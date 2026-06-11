@@ -129,6 +129,7 @@ Good first tests:
 - SessionModeChanger applies only allowed mode transitions
 - GameSession save/load preserves event sinks and resets transient clock state
 - GameSession failed load preserves the active world
+- SessionCommandApplier maps lifecycle command outcomes to results and events
 - SessionCommandDispatcher applies start, save, load, and mode commands
 - SessionCommandDispatcher rejects invalid lifecycle commands
 - SessionCommandDispatcher emits success and failure lifecycle events

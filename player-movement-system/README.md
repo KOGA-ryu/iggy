@@ -479,9 +479,13 @@ SessionModeChanger
   small transition boundary that applies only mode changes allowed by
   SessionModePolicy
 
-SessionCommand / SessionCommandDispatcher
+SessionCommand / SessionCommandApplier
   semantic lifecycle command boundary for menu, UI, controller, replay, and
   tests to request new/load/save/mode changes without directly mutating session
+
+SessionCommandDispatcher
+  emits lifecycle events for applied or rejected session commands after
+  SessionCommandApplier mutates or rejects the active GameSession
 
 SessionCommandSource
   runtime-facing source boundary that lets menu actions, debug tools, scripts,

@@ -86,6 +86,7 @@
 #include "save/SnapshotVectorCodec.hpp"
 #include "save/SnapshotWriter.hpp"
 #include "session/GameSession.hpp"
+#include "session/SessionCommandApplier.hpp"
 #include "session/SessionCommandCodec.hpp"
 #include "session/SessionCommandDispatcher.hpp"
 #include "session/SessionCommandLog.hpp"
@@ -3197,6 +3198,79 @@ void TestSessionCommandDispatcherRejectsInvalidLifecycleCommands()
 	std::filesystem::remove_all(root);
 }
 
+void TestSessionCommandApplierMapsLifecycleOutcomes()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_session_command_applier_test";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root };
+	dev::SessionCommandApplier applier { session };
+
+	dev::SessionCommandApplication start = applier.apply({
+	    .type = dev::SessionCommandType::StartNewGame,
+	    .newGameSettings = dev::NewGameSettings { .playerStart = { 3, 7 } },
+	});
+	Expect(start.result.type == dev::SessionCommandResultType::Applied, "session command applier should apply start command");
+	Expect(start.eventType == dev::SessionEventType::GameStarted, "session command applier should map start to GameStarted");
+	Expect(session.world().players.size() == 1 && session.world().players[0].position.tile == dev::Point { 3, 7 }, "session command applier should mutate session for start command");
+
+	dev::SessionCommandApplication save = applier.apply({
+	    .type = dev::SessionCommandType::SaveSlot,
+	    .slotId = 1,
+	});
+	Expect(save.result.type == dev::SessionCommandResultType::Applied, "session command applier should apply save command");
+	Expect(save.eventType == dev::SessionEventType::SaveCompleted, "session command applier should map successful save to SaveCompleted");
+
+	session.world().players[0].position.tile = { 9, 9 };
+	dev::SessionCommandApplication load = applier.apply({
+	    .type = dev::SessionCommandType::LoadSlot,
+	    .slotId = 1,
+	});
+	Expect(load.result.type == dev::SessionCommandResultType::Applied, "session command applier should apply load command");
+	Expect(load.eventType == dev::SessionEventType::LoadCompleted, "session command applier should map successful load to LoadCompleted");
+	Expect(session.world().players[0].position.tile == dev::Point { 3, 7 }, "session command applier should restore saved world");
+
+	dev::SessionCommandApplication mode = applier.apply({
+	    .type = dev::SessionCommandType::SetMode,
+	    .mode = dev::GameSessionMode::Inventory,
+	});
+	Expect(mode.result.type == dev::SessionCommandResultType::Applied, "session command applier should apply mode command");
+	Expect(mode.eventType == dev::SessionEventType::ModeChanged, "session command applier should map successful mode change to ModeChanged");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestSessionCommandApplierMapsRejectedOutcomes()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_session_command_applier_reject_test";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root };
+	dev::SessionCommandApplier applier { session };
+
+	dev::SessionCommandApplication save = applier.apply({
+	    .type = dev::SessionCommandType::SaveSlot,
+	    .slotId = 1,
+	});
+	Expect(save.result.type == dev::SessionCommandResultType::Rejected, "session command applier should reject saving empty sessions");
+	Expect(save.eventType == dev::SessionEventType::SaveFailed, "session command applier should map rejected save to SaveFailed");
+
+	dev::SessionCommandApplication load = applier.apply({
+	    .type = dev::SessionCommandType::LoadSlot,
+	    .slotId = 99,
+	});
+	Expect(load.result.type == dev::SessionCommandResultType::Rejected, "session command applier should reject missing load slots");
+	Expect(load.eventType == dev::SessionEventType::LoadFailed, "session command applier should map rejected load to LoadFailed");
+
+	dev::SessionCommandApplication mode = applier.apply({
+	    .type = dev::SessionCommandType::SetMode,
+	});
+	Expect(mode.result.type == dev::SessionCommandResultType::Rejected, "session command applier should reject mode commands without payload");
+	Expect(mode.eventType == dev::SessionEventType::ModeChangeRejected, "session command applier should map rejected mode to ModeChangeRejected");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestSessionCommandDispatcherEmitsSuccessEvents()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_session_event_success_test";
@@ -6293,6 +6367,8 @@ int main()
 	TestGameSessionMissingLoadKeepsCurrentWorld();
 	TestSessionCommandDispatcherAppliesLifecycleCommands();
 	TestSessionCommandDispatcherRejectsInvalidLifecycleCommands();
+	TestSessionCommandApplierMapsLifecycleOutcomes();
+	TestSessionCommandApplierMapsRejectedOutcomes();
 	TestSessionCommandDispatcherEmitsSuccessEvents();
 	TestSessionCommandDispatcherEmitsFailureEvents();
 	TestSessionCommandReplayAppliesLifecycleSequence();
