@@ -105,6 +105,7 @@
 #include "replay/CommandLogFrameCodec.hpp"
 #include "replay/CommandPacketListCodec.hpp"
 #include "replay/CommandReplayer.hpp"
+#include "replay/MovementScriptRunner.hpp"
 #include "save/SaveGameService.hpp"
 #include "save/SaveSlotService.hpp"
 #include "save/SnapshotByteStream.hpp"
@@ -858,6 +859,87 @@ void TestCommandLogFileStoreRejectsCorruptAndMissingFiles()
 	dev::CommandLogFileStore store;
 	Expect(!store.load(missingPath).has_value(), "movement command log file store should reject missing file");
 	Expect(!store.load(corruptPath).has_value(), "movement command log file store should reject corrupt file");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestMovementScriptRunnerRunsSavedMovementScript()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_movement_script_runner_test";
+	const std::filesystem::path path = root / "movement.imcl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::CommandLog log;
+	log.record({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+	log.record({
+	    .type = dev::MovementCommandType::Stop,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+	dev::CommandLogFileStore store;
+	Expect(store.save(path, log), "movement script runner test should save movement script");
+
+	dev::EventRecorder events;
+	dev::TileMap map;
+	dev::Collision collision;
+	dev::PathFinder pathFinder;
+	std::vector<dev::Player> players { MakePlayer({ 0, 0 }) };
+	dev::PlayerController controller { players, map, collision, pathFinder, &events };
+	dev::CommandDispatcher dispatcher { controller, &events };
+	dev::MovementScriptRunner runner { dispatcher };
+
+	const dev::MovementScriptRunResult result = runner.run(path);
+
+	Expect(result.status == dev::MovementScriptRunStatus::Completed, "movement script runner should report completed scripts");
+	Expect(result.replayReport.results.size() == 2, "movement script runner should replay every loaded command");
+	Expect(result.replayReport.acceptedCount() == 2, "movement script runner should report accepted commands");
+	Expect(result.replayReport.allAccepted(), "movement script runner should report all accepted commands");
+	Expect(players[0].moveState == dev::PlayerMoveState::Idle, "movement script runner should let stop command settle player state");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestMovementScriptRunnerDistinguishesLoadFailureFromCommandRejection()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_movement_script_runner_failure_test";
+	const std::filesystem::path missingPath = root / "missing.imcl";
+	const std::filesystem::path rejectedPath = root / "rejected.imcl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::CommandLog rejectedLog;
+	rejectedLog.record({
+	    .type = dev::MovementCommandType::MoveThenAct,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	    .destinationAction = std::nullopt,
+	});
+	dev::CommandLogFileStore store;
+	Expect(store.save(rejectedPath, rejectedLog), "movement script runner failure test should save rejected script");
+
+	dev::EventRecorder events;
+	dev::TileMap map;
+	dev::Collision collision;
+	dev::PathFinder pathFinder;
+	std::vector<dev::Player> players { MakePlayer({ 0, 0 }) };
+	dev::PlayerController controller { players, map, collision, pathFinder, &events };
+	dev::CommandDispatcher dispatcher { controller, &events };
+	dev::MovementScriptRunner runner { dispatcher };
+
+	const dev::MovementScriptRunResult missing = runner.run(missingPath);
+	const dev::MovementScriptRunResult rejected = runner.run(rejectedPath);
+
+	Expect(missing.status == dev::MovementScriptRunStatus::LoadFailed, "movement script runner should report load failure for missing scripts");
+	Expect(missing.replayReport.results.empty(), "movement script runner should not replay commands after load failure");
+	Expect(rejected.status == dev::MovementScriptRunStatus::Completed, "movement script runner should complete loaded scripts even when commands reject");
+	Expect(rejected.replayReport.results.size() == 1, "movement script runner should report rejected command result");
+	Expect(rejected.replayReport.rejectedCount() == 1, "movement script runner should keep command rejection separate from load failure");
+	Expect(!rejected.replayReport.allAccepted(), "movement script runner should expose rejected loaded scripts");
 
 	std::filesystem::remove_all(root);
 }
@@ -7928,6 +8010,8 @@ int main()
 	TestCommandLogFrameCodecRejectsInvalidFrames();
 	TestCommandLogFileStoreSavesLoadsAndReplays();
 	TestCommandLogFileStoreRejectsCorruptAndMissingFiles();
+	TestMovementScriptRunnerRunsSavedMovementScript();
+	TestMovementScriptRunnerDistinguishesLoadFailureFromCommandRejection();
 	TestEnemyPursuitStepPlannerChoosesNextTileTowardTarget();
 	TestEnemyPursuitStepGateRequiresWalkableUnblockedTile();
 	TestEnemyAttackRangeUsesEnemyTuning();

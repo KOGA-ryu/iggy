@@ -113,6 +113,7 @@ add_library(player_movement_system
   src/replay/CommandPacketListCodec.cpp
   src/replay/CommandReplayReport.cpp
   src/replay/CommandReplayer.cpp
+  src/replay/MovementScriptRunner.cpp
   src/save/SnapshotByteStream.cpp
   src/save/SnapshotChecksum.cpp
   src/save/SnapshotFrameCodec.cpp

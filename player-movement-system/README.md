@@ -370,6 +370,10 @@ CommandLogFileStore
   filesystem boundary for movement replay logs, mapping saved bytes to valid
   CommandLog values or missing/corrupt load failures
 
+MovementScriptRunner
+  high-level replay use case that loads a movement script file and dispatches it
+  through CommandReplayer without mixing filesystem errors into command rejection
+
 MovementCommandDispatchResult
   inspectable accepted/rejected result returned by CommandDispatcher and
   collected by CommandReplayer during movement replay

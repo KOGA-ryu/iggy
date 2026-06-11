@@ -245,6 +245,22 @@ Loading reverses that path. A missing or corrupt `.imcl` file returns no
 `CommandLog`, so replay does not have to know about filesystem errors or bad
 byte streams.
 
+The script runner is the use-case layer over files and replay:
+
+```text
+movement script path
+  -> MovementScriptRunner
+  -> CommandLogFileStore
+  -> CommandLog
+  -> CommandReplayer
+  -> CommandDispatcher
+```
+
+`MovementScriptRunner` reports load failure separately from command rejection.
+That distinction matters because a valid movement script can still ask for an
+illegal action in the current world state, and that should be visible as replay
+data rather than confused with a missing or corrupt file.
+
 ## 12. Network Codec
 
 Networking should transmit semantic commands, not raw input:
