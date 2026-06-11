@@ -131,6 +131,7 @@ PlayerMovement consumes path
   -> PlayerAnimationLockGate
   -> PlayerPathStepper
   -> PlayerMoveState::Acting
+  -> PlayerActionRunner
   -> ActionExecutor
   -> ActionRules
   -> AnimationLock
@@ -144,6 +145,10 @@ hand control to the action executor.
 `PlayerAnimationLockGate` runs before path stepping. It lets animation
 commitment block movement for a predictable window, then emits
 `AnimationUnlocked` when input may affect the actor again.
+
+`PlayerActionRunner` owns the small but important handoff from movement state to
+action execution. It decides whether an arrived player should idle or enter
+`Acting`, then delegates the target/range/consequence rules to `ActionExecutor`.
 
 The executor owns questions like:
 

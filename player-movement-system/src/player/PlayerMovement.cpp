@@ -5,7 +5,7 @@ namespace dev {
 PlayerMovement::PlayerMovement(const Collision &collision, ActionExecutor actionExecutor, MovementEventSink *eventSink)
     : animationLocks_(eventSink)
     , pathStepper_(collision, eventSink)
-    , actionExecutor_(actionExecutor)
+    , actions_(actionExecutor)
 {
 }
 
@@ -18,17 +18,13 @@ void PlayerMovement::update(std::vector<Player> &players, float deltaSeconds) co
 			continue;
 
 		if (player.path.empty()) {
-			player.moveState = player.destinationAction.type == DestinationActionType::None
-			    ? PlayerMoveState::Idle
-			    : PlayerMoveState::Acting;
-			if (player.moveState == PlayerMoveState::Acting)
-				actionExecutor_.update(player, playerId);
+			actions_.run(player, playerId);
 			continue;
 		}
 
 		const PlayerPathStepResult step = pathStepper_.step(player);
 		if (step.actionReady)
-			actionExecutor_.update(player, playerId);
+			actions_.run(player, playerId);
 	}
 }
 

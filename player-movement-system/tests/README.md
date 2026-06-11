@@ -29,6 +29,7 @@ Good first tests:
 - MoveThenAct emits CommandAccepted -> PathStarted -> StepCommitted -> DestinationActionReady -> AnimationLocked -> ActionExecuted
 - PlayerPathStepper commits one path step and reports destination action readiness
 - PlayerAnimationLockGate blocks movement until the cancel window and emits AnimationUnlocked
+- PlayerActionRunner executes a ready destination action through ActionExecutor
 - CommandLog replay produces the same movement/action event sequence
 - MovementCodec round-trips MoveThenAct command packets
 - enemy pursuit obeys maxStepsPerTick

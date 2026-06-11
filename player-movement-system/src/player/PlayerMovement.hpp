@@ -5,6 +5,7 @@
 #include "actions/ActionExecutor.hpp"
 #include "events/MovementEventSink.hpp"
 #include "player/Player.hpp"
+#include "player/PlayerActionRunner.hpp"
 #include "player/PlayerAnimationLockGate.hpp"
 #include "player/PlayerPathStepper.hpp"
 #include "world/Collision.hpp"
@@ -20,7 +21,7 @@ public:
 private:
 	PlayerAnimationLockGate animationLocks_;
 	PlayerPathStepper pathStepper_;
-	ActionExecutor actionExecutor_;
+	PlayerActionRunner actions_;
 };
 
 } // namespace dev

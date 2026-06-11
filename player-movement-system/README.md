@@ -150,6 +150,7 @@ RawInputEvent
   -> PlayerController
   -> PlayerMovement
   -> PlayerPathStepper
+  -> PlayerActionRunner
   -> ActionExecutor
 ```
 
@@ -193,6 +194,10 @@ PlayerAnimationLockGate
 
 DestinationAction
   action to perform after movement reaches range
+
+PlayerActionRunner
+  turns an arrived player into acting state and runs the queued destination
+  action through ActionExecutor
 
 TargetRegistry
   world-backed clickable target table used by runtime input routing, save/load,

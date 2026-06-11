@@ -52,6 +52,7 @@
 #include "input/RawInputSource.hpp"
 #include "network/MovementCodec.hpp"
 #include "player/PlayerAnimationLockGate.hpp"
+#include "player/PlayerActionRunner.hpp"
 #include "player/PlayerActionGate.hpp"
 #include "player/PlayerController.hpp"
 #include "player/PlayerMovement.hpp"
@@ -307,6 +308,23 @@ void TestPlayerAnimationLockGateBlocksUntilCancelWindow()
 	Expect(gate.advance(player, 0.25F), "animation lock gate should open once cancel window is reached");
 	Expect(!player.animationLock.active, "animation lock gate should clear active lock at cancel window");
 	Expect(events.events().size() == 1 && events.events()[0].type == dev::MovementEventType::AnimationUnlocked, "animation lock gate should emit animation unlock event");
+}
+
+void TestPlayerActionRunnerExecutesReadyDestinationAction()
+{
+	dev::EventRecorder events;
+	dev::Player player = MakePlayer({ 1, 0 });
+	dev::Target target { .type = dev::TargetType::Enemy, .id = 15, .tile = { 1, 0 } };
+	player.destinationAction = { dev::DestinationActionType::Attack, target, 1 };
+	player.moveState = dev::PlayerMoveState::Acting;
+
+	dev::PlayerActionRunner { dev::ActionExecutor { dev::ActionRules {}, &events } }.run(player, 0);
+
+	Expect(player.destinationAction.type == dev::DestinationActionType::None, "player action runner should clear executed destination action");
+	Expect(player.moveState == dev::PlayerMoveState::Idle, "player action runner should settle executed action back to idle");
+	Expect(player.animationLock.active, "player action runner should preserve action animation commitment");
+	Expect(events.events().size() >= 2 && events.events()[0].type == dev::MovementEventType::AnimationLocked, "player action runner should emit animation lock through action executor");
+	Expect(events.events().size() >= 2 && events.events()[1].type == dev::MovementEventType::ActionExecuted, "player action runner should emit action executed through action executor");
 }
 
 void TestCommandReplayProducesSameEventSequence()
@@ -5027,6 +5045,7 @@ int main()
 	TestMoveThenActEventSequence();
 	TestPlayerPathStepperReportsActionReady();
 	TestPlayerAnimationLockGateBlocksUntilCancelWindow();
+	TestPlayerActionRunnerExecutesReadyDestinationAction();
 	TestCommandReplayProducesSameEventSequence();
 	TestMovementCodecRoundTrip();
 	TestEnemyPursuitObeysStepBudget();
