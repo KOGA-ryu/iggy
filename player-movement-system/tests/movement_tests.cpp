@@ -71,6 +71,7 @@
 #include "session/SessionEventRecorder.hpp"
 #include "session/SessionScriptRunner.hpp"
 #include "simulation/SimulationClock.hpp"
+#include "simulation/SimulationFrameEventCapture.hpp"
 #include "simulation/SimulationFrameFinalizer.hpp"
 #include "simulation/SimulationFrameRunner.hpp"
 #include "simulation/SimulationTick.hpp"
@@ -707,6 +708,42 @@ void TestEffectApplierAppliesHitStopToClock()
 	dev::SimulationTimeStep step = clock.step(0.01F);
 	Expect(step.playerDeltaSeconds == 0.0F, "applied hit-stop should freeze player actor time");
 	Expect(step.enemyDeltaSeconds == 0.0F, "applied hit-stop should freeze enemy actor time");
+}
+
+void TestSimulationFrameEventCaptureCollectsForwardsAndRestoresSinks()
+{
+	dev::SimulationWorld world;
+	dev::EventRecorder forwardedMovement;
+	dev::CombatEventRecorder forwardedCombat;
+	world.movementEvents = &forwardedMovement;
+	world.setCombatEventSink(&forwardedCombat);
+
+	{
+		dev::SimulationFrameEventCapture capture { world };
+		Expect(world.movementEvents == &capture.events(), "simulation frame event capture should install movement capture sink");
+		Expect(world.combatEvents == &capture.events(), "simulation frame event capture should install combat capture sink");
+
+		world.movementEvents->emit({
+		    .type = dev::MovementEventType::StepCommitted,
+		    .playerId = 0,
+		    .tile = { 2, 0 },
+		});
+		world.combatEvents->emit({
+		    .type = dev::CombatEventType::Hit,
+		    .target = dev::Target { .type = dev::TargetType::Enemy, .id = 44, .tile = { 2, 0 } },
+		    .damage = 2,
+		    .remainingHitPoints = 3,
+		    .result = dev::CombatResultType::Hit,
+		});
+
+		Expect(capture.events().movementEvents().size() == 1, "simulation frame event capture should collect movement events");
+		Expect(capture.events().combatEvents().size() == 1, "simulation frame event capture should collect combat events");
+		Expect(forwardedMovement.events().size() == 1, "simulation frame event capture should forward movement events");
+		Expect(forwardedCombat.events().size() == 1, "simulation frame event capture should forward combat events");
+	}
+
+	Expect(world.movementEvents == &forwardedMovement, "simulation frame event capture should restore movement sink");
+	Expect(world.combatEvents == &forwardedCombat, "simulation frame event capture should restore combat sink");
 }
 
 void TestSimulationFrameFinalizerAppliesConsequences()
@@ -4863,6 +4900,7 @@ int main()
 	TestEffectRouterMapsMovementEventsToRequests();
 	TestEffectRouterMapsCombatHitToRequests();
 	TestEffectApplierAppliesHitStopToClock();
+	TestSimulationFrameEventCaptureCollectsForwardsAndRestoresSinks();
 	TestSimulationFrameFinalizerAppliesConsequences();
 	TestSimulationFrameRunnerProcessesConsequences();
 	TestTargetRegistryResolvesAndRemovesTargets();

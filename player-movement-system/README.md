@@ -289,6 +289,10 @@ SimulationClock / SimulationTimeStep
 SimulationFrameEvents / SimulationFrameRunner
   collects per-frame facts and returns frame output for presentation
 
+SimulationFrameEventCapture
+  scoped frame helper that temporarily installs movement/combat event capture
+  sinks, forwards to existing sinks, and restores the world after the tick
+
 SimulationFrameFinalizer
   post-tick consequence stage that synchronizes clickable targets, applies
   pickup transfers, routes effect requests, and applies allowed simulation-facing

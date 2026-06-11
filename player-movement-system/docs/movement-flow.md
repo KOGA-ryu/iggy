@@ -373,6 +373,7 @@ The frame runner turns the pieces into a normal loop:
 SimulationFrameRunner
   -> SimulationClock::step
   -> SimulationTick
+  -> SimulationFrameEventCapture
   -> SimulationFrameEvents
   -> SimulationFrameFinalizer
   -> TargetSynchronizer
@@ -387,6 +388,7 @@ This gives each frame a clean consequence phase:
 ```text
 state changes happen during tick
 facts are collected as events
+event capture forwards to existing observers and restores world sinks
 target and inventory consequences are reconciled after the tick
 effect requests are derived after the tick
 approved simulation-facing effects are applied

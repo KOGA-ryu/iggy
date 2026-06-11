@@ -1,5 +1,7 @@
 #include "SimulationFrameRunner.hpp"
 
+#include "simulation/SimulationFrameEventCapture.hpp"
+
 namespace dev {
 
 SimulationFrameRunner::SimulationFrameRunner(SimulationClock *clock)
@@ -25,18 +27,10 @@ SimulationFrameEvents SimulationFrameRunner::run(SimulationWorld &world, const S
 
 SimulationFrameEvents SimulationFrameRunner::run(SimulationWorld &world, const SimulationTimeStep &timeStep, const SimulationFramePolicy &policy) const
 {
-	MovementEventSink *previousMovementEvents = world.movementEvents;
-	CombatEventSink *previousCombatEvents = world.combatEvents;
-	SimulationFrameEvents frameEvents { previousMovementEvents, previousCombatEvents };
-
-	world.movementEvents = &frameEvents;
-	world.setCombatEventSink(&frameEvents);
-
+	SimulationFrameEventCapture capture { world };
 	tick_.update(world, timeStep, policy);
-
-	world.movementEvents = previousMovementEvents;
-	world.setCombatEventSink(previousCombatEvents);
-
+	capture.restore();
+	SimulationFrameEvents frameEvents = capture.events();
 	finalizer_.finalize(world, frameEvents);
 
 	return frameEvents;
