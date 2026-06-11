@@ -720,7 +720,9 @@ Session commands now have a stable byte boundary:
 SessionCommand
   -> SessionCommandPacket
   -> SessionCommandPacketValidator
+  -> SessionCommandPacketByteCodec
   -> bytes
+  -> SessionCommandPacketByteCodec
   -> SessionCommandPacket
   -> SessionCommandPacketValidator
   -> SessionCommand
@@ -748,10 +750,12 @@ needs framing:
 
 ```text
 SessionCommandLog
+  -> SessionCommandLogFrameCodec
   -> magic
   -> version
   -> command count
   -> SessionCommandPacket[]
+  -> SessionCommandLogChecksum
   -> checksum
 ```
 

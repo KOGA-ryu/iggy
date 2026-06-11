@@ -1,53 +1,9 @@
 #include "SessionCommandCodec.hpp"
 
-#include <cstddef>
-
+#include "session/SessionCommandPacketByteCodec.hpp"
 #include "session/SessionCommandPacketValidator.hpp"
 
 namespace dev {
-
-namespace {
-
-constexpr std::size_t PacketSize = 25;
-
-void WriteU8(SessionCommandBytes &bytes, uint8_t value)
-{
-	bytes.push_back(value);
-}
-
-void WriteU16(SessionCommandBytes &bytes, uint16_t value)
-{
-	bytes.push_back(static_cast<uint8_t>(value & 0xFFU));
-	bytes.push_back(static_cast<uint8_t>((value >> 8U) & 0xFFU));
-}
-
-void WriteU32(SessionCommandBytes &bytes, uint32_t value)
-{
-	WriteU16(bytes, static_cast<uint16_t>(value & 0xFFFFU));
-	WriteU16(bytes, static_cast<uint16_t>((value >> 16U) & 0xFFFFU));
-}
-
-uint8_t ReadU8(const SessionCommandBytes &bytes, std::size_t &offset)
-{
-	return bytes[offset++];
-}
-
-uint16_t ReadU16(const SessionCommandBytes &bytes, std::size_t &offset)
-{
-	const uint16_t value = static_cast<uint16_t>(bytes[offset])
-	    | (static_cast<uint16_t>(bytes[offset + 1U]) << 8U);
-	offset += 2U;
-	return value;
-}
-
-uint32_t ReadU32(const SessionCommandBytes &bytes, std::size_t &offset)
-{
-	const uint32_t low = ReadU16(bytes, offset);
-	const uint32_t high = ReadU16(bytes, offset);
-	return low | (high << 16U);
-}
-
-} // namespace
 
 SessionCommandPacket SessionCommandCodec::toPacket(const SessionCommand &command) const
 {
@@ -94,46 +50,12 @@ std::optional<SessionCommand> SessionCommandCodec::fromPacket(const SessionComma
 
 SessionCommandBytes SessionCommandCodec::encode(const SessionCommandPacket &packet) const
 {
-	SessionCommandBytes bytes;
-	bytes.reserve(PacketSize);
-	WriteU8(bytes, packet.commandType);
-	WriteU8(bytes, packet.hasNewGameSettings);
-	WriteU16(bytes, static_cast<uint16_t>(packet.playerStartX));
-	WriteU16(bytes, static_cast<uint16_t>(packet.playerStartY));
-	WriteU16(bytes, static_cast<uint16_t>(packet.playerHitPoints));
-	WriteU8(bytes, packet.hasSlotId);
-	WriteU32(bytes, packet.slotId);
-	WriteU8(bytes, packet.hasMode);
-	WriteU8(bytes, packet.mode);
-	WriteU16(bytes, 0); // reserved
-	WriteU32(bytes, 0); // reserved
-	WriteU32(bytes, 0); // reserved
-	return bytes;
+	return SessionCommandPacketByteCodec {}.encode(packet);
 }
 
 std::optional<SessionCommandPacket> SessionCommandCodec::decode(const SessionCommandBytes &bytes) const
 {
-	if (bytes.size() != PacketSize)
-		return std::nullopt;
-
-	std::size_t offset = 0;
-	SessionCommandPacket packet;
-	packet.commandType = ReadU8(bytes, offset);
-	packet.hasNewGameSettings = ReadU8(bytes, offset);
-	packet.playerStartX = static_cast<int16_t>(ReadU16(bytes, offset));
-	packet.playerStartY = static_cast<int16_t>(ReadU16(bytes, offset));
-	packet.playerHitPoints = static_cast<int16_t>(ReadU16(bytes, offset));
-	packet.hasSlotId = ReadU8(bytes, offset);
-	packet.slotId = ReadU32(bytes, offset);
-	packet.hasMode = ReadU8(bytes, offset);
-	packet.mode = ReadU8(bytes, offset);
-	ReadU16(bytes, offset); // reserved
-	ReadU32(bytes, offset); // reserved
-	ReadU32(bytes, offset); // reserved
-
-	if (!fromPacket(packet).has_value())
-		return std::nullopt;
-	return packet;
+	return SessionCommandPacketByteCodec {}.decode(bytes);
 }
 
 } // namespace dev

@@ -84,8 +84,11 @@ add_library(player_movement_system
   src/session/SessionCommandCodec.cpp
   src/session/SessionCommandDispatcher.cpp
   src/session/SessionCommandLog.cpp
+  src/session/SessionCommandLogChecksum.cpp
   src/session/SessionCommandLogCodec.cpp
   src/session/SessionCommandLogFileStore.cpp
+  src/session/SessionCommandLogFrameCodec.cpp
+  src/session/SessionCommandPacketByteCodec.cpp
   src/session/SessionCommandPacketValidator.cpp
   src/session/SessionCommandReplayer.cpp
   src/session/SessionCommandSource.cpp

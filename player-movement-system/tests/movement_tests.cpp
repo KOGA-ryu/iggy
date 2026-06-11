@@ -77,8 +77,11 @@
 #include "session/SessionCommandCodec.hpp"
 #include "session/SessionCommandDispatcher.hpp"
 #include "session/SessionCommandLog.hpp"
+#include "session/SessionCommandLogChecksum.hpp"
 #include "session/SessionCommandLogCodec.hpp"
 #include "session/SessionCommandLogFileStore.hpp"
+#include "session/SessionCommandLogFrameCodec.hpp"
+#include "session/SessionCommandPacketByteCodec.hpp"
 #include "session/SessionCommandPacketValidator.hpp"
 #include "session/SessionCommandReplayer.hpp"
 #include "session/SessionEventRecorder.hpp"
@@ -2946,6 +2949,43 @@ void TestSessionCommandPacketValidatorRejectsMalformedPayloads()
 	    "session command packet validator should reject unexpected payload fields");
 }
 
+void TestSessionCommandPacketByteCodecRoundTripsPackets()
+{
+	dev::SessionCommandPacketByteCodec codec;
+	dev::SessionCommandPacket packet {
+		.commandType = static_cast<uint8_t>(dev::SessionCommandType::SaveSlot),
+		.hasSlotId = 1,
+		.slotId = 0x01020304U,
+	};
+
+	dev::SessionCommandBytes bytes = codec.encode(packet);
+	std::optional<dev::SessionCommandPacket> decoded = codec.decode(bytes);
+
+	Expect(bytes.size() == 25, "session command packet byte codec should write fixed packet size");
+	Expect(bytes.size() == 25 && bytes[9] == 0x04 && bytes[10] == 0x03 && bytes[11] == 0x02 && bytes[12] == 0x01, "session command packet byte codec should write slot id little-endian");
+	Expect(decoded.has_value(), "session command packet byte codec should decode valid bytes");
+	Expect(decoded.has_value() && decoded->commandType == packet.commandType, "session command packet byte codec should preserve command type");
+	Expect(decoded.has_value() && decoded->hasSlotId == 1 && decoded->slotId == packet.slotId, "session command packet byte codec should preserve slot payload");
+}
+
+void TestSessionCommandPacketByteCodecRejectsInvalidBytes()
+{
+	dev::SessionCommandPacketByteCodec codec;
+	dev::SessionCommandPacket packet {
+		.commandType = static_cast<uint8_t>(dev::SessionCommandType::SetMode),
+		.hasMode = 1,
+		.mode = static_cast<uint8_t>(dev::GameSessionMode::Inventory),
+	};
+
+	dev::SessionCommandBytes shortBytes = codec.encode(packet);
+	shortBytes.pop_back();
+	Expect(!codec.decode(shortBytes).has_value(), "session command packet byte codec should reject wrong byte size");
+
+	dev::SessionCommandBytes invalidPacketBytes = codec.encode(packet);
+	invalidPacketBytes[14] = 99;
+	Expect(!codec.decode(invalidPacketBytes).has_value(), "session command packet byte codec should reject invalid decoded packets");
+}
+
 void TestSessionCommandLogCodecRoundTripsAndReplays()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_session_log_codec_replay_test";
@@ -3013,6 +3053,80 @@ void TestSessionCommandLogCodecRejectsInvalidBytes()
 	dev::SessionCommandLogBytes corrupted = bytes;
 	corrupted[12] ^= 0x01U;
 	Expect(!codec.decode(corrupted).has_value(), "session command log codec should reject checksum mismatch");
+}
+
+void TestSessionCommandLogChecksumValidatesTrailingChecksum()
+{
+	dev::SessionCommandLogBytes bytes { 1, 2, 3, 4 };
+	dev::SessionCommandLogChecksum checksum;
+	const uint32_t expected = checksum.compute(bytes, bytes.size());
+
+	checksum.appendTo(bytes);
+
+	Expect(bytes.size() == 8, "session command log checksum should append four checksum bytes");
+	Expect(checksum.hasValidTrailingChecksum(bytes, 4), "session command log checksum should validate appended checksum");
+	Expect(expected == checksum.compute(bytes, 4), "session command log checksum should compute payload hash only");
+
+	bytes[0] ^= 0xFFU;
+	Expect(!checksum.hasValidTrailingChecksum(bytes, 4), "session command log checksum should reject mutated payload");
+}
+
+void TestSessionCommandLogFrameCodecFramesPacketBytes()
+{
+	dev::SessionCommandPacketByteCodec packetCodec;
+	std::vector<dev::SessionCommandBytes> packets {
+		packetCodec.encode({
+		    .commandType = static_cast<uint8_t>(dev::SessionCommandType::SaveSlot),
+		    .hasSlotId = 1,
+		    .slotId = 5,
+		}),
+		packetCodec.encode({
+		    .commandType = static_cast<uint8_t>(dev::SessionCommandType::SetMode),
+		    .hasMode = 1,
+		    .mode = static_cast<uint8_t>(dev::GameSessionMode::Inventory),
+		}),
+	};
+
+	dev::SessionCommandLogFrameCodec frameCodec;
+	dev::SessionCommandLogBytes bytes = frameCodec.encode(packets);
+	std::optional<std::vector<dev::SessionCommandBytes>> decoded = frameCodec.decode(bytes);
+
+	Expect(bytes.size() == 66, "session command log frame codec should write header, packets, and checksum");
+	Expect(bytes.size() == 66 && bytes[0] == 'I' && bytes[1] == 'S' && bytes[2] == 'C' && bytes[3] == 'L', "session command log frame codec should write magic");
+	Expect(bytes.size() == 66 && bytes[4] == 1 && bytes[8] == 2, "session command log frame codec should write version and command count");
+	Expect(decoded.has_value() && decoded->size() == 2, "session command log frame codec should restore packet count");
+	Expect(decoded.has_value() && (*decoded)[0] == packets[0], "session command log frame codec should preserve first packet");
+	Expect(decoded.has_value() && (*decoded)[1] == packets[1], "session command log frame codec should preserve second packet");
+}
+
+void TestSessionCommandLogFrameCodecRejectsInvalidFrames()
+{
+	dev::SessionCommandPacketByteCodec packetCodec;
+	std::vector<dev::SessionCommandBytes> packets {
+		packetCodec.encode({
+		    .commandType = static_cast<uint8_t>(dev::SessionCommandType::SaveSlot),
+		    .hasSlotId = 1,
+		    .slotId = 5,
+		}),
+	};
+	dev::SessionCommandLogFrameCodec frameCodec;
+	dev::SessionCommandLogBytes bytes = frameCodec.encode(packets);
+
+	dev::SessionCommandLogBytes badMagic = bytes;
+	badMagic[0] = 'X';
+	Expect(!frameCodec.decode(badMagic).has_value(), "session command log frame codec should reject checksum-protected bad magic");
+
+	dev::SessionCommandLogBytes badVersion = bytes;
+	badVersion.resize(badVersion.size() - 4U);
+	badVersion[4] = 2;
+	dev::SessionCommandLogChecksum {}.appendTo(badVersion);
+	Expect(!frameCodec.decode(badVersion).has_value(), "session command log frame codec should reject unsupported version");
+
+	dev::SessionCommandLogBytes wrongCount = bytes;
+	wrongCount.resize(wrongCount.size() - 4U);
+	wrongCount[8] = 2;
+	dev::SessionCommandLogChecksum {}.appendTo(wrongCount);
+	Expect(!frameCodec.decode(wrongCount).has_value(), "session command log frame codec should reject payload size mismatch");
 }
 
 void TestSessionCommandLogFileStoreSavesLoadsAndReplays()
@@ -5646,8 +5760,13 @@ int main()
 	TestSessionCommandCodecRoundTripsCommands();
 	TestSessionCommandCodecRejectsInvalidPackets();
 	TestSessionCommandPacketValidatorRejectsMalformedPayloads();
+	TestSessionCommandPacketByteCodecRoundTripsPackets();
+	TestSessionCommandPacketByteCodecRejectsInvalidBytes();
 	TestSessionCommandLogCodecRoundTripsAndReplays();
 	TestSessionCommandLogCodecRejectsInvalidBytes();
+	TestSessionCommandLogChecksumValidatesTrailingChecksum();
+	TestSessionCommandLogFrameCodecFramesPacketBytes();
+	TestSessionCommandLogFrameCodecRejectsInvalidFrames();
 	TestSessionCommandLogFileStoreSavesLoadsAndReplays();
 	TestSessionCommandLogFileStoreRejectsCorruptAndMissingFiles();
 	TestSessionScriptRunnerRunsSavedLifecycleScript();

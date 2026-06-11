@@ -126,8 +126,11 @@ Good first tests:
 - SessionCommandCodec round-trips lifecycle commands
 - SessionCommandCodec rejects invalid lifecycle command packets
 - SessionCommandPacketValidator rejects malformed lifecycle packet shapes
+- SessionCommandPacketByteCodec round-trips and rejects lifecycle packet bytes
 - SessionCommandLogCodec round-trips and replays lifecycle command logs
 - SessionCommandLogCodec rejects invalid lifecycle log bytes
+- SessionCommandLogChecksum appends and validates lifecycle log checksums
+- SessionCommandLogFrameCodec frames packet bytes and rejects invalid frame metadata
 - SessionCommandLogFileStore saves, loads, and replays lifecycle command log files
 - SessionCommandLogFileStore rejects corrupt and missing lifecycle command log files
 - SessionScriptRunner loads and runs saved lifecycle scripts through the dispatcher

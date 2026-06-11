@@ -3,11 +3,11 @@
 #include <optional>
 
 #include "session/SessionCommandCodec.hpp"
+#include "session/SessionCommandLogBytes.hpp"
 #include "session/SessionCommandLog.hpp"
+#include "session/SessionCommandLogFrameCodec.hpp"
 
 namespace dev {
-
-using SessionCommandLogBytes = std::vector<uint8_t>;
 
 class SessionCommandLogCodec {
 public:
@@ -16,6 +16,7 @@ public:
 
 private:
 	SessionCommandCodec commandCodec_;
+	SessionCommandLogFrameCodec frameCodec_;
 };
 
 } // namespace dev

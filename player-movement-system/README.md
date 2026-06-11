@@ -456,9 +456,21 @@ SessionCommandPacketValidator
   packet-shape guard that rejects malformed lifecycle command payloads before
   they become semantic session commands
 
+SessionCommandPacketByteCodec
+  fixed-size byte boundary for lifecycle command packets, preserving explicit
+  little-endian field layout and rejecting invalid decoded packet shapes
+
 SessionCommandLogCodec
   durable byte format for lifecycle command logs, including magic, version,
   command count, packet validation, and checksum rejection
+
+SessionCommandLogChecksum
+  checksum boundary for lifecycle command log bytes, so replay-file integrity
+  rules are testable outside the full log codec
+
+SessionCommandLogFrameCodec
+  replay-file frame boundary that owns magic, version, command count, packet
+  slicing, and checksum-protected frame validation
 
 SessionCommandLogFileStore
   file persistence boundary for lifecycle command logs, so replay scripts can be
