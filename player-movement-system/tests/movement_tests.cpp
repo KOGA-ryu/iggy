@@ -71,6 +71,7 @@
 #include "session/SessionEventRecorder.hpp"
 #include "session/SessionScriptRunner.hpp"
 #include "simulation/SimulationClock.hpp"
+#include "simulation/SimulationFrameFinalizer.hpp"
 #include "simulation/SimulationFrameRunner.hpp"
 #include "simulation/SimulationTick.hpp"
 #include "simulation/WorldEntityService.hpp"
@@ -706,6 +707,46 @@ void TestEffectApplierAppliesHitStopToClock()
 	dev::SimulationTimeStep step = clock.step(0.01F);
 	Expect(step.playerDeltaSeconds == 0.0F, "applied hit-stop should freeze player actor time");
 	Expect(step.enemyDeltaSeconds == 0.0F, "applied hit-stop should freeze enemy actor time");
+}
+
+void TestSimulationFrameFinalizerAppliesConsequences()
+{
+	dev::SimulationWorld world;
+	dev::SimulationClock clock;
+	world.players.push_back(MakePlayer({ 1, 0 }));
+	dev::WorldEntityService {}.spawnItem(world, {
+	    .id = 620,
+	    .tile = { 1, 0 },
+	});
+	dev::Enemy enemy = MakeEnemy({ 2, 0 });
+	enemy.id = 41;
+	world.enemies.push_back(enemy);
+
+	dev::SimulationFrameEvents frameEvents;
+	frameEvents.emit(dev::MovementEvent {
+	    .type = dev::MovementEventType::ActionExecuted,
+	    .playerId = 0,
+	    .tile = { 1, 0 },
+	    .actionType = dev::DestinationActionType::Pickup,
+	    .actionResult = dev::ActionResultType::Executed,
+	    .target = dev::Target { .type = dev::TargetType::Item, .id = 620, .tile = { 1, 0 } },
+	});
+	frameEvents.emit(dev::CombatEvent {
+	    .type = dev::CombatEventType::Hit,
+	    .target = dev::Target { .type = dev::TargetType::Enemy, .id = 41, .tile = { 2, 0 } },
+	    .damage = 3,
+	    .remainingHitPoints = 4,
+	    .result = dev::CombatResultType::Hit,
+	});
+
+	dev::SimulationFrameFinalizer { &clock }.finalize(world, frameEvents);
+
+	Expect(world.items.empty(), "simulation frame finalizer should apply pickup transfers");
+	Expect(world.players[0].inventory.items.size() == 1 && world.players[0].inventory.items[0].id == 620, "simulation frame finalizer should preserve picked item identity");
+	Expect(world.targets.resolveAtTile({ 1, 0 }).type == dev::TargetType::EmptyTile, "simulation frame finalizer should remove picked item target");
+	Expect(world.targets.resolveAtTile({ 2, 0 }).type == dev::TargetType::Enemy, "simulation frame finalizer should publish current enemy targets");
+	Expect(!frameEvents.effectRequests().empty(), "simulation frame finalizer should route events into effect requests");
+	Expect(clock.hitStopRemainingSeconds() > 0.0F, "simulation frame finalizer should apply hit-stop effect requests");
 }
 
 void TestSimulationFrameRunnerProcessesConsequences()
@@ -4822,6 +4863,7 @@ int main()
 	TestEffectRouterMapsMovementEventsToRequests();
 	TestEffectRouterMapsCombatHitToRequests();
 	TestEffectApplierAppliesHitStopToClock();
+	TestSimulationFrameFinalizerAppliesConsequences();
 	TestSimulationFrameRunnerProcessesConsequences();
 	TestTargetRegistryResolvesAndRemovesTargets();
 	TestTargetSynchronizerSyncsEnemyTargetsWithoutRemovingObjects();

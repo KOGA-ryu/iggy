@@ -1,15 +1,12 @@
 #pragma once
 
-#include "effects/EffectApplier.hpp"
-#include "effects/EffectRouter.hpp"
-#include "inventory/InventoryService.hpp"
 #include "simulation/SimulationClock.hpp"
 #include "simulation/SimulationFrameEvents.hpp"
+#include "simulation/SimulationFrameFinalizer.hpp"
 #include "simulation/SimulationFramePolicy.hpp"
 #include "simulation/SimulationTick.hpp"
 #include "simulation/SimulationTimeStep.hpp"
 #include "simulation/SimulationWorld.hpp"
-#include "targeting/TargetSynchronizer.hpp"
 
 namespace dev {
 
@@ -27,8 +24,7 @@ private:
 
 	SimulationClock *clock_;
 	SimulationTick tick_;
-	TargetSynchronizer targets_;
-	InventoryService inventory_;
+	SimulationFrameFinalizer finalizer_;
 };
 
 } // namespace dev

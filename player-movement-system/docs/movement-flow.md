@@ -374,6 +374,9 @@ SimulationFrameRunner
   -> SimulationClock::step
   -> SimulationTick
   -> SimulationFrameEvents
+  -> SimulationFrameFinalizer
+  -> TargetSynchronizer
+  -> InventoryService
   -> EffectRouter
   -> EffectApplier
   -> frame output for presentation
@@ -384,6 +387,7 @@ This gives each frame a clean consequence phase:
 ```text
 state changes happen during tick
 facts are collected as events
+target and inventory consequences are reconciled after the tick
 effect requests are derived after the tick
 approved simulation-facing effects are applied
 presentation can consume the remaining frame output

@@ -4,6 +4,7 @@ namespace dev {
 
 SimulationFrameRunner::SimulationFrameRunner(SimulationClock *clock)
     : clock_(clock)
+    , finalizer_(clock)
 {
 }
 
@@ -32,25 +33,11 @@ SimulationFrameEvents SimulationFrameRunner::run(SimulationWorld &world, const S
 	world.setCombatEventSink(&frameEvents);
 
 	tick_.update(world, timeStep, policy);
-	targets_.syncEnemyTargets(world.enemies, world.combat.registry(), world.targets);
-	targets_.removeDefeatedTargets(frameEvents.combatEvents(), world.targets);
-	inventory_.applyPickupEvents(world, frameEvents.movementEvents());
 
 	world.movementEvents = previousMovementEvents;
 	world.setCombatEventSink(previousCombatEvents);
 
-	EffectRouter router { frameEvents };
-	for (const MovementEvent &event : frameEvents.movementEvents()) {
-		router.route(event);
-	}
-	for (const CombatEvent &event : frameEvents.combatEvents()) {
-		router.route(event);
-	}
-
-	EffectApplier applier { clock_ };
-	for (const EffectRequest &request : frameEvents.effectRequests()) {
-		applier.apply(request);
-	}
+	finalizer_.finalize(world, frameEvents);
 
 	return frameEvents;
 }

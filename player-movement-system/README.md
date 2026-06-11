@@ -287,8 +287,12 @@ SimulationClock / SimulationTimeStep
   without pushing time rules into movement, enemy, or combat systems
 
 SimulationFrameEvents / SimulationFrameRunner
-  collects per-frame facts, routes them into effect requests, applies allowed
-  simulation-facing effects, and returns the frame output for presentation
+  collects per-frame facts and returns frame output for presentation
+
+SimulationFrameFinalizer
+  post-tick consequence stage that synchronizes clickable targets, applies
+  pickup transfers, routes effect requests, and applies allowed simulation-facing
+  effects such as hit-stop
 
 SimulationSnapshot
   durable world state for save/load and debugging: players, inventories,
