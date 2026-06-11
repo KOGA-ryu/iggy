@@ -1,7 +1,7 @@
 #include "RuntimeFrameRunner.hpp"
 
-#include "app/RuntimeFramePolicyResolver.hpp"
-#include "app/RuntimeSimulationFrameUpdater.hpp"
+#include "app/RuntimeFrameSimulationPhaseRunner.hpp"
+#include "app/RuntimeFrameSourcePhaseRunner.hpp"
 
 namespace dev {
 
@@ -25,19 +25,13 @@ void RuntimeFrameRunner::runFrame()
 {
 	recorder_.beginFrame();
 
-	recorder_.recordRawInputDrainResult(inputSourceRouter_.route());
+	RuntimeFrameSourcePhaseRunner {}.run(
+	    inputSourceRouter_,
+	    sourceDrainer_,
+	    recorder_,
+	    sessionDispatcher_);
 
-	recorder_.recordSessionCommandResults(sourceDrainer_.drainSessionCommands(sessionDispatcher_));
-
-	recorder_.recordInventoryScriptResults(sourceDrainer_.drainInventoryScripts());
-	recorder_.recordInventoryCommandResults(sourceDrainer_.drainInventoryCommands());
-
-	recorder_.recordMovementScriptResults(sourceDrainer_.drainMovementScripts());
-	recorder_.recordMovementCommandsQueued(sourceDrainer_.drainMovementCommands());
-
-	recorder_.recordFramePolicy(RuntimeFramePolicyResolver {}.resolve(session_));
-
-	recorder_.recordFrameEvents(RuntimeSimulationFrameUpdater {}.update(session_, frame_));
+	RuntimeFrameSimulationPhaseRunner {}.run(session_, frame_, recorder_);
 	recorder_.finishFrame();
 
 	renderDebugView();

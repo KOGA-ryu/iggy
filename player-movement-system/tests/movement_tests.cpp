@@ -33,6 +33,8 @@
 #include "app/RuntimeFramePolicyResolver.hpp"
 #include "app/RuntimeFramePolicyText.hpp"
 #include "app/RuntimeFrameRunner.hpp"
+#include "app/RuntimeFrameSimulationPhaseRunner.hpp"
+#include "app/RuntimeFrameSourcePhaseRunner.hpp"
 #include "app/RuntimeInputContextBuilder.hpp"
 #include "app/RuntimeInputDrainReportRecorder.hpp"
 #include "app/RuntimeInputDrainResultBuilder.hpp"
@@ -7818,6 +7820,42 @@ void TestRuntimeSimulationFrameUpdaterAdvancesSessionWithFrameSettings()
 	std::filesystem::remove_all(root);
 }
 
+void TestRuntimeFrameSimulationPhaseRunnerRecordsPolicyAndEvents()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_frame_simulation_phase_runner_test";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root / "saves" };
+	session.startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	session.world().commandQueue.push({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+
+	dev::GameLoopResult result;
+	dev::SessionEventRecorder sessionEvents;
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::RuntimeRunRecorder recorder { result, sessionEvents, inventoryEvents };
+	recorder.beginFrame();
+
+	dev::RuntimeFrameSimulationPhaseRunner {}.run(
+	    session,
+	    dev::RuntimeFrameSettings {
+	        .fixedDeltaSeconds = 1.0F / 60.0F,
+	    },
+	    recorder);
+	recorder.finishFrame();
+
+	Expect(result.frameReports.size() == 1, "runtime frame simulation phase runner should be recordable inside a frame");
+	Expect(result.frameReports[0].framePolicy.mode == dev::SimulationMode::Gameplay, "runtime frame simulation phase runner should record current frame policy");
+	Expect(!result.frameReports[0].frameEvents.movementEvents().empty(), "runtime frame simulation phase runner should record simulation events");
+	Expect(!result.summary.lastFrameEvents.movementEvents().empty(), "runtime frame simulation phase runner should update summary frame events");
+	Expect(session.world().players.size() == 1 && session.world().players[0].position.tile == dev::Point { 1, 0 }, "runtime frame simulation phase runner should advance the active session world");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz()
 {
 	dev::RuntimeFrameSettings frame;
@@ -9454,6 +9492,89 @@ void TestRuntimeInputSourceRouterRoutesRawSourcesThroughSessionContext()
 	std::filesystem::remove_all(root);
 }
 
+void TestRuntimeFrameSourcePhaseRunnerRoutesAndDrainsSources()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_frame_source_phase_runner_test";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root / "saves" };
+	session.startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	session.world().players[0].inventory.items.push_back({
+	    .id = 61,
+	    .equipmentSlot = dev::EquipmentSlot::Weapon,
+	});
+
+	dev::SessionEventRecorder sessionEvents;
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::QueuedSessionCommandSource routedSessionCommands;
+	dev::QueuedMovementCommandSource routedMovementCommands;
+	dev::QueuedRawInputSource rawInput;
+	rawInput.enqueue({
+	    .type = dev::RawInputType::KeyPress,
+	    .code = 'I',
+	    .pressed = true,
+	});
+	dev::QueuedInventoryCommandSource inventoryCommands;
+	inventoryCommands.enqueue({
+	    .type = dev::InventoryCommandType::EquipItem,
+	    .itemId = 61,
+	});
+	dev::QueuedMovementCommandSource movementCommands;
+	movementCommands.enqueue({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+
+	dev::GameLoopResult result;
+	dev::RuntimeRunRecorder recorder { result, sessionEvents, inventoryEvents };
+	recorder.beginFrame();
+	dev::SessionCommandDispatcher dispatcher { session, &sessionEvents };
+	dev::RuntimeSourceDrainer sourceDrainer {
+		session,
+		inventoryEvents,
+		routedSessionCommands,
+		routedMovementCommands,
+		dev::RuntimeSourceDrainerSettings {
+		    .inventoryCommandSources = { &inventoryCommands },
+		    .movementCommandSources = { &movementCommands },
+		},
+	};
+	dev::RuntimeSourceSettings sources {
+	    .rawInputSources = { &rawInput },
+	};
+	dev::RuntimeInputSettings input {
+	    .bindings = dev::RuntimeInputBindings { .pauseKey = 'P', .inventoryKey = 'I', .stopKey = 'S' },
+	};
+	dev::RuntimeInputSourceRouter inputSourceRouter {
+		session,
+		routedSessionCommands,
+		routedMovementCommands,
+		sources,
+		input,
+	};
+
+	dev::RuntimeFrameSourcePhaseRunner {}.run(
+	    inputSourceRouter,
+	    sourceDrainer,
+	    recorder,
+	    dispatcher);
+
+	Expect(result.summary.rawInputEventsRouted == 1, "runtime frame source phase runner should record routed raw input");
+	Expect(result.summary.sessionCommandResults.size() == 1 && result.summary.sessionCommandResults[0].type == dev::SessionCommandResultType::Applied, "runtime frame source phase runner should dispatch routed session command");
+	Expect(session.mode() == dev::GameSessionMode::Inventory, "runtime frame source phase runner should apply session commands before later frame work");
+	Expect(result.summary.inventoryCommandResults.size() == 1 && result.summary.inventoryCommandResults[0].type == dev::InventoryCommandResultType::Applied, "runtime frame source phase runner should dispatch inventory command sources");
+	Expect(result.summary.movementCommandsQueued == 1, "runtime frame source phase runner should queue movement command sources");
+	Expect(rawInput.empty(), "runtime frame source phase runner should drain raw input source");
+	Expect(routedSessionCommands.empty(), "runtime frame source phase runner should drain routed session queue");
+	Expect(inventoryCommands.empty(), "runtime frame source phase runner should drain inventory command source");
+	Expect(movementCommands.empty(), "runtime frame source phase runner should drain movement command source");
+	dev::MovementCommand queued {};
+	Expect(session.world().commandQueue.tryPop(queued) && queued.destination == dev::Point { 1, 0 }, "runtime frame source phase runner should queue movement commands into active world");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestRuntimeFrameRunnerRoutesSourcesAndRecordsOneFrame()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_frame_runner_test";
@@ -10245,6 +10366,7 @@ int main()
 	TestRuntimeFramePolicyReportRecorderStoresCurrentFramePolicy();
 	TestRuntimeFramePolicyResolverMapsSessionModeToSimulationPolicy();
 	TestRuntimeSimulationFrameUpdaterAdvancesSessionWithFrameSettings();
+	TestRuntimeFrameSimulationPhaseRunnerRecordsPolicyAndEvents();
 	TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz();
 	TestRuntimeRunSummaryDefaultsToEmptyRun();
 	TestRuntimeRunRecorderAggregatesSetupInventoryResultsWithoutFrame();
@@ -10303,6 +10425,7 @@ int main()
 	TestQueuedRawInputSourceDrainsEventsOnce();
 	TestRuntimeRawInputDrainerRoutesHandledEventsAndSkipsNullSources();
 	TestRuntimeInputSourceRouterRoutesRawSourcesThroughSessionContext();
+	TestRuntimeFrameSourcePhaseRunnerRoutesAndDrainsSources();
 	TestRuntimeFrameRunnerRoutesSourcesAndRecordsOneFrame();
 	TestRuntimeFrameLoopRunnerRunsConfiguredFrames();
 	TestRuntimeRunExecutorRunsFramesOnlyWhenSetupAllows();

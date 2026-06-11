@@ -1279,20 +1279,25 @@ compare.
 
 ```text
 RuntimeFrameRunner
-  -> RuntimeInputSourceRouter routes raw input sources
-  -> drain session command sources
-  -> drain inventory script sources
-  -> drain inventory command sources
-  -> drain movement script sources
-  -> drain movement command sources
-  -> GameSession::update
+  -> RuntimeFrameSourcePhaseRunner
+  -> RuntimeFrameSimulationPhaseRunner
   -> RuntimeRunRecorder
 ```
 
+`RuntimeFrameSourcePhaseRunner` owns the ordered pre-simulation source phase:
+route raw input, drain session commands, run inventory scripts, dispatch
+inventory commands, run movement scripts, and queue direct movement commands.
+That keeps the frame runner focused on the frame lifecycle around the phase.
+
+`RuntimeFrameSimulationPhaseRunner` owns the ordered simulation phase: record
+the current frame policy, advance the active session, and record the resulting
+simulation events. That keeps policy selection and event collection together as
+the named phase that follows source intake.
+
 `RuntimeFramePolicyResolver` owns the app bridge from `GameSession` mode to
-`SimulationFramePolicyDescription`. The frame runner asks for the current frame
-policy, records it, then advances the session; it no longer needs to know how
-session modes map to simulation gates.
+`SimulationFramePolicyDescription`. The simulation phase asks for the current
+frame policy, records it, then advances the session; frame lifecycle code no
+longer needs to know how session modes map to simulation gates.
 
 `RuntimeSimulationFrameUpdater` owns the app bridge from frame settings to
 session simulation. It advances `GameSession` by

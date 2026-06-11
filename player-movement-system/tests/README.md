@@ -245,7 +245,9 @@ Good first tests:
 - RuntimeFramePolicyReportRecorder records the current simulation frame policy
 - RuntimeFramePolicyResolver maps session mode to current simulation frame policy
 - RuntimeSimulationFrameUpdater advances sessions with runtime frame settings
+- RuntimeFrameSimulationPhaseRunner records policy and events while advancing simulation
 - RuntimeFrameSettings defaults to zero frames at a sixty hertz timestep
+- RuntimeFrameSourcePhaseRunner routes and drains runtime sources before simulation
 - RuntimeFrameRunner routes sources and records one bounded frame
 - RuntimeFrameLoopRunner runs the configured bounded frame count
 - RuntimeRunSummary defaults to empty aggregate run state

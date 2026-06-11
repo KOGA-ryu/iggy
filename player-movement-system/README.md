@@ -773,8 +773,16 @@ RuntimeFrameSettings
 
 RuntimeFrameRunner
   app-layer use case that runs one bounded frame: asks the input source router
-  to route raw input, drains runtime sources, advances the session, and records
-  the frame report
+  to route raw input, drains runtime sources, runs the simulation phase, and
+  records the frame report
+
+RuntimeFrameSourcePhaseRunner
+  app-layer pre-simulation phase that routes raw input, drains runtime sources
+  in frame order, and records source results
+
+RuntimeFrameSimulationPhaseRunner
+  app-layer simulation phase that records the current frame policy, advances
+  the session, and records simulation events
 
 RuntimeFramePolicyResolver
   app-layer bridge that maps the GameSession mode to the SimulationFramePolicy
