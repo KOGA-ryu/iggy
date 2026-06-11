@@ -791,6 +791,10 @@ RuntimeFrameSourcePhaseRunner
   app-layer pre-simulation phase that routes raw input, drains runtime sources
   in frame order, and records source results
 
+RuntimeInventoryFrameSourceStep
+  app-layer frame source step that drains inventory scripts before direct
+  inventory commands and records both report surfaces
+
 RuntimeFrameSimulationPhaseRunner
   app-layer simulation phase that records the current frame policy, advances
   the session, and records simulation events
@@ -835,6 +839,10 @@ RuntimeInventoryScriptIntake
 RuntimeInventoryScriptBatchRunner
   app-layer runner that turns a drained inventory script path list into ordered
   runtime inventory script results
+
+RuntimeInventoryFrameSourceStep
+  app-layer source step that records script results and then direct inventory
+  command results so frame reports preserve inventory source order
 
 RuntimeInventoryCommandReportRecorder
   app-layer recorder that appends direct runtime inventory command results to

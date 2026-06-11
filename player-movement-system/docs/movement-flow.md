@@ -1301,6 +1301,9 @@ RuntimeFrameRunner
 route raw input, drain session commands, run inventory scripts, dispatch
 inventory commands, run movement scripts, and queue direct movement commands.
 That keeps the frame runner focused on the frame lifecycle around the phase.
+`RuntimeInventoryFrameSourceStep` owns the inventory subsection of that phase,
+so script-driven inventory commands are recorded before direct inventory command
+sources.
 
 `RuntimeFrameSimulationPhaseRunner` owns the ordered simulation phase: record
 the current frame policy, advance the active session, and record the resulting
@@ -1402,6 +1405,10 @@ inventory commands and wires that player into `InventoryScriptRunner`.
 batch. It keeps `RuntimeSourceDrainer` focused on source gating and path
 draining while the batch runner turns the drained path list into ordered
 `InventoryScriptRunResult` entries.
+
+`RuntimeInventoryFrameSourceStep` owns the frame-level inventory source order:
+drain inventory scripts, record script results and their flattened command
+results, then drain and record direct inventory commands.
 
 `RuntimeInventoryCommandReportRecorder` owns direct runtime inventory command
 results. It appends those results after any script-flattened command results, so

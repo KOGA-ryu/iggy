@@ -1,5 +1,7 @@
 #include "RuntimeFrameSourcePhaseRunner.hpp"
 
+#include "app/RuntimeInventoryFrameSourceStep.hpp"
+
 namespace dev {
 
 void RuntimeFrameSourcePhaseRunner::run(
@@ -12,8 +14,7 @@ void RuntimeFrameSourcePhaseRunner::run(
 
 	recorder.recordSessionCommandResults(sourceDrainer.drainSessionCommands(sessionDispatcher));
 
-	recorder.recordInventoryScriptResults(sourceDrainer.drainInventoryScripts());
-	recorder.recordInventoryCommandResults(sourceDrainer.drainInventoryCommands());
+	RuntimeInventoryFrameSourceStep {}.run(sourceDrainer, recorder);
 
 	recorder.recordMovementScriptResults(sourceDrainer.drainMovementScripts());
 	recorder.recordMovementCommandsQueued(sourceDrainer.drainMovementCommands());

@@ -43,6 +43,7 @@
 #include "app/RuntimeInputRouteResultBuilder.hpp"
 #include "app/RuntimeInputSourceRouter.hpp"
 #include "app/RuntimeInventoryCommandIntake.hpp"
+#include "app/RuntimeInventoryFrameSourceStep.hpp"
 #include "app/RuntimeInventoryCommandReportRecorder.hpp"
 #include "app/RuntimeInventoryScriptReportRecorder.hpp"
 #include "app/RuntimeInventoryScriptBatchRunner.hpp"
@@ -6030,6 +6031,72 @@ void TestRuntimeInventoryScriptBatchRunnerPreservesPathOrder()
 	std::filesystem::remove_all(root);
 }
 
+void TestRuntimeInventoryFrameSourceStepDrainsScriptsBeforeCommands()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_inventory_frame_source_step_test";
+	const std::filesystem::path scriptPath = root / "inventory.iicl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::InventoryCommandLog log;
+	log.record({
+	    .type = dev::InventoryCommandType::EquipItem,
+	    .itemId = 71,
+	});
+	dev::InventoryCommandLogFileStore store;
+	Expect(store.save(scriptPath, log), "runtime inventory frame source step test should create inventory script");
+
+	dev::GameSession session { root / "saves" };
+	session.startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	session.world().players[0].inventory.items.push_back({
+	    .id = 71,
+	    .equipmentSlot = dev::EquipmentSlot::Weapon,
+	});
+	session.world().players[0].inventory.items.push_back({
+	    .id = 72,
+	    .equipmentSlot = dev::EquipmentSlot::Weapon,
+	});
+
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::QueuedSessionCommandSource routedSessionCommands;
+	dev::QueuedMovementCommandSource routedMovementCommands;
+	dev::QueuedInventoryScriptSource inventoryScripts;
+	inventoryScripts.enqueue(scriptPath);
+	dev::QueuedInventoryCommandSource inventoryCommands;
+	inventoryCommands.enqueue({
+	    .type = dev::InventoryCommandType::EquipItem,
+	    .itemId = 72,
+	});
+	dev::RuntimeSourceDrainer sourceDrainer {
+		session,
+		inventoryEvents,
+		routedSessionCommands,
+		routedMovementCommands,
+		dev::RuntimeSourceDrainerSettings {
+		    .inventoryScriptSources = { &inventoryScripts },
+		    .inventoryCommandSources = { &inventoryCommands },
+		},
+	};
+	dev::GameLoopResult result;
+	dev::SessionEventRecorder sessionEvents;
+	dev::RuntimeRunRecorder recorder { result, sessionEvents, inventoryEvents };
+	recorder.beginFrame();
+
+	dev::RuntimeInventoryFrameSourceStep {}.run(sourceDrainer, recorder);
+	recorder.finishFrame();
+
+	Expect(result.summary.runtimeInventoryScriptResults.size() == 1, "runtime inventory frame source step should record inventory script results");
+	Expect(result.summary.inventoryCommandResults.size() == 2, "runtime inventory frame source step should record script and direct inventory command results");
+	Expect(result.summary.inventoryCommandResults[0].command.itemId == std::optional<dev::TargetId> { 71 }, "runtime inventory frame source step should record script command results before direct commands");
+	Expect(result.summary.inventoryCommandResults[1].command.itemId == std::optional<dev::TargetId> { 72 }, "runtime inventory frame source step should record direct commands after scripts");
+	Expect(result.frameReports.size() == 1 && result.frameReports[0].inventoryScriptResults.size() == 1, "runtime inventory frame source step should record frame script results");
+	Expect(result.frameReports.size() == 1 && result.frameReports[0].inventoryCommandResults.size() == 2, "runtime inventory frame source step should record frame inventory command results");
+	Expect(inventoryScripts.empty(), "runtime inventory frame source step should drain inventory script sources");
+	Expect(inventoryCommands.empty(), "runtime inventory frame source step should drain inventory command sources");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestRuntimeSourceDrainerDrainsSessionBeforeMovement()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_source_drainer_test";
@@ -10450,6 +10517,7 @@ int main()
 	TestRuntimeMovementScriptBatchRunnerPreservesPathOrder();
 	TestRuntimeInventoryScriptIntakeRunsScriptsAgainstActivePlayer();
 	TestRuntimeInventoryScriptBatchRunnerPreservesPathOrder();
+	TestRuntimeInventoryFrameSourceStepDrainsScriptsBeforeCommands();
 	TestRuntimeSourceDrainerDrainsSessionBeforeMovement();
 	TestRuntimeSourceDrainerRunsMovementScripts();
 	TestGameLoopDrainsRuntimeMovementScriptSources();

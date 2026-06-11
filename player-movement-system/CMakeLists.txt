@@ -49,6 +49,7 @@ add_library(player_movement_system
   src/app/RuntimeInputRouteResultBuilder.cpp
   src/app/RuntimeInputRouter.cpp
   src/app/RuntimeInputSourceRouter.cpp
+  src/app/RuntimeInventoryFrameSourceStep.cpp
   src/app/RuntimeInventoryCommandIntake.cpp
   src/app/RuntimeMovementInputRouter.cpp
   src/app/RuntimeInventoryCommandReportRecorder.cpp
