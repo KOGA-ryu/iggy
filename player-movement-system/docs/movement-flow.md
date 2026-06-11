@@ -262,8 +262,10 @@ The tick layer is where the separate systems become one frame:
 
 ```text
 CommandQueue
+  -> SimulationCommandDrainer
   -> CommandDispatcher
   -> PlayerController
+  -> SimulationPlayerUpdater
   -> PlayerMovement
   -> ActionExecutor
   -> EnemyMovement
@@ -271,9 +273,11 @@ CommandQueue
 ```
 
 The order matters. Commands are drained first so fresh input can affect this
-frame. Player movement updates before enemy movement so enemies respond to the
+frame. `SimulationPlayerUpdater` then owns the player-side actor wiring:
+`PlayerMovement` plus the `ActionExecutor` that resolves ready destination
+actions. Player movement updates before enemy movement so enemies respond to the
 latest committed player position. Actions and combat consequences happen inside
-those movement updates, but still publish events instead of directly owning UI,
+those actor updates, but still publish events instead of directly owning UI,
 audio, VFX, or networking.
 
 This is the first point that starts to look like a small game loop.

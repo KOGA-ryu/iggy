@@ -1,6 +1,8 @@
 #pragma once
 
+#include "simulation/SimulationCommandDrainer.hpp"
 #include "simulation/SimulationFramePolicy.hpp"
+#include "simulation/SimulationPlayerUpdater.hpp"
 #include "simulation/SimulationTimeStep.hpp"
 #include "simulation/SimulationWorld.hpp"
 
@@ -14,7 +16,8 @@ public:
 	void update(SimulationWorld &world, const SimulationTimeStep &timeStep, const SimulationFramePolicy &policy) const;
 
 private:
-	void dispatchQueuedCommands(SimulationWorld &world) const;
+	SimulationCommandDrainer commands_;
+	SimulationPlayerUpdater players_;
 };
 
 } // namespace dev

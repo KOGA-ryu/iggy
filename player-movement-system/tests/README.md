@@ -36,6 +36,8 @@ Good first tests:
 - ActionExecutor attack can damage registered combat target
 - CombatSystem emits Hit and Defeated events with damage and remaining HP
 - Enemy attack windup resolves combat against player and emits CombatEvent
+- SimulationCommandDrainer dispatches queued movement commands into player controller state
+- SimulationPlayerUpdater advances player movement and emits frame-visible movement events
 - SimulationTick drains queued commands, updates movement, and resolves combat
 - SimulationFramePolicy can pause command draining and movement
 - SimulationClock hit-stop freezes actor updates while preserving command intake

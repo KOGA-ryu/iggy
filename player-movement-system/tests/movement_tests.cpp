@@ -71,10 +71,12 @@
 #include "session/SessionEventRecorder.hpp"
 #include "session/SessionScriptRunner.hpp"
 #include "simulation/SimulationClock.hpp"
+#include "simulation/SimulationCommandDrainer.hpp"
 #include "simulation/SimulationEffectPipeline.hpp"
 #include "simulation/SimulationFrameEventCapture.hpp"
 #include "simulation/SimulationFrameFinalizer.hpp"
 #include "simulation/SimulationFrameRunner.hpp"
+#include "simulation/SimulationPlayerUpdater.hpp"
 #include "simulation/SimulationTick.hpp"
 #include "simulation/WorldEntityService.hpp"
 #include "targeting/Target.hpp"
@@ -540,6 +542,44 @@ void TestEnemyAttackResolvesCombatAgainstPlayer()
 	Expect(events.size() == 1 && events[0].type == dev::CombatEventType::Hit, "enemy attack event should be Hit");
 	Expect(events.size() == 1 && events[0].target.type == dev::TargetType::Player, "enemy attack event should target player");
 	Expect(events.size() == 1 && events[0].damage == 4, "enemy attack event should include damage");
+}
+
+void TestSimulationCommandDrainerDispatchesQueuedMovementCommands()
+{
+	dev::SimulationWorld world;
+	dev::EventRecorder movementEvents;
+	world.movementEvents = &movementEvents;
+	world.players.push_back(MakePlayer({ 0, 0 }));
+	world.commandQueue.push({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	    .destinationAction = std::nullopt,
+	});
+
+	dev::SimulationCommandDrainer {}.drain(world);
+
+	dev::MovementCommand command;
+	Expect(!world.commandQueue.tryPop(command), "simulation command drainer should empty queued movement commands");
+	Expect(world.players[0].moveState == dev::PlayerMoveState::Pathing, "simulation command drainer should dispatch movement commands through player controller");
+	Expect(movementEvents.events().size() >= 2, "simulation command drainer should emit command and controller events");
+	Expect(!movementEvents.events().empty() && movementEvents.events()[0].type == dev::MovementEventType::CommandAccepted, "simulation command drainer should emit command accepted event");
+}
+
+void TestSimulationPlayerUpdaterAdvancesPlayerMovement()
+{
+	dev::SimulationWorld world;
+	dev::EventRecorder movementEvents;
+	world.movementEvents = &movementEvents;
+	world.players.push_back(MakePlayer({ 0, 0 }));
+	world.players[0].path.pushStep({ 1, 0 });
+	world.players[0].moveState = dev::PlayerMoveState::Pathing;
+
+	dev::SimulationPlayerUpdater {}.update(world, 0.016F);
+
+	Expect(world.players[0].position.tile == dev::Point { 1, 0 }, "simulation player updater should commit player path steps");
+	Expect(world.players[0].moveState == dev::PlayerMoveState::Idle, "simulation player updater should settle player after final path step");
+	Expect(!movementEvents.events().empty() && movementEvents.events()[0].type == dev::MovementEventType::StepCommitted, "simulation player updater should emit movement events");
 }
 
 void TestSimulationTickDispatchesMovementAndCombat()
@@ -4919,6 +4959,8 @@ int main()
 	TestPlayerAttackUsesEquippedCombatModifiers();
 	TestEnemyAttackUsesEquippedDefenseModifiers();
 	TestEnemyAttackResolvesCombatAgainstPlayer();
+	TestSimulationCommandDrainerDispatchesQueuedMovementCommands();
+	TestSimulationPlayerUpdaterAdvancesPlayerMovement();
 	TestSimulationTickDispatchesMovementAndCombat();
 	TestSimulationPolicyPausedDoesNotDrainCommands();
 	TestSimulationClockHitStopFreezesActorUpdates();
