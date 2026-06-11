@@ -52,6 +52,9 @@ src/replay
 src/network
   Converts semantic movement commands to stable packets and back.
 
+src/enemies
+  Adds constrained enemy pursuit and attack timing pressure.
+
 src/player
   Owns player state, action gating, movement state transitions, and movement
   execution.
@@ -163,4 +166,7 @@ CommandLog
 
 MovementCodec
   socket-free command packet encoding/decoding boundary
+
+EnemyMovement
+  pressure layer with speed, attack range, windup, and recovery constraints
 ```

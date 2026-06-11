@@ -29,6 +29,9 @@ Good first tests:
 - MoveThenAct emits CommandAccepted -> PathStarted -> StepCommitted -> DestinationActionReady -> AnimationLocked -> ActionExecuted
 - CommandLog replay produces the same movement/action event sequence
 - MovementCodec round-trips MoveThenAct command packets
+- enemy pursuit obeys maxStepsPerTick
+- enemy in range enters attack windup
+- enemy attack windup transitions into recovery
 
 Run them with:
 

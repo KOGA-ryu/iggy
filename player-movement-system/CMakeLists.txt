@@ -13,6 +13,7 @@ add_library(player_movement_system
   src/commands/CommandDispatcher.cpp
   src/commands/CommandQueue.cpp
   src/commands/IntentCommandBuilder.cpp
+  src/enemies/EnemyMovement.cpp
   src/events/EventRecorder.cpp
   src/focus/InputFocus.cpp
   src/input/InputMapper.cpp

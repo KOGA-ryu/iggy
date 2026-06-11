@@ -192,3 +192,18 @@ MovementCommand
 
 The codec is deliberately socket-free. It only proves that command data is
 explicit, compact, and stable enough to cross a network boundary.
+
+## 13. Enemy Pressure
+
+Enemies build on player movement by adding constrained pressure:
+
+```text
+enemy position
+  -> pursuit step budget
+  -> attack range
+  -> attack windup
+  -> attack recovery
+```
+
+The goal is not simply to reach the player. The goal is to stay inside a fair
+reaction window: readable enough to answer, fast enough to matter.

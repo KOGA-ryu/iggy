@@ -5,6 +5,7 @@
 
 #include "actions/ActionExecutor.hpp"
 #include "commands/CommandDispatcher.hpp"
+#include "enemies/EnemyMovement.hpp"
 #include "events/EventRecorder.hpp"
 #include "focus/InputFocus.hpp"
 #include "interaction/InteractionCommandBuilder.hpp"
@@ -40,6 +41,16 @@ dev::Player MakePlayer(dev::Point tile = { 0, 0 })
 	player.position.previous = tile;
 	player.position.precise = tile;
 	return player;
+}
+
+dev::Enemy MakeEnemy(dev::Point tile)
+{
+	dev::Enemy enemy;
+	enemy.position.tile = tile;
+	enemy.position.future = tile;
+	enemy.position.previous = tile;
+	enemy.position.precise = tile;
+	return enemy;
 }
 
 void TestInventoryFocusBlocksMovement()
@@ -227,6 +238,42 @@ void TestMovementCodecRoundTrip()
 	Expect(decoded->destinationAction->rangeTiles == 1, "codec should preserve range");
 }
 
+void TestEnemyPursuitObeysStepBudget()
+{
+	dev::TileMap map;
+	dev::Collision collision;
+	dev::Player player = MakePlayer({ 4, 0 });
+	std::vector<dev::Enemy> enemies { MakeEnemy({ 0, 0 }) };
+	enemies[0].tuning.maxStepsPerTick = 1;
+
+	dev::EnemyMovement movement { map, collision };
+	movement.update(enemies, player, 0.016F);
+
+	Expect(enemies[0].position.tile == dev::Point { 1, 0 }, "enemy should move only one step toward player");
+	Expect(enemies[0].moveState == dev::EnemyMoveState::Pursuing, "enemy should be pursuing after constrained movement");
+}
+
+void TestEnemyAttackWindupAndRecovery()
+{
+	dev::TileMap map;
+	dev::Collision collision;
+	dev::Player player = MakePlayer({ 1, 0 });
+	std::vector<dev::Enemy> enemies { MakeEnemy({ 0, 0 }) };
+	enemies[0].tuning.attackRangeTiles = 1;
+	enemies[0].tuning.attackWindupSeconds = 0.25F;
+	enemies[0].tuning.attackRecoverySeconds = 0.50F;
+
+	dev::EnemyMovement movement { map, collision };
+	movement.update(enemies, player, 0.016F);
+	Expect(enemies[0].moveState == dev::EnemyMoveState::Attacking, "enemy in range should enter attack windup");
+
+	movement.update(enemies, player, 0.25F);
+	Expect(enemies[0].moveState == dev::EnemyMoveState::Recovering, "enemy should enter recovery after windup");
+
+	movement.update(enemies, player, 0.25F);
+	Expect(enemies[0].moveState == dev::EnemyMoveState::Recovering, "enemy should remain in recovery until recovery duration completes");
+}
+
 } // namespace
 
 int main()
@@ -239,6 +286,8 @@ int main()
 	TestMoveThenActEventSequence();
 	TestCommandReplayProducesSameEventSequence();
 	TestMovementCodecRoundTrip();
+	TestEnemyPursuitObeysStepBudget();
+	TestEnemyAttackWindupAndRecovery();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;
