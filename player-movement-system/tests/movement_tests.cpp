@@ -49,6 +49,7 @@
 #include "effects/EffectRouter.hpp"
 #include "enemies/EnemyAttackRunner.hpp"
 #include "enemies/EnemyMovement.hpp"
+#include "enemies/EnemyPursuitStepPlanner.hpp"
 #include "enemies/EnemyPursuitStepper.hpp"
 #include "events/EventRecorder.hpp"
 #include "files/ByteFileStore.hpp"
@@ -543,6 +544,15 @@ void TestMovementCodecRoundTrip()
 	Expect(decoded->destinationAction->target.id == 42, "codec should preserve target id");
 	Expect(decoded->destinationAction->target.tile == target.tile, "codec should preserve target tile");
 	Expect(decoded->destinationAction->rangeTiles == 1, "codec should preserve range");
+}
+
+void TestEnemyPursuitStepPlannerChoosesNextTileTowardTarget()
+{
+	dev::EnemyPursuitStepPlanner planner;
+
+	Expect(planner.nextStepToward({ 0, 0 }, { 3, 2 }) == dev::Point { 1, 1 }, "enemy pursuit planner should step diagonally toward target");
+	Expect(planner.nextStepToward({ 4, 2 }, { 1, 2 }) == dev::Point { 3, 2 }, "enemy pursuit planner should step horizontally toward target");
+	Expect(planner.nextStepToward({ 4, 5 }, { 4, 5 }) == dev::Point { 4, 5 }, "enemy pursuit planner should stay when already at target");
 }
 
 void TestEnemyPursuitObeysStepBudget()
@@ -7023,6 +7033,7 @@ int main()
 	TestPlayerActionRunnerExecutesReadyDestinationAction();
 	TestCommandReplayProducesSameEventSequence();
 	TestMovementCodecRoundTrip();
+	TestEnemyPursuitStepPlannerChoosesNextTileTowardTarget();
 	TestEnemyPursuitObeysStepBudget();
 	TestEnemyPursuitStepperStopsAtAttackRange();
 	TestEnemyAttackWindupAndRecovery();

@@ -184,6 +184,10 @@ ActorStepCommitter
   shared step-commit boundary that updates ActorPosition after player pathing
   or enemy pursuit has already chosen a legal next tile
 
+EnemyPursuitStepPlanner
+  small chase steering rule that chooses the next one-tile enemy step toward a
+  target before budget, blocking, or attack-range constraints are applied
+
 WalkPath
   fixed-size queue of committed tile steps
 
@@ -350,9 +354,9 @@ EnemyMovement
   resolution constraints
 
 EnemyPursuitStepper
-  constrained enemy chase helper that chooses pursuit steps, delegates position
-  commitment to ActorStepCommitter, and stops when step budget, blocking, or
-  attack range stops movement
+  constrained enemy chase helper that asks EnemyPursuitStepPlanner for pursuit
+  steps, delegates position commitment to ActorStepCommitter, and stops when
+  step budget, blocking, or attack range stops movement
 
 EnemyAttackRunner
   enemy attack state helper for range checks, windup timing, recovery timing,

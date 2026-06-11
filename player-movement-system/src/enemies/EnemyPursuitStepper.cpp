@@ -1,19 +1,6 @@
 #include "EnemyPursuitStepper.hpp"
 
-#include <cstdlib>
-
 namespace dev {
-
-namespace {
-
-int Sign(int value)
-{
-	if (value == 0)
-		return 0;
-	return value > 0 ? 1 : -1;
-}
-
-} // namespace
 
 EnemyPursuitStepper::EnemyPursuitStepper(const TileMap &map, const Collision &collision, const EnemyAttackRunner &attacks)
     : map_(map)
@@ -26,7 +13,7 @@ void EnemyPursuitStepper::pursue(Enemy &enemy, Player &target) const
 {
 	enemy.moveState = EnemyMoveState::Pursuing;
 	for (int step = 0; step < enemy.tuning.maxStepsPerTick; ++step) {
-		const Point next = nextStepToward(enemy.position.future, target.position.tile);
+		const Point next = stepPlanner_.nextStepToward(enemy.position.future, target.position.tile);
 		if (next == enemy.position.future)
 			return;
 		if (!map_.isWalkable(next) || collision_.blocksMovement(next))
@@ -35,14 +22,6 @@ void EnemyPursuitStepper::pursue(Enemy &enemy, Player &target) const
 		if (attacks_.targetInAttackRange(enemy, target))
 			return;
 	}
-}
-
-Point EnemyPursuitStepper::nextStepToward(Point from, Point to) const
-{
-	return {
-	    from.x + Sign(to.x - from.x),
-	    from.y + Sign(to.y - from.y),
-	};
 }
 
 } // namespace dev

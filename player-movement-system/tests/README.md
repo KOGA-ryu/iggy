@@ -37,6 +37,7 @@ Good first tests:
 - PlayerActionRunner executes a ready destination action through ActionExecutor
 - CommandLog replay produces the same movement/action event sequence
 - MovementCodec round-trips MoveThenAct command packets
+- EnemyPursuitStepPlanner chooses the next chase tile toward a target
 - enemy pursuit obeys maxStepsPerTick
 - EnemyPursuitStepper stops pursuit once attack range is reached
 - enemy in range enters attack windup

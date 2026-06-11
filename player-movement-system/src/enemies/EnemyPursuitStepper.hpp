@@ -2,6 +2,7 @@
 
 #include "enemies/Enemy.hpp"
 #include "enemies/EnemyAttackRunner.hpp"
+#include "enemies/EnemyPursuitStepPlanner.hpp"
 #include "player/ActorStepCommitter.hpp"
 #include "player/Player.hpp"
 #include "world/Collision.hpp"
@@ -16,11 +17,10 @@ public:
 	void pursue(Enemy &enemy, Player &target) const;
 
 private:
-	[[nodiscard]] Point nextStepToward(Point from, Point to) const;
-
 	const TileMap &map_;
 	const Collision &collision_;
 	const EnemyAttackRunner &attacks_;
+	EnemyPursuitStepPlanner stepPlanner_;
 	ActorStepCommitter stepCommitter_;
 };
 
