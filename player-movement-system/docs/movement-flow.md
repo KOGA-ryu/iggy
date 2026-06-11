@@ -795,6 +795,12 @@ This is the first runtime-facing shell around the movement/session system. It
 is still testable because the loop is bounded and reports what happened instead
 of hiding behavior behind an infinite platform loop.
 
+`RuntimeLoopTypes.hpp` keeps the app-facing contracts separate from the shell
+that executes them. `GameLoop` owns the orchestration, while the settings,
+setup results, frame reports, output results, and run summary stay in plain
+data types that tests, trace writers, output finalizers, and exit-code policy
+can share without depending on the loop class itself.
+
 `RuntimeSetupSettings` groups one-time configured setup scripts:
 
 ```text

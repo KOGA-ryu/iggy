@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/GameLoop.hpp"
+#include "app/RuntimeLoopTypes.hpp"
 
 namespace dev {
 

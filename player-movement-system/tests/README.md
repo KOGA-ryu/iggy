@@ -111,6 +111,7 @@ Good first tests:
 - GameLoop reports inventory script load failure or missing player before ticking frames
 - GameLoop drains runtime inventory script sources before direct inventory command sources
 - RuntimeSourceDrainer owns runtime source draining order
+- RuntimeLoopTypes keeps loop settings and results reusable outside GameLoop
 - GameLoop builds RuntimeFrameReport entries for per-frame inspection
 - RuntimeFrameTrace formats frame reports into readable debug lines
 - RuntimeFrameTraceFileStore saves and loads readable trace lines

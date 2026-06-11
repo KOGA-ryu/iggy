@@ -1,7 +1,11 @@
 #include "GameLoop.hpp"
 
+#include "RuntimeInputRouter.hpp"
 #include "RuntimeExitCodePolicy.hpp"
 #include "RuntimeOutputFinalizer.hpp"
+#include "RuntimeSourceDrainer.hpp"
+#include "session/SessionCommandDispatcher.hpp"
+#include "session/SessionScriptRunner.hpp"
 
 #include <cstddef>
 #include <utility>

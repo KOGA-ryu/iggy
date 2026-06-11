@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "app/GameLoop.hpp"
+#include "app/RuntimeLoopTypes.hpp"
 #include "app/RuntimeTraceService.hpp"
 
 namespace dev {

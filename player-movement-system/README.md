@@ -343,6 +343,11 @@ SessionScriptRunner
   high-level automation use case that loads a lifecycle script file and replays
   it through the same dispatcher used by live session actions
 
+RuntimeLoopTypes
+  app-layer contracts that group GameLoop settings, setup/output settings,
+  per-frame reports, run summaries, and final results separately from the loop
+  orchestration class
+
 GameLoop
   app-facing shell that runs optional startup and inventory scripts, drains raw
   input, session, inventory script, inventory command, and movement sources,

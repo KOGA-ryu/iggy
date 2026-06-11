@@ -1,7 +1,7 @@
 #pragma once
 
-#include "app/GameLoop.hpp"
 #include "app/RuntimeDebugArtifactBundle.hpp"
+#include "app/RuntimeLoopTypes.hpp"
 #include "app/RuntimeTraceService.hpp"
 
 namespace dev {

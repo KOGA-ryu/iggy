@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "app/GameLoop.hpp"
+#include "app/RuntimeLoopTypes.hpp"
 
 namespace dev {
 

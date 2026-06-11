@@ -4,9 +4,9 @@
 #include <string>
 #include <vector>
 
-#include "app/GameLoop.hpp"
 #include "app/RuntimeFrameTrace.hpp"
 #include "app/RuntimeFrameTraceFileStore.hpp"
+#include "app/RuntimeLoopTypes.hpp"
 
 namespace dev {
 
