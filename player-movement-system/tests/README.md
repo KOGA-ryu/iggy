@@ -38,6 +38,9 @@ Good first tests:
 - CommandLog replay produces the same movement/action event sequence
 - MovementCodec round-trips MoveThenAct command packets
 - EnemyPursuitStepPlanner chooses the next chase tile toward a target
+- EnemyPursuitStepGate rejects map-blocked and collision-blocked pursuit tiles
+- EnemyAttackRange applies tuned Chebyshev attack range
+- EnemyPursuitBudget stops pursuit at maxStepsPerTick
 - enemy pursuit obeys maxStepsPerTick
 - EnemyPursuitStepper stops pursuit once attack range is reached
 - enemy in range enters attack windup

@@ -47,8 +47,11 @@
 #include "effects/EffectApplier.hpp"
 #include "effects/EffectRecorder.hpp"
 #include "effects/EffectRouter.hpp"
+#include "enemies/EnemyAttackRange.hpp"
 #include "enemies/EnemyAttackRunner.hpp"
 #include "enemies/EnemyMovement.hpp"
+#include "enemies/EnemyPursuitBudget.hpp"
+#include "enemies/EnemyPursuitStepGate.hpp"
 #include "enemies/EnemyPursuitStepPlanner.hpp"
 #include "enemies/EnemyPursuitStepper.hpp"
 #include "events/EventRecorder.hpp"
@@ -555,6 +558,48 @@ void TestEnemyPursuitStepPlannerChoosesNextTileTowardTarget()
 	Expect(planner.nextStepToward({ 4, 5 }, { 4, 5 }) == dev::Point { 4, 5 }, "enemy pursuit planner should stay when already at target");
 }
 
+void TestEnemyPursuitStepGateRequiresWalkableUnblockedTile()
+{
+	dev::TileMap map;
+	dev::Collision collision;
+	map.setBlocked({ 2, 0 });
+	collision.setBlocked({ 3, 0 });
+
+	dev::EnemyPursuitStepGate gate { map, collision };
+
+	Expect(gate.canEnter({ 1, 0 }), "enemy pursuit step gate should allow walkable unblocked tiles");
+	Expect(!gate.canEnter({ 2, 0 }), "enemy pursuit step gate should reject map-blocked tiles");
+	Expect(!gate.canEnter({ 3, 0 }), "enemy pursuit step gate should reject collision-blocked tiles");
+	Expect(!gate.canEnter({ -1, 0 }), "enemy pursuit step gate should reject out-of-bounds tiles");
+}
+
+void TestEnemyAttackRangeUsesEnemyTuning()
+{
+	dev::EnemyAttackRange range;
+	dev::Enemy enemy = MakeEnemy({ 0, 0 });
+	enemy.tuning.attackRangeTiles = 1;
+	dev::Player diagonalTarget = MakePlayer({ 1, 1 });
+	dev::Player distantTarget = MakePlayer({ 2, 0 });
+
+	Expect(range.contains(enemy, diagonalTarget), "enemy attack range should include diagonal tiles within Chebyshev range");
+	Expect(!range.contains(enemy, distantTarget), "enemy attack range should reject targets beyond tuning range");
+
+	enemy.tuning.attackRangeTiles = 2;
+	Expect(range.contains(enemy, distantTarget), "enemy attack range should honor larger tuning ranges");
+}
+
+void TestEnemyPursuitBudgetUsesMaxStepsPerTick()
+{
+	dev::Enemy enemy = MakeEnemy({ 0, 0 });
+	enemy.tuning.maxStepsPerTick = 2;
+	dev::EnemyPursuitBudget budget;
+
+	Expect(budget.canSpendStep(enemy, 0), "enemy pursuit budget should allow first pursuit step");
+	Expect(budget.canSpendStep(enemy, 1), "enemy pursuit budget should allow steps below maxStepsPerTick");
+	Expect(!budget.canSpendStep(enemy, 2), "enemy pursuit budget should stop at maxStepsPerTick");
+	Expect(!budget.canSpendStep(enemy, -1), "enemy pursuit budget should reject invalid spent step counts");
+}
+
 void TestEnemyPursuitObeysStepBudget()
 {
 	dev::TileMap map;
@@ -574,8 +619,7 @@ void TestEnemyPursuitStepperStopsAtAttackRange()
 {
 	dev::TileMap map;
 	dev::Collision collision;
-	dev::EnemyAttackRunner attacks;
-	dev::EnemyPursuitStepper pursuit { map, collision, attacks };
+	dev::EnemyPursuitStepper pursuit { map, collision };
 	dev::Player player = MakePlayer({ 4, 0 });
 	dev::Enemy enemy = MakeEnemy({ 0, 0 });
 	enemy.tuning.maxStepsPerTick = 5;
@@ -7034,6 +7078,9 @@ int main()
 	TestCommandReplayProducesSameEventSequence();
 	TestMovementCodecRoundTrip();
 	TestEnemyPursuitStepPlannerChoosesNextTileTowardTarget();
+	TestEnemyPursuitStepGateRequiresWalkableUnblockedTile();
+	TestEnemyAttackRangeUsesEnemyTuning();
+	TestEnemyPursuitBudgetUsesMaxStepsPerTick();
 	TestEnemyPursuitObeysStepBudget();
 	TestEnemyPursuitStepperStopsAtAttackRange();
 	TestEnemyAttackWindupAndRecovery();

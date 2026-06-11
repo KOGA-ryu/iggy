@@ -233,9 +233,10 @@ Enemies build on player movement by adding constrained pressure:
 ```text
 enemy position
   -> EnemyPursuitStepPlanner
+  -> EnemyPursuitStepGate
   -> EnemyPursuitStepper
-  -> pursuit step budget
-  -> attack range
+  -> EnemyPursuitBudget
+  -> EnemyAttackRange
   -> EnemyAttackRunner
   -> attack windup
   -> attack recovery
@@ -243,10 +244,15 @@ enemy position
 
 The goal is not simply to reach the player. The goal is to stay inside a fair
 reaction window: readable enough to answer, fast enough to matter.
-`EnemyPursuitStepPlanner` chooses the next chase tile only. `EnemyPursuitStepper`
-owns the chase budget and stops when the enemy reaches attack range, leaving the
-next frame to start windup through `EnemyAttackRunner`. It uses the same
-`ActorStepCommitter` as player pathing once a pursuit step is known to be legal.
+`EnemyPursuitStepPlanner` chooses the next chase tile only.
+`EnemyPursuitStepGate` answers whether that proposed tile is both walkable and
+unblocked. `EnemyPursuitBudget` names the max-steps-per-tick pressure limit so
+enemy speed is explicit tuning, not an accidental loop counter.
+`EnemyPursuitStepper` owns the chase flow and stops when the enemy reaches
+`EnemyAttackRange`, leaving the next frame to start windup through
+`EnemyAttackRunner`. The attack runner reuses the same range rule when deciding
+whether to enter windup. Pursuit uses the same `ActorStepCommitter` as player
+pathing once a pursuit step is known to be legal.
 
 ## 14. Combat Resolution
 

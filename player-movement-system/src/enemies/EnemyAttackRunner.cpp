@@ -1,18 +1,6 @@
 #include "EnemyAttackRunner.hpp"
 
-#include <algorithm>
-#include <cstdlib>
-
 namespace dev {
-
-namespace {
-
-int ChebyshevDistance(Point a, Point b)
-{
-	return std::max(std::abs(a.x - b.x), std::abs(a.y - b.y));
-}
-
-} // namespace
 
 EnemyAttackRunner::EnemyAttackRunner(CombatSystem *combatSystem)
     : combatSystem_(combatSystem)
@@ -49,7 +37,7 @@ bool EnemyAttackRunner::update(Enemy &enemy, Player &target, float deltaSeconds)
 
 bool EnemyAttackRunner::targetInAttackRange(const Enemy &enemy, const Player &target) const
 {
-	return ChebyshevDistance(enemy.position.tile, target.position.tile) <= enemy.tuning.attackRangeTiles;
+	return attackRange_.contains(enemy, target);
 }
 
 } // namespace dev

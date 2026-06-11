@@ -6,7 +6,7 @@ EnemyMovement::EnemyMovement(const TileMap &map, const Collision &collision, Mov
     : map_(map)
     , collision_(collision)
     , attacks_(combatSystem)
-    , pursuit_(map_, collision_, attacks_)
+    , pursuit_(map_, collision_)
 {
 	(void)eventSink;
 }

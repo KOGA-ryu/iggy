@@ -52,8 +52,11 @@ add_library(player_movement_system
   src/effects/EffectApplier.cpp
   src/effects/EffectRecorder.cpp
   src/effects/EffectRouter.cpp
+  src/enemies/EnemyAttackRange.cpp
   src/enemies/EnemyAttackRunner.cpp
   src/enemies/EnemyMovement.cpp
+  src/enemies/EnemyPursuitBudget.cpp
+  src/enemies/EnemyPursuitStepGate.cpp
   src/enemies/EnemyPursuitStepPlanner.cpp
   src/enemies/EnemyPursuitStepper.cpp
   src/events/EventRecorder.cpp

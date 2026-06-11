@@ -188,6 +188,18 @@ EnemyPursuitStepPlanner
   small chase steering rule that chooses the next one-tile enemy step toward a
   target before budget, blocking, or attack-range constraints are applied
 
+EnemyPursuitStepGate
+  enemy pursuit legality check that accepts only tiles both walkable by the map
+  and unblocked by collision
+
+EnemyAttackRange
+  shared enemy range rule that answers whether a target is inside the enemy's
+  tuned attack distance without running attack state
+
+EnemyPursuitBudget
+  pressure pacing rule that spends at most maxStepsPerTick pursuit steps during
+  one enemy update
+
 WalkPath
   fixed-size queue of committed tile steps
 
@@ -355,12 +367,13 @@ EnemyMovement
 
 EnemyPursuitStepper
   constrained enemy chase helper that asks EnemyPursuitStepPlanner for pursuit
-  steps, delegates position commitment to ActorStepCommitter, and stops when
-  step budget, blocking, or attack range stops movement
+  steps, asks EnemyPursuitStepGate whether each tile can be entered, delegates
+  position commitment to ActorStepCommitter, and stops when EnemyPursuitBudget,
+  blocking, or EnemyAttackRange stops movement
 
 EnemyAttackRunner
-  enemy attack state helper for range checks, windup timing, recovery timing,
-  and combat resolution
+  enemy attack state helper for range entry, windup timing, recovery timing, and
+  combat resolution
 
 CombatResolver
   deterministic consequence layer for executed attack actions

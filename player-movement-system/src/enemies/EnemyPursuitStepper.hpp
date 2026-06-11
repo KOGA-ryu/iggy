@@ -1,7 +1,9 @@
 #pragma once
 
 #include "enemies/Enemy.hpp"
-#include "enemies/EnemyAttackRunner.hpp"
+#include "enemies/EnemyAttackRange.hpp"
+#include "enemies/EnemyPursuitBudget.hpp"
+#include "enemies/EnemyPursuitStepGate.hpp"
 #include "enemies/EnemyPursuitStepPlanner.hpp"
 #include "player/ActorStepCommitter.hpp"
 #include "player/Player.hpp"
@@ -12,15 +14,15 @@ namespace dev {
 
 class EnemyPursuitStepper {
 public:
-	EnemyPursuitStepper(const TileMap &map, const Collision &collision, const EnemyAttackRunner &attacks);
+	EnemyPursuitStepper(const TileMap &map, const Collision &collision);
 
 	void pursue(Enemy &enemy, Player &target) const;
 
 private:
-	const TileMap &map_;
-	const Collision &collision_;
-	const EnemyAttackRunner &attacks_;
+	EnemyAttackRange attackRange_;
+	EnemyPursuitBudget budget_;
 	EnemyPursuitStepPlanner stepPlanner_;
+	EnemyPursuitStepGate stepGate_;
 	ActorStepCommitter stepCommitter_;
 };
 
