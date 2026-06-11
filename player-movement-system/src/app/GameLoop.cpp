@@ -1,9 +1,8 @@
 #include "GameLoop.hpp"
 
-#include "RuntimeInputRouter.hpp"
 #include "RuntimeExitCodePolicy.hpp"
+#include "RuntimeFrameRunner.hpp"
 #include "RuntimeOutputFinalizer.hpp"
-#include "RuntimeRawInputDrainer.hpp"
 #include "RuntimeRunRecorder.hpp"
 #include "RuntimeSetupRunner.hpp"
 #include "RuntimeSourceDrainer.hpp"
@@ -59,22 +58,19 @@ GameLoopResult GameLoop::runForResult()
 	if (!setup.framesAllowed)
 		return finish();
 
+	RuntimeFrameRunner frameRunner {
+		session_,
+		routedSessionCommands_,
+		routedMovementCommands_,
+		drainer,
+		recorder,
+		dispatcher,
+		settings_.sources,
+		settings_.input,
+		settings_.frame,
+	};
 	for (int frame = 0; frame < settings_.frame.maxFrames; ++frame) {
-		recorder.beginFrame();
-
-		recorder.recordRawInputEventsRouted(routeRawInputSources());
-
-		recorder.recordSessionCommandResults(drainer.drainSessionCommands(dispatcher));
-
-		recorder.recordInventoryScriptResults(drainer.drainInventoryScripts());
-		recorder.recordInventoryCommandResults(drainer.drainInventoryCommands());
-
-		recorder.recordMovementCommandsQueued(drainer.drainMovementCommands());
-
-		recorder.recordFrameEvents(updateSimulationFrame());
-		recorder.finishFrame();
-
-		renderDebugView();
+		frameRunner.runFrame();
 	}
 
 	return finish();
@@ -99,29 +95,5 @@ const InventoryEventRecorder &GameLoop::inventoryEvents() const
 {
 	return inventoryEvents_;
 }
-
-int GameLoop::routeRawInputSources()
-{
-	RuntimeInputRouter router { routedSessionCommands_, routedMovementCommands_, settings_.input.bindings };
-	RuntimeRawInputDrainer drainer { router };
-	RuntimeInputContext context {
-		.world = session_.hasActiveWorld() ? &session_.world() : nullptr,
-		.playerId = settings_.input.playerId,
-		.focusState = settings_.input.focusState,
-		.actionContext = settings_.input.actionContext,
-		.sessionMode = session_.mode(),
-		.targetResolver = settings_.input.targetResolver != nullptr
-		    ? settings_.input.targetResolver
-		    : (session_.hasActiveWorld() ? &session_.world().targets : nullptr),
-	};
-	return drainer.drain(settings_.sources.rawInputSources, context);
-}
-
-SimulationFrameEvents GameLoop::updateSimulationFrame()
-{
-	return session_.update(settings_.frame.fixedDeltaSeconds);
-}
-
-void GameLoop::renderDebugView() {}
 
 } // namespace dev

@@ -120,7 +120,9 @@ Good first tests:
 - RuntimeSetupResult defaults to no configured setup script attempts
 - RuntimeSourceSettings defaults to no runtime source streams
 - RuntimeInputSettings defaults to primary gameplay input context
+- RuntimeInputContextBuilder builds per-frame router context from session state
 - RuntimeFrameSettings defaults to zero frames at a sixty hertz timestep
+- RuntimeFrameRunner routes sources and records one bounded frame
 - RuntimeRunSummary defaults to empty aggregate run state
 - RuntimeRunRecorder turns frame work into frame reports and run summaries
 - RuntimeExitCodePolicy maps setup and output failures to process failures

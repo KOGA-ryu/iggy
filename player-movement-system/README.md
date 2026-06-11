@@ -379,9 +379,17 @@ RuntimeInputSettings
   app-layer input context settings that group bindings, focus/action state,
   active player id, and optional target resolver for GameLoop routing
 
+RuntimeInputContextBuilder
+  app-layer context builder that combines current session state with
+  RuntimeInputSettings before raw input is routed
+
 RuntimeFrameSettings
   app-layer frame settings that group bounded frame count and fixed timestep
   for the GameLoop shell
+
+RuntimeFrameRunner
+  app-layer use case that runs one bounded frame: routes raw input, drains
+  runtime sources, advances the session, and records the frame report
 
 RuntimeRunSummary
   app-layer aggregate run result state for routed input, runtime command

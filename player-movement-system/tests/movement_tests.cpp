@@ -10,6 +10,8 @@
 #include "app/GameLoop.hpp"
 #include "app/RuntimeDebugArtifactBundle.hpp"
 #include "app/RuntimeExitCodePolicy.hpp"
+#include "app/RuntimeFrameRunner.hpp"
+#include "app/RuntimeInputContextBuilder.hpp"
 #include "app/RuntimeInputRouter.hpp"
 #include "app/RuntimeFrameTrace.hpp"
 #include "app/RuntimeFrameTraceFileStore.hpp"
@@ -3466,6 +3468,56 @@ void TestRuntimeInputSettingsDefaultsToPrimaryGameplayInput()
 	Expect(input.targetResolver == nullptr, "runtime input settings should default to world target resolver fallback");
 }
 
+void TestRuntimeInputContextBuilderHandlesMissingWorld()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_input_context_no_world_test";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root / "saves" };
+	dev::RuntimeInputContext context = dev::RuntimeInputContextBuilder { session }.build({
+	    .focusState = dev::FocusState { .owner = dev::InputOwner::Inventory },
+	    .actionContext = dev::PlayerActionContext { .paused = true },
+	    .playerId = 2,
+	});
+
+	Expect(context.world == nullptr, "runtime input context builder should not expose a world before one exists");
+	Expect(context.playerId == 2, "runtime input context builder should preserve configured player id");
+	Expect(context.focusState.owner == dev::InputOwner::Inventory, "runtime input context builder should preserve focus state");
+	Expect(context.actionContext.paused, "runtime input context builder should preserve action context");
+	Expect(context.sessionMode == dev::GameSessionMode::Empty, "runtime input context builder should expose current session mode");
+	Expect(context.targetResolver == nullptr, "runtime input context builder should not invent a target resolver without a world");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeInputContextBuilderUsesWorldTargetsUnlessOverridden()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_input_context_world_test";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root / "saves" };
+	session.startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	dev::RuntimeInputContext worldContext = dev::RuntimeInputContextBuilder { session }.build({});
+
+	FixedTargetResolver explicitTargets {
+		dev::Target {
+		    .type = dev::TargetType::Enemy,
+		    .id = 91,
+		    .tile = { 0, 0 },
+		}
+	};
+	dev::RuntimeInputContext overrideContext = dev::RuntimeInputContextBuilder { session }.build({
+	    .targetResolver = &explicitTargets,
+	});
+
+	Expect(worldContext.world == &session.world(), "runtime input context builder should expose active world");
+	Expect(worldContext.sessionMode == dev::GameSessionMode::Gameplay, "runtime input context builder should expose gameplay session mode");
+	Expect(worldContext.targetResolver == &session.world().targets, "runtime input context builder should use world targets by default");
+	Expect(overrideContext.targetResolver == &explicitTargets, "runtime input context builder should preserve explicit target resolver override");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz()
 {
 	dev::RuntimeFrameSettings frame;
@@ -4346,6 +4398,66 @@ void TestRuntimeRawInputDrainerRoutesHandledEventsAndSkipsNullSources()
 	Expect(movementCommands.empty(), "runtime raw input drainer should not invent movement commands for hotkeys");
 }
 
+void TestRuntimeFrameRunnerRoutesSourcesAndRecordsOneFrame()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_frame_runner_test";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root / "saves" };
+	session.startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	dev::SessionEventRecorder sessionEvents;
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::QueuedSessionCommandSource routedSessionCommands;
+	dev::QueuedMovementCommandSource routedMovementCommands;
+	dev::QueuedRawInputSource rawInput;
+	rawInput.enqueue({
+	    .type = dev::RawInputType::KeyPress,
+	    .code = 'P',
+	    .pressed = true,
+	});
+
+	dev::GameLoopResult result;
+	dev::RuntimeRunRecorder recorder { result, sessionEvents, inventoryEvents };
+	dev::SessionCommandDispatcher dispatcher { session, &sessionEvents };
+	dev::RuntimeSourceDrainer sourceDrainer {
+		session,
+		inventoryEvents,
+		routedSessionCommands,
+		routedMovementCommands,
+		{},
+	};
+	dev::RuntimeSourceSettings sources {
+		.rawInputSources = { &rawInput },
+	};
+	dev::RuntimeInputSettings input {
+		.bindings = dev::RuntimeInputBindings { .pauseKey = 'P', .inventoryKey = 'I', .stopKey = 'S' },
+	};
+	dev::RuntimeFrameRunner {
+		session,
+		routedSessionCommands,
+		routedMovementCommands,
+		sourceDrainer,
+		recorder,
+		dispatcher,
+		sources,
+		input,
+		dev::RuntimeFrameSettings { .maxFrames = 1 },
+	}.runFrame();
+
+	Expect(result.summary.framesRun == 1, "runtime frame runner should finish one frame");
+	Expect(result.summary.rawInputEventsRouted == 1, "runtime frame runner should route raw input during the frame");
+	Expect(result.summary.sessionCommandResults.size() == 1, "runtime frame runner should drain routed session commands");
+	Expect(result.summary.sessionCommandResults.size() == 1 && result.summary.sessionCommandResults[0].type == dev::SessionCommandResultType::Applied, "runtime frame runner should dispatch routed session commands");
+	Expect(result.frameReports.size() == 1, "runtime frame runner should record one frame report");
+	Expect(result.frameReports.size() == 1 && result.frameReports[0].rawInputEventsRouted == 1, "runtime frame runner report should include raw input count");
+	Expect(result.frameReports.size() == 1 && result.frameReports[0].sessionCommandResults.size() == 1, "runtime frame runner report should include session command results");
+	Expect(rawInput.empty(), "runtime frame runner should drain raw input sources once");
+	Expect(routedSessionCommands.empty(), "runtime frame runner should drain routed session queue");
+	Expect(session.mode() == dev::GameSessionMode::Paused, "runtime frame runner should apply routed pause command before simulation update");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestGameLoopRoutesRawInputHotkeysThroughSessionCommands()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_game_loop_raw_session_input_test";
@@ -4732,6 +4844,8 @@ int main()
 	TestRuntimeSetupRunnerPreservesInventoryCommandRejections();
 	TestRuntimeSourceSettingsDefaultsToNoSources();
 	TestRuntimeInputSettingsDefaultsToPrimaryGameplayInput();
+	TestRuntimeInputContextBuilderHandlesMissingWorld();
+	TestRuntimeInputContextBuilderUsesWorldTargetsUnlessOverridden();
 	TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz();
 	TestRuntimeRunSummaryDefaultsToEmptyRun();
 	TestRuntimeRunRecorderAggregatesFrameReportsAndSummary();
@@ -4763,6 +4877,7 @@ int main()
 	TestRuntimeInputRouterMapsStandGroundTargetClickToStandAndAct();
 	TestQueuedRawInputSourceDrainsEventsOnce();
 	TestRuntimeRawInputDrainerRoutesHandledEventsAndSkipsNullSources();
+	TestRuntimeFrameRunnerRoutesSourcesAndRecordsOneFrame();
 	TestGameLoopRoutesRawInputHotkeysThroughSessionCommands();
 	TestGameLoopRoutesRawMouseInputThroughMovementCommands();
 	TestGameLoopUsesWorldTargetRegistryForRawMouseInput();

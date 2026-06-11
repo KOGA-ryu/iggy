@@ -21,10 +21,6 @@ public:
 	[[nodiscard]] const InventoryEventRecorder &inventoryEvents() const;
 
 private:
-	[[nodiscard]] int routeRawInputSources();
-	[[nodiscard]] SimulationFrameEvents updateSimulationFrame();
-	void renderDebugView();
-
 	GameLoopSettings settings_;
 	GameSession session_;
 	SessionEventRecorder sessionEvents_;

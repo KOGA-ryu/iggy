@@ -841,6 +841,24 @@ GameLoopSettings::input
 Sources answer “where do commands/events come from?” Input settings answer “who
 is controlling, what has focus, and how should raw input become commands?”
 
+`RuntimeInputContextBuilder` turns those settings plus current session state
+into the context used by `RuntimeInputRouter`:
+
+```text
+GameSession
+  -> current mode
+  -> active world, if any
+  -> default world target registry, if any
+RuntimeInputSettings
+  -> player id
+  -> focus/action state
+  -> optional target resolver override
+```
+
+That keeps target fallback and focus/session state wiring out of the frame
+runner. The router receives a complete context and only decides what a raw
+event means inside it.
+
 `RuntimeFrameSettings` groups the bounded loop controls:
 
 ```text
@@ -944,9 +962,23 @@ RuntimeSourceDrainer
   -> drain movement command sources
 ```
 
-`GameLoop` still owns startup, raw input routing, frame stepping, and result
-aggregation. The drainer owns the repeated source mechanics and the active-world
-checks needed before inventory and movement sources can safely mutate state.
+`RuntimeFrameRunner` owns the one-frame order around that drainer:
+
+```text
+RuntimeFrameRunner
+  -> route raw input sources
+  -> drain session command sources
+  -> drain inventory script sources
+  -> drain inventory command sources
+  -> drain movement command sources
+  -> GameSession::update
+  -> RuntimeRunRecorder
+```
+
+`GameLoop` still owns setup, loop bounds, and finalization. `RuntimeFrameRunner`
+owns the repeated frame mechanics. `RuntimeSourceDrainer` owns the repeated
+source mechanics and the active-world checks needed before inventory and
+movement sources can safely mutate state.
 
 `RuntimeRunSummary` keeps the cross-frame aggregates together:
 
@@ -976,9 +1008,9 @@ finish frame
   -> RuntimeRunSummary
 ```
 
-That keeps `GameLoop` from manually copying every source result into two
-places. The loop still decides the runtime order, and the recorder decides how
-that work becomes inspectable run data.
+That keeps the frame runner from manually copying every source result into two
+places. The frame runner decides the runtime order, and the recorder decides
+how that work becomes inspectable run data.
 
 `RuntimeOutputSettings` groups the app shell's optional artifact destinations:
 
