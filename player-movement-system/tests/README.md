@@ -243,6 +243,7 @@ Good first tests:
 - RuntimeSetupInventoryCommandReportRecorder records setup command results without frames
 - RuntimeFrameEventDeltaCollector captures only session/inventory events emitted during a frame
 - RuntimeFramePolicyReportRecorder records the current simulation frame policy
+- RuntimeFramePolicyResolver maps session mode to current simulation frame policy
 - RuntimeFrameSettings defaults to zero frames at a sixty hertz timestep
 - RuntimeFrameRunner routes sources and records one bounded frame
 - RuntimeFrameLoopRunner runs the configured bounded frame count

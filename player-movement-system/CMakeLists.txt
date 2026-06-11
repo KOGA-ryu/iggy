@@ -32,6 +32,7 @@ add_library(player_movement_system
   src/app/RuntimeFrameEventReportRecorder.cpp
   src/app/RuntimeFrameLoopRunner.cpp
   src/app/RuntimeFramePolicyReportRecorder.cpp
+  src/app/RuntimeFramePolicyResolver.cpp
   src/app/RuntimeFramePolicyText.cpp
   src/app/RuntimeFrameRunner.cpp
   src/app/RuntimeFrameTrace.cpp

@@ -30,6 +30,7 @@
 #include "app/RuntimeFrameEventReportRecorder.hpp"
 #include "app/RuntimeFrameLoopRunner.hpp"
 #include "app/RuntimeFramePolicyReportRecorder.hpp"
+#include "app/RuntimeFramePolicyResolver.hpp"
 #include "app/RuntimeFramePolicyText.hpp"
 #include "app/RuntimeFrameRunner.hpp"
 #include "app/RuntimeInputContextBuilder.hpp"
@@ -7762,6 +7763,35 @@ void TestRuntimeFramePolicyReportRecorderStoresCurrentFramePolicy()
 	Expect(std::string { frame.framePolicy.summary } == "hold world simulation while inventory owns input", "runtime frame policy report recorder should preserve policy summary");
 }
 
+void TestRuntimeFramePolicyResolverMapsSessionModeToSimulationPolicy()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_frame_policy_resolver_test";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root / "saves" };
+	session.startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	dev::RuntimeFramePolicyResolver resolver;
+
+	dev::SimulationFramePolicyDescription gameplay = resolver.resolve(session);
+	session.setMode(dev::GameSessionMode::Inventory);
+	dev::SimulationFramePolicyDescription inventory = resolver.resolve(session);
+	session.setMode(dev::GameSessionMode::Paused);
+	dev::SimulationFramePolicyDescription paused = resolver.resolve(session);
+	session.setMode(dev::GameSessionMode::Empty);
+	dev::SimulationFramePolicyDescription empty = resolver.resolve(session);
+
+	Expect(gameplay.mode == dev::SimulationMode::Gameplay, "runtime frame policy resolver should map gameplay sessions to gameplay simulation");
+	Expect(gameplay.policy.updatePlayers && gameplay.policy.updateEnemies, "runtime frame policy resolver should advance actors during gameplay");
+	Expect(inventory.mode == dev::SimulationMode::Inventory, "runtime frame policy resolver should map inventory sessions to inventory simulation");
+	Expect(!inventory.policy.acceptCommands && !inventory.policy.updatePlayers, "runtime frame policy resolver should freeze command intake and player updates during inventory");
+	Expect(paused.mode == dev::SimulationMode::Paused, "runtime frame policy resolver should map paused sessions to paused simulation");
+	Expect(!paused.policy.acceptCommands && !paused.policy.updatePlayers, "runtime frame policy resolver should freeze paused simulation");
+	Expect(empty.mode == dev::SimulationMode::Paused, "runtime frame policy resolver should map empty sessions to paused simulation");
+	Expect(!empty.policy.updatePlayers && !empty.policy.updateEnemies, "runtime frame policy resolver should keep empty sessions inert");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz()
 {
 	dev::RuntimeFrameSettings frame;
@@ -10187,6 +10217,7 @@ int main()
 	TestRuntimeSetupInventoryCommandReportRecorderAppendsOnlySummaryResults();
 	TestRuntimeFrameEventDeltaCollectorCapturesEventsSinceBeginFrame();
 	TestRuntimeFramePolicyReportRecorderStoresCurrentFramePolicy();
+	TestRuntimeFramePolicyResolverMapsSessionModeToSimulationPolicy();
 	TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz();
 	TestRuntimeRunSummaryDefaultsToEmptyRun();
 	TestRuntimeRunRecorderAggregatesSetupInventoryResultsWithoutFrame();

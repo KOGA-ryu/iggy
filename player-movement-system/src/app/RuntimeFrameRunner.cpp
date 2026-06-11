@@ -1,7 +1,6 @@
 #include "RuntimeFrameRunner.hpp"
 
-#include "session/SessionModePolicy.hpp"
-#include "simulation/SimulationFramePolicyDescriber.hpp"
+#include "app/RuntimeFramePolicyResolver.hpp"
 
 namespace dev {
 
@@ -35,8 +34,7 @@ void RuntimeFrameRunner::runFrame()
 	recorder_.recordMovementScriptResults(sourceDrainer_.drainMovementScripts());
 	recorder_.recordMovementCommandsQueued(sourceDrainer_.drainMovementCommands());
 
-	const SimulationMode simulationMode = SessionModePolicy {}.simulationModeFor(session_.mode());
-	recorder_.recordFramePolicy(SimulationFramePolicyDescriber {}.describe(simulationMode));
+	recorder_.recordFramePolicy(RuntimeFramePolicyResolver {}.resolve(session_));
 
 	recorder_.recordFrameEvents(updateSimulationFrame());
 	recorder_.finishFrame();

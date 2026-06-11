@@ -776,6 +776,10 @@ RuntimeFrameRunner
   to route raw input, drains runtime sources, advances the session, and records
   the frame report
 
+RuntimeFramePolicyResolver
+  app-layer bridge that maps the GameSession mode to the SimulationFramePolicy
+  description used for the current frame
+
 RuntimeFrameLoopRunner
   app-layer loop policy that runs a one-frame runner for RuntimeFrameSettings
   maxFrames, keeping bounded repetition out of the GameLoop shell
@@ -861,6 +865,10 @@ RuntimeFrameEventDeltaCollector
 RuntimeFramePolicyReportRecorder
   app-layer recorder that stores the simulation frame policy description on
   the current frame report
+
+RuntimeFramePolicyResolver
+  app-layer resolver that keeps session-mode to simulation-policy mapping out
+  of frame execution ordering
 
 RuntimeSetupInventoryCommandReportRecorder
   app-layer recorder that appends setup-phase inventory command results to the

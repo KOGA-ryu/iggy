@@ -1289,6 +1289,11 @@ RuntimeFrameRunner
   -> RuntimeRunRecorder
 ```
 
+`RuntimeFramePolicyResolver` owns the app bridge from `GameSession` mode to
+`SimulationFramePolicyDescription`. The frame runner asks for the current frame
+policy, records it, then advances the session; it no longer needs to know how
+session modes map to simulation gates.
+
 `RuntimeFrameLoopRunner` owns the bounded repetition policy around that
 one-frame runner:
 
@@ -1436,6 +1441,10 @@ keeps lifecycle delta math out of the report writer.
 `RuntimeFramePolicyReportRecorder` owns the frame policy report assignment. The
 frame runner still chooses the policy from session mode, while the recorder
 stores the chosen policy description on the current frame report.
+
+`RuntimeFramePolicyResolver` owns the session-mode to simulation-policy choice.
+That keeps the frame runner's source order readable while preserving a named
+place to test gameplay, inventory pause, paused, and empty-session gates.
 
 `RuntimeSetupInventoryCommandReportRecorder` owns setup-phase inventory command
 reporting. Setup commands run before bounded frames begin, so their command
