@@ -439,6 +439,10 @@ RuntimeSourceDrainer
   app-layer helper that drains runtime session, inventory script, inventory
   command, and movement sources in frame order
 
+RuntimeSourceDrainerSettingsBuilder
+  app-layer mapper that turns loop-level source and input settings into the
+  lower-level settings consumed by RuntimeSourceDrainer
+
 EffectRouter
   maps factual movement/combat events into presentation requests without letting
   simulation systems know about UI, audio, VFX, rumble, or camera code

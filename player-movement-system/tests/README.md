@@ -110,6 +110,7 @@ Good first tests:
 - GameLoop runs configured inventory scripts after startup scripts
 - GameLoop reports inventory script load failure or missing player before ticking frames
 - GameLoop drains runtime inventory script sources before direct inventory command sources
+- RuntimeSourceDrainerSettingsBuilder maps loop sources and player id into drainer settings
 - RuntimeSourceDrainer owns runtime source draining order
 - RuntimeLoopTypes keeps loop settings and results reusable outside GameLoop
 - GameLoop builds RuntimeFrameReport entries for per-frame inspection
@@ -124,6 +125,7 @@ Good first tests:
 - RuntimeFrameSettings defaults to zero frames at a sixty hertz timestep
 - RuntimeFrameRunner routes sources and records one bounded frame
 - RuntimeRunSummary defaults to empty aggregate run state
+- RuntimeRunRecorder aggregates setup inventory results without creating frames
 - RuntimeRunRecorder turns frame work into frame reports and run summaries
 - RuntimeExitCodePolicy maps setup and output failures to process failures
 - RuntimeOutputSettings defaults to no runtime artifact outputs

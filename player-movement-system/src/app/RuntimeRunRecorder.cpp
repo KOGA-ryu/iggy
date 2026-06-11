@@ -14,6 +14,14 @@ RuntimeRunRecorder::RuntimeRunRecorder(
 {
 }
 
+void RuntimeRunRecorder::recordSetupInventoryCommandResults(const std::vector<InventoryCommandResult> &results)
+{
+	result_.summary.inventoryCommandResults.insert(
+	    result_.summary.inventoryCommandResults.end(),
+	    results.begin(),
+	    results.end());
+}
+
 void RuntimeRunRecorder::beginFrame()
 {
 	frame_ = {};

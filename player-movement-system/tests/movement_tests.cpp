@@ -20,6 +20,7 @@
 #include "app/RuntimeRunRecorder.hpp"
 #include "app/RuntimeSetupRunner.hpp"
 #include "app/RuntimeSourceDrainer.hpp"
+#include "app/RuntimeSourceDrainerSettingsBuilder.hpp"
 #include "app/RuntimeTraceService.hpp"
 #include "combat/CombatEventRecorder.hpp"
 #include "combat/CombatResolver.hpp"
@@ -2869,6 +2870,33 @@ void TestQueuedInventoryScriptSourceDrainsPathsOnce()
 	Expect(drained.size() == 2 && drained[1] == second, "queued inventory script source should preserve second path");
 }
 
+void TestRuntimeSourceDrainerSettingsBuilderMapsLoopSourcesAndPlayer()
+{
+	dev::QueuedRawInputSource rawInput;
+	dev::QueuedSessionCommandSource sessionCommands;
+	dev::QueuedMovementCommandSource movementCommands;
+	dev::QueuedInventoryCommandSource inventoryCommands;
+	dev::QueuedInventoryScriptSource inventoryScripts;
+
+	dev::RuntimeSourceDrainerSettings settings = dev::RuntimeSourceDrainerSettingsBuilder {}.build(
+	    dev::RuntimeSourceSettings {
+	        .rawInputSources = { &rawInput },
+	        .sessionCommandSources = { &sessionCommands },
+	        .movementCommandSources = { &movementCommands },
+	        .inventoryCommandSources = { &inventoryCommands },
+	        .inventoryScriptSources = { &inventoryScripts },
+	    },
+	    dev::RuntimeInputSettings {
+	        .playerId = 3,
+	    });
+
+	Expect(settings.sessionCommandSources.size() == 1 && settings.sessionCommandSources[0] == &sessionCommands, "runtime source drainer settings builder should copy session sources");
+	Expect(settings.movementCommandSources.size() == 1 && settings.movementCommandSources[0] == &movementCommands, "runtime source drainer settings builder should copy movement sources");
+	Expect(settings.inventoryCommandSources.size() == 1 && settings.inventoryCommandSources[0] == &inventoryCommands, "runtime source drainer settings builder should copy inventory command sources");
+	Expect(settings.inventoryScriptSources.size() == 1 && settings.inventoryScriptSources[0] == &inventoryScripts, "runtime source drainer settings builder should copy inventory script sources");
+	Expect(settings.inputPlayerId == 3, "runtime source drainer settings builder should map input player id to source-drainer player id");
+}
+
 void TestRuntimeSourceDrainerDrainsSessionBeforeMovement()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_source_drainer_test";
@@ -3537,6 +3565,27 @@ void TestRuntimeRunSummaryDefaultsToEmptyRun()
 	Expect(summary.movementCommandsQueued == 0, "runtime run summary should default to no queued movement commands");
 	Expect(summary.framesRun == 0, "runtime run summary should default to zero frames");
 	Expect(summary.lastFrameEvents.movementEvents().empty(), "runtime run summary should default to no final movement events");
+}
+
+void TestRuntimeRunRecorderAggregatesSetupInventoryResultsWithoutFrame()
+{
+	dev::GameLoopResult result;
+	dev::SessionEventRecorder sessionEvents;
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::RuntimeRunRecorder recorder { result, sessionEvents, inventoryEvents };
+
+	recorder.recordSetupInventoryCommandResults({
+	    {
+	        .type = dev::InventoryCommandResultType::Applied,
+	        .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 73 },
+	        .equipmentResult = { .type = dev::EquipmentResultType::Equipped, .itemId = 73 },
+	    },
+	});
+
+	Expect(result.summary.inventoryCommandResults.size() == 1, "runtime run recorder should aggregate setup inventory command results");
+	Expect(result.summary.inventoryCommandResults.size() == 1 && result.summary.inventoryCommandResults[0].command.itemId == std::optional<dev::TargetId> { 73 }, "runtime run recorder should preserve setup inventory result payload");
+	Expect(result.summary.framesRun == 0, "runtime run recorder setup aggregation should not count a frame");
+	Expect(result.frameReports.empty(), "runtime run recorder setup aggregation should not create a frame report");
 }
 
 void TestRuntimeRunRecorderAggregatesFrameReportsAndSummary()
@@ -4825,6 +4874,7 @@ int main()
 	TestGameLoopDrainsRuntimeMovementCommandSources();
 	TestQueuedInventoryCommandSourceDrainsCommandsOnce();
 	TestQueuedInventoryScriptSourceDrainsPathsOnce();
+	TestRuntimeSourceDrainerSettingsBuilderMapsLoopSourcesAndPlayer();
 	TestRuntimeSourceDrainerDrainsSessionBeforeMovement();
 	TestGameLoopDrainsRuntimeInventoryScriptSources();
 	TestGameLoopReportsRuntimeInventoryScriptLoadFailureWithoutStoppingFrames();
@@ -4848,6 +4898,7 @@ int main()
 	TestRuntimeInputContextBuilderUsesWorldTargetsUnlessOverridden();
 	TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz();
 	TestRuntimeRunSummaryDefaultsToEmptyRun();
+	TestRuntimeRunRecorderAggregatesSetupInventoryResultsWithoutFrame();
 	TestRuntimeRunRecorderAggregatesFrameReportsAndSummary();
 	TestRuntimeExitCodePolicyReportsSuccessForCleanRun();
 	TestRuntimeExitCodePolicyFailsSetupErrors();

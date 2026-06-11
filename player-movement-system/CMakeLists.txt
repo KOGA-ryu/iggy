@@ -22,6 +22,7 @@ add_library(player_movement_system
   src/app/RuntimeRunRecorder.cpp
   src/app/RuntimeSetupRunner.cpp
   src/app/RuntimeSourceDrainer.cpp
+  src/app/RuntimeSourceDrainerSettingsBuilder.cpp
   src/app/RuntimeTraceService.cpp
   src/combat/CombatEventRecorder.cpp
   src/combat/CombatRegistry.cpp

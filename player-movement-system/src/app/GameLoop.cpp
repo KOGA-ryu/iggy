@@ -6,6 +6,7 @@
 #include "RuntimeRunRecorder.hpp"
 #include "RuntimeSetupRunner.hpp"
 #include "RuntimeSourceDrainer.hpp"
+#include "RuntimeSourceDrainerSettingsBuilder.hpp"
 #include "session/SessionCommandDispatcher.hpp"
 
 #include <utility>
@@ -34,13 +35,7 @@ GameLoopResult GameLoop::runForResult()
 		inventoryEvents_,
 		routedSessionCommands_,
 		routedMovementCommands_,
-		{
-		    .sessionCommandSources = settings_.sources.sessionCommandSources,
-		    .inventoryScriptSources = settings_.sources.inventoryScriptSources,
-		    .inventoryCommandSources = settings_.sources.inventoryCommandSources,
-		    .movementCommandSources = settings_.sources.movementCommandSources,
-		    .inputPlayerId = settings_.input.playerId,
-		},
+		RuntimeSourceDrainerSettingsBuilder {}.build(settings_.sources, settings_.input),
 	};
 
 	auto finish = [&]() {
@@ -51,10 +46,7 @@ GameLoopResult GameLoop::runForResult()
 
 	RuntimeSetupRunResult setup = RuntimeSetupRunner { dispatcher, drainer }.run(settings_.setup);
 	result.setup = setup.setup;
-	result.summary.inventoryCommandResults.insert(
-	    result.summary.inventoryCommandResults.end(),
-	    setup.inventoryCommandResults.begin(),
-	    setup.inventoryCommandResults.end());
+	recorder.recordSetupInventoryCommandResults(setup.inventoryCommandResults);
 	if (!setup.framesAllowed)
 		return finish();
 

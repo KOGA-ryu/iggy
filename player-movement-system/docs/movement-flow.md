@@ -955,6 +955,11 @@ down the frame loop.
 `RuntimeSourceDrainer` now owns that runtime source order:
 
 ```text
+RuntimeSourceDrainerSettingsBuilder
+  -> RuntimeSourceSettings
+  -> RuntimeInputSettings::playerId
+  -> RuntimeSourceDrainerSettings
+
 RuntimeSourceDrainer
   -> drain session command sources
   -> drain inventory script sources
@@ -984,6 +989,7 @@ movement sources can safely mutate state.
 
 ```text
 GameLoopResult::summary
+  -> configured setup inventory command results
   -> runtime inventory script results
   -> raw input routed
   -> session and inventory command results
@@ -994,7 +1000,9 @@ GameLoopResult::summary
 
 That is different from `RuntimeFrameReport`. The summary answers “what happened
 across the whole bounded run?” while the frame report answers “what happened on
-this specific frame?”
+this specific frame?” Configured setup inventory command results belong in the
+summary, but they do not create frame reports because they ran before frames
+began.
 
 `RuntimeRunRecorder` owns the translation from per-frame work to those two
 reporting shapes:
