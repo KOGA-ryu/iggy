@@ -18,6 +18,7 @@ add_library(player_movement_system
   src/input/InputMapper.cpp
   src/interaction/InteractionCommandBuilder.cpp
   src/interaction/InteractionIntentBuilder.cpp
+  src/network/MovementCodec.cpp
   src/player/PlayerActionGate.cpp
   src/player/PlayerController.cpp
   src/player/PlayerMovement.cpp

@@ -49,6 +49,9 @@ src/events
 src/replay
   Records and replays semantic movement commands.
 
+src/network
+  Converts semantic movement commands to stable packets and back.
+
 src/player
   Owns player state, action gating, movement state transitions, and movement
   execution.
@@ -157,4 +160,7 @@ MovementEvent
 
 CommandLog
   replayable list of semantic movement commands
+
+MovementCodec
+  socket-free command packet encoding/decoding boundary
 ```

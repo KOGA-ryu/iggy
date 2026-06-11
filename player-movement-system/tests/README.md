@@ -28,6 +28,7 @@ Good first tests:
 - action executor clears destination action after execution
 - MoveThenAct emits CommandAccepted -> PathStarted -> StepCommitted -> DestinationActionReady -> AnimationLocked -> ActionExecuted
 - CommandLog replay produces the same movement/action event sequence
+- MovementCodec round-trips MoveThenAct command packets
 
 Run them with:
 

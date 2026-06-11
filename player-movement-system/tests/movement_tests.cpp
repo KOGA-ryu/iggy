@@ -9,6 +9,7 @@
 #include "focus/InputFocus.hpp"
 #include "interaction/InteractionCommandBuilder.hpp"
 #include "interaction/InteractionIntentBuilder.hpp"
+#include "network/MovementCodec.hpp"
 #include "player/PlayerActionGate.hpp"
 #include "player/PlayerController.hpp"
 #include "player/PlayerMovement.hpp"
@@ -192,6 +193,40 @@ void TestCommandReplayProducesSameEventSequence()
 	Expect(recorded[5].type == dev::MovementEventType::ActionExecuted, "replay should execute action");
 }
 
+void TestMovementCodecRoundTrip()
+{
+	dev::Target target { .type = dev::TargetType::Enemy, .id = 42, .tile = { 10, 6 } };
+	dev::MovementCommand original {
+		.type = dev::MovementCommandType::MoveThenAct,
+		.playerId = 2,
+		.destination = target.tile,
+		.destinationAction = dev::DestinationAction { dev::DestinationActionType::Attack, target, 1 },
+	};
+
+	dev::MovementCodec codec;
+	dev::MovementPacket packet = codec.toPacket(original);
+	dev::PacketBytes bytes = codec.encode(packet);
+	std::optional<dev::MovementPacket> decodedPacket = codec.decode(bytes);
+	Expect(decodedPacket.has_value(), "encoded packet should decode");
+
+	std::optional<dev::MovementCommand> decoded = decodedPacket.has_value()
+	    ? codec.fromPacket(*decodedPacket)
+	    : std::nullopt;
+	Expect(decoded.has_value(), "decoded packet should become command");
+	if (!decoded.has_value())
+		return;
+
+	Expect(decoded->type == original.type, "codec should preserve command type");
+	Expect(decoded->playerId == original.playerId, "codec should preserve player id");
+	Expect(decoded->destination == original.destination, "codec should preserve destination");
+	Expect(decoded->destinationAction.has_value(), "codec should preserve destination action");
+	Expect(decoded->destinationAction->type == dev::DestinationActionType::Attack, "codec should preserve action type");
+	Expect(decoded->destinationAction->target.type == dev::TargetType::Enemy, "codec should preserve target type");
+	Expect(decoded->destinationAction->target.id == 42, "codec should preserve target id");
+	Expect(decoded->destinationAction->target.tile == target.tile, "codec should preserve target tile");
+	Expect(decoded->destinationAction->rangeTiles == 1, "codec should preserve range");
+}
+
 } // namespace
 
 int main()
@@ -203,6 +238,7 @@ int main()
 	TestActionExecutorWaitsOutOfRange();
 	TestMoveThenActEventSequence();
 	TestCommandReplayProducesSameEventSequence();
+	TestMovementCodecRoundTrip();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

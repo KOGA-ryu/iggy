@@ -176,3 +176,19 @@ MovementEvent -> EventRecorder
 
 That means the same input, network, replay, and test paths all exercise the same
 movement command pipeline.
+
+## 12. Network Codec
+
+Networking should transmit semantic commands, not raw input:
+
+```text
+MovementCommand
+  -> MovementPacket
+  -> bytes
+  -> MovementPacket
+  -> MovementCommand
+  -> CommandDispatcher
+```
+
+The codec is deliberately socket-free. It only proves that command data is
+explicit, compact, and stable enough to cross a network boundary.
