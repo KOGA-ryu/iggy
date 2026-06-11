@@ -44,6 +44,7 @@
 #include "enemies/EnemyPursuitStepper.hpp"
 #include "events/EventRecorder.hpp"
 #include "files/ByteFileStore.hpp"
+#include "files/TextFileStore.hpp"
 #include "focus/InputFocus.hpp"
 #include "interaction/DestinationActionBuilder.hpp"
 #include "interaction/InteractionCommandBuilder.hpp"
@@ -2227,6 +2228,47 @@ void TestByteFileStoreRejectsMissingAndUnwritablePaths()
 	Expect(!store.load(missing).has_value(), "byte file store should reject missing files");
 	Expect(!store.save(unwritable, { 1, 2, 3 }), "byte file store should reject saves when parent directory is missing");
 	Expect(!std::filesystem::exists(unwritable.string() + ".tmp"), "byte file store should not leave temp files after failed open");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestTextFileStoreSavesLoadsAndCleansTempFile()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_text_file_store_test";
+	const std::filesystem::path path = root / "lines.txt";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+	std::filesystem::remove(path.string() + ".tmp");
+
+	dev::TextFileStore store;
+	std::vector<std::string> lines {
+		"run frames=1 frameReports=1",
+		"frame[0]",
+		"inventoryResult[0] type=Applied",
+	};
+
+	Expect(store.saveLines(path, lines), "text file store should save text lines");
+	std::optional<std::vector<std::string>> loaded = store.loadLines(path);
+
+	Expect(loaded.has_value(), "text file store should load saved lines");
+	Expect(loaded.has_value() && *loaded == lines, "text file store should preserve line payloads");
+	Expect(!std::filesystem::exists(path.string() + ".tmp"), "text file store should remove temp file after save");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestTextFileStoreRejectsMissingAndUnwritablePaths()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_text_file_store_missing_test";
+	const std::filesystem::path missing = root / "missing.txt";
+	const std::filesystem::path unwritable = root / "missing_directory" / "lines.txt";
+	std::filesystem::remove_all(root);
+
+	dev::TextFileStore store;
+
+	Expect(!store.loadLines(missing).has_value(), "text file store should reject missing files");
+	Expect(!store.saveLines(unwritable, { "line" }), "text file store should reject saves when parent directory is missing");
+	Expect(!std::filesystem::exists(unwritable.string() + ".tmp"), "text file store should not leave temp files after failed open");
 
 	std::filesystem::remove_all(root);
 }
@@ -6813,6 +6855,8 @@ int main()
 	TestInventoryCommandLogFrameCodecRejectsInvalidFrames();
 	TestByteFileStoreSavesLoadsAndCleansTempFile();
 	TestByteFileStoreRejectsMissingAndUnwritablePaths();
+	TestTextFileStoreSavesLoadsAndCleansTempFile();
+	TestTextFileStoreRejectsMissingAndUnwritablePaths();
 	TestInventoryCommandLogFileStoreSavesLoadsAndReplays();
 	TestInventoryCommandLogFileStoreRejectsCorruptAndMissingFiles();
 	TestInventoryScriptRunnerRunsSavedInventoryScript();

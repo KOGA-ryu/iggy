@@ -165,6 +165,7 @@ Good first tests:
 - RuntimeLoopTypes keeps loop settings and results reusable outside GameLoop
 - GameLoop builds RuntimeFrameReport entries for per-frame inspection
 - RuntimeFrameTrace formats frame reports into readable debug lines
+- TextFileStore saves/loads readable lines and cleans temp files
 - RuntimeFrameTraceFileStore saves and loads readable trace lines
 - RuntimeTraceService formats and saves full GameLoopResult traces
 - RuntimeSetupSettings defaults to no configured setup scripts

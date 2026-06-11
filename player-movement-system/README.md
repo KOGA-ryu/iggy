@@ -655,8 +655,14 @@ RuntimeFrameTrace
   readable text formatter for RuntimeFrameReport, suitable for logs, debug
   overlays, and test diagnostics
 
+TextFileStore
+  shared line-oriented text filesystem boundary that writes readable artifact
+  lines through a temp file, renames them into place, and loads lines without
+  knowing trace or debug bundle meaning
+
 RuntimeFrameTraceFileStore
-  file persistence boundary for readable runtime frame trace lines
+  domain persistence boundary for readable runtime frame trace lines, backed by
+  TextFileStore
 
 RuntimeTraceService
   high-level use case that formats and saves complete GameLoopResult frame

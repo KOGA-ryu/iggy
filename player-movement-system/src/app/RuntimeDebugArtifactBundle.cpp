@@ -1,7 +1,8 @@
 #include "RuntimeDebugArtifactBundle.hpp"
 
-#include <fstream>
 #include <sstream>
+
+#include "files/TextFileStore.hpp"
 
 namespace dev {
 
@@ -56,7 +57,7 @@ RuntimeDebugArtifactBundleResult RuntimeDebugArtifactBundle::save(
 
 	bundle.rootPrepared = true;
 	bundle.traceSaved = traceService_.saveRunTrace(bundle.tracePath, result);
-	bundle.manifestSaved = saveLines(bundle.manifestPath, formatManifest(result, bundle));
+	bundle.manifestSaved = TextFileStore {}.saveLines(bundle.manifestPath, formatManifest(result, bundle));
 	return bundle;
 }
 
@@ -92,32 +93,6 @@ std::vector<std::string> RuntimeDebugArtifactBundle::formatManifest(
 	lines.push_back("paths manifest=" + bundle.manifestPath.filename().string());
 	lines.push_back("paths trace=" + bundle.tracePath.filename().string());
 	return lines;
-}
-
-bool RuntimeDebugArtifactBundle::saveLines(const std::filesystem::path &path, const std::vector<std::string> &lines) const
-{
-	const std::filesystem::path tempPath = path.string() + ".tmp";
-
-	{
-		std::ofstream output { tempPath, std::ios::trunc };
-		if (!output)
-			return false;
-		for (const std::string &line : lines)
-			output << line << '\n';
-		if (!output)
-			return false;
-	}
-
-	std::error_code error;
-	std::filesystem::remove(path, error);
-	error.clear();
-	std::filesystem::rename(tempPath, path, error);
-	if (error) {
-		std::filesystem::remove(tempPath);
-		return false;
-	}
-
-	return true;
 }
 
 } // namespace dev

@@ -30,8 +30,6 @@ public:
 	    const RuntimeDebugArtifactBundleResult &bundle) const;
 
 private:
-	[[nodiscard]] bool saveLines(const std::filesystem::path &path, const std::vector<std::string> &lines) const;
-
 	RuntimeTraceService traceService_;
 };
 

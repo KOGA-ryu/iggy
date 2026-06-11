@@ -1251,12 +1251,15 @@ into readable lines.
 RuntimeFrameReport
   -> RuntimeFrameTrace
   -> RuntimeFrameTraceFileStore
+  -> TextFileStore
   -> frame.trace
 ```
 
 This store is plain text on purpose. Unlike save files or command logs, trace
 files are for humans and tooling to inspect what happened during a run, not for
-restoring gameplay state.
+restoring gameplay state. TextFileStore owns the raw line-oriented temp-file
+write, rename, and load mechanics so trace classes can stay focused on runtime
+meaning.
 
 `RuntimeTraceService` is the use-case layer for full run traces:
 
@@ -1265,6 +1268,7 @@ GameLoopResult
   -> frameReports[]
   -> RuntimeFrameTrace
   -> RuntimeFrameTraceFileStore
+  -> TextFileStore
   -> run.trace
 ```
 
@@ -1277,6 +1281,7 @@ behavior testable as separate pieces.
 ```text
 GameLoopResult
   -> RuntimeDebugArtifactBundle
+  -> TextFileStore
   -> manifest.txt
   -> run.trace
 ```
