@@ -248,6 +248,14 @@ InventoryCommandCodec / InventoryCommandLog / InventoryCommandReplayer
   stable packet, byte, log, and replay boundaries for semantic inventory
   automation
 
+InventoryCommandPacketValidator / InventoryCommandPacketByteCodec
+  inventory packet-shape and fixed byte-layout boundaries that keep malformed
+  automation or replay input out of semantic inventory commands
+
+InventoryCommandLogChecksum / InventoryCommandLogFrameCodec
+  inventory replay-file integrity and frame boundaries for magic, version,
+  command count, packet slicing, and checksum validation
+
 InventoryCommandLogFileStore
   file persistence boundary for inventory command logs, so automation scripts
   can live on disk without mixing filesystem rules into codecs or dispatchers
@@ -391,6 +399,10 @@ SimulationSnapshot
 SnapshotCodec
   versioned byte boundary for snapshots, with magic/version validation before
   restored data is trusted
+
+SnapshotChecksum
+  checksum boundary for snapshot bytes, keeping save-file integrity checks
+  testable outside the full snapshot serializer
 
 SnapshotFileStore
   file persistence boundary that saves versioned snapshot bytes and rejects

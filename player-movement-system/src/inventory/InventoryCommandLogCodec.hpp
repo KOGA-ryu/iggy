@@ -3,11 +3,11 @@
 #include <optional>
 
 #include "inventory/InventoryCommandCodec.hpp"
+#include "inventory/InventoryCommandLogBytes.hpp"
+#include "inventory/InventoryCommandLogFrameCodec.hpp"
 #include "inventory/InventoryCommandLog.hpp"
 
 namespace dev {
-
-using InventoryCommandLogBytes = std::vector<uint8_t>;
 
 class InventoryCommandLogCodec {
 public:
@@ -16,6 +16,7 @@ public:
 
 private:
 	InventoryCommandCodec commandCodec_;
+	InventoryCommandLogFrameCodec frameCodec_;
 };
 
 } // namespace dev

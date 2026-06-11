@@ -4,6 +4,7 @@
 #include <limits>
 
 #include "interaction/DestinationAction.hpp"
+#include "save/SnapshotChecksum.hpp"
 
 namespace dev {
 
@@ -14,8 +15,6 @@ constexpr uint8_t Magic1 = 'G';
 constexpr uint8_t Magic2 = 'G';
 constexpr uint8_t Magic3 = 'Y';
 constexpr uint32_t SnapshotVersion = 7;
-constexpr uint32_t FnvOffset = 2166136261U;
-constexpr uint32_t FnvPrime = 16777619U;
 
 class ByteWriter {
 public:
@@ -109,25 +108,6 @@ uint32_t CountOf(std::size_t size)
 	return size > std::numeric_limits<uint32_t>::max()
 	    ? std::numeric_limits<uint32_t>::max()
 	    : static_cast<uint32_t>(size);
-}
-
-uint32_t ChecksumOf(const SnapshotBytes &bytes, std::size_t length)
-{
-	uint32_t hash = FnvOffset;
-	for (std::size_t i = 0; i < length; ++i) {
-		hash ^= bytes[i];
-		hash *= FnvPrime;
-	}
-	return hash;
-}
-
-uint32_t ReadTrailingU32(const SnapshotBytes &bytes)
-{
-	const std::size_t offset = bytes.size() - 4U;
-	return static_cast<uint32_t>(bytes[offset])
-	    | (static_cast<uint32_t>(bytes[offset + 1U]) << 8U)
-	    | (static_cast<uint32_t>(bytes[offset + 2U]) << 16U)
-	    | (static_cast<uint32_t>(bytes[offset + 3U]) << 24U);
 }
 
 void WritePoint(ByteWriter &writer, Point point)
@@ -436,12 +416,9 @@ SnapshotBytes SnapshotCodec::encode(const SimulationSnapshot &snapshot) const
 	WriteVector(writer, snapshot.items, WriteItem);
 	WriteVector(writer, snapshot.combatants, WriteCombatant);
 	WriteVector(writer, snapshot.targets, WriteTarget);
-	const SnapshotBytes payload = writer.take();
-	ByteWriter finalWriter;
-	for (uint8_t byte : payload)
-		finalWriter.writeU8(byte);
-	finalWriter.writeU32(ChecksumOf(payload, payload.size()));
-	return finalWriter.take();
+	SnapshotBytes payload = writer.take();
+	SnapshotChecksum {}.appendTo(payload);
+	return payload;
 }
 
 std::optional<SimulationSnapshot> SnapshotCodec::decode(const SnapshotBytes &bytes) const
@@ -450,8 +427,7 @@ std::optional<SimulationSnapshot> SnapshotCodec::decode(const SnapshotBytes &byt
 		return std::nullopt;
 
 	const std::size_t payloadSize = bytes.size() - 4U;
-	const uint32_t expectedChecksum = ReadTrailingU32(bytes);
-	if (ChecksumOf(bytes, payloadSize) != expectedChecksum)
+	if (!SnapshotChecksum {}.hasValidTrailingChecksum(bytes, payloadSize))
 		return std::nullopt;
 
 	SnapshotBytes payload { bytes.begin(), bytes.begin() + static_cast<std::ptrdiff_t>(payloadSize) };

@@ -51,8 +51,12 @@ add_library(player_movement_system
   src/inventory/InventoryCommandCodec.cpp
   src/inventory/InventoryCommandDispatcher.cpp
   src/inventory/InventoryCommandLog.cpp
+  src/inventory/InventoryCommandLogChecksum.cpp
   src/inventory/InventoryCommandLogCodec.cpp
   src/inventory/InventoryCommandLogFileStore.cpp
+  src/inventory/InventoryCommandLogFrameCodec.cpp
+  src/inventory/InventoryCommandPacketByteCodec.cpp
+  src/inventory/InventoryCommandPacketValidator.cpp
   src/inventory/InventoryCommandReplayer.cpp
   src/inventory/InventoryCommandSource.cpp
   src/inventory/InventoryEventRecorder.cpp
@@ -75,6 +79,7 @@ add_library(player_movement_system
   src/player/WalkPath.cpp
   src/replay/CommandLog.cpp
   src/replay/CommandReplayer.cpp
+  src/save/SnapshotChecksum.cpp
   src/save/SaveGameService.cpp
   src/save/SaveSlotService.cpp
   src/save/SnapshotCodec.cpp

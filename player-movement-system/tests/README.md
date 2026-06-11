@@ -89,8 +89,12 @@ Good first tests:
 - GameLoop dispatches inventory command sources only when a world is active
 - GameLoop records inventory events from runtime inventory command sources
 - InventoryCommandCodec round-trips valid commands and rejects invalid packets
+- InventoryCommandPacketValidator rejects malformed inventory packet shapes
+- InventoryCommandPacketByteCodec round-trips and rejects inventory packet bytes
 - InventoryCommandLog replays through InventoryCommandDispatcher
 - InventoryCommandLogCodec round-trips versioned command logs and rejects corrupt bytes
+- InventoryCommandLogChecksum appends and validates inventory log checksums
+- InventoryCommandLogFrameCodec frames packet bytes and rejects invalid frame metadata
 - InventoryCommandLogFileStore saves, loads, replays, and rejects bad files
 - InventoryScriptRunner loads and runs saved inventory scripts through the dispatcher
 - InventoryScriptRunner distinguishes script load failure from command rejection
@@ -103,6 +107,7 @@ Good first tests:
 - SnapshotWriter and SnapshotReader restore durable item state
 - SnapshotWriter and SnapshotReader restore clickable target registry state
 - SnapshotCodec round-trips versioned snapshot bytes and rejects invalid or corrupted data
+- SnapshotChecksum appends and validates snapshot byte checksums
 - SnapshotFileStore saves versioned bytes and rejects corrupt save files
 - SaveGameService saves and loads SimulationWorld without replacing event sinks
 - SaveSlotService lists slot metadata and distinguishes valid, corrupt, and empty slots

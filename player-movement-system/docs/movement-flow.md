@@ -485,6 +485,7 @@ SimulationSnapshot
   -> magic bytes
   -> format version
   -> serialized durable state
+  -> SnapshotChecksum
 ```
 
 The codec validates before trusting data:
@@ -1794,8 +1795,12 @@ Inventory commands now have a stable byte boundary:
 ```text
 InventoryCommand
   -> InventoryCommandPacket
+  -> InventoryCommandPacketValidator
+  -> InventoryCommandPacketByteCodec
   -> bytes
+  -> InventoryCommandPacketByteCodec
   -> InventoryCommandPacket
+  -> InventoryCommandPacketValidator
   -> InventoryCommand
 ```
 
@@ -1813,11 +1818,13 @@ Command logs store semantic inventory requests:
 
 ```text
 InventoryCommandLog
+  -> InventoryCommandLogFrameCodec
   -> InventoryCommandLogCodec
   -> magic
   -> version
   -> command count
   -> packet[]
+  -> InventoryCommandLogChecksum
   -> checksum
 ```
 

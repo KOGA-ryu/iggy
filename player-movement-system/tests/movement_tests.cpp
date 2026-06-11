@@ -46,8 +46,12 @@
 #include "inventory/InventoryCommandCodec.hpp"
 #include "inventory/InventoryCommandDispatcher.hpp"
 #include "inventory/InventoryCommandLog.hpp"
+#include "inventory/InventoryCommandLogChecksum.hpp"
 #include "inventory/InventoryCommandLogCodec.hpp"
 #include "inventory/InventoryCommandLogFileStore.hpp"
+#include "inventory/InventoryCommandLogFrameCodec.hpp"
+#include "inventory/InventoryCommandPacketByteCodec.hpp"
+#include "inventory/InventoryCommandPacketValidator.hpp"
 #include "inventory/InventoryCommandReplayer.hpp"
 #include "inventory/InventoryCommandSource.hpp"
 #include "inventory/InventoryEventRecorder.hpp"
@@ -70,6 +74,7 @@
 #include "save/SaveGameService.hpp"
 #include "save/SaveSlotService.hpp"
 #include "save/SnapshotCodec.hpp"
+#include "save/SnapshotChecksum.hpp"
 #include "save/SnapshotFileStore.hpp"
 #include "save/SnapshotReader.hpp"
 #include "save/SnapshotWriter.hpp"
@@ -1834,6 +1839,81 @@ void TestInventoryCommandCodecRejectsInvalidPackets()
 	Expect(!codec.decode(shortBytes).has_value(), "inventory command codec should reject wrong byte size");
 }
 
+void TestInventoryCommandPacketValidatorRejectsMalformedPayloads()
+{
+	dev::InventoryCommandPacketValidator validator;
+
+	Expect(validator.isValid({
+	           .commandType = static_cast<uint8_t>(dev::InventoryCommandType::EquipItem),
+	           .hasItemId = 1,
+	           .itemId = 961,
+	       }),
+	    "inventory command packet validator should accept valid equip packets");
+	Expect(validator.isValid({
+	           .commandType = static_cast<uint8_t>(dev::InventoryCommandType::UnequipSlot),
+	           .hasSlot = 1,
+	           .slot = static_cast<uint8_t>(dev::EquipmentSlot::Weapon),
+	       }),
+	    "inventory command packet validator should accept valid unequip packets");
+	Expect(!validator.isValid({
+	           .commandType = static_cast<uint8_t>(dev::InventoryCommandType::EquipItem),
+	           .hasItemId = 2,
+	           .itemId = 961,
+	       }),
+	    "inventory command packet validator should reject non-boolean payload flags");
+	Expect(!validator.isValid({
+	           .commandType = static_cast<uint8_t>(dev::InventoryCommandType::UnequipSlot),
+	           .hasSlot = 1,
+	           .slot = 99,
+	       }),
+	    "inventory command packet validator should reject invalid equipment slots");
+	Expect(!validator.isValid({
+	           .commandType = static_cast<uint8_t>(dev::InventoryCommandType::EquipItem),
+	           .hasItemId = 1,
+	           .itemId = 961,
+	           .hasSlot = 1,
+	           .slot = static_cast<uint8_t>(dev::EquipmentSlot::Weapon),
+	       }),
+	    "inventory command packet validator should reject unexpected payload fields");
+}
+
+void TestInventoryCommandPacketByteCodecRoundTripsPackets()
+{
+	dev::InventoryCommandPacketByteCodec codec;
+	dev::InventoryCommandPacket packet {
+		.commandType = static_cast<uint8_t>(dev::InventoryCommandType::EquipItem),
+		.hasItemId = 1,
+		.itemId = 0x01020304U,
+	};
+
+	dev::InventoryCommandBytes bytes = codec.encode(packet);
+	std::optional<dev::InventoryCommandPacket> decoded = codec.decode(bytes);
+
+	Expect(bytes.size() == 16, "inventory command packet byte codec should write fixed packet size");
+	Expect(bytes.size() == 16 && bytes[2] == 0x04 && bytes[3] == 0x03 && bytes[4] == 0x02 && bytes[5] == 0x01, "inventory command packet byte codec should write item id little-endian");
+	Expect(decoded.has_value(), "inventory command packet byte codec should decode valid bytes");
+	Expect(decoded.has_value() && decoded->commandType == packet.commandType, "inventory command packet byte codec should preserve command type");
+	Expect(decoded.has_value() && decoded->hasItemId == 1 && decoded->itemId == packet.itemId, "inventory command packet byte codec should preserve item payload");
+}
+
+void TestInventoryCommandPacketByteCodecRejectsInvalidBytes()
+{
+	dev::InventoryCommandPacketByteCodec codec;
+	dev::InventoryCommandPacket packet {
+		.commandType = static_cast<uint8_t>(dev::InventoryCommandType::UnequipSlot),
+		.hasSlot = 1,
+		.slot = static_cast<uint8_t>(dev::EquipmentSlot::Weapon),
+	};
+
+	dev::InventoryCommandBytes shortBytes = codec.encode(packet);
+	shortBytes.pop_back();
+	Expect(!codec.decode(shortBytes).has_value(), "inventory command packet byte codec should reject wrong byte size");
+
+	dev::InventoryCommandBytes invalidPacketBytes = codec.encode(packet);
+	invalidPacketBytes[7] = 99;
+	Expect(!codec.decode(invalidPacketBytes).has_value(), "inventory command packet byte codec should reject invalid decoded packets");
+}
+
 void TestInventoryCommandLogReplaysThroughDispatcher()
 {
 	dev::Player player = MakePlayer();
@@ -1930,6 +2010,80 @@ void TestInventoryCommandLogCodecRejectsInvalidBytes()
 	dev::InventoryCommandLogBytes corrupted = bytes;
 	corrupted[12] ^= 0x01U;
 	Expect(!codec.decode(corrupted).has_value(), "inventory command log codec should reject checksum mismatch");
+}
+
+void TestInventoryCommandLogChecksumValidatesTrailingChecksum()
+{
+	dev::InventoryCommandLogBytes bytes { 1, 2, 3, 4 };
+	dev::InventoryCommandLogChecksum checksum;
+	const uint32_t expected = checksum.compute(bytes, bytes.size());
+
+	checksum.appendTo(bytes);
+
+	Expect(bytes.size() == 8, "inventory command log checksum should append four checksum bytes");
+	Expect(checksum.hasValidTrailingChecksum(bytes, 4), "inventory command log checksum should validate appended checksum");
+	Expect(expected == checksum.compute(bytes, 4), "inventory command log checksum should compute payload hash only");
+
+	bytes[0] ^= 0xFFU;
+	Expect(!checksum.hasValidTrailingChecksum(bytes, 4), "inventory command log checksum should reject mutated payload");
+}
+
+void TestInventoryCommandLogFrameCodecFramesPacketBytes()
+{
+	dev::InventoryCommandPacketByteCodec packetCodec;
+	std::vector<dev::InventoryCommandBytes> packets {
+		packetCodec.encode({
+		    .commandType = static_cast<uint8_t>(dev::InventoryCommandType::EquipItem),
+		    .hasItemId = 1,
+		    .itemId = 962,
+		}),
+		packetCodec.encode({
+		    .commandType = static_cast<uint8_t>(dev::InventoryCommandType::UnequipSlot),
+		    .hasSlot = 1,
+		    .slot = static_cast<uint8_t>(dev::EquipmentSlot::Weapon),
+		}),
+	};
+
+	dev::InventoryCommandLogFrameCodec frameCodec;
+	dev::InventoryCommandLogBytes bytes = frameCodec.encode(packets);
+	std::optional<std::vector<dev::InventoryCommandBytes>> decoded = frameCodec.decode(bytes);
+
+	Expect(bytes.size() == 48, "inventory command log frame codec should write header, packets, and checksum");
+	Expect(bytes.size() == 48 && bytes[0] == 'I' && bytes[1] == 'I' && bytes[2] == 'C' && bytes[3] == 'L', "inventory command log frame codec should write magic");
+	Expect(bytes.size() == 48 && bytes[4] == 1 && bytes[8] == 2, "inventory command log frame codec should write version and command count");
+	Expect(decoded.has_value() && decoded->size() == 2, "inventory command log frame codec should restore packet count");
+	Expect(decoded.has_value() && (*decoded)[0] == packets[0], "inventory command log frame codec should preserve first packet");
+	Expect(decoded.has_value() && (*decoded)[1] == packets[1], "inventory command log frame codec should preserve second packet");
+}
+
+void TestInventoryCommandLogFrameCodecRejectsInvalidFrames()
+{
+	dev::InventoryCommandPacketByteCodec packetCodec;
+	std::vector<dev::InventoryCommandBytes> packets {
+		packetCodec.encode({
+		    .commandType = static_cast<uint8_t>(dev::InventoryCommandType::EquipItem),
+		    .hasItemId = 1,
+		    .itemId = 962,
+		}),
+	};
+	dev::InventoryCommandLogFrameCodec frameCodec;
+	dev::InventoryCommandLogBytes bytes = frameCodec.encode(packets);
+
+	dev::InventoryCommandLogBytes badMagic = bytes;
+	badMagic[0] = 'X';
+	Expect(!frameCodec.decode(badMagic).has_value(), "inventory command log frame codec should reject checksum-protected bad magic");
+
+	dev::InventoryCommandLogBytes badVersion = bytes;
+	badVersion.resize(badVersion.size() - 4U);
+	badVersion[4] = 2;
+	dev::InventoryCommandLogChecksum {}.appendTo(badVersion);
+	Expect(!frameCodec.decode(badVersion).has_value(), "inventory command log frame codec should reject unsupported version");
+
+	dev::InventoryCommandLogBytes wrongCount = bytes;
+	wrongCount.resize(wrongCount.size() - 4U);
+	wrongCount[8] = 2;
+	dev::InventoryCommandLogChecksum {}.appendTo(wrongCount);
+	Expect(!frameCodec.decode(wrongCount).has_value(), "inventory command log frame codec should reject payload size mismatch");
 }
 
 void TestInventoryCommandLogFileStoreSavesLoadsAndReplays()
@@ -2217,6 +2371,22 @@ void TestSnapshotCodecRejectsInvalidBytes()
 	dev::SnapshotBytes corruptedPayload = bytes;
 	corruptedPayload[12] ^= 0x01U;
 	Expect(!codec.decode(corruptedPayload).has_value(), "snapshot codec should reject checksum mismatch");
+}
+
+void TestSnapshotChecksumValidatesTrailingChecksum()
+{
+	dev::SnapshotBytes bytes { 1, 2, 3, 4 };
+	dev::SnapshotChecksum checksum;
+	const uint32_t expected = checksum.compute(bytes, bytes.size());
+
+	checksum.appendTo(bytes);
+
+	Expect(bytes.size() == 8, "snapshot checksum should append four checksum bytes");
+	Expect(checksum.hasValidTrailingChecksum(bytes, 4), "snapshot checksum should validate appended checksum");
+	Expect(expected == checksum.compute(bytes, 4), "snapshot checksum should compute payload hash only");
+
+	bytes[0] ^= 0xFFU;
+	Expect(!checksum.hasValidTrailingChecksum(bytes, 4), "snapshot checksum should reject mutated payload");
 }
 
 void TestSnapshotFileStoreSavesAndLoadsVersionedBytes()
@@ -5725,9 +5895,15 @@ int main()
 	TestInventoryCommandDispatcherEmitsInventoryEvents();
 	TestInventoryCommandCodecRoundTripsCommands();
 	TestInventoryCommandCodecRejectsInvalidPackets();
+	TestInventoryCommandPacketValidatorRejectsMalformedPayloads();
+	TestInventoryCommandPacketByteCodecRoundTripsPackets();
+	TestInventoryCommandPacketByteCodecRejectsInvalidBytes();
 	TestInventoryCommandLogReplaysThroughDispatcher();
 	TestInventoryCommandLogCodecRoundTripsAndReplays();
 	TestInventoryCommandLogCodecRejectsInvalidBytes();
+	TestInventoryCommandLogChecksumValidatesTrailingChecksum();
+	TestInventoryCommandLogFrameCodecFramesPacketBytes();
+	TestInventoryCommandLogFrameCodecRejectsInvalidFrames();
 	TestInventoryCommandLogFileStoreSavesLoadsAndReplays();
 	TestInventoryCommandLogFileStoreRejectsCorruptAndMissingFiles();
 	TestInventoryScriptRunnerRunsSavedInventoryScript();
@@ -5735,6 +5911,7 @@ int main()
 	TestSimulationSnapshotRestoresDurableState();
 	TestSnapshotCodecRoundTripsVersionedBytes();
 	TestSnapshotCodecRejectsInvalidBytes();
+	TestSnapshotChecksumValidatesTrailingChecksum();
 	TestSnapshotFileStoreSavesAndLoadsVersionedBytes();
 	TestSnapshotFileStoreRejectsCorruptFile();
 	TestSaveGameServiceSavesAndLoadsWorld();
