@@ -1203,6 +1203,7 @@ a full debug bundle:
 GameLoopSettings::output.debugBundlePath
   -> GameLoopResult
   -> RuntimeDebugArtifactBundle
+  -> RuntimeDebugArtifactLayout
   -> RuntimeDebugManifest
   -> manifest.txt
   -> run.trace
@@ -1282,17 +1283,18 @@ behavior testable as separate pieces.
 ```text
 GameLoopResult
   -> RuntimeDebugArtifactBundle
+  -> RuntimeDebugArtifactLayout
   -> RuntimeDebugManifest
   -> TextFileStore
   -> manifest.txt
   -> run.trace
 ```
 
-The bundle owns directory preparation and artifact assembly. The manifest
-formatter owns readable manifest lines. The trace still goes through
-`RuntimeTraceService`. That split keeps replay/debug artifact shape outside
-gameplay code while leaving a clear place to add future files, such as replay
-command logs or session metadata.
+The bundle owns directory preparation and artifact assembly. The layout owns
+stable artifact path names. The manifest formatter owns readable manifest lines.
+The trace still goes through `RuntimeTraceService`. That split keeps
+replay/debug artifact shape outside gameplay code while leaving a clear place to
+add future files, such as replay command logs or session metadata.
 
 ## 35. Runtime Session Command Sources
 

@@ -672,10 +672,15 @@ RuntimeDebugManifest
   readable manifest formatter for debug bundles, summarizing run counts, setup
   attempts, final mode, artifact paths, and trace save state
 
+RuntimeDebugArtifactLayout
+  app-layer bundle layout boundary that maps a debug bundle root to stable
+  artifact paths such as manifest.txt and run.trace
+
 RuntimeDebugArtifactBundle
   app-layer debug artifact writer that prepares a bundle directory, saves the
-  run trace, delegates manifest formatting to RuntimeDebugManifest, and can be
-  invoked directly or through GameLoopSettings
+  run trace, delegates path naming to RuntimeDebugArtifactLayout and manifest
+  formatting to RuntimeDebugManifest, and can be invoked directly or through
+  GameLoopSettings
 
 RuntimeSourceDrainer
   app-layer helper that drains runtime session, inventory script, inventory

@@ -10,6 +10,7 @@
 #include "actions/ActionExecutor.hpp"
 #include "app/GameLoop.hpp"
 #include "app/RuntimeDebugArtifactBundle.hpp"
+#include "app/RuntimeDebugArtifactLayout.hpp"
 #include "app/RuntimeDebugManifest.hpp"
 #include "app/RuntimeExitCodePolicy.hpp"
 #include "app/RuntimeFrameLoopRunner.hpp"
@@ -5618,6 +5619,17 @@ void TestRuntimeDebugManifestFormatsFailedRun()
 	Expect(ContainsLineFragment(lines, "setup startupScriptRan=true inventoryScriptRan=false"), "runtime debug bundle manifest should report setup attempts");
 }
 
+void TestRuntimeDebugArtifactLayoutNamesBundlePaths()
+{
+	const std::filesystem::path root = "debug/run-001";
+
+	dev::RuntimeDebugArtifactPaths paths = dev::RuntimeDebugArtifactLayout {}.pathsForRoot(root);
+
+	Expect(paths.rootPath == root, "runtime debug artifact layout should preserve root path");
+	Expect(paths.manifestPath == root / "manifest.txt", "runtime debug artifact layout should name manifest path");
+	Expect(paths.tracePath == root / "run.trace", "runtime debug artifact layout should name trace path");
+}
+
 void TestRuntimeDebugArtifactBundleRejectsRootFile()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_debug_bundle_root_file_test";
@@ -6974,6 +6986,7 @@ int main()
 	TestGameLoopReportsRunTraceSaveFailure();
 	TestRuntimeDebugArtifactBundleSavesManifestAndTrace();
 	TestRuntimeDebugManifestFormatsFailedRun();
+	TestRuntimeDebugArtifactLayoutNamesBundlePaths();
 	TestRuntimeDebugArtifactBundleRejectsRootFile();
 	TestGameLoopSavesConfiguredDebugBundle();
 	TestGameLoopSavesDebugBundleOnStartupFailure();
