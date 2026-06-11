@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "actions/ActionExecutor.hpp"
+#include "combat/CombatEventRecorder.hpp"
 #include "combat/CombatResolver.hpp"
 #include "combat/CombatSystem.hpp"
 #include "commands/CommandDispatcher.hpp"
@@ -314,6 +315,55 @@ void TestActionExecutorAttackResolvesCombat()
 	Expect(player.destinationAction.type == dev::DestinationActionType::None, "executed combat action should clear destination action");
 }
 
+void TestCombatSystemEmitsHitEvent()
+{
+	dev::CombatEventRecorder combatEvents;
+	dev::CombatSystem combat { &combatEvents };
+	dev::Target target { .type = dev::TargetType::Enemy, .id = 8, .tile = { 1, 0 } };
+	combat.registry().add({
+		.target = target,
+		.stats = { .hitPoints = 10, .attackPower = 3, .defense = 1 },
+	});
+
+	dev::Player player = MakePlayer({ 1, 0 });
+	player.combatStats.attackPower = 6;
+	player.destinationAction = { dev::DestinationActionType::Attack, target, 1 };
+	player.moveState = dev::PlayerMoveState::Acting;
+
+	dev::ActionExecutor { dev::ActionRules {}, nullptr, &combat }.update(player);
+
+	const std::vector<dev::CombatEvent> &events = combatEvents.events();
+	Expect(events.size() == 1, "combat hit should emit one combat event");
+	Expect(events.size() == 1 && events[0].type == dev::CombatEventType::Hit, "combat event should be Hit");
+	Expect(events.size() == 1 && events[0].damage == 5, "combat hit event should include damage");
+	Expect(events.size() == 1 && events[0].remainingHitPoints == 5, "combat hit event should include remaining hp");
+	Expect(events.size() == 1 && events[0].target.id == 8, "combat hit event should include target id");
+}
+
+void TestCombatSystemEmitsDefeatedEvent()
+{
+	dev::CombatEventRecorder combatEvents;
+	dev::CombatSystem combat { &combatEvents };
+	dev::Target target { .type = dev::TargetType::Enemy, .id = 9, .tile = { 1, 0 } };
+	combat.registry().add({
+		.target = target,
+		.stats = { .hitPoints = 5, .attackPower = 3, .defense = 1 },
+	});
+
+	dev::Player player = MakePlayer({ 1, 0 });
+	player.combatStats.attackPower = 6;
+	player.destinationAction = { dev::DestinationActionType::Attack, target, 1 };
+	player.moveState = dev::PlayerMoveState::Acting;
+
+	dev::ActionExecutor { dev::ActionRules {}, nullptr, &combat }.update(player);
+
+	const std::vector<dev::CombatEvent> &events = combatEvents.events();
+	Expect(events.size() == 1, "defeat should emit one combat event");
+	Expect(events.size() == 1 && events[0].type == dev::CombatEventType::Defeated, "combat event should be Defeated");
+	Expect(events.size() == 1 && events[0].damage == 5, "defeated event should include damage");
+	Expect(events.size() == 1 && events[0].remainingHitPoints == 0, "defeated event should include zero remaining hp");
+}
+
 } // namespace
 
 int main()
@@ -330,6 +380,8 @@ int main()
 	TestEnemyAttackWindupAndRecovery();
 	TestCombatResolverDamageAndDefeat();
 	TestActionExecutorAttackResolvesCombat();
+	TestCombatSystemEmitsHitEvent();
+	TestCombatSystemEmitsDefeatedEvent();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

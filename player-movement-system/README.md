@@ -175,4 +175,7 @@ EnemyMovement
 
 CombatResolver
   deterministic consequence layer for executed attack actions
+
+CombatEvent
+  observable combat consequence such as Hit, Defeated, damage, and remaining HP
 ```

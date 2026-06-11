@@ -231,3 +231,14 @@ hp <= 0 -> defeated
 
 That keeps combat testable before adding randomness, status effects, hit chance,
 or equipment rules.
+
+Combat also emits consequence events:
+
+```text
+CombatHit(damage, remainingHp, target)
+CombatDefeated(damage, remainingHp = 0, target)
+CombatRejected(target)
+```
+
+These events are for UI, floating damage numbers, audio, VFX, replay comparison,
+and tests.

@@ -34,6 +34,7 @@ Good first tests:
 - enemy attack windup transitions into recovery
 - CombatResolver applies deterministic damage and defeat
 - ActionExecutor attack can damage registered combat target
+- CombatSystem emits Hit and Defeated events with damage and remaining HP
 
 Run them with:
 

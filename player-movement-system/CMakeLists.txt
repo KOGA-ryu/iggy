@@ -10,6 +10,7 @@ add_library(player_movement_system
   src/actions/ActionExecutor.cpp
   src/actions/ActionRules.cpp
   src/app/GameLoop.cpp
+  src/combat/CombatEventRecorder.cpp
   src/combat/CombatRegistry.cpp
   src/combat/CombatResolver.cpp
   src/combat/CombatSystem.cpp
