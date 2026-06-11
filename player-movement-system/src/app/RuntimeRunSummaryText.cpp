@@ -32,6 +32,7 @@ std::string RuntimeRunSummaryText::format(const GameLoopResult &result, RuntimeR
 	        << " sessionResults=" << result.summary.sessionCommandResults.size()
 	        << " inventoryScripts=" << result.summary.runtimeInventoryScriptResults.size()
 	        << " inventoryResults=" << result.summary.inventoryCommandResults.size()
+	        << " movementScripts=" << result.summary.runtimeMovementScriptResults.size()
 	        << " movementQueued=" << result.summary.movementCommandsQueued;
 
 	if (detail == RuntimeRunSummaryDetail::WithFinalMode)

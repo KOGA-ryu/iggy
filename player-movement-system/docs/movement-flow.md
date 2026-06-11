@@ -261,6 +261,19 @@ That distinction matters because a valid movement script can still ask for an
 illegal action in the current world state, and that should be visible as replay
 data rather than confused with a missing or corrupt file.
 
+`MovementScriptSource` is the runtime-facing queue boundary for those script
+paths:
+
+```text
+debug menu / test / automation
+  -> MovementScriptSource
+  -> movement script path[]
+```
+
+It does not load files or dispatch commands. It only gives app/runtime code the
+same drain-once source shape already used by movement commands and inventory
+scripts.
+
 ## 12. Network Codec
 
 Networking should transmit semantic commands, not raw input:
@@ -1023,9 +1036,10 @@ captures whether each configured script ran and what result it produced.
 GameLoopSettings::sources
   -> RawInputSource[]
   -> SessionCommandSource[]
+  -> MovementScriptSource[]
+  -> MovementCommandSource[]
   -> InventoryScriptSource[]
   -> InventoryCommandSource[]
-  -> MovementCommandSource[]
 ```
 
 That keeps setup scripts, output artifacts, and runtime sources from becoming
@@ -1167,6 +1181,23 @@ failure is reported in `GameLoopResult::summary.runtimeInventoryScriptResults`
 and the loop keeps ticking. That lets a debug menu try a script without taking
 down the frame loop.
 
+Runtime movement script sources use the same per-frame source idea for `.imcl`
+replay files:
+
+```text
+debug tool / automation
+  -> MovementScriptSource
+  -> script path
+  -> MovementScriptRunner
+  -> CommandReplayReport
+```
+
+They run against the active world before direct runtime movement command
+sources are queued. Their `MovementScriptRunResult` entries are stored in
+`GameLoopResult::summary.runtimeMovementScriptResults` and each
+`RuntimeFrameReport`, while `movementCommandsQueued` remains reserved for
+commands placed into the world's command queue.
+
 `RuntimeSourceDrainer` now owns that runtime source order:
 
 ```text
@@ -1180,6 +1211,7 @@ RuntimeSourceDrainer
   -> drain session command sources
   -> drain inventory script sources
   -> drain inventory command sources
+  -> drain movement script sources
   -> drain movement command sources
 ```
 
@@ -1188,7 +1220,10 @@ semantic source types: preserve order, skip missing source slots, drain each
 source once, and return the drained items as a flat list. That lets
 `RuntimeSourceDrainer` focus on what drained items mean: dispatch session
 commands, run inventory scripts, dispatch inventory commands, or queue movement
-commands into the active world.
+commands into the active world. Movement scripts sit between inventory commands
+and direct movement command queues: they dispatch decoded replay commands
+through the normal movement dispatcher, then the next `GameSession::update`
+advances any resulting player state.
 
 `RuntimeFrameRunner` owns the one-frame order around that drainer:
 
@@ -1198,6 +1233,7 @@ RuntimeFrameRunner
   -> drain session command sources
   -> drain inventory script sources
   -> drain inventory command sources
+  -> drain movement script sources
   -> drain movement command sources
   -> GameSession::update
   -> RuntimeRunRecorder

@@ -168,6 +168,17 @@ const char *ToString(MovementEventType type)
 	return "Unknown";
 }
 
+const char *ToString(MovementScriptRunStatus status)
+{
+	switch (status) {
+	case MovementScriptRunStatus::LoadFailed:
+		return "LoadFailed";
+	case MovementScriptRunStatus::Completed:
+		return "Completed";
+	}
+	return "Unknown";
+}
+
 const char *ToString(EnemyAttackTransition transition)
 {
 	switch (transition) {
@@ -267,6 +278,7 @@ std::vector<std::string> RuntimeFrameTrace::format(const RuntimeFrameReport &rep
 		     << " sessionResults=" << report.sessionCommandResults.size()
 		     << " inventoryScripts=" << report.inventoryScriptResults.size()
 		     << " inventoryResults=" << report.inventoryCommandResults.size()
+		     << " movementScripts=" << report.movementScriptResults.size()
 		     << " movementQueued=" << report.movementCommandsQueued
 		     << " movementEvents=" << report.frameEvents.movementEvents().size()
 		     << " combatEvents=" << report.frameEvents.combatEvents().size()
@@ -307,6 +319,16 @@ std::vector<std::string> RuntimeFrameTrace::format(const RuntimeFrameReport &rep
 		     << " equipment=" << ToString(result.equipmentResult.type)
 		     << " item=" << result.equipmentResult.itemId
 		     << " slot=" << ToString(result.equipmentResult.slot);
+		lines.push_back(line.str());
+	}
+
+	for (std::size_t i = 0; i < report.movementScriptResults.size(); ++i) {
+		const MovementScriptRunResult &result = report.movementScriptResults[i];
+		std::ostringstream line;
+		line << "movementScript[" << i << "] status=" << ToString(result.status)
+		     << " results=" << result.replayReport.results.size()
+		     << " accepted=" << result.replayReport.acceptedCount()
+		     << " rejected=" << result.replayReport.rejectedCount();
 		lines.push_back(line.str());
 	}
 

@@ -32,6 +32,7 @@ void RuntimeFrameRunner::runFrame()
 	recorder_.recordInventoryScriptResults(sourceDrainer_.drainInventoryScripts());
 	recorder_.recordInventoryCommandResults(sourceDrainer_.drainInventoryCommands());
 
+	recorder_.recordMovementScriptResults(sourceDrainer_.drainMovementScripts());
 	recorder_.recordMovementCommandsQueued(sourceDrainer_.drainMovementCommands());
 
 	const SimulationMode simulationMode = SessionModePolicy {}.simulationModeFor(session_.mode());

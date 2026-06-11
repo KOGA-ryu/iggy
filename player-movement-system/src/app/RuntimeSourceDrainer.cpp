@@ -1,6 +1,8 @@
 #include "RuntimeSourceDrainer.hpp"
 
 #include "app/RuntimeSourceStream.hpp"
+#include "commands/CommandDispatcher.hpp"
+#include "player/PlayerController.hpp"
 
 #include <utility>
 
@@ -80,6 +82,31 @@ std::vector<InventoryCommandResult> RuntimeSourceDrainer::drainInventoryCommands
 	InventoryCommandDispatcher dispatcher { session_.world().players[settings_.inputPlayerId], &inventoryEvents_ };
 	for (const InventoryCommand &command : commands)
 		results.push_back(dispatcher.dispatch(command));
+
+	return results;
+}
+
+std::vector<MovementScriptRunResult> RuntimeSourceDrainer::drainMovementScripts()
+{
+	std::vector<MovementScriptRunResult> results;
+	if (!session_.hasActiveWorld())
+		return results;
+
+	std::vector<std::filesystem::path> paths = RuntimeSourceStream<std::filesystem::path, MovementScriptSource> {}.drain(
+	    settings_.movementScriptSources);
+	results.reserve(paths.size());
+
+	PlayerController playerController {
+		session_.world().players,
+		session_.world().map,
+		session_.world().collision,
+		session_.world().pathFinder,
+		session_.world().movementEvents,
+	};
+	CommandDispatcher dispatcher { playerController, session_.world().movementEvents };
+	MovementScriptRunner runner { dispatcher };
+	for (const std::filesystem::path &path : paths)
+		results.push_back(runner.run(path));
 
 	return results;
 }

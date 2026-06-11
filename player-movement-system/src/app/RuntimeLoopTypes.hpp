@@ -12,6 +12,8 @@
 #include "inventory/InventoryEvent.hpp"
 #include "inventory/InventoryScriptRunner.hpp"
 #include "inventory/InventoryScriptSource.hpp"
+#include "replay/MovementScriptRunner.hpp"
+#include "replay/MovementScriptSource.hpp"
 #include "session/GameSession.hpp"
 #include "session/SessionCommand.hpp"
 #include "session/SessionCommandSource.hpp"
@@ -50,6 +52,7 @@ struct RuntimeSourceSettings {
 	std::vector<RawInputSource *> rawInputSources;
 	std::vector<SessionCommandSource *> sessionCommandSources;
 	std::vector<MovementCommandSource *> movementCommandSources;
+	std::vector<MovementScriptSource *> movementScriptSources;
 	std::vector<InventoryCommandSource *> inventoryCommandSources;
 	std::vector<InventoryScriptSource *> inventoryScriptSources;
 };
@@ -82,6 +85,7 @@ struct RuntimeFrameReport {
 	std::vector<SessionCommandResult> sessionCommandResults;
 	std::vector<InventoryScriptRunResult> inventoryScriptResults;
 	std::vector<InventoryCommandResult> inventoryCommandResults;
+	std::vector<MovementScriptRunResult> movementScriptResults;
 	int movementCommandsQueued = 0;
 	SimulationFrameEvents frameEvents;
 	std::vector<SessionEvent> sessionEvents;
@@ -90,6 +94,7 @@ struct RuntimeFrameReport {
 
 struct RuntimeRunSummary {
 	std::vector<InventoryScriptRunResult> runtimeInventoryScriptResults;
+	std::vector<MovementScriptRunResult> runtimeMovementScriptResults;
 	int rawInputEventsRouted = 0;
 	std::vector<SessionCommandResult> sessionCommandResults;
 	std::vector<InventoryCommandResult> inventoryCommandResults;

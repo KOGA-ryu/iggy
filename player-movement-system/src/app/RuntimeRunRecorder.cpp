@@ -71,6 +71,15 @@ void RuntimeRunRecorder::recordInventoryCommandResults(std::vector<InventoryComm
 	    results.end());
 }
 
+void RuntimeRunRecorder::recordMovementScriptResults(std::vector<MovementScriptRunResult> results)
+{
+	result_.summary.runtimeMovementScriptResults.insert(
+	    result_.summary.runtimeMovementScriptResults.end(),
+	    results.begin(),
+	    results.end());
+	frame_.movementScriptResults = std::move(results);
+}
+
 void RuntimeRunRecorder::recordMovementCommandsQueued(int count)
 {
 	frame_.movementCommandsQueued = count;

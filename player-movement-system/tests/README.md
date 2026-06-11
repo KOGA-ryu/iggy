@@ -47,6 +47,7 @@ Good first tests:
 - CommandLogFileStore saves, loads, replays, and rejects bad movement command log files
 - MovementScriptRunner loads and runs saved movement scripts through the dispatcher
 - MovementScriptRunner distinguishes movement script load failure from command rejection
+- MovementScriptSource queues and drains movement replay script paths
 - EnemyPursuitStepPlanner chooses the next chase tile toward a target
 - EnemyPursuitStepGate rejects map-blocked and collision-blocked pursuit tiles
 - EnemyAttackRange applies tuned Chebyshev attack range
@@ -187,6 +188,7 @@ Good first tests:
 - GameLoop runs configured inventory scripts after startup scripts
 - GameLoop reports inventory script load failure or missing player before ticking frames
 - GameLoop drains runtime inventory script sources before direct inventory command sources
+- GameLoop drains runtime movement script sources before direct movement command sources
 - RuntimeSourceDrainerSettingsBuilder maps loop sources and player id into drainer settings
 - RuntimeSourceDrainer owns runtime source draining order
 - RuntimeSourceStream drains nullable source lists once while preserving order

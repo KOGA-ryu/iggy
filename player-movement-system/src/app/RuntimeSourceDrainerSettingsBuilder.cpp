@@ -10,6 +10,7 @@ RuntimeSourceDrainerSettings RuntimeSourceDrainerSettingsBuilder::build(
 		.sessionCommandSources = sources.sessionCommandSources,
 		.inventoryScriptSources = sources.inventoryScriptSources,
 		.inventoryCommandSources = sources.inventoryCommandSources,
+		.movementScriptSources = sources.movementScriptSources,
 		.movementCommandSources = sources.movementCommandSources,
 		.inputPlayerId = input.playerId,
 	};

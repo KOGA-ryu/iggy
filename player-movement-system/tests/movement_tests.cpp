@@ -106,6 +106,7 @@
 #include "replay/CommandPacketListCodec.hpp"
 #include "replay/CommandReplayer.hpp"
 #include "replay/MovementScriptRunner.hpp"
+#include "replay/MovementScriptSource.hpp"
 #include "save/SaveGameService.hpp"
 #include "save/SaveSlotService.hpp"
 #include "save/SnapshotByteStream.hpp"
@@ -5432,11 +5433,32 @@ void TestQueuedInventoryScriptSourceDrainsPathsOnce()
 	Expect(drained.size() == 2 && drained[1] == second, "queued inventory script source should preserve second path");
 }
 
+void TestQueuedMovementScriptSourceDrainsPathsOnce()
+{
+	dev::QueuedMovementScriptSource source;
+	const std::filesystem::path first = "opening.imcl";
+	const std::filesystem::path second = "combat.imcl";
+	source.enqueue(first);
+	source.enqueue(second);
+
+	Expect(source.size() == 2, "queued movement script source should track queued path count");
+	std::vector<std::filesystem::path> drained = source.drain();
+	Expect(drained.size() == 2, "queued movement script source should drain queued paths");
+	Expect(source.empty(), "queued movement script source should be empty after drain");
+	Expect(source.drain().empty(), "queued movement script source should not drain paths twice");
+	Expect(drained.size() == 2 && drained[0] == first, "queued movement script source should preserve first path");
+	Expect(drained.size() == 2 && drained[1] == second, "queued movement script source should preserve second path");
+	source.enqueue(first);
+	source.clear();
+	Expect(source.empty(), "queued movement script source should clear queued paths");
+}
+
 void TestRuntimeSourceDrainerSettingsBuilderMapsLoopSourcesAndPlayer()
 {
 	dev::QueuedRawInputSource rawInput;
 	dev::QueuedSessionCommandSource sessionCommands;
 	dev::QueuedMovementCommandSource movementCommands;
+	dev::QueuedMovementScriptSource movementScripts;
 	dev::QueuedInventoryCommandSource inventoryCommands;
 	dev::QueuedInventoryScriptSource inventoryScripts;
 
@@ -5445,6 +5467,7 @@ void TestRuntimeSourceDrainerSettingsBuilderMapsLoopSourcesAndPlayer()
 	        .rawInputSources = { &rawInput },
 	        .sessionCommandSources = { &sessionCommands },
 	        .movementCommandSources = { &movementCommands },
+	        .movementScriptSources = { &movementScripts },
 	        .inventoryCommandSources = { &inventoryCommands },
 	        .inventoryScriptSources = { &inventoryScripts },
 	    },
@@ -5454,6 +5477,7 @@ void TestRuntimeSourceDrainerSettingsBuilderMapsLoopSourcesAndPlayer()
 
 	Expect(settings.sessionCommandSources.size() == 1 && settings.sessionCommandSources[0] == &sessionCommands, "runtime source drainer settings builder should copy session sources");
 	Expect(settings.movementCommandSources.size() == 1 && settings.movementCommandSources[0] == &movementCommands, "runtime source drainer settings builder should copy movement sources");
+	Expect(settings.movementScriptSources.size() == 1 && settings.movementScriptSources[0] == &movementScripts, "runtime source drainer settings builder should copy movement script sources");
 	Expect(settings.inventoryCommandSources.size() == 1 && settings.inventoryCommandSources[0] == &inventoryCommands, "runtime source drainer settings builder should copy inventory command sources");
 	Expect(settings.inventoryScriptSources.size() == 1 && settings.inventoryScriptSources[0] == &inventoryScripts, "runtime source drainer settings builder should copy inventory script sources");
 	Expect(settings.inputPlayerId == 3, "runtime source drainer settings builder should map input player id to source-drainer player id");
@@ -5534,6 +5558,52 @@ void TestRuntimeSourceDrainerDrainsSessionBeforeMovement()
 	std::filesystem::remove_all(root);
 }
 
+void TestRuntimeSourceDrainerRunsMovementScripts()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_source_drainer_movement_script_test";
+	const std::filesystem::path scriptPath = root / "runtime_movement.imcl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::CommandLog log;
+	log.record({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+	dev::CommandLogFileStore store;
+	Expect(store.save(scriptPath, log), "runtime movement script drainer test should create script file");
+
+	dev::GameSession session { root / "saves" };
+	session.startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::QueuedSessionCommandSource routedSessionCommands;
+	dev::QueuedMovementCommandSource routedMovementCommands;
+	dev::QueuedMovementScriptSource movementScripts;
+	movementScripts.enqueue(scriptPath);
+	dev::RuntimeSourceDrainer drainer {
+		session,
+		inventoryEvents,
+		routedSessionCommands,
+		routedMovementCommands,
+		dev::RuntimeSourceDrainerSettings {
+		    .movementScriptSources = { &movementScripts },
+		},
+	};
+
+	std::vector<dev::MovementScriptRunResult> results = drainer.drainMovementScripts();
+	dev::SimulationFrameEvents frameEvents = session.update(1.0F / 60.0F);
+
+	Expect(results.size() == 1, "runtime source drainer should run movement script sources");
+	Expect(results.size() == 1 && results[0].status == dev::MovementScriptRunStatus::Completed, "runtime source drainer movement script should complete");
+	Expect(results.size() == 1 && results[0].replayReport.acceptedCount() == 1, "runtime source drainer movement script should report accepted command");
+	Expect(frameEvents.movementEvents().size() == 1 && frameEvents.movementEvents()[0].type == dev::MovementEventType::StepCommitted, "runtime movement script should feed next simulation update");
+	Expect(session.world().players.size() == 1 && session.world().players[0].position.tile == dev::Point { 1, 0 }, "runtime movement script should move player through active world");
+	Expect(movementScripts.empty(), "runtime source drainer should drain movement script source");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestGameLoopDrainsRuntimeMovementCommandSources()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_game_loop_movement_source_test";
@@ -5576,6 +5646,76 @@ void TestGameLoopDrainsRuntimeMovementCommandSources()
 	Expect(movementSource.empty(), "game loop should drain movement source commands once");
 	Expect(loop.session().world().players.size() == 1 && loop.session().world().players[0].position.tile == dev::Point { 1, 0 }, "movement command source should move player through simulation");
 	Expect(sawCommandAccepted, "movement command source should still pass through movement command dispatcher events");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestGameLoopDrainsRuntimeMovementScriptSources()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_game_loop_movement_script_source_test";
+	const std::filesystem::path scriptPath = root / "runtime_movement.imcl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::CommandLog log;
+	log.record({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+	dev::CommandLogFileStore store;
+	Expect(store.save(scriptPath, log), "runtime movement script source test should create script file");
+
+	dev::QueuedMovementScriptSource movementScripts;
+	movementScripts.enqueue(scriptPath);
+
+	dev::GameLoop loop {
+		dev::GameLoopSettings {
+		    .saveRoot = root / "saves",
+		    .sources = { .movementScriptSources = { &movementScripts } },
+		    .frame = { .maxFrames = 1 },
+		}
+	};
+	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+
+	dev::GameLoopResult result = loop.runForResult();
+
+	Expect(result.summary.runtimeMovementScriptResults.size() == 1, "game loop should run runtime movement script source");
+	Expect(result.summary.runtimeMovementScriptResults.size() == 1 && result.summary.runtimeMovementScriptResults[0].status == dev::MovementScriptRunStatus::Completed, "runtime movement script source should complete valid script");
+	Expect(result.summary.runtimeMovementScriptResults.size() == 1 && result.summary.runtimeMovementScriptResults[0].replayReport.acceptedCount() == 1, "runtime movement script source should report accepted replay command");
+	Expect(result.summary.movementCommandsQueued == 0, "runtime movement scripts should not inflate queued movement command count");
+	Expect(result.frameReports.size() == 1 && result.frameReports[0].movementScriptResults.size() == 1, "runtime frame report should include movement script results");
+	std::vector<std::string> traceLines = result.frameReports.empty()
+	    ? std::vector<std::string> {}
+	    : dev::RuntimeFrameTrace {}.format(result.frameReports[0]);
+	Expect(ContainsLineFragment(traceLines, "movementScripts=1"), "runtime frame trace should include movement script count");
+	Expect(ContainsLineFragment(traceLines, "movementScript[0] status=Completed results=1 accepted=1 rejected=0"), "runtime frame trace should include movement script replay detail");
+	Expect(loop.session().world().players.size() == 1 && loop.session().world().players[0].position.tile == dev::Point { 1, 0 }, "runtime movement script source should move player through simulation");
+	Expect(movementScripts.empty(), "game loop should drain runtime movement script source");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestGameLoopDoesNotDrainMovementScriptSourcesWithoutActiveWorld()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_game_loop_no_world_movement_script_source_test";
+	const std::filesystem::path scriptPath = root / "movement.imcl";
+	std::filesystem::remove_all(root);
+
+	dev::QueuedMovementScriptSource movementScripts;
+	movementScripts.enqueue(scriptPath);
+
+	dev::GameLoop loop {
+		dev::GameLoopSettings {
+		    .saveRoot = root / "saves",
+		    .sources = { .movementScriptSources = { &movementScripts } },
+		    .frame = { .maxFrames = 1 },
+		}
+	};
+	dev::GameLoopResult result = loop.runForResult();
+
+	Expect(result.summary.runtimeMovementScriptResults.empty(), "game loop should not run movement script sources without an active world");
+	Expect(movementScripts.size() == 1, "game loop should preserve movement script paths until a world exists");
 
 	std::filesystem::remove_all(root);
 }
@@ -5854,8 +5994,8 @@ void TestRuntimeRunSummaryTextFormatsTraceAndManifestSummaries()
 
 	dev::RuntimeRunSummaryText formatter;
 
-	Expect(formatter.format(result, dev::RuntimeRunSummaryDetail::CountsOnly) == "run frames=2 frameReports=1 rawInput=3 sessionResults=1 inventoryScripts=1 inventoryResults=1 movementQueued=4", "runtime run summary text should format trace run summary");
-	Expect(formatter.format(result, dev::RuntimeRunSummaryDetail::WithFinalMode) == "run frames=2 frameReports=1 rawInput=3 sessionResults=1 inventoryScripts=1 inventoryResults=1 movementQueued=4 finalMode=Inventory", "runtime run summary text should format manifest run summary");
+	Expect(formatter.format(result, dev::RuntimeRunSummaryDetail::CountsOnly) == "run frames=2 frameReports=1 rawInput=3 sessionResults=1 inventoryScripts=1 inventoryResults=1 movementScripts=0 movementQueued=4", "runtime run summary text should format trace run summary");
+	Expect(formatter.format(result, dev::RuntimeRunSummaryDetail::WithFinalMode) == "run frames=2 frameReports=1 rawInput=3 sessionResults=1 inventoryScripts=1 inventoryResults=1 movementScripts=0 movementQueued=4 finalMode=Inventory", "runtime run summary text should format manifest run summary");
 }
 
 void TestRuntimeFrameTraceFormatsEnemyPursuitEvents()
@@ -5903,7 +6043,7 @@ void TestRuntimeFrameTraceFileStoreSavesAndLoadsLines()
 	std::filesystem::remove(path.string() + ".tmp");
 
 	std::vector<std::string> lines {
-		"frame rawInput=0 sessionResults=0 inventoryScripts=1 inventoryResults=2 movementQueued=1",
+		"frame rawInput=0 sessionResults=0 inventoryScripts=1 inventoryResults=2 movementScripts=0 movementQueued=1",
 		"inventoryResult[0] type=Applied command=EquipItem equipment=Equipped item=955 slot=Weapon",
 		"movementEvent[0] type=CommandAccepted player=0 tile=(0,0) command=WalkTo",
 	};
@@ -5970,7 +6110,7 @@ void TestRuntimeTraceServiceFormatsAndSavesRunTrace()
 	std::optional<std::vector<std::string>> loaded = dev::RuntimeFrameTraceFileStore {}.load(tracePath);
 
 	Expect(!lines.empty(), "runtime trace service should format run lines");
-	Expect(!lines.empty() && lines[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=1 inventoryResults=1 movementQueued=0", "runtime trace service should include run summary");
+	Expect(!lines.empty() && lines[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=1 inventoryResults=1 movementScripts=0 movementQueued=0", "runtime trace service should include run summary");
 	Expect(ContainsLineFragment(lines, "frame[0]"), "runtime trace service should include frame header");
 	Expect(ContainsLineFragment(lines, "inventoryResult[0] type=Applied command=EquipItem equipment=Equipped item=956 slot=Weapon"), "runtime trace service should include frame trace detail");
 	Expect(loaded.has_value() && *loaded == lines, "runtime trace service should persist exact formatted lines");
@@ -5984,7 +6124,7 @@ void TestRuntimeTraceServiceFormatsEmptyRun()
 	std::vector<std::string> lines = dev::RuntimeTraceService {}.formatRun(result);
 
 	Expect(lines.size() == 1, "runtime trace service should format empty run as summary only");
-	Expect(lines.size() == 1 && lines[0] == "run frames=0 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "runtime trace service should preserve empty run counts");
+	Expect(lines.size() == 1 && lines[0] == "run frames=0 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime trace service should preserve empty run counts");
 }
 
 void TestRuntimeOutputSettingsDefaultDisablesArtifacts()
@@ -6600,9 +6740,9 @@ void TestRuntimeOutputFinalizerSavesTraceAndBundle()
 	Expect(result.output.debugBundleSaveAttempted, "runtime output finalizer should attempt configured bundle save");
 	Expect(result.output.debugBundleSaved, "runtime output finalizer should report saved bundle");
 	Expect(!dev::RuntimeOutputFailurePolicy {}.failed(result.output), "runtime output finalizer should report no failure after saving requested outputs");
-	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "runtime output finalizer should save standalone trace");
+	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime output finalizer should save standalone trace");
 	Expect(bundleManifest.has_value() && ContainsLineFragment(*bundleManifest, "trace=run.trace saved=true"), "runtime output finalizer should save bundle manifest");
-	Expect(bundleTrace.has_value() && !bundleTrace->empty() && (*bundleTrace)[0] == "run frames=1 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "runtime output finalizer should save bundle trace");
+	Expect(bundleTrace.has_value() && !bundleTrace->empty() && (*bundleTrace)[0] == "run frames=1 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime output finalizer should save bundle trace");
 
 	std::filesystem::remove_all(root);
 }
@@ -6649,7 +6789,7 @@ void TestGameLoopSavesConfiguredRunTrace()
 	Expect(result.output.runTraceSaveAttempted, "game loop should attempt configured run trace save");
 	Expect(result.output.runTraceSaved, "game loop should report successful run trace save");
 	Expect(loaded.has_value(), "game loop should persist configured run trace");
-	Expect(loaded.has_value() && !loaded->empty() && (*loaded)[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "game loop run trace should include run summary");
+	Expect(loaded.has_value() && !loaded->empty() && (*loaded)[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "game loop run trace should include run summary");
 	Expect(loaded.has_value() && ContainsLineFragment(*loaded, "frame[0]"), "game loop run trace should include frame trace header");
 
 	std::filesystem::remove_all(root);
@@ -6677,7 +6817,7 @@ void TestGameLoopSavesRunTraceOnStartupFailure()
 	Expect(result.setup.startupScriptResult.status == dev::SessionScriptRunStatus::LoadFailed, "failed startup trace test should report load failure");
 	Expect(result.output.runTraceSaveAttempted, "game loop should attempt run trace save after startup failure");
 	Expect(result.output.runTraceSaved, "game loop should save run trace after startup failure");
-	Expect(loaded.has_value() && !loaded->empty() && (*loaded)[0] == "run frames=0 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "failed startup trace should preserve zero-frame summary");
+	Expect(loaded.has_value() && !loaded->empty() && (*loaded)[0] == "run frames=0 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "failed startup trace should preserve zero-frame summary");
 
 	std::filesystem::remove_all(root);
 }
@@ -6745,7 +6885,7 @@ void TestRuntimeDebugArtifactBundleSavesManifestAndTrace()
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "run frames=1 frameReports=1"), "runtime debug bundle manifest should summarize run frame counts");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "finalMode=Gameplay"), "runtime debug bundle manifest should include final mode");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "policy latest=Gameplay acceptCommands=true updatePlayers=true updateEnemies=true"), "runtime debug bundle manifest should summarize latest frame policy");
-	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "runtime debug bundle trace should preserve run trace summary");
+	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime debug bundle trace should preserve run trace summary");
 
 	std::filesystem::remove_all(root);
 }
@@ -6804,7 +6944,7 @@ void TestRuntimeDebugArtifactWriterSavesTraceAndManifest()
 	Expect(trace.has_value(), "runtime debug artifact writer should write readable trace");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "trace=run.trace saved=true"), "runtime debug artifact writer manifest should record saved trace");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "policy latest=none"), "runtime debug artifact writer manifest should report no frame policy without frame reports");
-	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=2 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "runtime debug artifact writer should preserve trace summary");
+	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=2 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime debug artifact writer should preserve trace summary");
 
 	std::filesystem::remove_all(root);
 }
@@ -6876,7 +7016,7 @@ void TestGameLoopSavesConfiguredDebugBundle()
 	Expect(trace.has_value(), "game loop debug bundle should write run trace");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "trace=run.trace saved=true"), "game loop debug bundle manifest should index saved trace");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "policy latest=Gameplay acceptCommands=true updatePlayers=true updateEnemies=true"), "game loop debug bundle manifest should include latest frame policy");
-	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "game loop debug bundle trace should include run summary");
+	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "game loop debug bundle trace should include run summary");
 
 	std::filesystem::remove_all(root);
 }
@@ -6905,7 +7045,7 @@ void TestGameLoopSavesDebugBundleOnStartupFailure()
 	Expect(result.output.debugBundleSaved, "game loop should save debug bundle after startup failure");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "setup startupScriptRan=true inventoryScriptRan=false"), "failed startup debug bundle manifest should record setup attempt");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "policy latest=none"), "failed startup debug bundle manifest should report no frame policy");
-	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=0 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "failed startup debug bundle trace should preserve zero-frame summary");
+	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=0 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "failed startup debug bundle trace should preserve zero-frame summary");
 
 	std::filesystem::remove_all(root);
 }
@@ -8187,9 +8327,13 @@ int main()
 	TestGameLoopDrainsRuntimeMovementCommandSources();
 	TestQueuedInventoryCommandSourceDrainsCommandsOnce();
 	TestQueuedInventoryScriptSourceDrainsPathsOnce();
+	TestQueuedMovementScriptSourceDrainsPathsOnce();
 	TestRuntimeSourceDrainerSettingsBuilderMapsLoopSourcesAndPlayer();
 	TestRuntimeSourceStreamDrainsSourcesAndSkipsNullSlots();
 	TestRuntimeSourceDrainerDrainsSessionBeforeMovement();
+	TestRuntimeSourceDrainerRunsMovementScripts();
+	TestGameLoopDrainsRuntimeMovementScriptSources();
+	TestGameLoopDoesNotDrainMovementScriptSourcesWithoutActiveWorld();
 	TestGameLoopDrainsRuntimeInventoryScriptSources();
 	TestGameLoopReportsRuntimeInventoryScriptLoadFailureWithoutStoppingFrames();
 	TestGameLoopDoesNotDrainInventoryScriptSourcesWithoutActiveWorld();

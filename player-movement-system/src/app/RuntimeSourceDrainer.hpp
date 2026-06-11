@@ -9,6 +9,8 @@
 #include "inventory/InventoryEventRecorder.hpp"
 #include "inventory/InventoryScriptRunner.hpp"
 #include "inventory/InventoryScriptSource.hpp"
+#include "replay/MovementScriptRunner.hpp"
+#include "replay/MovementScriptSource.hpp"
 #include "session/GameSession.hpp"
 #include "session/SessionCommandDispatcher.hpp"
 #include "session/SessionCommandSource.hpp"
@@ -19,6 +21,7 @@ struct RuntimeSourceDrainerSettings {
 	std::vector<SessionCommandSource *> sessionCommandSources;
 	std::vector<InventoryScriptSource *> inventoryScriptSources;
 	std::vector<InventoryCommandSource *> inventoryCommandSources;
+	std::vector<MovementScriptSource *> movementScriptSources;
 	std::vector<MovementCommandSource *> movementCommandSources;
 	PlayerId inputPlayerId = 0;
 };
@@ -36,6 +39,7 @@ public:
 	[[nodiscard]] std::vector<SessionCommandResult> drainSessionCommands(const SessionCommandDispatcher &dispatcher);
 	[[nodiscard]] std::vector<InventoryScriptRunResult> drainInventoryScripts();
 	[[nodiscard]] std::vector<InventoryCommandResult> drainInventoryCommands();
+	[[nodiscard]] std::vector<MovementScriptRunResult> drainMovementScripts();
 	[[nodiscard]] int drainMovementCommands();
 
 private:

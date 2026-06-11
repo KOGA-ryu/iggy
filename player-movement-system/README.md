@@ -374,6 +374,10 @@ MovementScriptRunner
   high-level replay use case that loads a movement script file and dispatches it
   through CommandReplayer without mixing filesystem errors into command rejection
 
+MovementScriptSource
+  runtime-facing source boundary that lets debug tools, tests, menus, or future
+  automation queue movement replay script paths
+
 MovementCommandDispatchResult
   inspectable accepted/rejected result returned by CommandDispatcher and
   collected by CommandReplayer during movement replay
@@ -836,7 +840,7 @@ RuntimeDebugArtifactBundle
 
 RuntimeSourceDrainer
   app-layer helper that drains runtime session, inventory script, inventory
-  command, and movement sources in frame order
+  command, movement script, and movement command sources in frame order
 
 RuntimeSourceStream
   app-layer source-stream primitive that skips missing source slots, drains
