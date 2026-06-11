@@ -83,6 +83,9 @@ add_library(player_movement_system
   src/save/SnapshotChecksum.cpp
   src/save/SnapshotFrameCodec.cpp
   src/save/SnapshotEntityCodec.cpp
+  src/save/SnapshotEnemyCodec.cpp
+  src/save/SnapshotPlayerCodec.cpp
+  src/save/SnapshotSchemaCodec.cpp
   src/save/SaveGameService.cpp
   src/save/SaveSlotService.cpp
   src/save/SnapshotCodec.cpp

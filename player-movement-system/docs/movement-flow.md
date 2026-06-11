@@ -477,12 +477,14 @@ is, not replay the footstep sound that happened while saving.
 ## 22. Snapshot Codec
 
 An in-memory snapshot is useful for tests and debugging. A mature save boundary
-also needs a stable byte format:
+also needs a stable byte format. The detailed save architecture is documented in
+[`save-system.md`](save-system.md); the short flow is:
 
 ```text
 SimulationSnapshot
   -> SnapshotCodec
-  -> serialized durable state
+  -> SnapshotSchemaCodec
+  -> serialized durable sections
   -> SnapshotFrameCodec
   -> magic bytes
   -> format version
@@ -499,10 +501,9 @@ invalid enum    -> reject
 checksum mismatch -> reject
 ```
 
-This is the beginning of save compatibility. File I/O can come later; the
-important lesson is that serialization is not just copying memory. It is a
-contract about what durable state means and which old/new formats the game is
-willing to load.
+This is save compatibility work. Serialization is not just copying memory. It
+is a contract about what durable state means, how sections are ordered, and
+which old or corrupt bytes the game is willing to load.
 
 ## 23. Snapshot File Store
 

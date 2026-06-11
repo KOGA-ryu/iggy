@@ -77,9 +77,13 @@
 #include "save/SnapshotCodec.hpp"
 #include "save/SnapshotChecksum.hpp"
 #include "save/SnapshotEntityCodec.hpp"
+#include "save/SnapshotEnemyCodec.hpp"
 #include "save/SnapshotFileStore.hpp"
 #include "save/SnapshotFrameCodec.hpp"
+#include "save/SnapshotPlayerCodec.hpp"
 #include "save/SnapshotReader.hpp"
+#include "save/SnapshotSchemaCodec.hpp"
+#include "save/SnapshotVectorCodec.hpp"
 #include "save/SnapshotWriter.hpp"
 #include "session/GameSession.hpp"
 #include "session/SessionCommandCodec.hpp"
@@ -2495,6 +2499,207 @@ void TestSnapshotEntityCodecRejectsInvalidEnums()
 	dev::SnapshotByteReader badActionReader { badActionBytes };
 	dev::DestinationAction action;
 	Expect(!codec.readDestinationAction(badActionReader, action), "snapshot entity codec should reject invalid destination action type");
+}
+
+void TestSnapshotPlayerCodecRoundTripsDurablePlayerState()
+{
+	dev::Player player = MakePlayer({ 4, 5 });
+	player.position.future = { 5, 5 };
+	player.position.previous = { 3, 5 };
+	player.position.precise = { 4, 5 };
+	player.moveState = dev::PlayerMoveState::Pathing;
+	player.path.pushStep({ 5, 5 });
+	player.path.pushStep({ 6, 5 });
+	player.destinationAction = {
+	    dev::DestinationActionType::Attack,
+	    { .type = dev::TargetType::Enemy, .id = 72, .tile = { 6, 5 } },
+	    1,
+	};
+	player.movementModifiers.standGround = true;
+	player.animationLock.active = true;
+	player.animationLock.elapsedSeconds = 0.25F;
+	player.animationLock.cancelAfterSeconds = 0.75F;
+	player.combatStats = { .hitPoints = 13, .attackPower = 8, .defense = 4 };
+	player.inventory.capacity = 4;
+	player.inventory.items.push_back({ .id = 73, .tile = { 2, 2 }, .combatModifiers = { .defense = 2 } });
+	player.inventory.equipment.weapon = dev::Item { .id = 74, .equipmentSlot = dev::EquipmentSlot::Weapon, .combatModifiers = { .attackPower = 5 } };
+	player.inventory.equipment.armor = dev::Item { .id = 75, .equipmentSlot = dev::EquipmentSlot::Armor, .combatModifiers = { .defense = 6 } };
+	player.moveSpeedTilesPerSecond = 6.5F;
+
+	dev::SnapshotBytes bytes;
+	dev::SnapshotByteWriter writer { bytes };
+	dev::SnapshotPlayerCodec codec;
+	codec.writePlayer(writer, player);
+
+	dev::SnapshotByteReader reader { bytes };
+	dev::Player decoded;
+	Expect(codec.readPlayer(reader, decoded), "snapshot player codec should read encoded player");
+	Expect(decoded.position.tile == dev::Point { 4, 5 } && decoded.position.future == dev::Point { 5, 5 }, "snapshot player codec should preserve actor position");
+	Expect(decoded.moveState == dev::PlayerMoveState::Pathing, "snapshot player codec should preserve move state");
+	Expect(decoded.path.size() == 2 && decoded.path.peekNext() == std::optional<dev::Point> { { 5, 5 } }, "snapshot player codec should preserve path steps");
+	Expect(decoded.destinationAction.type == dev::DestinationActionType::Attack && decoded.destinationAction.target.id == 72, "snapshot player codec should preserve destination action");
+	Expect(decoded.movementModifiers.standGround, "snapshot player codec should preserve movement modifiers");
+	Expect(decoded.animationLock.active && Near(decoded.animationLock.elapsedSeconds, 0.25F) && Near(decoded.animationLock.cancelAfterSeconds, 0.75F), "snapshot player codec should preserve animation lock");
+	Expect(decoded.combatStats.hitPoints == 13 && decoded.combatStats.attackPower == 8 && decoded.combatStats.defense == 4, "snapshot player codec should preserve combat stats");
+	Expect(decoded.inventory.capacity == 4 && decoded.inventory.items.size() == 1 && decoded.inventory.items[0].id == 73, "snapshot player codec should preserve inventory contents");
+	Expect(decoded.inventory.equipment.weapon.has_value() && decoded.inventory.equipment.weapon->combatModifiers.attackPower == 5, "snapshot player codec should preserve weapon equipment");
+	Expect(decoded.inventory.equipment.armor.has_value() && decoded.inventory.equipment.armor->combatModifiers.defense == 6, "snapshot player codec should preserve armor equipment");
+	Expect(Near(decoded.moveSpeedTilesPerSecond, 6.5F), "snapshot player codec should preserve movement speed");
+	Expect(reader.consumed(), "snapshot player codec should consume encoded player bytes");
+}
+
+void TestSnapshotPlayerCodecRejectsInvalidMoveState()
+{
+	dev::SnapshotBytes bytes;
+	dev::SnapshotByteWriter writer { bytes };
+	dev::SnapshotEntityCodec entityCodec;
+	entityCodec.writeActorPosition(writer, dev::ActorPosition {});
+	writer.writeU8(static_cast<uint8_t>(dev::PlayerMoveState::Acting) + 1U);
+
+	dev::SnapshotByteReader reader { bytes };
+	dev::Player player;
+	Expect(!dev::SnapshotPlayerCodec {}.readPlayer(reader, player), "snapshot player codec should reject invalid move state");
+}
+
+void TestSnapshotEnemyCodecRoundTripsDurableEnemyState()
+{
+	dev::Enemy enemy = MakeEnemy({ 7, 8 });
+	enemy.id = 81;
+	enemy.position.future = { 8, 8 };
+	enemy.position.previous = { 6, 8 };
+	enemy.position.precise = { 7, 8 };
+	enemy.moveState = dev::EnemyMoveState::Recovering;
+	enemy.tuning.maxStepsPerTick = 2;
+	enemy.tuning.attackRangeTiles = 3;
+	enemy.tuning.attackWindupSeconds = 0.60F;
+	enemy.tuning.attackRecoverySeconds = 0.90F;
+	enemy.combatStats = { .hitPoints = 10, .attackPower = 11, .defense = 12 };
+	enemy.stateTimerSeconds = 1.25F;
+
+	dev::SnapshotBytes bytes;
+	dev::SnapshotByteWriter writer { bytes };
+	dev::SnapshotEnemyCodec codec;
+	codec.writeEnemy(writer, enemy);
+
+	dev::SnapshotByteReader reader { bytes };
+	dev::Enemy decoded;
+	Expect(codec.readEnemy(reader, decoded), "snapshot enemy codec should read encoded enemy");
+	Expect(decoded.id == 81, "snapshot enemy codec should preserve enemy id");
+	Expect(decoded.position.tile == dev::Point { 7, 8 } && decoded.position.future == dev::Point { 8, 8 }, "snapshot enemy codec should preserve actor position");
+	Expect(decoded.moveState == dev::EnemyMoveState::Recovering, "snapshot enemy codec should preserve move state");
+	Expect(decoded.tuning.maxStepsPerTick == 2 && decoded.tuning.attackRangeTiles == 3, "snapshot enemy codec should preserve integer tuning");
+	Expect(Near(decoded.tuning.attackWindupSeconds, 0.60F) && Near(decoded.tuning.attackRecoverySeconds, 0.90F), "snapshot enemy codec should preserve timing tuning");
+	Expect(decoded.combatStats.hitPoints == 10 && decoded.combatStats.attackPower == 11 && decoded.combatStats.defense == 12, "snapshot enemy codec should preserve combat stats");
+	Expect(Near(decoded.stateTimerSeconds, 1.25F), "snapshot enemy codec should preserve state timer");
+	Expect(reader.consumed(), "snapshot enemy codec should consume encoded enemy bytes");
+}
+
+void TestSnapshotEnemyCodecRejectsInvalidMoveState()
+{
+	dev::SnapshotBytes bytes;
+	dev::SnapshotByteWriter writer { bytes };
+	dev::SnapshotEntityCodec entityCodec;
+	writer.writeU32(1);
+	entityCodec.writeActorPosition(writer, dev::ActorPosition {});
+	writer.writeU8(static_cast<uint8_t>(dev::EnemyMoveState::Recovering) + 1U);
+
+	dev::SnapshotByteReader reader { bytes };
+	dev::Enemy enemy;
+	Expect(!dev::SnapshotEnemyCodec {}.readEnemy(reader, enemy), "snapshot enemy codec should reject invalid move state");
+}
+
+void TestSnapshotVectorCodecFramesCountedVectors()
+{
+	std::vector<int> values { 3, 4, 5 };
+	dev::SnapshotBytes bytes;
+	dev::SnapshotByteWriter writer { bytes };
+	dev::SnapshotVectorCodec codec;
+	codec.writeVector(writer, values, [](dev::SnapshotByteWriter &itemWriter, int value) {
+		itemWriter.writeI32(value);
+	});
+
+	Expect(bytes.size() == 16, "snapshot vector codec should write count and item bytes");
+	Expect(bytes.size() == 16 && bytes[0] == 3 && bytes[1] == 0 && bytes[2] == 0 && bytes[3] == 0, "snapshot vector codec should write count little-endian");
+
+	std::vector<int> decoded;
+	dev::SnapshotByteReader reader { bytes };
+	Expect(codec.readVector(reader, decoded, [](dev::SnapshotByteReader &itemReader, int &value) {
+		return itemReader.readI32(value);
+	}), "snapshot vector codec should read encoded vectors");
+	Expect(decoded == values, "snapshot vector codec should preserve vector items");
+	Expect(reader.consumed(), "snapshot vector codec should consume encoded vector bytes");
+}
+
+void TestSnapshotVectorCodecRejectsTruncatedVectors()
+{
+	dev::SnapshotBytes bytes;
+	dev::SnapshotByteWriter writer { bytes };
+	writer.writeU32(2);
+	writer.writeI32(10);
+
+	dev::SnapshotVectorCodec codec;
+	dev::SnapshotByteReader reader { bytes };
+	std::vector<int> decoded;
+	Expect(!codec.readVector(reader, decoded, [](dev::SnapshotByteReader &itemReader, int &value) {
+		return itemReader.readI32(value);
+	}), "snapshot vector codec should reject truncated item data");
+}
+
+void TestSnapshotSchemaCodecRoundTripsOrderedSections()
+{
+	dev::SimulationSnapshot snapshot;
+	dev::Player player = MakePlayer({ 1, 2 });
+	player.path.pushStep({ 2, 2 });
+	player.inventory.capacity = 2;
+	player.inventory.items.push_back({ .id = 101, .tile = { 3, 3 } });
+	snapshot.players.push_back(player);
+	dev::Enemy enemy = MakeEnemy({ 4, 4 });
+	enemy.id = 102;
+	enemy.tuning.attackRangeTiles = 2;
+	snapshot.enemies.push_back(enemy);
+	snapshot.items.push_back({ .id = 103, .tile = { 5, 5 }, .equipmentSlot = dev::EquipmentSlot::Armor, .combatModifiers = { .defense = 2 } });
+	snapshot.combatants.push_back({
+	    .target = { .type = dev::TargetType::Enemy, .id = 102, .tile = { 4, 4 } },
+	    .stats = { .hitPoints = 6, .attackPower = 7, .defense = 8 },
+	});
+	snapshot.targets.push_back({ .type = dev::TargetType::Item, .id = 103, .tile = { 5, 5 } });
+
+	dev::SnapshotBytes bytes;
+	dev::SnapshotByteWriter writer { bytes };
+	dev::SnapshotSchemaCodec codec;
+	codec.writeSnapshot(writer, snapshot);
+
+	dev::SnapshotByteReader reader { bytes };
+	dev::SimulationSnapshot decoded;
+	Expect(codec.readSnapshot(reader, decoded), "snapshot schema codec should read encoded snapshot sections");
+	Expect(decoded.players.size() == 1 && decoded.players[0].position.tile == dev::Point { 1, 2 }, "snapshot schema codec should preserve player section");
+	Expect(decoded.players.size() == 1 && decoded.players[0].path.size() == 1, "snapshot schema codec should preserve player path inside section");
+	Expect(decoded.enemies.size() == 1 && decoded.enemies[0].id == 102 && decoded.enemies[0].tuning.attackRangeTiles == 2, "snapshot schema codec should preserve enemy section");
+	Expect(decoded.items.size() == 1 && decoded.items[0].id == 103 && decoded.items[0].combatModifiers.defense == 2, "snapshot schema codec should preserve item section");
+	Expect(decoded.combatants.size() == 1 && decoded.combatants[0].stats.attackPower == 7, "snapshot schema codec should preserve combatant section");
+	Expect(decoded.targets.size() == 1 && decoded.targets[0].type == dev::TargetType::Item, "snapshot schema codec should preserve target section");
+	Expect(reader.consumed(), "snapshot schema codec should consume all schema bytes");
+}
+
+void TestSnapshotSchemaCodecRejectsIncompleteOrTrailingPayload()
+{
+	dev::SnapshotSchemaCodec codec;
+
+	dev::SnapshotBytes incompleteBytes;
+	dev::SnapshotByteWriter incompleteWriter { incompleteBytes };
+	incompleteWriter.writeU32(0);
+	dev::SnapshotByteReader incompleteReader { incompleteBytes };
+	dev::SimulationSnapshot incomplete;
+	Expect(!codec.readSnapshot(incompleteReader, incomplete), "snapshot schema codec should reject missing sections");
+
+	dev::SimulationSnapshot emptySnapshot;
+	dev::SnapshotBytes trailingBytes;
+	dev::SnapshotByteWriter trailingWriter { trailingBytes };
+	codec.writeSnapshot(trailingWriter, emptySnapshot);
+	trailingWriter.writeU8(0xFFU);
+	dev::SnapshotByteReader trailingReader { trailingBytes };
+	dev::SimulationSnapshot trailing;
+	Expect(!codec.readSnapshot(trailingReader, trailing), "snapshot schema codec should reject trailing payload bytes");
 }
 
 void TestSnapshotFrameCodecFramesPayloadBytes()
@@ -6060,6 +6265,14 @@ int main()
 	TestSnapshotByteStreamRejectsShortReads();
 	TestSnapshotEntityCodecRoundTripsItemAndCombatant();
 	TestSnapshotEntityCodecRejectsInvalidEnums();
+	TestSnapshotPlayerCodecRoundTripsDurablePlayerState();
+	TestSnapshotPlayerCodecRejectsInvalidMoveState();
+	TestSnapshotEnemyCodecRoundTripsDurableEnemyState();
+	TestSnapshotEnemyCodecRejectsInvalidMoveState();
+	TestSnapshotVectorCodecFramesCountedVectors();
+	TestSnapshotVectorCodecRejectsTruncatedVectors();
+	TestSnapshotSchemaCodecRoundTripsOrderedSections();
+	TestSnapshotSchemaCodecRejectsIncompleteOrTrailingPayload();
 	TestSnapshotFrameCodecFramesPayloadBytes();
 	TestSnapshotFrameCodecRejectsInvalidFrames();
 	TestSnapshotFileStoreSavesAndLoadsVersionedBytes();

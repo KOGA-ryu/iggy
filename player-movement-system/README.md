@@ -18,6 +18,13 @@ The key idea is that gameplay should not care whether intent came from mouse,
 keyboard, controller, touch, replay, or network. Once input becomes a movement
 command, the simulation has one path to maintain.
 
+## Docs
+
+- [Movement flow](docs/movement-flow.md) walks through the runtime gameplay
+  pipeline from input to simulation, save slots, and session commands.
+- [Save system](docs/save-system.md) explains the durable-state and byte-format
+  layers behind snapshot save/load.
+
 ## Folder Map
 
 ```text
@@ -408,8 +415,21 @@ SnapshotEntityCodec
   reusable field codec for durable entity fragments such as points, targets,
   actor positions, item/equipment data, combat stats, and combatants
 
+SnapshotPlayerCodec / SnapshotEnemyCodec
+  actor-level durable serializers for player path/inventory/action state and
+  enemy tuning/state timers, built on reusable entity field codecs
+
+SnapshotVectorCodec
+  count-prefixed vector serializer used by snapshot schema code to keep list
+  framing separate from entity-specific field encoders
+
+SnapshotSchemaCodec
+  ordered durable snapshot schema coordinator for players, enemies, floor items,
+  combat registry entries, and clickable targets
+
 SnapshotCodec
-  durable-state serializer for snapshots once the save frame is trusted
+  outer snapshot serializer that frames/unframes payload bytes and delegates the
+  ordered durable section payload to SnapshotSchemaCodec
 
 SnapshotChecksum
   checksum boundary for snapshot bytes, keeping save-file integrity checks
