@@ -56,6 +56,7 @@ add_library(player_movement_system
   src/enemies/EnemyAttackRunner.cpp
   src/enemies/EnemyMovement.cpp
   src/enemies/EnemyPursuitBudget.cpp
+  src/enemies/EnemyPursuitEventEmitter.cpp
   src/enemies/EnemyPursuitStepGate.cpp
   src/enemies/EnemyPursuitStepPlanner.cpp
   src/enemies/EnemyPursuitStepper.cpp

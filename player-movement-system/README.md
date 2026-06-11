@@ -200,6 +200,14 @@ EnemyPursuitBudget
   pressure pacing rule that spends at most maxStepsPerTick pursuit steps during
   one enemy update
 
+EnemyPursuitResult
+  observable pursuit outcome that reports how many steps committed and whether
+  pursuit stopped from budget, blocking, already being at target, or attack range
+
+EnemyPursuitEventEmitter
+  bridge from enemy pursuit outcomes into MovementEvent so frame capture and
+  runtime traces can explain enemy pressure
+
 WalkPath
   fixed-size queue of committed tile steps
 
@@ -312,7 +320,7 @@ ActionExecutor
 
 MovementEvent
   observable facts such as CommandAccepted, PathStarted, StepCommitted,
-  ActionExecuted, and AnimationLocked
+  ActionExecuted, AnimationLocked, and EnemyPursuitStopped
 
 CommandLog
   replayable list of semantic movement commands
@@ -363,13 +371,15 @@ MovementCommandEventEmitter
 
 EnemyMovement
   pressure layer with speed, attack range, windup, recovery, and enemy attack
-  resolution constraints
+  resolution constraints; publishes pursuit outcomes through
+  EnemyPursuitEventEmitter when a movement event sink is present
 
 EnemyPursuitStepper
   constrained enemy chase helper that asks EnemyPursuitStepPlanner for pursuit
   steps, asks EnemyPursuitStepGate whether each tile can be entered, delegates
   position commitment to ActorStepCommitter, and stops when EnemyPursuitBudget,
-  blocking, or EnemyAttackRange stops movement
+  blocking, or EnemyAttackRange stops movement; returns EnemyPursuitResult for
+  tests, tuning, traces, and future AI decisions
 
 EnemyAttackRunner
   enemy attack state helper for range entry, windup timing, recovery timing, and

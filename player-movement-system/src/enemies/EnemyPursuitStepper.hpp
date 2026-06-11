@@ -3,6 +3,7 @@
 #include "enemies/Enemy.hpp"
 #include "enemies/EnemyAttackRange.hpp"
 #include "enemies/EnemyPursuitBudget.hpp"
+#include "enemies/EnemyPursuitResult.hpp"
 #include "enemies/EnemyPursuitStepGate.hpp"
 #include "enemies/EnemyPursuitStepPlanner.hpp"
 #include "player/ActorStepCommitter.hpp"
@@ -16,7 +17,7 @@ class EnemyPursuitStepper {
 public:
 	EnemyPursuitStepper(const TileMap &map, const Collision &collision);
 
-	void pursue(Enemy &enemy, Player &target) const;
+	EnemyPursuitResult pursue(Enemy &enemy, Player &target) const;
 
 private:
 	EnemyAttackRange attackRange_;

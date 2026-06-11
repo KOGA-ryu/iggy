@@ -51,6 +51,7 @@
 #include "enemies/EnemyAttackRunner.hpp"
 #include "enemies/EnemyMovement.hpp"
 #include "enemies/EnemyPursuitBudget.hpp"
+#include "enemies/EnemyPursuitEventEmitter.hpp"
 #include "enemies/EnemyPursuitStepGate.hpp"
 #include "enemies/EnemyPursuitStepPlanner.hpp"
 #include "enemies/EnemyPursuitStepper.hpp"
@@ -625,10 +626,97 @@ void TestEnemyPursuitStepperStopsAtAttackRange()
 	enemy.tuning.maxStepsPerTick = 5;
 	enemy.tuning.attackRangeTiles = 1;
 
-	pursuit.pursue(enemy, player);
+	const dev::EnemyPursuitResult result = pursuit.pursue(enemy, player);
 
 	Expect(enemy.position.tile == dev::Point { 3, 0 }, "enemy pursuit stepper should stop once attack range is reached");
 	Expect(enemy.moveState == dev::EnemyMoveState::Pursuing, "enemy pursuit stepper should leave windup start for the next enemy update");
+	Expect(result.stopReason == dev::EnemyPursuitStopReason::AttackRangeReached, "enemy pursuit result should report attack range stop");
+	Expect(result.stepsCommitted == 3, "enemy pursuit result should count committed pursuit steps");
+}
+
+void TestEnemyPursuitStepperReportsBudgetAndBlockedStops()
+{
+	dev::TileMap map;
+	dev::Collision collision;
+	dev::EnemyPursuitStepper pursuit { map, collision };
+	dev::Player player = MakePlayer({ 4, 0 });
+	dev::Enemy enemy = MakeEnemy({ 0, 0 });
+	enemy.tuning.maxStepsPerTick = 1;
+	enemy.tuning.attackRangeTiles = 0;
+
+	const dev::EnemyPursuitResult budgetResult = pursuit.pursue(enemy, player);
+
+	Expect(budgetResult.stopReason == dev::EnemyPursuitStopReason::BudgetSpent, "enemy pursuit result should report budget stop");
+	Expect(budgetResult.stepsCommitted == 1, "enemy pursuit result should count budgeted steps");
+
+	collision.setBlocked({ 2, 0 });
+	const dev::EnemyPursuitResult blockedResult = pursuit.pursue(enemy, player);
+
+	Expect(blockedResult.stopReason == dev::EnemyPursuitStopReason::Blocked, "enemy pursuit result should report blocked stop");
+	Expect(blockedResult.stepsCommitted == 0, "enemy pursuit result should not count rejected blocked steps");
+	Expect(enemy.position.tile == dev::Point { 1, 0 }, "blocked pursuit step should leave enemy on last committed tile");
+}
+
+void TestEnemyPursuitStepperReportsAlreadyAtTarget()
+{
+	dev::TileMap map;
+	dev::Collision collision;
+	dev::EnemyPursuitStepper pursuit { map, collision };
+	dev::Player player = MakePlayer({ 2, 0 });
+	dev::Enemy enemy = MakeEnemy({ 2, 0 });
+
+	const dev::EnemyPursuitResult result = pursuit.pursue(enemy, player);
+
+	Expect(result.stopReason == dev::EnemyPursuitStopReason::AlreadyAtTarget, "enemy pursuit result should report already-at-target stop");
+	Expect(result.stepsCommitted == 0, "enemy pursuit result should not count steps when already at target");
+}
+
+void TestEnemyPursuitEventEmitterRecordsStopReason()
+{
+	dev::EventRecorder events;
+	dev::Enemy enemy = MakeEnemy({ 3, 0 });
+	enemy.id = 77;
+	dev::EnemyPursuitResult result {
+		.stepsCommitted = 2,
+		.stopReason = dev::EnemyPursuitStopReason::Blocked,
+	};
+
+	dev::EnemyPursuitEventEmitter { &events }.emit(enemy, result);
+
+	Expect(events.events().size() == 1, "enemy pursuit event emitter should emit one movement event");
+	if (events.events().empty())
+		return;
+
+	const dev::MovementEvent &event = events.events()[0];
+	Expect(event.type == dev::MovementEventType::EnemyPursuitStopped, "enemy pursuit event should report pursuit stop type");
+	Expect(event.tile == dev::Point { 3, 0 }, "enemy pursuit event should report enemy tile");
+	Expect(event.enemyId.has_value() && *event.enemyId == 77, "enemy pursuit event should report enemy id");
+	Expect(event.enemyPursuitStopReason == dev::EnemyPursuitStopReason::Blocked, "enemy pursuit event should report stop reason");
+	Expect(event.enemyPursuitStepsCommitted == 2, "enemy pursuit event should report committed step count");
+}
+
+void TestEnemyMovementEmitsPursuitResult()
+{
+	dev::TileMap map;
+	dev::Collision collision;
+	dev::EventRecorder events;
+	dev::Player player = MakePlayer({ 4, 0 });
+	std::vector<dev::Enemy> enemies { MakeEnemy({ 0, 0 }) };
+	enemies[0].id = 78;
+	enemies[0].tuning.maxStepsPerTick = 1;
+	enemies[0].tuning.attackRangeTiles = 0;
+
+	dev::EnemyMovement { map, collision, &events }.update(enemies, player, 0.016F);
+
+	Expect(!events.events().empty(), "enemy movement should emit pursuit result events");
+	if (events.events().empty())
+		return;
+
+	const dev::MovementEvent &event = events.events()[0];
+	Expect(event.type == dev::MovementEventType::EnemyPursuitStopped, "enemy movement should emit enemy pursuit stopped event");
+	Expect(event.enemyId == 78, "enemy movement pursuit event should include enemy id");
+	Expect(event.enemyPursuitStopReason == dev::EnemyPursuitStopReason::BudgetSpent, "enemy movement pursuit event should report stop reason");
+	Expect(event.enemyPursuitStepsCommitted == 1, "enemy movement pursuit event should include committed step count");
 }
 
 void TestEnemyAttackWindupAndRecovery()
@@ -4976,6 +5064,25 @@ void TestRuntimeFrameTraceFormatsReadableLines()
 	std::filesystem::remove_all(root);
 }
 
+void TestRuntimeFrameTraceFormatsEnemyPursuitEvents()
+{
+	dev::RuntimeFrameReport report;
+	report.frameEvents.emit(dev::MovementEvent {
+	    .type = dev::MovementEventType::EnemyPursuitStopped,
+	    .tile = { 3, 0 },
+	    .enemyId = 90,
+	    .enemyPursuitStopReason = dev::EnemyPursuitStopReason::AttackRangeReached,
+	    .enemyPursuitStepsCommitted = 3,
+	});
+
+	std::vector<std::string> lines = dev::RuntimeFrameTrace {}.format(report);
+
+	Expect(ContainsLineFragment(lines, "movementEvent[0] type=EnemyPursuitStopped"), "runtime frame trace should include enemy pursuit event type");
+	Expect(ContainsLineFragment(lines, "enemy=90"), "runtime frame trace should include enemy id");
+	Expect(ContainsLineFragment(lines, "pursuitStop=AttackRangeReached"), "runtime frame trace should include enemy pursuit stop reason");
+	Expect(ContainsLineFragment(lines, "pursuitSteps=3"), "runtime frame trace should include enemy pursuit committed steps");
+}
+
 void TestRuntimeFrameTraceFileStoreSavesAndLoadsLines()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_frame_trace_file_store_test";
@@ -7083,6 +7190,10 @@ int main()
 	TestEnemyPursuitBudgetUsesMaxStepsPerTick();
 	TestEnemyPursuitObeysStepBudget();
 	TestEnemyPursuitStepperStopsAtAttackRange();
+	TestEnemyPursuitStepperReportsBudgetAndBlockedStops();
+	TestEnemyPursuitStepperReportsAlreadyAtTarget();
+	TestEnemyPursuitEventEmitterRecordsStopReason();
+	TestEnemyMovementEmitsPursuitResult();
 	TestEnemyAttackWindupAndRecovery();
 	TestEnemyAttackRunnerConsumesWindupAndRecovery();
 	TestCombatResolverDamageAndDefeat();
@@ -7239,6 +7350,7 @@ int main()
 	TestGameLoopDoesNotDrainInventoryScriptSourcesWithoutActiveWorld();
 	TestGameLoopBuildsRuntimeFrameReports();
 	TestRuntimeFrameTraceFormatsReadableLines();
+	TestRuntimeFrameTraceFormatsEnemyPursuitEvents();
 	TestRuntimeFrameTraceFileStoreSavesAndLoadsLines();
 	TestRuntimeFrameTraceFileStoreRejectsMissingFile();
 	TestRuntimeTraceServiceFormatsAndSavesRunTrace();

@@ -237,6 +237,9 @@ enemy position
   -> EnemyPursuitStepper
   -> EnemyPursuitBudget
   -> EnemyAttackRange
+  -> EnemyPursuitResult
+  -> EnemyPursuitEventEmitter
+  -> MovementEvent::EnemyPursuitStopped
   -> EnemyAttackRunner
   -> attack windup
   -> attack recovery
@@ -250,9 +253,14 @@ unblocked. `EnemyPursuitBudget` names the max-steps-per-tick pressure limit so
 enemy speed is explicit tuning, not an accidental loop counter.
 `EnemyPursuitStepper` owns the chase flow and stops when the enemy reaches
 `EnemyAttackRange`, leaving the next frame to start windup through
-`EnemyAttackRunner`. The attack runner reuses the same range rule when deciding
-whether to enter windup. Pursuit uses the same `ActorStepCommitter` as player
-pathing once a pursuit step is known to be legal.
+`EnemyAttackRunner`. It returns `EnemyPursuitResult` so tests, traces, and future
+AI choices can tell whether pursuit stopped from budget, blocking, already being
+at the target, or reaching attack range. `EnemyPursuitEventEmitter` publishes
+that outcome as `MovementEvent::EnemyPursuitStopped`, which means frame capture
+and runtime traces can explain enemy pressure without peeking into AI internals.
+The attack runner reuses the same range rule when deciding whether to enter
+windup. Pursuit uses the same `ActorStepCommitter` as player pathing once a
+pursuit step is known to be legal.
 
 ## 14. Combat Resolution
 

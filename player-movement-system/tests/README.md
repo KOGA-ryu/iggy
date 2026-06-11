@@ -43,6 +43,8 @@ Good first tests:
 - EnemyPursuitBudget stops pursuit at maxStepsPerTick
 - enemy pursuit obeys maxStepsPerTick
 - EnemyPursuitStepper stops pursuit once attack range is reached
+- EnemyPursuitResult reports budget, blocked, already-at-target, and attack-range stops
+- EnemyPursuitEventEmitter publishes pursuit stop facts for frame traces
 - enemy in range enters attack windup
 - enemy attack windup transitions into recovery
 - EnemyAttackRunner owns enemy windup, recovery, and restart timing
