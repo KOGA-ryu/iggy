@@ -42,6 +42,7 @@ Good first tests:
 - SimulationClock time scale slows enemy attack windup
 - EffectRouter maps movement events to feedback requests
 - EffectRouter maps combat hits to damage, impact, and hit-stop requests
+- EffectApplier applies hit-stop requests to SimulationClock
 
 Run them with:
 

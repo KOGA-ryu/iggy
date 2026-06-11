@@ -203,4 +203,8 @@ SimulationClock / SimulationTimeStep
 EffectRouter
   maps factual movement/combat events into presentation requests without letting
   simulation systems know about UI, audio, VFX, rumble, or camera code
+
+EffectApplier
+  applies effect requests that legitimately touch simulation feel, such as
+  turning a HitStop request into SimulationClock hit-stop
 ```

@@ -349,3 +349,18 @@ presentation systems decide how to render it
 
 This keeps combat free of UI, audio, VFX, rumble, camera shake, and time-control
 dependencies while still giving hits, steps, and blocked paths immediate feel.
+
+## 19. Effect Application
+
+Routing creates requests. Application lets selected requests affect engine feel:
+
+```text
+CombatEvent::Hit
+  -> EffectRouter
+  -> EffectRequest::HitStop
+  -> EffectApplier
+  -> SimulationClock::triggerHitStop
+```
+
+That is the narrow bridge back into simulation. Combat still does not know that
+hit-stop exists, and the clock still does not know that combat exists.

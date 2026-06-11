@@ -17,6 +17,7 @@ add_library(player_movement_system
   src/commands/CommandDispatcher.cpp
   src/commands/CommandQueue.cpp
   src/commands/IntentCommandBuilder.cpp
+  src/effects/EffectApplier.cpp
   src/effects/EffectRecorder.cpp
   src/effects/EffectRouter.cpp
   src/enemies/EnemyMovement.cpp

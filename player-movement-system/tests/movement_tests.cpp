@@ -8,6 +8,7 @@
 #include "combat/CombatResolver.hpp"
 #include "combat/CombatSystem.hpp"
 #include "commands/CommandDispatcher.hpp"
+#include "effects/EffectApplier.hpp"
 #include "effects/EffectRecorder.hpp"
 #include "effects/EffectRouter.hpp"
 #include "enemies/EnemyMovement.hpp"
@@ -541,6 +542,32 @@ void TestEffectRouterMapsCombatHitToRequests()
 	Expect(requests.size() == 3 && requests[2].durationSeconds > 0.0F, "hit-stop request should include duration");
 }
 
+void TestEffectApplierAppliesHitStopToClock()
+{
+	dev::EffectRecorder effects;
+	dev::EffectRouter router { effects };
+	dev::SimulationClock clock;
+	dev::EffectApplier applier { &clock };
+	dev::Target target { .type = dev::TargetType::Enemy, .id = 31, .tile = { 2, 1 } };
+
+	router.route(dev::CombatEvent {
+	    .type = dev::CombatEventType::Hit,
+	    .target = target,
+	    .damage = 4,
+	    .remainingHitPoints = 6,
+	    .result = dev::CombatResultType::Hit,
+	});
+
+	for (const dev::EffectRequest &request : effects.requests()) {
+		applier.apply(request);
+	}
+
+	Expect(clock.hitStopRemainingSeconds() > 0.0F, "hit-stop effect request should apply to simulation clock");
+	dev::SimulationTimeStep step = clock.step(0.01F);
+	Expect(step.playerDeltaSeconds == 0.0F, "applied hit-stop should freeze player actor time");
+	Expect(step.enemyDeltaSeconds == 0.0F, "applied hit-stop should freeze enemy actor time");
+}
+
 } // namespace
 
 int main()
@@ -566,6 +593,7 @@ int main()
 	TestSimulationClockScalesEnemyWindup();
 	TestEffectRouterMapsMovementEventsToRequests();
 	TestEffectRouterMapsCombatHitToRequests();
+	TestEffectApplierAppliesHitStopToClock();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;
