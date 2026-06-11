@@ -26,3 +26,11 @@ Good first tests:
 - action executor waits when target is out of range
 - action executor applies attack animation commitment
 - action executor clears destination action after execution
+
+Run them with:
+
+```sh
+cmake -S . -B build
+cmake --build build
+ctest --test-dir build --output-on-failure
+```

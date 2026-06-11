@@ -2,9 +2,20 @@
 
 namespace dev {
 
+void TileMap::setBlocked(Point tile)
+{
+	blockedTiles_.push_back(tile);
+}
+
 bool TileMap::isWalkable(Point tile) const
 {
-	return tile.x >= 0 && tile.y >= 0;
+	if (tile.x < 0 || tile.y < 0)
+		return false;
+	for (Point blocked : blockedTiles_) {
+		if (blocked == tile)
+			return false;
+	}
+	return true;
 }
 
 Point TileMap::screenToTile(Point screenPosition) const
@@ -13,4 +24,3 @@ Point TileMap::screenToTile(Point screenPosition) const
 }
 
 } // namespace dev
-
