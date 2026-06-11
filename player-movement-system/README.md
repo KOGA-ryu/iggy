@@ -802,8 +802,16 @@ RuntimeRunSummaryText
   app-layer text formatter that renders run count summaries consistently for
   run traces and debug bundle manifests
 
+RuntimeFrameTraceHeaderText
+  app-layer text formatter that renders per-frame runtime counts as the first
+  line of a frame trace
+
 RuntimeSessionText
   app-layer text formatter that renders session command results and lifecycle
+  events consistently for run traces and future debug summaries
+
+RuntimeInventoryText
+  app-layer text formatter that renders inventory command results and equipment
   events consistently for run traces and future debug summaries
 
 RuntimeInventoryScriptText
@@ -815,6 +823,18 @@ RuntimeMovementScriptText
   app-layer text formatter that renders movement script replay status,
   accepted/rejected counts, and aggregate runtime script summaries consistently
   for traces and debug bundle manifests
+
+RuntimeMovementEventText
+  app-layer text formatter that renders movement event type, player, tile,
+  command, pursuit, and attack transition details consistently for run traces
+
+RuntimeCombatText
+  app-layer text formatter that renders combat event type, damage, and remaining
+  hit points consistently for run traces
+
+RuntimeEffectText
+  app-layer text formatter that renders effect request type and tile
+  consistently for run traces
 
 RuntimeFrameTrace
   readable text formatter for RuntimeFrameReport, including mode policy gates,

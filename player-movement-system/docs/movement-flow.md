@@ -1420,8 +1420,14 @@ booleans for their audience.
 `RuntimeRunSummaryText` does the same for the run-level count summary: the trace
 uses counts only, while the manifest asks for the same line with final mode
 included.
+`RuntimeFrameTraceHeaderText` owns the per-frame count summary at the top of
+each frame report: routed input, source results, queued movement, gameplay
+events, session events, and inventory events.
 `RuntimeSessionText` owns the spelling for session command results and lifecycle
 events, keeping startup/save/load/mode names consistent in runtime traces.
+`RuntimeInventoryText` owns the spelling for inventory command results and
+equipment events, keeping equip/unequip result names consistent in runtime
+traces.
 `RuntimeInventoryScriptText` owns the spelling for configured and runtime
 inventory script outcomes: status, result count, applied commands, and rejected
 commands.
@@ -1431,6 +1437,17 @@ rejected commands. Traces use these formatters for per-frame script details,
 while `RuntimeDebugManifest` uses them for setup and aggregate runtime
 summaries. That makes a debug bundle useful even before opening the full run
 trace.
+`RuntimeMovementEventText` owns the spelling for movement events themselves:
+player, tile, accepted command type, pursuit stop reason, pursuit steps, and
+attack transition. That keeps the movement debug vocabulary next to movement
+event types instead of mixing it into the whole-frame trace assembler.
+`RuntimeCombatText` owns the spelling for combat event outcomes: hit/defeat/
+rejection type, damage, and remaining hit points. Combat remains a gameplay
+system, but its trace vocabulary is now isolated from the whole-frame trace
+assembler.
+`RuntimeEffectText` owns the spelling for effect requests: feedback type and
+tile. Effects are presentation-facing, but tracing them beside movement and
+combat helps show which simulation moments produced visible or timed feedback.
 
 `RuntimeFrameTraceFileStore` persists those readable lines:
 

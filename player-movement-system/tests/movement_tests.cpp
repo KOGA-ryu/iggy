@@ -10,10 +10,12 @@
 #include "actions/ActionExecutor.hpp"
 #include "app/GameLoop.hpp"
 #include "app/RuntimeArtifactOutputService.hpp"
+#include "app/RuntimeCombatText.hpp"
 #include "app/RuntimeDebugArtifactBundle.hpp"
 #include "app/RuntimeDebugArtifactLayout.hpp"
 #include "app/RuntimeDebugArtifactWriter.hpp"
 #include "app/RuntimeDebugManifest.hpp"
+#include "app/RuntimeEffectText.hpp"
 #include "app/RuntimeExitCodeMapper.hpp"
 #include "app/RuntimeExitCodePolicy.hpp"
 #include "app/RuntimeFrameLoopRunner.hpp"
@@ -23,10 +25,13 @@
 #include "app/RuntimeInputRouter.hpp"
 #include "app/RuntimeInputSourceRouter.hpp"
 #include "app/RuntimeInventoryScriptText.hpp"
+#include "app/RuntimeInventoryText.hpp"
 #include "app/RuntimeMovementInputRouter.hpp"
+#include "app/RuntimeMovementEventText.hpp"
 #include "app/RuntimeMovementScriptText.hpp"
 #include "app/RuntimeFrameTrace.hpp"
 #include "app/RuntimeFrameTraceFileStore.hpp"
+#include "app/RuntimeFrameTraceHeaderText.hpp"
 #include "app/RuntimeOutputFinalizer.hpp"
 #include "app/RuntimeOutputFailurePolicy.hpp"
 #include "app/RuntimeRawInputDrainer.hpp"
@@ -6029,6 +6034,26 @@ void TestRuntimeFramePolicyTextFormatsArtifactPolicyLines()
 	Expect(noneLine == "policy latest=none", "runtime frame policy text should format missing policy line");
 }
 
+void TestRuntimeFrameTraceHeaderTextFormatsFrameCounts()
+{
+	dev::RuntimeFrameReport report;
+	report.rawInputEventsRouted = 2;
+	report.sessionCommandResults.push_back({});
+	report.inventoryScriptResults.push_back({});
+	report.inventoryCommandResults.push_back({});
+	report.movementScriptResults.push_back({});
+	report.movementCommandsQueued = 3;
+	report.frameEvents.emit(dev::MovementEvent { .type = dev::MovementEventType::StepCommitted });
+	report.frameEvents.emit(dev::CombatEvent { .type = dev::CombatEventType::Hit });
+	report.frameEvents.emit(dev::EffectRequest { .type = dev::EffectRequestType::Footstep });
+	report.sessionEvents.push_back({});
+	report.inventoryEvents.push_back({});
+
+	dev::RuntimeFrameTraceHeaderText formatter;
+
+	Expect(formatter.format(report) == "frame rawInput=2 sessionResults=1 inventoryScripts=1 inventoryResults=1 movementScripts=1 movementQueued=3 movementEvents=1 combatEvents=1 effects=1 sessionEvents=1 inventoryEvents=1", "runtime frame trace header text should format all frame counts");
+}
+
 void TestRuntimeSessionTextFormatsResultsAndEvents()
 {
 	dev::RuntimeSessionText formatter;
@@ -6044,6 +6069,27 @@ void TestRuntimeSessionTextFormatsResultsAndEvents()
 
 	Expect(formatter.formatResult("sessionResult[0]", result) == "sessionResult[0] type=Applied command=SetMode", "runtime session text should format command result lines");
 	Expect(formatter.formatEvent("sessionEvent[0]", event) == "sessionEvent[0] type=ModeChanged command=SetMode", "runtime session text should format event lines");
+}
+
+void TestRuntimeInventoryTextFormatsResultsAndEvents()
+{
+	dev::RuntimeInventoryText formatter;
+	dev::InventoryCommandResult result {
+		.type = dev::InventoryCommandResultType::Applied,
+		.command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 100 },
+		.equipmentResult = { .type = dev::EquipmentResultType::Equipped, .itemId = 100, .slot = dev::EquipmentSlot::Weapon },
+	};
+	dev::InventoryEvent event {
+		.type = dev::InventoryEventType::Equipped,
+		.commandType = dev::InventoryCommandType::EquipItem,
+		.commandResult = dev::InventoryCommandResultType::Applied,
+		.equipmentResult = dev::EquipmentResultType::Equipped,
+		.itemId = 100,
+		.slot = dev::EquipmentSlot::Weapon,
+	};
+
+	Expect(formatter.formatResult("inventoryResult[0]", result) == "inventoryResult[0] type=Applied command=EquipItem equipment=Equipped item=100 slot=Weapon", "runtime inventory text should format command result lines");
+	Expect(formatter.formatEvent("inventoryEvent[0]", event) == "inventoryEvent[0] type=Equipped command=EquipItem result=Applied equipment=Equipped item=100 slot=Weapon", "runtime inventory text should format event lines");
 }
 
 void TestRuntimeInventoryScriptTextFormatsResultsAndAggregates()
@@ -6109,6 +6155,53 @@ void TestRuntimeMovementScriptTextFormatsResultsAndAggregates()
 
 	Expect(formatter.formatResult("movementScript[0]", completed) == "movementScript[0] status=Completed results=2 accepted=1 rejected=1", "runtime movement script text should format one replay result");
 	Expect(formatter.formatAggregate("runtime movementScripts", results) == "runtime movementScripts=3 completed=1 loadFailed=1 noActiveWorld=1 accepted=1 rejected=1", "runtime movement script text should format aggregate replay results");
+}
+
+void TestRuntimeMovementEventTextFormatsMovementEvents()
+{
+	dev::RuntimeMovementEventText formatter;
+	dev::MovementEvent basicEvent {
+		.type = dev::MovementEventType::StepCommitted,
+		.playerId = 1,
+		.tile = { 2, 3 },
+		.commandType = dev::MovementCommandType::WalkTo,
+	};
+	dev::MovementEvent enemyEvent {
+		.type = dev::MovementEventType::EnemyAttackTransitioned,
+		.playerId = 2,
+		.tile = { 4, 5 },
+		.commandType = dev::MovementCommandType::MoveThenAct,
+		.enemyId = 90,
+		.enemyPursuitStopReason = dev::EnemyPursuitStopReason::AttackRangeReached,
+		.enemyPursuitStepsCommitted = 3,
+		.enemyAttackTransition = dev::EnemyAttackTransition::WindupStarted,
+	};
+
+	Expect(formatter.formatEvent("movementEvent[0]", basicEvent) == "movementEvent[0] type=StepCommitted player=1 tile=(2,3) command=WalkTo", "runtime movement event text should format basic movement event lines");
+	Expect(formatter.formatEvent("movementEvent[1]", enemyEvent) == "movementEvent[1] type=EnemyAttackTransitioned player=2 tile=(4,5) command=MoveThenAct enemy=90 pursuitStop=AttackRangeReached pursuitSteps=3 attackTransition=WindupStarted", "runtime movement event text should format enemy movement event details");
+}
+
+void TestRuntimeCombatTextFormatsCombatEvents()
+{
+	dev::RuntimeCombatText formatter;
+	dev::CombatEvent event {
+		.type = dev::CombatEventType::Defeated,
+		.damage = 7,
+		.remainingHitPoints = 0,
+	};
+
+	Expect(formatter.formatEvent("combatEvent[0]", event) == "combatEvent[0] type=Defeated damage=7 remainingHp=0", "runtime combat text should format combat event lines");
+}
+
+void TestRuntimeEffectTextFormatsEffectRequests()
+{
+	dev::RuntimeEffectText formatter;
+	dev::EffectRequest request {
+		.type = dev::EffectRequestType::HitStop,
+		.tile = { 6, 7 },
+	};
+
+	Expect(formatter.formatRequest("effect[0]", request) == "effect[0] type=HitStop tile=(6,7)", "runtime effect text should format effect request lines");
 }
 
 void TestRuntimeRunSummaryTextFormatsTraceAndManifestSummaries()
@@ -8727,9 +8820,14 @@ int main()
 	TestGameLoopBuildsRuntimeFrameReports();
 	TestRuntimeFrameTraceFormatsReadableLines();
 	TestRuntimeFramePolicyTextFormatsArtifactPolicyLines();
+	TestRuntimeFrameTraceHeaderTextFormatsFrameCounts();
 	TestRuntimeSessionTextFormatsResultsAndEvents();
+	TestRuntimeInventoryTextFormatsResultsAndEvents();
 	TestRuntimeInventoryScriptTextFormatsResultsAndAggregates();
 	TestRuntimeMovementScriptTextFormatsResultsAndAggregates();
+	TestRuntimeMovementEventTextFormatsMovementEvents();
+	TestRuntimeCombatTextFormatsCombatEvents();
+	TestRuntimeEffectTextFormatsEffectRequests();
 	TestRuntimeRunSummaryTextFormatsTraceAndManifestSummaries();
 	TestRuntimeFrameTraceFormatsEnemyPursuitEvents();
 	TestRuntimeFrameTraceFormatsEnemyAttackEvents();

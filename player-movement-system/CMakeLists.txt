@@ -15,6 +15,8 @@ add_library(player_movement_system
   src/app/RuntimeDebugArtifactLayout.cpp
   src/app/RuntimeDebugArtifactWriter.cpp
   src/app/RuntimeDebugManifest.cpp
+  src/app/RuntimeCombatText.cpp
+  src/app/RuntimeEffectText.cpp
   src/app/RuntimeExitCodeMapper.cpp
   src/app/RuntimeExitCodePolicy.cpp
   src/app/RuntimeFrameLoopRunner.cpp
@@ -22,11 +24,14 @@ add_library(player_movement_system
   src/app/RuntimeFrameRunner.cpp
   src/app/RuntimeFrameTrace.cpp
   src/app/RuntimeFrameTraceFileStore.cpp
+  src/app/RuntimeFrameTraceHeaderText.cpp
   src/app/RuntimeInputContextBuilder.cpp
   src/app/RuntimeInputRouter.cpp
   src/app/RuntimeInputSourceRouter.cpp
   src/app/RuntimeMovementInputRouter.cpp
+  src/app/RuntimeInventoryText.cpp
   src/app/RuntimeInventoryScriptText.cpp
+  src/app/RuntimeMovementEventText.cpp
   src/app/RuntimeMovementScriptText.cpp
   src/app/RuntimeOutputFailurePolicy.cpp
   src/app/RuntimeOutputFinalizer.cpp
