@@ -198,6 +198,7 @@ Good first tests:
 - RuntimeFramePolicyText formats policy lines for traces and manifests
 - RuntimeRunSummaryText formats run summaries for traces and manifests
 - RuntimeFrameTraceHeaderText formats per-frame trace count headers
+- RuntimeFrameTraceSections formats runtime source, lifecycle, and simulation trace sections
 - RuntimeSessionText formats session result and event lines for traces
 - RuntimeInventoryText formats inventory result and event lines for traces
 - RuntimeInventoryScriptText formats inventory script result lines for traces and manifests
@@ -235,6 +236,7 @@ Good first tests:
 - RuntimeArtifactOutputService applies configured artifact outputs and reports failures
 - RuntimeSetupRunner separates configured setup scripts from per-frame runtime sources
 - GameLoop saves configured run traces and reports trace write failures
+- RuntimeDebugManifestSetupText formats setup script attempt flags for manifests
 - RuntimeDebugManifest formats debug bundle manifest lines with latest frame policy and movement script replay summaries
 - RuntimeDebugArtifactLayout names stable debug bundle artifact paths
 - RuntimeDebugArtifactWriter saves trace/manifest artifacts and records trace failures

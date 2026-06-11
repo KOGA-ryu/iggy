@@ -1,11 +1,10 @@
 #include "RuntimeDebugManifest.hpp"
 
+#include "app/RuntimeDebugManifestSetupText.hpp"
 #include "app/RuntimeFramePolicyText.hpp"
 #include "app/RuntimeInventoryScriptText.hpp"
 #include "app/RuntimeMovementScriptText.hpp"
 #include "app/RuntimeRunSummaryText.hpp"
-
-#include <sstream>
 
 namespace dev {
 
@@ -37,13 +36,7 @@ std::vector<std::string> RuntimeDebugManifest::format(
 		    RuntimeFramePolicyBoolStyle::Words));
 	}
 
-	{
-		std::ostringstream setup;
-		setup << "setup startupScriptRan=" << BoolText(result.setup.startupScriptRan)
-		      << " inventoryScriptRan=" << BoolText(result.setup.inventoryScriptRan)
-		      << " movementScriptRan=" << BoolText(result.setup.movementScriptRan);
-		lines.push_back(setup.str());
-	}
+	lines.push_back(RuntimeDebugManifestSetupText {}.format(result.setup));
 
 	if (result.setup.movementScriptRan) {
 		lines.push_back(RuntimeMovementScriptText {}.formatResult("setup movementScript", result.setup.movementScriptResult));

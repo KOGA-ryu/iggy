@@ -806,6 +806,10 @@ RuntimeFrameTraceHeaderText
   app-layer text formatter that renders per-frame runtime counts as the first
   line of a frame trace
 
+RuntimeFrameTraceSections
+  app-layer trace section formatter that groups runtime source results,
+  lifecycle events, and simulation events in deterministic frame trace order
+
 RuntimeSessionText
   app-layer text formatter that renders session command results and lifecycle
   events consistently for run traces and future debug summaries
@@ -837,8 +841,9 @@ RuntimeEffectText
   consistently for run traces
 
 RuntimeFrameTrace
-  readable text formatter for RuntimeFrameReport, including mode policy gates,
-  suitable for logs, debug overlays, and test diagnostics
+  readable text assembler for RuntimeFrameReport, combining frame header,
+  policy, runtime source sections, lifecycle events, and simulation events for
+  logs, debug overlays, and test diagnostics
 
 TextFileStore
   shared line-oriented text filesystem boundary that writes readable artifact
@@ -852,6 +857,10 @@ RuntimeFrameTraceFileStore
 RuntimeTraceService
   high-level use case that formats and saves complete GameLoopResult frame
   traces in one call, including GameLoop-configured trace output
+
+RuntimeDebugManifestSetupText
+  app-layer text formatter that renders setup script attempt flags consistently
+  for debug bundle manifests
 
 RuntimeDebugManifest
   readable manifest formatter for debug bundles, summarizing run counts, setup

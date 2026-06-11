@@ -1423,6 +1423,10 @@ included.
 `RuntimeFrameTraceHeaderText` owns the per-frame count summary at the top of
 each frame report: routed input, source results, queued movement, gameplay
 events, session events, and inventory events.
+`RuntimeFrameTraceSections` owns the deterministic order after the header and
+policy: runtime source results first, lifecycle events second, simulation
+events last. That keeps the trace readable as a frame story instead of a bag of
+mixed event streams.
 `RuntimeSessionText` owns the spelling for session command results and lifecycle
 events, keeping startup/save/load/mode names consistent in runtime traces.
 `RuntimeInventoryText` owns the spelling for inventory command results and
@@ -1496,6 +1500,9 @@ GameLoopResult
 The bundle owns directory preparation and artifact assembly. The layout owns
 stable artifact path names. The writer owns trace/manifest write attempts and
 reports their save flags. The manifest formatter owns readable manifest lines.
+`RuntimeDebugManifestSetupText` owns the setup attempt flags inside that
+manifest, keeping startup, inventory setup script, and movement setup script
+attempts readable as lifecycle state rather than artifact plumbing.
 The manifest includes the latest frame policy summary so a bundle can explain
 why the run accepted commands or advanced actors without opening the full trace.
 That line is formatted through `RuntimeFramePolicyText`, the same boundary used

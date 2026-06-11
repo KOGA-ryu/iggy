@@ -15,6 +15,7 @@
 #include "app/RuntimeDebugArtifactLayout.hpp"
 #include "app/RuntimeDebugArtifactWriter.hpp"
 #include "app/RuntimeDebugManifest.hpp"
+#include "app/RuntimeDebugManifestSetupText.hpp"
 #include "app/RuntimeEffectText.hpp"
 #include "app/RuntimeExitCodeMapper.hpp"
 #include "app/RuntimeExitCodePolicy.hpp"
@@ -32,6 +33,7 @@
 #include "app/RuntimeFrameTrace.hpp"
 #include "app/RuntimeFrameTraceFileStore.hpp"
 #include "app/RuntimeFrameTraceHeaderText.hpp"
+#include "app/RuntimeFrameTraceSections.hpp"
 #include "app/RuntimeOutputFinalizer.hpp"
 #include "app/RuntimeOutputFailurePolicy.hpp"
 #include "app/RuntimeRawInputDrainer.hpp"
@@ -6054,6 +6056,103 @@ void TestRuntimeFrameTraceHeaderTextFormatsFrameCounts()
 	Expect(formatter.format(report) == "frame rawInput=2 sessionResults=1 inventoryScripts=1 inventoryResults=1 movementScripts=1 movementQueued=3 movementEvents=1 combatEvents=1 effects=1 sessionEvents=1 inventoryEvents=1", "runtime frame trace header text should format all frame counts");
 }
 
+void TestRuntimeFrameTraceSectionsFormatsRuntimeSourcesInOrder()
+{
+	dev::RuntimeFrameReport report;
+	report.sessionCommandResults.push_back({
+	    .type = dev::SessionCommandResultType::Applied,
+	    .command = { .type = dev::SessionCommandType::SetMode, .mode = dev::GameSessionMode::Inventory },
+	});
+	report.inventoryScriptResults.push_back({
+	    .status = dev::InventoryScriptRunStatus::Completed,
+	});
+	report.inventoryCommandResults.push_back({
+	    .type = dev::InventoryCommandResultType::Applied,
+	    .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 10 },
+	    .equipmentResult = { .type = dev::EquipmentResultType::Equipped, .itemId = 10, .slot = dev::EquipmentSlot::Weapon },
+	});
+	report.movementScriptResults.push_back({
+	    .status = dev::MovementScriptRunStatus::Completed,
+	});
+
+	const std::vector<std::string> lines = dev::RuntimeFrameTraceSections {}.formatRuntimeSources(report);
+	const std::vector<std::string> expected {
+		"sessionResult[0] type=Applied command=SetMode",
+		"inventoryScript[0] status=Completed results=0 applied=0 rejected=0",
+		"inventoryResult[0] type=Applied command=EquipItem equipment=Equipped item=10 slot=Weapon",
+		"movementScript[0] status=Completed results=0 accepted=0 rejected=0",
+	};
+
+	Expect(lines == expected, "runtime frame trace sections should format runtime source lines in trace order");
+}
+
+void TestRuntimeFrameTraceSectionsFormatsLifecycleEventsInOrder()
+{
+	dev::RuntimeFrameReport report;
+	report.sessionEvents.push_back({
+	    .type = dev::SessionEventType::ModeChanged,
+	    .commandType = dev::SessionCommandType::SetMode,
+	    .mode = dev::GameSessionMode::Inventory,
+	});
+	report.inventoryEvents.push_back({
+	    .type = dev::InventoryEventType::Equipped,
+	    .commandType = dev::InventoryCommandType::EquipItem,
+	    .commandResult = dev::InventoryCommandResultType::Applied,
+	    .equipmentResult = dev::EquipmentResultType::Equipped,
+	    .itemId = 10,
+	    .slot = dev::EquipmentSlot::Weapon,
+	});
+
+	const std::vector<std::string> lines = dev::RuntimeFrameTraceSections {}.formatLifecycleEvents(report);
+	const std::vector<std::string> expected {
+		"sessionEvent[0] type=ModeChanged command=SetMode",
+		"inventoryEvent[0] type=Equipped command=EquipItem result=Applied equipment=Equipped item=10 slot=Weapon",
+	};
+
+	Expect(lines == expected, "runtime frame trace sections should format lifecycle event lines in trace order");
+}
+
+void TestRuntimeFrameTraceSectionsFormatsSimulationEventsInOrder()
+{
+	dev::RuntimeFrameReport report;
+	report.frameEvents.emit(dev::MovementEvent {
+	    .type = dev::MovementEventType::StepCommitted,
+	    .playerId = 1,
+	    .tile = { 2, 3 },
+	    .commandType = dev::MovementCommandType::WalkTo,
+	});
+	report.frameEvents.emit(dev::CombatEvent {
+	    .type = dev::CombatEventType::Hit,
+	    .damage = 4,
+	    .remainingHitPoints = 6,
+	});
+	report.frameEvents.emit(dev::EffectRequest {
+	    .type = dev::EffectRequestType::HitImpact,
+	    .tile = { 2, 3 },
+	});
+
+	const std::vector<std::string> lines = dev::RuntimeFrameTraceSections {}.formatSimulationEvents(report);
+	const std::vector<std::string> expected {
+		"movementEvent[0] type=StepCommitted player=1 tile=(2,3) command=WalkTo",
+		"combatEvent[0] type=Hit damage=4 remainingHp=6",
+		"effect[0] type=HitImpact tile=(2,3)",
+	};
+
+	Expect(lines == expected, "runtime frame trace sections should format simulation event lines in trace order");
+}
+
+void TestRuntimeDebugManifestSetupTextFormatsSetupAttempts()
+{
+	dev::RuntimeSetupResult setup;
+	setup.startupScriptRan = true;
+	setup.inventoryScriptRan = false;
+	setup.movementScriptRan = true;
+
+	dev::RuntimeDebugManifestSetupText formatter;
+
+	Expect(formatter.format(setup) == "setup startupScriptRan=true inventoryScriptRan=false movementScriptRan=true", "runtime debug manifest setup text should format setup attempt flags");
+}
+
 void TestRuntimeSessionTextFormatsResultsAndEvents()
 {
 	dev::RuntimeSessionText formatter;
@@ -8821,6 +8920,10 @@ int main()
 	TestRuntimeFrameTraceFormatsReadableLines();
 	TestRuntimeFramePolicyTextFormatsArtifactPolicyLines();
 	TestRuntimeFrameTraceHeaderTextFormatsFrameCounts();
+	TestRuntimeFrameTraceSectionsFormatsRuntimeSourcesInOrder();
+	TestRuntimeFrameTraceSectionsFormatsLifecycleEventsInOrder();
+	TestRuntimeFrameTraceSectionsFormatsSimulationEventsInOrder();
+	TestRuntimeDebugManifestSetupTextFormatsSetupAttempts();
 	TestRuntimeSessionTextFormatsResultsAndEvents();
 	TestRuntimeInventoryTextFormatsResultsAndEvents();
 	TestRuntimeInventoryScriptTextFormatsResultsAndAggregates();
