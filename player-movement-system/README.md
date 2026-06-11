@@ -801,6 +801,10 @@ RuntimeMovementCommandReportRecorder
   app-layer recorder that stores direct movement command queue counts on the
   frame report and aggregates them into the run summary
 
+RuntimeMovementCommandIntake
+  app-layer intake step that moves drained runtime movement commands into the
+  active SimulationWorld command queue while reporting how many were queued
+
 RuntimeFrameEventReportRecorder
   app-layer recorder that stores current simulation frame events on the frame
   report and mirrors them as the run summary's last frame events

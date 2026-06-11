@@ -1359,6 +1359,11 @@ command source intake.
 count. The frame gets the count for this frame, while the run summary
 accumulates command intake across frames.
 
+`RuntimeMovementCommandIntake` owns the app-to-simulation handoff for drained
+movement commands. Runtime sources produce semantic movement commands; the
+intake step queues them into the active `SimulationWorld` command queue and
+returns the queued count that frame reports use.
+
 `RuntimeFrameEventReportRecorder` owns simulation frame event reporting. It
 stores the current frame's event batch on the frame report and mirrors it to
 `RuntimeRunSummary::lastFrameEvents`, making that summary field explicitly the

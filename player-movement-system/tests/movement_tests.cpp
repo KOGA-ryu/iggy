@@ -44,6 +44,7 @@
 #include "app/RuntimeInventoryText.hpp"
 #include "app/RuntimeMovementInputRouter.hpp"
 #include "app/RuntimeMovementInputBlockSummary.hpp"
+#include "app/RuntimeMovementCommandIntake.hpp"
 #include "app/RuntimeMovementCommandReportRecorder.hpp"
 #include "app/RuntimeMovementEventText.hpp"
 #include "app/RuntimeMovementScriptReportRecorder.hpp"
@@ -5704,6 +5705,35 @@ void TestRuntimeSourceStreamDrainsSourcesAndSkipsNullSlots()
 	Expect(second.empty(), "runtime source stream should drain configured sources once");
 }
 
+void TestRuntimeMovementCommandIntakeQueuesCommandsInWorldOrder()
+{
+	dev::SimulationWorld world;
+	std::vector<dev::MovementCommand> commands {
+	    {
+	        .type = dev::MovementCommandType::WalkTo,
+	        .playerId = 0,
+	        .destination = { 1, 0 },
+	    },
+	    {
+	        .type = dev::MovementCommandType::Stop,
+	        .playerId = 0,
+	        .destination = { 2, 0 },
+	    },
+	};
+
+	const int queued = dev::RuntimeMovementCommandIntake {}.queue(commands, world);
+
+	dev::MovementCommand first {};
+	dev::MovementCommand second {};
+	dev::MovementCommand none {};
+	Expect(queued == 2, "runtime movement command intake should report queued command count");
+	Expect(world.commandQueue.tryPop(first), "runtime movement command intake should push first command");
+	Expect(world.commandQueue.tryPop(second), "runtime movement command intake should push second command");
+	Expect(!world.commandQueue.tryPop(none), "runtime movement command intake should not add extra commands");
+	Expect(first.destination == dev::Point { 1, 0 }, "runtime movement command intake should preserve first command order");
+	Expect(second.destination == dev::Point { 2, 0 }, "runtime movement command intake should preserve second command order");
+}
+
 void TestRuntimeSourceDrainerDrainsSessionBeforeMovement()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_source_drainer_test";
@@ -9828,6 +9858,7 @@ int main()
 	TestRuntimeSourceDrainerSettingsBuilderMapsLoopSourcesAndPlayer();
 	TestRuntimeSourceContextReportsActiveWorldAndPlayer();
 	TestRuntimeSourceStreamDrainsSourcesAndSkipsNullSlots();
+	TestRuntimeMovementCommandIntakeQueuesCommandsInWorldOrder();
 	TestRuntimeSourceDrainerDrainsSessionBeforeMovement();
 	TestRuntimeSourceDrainerRunsMovementScripts();
 	TestGameLoopDrainsRuntimeMovementScriptSources();

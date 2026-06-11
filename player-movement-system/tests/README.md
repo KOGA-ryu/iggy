@@ -196,6 +196,7 @@ Good first tests:
 - RuntimeSourceContext reports active world/player availability for source draining
 - RuntimeSourceDrainer owns runtime source draining order
 - RuntimeSourceStream drains nullable source lists once while preserving order
+- RuntimeMovementCommandIntake queues drained runtime movement commands into the simulation world
 - RuntimeLoopTypes keeps loop settings and results reusable outside GameLoop
 - GameLoop builds RuntimeFrameReport entries for per-frame inspection
 - RuntimeFramePolicyText formats policy lines for traces and manifests

@@ -1,5 +1,6 @@
 #include "RuntimeSourceDrainer.hpp"
 
+#include "app/RuntimeMovementCommandIntake.hpp"
 #include "app/RuntimeSourceContext.hpp"
 #include "app/RuntimeSourceStream.hpp"
 #include "commands/CommandDispatcher.hpp"
@@ -131,15 +132,10 @@ int RuntimeSourceDrainer::drainMovementCommands()
 	if (!context.hasActiveWorld())
 		return 0;
 
-	int queued = 0;
 	std::vector<MovementCommand> commands = RuntimeSourceStream<MovementCommand, MovementCommandSource> {}.drain(
 	    routedMovementCommands_,
 	    settings_.movementCommandSources);
-	for (MovementCommand command : commands) {
-		context.world().commandQueue.push(command);
-		++queued;
-	}
-	return queued;
+	return RuntimeMovementCommandIntake {}.queue(std::move(commands), context.world());
 }
 
 } // namespace dev
