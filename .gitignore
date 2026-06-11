@@ -1,0 +1,8 @@
+# Reference source extracted for study only.
+/DevilutionX-master/
+
+# Local build/check artifacts.
+/build/
+/.cache/
+.DS_Store
+

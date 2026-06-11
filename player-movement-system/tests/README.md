@@ -1,0 +1,28 @@
+# Movement Tests
+
+Good first tests:
+
+- click on walkable tile creates `WalkTo`
+- click while inventory owns focus creates no command
+- click while text entry is active creates no command
+- `WalkTo` on blocked tile is rejected
+- path is consumed one step at a time
+- `Stop` clears the current path
+- stun state rejects movement
+- animation lock rejects movement
+- animation cancel window allows movement again
+- stand-ground rejects `WalkTo` but keeps player facing/intent available
+- diagonal movement through a blocked corner is rejected
+- diagonal path cost discourages unnecessary zig-zagging
+- `future` updates when a step is committed
+- empty tile target creates `WalkTo`
+- enemy target creates `MoveThenAct(Attack)`
+- item target creates `MoveThenAct(Pickup)`
+- NPC target creates `MoveThenAct(Talk)`
+- object target creates `MoveThenAct(Interact)`
+- stand-ground plus attack target creates `StandAndAct(Attack)`
+- destination action survives until path is consumed
+- action executor rejects invalid targets
+- action executor waits when target is out of range
+- action executor applies attack animation commitment
+- action executor clears destination action after execution
