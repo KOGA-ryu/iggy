@@ -5671,6 +5671,8 @@ void TestRuntimeSourceContextReportsActiveWorldAndPlayer()
 	dev::RuntimeSourceContext emptyContext { session, 0 };
 	Expect(!emptyContext.hasActiveWorld(), "runtime source context should report missing active world");
 	Expect(!emptyContext.hasActivePlayer(), "runtime source context should report no active player without a world");
+	Expect(emptyContext.activeWorld() == nullptr, "runtime source context should expose null active world pointer before a world exists");
+	Expect(emptyContext.activePlayer() == nullptr, "runtime source context should expose null active player pointer before a world exists");
 
 	session.startNewGame({ .playerStart = { 1, 2 }, .playerHitPoints = 20 });
 	dev::RuntimeSourceContext playerContext { session, 0 };
@@ -5678,9 +5680,13 @@ void TestRuntimeSourceContextReportsActiveWorldAndPlayer()
 
 	Expect(playerContext.hasActiveWorld(), "runtime source context should report active world");
 	Expect(playerContext.hasActivePlayer(), "runtime source context should report valid input player");
+	Expect(playerContext.activeWorld() != nullptr && playerContext.activeWorld()->players.size() == 1, "runtime source context should expose active world pointer");
+	Expect(playerContext.activePlayer() != nullptr && playerContext.activePlayer()->position.tile == dev::Point { 1, 2 }, "runtime source context should expose selected player pointer");
 	Expect(playerContext.world().players.size() == 1, "runtime source context should expose active world");
 	Expect(playerContext.player().position.tile == dev::Point { 1, 2 }, "runtime source context should expose selected player");
 	Expect(!missingPlayerContext.hasActivePlayer(), "runtime source context should reject out-of-range input player");
+	Expect(missingPlayerContext.activeWorld() != nullptr, "runtime source context should still expose active world when selected player is missing");
+	Expect(missingPlayerContext.activePlayer() == nullptr, "runtime source context should expose null active player pointer for out-of-range player");
 
 	std::filesystem::remove_all(root);
 }

@@ -197,7 +197,7 @@ Good first tests:
 - GameLoop drains runtime inventory script sources before direct inventory command sources
 - GameLoop drains runtime movement script sources before direct movement command sources
 - RuntimeSourceDrainerSettingsBuilder maps loop sources and player id into drainer settings
-- RuntimeSourceContext reports active world/player availability for source draining
+- RuntimeSourceContext reports active world/player availability and optional receivers for source draining
 - RuntimeSourceDrainer owns runtime source draining order
 - RuntimeSourceStream drains nullable source lists once while preserving order
 - RuntimeMovementCommandIntake queues drained runtime movement commands into the simulation world

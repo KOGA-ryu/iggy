@@ -33,7 +33,7 @@ InventoryScriptRunResult RuntimeSourceDrainer::runInventoryScript(const std::fil
 	RuntimeSourceContext context { session_, settings_.inputPlayerId };
 	return RuntimeInventoryScriptIntake {}.run(
 	    path,
-	    context.hasActivePlayer() ? &context.player() : nullptr,
+	    context.activePlayer(),
 	    &inventoryEvents_);
 }
 
@@ -42,7 +42,7 @@ MovementScriptRunResult RuntimeSourceDrainer::runMovementScript(const std::files
 	RuntimeSourceContext context { session_, settings_.inputPlayerId };
 	return RuntimeMovementScriptIntake {}.run(
 	    path,
-	    context.hasActiveWorld() ? &context.world() : nullptr);
+	    context.activeWorld());
 }
 
 std::vector<SessionCommandResult> RuntimeSourceDrainer::drainSessionCommands(const SessionCommandDispatcher &dispatcher)
@@ -63,7 +63,7 @@ std::vector<InventoryScriptRunResult> RuntimeSourceDrainer::drainInventoryScript
 	    settings_.inventoryScriptSources);
 	return RuntimeInventoryScriptBatchRunner {}.run(
 	    std::move(paths),
-	    context.hasActivePlayer() ? &context.player() : nullptr,
+	    context.activePlayer(),
 	    &inventoryEvents_);
 }
 
@@ -78,7 +78,7 @@ std::vector<InventoryCommandResult> RuntimeSourceDrainer::drainInventoryCommands
 	    settings_.inventoryCommandSources);
 	return RuntimeInventoryCommandIntake {}.dispatch(
 	    std::move(commands),
-	    context.hasActivePlayer() ? &context.player() : nullptr,
+	    context.activePlayer(),
 	    &inventoryEvents_);
 }
 

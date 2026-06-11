@@ -1050,7 +1050,8 @@ RuntimeSourceDrainer
 
 RuntimeSourceContext
   app-layer access helper that reports active world/player availability and
-  exposes the selected runtime world/player to source draining
+  exposes required references or optional pointers for the selected runtime
+  world/player to source draining
 
 RuntimeSourceStream
   app-layer source-stream primitive that skips missing source slots, drains

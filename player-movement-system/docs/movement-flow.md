@@ -1269,8 +1269,11 @@ through the normal movement dispatcher, then the next `GameSession::update`
 advances any resulting player state.
 `RuntimeSourceContext` owns the repeated active world/player checks used by
 runtime sources. Inventory scripts and commands need a selected player; movement
-scripts and movement commands need an active world. Keeping that context check
-in one helper makes the source-draining rules easier to compare.
+scripts and movement commands need an active world. It exposes references for
+callers that require an active receiver and nullable pointers for intake
+boundaries that report missing receivers as normal runtime results. Keeping
+that context check in one helper makes the source-draining rules easier to
+compare.
 
 `RuntimeFrameRunner` owns the one-frame order around that drainer:
 

@@ -13,6 +13,8 @@ public:
 
 	[[nodiscard]] bool hasActiveWorld() const;
 	[[nodiscard]] bool hasActivePlayer() const;
+	[[nodiscard]] SimulationWorld *activeWorld() const;
+	[[nodiscard]] Player *activePlayer() const;
 	[[nodiscard]] SimulationWorld &world() const;
 	[[nodiscard]] Player &player() const;
 
