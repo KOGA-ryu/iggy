@@ -18,6 +18,8 @@ lookup, source stream draining, and source-drainer ordering.
 step orchestration before simulation runs.
 `frame_simulation_tests` covers simulation phase policy capture, session
 advancement, frame event reporting, and lifecycle/inventory event deltas.
+`frame_lifecycle_tests` covers one-frame execution, bounded frame-loop
+repetition, and run-executor setup gating before finalization.
 
 Good first tests:
 

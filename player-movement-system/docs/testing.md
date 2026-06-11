@@ -40,6 +40,10 @@ script-before-command order, and the combined pre-simulation source phase.
 policy resolution/recording, session advancement, simulation event recording,
 and lifecycle/inventory event deltas attached when a frame completes.
 
+`frame_lifecycle_tests` owns the outer frame/run lifecycle: one-frame source
+plus simulation sequencing, bounded frame-loop repetition, and run-executor
+setup gates before finalization.
+
 ```text
 focused production boundary
   -> focused test executable
@@ -53,7 +57,7 @@ large shared helper migration.
 
 Good first candidates:
 
-- frame lifecycle runners
+- run finalization, exit-code, and failure-policy reporting
 
 Avoid splitting by line count alone. A smaller file is useful only when the new
 test target has a clear reason to exist.

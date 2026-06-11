@@ -1356,6 +1356,11 @@ RuntimeRunExecutor
   -> RuntimeRunFinalizer
 ```
 
+`frame_lifecycle_tests` covers this outer lifecycle boundary directly: one
+frame must route/drain sources before simulation, the loop must repeat that
+bounded frame the configured number of times, and the run executor must skip
+frames after setup failure while still finalizing the result.
+
 `GameLoop` still owns collaborator assembly and event/result access.
 `RuntimeRunExecutor` owns lifecycle order, `RuntimeFrameLoopRunner` owns how
 many bounded frames run, `RuntimeFrameRunner` owns one frame's mechanics,
