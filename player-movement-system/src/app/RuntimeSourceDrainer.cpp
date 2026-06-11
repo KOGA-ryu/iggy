@@ -1,6 +1,7 @@
 #include "RuntimeSourceDrainer.hpp"
 
 #include "app/RuntimeInventoryCommandIntake.hpp"
+#include "app/RuntimeInventoryScriptBatchRunner.hpp"
 #include "app/RuntimeInventoryScriptIntake.hpp"
 #include "app/RuntimeMovementCommandIntake.hpp"
 #include "app/RuntimeMovementScriptBatchRunner.hpp"
@@ -54,17 +55,16 @@ std::vector<SessionCommandResult> RuntimeSourceDrainer::drainSessionCommands(con
 
 std::vector<InventoryScriptRunResult> RuntimeSourceDrainer::drainInventoryScripts()
 {
-	std::vector<InventoryScriptRunResult> results;
 	RuntimeSourceContext context { session_, settings_.inputPlayerId };
 	if (!context.hasActiveWorld())
-		return results;
+		return {};
 
 	std::vector<std::filesystem::path> paths = RuntimeSourceStream<std::filesystem::path, InventoryScriptSource> {}.drain(
 	    settings_.inventoryScriptSources);
-	results.reserve(paths.size());
-	for (const std::filesystem::path &path : paths)
-		results.push_back(runInventoryScript(path));
-	return results;
+	return RuntimeInventoryScriptBatchRunner {}.run(
+	    std::move(paths),
+	    context.hasActivePlayer() ? &context.player() : nullptr,
+	    &inventoryEvents_);
 }
 
 std::vector<InventoryCommandResult> RuntimeSourceDrainer::drainInventoryCommands()

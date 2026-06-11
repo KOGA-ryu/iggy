@@ -41,6 +41,7 @@
 #include "app/RuntimeInventoryCommandIntake.hpp"
 #include "app/RuntimeInventoryCommandReportRecorder.hpp"
 #include "app/RuntimeInventoryScriptReportRecorder.hpp"
+#include "app/RuntimeInventoryScriptBatchRunner.hpp"
 #include "app/RuntimeInventoryScriptIntake.hpp"
 #include "app/RuntimeInventoryScriptText.hpp"
 #include "app/RuntimeInventoryText.hpp"
@@ -5938,6 +5939,52 @@ void TestRuntimeInventoryScriptIntakeRunsScriptsAgainstActivePlayer()
 	std::filesystem::remove_all(root);
 }
 
+void TestRuntimeInventoryScriptBatchRunnerPreservesPathOrder()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_inventory_script_batch_runner_test";
+	const std::filesystem::path firstPath = root / "first.iicl";
+	const std::filesystem::path missingPath = root / "missing.iicl";
+	const std::filesystem::path thirdPath = root / "third.iicl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::InventoryCommandLog firstLog;
+	firstLog.record({
+	    .type = dev::InventoryCommandType::EquipItem,
+	    .itemId = 13,
+	});
+	dev::InventoryCommandLog thirdLog;
+	thirdLog.record({
+	    .type = dev::InventoryCommandType::UnequipSlot,
+	    .slot = dev::EquipmentSlot::Weapon,
+	});
+	dev::InventoryCommandLogFileStore store;
+	Expect(store.save(firstPath, firstLog), "runtime inventory script batch runner test should save first script");
+	Expect(store.save(thirdPath, thirdLog), "runtime inventory script batch runner test should save third script");
+
+	dev::Player player = MakePlayer();
+	player.inventory.items.push_back({
+	    .id = 13,
+	    .equipmentSlot = dev::EquipmentSlot::Weapon,
+	});
+	dev::InventoryEventRecorder events;
+
+	std::vector<dev::InventoryScriptRunResult> results = dev::RuntimeInventoryScriptBatchRunner {}.run(
+	    { firstPath, missingPath, thirdPath },
+	    &player,
+	    &events);
+
+	Expect(results.size() == 3, "runtime inventory script batch runner should produce one result per script path");
+	Expect(results.size() == 3 && results[0].status == dev::InventoryScriptRunStatus::Completed, "runtime inventory script batch runner should keep first script result order");
+	Expect(results.size() == 3 && results[1].status == dev::InventoryScriptRunStatus::LoadFailed, "runtime inventory script batch runner should keep missing script result order");
+	Expect(results.size() == 3 && results[2].status == dev::InventoryScriptRunStatus::Completed, "runtime inventory script batch runner should continue after load failure");
+	Expect(results.size() == 3 && results[0].commandResults.size() == 1 && results[0].commandResults[0].type == dev::InventoryCommandResultType::Applied, "runtime inventory script batch runner should replay first script");
+	Expect(results.size() == 3 && results[2].commandResults.size() == 1 && results[2].commandResults[0].type == dev::InventoryCommandResultType::Applied, "runtime inventory script batch runner should replay later scripts");
+	Expect(events.events().size() == 2, "runtime inventory script batch runner should emit events for completed script commands only");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestRuntimeSourceDrainerDrainsSessionBeforeMovement()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_source_drainer_test";
@@ -10068,6 +10115,7 @@ int main()
 	TestRuntimeMovementScriptIntakeRunsScriptsAgainstActiveWorld();
 	TestRuntimeMovementScriptBatchRunnerPreservesPathOrder();
 	TestRuntimeInventoryScriptIntakeRunsScriptsAgainstActivePlayer();
+	TestRuntimeInventoryScriptBatchRunnerPreservesPathOrder();
 	TestRuntimeSourceDrainerDrainsSessionBeforeMovement();
 	TestRuntimeSourceDrainerRunsMovementScripts();
 	TestGameLoopDrainsRuntimeMovementScriptSources();

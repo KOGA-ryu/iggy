@@ -340,6 +340,10 @@ RuntimeInventoryScriptIntake
   app-layer intake step that runs an inventory script against the selected
   runtime player or reports NoActivePlayer before replay begins
 
+RuntimeInventoryScriptBatchRunner
+  app-layer runner that executes drained inventory script paths in order and
+  returns one InventoryScriptRunResult per path
+
 InventoryScriptSource
   runtime-facing source boundary that lets menus and debug tools queue inventory
   automation script paths for the active player
@@ -799,6 +803,10 @@ RuntimeInventoryScriptReportRecorder
 RuntimeInventoryScriptIntake
   app-layer intake step that binds inventory script replay to the selected
   runtime player and inventory event sink used by InventoryScriptRunner
+
+RuntimeInventoryScriptBatchRunner
+  app-layer runner that turns a drained inventory script path list into ordered
+  runtime inventory script results
 
 RuntimeInventoryCommandReportRecorder
   app-layer recorder that appends direct runtime inventory command results to

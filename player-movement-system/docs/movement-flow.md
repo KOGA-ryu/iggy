@@ -1034,6 +1034,11 @@ inventory script runner. It checks whether the selected player exists, wires the
 inventory event sink into `InventoryCommandDispatcher`, and then lets
 `InventoryScriptRunner` own file loading and replay.
 
+`RuntimeInventoryScriptBatchRunner` is the ordered batch layer above the intake.
+Once runtime inventory script sources have been drained into a flat path list,
+it runs each path against the selected player and returns one result per path
+without stopping the batch on load failure or command rejection.
+
 This is the first runtime-facing shell around the movement/session system. It
 is still testable because the loop is bounded and reports what happened instead
 of hiding behavior behind an infinite platform loop.
@@ -1360,6 +1365,11 @@ inventory commands actually applied or rejected?"
 inventory script paths. The source drainer decides when script paths are
 drained; the intake decides whether a selected player can receive replayed
 inventory commands and wires that player into `InventoryScriptRunner`.
+
+`RuntimeInventoryScriptBatchRunner` owns the ordered runtime inventory script
+batch. It keeps `RuntimeSourceDrainer` focused on source gating and path
+draining while the batch runner turns the drained path list into ordered
+`InventoryScriptRunResult` entries.
 
 `RuntimeInventoryCommandReportRecorder` owns direct runtime inventory command
 results. It appends those results after any script-flattened command results, so
