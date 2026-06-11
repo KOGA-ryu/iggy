@@ -184,7 +184,8 @@ Good first tests:
 - RuntimeSetupFailurePolicy maps setup script failures to setup failures
 - RuntimeOutputFailurePolicy maps attempted unsaved artifacts to output failures
 - RuntimeRunFailurePolicy composes setup and output failures into run failures
-- RuntimeExitCodePolicy maps run failures to process failures
+- RuntimeExitCodeMapper maps run failure booleans to process exit codes
+- RuntimeExitCodePolicy adapts GameLoopResult failure state to process failures
 - RuntimeOutputSettings defaults to no runtime artifact outputs
 - RuntimeOutputResult defaults to no artifact save attempts
 - RuntimeOutputFinalizer writes artifact output results back onto GameLoopResult

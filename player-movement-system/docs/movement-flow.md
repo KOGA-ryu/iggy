@@ -1016,6 +1016,7 @@ exit code:
 GameLoopResult
   -> RuntimeExitCodePolicy
   -> RuntimeRunFailurePolicy
+  -> RuntimeExitCodeMapper
   -> RuntimeSetupFailurePolicy
   -> RuntimeOutputFailurePolicy
   -> 0 or 1
@@ -1026,7 +1027,8 @@ RuntimeRunFailurePolicy composes the setup and output decisions.
 RuntimeSetupFailurePolicy owns the setup rule: startup load failure fails, and
 configured inventory setup must complete. RuntimeOutputFailurePolicy owns the
 artifact-output rule: only attempted outputs that did not save are failures.
-RuntimeExitCodePolicy only maps that run-failure decision to 0 or 1.
+RuntimeExitCodeMapper maps that run-failure boolean to 0 or 1, and
+RuntimeExitCodePolicy adapts the whole `GameLoopResult` to that mapper.
 Command-level rejections inside a loadable setup script remain command results,
 so they do not automatically make the process fail.
 

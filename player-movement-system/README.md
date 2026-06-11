@@ -643,9 +643,13 @@ RuntimeRunFailurePolicy
   app-layer policy that composes setup and output failure policies into a
   single GameLoopResult failure decision
 
+RuntimeExitCodeMapper
+  app-layer mapper that converts a run failure boolean into a process-style
+  numeric exit code
+
 RuntimeExitCodePolicy
-  app-layer policy that maps RuntimeRunFailurePolicy results into process-style
-  success/failure exit codes
+  app-layer adapter that combines RuntimeRunFailurePolicy and
+  RuntimeExitCodeMapper for GameLoopResult exit codes
 
 RuntimeOutputSettings
   app-layer artifact settings that group optional run trace and debug bundle

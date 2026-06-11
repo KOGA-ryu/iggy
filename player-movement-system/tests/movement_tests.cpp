@@ -14,6 +14,7 @@
 #include "app/RuntimeDebugArtifactLayout.hpp"
 #include "app/RuntimeDebugArtifactWriter.hpp"
 #include "app/RuntimeDebugManifest.hpp"
+#include "app/RuntimeExitCodeMapper.hpp"
 #include "app/RuntimeExitCodePolicy.hpp"
 #include "app/RuntimeFrameLoopRunner.hpp"
 #include "app/RuntimeFrameRunner.hpp"
@@ -5372,8 +5373,15 @@ void TestRuntimeExitCodePolicyReportsSuccessForCleanRun()
 {
 	dev::GameLoopResult result;
 
-	Expect(!dev::RuntimeExitCodePolicy {}.failed(result), "runtime exit policy should not fail clean default run results");
 	Expect(dev::RuntimeExitCodePolicy {}.exitCodeFor(result) == 0, "runtime exit policy should return success for clean run results");
+}
+
+void TestRuntimeExitCodeMapperMapsFailureBooleanToProcessCode()
+{
+	dev::RuntimeExitCodeMapper mapper;
+
+	Expect(mapper.exitCodeFor(false) == 0, "runtime exit code mapper should return success for non-failed runs");
+	Expect(mapper.exitCodeFor(true) == 1, "runtime exit code mapper should return failure for failed runs");
 }
 
 void TestRuntimeExitCodePolicyFailsSetupErrors()
@@ -5386,9 +5394,7 @@ void TestRuntimeExitCodePolicyFailsSetupErrors()
 	inventoryFailure.setup.inventoryScriptRan = true;
 	inventoryFailure.setup.inventoryScriptResult.status = dev::InventoryScriptRunStatus::LoadFailed;
 
-	Expect(dev::RuntimeExitCodePolicy {}.failed(startupFailure), "runtime exit policy should fail startup script load failures");
 	Expect(dev::RuntimeExitCodePolicy {}.exitCodeFor(startupFailure) == 1, "runtime exit policy should return failure for startup load failures");
-	Expect(dev::RuntimeExitCodePolicy {}.failed(inventoryFailure), "runtime exit policy should fail configured inventory script failures");
 	Expect(dev::RuntimeExitCodePolicy {}.exitCodeFor(inventoryFailure) == 1, "runtime exit policy should return failure for configured inventory script failures");
 }
 
@@ -5458,7 +5464,6 @@ void TestRuntimeExitCodePolicyAllowsCommandRejections()
 	    .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 99 },
 	});
 
-	Expect(!dev::RuntimeExitCodePolicy {}.failed(result), "runtime exit policy should allow completed setup scripts with rejected commands");
 	Expect(dev::RuntimeExitCodePolicy {}.exitCodeFor(result) == 0, "runtime exit policy should return success for command-level rejections");
 }
 
@@ -5468,7 +5473,6 @@ void TestRuntimeExitCodePolicyFailsOutputErrors()
 	result.output.runTraceSaveAttempted = true;
 	result.output.runTraceSaved = false;
 
-	Expect(dev::RuntimeExitCodePolicy {}.failed(result), "runtime exit policy should fail requested output write failures");
 	Expect(dev::RuntimeExitCodePolicy {}.exitCodeFor(result) == 1, "runtime exit policy should return failure for output write failures");
 }
 
@@ -7179,6 +7183,7 @@ int main()
 	TestRuntimeRunRecorderAggregatesFrameReportsAndSummary();
 	TestRuntimeRunFinalizerCapturesFinalModeAndLeavesDisabledOutputsUntouched();
 	TestRuntimeExitCodePolicyReportsSuccessForCleanRun();
+	TestRuntimeExitCodeMapperMapsFailureBooleanToProcessCode();
 	TestRuntimeExitCodePolicyFailsSetupErrors();
 	TestRuntimeSetupFailurePolicyFailsSetupLoadErrors();
 	TestRuntimeRunFailurePolicyComposesSetupAndOutputFailures();
