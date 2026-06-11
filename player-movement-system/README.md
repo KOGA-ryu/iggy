@@ -776,6 +776,10 @@ RuntimeRunRecorder
   app-layer recorder that turns per-frame runtime work into RuntimeFrameReport
   entries and RuntimeRunSummary aggregates
 
+RuntimeInputDrainReportRecorder
+  app-layer recorder that copies raw input drain results onto the current frame
+  report and aggregates them into the run summary
+
 RuntimeFinalModeRecorder
   app-layer recorder that captures the GameSession's final mode onto
   GameLoopResult before output artifacts are written

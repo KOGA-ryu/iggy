@@ -1,5 +1,7 @@
 #include "RuntimeRunRecorder.hpp"
 
+#include "app/RuntimeInputDrainReportRecorder.hpp"
+
 #include <utility>
 
 namespace dev {
@@ -36,13 +38,7 @@ void RuntimeRunRecorder::recordFramePolicy(SimulationFramePolicyDescription desc
 
 void RuntimeRunRecorder::recordRawInputDrainResult(RuntimeInputDrainResult result)
 {
-	frame_.rawInputEventsRouted = result.handled;
-	result_.summary.rawInputEventsRouted += result.handled;
-	frame_.movementInputBlockReasons = result.movementBlockReasons;
-	result_.summary.movementInputBlockReasons.insert(
-	    result_.summary.movementInputBlockReasons.end(),
-	    result.movementBlockReasons.begin(),
-	    result.movementBlockReasons.end());
+	RuntimeInputDrainReportRecorder {}.record(result, frame_, result_.summary);
 }
 
 void RuntimeRunRecorder::recordSessionCommandResults(std::vector<SessionCommandResult> results)

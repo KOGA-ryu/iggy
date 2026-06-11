@@ -29,6 +29,7 @@
 #include "app/RuntimeFramePolicyText.hpp"
 #include "app/RuntimeFrameRunner.hpp"
 #include "app/RuntimeInputContextBuilder.hpp"
+#include "app/RuntimeInputDrainReportRecorder.hpp"
 #include "app/RuntimeInputDrainResultBuilder.hpp"
 #include "app/RuntimeInputRouter.hpp"
 #include "app/RuntimeInputRouteResultBuilder.hpp"
@@ -7149,6 +7150,33 @@ void TestRuntimeInputDrainResultBuilderAggregatesRouteOutcomes()
 	Expect(result.movementBlockReasons.size() == 2 && result.movementBlockReasons[1] == dev::PlayerActionBlockReason::Paused, "runtime input drain result builder should preserve second block reason");
 }
 
+void TestRuntimeInputDrainReportRecorderCopiesFrameAndAggregatesSummary()
+{
+	dev::RuntimeFrameReport frame;
+	dev::RuntimeRunSummary summary;
+	summary.rawInputEventsRouted = 1;
+	summary.movementInputBlockReasons.push_back(dev::PlayerActionBlockReason::Stunned);
+
+	dev::RuntimeInputDrainReportRecorder {}.record(
+	    dev::RuntimeInputDrainResult {
+	        .handled = 2,
+	        .movementBlockReasons = {
+	            dev::PlayerActionBlockReason::Focus,
+	            dev::PlayerActionBlockReason::Paused,
+	        },
+	    },
+	    frame,
+	    summary);
+
+	Expect(frame.rawInputEventsRouted == 2, "runtime input drain report recorder should copy handled count onto frame report");
+	Expect(frame.movementInputBlockReasons.size() == 2 && frame.movementInputBlockReasons[0] == dev::PlayerActionBlockReason::Focus, "runtime input drain report recorder should copy first frame block reason");
+	Expect(frame.movementInputBlockReasons.size() == 2 && frame.movementInputBlockReasons[1] == dev::PlayerActionBlockReason::Paused, "runtime input drain report recorder should copy second frame block reason");
+	Expect(summary.rawInputEventsRouted == 3, "runtime input drain report recorder should aggregate handled count onto run summary");
+	Expect(summary.movementInputBlockReasons.size() == 3 && summary.movementInputBlockReasons[0] == dev::PlayerActionBlockReason::Stunned, "runtime input drain report recorder should preserve existing summary block reasons");
+	Expect(summary.movementInputBlockReasons.size() == 3 && summary.movementInputBlockReasons[1] == dev::PlayerActionBlockReason::Focus, "runtime input drain report recorder should append first new block reason");
+	Expect(summary.movementInputBlockReasons.size() == 3 && summary.movementInputBlockReasons[2] == dev::PlayerActionBlockReason::Paused, "runtime input drain report recorder should append second new block reason");
+}
+
 void TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz()
 {
 	dev::RuntimeFrameSettings frame;
@@ -9556,6 +9584,7 @@ int main()
 	TestRuntimeInputContextBuilderUsesWorldTargetsUnlessOverridden();
 	TestRuntimeInputRouteResultBuilderNamesRouteOutcomes();
 	TestRuntimeInputDrainResultBuilderAggregatesRouteOutcomes();
+	TestRuntimeInputDrainReportRecorderCopiesFrameAndAggregatesSummary();
 	TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz();
 	TestRuntimeRunSummaryDefaultsToEmptyRun();
 	TestRuntimeRunRecorderAggregatesSetupInventoryResultsWithoutFrame();

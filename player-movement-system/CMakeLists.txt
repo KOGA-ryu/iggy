@@ -36,6 +36,7 @@ add_library(player_movement_system
   src/app/RuntimeFrameTraceSections.cpp
   src/app/RuntimeInputContextBuilder.cpp
   src/app/RuntimeInputDrainResultBuilder.cpp
+  src/app/RuntimeInputDrainReportRecorder.cpp
   src/app/RuntimeInputFocusResolver.cpp
   src/app/RuntimeInputRouteResultBuilder.cpp
   src/app/RuntimeInputRouter.cpp

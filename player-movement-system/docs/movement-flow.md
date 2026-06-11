@@ -1330,6 +1330,11 @@ That keeps the frame runner from manually copying every source result into two
 places. The frame runner decides the runtime order, and the recorder decides
 how that work becomes inspectable run data.
 
+`RuntimeInputDrainReportRecorder` owns one slice of that reporting translation:
+raw input drain results become the frame's routed-input count and movement block
+reasons, then also accumulate into the run summary. That keeps source routing,
+drain aggregation, and report recording as separate app-layer facts.
+
 `RuntimeOutputSettings` groups the app shell's optional artifact destinations:
 
 ```text
