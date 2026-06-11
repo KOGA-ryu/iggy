@@ -4,6 +4,8 @@
 
 #include "combat/CombatSystem.hpp"
 #include "enemies/Enemy.hpp"
+#include "enemies/EnemyAttackRunner.hpp"
+#include "enemies/EnemyPursuitStepper.hpp"
 #include "events/MovementEventSink.hpp"
 #include "player/Player.hpp"
 #include "world/Collision.hpp"
@@ -19,13 +21,11 @@ public:
 
 private:
 	void updateEnemy(Enemy &enemy, Player &target, float deltaSeconds) const;
-	bool targetInAttackRange(const Enemy &enemy, const Player &target) const;
-	Point nextStepToward(Point from, Point to) const;
 
 	const TileMap &map_;
 	const Collision &collision_;
-	MovementEventSink *eventSink_;
-	CombatSystem *combatSystem_;
+	EnemyAttackRunner attacks_;
+	EnemyPursuitStepper pursuit_;
 };
 
 } // namespace dev

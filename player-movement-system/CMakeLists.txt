@@ -32,11 +32,15 @@ add_library(player_movement_system
   src/commands/CommandDispatcher.cpp
   src/commands/CommandQueue.cpp
   src/commands/IntentCommandBuilder.cpp
+  src/commands/MovementCommandEventEmitter.cpp
   src/commands/MovementCommandSource.cpp
+  src/commands/MovementCommandValidator.cpp
   src/effects/EffectApplier.cpp
   src/effects/EffectRecorder.cpp
   src/effects/EffectRouter.cpp
+  src/enemies/EnemyAttackRunner.cpp
   src/enemies/EnemyMovement.cpp
+  src/enemies/EnemyPursuitStepper.cpp
   src/events/EventRecorder.cpp
   src/focus/InputFocus.cpp
   src/input/InputMapper.cpp
@@ -62,6 +66,7 @@ add_library(player_movement_system
   src/player/PlayerActionGate.cpp
   src/player/PlayerController.cpp
   src/player/PlayerMovement.cpp
+  src/player/PlayerPathPlanner.cpp
   src/player/PlayerPathStepper.cpp
   src/player/WalkPath.cpp
   src/replay/CommandLog.cpp

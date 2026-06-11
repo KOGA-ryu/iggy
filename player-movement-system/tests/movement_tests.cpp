@@ -31,7 +31,9 @@
 #include "effects/EffectApplier.hpp"
 #include "effects/EffectRecorder.hpp"
 #include "effects/EffectRouter.hpp"
+#include "enemies/EnemyAttackRunner.hpp"
 #include "enemies/EnemyMovement.hpp"
+#include "enemies/EnemyPursuitStepper.hpp"
 #include "events/EventRecorder.hpp"
 #include "focus/InputFocus.hpp"
 #include "interaction/InteractionCommandBuilder.hpp"
@@ -56,6 +58,7 @@
 #include "player/PlayerActionGate.hpp"
 #include "player/PlayerController.hpp"
 #include "player/PlayerMovement.hpp"
+#include "player/PlayerPathPlanner.hpp"
 #include "player/PlayerPathStepper.hpp"
 #include "replay/CommandLog.hpp"
 #include "replay/CommandReplayer.hpp"
@@ -211,6 +214,21 @@ void TestMoveThenActExecutesAfterPath()
 	Expect(players[0].position.tile == dev::Point { 1, 0 }, "movement should commit next step");
 	Expect(players[0].destinationAction.type == dev::DestinationActionType::None, "action should clear after execution");
 	Expect(players[0].animationLock.active, "executed attack should apply animation lock");
+}
+
+void TestPlayerPathPlannerStartsPathAndEvents()
+{
+	dev::EventRecorder events;
+	dev::TileMap map;
+	dev::Collision collision;
+	dev::PathFinder pathFinder;
+	dev::Player player = MakePlayer({ 0, 0 });
+
+	dev::PlayerPathPlanner { map, collision, pathFinder, &events }.walkTo(player, 0, { 1, 0 });
+
+	Expect(player.moveState == dev::PlayerMoveState::Pathing, "player path planner should put walkable destination into pathing state");
+	Expect(!player.path.empty(), "player path planner should store planned walk path");
+	Expect(events.events().size() == 1 && events.events()[0].type == dev::MovementEventType::PathStarted, "player path planner should emit path started event");
 }
 
 void TestDiagonalCornerPolicyBlocksCornerCutting()
@@ -412,6 +430,23 @@ void TestEnemyPursuitObeysStepBudget()
 	Expect(enemies[0].moveState == dev::EnemyMoveState::Pursuing, "enemy should be pursuing after constrained movement");
 }
 
+void TestEnemyPursuitStepperStopsAtAttackRange()
+{
+	dev::TileMap map;
+	dev::Collision collision;
+	dev::EnemyAttackRunner attacks;
+	dev::EnemyPursuitStepper pursuit { map, collision, attacks };
+	dev::Player player = MakePlayer({ 4, 0 });
+	dev::Enemy enemy = MakeEnemy({ 0, 0 });
+	enemy.tuning.maxStepsPerTick = 5;
+	enemy.tuning.attackRangeTiles = 1;
+
+	pursuit.pursue(enemy, player);
+
+	Expect(enemy.position.tile == dev::Point { 3, 0 }, "enemy pursuit stepper should stop once attack range is reached");
+	Expect(enemy.moveState == dev::EnemyMoveState::Pursuing, "enemy pursuit stepper should leave windup start for the next enemy update");
+}
+
 void TestEnemyAttackWindupAndRecovery()
 {
 	dev::TileMap map;
@@ -431,6 +466,28 @@ void TestEnemyAttackWindupAndRecovery()
 
 	movement.update(enemies, player, 0.25F);
 	Expect(enemies[0].moveState == dev::EnemyMoveState::Recovering, "enemy should remain in recovery until recovery duration completes");
+}
+
+void TestEnemyAttackRunnerConsumesWindupAndRecovery()
+{
+	dev::Player player = MakePlayer({ 1, 0 });
+	dev::Enemy enemy = MakeEnemy({ 0, 0 });
+	enemy.tuning.attackRangeTiles = 1;
+	enemy.tuning.attackWindupSeconds = 0.25F;
+	enemy.tuning.attackRecoverySeconds = 0.50F;
+	dev::EnemyAttackRunner attacks;
+
+	Expect(attacks.update(enemy, player, 0.016F), "enemy attack runner should consume frame when target is in range");
+	Expect(enemy.moveState == dev::EnemyMoveState::Attacking, "enemy attack runner should enter attack windup");
+
+	Expect(attacks.update(enemy, player, 0.25F), "enemy attack runner should consume windup completion frame");
+	Expect(enemy.moveState == dev::EnemyMoveState::Recovering, "enemy attack runner should enter recovery after windup");
+
+	Expect(attacks.update(enemy, player, 0.25F), "enemy attack runner should consume incomplete recovery frame");
+	Expect(enemy.moveState == dev::EnemyMoveState::Recovering, "enemy attack runner should stay recovering until recovery completes");
+
+	Expect(attacks.update(enemy, player, 0.25F), "enemy attack runner should restart windup when recovery completes in range");
+	Expect(enemy.moveState == dev::EnemyMoveState::Attacking, "enemy attack runner should restart attack after recovery if target remains in range");
 }
 
 void TestCombatResolverDamageAndDefeat()
@@ -5040,6 +5097,7 @@ int main()
 	TestInventoryFocusBlocksMovement();
 	TestStandGroundCreatesStandAndAct();
 	TestMoveThenActExecutesAfterPath();
+	TestPlayerPathPlannerStartsPathAndEvents();
 	TestDiagonalCornerPolicyBlocksCornerCutting();
 	TestActionExecutorWaitsOutOfRange();
 	TestMoveThenActEventSequence();
@@ -5049,7 +5107,9 @@ int main()
 	TestCommandReplayProducesSameEventSequence();
 	TestMovementCodecRoundTrip();
 	TestEnemyPursuitObeysStepBudget();
+	TestEnemyPursuitStepperStopsAtAttackRange();
 	TestEnemyAttackWindupAndRecovery();
+	TestEnemyAttackRunnerConsumesWindupAndRecovery();
 	TestCombatResolverDamageAndDefeat();
 	TestActionExecutorAttackResolvesCombat();
 	TestCombatSystemEmitsHitEvent();

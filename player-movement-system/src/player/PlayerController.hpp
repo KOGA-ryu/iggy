@@ -5,6 +5,7 @@
 #include "commands/MovementCommand.hpp"
 #include "events/MovementEventSink.hpp"
 #include "player/Player.hpp"
+#include "player/PlayerPathPlanner.hpp"
 #include "world/PathFinder.hpp"
 #include "world/TileMap.hpp"
 
@@ -22,8 +23,7 @@ public:
 private:
 	std::vector<Player> &players_;
 	const TileMap &map_;
-	const Collision &collision_;
-	const PathFinder &pathFinder_;
+	PlayerPathPlanner paths_;
 	MovementEventSink *eventSink_;
 };
 

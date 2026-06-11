@@ -21,8 +21,7 @@ void EmitControllerEvent(MovementEventSink *eventSink, MovementEventType type, P
 PlayerController::PlayerController(std::vector<Player> &players, const TileMap &map, const Collision &collision, const PathFinder &pathFinder, MovementEventSink *eventSink)
     : players_(players)
     , map_(map)
-    , collision_(collision)
-    , pathFinder_(pathFinder)
+    , paths_(map, collision, pathFinder, eventSink)
     , eventSink_(eventSink)
 {
 }
@@ -43,9 +42,7 @@ void PlayerController::walkTo(PlayerId playerId, Point destination)
 		return;
 	}
 
-	player.path = pathFinder_.findPath(player.position.future, destination, map_, collision_);
-	player.moveState = player.path.empty() ? PlayerMoveState::Blocked : PlayerMoveState::Pathing;
-	EmitControllerEvent(eventSink_, player.path.empty() ? MovementEventType::PathBlocked : MovementEventType::PathStarted, playerId, destination);
+	paths_.walkTo(player, playerId, destination);
 }
 
 void PlayerController::moveThenAct(PlayerId playerId, Point destination, DestinationAction action)
@@ -54,10 +51,7 @@ void PlayerController::moveThenAct(PlayerId playerId, Point destination, Destina
 		return;
 
 	Player &player = players_[playerId];
-	player.destinationAction = action;
-	player.path = pathFinder_.findPath(player.position.future, destination, map_, collision_);
-	player.moveState = player.path.empty() ? PlayerMoveState::Acting : PlayerMoveState::Pathing;
-	EmitControllerEvent(eventSink_, player.path.empty() ? MovementEventType::DestinationActionReady : MovementEventType::PathStarted, playerId, destination, action.type);
+	paths_.moveThenAct(player, playerId, destination, action);
 }
 
 void PlayerController::standAndAct(PlayerId playerId, DestinationAction action)

@@ -130,6 +130,7 @@ RawInputEvent
   -> MovementCommand::WalkTo
   -> CommandDispatcher::dispatch
   -> PlayerController::walkTo
+  -> PlayerPathPlanner::walkTo
   -> PathFinder::findPath
   -> WalkPath
   -> PlayerMovement::update
@@ -148,6 +149,7 @@ RawInputEvent
   -> MovementCommand::WalkTo / MoveThenAct / StandAndAct
   -> CommandDispatcher
   -> PlayerController
+  -> PlayerPathPlanner
   -> PlayerMovement
   -> PlayerPathStepper
   -> PlayerActionRunner
@@ -194,6 +196,10 @@ PlayerAnimationLockGate
 
 DestinationAction
   action to perform after movement reaches range
+
+PlayerPathPlanner
+  command-side helper that finds paths, stores pathing state, and emits
+  path-started or action-ready controller events
 
 PlayerActionRunner
   turns an arrived player into acting state and runs the queued destination
@@ -283,6 +289,14 @@ MovementCodec
 EnemyMovement
   pressure layer with speed, attack range, windup, recovery, and enemy attack
   resolution constraints
+
+EnemyPursuitStepper
+  constrained enemy chase helper that commits pursuit steps until step budget,
+  blocking, or attack range stops movement
+
+EnemyAttackRunner
+  enemy attack state helper for range checks, windup timing, recovery timing,
+  and combat resolution
 
 CombatResolver
   deterministic consequence layer for executed attack actions

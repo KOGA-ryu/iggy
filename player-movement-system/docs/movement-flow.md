@@ -61,8 +61,13 @@ The dispatcher validates and routes commands to the correct system:
 
 ```text
 WalkTo -> PlayerController::walkTo
+       -> PlayerPathPlanner
 Stop   -> PlayerController::stop
 ```
+
+`PlayerController` owns command semantics such as stand-ground and stop.
+`PlayerPathPlanner` owns the narrower path setup: finding a route, storing
+pathing state, and publishing path-started or immediate-action-ready events.
 
 ## 6. Simulation
 
@@ -215,14 +220,18 @@ Enemies build on player movement by adding constrained pressure:
 
 ```text
 enemy position
+  -> EnemyPursuitStepper
   -> pursuit step budget
   -> attack range
+  -> EnemyAttackRunner
   -> attack windup
   -> attack recovery
 ```
 
 The goal is not simply to reach the player. The goal is to stay inside a fair
 reaction window: readable enough to answer, fast enough to matter.
+`EnemyPursuitStepper` owns that chase budget and stops when the enemy reaches
+attack range, leaving the next frame to start windup through `EnemyAttackRunner`.
 
 ## 14. Combat Resolution
 
@@ -263,6 +272,7 @@ Enemy attacks use the same consequence path:
 
 ```text
 EnemyMovement
+  -> EnemyAttackRunner
   -> attack windup completes
   -> CombatSystem::resolveEnemyAttack
   -> CombatResolver

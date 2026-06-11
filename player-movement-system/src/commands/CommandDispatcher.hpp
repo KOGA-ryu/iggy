@@ -1,6 +1,8 @@
 #pragma once
 
 #include "commands/MovementCommand.hpp"
+#include "commands/MovementCommandEventEmitter.hpp"
+#include "commands/MovementCommandValidator.hpp"
 #include "events/MovementEventSink.hpp"
 #include "player/PlayerController.hpp"
 
@@ -14,7 +16,8 @@ public:
 
 private:
 	PlayerController &playerController_;
-	MovementEventSink *eventSink_;
+	MovementCommandValidator validator_;
+	MovementCommandEventEmitter events_;
 };
 
 } // namespace dev

@@ -22,6 +22,7 @@ Good first tests:
 - object target creates `MoveThenAct(Interact)`
 - stand-ground plus attack target creates `StandAndAct(Attack)`
 - destination action survives until path is consumed
+- PlayerPathPlanner starts pathing and emits path events
 - action executor rejects invalid targets
 - action executor waits when target is out of range
 - action executor applies attack animation commitment
@@ -33,8 +34,10 @@ Good first tests:
 - CommandLog replay produces the same movement/action event sequence
 - MovementCodec round-trips MoveThenAct command packets
 - enemy pursuit obeys maxStepsPerTick
+- EnemyPursuitStepper stops pursuit once attack range is reached
 - enemy in range enters attack windup
 - enemy attack windup transitions into recovery
+- EnemyAttackRunner owns enemy windup, recovery, and restart timing
 - CombatResolver applies deterministic damage and defeat
 - ActionExecutor attack can damage registered combat target
 - CombatSystem emits Hit and Defeated events with damage and remaining HP
