@@ -30,6 +30,7 @@
 #include "app/RuntimeRunFinalizer.hpp"
 #include "app/RuntimeRunRecorder.hpp"
 #include "app/RuntimeSessionInputRouter.hpp"
+#include "app/RuntimeSetupFailurePolicy.hpp"
 #include "app/RuntimeSetupRunner.hpp"
 #include "app/RuntimeSourceDrainer.hpp"
 #include "app/RuntimeSourceDrainerSettingsBuilder.hpp"
@@ -5390,6 +5391,34 @@ void TestRuntimeExitCodePolicyFailsSetupErrors()
 	Expect(dev::RuntimeExitCodePolicy {}.exitCodeFor(inventoryFailure) == 1, "runtime exit policy should return failure for configured inventory script failures");
 }
 
+void TestRuntimeSetupFailurePolicyFailsSetupLoadErrors()
+{
+	dev::RuntimeSetupResult clean;
+
+	dev::RuntimeSetupResult startupFailure;
+	startupFailure.startupScriptRan = true;
+	startupFailure.startupScriptResult.status = dev::SessionScriptRunStatus::LoadFailed;
+
+	dev::RuntimeSetupResult inventoryFailure;
+	inventoryFailure.inventoryScriptRan = true;
+	inventoryFailure.inventoryScriptResult.status = dev::InventoryScriptRunStatus::LoadFailed;
+
+	dev::RuntimeSetupResult rejectedInventoryCommand;
+	rejectedInventoryCommand.inventoryScriptRan = true;
+	rejectedInventoryCommand.inventoryScriptResult.status = dev::InventoryScriptRunStatus::Completed;
+	rejectedInventoryCommand.inventoryScriptResult.commandResults.push_back({
+	    .type = dev::InventoryCommandResultType::Rejected,
+	    .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 99 },
+	});
+
+	dev::RuntimeSetupFailurePolicy policy;
+
+	Expect(!policy.failed(clean), "runtime setup failure policy should not fail clean setup state");
+	Expect(policy.failed(startupFailure), "runtime setup failure policy should fail startup load failures");
+	Expect(policy.failed(inventoryFailure), "runtime setup failure policy should fail configured inventory setup failures");
+	Expect(!policy.failed(rejectedInventoryCommand), "runtime setup failure policy should allow completed scripts with rejected commands");
+}
+
 void TestRuntimeExitCodePolicyAllowsCommandRejections()
 {
 	dev::GameLoopResult result;
@@ -7122,6 +7151,7 @@ int main()
 	TestRuntimeRunFinalizerCapturesFinalModeAndLeavesDisabledOutputsUntouched();
 	TestRuntimeExitCodePolicyReportsSuccessForCleanRun();
 	TestRuntimeExitCodePolicyFailsSetupErrors();
+	TestRuntimeSetupFailurePolicyFailsSetupLoadErrors();
 	TestRuntimeExitCodePolicyAllowsCommandRejections();
 	TestRuntimeExitCodePolicyFailsOutputErrors();
 	TestRuntimeOutputFailurePolicyFailsAttemptedUnsavedOutputs();

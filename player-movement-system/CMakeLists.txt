@@ -31,6 +31,7 @@ add_library(player_movement_system
   src/app/RuntimeRunFinalizer.cpp
   src/app/RuntimeRunRecorder.cpp
   src/app/RuntimeSetupRunner.cpp
+  src/app/RuntimeSetupFailurePolicy.cpp
   src/app/RuntimeSessionInputRouter.cpp
   src/app/RuntimeSourceDrainer.cpp
   src/app/RuntimeSourceDrainerSettingsBuilder.cpp

@@ -631,6 +631,10 @@ RuntimeRunFinalizer
   app-layer completion policy that records final session mode and applies
   configured output finalization to GameLoopResult
 
+RuntimeSetupFailurePolicy
+  app-layer policy that treats failed startup scripts and non-completed
+  configured inventory setup scripts as setup failures
+
 RuntimeOutputFailurePolicy
   app-layer policy that treats attempted-but-unsaved runtime artifact outputs
   as output failures while ignoring outputs that were never requested

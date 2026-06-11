@@ -181,6 +181,7 @@ Good first tests:
 - RuntimeRunRecorder turns frame work into frame reports and run summaries
 - RuntimeRunExecutor runs setup, frames, and finalization in lifecycle order
 - RuntimeRunFinalizer captures final session mode and applies output finalization
+- RuntimeSetupFailurePolicy maps setup script failures to setup failures
 - RuntimeOutputFailurePolicy maps attempted unsaved artifacts to output failures
 - RuntimeExitCodePolicy maps setup and output failures to process failures
 - RuntimeOutputSettings defaults to no runtime artifact outputs
