@@ -127,6 +127,7 @@ Good first tests:
 - RuntimeRunSummary defaults to empty aggregate run state
 - RuntimeRunRecorder aggregates setup inventory results without creating frames
 - RuntimeRunRecorder turns frame work into frame reports and run summaries
+- RuntimeRunFinalizer captures final session mode and applies output finalization
 - RuntimeExitCodePolicy maps setup and output failures to process failures
 - RuntimeOutputSettings defaults to no runtime artifact outputs
 - RuntimeOutputResult defaults to no artifact save attempts

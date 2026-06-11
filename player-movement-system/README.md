@@ -399,6 +399,10 @@ RuntimeRunRecorder
   app-layer recorder that turns per-frame runtime work into RuntimeFrameReport
   entries and RuntimeRunSummary aggregates
 
+RuntimeRunFinalizer
+  app-layer completion policy that records final session mode and applies
+  configured output finalization to GameLoopResult
+
 RuntimeExitCodePolicy
   app-layer policy that translates GameLoopResult setup and output failures
   into process-style success/failure exit codes

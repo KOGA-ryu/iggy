@@ -17,6 +17,7 @@
 #include "app/RuntimeFrameTraceFileStore.hpp"
 #include "app/RuntimeOutputFinalizer.hpp"
 #include "app/RuntimeRawInputDrainer.hpp"
+#include "app/RuntimeRunFinalizer.hpp"
 #include "app/RuntimeRunRecorder.hpp"
 #include "app/RuntimeSetupRunner.hpp"
 #include "app/RuntimeSourceDrainer.hpp"
@@ -3680,6 +3681,25 @@ void TestRuntimeRunRecorderAggregatesFrameReportsAndSummary()
 	Expect(report.frameEvents.movementEvents().size() == 1, "runtime run recorder frame report should keep simulation frame events");
 }
 
+void TestRuntimeRunFinalizerCapturesFinalModeAndLeavesDisabledOutputsUntouched()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_run_finalizer_test";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root / "saves" };
+	session.startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	session.setMode(dev::GameSessionMode::Inventory);
+	dev::GameLoopResult result;
+
+	dev::RuntimeRunFinalizer {}.finalize(session, dev::RuntimeOutputSettings {}, result);
+
+	Expect(result.finalMode == dev::GameSessionMode::Inventory, "runtime run finalizer should capture final session mode");
+	Expect(!result.output.runTraceSaveAttempted, "runtime run finalizer should leave disabled trace output untouched");
+	Expect(!result.output.debugBundleSaveAttempted, "runtime run finalizer should leave disabled bundle output untouched");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestRuntimeExitCodePolicyReportsSuccessForCleanRun()
 {
 	dev::GameLoopResult result;
@@ -4900,6 +4920,7 @@ int main()
 	TestRuntimeRunSummaryDefaultsToEmptyRun();
 	TestRuntimeRunRecorderAggregatesSetupInventoryResultsWithoutFrame();
 	TestRuntimeRunRecorderAggregatesFrameReportsAndSummary();
+	TestRuntimeRunFinalizerCapturesFinalModeAndLeavesDisabledOutputsUntouched();
 	TestRuntimeExitCodePolicyReportsSuccessForCleanRun();
 	TestRuntimeExitCodePolicyFailsSetupErrors();
 	TestRuntimeExitCodePolicyAllowsCommandRejections();

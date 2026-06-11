@@ -2,7 +2,7 @@
 
 #include "RuntimeExitCodePolicy.hpp"
 #include "RuntimeFrameRunner.hpp"
-#include "RuntimeOutputFinalizer.hpp"
+#include "RuntimeRunFinalizer.hpp"
 #include "RuntimeRunRecorder.hpp"
 #include "RuntimeSetupRunner.hpp"
 #include "RuntimeSourceDrainer.hpp"
@@ -39,8 +39,7 @@ GameLoopResult GameLoop::runForResult()
 	};
 
 	auto finish = [&]() {
-		result.finalMode = session_.mode();
-		RuntimeOutputFinalizer {}.finalize(settings_.output, result);
+		RuntimeRunFinalizer {}.finalize(session_, settings_.output, result);
 		return result;
 	};
 

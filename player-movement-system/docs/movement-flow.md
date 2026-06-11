@@ -1041,14 +1041,17 @@ GameLoopResult::output
 
 ```text
 GameLoopResult
+  -> RuntimeRunFinalizer
   -> RuntimeOutputFinalizer
   -> RuntimeTraceService
   -> RuntimeDebugArtifactBundle
 ```
 
-That keeps `GameLoop` focused on lifecycle, input routing, source draining, and
-frame stepping. Output finalization owns the app artifact policy and exposes the
-same success/failure flags on `GameLoopResult::output`.
+`RuntimeRunFinalizer` records the final session mode, then delegates configured
+artifact writes to `RuntimeOutputFinalizer`. That keeps `GameLoop` focused on
+setup, loop bounds, and finalization timing. Output finalization owns the app
+artifact policy and exposes the same success/failure flags on
+`GameLoopResult::output`.
 
 `GameLoopSettings::output.runTracePath` lets the app shell persist a full run
 trace after the loop exits:

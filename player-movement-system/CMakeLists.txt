@@ -19,6 +19,7 @@ add_library(player_movement_system
   src/app/RuntimeInputRouter.cpp
   src/app/RuntimeOutputFinalizer.cpp
   src/app/RuntimeRawInputDrainer.cpp
+  src/app/RuntimeRunFinalizer.cpp
   src/app/RuntimeRunRecorder.cpp
   src/app/RuntimeSetupRunner.cpp
   src/app/RuntimeSourceDrainer.cpp
