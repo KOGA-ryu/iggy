@@ -76,6 +76,7 @@
 #include "save/SnapshotByteStream.hpp"
 #include "save/SnapshotCodec.hpp"
 #include "save/SnapshotChecksum.hpp"
+#include "save/SnapshotEntityCodec.hpp"
 #include "save/SnapshotFileStore.hpp"
 #include "save/SnapshotFrameCodec.hpp"
 #include "save/SnapshotReader.hpp"
@@ -2428,6 +2429,72 @@ void TestSnapshotByteStreamRejectsShortReads()
 	Expect(!reader.readU32(value), "snapshot byte reader should reject short u32 reads");
 	Expect(reader.offset() == 0, "snapshot byte reader should not advance after failed reads");
 	Expect(reader.readU8(first) && first == 1, "snapshot byte reader should continue after failed reads");
+}
+
+void TestSnapshotEntityCodecRoundTripsItemAndCombatant()
+{
+	dev::SnapshotBytes bytes;
+	dev::SnapshotByteWriter writer { bytes };
+	dev::SnapshotEntityCodec codec;
+	dev::Item item {
+	    .id = 91,
+	    .tile = { 3, 4 },
+	    .equipmentSlot = dev::EquipmentSlot::Accessory,
+	    .combatModifiers = { .attackPower = 2, .defense = 5 },
+	};
+	dev::Combatant combatant {
+	    .target = { .type = dev::TargetType::Enemy, .id = 92, .tile = { 5, 6 } },
+	    .stats = { .hitPoints = 7, .attackPower = 8, .defense = 9 },
+	};
+	codec.writeItem(writer, item);
+	codec.writeCombatant(writer, combatant);
+
+	dev::SnapshotByteReader reader { bytes };
+	dev::Item decodedItem;
+	dev::Combatant decodedCombatant;
+	Expect(codec.readItem(reader, decodedItem), "snapshot entity codec should read encoded item");
+	Expect(codec.readCombatant(reader, decodedCombatant), "snapshot entity codec should read encoded combatant");
+	Expect(decodedItem.id == 91 && decodedItem.tile == dev::Point { 3, 4 }, "snapshot entity codec should preserve item identity and tile");
+	Expect(decodedItem.equipmentSlot == std::optional<dev::EquipmentSlot> { dev::EquipmentSlot::Accessory }, "snapshot entity codec should preserve item equipment slot");
+	Expect(decodedItem.combatModifiers.attackPower == 2 && decodedItem.combatModifiers.defense == 5, "snapshot entity codec should preserve item combat modifiers");
+	Expect(decodedCombatant.target.type == dev::TargetType::Enemy && decodedCombatant.target.id == 92 && decodedCombatant.target.tile == dev::Point { 5, 6 }, "snapshot entity codec should preserve combatant target");
+	Expect(decodedCombatant.stats.hitPoints == 7 && decodedCombatant.stats.attackPower == 8 && decodedCombatant.stats.defense == 9, "snapshot entity codec should preserve combatant stats");
+	Expect(reader.consumed(), "snapshot entity codec should consume encoded entity bytes");
+}
+
+void TestSnapshotEntityCodecRejectsInvalidEnums()
+{
+	dev::SnapshotEntityCodec codec;
+
+	dev::SnapshotBytes badTargetBytes;
+	dev::SnapshotByteWriter badTargetWriter { badTargetBytes };
+	badTargetWriter.writeU8(static_cast<uint8_t>(dev::TargetType::Object) + 1U);
+	badTargetWriter.writeU32(1);
+	badTargetWriter.writeI32(0);
+	badTargetWriter.writeI32(0);
+	dev::SnapshotByteReader badTargetReader { badTargetBytes };
+	dev::Target target;
+	Expect(!codec.readTarget(badTargetReader, target), "snapshot entity codec should reject invalid target type");
+
+	dev::SnapshotBytes badSlotBytes;
+	dev::SnapshotByteWriter badSlotWriter { badSlotBytes };
+	badSlotWriter.writeU32(2);
+	badSlotWriter.writeI32(1);
+	badSlotWriter.writeI32(1);
+	badSlotWriter.writeU8(1);
+	badSlotWriter.writeU8(static_cast<uint8_t>(dev::EquipmentSlot::Accessory) + 1U);
+	badSlotWriter.writeI32(0);
+	badSlotWriter.writeI32(0);
+	dev::SnapshotByteReader badSlotReader { badSlotBytes };
+	dev::Item item;
+	Expect(!codec.readItem(badSlotReader, item), "snapshot entity codec should reject invalid equipment slot");
+
+	dev::SnapshotBytes badActionBytes;
+	dev::SnapshotByteWriter badActionWriter { badActionBytes };
+	badActionWriter.writeU8(static_cast<uint8_t>(dev::DestinationActionType::Interact) + 1U);
+	dev::SnapshotByteReader badActionReader { badActionBytes };
+	dev::DestinationAction action;
+	Expect(!codec.readDestinationAction(badActionReader, action), "snapshot entity codec should reject invalid destination action type");
 }
 
 void TestSnapshotFrameCodecFramesPayloadBytes()
@@ -5991,6 +6058,8 @@ int main()
 	TestSnapshotChecksumValidatesTrailingChecksum();
 	TestSnapshotByteStreamWritesLittleEndianPrimitives();
 	TestSnapshotByteStreamRejectsShortReads();
+	TestSnapshotEntityCodecRoundTripsItemAndCombatant();
+	TestSnapshotEntityCodecRejectsInvalidEnums();
 	TestSnapshotFrameCodecFramesPayloadBytes();
 	TestSnapshotFrameCodecRejectsInvalidFrames();
 	TestSnapshotFileStoreSavesAndLoadsVersionedBytes();

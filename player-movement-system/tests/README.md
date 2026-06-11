@@ -109,6 +109,7 @@ Good first tests:
 - SnapshotCodec round-trips versioned snapshot bytes and rejects invalid or corrupted data
 - SnapshotChecksum appends and validates snapshot byte checksums
 - SnapshotByteStream writes little-endian primitives and rejects short reads
+- SnapshotEntityCodec round-trips item/combatant fields and rejects invalid entity enums
 - SnapshotFrameCodec frames payload bytes and rejects invalid snapshot frames
 - SnapshotFileStore saves versioned bytes and rejects corrupt save files
 - SaveGameService saves and loads SimulationWorld without replacing event sinks

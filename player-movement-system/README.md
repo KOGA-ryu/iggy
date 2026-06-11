@@ -404,6 +404,10 @@ SnapshotByteWriter / SnapshotByteReader
   little-endian primitive byte stream helpers shared by snapshot payloads,
   frame headers, and checksum trailers
 
+SnapshotEntityCodec
+  reusable field codec for durable entity fragments such as points, targets,
+  actor positions, item/equipment data, combat stats, and combatants
+
 SnapshotCodec
   durable-state serializer for snapshots once the save frame is trusted
 
