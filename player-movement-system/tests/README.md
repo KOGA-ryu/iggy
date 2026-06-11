@@ -44,6 +44,7 @@ Good first tests:
 - CommandLogChecksum appends and validates movement log checksums
 - CommandPacketListCodec frames counted movement packet lists and rejects invalid sizes
 - CommandLogFrameCodec frames movement packet bytes and rejects invalid frame metadata
+- CommandLogFileStore saves, loads, replays, and rejects bad movement command log files
 - EnemyPursuitStepPlanner chooses the next chase tile toward a target
 - EnemyPursuitStepGate rejects map-blocked and collision-blocked pursuit tiles
 - EnemyAttackRange applies tuned Chebyshev attack range

@@ -101,6 +101,7 @@
 #include "replay/CommandLog.hpp"
 #include "replay/CommandLogChecksum.hpp"
 #include "replay/CommandLogCodec.hpp"
+#include "replay/CommandLogFileStore.hpp"
 #include "replay/CommandLogFrameCodec.hpp"
 #include "replay/CommandPacketListCodec.hpp"
 #include "replay/CommandReplayer.hpp"
@@ -787,6 +788,78 @@ void TestCommandLogFrameCodecRejectsInvalidFrames()
 	wrongCount[8] = 2;
 	dev::CommandLogChecksum {}.appendTo(wrongCount);
 	Expect(!frameCodec.decode(wrongCount).has_value(), "movement command log frame codec should reject payload size mismatch");
+}
+
+void TestCommandLogFileStoreSavesLoadsAndReplays()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_movement_log_file_store_replay_test";
+	const std::filesystem::path path = root / "movement.imcl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+	std::filesystem::remove(path.string() + ".tmp");
+
+	dev::CommandLog log;
+	log.record({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+	log.record({
+	    .type = dev::MovementCommandType::Stop,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+
+	dev::CommandLogFileStore store;
+	Expect(store.save(path, log), "movement command log file store should save log bytes");
+	std::optional<dev::CommandLog> loaded = store.load(path);
+
+	Expect(loaded.has_value(), "movement command log file store should load saved log");
+	Expect(loaded.has_value() && loaded->commands().size() == 2, "movement command log file store should preserve command count");
+	Expect(!std::filesystem::exists(path.string() + ".tmp"), "movement command log file store should remove temp file after save");
+
+	dev::EventRecorder events;
+	dev::TileMap map;
+	dev::Collision collision;
+	dev::PathFinder pathFinder;
+	std::vector<dev::Player> players { MakePlayer({ 0, 0 }) };
+	dev::PlayerController controller { players, map, collision, pathFinder, &events };
+	dev::CommandDispatcher dispatcher { controller, &events };
+	dev::CommandReplayer replayer { dispatcher };
+	dev::CommandReplayReport report = loaded.has_value()
+	    ? replayer.replay(*loaded)
+	    : dev::CommandReplayReport {};
+
+	Expect(report.results.size() == 2, "loaded movement command log should replay");
+	Expect(report.acceptedCount() == 2, "loaded movement command log should preserve accepted dispatches");
+	std::size_t acceptedCommands = 0;
+	for (const dev::MovementEvent &event : events.events()) {
+		if (event.type == dev::MovementEventType::CommandAccepted)
+			++acceptedCommands;
+	}
+	Expect(acceptedCommands == 2, "loaded movement command log replay should emit accepted command events");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestCommandLogFileStoreRejectsCorruptAndMissingFiles()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_movement_log_file_store_corrupt_test";
+	const std::filesystem::path missingPath = root / "missing.imcl";
+	const std::filesystem::path corruptPath = root / "corrupt.imcl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	{
+		std::ofstream output { corruptPath, std::ios::binary | std::ios::trunc };
+		output << "not a movement command log";
+	}
+
+	dev::CommandLogFileStore store;
+	Expect(!store.load(missingPath).has_value(), "movement command log file store should reject missing file");
+	Expect(!store.load(corruptPath).has_value(), "movement command log file store should reject corrupt file");
+
+	std::filesystem::remove_all(root);
 }
 
 void TestEnemyPursuitStepPlannerChoosesNextTileTowardTarget()
@@ -7853,6 +7926,8 @@ int main()
 	TestCommandPacketListCodecRejectsInvalidSizes();
 	TestCommandLogFrameCodecFramesPacketBytes();
 	TestCommandLogFrameCodecRejectsInvalidFrames();
+	TestCommandLogFileStoreSavesLoadsAndReplays();
+	TestCommandLogFileStoreRejectsCorruptAndMissingFiles();
 	TestEnemyPursuitStepPlannerChoosesNextTileTowardTarget();
 	TestEnemyPursuitStepGateRequiresWalkableUnblockedTile();
 	TestEnemyAttackRangeUsesEnemyTuning();

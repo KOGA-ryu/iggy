@@ -108,6 +108,7 @@ add_library(player_movement_system
   src/replay/CommandLog.cpp
   src/replay/CommandLogChecksum.cpp
   src/replay/CommandLogCodec.cpp
+  src/replay/CommandLogFileStore.cpp
   src/replay/CommandLogFrameCodec.cpp
   src/replay/CommandPacketListCodec.cpp
   src/replay/CommandReplayReport.cpp

@@ -232,6 +232,19 @@ top-level `CommandLogCodec` is the only layer that turns decoded packet bytes
 back into semantic `MovementCommand` values, so corrupt or invalid command logs
 are rejected before they reach `CommandReplayer`.
 
+Saving a movement replay adds one more edge boundary:
+
+```text
+CommandLog
+  -> CommandLogCodec
+  -> CommandLogFileStore
+  -> ByteFileStore
+```
+
+Loading reverses that path. A missing or corrupt `.imcl` file returns no
+`CommandLog`, so replay does not have to know about filesystem errors or bad
+byte streams.
+
 ## 12. Network Codec
 
 Networking should transmit semantic commands, not raw input:

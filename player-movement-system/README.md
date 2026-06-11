@@ -366,6 +366,10 @@ CommandLogFrameCodec
   replay-file frame boundary that owns magic, version, and checksum-protected
   packet-list payloads
 
+CommandLogFileStore
+  filesystem boundary for movement replay logs, mapping saved bytes to valid
+  CommandLog values or missing/corrupt load failures
+
 MovementCommandDispatchResult
   inspectable accepted/rejected result returned by CommandDispatcher and
   collected by CommandReplayer during movement replay
