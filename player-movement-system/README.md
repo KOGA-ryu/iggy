@@ -732,6 +732,10 @@ SessionScriptRunner
   high-level automation use case that loads a lifecycle script file and replays
   it through the same dispatcher used by live session actions
 
+RuntimeStartupScriptIntake
+  app-layer intake step that binds startup lifecycle script replay to the
+  SessionCommandDispatcher used by setup
+
 RuntimeLoopTypes
   app-layer contracts that group GameLoop settings, setup/output settings,
   per-frame reports, run summaries, and final results separately from the loop

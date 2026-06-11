@@ -1006,7 +1006,7 @@ The app layer can now run a minimal bounded loop:
 GameLoopSettings
   -> RuntimeSetupSettings
   -> optional startup script
-  -> SessionScriptRunner
+  -> RuntimeStartupScriptIntake
   -> optional inventory script
   -> InventoryScriptRunner
   -> RuntimeSourceSettings
@@ -1022,12 +1022,17 @@ files by hand. It composes existing boundaries:
 
 ```text
 startup file  -> SessionCommandLogFileStore
-startup run   -> SessionCommandDispatcher
+startup run   -> RuntimeStartupScriptIntake -> SessionCommandDispatcher
 inventory file -> InventoryCommandLogFileStore
 inventory run -> InventoryCommandDispatcher
 frame update  -> GameSession::update
 events        -> SessionEventRecorder / InventoryEventRecorder
 ```
+
+`RuntimeStartupScriptIntake` is the app-layer adapter above the lifecycle
+script runner. It wires startup replay to the same `SessionCommandDispatcher`
+used by live session commands, while `SessionScriptRunner` keeps owning file
+loading and replay.
 
 `RuntimeInventoryScriptIntake` is the runtime-player adapter above the
 inventory script runner. It checks whether the selected player exists, wires the
@@ -1155,6 +1160,7 @@ GameLoopResult::setup
 ```text
 RuntimeSetupSettings
   -> RuntimeSetupRunner
+  -> RuntimeStartupScriptIntake
   -> RuntimeSetupRunResult
   -> RuntimeSetupRunResultApplier
   -> setup result

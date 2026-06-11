@@ -1,6 +1,6 @@
 #include "RuntimeSetupRunner.hpp"
 
-#include "session/SessionScriptRunner.hpp"
+#include "app/RuntimeStartupScriptIntake.hpp"
 
 namespace dev {
 
@@ -20,8 +20,9 @@ RuntimeSetupRunResult RuntimeSetupRunner::run(const RuntimeSetupSettings &settin
 
 	if (settings.startupScript.has_value()) {
 		result.setup.startupScriptRan = true;
-		SessionScriptRunner runner { sessionDispatcher_ };
-		result.setup.startupScriptResult = runner.run(*settings.startupScript);
+		result.setup.startupScriptResult = RuntimeStartupScriptIntake {}.run(
+		    *settings.startupScript,
+		    sessionDispatcher_);
 		if (setupFailurePolicy_.failed(result.setup)) {
 			result.framesAllowed = false;
 			return result;

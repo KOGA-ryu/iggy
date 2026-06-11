@@ -189,6 +189,7 @@ Good first tests:
 - SessionCommandLogFileStore rejects corrupt and missing lifecycle command log files
 - SessionScriptRunner loads and runs saved lifecycle scripts through the dispatcher
 - SessionScriptRunner distinguishes script load failure from command rejection
+- RuntimeStartupScriptIntake runs startup lifecycle scripts through setup dispatch
 - GameLoop runs configured startup scripts and bounded frame updates
 - GameLoop reports startup script load failure without ticking frames
 - GameLoop runs configured inventory scripts after startup scripts

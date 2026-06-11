@@ -86,6 +86,7 @@
 #include "app/RuntimeSourceDrainer.hpp"
 #include "app/RuntimeSourceDrainerSettingsBuilder.hpp"
 #include "app/RuntimeSourceStream.hpp"
+#include "app/RuntimeStartupScriptIntake.hpp"
 #include "app/RuntimeSessionText.hpp"
 #include "app/RuntimeTargetInputRouter.hpp"
 #include "app/RuntimeTraceService.hpp"
@@ -5205,6 +5206,36 @@ void TestSessionScriptRunnerReportsLoadFailureAndCommandRejectionSeparately()
 	std::filesystem::remove_all(root);
 }
 
+void TestRuntimeStartupScriptIntakeRunsLifecycleScript()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_startup_script_intake_test";
+	const std::filesystem::path path = root / "startup.iscl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::SessionCommandLog log;
+	log.record({
+	    .type = dev::SessionCommandType::StartNewGame,
+	    .newGameSettings = dev::NewGameSettings { .playerStart = { 4, 5 }, .playerHitPoints = 19 },
+	});
+	dev::SessionCommandLogFileStore store;
+	Expect(store.save(path, log), "runtime startup script intake test should create startup script");
+
+	dev::GameSession session { root / "saves" };
+	dev::SessionEventRecorder events;
+	dev::SessionCommandDispatcher dispatcher { session, &events };
+
+	const dev::SessionScriptRunResult result = dev::RuntimeStartupScriptIntake {}.run(path, dispatcher);
+
+	Expect(result.status == dev::SessionScriptRunStatus::Completed, "runtime startup script intake should complete saved lifecycle scripts");
+	Expect(result.commandResults.size() == 1 && result.commandResults[0].type == dev::SessionCommandResultType::Applied, "runtime startup script intake should dispatch lifecycle commands");
+	Expect(session.mode() == dev::GameSessionMode::Gameplay, "runtime startup script intake should apply session mode changes");
+	Expect(session.world().players.size() == 1 && session.world().players[0].position.tile == dev::Point { 4, 5 }, "runtime startup script intake should update the session world");
+	Expect(events.events().size() == 1, "runtime startup script intake should keep dispatcher event emission");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestGameLoopRunsStartupScriptAndFrames()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_game_loop_startup_script_test";
@@ -10305,6 +10336,7 @@ int main()
 	TestSessionCommandLogFileStoreRejectsCorruptAndMissingFiles();
 	TestSessionScriptRunnerRunsSavedLifecycleScript();
 	TestSessionScriptRunnerReportsLoadFailureAndCommandRejectionSeparately();
+	TestRuntimeStartupScriptIntakeRunsLifecycleScript();
 	TestGameLoopRunsStartupScriptAndFrames();
 	TestGameLoopReportsStartupScriptLoadFailure();
 	TestGameLoopRunsInventoryScriptAgainstActivePlayer();
