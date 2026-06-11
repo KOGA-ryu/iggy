@@ -171,7 +171,8 @@ MovementCodec
   socket-free command packet encoding/decoding boundary
 
 EnemyMovement
-  pressure layer with speed, attack range, windup, and recovery constraints
+  pressure layer with speed, attack range, windup, recovery, and enemy attack
+  resolution constraints
 
 CombatResolver
   deterministic consequence layer for executed attack actions

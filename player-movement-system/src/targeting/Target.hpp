@@ -12,6 +12,7 @@ enum class TargetType {
 	EmptyTile,
 	Item,
 	Enemy,
+	Player,
 	Npc,
 	Object,
 };
@@ -23,4 +24,3 @@ struct Target {
 };
 
 } // namespace dev
-

@@ -49,6 +49,7 @@ dev::Player MakePlayer(dev::Point tile = { 0, 0 })
 dev::Enemy MakeEnemy(dev::Point tile)
 {
 	dev::Enemy enemy;
+	enemy.id = 1;
 	enemy.position.tile = tile;
 	enemy.position.future = tile;
 	enemy.position.previous = tile;
@@ -364,6 +365,35 @@ void TestCombatSystemEmitsDefeatedEvent()
 	Expect(events.size() == 1 && events[0].remainingHitPoints == 0, "defeated event should include zero remaining hp");
 }
 
+void TestEnemyAttackResolvesCombatAgainstPlayer()
+{
+	dev::TileMap map;
+	dev::Collision collision;
+	dev::CombatEventRecorder combatEvents;
+	dev::CombatSystem combat { &combatEvents };
+	dev::Player player = MakePlayer({ 1, 0 });
+	player.combatStats.hitPoints = 20;
+	player.combatStats.defense = 1;
+	std::vector<dev::Enemy> enemies { MakeEnemy({ 0, 0 }) };
+	enemies[0].combatStats.attackPower = 5;
+	enemies[0].tuning.attackRangeTiles = 1;
+	enemies[0].tuning.attackWindupSeconds = 0.25F;
+
+	dev::EnemyMovement movement { map, collision, nullptr, &combat };
+	movement.update(enemies, player, 0.016F);
+	Expect(enemies[0].moveState == dev::EnemyMoveState::Attacking, "enemy should enter windup before damaging player");
+
+	movement.update(enemies, player, 0.25F);
+	Expect(player.combatStats.hitPoints == 16, "enemy attack should damage player after windup");
+	Expect(enemies[0].moveState == dev::EnemyMoveState::Recovering, "enemy should recover after resolving attack");
+
+	const std::vector<dev::CombatEvent> &events = combatEvents.events();
+	Expect(events.size() == 1, "enemy attack should emit one combat event");
+	Expect(events.size() == 1 && events[0].type == dev::CombatEventType::Hit, "enemy attack event should be Hit");
+	Expect(events.size() == 1 && events[0].target.type == dev::TargetType::Player, "enemy attack event should target player");
+	Expect(events.size() == 1 && events[0].damage == 4, "enemy attack event should include damage");
+}
+
 } // namespace
 
 int main()
@@ -382,6 +412,7 @@ int main()
 	TestActionExecutorAttackResolvesCombat();
 	TestCombatSystemEmitsHitEvent();
 	TestCombatSystemEmitsDefeatedEvent();
+	TestEnemyAttackResolvesCombatAgainstPlayer();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

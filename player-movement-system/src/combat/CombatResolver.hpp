@@ -9,7 +9,7 @@ namespace dev {
 class CombatResolver {
 public:
 	CombatResult resolveAttack(const CombatStats &attacker, Combatant &target) const;
+	CombatResult resolveAttack(const CombatStats &attacker, CombatStats &target) const;
 };
 
 } // namespace dev
-

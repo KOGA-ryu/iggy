@@ -242,3 +242,16 @@ CombatRejected(target)
 
 These events are for UI, floating damage numbers, audio, VFX, replay comparison,
 and tests.
+
+Enemy attacks use the same consequence path:
+
+```text
+EnemyMovement
+  -> attack windup completes
+  -> CombatSystem::resolveEnemyAttack
+  -> CombatResolver
+  -> CombatEvent
+  -> recovery
+```
+
+That keeps player and enemy attacks on the same damage rules.

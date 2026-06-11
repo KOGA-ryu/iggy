@@ -10,6 +10,7 @@ InteractionIntent InteractionIntentBuilder::build(Target target, bool standGroun
 	case TargetType::Item:
 		return { InteractionIntentType::Pickup, target };
 	case TargetType::Enemy:
+	case TargetType::Player:
 		return { InteractionIntentType::Attack, target };
 	case TargetType::Npc:
 		return { InteractionIntentType::Talk, target };
@@ -20,4 +21,3 @@ InteractionIntent InteractionIntentBuilder::build(Target target, bool standGroun
 }
 
 } // namespace dev
-

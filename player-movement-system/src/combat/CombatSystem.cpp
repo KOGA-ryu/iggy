@@ -63,4 +63,16 @@ CombatResult CombatSystem::resolvePlayerAttack(const Player &player, const Desti
 	return result;
 }
 
+CombatResult CombatSystem::resolveEnemyAttack(const Enemy &enemy, Player &player)
+{
+	Target playerTarget {
+		.type = TargetType::Player,
+		.id = 0,
+		.tile = player.position.tile,
+	};
+	CombatResult result = resolver_.resolveAttack(enemy.combatStats, player.combatStats);
+	EmitCombatEvent(eventSink_, playerTarget, result);
+	return result;
+}
+
 } // namespace dev

@@ -21,25 +21,28 @@ int ChebyshevDistance(Point a, Point b)
 
 } // namespace
 
-EnemyMovement::EnemyMovement(const TileMap &map, const Collision &collision, MovementEventSink *eventSink)
+EnemyMovement::EnemyMovement(const TileMap &map, const Collision &collision, MovementEventSink *eventSink, CombatSystem *combatSystem)
     : map_(map)
     , collision_(collision)
     , eventSink_(eventSink)
+    , combatSystem_(combatSystem)
 {
 }
 
-void EnemyMovement::update(std::vector<Enemy> &enemies, const Player &target, float deltaSeconds) const
+void EnemyMovement::update(std::vector<Enemy> &enemies, Player &target, float deltaSeconds) const
 {
 	for (Enemy &enemy : enemies) {
 		updateEnemy(enemy, target, deltaSeconds);
 	}
 }
 
-void EnemyMovement::updateEnemy(Enemy &enemy, const Player &target, float deltaSeconds) const
+void EnemyMovement::updateEnemy(Enemy &enemy, Player &target, float deltaSeconds) const
 {
 	if (enemy.moveState == EnemyMoveState::Attacking) {
 		enemy.stateTimerSeconds += deltaSeconds;
 		if (enemy.stateTimerSeconds >= enemy.tuning.attackWindupSeconds) {
+			if (combatSystem_ != nullptr)
+				combatSystem_->resolveEnemyAttack(enemy, target);
 			enemy.moveState = EnemyMoveState::Recovering;
 			enemy.stateTimerSeconds = 0.0F;
 		}
@@ -89,4 +92,3 @@ Point EnemyMovement::nextStepToward(Point from, Point to) const
 }
 
 } // namespace dev
-
