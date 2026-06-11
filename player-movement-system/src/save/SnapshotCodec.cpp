@@ -1,101 +1,14 @@
 #include "SnapshotCodec.hpp"
 
-#include <cstring>
 #include <limits>
 
 #include "interaction/DestinationAction.hpp"
+#include "save/SnapshotByteStream.hpp"
 #include "save/SnapshotFrameCodec.hpp"
 
 namespace dev {
 
 namespace {
-
-class ByteWriter {
-public:
-	void writeU8(uint8_t value) { bytes_.push_back(value); }
-
-	void writeU32(uint32_t value)
-	{
-		bytes_.push_back(static_cast<uint8_t>(value & 0xFFU));
-		bytes_.push_back(static_cast<uint8_t>((value >> 8U) & 0xFFU));
-		bytes_.push_back(static_cast<uint8_t>((value >> 16U) & 0xFFU));
-		bytes_.push_back(static_cast<uint8_t>((value >> 24U) & 0xFFU));
-	}
-
-	void writeI32(int value)
-	{
-		writeU32(static_cast<uint32_t>(value));
-	}
-
-	void writeFloat(float value)
-	{
-		uint32_t bits = 0;
-		static_assert(sizeof(bits) == sizeof(value));
-		std::memcpy(&bits, &value, sizeof(bits));
-		writeU32(bits);
-	}
-
-	SnapshotBytes take() { return std::move(bytes_); }
-
-private:
-	SnapshotBytes bytes_;
-};
-
-class ByteReader {
-public:
-	explicit ByteReader(const SnapshotBytes &bytes)
-	    : bytes_(bytes)
-	{
-	}
-
-	bool readU8(uint8_t &value)
-	{
-		if (offset_ + 1U > bytes_.size())
-			return false;
-		value = bytes_[offset_++];
-		return true;
-	}
-
-	bool readU32(uint32_t &value)
-	{
-		if (offset_ + 4U > bytes_.size())
-			return false;
-		value = static_cast<uint32_t>(bytes_[offset_])
-		    | (static_cast<uint32_t>(bytes_[offset_ + 1U]) << 8U)
-		    | (static_cast<uint32_t>(bytes_[offset_ + 2U]) << 16U)
-		    | (static_cast<uint32_t>(bytes_[offset_ + 3U]) << 24U);
-		offset_ += 4U;
-		return true;
-	}
-
-	bool readI32(int &value)
-	{
-		uint32_t raw = 0;
-		if (!readU32(raw))
-			return false;
-		value = static_cast<int>(raw);
-		return true;
-	}
-
-	bool readFloat(float &value)
-	{
-		uint32_t bits = 0;
-		if (!readU32(bits))
-			return false;
-		static_assert(sizeof(bits) == sizeof(value));
-		std::memcpy(&value, &bits, sizeof(value));
-		return true;
-	}
-
-	[[nodiscard]] bool consumed() const
-	{
-		return offset_ == bytes_.size();
-	}
-
-private:
-	const SnapshotBytes &bytes_;
-	std::size_t offset_ = 0;
-};
 
 uint32_t CountOf(std::size_t size)
 {
@@ -104,25 +17,25 @@ uint32_t CountOf(std::size_t size)
 	    : static_cast<uint32_t>(size);
 }
 
-void WritePoint(ByteWriter &writer, Point point)
+void WritePoint(SnapshotByteWriter &writer, Point point)
 {
 	writer.writeI32(point.x);
 	writer.writeI32(point.y);
 }
 
-bool ReadPoint(ByteReader &reader, Point &point)
+bool ReadPoint(SnapshotByteReader &reader, Point &point)
 {
 	return reader.readI32(point.x) && reader.readI32(point.y);
 }
 
-void WriteTarget(ByteWriter &writer, const Target &target)
+void WriteTarget(SnapshotByteWriter &writer, const Target &target)
 {
 	writer.writeU8(static_cast<uint8_t>(target.type));
 	writer.writeU32(target.id);
 	WritePoint(writer, target.tile);
 }
 
-bool ReadTarget(ByteReader &reader, Target &target)
+bool ReadTarget(SnapshotByteReader &reader, Target &target)
 {
 	uint8_t type = 0;
 	if (!reader.readU8(type) || type > static_cast<uint8_t>(TargetType::Object))
@@ -136,40 +49,40 @@ bool IsValidEquipmentSlot(uint8_t slot)
 	return slot <= static_cast<uint8_t>(EquipmentSlot::Accessory);
 }
 
-void WriteCombatStats(ByteWriter &writer, const CombatStats &stats)
+void WriteCombatStats(SnapshotByteWriter &writer, const CombatStats &stats)
 {
 	writer.writeI32(stats.hitPoints);
 	writer.writeI32(stats.attackPower);
 	writer.writeI32(stats.defense);
 }
 
-bool ReadCombatStats(ByteReader &reader, CombatStats &stats)
+bool ReadCombatStats(SnapshotByteReader &reader, CombatStats &stats)
 {
 	return reader.readI32(stats.hitPoints)
 	    && reader.readI32(stats.attackPower)
 	    && reader.readI32(stats.defense);
 }
 
-void WriteEquipmentCombatModifiers(ByteWriter &writer, const EquipmentCombatModifiers &modifiers)
+void WriteEquipmentCombatModifiers(SnapshotByteWriter &writer, const EquipmentCombatModifiers &modifiers)
 {
 	writer.writeI32(modifiers.attackPower);
 	writer.writeI32(modifiers.defense);
 }
 
-bool ReadEquipmentCombatModifiers(ByteReader &reader, EquipmentCombatModifiers &modifiers)
+bool ReadEquipmentCombatModifiers(SnapshotByteReader &reader, EquipmentCombatModifiers &modifiers)
 {
 	return reader.readI32(modifiers.attackPower)
 	    && reader.readI32(modifiers.defense);
 }
 
-void WriteDestinationAction(ByteWriter &writer, const DestinationAction &action)
+void WriteDestinationAction(SnapshotByteWriter &writer, const DestinationAction &action)
 {
 	writer.writeU8(static_cast<uint8_t>(action.type));
 	WriteTarget(writer, action.target);
 	writer.writeI32(action.rangeTiles);
 }
 
-bool ReadDestinationAction(ByteReader &reader, DestinationAction &action)
+bool ReadDestinationAction(SnapshotByteReader &reader, DestinationAction &action)
 {
 	uint8_t type = 0;
 	if (!reader.readU8(type) || type > static_cast<uint8_t>(DestinationActionType::Interact))
@@ -178,7 +91,7 @@ bool ReadDestinationAction(ByteReader &reader, DestinationAction &action)
 	return ReadTarget(reader, action.target) && reader.readI32(action.rangeTiles);
 }
 
-void WriteActorPosition(ByteWriter &writer, const ActorPosition &position)
+void WriteActorPosition(SnapshotByteWriter &writer, const ActorPosition &position)
 {
 	WritePoint(writer, position.tile);
 	WritePoint(writer, position.future);
@@ -186,7 +99,7 @@ void WriteActorPosition(ByteWriter &writer, const ActorPosition &position)
 	WritePoint(writer, position.precise);
 }
 
-bool ReadActorPosition(ByteReader &reader, ActorPosition &position)
+bool ReadActorPosition(SnapshotByteReader &reader, ActorPosition &position)
 {
 	return ReadPoint(reader, position.tile)
 	    && ReadPoint(reader, position.future)
@@ -194,7 +107,7 @@ bool ReadActorPosition(ByteReader &reader, ActorPosition &position)
 	    && ReadPoint(reader, position.precise);
 }
 
-void WriteItem(ByteWriter &writer, const Item &item)
+void WriteItem(SnapshotByteWriter &writer, const Item &item)
 {
 	writer.writeU32(item.id);
 	WritePoint(writer, item.tile);
@@ -204,7 +117,7 @@ void WriteItem(ByteWriter &writer, const Item &item)
 	WriteEquipmentCombatModifiers(writer, item.combatModifiers);
 }
 
-bool ReadItem(ByteReader &reader, Item &item)
+bool ReadItem(SnapshotByteReader &reader, Item &item)
 {
 	uint8_t hasSlot = 0;
 	if (!reader.readU32(item.id) || !ReadPoint(reader, item.tile) || !reader.readU8(hasSlot) || hasSlot > 1U)
@@ -219,14 +132,14 @@ bool ReadItem(ByteReader &reader, Item &item)
 	return ReadEquipmentCombatModifiers(reader, item.combatModifiers);
 }
 
-void WriteOptionalItem(ByteWriter &writer, const std::optional<Item> &item)
+void WriteOptionalItem(SnapshotByteWriter &writer, const std::optional<Item> &item)
 {
 	writer.writeU8(item.has_value() ? 1U : 0U);
 	if (item.has_value())
 		WriteItem(writer, *item);
 }
 
-bool ReadOptionalItem(ByteReader &reader, std::optional<Item> &item)
+bool ReadOptionalItem(SnapshotByteReader &reader, std::optional<Item> &item)
 {
 	uint8_t hasItem = 0;
 	if (!reader.readU8(hasItem) || hasItem > 1U)
@@ -242,7 +155,7 @@ bool ReadOptionalItem(ByteReader &reader, std::optional<Item> &item)
 	return true;
 }
 
-void WritePlayer(ByteWriter &writer, const Player &player)
+void WritePlayer(SnapshotByteWriter &writer, const Player &player)
 {
 	WriteActorPosition(writer, player.position);
 	writer.writeU8(static_cast<uint8_t>(player.moveState));
@@ -266,7 +179,7 @@ void WritePlayer(ByteWriter &writer, const Player &player)
 	writer.writeFloat(player.moveSpeedTilesPerSecond);
 }
 
-bool ReadPlayer(ByteReader &reader, Player &player)
+bool ReadPlayer(SnapshotByteReader &reader, Player &player)
 {
 	uint8_t moveState = 0;
 	uint32_t pathLength = 0;
@@ -326,7 +239,7 @@ bool ReadPlayer(ByteReader &reader, Player &player)
 	return true;
 }
 
-void WriteEnemy(ByteWriter &writer, const Enemy &enemy)
+void WriteEnemy(SnapshotByteWriter &writer, const Enemy &enemy)
 {
 	writer.writeU32(enemy.id);
 	WriteActorPosition(writer, enemy.position);
@@ -339,7 +252,7 @@ void WriteEnemy(ByteWriter &writer, const Enemy &enemy)
 	writer.writeFloat(enemy.stateTimerSeconds);
 }
 
-bool ReadEnemy(ByteReader &reader, Enemy &enemy)
+bool ReadEnemy(SnapshotByteReader &reader, Enemy &enemy)
 {
 	uint8_t moveState = 0;
 	if (!reader.readU32(enemy.id)
@@ -358,19 +271,19 @@ bool ReadEnemy(ByteReader &reader, Enemy &enemy)
 	return true;
 }
 
-void WriteCombatant(ByteWriter &writer, const Combatant &combatant)
+void WriteCombatant(SnapshotByteWriter &writer, const Combatant &combatant)
 {
 	WriteTarget(writer, combatant.target);
 	WriteCombatStats(writer, combatant.stats);
 }
 
-bool ReadCombatant(ByteReader &reader, Combatant &combatant)
+bool ReadCombatant(SnapshotByteReader &reader, Combatant &combatant)
 {
 	return ReadTarget(reader, combatant.target) && ReadCombatStats(reader, combatant.stats);
 }
 
 template <typename T, typename WriteFn>
-void WriteVector(ByteWriter &writer, const std::vector<T> &items, WriteFn writeItem)
+void WriteVector(SnapshotByteWriter &writer, const std::vector<T> &items, WriteFn writeItem)
 {
 	writer.writeU32(CountOf(items.size()));
 	for (const T &item : items)
@@ -378,7 +291,7 @@ void WriteVector(ByteWriter &writer, const std::vector<T> &items, WriteFn writeI
 }
 
 template <typename T, typename ReadFn>
-bool ReadVector(ByteReader &reader, std::vector<T> &items, ReadFn readItem)
+bool ReadVector(SnapshotByteReader &reader, std::vector<T> &items, ReadFn readItem)
 {
 	uint32_t count = 0;
 	if (!reader.readU32(count))
@@ -399,13 +312,13 @@ bool ReadVector(ByteReader &reader, std::vector<T> &items, ReadFn readItem)
 
 SnapshotBytes SnapshotCodec::encode(const SimulationSnapshot &snapshot) const
 {
-	ByteWriter writer;
+	SnapshotBytes payload;
+	SnapshotByteWriter writer { payload };
 	WriteVector(writer, snapshot.players, WritePlayer);
 	WriteVector(writer, snapshot.enemies, WriteEnemy);
 	WriteVector(writer, snapshot.items, WriteItem);
 	WriteVector(writer, snapshot.combatants, WriteCombatant);
 	WriteVector(writer, snapshot.targets, WriteTarget);
-	SnapshotBytes payload = writer.take();
 	return SnapshotFrameCodec {}.encode(payload);
 }
 
@@ -415,7 +328,7 @@ std::optional<SimulationSnapshot> SnapshotCodec::decode(const SnapshotBytes &byt
 	if (!payload.has_value())
 		return std::nullopt;
 
-	ByteReader reader { *payload };
+	SnapshotByteReader reader { *payload };
 	SimulationSnapshot snapshot;
 	if (!ReadVector(reader, snapshot.players, ReadPlayer)
 	    || !ReadVector(reader, snapshot.enemies, ReadEnemy)

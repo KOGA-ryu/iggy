@@ -1,5 +1,7 @@
 #include "SnapshotChecksum.hpp"
 
+#include "save/SnapshotByteStream.hpp"
+
 namespace dev {
 
 namespace {
@@ -7,19 +9,12 @@ namespace {
 constexpr uint32_t FnvOffset = 2166136261U;
 constexpr uint32_t FnvPrime = 16777619U;
 
-void WriteU32(SnapshotBytes &bytes, uint32_t value)
-{
-	bytes.push_back(static_cast<uint8_t>(value & 0xFFU));
-	bytes.push_back(static_cast<uint8_t>((value >> 8U) & 0xFFU));
-	bytes.push_back(static_cast<uint8_t>((value >> 16U) & 0xFFU));
-	bytes.push_back(static_cast<uint8_t>((value >> 24U) & 0xFFU));
-}
-
 } // namespace
 
 void SnapshotChecksum::appendTo(SnapshotBytes &bytes) const
 {
-	WriteU32(bytes, compute(bytes, bytes.size()));
+	SnapshotByteWriter writer { bytes };
+	writer.writeU32(compute(bytes, bytes.size()));
 }
 
 bool SnapshotChecksum::hasValidTrailingChecksum(const SnapshotBytes &bytes, std::size_t payloadSize) const
@@ -42,10 +37,10 @@ uint32_t SnapshotChecksum::compute(const SnapshotBytes &bytes, std::size_t lengt
 uint32_t SnapshotChecksum::readTrailingU32(const SnapshotBytes &bytes) const
 {
 	const std::size_t offset = bytes.size() - 4U;
-	return static_cast<uint32_t>(bytes[offset])
-	    | (static_cast<uint32_t>(bytes[offset + 1U]) << 8U)
-	    | (static_cast<uint32_t>(bytes[offset + 2U]) << 16U)
-	    | (static_cast<uint32_t>(bytes[offset + 3U]) << 24U);
+	SnapshotByteReader reader { bytes, offset };
+	uint32_t value = 0;
+	reader.readU32(value);
+	return value;
 }
 
 } // namespace dev

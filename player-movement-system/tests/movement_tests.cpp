@@ -73,6 +73,7 @@
 #include "replay/CommandReplayer.hpp"
 #include "save/SaveGameService.hpp"
 #include "save/SaveSlotService.hpp"
+#include "save/SnapshotByteStream.hpp"
 #include "save/SnapshotCodec.hpp"
 #include "save/SnapshotChecksum.hpp"
 #include "save/SnapshotFileStore.hpp"
@@ -2388,6 +2389,45 @@ void TestSnapshotChecksumValidatesTrailingChecksum()
 
 	bytes[0] ^= 0xFFU;
 	Expect(!checksum.hasValidTrailingChecksum(bytes, 4), "snapshot checksum should reject mutated payload");
+}
+
+void TestSnapshotByteStreamWritesLittleEndianPrimitives()
+{
+	dev::SnapshotBytes bytes;
+	dev::SnapshotByteWriter writer { bytes };
+	writer.writeU8(0xABU);
+	writer.writeU32(0x12345678U);
+	writer.writeI32(-2);
+	writer.writeFloat(1.5F);
+
+	Expect(bytes.size() == 13, "snapshot byte writer should append primitive bytes");
+	Expect(bytes.size() == 13 && bytes[1] == 0x78U && bytes[2] == 0x56U && bytes[3] == 0x34U && bytes[4] == 0x12U, "snapshot byte writer should write uint32 little-endian");
+
+	dev::SnapshotByteReader reader { bytes };
+	uint8_t byte = 0;
+	uint32_t unsignedValue = 0;
+	int signedValue = 0;
+	float floatValue = 0.0F;
+	Expect(reader.readU8(byte) && byte == 0xABU, "snapshot byte reader should read u8");
+	Expect(reader.readU32(unsignedValue) && unsignedValue == 0x12345678U, "snapshot byte reader should read u32");
+	Expect(reader.readI32(signedValue) && signedValue == -2, "snapshot byte reader should read i32");
+	Expect(reader.readFloat(floatValue) && Near(floatValue, 1.5F), "snapshot byte reader should read float");
+	Expect(reader.consumed(), "snapshot byte reader should report consumed bytes");
+
+	dev::SnapshotByteReader offsetReader { bytes, 1 };
+	Expect(offsetReader.readU32(unsignedValue) && unsignedValue == 0x12345678U, "snapshot byte reader should read from a starting offset");
+}
+
+void TestSnapshotByteStreamRejectsShortReads()
+{
+	dev::SnapshotBytes bytes { 1, 2, 3 };
+	dev::SnapshotByteReader reader { bytes };
+	uint32_t value = 0;
+	uint8_t first = 0;
+
+	Expect(!reader.readU32(value), "snapshot byte reader should reject short u32 reads");
+	Expect(reader.offset() == 0, "snapshot byte reader should not advance after failed reads");
+	Expect(reader.readU8(first) && first == 1, "snapshot byte reader should continue after failed reads");
 }
 
 void TestSnapshotFrameCodecFramesPayloadBytes()
@@ -5949,6 +5989,8 @@ int main()
 	TestSnapshotCodecRoundTripsVersionedBytes();
 	TestSnapshotCodecRejectsInvalidBytes();
 	TestSnapshotChecksumValidatesTrailingChecksum();
+	TestSnapshotByteStreamWritesLittleEndianPrimitives();
+	TestSnapshotByteStreamRejectsShortReads();
 	TestSnapshotFrameCodecFramesPayloadBytes();
 	TestSnapshotFrameCodecRejectsInvalidFrames();
 	TestSnapshotFileStoreSavesAndLoadsVersionedBytes();

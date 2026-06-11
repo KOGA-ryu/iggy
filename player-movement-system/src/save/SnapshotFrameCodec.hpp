@@ -2,7 +2,7 @@
 
 #include <optional>
 
-#include "save/SnapshotCodec.hpp"
+#include "save/SnapshotBytes.hpp"
 
 namespace dev {
 

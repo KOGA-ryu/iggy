@@ -79,6 +79,7 @@ add_library(player_movement_system
   src/player/WalkPath.cpp
   src/replay/CommandLog.cpp
   src/replay/CommandReplayer.cpp
+  src/save/SnapshotByteStream.cpp
   src/save/SnapshotChecksum.cpp
   src/save/SnapshotFrameCodec.cpp
   src/save/SaveGameService.cpp

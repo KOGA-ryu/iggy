@@ -396,6 +396,14 @@ SimulationSnapshot
   equipment, enemies, floor items, combat registry data, and clickable targets,
   not transient events or effects
 
+SnapshotBytes
+  raw byte buffer type shared by save codecs, frame validation, checksums, and
+  file persistence without forcing dependencies on the snapshot serializer
+
+SnapshotByteWriter / SnapshotByteReader
+  little-endian primitive byte stream helpers shared by snapshot payloads,
+  frame headers, and checksum trailers
+
 SnapshotCodec
   durable-state serializer for snapshots once the save frame is trusted
 

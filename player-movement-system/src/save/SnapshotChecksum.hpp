@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "save/SnapshotCodec.hpp"
+#include "save/SnapshotBytes.hpp"
 
 namespace dev {
 
