@@ -57,9 +57,11 @@ Good first tests:
 - EffectApplier applies hit-stop requests to SimulationClock
 - SimulationTimeStepBuilder converts raw frame delta through optional clock rules
 - SimulationEffectPipeline routes frame events and applies simulation-facing effects
+- SimulationEffectFinalizer applies frame effect consequences through the pipeline
 - SimulationFrameEventCapture collects frame events, forwards them, and restores sinks
 - SimulationFrameFinalizer applies post-tick targets, pickups, and effects
 - SimulationTargetFinalizer synchronizes moved and defeated target state
+- SimulationInventoryFinalizer applies accepted pickups and preserves rejected pickups
 - SimulationFrameRunner collects events, routes effects, applies hit-stop, and preserves forwarding
 - TargetRegistry resolves, removes, and falls back to empty tile targets
 - TargetSynchronizer publishes current enemy targets without deleting objects
@@ -105,8 +107,12 @@ Good first tests:
 - SaveGameService saves and loads SimulationWorld without replacing event sinks
 - SaveSlotService lists slot metadata and distinguishes valid, corrupt, and empty slots
 - SaveSlotService loads a selected slot into SimulationWorld without replacing event sinks
+- NewGameWorldBuilder creates starting player world state while preserving event sinks
+- SessionWorldSlotLoader replaces session world from a slot while preserving event sinks and failed-load state
 - GameSession starts a new game and advances frames
 - GameSession paused mode preserves queued commands
+- SessionModePolicy maps session modes to simulation frame policy
+- SessionModePolicy rejects activating an empty session through mode-only changes
 - GameSession save/load preserves event sinks and resets transient clock state
 - GameSession failed load preserves the active world
 - SessionCommandDispatcher applies start, save, load, and mode commands

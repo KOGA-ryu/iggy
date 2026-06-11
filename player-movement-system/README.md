@@ -367,6 +367,10 @@ SimulationEffectPipeline
   routes frame movement/combat events into effect requests and applies approved
   simulation-facing effects through EffectApplier
 
+SimulationEffectFinalizer
+  post-tick effect stage that runs frame feedback routing and applies any
+  simulation-facing effect consequences such as hit-stop
+
 SimulationFrameFinalizer
   post-tick consequence stage that synchronizes clickable targets, applies
   pickup transfers, and runs the simulation effect pipeline
@@ -374,6 +378,10 @@ SimulationFrameFinalizer
 SimulationTargetFinalizer
   post-tick target stage that publishes current enemy targets and removes
   defeated enemy targets
+
+SimulationInventoryFinalizer
+  post-tick inventory stage that applies accepted pickup actions and reports
+  rejected transfers without hiding item ownership rules in the frame runner
 
 SimulationSnapshot
   durable world state for save/load and debugging: players, inventories,
@@ -396,9 +404,21 @@ SaveSlotService
   slot-based save/load and metadata listing for menu/debug surfaces without
   loading corrupt or missing slots into the world
 
+NewGameSettings / NewGameWorldBuilder
+  new-session setup boundary that turns start settings into initial world state
+  while preserving the event sinks owned by the surrounding runtime/session
+
+SessionWorldSlotLoader
+  session-facing load boundary that replaces world state from a save slot only
+  on success, preserving runtime event sinks across the replacement
+
 GameSession
   game-loop-facing owner for SimulationWorld, SimulationClock, frame updates,
   mode policy, and save slots
+
+GameSessionMode / SessionModePolicy
+  compact lifecycle state and the rules that map gameplay, pause, inventory,
+  and empty sessions to simulation frame behavior
 
 SessionCommand / SessionCommandDispatcher
   semantic lifecycle command boundary for menu, UI, controller, replay, and

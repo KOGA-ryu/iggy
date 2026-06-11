@@ -10,9 +10,9 @@ SimulationFrameFinalizer::SimulationFrameFinalizer(SimulationClock *clock)
 void SimulationFrameFinalizer::finalize(SimulationWorld &world, SimulationFrameEvents &frameEvents) const
 {
 	targets_.finalize(world, frameEvents);
-	inventory_.applyPickupEvents(world, frameEvents.movementEvents());
+	(void)inventory_.finalize(world, frameEvents);
 
-	effects_.run(frameEvents);
+	effects_.finalize(frameEvents);
 }
 
 } // namespace dev

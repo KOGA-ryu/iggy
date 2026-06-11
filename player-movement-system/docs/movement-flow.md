@@ -421,7 +421,9 @@ SimulationFrameRunner
   -> SimulationFrameFinalizer
   -> SimulationTargetFinalizer
   -> TargetSynchronizer
+  -> SimulationInventoryFinalizer
   -> InventoryService
+  -> SimulationEffectFinalizer
   -> SimulationEffectPipeline
   -> EffectRouter / EffectApplier
   -> frame output for presentation
@@ -591,6 +593,9 @@ The session owns the objects a real game loop needs:
 GameSession
   -> SimulationWorld
   -> SimulationClock
+  -> NewGameWorldBuilder
+  -> SessionModePolicy
+  -> SessionWorldSlotLoader
   -> SimulationFrameRunner
   -> SaveSlotService
 ```
@@ -599,13 +604,15 @@ It exposes lifecycle actions:
 
 ```text
 startNewGame
+  -> NewGameWorldBuilder
 saveToSlot
 loadFromSlot
+  -> SessionWorldSlotLoader
 setMode
 update
 ```
 
-Session mode maps to frame policy:
+SessionModePolicy maps session mode to frame policy:
 
 ```text
 Gameplay  -> commands and actors advance
@@ -1513,6 +1520,7 @@ Pickup ownership happens after the action layer succeeds:
 MoveThenAct(Pickup)
   -> PlayerMovement reaches target tile
   -> ActionExecutor emits ActionExecuted(Pickup, target)
+  -> SimulationInventoryFinalizer
   -> InventoryService
   -> player.inventory.items
 ```

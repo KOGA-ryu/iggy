@@ -2,7 +2,7 @@
 
 #include "focus/InputFocus.hpp"
 #include "player/PlayerActionGate.hpp"
-#include "session/GameSession.hpp"
+#include "session/GameSessionMode.hpp"
 #include "simulation/SimulationWorld.hpp"
 #include "targeting/TargetResolver.hpp"
 

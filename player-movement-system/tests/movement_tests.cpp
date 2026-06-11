@@ -81,14 +81,19 @@
 #include "session/SessionCommandLogFileStore.hpp"
 #include "session/SessionCommandReplayer.hpp"
 #include "session/SessionEventRecorder.hpp"
+#include "session/NewGameWorldBuilder.hpp"
+#include "session/SessionModePolicy.hpp"
 #include "session/SessionScriptRunner.hpp"
+#include "session/SessionWorldSlotLoader.hpp"
 #include "simulation/SimulationClock.hpp"
 #include "simulation/SimulationCommandDrainer.hpp"
 #include "simulation/SimulationEnemyUpdater.hpp"
+#include "simulation/SimulationEffectFinalizer.hpp"
 #include "simulation/SimulationEffectPipeline.hpp"
 #include "simulation/SimulationFrameEventCapture.hpp"
 #include "simulation/SimulationFrameFinalizer.hpp"
 #include "simulation/SimulationFrameRunner.hpp"
+#include "simulation/SimulationInventoryFinalizer.hpp"
 #include "simulation/SimulationPlayerUpdater.hpp"
 #include "simulation/SimulationTargetFinalizer.hpp"
 #include "simulation/SimulationTick.hpp"
@@ -995,6 +1000,30 @@ void TestSimulationEffectPipelineRoutesAndAppliesEffects()
 	Expect(clock.hitStopRemainingSeconds() > 0.0F, "simulation effect pipeline should apply hit-stop to clock");
 }
 
+void TestSimulationEffectFinalizerRunsEffectConsequences()
+{
+	dev::SimulationClock clock;
+	dev::SimulationFrameEvents frameEvents;
+	frameEvents.emit(dev::MovementEvent {
+	    .type = dev::MovementEventType::StepCommitted,
+	    .playerId = 0,
+	    .tile = { 3, 0 },
+	});
+	frameEvents.emit(dev::CombatEvent {
+	    .type = dev::CombatEventType::Hit,
+	    .target = dev::Target { .type = dev::TargetType::Enemy, .id = 46, .tile = { 3, 0 } },
+	    .damage = 6,
+	    .remainingHitPoints = 2,
+	    .result = dev::CombatResultType::Hit,
+	});
+
+	dev::SimulationEffectFinalizer { &clock }.finalize(frameEvents);
+
+	Expect(frameEvents.effectRequests().size() == 4, "simulation effect finalizer should route frame effects");
+	Expect(frameEvents.effectRequests().size() == 4 && frameEvents.effectRequests()[0].type == dev::EffectRequestType::Footstep, "simulation effect finalizer should preserve routed effect order");
+	Expect(clock.hitStopRemainingSeconds() > 0.0F, "simulation effect finalizer should apply clock effects");
+}
+
 void TestSimulationFrameEventCaptureCollectsForwardsAndRestoresSinks()
 {
 	dev::SimulationWorld world;
@@ -1096,6 +1125,51 @@ void TestSimulationTargetFinalizerSynchronizesTargets()
 	Expect(world.targets.resolveAtTile({ 0, 0 }).type == dev::TargetType::EmptyTile, "simulation target finalizer should remove stale enemy targets");
 	Expect(world.targets.resolveAtTile({ 2, 0 }).type == dev::TargetType::EmptyTile, "simulation target finalizer should remove defeated enemy target");
 	Expect(world.targets.resolveAtTile({ 4, 0 }).type == dev::TargetType::Object, "simulation target finalizer should preserve unrelated targets");
+}
+
+void TestSimulationInventoryFinalizerAppliesPickupConsequences()
+{
+	dev::SimulationWorld world;
+	world.players.push_back(MakePlayer({ 1, 0 }));
+	world.players.push_back(MakePlayer({ 3, 0 }));
+	world.players[1].inventory.capacity = 1;
+	world.players[1].inventory.items.push_back({ .id = 800, .tile = { 3, 0 } });
+	dev::WorldEntityService {}.spawnItem(world, {
+	    .id = 630,
+	    .tile = { 1, 0 },
+	});
+	dev::WorldEntityService {}.spawnItem(world, {
+	    .id = 631,
+	    .tile = { 3, 0 },
+	});
+
+	dev::SimulationFrameEvents frameEvents;
+	frameEvents.emit(dev::MovementEvent {
+	    .type = dev::MovementEventType::ActionExecuted,
+	    .playerId = 0,
+	    .tile = { 1, 0 },
+	    .actionType = dev::DestinationActionType::Pickup,
+	    .actionResult = dev::ActionResultType::Executed,
+	    .target = dev::Target { .type = dev::TargetType::Item, .id = 630, .tile = { 1, 0 } },
+	});
+	frameEvents.emit(dev::MovementEvent {
+	    .type = dev::MovementEventType::ActionExecuted,
+	    .playerId = 1,
+	    .tile = { 3, 0 },
+	    .actionType = dev::DestinationActionType::Pickup,
+	    .actionResult = dev::ActionResultType::Executed,
+	    .target = dev::Target { .type = dev::TargetType::Item, .id = 631, .tile = { 3, 0 } },
+	});
+
+	std::vector<dev::InventoryTransferResult> results = dev::SimulationInventoryFinalizer {}.finalize(world, frameEvents);
+
+	Expect(results.size() == 2, "simulation inventory finalizer should report every pickup consequence");
+	Expect(results.size() == 2 && results[0].type == dev::InventoryTransferResultType::Transferred, "simulation inventory finalizer should report transferred pickups");
+	Expect(results.size() == 2 && results[1].type == dev::InventoryTransferResultType::RejectedFull, "simulation inventory finalizer should report rejected pickups");
+	Expect(world.players[0].inventory.items.size() == 1 && world.players[0].inventory.items[0].id == 630, "simulation inventory finalizer should transfer accepted pickup to player");
+	Expect(world.items.size() == 1 && world.items[0].id == 631, "simulation inventory finalizer should keep rejected item in world");
+	Expect(world.targets.resolveAtTile({ 1, 0 }).type == dev::TargetType::EmptyTile, "simulation inventory finalizer should remove accepted item target");
+	Expect(world.targets.resolveAtTile({ 3, 0 }).type == dev::TargetType::Item, "simulation inventory finalizer should preserve rejected item target");
 }
 
 void TestSimulationFrameRunnerProcessesConsequences()
@@ -2322,6 +2396,56 @@ void TestGameSessionStartsNewGameAndUpdates()
 	std::filesystem::remove_all(root);
 }
 
+void TestNewGameWorldBuilderCreatesPlayerWorld()
+{
+	dev::EventRecorder movementEvents;
+	dev::CombatEventRecorder combatEvents;
+
+	dev::SimulationWorld world = dev::NewGameWorldBuilder {}.build(
+	    { .playerStart = { 7, 3 }, .playerHitPoints = 24 },
+	    &movementEvents,
+	    &combatEvents);
+
+	Expect(world.players.size() == 1, "new game world builder should create one starting player");
+	Expect(world.players.size() == 1 && world.players[0].position.tile == dev::Point { 7, 3 }, "new game world builder should set player tile");
+	Expect(world.players.size() == 1 && world.players[0].position.future == dev::Point { 7, 3 }, "new game world builder should initialize future tile");
+	Expect(world.players.size() == 1 && world.players[0].position.previous == dev::Point { 7, 3 }, "new game world builder should initialize previous tile");
+	Expect(world.players.size() == 1 && world.players[0].combatStats.hitPoints == 24, "new game world builder should apply starting hit points");
+	Expect(world.movementEvents == &movementEvents, "new game world builder should preserve movement sink");
+	Expect(world.combatEvents == &combatEvents, "new game world builder should preserve combat sink");
+}
+
+void TestSessionWorldSlotLoaderLoadsWorldPreservingSinks()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_session_world_slot_loader_test";
+	std::filesystem::remove_all(root);
+
+	dev::SimulationWorld saved;
+	saved.players.push_back(MakePlayer({ 8, 8 }));
+	saved.players[0].combatStats.hitPoints = 13;
+	dev::SaveSlotService slots { root };
+	Expect(slots.saveSlot(1, saved), "session world slot loader setup should save world");
+
+	dev::EventRecorder movementEvents;
+	dev::CombatEventRecorder combatEvents;
+	dev::SimulationWorld current;
+	current.movementEvents = &movementEvents;
+	current.setCombatEventSink(&combatEvents);
+	current.players.push_back(MakePlayer({ 1, 1 }));
+
+	Expect(dev::SessionWorldSlotLoader {}.load(slots, 1, current), "session world slot loader should load saved world");
+	Expect(current.players.size() == 1 && current.players[0].position.tile == dev::Point { 8, 8 }, "session world slot loader should replace world on success");
+	Expect(current.players.size() == 1 && current.players[0].combatStats.hitPoints == 13, "session world slot loader should restore saved player state");
+	Expect(current.movementEvents == &movementEvents && current.combatEvents == &combatEvents, "session world slot loader should preserve event sinks");
+
+	current.players[0].position.tile = { 2, 2 };
+	Expect(!dev::SessionWorldSlotLoader {}.load(slots, 99, current), "session world slot loader should reject missing slots");
+	Expect(current.players.size() == 1 && current.players[0].position.tile == dev::Point { 2, 2 }, "session world slot loader should preserve current world on failed load");
+	Expect(current.movementEvents == &movementEvents && current.combatEvents == &combatEvents, "session world slot loader should preserve sinks on failed load");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestGameSessionPausedModePreservesCommands()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_game_session_pause_test";
@@ -2345,6 +2469,32 @@ void TestGameSessionPausedModePreservesCommands()
 	Expect(session.world().players[0].position.tile == dev::Point { 1, 0 }, "gameplay session should resume preserved command");
 
 	std::filesystem::remove_all(root);
+}
+
+void TestSessionModePolicyMapsModesToFramePolicy()
+{
+	dev::SessionModePolicy policy;
+
+	dev::SimulationFramePolicy gameplay = policy.framePolicyFor(dev::GameSessionMode::Gameplay);
+	dev::SimulationFramePolicy paused = policy.framePolicyFor(dev::GameSessionMode::Paused);
+	dev::SimulationFramePolicy inventory = policy.framePolicyFor(dev::GameSessionMode::Inventory);
+	dev::SimulationFramePolicy empty = policy.framePolicyFor(dev::GameSessionMode::Empty);
+
+	Expect(gameplay.acceptCommands && gameplay.updatePlayers && gameplay.updateEnemies, "session mode policy should let gameplay update actors");
+	Expect(!paused.acceptCommands && !paused.updatePlayers && !paused.updateEnemies, "session mode policy should freeze paused sessions");
+	Expect(!inventory.acceptCommands && !inventory.updatePlayers && !inventory.updateEnemies, "session mode policy should freeze inventory sessions");
+	Expect(!empty.acceptCommands && !empty.updatePlayers && !empty.updateEnemies, "session mode policy should freeze empty sessions");
+}
+
+void TestSessionModePolicyGuardsTransitions()
+{
+	dev::SessionModePolicy policy;
+
+	Expect(policy.hasActiveWorld(dev::GameSessionMode::Gameplay), "session mode policy should treat gameplay as active");
+	Expect(!policy.hasActiveWorld(dev::GameSessionMode::Empty), "session mode policy should treat empty as inactive");
+	Expect(!policy.canTransition(dev::GameSessionMode::Empty, dev::GameSessionMode::Gameplay), "session mode policy should reject activating an empty session through mode change");
+	Expect(policy.canTransition(dev::GameSessionMode::Gameplay, dev::GameSessionMode::Inventory), "session mode policy should allow active session mode changes");
+	Expect(policy.canTransition(dev::GameSessionMode::Inventory, dev::GameSessionMode::Empty), "session mode policy should allow returning to empty mode");
 }
 
 void TestGameSessionSaveLoadPreservesSinksAndResetsClock()
@@ -5324,9 +5474,11 @@ int main()
 	TestEffectApplierAppliesHitStopToClock();
 	TestSimulationTimeStepBuilderUsesClock();
 	TestSimulationEffectPipelineRoutesAndAppliesEffects();
+	TestSimulationEffectFinalizerRunsEffectConsequences();
 	TestSimulationFrameEventCaptureCollectsForwardsAndRestoresSinks();
 	TestSimulationFrameFinalizerAppliesConsequences();
 	TestSimulationTargetFinalizerSynchronizesTargets();
+	TestSimulationInventoryFinalizerAppliesPickupConsequences();
 	TestSimulationFrameRunnerProcessesConsequences();
 	TestTargetRegistryResolvesAndRemovesTargets();
 	TestTargetSynchronizerSyncsEnemyTargetsWithoutRemovingObjects();
@@ -5369,7 +5521,11 @@ int main()
 	TestSaveSlotServiceListsMetadata();
 	TestSaveSlotServiceLoadsWorld();
 	TestGameSessionStartsNewGameAndUpdates();
+	TestNewGameWorldBuilderCreatesPlayerWorld();
+	TestSessionWorldSlotLoaderLoadsWorldPreservingSinks();
 	TestGameSessionPausedModePreservesCommands();
+	TestSessionModePolicyMapsModesToFramePolicy();
+	TestSessionModePolicyGuardsTransitions();
 	TestGameSessionSaveLoadPreservesSinksAndResetsClock();
 	TestGameSessionMissingLoadKeepsCurrentWorld();
 	TestSessionCommandDispatcherAppliesLifecycleCommands();

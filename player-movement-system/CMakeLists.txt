@@ -89,17 +89,22 @@ add_library(player_movement_system
   src/session/SessionCommandReplayer.cpp
   src/session/SessionCommandSource.cpp
   src/session/SessionEventRecorder.cpp
+  src/session/NewGameWorldBuilder.cpp
+  src/session/SessionModePolicy.cpp
   src/session/SessionScriptRunner.cpp
+  src/session/SessionWorldSlotLoader.cpp
   src/session/GameSession.cpp
   src/simulation/SimulationClock.cpp
   src/simulation/SimulationCommandDrainer.cpp
   src/simulation/SimulationEnemyUpdater.cpp
+  src/simulation/SimulationEffectFinalizer.cpp
   src/simulation/SimulationEffectPipeline.cpp
   src/simulation/SimulationFrameEventCapture.cpp
   src/simulation/SimulationFrameFinalizer.cpp
   src/simulation/SimulationFrameEvents.cpp
   src/simulation/SimulationFramePolicy.cpp
   src/simulation/SimulationFrameRunner.cpp
+  src/simulation/SimulationInventoryFinalizer.cpp
   src/simulation/SimulationPlayerUpdater.cpp
   src/simulation/SimulationTargetFinalizer.cpp
   src/simulation/SimulationTimeStep.cpp

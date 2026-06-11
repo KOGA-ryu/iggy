@@ -3,7 +3,8 @@
 #include <optional>
 
 #include "save/SaveSlot.hpp"
-#include "session/GameSession.hpp"
+#include "session/GameSessionMode.hpp"
+#include "session/NewGameSettings.hpp"
 
 namespace dev {
 

@@ -1,23 +1,12 @@
 #include "GameSession.hpp"
 
+#include "session/NewGameWorldBuilder.hpp"
+#include "session/SessionModePolicy.hpp"
+#include "session/SessionWorldSlotLoader.hpp"
+
 #include <utility>
 
 namespace dev {
-
-namespace {
-
-Player MakeSessionPlayer(const NewGameSettings &settings)
-{
-	Player player;
-	player.position.tile = settings.playerStart;
-	player.position.future = settings.playerStart;
-	player.position.previous = settings.playerStart;
-	player.position.precise = settings.playerStart;
-	player.combatStats.hitPoints = settings.playerHitPoints;
-	return player;
-}
-
-} // namespace
 
 GameSession::GameSession(std::filesystem::path saveRoot)
     : saveSlots_(std::move(saveRoot))
@@ -26,9 +15,10 @@ GameSession::GameSession(std::filesystem::path saveRoot)
 
 void GameSession::startNewGame(const NewGameSettings &settings)
 {
-	resetWorldPreservingSinks();
+	MovementEventSink *movementEvents = world_.movementEvents;
+	CombatEventSink *combatEvents = world_.combatEvents;
+	world_ = NewGameWorldBuilder {}.build(settings, movementEvents, combatEvents);
 	clock_.reset();
-	world_.players.push_back(MakeSessionPlayer(settings));
 	mode_ = GameSessionMode::Gameplay;
 }
 
@@ -41,17 +31,9 @@ bool GameSession::saveToSlot(SaveSlotId slotId) const
 
 bool GameSession::loadFromSlot(SaveSlotId slotId)
 {
-	MovementEventSink *movementEvents = world_.movementEvents;
-	CombatEventSink *combatEvents = world_.combatEvents;
-	SimulationWorld loadedWorld;
-	loadedWorld.movementEvents = movementEvents;
-	loadedWorld.setCombatEventSink(combatEvents);
-	if (!saveSlots_.loadSlot(slotId, loadedWorld))
+	if (!SessionWorldSlotLoader {}.load(saveSlots_, slotId, world_))
 		return false;
 
-	world_ = std::move(loadedWorld);
-	world_.movementEvents = movementEvents;
-	world_.setCombatEventSink(combatEvents);
 	clock_.reset();
 	mode_ = GameSessionMode::Gameplay;
 	return true;
@@ -68,7 +50,8 @@ SimulationFrameEvents GameSession::update(float rawDeltaSeconds)
 
 void GameSession::setMode(GameSessionMode mode)
 {
-	if (mode == GameSessionMode::Empty || hasActiveWorld())
+	SessionModePolicy policy;
+	if (policy.canTransition(mode_, mode))
 		mode_ = mode;
 }
 
@@ -79,7 +62,7 @@ GameSessionMode GameSession::mode() const
 
 bool GameSession::hasActiveWorld() const
 {
-	return mode_ != GameSessionMode::Empty;
+	return SessionModePolicy {}.hasActiveWorld(mode_);
 }
 
 SimulationWorld &GameSession::world()
@@ -112,30 +95,9 @@ const SaveSlotService &GameSession::saveSlots() const
 	return saveSlots_;
 }
 
-void GameSession::resetWorldPreservingSinks()
-{
-	MovementEventSink *movementEvents = world_.movementEvents;
-	CombatEventSink *combatEvents = world_.combatEvents;
-	SimulationWorld resetWorld;
-	world_ = std::move(resetWorld);
-	world_.movementEvents = movementEvents;
-	world_.setCombatEventSink(combatEvents);
-}
-
 SimulationFramePolicy GameSession::framePolicy() const
 {
-	switch (mode_) {
-	case GameSessionMode::Gameplay:
-		return SimulationFramePolicy::forMode(SimulationMode::Gameplay);
-	case GameSessionMode::Paused:
-		return SimulationFramePolicy::forMode(SimulationMode::Paused);
-	case GameSessionMode::Inventory:
-		return SimulationFramePolicy::forMode(SimulationMode::Inventory);
-	case GameSessionMode::Empty:
-		return SimulationFramePolicy::forMode(SimulationMode::Paused);
-	}
-
-	return SimulationFramePolicy::forMode(SimulationMode::Paused);
+	return SessionModePolicy {}.framePolicyFor(mode_);
 }
 
 } // namespace dev

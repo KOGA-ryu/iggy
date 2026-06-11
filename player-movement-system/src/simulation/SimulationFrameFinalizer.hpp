@@ -1,9 +1,9 @@
 #pragma once
 
-#include "inventory/InventoryService.hpp"
 #include "simulation/SimulationClock.hpp"
-#include "simulation/SimulationEffectPipeline.hpp"
+#include "simulation/SimulationEffectFinalizer.hpp"
 #include "simulation/SimulationFrameEvents.hpp"
+#include "simulation/SimulationInventoryFinalizer.hpp"
 #include "simulation/SimulationTargetFinalizer.hpp"
 #include "simulation/SimulationWorld.hpp"
 
@@ -17,8 +17,8 @@ public:
 
 private:
 	SimulationTargetFinalizer targets_;
-	InventoryService inventory_;
-	SimulationEffectPipeline effects_;
+	SimulationInventoryFinalizer inventory_;
+	SimulationEffectFinalizer effects_;
 };
 
 } // namespace dev

@@ -3,25 +3,14 @@
 #include <filesystem>
 
 #include "events/MovementEventSink.hpp"
+#include "session/GameSessionMode.hpp"
+#include "session/NewGameSettings.hpp"
 #include "save/SaveSlotService.hpp"
 #include "simulation/SimulationClock.hpp"
 #include "simulation/SimulationFrameRunner.hpp"
 #include "simulation/SimulationWorld.hpp"
-#include "world/Point.hpp"
 
 namespace dev {
-
-enum class GameSessionMode {
-	Empty,
-	Gameplay,
-	Paused,
-	Inventory,
-};
-
-struct NewGameSettings {
-	Point playerStart;
-	int playerHitPoints = 20;
-};
 
 class GameSession {
 public:
@@ -44,7 +33,6 @@ public:
 	[[nodiscard]] const SaveSlotService &saveSlots() const;
 
 private:
-	void resetWorldPreservingSinks();
 	[[nodiscard]] SimulationFramePolicy framePolicy() const;
 
 	SimulationWorld world_;
