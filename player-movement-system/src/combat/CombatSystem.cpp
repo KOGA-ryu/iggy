@@ -63,7 +63,7 @@ CombatResult CombatSystem::resolvePlayerAttack(const Player &player, const Desti
 		return {};
 	}
 
-	CombatResult result = resolver_.resolveAttack(player.combatStats, *target);
+	CombatResult result = resolver_.resolveAttack(equipmentStats_.effectiveCombatStats(player), *target);
 	EmitCombatEvent(eventSink_, action.target, result);
 	return result;
 }
@@ -75,7 +75,9 @@ CombatResult CombatSystem::resolveEnemyAttack(const Enemy &enemy, Player &player
 		.id = 0,
 		.tile = player.position.tile,
 	};
-	CombatResult result = resolver_.resolveAttack(enemy.combatStats, player.combatStats);
+	CombatStats playerStats = equipmentStats_.effectiveCombatStats(player);
+	CombatResult result = resolver_.resolveAttack(enemy.combatStats, playerStats);
+	player.combatStats.hitPoints = playerStats.hitPoints;
 	EmitCombatEvent(eventSink_, playerTarget, result);
 	return result;
 }

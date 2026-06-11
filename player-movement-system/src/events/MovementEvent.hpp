@@ -5,6 +5,7 @@
 #include "actions/ActionResult.hpp"
 #include "commands/MovementCommand.hpp"
 #include "interaction/DestinationAction.hpp"
+#include "targeting/Target.hpp"
 #include "world/Point.hpp"
 
 namespace dev {
@@ -29,7 +30,7 @@ struct MovementEvent {
 	std::optional<MovementCommandType> commandType;
 	std::optional<DestinationActionType> actionType;
 	std::optional<ActionResultType> actionResult;
+	std::optional<Target> target;
 };
 
 } // namespace dev
-

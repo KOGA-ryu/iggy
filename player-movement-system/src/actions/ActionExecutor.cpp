@@ -4,15 +4,17 @@ namespace dev {
 
 namespace {
 
-void EmitActionEvent(MovementEventSink *eventSink, MovementEventType type, const Player &player, const DestinationAction &action, ActionResultType result)
+void EmitActionEvent(MovementEventSink *eventSink, MovementEventType type, PlayerId playerId, const Player &player, const DestinationAction &action, ActionResultType result)
 {
 	if (eventSink == nullptr)
 		return;
 	eventSink->emit({
 		.type = type,
+		.playerId = playerId,
 		.tile = player.position.tile,
 		.actionType = action.type,
 		.actionResult = result,
+		.target = action.target,
 	});
 }
 
@@ -25,31 +27,31 @@ ActionExecutor::ActionExecutor(ActionRules rules, MovementEventSink *eventSink, 
 {
 }
 
-ActionResult ActionExecutor::update(Player &player) const
+ActionResult ActionExecutor::update(Player &player, PlayerId playerId) const
 {
 	const DestinationAction action = player.destinationAction;
 	if (action.type == DestinationActionType::None)
 		return { ActionResultType::NoAction, false };
 
 	if (!rules_.canExecute(player, action)) {
-		EmitActionEvent(eventSink_, MovementEventType::ActionRejected, player, action, ActionResultType::BlockedByState);
+		EmitActionEvent(eventSink_, MovementEventType::ActionRejected, playerId, player, action, ActionResultType::BlockedByState);
 		return { ActionResultType::BlockedByState, false };
 	}
 
 	if (!rules_.targetStillValid(action)) {
-		EmitActionEvent(eventSink_, MovementEventType::ActionRejected, player, action, ActionResultType::InvalidTarget);
+		EmitActionEvent(eventSink_, MovementEventType::ActionRejected, playerId, player, action, ActionResultType::InvalidTarget);
 		return { ActionResultType::InvalidTarget, true };
 	}
 
 	if (!rules_.targetInRange(player, action)) {
-		EmitActionEvent(eventSink_, MovementEventType::ActionRejected, player, action, ActionResultType::OutOfRange);
+		EmitActionEvent(eventSink_, MovementEventType::ActionRejected, playerId, player, action, ActionResultType::OutOfRange);
 		return { ActionResultType::OutOfRange, false };
 	}
 
 	if (action.type == DestinationActionType::Attack && combatSystem_ != nullptr) {
 		const CombatResult combatResult = combatSystem_->resolvePlayerAttack(player, action);
 		if (combatResult.type == CombatResultType::InvalidTarget) {
-			EmitActionEvent(eventSink_, MovementEventType::ActionRejected, player, action, ActionResultType::InvalidTarget);
+			EmitActionEvent(eventSink_, MovementEventType::ActionRejected, playerId, player, action, ActionResultType::InvalidTarget);
 			return { ActionResultType::InvalidTarget, true };
 		}
 	}
@@ -57,7 +59,7 @@ ActionResult ActionExecutor::update(Player &player) const
 	applyAnimationCommitment(player, action);
 	player.destinationAction = {};
 	player.moveState = PlayerMoveState::Idle;
-	EmitActionEvent(eventSink_, MovementEventType::ActionExecuted, player, action, ActionResultType::Executed);
+	EmitActionEvent(eventSink_, MovementEventType::ActionExecuted, playerId, player, action, ActionResultType::Executed);
 	return { ActionResultType::Executed, true };
 }
 

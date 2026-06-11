@@ -1,6 +1,7 @@
 #pragma once
 
 #include "combat/CombatStats.hpp"
+#include "inventory/Inventory.hpp"
 #include "player/ActorPosition.hpp"
 #include "player/AnimationLock.hpp"
 #include "interaction/DestinationAction.hpp"
@@ -18,6 +19,7 @@ struct Player {
 	MovementModifiers movementModifiers;
 	AnimationLock animationLock;
 	CombatStats combatStats;
+	Inventory inventory;
 	float moveSpeedTilesPerSecond = 4.0F;
 };
 

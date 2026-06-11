@@ -44,7 +44,91 @@ Good first tests:
 - EffectRouter maps combat hits to damage, impact, and hit-stop requests
 - EffectApplier applies hit-stop requests to SimulationClock
 - SimulationFrameRunner collects events, routes effects, applies hit-stop, and preserves forwarding
+- TargetRegistry resolves, removes, and falls back to empty tile targets
+- TargetSynchronizer publishes current enemy targets without deleting objects
+- TargetSynchronizer skips defeated combat registry enemies
+- SimulationFrameRunner updates enemy target tiles after movement
+- SimulationFrameRunner removes enemy targets after defeat events
+- WorldEntityService spawns enemies across enemy, combat, and target registries
+- WorldEntityService despawns enemies without removing unrelated world state
+- WorldEntityService respawns duplicate enemy ids without stale registry entries
+- WorldEntityService spawns and despawns item targets
+- WorldEntityService respawns duplicate item ids without stale target entries
+- InventoryService transfers executed pickups into player inventory
+- InventoryService ignores invalid pickup events without consuming world items
+- InventoryService rejects pickup transfer when inventory is full
+- EquipmentService equips inventory items into matching slots
+- EquipmentService swaps occupied equipment back into inventory
+- EquipmentService rejects missing or non-equippable items
+- EquipmentService unequips only when inventory has capacity
+- EquipmentStatsService derives effective combat stats from equipped items only
+- CombatSystem applies equipped attack and defense modifiers
+- InventoryCommandDispatcher applies semantic equip and unequip commands
+- InventoryCommandDispatcher preserves rejected equipment reasons
+- InventoryCommandDispatcher emits inventory events for applied and rejected commands
+- InventoryCommandSource queues and drains semantic inventory commands
+- GameLoop dispatches inventory command sources only when a world is active
+- GameLoop records inventory events from runtime inventory command sources
+- InventoryCommandCodec round-trips valid commands and rejects invalid packets
+- InventoryCommandLog replays through InventoryCommandDispatcher
+- InventoryCommandLogCodec round-trips versioned command logs and rejects corrupt bytes
+- InventoryCommandLogFileStore saves, loads, replays, and rejects bad files
+- InventoryScriptRunner loads and runs saved inventory scripts through the dispatcher
+- InventoryScriptRunner distinguishes script load failure from command rejection
+- InventoryScriptSource queues and drains inventory automation script paths
+- GameLoop reports runtime inventory script source results without stopping frames
 - SnapshotWriter and SnapshotReader restore durable player, enemy, and combat state
+- SnapshotWriter and SnapshotReader restore player inventory state
+- SnapshotWriter and SnapshotReader restore player equipment state
+- SnapshotCodec preserves item combat modifiers
+- SnapshotWriter and SnapshotReader restore durable item state
+- SnapshotWriter and SnapshotReader restore clickable target registry state
+- SnapshotCodec round-trips versioned snapshot bytes and rejects invalid or corrupted data
+- SnapshotFileStore saves versioned bytes and rejects corrupt save files
+- SaveGameService saves and loads SimulationWorld without replacing event sinks
+- SaveSlotService lists slot metadata and distinguishes valid, corrupt, and empty slots
+- SaveSlotService loads a selected slot into SimulationWorld without replacing event sinks
+- GameSession starts a new game and advances frames
+- GameSession paused mode preserves queued commands
+- GameSession save/load preserves event sinks and resets transient clock state
+- GameSession failed load preserves the active world
+- SessionCommandDispatcher applies start, save, load, and mode commands
+- SessionCommandDispatcher rejects invalid lifecycle commands
+- SessionCommandDispatcher emits success and failure lifecycle events
+- SessionCommandLog and SessionCommandReplayer replay lifecycle command sequences
+- SessionCommandReplayer reports rejected lifecycle commands
+- SessionCommandCodec round-trips lifecycle commands
+- SessionCommandCodec rejects invalid lifecycle command packets
+- SessionCommandLogCodec round-trips and replays lifecycle command logs
+- SessionCommandLogCodec rejects invalid lifecycle log bytes
+- SessionCommandLogFileStore saves, loads, and replays lifecycle command log files
+- SessionCommandLogFileStore rejects corrupt and missing lifecycle command log files
+- SessionScriptRunner loads and runs saved lifecycle scripts through the dispatcher
+- SessionScriptRunner distinguishes script load failure from command rejection
+- GameLoop runs configured startup scripts and bounded frame updates
+- GameLoop reports startup script load failure without ticking frames
+- GameLoop runs configured inventory scripts after startup scripts
+- GameLoop reports inventory script load failure or missing player before ticking frames
+- GameLoop drains runtime inventory script sources before direct inventory command sources
+- QueuedSessionCommandSource drains lifecycle commands exactly once
+- GameLoop drains runtime lifecycle command sources before frame updates
+- GameLoop runs startup scripts before runtime lifecycle command sources
+- QueuedMovementCommandSource drains movement commands exactly once
+- GameLoop drains runtime movement command sources into the active world queue
+- GameLoop preserves movement commands when no active world can receive them
+- RuntimeInputRouter maps gameplay mouse clicks into movement commands
+- RuntimeInputRouter blocks movement when focus or text entry owns input
+- RuntimeInputRouter maps lifecycle hotkeys into session commands
+- RuntimeInputRouter maps stop hotkeys into movement commands
+- RuntimeInputRouter maps target-aware enemy clicks into MoveThenAct attacks
+- RuntimeInputRouter maps stand-ground target clicks into StandAndAct attacks
+- QueuedRawInputSource drains raw input events exactly once
+- GameLoop routes raw hotkeys through session command dispatch
+- GameLoop routes raw mouse clicks through movement command dispatch
+- GameLoop uses the active world target registry for target-aware raw mouse input
+- GameLoop routes item targets into pickup actions and transfers item ownership
+- GameLoop leaves pickup items in the world when inventory is full
+- GameLoop drains but does not route blocked raw movement input
 
 Run them with:
 

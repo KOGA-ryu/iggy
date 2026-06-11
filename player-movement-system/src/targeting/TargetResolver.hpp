@@ -7,8 +7,9 @@ namespace dev {
 
 class TargetResolver {
 public:
-	Target resolveAtTile(Point tile) const;
+	virtual ~TargetResolver() = default;
+
+	[[nodiscard]] virtual Target resolveAtTile(Point tile) const;
 };
 
 } // namespace dev
-

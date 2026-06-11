@@ -4,6 +4,7 @@
 #include "combat/CombatRegistry.hpp"
 #include "combat/CombatResolver.hpp"
 #include "enemies/Enemy.hpp"
+#include "inventory/EquipmentStatsService.hpp"
 #include "interaction/DestinationAction.hpp"
 #include "player/Player.hpp"
 
@@ -23,6 +24,7 @@ public:
 private:
 	CombatRegistry registry_;
 	CombatResolver resolver_;
+	EquipmentStatsService equipmentStats_;
 	CombatEventSink *eventSink_;
 };
 

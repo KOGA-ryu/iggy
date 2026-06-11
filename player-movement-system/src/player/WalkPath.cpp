@@ -45,5 +45,18 @@ std::optional<Point> WalkPath::peekNext() const
 	return steps_[0];
 }
 
-} // namespace dev
+std::vector<Point> WalkPath::steps() const
+{
+	return { steps_.begin(), steps_.begin() + length_ };
+}
 
+void WalkPath::replace(std::vector<Point> steps)
+{
+	clear();
+	for (Point step : steps) {
+		if (!pushStep(step))
+			return;
+	}
+}
+
+} // namespace dev

@@ -6,6 +6,7 @@ namespace dev {
 
 class SimulationClock {
 public:
+	void reset();
 	void setTimeScale(float timeScale);
 	void triggerHitStop(float durationSeconds);
 	SimulationTimeStep step(float rawDeltaSeconds);

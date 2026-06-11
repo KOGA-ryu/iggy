@@ -12,7 +12,7 @@ class ActionExecutor {
 public:
 	explicit ActionExecutor(ActionRules rules = {}, MovementEventSink *eventSink = nullptr, CombatSystem *combatSystem = nullptr);
 
-	ActionResult update(Player &player) const;
+	ActionResult update(Player &player, PlayerId playerId = 0) const;
 
 private:
 	void applyAnimationCommitment(Player &player, const DestinationAction &action) const;

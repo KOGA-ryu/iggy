@@ -4,6 +4,7 @@
 #include "enemies/EnemyState.hpp"
 #include "enemies/EnemyTuning.hpp"
 #include "player/ActorPosition.hpp"
+#include "targeting/Target.hpp"
 
 namespace dev {
 

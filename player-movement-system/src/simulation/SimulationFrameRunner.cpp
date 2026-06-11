@@ -32,6 +32,9 @@ SimulationFrameEvents SimulationFrameRunner::run(SimulationWorld &world, const S
 	world.setCombatEventSink(&frameEvents);
 
 	tick_.update(world, timeStep, policy);
+	targets_.syncEnemyTargets(world.enemies, world.combat.registry(), world.targets);
+	targets_.removeDefeatedTargets(frameEvents.combatEvents(), world.targets);
+	inventory_.applyPickupEvents(world, frameEvents.movementEvents());
 
 	world.movementEvents = previousMovementEvents;
 	world.setCombatEventSink(previousCombatEvents);

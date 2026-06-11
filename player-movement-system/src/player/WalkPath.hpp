@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <optional>
+#include <vector>
 
 #include "world/Point.hpp"
 
@@ -19,6 +20,8 @@ public:
 	[[nodiscard]] bool empty() const;
 	[[nodiscard]] std::size_t size() const;
 	[[nodiscard]] std::optional<Point> peekNext() const;
+	[[nodiscard]] std::vector<Point> steps() const;
+	void replace(std::vector<Point> steps);
 
 private:
 	std::array<Point, MaxWalkPathLength> steps_ {};
@@ -26,4 +29,3 @@ private:
 };
 
 } // namespace dev
-

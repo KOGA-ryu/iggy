@@ -10,6 +10,7 @@ add_library(player_movement_system
   src/actions/ActionExecutor.cpp
   src/actions/ActionRules.cpp
   src/app/GameLoop.cpp
+  src/app/RuntimeInputRouter.cpp
   src/combat/CombatEventRecorder.cpp
   src/combat/CombatRegistry.cpp
   src/combat/CombatResolver.cpp
@@ -17,6 +18,7 @@ add_library(player_movement_system
   src/commands/CommandDispatcher.cpp
   src/commands/CommandQueue.cpp
   src/commands/IntentCommandBuilder.cpp
+  src/commands/MovementCommandSource.cpp
   src/effects/EffectApplier.cpp
   src/effects/EffectRecorder.cpp
   src/effects/EffectRouter.cpp
@@ -24,6 +26,20 @@ add_library(player_movement_system
   src/events/EventRecorder.cpp
   src/focus/InputFocus.cpp
   src/input/InputMapper.cpp
+  src/input/RawInputSource.cpp
+  src/inventory/InventoryCommandCodec.cpp
+  src/inventory/InventoryCommandDispatcher.cpp
+  src/inventory/InventoryCommandLog.cpp
+  src/inventory/InventoryCommandLogCodec.cpp
+  src/inventory/InventoryCommandLogFileStore.cpp
+  src/inventory/InventoryCommandReplayer.cpp
+  src/inventory/InventoryCommandSource.cpp
+  src/inventory/InventoryEventRecorder.cpp
+  src/inventory/InventoryScriptRunner.cpp
+  src/inventory/InventoryScriptSource.cpp
+  src/inventory/EquipmentService.cpp
+  src/inventory/EquipmentStatsService.cpp
+  src/inventory/InventoryService.cpp
   src/interaction/InteractionCommandBuilder.cpp
   src/interaction/InteractionIntentBuilder.cpp
   src/network/MovementCodec.cpp
@@ -33,8 +49,22 @@ add_library(player_movement_system
   src/player/WalkPath.cpp
   src/replay/CommandLog.cpp
   src/replay/CommandReplayer.cpp
+  src/save/SaveGameService.cpp
+  src/save/SaveSlotService.cpp
+  src/save/SnapshotCodec.cpp
+  src/save/SnapshotFileStore.cpp
   src/save/SnapshotReader.cpp
   src/save/SnapshotWriter.cpp
+  src/session/SessionCommandCodec.cpp
+  src/session/SessionCommandDispatcher.cpp
+  src/session/SessionCommandLog.cpp
+  src/session/SessionCommandLogCodec.cpp
+  src/session/SessionCommandLogFileStore.cpp
+  src/session/SessionCommandReplayer.cpp
+  src/session/SessionCommandSource.cpp
+  src/session/SessionEventRecorder.cpp
+  src/session/SessionScriptRunner.cpp
+  src/session/GameSession.cpp
   src/simulation/SimulationClock.cpp
   src/simulation/SimulationFrameEvents.cpp
   src/simulation/SimulationFramePolicy.cpp
@@ -42,7 +72,10 @@ add_library(player_movement_system
   src/simulation/SimulationTimeStep.cpp
   src/simulation/SimulationTick.cpp
   src/simulation/SimulationWorld.cpp
+  src/simulation/WorldEntityService.cpp
+  src/targeting/TargetRegistry.cpp
   src/targeting/TargetResolver.cpp
+  src/targeting/TargetSynchronizer.cpp
   src/world/Collision.cpp
   src/world/DiagonalCornerPolicy.cpp
   src/world/PathFinder.cpp

@@ -26,7 +26,9 @@ PlayerMovement::PlayerMovement(const Collision &collision, ActionExecutor action
 
 void PlayerMovement::update(std::vector<Player> &players, float deltaSeconds) const
 {
-	for (Player &player : players) {
+	for (std::size_t index = 0; index < players.size(); ++index) {
+		Player &player = players[index];
+		const PlayerId playerId = static_cast<PlayerId>(index);
 		if (player.animationLock.active) {
 			player.animationLock.elapsedSeconds += deltaSeconds;
 				if (!player.animationLock.canCancel())
@@ -40,7 +42,7 @@ void PlayerMovement::update(std::vector<Player> &players, float deltaSeconds) co
 			    ? PlayerMoveState::Idle
 			    : PlayerMoveState::Acting;
 			if (player.moveState == PlayerMoveState::Acting)
-				actionExecutor_.update(player);
+				actionExecutor_.update(player, playerId);
 			continue;
 		}
 
@@ -67,7 +69,7 @@ void PlayerMovement::update(std::vector<Player> &players, float deltaSeconds) co
 			    : PlayerMoveState::Pathing;
 			if (player.moveState == PlayerMoveState::Acting) {
 				EmitMovementEvent(eventSink_, MovementEventType::DestinationActionReady, player.position.tile, player.destinationAction.type);
-				actionExecutor_.update(player);
+				actionExecutor_.update(player, playerId);
 			}
 	}
 }

@@ -1,5 +1,7 @@
 #include "CombatRegistry.hpp"
 
+#include <algorithm>
+
 namespace dev {
 
 void CombatRegistry::add(Combatant combatant)
@@ -23,6 +25,17 @@ const Combatant *CombatRegistry::find(const Target &target) const
 			return &combatant;
 	}
 	return nullptr;
+}
+
+bool CombatRegistry::remove(const Target &target)
+{
+	const auto before = combatants_.size();
+	combatants_.erase(
+	    std::remove_if(combatants_.begin(), combatants_.end(), [&target](const Combatant &combatant) {
+		    return combatant.target.type == target.type && combatant.target.id == target.id;
+	    }),
+	    combatants_.end());
+	return combatants_.size() != before;
 }
 
 void CombatRegistry::replaceAll(std::vector<Combatant> combatants)

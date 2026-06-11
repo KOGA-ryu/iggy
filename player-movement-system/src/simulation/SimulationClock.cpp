@@ -4,6 +4,12 @@
 
 namespace dev {
 
+void SimulationClock::reset()
+{
+	timeScale_ = 1.0F;
+	hitStopRemainingSeconds_ = 0.0F;
+}
+
 void SimulationClock::setTimeScale(float timeScale)
 {
 	timeScale_ = std::max(0.0F, timeScale);

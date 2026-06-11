@@ -12,6 +12,7 @@ public:
 	void add(Combatant combatant);
 	Combatant *find(const Target &target);
 	const Combatant *find(const Target &target) const;
+	[[nodiscard]] bool remove(const Target &target);
 	void replaceAll(std::vector<Combatant> combatants);
 
 	[[nodiscard]] const std::vector<Combatant> &combatants() const;

@@ -6,7 +6,9 @@ void SnapshotReader::read(const SimulationSnapshot &snapshot, SimulationWorld &w
 {
 	world.players = snapshot.players;
 	world.enemies = snapshot.enemies;
+	world.items = snapshot.items;
 	world.combat.registry().replaceAll(snapshot.combatants);
+	world.targets.replaceAll(snapshot.targets);
 }
 
 } // namespace dev
