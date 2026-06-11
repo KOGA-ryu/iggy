@@ -87,6 +87,7 @@
 #include "save/SnapshotWriter.hpp"
 #include "session/GameSession.hpp"
 #include "session/SessionCommandApplier.hpp"
+#include "session/SessionCommandByteStream.hpp"
 #include "session/SessionCommandCodec.hpp"
 #include "session/SessionCommandDispatcher.hpp"
 #include "session/SessionCommandLog.hpp"
@@ -3542,6 +3543,43 @@ void TestSessionCommandPacketValidatorRejectsMalformedPayloads()
 	    "session command packet validator should reject unexpected payload fields");
 }
 
+void TestSessionCommandByteStreamWritesLittleEndianPrimitives()
+{
+	std::vector<uint8_t> bytes;
+	dev::SessionCommandByteWriter writer { bytes };
+	writer.writeU8(0xABU);
+	writer.writeU16(0x1234U);
+	writer.writeU32(0xABCDEF12U);
+
+	Expect(bytes.size() == 7, "session command byte writer should append primitive bytes");
+	Expect(bytes.size() == 7 && bytes[1] == 0x34U && bytes[2] == 0x12U, "session command byte writer should write u16 little-endian");
+	Expect(bytes.size() == 7 && bytes[3] == 0x12U && bytes[4] == 0xEFU && bytes[5] == 0xCDU && bytes[6] == 0xABU, "session command byte writer should write u32 little-endian");
+
+	dev::SessionCommandByteReader reader { bytes };
+	uint8_t byte = 0;
+	uint16_t shortValue = 0;
+	uint32_t wordValue = 0;
+	Expect(reader.readU8(byte) && byte == 0xABU, "session command byte reader should read u8");
+	Expect(reader.readU16(shortValue) && shortValue == 0x1234U, "session command byte reader should read u16");
+	Expect(reader.readU32(wordValue) && wordValue == 0xABCDEF12U, "session command byte reader should read u32");
+	Expect(reader.consumed(), "session command byte reader should report consumed bytes");
+
+	dev::SessionCommandByteReader offsetReader { bytes, 3 };
+	Expect(offsetReader.readU32(wordValue) && wordValue == 0xABCDEF12U, "session command byte reader should read from a starting offset");
+}
+
+void TestSessionCommandByteStreamRejectsShortReads()
+{
+	std::vector<uint8_t> bytes { 1, 2, 3 };
+	dev::SessionCommandByteReader reader { bytes };
+	uint32_t wordValue = 0;
+	uint8_t first = 0;
+
+	Expect(!reader.readU32(wordValue), "session command byte reader should reject short u32 reads");
+	Expect(reader.offset() == 0, "session command byte reader should not advance after failed u32 reads");
+	Expect(reader.readU8(first) && first == 1, "session command byte reader should continue after failed reads");
+}
+
 void TestSessionCommandPacketByteCodecRoundTripsPackets()
 {
 	dev::SessionCommandPacketByteCodec codec;
@@ -6376,6 +6414,8 @@ int main()
 	TestSessionCommandCodecRoundTripsCommands();
 	TestSessionCommandCodecRejectsInvalidPackets();
 	TestSessionCommandPacketValidatorRejectsMalformedPayloads();
+	TestSessionCommandByteStreamWritesLittleEndianPrimitives();
+	TestSessionCommandByteStreamRejectsShortReads();
 	TestSessionCommandPacketByteCodecRoundTripsPackets();
 	TestSessionCommandPacketByteCodecRejectsInvalidBytes();
 	TestSessionCommandLogCodecRoundTripsAndReplays();

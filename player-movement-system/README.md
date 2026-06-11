@@ -507,6 +507,10 @@ SessionCommandPacketValidator
   packet-shape guard that rejects malformed lifecycle command payloads before
   they become semantic session commands
 
+SessionCommandByteStream
+  little-endian primitive byte stream shared by lifecycle command packets,
+  command log frames, and command log checksums
+
 SessionCommandPacketByteCodec
   fixed-size byte boundary for lifecycle command packets, preserving explicit
   little-endian field layout and rejecting invalid decoded packet shapes

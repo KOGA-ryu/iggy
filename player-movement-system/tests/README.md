@@ -138,6 +138,7 @@ Good first tests:
 - SessionCommandCodec round-trips lifecycle commands
 - SessionCommandCodec rejects invalid lifecycle command packets
 - SessionCommandPacketValidator rejects malformed lifecycle packet shapes
+- SessionCommandByteStream writes little-endian primitives and rejects short reads
 - SessionCommandPacketByteCodec round-trips and rejects lifecycle packet bytes
 - SessionCommandLogCodec round-trips and replays lifecycle command logs
 - SessionCommandLogCodec rejects invalid lifecycle log bytes

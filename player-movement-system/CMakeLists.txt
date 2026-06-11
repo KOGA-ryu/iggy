@@ -92,6 +92,7 @@ add_library(player_movement_system
   src/save/SnapshotFileStore.cpp
   src/save/SnapshotReader.cpp
   src/save/SnapshotWriter.cpp
+  src/session/SessionCommandByteStream.cpp
   src/session/SessionCommandCodec.cpp
   src/session/SessionCommandDispatcher.cpp
   src/session/SessionCommandApplier.cpp

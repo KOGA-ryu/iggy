@@ -1,5 +1,7 @@
 #include "SessionCommandLogChecksum.hpp"
 
+#include "session/SessionCommandByteStream.hpp"
+
 namespace dev {
 
 namespace {
@@ -7,23 +9,12 @@ namespace {
 constexpr uint32_t FnvOffset = 2166136261U;
 constexpr uint32_t FnvPrime = 16777619U;
 
-void WriteU16(SessionCommandLogBytes &bytes, uint16_t value)
-{
-	bytes.push_back(static_cast<uint8_t>(value & 0xFFU));
-	bytes.push_back(static_cast<uint8_t>((value >> 8U) & 0xFFU));
-}
-
-void WriteU32(SessionCommandLogBytes &bytes, uint32_t value)
-{
-	WriteU16(bytes, static_cast<uint16_t>(value & 0xFFFFU));
-	WriteU16(bytes, static_cast<uint16_t>((value >> 16U) & 0xFFFFU));
-}
-
 } // namespace
 
 void SessionCommandLogChecksum::appendTo(SessionCommandLogBytes &bytes) const
 {
-	WriteU32(bytes, compute(bytes, bytes.size()));
+	SessionCommandByteWriter writer { bytes };
+	writer.writeU32(compute(bytes, bytes.size()));
 }
 
 bool SessionCommandLogChecksum::hasValidTrailingChecksum(const SessionCommandLogBytes &bytes, std::size_t payloadSize) const
@@ -46,10 +37,10 @@ uint32_t SessionCommandLogChecksum::compute(const SessionCommandLogBytes &bytes,
 uint32_t SessionCommandLogChecksum::readTrailingU32(const SessionCommandLogBytes &bytes) const
 {
 	const std::size_t offset = bytes.size() - 4U;
-	return static_cast<uint32_t>(bytes[offset])
-	    | (static_cast<uint32_t>(bytes[offset + 1U]) << 8U)
-	    | (static_cast<uint32_t>(bytes[offset + 2U]) << 16U)
-	    | (static_cast<uint32_t>(bytes[offset + 3U]) << 24U);
+	SessionCommandByteReader reader { bytes, offset };
+	uint32_t value = 0;
+	reader.readU32(value);
+	return value;
 }
 
 } // namespace dev
