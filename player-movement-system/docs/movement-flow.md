@@ -163,3 +163,16 @@ AnimationUnlocked
 
 Events let tests, debug tools, UI, audio, VFX, replay, and telemetry observe the
 movement system without being hardwired into it.
+
+## 11. Replay
+
+Replay records semantic commands, not raw hardware input:
+
+```text
+MovementCommand -> CommandLog
+CommandLog -> CommandReplayer -> CommandDispatcher
+MovementEvent -> EventRecorder
+```
+
+That means the same input, network, replay, and test paths all exercise the same
+movement command pipeline.

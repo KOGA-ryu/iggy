@@ -46,6 +46,9 @@ src/events
   Publishes semantic movement/action events for tests, debugging, UI, audio, VFX,
   replay, and telemetry.
 
+src/replay
+  Records and replays semantic movement commands.
+
 src/player
   Owns player state, action gating, movement state transitions, and movement
   execution.
@@ -151,4 +154,7 @@ ActionExecutor
 MovementEvent
   observable facts such as CommandAccepted, PathStarted, StepCommitted,
   ActionExecuted, and AnimationLocked
+
+CommandLog
+  replayable list of semantic movement commands
 ```

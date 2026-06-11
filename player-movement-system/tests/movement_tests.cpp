@@ -12,6 +12,8 @@
 #include "player/PlayerActionGate.hpp"
 #include "player/PlayerController.hpp"
 #include "player/PlayerMovement.hpp"
+#include "replay/CommandLog.hpp"
+#include "replay/CommandReplayer.hpp"
 #include "targeting/Target.hpp"
 #include "world/Collision.hpp"
 #include "world/PathFinder.hpp"
@@ -154,6 +156,42 @@ void TestMoveThenActEventSequence()
 	Expect(recorded[5].type == dev::MovementEventType::ActionExecuted, "sixth event should execute action");
 }
 
+void TestCommandReplayProducesSameEventSequence()
+{
+	dev::Target target { .type = dev::TargetType::Enemy, .id = 1, .tile = { 1, 0 } };
+	dev::MovementCommand command {
+		.type = dev::MovementCommandType::MoveThenAct,
+		.playerId = 0,
+		.destination = target.tile,
+		.destinationAction = dev::DestinationAction { dev::DestinationActionType::Attack, target, 1 },
+	};
+
+	dev::CommandLog log;
+	log.record(command);
+	Expect(!log.empty(), "command log should record command");
+
+	dev::EventRecorder events;
+	dev::TileMap map;
+	dev::Collision collision;
+	dev::PathFinder pathFinder;
+	std::vector<dev::Player> players { MakePlayer({ 0, 0 }) };
+	dev::PlayerController controller { players, map, collision, pathFinder, &events };
+	dev::CommandDispatcher dispatcher { controller, &events };
+	dev::CommandReplayer replayer { dispatcher };
+	dev::ActionExecutor actionExecutor { dev::ActionRules {}, &events };
+	dev::PlayerMovement movement { collision, actionExecutor, &events };
+
+	replayer.replay(log);
+	movement.update(players, 0.016F);
+
+	const std::vector<dev::MovementEvent> &recorded = events.events();
+	Expect(recorded.size() >= 6, "replayed command should produce movement/action events");
+	Expect(recorded[0].type == dev::MovementEventType::CommandAccepted, "replay should accept command");
+	Expect(recorded[1].type == dev::MovementEventType::PathStarted, "replay should start path");
+	Expect(recorded[2].type == dev::MovementEventType::StepCommitted, "replay should commit step");
+	Expect(recorded[5].type == dev::MovementEventType::ActionExecuted, "replay should execute action");
+}
+
 } // namespace
 
 int main()
@@ -164,6 +202,7 @@ int main()
 	TestDiagonalCornerPolicyBlocksCornerCutting();
 	TestActionExecutorWaitsOutOfRange();
 	TestMoveThenActEventSequence();
+	TestCommandReplayProducesSameEventSequence();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

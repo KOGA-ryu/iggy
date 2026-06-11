@@ -22,6 +22,8 @@ add_library(player_movement_system
   src/player/PlayerController.cpp
   src/player/PlayerMovement.cpp
   src/player/WalkPath.cpp
+  src/replay/CommandLog.cpp
+  src/replay/CommandReplayer.cpp
   src/targeting/TargetResolver.cpp
   src/world/Collision.cpp
   src/world/DiagonalCornerPolicy.cpp
