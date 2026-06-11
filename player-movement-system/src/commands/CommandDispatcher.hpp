@@ -1,5 +1,6 @@
 #pragma once
 
+#include "commands/MovementCommandDispatchResult.hpp"
 #include "commands/MovementCommand.hpp"
 #include "commands/MovementCommandEventEmitter.hpp"
 #include "commands/MovementCommandValidator.hpp"
@@ -12,7 +13,7 @@ class CommandDispatcher {
 public:
 	explicit CommandDispatcher(PlayerController &playerController, MovementEventSink *eventSink = nullptr);
 
-	void dispatch(const MovementCommand &command);
+	MovementCommandDispatchResult dispatch(const MovementCommand &command);
 
 private:
 	PlayerController &playerController_;

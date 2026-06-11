@@ -36,7 +36,14 @@ Good first tests:
 - PlayerAnimationLockGate blocks movement until the cancel window and emits AnimationUnlocked
 - PlayerActionRunner executes a ready destination action through ActionExecutor
 - CommandLog replay produces the same movement/action event sequence
+- CommandReplayer reports accepted and rejected movement command dispatches
+- CommandReplayReport summarizes accepted and rejected movement replay results
 - MovementCodec round-trips MoveThenAct command packets
+- CommandLogCodec round-trips and replays versioned movement command logs
+- CommandLogCodec rejects invalid movement log bytes
+- CommandLogChecksum appends and validates movement log checksums
+- CommandPacketListCodec frames counted movement packet lists and rejects invalid sizes
+- CommandLogFrameCodec frames movement packet bytes and rejects invalid frame metadata
 - EnemyPursuitStepPlanner chooses the next chase tile toward a target
 - EnemyPursuitStepGate rejects map-blocked and collision-blocked pursuit tiles
 - EnemyAttackRange applies tuned Chebyshev attack range
@@ -66,6 +73,7 @@ Good first tests:
 - SimulationActorUpdater runs players before enemies and can policy-skip enemy updates
 - SimulationTickPipeline drains commands before actors and can policy-skip command intake
 - SimulationTick drains queued commands, updates movement, and resolves combat
+- SimulationFramePolicyDescriber reports mode names, reasons, and exact frame gates
 - SimulationFramePolicy can pause command draining and movement
 - SimulationClock hit-stop freezes actor updates while preserving command intake
 - SimulationClock time scale slows enemy attack windup
@@ -145,7 +153,7 @@ Good first tests:
 - SessionFrameUpdater applies session mode policy to frame updates
 - GameSession starts a new game and advances frames
 - GameSession paused mode preserves queued commands
-- SessionModePolicy maps session modes to simulation frame policy
+- SessionModePolicy maps session modes to simulation modes and frame policy
 - SessionModePolicy rejects activating an empty session through mode-only changes
 - SessionModeChanger applies only allowed mode transitions
 - GameSession save/load preserves event sinks and resets transient clock state
@@ -181,7 +189,9 @@ Good first tests:
 - RuntimeSourceStream drains nullable source lists once while preserving order
 - RuntimeLoopTypes keeps loop settings and results reusable outside GameLoop
 - GameLoop builds RuntimeFrameReport entries for per-frame inspection
-- RuntimeFrameTrace formats frame reports into readable debug lines
+- RuntimeFramePolicyText formats policy lines for traces and manifests
+- RuntimeRunSummaryText formats run summaries for traces and manifests
+- RuntimeFrameTrace formats frame reports and mode policy into readable debug lines
 - TextFileStore saves/loads readable lines and cleans temp files
 - RuntimeFrameTraceFileStore saves and loads readable trace lines
 - RuntimeTraceService formats and saves full GameLoopResult traces
@@ -209,7 +219,7 @@ Good first tests:
 - RuntimeArtifactOutputService applies configured artifact outputs and reports failures
 - RuntimeSetupRunner separates configured setup scripts from per-frame runtime sources
 - GameLoop saves configured run traces and reports trace write failures
-- RuntimeDebugManifest formats debug bundle manifest lines
+- RuntimeDebugManifest formats debug bundle manifest lines with latest frame policy
 - RuntimeDebugArtifactLayout names stable debug bundle artifact paths
 - RuntimeDebugArtifactWriter saves trace/manifest artifacts and records trace failures
 - RuntimeDebugArtifactBundle saves a manifest and run trace as one debug bundle

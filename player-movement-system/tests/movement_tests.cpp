@@ -17,6 +17,7 @@
 #include "app/RuntimeExitCodeMapper.hpp"
 #include "app/RuntimeExitCodePolicy.hpp"
 #include "app/RuntimeFrameLoopRunner.hpp"
+#include "app/RuntimeFramePolicyText.hpp"
 #include "app/RuntimeFrameRunner.hpp"
 #include "app/RuntimeInputContextBuilder.hpp"
 #include "app/RuntimeInputRouter.hpp"
@@ -31,6 +32,7 @@
 #include "app/RuntimeRunFinalizer.hpp"
 #include "app/RuntimeRunFailurePolicy.hpp"
 #include "app/RuntimeRunRecorder.hpp"
+#include "app/RuntimeRunSummaryText.hpp"
 #include "app/RuntimeSessionInputRouter.hpp"
 #include "app/RuntimeSetupFailurePolicy.hpp"
 #include "app/RuntimeSetupRunner.hpp"
@@ -97,6 +99,10 @@
 #include "player/PlayerPathPlanner.hpp"
 #include "player/PlayerPathStepper.hpp"
 #include "replay/CommandLog.hpp"
+#include "replay/CommandLogChecksum.hpp"
+#include "replay/CommandLogCodec.hpp"
+#include "replay/CommandLogFrameCodec.hpp"
+#include "replay/CommandPacketListCodec.hpp"
 #include "replay/CommandReplayer.hpp"
 #include "save/SaveGameService.hpp"
 #include "save/SaveSlotService.hpp"
@@ -145,6 +151,7 @@
 #include "simulation/SimulationEffectPipeline.hpp"
 #include "simulation/SimulationFrameEventCapture.hpp"
 #include "simulation/SimulationFrameFinalizer.hpp"
+#include "simulation/SimulationFramePolicyDescriber.hpp"
 #include "simulation/SimulationFrameRunner.hpp"
 #include "simulation/SimulationFrameTickRunner.hpp"
 #include "simulation/SimulationInventoryFinalizer.hpp"
@@ -515,15 +522,53 @@ void TestCommandReplayProducesSameEventSequence()
 	dev::ActionExecutor actionExecutor { dev::ActionRules {}, &events };
 	dev::PlayerMovement movement { collision, actionExecutor, &events };
 
-	replayer.replay(log);
+	dev::CommandReplayReport replayReport = replayer.replay(log);
 	movement.update(players, 0.016F);
 
 	const std::vector<dev::MovementEvent> &recorded = events.events();
+	Expect(replayReport.results.size() == 1, "replayed command should report one dispatch result");
+	Expect(replayReport.acceptedCount() == 1, "replayed command should count accepted dispatches");
+	Expect(replayReport.rejectedCount() == 0, "replayed command should count no rejected dispatches");
+	Expect(replayReport.allAccepted(), "replayed command should report all accepted");
+	Expect(replayReport.results.size() == 1 && replayReport.results[0].type == dev::MovementCommandDispatchResultType::Accepted, "replayed command should report accepted dispatch");
+	Expect(replayReport.results.size() == 1 && replayReport.results[0].command.type == dev::MovementCommandType::MoveThenAct, "replayed command should preserve dispatched command");
 	Expect(recorded.size() >= 6, "replayed command should produce movement/action events");
 	Expect(recorded[0].type == dev::MovementEventType::CommandAccepted, "replay should accept command");
 	Expect(recorded[1].type == dev::MovementEventType::PathStarted, "replay should start path");
 	Expect(recorded[2].type == dev::MovementEventType::StepCommitted, "replay should commit step");
 	Expect(recorded[5].type == dev::MovementEventType::ActionExecuted, "replay should execute action");
+}
+
+void TestCommandReplayReportsRejectedCommands()
+{
+	dev::MovementCommand invalid {
+		.type = dev::MovementCommandType::MoveThenAct,
+		.playerId = 0,
+		.destination = { 1, 0 },
+		.destinationAction = std::nullopt,
+	};
+	dev::CommandLog log;
+	log.record(invalid);
+
+	dev::EventRecorder events;
+	dev::TileMap map;
+	dev::Collision collision;
+	dev::PathFinder pathFinder;
+	std::vector<dev::Player> players { MakePlayer({ 0, 0 }) };
+	dev::PlayerController controller { players, map, collision, pathFinder, &events };
+	dev::CommandDispatcher dispatcher { controller, &events };
+	dev::CommandReplayer replayer { dispatcher };
+
+	dev::CommandReplayReport replayReport = replayer.replay(log);
+
+	Expect(replayReport.results.size() == 1, "rejected replay command should report one dispatch result");
+	Expect(replayReport.acceptedCount() == 0, "rejected replay command should count no accepted dispatches");
+	Expect(replayReport.rejectedCount() == 1, "rejected replay command should count rejected dispatches");
+	Expect(!replayReport.allAccepted(), "rejected replay command should report not all accepted");
+	Expect(replayReport.results.size() == 1 && replayReport.results[0].type == dev::MovementCommandDispatchResultType::Rejected, "rejected replay command should report rejected dispatch");
+	Expect(replayReport.results.size() == 1 && replayReport.results[0].command.type == dev::MovementCommandType::MoveThenAct, "rejected replay command should preserve rejected command");
+	Expect(players[0].moveState == dev::PlayerMoveState::Idle, "rejected replay command should not move player");
+	Expect(events.events().size() == 1 && events.events()[0].type == dev::MovementEventType::CommandRejected, "rejected replay command should still emit rejection event");
 }
 
 void TestMovementCodecRoundTrip()
@@ -558,6 +603,190 @@ void TestMovementCodecRoundTrip()
 	Expect(decoded->destinationAction->target.id == 42, "codec should preserve target id");
 	Expect(decoded->destinationAction->target.tile == target.tile, "codec should preserve target tile");
 	Expect(decoded->destinationAction->rangeTiles == 1, "codec should preserve range");
+}
+
+void TestCommandLogCodecRoundTripsAndReplays()
+{
+	dev::Target target { .type = dev::TargetType::Enemy, .id = 43, .tile = { 2, 0 } };
+	dev::CommandLog log;
+	log.record({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+	log.record({
+	    .type = dev::MovementCommandType::MoveThenAct,
+	    .playerId = 0,
+	    .destination = target.tile,
+	    .destinationAction = dev::DestinationAction { dev::DestinationActionType::Attack, target, 1 },
+	});
+
+	dev::CommandLogCodec codec;
+	dev::CommandLogBytes bytes = codec.encode(log);
+	std::optional<dev::CommandLog> decoded = codec.decode(bytes);
+	Expect(decoded.has_value(), "movement command log codec should decode its own bytes");
+	Expect(decoded.has_value() && decoded->commands().size() == 2, "movement command log codec should preserve command count");
+	Expect(decoded.has_value() && decoded->commands()[0].destination == dev::Point { 1, 0 }, "movement command log codec should preserve move destination");
+	Expect(decoded.has_value() && decoded->commands()[1].destinationAction.has_value(), "movement command log codec should preserve destination action");
+	Expect(decoded.has_value() && decoded->commands()[1].destinationAction->target.id == 43, "movement command log codec should preserve action target");
+
+	dev::EventRecorder events;
+	dev::TileMap map;
+	dev::Collision collision;
+	dev::PathFinder pathFinder;
+	std::vector<dev::Player> players { MakePlayer({ 0, 0 }) };
+	dev::PlayerController controller { players, map, collision, pathFinder, &events };
+	dev::CommandDispatcher dispatcher { controller, &events };
+	dev::CommandReplayer replayer { dispatcher };
+	dev::ActionExecutor actionExecutor { dev::ActionRules {}, &events };
+	dev::PlayerMovement movement { collision, actionExecutor, &events };
+	dev::CommandReplayReport report = decoded.has_value()
+	    ? replayer.replay(*decoded)
+	    : dev::CommandReplayReport {};
+	movement.update(players, 0.016F);
+	movement.update(players, 0.016F);
+
+	Expect(report.results.size() == 2, "decoded movement command log should replay every command");
+	Expect(report.acceptedCount() == 2, "decoded movement command log should replay accepted commands");
+	Expect(report.allAccepted(), "decoded movement command log should report all accepted");
+	Expect(players[0].position.tile == dev::Point { 2, 0 }, "decoded movement command log should reproduce player movement");
+}
+
+void TestCommandLogCodecRejectsInvalidBytes()
+{
+	dev::CommandLog log;
+	log.record({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+
+	dev::CommandLogCodec codec;
+	dev::CommandLogBytes bytes = codec.encode(log);
+
+	dev::CommandLogBytes badMagic = bytes;
+	badMagic[0] = 'X';
+	Expect(!codec.decode(badMagic).has_value(), "movement command log codec should reject bad magic");
+
+	dev::CommandLogBytes badVersion = bytes;
+	badVersion.resize(badVersion.size() - 4U);
+	badVersion[4] = 2;
+	dev::CommandLogChecksum {}.appendTo(badVersion);
+	Expect(!codec.decode(badVersion).has_value(), "movement command log codec should reject bad version");
+
+	dev::CommandLogBytes truncated = bytes;
+	truncated.pop_back();
+	Expect(!codec.decode(truncated).has_value(), "movement command log codec should reject truncated bytes");
+
+	dev::CommandLogBytes corrupted = bytes;
+	corrupted[12] ^= 0x01U;
+	Expect(!codec.decode(corrupted).has_value(), "movement command log codec should reject checksum mismatch");
+}
+
+void TestCommandLogChecksumValidatesTrailingChecksum()
+{
+	dev::CommandLogBytes bytes { 1, 2, 3, 4 };
+	dev::CommandLogChecksum checksum;
+	const uint32_t expected = checksum.compute(bytes, bytes.size());
+
+	checksum.appendTo(bytes);
+
+	Expect(bytes.size() == 8, "movement command log checksum should append four checksum bytes");
+	Expect(checksum.hasValidTrailingChecksum(bytes, 4), "movement command log checksum should validate appended checksum");
+	Expect(expected == checksum.compute(bytes, 4), "movement command log checksum should compute payload hash only");
+
+	bytes[0] ^= 0xFFU;
+	Expect(!checksum.hasValidTrailingChecksum(bytes, 4), "movement command log checksum should reject mutated payload");
+}
+
+void TestCommandPacketListCodecFramesPacketBytes()
+{
+	dev::MovementCommand command {
+		.type = dev::MovementCommandType::WalkTo,
+		.playerId = 1,
+		.destination = { 2, 3 },
+	};
+	dev::MovementCodec movementCodec;
+	dev::PacketBytes packetBytes = movementCodec.encode(movementCodec.toPacket(command));
+
+	dev::CommandLogBytes bytes = dev::CommandPacketListCodec {}.encode({ packetBytes, packetBytes });
+	std::optional<std::vector<dev::PacketBytes>> decoded = dev::CommandPacketListCodec {}.decode(bytes);
+
+	Expect(decoded.has_value(), "movement command packet list codec should decode encoded packet lists");
+	Expect(decoded.has_value() && decoded->size() == 2, "movement command packet list codec should preserve packet count");
+	Expect(decoded.has_value() && (*decoded)[0] == packetBytes, "movement command packet list codec should preserve first packet bytes");
+	Expect(decoded.has_value() && (*decoded)[1] == packetBytes, "movement command packet list codec should preserve second packet bytes");
+}
+
+void TestCommandPacketListCodecRejectsInvalidSizes()
+{
+	dev::CommandLogBytes missingCount { 1, 2 };
+	dev::CommandLogBytes wrongSize {
+		1, 0, 0, 0,
+		1, 2, 3,
+	};
+
+	dev::CommandPacketListCodec codec;
+	Expect(!codec.decode(missingCount).has_value(), "movement command packet list codec should reject missing command count");
+	Expect(!codec.decode(wrongSize).has_value(), "movement command packet list codec should reject packet lists with invalid size");
+}
+
+void TestCommandLogFrameCodecFramesPacketBytes()
+{
+	dev::MovementCodec movementCodec;
+	std::vector<dev::PacketBytes> packets {
+		movementCodec.encode(movementCodec.toPacket({
+		    .type = dev::MovementCommandType::WalkTo,
+		    .playerId = 0,
+		    .destination = { 1, 0 },
+		})),
+		movementCodec.encode(movementCodec.toPacket({
+		    .type = dev::MovementCommandType::Stop,
+		    .playerId = 0,
+		    .destination = { 1, 0 },
+		})),
+	};
+
+	dev::CommandLogFrameCodec frameCodec;
+	dev::CommandLogBytes bytes = frameCodec.encode(packets);
+	std::optional<std::vector<dev::PacketBytes>> decoded = frameCodec.decode(bytes);
+
+	Expect(bytes.size() == 68, "movement command log frame codec should write header, packets, and checksum");
+	Expect(bytes.size() == 68 && bytes[0] == 'I' && bytes[1] == 'M' && bytes[2] == 'C' && bytes[3] == 'L', "movement command log frame codec should write magic");
+	Expect(bytes.size() == 68 && bytes[4] == 1 && bytes[8] == 2, "movement command log frame codec should write version and command count");
+	Expect(decoded.has_value() && decoded->size() == 2, "movement command log frame codec should restore packet count");
+	Expect(decoded.has_value() && (*decoded)[0] == packets[0], "movement command log frame codec should preserve first packet");
+	Expect(decoded.has_value() && (*decoded)[1] == packets[1], "movement command log frame codec should preserve second packet");
+}
+
+void TestCommandLogFrameCodecRejectsInvalidFrames()
+{
+	dev::MovementCodec movementCodec;
+	std::vector<dev::PacketBytes> packets {
+		movementCodec.encode(movementCodec.toPacket({
+		    .type = dev::MovementCommandType::WalkTo,
+		    .playerId = 0,
+		    .destination = { 1, 0 },
+		})),
+	};
+	dev::CommandLogFrameCodec frameCodec;
+	dev::CommandLogBytes bytes = frameCodec.encode(packets);
+
+	dev::CommandLogBytes badMagic = bytes;
+	badMagic[0] = 'X';
+	Expect(!frameCodec.decode(badMagic).has_value(), "movement command log frame codec should reject checksum-protected bad magic");
+
+	dev::CommandLogBytes badVersion = bytes;
+	badVersion.resize(badVersion.size() - 4U);
+	badVersion[4] = 2;
+	dev::CommandLogChecksum {}.appendTo(badVersion);
+	Expect(!frameCodec.decode(badVersion).has_value(), "movement command log frame codec should reject unsupported version");
+
+	dev::CommandLogBytes wrongCount = bytes;
+	wrongCount.resize(wrongCount.size() - 4U);
+	wrongCount[8] = 2;
+	dev::CommandLogChecksum {}.appendTo(wrongCount);
+	Expect(!frameCodec.decode(wrongCount).has_value(), "movement command log frame codec should reject payload size mismatch");
 }
 
 void TestEnemyPursuitStepPlannerChoosesNextTileTowardTarget()
@@ -1380,6 +1609,36 @@ void TestSimulationPolicyPausedDoesNotDrainCommands()
 
 	tick.update(world, 0.016F);
 	Expect(world.players[0].position.tile == dev::Point { 1, 0 }, "gameplay simulation should drain preserved command");
+}
+
+void TestSimulationFramePolicyDescriberReportsModePolicy()
+{
+	dev::SimulationFramePolicyDescriber describer;
+
+	const dev::SimulationFramePolicyDescription gameplay = describer.describe(dev::SimulationMode::Gameplay);
+	Expect(std::string_view { gameplay.modeName } == "Gameplay", "policy describer should name gameplay mode");
+	Expect(gameplay.policy.acceptCommands && gameplay.policy.updatePlayers && gameplay.policy.updateEnemies, "policy describer should report gameplay policy");
+	Expect(std::string_view { gameplay.summary }.find("all actors") != std::string_view::npos, "policy describer should explain gameplay actor behavior");
+
+	const dev::SimulationFramePolicyDescription inventory = describer.describe(dev::SimulationMode::Inventory);
+	Expect(std::string_view { inventory.modeName } == "Inventory", "policy describer should name inventory mode");
+	Expect(!inventory.policy.acceptCommands && !inventory.policy.updatePlayers && !inventory.policy.updateEnemies, "policy describer should report inventory policy");
+	Expect(std::string_view { inventory.summary }.find("inventory owns input") != std::string_view::npos, "policy describer should explain inventory input ownership");
+
+	const dev::SimulationFramePolicyDescription paused = describer.describe(dev::SimulationMode::Paused);
+	Expect(std::string_view { paused.modeName } == "Paused", "policy describer should name paused mode");
+	Expect(!paused.policy.acceptCommands && !paused.policy.updatePlayers && !paused.policy.updateEnemies, "policy describer should report paused policy");
+	Expect(std::string_view { paused.summary }.find("freeze actors") != std::string_view::npos, "policy describer should explain paused actor freeze");
+
+	const dev::SimulationFramePolicyDescription replay = describer.describe(dev::SimulationMode::Replay);
+	Expect(std::string_view { replay.modeName } == "Replay", "policy describer should name replay mode");
+	Expect(replay.policy.acceptCommands && replay.policy.updatePlayers && replay.policy.updateEnemies, "policy describer should report replay policy");
+	Expect(std::string_view { replay.summary }.find("recorded commands") != std::string_view::npos, "policy describer should explain replay command source");
+
+	const dev::SimulationFramePolicyDescription prediction = describer.describe(dev::SimulationMode::NetworkPrediction);
+	Expect(std::string_view { prediction.modeName } == "NetworkPrediction", "policy describer should name prediction mode");
+	Expect(prediction.policy.acceptCommands && prediction.policy.updatePlayers && !prediction.policy.updateEnemies, "policy describer should report prediction policy");
+	Expect(std::string_view { prediction.summary }.find("without enemies") != std::string_view::npos, "policy describer should explain prediction enemy gating");
 }
 
 void TestSimulationClockHitStopFreezesActorUpdates()
@@ -3747,6 +4006,10 @@ void TestSessionModePolicyMapsModesToFramePolicy()
 	Expect(!paused.acceptCommands && !paused.updatePlayers && !paused.updateEnemies, "session mode policy should freeze paused sessions");
 	Expect(!inventory.acceptCommands && !inventory.updatePlayers && !inventory.updateEnemies, "session mode policy should freeze inventory sessions");
 	Expect(!empty.acceptCommands && !empty.updatePlayers && !empty.updateEnemies, "session mode policy should freeze empty sessions");
+	Expect(policy.simulationModeFor(dev::GameSessionMode::Gameplay) == dev::SimulationMode::Gameplay, "session mode policy should expose gameplay simulation mode");
+	Expect(policy.simulationModeFor(dev::GameSessionMode::Paused) == dev::SimulationMode::Paused, "session mode policy should expose paused simulation mode");
+	Expect(policy.simulationModeFor(dev::GameSessionMode::Inventory) == dev::SimulationMode::Inventory, "session mode policy should expose inventory simulation mode");
+	Expect(policy.simulationModeFor(dev::GameSessionMode::Empty) == dev::SimulationMode::Paused, "session mode policy should describe empty sessions with paused frame policy");
 }
 
 void TestSessionModePolicyGuardsTransitions()
@@ -5325,6 +5588,8 @@ void TestGameLoopBuildsRuntimeFrameReports()
 	Expect(report.inventoryEvents.size() == 2, "runtime frame report should include inventory event deltas");
 	Expect(report.inventoryEvents.size() == 2 && report.inventoryEvents[0].type == dev::InventoryEventType::Equipped, "runtime frame report should include equipped event");
 	Expect(report.inventoryEvents.size() == 2 && report.inventoryEvents[1].type == dev::InventoryEventType::Unequipped, "runtime frame report should include unequipped event");
+	Expect(std::string_view { report.framePolicy.modeName } == "Gameplay", "runtime frame report should include frame policy mode");
+	Expect(report.framePolicy.policy.acceptCommands && report.framePolicy.policy.updatePlayers && report.framePolicy.policy.updateEnemies, "runtime frame report should include frame policy gates");
 	Expect(result.summary.inventoryCommandResults.size() == report.inventoryCommandResults.size(), "game loop aggregate inventory command results should match frame report results");
 	Expect(result.summary.movementCommandsQueued == report.movementCommandsQueued, "game loop aggregate movement count should match frame report count");
 	Expect(result.summary.lastFrameEvents.movementEvents().size() == report.frameEvents.movementEvents().size(), "last frame events should mirror final runtime frame report");
@@ -5395,6 +5660,8 @@ void TestRuntimeFrameTraceFormatsReadableLines()
 	Expect(ContainsLineFragment(lines, "inventoryScripts=1"), "runtime frame trace should include inventory script count");
 	Expect(ContainsLineFragment(lines, "inventoryResults=2"), "runtime frame trace should include inventory result count");
 	Expect(ContainsLineFragment(lines, "movementQueued=1"), "runtime frame trace should include movement queue count");
+	Expect(ContainsLineFragment(lines, "policy mode=Gameplay acceptCommands=1 updatePlayers=1 updateEnemies=1"), "runtime frame trace should include frame policy gates");
+	Expect(ContainsLineFragment(lines, "reason=accept live input and advance all actors"), "runtime frame trace should include frame policy reason");
 	Expect(ContainsLineFragment(lines, "inventoryScript[0] status=Completed results=1"), "runtime frame trace should include inventory script detail");
 	Expect(ContainsLineFragment(lines, "inventoryResult[0] type=Applied command=EquipItem equipment=Equipped item=955 slot=Weapon"), "runtime frame trace should include equip result detail");
 	Expect(ContainsLineFragment(lines, "inventoryResult[1] type=Applied command=UnequipSlot equipment=Unequipped item=955 slot=Weapon"), "runtime frame trace should include unequip result detail");
@@ -5402,6 +5669,38 @@ void TestRuntimeFrameTraceFormatsReadableLines()
 	Expect(ContainsLineFragment(lines, "movementEvent[0] type=CommandAccepted"), "runtime frame trace should include movement event detail");
 
 	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeFramePolicyTextFormatsArtifactPolicyLines()
+{
+	const dev::SimulationFramePolicyDescription gameplay = dev::SimulationFramePolicyDescriber {}.describe(dev::SimulationMode::Gameplay);
+	dev::RuntimeFramePolicyText formatter;
+
+	const std::string traceLine = formatter.format("policy mode", gameplay, dev::RuntimeFramePolicyBoolStyle::Numeric);
+	const std::string manifestLine = formatter.format("policy latest", gameplay, dev::RuntimeFramePolicyBoolStyle::Words);
+	const std::string noneLine = formatter.formatNone("policy latest");
+
+	Expect(traceLine == "policy mode=Gameplay acceptCommands=1 updatePlayers=1 updateEnemies=1 reason=accept live input and advance all actors", "runtime frame policy text should format trace policy line");
+	Expect(manifestLine == "policy latest=Gameplay acceptCommands=true updatePlayers=true updateEnemies=true reason=accept live input and advance all actors", "runtime frame policy text should format manifest policy line");
+	Expect(noneLine == "policy latest=none", "runtime frame policy text should format missing policy line");
+}
+
+void TestRuntimeRunSummaryTextFormatsTraceAndManifestSummaries()
+{
+	dev::GameLoopResult result;
+	result.summary.framesRun = 2;
+	result.summary.rawInputEventsRouted = 3;
+	result.summary.sessionCommandResults.push_back({});
+	result.summary.runtimeInventoryScriptResults.push_back({});
+	result.summary.inventoryCommandResults.push_back({});
+	result.summary.movementCommandsQueued = 4;
+	result.frameReports.push_back({});
+	result.finalMode = dev::GameSessionMode::Inventory;
+
+	dev::RuntimeRunSummaryText formatter;
+
+	Expect(formatter.format(result, dev::RuntimeRunSummaryDetail::CountsOnly) == "run frames=2 frameReports=1 rawInput=3 sessionResults=1 inventoryScripts=1 inventoryResults=1 movementQueued=4", "runtime run summary text should format trace run summary");
+	Expect(formatter.format(result, dev::RuntimeRunSummaryDetail::WithFinalMode) == "run frames=2 frameReports=1 rawInput=3 sessionResults=1 inventoryScripts=1 inventoryResults=1 movementQueued=4 finalMode=Inventory", "runtime run summary text should format manifest run summary");
 }
 
 void TestRuntimeFrameTraceFormatsEnemyPursuitEvents()
@@ -6290,6 +6589,7 @@ void TestRuntimeDebugArtifactBundleSavesManifestAndTrace()
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "trace=run.trace saved=true"), "runtime debug bundle manifest should index trace artifact");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "run frames=1 frameReports=1"), "runtime debug bundle manifest should summarize run frame counts");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "finalMode=Gameplay"), "runtime debug bundle manifest should include final mode");
+	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "policy latest=Gameplay acceptCommands=true updatePlayers=true updateEnemies=true"), "runtime debug bundle manifest should summarize latest frame policy");
 	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "runtime debug bundle trace should preserve run trace summary");
 
 	std::filesystem::remove_all(root);
@@ -6313,6 +6613,7 @@ void TestRuntimeDebugManifestFormatsFailedRun()
 	Expect(ContainsLineFragment(lines, "trace=run.trace saved=false"), "runtime debug bundle manifest should report trace save state");
 	Expect(ContainsLineFragment(lines, "run frames=0 frameReports=0"), "runtime debug bundle manifest should summarize empty failed runs");
 	Expect(ContainsLineFragment(lines, "finalMode=Empty"), "runtime debug bundle manifest should name empty final mode");
+	Expect(ContainsLineFragment(lines, "policy latest=none"), "runtime debug bundle manifest should report no frame policy for zero-frame runs");
 	Expect(ContainsLineFragment(lines, "setup startupScriptRan=true inventoryScriptRan=false"), "runtime debug bundle manifest should report setup attempts");
 }
 
@@ -6347,6 +6648,7 @@ void TestRuntimeDebugArtifactWriterSavesTraceAndManifest()
 	Expect(manifest.has_value(), "runtime debug artifact writer should write readable manifest");
 	Expect(trace.has_value(), "runtime debug artifact writer should write readable trace");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "trace=run.trace saved=true"), "runtime debug artifact writer manifest should record saved trace");
+	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "policy latest=none"), "runtime debug artifact writer manifest should report no frame policy without frame reports");
 	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=2 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "runtime debug artifact writer should preserve trace summary");
 
 	std::filesystem::remove_all(root);
@@ -6418,6 +6720,7 @@ void TestGameLoopSavesConfiguredDebugBundle()
 	Expect(manifest.has_value(), "game loop debug bundle should write manifest");
 	Expect(trace.has_value(), "game loop debug bundle should write run trace");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "trace=run.trace saved=true"), "game loop debug bundle manifest should index saved trace");
+	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "policy latest=Gameplay acceptCommands=true updatePlayers=true updateEnemies=true"), "game loop debug bundle manifest should include latest frame policy");
 	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "game loop debug bundle trace should include run summary");
 
 	std::filesystem::remove_all(root);
@@ -6446,6 +6749,7 @@ void TestGameLoopSavesDebugBundleOnStartupFailure()
 	Expect(result.output.debugBundleSaveAttempted, "game loop should attempt debug bundle save after startup failure");
 	Expect(result.output.debugBundleSaved, "game loop should save debug bundle after startup failure");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "setup startupScriptRan=true inventoryScriptRan=false"), "failed startup debug bundle manifest should record setup attempt");
+	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "policy latest=none"), "failed startup debug bundle manifest should report no frame policy");
 	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=0 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "failed startup debug bundle trace should preserve zero-frame summary");
 
 	std::filesystem::remove_all(root);
@@ -7540,7 +7844,15 @@ int main()
 	TestPlayerAnimationLockGateBlocksUntilCancelWindow();
 	TestPlayerActionRunnerExecutesReadyDestinationAction();
 	TestCommandReplayProducesSameEventSequence();
+	TestCommandReplayReportsRejectedCommands();
 	TestMovementCodecRoundTrip();
+	TestCommandLogCodecRoundTripsAndReplays();
+	TestCommandLogCodecRejectsInvalidBytes();
+	TestCommandLogChecksumValidatesTrailingChecksum();
+	TestCommandPacketListCodecFramesPacketBytes();
+	TestCommandPacketListCodecRejectsInvalidSizes();
+	TestCommandLogFrameCodecFramesPacketBytes();
+	TestCommandLogFrameCodecRejectsInvalidFrames();
 	TestEnemyPursuitStepPlannerChoosesNextTileTowardTarget();
 	TestEnemyPursuitStepGateRequiresWalkableUnblockedTile();
 	TestEnemyAttackRangeUsesEnemyTuning();
@@ -7581,6 +7893,7 @@ int main()
 	TestSimulationTickPipelineCanSkipCommandIntake();
 	TestSimulationTickDispatchesMovementAndCombat();
 	TestSimulationPolicyPausedDoesNotDrainCommands();
+	TestSimulationFramePolicyDescriberReportsModePolicy();
 	TestSimulationClockHitStopFreezesActorUpdates();
 	TestSimulationClockScalesEnemyWindup();
 	TestEffectRouterMapsMovementEventsToRequests();
@@ -7723,6 +8036,8 @@ int main()
 	TestGameLoopDoesNotDrainInventoryScriptSourcesWithoutActiveWorld();
 	TestGameLoopBuildsRuntimeFrameReports();
 	TestRuntimeFrameTraceFormatsReadableLines();
+	TestRuntimeFramePolicyTextFormatsArtifactPolicyLines();
+	TestRuntimeRunSummaryTextFormatsTraceAndManifestSummaries();
 	TestRuntimeFrameTraceFormatsEnemyPursuitEvents();
 	TestRuntimeFrameTraceFormatsEnemyAttackEvents();
 	TestRuntimeFrameTraceFileStoreSavesAndLoadsLines();

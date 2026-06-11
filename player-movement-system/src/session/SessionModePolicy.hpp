@@ -9,6 +9,7 @@ class SessionModePolicy {
 public:
 	[[nodiscard]] bool hasActiveWorld(GameSessionMode mode) const;
 	[[nodiscard]] bool canTransition(GameSessionMode current, GameSessionMode requested) const;
+	[[nodiscard]] SimulationMode simulationModeFor(GameSessionMode mode) const;
 	[[nodiscard]] SimulationFramePolicy framePolicyFor(GameSessionMode mode) const;
 };
 

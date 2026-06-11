@@ -29,6 +29,11 @@ void RuntimeRunRecorder::beginFrame()
 	inventoryEventOffset_ = inventoryEvents_.events().size();
 }
 
+void RuntimeRunRecorder::recordFramePolicy(SimulationFramePolicyDescription description)
+{
+	frame_.framePolicy = description;
+}
+
 void RuntimeRunRecorder::recordRawInputEventsRouted(int count)
 {
 	frame_.rawInputEventsRouted = count;

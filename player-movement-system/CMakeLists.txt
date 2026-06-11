@@ -18,6 +18,7 @@ add_library(player_movement_system
   src/app/RuntimeExitCodeMapper.cpp
   src/app/RuntimeExitCodePolicy.cpp
   src/app/RuntimeFrameLoopRunner.cpp
+  src/app/RuntimeFramePolicyText.cpp
   src/app/RuntimeFrameRunner.cpp
   src/app/RuntimeFrameTrace.cpp
   src/app/RuntimeFrameTraceFileStore.cpp
@@ -32,6 +33,7 @@ add_library(player_movement_system
   src/app/RuntimeRunFinalizer.cpp
   src/app/RuntimeRunFailurePolicy.cpp
   src/app/RuntimeRunRecorder.cpp
+  src/app/RuntimeRunSummaryText.cpp
   src/app/RuntimeSetupRunner.cpp
   src/app/RuntimeSetupFailurePolicy.cpp
   src/app/RuntimeSessionInputRouter.cpp
@@ -104,6 +106,11 @@ add_library(player_movement_system
   src/player/PlayerPathStepper.cpp
   src/player/WalkPath.cpp
   src/replay/CommandLog.cpp
+  src/replay/CommandLogChecksum.cpp
+  src/replay/CommandLogCodec.cpp
+  src/replay/CommandLogFrameCodec.cpp
+  src/replay/CommandPacketListCodec.cpp
+  src/replay/CommandReplayReport.cpp
   src/replay/CommandReplayer.cpp
   src/save/SnapshotByteStream.cpp
   src/save/SnapshotChecksum.cpp
@@ -153,6 +160,7 @@ add_library(player_movement_system
   src/simulation/SimulationFrameEventCapture.cpp
   src/simulation/SimulationFrameFinalizer.cpp
   src/simulation/SimulationFrameEvents.cpp
+  src/simulation/SimulationFramePolicyDescriber.cpp
   src/simulation/SimulationFramePolicy.cpp
   src/simulation/SimulationFrameRunner.cpp
   src/simulation/SimulationFrameTickRunner.cpp

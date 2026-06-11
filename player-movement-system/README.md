@@ -350,6 +350,30 @@ MovementEvent
 CommandLog
   replayable list of semantic movement commands
 
+CommandLogCodec
+  durable byte format for movement command logs, including magic, version,
+  command count, packet validation, and checksum rejection
+
+CommandLogChecksum
+  checksum boundary for movement replay bytes, so corrupted command logs are
+  rejected before replay
+
+CommandPacketListCodec
+  count-prefixed packet-list payload for movement command logs, separate from
+  the outer versioned frame
+
+CommandLogFrameCodec
+  replay-file frame boundary that owns magic, version, and checksum-protected
+  packet-list payloads
+
+MovementCommandDispatchResult
+  inspectable accepted/rejected result returned by CommandDispatcher and
+  collected by CommandReplayer during movement replay
+
+CommandReplayReport
+  movement replay report that keeps every dispatch result and summarizes
+  accepted/rejected replay counts
+
 MovementCommandSource
   runtime-facing source boundary that lets input, replay, debug, or future
   networking feed semantic movement commands into the active world queue
@@ -458,6 +482,10 @@ SimulationEnemyUpdater
 SimulationFramePolicy
   mode-level rule set for whether a frame accepts commands, advances players,
   or advances enemies
+
+SimulationFramePolicyDescriber
+  inspection boundary that names each SimulationMode, exposes its frame policy,
+  and explains why those gates are enabled
 
 SimulationClock / SimulationTimeStep
   converts raw frame time into actor time, supporting time scale and hit-stop
@@ -578,7 +606,7 @@ GameSession
 
 GameSessionMode / SessionModePolicy
   compact lifecycle state and the rules that map gameplay, pause, inventory,
-  and empty sessions to simulation frame behavior
+  and empty sessions to simulation modes and frame behavior
 
 SessionModeChanger
   small transition boundary that applies only mode changes allowed by
@@ -751,11 +779,20 @@ RuntimeOutputFinalizer
 
 RuntimeFrameReport
   per-frame report that groups routed input counts, runtime source results,
-  event deltas, and simulation frame output for debug/test inspection
+  mode policy, event deltas, and simulation frame output for debug/test
+  inspection
+
+RuntimeFramePolicyText
+  app-layer text formatter that renders frame policy descriptions consistently
+  for run traces and debug bundle manifests
+
+RuntimeRunSummaryText
+  app-layer text formatter that renders run count summaries consistently for
+  run traces and debug bundle manifests
 
 RuntimeFrameTrace
-  readable text formatter for RuntimeFrameReport, suitable for logs, debug
-  overlays, and test diagnostics
+  readable text formatter for RuntimeFrameReport, including mode policy gates,
+  suitable for logs, debug overlays, and test diagnostics
 
 TextFileStore
   shared line-oriented text filesystem boundary that writes readable artifact
@@ -772,7 +809,8 @@ RuntimeTraceService
 
 RuntimeDebugManifest
   readable manifest formatter for debug bundles, summarizing run counts, setup
-  attempts, final mode, artifact paths, and trace save state
+  attempts, final mode, latest frame policy, artifact paths, and trace save
+  state
 
 RuntimeDebugArtifactLayout
   app-layer bundle layout boundary that maps a debug bundle root to stable

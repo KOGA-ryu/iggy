@@ -7,12 +7,14 @@ CommandReplayer::CommandReplayer(CommandDispatcher &dispatcher)
 {
 }
 
-void CommandReplayer::replay(const CommandLog &log) const
+CommandReplayReport CommandReplayer::replay(const CommandLog &log) const
 {
+	CommandReplayReport report;
+	report.results.reserve(log.commands().size());
 	for (const MovementCommand &command : log.commands()) {
-		dispatcher_.dispatch(command);
+		report.results.push_back(dispatcher_.dispatch(command));
 	}
+	return report;
 }
 
 } // namespace dev
-

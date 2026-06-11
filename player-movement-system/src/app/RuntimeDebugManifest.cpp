@@ -1,25 +1,13 @@
 #include "RuntimeDebugManifest.hpp"
 
+#include "app/RuntimeFramePolicyText.hpp"
+#include "app/RuntimeRunSummaryText.hpp"
+
 #include <sstream>
 
 namespace dev {
 
 namespace {
-
-const char *ToString(GameSessionMode mode)
-{
-	switch (mode) {
-	case GameSessionMode::Empty:
-		return "Empty";
-	case GameSessionMode::Gameplay:
-		return "Gameplay";
-	case GameSessionMode::Paused:
-		return "Paused";
-	case GameSessionMode::Inventory:
-		return "Inventory";
-	}
-	return "Unknown";
-}
 
 const char *BoolText(bool value)
 {
@@ -36,17 +24,15 @@ std::vector<std::string> RuntimeDebugManifest::format(
 	lines.push_back("bundle version=1");
 	lines.push_back("trace=run.trace saved=" + std::string { BoolText(context.traceSaved) });
 
-	{
-		std::ostringstream summary;
-		summary << "run frames=" << result.summary.framesRun
-		        << " frameReports=" << result.frameReports.size()
-		        << " rawInput=" << result.summary.rawInputEventsRouted
-		        << " sessionResults=" << result.summary.sessionCommandResults.size()
-		        << " inventoryScripts=" << result.summary.runtimeInventoryScriptResults.size()
-		        << " inventoryResults=" << result.summary.inventoryCommandResults.size()
-		        << " movementQueued=" << result.summary.movementCommandsQueued
-		        << " finalMode=" << ToString(result.finalMode);
-		lines.push_back(summary.str());
+	lines.push_back(RuntimeRunSummaryText {}.format(result, RuntimeRunSummaryDetail::WithFinalMode));
+
+	if (result.frameReports.empty()) {
+		lines.push_back(RuntimeFramePolicyText {}.formatNone("policy latest"));
+	} else {
+		lines.push_back(RuntimeFramePolicyText {}.format(
+		    "policy latest",
+		    result.frameReports.back().framePolicy,
+		    RuntimeFramePolicyBoolStyle::Words));
 	}
 
 	{

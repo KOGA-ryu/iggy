@@ -204,11 +204,33 @@ Replay records semantic commands, not raw hardware input:
 ```text
 MovementCommand -> CommandLog
 CommandLog -> CommandReplayer -> CommandDispatcher
+CommandDispatcher -> MovementCommandDispatchResult
+MovementCommandDispatchResult -> CommandReplayReport
 MovementEvent -> EventRecorder
 ```
 
 That means the same input, network, replay, and test paths all exercise the same
-movement command pipeline.
+movement command pipeline. `MovementCommandDispatchResult` gives replay tools a
+direct accepted/rejected report without scraping the event stream, while
+`CommandReplayReport` summarizes the whole replay as accepted/rejected counts.
+`MovementEvent` still records the frame-visible consequences.
+
+Movement replay can also cross a durable byte boundary:
+
+```text
+CommandLog
+  -> CommandLogCodec
+  -> CommandLogFrameCodec
+  -> CommandPacketListCodec
+  -> MovementCodec packet bytes
+  -> CommandLogChecksum
+```
+
+`CommandPacketListCodec` owns the counted packet-byte payload. `CommandLogFrameCodec`
+owns the replay-file shell: magic bytes, version, payload, and checksum. The
+top-level `CommandLogCodec` is the only layer that turns decoded packet bytes
+back into semantic `MovementCommand` values, so corrupt or invalid command logs
+are rejected before they reach `CommandReplayer`.
 
 ## 12. Network Codec
 
@@ -378,6 +400,12 @@ should enemies advance?
 `SimulationFramePolicy` keeps those answers at the tick boundary. That prevents
 pause, inventory, and replay rules from leaking into pathfinding, combat, enemy
 AI, or raw input mapping.
+
+`SimulationFramePolicyDescriber` is the inspection side of the same idea. It
+turns a `SimulationMode` into a name, a short reason, and the exact
+`SimulationFramePolicy` gates that the tick pipeline will use. That is useful
+for debug overlays, tests, logs, tutorials, or network diagnostics because those
+surfaces can explain the mode without duplicating policy logic.
 
 The current modes are:
 
@@ -681,13 +709,13 @@ update
   -> SessionFrameUpdater
 ```
 
-SessionModePolicy maps session mode to frame policy:
+SessionModePolicy maps session mode to simulation mode and frame policy:
 
 ```text
-Gameplay  -> commands and actors advance
-Paused    -> commands and actors stop
-Inventory -> commands and actors stop
-Empty     -> no active world updates
+Gameplay  -> Gameplay policy, commands and actors advance
+Paused    -> Paused policy, commands and actors stop
+Inventory -> Inventory policy, commands and actors stop
+Empty     -> Paused policy, no active world updates
 ```
 
 Failed loads do not destroy the active world. Successful new/load operations
@@ -1302,14 +1330,21 @@ runtime shell starts coordinating several command and event streams.
 
 ```text
 frame rawInput=0 sessionResults=0 inventoryScripts=1 ...
+policy mode=Gameplay acceptCommands=1 updatePlayers=1 updateEnemies=1 ...
 inventoryResult[0] type=Applied command=EquipItem ...
 inventoryEvent[0] type=Equipped ...
 movementEvent[0] type=CommandAccepted ...
 ```
 
 The trace formatter is intentionally downstream of the report. It does not
-drive gameplay or mutate state. It only turns already-recorded runtime facts
-into readable lines.
+drive gameplay or mutate state. It only turns already-recorded runtime facts,
+including the frame policy chosen for that mode, into readable lines.
+`RuntimeFramePolicyText` owns the exact policy line spelling so traces and
+debug bundle manifests stay consistent while still choosing numeric or word
+booleans for their audience.
+`RuntimeRunSummaryText` does the same for the run-level count summary: the trace
+uses counts only, while the manifest asks for the same line with final mode
+included.
 
 `RuntimeFrameTraceFileStore` persists those readable lines:
 
@@ -1358,6 +1393,11 @@ GameLoopResult
 The bundle owns directory preparation and artifact assembly. The layout owns
 stable artifact path names. The writer owns trace/manifest write attempts and
 reports their save flags. The manifest formatter owns readable manifest lines.
+The manifest includes the latest frame policy summary so a bundle can explain
+why the run accepted commands or advanced actors without opening the full trace.
+That line is formatted through `RuntimeFramePolicyText`, the same boundary used
+by `RuntimeFrameTrace`. Run-level counts go through `RuntimeRunSummaryText` for
+the same reason.
 The trace still goes through `RuntimeTraceService`. That split keeps
 replay/debug artifact shape outside gameplay code while leaving a clear place to
 add future files, such as replay command logs or session metadata.

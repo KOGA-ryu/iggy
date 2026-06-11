@@ -1,5 +1,7 @@
 #include "RuntimeTraceService.hpp"
 
+#include "app/RuntimeRunSummaryText.hpp"
+
 #include <sstream>
 
 namespace dev {
@@ -13,17 +15,7 @@ RuntimeTraceService::RuntimeTraceService(RuntimeFrameTrace formatter, RuntimeFra
 std::vector<std::string> RuntimeTraceService::formatRun(const GameLoopResult &result) const
 {
 	std::vector<std::string> lines;
-	{
-		std::ostringstream summary;
-		summary << "run frames=" << result.summary.framesRun
-		        << " frameReports=" << result.frameReports.size()
-		        << " rawInput=" << result.summary.rawInputEventsRouted
-		        << " sessionResults=" << result.summary.sessionCommandResults.size()
-		        << " inventoryScripts=" << result.summary.runtimeInventoryScriptResults.size()
-		        << " inventoryResults=" << result.summary.inventoryCommandResults.size()
-		        << " movementQueued=" << result.summary.movementCommandsQueued;
-		lines.push_back(summary.str());
-	}
+	lines.push_back(RuntimeRunSummaryText {}.format(result, RuntimeRunSummaryDetail::CountsOnly));
 
 	for (std::size_t i = 0; i < result.frameReports.size(); ++i) {
 		std::ostringstream header;

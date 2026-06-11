@@ -8,11 +8,14 @@ CommandDispatcher::CommandDispatcher(PlayerController &playerController, Movemen
 {
 }
 
-void CommandDispatcher::dispatch(const MovementCommand &command)
+MovementCommandDispatchResult CommandDispatcher::dispatch(const MovementCommand &command)
 {
 	if (!validator_.accepts(command)) {
 		events_.rejected(command);
-		return;
+		return {
+		    .type = MovementCommandDispatchResultType::Rejected,
+		    .command = command,
+		};
 	}
 
 	events_.accepted(command);
@@ -31,6 +34,11 @@ void CommandDispatcher::dispatch(const MovementCommand &command)
 		playerController_.stop(command.playerId);
 		break;
 	}
+
+	return {
+	    .type = MovementCommandDispatchResultType::Accepted,
+	    .command = command,
+	};
 }
 
 } // namespace dev

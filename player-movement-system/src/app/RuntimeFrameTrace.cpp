@@ -1,5 +1,7 @@
 #include "RuntimeFrameTrace.hpp"
 
+#include "app/RuntimeFramePolicyText.hpp"
+
 #include <sstream>
 
 namespace dev {
@@ -272,6 +274,13 @@ std::vector<std::string> RuntimeFrameTrace::format(const RuntimeFrameReport &rep
 		     << " sessionEvents=" << report.sessionEvents.size()
 		     << " inventoryEvents=" << report.inventoryEvents.size();
 		lines.push_back(line.str());
+	}
+
+	{
+		lines.push_back(RuntimeFramePolicyText {}.format(
+		    "policy mode",
+		    report.framePolicy,
+		    RuntimeFramePolicyBoolStyle::Numeric));
 	}
 
 	for (std::size_t i = 0; i < report.sessionCommandResults.size(); ++i) {

@@ -18,6 +18,7 @@
 #include "session/SessionEvent.hpp"
 #include "session/SessionScriptRunner.hpp"
 #include "simulation/SimulationFrameEvents.hpp"
+#include "simulation/SimulationFramePolicyDescriber.hpp"
 
 namespace dev {
 
@@ -76,6 +77,7 @@ struct GameLoopSettings {
 };
 
 struct RuntimeFrameReport {
+	SimulationFramePolicyDescription framePolicy;
 	int rawInputEventsRouted = 0;
 	std::vector<SessionCommandResult> sessionCommandResults;
 	std::vector<InventoryScriptRunResult> inventoryScriptResults;

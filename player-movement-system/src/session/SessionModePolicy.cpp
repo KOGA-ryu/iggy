@@ -12,20 +12,25 @@ bool SessionModePolicy::canTransition(GameSessionMode current, GameSessionMode r
 	return requested == GameSessionMode::Empty || hasActiveWorld(current);
 }
 
-SimulationFramePolicy SessionModePolicy::framePolicyFor(GameSessionMode mode) const
+SimulationMode SessionModePolicy::simulationModeFor(GameSessionMode mode) const
 {
 	switch (mode) {
 	case GameSessionMode::Gameplay:
-		return SimulationFramePolicy::forMode(SimulationMode::Gameplay);
+		return SimulationMode::Gameplay;
 	case GameSessionMode::Paused:
-		return SimulationFramePolicy::forMode(SimulationMode::Paused);
+		return SimulationMode::Paused;
 	case GameSessionMode::Inventory:
-		return SimulationFramePolicy::forMode(SimulationMode::Inventory);
+		return SimulationMode::Inventory;
 	case GameSessionMode::Empty:
-		return SimulationFramePolicy::forMode(SimulationMode::Paused);
+		return SimulationMode::Paused;
 	}
 
-	return SimulationFramePolicy::forMode(SimulationMode::Paused);
+	return SimulationMode::Paused;
+}
+
+SimulationFramePolicy SessionModePolicy::framePolicyFor(GameSessionMode mode) const
+{
+	return SimulationFramePolicy::forMode(simulationModeFor(mode));
 }
 
 } // namespace dev
