@@ -1,8 +1,10 @@
 #include "GameLoop.hpp"
 
 #include "RuntimeExitCodePolicy.hpp"
+#include "RuntimeFrameLoopRunner.hpp"
 #include "RuntimeFrameRunner.hpp"
-#include "RuntimeRunFinalizer.hpp"
+#include "RuntimeInputSourceRouter.hpp"
+#include "RuntimeRunExecutor.hpp"
 #include "RuntimeRunRecorder.hpp"
 #include "RuntimeSetupRunner.hpp"
 #include "RuntimeSourceDrainer.hpp"
@@ -37,34 +39,29 @@ GameLoopResult GameLoop::runForResult()
 		routedMovementCommands_,
 		RuntimeSourceDrainerSettingsBuilder {}.build(settings_.sources, settings_.input),
 	};
-
-	auto finish = [&]() {
-		RuntimeRunFinalizer {}.finalize(session_, settings_.output, result);
-		return result;
-	};
-
-	RuntimeSetupRunResult setup = RuntimeSetupRunner { dispatcher, drainer }.run(settings_.setup);
-	result.setup = setup.setup;
-	recorder.recordSetupInventoryCommandResults(setup.inventoryCommandResults);
-	if (!setup.framesAllowed)
-		return finish();
-
-	RuntimeFrameRunner frameRunner {
+	RuntimeInputSourceRouter inputSourceRouter {
 		session_,
 		routedSessionCommands_,
 		routedMovementCommands_,
+		settings_.sources,
+		settings_.input,
+	};
+	RuntimeFrameRunner frameRunner {
+		session_,
+		inputSourceRouter,
 		drainer,
 		recorder,
 		dispatcher,
-		settings_.sources,
-		settings_.input,
 		settings_.frame,
 	};
-	for (int frame = 0; frame < settings_.frame.maxFrames; ++frame) {
-		frameRunner.runFrame();
-	}
+	RuntimeFrameLoopRunner frameLoopRunner { frameRunner, settings_.frame };
+	RuntimeSetupRunner setupRunner { dispatcher, drainer };
 
-	return finish();
+	RuntimeRunExecutor { session_, recorder, setupRunner, frameLoopRunner }.run(
+	    result,
+	    settings_.setup,
+	    settings_.output);
+	return result;
 }
 
 GameSession &GameLoop::session()

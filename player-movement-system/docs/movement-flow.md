@@ -899,8 +899,8 @@ GameLoopSettings::sources
 ```
 
 That keeps setup scripts, output artifacts, and runtime sources from becoming
-one flat settings bag. Raw input is still routed by `GameLoop`; command and
-script sources are delegated to `RuntimeSourceDrainer`.
+one flat settings bag. Raw input sources are routed by `RuntimeInputSourceRouter`;
+command and script sources are delegated to `RuntimeSourceDrainer`.
 
 `RuntimeInputSettings` groups the active routing context:
 
@@ -1046,7 +1046,7 @@ RuntimeSourceDrainer
 
 ```text
 RuntimeFrameRunner
-  -> route raw input sources
+  -> RuntimeInputSourceRouter routes raw input sources
   -> drain session command sources
   -> drain inventory script sources
   -> drain inventory command sources
@@ -1055,10 +1055,31 @@ RuntimeFrameRunner
   -> RuntimeRunRecorder
 ```
 
-`GameLoop` still owns setup, loop bounds, and finalization. `RuntimeFrameRunner`
-owns the repeated frame mechanics. `RuntimeSourceDrainer` owns the repeated
-source mechanics and the active-world checks needed before inventory and
-movement sources can safely mutate state.
+`RuntimeFrameLoopRunner` owns the bounded repetition policy around that
+one-frame runner:
+
+```text
+RuntimeFrameLoopRunner
+  -> repeat RuntimeFrameRunner::runFrame maxFrames times
+```
+
+`RuntimeRunExecutor` owns the high-level run lifecycle around setup, frame
+loop, and finalization:
+
+```text
+RuntimeRunExecutor
+  -> RuntimeSetupRunner
+  -> if frames allowed, RuntimeFrameLoopRunner
+  -> RuntimeRunFinalizer
+```
+
+`GameLoop` still owns collaborator assembly and event/result access.
+`RuntimeRunExecutor` owns lifecycle order, `RuntimeFrameLoopRunner` owns how
+many bounded frames run, `RuntimeFrameRunner` owns one frame's mechanics,
+`RuntimeInputSourceRouter` owns raw source routing for the frame, and
+`RuntimeSourceDrainer` owns the repeated semantic source mechanics plus the
+active-world checks needed before inventory and movement sources can safely
+mutate state.
 
 `RuntimeRunSummary` keeps the cross-frame aggregates together:
 
@@ -1123,9 +1144,9 @@ GameLoopResult
 ```
 
 `RuntimeRunFinalizer` records the final session mode, then delegates configured
-artifact writes to `RuntimeOutputFinalizer`. That keeps `GameLoop` focused on
-setup, loop bounds, and finalization timing. Output finalization owns the app
-artifact policy and exposes the same success/failure flags on
+artifact writes to `RuntimeOutputFinalizer`. That keeps `RuntimeRunExecutor`
+focused on lifecycle timing. Output finalization owns the app artifact policy
+and exposes the same success/failure flags on
 `GameLoopResult::output`.
 
 `GameLoopSettings::output.runTracePath` lets the app shell persist a full run
@@ -1359,6 +1380,7 @@ The loop can now accept raw input sources directly:
 ```text
 RawInputSource
   -> RawInputEvent[]
+  -> RuntimeInputSourceRouter
   -> RuntimeRawInputDrainer
   -> RuntimeInputRouter
   -> RuntimeSessionInputRouter
@@ -1369,10 +1391,12 @@ RawInputSource
   -> GameSession / SimulationWorld
 ```
 
-`RuntimeRawInputDrainer` owns the source-stream mechanics: drain each configured
-raw input source once, skip missing source slots, route every event, and count
-only events the router handled. `RuntimeInputRouter` still owns the meaning of a
-single event.
+`RuntimeInputSourceRouter` owns the frame-facing input route: build the current
+input context from session state, drain raw input sources, and route handled
+events into the semantic queues. `RuntimeRawInputDrainer` owns the lower-level
+source-stream mechanics: drain each configured raw input source once, skip
+missing source slots, route every event, and count only events the router
+handled. `RuntimeInputRouter` still owns the meaning of a single event.
 
 That gives the app layer three input levels:
 

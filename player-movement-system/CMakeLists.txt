@@ -12,14 +12,17 @@ add_library(player_movement_system
   src/app/GameLoop.cpp
   src/app/RuntimeDebugArtifactBundle.cpp
   src/app/RuntimeExitCodePolicy.cpp
+  src/app/RuntimeFrameLoopRunner.cpp
   src/app/RuntimeFrameRunner.cpp
   src/app/RuntimeFrameTrace.cpp
   src/app/RuntimeFrameTraceFileStore.cpp
   src/app/RuntimeInputContextBuilder.cpp
   src/app/RuntimeInputRouter.cpp
+  src/app/RuntimeInputSourceRouter.cpp
   src/app/RuntimeMovementInputRouter.cpp
   src/app/RuntimeOutputFinalizer.cpp
   src/app/RuntimeRawInputDrainer.cpp
+  src/app/RuntimeRunExecutor.cpp
   src/app/RuntimeRunFinalizer.cpp
   src/app/RuntimeRunRecorder.cpp
   src/app/RuntimeSetupRunner.cpp

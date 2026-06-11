@@ -11,14 +11,17 @@
 #include "app/GameLoop.hpp"
 #include "app/RuntimeDebugArtifactBundle.hpp"
 #include "app/RuntimeExitCodePolicy.hpp"
+#include "app/RuntimeFrameLoopRunner.hpp"
 #include "app/RuntimeFrameRunner.hpp"
 #include "app/RuntimeInputContextBuilder.hpp"
 #include "app/RuntimeInputRouter.hpp"
+#include "app/RuntimeInputSourceRouter.hpp"
 #include "app/RuntimeMovementInputRouter.hpp"
 #include "app/RuntimeFrameTrace.hpp"
 #include "app/RuntimeFrameTraceFileStore.hpp"
 #include "app/RuntimeOutputFinalizer.hpp"
 #include "app/RuntimeRawInputDrainer.hpp"
+#include "app/RuntimeRunExecutor.hpp"
 #include "app/RuntimeRunFinalizer.hpp"
 #include "app/RuntimeRunRecorder.hpp"
 #include "app/RuntimeSessionInputRouter.hpp"
@@ -6003,6 +6006,46 @@ void TestRuntimeRawInputDrainerRoutesHandledEventsAndSkipsNullSources()
 	Expect(movementCommands.empty(), "runtime raw input drainer should not invent movement commands for hotkeys");
 }
 
+void TestRuntimeInputSourceRouterRoutesRawSourcesThroughSessionContext()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_input_source_router_test";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root / "saves" };
+	session.startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	dev::QueuedRawInputSource rawInput;
+	rawInput.enqueue({
+	    .type = dev::RawInputType::MouseClick,
+	    .screenPosition = { 96, 64 },
+	    .pressed = true,
+	});
+
+	dev::QueuedSessionCommandSource routedSessionCommands;
+	dev::QueuedMovementCommandSource routedMovementCommands;
+	dev::RuntimeSourceSettings sources {
+		.rawInputSources = { nullptr, &rawInput },
+	};
+	dev::RuntimeInputSettings input;
+	dev::RuntimeInputSourceRouter router {
+		session,
+		routedSessionCommands,
+		routedMovementCommands,
+		sources,
+		input,
+	};
+
+	const int routed = router.route();
+
+	Expect(routed == 1, "runtime input source router should route handled raw source events");
+	Expect(rawInput.empty(), "runtime input source router should drain raw input source events once");
+	Expect(routedMovementCommands.size() == 1, "runtime input source router should queue routed movement commands");
+	std::vector<dev::MovementCommand> commands = routedMovementCommands.drain();
+	Expect(commands.size() == 1 && commands[0].destination == dev::Point { 3, 2 }, "runtime input source router should build input context from session world");
+	Expect(routedSessionCommands.empty(), "runtime input source router should leave session commands empty for movement input");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestRuntimeFrameRunnerRoutesSourcesAndRecordsOneFrame()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_frame_runner_test";
@@ -6037,15 +6080,19 @@ void TestRuntimeFrameRunnerRoutesSourcesAndRecordsOneFrame()
 	dev::RuntimeInputSettings input {
 		.bindings = dev::RuntimeInputBindings { .pauseKey = 'P', .inventoryKey = 'I', .stopKey = 'S' },
 	};
-	dev::RuntimeFrameRunner {
+	dev::RuntimeInputSourceRouter inputSourceRouter {
 		session,
 		routedSessionCommands,
 		routedMovementCommands,
+		sources,
+		input,
+	};
+	dev::RuntimeFrameRunner {
+		session,
+		inputSourceRouter,
 		sourceDrainer,
 		recorder,
 		dispatcher,
-		sources,
-		input,
 		dev::RuntimeFrameSettings { .maxFrames = 1 },
 	}.runFrame();
 
@@ -6059,6 +6106,175 @@ void TestRuntimeFrameRunnerRoutesSourcesAndRecordsOneFrame()
 	Expect(rawInput.empty(), "runtime frame runner should drain raw input sources once");
 	Expect(routedSessionCommands.empty(), "runtime frame runner should drain routed session queue");
 	Expect(session.mode() == dev::GameSessionMode::Paused, "runtime frame runner should apply routed pause command before simulation update");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeFrameLoopRunnerRunsConfiguredFrames()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_frame_loop_runner_test";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root / "saves" };
+	dev::SessionEventRecorder sessionEvents;
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::QueuedSessionCommandSource routedSessionCommands;
+	dev::QueuedMovementCommandSource routedMovementCommands;
+	dev::GameLoopResult result;
+	dev::RuntimeRunRecorder recorder { result, sessionEvents, inventoryEvents };
+	dev::SessionCommandDispatcher dispatcher { session, &sessionEvents };
+	dev::RuntimeSourceDrainer sourceDrainer {
+		session,
+		inventoryEvents,
+		routedSessionCommands,
+		routedMovementCommands,
+		{},
+	};
+	dev::RuntimeSourceSettings sources;
+	dev::RuntimeInputSettings input;
+	dev::RuntimeFrameSettings frame {
+		.maxFrames = 3,
+		.fixedDeltaSeconds = 1.0F / 120.0F,
+	};
+	dev::RuntimeInputSourceRouter inputSourceRouter {
+		session,
+		routedSessionCommands,
+		routedMovementCommands,
+		sources,
+		input,
+	};
+	dev::RuntimeFrameRunner frameRunner {
+		session,
+		inputSourceRouter,
+		sourceDrainer,
+		recorder,
+		dispatcher,
+		frame,
+	};
+
+	const int framesRun = dev::RuntimeFrameLoopRunner { frameRunner, frame }.run();
+
+	Expect(framesRun == 3, "runtime frame loop runner should report configured frames run");
+	Expect(result.summary.framesRun == 3, "runtime frame loop runner should run the configured frame count");
+	Expect(result.frameReports.size() == 3, "runtime frame loop runner should record one report per frame");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeRunExecutorRunsFramesOnlyWhenSetupAllows()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_run_executor_test";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root / "saves" };
+	dev::SessionEventRecorder sessionEvents;
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::QueuedSessionCommandSource routedSessionCommands;
+	dev::QueuedMovementCommandSource routedMovementCommands;
+	dev::GameLoopResult result;
+	dev::RuntimeRunRecorder recorder { result, sessionEvents, inventoryEvents };
+	dev::SessionCommandDispatcher dispatcher { session, &sessionEvents };
+	dev::RuntimeSourceDrainer sourceDrainer {
+		session,
+		inventoryEvents,
+		routedSessionCommands,
+		routedMovementCommands,
+		{},
+	};
+	dev::RuntimeInputSourceRouter inputSourceRouter {
+		session,
+		routedSessionCommands,
+		routedMovementCommands,
+		dev::RuntimeSourceSettings {},
+		dev::RuntimeInputSettings {},
+	};
+	dev::RuntimeFrameSettings frame {
+		.maxFrames = 2,
+	};
+	dev::RuntimeFrameRunner frameRunner {
+		session,
+		inputSourceRouter,
+		sourceDrainer,
+		recorder,
+		dispatcher,
+		frame,
+	};
+	dev::RuntimeFrameLoopRunner frameLoopRunner { frameRunner, frame };
+	dev::RuntimeSetupRunner setupRunner { dispatcher, sourceDrainer };
+
+	dev::RuntimeRunExecutor {
+		session,
+		recorder,
+		setupRunner,
+		frameLoopRunner,
+	}.run(
+	    result,
+	    dev::RuntimeSetupSettings {},
+	    dev::RuntimeOutputSettings {});
+
+	Expect(result.summary.framesRun == 2, "runtime run executor should run frames when setup allows them");
+	Expect(result.finalMode == dev::GameSessionMode::Empty, "runtime run executor should finalize the run after frames");
+	Expect(!result.setup.startupScriptRan, "runtime run executor should preserve setup results");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeRunExecutorFinalizesWithoutFramesAfterSetupFailure()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_run_executor_failure_test";
+	const std::filesystem::path missingStartup = root / "missing.iscl";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root / "saves" };
+	dev::SessionEventRecorder sessionEvents;
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::QueuedSessionCommandSource routedSessionCommands;
+	dev::QueuedMovementCommandSource routedMovementCommands;
+	dev::GameLoopResult result;
+	dev::RuntimeRunRecorder recorder { result, sessionEvents, inventoryEvents };
+	dev::SessionCommandDispatcher dispatcher { session, &sessionEvents };
+	dev::RuntimeSourceDrainer sourceDrainer {
+		session,
+		inventoryEvents,
+		routedSessionCommands,
+		routedMovementCommands,
+		{},
+	};
+	dev::RuntimeInputSourceRouter inputSourceRouter {
+		session,
+		routedSessionCommands,
+		routedMovementCommands,
+		dev::RuntimeSourceSettings {},
+		dev::RuntimeInputSettings {},
+	};
+	dev::RuntimeFrameSettings frame {
+		.maxFrames = 2,
+	};
+	dev::RuntimeFrameRunner frameRunner {
+		session,
+		inputSourceRouter,
+		sourceDrainer,
+		recorder,
+		dispatcher,
+		frame,
+	};
+	dev::RuntimeFrameLoopRunner frameLoopRunner { frameRunner, frame };
+	dev::RuntimeSetupRunner setupRunner { dispatcher, sourceDrainer };
+
+	dev::RuntimeRunExecutor {
+		session,
+		recorder,
+		setupRunner,
+		frameLoopRunner,
+	}.run(
+	    result,
+	    dev::RuntimeSetupSettings { .startupScript = missingStartup },
+	    dev::RuntimeOutputSettings {});
+
+	Expect(result.setup.startupScriptRan, "runtime run executor should record attempted setup scripts");
+	Expect(result.setup.startupScriptResult.status == dev::SessionScriptRunStatus::LoadFailed, "runtime run executor should preserve setup failure");
+	Expect(result.summary.framesRun == 0, "runtime run executor should not run frames after setup failure");
+	Expect(result.finalMode == dev::GameSessionMode::Empty, "runtime run executor should finalize even when frames are blocked");
 
 	std::filesystem::remove_all(root);
 }
@@ -6547,7 +6763,11 @@ int main()
 	TestRuntimeInputRouterMapsStandGroundTargetClickToStandAndAct();
 	TestQueuedRawInputSourceDrainsEventsOnce();
 	TestRuntimeRawInputDrainerRoutesHandledEventsAndSkipsNullSources();
+	TestRuntimeInputSourceRouterRoutesRawSourcesThroughSessionContext();
 	TestRuntimeFrameRunnerRoutesSourcesAndRecordsOneFrame();
+	TestRuntimeFrameLoopRunnerRunsConfiguredFrames();
+	TestRuntimeRunExecutorRunsFramesOnlyWhenSetupAllows();
+	TestRuntimeRunExecutorFinalizesWithoutFramesAfterSetupFailure();
 	TestGameLoopRoutesRawInputHotkeysThroughSessionCommands();
 	TestGameLoopRoutesRawMouseInputThroughMovementCommands();
 	TestGameLoopUsesWorldTargetRegistryForRawMouseInput();

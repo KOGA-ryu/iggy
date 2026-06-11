@@ -168,9 +168,11 @@ Good first tests:
 - RuntimeInputContextBuilder builds per-frame router context from session state
 - RuntimeFrameSettings defaults to zero frames at a sixty hertz timestep
 - RuntimeFrameRunner routes sources and records one bounded frame
+- RuntimeFrameLoopRunner runs the configured bounded frame count
 - RuntimeRunSummary defaults to empty aggregate run state
 - RuntimeRunRecorder aggregates setup inventory results without creating frames
 - RuntimeRunRecorder turns frame work into frame reports and run summaries
+- RuntimeRunExecutor runs setup, frames, and finalization in lifecycle order
 - RuntimeRunFinalizer captures final session mode and applies output finalization
 - RuntimeExitCodePolicy maps setup and output failures to process failures
 - RuntimeOutputSettings defaults to no runtime artifact outputs
@@ -197,6 +199,7 @@ Good first tests:
 - RuntimeInputRouter maps stand-ground target clicks into StandAndAct attacks
 - QueuedRawInputSource drains raw input events exactly once
 - RuntimeRawInputDrainer drains raw input sources and counts handled routed events
+- RuntimeInputSourceRouter routes raw input sources through the current session context
 - GameLoop routes raw hotkeys through session command dispatch
 - GameLoop routes raw mouse clicks through movement command dispatch
 - GameLoop uses the active world target registry for target-aware raw mouse input

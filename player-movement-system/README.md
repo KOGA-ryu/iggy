@@ -291,6 +291,10 @@ MovementCommandSource
   runtime-facing source boundary that lets input, replay, debug, or future
   networking feed semantic movement commands into the active world queue
 
+RuntimeInputSourceRouter
+  app-edge use case that builds the current input context, drains raw input
+  sources, and routes handled events into semantic session/movement queues
+
 RuntimeInputRouter
   app-edge adapter that translates focused raw input into session or movement
   command sources, optionally resolving clicked targets into interaction
@@ -547,10 +551,8 @@ RuntimeLoopTypes
   orchestration class
 
 GameLoop
-  app-facing shell that runs optional startup and inventory scripts, drains raw
-  input, session, inventory script, inventory command, and movement sources,
-  advances bounded frames, optionally saves run traces/debug bundles, and
-  exposes results/events for tests and debug tools
+  app-facing shell that assembles runtime collaborators, executes the run
+  lifecycle, and exposes results/events for tests and debug tools
 
 RuntimeSetupSettings
   app-layer setup settings that group optional startup and configured inventory
@@ -582,8 +584,17 @@ RuntimeFrameSettings
   for the GameLoop shell
 
 RuntimeFrameRunner
-  app-layer use case that runs one bounded frame: routes raw input, drains
-  runtime sources, advances the session, and records the frame report
+  app-layer use case that runs one bounded frame: asks the input source router
+  to route raw input, drains runtime sources, advances the session, and records
+  the frame report
+
+RuntimeFrameLoopRunner
+  app-layer loop policy that runs a one-frame runner for RuntimeFrameSettings
+  maxFrames, keeping bounded repetition out of the GameLoop shell
+
+RuntimeRunExecutor
+  app-layer lifecycle use case that runs configured setup, conditionally runs
+  the bounded frame loop, and finalizes the GameLoopResult
 
 RuntimeRunSummary
   app-layer aggregate run result state for routed input, runtime command
