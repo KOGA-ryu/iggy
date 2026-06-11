@@ -691,7 +691,9 @@ session command  -> session event
 
 ## 29. Session Replay
 
-Session replay records lifecycle commands, not UI clicks:
+Session replay records lifecycle commands, not UI clicks. The detailed replay
+architecture is documented in [`lifecycle-replay.md`](lifecycle-replay.md); the
+short path is:
 
 ```text
 SessionCommand
@@ -749,15 +751,16 @@ boundary that movement commands already have.
 ## 31. Session Command Log Codec
 
 A single lifecycle command can cross a byte boundary. A full lifecycle script
-needs framing:
+needs framing. The log byte stack is split into packet bytes, counted packet
+lists, frame metadata, and checksum validation:
 
 ```text
 SessionCommandLog
   -> SessionCommandLogFrameCodec
   -> magic
   -> version
-  -> command count
-  -> SessionCommandPacket[]
+  -> SessionCommandPacketListCodec
+  -> counted SessionCommandPacket[]
   -> SessionCommandLogChecksum
   -> checksum
 ```

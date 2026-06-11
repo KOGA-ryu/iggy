@@ -24,6 +24,8 @@ command, the simulation has one path to maintain.
   pipeline from input to simulation, save slots, and session commands.
 - [Save system](docs/save-system.md) explains the durable-state and byte-format
   layers behind snapshot save/load.
+- [Lifecycle replay](docs/lifecycle-replay.md) explains session command replay,
+  lifecycle scripts, and their byte-format validation layers.
 
 ## Folder Map
 
