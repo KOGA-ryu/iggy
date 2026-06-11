@@ -40,7 +40,9 @@
 #include "app/RuntimeInventoryText.hpp"
 #include "app/RuntimeMovementInputRouter.hpp"
 #include "app/RuntimeMovementInputBlockSummary.hpp"
+#include "app/RuntimeMovementCommandReportRecorder.hpp"
 #include "app/RuntimeMovementEventText.hpp"
+#include "app/RuntimeMovementScriptReportRecorder.hpp"
 #include "app/RuntimeMovementScriptText.hpp"
 #include "app/RuntimeFrameTrace.hpp"
 #include "app/RuntimeFrameTraceFileStore.hpp"
@@ -7275,6 +7277,45 @@ void TestRuntimeSessionCommandReportRecorderReplacesFrameAndAggregatesSummary()
 	Expect(summary.sessionCommandResults.size() == 2 && summary.sessionCommandResults[1].command.mode == std::optional<dev::GameSessionMode> { dev::GameSessionMode::Inventory }, "runtime session command report recorder should append current frame results to summary");
 }
 
+void TestRuntimeMovementScriptReportRecorderReplacesFrameAndAggregatesSummary()
+{
+	dev::RuntimeFrameReport frame;
+	dev::RuntimeRunSummary summary;
+	frame.movementScriptResults.push_back({
+	    .status = dev::MovementScriptRunStatus::LoadFailed,
+	});
+	summary.runtimeMovementScriptResults.push_back({
+	    .status = dev::MovementScriptRunStatus::NoActiveWorld,
+	});
+
+	dev::RuntimeMovementScriptReportRecorder {}.record(
+	    {
+	        {
+	            .status = dev::MovementScriptRunStatus::Completed,
+	        },
+	    },
+	    frame,
+	    summary);
+
+	Expect(frame.movementScriptResults.size() == 1 && frame.movementScriptResults[0].status == dev::MovementScriptRunStatus::Completed, "runtime movement script report recorder should replace frame movement scripts with current frame results");
+	Expect(summary.runtimeMovementScriptResults.size() == 2 && summary.runtimeMovementScriptResults[0].status == dev::MovementScriptRunStatus::NoActiveWorld, "runtime movement script report recorder should preserve existing summary movement script results");
+	Expect(summary.runtimeMovementScriptResults.size() == 2 && summary.runtimeMovementScriptResults[1].status == dev::MovementScriptRunStatus::Completed, "runtime movement script report recorder should append current frame movement script results");
+	Expect(summary.movementCommandsQueued == 0, "runtime movement script report recorder should not inflate queued movement command count");
+}
+
+void TestRuntimeMovementCommandReportRecorderCopiesFrameAndAggregatesSummary()
+{
+	dev::RuntimeFrameReport frame;
+	dev::RuntimeRunSummary summary;
+	frame.movementCommandsQueued = 1;
+	summary.movementCommandsQueued = 3;
+
+	dev::RuntimeMovementCommandReportRecorder {}.recordQueuedCount(2, frame, summary);
+
+	Expect(frame.movementCommandsQueued == 2, "runtime movement command report recorder should replace frame queued command count");
+	Expect(summary.movementCommandsQueued == 5, "runtime movement command report recorder should aggregate queued command count into summary");
+}
+
 void TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz()
 {
 	dev::RuntimeFrameSettings frame;
@@ -9686,6 +9727,8 @@ int main()
 	TestRuntimeInventoryScriptReportRecorderKeepsScriptsAndFlattensCommands();
 	TestRuntimeInventoryCommandReportRecorderAppendsDirectCommandResults();
 	TestRuntimeSessionCommandReportRecorderReplacesFrameAndAggregatesSummary();
+	TestRuntimeMovementScriptReportRecorderReplacesFrameAndAggregatesSummary();
+	TestRuntimeMovementCommandReportRecorderCopiesFrameAndAggregatesSummary();
 	TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz();
 	TestRuntimeRunSummaryDefaultsToEmptyRun();
 	TestRuntimeRunRecorderAggregatesSetupInventoryResultsWithoutFrame();

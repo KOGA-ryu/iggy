@@ -1350,6 +1350,15 @@ aggregate inventory command list.
 report receives the current frame's lifecycle command results, while the run
 summary appends them to the cross-frame lifecycle history.
 
+`RuntimeMovementScriptReportRecorder` owns runtime movement script results. It
+records which movement scripts ran on the frame and across the run without
+inflating `movementCommandsQueued`, which is reserved for direct movement
+command source intake.
+
+`RuntimeMovementCommandReportRecorder` owns that direct queued movement command
+count. The frame gets the count for this frame, while the run summary
+accumulates command intake across frames.
+
 `RuntimeOutputSettings` groups the app shell's optional artifact destinations:
 
 ```text

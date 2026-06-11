@@ -792,6 +792,15 @@ RuntimeSessionCommandReportRecorder
   app-layer recorder that keeps current-frame session command results on the
   frame report while aggregating all session command results into the run summary
 
+RuntimeMovementScriptReportRecorder
+  app-layer recorder that keeps current-frame movement script results on the
+  frame report while aggregating runtime movement script results into the run
+  summary without changing queued movement command counts
+
+RuntimeMovementCommandReportRecorder
+  app-layer recorder that stores direct movement command queue counts on the
+  frame report and aggregates them into the run summary
+
 RuntimeFinalModeRecorder
   app-layer recorder that captures the GameSession's final mode onto
   GameLoopResult before output artifacts are written

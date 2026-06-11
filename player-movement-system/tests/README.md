@@ -229,6 +229,8 @@ Good first tests:
 - RuntimeInventoryScriptReportRecorder records script results and flattens command results
 - RuntimeInventoryCommandReportRecorder appends direct command results to frame and run reports
 - RuntimeSessionCommandReportRecorder records frame and aggregate session command results
+- RuntimeMovementScriptReportRecorder records frame and aggregate movement script results
+- RuntimeMovementCommandReportRecorder records frame and aggregate queued movement counts
 - RuntimeFrameSettings defaults to zero frames at a sixty hertz timestep
 - RuntimeFrameRunner routes sources and records one bounded frame
 - RuntimeFrameLoopRunner runs the configured bounded frame count

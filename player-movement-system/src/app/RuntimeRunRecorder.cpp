@@ -3,6 +3,8 @@
 #include "app/RuntimeInputDrainReportRecorder.hpp"
 #include "app/RuntimeInventoryCommandReportRecorder.hpp"
 #include "app/RuntimeInventoryScriptReportRecorder.hpp"
+#include "app/RuntimeMovementCommandReportRecorder.hpp"
+#include "app/RuntimeMovementScriptReportRecorder.hpp"
 #include "app/RuntimeSessionCommandReportRecorder.hpp"
 
 #include <utility>
@@ -61,17 +63,12 @@ void RuntimeRunRecorder::recordInventoryCommandResults(std::vector<InventoryComm
 
 void RuntimeRunRecorder::recordMovementScriptResults(std::vector<MovementScriptRunResult> results)
 {
-	result_.summary.runtimeMovementScriptResults.insert(
-	    result_.summary.runtimeMovementScriptResults.end(),
-	    results.begin(),
-	    results.end());
-	frame_.movementScriptResults = std::move(results);
+	RuntimeMovementScriptReportRecorder {}.record(std::move(results), frame_, result_.summary);
 }
 
 void RuntimeRunRecorder::recordMovementCommandsQueued(int count)
 {
-	frame_.movementCommandsQueued = count;
-	result_.summary.movementCommandsQueued += count;
+	RuntimeMovementCommandReportRecorder {}.recordQueuedCount(count, frame_, result_.summary);
 }
 
 void RuntimeRunRecorder::recordFrameEvents(SimulationFrameEvents events)
