@@ -39,6 +39,7 @@ struct RuntimeOutputResult {
 struct RuntimeSetupSettings {
 	std::optional<std::filesystem::path> startupScript;
 	std::optional<std::filesystem::path> inventoryScript;
+	std::optional<std::filesystem::path> movementScript;
 };
 
 struct RuntimeSetupResult {
@@ -46,6 +47,8 @@ struct RuntimeSetupResult {
 	SessionScriptRunResult startupScriptResult;
 	bool inventoryScriptRan = false;
 	InventoryScriptRunResult inventoryScriptResult;
+	bool movementScriptRan = false;
+	MovementScriptRunResult movementScriptResult;
 };
 
 struct RuntimeSourceSettings {

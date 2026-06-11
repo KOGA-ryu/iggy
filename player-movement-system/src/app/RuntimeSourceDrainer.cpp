@@ -32,6 +32,23 @@ InventoryScriptRunResult RuntimeSourceDrainer::runInventoryScript(const std::fil
 	return runner.run(path);
 }
 
+MovementScriptRunResult RuntimeSourceDrainer::runMovementScript(const std::filesystem::path &path)
+{
+	if (!session_.hasActiveWorld())
+		return { .status = MovementScriptRunStatus::NoActiveWorld };
+
+	PlayerController playerController {
+		session_.world().players,
+		session_.world().map,
+		session_.world().collision,
+		session_.world().pathFinder,
+		session_.world().movementEvents,
+	};
+	CommandDispatcher dispatcher { playerController, session_.world().movementEvents };
+	MovementScriptRunner runner { dispatcher };
+	return runner.run(path);
+}
+
 std::vector<SessionCommandResult> RuntimeSourceDrainer::drainSessionCommands(const SessionCommandDispatcher &dispatcher)
 {
 	std::vector<SessionCommandResult> results;
@@ -96,17 +113,8 @@ std::vector<MovementScriptRunResult> RuntimeSourceDrainer::drainMovementScripts(
 	    settings_.movementScriptSources);
 	results.reserve(paths.size());
 
-	PlayerController playerController {
-		session_.world().players,
-		session_.world().map,
-		session_.world().collision,
-		session_.world().pathFinder,
-		session_.world().movementEvents,
-	};
-	CommandDispatcher dispatcher { playerController, session_.world().movementEvents };
-	MovementScriptRunner runner { dispatcher };
 	for (const std::filesystem::path &path : paths)
-		results.push_back(runner.run(path));
+		results.push_back(runMovementScript(path));
 
 	return results;
 }

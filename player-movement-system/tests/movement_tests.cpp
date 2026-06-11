@@ -23,6 +23,7 @@
 #include "app/RuntimeInputRouter.hpp"
 #include "app/RuntimeInputSourceRouter.hpp"
 #include "app/RuntimeMovementInputRouter.hpp"
+#include "app/RuntimeMovementScriptText.hpp"
 #include "app/RuntimeFrameTrace.hpp"
 #include "app/RuntimeFrameTraceFileStore.hpp"
 #include "app/RuntimeOutputFinalizer.hpp"
@@ -5216,6 +5217,52 @@ void TestGameLoopRunsInventoryScriptAfterStartupScript()
 	std::filesystem::remove_all(root);
 }
 
+void TestGameLoopRunsMovementScriptAfterStartupScript()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_game_loop_startup_then_movement_script_test";
+	const std::filesystem::path startupPath = root / "startup.iscl";
+	const std::filesystem::path movementPath = root / "movement.imcl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::SessionCommandLog startup;
+	startup.record({
+	    .type = dev::SessionCommandType::StartNewGame,
+	    .newGameSettings = dev::NewGameSettings { .playerStart = { 0, 0 }, .playerHitPoints = 20 },
+	});
+	dev::SessionCommandLogFileStore sessionStore;
+	Expect(sessionStore.save(startupPath, startup), "startup then movement test should create startup script");
+
+	dev::CommandLog movement;
+	movement.record({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+	dev::CommandLogFileStore movementStore;
+	Expect(movementStore.save(movementPath, movement), "startup then movement test should create movement script");
+
+	dev::GameLoop loop {
+		dev::GameLoopSettings {
+		    .saveRoot = root / "saves",
+		    .setup = { .startupScript = startupPath, .movementScript = movementPath },
+		    .frame = { .maxFrames = 1 },
+		}
+	};
+	dev::GameLoopResult result = loop.runForResult();
+
+	Expect(result.setup.startupScriptRan, "game loop should run startup script before movement script");
+	Expect(result.setup.startupScriptResult.status == dev::SessionScriptRunStatus::Completed, "startup then movement test should complete startup script");
+	Expect(result.setup.movementScriptRan, "game loop should run configured movement script after startup creates world");
+	Expect(result.setup.movementScriptResult.status == dev::MovementScriptRunStatus::Completed, "movement setup script should complete when startup created world");
+	Expect(result.setup.movementScriptResult.replayReport.acceptedCount() == 1, "movement setup script should report accepted movement command");
+	Expect(result.summary.runtimeMovementScriptResults.empty(), "configured movement setup script should not be counted as runtime movement script source");
+	Expect(result.summary.framesRun == 1, "game loop should run frames after configured movement script");
+	Expect(loop.session().world().players.size() == 1 && loop.session().world().players[0].position.tile == dev::Point { 1, 0 }, "configured movement setup script should feed first frame movement");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestGameLoopReportsInventoryScriptLoadFailure()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_game_loop_inventory_script_load_failure_test";
@@ -5980,6 +6027,44 @@ void TestRuntimeFramePolicyTextFormatsArtifactPolicyLines()
 	Expect(noneLine == "policy latest=none", "runtime frame policy text should format missing policy line");
 }
 
+void TestRuntimeMovementScriptTextFormatsResultsAndAggregates()
+{
+	dev::MovementScriptRunResult completed {
+		.status = dev::MovementScriptRunStatus::Completed,
+		.replayReport = {
+		    .results = {
+		        {
+		            .type = dev::MovementCommandDispatchResultType::Accepted,
+		            .command = {
+		                .type = dev::MovementCommandType::WalkTo,
+		                .playerId = 0,
+		                .destination = { 1, 0 },
+		            },
+		        },
+		        {
+		            .type = dev::MovementCommandDispatchResultType::Rejected,
+		            .command = {
+		                .type = dev::MovementCommandType::MoveThenAct,
+		                .playerId = 0,
+		                .destination = { 1, 0 },
+		                .destinationAction = std::nullopt,
+		            },
+		        },
+		    },
+		},
+	};
+	std::vector<dev::MovementScriptRunResult> results {
+		completed,
+		{ .status = dev::MovementScriptRunStatus::LoadFailed },
+		{ .status = dev::MovementScriptRunStatus::NoActiveWorld },
+	};
+
+	dev::RuntimeMovementScriptText formatter;
+
+	Expect(formatter.formatResult("movementScript[0]", completed) == "movementScript[0] status=Completed results=2 accepted=1 rejected=1", "runtime movement script text should format one replay result");
+	Expect(formatter.formatAggregate("runtime movementScripts", results) == "runtime movementScripts=3 completed=1 loadFailed=1 noActiveWorld=1 accepted=1 rejected=1", "runtime movement script text should format aggregate replay results");
+}
+
 void TestRuntimeRunSummaryTextFormatsTraceAndManifestSummaries()
 {
 	dev::GameLoopResult result;
@@ -6152,6 +6237,7 @@ void TestRuntimeSetupSettingsDefaultsToNoScripts()
 
 	Expect(!setup.startupScript.has_value(), "runtime setup settings should default to no startup script");
 	Expect(!setup.inventoryScript.has_value(), "runtime setup settings should default to no configured inventory script");
+	Expect(!setup.movementScript.has_value(), "runtime setup settings should default to no configured movement script");
 }
 
 void TestRuntimeSetupResultDefaultsToNoSetupScripts()
@@ -6162,6 +6248,8 @@ void TestRuntimeSetupResultDefaultsToNoSetupScripts()
 	Expect(setup.startupScriptResult.commandResults.empty(), "runtime setup result should default to no startup command results");
 	Expect(!setup.inventoryScriptRan, "runtime setup result should default to no inventory script");
 	Expect(setup.inventoryScriptResult.commandResults.empty(), "runtime setup result should default to no inventory command results");
+	Expect(!setup.movementScriptRan, "runtime setup result should default to no movement script");
+	Expect(setup.movementScriptResult.replayReport.results.empty(), "runtime setup result should default to no movement replay results");
 }
 
 void TestRuntimeSetupRunnerAllowsFramesWhenNoScriptsConfigured()
@@ -6187,6 +6275,7 @@ void TestRuntimeSetupRunnerAllowsFramesWhenNoScriptsConfigured()
 	Expect(result.framesAllowed, "runtime setup runner should allow frames when no setup scripts are configured");
 	Expect(!result.setup.startupScriptRan, "runtime setup runner should not invent startup script attempts");
 	Expect(!result.setup.inventoryScriptRan, "runtime setup runner should not invent inventory script attempts");
+	Expect(!result.setup.movementScriptRan, "runtime setup runner should not invent movement script attempts");
 	Expect(result.inventoryCommandResults.empty(), "runtime setup runner should report no setup inventory command results without scripts");
 
 	std::filesystem::remove_all(root);
@@ -6221,6 +6310,7 @@ void TestRuntimeSetupRunnerStopsFramesAfterStartupLoadFailure()
 	Expect(result.setup.startupScriptRan, "runtime setup runner should attempt configured startup script");
 	Expect(result.setup.startupScriptResult.status == dev::SessionScriptRunStatus::LoadFailed, "runtime setup runner should report startup load failure");
 	Expect(!result.setup.inventoryScriptRan, "runtime setup runner should not run inventory setup after startup load failure");
+	Expect(!result.setup.movementScriptRan, "runtime setup runner should not run movement setup after startup load failure");
 	Expect(result.inventoryCommandResults.empty(), "failed startup setup should not produce inventory command results");
 
 	std::filesystem::remove_all(root);
@@ -6266,6 +6356,90 @@ void TestRuntimeSetupRunnerPreservesInventoryCommandRejections()
 	Expect(result.setup.inventoryScriptResult.commandResults.size() == 1 && result.setup.inventoryScriptResult.commandResults[0].type == dev::InventoryCommandResultType::Rejected, "runtime setup runner should preserve rejected inventory command result");
 	Expect(result.inventoryCommandResults.size() == 1 && result.inventoryCommandResults[0].type == dev::InventoryCommandResultType::Rejected, "runtime setup runner should expose configured inventory command results for run summaries");
 	Expect(inventoryEvents.events().size() == 1 && inventoryEvents.events()[0].type == dev::InventoryEventType::Rejected, "runtime setup runner should preserve inventory setup events");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeSetupRunnerPreservesMovementCommandRejections()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_setup_runner_movement_rejection_test";
+	const std::filesystem::path movementPath = root / "movement.imcl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::CommandLog movementLog;
+	movementLog.record({
+	    .type = dev::MovementCommandType::MoveThenAct,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	    .destinationAction = std::nullopt,
+	});
+	dev::CommandLogFileStore movementStore;
+	Expect(movementStore.save(movementPath, movementLog), "runtime setup runner movement rejection test should create movement script");
+
+	dev::GameSession session { root / "saves" };
+	session.startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	dev::SessionEventRecorder sessionEvents;
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::QueuedSessionCommandSource routedSessionCommands;
+	dev::QueuedMovementCommandSource routedMovementCommands;
+	dev::SessionCommandDispatcher dispatcher { session, &sessionEvents };
+	dev::RuntimeSourceDrainer drainer {
+		session,
+		inventoryEvents,
+		routedSessionCommands,
+		routedMovementCommands,
+		{},
+	};
+	dev::RuntimeSetupRunResult result = dev::RuntimeSetupRunner { dispatcher, drainer }.run({
+	    .movementScript = movementPath,
+	});
+
+	Expect(result.framesAllowed, "runtime setup runner should allow frames after loadable movement script command rejection");
+	Expect(result.setup.movementScriptRan, "runtime setup runner should attempt configured movement script");
+	Expect(result.setup.movementScriptResult.status == dev::MovementScriptRunStatus::Completed, "runtime setup runner should complete loadable movement scripts");
+	Expect(result.setup.movementScriptResult.replayReport.results.size() == 1, "runtime setup runner should preserve movement replay results");
+	Expect(result.setup.movementScriptResult.replayReport.rejectedCount() == 1, "runtime setup runner should preserve rejected movement commands");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeSetupRunnerStopsFramesWithoutActiveWorldForMovementScript()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_setup_runner_movement_no_world_test";
+	const std::filesystem::path movementPath = root / "movement.imcl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::CommandLog movementLog;
+	movementLog.record({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+	dev::CommandLogFileStore movementStore;
+	Expect(movementStore.save(movementPath, movementLog), "runtime setup runner no-world movement test should create movement script");
+
+	dev::GameSession session { root / "saves" };
+	dev::SessionEventRecorder sessionEvents;
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::QueuedSessionCommandSource routedSessionCommands;
+	dev::QueuedMovementCommandSource routedMovementCommands;
+	dev::SessionCommandDispatcher dispatcher { session, &sessionEvents };
+	dev::RuntimeSourceDrainer drainer {
+		session,
+		inventoryEvents,
+		routedSessionCommands,
+		routedMovementCommands,
+		{},
+	};
+	dev::RuntimeSetupRunResult result = dev::RuntimeSetupRunner { dispatcher, drainer }.run({
+	    .movementScript = movementPath,
+	});
+
+	Expect(!result.framesAllowed, "runtime setup runner should stop frames when movement setup has no active world");
+	Expect(result.setup.movementScriptRan, "runtime setup runner should attempt configured movement script without world");
+	Expect(result.setup.movementScriptResult.status == dev::MovementScriptRunStatus::NoActiveWorld, "runtime setup runner should report movement setup without active world");
 
 	std::filesystem::remove_all(root);
 }
@@ -6524,8 +6698,13 @@ void TestRuntimeExitCodePolicyFailsSetupErrors()
 	inventoryFailure.setup.inventoryScriptRan = true;
 	inventoryFailure.setup.inventoryScriptResult.status = dev::InventoryScriptRunStatus::LoadFailed;
 
+	dev::GameLoopResult movementFailure;
+	movementFailure.setup.movementScriptRan = true;
+	movementFailure.setup.movementScriptResult.status = dev::MovementScriptRunStatus::LoadFailed;
+
 	Expect(dev::RuntimeExitCodePolicy {}.exitCodeFor(startupFailure) == 1, "runtime exit policy should return failure for startup load failures");
 	Expect(dev::RuntimeExitCodePolicy {}.exitCodeFor(inventoryFailure) == 1, "runtime exit policy should return failure for configured inventory script failures");
+	Expect(dev::RuntimeExitCodePolicy {}.exitCodeFor(movementFailure) == 1, "runtime exit policy should return failure for configured movement script failures");
 }
 
 void TestRuntimeSetupFailurePolicyFailsSetupLoadErrors()
@@ -6540,6 +6719,10 @@ void TestRuntimeSetupFailurePolicyFailsSetupLoadErrors()
 	inventoryFailure.inventoryScriptRan = true;
 	inventoryFailure.inventoryScriptResult.status = dev::InventoryScriptRunStatus::LoadFailed;
 
+	dev::RuntimeSetupResult movementFailure;
+	movementFailure.movementScriptRan = true;
+	movementFailure.movementScriptResult.status = dev::MovementScriptRunStatus::LoadFailed;
+
 	dev::RuntimeSetupResult rejectedInventoryCommand;
 	rejectedInventoryCommand.inventoryScriptRan = true;
 	rejectedInventoryCommand.inventoryScriptResult.status = dev::InventoryScriptRunStatus::Completed;
@@ -6548,12 +6731,27 @@ void TestRuntimeSetupFailurePolicyFailsSetupLoadErrors()
 	    .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 99 },
 	});
 
+	dev::RuntimeSetupResult rejectedMovementCommand;
+	rejectedMovementCommand.movementScriptRan = true;
+	rejectedMovementCommand.movementScriptResult.status = dev::MovementScriptRunStatus::Completed;
+	rejectedMovementCommand.movementScriptResult.replayReport.results.push_back({
+	    .type = dev::MovementCommandDispatchResultType::Rejected,
+	    .command = {
+	        .type = dev::MovementCommandType::MoveThenAct,
+	        .playerId = 0,
+	        .destination = { 1, 0 },
+	        .destinationAction = std::nullopt,
+	    },
+	});
+
 	dev::RuntimeSetupFailurePolicy policy;
 
 	Expect(!policy.failed(clean), "runtime setup failure policy should not fail clean setup state");
 	Expect(policy.failed(startupFailure), "runtime setup failure policy should fail startup load failures");
 	Expect(policy.failed(inventoryFailure), "runtime setup failure policy should fail configured inventory setup failures");
+	Expect(policy.failed(movementFailure), "runtime setup failure policy should fail configured movement setup failures");
 	Expect(!policy.failed(rejectedInventoryCommand), "runtime setup failure policy should allow completed scripts with rejected commands");
+	Expect(!policy.failed(rejectedMovementCommand), "runtime setup failure policy should allow completed movement scripts with rejected commands");
 }
 
 void TestRuntimeRunFailurePolicyComposesSetupAndOutputFailures()
@@ -6576,12 +6774,26 @@ void TestRuntimeRunFailurePolicyComposesSetupAndOutputFailures()
 	    .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 99 },
 	});
 
+	dev::GameLoopResult movementCommandRejection;
+	movementCommandRejection.setup.movementScriptRan = true;
+	movementCommandRejection.setup.movementScriptResult.status = dev::MovementScriptRunStatus::Completed;
+	movementCommandRejection.setup.movementScriptResult.replayReport.results.push_back({
+	    .type = dev::MovementCommandDispatchResultType::Rejected,
+	    .command = {
+	        .type = dev::MovementCommandType::MoveThenAct,
+	        .playerId = 0,
+	        .destination = { 1, 0 },
+	        .destinationAction = std::nullopt,
+	    },
+	});
+
 	dev::RuntimeRunFailurePolicy policy;
 
 	Expect(!policy.failed(clean), "runtime run failure policy should not fail clean runs");
 	Expect(policy.failed(setupFailure), "runtime run failure policy should fail setup failures");
 	Expect(policy.failed(outputFailure), "runtime run failure policy should fail output failures");
 	Expect(!policy.failed(commandRejection), "runtime run failure policy should allow command-level rejections");
+	Expect(!policy.failed(movementCommandRejection), "runtime run failure policy should allow movement command-level rejections");
 }
 
 void TestRuntimeExitCodePolicyAllowsCommandRejections()
@@ -6592,6 +6804,17 @@ void TestRuntimeExitCodePolicyAllowsCommandRejections()
 	result.setup.inventoryScriptResult.commandResults.push_back({
 	    .type = dev::InventoryCommandResultType::Rejected,
 	    .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 99 },
+	});
+	result.setup.movementScriptRan = true;
+	result.setup.movementScriptResult.status = dev::MovementScriptRunStatus::Completed;
+	result.setup.movementScriptResult.replayReport.results.push_back({
+	    .type = dev::MovementCommandDispatchResultType::Rejected,
+	    .command = {
+	        .type = dev::MovementCommandType::MoveThenAct,
+	        .playerId = 0,
+	        .destination = { 1, 0 },
+	        .destinationAction = std::nullopt,
+	    },
 	});
 
 	Expect(dev::RuntimeExitCodePolicy {}.exitCodeFor(result) == 0, "runtime exit policy should return success for command-level rejections");
@@ -6885,6 +7108,7 @@ void TestRuntimeDebugArtifactBundleSavesManifestAndTrace()
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "run frames=1 frameReports=1"), "runtime debug bundle manifest should summarize run frame counts");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "finalMode=Gameplay"), "runtime debug bundle manifest should include final mode");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "policy latest=Gameplay acceptCommands=true updatePlayers=true updateEnemies=true"), "runtime debug bundle manifest should summarize latest frame policy");
+	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "runtime movementScripts=0 completed=0 loadFailed=0 noActiveWorld=0 accepted=0 rejected=0"), "runtime debug bundle manifest should summarize runtime movement scripts");
 	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime debug bundle trace should preserve run trace summary");
 
 	std::filesystem::remove_all(root);
@@ -6909,7 +7133,73 @@ void TestRuntimeDebugManifestFormatsFailedRun()
 	Expect(ContainsLineFragment(lines, "run frames=0 frameReports=0"), "runtime debug bundle manifest should summarize empty failed runs");
 	Expect(ContainsLineFragment(lines, "finalMode=Empty"), "runtime debug bundle manifest should name empty final mode");
 	Expect(ContainsLineFragment(lines, "policy latest=none"), "runtime debug bundle manifest should report no frame policy for zero-frame runs");
-	Expect(ContainsLineFragment(lines, "setup startupScriptRan=true inventoryScriptRan=false"), "runtime debug bundle manifest should report setup attempts");
+	Expect(ContainsLineFragment(lines, "setup startupScriptRan=true inventoryScriptRan=false movementScriptRan=false"), "runtime debug bundle manifest should report setup attempts");
+	Expect(ContainsLineFragment(lines, "runtime movementScripts=0 completed=0 loadFailed=0 noActiveWorld=0 accepted=0 rejected=0"), "runtime debug bundle manifest should report empty runtime movement scripts");
+}
+
+void TestRuntimeDebugManifestSummarizesMovementScripts()
+{
+	dev::GameLoopResult run;
+	run.setup.movementScriptRan = true;
+	run.setup.movementScriptResult = {
+		.status = dev::MovementScriptRunStatus::Completed,
+		.replayReport = {
+		    .results = {
+		        {
+		            .type = dev::MovementCommandDispatchResultType::Accepted,
+		            .command = {
+		                .type = dev::MovementCommandType::WalkTo,
+		                .playerId = 0,
+		                .destination = { 1, 0 },
+		            },
+		        },
+		        {
+		            .type = dev::MovementCommandDispatchResultType::Rejected,
+		            .command = {
+		                .type = dev::MovementCommandType::MoveThenAct,
+		                .playerId = 0,
+		                .destination = { 1, 0 },
+		                .destinationAction = std::nullopt,
+		            },
+		        },
+		    },
+		},
+	};
+	run.summary.runtimeMovementScriptResults.push_back({
+	    .status = dev::MovementScriptRunStatus::Completed,
+	    .replayReport = {
+	        .results = {
+	            {
+	                .type = dev::MovementCommandDispatchResultType::Accepted,
+	                .command = {
+	                    .type = dev::MovementCommandType::WalkTo,
+	                    .playerId = 0,
+	                    .destination = { 1, 0 },
+	                },
+	            },
+	        },
+	    },
+	});
+	run.summary.runtimeMovementScriptResults.push_back({
+	    .status = dev::MovementScriptRunStatus::LoadFailed,
+	});
+	run.summary.runtimeMovementScriptResults.push_back({
+	    .status = dev::MovementScriptRunStatus::NoActiveWorld,
+	});
+	run.finalMode = dev::GameSessionMode::Gameplay;
+
+	dev::RuntimeDebugManifestContext context {
+		.rootPath = "debug/run-002",
+		.manifestPath = "debug/run-002/manifest.txt",
+		.tracePath = "debug/run-002/run.trace",
+		.traceSaved = true,
+	};
+
+	std::vector<std::string> lines = dev::RuntimeDebugManifest {}.format(run, context);
+
+	Expect(ContainsLineFragment(lines, "setup startupScriptRan=false inventoryScriptRan=false movementScriptRan=true"), "runtime debug manifest should report configured movement setup attempt");
+	Expect(ContainsLineFragment(lines, "setup movementScript status=Completed results=2 accepted=1 rejected=1"), "runtime debug manifest should summarize configured movement setup replay result");
+	Expect(ContainsLineFragment(lines, "runtime movementScripts=3 completed=1 loadFailed=1 noActiveWorld=1 accepted=1 rejected=0"), "runtime debug manifest should summarize runtime movement script results");
 }
 
 void TestRuntimeDebugArtifactLayoutNamesBundlePaths()
@@ -7043,7 +7333,7 @@ void TestGameLoopSavesDebugBundleOnStartupFailure()
 	Expect(result.setup.startupScriptResult.status == dev::SessionScriptRunStatus::LoadFailed, "failed startup debug bundle test should report load failure");
 	Expect(result.output.debugBundleSaveAttempted, "game loop should attempt debug bundle save after startup failure");
 	Expect(result.output.debugBundleSaved, "game loop should save debug bundle after startup failure");
-	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "setup startupScriptRan=true inventoryScriptRan=false"), "failed startup debug bundle manifest should record setup attempt");
+	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "setup startupScriptRan=true inventoryScriptRan=false movementScriptRan=false"), "failed startup debug bundle manifest should record setup attempt");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "policy latest=none"), "failed startup debug bundle manifest should report no frame policy");
 	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=0 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "failed startup debug bundle trace should preserve zero-frame summary");
 
@@ -8318,6 +8608,7 @@ int main()
 	TestGameLoopReportsStartupScriptLoadFailure();
 	TestGameLoopRunsInventoryScriptAgainstActivePlayer();
 	TestGameLoopRunsInventoryScriptAfterStartupScript();
+	TestGameLoopRunsMovementScriptAfterStartupScript();
 	TestGameLoopReportsInventoryScriptLoadFailure();
 	TestGameLoopReportsInventoryScriptWithoutActivePlayer();
 	TestQueuedSessionCommandSourceDrainsCommandsOnce();
@@ -8340,6 +8631,7 @@ int main()
 	TestGameLoopBuildsRuntimeFrameReports();
 	TestRuntimeFrameTraceFormatsReadableLines();
 	TestRuntimeFramePolicyTextFormatsArtifactPolicyLines();
+	TestRuntimeMovementScriptTextFormatsResultsAndAggregates();
 	TestRuntimeRunSummaryTextFormatsTraceAndManifestSummaries();
 	TestRuntimeFrameTraceFormatsEnemyPursuitEvents();
 	TestRuntimeFrameTraceFormatsEnemyAttackEvents();
@@ -8354,6 +8646,8 @@ int main()
 	TestRuntimeSetupRunnerAllowsFramesWhenNoScriptsConfigured();
 	TestRuntimeSetupRunnerStopsFramesAfterStartupLoadFailure();
 	TestRuntimeSetupRunnerPreservesInventoryCommandRejections();
+	TestRuntimeSetupRunnerPreservesMovementCommandRejections();
+	TestRuntimeSetupRunnerStopsFramesWithoutActiveWorldForMovementScript();
 	TestRuntimeSourceSettingsDefaultsToNoSources();
 	TestRuntimeInputSettingsDefaultsToPrimaryGameplayInput();
 	TestRuntimeInputContextBuilderHandlesMissingWorld();
@@ -8382,6 +8676,7 @@ int main()
 	TestGameLoopReportsRunTraceSaveFailure();
 	TestRuntimeDebugArtifactBundleSavesManifestAndTrace();
 	TestRuntimeDebugManifestFormatsFailedRun();
+	TestRuntimeDebugManifestSummarizesMovementScripts();
 	TestRuntimeDebugArtifactLayoutNamesBundlePaths();
 	TestRuntimeDebugArtifactWriterSavesTraceAndManifest();
 	TestRuntimeDebugArtifactWriterRecordsTraceFailureInManifest();

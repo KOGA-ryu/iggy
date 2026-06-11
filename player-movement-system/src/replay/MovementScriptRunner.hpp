@@ -9,6 +9,7 @@ namespace dev {
 
 enum class MovementScriptRunStatus {
 	LoadFailed,
+	NoActiveWorld,
 	Completed,
 };
 

@@ -1,6 +1,7 @@
 #include "RuntimeDebugManifest.hpp"
 
 #include "app/RuntimeFramePolicyText.hpp"
+#include "app/RuntimeMovementScriptText.hpp"
 #include "app/RuntimeRunSummaryText.hpp"
 
 #include <sstream>
@@ -38,8 +39,19 @@ std::vector<std::string> RuntimeDebugManifest::format(
 	{
 		std::ostringstream setup;
 		setup << "setup startupScriptRan=" << BoolText(result.setup.startupScriptRan)
-		      << " inventoryScriptRan=" << BoolText(result.setup.inventoryScriptRan);
+		      << " inventoryScriptRan=" << BoolText(result.setup.inventoryScriptRan)
+		      << " movementScriptRan=" << BoolText(result.setup.movementScriptRan);
 		lines.push_back(setup.str());
+	}
+
+	if (result.setup.movementScriptRan) {
+		lines.push_back(RuntimeMovementScriptText {}.formatResult("setup movementScript", result.setup.movementScriptResult));
+	}
+
+	{
+		lines.push_back(RuntimeMovementScriptText {}.formatAggregate(
+		    "runtime movementScripts",
+		    result.summary.runtimeMovementScriptResults));
 	}
 
 	lines.push_back("paths root=" + context.rootPath.string());

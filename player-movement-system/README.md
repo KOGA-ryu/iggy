@@ -699,17 +699,17 @@ GameLoop
   lifecycle, and exposes results/events for tests and debug tools
 
 RuntimeSetupSettings
-  app-layer setup settings that group optional startup and configured inventory
-  script paths before frame updates begin
+  app-layer setup settings that group optional startup, configured inventory,
+  and configured movement script paths before frame updates begin
 
 RuntimeSetupResult
-  app-layer setup result state that groups configured startup and inventory
-  script attempts before frame updates begin
+  app-layer setup result state that groups configured startup, inventory, and
+  movement script attempts before frame updates begin
 
 RuntimeSetupRunner
-  app-layer use case that runs configured startup and inventory setup scripts,
-  reports whether frames may begin, and preserves setup inventory command
-  results for run summaries
+  app-layer use case that runs configured startup, inventory, and movement
+  setup scripts, reports whether frames may begin, and preserves setup
+  inventory command results for run summaries
 
 RuntimeSourceSettings
   app-layer source settings that group raw input, session, inventory script,
@@ -754,7 +754,7 @@ RuntimeRunFinalizer
 
 RuntimeSetupFailurePolicy
   app-layer policy that treats failed startup scripts and non-completed
-  configured inventory setup scripts as setup failures
+  configured inventory or movement setup scripts as setup failures
 
 RuntimeOutputFailurePolicy
   app-layer policy that treats attempted-but-unsaved runtime artifact outputs
@@ -802,6 +802,11 @@ RuntimeRunSummaryText
   app-layer text formatter that renders run count summaries consistently for
   run traces and debug bundle manifests
 
+RuntimeMovementScriptText
+  app-layer text formatter that renders movement script replay status,
+  accepted/rejected counts, and aggregate runtime script summaries consistently
+  for traces and debug bundle manifests
+
 RuntimeFrameTrace
   readable text formatter for RuntimeFrameReport, including mode policy gates,
   suitable for logs, debug overlays, and test diagnostics
@@ -821,8 +826,8 @@ RuntimeTraceService
 
 RuntimeDebugManifest
   readable manifest formatter for debug bundles, summarizing run counts, setup
-  attempts, final mode, latest frame policy, artifact paths, and trace save
-  state
+  attempts, movement script replay outcomes, final mode, latest frame policy,
+  artifact paths, and trace save state
 
 RuntimeDebugArtifactLayout
   app-layer bundle layout boundary that maps a debug bundle root to stable

@@ -1025,6 +1025,7 @@ can share without depending on the loop class itself.
 GameLoopSettings::setup
   -> optional startup script
   -> optional configured inventory script
+  -> optional configured movement script
 ```
 
 Those scripts run before frame updates. The matching `RuntimeSetupResult`
@@ -1095,6 +1096,7 @@ The inventory script runs after the startup script and before frame updates:
 ```text
 startup script creates/loads the world
 inventory script runs against the active player inventory
+movement script dispatches replayed movement commands
 runtime command sources drain
 frame update ticks
 ```
@@ -1103,12 +1105,19 @@ If the inventory script file cannot load, the loop stops before ticking frames.
 If the script loads but an inventory command rejects, the loop still reports a
 completed inventory script with rejected command results.
 
+The configured movement script follows the same setup rule. It runs after
+startup and configured inventory setup, against the active world. A missing file
+or no active world stops before frames. A loadable movement script whose command
+rejects still allows frames, because that rejection is replay data, not setup
+plumbing failure.
+
 `RuntimeSetupResult` keeps those setup facts together:
 
 ```text
 GameLoopResult::setup
   -> startup script attempted/result
   -> configured inventory script attempted/result
+  -> configured movement script attempted/result
 ```
 
 `RuntimeSetupRunner` owns the configured setup phase:
@@ -1123,9 +1132,10 @@ RuntimeSetupSettings
 ```
 
 Startup script load failure stops before configured inventory setup. Configured
-inventory setup failure also stops before frames. A loadable inventory script
-with rejected commands still allows frames, because the file and setup pipeline
-worked and the rejection is command-level data.
+inventory setup failure also stops before configured movement setup and frames.
+Configured movement setup failure also stops before frames. Loadable inventory
+or movement scripts with rejected commands still allow frames, because the file
+and setup pipeline worked and the rejection is command-level data.
 
 That separates one-time setup automation from per-frame runtime sources. A
 failed setup script can stop the loop before frames begin, while runtime script
@@ -1147,12 +1157,12 @@ GameLoopResult
 Setup load failures and requested artifact write failures return failure.
 RuntimeRunFailurePolicy composes the setup and output decisions.
 RuntimeSetupFailurePolicy owns the setup rule: startup load failure fails, and
-configured inventory setup must complete. RuntimeOutputFailurePolicy owns the
-artifact-output rule: only attempted outputs that did not save are failures.
-RuntimeExitCodeMapper maps that run-failure boolean to 0 or 1, and
+configured inventory and movement setup must complete. RuntimeOutputFailurePolicy
+owns the artifact-output rule: only attempted outputs that did not save are
+failures. RuntimeExitCodeMapper maps that run-failure boolean to 0 or 1, and
 RuntimeExitCodePolicy adapts the whole `GameLoopResult` to that mapper.
-Command-level rejections inside a loadable setup script remain command results,
-so they do not automatically make the process fail.
+Command-level rejections inside a loadable setup script remain command or replay
+results, so they do not automatically make the process fail.
 
 Runtime inventory script sources are different from the configured setup script:
 
@@ -1346,7 +1356,7 @@ GameLoopSettings::output.runTracePath
 ```
 
 This save happens through the same finalization path whether the loop finishes
-its frames or stops early during startup/inventory setup. `GameLoopResult`
+its frames or stops early during startup, inventory, or movement setup. `GameLoopResult`
 reports both `output.runTraceSaveAttempted` and `output.runTraceSaved`, and
 `GameLoop::run` returns failure when a requested trace cannot be written. That
 makes trace output useful for command-line tools without making movement,
@@ -1410,6 +1420,11 @@ booleans for their audience.
 `RuntimeRunSummaryText` does the same for the run-level count summary: the trace
 uses counts only, while the manifest asks for the same line with final mode
 included.
+`RuntimeMovementScriptText` owns the spelling for configured and runtime
+movement script replay outcomes: status, result count, accepted commands, and
+rejected commands. Traces use it for per-frame movement script details, while
+`RuntimeDebugManifest` uses it for setup and aggregate runtime summaries. That
+makes a debug bundle useful even before opening the full run trace.
 
 `RuntimeFrameTraceFileStore` persists those readable lines:
 

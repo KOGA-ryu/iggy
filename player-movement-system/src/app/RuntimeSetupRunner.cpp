@@ -36,6 +36,15 @@ RuntimeSetupRunResult RuntimeSetupRunner::run(const RuntimeSetupSettings &settin
 		result.inventoryCommandResults = result.setup.inventoryScriptResult.commandResults;
 	}
 
+	if (settings.movementScript.has_value()) {
+		result.setup.movementScriptRan = true;
+		result.setup.movementScriptResult = sourceDrainer_.runMovementScript(*settings.movementScript);
+		if (result.setup.movementScriptResult.status != MovementScriptRunStatus::Completed) {
+			result.framesAllowed = false;
+			return result;
+		}
+	}
+
 	return result;
 }
 

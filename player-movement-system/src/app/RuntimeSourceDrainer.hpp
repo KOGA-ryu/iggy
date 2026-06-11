@@ -36,6 +36,7 @@ public:
 	    RuntimeSourceDrainerSettings settings);
 
 	[[nodiscard]] InventoryScriptRunResult runInventoryScript(const std::filesystem::path &path);
+	[[nodiscard]] MovementScriptRunResult runMovementScript(const std::filesystem::path &path);
 	[[nodiscard]] std::vector<SessionCommandResult> drainSessionCommands(const SessionCommandDispatcher &dispatcher);
 	[[nodiscard]] std::vector<InventoryScriptRunResult> drainInventoryScripts();
 	[[nodiscard]] std::vector<InventoryCommandResult> drainInventoryCommands();

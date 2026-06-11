@@ -8,6 +8,8 @@ bool RuntimeSetupFailurePolicy::failed(const RuntimeSetupResult &result) const
 		return true;
 	if (result.inventoryScriptRan && result.inventoryScriptResult.status != InventoryScriptRunStatus::Completed)
 		return true;
+	if (result.movementScriptRan && result.movementScriptResult.status != MovementScriptRunStatus::Completed)
+		return true;
 	return false;
 }
 

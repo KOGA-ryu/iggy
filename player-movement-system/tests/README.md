@@ -186,6 +186,7 @@ Good first tests:
 - GameLoop runs configured startup scripts and bounded frame updates
 - GameLoop reports startup script load failure without ticking frames
 - GameLoop runs configured inventory scripts after startup scripts
+- GameLoop runs configured movement scripts after startup scripts
 - GameLoop reports inventory script load failure or missing player before ticking frames
 - GameLoop drains runtime inventory script sources before direct inventory command sources
 - GameLoop drains runtime movement script sources before direct movement command sources
@@ -196,12 +197,15 @@ Good first tests:
 - GameLoop builds RuntimeFrameReport entries for per-frame inspection
 - RuntimeFramePolicyText formats policy lines for traces and manifests
 - RuntimeRunSummaryText formats run summaries for traces and manifests
+- RuntimeMovementScriptText formats movement script replay lines for traces and manifests
 - RuntimeFrameTrace formats frame reports and mode policy into readable debug lines
 - TextFileStore saves/loads readable lines and cleans temp files
 - RuntimeFrameTraceFileStore saves and loads readable trace lines
 - RuntimeTraceService formats and saves full GameLoopResult traces
 - RuntimeSetupSettings defaults to no configured setup scripts
 - RuntimeSetupResult defaults to no configured setup script attempts
+- RuntimeSetupRunner runs configured movement setup scripts after startup
+- RuntimeSetupRunner distinguishes movement setup failure from command rejection
 - RuntimeSourceSettings defaults to no runtime source streams
 - RuntimeInputSettings defaults to primary gameplay input context
 - RuntimeInputContextBuilder builds per-frame router context from session state
@@ -224,7 +228,7 @@ Good first tests:
 - RuntimeArtifactOutputService applies configured artifact outputs and reports failures
 - RuntimeSetupRunner separates configured setup scripts from per-frame runtime sources
 - GameLoop saves configured run traces and reports trace write failures
-- RuntimeDebugManifest formats debug bundle manifest lines with latest frame policy
+- RuntimeDebugManifest formats debug bundle manifest lines with latest frame policy and movement script replay summaries
 - RuntimeDebugArtifactLayout names stable debug bundle artifact paths
 - RuntimeDebugArtifactWriter saves trace/manifest artifacts and records trace failures
 - RuntimeDebugArtifactBundle saves a manifest and run trace as one debug bundle

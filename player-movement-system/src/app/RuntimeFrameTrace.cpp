@@ -1,6 +1,7 @@
 #include "RuntimeFrameTrace.hpp"
 
 #include "app/RuntimeFramePolicyText.hpp"
+#include "app/RuntimeMovementScriptText.hpp"
 
 #include <sstream>
 
@@ -168,17 +169,6 @@ const char *ToString(MovementEventType type)
 	return "Unknown";
 }
 
-const char *ToString(MovementScriptRunStatus status)
-{
-	switch (status) {
-	case MovementScriptRunStatus::LoadFailed:
-		return "LoadFailed";
-	case MovementScriptRunStatus::Completed:
-		return "Completed";
-	}
-	return "Unknown";
-}
-
 const char *ToString(EnemyAttackTransition transition)
 {
 	switch (transition) {
@@ -325,11 +315,8 @@ std::vector<std::string> RuntimeFrameTrace::format(const RuntimeFrameReport &rep
 	for (std::size_t i = 0; i < report.movementScriptResults.size(); ++i) {
 		const MovementScriptRunResult &result = report.movementScriptResults[i];
 		std::ostringstream line;
-		line << "movementScript[" << i << "] status=" << ToString(result.status)
-		     << " results=" << result.replayReport.results.size()
-		     << " accepted=" << result.replayReport.acceptedCount()
-		     << " rejected=" << result.replayReport.rejectedCount();
-		lines.push_back(line.str());
+		line << "movementScript[" << i << "]";
+		lines.push_back(RuntimeMovementScriptText {}.formatResult(line.str(), result));
 	}
 
 	for (std::size_t i = 0; i < report.sessionEvents.size(); ++i) {
