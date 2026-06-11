@@ -10,7 +10,11 @@ add_library(player_movement_system
   src/actions/ActionExecutor.cpp
   src/actions/ActionRules.cpp
   src/app/GameLoop.cpp
+  src/app/RuntimeFrameTrace.cpp
+  src/app/RuntimeFrameTraceFileStore.cpp
   src/app/RuntimeInputRouter.cpp
+  src/app/RuntimeSourceDrainer.cpp
+  src/app/RuntimeTraceService.cpp
   src/combat/CombatEventRecorder.cpp
   src/combat/CombatRegistry.cpp
   src/combat/CombatResolver.cpp

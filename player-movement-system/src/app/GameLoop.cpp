@@ -1,8 +1,39 @@
 #include "GameLoop.hpp"
 
+#include <cstddef>
 #include <utility>
 
 namespace dev {
+
+namespace {
+
+std::vector<SessionEvent> EventsSince(const SessionEventRecorder &recorder, std::size_t offset)
+{
+	const std::vector<SessionEvent> &events = recorder.events();
+	if (offset >= events.size())
+		return {};
+	return { events.begin() + static_cast<std::ptrdiff_t>(offset), events.end() };
+}
+
+std::vector<InventoryEvent> EventsSince(const InventoryEventRecorder &recorder, std::size_t offset)
+{
+	const std::vector<InventoryEvent> &events = recorder.events();
+	if (offset >= events.size())
+		return {};
+	return { events.begin() + static_cast<std::ptrdiff_t>(offset), events.end() };
+}
+
+void AppendInventoryCommandResults(std::vector<InventoryCommandResult> &out, const std::vector<InventoryScriptRunResult> &scriptResults)
+{
+	for (const InventoryScriptRunResult &scriptResult : scriptResults) {
+		out.insert(
+		    out.end(),
+		    scriptResult.commandResults.begin(),
+		    scriptResult.commandResults.end());
+	}
+}
+
+} // namespace
 
 GameLoop::GameLoop(GameLoopSettings settings)
     : settings_(std::move(settings))
@@ -24,6 +55,19 @@ GameLoopResult GameLoop::runForResult()
 {
 	GameLoopResult result;
 	SessionCommandDispatcher dispatcher { session_, &sessionEvents_ };
+	RuntimeSourceDrainer drainer {
+		session_,
+		inventoryEvents_,
+		routedSessionCommands_,
+		routedMovementCommands_,
+		{
+		    .sessionCommandSources = settings_.sessionCommandSources,
+		    .inventoryScriptSources = settings_.inventoryScriptSources,
+		    .inventoryCommandSources = settings_.inventoryCommandSources,
+		    .movementCommandSources = settings_.movementCommandSources,
+		    .inputPlayerId = settings_.inputPlayerId,
+		},
+	};
 
 	if (settings_.startupScript.has_value()) {
 		result.startupScriptRan = true;
@@ -37,7 +81,7 @@ GameLoopResult GameLoop::runForResult()
 
 	if (settings_.inventoryScript.has_value()) {
 		result.inventoryScriptRan = true;
-		result.inventoryScriptResult = runInventoryScript(*settings_.inventoryScript);
+		result.inventoryScriptResult = drainer.runInventoryScript(*settings_.inventoryScript);
 		if (result.inventoryScriptResult.status != InventoryScriptRunStatus::Completed) {
 			result.finalMode = session_.mode();
 			return result;
@@ -49,24 +93,37 @@ GameLoopResult GameLoop::runForResult()
 	}
 
 	for (int frame = 0; frame < settings_.maxFrames; ++frame) {
-		result.rawInputEventsRouted += routeRawInputSources();
-		std::vector<SessionCommandResult> drained = drainSessionCommandSources(dispatcher);
-		result.sessionCommandResults.insert(result.sessionCommandResults.end(), drained.begin(), drained.end());
-		std::vector<InventoryScriptRunResult> inventoryScriptResults = drainInventoryScriptSources();
+		const std::size_t sessionEventOffset = sessionEvents_.events().size();
+		const std::size_t inventoryEventOffset = inventoryEvents_.events().size();
+		RuntimeFrameReport frameReport;
+
+		frameReport.rawInputEventsRouted = routeRawInputSources();
+		result.rawInputEventsRouted += frameReport.rawInputEventsRouted;
+
+		frameReport.sessionCommandResults = drainer.drainSessionCommands(dispatcher);
+		result.sessionCommandResults.insert(result.sessionCommandResults.end(), frameReport.sessionCommandResults.begin(), frameReport.sessionCommandResults.end());
+
+		frameReport.inventoryScriptResults = drainer.drainInventoryScripts();
 		result.runtimeInventoryScriptResults.insert(
 		    result.runtimeInventoryScriptResults.end(),
-		    inventoryScriptResults.begin(),
-		    inventoryScriptResults.end());
-		for (const InventoryScriptRunResult &scriptResult : inventoryScriptResults) {
-			result.inventoryCommandResults.insert(
-			    result.inventoryCommandResults.end(),
-			    scriptResult.commandResults.begin(),
-			    scriptResult.commandResults.end());
-		}
-		std::vector<InventoryCommandResult> inventoryResults = drainInventoryCommandSources();
+		    frameReport.inventoryScriptResults.begin(),
+		    frameReport.inventoryScriptResults.end());
+		AppendInventoryCommandResults(frameReport.inventoryCommandResults, frameReport.inventoryScriptResults);
+		AppendInventoryCommandResults(result.inventoryCommandResults, frameReport.inventoryScriptResults);
+
+		std::vector<InventoryCommandResult> inventoryResults = drainer.drainInventoryCommands();
+		frameReport.inventoryCommandResults.insert(frameReport.inventoryCommandResults.end(), inventoryResults.begin(), inventoryResults.end());
 		result.inventoryCommandResults.insert(result.inventoryCommandResults.end(), inventoryResults.begin(), inventoryResults.end());
-		result.movementCommandsQueued += drainMovementCommandSources();
-		result.lastFrameEvents = updateSimulationFrame();
+
+		frameReport.movementCommandsQueued = drainer.drainMovementCommands();
+		result.movementCommandsQueued += frameReport.movementCommandsQueued;
+
+		frameReport.frameEvents = updateSimulationFrame();
+		result.lastFrameEvents = frameReport.frameEvents;
+		frameReport.sessionEvents = EventsSince(sessionEvents_, sessionEventOffset);
+		frameReport.inventoryEvents = EventsSince(inventoryEvents_, inventoryEventOffset);
+		result.frameReports.push_back(frameReport);
+
 		renderDebugView();
 		++result.framesRun;
 	}
@@ -95,16 +152,6 @@ const InventoryEventRecorder &GameLoop::inventoryEvents() const
 	return inventoryEvents_;
 }
 
-InventoryScriptRunResult GameLoop::runInventoryScript(const std::filesystem::path &path)
-{
-	if (!session_.hasActiveWorld() || settings_.inputPlayerId >= session_.world().players.size())
-		return { .status = InventoryScriptRunStatus::NoActivePlayer };
-
-	InventoryCommandDispatcher dispatcher { session_.world().players[settings_.inputPlayerId], &inventoryEvents_ };
-	InventoryScriptRunner runner { dispatcher };
-	return runner.run(path);
-}
-
 int GameLoop::routeRawInputSources()
 {
 	RuntimeInputRouter router { routedSessionCommands_, routedMovementCommands_, settings_.inputBindings };
@@ -131,99 +178,6 @@ int GameLoop::routeRawInputSources()
 		}
 	}
 	return routed;
-}
-
-std::vector<SessionCommandResult> GameLoop::drainSessionCommandSources(const SessionCommandDispatcher &dispatcher)
-{
-	std::vector<SessionCommandResult> results;
-	std::vector<SessionCommandSource *> sources;
-	sources.reserve(settings_.sessionCommandSources.size() + 1U);
-	sources.push_back(&routedSessionCommands_);
-	sources.insert(sources.end(), settings_.sessionCommandSources.begin(), settings_.sessionCommandSources.end());
-
-	for (SessionCommandSource *source : sources) {
-		if (source == nullptr)
-			continue;
-		std::vector<SessionCommand> commands = source->drain();
-		results.reserve(results.size() + commands.size());
-		for (const SessionCommand &command : commands) {
-			results.push_back(dispatcher.dispatch(command));
-		}
-	}
-	return results;
-}
-
-std::vector<InventoryScriptRunResult> GameLoop::drainInventoryScriptSources()
-{
-	std::vector<InventoryScriptRunResult> results;
-	if (!session_.hasActiveWorld())
-		return results;
-
-	std::vector<InventoryScriptSource *> sources = settings_.inventoryScriptSources;
-	for (InventoryScriptSource *source : sources) {
-		if (source == nullptr)
-			continue;
-		std::vector<std::filesystem::path> paths = source->drain();
-		results.reserve(results.size() + paths.size());
-		for (const std::filesystem::path &path : paths)
-			results.push_back(runInventoryScript(path));
-	}
-	return results;
-}
-
-std::vector<InventoryCommandResult> GameLoop::drainInventoryCommandSources()
-{
-	std::vector<InventoryCommandResult> results;
-	if (!session_.hasActiveWorld())
-		return results;
-
-	std::vector<InventoryCommandSource *> sources = settings_.inventoryCommandSources;
-	for (InventoryCommandSource *source : sources) {
-		if (source == nullptr)
-			continue;
-		std::vector<InventoryCommand> commands = source->drain();
-		results.reserve(results.size() + commands.size());
-		if (settings_.inputPlayerId >= session_.world().players.size()) {
-			for (const InventoryCommand &command : commands) {
-				results.push_back({ .type = InventoryCommandResultType::Rejected, .command = command });
-				inventoryEvents_.emit({
-				    .type = InventoryEventType::Rejected,
-				    .commandType = command.type,
-				    .commandResult = InventoryCommandResultType::Rejected,
-				});
-			}
-			continue;
-		}
-
-		InventoryCommandDispatcher dispatcher { session_.world().players[settings_.inputPlayerId], &inventoryEvents_ };
-		for (const InventoryCommand &command : commands)
-			results.push_back(dispatcher.dispatch(command));
-	}
-
-	return results;
-}
-
-int GameLoop::drainMovementCommandSources()
-{
-	if (!session_.hasActiveWorld())
-		return 0;
-
-	int queued = 0;
-	std::vector<MovementCommandSource *> sources;
-	sources.reserve(settings_.movementCommandSources.size() + 1U);
-	sources.push_back(&routedMovementCommands_);
-	sources.insert(sources.end(), settings_.movementCommandSources.begin(), settings_.movementCommandSources.end());
-
-	for (MovementCommandSource *source : sources) {
-		if (source == nullptr)
-			continue;
-		std::vector<MovementCommand> commands = source->drain();
-		for (MovementCommand command : commands) {
-			session_.world().commandQueue.push(command);
-			++queued;
-		}
-	}
-	return queued;
 }
 
 SimulationFrameEvents GameLoop::updateSimulationFrame()

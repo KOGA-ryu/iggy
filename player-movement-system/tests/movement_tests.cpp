@@ -2,12 +2,17 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <string>
 #include <string_view>
 #include <vector>
 
 #include "actions/ActionExecutor.hpp"
 #include "app/GameLoop.hpp"
 #include "app/RuntimeInputRouter.hpp"
+#include "app/RuntimeFrameTrace.hpp"
+#include "app/RuntimeFrameTraceFileStore.hpp"
+#include "app/RuntimeSourceDrainer.hpp"
+#include "app/RuntimeTraceService.hpp"
 #include "combat/CombatEventRecorder.hpp"
 #include "combat/CombatResolver.hpp"
 #include "combat/CombatSystem.hpp"
@@ -76,6 +81,15 @@ void Expect(bool condition, std::string_view message)
 		return;
 	std::cerr << "FAIL: " << message << '\n';
 	++Failures;
+}
+
+bool ContainsLineFragment(const std::vector<std::string> &lines, std::string_view fragment)
+{
+	for (const std::string &line : lines) {
+		if (line.find(fragment) != std::string::npos)
+			return true;
+	}
+	return false;
 }
 
 dev::Player MakePlayer(dev::Point tile = { 0, 0 })
@@ -2849,6 +2863,55 @@ void TestQueuedInventoryScriptSourceDrainsPathsOnce()
 	Expect(drained.size() == 2 && drained[1] == second, "queued inventory script source should preserve second path");
 }
 
+void TestRuntimeSourceDrainerDrainsSessionBeforeMovement()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_source_drainer_test";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root / "saves" };
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::QueuedSessionCommandSource routedSessionCommands;
+	dev::QueuedMovementCommandSource routedMovementCommands;
+	dev::QueuedSessionCommandSource sessionCommands;
+	dev::QueuedMovementCommandSource movementCommands;
+
+	sessionCommands.enqueue({
+	    .type = dev::SessionCommandType::StartNewGame,
+	    .newGameSettings = dev::NewGameSettings { .playerStart = { 0, 0 }, .playerHitPoints = 20 },
+	});
+	movementCommands.enqueue({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+
+	dev::RuntimeSourceDrainer drainer {
+		session,
+		inventoryEvents,
+		routedSessionCommands,
+		routedMovementCommands,
+		dev::RuntimeSourceDrainerSettings {
+		    .sessionCommandSources = { &sessionCommands },
+		    .movementCommandSources = { &movementCommands },
+		},
+	};
+	dev::SessionCommandDispatcher dispatcher { session };
+
+	std::vector<dev::SessionCommandResult> sessionResults = drainer.drainSessionCommands(dispatcher);
+	int queuedMovement = drainer.drainMovementCommands();
+	dev::SimulationFrameEvents frameEvents = session.update(1.0F / 60.0F);
+
+	Expect(sessionResults.size() == 1 && sessionResults[0].type == dev::SessionCommandResultType::Applied, "runtime source drainer should dispatch session sources");
+	Expect(session.hasActiveWorld(), "runtime source drainer session commands should create an active world");
+	Expect(queuedMovement == 1, "runtime source drainer should queue movement after world exists");
+	Expect(!frameEvents.movementEvents().empty(), "runtime source drainer test should produce movement frame events");
+	Expect(session.world().players.size() == 1 && session.world().players[0].position.tile == dev::Point { 1, 0 }, "runtime source drainer movement queue should feed session update");
+	Expect(sessionCommands.empty(), "runtime source drainer should drain session source");
+	Expect(movementCommands.empty(), "runtime source drainer should drain movement source");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestGameLoopDrainsRuntimeMovementCommandSources()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_game_loop_movement_source_test";
@@ -2988,6 +3051,240 @@ void TestGameLoopDoesNotDrainInventoryScriptSourcesWithoutActiveWorld()
 	Expect(inventoryScripts.size() == 1, "game loop should preserve inventory script paths until a world exists");
 
 	std::filesystem::remove_all(root);
+}
+
+void TestGameLoopBuildsRuntimeFrameReports()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_game_loop_frame_report_test";
+	const std::filesystem::path scriptPath = root / "frame_inventory.iicl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::InventoryCommandLog log;
+	log.record({
+	    .type = dev::InventoryCommandType::EquipItem,
+	    .itemId = 954,
+	});
+	dev::InventoryCommandLogFileStore store;
+	Expect(store.save(scriptPath, log), "frame report test should create inventory script");
+
+	dev::QueuedInventoryScriptSource inventoryScripts;
+	inventoryScripts.enqueue(scriptPath);
+	dev::QueuedInventoryCommandSource inventoryCommands;
+	inventoryCommands.enqueue({
+	    .type = dev::InventoryCommandType::UnequipSlot,
+	    .slot = dev::EquipmentSlot::Weapon,
+	});
+	dev::QueuedMovementCommandSource movementCommands;
+	movementCommands.enqueue({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+
+	dev::GameLoop loop {
+		dev::GameLoopSettings {
+		    .saveRoot = root / "saves",
+		    .movementCommandSources = { &movementCommands },
+		    .inventoryCommandSources = { &inventoryCommands },
+		    .inventoryScriptSources = { &inventoryScripts },
+		    .maxFrames = 1,
+		}
+	};
+	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	loop.session().world().players[0].inventory.capacity = 2;
+	loop.session().world().players[0].inventory.items.push_back({
+	    .id = 954,
+	    .equipmentSlot = dev::EquipmentSlot::Weapon,
+	});
+
+	dev::GameLoopResult result = loop.runForResult();
+
+	Expect(result.frameReports.size() == 1, "game loop should record one runtime frame report per frame");
+	if (result.frameReports.empty()) {
+		std::filesystem::remove_all(root);
+		return;
+	}
+
+	const dev::RuntimeFrameReport &report = result.frameReports[0];
+	Expect(report.inventoryScriptResults.size() == 1, "runtime frame report should include inventory script results");
+	Expect(report.inventoryScriptResults.size() == 1 && report.inventoryScriptResults[0].status == dev::InventoryScriptRunStatus::Completed, "runtime frame report should preserve inventory script status");
+	Expect(report.inventoryCommandResults.size() == 2, "runtime frame report should include script and direct inventory command results");
+	Expect(report.inventoryCommandResults.size() == 2 && report.inventoryCommandResults[0].type == dev::InventoryCommandResultType::Applied, "runtime frame report should include applied script command result");
+	Expect(report.inventoryCommandResults.size() == 2 && report.inventoryCommandResults[1].type == dev::InventoryCommandResultType::Applied, "runtime frame report should include applied direct inventory command result");
+	Expect(report.movementCommandsQueued == 1, "runtime frame report should include movement command count");
+	Expect(!report.frameEvents.movementEvents().empty(), "runtime frame report should include simulation frame events");
+	Expect(report.inventoryEvents.size() == 2, "runtime frame report should include inventory event deltas");
+	Expect(report.inventoryEvents.size() == 2 && report.inventoryEvents[0].type == dev::InventoryEventType::Equipped, "runtime frame report should include equipped event");
+	Expect(report.inventoryEvents.size() == 2 && report.inventoryEvents[1].type == dev::InventoryEventType::Unequipped, "runtime frame report should include unequipped event");
+	Expect(result.inventoryCommandResults.size() == report.inventoryCommandResults.size(), "game loop aggregate inventory command results should match frame report results");
+	Expect(result.movementCommandsQueued == report.movementCommandsQueued, "game loop aggregate movement count should match frame report count");
+	Expect(result.lastFrameEvents.movementEvents().size() == report.frameEvents.movementEvents().size(), "last frame events should mirror final runtime frame report");
+	Expect(loop.session().world().players[0].inventory.items.size() == 1 && loop.session().world().players[0].inventory.items[0].id == 954, "frame report scenario should replay script then direct unequip");
+	Expect(loop.session().world().players[0].position.tile == dev::Point { 1, 0 }, "frame report scenario should still run movement update");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeFrameTraceFormatsReadableLines()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_frame_trace_test";
+	const std::filesystem::path scriptPath = root / "trace_inventory.iicl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::InventoryCommandLog log;
+	log.record({
+	    .type = dev::InventoryCommandType::EquipItem,
+	    .itemId = 955,
+	});
+	dev::InventoryCommandLogFileStore store;
+	Expect(store.save(scriptPath, log), "runtime frame trace test should create inventory script");
+
+	dev::QueuedInventoryScriptSource inventoryScripts;
+	inventoryScripts.enqueue(scriptPath);
+	dev::QueuedInventoryCommandSource inventoryCommands;
+	inventoryCommands.enqueue({
+	    .type = dev::InventoryCommandType::UnequipSlot,
+	    .slot = dev::EquipmentSlot::Weapon,
+	});
+	dev::QueuedMovementCommandSource movementCommands;
+	movementCommands.enqueue({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+
+	dev::GameLoop loop {
+		dev::GameLoopSettings {
+		    .saveRoot = root / "saves",
+		    .movementCommandSources = { &movementCommands },
+		    .inventoryCommandSources = { &inventoryCommands },
+		    .inventoryScriptSources = { &inventoryScripts },
+		    .maxFrames = 1,
+		}
+	};
+	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	loop.session().world().players[0].inventory.capacity = 2;
+	loop.session().world().players[0].inventory.items.push_back({
+	    .id = 955,
+	    .equipmentSlot = dev::EquipmentSlot::Weapon,
+	});
+
+	dev::GameLoopResult result = loop.runForResult();
+	Expect(result.frameReports.size() == 1, "runtime frame trace test should create one frame report");
+	if (result.frameReports.empty()) {
+		std::filesystem::remove_all(root);
+		return;
+	}
+
+	std::vector<std::string> lines = dev::RuntimeFrameTrace {}.format(result.frameReports[0]);
+
+	Expect(!lines.empty(), "runtime frame trace should produce readable lines");
+	Expect(ContainsLineFragment(lines, "frame rawInput=0"), "runtime frame trace should include summary line");
+	Expect(ContainsLineFragment(lines, "inventoryScripts=1"), "runtime frame trace should include inventory script count");
+	Expect(ContainsLineFragment(lines, "inventoryResults=2"), "runtime frame trace should include inventory result count");
+	Expect(ContainsLineFragment(lines, "movementQueued=1"), "runtime frame trace should include movement queue count");
+	Expect(ContainsLineFragment(lines, "inventoryScript[0] status=Completed results=1"), "runtime frame trace should include inventory script detail");
+	Expect(ContainsLineFragment(lines, "inventoryResult[0] type=Applied command=EquipItem equipment=Equipped item=955 slot=Weapon"), "runtime frame trace should include equip result detail");
+	Expect(ContainsLineFragment(lines, "inventoryResult[1] type=Applied command=UnequipSlot equipment=Unequipped item=955 slot=Weapon"), "runtime frame trace should include unequip result detail");
+	Expect(ContainsLineFragment(lines, "inventoryEvent[0] type=Equipped command=EquipItem result=Applied equipment=Equipped item=955 slot=Weapon"), "runtime frame trace should include inventory event detail");
+	Expect(ContainsLineFragment(lines, "movementEvent[0] type=CommandAccepted"), "runtime frame trace should include movement event detail");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeFrameTraceFileStoreSavesAndLoadsLines()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_frame_trace_file_store_test";
+	const std::filesystem::path path = root / "frame.trace";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+	std::filesystem::remove(path.string() + ".tmp");
+
+	std::vector<std::string> lines {
+		"frame rawInput=0 sessionResults=0 inventoryScripts=1 inventoryResults=2 movementQueued=1",
+		"inventoryResult[0] type=Applied command=EquipItem equipment=Equipped item=955 slot=Weapon",
+		"movementEvent[0] type=CommandAccepted player=0 tile=(0,0) command=WalkTo",
+	};
+
+	dev::RuntimeFrameTraceFileStore store;
+	Expect(store.save(path, lines), "runtime frame trace file store should save lines");
+	std::optional<std::vector<std::string>> loaded = store.load(path);
+
+	Expect(loaded.has_value(), "runtime frame trace file store should load saved lines");
+	Expect(loaded.has_value() && *loaded == lines, "runtime frame trace file store should preserve exact lines");
+	Expect(!std::filesystem::exists(path.string() + ".tmp"), "runtime frame trace file store should remove temp file after save");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeFrameTraceFileStoreRejectsMissingFile()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_frame_trace_missing_test";
+	const std::filesystem::path path = root / "missing.trace";
+	std::filesystem::remove_all(root);
+
+	dev::RuntimeFrameTraceFileStore store;
+	Expect(!store.load(path).has_value(), "runtime frame trace file store should reject missing file");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeTraceServiceFormatsAndSavesRunTrace()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_trace_service_test";
+	const std::filesystem::path scriptPath = root / "trace_inventory.iicl";
+	const std::filesystem::path tracePath = root / "run.trace";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::InventoryCommandLog log;
+	log.record({
+	    .type = dev::InventoryCommandType::EquipItem,
+	    .itemId = 956,
+	});
+	dev::InventoryCommandLogFileStore inventoryStore;
+	Expect(inventoryStore.save(scriptPath, log), "runtime trace service test should create inventory script");
+
+	dev::QueuedInventoryScriptSource inventoryScripts;
+	inventoryScripts.enqueue(scriptPath);
+
+	dev::GameLoop loop {
+		dev::GameLoopSettings {
+		    .saveRoot = root / "saves",
+		    .inventoryScriptSources = { &inventoryScripts },
+		    .maxFrames = 1,
+		}
+	};
+	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	loop.session().world().players[0].inventory.items.push_back({
+	    .id = 956,
+	    .equipmentSlot = dev::EquipmentSlot::Weapon,
+	});
+	dev::GameLoopResult result = loop.runForResult();
+
+	dev::RuntimeTraceService service;
+	std::vector<std::string> lines = service.formatRun(result);
+	Expect(service.saveRunTrace(tracePath, result), "runtime trace service should save full run trace");
+	std::optional<std::vector<std::string>> loaded = dev::RuntimeFrameTraceFileStore {}.load(tracePath);
+
+	Expect(!lines.empty(), "runtime trace service should format run lines");
+	Expect(!lines.empty() && lines[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=1 inventoryResults=1 movementQueued=0", "runtime trace service should include run summary");
+	Expect(ContainsLineFragment(lines, "frame[0]"), "runtime trace service should include frame header");
+	Expect(ContainsLineFragment(lines, "inventoryResult[0] type=Applied command=EquipItem equipment=Equipped item=956 slot=Weapon"), "runtime trace service should include frame trace detail");
+	Expect(loaded.has_value() && *loaded == lines, "runtime trace service should persist exact formatted lines");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeTraceServiceFormatsEmptyRun()
+{
+	dev::GameLoopResult result;
+	std::vector<std::string> lines = dev::RuntimeTraceService {}.formatRun(result);
+
+	Expect(lines.size() == 1, "runtime trace service should format empty run as summary only");
+	Expect(lines.size() == 1 && lines[0] == "run frames=0 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "runtime trace service should preserve empty run counts");
 }
 
 void TestGameLoopDrainsRuntimeInventoryCommandSources()
@@ -3720,9 +4017,16 @@ int main()
 	TestGameLoopDrainsRuntimeMovementCommandSources();
 	TestQueuedInventoryCommandSourceDrainsCommandsOnce();
 	TestQueuedInventoryScriptSourceDrainsPathsOnce();
+	TestRuntimeSourceDrainerDrainsSessionBeforeMovement();
 	TestGameLoopDrainsRuntimeInventoryScriptSources();
 	TestGameLoopReportsRuntimeInventoryScriptLoadFailureWithoutStoppingFrames();
 	TestGameLoopDoesNotDrainInventoryScriptSourcesWithoutActiveWorld();
+	TestGameLoopBuildsRuntimeFrameReports();
+	TestRuntimeFrameTraceFormatsReadableLines();
+	TestRuntimeFrameTraceFileStoreSavesAndLoadsLines();
+	TestRuntimeFrameTraceFileStoreRejectsMissingFile();
+	TestRuntimeTraceServiceFormatsAndSavesRunTrace();
+	TestRuntimeTraceServiceFormatsEmptyRun();
 	TestGameLoopDrainsRuntimeInventoryCommandSources();
 	TestGameLoopEmitsRejectedInventoryEventForMissingPlayer();
 	TestGameLoopDoesNotDrainInventorySourcesWithoutActiveWorld();

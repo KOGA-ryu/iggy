@@ -6,11 +6,10 @@
 
 #include "commands/MovementCommandSource.hpp"
 #include "app/RuntimeInputRouter.hpp"
+#include "app/RuntimeSourceDrainer.hpp"
 #include "input/RawInputSource.hpp"
-#include "inventory/InventoryCommandDispatcher.hpp"
 #include "inventory/InventoryCommandSource.hpp"
 #include "inventory/InventoryEventRecorder.hpp"
-#include "inventory/InventoryScriptRunner.hpp"
 #include "inventory/InventoryScriptSource.hpp"
 #include "session/GameSession.hpp"
 #include "session/SessionCommandDispatcher.hpp"
@@ -24,6 +23,7 @@ struct GameLoopSettings {
 	std::filesystem::path saveRoot = "saves";
 	std::optional<std::filesystem::path> startupScript;
 	std::optional<std::filesystem::path> inventoryScript;
+	std::optional<std::filesystem::path> runTracePath;
 	std::vector<RawInputSource *> rawInputSources;
 	std::vector<SessionCommandSource *> sessionCommandSources;
 	std::vector<MovementCommandSource *> movementCommandSources;
@@ -38,6 +38,17 @@ struct GameLoopSettings {
 	float fixedDeltaSeconds = 1.0F / 60.0F;
 };
 
+struct RuntimeFrameReport {
+	int rawInputEventsRouted = 0;
+	std::vector<SessionCommandResult> sessionCommandResults;
+	std::vector<InventoryScriptRunResult> inventoryScriptResults;
+	std::vector<InventoryCommandResult> inventoryCommandResults;
+	int movementCommandsQueued = 0;
+	SimulationFrameEvents frameEvents;
+	std::vector<SessionEvent> sessionEvents;
+	std::vector<InventoryEvent> inventoryEvents;
+};
+
 struct GameLoopResult {
 	bool startupScriptRan = false;
 	SessionScriptRunResult startupScriptResult;
@@ -50,7 +61,10 @@ struct GameLoopResult {
 	int movementCommandsQueued = 0;
 	int framesRun = 0;
 	SimulationFrameEvents lastFrameEvents;
+	std::vector<RuntimeFrameReport> frameReports;
 	GameSessionMode finalMode = GameSessionMode::Empty;
+	bool runTraceSaveAttempted = false;
+	bool runTraceSaved = false;
 };
 
 class GameLoop {
@@ -65,12 +79,7 @@ public:
 	[[nodiscard]] const InventoryEventRecorder &inventoryEvents() const;
 
 private:
-	[[nodiscard]] InventoryScriptRunResult runInventoryScript(const std::filesystem::path &path);
 	[[nodiscard]] int routeRawInputSources();
-	std::vector<SessionCommandResult> drainSessionCommandSources(const SessionCommandDispatcher &dispatcher);
-	[[nodiscard]] std::vector<InventoryScriptRunResult> drainInventoryScriptSources();
-	[[nodiscard]] std::vector<InventoryCommandResult> drainInventoryCommandSources();
-	[[nodiscard]] int drainMovementCommandSources();
 	[[nodiscard]] SimulationFrameEvents updateSimulationFrame();
 	void renderDebugView();
 

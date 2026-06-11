@@ -830,6 +830,79 @@ Configured inventory script failure stops setup. Runtime inventory script
 failure is reported in `runtimeInventoryScriptResults` and the loop keeps
 ticking. That lets a debug menu try a script without taking down the frame loop.
 
+`RuntimeSourceDrainer` now owns that runtime source order:
+
+```text
+RuntimeSourceDrainer
+  -> drain session command sources
+  -> drain inventory script sources
+  -> drain inventory command sources
+  -> drain movement command sources
+```
+
+`GameLoop` still owns startup, raw input routing, frame stepping, and result
+aggregation. The drainer owns the repeated source mechanics and the active-world
+checks needed before inventory and movement sources can safely mutate state.
+
+Each bounded frame now also produces a report:
+
+```text
+RuntimeFrameReport
+  raw input routed this frame
+  session command results this frame
+  inventory script results this frame
+  inventory command results this frame
+  movement commands queued this frame
+  movement/combat/effect frame events
+  session event delta
+  inventory event delta
+```
+
+`GameLoopResult` still keeps aggregate fields for convenience. The frame report
+answers a different question: “what happened during this specific app frame?”
+That is the shape a debug overlay, test harness, or trace logger wants when the
+runtime shell starts coordinating several command and event streams.
+
+`RuntimeFrameTrace` exports that structured report into deterministic text:
+
+```text
+frame rawInput=0 sessionResults=0 inventoryScripts=1 ...
+inventoryResult[0] type=Applied command=EquipItem ...
+inventoryEvent[0] type=Equipped ...
+movementEvent[0] type=CommandAccepted ...
+```
+
+The trace formatter is intentionally downstream of the report. It does not
+drive gameplay or mutate state. It only turns already-recorded runtime facts
+into readable lines.
+
+`RuntimeFrameTraceFileStore` persists those readable lines:
+
+```text
+RuntimeFrameReport
+  -> RuntimeFrameTrace
+  -> RuntimeFrameTraceFileStore
+  -> frame.trace
+```
+
+This store is plain text on purpose. Unlike save files or command logs, trace
+files are for humans and tooling to inspect what happened during a run, not for
+restoring gameplay state.
+
+`RuntimeTraceService` is the use-case layer for full run traces:
+
+```text
+GameLoopResult
+  -> frameReports[]
+  -> RuntimeFrameTrace
+  -> RuntimeFrameTraceFileStore
+  -> run.trace
+```
+
+It adds a run-level summary before the per-frame lines. That gives a caller one
+method for “save the trace for this run” while keeping formatting and filesystem
+behavior testable as separate pieces.
+
 ## 35. Runtime Session Command Sources
 
 Startup scripts are only one way lifecycle commands enter the app. Menus,

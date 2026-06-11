@@ -348,6 +348,25 @@ GameLoop
   input, session, inventory script, inventory command, and movement sources,
   advances bounded frames, and exposes results/events for tests and debug tools
 
+RuntimeFrameReport
+  per-frame report that groups routed input counts, runtime source results,
+  event deltas, and simulation frame output for debug/test inspection
+
+RuntimeFrameTrace
+  readable text formatter for RuntimeFrameReport, suitable for logs, debug
+  overlays, and test diagnostics
+
+RuntimeFrameTraceFileStore
+  file persistence boundary for readable runtime frame trace lines
+
+RuntimeTraceService
+  high-level use case that formats and saves complete GameLoopResult frame
+  traces in one call
+
+RuntimeSourceDrainer
+  app-layer helper that drains runtime session, inventory script, inventory
+  command, and movement sources in frame order
+
 EffectRouter
   maps factual movement/combat events into presentation requests without letting
   simulation systems know about UI, audio, VFX, rumble, or camera code
