@@ -43,6 +43,7 @@ Good first tests:
 - EffectRouter maps movement events to feedback requests
 - EffectRouter maps combat hits to damage, impact, and hit-stop requests
 - EffectApplier applies hit-stop requests to SimulationClock
+- SimulationEffectPipeline routes frame events and applies simulation-facing effects
 - SimulationFrameEventCapture collects frame events, forwards them, and restores sinks
 - SimulationFrameFinalizer applies post-tick targets, pickups, and effects
 - SimulationFrameRunner collects events, routes effects, applies hit-stop, and preserves forwarding

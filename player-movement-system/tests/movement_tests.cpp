@@ -71,6 +71,7 @@
 #include "session/SessionEventRecorder.hpp"
 #include "session/SessionScriptRunner.hpp"
 #include "simulation/SimulationClock.hpp"
+#include "simulation/SimulationEffectPipeline.hpp"
 #include "simulation/SimulationFrameEventCapture.hpp"
 #include "simulation/SimulationFrameFinalizer.hpp"
 #include "simulation/SimulationFrameRunner.hpp"
@@ -708,6 +709,31 @@ void TestEffectApplierAppliesHitStopToClock()
 	dev::SimulationTimeStep step = clock.step(0.01F);
 	Expect(step.playerDeltaSeconds == 0.0F, "applied hit-stop should freeze player actor time");
 	Expect(step.enemyDeltaSeconds == 0.0F, "applied hit-stop should freeze enemy actor time");
+}
+
+void TestSimulationEffectPipelineRoutesAndAppliesEffects()
+{
+	dev::SimulationClock clock;
+	dev::SimulationFrameEvents frameEvents;
+	frameEvents.emit(dev::MovementEvent {
+	    .type = dev::MovementEventType::StepCommitted,
+	    .playerId = 0,
+	    .tile = { 2, 0 },
+	});
+	frameEvents.emit(dev::CombatEvent {
+	    .type = dev::CombatEventType::Hit,
+	    .target = dev::Target { .type = dev::TargetType::Enemy, .id = 45, .tile = { 2, 0 } },
+	    .damage = 5,
+	    .remainingHitPoints = 4,
+	    .result = dev::CombatResultType::Hit,
+	});
+
+	dev::SimulationEffectPipeline { &clock }.run(frameEvents);
+
+	Expect(frameEvents.effectRequests().size() == 4, "simulation effect pipeline should route movement and combat effects");
+	Expect(frameEvents.effectRequests().size() == 4 && frameEvents.effectRequests()[0].type == dev::EffectRequestType::Footstep, "simulation effect pipeline should preserve movement effect order");
+	Expect(frameEvents.effectRequests().size() == 4 && frameEvents.effectRequests()[3].type == dev::EffectRequestType::HitStop, "simulation effect pipeline should route hit-stop request");
+	Expect(clock.hitStopRemainingSeconds() > 0.0F, "simulation effect pipeline should apply hit-stop to clock");
 }
 
 void TestSimulationFrameEventCaptureCollectsForwardsAndRestoresSinks()
@@ -4900,6 +4926,7 @@ int main()
 	TestEffectRouterMapsMovementEventsToRequests();
 	TestEffectRouterMapsCombatHitToRequests();
 	TestEffectApplierAppliesHitStopToClock();
+	TestSimulationEffectPipelineRoutesAndAppliesEffects();
 	TestSimulationFrameEventCaptureCollectsForwardsAndRestoresSinks();
 	TestSimulationFrameFinalizerAppliesConsequences();
 	TestSimulationFrameRunnerProcessesConsequences();

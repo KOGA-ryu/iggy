@@ -378,8 +378,8 @@ SimulationFrameRunner
   -> SimulationFrameFinalizer
   -> TargetSynchronizer
   -> InventoryService
-  -> EffectRouter
-  -> EffectApplier
+  -> SimulationEffectPipeline
+  -> EffectRouter / EffectApplier
   -> frame output for presentation
 ```
 

@@ -80,6 +80,7 @@ add_library(player_movement_system
   src/session/SessionScriptRunner.cpp
   src/session/GameSession.cpp
   src/simulation/SimulationClock.cpp
+  src/simulation/SimulationEffectPipeline.cpp
   src/simulation/SimulationFrameEventCapture.cpp
   src/simulation/SimulationFrameFinalizer.cpp
   src/simulation/SimulationFrameEvents.cpp

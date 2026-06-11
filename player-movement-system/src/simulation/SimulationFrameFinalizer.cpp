@@ -3,7 +3,7 @@
 namespace dev {
 
 SimulationFrameFinalizer::SimulationFrameFinalizer(SimulationClock *clock)
-    : clock_(clock)
+    : effects_(clock)
 {
 }
 
@@ -13,27 +13,7 @@ void SimulationFrameFinalizer::finalize(SimulationWorld &world, SimulationFrameE
 	targets_.removeDefeatedTargets(frameEvents.combatEvents(), world.targets);
 	inventory_.applyPickupEvents(world, frameEvents.movementEvents());
 
-	routeEffects(frameEvents);
-	applyEffects(frameEvents);
-}
-
-void SimulationFrameFinalizer::routeEffects(SimulationFrameEvents &frameEvents) const
-{
-	EffectRouter router { frameEvents };
-	for (const MovementEvent &event : frameEvents.movementEvents()) {
-		router.route(event);
-	}
-	for (const CombatEvent &event : frameEvents.combatEvents()) {
-		router.route(event);
-	}
-}
-
-void SimulationFrameFinalizer::applyEffects(const SimulationFrameEvents &frameEvents) const
-{
-	EffectApplier applier { clock_ };
-	for (const EffectRequest &request : frameEvents.effectRequests()) {
-		applier.apply(request);
-	}
+	effects_.run(frameEvents);
 }
 
 } // namespace dev

@@ -293,10 +293,13 @@ SimulationFrameEventCapture
   scoped frame helper that temporarily installs movement/combat event capture
   sinks, forwards to existing sinks, and restores the world after the tick
 
+SimulationEffectPipeline
+  routes frame movement/combat events into effect requests and applies approved
+  simulation-facing effects through EffectApplier
+
 SimulationFrameFinalizer
   post-tick consequence stage that synchronizes clickable targets, applies
-  pickup transfers, routes effect requests, and applies allowed simulation-facing
-  effects such as hit-stop
+  pickup transfers, and runs the simulation effect pipeline
 
 SimulationSnapshot
   durable world state for save/load and debugging: players, inventories,
