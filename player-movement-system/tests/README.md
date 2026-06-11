@@ -38,6 +38,8 @@ Good first tests:
 - Enemy attack windup resolves combat against player and emits CombatEvent
 - SimulationTick drains queued commands, updates movement, and resolves combat
 - SimulationFramePolicy can pause command draining and movement
+- SimulationClock hit-stop freezes actor updates while preserving command intake
+- SimulationClock time scale slows enemy attack windup
 
 Run them with:
 

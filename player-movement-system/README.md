@@ -191,4 +191,8 @@ SimulationTick
 SimulationFramePolicy
   mode-level rule set for whether a frame accepts commands, advances players,
   or advances enemies
+
+SimulationClock / SimulationTimeStep
+  converts raw frame time into actor time, supporting time scale and hit-stop
+  without pushing time rules into movement, enemy, or combat systems
 ```

@@ -19,6 +19,7 @@
 #include "player/PlayerMovement.hpp"
 #include "replay/CommandLog.hpp"
 #include "replay/CommandReplayer.hpp"
+#include "simulation/SimulationClock.hpp"
 #include "simulation/SimulationTick.hpp"
 #include "targeting/Target.hpp"
 #include "world/Collision.hpp"
@@ -447,6 +448,53 @@ void TestSimulationPolicyPausedDoesNotDrainCommands()
 	Expect(world.players[0].position.tile == dev::Point { 1, 0 }, "gameplay simulation should drain preserved command");
 }
 
+void TestSimulationClockHitStopFreezesActorUpdates()
+{
+	dev::SimulationWorld world;
+	world.players.push_back(MakePlayer({ 0, 0 }));
+	world.commandQueue.push({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	    .destinationAction = std::nullopt,
+	});
+
+	dev::SimulationClock clock;
+	clock.triggerHitStop(0.25F);
+	dev::SimulationTick tick;
+
+	tick.update(world, clock.step(0.10F));
+	Expect(world.players[0].position.tile == dev::Point { 0, 0 }, "hit-stop should freeze player movement");
+
+	tick.update(world, clock.step(0.20F));
+	Expect(world.players[0].position.tile == dev::Point { 1, 0 }, "movement should resume after hit-stop remainder expires");
+}
+
+void TestSimulationClockScalesEnemyWindup()
+{
+	dev::SimulationWorld world;
+	dev::CombatEventRecorder combatEvents;
+	world.setCombatEventSink(&combatEvents);
+	world.players.push_back(MakePlayer({ 1, 0 }));
+	world.players[0].combatStats.hitPoints = 20;
+	world.players[0].combatStats.defense = 1;
+	world.enemies.push_back(MakeEnemy({ 0, 0 }));
+	world.enemies[0].moveState = dev::EnemyMoveState::Attacking;
+	world.enemies[0].combatStats.attackPower = 5;
+	world.enemies[0].tuning.attackWindupSeconds = 1.0F;
+
+	dev::SimulationClock clock;
+	clock.setTimeScale(0.5F);
+	dev::SimulationTick tick;
+
+	tick.update(world, clock.step(1.0F));
+	Expect(world.players[0].combatStats.hitPoints == 20, "half-speed enemy windup should not finish after one raw second");
+
+	tick.update(world, clock.step(1.0F));
+	Expect(world.players[0].combatStats.hitPoints == 16, "half-speed enemy windup should finish after two raw seconds");
+	Expect(combatEvents.events().size() == 1, "scaled windup should emit one combat event when it completes");
+}
+
 } // namespace
 
 int main()
@@ -468,6 +516,8 @@ int main()
 	TestEnemyAttackResolvesCombatAgainstPlayer();
 	TestSimulationTickDispatchesMovementAndCombat();
 	TestSimulationPolicyPausedDoesNotDrainCommands();
+	TestSimulationClockHitStopFreezesActorUpdates();
+	TestSimulationClockScalesEnemyWindup();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

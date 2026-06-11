@@ -302,3 +302,27 @@ NetworkPrediction commands, players
 Paused            nothing advances
 Inventory         nothing advances
 ```
+
+## 17. Time Control
+
+Frame policy answers what may run. Time control answers how much time each
+running system receives.
+
+```text
+raw frame delta
+  -> SimulationClock
+  -> SimulationTimeStep
+  -> SimulationTick
+  -> player delta / enemy delta / animation delta
+```
+
+The clock currently supports:
+
+```text
+time scale  slows or freezes actor time
+hit-stop    consumes raw time before actors advance
+```
+
+This lets impact freeze movement and enemy windup without teaching pathfinding,
+commands, combat, or input mapping about hit-stop. Commands can still be
+accepted during hit-stop, but actor updates wait until actor time resumes.
