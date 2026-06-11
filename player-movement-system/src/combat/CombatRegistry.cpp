@@ -25,5 +25,14 @@ const Combatant *CombatRegistry::find(const Target &target) const
 	return nullptr;
 }
 
-} // namespace dev
+void CombatRegistry::replaceAll(std::vector<Combatant> combatants)
+{
+	combatants_ = std::move(combatants);
+}
 
+const std::vector<Combatant> &CombatRegistry::combatants() const
+{
+	return combatants_;
+}
+
+} // namespace dev

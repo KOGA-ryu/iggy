@@ -56,6 +56,10 @@ src/effects
 src/replay
   Records and replays semantic movement commands.
 
+src/save
+  Captures and restores durable simulation state without saving frame events or
+  presentation effects.
+
 src/network
   Converts semantic movement commands to stable packets and back.
 
@@ -203,6 +207,10 @@ SimulationClock / SimulationTimeStep
 SimulationFrameEvents / SimulationFrameRunner
   collects per-frame facts, routes them into effect requests, applies allowed
   simulation-facing effects, and returns the frame output for presentation
+
+SimulationSnapshot
+  durable world state for save/load and debugging: players, enemies, and combat
+  registry data, not transient events or effects
 
 EffectRouter
   maps factual movement/combat events into presentation requests without letting

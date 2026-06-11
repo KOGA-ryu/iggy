@@ -22,6 +22,8 @@
 #include "player/PlayerMovement.hpp"
 #include "replay/CommandLog.hpp"
 #include "replay/CommandReplayer.hpp"
+#include "save/SnapshotReader.hpp"
+#include "save/SnapshotWriter.hpp"
 #include "simulation/SimulationClock.hpp"
 #include "simulation/SimulationFrameRunner.hpp"
 #include "simulation/SimulationTick.hpp"
@@ -615,6 +617,44 @@ void TestSimulationFrameRunnerProcessesConsequences()
 	Expect(!stoppedFrame.movementEvents().empty(), "runner should still accept commands during hit-stop");
 }
 
+void TestSimulationSnapshotRestoresDurableState()
+{
+	dev::SimulationWorld world;
+	dev::EventRecorder movementEvents;
+	dev::CombatEventRecorder combatEvents;
+	world.movementEvents = &movementEvents;
+	world.setCombatEventSink(&combatEvents);
+	world.players.push_back(MakePlayer({ 2, 2 }));
+	world.players[0].combatStats.hitPoints = 18;
+	world.enemies.push_back(MakeEnemy({ 4, 4 }));
+	world.enemies[0].moveState = dev::EnemyMoveState::Attacking;
+	world.enemies[0].stateTimerSeconds = 0.50F;
+	dev::Target target { .type = dev::TargetType::Enemy, .id = 50, .tile = { 4, 4 } };
+	world.combat.registry().add({
+	    .target = target,
+	    .stats = { .hitPoints = 7, .attackPower = 3, .defense = 1 },
+	});
+	movementEvents.emit({ .type = dev::MovementEventType::StepCommitted, .tile = { 2, 2 } });
+	combatEvents.emit({ .type = dev::CombatEventType::Hit, .target = target, .damage = 2, .remainingHitPoints = 7 });
+
+	dev::SimulationSnapshot snapshot = dev::SnapshotWriter {}.write(world);
+
+	world.players[0].position.tile = { 9, 9 };
+	world.players[0].combatStats.hitPoints = 1;
+	world.enemies.clear();
+	world.combat.registry().replaceAll({});
+	dev::SnapshotReader {}.read(snapshot, world);
+
+	const dev::Combatant *combatant = world.combat.registry().find(target);
+	Expect(world.players.size() == 1 && world.players[0].position.tile == dev::Point { 2, 2 }, "snapshot should restore player position");
+	Expect(world.players.size() == 1 && world.players[0].combatStats.hitPoints == 18, "snapshot should restore player combat stats");
+	Expect(world.enemies.size() == 1 && world.enemies[0].position.tile == dev::Point { 4, 4 }, "snapshot should restore enemy position");
+	Expect(world.enemies.size() == 1 && world.enemies[0].moveState == dev::EnemyMoveState::Attacking, "snapshot should restore enemy state");
+	Expect(combatant != nullptr && combatant->stats.hitPoints == 7, "snapshot should restore combat registry state");
+	Expect(snapshot.players.size() == 1 && snapshot.enemies.size() == 1 && snapshot.combatants.size() == 1, "snapshot should contain durable state only");
+	Expect(!movementEvents.events().empty() && !combatEvents.events().empty(), "snapshot restore should not manage transient event history");
+}
+
 } // namespace
 
 int main()
@@ -642,6 +682,7 @@ int main()
 	TestEffectRouterMapsCombatHitToRequests();
 	TestEffectApplierAppliesHitStopToClock();
 	TestSimulationFrameRunnerProcessesConsequences();
+	TestSimulationSnapshotRestoresDurableState();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

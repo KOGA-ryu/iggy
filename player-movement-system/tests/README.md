@@ -44,6 +44,7 @@ Good first tests:
 - EffectRouter maps combat hits to damage, impact, and hit-stop requests
 - EffectApplier applies hit-stop requests to SimulationClock
 - SimulationFrameRunner collects events, routes effects, applies hit-stop, and preserves forwarding
+- SnapshotWriter and SnapshotReader restore durable player, enemy, and combat state
 
 Run them with:
 

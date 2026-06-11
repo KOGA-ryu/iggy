@@ -393,3 +393,31 @@ The runner temporarily redirects movement and combat events into
 `SimulationFrameEvents`, forwards them to any existing sinks, then restores the
 world sinks after the tick. That keeps event capture local to a frame without
 stealing events from tests, debug tools, UI, or telemetry.
+
+## 21. Snapshot State
+
+Save/load starts by naming durable state:
+
+```text
+players
+enemies
+combat registry
+```
+
+Those are state. These are not:
+
+```text
+movement events
+combat events
+effect requests
+damage numbers
+hit sparks
+footsteps
+```
+
+`SnapshotWriter` copies durable state out of `SimulationWorld`.
+`SnapshotReader` restores that state into a world.
+
+This split matters because events and effects are consequences of a frame, not
+facts that should be restored later. A save file should restore where the world
+is, not replay the footstep sound that happened while saving.

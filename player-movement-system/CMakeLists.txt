@@ -33,6 +33,8 @@ add_library(player_movement_system
   src/player/WalkPath.cpp
   src/replay/CommandLog.cpp
   src/replay/CommandReplayer.cpp
+  src/save/SnapshotReader.cpp
+  src/save/SnapshotWriter.cpp
   src/simulation/SimulationClock.cpp
   src/simulation/SimulationFrameEvents.cpp
   src/simulation/SimulationFramePolicy.cpp
