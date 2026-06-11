@@ -10,6 +10,7 @@
 #include "actions/ActionExecutor.hpp"
 #include "app/GameLoop.hpp"
 #include "app/RuntimeDebugArtifactBundle.hpp"
+#include "app/RuntimeDebugManifest.hpp"
 #include "app/RuntimeExitCodePolicy.hpp"
 #include "app/RuntimeFrameLoopRunner.hpp"
 #include "app/RuntimeFrameRunner.hpp"
@@ -5596,22 +5597,20 @@ void TestRuntimeDebugArtifactBundleSavesManifestAndTrace()
 	std::filesystem::remove_all(root);
 }
 
-void TestRuntimeDebugArtifactBundleFormatsManifestForFailedRun()
+void TestRuntimeDebugManifestFormatsFailedRun()
 {
 	dev::GameLoopResult run;
 	run.setup.startupScriptRan = true;
 	run.finalMode = dev::GameSessionMode::Empty;
 
-	dev::RuntimeDebugArtifactBundleResult bundle {
+	dev::RuntimeDebugManifestContext context {
 		.rootPath = "debug/run-001",
 		.manifestPath = "debug/run-001/manifest.txt",
 		.tracePath = "debug/run-001/run.trace",
-		.rootPrepared = true,
 		.traceSaved = false,
-		.manifestSaved = false,
 	};
 
-	std::vector<std::string> lines = dev::RuntimeDebugArtifactBundle {}.formatManifest(run, bundle);
+	std::vector<std::string> lines = dev::RuntimeDebugManifest {}.format(run, context);
 
 	Expect(ContainsLineFragment(lines, "trace=run.trace saved=false"), "runtime debug bundle manifest should report trace save state");
 	Expect(ContainsLineFragment(lines, "run frames=0 frameReports=0"), "runtime debug bundle manifest should summarize empty failed runs");
@@ -6974,7 +6973,7 @@ int main()
 	TestGameLoopSavesRunTraceOnStartupFailure();
 	TestGameLoopReportsRunTraceSaveFailure();
 	TestRuntimeDebugArtifactBundleSavesManifestAndTrace();
-	TestRuntimeDebugArtifactBundleFormatsManifestForFailedRun();
+	TestRuntimeDebugManifestFormatsFailedRun();
 	TestRuntimeDebugArtifactBundleRejectsRootFile();
 	TestGameLoopSavesConfiguredDebugBundle();
 	TestGameLoopSavesDebugBundleOnStartupFailure();

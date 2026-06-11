@@ -187,6 +187,7 @@ Good first tests:
 - RuntimeOutputFinalizer applies output settings and reports requested write failures
 - RuntimeSetupRunner separates configured setup scripts from per-frame runtime sources
 - GameLoop saves configured run traces and reports trace write failures
+- RuntimeDebugManifest formats debug bundle manifest lines
 - RuntimeDebugArtifactBundle saves a manifest and run trace as one debug bundle
 - GameLoop saves configured debug bundles and reports bundle write failures
 - QueuedSessionCommandSource drains lifecycle commands exactly once

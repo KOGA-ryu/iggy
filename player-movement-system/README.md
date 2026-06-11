@@ -668,10 +668,14 @@ RuntimeTraceService
   high-level use case that formats and saves complete GameLoopResult frame
   traces in one call, including GameLoop-configured trace output
 
+RuntimeDebugManifest
+  readable manifest formatter for debug bundles, summarizing run counts, setup
+  attempts, final mode, artifact paths, and trace save state
+
 RuntimeDebugArtifactBundle
   app-layer debug artifact writer that prepares a bundle directory, saves the
-  run trace, writes a manifest describing the captured run, and can be invoked
-  directly or through GameLoopSettings
+  run trace, delegates manifest formatting to RuntimeDebugManifest, and can be
+  invoked directly or through GameLoopSettings
 
 RuntimeSourceDrainer
   app-layer helper that drains runtime session, inventory script, inventory

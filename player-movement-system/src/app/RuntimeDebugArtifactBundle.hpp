@@ -1,9 +1,8 @@
 #pragma once
 
 #include <filesystem>
-#include <string>
-#include <vector>
 
+#include "app/RuntimeDebugManifest.hpp"
 #include "app/RuntimeLoopTypes.hpp"
 #include "app/RuntimeTraceService.hpp"
 
@@ -22,15 +21,15 @@ struct RuntimeDebugArtifactBundleResult {
 
 class RuntimeDebugArtifactBundle {
 public:
-	explicit RuntimeDebugArtifactBundle(RuntimeTraceService traceService = RuntimeTraceService {});
+	explicit RuntimeDebugArtifactBundle(
+	    RuntimeTraceService traceService = RuntimeTraceService {},
+	    RuntimeDebugManifest manifest = RuntimeDebugManifest {});
 
 	[[nodiscard]] RuntimeDebugArtifactBundleResult save(const std::filesystem::path &rootPath, const GameLoopResult &result) const;
-	[[nodiscard]] std::vector<std::string> formatManifest(
-	    const GameLoopResult &result,
-	    const RuntimeDebugArtifactBundleResult &bundle) const;
 
 private:
 	RuntimeTraceService traceService_;
+	RuntimeDebugManifest manifest_;
 };
 
 } // namespace dev
