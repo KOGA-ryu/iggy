@@ -56,6 +56,7 @@ add_library(player_movement_system
   src/app/RuntimeMovementEventText.cpp
   src/app/RuntimeMovementInputBlockSummary.cpp
   src/app/RuntimeMovementScriptReportRecorder.cpp
+  src/app/RuntimeMovementScriptIntake.cpp
   src/app/RuntimeMovementScriptText.cpp
   src/app/RuntimeOutputFailurePolicy.cpp
   src/app/RuntimeOutputFinalizer.cpp

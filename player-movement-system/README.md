@@ -375,6 +375,10 @@ MovementScriptRunner
   high-level replay use case that loads a movement script file and dispatches it
   through CommandReplayer without mixing filesystem errors into command rejection
 
+RuntimeMovementScriptIntake
+  app-layer intake step that runs a movement script against the active
+  SimulationWorld or reports NoActiveWorld before replay begins
+
 MovementScriptSource
   runtime-facing source boundary that lets debug tools, tests, menus, or future
   automation queue movement replay script paths
@@ -805,6 +809,10 @@ RuntimeMovementScriptReportRecorder
   app-layer recorder that keeps current-frame movement script results on the
   frame report while aggregating runtime movement script results into the run
   summary without changing queued movement command counts
+
+RuntimeMovementScriptIntake
+  app-layer intake step that binds movement script replay to the active runtime
+  world, building the controller and dispatcher used by MovementScriptRunner
 
 RuntimeMovementCommandReportRecorder
   app-layer recorder that stores direct movement command queue counts on the

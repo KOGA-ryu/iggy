@@ -49,6 +49,7 @@
 #include "app/RuntimeMovementCommandReportRecorder.hpp"
 #include "app/RuntimeMovementEventText.hpp"
 #include "app/RuntimeMovementScriptReportRecorder.hpp"
+#include "app/RuntimeMovementScriptIntake.hpp"
 #include "app/RuntimeMovementScriptText.hpp"
 #include "app/RuntimeFrameTrace.hpp"
 #include "app/RuntimeFrameTraceFileStore.hpp"
@@ -5811,6 +5812,46 @@ void TestRuntimeSessionCommandIntakeDispatchesCommandsInOrder()
 	std::filesystem::remove_all(root);
 }
 
+void TestRuntimeMovementScriptIntakeRunsScriptsAgainstActiveWorld()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_movement_script_intake_test";
+	const std::filesystem::path scriptPath = root / "runtime_movement.imcl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::CommandLog log;
+	log.record({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+	log.record({
+	    .type = dev::MovementCommandType::Stop,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+	dev::CommandLogFileStore store;
+	Expect(store.save(scriptPath, log), "runtime movement script intake test should save script");
+
+	dev::EventRecorder events;
+	dev::SimulationWorld world;
+	world.players.push_back(MakePlayer({ 0, 0 }));
+	world.movementEvents = &events;
+
+	const dev::MovementScriptRunResult result = dev::RuntimeMovementScriptIntake {}.run(scriptPath, &world);
+	const dev::MovementScriptRunResult missingWorld = dev::RuntimeMovementScriptIntake {}.run(scriptPath, nullptr);
+
+	Expect(result.status == dev::MovementScriptRunStatus::Completed, "runtime movement script intake should run scripts against active world");
+	Expect(result.replayReport.results.size() == 2, "runtime movement script intake should replay every command");
+	Expect(result.replayReport.acceptedCount() == 2, "runtime movement script intake should report accepted replay commands");
+	Expect(world.players[0].moveState == dev::PlayerMoveState::Idle, "runtime movement script intake should let script dispatch affect world player state");
+	Expect(events.events().size() >= 2, "runtime movement script intake should emit movement events through the world sink");
+	Expect(missingWorld.status == dev::MovementScriptRunStatus::NoActiveWorld, "runtime movement script intake should report missing active world");
+	Expect(missingWorld.replayReport.results.empty(), "runtime movement script intake should not replay without active world");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestRuntimeSourceDrainerDrainsSessionBeforeMovement()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_source_drainer_test";
@@ -9938,6 +9979,7 @@ int main()
 	TestRuntimeMovementCommandIntakeQueuesCommandsInWorldOrder();
 	TestRuntimeInventoryCommandIntakeDispatchesOrRejectsCommands();
 	TestRuntimeSessionCommandIntakeDispatchesCommandsInOrder();
+	TestRuntimeMovementScriptIntakeRunsScriptsAgainstActiveWorld();
 	TestRuntimeSourceDrainerDrainsSessionBeforeMovement();
 	TestRuntimeSourceDrainerRunsMovementScripts();
 	TestGameLoopDrainsRuntimeMovementScriptSources();

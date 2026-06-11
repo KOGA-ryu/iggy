@@ -2,11 +2,10 @@
 
 #include "app/RuntimeInventoryCommandIntake.hpp"
 #include "app/RuntimeMovementCommandIntake.hpp"
+#include "app/RuntimeMovementScriptIntake.hpp"
 #include "app/RuntimeSessionCommandIntake.hpp"
 #include "app/RuntimeSourceContext.hpp"
 #include "app/RuntimeSourceStream.hpp"
-#include "commands/CommandDispatcher.hpp"
-#include "player/PlayerController.hpp"
 
 #include <utility>
 
@@ -40,20 +39,9 @@ InventoryScriptRunResult RuntimeSourceDrainer::runInventoryScript(const std::fil
 MovementScriptRunResult RuntimeSourceDrainer::runMovementScript(const std::filesystem::path &path)
 {
 	RuntimeSourceContext context { session_, settings_.inputPlayerId };
-	if (!context.hasActiveWorld())
-		return { .status = MovementScriptRunStatus::NoActiveWorld };
-
-	SimulationWorld &world = context.world();
-	PlayerController playerController {
-		world.players,
-		world.map,
-		world.collision,
-		world.pathFinder,
-		world.movementEvents,
-	};
-	CommandDispatcher dispatcher { playerController, world.movementEvents };
-	MovementScriptRunner runner { dispatcher };
-	return runner.run(path);
+	return RuntimeMovementScriptIntake {}.run(
+	    path,
+	    context.hasActiveWorld() ? &context.world() : nullptr);
 }
 
 std::vector<SessionCommandResult> RuntimeSourceDrainer::drainSessionCommands(const SessionCommandDispatcher &dispatcher)

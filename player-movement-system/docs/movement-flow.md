@@ -271,6 +271,11 @@ That distinction matters because a valid movement script can still ask for an
 illegal action in the current world state, and that should be visible as replay
 data rather than confused with a missing or corrupt file.
 
+`RuntimeMovementScriptIntake` is the runtime-world adapter above that runner. It
+checks whether an active world exists, builds the player controller and command
+dispatcher for that world, and then lets `MovementScriptRunner` own file loading
+and replay.
+
 `MovementScriptSource` is the runtime-facing queue boundary for those script
 paths:
 
@@ -1365,6 +1370,11 @@ summary appends them to the cross-frame lifecycle history.
 records which movement scripts ran on the frame and across the run without
 inflating `movementCommandsQueued`, which is reserved for direct movement
 command source intake.
+
+`RuntimeMovementScriptIntake` owns the app-to-replay handoff for drained
+movement script paths. The source drainer decides when script paths are drained;
+the intake decides whether there is a world that can receive replayed movement
+commands and wires that world into `MovementScriptRunner`.
 
 `RuntimeMovementCommandReportRecorder` owns that direct queued movement command
 count. The frame gets the count for this frame, while the run summary
