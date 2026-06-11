@@ -788,6 +788,11 @@ RuntimeInventoryCommandReportRecorder
   app-layer recorder that appends direct runtime inventory command results to
   frame and run inventory command reports without replacing script results
 
+RuntimeInventoryCommandIntake
+  app-layer intake step that applies drained runtime inventory commands to the
+  active player or rejects them with inventory events when no player can receive
+  them
+
 RuntimeSessionCommandReportRecorder
   app-layer recorder that keeps current-frame session command results on the
   frame report while aggregating all session command results into the run summary

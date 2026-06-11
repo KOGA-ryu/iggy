@@ -1,10 +1,10 @@
 #include "RuntimeSourceDrainer.hpp"
 
+#include "app/RuntimeInventoryCommandIntake.hpp"
 #include "app/RuntimeMovementCommandIntake.hpp"
 #include "app/RuntimeSourceContext.hpp"
 #include "app/RuntimeSourceStream.hpp"
 #include "commands/CommandDispatcher.hpp"
-#include "inventory/InventoryCommandEventEmitter.hpp"
 #include "player/PlayerController.hpp"
 
 #include <utility>
@@ -91,22 +91,10 @@ std::vector<InventoryCommandResult> RuntimeSourceDrainer::drainInventoryCommands
 
 	std::vector<InventoryCommand> commands = RuntimeSourceStream<InventoryCommand, InventoryCommandSource> {}.drain(
 	    settings_.inventoryCommandSources);
-	results.reserve(commands.size());
-	if (!context.hasActivePlayer()) {
-		InventoryCommandEventEmitter events { &inventoryEvents_ };
-		for (const InventoryCommand &command : commands) {
-			InventoryCommandResult result { .type = InventoryCommandResultType::Rejected, .command = command };
-			events.emit(result);
-			results.push_back(result);
-		}
-		return results;
-	}
-
-	InventoryCommandDispatcher dispatcher { context.player(), &inventoryEvents_ };
-	for (const InventoryCommand &command : commands)
-		results.push_back(dispatcher.dispatch(command));
-
-	return results;
+	return RuntimeInventoryCommandIntake {}.dispatch(
+	    std::move(commands),
+	    context.hasActivePlayer() ? &context.player() : nullptr,
+	    &inventoryEvents_);
 }
 
 std::vector<MovementScriptRunResult> RuntimeSourceDrainer::drainMovementScripts()

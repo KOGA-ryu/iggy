@@ -38,6 +38,7 @@
 #include "app/RuntimeInputRouter.hpp"
 #include "app/RuntimeInputRouteResultBuilder.hpp"
 #include "app/RuntimeInputSourceRouter.hpp"
+#include "app/RuntimeInventoryCommandIntake.hpp"
 #include "app/RuntimeInventoryCommandReportRecorder.hpp"
 #include "app/RuntimeInventoryScriptReportRecorder.hpp"
 #include "app/RuntimeInventoryScriptText.hpp"
@@ -5734,6 +5735,46 @@ void TestRuntimeMovementCommandIntakeQueuesCommandsInWorldOrder()
 	Expect(second.destination == dev::Point { 2, 0 }, "runtime movement command intake should preserve second command order");
 }
 
+void TestRuntimeInventoryCommandIntakeDispatchesOrRejectsCommands()
+{
+	dev::Player player;
+	player.inventory.items.push_back({
+	    .id = 10,
+	    .equipmentSlot = dev::EquipmentSlot::Weapon,
+	});
+	dev::InventoryEventRecorder events;
+
+	std::vector<dev::InventoryCommandResult> applied = dev::RuntimeInventoryCommandIntake {}.dispatch(
+	    {
+	        {
+	            .type = dev::InventoryCommandType::EquipItem,
+	            .itemId = 10,
+	        },
+	    },
+	    &player,
+	    &events);
+
+	Expect(applied.size() == 1 && applied[0].type == dev::InventoryCommandResultType::Applied, "runtime inventory command intake should dispatch commands for active player");
+	Expect(player.inventory.items.empty(), "runtime inventory command intake should apply equipment changes");
+	Expect(player.inventory.equipment.weapon.has_value() && player.inventory.equipment.weapon->id == 10, "runtime inventory command intake should equip item into slot");
+	Expect(events.events().size() == 1 && events.events()[0].type == dev::InventoryEventType::Equipped, "runtime inventory command intake should emit applied inventory event");
+
+	std::vector<dev::InventoryCommandResult> rejected = dev::RuntimeInventoryCommandIntake {}.dispatch(
+	    {
+	        {
+	            .type = dev::InventoryCommandType::EquipItem,
+	            .itemId = 11,
+	        },
+	    },
+	    nullptr,
+	    &events);
+
+	Expect(rejected.size() == 1 && rejected[0].type == dev::InventoryCommandResultType::Rejected, "runtime inventory command intake should reject commands without active player");
+	Expect(rejected.size() == 1 && rejected[0].command.itemId == std::optional<dev::TargetId> { 11 }, "runtime inventory command intake should preserve rejected command payload");
+	Expect(events.events().size() == 2 && events.events()[1].type == dev::InventoryEventType::Rejected, "runtime inventory command intake should emit rejected event without active player");
+	Expect(events.events().size() == 2 && events.events()[1].commandType == dev::InventoryCommandType::EquipItem, "runtime inventory command intake should preserve rejected event command type");
+}
+
 void TestRuntimeSourceDrainerDrainsSessionBeforeMovement()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_source_drainer_test";
@@ -9859,6 +9900,7 @@ int main()
 	TestRuntimeSourceContextReportsActiveWorldAndPlayer();
 	TestRuntimeSourceStreamDrainsSourcesAndSkipsNullSlots();
 	TestRuntimeMovementCommandIntakeQueuesCommandsInWorldOrder();
+	TestRuntimeInventoryCommandIntakeDispatchesOrRejectsCommands();
 	TestRuntimeSourceDrainerDrainsSessionBeforeMovement();
 	TestRuntimeSourceDrainerRunsMovementScripts();
 	TestGameLoopDrainsRuntimeMovementScriptSources();

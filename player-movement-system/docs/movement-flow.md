@@ -1346,6 +1346,12 @@ results. It appends those results after any script-flattened command results, so
 the frame report preserves source order while the run summary keeps one
 aggregate inventory command list.
 
+`RuntimeInventoryCommandIntake` owns the app-to-inventory handoff for drained
+inventory commands. When the selected player exists, commands dispatch through
+`InventoryCommandDispatcher`; when the world exists but the selected player does
+not, the same drained commands become rejected command results and rejected
+inventory events.
+
 `RuntimeSessionCommandReportRecorder` owns session command results. The frame
 report receives the current frame's lifecycle command results, while the run
 summary appends them to the cross-frame lifecycle history.
