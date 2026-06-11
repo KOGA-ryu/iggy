@@ -858,9 +858,21 @@ RuntimeTraceService
   high-level use case that formats and saves complete GameLoopResult frame
   traces in one call, including GameLoop-configured trace output
 
+RuntimeDebugManifestIndexText
+  app-layer text formatter that renders debug bundle version and trace save
+  state lines consistently for debug bundle manifests
+
 RuntimeDebugManifestSetupText
   app-layer text formatter that renders setup script attempt flags consistently
   for debug bundle manifests
+
+RuntimeDebugManifestPathsText
+  app-layer text formatter that renders debug bundle root, manifest, and trace
+  path lines consistently for debug bundle manifests
+
+RuntimeDebugManifestSections
+  app-layer manifest section formatter that groups run status, setup details,
+  and runtime script summaries in deterministic debug manifest order
 
 RuntimeDebugManifest
   readable manifest formatter for debug bundles, summarizing run counts, setup

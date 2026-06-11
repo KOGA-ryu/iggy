@@ -236,7 +236,10 @@ Good first tests:
 - RuntimeArtifactOutputService applies configured artifact outputs and reports failures
 - RuntimeSetupRunner separates configured setup scripts from per-frame runtime sources
 - GameLoop saves configured run traces and reports trace write failures
+- RuntimeDebugManifestIndexText formats debug bundle version and trace save state lines
 - RuntimeDebugManifestSetupText formats setup script attempt flags for manifests
+- RuntimeDebugManifestPathsText formats manifest artifact path lines
+- RuntimeDebugManifestSections formats run status, setup, and runtime script manifest groups
 - RuntimeDebugManifest formats debug bundle manifest lines with latest frame policy and movement script replay summaries
 - RuntimeDebugArtifactLayout names stable debug bundle artifact paths
 - RuntimeDebugArtifactWriter saves trace/manifest artifacts and records trace failures

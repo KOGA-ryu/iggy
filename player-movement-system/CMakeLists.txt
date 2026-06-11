@@ -15,6 +15,9 @@ add_library(player_movement_system
   src/app/RuntimeDebugArtifactLayout.cpp
   src/app/RuntimeDebugArtifactWriter.cpp
   src/app/RuntimeDebugManifest.cpp
+  src/app/RuntimeDebugManifestIndexText.cpp
+  src/app/RuntimeDebugManifestPathsText.cpp
+  src/app/RuntimeDebugManifestSections.cpp
   src/app/RuntimeDebugManifestSetupText.cpp
   src/app/RuntimeCombatText.cpp
   src/app/RuntimeEffectText.cpp

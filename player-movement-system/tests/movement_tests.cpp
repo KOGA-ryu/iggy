@@ -15,6 +15,9 @@
 #include "app/RuntimeDebugArtifactLayout.hpp"
 #include "app/RuntimeDebugArtifactWriter.hpp"
 #include "app/RuntimeDebugManifest.hpp"
+#include "app/RuntimeDebugManifestIndexText.hpp"
+#include "app/RuntimeDebugManifestPathsText.hpp"
+#include "app/RuntimeDebugManifestSections.hpp"
 #include "app/RuntimeDebugManifestSetupText.hpp"
 #include "app/RuntimeEffectText.hpp"
 #include "app/RuntimeExitCodeMapper.hpp"
@@ -6153,6 +6156,112 @@ void TestRuntimeDebugManifestSetupTextFormatsSetupAttempts()
 	Expect(formatter.format(setup) == "setup startupScriptRan=true inventoryScriptRan=false movementScriptRan=true", "runtime debug manifest setup text should format setup attempt flags");
 }
 
+void TestRuntimeDebugManifestIndexTextFormatsBundleIndex()
+{
+	dev::RuntimeDebugManifestContext savedContext {
+		.traceSaved = true,
+	};
+	dev::RuntimeDebugManifestContext failedContext {
+		.traceSaved = false,
+	};
+
+	const std::vector<std::string> saved = dev::RuntimeDebugManifestIndexText {}.format(savedContext);
+	const std::vector<std::string> failed = dev::RuntimeDebugManifestIndexText {}.format(failedContext);
+	const std::vector<std::string> expectedSaved {
+		"bundle version=1",
+		"trace=run.trace saved=true",
+	};
+	const std::vector<std::string> expectedFailed {
+		"bundle version=1",
+		"trace=run.trace saved=false",
+	};
+
+	Expect(saved == expectedSaved, "runtime debug manifest index text should format saved trace index lines");
+	Expect(failed == expectedFailed, "runtime debug manifest index text should format failed trace index lines");
+}
+
+void TestRuntimeDebugManifestPathsTextFormatsArtifactPaths()
+{
+	dev::RuntimeDebugManifestContext context {
+		.rootPath = "debug/run-001",
+		.manifestPath = "debug/run-001/manifest.txt",
+		.tracePath = "debug/run-001/run.trace",
+	};
+
+	const std::vector<std::string> lines = dev::RuntimeDebugManifestPathsText {}.format(context);
+	const std::vector<std::string> expected {
+		"paths root=debug/run-001",
+		"paths manifest=manifest.txt",
+		"paths trace=run.trace",
+	};
+
+	Expect(lines == expected, "runtime debug manifest paths text should format artifact path lines");
+}
+
+void TestRuntimeDebugManifestSectionsFormatsRunStatus()
+{
+	dev::GameLoopResult result;
+	result.summary.framesRun = 2;
+	result.finalMode = dev::GameSessionMode::Inventory;
+
+	const std::vector<std::string> lines = dev::RuntimeDebugManifestSections {}.formatRunStatus(result);
+	const std::vector<std::string> expected {
+		"run frames=2 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0 finalMode=Inventory",
+		"policy latest=none",
+	};
+
+	Expect(lines == expected, "runtime debug manifest sections should format run status lines in manifest order");
+}
+
+void TestRuntimeDebugManifestSectionsFormatsSetupDetails()
+{
+	dev::GameLoopResult result;
+	result.setup.inventoryScriptRan = true;
+	result.setup.inventoryScriptResult = {
+		.status = dev::InventoryScriptRunStatus::Completed,
+		.commandResults = {
+		    { .type = dev::InventoryCommandResultType::Applied },
+		},
+	};
+	result.setup.movementScriptRan = true;
+	result.setup.movementScriptResult = {
+		.status = dev::MovementScriptRunStatus::Completed,
+		.replayReport = {
+		    .results = {
+		        { .type = dev::MovementCommandDispatchResultType::Accepted },
+		    },
+		},
+	};
+
+	const std::vector<std::string> lines = dev::RuntimeDebugManifestSections {}.formatSetup(result);
+	const std::vector<std::string> expected {
+		"setup startupScriptRan=false inventoryScriptRan=true movementScriptRan=true",
+		"setup movementScript status=Completed results=1 accepted=1 rejected=0",
+		"setup inventoryScript status=Completed results=1 applied=1 rejected=0",
+	};
+
+	Expect(lines == expected, "runtime debug manifest sections should format setup details in manifest order");
+}
+
+void TestRuntimeDebugManifestSectionsFormatsRuntimeScripts()
+{
+	dev::GameLoopResult result;
+	result.summary.runtimeInventoryScriptResults.push_back({
+	    .status = dev::InventoryScriptRunStatus::LoadFailed,
+	});
+	result.summary.runtimeMovementScriptResults.push_back({
+	    .status = dev::MovementScriptRunStatus::NoActiveWorld,
+	});
+
+	const std::vector<std::string> lines = dev::RuntimeDebugManifestSections {}.formatRuntimeScripts(result);
+	const std::vector<std::string> expected {
+		"runtime inventoryScripts=1 completed=0 loadFailed=1 noActivePlayer=0 applied=0 rejected=0",
+		"runtime movementScripts=1 completed=0 loadFailed=0 noActiveWorld=1 accepted=0 rejected=0",
+	};
+
+	Expect(lines == expected, "runtime debug manifest sections should format runtime script aggregate lines in manifest order");
+}
+
 void TestRuntimeSessionTextFormatsResultsAndEvents()
 {
 	dev::RuntimeSessionText formatter;
@@ -8924,6 +9033,11 @@ int main()
 	TestRuntimeFrameTraceSectionsFormatsLifecycleEventsInOrder();
 	TestRuntimeFrameTraceSectionsFormatsSimulationEventsInOrder();
 	TestRuntimeDebugManifestSetupTextFormatsSetupAttempts();
+	TestRuntimeDebugManifestIndexTextFormatsBundleIndex();
+	TestRuntimeDebugManifestPathsTextFormatsArtifactPaths();
+	TestRuntimeDebugManifestSectionsFormatsRunStatus();
+	TestRuntimeDebugManifestSectionsFormatsSetupDetails();
+	TestRuntimeDebugManifestSectionsFormatsRuntimeScripts();
 	TestRuntimeSessionTextFormatsResultsAndEvents();
 	TestRuntimeInventoryTextFormatsResultsAndEvents();
 	TestRuntimeInventoryScriptTextFormatsResultsAndAggregates();

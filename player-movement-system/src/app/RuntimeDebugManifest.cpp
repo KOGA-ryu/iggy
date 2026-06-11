@@ -1,18 +1,16 @@
 #include "RuntimeDebugManifest.hpp"
 
-#include "app/RuntimeDebugManifestSetupText.hpp"
-#include "app/RuntimeFramePolicyText.hpp"
-#include "app/RuntimeInventoryScriptText.hpp"
-#include "app/RuntimeMovementScriptText.hpp"
-#include "app/RuntimeRunSummaryText.hpp"
+#include "app/RuntimeDebugManifestIndexText.hpp"
+#include "app/RuntimeDebugManifestPathsText.hpp"
+#include "app/RuntimeDebugManifestSections.hpp"
 
 namespace dev {
 
 namespace {
 
-const char *BoolText(bool value)
+void AppendLines(std::vector<std::string> &lines, const std::vector<std::string> &section)
 {
-	return value ? "true" : "false";
+	lines.insert(lines.end(), section.begin(), section.end());
 }
 
 } // namespace
@@ -21,46 +19,15 @@ std::vector<std::string> RuntimeDebugManifest::format(
     const GameLoopResult &result,
     const RuntimeDebugManifestContext &context) const
 {
-	std::vector<std::string> lines;
-	lines.push_back("bundle version=1");
-	lines.push_back("trace=run.trace saved=" + std::string { BoolText(context.traceSaved) });
+	std::vector<std::string> lines = RuntimeDebugManifestIndexText {}.format(context);
 
-	lines.push_back(RuntimeRunSummaryText {}.format(result, RuntimeRunSummaryDetail::WithFinalMode));
+	RuntimeDebugManifestSections sections;
+	AppendLines(lines, sections.formatRunStatus(result));
+	AppendLines(lines, sections.formatSetup(result));
+	AppendLines(lines, sections.formatRuntimeScripts(result));
 
-	if (result.frameReports.empty()) {
-		lines.push_back(RuntimeFramePolicyText {}.formatNone("policy latest"));
-	} else {
-		lines.push_back(RuntimeFramePolicyText {}.format(
-		    "policy latest",
-		    result.frameReports.back().framePolicy,
-		    RuntimeFramePolicyBoolStyle::Words));
-	}
-
-	lines.push_back(RuntimeDebugManifestSetupText {}.format(result.setup));
-
-	if (result.setup.movementScriptRan) {
-		lines.push_back(RuntimeMovementScriptText {}.formatResult("setup movementScript", result.setup.movementScriptResult));
-	}
-
-	if (result.setup.inventoryScriptRan) {
-		lines.push_back(RuntimeInventoryScriptText {}.formatResult("setup inventoryScript", result.setup.inventoryScriptResult));
-	}
-
-	{
-		lines.push_back(RuntimeInventoryScriptText {}.formatAggregate(
-		    "runtime inventoryScripts",
-		    result.summary.runtimeInventoryScriptResults));
-	}
-
-	{
-		lines.push_back(RuntimeMovementScriptText {}.formatAggregate(
-		    "runtime movementScripts",
-		    result.summary.runtimeMovementScriptResults));
-	}
-
-	lines.push_back("paths root=" + context.rootPath.string());
-	lines.push_back("paths manifest=" + context.manifestPath.filename().string());
-	lines.push_back("paths trace=" + context.tracePath.filename().string());
+	const std::vector<std::string> paths = RuntimeDebugManifestPathsText {}.format(context);
+	lines.insert(lines.end(), paths.begin(), paths.end());
 	return lines;
 }
 

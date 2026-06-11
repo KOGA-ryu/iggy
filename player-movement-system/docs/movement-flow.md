@@ -1500,9 +1500,18 @@ GameLoopResult
 The bundle owns directory preparation and artifact assembly. The layout owns
 stable artifact path names. The writer owns trace/manifest write attempts and
 reports their save flags. The manifest formatter owns readable manifest lines.
+`RuntimeDebugManifestIndexText` owns the top manifest index lines: bundle
+version and trace save state. That keeps artifact identity and save status
+separate from run gameplay summaries.
 `RuntimeDebugManifestSetupText` owns the setup attempt flags inside that
 manifest, keeping startup, inventory setup script, and movement setup script
 attempts readable as lifecycle state rather than artifact plumbing.
+`RuntimeDebugManifestPathsText` owns the artifact path lines in the manifest:
+bundle root, manifest filename, and trace filename. That keeps path reporting
+consistent with the layout/writer boundaries without letting the manifest own
+filesystem behavior.
+`RuntimeDebugManifestSections` owns the deterministic order of the remaining
+manifest groups: run status, setup details, and runtime script aggregates.
 The manifest includes the latest frame policy summary so a bundle can explain
 why the run accepted commands or advanced actors without opening the full trace.
 That line is formatted through `RuntimeFramePolicyText`, the same boundary used
