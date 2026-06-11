@@ -7,6 +7,7 @@
 #include "app/RuntimeFrameTrace.hpp"
 #include "app/RuntimeFrameTraceFileStore.hpp"
 #include "app/RuntimeLoopTypes.hpp"
+#include "app/RuntimeRunTraceFrameHeaderText.hpp"
 
 namespace dev {
 
@@ -22,6 +23,7 @@ public:
 private:
 	RuntimeFrameTrace formatter_;
 	RuntimeFrameTraceFileStore fileStore_;
+	RuntimeRunTraceFrameHeaderText frameHeader_;
 };
 
 } // namespace dev

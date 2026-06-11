@@ -1536,6 +1536,8 @@ GameLoopResult
   -> RuntimeRunFinalizer
   -> RuntimeOutputFinalizer
   -> RuntimeArtifactOutputService
+  -> RuntimeArtifactOutputPlan
+  -> RuntimeArtifactOutputRequestRunner
   -> RuntimeRunTraceOutputStep
   -> RuntimeTraceService
   -> RuntimeDebugBundleOutputStep
@@ -1546,7 +1548,12 @@ GameLoopResult
 artifact writes to `RuntimeOutputFinalizer`. That keeps `RuntimeRunExecutor`
 focused on lifecycle timing. `RuntimeOutputFinalizer` writes output results back
 onto `GameLoopResult`, while `RuntimeArtifactOutputService` owns the app
-artifact write policy. `RuntimeRunTraceOutputStep` owns the run-trace artifact
+artifact write policy. `RuntimeArtifactOutputPlan` owns the ordered request list
+for enabled artifact outputs. Focused lesson:
+[07. Artifact Output Order](movement/07-artifact-output-order.md).
+`RuntimeArtifactOutputRequestRunner` owns execution of one planned artifact
+request.
+`RuntimeRunTraceOutputStep` owns the run-trace artifact
 transition: mark the trace as attempted, snapshot the in-progress
 `GameLoopResult` for the trace writer, then record whether the write saved.
 `RuntimeDebugBundleOutputStep` owns the same transition for debug bundles,
@@ -1704,6 +1711,10 @@ It adds a run-level summary before the per-frame lines. That gives a caller one
 method for “save the trace for this run” while keeping formatting and filesystem
 behavior testable as separate pieces.
 
+`RuntimeRunTraceFrameHeaderText` owns the `frame[n]` marker between run-level
+summary and frame-level trace details. Focused lesson:
+[05. Reports To Artifacts](movement/05-reports-to-artifacts.md).
+
 `RuntimeDebugArtifactBundle` is the next app-layer wrapper around that trace:
 
 ```text
@@ -1723,9 +1734,14 @@ preparation, and trace/manifest write flags. `RuntimeDebugArtifactRootPreparer`
 owns bundle directory preparation. The writer owns trace/manifest write attempts
 and reports their save flags. The manifest formatter owns readable manifest
 lines.
+`RuntimeDebugTraceWriteStep` owns the bundle trace-file write through the trace
+service.
 `RuntimeDebugManifestContextBuilder` maps the writer's artifact paths and trace
 save result into the manifest context, so `RuntimeDebugArtifactWriter` does not
 also own manifest context structure.
+`RuntimeDebugManifestWriteStep` owns the manifest-file write: build context,
+format the manifest, and persist readable lines. Focused lesson:
+[06. Debug Bundle Manifest](movement/06-debug-bundle-manifest.md).
 `RuntimeDebugManifestIndexText` owns the top manifest index lines: bundle
 version and trace save state. That keeps artifact identity and save status
 separate from run gameplay summaries.

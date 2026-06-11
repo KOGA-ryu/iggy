@@ -14,6 +14,12 @@ full system sweep.
   commands cross into the simulation frame.
 - [04. Frame Events To Reports](movement/04-frame-events-to-reports.md): how
   simulation and lifecycle events become per-frame debug facts.
+- [05. Reports To Artifacts](movement/05-reports-to-artifacts.md): how runtime
+  reports become deterministic trace files.
+- [06. Debug Bundle Manifest](movement/06-debug-bundle-manifest.md): how trace
+  output and manifest output become one inspectable debug bundle.
+- [07. Artifact Output Order](movement/07-artifact-output-order.md): how output
+  settings become ordered trace and bundle write requests.
 
 ## Reference Docs
 

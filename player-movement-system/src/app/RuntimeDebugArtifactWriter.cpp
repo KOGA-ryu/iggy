@@ -1,16 +1,12 @@
 #include "RuntimeDebugArtifactWriter.hpp"
 
-#include "app/RuntimeDebugManifestContextBuilder.hpp"
-
 namespace dev {
 
 RuntimeDebugArtifactWriter::RuntimeDebugArtifactWriter(
-    RuntimeTraceService traceService,
-    RuntimeDebugManifest manifest,
-    TextFileStore textFileStore)
-    : traceService_(traceService)
-    , manifest_(manifest)
-    , textFileStore_(textFileStore)
+    RuntimeDebugTraceWriteStep traceWrite,
+    RuntimeDebugManifestWriteStep manifestWrite)
+    : traceWrite_(traceWrite)
+    , manifestWrite_(manifestWrite)
 {
 }
 
@@ -19,10 +15,8 @@ RuntimeDebugArtifactWriteResult RuntimeDebugArtifactWriter::write(
     const GameLoopResult &result) const
 {
 	RuntimeDebugArtifactWriteResult write;
-	write.traceSaved = traceService_.saveRunTrace(paths.tracePath, result);
-	write.manifestSaved = textFileStore_.saveLines(
-	    paths.manifestPath,
-	    manifest_.format(result, RuntimeDebugManifestContextBuilder {}.build(paths, write.traceSaved)));
+	write.traceSaved = traceWrite_.write(paths, result);
+	write.manifestSaved = manifestWrite_.write(paths, result, write.traceSaved);
 	return write;
 }
 

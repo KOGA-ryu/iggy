@@ -11,6 +11,8 @@ add_library(player_movement_system
   src/actions/ActionRules.cpp
   src/app/GameLoop.cpp
   src/app/RuntimeArtifactOutputService.cpp
+  src/app/RuntimeArtifactOutputPlan.cpp
+  src/app/RuntimeArtifactOutputRequestRunner.cpp
   src/app/RuntimeDebugArtifactBundle.cpp
   src/app/RuntimeDebugArtifactBundleResultBuilder.cpp
   src/app/RuntimeDebugArtifactLayout.cpp
@@ -23,6 +25,8 @@ add_library(player_movement_system
   src/app/RuntimeDebugManifestPathsText.cpp
   src/app/RuntimeDebugManifestSections.cpp
   src/app/RuntimeDebugManifestSetupText.cpp
+  src/app/RuntimeDebugManifestWriteStep.cpp
+  src/app/RuntimeDebugTraceWriteStep.cpp
   src/app/RuntimeBlockedPointerInputStep.cpp
   src/app/RuntimeCombatText.cpp
   src/app/RuntimeEffectText.cpp
@@ -80,6 +84,7 @@ add_library(player_movement_system
   src/app/RuntimeRunFinalizer.cpp
   src/app/RuntimeRunFailurePolicy.cpp
   src/app/RuntimeRunRecorder.cpp
+  src/app/RuntimeRunTraceFrameHeaderText.cpp
   src/app/RuntimeRunTraceOutputStep.cpp
   src/app/RuntimeRunSummaryText.cpp
   src/app/RuntimeSessionCommandReportRecorder.cpp

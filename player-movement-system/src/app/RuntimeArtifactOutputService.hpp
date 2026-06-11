@@ -1,8 +1,8 @@
 #pragma once
 
-#include "app/RuntimeDebugBundleOutputStep.hpp"
+#include "app/RuntimeArtifactOutputPlan.hpp"
+#include "app/RuntimeArtifactOutputRequestRunner.hpp"
 #include "app/RuntimeLoopTypes.hpp"
-#include "app/RuntimeRunTraceOutputStep.hpp"
 #include "app/RuntimeTraceService.hpp"
 
 namespace dev {
@@ -18,8 +18,8 @@ public:
 	    const GameLoopResult &result) const;
 
 private:
-	RuntimeRunTraceOutputStep runTraceOutput_;
-	RuntimeDebugBundleOutputStep debugBundleOutput_;
+	RuntimeArtifactOutputPlan outputPlan_;
+	RuntimeArtifactOutputRequestRunner outputRunner_;
 };
 
 } // namespace dev

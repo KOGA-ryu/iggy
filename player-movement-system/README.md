@@ -996,9 +996,19 @@ RuntimeOutputResultBuilder
   app-layer state builder that records artifact save attempts, completion
   flags, and snapshots those flags onto GameLoopResult before writers run
 
+RuntimeArtifactOutputPlan
+  app-layer policy that maps optional output settings into ordered artifact
+  output requests
+
+RuntimeArtifactOutputRequestRunner
+  app-layer executor for one planned artifact output request
+
 RuntimeRunTraceOutputStep
   app-layer artifact step that marks a run trace save attempt, saves the trace
   with the in-progress output snapshot, and records completion
+
+RuntimeRunTraceFrameHeaderText
+  app-layer formatter for per-frame markers inside full run trace artifacts
 
 RuntimeDebugBundleOutputStep
   app-layer artifact step that marks a debug bundle save attempt, saves the
@@ -1133,6 +1143,14 @@ RuntimeDebugArtifactWriter
   app-layer artifact writer that saves the run trace and manifest files, while
   reporting trace/manifest save flags back to the bundle and delegating manifest
   context mapping
+
+RuntimeDebugTraceWriteStep
+  app-layer trace artifact step that writes the bundle run.trace through the
+  trace service
+
+RuntimeDebugManifestWriteStep
+  app-layer manifest artifact step that maps paths plus trace save state into
+  manifest text and persists manifest.txt
 
 RuntimeDebugArtifactBundle
   app-layer debug artifact orchestrator that prepares a bundle directory,

@@ -214,6 +214,7 @@ Good first tests:
 - RuntimeRunSummaryText formats run summaries and movement input block counts for traces and manifests
 - RuntimeMovementInputBlockSummary counts movement input block reasons for diagnostics
 - RuntimeFrameTraceHeaderText formats per-frame trace count headers
+- RuntimeRunTraceFrameHeaderText formats frame index markers for full run traces
 - RuntimeFrameTraceSections formats runtime source, lifecycle, and simulation trace sections
 - RuntimePlayerActionText formats player movement block reasons
 - RuntimeSessionText formats session result and event lines for traces
@@ -275,6 +276,8 @@ Good first tests:
 - RuntimeRunTraceOutputStep saves run traces and updates output flags
 - RuntimeDebugBundleOutputStep saves debug bundles and updates output flags
 - RuntimeOutputFinalizer writes artifact output results back onto GameLoopResult
+- RuntimeArtifactOutputPlan maps output settings into ordered artifact requests
+- RuntimeArtifactOutputRequestRunner executes planned artifact requests
 - RuntimeArtifactOutputService applies configured artifact outputs and reports failures
 - RuntimeSetupRunner separates configured setup scripts from per-frame runtime sources
 - GameLoop saves configured run traces and reports trace write failures
@@ -287,6 +290,8 @@ Good first tests:
 - RuntimeDebugArtifactBundleResultBuilder records bundle paths, root preparation, and write flags
 - RuntimeDebugArtifactRootPreparer creates bundle roots and rejects root files
 - RuntimeDebugManifestContextBuilder maps artifact paths and trace save state into manifest context
+- RuntimeDebugTraceWriteStep saves bundle run traces
+- RuntimeDebugManifestWriteStep saves manifest lines with trace save state
 - RuntimeDebugArtifactWriter saves trace/manifest artifacts and records trace failures
 - RuntimeDebugArtifactBundle saves a manifest and run trace as one debug bundle
 - GameLoop saves configured debug bundles and reports bundle write failures

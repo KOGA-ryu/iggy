@@ -9,8 +9,7 @@ namespace dev {
 RuntimeArtifactOutputService::RuntimeArtifactOutputService(
     RuntimeTraceService traceService,
     RuntimeDebugArtifactBundle debugBundle)
-    : runTraceOutput_(std::move(traceService))
-    , debugBundleOutput_(std::move(debugBundle))
+    : outputRunner_(std::move(traceService), std::move(debugBundle))
 {
 }
 
@@ -20,12 +19,8 @@ RuntimeOutputResult RuntimeArtifactOutputService::apply(
 {
 	RuntimeOutputResultBuilder output { result.output };
 
-	if (settings.runTracePath.has_value()) {
-		runTraceOutput_.save(*settings.runTracePath, result, output);
-	}
-
-	if (settings.debugBundlePath.has_value()) {
-		debugBundleOutput_.save(*settings.debugBundlePath, result, output);
+	for (const RuntimeArtifactOutputRequest &request : outputPlan_.build(settings)) {
+		outputRunner_.run(request, result, output);
 	}
 
 	return output.result();

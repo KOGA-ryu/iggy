@@ -1,10 +1,9 @@
 #pragma once
 
 #include "app/RuntimeDebugArtifactLayout.hpp"
-#include "app/RuntimeDebugManifest.hpp"
+#include "app/RuntimeDebugManifestWriteStep.hpp"
+#include "app/RuntimeDebugTraceWriteStep.hpp"
 #include "app/RuntimeLoopTypes.hpp"
-#include "app/RuntimeTraceService.hpp"
-#include "files/TextFileStore.hpp"
 
 namespace dev {
 
@@ -16,18 +15,16 @@ struct RuntimeDebugArtifactWriteResult {
 class RuntimeDebugArtifactWriter {
 public:
 	explicit RuntimeDebugArtifactWriter(
-	    RuntimeTraceService traceService = RuntimeTraceService {},
-	    RuntimeDebugManifest manifest = RuntimeDebugManifest {},
-	    TextFileStore textFileStore = TextFileStore {});
+	    RuntimeDebugTraceWriteStep traceWrite = RuntimeDebugTraceWriteStep {},
+	    RuntimeDebugManifestWriteStep manifestWrite = RuntimeDebugManifestWriteStep {});
 
 	[[nodiscard]] RuntimeDebugArtifactWriteResult write(
 	    const RuntimeDebugArtifactPaths &paths,
 	    const GameLoopResult &result) const;
 
 private:
-	RuntimeTraceService traceService_;
-	RuntimeDebugManifest manifest_;
-	TextFileStore textFileStore_;
+	RuntimeDebugTraceWriteStep traceWrite_;
+	RuntimeDebugManifestWriteStep manifestWrite_;
 };
 
 } // namespace dev
