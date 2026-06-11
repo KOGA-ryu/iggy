@@ -596,6 +596,8 @@ GameSession
   -> NewGameWorldBuilder
   -> SessionModePolicy
   -> SessionWorldSlotLoader
+  -> SessionWorldSlotSaver
+  -> SessionFrameUpdater
   -> SimulationFrameRunner
   -> SaveSlotService
 ```
@@ -606,10 +608,12 @@ It exposes lifecycle actions:
 startNewGame
   -> NewGameWorldBuilder
 saveToSlot
+  -> SessionWorldSlotSaver
 loadFromSlot
   -> SessionWorldSlotLoader
 setMode
 update
+  -> SessionFrameUpdater
 ```
 
 SessionModePolicy maps session mode to frame policy:

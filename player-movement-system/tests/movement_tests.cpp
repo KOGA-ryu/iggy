@@ -81,10 +81,12 @@
 #include "session/SessionCommandLogFileStore.hpp"
 #include "session/SessionCommandReplayer.hpp"
 #include "session/SessionEventRecorder.hpp"
+#include "session/SessionFrameUpdater.hpp"
 #include "session/NewGameWorldBuilder.hpp"
 #include "session/SessionModePolicy.hpp"
 #include "session/SessionScriptRunner.hpp"
 #include "session/SessionWorldSlotLoader.hpp"
+#include "session/SessionWorldSlotSaver.hpp"
 #include "simulation/SimulationClock.hpp"
 #include "simulation/SimulationCommandDrainer.hpp"
 #include "simulation/SimulationEnemyUpdater.hpp"
@@ -2444,6 +2446,55 @@ void TestSessionWorldSlotLoaderLoadsWorldPreservingSinks()
 	Expect(current.movementEvents == &movementEvents && current.combatEvents == &combatEvents, "session world slot loader should preserve sinks on failed load");
 
 	std::filesystem::remove_all(root);
+}
+
+void TestSessionWorldSlotSaverRequiresActiveSession()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_session_world_slot_saver_test";
+	std::filesystem::remove_all(root);
+
+	dev::SimulationWorld world;
+	world.players.push_back(MakePlayer({ 6, 6 }));
+	world.players[0].combatStats.hitPoints = 11;
+	dev::SaveSlotService slots { root };
+
+	dev::SessionWorldSlotSaver saver;
+	Expect(!saver.save(slots, 1, world, dev::GameSessionMode::Empty), "session world slot saver should reject empty sessions");
+	Expect(!slots.metadataForSlot(1).occupied, "rejected session save should not create a slot file");
+	Expect(saver.save(slots, 2, world, dev::GameSessionMode::Inventory), "session world slot saver should save active inventory sessions");
+
+	dev::SimulationWorld loaded;
+	Expect(slots.loadSlot(2, loaded), "session world slot saver should write loadable slot data");
+	Expect(loaded.players.size() == 1 && loaded.players[0].position.tile == dev::Point { 6, 6 }, "session world slot saver should save player position");
+	Expect(loaded.players.size() == 1 && loaded.players[0].combatStats.hitPoints == 11, "session world slot saver should save player hp");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestSessionFrameUpdaterAppliesModePolicy()
+{
+	dev::SimulationWorld world;
+	dev::SimulationClock clock;
+	world.players.push_back(MakePlayer({ 0, 0 }));
+	world.commandQueue.push({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	    .destinationAction = std::nullopt,
+	});
+
+	dev::SessionFrameUpdater updater;
+	dev::SimulationFrameEvents emptyFrame = updater.update(world, clock, dev::GameSessionMode::Empty, 0.016F);
+	Expect(world.players[0].position.tile == dev::Point { 0, 0 }, "session frame updater should not run empty sessions");
+	Expect(emptyFrame.movementEvents().empty(), "session frame updater should not emit empty-session frame events");
+
+	dev::SimulationFrameEvents inventoryFrame = updater.update(world, clock, dev::GameSessionMode::Inventory, 0.016F);
+	Expect(world.players[0].position.tile == dev::Point { 0, 0 }, "session frame updater should freeze inventory sessions");
+	Expect(inventoryFrame.movementEvents().empty(), "session frame updater should not drain movement in inventory mode");
+
+	dev::SimulationFrameEvents gameplayFrame = updater.update(world, clock, dev::GameSessionMode::Gameplay, 0.016F);
+	Expect(world.players[0].position.tile == dev::Point { 1, 0 }, "session frame updater should advance gameplay sessions");
+	Expect(!gameplayFrame.movementEvents().empty(), "session frame updater should return gameplay frame events");
 }
 
 void TestGameSessionPausedModePreservesCommands()
@@ -5523,6 +5574,8 @@ int main()
 	TestGameSessionStartsNewGameAndUpdates();
 	TestNewGameWorldBuilderCreatesPlayerWorld();
 	TestSessionWorldSlotLoaderLoadsWorldPreservingSinks();
+	TestSessionWorldSlotSaverRequiresActiveSession();
+	TestSessionFrameUpdaterAppliesModePolicy();
 	TestGameSessionPausedModePreservesCommands();
 	TestSessionModePolicyMapsModesToFramePolicy();
 	TestSessionModePolicyGuardsTransitions();

@@ -89,10 +89,12 @@ add_library(player_movement_system
   src/session/SessionCommandReplayer.cpp
   src/session/SessionCommandSource.cpp
   src/session/SessionEventRecorder.cpp
+  src/session/SessionFrameUpdater.cpp
   src/session/NewGameWorldBuilder.cpp
   src/session/SessionModePolicy.cpp
   src/session/SessionScriptRunner.cpp
   src/session/SessionWorldSlotLoader.cpp
+  src/session/SessionWorldSlotSaver.cpp
   src/session/GameSession.cpp
   src/simulation/SimulationClock.cpp
   src/simulation/SimulationCommandDrainer.cpp

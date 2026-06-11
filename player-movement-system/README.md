@@ -412,6 +412,14 @@ SessionWorldSlotLoader
   session-facing load boundary that replaces world state from a save slot only
   on success, preserving runtime event sinks across the replacement
 
+SessionWorldSlotSaver
+  session-facing save boundary that rejects empty sessions and persists active
+  world state through SaveSlotService
+
+SessionFrameUpdater
+  session-facing frame boundary that applies lifecycle mode policy before
+  advancing SimulationFrameRunner with the session clock
+
 GameSession
   game-loop-facing owner for SimulationWorld, SimulationClock, frame updates,
   mode policy, and save slots

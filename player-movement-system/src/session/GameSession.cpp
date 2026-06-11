@@ -1,8 +1,10 @@
 #include "GameSession.hpp"
 
 #include "session/NewGameWorldBuilder.hpp"
+#include "session/SessionFrameUpdater.hpp"
 #include "session/SessionModePolicy.hpp"
 #include "session/SessionWorldSlotLoader.hpp"
+#include "session/SessionWorldSlotSaver.hpp"
 
 #include <utility>
 
@@ -24,9 +26,7 @@ void GameSession::startNewGame(const NewGameSettings &settings)
 
 bool GameSession::saveToSlot(SaveSlotId slotId) const
 {
-	if (!hasActiveWorld())
-		return false;
-	return saveSlots_.saveSlot(slotId, world_);
+	return SessionWorldSlotSaver {}.save(saveSlots_, slotId, world_, mode_);
 }
 
 bool GameSession::loadFromSlot(SaveSlotId slotId)
@@ -41,11 +41,7 @@ bool GameSession::loadFromSlot(SaveSlotId slotId)
 
 SimulationFrameEvents GameSession::update(float rawDeltaSeconds)
 {
-	if (!hasActiveWorld())
-		return {};
-
-	SimulationFrameRunner runner { &clock_ };
-	return runner.run(world_, rawDeltaSeconds, framePolicy());
+	return SessionFrameUpdater {}.update(world_, clock_, mode_, rawDeltaSeconds);
 }
 
 void GameSession::setMode(GameSessionMode mode)
@@ -93,11 +89,6 @@ SaveSlotService &GameSession::saveSlots()
 const SaveSlotService &GameSession::saveSlots() const
 {
 	return saveSlots_;
-}
-
-SimulationFramePolicy GameSession::framePolicy() const
-{
-	return SessionModePolicy {}.framePolicyFor(mode_);
 }
 
 } // namespace dev

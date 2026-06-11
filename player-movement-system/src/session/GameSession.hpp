@@ -7,7 +7,7 @@
 #include "session/NewGameSettings.hpp"
 #include "save/SaveSlotService.hpp"
 #include "simulation/SimulationClock.hpp"
-#include "simulation/SimulationFrameRunner.hpp"
+#include "simulation/SimulationFrameEvents.hpp"
 #include "simulation/SimulationWorld.hpp"
 
 namespace dev {
@@ -33,8 +33,6 @@ public:
 	[[nodiscard]] const SaveSlotService &saveSlots() const;
 
 private:
-	[[nodiscard]] SimulationFramePolicy framePolicy() const;
-
 	SimulationWorld world_;
 	SimulationClock clock_;
 	SaveSlotService saveSlots_;

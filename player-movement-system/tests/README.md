@@ -109,6 +109,8 @@ Good first tests:
 - SaveSlotService loads a selected slot into SimulationWorld without replacing event sinks
 - NewGameWorldBuilder creates starting player world state while preserving event sinks
 - SessionWorldSlotLoader replaces session world from a slot while preserving event sinks and failed-load state
+- SessionWorldSlotSaver rejects empty sessions and saves active sessions
+- SessionFrameUpdater applies session mode policy to frame updates
 - GameSession starts a new game and advances frames
 - GameSession paused mode preserves queued commands
 - SessionModePolicy maps session modes to simulation frame policy
