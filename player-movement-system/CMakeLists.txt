@@ -76,6 +76,7 @@ add_library(player_movement_system
   src/app/RuntimeRunSummaryText.cpp
   src/app/RuntimeSessionCommandReportRecorder.cpp
   src/app/RuntimeSessionCommandIntake.cpp
+  src/app/RuntimeSetupFrameGate.cpp
   src/app/RuntimeSetupInventoryCommandReportRecorder.cpp
   src/app/RuntimeSetupRunResultApplier.cpp
   src/app/RuntimeSetupRunner.cpp

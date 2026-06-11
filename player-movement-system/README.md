@@ -755,9 +755,12 @@ RuntimeSetupResult
 
 RuntimeSetupRunner
   app-layer use case that runs configured startup, inventory, and movement
-  setup scripts, delegates fatal setup status checks to RuntimeSetupFailurePolicy,
-  reports whether frames may begin, and preserves setup inventory command
-  results for run summaries
+  setup scripts, delegates frame gating to RuntimeSetupFrameGate, and preserves
+  setup inventory command results for run summaries
+
+RuntimeSetupFrameGate
+  app-layer setup gate that answers whether bounded frames may begin from the
+  accumulated RuntimeSetupResult
 
 RuntimeSetupRunResultApplier
   app-layer handoff that copies setup results into GameLoopResult, records setup

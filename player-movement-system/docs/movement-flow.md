@@ -1161,6 +1161,7 @@ GameLoopResult::setup
 RuntimeSetupSettings
   -> RuntimeSetupRunner
   -> RuntimeStartupScriptIntake
+  -> RuntimeSetupFrameGate
   -> RuntimeSetupRunResult
   -> RuntimeSetupRunResultApplier
   -> setup result
@@ -1173,9 +1174,9 @@ inventory setup failure also stops before configured movement setup and frames.
 Configured movement setup failure also stops before frames. Loadable inventory
 or movement scripts with rejected commands still allow frames, because the file
 and setup pipeline worked and the rejection is command-level data.
-`RuntimeSetupRunner` delegates the fatal-status interpretation to
-`RuntimeSetupFailurePolicy`, so setup gating and run failure reporting use the
-same status rules.
+`RuntimeSetupRunner` delegates the frame-start decision to
+`RuntimeSetupFrameGate`, which uses `RuntimeSetupFailurePolicy` so setup gating
+and run failure reporting use the same status rules.
 
 `RuntimeSetupRunResultApplier` owns the handoff from setup execution to the run
 result: copy the setup result, record setup inventory command results into the
@@ -1477,6 +1478,10 @@ incrementing `framesRun`.
 `RuntimeSetupRunResultApplier` uses that recorder as the bridge between
 `RuntimeSetupRunResult` and `GameLoopResult`. The executor can then treat setup
 as one lifecycle gate: apply setup, run frames only when allowed, finalize.
+
+`RuntimeSetupFrameGate` owns the positive setup question: can bounded frame
+updates start from this accumulated setup result? It keeps the setup runner from
+spreading direct failure-policy checks across every configured setup step.
 
 `RuntimeOutputSettings` groups the app shell's optional artifact destinations:
 

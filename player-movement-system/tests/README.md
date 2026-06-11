@@ -228,6 +228,7 @@ Good first tests:
 - RuntimeSetupRunner runs configured movement setup scripts after startup
 - RuntimeSetupRunner stops later setup and frames after configured inventory setup failure
 - RuntimeSetupRunner distinguishes movement setup failure from command rejection
+- RuntimeSetupFrameGate allows only non-fatal setup results to start frames
 - RuntimeSourceSettings defaults to no runtime source streams
 - RuntimeInputSettings defaults to primary gameplay input context
 - RuntimeInputContextBuilder builds per-frame router context from session state

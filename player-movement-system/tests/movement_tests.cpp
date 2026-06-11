@@ -78,6 +78,7 @@
 #include "app/RuntimeSessionInputRouter.hpp"
 #include "app/RuntimeSessionModeTogglePolicy.hpp"
 #include "app/RuntimeSetupFailurePolicy.hpp"
+#include "app/RuntimeSetupFrameGate.hpp"
 #include "app/RuntimeSetupInventoryCommandReportRecorder.hpp"
 #include "app/RuntimeSetupRunResultApplier.hpp"
 #include "app/RuntimeSetupRunner.hpp"
@@ -8175,6 +8176,35 @@ void TestRuntimeSetupFailurePolicyFailsSetupLoadErrors()
 	Expect(!policy.failed(rejectedMovementCommand), "runtime setup failure policy should allow completed movement scripts with rejected commands");
 }
 
+void TestRuntimeSetupFrameGateAllowsOnlyNonFatalSetupResults()
+{
+	dev::RuntimeSetupFrameGate gate;
+
+	dev::RuntimeSetupResult clean;
+
+	dev::RuntimeSetupResult commandRejection;
+	commandRejection.inventoryScriptRan = true;
+	commandRejection.inventoryScriptResult.status = dev::InventoryScriptRunStatus::Completed;
+	commandRejection.inventoryScriptResult.commandResults.push_back({
+	    .type = dev::InventoryCommandResultType::Rejected,
+	    .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 4 },
+	    .equipmentResult = { .type = dev::EquipmentResultType::MissingItem, .itemId = 4 },
+	});
+
+	dev::RuntimeSetupResult startupFailure;
+	startupFailure.startupScriptRan = true;
+	startupFailure.startupScriptResult.status = dev::SessionScriptRunStatus::LoadFailed;
+
+	dev::RuntimeSetupResult movementFailure;
+	movementFailure.movementScriptRan = true;
+	movementFailure.movementScriptResult.status = dev::MovementScriptRunStatus::NoActiveWorld;
+
+	Expect(gate.allowsFrames(clean), "runtime setup frame gate should allow frames after clean setup");
+	Expect(gate.allowsFrames(commandRejection), "runtime setup frame gate should allow frames after command-level setup rejections");
+	Expect(!gate.allowsFrames(startupFailure), "runtime setup frame gate should block frames after startup load failure");
+	Expect(!gate.allowsFrames(movementFailure), "runtime setup frame gate should block frames after movement setup failure");
+}
+
 void TestRuntimeRunFailurePolicyComposesSetupAndOutputFailures()
 {
 	dev::GameLoopResult clean;
@@ -10441,6 +10471,7 @@ int main()
 	TestRuntimeExitCodeMapperMapsFailureBooleanToProcessCode();
 	TestRuntimeExitCodePolicyFailsSetupErrors();
 	TestRuntimeSetupFailurePolicyFailsSetupLoadErrors();
+	TestRuntimeSetupFrameGateAllowsOnlyNonFatalSetupResults();
 	TestRuntimeRunFailurePolicyComposesSetupAndOutputFailures();
 	TestRuntimeExitCodePolicyAllowsCommandRejections();
 	TestRuntimeExitCodePolicyFailsOutputErrors();
