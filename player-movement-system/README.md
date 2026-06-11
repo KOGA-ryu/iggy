@@ -793,6 +793,10 @@ RuntimeInventoryCommandIntake
   active player or rejects them with inventory events when no player can receive
   them
 
+RuntimeSessionCommandIntake
+  app-layer intake step that dispatches drained lifecycle commands through
+  SessionCommandDispatcher while preserving source order
+
 RuntimeSessionCommandReportRecorder
   app-layer recorder that keeps current-frame session command results on the
   frame report while aggregating all session command results into the run summary

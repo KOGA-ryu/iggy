@@ -67,6 +67,7 @@
 #include "app/RuntimeRunRecorder.hpp"
 #include "app/RuntimeRunSummaryText.hpp"
 #include "app/RuntimeSessionCommandReportRecorder.hpp"
+#include "app/RuntimeSessionCommandIntake.hpp"
 #include "app/RuntimeSessionInputRouter.hpp"
 #include "app/RuntimeSessionModeTogglePolicy.hpp"
 #include "app/RuntimeSetupFailurePolicy.hpp"
@@ -5775,6 +5776,41 @@ void TestRuntimeInventoryCommandIntakeDispatchesOrRejectsCommands()
 	Expect(events.events().size() == 2 && events.events()[1].commandType == dev::InventoryCommandType::EquipItem, "runtime inventory command intake should preserve rejected event command type");
 }
 
+void TestRuntimeSessionCommandIntakeDispatchesCommandsInOrder()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_session_command_intake_test";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root / "saves" };
+	dev::SessionEventRecorder events;
+	dev::SessionCommandDispatcher dispatcher { session, &events };
+
+	std::vector<dev::SessionCommandResult> results = dev::RuntimeSessionCommandIntake {}.dispatch(
+	    {
+	        {
+	            .type = dev::SessionCommandType::StartNewGame,
+	            .newGameSettings = dev::NewGameSettings { .playerStart = { 3, 4 }, .playerHitPoints = 12 },
+	        },
+	        {
+	            .type = dev::SessionCommandType::SetMode,
+	            .mode = dev::GameSessionMode::Inventory,
+	        },
+	    },
+	    dispatcher);
+
+	Expect(results.size() == 2, "runtime session command intake should dispatch every drained command");
+	Expect(results.size() == 2 && results[0].command.type == dev::SessionCommandType::StartNewGame, "runtime session command intake should preserve first command order");
+	Expect(results.size() == 2 && results[1].command.type == dev::SessionCommandType::SetMode, "runtime session command intake should preserve second command order");
+	Expect(results.size() == 2 && results[0].type == dev::SessionCommandResultType::Applied, "runtime session command intake should apply start command");
+	Expect(results.size() == 2 && results[1].type == dev::SessionCommandResultType::Applied, "runtime session command intake should apply mode command");
+	Expect(session.hasActiveWorld(), "runtime session command intake should mutate session through dispatcher");
+	Expect(session.mode() == dev::GameSessionMode::Inventory, "runtime session command intake should leave session in dispatched mode");
+	Expect(events.events().size() == 2 && events.events()[0].commandType == dev::SessionCommandType::StartNewGame, "runtime session command intake should emit first lifecycle event");
+	Expect(events.events().size() == 2 && events.events()[1].commandType == dev::SessionCommandType::SetMode, "runtime session command intake should emit second lifecycle event");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestRuntimeSourceDrainerDrainsSessionBeforeMovement()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_source_drainer_test";
@@ -9901,6 +9937,7 @@ int main()
 	TestRuntimeSourceStreamDrainsSourcesAndSkipsNullSlots();
 	TestRuntimeMovementCommandIntakeQueuesCommandsInWorldOrder();
 	TestRuntimeInventoryCommandIntakeDispatchesOrRejectsCommands();
+	TestRuntimeSessionCommandIntakeDispatchesCommandsInOrder();
 	TestRuntimeSourceDrainerDrainsSessionBeforeMovement();
 	TestRuntimeSourceDrainerRunsMovementScripts();
 	TestGameLoopDrainsRuntimeMovementScriptSources();

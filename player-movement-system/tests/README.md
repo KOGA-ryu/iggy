@@ -198,6 +198,7 @@ Good first tests:
 - RuntimeSourceStream drains nullable source lists once while preserving order
 - RuntimeMovementCommandIntake queues drained runtime movement commands into the simulation world
 - RuntimeInventoryCommandIntake dispatches drained runtime inventory commands or rejects them without a player
+- RuntimeSessionCommandIntake dispatches drained lifecycle commands in source order
 - RuntimeLoopTypes keeps loop settings and results reusable outside GameLoop
 - GameLoop builds RuntimeFrameReport entries for per-frame inspection
 - RuntimeFramePolicyText formats policy lines for traces and manifests

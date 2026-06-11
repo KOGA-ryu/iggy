@@ -2,6 +2,7 @@
 
 #include "app/RuntimeInventoryCommandIntake.hpp"
 #include "app/RuntimeMovementCommandIntake.hpp"
+#include "app/RuntimeSessionCommandIntake.hpp"
 #include "app/RuntimeSourceContext.hpp"
 #include "app/RuntimeSourceStream.hpp"
 #include "commands/CommandDispatcher.hpp"
@@ -57,14 +58,10 @@ MovementScriptRunResult RuntimeSourceDrainer::runMovementScript(const std::files
 
 std::vector<SessionCommandResult> RuntimeSourceDrainer::drainSessionCommands(const SessionCommandDispatcher &dispatcher)
 {
-	std::vector<SessionCommandResult> results;
 	std::vector<SessionCommand> commands = RuntimeSourceStream<SessionCommand, SessionCommandSource> {}.drain(
 	    routedSessionCommands_,
 	    settings_.sessionCommandSources);
-	results.reserve(commands.size());
-	for (const SessionCommand &command : commands)
-		results.push_back(dispatcher.dispatch(command));
-	return results;
+	return RuntimeSessionCommandIntake {}.dispatch(std::move(commands), dispatcher);
 }
 
 std::vector<InventoryScriptRunResult> RuntimeSourceDrainer::drainInventoryScripts()

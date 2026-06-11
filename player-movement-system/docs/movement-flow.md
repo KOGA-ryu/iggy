@@ -1352,6 +1352,11 @@ inventory commands. When the selected player exists, commands dispatch through
 not, the same drained commands become rejected command results and rejected
 inventory events.
 
+`RuntimeSessionCommandIntake` owns the app-to-session handoff for drained
+lifecycle commands. Runtime session sources and routed hotkeys both become a
+single ordered command list, then the intake dispatches each command through
+`SessionCommandDispatcher` before the frame records the results.
+
 `RuntimeSessionCommandReportRecorder` owns session command results. The frame
 report receives the current frame's lifecycle command results, while the run
 summary appends them to the cross-frame lifecycle history.
