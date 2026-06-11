@@ -271,6 +271,14 @@ target_link_libraries(artifact_output_tests PRIVATE player_movement_system)
 add_executable(artifact_text_tests tests/artifact_text_tests.cpp)
 target_link_libraries(artifact_text_tests PRIVATE player_movement_system)
 
+add_executable(input_routing_tests tests/input_routing_tests.cpp)
+target_link_libraries(input_routing_tests PRIVATE player_movement_system)
+
+add_executable(input_drain_tests tests/input_drain_tests.cpp)
+target_link_libraries(input_drain_tests PRIVATE player_movement_system)
+
 add_test(NAME movement_tests COMMAND movement_tests)
 add_test(NAME artifact_output_tests COMMAND artifact_output_tests)
 add_test(NAME artifact_text_tests COMMAND artifact_text_tests)
+add_test(NAME input_routing_tests COMMAND input_routing_tests)
+add_test(NAME input_drain_tests COMMAND input_drain_tests)

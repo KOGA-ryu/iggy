@@ -11,7 +11,6 @@
 #include "actions/ActionExecutor.hpp"
 #include "app/GameLoop.hpp"
 #include "app/RuntimeArtifactOutputService.hpp"
-#include "app/RuntimeBlockedPointerInputStep.hpp"
 #include "app/RuntimeCombatText.hpp"
 #include "app/RuntimeDebugArtifactBundle.hpp"
 #include "app/RuntimeDebugArtifactBundleResultBuilder.hpp"
@@ -40,8 +39,6 @@
 #include "app/RuntimeFrameSimulationPhaseRunner.hpp"
 #include "app/RuntimeFrameSourcePhaseRunner.hpp"
 #include "app/RuntimeInputContextBuilder.hpp"
-#include "app/RuntimeInputDrainReportRecorder.hpp"
-#include "app/RuntimeInputDrainResultBuilder.hpp"
 #include "app/RuntimeInputRouter.hpp"
 #include "app/RuntimeInputRouteResultBuilder.hpp"
 #include "app/RuntimeInputSourceRouter.hpp"
@@ -60,8 +57,6 @@
 #include "app/RuntimeMovementCommandReportRecorder.hpp"
 #include "app/RuntimeMovementEventText.hpp"
 #include "app/RuntimeMovementFrameSourceStep.hpp"
-#include "app/RuntimeMovementInputContextBuilder.hpp"
-#include "app/RuntimeMovementIntentInputStep.hpp"
 #include "app/RuntimeMovementScriptBatchRunner.hpp"
 #include "app/RuntimeMovementScriptReportRecorder.hpp"
 #include "app/RuntimeMovementScriptIntake.hpp"
@@ -72,9 +67,7 @@
 #include "app/RuntimeFinalModeRecorder.hpp"
 #include "app/RuntimeOutputFinalizer.hpp"
 #include "app/RuntimeOutputFailurePolicy.hpp"
-#include "app/RuntimeInputFocusResolver.hpp"
 #include "app/RuntimePlayerActionText.hpp"
-#include "app/RuntimeRawInputDrainer.hpp"
 #include "app/RuntimeRunExecutor.hpp"
 #include "app/RuntimeRunFinalizer.hpp"
 #include "app/RuntimeRunFailurePolicy.hpp"
@@ -97,8 +90,6 @@
 #include "app/RuntimeStartupScriptIntake.hpp"
 #include "app/RuntimeStopMovementInputStep.hpp"
 #include "app/RuntimeSessionText.hpp"
-#include "app/RuntimeTargetInteractionInputStep.hpp"
-#include "app/RuntimeTargetInputRouter.hpp"
 #include "app/RuntimeTraceService.hpp"
 #include "combat/CombatEventRecorder.hpp"
 #include "combat/CombatResolver.hpp"
@@ -7634,52 +7625,6 @@ void TestRuntimeInputRouteResultBuilderNamesRouteOutcomes()
 	Expect(blocked.movementBlockReason == std::optional<dev::PlayerActionBlockReason> { dev::PlayerActionBlockReason::Focus }, "runtime input route result builder should preserve blocked movement reason");
 }
 
-void TestRuntimeInputDrainResultBuilderAggregatesRouteOutcomes()
-{
-	dev::RuntimeInputRouteResultBuilder routeResults;
-	dev::RuntimeInputDrainResultBuilder drainResults;
-
-	drainResults.record(routeResults.unhandled());
-	drainResults.record(routeResults.queuedSessionCommand());
-	drainResults.record(routeResults.queuedMovementCommand());
-	drainResults.record(routeResults.blockedMovement(dev::PlayerActionBlockReason::Focus));
-	drainResults.record(routeResults.blockedMovement(dev::PlayerActionBlockReason::Paused));
-
-	const dev::RuntimeInputDrainResult result = drainResults.build();
-
-	Expect(result.handled == 2, "runtime input drain result builder should count handled route outcomes");
-	Expect(result.movementBlockReasons.size() == 2, "runtime input drain result builder should collect blocked movement reasons");
-	Expect(result.movementBlockReasons.size() == 2 && result.movementBlockReasons[0] == dev::PlayerActionBlockReason::Focus, "runtime input drain result builder should preserve first block reason");
-	Expect(result.movementBlockReasons.size() == 2 && result.movementBlockReasons[1] == dev::PlayerActionBlockReason::Paused, "runtime input drain result builder should preserve second block reason");
-}
-
-void TestRuntimeInputDrainReportRecorderCopiesFrameAndAggregatesSummary()
-{
-	dev::RuntimeFrameReport frame;
-	dev::RuntimeRunSummary summary;
-	summary.rawInputEventsRouted = 1;
-	summary.movementInputBlockReasons.push_back(dev::PlayerActionBlockReason::Stunned);
-
-	dev::RuntimeInputDrainReportRecorder {}.record(
-	    dev::RuntimeInputDrainResult {
-	        .handled = 2,
-	        .movementBlockReasons = {
-	            dev::PlayerActionBlockReason::Focus,
-	            dev::PlayerActionBlockReason::Paused,
-	        },
-	    },
-	    frame,
-	    summary);
-
-	Expect(frame.rawInputEventsRouted == 2, "runtime input drain report recorder should copy handled count onto frame report");
-	Expect(frame.movementInputBlockReasons.size() == 2 && frame.movementInputBlockReasons[0] == dev::PlayerActionBlockReason::Focus, "runtime input drain report recorder should copy first frame block reason");
-	Expect(frame.movementInputBlockReasons.size() == 2 && frame.movementInputBlockReasons[1] == dev::PlayerActionBlockReason::Paused, "runtime input drain report recorder should copy second frame block reason");
-	Expect(summary.rawInputEventsRouted == 3, "runtime input drain report recorder should aggregate handled count onto run summary");
-	Expect(summary.movementInputBlockReasons.size() == 3 && summary.movementInputBlockReasons[0] == dev::PlayerActionBlockReason::Stunned, "runtime input drain report recorder should preserve existing summary block reasons");
-	Expect(summary.movementInputBlockReasons.size() == 3 && summary.movementInputBlockReasons[1] == dev::PlayerActionBlockReason::Focus, "runtime input drain report recorder should append first new block reason");
-	Expect(summary.movementInputBlockReasons.size() == 3 && summary.movementInputBlockReasons[2] == dev::PlayerActionBlockReason::Paused, "runtime input drain report recorder should append second new block reason");
-}
-
 void TestRuntimeInventoryScriptReportRecorderKeepsScriptsAndFlattensCommands()
 {
 	dev::RuntimeFrameReport frame;
@@ -9310,251 +9255,6 @@ void TestGameLoopDoesNotDrainMovementSourcesWithoutActiveWorld()
 	std::filesystem::remove_all(root);
 }
 
-void TestRuntimeInputRouterMapsMouseClickToMovementCommand()
-{
-	dev::SimulationWorld world;
-	world.players.push_back(MakePlayer({ 0, 0 }));
-
-	dev::QueuedSessionCommandSource sessionCommands;
-	dev::QueuedMovementCommandSource movementCommands;
-	dev::RuntimeInputRouter router { sessionCommands, movementCommands };
-
-	dev::RuntimeInputRouteResult result = router.route(
-	    dev::RawInputEvent {
-	        .type = dev::RawInputType::MouseClick,
-	        .screenPosition = { 96, 64 },
-	        .pressed = true,
-	    },
-	    dev::RuntimeInputContext {
-	        .world = &world,
-	        .sessionMode = dev::GameSessionMode::Gameplay,
-	    });
-
-	Expect(result.handled, "runtime input router should handle gameplay mouse click");
-	Expect(result.queuedMovementCommand, "runtime input router should queue movement for mouse click");
-	Expect(!result.queuedSessionCommand, "runtime input router should not queue session command for mouse click");
-	Expect(movementCommands.size() == 1, "runtime input router should enqueue one movement command");
-	std::vector<dev::MovementCommand> drained = movementCommands.drain();
-	Expect(drained.size() == 1 && drained[0].type == dev::MovementCommandType::WalkTo, "runtime input router should map mouse click to WalkTo");
-	Expect(drained.size() == 1 && drained[0].destination == dev::Point { 3, 2 }, "runtime input router should map screen position through tile map");
-	Expect(sessionCommands.empty(), "runtime input router should leave session queue empty for movement input");
-}
-
-void TestRuntimeMovementInputRouterMapsMouseClickToMovementCommand()
-{
-	dev::SimulationWorld world;
-	world.players.push_back(MakePlayer({ 0, 0 }));
-
-	dev::QueuedMovementCommandSource movementCommands;
-	dev::RuntimeMovementInputRouter router { movementCommands };
-
-	dev::RuntimeInputRouteResult result = router.route(
-	    dev::RawInputEvent {
-	        .type = dev::RawInputType::MouseClick,
-	        .screenPosition = { 96, 64 },
-	        .pressed = true,
-	    },
-	    dev::RuntimeInputContext {
-	        .world = &world,
-	        .sessionMode = dev::GameSessionMode::Gameplay,
-	    });
-
-	Expect(result.handled && result.queuedMovementCommand, "runtime movement input router should handle gameplay mouse click");
-	std::vector<dev::MovementCommand> commands = movementCommands.drain();
-	Expect(commands.size() == 1 && commands[0].type == dev::MovementCommandType::WalkTo, "runtime movement input router should map click to WalkTo");
-	Expect(commands.size() == 1 && commands[0].destination == dev::Point { 3, 2 }, "runtime movement input router should map click through tile map");
-}
-
-void TestRuntimeMovementIntentInputStepMapsPointerIntentToCommand()
-{
-	dev::SimulationWorld world;
-	world.players.push_back(MakePlayer({ 0, 0 }));
-	const dev::Player &player = world.players[0];
-	dev::InputFocus focus { dev::FocusState { .owner = dev::InputOwner::Gameplay } };
-	dev::PlayerActionGate gate {
-		focus,
-		dev::PlayerActionContext {},
-	};
-	dev::QueuedMovementCommandSource movementCommands;
-
-	dev::RuntimeInputRouteResult result = dev::RuntimeMovementIntentInputStep { movementCommands }.route(
-	    dev::RawInputEvent {
-	        .type = dev::RawInputType::MouseClick,
-	        .screenPosition = { 96, 64 },
-	        .pressed = true,
-	    },
-	    world.map,
-	    0,
-	    player,
-	    focus,
-	    gate);
-
-	Expect(result.handled && result.queuedMovementCommand, "runtime movement intent input step should queue movement commands for movement intents");
-	std::vector<dev::MovementCommand> commands = movementCommands.drain();
-	Expect(commands.size() == 1 && commands[0].type == dev::MovementCommandType::WalkTo, "runtime movement intent input step should build WalkTo commands");
-	Expect(commands.size() == 1 && commands[0].destination == dev::Point { 3, 2 }, "runtime movement intent input step should map pointer input through the tile map");
-}
-
-void TestRuntimeMovementInputRouterMapsTouchTapToMovementCommand()
-{
-	dev::SimulationWorld world;
-	world.players.push_back(MakePlayer({ 0, 0 }));
-
-	dev::QueuedMovementCommandSource movementCommands;
-	dev::RuntimeMovementInputRouter router { movementCommands };
-
-	dev::RuntimeInputRouteResult result = router.route(
-	    dev::RawInputEvent {
-	        .type = dev::RawInputType::TouchTap,
-	        .screenPosition = { 128, 32 },
-	        .pressed = true,
-	    },
-	    dev::RuntimeInputContext {
-	        .world = &world,
-	        .sessionMode = dev::GameSessionMode::Gameplay,
-	    });
-
-	Expect(result.handled && result.queuedMovementCommand, "runtime movement input router should handle gameplay touch tap");
-	std::vector<dev::MovementCommand> commands = movementCommands.drain();
-	Expect(commands.size() == 1 && commands[0].type == dev::MovementCommandType::WalkTo, "runtime movement input router should map touch tap to WalkTo");
-	Expect(commands.size() == 1 && commands[0].destination == dev::Point { 4, 1 }, "runtime movement input router should map touch tap through tile map");
-}
-
-void TestRuntimeInputFocusResolverMapsSessionModesToFocus()
-{
-	dev::RuntimeInputFocusResolver resolver;
-
-	dev::FocusState gameplay = resolver.resolve(
-	    dev::FocusState { .owner = dev::InputOwner::Gameplay },
-	    dev::GameSessionMode::Gameplay);
-	dev::FocusState paused = resolver.resolve(
-	    dev::FocusState { .owner = dev::InputOwner::Gameplay },
-	    dev::GameSessionMode::Paused);
-	dev::FocusState inventory = resolver.resolve(
-	    dev::FocusState { .owner = dev::InputOwner::Gameplay, .textEntryActive = true },
-	    dev::GameSessionMode::Inventory);
-	dev::FocusState empty = resolver.resolve(
-	    dev::FocusState { .owner = dev::InputOwner::Dialogue },
-	    dev::GameSessionMode::Empty);
-
-	Expect(gameplay.owner == dev::InputOwner::Gameplay, "runtime input focus resolver should preserve gameplay focus in gameplay mode");
-	Expect(paused.owner == dev::InputOwner::Menu, "runtime input focus resolver should route paused mode to menu focus");
-	Expect(inventory.owner == dev::InputOwner::Inventory, "runtime input focus resolver should route inventory mode to inventory focus");
-	Expect(inventory.textEntryActive, "runtime input focus resolver should preserve text entry state");
-	Expect(empty.owner == dev::InputOwner::Dialogue, "runtime input focus resolver should preserve explicit focus in empty mode");
-}
-
-void TestRuntimeMovementInputContextBuilderSelectsPlayerAndBlockReason()
-{
-	dev::SimulationWorld world;
-	world.players.push_back(MakePlayer({ 0, 0 }));
-	world.players.push_back(MakePlayer({ 3, 4 }));
-	world.players[1].moveState = dev::PlayerMoveState::Stunned;
-
-	std::optional<dev::RuntimeMovementInputContext> context = dev::RuntimeMovementInputContextBuilder {}.build(
-	    dev::RuntimeInputContext {
-	        .world = &world,
-	        .playerId = 1,
-	        .focusState = dev::FocusState { .owner = dev::InputOwner::Gameplay },
-	        .sessionMode = dev::GameSessionMode::Gameplay,
-	    });
-	std::optional<dev::RuntimeMovementInputContext> inventoryContext = dev::RuntimeMovementInputContextBuilder {}.build(
-	    dev::RuntimeInputContext {
-	        .world = &world,
-	        .playerId = 0,
-	        .focusState = dev::FocusState { .owner = dev::InputOwner::Gameplay },
-	        .sessionMode = dev::GameSessionMode::Inventory,
-	    });
-	std::optional<dev::RuntimeMovementInputContext> missingWorld = dev::RuntimeMovementInputContextBuilder {}.build(
-	    dev::RuntimeInputContext {});
-	std::optional<dev::RuntimeMovementInputContext> missingPlayer = dev::RuntimeMovementInputContextBuilder {}.build(
-	    dev::RuntimeInputContext {
-	        .world = &world,
-	        .playerId = 2,
-	        .sessionMode = dev::GameSessionMode::Gameplay,
-	    });
-
-	Expect(context.has_value(), "runtime movement input context builder should build context for active players");
-	Expect(context.has_value() && context->player == &world.players[1], "runtime movement input context builder should select requested player");
-	Expect(context.has_value() && context->focusState.owner == dev::InputOwner::Gameplay, "runtime movement input context builder should preserve gameplay focus in gameplay mode");
-	Expect(context.has_value() && context->blockReason == dev::PlayerActionBlockReason::Stunned, "runtime movement input context builder should compute player movement block reason");
-	Expect(inventoryContext.has_value() && inventoryContext->focusState.owner == dev::InputOwner::Inventory, "runtime movement input context builder should apply session focus rules");
-	Expect(inventoryContext.has_value() && inventoryContext->blockReason == dev::PlayerActionBlockReason::Focus, "runtime movement input context builder should expose focus block reason");
-	Expect(!missingWorld.has_value(), "runtime movement input context builder should reject missing worlds");
-	Expect(!missingPlayer.has_value(), "runtime movement input context builder should reject missing players");
-}
-
-void TestRuntimeBlockedPointerInputStepReportsBlockedPointerMovement()
-{
-	dev::RuntimeInputRouteResult blocked = dev::RuntimeBlockedPointerInputStep {}.route(
-	    dev::RawInputEvent {
-	        .type = dev::RawInputType::MouseClick,
-	        .screenPosition = { 32, 0 },
-	        .pressed = true,
-	    },
-	    dev::PlayerActionBlockReason::Focus);
-	dev::RuntimeInputRouteResult unblocked = dev::RuntimeBlockedPointerInputStep {}.route(
-	    dev::RawInputEvent {
-	        .type = dev::RawInputType::MouseClick,
-	        .screenPosition = { 32, 0 },
-	        .pressed = true,
-	    },
-	    dev::PlayerActionBlockReason::None);
-	dev::RuntimeInputRouteResult nonPointer = dev::RuntimeBlockedPointerInputStep {}.route(
-	    dev::RawInputEvent {
-	        .type = dev::RawInputType::KeyPress,
-	        .code = 'A',
-	        .pressed = true,
-	    },
-	    dev::PlayerActionBlockReason::Focus);
-
-	Expect(!blocked.handled, "runtime blocked pointer input step should report blocks without handling input");
-	Expect(blocked.movementBlockReason == std::optional<dev::PlayerActionBlockReason> { dev::PlayerActionBlockReason::Focus }, "runtime blocked pointer input step should preserve block reason");
-	Expect(!unblocked.handled && !unblocked.movementBlockReason.has_value(), "runtime blocked pointer input step should ignore unblocked pointer input");
-	Expect(!nonPointer.handled && !nonPointer.movementBlockReason.has_value(), "runtime blocked pointer input step should ignore non-pointer input");
-}
-
-void TestRuntimeInputRouterBlocksMovementWhenFocusDoesNotOwnGameplay()
-{
-	dev::SimulationWorld world;
-	world.players.push_back(MakePlayer({ 0, 0 }));
-
-	dev::QueuedSessionCommandSource sessionCommands;
-	dev::QueuedMovementCommandSource movementCommands;
-	dev::RuntimeInputRouter router { sessionCommands, movementCommands };
-
-	dev::RuntimeInputRouteResult inventoryResult = router.route(
-	    dev::RawInputEvent {
-	        .type = dev::RawInputType::MouseClick,
-	        .screenPosition = { 32, 0 },
-	        .pressed = true,
-	    },
-	    dev::RuntimeInputContext {
-	        .world = &world,
-	        .focusState = dev::FocusState { .owner = dev::InputOwner::Inventory },
-	        .sessionMode = dev::GameSessionMode::Inventory,
-	    });
-
-	dev::RuntimeInputRouteResult textEntryResult = router.route(
-	    dev::RawInputEvent {
-	        .type = dev::RawInputType::MouseClick,
-	        .screenPosition = { 64, 0 },
-	        .pressed = true,
-	    },
-	    dev::RuntimeInputContext {
-	        .world = &world,
-	        .focusState = dev::FocusState { .owner = dev::InputOwner::Gameplay, .textEntryActive = true },
-	        .sessionMode = dev::GameSessionMode::Gameplay,
-	    });
-
-	Expect(!inventoryResult.handled, "runtime input router should ignore movement while inventory owns focus");
-	Expect(!textEntryResult.handled, "runtime input router should ignore movement while text entry is active");
-	Expect(inventoryResult.movementBlockReason == std::optional<dev::PlayerActionBlockReason> { dev::PlayerActionBlockReason::Focus }, "runtime input router should explain inventory movement block");
-	Expect(textEntryResult.movementBlockReason == std::optional<dev::PlayerActionBlockReason> { dev::PlayerActionBlockReason::Focus }, "runtime input router should explain text-entry movement block");
-	Expect(movementCommands.empty(), "runtime input router should not queue blocked movement input");
-	Expect(sessionCommands.empty(), "runtime input router should not convert blocked movement into session commands");
-}
-
 void TestRuntimeInputRouterMapsHotkeysToSessionCommands()
 {
 	dev::QueuedSessionCommandSource sessionCommands;
@@ -9726,267 +9426,6 @@ void TestRuntimeMovementInputRouterReportsBlockedStopReason()
 	Expect(!result.handled, "runtime movement input router should not handle blocked stop hotkey");
 	Expect(result.movementBlockReason == std::optional<dev::PlayerActionBlockReason> { dev::PlayerActionBlockReason::Paused }, "runtime movement input router should report paused stop block reason");
 	Expect(movementCommands.empty(), "blocked stop hotkey should not queue movement command");
-}
-
-void TestRuntimeInputRouterMapsTargetClickToMoveThenAct()
-{
-	dev::SimulationWorld world;
-	world.players.push_back(MakePlayer({ 0, 0 }));
-	FixedTargetResolver targets {
-		dev::Target {
-		    .type = dev::TargetType::Enemy,
-		    .id = 42,
-		    .tile = { 0, 0 },
-		}
-	};
-
-	dev::QueuedSessionCommandSource sessionCommands;
-	dev::QueuedMovementCommandSource movementCommands;
-	dev::RuntimeInputRouter router { sessionCommands, movementCommands };
-
-	dev::RuntimeInputRouteResult result = router.route(
-	    dev::RawInputEvent {
-	        .type = dev::RawInputType::MouseClick,
-	        .screenPosition = { 64, 0 },
-	        .pressed = true,
-	    },
-	    dev::RuntimeInputContext {
-	        .world = &world,
-	        .sessionMode = dev::GameSessionMode::Gameplay,
-	        .targetResolver = &targets,
-	    });
-
-	Expect(result.handled && result.queuedMovementCommand, "runtime input router should route target-aware click");
-	std::vector<dev::MovementCommand> commands = movementCommands.drain();
-	Expect(commands.size() == 1 && commands[0].type == dev::MovementCommandType::MoveThenAct, "enemy click should become MoveThenAct");
-	Expect(commands.size() == 1 && commands[0].destination == dev::Point { 2, 0 }, "target-aware click should use clicked tile");
-	Expect(commands.size() == 1 && commands[0].destinationAction.has_value(), "enemy click should carry destination action");
-	Expect(commands.size() == 1 && commands[0].destinationAction->type == dev::DestinationActionType::Attack, "enemy click should carry attack action");
-	Expect(commands.size() == 1 && commands[0].destinationAction->target.id == 42, "enemy click should preserve target id");
-	Expect(sessionCommands.empty(), "target-aware click should not queue session commands");
-}
-
-void TestRuntimeTargetInteractionInputStepBuildsInteractionCommand()
-{
-	dev::SimulationWorld world;
-	world.players.push_back(MakePlayer({ 0, 0 }));
-	FixedTargetResolver targets {
-		dev::Target {
-		    .type = dev::TargetType::Enemy,
-		    .id = 47,
-		    .tile = { 0, 0 },
-		}
-	};
-	dev::FocusState focusState;
-	dev::InputFocus focus { focusState };
-	dev::PlayerActionContext context;
-	dev::PlayerActionGate gate { focus, context };
-	dev::QueuedMovementCommandSource movementCommands;
-
-	dev::RuntimeInputRouteResult result = dev::RuntimeTargetInteractionInputStep { movementCommands }.route(
-	    dev::RawInputEvent {
-	        .type = dev::RawInputType::MouseClick,
-	        .screenPosition = { 64, 0 },
-	        .pressed = true,
-	    },
-	    world.map,
-	    targets,
-	    0,
-	    world.players[0],
-	    gate);
-
-	Expect(result.handled && result.queuedMovementCommand, "runtime target interaction input step should queue target-aware movement commands");
-	std::vector<dev::MovementCommand> commands = movementCommands.drain();
-	Expect(commands.size() == 1 && commands[0].type == dev::MovementCommandType::MoveThenAct, "runtime target interaction input step should map enemy targets to MoveThenAct");
-	Expect(commands.size() == 1 && commands[0].destination == dev::Point { 2, 0 }, "runtime target interaction input step should resolve screen position through the tile map");
-	Expect(commands.size() == 1 && commands[0].destinationAction.has_value(), "runtime target interaction input step should attach destination action");
-	Expect(commands.size() == 1 && commands[0].destinationAction->type == dev::DestinationActionType::Attack, "runtime target interaction input step should preserve attack intent");
-	Expect(commands.size() == 1 && commands[0].destinationAction->target.id == 47, "runtime target interaction input step should preserve target identity");
-}
-
-void TestRuntimeTargetInputRouterMapsTargetClickToMoveThenAct()
-{
-	dev::SimulationWorld world;
-	world.players.push_back(MakePlayer({ 0, 0 }));
-	FixedTargetResolver targets {
-		dev::Target {
-		    .type = dev::TargetType::Enemy,
-		    .id = 47,
-		    .tile = { 0, 0 },
-		}
-	};
-	dev::FocusState focusState;
-	dev::InputFocus focus { focusState };
-	dev::PlayerActionContext context;
-	dev::PlayerActionGate gate { focus, context };
-	dev::QueuedMovementCommandSource movementCommands;
-	dev::RuntimeTargetInputRouter router { movementCommands };
-
-	dev::RuntimeInputRouteResult result = router.route(
-	    dev::RawInputEvent {
-	        .type = dev::RawInputType::MouseClick,
-	        .screenPosition = { 64, 0 },
-	        .pressed = true,
-	    },
-	    dev::RuntimeInputContext {
-	        .world = &world,
-	        .sessionMode = dev::GameSessionMode::Gameplay,
-	        .targetResolver = &targets,
-	    },
-	    world.players[0],
-	    gate);
-
-	Expect(result.handled && result.queuedMovementCommand, "runtime target input router should route target-aware click");
-	std::vector<dev::MovementCommand> commands = movementCommands.drain();
-	Expect(commands.size() == 1 && commands[0].type == dev::MovementCommandType::MoveThenAct, "runtime target input router should map enemy click to MoveThenAct");
-	Expect(commands.size() == 1 && commands[0].destinationAction.has_value(), "runtime target input router should attach destination action");
-	Expect(commands.size() == 1 && commands[0].destinationAction->target.id == 47, "runtime target input router should preserve target identity");
-}
-
-void TestRuntimeInputRouterMapsStandGroundTargetClickToStandAndAct()
-{
-	dev::SimulationWorld world;
-	dev::Player player = MakePlayer({ 0, 0 });
-	player.movementModifiers.standGround = true;
-	world.players.push_back(player);
-	FixedTargetResolver targets {
-		dev::Target {
-		    .type = dev::TargetType::Enemy,
-		    .id = 77,
-		    .tile = { 0, 0 },
-		}
-	};
-
-	dev::QueuedSessionCommandSource sessionCommands;
-	dev::QueuedMovementCommandSource movementCommands;
-	dev::RuntimeInputRouter router { sessionCommands, movementCommands };
-
-	dev::RuntimeInputRouteResult result = router.route(
-	    dev::RawInputEvent {
-	        .type = dev::RawInputType::MouseClick,
-	        .screenPosition = { 32, 0 },
-	        .pressed = true,
-	    },
-	    dev::RuntimeInputContext {
-	        .world = &world,
-	        .sessionMode = dev::GameSessionMode::Gameplay,
-	        .targetResolver = &targets,
-	    });
-
-	Expect(result.handled && result.queuedMovementCommand, "runtime input router should route stand-ground target click");
-	std::vector<dev::MovementCommand> commands = movementCommands.drain();
-	Expect(commands.size() == 1 && commands[0].type == dev::MovementCommandType::StandAndAct, "stand-ground enemy click should become StandAndAct");
-	Expect(commands.size() == 1 && commands[0].destination == dev::Point { 1, 0 }, "stand-ground target click should preserve clicked tile");
-	Expect(commands.size() == 1 && commands[0].destinationAction->type == dev::DestinationActionType::Attack, "stand-ground target click should carry attack action");
-}
-
-void TestQueuedRawInputSourceDrainsEventsOnce()
-{
-	dev::QueuedRawInputSource source;
-	source.enqueue({
-	    .type = dev::RawInputType::MouseClick,
-	    .screenPosition = { 32, 64 },
-	    .pressed = true,
-	});
-	source.enqueue({
-	    .type = dev::RawInputType::KeyPress,
-	    .code = 'P',
-	    .pressed = true,
-	});
-
-	Expect(source.size() == 2, "queued raw input source should track queued event count");
-	std::vector<dev::RawInputEvent> drained = source.drain();
-	Expect(drained.size() == 2, "queued raw input source should drain queued events");
-	Expect(source.empty(), "queued raw input source should be empty after drain");
-	Expect(source.drain().empty(), "queued raw input source should not drain events twice");
-	Expect(drained.size() == 2 && drained[0].screenPosition == dev::Point { 32, 64 }, "queued raw input source should preserve event payloads");
-}
-
-void TestRuntimeRawInputDrainerRoutesHandledEventsAndSkipsNullSources()
-{
-	dev::SimulationWorld world;
-	world.players.push_back(MakePlayer({ 0, 0 }));
-
-	dev::QueuedRawInputSource rawInput;
-	rawInput.enqueue({
-	    .type = dev::RawInputType::KeyPress,
-	    .code = 'P',
-	    .pressed = true,
-	});
-	rawInput.enqueue({
-	    .type = dev::RawInputType::KeyPress,
-	    .code = 'P',
-	    .pressed = false,
-	});
-	rawInput.enqueue({
-	    .type = dev::RawInputType::MouseClick,
-	    .screenPosition = { 32, 0 },
-	    .pressed = true,
-	});
-
-	dev::QueuedSessionCommandSource sessionCommands;
-	dev::QueuedMovementCommandSource movementCommands;
-	dev::RuntimeInputRouter router {
-		sessionCommands,
-		movementCommands,
-		dev::RuntimeInputBindings { .pauseKey = 'P', .inventoryKey = 'I', .stopKey = 'S' },
-	};
-	dev::RuntimeRawInputDrainer drainer { router };
-
-	const dev::RuntimeInputDrainResult routed = drainer.drain(
-	    { nullptr, &rawInput },
-	    dev::RuntimeInputContext {
-	        .world = &world,
-	        .focusState = dev::FocusState { .owner = dev::InputOwner::Inventory },
-	        .sessionMode = dev::GameSessionMode::Gameplay,
-	    });
-
-	Expect(routed.handled == 1, "runtime raw input drainer should count handled routed events only");
-	Expect(routed.movementBlockReasons.size() == 1 && routed.movementBlockReasons[0] == dev::PlayerActionBlockReason::Focus, "runtime raw input drainer should collect blocked movement reasons separately");
-	Expect(rawInput.empty(), "runtime raw input drainer should drain source events once");
-	Expect(sessionCommands.size() == 1, "runtime raw input drainer should route handled hotkeys through session commands");
-	Expect(movementCommands.empty(), "runtime raw input drainer should not invent movement commands for hotkeys");
-}
-
-void TestRuntimeInputSourceRouterRoutesRawSourcesThroughSessionContext()
-{
-	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_input_source_router_test";
-	std::filesystem::remove_all(root);
-
-	dev::GameSession session { root / "saves" };
-	session.startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
-	dev::QueuedRawInputSource rawInput;
-	rawInput.enqueue({
-	    .type = dev::RawInputType::MouseClick,
-	    .screenPosition = { 96, 64 },
-	    .pressed = true,
-	});
-
-	dev::QueuedSessionCommandSource routedSessionCommands;
-	dev::QueuedMovementCommandSource routedMovementCommands;
-	dev::RuntimeSourceSettings sources {
-		.rawInputSources = { nullptr, &rawInput },
-	};
-	dev::RuntimeInputSettings input;
-	dev::RuntimeInputSourceRouter router {
-		session,
-		routedSessionCommands,
-		routedMovementCommands,
-		sources,
-		input,
-	};
-
-	const dev::RuntimeInputDrainResult routed = router.route();
-
-	Expect(routed.handled == 1, "runtime input source router should route handled raw source events");
-	Expect(routed.movementBlockReasons.empty(), "runtime input source router should report no movement blocks for handled movement input");
-	Expect(rawInput.empty(), "runtime input source router should drain raw input source events once");
-	Expect(routedMovementCommands.size() == 1, "runtime input source router should queue routed movement commands");
-	std::vector<dev::MovementCommand> commands = routedMovementCommands.drain();
-	Expect(commands.size() == 1 && commands[0].destination == dev::Point { 3, 2 }, "runtime input source router should build input context from session world");
-	Expect(routedSessionCommands.empty(), "runtime input source router should leave session commands empty for movement input");
-
-	std::filesystem::remove_all(root);
 }
 
 void TestRuntimeFrameSourcePhaseRunnerRoutesAndDrainsSources()
@@ -10849,8 +10288,6 @@ int main()
 	TestRuntimeInputContextBuilderHandlesMissingWorld();
 	TestRuntimeInputContextBuilderUsesWorldTargetsUnlessOverridden();
 	TestRuntimeInputRouteResultBuilderNamesRouteOutcomes();
-	TestRuntimeInputDrainResultBuilderAggregatesRouteOutcomes();
-	TestRuntimeInputDrainReportRecorderCopiesFrameAndAggregatesSummary();
 	TestRuntimeInventoryScriptReportRecorderKeepsScriptsAndFlattensCommands();
 	TestRuntimeInventoryCommandReportRecorderAppendsDirectCommandResults();
 	TestRuntimeSessionCommandReportRecorderReplacesFrameAndAggregatesSummary();
@@ -10911,27 +10348,12 @@ int main()
 	TestGameLoopEmitsRejectedInventoryEventForMissingPlayer();
 	TestGameLoopDoesNotDrainInventorySourcesWithoutActiveWorld();
 	TestGameLoopDoesNotDrainMovementSourcesWithoutActiveWorld();
-	TestRuntimeInputRouterMapsMouseClickToMovementCommand();
-	TestRuntimeMovementInputRouterMapsMouseClickToMovementCommand();
-	TestRuntimeMovementIntentInputStepMapsPointerIntentToCommand();
-	TestRuntimeMovementInputRouterMapsTouchTapToMovementCommand();
-	TestRuntimeInputFocusResolverMapsSessionModesToFocus();
-	TestRuntimeMovementInputContextBuilderSelectsPlayerAndBlockReason();
-	TestRuntimeBlockedPointerInputStepReportsBlockedPointerMovement();
-	TestRuntimeInputRouterBlocksMovementWhenFocusDoesNotOwnGameplay();
 	TestRuntimeInputRouterMapsHotkeysToSessionCommands();
 	TestRuntimeSessionInputRouterTogglesLifecycleModes();
 	TestRuntimeSessionModeTogglePolicyMapsHotkeysToRequestedModes();
 	TestRuntimeInputRouterMapsStopHotkeyToMovementCommand();
 	TestRuntimeStopMovementInputStepMapsStopHotkeyToCommand();
 	TestRuntimeMovementInputRouterReportsBlockedStopReason();
-	TestRuntimeInputRouterMapsTargetClickToMoveThenAct();
-	TestRuntimeTargetInteractionInputStepBuildsInteractionCommand();
-	TestRuntimeTargetInputRouterMapsTargetClickToMoveThenAct();
-	TestRuntimeInputRouterMapsStandGroundTargetClickToStandAndAct();
-	TestQueuedRawInputSourceDrainsEventsOnce();
-	TestRuntimeRawInputDrainerRoutesHandledEventsAndSkipsNullSources();
-	TestRuntimeInputSourceRouterRoutesRawSourcesThroughSessionContext();
 	TestRuntimeFrameSourcePhaseRunnerRoutesAndDrainsSources();
 	TestRuntimeFrameRunnerRoutesSourcesAndRecordsOneFrame();
 	TestRuntimeFrameLoopRunnerRunsConfiguredFrames();

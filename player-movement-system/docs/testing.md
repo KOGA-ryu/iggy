@@ -16,6 +16,14 @@ artifact execution.
 tests exercise strings produced from runtime reports without touching artifact
 writers, filesystem stores, or frame execution.
 
+`input_routing_tests` owns controls-edge checks: pointer input, focus
+resolution, movement context building, blocked pointer reporting, and
+target-aware interaction routing before commands reach simulation code.
+
+`input_drain_tests` owns raw input source draining and drain reporting. These
+tests verify that queued raw events are consumed once, routed through the
+current session context, and summarized into frame/run input reports.
+
 ```text
 focused production boundary
   -> focused test executable
@@ -29,7 +37,6 @@ large shared helper migration.
 
 Good first candidates:
 
-- input routing steps
 - simulation command draining
 
 Avoid splitting by line count alone. A smaller file is useful only when the new

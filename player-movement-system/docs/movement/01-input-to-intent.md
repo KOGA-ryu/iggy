@@ -41,6 +41,22 @@ target-aware pointer interactions get first chance before generic walk intent.
 the raw event to `PlayerIntent`, asks the action gate whether movement is
 allowed, then queues a movement command.
 
+`RuntimeRawInputDrainer` owns source consumption. It drains raw input sources
+once, routes each event through the current context, and keeps blocked movement
+reasons separate from handled command routes.
+
+## Test Boundary
+
+`input_routing_tests` covers this layer before the simulation is involved. The
+tests assert that mouse clicks and touch taps become movement commands, that
+session mode resolves into the effective input focus, that target-aware clicks
+become interaction movement commands, and that blocked pointer input reports a
+reason instead of silently disappearing.
+
+`input_drain_tests` covers the frame-facing edge around those route decisions:
+queued raw events are consumed once, nullable source lists are skipped safely,
+and route outcomes become frame/run input report counts and block reasons.
+
 ## Why Focus Is Early
 
 Inventory, menus, text entry, stun, and animation locks can all make the same

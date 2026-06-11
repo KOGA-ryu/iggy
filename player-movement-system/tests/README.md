@@ -5,6 +5,11 @@ move into smaller executables as subsystem boundaries stabilize.
 `artifact_output_tests` covers artifact output settings, result flags, output
 steps, planning, and one-request execution.
 `artifact_text_tests` covers pure trace and manifest formatter contracts.
+`input_routing_tests` covers the controls-edge slice from pointer input through
+focus/context checks into movement commands, target interaction commands, or
+block reports.
+`input_drain_tests` covers raw input source draining and the frame/run report
+facts produced by routed or blocked input.
 
 Good first tests:
 
