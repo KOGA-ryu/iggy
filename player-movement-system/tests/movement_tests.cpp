@@ -76,6 +76,7 @@
 #include "save/SnapshotCodec.hpp"
 #include "save/SnapshotChecksum.hpp"
 #include "save/SnapshotFileStore.hpp"
+#include "save/SnapshotFrameCodec.hpp"
 #include "save/SnapshotReader.hpp"
 #include "save/SnapshotWriter.hpp"
 #include "session/GameSession.hpp"
@@ -2387,6 +2388,42 @@ void TestSnapshotChecksumValidatesTrailingChecksum()
 
 	bytes[0] ^= 0xFFU;
 	Expect(!checksum.hasValidTrailingChecksum(bytes, 4), "snapshot checksum should reject mutated payload");
+}
+
+void TestSnapshotFrameCodecFramesPayloadBytes()
+{
+	dev::SnapshotBytes payload { 10, 20, 30 };
+	dev::SnapshotFrameCodec frameCodec;
+	dev::SnapshotBytes bytes = frameCodec.encode(payload);
+	std::optional<dev::SnapshotBytes> decoded = frameCodec.decode(bytes);
+
+	Expect(bytes.size() == 15, "snapshot frame codec should write header, payload, and checksum");
+	Expect(bytes.size() == 15 && bytes[0] == 'I' && bytes[1] == 'G' && bytes[2] == 'G' && bytes[3] == 'Y', "snapshot frame codec should write magic");
+	Expect(bytes.size() == 15 && bytes[4] == 7 && bytes[5] == 0 && bytes[6] == 0 && bytes[7] == 0, "snapshot frame codec should write version little-endian");
+	Expect(decoded.has_value() && *decoded == payload, "snapshot frame codec should restore payload bytes");
+}
+
+void TestSnapshotFrameCodecRejectsInvalidFrames()
+{
+	dev::SnapshotBytes payload { 10, 20, 30 };
+	dev::SnapshotFrameCodec frameCodec;
+	dev::SnapshotBytes bytes = frameCodec.encode(payload);
+
+	dev::SnapshotBytes badMagic = bytes;
+	badMagic.resize(badMagic.size() - 4U);
+	badMagic[0] = 'X';
+	dev::SnapshotChecksum {}.appendTo(badMagic);
+	Expect(!frameCodec.decode(badMagic).has_value(), "snapshot frame codec should reject bad magic");
+
+	dev::SnapshotBytes badVersion = bytes;
+	badVersion.resize(badVersion.size() - 4U);
+	badVersion[4] = 8;
+	dev::SnapshotChecksum {}.appendTo(badVersion);
+	Expect(!frameCodec.decode(badVersion).has_value(), "snapshot frame codec should reject unsupported version");
+
+	dev::SnapshotBytes truncated = bytes;
+	truncated.pop_back();
+	Expect(!frameCodec.decode(truncated).has_value(), "snapshot frame codec should reject truncated frames");
 }
 
 void TestSnapshotFileStoreSavesAndLoadsVersionedBytes()
@@ -5912,6 +5949,8 @@ int main()
 	TestSnapshotCodecRoundTripsVersionedBytes();
 	TestSnapshotCodecRejectsInvalidBytes();
 	TestSnapshotChecksumValidatesTrailingChecksum();
+	TestSnapshotFrameCodecFramesPayloadBytes();
+	TestSnapshotFrameCodecRejectsInvalidFrames();
 	TestSnapshotFileStoreSavesAndLoadsVersionedBytes();
 	TestSnapshotFileStoreRejectsCorruptFile();
 	TestSaveGameServiceSavesAndLoadsWorld();

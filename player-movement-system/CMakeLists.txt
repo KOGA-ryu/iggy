@@ -80,6 +80,7 @@ add_library(player_movement_system
   src/replay/CommandLog.cpp
   src/replay/CommandReplayer.cpp
   src/save/SnapshotChecksum.cpp
+  src/save/SnapshotFrameCodec.cpp
   src/save/SaveGameService.cpp
   src/save/SaveSlotService.cpp
   src/save/SnapshotCodec.cpp

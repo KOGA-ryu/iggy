@@ -108,6 +108,7 @@ Good first tests:
 - SnapshotWriter and SnapshotReader restore clickable target registry state
 - SnapshotCodec round-trips versioned snapshot bytes and rejects invalid or corrupted data
 - SnapshotChecksum appends and validates snapshot byte checksums
+- SnapshotFrameCodec frames payload bytes and rejects invalid snapshot frames
 - SnapshotFileStore saves versioned bytes and rejects corrupt save files
 - SaveGameService saves and loads SimulationWorld without replacing event sinks
 - SaveSlotService lists slot metadata and distinguishes valid, corrupt, and empty slots

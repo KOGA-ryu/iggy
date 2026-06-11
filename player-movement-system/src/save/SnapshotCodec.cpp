@@ -4,17 +4,11 @@
 #include <limits>
 
 #include "interaction/DestinationAction.hpp"
-#include "save/SnapshotChecksum.hpp"
+#include "save/SnapshotFrameCodec.hpp"
 
 namespace dev {
 
 namespace {
-
-constexpr uint8_t Magic0 = 'I';
-constexpr uint8_t Magic1 = 'G';
-constexpr uint8_t Magic2 = 'G';
-constexpr uint8_t Magic3 = 'Y';
-constexpr uint32_t SnapshotVersion = 7;
 
 class ByteWriter {
 public:
@@ -406,42 +400,22 @@ bool ReadVector(ByteReader &reader, std::vector<T> &items, ReadFn readItem)
 SnapshotBytes SnapshotCodec::encode(const SimulationSnapshot &snapshot) const
 {
 	ByteWriter writer;
-	writer.writeU8(Magic0);
-	writer.writeU8(Magic1);
-	writer.writeU8(Magic2);
-	writer.writeU8(Magic3);
-	writer.writeU32(SnapshotVersion);
 	WriteVector(writer, snapshot.players, WritePlayer);
 	WriteVector(writer, snapshot.enemies, WriteEnemy);
 	WriteVector(writer, snapshot.items, WriteItem);
 	WriteVector(writer, snapshot.combatants, WriteCombatant);
 	WriteVector(writer, snapshot.targets, WriteTarget);
 	SnapshotBytes payload = writer.take();
-	SnapshotChecksum {}.appendTo(payload);
-	return payload;
+	return SnapshotFrameCodec {}.encode(payload);
 }
 
 std::optional<SimulationSnapshot> SnapshotCodec::decode(const SnapshotBytes &bytes) const
 {
-	if (bytes.size() < 12U)
+	std::optional<SnapshotBytes> payload = SnapshotFrameCodec {}.decode(bytes);
+	if (!payload.has_value())
 		return std::nullopt;
 
-	const std::size_t payloadSize = bytes.size() - 4U;
-	if (!SnapshotChecksum {}.hasValidTrailingChecksum(bytes, payloadSize))
-		return std::nullopt;
-
-	SnapshotBytes payload { bytes.begin(), bytes.begin() + static_cast<std::ptrdiff_t>(payloadSize) };
-	ByteReader reader { payload };
-	uint8_t magic0 = 0;
-	uint8_t magic1 = 0;
-	uint8_t magic2 = 0;
-	uint8_t magic3 = 0;
-	uint32_t version = 0;
-	if (!reader.readU8(magic0) || !reader.readU8(magic1) || !reader.readU8(magic2) || !reader.readU8(magic3)
-	    || magic0 != Magic0 || magic1 != Magic1 || magic2 != Magic2 || magic3 != Magic3
-	    || !reader.readU32(version) || version != SnapshotVersion)
-		return std::nullopt;
-
+	ByteReader reader { *payload };
 	SimulationSnapshot snapshot;
 	if (!ReadVector(reader, snapshot.players, ReadPlayer)
 	    || !ReadVector(reader, snapshot.enemies, ReadEnemy)

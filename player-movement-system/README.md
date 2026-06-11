@@ -397,12 +397,15 @@ SimulationSnapshot
   not transient events or effects
 
 SnapshotCodec
-  versioned byte boundary for snapshots, with magic/version validation before
-  restored data is trusted
+  durable-state serializer for snapshots once the save frame is trusted
 
 SnapshotChecksum
   checksum boundary for snapshot bytes, keeping save-file integrity checks
   testable outside the full snapshot serializer
+
+SnapshotFrameCodec
+  snapshot byte frame boundary that owns magic, version, payload framing, and
+  checksum-protected validation before durable state is decoded
 
 SnapshotFileStore
   file persistence boundary that saves versioned snapshot bytes and rejects

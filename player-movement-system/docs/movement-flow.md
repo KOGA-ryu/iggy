@@ -482,9 +482,10 @@ also needs a stable byte format:
 ```text
 SimulationSnapshot
   -> SnapshotCodec
+  -> serialized durable state
+  -> SnapshotFrameCodec
   -> magic bytes
   -> format version
-  -> serialized durable state
   -> SnapshotChecksum
 ```
 
