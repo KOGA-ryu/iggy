@@ -109,6 +109,7 @@ add_library(player_movement_system
   src/session/SessionCommandPacketValidator.cpp
   src/session/SessionCommandReplayer.cpp
   src/session/SessionCommandSource.cpp
+  src/session/SessionEventEmitter.cpp
   src/session/SessionEventRecorder.cpp
   src/session/SessionFrameUpdater.cpp
   src/session/NewGameWorldBuilder.cpp

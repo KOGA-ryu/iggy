@@ -649,7 +649,10 @@ already has:
 menu click / hotkey / controller / replay
   -> SessionCommand
   -> SessionCommandDispatcher
+  -> SessionCommandApplier
   -> GameSession
+  -> SessionEventEmitter
+  -> SessionEventSink
 ```
 
 The command layer covers:
@@ -686,6 +689,11 @@ SetMode      -> ModeChanged / ModeChangeRejected
 These are facts about the lifecycle layer. They let menu UI, logs, replay
 tools, and tests observe what happened without reaching into `GameSession` or
 duplicating dispatcher rules.
+
+`SessionEventEmitter` owns the event payload edge: copy the command type,
+optional slot id, and optional mode into the emitted `SessionEvent`, while
+cleanly ignoring missing sinks. That keeps `SessionCommandDispatcher` focused
+on dispatch order instead of event formatting.
 
 This mirrors the lower-level split:
 

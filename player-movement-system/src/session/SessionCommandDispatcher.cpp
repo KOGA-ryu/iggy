@@ -1,6 +1,7 @@
 #include "SessionCommandDispatcher.hpp"
 
 #include "session/SessionCommandApplier.hpp"
+#include "session/SessionEventEmitter.hpp"
 
 namespace dev {
 
@@ -13,20 +14,8 @@ SessionCommandDispatcher::SessionCommandDispatcher(GameSession &session, Session
 SessionCommandResult SessionCommandDispatcher::dispatch(const SessionCommand &command) const
 {
 	const SessionCommandApplication application = SessionCommandApplier { session_ }.apply(command);
-	emit(command, application.eventType);
+	SessionEventEmitter { eventSink_ }.emit(command, application.eventType);
 	return application.result;
-}
-
-void SessionCommandDispatcher::emit(const SessionCommand &command, SessionEventType type) const
-{
-	if (eventSink_ == nullptr)
-		return;
-	eventSink_->emit({
-	    .type = type,
-	    .commandType = command.type,
-	    .slotId = command.slotId,
-	    .mode = command.mode,
-	});
 }
 
 } // namespace dev

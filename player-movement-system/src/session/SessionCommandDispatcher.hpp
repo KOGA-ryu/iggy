@@ -13,8 +13,6 @@ public:
 	[[nodiscard]] SessionCommandResult dispatch(const SessionCommand &command) const;
 
 private:
-	void emit(const SessionCommand &command, SessionEventType type) const;
-
 	GameSession &session_;
 	SessionEventSink *eventSink_;
 };

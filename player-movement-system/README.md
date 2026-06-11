@@ -494,8 +494,12 @@ SessionCommand / SessionCommandApplier
   tests to request new/load/save/mode changes without directly mutating session
 
 SessionCommandDispatcher
-  emits lifecycle events for applied or rejected session commands after
-  SessionCommandApplier mutates or rejects the active GameSession
+  dispatches lifecycle commands through SessionCommandApplier and delegates
+  observable event publication to SessionEventEmitter
+
+SessionEventEmitter
+  session event adapter that turns applied/rejected lifecycle command outcomes
+  into SessionEvent payloads for an optional event sink
 
 SessionCommandSource
   runtime-facing source boundary that lets menu actions, debug tools, scripts,

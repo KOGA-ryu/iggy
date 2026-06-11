@@ -131,6 +131,7 @@ Good first tests:
 - GameSession save/load preserves event sinks and resets transient clock state
 - GameSession failed load preserves the active world
 - SessionCommandApplier maps lifecycle command outcomes to results and events
+- SessionEventEmitter builds lifecycle events and ignores missing sinks
 - SessionCommandDispatcher applies start, save, load, and mode commands
 - SessionCommandDispatcher rejects invalid lifecycle commands
 - SessionCommandDispatcher emits success and failure lifecycle events

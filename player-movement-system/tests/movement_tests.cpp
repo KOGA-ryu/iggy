@@ -103,6 +103,7 @@
 #include "session/SessionCommandPacketListCodec.hpp"
 #include "session/SessionCommandPacketValidator.hpp"
 #include "session/SessionCommandReplayer.hpp"
+#include "session/SessionEventEmitter.hpp"
 #include "session/SessionEventRecorder.hpp"
 #include "session/SessionFrameUpdater.hpp"
 #include "session/NewGameWorldBuilder.hpp"
@@ -3302,6 +3303,26 @@ void TestSessionCommandApplierMapsRejectedOutcomes()
 	Expect(mode.eventType == dev::SessionEventType::ModeChangeRejected, "session command applier should map rejected mode to ModeChangeRejected");
 
 	std::filesystem::remove_all(root);
+}
+
+void TestSessionEventEmitterBuildsLifecycleEvents()
+{
+	dev::SessionEventRecorder events;
+	dev::SessionCommand command {
+		.type = dev::SessionCommandType::LoadSlot,
+		.slotId = 4,
+		.mode = dev::GameSessionMode::Inventory,
+	};
+
+	dev::SessionEventEmitter { &events }.emit(command, dev::SessionEventType::LoadCompleted);
+	dev::SessionEventEmitter {}.emit(command, dev::SessionEventType::LoadFailed);
+
+	const std::vector<dev::SessionEvent> &recorded = events.events();
+	Expect(recorded.size() == 1, "session event emitter should ignore missing event sinks");
+	Expect(recorded.size() == 1 && recorded[0].type == dev::SessionEventType::LoadCompleted, "session event emitter should preserve event type");
+	Expect(recorded.size() == 1 && recorded[0].commandType == dev::SessionCommandType::LoadSlot, "session event emitter should preserve command type");
+	Expect(recorded.size() == 1 && recorded[0].slotId == std::optional<dev::SaveSlotId> { 4 }, "session event emitter should preserve slot id");
+	Expect(recorded.size() == 1 && recorded[0].mode == std::optional<dev::GameSessionMode> { dev::GameSessionMode::Inventory }, "session event emitter should preserve mode payload");
 }
 
 void TestSessionCommandDispatcherEmitsSuccessEvents()
@@ -6725,6 +6746,7 @@ int main()
 	TestSessionCommandDispatcherRejectsInvalidLifecycleCommands();
 	TestSessionCommandApplierMapsLifecycleOutcomes();
 	TestSessionCommandApplierMapsRejectedOutcomes();
+	TestSessionEventEmitterBuildsLifecycleEvents();
 	TestSessionCommandDispatcherEmitsSuccessEvents();
 	TestSessionCommandDispatcherEmitsFailureEvents();
 	TestSessionCommandReplayAppliesLifecycleSequence();
