@@ -349,6 +349,10 @@ GameLoop
   advances bounded frames, optionally saves run traces/debug bundles, and
   exposes results/events for tests and debug tools
 
+RuntimeSetupSettings
+  app-layer setup settings that group optional startup and configured inventory
+  script paths before frame updates begin
+
 RuntimeSetupResult
   app-layer setup result state that groups configured startup and inventory
   script attempts before frame updates begin

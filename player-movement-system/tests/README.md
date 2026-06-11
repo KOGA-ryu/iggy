@@ -115,6 +115,7 @@ Good first tests:
 - RuntimeFrameTrace formats frame reports into readable debug lines
 - RuntimeFrameTraceFileStore saves and loads readable trace lines
 - RuntimeTraceService formats and saves full GameLoopResult traces
+- RuntimeSetupSettings defaults to no configured setup scripts
 - RuntimeSetupResult defaults to no configured setup script attempts
 - RuntimeSourceSettings defaults to no runtime source streams
 - RuntimeInputSettings defaults to primary gameplay input context

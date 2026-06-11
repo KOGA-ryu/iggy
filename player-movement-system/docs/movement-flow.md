@@ -766,6 +766,7 @@ The app layer can now run a minimal bounded loop:
 
 ```text
 GameLoopSettings
+  -> RuntimeSetupSettings
   -> optional startup script
   -> SessionScriptRunner
   -> optional inventory script
@@ -793,6 +794,17 @@ events        -> SessionEventRecorder / InventoryEventRecorder
 This is the first runtime-facing shell around the movement/session system. It
 is still testable because the loop is bounded and reports what happened instead
 of hiding behavior behind an infinite platform loop.
+
+`RuntimeSetupSettings` groups one-time configured setup scripts:
+
+```text
+GameLoopSettings::setup
+  -> optional startup script
+  -> optional configured inventory script
+```
+
+Those scripts run before frame updates. The matching `RuntimeSetupResult`
+captures whether each configured script ran and what result it produced.
 
 `RuntimeSourceSettings` groups the live input/source streams:
 
