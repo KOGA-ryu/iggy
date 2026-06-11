@@ -519,6 +519,7 @@ File persistence sits outside snapshot shape and byte encoding:
 SimulationSnapshot
   -> SnapshotCodec
   -> SnapshotFileStore
+  -> ByteFileStore
   -> file
 ```
 
@@ -526,6 +527,7 @@ Loading runs the reverse direction:
 
 ```text
 file
+  -> ByteFileStore
   -> SnapshotFileStore
   -> SnapshotCodec validation
   -> SimulationSnapshot
@@ -534,8 +536,9 @@ file
 ```
 
 The file store does not know what a player, enemy, or combatant means. It only
-knows how to write codec bytes and refuse unreadable or corrupt data. That keeps
-save format rules separate from filesystem failure rules.
+knows that snapshot bytes should cross a binary file boundary. ByteFileStore owns
+the raw temp-file write, rename, and byte load mechanics. That keeps save format
+rules, domain save/load intent, and filesystem failure rules separate.
 
 ## 24. Save Game Service
 
@@ -802,9 +805,13 @@ filesystem:
 ```text
 SessionCommandLog
   -> SessionCommandLogCodec
+  -> SessionCommandLogFileStore
+  -> ByteFileStore
   -> temp file
   -> rename into place
   -> file bytes
+  -> ByteFileStore
+  -> SessionCommandLogFileStore
   -> SessionCommandLogCodec
   -> SessionCommandLog
 ```
@@ -813,7 +820,8 @@ This keeps three jobs separate:
 
 ```text
 SessionCommandLogCodec      validates replay-file structure
-SessionCommandLogFileStore  handles file IO and missing/corrupt files
+ByteFileStore               handles raw binary file IO and temp-file rename
+SessionCommandLogFileStore  maps raw bytes to missing/corrupt lifecycle logs
 SessionCommandReplayer      applies loaded commands through GameSession
 ```
 
@@ -1908,9 +1916,13 @@ those bytes cross the filesystem:
 ```text
 InventoryCommandLog
   -> InventoryCommandLogCodec
+  -> InventoryCommandLogFileStore
+  -> ByteFileStore
   -> temp file
   -> rename into place
   -> file bytes
+  -> ByteFileStore
+  -> InventoryCommandLogFileStore
   -> InventoryCommandLogCodec
   -> InventoryCommandLog
 ```
@@ -1927,7 +1939,8 @@ That keeps three jobs separate:
 
 ```text
 InventoryCommandLogCodec      validates replay-file structure
-InventoryCommandLogFileStore  handles file IO and missing/corrupt files
+ByteFileStore                 handles raw binary file IO and temp-file rename
+InventoryCommandLogFileStore  maps raw bytes to missing/corrupt inventory logs
 InventoryCommandReplayer      applies loaded commands through the dispatcher
 ```
 

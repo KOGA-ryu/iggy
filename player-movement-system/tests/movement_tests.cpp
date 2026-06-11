@@ -43,6 +43,7 @@
 #include "enemies/EnemyMovement.hpp"
 #include "enemies/EnemyPursuitStepper.hpp"
 #include "events/EventRecorder.hpp"
+#include "files/ByteFileStore.hpp"
 #include "focus/InputFocus.hpp"
 #include "interaction/DestinationActionBuilder.hpp"
 #include "interaction/InteractionCommandBuilder.hpp"
@@ -2191,6 +2192,43 @@ void TestInventoryCommandLogFrameCodecRejectsInvalidFrames()
 	wrongCount[8] = 2;
 	dev::InventoryCommandLogChecksum {}.appendTo(wrongCount);
 	Expect(!frameCodec.decode(wrongCount).has_value(), "inventory command log frame codec should reject payload size mismatch");
+}
+
+void TestByteFileStoreSavesLoadsAndCleansTempFile()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_byte_file_store_test";
+	const std::filesystem::path path = root / "bytes.bin";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+	std::filesystem::remove(path.string() + ".tmp");
+
+	dev::ByteFileStore store;
+	std::vector<uint8_t> bytes { 0, 1, 2, 255 };
+
+	Expect(store.save(path, bytes), "byte file store should save binary bytes");
+	std::optional<std::vector<uint8_t>> loaded = store.load(path);
+
+	Expect(loaded.has_value(), "byte file store should load saved bytes");
+	Expect(loaded.has_value() && *loaded == bytes, "byte file store should preserve binary byte payload");
+	Expect(!std::filesystem::exists(path.string() + ".tmp"), "byte file store should remove temp file after save");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestByteFileStoreRejectsMissingAndUnwritablePaths()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_byte_file_store_missing_test";
+	const std::filesystem::path missing = root / "missing.bin";
+	const std::filesystem::path unwritable = root / "missing_directory" / "bytes.bin";
+	std::filesystem::remove_all(root);
+
+	dev::ByteFileStore store;
+
+	Expect(!store.load(missing).has_value(), "byte file store should reject missing files");
+	Expect(!store.save(unwritable, { 1, 2, 3 }), "byte file store should reject saves when parent directory is missing");
+	Expect(!std::filesystem::exists(unwritable.string() + ".tmp"), "byte file store should not leave temp files after failed open");
+
+	std::filesystem::remove_all(root);
 }
 
 void TestInventoryCommandLogFileStoreSavesLoadsAndReplays()
@@ -6773,6 +6811,8 @@ int main()
 	TestInventoryCommandPacketListCodecRejectsInvalidSizes();
 	TestInventoryCommandLogFrameCodecFramesPacketBytes();
 	TestInventoryCommandLogFrameCodecRejectsInvalidFrames();
+	TestByteFileStoreSavesLoadsAndCleansTempFile();
+	TestByteFileStoreRejectsMissingAndUnwritablePaths();
 	TestInventoryCommandLogFileStoreSavesLoadsAndReplays();
 	TestInventoryCommandLogFileStoreRejectsCorruptAndMissingFiles();
 	TestInventoryScriptRunnerRunsSavedInventoryScript();

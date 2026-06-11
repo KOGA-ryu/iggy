@@ -98,6 +98,7 @@ Good first tests:
 - InventoryCommandLogChecksum appends and validates inventory log checksums
 - InventoryCommandPacketListCodec frames counted packet lists and rejects invalid sizes
 - InventoryCommandLogFrameCodec frames packet bytes and rejects invalid frame metadata
+- ByteFileStore saves/loads binary bytes and cleans temp files
 - InventoryCommandLogFileStore saves, loads, replays, and rejects bad files
 - InventoryScriptRunner loads and runs saved inventory scripts through the dispatcher
 - InventoryScriptRunner distinguishes script load failure from command rejection

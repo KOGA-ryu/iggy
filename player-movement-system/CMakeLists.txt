@@ -49,6 +49,7 @@ add_library(player_movement_system
   src/enemies/EnemyPursuitStepper.cpp
   src/events/EventRecorder.cpp
   src/focus/InputFocus.cpp
+  src/files/ByteFileStore.cpp
   src/input/InputMapper.cpp
   src/input/RawInputSource.cpp
   src/inventory/InventoryCommandCodec.cpp

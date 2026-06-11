@@ -274,8 +274,9 @@ InventoryCommandLogChecksum / InventoryCommandLogFrameCodec
   packet-list payloads, and checksum validation
 
 InventoryCommandLogFileStore
-  file persistence boundary for inventory command logs, so automation scripts
-  can live on disk without mixing filesystem rules into codecs or dispatchers
+  domain persistence boundary for inventory command logs, backed by
+  ByteFileStore so automation scripts can live on disk without mixing raw
+  filesystem rules into codecs or dispatchers
 
 InventoryScriptRunner
   high-level use case that loads an inventory command script and replays it
@@ -457,9 +458,14 @@ SnapshotFrameCodec
   snapshot byte frame boundary that owns magic, version, payload framing, and
   checksum-protected validation before durable state is decoded
 
+ByteFileStore
+  shared binary filesystem boundary that writes bytes through a temp file,
+  renames them into place, loads raw bytes, and reports missing or unwritable
+  paths without knowing snapshot, session, or inventory meaning
+
 SnapshotFileStore
-  file persistence boundary that saves versioned snapshot bytes and rejects
-  invalid files before restore
+  domain persistence boundary that saves versioned snapshot bytes through
+  ByteFileStore and rejects invalid files before restore
 
 SaveGameService
   high-level save/load use case that snapshots a world, persists it, and restores
@@ -554,8 +560,9 @@ SessionCommandLogFrameCodec
   frame validation around SessionCommandPacketListCodec payloads
 
 SessionCommandLogFileStore
-  file persistence boundary for lifecycle command logs, so replay scripts can be
-  saved and loaded without mixing filesystem behavior into the codec
+  domain persistence boundary for lifecycle command logs, backed by
+  ByteFileStore so replay scripts can be saved and loaded without mixing raw
+  filesystem behavior into the codec
 
 SessionScriptRunner
   high-level automation use case that loads a lifecycle script file and replays
