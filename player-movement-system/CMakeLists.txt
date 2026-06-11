@@ -27,6 +27,8 @@ add_library(player_movement_system
   src/app/RuntimeExitCodeMapper.cpp
   src/app/RuntimeExitCodePolicy.cpp
   src/app/RuntimeFinalModeRecorder.cpp
+  src/app/RuntimeFrameCompletionReportRecorder.cpp
+  src/app/RuntimeFrameEventReportRecorder.cpp
   src/app/RuntimeFrameLoopRunner.cpp
   src/app/RuntimeFramePolicyText.cpp
   src/app/RuntimeFrameRunner.cpp
@@ -62,6 +64,7 @@ add_library(player_movement_system
   src/app/RuntimeRunRecorder.cpp
   src/app/RuntimeRunSummaryText.cpp
   src/app/RuntimeSessionCommandReportRecorder.cpp
+  src/app/RuntimeSetupInventoryCommandReportRecorder.cpp
   src/app/RuntimeSetupRunner.cpp
   src/app/RuntimeSetupFailurePolicy.cpp
   src/app/RuntimeSessionInputRouter.cpp

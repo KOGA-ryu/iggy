@@ -1,11 +1,14 @@
 #include "RuntimeRunRecorder.hpp"
 
+#include "app/RuntimeFrameCompletionReportRecorder.hpp"
+#include "app/RuntimeFrameEventReportRecorder.hpp"
 #include "app/RuntimeInputDrainReportRecorder.hpp"
 #include "app/RuntimeInventoryCommandReportRecorder.hpp"
 #include "app/RuntimeInventoryScriptReportRecorder.hpp"
 #include "app/RuntimeMovementCommandReportRecorder.hpp"
 #include "app/RuntimeMovementScriptReportRecorder.hpp"
 #include "app/RuntimeSessionCommandReportRecorder.hpp"
+#include "app/RuntimeSetupInventoryCommandReportRecorder.hpp"
 
 #include <utility>
 
@@ -23,10 +26,7 @@ RuntimeRunRecorder::RuntimeRunRecorder(
 
 void RuntimeRunRecorder::recordSetupInventoryCommandResults(const std::vector<InventoryCommandResult> &results)
 {
-	result_.summary.inventoryCommandResults.insert(
-	    result_.summary.inventoryCommandResults.end(),
-	    results.begin(),
-	    results.end());
+	RuntimeSetupInventoryCommandReportRecorder {}.record(results, result_.summary);
 }
 
 void RuntimeRunRecorder::beginFrame()
@@ -73,16 +73,16 @@ void RuntimeRunRecorder::recordMovementCommandsQueued(int count)
 
 void RuntimeRunRecorder::recordFrameEvents(SimulationFrameEvents events)
 {
-	frame_.frameEvents = std::move(events);
-	result_.summary.lastFrameEvents = frame_.frameEvents;
+	RuntimeFrameEventReportRecorder {}.record(std::move(events), frame_, result_.summary);
 }
 
 void RuntimeRunRecorder::finishFrame()
 {
-	frame_.sessionEvents = sessionEventsSinceFrameStart();
-	frame_.inventoryEvents = inventoryEventsSinceFrameStart();
-	result_.frameReports.push_back(frame_);
-	++result_.summary.framesRun;
+	RuntimeFrameCompletionReportRecorder {}.record(
+	    sessionEventsSinceFrameStart(),
+	    inventoryEventsSinceFrameStart(),
+	    std::move(frame_),
+	    result_);
 }
 
 std::vector<SessionEvent> RuntimeRunRecorder::sessionEventsSinceFrameStart() const

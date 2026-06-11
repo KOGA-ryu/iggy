@@ -25,6 +25,8 @@
 #include "app/RuntimeEffectText.hpp"
 #include "app/RuntimeExitCodeMapper.hpp"
 #include "app/RuntimeExitCodePolicy.hpp"
+#include "app/RuntimeFrameCompletionReportRecorder.hpp"
+#include "app/RuntimeFrameEventReportRecorder.hpp"
 #include "app/RuntimeFrameLoopRunner.hpp"
 #include "app/RuntimeFramePolicyText.hpp"
 #include "app/RuntimeFrameRunner.hpp"
@@ -64,6 +66,7 @@
 #include "app/RuntimeSessionInputRouter.hpp"
 #include "app/RuntimeSessionModeTogglePolicy.hpp"
 #include "app/RuntimeSetupFailurePolicy.hpp"
+#include "app/RuntimeSetupInventoryCommandReportRecorder.hpp"
 #include "app/RuntimeSetupRunner.hpp"
 #include "app/RuntimeSourceContext.hpp"
 #include "app/RuntimeSourceDrainer.hpp"
@@ -7316,6 +7319,101 @@ void TestRuntimeMovementCommandReportRecorderCopiesFrameAndAggregatesSummary()
 	Expect(summary.movementCommandsQueued == 5, "runtime movement command report recorder should aggregate queued command count into summary");
 }
 
+void TestRuntimeFrameEventReportRecorderReplacesFrameAndSummaryEvents()
+{
+	dev::RuntimeFrameReport frame;
+	dev::RuntimeRunSummary summary;
+	summary.lastFrameEvents.emit({
+	    .type = dev::MovementEventType::StepCommitted,
+	    .playerId = 1,
+	    .tile = { 1, 1 },
+	});
+
+	dev::SimulationFrameEvents events;
+	events.emit({
+	    .type = dev::MovementEventType::CommandAccepted,
+	    .playerId = 2,
+	    .tile = { 4, 5 },
+	    .commandType = dev::MovementCommandType::WalkTo,
+	});
+	events.emit({
+	    .type = dev::CombatEventType::Hit,
+	    .damage = 3,
+	});
+
+	dev::RuntimeFrameEventReportRecorder {}.record(events, frame, summary);
+
+	Expect(frame.frameEvents.movementEvents().size() == 1, "runtime frame event report recorder should replace frame movement events");
+	Expect(frame.frameEvents.movementEvents().size() == 1 && frame.frameEvents.movementEvents()[0].playerId == 2, "runtime frame event report recorder should preserve current frame movement event payload");
+	Expect(frame.frameEvents.combatEvents().size() == 1, "runtime frame event report recorder should preserve current frame combat events");
+	Expect(summary.lastFrameEvents.movementEvents().size() == 1, "runtime frame event report recorder should replace summary movement events with latest frame");
+	Expect(summary.lastFrameEvents.movementEvents().size() == 1 && summary.lastFrameEvents.movementEvents()[0].playerId == 2, "runtime frame event report recorder should drop older summary movement events");
+	Expect(summary.lastFrameEvents.combatEvents().size() == 1, "runtime frame event report recorder should mirror frame combat events into summary");
+}
+
+void TestRuntimeFrameCompletionReportRecorderStoresFrameAndCountsRun()
+{
+	dev::GameLoopResult result;
+	result.summary.framesRun = 2;
+	result.frameReports.push_back({});
+
+	dev::RuntimeFrameReport frame;
+	frame.rawInputEventsRouted = 3;
+	frame.movementCommandsQueued = 1;
+
+	std::vector<dev::SessionEvent> sessionEvents {
+	    {
+	        .type = dev::SessionEventType::ModeChanged,
+	        .commandType = dev::SessionCommandType::SetMode,
+	        .mode = dev::GameSessionMode::Inventory,
+	    },
+	};
+	std::vector<dev::InventoryEvent> inventoryEvents {
+	    {
+	        .type = dev::InventoryEventType::Equipped,
+	        .commandType = dev::InventoryCommandType::EquipItem,
+	        .commandResult = dev::InventoryCommandResultType::Applied,
+	        .equipmentResult = dev::EquipmentResultType::Equipped,
+	        .itemId = 8,
+	    },
+	};
+
+	dev::RuntimeFrameCompletionReportRecorder {}.record(sessionEvents, inventoryEvents, frame, result);
+
+	Expect(result.summary.framesRun == 3, "runtime frame completion report recorder should increment finished frame count");
+	Expect(result.frameReports.size() == 2, "runtime frame completion report recorder should append one frame report");
+	const dev::RuntimeFrameReport &completedFrame = result.frameReports.back();
+	Expect(completedFrame.rawInputEventsRouted == 3, "runtime frame completion report recorder should preserve existing frame report fields");
+	Expect(completedFrame.movementCommandsQueued == 1, "runtime frame completion report recorder should preserve queued movement counts");
+	Expect(completedFrame.sessionEvents.size() == 1 && completedFrame.sessionEvents[0].mode == dev::GameSessionMode::Inventory, "runtime frame completion report recorder should attach session event deltas");
+	Expect(completedFrame.inventoryEvents.size() == 1 && completedFrame.inventoryEvents[0].itemId == 8, "runtime frame completion report recorder should attach inventory event deltas");
+}
+
+void TestRuntimeSetupInventoryCommandReportRecorderAppendsOnlySummaryResults()
+{
+	dev::RuntimeRunSummary summary;
+	summary.inventoryCommandResults.push_back({
+	    .type = dev::InventoryCommandResultType::Rejected,
+	    .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 1 },
+	    .equipmentResult = { .type = dev::EquipmentResultType::MissingItem, .itemId = 1 },
+	});
+
+	dev::RuntimeSetupInventoryCommandReportRecorder {}.record(
+	    {
+	        {
+	            .type = dev::InventoryCommandResultType::Applied,
+	            .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 9 },
+	            .equipmentResult = { .type = dev::EquipmentResultType::Equipped, .itemId = 9 },
+	        },
+	    },
+	    summary);
+
+	Expect(summary.inventoryCommandResults.size() == 2, "runtime setup inventory command report recorder should append setup results to existing summary results");
+	Expect(summary.inventoryCommandResults[0].type == dev::InventoryCommandResultType::Rejected, "runtime setup inventory command report recorder should preserve existing summary result order");
+	Expect(summary.inventoryCommandResults[1].command.itemId == std::optional<dev::TargetId> { 9 }, "runtime setup inventory command report recorder should preserve setup command payload");
+	Expect(summary.framesRun == 0, "runtime setup inventory command report recorder should not count frames");
+}
+
 void TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz()
 {
 	dev::RuntimeFrameSettings frame;
@@ -9729,6 +9827,9 @@ int main()
 	TestRuntimeSessionCommandReportRecorderReplacesFrameAndAggregatesSummary();
 	TestRuntimeMovementScriptReportRecorderReplacesFrameAndAggregatesSummary();
 	TestRuntimeMovementCommandReportRecorderCopiesFrameAndAggregatesSummary();
+	TestRuntimeFrameEventReportRecorderReplacesFrameAndSummaryEvents();
+	TestRuntimeFrameCompletionReportRecorderStoresFrameAndCountsRun();
+	TestRuntimeSetupInventoryCommandReportRecorderAppendsOnlySummaryResults();
 	TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz();
 	TestRuntimeRunSummaryDefaultsToEmptyRun();
 	TestRuntimeRunRecorderAggregatesSetupInventoryResultsWithoutFrame();

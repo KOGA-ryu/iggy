@@ -231,6 +231,9 @@ Good first tests:
 - RuntimeSessionCommandReportRecorder records frame and aggregate session command results
 - RuntimeMovementScriptReportRecorder records frame and aggregate movement script results
 - RuntimeMovementCommandReportRecorder records frame and aggregate queued movement counts
+- RuntimeFrameEventReportRecorder records frame events and the latest summary snapshot
+- RuntimeFrameCompletionReportRecorder stores completed frames and counts frames run
+- RuntimeSetupInventoryCommandReportRecorder records setup command results without frames
 - RuntimeFrameSettings defaults to zero frames at a sixty hertz timestep
 - RuntimeFrameRunner routes sources and records one bounded frame
 - RuntimeFrameLoopRunner runs the configured bounded frame count

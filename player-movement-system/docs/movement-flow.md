@@ -1359,6 +1359,21 @@ command source intake.
 count. The frame gets the count for this frame, while the run summary
 accumulates command intake across frames.
 
+`RuntimeFrameEventReportRecorder` owns simulation frame event reporting. It
+stores the current frame's event batch on the frame report and mirrors it to
+`RuntimeRunSummary::lastFrameEvents`, making that summary field explicitly the
+latest frame snapshot rather than an event log.
+
+`RuntimeFrameCompletionReportRecorder` owns the final frame report handoff. It
+attaches the session and inventory event deltas captured during the frame,
+stores the completed frame report on the run result, and increments the run's
+finished-frame count.
+
+`RuntimeSetupInventoryCommandReportRecorder` owns setup-phase inventory command
+reporting. Setup commands run before bounded frames begin, so their command
+results are appended to the run summary without creating a frame report or
+incrementing `framesRun`.
+
 `RuntimeOutputSettings` groups the app shell's optional artifact destinations:
 
 ```text

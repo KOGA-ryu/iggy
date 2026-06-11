@@ -801,6 +801,18 @@ RuntimeMovementCommandReportRecorder
   app-layer recorder that stores direct movement command queue counts on the
   frame report and aggregates them into the run summary
 
+RuntimeFrameEventReportRecorder
+  app-layer recorder that stores current simulation frame events on the frame
+  report and mirrors them as the run summary's last frame events
+
+RuntimeFrameCompletionReportRecorder
+  app-layer recorder that attaches session and inventory event deltas to a
+  completed frame report, appends it to the run, and counts the finished frame
+
+RuntimeSetupInventoryCommandReportRecorder
+  app-layer recorder that appends setup-phase inventory command results to the
+  run summary without creating or counting a runtime frame report
+
 RuntimeFinalModeRecorder
   app-layer recorder that captures the GameSession's final mode onto
   GameLoopResult before output artifacts are written
