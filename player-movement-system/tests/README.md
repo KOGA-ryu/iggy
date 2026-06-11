@@ -27,6 +27,8 @@ Good first tests:
 - action executor applies attack animation commitment
 - action executor clears destination action after execution
 - MoveThenAct emits CommandAccepted -> PathStarted -> StepCommitted -> DestinationActionReady -> AnimationLocked -> ActionExecuted
+- PlayerPathStepper commits one path step and reports destination action readiness
+- PlayerAnimationLockGate blocks movement until the cancel window and emits AnimationUnlocked
 - CommandLog replay produces the same movement/action event sequence
 - MovementCodec round-trips MoveThenAct command packets
 - enemy pursuit obeys maxStepsPerTick
@@ -38,6 +40,7 @@ Good first tests:
 - Enemy attack windup resolves combat against player and emits CombatEvent
 - SimulationCommandDrainer dispatches queued movement commands into player controller state
 - SimulationPlayerUpdater advances player movement and emits frame-visible movement events
+- SimulationEnemyUpdater advances enemy movement against the current player target
 - SimulationTick drains queued commands, updates movement, and resolves combat
 - SimulationFramePolicy can pause command draining and movement
 - SimulationClock hit-stop freezes actor updates while preserving command intake
@@ -45,6 +48,7 @@ Good first tests:
 - EffectRouter maps movement events to feedback requests
 - EffectRouter maps combat hits to damage, impact, and hit-stop requests
 - EffectApplier applies hit-stop requests to SimulationClock
+- SimulationTimeStepBuilder converts raw frame delta through optional clock rules
 - SimulationEffectPipeline routes frame events and applies simulation-facing effects
 - SimulationFrameEventCapture collects frame events, forwards them, and restores sinks
 - SimulationFrameFinalizer applies post-tick targets, pickups, and effects

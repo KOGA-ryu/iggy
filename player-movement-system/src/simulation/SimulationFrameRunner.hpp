@@ -6,6 +6,7 @@
 #include "simulation/SimulationFramePolicy.hpp"
 #include "simulation/SimulationTick.hpp"
 #include "simulation/SimulationTimeStep.hpp"
+#include "simulation/SimulationTimeStepBuilder.hpp"
 #include "simulation/SimulationWorld.hpp"
 
 namespace dev {
@@ -20,9 +21,7 @@ public:
 	SimulationFrameEvents run(SimulationWorld &world, const SimulationTimeStep &timeStep, const SimulationFramePolicy &policy) const;
 
 private:
-	SimulationTimeStep buildTimeStep(float rawDeltaSeconds) const;
-
-	SimulationClock *clock_;
+	SimulationTimeStepBuilder timeSteps_;
 	SimulationTick tick_;
 	SimulationFrameFinalizer finalizer_;
 };

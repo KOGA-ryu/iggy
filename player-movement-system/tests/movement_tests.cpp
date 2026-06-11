@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -50,9 +51,11 @@
 #include "inventory/InventoryService.hpp"
 #include "input/RawInputSource.hpp"
 #include "network/MovementCodec.hpp"
+#include "player/PlayerAnimationLockGate.hpp"
 #include "player/PlayerActionGate.hpp"
 #include "player/PlayerController.hpp"
 #include "player/PlayerMovement.hpp"
+#include "player/PlayerPathStepper.hpp"
 #include "replay/CommandLog.hpp"
 #include "replay/CommandReplayer.hpp"
 #include "save/SaveGameService.hpp"
@@ -72,12 +75,14 @@
 #include "session/SessionScriptRunner.hpp"
 #include "simulation/SimulationClock.hpp"
 #include "simulation/SimulationCommandDrainer.hpp"
+#include "simulation/SimulationEnemyUpdater.hpp"
 #include "simulation/SimulationEffectPipeline.hpp"
 #include "simulation/SimulationFrameEventCapture.hpp"
 #include "simulation/SimulationFrameFinalizer.hpp"
 #include "simulation/SimulationFrameRunner.hpp"
 #include "simulation/SimulationPlayerUpdater.hpp"
 #include "simulation/SimulationTick.hpp"
+#include "simulation/SimulationTimeStepBuilder.hpp"
 #include "simulation/WorldEntityService.hpp"
 #include "targeting/Target.hpp"
 #include "targeting/TargetRegistry.hpp"
@@ -105,6 +110,11 @@ bool ContainsLineFragment(const std::vector<std::string> &lines, std::string_vie
 			return true;
 	}
 	return false;
+}
+
+bool Near(float actual, float expected, float tolerance = 0.0001F)
+{
+	return std::fabs(actual - expected) <= tolerance;
 }
 
 dev::Player MakePlayer(dev::Point tile = { 0, 0 })
@@ -259,6 +269,44 @@ void TestMoveThenActEventSequence()
 	Expect(recorded[3].type == dev::MovementEventType::DestinationActionReady, "fourth event should make destination action ready");
 	Expect(recorded[4].type == dev::MovementEventType::AnimationLocked, "fifth event should lock animation");
 	Expect(recorded[5].type == dev::MovementEventType::ActionExecuted, "sixth event should execute action");
+}
+
+void TestPlayerPathStepperReportsActionReady()
+{
+	dev::EventRecorder events;
+	dev::Collision collision;
+	dev::Player player = MakePlayer({ 0, 0 });
+	dev::Target target { .type = dev::TargetType::Enemy, .id = 14, .tile = { 1, 0 } };
+	player.destinationAction = { dev::DestinationActionType::Attack, target, 1 };
+	player.moveState = dev::PlayerMoveState::Pathing;
+	player.path.pushStep({ 1, 0 });
+
+	const dev::PlayerPathStepResult result = dev::PlayerPathStepper { collision, &events }.step(player);
+
+	Expect(result.consumedStep, "player path stepper should consume a queued path step");
+	Expect(result.actionReady, "player path stepper should report destination action readiness");
+	Expect(player.position.tile == dev::Point { 1, 0 }, "player path stepper should commit the next tile");
+	Expect(player.moveState == dev::PlayerMoveState::Acting, "player path stepper should leave arrived action in acting state");
+	Expect(events.events().size() == 2, "player path stepper should emit step and action-ready events");
+	Expect(events.events().size() == 2 && events.events()[0].type == dev::MovementEventType::StepCommitted, "player path stepper should emit step committed first");
+	Expect(events.events().size() == 2 && events.events()[1].type == dev::MovementEventType::DestinationActionReady, "player path stepper should emit action ready second");
+}
+
+void TestPlayerAnimationLockGateBlocksUntilCancelWindow()
+{
+	dev::EventRecorder events;
+	dev::Player player = MakePlayer({ 2, 0 });
+	player.animationLock.active = true;
+	player.animationLock.cancelAfterSeconds = 0.50F;
+	dev::PlayerAnimationLockGate gate { &events };
+
+	Expect(!gate.advance(player, 0.25F), "animation lock gate should block before cancel window");
+	Expect(player.animationLock.active, "animation lock should remain active before cancel window");
+	Expect(events.events().empty(), "animation lock gate should not emit unlock before cancel window");
+
+	Expect(gate.advance(player, 0.25F), "animation lock gate should open once cancel window is reached");
+	Expect(!player.animationLock.active, "animation lock gate should clear active lock at cancel window");
+	Expect(events.events().size() == 1 && events.events()[0].type == dev::MovementEventType::AnimationUnlocked, "animation lock gate should emit animation unlock event");
 }
 
 void TestCommandReplayProducesSameEventSequence()
@@ -582,6 +630,19 @@ void TestSimulationPlayerUpdaterAdvancesPlayerMovement()
 	Expect(!movementEvents.events().empty() && movementEvents.events()[0].type == dev::MovementEventType::StepCommitted, "simulation player updater should emit movement events");
 }
 
+void TestSimulationEnemyUpdaterAdvancesEnemyMovement()
+{
+	dev::SimulationWorld world;
+	world.players.push_back(MakePlayer({ 4, 0 }));
+	world.enemies.push_back(MakeEnemy({ 0, 0 }));
+	world.enemies[0].tuning.maxStepsPerTick = 1;
+
+	dev::SimulationEnemyUpdater {}.update(world, 0.016F);
+
+	Expect(world.enemies[0].position.tile == dev::Point { 1, 0 }, "simulation enemy updater should advance enemies toward the player target");
+	Expect(world.enemies[0].moveState == dev::EnemyMoveState::Pursuing, "simulation enemy updater should preserve enemy movement state");
+}
+
 void TestSimulationTickDispatchesMovementAndCombat()
 {
 	dev::SimulationWorld world;
@@ -749,6 +810,22 @@ void TestEffectApplierAppliesHitStopToClock()
 	dev::SimulationTimeStep step = clock.step(0.01F);
 	Expect(step.playerDeltaSeconds == 0.0F, "applied hit-stop should freeze player actor time");
 	Expect(step.enemyDeltaSeconds == 0.0F, "applied hit-stop should freeze enemy actor time");
+}
+
+void TestSimulationTimeStepBuilderUsesClock()
+{
+	dev::SimulationClock clock;
+	clock.setTimeScale(0.5F);
+	clock.triggerHitStop(0.25F);
+	dev::SimulationTimeStepBuilder builder { &clock };
+
+	dev::SimulationTimeStep stopped = builder.build(0.10F);
+	dev::SimulationTimeStep scaled = builder.build(0.20F);
+
+	Expect(Near(stopped.rawDeltaSeconds, 0.10F), "time step builder should preserve raw delta during hit-stop");
+	Expect(stopped.playerDeltaSeconds == 0.0F, "time step builder should freeze player time through clock hit-stop");
+	Expect(Near(scaled.playerDeltaSeconds, 0.025F), "time step builder should apply clock time scale after hit-stop remainder");
+	Expect(Near(scaled.enemyDeltaSeconds, 0.025F), "time step builder should apply scaled actor time to enemies");
 }
 
 void TestSimulationEffectPipelineRoutesAndAppliesEffects()
@@ -4948,6 +5025,8 @@ int main()
 	TestDiagonalCornerPolicyBlocksCornerCutting();
 	TestActionExecutorWaitsOutOfRange();
 	TestMoveThenActEventSequence();
+	TestPlayerPathStepperReportsActionReady();
+	TestPlayerAnimationLockGateBlocksUntilCancelWindow();
 	TestCommandReplayProducesSameEventSequence();
 	TestMovementCodecRoundTrip();
 	TestEnemyPursuitObeysStepBudget();
@@ -4961,6 +5040,7 @@ int main()
 	TestEnemyAttackResolvesCombatAgainstPlayer();
 	TestSimulationCommandDrainerDispatchesQueuedMovementCommands();
 	TestSimulationPlayerUpdaterAdvancesPlayerMovement();
+	TestSimulationEnemyUpdaterAdvancesEnemyMovement();
 	TestSimulationTickDispatchesMovementAndCombat();
 	TestSimulationPolicyPausedDoesNotDrainCommands();
 	TestSimulationClockHitStopFreezesActorUpdates();
@@ -4968,6 +5048,7 @@ int main()
 	TestEffectRouterMapsMovementEventsToRequests();
 	TestEffectRouterMapsCombatHitToRequests();
 	TestEffectApplierAppliesHitStopToClock();
+	TestSimulationTimeStepBuilderUsesClock();
 	TestSimulationEffectPipelineRoutesAndAppliesEffects();
 	TestSimulationFrameEventCaptureCollectsForwardsAndRestoresSinks();
 	TestSimulationFrameFinalizerAppliesConsequences();

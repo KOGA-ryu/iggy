@@ -5,19 +5,19 @@
 namespace dev {
 
 SimulationFrameRunner::SimulationFrameRunner(SimulationClock *clock)
-    : clock_(clock)
+    : timeSteps_(clock)
     , finalizer_(clock)
 {
 }
 
 SimulationFrameEvents SimulationFrameRunner::run(SimulationWorld &world, float rawDeltaSeconds) const
 {
-	return run(world, buildTimeStep(rawDeltaSeconds));
+	return run(world, timeSteps_.build(rawDeltaSeconds));
 }
 
 SimulationFrameEvents SimulationFrameRunner::run(SimulationWorld &world, float rawDeltaSeconds, const SimulationFramePolicy &policy) const
 {
-	return run(world, buildTimeStep(rawDeltaSeconds), policy);
+	return run(world, timeSteps_.build(rawDeltaSeconds), policy);
 }
 
 SimulationFrameEvents SimulationFrameRunner::run(SimulationWorld &world, const SimulationTimeStep &timeStep) const
@@ -34,13 +34,6 @@ SimulationFrameEvents SimulationFrameRunner::run(SimulationWorld &world, const S
 	finalizer_.finalize(world, frameEvents);
 
 	return frameEvents;
-}
-
-SimulationTimeStep SimulationFrameRunner::buildTimeStep(float rawDeltaSeconds) const
-{
-	if (clock_ != nullptr)
-		return clock_->step(rawDeltaSeconds);
-	return SimulationTimeStep::fromRawDelta(rawDeltaSeconds);
 }
 
 } // namespace dev

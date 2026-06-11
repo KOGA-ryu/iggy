@@ -1,7 +1,5 @@
 #include "SimulationTick.hpp"
 
-#include "enemies/EnemyMovement.hpp"
-
 namespace dev {
 
 void SimulationTick::update(SimulationWorld &world, float deltaSeconds) const
@@ -28,10 +26,8 @@ void SimulationTick::update(SimulationWorld &world, const SimulationTimeStep &ti
 	if (policy.updatePlayers)
 		players_.update(world, timeStep.playerDeltaSeconds);
 
-	if (policy.updateEnemies && timeStep.enemyDeltaSeconds > 0.0F && !world.players.empty()) {
-		EnemyMovement enemyMovement { world.map, world.collision, world.movementEvents, &world.combat };
-		enemyMovement.update(world.enemies, world.players.front(), timeStep.enemyDeltaSeconds);
-	}
+	if (policy.updateEnemies)
+		enemies_.update(world, timeStep.enemyDeltaSeconds);
 }
 
 } // namespace dev

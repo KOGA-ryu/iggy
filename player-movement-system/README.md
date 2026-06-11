@@ -133,6 +133,8 @@ RawInputEvent
   -> PathFinder::findPath
   -> WalkPath
   -> PlayerMovement::update
+  -> PlayerAnimationLockGate::advance
+  -> PlayerPathStepper::step
 ```
 
 For click-to-interact movement:
@@ -147,6 +149,7 @@ RawInputEvent
   -> CommandDispatcher
   -> PlayerController
   -> PlayerMovement
+  -> PlayerPathStepper
   -> ActionExecutor
 ```
 
@@ -168,6 +171,10 @@ ActorPosition
 WalkPath
   fixed-size queue of committed tile steps
 
+PlayerPathStepper
+  consumes one queued path step, checks late collision, commits position, and
+  reports when arrival makes a destination action ready
+
 PathCostTuning
   pathfinding taste, such as diagonal vs axis-aligned preference
 
@@ -179,6 +186,10 @@ MovementModifiers
 
 AnimationLock
   movement cancel timing and commitment windows
+
+PlayerAnimationLockGate
+  advances animation commitment timers and blocks movement until the cancel
+  window opens
 
 DestinationAction
   action to perform after movement reaches range
@@ -286,6 +297,10 @@ SimulationPlayerUpdater
   simulation-layer player actor stage that advances path movement and executes
   ready destination actions through ActionExecutor
 
+SimulationEnemyUpdater
+  simulation-layer enemy actor stage that advances pursuit, windup, recovery,
+  and enemy attack resolution against the current player target
+
 SimulationFramePolicy
   mode-level rule set for whether a frame accepts commands, advances players,
   or advances enemies
@@ -293,6 +308,10 @@ SimulationFramePolicy
 SimulationClock / SimulationTimeStep
   converts raw frame time into actor time, supporting time scale and hit-stop
   without pushing time rules into movement, enemy, or combat systems
+
+SimulationTimeStepBuilder
+  frame-runner boundary that converts raw delta into SimulationTimeStep, using
+  SimulationClock when time scale or hit-stop is active
 
 SimulationFrameEvents / SimulationFrameRunner
   collects per-frame facts and returns frame output for presentation

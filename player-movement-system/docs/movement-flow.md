@@ -128,11 +128,22 @@ It only delivers the player into `Acting`.
 
 ```text
 PlayerMovement consumes path
+  -> PlayerAnimationLockGate
+  -> PlayerPathStepper
   -> PlayerMoveState::Acting
   -> ActionExecutor
   -> ActionRules
   -> AnimationLock
 ```
+
+`PlayerPathStepper` is deliberately narrower than pathfinding. Pathfinding picks
+a route; the stepper consumes one queued route tile, checks whether that tile is
+still legal, commits the player position, and reports whether arrival should
+hand control to the action executor.
+
+`PlayerAnimationLockGate` runs before path stepping. It lets animation
+commitment block movement for a predictable window, then emits
+`AnimationUnlocked` when input may affect the actor again.
 
 The executor owns questions like:
 
@@ -268,6 +279,7 @@ CommandQueue
   -> SimulationPlayerUpdater
   -> PlayerMovement
   -> ActionExecutor
+  -> SimulationEnemyUpdater
   -> EnemyMovement
   -> CombatSystem
 ```
@@ -276,9 +288,10 @@ The order matters. Commands are drained first so fresh input can affect this
 frame. `SimulationPlayerUpdater` then owns the player-side actor wiring:
 `PlayerMovement` plus the `ActionExecutor` that resolves ready destination
 actions. Player movement updates before enemy movement so enemies respond to the
-latest committed player position. Actions and combat consequences happen inside
-those actor updates, but still publish events instead of directly owning UI,
-audio, VFX, or networking.
+latest committed player position. `SimulationEnemyUpdater` owns the enemy-side
+actor wiring and target guard before calling `EnemyMovement`. Actions and combat
+consequences happen inside those actor updates, but still publish events instead
+of directly owning UI, audio, VFX, or networking.
 
 This is the first point that starts to look like a small game loop.
 
@@ -315,6 +328,7 @@ running system receives.
 ```text
 raw frame delta
   -> SimulationClock
+  -> SimulationTimeStepBuilder
   -> SimulationTimeStep
   -> SimulationTick
   -> player delta / enemy delta / animation delta
@@ -330,6 +344,8 @@ hit-stop    consumes raw time before actors advance
 This lets impact freeze movement and enemy windup without teaching pathfinding,
 commands, combat, or input mapping about hit-stop. Commands can still be
 accepted during hit-stop, but actor updates wait until actor time resumes.
+`SimulationTimeStepBuilder` is the frame-runner boundary that decides whether
+raw delta passes straight through or is consumed by `SimulationClock` first.
 
 ## 18. Effect Routing
 
@@ -375,6 +391,7 @@ The frame runner turns the pieces into a normal loop:
 
 ```text
 SimulationFrameRunner
+  -> SimulationTimeStepBuilder
   -> SimulationClock::step
   -> SimulationTick
   -> SimulationFrameEventCapture

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "simulation/SimulationCommandDrainer.hpp"
+#include "simulation/SimulationEnemyUpdater.hpp"
 #include "simulation/SimulationFramePolicy.hpp"
 #include "simulation/SimulationPlayerUpdater.hpp"
 #include "simulation/SimulationTimeStep.hpp"
@@ -18,6 +19,7 @@ public:
 private:
 	SimulationCommandDrainer commands_;
 	SimulationPlayerUpdater players_;
+	SimulationEnemyUpdater enemies_;
 };
 
 } // namespace dev

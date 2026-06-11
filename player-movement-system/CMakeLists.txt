@@ -57,9 +57,11 @@ add_library(player_movement_system
   src/interaction/InteractionCommandBuilder.cpp
   src/interaction/InteractionIntentBuilder.cpp
   src/network/MovementCodec.cpp
+  src/player/PlayerAnimationLockGate.cpp
   src/player/PlayerActionGate.cpp
   src/player/PlayerController.cpp
   src/player/PlayerMovement.cpp
+  src/player/PlayerPathStepper.cpp
   src/player/WalkPath.cpp
   src/replay/CommandLog.cpp
   src/replay/CommandReplayer.cpp
@@ -81,6 +83,7 @@ add_library(player_movement_system
   src/session/GameSession.cpp
   src/simulation/SimulationClock.cpp
   src/simulation/SimulationCommandDrainer.cpp
+  src/simulation/SimulationEnemyUpdater.cpp
   src/simulation/SimulationEffectPipeline.cpp
   src/simulation/SimulationFrameEventCapture.cpp
   src/simulation/SimulationFrameFinalizer.cpp
@@ -89,6 +92,7 @@ add_library(player_movement_system
   src/simulation/SimulationFrameRunner.cpp
   src/simulation/SimulationPlayerUpdater.cpp
   src/simulation/SimulationTimeStep.cpp
+  src/simulation/SimulationTimeStepBuilder.cpp
   src/simulation/SimulationTick.cpp
   src/simulation/SimulationWorld.cpp
   src/simulation/WorldEntityService.cpp
