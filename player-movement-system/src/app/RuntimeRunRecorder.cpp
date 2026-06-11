@@ -3,6 +3,7 @@
 #include "app/RuntimeInputDrainReportRecorder.hpp"
 #include "app/RuntimeInventoryCommandReportRecorder.hpp"
 #include "app/RuntimeInventoryScriptReportRecorder.hpp"
+#include "app/RuntimeSessionCommandReportRecorder.hpp"
 
 #include <utility>
 
@@ -45,11 +46,7 @@ void RuntimeRunRecorder::recordRawInputDrainResult(RuntimeInputDrainResult resul
 
 void RuntimeRunRecorder::recordSessionCommandResults(std::vector<SessionCommandResult> results)
 {
-	result_.summary.sessionCommandResults.insert(
-	    result_.summary.sessionCommandResults.end(),
-	    results.begin(),
-	    results.end());
-	frame_.sessionCommandResults = std::move(results);
+	RuntimeSessionCommandReportRecorder {}.record(std::move(results), frame_, result_.summary);
 }
 
 void RuntimeRunRecorder::recordInventoryScriptResults(std::vector<InventoryScriptRunResult> results)

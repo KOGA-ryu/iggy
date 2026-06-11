@@ -228,6 +228,7 @@ Good first tests:
 - RuntimeInputDrainReportRecorder copies drain results into frame and run reports
 - RuntimeInventoryScriptReportRecorder records script results and flattens command results
 - RuntimeInventoryCommandReportRecorder appends direct command results to frame and run reports
+- RuntimeSessionCommandReportRecorder records frame and aggregate session command results
 - RuntimeFrameSettings defaults to zero frames at a sixty hertz timestep
 - RuntimeFrameRunner routes sources and records one bounded frame
 - RuntimeFrameLoopRunner runs the configured bounded frame count

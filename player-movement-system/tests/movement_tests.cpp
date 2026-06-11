@@ -58,6 +58,7 @@
 #include "app/RuntimeRunFailurePolicy.hpp"
 #include "app/RuntimeRunRecorder.hpp"
 #include "app/RuntimeRunSummaryText.hpp"
+#include "app/RuntimeSessionCommandReportRecorder.hpp"
 #include "app/RuntimeSessionInputRouter.hpp"
 #include "app/RuntimeSessionModeTogglePolicy.hpp"
 #include "app/RuntimeSetupFailurePolicy.hpp"
@@ -7246,6 +7247,34 @@ void TestRuntimeInventoryCommandReportRecorderAppendsDirectCommandResults()
 	Expect(summary.inventoryCommandResults.size() == 2 && summary.inventoryCommandResults[1].command.type == dev::InventoryCommandType::UnequipSlot, "runtime inventory command report recorder should append direct command result to summary");
 }
 
+void TestRuntimeSessionCommandReportRecorderReplacesFrameAndAggregatesSummary()
+{
+	dev::RuntimeFrameReport frame;
+	dev::RuntimeRunSummary summary;
+	frame.sessionCommandResults.push_back({
+	    .type = dev::SessionCommandResultType::Rejected,
+	    .command = { .type = dev::SessionCommandType::SetMode, .mode = dev::GameSessionMode::Paused },
+	});
+	summary.sessionCommandResults.push_back({
+	    .type = dev::SessionCommandResultType::Applied,
+	    .command = { .type = dev::SessionCommandType::StartNewGame },
+	});
+
+	dev::RuntimeSessionCommandReportRecorder {}.record(
+	    {
+	        {
+	            .type = dev::SessionCommandResultType::Applied,
+	            .command = { .type = dev::SessionCommandType::SetMode, .mode = dev::GameSessionMode::Inventory },
+	        },
+	    },
+	    frame,
+	    summary);
+
+	Expect(frame.sessionCommandResults.size() == 1 && frame.sessionCommandResults[0].command.mode == std::optional<dev::GameSessionMode> { dev::GameSessionMode::Inventory }, "runtime session command report recorder should replace frame session results with current frame results");
+	Expect(summary.sessionCommandResults.size() == 2 && summary.sessionCommandResults[0].command.type == dev::SessionCommandType::StartNewGame, "runtime session command report recorder should preserve existing summary session results");
+	Expect(summary.sessionCommandResults.size() == 2 && summary.sessionCommandResults[1].command.mode == std::optional<dev::GameSessionMode> { dev::GameSessionMode::Inventory }, "runtime session command report recorder should append current frame results to summary");
+}
+
 void TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz()
 {
 	dev::RuntimeFrameSettings frame;
@@ -9656,6 +9685,7 @@ int main()
 	TestRuntimeInputDrainReportRecorderCopiesFrameAndAggregatesSummary();
 	TestRuntimeInventoryScriptReportRecorderKeepsScriptsAndFlattensCommands();
 	TestRuntimeInventoryCommandReportRecorderAppendsDirectCommandResults();
+	TestRuntimeSessionCommandReportRecorderReplacesFrameAndAggregatesSummary();
 	TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz();
 	TestRuntimeRunSummaryDefaultsToEmptyRun();
 	TestRuntimeRunRecorderAggregatesSetupInventoryResultsWithoutFrame();

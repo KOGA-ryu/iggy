@@ -1346,6 +1346,10 @@ results. It appends those results after any script-flattened command results, so
 the frame report preserves source order while the run summary keeps one
 aggregate inventory command list.
 
+`RuntimeSessionCommandReportRecorder` owns session command results. The frame
+report receives the current frame's lifecycle command results, while the run
+summary appends them to the cross-frame lifecycle history.
+
 `RuntimeOutputSettings` groups the app shell's optional artifact destinations:
 
 ```text

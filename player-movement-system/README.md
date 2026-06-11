@@ -788,6 +788,10 @@ RuntimeInventoryCommandReportRecorder
   app-layer recorder that appends direct runtime inventory command results to
   frame and run inventory command reports without replacing script results
 
+RuntimeSessionCommandReportRecorder
+  app-layer recorder that keeps current-frame session command results on the
+  frame report while aggregating all session command results into the run summary
+
 RuntimeFinalModeRecorder
   app-layer recorder that captures the GameSession's final mode onto
   GameLoopResult before output artifacts are written
