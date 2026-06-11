@@ -49,6 +49,10 @@ src/events
   Publishes semantic movement/action events for tests, debugging, UI, audio, VFX,
   replay, and telemetry.
 
+src/effects
+  Converts movement and combat facts into presentation requests such as sounds,
+  VFX, damage numbers, feedback, and hit-stop.
+
 src/replay
   Records and replays semantic movement commands.
 
@@ -195,4 +199,8 @@ SimulationFramePolicy
 SimulationClock / SimulationTimeStep
   converts raw frame time into actor time, supporting time scale and hit-stop
   without pushing time rules into movement, enemy, or combat systems
+
+EffectRouter
+  maps factual movement/combat events into presentation requests without letting
+  simulation systems know about UI, audio, VFX, rumble, or camera code
 ```

@@ -8,6 +8,8 @@
 #include "combat/CombatResolver.hpp"
 #include "combat/CombatSystem.hpp"
 #include "commands/CommandDispatcher.hpp"
+#include "effects/EffectRecorder.hpp"
+#include "effects/EffectRouter.hpp"
 #include "enemies/EnemyMovement.hpp"
 #include "events/EventRecorder.hpp"
 #include "focus/InputFocus.hpp"
@@ -495,6 +497,50 @@ void TestSimulationClockScalesEnemyWindup()
 	Expect(combatEvents.events().size() == 1, "scaled windup should emit one combat event when it completes");
 }
 
+void TestEffectRouterMapsMovementEventsToRequests()
+{
+	dev::EffectRecorder effects;
+	dev::EffectRouter router { effects };
+
+	router.route(dev::MovementEvent {
+	    .type = dev::MovementEventType::StepCommitted,
+	    .tile = { 2, 3 },
+	});
+	router.route(dev::MovementEvent {
+	    .type = dev::MovementEventType::PathBlocked,
+	    .tile = { 3, 3 },
+	});
+
+	const std::vector<dev::EffectRequest> &requests = effects.requests();
+	Expect(requests.size() == 2, "movement effects should emit two requests");
+	Expect(requests.size() == 2 && requests[0].type == dev::EffectRequestType::Footstep, "step should create footstep effect");
+	Expect(requests.size() == 2 && requests[0].tile == dev::Point { 2, 3 }, "footstep should keep event tile");
+	Expect(requests.size() == 2 && requests[1].type == dev::EffectRequestType::BlockedFeedback, "blocked path should create feedback effect");
+}
+
+void TestEffectRouterMapsCombatHitToRequests()
+{
+	dev::EffectRecorder effects;
+	dev::EffectRouter router { effects };
+	dev::Target target { .type = dev::TargetType::Enemy, .id = 30, .tile = { 4, 1 } };
+
+	router.route(dev::CombatEvent {
+	    .type = dev::CombatEventType::Hit,
+	    .target = target,
+	    .damage = 7,
+	    .remainingHitPoints = 3,
+	    .result = dev::CombatResultType::Hit,
+	});
+
+	const std::vector<dev::EffectRequest> &requests = effects.requests();
+	Expect(requests.size() == 3, "combat hit should emit damage, impact, and hit-stop requests");
+	Expect(requests.size() == 3 && requests[0].type == dev::EffectRequestType::DamageNumber, "combat hit should create damage number");
+	Expect(requests.size() == 3 && requests[0].damage == 7, "damage number should preserve damage");
+	Expect(requests.size() == 3 && requests[1].type == dev::EffectRequestType::HitImpact, "combat hit should create impact request");
+	Expect(requests.size() == 3 && requests[2].type == dev::EffectRequestType::HitStop, "combat hit should create hit-stop request");
+	Expect(requests.size() == 3 && requests[2].durationSeconds > 0.0F, "hit-stop request should include duration");
+}
+
 } // namespace
 
 int main()
@@ -518,6 +564,8 @@ int main()
 	TestSimulationPolicyPausedDoesNotDrainCommands();
 	TestSimulationClockHitStopFreezesActorUpdates();
 	TestSimulationClockScalesEnemyWindup();
+	TestEffectRouterMapsMovementEventsToRequests();
+	TestEffectRouterMapsCombatHitToRequests();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

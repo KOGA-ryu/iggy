@@ -326,3 +326,26 @@ hit-stop    consumes raw time before actors advance
 This lets impact freeze movement and enemy windup without teaching pathfinding,
 commands, combat, or input mapping about hit-stop. Commands can still be
 accepted during hit-stop, but actor updates wait until actor time resumes.
+
+## 18. Effect Routing
+
+Movement and combat events are factual. Effects are requests for presentation or
+feel:
+
+```text
+MovementEvent::StepCommitted -> EffectRequest::Footstep
+MovementEvent::PathBlocked   -> EffectRequest::BlockedFeedback
+CombatEvent::Hit             -> DamageNumber + HitImpact + HitStop
+CombatEvent::Defeated        -> DamageNumber + DefeatCue + HitStop
+```
+
+The split matters:
+
+```text
+simulation says what happened
+effect routing says how the player should notice
+presentation systems decide how to render it
+```
+
+This keeps combat free of UI, audio, VFX, rumble, camera shake, and time-control
+dependencies while still giving hits, steps, and blocked paths immediate feel.

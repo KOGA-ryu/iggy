@@ -40,6 +40,8 @@ Good first tests:
 - SimulationFramePolicy can pause command draining and movement
 - SimulationClock hit-stop freezes actor updates while preserving command intake
 - SimulationClock time scale slows enemy attack windup
+- EffectRouter maps movement events to feedback requests
+- EffectRouter maps combat hits to damage, impact, and hit-stop requests
 
 Run them with:
 
