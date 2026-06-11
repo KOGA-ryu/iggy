@@ -19,11 +19,7 @@ void SimulationTick::update(SimulationWorld &world, const SimulationTimeStep &ti
 
 void SimulationTick::update(SimulationWorld &world, const SimulationTimeStep &timeStep, const SimulationFramePolicy &policy) const
 {
-	if (policy.acceptCommands) {
-		commands_.drain(world);
-	}
-
-	actors_.update(world, timeStep, policy);
+	pipeline_.run(world, timeStep, policy);
 }
 
 } // namespace dev

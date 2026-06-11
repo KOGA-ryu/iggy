@@ -420,8 +420,11 @@ CombatEvent
   observable combat consequence such as Hit, Defeated, damage, and remaining HP
 
 SimulationTick
-  frame-level coordinator that drains commands, updates player movement, updates
-  enemy pressure, and lets actions resolve through combat
+  frame-level adapter that builds/defaults tick inputs and runs
+  SimulationTickPipeline
+
+SimulationTickPipeline
+  frame-level simulation order that applies command intake before actor updates
 
 SimulationCommandDrainer
   simulation-layer command intake stage that drains queued semantic movement

@@ -163,6 +163,7 @@ add_library(player_movement_system
   src/simulation/SimulationTimeStep.cpp
   src/simulation/SimulationTimeStepBuilder.cpp
   src/simulation/SimulationTick.cpp
+  src/simulation/SimulationTickPipeline.cpp
   src/simulation/SimulationWorld.cpp
   src/simulation/WorldEntityService.cpp
   src/targeting/TargetRegistry.cpp

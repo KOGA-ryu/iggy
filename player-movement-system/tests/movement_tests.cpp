@@ -152,6 +152,7 @@
 #include "simulation/SimulationPlayerUpdater.hpp"
 #include "simulation/SimulationTargetFinalizer.hpp"
 #include "simulation/SimulationTick.hpp"
+#include "simulation/SimulationTickPipeline.hpp"
 #include "simulation/SimulationTimeStepBuilder.hpp"
 #include "simulation/WorldEntityService.hpp"
 #include "targeting/Target.hpp"
@@ -1277,6 +1278,56 @@ void TestSimulationActorUpdaterCanSkipEnemies()
 
 	Expect(world.players[0].position.tile == dev::Point { 4, 0 }, "simulation actor updater should still update players during prediction");
 	Expect(world.enemies[0].position.tile == dev::Point { 0, 0 }, "simulation actor updater should skip enemies when policy disables enemies");
+}
+
+void TestSimulationTickPipelineDrainsCommandsBeforeActors()
+{
+	dev::SimulationWorld world;
+	world.players.push_back(MakePlayer({ 0, 0 }));
+	world.commandQueue.push({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	    .destinationAction = std::nullopt,
+	});
+
+	dev::SimulationTickPipeline {}.run(
+	    world,
+	    dev::SimulationTimeStep::fromRawDelta(0.016F),
+	    dev::SimulationFramePolicy::forMode(dev::SimulationMode::Gameplay));
+
+	dev::MovementCommand command;
+	Expect(!world.commandQueue.tryPop(command), "simulation tick pipeline should drain accepted commands before actor updates");
+	Expect(world.players[0].position.tile == dev::Point { 1, 0 }, "simulation tick pipeline should let drained commands affect actors in the same tick");
+}
+
+void TestSimulationTickPipelineCanSkipCommandIntake()
+{
+	dev::SimulationWorld world;
+	world.players.push_back(MakePlayer({ 0, 0 }));
+	world.players[0].path.pushStep({ 1, 0 });
+	world.players[0].moveState = dev::PlayerMoveState::Pathing;
+	world.commandQueue.push({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 2, 0 },
+	    .destinationAction = std::nullopt,
+	});
+	dev::SimulationFramePolicy policy {
+	    .acceptCommands = false,
+	    .updatePlayers = true,
+	    .updateEnemies = false,
+	};
+
+	dev::SimulationTickPipeline {}.run(
+	    world,
+	    dev::SimulationTimeStep::fromRawDelta(0.016F),
+	    policy);
+
+	dev::MovementCommand command;
+	Expect(world.commandQueue.tryPop(command), "simulation tick pipeline should preserve commands when intake is disabled");
+	Expect(command.destination == dev::Point { 2, 0 }, "simulation tick pipeline should leave preserved command payload intact");
+	Expect(world.players[0].position.tile == dev::Point { 1, 0 }, "simulation tick pipeline should still run enabled actor stages");
 }
 
 void TestSimulationTickDispatchesMovementAndCombat()
@@ -7526,6 +7577,8 @@ int main()
 	TestSimulationEnemyUpdaterSkipsWithoutTarget();
 	TestSimulationActorUpdaterRunsPlayersBeforeEnemies();
 	TestSimulationActorUpdaterCanSkipEnemies();
+	TestSimulationTickPipelineDrainsCommandsBeforeActors();
+	TestSimulationTickPipelineCanSkipCommandIntake();
 	TestSimulationTickDispatchesMovementAndCombat();
 	TestSimulationPolicyPausedDoesNotDrainCommands();
 	TestSimulationClockHitStopFreezesActorUpdates();

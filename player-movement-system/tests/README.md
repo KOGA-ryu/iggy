@@ -64,6 +64,7 @@ Good first tests:
 - SimulationEnemyMovementRunner wires world services into EnemyMovement
 - SimulationEnemyUpdater advances enemy movement against the current player target
 - SimulationActorUpdater runs players before enemies and can policy-skip enemy updates
+- SimulationTickPipeline drains commands before actors and can policy-skip command intake
 - SimulationTick drains queued commands, updates movement, and resolves combat
 - SimulationFramePolicy can pause command draining and movement
 - SimulationClock hit-stop freezes actor updates while preserving command intake

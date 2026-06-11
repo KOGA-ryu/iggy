@@ -332,6 +332,7 @@ The tick layer is where the separate systems become one frame:
 
 ```text
 CommandQueue
+  -> SimulationTickPipeline
   -> SimulationCommandDrainer
   -> CommandDispatcher
   -> PlayerController
@@ -347,8 +348,9 @@ CommandQueue
   -> CombatSystem
 ```
 
-The order matters. Commands are drained first so fresh input can affect this
-frame. `SimulationActorUpdater` then applies the frame policy and owns the actor
+The order matters. `SimulationTickPipeline` applies the frame policy at the
+tick-stage boundary. Commands are drained first so fresh input can affect this
+frame. `SimulationActorUpdater` then applies the actor policy and owns the actor
 order: players before enemies. `SimulationPlayerUpdater` delegates the
 player-side actor wiring to `SimulationPlayerMovementRunner`, which builds
 `PlayerMovement` plus the `ActionExecutor` that resolves ready destination
@@ -398,6 +400,7 @@ raw frame delta
   -> SimulationTimeStepBuilder
   -> SimulationTimeStep
   -> SimulationTick
+  -> SimulationTickPipeline
   -> SimulationActorUpdater
   -> player delta / enemy delta / animation delta
 ```
@@ -478,8 +481,10 @@ SimulationFrameRunner
 
 `SimulationFrameTickRunner` owns the tick-stage event boundary. It installs
 frame event capture, runs `SimulationTick`, restores the world's previous event
-sinks, and returns the collected events. That leaves `SimulationFrameRunner` to
-coordinate time-step building and post-tick finalization.
+sinks, and returns the collected events. `SimulationTick` adapts raw/default
+tick inputs into `SimulationTickPipeline`, which is the named gameplay order:
+command intake first, actor updates second. That leaves `SimulationFrameRunner`
+to coordinate time-step building and post-tick finalization.
 
 This gives each frame a clean consequence phase:
 
