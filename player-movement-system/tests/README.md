@@ -234,6 +234,8 @@ Good first tests:
 - RuntimeFrameEventReportRecorder records frame events and the latest summary snapshot
 - RuntimeFrameCompletionReportRecorder stores completed frames and counts frames run
 - RuntimeSetupInventoryCommandReportRecorder records setup command results without frames
+- RuntimeFrameEventDeltaCollector captures only session/inventory events emitted during a frame
+- RuntimeFramePolicyReportRecorder records the current simulation frame policy
 - RuntimeFrameSettings defaults to zero frames at a sixty hertz timestep
 - RuntimeFrameRunner routes sources and records one bounded frame
 - RuntimeFrameLoopRunner runs the configured bounded frame count

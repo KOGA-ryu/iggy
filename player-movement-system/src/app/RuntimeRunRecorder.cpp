@@ -2,6 +2,7 @@
 
 #include "app/RuntimeFrameCompletionReportRecorder.hpp"
 #include "app/RuntimeFrameEventReportRecorder.hpp"
+#include "app/RuntimeFramePolicyReportRecorder.hpp"
 #include "app/RuntimeInputDrainReportRecorder.hpp"
 #include "app/RuntimeInventoryCommandReportRecorder.hpp"
 #include "app/RuntimeInventoryScriptReportRecorder.hpp"
@@ -32,13 +33,12 @@ void RuntimeRunRecorder::recordSetupInventoryCommandResults(const std::vector<In
 void RuntimeRunRecorder::beginFrame()
 {
 	frame_ = {};
-	sessionEventOffset_ = sessionEvents_.events().size();
-	inventoryEventOffset_ = inventoryEvents_.events().size();
+	frameEventDeltas_.beginFrame(sessionEvents_, inventoryEvents_);
 }
 
 void RuntimeRunRecorder::recordFramePolicy(SimulationFramePolicyDescription description)
 {
-	frame_.framePolicy = description;
+	RuntimeFramePolicyReportRecorder {}.record(description, frame_);
 }
 
 void RuntimeRunRecorder::recordRawInputDrainResult(RuntimeInputDrainResult result)
@@ -78,27 +78,12 @@ void RuntimeRunRecorder::recordFrameEvents(SimulationFrameEvents events)
 
 void RuntimeRunRecorder::finishFrame()
 {
+	RuntimeFrameEventDeltas deltas = frameEventDeltas_.collect(sessionEvents_, inventoryEvents_);
 	RuntimeFrameCompletionReportRecorder {}.record(
-	    sessionEventsSinceFrameStart(),
-	    inventoryEventsSinceFrameStart(),
+	    std::move(deltas.sessionEvents),
+	    std::move(deltas.inventoryEvents),
 	    std::move(frame_),
 	    result_);
-}
-
-std::vector<SessionEvent> RuntimeRunRecorder::sessionEventsSinceFrameStart() const
-{
-	const std::vector<SessionEvent> &events = sessionEvents_.events();
-	if (sessionEventOffset_ >= events.size())
-		return {};
-	return { events.begin() + static_cast<std::ptrdiff_t>(sessionEventOffset_), events.end() };
-}
-
-std::vector<InventoryEvent> RuntimeRunRecorder::inventoryEventsSinceFrameStart() const
-{
-	const std::vector<InventoryEvent> &events = inventoryEvents_.events();
-	if (inventoryEventOffset_ >= events.size())
-		return {};
-	return { events.begin() + static_cast<std::ptrdiff_t>(inventoryEventOffset_), events.end() };
 }
 
 } // namespace dev

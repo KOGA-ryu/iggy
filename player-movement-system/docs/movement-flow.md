@@ -1369,6 +1369,15 @@ attaches the session and inventory event deltas captured during the frame,
 stores the completed frame report on the run result, and increments the run's
 finished-frame count.
 
+`RuntimeFrameEventDeltaCollector` owns the event-stream cursor for a frame. At
+frame start it snapshots the current session and inventory event counts; at
+frame completion it returns only the events emitted after that snapshot. That
+keeps lifecycle delta math out of the report writer.
+
+`RuntimeFramePolicyReportRecorder` owns the frame policy report assignment. The
+frame runner still chooses the policy from session mode, while the recorder
+stores the chosen policy description on the current frame report.
+
 `RuntimeSetupInventoryCommandReportRecorder` owns setup-phase inventory command
 reporting. Setup commands run before bounded frames begin, so their command
 results are appended to the run summary without creating a frame report or

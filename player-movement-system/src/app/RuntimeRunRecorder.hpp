@@ -1,8 +1,8 @@
 #pragma once
 
-#include <cstddef>
 #include <vector>
 
+#include "app/RuntimeFrameEventDeltaCollector.hpp"
 #include "app/RuntimeLoopTypes.hpp"
 #include "inventory/InventoryEventRecorder.hpp"
 #include "session/SessionEventRecorder.hpp"
@@ -29,15 +29,11 @@ public:
 	void finishFrame();
 
 private:
-	[[nodiscard]] std::vector<SessionEvent> sessionEventsSinceFrameStart() const;
-	[[nodiscard]] std::vector<InventoryEvent> inventoryEventsSinceFrameStart() const;
-
 	GameLoopResult &result_;
 	const SessionEventRecorder &sessionEvents_;
 	const InventoryEventRecorder &inventoryEvents_;
 	RuntimeFrameReport frame_;
-	std::size_t sessionEventOffset_ = 0;
-	std::size_t inventoryEventOffset_ = 0;
+	RuntimeFrameEventDeltaCollector frameEventDeltas_;
 };
 
 } // namespace dev

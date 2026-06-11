@@ -809,6 +809,14 @@ RuntimeFrameCompletionReportRecorder
   app-layer recorder that attaches session and inventory event deltas to a
   completed frame report, appends it to the run, and counts the finished frame
 
+RuntimeFrameEventDeltaCollector
+  app-layer frame lifecycle helper that snapshots session and inventory event
+  stream positions and returns only the events emitted during the active frame
+
+RuntimeFramePolicyReportRecorder
+  app-layer recorder that stores the simulation frame policy description on
+  the current frame report
+
 RuntimeSetupInventoryCommandReportRecorder
   app-layer recorder that appends setup-phase inventory command results to the
   run summary without creating or counting a runtime frame report

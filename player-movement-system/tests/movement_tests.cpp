@@ -26,8 +26,10 @@
 #include "app/RuntimeExitCodeMapper.hpp"
 #include "app/RuntimeExitCodePolicy.hpp"
 #include "app/RuntimeFrameCompletionReportRecorder.hpp"
+#include "app/RuntimeFrameEventDeltaCollector.hpp"
 #include "app/RuntimeFrameEventReportRecorder.hpp"
 #include "app/RuntimeFrameLoopRunner.hpp"
+#include "app/RuntimeFramePolicyReportRecorder.hpp"
 #include "app/RuntimeFramePolicyText.hpp"
 #include "app/RuntimeFrameRunner.hpp"
 #include "app/RuntimeInputContextBuilder.hpp"
@@ -7414,6 +7416,65 @@ void TestRuntimeSetupInventoryCommandReportRecorderAppendsOnlySummaryResults()
 	Expect(summary.framesRun == 0, "runtime setup inventory command report recorder should not count frames");
 }
 
+void TestRuntimeFrameEventDeltaCollectorCapturesEventsSinceBeginFrame()
+{
+	dev::SessionEventRecorder sessionEvents;
+	dev::InventoryEventRecorder inventoryEvents;
+	sessionEvents.emit({
+	    .type = dev::SessionEventType::GameStarted,
+	    .commandType = dev::SessionCommandType::StartNewGame,
+	});
+	inventoryEvents.emit({
+	    .type = dev::InventoryEventType::Rejected,
+	    .commandType = dev::InventoryCommandType::EquipItem,
+	    .commandResult = dev::InventoryCommandResultType::Rejected,
+	    .equipmentResult = dev::EquipmentResultType::MissingItem,
+	    .itemId = 2,
+	});
+
+	dev::RuntimeFrameEventDeltaCollector collector;
+	collector.beginFrame(sessionEvents, inventoryEvents);
+
+	sessionEvents.emit({
+	    .type = dev::SessionEventType::ModeChanged,
+	    .commandType = dev::SessionCommandType::SetMode,
+	    .mode = dev::GameSessionMode::Inventory,
+	});
+	inventoryEvents.emit({
+	    .type = dev::InventoryEventType::Equipped,
+	    .commandType = dev::InventoryCommandType::EquipItem,
+	    .commandResult = dev::InventoryCommandResultType::Applied,
+	    .equipmentResult = dev::EquipmentResultType::Equipped,
+	    .itemId = 3,
+	});
+
+	const dev::RuntimeFrameEventDeltas deltas = collector.collect(sessionEvents, inventoryEvents);
+
+	Expect(deltas.sessionEvents.size() == 1, "runtime frame event delta collector should ignore session events before frame start");
+	Expect(deltas.sessionEvents.size() == 1 && deltas.sessionEvents[0].mode == dev::GameSessionMode::Inventory, "runtime frame event delta collector should capture session events since frame start");
+	Expect(deltas.inventoryEvents.size() == 1, "runtime frame event delta collector should ignore inventory events before frame start");
+	Expect(deltas.inventoryEvents.size() == 1 && deltas.inventoryEvents[0].itemId == 3, "runtime frame event delta collector should capture inventory events since frame start");
+
+	collector.beginFrame(sessionEvents, inventoryEvents);
+	const dev::RuntimeFrameEventDeltas resetDeltas = collector.collect(sessionEvents, inventoryEvents);
+
+	Expect(resetDeltas.sessionEvents.empty(), "runtime frame event delta collector should reset session offset at the next frame start");
+	Expect(resetDeltas.inventoryEvents.empty(), "runtime frame event delta collector should reset inventory offset at the next frame start");
+}
+
+void TestRuntimeFramePolicyReportRecorderStoresCurrentFramePolicy()
+{
+	dev::RuntimeFrameReport frame;
+	frame.framePolicy = dev::SimulationFramePolicyDescriber {}.describe(dev::SimulationMode::Paused);
+	const dev::SimulationFramePolicyDescription inventory = dev::SimulationFramePolicyDescriber {}.describe(dev::SimulationMode::Inventory);
+
+	dev::RuntimeFramePolicyReportRecorder {}.record(inventory, frame);
+
+	Expect(frame.framePolicy.mode == dev::SimulationMode::Inventory, "runtime frame policy report recorder should replace frame policy mode");
+	Expect(!frame.framePolicy.policy.updatePlayers, "runtime frame policy report recorder should preserve movement policy gate");
+	Expect(std::string { frame.framePolicy.summary } == "hold world simulation while inventory owns input", "runtime frame policy report recorder should preserve policy summary");
+}
+
 void TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz()
 {
 	dev::RuntimeFrameSettings frame;
@@ -9830,6 +9891,8 @@ int main()
 	TestRuntimeFrameEventReportRecorderReplacesFrameAndSummaryEvents();
 	TestRuntimeFrameCompletionReportRecorderStoresFrameAndCountsRun();
 	TestRuntimeSetupInventoryCommandReportRecorderAppendsOnlySummaryResults();
+	TestRuntimeFrameEventDeltaCollectorCapturesEventsSinceBeginFrame();
+	TestRuntimeFramePolicyReportRecorderStoresCurrentFramePolicy();
 	TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz();
 	TestRuntimeRunSummaryDefaultsToEmptyRun();
 	TestRuntimeRunRecorderAggregatesSetupInventoryResultsWithoutFrame();
