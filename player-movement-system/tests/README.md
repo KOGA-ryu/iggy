@@ -185,6 +185,7 @@ Good first tests:
 - RuntimeOutputSettings defaults to no runtime artifact outputs
 - RuntimeOutputResult defaults to no artifact save attempts
 - RuntimeOutputFinalizer applies output settings and reports requested write failures
+- RuntimeArtifactOutputService applies configured artifact outputs and reports failures
 - RuntimeSetupRunner separates configured setup scripts from per-frame runtime sources
 - GameLoop saves configured run traces and reports trace write failures
 - RuntimeDebugManifest formats debug bundle manifest lines

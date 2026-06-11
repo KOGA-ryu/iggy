@@ -9,6 +9,7 @@
 
 #include "actions/ActionExecutor.hpp"
 #include "app/GameLoop.hpp"
+#include "app/RuntimeArtifactOutputService.hpp"
 #include "app/RuntimeDebugArtifactBundle.hpp"
 #include "app/RuntimeDebugArtifactLayout.hpp"
 #include "app/RuntimeDebugArtifactWriter.hpp"
@@ -5422,6 +5423,71 @@ void TestRuntimeOutputFinalizerLeavesDisabledOutputsUntouched()
 	Expect(!dev::RuntimeOutputFinalizer::failed(result.output), "runtime output finalizer should not fail when nothing was requested");
 }
 
+void TestRuntimeArtifactOutputServiceLeavesDisabledOutputsUntouched()
+{
+	dev::GameLoopResult result;
+	result.output.runTraceSaved = true;
+
+	dev::RuntimeOutputResult output = dev::RuntimeArtifactOutputService {}.apply(dev::RuntimeOutputSettings {}, result);
+
+	Expect(!output.runTraceSaveAttempted, "runtime artifact output service should not attempt trace without trace path");
+	Expect(output.runTraceSaved, "runtime artifact output service should preserve existing output flags when disabled");
+	Expect(!output.debugBundleSaveAttempted, "runtime artifact output service should not attempt bundle without bundle path");
+	Expect(!dev::RuntimeOutputFinalizer::failed(output), "runtime artifact output service should not fail when nothing was requested");
+}
+
+void TestRuntimeArtifactOutputServiceAppliesTraceAndBundleSettings()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_artifact_output_service_test";
+	const std::filesystem::path tracePath = root / "run.trace";
+	const std::filesystem::path bundlePath = root / "bundle";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::GameLoopResult result;
+	result.summary.framesRun = 1;
+	result.finalMode = dev::GameSessionMode::Gameplay;
+
+	dev::RuntimeOutputResult output = dev::RuntimeArtifactOutputService {}.apply(
+	    dev::RuntimeOutputSettings {
+	        .runTracePath = tracePath,
+	        .debugBundlePath = bundlePath,
+	    },
+	    result);
+	std::optional<std::vector<std::string>> trace = dev::RuntimeFrameTraceFileStore {}.load(tracePath);
+	std::optional<std::vector<std::string>> bundleManifest = dev::RuntimeFrameTraceFileStore {}.load(bundlePath / "manifest.txt");
+	std::optional<std::vector<std::string>> bundleTrace = dev::RuntimeFrameTraceFileStore {}.load(bundlePath / "run.trace");
+
+	Expect(output.runTraceSaveAttempted, "runtime artifact output service should attempt configured trace save");
+	Expect(output.runTraceSaved, "runtime artifact output service should report saved trace");
+	Expect(output.debugBundleSaveAttempted, "runtime artifact output service should attempt configured bundle save");
+	Expect(output.debugBundleSaved, "runtime artifact output service should report saved bundle");
+	Expect(trace.has_value() && !trace->empty(), "runtime artifact output service should save standalone trace");
+	Expect(bundleManifest.has_value() && ContainsLineFragment(*bundleManifest, "trace=run.trace saved=true"), "runtime artifact output service should save bundle manifest");
+	Expect(bundleTrace.has_value() && !bundleTrace->empty(), "runtime artifact output service should save bundle trace");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeArtifactOutputServiceReportsRequestedOutputFailure()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_artifact_output_service_failure_test";
+	const std::filesystem::path tracePath = root / "missing-parent" / "run.trace";
+	std::filesystem::remove_all(root);
+
+	dev::RuntimeOutputResult output = dev::RuntimeArtifactOutputService {}.apply(
+	    dev::RuntimeOutputSettings {
+	        .runTracePath = tracePath,
+	    },
+	    dev::GameLoopResult {});
+
+	Expect(output.runTraceSaveAttempted, "runtime artifact output service should attempt requested trace even when path is invalid");
+	Expect(!output.runTraceSaved, "runtime artifact output service should report failed trace save");
+	Expect(dev::RuntimeOutputFinalizer::failed(output), "runtime artifact output service should expose requested output failure");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestRuntimeOutputFinalizerSavesTraceAndBundle()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_output_finalizer_test";
@@ -7027,6 +7093,9 @@ int main()
 	TestRuntimeExitCodePolicyAllowsCommandRejections();
 	TestRuntimeExitCodePolicyFailsOutputErrors();
 	TestRuntimeOutputFinalizerLeavesDisabledOutputsUntouched();
+	TestRuntimeArtifactOutputServiceLeavesDisabledOutputsUntouched();
+	TestRuntimeArtifactOutputServiceAppliesTraceAndBundleSettings();
+	TestRuntimeArtifactOutputServiceReportsRequestedOutputFailure();
 	TestRuntimeOutputFinalizerSavesTraceAndBundle();
 	TestRuntimeOutputFinalizerReportsRequestedOutputFailure();
 	TestGameLoopSavesConfiguredRunTrace();

@@ -2,25 +2,14 @@
 
 namespace dev {
 
-RuntimeOutputFinalizer::RuntimeOutputFinalizer(
-    RuntimeTraceService traceService,
-    RuntimeDebugArtifactBundle debugBundle)
-    : traceService_(traceService)
-    , debugBundle_(debugBundle)
+RuntimeOutputFinalizer::RuntimeOutputFinalizer(RuntimeArtifactOutputService outputService)
+    : outputService_(outputService)
 {
 }
 
 void RuntimeOutputFinalizer::finalize(const RuntimeOutputSettings &settings, GameLoopResult &result) const
 {
-	if (settings.runTracePath.has_value()) {
-		result.output.runTraceSaveAttempted = true;
-		result.output.runTraceSaved = traceService_.saveRunTrace(*settings.runTracePath, result);
-	}
-
-	if (settings.debugBundlePath.has_value()) {
-		result.output.debugBundleSaveAttempted = true;
-		result.output.debugBundleSaved = debugBundle_.save(*settings.debugBundlePath, result).saved();
-	}
+	result.output = outputService_.apply(settings, result);
 }
 
 bool RuntimeOutputFinalizer::failed(const RuntimeOutputResult &result)

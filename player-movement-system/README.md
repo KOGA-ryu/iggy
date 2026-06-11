@@ -643,9 +643,14 @@ RuntimeOutputResult
   app-layer artifact result state that groups trace and debug bundle save
   attempts after GameLoop output finalization
 
+RuntimeArtifactOutputService
+  app-layer artifact output service that applies RuntimeOutputSettings,
+  saves configured run traces and debug bundles, and returns RuntimeOutputResult
+  flags for the caller
+
 RuntimeOutputFinalizer
-  app-layer use case that applies RuntimeOutputSettings to a GameLoopResult and
-  reports trace or debug bundle write failures
+  app-layer use case that writes RuntimeArtifactOutputService results back onto
+  GameLoopResult after the run lifecycle has produced final state
 
 RuntimeFrameReport
   per-frame report that groups routed input counts, runtime source results,

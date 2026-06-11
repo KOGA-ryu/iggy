@@ -1169,14 +1169,16 @@ GameLoopResult::output
 GameLoopResult
   -> RuntimeRunFinalizer
   -> RuntimeOutputFinalizer
+  -> RuntimeArtifactOutputService
   -> RuntimeTraceService
   -> RuntimeDebugArtifactBundle
 ```
 
 `RuntimeRunFinalizer` records the final session mode, then delegates configured
 artifact writes to `RuntimeOutputFinalizer`. That keeps `RuntimeRunExecutor`
-focused on lifecycle timing. Output finalization owns the app artifact policy
-and exposes the same success/failure flags on
+focused on lifecycle timing. `RuntimeOutputFinalizer` writes output results back
+onto `GameLoopResult`, while `RuntimeArtifactOutputService` owns the app
+artifact policy and exposes the same success/failure flags on
 `GameLoopResult::output`.
 
 `GameLoopSettings::output.runTracePath` lets the app shell persist a full run
