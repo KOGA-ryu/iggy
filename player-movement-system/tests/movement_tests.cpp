@@ -96,6 +96,7 @@
 #include "session/SessionCommandLogFileStore.hpp"
 #include "session/SessionCommandLogFrameCodec.hpp"
 #include "session/SessionCommandPacketByteCodec.hpp"
+#include "session/SessionCommandPacketListCodec.hpp"
 #include "session/SessionCommandPacketValidator.hpp"
 #include "session/SessionCommandReplayer.hpp"
 #include "session/SessionEventRecorder.hpp"
@@ -3702,6 +3703,52 @@ void TestSessionCommandLogChecksumValidatesTrailingChecksum()
 	Expect(!checksum.hasValidTrailingChecksum(bytes, 4), "session command log checksum should reject mutated payload");
 }
 
+void TestSessionCommandPacketListCodecFramesPacketBytes()
+{
+	dev::SessionCommandPacketByteCodec packetCodec;
+	std::vector<dev::SessionCommandBytes> packets {
+		packetCodec.encode({
+		    .commandType = static_cast<uint8_t>(dev::SessionCommandType::SaveSlot),
+		    .hasSlotId = 1,
+		    .slotId = 5,
+		}),
+		packetCodec.encode({
+		    .commandType = static_cast<uint8_t>(dev::SessionCommandType::SetMode),
+		    .hasMode = 1,
+		    .mode = static_cast<uint8_t>(dev::GameSessionMode::Inventory),
+		}),
+	};
+
+	dev::SessionCommandPacketListCodec codec;
+	dev::SessionCommandLogBytes bytes = codec.encode(packets);
+	std::optional<std::vector<dev::SessionCommandBytes>> decoded = codec.decode(bytes);
+
+	Expect(bytes.size() == 54, "session command packet list codec should write count and packet bytes");
+	Expect(bytes.size() == 54 && bytes[0] == 2 && bytes[1] == 0 && bytes[2] == 0 && bytes[3] == 0, "session command packet list codec should write count little-endian");
+	Expect(decoded.has_value() && *decoded == packets, "session command packet list codec should restore packet bytes");
+}
+
+void TestSessionCommandPacketListCodecRejectsInvalidSizes()
+{
+	dev::SessionCommandPacketByteCodec packetCodec;
+	std::vector<dev::SessionCommandBytes> packets {
+		packetCodec.encode({
+		    .commandType = static_cast<uint8_t>(dev::SessionCommandType::SaveSlot),
+		    .hasSlotId = 1,
+		    .slotId = 5,
+		}),
+	};
+
+	dev::SessionCommandPacketListCodec codec;
+	dev::SessionCommandLogBytes truncated = codec.encode(packets);
+	truncated.pop_back();
+	Expect(!codec.decode(truncated).has_value(), "session command packet list codec should reject truncated packet lists");
+
+	dev::SessionCommandLogBytes wrongCount = codec.encode(packets);
+	wrongCount[0] = 2;
+	Expect(!codec.decode(wrongCount).has_value(), "session command packet list codec should reject mismatched packet counts");
+}
+
 void TestSessionCommandLogFrameCodecFramesPacketBytes()
 {
 	dev::SessionCommandPacketByteCodec packetCodec;
@@ -3724,7 +3771,7 @@ void TestSessionCommandLogFrameCodecFramesPacketBytes()
 
 	Expect(bytes.size() == 66, "session command log frame codec should write header, packets, and checksum");
 	Expect(bytes.size() == 66 && bytes[0] == 'I' && bytes[1] == 'S' && bytes[2] == 'C' && bytes[3] == 'L', "session command log frame codec should write magic");
-	Expect(bytes.size() == 66 && bytes[4] == 1 && bytes[8] == 2, "session command log frame codec should write version and command count");
+	Expect(bytes.size() == 66 && bytes[4] == 1 && bytes[8] == 2, "session command log frame codec should write version and packet list count");
 	Expect(decoded.has_value() && decoded->size() == 2, "session command log frame codec should restore packet count");
 	Expect(decoded.has_value() && (*decoded)[0] == packets[0], "session command log frame codec should preserve first packet");
 	Expect(decoded.has_value() && (*decoded)[1] == packets[1], "session command log frame codec should preserve second packet");
@@ -6421,6 +6468,8 @@ int main()
 	TestSessionCommandLogCodecRoundTripsAndReplays();
 	TestSessionCommandLogCodecRejectsInvalidBytes();
 	TestSessionCommandLogChecksumValidatesTrailingChecksum();
+	TestSessionCommandPacketListCodecFramesPacketBytes();
+	TestSessionCommandPacketListCodecRejectsInvalidSizes();
 	TestSessionCommandLogFrameCodecFramesPacketBytes();
 	TestSessionCommandLogFrameCodecRejectsInvalidFrames();
 	TestSessionCommandLogFileStoreSavesLoadsAndReplays();

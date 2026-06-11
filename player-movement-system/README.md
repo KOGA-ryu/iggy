@@ -523,9 +523,13 @@ SessionCommandLogChecksum
   checksum boundary for lifecycle command log bytes, so replay-file integrity
   rules are testable outside the full log codec
 
+SessionCommandPacketListCodec
+  count-prefixed packet-list payload for lifecycle command logs, separate from
+  magic/version/checksum frame validation
+
 SessionCommandLogFrameCodec
-  replay-file frame boundary that owns magic, version, command count, packet
-  slicing, and checksum-protected frame validation
+  replay-file frame boundary that owns magic, version, and checksum-protected
+  frame validation around SessionCommandPacketListCodec payloads
 
 SessionCommandLogFileStore
   file persistence boundary for lifecycle command logs, so replay scripts can be

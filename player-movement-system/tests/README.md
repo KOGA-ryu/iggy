@@ -143,6 +143,7 @@ Good first tests:
 - SessionCommandLogCodec round-trips and replays lifecycle command logs
 - SessionCommandLogCodec rejects invalid lifecycle log bytes
 - SessionCommandLogChecksum appends and validates lifecycle log checksums
+- SessionCommandPacketListCodec frames counted packet lists and rejects invalid sizes
 - SessionCommandLogFrameCodec frames packet bytes and rejects invalid frame metadata
 - SessionCommandLogFileStore saves, loads, and replays lifecycle command log files
 - SessionCommandLogFileStore rejects corrupt and missing lifecycle command log files
