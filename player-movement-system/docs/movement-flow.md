@@ -1420,11 +1420,15 @@ booleans for their audience.
 `RuntimeRunSummaryText` does the same for the run-level count summary: the trace
 uses counts only, while the manifest asks for the same line with final mode
 included.
+`RuntimeInventoryScriptText` owns the spelling for configured and runtime
+inventory script outcomes: status, result count, applied commands, and rejected
+commands.
 `RuntimeMovementScriptText` owns the spelling for configured and runtime
 movement script replay outcomes: status, result count, accepted commands, and
-rejected commands. Traces use it for per-frame movement script details, while
-`RuntimeDebugManifest` uses it for setup and aggregate runtime summaries. That
-makes a debug bundle useful even before opening the full run trace.
+rejected commands. Traces use these formatters for per-frame script details,
+while `RuntimeDebugManifest` uses them for setup and aggregate runtime
+summaries. That makes a debug bundle useful even before opening the full run
+trace.
 
 `RuntimeFrameTraceFileStore` persists those readable lines:
 

@@ -1,6 +1,7 @@
 #include "RuntimeDebugManifest.hpp"
 
 #include "app/RuntimeFramePolicyText.hpp"
+#include "app/RuntimeInventoryScriptText.hpp"
 #include "app/RuntimeMovementScriptText.hpp"
 #include "app/RuntimeRunSummaryText.hpp"
 
@@ -46,6 +47,16 @@ std::vector<std::string> RuntimeDebugManifest::format(
 
 	if (result.setup.movementScriptRan) {
 		lines.push_back(RuntimeMovementScriptText {}.formatResult("setup movementScript", result.setup.movementScriptResult));
+	}
+
+	if (result.setup.inventoryScriptRan) {
+		lines.push_back(RuntimeInventoryScriptText {}.formatResult("setup inventoryScript", result.setup.inventoryScriptResult));
+	}
+
+	{
+		lines.push_back(RuntimeInventoryScriptText {}.formatAggregate(
+		    "runtime inventoryScripts",
+		    result.summary.runtimeInventoryScriptResults));
 	}
 
 	{

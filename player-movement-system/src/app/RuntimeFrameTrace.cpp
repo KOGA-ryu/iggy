@@ -1,6 +1,7 @@
 #include "RuntimeFrameTrace.hpp"
 
 #include "app/RuntimeFramePolicyText.hpp"
+#include "app/RuntimeInventoryScriptText.hpp"
 #include "app/RuntimeMovementScriptText.hpp"
 
 #include <sstream>
@@ -52,19 +53,6 @@ const char *ToString(SessionEventType type)
 		return "ModeChanged";
 	case SessionEventType::ModeChangeRejected:
 		return "ModeChangeRejected";
-	}
-	return "Unknown";
-}
-
-const char *ToString(InventoryScriptRunStatus status)
-{
-	switch (status) {
-	case InventoryScriptRunStatus::LoadFailed:
-		return "LoadFailed";
-	case InventoryScriptRunStatus::NoActivePlayer:
-		return "NoActivePlayer";
-	case InventoryScriptRunStatus::Completed:
-		return "Completed";
 	}
 	return "Unknown";
 }
@@ -296,9 +284,8 @@ std::vector<std::string> RuntimeFrameTrace::format(const RuntimeFrameReport &rep
 	for (std::size_t i = 0; i < report.inventoryScriptResults.size(); ++i) {
 		const InventoryScriptRunResult &result = report.inventoryScriptResults[i];
 		std::ostringstream line;
-		line << "inventoryScript[" << i << "] status=" << ToString(result.status)
-		     << " results=" << result.commandResults.size();
-		lines.push_back(line.str());
+		line << "inventoryScript[" << i << "]";
+		lines.push_back(RuntimeInventoryScriptText {}.formatResult(line.str(), result));
 	}
 
 	for (std::size_t i = 0; i < report.inventoryCommandResults.size(); ++i) {

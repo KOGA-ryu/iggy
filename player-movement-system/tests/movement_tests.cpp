@@ -22,6 +22,7 @@
 #include "app/RuntimeInputContextBuilder.hpp"
 #include "app/RuntimeInputRouter.hpp"
 #include "app/RuntimeInputSourceRouter.hpp"
+#include "app/RuntimeInventoryScriptText.hpp"
 #include "app/RuntimeMovementInputRouter.hpp"
 #include "app/RuntimeMovementScriptText.hpp"
 #include "app/RuntimeFrameTrace.hpp"
@@ -6004,7 +6005,7 @@ void TestRuntimeFrameTraceFormatsReadableLines()
 	Expect(ContainsLineFragment(lines, "movementQueued=1"), "runtime frame trace should include movement queue count");
 	Expect(ContainsLineFragment(lines, "policy mode=Gameplay acceptCommands=1 updatePlayers=1 updateEnemies=1"), "runtime frame trace should include frame policy gates");
 	Expect(ContainsLineFragment(lines, "reason=accept live input and advance all actors"), "runtime frame trace should include frame policy reason");
-	Expect(ContainsLineFragment(lines, "inventoryScript[0] status=Completed results=1"), "runtime frame trace should include inventory script detail");
+	Expect(ContainsLineFragment(lines, "inventoryScript[0] status=Completed results=1 applied=1 rejected=0"), "runtime frame trace should include inventory script detail");
 	Expect(ContainsLineFragment(lines, "inventoryResult[0] type=Applied command=EquipItem equipment=Equipped item=955 slot=Weapon"), "runtime frame trace should include equip result detail");
 	Expect(ContainsLineFragment(lines, "inventoryResult[1] type=Applied command=UnequipSlot equipment=Unequipped item=955 slot=Weapon"), "runtime frame trace should include unequip result detail");
 	Expect(ContainsLineFragment(lines, "inventoryEvent[0] type=Equipped command=EquipItem result=Applied equipment=Equipped item=955 slot=Weapon"), "runtime frame trace should include inventory event detail");
@@ -6025,6 +6026,33 @@ void TestRuntimeFramePolicyTextFormatsArtifactPolicyLines()
 	Expect(traceLine == "policy mode=Gameplay acceptCommands=1 updatePlayers=1 updateEnemies=1 reason=accept live input and advance all actors", "runtime frame policy text should format trace policy line");
 	Expect(manifestLine == "policy latest=Gameplay acceptCommands=true updatePlayers=true updateEnemies=true reason=accept live input and advance all actors", "runtime frame policy text should format manifest policy line");
 	Expect(noneLine == "policy latest=none", "runtime frame policy text should format missing policy line");
+}
+
+void TestRuntimeInventoryScriptTextFormatsResultsAndAggregates()
+{
+	dev::InventoryScriptRunResult completed {
+		.status = dev::InventoryScriptRunStatus::Completed,
+		.commandResults = {
+		    {
+		        .type = dev::InventoryCommandResultType::Applied,
+		        .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 100 },
+		    },
+		    {
+		        .type = dev::InventoryCommandResultType::Rejected,
+		        .command = { .type = dev::InventoryCommandType::UnequipSlot, .slot = dev::EquipmentSlot::Weapon },
+		    },
+		},
+	};
+	std::vector<dev::InventoryScriptRunResult> results {
+		completed,
+		{ .status = dev::InventoryScriptRunStatus::LoadFailed },
+		{ .status = dev::InventoryScriptRunStatus::NoActivePlayer },
+	};
+
+	dev::RuntimeInventoryScriptText formatter;
+
+	Expect(formatter.formatResult("inventoryScript[0]", completed) == "inventoryScript[0] status=Completed results=2 applied=1 rejected=1", "runtime inventory script text should format one script result");
+	Expect(formatter.formatAggregate("runtime inventoryScripts", results) == "runtime inventoryScripts=3 completed=1 loadFailed=1 noActivePlayer=1 applied=1 rejected=1", "runtime inventory script text should format aggregate script results");
 }
 
 void TestRuntimeMovementScriptTextFormatsResultsAndAggregates()
@@ -7108,6 +7136,7 @@ void TestRuntimeDebugArtifactBundleSavesManifestAndTrace()
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "run frames=1 frameReports=1"), "runtime debug bundle manifest should summarize run frame counts");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "finalMode=Gameplay"), "runtime debug bundle manifest should include final mode");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "policy latest=Gameplay acceptCommands=true updatePlayers=true updateEnemies=true"), "runtime debug bundle manifest should summarize latest frame policy");
+	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "runtime inventoryScripts=0 completed=0 loadFailed=0 noActivePlayer=0 applied=0 rejected=0"), "runtime debug bundle manifest should summarize runtime inventory scripts");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "runtime movementScripts=0 completed=0 loadFailed=0 noActiveWorld=0 accepted=0 rejected=0"), "runtime debug bundle manifest should summarize runtime movement scripts");
 	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime debug bundle trace should preserve run trace summary");
 
@@ -7134,7 +7163,56 @@ void TestRuntimeDebugManifestFormatsFailedRun()
 	Expect(ContainsLineFragment(lines, "finalMode=Empty"), "runtime debug bundle manifest should name empty final mode");
 	Expect(ContainsLineFragment(lines, "policy latest=none"), "runtime debug bundle manifest should report no frame policy for zero-frame runs");
 	Expect(ContainsLineFragment(lines, "setup startupScriptRan=true inventoryScriptRan=false movementScriptRan=false"), "runtime debug bundle manifest should report setup attempts");
+	Expect(ContainsLineFragment(lines, "runtime inventoryScripts=0 completed=0 loadFailed=0 noActivePlayer=0 applied=0 rejected=0"), "runtime debug bundle manifest should report empty runtime inventory scripts");
 	Expect(ContainsLineFragment(lines, "runtime movementScripts=0 completed=0 loadFailed=0 noActiveWorld=0 accepted=0 rejected=0"), "runtime debug bundle manifest should report empty runtime movement scripts");
+}
+
+void TestRuntimeDebugManifestSummarizesInventoryScripts()
+{
+	dev::GameLoopResult run;
+	run.setup.inventoryScriptRan = true;
+	run.setup.inventoryScriptResult = {
+		.status = dev::InventoryScriptRunStatus::Completed,
+		.commandResults = {
+		    {
+		        .type = dev::InventoryCommandResultType::Applied,
+		        .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 10 },
+		    },
+		    {
+		        .type = dev::InventoryCommandResultType::Rejected,
+		        .command = { .type = dev::InventoryCommandType::UnequipSlot, .slot = dev::EquipmentSlot::Weapon },
+		    },
+		},
+	};
+	run.summary.runtimeInventoryScriptResults.push_back({
+	    .status = dev::InventoryScriptRunStatus::Completed,
+	    .commandResults = {
+	        {
+	            .type = dev::InventoryCommandResultType::Applied,
+	            .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 11 },
+	        },
+	    },
+	});
+	run.summary.runtimeInventoryScriptResults.push_back({
+	    .status = dev::InventoryScriptRunStatus::LoadFailed,
+	});
+	run.summary.runtimeInventoryScriptResults.push_back({
+	    .status = dev::InventoryScriptRunStatus::NoActivePlayer,
+	});
+	run.finalMode = dev::GameSessionMode::Gameplay;
+
+	dev::RuntimeDebugManifestContext context {
+		.rootPath = "debug/run-inventory",
+		.manifestPath = "debug/run-inventory/manifest.txt",
+		.tracePath = "debug/run-inventory/run.trace",
+		.traceSaved = true,
+	};
+
+	std::vector<std::string> lines = dev::RuntimeDebugManifest {}.format(run, context);
+
+	Expect(ContainsLineFragment(lines, "setup startupScriptRan=false inventoryScriptRan=true movementScriptRan=false"), "runtime debug manifest should report configured inventory setup attempt");
+	Expect(ContainsLineFragment(lines, "setup inventoryScript status=Completed results=2 applied=1 rejected=1"), "runtime debug manifest should summarize configured inventory setup result");
+	Expect(ContainsLineFragment(lines, "runtime inventoryScripts=3 completed=1 loadFailed=1 noActivePlayer=1 applied=1 rejected=0"), "runtime debug manifest should summarize runtime inventory script results");
 }
 
 void TestRuntimeDebugManifestSummarizesMovementScripts()
@@ -8631,6 +8709,7 @@ int main()
 	TestGameLoopBuildsRuntimeFrameReports();
 	TestRuntimeFrameTraceFormatsReadableLines();
 	TestRuntimeFramePolicyTextFormatsArtifactPolicyLines();
+	TestRuntimeInventoryScriptTextFormatsResultsAndAggregates();
 	TestRuntimeMovementScriptTextFormatsResultsAndAggregates();
 	TestRuntimeRunSummaryTextFormatsTraceAndManifestSummaries();
 	TestRuntimeFrameTraceFormatsEnemyPursuitEvents();
@@ -8676,6 +8755,7 @@ int main()
 	TestGameLoopReportsRunTraceSaveFailure();
 	TestRuntimeDebugArtifactBundleSavesManifestAndTrace();
 	TestRuntimeDebugManifestFormatsFailedRun();
+	TestRuntimeDebugManifestSummarizesInventoryScripts();
 	TestRuntimeDebugManifestSummarizesMovementScripts();
 	TestRuntimeDebugArtifactLayoutNamesBundlePaths();
 	TestRuntimeDebugArtifactWriterSavesTraceAndManifest();

@@ -802,6 +802,11 @@ RuntimeRunSummaryText
   app-layer text formatter that renders run count summaries consistently for
   run traces and debug bundle manifests
 
+RuntimeInventoryScriptText
+  app-layer text formatter that renders inventory script status, applied/rejected
+  command counts, and aggregate runtime script summaries consistently for traces
+  and debug bundle manifests
+
 RuntimeMovementScriptText
   app-layer text formatter that renders movement script replay status,
   accepted/rejected counts, and aggregate runtime script summaries consistently
