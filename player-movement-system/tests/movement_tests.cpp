@@ -78,6 +78,7 @@
 #include "app/RuntimeSetupFailurePolicy.hpp"
 #include "app/RuntimeSetupInventoryCommandReportRecorder.hpp"
 #include "app/RuntimeSetupRunner.hpp"
+#include "app/RuntimeSimulationFrameUpdater.hpp"
 #include "app/RuntimeSourceContext.hpp"
 #include "app/RuntimeSourceDrainer.hpp"
 #include "app/RuntimeSourceDrainerSettingsBuilder.hpp"
@@ -7792,6 +7793,31 @@ void TestRuntimeFramePolicyResolverMapsSessionModeToSimulationPolicy()
 	std::filesystem::remove_all(root);
 }
 
+void TestRuntimeSimulationFrameUpdaterAdvancesSessionWithFrameSettings()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_simulation_frame_updater_test";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root / "saves" };
+	session.startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	session.world().commandQueue.push({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+
+	const dev::SimulationFrameEvents events = dev::RuntimeSimulationFrameUpdater {}.update(
+	    session,
+	    dev::RuntimeFrameSettings {
+	        .fixedDeltaSeconds = 1.0F / 60.0F,
+	    });
+
+	Expect(!events.movementEvents().empty(), "runtime simulation frame updater should return simulation frame events");
+	Expect(session.world().players.size() == 1 && session.world().players[0].position.tile == dev::Point { 1, 0 }, "runtime simulation frame updater should advance the active session world");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz()
 {
 	dev::RuntimeFrameSettings frame;
@@ -10218,6 +10244,7 @@ int main()
 	TestRuntimeFrameEventDeltaCollectorCapturesEventsSinceBeginFrame();
 	TestRuntimeFramePolicyReportRecorderStoresCurrentFramePolicy();
 	TestRuntimeFramePolicyResolverMapsSessionModeToSimulationPolicy();
+	TestRuntimeSimulationFrameUpdaterAdvancesSessionWithFrameSettings();
 	TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz();
 	TestRuntimeRunSummaryDefaultsToEmptyRun();
 	TestRuntimeRunRecorderAggregatesSetupInventoryResultsWithoutFrame();

@@ -77,6 +77,7 @@ add_library(player_movement_system
   src/app/RuntimeSetupInventoryCommandReportRecorder.cpp
   src/app/RuntimeSetupRunner.cpp
   src/app/RuntimeSetupFailurePolicy.cpp
+  src/app/RuntimeSimulationFrameUpdater.cpp
   src/app/RuntimeSessionInputRouter.cpp
   src/app/RuntimeSessionModeTogglePolicy.cpp
   src/app/RuntimeSessionText.cpp

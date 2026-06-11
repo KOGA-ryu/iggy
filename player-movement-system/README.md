@@ -780,6 +780,10 @@ RuntimeFramePolicyResolver
   app-layer bridge that maps the GameSession mode to the SimulationFramePolicy
   description used for the current frame
 
+RuntimeSimulationFrameUpdater
+  app-layer bridge that advances GameSession by RuntimeFrameSettings fixed
+  delta seconds and returns SimulationFrameEvents for reporting
+
 RuntimeFrameLoopRunner
   app-layer loop policy that runs a one-frame runner for RuntimeFrameSettings
   maxFrames, keeping bounded repetition out of the GameLoop shell

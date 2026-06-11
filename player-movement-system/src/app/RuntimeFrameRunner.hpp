@@ -22,7 +22,6 @@ public:
 	void runFrame();
 
 private:
-	[[nodiscard]] SimulationFrameEvents updateSimulationFrame();
 	void renderDebugView();
 
 	GameSession &session_;

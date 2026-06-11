@@ -1294,6 +1294,11 @@ RuntimeFrameRunner
 policy, records it, then advances the session; it no longer needs to know how
 session modes map to simulation gates.
 
+`RuntimeSimulationFrameUpdater` owns the app bridge from frame settings to
+session simulation. It advances `GameSession` by
+`RuntimeFrameSettings::fixedDeltaSeconds` and returns the
+`SimulationFrameEvents` that runtime reports store.
+
 `RuntimeFrameLoopRunner` owns the bounded repetition policy around that
 one-frame runner:
 

@@ -1,6 +1,7 @@
 #include "RuntimeFrameRunner.hpp"
 
 #include "app/RuntimeFramePolicyResolver.hpp"
+#include "app/RuntimeSimulationFrameUpdater.hpp"
 
 namespace dev {
 
@@ -36,15 +37,10 @@ void RuntimeFrameRunner::runFrame()
 
 	recorder_.recordFramePolicy(RuntimeFramePolicyResolver {}.resolve(session_));
 
-	recorder_.recordFrameEvents(updateSimulationFrame());
+	recorder_.recordFrameEvents(RuntimeSimulationFrameUpdater {}.update(session_, frame_));
 	recorder_.finishFrame();
 
 	renderDebugView();
-}
-
-SimulationFrameEvents RuntimeFrameRunner::updateSimulationFrame()
-{
-	return session_.update(frame_.fixedDeltaSeconds);
 }
 
 void RuntimeFrameRunner::renderDebugView() {}
