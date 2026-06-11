@@ -85,6 +85,7 @@ struct GameLoopSettings {
 struct RuntimeFrameReport {
 	SimulationFramePolicyDescription framePolicy;
 	int rawInputEventsRouted = 0;
+	std::vector<PlayerActionBlockReason> movementInputBlockReasons;
 	std::vector<SessionCommandResult> sessionCommandResults;
 	std::vector<InventoryScriptRunResult> inventoryScriptResults;
 	std::vector<InventoryCommandResult> inventoryCommandResults;
@@ -99,6 +100,7 @@ struct RuntimeRunSummary {
 	std::vector<InventoryScriptRunResult> runtimeInventoryScriptResults;
 	std::vector<MovementScriptRunResult> runtimeMovementScriptResults;
 	int rawInputEventsRouted = 0;
+	std::vector<PlayerActionBlockReason> movementInputBlockReasons;
 	std::vector<SessionCommandResult> sessionCommandResults;
 	std::vector<InventoryCommandResult> inventoryCommandResults;
 	int movementCommandsQueued = 0;

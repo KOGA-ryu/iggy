@@ -19,7 +19,7 @@ public:
 	void recordSetupInventoryCommandResults(const std::vector<InventoryCommandResult> &results);
 	void beginFrame();
 	void recordFramePolicy(SimulationFramePolicyDescription description);
-	void recordRawInputEventsRouted(int count);
+	void recordRawInputDrainResult(RuntimeInputDrainResult result);
 	void recordSessionCommandResults(std::vector<SessionCommandResult> results);
 	void recordInventoryScriptResults(std::vector<InventoryScriptRunResult> results);
 	void recordInventoryCommandResults(std::vector<InventoryCommandResult> results);

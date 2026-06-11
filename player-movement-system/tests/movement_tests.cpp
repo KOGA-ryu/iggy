@@ -45,6 +45,7 @@
 #include "app/RuntimeOutputFailurePolicy.hpp"
 #include "app/RuntimeInputFocusResolver.hpp"
 #include "app/RuntimeOutputResultBuilder.hpp"
+#include "app/RuntimePlayerActionText.hpp"
 #include "app/RuntimeRawInputDrainer.hpp"
 #include "app/RuntimeRunExecutor.hpp"
 #include "app/RuntimeRunFinalizer.hpp"
@@ -6183,6 +6184,7 @@ void TestRuntimeFrameTraceHeaderTextFormatsFrameCounts()
 void TestRuntimeFrameTraceSectionsFormatsRuntimeSourcesInOrder()
 {
 	dev::RuntimeFrameReport report;
+	report.movementInputBlockReasons.push_back(dev::PlayerActionBlockReason::Focus);
 	report.sessionCommandResults.push_back({
 	    .type = dev::SessionCommandResultType::Applied,
 	    .command = { .type = dev::SessionCommandType::SetMode, .mode = dev::GameSessionMode::Inventory },
@@ -6202,12 +6204,25 @@ void TestRuntimeFrameTraceSectionsFormatsRuntimeSourcesInOrder()
 	const std::vector<std::string> lines = dev::RuntimeFrameTraceSections {}.formatRuntimeSources(report);
 	const std::vector<std::string> expected {
 		"sessionResult[0] type=Applied command=SetMode",
+		"movementInputBlock[0] reason=Focus",
 		"inventoryScript[0] status=Completed results=0 applied=0 rejected=0",
 		"inventoryResult[0] type=Applied command=EquipItem equipment=Equipped item=10 slot=Weapon",
 		"movementScript[0] status=Completed results=0 accepted=0 rejected=0",
 	};
 
 	Expect(lines == expected, "runtime frame trace sections should format runtime source lines in trace order");
+}
+
+void TestRuntimePlayerActionTextFormatsMovementBlockReasons()
+{
+	dev::RuntimePlayerActionText formatter;
+
+	Expect(formatter.formatMovementBlockReason("movementInputBlock[0]", dev::PlayerActionBlockReason::Focus) == "movementInputBlock[0] reason=Focus", "runtime player action text should format focus block reason");
+	Expect(formatter.formatMovementBlockReason("movementInputBlock[1]", dev::PlayerActionBlockReason::Paused) == "movementInputBlock[1] reason=Paused", "runtime player action text should format paused block reason");
+	Expect(formatter.formatMovementBlockReason("movementInputBlock[2]", dev::PlayerActionBlockReason::AnimationLocked) == "movementInputBlock[2] reason=AnimationLocked", "runtime player action text should format app animation lock reason");
+	Expect(formatter.formatMovementBlockReason("movementInputBlock[3]", dev::PlayerActionBlockReason::AnimationCommitment) == "movementInputBlock[3] reason=AnimationCommitment", "runtime player action text should format animation commitment reason");
+	Expect(formatter.formatMovementBlockReason("movementInputBlock[4]", dev::PlayerActionBlockReason::Stunned) == "movementInputBlock[4] reason=Stunned", "runtime player action text should format stunned reason");
+	Expect(formatter.formatMovementBlockReason("movementInputBlock[5]", dev::PlayerActionBlockReason::None) == "movementInputBlock[5] reason=None", "runtime player action text should format no block reason");
 }
 
 void TestRuntimeFrameTraceSectionsFormatsLifecycleEventsInOrder()
@@ -7069,6 +7084,7 @@ void TestRuntimeRunSummaryDefaultsToEmptyRun()
 
 	Expect(summary.runtimeInventoryScriptResults.empty(), "runtime run summary should default to no runtime inventory script results");
 	Expect(summary.rawInputEventsRouted == 0, "runtime run summary should default to no routed raw input");
+	Expect(summary.movementInputBlockReasons.empty(), "runtime run summary should default to no movement input block reasons");
 	Expect(summary.sessionCommandResults.empty(), "runtime run summary should default to no session command results");
 	Expect(summary.inventoryCommandResults.empty(), "runtime run summary should default to no inventory command results");
 	Expect(summary.movementCommandsQueued == 0, "runtime run summary should default to no queued movement commands");
@@ -7130,7 +7146,10 @@ void TestRuntimeRunRecorderAggregatesFrameReportsAndSummary()
 	    .itemId = 71,
 	});
 
-	recorder.recordRawInputEventsRouted(2);
+	recorder.recordRawInputDrainResult({
+	    .handled = 2,
+	    .movementBlockReasons = { dev::PlayerActionBlockReason::Focus },
+	});
 	recorder.recordSessionCommandResults({
 	    {
 	        .type = dev::SessionCommandResultType::Applied,
@@ -7169,6 +7188,7 @@ void TestRuntimeRunRecorderAggregatesFrameReportsAndSummary()
 
 	Expect(result.summary.framesRun == 1, "runtime run recorder should count finished frames");
 	Expect(result.summary.rawInputEventsRouted == 2, "runtime run recorder should aggregate routed raw input");
+	Expect(result.summary.movementInputBlockReasons.size() == 1 && result.summary.movementInputBlockReasons[0] == dev::PlayerActionBlockReason::Focus, "runtime run recorder should aggregate movement input block reasons");
 	Expect(result.summary.sessionCommandResults.size() == 1, "runtime run recorder should aggregate session results");
 	Expect(result.summary.runtimeInventoryScriptResults.size() == 1, "runtime run recorder should aggregate inventory script results");
 	Expect(result.summary.inventoryCommandResults.size() == 2, "runtime run recorder should aggregate script and direct inventory results");
@@ -7180,6 +7200,7 @@ void TestRuntimeRunRecorderAggregatesFrameReportsAndSummary()
 
 	const dev::RuntimeFrameReport &report = result.frameReports[0];
 	Expect(report.rawInputEventsRouted == 2, "runtime run recorder frame report should keep raw input count");
+	Expect(report.movementInputBlockReasons.size() == 1 && report.movementInputBlockReasons[0] == dev::PlayerActionBlockReason::Focus, "runtime run recorder frame report should keep movement input block reasons");
 	Expect(report.sessionCommandResults.size() == 1, "runtime run recorder frame report should keep session results");
 	Expect(report.inventoryScriptResults.size() == 1, "runtime run recorder frame report should keep inventory scripts");
 	Expect(report.inventoryCommandResults.size() == 2, "runtime run recorder frame report should keep script and direct inventory results");
@@ -8600,6 +8621,9 @@ void TestQueuedRawInputSourceDrainsEventsOnce()
 
 void TestRuntimeRawInputDrainerRoutesHandledEventsAndSkipsNullSources()
 {
+	dev::SimulationWorld world;
+	world.players.push_back(MakePlayer({ 0, 0 }));
+
 	dev::QueuedRawInputSource rawInput;
 	rawInput.enqueue({
 	    .type = dev::RawInputType::KeyPress,
@@ -8611,6 +8635,11 @@ void TestRuntimeRawInputDrainerRoutesHandledEventsAndSkipsNullSources()
 	    .code = 'P',
 	    .pressed = false,
 	});
+	rawInput.enqueue({
+	    .type = dev::RawInputType::MouseClick,
+	    .screenPosition = { 32, 0 },
+	    .pressed = true,
+	});
 
 	dev::QueuedSessionCommandSource sessionCommands;
 	dev::QueuedMovementCommandSource movementCommands;
@@ -8621,13 +8650,16 @@ void TestRuntimeRawInputDrainerRoutesHandledEventsAndSkipsNullSources()
 	};
 	dev::RuntimeRawInputDrainer drainer { router };
 
-	const int routed = drainer.drain(
+	const dev::RuntimeInputDrainResult routed = drainer.drain(
 	    { nullptr, &rawInput },
 	    dev::RuntimeInputContext {
+	        .world = &world,
+	        .focusState = dev::FocusState { .owner = dev::InputOwner::Inventory },
 	        .sessionMode = dev::GameSessionMode::Gameplay,
 	    });
 
-	Expect(routed == 1, "runtime raw input drainer should count handled routed events only");
+	Expect(routed.handled == 1, "runtime raw input drainer should count handled routed events only");
+	Expect(routed.movementBlockReasons.size() == 1 && routed.movementBlockReasons[0] == dev::PlayerActionBlockReason::Focus, "runtime raw input drainer should collect blocked movement reasons separately");
 	Expect(rawInput.empty(), "runtime raw input drainer should drain source events once");
 	Expect(sessionCommands.size() == 1, "runtime raw input drainer should route handled hotkeys through session commands");
 	Expect(movementCommands.empty(), "runtime raw input drainer should not invent movement commands for hotkeys");
@@ -8661,9 +8693,10 @@ void TestRuntimeInputSourceRouterRoutesRawSourcesThroughSessionContext()
 		input,
 	};
 
-	const int routed = router.route();
+	const dev::RuntimeInputDrainResult routed = router.route();
 
-	Expect(routed == 1, "runtime input source router should route handled raw source events");
+	Expect(routed.handled == 1, "runtime input source router should route handled raw source events");
+	Expect(routed.movementBlockReasons.empty(), "runtime input source router should report no movement blocks for handled movement input");
 	Expect(rawInput.empty(), "runtime input source router should drain raw input source events once");
 	Expect(routedMovementCommands.size() == 1, "runtime input source router should queue routed movement commands");
 	std::vector<dev::MovementCommand> commands = routedMovementCommands.drain();
@@ -9166,6 +9199,8 @@ void TestGameLoopDoesNotRouteBlockedRawMovementInput()
 	dev::GameLoopResult result = loop.runForResult();
 
 	Expect(result.summary.rawInputEventsRouted == 0, "game loop should not count blocked raw movement as routed");
+	Expect(result.summary.movementInputBlockReasons.size() == 1 && result.summary.movementInputBlockReasons[0] == dev::PlayerActionBlockReason::Focus, "game loop should summarize blocked raw movement reason");
+	Expect(result.frameReports.size() == 1 && result.frameReports[0].movementInputBlockReasons.size() == 1 && result.frameReports[0].movementInputBlockReasons[0] == dev::PlayerActionBlockReason::Focus, "game loop frame report should preserve blocked raw movement reason");
 	Expect(result.summary.movementCommandsQueued == 0, "game loop should not queue blocked raw movement");
 	Expect(loop.session().world().players.size() == 1 && loop.session().world().players[0].position.tile == dev::Point { 0, 0 }, "blocked raw movement should not move player");
 	Expect(rawInput.empty(), "game loop should still drain inspected raw input");
@@ -9400,6 +9435,7 @@ int main()
 	TestRuntimeFramePolicyTextFormatsArtifactPolicyLines();
 	TestRuntimeFrameTraceHeaderTextFormatsFrameCounts();
 	TestRuntimeFrameTraceSectionsFormatsRuntimeSourcesInOrder();
+	TestRuntimePlayerActionTextFormatsMovementBlockReasons();
 	TestRuntimeFrameTraceSectionsFormatsLifecycleEventsInOrder();
 	TestRuntimeFrameTraceSectionsFormatsSimulationEventsInOrder();
 	TestRuntimeDebugManifestSetupTextFormatsSetupAttempts();

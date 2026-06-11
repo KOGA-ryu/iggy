@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <vector>
 
 #include "focus/InputFocus.hpp"
 #include "player/PlayerActionGate.hpp"
@@ -30,6 +31,11 @@ struct RuntimeInputRouteResult {
 	bool queuedSessionCommand = false;
 	bool queuedMovementCommand = false;
 	std::optional<PlayerActionBlockReason> movementBlockReason;
+};
+
+struct RuntimeInputDrainResult {
+	int handled = 0;
+	std::vector<PlayerActionBlockReason> movementBlockReasons;
 };
 
 } // namespace dev

@@ -16,7 +16,7 @@ public:
 	    const RuntimeSourceSettings &sources,
 	    const RuntimeInputSettings &input);
 
-	[[nodiscard]] int route();
+	[[nodiscard]] RuntimeInputDrainResult route();
 
 private:
 	const GameSession &session_;

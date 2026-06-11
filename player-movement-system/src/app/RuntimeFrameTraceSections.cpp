@@ -6,6 +6,7 @@
 #include "app/RuntimeInventoryText.hpp"
 #include "app/RuntimeMovementEventText.hpp"
 #include "app/RuntimeMovementScriptText.hpp"
+#include "app/RuntimePlayerActionText.hpp"
 #include "app/RuntimeSessionText.hpp"
 
 #include <sstream>
@@ -21,6 +22,12 @@ std::vector<std::string> RuntimeFrameTraceSections::formatRuntimeSources(const R
 		std::ostringstream line;
 		line << "sessionResult[" << i << "]";
 		lines.push_back(RuntimeSessionText {}.formatResult(line.str(), result));
+	}
+
+	for (std::size_t i = 0; i < report.movementInputBlockReasons.size(); ++i) {
+		std::ostringstream line;
+		line << "movementInputBlock[" << i << "]";
+		lines.push_back(RuntimePlayerActionText {}.formatMovementBlockReason(line.str(), report.movementInputBlockReasons[i]));
 	}
 
 	for (std::size_t i = 0; i < report.inventoryScriptResults.size(); ++i) {

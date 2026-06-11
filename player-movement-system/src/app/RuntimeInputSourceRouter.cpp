@@ -20,7 +20,7 @@ RuntimeInputSourceRouter::RuntimeInputSourceRouter(
 {
 }
 
-int RuntimeInputSourceRouter::route()
+RuntimeInputDrainResult RuntimeInputSourceRouter::route()
 {
 	RuntimeInputRouter router { routedSessionCommands_, routedMovementCommands_, input_.bindings };
 	RuntimeRawInputDrainer drainer { router };

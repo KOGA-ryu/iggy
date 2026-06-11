@@ -202,6 +202,7 @@ Good first tests:
 - RuntimeRunSummaryText formats run summaries for traces and manifests
 - RuntimeFrameTraceHeaderText formats per-frame trace count headers
 - RuntimeFrameTraceSections formats runtime source, lifecycle, and simulation trace sections
+- RuntimePlayerActionText formats player movement block reasons
 - RuntimeSessionText formats session result and event lines for traces
 - RuntimeInventoryText formats inventory result and event lines for traces
 - RuntimeInventoryScriptText formats inventory script result lines for traces and manifests
@@ -274,7 +275,7 @@ Good first tests:
 - RuntimeTargetInputRouter maps target-aware pointer input into interaction movement commands
 - RuntimeInputRouter maps stand-ground target clicks into StandAndAct attacks
 - QueuedRawInputSource drains raw input events exactly once
-- RuntimeRawInputDrainer drains raw input sources and counts handled routed events
+- RuntimeRawInputDrainer drains raw input sources, counts handled routed events, and reports movement block reasons
 - RuntimeInputSourceRouter routes raw input sources through the current session context
 - GameLoop routes raw hotkeys through session command dispatch
 - GameLoop routes raw mouse clicks through movement command dispatch

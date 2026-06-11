@@ -818,9 +818,9 @@ RuntimeOutputFinalizer
   GameLoopResult after the run lifecycle has produced final state
 
 RuntimeFrameReport
-  per-frame report that groups routed input counts, runtime source results,
-  mode policy, event deltas, and simulation frame output for debug/test
-  inspection
+  per-frame report that groups routed input counts, blocked movement input
+  reasons, runtime source results, mode policy, event deltas, and simulation
+  frame output for debug/test inspection
 
 RuntimeFramePolicyText
   app-layer text formatter that renders frame policy descriptions consistently
@@ -836,7 +836,12 @@ RuntimeFrameTraceHeaderText
 
 RuntimeFrameTraceSections
   app-layer trace section formatter that groups runtime source results,
-  lifecycle events, and simulation events in deterministic frame trace order
+  movement input blocks, lifecycle events, and simulation events in deterministic
+  frame trace order
+
+RuntimePlayerActionText
+  app-layer text formatter that renders player action block reasons consistently
+  for run traces and future input diagnostics
 
 RuntimeSessionText
   app-layer text formatter that renders session command results and lifecycle

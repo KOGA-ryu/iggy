@@ -7,11 +7,11 @@ RuntimeRawInputDrainer::RuntimeRawInputDrainer(RuntimeInputRouter &router)
 {
 }
 
-int RuntimeRawInputDrainer::drain(
+RuntimeInputDrainResult RuntimeRawInputDrainer::drain(
     const std::vector<RawInputSource *> &sources,
     const RuntimeInputContext &context) const
 {
-	int routed = 0;
+	RuntimeInputDrainResult drainResult;
 	for (RawInputSource *source : sources) {
 		if (source == nullptr)
 			continue;
@@ -19,10 +19,12 @@ int RuntimeRawInputDrainer::drain(
 		for (const RawInputEvent &event : source->drain()) {
 			RuntimeInputRouteResult result = router_.route(event, context);
 			if (result.handled)
-				++routed;
+				++drainResult.handled;
+			if (result.movementBlockReason.has_value())
+				drainResult.movementBlockReasons.push_back(*result.movementBlockReason);
 		}
 	}
-	return routed;
+	return drainResult;
 }
 
 } // namespace dev

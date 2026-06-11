@@ -1448,8 +1448,13 @@ each frame report: routed input, source results, queued movement, gameplay
 events, session events, and inventory events.
 `RuntimeFrameTraceSections` owns the deterministic order after the header and
 policy: runtime source results first, lifecycle events second, simulation
-events last. That keeps the trace readable as a frame story instead of a bag of
+events last. Movement input blocks are part of the runtime source section:
+they explain why movement-shaped input was drained but did not become a routed
+command. That keeps the trace readable as a frame story instead of a bag of
 mixed event streams.
+`RuntimePlayerActionText` owns the spelling for action block reasons, so focus,
+pause, animation commitment, and stun vocabulary stays consistent between tests
+and traces.
 `RuntimeSessionText` owns the spelling for session command results and lifecycle
 events, keeping startup/save/load/mode names consistent in runtime traces.
 `RuntimeInventoryText` owns the spelling for inventory command results and

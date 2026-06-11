@@ -11,7 +11,7 @@ class RuntimeRawInputDrainer {
 public:
 	explicit RuntimeRawInputDrainer(RuntimeInputRouter &router);
 
-	[[nodiscard]] int drain(
+	[[nodiscard]] RuntimeInputDrainResult drain(
 	    const std::vector<RawInputSource *> &sources,
 	    const RuntimeInputContext &context) const;
 

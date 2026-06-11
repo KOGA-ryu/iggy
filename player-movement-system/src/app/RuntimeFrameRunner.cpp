@@ -25,7 +25,7 @@ void RuntimeFrameRunner::runFrame()
 {
 	recorder_.beginFrame();
 
-	recorder_.recordRawInputEventsRouted(inputSourceRouter_.route());
+	recorder_.recordRawInputDrainResult(inputSourceRouter_.route());
 
 	recorder_.recordSessionCommandResults(sourceDrainer_.drainSessionCommands(sessionDispatcher_));
 

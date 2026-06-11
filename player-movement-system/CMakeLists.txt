@@ -46,6 +46,7 @@ add_library(player_movement_system
   src/app/RuntimeOutputFailurePolicy.cpp
   src/app/RuntimeOutputFinalizer.cpp
   src/app/RuntimeOutputResultBuilder.cpp
+  src/app/RuntimePlayerActionText.cpp
   src/app/RuntimeRawInputDrainer.cpp
   src/app/RuntimeRunExecutor.cpp
   src/app/RuntimeRunFinalizer.cpp
