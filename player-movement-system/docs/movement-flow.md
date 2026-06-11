@@ -276,6 +276,11 @@ checks whether an active world exists, builds the player controller and command
 dispatcher for that world, and then lets `MovementScriptRunner` own file loading
 and replay.
 
+`RuntimeMovementScriptBatchRunner` is the ordered batch layer above the intake.
+Once runtime movement script sources have been drained into a flat path list, it
+runs each path against the active world and returns one result per path without
+stopping the batch on load failure or command rejection.
+
 `MovementScriptSource` is the runtime-facing queue boundary for those script
 paths:
 
@@ -1385,6 +1390,11 @@ command source intake.
 movement script paths. The source drainer decides when script paths are drained;
 the intake decides whether there is a world that can receive replayed movement
 commands and wires that world into `MovementScriptRunner`.
+
+`RuntimeMovementScriptBatchRunner` owns the ordered runtime script batch. It
+keeps `RuntimeSourceDrainer` focused on source gating and path draining while
+the batch runner turns the drained path list into ordered
+`MovementScriptRunResult` entries.
 
 `RuntimeMovementCommandReportRecorder` owns that direct queued movement command
 count. The frame gets the count for this frame, while the run summary

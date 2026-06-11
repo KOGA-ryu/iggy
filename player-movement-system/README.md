@@ -383,6 +383,10 @@ RuntimeMovementScriptIntake
   app-layer intake step that runs a movement script against the active
   SimulationWorld or reports NoActiveWorld before replay begins
 
+RuntimeMovementScriptBatchRunner
+  app-layer runner that executes drained movement script paths in order and
+  returns one MovementScriptRunResult per path
+
 MovementScriptSource
   runtime-facing source boundary that lets debug tools, tests, menus, or future
   automation queue movement replay script paths
@@ -821,6 +825,10 @@ RuntimeMovementScriptReportRecorder
 RuntimeMovementScriptIntake
   app-layer intake step that binds movement script replay to the active runtime
   world, building the controller and dispatcher used by MovementScriptRunner
+
+RuntimeMovementScriptBatchRunner
+  app-layer runner that turns a drained movement script path list into ordered
+  runtime movement script results
 
 RuntimeMovementCommandReportRecorder
   app-layer recorder that stores direct movement command queue counts on the

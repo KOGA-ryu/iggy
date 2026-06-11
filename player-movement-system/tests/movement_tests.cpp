@@ -49,6 +49,7 @@
 #include "app/RuntimeMovementCommandIntake.hpp"
 #include "app/RuntimeMovementCommandReportRecorder.hpp"
 #include "app/RuntimeMovementEventText.hpp"
+#include "app/RuntimeMovementScriptBatchRunner.hpp"
 #include "app/RuntimeMovementScriptReportRecorder.hpp"
 #include "app/RuntimeMovementScriptIntake.hpp"
 #include "app/RuntimeMovementScriptText.hpp"
@@ -5853,6 +5854,48 @@ void TestRuntimeMovementScriptIntakeRunsScriptsAgainstActiveWorld()
 	std::filesystem::remove_all(root);
 }
 
+void TestRuntimeMovementScriptBatchRunnerPreservesPathOrder()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_movement_script_batch_runner_test";
+	const std::filesystem::path firstPath = root / "first.imcl";
+	const std::filesystem::path missingPath = root / "missing.imcl";
+	const std::filesystem::path thirdPath = root / "third.imcl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::CommandLog firstLog;
+	firstLog.record({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+	dev::CommandLog thirdLog;
+	thirdLog.record({
+	    .type = dev::MovementCommandType::Stop,
+	    .playerId = 0,
+	    .destination = { 0, 0 },
+	});
+	dev::CommandLogFileStore store;
+	Expect(store.save(firstPath, firstLog), "runtime movement script batch runner test should save first script");
+	Expect(store.save(thirdPath, thirdLog), "runtime movement script batch runner test should save third script");
+
+	dev::SimulationWorld world;
+	world.players.push_back(MakePlayer({ 0, 0 }));
+
+	std::vector<dev::MovementScriptRunResult> results = dev::RuntimeMovementScriptBatchRunner {}.run(
+	    { firstPath, missingPath, thirdPath },
+	    world);
+
+	Expect(results.size() == 3, "runtime movement script batch runner should produce one result per script path");
+	Expect(results.size() == 3 && results[0].status == dev::MovementScriptRunStatus::Completed, "runtime movement script batch runner should keep first script result order");
+	Expect(results.size() == 3 && results[1].status == dev::MovementScriptRunStatus::LoadFailed, "runtime movement script batch runner should keep missing script result order");
+	Expect(results.size() == 3 && results[2].status == dev::MovementScriptRunStatus::Completed, "runtime movement script batch runner should continue after load failure");
+	Expect(results.size() == 3 && results[0].replayReport.acceptedCount() == 1, "runtime movement script batch runner should replay first script");
+	Expect(results.size() == 3 && results[2].replayReport.results.size() == 1, "runtime movement script batch runner should replay later scripts");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestRuntimeInventoryScriptIntakeRunsScriptsAgainstActivePlayer()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_inventory_script_intake_test";
@@ -10023,6 +10066,7 @@ int main()
 	TestRuntimeInventoryCommandIntakeDispatchesOrRejectsCommands();
 	TestRuntimeSessionCommandIntakeDispatchesCommandsInOrder();
 	TestRuntimeMovementScriptIntakeRunsScriptsAgainstActiveWorld();
+	TestRuntimeMovementScriptBatchRunnerPreservesPathOrder();
 	TestRuntimeInventoryScriptIntakeRunsScriptsAgainstActivePlayer();
 	TestRuntimeSourceDrainerDrainsSessionBeforeMovement();
 	TestRuntimeSourceDrainerRunsMovementScripts();

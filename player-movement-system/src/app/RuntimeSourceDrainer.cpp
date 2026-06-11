@@ -3,6 +3,7 @@
 #include "app/RuntimeInventoryCommandIntake.hpp"
 #include "app/RuntimeInventoryScriptIntake.hpp"
 #include "app/RuntimeMovementCommandIntake.hpp"
+#include "app/RuntimeMovementScriptBatchRunner.hpp"
 #include "app/RuntimeMovementScriptIntake.hpp"
 #include "app/RuntimeSessionCommandIntake.hpp"
 #include "app/RuntimeSourceContext.hpp"
@@ -83,19 +84,13 @@ std::vector<InventoryCommandResult> RuntimeSourceDrainer::drainInventoryCommands
 
 std::vector<MovementScriptRunResult> RuntimeSourceDrainer::drainMovementScripts()
 {
-	std::vector<MovementScriptRunResult> results;
 	RuntimeSourceContext context { session_, settings_.inputPlayerId };
 	if (!context.hasActiveWorld())
-		return results;
+		return {};
 
 	std::vector<std::filesystem::path> paths = RuntimeSourceStream<std::filesystem::path, MovementScriptSource> {}.drain(
 	    settings_.movementScriptSources);
-	results.reserve(paths.size());
-
-	for (const std::filesystem::path &path : paths)
-		results.push_back(runMovementScript(path));
-
-	return results;
+	return RuntimeMovementScriptBatchRunner {}.run(std::move(paths), context.world());
 }
 
 int RuntimeSourceDrainer::drainMovementCommands()

@@ -49,6 +49,7 @@ Good first tests:
 - MovementScriptRunner loads and runs saved movement scripts through the dispatcher
 - MovementScriptRunner distinguishes movement script load failure from command rejection
 - RuntimeMovementScriptIntake runs movement scripts against an active runtime world
+- RuntimeMovementScriptBatchRunner preserves ordered movement script path results
 - MovementScriptSource queues and drains movement replay script paths
 - EnemyPursuitStepPlanner chooses the next chase tile toward a target
 - EnemyPursuitStepGate rejects map-blocked and collision-blocked pursuit tiles
