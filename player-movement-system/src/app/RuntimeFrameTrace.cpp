@@ -160,6 +160,25 @@ const char *ToString(MovementEventType type)
 		return "AnimationUnlocked";
 	case MovementEventType::EnemyPursuitStopped:
 		return "EnemyPursuitStopped";
+	case MovementEventType::EnemyAttackTransitioned:
+		return "EnemyAttackTransitioned";
+	}
+	return "Unknown";
+}
+
+const char *ToString(EnemyAttackTransition transition)
+{
+	switch (transition) {
+	case EnemyAttackTransition::None:
+		return "None";
+	case EnemyAttackTransition::WindupStarted:
+		return "WindupStarted";
+	case EnemyAttackTransition::WindupCompleted:
+		return "WindupCompleted";
+	case EnemyAttackTransition::RecoveryCompleted:
+		return "RecoveryCompleted";
+	case EnemyAttackTransition::RecoveryCompletedAndWindupStarted:
+		return "RecoveryCompletedAndWindupStarted";
 	}
 	return "Unknown";
 }
@@ -316,6 +335,8 @@ std::vector<std::string> RuntimeFrameTrace::format(const RuntimeFrameReport &rep
 			line << " pursuitStop=" << ToString(*event.enemyPursuitStopReason);
 		if (event.enemyPursuitStepsCommitted.has_value())
 			line << " pursuitSteps=" << *event.enemyPursuitStepsCommitted;
+		if (event.enemyAttackTransition.has_value())
+			line << " attackTransition=" << ToString(*event.enemyAttackTransition);
 		lines.push_back(line.str());
 	}
 

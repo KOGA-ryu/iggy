@@ -196,6 +196,18 @@ EnemyAttackRange
   shared enemy range rule that answers whether a target is inside the enemy's
   tuned attack distance without running attack state
 
+EnemyAttackResult
+  observable attack-state outcome that reports whether the attack runner
+  consumed the frame and which windup/recovery transition happened
+
+EnemyAttackEventEmitter
+  bridge from enemy attack transitions into MovementEvent so traces can show
+  windup starts, windup completions, and recovery exits
+
+EnemyMovementReporter
+  reporting boundary that publishes enemy pursuit outcomes and enemy attack
+  transitions through the movement event stream
+
 EnemyPursuitBudget
   pressure pacing rule that spends at most maxStepsPerTick pursuit steps during
   one enemy update
@@ -320,7 +332,8 @@ ActionExecutor
 
 MovementEvent
   observable facts such as CommandAccepted, PathStarted, StepCommitted,
-  ActionExecuted, AnimationLocked, and EnemyPursuitStopped
+  ActionExecuted, AnimationLocked, EnemyPursuitStopped, and
+  EnemyAttackTransitioned
 
 CommandLog
   replayable list of semantic movement commands
@@ -371,8 +384,8 @@ MovementCommandEventEmitter
 
 EnemyMovement
   pressure layer with speed, attack range, windup, recovery, and enemy attack
-  resolution constraints; publishes pursuit outcomes through
-  EnemyPursuitEventEmitter when a movement event sink is present
+  resolution constraints; publishes pursuit outcomes and attack transitions
+  through EnemyMovementReporter when a movement event sink is present
 
 EnemyPursuitStepper
   constrained enemy chase helper that asks EnemyPursuitStepPlanner for pursuit
@@ -383,7 +396,8 @@ EnemyPursuitStepper
 
 EnemyAttackRunner
   enemy attack state helper for range entry, windup timing, recovery timing, and
-  combat resolution
+  combat resolution; returns EnemyAttackResult for tests, traces, and future AI
+  decisions
 
 CombatResolver
   deterministic consequence layer for executed attack actions

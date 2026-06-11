@@ -42,6 +42,7 @@ void EffectRouter::route(const MovementEvent &event) const
 	case MovementEventType::AnimationLocked:
 	case MovementEventType::AnimationUnlocked:
 	case MovementEventType::EnemyPursuitStopped:
+	case MovementEventType::EnemyAttackTransitioned:
 		break;
 	}
 }

@@ -238,9 +238,14 @@ enemy position
   -> EnemyPursuitBudget
   -> EnemyAttackRange
   -> EnemyPursuitResult
+  -> EnemyMovementReporter
   -> EnemyPursuitEventEmitter
   -> MovementEvent::EnemyPursuitStopped
   -> EnemyAttackRunner
+  -> EnemyAttackResult
+  -> EnemyMovementReporter
+  -> EnemyAttackEventEmitter
+  -> MovementEvent::EnemyAttackTransitioned
   -> attack windup
   -> attack recovery
 ```
@@ -259,8 +264,11 @@ at the target, or reaching attack range. `EnemyPursuitEventEmitter` publishes
 that outcome as `MovementEvent::EnemyPursuitStopped`, which means frame capture
 and runtime traces can explain enemy pressure without peeking into AI internals.
 The attack runner reuses the same range rule when deciding whether to enter
-windup. Pursuit uses the same `ActorStepCommitter` as player pathing once a
-pursuit step is known to be legal.
+windup. It returns `EnemyAttackResult`, and `EnemyAttackEventEmitter` publishes
+windup/recovery transitions as `MovementEvent::EnemyAttackTransitioned`.
+`EnemyMovementReporter` is the single reporting boundary that owns both
+publishing paths. Pursuit uses the same `ActorStepCommitter` as player pathing
+once a pursuit step is known to be legal.
 
 ## 14. Combat Resolution
 

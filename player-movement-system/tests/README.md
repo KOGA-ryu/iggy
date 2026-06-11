@@ -48,6 +48,8 @@ Good first tests:
 - enemy in range enters attack windup
 - enemy attack windup transitions into recovery
 - EnemyAttackRunner owns enemy windup, recovery, and restart timing
+- EnemyAttackEventEmitter publishes windup/recovery transition facts for frame traces
+- EnemyMovementReporter publishes enemy attack and pursuit reports through one boundary
 - CombatResolver applies deterministic damage and defeat
 - ActionExecutor attack can damage registered combat target
 - CombatSystem emits Hit and Defeated events with damage and remaining HP

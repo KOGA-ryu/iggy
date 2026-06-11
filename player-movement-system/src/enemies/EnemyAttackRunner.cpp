@@ -7,7 +7,7 @@ EnemyAttackRunner::EnemyAttackRunner(CombatSystem *combatSystem)
 {
 }
 
-bool EnemyAttackRunner::update(Enemy &enemy, Player &target, float deltaSeconds) const
+EnemyAttackResult EnemyAttackRunner::update(Enemy &enemy, Player &target, float deltaSeconds) const
 {
 	if (enemy.moveState == EnemyMoveState::Attacking) {
 		enemy.stateTimerSeconds += deltaSeconds;
@@ -16,23 +16,30 @@ bool EnemyAttackRunner::update(Enemy &enemy, Player &target, float deltaSeconds)
 				combatSystem_->resolveEnemyAttack(enemy, target);
 			enemy.moveState = EnemyMoveState::Recovering;
 			enemy.stateTimerSeconds = 0.0F;
+			return { .consumedFrame = true, .transition = EnemyAttackTransition::WindupCompleted };
 		}
-		return true;
+		return { .consumedFrame = true };
 	}
 
 	if (enemy.moveState == EnemyMoveState::Recovering) {
 		enemy.stateTimerSeconds += deltaSeconds;
 		if (enemy.stateTimerSeconds < enemy.tuning.attackRecoverySeconds)
-			return true;
+			return { .consumedFrame = true };
 		enemy.stateTimerSeconds = 0.0F;
+		if (!targetInAttackRange(enemy, target))
+			return { .transition = EnemyAttackTransition::RecoveryCompleted };
+
+		enemy.moveState = EnemyMoveState::Attacking;
+		enemy.stateTimerSeconds = 0.0F;
+		return { .consumedFrame = true, .transition = EnemyAttackTransition::RecoveryCompletedAndWindupStarted };
 	}
 
 	if (!targetInAttackRange(enemy, target))
-		return false;
+		return {};
 
 	enemy.moveState = EnemyMoveState::Attacking;
 	enemy.stateTimerSeconds = 0.0F;
-	return true;
+	return { .consumedFrame = true, .transition = EnemyAttackTransition::WindupStarted };
 }
 
 bool EnemyAttackRunner::targetInAttackRange(const Enemy &enemy, const Player &target) const

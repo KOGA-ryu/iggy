@@ -5,7 +5,7 @@
 #include "combat/CombatSystem.hpp"
 #include "enemies/Enemy.hpp"
 #include "enemies/EnemyAttackRunner.hpp"
-#include "enemies/EnemyPursuitEventEmitter.hpp"
+#include "enemies/EnemyMovementReporter.hpp"
 #include "enemies/EnemyPursuitStepper.hpp"
 #include "events/MovementEventSink.hpp"
 #include "player/Player.hpp"
@@ -27,7 +27,7 @@ private:
 	const Collision &collision_;
 	EnemyAttackRunner attacks_;
 	EnemyPursuitStepper pursuit_;
-	EnemyPursuitEventEmitter pursuitEvents_;
+	EnemyMovementReporter reporter_;
 };
 
 } // namespace dev

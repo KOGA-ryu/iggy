@@ -4,6 +4,7 @@
 
 #include "actions/ActionResult.hpp"
 #include "commands/MovementCommand.hpp"
+#include "enemies/EnemyAttackResult.hpp"
 #include "enemies/EnemyPursuitResult.hpp"
 #include "interaction/DestinationAction.hpp"
 #include "targeting/Target.hpp"
@@ -23,6 +24,7 @@ enum class MovementEventType {
 	AnimationLocked,
 	AnimationUnlocked,
 	EnemyPursuitStopped,
+	EnemyAttackTransitioned,
 };
 
 struct MovementEvent {
@@ -36,6 +38,7 @@ struct MovementEvent {
 	std::optional<TargetId> enemyId;
 	std::optional<EnemyPursuitStopReason> enemyPursuitStopReason;
 	std::optional<int> enemyPursuitStepsCommitted;
+	std::optional<EnemyAttackTransition> enemyAttackTransition;
 };
 
 } // namespace dev

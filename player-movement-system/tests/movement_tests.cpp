@@ -47,9 +47,11 @@
 #include "effects/EffectApplier.hpp"
 #include "effects/EffectRecorder.hpp"
 #include "effects/EffectRouter.hpp"
+#include "enemies/EnemyAttackEventEmitter.hpp"
 #include "enemies/EnemyAttackRange.hpp"
 #include "enemies/EnemyAttackRunner.hpp"
 #include "enemies/EnemyMovement.hpp"
+#include "enemies/EnemyMovementReporter.hpp"
 #include "enemies/EnemyPursuitBudget.hpp"
 #include "enemies/EnemyPursuitEventEmitter.hpp"
 #include "enemies/EnemyPursuitStepGate.hpp"
@@ -749,17 +751,112 @@ void TestEnemyAttackRunnerConsumesWindupAndRecovery()
 	enemy.tuning.attackRecoverySeconds = 0.50F;
 	dev::EnemyAttackRunner attacks;
 
-	Expect(attacks.update(enemy, player, 0.016F), "enemy attack runner should consume frame when target is in range");
+	const dev::EnemyAttackResult started = attacks.update(enemy, player, 0.016F);
+	Expect(started.consumedFrame, "enemy attack runner should consume frame when target is in range");
+	Expect(started.transition == dev::EnemyAttackTransition::WindupStarted, "enemy attack runner should report windup start");
 	Expect(enemy.moveState == dev::EnemyMoveState::Attacking, "enemy attack runner should enter attack windup");
 
-	Expect(attacks.update(enemy, player, 0.25F), "enemy attack runner should consume windup completion frame");
+	const dev::EnemyAttackResult completedWindup = attacks.update(enemy, player, 0.25F);
+	Expect(completedWindup.consumedFrame, "enemy attack runner should consume windup completion frame");
+	Expect(completedWindup.transition == dev::EnemyAttackTransition::WindupCompleted, "enemy attack runner should report windup completion");
 	Expect(enemy.moveState == dev::EnemyMoveState::Recovering, "enemy attack runner should enter recovery after windup");
 
-	Expect(attacks.update(enemy, player, 0.25F), "enemy attack runner should consume incomplete recovery frame");
+	const dev::EnemyAttackResult recovering = attacks.update(enemy, player, 0.25F);
+	Expect(recovering.consumedFrame, "enemy attack runner should consume incomplete recovery frame");
+	Expect(recovering.transition == dev::EnemyAttackTransition::None, "enemy attack runner should not report transition while recovery is still ticking");
 	Expect(enemy.moveState == dev::EnemyMoveState::Recovering, "enemy attack runner should stay recovering until recovery completes");
 
-	Expect(attacks.update(enemy, player, 0.25F), "enemy attack runner should restart windup when recovery completes in range");
+	const dev::EnemyAttackResult restarted = attacks.update(enemy, player, 0.25F);
+	Expect(restarted.consumedFrame, "enemy attack runner should restart windup when recovery completes in range");
+	Expect(restarted.transition == dev::EnemyAttackTransition::RecoveryCompletedAndWindupStarted, "enemy attack runner should report recovery completion and windup restart");
 	Expect(enemy.moveState == dev::EnemyMoveState::Attacking, "enemy attack runner should restart attack after recovery if target remains in range");
+}
+
+void TestEnemyAttackRunnerReportsRecoveryCompletedOutOfRange()
+{
+	dev::Player player = MakePlayer({ 4, 0 });
+	dev::Enemy enemy = MakeEnemy({ 0, 0 });
+	enemy.moveState = dev::EnemyMoveState::Recovering;
+	enemy.tuning.attackRangeTiles = 1;
+	enemy.tuning.attackRecoverySeconds = 0.25F;
+	dev::EnemyAttackRunner attacks;
+
+	const dev::EnemyAttackResult result = attacks.update(enemy, player, 0.25F);
+
+	Expect(!result.consumedFrame, "enemy attack runner should release frame after recovery if target is out of range");
+	Expect(result.transition == dev::EnemyAttackTransition::RecoveryCompleted, "enemy attack runner should report recovery completion out of range");
+	Expect(enemy.moveState == dev::EnemyMoveState::Recovering, "enemy attack runner should leave movement layer to choose next state after recovery");
+}
+
+void TestEnemyAttackEventEmitterRecordsTransitions()
+{
+	dev::EventRecorder events;
+	dev::Enemy enemy = MakeEnemy({ 1, 0 });
+	enemy.id = 79;
+	dev::EnemyAttackResult result {
+		.consumedFrame = true,
+		.transition = dev::EnemyAttackTransition::WindupCompleted,
+	};
+
+	dev::EnemyAttackEventEmitter { &events }.emit(enemy, result);
+
+	Expect(events.events().size() == 1, "enemy attack event emitter should emit one transition event");
+	if (events.events().empty())
+		return;
+
+	const dev::MovementEvent &event = events.events()[0];
+	Expect(event.type == dev::MovementEventType::EnemyAttackTransitioned, "enemy attack event should report transition type");
+	Expect(event.tile == dev::Point { 1, 0 }, "enemy attack event should report enemy tile");
+	Expect(event.enemyId == 79, "enemy attack event should report enemy id");
+	Expect(event.enemyAttackTransition == dev::EnemyAttackTransition::WindupCompleted, "enemy attack event should report attack transition");
+}
+
+void TestEnemyMovementEmitsAttackTransition()
+{
+	dev::TileMap map;
+	dev::Collision collision;
+	dev::EventRecorder events;
+	dev::Player player = MakePlayer({ 1, 0 });
+	std::vector<dev::Enemy> enemies { MakeEnemy({ 0, 0 }) };
+	enemies[0].id = 80;
+	enemies[0].tuning.attackRangeTiles = 1;
+
+	dev::EnemyMovement { map, collision, &events }.update(enemies, player, 0.016F);
+
+	Expect(!events.events().empty(), "enemy movement should emit attack transition events");
+	if (events.events().empty())
+		return;
+
+	const dev::MovementEvent &event = events.events()[0];
+	Expect(event.type == dev::MovementEventType::EnemyAttackTransitioned, "enemy movement should emit enemy attack transition event");
+	Expect(event.enemyId == 80, "enemy movement attack event should include enemy id");
+	Expect(event.enemyAttackTransition == dev::EnemyAttackTransition::WindupStarted, "enemy movement attack event should report windup start");
+}
+
+void TestEnemyMovementReporterPublishesAttackAndPursuit()
+{
+	dev::EventRecorder events;
+	dev::Enemy enemy = MakeEnemy({ 2, 0 });
+	enemy.id = 81;
+	dev::EnemyMovementReporter reporter { &events };
+
+	reporter.reportAttack(enemy, {
+	    .consumedFrame = true,
+	    .transition = dev::EnemyAttackTransition::WindupStarted,
+	});
+	reporter.reportPursuit(enemy, {
+	    .stepsCommitted = 1,
+	    .stopReason = dev::EnemyPursuitStopReason::BudgetSpent,
+	});
+
+	Expect(events.events().size() == 2, "enemy movement reporter should publish attack and pursuit events");
+	if (events.events().size() < 2)
+		return;
+
+	Expect(events.events()[0].type == dev::MovementEventType::EnemyAttackTransitioned, "enemy movement reporter should publish attack transition first");
+	Expect(events.events()[0].enemyAttackTransition == dev::EnemyAttackTransition::WindupStarted, "enemy movement reporter should preserve attack transition");
+	Expect(events.events()[1].type == dev::MovementEventType::EnemyPursuitStopped, "enemy movement reporter should publish pursuit stop");
+	Expect(events.events()[1].enemyPursuitStopReason == dev::EnemyPursuitStopReason::BudgetSpent, "enemy movement reporter should preserve pursuit stop reason");
 }
 
 void TestCombatResolverDamageAndDefeat()
@@ -5083,6 +5180,23 @@ void TestRuntimeFrameTraceFormatsEnemyPursuitEvents()
 	Expect(ContainsLineFragment(lines, "pursuitSteps=3"), "runtime frame trace should include enemy pursuit committed steps");
 }
 
+void TestRuntimeFrameTraceFormatsEnemyAttackEvents()
+{
+	dev::RuntimeFrameReport report;
+	report.frameEvents.emit(dev::MovementEvent {
+	    .type = dev::MovementEventType::EnemyAttackTransitioned,
+	    .tile = { 1, 0 },
+	    .enemyId = 91,
+	    .enemyAttackTransition = dev::EnemyAttackTransition::WindupCompleted,
+	});
+
+	std::vector<std::string> lines = dev::RuntimeFrameTrace {}.format(report);
+
+	Expect(ContainsLineFragment(lines, "movementEvent[0] type=EnemyAttackTransitioned"), "runtime frame trace should include enemy attack event type");
+	Expect(ContainsLineFragment(lines, "enemy=91"), "runtime frame trace should include enemy attack id");
+	Expect(ContainsLineFragment(lines, "attackTransition=WindupCompleted"), "runtime frame trace should include enemy attack transition");
+}
+
 void TestRuntimeFrameTraceFileStoreSavesAndLoadsLines()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_frame_trace_file_store_test";
@@ -7196,6 +7310,10 @@ int main()
 	TestEnemyMovementEmitsPursuitResult();
 	TestEnemyAttackWindupAndRecovery();
 	TestEnemyAttackRunnerConsumesWindupAndRecovery();
+	TestEnemyAttackRunnerReportsRecoveryCompletedOutOfRange();
+	TestEnemyAttackEventEmitterRecordsTransitions();
+	TestEnemyMovementEmitsAttackTransition();
+	TestEnemyMovementReporterPublishesAttackAndPursuit();
 	TestCombatResolverDamageAndDefeat();
 	TestActionExecutorAttackResolvesCombat();
 	TestCombatSystemEmitsHitEvent();
@@ -7351,6 +7469,7 @@ int main()
 	TestGameLoopBuildsRuntimeFrameReports();
 	TestRuntimeFrameTraceFormatsReadableLines();
 	TestRuntimeFrameTraceFormatsEnemyPursuitEvents();
+	TestRuntimeFrameTraceFormatsEnemyAttackEvents();
 	TestRuntimeFrameTraceFileStoreSavesAndLoadsLines();
 	TestRuntimeFrameTraceFileStoreRejectsMissingFile();
 	TestRuntimeTraceServiceFormatsAndSavesRunTrace();
