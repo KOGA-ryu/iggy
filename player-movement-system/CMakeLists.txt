@@ -61,6 +61,7 @@ add_library(player_movement_system
   src/app/RuntimeMovementCommandReportRecorder.cpp
   src/app/RuntimeMovementCommandIntake.cpp
   src/app/RuntimeMovementEventText.cpp
+  src/app/RuntimeMovementFrameSourceStep.cpp
   src/app/RuntimeMovementInputBlockSummary.cpp
   src/app/RuntimeMovementScriptReportRecorder.cpp
   src/app/RuntimeMovementScriptBatchRunner.cpp
@@ -79,6 +80,7 @@ add_library(player_movement_system
   src/app/RuntimeRunSummaryText.cpp
   src/app/RuntimeSessionCommandReportRecorder.cpp
   src/app/RuntimeSessionCommandIntake.cpp
+  src/app/RuntimeSessionFrameSourceStep.cpp
   src/app/RuntimeSetupFrameGate.cpp
   src/app/RuntimeSetupInventoryCommandReportRecorder.cpp
   src/app/RuntimeSetupRunResultApplier.cpp

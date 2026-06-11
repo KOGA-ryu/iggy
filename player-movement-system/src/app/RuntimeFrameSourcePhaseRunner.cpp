@@ -1,6 +1,8 @@
 #include "RuntimeFrameSourcePhaseRunner.hpp"
 
 #include "app/RuntimeInventoryFrameSourceStep.hpp"
+#include "app/RuntimeMovementFrameSourceStep.hpp"
+#include "app/RuntimeSessionFrameSourceStep.hpp"
 
 namespace dev {
 
@@ -10,14 +12,15 @@ void RuntimeFrameSourcePhaseRunner::run(
     RuntimeRunRecorder &recorder,
     const SessionCommandDispatcher &sessionDispatcher) const
 {
-	recorder.recordRawInputDrainResult(inputSourceRouter.route());
-
-	recorder.recordSessionCommandResults(sourceDrainer.drainSessionCommands(sessionDispatcher));
+	RuntimeSessionFrameSourceStep {}.run(
+	    inputSourceRouter,
+	    sourceDrainer,
+	    recorder,
+	    sessionDispatcher);
 
 	RuntimeInventoryFrameSourceStep {}.run(sourceDrainer, recorder);
 
-	recorder.recordMovementScriptResults(sourceDrainer.drainMovementScripts());
-	recorder.recordMovementCommandsQueued(sourceDrainer.drainMovementCommands());
+	RuntimeMovementFrameSourceStep {}.run(sourceDrainer, recorder);
 }
 
 } // namespace dev

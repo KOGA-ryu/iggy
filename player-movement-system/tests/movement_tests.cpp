@@ -55,6 +55,7 @@
 #include "app/RuntimeMovementCommandIntake.hpp"
 #include "app/RuntimeMovementCommandReportRecorder.hpp"
 #include "app/RuntimeMovementEventText.hpp"
+#include "app/RuntimeMovementFrameSourceStep.hpp"
 #include "app/RuntimeMovementScriptBatchRunner.hpp"
 #include "app/RuntimeMovementScriptReportRecorder.hpp"
 #include "app/RuntimeMovementScriptIntake.hpp"
@@ -78,6 +79,7 @@
 #include "app/RuntimeRunTraceOutputStep.hpp"
 #include "app/RuntimeSessionCommandReportRecorder.hpp"
 #include "app/RuntimeSessionCommandIntake.hpp"
+#include "app/RuntimeSessionFrameSourceStep.hpp"
 #include "app/RuntimeSessionInputRouter.hpp"
 #include "app/RuntimeSessionModeTogglePolicy.hpp"
 #include "app/RuntimeSetupFailurePolicy.hpp"
@@ -5861,6 +5863,76 @@ void TestRuntimeSessionCommandIntakeDispatchesCommandsInOrder()
 	std::filesystem::remove_all(root);
 }
 
+void TestRuntimeSessionFrameSourceStepRoutesRawInputBeforeSessionSources()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_session_frame_source_step_test";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root / "saves" };
+	session.startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	dev::SessionEventRecorder sessionEvents;
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::QueuedSessionCommandSource routedSessionCommands;
+	dev::QueuedMovementCommandSource routedMovementCommands;
+	dev::QueuedRawInputSource rawInput;
+	rawInput.enqueue({
+	    .type = dev::RawInputType::KeyPress,
+	    .code = 'I',
+	    .pressed = true,
+	});
+	dev::QueuedSessionCommandSource sessionCommands;
+	sessionCommands.enqueue({
+	    .type = dev::SessionCommandType::SetMode,
+	    .mode = dev::GameSessionMode::Paused,
+	});
+	dev::RuntimeSourceSettings sources {
+	    .rawInputSources = { &rawInput },
+	};
+	dev::RuntimeInputSettings input {
+	    .bindings = dev::RuntimeInputBindings { .pauseKey = 'P', .inventoryKey = 'I', .stopKey = 'S' },
+	};
+	dev::RuntimeInputSourceRouter inputSourceRouter {
+		session,
+		routedSessionCommands,
+		routedMovementCommands,
+		sources,
+		input,
+	};
+	dev::RuntimeSourceDrainer sourceDrainer {
+		session,
+		inventoryEvents,
+		routedSessionCommands,
+		routedMovementCommands,
+		dev::RuntimeSourceDrainerSettings {
+		    .sessionCommandSources = { &sessionCommands },
+		},
+	};
+	dev::GameLoopResult result;
+	dev::RuntimeRunRecorder recorder { result, sessionEvents, inventoryEvents };
+	dev::SessionCommandDispatcher dispatcher { session, &sessionEvents };
+	recorder.beginFrame();
+
+	dev::RuntimeSessionFrameSourceStep {}.run(
+	    inputSourceRouter,
+	    sourceDrainer,
+	    recorder,
+	    dispatcher);
+	recorder.finishFrame();
+
+	Expect(result.summary.rawInputEventsRouted == 1, "runtime session frame source step should record routed raw input");
+	Expect(result.summary.sessionCommandResults.size() == 2, "runtime session frame source step should dispatch routed and configured session commands");
+	Expect(result.summary.sessionCommandResults[0].command.mode == std::optional<dev::GameSessionMode> { dev::GameSessionMode::Inventory }, "runtime session frame source step should dispatch raw-input session commands first");
+	Expect(result.summary.sessionCommandResults[1].command.mode == std::optional<dev::GameSessionMode> { dev::GameSessionMode::Paused }, "runtime session frame source step should dispatch configured session sources after routed commands");
+	Expect(session.mode() == dev::GameSessionMode::Paused, "runtime session frame source step should leave session after ordered lifecycle commands");
+	Expect(result.frameReports.size() == 1 && result.frameReports[0].rawInputEventsRouted == 1, "runtime session frame source step should record frame raw input count");
+	Expect(result.frameReports.size() == 1 && result.frameReports[0].sessionCommandResults.size() == 2, "runtime session frame source step should record frame session command results");
+	Expect(rawInput.empty(), "runtime session frame source step should drain raw input sources");
+	Expect(routedSessionCommands.empty(), "runtime session frame source step should drain routed session commands");
+	Expect(sessionCommands.empty(), "runtime session frame source step should drain configured session command sources");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestRuntimeMovementScriptIntakeRunsScriptsAgainstActiveWorld()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_movement_script_intake_test";
@@ -5939,6 +6011,68 @@ void TestRuntimeMovementScriptBatchRunnerPreservesPathOrder()
 	Expect(results.size() == 3 && results[2].status == dev::MovementScriptRunStatus::Completed, "runtime movement script batch runner should continue after load failure");
 	Expect(results.size() == 3 && results[0].replayReport.acceptedCount() == 1, "runtime movement script batch runner should replay first script");
 	Expect(results.size() == 3 && results[2].replayReport.results.size() == 1, "runtime movement script batch runner should replay later scripts");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeMovementFrameSourceStepRunsScriptsBeforeQueueingCommands()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_movement_frame_source_step_test";
+	const std::filesystem::path scriptPath = root / "movement.imcl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::CommandLog log;
+	log.record({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+	dev::CommandLogFileStore store;
+	Expect(store.save(scriptPath, log), "runtime movement frame source step test should create movement script");
+
+	dev::GameSession session { root / "saves" };
+	session.startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::QueuedSessionCommandSource routedSessionCommands;
+	dev::QueuedMovementCommandSource routedMovementCommands;
+	dev::QueuedMovementScriptSource movementScripts;
+	movementScripts.enqueue(scriptPath);
+	dev::QueuedMovementCommandSource movementCommands;
+	movementCommands.enqueue({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 2, 0 },
+	});
+	dev::RuntimeSourceDrainer sourceDrainer {
+		session,
+		inventoryEvents,
+		routedSessionCommands,
+		routedMovementCommands,
+		dev::RuntimeSourceDrainerSettings {
+		    .movementScriptSources = { &movementScripts },
+		    .movementCommandSources = { &movementCommands },
+		},
+	};
+	dev::GameLoopResult result;
+	dev::SessionEventRecorder sessionEvents;
+	dev::RuntimeRunRecorder recorder { result, sessionEvents, inventoryEvents };
+	recorder.beginFrame();
+
+	dev::RuntimeMovementFrameSourceStep {}.run(sourceDrainer, recorder);
+	recorder.finishFrame();
+
+	dev::MovementCommand queued {};
+
+	Expect(result.summary.runtimeMovementScriptResults.size() == 1, "runtime movement frame source step should record movement script results");
+	Expect(result.summary.runtimeMovementScriptResults[0].status == dev::MovementScriptRunStatus::Completed, "runtime movement frame source step should run movement scripts");
+	Expect(result.summary.runtimeMovementScriptResults[0].replayReport.acceptedCount() == 1, "runtime movement frame source step should preserve script replay results");
+	Expect(result.summary.movementCommandsQueued == 1, "runtime movement frame source step should record queued direct movement commands");
+	Expect(result.frameReports.size() == 1 && result.frameReports[0].movementScriptResults.size() == 1, "runtime movement frame source step should record frame movement script results");
+	Expect(result.frameReports.size() == 1 && result.frameReports[0].movementCommandsQueued == 1, "runtime movement frame source step should record frame queued movement count");
+	Expect(movementScripts.empty(), "runtime movement frame source step should drain movement script sources");
+	Expect(movementCommands.empty(), "runtime movement frame source step should drain movement command sources");
+	Expect(session.world().commandQueue.tryPop(queued) && queued.destination == dev::Point { 2, 0 }, "runtime movement frame source step should queue direct movement commands into the active world");
 
 	std::filesystem::remove_all(root);
 }
@@ -10513,8 +10647,10 @@ int main()
 	TestRuntimeMovementCommandIntakeQueuesCommandsInWorldOrder();
 	TestRuntimeInventoryCommandIntakeDispatchesOrRejectsCommands();
 	TestRuntimeSessionCommandIntakeDispatchesCommandsInOrder();
+	TestRuntimeSessionFrameSourceStepRoutesRawInputBeforeSessionSources();
 	TestRuntimeMovementScriptIntakeRunsScriptsAgainstActiveWorld();
 	TestRuntimeMovementScriptBatchRunnerPreservesPathOrder();
+	TestRuntimeMovementFrameSourceStepRunsScriptsBeforeQueueingCommands();
 	TestRuntimeInventoryScriptIntakeRunsScriptsAgainstActivePlayer();
 	TestRuntimeInventoryScriptBatchRunnerPreservesPathOrder();
 	TestRuntimeInventoryFrameSourceStepDrainsScriptsBeforeCommands();

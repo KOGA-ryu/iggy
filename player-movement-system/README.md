@@ -791,9 +791,17 @@ RuntimeFrameSourcePhaseRunner
   app-layer pre-simulation phase that routes raw input, drains runtime sources
   in frame order, and records source results
 
+RuntimeSessionFrameSourceStep
+  app-layer frame source step that routes raw input before draining lifecycle
+  command sources and records both report surfaces
+
 RuntimeInventoryFrameSourceStep
   app-layer frame source step that drains inventory scripts before direct
   inventory commands and records both report surfaces
+
+RuntimeMovementFrameSourceStep
+  app-layer frame source step that drains movement scripts before direct
+  movement commands and records script results separately from queued counts
 
 RuntimeFrameSimulationPhaseRunner
   app-layer simulation phase that records the current frame policy, advances
@@ -857,6 +865,10 @@ RuntimeSessionCommandIntake
   app-layer intake step that dispatches drained lifecycle commands through
   SessionCommandDispatcher while preserving source order
 
+RuntimeSessionFrameSourceStep
+  app-layer source step that records raw input routing and then records routed
+  plus configured lifecycle command dispatch results
+
 RuntimeSessionCommandReportRecorder
   app-layer recorder that keeps current-frame session command results on the
   frame report while aggregating all session command results into the run summary
@@ -865,6 +877,10 @@ RuntimeMovementScriptReportRecorder
   app-layer recorder that keeps current-frame movement script results on the
   frame report while aggregating runtime movement script results into the run
   summary without changing queued movement command counts
+
+RuntimeMovementFrameSourceStep
+  app-layer source step that records movement script results and then direct
+  movement command queue counts so reports preserve movement source roles
 
 RuntimeMovementScriptIntake
   app-layer intake step that binds movement script replay to the active runtime

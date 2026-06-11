@@ -204,7 +204,9 @@ Good first tests:
 - RuntimeMovementCommandIntake queues drained runtime movement commands into the simulation world
 - RuntimeInventoryCommandIntake dispatches drained runtime inventory commands or rejects them without a player
 - RuntimeInventoryFrameSourceStep drains inventory scripts before direct inventory commands
+- RuntimeMovementFrameSourceStep drains movement scripts before direct movement commands
 - RuntimeSessionCommandIntake dispatches drained lifecycle commands in source order
+- RuntimeSessionFrameSourceStep routes raw input before draining lifecycle command sources
 - RuntimeLoopTypes keeps loop settings and results reusable outside GameLoop
 - GameLoop builds RuntimeFrameReport entries for per-frame inspection
 - RuntimeFramePolicyText formats policy lines for traces and manifests

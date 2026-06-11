@@ -1301,9 +1301,14 @@ RuntimeFrameRunner
 route raw input, drain session commands, run inventory scripts, dispatch
 inventory commands, run movement scripts, and queue direct movement commands.
 That keeps the frame runner focused on the frame lifecycle around the phase.
+`RuntimeSessionFrameSourceStep` owns the session subsection of that phase:
+route raw input first so hotkeys can enqueue lifecycle commands, then drain and
+dispatch routed plus configured lifecycle command sources.
 `RuntimeInventoryFrameSourceStep` owns the inventory subsection of that phase,
 so script-driven inventory commands are recorded before direct inventory command
 sources.
+`RuntimeMovementFrameSourceStep` owns the movement subsection: run movement
+scripts first, then queue direct movement commands for simulation.
 
 `RuntimeFrameSimulationPhaseRunner` owns the ordered simulation phase: record
 the current frame policy, advance the active session, and record the resulting
@@ -1426,6 +1431,10 @@ lifecycle commands. Runtime session sources and routed hotkeys both become a
 single ordered command list, then the intake dispatches each command through
 `SessionCommandDispatcher` before the frame records the results.
 
+`RuntimeSessionFrameSourceStep` owns the frame-level session source order:
+record raw input routing, drain routed and configured lifecycle command sources,
+and record dispatch results before inventory or movement sources run.
+
 `RuntimeSessionCommandReportRecorder` owns session command results. The frame
 report receives the current frame's lifecycle command results, while the run
 summary appends them to the cross-frame lifecycle history.
@@ -1444,6 +1453,11 @@ commands and wires that world into `MovementScriptRunner`.
 keeps `RuntimeSourceDrainer` focused on source gating and path draining while
 the batch runner turns the drained path list into ordered
 `MovementScriptRunResult` entries.
+
+`RuntimeMovementFrameSourceStep` owns the frame-level movement source order:
+drain movement scripts, record replay results, then drain direct movement
+commands and record only the queued command count. Movement scripts describe
+replay dispatch; direct movement commands describe queued simulation input.
 
 `RuntimeMovementCommandReportRecorder` owns that direct queued movement command
 count. The frame gets the count for this frame, while the run summary
