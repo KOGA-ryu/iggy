@@ -2,7 +2,7 @@
 
 #include "app/RuntimeBlockedPointerInputStep.hpp"
 #include "app/RuntimeInputTypes.hpp"
-#include "app/RuntimeInputFocusResolver.hpp"
+#include "app/RuntimeMovementInputContextBuilder.hpp"
 #include "app/RuntimeMovementIntentInputStep.hpp"
 #include "app/RuntimeTargetInputRouter.hpp"
 #include "app/RuntimeStopMovementInputStep.hpp"
@@ -19,7 +19,7 @@ public:
 
 private:
 	RuntimeInputBindings bindings_;
-	RuntimeInputFocusResolver focusResolver_;
+	RuntimeMovementInputContextBuilder contextBuilder_;
 	RuntimeStopMovementInputStep stopInput_;
 	RuntimeBlockedPointerInputStep blockedPointerInput_;
 	RuntimeMovementIntentInputStep movementIntentInput_;

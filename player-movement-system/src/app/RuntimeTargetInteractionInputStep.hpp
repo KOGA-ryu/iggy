@@ -1,7 +1,7 @@
 #pragma once
 
 #include "app/RuntimeInputTypes.hpp"
-#include "commands/MovementCommandSource.hpp"
+#include "app/RuntimeMovementCommandQueueStep.hpp"
 #include "input/RawInput.hpp"
 #include "interaction/InteractionCommandBuilder.hpp"
 #include "interaction/InteractionIntentBuilder.hpp"
@@ -25,7 +25,7 @@ public:
 	    const PlayerActionGate &gate) const;
 
 private:
-	QueuedMovementCommandSource &movementCommands_;
+	RuntimeMovementCommandQueueStep queueStep_;
 	InteractionIntentBuilder interactionIntentBuilder_;
 	InteractionCommandBuilder interactionCommandBuilder_;
 };

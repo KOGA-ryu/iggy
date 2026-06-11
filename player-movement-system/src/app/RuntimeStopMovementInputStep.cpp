@@ -8,7 +8,7 @@
 namespace dev {
 
 RuntimeStopMovementInputStep::RuntimeStopMovementInputStep(QueuedMovementCommandSource &movementCommands)
-    : movementCommands_(movementCommands)
+    : queueStep_(movementCommands)
 {
 }
 
@@ -32,11 +32,7 @@ RuntimeInputRouteResult RuntimeStopMovementInputStep::route(
 	    player,
 	    PlayerIntent { .type = PlayerIntentType::StopMoving },
 	    gate);
-	if (!stop.has_value())
-		return resultBuilder.unhandled();
-
-	movementCommands_.enqueue(*stop);
-	return resultBuilder.queuedMovementCommand();
+	return queueStep_.queue(stop);
 }
 
 } // namespace dev

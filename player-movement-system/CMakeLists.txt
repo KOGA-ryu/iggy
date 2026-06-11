@@ -61,8 +61,10 @@ add_library(player_movement_system
   src/app/RuntimeInventoryScriptText.cpp
   src/app/RuntimeMovementCommandReportRecorder.cpp
   src/app/RuntimeMovementCommandIntake.cpp
+  src/app/RuntimeMovementCommandQueueStep.cpp
   src/app/RuntimeMovementEventText.cpp
   src/app/RuntimeMovementFrameSourceStep.cpp
+  src/app/RuntimeMovementInputContextBuilder.cpp
   src/app/RuntimeMovementInputBlockSummary.cpp
   src/app/RuntimeMovementIntentInputStep.cpp
   src/app/RuntimeMovementScriptReportRecorder.cpp
@@ -216,6 +218,7 @@ add_library(player_movement_system
   src/simulation/SimulationActorUpdater.cpp
   src/simulation/SimulationClock.cpp
   src/simulation/SimulationCommandDrainer.cpp
+  src/simulation/SimulationCommandQueueDrainStep.cpp
   src/simulation/SimulationEnemyMovementRunner.cpp
   src/simulation/SimulationEnemyTargetSelector.cpp
   src/simulation/SimulationEnemyUpdater.cpp

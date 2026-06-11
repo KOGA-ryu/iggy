@@ -2,18 +2,6 @@
 
 namespace dev {
 
-namespace {
-
-template <typename Event>
-std::vector<Event> EventsSince(const std::vector<Event> &events, std::size_t offset)
-{
-	if (offset >= events.size())
-		return {};
-	return { events.begin() + static_cast<std::ptrdiff_t>(offset), events.end() };
-}
-
-} // namespace
-
 void RuntimeFrameEventDeltaCollector::beginFrame(
     const SessionEventRecorder &sessionEvents,
     const InventoryEventRecorder &inventoryEvents)
@@ -27,8 +15,8 @@ RuntimeFrameEventDeltas RuntimeFrameEventDeltaCollector::collect(
     const InventoryEventRecorder &inventoryEvents) const
 {
 	return {
-		.sessionEvents = EventsSince(sessionEvents.events(), sessionEventOffset_),
-		.inventoryEvents = EventsSince(inventoryEvents.events(), inventoryEventOffset_),
+		.sessionEvents = streamDelta_.eventsSince(sessionEvents.events(), sessionEventOffset_),
+		.inventoryEvents = streamDelta_.eventsSince(inventoryEvents.events(), inventoryEventOffset_),
 	};
 }
 

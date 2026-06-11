@@ -20,6 +20,8 @@ command, the simulation has one path to maintain.
 
 ## Docs
 
+- [Documentation map](docs/README.md) is the shorter learning path and points to
+  focused lessons before the long reference docs.
 - [Movement flow](docs/movement-flow.md) walks through the runtime gameplay
   pipeline from input to simulation, save slots, and session commands.
 - [Save system](docs/save-system.md) explains the durable-state and byte-format
@@ -407,6 +409,10 @@ MovementCommandSource
   runtime-facing source boundary that lets input, replay, debug, or future
   networking feed semantic movement commands into the active world queue
 
+RuntimeMovementCommandQueueStep
+  app-edge handoff that enqueues built movement commands and returns the
+  route-result vocabulary used by input frame reports
+
 RuntimeInputSourceRouter
   app-edge use case that builds the current input context, drains raw input
   sources, and routes handled events into semantic session/movement queues
@@ -441,6 +447,10 @@ RuntimeSessionModeTogglePolicy
 RuntimeMovementInputRouter
   gameplay input router that maps focused pointer, target, and stop-key input
   into semantic movement commands
+
+RuntimeMovementInputContextBuilder
+  gameplay input context builder that selects the runtime player, applies
+  session focus rules, and computes the movement block reason
 
 RuntimeMovementIntentInputStep
   gameplay input step that maps generic movement-shaped raw input into
@@ -524,6 +534,10 @@ SimulationTickPipeline
 SimulationCommandDrainer
   simulation-layer command intake stage that drains queued semantic movement
   commands through CommandDispatcher and PlayerController
+
+SimulationCommandQueueDrainStep
+  simulation-layer FIFO command queue drain loop that dispatches queued movement
+  commands and reports how many commands were consumed
 
 SimulationActorUpdater
   simulation-layer actor stage that applies frame policy and runs players before
@@ -925,6 +939,10 @@ RuntimeFrameCompletionReportRecorder
 RuntimeFrameEventDeltaCollector
   app-layer frame lifecycle helper that snapshots session and inventory event
   stream positions and returns only the events emitted during the active frame
+
+RuntimeEventStreamDelta
+  app-layer helper that slices long-lived event streams from a frame-start
+  offset into per-frame report deltas
 
 RuntimeFramePolicyReportRecorder
   app-layer recorder that stores the simulation frame policy description on

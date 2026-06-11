@@ -412,12 +412,16 @@ That keeps player and enemy attacks on the same damage rules.
 
 ## 15. Simulation Tick
 
+Focused lesson:
+[03. Command To Simulation](movement/03-command-to-simulation.md).
+
 The tick layer is where the separate systems become one frame:
 
 ```text
 CommandQueue
   -> SimulationTickPipeline
   -> SimulationCommandDrainer
+  -> SimulationCommandQueueDrainStep
   -> CommandDispatcher
   -> PlayerController
   -> SimulationActorUpdater
@@ -1483,6 +1487,10 @@ frame start it snapshots the current session and inventory event counts; at
 frame completion it returns only the events emitted after that snapshot. That
 keeps lifecycle delta math out of the report writer.
 
+`RuntimeEventStreamDelta` owns the offset slicing rule used by the frame event
+delta collector. Focused lesson:
+[04. Frame Events To Reports](movement/04-frame-events-to-reports.md).
+
 `RuntimeFramePolicyReportRecorder` owns the frame policy report assignment. The
 frame runner still chooses the policy from session mode, while the recorder
 stores the chosen policy description on the current frame report.
@@ -1800,6 +1808,13 @@ already owns.
 
 ## 37. Runtime Input Router
 
+Focused lesson: [01. Input To Intent](movement/01-input-to-intent.md). Keep this
+section as the full reference sweep; use the focused doc for the shorter reading
+path.
+
+Next focused lesson:
+[02. Intent To Command](movement/02-intent-to-command.md).
+
 The app edge now has a small adapter from raw input to semantic command sources:
 
 ```text
@@ -1824,6 +1839,7 @@ Movement input still uses the lower-level movement path:
 RawInputEvent
   -> InputEventMatcher
   -> RuntimeInputFocusResolver
+  -> RuntimeMovementInputContextBuilder
   -> InputFocus
   -> RuntimeBlockedPointerInputStep
   -> RuntimeMovementIntentInputStep
@@ -1844,6 +1860,10 @@ force menu focus, inventory sessions force inventory focus, and gameplay keeps
 the provided focus state. That makes the common game rule visible: the same
 button can mean movement during gameplay and nothing for movement while a menu
 or inventory owns controls.
+
+`RuntimeMovementInputContextBuilder` owns the per-event movement input state:
+select the active player, apply session focus rules, preserve action context,
+and compute the movement block reason that later input steps reuse.
 
 `RuntimeMovementIntentInputStep` owns the generic movement route after
 target-specific pointer input has first chance: map raw input to `PlayerIntent`,

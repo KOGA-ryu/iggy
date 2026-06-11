@@ -5,15 +5,12 @@
 
 namespace dev {
 
-void SimulationCommandDrainer::drain(SimulationWorld &world) const
+int SimulationCommandDrainer::drain(SimulationWorld &world) const
 {
 	PlayerController playerController { world.players, world.map, world.collision, world.pathFinder, world.movementEvents };
 	CommandDispatcher dispatcher { playerController, world.movementEvents };
 
-	MovementCommand command {};
-	while (world.commandQueue.tryPop(command)) {
-		dispatcher.dispatch(command);
-	}
+	return queueDrain_.drain(world.commandQueue, dispatcher);
 }
 
 } // namespace dev

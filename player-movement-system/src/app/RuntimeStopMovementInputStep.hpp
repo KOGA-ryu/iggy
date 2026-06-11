@@ -1,8 +1,8 @@
 #pragma once
 
 #include "app/RuntimeInputTypes.hpp"
+#include "app/RuntimeMovementCommandQueueStep.hpp"
 #include "commands/IntentCommandBuilder.hpp"
-#include "commands/MovementCommandSource.hpp"
 #include "input/RawInput.hpp"
 #include "player/Player.hpp"
 #include "player/PlayerActionGate.hpp"
@@ -22,7 +22,7 @@ public:
 	    PlayerActionBlockReason blockReason) const;
 
 private:
-	QueuedMovementCommandSource &movementCommands_;
+	RuntimeMovementCommandQueueStep queueStep_;
 	IntentCommandBuilder commandBuilder_;
 };
 

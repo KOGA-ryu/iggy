@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -25,6 +26,7 @@
 #include "app/RuntimeDebugManifestSections.hpp"
 #include "app/RuntimeDebugManifestSetupText.hpp"
 #include "app/RuntimeEffectText.hpp"
+#include "app/RuntimeEventStreamDelta.hpp"
 #include "app/RuntimeExitCodeMapper.hpp"
 #include "app/RuntimeExitCodePolicy.hpp"
 #include "app/RuntimeFrameCompletionReportRecorder.hpp"
@@ -54,9 +56,11 @@
 #include "app/RuntimeMovementInputRouter.hpp"
 #include "app/RuntimeMovementInputBlockSummary.hpp"
 #include "app/RuntimeMovementCommandIntake.hpp"
+#include "app/RuntimeMovementCommandQueueStep.hpp"
 #include "app/RuntimeMovementCommandReportRecorder.hpp"
 #include "app/RuntimeMovementEventText.hpp"
 #include "app/RuntimeMovementFrameSourceStep.hpp"
+#include "app/RuntimeMovementInputContextBuilder.hpp"
 #include "app/RuntimeMovementIntentInputStep.hpp"
 #include "app/RuntimeMovementScriptBatchRunner.hpp"
 #include "app/RuntimeMovementScriptReportRecorder.hpp"
@@ -208,6 +212,7 @@
 #include "simulation/SimulationActorUpdater.hpp"
 #include "simulation/SimulationClock.hpp"
 #include "simulation/SimulationCommandDrainer.hpp"
+#include "simulation/SimulationCommandQueueDrainStep.hpp"
 #include "simulation/SimulationEnemyMovementRunner.hpp"
 #include "simulation/SimulationEnemyTargetSelector.hpp"
 #include "simulation/SimulationEnemyUpdater.hpp"
@@ -1600,6 +1605,35 @@ void TestEnemyAttackResolvesCombatAgainstPlayer()
 	Expect(events.size() == 1 && events[0].damage == 4, "enemy attack event should include damage");
 }
 
+void TestSimulationCommandQueueDrainStepDispatchesQueuedCommands()
+{
+	dev::SimulationWorld world;
+	dev::EventRecorder movementEvents;
+	world.movementEvents = &movementEvents;
+	world.players.push_back(MakePlayer({ 0, 0 }));
+	dev::PlayerController controller { world.players, world.map, world.collision, world.pathFinder, &movementEvents };
+	dev::CommandDispatcher dispatcher { controller, &movementEvents };
+	dev::CommandQueue commands;
+	commands.push({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+	commands.push({
+	    .type = dev::MovementCommandType::Stop,
+	    .playerId = 0,
+	    .destination = { 0, 0 },
+	});
+
+	const int drained = dev::SimulationCommandQueueDrainStep {}.drain(commands, dispatcher);
+
+	dev::MovementCommand command;
+	Expect(drained == 2, "simulation command queue drain step should report drained command count");
+	Expect(!commands.tryPop(command), "simulation command queue drain step should empty command queue");
+	Expect(movementEvents.events().size() >= 2, "simulation command queue drain step should dispatch commands through dispatcher");
+	Expect(!movementEvents.events().empty() && movementEvents.events()[0].type == dev::MovementEventType::CommandAccepted, "simulation command queue drain step should preserve command dispatch events");
+}
+
 void TestSimulationCommandDrainerDispatchesQueuedMovementCommands()
 {
 	dev::SimulationWorld world;
@@ -1613,9 +1647,10 @@ void TestSimulationCommandDrainerDispatchesQueuedMovementCommands()
 	    .destinationAction = std::nullopt,
 	});
 
-	dev::SimulationCommandDrainer {}.drain(world);
+	const int drained = dev::SimulationCommandDrainer {}.drain(world);
 
 	dev::MovementCommand command;
+	Expect(drained == 1, "simulation command drainer should report drained world command count");
 	Expect(!world.commandQueue.tryPop(command), "simulation command drainer should empty queued movement commands");
 	Expect(world.players[0].moveState == dev::PlayerMoveState::Pathing, "simulation command drainer should dispatch movement commands through player controller");
 	Expect(movementEvents.events().size() >= 2, "simulation command drainer should emit command and controller events");
@@ -5620,6 +5655,31 @@ void TestQueuedMovementCommandSourceDrainsCommandsOnce()
 	Expect(drained.size() == 2 && drained[0].destination == dev::Point { 3, 4 }, "queued movement command source should preserve command payloads");
 }
 
+void TestRuntimeMovementCommandQueueStepQueuesRouteResults()
+{
+	dev::QueuedMovementCommandSource source;
+	dev::RuntimeMovementCommandQueueStep queueStep { source };
+
+	dev::RuntimeInputRouteResult result = queueStep.queue(dev::MovementCommand {
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 1,
+	    .destination = { 6, 7 },
+	});
+	std::vector<dev::MovementCommand> drained = source.drain();
+
+	std::optional<dev::MovementCommand> missingCommand;
+	dev::RuntimeInputRouteResult missingResult = queueStep.queue(missingCommand);
+
+	Expect(result.handled, "runtime movement command queue step should mark concrete commands handled");
+	Expect(result.queuedMovementCommand, "runtime movement command queue step should report queued movement commands");
+	Expect(!result.queuedSessionCommand, "runtime movement command queue step should not report session commands");
+	Expect(!result.movementBlockReason.has_value(), "runtime movement command queue step should not invent block reasons");
+	Expect(drained.size() == 1, "runtime movement command queue step should enqueue concrete commands");
+	Expect(drained.size() == 1 && drained[0].playerId == 1 && drained[0].destination == dev::Point { 6, 7 }, "runtime movement command queue step should preserve command payloads");
+	Expect(!missingResult.handled, "runtime movement command queue step should leave missing optional commands unhandled");
+	Expect(source.empty(), "runtime movement command queue step should not queue missing optional commands");
+}
+
 void TestQueuedInventoryCommandSourceDrainsCommandsOnce()
 {
 	dev::QueuedInventoryCommandSource source;
@@ -8033,6 +8093,32 @@ void TestRuntimeSetupRunResultApplierCopiesSetupAndRecordsSummary()
 	Expect(result.summary.framesRun == 0, "runtime setup run result applier should not finish frames");
 }
 
+void TestRuntimeEventStreamDeltaCopiesEventsSinceOffset()
+{
+	std::vector<dev::SessionEvent> events {
+	    {
+	        .type = dev::SessionEventType::GameStarted,
+	        .commandType = dev::SessionCommandType::StartNewGame,
+	    },
+	    {
+	        .type = dev::SessionEventType::ModeChanged,
+	        .commandType = dev::SessionCommandType::SetMode,
+	        .mode = dev::GameSessionMode::Inventory,
+	    },
+	};
+
+	std::vector<dev::SessionEvent> delta = dev::RuntimeEventStreamDelta {}.eventsSince(events, 1);
+	std::vector<dev::SessionEvent> allEvents = dev::RuntimeEventStreamDelta {}.eventsSince(events, 0);
+	std::vector<dev::SessionEvent> noneAtEnd = dev::RuntimeEventStreamDelta {}.eventsSince(events, events.size());
+	std::vector<dev::SessionEvent> nonePastEnd = dev::RuntimeEventStreamDelta {}.eventsSince(events, events.size() + 4);
+
+	Expect(delta.size() == 1, "runtime event stream delta should copy only events after offset");
+	Expect(delta.size() == 1 && delta[0].mode == dev::GameSessionMode::Inventory, "runtime event stream delta should preserve event payloads after offset");
+	Expect(allEvents.size() == 2, "runtime event stream delta should copy all events from zero offset");
+	Expect(noneAtEnd.empty(), "runtime event stream delta should return empty delta at stream end");
+	Expect(nonePastEnd.empty(), "runtime event stream delta should return empty delta past stream end");
+}
+
 void TestRuntimeFrameEventDeltaCollectorCapturesEventsSinceBeginFrame()
 {
 	dev::SessionEventRecorder sessionEvents;
@@ -9468,6 +9554,46 @@ void TestRuntimeInputFocusResolverMapsSessionModesToFocus()
 	Expect(empty.owner == dev::InputOwner::Dialogue, "runtime input focus resolver should preserve explicit focus in empty mode");
 }
 
+void TestRuntimeMovementInputContextBuilderSelectsPlayerAndBlockReason()
+{
+	dev::SimulationWorld world;
+	world.players.push_back(MakePlayer({ 0, 0 }));
+	world.players.push_back(MakePlayer({ 3, 4 }));
+	world.players[1].moveState = dev::PlayerMoveState::Stunned;
+
+	std::optional<dev::RuntimeMovementInputContext> context = dev::RuntimeMovementInputContextBuilder {}.build(
+	    dev::RuntimeInputContext {
+	        .world = &world,
+	        .playerId = 1,
+	        .focusState = dev::FocusState { .owner = dev::InputOwner::Gameplay },
+	        .sessionMode = dev::GameSessionMode::Gameplay,
+	    });
+	std::optional<dev::RuntimeMovementInputContext> inventoryContext = dev::RuntimeMovementInputContextBuilder {}.build(
+	    dev::RuntimeInputContext {
+	        .world = &world,
+	        .playerId = 0,
+	        .focusState = dev::FocusState { .owner = dev::InputOwner::Gameplay },
+	        .sessionMode = dev::GameSessionMode::Inventory,
+	    });
+	std::optional<dev::RuntimeMovementInputContext> missingWorld = dev::RuntimeMovementInputContextBuilder {}.build(
+	    dev::RuntimeInputContext {});
+	std::optional<dev::RuntimeMovementInputContext> missingPlayer = dev::RuntimeMovementInputContextBuilder {}.build(
+	    dev::RuntimeInputContext {
+	        .world = &world,
+	        .playerId = 2,
+	        .sessionMode = dev::GameSessionMode::Gameplay,
+	    });
+
+	Expect(context.has_value(), "runtime movement input context builder should build context for active players");
+	Expect(context.has_value() && context->player == &world.players[1], "runtime movement input context builder should select requested player");
+	Expect(context.has_value() && context->focusState.owner == dev::InputOwner::Gameplay, "runtime movement input context builder should preserve gameplay focus in gameplay mode");
+	Expect(context.has_value() && context->blockReason == dev::PlayerActionBlockReason::Stunned, "runtime movement input context builder should compute player movement block reason");
+	Expect(inventoryContext.has_value() && inventoryContext->focusState.owner == dev::InputOwner::Inventory, "runtime movement input context builder should apply session focus rules");
+	Expect(inventoryContext.has_value() && inventoryContext->blockReason == dev::PlayerActionBlockReason::Focus, "runtime movement input context builder should expose focus block reason");
+	Expect(!missingWorld.has_value(), "runtime movement input context builder should reject missing worlds");
+	Expect(!missingPlayer.has_value(), "runtime movement input context builder should reject missing players");
+}
+
 void TestRuntimeBlockedPointerInputStepReportsBlockedPointerMovement()
 {
 	dev::RuntimeInputRouteResult blocked = dev::RuntimeBlockedPointerInputStep {}.route(
@@ -10619,6 +10745,7 @@ int main()
 	TestPlayerAttackUsesEquippedCombatModifiers();
 	TestEnemyAttackUsesEquippedDefenseModifiers();
 	TestEnemyAttackResolvesCombatAgainstPlayer();
+	TestSimulationCommandQueueDrainStepDispatchesQueuedCommands();
 	TestSimulationCommandDrainerDispatchesQueuedMovementCommands();
 	TestSimulationPlayerUpdaterAdvancesPlayerMovement();
 	TestSimulationPlayerMovementRunnerWiresWorldServices();
@@ -10767,6 +10894,7 @@ int main()
 	TestGameLoopDrainsRuntimeSessionCommandSources();
 	TestGameLoopRunsStartupScriptBeforeRuntimeCommandSources();
 	TestQueuedMovementCommandSourceDrainsCommandsOnce();
+	TestRuntimeMovementCommandQueueStepQueuesRouteResults();
 	TestGameLoopDrainsRuntimeMovementCommandSources();
 	TestQueuedInventoryCommandSourceDrainsCommandsOnce();
 	TestQueuedInventoryScriptSourceDrainsPathsOnce();
@@ -10850,6 +10978,7 @@ int main()
 	TestRuntimeFrameCompletionReportRecorderStoresFrameAndCountsRun();
 	TestRuntimeSetupInventoryCommandReportRecorderAppendsOnlySummaryResults();
 	TestRuntimeSetupRunResultApplierCopiesSetupAndRecordsSummary();
+	TestRuntimeEventStreamDeltaCopiesEventsSinceOffset();
 	TestRuntimeFrameEventDeltaCollectorCapturesEventsSinceBeginFrame();
 	TestRuntimeFramePolicyReportRecorderStoresCurrentFramePolicy();
 	TestRuntimeFramePolicyResolverMapsSessionModeToSimulationPolicy();
@@ -10903,6 +11032,7 @@ int main()
 	TestRuntimeMovementIntentInputStepMapsPointerIntentToCommand();
 	TestRuntimeMovementInputRouterMapsTouchTapToMovementCommand();
 	TestRuntimeInputFocusResolverMapsSessionModesToFocus();
+	TestRuntimeMovementInputContextBuilderSelectsPlayerAndBlockReason();
 	TestRuntimeBlockedPointerInputStepReportsBlockedPointerMovement();
 	TestRuntimeInputRouterBlocksMovementWhenFocusDoesNotOwnGameplay();
 	TestRuntimeInputRouterMapsHotkeysToSessionCommands();

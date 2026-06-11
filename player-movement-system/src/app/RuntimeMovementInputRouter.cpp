@@ -15,38 +15,36 @@ RuntimeMovementInputRouter::RuntimeMovementInputRouter(QueuedMovementCommandSour
 RuntimeInputRouteResult RuntimeMovementInputRouter::route(const RawInputEvent &event, const RuntimeInputContext &context) const
 {
 	RuntimeInputRouteResultBuilder resultBuilder;
-	if (context.world == nullptr || context.playerId >= context.world->players.size())
+	std::optional<RuntimeMovementInputContext> movementContext = contextBuilder_.build(context);
+	if (!movementContext.has_value())
 		return resultBuilder.unhandled();
 
-	FocusState focusState = focusResolver_.resolve(context.focusState, context.sessionMode);
-	InputFocus focus { focusState };
-	PlayerActionGate gate { focus, context.actionContext };
-	const Player &player = context.world->players[context.playerId];
-	const PlayerActionBlockReason blockReason = gate.movementBlockReason(player);
+	InputFocus focus { movementContext->focusState };
+	PlayerActionGate gate { focus, movementContext->actionContext };
 
 	RuntimeInputRouteResult stopResult = stopInput_.route(
 	    event,
 	    bindings_.stopKey,
 	    context.playerId,
-	    player,
+	    *movementContext->player,
 	    gate,
-	    blockReason);
+	    movementContext->blockReason);
 	if (stopResult.handled || stopResult.movementBlockReason.has_value())
 		return stopResult;
 
-	RuntimeInputRouteResult targetResult = targetInput_.route(event, context, player, gate);
+	RuntimeInputRouteResult targetResult = targetInput_.route(event, context, *movementContext->player, gate);
 	if (targetResult.handled || targetResult.movementBlockReason.has_value())
 		return targetResult;
 
-	RuntimeInputRouteResult blockedPointerResult = blockedPointerInput_.route(event, blockReason);
+	RuntimeInputRouteResult blockedPointerResult = blockedPointerInput_.route(event, movementContext->blockReason);
 	if (blockedPointerResult.movementBlockReason.has_value())
 		return blockedPointerResult;
 
 	return movementIntentInput_.route(
 	    event,
-	    context.world->map,
+	    movementContext->world->map,
 	    context.playerId,
-	    player,
+	    *movementContext->player,
 	    focus,
 	    gate);
 }

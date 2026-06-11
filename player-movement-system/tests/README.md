@@ -71,6 +71,7 @@ Good first tests:
 - ActionExecutor attack can damage registered combat target
 - CombatSystem emits Hit and Defeated events with damage and remaining HP
 - Enemy attack windup resolves combat against player and emits CombatEvent
+- SimulationCommandQueueDrainStep dispatches queued commands and reports drain count
 - SimulationCommandDrainer dispatches queued movement commands into player controller state
 - SimulationPlayerUpdater advances player movement and emits frame-visible movement events
 - SimulationPlayerMovementRunner wires world services into PlayerMovement
@@ -247,6 +248,7 @@ Good first tests:
 - RuntimeFrameCompletionReportRecorder stores completed frames and counts frames run
 - RuntimeSetupInventoryCommandReportRecorder records setup command results without frames
 - RuntimeSetupRunResultApplier copies setup results and records setup summary effects
+- RuntimeEventStreamDelta slices long-lived event streams from an offset
 - RuntimeFrameEventDeltaCollector captures only session/inventory events emitted during a frame
 - RuntimeFramePolicyReportRecorder records the current simulation frame policy
 - RuntimeFramePolicyResolver maps session mode to current simulation frame policy
@@ -292,11 +294,13 @@ Good first tests:
 - GameLoop drains runtime lifecycle command sources before frame updates
 - GameLoop runs startup scripts before runtime lifecycle command sources
 - QueuedMovementCommandSource drains movement commands exactly once
+- RuntimeMovementCommandQueueStep queues built movement commands as route results
 - GameLoop drains runtime movement command sources into the active world queue
 - GameLoop preserves movement commands when no active world can receive them
 - InputEventMatcher recognizes pressed keys and pointer events
 - RuntimeInputRouter maps gameplay mouse clicks into movement commands
 - RuntimeMovementInputRouter maps gameplay pointer input into movement commands
+- RuntimeMovementInputContextBuilder selects player, focus, and movement block state
 - RuntimeMovementIntentInputStep maps pointer movement intent into queued commands
 - RuntimeBlockedPointerInputStep reports blocked pointer movement without queueing commands
 - RuntimeStopMovementInputStep maps stop hotkeys into queued Stop commands

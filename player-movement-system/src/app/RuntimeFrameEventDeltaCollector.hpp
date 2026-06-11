@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <vector>
 
+#include "app/RuntimeEventStreamDelta.hpp"
 #include "inventory/InventoryEvent.hpp"
 #include "inventory/InventoryEventRecorder.hpp"
 #include "session/SessionEvent.hpp"
@@ -28,6 +29,7 @@ public:
 private:
 	std::size_t sessionEventOffset_ = 0;
 	std::size_t inventoryEventOffset_ = 0;
+	RuntimeEventStreamDelta streamDelta_;
 };
 
 } // namespace dev
