@@ -19,16 +19,39 @@
 
 namespace dev {
 
-struct GameLoopSettings {
-	std::filesystem::path saveRoot = "saves";
-	std::optional<std::filesystem::path> startupScript;
-	std::optional<std::filesystem::path> inventoryScript;
+struct RuntimeOutputSettings {
 	std::optional<std::filesystem::path> runTracePath;
+	std::optional<std::filesystem::path> debugBundlePath;
+};
+
+struct RuntimeOutputResult {
+	bool runTraceSaveAttempted = false;
+	bool runTraceSaved = false;
+	bool debugBundleSaveAttempted = false;
+	bool debugBundleSaved = false;
+};
+
+struct RuntimeSetupResult {
+	bool startupScriptRan = false;
+	SessionScriptRunResult startupScriptResult;
+	bool inventoryScriptRan = false;
+	InventoryScriptRunResult inventoryScriptResult;
+};
+
+struct RuntimeSourceSettings {
 	std::vector<RawInputSource *> rawInputSources;
 	std::vector<SessionCommandSource *> sessionCommandSources;
 	std::vector<MovementCommandSource *> movementCommandSources;
 	std::vector<InventoryCommandSource *> inventoryCommandSources;
 	std::vector<InventoryScriptSource *> inventoryScriptSources;
+};
+
+struct GameLoopSettings {
+	std::filesystem::path saveRoot = "saves";
+	std::optional<std::filesystem::path> startupScript;
+	std::optional<std::filesystem::path> inventoryScript;
+	RuntimeOutputSettings output;
+	RuntimeSourceSettings sources;
 	RuntimeInputBindings inputBindings;
 	FocusState inputFocusState;
 	PlayerActionContext playerActionContext;
@@ -49,11 +72,7 @@ struct RuntimeFrameReport {
 	std::vector<InventoryEvent> inventoryEvents;
 };
 
-struct GameLoopResult {
-	bool startupScriptRan = false;
-	SessionScriptRunResult startupScriptResult;
-	bool inventoryScriptRan = false;
-	InventoryScriptRunResult inventoryScriptResult;
+struct RuntimeRunSummary {
 	std::vector<InventoryScriptRunResult> runtimeInventoryScriptResults;
 	int rawInputEventsRouted = 0;
 	std::vector<SessionCommandResult> sessionCommandResults;
@@ -61,10 +80,14 @@ struct GameLoopResult {
 	int movementCommandsQueued = 0;
 	int framesRun = 0;
 	SimulationFrameEvents lastFrameEvents;
+};
+
+struct GameLoopResult {
+	RuntimeSetupResult setup;
+	RuntimeRunSummary summary;
 	std::vector<RuntimeFrameReport> frameReports;
 	GameSessionMode finalMode = GameSessionMode::Empty;
-	bool runTraceSaveAttempted = false;
-	bool runTraceSaved = false;
+	RuntimeOutputResult output;
 };
 
 class GameLoop {

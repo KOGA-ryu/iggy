@@ -115,6 +115,15 @@ Good first tests:
 - RuntimeFrameTrace formats frame reports into readable debug lines
 - RuntimeFrameTraceFileStore saves and loads readable trace lines
 - RuntimeTraceService formats and saves full GameLoopResult traces
+- RuntimeSetupResult defaults to no configured setup script attempts
+- RuntimeRunSummary defaults to empty aggregate run state
+- RuntimeExitCodePolicy maps setup and output failures to process failures
+- RuntimeOutputSettings defaults to no runtime artifact outputs
+- RuntimeOutputResult defaults to no artifact save attempts
+- RuntimeOutputFinalizer applies output settings and reports requested write failures
+- GameLoop saves configured run traces and reports trace write failures
+- RuntimeDebugArtifactBundle saves a manifest and run trace as one debug bundle
+- GameLoop saves configured debug bundles and reports bundle write failures
 - QueuedSessionCommandSource drains lifecycle commands exactly once
 - GameLoop drains runtime lifecycle command sources before frame updates
 - GameLoop runs startup scripts before runtime lifecycle command sources

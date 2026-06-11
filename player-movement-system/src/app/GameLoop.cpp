@@ -1,5 +1,8 @@
 #include "GameLoop.hpp"
 
+#include "RuntimeExitCodePolicy.hpp"
+#include "RuntimeOutputFinalizer.hpp"
+
 #include <cstddef>
 #include <utility>
 
@@ -44,11 +47,7 @@ GameLoop::GameLoop(GameLoopSettings settings)
 int GameLoop::run()
 {
 	const GameLoopResult result = runForResult();
-	if (result.startupScriptRan && result.startupScriptResult.status == SessionScriptRunStatus::LoadFailed)
-		return 1;
-	if (result.inventoryScriptRan && result.inventoryScriptResult.status != InventoryScriptRunStatus::Completed)
-		return 1;
-	return 0;
+	return RuntimeExitCodePolicy {}.exitCodeFor(result);
 }
 
 GameLoopResult GameLoop::runForResult()
@@ -61,35 +60,37 @@ GameLoopResult GameLoop::runForResult()
 		routedSessionCommands_,
 		routedMovementCommands_,
 		{
-		    .sessionCommandSources = settings_.sessionCommandSources,
-		    .inventoryScriptSources = settings_.inventoryScriptSources,
-		    .inventoryCommandSources = settings_.inventoryCommandSources,
-		    .movementCommandSources = settings_.movementCommandSources,
+		    .sessionCommandSources = settings_.sources.sessionCommandSources,
+		    .inventoryScriptSources = settings_.sources.inventoryScriptSources,
+		    .inventoryCommandSources = settings_.sources.inventoryCommandSources,
+		    .movementCommandSources = settings_.sources.movementCommandSources,
 		    .inputPlayerId = settings_.inputPlayerId,
 		},
 	};
 
+	auto finish = [&]() {
+		result.finalMode = session_.mode();
+		RuntimeOutputFinalizer {}.finalize(settings_.output, result);
+		return result;
+	};
+
 	if (settings_.startupScript.has_value()) {
-		result.startupScriptRan = true;
+		result.setup.startupScriptRan = true;
 		SessionScriptRunner runner { dispatcher };
-		result.startupScriptResult = runner.run(*settings_.startupScript);
-		if (result.startupScriptResult.status == SessionScriptRunStatus::LoadFailed) {
-			result.finalMode = session_.mode();
-			return result;
-		}
+		result.setup.startupScriptResult = runner.run(*settings_.startupScript);
+		if (result.setup.startupScriptResult.status == SessionScriptRunStatus::LoadFailed)
+			return finish();
 	}
 
 	if (settings_.inventoryScript.has_value()) {
-		result.inventoryScriptRan = true;
-		result.inventoryScriptResult = drainer.runInventoryScript(*settings_.inventoryScript);
-		if (result.inventoryScriptResult.status != InventoryScriptRunStatus::Completed) {
-			result.finalMode = session_.mode();
-			return result;
-		}
-		result.inventoryCommandResults.insert(
-		    result.inventoryCommandResults.end(),
-		    result.inventoryScriptResult.commandResults.begin(),
-		    result.inventoryScriptResult.commandResults.end());
+		result.setup.inventoryScriptRan = true;
+		result.setup.inventoryScriptResult = drainer.runInventoryScript(*settings_.inventoryScript);
+		if (result.setup.inventoryScriptResult.status != InventoryScriptRunStatus::Completed)
+			return finish();
+		result.summary.inventoryCommandResults.insert(
+		    result.summary.inventoryCommandResults.end(),
+		    result.setup.inventoryScriptResult.commandResults.begin(),
+		    result.setup.inventoryScriptResult.commandResults.end());
 	}
 
 	for (int frame = 0; frame < settings_.maxFrames; ++frame) {
@@ -98,38 +99,37 @@ GameLoopResult GameLoop::runForResult()
 		RuntimeFrameReport frameReport;
 
 		frameReport.rawInputEventsRouted = routeRawInputSources();
-		result.rawInputEventsRouted += frameReport.rawInputEventsRouted;
+		result.summary.rawInputEventsRouted += frameReport.rawInputEventsRouted;
 
 		frameReport.sessionCommandResults = drainer.drainSessionCommands(dispatcher);
-		result.sessionCommandResults.insert(result.sessionCommandResults.end(), frameReport.sessionCommandResults.begin(), frameReport.sessionCommandResults.end());
+		result.summary.sessionCommandResults.insert(result.summary.sessionCommandResults.end(), frameReport.sessionCommandResults.begin(), frameReport.sessionCommandResults.end());
 
 		frameReport.inventoryScriptResults = drainer.drainInventoryScripts();
-		result.runtimeInventoryScriptResults.insert(
-		    result.runtimeInventoryScriptResults.end(),
+		result.summary.runtimeInventoryScriptResults.insert(
+		    result.summary.runtimeInventoryScriptResults.end(),
 		    frameReport.inventoryScriptResults.begin(),
 		    frameReport.inventoryScriptResults.end());
 		AppendInventoryCommandResults(frameReport.inventoryCommandResults, frameReport.inventoryScriptResults);
-		AppendInventoryCommandResults(result.inventoryCommandResults, frameReport.inventoryScriptResults);
+		AppendInventoryCommandResults(result.summary.inventoryCommandResults, frameReport.inventoryScriptResults);
 
 		std::vector<InventoryCommandResult> inventoryResults = drainer.drainInventoryCommands();
 		frameReport.inventoryCommandResults.insert(frameReport.inventoryCommandResults.end(), inventoryResults.begin(), inventoryResults.end());
-		result.inventoryCommandResults.insert(result.inventoryCommandResults.end(), inventoryResults.begin(), inventoryResults.end());
+		result.summary.inventoryCommandResults.insert(result.summary.inventoryCommandResults.end(), inventoryResults.begin(), inventoryResults.end());
 
 		frameReport.movementCommandsQueued = drainer.drainMovementCommands();
-		result.movementCommandsQueued += frameReport.movementCommandsQueued;
+		result.summary.movementCommandsQueued += frameReport.movementCommandsQueued;
 
 		frameReport.frameEvents = updateSimulationFrame();
-		result.lastFrameEvents = frameReport.frameEvents;
+		result.summary.lastFrameEvents = frameReport.frameEvents;
 		frameReport.sessionEvents = EventsSince(sessionEvents_, sessionEventOffset);
 		frameReport.inventoryEvents = EventsSince(inventoryEvents_, inventoryEventOffset);
 		result.frameReports.push_back(frameReport);
 
 		renderDebugView();
-		++result.framesRun;
+		++result.summary.framesRun;
 	}
 
-	result.finalMode = session_.mode();
-	return result;
+	return finish();
 }
 
 GameSession &GameLoop::session()
@@ -167,7 +167,7 @@ int GameLoop::routeRawInputSources()
 	};
 
 	int routed = 0;
-	for (RawInputSource *source : settings_.rawInputSources) {
+	for (RawInputSource *source : settings_.sources.rawInputSources) {
 		if (source == nullptr)
 			continue;
 		std::vector<RawInputEvent> events = source->drain();

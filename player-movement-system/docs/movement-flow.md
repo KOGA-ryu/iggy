@@ -804,6 +804,31 @@ If the inventory script file cannot load, the loop stops before ticking frames.
 If the script loads but an inventory command rejects, the loop still reports a
 completed inventory script with rejected command results.
 
+`RuntimeSetupResult` keeps those setup facts together:
+
+```text
+GameLoopResult::setup
+  -> startup script attempted/result
+  -> configured inventory script attempted/result
+```
+
+That separates one-time setup automation from per-frame runtime sources. A
+failed setup script can stop the loop before frames begin, while runtime script
+source failures are reported per frame and the loop keeps ticking.
+
+`RuntimeExitCodePolicy` translates completed run facts into a process-style
+exit code:
+
+```text
+GameLoopResult
+  -> RuntimeExitCodePolicy
+  -> 0 or 1
+```
+
+Setup load failures and requested artifact write failures return failure.
+Command-level rejections inside a loadable setup script remain command results,
+so they do not automatically make the process fail.
+
 Runtime inventory script sources are different from the configured setup script:
 
 ```text
@@ -827,8 +852,9 @@ for each frame
 ```
 
 Configured inventory script failure stops setup. Runtime inventory script
-failure is reported in `runtimeInventoryScriptResults` and the loop keeps
-ticking. That lets a debug menu try a script without taking down the frame loop.
+failure is reported in `GameLoopResult::summary.runtimeInventoryScriptResults`
+and the loop keeps ticking. That lets a debug menu try a script without taking
+down the frame loop.
 
 `RuntimeSourceDrainer` now owns that runtime source order:
 
@@ -843,6 +869,86 @@ RuntimeSourceDrainer
 `GameLoop` still owns startup, raw input routing, frame stepping, and result
 aggregation. The drainer owns the repeated source mechanics and the active-world
 checks needed before inventory and movement sources can safely mutate state.
+
+`RuntimeRunSummary` keeps the cross-frame aggregates together:
+
+```text
+GameLoopResult::summary
+  -> runtime inventory script results
+  -> raw input routed
+  -> session and inventory command results
+  -> movement commands queued
+  -> frames run
+  -> last frame events
+```
+
+That is different from `RuntimeFrameReport`. The summary answers “what happened
+across the whole bounded run?” while the frame report answers “what happened on
+this specific frame?”
+
+`RuntimeOutputSettings` groups the app shell's optional artifact destinations:
+
+```text
+GameLoopSettings::output
+  -> optional runTracePath
+  -> optional debugBundlePath
+```
+
+`RuntimeOutputResult` mirrors that shape on the result side:
+
+```text
+GameLoopResult::output
+  -> run trace save attempted/saved
+  -> debug bundle save attempted/saved
+```
+
+`RuntimeOutputFinalizer` applies those settings after the loop has produced a
+`GameLoopResult`:
+
+```text
+GameLoopResult
+  -> RuntimeOutputFinalizer
+  -> RuntimeTraceService
+  -> RuntimeDebugArtifactBundle
+```
+
+That keeps `GameLoop` focused on lifecycle, input routing, source draining, and
+frame stepping. Output finalization owns the app artifact policy and exposes the
+same success/failure flags on `GameLoopResult::output`.
+
+`GameLoopSettings::output.runTracePath` lets the app shell persist a full run
+trace after the loop exits:
+
+```text
+GameLoopSettings::output.runTracePath
+  -> GameLoopResult
+  -> RuntimeTraceService
+  -> run.trace
+```
+
+This save happens through the same finalization path whether the loop finishes
+its frames or stops early during startup/inventory setup. `GameLoopResult`
+reports both `output.runTraceSaveAttempted` and `output.runTraceSaved`, and
+`GameLoop::run` returns failure when a requested trace cannot be written. That
+makes trace output useful for command-line tools without making movement,
+input, or inventory systems know about files.
+
+`GameLoopSettings::output.debugBundlePath` follows the same app-shell rule for
+a full debug bundle:
+
+```text
+GameLoopSettings::output.debugBundlePath
+  -> GameLoopResult
+  -> RuntimeDebugArtifactBundle
+  -> manifest.txt
+  -> run.trace
+```
+
+`GameLoopResult::output` reports `debugBundleSaveAttempted` and
+`debugBundleSaved`. `GameLoop::run` also returns failure when a requested bundle
+cannot be written. The loop still does not know how a manifest is formatted or
+how a trace is serialized; it only decides that configured debug artifacts
+should be finalized after the run.
 
 Each bounded frame now also produces a report:
 
@@ -902,6 +1008,20 @@ GameLoopResult
 It adds a run-level summary before the per-frame lines. That gives a caller one
 method for “save the trace for this run” while keeping formatting and filesystem
 behavior testable as separate pieces.
+
+`RuntimeDebugArtifactBundle` is the next app-layer wrapper around that trace:
+
+```text
+GameLoopResult
+  -> RuntimeDebugArtifactBundle
+  -> manifest.txt
+  -> run.trace
+```
+
+The bundle owns directory preparation and manifest writing. The trace still
+goes through `RuntimeTraceService`. That split keeps the replay/debug artifact
+shape outside gameplay code while leaving a clear place to add future files,
+such as replay command logs or session metadata.
 
 ## 35. Runtime Session Command Sources
 

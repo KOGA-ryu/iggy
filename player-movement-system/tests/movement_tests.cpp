@@ -8,9 +8,12 @@
 
 #include "actions/ActionExecutor.hpp"
 #include "app/GameLoop.hpp"
+#include "app/RuntimeDebugArtifactBundle.hpp"
+#include "app/RuntimeExitCodePolicy.hpp"
 #include "app/RuntimeInputRouter.hpp"
 #include "app/RuntimeFrameTrace.hpp"
 #include "app/RuntimeFrameTraceFileStore.hpp"
+#include "app/RuntimeOutputFinalizer.hpp"
 #include "app/RuntimeSourceDrainer.hpp"
 #include "app/RuntimeTraceService.hpp"
 #include "combat/CombatEventRecorder.hpp"
@@ -2521,10 +2524,10 @@ void TestGameLoopRunsStartupScriptAndFrames()
 	};
 	dev::GameLoopResult result = loop.runForResult();
 
-	Expect(result.startupScriptRan, "game loop should run configured startup script");
-	Expect(result.startupScriptResult.status == dev::SessionScriptRunStatus::Completed, "game loop should report completed startup script");
-	Expect(result.startupScriptResult.commandResults.size() == 1, "game loop should expose startup command results");
-	Expect(result.framesRun == 2, "game loop should run configured frame count");
+	Expect(result.setup.startupScriptRan, "game loop should run configured startup script");
+	Expect(result.setup.startupScriptResult.status == dev::SessionScriptRunStatus::Completed, "game loop should report completed startup script");
+	Expect(result.setup.startupScriptResult.commandResults.size() == 1, "game loop should expose startup command results");
+	Expect(result.summary.framesRun == 2, "game loop should run configured frame count");
 	Expect(result.finalMode == dev::GameSessionMode::Gameplay, "game loop should report final session mode");
 	Expect(loop.session().world().players.size() == 1 && loop.session().world().players[0].position.tile == dev::Point { 2, 13 }, "game loop startup script should initialize session world");
 	Expect(loop.session().world().players.size() == 1 && loop.session().world().players[0].combatStats.hitPoints == 18, "game loop startup script should initialize player hp");
@@ -2549,10 +2552,10 @@ void TestGameLoopReportsStartupScriptLoadFailure()
 	};
 	dev::GameLoopResult result = loop.runForResult();
 
-	Expect(result.startupScriptRan, "game loop should attempt configured startup script");
-	Expect(result.startupScriptResult.status == dev::SessionScriptRunStatus::LoadFailed, "game loop should report startup script load failure");
-	Expect(result.startupScriptResult.commandResults.empty(), "failed startup script should not dispatch commands");
-	Expect(result.framesRun == 0, "game loop should not run frames after failed startup script");
+	Expect(result.setup.startupScriptRan, "game loop should attempt configured startup script");
+	Expect(result.setup.startupScriptResult.status == dev::SessionScriptRunStatus::LoadFailed, "game loop should report startup script load failure");
+	Expect(result.setup.startupScriptResult.commandResults.empty(), "failed startup script should not dispatch commands");
+	Expect(result.summary.framesRun == 0, "game loop should not run frames after failed startup script");
 	Expect(result.finalMode == dev::GameSessionMode::Empty, "failed startup script should leave session empty");
 	Expect(loop.run() == 1, "game loop run should return failure exit code for missing startup script");
 
@@ -2589,10 +2592,10 @@ void TestGameLoopRunsInventoryScriptAgainstActivePlayer()
 
 	dev::GameLoopResult result = loop.runForResult();
 
-	Expect(result.inventoryScriptRan, "game loop should run configured inventory script");
-	Expect(result.inventoryScriptResult.status == dev::InventoryScriptRunStatus::Completed, "game loop should report completed inventory script");
-	Expect(result.inventoryScriptResult.commandResults.size() == 1, "game loop should expose inventory script command results");
-	Expect(result.inventoryCommandResults.size() == 1, "game loop should merge inventory script command results into loop results");
+	Expect(result.setup.inventoryScriptRan, "game loop should run configured inventory script");
+	Expect(result.setup.inventoryScriptResult.status == dev::InventoryScriptRunStatus::Completed, "game loop should report completed inventory script");
+	Expect(result.setup.inventoryScriptResult.commandResults.size() == 1, "game loop should expose inventory script command results");
+	Expect(result.summary.inventoryCommandResults.size() == 1, "game loop should merge inventory script command results into loop results");
 	Expect(loop.session().world().players[0].inventory.items.empty(), "game loop inventory script should remove equipped item from bag");
 	Expect(loop.session().world().players[0].inventory.equipment.weapon.has_value() && loop.session().world().players[0].inventory.equipment.weapon->id == 970, "game loop inventory script should equip item");
 	Expect(loop.inventoryEvents().events().size() == 1 && loop.inventoryEvents().events()[0].type == dev::InventoryEventType::Equipped, "game loop inventory script should emit inventory event");
@@ -2634,12 +2637,12 @@ void TestGameLoopRunsInventoryScriptAfterStartupScript()
 	};
 	dev::GameLoopResult result = loop.runForResult();
 
-	Expect(result.startupScriptRan, "game loop should run startup script before inventory script");
-	Expect(result.startupScriptResult.status == dev::SessionScriptRunStatus::Completed, "startup then inventory test should complete startup script");
-	Expect(result.inventoryScriptRan, "game loop should run inventory script after startup creates world");
-	Expect(result.inventoryScriptResult.status == dev::InventoryScriptRunStatus::Completed, "inventory script should complete when startup created player");
-	Expect(result.inventoryScriptResult.commandResults.size() == 1 && result.inventoryScriptResult.commandResults[0].type == dev::InventoryCommandResultType::Rejected, "inventory script should preserve command rejection after load");
-	Expect(result.framesRun == 1, "game loop should continue frames after loadable inventory script command rejects");
+	Expect(result.setup.startupScriptRan, "game loop should run startup script before inventory script");
+	Expect(result.setup.startupScriptResult.status == dev::SessionScriptRunStatus::Completed, "startup then inventory test should complete startup script");
+	Expect(result.setup.inventoryScriptRan, "game loop should run inventory script after startup creates world");
+	Expect(result.setup.inventoryScriptResult.status == dev::InventoryScriptRunStatus::Completed, "inventory script should complete when startup created player");
+	Expect(result.setup.inventoryScriptResult.commandResults.size() == 1 && result.setup.inventoryScriptResult.commandResults[0].type == dev::InventoryCommandResultType::Rejected, "inventory script should preserve command rejection after load");
+	Expect(result.summary.framesRun == 1, "game loop should continue frames after loadable inventory script command rejects");
 	Expect(loop.session().world().players.size() == 1 && loop.session().world().players[0].position.tile == dev::Point { 4, 9 }, "startup should initialize world before inventory script");
 	Expect(loop.inventoryEvents().events().size() == 1 && loop.inventoryEvents().events()[0].equipmentResult == dev::EquipmentResultType::MissingItem, "inventory script rejection should emit event");
 
@@ -2663,10 +2666,10 @@ void TestGameLoopReportsInventoryScriptLoadFailure()
 
 	dev::GameLoopResult result = loop.runForResult();
 
-	Expect(result.inventoryScriptRan, "game loop should attempt configured inventory script");
-	Expect(result.inventoryScriptResult.status == dev::InventoryScriptRunStatus::LoadFailed, "game loop should report inventory script load failure");
-	Expect(result.inventoryScriptResult.commandResults.empty(), "failed inventory script should not dispatch commands");
-	Expect(result.framesRun == 0, "game loop should stop before frames when configured inventory script cannot load");
+	Expect(result.setup.inventoryScriptRan, "game loop should attempt configured inventory script");
+	Expect(result.setup.inventoryScriptResult.status == dev::InventoryScriptRunStatus::LoadFailed, "game loop should report inventory script load failure");
+	Expect(result.setup.inventoryScriptResult.commandResults.empty(), "failed inventory script should not dispatch commands");
+	Expect(result.summary.framesRun == 0, "game loop should stop before frames when configured inventory script cannot load");
 
 	std::filesystem::remove_all(root);
 }
@@ -2695,10 +2698,10 @@ void TestGameLoopReportsInventoryScriptWithoutActivePlayer()
 	};
 	dev::GameLoopResult result = loop.runForResult();
 
-	Expect(result.inventoryScriptRan, "game loop should notice configured inventory script");
-	Expect(result.inventoryScriptResult.status == dev::InventoryScriptRunStatus::NoActivePlayer, "game loop should report inventory script without active player");
-	Expect(result.inventoryScriptResult.commandResults.empty(), "inventory script without player should not dispatch commands");
-	Expect(result.framesRun == 0, "game loop should stop before frames when inventory script has no active player");
+	Expect(result.setup.inventoryScriptRan, "game loop should notice configured inventory script");
+	Expect(result.setup.inventoryScriptResult.status == dev::InventoryScriptRunStatus::NoActivePlayer, "game loop should report inventory script without active player");
+	Expect(result.setup.inventoryScriptResult.commandResults.empty(), "inventory script without player should not dispatch commands");
+	Expect(result.summary.framesRun == 0, "game loop should stop before frames when inventory script has no active player");
 
 	std::filesystem::remove_all(root);
 }
@@ -2741,17 +2744,17 @@ void TestGameLoopDrainsRuntimeSessionCommandSources()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .sessionCommandSources = { &source },
+		    .sources = { .sessionCommandSources = { &source } },
 		    .maxFrames = 1,
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
 
-	Expect(!result.startupScriptRan, "runtime command source test should not run startup script");
-	Expect(result.sessionCommandResults.size() == 2, "game loop should dispatch runtime session commands");
-	Expect(result.sessionCommandResults.size() == 2 && result.sessionCommandResults[0].type == dev::SessionCommandResultType::Applied, "game loop should apply runtime new-game command");
-	Expect(result.sessionCommandResults.size() == 2 && result.sessionCommandResults[1].type == dev::SessionCommandResultType::Applied, "game loop should apply runtime mode command");
-	Expect(result.framesRun == 1, "game loop should still run frame after runtime commands");
+	Expect(!result.setup.startupScriptRan, "runtime command source test should not run startup script");
+	Expect(result.summary.sessionCommandResults.size() == 2, "game loop should dispatch runtime session commands");
+	Expect(result.summary.sessionCommandResults.size() == 2 && result.summary.sessionCommandResults[0].type == dev::SessionCommandResultType::Applied, "game loop should apply runtime new-game command");
+	Expect(result.summary.sessionCommandResults.size() == 2 && result.summary.sessionCommandResults[1].type == dev::SessionCommandResultType::Applied, "game loop should apply runtime mode command");
+	Expect(result.summary.framesRun == 1, "game loop should still run frame after runtime commands");
 	Expect(loop.session().world().players.size() == 1 && loop.session().world().players[0].position.tile == dev::Point { 9, 3 }, "runtime command source should initialize session world");
 	Expect(loop.session().world().players.size() == 1 && loop.session().world().players[0].combatStats.hitPoints == 22, "runtime command source should preserve new-game settings");
 	Expect(result.finalMode == dev::GameSessionMode::Inventory, "runtime command source should set final session mode");
@@ -2787,15 +2790,15 @@ void TestGameLoopRunsStartupScriptBeforeRuntimeCommandSources()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
 		    .startupScript = scriptPath,
-		    .sessionCommandSources = { &source },
+		    .sources = { .sessionCommandSources = { &source } },
 		    .maxFrames = 1,
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
 
-	Expect(result.startupScriptResult.commandResults.size() == 1, "startup script should run before runtime sources");
-	Expect(result.sessionCommandResults.size() == 1, "runtime source should run after startup script");
-	Expect(result.sessionCommandResults.size() == 1 && result.sessionCommandResults[0].type == dev::SessionCommandResultType::Applied, "runtime mode command should apply after startup creates a world");
+	Expect(result.setup.startupScriptResult.commandResults.size() == 1, "startup script should run before runtime sources");
+	Expect(result.summary.sessionCommandResults.size() == 1, "runtime source should run after startup script");
+	Expect(result.summary.sessionCommandResults.size() == 1 && result.summary.sessionCommandResults[0].type == dev::SessionCommandResultType::Applied, "runtime mode command should apply after startup creates a world");
 	Expect(loop.session().world().players.size() == 1 && loop.session().world().players[0].position.tile == dev::Point { 1, 8 }, "startup script should initialize world before runtime mode command");
 	Expect(result.finalMode == dev::GameSessionMode::Paused, "runtime command should be able to change mode after startup");
 	Expect(loop.sessionEvents().events().size() == 2, "startup and runtime commands should share the same session event sink");
@@ -2933,22 +2936,24 @@ void TestGameLoopDrainsRuntimeMovementCommandSources()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .sessionCommandSources = { &sessionSource },
-		    .movementCommandSources = { &movementSource },
+		    .sources = {
+		        .sessionCommandSources = { &sessionSource },
+		        .movementCommandSources = { &movementSource },
+		    },
 		    .maxFrames = 1,
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
 
 	bool sawCommandAccepted = false;
-	for (const dev::MovementEvent &event : result.lastFrameEvents.movementEvents()) {
+	for (const dev::MovementEvent &event : result.summary.lastFrameEvents.movementEvents()) {
 		if (event.type == dev::MovementEventType::CommandAccepted && event.commandType == dev::MovementCommandType::WalkTo)
 			sawCommandAccepted = true;
 	}
 
-	Expect(result.sessionCommandResults.size() == 1, "game loop movement source test should dispatch session startup first");
-	Expect(result.movementCommandsQueued == 1, "game loop should queue runtime movement commands");
-	Expect(result.framesRun == 1, "game loop should run a frame after queueing movement");
+	Expect(result.summary.sessionCommandResults.size() == 1, "game loop movement source test should dispatch session startup first");
+	Expect(result.summary.movementCommandsQueued == 1, "game loop should queue runtime movement commands");
+	Expect(result.summary.framesRun == 1, "game loop should run a frame after queueing movement");
 	Expect(movementSource.empty(), "game loop should drain movement source commands once");
 	Expect(loop.session().world().players.size() == 1 && loop.session().world().players[0].position.tile == dev::Point { 1, 0 }, "movement command source should move player through simulation");
 	Expect(sawCommandAccepted, "movement command source should still pass through movement command dispatcher events");
@@ -2977,7 +2982,7 @@ void TestGameLoopDrainsRuntimeInventoryScriptSources()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .inventoryScriptSources = { &inventoryScripts },
+		    .sources = { .inventoryScriptSources = { &inventoryScripts } },
 		    .maxFrames = 1,
 		}
 	};
@@ -2989,9 +2994,9 @@ void TestGameLoopDrainsRuntimeInventoryScriptSources()
 
 	dev::GameLoopResult result = loop.runForResult();
 
-	Expect(result.runtimeInventoryScriptResults.size() == 1, "game loop should run runtime inventory script source");
-	Expect(result.runtimeInventoryScriptResults.size() == 1 && result.runtimeInventoryScriptResults[0].status == dev::InventoryScriptRunStatus::Completed, "runtime inventory script source should complete valid script");
-	Expect(result.inventoryCommandResults.size() == 1 && result.inventoryCommandResults[0].type == dev::InventoryCommandResultType::Applied, "runtime inventory script source should merge command results");
+	Expect(result.summary.runtimeInventoryScriptResults.size() == 1, "game loop should run runtime inventory script source");
+	Expect(result.summary.runtimeInventoryScriptResults.size() == 1 && result.summary.runtimeInventoryScriptResults[0].status == dev::InventoryScriptRunStatus::Completed, "runtime inventory script source should complete valid script");
+	Expect(result.summary.inventoryCommandResults.size() == 1 && result.summary.inventoryCommandResults[0].type == dev::InventoryCommandResultType::Applied, "runtime inventory script source should merge command results");
 	Expect(loop.session().world().players[0].inventory.items.empty(), "runtime inventory script source should remove equipped item from bag");
 	Expect(loop.session().world().players[0].inventory.equipment.weapon.has_value() && loop.session().world().players[0].inventory.equipment.weapon->id == 953, "runtime inventory script source should equip item");
 	Expect(loop.inventoryEvents().events().size() == 1 && loop.inventoryEvents().events()[0].type == dev::InventoryEventType::Equipped, "runtime inventory script source should emit inventory event");
@@ -3012,7 +3017,7 @@ void TestGameLoopReportsRuntimeInventoryScriptLoadFailureWithoutStoppingFrames()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .inventoryScriptSources = { &inventoryScripts },
+		    .sources = { .inventoryScriptSources = { &inventoryScripts } },
 		    .maxFrames = 1,
 		}
 	};
@@ -3020,10 +3025,10 @@ void TestGameLoopReportsRuntimeInventoryScriptLoadFailureWithoutStoppingFrames()
 
 	dev::GameLoopResult result = loop.runForResult();
 
-	Expect(result.runtimeInventoryScriptResults.size() == 1, "game loop should report runtime inventory script source result");
-	Expect(result.runtimeInventoryScriptResults.size() == 1 && result.runtimeInventoryScriptResults[0].status == dev::InventoryScriptRunStatus::LoadFailed, "runtime inventory script source should report load failure");
-	Expect(result.inventoryCommandResults.empty(), "failed runtime inventory script source should not dispatch commands");
-	Expect(result.framesRun == 1, "runtime inventory script load failure should not stop frame updates");
+	Expect(result.summary.runtimeInventoryScriptResults.size() == 1, "game loop should report runtime inventory script source result");
+	Expect(result.summary.runtimeInventoryScriptResults.size() == 1 && result.summary.runtimeInventoryScriptResults[0].status == dev::InventoryScriptRunStatus::LoadFailed, "runtime inventory script source should report load failure");
+	Expect(result.summary.inventoryCommandResults.empty(), "failed runtime inventory script source should not dispatch commands");
+	Expect(result.summary.framesRun == 1, "runtime inventory script load failure should not stop frame updates");
 	Expect(inventoryScripts.empty(), "failed runtime inventory script source should still drain after attempted run");
 
 	std::filesystem::remove_all(root);
@@ -3041,13 +3046,13 @@ void TestGameLoopDoesNotDrainInventoryScriptSourcesWithoutActiveWorld()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .inventoryScriptSources = { &inventoryScripts },
+		    .sources = { .inventoryScriptSources = { &inventoryScripts } },
 		    .maxFrames = 1,
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
 
-	Expect(result.runtimeInventoryScriptResults.empty(), "game loop should not run inventory script sources without an active world");
+	Expect(result.summary.runtimeInventoryScriptResults.empty(), "game loop should not run inventory script sources without an active world");
 	Expect(inventoryScripts.size() == 1, "game loop should preserve inventory script paths until a world exists");
 
 	std::filesystem::remove_all(root);
@@ -3085,9 +3090,11 @@ void TestGameLoopBuildsRuntimeFrameReports()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .movementCommandSources = { &movementCommands },
-		    .inventoryCommandSources = { &inventoryCommands },
-		    .inventoryScriptSources = { &inventoryScripts },
+		    .sources = {
+		        .movementCommandSources = { &movementCommands },
+		        .inventoryCommandSources = { &inventoryCommands },
+		        .inventoryScriptSources = { &inventoryScripts },
+		    },
 		    .maxFrames = 1,
 		}
 	};
@@ -3117,9 +3124,9 @@ void TestGameLoopBuildsRuntimeFrameReports()
 	Expect(report.inventoryEvents.size() == 2, "runtime frame report should include inventory event deltas");
 	Expect(report.inventoryEvents.size() == 2 && report.inventoryEvents[0].type == dev::InventoryEventType::Equipped, "runtime frame report should include equipped event");
 	Expect(report.inventoryEvents.size() == 2 && report.inventoryEvents[1].type == dev::InventoryEventType::Unequipped, "runtime frame report should include unequipped event");
-	Expect(result.inventoryCommandResults.size() == report.inventoryCommandResults.size(), "game loop aggregate inventory command results should match frame report results");
-	Expect(result.movementCommandsQueued == report.movementCommandsQueued, "game loop aggregate movement count should match frame report count");
-	Expect(result.lastFrameEvents.movementEvents().size() == report.frameEvents.movementEvents().size(), "last frame events should mirror final runtime frame report");
+	Expect(result.summary.inventoryCommandResults.size() == report.inventoryCommandResults.size(), "game loop aggregate inventory command results should match frame report results");
+	Expect(result.summary.movementCommandsQueued == report.movementCommandsQueued, "game loop aggregate movement count should match frame report count");
+	Expect(result.summary.lastFrameEvents.movementEvents().size() == report.frameEvents.movementEvents().size(), "last frame events should mirror final runtime frame report");
 	Expect(loop.session().world().players[0].inventory.items.size() == 1 && loop.session().world().players[0].inventory.items[0].id == 954, "frame report scenario should replay script then direct unequip");
 	Expect(loop.session().world().players[0].position.tile == dev::Point { 1, 0 }, "frame report scenario should still run movement update");
 
@@ -3158,9 +3165,11 @@ void TestRuntimeFrameTraceFormatsReadableLines()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .movementCommandSources = { &movementCommands },
-		    .inventoryCommandSources = { &inventoryCommands },
-		    .inventoryScriptSources = { &inventoryScripts },
+		    .sources = {
+		        .movementCommandSources = { &movementCommands },
+		        .inventoryCommandSources = { &inventoryCommands },
+		        .inventoryScriptSources = { &inventoryScripts },
+		    },
 		    .maxFrames = 1,
 		}
 	};
@@ -3253,7 +3262,7 @@ void TestRuntimeTraceServiceFormatsAndSavesRunTrace()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .inventoryScriptSources = { &inventoryScripts },
+		    .sources = { .inventoryScriptSources = { &inventoryScripts } },
 		    .maxFrames = 1,
 		}
 	};
@@ -3287,6 +3296,428 @@ void TestRuntimeTraceServiceFormatsEmptyRun()
 	Expect(lines.size() == 1 && lines[0] == "run frames=0 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "runtime trace service should preserve empty run counts");
 }
 
+void TestRuntimeOutputSettingsDefaultDisablesArtifacts()
+{
+	dev::RuntimeOutputSettings output;
+
+	Expect(!output.runTracePath.has_value(), "runtime output settings should default to no run trace path");
+	Expect(!output.debugBundlePath.has_value(), "runtime output settings should default to no debug bundle path");
+}
+
+void TestRuntimeOutputResultDefaultsToNoAttempts()
+{
+	dev::RuntimeOutputResult output;
+
+	Expect(!output.runTraceSaveAttempted, "runtime output result should default to no trace attempt");
+	Expect(!output.runTraceSaved, "runtime output result should default to unsaved trace");
+	Expect(!output.debugBundleSaveAttempted, "runtime output result should default to no bundle attempt");
+	Expect(!output.debugBundleSaved, "runtime output result should default to unsaved bundle");
+	Expect(!dev::RuntimeOutputFinalizer::failed(output), "runtime output result should not fail when nothing was requested");
+}
+
+void TestRuntimeSetupResultDefaultsToNoSetupScripts()
+{
+	dev::RuntimeSetupResult setup;
+
+	Expect(!setup.startupScriptRan, "runtime setup result should default to no startup script");
+	Expect(setup.startupScriptResult.commandResults.empty(), "runtime setup result should default to no startup command results");
+	Expect(!setup.inventoryScriptRan, "runtime setup result should default to no inventory script");
+	Expect(setup.inventoryScriptResult.commandResults.empty(), "runtime setup result should default to no inventory command results");
+}
+
+void TestRuntimeSourceSettingsDefaultsToNoSources()
+{
+	dev::RuntimeSourceSettings sources;
+
+	Expect(sources.rawInputSources.empty(), "runtime source settings should default to no raw input sources");
+	Expect(sources.sessionCommandSources.empty(), "runtime source settings should default to no session command sources");
+	Expect(sources.movementCommandSources.empty(), "runtime source settings should default to no movement command sources");
+	Expect(sources.inventoryCommandSources.empty(), "runtime source settings should default to no inventory command sources");
+	Expect(sources.inventoryScriptSources.empty(), "runtime source settings should default to no inventory script sources");
+}
+
+void TestRuntimeRunSummaryDefaultsToEmptyRun()
+{
+	dev::RuntimeRunSummary summary;
+
+	Expect(summary.runtimeInventoryScriptResults.empty(), "runtime run summary should default to no runtime inventory script results");
+	Expect(summary.rawInputEventsRouted == 0, "runtime run summary should default to no routed raw input");
+	Expect(summary.sessionCommandResults.empty(), "runtime run summary should default to no session command results");
+	Expect(summary.inventoryCommandResults.empty(), "runtime run summary should default to no inventory command results");
+	Expect(summary.movementCommandsQueued == 0, "runtime run summary should default to no queued movement commands");
+	Expect(summary.framesRun == 0, "runtime run summary should default to zero frames");
+	Expect(summary.lastFrameEvents.movementEvents().empty(), "runtime run summary should default to no final movement events");
+}
+
+void TestRuntimeExitCodePolicyReportsSuccessForCleanRun()
+{
+	dev::GameLoopResult result;
+
+	Expect(!dev::RuntimeExitCodePolicy {}.failed(result), "runtime exit policy should not fail clean default run results");
+	Expect(dev::RuntimeExitCodePolicy {}.exitCodeFor(result) == 0, "runtime exit policy should return success for clean run results");
+}
+
+void TestRuntimeExitCodePolicyFailsSetupErrors()
+{
+	dev::GameLoopResult startupFailure;
+	startupFailure.setup.startupScriptRan = true;
+	startupFailure.setup.startupScriptResult.status = dev::SessionScriptRunStatus::LoadFailed;
+
+	dev::GameLoopResult inventoryFailure;
+	inventoryFailure.setup.inventoryScriptRan = true;
+	inventoryFailure.setup.inventoryScriptResult.status = dev::InventoryScriptRunStatus::LoadFailed;
+
+	Expect(dev::RuntimeExitCodePolicy {}.failed(startupFailure), "runtime exit policy should fail startup script load failures");
+	Expect(dev::RuntimeExitCodePolicy {}.exitCodeFor(startupFailure) == 1, "runtime exit policy should return failure for startup load failures");
+	Expect(dev::RuntimeExitCodePolicy {}.failed(inventoryFailure), "runtime exit policy should fail configured inventory script failures");
+	Expect(dev::RuntimeExitCodePolicy {}.exitCodeFor(inventoryFailure) == 1, "runtime exit policy should return failure for configured inventory script failures");
+}
+
+void TestRuntimeExitCodePolicyAllowsCommandRejections()
+{
+	dev::GameLoopResult result;
+	result.setup.inventoryScriptRan = true;
+	result.setup.inventoryScriptResult.status = dev::InventoryScriptRunStatus::Completed;
+	result.setup.inventoryScriptResult.commandResults.push_back({
+	    .type = dev::InventoryCommandResultType::Rejected,
+	    .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 99 },
+	});
+
+	Expect(!dev::RuntimeExitCodePolicy {}.failed(result), "runtime exit policy should allow completed setup scripts with rejected commands");
+	Expect(dev::RuntimeExitCodePolicy {}.exitCodeFor(result) == 0, "runtime exit policy should return success for command-level rejections");
+}
+
+void TestRuntimeExitCodePolicyFailsOutputErrors()
+{
+	dev::GameLoopResult result;
+	result.output.runTraceSaveAttempted = true;
+	result.output.runTraceSaved = false;
+
+	Expect(dev::RuntimeExitCodePolicy {}.failed(result), "runtime exit policy should fail requested output write failures");
+	Expect(dev::RuntimeExitCodePolicy {}.exitCodeFor(result) == 1, "runtime exit policy should return failure for output write failures");
+}
+
+void TestRuntimeOutputFinalizerLeavesDisabledOutputsUntouched()
+{
+	dev::GameLoopResult result;
+	dev::RuntimeOutputFinalizer {}.finalize(dev::RuntimeOutputSettings {}, result);
+
+	Expect(!result.output.runTraceSaveAttempted, "runtime output finalizer should not attempt trace without trace path");
+	Expect(!result.output.debugBundleSaveAttempted, "runtime output finalizer should not attempt bundle without bundle path");
+	Expect(!dev::RuntimeOutputFinalizer::failed(result.output), "runtime output finalizer should not fail when nothing was requested");
+}
+
+void TestRuntimeOutputFinalizerSavesTraceAndBundle()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_output_finalizer_test";
+	const std::filesystem::path tracePath = root / "run.trace";
+	const std::filesystem::path bundlePath = root / "bundle";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::GameLoopResult result;
+	result.summary.framesRun = 1;
+	result.finalMode = dev::GameSessionMode::Gameplay;
+
+	dev::RuntimeOutputFinalizer {}.finalize(
+	    dev::RuntimeOutputSettings {
+	        .runTracePath = tracePath,
+	        .debugBundlePath = bundlePath,
+	    },
+	    result);
+
+	std::optional<std::vector<std::string>> trace = dev::RuntimeFrameTraceFileStore {}.load(tracePath);
+	std::optional<std::vector<std::string>> bundleManifest = dev::RuntimeFrameTraceFileStore {}.load(bundlePath / "manifest.txt");
+	std::optional<std::vector<std::string>> bundleTrace = dev::RuntimeFrameTraceFileStore {}.load(bundlePath / "run.trace");
+
+	Expect(result.output.runTraceSaveAttempted, "runtime output finalizer should attempt configured trace save");
+	Expect(result.output.runTraceSaved, "runtime output finalizer should report saved trace");
+	Expect(result.output.debugBundleSaveAttempted, "runtime output finalizer should attempt configured bundle save");
+	Expect(result.output.debugBundleSaved, "runtime output finalizer should report saved bundle");
+	Expect(!dev::RuntimeOutputFinalizer::failed(result.output), "runtime output finalizer should report no failure after saving requested outputs");
+	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "runtime output finalizer should save standalone trace");
+	Expect(bundleManifest.has_value() && ContainsLineFragment(*bundleManifest, "trace=run.trace saved=true"), "runtime output finalizer should save bundle manifest");
+	Expect(bundleTrace.has_value() && !bundleTrace->empty() && (*bundleTrace)[0] == "run frames=1 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "runtime output finalizer should save bundle trace");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeOutputFinalizerReportsRequestedOutputFailure()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_output_finalizer_failure_test";
+	const std::filesystem::path tracePath = root / "missing-parent" / "run.trace";
+	std::filesystem::remove_all(root);
+
+	dev::GameLoopResult result;
+	dev::RuntimeOutputFinalizer {}.finalize(
+	    dev::RuntimeOutputSettings {
+	        .runTracePath = tracePath,
+	    },
+	    result);
+
+	Expect(result.output.runTraceSaveAttempted, "runtime output finalizer should attempt requested trace even when path is invalid");
+	Expect(!result.output.runTraceSaved, "runtime output finalizer should report failed trace save");
+	Expect(dev::RuntimeOutputFinalizer::failed(result.output), "runtime output finalizer should report requested output failure");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestGameLoopSavesConfiguredRunTrace()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_game_loop_run_trace_test";
+	const std::filesystem::path tracePath = root / "run.trace";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::GameLoop loop {
+		dev::GameLoopSettings {
+		    .saveRoot = root / "saves",
+		    .output = { .runTracePath = tracePath },
+		    .maxFrames = 1,
+		}
+	};
+	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+
+	dev::GameLoopResult result = loop.runForResult();
+	std::optional<std::vector<std::string>> loaded = dev::RuntimeFrameTraceFileStore {}.load(tracePath);
+
+	Expect(result.output.runTraceSaveAttempted, "game loop should attempt configured run trace save");
+	Expect(result.output.runTraceSaved, "game loop should report successful run trace save");
+	Expect(loaded.has_value(), "game loop should persist configured run trace");
+	Expect(loaded.has_value() && !loaded->empty() && (*loaded)[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "game loop run trace should include run summary");
+	Expect(loaded.has_value() && ContainsLineFragment(*loaded, "frame[0]"), "game loop run trace should include frame trace header");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestGameLoopSavesRunTraceOnStartupFailure()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_game_loop_failed_startup_trace_test";
+	const std::filesystem::path tracePath = root / "failed-startup.trace";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::GameLoop loop {
+		dev::GameLoopSettings {
+		    .saveRoot = root / "saves",
+		    .startupScript = root / "missing.iscl",
+		    .output = { .runTracePath = tracePath },
+		    .maxFrames = 1,
+		}
+	};
+	dev::GameLoopResult result = loop.runForResult();
+	std::optional<std::vector<std::string>> loaded = dev::RuntimeFrameTraceFileStore {}.load(tracePath);
+
+	Expect(result.setup.startupScriptRan, "failed startup trace test should attempt startup script");
+	Expect(result.setup.startupScriptResult.status == dev::SessionScriptRunStatus::LoadFailed, "failed startup trace test should report load failure");
+	Expect(result.output.runTraceSaveAttempted, "game loop should attempt run trace save after startup failure");
+	Expect(result.output.runTraceSaved, "game loop should save run trace after startup failure");
+	Expect(loaded.has_value() && !loaded->empty() && (*loaded)[0] == "run frames=0 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "failed startup trace should preserve zero-frame summary");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestGameLoopReportsRunTraceSaveFailure()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_game_loop_run_trace_failure_test";
+	const std::filesystem::path tracePath = root / "missing-parent" / "run.trace";
+	std::filesystem::remove_all(root);
+
+	dev::GameLoop loop {
+		dev::GameLoopSettings {
+		    .saveRoot = root / "saves",
+		    .output = { .runTracePath = tracePath },
+		    .maxFrames = 0,
+		}
+	};
+	dev::GameLoopResult result = loop.runForResult();
+
+	Expect(result.output.runTraceSaveAttempted, "game loop should attempt configured run trace even when path is invalid");
+	Expect(!result.output.runTraceSaved, "game loop should report failed run trace save");
+
+	dev::GameLoop exitLoop {
+		dev::GameLoopSettings {
+		    .saveRoot = root / "other-saves",
+		    .output = { .runTracePath = tracePath },
+		    .maxFrames = 0,
+		}
+	};
+	Expect(exitLoop.run() == 1, "game loop run should fail when requested trace cannot be saved");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeDebugArtifactBundleSavesManifestAndTrace()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_debug_bundle_test";
+	const std::filesystem::path bundleRoot = root / "bundle";
+	std::filesystem::remove_all(root);
+
+	dev::GameLoop loop {
+		dev::GameLoopSettings {
+		    .saveRoot = root / "saves",
+		    .maxFrames = 1,
+		}
+	};
+	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	dev::GameLoopResult run = loop.runForResult();
+
+	dev::RuntimeDebugArtifactBundle bundle;
+	dev::RuntimeDebugArtifactBundleResult result = bundle.save(bundleRoot, run);
+	std::optional<std::vector<std::string>> manifest = dev::RuntimeFrameTraceFileStore {}.load(bundleRoot / "manifest.txt");
+	std::optional<std::vector<std::string>> trace = dev::RuntimeFrameTraceFileStore {}.load(bundleRoot / "run.trace");
+
+	Expect(result.rootPrepared, "runtime debug bundle should create bundle root");
+	Expect(result.traceSaved, "runtime debug bundle should save run trace");
+	Expect(result.manifestSaved, "runtime debug bundle should save manifest");
+	Expect(result.saved(), "runtime debug bundle should report complete save");
+	Expect(result.manifestPath == bundleRoot / "manifest.txt", "runtime debug bundle should use stable manifest path");
+	Expect(result.tracePath == bundleRoot / "run.trace", "runtime debug bundle should use stable trace path");
+	Expect(manifest.has_value(), "runtime debug bundle manifest should be loadable text");
+	Expect(trace.has_value(), "runtime debug bundle trace should be loadable text");
+	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "bundle version=1"), "runtime debug bundle manifest should include version");
+	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "trace=run.trace saved=true"), "runtime debug bundle manifest should index trace artifact");
+	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "run frames=1 frameReports=1"), "runtime debug bundle manifest should summarize run frame counts");
+	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "finalMode=Gameplay"), "runtime debug bundle manifest should include final mode");
+	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "runtime debug bundle trace should preserve run trace summary");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeDebugArtifactBundleFormatsManifestForFailedRun()
+{
+	dev::GameLoopResult run;
+	run.setup.startupScriptRan = true;
+	run.finalMode = dev::GameSessionMode::Empty;
+
+	dev::RuntimeDebugArtifactBundleResult bundle {
+		.rootPath = "debug/run-001",
+		.manifestPath = "debug/run-001/manifest.txt",
+		.tracePath = "debug/run-001/run.trace",
+		.rootPrepared = true,
+		.traceSaved = false,
+		.manifestSaved = false,
+	};
+
+	std::vector<std::string> lines = dev::RuntimeDebugArtifactBundle {}.formatManifest(run, bundle);
+
+	Expect(ContainsLineFragment(lines, "trace=run.trace saved=false"), "runtime debug bundle manifest should report trace save state");
+	Expect(ContainsLineFragment(lines, "run frames=0 frameReports=0"), "runtime debug bundle manifest should summarize empty failed runs");
+	Expect(ContainsLineFragment(lines, "finalMode=Empty"), "runtime debug bundle manifest should name empty final mode");
+	Expect(ContainsLineFragment(lines, "setup startupScriptRan=true inventoryScriptRan=false"), "runtime debug bundle manifest should report setup attempts");
+}
+
+void TestRuntimeDebugArtifactBundleRejectsRootFile()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_debug_bundle_root_file_test";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root.parent_path());
+	{
+		std::ofstream output { root, std::ios::trunc };
+		output << "not a directory\n";
+	}
+
+	dev::RuntimeDebugArtifactBundleResult result = dev::RuntimeDebugArtifactBundle {}.save(root, dev::GameLoopResult {});
+
+	Expect(!result.rootPrepared, "runtime debug bundle should reject a root path that is already a file");
+	Expect(!result.traceSaved, "runtime debug bundle should not save trace when root cannot be prepared");
+	Expect(!result.manifestSaved, "runtime debug bundle should not save manifest when root cannot be prepared");
+	Expect(!result.saved(), "runtime debug bundle should report incomplete save on root failure");
+
+	std::filesystem::remove(root);
+}
+
+void TestGameLoopSavesConfiguredDebugBundle()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_game_loop_debug_bundle_test";
+	const std::filesystem::path bundleRoot = root / "debug-bundle";
+	std::filesystem::remove_all(root);
+
+	dev::GameLoop loop {
+		dev::GameLoopSettings {
+		    .saveRoot = root / "saves",
+		    .output = { .debugBundlePath = bundleRoot },
+		    .maxFrames = 1,
+		}
+	};
+	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+
+	dev::GameLoopResult result = loop.runForResult();
+	std::optional<std::vector<std::string>> manifest = dev::RuntimeFrameTraceFileStore {}.load(bundleRoot / "manifest.txt");
+	std::optional<std::vector<std::string>> trace = dev::RuntimeFrameTraceFileStore {}.load(bundleRoot / "run.trace");
+
+	Expect(result.output.debugBundleSaveAttempted, "game loop should attempt configured debug bundle save");
+	Expect(result.output.debugBundleSaved, "game loop should report successful debug bundle save");
+	Expect(manifest.has_value(), "game loop debug bundle should write manifest");
+	Expect(trace.has_value(), "game loop debug bundle should write run trace");
+	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "trace=run.trace saved=true"), "game loop debug bundle manifest should index saved trace");
+	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "game loop debug bundle trace should include run summary");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestGameLoopSavesDebugBundleOnStartupFailure()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_game_loop_failed_startup_debug_bundle_test";
+	const std::filesystem::path bundleRoot = root / "debug-bundle";
+	std::filesystem::remove_all(root);
+
+	dev::GameLoop loop {
+		dev::GameLoopSettings {
+		    .saveRoot = root / "saves",
+		    .startupScript = root / "missing.iscl",
+		    .output = { .debugBundlePath = bundleRoot },
+		    .maxFrames = 1,
+		}
+	};
+	dev::GameLoopResult result = loop.runForResult();
+	std::optional<std::vector<std::string>> manifest = dev::RuntimeFrameTraceFileStore {}.load(bundleRoot / "manifest.txt");
+	std::optional<std::vector<std::string>> trace = dev::RuntimeFrameTraceFileStore {}.load(bundleRoot / "run.trace");
+
+	Expect(result.setup.startupScriptRan, "failed startup debug bundle test should attempt startup script");
+	Expect(result.setup.startupScriptResult.status == dev::SessionScriptRunStatus::LoadFailed, "failed startup debug bundle test should report load failure");
+	Expect(result.output.debugBundleSaveAttempted, "game loop should attempt debug bundle save after startup failure");
+	Expect(result.output.debugBundleSaved, "game loop should save debug bundle after startup failure");
+	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "setup startupScriptRan=true inventoryScriptRan=false"), "failed startup debug bundle manifest should record setup attempt");
+	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=0 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "failed startup debug bundle trace should preserve zero-frame summary");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestGameLoopReportsDebugBundleSaveFailure()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_game_loop_debug_bundle_failure_test";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root.parent_path());
+	{
+		std::ofstream output { root, std::ios::trunc };
+		output << "not a directory\n";
+	}
+
+	dev::GameLoop loop {
+		dev::GameLoopSettings {
+		    .saveRoot = root.parent_path() / "saves",
+		    .output = { .debugBundlePath = root },
+		    .maxFrames = 0,
+		}
+	};
+	dev::GameLoopResult result = loop.runForResult();
+
+	Expect(result.output.debugBundleSaveAttempted, "game loop should attempt configured debug bundle even when path is invalid");
+	Expect(!result.output.debugBundleSaved, "game loop should report failed debug bundle save");
+
+	dev::GameLoop exitLoop {
+		dev::GameLoopSettings {
+		    .saveRoot = root.parent_path() / "other-saves",
+		    .output = { .debugBundlePath = root },
+		    .maxFrames = 0,
+		}
+	};
+	Expect(exitLoop.run() == 1, "game loop run should fail when requested debug bundle cannot be saved");
+
+	std::filesystem::remove(root);
+}
+
 void TestGameLoopDrainsRuntimeInventoryCommandSources()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_game_loop_inventory_source_test";
@@ -3301,7 +3732,7 @@ void TestGameLoopDrainsRuntimeInventoryCommandSources()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .inventoryCommandSources = { &inventoryCommands },
+		    .sources = { .inventoryCommandSources = { &inventoryCommands } },
 		    .maxFrames = 1,
 		}
 	};
@@ -3313,8 +3744,8 @@ void TestGameLoopDrainsRuntimeInventoryCommandSources()
 
 	dev::GameLoopResult result = loop.runForResult();
 
-	Expect(result.inventoryCommandResults.size() == 1, "game loop should dispatch runtime inventory command source");
-	Expect(result.inventoryCommandResults.size() == 1 && result.inventoryCommandResults[0].type == dev::InventoryCommandResultType::Applied, "game loop should apply valid runtime inventory command");
+	Expect(result.summary.inventoryCommandResults.size() == 1, "game loop should dispatch runtime inventory command source");
+	Expect(result.summary.inventoryCommandResults.size() == 1 && result.summary.inventoryCommandResults[0].type == dev::InventoryCommandResultType::Applied, "game loop should apply valid runtime inventory command");
 	Expect(loop.session().world().players[0].inventory.items.empty(), "runtime inventory equip should remove item from bag");
 	Expect(loop.session().world().players[0].inventory.equipment.weapon.has_value() && loop.session().world().players[0].inventory.equipment.weapon->id == 950, "runtime inventory equip should fill equipment slot");
 	Expect(inventoryCommands.empty(), "game loop should drain runtime inventory command source");
@@ -3339,7 +3770,7 @@ void TestGameLoopEmitsRejectedInventoryEventForMissingPlayer()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .inventoryCommandSources = { &inventoryCommands },
+		    .sources = { .inventoryCommandSources = { &inventoryCommands } },
 		    .inputPlayerId = 3,
 		    .maxFrames = 1,
 		}
@@ -3348,8 +3779,8 @@ void TestGameLoopEmitsRejectedInventoryEventForMissingPlayer()
 
 	dev::GameLoopResult result = loop.runForResult();
 
-	Expect(result.inventoryCommandResults.size() == 1, "game loop should reject inventory command for missing player");
-	Expect(result.inventoryCommandResults.size() == 1 && result.inventoryCommandResults[0].type == dev::InventoryCommandResultType::Rejected, "missing player inventory command should be rejected");
+	Expect(result.summary.inventoryCommandResults.size() == 1, "game loop should reject inventory command for missing player");
+	Expect(result.summary.inventoryCommandResults.size() == 1 && result.summary.inventoryCommandResults[0].type == dev::InventoryCommandResultType::Rejected, "missing player inventory command should be rejected");
 	Expect(loop.inventoryEvents().events().size() == 1, "missing player inventory command should emit rejected event");
 	Expect(loop.inventoryEvents().events().size() == 1 && loop.inventoryEvents().events()[0].type == dev::InventoryEventType::Rejected, "missing player inventory event should be rejected");
 	Expect(loop.inventoryEvents().events().size() == 1 && loop.inventoryEvents().events()[0].commandType == dev::InventoryCommandType::EquipItem, "missing player inventory event should preserve command type");
@@ -3372,13 +3803,13 @@ void TestGameLoopDoesNotDrainInventorySourcesWithoutActiveWorld()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .inventoryCommandSources = { &inventoryCommands },
+		    .sources = { .inventoryCommandSources = { &inventoryCommands } },
 		    .maxFrames = 1,
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
 
-	Expect(result.inventoryCommandResults.empty(), "game loop should not dispatch inventory commands without an active world");
+	Expect(result.summary.inventoryCommandResults.empty(), "game loop should not dispatch inventory commands without an active world");
 	Expect(inventoryCommands.size() == 1, "game loop should preserve inventory commands until a world exists");
 
 	std::filesystem::remove_all(root);
@@ -3399,14 +3830,14 @@ void TestGameLoopDoesNotDrainMovementSourcesWithoutActiveWorld()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .movementCommandSources = { &movementSource },
+		    .sources = { .movementCommandSources = { &movementSource } },
 		    .maxFrames = 1,
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
 
-	Expect(result.movementCommandsQueued == 0, "game loop should not queue movement commands without an active world");
-	Expect(result.framesRun == 1, "game loop should still run bounded frames without an active world");
+	Expect(result.summary.movementCommandsQueued == 0, "game loop should not queue movement commands without an active world");
+	Expect(result.summary.framesRun == 1, "game loop should still run bounded frames without an active world");
 	Expect(movementSource.size() == 1, "movement source should keep commands when no active world can receive them");
 	Expect(result.finalMode == dev::GameSessionMode::Empty, "movement-only loop should leave session empty");
 
@@ -3677,16 +4108,16 @@ void TestGameLoopRoutesRawInputHotkeysThroughSessionCommands()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
 		    .startupScript = scriptPath,
-		    .rawInputSources = { &rawInput },
+		    .sources = { .rawInputSources = { &rawInput } },
 		    .inputBindings = dev::RuntimeInputBindings { .pauseKey = 'P', .inventoryKey = 'I', .stopKey = 'S' },
 		    .maxFrames = 1,
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
 
-	Expect(result.rawInputEventsRouted == 1, "game loop should route raw hotkey input");
-	Expect(result.sessionCommandResults.size() == 1, "game loop should dispatch routed session command");
-	Expect(result.sessionCommandResults.size() == 1 && result.sessionCommandResults[0].type == dev::SessionCommandResultType::Applied, "routed pause hotkey should apply");
+	Expect(result.summary.rawInputEventsRouted == 1, "game loop should route raw hotkey input");
+	Expect(result.summary.sessionCommandResults.size() == 1, "game loop should dispatch routed session command");
+	Expect(result.summary.sessionCommandResults.size() == 1 && result.summary.sessionCommandResults[0].type == dev::SessionCommandResultType::Applied, "routed pause hotkey should apply");
 	Expect(result.finalMode == dev::GameSessionMode::Paused, "routed pause hotkey should update final mode");
 	Expect(rawInput.empty(), "game loop should drain raw input source once");
 	Expect(loop.sessionEvents().events().size() == 2, "startup script and routed hotkey should share session event sink");
@@ -3721,20 +4152,20 @@ void TestGameLoopRoutesRawMouseInputThroughMovementCommands()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
 		    .startupScript = scriptPath,
-		    .rawInputSources = { &rawInput },
+		    .sources = { .rawInputSources = { &rawInput } },
 		    .maxFrames = 1,
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
 
 	bool sawWalkCommand = false;
-	for (const dev::MovementEvent &event : result.lastFrameEvents.movementEvents()) {
+	for (const dev::MovementEvent &event : result.summary.lastFrameEvents.movementEvents()) {
 		if (event.type == dev::MovementEventType::CommandAccepted && event.commandType == dev::MovementCommandType::WalkTo)
 			sawWalkCommand = true;
 	}
 
-	Expect(result.rawInputEventsRouted == 1, "game loop should route raw mouse input");
-	Expect(result.movementCommandsQueued == 1, "game loop should queue movement command from routed raw input");
+	Expect(result.summary.rawInputEventsRouted == 1, "game loop should route raw mouse input");
+	Expect(result.summary.movementCommandsQueued == 1, "game loop should queue movement command from routed raw input");
 	Expect(loop.session().world().players.size() == 1 && loop.session().world().players[0].position.tile == dev::Point { 1, 0 }, "routed raw mouse input should move player through simulation");
 	Expect(sawWalkCommand, "routed raw mouse input should still emit movement command events");
 	Expect(rawInput.empty(), "game loop should drain raw mouse input source once");
@@ -3757,7 +4188,7 @@ void TestGameLoopUsesWorldTargetRegistryForRawMouseInput()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .rawInputSources = { &rawInput },
+		    .sources = { .rawInputSources = { &rawInput } },
 		    .maxFrames = 1,
 		}
 	};
@@ -3768,15 +4199,15 @@ void TestGameLoopUsesWorldTargetRegistryForRawMouseInput()
 
 	bool sawMoveThenAct = false;
 	bool sawActionRejected = false;
-	for (const dev::MovementEvent &event : result.lastFrameEvents.movementEvents()) {
+	for (const dev::MovementEvent &event : result.summary.lastFrameEvents.movementEvents()) {
 		if (event.type == dev::MovementEventType::CommandAccepted && event.commandType == dev::MovementCommandType::MoveThenAct)
 			sawMoveThenAct = true;
 		if (event.type == dev::MovementEventType::ActionRejected)
 			sawActionRejected = true;
 	}
 
-	Expect(result.rawInputEventsRouted == 1, "game loop should route raw target-aware mouse input through world registry");
-	Expect(result.movementCommandsQueued == 1, "game loop should queue world-target movement command");
+	Expect(result.summary.rawInputEventsRouted == 1, "game loop should route raw target-aware mouse input through world registry");
+	Expect(result.summary.movementCommandsQueued == 1, "game loop should queue world-target movement command");
 	Expect(sawMoveThenAct, "world target registry click should become MoveThenAct command");
 	Expect(sawActionRejected, "unregistered combat target should still reject at action layer");
 	Expect(loop.session().world().players.size() == 1 && loop.session().world().players[0].position.tile == dev::Point { 1, 0 }, "world target registry click should move player to target tile");
@@ -3799,7 +4230,7 @@ void TestGameLoopUsesWorldItemTargetForRawPickupInput()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .rawInputSources = { &rawInput },
+		    .sources = { .rawInputSources = { &rawInput } },
 		    .maxFrames = 1,
 		}
 	};
@@ -3813,15 +4244,15 @@ void TestGameLoopUsesWorldItemTargetForRawPickupInput()
 
 	bool sawMoveThenAct = false;
 	bool sawPickupExecuted = false;
-	for (const dev::MovementEvent &event : result.lastFrameEvents.movementEvents()) {
+	for (const dev::MovementEvent &event : result.summary.lastFrameEvents.movementEvents()) {
 		if (event.type == dev::MovementEventType::CommandAccepted && event.commandType == dev::MovementCommandType::MoveThenAct)
 			sawMoveThenAct = true;
 		if (event.type == dev::MovementEventType::ActionExecuted && event.actionType == dev::DestinationActionType::Pickup)
 			sawPickupExecuted = true;
 	}
 
-	Expect(result.rawInputEventsRouted == 1, "game loop should route raw item mouse input through world registry");
-	Expect(result.movementCommandsQueued == 1, "game loop should queue world-item movement command");
+	Expect(result.summary.rawInputEventsRouted == 1, "game loop should route raw item mouse input through world registry");
+	Expect(result.summary.movementCommandsQueued == 1, "game loop should queue world-item movement command");
 	Expect(sawMoveThenAct, "world item target click should become MoveThenAct command");
 	Expect(sawPickupExecuted, "world item target click should execute pickup action");
 	Expect(loop.session().world().items.empty(), "pickup action should remove item from world");
@@ -3847,7 +4278,7 @@ void TestGameLoopLeavesItemWhenInventoryFull()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .rawInputSources = { &rawInput },
+		    .sources = { .rawInputSources = { &rawInput } },
 		    .maxFrames = 1,
 		}
 	};
@@ -3862,7 +4293,7 @@ void TestGameLoopLeavesItemWhenInventoryFull()
 	dev::GameLoopResult result = loop.runForResult();
 
 	bool sawPickupExecuted = false;
-	for (const dev::MovementEvent &event : result.lastFrameEvents.movementEvents()) {
+	for (const dev::MovementEvent &event : result.summary.lastFrameEvents.movementEvents()) {
 		if (event.type == dev::MovementEventType::ActionExecuted && event.actionType == dev::DestinationActionType::Pickup)
 			sawPickupExecuted = true;
 	}
@@ -3902,15 +4333,15 @@ void TestGameLoopDoesNotRouteBlockedRawMovementInput()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
 		    .startupScript = scriptPath,
-		    .rawInputSources = { &rawInput },
+		    .sources = { .rawInputSources = { &rawInput } },
 		    .inputFocusState = dev::FocusState { .owner = dev::InputOwner::Gameplay, .textEntryActive = true },
 		    .maxFrames = 1,
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
 
-	Expect(result.rawInputEventsRouted == 0, "game loop should not count blocked raw movement as routed");
-	Expect(result.movementCommandsQueued == 0, "game loop should not queue blocked raw movement");
+	Expect(result.summary.rawInputEventsRouted == 0, "game loop should not count blocked raw movement as routed");
+	Expect(result.summary.movementCommandsQueued == 0, "game loop should not queue blocked raw movement");
 	Expect(loop.session().world().players.size() == 1 && loop.session().world().players[0].position.tile == dev::Point { 0, 0 }, "blocked raw movement should not move player");
 	Expect(rawInput.empty(), "game loop should still drain inspected raw input");
 
@@ -4027,6 +4458,27 @@ int main()
 	TestRuntimeFrameTraceFileStoreRejectsMissingFile();
 	TestRuntimeTraceServiceFormatsAndSavesRunTrace();
 	TestRuntimeTraceServiceFormatsEmptyRun();
+	TestRuntimeOutputSettingsDefaultDisablesArtifacts();
+	TestRuntimeOutputResultDefaultsToNoAttempts();
+	TestRuntimeSetupResultDefaultsToNoSetupScripts();
+	TestRuntimeSourceSettingsDefaultsToNoSources();
+	TestRuntimeRunSummaryDefaultsToEmptyRun();
+	TestRuntimeExitCodePolicyReportsSuccessForCleanRun();
+	TestRuntimeExitCodePolicyFailsSetupErrors();
+	TestRuntimeExitCodePolicyAllowsCommandRejections();
+	TestRuntimeExitCodePolicyFailsOutputErrors();
+	TestRuntimeOutputFinalizerLeavesDisabledOutputsUntouched();
+	TestRuntimeOutputFinalizerSavesTraceAndBundle();
+	TestRuntimeOutputFinalizerReportsRequestedOutputFailure();
+	TestGameLoopSavesConfiguredRunTrace();
+	TestGameLoopSavesRunTraceOnStartupFailure();
+	TestGameLoopReportsRunTraceSaveFailure();
+	TestRuntimeDebugArtifactBundleSavesManifestAndTrace();
+	TestRuntimeDebugArtifactBundleFormatsManifestForFailedRun();
+	TestRuntimeDebugArtifactBundleRejectsRootFile();
+	TestGameLoopSavesConfiguredDebugBundle();
+	TestGameLoopSavesDebugBundleOnStartupFailure();
+	TestGameLoopReportsDebugBundleSaveFailure();
 	TestGameLoopDrainsRuntimeInventoryCommandSources();
 	TestGameLoopEmitsRejectedInventoryEventForMissingPlayer();
 	TestGameLoopDoesNotDrainInventorySourcesWithoutActiveWorld();

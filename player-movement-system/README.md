@@ -346,7 +346,36 @@ SessionScriptRunner
 GameLoop
   app-facing shell that runs optional startup and inventory scripts, drains raw
   input, session, inventory script, inventory command, and movement sources,
-  advances bounded frames, and exposes results/events for tests and debug tools
+  advances bounded frames, optionally saves run traces/debug bundles, and
+  exposes results/events for tests and debug tools
+
+RuntimeSetupResult
+  app-layer setup result state that groups configured startup and inventory
+  script attempts before frame updates begin
+
+RuntimeSourceSettings
+  app-layer source settings that group raw input, session, inventory script,
+  inventory command, and movement command sources for GameLoop
+
+RuntimeRunSummary
+  app-layer aggregate run result state for routed input, runtime command
+  results, queued movement counts, frames run, and final frame events
+
+RuntimeExitCodePolicy
+  app-layer policy that translates GameLoopResult setup and output failures
+  into process-style success/failure exit codes
+
+RuntimeOutputSettings
+  app-layer artifact settings that group optional run trace and debug bundle
+  destinations for GameLoop finalization
+
+RuntimeOutputResult
+  app-layer artifact result state that groups trace and debug bundle save
+  attempts after GameLoop output finalization
+
+RuntimeOutputFinalizer
+  app-layer use case that applies RuntimeOutputSettings to a GameLoopResult and
+  reports trace or debug bundle write failures
 
 RuntimeFrameReport
   per-frame report that groups routed input counts, runtime source results,
@@ -361,7 +390,12 @@ RuntimeFrameTraceFileStore
 
 RuntimeTraceService
   high-level use case that formats and saves complete GameLoopResult frame
-  traces in one call
+  traces in one call, including GameLoop-configured trace output
+
+RuntimeDebugArtifactBundle
+  app-layer debug artifact writer that prepares a bundle directory, saves the
+  run trace, writes a manifest describing the captured run, and can be invoked
+  directly or through GameLoopSettings
 
 RuntimeSourceDrainer
   app-layer helper that drains runtime session, inventory script, inventory

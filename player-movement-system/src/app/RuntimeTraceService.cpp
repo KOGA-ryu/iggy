@@ -15,13 +15,13 @@ std::vector<std::string> RuntimeTraceService::formatRun(const GameLoopResult &re
 	std::vector<std::string> lines;
 	{
 		std::ostringstream summary;
-		summary << "run frames=" << result.framesRun
+		summary << "run frames=" << result.summary.framesRun
 		        << " frameReports=" << result.frameReports.size()
-		        << " rawInput=" << result.rawInputEventsRouted
-		        << " sessionResults=" << result.sessionCommandResults.size()
-		        << " inventoryScripts=" << result.runtimeInventoryScriptResults.size()
-		        << " inventoryResults=" << result.inventoryCommandResults.size()
-		        << " movementQueued=" << result.movementCommandsQueued;
+		        << " rawInput=" << result.summary.rawInputEventsRouted
+		        << " sessionResults=" << result.summary.sessionCommandResults.size()
+		        << " inventoryScripts=" << result.summary.runtimeInventoryScriptResults.size()
+		        << " inventoryResults=" << result.summary.inventoryCommandResults.size()
+		        << " movementQueued=" << result.summary.movementCommandsQueued;
 		lines.push_back(summary.str());
 	}
 
