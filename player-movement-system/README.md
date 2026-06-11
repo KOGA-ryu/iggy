@@ -827,8 +827,13 @@ RuntimeFramePolicyText
   for run traces and debug bundle manifests
 
 RuntimeRunSummaryText
-  app-layer text formatter that renders run count summaries consistently for
-  run traces and debug bundle manifests
+  app-layer text formatter that renders routed input, blocked movement input,
+  and run count summaries consistently for run traces and debug bundle manifests
+
+RuntimeMovementInputBlockSummary
+  app-layer diagnostic summary that counts blocked movement input reasons so
+  manifests and future debug UI can answer why input did not become movement
+  without parsing trace lines
 
 RuntimeFrameTraceHeaderText
   app-layer text formatter that renders per-frame runtime counts as the first

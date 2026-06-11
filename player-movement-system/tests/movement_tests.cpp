@@ -34,6 +34,7 @@
 #include "app/RuntimeInventoryScriptText.hpp"
 #include "app/RuntimeInventoryText.hpp"
 #include "app/RuntimeMovementInputRouter.hpp"
+#include "app/RuntimeMovementInputBlockSummary.hpp"
 #include "app/RuntimeMovementEventText.hpp"
 #include "app/RuntimeMovementScriptText.hpp"
 #include "app/RuntimeFrameTrace.hpp"
@@ -6178,7 +6179,7 @@ void TestRuntimeFrameTraceHeaderTextFormatsFrameCounts()
 
 	dev::RuntimeFrameTraceHeaderText formatter;
 
-	Expect(formatter.format(report) == "frame rawInput=2 sessionResults=1 inventoryScripts=1 inventoryResults=1 movementScripts=1 movementQueued=3 movementEvents=1 combatEvents=1 effects=1 sessionEvents=1 inventoryEvents=1", "runtime frame trace header text should format all frame counts");
+	Expect(formatter.format(report) == "frame rawInput=2 movementInputBlocks=0 sessionResults=1 inventoryScripts=1 inventoryResults=1 movementScripts=1 movementQueued=3 movementEvents=1 combatEvents=1 effects=1 sessionEvents=1 inventoryEvents=1", "runtime frame trace header text should format all frame counts");
 }
 
 void TestRuntimeFrameTraceSectionsFormatsRuntimeSourcesInOrder()
@@ -6211,6 +6212,43 @@ void TestRuntimeFrameTraceSectionsFormatsRuntimeSourcesInOrder()
 	};
 
 	Expect(lines == expected, "runtime frame trace sections should format runtime source lines in trace order");
+}
+
+void TestRuntimeMovementInputBlockSummaryCountsReasons()
+{
+	const std::vector<dev::PlayerActionBlockReason> reasons {
+		dev::PlayerActionBlockReason::Focus,
+		dev::PlayerActionBlockReason::Focus,
+		dev::PlayerActionBlockReason::Paused,
+		dev::PlayerActionBlockReason::AnimationLocked,
+		dev::PlayerActionBlockReason::AnimationCommitment,
+		dev::PlayerActionBlockReason::Stunned,
+		dev::PlayerActionBlockReason::None,
+	};
+
+	const dev::RuntimeMovementInputBlockSummary summary = dev::RuntimeMovementInputBlockSummaryBuilder {}.summarize(reasons);
+
+	Expect(!summary.empty(), "runtime movement input block summary should report non-empty reasons");
+	Expect(summary.total == 7, "runtime movement input block summary should count total blocks");
+	Expect(summary.count(dev::PlayerActionBlockReason::Focus) == 2, "runtime movement input block summary should count focus blocks");
+	Expect(summary.count(dev::PlayerActionBlockReason::Paused) == 1, "runtime movement input block summary should count paused blocks");
+	Expect(summary.count(dev::PlayerActionBlockReason::AnimationLocked) == 1, "runtime movement input block summary should count app animation lock blocks");
+	Expect(summary.count(dev::PlayerActionBlockReason::AnimationCommitment) == 1, "runtime movement input block summary should count animation commitment blocks");
+	Expect(summary.count(dev::PlayerActionBlockReason::Stunned) == 1, "runtime movement input block summary should count stunned blocks");
+	Expect(summary.count(dev::PlayerActionBlockReason::None) == 1, "runtime movement input block summary should count no-reason blocks");
+}
+
+void TestRuntimeMovementInputBlockSummaryTextFormatsReasonCounts()
+{
+	dev::RuntimeMovementInputBlockSummary summary;
+	summary.total = 3;
+	summary.focus = 1;
+	summary.paused = 1;
+	summary.stunned = 1;
+
+	const std::string line = dev::RuntimeMovementInputBlockSummaryText {}.format("movementInputBlockReasons", summary);
+
+	Expect(line == "movementInputBlockReasons total=3 focus=1 paused=1 animationLocked=0 animationCommitment=0 stunned=1 none=0", "runtime movement input block summary text should format reason counts");
 }
 
 void TestRuntimePlayerActionTextFormatsMovementBlockReasons()
@@ -6338,11 +6376,14 @@ void TestRuntimeDebugManifestSectionsFormatsRunStatus()
 {
 	dev::GameLoopResult result;
 	result.summary.framesRun = 2;
+	result.summary.movementInputBlockReasons.push_back(dev::PlayerActionBlockReason::Focus);
+	result.summary.movementInputBlockReasons.push_back(dev::PlayerActionBlockReason::Paused);
 	result.finalMode = dev::GameSessionMode::Inventory;
 
 	const std::vector<std::string> lines = dev::RuntimeDebugManifestSections {}.formatRunStatus(result);
 	const std::vector<std::string> expected {
-		"run frames=2 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0 finalMode=Inventory",
+		"run frames=2 frameReports=0 rawInput=0 movementInputBlocks=2 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0 finalMode=Inventory",
+		"movementInputBlockReasons total=2 focus=1 paused=1 animationLocked=0 animationCommitment=0 stunned=0 none=0",
 		"policy latest=none",
 	};
 
@@ -6553,6 +6594,7 @@ void TestRuntimeRunSummaryTextFormatsTraceAndManifestSummaries()
 	dev::GameLoopResult result;
 	result.summary.framesRun = 2;
 	result.summary.rawInputEventsRouted = 3;
+	result.summary.movementInputBlockReasons.push_back(dev::PlayerActionBlockReason::Focus);
 	result.summary.sessionCommandResults.push_back({});
 	result.summary.runtimeInventoryScriptResults.push_back({});
 	result.summary.inventoryCommandResults.push_back({});
@@ -6562,8 +6604,8 @@ void TestRuntimeRunSummaryTextFormatsTraceAndManifestSummaries()
 
 	dev::RuntimeRunSummaryText formatter;
 
-	Expect(formatter.format(result, dev::RuntimeRunSummaryDetail::CountsOnly) == "run frames=2 frameReports=1 rawInput=3 sessionResults=1 inventoryScripts=1 inventoryResults=1 movementScripts=0 movementQueued=4", "runtime run summary text should format trace run summary");
-	Expect(formatter.format(result, dev::RuntimeRunSummaryDetail::WithFinalMode) == "run frames=2 frameReports=1 rawInput=3 sessionResults=1 inventoryScripts=1 inventoryResults=1 movementScripts=0 movementQueued=4 finalMode=Inventory", "runtime run summary text should format manifest run summary");
+	Expect(formatter.format(result, dev::RuntimeRunSummaryDetail::CountsOnly) == "run frames=2 frameReports=1 rawInput=3 movementInputBlocks=1 sessionResults=1 inventoryScripts=1 inventoryResults=1 movementScripts=0 movementQueued=4", "runtime run summary text should format trace run summary");
+	Expect(formatter.format(result, dev::RuntimeRunSummaryDetail::WithFinalMode) == "run frames=2 frameReports=1 rawInput=3 movementInputBlocks=1 sessionResults=1 inventoryScripts=1 inventoryResults=1 movementScripts=0 movementQueued=4 finalMode=Inventory", "runtime run summary text should format manifest run summary");
 }
 
 void TestRuntimeFrameTraceFormatsEnemyPursuitEvents()
@@ -6611,7 +6653,7 @@ void TestRuntimeFrameTraceFileStoreSavesAndLoadsLines()
 	std::filesystem::remove(path.string() + ".tmp");
 
 	std::vector<std::string> lines {
-		"frame rawInput=0 sessionResults=0 inventoryScripts=1 inventoryResults=2 movementScripts=0 movementQueued=1",
+		"frame rawInput=0 movementInputBlocks=0 sessionResults=0 inventoryScripts=1 inventoryResults=2 movementScripts=0 movementQueued=1",
 		"inventoryResult[0] type=Applied command=EquipItem equipment=Equipped item=955 slot=Weapon",
 		"movementEvent[0] type=CommandAccepted player=0 tile=(0,0) command=WalkTo",
 	};
@@ -6678,7 +6720,7 @@ void TestRuntimeTraceServiceFormatsAndSavesRunTrace()
 	std::optional<std::vector<std::string>> loaded = dev::RuntimeFrameTraceFileStore {}.load(tracePath);
 
 	Expect(!lines.empty(), "runtime trace service should format run lines");
-	Expect(!lines.empty() && lines[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=1 inventoryResults=1 movementScripts=0 movementQueued=0", "runtime trace service should include run summary");
+	Expect(!lines.empty() && lines[0] == "run frames=1 frameReports=1 rawInput=0 movementInputBlocks=0 sessionResults=0 inventoryScripts=1 inventoryResults=1 movementScripts=0 movementQueued=0", "runtime trace service should include run summary");
 	Expect(ContainsLineFragment(lines, "frame[0]"), "runtime trace service should include frame header");
 	Expect(ContainsLineFragment(lines, "inventoryResult[0] type=Applied command=EquipItem equipment=Equipped item=956 slot=Weapon"), "runtime trace service should include frame trace detail");
 	Expect(loaded.has_value() && *loaded == lines, "runtime trace service should persist exact formatted lines");
@@ -6692,7 +6734,7 @@ void TestRuntimeTraceServiceFormatsEmptyRun()
 	std::vector<std::string> lines = dev::RuntimeTraceService {}.formatRun(result);
 
 	Expect(lines.size() == 1, "runtime trace service should format empty run as summary only");
-	Expect(lines.size() == 1 && lines[0] == "run frames=0 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime trace service should preserve empty run counts");
+	Expect(lines.size() == 1 && lines[0] == "run frames=0 frameReports=0 rawInput=0 movementInputBlocks=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime trace service should preserve empty run counts");
 }
 
 void TestRuntimeOutputSettingsDefaultDisablesArtifacts()
@@ -7536,9 +7578,9 @@ void TestRuntimeOutputFinalizerSavesTraceAndBundle()
 	Expect(result.output.debugBundleSaveAttempted, "runtime output finalizer should attempt configured bundle save");
 	Expect(result.output.debugBundleSaved, "runtime output finalizer should report saved bundle");
 	Expect(!dev::RuntimeOutputFailurePolicy {}.failed(result.output), "runtime output finalizer should report no failure after saving requested outputs");
-	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime output finalizer should save standalone trace");
+	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=0 rawInput=0 movementInputBlocks=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime output finalizer should save standalone trace");
 	Expect(bundleManifest.has_value() && ContainsLineFragment(*bundleManifest, "trace=run.trace saved=true"), "runtime output finalizer should save bundle manifest");
-	Expect(bundleTrace.has_value() && !bundleTrace->empty() && (*bundleTrace)[0] == "run frames=1 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime output finalizer should save bundle trace");
+	Expect(bundleTrace.has_value() && !bundleTrace->empty() && (*bundleTrace)[0] == "run frames=1 frameReports=0 rawInput=0 movementInputBlocks=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime output finalizer should save bundle trace");
 
 	std::filesystem::remove_all(root);
 }
@@ -7585,7 +7627,7 @@ void TestGameLoopSavesConfiguredRunTrace()
 	Expect(result.output.runTraceSaveAttempted, "game loop should attempt configured run trace save");
 	Expect(result.output.runTraceSaved, "game loop should report successful run trace save");
 	Expect(loaded.has_value(), "game loop should persist configured run trace");
-	Expect(loaded.has_value() && !loaded->empty() && (*loaded)[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "game loop run trace should include run summary");
+	Expect(loaded.has_value() && !loaded->empty() && (*loaded)[0] == "run frames=1 frameReports=1 rawInput=0 movementInputBlocks=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "game loop run trace should include run summary");
 	Expect(loaded.has_value() && ContainsLineFragment(*loaded, "frame[0]"), "game loop run trace should include frame trace header");
 
 	std::filesystem::remove_all(root);
@@ -7613,7 +7655,7 @@ void TestGameLoopSavesRunTraceOnStartupFailure()
 	Expect(result.setup.startupScriptResult.status == dev::SessionScriptRunStatus::LoadFailed, "failed startup trace test should report load failure");
 	Expect(result.output.runTraceSaveAttempted, "game loop should attempt run trace save after startup failure");
 	Expect(result.output.runTraceSaved, "game loop should save run trace after startup failure");
-	Expect(loaded.has_value() && !loaded->empty() && (*loaded)[0] == "run frames=0 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "failed startup trace should preserve zero-frame summary");
+	Expect(loaded.has_value() && !loaded->empty() && (*loaded)[0] == "run frames=0 frameReports=0 rawInput=0 movementInputBlocks=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "failed startup trace should preserve zero-frame summary");
 
 	std::filesystem::remove_all(root);
 }
@@ -7683,7 +7725,7 @@ void TestRuntimeDebugArtifactBundleSavesManifestAndTrace()
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "policy latest=Gameplay acceptCommands=true updatePlayers=true updateEnemies=true"), "runtime debug bundle manifest should summarize latest frame policy");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "runtime inventoryScripts=0 completed=0 loadFailed=0 noActivePlayer=0 applied=0 rejected=0"), "runtime debug bundle manifest should summarize runtime inventory scripts");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "runtime movementScripts=0 completed=0 loadFailed=0 noActiveWorld=0 accepted=0 rejected=0"), "runtime debug bundle manifest should summarize runtime movement scripts");
-	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime debug bundle trace should preserve run trace summary");
+	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=1 rawInput=0 movementInputBlocks=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime debug bundle trace should preserve run trace summary");
 
 	std::filesystem::remove_all(root);
 }
@@ -7927,7 +7969,7 @@ void TestRuntimeDebugArtifactWriterSavesTraceAndManifest()
 	Expect(trace.has_value(), "runtime debug artifact writer should write readable trace");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "trace=run.trace saved=true"), "runtime debug artifact writer manifest should record saved trace");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "policy latest=none"), "runtime debug artifact writer manifest should report no frame policy without frame reports");
-	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=2 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime debug artifact writer should preserve trace summary");
+	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=2 frameReports=0 rawInput=0 movementInputBlocks=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime debug artifact writer should preserve trace summary");
 
 	std::filesystem::remove_all(root);
 }
@@ -7999,7 +8041,7 @@ void TestGameLoopSavesConfiguredDebugBundle()
 	Expect(trace.has_value(), "game loop debug bundle should write run trace");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "trace=run.trace saved=true"), "game loop debug bundle manifest should index saved trace");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "policy latest=Gameplay acceptCommands=true updatePlayers=true updateEnemies=true"), "game loop debug bundle manifest should include latest frame policy");
-	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=1 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "game loop debug bundle trace should include run summary");
+	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=1 rawInput=0 movementInputBlocks=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "game loop debug bundle trace should include run summary");
 
 	std::filesystem::remove_all(root);
 }
@@ -8028,7 +8070,7 @@ void TestGameLoopSavesDebugBundleOnStartupFailure()
 	Expect(result.output.debugBundleSaved, "game loop should save debug bundle after startup failure");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "setup startupScriptRan=true inventoryScriptRan=false movementScriptRan=false"), "failed startup debug bundle manifest should record setup attempt");
 	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "policy latest=none"), "failed startup debug bundle manifest should report no frame policy");
-	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=0 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "failed startup debug bundle trace should preserve zero-frame summary");
+	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=0 frameReports=0 rawInput=0 movementInputBlocks=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "failed startup debug bundle trace should preserve zero-frame summary");
 
 	std::filesystem::remove_all(root);
 }
@@ -9435,6 +9477,8 @@ int main()
 	TestRuntimeFramePolicyTextFormatsArtifactPolicyLines();
 	TestRuntimeFrameTraceHeaderTextFormatsFrameCounts();
 	TestRuntimeFrameTraceSectionsFormatsRuntimeSourcesInOrder();
+	TestRuntimeMovementInputBlockSummaryCountsReasons();
+	TestRuntimeMovementInputBlockSummaryTextFormatsReasonCounts();
 	TestRuntimePlayerActionTextFormatsMovementBlockReasons();
 	TestRuntimeFrameTraceSectionsFormatsLifecycleEventsInOrder();
 	TestRuntimeFrameTraceSectionsFormatsSimulationEventsInOrder();

@@ -8,6 +8,7 @@ std::string RuntimeFrameTraceHeaderText::format(const RuntimeFrameReport &report
 {
 	std::ostringstream line;
 	line << "frame rawInput=" << report.rawInputEventsRouted
+	     << " movementInputBlocks=" << report.movementInputBlockReasons.size()
 	     << " sessionResults=" << report.sessionCommandResults.size()
 	     << " inventoryScripts=" << report.inventoryScriptResults.size()
 	     << " inventoryResults=" << report.inventoryCommandResults.size()

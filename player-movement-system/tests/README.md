@@ -199,7 +199,8 @@ Good first tests:
 - RuntimeLoopTypes keeps loop settings and results reusable outside GameLoop
 - GameLoop builds RuntimeFrameReport entries for per-frame inspection
 - RuntimeFramePolicyText formats policy lines for traces and manifests
-- RuntimeRunSummaryText formats run summaries for traces and manifests
+- RuntimeRunSummaryText formats run summaries and movement input block counts for traces and manifests
+- RuntimeMovementInputBlockSummary counts movement input block reasons for diagnostics
 - RuntimeFrameTraceHeaderText formats per-frame trace count headers
 - RuntimeFrameTraceSections formats runtime source, lifecycle, and simulation trace sections
 - RuntimePlayerActionText formats player movement block reasons

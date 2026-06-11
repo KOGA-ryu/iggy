@@ -3,6 +3,7 @@
 #include "app/RuntimeDebugManifestSetupText.hpp"
 #include "app/RuntimeFramePolicyText.hpp"
 #include "app/RuntimeInventoryScriptText.hpp"
+#include "app/RuntimeMovementInputBlockSummary.hpp"
 #include "app/RuntimeMovementScriptText.hpp"
 #include "app/RuntimeRunSummaryText.hpp"
 
@@ -12,6 +13,9 @@ std::vector<std::string> RuntimeDebugManifestSections::formatRunStatus(const Gam
 {
 	std::vector<std::string> lines;
 	lines.push_back(RuntimeRunSummaryText {}.format(result, RuntimeRunSummaryDetail::WithFinalMode));
+	lines.push_back(RuntimeMovementInputBlockSummaryText {}.format(
+	    "movementInputBlockReasons",
+	    RuntimeMovementInputBlockSummaryBuilder {}.summarize(result.summary.movementInputBlockReasons)));
 
 	if (result.frameReports.empty()) {
 		lines.push_back(RuntimeFramePolicyText {}.formatNone("policy latest"));

@@ -1427,7 +1427,7 @@ runtime shell starts coordinating several command and event streams.
 `RuntimeFrameTrace` exports that structured report into deterministic text:
 
 ```text
-frame rawInput=0 sessionResults=0 inventoryScripts=1 ...
+frame rawInput=0 movementInputBlocks=0 sessionResults=0 inventoryScripts=1 ...
 policy mode=Gameplay acceptCommands=1 updatePlayers=1 updateEnemies=1 ...
 inventoryResult[0] type=Applied command=EquipItem ...
 inventoryEvent[0] type=Equipped ...
@@ -1442,7 +1442,12 @@ debug bundle manifests stay consistent while still choosing numeric or word
 booleans for their audience.
 `RuntimeRunSummaryText` does the same for the run-level count summary: the trace
 uses counts only, while the manifest asks for the same line with final mode
-included.
+included. Its aggregate counts include both routed raw input and blocked
+movement-shaped input.
+`RuntimeMovementInputBlockSummary` turns the stored block reasons into a small
+reason distribution for manifests and future debug UI. That keeps "how many
+inputs were blocked?" separate from "why were they blocked?" without making
+tools scrape detailed frame trace lines.
 `RuntimeFrameTraceHeaderText` owns the per-frame count summary at the top of
 each frame report: routed input, source results, queued movement, gameplay
 events, session events, and inventory events.
@@ -1549,8 +1554,10 @@ manifest groups: run status, setup details, and runtime script aggregates.
 The manifest includes the latest frame policy summary so a bundle can explain
 why the run accepted commands or advanced actors without opening the full trace.
 That line is formatted through `RuntimeFramePolicyText`, the same boundary used
-by `RuntimeFrameTrace`. Run-level counts go through `RuntimeRunSummaryText` for
-the same reason.
+by `RuntimeFrameTrace`. Run-level routed-input and blocked-movement counts go
+through `RuntimeRunSummaryText` for the same reason. Blocked movement reason
+distribution goes through `RuntimeMovementInputBlockSummary`, so the manifest
+can answer the common tuning question without opening the trace.
 The trace still goes through `RuntimeTraceService`. That split keeps
 replay/debug artifact shape outside gameplay code while leaving a clear place to
 add future files, such as replay command logs or session metadata.

@@ -29,6 +29,7 @@ std::string RuntimeRunSummaryText::format(const GameLoopResult &result, RuntimeR
 	summary << "run frames=" << result.summary.framesRun
 	        << " frameReports=" << result.frameReports.size()
 	        << " rawInput=" << result.summary.rawInputEventsRouted
+	        << " movementInputBlocks=" << result.summary.movementInputBlockReasons.size()
 	        << " sessionResults=" << result.summary.sessionCommandResults.size()
 	        << " inventoryScripts=" << result.summary.runtimeInventoryScriptResults.size()
 	        << " inventoryResults=" << result.summary.inventoryCommandResults.size()
