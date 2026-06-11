@@ -10,6 +10,7 @@
 #include "actions/ActionExecutor.hpp"
 #include "app/GameLoop.hpp"
 #include "app/RuntimeArtifactOutputService.hpp"
+#include "app/RuntimeBlockedPointerInputStep.hpp"
 #include "app/RuntimeCombatText.hpp"
 #include "app/RuntimeDebugArtifactBundle.hpp"
 #include "app/RuntimeDebugArtifactBundleResultBuilder.hpp"
@@ -96,6 +97,7 @@
 #include "app/RuntimeStartupScriptIntake.hpp"
 #include "app/RuntimeStopMovementInputStep.hpp"
 #include "app/RuntimeSessionText.hpp"
+#include "app/RuntimeTargetInteractionInputStep.hpp"
 #include "app/RuntimeTargetInputRouter.hpp"
 #include "app/RuntimeTraceService.hpp"
 #include "combat/CombatEventRecorder.hpp"
@@ -9466,6 +9468,36 @@ void TestRuntimeInputFocusResolverMapsSessionModesToFocus()
 	Expect(empty.owner == dev::InputOwner::Dialogue, "runtime input focus resolver should preserve explicit focus in empty mode");
 }
 
+void TestRuntimeBlockedPointerInputStepReportsBlockedPointerMovement()
+{
+	dev::RuntimeInputRouteResult blocked = dev::RuntimeBlockedPointerInputStep {}.route(
+	    dev::RawInputEvent {
+	        .type = dev::RawInputType::MouseClick,
+	        .screenPosition = { 32, 0 },
+	        .pressed = true,
+	    },
+	    dev::PlayerActionBlockReason::Focus);
+	dev::RuntimeInputRouteResult unblocked = dev::RuntimeBlockedPointerInputStep {}.route(
+	    dev::RawInputEvent {
+	        .type = dev::RawInputType::MouseClick,
+	        .screenPosition = { 32, 0 },
+	        .pressed = true,
+	    },
+	    dev::PlayerActionBlockReason::None);
+	dev::RuntimeInputRouteResult nonPointer = dev::RuntimeBlockedPointerInputStep {}.route(
+	    dev::RawInputEvent {
+	        .type = dev::RawInputType::KeyPress,
+	        .code = 'A',
+	        .pressed = true,
+	    },
+	    dev::PlayerActionBlockReason::Focus);
+
+	Expect(!blocked.handled, "runtime blocked pointer input step should report blocks without handling input");
+	Expect(blocked.movementBlockReason == std::optional<dev::PlayerActionBlockReason> { dev::PlayerActionBlockReason::Focus }, "runtime blocked pointer input step should preserve block reason");
+	Expect(!unblocked.handled && !unblocked.movementBlockReason.has_value(), "runtime blocked pointer input step should ignore unblocked pointer input");
+	Expect(!nonPointer.handled && !nonPointer.movementBlockReason.has_value(), "runtime blocked pointer input step should ignore non-pointer input");
+}
+
 void TestRuntimeInputRouterBlocksMovementWhenFocusDoesNotOwnGameplay()
 {
 	dev::SimulationWorld world;
@@ -9716,6 +9748,44 @@ void TestRuntimeInputRouterMapsTargetClickToMoveThenAct()
 	Expect(commands.size() == 1 && commands[0].destinationAction->type == dev::DestinationActionType::Attack, "enemy click should carry attack action");
 	Expect(commands.size() == 1 && commands[0].destinationAction->target.id == 42, "enemy click should preserve target id");
 	Expect(sessionCommands.empty(), "target-aware click should not queue session commands");
+}
+
+void TestRuntimeTargetInteractionInputStepBuildsInteractionCommand()
+{
+	dev::SimulationWorld world;
+	world.players.push_back(MakePlayer({ 0, 0 }));
+	FixedTargetResolver targets {
+		dev::Target {
+		    .type = dev::TargetType::Enemy,
+		    .id = 47,
+		    .tile = { 0, 0 },
+		}
+	};
+	dev::FocusState focusState;
+	dev::InputFocus focus { focusState };
+	dev::PlayerActionContext context;
+	dev::PlayerActionGate gate { focus, context };
+	dev::QueuedMovementCommandSource movementCommands;
+
+	dev::RuntimeInputRouteResult result = dev::RuntimeTargetInteractionInputStep { movementCommands }.route(
+	    dev::RawInputEvent {
+	        .type = dev::RawInputType::MouseClick,
+	        .screenPosition = { 64, 0 },
+	        .pressed = true,
+	    },
+	    world.map,
+	    targets,
+	    0,
+	    world.players[0],
+	    gate);
+
+	Expect(result.handled && result.queuedMovementCommand, "runtime target interaction input step should queue target-aware movement commands");
+	std::vector<dev::MovementCommand> commands = movementCommands.drain();
+	Expect(commands.size() == 1 && commands[0].type == dev::MovementCommandType::MoveThenAct, "runtime target interaction input step should map enemy targets to MoveThenAct");
+	Expect(commands.size() == 1 && commands[0].destination == dev::Point { 2, 0 }, "runtime target interaction input step should resolve screen position through the tile map");
+	Expect(commands.size() == 1 && commands[0].destinationAction.has_value(), "runtime target interaction input step should attach destination action");
+	Expect(commands.size() == 1 && commands[0].destinationAction->type == dev::DestinationActionType::Attack, "runtime target interaction input step should preserve attack intent");
+	Expect(commands.size() == 1 && commands[0].destinationAction->target.id == 47, "runtime target interaction input step should preserve target identity");
 }
 
 void TestRuntimeTargetInputRouterMapsTargetClickToMoveThenAct()
@@ -10833,6 +10903,7 @@ int main()
 	TestRuntimeMovementIntentInputStepMapsPointerIntentToCommand();
 	TestRuntimeMovementInputRouterMapsTouchTapToMovementCommand();
 	TestRuntimeInputFocusResolverMapsSessionModesToFocus();
+	TestRuntimeBlockedPointerInputStepReportsBlockedPointerMovement();
 	TestRuntimeInputRouterBlocksMovementWhenFocusDoesNotOwnGameplay();
 	TestRuntimeInputRouterMapsHotkeysToSessionCommands();
 	TestRuntimeSessionInputRouterTogglesLifecycleModes();
@@ -10841,6 +10912,7 @@ int main()
 	TestRuntimeStopMovementInputStepMapsStopHotkeyToCommand();
 	TestRuntimeMovementInputRouterReportsBlockedStopReason();
 	TestRuntimeInputRouterMapsTargetClickToMoveThenAct();
+	TestRuntimeTargetInteractionInputStepBuildsInteractionCommand();
 	TestRuntimeTargetInputRouterMapsTargetClickToMoveThenAct();
 	TestRuntimeInputRouterMapsStandGroundTargetClickToStandAndAct();
 	TestQueuedRawInputSourceDrainsEventsOnce();

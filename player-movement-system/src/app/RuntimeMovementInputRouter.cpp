@@ -1,7 +1,6 @@
 #include "RuntimeMovementInputRouter.hpp"
 
 #include "app/RuntimeInputRouteResultBuilder.hpp"
-#include "input/InputEventMatcher.hpp"
 
 namespace dev {
 
@@ -24,7 +23,6 @@ RuntimeInputRouteResult RuntimeMovementInputRouter::route(const RawInputEvent &e
 	PlayerActionGate gate { focus, context.actionContext };
 	const Player &player = context.world->players[context.playerId];
 	const PlayerActionBlockReason blockReason = gate.movementBlockReason(player);
-	InputEventMatcher inputMatcher;
 
 	RuntimeInputRouteResult stopResult = stopInput_.route(
 	    event,
@@ -40,8 +38,9 @@ RuntimeInputRouteResult RuntimeMovementInputRouter::route(const RawInputEvent &e
 	if (targetResult.handled || targetResult.movementBlockReason.has_value())
 		return targetResult;
 
-	if (inputMatcher.pressedPointer(event) && blockReason != PlayerActionBlockReason::None)
-		return resultBuilder.blockedMovement(blockReason);
+	RuntimeInputRouteResult blockedPointerResult = blockedPointerInput_.route(event, blockReason);
+	if (blockedPointerResult.movementBlockReason.has_value())
+		return blockedPointerResult;
 
 	return movementIntentInput_.route(
 	    event,

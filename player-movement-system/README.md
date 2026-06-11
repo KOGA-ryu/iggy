@@ -446,6 +446,10 @@ RuntimeMovementIntentInputStep
   gameplay input step that maps generic movement-shaped raw input into
   PlayerIntent, builds a movement command, and queues it
 
+RuntimeBlockedPointerInputStep
+  gameplay input step that reports movement-shaped pointer input as blocked
+  when focus or action state prevents movement
+
 RuntimeStopMovementInputStep
   gameplay input step that maps the stop hotkey into a StopMoving intent,
   builds a Stop command, and queues it
@@ -453,6 +457,10 @@ RuntimeStopMovementInputStep
 RuntimeTargetInputRouter
   target-aware pointer router that resolves clicked tiles into interaction
   movement commands
+
+RuntimeTargetInteractionInputStep
+  target-aware input step that resolves clicked tiles to targets, builds
+  interaction intent, builds a movement command, and queues it
 
 RuntimeRawInputDrainer
   app-edge helper that drains raw input sources, skips missing sources, routes

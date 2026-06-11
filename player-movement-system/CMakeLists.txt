@@ -23,6 +23,7 @@ add_library(player_movement_system
   src/app/RuntimeDebugManifestPathsText.cpp
   src/app/RuntimeDebugManifestSections.cpp
   src/app/RuntimeDebugManifestSetupText.cpp
+  src/app/RuntimeBlockedPointerInputStep.cpp
   src/app/RuntimeCombatText.cpp
   src/app/RuntimeEffectText.cpp
   src/app/RuntimeExitCodeMapper.cpp
@@ -96,6 +97,7 @@ add_library(player_movement_system
   src/app/RuntimeSourceDrainerSettingsBuilder.cpp
   src/app/RuntimeStartupScriptIntake.cpp
   src/app/RuntimeStopMovementInputStep.cpp
+  src/app/RuntimeTargetInteractionInputStep.cpp
   src/app/RuntimeTargetInputRouter.cpp
   src/app/RuntimeTraceService.cpp
   src/combat/CombatEventRecorder.cpp

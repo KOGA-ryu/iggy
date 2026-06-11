@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/RuntimeBlockedPointerInputStep.hpp"
 #include "app/RuntimeInputTypes.hpp"
 #include "app/RuntimeInputFocusResolver.hpp"
 #include "app/RuntimeMovementIntentInputStep.hpp"
@@ -20,6 +21,7 @@ private:
 	RuntimeInputBindings bindings_;
 	RuntimeInputFocusResolver focusResolver_;
 	RuntimeStopMovementInputStep stopInput_;
+	RuntimeBlockedPointerInputStep blockedPointerInput_;
 	RuntimeMovementIntentInputStep movementIntentInput_;
 	RuntimeTargetInputRouter targetInput_;
 };

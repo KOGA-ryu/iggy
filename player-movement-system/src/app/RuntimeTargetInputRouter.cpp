@@ -6,7 +6,7 @@
 namespace dev {
 
 RuntimeTargetInputRouter::RuntimeTargetInputRouter(QueuedMovementCommandSource &movementCommands)
-    : movementCommands_(movementCommands)
+    : targetInteractionInput_(movementCommands)
 {
 }
 
@@ -23,11 +23,13 @@ RuntimeInputRouteResult RuntimeTargetInputRouter::route(
 	if (blockReason != PlayerActionBlockReason::None)
 		return resultBuilder.blockedMovement(blockReason);
 
-	const Point tile = context.world->map.screenToTile(event.screenPosition);
-	const Target target = context.targetResolver->resolveAtTile(tile);
-	const InteractionIntent intent = interactionIntentBuilder_.build(target, player.movementModifiers.standGround);
-	movementCommands_.enqueue(interactionCommandBuilder_.build(context.playerId, player, intent, gate));
-	return resultBuilder.queuedMovementCommand();
+	return targetInteractionInput_.route(
+	    event,
+	    context.world->map,
+	    *context.targetResolver,
+	    context.playerId,
+	    player,
+	    gate);
 }
 
 } // namespace dev

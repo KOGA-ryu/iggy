@@ -1811,6 +1811,7 @@ RawInputEvent
   -> RuntimeMovementInputRouter
   -> RuntimeStopMovementInputStep
   -> RuntimeTargetInputRouter
+  -> RuntimeBlockedPointerInputStep
   -> RuntimeMovementIntentInputStep
   -> SessionCommandSource or MovementCommandSource
   -> GameLoop
@@ -1824,6 +1825,7 @@ RawInputEvent
   -> InputEventMatcher
   -> RuntimeInputFocusResolver
   -> InputFocus
+  -> RuntimeBlockedPointerInputStep
   -> RuntimeMovementIntentInputStep
   -> InputMapper
   -> PlayerIntent
@@ -1847,6 +1849,11 @@ or inventory owns controls.
 target-specific pointer input has first chance: map raw input to `PlayerIntent`,
 ask the action gate to build a movement command, then queue that command.
 
+`RuntimeBlockedPointerInputStep` owns blocked pointer reporting for the generic
+movement path. It does not handle the input or queue a command; it returns the
+movement block reason so frame reports can explain why movement-shaped input was
+ignored.
+
 `RuntimeStopMovementInputStep` owns the stop-hotkey route. It maps the configured
 key to `PlayerIntentType::StopMoving`, asks the same action gate for permission,
 and queues a `Stop` command at the player's current tile.
@@ -1857,10 +1864,15 @@ When a target resolver is attached, clicks can use the interaction path instead:
 RawInputEvent
   -> screenToTile
   -> TargetResolver
+  -> RuntimeTargetInteractionInputStep
   -> InteractionIntentBuilder
   -> InteractionCommandBuilder
   -> MovementCommandSource
 ```
+
+`RuntimeTargetInteractionInputStep` owns the inner interaction route: convert
+the clicked screen position to a tile, resolve the target at that tile, build
+interaction intent, build the movement command, and queue it.
 
 That produces richer commands:
 
@@ -1903,6 +1915,7 @@ RawInputSource
   -> RuntimeSessionInputRouter
   -> RuntimeMovementInputRouter
   -> RuntimeTargetInputRouter
+  -> RuntimeBlockedPointerInputStep
   -> RuntimeMovementIntentInputStep
   -> routed SessionCommandSource / MovementCommandSource
   -> GameLoop drains command sources
