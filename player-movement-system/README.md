@@ -196,6 +196,10 @@ EnemyAttackRange
   shared enemy range rule that answers whether a target is inside the enemy's
   tuned attack distance without running attack state
 
+EnemyAttackEntryPolicy
+  first-contact rule that decides whether an idle or pursuing enemy can enter
+  attack windup now
+
 EnemyAttackResult
   observable attack-state outcome that reports whether the attack runner
   consumed the frame and which windup/recovery transition happened
@@ -203,6 +207,14 @@ EnemyAttackResult
 EnemyAttackEventEmitter
   bridge from enemy attack transitions into MovementEvent so traces can show
   windup starts, windup completions, and recovery exits
+
+EnemyAttackPhaseRunner
+  timing helper that advances active enemy windup/recovery phases and resets
+  enemy attack timers when those phases complete
+
+EnemyAttackRestartPolicy
+  recovery-exit rule that decides whether an enemy immediately starts another
+  windup or releases the frame back to pursuit
 
 EnemyMovementReporter
   reporting boundary that publishes enemy pursuit outcomes and enemy attack
@@ -396,8 +408,10 @@ EnemyPursuitStepper
 
 EnemyAttackRunner
   enemy attack state helper for range entry, windup timing, recovery timing, and
-  combat resolution; returns EnemyAttackResult for tests, traces, and future AI
-  decisions
+  combat resolution; delegates active phase timing to EnemyAttackPhaseRunner,
+  initial windup checks to EnemyAttackEntryPolicy, recovery restart checks to
+  EnemyAttackRestartPolicy, and returns EnemyAttackResult for tests, traces, and
+  future AI decisions
 
 CombatResolver
   deterministic consequence layer for executed attack actions
@@ -417,9 +431,14 @@ SimulationPlayerUpdater
   simulation-layer player actor stage that advances path movement and executes
   ready destination actions through ActionExecutor
 
+SimulationEnemyTargetSelector
+  simulation-layer target choice that picks the current player target for enemy
+  movement or reports no target when the world has no players
+
 SimulationEnemyUpdater
   simulation-layer enemy actor stage that advances pursuit, windup, recovery,
-  and enemy attack resolution against the current player target
+  and enemy attack resolution against the current player target selected by
+  SimulationEnemyTargetSelector
 
 SimulationFramePolicy
   mode-level rule set for whether a frame accepts commands, advances players,

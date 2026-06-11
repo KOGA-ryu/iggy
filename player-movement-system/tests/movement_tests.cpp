@@ -47,8 +47,11 @@
 #include "effects/EffectApplier.hpp"
 #include "effects/EffectRecorder.hpp"
 #include "effects/EffectRouter.hpp"
+#include "enemies/EnemyAttackEntryPolicy.hpp"
 #include "enemies/EnemyAttackEventEmitter.hpp"
+#include "enemies/EnemyAttackPhaseRunner.hpp"
 #include "enemies/EnemyAttackRange.hpp"
+#include "enemies/EnemyAttackRestartPolicy.hpp"
 #include "enemies/EnemyAttackRunner.hpp"
 #include "enemies/EnemyMovement.hpp"
 #include "enemies/EnemyMovementReporter.hpp"
@@ -134,6 +137,7 @@
 #include "session/SessionWorldSlotSaver.hpp"
 #include "simulation/SimulationClock.hpp"
 #include "simulation/SimulationCommandDrainer.hpp"
+#include "simulation/SimulationEnemyTargetSelector.hpp"
 #include "simulation/SimulationEnemyUpdater.hpp"
 #include "simulation/SimulationEffectFinalizer.hpp"
 #include "simulation/SimulationEffectPipeline.hpp"
@@ -591,6 +595,18 @@ void TestEnemyAttackRangeUsesEnemyTuning()
 	Expect(range.contains(enemy, distantTarget), "enemy attack range should honor larger tuning ranges");
 }
 
+void TestEnemyAttackEntryPolicyUsesRange()
+{
+	dev::Enemy enemy = MakeEnemy({ 0, 0 });
+	enemy.tuning.attackRangeTiles = 1;
+	dev::Player closeTarget = MakePlayer({ 1, 0 });
+	dev::Player farTarget = MakePlayer({ 3, 0 });
+	dev::EnemyAttackEntryPolicy policy;
+
+	Expect(policy.shouldStartWindup(enemy, closeTarget), "enemy attack entry policy should start windup when target is in range");
+	Expect(!policy.shouldStartWindup(enemy, farTarget), "enemy attack entry policy should wait when target is out of range");
+}
+
 void TestEnemyPursuitBudgetUsesMaxStepsPerTick()
 {
 	dev::Enemy enemy = MakeEnemy({ 0, 0 });
@@ -786,6 +802,60 @@ void TestEnemyAttackRunnerReportsRecoveryCompletedOutOfRange()
 	Expect(!result.consumedFrame, "enemy attack runner should release frame after recovery if target is out of range");
 	Expect(result.transition == dev::EnemyAttackTransition::RecoveryCompleted, "enemy attack runner should report recovery completion out of range");
 	Expect(enemy.moveState == dev::EnemyMoveState::Recovering, "enemy attack runner should leave movement layer to choose next state after recovery");
+}
+
+void TestEnemyAttackPhaseRunnerAdvancesWindupAndRecovery()
+{
+	dev::EnemyAttackPhaseRunner phases;
+	dev::Player player = MakePlayer({ 1, 0 });
+	dev::Enemy enemy = MakeEnemy({ 0, 0 });
+	enemy.moveState = dev::EnemyMoveState::Attacking;
+	enemy.tuning.attackWindupSeconds = 0.25F;
+	enemy.tuning.attackRecoverySeconds = 0.50F;
+
+	const dev::EnemyAttackResult charging = phases.advanceWindup(enemy, player, 0.10F, nullptr);
+	Expect(charging.consumedFrame, "enemy attack phase runner should consume incomplete windup");
+	Expect(charging.transition == dev::EnemyAttackTransition::None, "enemy attack phase runner should not transition during incomplete windup");
+	Expect(enemy.moveState == dev::EnemyMoveState::Attacking, "enemy attack phase runner should keep incomplete windup attacking");
+
+	const dev::EnemyAttackResult completedWindup = phases.advanceWindup(enemy, player, 0.15F, nullptr);
+	Expect(completedWindup.consumedFrame, "enemy attack phase runner should consume completed windup");
+	Expect(completedWindup.transition == dev::EnemyAttackTransition::WindupCompleted, "enemy attack phase runner should report windup completion");
+	Expect(enemy.moveState == dev::EnemyMoveState::Recovering, "enemy attack phase runner should enter recovery after windup");
+	Expect(Near(enemy.stateTimerSeconds, 0.0F), "enemy attack phase runner should reset timer after windup completion");
+
+	const dev::EnemyAttackResult recovering = phases.advanceRecovery(enemy, 0.25F);
+	Expect(recovering.consumedFrame, "enemy attack phase runner should consume incomplete recovery");
+	Expect(recovering.transition == dev::EnemyAttackTransition::None, "enemy attack phase runner should not transition during incomplete recovery");
+
+	const dev::EnemyAttackResult completedRecovery = phases.advanceRecovery(enemy, 0.25F);
+	Expect(!completedRecovery.consumedFrame, "enemy attack phase runner should release frame after recovery completion");
+	Expect(completedRecovery.transition == dev::EnemyAttackTransition::RecoveryCompleted, "enemy attack phase runner should report recovery completion");
+	Expect(Near(enemy.stateTimerSeconds, 0.0F), "enemy attack phase runner should reset timer after recovery completion");
+}
+
+void TestEnemyAttackPhaseRunnerStartsWindup()
+{
+	dev::Enemy enemy = MakeEnemy({ 0, 0 });
+	enemy.moveState = dev::EnemyMoveState::Recovering;
+	enemy.stateTimerSeconds = 0.40F;
+
+	dev::EnemyAttackPhaseRunner {}.startWindup(enemy);
+
+	Expect(enemy.moveState == dev::EnemyMoveState::Attacking, "enemy attack phase runner should enter attacking state");
+	Expect(Near(enemy.stateTimerSeconds, 0.0F), "enemy attack phase runner should reset timer when starting windup");
+}
+
+void TestEnemyAttackRestartPolicyUsesRecoveredRange()
+{
+	dev::Enemy enemy = MakeEnemy({ 0, 0 });
+	enemy.tuning.attackRangeTiles = 1;
+	dev::Player closeTarget = MakePlayer({ 1, 0 });
+	dev::Player farTarget = MakePlayer({ 3, 0 });
+	dev::EnemyAttackRestartPolicy policy;
+
+	Expect(policy.shouldRestartAfterRecovery(enemy, closeTarget), "enemy attack restart policy should restart when target remains in range");
+	Expect(!policy.shouldRestartAfterRecovery(enemy, farTarget), "enemy attack restart policy should release when target is out of range");
 }
 
 void TestEnemyAttackEventEmitterRecordsTransitions()
@@ -1074,6 +1144,21 @@ void TestSimulationPlayerUpdaterAdvancesPlayerMovement()
 	Expect(!movementEvents.events().empty() && movementEvents.events()[0].type == dev::MovementEventType::StepCommitted, "simulation player updater should emit movement events");
 }
 
+void TestSimulationEnemyTargetSelectorChoosesCurrentPlayer()
+{
+	dev::SimulationWorld world;
+	dev::SimulationEnemyTargetSelector selector;
+
+	Expect(selector.selectTarget(world) == nullptr, "simulation enemy target selector should return no target without players");
+
+	world.players.push_back(MakePlayer({ 4, 0 }));
+	world.players.push_back(MakePlayer({ 8, 0 }));
+
+	dev::Player *target = selector.selectTarget(world);
+	Expect(target == &world.players.front(), "simulation enemy target selector should choose the current player target");
+	Expect(target != nullptr && target->position.tile == dev::Point { 4, 0 }, "simulation enemy target selector should expose the chosen player's position");
+}
+
 void TestSimulationEnemyUpdaterAdvancesEnemyMovement()
 {
 	dev::SimulationWorld world;
@@ -1085,6 +1170,17 @@ void TestSimulationEnemyUpdaterAdvancesEnemyMovement()
 
 	Expect(world.enemies[0].position.tile == dev::Point { 1, 0 }, "simulation enemy updater should advance enemies toward the player target");
 	Expect(world.enemies[0].moveState == dev::EnemyMoveState::Pursuing, "simulation enemy updater should preserve enemy movement state");
+}
+
+void TestSimulationEnemyUpdaterSkipsWithoutTarget()
+{
+	dev::SimulationWorld world;
+	world.enemies.push_back(MakeEnemy({ 0, 0 }));
+
+	dev::SimulationEnemyUpdater {}.update(world, 0.016F);
+
+	Expect(world.enemies[0].position.tile == dev::Point { 0, 0 }, "simulation enemy updater should not move enemies without a target player");
+	Expect(world.enemies[0].moveState == dev::EnemyMoveState::Idle, "simulation enemy updater should leave enemies idle without a target player");
 }
 
 void TestSimulationTickDispatchesMovementAndCombat()
@@ -7301,6 +7397,7 @@ int main()
 	TestEnemyPursuitStepPlannerChoosesNextTileTowardTarget();
 	TestEnemyPursuitStepGateRequiresWalkableUnblockedTile();
 	TestEnemyAttackRangeUsesEnemyTuning();
+	TestEnemyAttackEntryPolicyUsesRange();
 	TestEnemyPursuitBudgetUsesMaxStepsPerTick();
 	TestEnemyPursuitObeysStepBudget();
 	TestEnemyPursuitStepperStopsAtAttackRange();
@@ -7311,6 +7408,9 @@ int main()
 	TestEnemyAttackWindupAndRecovery();
 	TestEnemyAttackRunnerConsumesWindupAndRecovery();
 	TestEnemyAttackRunnerReportsRecoveryCompletedOutOfRange();
+	TestEnemyAttackPhaseRunnerAdvancesWindupAndRecovery();
+	TestEnemyAttackPhaseRunnerStartsWindup();
+	TestEnemyAttackRestartPolicyUsesRecoveredRange();
 	TestEnemyAttackEventEmitterRecordsTransitions();
 	TestEnemyMovementEmitsAttackTransition();
 	TestEnemyMovementReporterPublishesAttackAndPursuit();
@@ -7323,7 +7423,9 @@ int main()
 	TestEnemyAttackResolvesCombatAgainstPlayer();
 	TestSimulationCommandDrainerDispatchesQueuedMovementCommands();
 	TestSimulationPlayerUpdaterAdvancesPlayerMovement();
+	TestSimulationEnemyTargetSelectorChoosesCurrentPlayer();
 	TestSimulationEnemyUpdaterAdvancesEnemyMovement();
+	TestSimulationEnemyUpdaterSkipsWithoutTarget();
 	TestSimulationTickDispatchesMovementAndCombat();
 	TestSimulationPolicyPausedDoesNotDrainCommands();
 	TestSimulationClockHitStopFreezesActorUpdates();

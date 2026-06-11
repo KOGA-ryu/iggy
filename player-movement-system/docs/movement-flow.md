@@ -242,6 +242,9 @@ enemy position
   -> EnemyPursuitEventEmitter
   -> MovementEvent::EnemyPursuitStopped
   -> EnemyAttackRunner
+  -> EnemyAttackEntryPolicy
+  -> EnemyAttackPhaseRunner
+  -> EnemyAttackRestartPolicy
   -> EnemyAttackResult
   -> EnemyMovementReporter
   -> EnemyAttackEventEmitter
@@ -263,8 +266,12 @@ AI choices can tell whether pursuit stopped from budget, blocking, already being
 at the target, or reaching attack range. `EnemyPursuitEventEmitter` publishes
 that outcome as `MovementEvent::EnemyPursuitStopped`, which means frame capture
 and runtime traces can explain enemy pressure without peeking into AI internals.
-The attack runner reuses the same range rule when deciding whether to enter
-windup. It returns `EnemyAttackResult`, and `EnemyAttackEventEmitter` publishes
+The attack runner reuses the same range rule through `EnemyAttackEntryPolicy`
+when deciding whether to enter windup. `EnemyAttackPhaseRunner` owns active
+windup/recovery timer advancement and phase timer resets. `EnemyAttackRestartPolicy`
+owns the recovery-exit choice: restart windup if the target is still in range, or
+release the frame so pursuit can resume. `EnemyAttackRunner` still owns attack
+sequencing, returns `EnemyAttackResult`, and `EnemyAttackEventEmitter` publishes
 windup/recovery transitions as `MovementEvent::EnemyAttackTransitioned`.
 `EnemyMovementReporter` is the single reporting boundary that owns both
 publishing paths. Pursuit uses the same `ActorStepCommitter` as player pathing
@@ -332,6 +339,7 @@ CommandQueue
   -> PlayerMovement
   -> ActionExecutor
   -> SimulationEnemyUpdater
+  -> SimulationEnemyTargetSelector
   -> EnemyMovement
   -> CombatSystem
 ```
@@ -341,9 +349,11 @@ frame. `SimulationPlayerUpdater` then owns the player-side actor wiring:
 `PlayerMovement` plus the `ActionExecutor` that resolves ready destination
 actions. Player movement updates before enemy movement so enemies respond to the
 latest committed player position. `SimulationEnemyUpdater` owns the enemy-side
-actor wiring and target guard before calling `EnemyMovement`. Actions and combat
-consequences happen inside those actor updates, but still publish events instead
-of directly owning UI, audio, VFX, or networking.
+actor wiring and asks `SimulationEnemyTargetSelector` for the current player
+target before calling `EnemyMovement`. That keeps the target choice testable
+instead of hidden inside enemy movement. Actions and combat consequences happen
+inside those actor updates, but still publish events instead of directly owning
+UI, audio, VFX, or networking.
 
 This is the first point that starts to look like a small game loop.
 

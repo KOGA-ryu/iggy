@@ -53,7 +53,10 @@ add_library(player_movement_system
   src/effects/EffectRecorder.cpp
   src/effects/EffectRouter.cpp
   src/enemies/EnemyAttackEventEmitter.cpp
+  src/enemies/EnemyAttackEntryPolicy.cpp
+  src/enemies/EnemyAttackPhaseRunner.cpp
   src/enemies/EnemyAttackRange.cpp
+  src/enemies/EnemyAttackRestartPolicy.cpp
   src/enemies/EnemyAttackRunner.cpp
   src/enemies/EnemyMovement.cpp
   src/enemies/EnemyMovementReporter.cpp
@@ -141,6 +144,7 @@ add_library(player_movement_system
   src/session/GameSession.cpp
   src/simulation/SimulationClock.cpp
   src/simulation/SimulationCommandDrainer.cpp
+  src/simulation/SimulationEnemyTargetSelector.cpp
   src/simulation/SimulationEnemyUpdater.cpp
   src/simulation/SimulationEffectFinalizer.cpp
   src/simulation/SimulationEffectPipeline.cpp

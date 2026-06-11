@@ -2,7 +2,9 @@
 
 #include "combat/CombatSystem.hpp"
 #include "enemies/Enemy.hpp"
-#include "enemies/EnemyAttackRange.hpp"
+#include "enemies/EnemyAttackEntryPolicy.hpp"
+#include "enemies/EnemyAttackPhaseRunner.hpp"
+#include "enemies/EnemyAttackRestartPolicy.hpp"
 #include "enemies/EnemyAttackResult.hpp"
 #include "player/Player.hpp"
 
@@ -17,7 +19,9 @@ public:
 
 private:
 	CombatSystem *combatSystem_;
-	EnemyAttackRange attackRange_;
+	EnemyAttackEntryPolicy entryPolicy_;
+	EnemyAttackPhaseRunner phaseRunner_;
+	EnemyAttackRestartPolicy restartPolicy_;
 };
 
 } // namespace dev

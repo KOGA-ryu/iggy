@@ -10,41 +10,30 @@ EnemyAttackRunner::EnemyAttackRunner(CombatSystem *combatSystem)
 EnemyAttackResult EnemyAttackRunner::update(Enemy &enemy, Player &target, float deltaSeconds) const
 {
 	if (enemy.moveState == EnemyMoveState::Attacking) {
-		enemy.stateTimerSeconds += deltaSeconds;
-		if (enemy.stateTimerSeconds >= enemy.tuning.attackWindupSeconds) {
-			if (combatSystem_ != nullptr)
-				combatSystem_->resolveEnemyAttack(enemy, target);
-			enemy.moveState = EnemyMoveState::Recovering;
-			enemy.stateTimerSeconds = 0.0F;
-			return { .consumedFrame = true, .transition = EnemyAttackTransition::WindupCompleted };
-		}
-		return { .consumedFrame = true };
+		return phaseRunner_.advanceWindup(enemy, target, deltaSeconds, combatSystem_);
 	}
 
 	if (enemy.moveState == EnemyMoveState::Recovering) {
-		enemy.stateTimerSeconds += deltaSeconds;
-		if (enemy.stateTimerSeconds < enemy.tuning.attackRecoverySeconds)
-			return { .consumedFrame = true };
-		enemy.stateTimerSeconds = 0.0F;
-		if (!targetInAttackRange(enemy, target))
-			return { .transition = EnemyAttackTransition::RecoveryCompleted };
+		const EnemyAttackResult recovery = phaseRunner_.advanceRecovery(enemy, deltaSeconds);
+		if (recovery.consumedFrame)
+			return recovery;
+		if (!restartPolicy_.shouldRestartAfterRecovery(enemy, target))
+			return recovery;
 
-		enemy.moveState = EnemyMoveState::Attacking;
-		enemy.stateTimerSeconds = 0.0F;
+		phaseRunner_.startWindup(enemy);
 		return { .consumedFrame = true, .transition = EnemyAttackTransition::RecoveryCompletedAndWindupStarted };
 	}
 
-	if (!targetInAttackRange(enemy, target))
+	if (!entryPolicy_.shouldStartWindup(enemy, target))
 		return {};
 
-	enemy.moveState = EnemyMoveState::Attacking;
-	enemy.stateTimerSeconds = 0.0F;
+	phaseRunner_.startWindup(enemy);
 	return { .consumedFrame = true, .transition = EnemyAttackTransition::WindupStarted };
 }
 
 bool EnemyAttackRunner::targetInAttackRange(const Enemy &enemy, const Player &target) const
 {
-	return attackRange_.contains(enemy, target);
+	return entryPolicy_.shouldStartWindup(enemy, target);
 }
 
 } // namespace dev

@@ -40,6 +40,7 @@ Good first tests:
 - EnemyPursuitStepPlanner chooses the next chase tile toward a target
 - EnemyPursuitStepGate rejects map-blocked and collision-blocked pursuit tiles
 - EnemyAttackRange applies tuned Chebyshev attack range
+- EnemyAttackEntryPolicy decides whether an enemy can start attack windup
 - EnemyPursuitBudget stops pursuit at maxStepsPerTick
 - enemy pursuit obeys maxStepsPerTick
 - EnemyPursuitStepper stops pursuit once attack range is reached
@@ -48,6 +49,8 @@ Good first tests:
 - enemy in range enters attack windup
 - enemy attack windup transitions into recovery
 - EnemyAttackRunner owns enemy windup, recovery, and restart timing
+- EnemyAttackPhaseRunner advances windup/recovery timers and resets phase time
+- EnemyAttackRestartPolicy decides whether recovery restarts windup or releases to pursuit
 - EnemyAttackEventEmitter publishes windup/recovery transition facts for frame traces
 - EnemyMovementReporter publishes enemy attack and pursuit reports through one boundary
 - CombatResolver applies deterministic damage and defeat
@@ -56,6 +59,7 @@ Good first tests:
 - Enemy attack windup resolves combat against player and emits CombatEvent
 - SimulationCommandDrainer dispatches queued movement commands into player controller state
 - SimulationPlayerUpdater advances player movement and emits frame-visible movement events
+- SimulationEnemyTargetSelector chooses the current player target or no target
 - SimulationEnemyUpdater advances enemy movement against the current player target
 - SimulationTick drains queued commands, updates movement, and resolves combat
 - SimulationFramePolicy can pause command draining and movement

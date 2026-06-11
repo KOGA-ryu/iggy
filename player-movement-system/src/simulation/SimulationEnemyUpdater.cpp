@@ -6,11 +6,15 @@ namespace dev {
 
 void SimulationEnemyUpdater::update(SimulationWorld &world, float deltaSeconds) const
 {
-	if (deltaSeconds <= 0.0F || world.players.empty())
+	if (deltaSeconds <= 0.0F)
+		return;
+
+	Player *target = targetSelector_.selectTarget(world);
+	if (target == nullptr)
 		return;
 
 	EnemyMovement enemyMovement { world.map, world.collision, world.movementEvents, &world.combat };
-	enemyMovement.update(world.enemies, world.players.front(), deltaSeconds);
+	enemyMovement.update(world.enemies, *target, deltaSeconds);
 }
 
 } // namespace dev
