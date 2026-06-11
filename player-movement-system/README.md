@@ -200,6 +200,10 @@ SimulationClock / SimulationTimeStep
   converts raw frame time into actor time, supporting time scale and hit-stop
   without pushing time rules into movement, enemy, or combat systems
 
+SimulationFrameEvents / SimulationFrameRunner
+  collects per-frame facts, routes them into effect requests, applies allowed
+  simulation-facing effects, and returns the frame output for presentation
+
 EffectRouter
   maps factual movement/combat events into presentation requests without letting
   simulation systems know about UI, audio, VFX, rumble, or camera code

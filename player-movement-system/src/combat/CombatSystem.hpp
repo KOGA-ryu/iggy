@@ -15,6 +15,7 @@ public:
 
 	CombatRegistry &registry();
 	const CombatRegistry &registry() const;
+	void setEventSink(CombatEventSink *eventSink);
 
 	CombatResult resolvePlayerAttack(const Player &player, const DestinationAction &action);
 	CombatResult resolveEnemyAttack(const Enemy &enemy, Player &player);

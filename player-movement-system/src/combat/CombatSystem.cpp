@@ -47,6 +47,11 @@ const CombatRegistry &CombatSystem::registry() const
 	return registry_;
 }
 
+void CombatSystem::setEventSink(CombatEventSink *eventSink)
+{
+	eventSink_ = eventSink;
+}
+
 CombatResult CombatSystem::resolvePlayerAttack(const Player &player, const DestinationAction &action)
 {
 	if (action.type != DestinationActionType::Attack)

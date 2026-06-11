@@ -364,3 +364,32 @@ CombatEvent::Hit
 
 That is the narrow bridge back into simulation. Combat still does not know that
 hit-stop exists, and the clock still does not know that combat exists.
+
+## 20. Frame Event Pipeline
+
+The frame runner turns the pieces into a normal loop:
+
+```text
+SimulationFrameRunner
+  -> SimulationClock::step
+  -> SimulationTick
+  -> SimulationFrameEvents
+  -> EffectRouter
+  -> EffectApplier
+  -> frame output for presentation
+```
+
+This gives each frame a clean consequence phase:
+
+```text
+state changes happen during tick
+facts are collected as events
+effect requests are derived after the tick
+approved simulation-facing effects are applied
+presentation can consume the remaining frame output
+```
+
+The runner temporarily redirects movement and combat events into
+`SimulationFrameEvents`, forwards them to any existing sinks, then restores the
+world sinks after the tick. That keeps event capture local to a frame without
+stealing events from tests, debug tools, UI, or telemetry.

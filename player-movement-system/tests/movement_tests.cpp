@@ -23,6 +23,7 @@
 #include "replay/CommandLog.hpp"
 #include "replay/CommandReplayer.hpp"
 #include "simulation/SimulationClock.hpp"
+#include "simulation/SimulationFrameRunner.hpp"
 #include "simulation/SimulationTick.hpp"
 #include "targeting/Target.hpp"
 #include "world/Collision.hpp"
@@ -568,6 +569,52 @@ void TestEffectApplierAppliesHitStopToClock()
 	Expect(step.enemyDeltaSeconds == 0.0F, "applied hit-stop should freeze enemy actor time");
 }
 
+void TestSimulationFrameRunnerProcessesConsequences()
+{
+	dev::SimulationWorld world;
+	dev::EventRecorder forwardedMovement;
+	dev::CombatEventRecorder forwardedCombat;
+	dev::SimulationClock clock;
+	world.movementEvents = &forwardedMovement;
+	world.setCombatEventSink(&forwardedCombat);
+	world.players.push_back(MakePlayer({ 0, 0 }));
+	world.players[0].combatStats.attackPower = 6;
+
+	dev::Target target { .type = dev::TargetType::Enemy, .id = 40, .tile = { 1, 0 } };
+	world.combat.registry().add({
+	    .target = target,
+	    .stats = { .hitPoints = 10, .attackPower = 3, .defense = 1 },
+	});
+	world.commandQueue.push({
+	    .type = dev::MovementCommandType::MoveThenAct,
+	    .playerId = 0,
+	    .destination = target.tile,
+	    .destinationAction = dev::DestinationAction { dev::DestinationActionType::Attack, target, 1 },
+	});
+
+	dev::SimulationFrameRunner runner { &clock };
+	dev::SimulationFrameEvents frame = runner.run(world, 0.016F);
+	const dev::Combatant *enemy = world.combat.registry().find(target);
+
+	Expect(enemy != nullptr && enemy->stats.hitPoints == 5, "frame runner should preserve combat registry while collecting events");
+	Expect(!frame.movementEvents().empty(), "frame runner should collect movement events");
+	Expect(frame.combatEvents().size() == 1, "frame runner should collect combat events");
+	Expect(!frame.effectRequests().empty(), "frame runner should route frame events into effect requests");
+	Expect(clock.hitStopRemainingSeconds() > 0.0F, "frame runner should apply hit-stop effect requests to clock");
+	Expect(!forwardedMovement.events().empty(), "frame runner should forward movement events to existing sink");
+	Expect(forwardedCombat.events().size() == 1, "frame runner should forward combat events to existing sink");
+
+	world.commandQueue.push({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 2, 0 },
+	    .destinationAction = std::nullopt,
+	});
+	dev::SimulationFrameEvents stoppedFrame = runner.run(world, 0.01F);
+	Expect(world.players[0].position.tile == dev::Point { 1, 0 }, "runner should freeze actor updates while hit-stop remains");
+	Expect(!stoppedFrame.movementEvents().empty(), "runner should still accept commands during hit-stop");
+}
+
 } // namespace
 
 int main()
@@ -594,6 +641,7 @@ int main()
 	TestEffectRouterMapsMovementEventsToRequests();
 	TestEffectRouterMapsCombatHitToRequests();
 	TestEffectApplierAppliesHitStopToClock();
+	TestSimulationFrameRunnerProcessesConsequences();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;
