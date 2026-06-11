@@ -1,5 +1,7 @@
 #include "InventoryCommandLogChecksum.hpp"
 
+#include "inventory/InventoryCommandByteStream.hpp"
+
 namespace dev {
 
 namespace {
@@ -7,23 +9,11 @@ namespace {
 constexpr uint32_t FnvOffset = 2166136261U;
 constexpr uint32_t FnvPrime = 16777619U;
 
-void WriteU16(InventoryCommandLogBytes &bytes, uint16_t value)
-{
-	bytes.push_back(static_cast<uint8_t>(value & 0xFFU));
-	bytes.push_back(static_cast<uint8_t>((value >> 8U) & 0xFFU));
-}
-
-void WriteU32(InventoryCommandLogBytes &bytes, uint32_t value)
-{
-	WriteU16(bytes, static_cast<uint16_t>(value & 0xFFFFU));
-	WriteU16(bytes, static_cast<uint16_t>((value >> 16U) & 0xFFFFU));
-}
-
 } // namespace
 
 void InventoryCommandLogChecksum::appendTo(InventoryCommandLogBytes &bytes) const
 {
-	WriteU32(bytes, compute(bytes, bytes.size()));
+	InventoryCommandByteWriter { bytes }.writeU32(compute(bytes, bytes.size()));
 }
 
 bool InventoryCommandLogChecksum::hasValidTrailingChecksum(const InventoryCommandLogBytes &bytes, std::size_t payloadSize) const
@@ -46,10 +36,9 @@ uint32_t InventoryCommandLogChecksum::compute(const InventoryCommandLogBytes &by
 uint32_t InventoryCommandLogChecksum::readTrailingU32(const InventoryCommandLogBytes &bytes) const
 {
 	const std::size_t offset = bytes.size() - 4U;
-	return static_cast<uint32_t>(bytes[offset])
-	    | (static_cast<uint32_t>(bytes[offset + 1U]) << 8U)
-	    | (static_cast<uint32_t>(bytes[offset + 2U]) << 16U)
-	    | (static_cast<uint32_t>(bytes[offset + 3U]) << 24U);
+	uint32_t value = 0;
+	(void)InventoryCommandByteReader { bytes, offset }.readU32(value);
+	return value;
 }
 
 } // namespace dev

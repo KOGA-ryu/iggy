@@ -91,10 +91,12 @@ Good first tests:
 - GameLoop records inventory events from runtime inventory command sources
 - InventoryCommandCodec round-trips valid commands and rejects invalid packets
 - InventoryCommandPacketValidator rejects malformed inventory packet shapes
+- InventoryCommandByteStream writes little-endian primitives and rejects short reads
 - InventoryCommandPacketByteCodec round-trips and rejects inventory packet bytes
 - InventoryCommandLog replays through InventoryCommandDispatcher
 - InventoryCommandLogCodec round-trips versioned command logs and rejects corrupt bytes
 - InventoryCommandLogChecksum appends and validates inventory log checksums
+- InventoryCommandPacketListCodec frames counted packet lists and rejects invalid sizes
 - InventoryCommandLogFrameCodec frames packet bytes and rejects invalid frame metadata
 - InventoryCommandLogFileStore saves, loads, replays, and rejects bad files
 - InventoryScriptRunner loads and runs saved inventory scripts through the dispatcher

@@ -261,9 +261,17 @@ InventoryCommandPacketValidator / InventoryCommandPacketByteCodec
   inventory packet-shape and fixed byte-layout boundaries that keep malformed
   automation or replay input out of semantic inventory commands
 
+InventoryCommandByteStream
+  little-endian primitive byte stream shared by inventory command packets,
+  packet lists, command log frames, and command log checksums
+
+InventoryCommandPacketListCodec
+  count-prefixed packet-list payload for inventory command logs, separate from
+  magic/version/checksum frame validation
+
 InventoryCommandLogChecksum / InventoryCommandLogFrameCodec
   inventory replay-file integrity and frame boundaries for magic, version,
-  command count, packet slicing, and checksum validation
+  packet-list payloads, and checksum validation
 
 InventoryCommandLogFileStore
   file persistence boundary for inventory command logs, so automation scripts

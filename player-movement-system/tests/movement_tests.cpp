@@ -54,7 +54,9 @@
 #include "inventory/InventoryCommandLogCodec.hpp"
 #include "inventory/InventoryCommandLogFileStore.hpp"
 #include "inventory/InventoryCommandLogFrameCodec.hpp"
+#include "inventory/InventoryCommandByteStream.hpp"
 #include "inventory/InventoryCommandPacketByteCodec.hpp"
+#include "inventory/InventoryCommandPacketListCodec.hpp"
 #include "inventory/InventoryCommandPacketValidator.hpp"
 #include "inventory/InventoryCommandReplayer.hpp"
 #include "inventory/InventoryCommandSource.hpp"
@@ -1919,6 +1921,37 @@ void TestInventoryCommandPacketValidatorRejectsMalformedPayloads()
 	    "inventory command packet validator should reject unexpected payload fields");
 }
 
+void TestInventoryCommandByteStreamWritesLittleEndianPrimitives()
+{
+	dev::InventoryCommandBytes bytes;
+	dev::InventoryCommandByteWriter writer { bytes };
+	writer.writeU8(0xAB);
+	writer.writeU16(0x1234);
+	writer.writeU32(0x01020304);
+
+	Expect(bytes == dev::InventoryCommandBytes({ 0xAB, 0x34, 0x12, 0x04, 0x03, 0x02, 0x01 }), "inventory command byte stream should write little-endian primitives");
+
+	dev::InventoryCommandByteReader reader { bytes };
+	uint8_t one = 0;
+	uint16_t two = 0;
+	uint32_t four = 0;
+	Expect(reader.readU8(one), "inventory command byte stream should read u8");
+	Expect(reader.readU16(two), "inventory command byte stream should read u16");
+	Expect(reader.readU32(four), "inventory command byte stream should read u32");
+	Expect(one == 0xAB && two == 0x1234 && four == 0x01020304, "inventory command byte stream should preserve primitive values");
+	Expect(reader.consumed(), "inventory command byte stream should track consumed bytes");
+}
+
+void TestInventoryCommandByteStreamRejectsShortReads()
+{
+	dev::InventoryCommandBytes bytes { 1, 2, 3 };
+	dev::InventoryCommandByteReader reader { bytes };
+	uint32_t value = 0;
+
+	Expect(!reader.readU32(value), "inventory command byte stream should reject short u32 reads");
+	Expect(reader.offset() == 0, "inventory command byte stream should not advance offset after rejected read");
+}
+
 void TestInventoryCommandPacketByteCodecRoundTripsPackets()
 {
 	dev::InventoryCommandPacketByteCodec codec;
@@ -2068,6 +2101,38 @@ void TestInventoryCommandLogChecksumValidatesTrailingChecksum()
 
 	bytes[0] ^= 0xFFU;
 	Expect(!checksum.hasValidTrailingChecksum(bytes, 4), "inventory command log checksum should reject mutated payload");
+}
+
+void TestInventoryCommandPacketListCodecFramesPacketBytes()
+{
+	dev::InventoryCommandPacket packet {
+		.commandType = static_cast<uint8_t>(dev::InventoryCommandType::EquipItem),
+		.hasItemId = 1,
+		.itemId = 100,
+	};
+	dev::InventoryCommandPacketByteCodec packetCodec;
+	dev::InventoryCommandBytes packetBytes = packetCodec.encode(packet);
+
+	dev::InventoryCommandLogBytes bytes = dev::InventoryCommandPacketListCodec {}.encode({ packetBytes, packetBytes });
+	std::optional<std::vector<dev::InventoryCommandBytes>> decoded = dev::InventoryCommandPacketListCodec {}.decode(bytes);
+
+	Expect(decoded.has_value(), "inventory command packet list codec should decode encoded packet lists");
+	Expect(decoded.has_value() && decoded->size() == 2, "inventory command packet list codec should preserve packet count");
+	Expect(decoded.has_value() && (*decoded)[0] == packetBytes, "inventory command packet list codec should preserve first packet bytes");
+	Expect(decoded.has_value() && (*decoded)[1] == packetBytes, "inventory command packet list codec should preserve second packet bytes");
+}
+
+void TestInventoryCommandPacketListCodecRejectsInvalidSizes()
+{
+	dev::InventoryCommandLogBytes missingCount { 1, 2 };
+	dev::InventoryCommandLogBytes wrongSize {
+		1, 0, 0, 0,
+		1, 2, 3,
+	};
+
+	dev::InventoryCommandPacketListCodec codec;
+	Expect(!codec.decode(missingCount).has_value(), "inventory command packet list codec should reject missing command count");
+	Expect(!codec.decode(wrongSize).has_value(), "inventory command packet list codec should reject packet lists with invalid size");
 }
 
 void TestInventoryCommandLogFrameCodecFramesPacketBytes()
@@ -6696,12 +6761,16 @@ int main()
 	TestInventoryCommandCodecRoundTripsCommands();
 	TestInventoryCommandCodecRejectsInvalidPackets();
 	TestInventoryCommandPacketValidatorRejectsMalformedPayloads();
+	TestInventoryCommandByteStreamWritesLittleEndianPrimitives();
+	TestInventoryCommandByteStreamRejectsShortReads();
 	TestInventoryCommandPacketByteCodecRoundTripsPackets();
 	TestInventoryCommandPacketByteCodecRejectsInvalidBytes();
 	TestInventoryCommandLogReplaysThroughDispatcher();
 	TestInventoryCommandLogCodecRoundTripsAndReplays();
 	TestInventoryCommandLogCodecRejectsInvalidBytes();
 	TestInventoryCommandLogChecksumValidatesTrailingChecksum();
+	TestInventoryCommandPacketListCodecFramesPacketBytes();
+	TestInventoryCommandPacketListCodecRejectsInvalidSizes();
 	TestInventoryCommandLogFrameCodecFramesPacketBytes();
 	TestInventoryCommandLogFrameCodecRejectsInvalidFrames();
 	TestInventoryCommandLogFileStoreSavesLoadsAndReplays();

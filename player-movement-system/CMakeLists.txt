@@ -52,6 +52,7 @@ add_library(player_movement_system
   src/input/InputMapper.cpp
   src/input/RawInputSource.cpp
   src/inventory/InventoryCommandCodec.cpp
+  src/inventory/InventoryCommandByteStream.cpp
   src/inventory/InventoryCommandDispatcher.cpp
   src/inventory/InventoryCommandLog.cpp
   src/inventory/InventoryCommandLogChecksum.cpp
@@ -59,6 +60,7 @@ add_library(player_movement_system
   src/inventory/InventoryCommandLogFileStore.cpp
   src/inventory/InventoryCommandLogFrameCodec.cpp
   src/inventory/InventoryCommandPacketByteCodec.cpp
+  src/inventory/InventoryCommandPacketListCodec.cpp
   src/inventory/InventoryCommandPacketValidator.cpp
   src/inventory/InventoryCommandReplayer.cpp
   src/inventory/InventoryCommandSource.cpp

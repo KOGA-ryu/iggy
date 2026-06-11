@@ -1869,15 +1869,21 @@ Command logs store semantic inventory requests:
 
 ```text
 InventoryCommandLog
-  -> InventoryCommandLogFrameCodec
   -> InventoryCommandLogCodec
+  -> InventoryCommandLogFrameCodec
   -> magic
   -> version
-  -> command count
-  -> packet[]
+  -> InventoryCommandByteStream
+  -> InventoryCommandPacketListCodec
+  -> counted InventoryCommandPacket[]
   -> InventoryCommandLogChecksum
   -> checksum
 ```
+
+`InventoryCommandByteStream` owns little-endian primitive reads and writes for
+the inventory replay byte stack. Packet bytes, packet-list counts, frame
+metadata, and trailing checksums all use the same primitive boundary instead of
+each codec carrying private read/write helpers.
 
 Replay uses the same dispatcher as live inventory commands:
 
