@@ -1024,6 +1024,11 @@ frame update  -> GameSession::update
 events        -> SessionEventRecorder / InventoryEventRecorder
 ```
 
+`RuntimeInventoryScriptIntake` is the runtime-player adapter above the
+inventory script runner. It checks whether the selected player exists, wires the
+inventory event sink into `InventoryCommandDispatcher`, and then lets
+`InventoryScriptRunner` own file loading and replay.
+
 This is the first runtime-facing shell around the movement/session system. It
 is still testable because the loop is bounded and reports what happened instead
 of hiding behavior behind an infinite platform loop.
@@ -1345,6 +1350,11 @@ script results are preserved as script results, while each script's command
 results are flattened into the inventory command reports for the frame and the
 run summary. That gives debug tools both views: "which scripts ran?" and "which
 inventory commands actually applied or rejected?"
+
+`RuntimeInventoryScriptIntake` owns the app-to-replay handoff for drained
+inventory script paths. The source drainer decides when script paths are
+drained; the intake decides whether a selected player can receive replayed
+inventory commands and wires that player into `InventoryScriptRunner`.
 
 `RuntimeInventoryCommandReportRecorder` owns direct runtime inventory command
 results. It appends those results after any script-flattened command results, so

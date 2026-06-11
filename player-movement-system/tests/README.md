@@ -134,6 +134,7 @@ Good first tests:
 - InventoryCommandLogFileStore saves, loads, replays, and rejects bad files
 - InventoryScriptRunner loads and runs saved inventory scripts through the dispatcher
 - InventoryScriptRunner distinguishes script load failure from command rejection
+- RuntimeInventoryScriptIntake runs inventory scripts against the selected runtime player
 - InventoryScriptSource queues and drains inventory automation script paths
 - GameLoop reports runtime inventory script source results without stopping frames
 - SnapshotWriter and SnapshotReader restore durable player, enemy, and combat state

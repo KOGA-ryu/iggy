@@ -1,6 +1,7 @@
 #include "RuntimeSourceDrainer.hpp"
 
 #include "app/RuntimeInventoryCommandIntake.hpp"
+#include "app/RuntimeInventoryScriptIntake.hpp"
 #include "app/RuntimeMovementCommandIntake.hpp"
 #include "app/RuntimeMovementScriptIntake.hpp"
 #include "app/RuntimeSessionCommandIntake.hpp"
@@ -28,12 +29,10 @@ RuntimeSourceDrainer::RuntimeSourceDrainer(
 InventoryScriptRunResult RuntimeSourceDrainer::runInventoryScript(const std::filesystem::path &path)
 {
 	RuntimeSourceContext context { session_, settings_.inputPlayerId };
-	if (!context.hasActivePlayer())
-		return { .status = InventoryScriptRunStatus::NoActivePlayer };
-
-	InventoryCommandDispatcher dispatcher { context.player(), &inventoryEvents_ };
-	InventoryScriptRunner runner { dispatcher };
-	return runner.run(path);
+	return RuntimeInventoryScriptIntake {}.run(
+	    path,
+	    context.hasActivePlayer() ? &context.player() : nullptr,
+	    &inventoryEvents_);
 }
 
 MovementScriptRunResult RuntimeSourceDrainer::runMovementScript(const std::filesystem::path &path)

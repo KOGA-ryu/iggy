@@ -336,6 +336,10 @@ InventoryScriptRunner
   high-level use case that loads an inventory command script and replays it
   through the normal inventory dispatcher
 
+RuntimeInventoryScriptIntake
+  app-layer intake step that runs an inventory script against the selected
+  runtime player or reports NoActivePlayer before replay begins
+
 InventoryScriptSource
   runtime-facing source boundary that lets menus and debug tools queue inventory
   automation script paths for the active player
@@ -787,6 +791,10 @@ RuntimeInputDrainReportRecorder
 RuntimeInventoryScriptReportRecorder
   app-layer recorder that keeps runtime inventory script results while
   flattening their command results into frame and run inventory command reports
+
+RuntimeInventoryScriptIntake
+  app-layer intake step that binds inventory script replay to the selected
+  runtime player and inventory event sink used by InventoryScriptRunner
 
 RuntimeInventoryCommandReportRecorder
   app-layer recorder that appends direct runtime inventory command results to

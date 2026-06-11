@@ -41,6 +41,7 @@
 #include "app/RuntimeInventoryCommandIntake.hpp"
 #include "app/RuntimeInventoryCommandReportRecorder.hpp"
 #include "app/RuntimeInventoryScriptReportRecorder.hpp"
+#include "app/RuntimeInventoryScriptIntake.hpp"
 #include "app/RuntimeInventoryScriptText.hpp"
 #include "app/RuntimeInventoryText.hpp"
 #include "app/RuntimeMovementInputRouter.hpp"
@@ -5852,6 +5853,48 @@ void TestRuntimeMovementScriptIntakeRunsScriptsAgainstActiveWorld()
 	std::filesystem::remove_all(root);
 }
 
+void TestRuntimeInventoryScriptIntakeRunsScriptsAgainstActivePlayer()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_inventory_script_intake_test";
+	const std::filesystem::path scriptPath = root / "runtime_inventory.iicl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::InventoryCommandLog log;
+	log.record({
+	    .type = dev::InventoryCommandType::EquipItem,
+	    .itemId = 12,
+	});
+	log.record({
+	    .type = dev::InventoryCommandType::UnequipSlot,
+	    .slot = dev::EquipmentSlot::Weapon,
+	});
+	dev::InventoryCommandLogFileStore store;
+	Expect(store.save(scriptPath, log), "runtime inventory script intake test should save script");
+
+	dev::Player player = MakePlayer();
+	player.inventory.items.push_back({
+	    .id = 12,
+	    .equipmentSlot = dev::EquipmentSlot::Weapon,
+	});
+	dev::InventoryEventRecorder events;
+
+	const dev::InventoryScriptRunResult result = dev::RuntimeInventoryScriptIntake {}.run(scriptPath, &player, &events);
+	const dev::InventoryScriptRunResult missingPlayer = dev::RuntimeInventoryScriptIntake {}.run(scriptPath, nullptr, &events);
+
+	Expect(result.status == dev::InventoryScriptRunStatus::Completed, "runtime inventory script intake should run scripts against active player");
+	Expect(result.commandResults.size() == 2, "runtime inventory script intake should replay every inventory command");
+	Expect(result.commandResults.size() == 2 && result.commandResults[0].type == dev::InventoryCommandResultType::Applied, "runtime inventory script intake should apply equip command");
+	Expect(result.commandResults.size() == 2 && result.commandResults[1].type == dev::InventoryCommandResultType::Applied, "runtime inventory script intake should apply unequip command");
+	Expect(!player.inventory.equipment.weapon.has_value(), "runtime inventory script intake should let script dispatch affect player equipment");
+	Expect(events.events().size() == 2, "runtime inventory script intake should emit inventory events through provided sink");
+	Expect(missingPlayer.status == dev::InventoryScriptRunStatus::NoActivePlayer, "runtime inventory script intake should report missing active player");
+	Expect(missingPlayer.commandResults.empty(), "runtime inventory script intake should not replay without active player");
+	Expect(events.events().size() == 2, "runtime inventory script intake should not emit extra events without active player");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestRuntimeSourceDrainerDrainsSessionBeforeMovement()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_source_drainer_test";
@@ -9980,6 +10023,7 @@ int main()
 	TestRuntimeInventoryCommandIntakeDispatchesOrRejectsCommands();
 	TestRuntimeSessionCommandIntakeDispatchesCommandsInOrder();
 	TestRuntimeMovementScriptIntakeRunsScriptsAgainstActiveWorld();
+	TestRuntimeInventoryScriptIntakeRunsScriptsAgainstActivePlayer();
 	TestRuntimeSourceDrainerDrainsSessionBeforeMovement();
 	TestRuntimeSourceDrainerRunsMovementScripts();
 	TestGameLoopDrainsRuntimeMovementScriptSources();
