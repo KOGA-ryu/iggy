@@ -36,6 +36,13 @@ commands stay unhandled.
 debug tools, and later network code all feed semantic movement commands into
 the same simulation path.
 
+## Test Boundary
+
+`command_drain_tests` covers the runtime queue side of this handoff:
+`QueuedMovementCommandSource` drains once, and
+`RuntimeMovementCommandQueueStep` turns built commands into consistent route
+results without applying them to the world directly.
+
 ## Why The Queue Step Exists
 
 Input routes should not each invent their own answer for "what happened after a

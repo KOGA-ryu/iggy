@@ -33,6 +33,18 @@ many commands left the queue.
 `CommandDispatcher` validates and applies a single command. Accepted commands
 go through `PlayerController`; rejected commands still emit command events.
 
+## Test Boundary
+
+`command_drain_tests` covers this handoff without running a full game loop. It
+asserts that runtime command intake preserves order in the world queue, that the
+simulation drain step empties the queue through `CommandDispatcher`, and that
+queued command counts are recorded for frame and run reports.
+
+`source_drain_tests` covers the source side before commands reach this boundary:
+runtime source lists are mapped once, nullable slots are skipped, session
+commands can create the active world before movement commands are drained, and
+movement scripts feed the same simulation queue path.
+
 ## Why Simulation Owns Consumption
 
 Controls should feel immediate, but commands should still wait for the

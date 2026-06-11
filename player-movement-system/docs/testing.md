@@ -24,6 +24,22 @@ target-aware interaction routing before commands reach simulation code.
 tests verify that queued raw events are consumed once, routed through the
 current session context, and summarized into frame/run input reports.
 
+`command_drain_tests` owns the movement command handoff from runtime command
+sources into `SimulationWorld::commandQueue`, then through the simulation drain
+loop and queued-count reporting.
+
+`source_drain_tests` owns the shared runtime source mechanics: source settings
+mapping, active world/player lookup, nullable source-list draining, and source
+drainer ordering before frame orchestration records the results.
+
+`frame_source_tests` owns the per-frame source orchestration steps: session
+input/lifecycle routing, inventory script-before-command order, movement
+script-before-command order, and the combined pre-simulation source phase.
+
+`frame_simulation_tests` owns the simulation-phase reporting boundary: frame
+policy resolution/recording, session advancement, simulation event recording,
+and lifecycle/inventory event deltas attached when a frame completes.
+
 ```text
 focused production boundary
   -> focused test executable
@@ -37,7 +53,7 @@ large shared helper migration.
 
 Good first candidates:
 
-- simulation command draining
+- frame lifecycle runners
 
 Avoid splitting by line count alone. A smaller file is useful only when the new
 test target has a clear reason to exist.

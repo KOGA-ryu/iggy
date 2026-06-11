@@ -277,8 +277,24 @@ target_link_libraries(input_routing_tests PRIVATE player_movement_system)
 add_executable(input_drain_tests tests/input_drain_tests.cpp)
 target_link_libraries(input_drain_tests PRIVATE player_movement_system)
 
+add_executable(command_drain_tests tests/command_drain_tests.cpp)
+target_link_libraries(command_drain_tests PRIVATE player_movement_system)
+
+add_executable(source_drain_tests tests/source_drain_tests.cpp)
+target_link_libraries(source_drain_tests PRIVATE player_movement_system)
+
+add_executable(frame_source_tests tests/frame_source_tests.cpp)
+target_link_libraries(frame_source_tests PRIVATE player_movement_system)
+
+add_executable(frame_simulation_tests tests/frame_simulation_tests.cpp)
+target_link_libraries(frame_simulation_tests PRIVATE player_movement_system)
+
 add_test(NAME movement_tests COMMAND movement_tests)
 add_test(NAME artifact_output_tests COMMAND artifact_output_tests)
 add_test(NAME artifact_text_tests COMMAND artifact_text_tests)
 add_test(NAME input_routing_tests COMMAND input_routing_tests)
 add_test(NAME input_drain_tests COMMAND input_drain_tests)
+add_test(NAME command_drain_tests COMMAND command_drain_tests)
+add_test(NAME source_drain_tests COMMAND source_drain_tests)
+add_test(NAME frame_source_tests COMMAND frame_source_tests)
+add_test(NAME frame_simulation_tests COMMAND frame_simulation_tests)

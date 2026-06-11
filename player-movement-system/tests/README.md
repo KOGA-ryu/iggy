@@ -10,6 +10,14 @@ focus/context checks into movement commands, target interaction commands, or
 block reports.
 `input_drain_tests` covers raw input source draining and the frame/run report
 facts produced by routed or blocked input.
+`command_drain_tests` covers movement command source draining, runtime world
+queue intake, simulation command draining, and queued-count reporting.
+`source_drain_tests` covers shared runtime source settings, active context
+lookup, source stream draining, and source-drainer ordering.
+`frame_source_tests` covers per-frame session, inventory, and movement source
+step orchestration before simulation runs.
+`frame_simulation_tests` covers simulation phase policy capture, session
+advancement, frame event reporting, and lifecycle/inventory event deltas.
 
 Good first tests:
 

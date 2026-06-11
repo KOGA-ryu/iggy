@@ -37,6 +37,14 @@ starting position, copy only the events emitted after that position.
 `RuntimeFrameCompletionReportRecorder` attaches those event deltas to the
 finished frame report and increments the finished-frame count.
 
+## Test Boundary
+
+`frame_simulation_tests` covers the runtime reporting side of a simulation
+frame. It verifies that the frame policy is resolved and recorded, the session
+advances through the frame settings, simulation events are mirrored into frame
+and run reports, and long-lived lifecycle/inventory logs are sliced into
+per-frame deltas.
+
 ## Why Reports Use Deltas
 
 Movement and combat events are naturally frame-scoped because simulation

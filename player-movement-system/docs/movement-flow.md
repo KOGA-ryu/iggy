@@ -1314,10 +1314,18 @@ sources.
 `RuntimeMovementFrameSourceStep` owns the movement subsection: run movement
 scripts first, then queue direct movement commands for simulation.
 
+`frame_source_tests` covers these subsection contracts directly. That keeps the
+test focus on pre-simulation ordering without pulling in the full frame runner,
+loop runner, or run executor lifecycle.
+
 `RuntimeFrameSimulationPhaseRunner` owns the ordered simulation phase: record
 the current frame policy, advance the active session, and record the resulting
 simulation events. That keeps policy selection and event collection together as
 the named phase that follows source intake.
+
+`frame_simulation_tests` covers that phase plus the supporting report
+recorders, so policy capture, event snapshots, and frame-completion deltas can
+fail independently from source orchestration and full frame-loop lifecycle.
 
 `RuntimeFramePolicyResolver` owns the app bridge from `GameSession` mode to
 `SimulationFramePolicyDescription`. The simulation phase asks for the current
