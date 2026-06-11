@@ -4,6 +4,8 @@
 #include <vector>
 
 #include "actions/ActionExecutor.hpp"
+#include "combat/CombatResolver.hpp"
+#include "combat/CombatSystem.hpp"
 #include "commands/CommandDispatcher.hpp"
 #include "enemies/EnemyMovement.hpp"
 #include "events/EventRecorder.hpp"
@@ -274,6 +276,44 @@ void TestEnemyAttackWindupAndRecovery()
 	Expect(enemies[0].moveState == dev::EnemyMoveState::Recovering, "enemy should remain in recovery until recovery duration completes");
 }
 
+void TestCombatResolverDamageAndDefeat()
+{
+	dev::CombatStats attacker { .hitPoints = 20, .attackPower = 7, .defense = 1 };
+	dev::Combatant target {
+		.target = { .type = dev::TargetType::Enemy, .id = 99, .tile = { 1, 0 } },
+		.stats = { .hitPoints = 5, .attackPower = 3, .defense = 2 },
+	};
+
+	dev::CombatResult result = dev::CombatResolver {}.resolveAttack(attacker, target);
+
+	Expect(result.damage == 5, "combat damage should be attack minus defense");
+	Expect(result.type == dev::CombatResultType::Defeated, "target should be defeated when hp reaches zero");
+	Expect(target.stats.hitPoints == 0, "target hp should clamp to zero");
+}
+
+void TestActionExecutorAttackResolvesCombat()
+{
+	dev::CombatSystem combat;
+	dev::Target target { .type = dev::TargetType::Enemy, .id = 7, .tile = { 1, 0 } };
+	combat.registry().add({
+		.target = target,
+		.stats = { .hitPoints = 10, .attackPower = 3, .defense = 1 },
+	});
+
+	dev::Player player = MakePlayer({ 1, 0 });
+	player.combatStats.attackPower = 6;
+	player.destinationAction = { dev::DestinationActionType::Attack, target, 1 };
+	player.moveState = dev::PlayerMoveState::Acting;
+
+	dev::ActionResult result = dev::ActionExecutor { dev::ActionRules {}, nullptr, &combat }.update(player);
+	const dev::Combatant *enemy = combat.registry().find(target);
+
+	Expect(result.type == dev::ActionResultType::Executed, "attack action should execute through combat system");
+	Expect(enemy != nullptr, "combat target should still be registered");
+	Expect(enemy != nullptr && enemy->stats.hitPoints == 5, "attack action should damage combat target");
+	Expect(player.destinationAction.type == dev::DestinationActionType::None, "executed combat action should clear destination action");
+}
+
 } // namespace
 
 int main()
@@ -288,6 +328,8 @@ int main()
 	TestMovementCodecRoundTrip();
 	TestEnemyPursuitObeysStepBudget();
 	TestEnemyAttackWindupAndRecovery();
+	TestCombatResolverDamageAndDefeat();
+	TestActionExecutorAttackResolvesCombat();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

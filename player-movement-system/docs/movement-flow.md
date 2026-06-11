@@ -207,3 +207,27 @@ enemy position
 
 The goal is not simply to reach the player. The goal is to stay inside a fair
 reaction window: readable enough to answer, fast enough to matter.
+
+## 14. Combat Resolution
+
+Movement creates opportunity. Action execution commits the move. Combat creates
+the consequence:
+
+```text
+DestinationAction::Attack
+  -> ActionExecutor
+  -> CombatSystem
+  -> CombatResolver
+  -> CombatResult
+```
+
+The current resolver is deterministic:
+
+```text
+damage = max(1, attackPower - defense)
+target.hp -= damage
+hp <= 0 -> defeated
+```
+
+That keeps combat testable before adding randomness, status effects, hit chance,
+or equipment rules.

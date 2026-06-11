@@ -2,6 +2,7 @@
 
 #include "actions/ActionResult.hpp"
 #include "actions/ActionRules.hpp"
+#include "combat/CombatSystem.hpp"
 #include "events/MovementEventSink.hpp"
 #include "player/Player.hpp"
 
@@ -9,7 +10,7 @@ namespace dev {
 
 class ActionExecutor {
 public:
-	explicit ActionExecutor(ActionRules rules = {}, MovementEventSink *eventSink = nullptr);
+	explicit ActionExecutor(ActionRules rules = {}, MovementEventSink *eventSink = nullptr, CombatSystem *combatSystem = nullptr);
 
 	ActionResult update(Player &player) const;
 
@@ -18,6 +19,7 @@ private:
 
 	ActionRules rules_;
 	MovementEventSink *eventSink_;
+	CombatSystem *combatSystem_;
 };
 
 } // namespace dev

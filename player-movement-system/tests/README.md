@@ -32,6 +32,8 @@ Good first tests:
 - enemy pursuit obeys maxStepsPerTick
 - enemy in range enters attack windup
 - enemy attack windup transitions into recovery
+- CombatResolver applies deterministic damage and defeat
+- ActionExecutor attack can damage registered combat target
 
 Run them with:
 

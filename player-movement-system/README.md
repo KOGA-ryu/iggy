@@ -24,6 +24,9 @@ command, the simulation has one path to maintain.
 src/app
   Owns startup and the game loop.
 
+src/combat
+  Resolves deterministic attack damage and target defeat.
+
 src/input
   Converts raw input into player-facing intent.
 
@@ -169,4 +172,7 @@ MovementCodec
 
 EnemyMovement
   pressure layer with speed, attack range, windup, and recovery constraints
+
+CombatResolver
+  deterministic consequence layer for executed attack actions
 ```

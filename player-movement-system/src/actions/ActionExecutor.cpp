@@ -18,9 +18,10 @@ void EmitActionEvent(MovementEventSink *eventSink, MovementEventType type, const
 
 } // namespace
 
-ActionExecutor::ActionExecutor(ActionRules rules, MovementEventSink *eventSink)
+ActionExecutor::ActionExecutor(ActionRules rules, MovementEventSink *eventSink, CombatSystem *combatSystem)
     : rules_(rules)
     , eventSink_(eventSink)
+    , combatSystem_(combatSystem)
 {
 }
 
@@ -43,6 +44,14 @@ ActionResult ActionExecutor::update(Player &player) const
 	if (!rules_.targetInRange(player, action)) {
 		EmitActionEvent(eventSink_, MovementEventType::ActionRejected, player, action, ActionResultType::OutOfRange);
 		return { ActionResultType::OutOfRange, false };
+	}
+
+	if (action.type == DestinationActionType::Attack && combatSystem_ != nullptr) {
+		const CombatResult combatResult = combatSystem_->resolvePlayerAttack(player, action);
+		if (combatResult.type == CombatResultType::InvalidTarget) {
+			EmitActionEvent(eventSink_, MovementEventType::ActionRejected, player, action, ActionResultType::InvalidTarget);
+			return { ActionResultType::InvalidTarget, true };
+		}
 	}
 
 	applyAnimationCommitment(player, action);
