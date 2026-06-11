@@ -255,3 +255,25 @@ EnemyMovement
 ```
 
 That keeps player and enemy attacks on the same damage rules.
+
+## 15. Simulation Tick
+
+The tick layer is where the separate systems become one frame:
+
+```text
+CommandQueue
+  -> CommandDispatcher
+  -> PlayerController
+  -> PlayerMovement
+  -> ActionExecutor
+  -> EnemyMovement
+  -> CombatSystem
+```
+
+The order matters. Commands are drained first so fresh input can affect this
+frame. Player movement updates before enemy movement so enemies respond to the
+latest committed player position. Actions and combat consequences happen inside
+those movement updates, but still publish events instead of directly owning UI,
+audio, VFX, or networking.
+
+This is the first point that starts to look like a small game loop.

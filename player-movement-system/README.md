@@ -58,6 +58,10 @@ src/network
 src/enemies
   Adds constrained enemy pursuit and attack timing pressure.
 
+src/simulation
+  Owns the per-tick orchestration order across queued commands, player movement,
+  enemy movement, destination actions, and combat consequences.
+
 src/player
   Owns player state, action gating, movement state transitions, and movement
   execution.
@@ -179,4 +183,8 @@ CombatResolver
 
 CombatEvent
   observable combat consequence such as Hit, Defeated, damage, and remaining HP
+
+SimulationTick
+  frame-level coordinator that drains commands, updates player movement, updates
+  enemy pressure, and lets actions resolve through combat
 ```

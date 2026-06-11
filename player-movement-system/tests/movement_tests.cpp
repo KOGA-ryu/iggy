@@ -19,6 +19,7 @@
 #include "player/PlayerMovement.hpp"
 #include "replay/CommandLog.hpp"
 #include "replay/CommandReplayer.hpp"
+#include "simulation/SimulationTick.hpp"
 #include "targeting/Target.hpp"
 #include "world/Collision.hpp"
 #include "world/PathFinder.hpp"
@@ -394,6 +395,39 @@ void TestEnemyAttackResolvesCombatAgainstPlayer()
 	Expect(events.size() == 1 && events[0].damage == 4, "enemy attack event should include damage");
 }
 
+void TestSimulationTickDispatchesMovementAndCombat()
+{
+	dev::SimulationWorld world;
+	dev::EventRecorder movementEvents;
+	dev::CombatEventRecorder combatEvents;
+	world.movementEvents = &movementEvents;
+	world.setCombatEventSink(&combatEvents);
+	world.players.push_back(MakePlayer({ 0, 0 }));
+	world.players[0].combatStats.attackPower = 6;
+
+	dev::Target target { .type = dev::TargetType::Enemy, .id = 20, .tile = { 1, 0 } };
+	world.combat.registry().add({
+	    .target = target,
+	    .stats = { .hitPoints = 10, .attackPower = 3, .defense = 1 },
+	});
+	world.commandQueue.push({
+	    .type = dev::MovementCommandType::MoveThenAct,
+	    .playerId = 0,
+	    .destination = target.tile,
+	    .destinationAction = dev::DestinationAction { dev::DestinationActionType::Attack, target, 1 },
+	});
+
+	dev::SimulationTick {}.update(world, 0.016F);
+
+	const dev::Combatant *enemy = world.combat.registry().find(target);
+	const std::vector<dev::CombatEvent> &combat = combatEvents.events();
+
+	Expect(world.players[0].position.tile == dev::Point { 1, 0 }, "simulation tick should move player from queued command");
+	Expect(enemy != nullptr && enemy->stats.hitPoints == 5, "simulation tick should resolve queued attack through combat");
+	Expect(combat.size() == 1 && combat[0].type == dev::CombatEventType::Hit, "simulation tick should emit combat event");
+	Expect(!movementEvents.events().empty(), "simulation tick should emit movement events");
+}
+
 } // namespace
 
 int main()
@@ -413,6 +447,7 @@ int main()
 	TestCombatSystemEmitsHitEvent();
 	TestCombatSystemEmitsDefeatedEvent();
 	TestEnemyAttackResolvesCombatAgainstPlayer();
+	TestSimulationTickDispatchesMovementAndCombat();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;
