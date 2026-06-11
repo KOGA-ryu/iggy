@@ -1809,7 +1809,9 @@ RawInputEvent
   -> RuntimeSessionInputRouter
   -> RuntimeInputFocusResolver
   -> RuntimeMovementInputRouter
+  -> RuntimeStopMovementInputStep
   -> RuntimeTargetInputRouter
+  -> RuntimeMovementIntentInputStep
   -> SessionCommandSource or MovementCommandSource
   -> GameLoop
   -> dispatcher / command queue
@@ -1822,6 +1824,7 @@ RawInputEvent
   -> InputEventMatcher
   -> RuntimeInputFocusResolver
   -> InputFocus
+  -> RuntimeMovementIntentInputStep
   -> InputMapper
   -> PlayerIntent
   -> PlayerActionGate
@@ -1839,6 +1842,14 @@ force menu focus, inventory sessions force inventory focus, and gameplay keeps
 the provided focus state. That makes the common game rule visible: the same
 button can mean movement during gameplay and nothing for movement while a menu
 or inventory owns controls.
+
+`RuntimeMovementIntentInputStep` owns the generic movement route after
+target-specific pointer input has first chance: map raw input to `PlayerIntent`,
+ask the action gate to build a movement command, then queue that command.
+
+`RuntimeStopMovementInputStep` owns the stop-hotkey route. It maps the configured
+key to `PlayerIntentType::StopMoving`, asks the same action gate for permission,
+and queues a `Stop` command at the player's current tile.
 
 When a target resolver is attached, clicks can use the interaction path instead:
 
@@ -1892,6 +1903,7 @@ RawInputSource
   -> RuntimeSessionInputRouter
   -> RuntimeMovementInputRouter
   -> RuntimeTargetInputRouter
+  -> RuntimeMovementIntentInputStep
   -> routed SessionCommandSource / MovementCommandSource
   -> GameLoop drains command sources
   -> GameSession / SimulationWorld

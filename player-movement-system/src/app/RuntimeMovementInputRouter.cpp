@@ -6,8 +6,9 @@
 namespace dev {
 
 RuntimeMovementInputRouter::RuntimeMovementInputRouter(QueuedMovementCommandSource &movementCommands, RuntimeInputBindings bindings)
-    : movementCommands_(movementCommands)
-    , bindings_(bindings)
+    : bindings_(bindings)
+    , stopInput_(movementCommands)
+    , movementIntentInput_(movementCommands)
     , targetInput_(movementCommands)
 {
 }
@@ -25,19 +26,15 @@ RuntimeInputRouteResult RuntimeMovementInputRouter::route(const RawInputEvent &e
 	const PlayerActionBlockReason blockReason = gate.movementBlockReason(player);
 	InputEventMatcher inputMatcher;
 
-	if (inputMatcher.pressedKey(event, bindings_.stopKey)) {
-		if (blockReason != PlayerActionBlockReason::None)
-			return resultBuilder.blockedMovement(blockReason);
-		std::optional<MovementCommand> stop = commandBuilder_.buildMoveCommand(
-		    context.playerId,
-		    player,
-		    PlayerIntent { .type = PlayerIntentType::StopMoving },
-		    gate);
-		if (!stop.has_value())
-			return resultBuilder.unhandled();
-		movementCommands_.enqueue(*stop);
-		return resultBuilder.queuedMovementCommand();
-	}
+	RuntimeInputRouteResult stopResult = stopInput_.route(
+	    event,
+	    bindings_.stopKey,
+	    context.playerId,
+	    player,
+	    gate,
+	    blockReason);
+	if (stopResult.handled || stopResult.movementBlockReason.has_value())
+		return stopResult;
 
 	RuntimeInputRouteResult targetResult = targetInput_.route(event, context, player, gate);
 	if (targetResult.handled || targetResult.movementBlockReason.has_value())
@@ -46,13 +43,13 @@ RuntimeInputRouteResult RuntimeMovementInputRouter::route(const RawInputEvent &e
 	if (inputMatcher.pressedPointer(event) && blockReason != PlayerActionBlockReason::None)
 		return resultBuilder.blockedMovement(blockReason);
 
-	PlayerIntent intent = inputMapper_.mapToIntent(event, context.world->map, focus);
-	std::optional<MovementCommand> command = commandBuilder_.buildMoveCommand(context.playerId, player, intent, gate);
-	if (!command.has_value())
-		return resultBuilder.unhandled();
-
-	movementCommands_.enqueue(*command);
-	return resultBuilder.queuedMovementCommand();
+	return movementIntentInput_.route(
+	    event,
+	    context.world->map,
+	    context.playerId,
+	    player,
+	    focus,
+	    gate);
 }
 
 } // namespace dev

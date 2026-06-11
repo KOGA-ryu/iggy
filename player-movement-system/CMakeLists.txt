@@ -63,6 +63,7 @@ add_library(player_movement_system
   src/app/RuntimeMovementEventText.cpp
   src/app/RuntimeMovementFrameSourceStep.cpp
   src/app/RuntimeMovementInputBlockSummary.cpp
+  src/app/RuntimeMovementIntentInputStep.cpp
   src/app/RuntimeMovementScriptReportRecorder.cpp
   src/app/RuntimeMovementScriptBatchRunner.cpp
   src/app/RuntimeMovementScriptIntake.cpp
@@ -94,6 +95,7 @@ add_library(player_movement_system
   src/app/RuntimeSourceDrainer.cpp
   src/app/RuntimeSourceDrainerSettingsBuilder.cpp
   src/app/RuntimeStartupScriptIntake.cpp
+  src/app/RuntimeStopMovementInputStep.cpp
   src/app/RuntimeTargetInputRouter.cpp
   src/app/RuntimeTraceService.cpp
   src/combat/CombatEventRecorder.cpp

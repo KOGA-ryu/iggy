@@ -56,6 +56,7 @@
 #include "app/RuntimeMovementCommandReportRecorder.hpp"
 #include "app/RuntimeMovementEventText.hpp"
 #include "app/RuntimeMovementFrameSourceStep.hpp"
+#include "app/RuntimeMovementIntentInputStep.hpp"
 #include "app/RuntimeMovementScriptBatchRunner.hpp"
 #include "app/RuntimeMovementScriptReportRecorder.hpp"
 #include "app/RuntimeMovementScriptIntake.hpp"
@@ -93,6 +94,7 @@
 #include "app/RuntimeSourceDrainerSettingsBuilder.hpp"
 #include "app/RuntimeSourceStream.hpp"
 #include "app/RuntimeStartupScriptIntake.hpp"
+#include "app/RuntimeStopMovementInputStep.hpp"
 #include "app/RuntimeSessionText.hpp"
 #include "app/RuntimeTargetInputRouter.hpp"
 #include "app/RuntimeTraceService.hpp"
@@ -9385,6 +9387,36 @@ void TestRuntimeMovementInputRouterMapsMouseClickToMovementCommand()
 	Expect(commands.size() == 1 && commands[0].destination == dev::Point { 3, 2 }, "runtime movement input router should map click through tile map");
 }
 
+void TestRuntimeMovementIntentInputStepMapsPointerIntentToCommand()
+{
+	dev::SimulationWorld world;
+	world.players.push_back(MakePlayer({ 0, 0 }));
+	const dev::Player &player = world.players[0];
+	dev::InputFocus focus { dev::FocusState { .owner = dev::InputOwner::Gameplay } };
+	dev::PlayerActionGate gate {
+		focus,
+		dev::PlayerActionContext {},
+	};
+	dev::QueuedMovementCommandSource movementCommands;
+
+	dev::RuntimeInputRouteResult result = dev::RuntimeMovementIntentInputStep { movementCommands }.route(
+	    dev::RawInputEvent {
+	        .type = dev::RawInputType::MouseClick,
+	        .screenPosition = { 96, 64 },
+	        .pressed = true,
+	    },
+	    world.map,
+	    0,
+	    player,
+	    focus,
+	    gate);
+
+	Expect(result.handled && result.queuedMovementCommand, "runtime movement intent input step should queue movement commands for movement intents");
+	std::vector<dev::MovementCommand> commands = movementCommands.drain();
+	Expect(commands.size() == 1 && commands[0].type == dev::MovementCommandType::WalkTo, "runtime movement intent input step should build WalkTo commands");
+	Expect(commands.size() == 1 && commands[0].destination == dev::Point { 3, 2 }, "runtime movement intent input step should map pointer input through the tile map");
+}
+
 void TestRuntimeMovementInputRouterMapsTouchTapToMovementCommand()
 {
 	dev::SimulationWorld world;
@@ -9590,6 +9622,34 @@ void TestRuntimeInputRouterMapsStopHotkeyToMovementCommand()
 	Expect(commands.size() == 1 && commands[0].type == dev::MovementCommandType::Stop, "stop hotkey should request Stop movement command");
 	Expect(commands.size() == 1 && commands[0].destination == dev::Point { 7, 4 }, "stop hotkey should use current player tile");
 	Expect(sessionCommands.empty(), "stop hotkey should not queue session commands");
+}
+
+void TestRuntimeStopMovementInputStepMapsStopHotkeyToCommand()
+{
+	dev::Player player = MakePlayer({ 7, 4 });
+	dev::InputFocus focus { dev::FocusState { .owner = dev::InputOwner::Gameplay } };
+	dev::PlayerActionGate gate {
+		focus,
+		dev::PlayerActionContext {},
+	};
+	dev::QueuedMovementCommandSource movementCommands;
+
+	dev::RuntimeInputRouteResult result = dev::RuntimeStopMovementInputStep { movementCommands }.route(
+	    dev::RawInputEvent {
+	        .type = dev::RawInputType::KeyPress,
+	        .code = 'Q',
+	        .pressed = true,
+	    },
+	    'Q',
+	    0,
+	    player,
+	    gate,
+	    dev::PlayerActionBlockReason::None);
+
+	Expect(result.handled && result.queuedMovementCommand, "runtime stop movement input step should handle stop hotkeys");
+	std::vector<dev::MovementCommand> commands = movementCommands.drain();
+	Expect(commands.size() == 1 && commands[0].type == dev::MovementCommandType::Stop, "runtime stop movement input step should build Stop commands");
+	Expect(commands.size() == 1 && commands[0].destination == dev::Point { 7, 4 }, "runtime stop movement input step should use the current player tile");
 }
 
 void TestRuntimeMovementInputRouterReportsBlockedStopReason()
@@ -10770,6 +10830,7 @@ int main()
 	TestGameLoopDoesNotDrainMovementSourcesWithoutActiveWorld();
 	TestRuntimeInputRouterMapsMouseClickToMovementCommand();
 	TestRuntimeMovementInputRouterMapsMouseClickToMovementCommand();
+	TestRuntimeMovementIntentInputStepMapsPointerIntentToCommand();
 	TestRuntimeMovementInputRouterMapsTouchTapToMovementCommand();
 	TestRuntimeInputFocusResolverMapsSessionModesToFocus();
 	TestRuntimeInputRouterBlocksMovementWhenFocusDoesNotOwnGameplay();
@@ -10777,6 +10838,7 @@ int main()
 	TestRuntimeSessionInputRouterTogglesLifecycleModes();
 	TestRuntimeSessionModeTogglePolicyMapsHotkeysToRequestedModes();
 	TestRuntimeInputRouterMapsStopHotkeyToMovementCommand();
+	TestRuntimeStopMovementInputStepMapsStopHotkeyToCommand();
 	TestRuntimeMovementInputRouterReportsBlockedStopReason();
 	TestRuntimeInputRouterMapsTargetClickToMoveThenAct();
 	TestRuntimeTargetInputRouterMapsTargetClickToMoveThenAct();

@@ -2,10 +2,10 @@
 
 #include "app/RuntimeInputTypes.hpp"
 #include "app/RuntimeInputFocusResolver.hpp"
+#include "app/RuntimeMovementIntentInputStep.hpp"
 #include "app/RuntimeTargetInputRouter.hpp"
-#include "commands/IntentCommandBuilder.hpp"
+#include "app/RuntimeStopMovementInputStep.hpp"
 #include "commands/MovementCommandSource.hpp"
-#include "input/InputMapper.hpp"
 #include "input/RawInput.hpp"
 
 namespace dev {
@@ -17,11 +17,10 @@ public:
 	[[nodiscard]] RuntimeInputRouteResult route(const RawInputEvent &event, const RuntimeInputContext &context) const;
 
 private:
-	QueuedMovementCommandSource &movementCommands_;
 	RuntimeInputBindings bindings_;
 	RuntimeInputFocusResolver focusResolver_;
-	InputMapper inputMapper_;
-	IntentCommandBuilder commandBuilder_;
+	RuntimeStopMovementInputStep stopInput_;
+	RuntimeMovementIntentInputStep movementIntentInput_;
 	RuntimeTargetInputRouter targetInput_;
 };
 

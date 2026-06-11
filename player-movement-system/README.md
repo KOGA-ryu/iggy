@@ -442,6 +442,14 @@ RuntimeMovementInputRouter
   gameplay input router that maps focused pointer, target, and stop-key input
   into semantic movement commands
 
+RuntimeMovementIntentInputStep
+  gameplay input step that maps generic movement-shaped raw input into
+  PlayerIntent, builds a movement command, and queues it
+
+RuntimeStopMovementInputStep
+  gameplay input step that maps the stop hotkey into a StopMoving intent,
+  builds a Stop command, and queues it
+
 RuntimeTargetInputRouter
   target-aware pointer router that resolves clicked tiles into interaction
   movement commands

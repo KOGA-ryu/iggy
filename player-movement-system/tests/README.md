@@ -297,6 +297,8 @@ Good first tests:
 - InputEventMatcher recognizes pressed keys and pointer events
 - RuntimeInputRouter maps gameplay mouse clicks into movement commands
 - RuntimeMovementInputRouter maps gameplay pointer input into movement commands
+- RuntimeMovementIntentInputStep maps pointer movement intent into queued commands
+- RuntimeStopMovementInputStep maps stop hotkeys into queued Stop commands
 - RuntimeInputFocusResolver maps session modes into effective input focus
 - RuntimeInputRouter blocks movement when focus or text entry owns input
 - RuntimeInputRouter reports movement block reasons without routing commands
