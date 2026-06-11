@@ -79,6 +79,7 @@
 #include "app/RuntimeSessionModeTogglePolicy.hpp"
 #include "app/RuntimeSetupFailurePolicy.hpp"
 #include "app/RuntimeSetupInventoryCommandReportRecorder.hpp"
+#include "app/RuntimeSetupRunResultApplier.hpp"
 #include "app/RuntimeSetupRunner.hpp"
 #include "app/RuntimeSimulationFrameUpdater.hpp"
 #include "app/RuntimeSourceContext.hpp"
@@ -7707,6 +7708,36 @@ void TestRuntimeSetupInventoryCommandReportRecorderAppendsOnlySummaryResults()
 	Expect(summary.framesRun == 0, "runtime setup inventory command report recorder should not count frames");
 }
 
+void TestRuntimeSetupRunResultApplierCopiesSetupAndRecordsSummary()
+{
+	dev::RuntimeSetupRunResult setupResult;
+	setupResult.setup.startupScriptRan = true;
+	setupResult.setup.inventoryScriptRan = true;
+	setupResult.inventoryCommandResults.push_back({
+	    .type = dev::InventoryCommandResultType::Applied,
+	    .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 12 },
+	    .equipmentResult = { .type = dev::EquipmentResultType::Equipped, .itemId = 12 },
+	});
+	setupResult.framesAllowed = false;
+
+	dev::GameLoopResult result;
+	dev::SessionEventRecorder sessionEvents;
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::RuntimeRunRecorder recorder { result, sessionEvents, inventoryEvents };
+
+	const bool framesAllowed = dev::RuntimeSetupRunResultApplier {}.apply(
+	    setupResult,
+	    result,
+	    recorder);
+
+	Expect(!framesAllowed, "runtime setup run result applier should return setup frame gate");
+	Expect(result.setup.startupScriptRan, "runtime setup run result applier should copy startup setup result");
+	Expect(result.setup.inventoryScriptRan, "runtime setup run result applier should copy inventory setup result");
+	Expect(result.summary.inventoryCommandResults.size() == 1, "runtime setup run result applier should record setup inventory command results");
+	Expect(result.summary.inventoryCommandResults[0].command.itemId == std::optional<dev::TargetId> { 12 }, "runtime setup run result applier should preserve setup command payload");
+	Expect(result.summary.framesRun == 0, "runtime setup run result applier should not finish frames");
+}
+
 void TestRuntimeFrameEventDeltaCollectorCapturesEventsSinceBeginFrame()
 {
 	dev::SessionEventRecorder sessionEvents;
@@ -10362,6 +10393,7 @@ int main()
 	TestRuntimeFrameEventReportRecorderReplacesFrameAndSummaryEvents();
 	TestRuntimeFrameCompletionReportRecorderStoresFrameAndCountsRun();
 	TestRuntimeSetupInventoryCommandReportRecorderAppendsOnlySummaryResults();
+	TestRuntimeSetupRunResultApplierCopiesSetupAndRecordsSummary();
 	TestRuntimeFrameEventDeltaCollectorCapturesEventsSinceBeginFrame();
 	TestRuntimeFramePolicyReportRecorderStoresCurrentFramePolicy();
 	TestRuntimeFramePolicyResolverMapsSessionModeToSimulationPolicy();

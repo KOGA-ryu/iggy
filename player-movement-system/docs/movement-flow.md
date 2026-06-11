@@ -1156,6 +1156,7 @@ GameLoopResult::setup
 RuntimeSetupSettings
   -> RuntimeSetupRunner
   -> RuntimeSetupRunResult
+  -> RuntimeSetupRunResultApplier
   -> setup result
   -> setup inventory command results
   -> frames allowed?
@@ -1169,6 +1170,11 @@ and setup pipeline worked and the rejection is command-level data.
 `RuntimeSetupRunner` delegates the fatal-status interpretation to
 `RuntimeSetupFailurePolicy`, so setup gating and run failure reporting use the
 same status rules.
+
+`RuntimeSetupRunResultApplier` owns the handoff from setup execution to the run
+result: copy the setup result, record setup inventory command results into the
+summary, and return the frame gate. That keeps `RuntimeRunExecutor` focused on
+lifecycle order instead of setup report plumbing.
 
 That separates one-time setup automation from per-frame runtime sources. A
 failed setup script can stop the loop before frames begin, while runtime script
@@ -1318,6 +1324,7 @@ loop, and finalization:
 ```text
 RuntimeRunExecutor
   -> RuntimeSetupRunner
+  -> RuntimeSetupRunResultApplier
   -> if frames allowed, RuntimeFrameLoopRunner
   -> RuntimeRunFinalizer
 ```
@@ -1460,6 +1467,10 @@ place to test gameplay, inventory pause, paused, and empty-session gates.
 reporting. Setup commands run before bounded frames begin, so their command
 results are appended to the run summary without creating a frame report or
 incrementing `framesRun`.
+
+`RuntimeSetupRunResultApplier` uses that recorder as the bridge between
+`RuntimeSetupRunResult` and `GameLoopResult`. The executor can then treat setup
+as one lifecycle gate: apply setup, run frames only when allowed, finalize.
 
 `RuntimeOutputSettings` groups the app shell's optional artifact destinations:
 

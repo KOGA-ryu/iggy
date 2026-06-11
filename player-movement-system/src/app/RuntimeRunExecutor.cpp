@@ -1,5 +1,7 @@
 #include "RuntimeRunExecutor.hpp"
 
+#include "app/RuntimeSetupRunResultApplier.hpp"
+
 #include <utility>
 
 namespace dev {
@@ -24,10 +26,12 @@ void RuntimeRunExecutor::run(
     const RuntimeOutputSettings &output) const
 {
 	RuntimeSetupRunResult setupResult = setupRunner_.run(setup);
-	result.setup = setupResult.setup;
-	recorder_.recordSetupInventoryCommandResults(setupResult.inventoryCommandResults);
+	const bool framesAllowed = RuntimeSetupRunResultApplier {}.apply(
+	    setupResult,
+	    result,
+	    recorder_);
 
-	if (setupResult.framesAllowed)
+	if (framesAllowed)
 		frameLoopRunner_.run();
 
 	finalizer_.finalize(session_, output, result);

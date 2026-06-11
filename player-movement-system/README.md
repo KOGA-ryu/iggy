@@ -755,6 +755,10 @@ RuntimeSetupRunner
   reports whether frames may begin, and preserves setup inventory command
   results for run summaries
 
+RuntimeSetupRunResultApplier
+  app-layer handoff that copies setup results into GameLoopResult, records setup
+  inventory command results, and returns the setup frame gate
+
 RuntimeSourceSettings
   app-layer source settings that group raw input, session, inventory script,
   inventory command, and movement command sources for GameLoop
@@ -798,7 +802,8 @@ RuntimeFrameLoopRunner
 
 RuntimeRunExecutor
   app-layer lifecycle use case that runs configured setup, conditionally runs
-  the bounded frame loop, and finalizes the GameLoopResult
+  the bounded frame loop through the setup result applier gate, and finalizes
+  the GameLoopResult
 
 RuntimeRunSummary
   app-layer aggregate run result state for routed input, runtime command

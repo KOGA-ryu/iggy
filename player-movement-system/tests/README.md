@@ -241,6 +241,7 @@ Good first tests:
 - RuntimeFrameEventReportRecorder records frame events and the latest summary snapshot
 - RuntimeFrameCompletionReportRecorder stores completed frames and counts frames run
 - RuntimeSetupInventoryCommandReportRecorder records setup command results without frames
+- RuntimeSetupRunResultApplier copies setup results and records setup summary effects
 - RuntimeFrameEventDeltaCollector captures only session/inventory events emitted during a frame
 - RuntimeFramePolicyReportRecorder records the current simulation frame policy
 - RuntimeFramePolicyResolver maps session mode to current simulation frame policy
