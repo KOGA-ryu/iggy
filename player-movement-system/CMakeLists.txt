@@ -13,6 +13,7 @@ add_library(player_movement_system
   src/commands/CommandDispatcher.cpp
   src/commands/CommandQueue.cpp
   src/commands/IntentCommandBuilder.cpp
+  src/events/EventRecorder.cpp
   src/focus/InputFocus.cpp
   src/input/InputMapper.cpp
   src/interaction/InteractionCommandBuilder.cpp
@@ -39,4 +40,3 @@ add_executable(movement_tests tests/movement_tests.cpp)
 target_link_libraries(movement_tests PRIVATE player_movement_system)
 
 add_test(NAME movement_tests COMMAND movement_tests)
-

@@ -2,18 +2,37 @@
 
 namespace dev {
 
-PlayerController::PlayerController(std::vector<Player> &players, const TileMap &map, const Collision &collision, const PathFinder &pathFinder)
+namespace {
+
+void EmitControllerEvent(MovementEventSink *eventSink, MovementEventType type, PlayerId playerId, Point tile, DestinationActionType actionType = DestinationActionType::None)
+{
+	if (eventSink == nullptr)
+		return;
+	eventSink->emit({
+		.type = type,
+		.playerId = playerId,
+		.tile = tile,
+		.actionType = actionType,
+	});
+}
+
+} // namespace
+
+PlayerController::PlayerController(std::vector<Player> &players, const TileMap &map, const Collision &collision, const PathFinder &pathFinder, MovementEventSink *eventSink)
     : players_(players)
     , map_(map)
     , collision_(collision)
     , pathFinder_(pathFinder)
+    , eventSink_(eventSink)
 {
 }
 
 void PlayerController::walkTo(PlayerId playerId, Point destination)
 {
-	if (playerId >= players_.size() || !map_.isWalkable(destination))
+	if (playerId >= players_.size() || !map_.isWalkable(destination)) {
+		EmitControllerEvent(eventSink_, MovementEventType::CommandRejected, playerId, destination);
 		return;
+	}
 
 	Player &player = players_[playerId];
 	player.destinationAction = {};
@@ -26,6 +45,7 @@ void PlayerController::walkTo(PlayerId playerId, Point destination)
 
 	player.path = pathFinder_.findPath(player.position.future, destination, map_, collision_);
 	player.moveState = player.path.empty() ? PlayerMoveState::Blocked : PlayerMoveState::Pathing;
+	EmitControllerEvent(eventSink_, player.path.empty() ? MovementEventType::PathBlocked : MovementEventType::PathStarted, playerId, destination);
 }
 
 void PlayerController::moveThenAct(PlayerId playerId, Point destination, DestinationAction action)
@@ -37,6 +57,7 @@ void PlayerController::moveThenAct(PlayerId playerId, Point destination, Destina
 	player.destinationAction = action;
 	player.path = pathFinder_.findPath(player.position.future, destination, map_, collision_);
 	player.moveState = player.path.empty() ? PlayerMoveState::Acting : PlayerMoveState::Pathing;
+	EmitControllerEvent(eventSink_, player.path.empty() ? MovementEventType::DestinationActionReady : MovementEventType::PathStarted, playerId, destination, action.type);
 }
 
 void PlayerController::standAndAct(PlayerId playerId, DestinationAction action)
@@ -49,6 +70,7 @@ void PlayerController::standAndAct(PlayerId playerId, DestinationAction action)
 	player.position.future = player.position.tile;
 	player.destinationAction = action;
 	player.moveState = PlayerMoveState::Acting;
+	EmitControllerEvent(eventSink_, MovementEventType::DestinationActionReady, playerId, action.target.tile, action.type);
 }
 
 void PlayerController::stop(PlayerId playerId)

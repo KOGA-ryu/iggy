@@ -2,8 +2,25 @@
 
 namespace dev {
 
-ActionExecutor::ActionExecutor(ActionRules rules)
+namespace {
+
+void EmitActionEvent(MovementEventSink *eventSink, MovementEventType type, const Player &player, const DestinationAction &action, ActionResultType result)
+{
+	if (eventSink == nullptr)
+		return;
+	eventSink->emit({
+		.type = type,
+		.tile = player.position.tile,
+		.actionType = action.type,
+		.actionResult = result,
+	});
+}
+
+} // namespace
+
+ActionExecutor::ActionExecutor(ActionRules rules, MovementEventSink *eventSink)
     : rules_(rules)
+    , eventSink_(eventSink)
 {
 }
 
@@ -13,18 +30,25 @@ ActionResult ActionExecutor::update(Player &player) const
 	if (action.type == DestinationActionType::None)
 		return { ActionResultType::NoAction, false };
 
-	if (!rules_.canExecute(player, action))
+	if (!rules_.canExecute(player, action)) {
+		EmitActionEvent(eventSink_, MovementEventType::ActionRejected, player, action, ActionResultType::BlockedByState);
 		return { ActionResultType::BlockedByState, false };
+	}
 
-	if (!rules_.targetStillValid(action))
+	if (!rules_.targetStillValid(action)) {
+		EmitActionEvent(eventSink_, MovementEventType::ActionRejected, player, action, ActionResultType::InvalidTarget);
 		return { ActionResultType::InvalidTarget, true };
+	}
 
-	if (!rules_.targetInRange(player, action))
+	if (!rules_.targetInRange(player, action)) {
+		EmitActionEvent(eventSink_, MovementEventType::ActionRejected, player, action, ActionResultType::OutOfRange);
 		return { ActionResultType::OutOfRange, false };
+	}
 
 	applyAnimationCommitment(player, action);
 	player.destinationAction = {};
 	player.moveState = PlayerMoveState::Idle;
+	EmitActionEvent(eventSink_, MovementEventType::ActionExecuted, player, action, ActionResultType::Executed);
 	return { ActionResultType::Executed, true };
 }
 
@@ -49,7 +73,13 @@ void ActionExecutor::applyAnimationCommitment(Player &player, const DestinationA
 		player.animationLock.cancelAfterSeconds = 0.0F;
 		break;
 	}
+	if (player.animationLock.active && eventSink_ != nullptr) {
+		eventSink_->emit({
+			.type = MovementEventType::AnimationLocked,
+			.tile = player.position.tile,
+			.actionType = action.type,
+		});
+	}
 }
 
 } // namespace dev
-

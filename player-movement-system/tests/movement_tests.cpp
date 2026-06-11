@@ -5,6 +5,7 @@
 
 #include "actions/ActionExecutor.hpp"
 #include "commands/CommandDispatcher.hpp"
+#include "events/EventRecorder.hpp"
 #include "focus/InputFocus.hpp"
 #include "interaction/InteractionCommandBuilder.hpp"
 #include "interaction/InteractionIntentBuilder.hpp"
@@ -120,6 +121,39 @@ void TestActionExecutorWaitsOutOfRange()
 	Expect(player.destinationAction.type == dev::DestinationActionType::Attack, "out-of-range action should stay queued");
 }
 
+void TestMoveThenActEventSequence()
+{
+	dev::EventRecorder events;
+	dev::TileMap map;
+	dev::Collision collision;
+	dev::PathFinder pathFinder;
+	std::vector<dev::Player> players { MakePlayer({ 0, 0 }) };
+	dev::PlayerController controller { players, map, collision, pathFinder, &events };
+	dev::CommandDispatcher dispatcher { controller, &events };
+	dev::ActionExecutor actionExecutor { dev::ActionRules {}, &events };
+	dev::PlayerMovement movement { collision, actionExecutor, &events };
+
+	dev::Target target { .type = dev::TargetType::Enemy, .id = 1, .tile = { 1, 0 } };
+	dev::MovementCommand command {
+		.type = dev::MovementCommandType::MoveThenAct,
+		.playerId = 0,
+		.destination = target.tile,
+		.destinationAction = dev::DestinationAction { dev::DestinationActionType::Attack, target, 1 },
+	};
+
+	dispatcher.dispatch(command);
+	movement.update(players, 0.016F);
+
+	const std::vector<dev::MovementEvent> &recorded = events.events();
+	Expect(recorded.size() >= 6, "MoveThenAct should emit observable movement/action events");
+	Expect(recorded[0].type == dev::MovementEventType::CommandAccepted, "first event should accept command");
+	Expect(recorded[1].type == dev::MovementEventType::PathStarted, "second event should start path");
+	Expect(recorded[2].type == dev::MovementEventType::StepCommitted, "third event should commit step");
+	Expect(recorded[3].type == dev::MovementEventType::DestinationActionReady, "fourth event should make destination action ready");
+	Expect(recorded[4].type == dev::MovementEventType::AnimationLocked, "fifth event should lock animation");
+	Expect(recorded[5].type == dev::MovementEventType::ActionExecuted, "sixth event should execute action");
+}
+
 } // namespace
 
 int main()
@@ -129,6 +163,7 @@ int main()
 	TestMoveThenActExecutesAfterPath();
 	TestDiagonalCornerPolicyBlocksCornerCutting();
 	TestActionExecutorWaitsOutOfRange();
+	TestMoveThenActEventSequence();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

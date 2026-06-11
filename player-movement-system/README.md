@@ -42,6 +42,10 @@ src/interaction
 src/actions
   Executes queued destination actions once movement reaches the acting point.
 
+src/events
+  Publishes semantic movement/action events for tests, debugging, UI, audio, VFX,
+  replay, and telemetry.
+
 src/player
   Owns player state, action gating, movement state transitions, and movement
   execution.
@@ -143,4 +147,8 @@ DestinationAction
 
 ActionExecutor
   validates target/range/state and applies animation commitment
+
+MovementEvent
+  observable facts such as CommandAccepted, PathStarted, StepCommitted,
+  ActionExecuted, and AnimationLocked
 ```

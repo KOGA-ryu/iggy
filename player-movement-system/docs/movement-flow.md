@@ -143,3 +143,23 @@ is player allowed to act?
 how long is the action commitment?
 should the destination action clear?
 ```
+
+## 10. Events
+
+State changes publish semantic events:
+
+```text
+CommandAccepted
+CommandRejected
+PathStarted
+PathBlocked
+StepCommitted
+DestinationActionReady
+ActionExecuted
+ActionRejected
+AnimationLocked
+AnimationUnlocked
+```
+
+Events let tests, debug tools, UI, audio, VFX, replay, and telemetry observe the
+movement system without being hardwired into it.
