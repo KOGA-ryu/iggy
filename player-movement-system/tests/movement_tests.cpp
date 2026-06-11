@@ -428,6 +428,25 @@ void TestSimulationTickDispatchesMovementAndCombat()
 	Expect(!movementEvents.events().empty(), "simulation tick should emit movement events");
 }
 
+void TestSimulationPolicyPausedDoesNotDrainCommands()
+{
+	dev::SimulationWorld world;
+	world.players.push_back(MakePlayer({ 0, 0 }));
+	world.commandQueue.push({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	    .destinationAction = std::nullopt,
+	});
+
+	dev::SimulationTick tick;
+	tick.update(world, 0.016F, dev::SimulationFramePolicy::forMode(dev::SimulationMode::Paused));
+	Expect(world.players[0].position.tile == dev::Point { 0, 0 }, "paused simulation should not move player");
+
+	tick.update(world, 0.016F);
+	Expect(world.players[0].position.tile == dev::Point { 1, 0 }, "gameplay simulation should drain preserved command");
+}
+
 } // namespace
 
 int main()
@@ -448,6 +467,7 @@ int main()
 	TestCombatSystemEmitsDefeatedEvent();
 	TestEnemyAttackResolvesCombatAgainstPlayer();
 	TestSimulationTickDispatchesMovementAndCombat();
+	TestSimulationPolicyPausedDoesNotDrainCommands();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

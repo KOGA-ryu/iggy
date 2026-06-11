@@ -37,6 +37,7 @@ Good first tests:
 - CombatSystem emits Hit and Defeated events with damage and remaining HP
 - Enemy attack windup resolves combat against player and emits CombatEvent
 - SimulationTick drains queued commands, updates movement, and resolves combat
+- SimulationFramePolicy can pause command draining and movement
 
 Run them with:
 

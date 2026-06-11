@@ -277,3 +277,28 @@ those movement updates, but still publish events instead of directly owning UI,
 audio, VFX, or networking.
 
 This is the first point that starts to look like a small game loop.
+
+## 16. Frame Policy
+
+Not every frame is a gameplay frame. Pause, inventory, replay, and prediction
+all need different answers to the same question:
+
+```text
+should this frame accept commands?
+should players advance?
+should enemies advance?
+```
+
+`SimulationFramePolicy` keeps those answers at the tick boundary. That prevents
+pause, inventory, and replay rules from leaking into pathfinding, combat, enemy
+AI, or raw input mapping.
+
+The current modes are:
+
+```text
+Gameplay          commands, players, enemies
+Replay            commands, players, enemies
+NetworkPrediction commands, players
+Paused            nothing advances
+Inventory         nothing advances
+```

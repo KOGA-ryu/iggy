@@ -10,13 +10,22 @@ namespace dev {
 
 void SimulationTick::update(SimulationWorld &world, float deltaSeconds) const
 {
-	dispatchQueuedCommands(world);
+	update(world, deltaSeconds, SimulationFramePolicy::forMode(SimulationMode::Gameplay));
+}
 
-	ActionExecutor actionExecutor { ActionRules {}, world.movementEvents, &world.combat };
-	PlayerMovement playerMovement { world.collision, actionExecutor, world.movementEvents };
-	playerMovement.update(world.players, deltaSeconds);
+void SimulationTick::update(SimulationWorld &world, float deltaSeconds, const SimulationFramePolicy &policy) const
+{
+	if (policy.acceptCommands) {
+		dispatchQueuedCommands(world);
+	}
 
-	if (!world.players.empty()) {
+	if (policy.updatePlayers) {
+		ActionExecutor actionExecutor { ActionRules {}, world.movementEvents, &world.combat };
+		PlayerMovement playerMovement { world.collision, actionExecutor, world.movementEvents };
+		playerMovement.update(world.players, deltaSeconds);
+	}
+
+	if (policy.updateEnemies && !world.players.empty()) {
 		EnemyMovement enemyMovement { world.map, world.collision, world.movementEvents, &world.combat };
 		enemyMovement.update(world.enemies, world.players.front(), deltaSeconds);
 	}
@@ -34,4 +43,3 @@ void SimulationTick::dispatchQueuedCommands(SimulationWorld &world) const
 }
 
 } // namespace dev
-

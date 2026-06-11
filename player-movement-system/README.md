@@ -187,4 +187,8 @@ CombatEvent
 SimulationTick
   frame-level coordinator that drains commands, updates player movement, updates
   enemy pressure, and lets actions resolve through combat
+
+SimulationFramePolicy
+  mode-level rule set for whether a frame accepts commands, advances players,
+  or advances enemies
 ```
