@@ -26,26 +26,8 @@ MovementCommand InteractionCommandBuilder::build(
 		.type = commandType,
 		.playerId = playerId,
 		.destination = intent.target.tile,
-		.destinationAction = destinationActionFor(intent),
+		.destinationAction = actions_.build(intent),
 	};
 }
 
-DestinationAction InteractionCommandBuilder::destinationActionFor(const InteractionIntent &intent) const
-{
-	switch (intent.type) {
-	case InteractionIntentType::Attack:
-		return { DestinationActionType::Attack, intent.target, 1 };
-	case InteractionIntentType::Pickup:
-		return { DestinationActionType::Pickup, intent.target, 0 };
-	case InteractionIntentType::Talk:
-		return { DestinationActionType::Talk, intent.target, 1 };
-	case InteractionIntentType::Interact:
-		return { DestinationActionType::Interact, intent.target, 1 };
-	case InteractionIntentType::Move:
-		return {};
-	}
-	return {};
-}
-
 } // namespace dev
-

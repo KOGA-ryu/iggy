@@ -21,8 +21,11 @@ Good first tests:
 - NPC target creates `MoveThenAct(Talk)`
 - object target creates `MoveThenAct(Interact)`
 - stand-ground plus attack target creates `StandAndAct(Attack)`
+- DestinationActionBuilder maps interaction intents into action payloads and ranges
 - destination action survives until path is consumed
 - PlayerPathPlanner starts pathing and emits path events
+- MovementCommandValidator rejects action commands without action payloads
+- CommandDispatcher emits rejected events for invalid action commands
 - action executor rejects invalid targets
 - action executor waits when target is out of range
 - action executor applies attack animation commitment
@@ -56,6 +59,7 @@ Good first tests:
 - SimulationEffectPipeline routes frame events and applies simulation-facing effects
 - SimulationFrameEventCapture collects frame events, forwards them, and restores sinks
 - SimulationFrameFinalizer applies post-tick targets, pickups, and effects
+- SimulationTargetFinalizer synchronizes moved and defeated target state
 - SimulationFrameRunner collects events, routes effects, applies hit-stop, and preserves forwarding
 - TargetRegistry resolves, removes, and falls back to empty tile targets
 - TargetSynchronizer publishes current enemy targets without deleting objects
@@ -156,10 +160,13 @@ Good first tests:
 - GameLoop drains runtime movement command sources into the active world queue
 - GameLoop preserves movement commands when no active world can receive them
 - RuntimeInputRouter maps gameplay mouse clicks into movement commands
+- RuntimeMovementInputRouter maps gameplay pointer input into movement commands
 - RuntimeInputRouter blocks movement when focus or text entry owns input
 - RuntimeInputRouter maps lifecycle hotkeys into session commands
+- RuntimeSessionInputRouter toggles pause and inventory lifecycle modes
 - RuntimeInputRouter maps stop hotkeys into movement commands
 - RuntimeInputRouter maps target-aware enemy clicks into MoveThenAct attacks
+- RuntimeTargetInputRouter maps target-aware pointer input into interaction movement commands
 - RuntimeInputRouter maps stand-ground target clicks into StandAndAct attacks
 - QueuedRawInputSource drains raw input events exactly once
 - RuntimeRawInputDrainer drains raw input sources and counts handled routed events

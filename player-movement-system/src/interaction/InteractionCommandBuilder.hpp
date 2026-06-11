@@ -1,6 +1,7 @@
 #pragma once
 
 #include "commands/MovementCommand.hpp"
+#include "interaction/DestinationActionBuilder.hpp"
 #include "interaction/InteractionIntent.hpp"
 #include "player/PlayerActionGate.hpp"
 
@@ -15,8 +16,7 @@ public:
 	    const PlayerActionGate &gate) const;
 
 private:
-	DestinationAction destinationActionFor(const InteractionIntent &intent) const;
+	DestinationActionBuilder actions_;
 };
 
 } // namespace dev
-

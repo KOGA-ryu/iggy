@@ -68,6 +68,9 @@ Stop   -> PlayerController::stop
 `PlayerController` owns command semantics such as stand-ground and stop.
 `PlayerPathPlanner` owns the narrower path setup: finding a route, storing
 pathing state, and publishing path-started or immediate-action-ready events.
+Before any route runs, `MovementCommandValidator` rejects incomplete action
+commands such as `MoveThenAct` without a destination action. The
+`MovementCommandEventEmitter` publishes the accepted or rejected command fact.
 
 ## 6. Simulation
 
@@ -130,6 +133,10 @@ semantic command path.
 
 Movement does not directly perform attacks, pickups, dialogue, or object use.
 It only delivers the player into `Acting`.
+
+`DestinationActionBuilder` is the narrow translation from an interaction intent
+to the action payload movement will carry: attack, pickup, talk, interact, and
+the range each one requires.
 
 ```text
 PlayerMovement consumes path
@@ -412,6 +419,7 @@ SimulationFrameRunner
   -> SimulationFrameEventCapture
   -> SimulationFrameEvents
   -> SimulationFrameFinalizer
+  -> SimulationTargetFinalizer
   -> TargetSynchronizer
   -> InventoryService
   -> SimulationEffectPipeline
@@ -1266,6 +1274,9 @@ The app edge now has a small adapter from raw input to semantic command sources:
 ```text
 RawInputEvent
   -> RuntimeInputRouter
+  -> RuntimeSessionInputRouter
+  -> RuntimeMovementInputRouter
+  -> RuntimeTargetInputRouter
   -> SessionCommandSource or MovementCommandSource
   -> GameLoop
   -> dispatcher / command queue
@@ -1325,6 +1336,9 @@ RawInputSource
   -> RawInputEvent[]
   -> RuntimeRawInputDrainer
   -> RuntimeInputRouter
+  -> RuntimeSessionInputRouter
+  -> RuntimeMovementInputRouter
+  -> RuntimeTargetInputRouter
   -> routed SessionCommandSource / MovementCommandSource
   -> GameLoop drains command sources
   -> GameSession / SimulationWorld

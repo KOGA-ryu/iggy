@@ -4,8 +4,8 @@
 #include "simulation/SimulationClock.hpp"
 #include "simulation/SimulationEffectPipeline.hpp"
 #include "simulation/SimulationFrameEvents.hpp"
+#include "simulation/SimulationTargetFinalizer.hpp"
 #include "simulation/SimulationWorld.hpp"
-#include "targeting/TargetSynchronizer.hpp"
 
 namespace dev {
 
@@ -16,7 +16,7 @@ public:
 	void finalize(SimulationWorld &world, SimulationFrameEvents &frameEvents) const;
 
 private:
-	TargetSynchronizer targets_;
+	SimulationTargetFinalizer targets_;
 	InventoryService inventory_;
 	SimulationEffectPipeline effects_;
 };

@@ -14,20 +14,24 @@
 #include "app/RuntimeFrameRunner.hpp"
 #include "app/RuntimeInputContextBuilder.hpp"
 #include "app/RuntimeInputRouter.hpp"
+#include "app/RuntimeMovementInputRouter.hpp"
 #include "app/RuntimeFrameTrace.hpp"
 #include "app/RuntimeFrameTraceFileStore.hpp"
 #include "app/RuntimeOutputFinalizer.hpp"
 #include "app/RuntimeRawInputDrainer.hpp"
 #include "app/RuntimeRunFinalizer.hpp"
 #include "app/RuntimeRunRecorder.hpp"
+#include "app/RuntimeSessionInputRouter.hpp"
 #include "app/RuntimeSetupRunner.hpp"
 #include "app/RuntimeSourceDrainer.hpp"
 #include "app/RuntimeSourceDrainerSettingsBuilder.hpp"
+#include "app/RuntimeTargetInputRouter.hpp"
 #include "app/RuntimeTraceService.hpp"
 #include "combat/CombatEventRecorder.hpp"
 #include "combat/CombatResolver.hpp"
 #include "combat/CombatSystem.hpp"
 #include "commands/CommandDispatcher.hpp"
+#include "commands/MovementCommandValidator.hpp"
 #include "effects/EffectApplier.hpp"
 #include "effects/EffectRecorder.hpp"
 #include "effects/EffectRouter.hpp"
@@ -36,6 +40,7 @@
 #include "enemies/EnemyPursuitStepper.hpp"
 #include "events/EventRecorder.hpp"
 #include "focus/InputFocus.hpp"
+#include "interaction/DestinationActionBuilder.hpp"
 #include "interaction/InteractionCommandBuilder.hpp"
 #include "interaction/InteractionIntentBuilder.hpp"
 #include "inventory/InventoryCommandCodec.hpp"
@@ -85,6 +90,7 @@
 #include "simulation/SimulationFrameFinalizer.hpp"
 #include "simulation/SimulationFrameRunner.hpp"
 #include "simulation/SimulationPlayerUpdater.hpp"
+#include "simulation/SimulationTargetFinalizer.hpp"
 #include "simulation/SimulationTick.hpp"
 #include "simulation/SimulationTimeStepBuilder.hpp"
 #include "simulation/WorldEntityService.hpp"
@@ -189,6 +195,22 @@ void TestStandGroundCreatesStandAndAct()
 	Expect(command.destinationAction->type == dev::DestinationActionType::Attack, "stand-ground destination action should be attack");
 }
 
+void TestDestinationActionBuilderMapsInteractionRanges()
+{
+	dev::Target item { .type = dev::TargetType::Item, .id = 2, .tile = { 1, 0 } };
+	dev::Target npc { .type = dev::TargetType::Npc, .id = 3, .tile = { 2, 0 } };
+	dev::DestinationActionBuilder builder;
+
+	dev::DestinationAction pickup = builder.build({ dev::InteractionIntentType::Pickup, item });
+	dev::DestinationAction talk = builder.build({ dev::InteractionIntentType::Talk, npc });
+	dev::DestinationAction move = builder.build({ dev::InteractionIntentType::Move, dev::Target { .type = dev::TargetType::EmptyTile, .tile = { 3, 0 } } });
+
+	Expect(pickup.type == dev::DestinationActionType::Pickup, "destination action builder should map pickup intent");
+	Expect(pickup.rangeTiles == 0, "destination action builder should allow pickups on the destination tile");
+	Expect(talk.type == dev::DestinationActionType::Talk && talk.rangeTiles == 1, "destination action builder should map talk range");
+	Expect(move.type == dev::DestinationActionType::None, "destination action builder should leave pure movement without action");
+}
+
 void TestMoveThenActExecutesAfterPath()
 {
 	dev::TileMap map;
@@ -229,6 +251,51 @@ void TestPlayerPathPlannerStartsPathAndEvents()
 	Expect(player.moveState == dev::PlayerMoveState::Pathing, "player path planner should put walkable destination into pathing state");
 	Expect(!player.path.empty(), "player path planner should store planned walk path");
 	Expect(events.events().size() == 1 && events.events()[0].type == dev::MovementEventType::PathStarted, "player path planner should emit path started event");
+}
+
+void TestMovementCommandValidatorRequiresActionPayloads()
+{
+	dev::MovementCommandValidator validator;
+	dev::MovementCommand walk {
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	    .destinationAction = std::nullopt,
+	};
+	dev::MovementCommand moveThenAct = walk;
+	moveThenAct.type = dev::MovementCommandType::MoveThenAct;
+	dev::MovementCommand standAndAct = walk;
+	standAndAct.type = dev::MovementCommandType::StandAndAct;
+	standAndAct.destinationAction = dev::DestinationAction {
+		dev::DestinationActionType::Attack,
+		dev::Target { .type = dev::TargetType::Enemy, .id = 16, .tile = { 1, 0 } },
+		1,
+	};
+
+	Expect(validator.accepts(walk), "movement command validator should accept walk commands without action payloads");
+	Expect(!validator.accepts(moveThenAct), "movement command validator should reject MoveThenAct without action payload");
+	Expect(validator.accepts(standAndAct), "movement command validator should accept StandAndAct with action payload");
+}
+
+void TestCommandDispatcherRejectsInvalidActionCommand()
+{
+	dev::EventRecorder events;
+	dev::TileMap map;
+	dev::Collision collision;
+	dev::PathFinder pathFinder;
+	std::vector<dev::Player> players { MakePlayer({ 0, 0 }) };
+	dev::PlayerController controller { players, map, collision, pathFinder, &events };
+	dev::CommandDispatcher dispatcher { controller, &events };
+
+	dispatcher.dispatch({
+	    .type = dev::MovementCommandType::MoveThenAct,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	    .destinationAction = std::nullopt,
+	});
+
+	Expect(players[0].moveState == dev::PlayerMoveState::Idle, "command dispatcher should not route invalid action commands");
+	Expect(events.events().size() == 1 && events.events()[0].type == dev::MovementEventType::CommandRejected, "command dispatcher should emit rejected event for invalid action command");
 }
 
 void TestDiagonalCornerPolicyBlocksCornerCutting()
@@ -1002,6 +1069,33 @@ void TestSimulationFrameFinalizerAppliesConsequences()
 	Expect(world.targets.resolveAtTile({ 2, 0 }).type == dev::TargetType::Enemy, "simulation frame finalizer should publish current enemy targets");
 	Expect(!frameEvents.effectRequests().empty(), "simulation frame finalizer should route events into effect requests");
 	Expect(clock.hitStopRemainingSeconds() > 0.0F, "simulation frame finalizer should apply hit-stop effect requests");
+}
+
+void TestSimulationTargetFinalizerSynchronizesTargets()
+{
+	dev::SimulationWorld world;
+	world.enemies.push_back(MakeEnemy({ 2, 0 }));
+	world.enemies[0].id = 51;
+	world.targets.add({ .type = dev::TargetType::Enemy, .id = 50, .tile = { 0, 0 } });
+	world.targets.add({ .type = dev::TargetType::Object, .id = 60, .tile = { 4, 0 } });
+	world.combat.registry().add({
+	    .target = { .type = dev::TargetType::Enemy, .id = 51, .tile = { 2, 0 } },
+	    .stats = { .hitPoints = 5, .attackPower = 1, .defense = 0 },
+	});
+	dev::SimulationFrameEvents frameEvents;
+	frameEvents.emit(dev::CombatEvent {
+	    .type = dev::CombatEventType::Defeated,
+	    .target = dev::Target { .type = dev::TargetType::Enemy, .id = 51, .tile = { 2, 0 } },
+	    .damage = 5,
+	    .remainingHitPoints = 0,
+	    .result = dev::CombatResultType::Defeated,
+	});
+
+	dev::SimulationTargetFinalizer {}.finalize(world, frameEvents);
+
+	Expect(world.targets.resolveAtTile({ 0, 0 }).type == dev::TargetType::EmptyTile, "simulation target finalizer should remove stale enemy targets");
+	Expect(world.targets.resolveAtTile({ 2, 0 }).type == dev::TargetType::EmptyTile, "simulation target finalizer should remove defeated enemy target");
+	Expect(world.targets.resolveAtTile({ 4, 0 }).type == dev::TargetType::Object, "simulation target finalizer should preserve unrelated targets");
 }
 
 void TestSimulationFrameRunnerProcessesConsequences()
@@ -4521,6 +4615,31 @@ void TestRuntimeInputRouterMapsMouseClickToMovementCommand()
 	Expect(sessionCommands.empty(), "runtime input router should leave session queue empty for movement input");
 }
 
+void TestRuntimeMovementInputRouterMapsMouseClickToMovementCommand()
+{
+	dev::SimulationWorld world;
+	world.players.push_back(MakePlayer({ 0, 0 }));
+
+	dev::QueuedMovementCommandSource movementCommands;
+	dev::RuntimeMovementInputRouter router { movementCommands };
+
+	dev::RuntimeInputRouteResult result = router.route(
+	    dev::RawInputEvent {
+	        .type = dev::RawInputType::MouseClick,
+	        .screenPosition = { 96, 64 },
+	        .pressed = true,
+	    },
+	    dev::RuntimeInputContext {
+	        .world = &world,
+	        .sessionMode = dev::GameSessionMode::Gameplay,
+	    });
+
+	Expect(result.handled && result.queuedMovementCommand, "runtime movement input router should handle gameplay mouse click");
+	std::vector<dev::MovementCommand> commands = movementCommands.drain();
+	Expect(commands.size() == 1 && commands[0].type == dev::MovementCommandType::WalkTo, "runtime movement input router should map click to WalkTo");
+	Expect(commands.size() == 1 && commands[0].destination == dev::Point { 3, 2 }, "runtime movement input router should map click through tile map");
+}
+
 void TestRuntimeInputRouterBlocksMovementWhenFocusDoesNotOwnGameplay()
 {
 	dev::SimulationWorld world;
@@ -4600,6 +4719,40 @@ void TestRuntimeInputRouterMapsHotkeysToSessionCommands()
 	Expect(commands.size() == 2 && commands[1].mode == std::optional<dev::GameSessionMode> { dev::GameSessionMode::Inventory }, "inventory hotkey should request inventory mode");
 }
 
+void TestRuntimeSessionInputRouterTogglesLifecycleModes()
+{
+	dev::QueuedSessionCommandSource sessionCommands;
+	dev::RuntimeSessionInputRouter router {
+		sessionCommands,
+		dev::RuntimeInputBindings { .pauseKey = 'P', .inventoryKey = 'B', .stopKey = 'S' },
+	};
+
+	dev::RuntimeInputRouteResult pauseResult = router.route(
+	    dev::RawInputEvent {
+	        .type = dev::RawInputType::KeyPress,
+	        .code = 'P',
+	        .pressed = true,
+	    },
+	    dev::RuntimeInputContext {
+	        .sessionMode = dev::GameSessionMode::Paused,
+	    });
+	dev::RuntimeInputRouteResult inventoryResult = router.route(
+	    dev::RawInputEvent {
+	        .type = dev::RawInputType::KeyPress,
+	        .code = 'B',
+	        .pressed = true,
+	    },
+	    dev::RuntimeInputContext {
+	        .sessionMode = dev::GameSessionMode::Inventory,
+	    });
+
+	Expect(pauseResult.handled && pauseResult.queuedSessionCommand, "runtime session input router should handle pause key");
+	Expect(inventoryResult.handled && inventoryResult.queuedSessionCommand, "runtime session input router should handle inventory key");
+	std::vector<dev::SessionCommand> commands = sessionCommands.drain();
+	Expect(commands.size() == 2 && commands[0].mode == std::optional<dev::GameSessionMode> { dev::GameSessionMode::Gameplay }, "pause key should unpause when already paused");
+	Expect(commands.size() == 2 && commands[1].mode == std::optional<dev::GameSessionMode> { dev::GameSessionMode::Gameplay }, "inventory key should close inventory when already in inventory mode");
+}
+
 void TestRuntimeInputRouterMapsStopHotkeyToMovementCommand()
 {
 	dev::SimulationWorld world;
@@ -4667,6 +4820,45 @@ void TestRuntimeInputRouterMapsTargetClickToMoveThenAct()
 	Expect(commands.size() == 1 && commands[0].destinationAction->type == dev::DestinationActionType::Attack, "enemy click should carry attack action");
 	Expect(commands.size() == 1 && commands[0].destinationAction->target.id == 42, "enemy click should preserve target id");
 	Expect(sessionCommands.empty(), "target-aware click should not queue session commands");
+}
+
+void TestRuntimeTargetInputRouterMapsTargetClickToMoveThenAct()
+{
+	dev::SimulationWorld world;
+	world.players.push_back(MakePlayer({ 0, 0 }));
+	FixedTargetResolver targets {
+		dev::Target {
+		    .type = dev::TargetType::Enemy,
+		    .id = 47,
+		    .tile = { 0, 0 },
+		}
+	};
+	dev::FocusState focusState;
+	dev::InputFocus focus { focusState };
+	dev::PlayerActionContext context;
+	dev::PlayerActionGate gate { focus, context };
+	dev::QueuedMovementCommandSource movementCommands;
+	dev::RuntimeTargetInputRouter router { movementCommands };
+
+	dev::RuntimeInputRouteResult result = router.route(
+	    dev::RawInputEvent {
+	        .type = dev::RawInputType::MouseClick,
+	        .screenPosition = { 64, 0 },
+	        .pressed = true,
+	    },
+	    dev::RuntimeInputContext {
+	        .world = &world,
+	        .sessionMode = dev::GameSessionMode::Gameplay,
+	        .targetResolver = &targets,
+	    },
+	    world.players[0],
+	    gate);
+
+	Expect(result.handled && result.queuedMovementCommand, "runtime target input router should route target-aware click");
+	std::vector<dev::MovementCommand> commands = movementCommands.drain();
+	Expect(commands.size() == 1 && commands[0].type == dev::MovementCommandType::MoveThenAct, "runtime target input router should map enemy click to MoveThenAct");
+	Expect(commands.size() == 1 && commands[0].destinationAction.has_value(), "runtime target input router should attach destination action");
+	Expect(commands.size() == 1 && commands[0].destinationAction->target.id == 47, "runtime target input router should preserve target identity");
 }
 
 void TestRuntimeInputRouterMapsStandGroundTargetClickToStandAndAct()
@@ -5096,8 +5288,11 @@ int main()
 {
 	TestInventoryFocusBlocksMovement();
 	TestStandGroundCreatesStandAndAct();
+	TestDestinationActionBuilderMapsInteractionRanges();
 	TestMoveThenActExecutesAfterPath();
 	TestPlayerPathPlannerStartsPathAndEvents();
+	TestMovementCommandValidatorRequiresActionPayloads();
+	TestCommandDispatcherRejectsInvalidActionCommand();
 	TestDiagonalCornerPolicyBlocksCornerCutting();
 	TestActionExecutorWaitsOutOfRange();
 	TestMoveThenActEventSequence();
@@ -5131,6 +5326,7 @@ int main()
 	TestSimulationEffectPipelineRoutesAndAppliesEffects();
 	TestSimulationFrameEventCaptureCollectsForwardsAndRestoresSinks();
 	TestSimulationFrameFinalizerAppliesConsequences();
+	TestSimulationTargetFinalizerSynchronizesTargets();
 	TestSimulationFrameRunnerProcessesConsequences();
 	TestTargetRegistryResolvesAndRemovesTargets();
 	TestTargetSynchronizerSyncsEnemyTargetsWithoutRemovingObjects();
@@ -5251,10 +5447,13 @@ int main()
 	TestGameLoopDoesNotDrainInventorySourcesWithoutActiveWorld();
 	TestGameLoopDoesNotDrainMovementSourcesWithoutActiveWorld();
 	TestRuntimeInputRouterMapsMouseClickToMovementCommand();
+	TestRuntimeMovementInputRouterMapsMouseClickToMovementCommand();
 	TestRuntimeInputRouterBlocksMovementWhenFocusDoesNotOwnGameplay();
 	TestRuntimeInputRouterMapsHotkeysToSessionCommands();
+	TestRuntimeSessionInputRouterTogglesLifecycleModes();
 	TestRuntimeInputRouterMapsStopHotkeyToMovementCommand();
 	TestRuntimeInputRouterMapsTargetClickToMoveThenAct();
+	TestRuntimeTargetInputRouterMapsTargetClickToMoveThenAct();
 	TestRuntimeInputRouterMapsStandGroundTargetClickToStandAndAct();
 	TestQueuedRawInputSourceDrainsEventsOnce();
 	TestRuntimeRawInputDrainerRoutesHandledEventsAndSkipsNullSources();

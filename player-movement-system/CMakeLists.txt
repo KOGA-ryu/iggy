@@ -17,13 +17,16 @@ add_library(player_movement_system
   src/app/RuntimeFrameTraceFileStore.cpp
   src/app/RuntimeInputContextBuilder.cpp
   src/app/RuntimeInputRouter.cpp
+  src/app/RuntimeMovementInputRouter.cpp
   src/app/RuntimeOutputFinalizer.cpp
   src/app/RuntimeRawInputDrainer.cpp
   src/app/RuntimeRunFinalizer.cpp
   src/app/RuntimeRunRecorder.cpp
   src/app/RuntimeSetupRunner.cpp
+  src/app/RuntimeSessionInputRouter.cpp
   src/app/RuntimeSourceDrainer.cpp
   src/app/RuntimeSourceDrainerSettingsBuilder.cpp
+  src/app/RuntimeTargetInputRouter.cpp
   src/app/RuntimeTraceService.cpp
   src/combat/CombatEventRecorder.cpp
   src/combat/CombatRegistry.cpp
@@ -58,6 +61,7 @@ add_library(player_movement_system
   src/inventory/EquipmentService.cpp
   src/inventory/EquipmentStatsService.cpp
   src/inventory/InventoryService.cpp
+  src/interaction/DestinationActionBuilder.cpp
   src/interaction/InteractionCommandBuilder.cpp
   src/interaction/InteractionIntentBuilder.cpp
   src/network/MovementCodec.cpp
@@ -97,6 +101,7 @@ add_library(player_movement_system
   src/simulation/SimulationFramePolicy.cpp
   src/simulation/SimulationFrameRunner.cpp
   src/simulation/SimulationPlayerUpdater.cpp
+  src/simulation/SimulationTargetFinalizer.cpp
   src/simulation/SimulationTimeStep.cpp
   src/simulation/SimulationTimeStepBuilder.cpp
   src/simulation/SimulationTick.cpp

@@ -9,8 +9,7 @@ SimulationFrameFinalizer::SimulationFrameFinalizer(SimulationClock *clock)
 
 void SimulationFrameFinalizer::finalize(SimulationWorld &world, SimulationFrameEvents &frameEvents) const
 {
-	targets_.syncEnemyTargets(world.enemies, world.combat.registry(), world.targets);
-	targets_.removeDefeatedTargets(frameEvents.combatEvents(), world.targets);
+	targets_.finalize(world, frameEvents);
 	inventory_.applyPickupEvents(world, frameEvents.movementEvents());
 
 	effects_.run(frameEvents);

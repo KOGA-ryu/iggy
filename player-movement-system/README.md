@@ -197,6 +197,10 @@ PlayerAnimationLockGate
 DestinationAction
   action to perform after movement reaches range
 
+DestinationActionBuilder
+  interaction helper that maps attack, pickup, talk, and interact intents into
+  destination action payloads and range requirements
+
 PlayerPathPlanner
   command-side helper that finds paths, stores pathing state, and emits
   path-started or action-ready controller events
@@ -275,6 +279,18 @@ RuntimeInputRouter
   command sources, optionally resolving clicked targets into interaction
   commands, without letting hardware events into simulation code
 
+RuntimeSessionInputRouter
+  lifecycle hotkey router for pause and inventory mode toggles before movement
+  input is considered
+
+RuntimeMovementInputRouter
+  gameplay input router that maps focused pointer, target, and stop-key input
+  into semantic movement commands
+
+RuntimeTargetInputRouter
+  target-aware pointer router that resolves clicked tiles into interaction
+  movement commands
+
 RuntimeRawInputDrainer
   app-edge helper that drains raw input sources, skips missing sources, routes
   each event through RuntimeInputRouter, and reports how many events were handled
@@ -285,6 +301,14 @@ RawInputSource
 
 MovementCodec
   socket-free command packet encoding/decoding boundary
+
+MovementCommandValidator
+  command dispatch gate that rejects structurally incomplete movement commands
+  before they can reach player control
+
+MovementCommandEventEmitter
+  command event helper that publishes accepted/rejected command facts for tests,
+  replay comparison, traces, and presentation
 
 EnemyMovement
   pressure layer with speed, attack range, windup, recovery, and enemy attack
@@ -346,6 +370,10 @@ SimulationEffectPipeline
 SimulationFrameFinalizer
   post-tick consequence stage that synchronizes clickable targets, applies
   pickup transfers, and runs the simulation effect pipeline
+
+SimulationTargetFinalizer
+  post-tick target stage that publishes current enemy targets and removes
+  defeated enemy targets
 
 SimulationSnapshot
   durable world state for save/load and debugging: players, inventories,
