@@ -427,18 +427,30 @@ SimulationCommandDrainer
   simulation-layer command intake stage that drains queued semantic movement
   commands through CommandDispatcher and PlayerController
 
+SimulationActorUpdater
+  simulation-layer actor stage that applies frame policy and runs players before
+  enemies so enemy movement sees freshly committed player positions
+
 SimulationPlayerUpdater
-  simulation-layer player actor stage that advances path movement and executes
-  ready destination actions through ActionExecutor
+  simulation-layer player actor stage that advances player movement through
+  SimulationPlayerMovementRunner
+
+SimulationPlayerMovementRunner
+  simulation-layer wiring boundary that builds PlayerMovement and ActionExecutor
+  from world services and runs player movement
 
 SimulationEnemyTargetSelector
   simulation-layer target choice that picks the current player target for enemy
   movement or reports no target when the world has no players
 
+SimulationEnemyMovementRunner
+  simulation-layer wiring boundary that builds EnemyMovement from world services
+  and runs enemy movement against the selected target
+
 SimulationEnemyUpdater
   simulation-layer enemy actor stage that advances pursuit, windup, recovery,
   and enemy attack resolution against the current player target selected by
-  SimulationEnemyTargetSelector
+  SimulationEnemyTargetSelector and executed through SimulationEnemyMovementRunner
 
 SimulationFramePolicy
   mode-level rule set for whether a frame accepts commands, advances players,

@@ -23,11 +23,7 @@ void SimulationTick::update(SimulationWorld &world, const SimulationTimeStep &ti
 		commands_.drain(world);
 	}
 
-	if (policy.updatePlayers)
-		players_.update(world, timeStep.playerDeltaSeconds);
-
-	if (policy.updateEnemies)
-		enemies_.update(world, timeStep.enemyDeltaSeconds);
+	actors_.update(world, timeStep, policy);
 }
 
 } // namespace dev

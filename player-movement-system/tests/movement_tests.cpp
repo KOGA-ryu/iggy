@@ -135,8 +135,10 @@
 #include "session/SessionScriptRunner.hpp"
 #include "session/SessionWorldSlotLoader.hpp"
 #include "session/SessionWorldSlotSaver.hpp"
+#include "simulation/SimulationActorUpdater.hpp"
 #include "simulation/SimulationClock.hpp"
 #include "simulation/SimulationCommandDrainer.hpp"
+#include "simulation/SimulationEnemyMovementRunner.hpp"
 #include "simulation/SimulationEnemyTargetSelector.hpp"
 #include "simulation/SimulationEnemyUpdater.hpp"
 #include "simulation/SimulationEffectFinalizer.hpp"
@@ -146,6 +148,7 @@
 #include "simulation/SimulationFrameRunner.hpp"
 #include "simulation/SimulationFrameTickRunner.hpp"
 #include "simulation/SimulationInventoryFinalizer.hpp"
+#include "simulation/SimulationPlayerMovementRunner.hpp"
 #include "simulation/SimulationPlayerUpdater.hpp"
 #include "simulation/SimulationTargetFinalizer.hpp"
 #include "simulation/SimulationTick.hpp"
@@ -1144,6 +1147,41 @@ void TestSimulationPlayerUpdaterAdvancesPlayerMovement()
 	Expect(!movementEvents.events().empty() && movementEvents.events()[0].type == dev::MovementEventType::StepCommitted, "simulation player updater should emit movement events");
 }
 
+void TestSimulationPlayerMovementRunnerWiresWorldServices()
+{
+	dev::SimulationWorld world;
+	dev::EventRecorder movementEvents;
+	dev::CombatEventRecorder combatEvents;
+	world.movementEvents = &movementEvents;
+	world.setCombatEventSink(&combatEvents);
+	world.players.push_back(MakePlayer({ 0, 0 }));
+	world.players[0].path.pushStep({ 1, 0 });
+	world.players[0].moveState = dev::PlayerMoveState::Pathing;
+
+	dev::SimulationPlayerMovementRunner {}.run(world, 0.016F);
+
+	Expect(world.players[0].position.tile == dev::Point { 1, 0 }, "simulation player movement runner should advance players using world movement services");
+	Expect(!movementEvents.events().empty(), "simulation player movement runner should forward player movement events");
+	Expect(!movementEvents.events().empty() && movementEvents.events()[0].playerId == 0, "simulation player movement runner should use world movement event sink");
+
+	movementEvents.clear();
+	combatEvents.clear();
+	dev::Target target { .type = dev::TargetType::Enemy, .id = 83, .tile = { 2, 0 } };
+	world.combat.registry().add({
+	    .target = target,
+	    .stats = { .hitPoints = 10, .attackPower = 3, .defense = 1 },
+	});
+	world.players[0].combatStats.attackPower = 6;
+	world.players[0].destinationAction = { dev::DestinationActionType::Attack, target, 1 };
+	world.players[0].moveState = dev::PlayerMoveState::Acting;
+
+	dev::SimulationPlayerMovementRunner {}.run(world, 0.016F);
+
+	Expect(!movementEvents.events().empty() && movementEvents.events().back().type == dev::MovementEventType::ActionExecuted, "simulation player movement runner should forward action events");
+	Expect(combatEvents.events().size() == 1, "simulation player movement runner should wire player actions to world combat");
+	Expect(combatEvents.events().size() == 1 && combatEvents.events()[0].target.id == 83, "simulation player movement runner should resolve combat against world targets");
+}
+
 void TestSimulationEnemyTargetSelectorChoosesCurrentPlayer()
 {
 	dev::SimulationWorld world;
@@ -1157,6 +1195,26 @@ void TestSimulationEnemyTargetSelectorChoosesCurrentPlayer()
 	dev::Player *target = selector.selectTarget(world);
 	Expect(target == &world.players.front(), "simulation enemy target selector should choose the current player target");
 	Expect(target != nullptr && target->position.tile == dev::Point { 4, 0 }, "simulation enemy target selector should expose the chosen player's position");
+}
+
+void TestSimulationEnemyMovementRunnerWiresWorldServices()
+{
+	dev::SimulationWorld world;
+	dev::EventRecorder movementEvents;
+	dev::CombatEventRecorder combatEvents;
+	world.movementEvents = &movementEvents;
+	world.setCombatEventSink(&combatEvents);
+	world.players.push_back(MakePlayer({ 4, 0 }));
+	world.enemies.push_back(MakeEnemy({ 0, 0 }));
+	world.enemies[0].id = 82;
+	world.enemies[0].tuning.maxStepsPerTick = 1;
+	world.enemies[0].tuning.attackRangeTiles = 0;
+
+	dev::SimulationEnemyMovementRunner {}.run(world, world.players[0], 0.016F);
+
+	Expect(world.enemies[0].position.tile == dev::Point { 1, 0 }, "simulation enemy movement runner should advance enemies using world movement services");
+	Expect(!movementEvents.events().empty(), "simulation enemy movement runner should forward enemy movement events");
+	Expect(!movementEvents.events().empty() && movementEvents.events()[0].enemyId == 82, "simulation enemy movement runner should use world movement event sink");
 }
 
 void TestSimulationEnemyUpdaterAdvancesEnemyMovement()
@@ -1181,6 +1239,44 @@ void TestSimulationEnemyUpdaterSkipsWithoutTarget()
 
 	Expect(world.enemies[0].position.tile == dev::Point { 0, 0 }, "simulation enemy updater should not move enemies without a target player");
 	Expect(world.enemies[0].moveState == dev::EnemyMoveState::Idle, "simulation enemy updater should leave enemies idle without a target player");
+}
+
+void TestSimulationActorUpdaterRunsPlayersBeforeEnemies()
+{
+	dev::SimulationWorld world;
+	world.players.push_back(MakePlayer({ 3, 0 }));
+	world.players[0].path.pushStep({ 4, 0 });
+	world.players[0].moveState = dev::PlayerMoveState::Pathing;
+	world.enemies.push_back(MakeEnemy({ 0, 0 }));
+	world.enemies[0].tuning.maxStepsPerTick = 4;
+	world.enemies[0].tuning.attackRangeTiles = 0;
+
+	dev::SimulationActorUpdater {}.update(
+	    world,
+	    dev::SimulationTimeStep::fromRawDelta(0.016F),
+	    dev::SimulationFramePolicy::forMode(dev::SimulationMode::Gameplay));
+
+	Expect(world.players[0].position.tile == dev::Point { 4, 0 }, "simulation actor updater should update players first");
+	Expect(world.enemies[0].position.tile == dev::Point { 4, 0 }, "simulation actor updater should let enemies pursue the freshly committed player position");
+}
+
+void TestSimulationActorUpdaterCanSkipEnemies()
+{
+	dev::SimulationWorld world;
+	world.players.push_back(MakePlayer({ 3, 0 }));
+	world.players[0].path.pushStep({ 4, 0 });
+	world.players[0].moveState = dev::PlayerMoveState::Pathing;
+	world.enemies.push_back(MakeEnemy({ 0, 0 }));
+	world.enemies[0].tuning.maxStepsPerTick = 4;
+	world.enemies[0].tuning.attackRangeTiles = 0;
+
+	dev::SimulationActorUpdater {}.update(
+	    world,
+	    dev::SimulationTimeStep::fromRawDelta(0.016F),
+	    dev::SimulationFramePolicy::forMode(dev::SimulationMode::NetworkPrediction));
+
+	Expect(world.players[0].position.tile == dev::Point { 4, 0 }, "simulation actor updater should still update players during prediction");
+	Expect(world.enemies[0].position.tile == dev::Point { 0, 0 }, "simulation actor updater should skip enemies when policy disables enemies");
 }
 
 void TestSimulationTickDispatchesMovementAndCombat()
@@ -7423,9 +7519,13 @@ int main()
 	TestEnemyAttackResolvesCombatAgainstPlayer();
 	TestSimulationCommandDrainerDispatchesQueuedMovementCommands();
 	TestSimulationPlayerUpdaterAdvancesPlayerMovement();
+	TestSimulationPlayerMovementRunnerWiresWorldServices();
 	TestSimulationEnemyTargetSelectorChoosesCurrentPlayer();
+	TestSimulationEnemyMovementRunnerWiresWorldServices();
 	TestSimulationEnemyUpdaterAdvancesEnemyMovement();
 	TestSimulationEnemyUpdaterSkipsWithoutTarget();
+	TestSimulationActorUpdaterRunsPlayersBeforeEnemies();
+	TestSimulationActorUpdaterCanSkipEnemies();
 	TestSimulationTickDispatchesMovementAndCombat();
 	TestSimulationPolicyPausedDoesNotDrainCommands();
 	TestSimulationClockHitStopFreezesActorUpdates();

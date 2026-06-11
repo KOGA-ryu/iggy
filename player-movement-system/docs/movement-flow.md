@@ -335,23 +335,28 @@ CommandQueue
   -> SimulationCommandDrainer
   -> CommandDispatcher
   -> PlayerController
+  -> SimulationActorUpdater
   -> SimulationPlayerUpdater
+  -> SimulationPlayerMovementRunner
   -> PlayerMovement
   -> ActionExecutor
   -> SimulationEnemyUpdater
   -> SimulationEnemyTargetSelector
+  -> SimulationEnemyMovementRunner
   -> EnemyMovement
   -> CombatSystem
 ```
 
 The order matters. Commands are drained first so fresh input can affect this
-frame. `SimulationPlayerUpdater` then owns the player-side actor wiring:
+frame. `SimulationActorUpdater` then applies the frame policy and owns the actor
+order: players before enemies. `SimulationPlayerUpdater` delegates the
+player-side actor wiring to `SimulationPlayerMovementRunner`, which builds
 `PlayerMovement` plus the `ActionExecutor` that resolves ready destination
 actions. Player movement updates before enemy movement so enemies respond to the
-latest committed player position. `SimulationEnemyUpdater` owns the enemy-side
-actor wiring and asks `SimulationEnemyTargetSelector` for the current player
-target before calling `EnemyMovement`. That keeps the target choice testable
-instead of hidden inside enemy movement. Actions and combat consequences happen
+latest committed player position. `SimulationEnemyUpdater` owns target choice
+through `SimulationEnemyTargetSelector`, then delegates world-service wiring to
+`SimulationEnemyMovementRunner`. These runners keep dependency wiring testable
+instead of hidden inside actor movement. Actions and combat consequences happen
 inside those actor updates, but still publish events instead of directly owning
 UI, audio, VFX, or networking.
 
@@ -393,6 +398,7 @@ raw frame delta
   -> SimulationTimeStepBuilder
   -> SimulationTimeStep
   -> SimulationTick
+  -> SimulationActorUpdater
   -> player delta / enemy delta / animation delta
 ```
 

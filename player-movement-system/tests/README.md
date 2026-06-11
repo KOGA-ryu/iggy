@@ -59,8 +59,11 @@ Good first tests:
 - Enemy attack windup resolves combat against player and emits CombatEvent
 - SimulationCommandDrainer dispatches queued movement commands into player controller state
 - SimulationPlayerUpdater advances player movement and emits frame-visible movement events
+- SimulationPlayerMovementRunner wires world services into PlayerMovement
 - SimulationEnemyTargetSelector chooses the current player target or no target
+- SimulationEnemyMovementRunner wires world services into EnemyMovement
 - SimulationEnemyUpdater advances enemy movement against the current player target
+- SimulationActorUpdater runs players before enemies and can policy-skip enemy updates
 - SimulationTick drains queued commands, updates movement, and resolves combat
 - SimulationFramePolicy can pause command draining and movement
 - SimulationClock hit-stop freezes actor updates while preserving command intake

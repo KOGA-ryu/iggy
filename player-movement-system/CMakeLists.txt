@@ -142,8 +142,10 @@ add_library(player_movement_system
   src/session/SessionWorldSlotLoader.cpp
   src/session/SessionWorldSlotSaver.cpp
   src/session/GameSession.cpp
+  src/simulation/SimulationActorUpdater.cpp
   src/simulation/SimulationClock.cpp
   src/simulation/SimulationCommandDrainer.cpp
+  src/simulation/SimulationEnemyMovementRunner.cpp
   src/simulation/SimulationEnemyTargetSelector.cpp
   src/simulation/SimulationEnemyUpdater.cpp
   src/simulation/SimulationEffectFinalizer.cpp
@@ -155,6 +157,7 @@ add_library(player_movement_system
   src/simulation/SimulationFrameRunner.cpp
   src/simulation/SimulationFrameTickRunner.cpp
   src/simulation/SimulationInventoryFinalizer.cpp
+  src/simulation/SimulationPlayerMovementRunner.cpp
   src/simulation/SimulationPlayerUpdater.cpp
   src/simulation/SimulationTargetFinalizer.cpp
   src/simulation/SimulationTimeStep.cpp
