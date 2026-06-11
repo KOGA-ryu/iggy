@@ -197,6 +197,7 @@ Good first tests:
 - GameLoop builds RuntimeFrameReport entries for per-frame inspection
 - RuntimeFramePolicyText formats policy lines for traces and manifests
 - RuntimeRunSummaryText formats run summaries for traces and manifests
+- RuntimeSessionText formats session result and event lines for traces
 - RuntimeInventoryScriptText formats inventory script result lines for traces and manifests
 - RuntimeMovementScriptText formats movement script replay lines for traces and manifests
 - RuntimeFrameTrace formats frame reports and mode policy into readable debug lines

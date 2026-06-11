@@ -41,6 +41,7 @@
 #include "app/RuntimeSourceDrainer.hpp"
 #include "app/RuntimeSourceDrainerSettingsBuilder.hpp"
 #include "app/RuntimeSourceStream.hpp"
+#include "app/RuntimeSessionText.hpp"
 #include "app/RuntimeTargetInputRouter.hpp"
 #include "app/RuntimeTraceService.hpp"
 #include "combat/CombatEventRecorder.hpp"
@@ -6028,6 +6029,23 @@ void TestRuntimeFramePolicyTextFormatsArtifactPolicyLines()
 	Expect(noneLine == "policy latest=none", "runtime frame policy text should format missing policy line");
 }
 
+void TestRuntimeSessionTextFormatsResultsAndEvents()
+{
+	dev::RuntimeSessionText formatter;
+	dev::SessionCommandResult result {
+		.type = dev::SessionCommandResultType::Applied,
+		.command = { .type = dev::SessionCommandType::SetMode, .mode = dev::GameSessionMode::Inventory },
+	};
+	dev::SessionEvent event {
+		.type = dev::SessionEventType::ModeChanged,
+		.commandType = dev::SessionCommandType::SetMode,
+		.mode = dev::GameSessionMode::Inventory,
+	};
+
+	Expect(formatter.formatResult("sessionResult[0]", result) == "sessionResult[0] type=Applied command=SetMode", "runtime session text should format command result lines");
+	Expect(formatter.formatEvent("sessionEvent[0]", event) == "sessionEvent[0] type=ModeChanged command=SetMode", "runtime session text should format event lines");
+}
+
 void TestRuntimeInventoryScriptTextFormatsResultsAndAggregates()
 {
 	dev::InventoryScriptRunResult completed {
@@ -8709,6 +8727,7 @@ int main()
 	TestGameLoopBuildsRuntimeFrameReports();
 	TestRuntimeFrameTraceFormatsReadableLines();
 	TestRuntimeFramePolicyTextFormatsArtifactPolicyLines();
+	TestRuntimeSessionTextFormatsResultsAndEvents();
 	TestRuntimeInventoryScriptTextFormatsResultsAndAggregates();
 	TestRuntimeMovementScriptTextFormatsResultsAndAggregates();
 	TestRuntimeRunSummaryTextFormatsTraceAndManifestSummaries();

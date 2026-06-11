@@ -1420,6 +1420,8 @@ booleans for their audience.
 `RuntimeRunSummaryText` does the same for the run-level count summary: the trace
 uses counts only, while the manifest asks for the same line with final mode
 included.
+`RuntimeSessionText` owns the spelling for session command results and lifecycle
+events, keeping startup/save/load/mode names consistent in runtime traces.
 `RuntimeInventoryScriptText` owns the spelling for configured and runtime
 inventory script outcomes: status, result count, applied commands, and rejected
 commands.

@@ -3,59 +3,13 @@
 #include "app/RuntimeFramePolicyText.hpp"
 #include "app/RuntimeInventoryScriptText.hpp"
 #include "app/RuntimeMovementScriptText.hpp"
+#include "app/RuntimeSessionText.hpp"
 
 #include <sstream>
 
 namespace dev {
 
 namespace {
-
-const char *ToString(SessionCommandResultType type)
-{
-	switch (type) {
-	case SessionCommandResultType::Applied:
-		return "Applied";
-	case SessionCommandResultType::Rejected:
-		return "Rejected";
-	}
-	return "Unknown";
-}
-
-const char *ToString(SessionCommandType type)
-{
-	switch (type) {
-	case SessionCommandType::StartNewGame:
-		return "StartNewGame";
-	case SessionCommandType::SaveSlot:
-		return "SaveSlot";
-	case SessionCommandType::LoadSlot:
-		return "LoadSlot";
-	case SessionCommandType::SetMode:
-		return "SetMode";
-	}
-	return "Unknown";
-}
-
-const char *ToString(SessionEventType type)
-{
-	switch (type) {
-	case SessionEventType::GameStarted:
-		return "GameStarted";
-	case SessionEventType::SaveCompleted:
-		return "SaveCompleted";
-	case SessionEventType::SaveFailed:
-		return "SaveFailed";
-	case SessionEventType::LoadCompleted:
-		return "LoadCompleted";
-	case SessionEventType::LoadFailed:
-		return "LoadFailed";
-	case SessionEventType::ModeChanged:
-		return "ModeChanged";
-	case SessionEventType::ModeChangeRejected:
-		return "ModeChangeRejected";
-	}
-	return "Unknown";
-}
 
 const char *ToString(InventoryCommandResultType type)
 {
@@ -276,9 +230,8 @@ std::vector<std::string> RuntimeFrameTrace::format(const RuntimeFrameReport &rep
 	for (std::size_t i = 0; i < report.sessionCommandResults.size(); ++i) {
 		const SessionCommandResult &result = report.sessionCommandResults[i];
 		std::ostringstream line;
-		line << "sessionResult[" << i << "] type=" << ToString(result.type)
-		     << " command=" << ToString(result.command.type);
-		lines.push_back(line.str());
+		line << "sessionResult[" << i << "]";
+		lines.push_back(RuntimeSessionText {}.formatResult(line.str(), result));
 	}
 
 	for (std::size_t i = 0; i < report.inventoryScriptResults.size(); ++i) {
@@ -309,9 +262,8 @@ std::vector<std::string> RuntimeFrameTrace::format(const RuntimeFrameReport &rep
 	for (std::size_t i = 0; i < report.sessionEvents.size(); ++i) {
 		const SessionEvent &event = report.sessionEvents[i];
 		std::ostringstream line;
-		line << "sessionEvent[" << i << "] type=" << ToString(event.type)
-		     << " command=" << ToString(event.commandType);
-		lines.push_back(line.str());
+		line << "sessionEvent[" << i << "]";
+		lines.push_back(RuntimeSessionText {}.formatEvent(line.str(), event));
 	}
 
 	for (std::size_t i = 0; i < report.inventoryEvents.size(); ++i) {
