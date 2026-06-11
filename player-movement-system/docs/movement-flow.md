@@ -1015,15 +1015,18 @@ exit code:
 ```text
 GameLoopResult
   -> RuntimeExitCodePolicy
+  -> RuntimeRunFailurePolicy
   -> RuntimeSetupFailurePolicy
   -> RuntimeOutputFailurePolicy
   -> 0 or 1
 ```
 
 Setup load failures and requested artifact write failures return failure.
+RuntimeRunFailurePolicy composes the setup and output decisions.
 RuntimeSetupFailurePolicy owns the setup rule: startup load failure fails, and
 configured inventory setup must complete. RuntimeOutputFailurePolicy owns the
 artifact-output rule: only attempted outputs that did not save are failures.
+RuntimeExitCodePolicy only maps that run-failure decision to 0 or 1.
 Command-level rejections inside a loadable setup script remain command results,
 so they do not automatically make the process fail.
 

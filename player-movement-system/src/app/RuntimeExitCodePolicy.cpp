@@ -2,11 +2,8 @@
 
 namespace dev {
 
-RuntimeExitCodePolicy::RuntimeExitCodePolicy(
-    RuntimeSetupFailurePolicy setupFailurePolicy,
-    RuntimeOutputFailurePolicy outputFailurePolicy)
-    : setupFailurePolicy_(setupFailurePolicy)
-    , outputFailurePolicy_(outputFailurePolicy)
+RuntimeExitCodePolicy::RuntimeExitCodePolicy(RuntimeRunFailurePolicy runFailurePolicy)
+    : runFailurePolicy_(runFailurePolicy)
 {
 }
 
@@ -17,11 +14,7 @@ int RuntimeExitCodePolicy::exitCodeFor(const GameLoopResult &result) const
 
 bool RuntimeExitCodePolicy::failed(const GameLoopResult &result) const
 {
-	if (setupFailurePolicy_.failed(result.setup))
-		return true;
-	if (outputFailurePolicy_.failed(result.output))
-		return true;
-	return false;
+	return runFailurePolicy_.failed(result);
 }
 
 } // namespace dev

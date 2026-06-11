@@ -183,7 +183,8 @@ Good first tests:
 - RuntimeRunFinalizer captures final session mode and applies output finalization
 - RuntimeSetupFailurePolicy maps setup script failures to setup failures
 - RuntimeOutputFailurePolicy maps attempted unsaved artifacts to output failures
-- RuntimeExitCodePolicy maps setup and output failures to process failures
+- RuntimeRunFailurePolicy composes setup and output failures into run failures
+- RuntimeExitCodePolicy maps run failures to process failures
 - RuntimeOutputSettings defaults to no runtime artifact outputs
 - RuntimeOutputResult defaults to no artifact save attempts
 - RuntimeOutputFinalizer writes artifact output results back onto GameLoopResult

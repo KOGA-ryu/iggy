@@ -639,9 +639,13 @@ RuntimeOutputFailurePolicy
   app-layer policy that treats attempted-but-unsaved runtime artifact outputs
   as output failures while ignoring outputs that were never requested
 
+RuntimeRunFailurePolicy
+  app-layer policy that composes setup and output failure policies into a
+  single GameLoopResult failure decision
+
 RuntimeExitCodePolicy
-  app-layer policy that translates GameLoopResult setup and output failures
-  into process-style success/failure exit codes
+  app-layer policy that maps RuntimeRunFailurePolicy results into process-style
+  success/failure exit codes
 
 RuntimeOutputSettings
   app-layer artifact settings that group optional run trace and debug bundle

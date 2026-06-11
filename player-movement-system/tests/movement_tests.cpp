@@ -28,6 +28,7 @@
 #include "app/RuntimeRawInputDrainer.hpp"
 #include "app/RuntimeRunExecutor.hpp"
 #include "app/RuntimeRunFinalizer.hpp"
+#include "app/RuntimeRunFailurePolicy.hpp"
 #include "app/RuntimeRunRecorder.hpp"
 #include "app/RuntimeSessionInputRouter.hpp"
 #include "app/RuntimeSetupFailurePolicy.hpp"
@@ -5419,6 +5420,34 @@ void TestRuntimeSetupFailurePolicyFailsSetupLoadErrors()
 	Expect(!policy.failed(rejectedInventoryCommand), "runtime setup failure policy should allow completed scripts with rejected commands");
 }
 
+void TestRuntimeRunFailurePolicyComposesSetupAndOutputFailures()
+{
+	dev::GameLoopResult clean;
+
+	dev::GameLoopResult setupFailure;
+	setupFailure.setup.startupScriptRan = true;
+	setupFailure.setup.startupScriptResult.status = dev::SessionScriptRunStatus::LoadFailed;
+
+	dev::GameLoopResult outputFailure;
+	outputFailure.output.debugBundleSaveAttempted = true;
+	outputFailure.output.debugBundleSaved = false;
+
+	dev::GameLoopResult commandRejection;
+	commandRejection.setup.inventoryScriptRan = true;
+	commandRejection.setup.inventoryScriptResult.status = dev::InventoryScriptRunStatus::Completed;
+	commandRejection.setup.inventoryScriptResult.commandResults.push_back({
+	    .type = dev::InventoryCommandResultType::Rejected,
+	    .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 99 },
+	});
+
+	dev::RuntimeRunFailurePolicy policy;
+
+	Expect(!policy.failed(clean), "runtime run failure policy should not fail clean runs");
+	Expect(policy.failed(setupFailure), "runtime run failure policy should fail setup failures");
+	Expect(policy.failed(outputFailure), "runtime run failure policy should fail output failures");
+	Expect(!policy.failed(commandRejection), "runtime run failure policy should allow command-level rejections");
+}
+
 void TestRuntimeExitCodePolicyAllowsCommandRejections()
 {
 	dev::GameLoopResult result;
@@ -7152,6 +7181,7 @@ int main()
 	TestRuntimeExitCodePolicyReportsSuccessForCleanRun();
 	TestRuntimeExitCodePolicyFailsSetupErrors();
 	TestRuntimeSetupFailurePolicyFailsSetupLoadErrors();
+	TestRuntimeRunFailurePolicyComposesSetupAndOutputFailures();
 	TestRuntimeExitCodePolicyAllowsCommandRejections();
 	TestRuntimeExitCodePolicyFailsOutputErrors();
 	TestRuntimeOutputFailurePolicyFailsAttemptedUnsavedOutputs();
