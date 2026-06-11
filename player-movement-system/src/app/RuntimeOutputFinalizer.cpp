@@ -12,10 +12,4 @@ void RuntimeOutputFinalizer::finalize(const RuntimeOutputSettings &settings, Gam
 	result.output = outputService_.apply(settings, result);
 }
 
-bool RuntimeOutputFinalizer::failed(const RuntimeOutputResult &result)
-{
-	return (result.runTraceSaveAttempted && !result.runTraceSaved)
-	    || (result.debugBundleSaveAttempted && !result.debugBundleSaved);
-}
-
 } // namespace dev

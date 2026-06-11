@@ -10,7 +10,6 @@ public:
 	explicit RuntimeOutputFinalizer(RuntimeArtifactOutputService outputService = RuntimeArtifactOutputService {});
 
 	void finalize(const RuntimeOutputSettings &settings, GameLoopResult &result) const;
-	[[nodiscard]] static bool failed(const RuntimeOutputResult &result);
 
 private:
 	RuntimeArtifactOutputService outputService_;

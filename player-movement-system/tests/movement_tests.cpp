@@ -24,6 +24,7 @@
 #include "app/RuntimeFrameTrace.hpp"
 #include "app/RuntimeFrameTraceFileStore.hpp"
 #include "app/RuntimeOutputFinalizer.hpp"
+#include "app/RuntimeOutputFailurePolicy.hpp"
 #include "app/RuntimeRawInputDrainer.hpp"
 #include "app/RuntimeRunExecutor.hpp"
 #include "app/RuntimeRunFinalizer.hpp"
@@ -5009,7 +5010,7 @@ void TestRuntimeOutputResultDefaultsToNoAttempts()
 	Expect(!output.runTraceSaved, "runtime output result should default to unsaved trace");
 	Expect(!output.debugBundleSaveAttempted, "runtime output result should default to no bundle attempt");
 	Expect(!output.debugBundleSaved, "runtime output result should default to unsaved bundle");
-	Expect(!dev::RuntimeOutputFinalizer::failed(output), "runtime output result should not fail when nothing was requested");
+	Expect(!dev::RuntimeOutputFailurePolicy {}.failed(output), "runtime output result should not fail when nothing was requested");
 }
 
 void TestRuntimeSetupSettingsDefaultsToNoScripts()
@@ -5413,6 +5414,37 @@ void TestRuntimeExitCodePolicyFailsOutputErrors()
 	Expect(dev::RuntimeExitCodePolicy {}.exitCodeFor(result) == 1, "runtime exit policy should return failure for output write failures");
 }
 
+void TestRuntimeOutputFailurePolicyFailsAttemptedUnsavedOutputs()
+{
+	dev::RuntimeOutputResult clean;
+
+	dev::RuntimeOutputResult unattemptedUnsaved;
+	unattemptedUnsaved.runTraceSaved = false;
+	unattemptedUnsaved.debugBundleSaved = false;
+
+	dev::RuntimeOutputResult failedTrace;
+	failedTrace.runTraceSaveAttempted = true;
+	failedTrace.runTraceSaved = false;
+
+	dev::RuntimeOutputResult failedBundle;
+	failedBundle.debugBundleSaveAttempted = true;
+	failedBundle.debugBundleSaved = false;
+
+	dev::RuntimeOutputResult savedOutputs;
+	savedOutputs.runTraceSaveAttempted = true;
+	savedOutputs.runTraceSaved = true;
+	savedOutputs.debugBundleSaveAttempted = true;
+	savedOutputs.debugBundleSaved = true;
+
+	dev::RuntimeOutputFailurePolicy policy;
+
+	Expect(!policy.failed(clean), "runtime output failure policy should not fail clean output state");
+	Expect(!policy.failed(unattemptedUnsaved), "runtime output failure policy should ignore unattempted unsaved outputs");
+	Expect(policy.failed(failedTrace), "runtime output failure policy should fail attempted unsaved trace output");
+	Expect(policy.failed(failedBundle), "runtime output failure policy should fail attempted unsaved bundle output");
+	Expect(!policy.failed(savedOutputs), "runtime output failure policy should not fail saved requested outputs");
+}
+
 void TestRuntimeOutputFinalizerLeavesDisabledOutputsUntouched()
 {
 	dev::GameLoopResult result;
@@ -5420,7 +5452,7 @@ void TestRuntimeOutputFinalizerLeavesDisabledOutputsUntouched()
 
 	Expect(!result.output.runTraceSaveAttempted, "runtime output finalizer should not attempt trace without trace path");
 	Expect(!result.output.debugBundleSaveAttempted, "runtime output finalizer should not attempt bundle without bundle path");
-	Expect(!dev::RuntimeOutputFinalizer::failed(result.output), "runtime output finalizer should not fail when nothing was requested");
+	Expect(!dev::RuntimeOutputFailurePolicy {}.failed(result.output), "runtime output finalizer should not fail when nothing was requested");
 }
 
 void TestRuntimeArtifactOutputServiceLeavesDisabledOutputsUntouched()
@@ -5433,7 +5465,7 @@ void TestRuntimeArtifactOutputServiceLeavesDisabledOutputsUntouched()
 	Expect(!output.runTraceSaveAttempted, "runtime artifact output service should not attempt trace without trace path");
 	Expect(output.runTraceSaved, "runtime artifact output service should preserve existing output flags when disabled");
 	Expect(!output.debugBundleSaveAttempted, "runtime artifact output service should not attempt bundle without bundle path");
-	Expect(!dev::RuntimeOutputFinalizer::failed(output), "runtime artifact output service should not fail when nothing was requested");
+	Expect(!dev::RuntimeOutputFailurePolicy {}.failed(output), "runtime artifact output service should not fail when nothing was requested");
 }
 
 void TestRuntimeArtifactOutputServiceAppliesTraceAndBundleSettings()
@@ -5483,7 +5515,7 @@ void TestRuntimeArtifactOutputServiceReportsRequestedOutputFailure()
 
 	Expect(output.runTraceSaveAttempted, "runtime artifact output service should attempt requested trace even when path is invalid");
 	Expect(!output.runTraceSaved, "runtime artifact output service should report failed trace save");
-	Expect(dev::RuntimeOutputFinalizer::failed(output), "runtime artifact output service should expose requested output failure");
+	Expect(dev::RuntimeOutputFailurePolicy {}.failed(output), "runtime artifact output service should expose requested output failure");
 
 	std::filesystem::remove_all(root);
 }
@@ -5515,7 +5547,7 @@ void TestRuntimeOutputFinalizerSavesTraceAndBundle()
 	Expect(result.output.runTraceSaved, "runtime output finalizer should report saved trace");
 	Expect(result.output.debugBundleSaveAttempted, "runtime output finalizer should attempt configured bundle save");
 	Expect(result.output.debugBundleSaved, "runtime output finalizer should report saved bundle");
-	Expect(!dev::RuntimeOutputFinalizer::failed(result.output), "runtime output finalizer should report no failure after saving requested outputs");
+	Expect(!dev::RuntimeOutputFailurePolicy {}.failed(result.output), "runtime output finalizer should report no failure after saving requested outputs");
 	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "runtime output finalizer should save standalone trace");
 	Expect(bundleManifest.has_value() && ContainsLineFragment(*bundleManifest, "trace=run.trace saved=true"), "runtime output finalizer should save bundle manifest");
 	Expect(bundleTrace.has_value() && !bundleTrace->empty() && (*bundleTrace)[0] == "run frames=1 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "runtime output finalizer should save bundle trace");
@@ -5538,7 +5570,7 @@ void TestRuntimeOutputFinalizerReportsRequestedOutputFailure()
 
 	Expect(result.output.runTraceSaveAttempted, "runtime output finalizer should attempt requested trace even when path is invalid");
 	Expect(!result.output.runTraceSaved, "runtime output finalizer should report failed trace save");
-	Expect(dev::RuntimeOutputFinalizer::failed(result.output), "runtime output finalizer should report requested output failure");
+	Expect(dev::RuntimeOutputFailurePolicy {}.failed(result.output), "runtime output finalizer should report requested output failure");
 
 	std::filesystem::remove_all(root);
 }
@@ -7092,6 +7124,7 @@ int main()
 	TestRuntimeExitCodePolicyFailsSetupErrors();
 	TestRuntimeExitCodePolicyAllowsCommandRejections();
 	TestRuntimeExitCodePolicyFailsOutputErrors();
+	TestRuntimeOutputFailurePolicyFailsAttemptedUnsavedOutputs();
 	TestRuntimeOutputFinalizerLeavesDisabledOutputsUntouched();
 	TestRuntimeArtifactOutputServiceLeavesDisabledOutputsUntouched();
 	TestRuntimeArtifactOutputServiceAppliesTraceAndBundleSettings();

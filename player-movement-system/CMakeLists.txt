@@ -24,6 +24,7 @@ add_library(player_movement_system
   src/app/RuntimeInputRouter.cpp
   src/app/RuntimeInputSourceRouter.cpp
   src/app/RuntimeMovementInputRouter.cpp
+  src/app/RuntimeOutputFailurePolicy.cpp
   src/app/RuntimeOutputFinalizer.cpp
   src/app/RuntimeRawInputDrainer.cpp
   src/app/RuntimeRunExecutor.cpp

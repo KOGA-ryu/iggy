@@ -1,8 +1,11 @@
 #include "RuntimeExitCodePolicy.hpp"
 
-#include "app/RuntimeOutputFinalizer.hpp"
-
 namespace dev {
+
+RuntimeExitCodePolicy::RuntimeExitCodePolicy(RuntimeOutputFailurePolicy outputFailurePolicy)
+    : outputFailurePolicy_(outputFailurePolicy)
+{
+}
 
 int RuntimeExitCodePolicy::exitCodeFor(const GameLoopResult &result) const
 {
@@ -15,7 +18,7 @@ bool RuntimeExitCodePolicy::failed(const GameLoopResult &result) const
 		return true;
 	if (result.setup.inventoryScriptRan && result.setup.inventoryScriptResult.status != InventoryScriptRunStatus::Completed)
 		return true;
-	if (RuntimeOutputFinalizer::failed(result.output))
+	if (outputFailurePolicy_.failed(result.output))
 		return true;
 	return false;
 }

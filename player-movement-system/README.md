@@ -631,6 +631,10 @@ RuntimeRunFinalizer
   app-layer completion policy that records final session mode and applies
   configured output finalization to GameLoopResult
 
+RuntimeOutputFailurePolicy
+  app-layer policy that treats attempted-but-unsaved runtime artifact outputs
+  as output failures while ignoring outputs that were never requested
+
 RuntimeExitCodePolicy
   app-layer policy that translates GameLoopResult setup and output failures
   into process-style success/failure exit codes

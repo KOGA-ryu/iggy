@@ -181,10 +181,11 @@ Good first tests:
 - RuntimeRunRecorder turns frame work into frame reports and run summaries
 - RuntimeRunExecutor runs setup, frames, and finalization in lifecycle order
 - RuntimeRunFinalizer captures final session mode and applies output finalization
+- RuntimeOutputFailurePolicy maps attempted unsaved artifacts to output failures
 - RuntimeExitCodePolicy maps setup and output failures to process failures
 - RuntimeOutputSettings defaults to no runtime artifact outputs
 - RuntimeOutputResult defaults to no artifact save attempts
-- RuntimeOutputFinalizer applies output settings and reports requested write failures
+- RuntimeOutputFinalizer writes artifact output results back onto GameLoopResult
 - RuntimeArtifactOutputService applies configured artifact outputs and reports failures
 - RuntimeSetupRunner separates configured setup scripts from per-frame runtime sources
 - GameLoop saves configured run traces and reports trace write failures

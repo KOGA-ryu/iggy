@@ -1015,12 +1015,15 @@ exit code:
 ```text
 GameLoopResult
   -> RuntimeExitCodePolicy
+  -> RuntimeOutputFailurePolicy
   -> 0 or 1
 ```
 
 Setup load failures and requested artifact write failures return failure.
-Command-level rejections inside a loadable setup script remain command results,
-so they do not automatically make the process fail.
+RuntimeOutputFailurePolicy owns the artifact-output rule: only attempted outputs
+that did not save are failures. Command-level rejections inside a loadable setup
+script remain command results, so they do not automatically make the process
+fail.
 
 Runtime inventory script sources are different from the configured setup script:
 
@@ -1178,8 +1181,8 @@ GameLoopResult
 artifact writes to `RuntimeOutputFinalizer`. That keeps `RuntimeRunExecutor`
 focused on lifecycle timing. `RuntimeOutputFinalizer` writes output results back
 onto `GameLoopResult`, while `RuntimeArtifactOutputService` owns the app
-artifact policy and exposes the same success/failure flags on
-`GameLoopResult::output`.
+artifact write policy. `RuntimeOutputFailurePolicy` interprets those output
+flags when exit-code logic needs to know whether a requested artifact failed.
 
 `GameLoopSettings::output.runTracePath` lets the app shell persist a full run
 trace after the loop exits:
