@@ -428,6 +428,10 @@ GameSessionMode / SessionModePolicy
   compact lifecycle state and the rules that map gameplay, pause, inventory,
   and empty sessions to simulation frame behavior
 
+SessionModeChanger
+  small transition boundary that applies only mode changes allowed by
+  SessionModePolicy
+
 SessionCommand / SessionCommandDispatcher
   semantic lifecycle command boundary for menu, UI, controller, replay, and
   tests to request new/load/save/mode changes without directly mutating session
@@ -447,6 +451,10 @@ SessionCommandLog / SessionCommandReplayer
 SessionCommandCodec
   stable byte boundary for lifecycle commands, with payload validation for
   replay, automation, and future networking
+
+SessionCommandPacketValidator
+  packet-shape guard that rejects malformed lifecycle command payloads before
+  they become semantic session commands
 
 SessionCommandLogCodec
   durable byte format for lifecycle command logs, including magic, version,

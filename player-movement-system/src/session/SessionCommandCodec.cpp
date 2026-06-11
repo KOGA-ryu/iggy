@@ -2,6 +2,8 @@
 
 #include <cstddef>
 
+#include "session/SessionCommandPacketValidator.hpp"
+
 namespace dev {
 
 namespace {
@@ -45,37 +47,6 @@ uint32_t ReadU32(const SessionCommandBytes &bytes, std::size_t &offset)
 	return low | (high << 16U);
 }
 
-bool IsValidCommandType(uint8_t value)
-{
-	return value <= static_cast<uint8_t>(SessionCommandType::SetMode);
-}
-
-bool IsValidMode(uint8_t value)
-{
-	return value <= static_cast<uint8_t>(GameSessionMode::Inventory);
-}
-
-bool IsBoolean(uint8_t value)
-{
-	return value <= 1U;
-}
-
-bool HasOnlyExpectedPayload(const SessionCommandPacket &packet)
-{
-	const SessionCommandType type = static_cast<SessionCommandType>(packet.commandType);
-	switch (type) {
-	case SessionCommandType::StartNewGame:
-		return packet.hasSlotId == 0U && packet.hasMode == 0U;
-	case SessionCommandType::SaveSlot:
-	case SessionCommandType::LoadSlot:
-		return packet.hasNewGameSettings == 0U && packet.hasSlotId == 1U && packet.hasMode == 0U;
-	case SessionCommandType::SetMode:
-		return packet.hasNewGameSettings == 0U && packet.hasSlotId == 0U && packet.hasMode == 1U;
-	}
-
-	return false;
-}
-
 } // namespace
 
 SessionCommandPacket SessionCommandCodec::toPacket(const SessionCommand &command) const
@@ -101,12 +72,7 @@ SessionCommandPacket SessionCommandCodec::toPacket(const SessionCommand &command
 
 std::optional<SessionCommand> SessionCommandCodec::fromPacket(const SessionCommandPacket &packet) const
 {
-	if (!IsValidCommandType(packet.commandType)
-	    || !IsBoolean(packet.hasNewGameSettings)
-	    || !IsBoolean(packet.hasSlotId)
-	    || !IsBoolean(packet.hasMode)
-	    || (packet.hasMode != 0U && !IsValidMode(packet.mode))
-	    || !HasOnlyExpectedPayload(packet))
+	if (!SessionCommandPacketValidator {}.isValid(packet))
 		return std::nullopt;
 
 	SessionCommand command {

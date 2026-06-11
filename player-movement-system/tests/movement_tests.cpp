@@ -79,10 +79,12 @@
 #include "session/SessionCommandLog.hpp"
 #include "session/SessionCommandLogCodec.hpp"
 #include "session/SessionCommandLogFileStore.hpp"
+#include "session/SessionCommandPacketValidator.hpp"
 #include "session/SessionCommandReplayer.hpp"
 #include "session/SessionEventRecorder.hpp"
 #include "session/SessionFrameUpdater.hpp"
 #include "session/NewGameWorldBuilder.hpp"
+#include "session/SessionModeChanger.hpp"
 #include "session/SessionModePolicy.hpp"
 #include "session/SessionScriptRunner.hpp"
 #include "session/SessionWorldSlotLoader.hpp"
@@ -2548,6 +2550,20 @@ void TestSessionModePolicyGuardsTransitions()
 	Expect(policy.canTransition(dev::GameSessionMode::Inventory, dev::GameSessionMode::Empty), "session mode policy should allow returning to empty mode");
 }
 
+void TestSessionModeChangerAppliesAllowedTransitionsOnly()
+{
+	dev::SessionModeChanger changer;
+	dev::GameSessionMode empty = dev::GameSessionMode::Empty;
+	dev::GameSessionMode active = dev::GameSessionMode::Gameplay;
+
+	Expect(!changer.change(empty, dev::GameSessionMode::Inventory), "session mode changer should reject activating empty sessions");
+	Expect(empty == dev::GameSessionMode::Empty, "session mode changer should preserve mode after rejected transition");
+	Expect(changer.change(active, dev::GameSessionMode::Inventory), "session mode changer should allow active session mode changes");
+	Expect(active == dev::GameSessionMode::Inventory, "session mode changer should apply allowed active transition");
+	Expect(changer.change(active, dev::GameSessionMode::Empty), "session mode changer should allow returning to empty mode");
+	Expect(active == dev::GameSessionMode::Empty, "session mode changer should apply empty transition");
+}
+
 void TestGameSessionSaveLoadPreservesSinksAndResetsClock()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_game_session_save_load_test";
@@ -2889,6 +2905,45 @@ void TestSessionCommandCodecRejectsInvalidPackets()
 	}));
 	shortBytes.pop_back();
 	Expect(!codec.decode(shortBytes).has_value(), "session command codec should reject wrong byte size");
+}
+
+void TestSessionCommandPacketValidatorRejectsMalformedPayloads()
+{
+	dev::SessionCommandPacketValidator validator;
+
+	Expect(validator.isValid({
+	           .commandType = static_cast<uint8_t>(dev::SessionCommandType::StartNewGame),
+	           .hasNewGameSettings = 1,
+	           .playerStartX = 2,
+	           .playerStartY = 3,
+	           .playerHitPoints = 14,
+	       }),
+	    "session command packet validator should accept valid new-game packets");
+	Expect(validator.isValid({
+	           .commandType = static_cast<uint8_t>(dev::SessionCommandType::SaveSlot),
+	           .hasSlotId = 1,
+	           .slotId = 7,
+	       }),
+	    "session command packet validator should accept valid slot packets");
+	Expect(!validator.isValid({
+	           .commandType = static_cast<uint8_t>(dev::SessionCommandType::SaveSlot),
+	           .hasSlotId = 2,
+	           .slotId = 7,
+	       }),
+	    "session command packet validator should reject non-boolean payload flags");
+	Expect(!validator.isValid({
+	           .commandType = static_cast<uint8_t>(dev::SessionCommandType::SetMode),
+	           .hasMode = 1,
+	           .mode = 99,
+	       }),
+	    "session command packet validator should reject invalid modes");
+	Expect(!validator.isValid({
+	           .commandType = static_cast<uint8_t>(dev::SessionCommandType::LoadSlot),
+	           .hasNewGameSettings = 1,
+	           .hasSlotId = 1,
+	           .slotId = 3,
+	       }),
+	    "session command packet validator should reject unexpected payload fields");
 }
 
 void TestSessionCommandLogCodecRoundTripsAndReplays()
@@ -5579,6 +5634,7 @@ int main()
 	TestGameSessionPausedModePreservesCommands();
 	TestSessionModePolicyMapsModesToFramePolicy();
 	TestSessionModePolicyGuardsTransitions();
+	TestSessionModeChangerAppliesAllowedTransitionsOnly();
 	TestGameSessionSaveLoadPreservesSinksAndResetsClock();
 	TestGameSessionMissingLoadKeepsCurrentWorld();
 	TestSessionCommandDispatcherAppliesLifecycleCommands();
@@ -5589,6 +5645,7 @@ int main()
 	TestSessionCommandReplayReportsRejectedCommands();
 	TestSessionCommandCodecRoundTripsCommands();
 	TestSessionCommandCodecRejectsInvalidPackets();
+	TestSessionCommandPacketValidatorRejectsMalformedPayloads();
 	TestSessionCommandLogCodecRoundTripsAndReplays();
 	TestSessionCommandLogCodecRejectsInvalidBytes();
 	TestSessionCommandLogFileStoreSavesLoadsAndReplays();

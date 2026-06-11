@@ -595,6 +595,7 @@ GameSession
   -> SimulationClock
   -> NewGameWorldBuilder
   -> SessionModePolicy
+  -> SessionModeChanger
   -> SessionWorldSlotLoader
   -> SessionWorldSlotSaver
   -> SessionFrameUpdater
@@ -612,6 +613,7 @@ saveToSlot
 loadFromSlot
   -> SessionWorldSlotLoader
 setMode
+  -> SessionModeChanger
 update
   -> SessionFrameUpdater
 ```
@@ -717,8 +719,10 @@ Session commands now have a stable byte boundary:
 ```text
 SessionCommand
   -> SessionCommandPacket
+  -> SessionCommandPacketValidator
   -> bytes
   -> SessionCommandPacket
+  -> SessionCommandPacketValidator
   -> SessionCommand
 ```
 

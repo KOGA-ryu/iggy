@@ -2,6 +2,7 @@
 
 #include "session/NewGameWorldBuilder.hpp"
 #include "session/SessionFrameUpdater.hpp"
+#include "session/SessionModeChanger.hpp"
 #include "session/SessionModePolicy.hpp"
 #include "session/SessionWorldSlotLoader.hpp"
 #include "session/SessionWorldSlotSaver.hpp"
@@ -46,9 +47,7 @@ SimulationFrameEvents GameSession::update(float rawDeltaSeconds)
 
 void GameSession::setMode(GameSessionMode mode)
 {
-	SessionModePolicy policy;
-	if (policy.canTransition(mode_, mode))
-		mode_ = mode;
+	(void)SessionModeChanger {}.change(mode_, mode);
 }
 
 GameSessionMode GameSession::mode() const

@@ -86,11 +86,13 @@ add_library(player_movement_system
   src/session/SessionCommandLog.cpp
   src/session/SessionCommandLogCodec.cpp
   src/session/SessionCommandLogFileStore.cpp
+  src/session/SessionCommandPacketValidator.cpp
   src/session/SessionCommandReplayer.cpp
   src/session/SessionCommandSource.cpp
   src/session/SessionEventRecorder.cpp
   src/session/SessionFrameUpdater.cpp
   src/session/NewGameWorldBuilder.cpp
+  src/session/SessionModeChanger.cpp
   src/session/SessionModePolicy.cpp
   src/session/SessionScriptRunner.cpp
   src/session/SessionWorldSlotLoader.cpp

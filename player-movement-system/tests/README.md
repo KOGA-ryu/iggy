@@ -115,6 +115,7 @@ Good first tests:
 - GameSession paused mode preserves queued commands
 - SessionModePolicy maps session modes to simulation frame policy
 - SessionModePolicy rejects activating an empty session through mode-only changes
+- SessionModeChanger applies only allowed mode transitions
 - GameSession save/load preserves event sinks and resets transient clock state
 - GameSession failed load preserves the active world
 - SessionCommandDispatcher applies start, save, load, and mode commands
@@ -124,6 +125,7 @@ Good first tests:
 - SessionCommandReplayer reports rejected lifecycle commands
 - SessionCommandCodec round-trips lifecycle commands
 - SessionCommandCodec rejects invalid lifecycle command packets
+- SessionCommandPacketValidator rejects malformed lifecycle packet shapes
 - SessionCommandLogCodec round-trips and replays lifecycle command logs
 - SessionCommandLogCodec rejects invalid lifecycle log bytes
 - SessionCommandLogFileStore saves, loads, and replays lifecycle command log files
