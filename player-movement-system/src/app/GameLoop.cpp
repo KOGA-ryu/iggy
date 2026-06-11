@@ -64,7 +64,7 @@ GameLoopResult GameLoop::runForResult()
 		    .inventoryScriptSources = settings_.sources.inventoryScriptSources,
 		    .inventoryCommandSources = settings_.sources.inventoryCommandSources,
 		    .movementCommandSources = settings_.sources.movementCommandSources,
-		    .inputPlayerId = settings_.inputPlayerId,
+		    .inputPlayerId = settings_.input.playerId,
 		},
 	};
 
@@ -74,17 +74,17 @@ GameLoopResult GameLoop::runForResult()
 		return result;
 	};
 
-	if (settings_.startupScript.has_value()) {
+	if (settings_.setup.startupScript.has_value()) {
 		result.setup.startupScriptRan = true;
 		SessionScriptRunner runner { dispatcher };
-		result.setup.startupScriptResult = runner.run(*settings_.startupScript);
+		result.setup.startupScriptResult = runner.run(*settings_.setup.startupScript);
 		if (result.setup.startupScriptResult.status == SessionScriptRunStatus::LoadFailed)
 			return finish();
 	}
 
-	if (settings_.inventoryScript.has_value()) {
+	if (settings_.setup.inventoryScript.has_value()) {
 		result.setup.inventoryScriptRan = true;
-		result.setup.inventoryScriptResult = drainer.runInventoryScript(*settings_.inventoryScript);
+		result.setup.inventoryScriptResult = drainer.runInventoryScript(*settings_.setup.inventoryScript);
 		if (result.setup.inventoryScriptResult.status != InventoryScriptRunStatus::Completed)
 			return finish();
 		result.summary.inventoryCommandResults.insert(
@@ -93,7 +93,7 @@ GameLoopResult GameLoop::runForResult()
 		    result.setup.inventoryScriptResult.commandResults.end());
 	}
 
-	for (int frame = 0; frame < settings_.maxFrames; ++frame) {
+	for (int frame = 0; frame < settings_.frame.maxFrames; ++frame) {
 		const std::size_t sessionEventOffset = sessionEvents_.events().size();
 		const std::size_t inventoryEventOffset = inventoryEvents_.events().size();
 		RuntimeFrameReport frameReport;
@@ -154,15 +154,15 @@ const InventoryEventRecorder &GameLoop::inventoryEvents() const
 
 int GameLoop::routeRawInputSources()
 {
-	RuntimeInputRouter router { routedSessionCommands_, routedMovementCommands_, settings_.inputBindings };
+	RuntimeInputRouter router { routedSessionCommands_, routedMovementCommands_, settings_.input.bindings };
 	RuntimeInputContext context {
 		.world = session_.hasActiveWorld() ? &session_.world() : nullptr,
-		.playerId = settings_.inputPlayerId,
-		.focusState = settings_.inputFocusState,
-		.actionContext = settings_.playerActionContext,
+		.playerId = settings_.input.playerId,
+		.focusState = settings_.input.focusState,
+		.actionContext = settings_.input.actionContext,
 		.sessionMode = session_.mode(),
-		.targetResolver = settings_.targetResolver != nullptr
-		    ? settings_.targetResolver
+		.targetResolver = settings_.input.targetResolver != nullptr
+		    ? settings_.input.targetResolver
 		    : (session_.hasActiveWorld() ? &session_.world().targets : nullptr),
 	};
 
@@ -182,7 +182,7 @@ int GameLoop::routeRawInputSources()
 
 SimulationFrameEvents GameLoop::updateSimulationFrame()
 {
-	return session_.update(settings_.fixedDeltaSeconds);
+	return session_.update(settings_.frame.fixedDeltaSeconds);
 }
 
 void GameLoop::renderDebugView() {}

@@ -116,6 +116,9 @@ Good first tests:
 - RuntimeFrameTraceFileStore saves and loads readable trace lines
 - RuntimeTraceService formats and saves full GameLoopResult traces
 - RuntimeSetupResult defaults to no configured setup script attempts
+- RuntimeSourceSettings defaults to no runtime source streams
+- RuntimeInputSettings defaults to primary gameplay input context
+- RuntimeFrameSettings defaults to zero frames at a sixty hertz timestep
 - RuntimeRunSummary defaults to empty aggregate run state
 - RuntimeExitCodePolicy maps setup and output failures to process failures
 - RuntimeOutputSettings defaults to no runtime artifact outputs

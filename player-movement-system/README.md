@@ -357,6 +357,14 @@ RuntimeSourceSettings
   app-layer source settings that group raw input, session, inventory script,
   inventory command, and movement command sources for GameLoop
 
+RuntimeInputSettings
+  app-layer input context settings that group bindings, focus/action state,
+  active player id, and optional target resolver for GameLoop routing
+
+RuntimeFrameSettings
+  app-layer frame settings that group bounded frame count and fixed timestep
+  for the GameLoop shell
+
 RuntimeRunSummary
   app-layer aggregate run result state for routed input, runtime command
   results, queued movement counts, frames run, and final frame events

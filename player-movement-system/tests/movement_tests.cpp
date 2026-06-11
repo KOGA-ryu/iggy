@@ -2517,9 +2517,8 @@ void TestGameLoopRunsStartupScriptAndFrames()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .startupScript = scriptPath,
-		    .maxFrames = 2,
-		    .fixedDeltaSeconds = 1.0F / 30.0F,
+		    .setup = { .startupScript = scriptPath },
+		    .frame = { .maxFrames = 2, .fixedDeltaSeconds = 1.0F / 30.0F },
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
@@ -2546,8 +2545,8 @@ void TestGameLoopReportsStartupScriptLoadFailure()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .startupScript = scriptPath,
-		    .maxFrames = 3,
+		    .setup = { .startupScript = scriptPath },
+		    .frame = { .maxFrames = 3 },
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
@@ -2580,8 +2579,8 @@ void TestGameLoopRunsInventoryScriptAgainstActivePlayer()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .inventoryScript = scriptPath,
-		    .maxFrames = 1,
+		    .setup = { .inventoryScript = scriptPath },
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
@@ -2630,9 +2629,8 @@ void TestGameLoopRunsInventoryScriptAfterStartupScript()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .startupScript = startupPath,
-		    .inventoryScript = inventoryPath,
-		    .maxFrames = 1,
+		    .setup = { .startupScript = startupPath, .inventoryScript = inventoryPath },
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
@@ -2658,8 +2656,8 @@ void TestGameLoopReportsInventoryScriptLoadFailure()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .inventoryScript = scriptPath,
-		    .maxFrames = 1,
+		    .setup = { .inventoryScript = scriptPath },
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
@@ -2692,8 +2690,8 @@ void TestGameLoopReportsInventoryScriptWithoutActivePlayer()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .inventoryScript = scriptPath,
-		    .maxFrames = 1,
+		    .setup = { .inventoryScript = scriptPath },
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
@@ -2745,7 +2743,7 @@ void TestGameLoopDrainsRuntimeSessionCommandSources()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
 		    .sources = { .sessionCommandSources = { &source } },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
@@ -2789,9 +2787,9 @@ void TestGameLoopRunsStartupScriptBeforeRuntimeCommandSources()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .startupScript = scriptPath,
+		    .setup = { .startupScript = scriptPath },
 		    .sources = { .sessionCommandSources = { &source } },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
@@ -2940,7 +2938,7 @@ void TestGameLoopDrainsRuntimeMovementCommandSources()
 		        .sessionCommandSources = { &sessionSource },
 		        .movementCommandSources = { &movementSource },
 		    },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
@@ -2983,7 +2981,7 @@ void TestGameLoopDrainsRuntimeInventoryScriptSources()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
 		    .sources = { .inventoryScriptSources = { &inventoryScripts } },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
@@ -3018,7 +3016,7 @@ void TestGameLoopReportsRuntimeInventoryScriptLoadFailureWithoutStoppingFrames()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
 		    .sources = { .inventoryScriptSources = { &inventoryScripts } },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
@@ -3047,7 +3045,7 @@ void TestGameLoopDoesNotDrainInventoryScriptSourcesWithoutActiveWorld()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
 		    .sources = { .inventoryScriptSources = { &inventoryScripts } },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
@@ -3095,7 +3093,7 @@ void TestGameLoopBuildsRuntimeFrameReports()
 		        .inventoryCommandSources = { &inventoryCommands },
 		        .inventoryScriptSources = { &inventoryScripts },
 		    },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
@@ -3170,7 +3168,7 @@ void TestRuntimeFrameTraceFormatsReadableLines()
 		        .inventoryCommandSources = { &inventoryCommands },
 		        .inventoryScriptSources = { &inventoryScripts },
 		    },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
@@ -3263,7 +3261,7 @@ void TestRuntimeTraceServiceFormatsAndSavesRunTrace()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
 		    .sources = { .inventoryScriptSources = { &inventoryScripts } },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
@@ -3315,6 +3313,14 @@ void TestRuntimeOutputResultDefaultsToNoAttempts()
 	Expect(!dev::RuntimeOutputFinalizer::failed(output), "runtime output result should not fail when nothing was requested");
 }
 
+void TestRuntimeSetupSettingsDefaultsToNoScripts()
+{
+	dev::RuntimeSetupSettings setup;
+
+	Expect(!setup.startupScript.has_value(), "runtime setup settings should default to no startup script");
+	Expect(!setup.inventoryScript.has_value(), "runtime setup settings should default to no configured inventory script");
+}
+
 void TestRuntimeSetupResultDefaultsToNoSetupScripts()
 {
 	dev::RuntimeSetupResult setup;
@@ -3334,6 +3340,29 @@ void TestRuntimeSourceSettingsDefaultsToNoSources()
 	Expect(sources.movementCommandSources.empty(), "runtime source settings should default to no movement command sources");
 	Expect(sources.inventoryCommandSources.empty(), "runtime source settings should default to no inventory command sources");
 	Expect(sources.inventoryScriptSources.empty(), "runtime source settings should default to no inventory script sources");
+}
+
+void TestRuntimeInputSettingsDefaultsToPrimaryGameplayInput()
+{
+	dev::RuntimeInputSettings input;
+
+	Expect(input.bindings.pauseKey == 27, "runtime input settings should default pause binding to escape");
+	Expect(input.bindings.inventoryKey == 'I', "runtime input settings should default inventory binding to I");
+	Expect(input.bindings.stopKey == 'S', "runtime input settings should default stop binding to S");
+	Expect(input.focusState.owner == dev::InputOwner::Gameplay, "runtime input settings should default focus to gameplay");
+	Expect(!input.focusState.textEntryActive, "runtime input settings should default to no text entry");
+	Expect(!input.actionContext.paused, "runtime input settings should default actions to unpaused");
+	Expect(!input.actionContext.animationLocked, "runtime input settings should default actions to unlocked animation");
+	Expect(input.playerId == 0, "runtime input settings should default to player zero");
+	Expect(input.targetResolver == nullptr, "runtime input settings should default to world target resolver fallback");
+}
+
+void TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz()
+{
+	dev::RuntimeFrameSettings frame;
+
+	Expect(frame.maxFrames == 0, "runtime frame settings should default to zero bounded frames");
+	Expect(frame.fixedDeltaSeconds == 1.0F / 60.0F, "runtime frame settings should default to sixty hertz timestep");
 }
 
 void TestRuntimeRunSummaryDefaultsToEmptyRun()
@@ -3473,7 +3502,7 @@ void TestGameLoopSavesConfiguredRunTrace()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
 		    .output = { .runTracePath = tracePath },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
@@ -3500,9 +3529,9 @@ void TestGameLoopSavesRunTraceOnStartupFailure()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .startupScript = root / "missing.iscl",
+		    .setup = { .startupScript = root / "missing.iscl" },
 		    .output = { .runTracePath = tracePath },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
@@ -3527,7 +3556,7 @@ void TestGameLoopReportsRunTraceSaveFailure()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
 		    .output = { .runTracePath = tracePath },
-		    .maxFrames = 0,
+		    .frame = { .maxFrames = 0 },
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
@@ -3539,7 +3568,7 @@ void TestGameLoopReportsRunTraceSaveFailure()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "other-saves",
 		    .output = { .runTracePath = tracePath },
-		    .maxFrames = 0,
+		    .frame = { .maxFrames = 0 },
 		}
 	};
 	Expect(exitLoop.run() == 1, "game loop run should fail when requested trace cannot be saved");
@@ -3556,7 +3585,7 @@ void TestRuntimeDebugArtifactBundleSavesManifestAndTrace()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
@@ -3637,7 +3666,7 @@ void TestGameLoopSavesConfiguredDebugBundle()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
 		    .output = { .debugBundlePath = bundleRoot },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
@@ -3665,9 +3694,9 @@ void TestGameLoopSavesDebugBundleOnStartupFailure()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .startupScript = root / "missing.iscl",
+		    .setup = { .startupScript = root / "missing.iscl" },
 		    .output = { .debugBundlePath = bundleRoot },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
@@ -3698,7 +3727,7 @@ void TestGameLoopReportsDebugBundleSaveFailure()
 		dev::GameLoopSettings {
 		    .saveRoot = root.parent_path() / "saves",
 		    .output = { .debugBundlePath = root },
-		    .maxFrames = 0,
+		    .frame = { .maxFrames = 0 },
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
@@ -3710,7 +3739,7 @@ void TestGameLoopReportsDebugBundleSaveFailure()
 		dev::GameLoopSettings {
 		    .saveRoot = root.parent_path() / "other-saves",
 		    .output = { .debugBundlePath = root },
-		    .maxFrames = 0,
+		    .frame = { .maxFrames = 0 },
 		}
 	};
 	Expect(exitLoop.run() == 1, "game loop run should fail when requested debug bundle cannot be saved");
@@ -3733,7 +3762,7 @@ void TestGameLoopDrainsRuntimeInventoryCommandSources()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
 		    .sources = { .inventoryCommandSources = { &inventoryCommands } },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
@@ -3771,8 +3800,8 @@ void TestGameLoopEmitsRejectedInventoryEventForMissingPlayer()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
 		    .sources = { .inventoryCommandSources = { &inventoryCommands } },
-		    .inputPlayerId = 3,
-		    .maxFrames = 1,
+		    .input = { .playerId = 3 },
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
@@ -3804,7 +3833,7 @@ void TestGameLoopDoesNotDrainInventorySourcesWithoutActiveWorld()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
 		    .sources = { .inventoryCommandSources = { &inventoryCommands } },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
@@ -3831,7 +3860,7 @@ void TestGameLoopDoesNotDrainMovementSourcesWithoutActiveWorld()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
 		    .sources = { .movementCommandSources = { &movementSource } },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
@@ -4107,10 +4136,10 @@ void TestGameLoopRoutesRawInputHotkeysThroughSessionCommands()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .startupScript = scriptPath,
+		    .setup = { .startupScript = scriptPath },
 		    .sources = { .rawInputSources = { &rawInput } },
-		    .inputBindings = dev::RuntimeInputBindings { .pauseKey = 'P', .inventoryKey = 'I', .stopKey = 'S' },
-		    .maxFrames = 1,
+		    .input = { .bindings = dev::RuntimeInputBindings { .pauseKey = 'P', .inventoryKey = 'I', .stopKey = 'S' } },
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
@@ -4151,9 +4180,9 @@ void TestGameLoopRoutesRawMouseInputThroughMovementCommands()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .startupScript = scriptPath,
+		    .setup = { .startupScript = scriptPath },
 		    .sources = { .rawInputSources = { &rawInput } },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
@@ -4189,7 +4218,7 @@ void TestGameLoopUsesWorldTargetRegistryForRawMouseInput()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
 		    .sources = { .rawInputSources = { &rawInput } },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
@@ -4231,7 +4260,7 @@ void TestGameLoopUsesWorldItemTargetForRawPickupInput()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
 		    .sources = { .rawInputSources = { &rawInput } },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
@@ -4279,7 +4308,7 @@ void TestGameLoopLeavesItemWhenInventoryFull()
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
 		    .sources = { .rawInputSources = { &rawInput } },
-		    .maxFrames = 1,
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	loop.session().startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
@@ -4332,10 +4361,10 @@ void TestGameLoopDoesNotRouteBlockedRawMovementInput()
 	dev::GameLoop loop {
 		dev::GameLoopSettings {
 		    .saveRoot = root / "saves",
-		    .startupScript = scriptPath,
+		    .setup = { .startupScript = scriptPath },
 		    .sources = { .rawInputSources = { &rawInput } },
-		    .inputFocusState = dev::FocusState { .owner = dev::InputOwner::Gameplay, .textEntryActive = true },
-		    .maxFrames = 1,
+		    .input = { .focusState = dev::FocusState { .owner = dev::InputOwner::Gameplay, .textEntryActive = true } },
+		    .frame = { .maxFrames = 1 },
 		}
 	};
 	dev::GameLoopResult result = loop.runForResult();
@@ -4460,8 +4489,11 @@ int main()
 	TestRuntimeTraceServiceFormatsEmptyRun();
 	TestRuntimeOutputSettingsDefaultDisablesArtifacts();
 	TestRuntimeOutputResultDefaultsToNoAttempts();
+	TestRuntimeSetupSettingsDefaultsToNoScripts();
 	TestRuntimeSetupResultDefaultsToNoSetupScripts();
 	TestRuntimeSourceSettingsDefaultsToNoSources();
+	TestRuntimeInputSettingsDefaultsToPrimaryGameplayInput();
+	TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz();
 	TestRuntimeRunSummaryDefaultsToEmptyRun();
 	TestRuntimeExitCodePolicyReportsSuccessForCleanRun();
 	TestRuntimeExitCodePolicyFailsSetupErrors();

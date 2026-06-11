@@ -31,6 +31,11 @@ struct RuntimeOutputResult {
 	bool debugBundleSaved = false;
 };
 
+struct RuntimeSetupSettings {
+	std::optional<std::filesystem::path> startupScript;
+	std::optional<std::filesystem::path> inventoryScript;
+};
+
 struct RuntimeSetupResult {
 	bool startupScriptRan = false;
 	SessionScriptRunResult startupScriptResult;
@@ -46,19 +51,26 @@ struct RuntimeSourceSettings {
 	std::vector<InventoryScriptSource *> inventoryScriptSources;
 };
 
-struct GameLoopSettings {
-	std::filesystem::path saveRoot = "saves";
-	std::optional<std::filesystem::path> startupScript;
-	std::optional<std::filesystem::path> inventoryScript;
-	RuntimeOutputSettings output;
-	RuntimeSourceSettings sources;
-	RuntimeInputBindings inputBindings;
-	FocusState inputFocusState;
-	PlayerActionContext playerActionContext;
-	PlayerId inputPlayerId = 0;
+struct RuntimeInputSettings {
+	RuntimeInputBindings bindings;
+	FocusState focusState;
+	PlayerActionContext actionContext;
+	PlayerId playerId = 0;
 	const TargetResolver *targetResolver = nullptr;
+};
+
+struct RuntimeFrameSettings {
 	int maxFrames = 0;
 	float fixedDeltaSeconds = 1.0F / 60.0F;
+};
+
+struct GameLoopSettings {
+	std::filesystem::path saveRoot = "saves";
+	RuntimeSetupSettings setup;
+	RuntimeOutputSettings output;
+	RuntimeSourceSettings sources;
+	RuntimeInputSettings input;
+	RuntimeFrameSettings frame;
 };
 
 struct RuntimeFrameReport {

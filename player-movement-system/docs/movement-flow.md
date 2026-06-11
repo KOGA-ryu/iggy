@@ -770,6 +770,9 @@ GameLoopSettings
   -> SessionScriptRunner
   -> optional inventory script
   -> InventoryScriptRunner
+  -> RuntimeSourceSettings
+  -> RuntimeInputSettings
+  -> RuntimeFrameSettings
   -> GameSession
   -> fixed number of frame updates
   -> GameLoopResult
@@ -790,6 +793,47 @@ events        -> SessionEventRecorder / InventoryEventRecorder
 This is the first runtime-facing shell around the movement/session system. It
 is still testable because the loop is bounded and reports what happened instead
 of hiding behavior behind an infinite platform loop.
+
+`RuntimeSourceSettings` groups the live input/source streams:
+
+```text
+GameLoopSettings::sources
+  -> RawInputSource[]
+  -> SessionCommandSource[]
+  -> InventoryScriptSource[]
+  -> InventoryCommandSource[]
+  -> MovementCommandSource[]
+```
+
+That keeps setup scripts, output artifacts, and runtime sources from becoming
+one flat settings bag. Raw input is still routed by `GameLoop`; command and
+script sources are delegated to `RuntimeSourceDrainer`.
+
+`RuntimeInputSettings` groups the active routing context:
+
+```text
+GameLoopSettings::input
+  -> RuntimeInputBindings
+  -> FocusState
+  -> PlayerActionContext
+  -> player id
+  -> optional TargetResolver
+```
+
+Sources answer “where do commands/events come from?” Input settings answer “who
+is controlling, what has focus, and how should raw input become commands?”
+
+`RuntimeFrameSettings` groups the bounded loop controls:
+
+```text
+GameLoopSettings::frame
+  -> maxFrames
+  -> fixedDeltaSeconds
+```
+
+The shell still runs a testable bounded loop. The frame settings simply keep
+the “how many frames?” and “how much simulated time per frame?” questions in
+one place.
 
 The inventory script runs after the startup script and before frame updates:
 
