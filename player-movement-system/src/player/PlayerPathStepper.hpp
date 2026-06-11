@@ -1,6 +1,7 @@
 #pragma once
 
 #include "events/MovementEventSink.hpp"
+#include "player/ActorStepCommitter.hpp"
 #include "player/Player.hpp"
 #include "world/Collision.hpp"
 
@@ -20,6 +21,7 @@ public:
 private:
 	const Collision &collision_;
 	MovementEventSink *eventSink_;
+	ActorStepCommitter stepCommitter_;
 };
 
 } // namespace dev

@@ -78,6 +78,7 @@
 #include "inventory/InventoryService.hpp"
 #include "input/RawInputSource.hpp"
 #include "network/MovementCodec.hpp"
+#include "player/ActorStepCommitter.hpp"
 #include "player/PlayerAnimationLockGate.hpp"
 #include "player/PlayerActionRunner.hpp"
 #include "player/PlayerActionGate.hpp"
@@ -400,6 +401,23 @@ void TestMoveThenActEventSequence()
 	Expect(recorded[3].type == dev::MovementEventType::DestinationActionReady, "fourth event should make destination action ready");
 	Expect(recorded[4].type == dev::MovementEventType::AnimationLocked, "fifth event should lock animation");
 	Expect(recorded[5].type == dev::MovementEventType::ActionExecuted, "sixth event should execute action");
+}
+
+void TestActorStepCommitterCommitsActorPosition()
+{
+	dev::ActorPosition position {
+		.tile = { 2, 3 },
+		.future = { 3, 3 },
+		.previous = { 1, 3 },
+		.precise = { 2, 3 },
+	};
+
+	dev::ActorStepCommitter {}.commit(position, { 4, 5 });
+
+	Expect(position.previous == dev::Point { 2, 3 }, "actor step committer should preserve old tile as previous");
+	Expect(position.tile == dev::Point { 4, 5 }, "actor step committer should update tile to committed step");
+	Expect(position.future == dev::Point { 4, 5 }, "actor step committer should update future to committed step");
+	Expect(position.precise == dev::Point { 4, 5 }, "actor step committer should update precise position to committed step");
 }
 
 void TestPlayerPathStepperReportsActionReady()
@@ -6999,6 +7017,7 @@ int main()
 	TestDiagonalCornerPolicyBlocksCornerCutting();
 	TestActionExecutorWaitsOutOfRange();
 	TestMoveThenActEventSequence();
+	TestActorStepCommitterCommitsActorPosition();
 	TestPlayerPathStepperReportsActionReady();
 	TestPlayerAnimationLockGateBlocksUntilCancelWindow();
 	TestPlayerActionRunnerExecutesReadyDestinationAction();

@@ -31,6 +31,7 @@ Good first tests:
 - action executor applies attack animation commitment
 - action executor clears destination action after execution
 - MoveThenAct emits CommandAccepted -> PathStarted -> StepCommitted -> DestinationActionReady -> AnimationLocked -> ActionExecuted
+- ActorStepCommitter updates previous/tile/future/precise for committed steps
 - PlayerPathStepper commits one path step and reports destination action readiness
 - PlayerAnimationLockGate blocks movement until the cancel window and emits AnimationUnlocked
 - PlayerActionRunner executes a ready destination action through ActionExecutor

@@ -84,6 +84,7 @@ add_library(player_movement_system
   src/interaction/InteractionCommandBuilder.cpp
   src/interaction/InteractionIntentBuilder.cpp
   src/network/MovementCodec.cpp
+  src/player/ActorStepCommitter.cpp
   src/player/PlayerAnimationLockGate.cpp
   src/player/PlayerActionRunner.cpp
   src/player/PlayerActionGate.cpp

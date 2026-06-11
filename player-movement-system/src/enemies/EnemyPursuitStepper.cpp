@@ -31,10 +31,7 @@ void EnemyPursuitStepper::pursue(Enemy &enemy, Player &target) const
 			return;
 		if (!map_.isWalkable(next) || collision_.blocksMovement(next))
 			return;
-		enemy.position.previous = enemy.position.tile;
-		enemy.position.future = next;
-		enemy.position.tile = next;
-		enemy.position.precise = next;
+		stepCommitter_.commit(enemy.position, next);
 		if (attacks_.targetInAttackRange(enemy, target))
 			return;
 	}

@@ -180,12 +180,17 @@ RawInputEvent
 ActorPosition
   tile, future, previous, precise
 
+ActorStepCommitter
+  shared step-commit boundary that updates ActorPosition after player pathing
+  or enemy pursuit has already chosen a legal next tile
+
 WalkPath
   fixed-size queue of committed tile steps
 
 PlayerPathStepper
-  consumes one queued path step, checks late collision, commits position, and
-  reports when arrival makes a destination action ready
+  consumes one queued path step, checks late collision, delegates position
+  commitment to ActorStepCommitter, and reports when arrival makes a
+  destination action ready
 
 PathCostTuning
   pathfinding taste, such as diagonal vs axis-aligned preference
@@ -345,8 +350,9 @@ EnemyMovement
   resolution constraints
 
 EnemyPursuitStepper
-  constrained enemy chase helper that commits pursuit steps until step budget,
-  blocking, or attack range stops movement
+  constrained enemy chase helper that chooses pursuit steps, delegates position
+  commitment to ActorStepCommitter, and stops when step budget, blocking, or
+  attack range stops movement
 
 EnemyAttackRunner
   enemy attack state helper for range checks, windup timing, recovery timing,

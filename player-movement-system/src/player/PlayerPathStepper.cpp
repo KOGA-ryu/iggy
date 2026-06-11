@@ -38,10 +38,7 @@ PlayerPathStepResult PlayerPathStepper::step(Player &player) const
 		return { .consumedStep = true };
 	}
 
-	player.position.previous = player.position.tile;
-	player.position.future = nextTile;
-	player.position.tile = nextTile;
-	player.position.precise = nextTile;
+	stepCommitter_.commit(player.position, nextTile);
 	EmitMovementEvent(eventSink_, MovementEventType::StepCommitted, nextTile);
 
 	player.moveState = player.path.empty()

@@ -2,6 +2,7 @@
 
 #include "enemies/Enemy.hpp"
 #include "enemies/EnemyAttackRunner.hpp"
+#include "player/ActorStepCommitter.hpp"
 #include "player/Player.hpp"
 #include "world/Collision.hpp"
 #include "world/TileMap.hpp"
@@ -20,6 +21,7 @@ private:
 	const TileMap &map_;
 	const Collision &collision_;
 	const EnemyAttackRunner &attacks_;
+	ActorStepCommitter stepCommitter_;
 };
 
 } // namespace dev

@@ -151,8 +151,13 @@ PlayerMovement consumes path
 
 `PlayerPathStepper` is deliberately narrower than pathfinding. Pathfinding picks
 a route; the stepper consumes one queued route tile, checks whether that tile is
-still legal, commits the player position, and reports whether arrival should
-hand control to the action executor.
+still legal, delegates position mutation to `ActorStepCommitter`, and reports
+whether arrival should hand control to the action executor.
+
+`ActorStepCommitter` is shared by player and enemy movement. It does not choose
+where to go, check collision, emit events, or change move state. It only commits
+the already-approved tile into `ActorPosition`: old tile becomes previous, and
+tile/future/precise become the next tile.
 
 `PlayerAnimationLockGate` runs before path stepping. It lets animation
 commitment block movement for a predictable window, then emits
@@ -239,6 +244,8 @@ The goal is not simply to reach the player. The goal is to stay inside a fair
 reaction window: readable enough to answer, fast enough to matter.
 `EnemyPursuitStepper` owns that chase budget and stops when the enemy reaches
 attack range, leaving the next frame to start windup through `EnemyAttackRunner`.
+It uses the same `ActorStepCommitter` as player pathing once a pursuit step is
+known to be legal.
 
 ## 14. Combat Resolution
 
