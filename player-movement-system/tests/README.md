@@ -2,8 +2,9 @@
 
 `movement_tests` remains the broad regression executable. Focused clusters can
 move into smaller executables as subsystem boundaries stabilize.
-`artifact_output_tests` is the first split and covers artifact output planning
-plus one-request execution.
+`artifact_output_tests` covers artifact output settings, result flags, output
+steps, planning, and one-request execution.
+`artifact_text_tests` covers pure trace and manifest formatter contracts.
 
 Good first tests:
 

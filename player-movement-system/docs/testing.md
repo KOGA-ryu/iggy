@@ -9,7 +9,12 @@ executables should take over one cluster at a time.
 `movement_tests` remains the broad regression suite.
 
 `artifact_output_tests` owns the first extracted cluster: artifact output
-planning and one-request artifact execution.
+settings, output flag state, output steps, output planning, and one-request
+artifact execution.
+
+`artifact_text_tests` owns pure trace and manifest formatter contracts. These
+tests exercise strings produced from runtime reports without touching artifact
+writers, filesystem stores, or frame execution.
 
 ```text
 focused production boundary
@@ -24,8 +29,6 @@ large shared helper migration.
 
 Good first candidates:
 
-- artifact output planning and artifact request execution
-- trace and manifest text formatters
 - input routing steps
 - simulation command draining
 

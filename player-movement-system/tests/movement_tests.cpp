@@ -18,7 +18,6 @@
 #include "app/RuntimeDebugArtifactLayout.hpp"
 #include "app/RuntimeDebugArtifactRootPreparer.hpp"
 #include "app/RuntimeDebugArtifactWriter.hpp"
-#include "app/RuntimeDebugBundleOutputStep.hpp"
 #include "app/RuntimeDebugManifest.hpp"
 #include "app/RuntimeDebugManifestContextBuilder.hpp"
 #include "app/RuntimeDebugManifestIndexText.hpp"
@@ -37,7 +36,6 @@
 #include "app/RuntimeFrameLoopRunner.hpp"
 #include "app/RuntimeFramePolicyReportRecorder.hpp"
 #include "app/RuntimeFramePolicyResolver.hpp"
-#include "app/RuntimeFramePolicyText.hpp"
 #include "app/RuntimeFrameRunner.hpp"
 #include "app/RuntimeFrameSimulationPhaseRunner.hpp"
 #include "app/RuntimeFrameSourcePhaseRunner.hpp"
@@ -70,22 +68,17 @@
 #include "app/RuntimeMovementScriptText.hpp"
 #include "app/RuntimeFrameTrace.hpp"
 #include "app/RuntimeFrameTraceFileStore.hpp"
-#include "app/RuntimeFrameTraceHeaderText.hpp"
 #include "app/RuntimeFrameTraceSections.hpp"
 #include "app/RuntimeFinalModeRecorder.hpp"
 #include "app/RuntimeOutputFinalizer.hpp"
 #include "app/RuntimeOutputFailurePolicy.hpp"
 #include "app/RuntimeInputFocusResolver.hpp"
-#include "app/RuntimeOutputResultBuilder.hpp"
 #include "app/RuntimePlayerActionText.hpp"
 #include "app/RuntimeRawInputDrainer.hpp"
 #include "app/RuntimeRunExecutor.hpp"
 #include "app/RuntimeRunFinalizer.hpp"
 #include "app/RuntimeRunFailurePolicy.hpp"
 #include "app/RuntimeRunRecorder.hpp"
-#include "app/RuntimeRunSummaryText.hpp"
-#include "app/RuntimeRunTraceFrameHeaderText.hpp"
-#include "app/RuntimeRunTraceOutputStep.hpp"
 #include "app/RuntimeSessionCommandReportRecorder.hpp"
 #include "app/RuntimeSessionCommandIntake.hpp"
 #include "app/RuntimeSessionFrameSourceStep.hpp"
@@ -6755,48 +6748,6 @@ void TestRuntimeFrameTraceFormatsReadableLines()
 	std::filesystem::remove_all(root);
 }
 
-void TestRuntimeFramePolicyTextFormatsArtifactPolicyLines()
-{
-	const dev::SimulationFramePolicyDescription gameplay = dev::SimulationFramePolicyDescriber {}.describe(dev::SimulationMode::Gameplay);
-	dev::RuntimeFramePolicyText formatter;
-
-	const std::string traceLine = formatter.format("policy mode", gameplay, dev::RuntimeFramePolicyBoolStyle::Numeric);
-	const std::string manifestLine = formatter.format("policy latest", gameplay, dev::RuntimeFramePolicyBoolStyle::Words);
-	const std::string noneLine = formatter.formatNone("policy latest");
-
-	Expect(traceLine == "policy mode=Gameplay acceptCommands=1 updatePlayers=1 updateEnemies=1 reason=accept live input and advance all actors", "runtime frame policy text should format trace policy line");
-	Expect(manifestLine == "policy latest=Gameplay acceptCommands=true updatePlayers=true updateEnemies=true reason=accept live input and advance all actors", "runtime frame policy text should format manifest policy line");
-	Expect(noneLine == "policy latest=none", "runtime frame policy text should format missing policy line");
-}
-
-void TestRuntimeFrameTraceHeaderTextFormatsFrameCounts()
-{
-	dev::RuntimeFrameReport report;
-	report.rawInputEventsRouted = 2;
-	report.sessionCommandResults.push_back({});
-	report.inventoryScriptResults.push_back({});
-	report.inventoryCommandResults.push_back({});
-	report.movementScriptResults.push_back({});
-	report.movementCommandsQueued = 3;
-	report.frameEvents.emit(dev::MovementEvent { .type = dev::MovementEventType::StepCommitted });
-	report.frameEvents.emit(dev::CombatEvent { .type = dev::CombatEventType::Hit });
-	report.frameEvents.emit(dev::EffectRequest { .type = dev::EffectRequestType::Footstep });
-	report.sessionEvents.push_back({});
-	report.inventoryEvents.push_back({});
-
-	dev::RuntimeFrameTraceHeaderText formatter;
-
-	Expect(formatter.format(report) == "frame rawInput=2 movementInputBlocks=0 sessionResults=1 inventoryScripts=1 inventoryResults=1 movementScripts=1 movementQueued=3 movementEvents=1 combatEvents=1 effects=1 sessionEvents=1 inventoryEvents=1", "runtime frame trace header text should format all frame counts");
-}
-
-void TestRuntimeRunTraceFrameHeaderTextFormatsFrameIndex()
-{
-	dev::RuntimeRunTraceFrameHeaderText formatter;
-
-	Expect(formatter.format(0) == "frame[0]", "runtime run trace frame header text should format first frame index");
-	Expect(formatter.format(12) == "frame[12]", "runtime run trace frame header text should format later frame indexes");
-}
-
 void TestRuntimeFrameTraceSectionsFormatsRuntimeSourcesInOrder()
 {
 	dev::RuntimeFrameReport report;
@@ -7204,25 +7155,6 @@ void TestRuntimeEffectTextFormatsEffectRequests()
 	Expect(formatter.formatRequest("effect[0]", request) == "effect[0] type=HitStop tile=(6,7)", "runtime effect text should format effect request lines");
 }
 
-void TestRuntimeRunSummaryTextFormatsTraceAndManifestSummaries()
-{
-	dev::GameLoopResult result;
-	result.summary.framesRun = 2;
-	result.summary.rawInputEventsRouted = 3;
-	result.summary.movementInputBlockReasons.push_back(dev::PlayerActionBlockReason::Focus);
-	result.summary.sessionCommandResults.push_back({});
-	result.summary.runtimeInventoryScriptResults.push_back({});
-	result.summary.inventoryCommandResults.push_back({});
-	result.summary.movementCommandsQueued = 4;
-	result.frameReports.push_back({});
-	result.finalMode = dev::GameSessionMode::Inventory;
-
-	dev::RuntimeRunSummaryText formatter;
-
-	Expect(formatter.format(result, dev::RuntimeRunSummaryDetail::CountsOnly) == "run frames=2 frameReports=1 rawInput=3 movementInputBlocks=1 sessionResults=1 inventoryScripts=1 inventoryResults=1 movementScripts=0 movementQueued=4", "runtime run summary text should format trace run summary");
-	Expect(formatter.format(result, dev::RuntimeRunSummaryDetail::WithFinalMode) == "run frames=2 frameReports=1 rawInput=3 movementInputBlocks=1 sessionResults=1 inventoryScripts=1 inventoryResults=1 movementScripts=0 movementQueued=4 finalMode=Inventory", "runtime run summary text should format manifest run summary");
-}
-
 void TestRuntimeFrameTraceFormatsEnemyPursuitEvents()
 {
 	dev::RuntimeFrameReport report;
@@ -7350,103 +7282,6 @@ void TestRuntimeTraceServiceFormatsEmptyRun()
 
 	Expect(lines.size() == 1, "runtime trace service should format empty run as summary only");
 	Expect(lines.size() == 1 && lines[0] == "run frames=0 frameReports=0 rawInput=0 movementInputBlocks=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime trace service should preserve empty run counts");
-}
-
-void TestRuntimeOutputSettingsDefaultDisablesArtifacts()
-{
-	dev::RuntimeOutputSettings output;
-
-	Expect(!output.runTracePath.has_value(), "runtime output settings should default to no run trace path");
-	Expect(!output.debugBundlePath.has_value(), "runtime output settings should default to no debug bundle path");
-}
-
-void TestRuntimeOutputResultDefaultsToNoAttempts()
-{
-	dev::RuntimeOutputResult output;
-
-	Expect(!output.runTraceSaveAttempted, "runtime output result should default to no trace attempt");
-	Expect(!output.runTraceSaved, "runtime output result should default to unsaved trace");
-	Expect(!output.debugBundleSaveAttempted, "runtime output result should default to no bundle attempt");
-	Expect(!output.debugBundleSaved, "runtime output result should default to unsaved bundle");
-	Expect(!dev::RuntimeOutputFailurePolicy {}.failed(output), "runtime output result should not fail when nothing was requested");
-}
-
-void TestRuntimeOutputResultBuilderRecordsArtifactAttempts()
-{
-	dev::RuntimeOutputResultBuilder builder;
-
-	builder.beginRunTraceSave();
-	dev::GameLoopResult traceAttempt = builder.applyTo(dev::GameLoopResult {});
-	Expect(traceAttempt.output.runTraceSaveAttempted, "runtime output result builder should apply in-progress trace attempt to run result");
-	Expect(!traceAttempt.output.runTraceSaved, "runtime output result builder should not mark trace saved before completion");
-
-	builder.completeRunTraceSave(true);
-	builder.beginDebugBundleSave();
-	dev::GameLoopResult bundleAttempt = builder.applyTo(dev::GameLoopResult {});
-	Expect(bundleAttempt.output.runTraceSaveAttempted && bundleAttempt.output.runTraceSaved, "runtime output result builder should preserve completed trace result");
-	Expect(bundleAttempt.output.debugBundleSaveAttempted, "runtime output result builder should apply in-progress bundle attempt to run result");
-	Expect(!bundleAttempt.output.debugBundleSaved, "runtime output result builder should not mark bundle saved before completion");
-
-	builder.completeDebugBundleSave(false);
-	dev::RuntimeOutputResult output = builder.result();
-	Expect(output.runTraceSaveAttempted && output.runTraceSaved, "runtime output result builder should report completed trace save");
-	Expect(output.debugBundleSaveAttempted && !output.debugBundleSaved, "runtime output result builder should report failed bundle save");
-}
-
-void TestRuntimeRunTraceOutputStepSavesTraceAndUpdatesOutput()
-{
-	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_run_trace_output_step_test";
-	const std::filesystem::path tracePath = root / "run.trace";
-	std::filesystem::remove_all(root);
-	std::filesystem::create_directories(root);
-
-	dev::GameLoopResult result;
-	result.summary.framesRun = 2;
-	dev::RuntimeOutputResultBuilder output;
-
-	dev::RuntimeRunTraceOutputStep {}.save(tracePath, result, output);
-
-	std::optional<std::vector<std::string>> trace = dev::RuntimeFrameTraceFileStore {}.load(tracePath);
-	const dev::RuntimeOutputResult outputResult = output.result();
-
-	Expect(outputResult.runTraceSaveAttempted, "runtime run trace output step should mark trace save attempted");
-	Expect(outputResult.runTraceSaved, "runtime run trace output step should record successful trace save");
-	Expect(!outputResult.debugBundleSaveAttempted, "runtime run trace output step should not touch debug bundle output flags");
-	Expect(trace.has_value() && !trace->empty(), "runtime run trace output step should save trace lines");
-	Expect(trace.has_value() && (*trace)[0] == "run frames=2 frameReports=0 rawInput=0 movementInputBlocks=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime run trace output step should save the supplied run result snapshot");
-
-	std::filesystem::remove_all(root);
-}
-
-void TestRuntimeDebugBundleOutputStepSavesBundleAndUpdatesOutput()
-{
-	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_debug_bundle_output_step_test";
-	const std::filesystem::path bundlePath = root / "bundle";
-	std::filesystem::remove_all(root);
-	std::filesystem::create_directories(root);
-
-	dev::GameLoopResult result;
-	result.summary.framesRun = 3;
-	result.finalMode = dev::GameSessionMode::Gameplay;
-	dev::RuntimeOutputResult existingOutput;
-	existingOutput.runTraceSaveAttempted = true;
-	existingOutput.runTraceSaved = true;
-	dev::RuntimeOutputResultBuilder output { existingOutput };
-
-	dev::RuntimeDebugBundleOutputStep {}.save(bundlePath, result, output);
-
-	std::optional<std::vector<std::string>> manifest = dev::RuntimeFrameTraceFileStore {}.load(bundlePath / "manifest.txt");
-	std::optional<std::vector<std::string>> trace = dev::RuntimeFrameTraceFileStore {}.load(bundlePath / "run.trace");
-	const dev::RuntimeOutputResult outputResult = output.result();
-
-	Expect(outputResult.runTraceSaveAttempted && outputResult.runTraceSaved, "runtime debug bundle output step should preserve existing trace output flags");
-	Expect(outputResult.debugBundleSaveAttempted, "runtime debug bundle output step should mark bundle save attempted");
-	Expect(outputResult.debugBundleSaved, "runtime debug bundle output step should record successful bundle save");
-	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "trace=run.trace saved=true"), "runtime debug bundle output step should save manifest lines");
-	Expect(trace.has_value() && !trace->empty(), "runtime debug bundle output step should save trace lines");
-	Expect(trace.has_value() && (*trace)[0] == "run frames=3 frameReports=0 rawInput=0 movementInputBlocks=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime debug bundle output step should save the supplied run result snapshot");
-
-	std::filesystem::remove_all(root);
 }
 
 void TestRuntimeSetupSettingsDefaultsToNoScripts()
@@ -10976,9 +10811,6 @@ int main()
 	TestGameLoopDoesNotDrainInventoryScriptSourcesWithoutActiveWorld();
 	TestGameLoopBuildsRuntimeFrameReports();
 	TestRuntimeFrameTraceFormatsReadableLines();
-	TestRuntimeFramePolicyTextFormatsArtifactPolicyLines();
-	TestRuntimeFrameTraceHeaderTextFormatsFrameCounts();
-	TestRuntimeRunTraceFrameHeaderTextFormatsFrameIndex();
 	TestRuntimeFrameTraceSectionsFormatsRuntimeSourcesInOrder();
 	TestRuntimeMovementInputBlockSummaryCountsReasons();
 	TestRuntimeMovementInputBlockSummaryTextFormatsReasonCounts();
@@ -10998,18 +10830,12 @@ int main()
 	TestRuntimeMovementEventTextFormatsMovementEvents();
 	TestRuntimeCombatTextFormatsCombatEvents();
 	TestRuntimeEffectTextFormatsEffectRequests();
-	TestRuntimeRunSummaryTextFormatsTraceAndManifestSummaries();
 	TestRuntimeFrameTraceFormatsEnemyPursuitEvents();
 	TestRuntimeFrameTraceFormatsEnemyAttackEvents();
 	TestRuntimeFrameTraceFileStoreSavesAndLoadsLines();
 	TestRuntimeFrameTraceFileStoreRejectsMissingFile();
 	TestRuntimeTraceServiceFormatsAndSavesRunTrace();
 	TestRuntimeTraceServiceFormatsEmptyRun();
-	TestRuntimeOutputSettingsDefaultDisablesArtifacts();
-	TestRuntimeOutputResultDefaultsToNoAttempts();
-	TestRuntimeOutputResultBuilderRecordsArtifactAttempts();
-	TestRuntimeRunTraceOutputStepSavesTraceAndUpdatesOutput();
-	TestRuntimeDebugBundleOutputStepSavesBundleAndUpdatesOutput();
 	TestRuntimeSetupSettingsDefaultsToNoScripts();
 	TestRuntimeSetupResultDefaultsToNoSetupScripts();
 	TestRuntimeSetupRunnerAllowsFramesWhenNoScriptsConfigured();
