@@ -434,6 +434,10 @@ RuntimeRawInputDrainer
   app-edge helper that drains raw input sources, skips missing sources, routes
   each event through RuntimeInputRouter, and reports how many events were handled
 
+RuntimeInputDrainResultBuilder
+  app-edge aggregation helper that turns per-event route results into handled
+  raw input counts and movement block reason lists for frame reports
+
 RawInputSource
   app-edge source boundary for raw device-like events before they are routed
   into semantic command sources

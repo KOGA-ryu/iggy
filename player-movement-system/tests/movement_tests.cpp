@@ -29,6 +29,7 @@
 #include "app/RuntimeFramePolicyText.hpp"
 #include "app/RuntimeFrameRunner.hpp"
 #include "app/RuntimeInputContextBuilder.hpp"
+#include "app/RuntimeInputDrainResultBuilder.hpp"
 #include "app/RuntimeInputRouter.hpp"
 #include "app/RuntimeInputRouteResultBuilder.hpp"
 #include "app/RuntimeInputSourceRouter.hpp"
@@ -7129,6 +7130,25 @@ void TestRuntimeInputRouteResultBuilderNamesRouteOutcomes()
 	Expect(blocked.movementBlockReason == std::optional<dev::PlayerActionBlockReason> { dev::PlayerActionBlockReason::Focus }, "runtime input route result builder should preserve blocked movement reason");
 }
 
+void TestRuntimeInputDrainResultBuilderAggregatesRouteOutcomes()
+{
+	dev::RuntimeInputRouteResultBuilder routeResults;
+	dev::RuntimeInputDrainResultBuilder drainResults;
+
+	drainResults.record(routeResults.unhandled());
+	drainResults.record(routeResults.queuedSessionCommand());
+	drainResults.record(routeResults.queuedMovementCommand());
+	drainResults.record(routeResults.blockedMovement(dev::PlayerActionBlockReason::Focus));
+	drainResults.record(routeResults.blockedMovement(dev::PlayerActionBlockReason::Paused));
+
+	const dev::RuntimeInputDrainResult result = drainResults.build();
+
+	Expect(result.handled == 2, "runtime input drain result builder should count handled route outcomes");
+	Expect(result.movementBlockReasons.size() == 2, "runtime input drain result builder should collect blocked movement reasons");
+	Expect(result.movementBlockReasons.size() == 2 && result.movementBlockReasons[0] == dev::PlayerActionBlockReason::Focus, "runtime input drain result builder should preserve first block reason");
+	Expect(result.movementBlockReasons.size() == 2 && result.movementBlockReasons[1] == dev::PlayerActionBlockReason::Paused, "runtime input drain result builder should preserve second block reason");
+}
+
 void TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz()
 {
 	dev::RuntimeFrameSettings frame;
@@ -9535,6 +9555,7 @@ int main()
 	TestRuntimeInputContextBuilderHandlesMissingWorld();
 	TestRuntimeInputContextBuilderUsesWorldTargetsUnlessOverridden();
 	TestRuntimeInputRouteResultBuilderNamesRouteOutcomes();
+	TestRuntimeInputDrainResultBuilderAggregatesRouteOutcomes();
 	TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz();
 	TestRuntimeRunSummaryDefaultsToEmptyRun();
 	TestRuntimeRunRecorderAggregatesSetupInventoryResultsWithoutFrame();

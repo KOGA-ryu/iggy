@@ -224,6 +224,7 @@ Good first tests:
 - RuntimeInputSettings defaults to primary gameplay input context
 - RuntimeInputContextBuilder builds per-frame router context from session state
 - RuntimeInputRouteResultBuilder names route outcomes consistently
+- RuntimeInputDrainResultBuilder aggregates route outcomes for frame input reports
 - RuntimeFrameSettings defaults to zero frames at a sixty hertz timestep
 - RuntimeFrameRunner routes sources and records one bounded frame
 - RuntimeFrameLoopRunner runs the configured bounded frame count
@@ -277,6 +278,7 @@ Good first tests:
 - RuntimeTargetInputRouter maps target-aware pointer input into interaction movement commands
 - RuntimeInputRouter maps stand-ground target clicks into StandAndAct attacks
 - QueuedRawInputSource drains raw input events exactly once
+- RuntimeInputDrainResultBuilder aggregates handled events and movement block reasons
 - RuntimeRawInputDrainer drains raw input sources, counts handled routed events, and reports movement block reasons
 - RuntimeInputSourceRouter routes raw input sources through the current session context
 - GameLoop routes raw hotkeys through session command dispatch
