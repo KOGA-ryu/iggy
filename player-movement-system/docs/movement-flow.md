@@ -1724,6 +1724,10 @@ events into the semantic queues. `RuntimeRawInputDrainer` owns the lower-level
 source-stream mechanics: drain each configured raw input source once, skip
 missing source slots, route every event, and count only events the router
 handled. `RuntimeInputRouter` still owns the meaning of a single event.
+`RuntimeInputRouteResultBuilder` owns the tiny result vocabulary those routers
+return: unhandled, queued session command, queued movement command, and blocked
+movement input. Keeping that vocabulary explicit matters because blocked
+movement input is diagnostic, not a handled command.
 
 That gives the app layer three input levels:
 

@@ -1,27 +1,9 @@
 #include "RuntimeTargetInputRouter.hpp"
 
+#include "app/RuntimeInputRouteResultBuilder.hpp"
 #include "input/InputEventMatcher.hpp"
 
 namespace dev {
-
-namespace {
-
-RuntimeInputRouteResult QueuedMovement()
-{
-	return {
-	    .handled = true,
-	    .queuedMovementCommand = true,
-	};
-}
-
-RuntimeInputRouteResult BlockedMovement(PlayerActionBlockReason reason)
-{
-	return {
-	    .movementBlockReason = reason,
-	};
-}
-
-} // namespace
 
 RuntimeTargetInputRouter::RuntimeTargetInputRouter(QueuedMovementCommandSource &movementCommands)
     : movementCommands_(movementCommands)
@@ -34,17 +16,18 @@ RuntimeInputRouteResult RuntimeTargetInputRouter::route(
     const Player &player,
     const PlayerActionGate &gate) const
 {
+	RuntimeInputRouteResultBuilder resultBuilder;
 	if (!InputEventMatcher {}.pressedPointer(event) || context.world == nullptr || context.targetResolver == nullptr)
-		return {};
+		return resultBuilder.unhandled();
 	const PlayerActionBlockReason blockReason = gate.movementBlockReason(player);
 	if (blockReason != PlayerActionBlockReason::None)
-		return BlockedMovement(blockReason);
+		return resultBuilder.blockedMovement(blockReason);
 
 	const Point tile = context.world->map.screenToTile(event.screenPosition);
 	const Target target = context.targetResolver->resolveAtTile(tile);
 	const InteractionIntent intent = interactionIntentBuilder_.build(target, player.movementModifiers.standGround);
 	movementCommands_.enqueue(interactionCommandBuilder_.build(context.playerId, player, intent, gate));
-	return QueuedMovement();
+	return resultBuilder.queuedMovementCommand();
 }
 
 } // namespace dev

@@ -30,6 +30,7 @@
 #include "app/RuntimeFrameRunner.hpp"
 #include "app/RuntimeInputContextBuilder.hpp"
 #include "app/RuntimeInputRouter.hpp"
+#include "app/RuntimeInputRouteResultBuilder.hpp"
 #include "app/RuntimeInputSourceRouter.hpp"
 #include "app/RuntimeInventoryScriptText.hpp"
 #include "app/RuntimeInventoryText.hpp"
@@ -7112,6 +7113,22 @@ void TestRuntimeInputContextBuilderUsesWorldTargetsUnlessOverridden()
 	std::filesystem::remove_all(root);
 }
 
+void TestRuntimeInputRouteResultBuilderNamesRouteOutcomes()
+{
+	dev::RuntimeInputRouteResultBuilder builder;
+
+	const dev::RuntimeInputRouteResult unhandled = builder.unhandled();
+	const dev::RuntimeInputRouteResult session = builder.queuedSessionCommand();
+	const dev::RuntimeInputRouteResult movement = builder.queuedMovementCommand();
+	const dev::RuntimeInputRouteResult blocked = builder.blockedMovement(dev::PlayerActionBlockReason::Focus);
+
+	Expect(!unhandled.handled && !unhandled.queuedSessionCommand && !unhandled.queuedMovementCommand && !unhandled.movementBlockReason.has_value(), "runtime input route result builder should name unhandled events");
+	Expect(session.handled && session.queuedSessionCommand && !session.queuedMovementCommand && !session.movementBlockReason.has_value(), "runtime input route result builder should name queued session commands");
+	Expect(movement.handled && !movement.queuedSessionCommand && movement.queuedMovementCommand && !movement.movementBlockReason.has_value(), "runtime input route result builder should name queued movement commands");
+	Expect(!blocked.handled && !blocked.queuedSessionCommand && !blocked.queuedMovementCommand, "runtime input route result builder should keep blocked movement unhandled");
+	Expect(blocked.movementBlockReason == std::optional<dev::PlayerActionBlockReason> { dev::PlayerActionBlockReason::Focus }, "runtime input route result builder should preserve blocked movement reason");
+}
+
 void TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz()
 {
 	dev::RuntimeFrameSettings frame;
@@ -9517,6 +9534,7 @@ int main()
 	TestRuntimeInputSettingsDefaultsToPrimaryGameplayInput();
 	TestRuntimeInputContextBuilderHandlesMissingWorld();
 	TestRuntimeInputContextBuilderUsesWorldTargetsUnlessOverridden();
+	TestRuntimeInputRouteResultBuilderNamesRouteOutcomes();
 	TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz();
 	TestRuntimeRunSummaryDefaultsToEmptyRun();
 	TestRuntimeRunRecorderAggregatesSetupInventoryResultsWithoutFrame();

@@ -223,6 +223,7 @@ Good first tests:
 - RuntimeSourceSettings defaults to no runtime source streams
 - RuntimeInputSettings defaults to primary gameplay input context
 - RuntimeInputContextBuilder builds per-frame router context from session state
+- RuntimeInputRouteResultBuilder names route outcomes consistently
 - RuntimeFrameSettings defaults to zero frames at a sixty hertz timestep
 - RuntimeFrameRunner routes sources and records one bounded frame
 - RuntimeFrameLoopRunner runs the configured bounded frame count

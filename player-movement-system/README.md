@@ -402,6 +402,10 @@ RuntimeInputRouter
   movement-shaped input can report the PlayerActionBlockReason without being
   counted as handled
 
+RuntimeInputRouteResultBuilder
+  app-edge result helper that names route outcomes consistently: unhandled,
+  queued session command, queued movement command, or blocked movement input
+
 InputEventMatcher
   input-layer matcher that names common raw input shapes such as pressed keys
   and pressed pointer events before routers map them to commands

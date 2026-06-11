@@ -1,20 +1,9 @@
 #include "RuntimeSessionInputRouter.hpp"
 
+#include "app/RuntimeInputRouteResultBuilder.hpp"
 #include "input/InputEventMatcher.hpp"
 
 namespace dev {
-
-namespace {
-
-RuntimeInputRouteResult QueuedSession()
-{
-	return {
-	    .handled = true,
-	    .queuedSessionCommand = true,
-	};
-}
-
-} // namespace
 
 RuntimeSessionInputRouter::RuntimeSessionInputRouter(QueuedSessionCommandSource &sessionCommands, RuntimeInputBindings bindings)
     : sessionCommands_(sessionCommands)
@@ -24,12 +13,13 @@ RuntimeSessionInputRouter::RuntimeSessionInputRouter(QueuedSessionCommandSource 
 
 RuntimeInputRouteResult RuntimeSessionInputRouter::route(const RawInputEvent &event, const RuntimeInputContext &context) const
 {
+	RuntimeInputRouteResultBuilder resultBuilder;
 	if (InputEventMatcher {}.pressedKey(event, bindings_.pauseKey)) {
 		sessionCommands_.enqueue({
 		    .type = SessionCommandType::SetMode,
 		    .mode = modeTogglePolicy_.togglePause(context.sessionMode),
 		});
-		return QueuedSession();
+		return resultBuilder.queuedSessionCommand();
 	}
 
 	if (InputEventMatcher {}.pressedKey(event, bindings_.inventoryKey)) {
@@ -37,10 +27,10 @@ RuntimeInputRouteResult RuntimeSessionInputRouter::route(const RawInputEvent &ev
 		    .type = SessionCommandType::SetMode,
 		    .mode = modeTogglePolicy_.toggleInventory(context.sessionMode),
 		});
-		return QueuedSession();
+		return resultBuilder.queuedSessionCommand();
 	}
 
-	return {};
+	return resultBuilder.unhandled();
 }
 
 } // namespace dev

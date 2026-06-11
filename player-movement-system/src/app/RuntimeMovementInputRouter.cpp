@@ -1,27 +1,9 @@
 #include "RuntimeMovementInputRouter.hpp"
 
+#include "app/RuntimeInputRouteResultBuilder.hpp"
 #include "input/InputEventMatcher.hpp"
 
 namespace dev {
-
-namespace {
-
-RuntimeInputRouteResult QueuedMovement()
-{
-	return {
-	    .handled = true,
-	    .queuedMovementCommand = true,
-	};
-}
-
-RuntimeInputRouteResult BlockedMovement(PlayerActionBlockReason reason)
-{
-	return {
-	    .movementBlockReason = reason,
-	};
-}
-
-} // namespace
 
 RuntimeMovementInputRouter::RuntimeMovementInputRouter(QueuedMovementCommandSource &movementCommands, RuntimeInputBindings bindings)
     : movementCommands_(movementCommands)
@@ -32,8 +14,9 @@ RuntimeMovementInputRouter::RuntimeMovementInputRouter(QueuedMovementCommandSour
 
 RuntimeInputRouteResult RuntimeMovementInputRouter::route(const RawInputEvent &event, const RuntimeInputContext &context) const
 {
+	RuntimeInputRouteResultBuilder resultBuilder;
 	if (context.world == nullptr || context.playerId >= context.world->players.size())
-		return {};
+		return resultBuilder.unhandled();
 
 	FocusState focusState = focusResolver_.resolve(context.focusState, context.sessionMode);
 	InputFocus focus { focusState };
@@ -44,16 +27,16 @@ RuntimeInputRouteResult RuntimeMovementInputRouter::route(const RawInputEvent &e
 
 	if (inputMatcher.pressedKey(event, bindings_.stopKey)) {
 		if (blockReason != PlayerActionBlockReason::None)
-			return BlockedMovement(blockReason);
+			return resultBuilder.blockedMovement(blockReason);
 		std::optional<MovementCommand> stop = commandBuilder_.buildMoveCommand(
 		    context.playerId,
 		    player,
 		    PlayerIntent { .type = PlayerIntentType::StopMoving },
 		    gate);
 		if (!stop.has_value())
-			return {};
+			return resultBuilder.unhandled();
 		movementCommands_.enqueue(*stop);
-		return QueuedMovement();
+		return resultBuilder.queuedMovementCommand();
 	}
 
 	RuntimeInputRouteResult targetResult = targetInput_.route(event, context, player, gate);
@@ -61,15 +44,15 @@ RuntimeInputRouteResult RuntimeMovementInputRouter::route(const RawInputEvent &e
 		return targetResult;
 
 	if (inputMatcher.pressedPointer(event) && blockReason != PlayerActionBlockReason::None)
-		return BlockedMovement(blockReason);
+		return resultBuilder.blockedMovement(blockReason);
 
 	PlayerIntent intent = inputMapper_.mapToIntent(event, context.world->map, focus);
 	std::optional<MovementCommand> command = commandBuilder_.buildMoveCommand(context.playerId, player, intent, gate);
 	if (!command.has_value())
-		return {};
+		return resultBuilder.unhandled();
 
 	movementCommands_.enqueue(*command);
-	return QueuedMovement();
+	return resultBuilder.queuedMovementCommand();
 }
 
 } // namespace dev
