@@ -28,6 +28,7 @@
 #include "app/RuntimeSetupRunner.hpp"
 #include "app/RuntimeSourceDrainer.hpp"
 #include "app/RuntimeSourceDrainerSettingsBuilder.hpp"
+#include "app/RuntimeSourceStream.hpp"
 #include "app/RuntimeTargetInputRouter.hpp"
 #include "app/RuntimeTraceService.hpp"
 #include "combat/CombatEventRecorder.hpp"
@@ -118,6 +119,7 @@
 #include "simulation/SimulationFrameEventCapture.hpp"
 #include "simulation/SimulationFrameFinalizer.hpp"
 #include "simulation/SimulationFrameRunner.hpp"
+#include "simulation/SimulationFrameTickRunner.hpp"
 #include "simulation/SimulationInventoryFinalizer.hpp"
 #include "simulation/SimulationPlayerUpdater.hpp"
 #include "simulation/SimulationTargetFinalizer.hpp"
@@ -1123,6 +1125,32 @@ void TestSimulationFrameFinalizerAppliesConsequences()
 	Expect(world.targets.resolveAtTile({ 2, 0 }).type == dev::TargetType::Enemy, "simulation frame finalizer should publish current enemy targets");
 	Expect(!frameEvents.effectRequests().empty(), "simulation frame finalizer should route events into effect requests");
 	Expect(clock.hitStopRemainingSeconds() > 0.0F, "simulation frame finalizer should apply hit-stop effect requests");
+}
+
+void TestSimulationFrameTickRunnerCollectsTickEventsAndRestoresSinks()
+{
+	dev::SimulationWorld world;
+	dev::EventRecorder forwardedMovement;
+	dev::CombatEventRecorder forwardedCombat;
+	world.movementEvents = &forwardedMovement;
+	world.setCombatEventSink(&forwardedCombat);
+	world.players.push_back(MakePlayer({ 0, 0 }));
+	world.commandQueue.push({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+
+	dev::SimulationFrameEvents frameEvents = dev::SimulationFrameTickRunner {}.run(
+	    world,
+	    dev::SimulationTimeStep::fromRawDelta(1.0F),
+	    dev::SimulationFramePolicy::forMode(dev::SimulationMode::Gameplay));
+
+	Expect(!frameEvents.movementEvents().empty(), "simulation frame tick runner should collect tick movement events");
+	Expect(!forwardedMovement.events().empty(), "simulation frame tick runner should forward collected movement events");
+	Expect(world.movementEvents == &forwardedMovement, "simulation frame tick runner should restore movement sink after tick");
+	Expect(world.combatEvents == &forwardedCombat, "simulation frame tick runner should restore combat sink after tick");
+	Expect(world.players[0].position.tile == dev::Point { 1, 0 }, "simulation frame tick runner should still run the simulation tick");
 }
 
 void TestSimulationTargetFinalizerSynchronizesTargets()
@@ -4339,6 +4367,32 @@ void TestRuntimeSourceDrainerSettingsBuilderMapsLoopSourcesAndPlayer()
 	Expect(settings.inputPlayerId == 3, "runtime source drainer settings builder should map input player id to source-drainer player id");
 }
 
+void TestRuntimeSourceStreamDrainsSourcesAndSkipsNullSlots()
+{
+	dev::QueuedMovementCommandSource first;
+	first.enqueue({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+	dev::QueuedMovementCommandSource second;
+	second.enqueue({
+	    .type = dev::MovementCommandType::Stop,
+	    .playerId = 0,
+	    .destination = { 2, 0 },
+	});
+
+	std::vector<dev::MovementCommand> commands = dev::RuntimeSourceStream<dev::MovementCommand, dev::MovementCommandSource> {}.drain(
+	    first,
+	    { nullptr, &second });
+
+	Expect(commands.size() == 2, "runtime source stream should drain first and configured sources");
+	Expect(commands.size() == 2 && commands[0].destination == dev::Point { 1, 0 }, "runtime source stream should preserve first source order");
+	Expect(commands.size() == 2 && commands[1].destination == dev::Point { 2, 0 }, "runtime source stream should preserve configured source order");
+	Expect(first.empty(), "runtime source stream should drain the first source once");
+	Expect(second.empty(), "runtime source stream should drain configured sources once");
+}
+
 void TestRuntimeSourceDrainerDrainsSessionBeforeMovement()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_source_drainer_test";
@@ -6591,6 +6645,7 @@ int main()
 	TestSimulationEffectFinalizerRunsEffectConsequences();
 	TestSimulationFrameEventCaptureCollectsForwardsAndRestoresSinks();
 	TestSimulationFrameFinalizerAppliesConsequences();
+	TestSimulationFrameTickRunnerCollectsTickEventsAndRestoresSinks();
 	TestSimulationTargetFinalizerSynchronizesTargets();
 	TestSimulationInventoryFinalizerAppliesPickupConsequences();
 	TestSimulationFrameRunnerProcessesConsequences();
@@ -6706,6 +6761,7 @@ int main()
 	TestQueuedInventoryCommandSourceDrainsCommandsOnce();
 	TestQueuedInventoryScriptSourceDrainsPathsOnce();
 	TestRuntimeSourceDrainerSettingsBuilderMapsLoopSourcesAndPlayer();
+	TestRuntimeSourceStreamDrainsSourcesAndSkipsNullSlots();
 	TestRuntimeSourceDrainerDrainsSessionBeforeMovement();
 	TestGameLoopDrainsRuntimeInventoryScriptSources();
 	TestGameLoopReportsRuntimeInventoryScriptLoadFailureWithoutStoppingFrames();

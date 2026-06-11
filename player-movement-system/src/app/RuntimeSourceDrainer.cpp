@@ -1,5 +1,7 @@
 #include "RuntimeSourceDrainer.hpp"
 
+#include "app/RuntimeSourceStream.hpp"
+
 #include <utility>
 
 namespace dev {
@@ -31,19 +33,12 @@ InventoryScriptRunResult RuntimeSourceDrainer::runInventoryScript(const std::fil
 std::vector<SessionCommandResult> RuntimeSourceDrainer::drainSessionCommands(const SessionCommandDispatcher &dispatcher)
 {
 	std::vector<SessionCommandResult> results;
-	std::vector<SessionCommandSource *> sources;
-	sources.reserve(settings_.sessionCommandSources.size() + 1U);
-	sources.push_back(&routedSessionCommands_);
-	sources.insert(sources.end(), settings_.sessionCommandSources.begin(), settings_.sessionCommandSources.end());
-
-	for (SessionCommandSource *source : sources) {
-		if (source == nullptr)
-			continue;
-		std::vector<SessionCommand> commands = source->drain();
-		results.reserve(results.size() + commands.size());
-		for (const SessionCommand &command : commands)
-			results.push_back(dispatcher.dispatch(command));
-	}
+	std::vector<SessionCommand> commands = RuntimeSourceStream<SessionCommand, SessionCommandSource> {}.drain(
+	    routedSessionCommands_,
+	    settings_.sessionCommandSources);
+	results.reserve(commands.size());
+	for (const SessionCommand &command : commands)
+		results.push_back(dispatcher.dispatch(command));
 	return results;
 }
 
@@ -53,14 +48,11 @@ std::vector<InventoryScriptRunResult> RuntimeSourceDrainer::drainInventoryScript
 	if (!session_.hasActiveWorld())
 		return results;
 
-	for (InventoryScriptSource *source : settings_.inventoryScriptSources) {
-		if (source == nullptr)
-			continue;
-		std::vector<std::filesystem::path> paths = source->drain();
-		results.reserve(results.size() + paths.size());
-		for (const std::filesystem::path &path : paths)
-			results.push_back(runInventoryScript(path));
-	}
+	std::vector<std::filesystem::path> paths = RuntimeSourceStream<std::filesystem::path, InventoryScriptSource> {}.drain(
+	    settings_.inventoryScriptSources);
+	results.reserve(paths.size());
+	for (const std::filesystem::path &path : paths)
+		results.push_back(runInventoryScript(path));
 	return results;
 }
 
@@ -70,27 +62,24 @@ std::vector<InventoryCommandResult> RuntimeSourceDrainer::drainInventoryCommands
 	if (!session_.hasActiveWorld())
 		return results;
 
-	for (InventoryCommandSource *source : settings_.inventoryCommandSources) {
-		if (source == nullptr)
-			continue;
-		std::vector<InventoryCommand> commands = source->drain();
-		results.reserve(results.size() + commands.size());
-		if (settings_.inputPlayerId >= session_.world().players.size()) {
-			for (const InventoryCommand &command : commands) {
-				results.push_back({ .type = InventoryCommandResultType::Rejected, .command = command });
-				inventoryEvents_.emit({
-				    .type = InventoryEventType::Rejected,
-				    .commandType = command.type,
-				    .commandResult = InventoryCommandResultType::Rejected,
-				});
-			}
-			continue;
+	std::vector<InventoryCommand> commands = RuntimeSourceStream<InventoryCommand, InventoryCommandSource> {}.drain(
+	    settings_.inventoryCommandSources);
+	results.reserve(commands.size());
+	if (settings_.inputPlayerId >= session_.world().players.size()) {
+		for (const InventoryCommand &command : commands) {
+			results.push_back({ .type = InventoryCommandResultType::Rejected, .command = command });
+			inventoryEvents_.emit({
+			    .type = InventoryEventType::Rejected,
+			    .commandType = command.type,
+			    .commandResult = InventoryCommandResultType::Rejected,
+			});
 		}
-
-		InventoryCommandDispatcher dispatcher { session_.world().players[settings_.inputPlayerId], &inventoryEvents_ };
-		for (const InventoryCommand &command : commands)
-			results.push_back(dispatcher.dispatch(command));
+		return results;
 	}
+
+	InventoryCommandDispatcher dispatcher { session_.world().players[settings_.inputPlayerId], &inventoryEvents_ };
+	for (const InventoryCommand &command : commands)
+		results.push_back(dispatcher.dispatch(command));
 
 	return results;
 }
@@ -101,19 +90,12 @@ int RuntimeSourceDrainer::drainMovementCommands()
 		return 0;
 
 	int queued = 0;
-	std::vector<MovementCommandSource *> sources;
-	sources.reserve(settings_.movementCommandSources.size() + 1U);
-	sources.push_back(&routedMovementCommands_);
-	sources.insert(sources.end(), settings_.movementCommandSources.begin(), settings_.movementCommandSources.end());
-
-	for (MovementCommandSource *source : sources) {
-		if (source == nullptr)
-			continue;
-		std::vector<MovementCommand> commands = source->drain();
-		for (MovementCommand command : commands) {
-			session_.world().commandQueue.push(command);
-			++queued;
-		}
+	std::vector<MovementCommand> commands = RuntimeSourceStream<MovementCommand, MovementCommandSource> {}.drain(
+	    routedMovementCommands_,
+	    settings_.movementCommandSources);
+	for (MovementCommand command : commands) {
+		session_.world().commandQueue.push(command);
+		++queued;
 	}
 	return queued;
 }

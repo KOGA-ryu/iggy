@@ -380,6 +380,10 @@ SimulationTimeStepBuilder
 SimulationFrameEvents / SimulationFrameRunner
   collects per-frame facts and returns frame output for presentation
 
+SimulationFrameTickRunner
+  tick-stage runner that captures movement/combat events while running
+  SimulationTick, then restores the world's previous event sinks
+
 SimulationFrameEventCapture
   scoped frame helper that temporarily installs movement/combat event capture
   sinks, forwards to existing sinks, and restores the world after the tick
@@ -647,6 +651,10 @@ RuntimeDebugArtifactBundle
 RuntimeSourceDrainer
   app-layer helper that drains runtime session, inventory script, inventory
   command, and movement sources in frame order
+
+RuntimeSourceStream
+  app-layer source-stream primitive that skips missing source slots, drains
+  each source once, and preserves source ordering before semantic dispatch
 
 RuntimeSourceDrainerSettingsBuilder
   app-layer mapper that turns loop-level source and input settings into the

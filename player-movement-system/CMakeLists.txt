@@ -128,6 +128,7 @@ add_library(player_movement_system
   src/simulation/SimulationFrameEvents.cpp
   src/simulation/SimulationFramePolicy.cpp
   src/simulation/SimulationFrameRunner.cpp
+  src/simulation/SimulationFrameTickRunner.cpp
   src/simulation/SimulationInventoryFinalizer.cpp
   src/simulation/SimulationPlayerUpdater.cpp
   src/simulation/SimulationTargetFinalizer.cpp

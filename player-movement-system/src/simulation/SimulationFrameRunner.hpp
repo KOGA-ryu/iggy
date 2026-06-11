@@ -4,7 +4,7 @@
 #include "simulation/SimulationFrameEvents.hpp"
 #include "simulation/SimulationFrameFinalizer.hpp"
 #include "simulation/SimulationFramePolicy.hpp"
-#include "simulation/SimulationTick.hpp"
+#include "simulation/SimulationFrameTickRunner.hpp"
 #include "simulation/SimulationTimeStep.hpp"
 #include "simulation/SimulationTimeStepBuilder.hpp"
 #include "simulation/SimulationWorld.hpp"
@@ -22,7 +22,7 @@ public:
 
 private:
 	SimulationTimeStepBuilder timeSteps_;
-	SimulationTick tick_;
+	SimulationFrameTickRunner ticks_;
 	SimulationFrameFinalizer finalizer_;
 };
 

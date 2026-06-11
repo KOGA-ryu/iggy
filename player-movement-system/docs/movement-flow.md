@@ -415,8 +415,9 @@ The frame runner turns the pieces into a normal loop:
 SimulationFrameRunner
   -> SimulationTimeStepBuilder
   -> SimulationClock::step
-  -> SimulationTick
+  -> SimulationFrameTickRunner
   -> SimulationFrameEventCapture
+  -> SimulationTick
   -> SimulationFrameEvents
   -> SimulationFrameFinalizer
   -> SimulationTargetFinalizer
@@ -428,6 +429,11 @@ SimulationFrameRunner
   -> EffectRouter / EffectApplier
   -> frame output for presentation
 ```
+
+`SimulationFrameTickRunner` owns the tick-stage event boundary. It installs
+frame event capture, runs `SimulationTick`, restores the world's previous event
+sinks, and returns the collected events. That leaves `SimulationFrameRunner` to
+coordinate time-step building and post-tick finalization.
 
 This gives each frame a clean consequence phase:
 
@@ -1036,11 +1042,19 @@ RuntimeSourceDrainerSettingsBuilder
   -> RuntimeSourceDrainerSettings
 
 RuntimeSourceDrainer
+  -> RuntimeSourceStream drains source lists
   -> drain session command sources
   -> drain inventory script sources
   -> drain inventory command sources
   -> drain movement command sources
 ```
+
+`RuntimeSourceStream` owns the source-list mechanics that are common across
+semantic source types: preserve order, skip missing source slots, drain each
+source once, and return the drained items as a flat list. That lets
+`RuntimeSourceDrainer` focus on what drained items mean: dispatch session
+commands, run inventory scripts, dispatch inventory commands, or queue movement
+commands into the active world.
 
 `RuntimeFrameRunner` owns the one-frame order around that drainer:
 

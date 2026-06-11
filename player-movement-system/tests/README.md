@@ -60,6 +60,7 @@ Good first tests:
 - SimulationEffectFinalizer applies frame effect consequences through the pipeline
 - SimulationFrameEventCapture collects frame events, forwards them, and restores sinks
 - SimulationFrameFinalizer applies post-tick targets, pickups, and effects
+- SimulationFrameTickRunner captures tick events and restores forwarded sinks
 - SimulationTargetFinalizer synchronizes moved and defeated target state
 - SimulationInventoryFinalizer applies accepted pickups and preserves rejected pickups
 - SimulationFrameRunner collects events, routes effects, applies hit-stop, and preserves forwarding
@@ -156,6 +157,7 @@ Good first tests:
 - GameLoop drains runtime inventory script sources before direct inventory command sources
 - RuntimeSourceDrainerSettingsBuilder maps loop sources and player id into drainer settings
 - RuntimeSourceDrainer owns runtime source draining order
+- RuntimeSourceStream drains nullable source lists once while preserving order
 - RuntimeLoopTypes keeps loop settings and results reusable outside GameLoop
 - GameLoop builds RuntimeFrameReport entries for per-frame inspection
 - RuntimeFrameTrace formats frame reports into readable debug lines
