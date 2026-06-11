@@ -938,6 +938,14 @@ RuntimeOutputResultBuilder
   app-layer state builder that records artifact save attempts, completion
   flags, and snapshots those flags onto GameLoopResult before writers run
 
+RuntimeRunTraceOutputStep
+  app-layer artifact step that marks a run trace save attempt, saves the trace
+  with the in-progress output snapshot, and records completion
+
+RuntimeDebugBundleOutputStep
+  app-layer artifact step that marks a debug bundle save attempt, saves the
+  bundle with the in-progress output snapshot, and records completion
+
 RuntimeArtifactOutputService
   app-layer artifact output service that applies RuntimeOutputSettings,
   saves configured run traces and debug bundles, and returns RuntimeOutputResult

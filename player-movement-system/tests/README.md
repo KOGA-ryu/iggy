@@ -267,6 +267,8 @@ Good first tests:
 - RuntimeOutputSettings defaults to no runtime artifact outputs
 - RuntimeOutputResult defaults to no artifact save attempts
 - RuntimeOutputResultBuilder records artifact attempt/save flags and snapshots them onto GameLoopResult
+- RuntimeRunTraceOutputStep saves run traces and updates output flags
+- RuntimeDebugBundleOutputStep saves debug bundles and updates output flags
 - RuntimeOutputFinalizer writes artifact output results back onto GameLoopResult
 - RuntimeArtifactOutputService applies configured artifact outputs and reports failures
 - RuntimeSetupRunner separates configured setup scripts from per-frame runtime sources

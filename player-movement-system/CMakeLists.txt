@@ -18,6 +18,7 @@ add_library(player_movement_system
   src/app/RuntimeDebugArtifactWriter.cpp
   src/app/RuntimeDebugManifest.cpp
   src/app/RuntimeDebugManifestContextBuilder.cpp
+  src/app/RuntimeDebugBundleOutputStep.cpp
   src/app/RuntimeDebugManifestIndexText.cpp
   src/app/RuntimeDebugManifestPathsText.cpp
   src/app/RuntimeDebugManifestSections.cpp
@@ -73,6 +74,7 @@ add_library(player_movement_system
   src/app/RuntimeRunFinalizer.cpp
   src/app/RuntimeRunFailurePolicy.cpp
   src/app/RuntimeRunRecorder.cpp
+  src/app/RuntimeRunTraceOutputStep.cpp
   src/app/RuntimeRunSummaryText.cpp
   src/app/RuntimeSessionCommandReportRecorder.cpp
   src/app/RuntimeSessionCommandIntake.cpp

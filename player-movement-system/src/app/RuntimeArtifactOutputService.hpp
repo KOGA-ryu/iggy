@@ -1,7 +1,8 @@
 #pragma once
 
-#include "app/RuntimeDebugArtifactBundle.hpp"
+#include "app/RuntimeDebugBundleOutputStep.hpp"
 #include "app/RuntimeLoopTypes.hpp"
+#include "app/RuntimeRunTraceOutputStep.hpp"
 #include "app/RuntimeTraceService.hpp"
 
 namespace dev {
@@ -17,8 +18,8 @@ public:
 	    const GameLoopResult &result) const;
 
 private:
-	RuntimeTraceService traceService_;
-	RuntimeDebugArtifactBundle debugBundle_;
+	RuntimeRunTraceOutputStep runTraceOutput_;
+	RuntimeDebugBundleOutputStep debugBundleOutput_;
 };
 
 } // namespace dev

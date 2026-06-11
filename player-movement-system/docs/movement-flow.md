@@ -1507,7 +1507,9 @@ GameLoopResult
   -> RuntimeRunFinalizer
   -> RuntimeOutputFinalizer
   -> RuntimeArtifactOutputService
+  -> RuntimeRunTraceOutputStep
   -> RuntimeTraceService
+  -> RuntimeDebugBundleOutputStep
   -> RuntimeDebugArtifactBundle
 ```
 
@@ -1515,9 +1517,12 @@ GameLoopResult
 artifact writes to `RuntimeOutputFinalizer`. That keeps `RuntimeRunExecutor`
 focused on lifecycle timing. `RuntimeOutputFinalizer` writes output results back
 onto `GameLoopResult`, while `RuntimeArtifactOutputService` owns the app
-artifact write policy. `RuntimeOutputResultBuilder` owns the flag transition
-inside that policy: mark an artifact as attempted, snapshot the in-progress
-`GameLoopResult` for the writer, then record whether the write saved.
+artifact write policy. `RuntimeRunTraceOutputStep` owns the run-trace artifact
+transition: mark the trace as attempted, snapshot the in-progress
+`GameLoopResult` for the trace writer, then record whether the write saved.
+`RuntimeDebugBundleOutputStep` owns the same transition for debug bundles,
+including the snapshot passed to the bundle writer. `RuntimeOutputResultBuilder`
+owns the generic flag transition behind those artifact steps.
 `RuntimeOutputFailurePolicy` interprets those output flags when exit-code logic
 needs to know whether a requested artifact failed.
 

@@ -16,6 +16,7 @@
 #include "app/RuntimeDebugArtifactLayout.hpp"
 #include "app/RuntimeDebugArtifactRootPreparer.hpp"
 #include "app/RuntimeDebugArtifactWriter.hpp"
+#include "app/RuntimeDebugBundleOutputStep.hpp"
 #include "app/RuntimeDebugManifest.hpp"
 #include "app/RuntimeDebugManifestContextBuilder.hpp"
 #include "app/RuntimeDebugManifestIndexText.hpp"
@@ -73,6 +74,7 @@
 #include "app/RuntimeRunFailurePolicy.hpp"
 #include "app/RuntimeRunRecorder.hpp"
 #include "app/RuntimeRunSummaryText.hpp"
+#include "app/RuntimeRunTraceOutputStep.hpp"
 #include "app/RuntimeSessionCommandReportRecorder.hpp"
 #include "app/RuntimeSessionCommandIntake.hpp"
 #include "app/RuntimeSessionInputRouter.hpp"
@@ -7115,6 +7117,62 @@ void TestRuntimeOutputResultBuilderRecordsArtifactAttempts()
 	Expect(output.debugBundleSaveAttempted && !output.debugBundleSaved, "runtime output result builder should report failed bundle save");
 }
 
+void TestRuntimeRunTraceOutputStepSavesTraceAndUpdatesOutput()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_run_trace_output_step_test";
+	const std::filesystem::path tracePath = root / "run.trace";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::GameLoopResult result;
+	result.summary.framesRun = 2;
+	dev::RuntimeOutputResultBuilder output;
+
+	dev::RuntimeRunTraceOutputStep {}.save(tracePath, result, output);
+
+	std::optional<std::vector<std::string>> trace = dev::RuntimeFrameTraceFileStore {}.load(tracePath);
+	const dev::RuntimeOutputResult outputResult = output.result();
+
+	Expect(outputResult.runTraceSaveAttempted, "runtime run trace output step should mark trace save attempted");
+	Expect(outputResult.runTraceSaved, "runtime run trace output step should record successful trace save");
+	Expect(!outputResult.debugBundleSaveAttempted, "runtime run trace output step should not touch debug bundle output flags");
+	Expect(trace.has_value() && !trace->empty(), "runtime run trace output step should save trace lines");
+	Expect(trace.has_value() && (*trace)[0] == "run frames=2 frameReports=0 rawInput=0 movementInputBlocks=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime run trace output step should save the supplied run result snapshot");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeDebugBundleOutputStepSavesBundleAndUpdatesOutput()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_debug_bundle_output_step_test";
+	const std::filesystem::path bundlePath = root / "bundle";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::GameLoopResult result;
+	result.summary.framesRun = 3;
+	result.finalMode = dev::GameSessionMode::Gameplay;
+	dev::RuntimeOutputResult existingOutput;
+	existingOutput.runTraceSaveAttempted = true;
+	existingOutput.runTraceSaved = true;
+	dev::RuntimeOutputResultBuilder output { existingOutput };
+
+	dev::RuntimeDebugBundleOutputStep {}.save(bundlePath, result, output);
+
+	std::optional<std::vector<std::string>> manifest = dev::RuntimeFrameTraceFileStore {}.load(bundlePath / "manifest.txt");
+	std::optional<std::vector<std::string>> trace = dev::RuntimeFrameTraceFileStore {}.load(bundlePath / "run.trace");
+	const dev::RuntimeOutputResult outputResult = output.result();
+
+	Expect(outputResult.runTraceSaveAttempted && outputResult.runTraceSaved, "runtime debug bundle output step should preserve existing trace output flags");
+	Expect(outputResult.debugBundleSaveAttempted, "runtime debug bundle output step should mark bundle save attempted");
+	Expect(outputResult.debugBundleSaved, "runtime debug bundle output step should record successful bundle save");
+	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "trace=run.trace saved=true"), "runtime debug bundle output step should save manifest lines");
+	Expect(trace.has_value() && !trace->empty(), "runtime debug bundle output step should save trace lines");
+	Expect(trace.has_value() && (*trace)[0] == "run frames=3 frameReports=0 rawInput=0 movementInputBlocks=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime debug bundle output step should save the supplied run result snapshot");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestRuntimeSetupSettingsDefaultsToNoScripts()
 {
 	dev::RuntimeSetupSettings setup;
@@ -10432,6 +10490,8 @@ int main()
 	TestRuntimeOutputSettingsDefaultDisablesArtifacts();
 	TestRuntimeOutputResultDefaultsToNoAttempts();
 	TestRuntimeOutputResultBuilderRecordsArtifactAttempts();
+	TestRuntimeRunTraceOutputStepSavesTraceAndUpdatesOutput();
+	TestRuntimeDebugBundleOutputStepSavesBundleAndUpdatesOutput();
 	TestRuntimeSetupSettingsDefaultsToNoScripts();
 	TestRuntimeSetupResultDefaultsToNoSetupScripts();
 	TestRuntimeSetupRunnerAllowsFramesWhenNoScriptsConfigured();
