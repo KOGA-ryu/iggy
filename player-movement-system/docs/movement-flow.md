@@ -874,6 +874,22 @@ GameLoopResult::setup
   -> configured inventory script attempted/result
 ```
 
+`RuntimeSetupRunner` owns the configured setup phase:
+
+```text
+RuntimeSetupSettings
+  -> RuntimeSetupRunner
+  -> RuntimeSetupRunResult
+  -> setup result
+  -> setup inventory command results
+  -> frames allowed?
+```
+
+Startup script load failure stops before configured inventory setup. Configured
+inventory setup failure also stops before frames. A loadable inventory script
+with rejected commands still allows frames, because the file and setup pipeline
+worked and the rejection is command-level data.
+
 That separates one-time setup automation from per-frame runtime sources. A
 failed setup script can stop the loop before frames begin, while runtime script
 source failures are reported per frame and the loop keeps ticking.
@@ -947,6 +963,22 @@ GameLoopResult::summary
 That is different from `RuntimeFrameReport`. The summary answers “what happened
 across the whole bounded run?” while the frame report answers “what happened on
 this specific frame?”
+
+`RuntimeRunRecorder` owns the translation from per-frame work to those two
+reporting shapes:
+
+```text
+begin frame
+  -> remember event offsets
+record source results and frame events
+finish frame
+  -> RuntimeFrameReport
+  -> RuntimeRunSummary
+```
+
+That keeps `GameLoop` from manually copying every source result into two
+places. The loop still decides the runtime order, and the recorder decides how
+that work becomes inspectable run data.
 
 `RuntimeOutputSettings` groups the app shell's optional artifact destinations:
 
@@ -1206,11 +1238,17 @@ The loop can now accept raw input sources directly:
 ```text
 RawInputSource
   -> RawInputEvent[]
+  -> RuntimeRawInputDrainer
   -> RuntimeInputRouter
   -> routed SessionCommandSource / MovementCommandSource
   -> GameLoop drains command sources
   -> GameSession / SimulationWorld
 ```
+
+`RuntimeRawInputDrainer` owns the source-stream mechanics: drain each configured
+raw input source once, skip missing source slots, route every event, and count
+only events the router handled. `RuntimeInputRouter` still owns the meaning of a
+single event.
 
 That gives the app layer three input levels:
 

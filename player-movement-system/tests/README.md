@@ -122,10 +122,12 @@ Good first tests:
 - RuntimeInputSettings defaults to primary gameplay input context
 - RuntimeFrameSettings defaults to zero frames at a sixty hertz timestep
 - RuntimeRunSummary defaults to empty aggregate run state
+- RuntimeRunRecorder turns frame work into frame reports and run summaries
 - RuntimeExitCodePolicy maps setup and output failures to process failures
 - RuntimeOutputSettings defaults to no runtime artifact outputs
 - RuntimeOutputResult defaults to no artifact save attempts
 - RuntimeOutputFinalizer applies output settings and reports requested write failures
+- RuntimeSetupRunner separates configured setup scripts from per-frame runtime sources
 - GameLoop saves configured run traces and reports trace write failures
 - RuntimeDebugArtifactBundle saves a manifest and run trace as one debug bundle
 - GameLoop saves configured debug bundles and reports bundle write failures
@@ -142,6 +144,7 @@ Good first tests:
 - RuntimeInputRouter maps target-aware enemy clicks into MoveThenAct attacks
 - RuntimeInputRouter maps stand-ground target clicks into StandAndAct attacks
 - QueuedRawInputSource drains raw input events exactly once
+- RuntimeRawInputDrainer drains raw input sources and counts handled routed events
 - GameLoop routes raw hotkeys through session command dispatch
 - GameLoop routes raw mouse clicks through movement command dispatch
 - GameLoop uses the active world target registry for target-aware raw mouse input

@@ -3,44 +3,15 @@
 #include "RuntimeInputRouter.hpp"
 #include "RuntimeExitCodePolicy.hpp"
 #include "RuntimeOutputFinalizer.hpp"
+#include "RuntimeRawInputDrainer.hpp"
+#include "RuntimeRunRecorder.hpp"
+#include "RuntimeSetupRunner.hpp"
 #include "RuntimeSourceDrainer.hpp"
 #include "session/SessionCommandDispatcher.hpp"
-#include "session/SessionScriptRunner.hpp"
 
-#include <cstddef>
 #include <utility>
 
 namespace dev {
-
-namespace {
-
-std::vector<SessionEvent> EventsSince(const SessionEventRecorder &recorder, std::size_t offset)
-{
-	const std::vector<SessionEvent> &events = recorder.events();
-	if (offset >= events.size())
-		return {};
-	return { events.begin() + static_cast<std::ptrdiff_t>(offset), events.end() };
-}
-
-std::vector<InventoryEvent> EventsSince(const InventoryEventRecorder &recorder, std::size_t offset)
-{
-	const std::vector<InventoryEvent> &events = recorder.events();
-	if (offset >= events.size())
-		return {};
-	return { events.begin() + static_cast<std::ptrdiff_t>(offset), events.end() };
-}
-
-void AppendInventoryCommandResults(std::vector<InventoryCommandResult> &out, const std::vector<InventoryScriptRunResult> &scriptResults)
-{
-	for (const InventoryScriptRunResult &scriptResult : scriptResults) {
-		out.insert(
-		    out.end(),
-		    scriptResult.commandResults.begin(),
-		    scriptResult.commandResults.end());
-	}
-}
-
-} // namespace
 
 GameLoop::GameLoop(GameLoopSettings settings)
     : settings_(std::move(settings))
@@ -57,6 +28,7 @@ int GameLoop::run()
 GameLoopResult GameLoop::runForResult()
 {
 	GameLoopResult result;
+	RuntimeRunRecorder recorder { result, sessionEvents_, inventoryEvents_ };
 	SessionCommandDispatcher dispatcher { session_, &sessionEvents_ };
 	RuntimeSourceDrainer drainer {
 		session_,
@@ -78,59 +50,31 @@ GameLoopResult GameLoop::runForResult()
 		return result;
 	};
 
-	if (settings_.setup.startupScript.has_value()) {
-		result.setup.startupScriptRan = true;
-		SessionScriptRunner runner { dispatcher };
-		result.setup.startupScriptResult = runner.run(*settings_.setup.startupScript);
-		if (result.setup.startupScriptResult.status == SessionScriptRunStatus::LoadFailed)
-			return finish();
-	}
-
-	if (settings_.setup.inventoryScript.has_value()) {
-		result.setup.inventoryScriptRan = true;
-		result.setup.inventoryScriptResult = drainer.runInventoryScript(*settings_.setup.inventoryScript);
-		if (result.setup.inventoryScriptResult.status != InventoryScriptRunStatus::Completed)
-			return finish();
-		result.summary.inventoryCommandResults.insert(
-		    result.summary.inventoryCommandResults.end(),
-		    result.setup.inventoryScriptResult.commandResults.begin(),
-		    result.setup.inventoryScriptResult.commandResults.end());
-	}
+	RuntimeSetupRunResult setup = RuntimeSetupRunner { dispatcher, drainer }.run(settings_.setup);
+	result.setup = setup.setup;
+	result.summary.inventoryCommandResults.insert(
+	    result.summary.inventoryCommandResults.end(),
+	    setup.inventoryCommandResults.begin(),
+	    setup.inventoryCommandResults.end());
+	if (!setup.framesAllowed)
+		return finish();
 
 	for (int frame = 0; frame < settings_.frame.maxFrames; ++frame) {
-		const std::size_t sessionEventOffset = sessionEvents_.events().size();
-		const std::size_t inventoryEventOffset = inventoryEvents_.events().size();
-		RuntimeFrameReport frameReport;
+		recorder.beginFrame();
 
-		frameReport.rawInputEventsRouted = routeRawInputSources();
-		result.summary.rawInputEventsRouted += frameReport.rawInputEventsRouted;
+		recorder.recordRawInputEventsRouted(routeRawInputSources());
 
-		frameReport.sessionCommandResults = drainer.drainSessionCommands(dispatcher);
-		result.summary.sessionCommandResults.insert(result.summary.sessionCommandResults.end(), frameReport.sessionCommandResults.begin(), frameReport.sessionCommandResults.end());
+		recorder.recordSessionCommandResults(drainer.drainSessionCommands(dispatcher));
 
-		frameReport.inventoryScriptResults = drainer.drainInventoryScripts();
-		result.summary.runtimeInventoryScriptResults.insert(
-		    result.summary.runtimeInventoryScriptResults.end(),
-		    frameReport.inventoryScriptResults.begin(),
-		    frameReport.inventoryScriptResults.end());
-		AppendInventoryCommandResults(frameReport.inventoryCommandResults, frameReport.inventoryScriptResults);
-		AppendInventoryCommandResults(result.summary.inventoryCommandResults, frameReport.inventoryScriptResults);
+		recorder.recordInventoryScriptResults(drainer.drainInventoryScripts());
+		recorder.recordInventoryCommandResults(drainer.drainInventoryCommands());
 
-		std::vector<InventoryCommandResult> inventoryResults = drainer.drainInventoryCommands();
-		frameReport.inventoryCommandResults.insert(frameReport.inventoryCommandResults.end(), inventoryResults.begin(), inventoryResults.end());
-		result.summary.inventoryCommandResults.insert(result.summary.inventoryCommandResults.end(), inventoryResults.begin(), inventoryResults.end());
+		recorder.recordMovementCommandsQueued(drainer.drainMovementCommands());
 
-		frameReport.movementCommandsQueued = drainer.drainMovementCommands();
-		result.summary.movementCommandsQueued += frameReport.movementCommandsQueued;
-
-		frameReport.frameEvents = updateSimulationFrame();
-		result.summary.lastFrameEvents = frameReport.frameEvents;
-		frameReport.sessionEvents = EventsSince(sessionEvents_, sessionEventOffset);
-		frameReport.inventoryEvents = EventsSince(inventoryEvents_, inventoryEventOffset);
-		result.frameReports.push_back(frameReport);
+		recorder.recordFrameEvents(updateSimulationFrame());
+		recorder.finishFrame();
 
 		renderDebugView();
-		++result.summary.framesRun;
 	}
 
 	return finish();
@@ -159,6 +103,7 @@ const InventoryEventRecorder &GameLoop::inventoryEvents() const
 int GameLoop::routeRawInputSources()
 {
 	RuntimeInputRouter router { routedSessionCommands_, routedMovementCommands_, settings_.input.bindings };
+	RuntimeRawInputDrainer drainer { router };
 	RuntimeInputContext context {
 		.world = session_.hasActiveWorld() ? &session_.world() : nullptr,
 		.playerId = settings_.input.playerId,
@@ -169,19 +114,7 @@ int GameLoop::routeRawInputSources()
 		    ? settings_.input.targetResolver
 		    : (session_.hasActiveWorld() ? &session_.world().targets : nullptr),
 	};
-
-	int routed = 0;
-	for (RawInputSource *source : settings_.sources.rawInputSources) {
-		if (source == nullptr)
-			continue;
-		std::vector<RawInputEvent> events = source->drain();
-		for (const RawInputEvent &event : events) {
-			RuntimeInputRouteResult result = router.route(event, context);
-			if (result.handled)
-				++routed;
-		}
-	}
-	return routed;
+	return drainer.drain(settings_.sources.rawInputSources, context);
 }
 
 SimulationFrameEvents GameLoop::updateSimulationFrame()

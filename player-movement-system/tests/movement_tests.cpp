@@ -14,6 +14,9 @@
 #include "app/RuntimeFrameTrace.hpp"
 #include "app/RuntimeFrameTraceFileStore.hpp"
 #include "app/RuntimeOutputFinalizer.hpp"
+#include "app/RuntimeRawInputDrainer.hpp"
+#include "app/RuntimeRunRecorder.hpp"
+#include "app/RuntimeSetupRunner.hpp"
 #include "app/RuntimeSourceDrainer.hpp"
 #include "app/RuntimeTraceService.hpp"
 #include "combat/CombatEventRecorder.hpp"
@@ -3331,6 +3334,112 @@ void TestRuntimeSetupResultDefaultsToNoSetupScripts()
 	Expect(setup.inventoryScriptResult.commandResults.empty(), "runtime setup result should default to no inventory command results");
 }
 
+void TestRuntimeSetupRunnerAllowsFramesWhenNoScriptsConfigured()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_setup_runner_empty_test";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root / "saves" };
+	dev::SessionEventRecorder sessionEvents;
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::QueuedSessionCommandSource routedSessionCommands;
+	dev::QueuedMovementCommandSource routedMovementCommands;
+	dev::SessionCommandDispatcher dispatcher { session, &sessionEvents };
+	dev::RuntimeSourceDrainer drainer {
+		session,
+		inventoryEvents,
+		routedSessionCommands,
+		routedMovementCommands,
+		{},
+	};
+	dev::RuntimeSetupRunResult result = dev::RuntimeSetupRunner { dispatcher, drainer }.run({});
+
+	Expect(result.framesAllowed, "runtime setup runner should allow frames when no setup scripts are configured");
+	Expect(!result.setup.startupScriptRan, "runtime setup runner should not invent startup script attempts");
+	Expect(!result.setup.inventoryScriptRan, "runtime setup runner should not invent inventory script attempts");
+	Expect(result.inventoryCommandResults.empty(), "runtime setup runner should report no setup inventory command results without scripts");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeSetupRunnerStopsFramesAfterStartupLoadFailure()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_setup_runner_startup_failure_test";
+	const std::filesystem::path missingStartup = root / "missing.iscl";
+	const std::filesystem::path missingInventory = root / "missing.iicl";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root / "saves" };
+	dev::SessionEventRecorder sessionEvents;
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::QueuedSessionCommandSource routedSessionCommands;
+	dev::QueuedMovementCommandSource routedMovementCommands;
+	dev::SessionCommandDispatcher dispatcher { session, &sessionEvents };
+	dev::RuntimeSourceDrainer drainer {
+		session,
+		inventoryEvents,
+		routedSessionCommands,
+		routedMovementCommands,
+		{},
+	};
+	dev::RuntimeSetupRunResult result = dev::RuntimeSetupRunner { dispatcher, drainer }.run({
+	    .startupScript = missingStartup,
+	    .inventoryScript = missingInventory,
+	});
+
+	Expect(!result.framesAllowed, "runtime setup runner should stop frames after startup load failure");
+	Expect(result.setup.startupScriptRan, "runtime setup runner should attempt configured startup script");
+	Expect(result.setup.startupScriptResult.status == dev::SessionScriptRunStatus::LoadFailed, "runtime setup runner should report startup load failure");
+	Expect(!result.setup.inventoryScriptRan, "runtime setup runner should not run inventory setup after startup load failure");
+	Expect(result.inventoryCommandResults.empty(), "failed startup setup should not produce inventory command results");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeSetupRunnerPreservesInventoryCommandRejections()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_setup_runner_inventory_rejection_test";
+	const std::filesystem::path inventoryPath = root / "inventory.iicl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::InventoryCommandLog inventoryLog;
+	inventoryLog.record({
+	    .type = dev::InventoryCommandType::EquipItem,
+	    .itemId = 72,
+	});
+	dev::InventoryCommandLogFileStore inventoryStore;
+	Expect(inventoryStore.save(inventoryPath, inventoryLog), "runtime setup runner inventory rejection test should create inventory script");
+
+	dev::GameSession session { root / "saves" };
+	session.startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	dev::SessionEventRecorder sessionEvents;
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::QueuedSessionCommandSource routedSessionCommands;
+	dev::QueuedMovementCommandSource routedMovementCommands;
+	dev::SessionCommandDispatcher dispatcher { session, &sessionEvents };
+	dev::RuntimeSourceDrainer drainer {
+		session,
+		inventoryEvents,
+		routedSessionCommands,
+		routedMovementCommands,
+		{},
+	};
+	dev::RuntimeSetupRunResult result = dev::RuntimeSetupRunner { dispatcher, drainer }.run({
+	    .inventoryScript = inventoryPath,
+	});
+
+	Expect(result.framesAllowed, "runtime setup runner should allow frames after loadable inventory script command rejection");
+	Expect(result.setup.inventoryScriptRan, "runtime setup runner should attempt configured inventory script");
+	Expect(result.setup.inventoryScriptResult.status == dev::InventoryScriptRunStatus::Completed, "runtime setup runner should complete loadable inventory scripts");
+	Expect(result.setup.inventoryScriptResult.commandResults.size() == 1, "runtime setup runner should preserve inventory script command results");
+	Expect(result.setup.inventoryScriptResult.commandResults.size() == 1 && result.setup.inventoryScriptResult.commandResults[0].type == dev::InventoryCommandResultType::Rejected, "runtime setup runner should preserve rejected inventory command result");
+	Expect(result.inventoryCommandResults.size() == 1 && result.inventoryCommandResults[0].type == dev::InventoryCommandResultType::Rejected, "runtime setup runner should expose configured inventory command results for run summaries");
+	Expect(inventoryEvents.events().size() == 1 && inventoryEvents.events()[0].type == dev::InventoryEventType::Rejected, "runtime setup runner should preserve inventory setup events");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestRuntimeSourceSettingsDefaultsToNoSources()
 {
 	dev::RuntimeSourceSettings sources;
@@ -3376,6 +3485,98 @@ void TestRuntimeRunSummaryDefaultsToEmptyRun()
 	Expect(summary.movementCommandsQueued == 0, "runtime run summary should default to no queued movement commands");
 	Expect(summary.framesRun == 0, "runtime run summary should default to zero frames");
 	Expect(summary.lastFrameEvents.movementEvents().empty(), "runtime run summary should default to no final movement events");
+}
+
+void TestRuntimeRunRecorderAggregatesFrameReportsAndSummary()
+{
+	dev::GameLoopResult result;
+	dev::SessionEventRecorder sessionEvents;
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::RuntimeRunRecorder recorder { result, sessionEvents, inventoryEvents };
+
+	sessionEvents.emit({
+	    .type = dev::SessionEventType::GameStarted,
+	    .commandType = dev::SessionCommandType::StartNewGame,
+	});
+	inventoryEvents.emit({
+	    .type = dev::InventoryEventType::Rejected,
+	    .commandType = dev::InventoryCommandType::EquipItem,
+	    .commandResult = dev::InventoryCommandResultType::Rejected,
+	    .equipmentResult = dev::EquipmentResultType::MissingItem,
+	    .itemId = 70,
+	});
+
+	recorder.beginFrame();
+	sessionEvents.emit({
+	    .type = dev::SessionEventType::ModeChanged,
+	    .commandType = dev::SessionCommandType::SetMode,
+	    .mode = dev::GameSessionMode::Inventory,
+	});
+	inventoryEvents.emit({
+	    .type = dev::InventoryEventType::Equipped,
+	    .commandType = dev::InventoryCommandType::EquipItem,
+	    .commandResult = dev::InventoryCommandResultType::Applied,
+	    .equipmentResult = dev::EquipmentResultType::Equipped,
+	    .itemId = 71,
+	});
+
+	recorder.recordRawInputEventsRouted(2);
+	recorder.recordSessionCommandResults({
+	    {
+	        .type = dev::SessionCommandResultType::Applied,
+	        .command = { .type = dev::SessionCommandType::SetMode, .mode = dev::GameSessionMode::Inventory },
+	    },
+	});
+	recorder.recordInventoryScriptResults({
+	    {
+	        .status = dev::InventoryScriptRunStatus::Completed,
+	        .commandResults = {
+	            {
+	                .type = dev::InventoryCommandResultType::Applied,
+	                .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 71 },
+	                .equipmentResult = { .type = dev::EquipmentResultType::Equipped, .itemId = 71 },
+	            },
+	        },
+	    },
+	});
+	recorder.recordInventoryCommandResults({
+	    {
+	        .type = dev::InventoryCommandResultType::Applied,
+	        .command = { .type = dev::InventoryCommandType::UnequipSlot, .slot = dev::EquipmentSlot::Weapon },
+	        .equipmentResult = { .type = dev::EquipmentResultType::Unequipped, .itemId = 71 },
+	    },
+	});
+	recorder.recordMovementCommandsQueued(1);
+	dev::SimulationFrameEvents frameEvents;
+	frameEvents.emit({
+	    .type = dev::MovementEventType::CommandAccepted,
+	    .playerId = 0,
+	    .tile = { 1, 0 },
+	    .commandType = dev::MovementCommandType::WalkTo,
+	});
+	recorder.recordFrameEvents(frameEvents);
+	recorder.finishFrame();
+
+	Expect(result.summary.framesRun == 1, "runtime run recorder should count finished frames");
+	Expect(result.summary.rawInputEventsRouted == 2, "runtime run recorder should aggregate routed raw input");
+	Expect(result.summary.sessionCommandResults.size() == 1, "runtime run recorder should aggregate session results");
+	Expect(result.summary.runtimeInventoryScriptResults.size() == 1, "runtime run recorder should aggregate inventory script results");
+	Expect(result.summary.inventoryCommandResults.size() == 2, "runtime run recorder should aggregate script and direct inventory results");
+	Expect(result.summary.movementCommandsQueued == 1, "runtime run recorder should aggregate movement queue counts");
+	Expect(result.summary.lastFrameEvents.movementEvents().size() == 1, "runtime run recorder should store final frame events");
+	Expect(result.frameReports.size() == 1, "runtime run recorder should create one frame report");
+	if (result.frameReports.empty())
+		return;
+
+	const dev::RuntimeFrameReport &report = result.frameReports[0];
+	Expect(report.rawInputEventsRouted == 2, "runtime run recorder frame report should keep raw input count");
+	Expect(report.sessionCommandResults.size() == 1, "runtime run recorder frame report should keep session results");
+	Expect(report.inventoryScriptResults.size() == 1, "runtime run recorder frame report should keep inventory scripts");
+	Expect(report.inventoryCommandResults.size() == 2, "runtime run recorder frame report should keep script and direct inventory results");
+	Expect(report.movementCommandsQueued == 1, "runtime run recorder frame report should keep movement queue count");
+	Expect(report.sessionEvents.size() == 1 && report.sessionEvents[0].type == dev::SessionEventType::ModeChanged, "runtime run recorder should capture session event deltas");
+	Expect(report.inventoryEvents.size() == 1 && report.inventoryEvents[0].itemId == 71, "runtime run recorder should capture inventory event deltas");
+	Expect(report.frameEvents.movementEvents().size() == 1, "runtime run recorder frame report should keep simulation frame events");
 }
 
 void TestRuntimeExitCodePolicyReportsSuccessForCleanRun()
@@ -4110,6 +4311,41 @@ void TestQueuedRawInputSourceDrainsEventsOnce()
 	Expect(drained.size() == 2 && drained[0].screenPosition == dev::Point { 32, 64 }, "queued raw input source should preserve event payloads");
 }
 
+void TestRuntimeRawInputDrainerRoutesHandledEventsAndSkipsNullSources()
+{
+	dev::QueuedRawInputSource rawInput;
+	rawInput.enqueue({
+	    .type = dev::RawInputType::KeyPress,
+	    .code = 'P',
+	    .pressed = true,
+	});
+	rawInput.enqueue({
+	    .type = dev::RawInputType::KeyPress,
+	    .code = 'P',
+	    .pressed = false,
+	});
+
+	dev::QueuedSessionCommandSource sessionCommands;
+	dev::QueuedMovementCommandSource movementCommands;
+	dev::RuntimeInputRouter router {
+		sessionCommands,
+		movementCommands,
+		dev::RuntimeInputBindings { .pauseKey = 'P', .inventoryKey = 'I', .stopKey = 'S' },
+	};
+	dev::RuntimeRawInputDrainer drainer { router };
+
+	const int routed = drainer.drain(
+	    { nullptr, &rawInput },
+	    dev::RuntimeInputContext {
+	        .sessionMode = dev::GameSessionMode::Gameplay,
+	    });
+
+	Expect(routed == 1, "runtime raw input drainer should count handled routed events only");
+	Expect(rawInput.empty(), "runtime raw input drainer should drain source events once");
+	Expect(sessionCommands.size() == 1, "runtime raw input drainer should route handled hotkeys through session commands");
+	Expect(movementCommands.empty(), "runtime raw input drainer should not invent movement commands for hotkeys");
+}
+
 void TestGameLoopRoutesRawInputHotkeysThroughSessionCommands()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_game_loop_raw_session_input_test";
@@ -4491,10 +4727,14 @@ int main()
 	TestRuntimeOutputResultDefaultsToNoAttempts();
 	TestRuntimeSetupSettingsDefaultsToNoScripts();
 	TestRuntimeSetupResultDefaultsToNoSetupScripts();
+	TestRuntimeSetupRunnerAllowsFramesWhenNoScriptsConfigured();
+	TestRuntimeSetupRunnerStopsFramesAfterStartupLoadFailure();
+	TestRuntimeSetupRunnerPreservesInventoryCommandRejections();
 	TestRuntimeSourceSettingsDefaultsToNoSources();
 	TestRuntimeInputSettingsDefaultsToPrimaryGameplayInput();
 	TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz();
 	TestRuntimeRunSummaryDefaultsToEmptyRun();
+	TestRuntimeRunRecorderAggregatesFrameReportsAndSummary();
 	TestRuntimeExitCodePolicyReportsSuccessForCleanRun();
 	TestRuntimeExitCodePolicyFailsSetupErrors();
 	TestRuntimeExitCodePolicyAllowsCommandRejections();
@@ -4522,6 +4762,7 @@ int main()
 	TestRuntimeInputRouterMapsTargetClickToMoveThenAct();
 	TestRuntimeInputRouterMapsStandGroundTargetClickToStandAndAct();
 	TestQueuedRawInputSourceDrainsEventsOnce();
+	TestRuntimeRawInputDrainerRoutesHandledEventsAndSkipsNullSources();
 	TestGameLoopRoutesRawInputHotkeysThroughSessionCommands();
 	TestGameLoopRoutesRawMouseInputThroughMovementCommands();
 	TestGameLoopUsesWorldTargetRegistryForRawMouseInput();

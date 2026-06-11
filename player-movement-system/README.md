@@ -253,6 +253,10 @@ RuntimeInputRouter
   command sources, optionally resolving clicked targets into interaction
   commands, without letting hardware events into simulation code
 
+RuntimeRawInputDrainer
+  app-edge helper that drains raw input sources, skips missing sources, routes
+  each event through RuntimeInputRouter, and reports how many events were handled
+
 RawInputSource
   app-edge source boundary for raw device-like events before they are routed
   into semantic command sources
@@ -362,6 +366,11 @@ RuntimeSetupResult
   app-layer setup result state that groups configured startup and inventory
   script attempts before frame updates begin
 
+RuntimeSetupRunner
+  app-layer use case that runs configured startup and inventory setup scripts,
+  reports whether frames may begin, and preserves setup inventory command
+  results for run summaries
+
 RuntimeSourceSettings
   app-layer source settings that group raw input, session, inventory script,
   inventory command, and movement command sources for GameLoop
@@ -377,6 +386,10 @@ RuntimeFrameSettings
 RuntimeRunSummary
   app-layer aggregate run result state for routed input, runtime command
   results, queued movement counts, frames run, and final frame events
+
+RuntimeRunRecorder
+  app-layer recorder that turns per-frame runtime work into RuntimeFrameReport
+  entries and RuntimeRunSummary aggregates
 
 RuntimeExitCodePolicy
   app-layer policy that translates GameLoopResult setup and output failures
