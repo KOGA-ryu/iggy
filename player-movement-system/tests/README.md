@@ -1,5 +1,10 @@
 # Movement Tests
 
+`movement_tests` remains the broad regression executable. Focused clusters can
+move into smaller executables as subsystem boundaries stabilize.
+`artifact_output_tests` is the first split and covers artifact output planning
+plus one-request execution.
+
 Good first tests:
 
 - click on walkable tile creates `WalkTo`

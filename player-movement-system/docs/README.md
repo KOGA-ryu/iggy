@@ -27,6 +27,8 @@ full system sweep.
 - [Lifecycle Replay](lifecycle-replay.md): session command replay and lifecycle
   command flow.
 - [Save System](save-system.md): snapshot and save-slot flow.
+- [Testing Shape](testing.md): how the test suite splits focused clusters out
+  of the original broad regression file.
 
 ## Split Rule
 

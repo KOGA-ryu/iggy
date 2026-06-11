@@ -265,4 +265,8 @@ enable_testing()
 add_executable(movement_tests tests/movement_tests.cpp)
 target_link_libraries(movement_tests PRIVATE player_movement_system)
 
+add_executable(artifact_output_tests tests/artifact_output_tests.cpp)
+target_link_libraries(artifact_output_tests PRIVATE player_movement_system)
+
 add_test(NAME movement_tests COMMAND movement_tests)
+add_test(NAME artifact_output_tests COMMAND artifact_output_tests)
