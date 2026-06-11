@@ -95,7 +95,8 @@ src/simulation
 
 src/player
   Owns player state, action gating, movement state transitions, and movement
-  execution.
+  execution. Action gating reports both yes/no and the first movement block
+  reason for tests, UI feedback, traces, and tuning.
 
 src/world
   Owns grid coordinates, pathfinding, collision, diagonal corner rules, and
@@ -397,11 +398,25 @@ RuntimeInputSourceRouter
 RuntimeInputRouter
   app-edge adapter that translates focused raw input into session or movement
   command sources, optionally resolving clicked targets into interaction
-  commands, without letting hardware events into simulation code
+  commands, without letting hardware events into simulation code; blocked
+  movement-shaped input can report the PlayerActionBlockReason without being
+  counted as handled
+
+InputEventMatcher
+  input-layer matcher that names common raw input shapes such as pressed keys
+  and pressed pointer events before routers map them to commands
+
+RuntimeInputFocusResolver
+  app-edge helper that resolves session lifecycle mode into effective focus
+  ownership before movement input can become commands
 
 RuntimeSessionInputRouter
   lifecycle hotkey router for pause and inventory mode toggles before movement
   input is considered
+
+RuntimeSessionModeTogglePolicy
+  app-edge policy that maps pause/inventory hotkeys plus current session mode to
+  the requested lifecycle mode
 
 RuntimeMovementInputRouter
   gameplay input router that maps focused pointer, target, and stop-key input
@@ -429,6 +444,10 @@ MovementCommandValidator
 MovementCommandEventEmitter
   command event helper that publishes accepted/rejected command facts for tests,
   replay comparison, traces, and presentation
+
+InventoryCommandEventEmitter
+  command event helper that publishes applied/rejected inventory command facts
+  without making dispatchers or runtime drains hand-build observer events
 
 EnemyMovement
   pressure layer with speed, attack range, windup, recovery, and enemy attack
@@ -708,8 +727,9 @@ RuntimeSetupResult
 
 RuntimeSetupRunner
   app-layer use case that runs configured startup, inventory, and movement
-  setup scripts, reports whether frames may begin, and preserves setup
-  inventory command results for run summaries
+  setup scripts, delegates fatal setup status checks to RuntimeSetupFailurePolicy,
+  reports whether frames may begin, and preserves setup inventory command
+  results for run summaries
 
 RuntimeSourceSettings
   app-layer source settings that group raw input, session, inventory script,
@@ -748,8 +768,12 @@ RuntimeRunRecorder
   app-layer recorder that turns per-frame runtime work into RuntimeFrameReport
   entries and RuntimeRunSummary aggregates
 
+RuntimeFinalModeRecorder
+  app-layer recorder that captures the GameSession's final mode onto
+  GameLoopResult before output artifacts are written
+
 RuntimeRunFinalizer
-  app-layer completion policy that records final session mode and applies
+  app-layer completion policy that delegates final mode capture and applies
   configured output finalization to GameLoopResult
 
 RuntimeSetupFailurePolicy
@@ -779,6 +803,10 @@ RuntimeOutputSettings
 RuntimeOutputResult
   app-layer artifact result state that groups trace and debug bundle save
   attempts after GameLoop output finalization
+
+RuntimeOutputResultBuilder
+  app-layer state builder that records artifact save attempts, completion
+  flags, and snapshots those flags onto GameLoopResult before writers run
 
 RuntimeArtifactOutputService
   app-layer artifact output service that applies RuntimeOutputSettings,
@@ -874,6 +902,10 @@ RuntimeDebugManifestSections
   app-layer manifest section formatter that groups run status, setup details,
   and runtime script summaries in deterministic debug manifest order
 
+RuntimeDebugManifestContextBuilder
+  app-layer context builder that maps debug artifact paths and trace save state
+  into the manifest formatter context
+
 RuntimeDebugManifest
   readable manifest formatter for debug bundles, summarizing run counts, setup
   attempts, movement script replay outcomes, final mode, latest frame policy,
@@ -883,19 +915,34 @@ RuntimeDebugArtifactLayout
   app-layer bundle layout boundary that maps a debug bundle root to stable
   artifact paths such as manifest.txt and run.trace
 
+RuntimeDebugArtifactBundleResultBuilder
+  app-layer state builder that records debug bundle paths, root preparation,
+  and trace/manifest write results before returning the bundle result
+
+RuntimeDebugArtifactRootPreparer
+  app-layer filesystem boundary that prepares the debug bundle root directory
+  and reports whether artifact writing may continue
+
 RuntimeDebugArtifactWriter
   app-layer artifact writer that saves the run trace and manifest files, while
-  reporting trace/manifest save flags back to the bundle
+  reporting trace/manifest save flags back to the bundle and delegating manifest
+  context mapping
 
 RuntimeDebugArtifactBundle
   app-layer debug artifact orchestrator that prepares a bundle directory,
-  delegates path naming to RuntimeDebugArtifactLayout and file writes to
-  RuntimeDebugArtifactWriter, and can be invoked directly or through
+  delegates path naming to RuntimeDebugArtifactLayout, result state to
+  RuntimeDebugArtifactBundleResultBuilder, root preparation to
+  RuntimeDebugArtifactRootPreparer, and file writes to RuntimeDebugArtifactWriter,
+  and can be invoked directly or through
   GameLoopSettings
 
 RuntimeSourceDrainer
   app-layer helper that drains runtime session, inventory script, inventory
   command, movement script, and movement command sources in frame order
+
+RuntimeSourceContext
+  app-layer access helper that reports active world/player availability and
+  exposes the selected runtime world/player to source draining
 
 RuntimeSourceStream
   app-layer source-stream primitive that skips missing source slots, drains

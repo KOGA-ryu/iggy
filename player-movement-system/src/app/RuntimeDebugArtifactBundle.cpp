@@ -1,5 +1,7 @@
 #include "RuntimeDebugArtifactBundle.hpp"
 
+#include "app/RuntimeDebugArtifactBundleResultBuilder.hpp"
+
 namespace dev {
 
 bool RuntimeDebugArtifactBundleResult::saved() const
@@ -9,8 +11,10 @@ bool RuntimeDebugArtifactBundleResult::saved() const
 
 RuntimeDebugArtifactBundle::RuntimeDebugArtifactBundle(
     RuntimeDebugArtifactLayout layout,
+    RuntimeDebugArtifactRootPreparer rootPreparer,
     RuntimeDebugArtifactWriter writer)
     : layout_(layout)
+    , rootPreparer_(rootPreparer)
     , writer_(writer)
 {
 }
@@ -20,22 +24,14 @@ RuntimeDebugArtifactBundleResult RuntimeDebugArtifactBundle::save(
     const GameLoopResult &result) const
 {
 	RuntimeDebugArtifactPaths paths = layout_.pathsForRoot(rootPath);
-	RuntimeDebugArtifactBundleResult bundle {
-		.rootPath = paths.rootPath,
-		.manifestPath = paths.manifestPath,
-		.tracePath = paths.tracePath,
-	};
+	RuntimeDebugArtifactBundleResultBuilder bundle { paths };
 
-	std::error_code error;
-	std::filesystem::create_directories(bundle.rootPath, error);
-	if (error)
-		return bundle;
+	if (!rootPreparer_.prepare(paths.rootPath))
+		return bundle.result();
 
-	bundle.rootPrepared = true;
-	RuntimeDebugArtifactWriteResult write = writer_.write(paths, result);
-	bundle.traceSaved = write.traceSaved;
-	bundle.manifestSaved = write.manifestSaved;
-	return bundle;
+	bundle.markRootPrepared();
+	bundle.recordWrite(writer_.write(paths, result));
+	return bundle.result();
 }
 
 } // namespace dev

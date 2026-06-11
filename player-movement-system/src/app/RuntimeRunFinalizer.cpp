@@ -4,8 +4,11 @@
 
 namespace dev {
 
-RuntimeRunFinalizer::RuntimeRunFinalizer(RuntimeOutputFinalizer outputFinalizer)
-    : outputFinalizer_(std::move(outputFinalizer))
+RuntimeRunFinalizer::RuntimeRunFinalizer(
+    RuntimeFinalModeRecorder finalModeRecorder,
+    RuntimeOutputFinalizer outputFinalizer)
+    : finalModeRecorder_(std::move(finalModeRecorder))
+    , outputFinalizer_(std::move(outputFinalizer))
 {
 }
 
@@ -14,7 +17,7 @@ void RuntimeRunFinalizer::finalize(
     const RuntimeOutputSettings &settings,
     GameLoopResult &result) const
 {
-	result.finalMode = session.mode();
+	finalModeRecorder_.record(session, result);
 	outputFinalizer_.finalize(settings, result);
 }
 

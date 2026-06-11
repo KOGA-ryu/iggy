@@ -12,9 +12,12 @@
 #include "app/RuntimeArtifactOutputService.hpp"
 #include "app/RuntimeCombatText.hpp"
 #include "app/RuntimeDebugArtifactBundle.hpp"
+#include "app/RuntimeDebugArtifactBundleResultBuilder.hpp"
 #include "app/RuntimeDebugArtifactLayout.hpp"
+#include "app/RuntimeDebugArtifactRootPreparer.hpp"
 #include "app/RuntimeDebugArtifactWriter.hpp"
 #include "app/RuntimeDebugManifest.hpp"
+#include "app/RuntimeDebugManifestContextBuilder.hpp"
 #include "app/RuntimeDebugManifestIndexText.hpp"
 #include "app/RuntimeDebugManifestPathsText.hpp"
 #include "app/RuntimeDebugManifestSections.hpp"
@@ -37,8 +40,11 @@
 #include "app/RuntimeFrameTraceFileStore.hpp"
 #include "app/RuntimeFrameTraceHeaderText.hpp"
 #include "app/RuntimeFrameTraceSections.hpp"
+#include "app/RuntimeFinalModeRecorder.hpp"
 #include "app/RuntimeOutputFinalizer.hpp"
 #include "app/RuntimeOutputFailurePolicy.hpp"
+#include "app/RuntimeInputFocusResolver.hpp"
+#include "app/RuntimeOutputResultBuilder.hpp"
 #include "app/RuntimeRawInputDrainer.hpp"
 #include "app/RuntimeRunExecutor.hpp"
 #include "app/RuntimeRunFinalizer.hpp"
@@ -46,8 +52,10 @@
 #include "app/RuntimeRunRecorder.hpp"
 #include "app/RuntimeRunSummaryText.hpp"
 #include "app/RuntimeSessionInputRouter.hpp"
+#include "app/RuntimeSessionModeTogglePolicy.hpp"
 #include "app/RuntimeSetupFailurePolicy.hpp"
 #include "app/RuntimeSetupRunner.hpp"
+#include "app/RuntimeSourceContext.hpp"
 #include "app/RuntimeSourceDrainer.hpp"
 #include "app/RuntimeSourceDrainerSettingsBuilder.hpp"
 #include "app/RuntimeSourceStream.hpp"
@@ -84,6 +92,7 @@
 #include "interaction/InteractionIntentBuilder.hpp"
 #include "inventory/InventoryCommandCodec.hpp"
 #include "inventory/InventoryCommandDispatcher.hpp"
+#include "inventory/InventoryCommandEventEmitter.hpp"
 #include "inventory/InventoryCommandLog.hpp"
 #include "inventory/InventoryCommandLogChecksum.hpp"
 #include "inventory/InventoryCommandLogCodec.hpp"
@@ -101,6 +110,7 @@
 #include "inventory/EquipmentService.hpp"
 #include "inventory/EquipmentStatsService.hpp"
 #include "inventory/InventoryService.hpp"
+#include "input/InputEventMatcher.hpp"
 #include "input/RawInputSource.hpp"
 #include "network/MovementCodec.hpp"
 #include "player/ActorStepCommitter.hpp"
@@ -259,6 +269,50 @@ void TestInventoryFocusBlocksMovement()
 	dev::Player player = MakePlayer();
 
 	Expect(!gate.canMove(player), "inventory focus should block movement");
+	Expect(gate.movementBlockReason(player) == dev::PlayerActionBlockReason::Focus, "inventory focus should explain movement block reason");
+}
+
+void TestPlayerActionGateReportsMovementBlockReasons()
+{
+	dev::FocusState gameplayFocusState;
+	dev::InputFocus gameplayFocus { gameplayFocusState };
+	dev::PlayerActionContext context;
+	dev::Player player = MakePlayer();
+
+	dev::PlayerActionGate openGate { gameplayFocus, context };
+	Expect(openGate.canMove(player), "player action gate should allow movement when no constraints block it");
+	Expect(openGate.movementBlockReason(player) == dev::PlayerActionBlockReason::None, "player action gate should report no block reason when movement is allowed");
+
+	dev::PlayerActionContext pausedContext { .paused = true };
+	dev::PlayerActionGate pausedGate { gameplayFocus, pausedContext };
+	Expect(pausedGate.movementBlockReason(player) == dev::PlayerActionBlockReason::Paused, "player action gate should report paused movement block");
+
+	dev::PlayerActionContext animationLockedContext { .animationLocked = true };
+	dev::PlayerActionGate animationLockedGate { gameplayFocus, animationLockedContext };
+	Expect(animationLockedGate.movementBlockReason(player) == dev::PlayerActionBlockReason::AnimationLocked, "player action gate should report app-level animation lock block");
+
+	dev::Player committedPlayer = MakePlayer();
+	committedPlayer.animationLock.active = true;
+	committedPlayer.animationLock.elapsedSeconds = 0.25F;
+	committedPlayer.animationLock.cancelAfterSeconds = 0.50F;
+	Expect(openGate.movementBlockReason(committedPlayer) == dev::PlayerActionBlockReason::AnimationCommitment, "player action gate should report uncancellable animation commitment");
+
+	dev::Player stunnedPlayer = MakePlayer();
+	stunnedPlayer.moveState = dev::PlayerMoveState::Stunned;
+	Expect(openGate.movementBlockReason(stunnedPlayer) == dev::PlayerActionBlockReason::Stunned, "player action gate should report stunned movement block");
+}
+
+void TestInputEventMatcherRecognizesPressedKeysAndPointers()
+{
+	dev::InputEventMatcher matcher;
+
+	Expect(matcher.pressedKey({ .type = dev::RawInputType::KeyPress, .code = 'S', .pressed = true }, 'S'), "input event matcher should match pressed key code");
+	Expect(!matcher.pressedKey({ .type = dev::RawInputType::KeyPress, .code = 'S', .pressed = false }, 'S'), "input event matcher should reject released key");
+	Expect(!matcher.pressedKey({ .type = dev::RawInputType::KeyPress, .code = 'A', .pressed = true }, 'S'), "input event matcher should reject different key code");
+	Expect(matcher.pressedPointer({ .type = dev::RawInputType::MouseClick, .pressed = true }), "input event matcher should treat pressed mouse click as pointer press");
+	Expect(matcher.pressedPointer({ .type = dev::RawInputType::TouchTap, .pressed = true }), "input event matcher should treat pressed touch tap as pointer press");
+	Expect(!matcher.pressedPointer({ .type = dev::RawInputType::MouseClick, .pressed = false }), "input event matcher should reject released pointer");
+	Expect(!matcher.pressedPointer({ .type = dev::RawInputType::ControllerButton, .pressed = true }), "input event matcher should reject non-pointer buttons");
 }
 
 void TestStandGroundCreatesStandAndAct()
@@ -2738,6 +2792,50 @@ void TestInventoryCommandDispatcherEmitsInventoryEvents()
 	Expect(recorded.size() == 2 && recorded[1].type == dev::InventoryEventType::Rejected, "inventory command dispatcher should emit rejected event");
 	Expect(recorded.size() == 2 && recorded[1].equipmentResult == dev::EquipmentResultType::NotEquippable, "inventory rejected event should preserve rejection reason");
 	Expect(recorded.size() == 2 && recorded[1].itemId == 934, "inventory rejected event should preserve rejected item id");
+}
+
+void TestInventoryCommandEventEmitterMapsResultsToEvents()
+{
+	dev::InventoryEventRecorder events;
+	dev::InventoryCommandEventEmitter emitter { &events };
+
+	emitter.emit({
+	    .type = dev::InventoryCommandResultType::Applied,
+	    .command = {
+	        .type = dev::InventoryCommandType::EquipItem,
+	        .itemId = 936,
+	    },
+	    .equipmentResult = {
+	        .type = dev::EquipmentResultType::Equipped,
+	        .itemId = 936,
+	        .slot = dev::EquipmentSlot::Weapon,
+	    },
+	});
+	emitter.emit({
+	    .type = dev::InventoryCommandResultType::Rejected,
+	    .command = {
+	        .type = dev::InventoryCommandType::UnequipSlot,
+	        .slot = dev::EquipmentSlot::Armor,
+	    },
+	    .equipmentResult = {
+	        .type = dev::EquipmentResultType::EmptySlot,
+	        .slot = dev::EquipmentSlot::Armor,
+	    },
+	});
+
+	const std::vector<dev::InventoryEvent> &recorded = events.events();
+	Expect(recorded.size() == 2, "inventory command event emitter should publish one event per result");
+	Expect(recorded.size() == 2 && recorded[0].type == dev::InventoryEventType::Equipped, "inventory command event emitter should map equipped result to equipped event");
+	Expect(recorded.size() == 2 && recorded[0].commandType == dev::InventoryCommandType::EquipItem, "inventory command event emitter should preserve applied command type");
+	Expect(recorded.size() == 2 && recorded[0].commandResult == dev::InventoryCommandResultType::Applied, "inventory command event emitter should preserve applied result type");
+	Expect(recorded.size() == 2 && recorded[0].equipmentResult == dev::EquipmentResultType::Equipped, "inventory command event emitter should preserve equipment result");
+	Expect(recorded.size() == 2 && recorded[0].itemId == 936, "inventory command event emitter should preserve item id");
+	Expect(recorded.size() == 2 && recorded[0].slot == dev::EquipmentSlot::Weapon, "inventory command event emitter should preserve applied slot");
+	Expect(recorded.size() == 2 && recorded[1].type == dev::InventoryEventType::Rejected, "inventory command event emitter should map rejected result to rejected event");
+	Expect(recorded.size() == 2 && recorded[1].commandType == dev::InventoryCommandType::UnequipSlot, "inventory command event emitter should preserve rejected command type");
+	Expect(recorded.size() == 2 && recorded[1].commandResult == dev::InventoryCommandResultType::Rejected, "inventory command event emitter should preserve rejected result type");
+	Expect(recorded.size() == 2 && recorded[1].equipmentResult == dev::EquipmentResultType::EmptySlot, "inventory command event emitter should preserve rejection reason");
+	Expect(recorded.size() == 2 && recorded[1].slot == dev::EquipmentSlot::Armor, "inventory command event emitter should preserve rejected slot");
 }
 
 void TestInventoryCommandCodecRoundTripsCommands()
@@ -5542,6 +5640,29 @@ void TestRuntimeSourceDrainerSettingsBuilderMapsLoopSourcesAndPlayer()
 	Expect(settings.inputPlayerId == 3, "runtime source drainer settings builder should map input player id to source-drainer player id");
 }
 
+void TestRuntimeSourceContextReportsActiveWorldAndPlayer()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_source_context_test";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root / "saves" };
+	dev::RuntimeSourceContext emptyContext { session, 0 };
+	Expect(!emptyContext.hasActiveWorld(), "runtime source context should report missing active world");
+	Expect(!emptyContext.hasActivePlayer(), "runtime source context should report no active player without a world");
+
+	session.startNewGame({ .playerStart = { 1, 2 }, .playerHitPoints = 20 });
+	dev::RuntimeSourceContext playerContext { session, 0 };
+	dev::RuntimeSourceContext missingPlayerContext { session, 3 };
+
+	Expect(playerContext.hasActiveWorld(), "runtime source context should report active world");
+	Expect(playerContext.hasActivePlayer(), "runtime source context should report valid input player");
+	Expect(playerContext.world().players.size() == 1, "runtime source context should expose active world");
+	Expect(playerContext.player().position.tile == dev::Point { 1, 2 }, "runtime source context should expose selected player");
+	Expect(!missingPlayerContext.hasActivePlayer(), "runtime source context should reject out-of-range input player");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestRuntimeSourceStreamDrainsSourcesAndSkipsNullSlots()
 {
 	dev::QueuedMovementCommandSource first;
@@ -6578,6 +6699,28 @@ void TestRuntimeOutputResultDefaultsToNoAttempts()
 	Expect(!dev::RuntimeOutputFailurePolicy {}.failed(output), "runtime output result should not fail when nothing was requested");
 }
 
+void TestRuntimeOutputResultBuilderRecordsArtifactAttempts()
+{
+	dev::RuntimeOutputResultBuilder builder;
+
+	builder.beginRunTraceSave();
+	dev::GameLoopResult traceAttempt = builder.applyTo(dev::GameLoopResult {});
+	Expect(traceAttempt.output.runTraceSaveAttempted, "runtime output result builder should apply in-progress trace attempt to run result");
+	Expect(!traceAttempt.output.runTraceSaved, "runtime output result builder should not mark trace saved before completion");
+
+	builder.completeRunTraceSave(true);
+	builder.beginDebugBundleSave();
+	dev::GameLoopResult bundleAttempt = builder.applyTo(dev::GameLoopResult {});
+	Expect(bundleAttempt.output.runTraceSaveAttempted && bundleAttempt.output.runTraceSaved, "runtime output result builder should preserve completed trace result");
+	Expect(bundleAttempt.output.debugBundleSaveAttempted, "runtime output result builder should apply in-progress bundle attempt to run result");
+	Expect(!bundleAttempt.output.debugBundleSaved, "runtime output result builder should not mark bundle saved before completion");
+
+	builder.completeDebugBundleSave(false);
+	dev::RuntimeOutputResult output = builder.result();
+	Expect(output.runTraceSaveAttempted && output.runTraceSaved, "runtime output result builder should report completed trace save");
+	Expect(output.debugBundleSaveAttempted && !output.debugBundleSaved, "runtime output result builder should report failed bundle save");
+}
+
 void TestRuntimeSetupSettingsDefaultsToNoScripts()
 {
 	dev::RuntimeSetupSettings setup;
@@ -6703,6 +6846,51 @@ void TestRuntimeSetupRunnerPreservesInventoryCommandRejections()
 	Expect(result.setup.inventoryScriptResult.commandResults.size() == 1 && result.setup.inventoryScriptResult.commandResults[0].type == dev::InventoryCommandResultType::Rejected, "runtime setup runner should preserve rejected inventory command result");
 	Expect(result.inventoryCommandResults.size() == 1 && result.inventoryCommandResults[0].type == dev::InventoryCommandResultType::Rejected, "runtime setup runner should expose configured inventory command results for run summaries");
 	Expect(inventoryEvents.events().size() == 1 && inventoryEvents.events()[0].type == dev::InventoryEventType::Rejected, "runtime setup runner should preserve inventory setup events");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeSetupRunnerStopsFramesAfterInventorySetupFailure()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_setup_runner_inventory_failure_test";
+	const std::filesystem::path missingInventory = root / "missing.iicl";
+	const std::filesystem::path movementPath = root / "movement.imcl";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::CommandLog movementLog;
+	movementLog.record({
+	    .type = dev::MovementCommandType::WalkTo,
+	    .playerId = 0,
+	    .destination = { 1, 0 },
+	});
+	dev::CommandLogFileStore movementStore;
+	Expect(movementStore.save(movementPath, movementLog), "runtime setup runner inventory failure test should create movement script");
+
+	dev::GameSession session { root / "saves" };
+	session.startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	dev::SessionEventRecorder sessionEvents;
+	dev::InventoryEventRecorder inventoryEvents;
+	dev::QueuedSessionCommandSource routedSessionCommands;
+	dev::QueuedMovementCommandSource routedMovementCommands;
+	dev::SessionCommandDispatcher dispatcher { session, &sessionEvents };
+	dev::RuntimeSourceDrainer drainer {
+		session,
+		inventoryEvents,
+		routedSessionCommands,
+		routedMovementCommands,
+		{},
+	};
+	dev::RuntimeSetupRunResult result = dev::RuntimeSetupRunner { dispatcher, drainer }.run({
+	    .inventoryScript = missingInventory,
+	    .movementScript = movementPath,
+	});
+
+	Expect(!result.framesAllowed, "runtime setup runner should stop frames after inventory setup failure");
+	Expect(result.setup.inventoryScriptRan, "runtime setup runner should attempt configured inventory script");
+	Expect(result.setup.inventoryScriptResult.status == dev::InventoryScriptRunStatus::LoadFailed, "runtime setup runner should report inventory setup load failure");
+	Expect(!result.setup.movementScriptRan, "runtime setup runner should not run movement setup after inventory setup failure");
+	Expect(result.inventoryCommandResults.empty(), "failed inventory setup should not expose setup inventory command results");
 
 	std::filesystem::remove_all(root);
 }
@@ -7016,6 +7204,23 @@ void TestRuntimeRunFinalizerCapturesFinalModeAndLeavesDisabledOutputsUntouched()
 	Expect(result.finalMode == dev::GameSessionMode::Inventory, "runtime run finalizer should capture final session mode");
 	Expect(!result.output.runTraceSaveAttempted, "runtime run finalizer should leave disabled trace output untouched");
 	Expect(!result.output.debugBundleSaveAttempted, "runtime run finalizer should leave disabled bundle output untouched");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeFinalModeRecorderCapturesSessionMode()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_final_mode_recorder_test";
+	std::filesystem::remove_all(root);
+
+	dev::GameSession session { root / "saves" };
+	session.startNewGame({ .playerStart = { 0, 0 }, .playerHitPoints = 20 });
+	session.setMode(dev::GameSessionMode::Inventory);
+	dev::GameLoopResult result;
+
+	dev::RuntimeFinalModeRecorder {}.record(session, result);
+
+	Expect(result.finalMode == dev::GameSessionMode::Inventory, "runtime final mode recorder should capture current session mode");
 
 	std::filesystem::remove_all(root);
 }
@@ -7610,6 +7815,76 @@ void TestRuntimeDebugArtifactLayoutNamesBundlePaths()
 	Expect(paths.tracePath == root / "run.trace", "runtime debug artifact layout should name trace path");
 }
 
+void TestRuntimeDebugArtifactBundleResultBuilderRecordsBundleState()
+{
+	const dev::RuntimeDebugArtifactPaths paths {
+		.rootPath = "debug/run-001",
+		.manifestPath = "debug/run-001/manifest.txt",
+		.tracePath = "debug/run-001/run.trace",
+	};
+	dev::RuntimeDebugArtifactBundleResultBuilder builder { paths };
+
+	dev::RuntimeDebugArtifactBundleResult initial = builder.result();
+	Expect(initial.rootPath == paths.rootPath, "runtime debug artifact bundle result builder should copy root path");
+	Expect(initial.manifestPath == paths.manifestPath, "runtime debug artifact bundle result builder should copy manifest path");
+	Expect(initial.tracePath == paths.tracePath, "runtime debug artifact bundle result builder should copy trace path");
+	Expect(!initial.rootPrepared && !initial.traceSaved && !initial.manifestSaved, "runtime debug artifact bundle result builder should default to unsaved state");
+	Expect(!initial.saved(), "runtime debug artifact bundle result builder should not report saved before writes");
+
+	builder.markRootPrepared();
+	builder.recordWrite({ .traceSaved = true, .manifestSaved = true });
+	dev::RuntimeDebugArtifactBundleResult saved = builder.result();
+
+	Expect(saved.rootPrepared, "runtime debug artifact bundle result builder should record prepared root");
+	Expect(saved.traceSaved && saved.manifestSaved, "runtime debug artifact bundle result builder should record write flags");
+	Expect(saved.saved(), "runtime debug artifact bundle result builder should report complete bundle save");
+}
+
+void TestRuntimeDebugArtifactRootPreparerCreatesBundleRoot()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_debug_root_preparer_test";
+	std::filesystem::remove_all(root);
+
+	bool prepared = dev::RuntimeDebugArtifactRootPreparer {}.prepare(root / "nested" / "bundle");
+
+	Expect(prepared, "runtime debug artifact root preparer should create missing bundle directories");
+	Expect(std::filesystem::is_directory(root / "nested" / "bundle"), "runtime debug artifact root preparer should leave a directory at bundle root");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeDebugArtifactRootPreparerRejectsRootFile()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_debug_root_preparer_file_test";
+	std::filesystem::remove_all(root);
+	{
+		std::ofstream output { root, std::ios::trunc };
+		output << "not a directory\n";
+	}
+
+	bool prepared = dev::RuntimeDebugArtifactRootPreparer {}.prepare(root);
+
+	Expect(!prepared, "runtime debug artifact root preparer should reject existing files");
+
+	std::filesystem::remove(root);
+}
+
+void TestRuntimeDebugManifestContextBuilderMapsPathsAndTraceState()
+{
+	const dev::RuntimeDebugArtifactPaths paths {
+		.rootPath = "debug/run-001",
+		.manifestPath = "debug/run-001/manifest.txt",
+		.tracePath = "debug/run-001/run.trace",
+	};
+
+	dev::RuntimeDebugManifestContext context = dev::RuntimeDebugManifestContextBuilder {}.build(paths, true);
+
+	Expect(context.rootPath == paths.rootPath, "runtime debug manifest context builder should copy bundle root path");
+	Expect(context.manifestPath == paths.manifestPath, "runtime debug manifest context builder should copy manifest path");
+	Expect(context.tracePath == paths.tracePath, "runtime debug manifest context builder should copy trace path");
+	Expect(context.traceSaved, "runtime debug manifest context builder should copy trace save state");
+}
+
 void TestRuntimeDebugArtifactWriterSavesTraceAndManifest()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_debug_writer_test";
@@ -7952,6 +8227,55 @@ void TestRuntimeMovementInputRouterMapsMouseClickToMovementCommand()
 	Expect(commands.size() == 1 && commands[0].destination == dev::Point { 3, 2 }, "runtime movement input router should map click through tile map");
 }
 
+void TestRuntimeMovementInputRouterMapsTouchTapToMovementCommand()
+{
+	dev::SimulationWorld world;
+	world.players.push_back(MakePlayer({ 0, 0 }));
+
+	dev::QueuedMovementCommandSource movementCommands;
+	dev::RuntimeMovementInputRouter router { movementCommands };
+
+	dev::RuntimeInputRouteResult result = router.route(
+	    dev::RawInputEvent {
+	        .type = dev::RawInputType::TouchTap,
+	        .screenPosition = { 128, 32 },
+	        .pressed = true,
+	    },
+	    dev::RuntimeInputContext {
+	        .world = &world,
+	        .sessionMode = dev::GameSessionMode::Gameplay,
+	    });
+
+	Expect(result.handled && result.queuedMovementCommand, "runtime movement input router should handle gameplay touch tap");
+	std::vector<dev::MovementCommand> commands = movementCommands.drain();
+	Expect(commands.size() == 1 && commands[0].type == dev::MovementCommandType::WalkTo, "runtime movement input router should map touch tap to WalkTo");
+	Expect(commands.size() == 1 && commands[0].destination == dev::Point { 4, 1 }, "runtime movement input router should map touch tap through tile map");
+}
+
+void TestRuntimeInputFocusResolverMapsSessionModesToFocus()
+{
+	dev::RuntimeInputFocusResolver resolver;
+
+	dev::FocusState gameplay = resolver.resolve(
+	    dev::FocusState { .owner = dev::InputOwner::Gameplay },
+	    dev::GameSessionMode::Gameplay);
+	dev::FocusState paused = resolver.resolve(
+	    dev::FocusState { .owner = dev::InputOwner::Gameplay },
+	    dev::GameSessionMode::Paused);
+	dev::FocusState inventory = resolver.resolve(
+	    dev::FocusState { .owner = dev::InputOwner::Gameplay, .textEntryActive = true },
+	    dev::GameSessionMode::Inventory);
+	dev::FocusState empty = resolver.resolve(
+	    dev::FocusState { .owner = dev::InputOwner::Dialogue },
+	    dev::GameSessionMode::Empty);
+
+	Expect(gameplay.owner == dev::InputOwner::Gameplay, "runtime input focus resolver should preserve gameplay focus in gameplay mode");
+	Expect(paused.owner == dev::InputOwner::Menu, "runtime input focus resolver should route paused mode to menu focus");
+	Expect(inventory.owner == dev::InputOwner::Inventory, "runtime input focus resolver should route inventory mode to inventory focus");
+	Expect(inventory.textEntryActive, "runtime input focus resolver should preserve text entry state");
+	Expect(empty.owner == dev::InputOwner::Dialogue, "runtime input focus resolver should preserve explicit focus in empty mode");
+}
+
 void TestRuntimeInputRouterBlocksMovementWhenFocusDoesNotOwnGameplay()
 {
 	dev::SimulationWorld world;
@@ -7987,6 +8311,8 @@ void TestRuntimeInputRouterBlocksMovementWhenFocusDoesNotOwnGameplay()
 
 	Expect(!inventoryResult.handled, "runtime input router should ignore movement while inventory owns focus");
 	Expect(!textEntryResult.handled, "runtime input router should ignore movement while text entry is active");
+	Expect(inventoryResult.movementBlockReason == std::optional<dev::PlayerActionBlockReason> { dev::PlayerActionBlockReason::Focus }, "runtime input router should explain inventory movement block");
+	Expect(textEntryResult.movementBlockReason == std::optional<dev::PlayerActionBlockReason> { dev::PlayerActionBlockReason::Focus }, "runtime input router should explain text-entry movement block");
 	Expect(movementCommands.empty(), "runtime input router should not queue blocked movement input");
 	Expect(sessionCommands.empty(), "runtime input router should not convert blocked movement into session commands");
 }
@@ -8065,6 +8391,18 @@ void TestRuntimeSessionInputRouterTogglesLifecycleModes()
 	Expect(commands.size() == 2 && commands[1].mode == std::optional<dev::GameSessionMode> { dev::GameSessionMode::Gameplay }, "inventory key should close inventory when already in inventory mode");
 }
 
+void TestRuntimeSessionModeTogglePolicyMapsHotkeysToRequestedModes()
+{
+	dev::RuntimeSessionModeTogglePolicy policy;
+
+	Expect(policy.togglePause(dev::GameSessionMode::Gameplay) == dev::GameSessionMode::Paused, "runtime session mode toggle policy should pause gameplay");
+	Expect(policy.togglePause(dev::GameSessionMode::Paused) == dev::GameSessionMode::Gameplay, "runtime session mode toggle policy should unpause paused mode");
+	Expect(policy.togglePause(dev::GameSessionMode::Inventory) == dev::GameSessionMode::Paused, "runtime session mode toggle policy should let pause key request paused mode from inventory");
+	Expect(policy.toggleInventory(dev::GameSessionMode::Gameplay) == dev::GameSessionMode::Inventory, "runtime session mode toggle policy should open inventory from gameplay");
+	Expect(policy.toggleInventory(dev::GameSessionMode::Inventory) == dev::GameSessionMode::Gameplay, "runtime session mode toggle policy should close inventory");
+	Expect(policy.toggleInventory(dev::GameSessionMode::Paused) == dev::GameSessionMode::Inventory, "runtime session mode toggle policy should let inventory key request inventory mode from pause");
+}
+
 void TestRuntimeInputRouterMapsStopHotkeyToMovementCommand()
 {
 	dev::SimulationWorld world;
@@ -8094,6 +8432,34 @@ void TestRuntimeInputRouterMapsStopHotkeyToMovementCommand()
 	Expect(commands.size() == 1 && commands[0].type == dev::MovementCommandType::Stop, "stop hotkey should request Stop movement command");
 	Expect(commands.size() == 1 && commands[0].destination == dev::Point { 7, 4 }, "stop hotkey should use current player tile");
 	Expect(sessionCommands.empty(), "stop hotkey should not queue session commands");
+}
+
+void TestRuntimeMovementInputRouterReportsBlockedStopReason()
+{
+	dev::SimulationWorld world;
+	world.players.push_back(MakePlayer({ 7, 4 }));
+
+	dev::QueuedMovementCommandSource movementCommands;
+	dev::RuntimeMovementInputRouter router {
+		movementCommands,
+		dev::RuntimeInputBindings { .pauseKey = 'P', .inventoryKey = 'I', .stopKey = 'Q' },
+	};
+
+	dev::RuntimeInputRouteResult result = router.route(
+	    dev::RawInputEvent {
+	        .type = dev::RawInputType::KeyPress,
+	        .code = 'Q',
+	        .pressed = true,
+	    },
+	    dev::RuntimeInputContext {
+	        .world = &world,
+	        .actionContext = { .paused = true },
+	        .sessionMode = dev::GameSessionMode::Gameplay,
+	    });
+
+	Expect(!result.handled, "runtime movement input router should not handle blocked stop hotkey");
+	Expect(result.movementBlockReason == std::optional<dev::PlayerActionBlockReason> { dev::PlayerActionBlockReason::Paused }, "runtime movement input router should report paused stop block reason");
+	Expect(movementCommands.empty(), "blocked stop hotkey should not queue movement command");
 }
 
 void TestRuntimeInputRouterMapsTargetClickToMoveThenAct()
@@ -8812,6 +9178,8 @@ void TestGameLoopDoesNotRouteBlockedRawMovementInput()
 int main()
 {
 	TestInventoryFocusBlocksMovement();
+	TestPlayerActionGateReportsMovementBlockReasons();
+	TestInputEventMatcherRecognizesPressedKeysAndPointers();
 	TestStandGroundCreatesStandAndAct();
 	TestDestinationActionBuilderMapsInteractionRanges();
 	TestMoveThenActExecutesAfterPath();
@@ -8917,6 +9285,7 @@ int main()
 	TestInventoryCommandDispatcherUnequipsSlot();
 	TestInventoryCommandDispatcherRejectsInvalidCommands();
 	TestInventoryCommandDispatcherEmitsInventoryEvents();
+	TestInventoryCommandEventEmitterMapsResultsToEvents();
 	TestInventoryCommandCodecRoundTripsCommands();
 	TestInventoryCommandCodecRejectsInvalidPackets();
 	TestInventoryCommandPacketValidatorRejectsMalformedPayloads();
@@ -9017,6 +9386,7 @@ int main()
 	TestQueuedInventoryScriptSourceDrainsPathsOnce();
 	TestQueuedMovementScriptSourceDrainsPathsOnce();
 	TestRuntimeSourceDrainerSettingsBuilderMapsLoopSourcesAndPlayer();
+	TestRuntimeSourceContextReportsActiveWorldAndPlayer();
 	TestRuntimeSourceStreamDrainsSourcesAndSkipsNullSlots();
 	TestRuntimeSourceDrainerDrainsSessionBeforeMovement();
 	TestRuntimeSourceDrainerRunsMovementScripts();
@@ -9054,11 +9424,13 @@ int main()
 	TestRuntimeTraceServiceFormatsEmptyRun();
 	TestRuntimeOutputSettingsDefaultDisablesArtifacts();
 	TestRuntimeOutputResultDefaultsToNoAttempts();
+	TestRuntimeOutputResultBuilderRecordsArtifactAttempts();
 	TestRuntimeSetupSettingsDefaultsToNoScripts();
 	TestRuntimeSetupResultDefaultsToNoSetupScripts();
 	TestRuntimeSetupRunnerAllowsFramesWhenNoScriptsConfigured();
 	TestRuntimeSetupRunnerStopsFramesAfterStartupLoadFailure();
 	TestRuntimeSetupRunnerPreservesInventoryCommandRejections();
+	TestRuntimeSetupRunnerStopsFramesAfterInventorySetupFailure();
 	TestRuntimeSetupRunnerPreservesMovementCommandRejections();
 	TestRuntimeSetupRunnerStopsFramesWithoutActiveWorldForMovementScript();
 	TestRuntimeSourceSettingsDefaultsToNoSources();
@@ -9070,6 +9442,7 @@ int main()
 	TestRuntimeRunRecorderAggregatesSetupInventoryResultsWithoutFrame();
 	TestRuntimeRunRecorderAggregatesFrameReportsAndSummary();
 	TestRuntimeRunFinalizerCapturesFinalModeAndLeavesDisabledOutputsUntouched();
+	TestRuntimeFinalModeRecorderCapturesSessionMode();
 	TestRuntimeExitCodePolicyReportsSuccessForCleanRun();
 	TestRuntimeExitCodeMapperMapsFailureBooleanToProcessCode();
 	TestRuntimeExitCodePolicyFailsSetupErrors();
@@ -9092,6 +9465,10 @@ int main()
 	TestRuntimeDebugManifestSummarizesInventoryScripts();
 	TestRuntimeDebugManifestSummarizesMovementScripts();
 	TestRuntimeDebugArtifactLayoutNamesBundlePaths();
+	TestRuntimeDebugArtifactBundleResultBuilderRecordsBundleState();
+	TestRuntimeDebugArtifactRootPreparerCreatesBundleRoot();
+	TestRuntimeDebugArtifactRootPreparerRejectsRootFile();
+	TestRuntimeDebugManifestContextBuilderMapsPathsAndTraceState();
 	TestRuntimeDebugArtifactWriterSavesTraceAndManifest();
 	TestRuntimeDebugArtifactWriterRecordsTraceFailureInManifest();
 	TestRuntimeDebugArtifactBundleRejectsRootFile();
@@ -9104,10 +9481,14 @@ int main()
 	TestGameLoopDoesNotDrainMovementSourcesWithoutActiveWorld();
 	TestRuntimeInputRouterMapsMouseClickToMovementCommand();
 	TestRuntimeMovementInputRouterMapsMouseClickToMovementCommand();
+	TestRuntimeMovementInputRouterMapsTouchTapToMovementCommand();
+	TestRuntimeInputFocusResolverMapsSessionModesToFocus();
 	TestRuntimeInputRouterBlocksMovementWhenFocusDoesNotOwnGameplay();
 	TestRuntimeInputRouterMapsHotkeysToSessionCommands();
 	TestRuntimeSessionInputRouterTogglesLifecycleModes();
+	TestRuntimeSessionModeTogglePolicyMapsHotkeysToRequestedModes();
 	TestRuntimeInputRouterMapsStopHotkeyToMovementCommand();
+	TestRuntimeMovementInputRouterReportsBlockedStopReason();
 	TestRuntimeInputRouterMapsTargetClickToMoveThenAct();
 	TestRuntimeTargetInputRouterMapsTargetClickToMoveThenAct();
 	TestRuntimeInputRouterMapsStandGroundTargetClickToStandAndAct();

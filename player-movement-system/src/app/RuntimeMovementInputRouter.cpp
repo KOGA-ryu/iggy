@@ -1,19 +1,23 @@
 #include "RuntimeMovementInputRouter.hpp"
 
+#include "input/InputEventMatcher.hpp"
+
 namespace dev {
 
 namespace {
-
-bool IsPressedKey(const RawInputEvent &event, int code)
-{
-	return event.type == RawInputType::KeyPress && event.pressed && event.code == code;
-}
 
 RuntimeInputRouteResult QueuedMovement()
 {
 	return {
 	    .handled = true,
 	    .queuedMovementCommand = true,
+	};
+}
+
+RuntimeInputRouteResult BlockedMovement(PlayerActionBlockReason reason)
+{
+	return {
+	    .movementBlockReason = reason,
 	};
 }
 
@@ -31,17 +35,16 @@ RuntimeInputRouteResult RuntimeMovementInputRouter::route(const RawInputEvent &e
 	if (context.world == nullptr || context.playerId >= context.world->players.size())
 		return {};
 
-	FocusState focusState = context.focusState;
-	if (context.sessionMode == GameSessionMode::Paused)
-		focusState.owner = InputOwner::Menu;
-	else if (context.sessionMode == GameSessionMode::Inventory)
-		focusState.owner = InputOwner::Inventory;
-
+	FocusState focusState = focusResolver_.resolve(context.focusState, context.sessionMode);
 	InputFocus focus { focusState };
 	PlayerActionGate gate { focus, context.actionContext };
 	const Player &player = context.world->players[context.playerId];
+	const PlayerActionBlockReason blockReason = gate.movementBlockReason(player);
+	InputEventMatcher inputMatcher;
 
-	if (IsPressedKey(event, bindings_.stopKey)) {
+	if (inputMatcher.pressedKey(event, bindings_.stopKey)) {
+		if (blockReason != PlayerActionBlockReason::None)
+			return BlockedMovement(blockReason);
 		std::optional<MovementCommand> stop = commandBuilder_.buildMoveCommand(
 		    context.playerId,
 		    player,
@@ -54,8 +57,11 @@ RuntimeInputRouteResult RuntimeMovementInputRouter::route(const RawInputEvent &e
 	}
 
 	RuntimeInputRouteResult targetResult = targetInput_.route(event, context, player, gate);
-	if (targetResult.handled)
+	if (targetResult.handled || targetResult.movementBlockReason.has_value())
 		return targetResult;
+
+	if (inputMatcher.pressedPointer(event) && blockReason != PlayerActionBlockReason::None)
+		return BlockedMovement(blockReason);
 
 	PlayerIntent intent = inputMapper_.mapToIntent(event, context.world->map, focus);
 	std::optional<MovementCommand> command = commandBuilder_.buildMoveCommand(context.playerId, player, intent, gate);

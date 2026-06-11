@@ -1,5 +1,7 @@
 #include "RuntimeArtifactOutputService.hpp"
 
+#include "app/RuntimeOutputResultBuilder.hpp"
+
 namespace dev {
 
 RuntimeArtifactOutputService::RuntimeArtifactOutputService(
@@ -14,23 +16,19 @@ RuntimeOutputResult RuntimeArtifactOutputService::apply(
     const RuntimeOutputSettings &settings,
     const GameLoopResult &result) const
 {
-	RuntimeOutputResult output = result.output;
+	RuntimeOutputResultBuilder output { result.output };
 
 	if (settings.runTracePath.has_value()) {
-		output.runTraceSaveAttempted = true;
-		GameLoopResult outputResult = result;
-		outputResult.output = output;
-		output.runTraceSaved = traceService_.saveRunTrace(*settings.runTracePath, outputResult);
+		output.beginRunTraceSave();
+		output.completeRunTraceSave(traceService_.saveRunTrace(*settings.runTracePath, output.applyTo(result)));
 	}
 
 	if (settings.debugBundlePath.has_value()) {
-		output.debugBundleSaveAttempted = true;
-		GameLoopResult outputResult = result;
-		outputResult.output = output;
-		output.debugBundleSaved = debugBundle_.save(*settings.debugBundlePath, outputResult).saved();
+		output.beginDebugBundleSave();
+		output.completeDebugBundleSave(debugBundle_.save(*settings.debugBundlePath, output.applyTo(result)).saved());
 	}
 
-	return output;
+	return output.result();
 }
 
 } // namespace dev

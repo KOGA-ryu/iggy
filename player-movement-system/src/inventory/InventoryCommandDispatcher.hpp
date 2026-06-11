@@ -2,7 +2,7 @@
 
 #include "inventory/EquipmentService.hpp"
 #include "inventory/InventoryCommand.hpp"
-#include "inventory/InventoryEventSink.hpp"
+#include "inventory/InventoryCommandEventEmitter.hpp"
 #include "player/Player.hpp"
 
 namespace dev {
@@ -14,11 +14,9 @@ public:
 	[[nodiscard]] InventoryCommandResult dispatch(const InventoryCommand &command) const;
 
 private:
-	void emit(const InventoryCommandResult &result) const;
-
 	Player &player_;
 	EquipmentService equipment_;
-	InventoryEventSink *eventSink_;
+	InventoryCommandEventEmitter events_;
 };
 
 } // namespace dev

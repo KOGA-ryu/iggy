@@ -1,5 +1,7 @@
 #include "RuntimeDebugArtifactWriter.hpp"
 
+#include "app/RuntimeDebugManifestContextBuilder.hpp"
+
 namespace dev {
 
 RuntimeDebugArtifactWriter::RuntimeDebugArtifactWriter(
@@ -18,12 +20,9 @@ RuntimeDebugArtifactWriteResult RuntimeDebugArtifactWriter::write(
 {
 	RuntimeDebugArtifactWriteResult write;
 	write.traceSaved = traceService_.saveRunTrace(paths.tracePath, result);
-	write.manifestSaved = textFileStore_.saveLines(paths.manifestPath, manifest_.format(result, {
-	    .rootPath = paths.rootPath,
-	    .manifestPath = paths.manifestPath,
-	    .tracePath = paths.tracePath,
-	    .traceSaved = write.traceSaved,
-	}));
+	write.manifestSaved = textFileStore_.saveLines(
+	    paths.manifestPath,
+	    manifest_.format(result, RuntimeDebugManifestContextBuilder {}.build(paths, write.traceSaved)));
 	return write;
 }
 

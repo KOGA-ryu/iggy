@@ -1,19 +1,23 @@
 #include "RuntimeTargetInputRouter.hpp"
 
+#include "input/InputEventMatcher.hpp"
+
 namespace dev {
 
 namespace {
-
-bool IsPressedPointer(const RawInputEvent &event)
-{
-	return (event.type == RawInputType::MouseClick || event.type == RawInputType::TouchTap) && event.pressed;
-}
 
 RuntimeInputRouteResult QueuedMovement()
 {
 	return {
 	    .handled = true,
 	    .queuedMovementCommand = true,
+	};
+}
+
+RuntimeInputRouteResult BlockedMovement(PlayerActionBlockReason reason)
+{
+	return {
+	    .movementBlockReason = reason,
 	};
 }
 
@@ -30,10 +34,11 @@ RuntimeInputRouteResult RuntimeTargetInputRouter::route(
     const Player &player,
     const PlayerActionGate &gate) const
 {
-	if (!IsPressedPointer(event) || context.world == nullptr || context.targetResolver == nullptr)
+	if (!InputEventMatcher {}.pressedPointer(event) || context.world == nullptr || context.targetResolver == nullptr)
 		return {};
-	if (!gate.canMove(player))
-		return {};
+	const PlayerActionBlockReason blockReason = gate.movementBlockReason(player);
+	if (blockReason != PlayerActionBlockReason::None)
+		return BlockedMovement(blockReason);
 
 	const Point tile = context.world->map.screenToTile(event.screenPosition);
 	const Target target = context.targetResolver->resolveAtTile(tile);

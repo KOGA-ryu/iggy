@@ -10,10 +10,20 @@ struct PlayerActionContext {
 	bool animationLocked = false;
 };
 
+enum class PlayerActionBlockReason {
+	None,
+	Focus,
+	Paused,
+	AnimationLocked,
+	AnimationCommitment,
+	Stunned,
+};
+
 class PlayerActionGate {
 public:
 	PlayerActionGate(const InputFocus &focus, const PlayerActionContext &context);
 
+	[[nodiscard]] PlayerActionBlockReason movementBlockReason(const Player &player) const;
 	bool canMove(const Player &player) const;
 
 private:
@@ -22,4 +32,3 @@ private:
 };
 
 } // namespace dev
-

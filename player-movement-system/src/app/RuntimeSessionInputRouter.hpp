@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/RuntimeInputTypes.hpp"
+#include "app/RuntimeSessionModeTogglePolicy.hpp"
 #include "input/RawInput.hpp"
 #include "session/SessionCommandSource.hpp"
 
@@ -15,6 +16,7 @@ public:
 private:
 	QueuedSessionCommandSource &sessionCommands_;
 	RuntimeInputBindings bindings_;
+	RuntimeSessionModeTogglePolicy modeTogglePolicy_;
 };
 
 } // namespace dev

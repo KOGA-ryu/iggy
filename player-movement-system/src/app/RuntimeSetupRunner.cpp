@@ -6,9 +6,11 @@ namespace dev {
 
 RuntimeSetupRunner::RuntimeSetupRunner(
     SessionCommandDispatcher &sessionDispatcher,
-    RuntimeSourceDrainer &sourceDrainer)
+    RuntimeSourceDrainer &sourceDrainer,
+    RuntimeSetupFailurePolicy setupFailurePolicy)
     : sessionDispatcher_(sessionDispatcher)
     , sourceDrainer_(sourceDrainer)
+    , setupFailurePolicy_(setupFailurePolicy)
 {
 }
 
@@ -20,7 +22,7 @@ RuntimeSetupRunResult RuntimeSetupRunner::run(const RuntimeSetupSettings &settin
 		result.setup.startupScriptRan = true;
 		SessionScriptRunner runner { sessionDispatcher_ };
 		result.setup.startupScriptResult = runner.run(*settings.startupScript);
-		if (result.setup.startupScriptResult.status == SessionScriptRunStatus::LoadFailed) {
+		if (setupFailurePolicy_.failed(result.setup)) {
 			result.framesAllowed = false;
 			return result;
 		}
@@ -29,7 +31,7 @@ RuntimeSetupRunResult RuntimeSetupRunner::run(const RuntimeSetupSettings &settin
 	if (settings.inventoryScript.has_value()) {
 		result.setup.inventoryScriptRan = true;
 		result.setup.inventoryScriptResult = sourceDrainer_.runInventoryScript(*settings.inventoryScript);
-		if (result.setup.inventoryScriptResult.status != InventoryScriptRunStatus::Completed) {
+		if (setupFailurePolicy_.failed(result.setup)) {
 			result.framesAllowed = false;
 			return result;
 		}
@@ -39,7 +41,7 @@ RuntimeSetupRunResult RuntimeSetupRunner::run(const RuntimeSetupSettings &settin
 	if (settings.movementScript.has_value()) {
 		result.setup.movementScriptRan = true;
 		result.setup.movementScriptResult = sourceDrainer_.runMovementScript(*settings.movementScript);
-		if (result.setup.movementScriptResult.status != MovementScriptRunStatus::Completed) {
+		if (setupFailurePolicy_.failed(result.setup)) {
 			result.framesAllowed = false;
 			return result;
 		}

@@ -1,5 +1,7 @@
 #include "InputMapper.hpp"
 
+#include "input/InputEventMatcher.hpp"
+
 namespace dev {
 
 PlayerIntent InputMapper::mapToIntent(const RawInputEvent &event, const TileMap &map, const InputFocus &focus) const
@@ -7,7 +9,7 @@ PlayerIntent InputMapper::mapToIntent(const RawInputEvent &event, const TileMap 
 	if (!focus.gameplayOwnsMovement())
 		return {};
 
-	if (event.type == RawInputType::MouseClick && event.pressed) {
+	if (InputEventMatcher {}.pressedPointer(event)) {
 		return {
 			.type = PlayerIntentType::MoveTo,
 			.destination = map.screenToTile(event.screenPosition),
@@ -18,4 +20,3 @@ PlayerIntent InputMapper::mapToIntent(const RawInputEvent &event, const TileMap 
 }
 
 } // namespace dev
-

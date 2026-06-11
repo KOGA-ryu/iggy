@@ -43,6 +43,16 @@ gameplay owns movement input?
 This is the local equivalent of DevilutionX's `CanPlayerTakeAction()` plus its
 UI movement router.
 
+`PlayerActionGate` reports the first `PlayerActionBlockReason`, not just a
+boolean. That keeps the actual command builders simple while preserving the
+reason movement was blocked: focus ownership, pause state, app-level animation
+lock, uncancellable animation commitment, or stun. In a real game those reasons
+become UI feedback, debug traces, controller hints, and tuning facts.
+Runtime input routing carries that reason on `RuntimeInputRouteResult` for
+movement-shaped input. The input is still not marked handled and no command is
+queued, but tests and future debug surfaces can tell why the player's intent did
+not become a command.
+
 ## 4. Command
 
 Accepted intent becomes a semantic command:
@@ -1136,6 +1146,9 @@ inventory setup failure also stops before configured movement setup and frames.
 Configured movement setup failure also stops before frames. Loadable inventory
 or movement scripts with rejected commands still allow frames, because the file
 and setup pipeline worked and the rejection is command-level data.
+`RuntimeSetupRunner` delegates the fatal-status interpretation to
+`RuntimeSetupFailurePolicy`, so setup gating and run failure reporting use the
+same status rules.
 
 That separates one-time setup automation from per-frame runtime sources. A
 failed setup script can stop the loop before frames begin, while runtime script
@@ -1234,6 +1247,10 @@ commands into the active world. Movement scripts sit between inventory commands
 and direct movement command queues: they dispatch decoded replay commands
 through the normal movement dispatcher, then the next `GameSession::update`
 advances any resulting player state.
+`RuntimeSourceContext` owns the repeated active world/player checks used by
+runtime sources. Inventory scripts and commands need a selected player; movement
+scripts and movement commands need an active world. Keeping that context check
+in one helper makes the source-draining rules easier to compare.
 
 `RuntimeFrameRunner` owns the one-frame order around that drainer:
 
@@ -1274,6 +1291,9 @@ many bounded frames run, `RuntimeFrameRunner` owns one frame's mechanics,
 `RuntimeSourceDrainer` owns the repeated semantic source mechanics plus the
 active-world checks needed before inventory and movement sources can safely
 mutate state.
+`RuntimeFinalModeRecorder` captures the final `GameSession` mode before output
+artifacts are written, so traces and debug bundles describe the completed run
+state instead of an earlier lifecycle moment.
 
 `RuntimeRunSummary` keeps the cross-frame aggregates together:
 
@@ -1342,8 +1362,11 @@ GameLoopResult
 artifact writes to `RuntimeOutputFinalizer`. That keeps `RuntimeRunExecutor`
 focused on lifecycle timing. `RuntimeOutputFinalizer` writes output results back
 onto `GameLoopResult`, while `RuntimeArtifactOutputService` owns the app
-artifact write policy. `RuntimeOutputFailurePolicy` interprets those output
-flags when exit-code logic needs to know whether a requested artifact failed.
+artifact write policy. `RuntimeOutputResultBuilder` owns the flag transition
+inside that policy: mark an artifact as attempted, snapshot the in-progress
+`GameLoopResult` for the writer, then record whether the write saved.
+`RuntimeOutputFailurePolicy` interprets those output flags when exit-code logic
+needs to know whether a requested artifact failed.
 
 `GameLoopSettings::output.runTracePath` lets the app shell persist a full run
 trace after the loop exits:
@@ -1497,9 +1520,15 @@ GameLoopResult
   -> run.trace
 ```
 
-The bundle owns directory preparation and artifact assembly. The layout owns
-stable artifact path names. The writer owns trace/manifest write attempts and
-reports their save flags. The manifest formatter owns readable manifest lines.
+The bundle owns artifact assembly. The layout owns stable artifact path names.
+`RuntimeDebugArtifactBundleResultBuilder` owns bundle result state: paths, root
+preparation, and trace/manifest write flags. `RuntimeDebugArtifactRootPreparer`
+owns bundle directory preparation. The writer owns trace/manifest write attempts
+and reports their save flags. The manifest formatter owns readable manifest
+lines.
+`RuntimeDebugManifestContextBuilder` maps the writer's artifact paths and trace
+save result into the manifest context, so `RuntimeDebugArtifactWriter` does not
+also own manifest context structure.
 `RuntimeDebugManifestIndexText` owns the top manifest index lines: bundle
 version and trace save state. That keeps artifact identity and save status
 separate from run gameplay summaries.
@@ -1585,7 +1614,9 @@ The app edge now has a small adapter from raw input to semantic command sources:
 ```text
 RawInputEvent
   -> RuntimeInputRouter
+  -> InputEventMatcher
   -> RuntimeSessionInputRouter
+  -> RuntimeInputFocusResolver
   -> RuntimeMovementInputRouter
   -> RuntimeTargetInputRouter
   -> SessionCommandSource or MovementCommandSource
@@ -1597,6 +1628,8 @@ Movement input still uses the lower-level movement path:
 
 ```text
 RawInputEvent
+  -> InputEventMatcher
+  -> RuntimeInputFocusResolver
   -> InputFocus
   -> InputMapper
   -> PlayerIntent
@@ -1604,6 +1637,17 @@ RawInputEvent
   -> IntentCommandBuilder
   -> MovementCommandSource
 ```
+
+`InputEventMatcher` owns the boring device-shape checks: pressed keys, pressed
+mouse clicks, and pressed touch taps. Routers then decide what those shapes mean.
+That keeps "is this a pressed pointer?" separate from "does this become WalkTo,
+Interact, Pause, or Stop?"
+
+`RuntimeInputFocusResolver` owns the app-level control lockout: paused sessions
+force menu focus, inventory sessions force inventory focus, and gameplay keeps
+the provided focus state. That makes the common game rule visible: the same
+button can mean movement during gameplay and nothing for movement while a menu
+or inventory owns controls.
 
 When a target resolver is attached, clicks can use the interaction path instead:
 
@@ -1633,6 +1677,12 @@ Lifecycle hotkeys produce session commands:
 pause key      -> SessionCommand::SetMode(Paused / Gameplay)
 inventory key  -> SessionCommand::SetMode(Inventory / Gameplay)
 ```
+
+`RuntimeSessionModeTogglePolicy` owns the requested mode for those hotkeys. It
+does not apply the transition; it only decides what `SetMode` command to queue.
+The session layer still validates and applies mode changes later. That keeps
+input routing as a command producer instead of turning it into session state
+mutation.
 
 The key lesson is that raw input stays at the app edge. Once routing finishes,
 the rest of the engine still sees boring semantic commands with the same focus,
@@ -2053,6 +2103,7 @@ Inventory commands now produce observable events:
 InventoryCommand
   -> InventoryCommandDispatcher
   -> InventoryCommandResult
+  -> InventoryCommandEventEmitter
   -> InventoryEvent
 ```
 
@@ -2081,6 +2132,12 @@ inventory command -> inventory event
 The command result still returns to the caller immediately. The event is the
 recordable fact for observers. That distinction is what keeps UI, tests, debug
 logs, and later replay code from reaching into inventory internals.
+
+`InventoryCommandEventEmitter` owns that translation. The dispatcher uses it
+after normal equipment service results, and runtime source draining uses the
+same emitter when an inventory command must be rejected because the selected
+player does not exist. That keeps the observer event shape consistent across
+normal command dispatch and app-level availability failures.
 
 ## 48. Inventory Command Codec And Replay
 

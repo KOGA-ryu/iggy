@@ -10,15 +10,22 @@ PlayerActionGate::PlayerActionGate(const InputFocus &focus, const PlayerActionCo
 
 bool PlayerActionGate::canMove(const Player &player) const
 {
+	return movementBlockReason(player) == PlayerActionBlockReason::None;
+}
+
+PlayerActionBlockReason PlayerActionGate::movementBlockReason(const Player &player) const
+{
 	if (!focus_.gameplayOwnsMovement())
-		return false;
-	if (context_.paused || context_.animationLocked)
-		return false;
+		return PlayerActionBlockReason::Focus;
+	if (context_.paused)
+		return PlayerActionBlockReason::Paused;
+	if (context_.animationLocked)
+		return PlayerActionBlockReason::AnimationLocked;
 	if (!player.animationLock.canCancel())
-		return false;
+		return PlayerActionBlockReason::AnimationCommitment;
 	if (player.moveState == PlayerMoveState::Stunned)
-		return false;
-	return true;
+		return PlayerActionBlockReason::Stunned;
+	return PlayerActionBlockReason::None;
 }
 
 } // namespace dev

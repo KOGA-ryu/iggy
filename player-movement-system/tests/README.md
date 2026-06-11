@@ -5,6 +5,7 @@ Good first tests:
 - click on walkable tile creates `WalkTo`
 - click while inventory owns focus creates no command
 - click while text entry is active creates no command
+- PlayerActionGate reports movement block reasons
 - `WalkTo` on blocked tile is rejected
 - path is consumed one step at a time
 - `Stop` clears the current path
@@ -115,6 +116,7 @@ Good first tests:
 - InventoryCommandDispatcher applies semantic equip and unequip commands
 - InventoryCommandDispatcher preserves rejected equipment reasons
 - InventoryCommandDispatcher emits inventory events for applied and rejected commands
+- InventoryCommandEventEmitter maps command results into inventory events
 - InventoryCommandSource queues and drains semantic inventory commands
 - GameLoop dispatches inventory command sources only when a world is active
 - GameLoop records inventory events from runtime inventory command sources
@@ -191,6 +193,7 @@ Good first tests:
 - GameLoop drains runtime inventory script sources before direct inventory command sources
 - GameLoop drains runtime movement script sources before direct movement command sources
 - RuntimeSourceDrainerSettingsBuilder maps loop sources and player id into drainer settings
+- RuntimeSourceContext reports active world/player availability for source draining
 - RuntimeSourceDrainer owns runtime source draining order
 - RuntimeSourceStream drains nullable source lists once while preserving order
 - RuntimeLoopTypes keeps loop settings and results reusable outside GameLoop
@@ -213,6 +216,7 @@ Good first tests:
 - RuntimeSetupSettings defaults to no configured setup scripts
 - RuntimeSetupResult defaults to no configured setup script attempts
 - RuntimeSetupRunner runs configured movement setup scripts after startup
+- RuntimeSetupRunner stops later setup and frames after configured inventory setup failure
 - RuntimeSetupRunner distinguishes movement setup failure from command rejection
 - RuntimeSourceSettings defaults to no runtime source streams
 - RuntimeInputSettings defaults to primary gameplay input context
@@ -224,7 +228,8 @@ Good first tests:
 - RuntimeRunRecorder aggregates setup inventory results without creating frames
 - RuntimeRunRecorder turns frame work into frame reports and run summaries
 - RuntimeRunExecutor runs setup, frames, and finalization in lifecycle order
-- RuntimeRunFinalizer captures final session mode and applies output finalization
+- RuntimeFinalModeRecorder captures final session mode onto GameLoopResult
+- RuntimeRunFinalizer delegates final mode capture and applies output finalization
 - RuntimeSetupFailurePolicy maps setup script failures to setup failures
 - RuntimeOutputFailurePolicy maps attempted unsaved artifacts to output failures
 - RuntimeRunFailurePolicy composes setup and output failures into run failures
@@ -232,6 +237,7 @@ Good first tests:
 - RuntimeExitCodePolicy adapts GameLoopResult failure state to process failures
 - RuntimeOutputSettings defaults to no runtime artifact outputs
 - RuntimeOutputResult defaults to no artifact save attempts
+- RuntimeOutputResultBuilder records artifact attempt/save flags and snapshots them onto GameLoopResult
 - RuntimeOutputFinalizer writes artifact output results back onto GameLoopResult
 - RuntimeArtifactOutputService applies configured artifact outputs and reports failures
 - RuntimeSetupRunner separates configured setup scripts from per-frame runtime sources
@@ -242,6 +248,9 @@ Good first tests:
 - RuntimeDebugManifestSections formats run status, setup, and runtime script manifest groups
 - RuntimeDebugManifest formats debug bundle manifest lines with latest frame policy and movement script replay summaries
 - RuntimeDebugArtifactLayout names stable debug bundle artifact paths
+- RuntimeDebugArtifactBundleResultBuilder records bundle paths, root preparation, and write flags
+- RuntimeDebugArtifactRootPreparer creates bundle roots and rejects root files
+- RuntimeDebugManifestContextBuilder maps artifact paths and trace save state into manifest context
 - RuntimeDebugArtifactWriter saves trace/manifest artifacts and records trace failures
 - RuntimeDebugArtifactBundle saves a manifest and run trace as one debug bundle
 - GameLoop saves configured debug bundles and reports bundle write failures
@@ -251,11 +260,15 @@ Good first tests:
 - QueuedMovementCommandSource drains movement commands exactly once
 - GameLoop drains runtime movement command sources into the active world queue
 - GameLoop preserves movement commands when no active world can receive them
+- InputEventMatcher recognizes pressed keys and pointer events
 - RuntimeInputRouter maps gameplay mouse clicks into movement commands
 - RuntimeMovementInputRouter maps gameplay pointer input into movement commands
+- RuntimeInputFocusResolver maps session modes into effective input focus
 - RuntimeInputRouter blocks movement when focus or text entry owns input
+- RuntimeInputRouter reports movement block reasons without routing commands
 - RuntimeInputRouter maps lifecycle hotkeys into session commands
 - RuntimeSessionInputRouter toggles pause and inventory lifecycle modes
+- RuntimeSessionModeTogglePolicy maps lifecycle hotkeys to requested modes
 - RuntimeInputRouter maps stop hotkeys into movement commands
 - RuntimeInputRouter maps target-aware enemy clicks into MoveThenAct attacks
 - RuntimeTargetInputRouter maps target-aware pointer input into interaction movement commands

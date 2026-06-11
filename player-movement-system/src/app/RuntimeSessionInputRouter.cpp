@@ -1,13 +1,10 @@
 #include "RuntimeSessionInputRouter.hpp"
 
+#include "input/InputEventMatcher.hpp"
+
 namespace dev {
 
 namespace {
-
-bool IsPressedKey(const RawInputEvent &event, int code)
-{
-	return event.type == RawInputType::KeyPress && event.pressed && event.code == code;
-}
 
 RuntimeInputRouteResult QueuedSession()
 {
@@ -27,18 +24,18 @@ RuntimeSessionInputRouter::RuntimeSessionInputRouter(QueuedSessionCommandSource 
 
 RuntimeInputRouteResult RuntimeSessionInputRouter::route(const RawInputEvent &event, const RuntimeInputContext &context) const
 {
-	if (IsPressedKey(event, bindings_.pauseKey)) {
+	if (InputEventMatcher {}.pressedKey(event, bindings_.pauseKey)) {
 		sessionCommands_.enqueue({
 		    .type = SessionCommandType::SetMode,
-		    .mode = context.sessionMode == GameSessionMode::Paused ? GameSessionMode::Gameplay : GameSessionMode::Paused,
+		    .mode = modeTogglePolicy_.togglePause(context.sessionMode),
 		});
 		return QueuedSession();
 	}
 
-	if (IsPressedKey(event, bindings_.inventoryKey)) {
+	if (InputEventMatcher {}.pressedKey(event, bindings_.inventoryKey)) {
 		sessionCommands_.enqueue({
 		    .type = SessionCommandType::SetMode,
-		    .mode = context.sessionMode == GameSessionMode::Inventory ? GameSessionMode::Gameplay : GameSessionMode::Inventory,
+		    .mode = modeTogglePolicy_.toggleInventory(context.sessionMode),
 		});
 		return QueuedSession();
 	}

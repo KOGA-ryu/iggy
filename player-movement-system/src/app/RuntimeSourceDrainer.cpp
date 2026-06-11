@@ -1,7 +1,9 @@
 #include "RuntimeSourceDrainer.hpp"
 
+#include "app/RuntimeSourceContext.hpp"
 #include "app/RuntimeSourceStream.hpp"
 #include "commands/CommandDispatcher.hpp"
+#include "inventory/InventoryCommandEventEmitter.hpp"
 #include "player/PlayerController.hpp"
 
 #include <utility>
@@ -24,27 +26,30 @@ RuntimeSourceDrainer::RuntimeSourceDrainer(
 
 InventoryScriptRunResult RuntimeSourceDrainer::runInventoryScript(const std::filesystem::path &path)
 {
-	if (!session_.hasActiveWorld() || settings_.inputPlayerId >= session_.world().players.size())
+	RuntimeSourceContext context { session_, settings_.inputPlayerId };
+	if (!context.hasActivePlayer())
 		return { .status = InventoryScriptRunStatus::NoActivePlayer };
 
-	InventoryCommandDispatcher dispatcher { session_.world().players[settings_.inputPlayerId], &inventoryEvents_ };
+	InventoryCommandDispatcher dispatcher { context.player(), &inventoryEvents_ };
 	InventoryScriptRunner runner { dispatcher };
 	return runner.run(path);
 }
 
 MovementScriptRunResult RuntimeSourceDrainer::runMovementScript(const std::filesystem::path &path)
 {
-	if (!session_.hasActiveWorld())
+	RuntimeSourceContext context { session_, settings_.inputPlayerId };
+	if (!context.hasActiveWorld())
 		return { .status = MovementScriptRunStatus::NoActiveWorld };
 
+	SimulationWorld &world = context.world();
 	PlayerController playerController {
-		session_.world().players,
-		session_.world().map,
-		session_.world().collision,
-		session_.world().pathFinder,
-		session_.world().movementEvents,
+		world.players,
+		world.map,
+		world.collision,
+		world.pathFinder,
+		world.movementEvents,
 	};
-	CommandDispatcher dispatcher { playerController, session_.world().movementEvents };
+	CommandDispatcher dispatcher { playerController, world.movementEvents };
 	MovementScriptRunner runner { dispatcher };
 	return runner.run(path);
 }
@@ -64,7 +69,8 @@ std::vector<SessionCommandResult> RuntimeSourceDrainer::drainSessionCommands(con
 std::vector<InventoryScriptRunResult> RuntimeSourceDrainer::drainInventoryScripts()
 {
 	std::vector<InventoryScriptRunResult> results;
-	if (!session_.hasActiveWorld())
+	RuntimeSourceContext context { session_, settings_.inputPlayerId };
+	if (!context.hasActiveWorld())
 		return results;
 
 	std::vector<std::filesystem::path> paths = RuntimeSourceStream<std::filesystem::path, InventoryScriptSource> {}.drain(
@@ -78,25 +84,24 @@ std::vector<InventoryScriptRunResult> RuntimeSourceDrainer::drainInventoryScript
 std::vector<InventoryCommandResult> RuntimeSourceDrainer::drainInventoryCommands()
 {
 	std::vector<InventoryCommandResult> results;
-	if (!session_.hasActiveWorld())
+	RuntimeSourceContext context { session_, settings_.inputPlayerId };
+	if (!context.hasActiveWorld())
 		return results;
 
 	std::vector<InventoryCommand> commands = RuntimeSourceStream<InventoryCommand, InventoryCommandSource> {}.drain(
 	    settings_.inventoryCommandSources);
 	results.reserve(commands.size());
-	if (settings_.inputPlayerId >= session_.world().players.size()) {
+	if (!context.hasActivePlayer()) {
+		InventoryCommandEventEmitter events { &inventoryEvents_ };
 		for (const InventoryCommand &command : commands) {
-			results.push_back({ .type = InventoryCommandResultType::Rejected, .command = command });
-			inventoryEvents_.emit({
-			    .type = InventoryEventType::Rejected,
-			    .commandType = command.type,
-			    .commandResult = InventoryCommandResultType::Rejected,
-			});
+			InventoryCommandResult result { .type = InventoryCommandResultType::Rejected, .command = command };
+			events.emit(result);
+			results.push_back(result);
 		}
 		return results;
 	}
 
-	InventoryCommandDispatcher dispatcher { session_.world().players[settings_.inputPlayerId], &inventoryEvents_ };
+	InventoryCommandDispatcher dispatcher { context.player(), &inventoryEvents_ };
 	for (const InventoryCommand &command : commands)
 		results.push_back(dispatcher.dispatch(command));
 
@@ -106,7 +111,8 @@ std::vector<InventoryCommandResult> RuntimeSourceDrainer::drainInventoryCommands
 std::vector<MovementScriptRunResult> RuntimeSourceDrainer::drainMovementScripts()
 {
 	std::vector<MovementScriptRunResult> results;
-	if (!session_.hasActiveWorld())
+	RuntimeSourceContext context { session_, settings_.inputPlayerId };
+	if (!context.hasActiveWorld())
 		return results;
 
 	std::vector<std::filesystem::path> paths = RuntimeSourceStream<std::filesystem::path, MovementScriptSource> {}.drain(
@@ -121,7 +127,8 @@ std::vector<MovementScriptRunResult> RuntimeSourceDrainer::drainMovementScripts(
 
 int RuntimeSourceDrainer::drainMovementCommands()
 {
-	if (!session_.hasActiveWorld())
+	RuntimeSourceContext context { session_, settings_.inputPlayerId };
+	if (!context.hasActiveWorld())
 		return 0;
 
 	int queued = 0;
@@ -129,7 +136,7 @@ int RuntimeSourceDrainer::drainMovementCommands()
 	    routedMovementCommands_,
 	    settings_.movementCommandSources);
 	for (MovementCommand command : commands) {
-		session_.world().commandQueue.push(command);
+		context.world().commandQueue.push(command);
 		++queued;
 	}
 	return queued;

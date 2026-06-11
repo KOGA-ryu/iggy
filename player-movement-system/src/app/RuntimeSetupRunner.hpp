@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "app/RuntimeLoopTypes.hpp"
+#include "app/RuntimeSetupFailurePolicy.hpp"
 #include "app/RuntimeSourceDrainer.hpp"
 #include "session/SessionCommandDispatcher.hpp"
 
@@ -18,13 +19,15 @@ class RuntimeSetupRunner {
 public:
 	RuntimeSetupRunner(
 	    SessionCommandDispatcher &sessionDispatcher,
-	    RuntimeSourceDrainer &sourceDrainer);
+	    RuntimeSourceDrainer &sourceDrainer,
+	    RuntimeSetupFailurePolicy setupFailurePolicy = RuntimeSetupFailurePolicy {});
 
 	[[nodiscard]] RuntimeSetupRunResult run(const RuntimeSetupSettings &settings) const;
 
 private:
 	SessionCommandDispatcher &sessionDispatcher_;
 	RuntimeSourceDrainer &sourceDrainer_;
+	RuntimeSetupFailurePolicy setupFailurePolicy_;
 };
 
 } // namespace dev

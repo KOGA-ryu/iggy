@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "focus/InputFocus.hpp"
 #include "player/PlayerActionGate.hpp"
 #include "session/GameSessionMode.hpp"
@@ -27,6 +29,7 @@ struct RuntimeInputRouteResult {
 	bool handled = false;
 	bool queuedSessionCommand = false;
 	bool queuedMovementCommand = false;
+	std::optional<PlayerActionBlockReason> movementBlockReason;
 };
 
 } // namespace dev

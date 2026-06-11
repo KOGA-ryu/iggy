@@ -12,9 +12,12 @@ add_library(player_movement_system
   src/app/GameLoop.cpp
   src/app/RuntimeArtifactOutputService.cpp
   src/app/RuntimeDebugArtifactBundle.cpp
+  src/app/RuntimeDebugArtifactBundleResultBuilder.cpp
   src/app/RuntimeDebugArtifactLayout.cpp
+  src/app/RuntimeDebugArtifactRootPreparer.cpp
   src/app/RuntimeDebugArtifactWriter.cpp
   src/app/RuntimeDebugManifest.cpp
+  src/app/RuntimeDebugManifestContextBuilder.cpp
   src/app/RuntimeDebugManifestIndexText.cpp
   src/app/RuntimeDebugManifestPathsText.cpp
   src/app/RuntimeDebugManifestSections.cpp
@@ -23,6 +26,7 @@ add_library(player_movement_system
   src/app/RuntimeEffectText.cpp
   src/app/RuntimeExitCodeMapper.cpp
   src/app/RuntimeExitCodePolicy.cpp
+  src/app/RuntimeFinalModeRecorder.cpp
   src/app/RuntimeFrameLoopRunner.cpp
   src/app/RuntimeFramePolicyText.cpp
   src/app/RuntimeFrameRunner.cpp
@@ -31,6 +35,7 @@ add_library(player_movement_system
   src/app/RuntimeFrameTraceHeaderText.cpp
   src/app/RuntimeFrameTraceSections.cpp
   src/app/RuntimeInputContextBuilder.cpp
+  src/app/RuntimeInputFocusResolver.cpp
   src/app/RuntimeInputRouter.cpp
   src/app/RuntimeInputSourceRouter.cpp
   src/app/RuntimeMovementInputRouter.cpp
@@ -40,6 +45,7 @@ add_library(player_movement_system
   src/app/RuntimeMovementScriptText.cpp
   src/app/RuntimeOutputFailurePolicy.cpp
   src/app/RuntimeOutputFinalizer.cpp
+  src/app/RuntimeOutputResultBuilder.cpp
   src/app/RuntimeRawInputDrainer.cpp
   src/app/RuntimeRunExecutor.cpp
   src/app/RuntimeRunFinalizer.cpp
@@ -49,7 +55,9 @@ add_library(player_movement_system
   src/app/RuntimeSetupRunner.cpp
   src/app/RuntimeSetupFailurePolicy.cpp
   src/app/RuntimeSessionInputRouter.cpp
+  src/app/RuntimeSessionModeTogglePolicy.cpp
   src/app/RuntimeSessionText.cpp
+  src/app/RuntimeSourceContext.cpp
   src/app/RuntimeSourceDrainer.cpp
   src/app/RuntimeSourceDrainerSettingsBuilder.cpp
   src/app/RuntimeTargetInputRouter.cpp
@@ -84,11 +92,13 @@ add_library(player_movement_system
   src/focus/InputFocus.cpp
   src/files/ByteFileStore.cpp
   src/files/TextFileStore.cpp
+  src/input/InputEventMatcher.cpp
   src/input/InputMapper.cpp
   src/input/RawInputSource.cpp
   src/inventory/InventoryCommandCodec.cpp
   src/inventory/InventoryCommandByteStream.cpp
   src/inventory/InventoryCommandDispatcher.cpp
+  src/inventory/InventoryCommandEventEmitter.cpp
   src/inventory/InventoryCommandLog.cpp
   src/inventory/InventoryCommandLogChecksum.cpp
   src/inventory/InventoryCommandLogCodec.cpp
