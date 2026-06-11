@@ -1335,6 +1335,17 @@ raw input drain results become the frame's routed-input count and movement block
 reasons, then also accumulate into the run summary. That keeps source routing,
 drain aggregation, and report recording as separate app-layer facts.
 
+`RuntimeInventoryScriptReportRecorder` owns another slice: runtime inventory
+script results are preserved as script results, while each script's command
+results are flattened into the inventory command reports for the frame and the
+run summary. That gives debug tools both views: "which scripts ran?" and "which
+inventory commands actually applied or rejected?"
+
+`RuntimeInventoryCommandReportRecorder` owns direct runtime inventory command
+results. It appends those results after any script-flattened command results, so
+the frame report preserves source order while the run summary keeps one
+aggregate inventory command list.
+
 `RuntimeOutputSettings` groups the app shell's optional artifact destinations:
 
 ```text

@@ -31,7 +31,6 @@ public:
 private:
 	[[nodiscard]] std::vector<SessionEvent> sessionEventsSinceFrameStart() const;
 	[[nodiscard]] std::vector<InventoryEvent> inventoryEventsSinceFrameStart() const;
-	void appendInventoryCommandResults(const std::vector<InventoryScriptRunResult> &scriptResults);
 
 	GameLoopResult &result_;
 	const SessionEventRecorder &sessionEvents_;

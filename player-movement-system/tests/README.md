@@ -226,6 +226,8 @@ Good first tests:
 - RuntimeInputRouteResultBuilder names route outcomes consistently
 - RuntimeInputDrainResultBuilder aggregates route outcomes for frame input reports
 - RuntimeInputDrainReportRecorder copies drain results into frame and run reports
+- RuntimeInventoryScriptReportRecorder records script results and flattens command results
+- RuntimeInventoryCommandReportRecorder appends direct command results to frame and run reports
 - RuntimeFrameSettings defaults to zero frames at a sixty hertz timestep
 - RuntimeFrameRunner routes sources and records one bounded frame
 - RuntimeFrameLoopRunner runs the configured bounded frame count

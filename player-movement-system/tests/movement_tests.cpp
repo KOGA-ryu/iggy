@@ -34,6 +34,8 @@
 #include "app/RuntimeInputRouter.hpp"
 #include "app/RuntimeInputRouteResultBuilder.hpp"
 #include "app/RuntimeInputSourceRouter.hpp"
+#include "app/RuntimeInventoryCommandReportRecorder.hpp"
+#include "app/RuntimeInventoryScriptReportRecorder.hpp"
 #include "app/RuntimeInventoryScriptText.hpp"
 #include "app/RuntimeInventoryText.hpp"
 #include "app/RuntimeMovementInputRouter.hpp"
@@ -7177,6 +7179,73 @@ void TestRuntimeInputDrainReportRecorderCopiesFrameAndAggregatesSummary()
 	Expect(summary.movementInputBlockReasons.size() == 3 && summary.movementInputBlockReasons[2] == dev::PlayerActionBlockReason::Paused, "runtime input drain report recorder should append second new block reason");
 }
 
+void TestRuntimeInventoryScriptReportRecorderKeepsScriptsAndFlattensCommands()
+{
+	dev::RuntimeFrameReport frame;
+	dev::RuntimeRunSummary summary;
+	frame.inventoryCommandResults.push_back({
+	    .type = dev::InventoryCommandResultType::Rejected,
+	    .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 10 },
+	});
+	summary.inventoryCommandResults.push_back({
+	    .type = dev::InventoryCommandResultType::Rejected,
+	    .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 11 },
+	});
+
+	dev::RuntimeInventoryScriptReportRecorder {}.record(
+	    {
+	        {
+	            .status = dev::InventoryScriptRunStatus::Completed,
+	            .commandResults = {
+	                {
+	                    .type = dev::InventoryCommandResultType::Applied,
+	                    .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 12 },
+	                    .equipmentResult = { .type = dev::EquipmentResultType::Equipped, .itemId = 12 },
+	                },
+	            },
+	        },
+	    },
+	    frame,
+	    summary);
+
+	Expect(frame.inventoryScriptResults.size() == 1 && frame.inventoryScriptResults[0].status == dev::InventoryScriptRunStatus::Completed, "runtime inventory script report recorder should copy script results onto frame report");
+	Expect(summary.runtimeInventoryScriptResults.size() == 1 && summary.runtimeInventoryScriptResults[0].status == dev::InventoryScriptRunStatus::Completed, "runtime inventory script report recorder should aggregate script results onto summary");
+	Expect(frame.inventoryCommandResults.size() == 2 && frame.inventoryCommandResults[0].command.itemId == std::optional<dev::TargetId> { 10 }, "runtime inventory script report recorder should preserve existing frame command results");
+	Expect(frame.inventoryCommandResults.size() == 2 && frame.inventoryCommandResults[1].command.itemId == std::optional<dev::TargetId> { 12 }, "runtime inventory script report recorder should append script command results to frame");
+	Expect(summary.inventoryCommandResults.size() == 2 && summary.inventoryCommandResults[0].command.itemId == std::optional<dev::TargetId> { 11 }, "runtime inventory script report recorder should preserve existing summary command results");
+	Expect(summary.inventoryCommandResults.size() == 2 && summary.inventoryCommandResults[1].command.itemId == std::optional<dev::TargetId> { 12 }, "runtime inventory script report recorder should append script command results to summary");
+}
+
+void TestRuntimeInventoryCommandReportRecorderAppendsDirectCommandResults()
+{
+	dev::RuntimeFrameReport frame;
+	dev::RuntimeRunSummary summary;
+	frame.inventoryCommandResults.push_back({
+	    .type = dev::InventoryCommandResultType::Applied,
+	    .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 20 },
+	});
+	summary.inventoryCommandResults.push_back({
+	    .type = dev::InventoryCommandResultType::Applied,
+	    .command = { .type = dev::InventoryCommandType::EquipItem, .itemId = 21 },
+	});
+
+	dev::RuntimeInventoryCommandReportRecorder {}.record(
+	    {
+	        {
+	            .type = dev::InventoryCommandResultType::Rejected,
+	            .command = { .type = dev::InventoryCommandType::UnequipSlot, .slot = dev::EquipmentSlot::Weapon },
+	            .equipmentResult = { .type = dev::EquipmentResultType::MissingItem },
+	        },
+	    },
+	    frame,
+	    summary);
+
+	Expect(frame.inventoryCommandResults.size() == 2 && frame.inventoryCommandResults[0].command.itemId == std::optional<dev::TargetId> { 20 }, "runtime inventory command report recorder should preserve existing frame command results");
+	Expect(frame.inventoryCommandResults.size() == 2 && frame.inventoryCommandResults[1].command.type == dev::InventoryCommandType::UnequipSlot, "runtime inventory command report recorder should append direct command result to frame");
+	Expect(summary.inventoryCommandResults.size() == 2 && summary.inventoryCommandResults[0].command.itemId == std::optional<dev::TargetId> { 21 }, "runtime inventory command report recorder should preserve existing summary command results");
+	Expect(summary.inventoryCommandResults.size() == 2 && summary.inventoryCommandResults[1].command.type == dev::InventoryCommandType::UnequipSlot, "runtime inventory command report recorder should append direct command result to summary");
+}
+
 void TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz()
 {
 	dev::RuntimeFrameSettings frame;
@@ -9585,6 +9654,8 @@ int main()
 	TestRuntimeInputRouteResultBuilderNamesRouteOutcomes();
 	TestRuntimeInputDrainResultBuilderAggregatesRouteOutcomes();
 	TestRuntimeInputDrainReportRecorderCopiesFrameAndAggregatesSummary();
+	TestRuntimeInventoryScriptReportRecorderKeepsScriptsAndFlattensCommands();
+	TestRuntimeInventoryCommandReportRecorderAppendsDirectCommandResults();
 	TestRuntimeFrameSettingsDefaultsToNoFramesAtSixtyHz();
 	TestRuntimeRunSummaryDefaultsToEmptyRun();
 	TestRuntimeRunRecorderAggregatesSetupInventoryResultsWithoutFrame();

@@ -780,6 +780,14 @@ RuntimeInputDrainReportRecorder
   app-layer recorder that copies raw input drain results onto the current frame
   report and aggregates them into the run summary
 
+RuntimeInventoryScriptReportRecorder
+  app-layer recorder that keeps runtime inventory script results while
+  flattening their command results into frame and run inventory command reports
+
+RuntimeInventoryCommandReportRecorder
+  app-layer recorder that appends direct runtime inventory command results to
+  frame and run inventory command reports without replacing script results
+
 RuntimeFinalModeRecorder
   app-layer recorder that captures the GameSession's final mode onto
   GameLoopResult before output artifacts are written

@@ -1,6 +1,8 @@
 #include "RuntimeRunRecorder.hpp"
 
 #include "app/RuntimeInputDrainReportRecorder.hpp"
+#include "app/RuntimeInventoryCommandReportRecorder.hpp"
+#include "app/RuntimeInventoryScriptReportRecorder.hpp"
 
 #include <utility>
 
@@ -52,24 +54,12 @@ void RuntimeRunRecorder::recordSessionCommandResults(std::vector<SessionCommandR
 
 void RuntimeRunRecorder::recordInventoryScriptResults(std::vector<InventoryScriptRunResult> results)
 {
-	result_.summary.runtimeInventoryScriptResults.insert(
-	    result_.summary.runtimeInventoryScriptResults.end(),
-	    results.begin(),
-	    results.end());
-	appendInventoryCommandResults(results);
-	frame_.inventoryScriptResults = std::move(results);
+	RuntimeInventoryScriptReportRecorder {}.record(std::move(results), frame_, result_.summary);
 }
 
 void RuntimeRunRecorder::recordInventoryCommandResults(std::vector<InventoryCommandResult> results)
 {
-	result_.summary.inventoryCommandResults.insert(
-	    result_.summary.inventoryCommandResults.end(),
-	    results.begin(),
-	    results.end());
-	frame_.inventoryCommandResults.insert(
-	    frame_.inventoryCommandResults.end(),
-	    results.begin(),
-	    results.end());
+	RuntimeInventoryCommandReportRecorder {}.record(results, frame_, result_.summary);
 }
 
 void RuntimeRunRecorder::recordMovementScriptResults(std::vector<MovementScriptRunResult> results)
@@ -115,20 +105,6 @@ std::vector<InventoryEvent> RuntimeRunRecorder::inventoryEventsSinceFrameStart()
 	if (inventoryEventOffset_ >= events.size())
 		return {};
 	return { events.begin() + static_cast<std::ptrdiff_t>(inventoryEventOffset_), events.end() };
-}
-
-void RuntimeRunRecorder::appendInventoryCommandResults(const std::vector<InventoryScriptRunResult> &scriptResults)
-{
-	for (const InventoryScriptRunResult &scriptResult : scriptResults) {
-		frame_.inventoryCommandResults.insert(
-		    frame_.inventoryCommandResults.end(),
-		    scriptResult.commandResults.begin(),
-		    scriptResult.commandResults.end());
-		result_.summary.inventoryCommandResults.insert(
-		    result_.summary.inventoryCommandResults.end(),
-		    scriptResult.commandResults.begin(),
-		    scriptResult.commandResults.end());
-	}
 }
 
 } // namespace dev
