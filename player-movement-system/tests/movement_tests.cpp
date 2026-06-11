@@ -11,6 +11,7 @@
 #include "app/GameLoop.hpp"
 #include "app/RuntimeDebugArtifactBundle.hpp"
 #include "app/RuntimeDebugArtifactLayout.hpp"
+#include "app/RuntimeDebugArtifactWriter.hpp"
 #include "app/RuntimeDebugManifest.hpp"
 #include "app/RuntimeExitCodePolicy.hpp"
 #include "app/RuntimeFrameLoopRunner.hpp"
@@ -5630,6 +5631,53 @@ void TestRuntimeDebugArtifactLayoutNamesBundlePaths()
 	Expect(paths.tracePath == root / "run.trace", "runtime debug artifact layout should name trace path");
 }
 
+void TestRuntimeDebugArtifactWriterSavesTraceAndManifest()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_debug_writer_test";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::GameLoopResult run;
+	run.finalMode = dev::GameSessionMode::Gameplay;
+	run.summary.framesRun = 2;
+
+	dev::RuntimeDebugArtifactPaths paths = dev::RuntimeDebugArtifactLayout {}.pathsForRoot(root);
+	dev::RuntimeDebugArtifactWriteResult result = dev::RuntimeDebugArtifactWriter {}.write(paths, run);
+	std::optional<std::vector<std::string>> manifest = dev::RuntimeFrameTraceFileStore {}.load(paths.manifestPath);
+	std::optional<std::vector<std::string>> trace = dev::RuntimeFrameTraceFileStore {}.load(paths.tracePath);
+
+	Expect(result.traceSaved, "runtime debug artifact writer should save trace");
+	Expect(result.manifestSaved, "runtime debug artifact writer should save manifest");
+	Expect(manifest.has_value(), "runtime debug artifact writer should write readable manifest");
+	Expect(trace.has_value(), "runtime debug artifact writer should write readable trace");
+	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "trace=run.trace saved=true"), "runtime debug artifact writer manifest should record saved trace");
+	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=2 frameReports=0 rawInput=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementQueued=0", "runtime debug artifact writer should preserve trace summary");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeDebugArtifactWriterRecordsTraceFailureInManifest()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_debug_writer_trace_failure_test";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::RuntimeDebugArtifactPaths paths {
+		.rootPath = root,
+		.manifestPath = root / "manifest.txt",
+		.tracePath = root / "missing-parent" / "run.trace",
+	};
+
+	dev::RuntimeDebugArtifactWriteResult result = dev::RuntimeDebugArtifactWriter {}.write(paths, dev::GameLoopResult {});
+	std::optional<std::vector<std::string>> manifest = dev::RuntimeFrameTraceFileStore {}.load(paths.manifestPath);
+
+	Expect(!result.traceSaved, "runtime debug artifact writer should report trace save failure");
+	Expect(result.manifestSaved, "runtime debug artifact writer should still save manifest after trace failure");
+	Expect(manifest.has_value() && ContainsLineFragment(*manifest, "trace=run.trace saved=false"), "runtime debug artifact writer manifest should record failed trace");
+
+	std::filesystem::remove_all(root);
+}
+
 void TestRuntimeDebugArtifactBundleRejectsRootFile()
 {
 	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_debug_bundle_root_file_test";
@@ -6987,6 +7035,8 @@ int main()
 	TestRuntimeDebugArtifactBundleSavesManifestAndTrace();
 	TestRuntimeDebugManifestFormatsFailedRun();
 	TestRuntimeDebugArtifactLayoutNamesBundlePaths();
+	TestRuntimeDebugArtifactWriterSavesTraceAndManifest();
+	TestRuntimeDebugArtifactWriterRecordsTraceFailureInManifest();
 	TestRuntimeDebugArtifactBundleRejectsRootFile();
 	TestGameLoopSavesConfiguredDebugBundle();
 	TestGameLoopSavesDebugBundleOnStartupFailure();

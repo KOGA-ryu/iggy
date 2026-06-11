@@ -189,6 +189,7 @@ Good first tests:
 - GameLoop saves configured run traces and reports trace write failures
 - RuntimeDebugManifest formats debug bundle manifest lines
 - RuntimeDebugArtifactLayout names stable debug bundle artifact paths
+- RuntimeDebugArtifactWriter saves trace/manifest artifacts and records trace failures
 - RuntimeDebugArtifactBundle saves a manifest and run trace as one debug bundle
 - GameLoop saves configured debug bundles and reports bundle write failures
 - QueuedSessionCommandSource drains lifecycle commands exactly once

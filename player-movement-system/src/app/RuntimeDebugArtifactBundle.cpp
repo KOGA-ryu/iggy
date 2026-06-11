@@ -1,7 +1,5 @@
 #include "RuntimeDebugArtifactBundle.hpp"
 
-#include "files/TextFileStore.hpp"
-
 namespace dev {
 
 bool RuntimeDebugArtifactBundleResult::saved() const
@@ -10,12 +8,10 @@ bool RuntimeDebugArtifactBundleResult::saved() const
 }
 
 RuntimeDebugArtifactBundle::RuntimeDebugArtifactBundle(
-    RuntimeTraceService traceService,
-    RuntimeDebugManifest manifest,
-    RuntimeDebugArtifactLayout layout)
-    : traceService_(traceService)
-    , manifest_(manifest)
-    , layout_(layout)
+    RuntimeDebugArtifactLayout layout,
+    RuntimeDebugArtifactWriter writer)
+    : layout_(layout)
+    , writer_(writer)
 {
 }
 
@@ -36,13 +32,9 @@ RuntimeDebugArtifactBundleResult RuntimeDebugArtifactBundle::save(
 		return bundle;
 
 	bundle.rootPrepared = true;
-	bundle.traceSaved = traceService_.saveRunTrace(bundle.tracePath, result);
-	bundle.manifestSaved = TextFileStore {}.saveLines(bundle.manifestPath, manifest_.format(result, {
-	    .rootPath = bundle.rootPath,
-	    .manifestPath = bundle.manifestPath,
-	    .tracePath = bundle.tracePath,
-	    .traceSaved = bundle.traceSaved,
-	}));
+	RuntimeDebugArtifactWriteResult write = writer_.write(paths, result);
+	bundle.traceSaved = write.traceSaved;
+	bundle.manifestSaved = write.manifestSaved;
 	return bundle;
 }
 

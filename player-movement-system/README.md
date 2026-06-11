@@ -676,10 +676,14 @@ RuntimeDebugArtifactLayout
   app-layer bundle layout boundary that maps a debug bundle root to stable
   artifact paths such as manifest.txt and run.trace
 
+RuntimeDebugArtifactWriter
+  app-layer artifact writer that saves the run trace and manifest files, while
+  reporting trace/manifest save flags back to the bundle
+
 RuntimeDebugArtifactBundle
-  app-layer debug artifact writer that prepares a bundle directory, saves the
-  run trace, delegates path naming to RuntimeDebugArtifactLayout and manifest
-  formatting to RuntimeDebugManifest, and can be invoked directly or through
+  app-layer debug artifact orchestrator that prepares a bundle directory,
+  delegates path naming to RuntimeDebugArtifactLayout and file writes to
+  RuntimeDebugArtifactWriter, and can be invoked directly or through
   GameLoopSettings
 
 RuntimeSourceDrainer

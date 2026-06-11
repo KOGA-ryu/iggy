@@ -12,6 +12,7 @@ add_library(player_movement_system
   src/app/GameLoop.cpp
   src/app/RuntimeDebugArtifactBundle.cpp
   src/app/RuntimeDebugArtifactLayout.cpp
+  src/app/RuntimeDebugArtifactWriter.cpp
   src/app/RuntimeDebugManifest.cpp
   src/app/RuntimeExitCodePolicy.cpp
   src/app/RuntimeFrameLoopRunner.cpp
