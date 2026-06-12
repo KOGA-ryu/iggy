@@ -45,6 +45,7 @@ add_library(iggy_engine
   src/scene/level/LevelTileMap.cpp
   src/scene/level/LevelTileRenderCommands.cpp
   src/scene/level/LevelVisibleTiles.cpp
+  src/scene/sprite/SpriteRenderCommands2D.cpp
   src/servers/navigation/NavigationGridPathfinder.cpp
   src/servers/navigation/NavigationGridValidator.cpp
   src/servers/navigation/NavigationPathFollower.cpp
@@ -108,6 +109,7 @@ iggy_add_test(shader_resource_tests tests/shader_resource_tests.cpp)
 iggy_add_test(sprite_animation_sampler_2d_tests tests/sprite_animation_sampler_2d_tests.cpp)
 iggy_add_test(sprite_animation_state_2d_tests tests/sprite_animation_state_2d_tests.cpp)
 iggy_add_test(sprite_frame_set_2d_tests tests/sprite_frame_set_2d_tests.cpp)
+iggy_add_test(sprite_render_commands_2d_tests tests/sprite_render_commands_2d_tests.cpp)
 iggy_add_test(texture_resource_tests tests/texture_resource_tests.cpp)
 iggy_add_test(runtime_tick_tests tests/runtime_tick_tests.cpp)
 iggy_add_test(runtime_tick_runner_tests tests/runtime_tick_runner_tests.cpp)
