@@ -13,6 +13,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeSessionMutationCommandRunner.cpp
   src/runtime/RuntimeSessionMutationCommandStep.cpp
   src/runtime/RuntimeSessionSnapshot.cpp
+  src/runtime/RuntimeSessionSnapshotChunkCodec.cpp
   src/runtime/RuntimeSessionSnapshotValidator.cpp
   src/runtime/RuntimeSessionState.cpp
   src/runtime/RuntimeSessionTick.cpp
