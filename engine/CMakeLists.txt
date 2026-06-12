@@ -17,6 +17,7 @@ add_library(iggy_engine
   src/modules/npc_ai/AwarenessSensor.cpp
   src/modules/npc_ai/NpcAgentBatchUpdater.cpp
   src/modules/npc_ai/NpcAgentController.cpp
+  src/modules/npc_ai/NpcAgentRenderCommands.cpp
   src/modules/npc_ai/NpcBrainTick.cpp
   src/modules/npc_ai/NpcIntentSelector.cpp
   src/modules/npc_ai/NpcMovementPlanner.cpp
@@ -76,6 +77,7 @@ iggy_add_test(line_of_sight_tests tests/line_of_sight_tests.cpp)
 iggy_add_test(npc_awareness_tests tests/npc_awareness_tests.cpp)
 iggy_add_test(npc_agent_controller_tests tests/npc_agent_controller_tests.cpp)
 iggy_add_test(npc_agent_batch_tests tests/npc_agent_batch_tests.cpp)
+iggy_add_test(npc_agent_render_commands_tests tests/npc_agent_render_commands_tests.cpp)
 iggy_add_test(npc_brain_tick_tests tests/npc_brain_tick_tests.cpp)
 iggy_add_test(npc_intent_tests tests/npc_intent_tests.cpp)
 iggy_add_test(npc_movement_planner_tests tests/npc_movement_planner_tests.cpp)
