@@ -29,9 +29,19 @@ bool SameBounds(iggy::Aabb2 actual, iggy::Aabb2 expected)
 	return NearVec(actual.min, expected.min) && NearVec(actual.max, expected.max);
 }
 
+bool SameRect(iggy::Rect2 actual, iggy::Rect2 expected)
+{
+	return NearVec(actual.position, expected.position) && NearVec(actual.size, expected.size);
+}
+
 iggy::render::RenderCommand2D Command(iggy::Aabb2 bounds, const iggy::ResourceId &materialId, int layer, std::size_t order)
 {
 	return { iggy::render::RenderCommand2DType::Quad, bounds, materialId, layer, order };
+}
+
+iggy::render::RenderCommand2D TexturedCommand(iggy::Aabb2 bounds, const iggy::ResourceId &materialId, const iggy::ResourceId &textureId, iggy::Rect2 sourceRect, int layer, std::size_t order)
+{
+	return { iggy::render::RenderCommand2DType::Quad, bounds, materialId, layer, order, { textureId, sourceRect, true } };
 }
 
 iggy::render::RenderCommandList2D List(std::vector<iggy::render::RenderCommand2D> commands)
@@ -42,6 +52,16 @@ iggy::render::RenderCommandList2D List(std::vector<iggy::render::RenderCommand2D
 void ExpectCommand(const iggy::render::RenderCommand2D &command, iggy::Aabb2 bounds, const iggy::ResourceId &materialId, int layer, std::size_t order, const char *message)
 {
 	Expect(command.type == iggy::render::RenderCommand2DType::Quad && SameBounds(command.worldBounds, bounds) && command.materialId == materialId && command.layer == layer && command.order == order, message);
+}
+
+void ExpectNoTexturePayload(const iggy::render::RenderCommand2D &command, const char *message)
+{
+	Expect(command.texture.textureId.empty() && !command.texture.hasSourceRect, message);
+}
+
+void ExpectTexturePayload(const iggy::render::RenderCommand2D &command, const iggy::ResourceId &textureId, iggy::Rect2 sourceRect, const char *message)
+{
+	Expect(command.texture.textureId == textureId && SameRect(command.texture.sourceRect, sourceRect) && command.texture.hasSourceRect, message);
 }
 
 iggy::npc_ai::NpcAgentEntry Agent(const char *id, iggy::Vec2 position)
@@ -148,11 +168,50 @@ void TestLayersArePreservedButNotSorted()
 	}
 }
 
+void TestAppendPreservesTexturePayloadAndNormalizesOrder()
+{
+	iggy::render::RenderCommandList2D target = List({
+		Command({ { -1.0F, -1.0F }, { 0.0F, 0.0F } }, FirstMaterial, 0, 0),
+	});
+	const iggy::Rect2 sourceRect { { 8.0F, 16.0F }, { 24.0F, 32.0F } };
+	const iggy::render::RenderCommandList2D source = List({
+		TexturedCommand({ { 0.0F, 0.0F }, { 1.0F, 1.0F } }, SecondMaterial, iggy::ResourceId { "texture:hero" }, sourceRect, 4, 99),
+	});
+
+	iggy::render::RenderCommandList2DComposer {}.append(target, source);
+
+	Expect(target.commands.size() == 2, "textured command should append after existing target command");
+	if (target.commands.size() == 2) {
+		ExpectCommand(target.commands[1], { { 0.0F, 0.0F }, { 1.0F, 1.0F } }, SecondMaterial, 4, 1, "appended textured command should normalize order");
+		ExpectTexturePayload(target.commands[1], iggy::ResourceId { "texture:hero" }, sourceRect, "append should preserve texture id, source rect, and presence flag");
+	}
+}
+
+void TestMergedPreservesMixedTexturePayloads()
+{
+	const iggy::Rect2 sourceRect { { 0.0F, 0.0F }, { 16.0F, 16.0F } };
+	const iggy::render::RenderCommandList2D first = List({
+		Command({ { 0.0F, 0.0F }, { 1.0F, 1.0F } }, FirstMaterial, 0, 42),
+	});
+	const iggy::render::RenderCommandList2D second = List({
+		TexturedCommand({ { 1.0F, 0.0F }, { 2.0F, 1.0F } }, SecondMaterial, iggy::ResourceId { "texture:hero" }, sourceRect, 1, 99),
+	});
+
+	const iggy::render::RenderCommandList2D merged = iggy::render::RenderCommandList2DComposer {}.merged(first, second);
+
+	Expect(merged.commands.size() == 2, "mixed material/textured merge should produce two commands");
+	if (merged.commands.size() == 2) {
+		ExpectNoTexturePayload(merged.commands[0], "merged material-only command should keep empty texture payload");
+		ExpectTexturePayload(merged.commands[1], iggy::ResourceId { "texture:hero" }, sourceRect, "merged textured command should preserve payload");
+		Expect(merged.commands[0].order == 0 && merged.commands[1].order == 1, "mixed merge should normalize final order");
+	}
+}
+
 void TestSelfAppendUsesSnapshotAndFreshOrders()
 {
 	iggy::render::RenderCommandList2D target = List({
 		Command({ { 0.0F, 0.0F }, { 1.0F, 1.0F } }, FirstMaterial, 0, 0),
-		Command({ { 1.0F, 0.0F }, { 2.0F, 1.0F } }, SecondMaterial, 1, 1),
+		TexturedCommand({ { 1.0F, 0.0F }, { 2.0F, 1.0F } }, SecondMaterial, iggy::ResourceId { "texture:self" }, { { 2.0F, 3.0F }, { 4.0F, 5.0F } }, 1, 1),
 	});
 
 	iggy::render::RenderCommandList2DComposer {}.append(target, target);
@@ -163,6 +222,8 @@ void TestSelfAppendUsesSnapshotAndFreshOrders()
 		ExpectCommand(target.commands[1], { { 1.0F, 0.0F }, { 2.0F, 1.0F } }, SecondMaterial, 1, 1, "self append should keep original second command");
 		ExpectCommand(target.commands[2], { { 0.0F, 0.0F }, { 1.0F, 1.0F } }, FirstMaterial, 0, 2, "self append should append copied first command with fresh order");
 		ExpectCommand(target.commands[3], { { 1.0F, 0.0F }, { 2.0F, 1.0F } }, SecondMaterial, 1, 3, "self append should append copied second command with fresh order");
+		ExpectTexturePayload(target.commands[1], iggy::ResourceId { "texture:self" }, { { 2.0F, 3.0F }, { 4.0F, 5.0F } }, "self append should preserve original textured payload");
+		ExpectTexturePayload(target.commands[3], iggy::ResourceId { "texture:self" }, { { 2.0F, 3.0F }, { 4.0F, 5.0F } }, "self append should preserve copied textured payload");
 	}
 }
 
@@ -225,6 +286,8 @@ int main()
 	TestAppendMultipleCommandsToNonEmptyTarget();
 	TestArbitrarySourceOrdersNormalizeToFinalOrder();
 	TestLayersArePreservedButNotSorted();
+	TestAppendPreservesTexturePayloadAndNormalizesOrder();
+	TestMergedPreservesMixedTexturePayloads();
 	TestSelfAppendUsesSnapshotAndFreshOrders();
 	TestMergedReturnsNewListWithoutMutatingInputs();
 	TestTileAndNpcRenderCommandsComposeWithNormalizedOrder();

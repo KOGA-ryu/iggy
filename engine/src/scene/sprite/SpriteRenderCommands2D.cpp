@@ -26,7 +26,7 @@ SpriteRenderCommandBuildResult2D SpriteRenderCommands2D::build(const animation::
 	if (sample.status != animation::SpriteAnimationSampleStatus::Sampled || sample.frame == nullptr)
 		return result;
 
-	render::RenderCommandListBuilder2D {}.addQuad(result.commands, BoundsForSprite(config.position, config.size, config.anchor), config.materialId, config.layer);
+	render::RenderCommandListBuilder2D {}.addTexturedQuad(result.commands, BoundsForSprite(config.position, config.size, config.anchor), config.materialId, sample.frame->textureId, sample.frame->sourceRect, config.layer);
 	result.emitted = true;
 	return result;
 }

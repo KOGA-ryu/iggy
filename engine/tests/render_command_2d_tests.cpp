@@ -19,9 +19,24 @@ bool SameBounds(iggy::Aabb2 actual, iggy::Aabb2 expected)
 	return NearVec(actual.min, expected.min) && NearVec(actual.max, expected.max);
 }
 
+bool SameRect(iggy::Rect2 actual, iggy::Rect2 expected)
+{
+	return NearVec(actual.position, expected.position) && NearVec(actual.size, expected.size);
+}
+
 void ExpectCommand(const iggy::render::RenderCommand2D &command, iggy::Aabb2 bounds, const iggy::ResourceId &materialId, int layer, std::size_t order, const char *message)
 {
 	Expect(command.type == iggy::render::RenderCommand2DType::Quad && SameBounds(command.worldBounds, bounds) && command.materialId == materialId && command.layer == layer && command.order == order, message);
+}
+
+void ExpectNoTexturePayload(const iggy::render::RenderCommand2D &command, const char *message)
+{
+	Expect(command.texture.textureId.empty() && !command.texture.hasSourceRect, message);
+}
+
+void ExpectTexturePayload(const iggy::render::RenderCommand2D &command, const iggy::ResourceId &textureId, iggy::Rect2 sourceRect, const char *message)
+{
+	Expect(command.texture.textureId == textureId && SameRect(command.texture.sourceRect, sourceRect) && command.texture.hasSourceRect, message);
 }
 
 void TestEmptyCommandListIsValid()
@@ -40,8 +55,27 @@ void TestAddOneQuadPreservesFields()
 	iggy::render::RenderCommandListBuilder2D {}.addQuad(list, bounds, materialId, 2);
 
 	Expect(list.commands.size() == 1, "one added quad should append one command");
-	if (list.commands.size() == 1)
+	if (list.commands.size() == 1) {
 		ExpectCommand(list.commands[0], bounds, materialId, 2, 0, "quad command should preserve supplied fields and order zero");
+		ExpectNoTexturePayload(list.commands[0], "material-only quad should not carry a texture payload");
+	}
+}
+
+void TestAddTexturedQuadPreservesTexturePayload()
+{
+	iggy::render::RenderCommandList2D list;
+	const iggy::Aabb2 bounds { { 1.0F, 2.0F }, { 3.0F, 4.0F } };
+	const iggy::ResourceId materialId { "material:sprite" };
+	const iggy::ResourceId textureId { "texture:hero" };
+	const iggy::Rect2 sourceRect { { 8.0F, 16.0F }, { 24.0F, 32.0F } };
+
+	iggy::render::RenderCommandListBuilder2D {}.addTexturedQuad(list, bounds, materialId, textureId, sourceRect, 5);
+
+	Expect(list.commands.size() == 1, "one textured quad should append one command");
+	if (list.commands.size() == 1) {
+		ExpectCommand(list.commands[0], bounds, materialId, 5, 0, "textured quad should preserve supplied command fields");
+		ExpectTexturePayload(list.commands[0], textureId, sourceRect, "textured quad should preserve texture id, source rect, and presence flag");
+	}
 }
 
 void TestMultipleCommandsPreserveInsertionOrder()
@@ -58,6 +92,23 @@ void TestMultipleCommandsPreserveInsertionOrder()
 		Expect(list.commands[0].materialId == iggy::ResourceId { "material:first" } && list.commands[0].order == 0, "first command should remain first with order 0");
 		Expect(list.commands[1].materialId == iggy::ResourceId { "material:second" } && list.commands[1].order == 1, "second command should remain second with order 1");
 		Expect(list.commands[2].materialId == iggy::ResourceId { "material:third" } && list.commands[2].order == 2, "third command should remain third with order 2");
+	}
+}
+
+void TestMixedMaterialAndTexturedCommandsPreserveOrder()
+{
+	iggy::render::RenderCommandList2D list;
+	const iggy::render::RenderCommandListBuilder2D builder;
+	const iggy::Rect2 sourceRect { { 0.0F, 0.0F }, { 16.0F, 16.0F } };
+
+	builder.addQuad(list, { { 0.0F, 0.0F }, { 1.0F, 1.0F } }, iggy::ResourceId { "material:tile" }, 0);
+	builder.addTexturedQuad(list, { { 1.0F, 0.0F }, { 2.0F, 1.0F } }, iggy::ResourceId { "material:sprite" }, iggy::ResourceId { "texture:hero" }, sourceRect, 2);
+
+	Expect(list.commands.size() == 2, "mixed material/textured commands should append two commands");
+	if (list.commands.size() == 2) {
+		ExpectNoTexturePayload(list.commands[0], "first material-only command should keep an empty texture payload");
+		ExpectTexturePayload(list.commands[1], iggy::ResourceId { "texture:hero" }, sourceRect, "second textured command should preserve texture payload");
+		Expect(list.commands[0].order == 0 && list.commands[1].order == 1, "mixed commands should preserve insertion order values");
 	}
 }
 
@@ -88,6 +139,30 @@ void TestEmptyMaterialIdIsPreserved()
 		Expect(list.commands[0].materialId.empty(), "empty material id should be preserved without validation");
 }
 
+void TestEmptyTextureIdIsPreservedOnTexturedQuad()
+{
+	iggy::render::RenderCommandList2D list;
+	const iggy::Rect2 sourceRect { { 4.0F, 5.0F }, { 6.0F, 7.0F } };
+
+	iggy::render::RenderCommandListBuilder2D {}.addTexturedQuad(list, { { 0.0F, 0.0F }, { 1.0F, 1.0F } }, iggy::ResourceId { "material:sprite" }, {}, sourceRect, 0);
+
+	Expect(list.commands.size() == 1, "empty texture id textured quad should still append");
+	if (list.commands.size() == 1)
+		Expect(list.commands[0].texture.textureId.empty() && list.commands[0].texture.hasSourceRect && SameRect(list.commands[0].texture.sourceRect, sourceRect), "empty texture id should be preserved with source rect payload present");
+}
+
+void TestSourceRectIsPreservedExactly()
+{
+	iggy::render::RenderCommandList2D list;
+	const iggy::Rect2 sourceRect { { -4.0F, 8.0F }, { 0.0F, -16.0F } };
+
+	iggy::render::RenderCommandListBuilder2D {}.addTexturedQuad(list, { { 0.0F, 0.0F }, { 1.0F, 1.0F } }, iggy::ResourceId { "material:sprite" }, iggy::ResourceId { "texture:odd" }, sourceRect, 0);
+
+	Expect(list.commands.size() == 1, "source rect preservation test should append one command");
+	if (list.commands.size() == 1)
+		ExpectTexturePayload(list.commands[0], iggy::ResourceId { "texture:odd" }, sourceRect, "zero/negative source rect values should be preserved exactly");
+}
+
 void TestLevelTileDrawItemsCanFeedRenderCommands()
 {
 	const iggy::ResourceId floorMaterial { "material:floor" };
@@ -110,6 +185,7 @@ void TestLevelTileDrawItemsCanFeedRenderCommands()
 	Expect(commands.commands.size() == drawList.items.size(), "composition should produce one command per draw item");
 	if (commands.commands.size() == 6) {
 		ExpectCommand(commands.commands[0], drawList.items[0].worldBounds, floorMaterial, 1, 0, "first tile draw item should feed first render command");
+		ExpectNoTexturePayload(commands.commands[0], "tile material-only command should not carry texture payload");
 		ExpectCommand(commands.commands[4], drawList.items[4].worldBounds, wallMaterial, 1, 4, "blocked tile draw item should select wall material in caller code");
 		ExpectCommand(commands.commands[5], drawList.items[5].worldBounds, floorMaterial, 1, 5, "last tile draw item should preserve order in render command list");
 	}
@@ -121,9 +197,13 @@ int main()
 {
 	TestEmptyCommandListIsValid();
 	TestAddOneQuadPreservesFields();
+	TestAddTexturedQuadPreservesTexturePayload();
 	TestMultipleCommandsPreserveInsertionOrder();
+	TestMixedMaterialAndTexturedCommandsPreserveOrder();
 	TestDifferentLayersAreStoredButNotSorted();
 	TestEmptyMaterialIdIsPreserved();
+	TestEmptyTextureIdIsPreservedOnTexturedQuad();
+	TestSourceRectIsPreservedExactly();
 	TestLevelTileDrawItemsCanFeedRenderCommands();
 
 	if (Failures != 0)
