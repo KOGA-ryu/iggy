@@ -11,6 +11,7 @@ add_library(iggy_engine
   src/core/math/Ray2.cpp
   src/core/math/Rect2.cpp
   src/core/math/Vec2.cpp
+  src/core/resource/AssetCatalog.cpp
   src/core/resource/ResourceId.cpp
   src/modules/blueprint/LevelBlueprintValidator.cpp
   src/modules/line_of_sight/LineOfSight.cpp
@@ -61,6 +62,7 @@ endfunction()
 
 iggy_add_test(core_math_tests tests/core_math_tests.cpp)
 iggy_add_test(core_resource_tests tests/core_resource_tests.cpp)
+iggy_add_test(asset_catalog_tests tests/asset_catalog_tests.cpp)
 iggy_add_test(camera_clamp_tests tests/camera_clamp_tests.cpp)
 iggy_add_test(camera_follow_tests tests/camera_follow_tests.cpp)
 iggy_add_test(camera_lookahead_tests tests/camera_lookahead_tests.cpp)
