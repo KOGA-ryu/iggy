@@ -1,6 +1,7 @@
 iggy_add_test(navigation_request_tests tests/navigation_request_tests.cpp)
 iggy_add_test(navigation_pathfinder_tests tests/navigation_pathfinder_tests.cpp)
 iggy_add_test(navigation_path_follower_tests tests/navigation_path_follower_tests.cpp)
+iggy_add_test(collision_motion_query_2d_tests tests/collision_motion_query_2d_tests.cpp)
 iggy_add_test(collision_overlap_2d_tests tests/collision_overlap_2d_tests.cpp)
 iggy_add_test(collision_shape_2d_tests tests/collision_shape_2d_tests.cpp)
 iggy_add_test(collision_world_2d_tests tests/collision_world_2d_tests.cpp)
