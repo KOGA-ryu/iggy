@@ -49,6 +49,7 @@ add_library(iggy_engine
   src/servers/render/MaterialResource.cpp
   src/servers/render/RenderCommand2D.cpp
   src/servers/render/RenderCommandList2DComposer.cpp
+  src/servers/render/RenderResourceRegistry.cpp
   src/servers/render/ShaderResource.cpp
   src/servers/render/TextureResource.cpp
 )
@@ -99,6 +100,7 @@ iggy_add_test(physics2d_tests tests/physics2d_tests.cpp)
 iggy_add_test(material_resource_tests tests/material_resource_tests.cpp)
 iggy_add_test(render_command_2d_tests tests/render_command_2d_tests.cpp)
 iggy_add_test(render_command_list_2d_composer_tests tests/render_command_list_2d_composer_tests.cpp)
+iggy_add_test(render_resource_registry_tests tests/render_resource_registry_tests.cpp)
 iggy_add_test(shader_resource_tests tests/shader_resource_tests.cpp)
 iggy_add_test(texture_resource_tests tests/texture_resource_tests.cpp)
 iggy_add_test(runtime_tick_tests tests/runtime_tick_tests.cpp)
