@@ -7,6 +7,7 @@
 #include "scene/level/LevelTileRenderCommands.hpp"
 #include "scene/level/LevelVisibleTiles.hpp"
 #include "servers/render/RenderCommand2D.hpp"
+#include "support/GeometryAssertions.hpp"
 #include "support/LevelMapFixtures.hpp"
 #include "support/TestHarness.hpp"
 
@@ -14,16 +15,11 @@ namespace {
 
 using iggy::test::Expect;
 using iggy::test::Failures;
-using iggy::test::NearVec;
+using iggy::test::SameBounds;
 
 const iggy::ResourceId NpcMaterial { "material:npc" };
 const iggy::ResourceId WalkableMaterial { "material:floor" };
 const iggy::ResourceId BlockedMaterial { "material:wall" };
-
-bool SameBounds(iggy::Aabb2 actual, iggy::Aabb2 expected)
-{
-	return NearVec(actual.min, expected.min) && NearVec(actual.max, expected.max);
-}
 
 iggy::npc_ai::NpcAgentEntry Agent(const char *id, iggy::Vec2 position)
 {

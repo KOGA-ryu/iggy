@@ -3,6 +3,7 @@
 
 #include "core/resource/ResourceId.hpp"
 #include "scene/level/LevelTileRenderChunkCache.hpp"
+#include "support/GeometryAssertions.hpp"
 #include "support/LevelMapFixtures.hpp"
 #include "support/TestHarness.hpp"
 
@@ -10,16 +11,11 @@ namespace {
 
 using iggy::test::Expect;
 using iggy::test::Failures;
-using iggy::test::NearVec;
+using iggy::test::SameBounds;
 using iggy::test::SameTile;
 
 const iggy::ResourceId WalkableMaterial { "material:floor" };
 const iggy::ResourceId BlockedMaterial { "material:wall" };
-
-bool SameBounds(iggy::Aabb2 actual, iggy::Aabb2 expected)
-{
-	return NearVec(actual.min, expected.min) && NearVec(actual.max, expected.max);
-}
 
 iggy::LevelTileRenderChunkCacheConfig Config(int chunkWidth, int chunkHeight, int layer = 2)
 {

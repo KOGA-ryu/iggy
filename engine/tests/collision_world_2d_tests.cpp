@@ -2,18 +2,14 @@
 #include <vector>
 
 #include "servers/physics2d/CollisionWorld2D.hpp"
+#include "support/GeometryAssertions.hpp"
 #include "support/TestHarness.hpp"
 
 namespace {
 
 using iggy::test::Expect;
+using iggy::test::ExpectBounds;
 using iggy::test::Failures;
-using iggy::test::NearVec;
-
-void ExpectBounds(iggy::Aabb2 actual, iggy::Aabb2 expected, const char *message)
-{
-	Expect(NearVec(actual.min, expected.min) && NearVec(actual.max, expected.max), message);
-}
 
 void ExpectObject(const iggy::physics2d::CollisionObject2D &actual, const iggy::physics2d::CollisionObject2D &expected, const char *message)
 {

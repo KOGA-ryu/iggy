@@ -9,6 +9,7 @@
 #include "scene/level/LevelVisibleTiles.hpp"
 #include "servers/render/RenderCommand2D.hpp"
 #include "servers/render/RenderCommandList2DComposer.hpp"
+#include "support/GeometryAssertions.hpp"
 #include "support/LevelMapFixtures.hpp"
 #include "support/TestHarness.hpp"
 
@@ -17,17 +18,13 @@ namespace {
 using iggy::test::Expect;
 using iggy::test::Failures;
 using iggy::test::NearVec;
+using iggy::test::SameBounds;
 
 const iggy::ResourceId FirstMaterial { "material:first" };
 const iggy::ResourceId SecondMaterial { "material:second" };
 const iggy::ResourceId FloorMaterial { "material:floor" };
 const iggy::ResourceId WallMaterial { "material:wall" };
 const iggy::ResourceId NpcMaterial { "material:npc" };
-
-bool SameBounds(iggy::Aabb2 actual, iggy::Aabb2 expected)
-{
-	return NearVec(actual.min, expected.min) && NearVec(actual.max, expected.max);
-}
 
 bool SameRect(iggy::Rect2 actual, iggy::Rect2 expected)
 {

@@ -1,6 +1,7 @@
 #include <cstdlib>
 
 #include "scene/sprite/SpriteRenderCommands2D.hpp"
+#include "support/GeometryAssertions.hpp"
 #include "support/TestHarness.hpp"
 
 namespace {
@@ -9,15 +10,11 @@ using iggy::test::Expect;
 using iggy::test::Failures;
 using iggy::test::Near;
 using iggy::test::NearVec;
+using iggy::test::SameBounds;
 
 const iggy::ResourceId ClipId { "clip:idle" };
 const iggy::ResourceId MaterialId { "material:hero" };
 const iggy::ResourceId TextureId { "texture:hero" };
-
-bool SameBounds(iggy::Aabb2 actual, iggy::Aabb2 expected)
-{
-	return NearVec(actual.min, expected.min) && NearVec(actual.max, expected.max);
-}
 
 bool SameRect(iggy::Rect2 actual, iggy::Rect2 expected)
 {

@@ -3,11 +3,13 @@
 #include "scene/camera/CameraRig.hpp"
 #include "scene/camera/CameraShake.hpp"
 #include "scene/camera/CameraView.hpp"
+#include "support/GeometryAssertions.hpp"
 #include "support/TestHarness.hpp"
 
 namespace {
 
 using iggy::test::Expect;
+using iggy::test::ExpectBounds;
 using iggy::test::Failures;
 using iggy::test::Near;
 using iggy::test::NearVec;
@@ -15,11 +17,6 @@ using iggy::test::NearVec;
 iggy::CameraViewResult View(iggy::Vec2 cameraPosition, iggy::Vec2 viewportSize, float zoom)
 {
 	return iggy::CameraView {}.visibleWorldBounds({ cameraPosition }, { viewportSize, zoom });
-}
-
-void ExpectBounds(const iggy::Aabb2 &bounds, iggy::Vec2 expectedMin, iggy::Vec2 expectedMax, const char *message)
-{
-	Expect(NearVec(bounds.min, expectedMin) && NearVec(bounds.max, expectedMax), message);
 }
 
 void TestZoomOnePositiveViewport()

@@ -4,6 +4,7 @@
 #include "scene/camera/CameraView.hpp"
 #include "scene/level/LevelTileDrawList.hpp"
 #include "scene/level/LevelVisibleTiles.hpp"
+#include "support/GeometryAssertions.hpp"
 #include "support/LevelMapFixtures.hpp"
 #include "support/TestHarness.hpp"
 
@@ -11,17 +12,12 @@ namespace {
 
 using iggy::test::Expect;
 using iggy::test::Failures;
-using iggy::test::NearVec;
+using iggy::test::SameBounds;
 using iggy::test::SameTile;
 
 iggy::LevelTileDrawListResult Build(const iggy::LevelTileMap &map, std::vector<iggy::TileCoord> visibleTiles)
 {
 	return iggy::LevelTileDrawList {}.build(map, visibleTiles);
-}
-
-bool SameBounds(iggy::Aabb2 actual, iggy::Aabb2 expected)
-{
-	return NearVec(actual.min, expected.min) && NearVec(actual.max, expected.max);
 }
 
 void ExpectItem(const iggy::LevelTileDrawItem &item, iggy::TileCoord tile, iggy::Aabb2 bounds, bool walkable, std::size_t index, const char *message)
