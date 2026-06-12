@@ -1746,6 +1746,9 @@ GameLoopResult
 It adds a run-level summary before the per-frame lines. That gives a caller one
 method for “save the trace for this run” while keeping formatting and filesystem
 behavior testable as separate pieces.
+`runtime_trace_persistence_tests` owns that boundary: line formatting is already
+covered by trace tests, while this target proves readable traces survive the
+file-store and full-run service boundary.
 
 `RuntimeRunTraceFrameHeaderText` owns the `frame[n]` marker between run-level
 summary and frame-level trace details. Focused lesson:

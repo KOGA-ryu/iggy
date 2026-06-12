@@ -77,6 +77,10 @@ summaries, and result/event text helpers used by traces and debug manifests.
 lines, artifact path lines, setup attempt lines, run/setup/runtime script
 sections, and full `RuntimeDebugManifest` summaries without writing files.
 
+`runtime_trace_persistence_tests` owns readable trace persistence: trace
+file-store save/load behavior, full run trace formatting through
+`RuntimeTraceService`, and exact persisted run trace contents.
+
 ```text
 focused production boundary
   -> focused test executable
@@ -90,7 +94,7 @@ large shared helper migration.
 
 Good first candidates:
 
-- runtime frame trace persistence and trace service
+- runtime debug artifact bundle writing
 
 Avoid splitting by line count alone. A smaller file is useful only when the new
 test target has a clear reason to exist.

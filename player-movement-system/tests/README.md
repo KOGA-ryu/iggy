@@ -38,6 +38,8 @@ assembled `GameLoop`.
 ordering, movement input block summaries, and result/event text helpers.
 `runtime_debug_manifest_tests` covers readable debug manifest lines and full
 manifest summaries without exercising artifact writers or filesystem stores.
+`runtime_trace_persistence_tests` covers trace file-store behavior and
+`RuntimeTraceService` full-run trace save/load contracts.
 
 Good first tests:
 
