@@ -85,6 +85,14 @@ file-store save/load behavior, full run trace formatting through
 paths, bundle result flags, root preparation, trace/manifest write steps,
 writer failure reporting, and end-to-end debug bundle save behavior.
 
+`runtime_setup_run_tests` owns setup and run recording lifecycle: configured
+setup defaults, setup script frame gates, setup result application, source
+result report recorders, run summary defaults, and frame report aggregation.
+
+`runtime_input_hotkey_tests` owns app-edge input settings and hotkey routing:
+input defaults, session-derived input context, route result naming, lifecycle
+hotkeys, stop hotkeys, and blocked stop-command reporting.
+
 ```text
 focused production boundary
   -> focused test executable
@@ -98,7 +106,7 @@ large shared helper migration.
 
 Good first candidates:
 
-- runtime setup and run recording lifecycle
+- runtime source settings and remaining source intake
 
 Avoid splitting by line count alone. A smaller file is useful only when the new
 test target has a clear reason to exist.

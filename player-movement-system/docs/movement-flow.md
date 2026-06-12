@@ -1125,6 +1125,9 @@ RuntimeInputSettings
 That keeps target fallback and focus/session state wiring out of the frame
 runner. The router receives a complete context and only decides what a raw
 event means inside it.
+`runtime_input_hotkey_tests` owns this app-edge input context plus the boring
+hotkey routes, so pointer movement and target interaction tests can stay focused
+on gameplay-shaped input.
 
 `RuntimeFrameSettings` groups the bounded loop controls:
 
@@ -1194,6 +1197,9 @@ and run failure reporting use the same status rules.
 result: copy the setup result, record setup inventory command results into the
 summary, and return the frame gate. That keeps `RuntimeRunExecutor` focused on
 lifecycle order instead of setup report plumbing.
+`runtime_setup_run_tests` owns this setup-to-run boundary along with the report
+recorders that turn setup and frame work into `RuntimeRunSummary` and
+`RuntimeFrameReport` facts.
 
 That separates one-time setup automation from per-frame runtime sources. A
 failed setup script can stop the loop before frames begin, while runtime script
@@ -1418,6 +1424,9 @@ finish frame
 That keeps the frame runner from manually copying every source result into two
 places. The frame runner decides the runtime order, and the recorder decides
 how that work becomes inspectable run data.
+The focused setup/run tests cover recorder defaults and aggregation without
+running the full assembled `GameLoop`, leaving assembled-loop report checks in
+`game_loop_frame_report_tests`.
 
 `RuntimeInputDrainReportRecorder` owns one slice of that reporting translation:
 raw input drain results become the frame's routed-input count and movement block
@@ -1979,6 +1988,9 @@ does not apply the transition; it only decides what `SetMode` command to queue.
 The session layer still validates and applies mode changes later. That keeps
 input routing as a command producer instead of turning it into session state
 mutation.
+The stop hotkey follows the same rule on the movement side: it queues a `Stop`
+command when the player can act, or reports the block reason without handling
+the event when focus, pause, or action gates prevent movement.
 
 The key lesson is that raw input stays at the app edge. Once routing finishes,
 the rest of the engine still sees boring semantic commands with the same focus,

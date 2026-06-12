@@ -42,6 +42,10 @@ manifest summaries without exercising artifact writers or filesystem stores.
 `RuntimeTraceService` full-run trace save/load contracts.
 `runtime_debug_artifact_tests` covers debug bundle layout, root preparation,
 writer steps, result flags, and saved manifest/trace artifacts.
+`runtime_setup_run_tests` covers configured setup gates, setup-to-run handoff,
+report recorders, run summaries, and frame report aggregation.
+`runtime_input_hotkey_tests` covers runtime input defaults, context building,
+route result naming, lifecycle hotkeys, stop hotkeys, and blocked stop reports.
 
 Good first tests:
 
