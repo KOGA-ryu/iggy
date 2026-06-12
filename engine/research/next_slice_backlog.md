@@ -9,11 +9,11 @@ Status labels:
 
 ## Near-Term
 
-1. `RuntimeDerivedCacheUpdateStep`
+1. `RuntimeLevelMutationStep`
    - status: `review`
    - owner candidate: `runtime`
-   - purpose: compose caller-supplied changed tiles with `LevelDerivedCacheUpdater` and return updated session/cache packet.
-   - caution: runtime must delegate update policy to scene/level and not infer tile changes.
+   - purpose: take `RuntimeSessionState` plus explicit `LevelTileEdit` list, delegate to `LevelMutationCacheUpdateStep`, and return an updated session packet.
+   - caution: runtime must not define mutation semantics, infer changed tiles, increment ticks, or rebuild caches directly. On success it should update `session.level`, `session.derivedCaches`, and legacy render-cache mirrors only.
 
 2. Save snapshot boundary
    - status: `review`
@@ -65,8 +65,7 @@ Pause before any slice that:
 
 - removes legacy runtime render-cache fields
 - introduces save/load
-- makes runtime mutate tiles
+- makes runtime define tile mutation semantics
 - makes runtime rebuild caches implicitly during ticks
 - adds dynamic collision bodies
 - introduces an entity registry/ECS
-

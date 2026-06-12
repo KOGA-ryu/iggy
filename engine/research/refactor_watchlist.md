@@ -81,6 +81,24 @@ Cleanup trigger:
 Risk:
 - Hiding diagnostics in a convenience wrapper too early.
 
+### Stale ownership assertion in level derived cache tests
+
+Files:
+- `engine/tests/level_derived_cache_state_tests.cpp`
+
+Watch:
+- `TestRuntimeAndLevelRuntimeDoNotReferenceDerivedCacheState`
+
+Reason:
+- The test name and assertion text predate the accepted migration where `RuntimeSessionState` intentionally carries `LevelDerivedCacheState`.
+- The ownership rule is now: `LevelRuntimeState` remains authoritative and cache-free, while `RuntimeSessionState` may carry rebuildable derived caches.
+
+Cleanup trigger:
+- Next test-code cleanup or next runtime/session cache slice.
+
+Risk:
+- Leaving stale assertions in the test file makes future reviewers distrust the ownership map, even if current test execution remains green.
+
 ## Review Cadence
 
 Every 5-8 build slices, check:
@@ -90,4 +108,3 @@ Every 5-8 build slices, check:
 - Did a subsystem start importing a layer it should not know about?
 - Did CMake fragment organization remain clean?
 - Are docs still describing current code?
-

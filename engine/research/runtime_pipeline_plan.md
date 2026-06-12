@@ -68,8 +68,9 @@ Tile mutation and cache refresh:
 ```text
 LevelTileMutation
   -> changed TileCoord list
-  -> LevelDerivedCacheUpdater
-  -> caller replaces carried derived cache state
+  -> LevelMutationCacheUpdateStep
+       -> LevelDerivedCacheUpdater
+  -> caller replaces carried level + derived cache state
 ```
 
 ## Current Runtime Command Tick Order
@@ -96,7 +97,7 @@ The caller still owns:
 - command frame creation
 - why a tile mutates
 - when tile edits are applied
-- when derived caches are refreshed
+- when derived caches are refreshed or when the explicit mutation/cache step is called
 - save/load snapshot creation
 - presentation camera state
 - render-frame request timing
@@ -118,9 +119,9 @@ Do not merge these into existing ticks without a dedicated ownership review:
 Possible future slices:
 
 - runtime step that composes `LevelTileMutation` plus `LevelDerivedCacheUpdater`
+- runtime adapter that delegates explicit tile edits to `LevelMutationCacheUpdateStep`
 - save snapshot that excludes `LevelDerivedCacheState`
 - render-frame step that reads session carried render cache
 - camera/presentation state packet
 
 Pause before any slice that makes runtime infer map changes or own cache rebuild policy.
-

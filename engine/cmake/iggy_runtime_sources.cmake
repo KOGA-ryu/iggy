@@ -1,6 +1,7 @@
 list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/GameplayCommand2D.cpp
   src/runtime/GameplayCommandFrame2DValidator.cpp
+  src/runtime/RuntimeLevelMutationStep.cpp
   src/runtime/RuntimeCollisionWorldProvider.cpp
   src/runtime/RuntimePlayerCommandExecutionStep.cpp
   src/runtime/RuntimePlayerCommandPlanningStep.cpp
