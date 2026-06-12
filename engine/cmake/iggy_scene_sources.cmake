@@ -24,5 +24,6 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/player/PlayerAgentState.cpp
   src/scene/player/PlayerCommandFramePlanner2D.cpp
   src/scene/player/PlayerCommandPlanner2D.cpp
+  src/scene/player/PlayerMovementExecutor2D.cpp
   src/scene/sprite/SpriteRenderCommands2D.cpp
 )
