@@ -95,6 +95,14 @@ sections, and full `RuntimeDebugManifest` summaries without writing files.
 file-store save/load behavior, full run trace formatting through
 `RuntimeTraceService`, and exact persisted run trace contents.
 
+`file_store_tests` owns generic filesystem stores: byte/text save-load
+behavior, temp-file cleanup, missing-file handling, and unwritable-path
+failures used by higher persistence layers.
+
+`inventory_command_persistence_tests` owns durable inventory command
+automation: semantic log replay, log codec/checksum/frame validation,
+log-file load/save behavior, and inventory script runner outcomes.
+
 `runtime_debug_artifact_tests` owns debug artifact bundle writing: stable bundle
 paths, bundle result flags, root preparation, trace/manifest write steps,
 writer failure reporting, and end-to-end debug bundle save behavior.
@@ -129,7 +137,7 @@ large shared helper migration.
 
 Good first candidates:
 
-- generic byte/text file-store boundaries
+- inventory command source/intake seams
 
 Avoid splitting by line count alone. A smaller file is useful only when the new
 test target has a clear reason to exist.

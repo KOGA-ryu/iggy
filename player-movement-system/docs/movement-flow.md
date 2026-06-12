@@ -684,6 +684,8 @@ The file store does not know what a player, enemy, or combatant means. It only
 knows that snapshot bytes should cross a binary file boundary. ByteFileStore owns
 the raw temp-file write, rename, and byte load mechanics. That keeps save format
 rules, domain save/load intent, and filesystem failure rules separate.
+`file_store_tests` owns this generic filesystem contract so snapshot, command
+log, and trace tests can stay focused on their domain formats.
 
 ## 24. Save Game Service
 
@@ -1760,6 +1762,8 @@ files are for humans and tooling to inspect what happened during a run, not for
 restoring gameplay state. TextFileStore owns the raw line-oriented temp-file
 write, rename, and load mechanics so trace classes can stay focused on runtime
 meaning.
+`file_store_tests` covers the shared text-store filesystem behavior separately
+from trace formatting.
 
 `RuntimeTraceService` is the use-case layer for full run traces:
 
@@ -2575,6 +2579,10 @@ ByteFileStore                 handles raw binary file IO and temp-file rename
 InventoryCommandLogFileStore  maps raw bytes to missing/corrupt inventory logs
 InventoryCommandReplayer      applies loaded commands through the dispatcher
 ```
+
+`inventory_command_persistence_tests` owns this durable inventory automation
+boundary so the broad movement suite can stay focused on live inventory command
+semantics and world interaction.
 
 This is the same pattern as session boot scripts. Inventory automation can now
 live on disk while still replaying semantic commands through the normal

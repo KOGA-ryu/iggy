@@ -49,6 +49,10 @@ ordering, movement input block summaries, and result/event text helpers.
 manifest summaries without exercising artifact writers or filesystem stores.
 `runtime_trace_persistence_tests` covers trace file-store behavior and
 `RuntimeTraceService` full-run trace save/load contracts.
+`file_store_tests` covers generic byte/text save-load behavior, temp-file
+cleanup, missing-file handling, and unwritable-path failures.
+`inventory_command_persistence_tests` covers durable inventory command logs,
+checksums/framing/file-store behavior, replay, and script runner outcomes.
 `runtime_debug_artifact_tests` covers debug bundle layout, root preparation,
 writer steps, result flags, and saved manifest/trace artifacts.
 `runtime_setup_run_tests` covers configured setup gates, setup-to-run handoff,
@@ -188,15 +192,6 @@ Good first tests:
 - InventoryCommandPacketValidator rejects malformed inventory packet shapes
 - InventoryCommandByteStream writes little-endian primitives and rejects short reads
 - InventoryCommandPacketByteCodec round-trips and rejects inventory packet bytes
-- InventoryCommandLog replays through InventoryCommandDispatcher
-- InventoryCommandLogCodec round-trips versioned command logs and rejects corrupt bytes
-- InventoryCommandLogChecksum appends and validates inventory log checksums
-- InventoryCommandPacketListCodec frames counted packet lists and rejects invalid sizes
-- InventoryCommandLogFrameCodec frames packet bytes and rejects invalid frame metadata
-- ByteFileStore saves/loads binary bytes and cleans temp files
-- InventoryCommandLogFileStore saves, loads, replays, and rejects bad files
-- InventoryScriptRunner loads and runs saved inventory scripts through the dispatcher
-- InventoryScriptRunner distinguishes script load failure from command rejection
 - RuntimeInventoryScriptIntake runs inventory scripts against the selected runtime player
 - RuntimeInventoryScriptBatchRunner preserves ordered inventory script path results
 - InventoryScriptSource queues and drains inventory automation script paths
@@ -286,7 +281,6 @@ Good first tests:
 - RuntimeCombatText formats combat event lines for traces
 - RuntimeEffectText formats effect request lines for traces
 - RuntimeFrameTrace formats frame reports and mode policy into readable debug lines
-- TextFileStore saves/loads readable lines and cleans temp files
 - RuntimeFrameTraceFileStore saves and loads readable trace lines
 - RuntimeTraceService formats and saves full GameLoopResult traces
 - RuntimeSetupSettings defaults to no configured setup scripts
