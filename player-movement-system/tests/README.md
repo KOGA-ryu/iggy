@@ -5,7 +5,8 @@ move into smaller executables as subsystem boundaries stabilize.
 `artifact_output_tests` covers artifact output settings, result flags, output
 steps, planning, one-request execution, artifact service application, and
 output finalizer integration.
-`artifact_text_tests` covers pure trace and manifest formatter contracts.
+`artifact_text_tests` covers shared trace/manifest text helpers for policies,
+headers, frame indexes, and run summaries.
 `input_routing_tests` covers the controls-edge slice from pointer input through
 focus/context checks into movement commands, target interaction commands, or
 block reports.
@@ -33,6 +34,8 @@ flowing through the fully assembled `GameLoop`.
 the fully assembled `GameLoop`.
 `game_loop_frame_report_tests` covers frame reports produced by the fully
 assembled `GameLoop`.
+`runtime_frame_trace_tests` covers readable frame trace lines, trace section
+ordering, movement input block summaries, and result/event text helpers.
 
 Good first tests:
 

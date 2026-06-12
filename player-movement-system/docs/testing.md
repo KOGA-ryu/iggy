@@ -13,9 +13,9 @@ output flag state, output steps, output planning, one-request artifact
 execution, artifact output service application, and output finalizer result
 integration.
 
-`artifact_text_tests` owns pure trace and manifest formatter contracts. These
-tests exercise strings produced from runtime reports without touching artifact
-writers, filesystem stores, or frame execution.
+`artifact_text_tests` owns shared artifact text helpers: policy lines, frame
+headers, frame index markers, and run summary lines used by traces and
+manifests.
 
 `input_routing_tests` owns controls-edge checks: pointer input, focus
 resolution, movement context building, blocked pointer reporting, and
@@ -69,6 +69,10 @@ pickup rejection, and blocked movement input reports through `GameLoop`.
 results, policy, simulation events, event deltas, and run-summary mirrors for a
 completed frame.
 
+`runtime_frame_trace_tests` owns frame trace presentation: readable trace lines,
+runtime source/lifecycle/simulation section order, movement input block
+summaries, and result/event text helpers used by traces and debug manifests.
+
 ```text
 focused production boundary
   -> focused test executable
@@ -82,7 +86,7 @@ large shared helper migration.
 
 Good first candidates:
 
-- runtime frame trace formatting
+- runtime debug manifest formatting
 
 Avoid splitting by line count alone. A smaller file is useful only when the new
 test target has a clear reason to exist.

@@ -1665,6 +1665,8 @@ movementEvent[0] type=CommandAccepted ...
 The trace formatter is intentionally downstream of the report. It does not
 drive gameplay or mutate state. It only turns already-recorded runtime facts,
 including the frame policy chosen for that mode, into readable lines.
+`runtime_frame_trace_tests` owns that presentation boundary so report capture,
+trace spelling, and trace persistence can keep changing independently.
 `RuntimeFramePolicyText` owns the exact policy line spelling so traces and
 debug bundle manifests stay consistent while still choosing numeric or word
 booleans for their audience.
