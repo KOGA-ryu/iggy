@@ -32,4 +32,43 @@ LevelDerivedCacheBuildResult LevelDerivedCacheBuilder::build(
 	return result;
 }
 
+LevelDerivedCacheUpdateResult LevelDerivedCacheUpdater::update(
+	const LevelDerivedCacheState &current,
+	const LevelRuntimeState &level,
+	const std::vector<TileCoord> &changedTiles) const
+{
+	LevelDerivedCacheUpdateResult result;
+	result.changedTiles = changedTiles;
+
+	if (!current.hasRenderCache && !current.hasCollisionCache) {
+		result.updated = true;
+		result.state = current;
+		return result;
+	}
+
+	LevelDerivedCacheState updatedState;
+
+	if (current.hasRenderCache) {
+		result.render = LevelRenderCacheUpdater {}.update(current.render, level.map, changedTiles);
+		if (!result.render.updated)
+			return result;
+
+		updatedState.hasRenderCache = true;
+		updatedState.render = result.render.state;
+	}
+
+	if (current.hasCollisionCache) {
+		result.collision = LevelCollisionCacheUpdater {}.update(current.collision, level.map, changedTiles);
+		if (!result.collision.updated)
+			return result;
+
+		updatedState.hasCollisionCache = true;
+		updatedState.collision = result.collision.state;
+	}
+
+	result.updated = true;
+	result.state = updatedState;
+	return result;
+}
+
 } // namespace iggy

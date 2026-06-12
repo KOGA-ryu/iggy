@@ -14,4 +14,27 @@ LevelCollisionCacheBuildResult LevelCollisionCacheBuilder::build(const LevelTile
 	return result;
 }
 
+LevelCollisionCacheUpdateResult LevelCollisionCacheUpdater::update(
+	const LevelCollisionCacheState &current,
+	const LevelTileMap &map,
+	const std::vector<TileCoord> &changedTiles) const
+{
+	LevelCollisionCacheUpdateResult result;
+	result.changedTiles = changedTiles;
+
+	if (changedTiles.empty()) {
+		result.updated = true;
+		result.state = current;
+		return result;
+	}
+
+	result.rebuild = LevelCollisionCacheBuilder {}.build(map);
+	if (!result.rebuild.built)
+		return result;
+
+	result.updated = true;
+	result.state = result.rebuild.state;
+	return result;
+}
+
 } // namespace iggy

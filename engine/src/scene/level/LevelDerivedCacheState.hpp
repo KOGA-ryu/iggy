@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "scene/level/LevelCollisionCacheState.hpp"
 #include "scene/level/LevelRenderCacheState.hpp"
 #include "scene/level/LevelRuntimeState.hpp"
@@ -32,6 +34,22 @@ public:
 	[[nodiscard]] LevelDerivedCacheBuildResult build(
 		const LevelRuntimeState &level,
 		const LevelDerivedCacheBuildConfig &config) const;
+};
+
+struct LevelDerivedCacheUpdateResult {
+	bool updated = false;
+	LevelDerivedCacheState state;
+	LevelRenderCacheUpdateResult render;
+	LevelCollisionCacheUpdateResult collision;
+	std::vector<TileCoord> changedTiles;
+};
+
+class LevelDerivedCacheUpdater {
+public:
+	[[nodiscard]] LevelDerivedCacheUpdateResult update(
+		const LevelDerivedCacheState &current,
+		const LevelRuntimeState &level,
+		const std::vector<TileCoord> &changedTiles) const;
 };
 
 } // namespace iggy

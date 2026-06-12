@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "scene/level/LevelCollisionCacheState.hpp"
 #include "scene/level/LevelDerivedCacheState.hpp"
@@ -70,6 +71,38 @@ void ExpectRuntimeLevelUnchanged(
 	for (std::size_t index = 0; index < actual.map.tiles.size() && index < expected.map.tiles.size(); ++index)
 		Expect(actual.map.tiles[index].walkable == expected.map.tiles[index].walkable, message);
 	Expect(actual.npcAgents.size() == expected.npcAgents.size(), message);
+}
+
+void ExpectChangedTiles(
+	const std::vector<iggy::TileCoord> &actual,
+	const std::vector<iggy::TileCoord> &expected,
+	const char *message)
+{
+	Expect(actual.size() == expected.size(), message);
+	for (std::size_t index = 0; index < actual.size() && index < expected.size(); ++index)
+		Expect(actual[index] == expected[index], message);
+}
+
+bool CommandsContainMaterial(const iggy::LevelRenderCacheState &cache, iggy::ResourceId material)
+{
+	for (const iggy::LevelTileRenderChunk &chunk : cache.tileChunks.chunks) {
+		for (const iggy::render::RenderCommand2D &command : chunk.commands.commands) {
+			if (command.materialId == material)
+				return true;
+		}
+	}
+	return false;
+}
+
+iggy::LevelDerivedCacheState BuildDerivedCaches(
+	const iggy::LevelRuntimeState &level,
+	bool buildRender,
+	bool buildCollision,
+	iggy::LevelTileRenderChunkCacheConfig renderConfig = RenderConfig())
+{
+	const iggy::LevelDerivedCacheBuildResult build = iggy::LevelDerivedCacheBuilder {}.build(level, Config(buildRender, buildCollision, renderConfig));
+	Expect(build.built, "derived cache fixture should build");
+	return build.state;
 }
 
 bool FileContains(const char *path, const char *needle)
@@ -247,6 +280,160 @@ void TestRuntimeAndLevelRuntimeDoNotReferenceDerivedCacheState()
 	Expect(!FileContains("engine/src/scene/level/LevelRuntimeState.hpp", "LevelDerivedCacheState"), "LevelRuntimeState should not reference LevelDerivedCacheState");
 }
 
+void TestUpdateWithNoCachesPresentCopiesCurrentState()
+{
+	const iggy::LevelDerivedCacheState current;
+	const iggy::LevelRuntimeState level = RuntimeLevel({ ".#" });
+	const std::vector<iggy::TileCoord> changedTiles { { 1, 0 } };
+
+	const iggy::LevelDerivedCacheUpdateResult result = iggy::LevelDerivedCacheUpdater {}.update(current, level, changedTiles);
+
+	Expect(result.updated, "derived update with no present caches should succeed");
+	Expect(!result.state.hasRenderCache, "derived update with no present caches should leave render absent");
+	Expect(!result.state.hasCollisionCache, "derived update with no present caches should leave collision absent");
+	Expect(!result.render.updated, "derived update with no render cache should not call render updater");
+	Expect(!result.collision.updated, "derived update with no collision cache should not call collision updater");
+	ExpectChangedTiles(result.changedTiles, changedTiles, "derived update should preserve changed tile diagnostics");
+}
+
+void TestRenderOnlyUpdateDelegatesToRenderUpdater()
+{
+	const iggy::LevelTileRenderChunkCacheConfig renderConfig = RenderConfig(2, 1, 8);
+	const iggy::LevelRuntimeState initial = RuntimeLevel({ ".." });
+	const iggy::LevelDerivedCacheState current = BuildDerivedCaches(initial, true, false, renderConfig);
+	const iggy::LevelRuntimeState updated = RuntimeLevel({ ".#" });
+	const std::vector<iggy::TileCoord> changedTiles { { 1, 0 } };
+
+	const iggy::LevelDerivedCacheUpdateResult result = iggy::LevelDerivedCacheUpdater {}.update(current, updated, changedTiles);
+
+	Expect(result.updated, "render-only derived update should succeed");
+	Expect(result.state.hasRenderCache, "render-only update should preserve render cache presence");
+	Expect(!result.state.hasCollisionCache, "render-only update should keep collision cache absent");
+	Expect(result.render.updated, "render-only update should preserve nested render update success");
+	Expect(result.render.dirtyChunks.queried, "render-only update should delegate dirty chunk query");
+	Expect(result.render.tileChunkUpdate.rebuiltChunks.size() == 1, "render-only update should rebuild one dirty render chunk");
+	Expect(CommandsContainMaterial(result.state.render, BlockedMaterial), "render-only update should reflect current blocked tile material");
+	Expect(!result.collision.updated, "render-only update should not call collision updater");
+	ExpectChangedTiles(result.changedTiles, changedTiles, "render-only update should preserve changed tile diagnostics");
+}
+
+void TestCollisionOnlyUpdateDelegatesToCollisionUpdater()
+{
+	const iggy::LevelRuntimeState initial = RuntimeLevel({ "..." });
+	const iggy::LevelDerivedCacheState current = BuildDerivedCaches(initial, false, true);
+	const iggy::LevelRuntimeState updated = RuntimeLevel({ ".#." });
+	const std::vector<iggy::TileCoord> changedTiles { { 1, 0 } };
+
+	const iggy::LevelDerivedCacheUpdateResult result = iggy::LevelDerivedCacheUpdater {}.update(current, updated, changedTiles);
+
+	Expect(result.updated, "collision-only derived update should succeed");
+	Expect(!result.state.hasRenderCache, "collision-only update should keep render cache absent");
+	Expect(result.state.hasCollisionCache, "collision-only update should preserve collision cache presence");
+	Expect(!result.render.updated, "collision-only update should not call render updater");
+	Expect(result.collision.updated, "collision-only update should preserve nested collision update success");
+	ExpectChangedTiles(result.collision.changedTiles, changedTiles, "collision-only update should pass changed tiles to nested collision updater");
+	Expect(result.state.collision.world.objects().size() == 1, "collision-only update should add current blocked tile object");
+	if (result.state.collision.world.objects().size() == 1)
+		ExpectBounds(result.state.collision.world.objects()[0].shape.bounds, iggy::tileBounds({ 1, 0 }), "collision-only update should use current blocked tile bounds");
+}
+
+void TestBothCachesPresentUpdateBothCaches()
+{
+	const iggy::LevelTileRenderChunkCacheConfig renderConfig = RenderConfig(2, 1, 9);
+	const iggy::LevelRuntimeState initial = RuntimeLevel({ ".." });
+	const iggy::LevelDerivedCacheState current = BuildDerivedCaches(initial, true, true, renderConfig);
+	const iggy::LevelRuntimeState updated = RuntimeLevel({ "#." });
+	const std::vector<iggy::TileCoord> changedTiles { { 0, 0 } };
+
+	const iggy::LevelDerivedCacheUpdateResult result = iggy::LevelDerivedCacheUpdater {}.update(current, updated, changedTiles);
+
+	Expect(result.updated, "both-cache derived update should succeed");
+	Expect(result.state.hasRenderCache, "both-cache update should preserve render cache presence");
+	Expect(result.state.hasCollisionCache, "both-cache update should preserve collision cache presence");
+	Expect(result.render.updated, "both-cache update should preserve nested render success");
+	Expect(result.collision.updated, "both-cache update should preserve nested collision success");
+	Expect(CommandsContainMaterial(result.state.render, BlockedMaterial), "both-cache update should refresh render cache");
+	Expect(result.state.collision.world.objects().size() == 1, "both-cache update should refresh collision cache");
+	if (result.state.collision.world.objects().size() == 1)
+		ExpectBounds(result.state.collision.world.objects()[0].shape.bounds, iggy::tileBounds({ 0, 0 }), "both-cache update should refresh collision object bounds");
+}
+
+void TestEmptyChangedTilesNoOpsThroughNestedUpdaters()
+{
+	const iggy::LevelTileRenderChunkCacheConfig renderConfig = RenderConfig(2, 1, 10);
+	const iggy::LevelRuntimeState level = RuntimeLevel({ ".#" });
+	const iggy::LevelDerivedCacheState current = BuildDerivedCaches(level, true, true, renderConfig);
+
+	const iggy::LevelDerivedCacheUpdateResult result = iggy::LevelDerivedCacheUpdater {}.update(current, level, {});
+
+	Expect(result.updated, "empty changed tile derived update should succeed");
+	Expect(result.render.updated, "empty changed tile derived update should preserve render no-op success");
+	Expect(result.render.dirtyChunks.queried, "empty changed tile derived update should still expose render dirty query");
+	Expect(result.render.tileChunkUpdate.rebuiltChunks.empty(), "empty changed tile derived update should rebuild no render chunks");
+	Expect(result.collision.updated, "empty changed tile derived update should preserve collision no-op success");
+	Expect(result.collision.changedTiles.empty(), "empty changed tile derived update should preserve nested collision diagnostics");
+	ExpectCollisionObjectsMatch(result.state.collision.world, current.collision.world, "empty changed tile derived update should copy collision cache");
+	Expect(result.state.render.tileChunks.chunks.size() == current.render.tileChunks.chunks.size(), "empty changed tile derived update should copy render cache");
+}
+
+void TestRenderUpdateFailureFailsOverallWithoutPartialState()
+{
+	const iggy::LevelRuntimeState level = RuntimeLevel({ ".#" });
+	iggy::LevelDerivedCacheState current;
+	current.hasRenderCache = true;
+	current.render.tileChunkConfig = RenderConfig(0, 1, 11);
+	current.hasCollisionCache = true;
+	current.collision = BuildDerivedCaches(level, false, true).collision;
+
+	const iggy::LevelDerivedCacheUpdateResult result = iggy::LevelDerivedCacheUpdater {}.update(current, level, { { 1, 0 } });
+
+	Expect(!result.updated, "render update failure should fail combined derived update");
+	Expect(!result.state.hasRenderCache, "render update failure should publish no render cache");
+	Expect(!result.state.hasCollisionCache, "render update failure should publish no collision cache");
+	Expect(!result.render.updated, "render update failure should preserve nested render failure");
+	Expect(result.render.dirtyChunks.issues.size() == 1, "render update failure should preserve dirty chunk diagnostics");
+	Expect(!result.collision.updated, "render update failure should not publish later collision update");
+}
+
+void TestDuplicateAndOutOfBoundsChangedTilesArePreserved()
+{
+	const iggy::LevelRuntimeState initial = RuntimeLevel({ "..." });
+	const iggy::LevelDerivedCacheState current = BuildDerivedCaches(initial, false, true);
+	const iggy::LevelRuntimeState updated = RuntimeLevel({ "..#" });
+	const std::vector<iggy::TileCoord> changedTiles { { 2, 0 }, { 2, 0 }, { -1, 4 }, { 99, 0 } };
+
+	const iggy::LevelDerivedCacheUpdateResult result = iggy::LevelDerivedCacheUpdater {}.update(current, updated, changedTiles);
+
+	Expect(result.updated, "duplicate and out-of-bounds changed tiles should still update derived cache");
+	ExpectChangedTiles(result.changedTiles, changedTiles, "derived update should preserve duplicate/out-of-bounds changed tile diagnostics");
+	ExpectChangedTiles(result.collision.changedTiles, changedTiles, "derived update should pass duplicate/out-of-bounds diagnostics to collision updater");
+	Expect(result.state.collision.world.objects().size() == 1, "duplicate and out-of-bounds diagnostics should not affect rebuilt collision output");
+}
+
+void TestDerivedUpdateInputsAreNotMutated()
+{
+	const iggy::LevelTileRenderChunkCacheConfig renderConfig = RenderConfig(2, 1, 12);
+	const iggy::LevelRuntimeState initial = RuntimeLevel({ ".#" });
+	iggy::LevelDerivedCacheState current = BuildDerivedCaches(initial, true, true, renderConfig);
+	const iggy::LevelDerivedCacheState currentBefore = current;
+	iggy::LevelRuntimeState updated = RuntimeLevel({ "#." });
+	updated.map.id = iggy::ResourceId("level:update");
+	updated.npcAgents.push_back({ iggy::ResourceId("npc:one"), {} });
+	const iggy::LevelRuntimeState levelBefore = updated;
+	std::vector<iggy::TileCoord> changedTiles { { 0, 0 }, { 1, 0 } };
+	const std::vector<iggy::TileCoord> changedTilesBefore = changedTiles;
+
+	const iggy::LevelDerivedCacheUpdateResult result = iggy::LevelDerivedCacheUpdater {}.update(current, updated, changedTiles);
+
+	Expect(result.updated, "derived cache immutability update should succeed");
+	Expect(current.hasRenderCache == currentBefore.hasRenderCache, "derived cache update should not mutate current render flag");
+	Expect(current.hasCollisionCache == currentBefore.hasCollisionCache, "derived cache update should not mutate current collision flag");
+	Expect(current.render.tileChunks.chunks.size() == currentBefore.render.tileChunks.chunks.size(), "derived cache update should not mutate current render cache");
+	ExpectCollisionObjectsMatch(current.collision.world, currentBefore.collision.world, "derived cache update should not mutate current collision cache");
+	ExpectRuntimeLevelUnchanged(updated, levelBefore, "derived cache update should not mutate LevelRuntimeState");
+	ExpectChangedTiles(changedTiles, changedTilesBefore, "derived cache update should not mutate changed tiles input");
+}
+
 } // namespace
 
 int main()
@@ -261,6 +448,14 @@ int main()
 	TestSuccessfulEmptyAndNonpositiveMapsFollowNestedBuilders();
 	TestInputLevelRuntimeStateIsNotMutated();
 	TestRuntimeAndLevelRuntimeDoNotReferenceDerivedCacheState();
+	TestUpdateWithNoCachesPresentCopiesCurrentState();
+	TestRenderOnlyUpdateDelegatesToRenderUpdater();
+	TestCollisionOnlyUpdateDelegatesToCollisionUpdater();
+	TestBothCachesPresentUpdateBothCaches();
+	TestEmptyChangedTilesNoOpsThroughNestedUpdaters();
+	TestRenderUpdateFailureFailsOverallWithoutPartialState();
+	TestDuplicateAndOutOfBoundsChangedTilesArePreserved();
+	TestDerivedUpdateInputsAreNotMutated();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

@@ -16,6 +16,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/level/LevelRuntimeUpdate.cpp
   src/scene/level/LevelTileDrawList.cpp
   src/scene/level/LevelTileMap.cpp
+  src/scene/level/LevelTileMutation.cpp
   src/scene/level/LevelTileRenderDirtyChunks.cpp
   src/scene/level/LevelTileRenderChunkBuilder.cpp
   src/scene/level/LevelTileRenderChunkCache.cpp
