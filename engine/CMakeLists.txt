@@ -38,6 +38,7 @@ add_library(iggy_engine
   src/scene/camera/CameraView.cpp
   src/scene/level/LevelBlueprint.cpp
   src/scene/level/LevelNpcUpdateStep.cpp
+  src/scene/level/LevelRenderCacheState.cpp
   src/scene/level/LevelRenderFrame2D.cpp
   src/scene/level/LevelRuntimeBuilder.cpp
   src/scene/level/LevelRuntimeUpdate.cpp
@@ -92,6 +93,7 @@ iggy_add_test(level_tile_render_chunk_cache_updater_tests tests/level_tile_rende
 iggy_add_test(level_tile_render_chunk_commands_tests tests/level_tile_render_chunk_commands_tests.cpp)
 iggy_add_test(level_tile_render_chunk_visibility_tests tests/level_tile_render_chunk_visibility_tests.cpp)
 iggy_add_test(level_tile_render_commands_tests tests/level_tile_render_commands_tests.cpp)
+iggy_add_test(level_render_cache_state_tests tests/level_render_cache_state_tests.cpp)
 iggy_add_test(level_render_frame_2d_tests tests/level_render_frame_2d_tests.cpp)
 iggy_add_test(level_runtime_builder_tests tests/level_runtime_builder_tests.cpp)
 iggy_add_test(level_runtime_update_tests tests/level_runtime_update_tests.cpp)
