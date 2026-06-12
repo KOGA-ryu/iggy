@@ -5,6 +5,8 @@
 #include <queue>
 #include <vector>
 
+#include "scene/level/LevelGridQuery.hpp"
+
 namespace iggy::navigation {
 
 namespace {
@@ -14,17 +16,6 @@ NavigationPath Path(NavigationPathStatus status)
 	NavigationPath path;
 	path.status = status;
 	return path;
-}
-
-std::size_t TileIndex(const LevelTileMap &map, int x, int y)
-{
-	return static_cast<std::size_t>(y) * static_cast<std::size_t>(map.width) + static_cast<std::size_t>(x);
-}
-
-bool Walkable(const LevelTileMap &map, int x, int y)
-{
-	const LevelTile *tile = map.tileAt(x, y);
-	return tile != nullptr && tile->walkable;
 }
 
 NavigationPath BuildPath(const LevelTileMap &map, TileCoord start, TileCoord destination, const std::vector<int> &previous)
@@ -37,7 +28,7 @@ NavigationPath BuildPath(const LevelTileMap &map, TileCoord start, TileCoord des
 		if (sameTile(cursor, start))
 			break;
 
-		const int previousIndex = previous[TileIndex(map, cursor.x, cursor.y)];
+		const int previousIndex = previous[tileIndex(map, cursor)];
 		cursor = { previousIndex % map.width, previousIndex / map.width };
 	}
 
@@ -61,9 +52,9 @@ NavigationPath NavigationGridPathfinder::findPath(const LevelTileMap &map, Vec2 
 		return Path(NavigationPathStatus::DestinationRejected);
 
 	const TileCoord startTile = tileForPoint(start);
-	if (!map.contains(startTile.x, startTile.y))
+	if (!containsTile(map, startTile))
 		return Path(NavigationPathStatus::StartOutOfBounds);
-	if (!Walkable(map, startTile.x, startTile.y))
+	if (!isWalkable(map, startTile))
 		return Path(NavigationPathStatus::StartBlocked);
 
 	const TileCoord destination { request.destinationTileX, request.destinationTileY };
@@ -81,7 +72,7 @@ NavigationPath NavigationGridPathfinder::findPath(const LevelTileMap &map, Vec2 
 	std::queue<TileCoord> frontier;
 
 	frontier.push(startTile);
-	visited[TileIndex(map, startTile.x, startTile.y)] = true;
+	visited[tileIndex(map, startTile)] = true;
 
 	const TileCoord neighbors[] = {
 		{ 1, 0 },
@@ -96,15 +87,15 @@ NavigationPath NavigationGridPathfinder::findPath(const LevelTileMap &map, Vec2 
 
 		for (TileCoord neighborOffset : neighbors) {
 			const TileCoord neighbor { current.x + neighborOffset.x, current.y + neighborOffset.y };
-			if (!map.contains(neighbor.x, neighbor.y) || !Walkable(map, neighbor.x, neighbor.y))
+			if (!containsTile(map, neighbor) || !isWalkable(map, neighbor))
 				continue;
 
-			const std::size_t neighborIndex = TileIndex(map, neighbor.x, neighbor.y);
+			const std::size_t neighborIndex = tileIndex(map, neighbor);
 			if (visited[neighborIndex])
 				continue;
 
 			visited[neighborIndex] = true;
-			previous[neighborIndex] = static_cast<int>(TileIndex(map, current.x, current.y));
+			previous[neighborIndex] = static_cast<int>(tileIndex(map, current));
 			if (sameTile(neighbor, destination))
 				return BuildPath(map, startTile, destination, previous);
 

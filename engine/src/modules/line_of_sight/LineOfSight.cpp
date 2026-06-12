@@ -1,10 +1,9 @@
 #include "modules/line_of_sight/LineOfSight.hpp"
 
-#include <cmath>
 #include <limits>
 
-#include "core/math/Aabb2.hpp"
 #include "core/math/Ray2.hpp"
+#include "scene/level/LevelGridQuery.hpp"
 #include "servers/physics2d/ShapeQuery2D.hpp"
 
 namespace iggy::line_of_sight {
@@ -18,11 +17,6 @@ LineOfSightTrace Result(LineOfSightStatus status, TileCoord startTile, TileCoord
 	trace.startTile = startTile;
 	trace.endTile = endTile;
 	return trace;
-}
-
-Aabb2 TileBounds(int x, int y)
-{
-	return { { static_cast<float>(x), static_cast<float>(y) }, { static_cast<float>(x + 1), static_cast<float>(y + 1) } };
 }
 
 } // namespace
@@ -46,11 +40,11 @@ LineOfSightTrace Trace(const LevelTileMap &map, Vec2 from, Vec2 to)
 {
 	const TileCoord startTile = tileForPoint(from);
 	const TileCoord endTile = tileForPoint(to);
-	const LevelTile *start = map.tileAt(startTile.x, startTile.y);
+	const LevelTile *start = tileAt(map, startTile);
 	if (start == nullptr)
 		return Result(LineOfSightStatus::StartOutOfBounds, startTile, endTile);
 
-	const LevelTile *end = map.tileAt(endTile.x, endTile.y);
+	const LevelTile *end = tileAt(map, endTile);
 	if (end == nullptr)
 		return Result(LineOfSightStatus::EndOutOfBounds, startTile, endTile);
 
@@ -72,16 +66,17 @@ LineOfSightTrace Trace(const LevelTileMap &map, Vec2 from, Vec2 to)
 
 	for (int y = 0; y < map.height; ++y) {
 		for (int x = 0; x < map.width; ++x) {
-			const LevelTile *tile = map.tileAt(x, y);
+			const TileCoord tileCoord { x, y };
+			const LevelTile *tile = tileAt(map, tileCoord);
 			if (tile == nullptr || tile->walkable)
 				continue;
 
-			const physics2d::RaycastHit2D hit = physics2d::RaycastAabb(ray, TileBounds(x, y), maxDistance);
+			const physics2d::RaycastHit2D hit = physics2d::RaycastAabb(ray, tileBounds(tileCoord), maxDistance);
 			if (!hit.hit || hit.distance >= closestDistance)
 				continue;
 
 			closest.status = LineOfSightStatus::Blocked;
-			closest.hitTile = { x, y };
+			closest.hitTile = tileCoord;
 			closest.hitPoint = hit.point;
 			closest.distance = hit.distance;
 			closestDistance = hit.distance;
