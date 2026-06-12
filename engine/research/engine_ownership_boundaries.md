@@ -23,8 +23,14 @@ Reference shape inspected:
 Current local anchors:
 - `engine/src/core/resource/ResourceId.hpp`
 - `engine/src/core/resource/AssetCatalog.hpp`
+- `engine/src/runtime/RuntimeSessionState.hpp`
+- `engine/src/runtime/RuntimePlayerCommandPlanningStep.hpp`
+- `engine/src/scene/player/PlayerAgentState.hpp`
+- `engine/src/scene/player/PlayerCommandFramePlanner2D.hpp`
 - `engine/src/servers/render/RenderCommand2D.hpp`
 - `engine/src/servers/render/RenderCommandList2DComposer.hpp`
+- `engine/src/servers/physics2d/CollisionShape2D.hpp`
+- `engine/src/servers/physics2d/CollisionWorld2D.hpp`
 - `engine/src/servers/physics2d/ShapeQuery2D.hpp`
 - `engine/src/scene/level/LevelRenderFrame2D.hpp`
 - `engine/src/runtime/RuntimeTickRunner.hpp`
@@ -71,6 +77,21 @@ rg -n "(RunGameLoop|ProcessPlayers|ProcessMonsters|ProcessItems|ProcessLightList
 - Backends stay behind ids.
   - No scene or gameplay type should depend on a texture object, shader object, window, graphics API, or file format.
   - Backend handles can appear later in a registry layer that resolves `ResourceId` during presentation.
+
+## Bounds Semantics
+
+- `Aabb2` is a raw min/max math type. `contains` and `overlaps` use inclusive edge checks. It does not normalize inverted bounds.
+- `CollisionShape2D` uses `Aabb2` exactly as supplied. `boundsOf` returns stored bounds without normalization. `isValid` rejects `Unknown` and inverted AABB bounds, but accepts ordered degenerate bounds.
+- Tile visibility is a view/query policy, not core AABB policy. `LevelVisibleTiles` and `LevelTileRenderChunkVisibility` own their half-open non-degenerate and point-bound edge rules through tests.
+- Do not silently convert between inclusive AABB behavior and half-open tile visibility behavior. Name and test the boundary that chooses an edge rule.
+
+## Runtime And Physics Notes
+
+- Runtime carries optional `PlayerAgentState` in `RuntimeSessionState` for session continuity.
+- `scene/player` owns player command interpretation through `PlayerCommandPlanner2D` and `PlayerCommandFramePlanner2D`.
+- Runtime planning steps may delegate to scene/player planners, but must not execute or reinterpret player commands.
+- `CollisionWorld2D` is currently a vector-backed valid-shape container only.
+- Overlap/raycast-over-world queries and character movement are deferred follow-up slices.
 
 ## Data Flow Target
 
