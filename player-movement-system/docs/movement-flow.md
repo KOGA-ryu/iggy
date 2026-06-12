@@ -787,6 +787,9 @@ Empty     -> Paused policy, no active world updates
 Failed loads do not destroy the active world. Successful new/load operations
 reset transient clock state, but preserve event sinks. That distinction keeps
 durable state, frame feel, and external observers from bleeding into each other.
+`session_state_tests` owns this layer: creating the world, loading/saving
+through session helpers, mode policy/changing, paused update behavior, and
+failed-load preservation. Command codecs and lifecycle scripts sit above it.
 
 ## 27. Session Commands
 
@@ -1001,6 +1004,11 @@ That distinction matters. A corrupt boot script is a file/format problem. A
 valid script that tries to load an empty slot is a lifecycle rule problem. They
 should be visible at different levels, because UI, tests, and tooling recover
 from them differently.
+`session_lifecycle_command_tests` owns this full lifecycle-command pipeline:
+live dispatch, event emission, replay, byte/log codecs, file-store behavior,
+and script execution. That keeps menu/save/load automation out of broad
+movement tests while preserving one semantic path for live and replayed session
+requests.
 
 ## 34. Game Loop Shell
 
@@ -1197,6 +1205,10 @@ and run failure reporting use the same status rules.
 result: copy the setup result, record setup inventory command results into the
 summary, and return the frame gate. That keeps `RuntimeRunExecutor` focused on
 lifecycle order instead of setup report plumbing.
+`runtime_setup_script_tests` owns the assembled setup-script behavior around
+this phase: startup intake, setup script order, load/no-player failures, and
+the guarantee that configured setup movement scripts are not counted as runtime
+movement script source results.
 `runtime_setup_run_tests` owns this setup-to-run boundary along with the report
 recorders that turn setup and frame work into `RuntimeRunSummary` and
 `RuntimeFrameReport` facts.
@@ -1309,6 +1321,10 @@ callers that require an active receiver and nullable pointers for intake
 boundaries that report missing receivers as normal runtime results. Keeping
 that context check in one helper makes the source-draining rules easier to
 compare.
+`runtime_source_intake_tests` owns the direct source adapter contracts below
+the frame source phase: queued sources drain once, intake adapters preserve
+order and report missing receivers, and batch script runners continue after
+load failures.
 
 `RuntimeFrameRunner` owns the one-frame order around that drainer:
 

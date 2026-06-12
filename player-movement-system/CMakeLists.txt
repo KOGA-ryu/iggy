@@ -328,6 +328,18 @@ target_link_libraries(runtime_setup_run_tests PRIVATE player_movement_system)
 add_executable(runtime_input_hotkey_tests tests/runtime_input_hotkey_tests.cpp)
 target_link_libraries(runtime_input_hotkey_tests PRIVATE player_movement_system)
 
+add_executable(runtime_source_intake_tests tests/runtime_source_intake_tests.cpp)
+target_link_libraries(runtime_source_intake_tests PRIVATE player_movement_system)
+
+add_executable(runtime_setup_script_tests tests/runtime_setup_script_tests.cpp)
+target_link_libraries(runtime_setup_script_tests PRIVATE player_movement_system)
+
+add_executable(session_state_tests tests/session_state_tests.cpp)
+target_link_libraries(session_state_tests PRIVATE player_movement_system)
+
+add_executable(session_lifecycle_command_tests tests/session_lifecycle_command_tests.cpp)
+target_link_libraries(session_lifecycle_command_tests PRIVATE player_movement_system)
+
 add_test(NAME movement_tests COMMAND movement_tests)
 add_test(NAME artifact_output_tests COMMAND artifact_output_tests)
 add_test(NAME artifact_text_tests COMMAND artifact_text_tests)
@@ -350,3 +362,7 @@ add_test(NAME runtime_trace_persistence_tests COMMAND runtime_trace_persistence_
 add_test(NAME runtime_debug_artifact_tests COMMAND runtime_debug_artifact_tests)
 add_test(NAME runtime_setup_run_tests COMMAND runtime_setup_run_tests)
 add_test(NAME runtime_input_hotkey_tests COMMAND runtime_input_hotkey_tests)
+add_test(NAME runtime_source_intake_tests COMMAND runtime_source_intake_tests)
+add_test(NAME runtime_setup_script_tests COMMAND runtime_setup_script_tests)
+add_test(NAME session_state_tests COMMAND session_state_tests)
+add_test(NAME session_lifecycle_command_tests COMMAND session_lifecycle_command_tests)

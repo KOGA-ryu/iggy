@@ -16,6 +16,12 @@ facts produced by routed or blocked input.
 queue intake, simulation command draining, and queued-count reporting.
 `source_drain_tests` covers shared runtime source settings, active context
 lookup, source stream draining, and source-drainer ordering.
+`session_state_tests` covers new-game world creation, slot load/save helpers,
+session frame updates, mode policy/changing, paused command preservation, and
+failed-load behavior.
+`session_lifecycle_command_tests` covers lifecycle command dispatch, applier
+results, session event emission, replay, packet validation, log
+framing/checksums/file-store behavior, and lifecycle script run results.
 `frame_source_tests` covers per-frame session, inventory, and movement source
 step orchestration before simulation runs.
 `frame_simulation_tests` covers simulation phase policy capture, session
@@ -44,8 +50,13 @@ manifest summaries without exercising artifact writers or filesystem stores.
 writer steps, result flags, and saved manifest/trace artifacts.
 `runtime_setup_run_tests` covers configured setup gates, setup-to-run handoff,
 report recorders, run summaries, and frame report aggregation.
+`runtime_setup_script_tests` covers startup script intake, configured
+startup/inventory/movement setup order, setup load failures, active-player
+gating, and the setup-script/runtime-source distinction.
 `runtime_input_hotkey_tests` covers runtime input defaults, context building,
 route result naming, lifecycle hotkeys, stop hotkeys, and blocked stop reports.
+`runtime_source_intake_tests` covers queued source drains, source defaults,
+command intake, script intake, and batch order for runtime sources.
 
 Good first tests:
 

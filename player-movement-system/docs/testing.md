@@ -33,6 +33,15 @@ loop and queued-count reporting.
 mapping, active world/player lookup, nullable source-list draining, and source
 drainer ordering before frame orchestration records the results.
 
+`session_state_tests` owns the session state boundary: new-game world creation,
+slot load/save helpers, session frame updates, mode policy/changing, paused
+command preservation, and failed-load behavior that preserves the active world.
+
+`session_lifecycle_command_tests` owns semantic session lifecycle commands:
+dispatch/applier results, lifecycle event emission, replay, command packet
+validation, command log framing/checksums/file-store behavior, and lifecycle
+script run results.
+
 `frame_source_tests` owns the per-frame source orchestration steps: session
 input/lifecycle routing, inventory script-before-command order, movement
 script-before-command order, and the combined pre-simulation source phase.
@@ -89,9 +98,18 @@ writer failure reporting, and end-to-end debug bundle save behavior.
 setup defaults, setup script frame gates, setup result application, source
 result report recorders, run summary defaults, and frame report aggregation.
 
+`runtime_setup_script_tests` owns assembled setup script behavior: startup
+script intake, configured startup/inventory/movement setup order, setup script
+load failures, active-player gating, and the distinction between setup scripts
+and runtime script sources.
+
 `runtime_input_hotkey_tests` owns app-edge input settings and hotkey routing:
 input defaults, session-derived input context, route result naming, lifecycle
 hotkeys, stop hotkeys, and blocked stop-command reporting.
+
+`runtime_source_intake_tests` owns the direct runtime source/intake adapters:
+queued source drain-once behavior, source settings defaults, session and
+inventory command intake, and movement/inventory script intake plus batch order.
 
 ```text
 focused production boundary
@@ -106,7 +124,7 @@ large shared helper migration.
 
 Good first candidates:
 
-- runtime source settings and remaining source intake
+- save/snapshot persistence codecs and slot metadata
 
 Avoid splitting by line count alone. A smaller file is useful only when the new
 test target has a clear reason to exist.
