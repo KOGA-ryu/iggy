@@ -28,6 +28,7 @@ add_library(iggy_engine
   src/modules/npc_ai/NpcNavigationController.cpp
   src/modules/npc_ai/NpcSpawnBuilder.cpp
   src/modules/npc_ai/NpcTickReporter.cpp
+  src/runtime/GameplayCommand2D.cpp
   src/runtime/RuntimeSessionState.cpp
   src/runtime/RuntimeSessionTick.cpp
   src/runtime/RuntimeSessionTickRunner.cpp
@@ -127,6 +128,7 @@ iggy_add_test(sprite_animation_state_2d_tests tests/sprite_animation_state_2d_te
 iggy_add_test(sprite_frame_set_2d_tests tests/sprite_frame_set_2d_tests.cpp)
 iggy_add_test(sprite_render_commands_2d_tests tests/sprite_render_commands_2d_tests.cpp)
 iggy_add_test(texture_resource_tests tests/texture_resource_tests.cpp)
+iggy_add_test(gameplay_command_2d_tests tests/gameplay_command_2d_tests.cpp)
 iggy_add_test(runtime_session_state_tests tests/runtime_session_state_tests.cpp)
 iggy_add_test(runtime_session_tick_tests tests/runtime_session_tick_tests.cpp)
 iggy_add_test(runtime_session_tick_runner_tests tests/runtime_session_tick_runner_tests.cpp)
