@@ -16,6 +16,7 @@ add_library(iggy_engine
   src/modules/line_of_sight/LineOfSight.cpp
   src/modules/npc_ai/AwarenessSensor.cpp
   src/modules/npc_ai/NpcIntentSelector.cpp
+  src/modules/npc_ai/NpcMovementPlanner.cpp
   src/scene/level/LevelBlueprint.cpp
   src/scene/level/LevelTileMap.cpp
   src/servers/physics2d/ShapeQuery2D.cpp
@@ -46,6 +47,9 @@ target_link_libraries(npc_awareness_tests PRIVATE iggy_engine)
 add_executable(npc_intent_tests tests/npc_intent_tests.cpp)
 target_link_libraries(npc_intent_tests PRIVATE iggy_engine)
 
+add_executable(npc_movement_planner_tests tests/npc_movement_planner_tests.cpp)
+target_link_libraries(npc_movement_planner_tests PRIVATE iggy_engine)
+
 add_executable(physics2d_tests tests/physics2d_tests.cpp)
 target_link_libraries(physics2d_tests PRIVATE iggy_engine)
 
@@ -56,4 +60,5 @@ add_test(NAME level_tile_map_tests COMMAND level_tile_map_tests)
 add_test(NAME line_of_sight_tests COMMAND line_of_sight_tests)
 add_test(NAME npc_awareness_tests COMMAND npc_awareness_tests)
 add_test(NAME npc_intent_tests COMMAND npc_intent_tests)
+add_test(NAME npc_movement_planner_tests COMMAND npc_movement_planner_tests)
 add_test(NAME physics2d_tests COMMAND physics2d_tests)
