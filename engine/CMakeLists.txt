@@ -15,6 +15,7 @@ add_library(iggy_engine
   src/modules/blueprint/LevelBlueprintValidator.cpp
   src/modules/line_of_sight/LineOfSight.cpp
   src/modules/npc_ai/AwarenessSensor.cpp
+  src/modules/npc_ai/NpcAgentBatchUpdater.cpp
   src/modules/npc_ai/NpcAgentController.cpp
   src/modules/npc_ai/NpcBrainTick.cpp
   src/modules/npc_ai/NpcIntentSelector.cpp
@@ -54,6 +55,9 @@ target_link_libraries(npc_awareness_tests PRIVATE iggy_engine)
 add_executable(npc_agent_controller_tests tests/npc_agent_controller_tests.cpp)
 target_link_libraries(npc_agent_controller_tests PRIVATE iggy_engine)
 
+add_executable(npc_agent_batch_tests tests/npc_agent_batch_tests.cpp)
+target_link_libraries(npc_agent_batch_tests PRIVATE iggy_engine)
+
 add_executable(npc_brain_tick_tests tests/npc_brain_tick_tests.cpp)
 target_link_libraries(npc_brain_tick_tests PRIVATE iggy_engine)
 
@@ -87,6 +91,7 @@ add_test(NAME level_blueprint_tests COMMAND level_blueprint_tests)
 add_test(NAME level_tile_map_tests COMMAND level_tile_map_tests)
 add_test(NAME line_of_sight_tests COMMAND line_of_sight_tests)
 add_test(NAME npc_awareness_tests COMMAND npc_awareness_tests)
+add_test(NAME npc_agent_batch_tests COMMAND npc_agent_batch_tests)
 add_test(NAME npc_agent_controller_tests COMMAND npc_agent_controller_tests)
 add_test(NAME npc_brain_tick_tests COMMAND npc_brain_tick_tests)
 add_test(NAME npc_intent_tests COMMAND npc_intent_tests)
