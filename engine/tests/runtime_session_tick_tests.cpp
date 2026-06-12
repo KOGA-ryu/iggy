@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -66,6 +67,26 @@ iggy::npc_ai::NpcAgentTickConfig NpcConfig(float maxDistance = 0.25F)
 iggy::LevelTileRenderChunkCacheConfig ChunkConfig(int chunkWidth = 2, int chunkHeight = 2)
 {
 	return { chunkWidth, chunkHeight, { { WalkableMaterial, BlockedMaterial }, 3 } };
+}
+
+iggy::PlayerAgentState Player(const char *id = "player:one")
+{
+	iggy::PlayerAgentState player;
+	player.id = iggy::ResourceId { id };
+	player.position = { 2.25F, 3.75F };
+	player.spawnTile = { 2, 3 };
+	player.movementStatus = iggy::PlayerMovementStatus::Moving;
+	player.facing = iggy::PlayerFacing2D::West;
+	return player;
+}
+
+void ExpectPlayer(const iggy::PlayerAgentState &actual, const iggy::PlayerAgentState &expected, std::string_view context)
+{
+	Expect(actual.id == expected.id, std::string(context) + " should preserve player id");
+	Expect(NearVec(actual.position, expected.position), std::string(context) + " should preserve player position");
+	Expect(actual.spawnTile == expected.spawnTile, std::string(context) + " should preserve player spawn tile");
+	Expect(actual.movementStatus == expected.movementStatus, std::string(context) + " should preserve player movement status");
+	Expect(actual.facing == expected.facing, std::string(context) + " should preserve player facing");
 }
 
 iggy::runtime::RuntimeSessionTickInput Input(iggy::runtime::RuntimeSessionState session)
@@ -167,6 +188,52 @@ void TestRenderCacheStateIsPreservedWhenPresent()
 	}
 }
 
+void TestPlayerStateIsPreserved()
+{
+	iggy::runtime::RuntimeSessionState session;
+	session.level = StateFromBuild(iggy::LevelRuntimeBuilder {}.build(BlueprintWithNpc()));
+	session.player = Player();
+	session.hasPlayer = true;
+	session.tickIndex = 2;
+	const iggy::PlayerAgentState originalPlayer = session.player;
+
+	const iggy::runtime::RuntimeSessionTickResult result = iggy::runtime::RuntimeSessionTick {}.run(Input(session));
+
+	Expect(result.session.tickIndex == 3, "session tick with player should increment tick index");
+	Expect(result.session.hasPlayer, "session tick should preserve hasPlayer true");
+	ExpectPlayer(result.session.player, originalPlayer, "session tick result");
+	Expect(result.session.level.npcAgents.size() == 1 && !NearVec(result.session.level.npcAgents[0].state.position, session.level.npcAgents[0].state.position), "session tick with player should still update NPC level state");
+}
+
+void TestNoPlayerStateRemainsAbsent()
+{
+	iggy::runtime::RuntimeSessionState session;
+	session.level = State({
+		".",
+	});
+	session.hasPlayer = false;
+
+	const iggy::runtime::RuntimeSessionTickResult result = iggy::runtime::RuntimeSessionTick {}.run(Input(session));
+
+	Expect(!result.session.hasPlayer, "session tick should preserve hasPlayer false");
+	Expect(result.session.player.id.empty(), "session tick should preserve default player when absent");
+	Expect(NearVec(result.session.player.position, { 0.0F, 0.0F }), "session tick should preserve default player position when absent");
+}
+
+void TestInputSessionPlayerIsNotMutated()
+{
+	iggy::runtime::RuntimeSessionState session;
+	session.level = StateFromBuild(iggy::LevelRuntimeBuilder {}.build(BlueprintWithNpc()));
+	session.player = Player();
+	session.hasPlayer = true;
+	const iggy::PlayerAgentState originalPlayer = session.player;
+
+	const iggy::runtime::RuntimeSessionTickResult result = iggy::runtime::RuntimeSessionTick {}.run(Input(session));
+
+	Expect(result.session.hasPlayer, "input player immutability setup should preserve player in result");
+	ExpectPlayer(session.player, originalPlayer, "input session player");
+}
+
 void TestNoRenderCacheRemainsAbsent()
 {
 	iggy::runtime::RuntimeSessionState session;
@@ -203,6 +270,9 @@ int main()
 	TestVisibleNpcMovesAndReportsThroughRuntimeTick();
 	TestInputSessionIsNotMutated();
 	TestRenderCacheStateIsPreservedWhenPresent();
+	TestPlayerStateIsPreserved();
+	TestNoPlayerStateRemainsAbsent();
+	TestInputSessionPlayerIsNotMutated();
 	TestNoRenderCacheRemainsAbsent();
 	TestMapStateIsPreserved();
 

@@ -4,6 +4,19 @@
 
 namespace iggy::runtime {
 
+namespace {
+
+void ApplyPlayerConfig(RuntimeSessionState &state, const RuntimeSessionBuildConfig &config)
+{
+	if (!config.hasPlayer)
+		return;
+
+	state.player = config.player;
+	state.hasPlayer = true;
+}
+
+} // namespace
+
 RuntimeSessionBuildResult RuntimeSessionBuilder::build(LevelRuntimeState level, const RuntimeSessionBuildConfig &config) const
 {
 	RuntimeSessionBuildResult result;
@@ -12,6 +25,7 @@ RuntimeSessionBuildResult RuntimeSessionBuilder::build(LevelRuntimeState level, 
 		result.state.level = std::move(level);
 		result.state.tickIndex = 0;
 		result.state.hasRenderCache = false;
+		ApplyPlayerConfig(result.state, config);
 		return result;
 	}
 
@@ -24,6 +38,7 @@ RuntimeSessionBuildResult RuntimeSessionBuilder::build(LevelRuntimeState level, 
 	result.state.renderCache = result.renderCache.state;
 	result.state.tickIndex = 0;
 	result.state.hasRenderCache = true;
+	ApplyPlayerConfig(result.state, config);
 	return result;
 }
 

@@ -4,6 +4,7 @@
 
 #include "scene/level/LevelRenderCacheState.hpp"
 #include "scene/level/LevelRuntimeState.hpp"
+#include "scene/player/PlayerAgentState.hpp"
 
 namespace iggy::runtime {
 
@@ -12,11 +13,15 @@ struct RuntimeSessionState {
 	LevelRenderCacheState renderCache;
 	std::size_t tickIndex = 0;
 	bool hasRenderCache = false;
+	PlayerAgentState player;
+	bool hasPlayer = false;
 };
 
 struct RuntimeSessionBuildConfig {
 	LevelTileRenderChunkCacheConfig renderCacheConfig;
 	bool buildRenderCache = true;
+	bool hasPlayer = false;
+	PlayerAgentState player;
 };
 
 struct RuntimeSessionBuildResult {

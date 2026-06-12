@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -40,6 +41,34 @@ iggy::runtime::RuntimeSessionBuildConfig Config(bool buildRenderCache = true, in
 	return { ChunkConfig(chunkWidth, chunkHeight), buildRenderCache };
 }
 
+iggy::PlayerAgentState Player(const char *id = "player:one")
+{
+	iggy::PlayerAgentState player;
+	player.id = iggy::ResourceId { id };
+	player.position = { 2.25F, 3.75F };
+	player.spawnTile = { 2, 3 };
+	player.movementStatus = iggy::PlayerMovementStatus::Moving;
+	player.facing = iggy::PlayerFacing2D::East;
+	return player;
+}
+
+iggy::runtime::RuntimeSessionBuildConfig ConfigWithPlayer(bool buildRenderCache = true, iggy::PlayerAgentState player = Player())
+{
+	iggy::runtime::RuntimeSessionBuildConfig config = Config(buildRenderCache);
+	config.hasPlayer = true;
+	config.player = player;
+	return config;
+}
+
+void ExpectPlayer(const iggy::PlayerAgentState &actual, const iggy::PlayerAgentState &expected, std::string_view context)
+{
+	Expect(actual.id == expected.id, std::string(context) + " should preserve player id");
+	Expect(NearVec(actual.position, expected.position), std::string(context) + " should preserve player position");
+	Expect(actual.spawnTile == expected.spawnTile, std::string(context) + " should preserve player spawn tile");
+	Expect(actual.movementStatus == expected.movementStatus, std::string(context) + " should preserve player movement status");
+	Expect(actual.facing == expected.facing, std::string(context) + " should preserve player facing");
+}
+
 void TestBuildWithRenderCacheEnabledSucceeds()
 {
 	const iggy::LevelRuntimeState level = State({
@@ -58,6 +87,7 @@ void TestBuildWithRenderCacheEnabledSucceeds()
 	Expect(result.state.level.map.width == 4 && result.state.level.map.height == 2, "session should preserve level map shape");
 	Expect(result.state.level.npcAgents.size() == 1 && result.state.level.npcAgents[0].id == iggy::ResourceId { "npc:one" }, "session should preserve NPC agents");
 	Expect(result.state.renderCache.tileChunks.chunks.size() == 2, "session should build tile render chunks");
+	Expect(!result.state.hasPlayer, "session build without player should leave hasPlayer false");
 }
 
 void TestBuildWithRenderCacheDisabledSucceeds()
@@ -75,6 +105,7 @@ void TestBuildWithRenderCacheDisabledSucceeds()
 	Expect(result.state.level.map.width == 2 && result.state.level.map.height == 2, "no-cache session should preserve level state");
 	Expect(result.state.renderCache.tileChunks.chunks.empty(), "no-cache session should leave render cache default");
 	Expect(!result.renderCache.built && result.renderCache.tileChunkIssues.empty(), "no-cache session should leave render cache diagnostics default");
+	Expect(!result.state.hasPlayer, "no-cache session without player should leave hasPlayer false");
 }
 
 void TestInvalidRenderCacheConfigFails()
@@ -86,11 +117,71 @@ void TestInvalidRenderCacheConfigFails()
 	const iggy::runtime::RuntimeSessionBuildResult result = iggy::runtime::RuntimeSessionBuilder {}.build(level, Config(true, 0, 2));
 
 	Expect(!result.built, "invalid render cache config should fail session build");
-	Expect(!result.state.hasRenderCache && result.state.tickIndex == 0, "failed session should leave state default");
+	Expect(!result.state.hasRenderCache && result.state.tickIndex == 0 && !result.state.hasPlayer, "failed session should leave state default");
 	Expect(!result.renderCache.built, "failed session should expose failed render cache build");
 	Expect(result.renderCache.tileChunkIssues.size() == 1, "failed session should expose render cache issue");
 	if (result.renderCache.tileChunkIssues.size() == 1)
 		Expect(result.renderCache.tileChunkIssues[0].code == iggy::LevelTileRenderChunkCacheIssueCode::InvalidChunkSize && result.renderCache.tileChunkIssues[0].chunkWidth == 0 && result.renderCache.tileChunkIssues[0].chunkHeight == 2, "failed session should preserve render cache issue dimensions");
+}
+
+void TestBuildWithPlayerAndRenderCacheEnabledCopiesPlayer()
+{
+	const iggy::LevelRuntimeState level = State({
+		"..",
+		"..",
+	});
+	const iggy::PlayerAgentState player = Player();
+
+	const iggy::runtime::RuntimeSessionBuildResult result = iggy::runtime::RuntimeSessionBuilder {}.build(level, ConfigWithPlayer(true, player));
+
+	Expect(result.built, "session build with player and render cache should succeed");
+	Expect(result.state.hasRenderCache, "session with player and render cache should build render cache");
+	Expect(result.state.hasPlayer, "session with player should set hasPlayer");
+	ExpectPlayer(result.state.player, player, "session with render cache");
+}
+
+void TestBuildWithPlayerAndRenderCacheDisabledCopiesPlayer()
+{
+	const iggy::LevelRuntimeState level = State({
+		"..",
+	});
+	const iggy::PlayerAgentState player = Player();
+
+	const iggy::runtime::RuntimeSessionBuildResult result = iggy::runtime::RuntimeSessionBuilder {}.build(level, ConfigWithPlayer(false, player));
+
+	Expect(result.built, "session build with player and no render cache should succeed");
+	Expect(!result.state.hasRenderCache, "session with player and no render cache should leave render cache disabled");
+	Expect(result.state.hasPlayer, "session with player and no render cache should set hasPlayer");
+	ExpectPlayer(result.state.player, player, "session without render cache");
+}
+
+void TestInvalidRenderCacheConfigDoesNotPublishPlayer()
+{
+	const iggy::LevelRuntimeState level = State({
+		"..",
+	});
+	iggy::runtime::RuntimeSessionBuildConfig config = ConfigWithPlayer(true, Player());
+	config.renderCacheConfig.chunkWidth = 0;
+
+	const iggy::runtime::RuntimeSessionBuildResult result = iggy::runtime::RuntimeSessionBuilder {}.build(level, config);
+
+	Expect(!result.built, "invalid render cache config with player should fail");
+	Expect(!result.state.hasPlayer, "failed session should not publish player");
+	Expect(result.state.player.id.empty(), "failed session should leave player default");
+}
+
+void TestDefaultPlayerStateAllowedWhenRequested()
+{
+	const iggy::LevelRuntimeState level = State({
+		".",
+	});
+	const iggy::PlayerAgentState player;
+
+	const iggy::runtime::RuntimeSessionBuildResult result = iggy::runtime::RuntimeSessionBuilder {}.build(level, ConfigWithPlayer(false, player));
+
+	Expect(result.built, "session build with default player should succeed");
+	Expect(result.state.hasPlayer, "session build with default player should set hasPlayer");
+	ExpectPlayer(result.state.player, player, "session with default player");
 }
 
 void TestEmptyMapBuildsEmptyRenderCache()
@@ -141,6 +232,20 @@ void TestInputCopyIsNotMutated()
 	Expect(original.npcAgents.size() == 1 && original.npcAgents[0].id == iggy::ResourceId { "npc:one" }, "original NPC list should remain unchanged");
 }
 
+void TestInputPlayerIsNotMutated()
+{
+	const iggy::LevelRuntimeState level = State({
+		".",
+	});
+	const iggy::PlayerAgentState player = Player();
+	const iggy::PlayerAgentState original = player;
+
+	const iggy::runtime::RuntimeSessionBuildResult result = iggy::runtime::RuntimeSessionBuilder {}.build(level, ConfigWithPlayer(false, player));
+
+	Expect(result.built, "input player immutability setup should build");
+	ExpectPlayer(player, original, "input player");
+}
+
 } // namespace
 
 int main()
@@ -148,9 +253,14 @@ int main()
 	TestBuildWithRenderCacheEnabledSucceeds();
 	TestBuildWithRenderCacheDisabledSucceeds();
 	TestInvalidRenderCacheConfigFails();
+	TestBuildWithPlayerAndRenderCacheEnabledCopiesPlayer();
+	TestBuildWithPlayerAndRenderCacheDisabledCopiesPlayer();
+	TestInvalidRenderCacheConfigDoesNotPublishPlayer();
+	TestDefaultPlayerStateAllowedWhenRequested();
 	TestEmptyMapBuildsEmptyRenderCache();
 	TestNpcAgentsArePreserved();
 	TestInputCopyIsNotMutated();
+	TestInputPlayerIsNotMutated();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;
