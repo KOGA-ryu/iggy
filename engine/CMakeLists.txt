@@ -20,6 +20,7 @@ add_library(iggy_engine
   src/modules/npc_ai/NpcIntentSelector.cpp
   src/modules/npc_ai/NpcMovementPlanner.cpp
   src/modules/npc_ai/NpcNavigationController.cpp
+  src/modules/npc_ai/NpcTickReporter.cpp
   src/scene/level/LevelBlueprint.cpp
   src/scene/level/LevelTileMap.cpp
   src/servers/navigation/NavigationGridPathfinder.cpp
@@ -65,6 +66,9 @@ target_link_libraries(npc_movement_planner_tests PRIVATE iggy_engine)
 add_executable(npc_navigation_controller_tests tests/npc_navigation_controller_tests.cpp)
 target_link_libraries(npc_navigation_controller_tests PRIVATE iggy_engine)
 
+add_executable(npc_tick_report_tests tests/npc_tick_report_tests.cpp)
+target_link_libraries(npc_tick_report_tests PRIVATE iggy_engine)
+
 add_executable(navigation_request_tests tests/navigation_request_tests.cpp)
 target_link_libraries(navigation_request_tests PRIVATE iggy_engine)
 
@@ -88,6 +92,7 @@ add_test(NAME npc_brain_tick_tests COMMAND npc_brain_tick_tests)
 add_test(NAME npc_intent_tests COMMAND npc_intent_tests)
 add_test(NAME npc_movement_planner_tests COMMAND npc_movement_planner_tests)
 add_test(NAME npc_navigation_controller_tests COMMAND npc_navigation_controller_tests)
+add_test(NAME npc_tick_report_tests COMMAND npc_tick_report_tests)
 add_test(NAME navigation_request_tests COMMAND navigation_request_tests)
 add_test(NAME navigation_pathfinder_tests COMMAND navigation_pathfinder_tests)
 add_test(NAME navigation_path_follower_tests COMMAND navigation_path_follower_tests)
