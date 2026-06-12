@@ -25,6 +25,7 @@ add_library(iggy_engine
   src/modules/npc_ai/NpcTickReporter.cpp
   src/runtime/RuntimeTick.cpp
   src/runtime/RuntimeTickRunner.cpp
+  src/scene/camera/CameraClamp.cpp
   src/scene/camera/CameraFollow.cpp
   src/scene/level/LevelBlueprint.cpp
   src/scene/level/LevelNpcUpdateStep.cpp
@@ -49,6 +50,7 @@ endfunction()
 
 iggy_add_test(core_math_tests tests/core_math_tests.cpp)
 iggy_add_test(core_resource_tests tests/core_resource_tests.cpp)
+iggy_add_test(camera_clamp_tests tests/camera_clamp_tests.cpp)
 iggy_add_test(camera_follow_tests tests/camera_follow_tests.cpp)
 iggy_add_test(level_blueprint_tests tests/level_blueprint_tests.cpp)
 iggy_add_test(level_tile_map_tests tests/level_tile_map_tests.cpp)
