@@ -8,9 +8,10 @@ executables should take over one cluster at a time.
 
 `movement_tests` remains the broad regression suite.
 
-`artifact_output_tests` owns the first extracted cluster: artifact output
-settings, output flag state, output steps, output planning, and one-request
-artifact execution.
+`artifact_output_tests` owns the artifact output boundary: output settings,
+output flag state, output steps, output planning, one-request artifact
+execution, artifact output service application, and output finalizer result
+integration.
 
 `artifact_text_tests` owns pure trace and manifest formatter contracts. These
 tests exercise strings produced from runtime reports without touching artifact
@@ -44,6 +45,30 @@ and lifecycle/inventory event deltas attached when a frame completes.
 plus simulation sequencing, bounded frame-loop repetition, and run-executor
 setup gates before finalization.
 
+`run_result_policy_tests` owns the completed-run result policy: final mode
+capture, setup/output failure classification, run failure composition, and exit
+code mapping.
+
+`game_loop_output_tests` owns the app-shell output wiring: configured run trace
+and debug bundle paths flowing through the assembled `GameLoop`, including
+startup-failure output and process failure on requested output write failure.
+
+`game_loop_command_source_tests` owns assembled-loop command source wiring:
+session command sources, startup-before-runtime command ordering, inventory
+command sources, movement command sources, and active-world/player gating.
+
+`game_loop_script_source_tests` owns assembled-loop script source wiring:
+runtime movement script sources, runtime inventory script sources, load-failure
+reporting, and active-world/player gates that preserve queued script paths.
+
+`game_loop_raw_input_tests` owns assembled-loop raw input wiring: raw hotkeys,
+raw pointer movement, world target lookup, pickup interactions, full-inventory
+pickup rejection, and blocked movement input reports through `GameLoop`.
+
+`game_loop_frame_report_tests` owns assembled-loop frame report wiring: source
+results, policy, simulation events, event deltas, and run-summary mirrors for a
+completed frame.
+
 ```text
 focused production boundary
   -> focused test executable
@@ -57,7 +82,7 @@ large shared helper migration.
 
 Good first candidates:
 
-- run finalization, exit-code, and failure-policy reporting
+- runtime frame trace formatting
 
 Avoid splitting by line count alone. A smaller file is useful only when the new
 test target has a clear reason to exist.

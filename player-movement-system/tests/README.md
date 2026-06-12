@@ -3,7 +3,8 @@
 `movement_tests` remains the broad regression executable. Focused clusters can
 move into smaller executables as subsystem boundaries stabilize.
 `artifact_output_tests` covers artifact output settings, result flags, output
-steps, planning, and one-request execution.
+steps, planning, one-request execution, artifact service application, and
+output finalizer integration.
 `artifact_text_tests` covers pure trace and manifest formatter contracts.
 `input_routing_tests` covers the controls-edge slice from pointer input through
 focus/context checks into movement commands, target interaction commands, or
@@ -20,6 +21,18 @@ step orchestration before simulation runs.
 advancement, frame event reporting, and lifecycle/inventory event deltas.
 `frame_lifecycle_tests` covers one-frame execution, bounded frame-loop
 repetition, and run-executor setup gating before finalization.
+`run_result_policy_tests` covers final mode capture, setup/output failure
+classification, run failure composition, and process exit-code mapping.
+`game_loop_output_tests` covers configured run trace and debug bundle paths
+flowing through the fully assembled `GameLoop`.
+`game_loop_command_source_tests` covers session, inventory, and movement command
+sources flowing through the fully assembled `GameLoop`.
+`game_loop_script_source_tests` covers movement and inventory script sources
+flowing through the fully assembled `GameLoop`.
+`game_loop_raw_input_tests` covers raw hotkeys and pointer input flowing through
+the fully assembled `GameLoop`.
+`game_loop_frame_report_tests` covers frame reports produced by the fully
+assembled `GameLoop`.
 
 Good first tests:
 

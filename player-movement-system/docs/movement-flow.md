@@ -1085,6 +1085,14 @@ GameLoopSettings::sources
 That keeps setup scripts, output artifacts, and runtime sources from becoming
 one flat settings bag. Raw input sources are routed by `RuntimeInputSourceRouter`;
 command and script sources are delegated to `RuntimeSourceDrainer`.
+`game_loop_command_source_tests` covers the assembled-loop command-source edge:
+runtime lifecycle commands can create/change sessions, startup scripts run
+before runtime lifecycle commands, inventory commands need an active player,
+and movement commands need an active world before they can reach simulation.
+`game_loop_script_source_tests` covers the assembled-loop script-source edge:
+runtime movement scripts replay against an active world, runtime inventory
+scripts replay against an active player, load failures are reported without
+stopping frames, and queued paths are preserved when no active receiver exists.
 
 `RuntimeInputSettings` groups the active routing context:
 
@@ -1213,6 +1221,10 @@ failures. RuntimeExitCodeMapper maps that run-failure boolean to 0 or 1, and
 RuntimeExitCodePolicy adapts the whole `GameLoopResult` to that mapper.
 Command-level rejections inside a loadable setup script remain command or replay
 results, so they do not automatically make the process fail.
+`run_result_policy_tests` covers this completed-run policy boundary directly,
+without invoking artifact writers or frame execution. That keeps "did the app
+run fail?" separate from "how did this frame execute?" and "how are artifacts
+written?"
 
 Runtime inventory script sources are different from the configured setup script:
 
@@ -1564,6 +1576,9 @@ onto `GameLoopResult`, while `RuntimeArtifactOutputService` owns the app
 artifact write policy. `RuntimeArtifactOutputPlan` owns the ordered request list
 for enabled artifact outputs. Focused lesson:
 [07. Artifact Output Order](movement/07-artifact-output-order.md).
+`artifact_output_tests` covers this output boundary from settings and flag
+updates through service/finalizer integration, without requiring a full
+`GameLoop` run.
 `RuntimeArtifactOutputRequestRunner` owns execution of one planned artifact
 request.
 `RuntimeRunTraceOutputStep` owns the run-trace artifact
@@ -1611,6 +1626,9 @@ GameLoopSettings::output.debugBundlePath
 cannot be written. The loop still does not know how a manifest is formatted or
 how a trace is serialized; it only decides that configured debug artifacts
 should be finalized after the run.
+`game_loop_output_tests` covers this app-shell wiring directly: configured
+trace and bundle paths save after normal runs and startup failures, while
+invalid requested paths surface as failed output and process failure.
 
 Each bounded frame now also produces a report:
 
@@ -1630,6 +1648,9 @@ RuntimeFrameReport
 answers a different question: “what happened during this specific app frame?”
 That is the shape a debug overlay, test harness, or trace logger wants when the
 runtime shell starts coordinating several command and event streams.
+`game_loop_frame_report_tests` covers the assembled-loop report handoff: source
+results, policy, event deltas, simulation events, and summary mirrors all agree
+after a real bounded frame completes.
 
 `RuntimeFrameTrace` exports that structured report into deterministic text:
 
@@ -2006,6 +2027,10 @@ startup script
 
 Blocked raw movement input is still drained, but it does not become a command.
 That keeps stale clicks from firing later after focus changes, while preserving
+the block reason for frame and summary diagnostics. `game_loop_raw_input_tests`
+covers that assembled-loop edge directly: raw keys become lifecycle commands,
+raw clicks become movement or interaction commands, world item targets can feed
+pickup behavior, and blocked pointer input drains without mutating movement.
 the rule that the simulation only receives commands that passed focus and action
 gates.
 

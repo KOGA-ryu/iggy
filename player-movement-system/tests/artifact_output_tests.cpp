@@ -8,9 +8,11 @@
 
 #include "app/RuntimeArtifactOutputPlan.hpp"
 #include "app/RuntimeArtifactOutputRequestRunner.hpp"
+#include "app/RuntimeArtifactOutputService.hpp"
 #include "app/RuntimeDebugBundleOutputStep.hpp"
 #include "app/RuntimeFrameTraceFileStore.hpp"
 #include "app/RuntimeLoopTypes.hpp"
+#include "app/RuntimeOutputFinalizer.hpp"
 #include "app/RuntimeOutputFailurePolicy.hpp"
 #include "app/RuntimeOutputResultBuilder.hpp"
 #include "app/RuntimeRunTraceOutputStep.hpp"
@@ -204,6 +206,136 @@ void TestRuntimeArtifactOutputRequestRunnerRunsTraceAndBundleRequests()
 	std::filesystem::remove_all(root);
 }
 
+void TestRuntimeOutputFinalizerLeavesDisabledOutputsUntouched()
+{
+	dev::GameLoopResult result;
+	dev::RuntimeOutputFinalizer {}.finalize(dev::RuntimeOutputSettings {}, result);
+
+	Expect(!result.output.runTraceSaveAttempted, "runtime output finalizer should not attempt trace without trace path");
+	Expect(!result.output.debugBundleSaveAttempted, "runtime output finalizer should not attempt bundle without bundle path");
+	Expect(!dev::RuntimeOutputFailurePolicy {}.failed(result.output), "runtime output finalizer should not fail when nothing was requested");
+}
+
+void TestRuntimeArtifactOutputServiceLeavesDisabledOutputsUntouched()
+{
+	dev::GameLoopResult result;
+	result.output.runTraceSaved = true;
+
+	dev::RuntimeOutputResult output = dev::RuntimeArtifactOutputService {}.apply(dev::RuntimeOutputSettings {}, result);
+
+	Expect(!output.runTraceSaveAttempted, "runtime artifact output service should not attempt trace without trace path");
+	Expect(output.runTraceSaved, "runtime artifact output service should preserve existing output flags when disabled");
+	Expect(!output.debugBundleSaveAttempted, "runtime artifact output service should not attempt bundle without bundle path");
+	Expect(!dev::RuntimeOutputFailurePolicy {}.failed(output), "runtime artifact output service should not fail when nothing was requested");
+}
+
+void TestRuntimeArtifactOutputServiceAppliesTraceAndBundleSettings()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_artifact_output_service_test";
+	const std::filesystem::path tracePath = root / "run.trace";
+	const std::filesystem::path bundlePath = root / "bundle";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::GameLoopResult result;
+	result.summary.framesRun = 1;
+	result.finalMode = dev::GameSessionMode::Gameplay;
+
+	dev::RuntimeOutputResult output = dev::RuntimeArtifactOutputService {}.apply(
+	    dev::RuntimeOutputSettings {
+	        .runTracePath = tracePath,
+	        .debugBundlePath = bundlePath,
+	    },
+	    result);
+	std::optional<std::vector<std::string>> trace = dev::RuntimeFrameTraceFileStore {}.load(tracePath);
+	std::optional<std::vector<std::string>> bundleManifest = dev::RuntimeFrameTraceFileStore {}.load(bundlePath / "manifest.txt");
+	std::optional<std::vector<std::string>> bundleTrace = dev::RuntimeFrameTraceFileStore {}.load(bundlePath / "run.trace");
+
+	Expect(output.runTraceSaveAttempted, "runtime artifact output service should attempt configured trace save");
+	Expect(output.runTraceSaved, "runtime artifact output service should report saved trace");
+	Expect(output.debugBundleSaveAttempted, "runtime artifact output service should attempt configured bundle save");
+	Expect(output.debugBundleSaved, "runtime artifact output service should report saved bundle");
+	Expect(trace.has_value() && !trace->empty(), "runtime artifact output service should save standalone trace");
+	Expect(bundleManifest.has_value() && ContainsLineFragment(*bundleManifest, "trace=run.trace saved=true"), "runtime artifact output service should save bundle manifest");
+	Expect(bundleTrace.has_value() && !bundleTrace->empty(), "runtime artifact output service should save bundle trace");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeArtifactOutputServiceReportsRequestedOutputFailure()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_artifact_output_service_failure_test";
+	const std::filesystem::path tracePath = root / "missing-parent" / "run.trace";
+	std::filesystem::remove_all(root);
+
+	dev::RuntimeOutputResult output = dev::RuntimeArtifactOutputService {}.apply(
+	    dev::RuntimeOutputSettings {
+	        .runTracePath = tracePath,
+	    },
+	    dev::GameLoopResult {});
+
+	Expect(output.runTraceSaveAttempted, "runtime artifact output service should attempt requested trace even when path is invalid");
+	Expect(!output.runTraceSaved, "runtime artifact output service should report failed trace save");
+	Expect(dev::RuntimeOutputFailurePolicy {}.failed(output), "runtime artifact output service should expose requested output failure");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeOutputFinalizerSavesTraceAndBundle()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_output_finalizer_test";
+	const std::filesystem::path tracePath = root / "run.trace";
+	const std::filesystem::path bundlePath = root / "bundle";
+	std::filesystem::remove_all(root);
+	std::filesystem::create_directories(root);
+
+	dev::GameLoopResult result;
+	result.summary.framesRun = 1;
+	result.finalMode = dev::GameSessionMode::Gameplay;
+
+	dev::RuntimeOutputFinalizer {}.finalize(
+	    dev::RuntimeOutputSettings {
+	        .runTracePath = tracePath,
+	        .debugBundlePath = bundlePath,
+	    },
+	    result);
+
+	std::optional<std::vector<std::string>> trace = dev::RuntimeFrameTraceFileStore {}.load(tracePath);
+	std::optional<std::vector<std::string>> bundleManifest = dev::RuntimeFrameTraceFileStore {}.load(bundlePath / "manifest.txt");
+	std::optional<std::vector<std::string>> bundleTrace = dev::RuntimeFrameTraceFileStore {}.load(bundlePath / "run.trace");
+
+	Expect(result.output.runTraceSaveAttempted, "runtime output finalizer should attempt configured trace save");
+	Expect(result.output.runTraceSaved, "runtime output finalizer should report saved trace");
+	Expect(result.output.debugBundleSaveAttempted, "runtime output finalizer should attempt configured bundle save");
+	Expect(result.output.debugBundleSaved, "runtime output finalizer should report saved bundle");
+	Expect(!dev::RuntimeOutputFailurePolicy {}.failed(result.output), "runtime output finalizer should report no failure after saving requested outputs");
+	Expect(trace.has_value() && !trace->empty() && (*trace)[0] == "run frames=1 frameReports=0 rawInput=0 movementInputBlocks=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime output finalizer should save standalone trace");
+	Expect(bundleManifest.has_value() && ContainsLineFragment(*bundleManifest, "trace=run.trace saved=true"), "runtime output finalizer should save bundle manifest");
+	Expect(bundleTrace.has_value() && !bundleTrace->empty() && (*bundleTrace)[0] == "run frames=1 frameReports=0 rawInput=0 movementInputBlocks=0 sessionResults=0 inventoryScripts=0 inventoryResults=0 movementScripts=0 movementQueued=0", "runtime output finalizer should save bundle trace");
+
+	std::filesystem::remove_all(root);
+}
+
+void TestRuntimeOutputFinalizerReportsRequestedOutputFailure()
+{
+	const std::filesystem::path root = std::filesystem::temp_directory_path() / "iggy_runtime_output_finalizer_failure_test";
+	const std::filesystem::path tracePath = root / "missing-parent" / "run.trace";
+	std::filesystem::remove_all(root);
+
+	dev::GameLoopResult result;
+	dev::RuntimeOutputFinalizer {}.finalize(
+	    dev::RuntimeOutputSettings {
+	        .runTracePath = tracePath,
+	    },
+	    result);
+
+	Expect(result.output.runTraceSaveAttempted, "runtime output finalizer should attempt requested trace even when path is invalid");
+	Expect(!result.output.runTraceSaved, "runtime output finalizer should report failed trace save");
+	Expect(dev::RuntimeOutputFailurePolicy {}.failed(result.output), "runtime output finalizer should report requested output failure");
+
+	std::filesystem::remove_all(root);
+}
+
 } // namespace
 
 int main()
@@ -215,5 +347,11 @@ int main()
 	TestRuntimeDebugBundleOutputStepSavesBundleAndUpdatesOutput();
 	TestRuntimeArtifactOutputPlanBuildsOrderedRequests();
 	TestRuntimeArtifactOutputRequestRunnerRunsTraceAndBundleRequests();
+	TestRuntimeOutputFinalizerLeavesDisabledOutputsUntouched();
+	TestRuntimeArtifactOutputServiceLeavesDisabledOutputsUntouched();
+	TestRuntimeArtifactOutputServiceAppliesTraceAndBundleSettings();
+	TestRuntimeArtifactOutputServiceReportsRequestedOutputFailure();
+	TestRuntimeOutputFinalizerSavesTraceAndBundle();
+	TestRuntimeOutputFinalizerReportsRequestedOutputFailure();
 	return Failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

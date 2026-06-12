@@ -292,6 +292,24 @@ target_link_libraries(frame_simulation_tests PRIVATE player_movement_system)
 add_executable(frame_lifecycle_tests tests/frame_lifecycle_tests.cpp)
 target_link_libraries(frame_lifecycle_tests PRIVATE player_movement_system)
 
+add_executable(run_result_policy_tests tests/run_result_policy_tests.cpp)
+target_link_libraries(run_result_policy_tests PRIVATE player_movement_system)
+
+add_executable(game_loop_output_tests tests/game_loop_output_tests.cpp)
+target_link_libraries(game_loop_output_tests PRIVATE player_movement_system)
+
+add_executable(game_loop_command_source_tests tests/game_loop_command_source_tests.cpp)
+target_link_libraries(game_loop_command_source_tests PRIVATE player_movement_system)
+
+add_executable(game_loop_script_source_tests tests/game_loop_script_source_tests.cpp)
+target_link_libraries(game_loop_script_source_tests PRIVATE player_movement_system)
+
+add_executable(game_loop_raw_input_tests tests/game_loop_raw_input_tests.cpp)
+target_link_libraries(game_loop_raw_input_tests PRIVATE player_movement_system)
+
+add_executable(game_loop_frame_report_tests tests/game_loop_frame_report_tests.cpp)
+target_link_libraries(game_loop_frame_report_tests PRIVATE player_movement_system)
+
 add_test(NAME movement_tests COMMAND movement_tests)
 add_test(NAME artifact_output_tests COMMAND artifact_output_tests)
 add_test(NAME artifact_text_tests COMMAND artifact_text_tests)
@@ -302,3 +320,9 @@ add_test(NAME source_drain_tests COMMAND source_drain_tests)
 add_test(NAME frame_source_tests COMMAND frame_source_tests)
 add_test(NAME frame_simulation_tests COMMAND frame_simulation_tests)
 add_test(NAME frame_lifecycle_tests COMMAND frame_lifecycle_tests)
+add_test(NAME run_result_policy_tests COMMAND run_result_policy_tests)
+add_test(NAME game_loop_output_tests COMMAND game_loop_output_tests)
+add_test(NAME game_loop_command_source_tests COMMAND game_loop_command_source_tests)
+add_test(NAME game_loop_script_source_tests COMMAND game_loop_script_source_tests)
+add_test(NAME game_loop_raw_input_tests COMMAND game_loop_raw_input_tests)
+add_test(NAME game_loop_frame_report_tests COMMAND game_loop_frame_report_tests)
