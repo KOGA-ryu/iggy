@@ -8,6 +8,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeSaveFileEnvelope.cpp
   src/runtime/RuntimeSaveFileIO.cpp
   src/runtime/RuntimeSaveSlotPathPolicy.cpp
+  src/runtime/RuntimeSaveSlotStore.cpp
   src/runtime/RuntimeLevelMutationStep.cpp
   src/runtime/RuntimeCollisionWorldProvider.cpp
   src/runtime/RuntimePlayerCommandExecutionStep.cpp
