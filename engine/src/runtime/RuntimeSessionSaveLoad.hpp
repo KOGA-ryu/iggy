@@ -5,6 +5,7 @@
 #include "runtime/RuntimeSaveChunkArchiveCodec.hpp"
 #include "runtime/RuntimeSaveFileEnvelope.hpp"
 #include "runtime/RuntimeSaveFileIO.hpp"
+#include "runtime/RuntimeSaveMetadata.hpp"
 #include "runtime/RuntimeSessionSnapshot.hpp"
 #include "runtime/RuntimeSessionSnapshotChunkCodec.hpp"
 #include "runtime/RuntimeSessionSnapshotValidator.hpp"
@@ -13,6 +14,7 @@ namespace iggy::runtime {
 
 enum class RuntimeSessionSaveStatus {
 	Saved,
+	MetadataInvalid,
 	SnapshotInvalid,
 	ArchiveEncodeFailed,
 	EnvelopeEncodeFailed,
@@ -24,6 +26,7 @@ enum class RuntimeSessionLoadStatus {
 	FileReadFailed,
 	EnvelopeDecodeFailed,
 	ArchiveDecodeFailed,
+	MetadataDecodeFailed,
 	SnapshotDecodeFailed,
 	SnapshotInvalid,
 	RestoreFailed,
@@ -37,6 +40,9 @@ struct RuntimeSessionSaveResult {
 	RuntimeSaveChunkArchiveEncodeResult archiveEncode;
 	RuntimeSaveFileEnvelopeEncodeResult envelopeEncode;
 	RuntimeSaveFileWriteResult fileWrite;
+	bool hasMetadata = false;
+	RuntimeSaveMetadata metadata;
+	RuntimeSaveMetadataValidationResult metadataValidation;
 };
 
 struct RuntimeSessionLoadResult {
@@ -48,6 +54,9 @@ struct RuntimeSessionLoadResult {
 	RuntimeSessionSnapshotDecodeResult snapshotDecode;
 	RuntimeSessionSnapshotValidationResult validation;
 	RuntimeSessionSnapshotRestoreResult restore;
+	bool hasMetadata = false;
+	RuntimeSaveMetadata metadata;
+	RuntimeSaveMetadataDecodeResult metadataDecode;
 };
 
 class RuntimeSessionSaver {
@@ -55,6 +64,11 @@ public:
 	[[nodiscard]] RuntimeSessionSaveResult save(
 		const RuntimeSessionState &session,
 		const std::filesystem::path &path) const;
+
+	[[nodiscard]] RuntimeSessionSaveResult save(
+		const RuntimeSessionState &session,
+		const std::filesystem::path &path,
+		const RuntimeSaveMetadata &metadata) const;
 };
 
 class RuntimeSessionLoader {

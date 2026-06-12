@@ -1,5 +1,7 @@
 #include "runtime/RuntimeSessionSaveLoad.hpp"
 
+#include <vector>
+
 namespace iggy::runtime {
 namespace {
 
@@ -12,13 +14,22 @@ namespace {
 	return false;
 }
 
-} // namespace
-
-RuntimeSessionSaveResult RuntimeSessionSaver::save(
+[[nodiscard]] RuntimeSessionSaveResult saveArchive(
 	const RuntimeSessionState &session,
-	const std::filesystem::path &path) const
+	const std::filesystem::path &path,
+	const RuntimeSaveMetadata *metadata)
 {
 	RuntimeSessionSaveResult result;
+	if (metadata != nullptr) {
+		result.hasMetadata = true;
+		result.metadata = *metadata;
+		result.metadataValidation = RuntimeSaveMetadataValidator {}.validate(*metadata);
+		if (!result.metadataValidation.valid) {
+			result.status = RuntimeSessionSaveStatus::MetadataInvalid;
+			return result;
+		}
+	}
+
 	result.snapshot = RuntimeSessionSnapshotBuilder {}.capture(session);
 	result.validation = RuntimeSessionSnapshotValidator {}.validate(result.snapshot);
 	if (!result.validation.valid) {
@@ -27,6 +38,9 @@ RuntimeSessionSaveResult RuntimeSessionSaver::save(
 	}
 
 	result.archive = RuntimeSessionSnapshotChunkEncoder {}.encode(result.snapshot);
+	if (metadata != nullptr)
+		result.archive.chunks.push_back(RuntimeSaveMetadataChunkEncoder {}.encode(*metadata));
+
 	result.archiveEncode = RuntimeSaveChunkArchiveEncoder {}.encode(result.archive);
 	if (!result.archiveEncode.encoded) {
 		result.status = RuntimeSessionSaveStatus::ArchiveEncodeFailed;
@@ -49,6 +63,43 @@ RuntimeSessionSaveResult RuntimeSessionSaver::save(
 	return result;
 }
 
+[[nodiscard]] bool decodeMetadata(RuntimeSessionLoadResult &result)
+{
+	const std::vector<std::size_t> metadataIndexes = findChunkIndexes(result.archiveDecode.archive, runtimeSaveMetadataChunkId());
+	if (metadataIndexes.empty())
+		return true;
+
+	if (metadataIndexes.size() > 1) {
+		result.metadataDecode.issues.push_back({ RuntimeSaveMetadataChunkIssueCode::MalformedPayload });
+		return false;
+	}
+
+	result.metadataDecode = RuntimeSaveMetadataChunkDecoder {}.decode(result.archiveDecode.archive.chunks[metadataIndexes.front()]);
+	if (!result.metadataDecode.decoded)
+		return false;
+
+	result.hasMetadata = true;
+	result.metadata = result.metadataDecode.metadata;
+	return true;
+}
+
+} // namespace
+
+RuntimeSessionSaveResult RuntimeSessionSaver::save(
+	const RuntimeSessionState &session,
+	const std::filesystem::path &path) const
+{
+	return saveArchive(session, path, nullptr);
+}
+
+RuntimeSessionSaveResult RuntimeSessionSaver::save(
+	const RuntimeSessionState &session,
+	const std::filesystem::path &path,
+	const RuntimeSaveMetadata &metadata) const
+{
+	return saveArchive(session, path, &metadata);
+}
+
 RuntimeSessionLoadResult RuntimeSessionLoader::load(
 	const std::filesystem::path &path,
 	const RuntimeSessionSnapshotRestoreConfig &restoreConfig) const
@@ -69,6 +120,11 @@ RuntimeSessionLoadResult RuntimeSessionLoader::load(
 	result.archiveDecode = RuntimeSaveChunkArchiveDecoder {}.decode(result.envelopeDecode.envelope.payload);
 	if (!result.archiveDecode.decoded) {
 		result.status = RuntimeSessionLoadStatus::ArchiveDecodeFailed;
+		return result;
+	}
+
+	if (!decodeMetadata(result)) {
+		result.status = RuntimeSessionLoadStatus::MetadataDecodeFailed;
 		return result;
 	}
 

@@ -229,6 +229,13 @@ iggy::runtime::RuntimeSaveChunkArchive ArchiveForSnapshot(const iggy::runtime::R
 	return iggy::runtime::RuntimeSessionSnapshotChunkEncoder {}.encode(snapshot);
 }
 
+void WriteArchive(const std::filesystem::path &path, const iggy::runtime::RuntimeSaveChunkArchive &archive)
+{
+	const iggy::runtime::RuntimeSaveChunkArchiveEncodeResult archiveBytes = iggy::runtime::RuntimeSaveChunkArchiveEncoder {}.encode(archive);
+	Expect(archiveBytes.encoded, "save/load fixture should encode archive");
+	WriteArchivePayload(path, archiveBytes.bytes);
+}
+
 void TestSaveThenLoadWithoutCacheRebuildRestoresAuthoritativeState()
 {
 	ResetTempRoot();
@@ -240,9 +247,38 @@ void TestSaveThenLoadWithoutCacheRebuildRestoresAuthoritativeState()
 	const iggy::runtime::RuntimeSessionLoadResult load = iggy::runtime::RuntimeSessionLoader {}.load(path, RestoreConfig(BuildConfigNoCaches()));
 
 	Expect(save.status == iggy::runtime::RuntimeSessionSaveStatus::Saved, "save without cache rebuild setup should save");
+	Expect(iggy::runtime::findChunkIndexes(save.archive, iggy::runtime::runtimeSaveMetadataChunkId()).empty(), "save without metadata should not emit META chunk");
 	Expect(load.status == iggy::runtime::RuntimeSessionLoadStatus::Loaded, "load without cache rebuild should succeed");
+	Expect(!load.hasMetadata, "load without metadata should report metadata absent");
 	ExpectAuthoritativeSessionSame(load.session, session, "load without cache rebuild should restore authoritative state");
 	ExpectNoCaches(load.session, "load without cache rebuild should leave caches absent");
+}
+
+void TestSaveAndLoadWithMetadata()
+{
+	ResetTempRoot();
+	const std::filesystem::path path = TempPath("metadata.iggy");
+	const iggy::LevelRuntimeState level = Level({ ".#", ".." });
+	const iggy::runtime::RuntimeSessionState session = Session(level, BuildCaches(level));
+	const iggy::runtime::RuntimeSaveMetadata metadata { "Manual Save", 123 };
+
+	const iggy::runtime::RuntimeSessionSaveResult save = iggy::runtime::RuntimeSessionSaver {}.save(session, path, metadata);
+	const iggy::runtime::RuntimeSessionLoadResult load = iggy::runtime::RuntimeSessionLoader {}.load(path, RestoreConfig(BuildConfigNoCaches()));
+
+	Expect(save.status == iggy::runtime::RuntimeSessionSaveStatus::Saved, "metadata save should succeed");
+	Expect(save.hasMetadata, "metadata save result should report metadata present");
+	Expect(save.metadata.displayName == metadata.displayName, "metadata save result should preserve display name");
+	Expect(save.metadata.createdTick == metadata.createdTick, "metadata save result should preserve created tick");
+	Expect(save.metadataValidation.valid, "metadata save should preserve valid metadata validation");
+	Expect(iggy::runtime::findChunkIndexes(save.archive, iggy::runtime::runtimeSaveMetadataChunkId()).size() == 1, "metadata save should emit one META chunk");
+	Expect(!save.archive.chunks.empty() && save.archive.chunks.back().id == iggy::runtime::runtimeSaveMetadataChunkId(), "metadata save should append META after snapshot chunks");
+	Expect(load.status == iggy::runtime::RuntimeSessionLoadStatus::Loaded, "metadata load should succeed");
+	Expect(load.hasMetadata, "metadata load should report metadata present");
+	Expect(load.metadata.displayName == metadata.displayName, "metadata load should round-trip display name");
+	Expect(load.metadata.createdTick == metadata.createdTick, "metadata load should round-trip created tick");
+	Expect(load.metadataDecode.decoded, "metadata load should preserve metadata decode result");
+	ExpectAuthoritativeSessionSame(load.session, session, "metadata should not change restored authoritative session");
+	ExpectNoCaches(load.session, "metadata load without cache rebuild should still leave caches absent");
 }
 
 void TestSaveThenLoadWithDerivedCacheRebuild()
@@ -259,6 +295,25 @@ void TestSaveThenLoadWithDerivedCacheRebuild()
 	Expect(load.status == iggy::runtime::RuntimeSessionLoadStatus::Loaded, "load with derived cache rebuild should succeed");
 	ExpectAuthoritativeSessionSame(load.session, session, "load with derived cache rebuild should restore authoritative state");
 	ExpectDerivedCaches(load.session, "load with derived cache rebuild should rebuild caches");
+}
+
+void TestMetadataDoesNotAffectCacheRebuild()
+{
+	ResetTempRoot();
+	const std::filesystem::path path = TempPath("metadata_caches.iggy");
+	const iggy::LevelRuntimeState level = Level({ ".#", ".." });
+	const iggy::runtime::RuntimeSessionState session = Session(level, {});
+	const iggy::runtime::RuntimeSaveMetadata metadata { "Cache Rebuild", 7 };
+
+	const iggy::runtime::RuntimeSessionSaveResult save = iggy::runtime::RuntimeSessionSaver {}.save(session, path, metadata);
+	const iggy::runtime::RuntimeSessionLoadResult load = iggy::runtime::RuntimeSessionLoader {}.load(path, RestoreConfig(BuildConfigDerived(true, true)));
+
+	Expect(save.status == iggy::runtime::RuntimeSessionSaveStatus::Saved, "metadata cache rebuild setup should save");
+	Expect(load.status == iggy::runtime::RuntimeSessionLoadStatus::Loaded, "metadata load with cache rebuild should succeed");
+	Expect(load.hasMetadata, "metadata load with cache rebuild should preserve metadata");
+	Expect(load.metadata.displayName == metadata.displayName, "metadata load with cache rebuild should preserve metadata value");
+	ExpectAuthoritativeSessionSame(load.session, session, "metadata should not affect authoritative restore with cache rebuild");
+	ExpectDerivedCaches(load.session, "metadata should not prevent cache rebuild");
 }
 
 void TestSaveExcludesDerivedCaches()
@@ -299,6 +354,25 @@ void TestSaveInvalidSnapshotDoesNotReplaceFile()
 	Expect(!save.validation.valid, "invalid snapshot save should preserve validation diagnostics");
 	Expect(read.status == iggy::runtime::RuntimeSaveFileIOStatus::Ok, "invalid snapshot setup should still read sentinel file");
 	Expect(read.bytes == sentinel, "invalid snapshot save should not replace existing file");
+}
+
+void TestSaveInvalidMetadataDoesNotReplaceFile()
+{
+	ResetTempRoot();
+	const std::filesystem::path path = TempPath("invalid_metadata.iggy");
+	const std::vector<std::uint8_t> sentinel { 8, 8, 8 };
+	WriteBytes(path, sentinel);
+	const iggy::runtime::RuntimeSessionState session = Session(Level({ "..", ".." }), {});
+	const iggy::runtime::RuntimeSaveMetadata metadata { "", 1 };
+
+	const iggy::runtime::RuntimeSessionSaveResult save = iggy::runtime::RuntimeSessionSaver {}.save(session, path, metadata);
+	const iggy::runtime::RuntimeSaveFileReadResult read = iggy::runtime::RuntimeSaveFileReader {}.readBytes(path);
+
+	Expect(save.status == iggy::runtime::RuntimeSessionSaveStatus::MetadataInvalid, "invalid metadata save should fail before writing");
+	Expect(save.hasMetadata, "invalid metadata save should preserve metadata presence");
+	Expect(!save.metadataValidation.valid, "invalid metadata save should preserve validation diagnostics");
+	Expect(read.status == iggy::runtime::RuntimeSaveFileIOStatus::Ok, "invalid metadata setup should still read sentinel file");
+	Expect(read.bytes == sentinel, "invalid metadata save should not replace existing file");
 }
 
 void TestFileWriteFailure()
@@ -369,6 +443,37 @@ void TestLoadMalformedSnapshotChunk()
 	Expect(!load.snapshotDecode.issues.empty(), "malformed snapshot load should preserve snapshot decode diagnostics");
 }
 
+void TestLoadMalformedMetadataChunk()
+{
+	ResetTempRoot();
+	const std::filesystem::path path = TempPath("malformed_metadata.iggy");
+	iggy::runtime::RuntimeSaveChunkArchive archive = ArchiveForSnapshot(Session(Level({ ".#", ".." }), {}));
+	archive.chunks.push_back({ iggy::runtime::runtimeSaveMetadataChunkId(), iggy::runtime::RuntimeSaveMetadataChunkVersion, { 0x04, 0x00, 0x00, 0x00, 'B', 'a' } });
+	WriteArchive(path, archive);
+
+	const iggy::runtime::RuntimeSessionLoadResult load = iggy::runtime::RuntimeSessionLoader {}.load(path, RestoreConfig(BuildConfigNoCaches()));
+
+	Expect(load.status == iggy::runtime::RuntimeSessionLoadStatus::MetadataDecodeFailed, "loading malformed metadata should fail at metadata decode");
+	Expect(!load.metadataDecode.decoded, "malformed metadata load should preserve failed decode result");
+	Expect(!load.metadataDecode.issues.empty(), "malformed metadata load should preserve metadata diagnostics");
+}
+
+void TestLoadDuplicateMetadataChunks()
+{
+	ResetTempRoot();
+	const std::filesystem::path path = TempPath("duplicate_metadata.iggy");
+	iggy::runtime::RuntimeSaveChunkArchive archive = ArchiveForSnapshot(Session(Level({ ".#", ".." }), {}));
+	archive.chunks.push_back(iggy::runtime::RuntimeSaveMetadataChunkEncoder {}.encode({ "One", 1 }));
+	archive.chunks.push_back(iggy::runtime::RuntimeSaveMetadataChunkEncoder {}.encode({ "Two", 2 }));
+	WriteArchive(path, archive);
+
+	const iggy::runtime::RuntimeSessionLoadResult load = iggy::runtime::RuntimeSessionLoader {}.load(path, RestoreConfig(BuildConfigNoCaches()));
+
+	Expect(load.status == iggy::runtime::RuntimeSessionLoadStatus::MetadataDecodeFailed, "loading duplicate metadata should fail at metadata decode");
+	Expect(!load.metadataDecode.decoded, "duplicate metadata load should not publish metadata decode");
+	Expect(!load.metadataDecode.issues.empty(), "duplicate metadata load should preserve metadata diagnostics");
+}
+
 void TestRestoreFailure()
 {
 	ResetTempRoot();
@@ -412,14 +517,19 @@ void TestSaverAndLoaderDoNotMutateInputs()
 int main()
 {
 	TestSaveThenLoadWithoutCacheRebuildRestoresAuthoritativeState();
+	TestSaveAndLoadWithMetadata();
 	TestSaveThenLoadWithDerivedCacheRebuild();
+	TestMetadataDoesNotAffectCacheRebuild();
 	TestSaveExcludesDerivedCaches();
 	TestSaveInvalidSnapshotDoesNotReplaceFile();
+	TestSaveInvalidMetadataDoesNotReplaceFile();
 	TestFileWriteFailure();
 	TestLoadMissingFile();
 	TestLoadCorruptEnvelope();
 	TestLoadInvalidArchiveBytes();
 	TestLoadMalformedSnapshotChunk();
+	TestLoadMalformedMetadataChunk();
+	TestLoadDuplicateMetadataChunks();
 	TestRestoreFailure();
 	TestSaverAndLoaderDoNotMutateInputs();
 
