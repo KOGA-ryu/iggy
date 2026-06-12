@@ -65,6 +65,7 @@ add_library(iggy_engine
   src/servers/navigation/NavigationGridPathfinder.cpp
   src/servers/navigation/NavigationGridValidator.cpp
   src/servers/navigation/NavigationPathFollower.cpp
+  src/servers/physics2d/CollisionShape2D.cpp
   src/servers/physics2d/ShapeQuery2D.cpp
   src/servers/render/MaterialResource.cpp
   src/servers/render/RenderCommand2D.cpp
@@ -122,6 +123,7 @@ iggy_add_test(npc_tick_report_tests tests/npc_tick_report_tests.cpp)
 iggy_add_test(navigation_request_tests tests/navigation_request_tests.cpp)
 iggy_add_test(navigation_pathfinder_tests tests/navigation_pathfinder_tests.cpp)
 iggy_add_test(navigation_path_follower_tests tests/navigation_path_follower_tests.cpp)
+iggy_add_test(collision_shape_2d_tests tests/collision_shape_2d_tests.cpp)
 iggy_add_test(physics2d_tests tests/physics2d_tests.cpp)
 iggy_add_test(material_resource_tests tests/material_resource_tests.cpp)
 iggy_add_test(render_command_2d_tests tests/render_command_2d_tests.cpp)
