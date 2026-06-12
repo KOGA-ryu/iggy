@@ -81,6 +81,10 @@ sections, and full `RuntimeDebugManifest` summaries without writing files.
 file-store save/load behavior, full run trace formatting through
 `RuntimeTraceService`, and exact persisted run trace contents.
 
+`runtime_debug_artifact_tests` owns debug artifact bundle writing: stable bundle
+paths, bundle result flags, root preparation, trace/manifest write steps,
+writer failure reporting, and end-to-end debug bundle save behavior.
+
 ```text
 focused production boundary
   -> focused test executable
@@ -94,7 +98,7 @@ large shared helper migration.
 
 Good first candidates:
 
-- runtime debug artifact bundle writing
+- runtime setup and run recording lifecycle
 
 Avoid splitting by line count alone. A smaller file is useful only when the new
 test target has a clear reason to exist.

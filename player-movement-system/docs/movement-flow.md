@@ -1773,6 +1773,9 @@ preparation, and trace/manifest write flags. `RuntimeDebugArtifactRootPreparer`
 owns bundle directory preparation. The writer owns trace/manifest write attempts
 and reports their save flags. The manifest formatter owns readable manifest
 lines.
+`runtime_debug_artifact_tests` owns this artifact-writing boundary, so lower
+trace and manifest tests can focus on line content while bundle tests focus on
+paths, write results, and saved files.
 `RuntimeDebugTraceWriteStep` owns the bundle trace-file write through the trace
 service.
 `RuntimeDebugManifestContextBuilder` maps the writer's artifact paths and trace

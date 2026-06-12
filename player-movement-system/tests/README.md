@@ -40,6 +40,8 @@ ordering, movement input block summaries, and result/event text helpers.
 manifest summaries without exercising artifact writers or filesystem stores.
 `runtime_trace_persistence_tests` covers trace file-store behavior and
 `RuntimeTraceService` full-run trace save/load contracts.
+`runtime_debug_artifact_tests` covers debug bundle layout, root preparation,
+writer steps, result flags, and saved manifest/trace artifacts.
 
 Good first tests:
 
