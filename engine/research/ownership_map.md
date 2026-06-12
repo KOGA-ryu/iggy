@@ -78,6 +78,7 @@ Current derived cache anchors:
 
 Current conversion anchors:
 - `LevelCollisionWorldBuilder`
+- `LevelMutationCacheUpdateStep`
 - `LevelRenderFrame2D`
 - tile render chunk builders/updaters
 
@@ -147,6 +148,11 @@ Current anchors:
 - `RuntimePlayerCommandStep`
 - `RuntimeSessionCommandTick`
 - `RuntimeSessionCommandTickRunner`
+- `RuntimeLevelMutationStep`
+- `RuntimeSessionMutationCommandStep`
+- `RuntimeSessionMutationCommandRunner`
+- `RuntimeSessionSnapshotBuilder`
+- `RuntimeSessionSnapshotRestorer`
 - `RuntimeCollisionWorldProvider`
 
 Runtime may carry:
@@ -159,7 +165,7 @@ Runtime does not own:
 - cache rebuild policy
 - raw device input
 - backend renderer/window/GPU
-- save disk IO
+- save disk IO or file format
 - physics internals
 
 ## Current Precedence Rules
@@ -185,9 +191,34 @@ Derived cache update ownership:
 
 ```text
 LevelTileMutation result changedTiles
-  -> LevelDerivedCacheUpdater
-  -> caller replaces carried derived cache state
+  -> LevelMutationCacheUpdateStep
+       -> LevelDerivedCacheUpdater
+  -> caller replaces carried level + derived cache state
 ```
 
-Runtime should not infer tile changes or rebuild caches inside existing tick steps.
+Runtime mutation orchestration:
 
+```text
+RuntimeLevelMutationStep
+  -> LevelMutationCacheUpdateStep
+  -> updates RuntimeSessionState.level + RuntimeSessionState.derivedCaches
+  -> mirrors legacy renderCache / hasRenderCache
+```
+
+Mutation-command tick order:
+
+```text
+RuntimeSessionMutationCommandStep
+  -> RuntimeLevelMutationStep
+  -> RuntimeSessionCommandTick
+```
+
+Runtime should not infer tile changes or rebuild caches inside existing tick steps. Tile edits are explicit inputs to mutation steps.
+
+Save snapshot ownership:
+
+```text
+RuntimeSessionSnapshot
+  includes authoritative level, tickIndex, optional player
+  excludes LevelDerivedCacheState and render/collision caches
+```

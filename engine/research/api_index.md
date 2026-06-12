@@ -62,6 +62,7 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `LevelCollisionWorldBuilder`: converts blocked tiles to `physics2d::CollisionWorld2D`.
 - `LevelCollisionCacheState`, `LevelCollisionCacheBuilder`, `LevelCollisionCacheUpdater`: derived collision cache state.
 - `LevelDerivedCacheState`, `LevelDerivedCacheBuilder`, `LevelDerivedCacheUpdater`: render + collision cache packet.
+- `LevelMutationCacheUpdateStep`: applies tile edits through `LevelTileMutation` and refreshes derived caches through `LevelDerivedCacheUpdater`.
 - `LevelRenderFrame2D`: data-only level render-frame builder.
 
 ## `scene/player`
@@ -89,4 +90,7 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `RuntimeCollisionWorldProvider`: resolves explicit/session/empty collision world.
 - `RuntimeSessionCommandTick`: command step followed by session tick.
 - `RuntimeSessionCommandTickRunner`: bounded command-frame loop over command ticks.
-
+- `RuntimeLevelMutationStep`: runtime adapter for explicit tile edits via `LevelMutationCacheUpdateStep`.
+- `RuntimeSessionMutationCommandStep`: mutation/cache update followed by command tick.
+- `RuntimeSessionMutationCommandRunner`: bounded loop over mutation-command frames.
+- `RuntimeSessionSnapshotBuilder`, `RuntimeSessionSnapshotRestorer`: capture/restore saveable runtime session state while excluding derived caches.

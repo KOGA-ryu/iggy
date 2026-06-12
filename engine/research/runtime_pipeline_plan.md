@@ -36,6 +36,14 @@ RuntimePlayerCommandExecutionStep
 RuntimePlayerCommandStep
 ```
 
+Runtime level mutation orchestration:
+
+```text
+RuntimeLevelMutationStep
+RuntimeSessionMutationCommandStep
+RuntimeSessionMutationCommandRunner
+```
+
 Session ticking:
 
 ```text
@@ -73,6 +81,18 @@ LevelTileMutation
   -> caller replaces carried level + derived cache state
 ```
 
+Snapshot flow:
+
+```text
+RuntimeSessionSnapshotBuilder
+  -> authoritative level + tickIndex + optional player
+  -> excludes derived caches
+
+RuntimeSessionSnapshotRestorer
+  -> RuntimeSessionBuilder
+  -> rebuilds requested caches from restore config
+```
+
 ## Current Runtime Command Tick Order
 
 ```text
@@ -89,6 +109,20 @@ input RuntimeSessionState + GameplayCommandFrame2D
        -> tickIndex increments once
 ```
 
+## Current Runtime Mutation Command Tick Order
+
+```text
+input RuntimeSessionState + level edits + GameplayCommandFrame2D
+  -> RuntimeLevelMutationStep
+       -> LevelMutationCacheUpdateStep
+       -> updates session level + derived caches
+       -> mirrors legacy render cache fields
+  -> RuntimeSessionCommandTick
+       -> selects collision world using provider or explicit override
+       -> runs player command step
+       -> runs RuntimeSessionTick
+```
+
 ## Caller-Owned Boundaries
 
 The caller still owns:
@@ -98,7 +132,7 @@ The caller still owns:
 - why a tile mutates
 - when tile edits are applied
 - when derived caches are refreshed or when the explicit mutation/cache step is called
-- save/load snapshot creation
+- when save snapshots are captured/restored
 - presentation camera state
 - render-frame request timing
 
@@ -106,11 +140,9 @@ The caller still owns:
 
 Do not merge these into existing ticks without a dedicated ownership review:
 
-- level tile mutation
-- derived cache refresh
 - render frame building
 - presentation camera update
-- save snapshot creation
+- save disk IO or versioned file format
 - raw device input
 - command queue buffering
 
@@ -118,10 +150,8 @@ Do not merge these into existing ticks without a dedicated ownership review:
 
 Possible future slices:
 
-- runtime step that composes `LevelTileMutation` plus `LevelDerivedCacheUpdater`
-- runtime adapter that delegates explicit tile edits to `LevelMutationCacheUpdateStep`
-- save snapshot that excludes `LevelDerivedCacheState`
 - render-frame step that reads session carried render cache
 - camera/presentation state packet
+- save file serialization around `RuntimeSessionSnapshot`
 
 Pause before any slice that makes runtime infer map changes or own cache rebuild policy.

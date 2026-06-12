@@ -37,6 +37,7 @@ Transient frame data:
 - player command plans
 - NPC tick reports
 - collision query results
+- mutation/cache update results and command tick diagnostics
 
 ## Save Boundary
 
@@ -57,6 +58,7 @@ Save snapshots should exclude:
 - render command lists
 - collision query worlds if rebuildable from map data
 - command plans and per-tick reports
+- mutation/cache update diagnostics
 - backend handles, windows, GPU resources
 - raw device input state
 
@@ -70,6 +72,7 @@ Current pattern:
 scene/level builds or updates LevelDerivedCacheState
 runtime carries LevelDerivedCacheState
 runtime steps may select from it through explicit providers
+runtime mutation steps may replace carried derived cache state by delegating to scene/level updaters
 ```
 
 ## Mutation Rule
@@ -81,8 +84,26 @@ Current pattern:
 ```text
 LevelTileMutation
   -> changedTiles
-  -> LevelDerivedCacheUpdater
+  -> LevelMutationCacheUpdateStep
+       -> LevelDerivedCacheUpdater
 ```
 
 Runtime should not infer changed tiles inside session ticks.
 
+## Snapshot Rule
+
+`RuntimeSessionSnapshot` captures authoritative session data only:
+
+- `LevelRuntimeState`
+- `tickIndex`
+- optional `PlayerAgentState`
+
+It intentionally excludes:
+
+- `LevelDerivedCacheState`
+- legacy runtime render-cache mirrors
+- render frames
+- command plans and reports
+- backend/device state
+
+Restoration should rebuild requested derived caches through `RuntimeSessionBuilder` configuration, not deserialize them as authoritative state.
