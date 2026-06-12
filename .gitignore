@@ -1,7 +1,9 @@
 # Reference source extracted for study only.
 /DevilutionX-master/
+/godot-master/
 
 # Local build/check artifacts.
 build/
+**/build/
 /.cache/
 .DS_Store
