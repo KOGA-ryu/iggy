@@ -6,6 +6,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/camera/CameraShake.cpp
   src/scene/camera/CameraView.cpp
   src/scene/level/LevelBlueprint.cpp
+  src/scene/level/LevelCollisionCacheState.cpp
   src/scene/level/LevelCollisionWorldBuilder.cpp
   src/scene/level/LevelNpcUpdateStep.cpp
   src/scene/level/LevelRenderCacheState.cpp
