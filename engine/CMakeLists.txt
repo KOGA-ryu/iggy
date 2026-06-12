@@ -13,6 +13,7 @@ add_library(iggy_engine
   src/core/math/Vec2.cpp
   src/core/resource/AssetCatalog.cpp
   src/core/resource/ResourceId.cpp
+  src/modules/animation/SpriteAnimationSampler2D.cpp
   src/modules/animation/SpriteAnimationState2D.cpp
   src/modules/animation/SpriteFrameSet2D.cpp
   src/modules/blueprint/LevelBlueprintValidator.cpp
@@ -104,6 +105,7 @@ iggy_add_test(render_command_2d_tests tests/render_command_2d_tests.cpp)
 iggy_add_test(render_command_list_2d_composer_tests tests/render_command_list_2d_composer_tests.cpp)
 iggy_add_test(render_resource_registry_tests tests/render_resource_registry_tests.cpp)
 iggy_add_test(shader_resource_tests tests/shader_resource_tests.cpp)
+iggy_add_test(sprite_animation_sampler_2d_tests tests/sprite_animation_sampler_2d_tests.cpp)
 iggy_add_test(sprite_animation_state_2d_tests tests/sprite_animation_state_2d_tests.cpp)
 iggy_add_test(sprite_frame_set_2d_tests tests/sprite_frame_set_2d_tests.cpp)
 iggy_add_test(texture_resource_tests tests/texture_resource_tests.cpp)
