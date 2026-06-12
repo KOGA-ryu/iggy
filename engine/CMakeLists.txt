@@ -58,6 +58,7 @@ add_library(iggy_engine
   src/scene/level/LevelTileRenderCommands.cpp
   src/scene/level/LevelVisibleTiles.cpp
   src/scene/player/PlayerAgentState.cpp
+  src/scene/player/PlayerCommandPlanner2D.cpp
   src/scene/sprite/SpriteRenderCommands2D.cpp
   src/servers/navigation/NavigationGridPathfinder.cpp
   src/servers/navigation/NavigationGridValidator.cpp
@@ -130,6 +131,7 @@ iggy_add_test(sprite_animation_state_2d_tests tests/sprite_animation_state_2d_te
 iggy_add_test(sprite_frame_set_2d_tests tests/sprite_frame_set_2d_tests.cpp)
 iggy_add_test(sprite_render_commands_2d_tests tests/sprite_render_commands_2d_tests.cpp)
 iggy_add_test(player_agent_state_tests tests/player_agent_state_tests.cpp)
+iggy_add_test(player_command_planner_2d_tests tests/player_command_planner_2d_tests.cpp)
 iggy_add_test(texture_resource_tests tests/texture_resource_tests.cpp)
 iggy_add_test(gameplay_command_2d_tests tests/gameplay_command_2d_tests.cpp)
 iggy_add_test(gameplay_command_frame_2d_validator_tests tests/gameplay_command_frame_2d_validator_tests.cpp)
