@@ -24,6 +24,7 @@ add_library(iggy_engine
   src/modules/npc_ai/NpcSpawnBuilder.cpp
   src/modules/npc_ai/NpcTickReporter.cpp
   src/scene/level/LevelBlueprint.cpp
+  src/scene/level/LevelRuntimeBuilder.cpp
   src/scene/level/LevelTileMap.cpp
   src/servers/navigation/NavigationGridPathfinder.cpp
   src/servers/navigation/NavigationGridValidator.cpp
@@ -46,6 +47,9 @@ target_link_libraries(level_blueprint_tests PRIVATE iggy_engine)
 
 add_executable(level_tile_map_tests tests/level_tile_map_tests.cpp)
 target_link_libraries(level_tile_map_tests PRIVATE iggy_engine)
+
+add_executable(level_runtime_builder_tests tests/level_runtime_builder_tests.cpp)
+target_link_libraries(level_runtime_builder_tests PRIVATE iggy_engine)
 
 add_executable(line_of_sight_tests tests/line_of_sight_tests.cpp)
 target_link_libraries(line_of_sight_tests PRIVATE iggy_engine)
@@ -93,6 +97,7 @@ add_test(NAME core_math_tests COMMAND core_math_tests)
 add_test(NAME core_resource_tests COMMAND core_resource_tests)
 add_test(NAME level_blueprint_tests COMMAND level_blueprint_tests)
 add_test(NAME level_tile_map_tests COMMAND level_tile_map_tests)
+add_test(NAME level_runtime_builder_tests COMMAND level_runtime_builder_tests)
 add_test(NAME line_of_sight_tests COMMAND line_of_sight_tests)
 add_test(NAME npc_awareness_tests COMMAND npc_awareness_tests)
 add_test(NAME npc_agent_batch_tests COMMAND npc_agent_batch_tests)
