@@ -2,6 +2,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/servers/navigation/NavigationGridPathfinder.cpp
   src/servers/navigation/NavigationGridValidator.cpp
   src/servers/navigation/NavigationPathFollower.cpp
+  src/servers/physics2d/CollisionOverlap2D.cpp
   src/servers/physics2d/CollisionShape2D.cpp
   src/servers/physics2d/CollisionWorld2D.cpp
   src/servers/physics2d/ShapeQuery2D.cpp
