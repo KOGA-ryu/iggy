@@ -8,6 +8,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimePlayerCommandStep.cpp
   src/runtime/RuntimeSessionCommandTick.cpp
   src/runtime/RuntimeSessionCommandTickRunner.cpp
+  src/runtime/RuntimeSessionMutationCommandRunner.cpp
   src/runtime/RuntimeSessionMutationCommandStep.cpp
   src/runtime/RuntimeSessionState.cpp
   src/runtime/RuntimeSessionTick.cpp
