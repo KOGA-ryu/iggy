@@ -5,6 +5,9 @@
 #include "scene/camera/CameraView.hpp"
 #include "scene/level/LevelRuntimeState.hpp"
 #include "scene/level/LevelTileDrawList.hpp"
+#include "scene/level/LevelTileRenderChunkCache.hpp"
+#include "scene/level/LevelTileRenderChunkCommands.hpp"
+#include "scene/level/LevelTileRenderChunkVisibility.hpp"
 #include "scene/level/LevelTileRenderCommands.hpp"
 #include "scene/level/LevelVisibleTiles.hpp"
 #include "servers/render/RenderCommand2D.hpp"
@@ -16,12 +19,17 @@ struct LevelRenderFrame2DConfig {
 	LevelTileRenderCommandConfig tileCommands;
 	npc_ai::NpcAgentRenderCommandConfig npcCommands;
 	bool includeNpcCommands = true;
+	bool useTileChunkCache = false;
+	const LevelTileRenderChunkCache *tileChunkCache = nullptr;
 };
 
 struct LevelRenderFrame2DResult {
 	CameraViewResult cameraView;
 	LevelVisibleTilesResult visibleTiles;
 	LevelTileDrawListResult tileDrawList;
+	LevelTileRenderChunkVisibilityResult visibleTileChunks;
+	LevelTileRenderChunkCommandResult tileChunkCommands;
+	bool usedTileChunkCache = false;
 	render::RenderCommandList2D commands;
 };
 

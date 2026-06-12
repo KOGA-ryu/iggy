@@ -8,12 +8,20 @@ LevelRenderFrame2DResult LevelRenderFrame2D::build(const LevelRuntimeState &stat
 {
 	LevelRenderFrame2DResult result;
 	result.cameraView = CameraView {}.visibleWorldBounds(presentationCamera, config.cameraView);
-	result.visibleTiles = LevelVisibleTiles {}.query(state.map, result.cameraView.bounds);
-	result.tileDrawList = LevelTileDrawList {}.build(state.map, result.visibleTiles.tiles);
 
-	const render::RenderCommandList2D tileCommands = LevelTileRenderCommands {}.build(result.tileDrawList, config.tileCommands);
 	const render::RenderCommandList2DComposer composer;
-	composer.append(result.commands, tileCommands);
+	if (config.useTileChunkCache && config.tileChunkCache != nullptr) {
+		result.visibleTileChunks = LevelTileRenderChunkVisibility {}.query(*config.tileChunkCache, result.cameraView.bounds);
+		result.tileChunkCommands = LevelTileRenderChunkCommands {}.build(*config.tileChunkCache, result.visibleTileChunks);
+		result.usedTileChunkCache = true;
+		composer.append(result.commands, result.tileChunkCommands.commands);
+	} else {
+		result.visibleTiles = LevelVisibleTiles {}.query(state.map, result.cameraView.bounds);
+		result.tileDrawList = LevelTileDrawList {}.build(state.map, result.visibleTiles.tiles);
+
+		const render::RenderCommandList2D tileCommands = LevelTileRenderCommands {}.build(result.tileDrawList, config.tileCommands);
+		composer.append(result.commands, tileCommands);
+	}
 
 	if (config.includeNpcCommands) {
 		const render::RenderCommandList2D npcCommands = npc_ai::NpcAgentRenderCommands {}.build(state.npcAgents, config.npcCommands);
