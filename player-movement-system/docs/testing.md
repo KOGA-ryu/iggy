@@ -121,8 +121,12 @@ input defaults, session-derived input context, route result naming, lifecycle
 hotkeys, stop hotkeys, and blocked stop-command reporting.
 
 `runtime_source_intake_tests` owns the direct runtime source/intake adapters:
-queued source drain-once behavior, source settings defaults, session and
-inventory command intake, and movement/inventory script intake plus batch order.
+queued source drain-once behavior, source settings defaults, session command
+intake, and movement script intake plus batch order.
+
+`runtime_inventory_source_intake_tests` owns inventory-specific runtime source
+and intake adapters: queued inventory command/script drains, active-player
+command dispatch, script intake, and ordered inventory script batches.
 
 ```text
 focused production boundary
@@ -137,7 +141,7 @@ large shared helper migration.
 
 Good first candidates:
 
-- inventory command source/intake seams
+- movement script source/intake seams
 
 Avoid splitting by line count alone. A smaller file is useful only when the new
 test target has a clear reason to exist.

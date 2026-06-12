@@ -63,7 +63,10 @@ gating, and the setup-script/runtime-source distinction.
 `runtime_input_hotkey_tests` covers runtime input defaults, context building,
 route result naming, lifecycle hotkeys, stop hotkeys, and blocked stop reports.
 `runtime_source_intake_tests` covers queued source drains, source defaults,
-command intake, script intake, and batch order for runtime sources.
+session command intake, movement script intake, and movement script batch order.
+`runtime_inventory_source_intake_tests` covers queued inventory command/script
+sources, active-player command intake, inventory script intake, and inventory
+script batch order.
 
 Good first tests:
 
@@ -185,16 +188,12 @@ Good first tests:
 - InventoryCommandDispatcher preserves rejected equipment reasons
 - InventoryCommandDispatcher emits inventory events for applied and rejected commands
 - InventoryCommandEventEmitter maps command results into inventory events
-- InventoryCommandSource queues and drains semantic inventory commands
 - GameLoop dispatches inventory command sources only when a world is active
 - GameLoop records inventory events from runtime inventory command sources
 - InventoryCommandCodec round-trips valid commands and rejects invalid packets
 - InventoryCommandPacketValidator rejects malformed inventory packet shapes
 - InventoryCommandByteStream writes little-endian primitives and rejects short reads
 - InventoryCommandPacketByteCodec round-trips and rejects inventory packet bytes
-- RuntimeInventoryScriptIntake runs inventory scripts against the selected runtime player
-- RuntimeInventoryScriptBatchRunner preserves ordered inventory script path results
-- InventoryScriptSource queues and drains inventory automation script paths
 - GameLoop reports runtime inventory script source results without stopping frames
 - SnapshotWriter and SnapshotReader restore durable player, enemy, and combat state
 - SnapshotWriter and SnapshotReader restore player inventory state

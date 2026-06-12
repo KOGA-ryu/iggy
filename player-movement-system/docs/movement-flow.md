@@ -1470,6 +1470,9 @@ inventory commands and wires that player into `InventoryScriptRunner`.
 batch. It keeps `RuntimeSourceDrainer` focused on source gating and path
 draining while the batch runner turns the drained path list into ordered
 `InventoryScriptRunResult` entries.
+`runtime_inventory_source_intake_tests` owns these inventory-specific runtime
+source adapters apart from the shared source settings and movement/session
+intake checks in `runtime_source_intake_tests`.
 
 `RuntimeInventoryFrameSourceStep` owns the frame-level inventory source order:
 drain inventory scripts, record script results and their flattened command
