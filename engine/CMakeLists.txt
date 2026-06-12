@@ -45,6 +45,7 @@ add_library(iggy_engine
   src/servers/navigation/NavigationPathFollower.cpp
   src/servers/physics2d/ShapeQuery2D.cpp
   src/servers/render/RenderCommand2D.cpp
+  src/servers/render/RenderCommandList2DComposer.cpp
 )
 
 target_include_directories(iggy_engine PUBLIC src)
@@ -89,5 +90,6 @@ iggy_add_test(navigation_pathfinder_tests tests/navigation_pathfinder_tests.cpp)
 iggy_add_test(navigation_path_follower_tests tests/navigation_path_follower_tests.cpp)
 iggy_add_test(physics2d_tests tests/physics2d_tests.cpp)
 iggy_add_test(render_command_2d_tests tests/render_command_2d_tests.cpp)
+iggy_add_test(render_command_list_2d_composer_tests tests/render_command_list_2d_composer_tests.cpp)
 iggy_add_test(runtime_tick_tests tests/runtime_tick_tests.cpp)
 iggy_add_test(runtime_tick_runner_tests tests/runtime_tick_runner_tests.cpp)
