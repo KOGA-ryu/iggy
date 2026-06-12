@@ -29,6 +29,7 @@ add_library(iggy_engine
   src/scene/camera/CameraFollow.cpp
   src/scene/camera/CameraLookahead.cpp
   src/scene/camera/CameraRig.cpp
+  src/scene/camera/CameraShake.cpp
   src/scene/level/LevelBlueprint.cpp
   src/scene/level/LevelNpcUpdateStep.cpp
   src/scene/level/LevelRuntimeBuilder.cpp
@@ -56,6 +57,7 @@ iggy_add_test(camera_clamp_tests tests/camera_clamp_tests.cpp)
 iggy_add_test(camera_follow_tests tests/camera_follow_tests.cpp)
 iggy_add_test(camera_lookahead_tests tests/camera_lookahead_tests.cpp)
 iggy_add_test(camera_rig_tests tests/camera_rig_tests.cpp)
+iggy_add_test(camera_shake_tests tests/camera_shake_tests.cpp)
 iggy_add_test(level_blueprint_tests tests/level_blueprint_tests.cpp)
 iggy_add_test(level_tile_map_tests tests/level_tile_map_tests.cpp)
 iggy_add_test(level_runtime_builder_tests tests/level_runtime_builder_tests.cpp)
