@@ -6,6 +6,7 @@
 #include "core/resource/ResourceId.hpp"
 #include "runtime/RuntimeSessionTick.hpp"
 #include "runtime/RuntimeSessionTickRunner.hpp"
+#include "scene/level/LevelDerivedCacheState.hpp"
 #include "scene/level/LevelRenderCacheState.hpp"
 #include "scene/level/LevelRuntimeBuilder.hpp"
 #include "support/LevelMapFixtures.hpp"
@@ -94,6 +95,17 @@ iggy::LevelRenderCacheState BuildRenderCache(const iggy::LevelRuntimeState &leve
 	return build.state;
 }
 
+iggy::LevelDerivedCacheState BuildDerivedCaches(const iggy::LevelRuntimeState &level)
+{
+	iggy::LevelDerivedCacheBuildConfig config;
+	config.buildRenderCache = true;
+	config.renderCacheConfig = ChunkConfig();
+	config.buildCollisionCache = true;
+	const iggy::LevelDerivedCacheBuildResult build = iggy::LevelDerivedCacheBuilder {}.build(level, config);
+	Expect(build.built, "derived cache fixture should build");
+	return build.state;
+}
+
 void TestZeroTicksReturnsInitialSession()
 {
 	iggy::runtime::RuntimeSessionState session;
@@ -161,14 +173,17 @@ void TestRenderCacheStateIsPreservedAcrossTicks()
 {
 	iggy::runtime::RuntimeSessionState session;
 	session.level = State({
-		"..",
+		".#",
 		"..",
 	});
 	session.renderCache = BuildRenderCache(session.level);
+	session.derivedCaches = BuildDerivedCaches(session.level);
 	session.hasRenderCache = true;
 	session.tickIndex = 10;
 
 	const std::size_t originalChunkCount = session.renderCache.tileChunks.chunks.size();
+	const std::size_t originalDerivedRenderChunkCount = session.derivedCaches.render.tileChunks.chunks.size();
+	const std::size_t originalCollisionObjectCount = session.derivedCaches.collision.world.objects().size();
 	const iggy::LevelTileRenderChunkCacheConfig originalConfig = session.renderCache.tileChunkConfig;
 	const iggy::render::RenderCommand2D originalCommand = session.renderCache.tileChunks.chunks[0].commands.commands[0];
 
@@ -179,6 +194,10 @@ void TestRenderCacheStateIsPreservedAcrossTicks()
 	Expect(result.finalSession.renderCache.tileChunkConfig.chunkWidth == originalConfig.chunkWidth && result.finalSession.renderCache.tileChunkConfig.chunkHeight == originalConfig.chunkHeight, "session tick runner should preserve render cache chunk config");
 	Expect(result.finalSession.renderCache.tileChunkConfig.tileCommands.layer == originalConfig.tileCommands.layer, "session tick runner should preserve render cache layer config");
 	Expect(result.finalSession.renderCache.tileChunks.chunks.size() == originalChunkCount, "session tick runner should preserve render cache chunk count");
+	Expect(result.finalSession.derivedCaches.hasRenderCache, "session tick runner should preserve derived render cache flag");
+	Expect(result.finalSession.derivedCaches.hasCollisionCache, "session tick runner should preserve derived collision cache flag");
+	Expect(result.finalSession.derivedCaches.render.tileChunks.chunks.size() == originalDerivedRenderChunkCount, "session tick runner should preserve derived render chunks");
+	Expect(result.finalSession.derivedCaches.collision.world.objects().size() == originalCollisionObjectCount, "session tick runner should preserve derived collision objects");
 	if (!result.finalSession.renderCache.tileChunks.chunks.empty() && !result.finalSession.renderCache.tileChunks.chunks[0].commands.commands.empty()) {
 		const iggy::render::RenderCommand2D command = result.finalSession.renderCache.tileChunks.chunks[0].commands.commands[0];
 		Expect(command.materialId == originalCommand.materialId, "session tick runner should preserve render cache command material");

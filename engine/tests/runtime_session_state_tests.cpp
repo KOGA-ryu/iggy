@@ -6,6 +6,8 @@
 #include "core/resource/ResourceId.hpp"
 #include "modules/npc_ai/NpcAgentBatch.hpp"
 #include "runtime/RuntimeSessionState.hpp"
+#include "scene/level/LevelGridQuery.hpp"
+#include "support/GeometryAssertions.hpp"
 #include "support/LevelMapFixtures.hpp"
 #include "support/PlayerFixtures.hpp"
 #include "support/TestHarness.hpp"
@@ -13,6 +15,7 @@
 namespace {
 
 using iggy::test::Expect;
+using iggy::test::ExpectBounds;
 using iggy::test::ExpectPlayerAgent;
 using iggy::test::Failures;
 using iggy::test::NearVec;
@@ -52,6 +55,18 @@ iggy::runtime::RuntimeSessionBuildConfig ConfigWithPlayer(bool buildRenderCache 
 	return config;
 }
 
+iggy::LevelDerivedCacheBuildConfig DerivedConfig(
+	bool buildRender,
+	bool buildCollision,
+	iggy::LevelTileRenderChunkCacheConfig renderConfig = ChunkConfig())
+{
+	iggy::LevelDerivedCacheBuildConfig config;
+	config.buildRenderCache = buildRender;
+	config.renderCacheConfig = renderConfig;
+	config.buildCollisionCache = buildCollision;
+	return config;
+}
+
 void TestBuildWithRenderCacheEnabledSucceeds()
 {
 	const iggy::LevelRuntimeState level = State({
@@ -70,6 +85,9 @@ void TestBuildWithRenderCacheEnabledSucceeds()
 	Expect(result.state.level.map.width == 4 && result.state.level.map.height == 2, "session should preserve level map shape");
 	Expect(result.state.level.npcAgents.size() == 1 && result.state.level.npcAgents[0].id == iggy::ResourceId { "npc:one" }, "session should preserve NPC agents");
 	Expect(result.state.renderCache.tileChunks.chunks.size() == 2, "session should build tile render chunks");
+	Expect(result.state.derivedCaches.hasRenderCache, "legacy render cache build should mirror render cache into derived caches");
+	Expect(!result.state.derivedCaches.hasCollisionCache, "legacy render cache build should leave derived collision cache absent");
+	Expect(result.state.derivedCaches.render.tileChunks.chunks.size() == result.state.renderCache.tileChunks.chunks.size(), "legacy render cache mirror should preserve render chunks");
 	Expect(!result.state.hasPlayer, "session build without player should leave hasPlayer false");
 }
 
@@ -87,6 +105,8 @@ void TestBuildWithRenderCacheDisabledSucceeds()
 	Expect(!result.state.hasRenderCache, "no-cache session should not report render cache");
 	Expect(result.state.level.map.width == 2 && result.state.level.map.height == 2, "no-cache session should preserve level state");
 	Expect(result.state.renderCache.tileChunks.chunks.empty(), "no-cache session should leave render cache default");
+	Expect(!result.state.derivedCaches.hasRenderCache, "no-cache session should leave derived render cache absent");
+	Expect(!result.state.derivedCaches.hasCollisionCache, "no-cache session should leave derived collision cache absent");
 	Expect(!result.renderCache.built && result.renderCache.tileChunkIssues.empty(), "no-cache session should leave render cache diagnostics default");
 	Expect(!result.state.hasPlayer, "no-cache session without player should leave hasPlayer false");
 }
@@ -101,6 +121,7 @@ void TestInvalidRenderCacheConfigFails()
 
 	Expect(!result.built, "invalid render cache config should fail session build");
 	Expect(!result.state.hasRenderCache && result.state.tickIndex == 0 && !result.state.hasPlayer, "failed session should leave state default");
+	Expect(!result.state.derivedCaches.hasRenderCache && !result.state.derivedCaches.hasCollisionCache, "failed session should leave derived cache state default");
 	Expect(!result.renderCache.built, "failed session should expose failed render cache build");
 	Expect(result.renderCache.tileChunkIssues.size() == 1, "failed session should expose render cache issue");
 	if (result.renderCache.tileChunkIssues.size() == 1)
@@ -177,6 +198,92 @@ void TestEmptyMapBuildsEmptyRenderCache()
 	Expect(result.state.hasRenderCache, "empty map session should still carry render cache state");
 	Expect(result.renderCache.built, "empty map session should expose successful render cache build");
 	Expect(result.state.renderCache.tileChunks.chunks.empty(), "empty map session should build empty tile render cache");
+	Expect(result.state.derivedCaches.hasRenderCache, "empty map legacy render cache should mirror into derived caches");
+	Expect(result.state.derivedCaches.render.tileChunks.chunks.empty(), "empty map derived render mirror should be empty");
+}
+
+void TestDerivedCollisionOnlyBuildStoresCollisionCache()
+{
+	const iggy::LevelRuntimeState level = State({
+		".#",
+	});
+	iggy::runtime::RuntimeSessionBuildConfig config = Config(false);
+	config.buildDerivedCaches = true;
+	config.derivedCacheConfig = DerivedConfig(false, true);
+
+	const iggy::runtime::RuntimeSessionBuildResult result = iggy::runtime::RuntimeSessionBuilder {}.build(level, config);
+
+	Expect(result.built, "derived collision-only session should build");
+	Expect(!result.state.hasRenderCache, "derived collision-only session should leave legacy render cache absent");
+	Expect(result.state.renderCache.tileChunks.chunks.empty(), "derived collision-only session should leave legacy render cache default");
+	Expect(!result.state.derivedCaches.hasRenderCache, "derived collision-only session should leave derived render cache absent");
+	Expect(result.state.derivedCaches.hasCollisionCache, "derived collision-only session should store collision cache");
+	Expect(result.derivedCaches.built && result.derivedCaches.collision.built, "derived collision-only session should expose derived collision diagnostics");
+	Expect(result.state.derivedCaches.collision.world.objects().size() == 1, "derived collision-only session should build one collision object");
+	if (result.state.derivedCaches.collision.world.objects().size() == 1)
+		ExpectBounds(result.state.derivedCaches.collision.world.objects()[0].shape.bounds, iggy::tileBounds({ 1, 0 }), "derived collision-only session should use blocked tile bounds");
+}
+
+void TestDerivedRenderAndCollisionBuildMirrorsLegacyRender()
+{
+	const iggy::LevelRuntimeState level = State({
+		".#",
+		"..",
+	});
+	iggy::runtime::RuntimeSessionBuildConfig config = Config(false);
+	config.buildDerivedCaches = true;
+	config.derivedCacheConfig = DerivedConfig(true, true, ChunkConfig(2, 2));
+
+	const iggy::runtime::RuntimeSessionBuildResult result = iggy::runtime::RuntimeSessionBuilder {}.build(level, config);
+
+	Expect(result.built, "derived render+collision session should build");
+	Expect(result.state.derivedCaches.hasRenderCache, "derived render+collision session should store derived render cache");
+	Expect(result.state.derivedCaches.hasCollisionCache, "derived render+collision session should store derived collision cache");
+	Expect(result.state.hasRenderCache, "derived render+collision session should mirror render cache to legacy flag");
+	Expect(result.state.renderCache.tileChunks.chunks.size() == result.state.derivedCaches.render.tileChunks.chunks.size(), "derived render+collision session should mirror render chunks to legacy field");
+	Expect(result.renderCache.built, "derived render+collision session should mirror render diagnostics to legacy result");
+	Expect(result.state.derivedCaches.collision.world.objects().size() == 1, "derived render+collision session should build collision object");
+}
+
+void TestDerivedBuildPathWinsWhenBothLegacyAndDerivedFlagsAreTrue()
+{
+	const iggy::LevelRuntimeState level = State({
+		"..",
+		"..",
+	});
+	iggy::runtime::RuntimeSessionBuildConfig config = Config(true, 0, 2);
+	config.buildDerivedCaches = true;
+	config.derivedCacheConfig = DerivedConfig(true, false, ChunkConfig(2, 2));
+
+	const iggy::runtime::RuntimeSessionBuildResult result = iggy::runtime::RuntimeSessionBuilder {}.build(level, config);
+
+	Expect(result.built, "derived build path should ignore invalid legacy render config when derived caches are enabled");
+	Expect(result.state.hasRenderCache, "derived build path should mirror derived render cache to legacy flag");
+	Expect(result.state.derivedCaches.hasRenderCache, "derived build path should store derived render cache");
+	Expect(result.renderCache.built, "derived build path should expose derived render diagnostics through legacy render result");
+	Expect(result.renderCache.tileChunkIssues.empty(), "derived build path should not expose invalid legacy render config diagnostics");
+	Expect(result.state.renderCache.tileChunkConfig.chunkWidth == 2 && result.state.renderCache.tileChunkConfig.chunkHeight == 2, "derived build path should source legacy render field from derived render config");
+}
+
+void TestDerivedBuildFailureDoesNotPublishPartialSessionOrPlayer()
+{
+	const iggy::LevelRuntimeState level = State({
+		".#",
+	});
+	iggy::runtime::RuntimeSessionBuildConfig config = ConfigWithPlayer(false);
+	config.buildDerivedCaches = true;
+	config.derivedCacheConfig = DerivedConfig(true, true, ChunkConfig(0, 2));
+
+	const iggy::runtime::RuntimeSessionBuildResult result = iggy::runtime::RuntimeSessionBuilder {}.build(level, config);
+
+	Expect(!result.built, "derived render failure should fail session build");
+	Expect(!result.state.hasPlayer, "failed derived session should not publish player");
+	Expect(!result.state.hasRenderCache, "failed derived session should not publish legacy render cache");
+	Expect(!result.state.derivedCaches.hasRenderCache && !result.state.derivedCaches.hasCollisionCache, "failed derived session should not publish partial derived caches");
+	Expect(!result.derivedCaches.built, "failed derived session should preserve failed derived result");
+	Expect(!result.derivedCaches.render.built, "failed derived session should preserve nested render failure");
+	Expect(result.derivedCaches.render.tileChunkIssues.size() == 1, "failed derived session should preserve render diagnostics");
+	Expect(result.derivedCaches.collision.built, "failed derived session should preserve successful nested collision diagnostics without publishing state");
 }
 
 void TestNpcAgentsArePreserved()
@@ -241,6 +348,10 @@ int main()
 	TestInvalidRenderCacheConfigDoesNotPublishPlayer();
 	TestDefaultPlayerStateAllowedWhenRequested();
 	TestEmptyMapBuildsEmptyRenderCache();
+	TestDerivedCollisionOnlyBuildStoresCollisionCache();
+	TestDerivedRenderAndCollisionBuildMirrorsLegacyRender();
+	TestDerivedBuildPathWinsWhenBothLegacyAndDerivedFlagsAreTrue();
+	TestDerivedBuildFailureDoesNotPublishPartialSessionOrPlayer();
 	TestNpcAgentsArePreserved();
 	TestInputCopyIsNotMutated();
 	TestInputPlayerIsNotMutated();

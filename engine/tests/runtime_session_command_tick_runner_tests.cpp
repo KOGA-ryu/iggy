@@ -3,10 +3,12 @@
 #include <vector>
 
 #include "runtime/RuntimeSessionCommandTickRunner.hpp"
+#include "scene/level/LevelDerivedCacheState.hpp"
 #include "scene/level/LevelRenderCacheState.hpp"
 #include "scene/level/LevelRuntimeBuilder.hpp"
 #include "support/CommandFrameFixtures.hpp"
 #include "support/GeometryAssertions.hpp"
+#include "support/LevelMapFixtures.hpp"
 #include "support/PlayerFixtures.hpp"
 #include "support/TestHarness.hpp"
 
@@ -75,6 +77,17 @@ iggy::LevelRenderCacheState BuildRenderCache(const iggy::LevelRuntimeState &leve
 {
 	const iggy::LevelRenderCacheBuildResult build = iggy::LevelRenderCacheBuilder {}.build(level.map, ChunkConfig());
 	Expect(build.built, "render cache fixture should build");
+	return build.state;
+}
+
+iggy::LevelDerivedCacheState BuildDerivedCaches(const iggy::LevelRuntimeState &level)
+{
+	iggy::LevelDerivedCacheBuildConfig config;
+	config.buildRenderCache = true;
+	config.renderCacheConfig = ChunkConfig();
+	config.buildCollisionCache = true;
+	const iggy::LevelDerivedCacheBuildResult build = iggy::LevelDerivedCacheBuilder {}.build(level, config);
+	Expect(build.built, "derived cache fixture should build");
 	return build.state;
 }
 
@@ -298,9 +311,16 @@ void TestRenderCacheIsPreservedAcrossMultipleTicks()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
 	iggy::runtime::RuntimeSessionState session = SessionWithPlayer({ 4.5F, 1.5F });
+	session.level.map = iggy::test::MapFromRows({
+		".#",
+		"..",
+	});
 	session.renderCache = BuildRenderCache(session.level);
+	session.derivedCaches = BuildDerivedCaches(session.level);
 	session.hasRenderCache = true;
 	const std::size_t originalChunkCount = session.renderCache.tileChunks.chunks.size();
+	const std::size_t originalDerivedRenderChunkCount = session.derivedCaches.render.tileChunks.chunks.size();
+	const std::size_t originalCollisionObjectCount = session.derivedCaches.collision.world.objects().size();
 	const iggy::LevelTileRenderChunkCacheConfig originalConfig = session.renderCache.tileChunkConfig;
 
 	const iggy::runtime::RuntimeSessionCommandTickRunnerResult result = iggy::runtime::RuntimeSessionCommandTickRunner {}.run(
@@ -317,6 +337,10 @@ void TestRenderCacheIsPreservedAcrossMultipleTicks()
 	Expect(result.session.renderCache.tileChunkConfig.chunkWidth == originalConfig.chunkWidth && result.session.renderCache.tileChunkConfig.chunkHeight == originalConfig.chunkHeight, "render cache runner should preserve chunk config");
 	Expect(result.session.renderCache.tileChunkConfig.tileCommands.layer == originalConfig.tileCommands.layer, "render cache runner should preserve render cache layer");
 	Expect(result.session.renderCache.tileChunks.chunks.size() == originalChunkCount, "render cache runner should preserve chunk count");
+	Expect(result.session.derivedCaches.hasRenderCache, "render cache runner should preserve derived render cache flag");
+	Expect(result.session.derivedCaches.hasCollisionCache, "render cache runner should preserve derived collision cache flag");
+	Expect(result.session.derivedCaches.render.tileChunks.chunks.size() == originalDerivedRenderChunkCount, "render cache runner should preserve derived render chunks");
+	Expect(result.session.derivedCaches.collision.world.objects().size() == originalCollisionObjectCount, "render cache runner should preserve derived collision objects");
 }
 
 void TestInputsAreNotMutated()
