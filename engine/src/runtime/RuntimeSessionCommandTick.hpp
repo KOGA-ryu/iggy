@@ -3,6 +3,7 @@
 #include "core/math/Vec2.hpp"
 #include "modules/npc_ai/NpcAgentController.hpp"
 #include "runtime/GameplayCommand2D.hpp"
+#include "runtime/RuntimeCollisionWorldProvider.hpp"
 #include "runtime/RuntimePlayerCommandStep.hpp"
 #include "runtime/RuntimeSessionState.hpp"
 #include "runtime/RuntimeSessionTick.hpp"
@@ -27,6 +28,8 @@ struct RuntimeSessionCommandTickResult {
 
 class RuntimeSessionCommandTick {
 public:
+	[[nodiscard]] RuntimeSessionCommandTickResult run(const RuntimeSessionCommandTickInput &input) const;
+
 	[[nodiscard]] RuntimeSessionCommandTickResult run(
 		const RuntimeSessionCommandTickInput &input,
 		const physics2d::CollisionWorld2D &collisionWorld) const;

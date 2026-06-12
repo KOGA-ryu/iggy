@@ -101,6 +101,12 @@ iggy::runtime::RuntimeSessionState SessionWithPlayer(iggy::Vec2 playerPosition =
 	return session;
 }
 
+void SetCollisionCache(iggy::runtime::RuntimeSessionState &session, const iggy::physics2d::CollisionWorld2D &world)
+{
+	session.derivedCaches.hasCollisionCache = true;
+	session.derivedCaches.collision.world = world;
+}
+
 iggy::runtime::RuntimePlayerCommandExecutionConfig PlayerCommandConfig(float maxStep = 1.0F)
 {
 	iggy::runtime::RuntimePlayerCommandExecutionConfig config;
@@ -343,6 +349,87 @@ void TestRenderCacheIsPreservedAcrossMultipleTicks()
 	Expect(result.session.derivedCaches.collision.world.objects().size() == originalCollisionObjectCount, "render cache runner should preserve derived collision objects");
 }
 
+void TestExplicitWorldRunnerOverloadPreservesExplicitPrecedenceAcrossTicks()
+{
+	const iggy::runtime::GameplayCommand2DFactory factory;
+	iggy::runtime::RuntimeSessionState session = SessionWithPlayer();
+	SetCollisionCache(session, World({}));
+	const iggy::physics2d::CollisionWorld2D explicitWorld = World({
+		Object(iggy::ResourceId("explicit:wall"), { { 2.5F, -0.5F }, { 3.5F, 0.5F } }),
+	});
+	iggy::runtime::RuntimeSessionCommandTickRunnerInput input = Input(
+		session,
+		{
+			CommandFrame({ factory.moveToPoint(PlayerId, { 8.0F, 0.0F }) }),
+			CommandFrame({ factory.moveToPoint(PlayerId, { 8.0F, 0.0F }) }),
+		});
+	input.playerCommandConfig = PlayerCommandConfig(4.0F);
+
+	const iggy::runtime::RuntimeSessionCommandTickRunnerResult result = iggy::runtime::RuntimeSessionCommandTickRunner {}.run(input, explicitWorld);
+
+	Expect(result.ticks.size() == 2, "explicit world runner should produce one tick result per frame");
+	if (result.ticks.size() == 2) {
+		Expect(result.ticks[0].playerCommands.execution.movementResults.size() == 1, "explicit first tick should preserve movement diagnostic");
+		Expect(result.ticks[1].playerCommands.execution.movementResults.size() == 1, "explicit second tick should preserve movement diagnostic");
+		if (result.ticks[0].playerCommands.execution.movementResults.size() == 1)
+			Expect(result.ticks[0].playerCommands.execution.movementResults[0].movement.motion.hit.object.id == iggy::ResourceId("explicit:wall"), "explicit first tick should use explicit world hit");
+		if (result.ticks[1].playerCommands.execution.movementResults.size() == 1)
+			Expect(result.ticks[1].playerCommands.execution.movementResults[0].movement.motion.hit.object.id == iggy::ResourceId("explicit:wall"), "explicit second tick should use explicit world hit");
+	}
+	Expect(NearVec(result.session.player.position, { 2.0F, 0.0F }), "explicit world should constrain movement across runner ticks");
+}
+
+void TestNoExplicitRunnerOverloadUsesSessionCollisionCacheAcrossTicks()
+{
+	const iggy::runtime::GameplayCommand2DFactory factory;
+	iggy::runtime::RuntimeSessionState session = SessionWithPlayer();
+	SetCollisionCache(session, World({
+		Object(iggy::ResourceId("session:wall"), { { 2.5F, -0.5F }, { 3.5F, 0.5F } }),
+	}));
+	iggy::runtime::RuntimeSessionCommandTickRunnerInput input = Input(
+		session,
+		{
+			CommandFrame({ factory.moveToPoint(PlayerId, { 8.0F, 0.0F }) }),
+			CommandFrame({ factory.moveToPoint(PlayerId, { 8.0F, 0.0F }) }),
+		});
+	input.playerCommandConfig = PlayerCommandConfig(4.0F);
+
+	const iggy::runtime::RuntimeSessionCommandTickRunnerResult result = iggy::runtime::RuntimeSessionCommandTickRunner {}.run(input);
+
+	Expect(result.ticks.size() == 2, "session collision cache runner should produce one tick result per frame");
+	if (result.ticks.size() == 2) {
+		Expect(result.ticks[0].playerCommands.execution.movementResults.size() == 1, "session cache first tick should preserve movement diagnostic");
+		Expect(result.ticks[1].playerCommands.execution.movementResults.size() == 1, "session cache second tick should preserve movement diagnostic");
+		if (result.ticks[0].playerCommands.execution.movementResults.size() == 1)
+			Expect(result.ticks[0].playerCommands.execution.movementResults[0].movement.motion.hit.object.id == iggy::ResourceId("session:wall"), "session cache first tick should use session cached world hit");
+		if (result.ticks[1].playerCommands.execution.movementResults.size() == 1)
+			Expect(result.ticks[1].playerCommands.execution.movementResults[0].movement.motion.hit.object.id == iggy::ResourceId("session:wall"), "session cache second tick should use session cached world hit");
+	}
+	Expect(NearVec(result.session.player.position, { 2.0F, 0.0F }), "session collision cache should constrain movement across runner ticks");
+}
+
+void TestNoExplicitRunnerOverloadWithoutCacheUsesEmptyWorldFallback()
+{
+	const iggy::runtime::GameplayCommand2DFactory factory;
+	const iggy::runtime::RuntimeSessionState session = SessionWithPlayer();
+	iggy::runtime::RuntimeSessionCommandTickRunnerInput input = Input(
+		session,
+		{
+			CommandFrame({ factory.moveToPoint(PlayerId, { 4.0F, 0.0F }) }),
+			CommandFrame({ factory.moveToPoint(PlayerId, { 8.0F, 0.0F }) }),
+		});
+	input.playerCommandConfig = PlayerCommandConfig(4.0F);
+
+	const iggy::runtime::RuntimeSessionCommandTickRunnerResult result = iggy::runtime::RuntimeSessionCommandTickRunner {}.run(input);
+
+	Expect(result.ticks.size() == 2, "empty world runner fallback should produce one tick result per frame");
+	if (result.ticks.size() == 2) {
+		Expect(NearVec(result.ticks[0].session.player.position, { 4.0F, 0.0F }), "empty world fallback first tick should allow full movement");
+		Expect(NearVec(result.ticks[1].session.player.position, { 8.0F, 0.0F }), "empty world fallback second tick should continue from first output");
+	}
+	Expect(NearVec(result.session.player.position, { 8.0F, 0.0F }), "empty world fallback should allow movement across runner ticks");
+}
+
 void TestInputsAreNotMutated()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
@@ -396,6 +483,9 @@ int main()
 	TestMissingPlayerUsesFallbackEachFrame();
 	TestInvalidAndNoOpFramesStillAdvanceTicks();
 	TestRenderCacheIsPreservedAcrossMultipleTicks();
+	TestExplicitWorldRunnerOverloadPreservesExplicitPrecedenceAcrossTicks();
+	TestNoExplicitRunnerOverloadUsesSessionCollisionCacheAcrossTicks();
+	TestNoExplicitRunnerOverloadWithoutCacheUsesEmptyWorldFallback();
 	TestInputsAreNotMutated();
 
 	if (Failures != 0)

@@ -2,15 +2,19 @@
 
 namespace iggy::runtime {
 
-RuntimeSessionCommandTickResult RuntimeSessionCommandTick::run(
+namespace {
+
+RuntimeSessionCommandTickResult RunWithCollisionWorldRequest(
 	const RuntimeSessionCommandTickInput &input,
-	const physics2d::CollisionWorld2D &collisionWorld) const
+	RuntimeCollisionWorldRequest request)
 {
+	const RuntimeCollisionWorldResult collisionWorld = RuntimeCollisionWorldProvider {}.resolve(input.session, request);
+
 	RuntimeSessionCommandTickResult result;
 	result.playerCommands = RuntimePlayerCommandStep {}.run(
 		input.session,
 		input.commandFrame,
-		collisionWorld,
+		collisionWorld.world,
 		input.playerCommandConfig);
 
 	result.npcTargetPosition = input.fallbackPlayerPosition;
@@ -24,6 +28,22 @@ RuntimeSessionCommandTickResult RuntimeSessionCommandTick::run(
 	});
 	result.session = result.tick.session;
 	return result;
+}
+
+} // namespace
+
+RuntimeSessionCommandTickResult RuntimeSessionCommandTick::run(const RuntimeSessionCommandTickInput &input) const
+{
+	return RunWithCollisionWorldRequest(input, {});
+}
+
+RuntimeSessionCommandTickResult RuntimeSessionCommandTick::run(
+	const RuntimeSessionCommandTickInput &input,
+	const physics2d::CollisionWorld2D &collisionWorld) const
+{
+	RuntimeCollisionWorldRequest request;
+	request.explicitWorld = &collisionWorld;
+	return RunWithCollisionWorldRequest(input, request);
 }
 
 } // namespace iggy::runtime

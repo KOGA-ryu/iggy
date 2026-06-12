@@ -27,6 +27,8 @@ struct RuntimeSessionCommandTickRunnerResult {
 
 class RuntimeSessionCommandTickRunner {
 public:
+	[[nodiscard]] RuntimeSessionCommandTickRunnerResult run(const RuntimeSessionCommandTickRunnerInput &input) const;
+
 	[[nodiscard]] RuntimeSessionCommandTickRunnerResult run(
 		const RuntimeSessionCommandTickRunnerInput &input,
 		const physics2d::CollisionWorld2D &collisionWorld) const;

@@ -101,6 +101,12 @@ iggy::runtime::RuntimeSessionState SessionWithPlayer(iggy::Vec2 playerPosition =
 	return session;
 }
 
+void SetCollisionCache(iggy::runtime::RuntimeSessionState &session, const iggy::physics2d::CollisionWorld2D &world)
+{
+	session.derivedCaches.hasCollisionCache = true;
+	session.derivedCaches.collision.world = world;
+}
+
 iggy::runtime::RuntimePlayerCommandExecutionConfig PlayerCommandConfig(float maxStep = 1.0F)
 {
 	iggy::runtime::RuntimePlayerCommandExecutionConfig config;
@@ -324,6 +330,78 @@ void TestBlockedMoveStillTicksWithExecutionDiagnostics()
 	Expect(result.session.tickIndex == session.tickIndex + 1, "blocked player command should still tick session once");
 }
 
+void TestExplicitWorldWinsOverSessionCollisionCache()
+{
+	const iggy::runtime::GameplayCommand2DFactory factory;
+	iggy::runtime::RuntimeSessionState session = SessionWithPlayer();
+	SetCollisionCache(session, World({}));
+	const iggy::physics2d::CollisionWorld2D explicitWorld = World({
+		Object(iggy::ResourceId("explicit:wall"), { { 2.5F, -0.5F }, { 3.5F, 0.5F } }),
+	});
+	iggy::runtime::RuntimeSessionCommandTickInput input = Input(
+		session,
+		CommandFrame({
+			factory.moveToPoint(PlayerId, { 8.0F, 0.0F }),
+		}));
+	input.playerCommandConfig = PlayerCommandConfig(4.0F);
+
+	const iggy::runtime::RuntimeSessionCommandTickResult result = iggy::runtime::RuntimeSessionCommandTick {}.run(input, explicitWorld);
+
+	Expect(result.playerCommands.execution.status == iggy::runtime::RuntimePlayerCommandExecutionStatus::Executed, "explicit world precedence setup should execute command");
+	Expect(result.playerCommands.execution.movementResults.size() == 1, "explicit world precedence should preserve movement diagnostic");
+	if (result.playerCommands.execution.movementResults.size() == 1) {
+		Expect(result.playerCommands.execution.movementResults[0].status == iggy::PlayerMovementExecutionStatus::Blocked, "explicit world should block even when session cache would not");
+		Expect(result.playerCommands.execution.movementResults[0].movement.motion.hit.object.id == iggy::ResourceId("explicit:wall"), "explicit world should provide the blocking hit object");
+	}
+	Expect(NearVec(result.session.player.position, { 2.0F, 0.0F }), "explicit world should constrain command tick movement");
+}
+
+void TestNoExplicitWorldUsesSessionCollisionCache()
+{
+	const iggy::runtime::GameplayCommand2DFactory factory;
+	iggy::runtime::RuntimeSessionState session = SessionWithPlayer();
+	const iggy::physics2d::CollisionWorld2D cachedWorld = World({
+		Object(iggy::ResourceId("session:wall"), { { 2.5F, -0.5F }, { 3.5F, 0.5F } }),
+	});
+	SetCollisionCache(session, cachedWorld);
+	iggy::runtime::RuntimeSessionCommandTickInput input = Input(
+		session,
+		CommandFrame({
+			factory.moveToPoint(PlayerId, { 8.0F, 0.0F }),
+		}));
+	input.playerCommandConfig = PlayerCommandConfig(4.0F);
+
+	const iggy::runtime::RuntimeSessionCommandTickResult result = iggy::runtime::RuntimeSessionCommandTick {}.run(input);
+
+	Expect(result.playerCommands.execution.status == iggy::runtime::RuntimePlayerCommandExecutionStatus::Executed, "session collision cache setup should execute command");
+	Expect(result.playerCommands.execution.movementResults.size() == 1, "session collision cache should preserve movement diagnostic");
+	if (result.playerCommands.execution.movementResults.size() == 1) {
+		Expect(result.playerCommands.execution.movementResults[0].status == iggy::PlayerMovementExecutionStatus::Blocked, "session collision cache should block movement");
+		Expect(result.playerCommands.execution.movementResults[0].movement.motion.hit.object.id == iggy::ResourceId("session:wall"), "session collision cache should provide blocking hit object");
+	}
+	Expect(NearVec(result.session.player.position, { 2.0F, 0.0F }), "session collision cache should constrain command tick movement");
+}
+
+void TestNoExplicitWorldAndNoSessionCollisionCacheUsesEmptyWorld()
+{
+	const iggy::runtime::GameplayCommand2DFactory factory;
+	const iggy::runtime::RuntimeSessionState session = SessionWithPlayer();
+	iggy::runtime::RuntimeSessionCommandTickInput input = Input(
+		session,
+		CommandFrame({
+			factory.moveToPoint(PlayerId, { 4.0F, 0.0F }),
+		}));
+	input.playerCommandConfig = PlayerCommandConfig(4.0F);
+
+	const iggy::runtime::RuntimeSessionCommandTickResult result = iggy::runtime::RuntimeSessionCommandTick {}.run(input);
+
+	Expect(result.playerCommands.execution.status == iggy::runtime::RuntimePlayerCommandExecutionStatus::Executed, "empty collision fallback setup should execute command");
+	Expect(result.playerCommands.execution.movementResults.size() == 1, "empty collision fallback should preserve movement diagnostic");
+	if (result.playerCommands.execution.movementResults.size() == 1)
+		Expect(result.playerCommands.execution.movementResults[0].status == iggy::PlayerMovementExecutionStatus::Moved, "empty collision fallback should allow movement");
+	Expect(NearVec(result.session.player.position, { 4.0F, 0.0F }), "empty collision fallback should allow full requested movement");
+}
+
 void TestRenderCacheAndSessionMetadataArePreservedThroughTick()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
@@ -408,6 +486,9 @@ int main()
 	TestActorMismatchDiagnosticsDoNotPreventTick();
 	TestMultipleMoveCommandsUseExistingFirstMovePolicy();
 	TestBlockedMoveStillTicksWithExecutionDiagnostics();
+	TestExplicitWorldWinsOverSessionCollisionCache();
+	TestNoExplicitWorldUsesSessionCollisionCache();
+	TestNoExplicitWorldAndNoSessionCollisionCacheUsesEmptyWorld();
 	TestRenderCacheAndSessionMetadataArePreservedThroughTick();
 	TestInputsAreNotMutated();
 
