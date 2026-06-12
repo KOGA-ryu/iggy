@@ -43,6 +43,7 @@ add_library(iggy_engine
   src/scene/level/LevelRuntimeUpdate.cpp
   src/scene/level/LevelTileDrawList.cpp
   src/scene/level/LevelTileMap.cpp
+  src/scene/level/LevelTileRenderDirtyChunks.cpp
   src/scene/level/LevelTileRenderChunkCache.cpp
   src/scene/level/LevelTileRenderChunkCommands.cpp
   src/scene/level/LevelTileRenderChunkVisibility.cpp
@@ -83,6 +84,7 @@ iggy_add_test(camera_view_tests tests/camera_view_tests.cpp)
 iggy_add_test(level_blueprint_tests tests/level_blueprint_tests.cpp)
 iggy_add_test(level_tile_draw_list_tests tests/level_tile_draw_list_tests.cpp)
 iggy_add_test(level_tile_map_tests tests/level_tile_map_tests.cpp)
+iggy_add_test(level_tile_render_dirty_chunks_tests tests/level_tile_render_dirty_chunks_tests.cpp)
 iggy_add_test(level_tile_render_chunk_cache_tests tests/level_tile_render_chunk_cache_tests.cpp)
 iggy_add_test(level_tile_render_chunk_commands_tests tests/level_tile_render_chunk_commands_tests.cpp)
 iggy_add_test(level_tile_render_chunk_visibility_tests tests/level_tile_render_chunk_visibility_tests.cpp)
