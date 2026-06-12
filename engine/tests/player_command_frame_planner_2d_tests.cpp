@@ -1,44 +1,30 @@
 #include <cstdlib>
-#include <initializer_list>
 
 #include "core/resource/ResourceId.hpp"
 #include "runtime/GameplayCommand2D.hpp"
 #include "scene/player/PlayerCommandFramePlanner2D.hpp"
+#include "support/CommandFrameFixtures.hpp"
+#include "support/PlayerFixtures.hpp"
 #include "support/TestHarness.hpp"
 
 namespace {
 
+using iggy::test::CommandFrame;
 using iggy::test::Expect;
+using iggy::test::ExpectPlayerAgent;
 using iggy::test::Failures;
 using iggy::test::NearVec;
+using iggy::test::PlayerAgent;
 
 const iggy::ResourceId PlayerId { "player:one" };
 const iggy::ResourceId OtherActorId { "player:two" };
 const iggy::ResourceId ThirdActorId { "player:three" };
 const iggy::ResourceId TargetId { "target:lever" };
 
-iggy::PlayerAgentState Player(iggy::ResourceId id = PlayerId)
-{
-	iggy::PlayerAgentState player;
-	player.id = id;
-	player.position = { 1.25F, 2.75F };
-	player.spawnTile = { 1, 2 };
-	player.movementStatus = iggy::PlayerMovementStatus::Idle;
-	player.facing = iggy::PlayerFacing2D::South;
-	return player;
-}
-
-iggy::runtime::GameplayCommandFrame2D Frame(std::initializer_list<iggy::runtime::GameplayCommand2D> commands)
-{
-	iggy::runtime::GameplayCommandFrame2D frame;
-	frame.commands.insert(frame.commands.end(), commands.begin(), commands.end());
-	return frame;
-}
-
 void TestEmptyFrameProducesEmptyResult()
 {
 	const iggy::runtime::GameplayCommandFrame2D frame;
-	const iggy::PlayerCommandFramePlan2DResult result = iggy::PlayerCommandFramePlanner2D {}.plan(Player(), frame);
+	const iggy::PlayerCommandFramePlan2DResult result = iggy::PlayerCommandFramePlanner2D {}.plan(PlayerAgent(PlayerId), frame);
 
 	Expect(!result.validation.hasInvalidCommands, "empty frame should have no invalid commands");
 	Expect(result.validation.acceptedFrame.commands.empty(), "empty frame should have empty accepted frame");
@@ -50,13 +36,13 @@ void TestEmptyFrameProducesEmptyResult()
 void TestAllValidFrameProducesPlansInOrder()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.moveToPoint(PlayerId, { 1.5F, 2.5F }),
 		factory.wait(PlayerId),
 		factory.interact(PlayerId, TargetId),
 	});
 
-	const iggy::PlayerCommandFramePlan2DResult result = iggy::PlayerCommandFramePlanner2D {}.plan(Player(), frame);
+	const iggy::PlayerCommandFramePlan2DResult result = iggy::PlayerCommandFramePlanner2D {}.plan(PlayerAgent(PlayerId), frame);
 
 	Expect(!result.validation.hasInvalidCommands, "all-valid frame should have no invalid commands");
 	Expect(result.plans.size() == 3, "all-valid frame should produce one plan per command");
@@ -71,14 +57,14 @@ void TestAllValidFrameProducesPlansInOrder()
 void TestFramePlannerPreservesSingleCommandPlannerBehavior()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.moveToPoint(PlayerId, { 3.75F, 4.1F }),
 		factory.moveToTile(PlayerId, { -2, -3 }),
 		factory.wait(PlayerId),
 		factory.interact(PlayerId, TargetId),
 	});
 
-	const iggy::PlayerCommandFramePlan2DResult result = iggy::PlayerCommandFramePlanner2D {}.plan(Player(), frame);
+	const iggy::PlayerCommandFramePlan2DResult result = iggy::PlayerCommandFramePlanner2D {}.plan(PlayerAgent(PlayerId), frame);
 
 	Expect(result.plans.size() == 4, "frame planner should produce four plans for four valid commands");
 	if (result.plans.size() == 4) {
@@ -92,13 +78,13 @@ void TestFramePlannerPreservesSingleCommandPlannerBehavior()
 void TestInvalidInteractReportedByValidationAndNotPlanned()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.wait(PlayerId),
 		factory.interact(PlayerId, {}),
 		factory.moveToTile(PlayerId, { 2, 3 }),
 	});
 
-	const iggy::PlayerCommandFramePlan2DResult result = iggy::PlayerCommandFramePlanner2D {}.plan(Player(), frame);
+	const iggy::PlayerCommandFramePlan2DResult result = iggy::PlayerCommandFramePlanner2D {}.plan(PlayerAgent(PlayerId), frame);
 
 	Expect(result.validation.hasInvalidCommands, "invalid command should appear in validation diagnostics");
 	Expect(result.validation.invalidCommands.size() == 1, "one invalid interact should produce one validation diagnostic");
@@ -117,7 +103,7 @@ void TestInvalidInteractReportedByValidationAndNotPlanned()
 void TestMixedValidInvalidCommandsPlanAcceptedRelativeOrder()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.interact(PlayerId, {}),
 		factory.moveToPoint(PlayerId, { 5.0F, 6.0F }),
 		factory.interact(PlayerId, TargetId),
@@ -125,7 +111,7 @@ void TestMixedValidInvalidCommandsPlanAcceptedRelativeOrder()
 		factory.wait(PlayerId),
 	});
 
-	const iggy::PlayerCommandFramePlan2DResult result = iggy::PlayerCommandFramePlanner2D {}.plan(Player(), frame);
+	const iggy::PlayerCommandFramePlan2DResult result = iggy::PlayerCommandFramePlanner2D {}.plan(PlayerAgent(PlayerId), frame);
 
 	Expect(result.validation.invalidCommands.size() == 2, "mixed frame should report invalid commands");
 	Expect(result.plans.size() == 3, "mixed frame should plan only accepted commands");
@@ -139,12 +125,12 @@ void TestMixedValidInvalidCommandsPlanAcceptedRelativeOrder()
 void TestActorMismatchedAcceptedCommandProducesRejectedPlan()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.wait(PlayerId),
 		factory.moveToPoint(OtherActorId, { 7.0F, 8.0F }),
 	});
 
-	const iggy::PlayerCommandFramePlan2DResult result = iggy::PlayerCommandFramePlanner2D {}.plan(Player(), frame);
+	const iggy::PlayerCommandFramePlan2DResult result = iggy::PlayerCommandFramePlanner2D {}.plan(PlayerAgent(PlayerId), frame);
 
 	Expect(!result.validation.hasInvalidCommands, "actor mismatch is a player-level rejection, not validation failure");
 	Expect(result.plans.size() == 2, "actor-mismatched accepted command should still produce a plan");
@@ -159,11 +145,11 @@ void TestActorMismatchedAcceptedCommandProducesRejectedPlan()
 void TestInvalidActorMismatchedCommandOnlyAppearsInValidation()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.interact(OtherActorId, {}),
 	});
 
-	const iggy::PlayerCommandFramePlan2DResult result = iggy::PlayerCommandFramePlanner2D {}.plan(Player(), frame);
+	const iggy::PlayerCommandFramePlan2DResult result = iggy::PlayerCommandFramePlanner2D {}.plan(PlayerAgent(PlayerId), frame);
 
 	Expect(result.validation.invalidCommands.size() == 1, "invalid actor-mismatched command should appear in validation diagnostics");
 	Expect(result.validation.invalidCommands[0].index == 0, "invalid actor-mismatched validation diagnostic should preserve index");
@@ -174,13 +160,13 @@ void TestInvalidActorMismatchedCommandOnlyAppearsInValidation()
 void TestMultipleRejectedAcceptedCommandsReportedInOrder()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.moveToPoint(OtherActorId, { 1.0F, 1.0F }),
 		factory.wait(PlayerId),
 		factory.interact(ThirdActorId, TargetId),
 	});
 
-	const iggy::PlayerCommandFramePlan2DResult result = iggy::PlayerCommandFramePlanner2D {}.plan(Player(), frame);
+	const iggy::PlayerCommandFramePlan2DResult result = iggy::PlayerCommandFramePlanner2D {}.plan(PlayerAgent(PlayerId), frame);
 
 	Expect(result.plans.size() == 3, "multiple rejection setup should plan all accepted commands");
 	Expect(result.rejectedPlans.size() == 2, "multiple actor mismatches should produce multiple rejected plan diagnostics");
@@ -193,13 +179,13 @@ void TestMultipleRejectedAcceptedCommandsReportedInOrder()
 void TestEmptyActorIdsRemainAcceptedThroughFramePlanner()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.wait(),
 		factory.moveToPoint({}, { 2.0F, 3.0F }),
 		factory.interact({}, TargetId),
 	});
 
-	const iggy::PlayerCommandFramePlan2DResult result = iggy::PlayerCommandFramePlanner2D {}.plan(Player(), frame);
+	const iggy::PlayerCommandFramePlan2DResult result = iggy::PlayerCommandFramePlanner2D {}.plan(PlayerAgent(PlayerId), frame);
 
 	Expect(!result.validation.hasInvalidCommands, "empty actor ids should not fail validation");
 	Expect(result.plans.size() == 3, "empty actor id commands should be planned");
@@ -211,9 +197,9 @@ void TestEmptyActorIdsRemainAcceptedThroughFramePlanner()
 void TestInputsAreNotMutated()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
-	iggy::PlayerAgentState player = Player();
+	iggy::PlayerAgentState player = PlayerAgent(PlayerId);
 	const iggy::PlayerAgentState originalPlayer = player;
-	iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.moveToPoint(PlayerId, { 9.0F, 10.0F }),
 		factory.interact(PlayerId, {}),
 	});
@@ -222,8 +208,7 @@ void TestInputsAreNotMutated()
 	const iggy::PlayerCommandFramePlan2DResult result = iggy::PlayerCommandFramePlanner2D {}.plan(player, frame);
 
 	Expect(result.validation.hasInvalidCommands, "input immutability setup should include invalid command");
-	Expect(player.id == originalPlayer.id && NearVec(player.position, originalPlayer.position), "frame planner should not mutate player state");
-	Expect(player.spawnTile == originalPlayer.spawnTile && player.movementStatus == originalPlayer.movementStatus && player.facing == originalPlayer.facing, "frame planner should not mutate player status fields");
+	ExpectPlayerAgent(player, originalPlayer, "frame planner");
 	Expect(frame.commands.size() == originalFrame.commands.size(), "frame planner should not mutate command frame count");
 	Expect(frame.commands[0].type == originalFrame.commands[0].type && NearVec(frame.commands[0].targetPoint, originalFrame.commands[0].targetPoint), "frame planner should not mutate first command");
 	Expect(frame.commands[1].type == originalFrame.commands[1].type && frame.commands[1].targetId == originalFrame.commands[1].targetId, "frame planner should not mutate second command");

@@ -9,13 +9,16 @@
 #include "scene/level/LevelRenderCacheState.hpp"
 #include "scene/level/LevelRuntimeBuilder.hpp"
 #include "support/LevelMapFixtures.hpp"
+#include "support/PlayerFixtures.hpp"
 #include "support/TestHarness.hpp"
 
 namespace {
 
 using iggy::test::Expect;
+using iggy::test::ExpectPlayerAgent;
 using iggy::test::Failures;
 using iggy::test::NearVec;
+using iggy::test::PlayerAgent;
 
 const iggy::ResourceId WalkableMaterial { "material:floor" };
 const iggy::ResourceId BlockedMaterial { "material:wall" };
@@ -70,26 +73,6 @@ iggy::LevelTileRenderChunkCacheConfig ChunkConfig(int chunkWidth = 2, int chunkH
 	return { chunkWidth, chunkHeight, { { WalkableMaterial, BlockedMaterial }, 3 } };
 }
 
-iggy::PlayerAgentState Player(const char *id = "player:one")
-{
-	iggy::PlayerAgentState player;
-	player.id = iggy::ResourceId { id };
-	player.position = { 2.25F, 3.75F };
-	player.spawnTile = { 2, 3 };
-	player.movementStatus = iggy::PlayerMovementStatus::Moving;
-	player.facing = iggy::PlayerFacing2D::North;
-	return player;
-}
-
-void ExpectPlayer(const iggy::PlayerAgentState &actual, const iggy::PlayerAgentState &expected, std::string_view context)
-{
-	Expect(actual.id == expected.id, std::string(context) + " should preserve player id");
-	Expect(NearVec(actual.position, expected.position), std::string(context) + " should preserve player position");
-	Expect(actual.spawnTile == expected.spawnTile, std::string(context) + " should preserve player spawn tile");
-	Expect(actual.movementStatus == expected.movementStatus, std::string(context) + " should preserve player movement status");
-	Expect(actual.facing == expected.facing, std::string(context) + " should preserve player facing");
-}
-
 iggy::runtime::RuntimeSessionTickRunInput Input(iggy::runtime::RuntimeSessionState session, std::size_t tickCount)
 {
 	return { session, { 4.5F, 1.5F }, NpcConfig(), tickCount };
@@ -115,7 +98,7 @@ void TestZeroTicksReturnsInitialSession()
 {
 	iggy::runtime::RuntimeSessionState session;
 	session.level = StateFromBuild(iggy::LevelRuntimeBuilder {}.build(BlueprintWithNpc()));
-	session.player = Player();
+	session.player = PlayerAgent(iggy::ResourceId { "player:one" }, { 2.25F, 3.75F }, { 2, 3 }, iggy::PlayerMovementStatus::Moving, iggy::PlayerFacing2D::North);
 	session.hasPlayer = true;
 	session.tickIndex = 6;
 	const iggy::PlayerAgentState originalPlayer = session.player;
@@ -126,7 +109,7 @@ void TestZeroTicksReturnsInitialSession()
 	Expect(result.finalSession.level.npcAgents.size() == session.level.npcAgents.size(), "zero session ticks should preserve NPC count");
 	Expect(result.finalSession.level.npcAgents[0].state.position == session.level.npcAgents[0].state.position, "zero session ticks should preserve NPC position");
 	Expect(result.finalSession.hasPlayer, "zero session ticks should preserve hasPlayer true");
-	ExpectPlayer(result.finalSession.player, originalPlayer, "zero tick result");
+	ExpectPlayerAgent(result.finalSession.player, originalPlayer, "zero tick result");
 	Expect(result.reportsByTick.empty(), "zero session ticks should produce no report groups");
 }
 
@@ -208,7 +191,7 @@ void TestPlayerStateIsPreservedAcrossTicks()
 {
 	iggy::runtime::RuntimeSessionState session;
 	session.level = StateFromBuild(iggy::LevelRuntimeBuilder {}.build(BlueprintWithNpc()));
-	session.player = Player();
+	session.player = PlayerAgent(iggy::ResourceId { "player:one" }, { 2.25F, 3.75F }, { 2, 3 }, iggy::PlayerMovementStatus::Moving, iggy::PlayerFacing2D::North);
 	session.hasPlayer = true;
 	session.tickIndex = 4;
 	const iggy::PlayerAgentState originalPlayer = session.player;
@@ -217,7 +200,7 @@ void TestPlayerStateIsPreservedAcrossTicks()
 
 	Expect(result.finalSession.tickIndex == 7, "session tick runner with player should increment tick index by tick count");
 	Expect(result.finalSession.hasPlayer, "session tick runner should preserve hasPlayer true");
-	ExpectPlayer(result.finalSession.player, originalPlayer, "session tick runner result");
+	ExpectPlayerAgent(result.finalSession.player, originalPlayer, "session tick runner result");
 	Expect(result.finalSession.level.npcAgents.size() == 1 && !NearVec(result.finalSession.level.npcAgents[0].state.position, session.level.npcAgents[0].state.position), "session tick runner with player should still update NPC level state");
 }
 

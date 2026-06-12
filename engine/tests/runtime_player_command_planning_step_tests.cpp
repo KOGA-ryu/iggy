@@ -1,18 +1,22 @@
 #include <cstdlib>
-#include <initializer_list>
 #include <string>
 #include <string_view>
 
 #include "core/resource/ResourceId.hpp"
 #include "runtime/RuntimePlayerCommandPlanningStep.hpp"
+#include "support/CommandFrameFixtures.hpp"
 #include "support/LevelMapFixtures.hpp"
+#include "support/PlayerFixtures.hpp"
 #include "support/TestHarness.hpp"
 
 namespace {
 
+using iggy::test::CommandFrame;
 using iggy::test::Expect;
+using iggy::test::ExpectPlayerAgent;
 using iggy::test::Failures;
 using iggy::test::NearVec;
+using iggy::test::PlayerAgent;
 
 const iggy::ResourceId PlayerId { "player:one" };
 const iggy::ResourceId OtherActorId { "player:two" };
@@ -20,43 +24,16 @@ const iggy::ResourceId TargetId { "target:lever" };
 const iggy::ResourceId WalkableMaterial { "material:floor" };
 const iggy::ResourceId BlockedMaterial { "material:wall" };
 
-iggy::PlayerAgentState Player(const char *id = "player:one")
-{
-	iggy::PlayerAgentState player;
-	player.id = iggy::ResourceId { id };
-	player.position = { 2.25F, 3.75F };
-	player.spawnTile = { 2, 3 };
-	player.movementStatus = iggy::PlayerMovementStatus::Moving;
-	player.facing = iggy::PlayerFacing2D::East;
-	return player;
-}
-
 iggy::runtime::RuntimeSessionState SessionWithPlayer()
 {
 	iggy::runtime::RuntimeSessionState session;
 	session.level = { iggy::test::MapFromRows({ "..", ".." }), {} };
-	session.player = Player();
+	session.player = PlayerAgent(PlayerId, { 2.25F, 3.75F }, { 2, 3 }, iggy::PlayerMovementStatus::Moving, iggy::PlayerFacing2D::East);
 	session.hasPlayer = true;
 	session.tickIndex = 5;
 	session.renderCache.tileChunkConfig = { 2, 2, { { WalkableMaterial, BlockedMaterial }, 4 } };
 	session.hasRenderCache = true;
 	return session;
-}
-
-iggy::runtime::GameplayCommandFrame2D Frame(std::initializer_list<iggy::runtime::GameplayCommand2D> commands)
-{
-	iggy::runtime::GameplayCommandFrame2D frame;
-	frame.commands.insert(frame.commands.end(), commands.begin(), commands.end());
-	return frame;
-}
-
-void ExpectPlayer(const iggy::PlayerAgentState &actual, const iggy::PlayerAgentState &expected, std::string_view context)
-{
-	Expect(actual.id == expected.id, std::string(context) + " should preserve player id");
-	Expect(NearVec(actual.position, expected.position), std::string(context) + " should preserve player position");
-	Expect(actual.spawnTile == expected.spawnTile, std::string(context) + " should preserve player spawn tile");
-	Expect(actual.movementStatus == expected.movementStatus, std::string(context) + " should preserve player movement status");
-	Expect(actual.facing == expected.facing, std::string(context) + " should preserve player facing");
 }
 
 void TestMissingPlayerReturnsEmptyMissingPlayerResult()
@@ -65,7 +42,7 @@ void TestMissingPlayerReturnsEmptyMissingPlayerResult()
 	iggy::runtime::RuntimeSessionState session = SessionWithPlayer();
 	session.hasPlayer = false;
 	session.player = {};
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.interact(PlayerId, {}),
 	});
 
@@ -96,7 +73,7 @@ void TestPresentPlayerValidCommandsPreservePlanOrder()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
 	const iggy::runtime::RuntimeSessionState session = SessionWithPlayer();
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.moveToPoint(PlayerId, { 1.5F, 2.5F }),
 		factory.wait(PlayerId),
 		factory.interact(PlayerId, TargetId),
@@ -118,7 +95,7 @@ void TestPresentPlayerInvalidCommandSurfacesValidationDiagnostics()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
 	const iggy::runtime::RuntimeSessionState session = SessionWithPlayer();
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.wait(PlayerId),
 		factory.interact(PlayerId, {}),
 	});
@@ -140,7 +117,7 @@ void TestPresentPlayerActorMismatchSurfacesRejectedPlan()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
 	const iggy::runtime::RuntimeSessionState session = SessionWithPlayer();
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.wait(PlayerId),
 		factory.moveToPoint(OtherActorId, { 8.0F, 9.0F }),
 	});
@@ -163,7 +140,7 @@ void TestInputSessionIsNotMutated()
 	const iggy::runtime::GameplayCommand2DFactory factory;
 	iggy::runtime::RuntimeSessionState session = SessionWithPlayer();
 	const iggy::runtime::RuntimeSessionState original = session;
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.moveToPoint(PlayerId, { 1.0F, 1.0F }),
 	});
 
@@ -171,7 +148,7 @@ void TestInputSessionIsNotMutated()
 
 	Expect(result.status == iggy::runtime::RuntimePlayerCommandPlanningStatus::Planned, "session immutability setup should plan");
 	Expect(session.hasPlayer == original.hasPlayer, "planning step should not mutate hasPlayer");
-	ExpectPlayer(session.player, original.player, "planning step input session");
+	ExpectPlayerAgent(session.player, original.player, "planning step input session");
 	Expect(session.tickIndex == original.tickIndex, "planning step should not mutate tickIndex");
 	Expect(session.level.map.width == original.level.map.width && session.level.map.height == original.level.map.height, "planning step should not mutate level map shape");
 	Expect(session.hasRenderCache == original.hasRenderCache, "planning step should not mutate hasRenderCache");
@@ -182,7 +159,7 @@ void TestInputFrameIsNotMutated()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
 	const iggy::runtime::RuntimeSessionState session = SessionWithPlayer();
-	iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.moveToPoint(PlayerId, { 3.0F, 4.0F }),
 		factory.interact(PlayerId, {}),
 	});
@@ -201,7 +178,7 @@ void TestPlanningDoesNotAdvanceTickOrUpdateLevel()
 	const iggy::runtime::GameplayCommand2DFactory factory;
 	iggy::runtime::RuntimeSessionState session = SessionWithPlayer();
 	session.tickIndex = 42;
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.wait(PlayerId),
 	});
 

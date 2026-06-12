@@ -7,13 +7,16 @@
 #include "modules/npc_ai/NpcAgentBatch.hpp"
 #include "runtime/RuntimeSessionState.hpp"
 #include "support/LevelMapFixtures.hpp"
+#include "support/PlayerFixtures.hpp"
 #include "support/TestHarness.hpp"
 
 namespace {
 
 using iggy::test::Expect;
+using iggy::test::ExpectPlayerAgent;
 using iggy::test::Failures;
 using iggy::test::NearVec;
+using iggy::test::PlayerAgent;
 
 const iggy::ResourceId WalkableMaterial { "material:floor" };
 const iggy::ResourceId BlockedMaterial { "material:wall" };
@@ -41,32 +44,12 @@ iggy::runtime::RuntimeSessionBuildConfig Config(bool buildRenderCache = true, in
 	return { ChunkConfig(chunkWidth, chunkHeight), buildRenderCache };
 }
 
-iggy::PlayerAgentState Player(const char *id = "player:one")
-{
-	iggy::PlayerAgentState player;
-	player.id = iggy::ResourceId { id };
-	player.position = { 2.25F, 3.75F };
-	player.spawnTile = { 2, 3 };
-	player.movementStatus = iggy::PlayerMovementStatus::Moving;
-	player.facing = iggy::PlayerFacing2D::East;
-	return player;
-}
-
-iggy::runtime::RuntimeSessionBuildConfig ConfigWithPlayer(bool buildRenderCache = true, iggy::PlayerAgentState player = Player())
+iggy::runtime::RuntimeSessionBuildConfig ConfigWithPlayer(bool buildRenderCache = true, iggy::PlayerAgentState player = PlayerAgent(iggy::ResourceId { "player:one" }, { 2.25F, 3.75F }, { 2, 3 }, iggy::PlayerMovementStatus::Moving, iggy::PlayerFacing2D::East))
 {
 	iggy::runtime::RuntimeSessionBuildConfig config = Config(buildRenderCache);
 	config.hasPlayer = true;
 	config.player = player;
 	return config;
-}
-
-void ExpectPlayer(const iggy::PlayerAgentState &actual, const iggy::PlayerAgentState &expected, std::string_view context)
-{
-	Expect(actual.id == expected.id, std::string(context) + " should preserve player id");
-	Expect(NearVec(actual.position, expected.position), std::string(context) + " should preserve player position");
-	Expect(actual.spawnTile == expected.spawnTile, std::string(context) + " should preserve player spawn tile");
-	Expect(actual.movementStatus == expected.movementStatus, std::string(context) + " should preserve player movement status");
-	Expect(actual.facing == expected.facing, std::string(context) + " should preserve player facing");
 }
 
 void TestBuildWithRenderCacheEnabledSucceeds()
@@ -130,14 +113,14 @@ void TestBuildWithPlayerAndRenderCacheEnabledCopiesPlayer()
 		"..",
 		"..",
 	});
-	const iggy::PlayerAgentState player = Player();
+	const iggy::PlayerAgentState player = PlayerAgent(iggy::ResourceId { "player:one" }, { 2.25F, 3.75F }, { 2, 3 }, iggy::PlayerMovementStatus::Moving, iggy::PlayerFacing2D::East);
 
 	const iggy::runtime::RuntimeSessionBuildResult result = iggy::runtime::RuntimeSessionBuilder {}.build(level, ConfigWithPlayer(true, player));
 
 	Expect(result.built, "session build with player and render cache should succeed");
 	Expect(result.state.hasRenderCache, "session with player and render cache should build render cache");
 	Expect(result.state.hasPlayer, "session with player should set hasPlayer");
-	ExpectPlayer(result.state.player, player, "session with render cache");
+	ExpectPlayerAgent(result.state.player, player, "session with render cache");
 }
 
 void TestBuildWithPlayerAndRenderCacheDisabledCopiesPlayer()
@@ -145,14 +128,14 @@ void TestBuildWithPlayerAndRenderCacheDisabledCopiesPlayer()
 	const iggy::LevelRuntimeState level = State({
 		"..",
 	});
-	const iggy::PlayerAgentState player = Player();
+	const iggy::PlayerAgentState player = PlayerAgent(iggy::ResourceId { "player:one" }, { 2.25F, 3.75F }, { 2, 3 }, iggy::PlayerMovementStatus::Moving, iggy::PlayerFacing2D::East);
 
 	const iggy::runtime::RuntimeSessionBuildResult result = iggy::runtime::RuntimeSessionBuilder {}.build(level, ConfigWithPlayer(false, player));
 
 	Expect(result.built, "session build with player and no render cache should succeed");
 	Expect(!result.state.hasRenderCache, "session with player and no render cache should leave render cache disabled");
 	Expect(result.state.hasPlayer, "session with player and no render cache should set hasPlayer");
-	ExpectPlayer(result.state.player, player, "session without render cache");
+	ExpectPlayerAgent(result.state.player, player, "session without render cache");
 }
 
 void TestInvalidRenderCacheConfigDoesNotPublishPlayer()
@@ -160,7 +143,7 @@ void TestInvalidRenderCacheConfigDoesNotPublishPlayer()
 	const iggy::LevelRuntimeState level = State({
 		"..",
 	});
-	iggy::runtime::RuntimeSessionBuildConfig config = ConfigWithPlayer(true, Player());
+	iggy::runtime::RuntimeSessionBuildConfig config = ConfigWithPlayer(true, PlayerAgent(iggy::ResourceId { "player:one" }, { 2.25F, 3.75F }, { 2, 3 }, iggy::PlayerMovementStatus::Moving, iggy::PlayerFacing2D::East));
 	config.renderCacheConfig.chunkWidth = 0;
 
 	const iggy::runtime::RuntimeSessionBuildResult result = iggy::runtime::RuntimeSessionBuilder {}.build(level, config);
@@ -181,7 +164,7 @@ void TestDefaultPlayerStateAllowedWhenRequested()
 
 	Expect(result.built, "session build with default player should succeed");
 	Expect(result.state.hasPlayer, "session build with default player should set hasPlayer");
-	ExpectPlayer(result.state.player, player, "session with default player");
+	ExpectPlayerAgent(result.state.player, player, "session with default player");
 }
 
 void TestEmptyMapBuildsEmptyRenderCache()
@@ -237,13 +220,13 @@ void TestInputPlayerIsNotMutated()
 	const iggy::LevelRuntimeState level = State({
 		".",
 	});
-	const iggy::PlayerAgentState player = Player();
+	const iggy::PlayerAgentState player = PlayerAgent(iggy::ResourceId { "player:one" }, { 2.25F, 3.75F }, { 2, 3 }, iggy::PlayerMovementStatus::Moving, iggy::PlayerFacing2D::East);
 	const iggy::PlayerAgentState original = player;
 
 	const iggy::runtime::RuntimeSessionBuildResult result = iggy::runtime::RuntimeSessionBuilder {}.build(level, ConfigWithPlayer(false, player));
 
 	Expect(result.built, "input player immutability setup should build");
-	ExpectPlayer(player, original, "input player");
+	ExpectPlayerAgent(player, original, "input player");
 }
 
 } // namespace

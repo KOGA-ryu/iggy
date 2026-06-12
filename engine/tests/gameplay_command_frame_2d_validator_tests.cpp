@@ -1,25 +1,19 @@
 #include <cstdlib>
-#include <initializer_list>
 
 #include "core/resource/ResourceId.hpp"
 #include "runtime/GameplayCommandFrame2DValidator.hpp"
+#include "support/CommandFrameFixtures.hpp"
 #include "support/TestHarness.hpp"
 
 namespace {
 
+using iggy::test::CommandFrame;
 using iggy::test::Expect;
 using iggy::test::Failures;
 using iggy::test::NearVec;
 
 const iggy::ResourceId ActorId { "actor:player" };
 const iggy::ResourceId TargetId { "target:lever" };
-
-iggy::runtime::GameplayCommandFrame2D Frame(std::initializer_list<iggy::runtime::GameplayCommand2D> commands)
-{
-	iggy::runtime::GameplayCommandFrame2D frame;
-	frame.commands.insert(frame.commands.end(), commands.begin(), commands.end());
-	return frame;
-}
 
 void TestEmptyFrameReturnsEmptyValidResult()
 {
@@ -34,7 +28,7 @@ void TestEmptyFrameReturnsEmptyValidResult()
 void TestAllValidCommandsAreAcceptedInOrder()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.moveToPoint(ActorId, { 1.0F, 2.0F }),
 		factory.moveToTile(ActorId, { -3, 4 }),
 		factory.wait(ActorId),
@@ -58,7 +52,7 @@ void TestInvalidInteractReportsOriginalIndexStatusAndCommand()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
 	const iggy::runtime::GameplayCommand2D invalid = factory.interact(ActorId, {});
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.wait(ActorId),
 		invalid,
 	});
@@ -77,7 +71,7 @@ void TestInvalidInteractReportsOriginalIndexStatusAndCommand()
 void TestInvalidCommandExcludedFromAcceptedFrame()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.moveToPoint(ActorId, { 3.0F, 4.0F }),
 		factory.interact(ActorId, {}),
 		factory.wait(ActorId),
@@ -95,7 +89,7 @@ void TestInvalidCommandExcludedFromAcceptedFrame()
 void TestMixedFramePreservesValidRelativeOrder()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.interact(ActorId, {}),
 		factory.moveToPoint(ActorId, { 5.0F, 6.0F }),
 		factory.interact(ActorId, TargetId),
@@ -117,7 +111,7 @@ void TestMixedFramePreservesValidRelativeOrder()
 void TestMultipleInvalidCommandsReportedInInputOrder()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.interact(ActorId, {}),
 		factory.wait(ActorId),
 		factory.interact({}, {}),
@@ -135,7 +129,7 @@ void TestMultipleInvalidCommandsReportedInInputOrder()
 void TestEmptyActorIdsRemainAccepted()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.none(),
 		factory.moveToPoint({}, { 1.0F, 2.0F }),
 		factory.moveToTile({}, { -1, -2 }),
@@ -153,7 +147,7 @@ void TestEmptyActorIdsRemainAccepted()
 void TestInputFrameIsNotMutated()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
-	iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.moveToPoint(ActorId, { 9.0F, 10.0F }),
 		factory.interact(ActorId, {}),
 	});
@@ -170,7 +164,7 @@ void TestInputFrameIsNotMutated()
 void TestValidatorDoesNotTouchRuntimeSessionState()
 {
 	const iggy::runtime::GameplayCommand2DFactory factory;
-	const iggy::runtime::GameplayCommandFrame2D frame = Frame({
+	const iggy::runtime::GameplayCommandFrame2D frame = CommandFrame({
 		factory.wait(ActorId),
 	});
 
