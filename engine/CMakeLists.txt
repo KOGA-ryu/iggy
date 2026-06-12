@@ -35,6 +35,7 @@ add_library(iggy_engine
   src/scene/level/LevelNpcUpdateStep.cpp
   src/scene/level/LevelRuntimeBuilder.cpp
   src/scene/level/LevelRuntimeUpdate.cpp
+  src/scene/level/LevelTileDrawList.cpp
   src/scene/level/LevelTileMap.cpp
   src/scene/level/LevelVisibleTiles.cpp
   src/servers/navigation/NavigationGridPathfinder.cpp
@@ -62,6 +63,7 @@ iggy_add_test(camera_rig_tests tests/camera_rig_tests.cpp)
 iggy_add_test(camera_shake_tests tests/camera_shake_tests.cpp)
 iggy_add_test(camera_view_tests tests/camera_view_tests.cpp)
 iggy_add_test(level_blueprint_tests tests/level_blueprint_tests.cpp)
+iggy_add_test(level_tile_draw_list_tests tests/level_tile_draw_list_tests.cpp)
 iggy_add_test(level_tile_map_tests tests/level_tile_map_tests.cpp)
 iggy_add_test(level_runtime_builder_tests tests/level_runtime_builder_tests.cpp)
 iggy_add_test(level_runtime_update_tests tests/level_runtime_update_tests.cpp)
