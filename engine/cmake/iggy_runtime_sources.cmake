@@ -5,6 +5,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeSaveChunkArchive.cpp
   src/runtime/RuntimeSaveChunkArchiveCodec.cpp
   src/runtime/RuntimeSaveFileEnvelope.cpp
+  src/runtime/RuntimeSaveFileIO.cpp
   src/runtime/RuntimeLevelMutationStep.cpp
   src/runtime/RuntimeCollisionWorldProvider.cpp
   src/runtime/RuntimePlayerCommandExecutionStep.cpp
@@ -14,6 +15,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeSessionCommandTickRunner.cpp
   src/runtime/RuntimeSessionMutationCommandRunner.cpp
   src/runtime/RuntimeSessionMutationCommandStep.cpp
+  src/runtime/RuntimeSessionSaveLoad.cpp
   src/runtime/RuntimeSessionSnapshot.cpp
   src/runtime/RuntimeSessionSnapshotChunkCodec.cpp
   src/runtime/RuntimeSessionSnapshotValidator.cpp
