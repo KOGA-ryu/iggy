@@ -88,6 +88,19 @@ RuntimeSessionSnapshotBuilder
   -> authoritative level + tickIndex + optional player
   -> excludes derived caches
 
+RuntimeSessionSnapshotValidator
+  -> validates authoritative snapshot consistency
+
+RuntimeSessionSnapshotChunkEncoder
+  -> RuntimeSaveChunkArchive
+  -> RuntimeSaveChunkArchiveEncoder
+  -> byte vector
+
+byte vector
+  -> RuntimeSaveChunkArchiveDecoder
+  -> RuntimeSessionSnapshotChunkDecoder
+  -> RuntimeSessionSnapshotValidator
+
 RuntimeSessionSnapshotRestorer
   -> RuntimeSessionBuilder
   -> rebuilds requested caches from restore config
@@ -142,7 +155,7 @@ Do not merge these into existing ticks without a dedicated ownership review:
 
 - render frame building
 - presentation camera update
-- save disk IO or versioned file format
+- save disk IO, platform storage, compression, encryption, or cloud sync
 - raw device input
 - command queue buffering
 
@@ -152,6 +165,6 @@ Possible future slices:
 
 - render-frame step that reads session carried render cache
 - camera/presentation state packet
-- save file serialization around `RuntimeSessionSnapshot`
+- save file IO wrapper around `RuntimeSaveChunkArchiveEncoder` / `RuntimeSaveChunkArchiveDecoder`
 
 Pause before any slice that makes runtime infer map changes or own cache rebuild policy.

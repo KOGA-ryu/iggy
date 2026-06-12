@@ -94,3 +94,8 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `RuntimeSessionMutationCommandStep`: mutation/cache update followed by command tick.
 - `RuntimeSessionMutationCommandRunner`: bounded loop over mutation-command frames.
 - `RuntimeSessionSnapshotBuilder`, `RuntimeSessionSnapshotRestorer`: capture/restore saveable runtime session state while excluding derived caches.
+- `RuntimeSessionSnapshotValidator`: validates snapshot map/player/NPC consistency.
+- `RuntimeBinaryWriter`, `RuntimeBinaryReader`: little-endian byte stream helpers.
+- `RuntimeSaveChunkArchive`, `RuntimeSaveChunkArchiveBuilder`, `RuntimeSaveChunkArchiveValidator`: backend-free chunked save archive data and validation.
+- `RuntimeSessionSnapshotChunkEncoder`, `RuntimeSessionSnapshotChunkDecoder`: convert snapshots to/from chunk archives.
+- `RuntimeSaveChunkArchiveEncoder`, `RuntimeSaveChunkArchiveDecoder`: convert chunk archives to/from byte vectors.

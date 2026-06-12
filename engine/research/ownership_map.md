@@ -153,6 +153,14 @@ Current anchors:
 - `RuntimeSessionMutationCommandRunner`
 - `RuntimeSessionSnapshotBuilder`
 - `RuntimeSessionSnapshotRestorer`
+- `RuntimeSessionSnapshotValidator`
+- `RuntimeSaveChunkArchive`
+- `RuntimeSaveChunkArchiveBuilder`
+- `RuntimeSaveChunkArchiveValidator`
+- `RuntimeSessionSnapshotChunkEncoder`
+- `RuntimeSessionSnapshotChunkDecoder`
+- `RuntimeSaveChunkArchiveEncoder`
+- `RuntimeSaveChunkArchiveDecoder`
 - `RuntimeCollisionWorldProvider`
 
 Runtime may carry:
@@ -165,7 +173,7 @@ Runtime does not own:
 - cache rebuild policy
 - raw device input
 - backend renderer/window/GPU
-- save disk IO or file format
+- save disk IO
 - physics internals
 
 ## Current Precedence Rules
@@ -221,4 +229,10 @@ Save snapshot ownership:
 RuntimeSessionSnapshot
   includes authoritative level, tickIndex, optional player
   excludes LevelDerivedCacheState and render/collision caches
+  -> RuntimeSessionSnapshotValidator
+  -> RuntimeSessionSnapshotChunkEncoder / Decoder
+  -> RuntimeSaveChunkArchiveEncoder / Decoder
+  -> byte vector
 ```
+
+The save lane currently owns in-memory snapshot validation, chunk archive structure, and byte-vector codecs. It still does not own disk paths, file IO, compression, encryption, cloud saves, or platform storage.

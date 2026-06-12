@@ -21,11 +21,11 @@ Status labels:
    - purpose: decide whether camera state is session-owned or sibling presentation state.
    - caution: avoid mixing camera update with render backend.
 
-3. Save file serialization around `RuntimeSessionSnapshot`
+3. Save file IO wrapper around runtime save byte codecs
    - status: `review`
    - owner candidate: `runtime`
-   - purpose: define serialization-ready snapshot data boundaries after `RuntimeSessionSnapshot` capture/restore.
-   - caution: no disk IO/versioning until format ownership is clear.
+   - purpose: write/read byte vectors produced by `RuntimeSaveChunkArchiveEncoder` / `RuntimeSaveChunkArchiveDecoder`.
+   - caution: keep file paths, atomic writes, platform storage, compression, and encryption out unless explicitly scoped.
 
 ## Ready When Requested
 
@@ -58,7 +58,7 @@ Status labels:
 Pause before any slice that:
 
 - removes legacy runtime render-cache fields
-- introduces save/load
+- introduces save disk IO or platform persistence
 - makes runtime define tile mutation semantics
 - makes runtime rebuild caches implicitly during ticks
 - adds dynamic collision bodies

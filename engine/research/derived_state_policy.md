@@ -107,3 +107,14 @@ It intentionally excludes:
 - backend/device state
 
 Restoration should rebuild requested derived caches through `RuntimeSessionBuilder` configuration, not deserialize them as authoritative state.
+
+## Save Codec Rule
+
+The runtime save lane may own in-memory serialization contracts:
+
+- `RuntimeBinaryWriter` / `RuntimeBinaryReader`
+- `RuntimeSaveChunkArchive`
+- snapshot-to-chunk codecs
+- chunk-archive-to-byte-vector codecs
+
+These are still not disk persistence. File paths, save slots, atomic writes, compression, encryption, cloud storage, and platform-specific storage remain separate future boundaries.

@@ -4,6 +4,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeBinaryCodec.cpp
   src/runtime/RuntimeSaveChunkArchive.cpp
   src/runtime/RuntimeSaveChunkArchiveCodec.cpp
+  src/runtime/RuntimeSaveFileEnvelope.cpp
   src/runtime/RuntimeLevelMutationStep.cpp
   src/runtime/RuntimeCollisionWorldProvider.cpp
   src/runtime/RuntimePlayerCommandExecutionStep.cpp
