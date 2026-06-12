@@ -30,6 +30,7 @@ add_library(iggy_engine
   src/modules/npc_ai/NpcTickReporter.cpp
   src/runtime/RuntimeSessionState.cpp
   src/runtime/RuntimeSessionTick.cpp
+  src/runtime/RuntimeSessionTickRunner.cpp
   src/runtime/RuntimeTick.cpp
   src/runtime/RuntimeTickRunner.cpp
   src/scene/camera/CameraClamp.cpp
@@ -128,5 +129,6 @@ iggy_add_test(sprite_render_commands_2d_tests tests/sprite_render_commands_2d_te
 iggy_add_test(texture_resource_tests tests/texture_resource_tests.cpp)
 iggy_add_test(runtime_session_state_tests tests/runtime_session_state_tests.cpp)
 iggy_add_test(runtime_session_tick_tests tests/runtime_session_tick_tests.cpp)
+iggy_add_test(runtime_session_tick_runner_tests tests/runtime_session_tick_runner_tests.cpp)
 iggy_add_test(runtime_tick_tests tests/runtime_tick_tests.cpp)
 iggy_add_test(runtime_tick_runner_tests tests/runtime_tick_runner_tests.cpp)
