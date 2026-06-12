@@ -4,26 +4,21 @@ namespace iggy::npc_ai {
 
 namespace {
 
-bool IsValidTile(line_of_sight::TileCoord tile)
+bool IsValidTile(TileCoord tile)
 {
 	return tile.x >= 0 && tile.y >= 0;
 }
 
-Vec2 TileCenter(line_of_sight::TileCoord tile)
-{
-	return { static_cast<float>(tile.x) + 0.5F, static_cast<float>(tile.y) + 0.5F };
-}
-
-NpcMovementPlan MoveToTile(line_of_sight::TileCoord tile)
+NpcMovementPlan MoveToTile(TileCoord tile)
 {
 	if (!IsValidTile(tile))
 		return {};
-	return { NpcMovementPlanType::MoveTo, TileCenter(tile) };
+	return { NpcMovementPlanType::MoveTo, tileCenter(tile) };
 }
 
 } // namespace
 
-NpcMovementPlan NpcMovementPlanner::plan(const NpcIntent &intent, line_of_sight::TileCoord homeTile) const
+NpcMovementPlan NpcMovementPlanner::plan(const NpcIntent &intent, TileCoord homeTile) const
 {
 	switch (intent.type) {
 	case NpcIntentType::Idle:

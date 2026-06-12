@@ -6,7 +6,7 @@ namespace iggy::npc_ai {
 
 namespace {
 
-AwarenessEvent BuildEvent(AwarenessEventType type, const AwarenessState &state, line_of_sight::TileCoord playerTile)
+AwarenessEvent BuildEvent(AwarenessEventType type, const AwarenessState &state, TileCoord playerTile)
 {
 	return { type, state.playerVisible, state.alerted, playerTile, state.lastSeenTile };
 }

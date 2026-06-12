@@ -16,7 +16,7 @@ void Expect(bool condition, std::string_view message)
 	++Failures;
 }
 
-bool SameTile(iggy::line_of_sight::TileCoord tile, int x, int y)
+bool SameTile(iggy::TileCoord tile, int x, int y)
 {
 	return tile.x == x && tile.y == y;
 }

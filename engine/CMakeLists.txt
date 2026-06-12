@@ -24,6 +24,7 @@ add_library(iggy_engine
   src/modules/npc_ai/NpcSpawnBuilder.cpp
   src/modules/npc_ai/NpcTickReporter.cpp
   src/runtime/RuntimeTick.cpp
+  src/runtime/RuntimeTickRunner.cpp
   src/scene/level/LevelBlueprint.cpp
   src/scene/level/LevelNpcUpdateStep.cpp
   src/scene/level/LevelRuntimeBuilder.cpp
@@ -105,6 +106,9 @@ target_link_libraries(physics2d_tests PRIVATE iggy_engine)
 add_executable(runtime_tick_tests tests/runtime_tick_tests.cpp)
 target_link_libraries(runtime_tick_tests PRIVATE iggy_engine)
 
+add_executable(runtime_tick_runner_tests tests/runtime_tick_runner_tests.cpp)
+target_link_libraries(runtime_tick_runner_tests PRIVATE iggy_engine)
+
 add_test(NAME core_math_tests COMMAND core_math_tests)
 add_test(NAME core_resource_tests COMMAND core_resource_tests)
 add_test(NAME level_blueprint_tests COMMAND level_blueprint_tests)
@@ -127,3 +131,4 @@ add_test(NAME navigation_pathfinder_tests COMMAND navigation_pathfinder_tests)
 add_test(NAME navigation_path_follower_tests COMMAND navigation_path_follower_tests)
 add_test(NAME physics2d_tests COMMAND physics2d_tests)
 add_test(NAME runtime_tick_tests COMMAND runtime_tick_tests)
+add_test(NAME runtime_tick_runner_tests COMMAND runtime_tick_runner_tests)

@@ -1,44 +1,17 @@
 #include <cmath>
 #include <cstdlib>
-#include <iostream>
-#include <string_view>
-#include <vector>
 
 #include "modules/line_of_sight/LineOfSight.hpp"
+#include "support/LevelMapFixtures.hpp"
+#include "support/TestHarness.hpp"
 
 namespace {
 
-int Failures = 0;
-
-void Expect(bool condition, std::string_view message)
-{
-	if (condition)
-		return;
-	std::cerr << "FAIL: " << message << '\n';
-	++Failures;
-}
-
-bool Near(float actual, float expected, float tolerance = 0.0001F)
-{
-	return std::fabs(actual - expected) <= tolerance;
-}
-
-bool SameTile(iggy::line_of_sight::TileCoord actual, int x, int y)
-{
-	return actual.x == x && actual.y == y;
-}
-
-iggy::LevelTileMap MapFromRows(std::vector<std::string_view> rows)
-{
-	iggy::LevelTileMap map;
-	map.height = static_cast<int>(rows.size());
-	map.width = rows.empty() ? 0 : static_cast<int>(rows.front().size());
-	for (std::string_view row : rows) {
-		for (char cell : row)
-			map.tiles.push_back({ cell != '#' });
-	}
-	return map;
-}
+using iggy::test::Expect;
+using iggy::test::Failures;
+using iggy::test::MapFromRows;
+using iggy::test::Near;
+using iggy::test::SameTile;
 
 void TestClearHorizontalAndVerticalLines()
 {

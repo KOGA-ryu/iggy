@@ -2,13 +2,9 @@
 
 #include "core/math/Vec2.hpp"
 #include "scene/level/LevelTileMap.hpp"
+#include "scene/level/TileCoord.hpp"
 
 namespace iggy::line_of_sight {
-
-struct TileCoord {
-	int x = -1;
-	int y = -1;
-};
 
 enum class LineOfSightStatus {
 	Visible,

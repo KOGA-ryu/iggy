@@ -1,44 +1,21 @@
 #include <cstdlib>
-#include <iostream>
-#include <string_view>
-#include <vector>
 
 #include "servers/navigation/NavigationGridPathfinder.hpp"
 #include "servers/navigation/NavigationGridValidator.hpp"
+#include "support/LevelMapFixtures.hpp"
+#include "support/TestHarness.hpp"
 
 namespace {
 
-int Failures = 0;
-
-void Expect(bool condition, std::string_view message)
-{
-	if (condition)
-		return;
-	std::cerr << "FAIL: " << message << '\n';
-	++Failures;
-}
-
-iggy::LevelTileMap MapFromRows(std::vector<std::string_view> rows)
-{
-	iggy::LevelTileMap map;
-	map.height = static_cast<int>(rows.size());
-	map.width = rows.empty() ? 0 : static_cast<int>(rows.front().size());
-	for (std::string_view row : rows) {
-		for (char cell : row)
-			map.tiles.push_back({ cell != '#' });
-	}
-	return map;
-}
+using iggy::test::Expect;
+using iggy::test::Failures;
+using iggy::test::MapFromRows;
+using iggy::test::SameTile;
 
 iggy::navigation::NavigationRequest RequestFor(const iggy::LevelTileMap &map, iggy::Vec2 destination)
 {
 	const iggy::npc_ai::NpcMovementPlan plan { iggy::npc_ai::NpcMovementPlanType::MoveTo, destination };
 	return iggy::navigation::NavigationGridValidator {}.validate(map, plan);
-}
-
-bool SameTile(iggy::navigation::NavigationPathTile tile, int x, int y)
-{
-	return tile.x == x && tile.y == y;
 }
 
 void TestSameTilePath()

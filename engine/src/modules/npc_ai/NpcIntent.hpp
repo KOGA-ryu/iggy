@@ -1,6 +1,6 @@
 #pragma once
 
-#include "modules/line_of_sight/LineOfSight.hpp"
+#include "scene/level/TileCoord.hpp"
 
 namespace iggy::npc_ai {
 
@@ -13,7 +13,7 @@ enum class NpcIntentType {
 
 struct NpcIntent {
 	NpcIntentType type = NpcIntentType::Idle;
-	line_of_sight::TileCoord targetTile;
+	TileCoord targetTile;
 };
 
 } // namespace iggy::npc_ai

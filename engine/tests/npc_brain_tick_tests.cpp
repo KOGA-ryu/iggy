@@ -28,7 +28,7 @@ bool NearVec(iggy::Vec2 actual, iggy::Vec2 expected)
 	return Near(actual.x, expected.x) && Near(actual.y, expected.y);
 }
 
-bool SameTile(iggy::line_of_sight::TileCoord actual, int x, int y)
+bool SameTile(iggy::TileCoord actual, int x, int y)
 {
 	return actual.x == x && actual.y == y;
 }

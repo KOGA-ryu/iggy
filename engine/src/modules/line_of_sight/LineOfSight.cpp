@@ -11,16 +11,6 @@ namespace iggy::line_of_sight {
 
 namespace {
 
-TileCoord TileForPoint(Vec2 point)
-{
-	return { static_cast<int>(std::floor(point.x)), static_cast<int>(std::floor(point.y)) };
-}
-
-bool SameTile(TileCoord left, TileCoord right)
-{
-	return left.x == right.x && left.y == right.y;
-}
-
 LineOfSightTrace Result(LineOfSightStatus status, TileCoord startTile, TileCoord endTile)
 {
 	LineOfSightTrace trace;
@@ -54,8 +44,8 @@ bool LineOfSightTrace::valid() const
 
 LineOfSightTrace Trace(const LevelTileMap &map, Vec2 from, Vec2 to)
 {
-	const TileCoord startTile = TileForPoint(from);
-	const TileCoord endTile = TileForPoint(to);
+	const TileCoord startTile = tileForPoint(from);
+	const TileCoord endTile = tileForPoint(to);
 	const LevelTile *start = map.tileAt(startTile.x, startTile.y);
 	if (start == nullptr)
 		return Result(LineOfSightStatus::StartOutOfBounds, startTile, endTile);
@@ -68,7 +58,7 @@ LineOfSightTrace Trace(const LevelTileMap &map, Vec2 from, Vec2 to)
 		return Result(LineOfSightStatus::StartBlocked, startTile, endTile);
 	if (!end->walkable)
 		return Result(LineOfSightStatus::EndBlocked, startTile, endTile);
-	if (SameTile(startTile, endTile))
+	if (sameTile(startTile, endTile))
 		return Result(LineOfSightStatus::Visible, startTile, endTile);
 
 	const Vec2 segment = to - from;

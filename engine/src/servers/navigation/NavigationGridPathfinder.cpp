@@ -1,7 +1,6 @@
 #include "servers/navigation/NavigationGridPathfinder.hpp"
 
 #include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <queue>
 #include <vector>
@@ -17,21 +16,6 @@ NavigationPath Path(NavigationPathStatus status)
 	return path;
 }
 
-NavigationPathTile TileForPoint(Vec2 point)
-{
-	return { static_cast<int>(std::floor(point.x)), static_cast<int>(std::floor(point.y)) };
-}
-
-Vec2 TileCenter(NavigationPathTile tile)
-{
-	return { static_cast<float>(tile.x) + 0.5F, static_cast<float>(tile.y) + 0.5F };
-}
-
-bool SameTile(NavigationPathTile left, NavigationPathTile right)
-{
-	return left.x == right.x && left.y == right.y;
-}
-
 std::size_t TileIndex(const LevelTileMap &map, int x, int y)
 {
 	return static_cast<std::size_t>(y) * static_cast<std::size_t>(map.width) + static_cast<std::size_t>(x);
@@ -43,14 +27,14 @@ bool Walkable(const LevelTileMap &map, int x, int y)
 	return tile != nullptr && tile->walkable;
 }
 
-NavigationPath BuildPath(const LevelTileMap &map, NavigationPathTile start, NavigationPathTile destination, const std::vector<int> &previous)
+NavigationPath BuildPath(const LevelTileMap &map, TileCoord start, TileCoord destination, const std::vector<int> &previous)
 {
 	NavigationPath path;
 	path.status = NavigationPathStatus::Found;
 
-	for (NavigationPathTile cursor = destination;;) {
+	for (TileCoord cursor = destination;;) {
 		path.tiles.push_back(cursor);
-		if (SameTile(cursor, start))
+		if (sameTile(cursor, start))
 			break;
 
 		const int previousIndex = previous[TileIndex(map, cursor.x, cursor.y)];
@@ -59,8 +43,8 @@ NavigationPath BuildPath(const LevelTileMap &map, NavigationPathTile start, Navi
 
 	std::reverse(path.tiles.begin(), path.tiles.end());
 	path.waypoints.reserve(path.tiles.size());
-	for (NavigationPathTile tile : path.tiles)
-		path.waypoints.push_back(TileCenter(tile));
+	for (TileCoord tile : path.tiles)
+		path.waypoints.push_back(tileCenter(tile));
 	return path;
 }
 
@@ -76,30 +60,30 @@ NavigationPath NavigationGridPathfinder::findPath(const LevelTileMap &map, Vec2 
 	if (!request.accepted())
 		return Path(NavigationPathStatus::DestinationRejected);
 
-	const NavigationPathTile startTile = TileForPoint(start);
+	const TileCoord startTile = tileForPoint(start);
 	if (!map.contains(startTile.x, startTile.y))
 		return Path(NavigationPathStatus::StartOutOfBounds);
 	if (!Walkable(map, startTile.x, startTile.y))
 		return Path(NavigationPathStatus::StartBlocked);
 
-	const NavigationPathTile destination { request.destinationTileX, request.destinationTileY };
-	if (SameTile(startTile, destination)) {
+	const TileCoord destination { request.destinationTileX, request.destinationTileY };
+	if (sameTile(startTile, destination)) {
 		NavigationPath path;
 		path.status = NavigationPathStatus::Found;
 		path.tiles.push_back(startTile);
-		path.waypoints.push_back(TileCenter(startTile));
+		path.waypoints.push_back(tileCenter(startTile));
 		return path;
 	}
 
 	const std::size_t tileCount = static_cast<std::size_t>(map.width) * static_cast<std::size_t>(map.height);
 	std::vector<bool> visited(tileCount, false);
 	std::vector<int> previous(tileCount, -1);
-	std::queue<NavigationPathTile> frontier;
+	std::queue<TileCoord> frontier;
 
 	frontier.push(startTile);
 	visited[TileIndex(map, startTile.x, startTile.y)] = true;
 
-	const NavigationPathTile neighbors[] = {
+	const TileCoord neighbors[] = {
 		{ 1, 0 },
 		{ 0, 1 },
 		{ -1, 0 },
@@ -107,11 +91,11 @@ NavigationPath NavigationGridPathfinder::findPath(const LevelTileMap &map, Vec2 
 	};
 
 	while (!frontier.empty()) {
-		const NavigationPathTile current = frontier.front();
+		const TileCoord current = frontier.front();
 		frontier.pop();
 
-		for (NavigationPathTile neighborOffset : neighbors) {
-			const NavigationPathTile neighbor { current.x + neighborOffset.x, current.y + neighborOffset.y };
+		for (TileCoord neighborOffset : neighbors) {
+			const TileCoord neighbor { current.x + neighborOffset.x, current.y + neighborOffset.y };
 			if (!map.contains(neighbor.x, neighbor.y) || !Walkable(map, neighbor.x, neighbor.y))
 				continue;
 
@@ -121,7 +105,7 @@ NavigationPath NavigationGridPathfinder::findPath(const LevelTileMap &map, Vec2 
 
 			visited[neighborIndex] = true;
 			previous[neighborIndex] = static_cast<int>(TileIndex(map, current.x, current.y));
-			if (SameTile(neighbor, destination))
+			if (sameTile(neighbor, destination))
 				return BuildPath(map, startTile, destination, previous);
 
 			frontier.push(neighbor);
