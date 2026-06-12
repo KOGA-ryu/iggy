@@ -23,9 +23,11 @@ add_library(iggy_engine
   src/modules/npc_ai/NpcNavigationController.cpp
   src/modules/npc_ai/NpcSpawnBuilder.cpp
   src/modules/npc_ai/NpcTickReporter.cpp
+  src/runtime/RuntimeTick.cpp
   src/scene/level/LevelBlueprint.cpp
   src/scene/level/LevelNpcUpdateStep.cpp
   src/scene/level/LevelRuntimeBuilder.cpp
+  src/scene/level/LevelRuntimeUpdate.cpp
   src/scene/level/LevelTileMap.cpp
   src/servers/navigation/NavigationGridPathfinder.cpp
   src/servers/navigation/NavigationGridValidator.cpp
@@ -51,6 +53,9 @@ target_link_libraries(level_tile_map_tests PRIVATE iggy_engine)
 
 add_executable(level_runtime_builder_tests tests/level_runtime_builder_tests.cpp)
 target_link_libraries(level_runtime_builder_tests PRIVATE iggy_engine)
+
+add_executable(level_runtime_update_tests tests/level_runtime_update_tests.cpp)
+target_link_libraries(level_runtime_update_tests PRIVATE iggy_engine)
 
 add_executable(level_npc_update_step_tests tests/level_npc_update_step_tests.cpp)
 target_link_libraries(level_npc_update_step_tests PRIVATE iggy_engine)
@@ -97,11 +102,15 @@ target_link_libraries(navigation_path_follower_tests PRIVATE iggy_engine)
 add_executable(physics2d_tests tests/physics2d_tests.cpp)
 target_link_libraries(physics2d_tests PRIVATE iggy_engine)
 
+add_executable(runtime_tick_tests tests/runtime_tick_tests.cpp)
+target_link_libraries(runtime_tick_tests PRIVATE iggy_engine)
+
 add_test(NAME core_math_tests COMMAND core_math_tests)
 add_test(NAME core_resource_tests COMMAND core_resource_tests)
 add_test(NAME level_blueprint_tests COMMAND level_blueprint_tests)
 add_test(NAME level_tile_map_tests COMMAND level_tile_map_tests)
 add_test(NAME level_runtime_builder_tests COMMAND level_runtime_builder_tests)
+add_test(NAME level_runtime_update_tests COMMAND level_runtime_update_tests)
 add_test(NAME level_npc_update_step_tests COMMAND level_npc_update_step_tests)
 add_test(NAME line_of_sight_tests COMMAND line_of_sight_tests)
 add_test(NAME npc_awareness_tests COMMAND npc_awareness_tests)
@@ -117,3 +126,4 @@ add_test(NAME navigation_request_tests COMMAND navigation_request_tests)
 add_test(NAME navigation_pathfinder_tests COMMAND navigation_pathfinder_tests)
 add_test(NAME navigation_path_follower_tests COMMAND navigation_path_follower_tests)
 add_test(NAME physics2d_tests COMMAND physics2d_tests)
+add_test(NAME runtime_tick_tests COMMAND runtime_tick_tests)
