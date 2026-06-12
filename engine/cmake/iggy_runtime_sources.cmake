@@ -2,6 +2,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/GameplayCommand2D.cpp
   src/runtime/GameplayCommandFrame2DValidator.cpp
   src/runtime/RuntimeBinaryCodec.cpp
+  src/runtime/RuntimeSaveMetadata.cpp
   src/runtime/RuntimeSaveChunkArchive.cpp
   src/runtime/RuntimeSaveChunkArchiveCodec.cpp
   src/runtime/RuntimeSaveFormatVersionPolicy.cpp
