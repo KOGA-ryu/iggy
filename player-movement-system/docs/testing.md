@@ -37,6 +37,11 @@ drainer ordering before frame orchestration records the results.
 slot load/save helpers, session frame updates, mode policy/changing, paused
 command preservation, and failed-load behavior that preserves the active world.
 
+`save_snapshot_persistence_tests` owns durable world persistence: snapshot
+writer/reader behavior, snapshot byte/schema/entity/player/enemy codecs,
+checksums and frame validation, snapshot file-store behavior, save-game service
+load/save workflow, and save-slot metadata/load behavior.
+
 `session_lifecycle_command_tests` owns semantic session lifecycle commands:
 dispatch/applier results, lifecycle event emission, replay, command packet
 validation, command log framing/checksums/file-store behavior, and lifecycle
@@ -124,7 +129,7 @@ large shared helper migration.
 
 Good first candidates:
 
-- save/snapshot persistence codecs and slot metadata
+- generic byte/text file-store boundaries
 
 Avoid splitting by line count alone. A smaller file is useful only when the new
 test target has a clear reason to exist.

@@ -19,6 +19,9 @@ lookup, source stream draining, and source-drainer ordering.
 `session_state_tests` covers new-game world creation, slot load/save helpers,
 session frame updates, mode policy/changing, paused command preservation, and
 failed-load behavior.
+`save_snapshot_persistence_tests` covers durable world snapshots, snapshot
+byte/schema/entity/player/enemy codecs, checksums/framing, snapshot file-store
+behavior, save-game service workflow, and save-slot metadata/load behavior.
 `session_lifecycle_command_tests` covers lifecycle command dispatch, applier
 results, session event emission, replay, packet validation, log
 framing/checksums/file-store behavior, and lifecycle script run results.

@@ -739,6 +739,10 @@ SaveSlotService::loadSlot
   -> SaveGameService::loadWorld
 ```
 
+`save_snapshot_persistence_tests` owns this durable persistence layer: snapshot
+shape, byte/schema/entity/player/enemy codecs, frame/checksum validation,
+snapshot files, save-game workflow, and save-slot metadata/load behavior.
+
 This is the same separation mature games need: the save selection screen should
 be able to show valid, empty, and corrupt slots without mutating gameplay state.
 
