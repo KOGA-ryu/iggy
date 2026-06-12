@@ -6,75 +6,15 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_library(iggy_engine
-  src/core/math/Aabb2.cpp
-  src/core/math/Ray2.cpp
-  src/core/math/Rect2.cpp
-  src/core/math/Vec2.cpp
-  src/core/resource/AssetCatalog.cpp
-  src/core/resource/ResourceId.cpp
-  src/modules/animation/SpriteAnimationSampler2D.cpp
-  src/modules/animation/SpriteAnimationState2D.cpp
-  src/modules/animation/SpriteFrameSet2D.cpp
-  src/modules/blueprint/LevelBlueprintValidator.cpp
-  src/modules/line_of_sight/LineOfSight.cpp
-  src/modules/npc_ai/AwarenessSensor.cpp
-  src/modules/npc_ai/NpcAgentBatchUpdater.cpp
-  src/modules/npc_ai/NpcAgentController.cpp
-  src/modules/npc_ai/NpcAgentRenderCommands.cpp
-  src/modules/npc_ai/NpcBrainTick.cpp
-  src/modules/npc_ai/NpcIntentSelector.cpp
-  src/modules/npc_ai/NpcMovementPlanner.cpp
-  src/modules/npc_ai/NpcNavigationController.cpp
-  src/modules/npc_ai/NpcSpawnBuilder.cpp
-  src/modules/npc_ai/NpcTickReporter.cpp
-  src/runtime/GameplayCommand2D.cpp
-  src/runtime/GameplayCommandFrame2DValidator.cpp
-  src/runtime/RuntimePlayerCommandPlanningStep.cpp
-  src/runtime/RuntimeSessionState.cpp
-  src/runtime/RuntimeSessionTick.cpp
-  src/runtime/RuntimeSessionTickRunner.cpp
-  src/runtime/RuntimeTick.cpp
-  src/runtime/RuntimeTickRunner.cpp
-  src/scene/camera/CameraClamp.cpp
-  src/scene/camera/CameraFollow.cpp
-  src/scene/camera/CameraLookahead.cpp
-  src/scene/camera/CameraRig.cpp
-  src/scene/camera/CameraShake.cpp
-  src/scene/camera/CameraView.cpp
-  src/scene/level/LevelBlueprint.cpp
-  src/scene/level/LevelNpcUpdateStep.cpp
-  src/scene/level/LevelRenderCacheState.cpp
-  src/scene/level/LevelRenderFrame2D.cpp
-  src/scene/level/LevelRuntimeBuilder.cpp
-  src/scene/level/LevelRuntimeUpdate.cpp
-  src/scene/level/LevelTileDrawList.cpp
-  src/scene/level/LevelTileMap.cpp
-  src/scene/level/LevelTileRenderDirtyChunks.cpp
-  src/scene/level/LevelTileRenderChunkBuilder.cpp
-  src/scene/level/LevelTileRenderChunkCache.cpp
-  src/scene/level/LevelTileRenderChunkCacheUpdater.cpp
-  src/scene/level/LevelTileRenderChunkCommands.cpp
-  src/scene/level/LevelTileRenderChunkVisibility.cpp
-  src/scene/level/LevelTileRenderCommands.cpp
-  src/scene/level/LevelVisibleTiles.cpp
-  src/scene/player/PlayerAgentState.cpp
-  src/scene/player/PlayerCommandFramePlanner2D.cpp
-  src/scene/player/PlayerCommandPlanner2D.cpp
-  src/scene/sprite/SpriteRenderCommands2D.cpp
-  src/servers/navigation/NavigationGridPathfinder.cpp
-  src/servers/navigation/NavigationGridValidator.cpp
-  src/servers/navigation/NavigationPathFollower.cpp
-  src/servers/physics2d/CollisionShape2D.cpp
-  src/servers/physics2d/CollisionWorld2D.cpp
-  src/servers/physics2d/ShapeQuery2D.cpp
-  src/servers/render/MaterialResource.cpp
-  src/servers/render/RenderCommand2D.cpp
-  src/servers/render/RenderCommandList2DComposer.cpp
-  src/servers/render/RenderResourceRegistry.cpp
-  src/servers/render/ShaderResource.cpp
-  src/servers/render/TextureResource.cpp
-)
+set(IGGY_ENGINE_SOURCES)
+
+include(cmake/iggy_core_sources.cmake)
+include(cmake/iggy_modules_sources.cmake)
+include(cmake/iggy_runtime_sources.cmake)
+include(cmake/iggy_scene_sources.cmake)
+include(cmake/iggy_servers_sources.cmake)
+
+add_library(iggy_engine ${IGGY_ENGINE_SOURCES})
 
 target_include_directories(iggy_engine PUBLIC src)
 
@@ -86,65 +26,8 @@ function(iggy_add_test name source)
   add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
-iggy_add_test(core_math_tests tests/core_math_tests.cpp)
-iggy_add_test(core_resource_tests tests/core_resource_tests.cpp)
-iggy_add_test(asset_catalog_tests tests/asset_catalog_tests.cpp)
-iggy_add_test(camera_clamp_tests tests/camera_clamp_tests.cpp)
-iggy_add_test(camera_follow_tests tests/camera_follow_tests.cpp)
-iggy_add_test(camera_lookahead_tests tests/camera_lookahead_tests.cpp)
-iggy_add_test(camera_rig_tests tests/camera_rig_tests.cpp)
-iggy_add_test(camera_shake_tests tests/camera_shake_tests.cpp)
-iggy_add_test(camera_view_tests tests/camera_view_tests.cpp)
-iggy_add_test(level_blueprint_tests tests/level_blueprint_tests.cpp)
-iggy_add_test(level_tile_draw_list_tests tests/level_tile_draw_list_tests.cpp)
-iggy_add_test(level_tile_map_tests tests/level_tile_map_tests.cpp)
-iggy_add_test(level_tile_render_dirty_chunks_tests tests/level_tile_render_dirty_chunks_tests.cpp)
-iggy_add_test(level_tile_render_chunk_cache_tests tests/level_tile_render_chunk_cache_tests.cpp)
-iggy_add_test(level_tile_render_chunk_cache_updater_tests tests/level_tile_render_chunk_cache_updater_tests.cpp)
-iggy_add_test(level_tile_render_chunk_commands_tests tests/level_tile_render_chunk_commands_tests.cpp)
-iggy_add_test(level_tile_render_chunk_visibility_tests tests/level_tile_render_chunk_visibility_tests.cpp)
-iggy_add_test(level_tile_render_commands_tests tests/level_tile_render_commands_tests.cpp)
-iggy_add_test(level_render_cache_state_tests tests/level_render_cache_state_tests.cpp)
-iggy_add_test(level_render_frame_2d_tests tests/level_render_frame_2d_tests.cpp)
-iggy_add_test(level_runtime_builder_tests tests/level_runtime_builder_tests.cpp)
-iggy_add_test(level_runtime_update_tests tests/level_runtime_update_tests.cpp)
-iggy_add_test(level_npc_update_step_tests tests/level_npc_update_step_tests.cpp)
-iggy_add_test(level_visible_tiles_tests tests/level_visible_tiles_tests.cpp)
-iggy_add_test(line_of_sight_tests tests/line_of_sight_tests.cpp)
-iggy_add_test(npc_awareness_tests tests/npc_awareness_tests.cpp)
-iggy_add_test(npc_agent_controller_tests tests/npc_agent_controller_tests.cpp)
-iggy_add_test(npc_agent_batch_tests tests/npc_agent_batch_tests.cpp)
-iggy_add_test(npc_agent_render_commands_tests tests/npc_agent_render_commands_tests.cpp)
-iggy_add_test(npc_brain_tick_tests tests/npc_brain_tick_tests.cpp)
-iggy_add_test(npc_intent_tests tests/npc_intent_tests.cpp)
-iggy_add_test(npc_movement_planner_tests tests/npc_movement_planner_tests.cpp)
-iggy_add_test(npc_navigation_controller_tests tests/npc_navigation_controller_tests.cpp)
-iggy_add_test(npc_spawn_builder_tests tests/npc_spawn_builder_tests.cpp)
-iggy_add_test(npc_tick_report_tests tests/npc_tick_report_tests.cpp)
-iggy_add_test(navigation_request_tests tests/navigation_request_tests.cpp)
-iggy_add_test(navigation_pathfinder_tests tests/navigation_pathfinder_tests.cpp)
-iggy_add_test(navigation_path_follower_tests tests/navigation_path_follower_tests.cpp)
-iggy_add_test(collision_shape_2d_tests tests/collision_shape_2d_tests.cpp)
-iggy_add_test(collision_world_2d_tests tests/collision_world_2d_tests.cpp)
-iggy_add_test(physics2d_tests tests/physics2d_tests.cpp)
-iggy_add_test(material_resource_tests tests/material_resource_tests.cpp)
-iggy_add_test(render_command_2d_tests tests/render_command_2d_tests.cpp)
-iggy_add_test(render_command_list_2d_composer_tests tests/render_command_list_2d_composer_tests.cpp)
-iggy_add_test(render_resource_registry_tests tests/render_resource_registry_tests.cpp)
-iggy_add_test(shader_resource_tests tests/shader_resource_tests.cpp)
-iggy_add_test(sprite_animation_sampler_2d_tests tests/sprite_animation_sampler_2d_tests.cpp)
-iggy_add_test(sprite_animation_state_2d_tests tests/sprite_animation_state_2d_tests.cpp)
-iggy_add_test(sprite_frame_set_2d_tests tests/sprite_frame_set_2d_tests.cpp)
-iggy_add_test(sprite_render_commands_2d_tests tests/sprite_render_commands_2d_tests.cpp)
-iggy_add_test(player_agent_state_tests tests/player_agent_state_tests.cpp)
-iggy_add_test(player_command_frame_planner_2d_tests tests/player_command_frame_planner_2d_tests.cpp)
-iggy_add_test(player_command_planner_2d_tests tests/player_command_planner_2d_tests.cpp)
-iggy_add_test(texture_resource_tests tests/texture_resource_tests.cpp)
-iggy_add_test(gameplay_command_2d_tests tests/gameplay_command_2d_tests.cpp)
-iggy_add_test(gameplay_command_frame_2d_validator_tests tests/gameplay_command_frame_2d_validator_tests.cpp)
-iggy_add_test(runtime_player_command_planning_step_tests tests/runtime_player_command_planning_step_tests.cpp)
-iggy_add_test(runtime_session_state_tests tests/runtime_session_state_tests.cpp)
-iggy_add_test(runtime_session_tick_tests tests/runtime_session_tick_tests.cpp)
-iggy_add_test(runtime_session_tick_runner_tests tests/runtime_session_tick_runner_tests.cpp)
-iggy_add_test(runtime_tick_tests tests/runtime_tick_tests.cpp)
-iggy_add_test(runtime_tick_runner_tests tests/runtime_tick_runner_tests.cpp)
+include(cmake/iggy_core_tests.cmake)
+include(cmake/iggy_modules_tests.cmake)
+include(cmake/iggy_runtime_tests.cmake)
+include(cmake/iggy_scene_tests.cmake)
+include(cmake/iggy_servers_tests.cmake)
