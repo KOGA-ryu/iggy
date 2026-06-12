@@ -36,6 +36,8 @@ the fully assembled `GameLoop`.
 assembled `GameLoop`.
 `runtime_frame_trace_tests` covers readable frame trace lines, trace section
 ordering, movement input block summaries, and result/event text helpers.
+`runtime_debug_manifest_tests` covers readable debug manifest lines and full
+manifest summaries without exercising artifact writers or filesystem stores.
 
 Good first tests:
 

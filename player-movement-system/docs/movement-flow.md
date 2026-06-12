@@ -1793,7 +1793,11 @@ manifest groups: run status, setup details, and runtime script aggregates.
 The manifest includes the latest frame policy summary so a bundle can explain
 why the run accepted commands or advanced actors without opening the full trace.
 That line is formatted through `RuntimeFramePolicyText`, the same boundary used
-by `RuntimeFrameTrace`. Run-level routed-input and blocked-movement counts go
+by `RuntimeFrameTrace`.
+`runtime_debug_manifest_tests` owns the manifest presentation contract. Bundle
+writer tests only need to prove those lines get persisted in the right artifact,
+not re-prove every manifest section spelling.
+Run-level routed-input and blocked-movement counts go
 through `RuntimeRunSummaryText` for the same reason. Blocked movement reason
 distribution goes through `RuntimeMovementInputBlockSummary`, so the manifest
 can answer the common tuning question without opening the trace.

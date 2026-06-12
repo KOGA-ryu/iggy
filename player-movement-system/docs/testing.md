@@ -73,6 +73,10 @@ completed frame.
 runtime source/lifecycle/simulation section order, movement input block
 summaries, and result/event text helpers used by traces and debug manifests.
 
+`runtime_debug_manifest_tests` owns debug manifest presentation: bundle index
+lines, artifact path lines, setup attempt lines, run/setup/runtime script
+sections, and full `RuntimeDebugManifest` summaries without writing files.
+
 ```text
 focused production boundary
   -> focused test executable
@@ -86,7 +90,7 @@ large shared helper migration.
 
 Good first candidates:
 
-- runtime debug manifest formatting
+- runtime frame trace persistence and trace service
 
 Avoid splitting by line count alone. A smaller file is useful only when the new
 test target has a clear reason to exist.

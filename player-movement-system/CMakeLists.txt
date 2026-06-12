@@ -313,6 +313,9 @@ target_link_libraries(game_loop_frame_report_tests PRIVATE player_movement_syste
 add_executable(runtime_frame_trace_tests tests/runtime_frame_trace_tests.cpp)
 target_link_libraries(runtime_frame_trace_tests PRIVATE player_movement_system)
 
+add_executable(runtime_debug_manifest_tests tests/runtime_debug_manifest_tests.cpp)
+target_link_libraries(runtime_debug_manifest_tests PRIVATE player_movement_system)
+
 add_test(NAME movement_tests COMMAND movement_tests)
 add_test(NAME artifact_output_tests COMMAND artifact_output_tests)
 add_test(NAME artifact_text_tests COMMAND artifact_text_tests)
@@ -330,3 +333,4 @@ add_test(NAME game_loop_script_source_tests COMMAND game_loop_script_source_test
 add_test(NAME game_loop_raw_input_tests COMMAND game_loop_raw_input_tests)
 add_test(NAME game_loop_frame_report_tests COMMAND game_loop_frame_report_tests)
 add_test(NAME runtime_frame_trace_tests COMMAND runtime_frame_trace_tests)
+add_test(NAME runtime_debug_manifest_tests COMMAND runtime_debug_manifest_tests)
