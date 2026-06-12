@@ -30,6 +30,7 @@ add_library(iggy_engine
   src/modules/npc_ai/NpcTickReporter.cpp
   src/runtime/GameplayCommand2D.cpp
   src/runtime/GameplayCommandFrame2DValidator.cpp
+  src/runtime/RuntimePlayerCommandPlanningStep.cpp
   src/runtime/RuntimeSessionState.cpp
   src/runtime/RuntimeSessionTick.cpp
   src/runtime/RuntimeSessionTickRunner.cpp
@@ -137,6 +138,7 @@ iggy_add_test(player_command_planner_2d_tests tests/player_command_planner_2d_te
 iggy_add_test(texture_resource_tests tests/texture_resource_tests.cpp)
 iggy_add_test(gameplay_command_2d_tests tests/gameplay_command_2d_tests.cpp)
 iggy_add_test(gameplay_command_frame_2d_validator_tests tests/gameplay_command_frame_2d_validator_tests.cpp)
+iggy_add_test(runtime_player_command_planning_step_tests tests/runtime_player_command_planning_step_tests.cpp)
 iggy_add_test(runtime_session_state_tests tests/runtime_session_state_tests.cpp)
 iggy_add_test(runtime_session_tick_tests tests/runtime_session_tick_tests.cpp)
 iggy_add_test(runtime_session_tick_runner_tests tests/runtime_session_tick_runner_tests.cpp)
