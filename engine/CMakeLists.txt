@@ -36,6 +36,7 @@ add_library(iggy_engine
   src/scene/level/LevelRuntimeBuilder.cpp
   src/scene/level/LevelRuntimeUpdate.cpp
   src/scene/level/LevelTileMap.cpp
+  src/scene/level/LevelVisibleTiles.cpp
   src/servers/navigation/NavigationGridPathfinder.cpp
   src/servers/navigation/NavigationGridValidator.cpp
   src/servers/navigation/NavigationPathFollower.cpp
@@ -65,6 +66,7 @@ iggy_add_test(level_tile_map_tests tests/level_tile_map_tests.cpp)
 iggy_add_test(level_runtime_builder_tests tests/level_runtime_builder_tests.cpp)
 iggy_add_test(level_runtime_update_tests tests/level_runtime_update_tests.cpp)
 iggy_add_test(level_npc_update_step_tests tests/level_npc_update_step_tests.cpp)
+iggy_add_test(level_visible_tiles_tests tests/level_visible_tiles_tests.cpp)
 iggy_add_test(line_of_sight_tests tests/line_of_sight_tests.cpp)
 iggy_add_test(npc_awareness_tests tests/npc_awareness_tests.cpp)
 iggy_add_test(npc_agent_controller_tests tests/npc_agent_controller_tests.cpp)
