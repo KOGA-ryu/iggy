@@ -1,6 +1,7 @@
 list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/GameplayCommand2D.cpp
   src/runtime/GameplayCommandFrame2DValidator.cpp
+  src/runtime/RuntimeAutosaveRotationExecutor.cpp
   src/runtime/RuntimeAutosaveRotationPolicy.cpp
   src/runtime/RuntimeBinaryCodec.cpp
   src/runtime/RuntimeSaveMetadata.cpp
@@ -12,6 +13,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeSaveSlotPathPolicy.cpp
   src/runtime/RuntimeSaveSlotDeletion.cpp
   src/runtime/RuntimeSaveSlotListing.cpp
+  src/runtime/RuntimeSaveSlotRename.cpp
   src/runtime/RuntimeSaveSlotStore.cpp
   src/runtime/RuntimeLevelMutationStep.cpp
   src/runtime/RuntimeCollisionWorldProvider.cpp
