@@ -137,6 +137,26 @@ Does not own:
 - inventory, combat, or quest semantics
 - backend UI or rendering
 
+### `scene/inventory`
+
+Owns inventory stack data, level item-drop data, and scene-level pickup planning.
+
+Current anchors:
+- `InventoryState2D`
+- `InventoryState2DBuilder`
+- `LevelItemDrop2D`
+- `LevelItemDrop2DRegistry`
+- `LevelItemDrop2DRegistryBuilder`
+- `PickupPlan2D`
+
+Does not own:
+- runtime command-frame order
+- raw input mapping
+- save slot/file format
+- item assets or backend loading
+- inventory UI
+- interaction effect semantics outside pickup-specific planning
+
 ### `modules/animation`
 
 Owns animation clip data, playback state, and sampling.

@@ -24,6 +24,8 @@ Transient frame data:
 - `LevelRuntimeState`
 - `LevelTileMap`
 - `PlayerAgentState` when carried by `RuntimeSessionState`
+- `InventoryState2D` when carried by a future authoritative state packet
+- `LevelItemDrop2DRegistry` when carried by a future authoritative level/session state packet
 - NPC agent state in level/runtime state
 - `RuntimeSessionState::tickIndex`
 
@@ -39,6 +41,7 @@ Transient frame data:
 - interaction effect plans
 - interaction effect application results
 - interaction events emitted while applying effects
+- pickup plans
 - NPC tick reports
 - collision query results
 - mutation/cache update results and command tick diagnostics
@@ -52,6 +55,7 @@ Save snapshots should include:
 - authoritative tile/map state or blueprint reference
 - tick index
 - player state
+- inventory state and item-drop state once a carrying state packet is defined
 - NPC/actor state
 - gameplay-relevant ids and resource ids
 
@@ -64,6 +68,7 @@ Save snapshots should exclude:
 - collision query worlds if rebuildable from map data
 - command plans and per-tick reports
 - interaction plans, requested effect lists, application diagnostics, interaction events, and interaction reports
+- pickup plans and pickup diagnostics
 - mutation/cache update diagnostics
 - backend handles, windows, GPU resources
 - raw device input state
@@ -151,3 +156,14 @@ Current effect application can return an updated `InteractionTarget2DRegistry` f
 Effects that mutate `LevelRuntimeState`, `PlayerAgentState`, inventory, combat, quests, or global event streams still require a separate ownership slice.
 
 `RuntimeInteractionState` may carry interaction targets/effects as an explicit caller-owned packet through runtime interaction steps. It is not currently part of authoritative session snapshots.
+
+## Inventory Rule
+
+Inventory stacks and level item drops are scene/inventory data. `PickupPlan2D` is a transient plan:
+
+```text
+LevelItemDrop2DRegistry + actor position + drop id
+  -> PickupPlan2DResult
+```
+
+The current pickup boundary does not remove drops, add stacks to `InventoryState2D`, mutate `RuntimeSessionState`, or define save snapshot shape for inventory/drop state. Those ownership choices require a later slice.

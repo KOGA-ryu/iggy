@@ -79,6 +79,12 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `InteractionEffectApplier2D::apply`: applies one interaction effect to an interaction target registry, applying toggle effects and recording inspect/event/toggle events.
 - `InteractionEffectPlanApplier2D::apply`: applies a ready effect plan to an interaction target registry and reports applied/deferred/no-op/failed counts plus recorded events.
 
+## `scene/inventory`
+
+- `InventoryState2D`, `InventoryState2DBuilder`: player/scene inventory stack data with deterministic id/count validation.
+- `LevelItemDrop2D`, `LevelItemDrop2DRegistry`, `LevelItemDrop2DRegistryBuilder`: level item-drop data and validated drop lookup table.
+- `PickupPlan2D::plan`: actor position + drop id to ready/blocked pickup plan using pickup radius and extra reach.
+
 ## `scene/player`
 
 - `PlayerAgentState`, `playerTile`: player-owned scene state.

@@ -56,11 +56,14 @@ Proves:
 - interaction target/effect catalogs validate deterministically
 - interaction query/reach/plan/effect-plan helpers remain pure and report diagnostics
 - interaction effect appliers return updated registries, record events, and count applied/deferred/failed effects without mutating inputs
+- inventory stacks and item-drop registries validate deterministically
+- pickup plans preserve requested ids/positions, enforce enabled/range policy, and do not mutate inventories or drops
 
 Avoid:
 - runtime tick order
 - backend or save semantics
 - applying interaction effects outside interaction target registry state without an explicit ownership slice
+- applying pickups to inventory/drop authoritative state without an explicit ownership slice
 
 ### Player scene behavior
 

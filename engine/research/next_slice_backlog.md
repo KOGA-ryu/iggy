@@ -53,7 +53,13 @@ Status labels:
    - purpose: decide how recorded interaction events, inventory/combat/quest effects, or level/player mutations become authoritative outcomes.
    - caution: keep this out of runtime until the target subsystem and save semantics are explicit.
 
-8. Raw input binding
+8. Pickup execution policy
+   - status: `review`
+   - owner candidate: `scene/inventory` for inventory/drop mutation semantics, runtime only for orchestration if needed
+   - purpose: decide how a ready `PickupPlan2DResult` removes or disables item drops and adds item stacks.
+   - caution: `InventoryState2D`, `LevelItemDrop2DRegistry`, and `PickupPlan2D` exist, but no slice currently mutates inventory/drop authoritative state or save snapshots.
+
+9. Raw input binding
    - status: `defer`
    - owner candidate: platform/input layer not defined yet
    - purpose: map keyboard/gamepad to `GameplayCommand2D`.

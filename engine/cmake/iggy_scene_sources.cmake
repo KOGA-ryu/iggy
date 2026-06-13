@@ -18,6 +18,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/interaction/InteractionTargetToggle2D.cpp
   src/scene/inventory/InventoryState2D.cpp
   src/scene/inventory/LevelItemDrop2D.cpp
+  src/scene/inventory/PickupPlan2D.cpp
   src/scene/level/LevelBlueprint.cpp
   src/scene/level/LevelCollisionCacheState.cpp
   src/scene/level/LevelCollisionWorldBuilder.cpp
