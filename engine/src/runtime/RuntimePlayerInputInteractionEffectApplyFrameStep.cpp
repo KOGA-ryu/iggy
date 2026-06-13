@@ -26,6 +26,7 @@ RuntimePlayerInputInteractionStateApplyFrameResult StateResultFrom(
 	result.queue = separate.queue;
 	result.interaction.targets = separate.interactionTargets;
 	result.interaction.effects = inputInteraction.effects;
+	result.events = separate.events;
 	return result;
 }
 
@@ -51,6 +52,7 @@ RuntimePlayerInputInteractionEffectApplyFrameResult RuntimePlayerInputInteractio
 		result.playerInput.command.intake.mapping.frame,
 		input.interactionReach);
 	result.interactionTargets = result.application.registry;
+	result.events = result.application.events;
 	return result;
 }
 
@@ -75,6 +77,7 @@ RuntimePlayerInputInteractionEffectApplyFrameResult RuntimePlayerInputInteractio
 		result.playerInput.command.intake.mapping.frame,
 		input.interactionReach);
 	result.interactionTargets = result.application.registry;
+	result.events = result.application.events;
 	return result;
 }
 

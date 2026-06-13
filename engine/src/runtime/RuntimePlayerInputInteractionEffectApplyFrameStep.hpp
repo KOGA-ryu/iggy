@@ -25,6 +25,7 @@ struct RuntimePlayerInputInteractionEffectApplyFrameResult {
 	RuntimeSessionState session;
 	RuntimeCommandQueueState queue;
 	InteractionTarget2DRegistry interactionTargets;
+	InteractionEventRecorder2D events;
 };
 
 struct RuntimePlayerInputInteractionStateApplyFrameInput {
@@ -39,6 +40,7 @@ struct RuntimePlayerInputInteractionStateApplyFrameResult {
 	RuntimeSessionState session;
 	RuntimeCommandQueueState queue;
 	RuntimeInteractionState interaction;
+	InteractionEventRecorder2D events;
 };
 
 class RuntimePlayerInputInteractionEffectApplyFrameStep {

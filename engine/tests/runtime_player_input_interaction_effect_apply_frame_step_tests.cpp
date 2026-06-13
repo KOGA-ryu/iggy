@@ -191,6 +191,15 @@ bool SameEffect(const iggy::InteractionEffect2D &actual, const iggy::Interaction
 		&& actual.enabledValue == expected.enabledValue;
 }
 
+bool SameEvent(const iggy::InteractionEvent2D &actual, const iggy::InteractionEvent2D &expected)
+{
+	return actual.type == expected.type
+		&& actual.targetId == expected.targetId
+		&& actual.eventId == expected.eventId
+		&& actual.text == expected.text
+		&& actual.enabledValue == expected.enabledValue;
+}
+
 bool SameEffects(const std::vector<iggy::InteractionEffect2D> &actual, const std::vector<iggy::InteractionEffect2D> &expected)
 {
 	if (actual.size() != expected.size())
@@ -200,6 +209,18 @@ bool SameEffects(const std::vector<iggy::InteractionEffect2D> &actual, const std
 			return false;
 	}
 	return true;
+}
+
+void ExpectEvents(
+	const iggy::InteractionEventRecorder2D &recorder,
+	const std::vector<iggy::InteractionEvent2D> &expected,
+	const char *message)
+{
+	Expect(recorder.events.size() == expected.size(), message);
+	if (recorder.events.size() != expected.size())
+		return;
+	for (std::size_t index = 0; index < expected.size(); ++index)
+		Expect(SameEvent(recorder.events[index], expected[index]), message);
 }
 
 void ExpectTarget(const iggy::InteractionTarget2D &actual, const iggy::InteractionTarget2D &expected, const char *message)
@@ -252,6 +273,7 @@ void TestNoInteractionCommandsStillRunsPlayerInputAndDoesNotMutateRegistry()
 	Expect(result.application.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::NoOp, "no-interaction apply adapter should return no-op application");
 	Expect(!result.application.hasInteractions(), "no-interaction apply adapter should have no application entries");
 	Expect(!result.application.mutated, "no-interaction apply adapter should not mutate interaction registry");
+	ExpectEvents(result.events, {}, "no-interaction apply adapter should surface no top-level events");
 	ExpectRegistryTargets(result.interactionTargets, { target }, "no-interaction apply adapter should return original interaction registry");
 	Expect(NearVec(result.session.player.position, { 1.0F, 0.0F }), "no-interaction apply adapter should preserve player movement result");
 	Expect(SameQueue(result.queue, result.playerInput.queue), "no-interaction apply adapter queue should come from player input result");
@@ -275,6 +297,10 @@ void TestReachableInteractWithToggleUpdatesReturnedRegistry()
 	Expect(result.application.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::Applied, "reachable toggle apply adapter should return Applied");
 	Expect(result.application.appliedCount == 1, "reachable toggle apply adapter should count applied interaction");
 	Expect(result.application.mutated, "reachable toggle apply adapter should mark mutation");
+	ExpectEvents(
+		result.events,
+		{ iggy::targetToggledInteractionEvent(targets[0].id, false) },
+		"reachable toggle apply adapter should surface top-level toggle event");
 	ExpectRegistryTargets(result.interactionTargets, expected, "reachable toggle apply adapter should return updated registry");
 	ExpectRegistryTargets(result.application.registry, expected, "reachable toggle apply adapter should preserve application registry");
 }
@@ -297,6 +323,13 @@ void TestDeferredOnlyEffectsDoNotMutateRegistry()
 	Expect(result.application.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::NoOp, "deferred apply adapter should return NoOp");
 	Expect(result.application.noOpCount == 1, "deferred apply adapter should count no-op interaction");
 	Expect(!result.application.mutated, "deferred apply adapter should not mutate");
+	ExpectEvents(
+		result.events,
+		{
+			iggy::inspectTextRequestedInteractionEvent(target.id, "Read"),
+			iggy::interactionEventEmitted(target.id, iggy::ResourceId { "event:read" }),
+		},
+		"deferred apply adapter should surface top-level deferred events");
 	ExpectRegistryTargets(result.interactionTargets, { target }, "deferred apply adapter should return original registry");
 	if (result.application.entries.size() == 1) {
 		Expect(result.application.entries[0].result.application.deferredCount == 2, "deferred apply adapter should preserve deferred diagnostics");
@@ -323,6 +356,8 @@ void TestDisabledAndOutOfRangeTargetsDoNotMutateRegistry()
 	Expect(disabledResult.application.notReadyCount == 1, "disabled target apply adapter should count not-ready interaction");
 	Expect(farResult.application.notReadyCount == 1, "out-of-range target apply adapter should count not-ready interaction");
 	Expect(!disabledResult.application.mutated && !farResult.application.mutated, "blocked target apply adapters should not mutate");
+	ExpectEvents(disabledResult.events, {}, "disabled target apply adapter should surface no events");
+	ExpectEvents(farResult.events, {}, "out-of-range target apply adapter should surface no events");
 	ExpectRegistryTargets(disabledResult.interactionTargets, { disabled, far }, "disabled target apply adapter should return original registry");
 	ExpectRegistryTargets(farResult.interactionTargets, { disabled, far }, "out-of-range target apply adapter should return original registry");
 	if (disabledResult.application.entries.size() == 1)
@@ -348,6 +383,7 @@ void TestContextBlockedInteractDoesNotEnterApplicationFrame()
 	Expect(result.playerInput.command.intake.mapping.frame.commands.empty(), "context-blocked apply adapter should map no commands");
 	Expect(!result.application.hasInteractions(), "context-blocked apply adapter should apply no interaction entries");
 	Expect(!result.application.mutated, "context-blocked apply adapter should not mutate");
+	ExpectEvents(result.events, {}, "context-blocked apply adapter should surface no top-level events");
 	ExpectRegistryTargets(result.interactionTargets, { target }, "context-blocked apply adapter should return original registry");
 }
 
@@ -371,6 +407,10 @@ void TestMoveThenInteractUsesPostMovePositionAndAppliesToggle()
 
 	Expect(NearVec(result.session.player.position, { 1.0F, 0.0F }), "move-then-interact apply adapter should preserve post-move session");
 	Expect(result.application.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::Applied, "move-then-interact apply adapter should apply effect");
+	ExpectEvents(
+		result.events,
+		{ iggy::targetToggledInteractionEvent(targets[0].id, false) },
+		"move-then-interact apply adapter should surface top-level toggle event");
 	ExpectRegistryTargets(result.interactionTargets, expected, "move-then-interact apply adapter should return toggled registry");
 	if (result.application.entries.size() == 1) {
 		Expect(result.application.entries[0].commandIndex == 1, "move-then-interact apply adapter should preserve interact command index");
@@ -402,6 +442,10 @@ void TestExplicitWorldOverloadAffectsMovementAndReachForApplication()
 
 	Expect(NearVec(result.session.player.position, { 1.0F, 0.0F }), "explicit world apply adapter should preserve movement override result");
 	Expect(result.application.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::Applied, "explicit world apply adapter should apply after movement override");
+	ExpectEvents(
+		result.events,
+		{ iggy::targetToggledInteractionEvent(targets[0].id, false) },
+		"explicit world apply adapter should surface top-level toggle event");
 	ExpectRegistryTargets(result.interactionTargets, expected, "explicit world apply adapter should return toggled registry");
 	if (result.application.entries.size() == 1)
 		Expect(NearVec(result.application.entries[0].result.command.interaction.plan.actorPosition, { 1.0F, 0.0F }), "explicit world apply adapter should use moved actor position");
@@ -437,6 +481,7 @@ void TestQueueRejectedSkipsEffectApplicationAndPreservesDiagnostics()
 	Expect(!result.application.hasInteractions(), "queue-rejected apply adapter should not apply mapped frame");
 	Expect(result.application.appliedCount == 0 && result.application.noOpCount == 0 && result.application.notReadyCount == 0 && result.application.failedCount == 0, "queue-rejected apply adapter should have zero application counts");
 	Expect(!result.application.mutated, "queue-rejected apply adapter should not mutate interaction registry");
+	ExpectEvents(result.events, {}, "queue-rejected apply adapter should surface no top-level events");
 	ExpectRegistryTargets(result.application.registry, targets, "queue-rejected apply adapter application should preserve original registry");
 	ExpectRegistryTargets(result.interactionTargets, targets, "queue-rejected apply adapter should return original registry");
 }
@@ -467,6 +512,7 @@ void TestQueueRejectedExplicitWorldAlsoSkipsEffectApplication()
 	Expect(result.playerInput.command.intake.mapping.frame.commands.size() == 1, "explicit queue-rejected apply adapter should preserve mapped interact diagnostics");
 	Expect(!result.application.hasInteractions(), "explicit queue-rejected apply adapter should not apply mapped frame");
 	Expect(!result.application.mutated, "explicit queue-rejected apply adapter should not mutate interaction registry");
+	ExpectEvents(result.events, {}, "explicit queue-rejected apply adapter should surface no top-level events");
 	ExpectRegistryTargets(result.interactionTargets, targets, "explicit queue-rejected apply adapter should return original registry");
 }
 
@@ -490,6 +536,10 @@ void TestStateOverloadAppliesToggleAndPreservesEffects()
 
 	Expect(result.application.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::Applied, "state apply adapter should apply toggle target");
 	Expect(result.application.mutated, "state apply adapter should mark mutation");
+	ExpectEvents(
+		result.events,
+		{ iggy::targetToggledInteractionEvent(targets[0].id, false) },
+		"state apply adapter should surface top-level toggle event");
 	ExpectRegistryTargets(result.interaction.targets, expected, "state apply adapter should return updated interaction targets");
 	ExpectCatalogPreserved(result.interaction.effects, effects, "state apply adapter should preserve input interaction effects");
 	ExpectRegistryTargets(interaction.targets, targets, "state apply adapter should not mutate input interaction targets");
@@ -515,6 +565,13 @@ void TestStateOverloadDeferredOnlyPreservesStateWithoutMutation()
 
 	Expect(result.application.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::NoOp, "state deferred adapter should return NoOp");
 	Expect(!result.application.mutated, "state deferred adapter should not mutate");
+	ExpectEvents(
+		result.events,
+		{
+			iggy::inspectTextRequestedInteractionEvent(target.id, "Read"),
+			iggy::interactionEventEmitted(target.id, iggy::ResourceId { "event:state_deferred" }),
+		},
+		"state deferred adapter should surface top-level deferred events");
 	ExpectRegistryTargets(result.interaction.targets, { target }, "state deferred adapter should preserve targets");
 	ExpectCatalogPreserved(result.interaction.effects, effects, "state deferred adapter should preserve effects");
 }
@@ -545,6 +602,7 @@ void TestStateOverloadQueueRejectedDoesNotMutateTargets()
 	Expect(result.playerInput.command.intake.mapping.frame.commands.size() == 1, "state queue-rejected adapter should preserve mapped frame diagnostics");
 	Expect(!result.application.hasInteractions(), "state queue-rejected adapter should skip application entries");
 	Expect(!result.application.mutated, "state queue-rejected adapter should not mutate application");
+	ExpectEvents(result.events, {}, "state queue-rejected adapter should surface no top-level events");
 	ExpectRegistryTargets(result.interaction.targets, targets, "state queue-rejected adapter should preserve interaction targets");
 	ExpectCatalogPreserved(result.interaction.effects, effects, "state queue-rejected adapter should preserve interaction effects");
 }
@@ -576,6 +634,10 @@ void TestStateOverloadExplicitWorldAffectsMovementAndApplication()
 
 	Expect(NearVec(result.session.player.position, { 1.0F, 0.0F }), "state explicit adapter should preserve movement override result");
 	Expect(result.application.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::Applied, "state explicit adapter should apply after explicit-world movement");
+	ExpectEvents(
+		result.events,
+		{ iggy::targetToggledInteractionEvent(targets[0].id, false) },
+		"state explicit adapter should surface top-level toggle event");
 	ExpectRegistryTargets(result.interaction.targets, expected, "state explicit adapter should return updated targets");
 	ExpectCatalogPreserved(result.interaction.effects, effects, "state explicit adapter should preserve effects");
 }
