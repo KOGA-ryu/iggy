@@ -36,6 +36,8 @@ InteractionEffectPlanApplyResult InteractionEffectPlanApplier2D::apply(
 		entry.effectIndex = index;
 		entry.result = InteractionEffectApplier2D {}.apply(current, plan.effects[index]);
 		result.entries.push_back(entry);
+		for (const InteractionEvent2D &event : entry.result.events.events)
+			recordInteractionEvent(result.events, event);
 
 		if (entry.result.status == InteractionEffectApplyStatus::Applied)
 			++result.appliedCount;

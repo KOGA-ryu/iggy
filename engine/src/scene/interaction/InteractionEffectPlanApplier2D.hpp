@@ -30,6 +30,7 @@ struct InteractionEffectPlanApplyResult {
 	std::size_t deferredCount = 0;
 	std::size_t noOpCount = 0;
 	std::size_t failedCount = 0;
+	InteractionEventRecorder2D events;
 	bool mutated = false;
 };
 

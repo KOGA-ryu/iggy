@@ -65,6 +65,27 @@ bool SameEffects(const std::vector<iggy::InteractionEffect2D> &actual, const std
 	return true;
 }
 
+bool SameEvent(const iggy::InteractionEvent2D &actual, const iggy::InteractionEvent2D &expected)
+{
+	return actual.type == expected.type
+		&& actual.targetId == expected.targetId
+		&& actual.eventId == expected.eventId
+		&& actual.text == expected.text
+		&& actual.enabledValue == expected.enabledValue;
+}
+
+void ExpectEvents(
+	const iggy::InteractionEventRecorder2D &actual,
+	const std::vector<iggy::InteractionEvent2D> &expected,
+	const char *message)
+{
+	Expect(actual.events.size() == expected.size(), message);
+	if (actual.events.size() != expected.size())
+		return;
+	for (std::size_t index = 0; index < expected.size(); ++index)
+		Expect(SameEvent(actual.events[index], expected[index]), message);
+}
+
 void ExpectTarget(const iggy::InteractionTarget2D &actual, const iggy::InteractionTarget2D &expected, const char *message)
 {
 	Expect(actual.id == expected.id, message);
@@ -126,6 +147,7 @@ void TestNonReadyPlanReturnsInteractionNotReady()
 	Expect(result.status == iggy::InteractionEffectPlanApplyStatus::InteractionNotReady, "non-ready effect plan should return InteractionNotReady");
 	Expect(result.entries.empty(), "non-ready effect plan should apply no entries");
 	Expect(result.appliedCount == 0 && result.deferredCount == 0 && result.noOpCount == 0 && result.failedCount == 0, "non-ready effect plan should have zero counts");
+	ExpectEvents(result.events, {}, "non-ready effect plan should produce no events");
 	Expect(!result.mutated, "non-ready effect plan should not mutate");
 	ExpectRegistryTargets(result.registry, targets, "non-ready effect plan should return original registry");
 	ExpectPlanPreserved(result.plan, plan, "non-ready effect plan should preserve input plan");
@@ -146,6 +168,7 @@ void TestReadyPlanWithNoEffectsReturnsNoOp()
 	Expect(result.status == iggy::InteractionEffectPlanApplyStatus::NoOp, "ready empty effect plan should return NoOp");
 	Expect(result.entries.empty(), "ready empty effect plan should apply no entries");
 	Expect(result.appliedCount == 0 && result.deferredCount == 0 && result.noOpCount == 0 && result.failedCount == 0, "ready empty effect plan should have zero counts");
+	ExpectEvents(result.events, {}, "ready empty effect plan should produce no events");
 	Expect(!result.mutated, "ready empty effect plan should not mutate");
 	ExpectRegistryTargets(result.registry, { target }, "ready empty effect plan should return original registry");
 }
@@ -172,6 +195,10 @@ void TestSingleToggleTargetMutatesRegistryAndReturnsApplied()
 	Expect(result.appliedCount == 1, "single toggle plan should count applied effect");
 	Expect(result.deferredCount == 0 && result.noOpCount == 0 && result.failedCount == 0, "single toggle plan should have no other counts");
 	Expect(result.mutated, "single toggle plan should mark mutated");
+	ExpectEvents(
+		result.events,
+		{ iggy::targetToggledInteractionEvent(effect.targetId, effect.enabledValue) },
+		"single toggle plan should aggregate target toggled event");
 	ExpectRegistryTargets(result.registry, expected, "single toggle plan should return mutated registry");
 	if (result.entries.size() == 1) {
 		Expect(result.entries[0].effectIndex == 0, "single toggle entry should preserve effect index");
@@ -202,6 +229,13 @@ void TestDeferredEffectsReturnNoOpWhenNoMutation()
 	Expect(result.deferredCount == 2, "deferred-only plan should count deferred effects");
 	Expect(result.noOpCount == 0 && result.failedCount == 0, "deferred-only plan should have no no-op or failed effects");
 	Expect(!result.mutated, "deferred-only plan should not mutate");
+	ExpectEvents(
+		result.events,
+		{
+			iggy::inspectTextRequestedInteractionEvent(effects[0].targetId, effects[0].text),
+			iggy::interactionEventEmitted(effects[1].targetId, effects[1].eventId),
+		},
+		"deferred-only plan should aggregate deferred events in order");
 	ExpectRegistryTargets(result.registry, { target }, "deferred-only plan should return original registry");
 }
 
@@ -230,6 +264,14 @@ void TestOrderedMultipleTogglesApplySequentially()
 	Expect(result.entries.size() == 3, "ordered toggles should apply every effect");
 	Expect(result.appliedCount == 3, "ordered toggles should count each toggle as applied");
 	Expect(result.mutated, "ordered toggles should mark mutated");
+	ExpectEvents(
+		result.events,
+		{
+			iggy::targetToggledInteractionEvent(effects[0].targetId, effects[0].enabledValue),
+			iggy::targetToggledInteractionEvent(effects[1].targetId, effects[1].enabledValue),
+			iggy::targetToggledInteractionEvent(effects[2].targetId, effects[2].enabledValue),
+		},
+		"ordered toggles should aggregate toggle events in effect order");
 	ExpectRegistryTargets(result.registry, expected, "ordered toggles should reflect final sequential state");
 }
 
@@ -262,7 +304,40 @@ void TestMixedToggleDeferredAndNoOpCountsCorrectly()
 	Expect(result.noOpCount == 1, "mixed plan should count no-op effect");
 	Expect(result.failedCount == 0, "mixed plan should have no failures");
 	Expect(result.mutated, "mixed plan should mark mutated");
+	ExpectEvents(
+		result.events,
+		{
+			iggy::inspectTextRequestedInteractionEvent(effects[0].targetId, effects[0].text),
+			iggy::targetToggledInteractionEvent(effects[1].targetId, effects[1].enabledValue),
+			iggy::interactionEventEmitted(effects[3].targetId, effects[3].eventId),
+		},
+		"mixed plan should aggregate events in effect order and skip none effect");
 	ExpectRegistryTargets(result.registry, expected, "mixed plan should return final registry");
+}
+
+void TestNoChangeToggleProducesNoPlanEvent()
+{
+	const std::vector<iggy::InteractionTarget2D> targets {
+		Target("target:door", iggy::InteractionTarget2DKind::Door, { 0.0F, 0.0F }, 0.0F, false),
+	};
+	const iggy::InteractionTarget2DRegistry registry = Registry(targets);
+	const std::vector<iggy::InteractionEffect2D> effects {
+		iggy::toggleTargetInteractionEffect(iggy::ResourceId { "target:door" }, false),
+	};
+	const iggy::InteractionEffectPlan2DResult plan = Plan(
+		iggy::InteractionEffectPlan2DStatus::Ready,
+		ReadyInteraction(registry, targets[0].id),
+		effects);
+
+	const iggy::InteractionEffectPlanApplyResult result =
+		iggy::InteractionEffectPlanApplier2D {}.apply(registry, plan);
+
+	Expect(result.status == iggy::InteractionEffectPlanApplyStatus::NoOp, "no-change toggle plan should return NoOp");
+	Expect(result.entries.size() == 1, "no-change toggle plan should preserve entry");
+	Expect(result.noOpCount == 1, "no-change toggle plan should count no-op effect");
+	Expect(!result.mutated, "no-change toggle plan should not mutate");
+	ExpectEvents(result.events, {}, "no-change toggle plan should produce no events");
+	ExpectRegistryTargets(result.registry, targets, "no-change toggle plan should return original registry");
 }
 
 void TestTargetMissingFailureStopsLaterEffects()
@@ -292,6 +367,10 @@ void TestTargetMissingFailureStopsLaterEffects()
 	Expect(result.appliedCount == 1, "target-missing plan should preserve prior applied count");
 	Expect(result.failedCount == 1, "target-missing plan should count failed effect");
 	Expect(result.mutated, "target-missing plan should preserve prior mutation flag");
+	ExpectEvents(
+		result.events,
+		{ iggy::targetToggledInteractionEvent(effects[0].targetId, effects[0].enabledValue) },
+		"target-missing plan should preserve earlier events and add no missing-target event");
 	ExpectRegistryTargets(result.registry, expected, "target-missing plan should preserve registry state before failed effect");
 	if (result.entries.size() == 2) {
 		Expect(result.entries[1].effectIndex == 1, "target-missing failed entry should preserve effect index");
@@ -326,6 +405,10 @@ void TestInvalidEffectFailureStopsLaterEffects()
 	Expect(result.appliedCount == 1, "invalid-effect plan should preserve prior applied count");
 	Expect(result.failedCount == 1, "invalid-effect plan should count failed effect");
 	Expect(result.mutated, "invalid-effect plan should preserve prior mutation flag");
+	ExpectEvents(
+		result.events,
+		{ iggy::targetToggledInteractionEvent(effects[0].targetId, effects[0].enabledValue) },
+		"invalid-effect plan should preserve earlier events and add no invalid-effect event");
 	ExpectRegistryTargets(result.registry, expected, "invalid-effect plan should preserve registry state before failed effect");
 	if (result.entries.size() == 2) {
 		Expect(result.entries[1].effectIndex == 1, "invalid-effect failed entry should preserve effect index");
@@ -366,6 +449,7 @@ int main()
 	TestDeferredEffectsReturnNoOpWhenNoMutation();
 	TestOrderedMultipleTogglesApplySequentially();
 	TestMixedToggleDeferredAndNoOpCountsCorrectly();
+	TestNoChangeToggleProducesNoPlanEvent();
 	TestTargetMissingFailureStopsLaterEffects();
 	TestInvalidEffectFailureStopsLaterEffects();
 	TestOriginalRegistryAndPlanAreNotMutated();
