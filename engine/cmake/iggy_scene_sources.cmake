@@ -17,6 +17,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/interaction/InteractionTargetQuery2D.cpp
   src/scene/interaction/InteractionTargetToggle2D.cpp
   src/scene/inventory/InventoryAddItem2D.cpp
+  src/scene/inventory/InventoryEvent2D.cpp
   src/scene/inventory/InventoryState2D.cpp
   src/scene/inventory/LevelItemDropConsume2D.cpp
   src/scene/inventory/LevelItemDrop2D.cpp
