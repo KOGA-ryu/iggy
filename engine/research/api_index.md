@@ -65,6 +65,16 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `LevelMutationCacheUpdateStep`: applies tile edits through `LevelTileMutation` and refreshes derived caches through `LevelDerivedCacheUpdater`.
 - `LevelRenderFrame2D`: data-only level render-frame builder.
 
+## `scene/interaction`
+
+- `InteractionTarget2D`, `InteractionTarget2DRegistry`, `InteractionTarget2DRegistryBuilder`: authored/runtime interaction target data and validated target lookup table.
+- `InteractionTargetQuery2D::find`: read-only target lookup with missing/disabled/not-found diagnostics.
+- `InteractionReach2D::evaluate`: player/actor position to target reach query with explicit reach config.
+- `InteractionPlan2D::plan`: target query + reach into ready/blocked interaction plan.
+- `InteractionEffect2D`, effect factory helpers, `validate`: backend-free interaction effect intent data.
+- `InteractionEffectCatalog2D`, `InteractionEffectCatalog2DBuilder`: target id to ordered interaction effects.
+- `InteractionEffectPlan2D::plan`: ready interaction plan to requested effect list.
+
 ## `scene/player`
 
 - `PlayerAgentState`, `playerTile`: player-owned scene state.
@@ -97,6 +107,10 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `RuntimePlayerInputCommandRunner`: composes input intent mapping/gating, command queue push, and queued command running.
 - `RuntimePlayerInputCommandReporter`: summarizes ungated or gated input command runner diagnostics without executing behavior.
 - `RuntimePlayerInputFrameStep`: one-frame wrapper around ungated or gated input command running plus reporting.
+- `RuntimeInteractionCommandStep`, `RuntimeInteractionCommandFrameStep`: evaluate Interact commands against scene interaction targets.
+- `RuntimeInteractionEffectCommandStep`, `RuntimeInteractionEffectCommandFrameStep`: evaluate ready interactions into requested effect plans without applying effects.
+- `RuntimePlayerInputInteractionFrameStep`, `RuntimePlayerInputInteractionFrameReporter`: gated input frame plus interaction diagnostics.
+- `RuntimePlayerInputInteractionEffectFrameStep`, `RuntimePlayerInputInteractionEffectFrameReporter`: gated input frame plus interaction/effect-plan diagnostics.
 - `RuntimeCollisionWorldProvider`: resolves explicit/session/empty collision world.
 - `RuntimeSessionCommandTick`: command step followed by session tick.
 - `RuntimeSessionCommandTickRunner`: bounded command-frame loop over command ticks.

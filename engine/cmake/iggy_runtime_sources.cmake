@@ -6,6 +6,10 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeBinaryCodec.cpp
   src/runtime/RuntimeCommandQueue.cpp
   src/runtime/RuntimeMutationCommandQueue.cpp
+  src/runtime/RuntimeInteractionEffectCommandFrameStep.cpp
+  src/runtime/RuntimeInteractionEffectCommandStep.cpp
+  src/runtime/RuntimeInteractionCommandFrameStep.cpp
+  src/runtime/RuntimeInteractionCommandStep.cpp
   src/runtime/RuntimeQueuedCommandRunner.cpp
   src/runtime/RuntimeQueuedMutationCommandRunner.cpp
   src/runtime/RuntimeSaveMetadata.cpp
@@ -25,6 +29,10 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimePlayerCommandPlanningStep.cpp
   src/runtime/RuntimePlayerCommandStep.cpp
   src/runtime/RuntimePlayerInputFrameStep.cpp
+  src/runtime/RuntimePlayerInputInteractionEffectFrameStep.cpp
+  src/runtime/RuntimePlayerInputInteractionEffectFrameReporter.cpp
+  src/runtime/RuntimePlayerInputInteractionFrameStep.cpp
+  src/runtime/RuntimePlayerInputInteractionFrameReporter.cpp
   src/runtime/RuntimePlayerInputCommandRunner.cpp
   src/runtime/RuntimePlayerInputCommandReporter.cpp
   src/runtime/RuntimePlayerInputQueueStep.cpp

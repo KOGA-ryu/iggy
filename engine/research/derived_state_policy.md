@@ -35,9 +35,12 @@ Transient frame data:
 - `RenderCommandList2D` frame packets
 - `LevelRenderFrame2DResult`
 - player command plans
+- interaction plans
+- interaction effect plans
 - NPC tick reports
 - collision query results
 - mutation/cache update results and command tick diagnostics
+- player input interaction reports
 
 ## Save Boundary
 
@@ -58,6 +61,7 @@ Save snapshots should exclude:
 - render command lists
 - collision query worlds if rebuildable from map data
 - command plans and per-tick reports
+- interaction plans, requested effect lists, and interaction reports
 - mutation/cache update diagnostics
 - backend handles, windows, GPU resources
 - raw device input state
@@ -128,3 +132,16 @@ The runtime save lane may own local persistence contracts for authoritative snap
 These contracts may read and write local save files and manage explicit save slots. They still do not make derived caches authoritative or saveable.
 
 Compression, encryption, cloud storage, platform-specific storage, cross-process locking, save UI, and broad retention/overwrite policy remain separate future boundaries.
+
+## Interaction Rule
+
+Interaction targets and effect catalogs are scene/interaction data. Interaction plans, effect plans, and runtime interaction reports are transient results:
+
+```text
+InteractionTarget2DRegistry + actor position + target id
+  -> InteractionPlan2DResult
+  -> InteractionEffectPlan2DResult
+  -> runtime reports
+```
+
+Requested effects are not authoritative changes until a future effect-application slice defines which subsystem mutates level/player/inventory/event state.

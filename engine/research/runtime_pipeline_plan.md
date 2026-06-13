@@ -39,6 +39,17 @@ RuntimePlayerCommandExecutionStep
 RuntimePlayerCommandStep
 ```
 
+Scene interaction interpretation:
+
+```text
+InteractionTarget2DRegistry
+InteractionTargetQuery2D
+InteractionReach2D
+InteractionPlan2D
+InteractionEffectCatalog2D
+InteractionEffectPlan2D
+```
+
 Runtime input-command orchestration:
 
 ```text
@@ -59,6 +70,24 @@ Runtime level mutation orchestration:
 RuntimeLevelMutationStep
 RuntimeSessionMutationCommandStep
 RuntimeSessionMutationCommandRunner
+```
+
+Runtime interaction orchestration:
+
+```text
+RuntimeInteractionCommandStep
+RuntimeInteractionCommandFrameStep
+RuntimeInteractionEffectCommandStep
+RuntimeInteractionEffectCommandFrameStep
+```
+
+Runtime player-input interaction frames:
+
+```text
+RuntimePlayerInputInteractionFrameStep
+RuntimePlayerInputInteractionFrameReporter
+RuntimePlayerInputInteractionEffectFrameStep
+RuntimePlayerInputInteractionEffectFrameReporter
 ```
 
 Session ticking:
@@ -177,6 +206,29 @@ input RuntimeSessionState + RuntimeCommandQueueState + PlayerInputContext2D + Pl
   -> RuntimePlayerInputCommandReporter::reportGated
 ```
 
+Interaction variant:
+
+```text
+input RuntimeSessionState + RuntimeCommandQueueState + PlayerInputContext2D + PlayerInputIntent2D list
+  -> RuntimePlayerInputFrameStep::runGated
+       -> maps/gates input and runs queued command ticks
+  -> RuntimeInteractionCommandFrameStep
+       -> evaluates accepted Interact commands against InteractionTarget2DRegistry
+  -> RuntimePlayerInputInteractionFrameReporter
+       -> summarizes player input + interaction ready/blocked diagnostics
+```
+
+Effect-plan variant:
+
+```text
+RuntimePlayerInputFrameStep::runGated
+  -> RuntimeInteractionEffectCommandFrameStep
+       -> RuntimeInteractionCommandStep
+       -> InteractionEffectPlan2D
+  -> RuntimePlayerInputInteractionEffectFrameReporter
+       -> reports requested effects without applying them
+```
+
 ## Current Runtime Mutation Command Tick Order
 
 ```text
@@ -214,6 +266,7 @@ Do not merge these into existing ticks without a dedicated ownership review:
 - presentation camera update
 - platform storage, compression, encryption, cloud sync, or save UI policy
 - raw device input
+- authoritative interaction effect application
 
 ## Likely Next Integration Choices
 
@@ -222,5 +275,6 @@ Possible future slices:
 - render-frame step that reads session carried render cache
 - camera/presentation state packet
 - save slot retention/overwrite policy if caller needs more than explicit slot store/list/delete calls
+- interaction effect application policy once target/effect ownership is reviewed
 
 Pause before any slice that makes runtime infer map changes or own cache rebuild policy.

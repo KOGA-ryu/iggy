@@ -41,11 +41,11 @@ Status labels:
    - purpose: refine reports or docs around input-intent gating, mapping, queueing, command running, and per-frame diagnostics if real callers need it.
    - caution: do not add raw device input mapping, move gate policy out of scene/player, or hide underlying runner diagnostics.
 
-6. Interaction command execution
+6. Interaction effect application policy
    - status: `review`
-   - owner candidate: `scene/player` for interpretation, runtime for orchestration
-   - purpose: execute `Interact` plans.
-   - caution: requires target ownership/range semantics first.
+   - owner candidate: `scene/interaction` for effect semantics, runtime only for orchestration
+   - purpose: decide how requested `InteractionEffect2D` values mutate authoritative state or emit events.
+   - caution: interaction target lookup, reach checks, effect catalogs, runtime interaction reports, and effect plans now exist; do not apply effects to level/player/inventory/event state until this boundary is reviewed.
 
 7. Raw input binding
    - status: `defer`

@@ -53,10 +53,13 @@ Proves:
 - derived cache construction/update from source state
 - changed-item reporting
 - exact delegation to server primitives
+- interaction target/effect catalogs validate deterministically
+- interaction query/reach/plan/effect-plan helpers remain pure and report diagnostics
 
 Avoid:
 - runtime tick order
 - backend or save semantics
+- applying interaction effects to authoritative state without an explicit ownership slice
 
 ### Player scene behavior
 
@@ -79,12 +82,14 @@ Proves:
 - state carry-forward
 - diagnostics preservation
 - queue push/drain and input-gate diagnostics are preserved without reinterpreting them
+- interaction and effect-plan diagnostics are preserved without applying effects
 - tick index changes only where the tick step owns them
 - derived caches copied/preserved, not rebuilt implicitly
 
 Avoid:
 - duplicating scene/server logic
 - duplicating player input gate or mapper logic
+- duplicating scene/interaction target, reach, or effect-plan rules
 - hidden cache rebuilds
 - raw input mapping
 

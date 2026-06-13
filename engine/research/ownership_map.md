@@ -111,6 +111,27 @@ Does not own:
 - NPC AI
 - save/load format
 
+### `scene/interaction`
+
+Owns interaction target/effect data and scene-level interaction interpretation.
+
+Current anchors:
+- `InteractionTarget2D`
+- `InteractionTarget2DRegistry`
+- `InteractionTargetQuery2D`
+- `InteractionReach2D`
+- `InteractionPlan2D`
+- `InteractionEffect2D`
+- `InteractionEffectCatalog2D`
+- `InteractionEffectPlan2D`
+
+Does not own:
+- runtime command-frame order
+- player input queueing
+- authoritative effect application to level/player state
+- inventory, combat, or quest semantics
+- backend UI or rendering
+
 ### `modules/animation`
 
 Owns animation clip data, playback state, and sampling.
@@ -157,6 +178,14 @@ Current anchors:
 - `RuntimePlayerInputCommandRunner`
 - `RuntimePlayerInputCommandReporter`
 - `RuntimePlayerInputFrameStep`
+- `RuntimeInteractionCommandStep`
+- `RuntimeInteractionCommandFrameStep`
+- `RuntimeInteractionEffectCommandStep`
+- `RuntimeInteractionEffectCommandFrameStep`
+- `RuntimePlayerInputInteractionFrameStep`
+- `RuntimePlayerInputInteractionFrameReporter`
+- `RuntimePlayerInputInteractionEffectFrameStep`
+- `RuntimePlayerInputInteractionEffectFrameReporter`
 - `RuntimeSessionCommandTick`
 - `RuntimeSessionCommandTickRunner`
 - `RuntimeLevelMutationStep`
@@ -241,6 +270,18 @@ RuntimeSessionMutationCommandStep
 ```
 
 Runtime should not infer tile changes or rebuild caches inside existing tick steps. Tile edits are explicit inputs to mutation steps.
+
+Interaction orchestration:
+
+```text
+GameplayCommandFrame2D
+  -> RuntimeInteractionCommandFrameStep
+       -> InteractionPlan2D
+  -> RuntimeInteractionEffectCommandFrameStep
+       -> InteractionEffectPlan2D
+```
+
+Runtime may compose command frames with scene/interaction targets and effect catalogs, but scene/interaction owns target lookup, reach, ready/blocked status, and requested effect-plan semantics. Runtime does not apply effects to authoritative level/player state yet.
 
 Save snapshot ownership:
 
