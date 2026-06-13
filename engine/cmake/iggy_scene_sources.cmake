@@ -56,6 +56,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/ui/UiFeatureContext.cpp
   src/scene/ui/UiInteractionEventPanelModel.cpp
   src/scene/ui/UiRuntimeFrameInspectorModel.cpp
+  src/scene/ui/UiRuntimeWorkspaceModel.cpp
   src/scene/ui/UiSettingsState.cpp
   src/scene/ui/UiShellModel.cpp
   src/scene/ui/UiToolBeltState.cpp

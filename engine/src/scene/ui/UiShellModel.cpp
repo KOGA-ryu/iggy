@@ -3,6 +3,32 @@
 #include <algorithm>
 
 namespace iggy::ui {
+namespace {
+
+bool ContainsResourceId(const std::vector<ResourceId> &ids, const ResourceId &id)
+{
+	return std::find(ids.begin(), ids.end(), id) != ids.end();
+}
+
+std::vector<const UiFeatureDescriptor *> mountedUiFeatures(
+	const UiWorkspaceLayout &layout,
+	const UiFeatureRegistry &registry)
+{
+	std::vector<const UiFeatureDescriptor *> features;
+	std::vector<ResourceId> mountedIds;
+	for (const UiSlotBinding &binding : layout.bindings) {
+		if (ContainsResourceId(mountedIds, binding.featureId))
+			continue;
+		const UiFeatureDescriptor *feature = findUiFeature(registry, binding.featureId);
+		if (feature == nullptr || !uiFeatureSupportsSlot(*feature, binding.slot))
+			continue;
+		features.push_back(feature);
+		mountedIds.push_back(binding.featureId);
+	}
+	return features;
+}
+
+} // namespace
 
 const UiFeatureDescriptor *findUiFeature(const UiFeatureRegistry &registry, const ResourceId &featureId)
 {
@@ -41,6 +67,61 @@ const UiMountedSlot *mountedUiSlot(const std::vector<UiMountedSlot> &mounted, Ui
 			return entry.slot == slot;
 		});
 	return found == mounted.end() ? nullptr : &*found;
+}
+
+std::vector<UiMountedPanel> mountUiWorkspacePanels(const UiWorkspaceLayout &layout, const UiFeatureRegistry &registry)
+{
+	std::vector<UiMountedPanel> mounted;
+	for (const UiFeatureDescriptor *feature : mountedUiFeatures(layout, registry)) {
+		for (const UiFeaturePanelDescriptor &panel : feature->panels) {
+			const UiPanelContentAssignment assignment = uiPanelContentAssignment(
+				layout,
+				panel.groupId,
+				{ panel.groupId, panel.defaultSlot, false });
+			mounted.push_back({
+				panel.id,
+				panel.label,
+				feature->id,
+				panel.groupId,
+				assignment.slot,
+				assignment.hidden,
+			});
+		}
+	}
+	return mounted;
+}
+
+std::vector<UiMountedPalette> mountUiWorkspacePalettes(const UiWorkspaceLayout &layout, const UiFeatureRegistry &registry)
+{
+	std::vector<UiMountedPalette> mounted;
+	for (const UiFeatureDescriptor *feature : mountedUiFeatures(layout, registry)) {
+		for (const UiFeaturePaletteDescriptor &palette : feature->palettes) {
+			mounted.push_back({
+				palette.id,
+				palette.label,
+				feature->id,
+				uiPalettePlacement(layout, palette.id),
+			});
+		}
+	}
+	return mounted;
+}
+
+std::vector<UiMountedChromePanel> mountUiWorkspaceChromePanels(
+	const UiWorkspaceLayout &layout,
+	const UiFeatureRegistry &registry)
+{
+	std::vector<UiMountedChromePanel> mounted;
+	for (const UiFeatureDescriptor *feature : mountedUiFeatures(layout, registry)) {
+		for (const UiFeatureChromePanelDescriptor &panel : feature->chromePanels) {
+			mounted.push_back({
+				panel.id,
+				panel.label,
+				feature->id,
+			});
+		}
+	}
+	return mounted;
 }
 
 UiPanelContentAssignment uiPanelContentAssignment(

@@ -15,10 +15,30 @@ enum class UiShellSlot {
 	Bottom,
 };
 
+struct UiFeaturePanelDescriptor {
+	ResourceId id;
+	std::string label;
+	ResourceId groupId;
+	UiShellSlot defaultSlot = UiShellSlot::Right;
+};
+
+struct UiFeaturePaletteDescriptor {
+	ResourceId id;
+	std::string label;
+};
+
+struct UiFeatureChromePanelDescriptor {
+	ResourceId id;
+	std::string label;
+};
+
 struct UiFeatureDescriptor {
 	ResourceId id;
 	std::string label;
 	std::vector<UiShellSlot> supportedSlots;
+	std::vector<UiFeaturePanelDescriptor> panels;
+	std::vector<UiFeaturePaletteDescriptor> palettes;
+	std::vector<UiFeatureChromePanelDescriptor> chromePanels;
 };
 
 struct UiFeatureRegistry {
@@ -53,6 +73,28 @@ struct UiWorkspaceLayout {
 
 struct UiMountedSlot {
 	UiShellSlot slot = UiShellSlot::Main;
+	ResourceId featureId;
+};
+
+struct UiMountedPanel {
+	ResourceId id;
+	std::string label;
+	ResourceId featureId;
+	ResourceId groupId;
+	UiShellSlot slot = UiShellSlot::Right;
+	bool hidden = false;
+};
+
+struct UiMountedPalette {
+	ResourceId id;
+	std::string label;
+	ResourceId featureId;
+	UiPalettePlacement placement;
+};
+
+struct UiMountedChromePanel {
+	ResourceId id;
+	std::string label;
 	ResourceId featureId;
 };
 
@@ -91,6 +133,15 @@ struct UiShellPanelsState {
 [[nodiscard]] const UiMountedSlot *mountedUiSlot(
 	const std::vector<UiMountedSlot> &mounted,
 	UiShellSlot slot);
+[[nodiscard]] std::vector<UiMountedPanel> mountUiWorkspacePanels(
+	const UiWorkspaceLayout &layout,
+	const UiFeatureRegistry &registry);
+[[nodiscard]] std::vector<UiMountedPalette> mountUiWorkspacePalettes(
+	const UiWorkspaceLayout &layout,
+	const UiFeatureRegistry &registry);
+[[nodiscard]] std::vector<UiMountedChromePanel> mountUiWorkspaceChromePanels(
+	const UiWorkspaceLayout &layout,
+	const UiFeatureRegistry &registry);
 [[nodiscard]] UiPanelContentAssignment uiPanelContentAssignment(
 	const UiWorkspaceLayout &layout,
 	const ResourceId &groupId,
