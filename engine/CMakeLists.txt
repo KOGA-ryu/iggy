@@ -31,3 +31,5 @@ include(cmake/iggy_modules_tests.cmake)
 include(cmake/iggy_runtime_tests.cmake)
 include(cmake/iggy_scene_tests.cmake)
 include(cmake/iggy_servers_tests.cmake)
+
+include(cmake/iggy_qt_shell.cmake)
