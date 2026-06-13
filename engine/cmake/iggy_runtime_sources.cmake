@@ -24,6 +24,8 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimePlayerCommandExecutionStep.cpp
   src/runtime/RuntimePlayerCommandPlanningStep.cpp
   src/runtime/RuntimePlayerCommandStep.cpp
+  src/runtime/RuntimePlayerInputCommandRunner.cpp
+  src/runtime/RuntimePlayerInputQueueStep.cpp
   src/runtime/RuntimeSessionCommandTick.cpp
   src/runtime/RuntimeSessionCommandTickRunner.cpp
   src/runtime/RuntimeSessionMutationCommandRunner.cpp
