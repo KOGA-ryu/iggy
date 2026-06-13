@@ -57,6 +57,9 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 		QFrame#mainSlot {
 			background: %8;
 		}
+		QFrame#workspaceOverlayHost {
+			background: %8;
+		}
 		QFrame#canvasStage {
 			background: %8;
 			border: none;
@@ -223,12 +226,6 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 		}
 		QCheckBox {
 			spacing: 8px;
-		}
-		QSplitter::handle {
-			background: %6;
-		}
-		QSplitter::handle:hover {
-			background: %13;
 		}
 		QMenu {
 			background: %5;

@@ -31,6 +31,7 @@ private:
 	void rebuildSettingsWindowContent();
 	void refreshBody();
 	void refreshStatusBar();
+	void refreshChrome();
 	void refreshAfterModelChange();
 	void rebuildModel();
 	void applyTheme();
@@ -40,6 +41,7 @@ private:
 	[[nodiscard]] QWidget *buildBody();
 	[[nodiscard]] QWidget *buildStatusBar();
 	[[nodiscard]] QWidget *buildRail();
+	[[nodiscard]] QWidget *buildWorkspaceHost();
 	[[nodiscard]] QWidget *buildMainSlot();
 	[[nodiscard]] QWidget *buildPanelSlot(ui::UiShellSlot slot, const char *objectName);
 	[[nodiscard]] QWidget *buildPanelContent(const ui::UiMountedPanel &panel);

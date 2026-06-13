@@ -3,6 +3,7 @@
 #include <QButtonGroup>
 #include <QCheckBox>
 #include <QColor>
+#include <QColorDialog>
 #include <QComboBox>
 #include <QEvent>
 #include <QFont>
@@ -16,9 +17,10 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QPushButton>
+#include <QResizeEvent>
 #include <QSize>
+#include <QSizePolicy>
 #include <QSpinBox>
-#include <QSplitter>
 #include <QStackedWidget>
 
 #include <algorithm>
@@ -129,20 +131,52 @@ void removeWidgetFromLayout(QLayout *layout, QWidget *widget)
 	widget->deleteLater();
 }
 
+class WorkspaceOverlayHost final : public QFrame {
+public:
+	QWidget *mainSlot = nullptr;
+	QWidget *rightPanel = nullptr;
+	QWidget *bottomPanel = nullptr;
+
+protected:
+	void resizeEvent(QResizeEvent *event) override
+	{
+		QFrame::resizeEvent(event);
+		const int w = width();
+		const int h = height();
+		const int rightW = rightPanel != nullptr ? std::min(280, std::max(220, w / 4)) : 0;
+		const int bottomH = bottomPanel != nullptr ? std::min(220, std::max(160, h / 4)) : 0;
+
+		if (mainSlot != nullptr)
+			mainSlot->setGeometry(0, 0, w, h);
+		if (rightPanel != nullptr)
+			rightPanel->setGeometry(w - rightW, 0, rightW, h - bottomH);
+		if (bottomPanel != nullptr)
+			bottomPanel->setGeometry(0, h - bottomH, w - rightW, bottomH);
+		if (rightPanel != nullptr)
+			rightPanel->raise();
+		if (bottomPanel != nullptr)
+			bottomPanel->raise();
+	}
+};
+
 } // namespace
 
 IggyQtShellWindow::IggyQtShellWindow()
 {
 	setWindowFlag(Qt::FramelessWindowHint, true);
 	setMinimumSize(520, 420);
+	resize(1180, 760);
 	settings_ = ui::defaultUiSettingsState(inventory_);
 	input_ = ui::defaultUiRuntimeWorkspaceModelInput(inventory_);
+	input_.windowWidth = width();
+	input_.windowHeight = height();
+	input_.panels.right.collapsed = false;
+	input_.panels.bottom.collapsed = false;
 	context_.activeToolId = id("tool:select");
 	rebuildModel();
 	applyTheme();
 	buildShell();
 	buildSettingsWindow();
-	resize(1180, 760);
 	setWindowTitle(QStringLiteral("Iggy Qt Shell"));
 }
 
@@ -208,9 +242,19 @@ void IggyQtShellWindow::refreshStatusBar()
 	rootLayout_->addWidget(statusBar_);
 }
 
+void IggyQtShellWindow::refreshChrome()
+{
+	if (rootLayout_ == nullptr || chrome_ == nullptr)
+		return;
+	removeWidgetFromLayout(rootLayout_, chrome_);
+	chrome_ = buildChrome();
+	rootLayout_->insertWidget(0, chrome_);
+}
+
 void IggyQtShellWindow::refreshAfterModelChange()
 {
 	rebuildModel();
+	refreshChrome();
 	refreshBody();
 	refreshStatusBar();
 	rebuildSettingsWindowContent();
@@ -230,6 +274,7 @@ void IggyQtShellWindow::applyTheme()
 	setStyleSheet(shellStyleSheet(ui::deriveUiThemeTokens(settings_.theme)));
 	if (settingsWindow_ != nullptr)
 		settingsWindow_->setStyleSheet(shellStyleSheet(ui::deriveUiThemeTokens(settings_.theme)));
+	refreshChrome();
 
 	for (QPushButton *button : findChildren<QPushButton *>())
 		button->setCursor(Qt::PointingHandCursor);
@@ -425,26 +470,38 @@ QWidget *IggyQtShellWindow::buildBody()
 	layout->setContentsMargins(0, 0, 0, 0);
 	layout->setSpacing(0);
 	layout->addWidget(buildRail());
-
-	auto *mainArea = new QSplitter(Qt::Horizontal);
-	mainArea->setChildrenCollapsible(false);
-	mainArea->setHandleWidth(2);
 	if (shouldShowPanel(model_, ui::UiShellSlot::Left, input_.panels.left, input_.windowWidth, input_.windowHeight))
-		mainArea->addWidget(buildPanelSlot(ui::UiShellSlot::Left, "leftPanel"));
-
-	auto *centerColumn = new QSplitter(Qt::Vertical);
-	centerColumn->setChildrenCollapsible(false);
-	centerColumn->setHandleWidth(2);
-	centerColumn->addWidget(buildMainSlot());
-	if (shouldShowPanel(model_, ui::UiShellSlot::Bottom, input_.panels.bottom, input_.windowWidth, input_.windowHeight))
-		centerColumn->addWidget(buildPanelSlot(ui::UiShellSlot::Bottom, "bottomPanel"));
-	mainArea->addWidget(centerColumn);
-
-	if (shouldShowPanel(model_, ui::UiShellSlot::Right, input_.panels.right, input_.windowWidth, input_.windowHeight))
-		mainArea->addWidget(buildPanelSlot(ui::UiShellSlot::Right, "rightPanel"));
-
-	layout->addWidget(mainArea, 1);
+		layout->addWidget(buildPanelSlot(ui::UiShellSlot::Left, "leftPanel"));
+	layout->addWidget(buildWorkspaceHost(), 1);
 	return body;
+}
+
+QWidget *IggyQtShellWindow::buildWorkspaceHost()
+{
+	auto *host = new WorkspaceOverlayHost;
+	host->setObjectName(QStringLiteral("workspaceOverlayHost"));
+
+	host->mainSlot = buildMainSlot();
+	host->mainSlot->setParent(host);
+	host->mainSlot->show();
+
+	if (shouldShowPanel(model_, ui::UiShellSlot::Bottom, input_.panels.bottom, input_.windowWidth, input_.windowHeight)) {
+		host->bottomPanel = buildPanelSlot(ui::UiShellSlot::Bottom, "bottomPanel");
+		host->bottomPanel->setParent(host);
+		host->bottomPanel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+		host->bottomPanel->show();
+		host->bottomPanel->raise();
+	}
+
+	if (shouldShowPanel(model_, ui::UiShellSlot::Right, input_.panels.right, input_.windowWidth, input_.windowHeight)) {
+		host->rightPanel = buildPanelSlot(ui::UiShellSlot::Right, "rightPanel");
+		host->rightPanel->setParent(host);
+		host->rightPanel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+		host->rightPanel->show();
+		host->rightPanel->raise();
+	}
+
+	return host;
 }
 
 QWidget *IggyQtShellWindow::buildRail()
@@ -644,12 +701,14 @@ QWidget *IggyQtShellWindow::buildSettings()
 	layout->setSpacing(0);
 
 	auto *strip = makeFrame("settingsSidebar");
-	strip->setFixedWidth(170);
+	strip->setObjectName(QStringLiteral("settingsPageStrip"));
+	strip->setFixedWidth(132);
 	auto *stripLayout = new QVBoxLayout(strip);
 	stripLayout->setContentsMargins(8, 8, 8, 8);
 	stripLayout->setSpacing(6);
 
 	auto *stack = new QStackedWidget;
+	stack->setObjectName(QStringLiteral("settingsPageStack"));
 	auto *group = new QButtonGroup(host);
 	group->setExclusive(true);
 	const std::vector<ui::UiSettingsPageDescriptor> pages = ui::defaultUiSettingsPages();
@@ -695,10 +754,9 @@ QWidget *IggyQtShellWindow::buildThemeSettingsPage()
 	auto *page = new QWidget;
 	page->setObjectName(QStringLiteral("settingsPage"));
 	auto *layout = new QVBoxLayout(page);
-	layout->setContentsMargins(14, 14, 14, 14);
-	layout->setSpacing(8);
-	layout->addWidget(makeLabel(QStringLiteral("Theme"), "panelTitle"));
-	layout->addWidget(makeSectionLabel(QStringLiteral("Colors")));
+	layout->setContentsMargins(16, 14, 16, 14);
+	layout->setSpacing(7);
+	layout->addWidget(makeSectionLabel(QStringLiteral("Theme")));
 
 	addThemeColorRow(layout, QStringLiteral("Base"), settings_.theme.base, [this](const std::string &value) {
 		settings_.theme.base = value;
@@ -713,23 +771,26 @@ QWidget *IggyQtShellWindow::buildThemeSettingsPage()
 		settings_.theme.text = value;
 	});
 
-	layout->addWidget(makeLabel(QStringLiteral("Typography"), "panelTitle"));
+	layout->addSpacing(8);
+	layout->addWidget(makeSectionLabel(QStringLiteral("Typography")));
 	addThemeFontRow(
 		layout,
-		QStringLiteral("UI"),
+		QStringLiteral("UI font"),
 		settings_.theme.uiFont,
 		settings_.theme.uiFontSize,
 		[this](const std::string &value) { settings_.theme.uiFont = value; },
 		[this](int value) { settings_.theme.uiFontSize = value; });
 	addThemeFontRow(
 		layout,
-		QStringLiteral("Code"),
+		QStringLiteral("Code font"),
 		settings_.theme.codeFont,
 		settings_.theme.codeFontSize,
 		[this](const std::string &value) { settings_.theme.codeFont = value; },
 		[this](int value) { settings_.theme.codeFontSize = value; });
 
-	layout->addWidget(makeLabel(QStringLiteral("Profiles: hooks reserved for persistence."), "mutedText"));
+	layout->addSpacing(8);
+	layout->addWidget(makeSectionLabel(QStringLiteral("Profiles")));
+	layout->addWidget(makeLabel(QStringLiteral("profile hooks reserved"), "mutedText"));
 	layout->addStretch(1);
 	return page;
 }
@@ -743,24 +804,33 @@ void IggyQtShellWindow::addThemeColorRow(
 	auto *row = new QWidget;
 	row->setObjectName(QStringLiteral("settingsRow"));
 	auto *rowLayout = new QHBoxLayout(row);
-	rowLayout->setContentsMargins(8, 6, 8, 6);
+	rowLayout->setContentsMargins(0, 0, 0, 0);
 	rowLayout->setSpacing(8);
-	rowLayout->addWidget(makeLabel(label, "fieldLabel"));
+	auto *name = makeLabel(label, "fieldLabel");
+	name->setMinimumWidth(70);
+	rowLayout->addWidget(name);
 	auto *field = new QLineEdit(toQString(value));
-	rowLayout->addWidget(field, 1);
+	field->setMaxLength(7);
+	rowLayout->addWidget(field);
 
 	auto *swatch = new QPushButton;
-	swatch->setEnabled(false);
+	swatch->setObjectName(QStringLiteral("themeSwatchButton"));
+	swatch->setToolTip(QStringLiteral("Pick %1 color").arg(label.toLower()));
 	swatch->setStyleSheet(swatchStyle(value, ui::deriveUiThemeTokens(settings_.theme)));
 	rowLayout->addWidget(swatch);
+	rowLayout->addStretch(1);
 
-	connect(field, &QLineEdit::editingFinished, this, [this, field, swatch, apply = std::move(apply)]() {
-		const QString text = field->text();
+	connect(field, &QLineEdit::textChanged, this, [this, swatch, apply](const QString &text) {
 		if (!text.startsWith('#') || text.size() != 7 || !QColor(text).isValid())
 			return;
 		apply(text.toStdString());
 		applyTheme();
 		swatch->setStyleSheet(swatchStyle(text.toStdString(), ui::deriveUiThemeTokens(settings_.theme)));
+	});
+	connect(swatch, &QPushButton::clicked, this, [this, field]() {
+		const QColor picked = QColorDialog::getColor(QColor(field->text()), field->window());
+		if (picked.isValid())
+			field->setText(picked.name());
 	});
 	layout->addWidget(row);
 }
@@ -776,17 +846,20 @@ void IggyQtShellWindow::addThemeFontRow(
 	auto *row = new QWidget;
 	row->setObjectName(QStringLiteral("settingsRow"));
 	auto *rowLayout = new QHBoxLayout(row);
-	rowLayout->setContentsMargins(8, 6, 8, 6);
+	rowLayout->setContentsMargins(0, 0, 0, 0);
 	rowLayout->setSpacing(8);
-	rowLayout->addWidget(makeLabel(label, "fieldLabel"));
+	auto *name = makeLabel(label, "fieldLabel");
+	name->setMinimumWidth(70);
+	rowLayout->addWidget(name);
 
 	auto *font = new QFontComboBox;
 	font->setCurrentFont(QFont(toQString(fontFamily)));
-	rowLayout->addWidget(font, 1);
+	rowLayout->addWidget(font);
 	auto *size = new QSpinBox;
 	size->setRange(9, 28);
 	size->setValue(fontSize);
 	rowLayout->addWidget(size);
+	rowLayout->addStretch(1);
 
 	connect(font, &QFontComboBox::currentFontChanged, this, [this, applyFont = std::move(applyFont)](const QFont &selected) {
 		applyFont(selected.family().toStdString());
@@ -804,16 +877,15 @@ QWidget *IggyQtShellWindow::buildToolBeltSettingsPage()
 	auto *page = new QWidget;
 	page->setObjectName(QStringLiteral("settingsPage"));
 	auto *layout = new QVBoxLayout(page);
-	layout->setContentsMargins(14, 14, 14, 14);
+	layout->setContentsMargins(16, 14, 16, 14);
 	layout->setSpacing(6);
-	layout->addWidget(makeLabel(QStringLiteral("Tool Belt"), "panelTitle"));
-	layout->addWidget(makeSectionLabel(QStringLiteral("Visible Tools")));
+	layout->addWidget(makeSectionLabel(QStringLiteral("On the belt")));
 
 	for (const ui::UiToolDescriptor &tool : inventory_.tools) {
 		auto *row = new QWidget;
 		row->setObjectName(QStringLiteral("settingsRow"));
 		auto *rowLayout = new QHBoxLayout(row);
-		rowLayout->setContentsMargins(8, 6, 8, 6);
+		rowLayout->setContentsMargins(0, 0, 0, 0);
 		rowLayout->setSpacing(8);
 		auto *box = new QCheckBox(toQString(tool.label));
 		box->setChecked(ui::uiToolIdEnabled(settings_.enabledToolIds, tool.id));
@@ -842,16 +914,15 @@ QWidget *IggyQtShellWindow::buildPanelSettingsPage()
 	auto *page = new QWidget;
 	page->setObjectName(QStringLiteral("settingsPage"));
 	auto *layout = new QVBoxLayout(page);
-	layout->setContentsMargins(14, 14, 14, 14);
+	layout->setContentsMargins(16, 14, 16, 14);
 	layout->setSpacing(8);
-	layout->addWidget(makeLabel(QStringLiteral("Panels"), "panelTitle"));
-	layout->addWidget(makeSectionLabel(QStringLiteral("Assignments")));
+	layout->addWidget(makeSectionLabel(QStringLiteral("Panel contents")));
 
 	for (const ui::UiMountedPanel &panel : model_.mountedPanels) {
 		auto *row = new QWidget;
 		row->setObjectName(QStringLiteral("settingsRow"));
 		auto *rowLayout = new QHBoxLayout(row);
-		rowLayout->setContentsMargins(8, 6, 8, 6);
+		rowLayout->setContentsMargins(0, 0, 0, 0);
 		rowLayout->setSpacing(8);
 		rowLayout->addWidget(makeLabel(toQString(panel.label), "fieldLabel"), 1);
 		auto *combo = new QComboBox;
