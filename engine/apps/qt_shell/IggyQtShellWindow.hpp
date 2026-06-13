@@ -20,7 +20,9 @@ public:
 	IggyQtShellWindow();
 
 private:
-	void rebuild();
+	void buildShell();
+	void refreshBody();
+	void refreshAfterModelChange();
 	void rebuildModel();
 	void applyTheme();
 
@@ -57,6 +59,9 @@ private:
 	ui::UiRuntimeWorkspaceModelInput input_;
 	ui::UiRuntimeWorkspaceModel model_;
 	bool showSettings_ = false;
+	QWidget *root_ = nullptr;
+	QVBoxLayout *rootLayout_ = nullptr;
+	QWidget *body_ = nullptr;
 };
 
 } // namespace iggy::qt_shell

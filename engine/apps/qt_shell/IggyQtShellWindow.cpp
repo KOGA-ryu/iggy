@@ -61,6 +61,14 @@ QString swatchStyle(const std::string &hex, const ui::UiThemeTokens &theme)
 		.arg(color, toQString(theme.borderMajor));
 }
 
+void removeWidgetFromLayout(QLayout *layout, QWidget *widget)
+{
+	if (layout == nullptr || widget == nullptr)
+		return;
+	layout->removeWidget(widget);
+	widget->deleteLater();
+}
+
 } // namespace
 
 IggyQtShellWindow::IggyQtShellWindow()
@@ -68,23 +76,40 @@ IggyQtShellWindow::IggyQtShellWindow()
 	settings_ = ui::defaultUiSettingsState(inventory_);
 	input_ = ui::defaultUiRuntimeWorkspaceModelInput(inventory_);
 	context_.activeToolId = id("tool:select");
-	rebuild();
-}
-
-void IggyQtShellWindow::rebuild()
-{
 	rebuildModel();
 	applyTheme();
-
-	auto *root = new QWidget;
-	auto *rootLayout = new QVBoxLayout(root);
-	rootLayout->setContentsMargins(0, 0, 0, 0);
-	rootLayout->setSpacing(0);
-	rootLayout->addWidget(buildChrome());
-	rootLayout->addWidget(buildBody(), 1);
-	setCentralWidget(root);
+	buildShell();
 	resize(1180, 760);
 	setWindowTitle(QStringLiteral("Iggy Qt Shell"));
+}
+
+void IggyQtShellWindow::buildShell()
+{
+	root_ = new QWidget;
+	rootLayout_ = new QVBoxLayout(root_);
+	rootLayout_->setContentsMargins(0, 0, 0, 0);
+	rootLayout_->setSpacing(0);
+	rootLayout_->addWidget(buildChrome());
+	body_ = buildBody();
+	rootLayout_->addWidget(body_, 1);
+	setCentralWidget(root_);
+}
+
+void IggyQtShellWindow::refreshBody()
+{
+	if (rootLayout_ == nullptr) {
+		buildShell();
+		return;
+	}
+	removeWidgetFromLayout(rootLayout_, body_);
+	body_ = buildBody();
+	rootLayout_->addWidget(body_, 1);
+}
+
+void IggyQtShellWindow::refreshAfterModelChange()
+{
+	rebuildModel();
+	refreshBody();
 }
 
 void IggyQtShellWindow::rebuildModel()
@@ -128,19 +153,19 @@ QWidget *IggyQtShellWindow::buildChrome()
 
 	connect(settings, &QPushButton::clicked, this, [this]() {
 		showSettings_ = !showSettings_;
-		rebuild();
+		refreshBody();
 	});
 	connect(leftToggle, &QPushButton::clicked, this, [this]() {
 		input_.panels.left.collapsed = !input_.panels.left.collapsed;
-		rebuild();
+		refreshAfterModelChange();
 	});
 	connect(rightToggle, &QPushButton::clicked, this, [this]() {
 		input_.panels.right.collapsed = !input_.panels.right.collapsed;
-		rebuild();
+		refreshAfterModelChange();
 	});
 	connect(bottomToggle, &QPushButton::clicked, this, [this]() {
 		input_.panels.bottom.collapsed = !input_.panels.bottom.collapsed;
-		rebuild();
+		refreshAfterModelChange();
 	});
 	return chrome;
 }
@@ -187,11 +212,11 @@ QWidget *IggyQtShellWindow::buildRail()
 
 	connect(runtime, &QPushButton::clicked, this, [this]() {
 		showSettings_ = false;
-		rebuild();
+		refreshBody();
 	});
 	connect(settings, &QPushButton::clicked, this, [this]() {
 		showSettings_ = true;
-		rebuild();
+		refreshBody();
 	});
 	return rail;
 }
@@ -280,7 +305,7 @@ QWidget *IggyQtShellWindow::buildToolBelt()
 		auto *button = makeToolButton(toQString(tool.label), tool.active);
 		connect(button, &QPushButton::clicked, this, [this, tool]() {
 			context_.activeToolId = tool.toolId;
-			rebuild();
+			refreshAfterModelChange();
 		});
 		layout->addWidget(button);
 	}
@@ -423,12 +448,13 @@ void IggyQtShellWindow::addThemeColorRow(
 	swatch->setStyleSheet(swatchStyle(value, ui::deriveUiThemeTokens(settings_.theme)));
 	rowLayout->addWidget(swatch);
 
-	connect(field, &QLineEdit::editingFinished, this, [this, field, apply = std::move(apply)]() {
+	connect(field, &QLineEdit::editingFinished, this, [this, field, swatch, apply = std::move(apply)]() {
 		const QString text = field->text();
 		if (!text.startsWith('#') || text.size() != 7 || !QColor(text).isValid())
 			return;
 		apply(text.toStdString());
-		rebuild();
+		applyTheme();
+		swatch->setStyleSheet(swatchStyle(text.toStdString(), ui::deriveUiThemeTokens(settings_.theme)));
 	});
 	layout->addWidget(row);
 }
@@ -457,11 +483,11 @@ void IggyQtShellWindow::addThemeFontRow(
 
 	connect(font, &QFontComboBox::currentFontChanged, this, [this, applyFont = std::move(applyFont)](const QFont &selected) {
 		applyFont(selected.family().toStdString());
-		rebuild();
+		applyTheme();
 	});
 	connect(size, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, [this, applySize = std::move(applySize)](int value) {
 		applySize(value);
-		rebuild();
+		applyTheme();
 	});
 	layout->addWidget(row);
 }
@@ -488,7 +514,7 @@ QWidget *IggyQtShellWindow::buildToolBeltSettingsPage()
 				}
 				settings_.enabledToolIds = next;
 			}
-			rebuild();
+			refreshAfterModelChange();
 		});
 		layout->addWidget(box);
 	}
@@ -524,7 +550,7 @@ QWidget *IggyQtShellWindow::buildPanelSettingsPage()
 				? panel.slot
 				: static_cast<ui::UiShellSlot>(combo->itemData(index).toInt());
 			setPanelContentAssignment(settings_.panelContent, assignment);
-			rebuild();
+			refreshAfterModelChange();
 		});
 		rowLayout->addWidget(combo);
 		layout->addWidget(row);
