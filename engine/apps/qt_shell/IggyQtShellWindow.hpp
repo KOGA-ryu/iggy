@@ -22,12 +22,14 @@ public:
 private:
 	void buildShell();
 	void refreshBody();
+	void refreshStatusBar();
 	void refreshAfterModelChange();
 	void rebuildModel();
 	void applyTheme();
 
 	[[nodiscard]] QWidget *buildChrome();
 	[[nodiscard]] QWidget *buildBody();
+	[[nodiscard]] QWidget *buildStatusBar();
 	[[nodiscard]] QWidget *buildRail();
 	[[nodiscard]] QWidget *buildMainSlot();
 	[[nodiscard]] QWidget *buildPanelSlot(ui::UiShellSlot slot, const char *objectName);
@@ -62,6 +64,7 @@ private:
 	QWidget *root_ = nullptr;
 	QVBoxLayout *rootLayout_ = nullptr;
 	QWidget *body_ = nullptr;
+	QWidget *statusBar_ = nullptr;
 };
 
 } // namespace iggy::qt_shell

@@ -24,7 +24,10 @@ namespace iggy::qt_shell {
 [[nodiscard]] QString panelVisibilityName(ui::UiPanelVisibility visibility);
 
 [[nodiscard]] QLabel *makeLabel(const QString &text, const char *objectName = nullptr);
+[[nodiscard]] QLabel *makeSectionLabel(const QString &text);
 [[nodiscard]] QPushButton *makeToolButton(const QString &label, bool checked = false);
+[[nodiscard]] QPushButton *makeChromeButton(const QString &label, const QString &tooltip = {});
+[[nodiscard]] QPushButton *makeRailButton(const QString &label, const QString &tooltip, bool checked = false);
 [[nodiscard]] QFrame *makeFrame(const char *objectName);
 [[nodiscard]] QWidget *makeScrollHost(QWidget *content);
 
