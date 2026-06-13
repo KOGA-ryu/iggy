@@ -5,6 +5,8 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeAutosaveRotationPolicy.cpp
   src/runtime/RuntimeBinaryCodec.cpp
   src/runtime/RuntimeCommandQueue.cpp
+  src/runtime/RuntimeMutationCommandQueue.cpp
+  src/runtime/RuntimeQueuedCommandRunner.cpp
   src/runtime/RuntimeSaveMetadata.cpp
   src/runtime/RuntimeSaveChunkArchive.cpp
   src/runtime/RuntimeSaveChunkArchiveCodec.cpp
