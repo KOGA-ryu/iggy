@@ -36,6 +36,30 @@ bool SameEffect(const iggy::InteractionEffect2D &actual, const iggy::Interaction
 		&& actual.enabledValue == expected.enabledValue;
 }
 
+bool SameEvent(const iggy::InteractionEvent2D &actual, const iggy::InteractionEvent2D &expected)
+{
+	return actual.type == expected.type
+		&& actual.targetId == expected.targetId
+		&& actual.eventId == expected.eventId
+		&& actual.text == expected.text
+		&& actual.enabledValue == expected.enabledValue;
+}
+
+void ExpectNoEvents(const iggy::InteractionEffectApplyResult &result, const char *message)
+{
+	Expect(result.events.events.empty(), message);
+}
+
+void ExpectOneEvent(
+	const iggy::InteractionEffectApplyResult &result,
+	const iggy::InteractionEvent2D &expected,
+	const char *message)
+{
+	Expect(result.events.events.size() == 1, message);
+	if (result.events.events.size() == 1)
+		Expect(SameEvent(result.events.events[0], expected), message);
+}
+
 void ExpectTarget(const iggy::InteractionTarget2D &actual, const iggy::InteractionTarget2D &expected, const char *message)
 {
 	Expect(actual.id == expected.id, message);
@@ -74,6 +98,7 @@ void ExpectInvalidEffect(
 	Expect(SameEffect(result.effect, effect), message);
 	Expect(!result.mutated, message);
 	Expect(result.toggle.status == iggy::InteractionTargetToggle2DStatus::TargetNotFound, message);
+	ExpectNoEvents(result, message);
 	ExpectRegistryTargets(result.registry, targets, message);
 }
 
@@ -107,6 +132,7 @@ void TestNoneReturnsNoOp()
 	Expect(result.effectStatus == iggy::InteractionEffect2DStatus::Valid, "none effect should preserve valid status");
 	Expect(SameEffect(result.effect, effect), "none effect should be copied");
 	Expect(!result.mutated, "none effect should not mutate");
+	ExpectNoEvents(result, "none effect should produce no events");
 	ExpectRegistryTargets(result.registry, targets, "none effect should return copied original registry");
 }
 
@@ -124,6 +150,10 @@ void TestInspectTextReturnsDeferredAndPreservesPayload()
 	Expect(result.effectStatus == iggy::InteractionEffect2DStatus::Valid, "inspect text should preserve valid status");
 	Expect(SameEffect(result.effect, effect), "inspect text should preserve payload");
 	Expect(!result.mutated, "inspect text should not mutate");
+	ExpectOneEvent(
+		result,
+		iggy::inspectTextRequestedInteractionEvent(effect.targetId, effect.text),
+		"inspect text should record inspect text requested event");
 	ExpectRegistryTargets(result.registry, targets, "inspect text should return copied original registry");
 }
 
@@ -142,6 +172,10 @@ void TestEmitEventReturnsDeferredAndPreservesPayload()
 	Expect(result.effectStatus == iggy::InteractionEffect2DStatus::Valid, "emit event should preserve valid status");
 	Expect(SameEffect(result.effect, effect), "emit event should preserve payload");
 	Expect(!result.mutated, "emit event should not mutate");
+	ExpectOneEvent(
+		result,
+		iggy::interactionEventEmitted(effect.targetId, effect.eventId),
+		"emit event should record emitted event");
 	ExpectRegistryTargets(result.registry, targets, "emit event should return copied original registry");
 }
 
@@ -165,6 +199,10 @@ void TestToggleTargetAppliesExistingTarget()
 	Expect(result.mutated, "toggle target should mark mutated");
 	Expect(result.toggle.status == iggy::InteractionTargetToggle2DStatus::Toggled, "toggle target should preserve toggle status");
 	Expect(result.toggle.changed, "toggle target should preserve toggle changed flag");
+	ExpectOneEvent(
+		result,
+		iggy::targetToggledInteractionEvent(effect.targetId, effect.enabledValue),
+		"toggle target should record target toggled event");
 	ExpectRegistryTargets(result.registry, expected, "toggle target should return toggled registry");
 	ExpectRegistryTargets(result.toggle.registry, expected, "toggle target should preserve toggle registry");
 }
@@ -183,6 +221,7 @@ void TestToggleTargetNoChangeReturnsNoOp()
 	Expect(!result.mutated, "toggle no-change should not mutate");
 	Expect(result.toggle.status == iggy::InteractionTargetToggle2DStatus::NoChange, "toggle no-change should preserve toggle status");
 	Expect(!result.toggle.changed, "toggle no-change should preserve toggle changed flag");
+	ExpectNoEvents(result, "toggle no-change should produce no events");
 	ExpectRegistryTargets(result.registry, targets, "toggle no-change should return original registry");
 }
 
@@ -200,6 +239,7 @@ void TestToggleTargetMissingReturnsTargetMissing()
 	Expect(!result.mutated, "toggle missing target should not mutate");
 	Expect(result.toggle.status == iggy::InteractionTargetToggle2DStatus::TargetNotFound, "toggle missing target should preserve toggle status");
 	Expect(result.toggle.targetId == iggy::ResourceId { "target:missing" }, "toggle missing target should preserve toggle target id");
+	ExpectNoEvents(result, "toggle missing target should produce no events");
 	ExpectRegistryTargets(result.registry, targets, "toggle missing target should return original registry");
 }
 

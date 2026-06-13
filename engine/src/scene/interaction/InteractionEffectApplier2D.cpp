@@ -36,6 +36,15 @@ InteractionEffectApplyResult InteractionEffectApplier2D::apply(
 
 	if (effect.type == InteractionEffect2DType::InspectText || effect.type == InteractionEffect2DType::EmitEvent) {
 		result.status = InteractionEffectApplyStatus::Deferred;
+		if (effect.type == InteractionEffect2DType::InspectText) {
+			recordInteractionEvent(
+				result.events,
+				inspectTextRequestedInteractionEvent(effect.targetId, effect.text));
+		} else {
+			recordInteractionEvent(
+				result.events,
+				interactionEventEmitted(effect.targetId, effect.eventId));
+		}
 		return result;
 	}
 
@@ -43,6 +52,11 @@ InteractionEffectApplyResult InteractionEffectApplier2D::apply(
 	result.status = StatusForToggle(result.toggle);
 	result.registry = result.toggle.registry;
 	result.mutated = result.toggle.changed;
+	if (result.status == InteractionEffectApplyStatus::Applied) {
+		recordInteractionEvent(
+			result.events,
+			targetToggledInteractionEvent(effect.targetId, effect.enabledValue));
+	}
 	return result;
 }
 

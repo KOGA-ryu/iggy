@@ -1,6 +1,7 @@
 #pragma once
 
 #include "scene/interaction/InteractionEffect2D.hpp"
+#include "scene/interaction/InteractionEvent2D.hpp"
 #include "scene/interaction/InteractionTarget2D.hpp"
 #include "scene/interaction/InteractionTargetToggle2D.hpp"
 
@@ -20,6 +21,7 @@ struct InteractionEffectApplyResult {
 	InteractionEffect2D effect;
 	InteractionEffect2DStatus effectStatus = InteractionEffect2DStatus::Valid;
 	InteractionTargetToggle2DResult toggle;
+	InteractionEventRecorder2D events;
 	bool mutated = false;
 };
 
