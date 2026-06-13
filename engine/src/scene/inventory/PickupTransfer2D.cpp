@@ -1,6 +1,15 @@
 #include "scene/inventory/PickupTransfer2D.hpp"
 
 namespace iggy {
+namespace {
+
+void AppendEvents(InventoryEventRecorder2D &destination, const InventoryEventRecorder2D &source)
+{
+	for (const InventoryEvent2D &event : source.events)
+		recordInventoryEvent(destination, event);
+}
+
+} // namespace
 
 PickupTransfer2DResult PickupTransfer2D::transfer(
 	const InventoryState2D &inventory,
@@ -22,8 +31,10 @@ PickupTransfer2DResult PickupTransfer2D::transfer(
 	result.inventory = result.add.inventory;
 	if (result.add.status != InventoryAddItem2DStatus::Added) {
 		result.status = PickupTransfer2DStatus::InventoryAddFailed;
+		recordInventoryEvent(result.events, inventoryAddFailedEvent(plan.drop.itemId, plan.drop.count));
 		return result;
 	}
+	AppendEvents(result.events, result.add.events);
 
 	result.consume = LevelItemDropConsume2D {}.consume(drops, plan.drop.id, config.consumeMode);
 	result.drops = result.consume.registry;
@@ -31,9 +42,11 @@ PickupTransfer2DResult PickupTransfer2D::transfer(
 		result.status = PickupTransfer2DStatus::DropConsumeFailed;
 		return result;
 	}
+	AppendEvents(result.events, result.consume.events);
 
 	result.status = PickupTransfer2DStatus::Transferred;
 	result.changed = true;
+	recordInventoryEvent(result.events, itemPickedUpInventoryEvent(plan.drop.id, plan.drop.itemId, plan.drop.count));
 	return result;
 }
 

@@ -25,6 +25,7 @@ struct PickupTransfer2DResult {
 	InventoryAddItem2DResult add;
 	LevelItemDropConsume2DResult consume;
 	bool changed = false;
+	InventoryEventRecorder2D events;
 };
 
 class PickupTransfer2D {

@@ -91,6 +91,56 @@ iggy::PickupPlan2DResult ReadyPlan(const iggy::LevelItemDrop2D &drop)
 	return plan;
 }
 
+void ExpectNoEvents(const iggy::PickupTransfer2DResult &result, const char *message)
+{
+	Expect(result.events.events.empty(), message);
+}
+
+void ExpectEvent(
+	const iggy::InventoryEvent2D &event,
+	iggy::InventoryEvent2DType type,
+	const iggy::ResourceId &itemId,
+	const iggy::ResourceId &dropId,
+	std::uint32_t count,
+	const char *message)
+{
+	Expect(event.type == type, message);
+	Expect(event.itemId == itemId, message);
+	Expect(event.dropId == dropId, message);
+	Expect(event.count == count, message);
+}
+
+void ExpectSuccessfulTransferEvents(
+	const iggy::PickupTransfer2DResult &result,
+	const iggy::LevelItemDrop2D &drop,
+	const char *message)
+{
+	Expect(result.events.events.size() == 3, message);
+	if (result.events.events.size() == 3) {
+		ExpectEvent(
+			result.events.events[0],
+			iggy::InventoryEvent2DType::ItemAdded,
+			drop.itemId,
+			{},
+			drop.count,
+			message);
+		ExpectEvent(
+			result.events.events[1],
+			iggy::InventoryEvent2DType::DropConsumed,
+			{},
+			drop.id,
+			0,
+			message);
+		ExpectEvent(
+			result.events.events[2],
+			iggy::InventoryEvent2DType::ItemPickedUp,
+			drop.itemId,
+			drop.id,
+			drop.count,
+			message);
+	}
+}
+
 void TestNonReadyPlanDoesNotAddOrConsume()
 {
 	const iggy::InventoryState2D inventory = Inventory({ Stack("item:potion", 1) });
@@ -107,6 +157,7 @@ void TestNonReadyPlanDoesNotAddOrConsume()
 	Expect(SameDrops(result.drops.drops, drops.drops), "non-ready pickup should preserve drops");
 	Expect(result.add.status == iggy::InventoryAddItem2DStatus::InvalidItemId, "non-ready pickup should not run inventory add");
 	Expect(result.consume.status == iggy::LevelItemDropConsume2DStatus::MissingDropId, "non-ready pickup should not run drop consume");
+	ExpectNoEvents(result, "non-ready pickup should not record inventory events");
 }
 
 void TestReadyPlanTransfersToEmptyInventoryAndDisablesDropByDefault()
@@ -129,6 +180,7 @@ void TestReadyPlanTransfersToEmptyInventoryAndDisablesDropByDefault()
 		disabled.enabled = false;
 		Expect(SameDrop(result.drops.drops[0], disabled), "default transfer should disable drop");
 	}
+	ExpectSuccessfulTransferEvents(result, drop, "default transfer should record add, consume, and pickup events in order");
 }
 
 void TestReadyPlanTransfersToExistingStack()
@@ -147,6 +199,7 @@ void TestReadyPlanTransfersToExistingStack()
 				   Stack("item:key", 1),
 			   }),
 		"existing stack pickup should increment count and preserve order");
+	ExpectSuccessfulTransferEvents(result, drop, "existing stack pickup should record transfer events with requested count");
 }
 
 void TestRemoveModeRemovesDrop()
@@ -167,6 +220,7 @@ void TestRemoveModeRemovesDrop()
 	Expect(result.drops.drops.size() == 1, "remove mode pickup should remove consumed drop");
 	if (result.drops.drops.size() == 1)
 		Expect(SameDrop(result.drops.drops[0], second), "remove mode pickup should preserve remaining drops");
+	ExpectSuccessfulTransferEvents(result, first, "remove mode pickup should record add, consume, and pickup events in order");
 }
 
 void TestInventoryAddFailureDoesNotConsumeDrop()
@@ -183,6 +237,16 @@ void TestInventoryAddFailureDoesNotConsumeDrop()
 	Expect(result.consume.status == iggy::LevelItemDropConsume2DStatus::MissingDropId, "invalid pickup item should not consume drop");
 	Expect(SameStacks(result.inventory.stacks, inventory.stacks), "invalid pickup item should preserve original inventory");
 	Expect(SameDrops(result.drops.drops, drops.drops), "invalid pickup item should preserve original drops");
+	Expect(result.events.events.size() == 1, "invalid pickup item should record one add-failed event");
+	if (result.events.events.size() == 1) {
+		ExpectEvent(
+			result.events.events[0],
+			iggy::InventoryEvent2DType::InventoryAddFailed,
+			drop.itemId,
+			{},
+			drop.count,
+			"invalid pickup item should record InventoryAddFailed event payload");
+	}
 }
 
 void TestDropConsumeFailurePreservesAddedInventoryAndFailureDiagnostics()
@@ -199,6 +263,16 @@ void TestDropConsumeFailurePreservesAddedInventoryAndFailureDiagnostics()
 	Expect(result.consume.status == iggy::LevelItemDropConsume2DStatus::DropNotFound, "consume failure should preserve consume diagnostics");
 	Expect(SameStacks(result.inventory.stacks, { Stack("item:potion", 2) }), "consume failure should expose partial added inventory");
 	Expect(SameDrops(result.drops.drops, drops.drops), "consume failure should preserve consume/original drops");
+	Expect(result.events.events.size() == 1, "consume failure should preserve add event only");
+	if (result.events.events.size() == 1) {
+		ExpectEvent(
+			result.events.events[0],
+			iggy::InventoryEvent2DType::ItemAdded,
+			plannedDrop.itemId,
+			{},
+			plannedDrop.count,
+			"consume failure should preserve ItemAdded event only");
+	}
 }
 
 void TestOriginalInventoryAndDropsAreNotMutated()
