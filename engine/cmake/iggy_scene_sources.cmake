@@ -31,6 +31,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/player/PlayerCommandPlanner2D.cpp
   src/scene/player/PlayerInputCommandFrameMapper2D.cpp
   src/scene/player/PlayerInputCommandMapper2D.cpp
+  src/scene/player/PlayerInputIntentGate2D.cpp
   src/scene/player/PlayerInputIntent2D.cpp
   src/scene/player/PlayerMovementExecutor2D.cpp
   src/scene/sprite/SpriteRenderCommands2D.cpp
