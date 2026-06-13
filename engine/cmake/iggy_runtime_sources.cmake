@@ -33,6 +33,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimePlayerCommandStep.cpp
   src/runtime/RuntimePlayerInputFrameStep.cpp
   src/runtime/RuntimePlayerInputInteractionEffectApplyFrameStep.cpp
+  src/runtime/RuntimePlayerInputInteractionEffectApplyFrameReporter.cpp
   src/runtime/RuntimePlayerInputInteractionEffectFrameStep.cpp
   src/runtime/RuntimePlayerInputInteractionEffectFrameReporter.cpp
   src/runtime/RuntimePlayerInputInteractionFrameStep.cpp
