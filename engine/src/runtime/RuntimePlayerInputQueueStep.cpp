@@ -18,4 +18,21 @@ RuntimePlayerInputQueueResult RuntimePlayerInputQueueStep::push(
 	return result;
 }
 
+RuntimePlayerInputQueueGatedResult RuntimePlayerInputQueueStep::pushGated(
+	const RuntimeCommandQueueState &queue,
+	const RuntimeCommandQueueConfig &queueConfig,
+	ResourceId actorId,
+	const PlayerInputContext2D &context,
+	const std::vector<PlayerInputIntent2D> &intents) const
+{
+	RuntimePlayerInputQueueGatedResult result;
+	result.mapping = PlayerInputGatedCommandFrameMapper2D {}.map(actorId, context, intents);
+	result.push = RuntimeCommandQueue {}.push(queue, result.mapping.frame, queueConfig);
+	result.queue = result.push.queue;
+	result.status = result.push.status == RuntimeCommandQueueStatus::Accepted
+		? RuntimePlayerInputQueueStatus::Queued
+		: RuntimePlayerInputQueueStatus::RejectedFull;
+	return result;
+}
+
 } // namespace iggy::runtime

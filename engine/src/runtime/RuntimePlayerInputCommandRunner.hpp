@@ -37,12 +37,38 @@ struct RuntimePlayerInputCommandRunnerResult {
 	RuntimeCommandQueueState queue;
 };
 
+struct RuntimePlayerInputGatedCommandRunnerInput {
+	RuntimeSessionState session;
+	RuntimeCommandQueueState queue;
+	RuntimeCommandQueueConfig queueConfig;
+	ResourceId actorId;
+	PlayerInputContext2D context;
+	std::vector<PlayerInputIntent2D> intents;
+	Vec2 fallbackPlayerPosition;
+	RuntimePlayerCommandExecutionConfig playerCommandConfig;
+	npc_ai::NpcAgentTickConfig npcConfig;
+};
+
+struct RuntimePlayerInputGatedCommandRunnerResult {
+	RuntimePlayerInputCommandRunnerStatus status = RuntimePlayerInputCommandRunnerStatus::Ran;
+	RuntimePlayerInputQueueGatedResult intake;
+	RuntimeQueuedCommandRunnerResult runner;
+	RuntimeSessionState session;
+	RuntimeCommandQueueState queue;
+};
+
 class RuntimePlayerInputCommandRunner {
 public:
 	[[nodiscard]] RuntimePlayerInputCommandRunnerResult run(const RuntimePlayerInputCommandRunnerInput &input) const;
 
 	[[nodiscard]] RuntimePlayerInputCommandRunnerResult run(
 		const RuntimePlayerInputCommandRunnerInput &input,
+		const physics2d::CollisionWorld2D &explicitWorld) const;
+
+	[[nodiscard]] RuntimePlayerInputGatedCommandRunnerResult runGated(const RuntimePlayerInputGatedCommandRunnerInput &input) const;
+
+	[[nodiscard]] RuntimePlayerInputGatedCommandRunnerResult runGated(
+		const RuntimePlayerInputGatedCommandRunnerInput &input,
 		const physics2d::CollisionWorld2D &explicitWorld) const;
 };
 
