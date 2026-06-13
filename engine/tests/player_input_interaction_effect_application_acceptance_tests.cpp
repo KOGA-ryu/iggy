@@ -111,6 +111,21 @@ iggy::runtime::RuntimePlayerInputInteractionEffectApplyFrameInput Input(
 	return { playerInput, targets, effects, reach };
 }
 
+iggy::runtime::RuntimeInteractionState InteractionState(
+	iggy::InteractionTarget2DRegistry targets,
+	iggy::InteractionEffectCatalog2D effects)
+{
+	return { targets, effects };
+}
+
+iggy::runtime::RuntimePlayerInputInteractionStateApplyFrameInput StateInput(
+	iggy::runtime::RuntimePlayerInputGatedFrameStepInput playerInput,
+	iggy::runtime::RuntimeInteractionState interaction,
+	iggy::InteractionReach2DConfig reach = {})
+{
+	return { playerInput, interaction, reach };
+}
+
 iggy::physics2d::CollisionObject2D Object(iggy::ResourceId id, iggy::Aabb2 bounds)
 {
 	return { id, iggy::physics2d::makeAabbShape(bounds), true };
@@ -176,6 +191,15 @@ bool SameEffect(const iggy::InteractionEffect2D &actual, const iggy::Interaction
 		&& actual.enabledValue == expected.enabledValue;
 }
 
+bool SameEvent(const iggy::InteractionEvent2D &actual, const iggy::InteractionEvent2D &expected)
+{
+	return actual.type == expected.type
+		&& actual.targetId == expected.targetId
+		&& actual.eventId == expected.eventId
+		&& actual.text == expected.text
+		&& actual.enabledValue == expected.enabledValue;
+}
+
 bool SameEffects(const std::vector<iggy::InteractionEffect2D> &actual, const std::vector<iggy::InteractionEffect2D> &expected)
 {
 	if (actual.size() != expected.size())
@@ -185,6 +209,18 @@ bool SameEffects(const std::vector<iggy::InteractionEffect2D> &actual, const std
 			return false;
 	}
 	return true;
+}
+
+void ExpectEvents(
+	const iggy::InteractionEventRecorder2D &recorder,
+	const std::vector<iggy::InteractionEvent2D> &expected,
+	const char *message)
+{
+	Expect(recorder.events.size() == expected.size(), message);
+	if (recorder.events.size() != expected.size())
+		return;
+	for (std::size_t index = 0; index < expected.size(); ++index)
+		Expect(SameEvent(recorder.events[index], expected[index]), message);
 }
 
 void ExpectTarget(const iggy::InteractionTarget2D &actual, const iggy::InteractionTarget2D &expected, const char *message)
@@ -229,6 +265,10 @@ void TestReachableToggleTargetAppliesToReturnedRegistryOnly()
 	Expect(result.application.appliedCount == 1, "reachable toggle acceptance should count applied interaction");
 	Expect(result.application.noOpCount == 0 && result.application.notReadyCount == 0 && result.application.failedCount == 0, "reachable toggle acceptance should have no other counts");
 	Expect(result.application.mutated, "reachable toggle acceptance should mark mutation");
+	ExpectEvents(
+		result.events,
+		{ iggy::targetToggledInteractionEvent(targets[1].id, false) },
+		"reachable toggle acceptance should surface top-level target toggled event");
 	ExpectRegistryTargets(result.interactionTargets, expected, "reachable toggle acceptance should return updated registry");
 	ExpectRegistryTargets(originalRegistry, targets, "reachable toggle acceptance should not mutate original registry");
 }
@@ -251,6 +291,13 @@ void TestDeferredOnlyEffectsDoNotMutateRegistry()
 	Expect(result.application.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::NoOp, "deferred-only acceptance should be no-op");
 	Expect(result.application.noOpCount == 1, "deferred-only acceptance should count one no-op interaction");
 	Expect(!result.application.mutated, "deferred-only acceptance should not mutate");
+	ExpectEvents(
+		result.events,
+		{
+			iggy::inspectTextRequestedInteractionEvent(target.id, "Read this."),
+			iggy::interactionEventEmitted(target.id, iggy::ResourceId { "event:read" }),
+		},
+		"deferred-only acceptance should surface top-level deferred events");
 	ExpectRegistryTargets(result.interactionTargets, { target }, "deferred-only acceptance should return original registry");
 	if (result.application.entries.size() == 1) {
 		Expect(result.application.entries[0].result.application.deferredCount == 2, "deferred-only acceptance should preserve deferred count");
@@ -277,6 +324,8 @@ void TestDisabledAndOutOfRangeInteractionsDoNotApplyEffects()
 	Expect(disabledResult.application.notReadyCount == 1, "disabled acceptance should count not-ready");
 	Expect(farResult.application.notReadyCount == 1, "out-of-range acceptance should count not-ready");
 	Expect(!disabledResult.application.mutated && !farResult.application.mutated, "not-ready acceptance should not mutate");
+	ExpectEvents(disabledResult.events, {}, "disabled acceptance should surface no top-level events");
+	ExpectEvents(farResult.events, {}, "out-of-range acceptance should surface no top-level events");
 	ExpectRegistryTargets(disabledResult.interactionTargets, { disabled, far }, "disabled acceptance should return original registry");
 	ExpectRegistryTargets(farResult.interactionTargets, { disabled, far }, "out-of-range acceptance should return original registry");
 }
@@ -301,6 +350,10 @@ void TestMoveThenInteractAppliesAfterMovement()
 
 	Expect(NearVec(result.session.player.position, { 1.0F, 0.0F }), "move-then-interact acceptance should use post-move session");
 	Expect(result.application.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::Applied, "move-then-interact acceptance should apply effect");
+	ExpectEvents(
+		result.events,
+		{ iggy::targetToggledInteractionEvent(targets[0].id, false) },
+		"move-then-interact acceptance should surface event only when post-move application occurs");
 	ExpectRegistryTargets(result.interactionTargets, expected, "move-then-interact acceptance should return updated registry");
 	if (result.application.entries.size() == 1)
 		Expect(NearVec(result.application.entries[0].result.command.interaction.plan.actorPosition, { 1.0F, 0.0F }), "move-then-interact acceptance should evaluate reach from post-move position");
@@ -323,6 +376,7 @@ void TestContextBlockedInteractDoesNotApply()
 	Expect(result.playerInput.command.intake.mapping.frame.commands.empty(), "context-blocked acceptance should map no command");
 	Expect(!result.application.hasInteractions(), "context-blocked acceptance should have no application entries");
 	Expect(!result.application.mutated, "context-blocked acceptance should not mutate");
+	ExpectEvents(result.events, {}, "context-blocked acceptance should surface no top-level events");
 	ExpectRegistryTargets(result.interactionTargets, { target }, "context-blocked acceptance should return original registry");
 }
 
@@ -354,6 +408,7 @@ void TestQueueRejectedMappedInteractDoesNotApply()
 	Expect(!result.application.hasInteractions(), "queue-rejected acceptance should not apply effects");
 	Expect(result.application.appliedCount == 0 && result.application.noOpCount == 0 && result.application.notReadyCount == 0 && result.application.failedCount == 0, "queue-rejected acceptance should have zero application counts");
 	Expect(!result.application.mutated, "queue-rejected acceptance should not mutate");
+	ExpectEvents(result.events, {}, "queue-rejected acceptance should surface no top-level events");
 	ExpectRegistryTargets(result.interactionTargets, targets, "queue-rejected acceptance should return original registry");
 }
 
@@ -381,7 +436,39 @@ void TestExplicitCollisionOverrideAllowsApplicationAfterMovement()
 
 	Expect(NearVec(result.session.player.position, { 1.0F, 0.0F }), "explicit collision acceptance should use explicit world movement");
 	Expect(result.application.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::Applied, "explicit collision acceptance should apply effect after movement");
+	ExpectEvents(
+		result.events,
+		{ iggy::targetToggledInteractionEvent(targets[0].id, false) },
+		"explicit collision acceptance should surface top-level target toggled event");
 	ExpectRegistryTargets(result.interactionTargets, expected, "explicit collision acceptance should return updated registry");
+}
+
+void TestStateBasedOverloadCarriesTopLevelEvents()
+{
+	const std::vector<iggy::InteractionTarget2D> targets {
+		Target("target:state_event", iggy::InteractionTarget2DKind::Usable, { 0.0F, 0.0F }, 0.0F, true),
+	};
+	std::vector<iggy::InteractionTarget2D> expected = targets;
+	expected[0].enabled = false;
+	const iggy::InteractionEffectCatalog2D effects = Catalog({
+		Entry("target:state_event", { iggy::toggleTargetInteractionEffect(targets[0].id, false) }),
+	});
+	const iggy::runtime::RuntimeInteractionState interaction = InteractionState(Registry(targets), effects);
+
+	const iggy::runtime::RuntimePlayerInputInteractionStateApplyFrameResult result =
+		iggy::runtime::RuntimePlayerInputInteractionEffectApplyFrameStep {}.runWithInteractionState(
+			StateInput(
+				PlayerInput(SessionWithPlayer({ 0.0F, 0.0F }), { iggy::playerInteractIntent(targets[0].id) }),
+				interaction));
+
+	Expect(result.application.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::Applied, "state event acceptance should apply");
+	Expect(result.application.mutated, "state event acceptance should mark mutation");
+	ExpectEvents(
+		result.events,
+		{ iggy::targetToggledInteractionEvent(targets[0].id, false) },
+		"state event acceptance should surface top-level target toggled event");
+	ExpectRegistryTargets(result.interaction.targets, expected, "state event acceptance should return updated interaction state targets");
+	ExpectRegistryTargets(interaction.targets, targets, "state event acceptance should not mutate input interaction state");
 }
 
 } // namespace
@@ -395,6 +482,7 @@ int main()
 	TestContextBlockedInteractDoesNotApply();
 	TestQueueRejectedMappedInteractDoesNotApply();
 	TestExplicitCollisionOverrideAllowsApplicationAfterMovement();
+	TestStateBasedOverloadCarriesTopLevelEvents();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;
