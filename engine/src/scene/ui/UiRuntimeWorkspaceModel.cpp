@@ -114,10 +114,38 @@ UiFeatureRegistry defaultUiRuntimeWorkspaceFeatureRegistry()
 {
 	UiFeatureRegistry registry;
 	registry.features = {
-		{ Id("feature:runtime_frame_inspector"), "Runtime Frame Inspector", { UiShellSlot::Main, UiShellSlot::Right } },
-		{ Id("feature:interaction_events"), "Interaction Events", { UiShellSlot::Bottom, UiShellSlot::Right } },
-		{ Id("feature:inventory"), "Inventory", { UiShellSlot::Left, UiShellSlot::Right } },
-		{ Id("feature:collision_debug"), "Collision Debug", { UiShellSlot::Right, UiShellSlot::Bottom } },
+		{
+			Id("feature:runtime_frame_inspector"),
+			"Runtime Frame Inspector",
+			{ UiShellSlot::Main, UiShellSlot::Right },
+			{ { Id("panel:runtime_frame"), "Runtime Frame", Id("panel:runtime_frame"), UiShellSlot::Right } },
+			{ { Id("palette:tool_belt"), "Tool Belt" } },
+			{ { Id("chrome:runtime"), "Runtime" } },
+		},
+		{
+			Id("feature:interaction_events"),
+			"Interaction Events",
+			{ UiShellSlot::Bottom, UiShellSlot::Right },
+			{ { Id("panel:interaction_events"), "Interaction Events", Id("panel:interaction_events"), UiShellSlot::Bottom } },
+			{},
+			{},
+		},
+		{
+			Id("feature:inventory"),
+			"Inventory",
+			{ UiShellSlot::Left, UiShellSlot::Right },
+			{ { Id("panel:inventory"), "Inventory", Id("panel:inventory"), UiShellSlot::Left } },
+			{},
+			{},
+		},
+		{
+			Id("feature:collision_debug"),
+			"Collision Debug",
+			{ UiShellSlot::Right, UiShellSlot::Bottom },
+			{ { Id("panel:collision"), "Collision", Id("panel:collision"), UiShellSlot::Right } },
+			{},
+			{},
+		},
 	};
 	return registry;
 }
@@ -161,6 +189,9 @@ UiRuntimeWorkspaceModel buildUiRuntimeWorkspaceModel(const UiRuntimeWorkspaceMod
 	model.workspace = applyUiSettingsToWorkspace(input.workspace, input.settings, input.inventory);
 	model.panels = input.panels;
 	model.mountedSlots = mountUiWorkspaceLayout(model.workspace, input.features);
+	model.mountedPanels = mountUiWorkspacePanels(model.workspace, input.features);
+	model.mountedPalettes = mountUiWorkspacePalettes(model.workspace, input.features);
+	model.mountedChromePanels = mountUiWorkspaceChromePanels(model.workspace, input.features);
 	model.toolBelt = model.workspace.toolBelt;
 	model.activeToolId = ResolveActiveToolId(input.context, model.toolBelt, model);
 	model.toolBeltState = ToolBeltStateForActiveTool(model.toolBelt, model.activeToolId);

@@ -55,6 +55,9 @@ struct UiRuntimeWorkspaceModel {
 	UiWorkspaceLayout workspace;
 	UiShellPanelsState panels;
 	std::vector<UiMountedSlot> mountedSlots;
+	std::vector<UiMountedPanel> mountedPanels;
+	std::vector<UiMountedPalette> mountedPalettes;
+	std::vector<UiMountedChromePanel> mountedChromePanels;
 	ResourceId activeToolId;
 	UiToolBeltLayout toolBelt;
 	UiToolBeltState toolBeltState;

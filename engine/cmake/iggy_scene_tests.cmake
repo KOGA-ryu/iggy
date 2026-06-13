@@ -57,6 +57,7 @@ iggy_add_test(ui_runtime_frame_inspector_model_tests tests/ui_runtime_frame_insp
 iggy_add_test(ui_runtime_workspace_model_tests tests/ui_runtime_workspace_model_tests.cpp)
 iggy_add_test(ui_settings_state_tests tests/ui_settings_state_tests.cpp)
 iggy_add_test(ui_shell_model_tests tests/ui_shell_model_tests.cpp)
+iggy_add_test(ui_theme_tests tests/ui_theme_tests.cpp)
 iggy_add_test(ui_tool_belt_state_tests tests/ui_tool_belt_state_tests.cpp)
 iggy_add_test(ui_tool_intent_tests tests/ui_tool_intent_tests.cpp)
 iggy_add_test(ui_tool_inventory_tests tests/ui_tool_inventory_tests.cpp)
