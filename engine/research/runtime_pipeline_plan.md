@@ -36,6 +36,19 @@ RuntimePlayerCommandExecutionStep
 RuntimePlayerCommandStep
 ```
 
+Runtime input-command orchestration:
+
+```text
+PlayerInputIntent2D list
+  -> RuntimePlayerInputQueueStep
+       -> PlayerInputCommandFrameMapper2D
+       -> RuntimeCommandQueue
+  -> RuntimeQueuedCommandRunner
+       -> RuntimeSessionCommandTickRunner
+  -> RuntimePlayerInputCommandReporter
+  -> RuntimePlayerInputFrameStep
+```
+
 Runtime level mutation orchestration:
 
 ```text
@@ -133,6 +146,20 @@ input RuntimeSessionState + GameplayCommandFrame2D
        -> tickIndex increments once
 ```
 
+## Current Runtime Input Frame Order
+
+```text
+input RuntimeSessionState + RuntimeCommandQueueState + PlayerInputIntent2D list
+  -> RuntimePlayerInputQueueStep
+       -> maps intents into one GameplayCommandFrame2D
+       -> appends mapped frame to RuntimeCommandQueueState
+  -> RuntimeQueuedCommandRunner
+       -> drains queued command frames
+       -> runs RuntimeSessionCommandTickRunner
+  -> RuntimePlayerInputCommandReporter
+       -> summarizes intake, queue, runner, and tick diagnostics
+```
+
 ## Current Runtime Mutation Command Tick Order
 
 ```text
@@ -152,7 +179,8 @@ input RuntimeSessionState + level edits + GameplayCommandFrame2D
 The caller still owns:
 
 - raw input/device mapping
-- command frame creation
+- command frame creation when bypassing the input-intent queue path
+- player input intent creation
 - why a tile mutates
 - when tile edits are applied
 - when derived caches are refreshed or when the explicit mutation/cache step is called
@@ -169,7 +197,6 @@ Do not merge these into existing ticks without a dedicated ownership review:
 - presentation camera update
 - platform storage, compression, encryption, cloud sync, or save UI policy
 - raw device input
-- command queue buffering
 
 ## Likely Next Integration Choices
 

@@ -146,6 +146,12 @@ Current anchors:
 - `RuntimePlayerCommandPlanningStep`
 - `RuntimePlayerCommandExecutionStep`
 - `RuntimePlayerCommandStep`
+- `RuntimeCommandQueue`
+- `RuntimePlayerInputQueueStep`
+- `RuntimeQueuedCommandRunner`
+- `RuntimePlayerInputCommandRunner`
+- `RuntimePlayerInputCommandReporter`
+- `RuntimePlayerInputFrameStep`
 - `RuntimeSessionCommandTick`
 - `RuntimeSessionCommandTickRunner`
 - `RuntimeLevelMutationStep`

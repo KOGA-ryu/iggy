@@ -35,11 +35,11 @@ Status labels:
    - purpose: replace only changed collision tile objects.
    - caution: only do this if full rebuild becomes a measured problem.
 
-5. Runtime command queue
-   - status: `defer`
+5. Runtime input command observability cleanup
+   - status: `review`
    - owner candidate: `runtime`
-   - purpose: buffer command frames before command ticks.
-   - caution: raw input mapping and queue ownership need separate design.
+   - purpose: refine reports or docs around input-intent mapping, queueing, command running, and per-frame diagnostics if real callers need it.
+   - caution: do not add raw device input mapping or hide underlying runner diagnostics.
 
 6. Interaction command execution
    - status: `review`

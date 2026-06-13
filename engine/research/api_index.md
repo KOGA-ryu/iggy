@@ -87,6 +87,12 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `RuntimePlayerCommandPlanningStep`: delegates session player command planning.
 - `RuntimePlayerCommandExecutionStep`: executes first movement plan against caller-supplied collision world.
 - `RuntimePlayerCommandStep`: composes planning + execution.
+- `RuntimeCommandQueue`, `RuntimeCommandQueueState`: explicit gameplay command-frame queue data and push/drain operations.
+- `RuntimePlayerInputQueueStep`: maps player input intents into a gameplay command frame and queues it.
+- `RuntimeQueuedCommandRunner`: drains queued command frames through the session command tick runner.
+- `RuntimePlayerInputCommandRunner`: composes input intent mapping, command queue push, and queued command running.
+- `RuntimePlayerInputCommandReporter`: summarizes input command runner diagnostics without executing behavior.
+- `RuntimePlayerInputFrameStep`: one-frame wrapper around input command running plus reporting.
 - `RuntimeCollisionWorldProvider`: resolves explicit/session/empty collision world.
 - `RuntimeSessionCommandTick`: command step followed by session tick.
 - `RuntimeSessionCommandTickRunner`: bounded command-frame loop over command ticks.
