@@ -139,15 +139,18 @@ Does not own:
 
 ### `scene/inventory`
 
-Owns inventory stack data, level item-drop data, and scene-level pickup planning.
+Owns inventory stack data, level item-drop data, pickup planning, and pickup transfer semantics.
 
 Current anchors:
 - `InventoryState2D`
 - `InventoryState2DBuilder`
+- `InventoryAddItem2D`
 - `LevelItemDrop2D`
 - `LevelItemDrop2DRegistry`
 - `LevelItemDrop2DRegistryBuilder`
+- `LevelItemDropConsume2D`
 - `PickupPlan2D`
+- `PickupTransfer2D`
 
 Does not own:
 - runtime command-frame order
@@ -156,6 +159,27 @@ Does not own:
 - item assets or backend loading
 - inventory UI
 - interaction effect semantics outside pickup-specific planning
+
+### `scene/ui`
+
+Owns UI model data, tool/layout state, and UI intent-to-action planning.
+
+Current anchors:
+- `UiToolBeltState`
+- `UiShellModel`
+- `UiFeatureContext`
+- `UiToolInventory`
+- `UiToolIntent`
+- `UiSettingsState`
+- `UiRuntimeFrameInspectorModel`
+- `UiInteractionEventPanelModel`
+
+Does not own:
+- runtime session mutation
+- command execution
+- save-file format or persistence
+- platform/window/input-device bindings
+- rendering backend
 
 ### `modules/animation`
 
@@ -215,6 +239,9 @@ Current anchors:
 - `RuntimePlayerInputInteractionEffectFrameStep`
 - `RuntimePlayerInputInteractionEffectFrameReporter`
 - `RuntimePlayerInputInteractionEffectApplyFrameStep`
+- `RuntimeInventoryState`
+- `RuntimePickupStep`
+- `RuntimePickupEffectStep`
 - `RuntimeSessionCommandTick`
 - `RuntimeSessionCommandTickRunner`
 - `RuntimeLevelMutationStep`
@@ -245,6 +272,7 @@ Runtime may carry:
 - optional `PlayerAgentState`
 - `LevelDerivedCacheState`
 - explicit `RuntimeInteractionState` values passed through interaction/input steps
+- explicit `RuntimeInventoryState` values passed through pickup steps
 
 Runtime does not own:
 - level tile mutation semantics
@@ -329,6 +357,20 @@ RuntimeInteractionEffectApplyFrameStep
 ```
 
 The current application boundary is limited to returning an updated interaction target registry plus transient interaction events. `RuntimeInteractionState` can carry targets/effects through explicit runtime input steps, but it is not stored in `RuntimeSessionState`. This path does not mutate `LevelRuntimeState` or execute inventory/combat/quest behavior.
+
+Pickup orchestration:
+
+```text
+RuntimePickupEffectStep
+  -> RuntimePickupStep
+       -> PickupPlan2D
+       -> PickupTransfer2D
+            -> InventoryAddItem2D
+            -> LevelItemDropConsume2D
+  -> returns updated RuntimeInventoryState
+```
+
+Runtime can orchestrate pickup from a session player and explicit `RuntimeInventoryState`, but `scene/inventory` owns the inventory/drop mutation semantics. `RuntimeInventoryState` is not stored in `RuntimeSessionState` yet.
 
 Save snapshot ownership:
 

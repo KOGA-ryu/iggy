@@ -62,6 +62,9 @@ void TestSuccessfulBuildPreservesEntryAndEffectOrder()
 			iggy::toggleTargetInteractionEffect(iggy::ResourceId { "target:door" }, false),
 			iggy::noneInteractionEffect(),
 		}),
+		Entry("target:chest", {
+			iggy::pickupItemInteractionEffect(iggy::ResourceId { "target:chest" }, iggy::ResourceId { "drop:potion" }),
+		}),
 	};
 
 	const iggy::InteractionEffectCatalog2DBuildResult result = iggy::InteractionEffectCatalog2DBuilder {}.build(entries);
@@ -72,6 +75,7 @@ void TestSuccessfulBuildPreservesEntryAndEffectOrder()
 	if (result.catalog.entries().size() == entries.size()) {
 		ExpectEntry(result.catalog.entries()[0], entries[0], "first effect catalog entry should preserve target and effects");
 		ExpectEntry(result.catalog.entries()[1], entries[1], "second effect catalog entry should preserve target and effects");
+		ExpectEntry(result.catalog.entries()[2], entries[2], "third effect catalog entry should preserve target and effects");
 	}
 }
 
@@ -148,20 +152,25 @@ void TestInvalidEffectsFailWithStatus()
 		Entry("target:bad_event", {
 			iggy::emitInteractionEventEffect({}, {}),
 		}),
+		Entry("target:bad_drop", {
+			iggy::pickupItemInteractionEffect({}, {}),
+		}),
 	};
 
 	const iggy::InteractionEffectCatalog2DBuildResult result = iggy::InteractionEffectCatalog2DBuilder {}.build(entries);
 
 	Expect(!result.built, "invalid effect catalog effects should fail build");
 	Expect(result.catalog.entries().empty(), "failed invalid-effect build should not publish catalog entries");
-	Expect(result.issues.size() == 3, "invalid effect catalog effects should each report an issue");
-	if (result.issues.size() == 3) {
+	Expect(result.issues.size() == 4, "invalid effect catalog effects should each report an issue");
+	if (result.issues.size() == 4) {
 		Expect(result.issues[0].code == iggy::InteractionEffectCatalog2DIssueCode::InvalidEffect && result.issues[0].entryIndex == 0 && result.issues[0].effectIndex == 0, "missing text issue should preserve entry and effect indexes");
 		Expect(result.issues[0].effectStatus == iggy::InteractionEffect2DStatus::MissingText, "missing text issue should preserve effect status");
 		Expect(result.issues[1].code == iggy::InteractionEffectCatalog2DIssueCode::InvalidEffect && result.issues[1].entryIndex == 1 && result.issues[1].effectIndex == 0, "missing target issue should preserve entry and effect indexes");
 		Expect(result.issues[1].effectStatus == iggy::InteractionEffect2DStatus::MissingTarget, "missing target issue should preserve effect status");
 		Expect(result.issues[2].code == iggy::InteractionEffectCatalog2DIssueCode::InvalidEffect && result.issues[2].entryIndex == 2 && result.issues[2].effectIndex == 0, "missing event issue should preserve entry and effect indexes");
 		Expect(result.issues[2].effectStatus == iggy::InteractionEffect2DStatus::MissingEvent, "missing event issue should preserve effect status");
+		Expect(result.issues[3].code == iggy::InteractionEffectCatalog2DIssueCode::InvalidEffect && result.issues[3].entryIndex == 3 && result.issues[3].effectIndex == 0, "missing drop issue should preserve entry and effect indexes");
+		Expect(result.issues[3].effectStatus == iggy::InteractionEffect2DStatus::MissingDropId, "missing drop issue should preserve effect status");
 	}
 }
 
@@ -173,6 +182,7 @@ void TestMultipleIssuesAreReportedDeterministically()
 			iggy::noneInteractionEffect(),
 			iggy::inspectTextInteractionEffect({}, ""),
 			iggy::toggleTargetInteractionEffect({}, true),
+			iggy::pickupItemInteractionEffect({}, {}),
 		}),
 		Entry("target:event", {
 			iggy::emitInteractionEventEffect({}, {}),
@@ -183,16 +193,18 @@ void TestMultipleIssuesAreReportedDeterministically()
 
 	Expect(!result.built, "multi-issue effect catalog should fail build");
 	Expect(result.catalog.entries().empty(), "failed multi-issue effect catalog should not publish entries");
-	Expect(result.issues.size() == 5, "multi-issue effect catalog should report all issues");
-	if (result.issues.size() == 5) {
+	Expect(result.issues.size() == 6, "multi-issue effect catalog should report all issues");
+	if (result.issues.size() == 6) {
 		Expect(result.issues[0].code == iggy::InteractionEffectCatalog2DIssueCode::MissingTargetId && result.issues[0].entryIndex == 0, "missing target id should be first issue for first entry");
 		Expect(result.issues[1].code == iggy::InteractionEffectCatalog2DIssueCode::EmptyEffects && result.issues[1].entryIndex == 0, "empty effects should follow missing target id for first entry");
 		Expect(result.issues[2].code == iggy::InteractionEffectCatalog2DIssueCode::InvalidEffect && result.issues[2].entryIndex == 1 && result.issues[2].effectIndex == 1, "missing text should be reported at second entry second effect");
 		Expect(result.issues[2].effectStatus == iggy::InteractionEffect2DStatus::MissingText, "missing text issue should preserve status");
 		Expect(result.issues[3].code == iggy::InteractionEffectCatalog2DIssueCode::InvalidEffect && result.issues[3].entryIndex == 1 && result.issues[3].effectIndex == 2, "missing target should be reported at second entry third effect");
 		Expect(result.issues[3].effectStatus == iggy::InteractionEffect2DStatus::MissingTarget, "missing target issue should preserve status");
-		Expect(result.issues[4].code == iggy::InteractionEffectCatalog2DIssueCode::InvalidEffect && result.issues[4].entryIndex == 2 && result.issues[4].effectIndex == 0, "missing event should be reported at third entry first effect");
-		Expect(result.issues[4].effectStatus == iggy::InteractionEffect2DStatus::MissingEvent, "missing event issue should preserve status");
+		Expect(result.issues[4].code == iggy::InteractionEffectCatalog2DIssueCode::InvalidEffect && result.issues[4].entryIndex == 1 && result.issues[4].effectIndex == 3, "missing drop should be reported at second entry fourth effect");
+		Expect(result.issues[4].effectStatus == iggy::InteractionEffect2DStatus::MissingDropId, "missing drop issue should preserve status");
+		Expect(result.issues[5].code == iggy::InteractionEffectCatalog2DIssueCode::InvalidEffect && result.issues[5].entryIndex == 2 && result.issues[5].effectIndex == 0, "missing event should be reported at third entry first effect");
+		Expect(result.issues[5].effectStatus == iggy::InteractionEffect2DStatus::MissingEvent, "missing event issue should preserve status");
 	}
 }
 

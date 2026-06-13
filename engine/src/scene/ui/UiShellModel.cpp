@@ -43,6 +43,68 @@ const UiMountedSlot *mountedUiSlot(const std::vector<UiMountedSlot> &mounted, Ui
 	return found == mounted.end() ? nullptr : &*found;
 }
 
+UiPanelContentAssignment uiPanelContentAssignment(
+	const UiWorkspaceLayout &layout,
+	const ResourceId &groupId,
+	UiPanelContentAssignment fallback)
+{
+	for (const UiPanelContentAssignment &assignment : layout.panelContent) {
+		if (assignment.groupId == groupId)
+			return assignment;
+	}
+	fallback.groupId = groupId;
+	return fallback;
+}
+
+void setUiPanelContentAssignment(UiWorkspaceLayout &layout, UiPanelContentAssignment assignment)
+{
+	for (UiPanelContentAssignment &existing : layout.panelContent) {
+		if (existing.groupId == assignment.groupId) {
+			existing = assignment;
+			return;
+		}
+	}
+	layout.panelContent.push_back(assignment);
+}
+
+UiPalettePlacement uiPalettePlacement(
+	const UiWorkspaceLayout &layout,
+	const ResourceId &paletteId,
+	UiPalettePlacement fallback)
+{
+	for (const UiPalettePlacement &placement : layout.palettes) {
+		if (placement.paletteId == paletteId)
+			return placement;
+	}
+	fallback.paletteId = paletteId;
+	return fallback;
+}
+
+void setUiPalettePlacement(UiWorkspaceLayout &layout, UiPalettePlacement placement)
+{
+	for (UiPalettePlacement &existing : layout.palettes) {
+		if (existing.paletteId == placement.paletteId) {
+			existing = placement;
+			return;
+		}
+	}
+	layout.palettes.push_back(placement);
+}
+
+UiPalettePlacement clampUiPalettePlacement(
+	UiPalettePlacement placement,
+	int hostWidth,
+	int hostHeight,
+	int paletteWidth,
+	int paletteHeight)
+{
+	const int maxX = std::max(0, hostWidth - std::max(0, paletteWidth));
+	const int maxY = std::max(0, hostHeight - std::max(0, paletteHeight));
+	placement.x = std::clamp(placement.x, 0, maxX);
+	placement.y = std::clamp(placement.y, 0, maxY);
+	return placement;
+}
+
 UiPanelSpec uiPanelSpec(UiShellSlot slot)
 {
 	switch (slot) {

@@ -24,8 +24,8 @@ Transient frame data:
 - `LevelRuntimeState`
 - `LevelTileMap`
 - `PlayerAgentState` when carried by `RuntimeSessionState`
-- `InventoryState2D` when carried by a future authoritative state packet
-- `LevelItemDrop2DRegistry` when carried by a future authoritative level/session state packet
+- `RuntimeInventoryState` when carried by caller or a future authoritative session packet
+- `InventoryState2D` and `LevelItemDrop2DRegistry` when carried through `RuntimeInventoryState`
 - NPC agent state in level/runtime state
 - `RuntimeSessionState::tickIndex`
 
@@ -55,7 +55,7 @@ Save snapshots should include:
 - authoritative tile/map state or blueprint reference
 - tick index
 - player state
-- inventory state and item-drop state once a carrying state packet is defined
+- inventory state and item-drop state when included in a future save snapshot boundary
 - NPC/actor state
 - gameplay-relevant ids and resource ids
 
@@ -159,11 +159,14 @@ Effects that mutate `LevelRuntimeState`, `PlayerAgentState`, inventory, combat, 
 
 ## Inventory Rule
 
-Inventory stacks and level item drops are scene/inventory data. `PickupPlan2D` is a transient plan:
+Inventory stacks and level item drops are scene/inventory data. `PickupPlan2D` is a transient plan, while `PickupTransfer2D` returns updated inventory/drop state:
 
 ```text
 LevelItemDrop2DRegistry + actor position + drop id
   -> PickupPlan2DResult
+  -> PickupTransfer2DResult
+       -> InventoryState2D
+       -> LevelItemDrop2DRegistry
 ```
 
-The current pickup boundary does not remove drops, add stacks to `InventoryState2D`, mutate `RuntimeSessionState`, or define save snapshot shape for inventory/drop state. Those ownership choices require a later slice.
+Runtime can carry those updates through explicit `RuntimeInventoryState` and `RuntimePickupStep` / `RuntimePickupEffectStep`. `RuntimeSessionState` does not currently own inventory/drop state, and save snapshot shape for inventory/drop state is not defined yet.

@@ -98,6 +98,31 @@ RuntimePlayerInputInteractionEffectFrameReporter
 RuntimePlayerInputInteractionEffectApplyFrameStep
 ```
 
+Inventory and pickup:
+
+```text
+InventoryState2D
+LevelItemDrop2DRegistry
+PickupPlan2D
+InventoryAddItem2D
+LevelItemDropConsume2D
+PickupTransfer2D
+RuntimeInventoryState
+RuntimePickupStep
+RuntimePickupEffectStep
+```
+
+UI models and actions:
+
+```text
+UiFeatureContext
+UiToolInventory
+UiShellModel
+UiToolIntent
+UiRuntimeFrameInspectorModel
+UiInteractionEventPanelModel
+```
+
 Session ticking:
 
 ```text
@@ -266,6 +291,19 @@ RuntimePlayerInputInteractionEffectApplyFrameStep
 
 This keeps interaction state explicit. It does not store interaction targets/effects inside `RuntimeSessionState`.
 
+Pickup effect variant:
+
+```text
+InteractionEffect2D::PickupItem
+  -> RuntimePickupEffectStep
+       -> RuntimePickupStep
+            -> PickupPlan2D
+            -> PickupTransfer2D
+  -> updated RuntimeInventoryState
+```
+
+This keeps inventory/drop state explicit. It does not store inventory or item drops inside `RuntimeSessionState`.
+
 ## Current Runtime Mutation Command Tick Order
 
 ```text
@@ -314,5 +352,6 @@ Possible future slices:
 - camera/presentation state packet
 - save slot retention/overwrite policy if caller needs more than explicit slot store/list/delete calls
 - decide whether `RuntimeInteractionState` should remain a caller-owned sibling packet or become part of a broader session/presentation packet
+- decide whether `RuntimeInventoryState` should remain caller-owned or become part of authoritative session/save state
 
 Pause before any slice that makes runtime infer map changes or own cache rebuild policy.

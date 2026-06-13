@@ -117,6 +117,10 @@ void TestInvalidEffectsReturnInvalidEffectAndDoNotMutate()
 		iggy::emitInteractionEventEffect(iggy::ResourceId { "target:lever" }, {}),
 		iggy::InteractionEffect2DStatus::MissingEvent,
 		"invalid emit event should not apply");
+	ExpectInvalidEffect(
+		iggy::pickupItemInteractionEffect(iggy::ResourceId { "target:chest" }, {}),
+		iggy::InteractionEffect2DStatus::MissingDropId,
+		"invalid pickup item should not apply");
 }
 
 void TestNoneReturnsNoOp()
@@ -178,6 +182,26 @@ void TestEmitEventReturnsDeferredAndPreservesPayload()
 		iggy::interactionEventEmitted(effect.targetId, effect.eventId),
 		"emit event should record emitted event");
 	ExpectRegistryTargets(result.registry, targets, "emit event should return copied original registry");
+}
+
+void TestPickupItemReturnsDeferredAndPreservesPayloadWithoutExecution()
+{
+	const std::vector<iggy::InteractionTarget2D> targets {
+		Target("target:chest", iggy::InteractionTarget2DKind::Pickup, { 1.0F, 0.0F }, 1.0F, true),
+	};
+	const iggy::InteractionEffect2D effect =
+		iggy::pickupItemInteractionEffect(iggy::ResourceId { "target:chest" }, iggy::ResourceId { "drop:potion" });
+
+	const iggy::InteractionEffectApplyResult result =
+		iggy::InteractionEffectApplier2D {}.apply(Registry(targets), effect);
+
+	Expect(result.status == iggy::InteractionEffectApplyStatus::Deferred, "pickup item should return Deferred");
+	Expect(result.effectStatus == iggy::InteractionEffect2DStatus::Valid, "pickup item should preserve valid status");
+	Expect(SameEffect(result.effect, effect), "pickup item should preserve payload");
+	Expect(!result.mutated, "pickup item should not mutate");
+	Expect(result.toggle.status == iggy::InteractionTargetToggle2DStatus::TargetNotFound, "pickup item should not run target toggle");
+	ExpectNoEvents(result, "pickup item should produce no events before pickup event ownership exists");
+	ExpectRegistryTargets(result.registry, targets, "pickup item should return copied original registry");
 }
 
 void TestToggleTargetAppliesExistingTarget()
@@ -268,6 +292,7 @@ int main()
 	TestNoneReturnsNoOp();
 	TestInspectTextReturnsDeferredAndPreservesPayload();
 	TestEmitEventReturnsDeferredAndPreservesPayload();
+	TestPickupItemReturnsDeferredAndPreservesPayloadWithoutExecution();
 	TestToggleTargetAppliesExistingTarget();
 	TestToggleTargetNoChangeReturnsNoOp();
 	TestToggleTargetMissingReturnsTargetMissing();

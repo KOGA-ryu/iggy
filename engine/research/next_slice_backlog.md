@@ -53,13 +53,19 @@ Status labels:
    - purpose: decide how recorded interaction events, inventory/combat/quest effects, or level/player mutations become authoritative outcomes.
    - caution: keep this out of runtime until the target subsystem and save semantics are explicit.
 
-8. Pickup execution policy
+8. Inventory/session lifetime policy
    - status: `review`
-   - owner candidate: `scene/inventory` for inventory/drop mutation semantics, runtime only for orchestration if needed
-   - purpose: decide how a ready `PickupPlan2DResult` removes or disables item drops and adds item stacks.
-   - caution: `InventoryState2D`, `LevelItemDrop2DRegistry`, and `PickupPlan2D` exist, but no slice currently mutates inventory/drop authoritative state or save snapshots.
+   - owner candidate: runtime if session-owned, caller-owned sibling state otherwise
+   - purpose: decide whether `RuntimeInventoryState` remains an explicit caller-owned packet or becomes part of `RuntimeSessionState` and save snapshots.
+   - caution: pickup transfer and runtime pickup steps now update explicit inventory/drop state, but session/save ownership is not settled.
 
-9. Raw input binding
+9. UI action integration policy
+   - status: `review`
+   - owner candidate: UI for action planning, runtime/caller for executing actions
+   - purpose: decide how `UiActionPlan` should be invoked by a host loop without making UI own runtime mutation.
+   - caution: UI models/tool intents exist, but backend window/input bindings and runtime execution remain out of scope.
+
+10. Raw input binding
    - status: `defer`
    - owner candidate: platform/input layer not defined yet
    - purpose: map keyboard/gamepad to `GameplayCommand2D`.

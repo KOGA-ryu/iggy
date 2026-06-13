@@ -53,7 +53,12 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/player/PlayerInputIntent2D.cpp
   src/scene/player/PlayerMovementExecutor2D.cpp
   src/scene/sprite/SpriteRenderCommands2D.cpp
+  src/scene/ui/UiFeatureContext.cpp
   src/scene/ui/UiInteractionEventPanelModel.cpp
+  src/scene/ui/UiRuntimeFrameInspectorModel.cpp
+  src/scene/ui/UiSettingsState.cpp
   src/scene/ui/UiShellModel.cpp
   src/scene/ui/UiToolBeltState.cpp
+  src/scene/ui/UiToolIntent.cpp
+  src/scene/ui/UiToolInventory.cpp
 )

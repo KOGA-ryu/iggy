@@ -36,11 +36,18 @@ struct UiPanelContentAssignment {
 	bool hidden = false;
 };
 
+struct UiPalettePlacement {
+	ResourceId paletteId;
+	int x = 12;
+	int y = 12;
+};
+
 struct UiWorkspaceLayout {
 	ResourceId id;
 	std::string label;
 	std::vector<UiSlotBinding> bindings;
 	UiToolBeltLayout toolBelt;
+	std::vector<UiPalettePlacement> palettes;
 	std::vector<UiPanelContentAssignment> panelContent;
 };
 
@@ -84,6 +91,26 @@ struct UiShellPanelsState {
 [[nodiscard]] const UiMountedSlot *mountedUiSlot(
 	const std::vector<UiMountedSlot> &mounted,
 	UiShellSlot slot);
+[[nodiscard]] UiPanelContentAssignment uiPanelContentAssignment(
+	const UiWorkspaceLayout &layout,
+	const ResourceId &groupId,
+	UiPanelContentAssignment fallback = {});
+void setUiPanelContentAssignment(
+	UiWorkspaceLayout &layout,
+	UiPanelContentAssignment assignment);
+[[nodiscard]] UiPalettePlacement uiPalettePlacement(
+	const UiWorkspaceLayout &layout,
+	const ResourceId &paletteId,
+	UiPalettePlacement fallback = {});
+void setUiPalettePlacement(
+	UiWorkspaceLayout &layout,
+	UiPalettePlacement placement);
+[[nodiscard]] UiPalettePlacement clampUiPalettePlacement(
+	UiPalettePlacement placement,
+	int hostWidth,
+	int hostHeight,
+	int paletteWidth,
+	int paletteHeight);
 
 [[nodiscard]] UiPanelSpec uiPanelSpec(UiShellSlot slot);
 [[nodiscard]] UiShellPanelsState defaultUiShellPanelsState();

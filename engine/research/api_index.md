@@ -82,8 +82,21 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 ## `scene/inventory`
 
 - `InventoryState2D`, `InventoryState2DBuilder`: player/scene inventory stack data with deterministic id/count validation.
+- `InventoryAddItem2D::add`: returns updated inventory with an added or incremented item stack.
 - `LevelItemDrop2D`, `LevelItemDrop2DRegistry`, `LevelItemDrop2DRegistryBuilder`: level item-drop data and validated drop lookup table.
+- `LevelItemDropConsume2D::consume`: returns updated item-drop registry by disabling or removing a consumed drop.
 - `PickupPlan2D::plan`: actor position + drop id to ready/blocked pickup plan using pickup radius and extra reach.
+- `PickupTransfer2D::transfer`: applies a ready pickup plan to inventory and item-drop registries.
+
+## `scene/ui`
+
+- `UiToolBeltState` helpers: tool-belt navigation, occupied-cell normalization, pinned rows, and view projection.
+- `UiShellModel` helpers: feature registry lookup, workspace slot mounting, panel assignment, panel sizing, and visibility.
+- `UiFeatureContext`, `UiShellActions`: UI read context and host-provided action callbacks.
+- `UiToolInventory`, `defaultUiToolInventory`, `buildUiToolBeltLayout`: available tool descriptors and tool-belt layout construction.
+- `UiToolIntent`, `buildUiToolIntentActionPlan`, `executeUiActionPlan`: UI intent to host action plan without directly mutating runtime state.
+- `UiSettingsState`, `applyUiSettingsToWorkspace`: UI settings projected into workspace layout.
+- `UiRuntimeFrameInspectorModel`, `UiInteractionEventPanelModel`: read-only UI models from runtime reports and interaction events.
 
 ## `scene/player`
 
@@ -125,6 +138,9 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `RuntimePlayerInputInteractionFrameStep`, `RuntimePlayerInputInteractionFrameReporter`: gated input frame plus interaction diagnostics.
 - `RuntimePlayerInputInteractionEffectFrameStep`, `RuntimePlayerInputInteractionEffectFrameReporter`: gated input frame plus interaction/effect-plan diagnostics.
 - `RuntimePlayerInputInteractionEffectApplyFrameStep`: gated player input frame plus interaction effect application, returning updated interaction state/targets.
+- `RuntimeInventoryState`: explicit runtime-carried inventory + item-drop packet; not part of `RuntimeSessionState`.
+- `RuntimePickupStep`: session player + runtime inventory state + drop id to pickup transfer result.
+- `RuntimePickupEffectStep`: applies `PickupItem` interaction effects through `RuntimePickupStep`.
 - `RuntimeCollisionWorldProvider`: resolves explicit/session/empty collision world.
 - `RuntimeSessionCommandTick`: command step followed by session tick.
 - `RuntimeSessionCommandTickRunner`: bounded command-frame loop over command ticks.

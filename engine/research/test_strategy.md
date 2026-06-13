@@ -58,12 +58,15 @@ Proves:
 - interaction effect appliers return updated registries, record events, and count applied/deferred/failed effects without mutating inputs
 - inventory stacks and item-drop registries validate deterministically
 - pickup plans preserve requested ids/positions, enforce enabled/range policy, and do not mutate inventories or drops
+- pickup transfers add inventory stacks and consume drops through source-of-truth helpers without mutating inputs
+- UI models project runtime reports/settings/tool state into read-only model/action data
 
 Avoid:
 - runtime tick order
 - backend or save semantics
 - applying interaction effects outside interaction target registry state without an explicit ownership slice
-- applying pickups to inventory/drop authoritative state without an explicit ownership slice
+- placing inventory/drop state in `RuntimeSessionState` or save snapshots without an explicit ownership slice
+- UI tests that require backend rendering, platform windows, or device input
 
 ### Player scene behavior
 
@@ -89,6 +92,7 @@ Proves:
 - interaction and effect-plan diagnostics are preserved without applying effects
 - interaction effect-apply orchestration delegates to scene/interaction appliers and does not persist target registries implicitly
 - frame-level effect application applies interactions sequentially and keeps `RuntimeInteractionState` explicit
+- pickup orchestration preserves explicit `RuntimeInventoryState` and delegates transfer semantics to scene/inventory
 - tick index changes only where the tick step owns them
 - derived caches copied/preserved, not rebuilt implicitly
 

@@ -98,6 +98,59 @@ void TestPanelSizeClampUsesSlotBands()
 	Expect(iggy::ui::clampUiPanelSize(iggy::ui::UiShellSlot::Main, 42) == 42, "main slot clamp should leave size unchanged");
 }
 
+void TestPanelContentAssignmentIsKeyedByGroup()
+{
+	iggy::ui::UiWorkspaceLayout layout;
+	iggy::ui::setUiPanelContentAssignment(layout, { Id("panel:runtime"), iggy::ui::UiShellSlot::Right, false });
+	iggy::ui::setUiPanelContentAssignment(layout, { Id("panel:runtime"), iggy::ui::UiShellSlot::Bottom, true });
+
+	const iggy::ui::UiPanelContentAssignment runtime = iggy::ui::uiPanelContentAssignment(layout, Id("panel:runtime"));
+	const iggy::ui::UiPanelContentAssignment missing = iggy::ui::uiPanelContentAssignment(
+		layout,
+		Id("panel:missing"),
+		{ {}, iggy::ui::UiShellSlot::Left, false });
+
+	Expect(layout.panelContent.size() == 1, "ui panel content assignment should update by group id");
+	Expect(runtime.slot == iggy::ui::UiShellSlot::Bottom && runtime.hidden, "ui panel content assignment should preserve replacement");
+	Expect(missing.groupId == Id("panel:missing"), "ui panel content fallback should receive requested group id");
+	Expect(missing.slot == iggy::ui::UiShellSlot::Left, "ui panel content fallback should preserve caller defaults");
+}
+
+void TestPalettePlacementIsWorkspaceDataKeyedByPalette()
+{
+	iggy::ui::UiWorkspaceLayout layout;
+	iggy::ui::setUiPalettePlacement(layout, { Id("palette:tools"), 40, 50 });
+	iggy::ui::setUiPalettePlacement(layout, { Id("palette:tools"), 70, 80 });
+
+	const iggy::ui::UiPalettePlacement tools = iggy::ui::uiPalettePlacement(layout, Id("palette:tools"));
+	const iggy::ui::UiPalettePlacement missing = iggy::ui::uiPalettePlacement(layout, Id("palette:missing"));
+
+	Expect(layout.palettes.size() == 1, "ui palette placement should update by palette id");
+	Expect(tools.x == 70 && tools.y == 80, "ui palette placement should preserve replacement coordinates");
+	Expect(missing.paletteId == Id("palette:missing"), "ui palette placement fallback should receive requested palette id");
+	Expect(missing.x == 12 && missing.y == 12, "ui palette placement fallback should use default placement");
+}
+
+void TestPalettePlacementClampKeepsStaleCoordinatesVisible()
+{
+	const iggy::ui::UiPalettePlacement placement = iggy::ui::clampUiPalettePlacement(
+		{ Id("palette:tools"), 900, -5 },
+		640,
+		480,
+		200,
+		100);
+	const iggy::ui::UiPalettePlacement tinyHost = iggy::ui::clampUiPalettePlacement(
+		{ Id("palette:wide"), 10, 20 },
+		40,
+		30,
+		200,
+		100);
+
+	Expect(placement.paletteId == Id("palette:tools"), "ui palette clamp should preserve palette id");
+	Expect(placement.x == 440 && placement.y == 0, "ui palette clamp should fit placement within host area");
+	Expect(tinyHost.x == 0 && tinyHost.y == 0, "ui palette clamp should degrade oversized palettes to origin");
+}
+
 void TestMountDoesNotMutateLayoutOrRegistry()
 {
 	iggy::ui::UiWorkspaceLayout layout;
@@ -123,6 +176,9 @@ int main()
 	TestDefaultPanelStateMatchesReferenceShape();
 	TestPanelVisibilitySeparatesCollapsedAndAutoHidden();
 	TestPanelSizeClampUsesSlotBands();
+	TestPanelContentAssignmentIsKeyedByGroup();
+	TestPalettePlacementIsWorkspaceDataKeyedByPalette();
+	TestPalettePlacementClampKeepsStaleCoordinatesVisible();
 	TestMountDoesNotMutateLayoutOrRegistry();
 
 	if (Failures != 0)
