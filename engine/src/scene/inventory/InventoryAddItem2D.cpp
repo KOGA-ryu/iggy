@@ -26,6 +26,7 @@ InventoryAddItem2DResult InventoryAddItem2D::add(
 			stack.count += count;
 			result.status = InventoryAddItem2DStatus::Added;
 			result.changed = true;
+			recordInventoryEvent(result.events, itemAddedInventoryEvent(itemId, count));
 			return result;
 		}
 	}
@@ -33,6 +34,7 @@ InventoryAddItem2DResult InventoryAddItem2D::add(
 	result.inventory.stacks.push_back({ itemId, count });
 	result.status = InventoryAddItem2DStatus::Added;
 	result.changed = true;
+	recordInventoryEvent(result.events, itemAddedInventoryEvent(itemId, count));
 	return result;
 }
 

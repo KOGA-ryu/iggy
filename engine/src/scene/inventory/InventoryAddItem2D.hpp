@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include "core/resource/ResourceId.hpp"
+#include "scene/inventory/InventoryEvent2D.hpp"
 #include "scene/inventory/InventoryState2D.hpp"
 
 namespace iggy {
@@ -19,6 +20,7 @@ struct InventoryAddItem2DResult {
 	ResourceId itemId;
 	std::uint32_t count = 0;
 	bool changed = false;
+	InventoryEventRecorder2D events;
 };
 
 class InventoryAddItem2D {

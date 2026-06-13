@@ -42,6 +42,22 @@ void ExpectInventory(
 	Expect(SameStacks(actual.stacks, expected), message);
 }
 
+void ExpectSingleItemAddedEvent(
+	const iggy::InventoryAddItem2DResult &result,
+	const iggy::ResourceId &itemId,
+	std::uint32_t count,
+	const char *message)
+{
+	Expect(result.events.events.size() == 1, message);
+	if (result.events.events.size() == 1) {
+		const iggy::InventoryEvent2D &event = result.events.events[0];
+		Expect(event.type == iggy::InventoryEvent2DType::ItemAdded, message);
+		Expect(event.itemId == itemId, message);
+		Expect(event.count == count, message);
+		Expect(event.dropId.empty(), message);
+	}
+}
+
 void TestEmptyItemIdInvalid()
 {
 	const iggy::InventoryState2D inventory = Inventory({ Stack("item:potion", 3) });
@@ -53,6 +69,7 @@ void TestEmptyItemIdInvalid()
 	Expect(result.itemId.empty(), "empty item add should preserve requested item id");
 	Expect(result.count == 1, "empty item add should preserve requested count");
 	ExpectInventory(result.inventory, inventory.stacks, "empty item add should return copied original inventory");
+	Expect(result.events.events.empty(), "empty item add should not record inventory events");
 }
 
 void TestZeroCountInvalid()
@@ -67,6 +84,7 @@ void TestZeroCountInvalid()
 	Expect(result.itemId == iggy::ResourceId { "item:potion" }, "zero count add should preserve requested item id");
 	Expect(result.count == 0, "zero count add should preserve requested count");
 	ExpectInventory(result.inventory, inventory.stacks, "zero count add should return copied original inventory");
+	Expect(result.events.events.empty(), "zero count add should not record inventory events");
 }
 
 void TestAddToEmptyInventoryAppendsStack()
@@ -81,6 +99,7 @@ void TestAddToEmptyInventoryAppendsStack()
 	Expect(result.itemId == iggy::ResourceId { "item:potion" }, "empty inventory add should preserve requested item id");
 	Expect(result.count == 2, "empty inventory add should preserve requested count");
 	ExpectInventory(result.inventory, { Stack("item:potion", 2) }, "empty inventory add should append stack");
+	ExpectSingleItemAddedEvent(result, iggy::ResourceId { "item:potion" }, 2, "empty inventory add should record ItemAdded event");
 	Expect(inventory.stacks.empty(), "empty inventory add should not mutate original inventory");
 }
 
@@ -105,6 +124,7 @@ void TestAddToExistingStackIncrementsCountAndPreservesOrder()
 			Stack("gold", 25),
 		},
 		"existing stack add should increment count and preserve order");
+	ExpectSingleItemAddedEvent(result, iggy::ResourceId { "item:key" }, 4, "existing stack add should record ItemAdded event");
 }
 
 void TestAddMissingItemAppendsAfterExistingStacks()
@@ -127,6 +147,7 @@ void TestAddMissingItemAppendsAfterExistingStacks()
 			Stack("item:scroll", 2),
 		},
 		"missing item add should append stack after existing stacks");
+	ExpectSingleItemAddedEvent(result, iggy::ResourceId { "item:scroll" }, 2, "missing item add should record ItemAdded event");
 }
 
 void TestNamespacedAndUnqualifiedItemIdsRemainDistinct()
