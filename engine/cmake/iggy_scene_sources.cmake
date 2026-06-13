@@ -5,6 +5,15 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/camera/CameraRig.cpp
   src/scene/camera/CameraShake.cpp
   src/scene/camera/CameraView.cpp
+  src/scene/draft/DraftBuildingCompile2D.cpp
+  src/scene/draft/DraftCompilePlan2D.cpp
+  src/scene/draft/DraftDoorCompile2D.cpp
+  src/scene/draft/DraftDocument2D.cpp
+  src/scene/draft/DraftLevelGeometryPlan2D.cpp
+  src/scene/draft/DraftWallCompile2D.cpp
+  src/scene/draft/DraftWallCutCompile2D.cpp
+  src/scene/draft/DraftWallDoorAttach2D.cpp
+  src/scene/draft/DraftWallDoorMorphPlan2D.cpp
   src/scene/interaction/InteractionEffectApplier2D.cpp
   src/scene/interaction/InteractionEffectCatalog2D.cpp
   src/scene/interaction/InteractionEffect2D.cpp
@@ -27,8 +36,12 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/inventory/PickupPlan2D.cpp
   src/scene/inventory/PickupPolicyTransfer2D.cpp
   src/scene/inventory/PickupTransfer2D.cpp
+  src/scene/level/LevelCombinedDerivedCacheBuilder2D.cpp
   src/scene/level/LevelBlueprint.cpp
   src/scene/level/LevelCollisionCacheState.cpp
+  src/scene/level/LevelCollisionSource2D.cpp
+  src/scene/level/LevelCollisionSourceWorldBuilder2D.cpp
+  src/scene/level/LevelCollisionWorldMerge2D.cpp
   src/scene/level/LevelCollisionWorldBuilder.cpp
   src/scene/level/LevelDerivedCacheState.cpp
   src/scene/level/LevelMutationCacheUpdateStep.cpp

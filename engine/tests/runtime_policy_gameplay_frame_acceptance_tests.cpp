@@ -268,25 +268,23 @@ void ExpectInventoryEvent(
 void TestPolicyRunnerFullGameplayRoad()
 {
 	const std::vector<iggy::InteractionTarget2D> targets {
-		Target("target:potion", iggy::InteractionTarget2DKind::Pickup),
-		Target("target:stack", iggy::InteractionTarget2DKind::Pickup),
-		Target("target:over", iggy::InteractionTarget2DKind::Pickup),
-		Target("target:missing_definition", iggy::InteractionTarget2DKind::Pickup),
-		Target("target:combo", iggy::InteractionTarget2DKind::Pickup),
+		Target("target:potion", iggy::InteractionTarget2DKind::Pickup, { 0.25F, 0.0F }),
+		Target("target:stack", iggy::InteractionTarget2DKind::Pickup, { 0.25F, 0.0F }),
+		Target("target:over", iggy::InteractionTarget2DKind::Pickup, { 0.25F, 0.0F }),
+		Target("target:missing_definition", iggy::InteractionTarget2DKind::Pickup, { 0.25F, 0.0F }),
+		Target("target:combo", iggy::InteractionTarget2DKind::Pickup, { 0.25F, 0.0F }),
 		Target("target:move_pickup", iggy::InteractionTarget2DKind::Pickup, { 1.0F, 0.0F }),
-		Target("target:blocked", iggy::InteractionTarget2DKind::Pickup),
-		Target("target:queue", iggy::InteractionTarget2DKind::Pickup),
-		Target("target:door", iggy::InteractionTarget2DKind::Door, { 0.0F, 0.0F }, 0.0F, true),
+		Target("target:blocked", iggy::InteractionTarget2DKind::Pickup, { 0.25F, 0.0F }),
+		Target("target:door", iggy::InteractionTarget2DKind::Door, { 0.25F, 0.0F }, 0.0F, true),
 	};
 	const std::vector<iggy::LevelItemDrop2D> drops {
-		Drop("drop:potion", "item:potion", 2),
-		Drop("drop:stack", "item:potion", 2),
-		Drop("drop:over", "item:potion", 1),
-		Drop("drop:missing_definition", "item:missing", 1),
-		Drop("drop:key", "item:key", 1),
+		Drop("drop:potion", "item:potion", 2, { 0.25F, 0.0F }),
+		Drop("drop:stack", "item:potion", 2, { 0.25F, 0.0F }),
+		Drop("drop:over", "item:potion", 1, { 0.25F, 0.0F }),
+		Drop("drop:missing_definition", "item:missing", 1, { 0.25F, 0.0F }),
+		Drop("drop:key", "item:key", 1, { 0.25F, 0.0F }),
 		Drop("drop:move", "item:move", 1, { 1.0F, 0.0F }),
-		Drop("drop:blocked", "item:blocked", 1),
-		Drop("drop:queue", "item:queue", 1),
+		Drop("drop:blocked", "item:blocked", 1, { 0.25F, 0.0F }),
 	};
 	const iggy::runtime::RuntimeInteractionState interaction {
 		Registry(targets),
@@ -301,7 +299,6 @@ void TestPolicyRunnerFullGameplayRoad()
 			}),
 			Entry("target:move_pickup", { iggy::pickupItemInteractionEffect(Id("target:move_pickup"), Id("drop:move")) }),
 			Entry("target:blocked", { iggy::pickupItemInteractionEffect(Id("target:blocked"), Id("drop:blocked")) }),
-			Entry("target:queue", { iggy::pickupItemInteractionEffect(Id("target:queue"), Id("drop:queue")) }),
 		}),
 	};
 	const iggy::runtime::RuntimeInventoryState inventory =
@@ -313,13 +310,9 @@ void TestPolicyRunnerFullGameplayRoad()
 		Definition("item:key", "Key", 1),
 		Definition("item:move", "Move Gem", 1),
 		Definition("item:blocked", "Blocked", 1),
-		Definition("item:queue", "Queue", 1),
 	});
 	iggy::PlayerInputContext2D blockedContext;
 	blockedContext.interactionEnabled = false;
-	iggy::runtime::RuntimeCommandQueueConfig rejectConfig;
-	rejectConfig.maxFrames = 1;
-	const iggy::runtime::RuntimeCommandQueueState fullQueue { { WaitFrame() } };
 	const std::vector<iggy::runtime::RuntimePolicyGameplayFrameRunnerFrame> frames {
 		Frame({ iggy::playerMoveToPointIntent({ 0.25F, 0.0F }) }),
 		Frame({ iggy::playerInteractIntent(Id("target:potion")) }),
@@ -332,10 +325,8 @@ void TestPolicyRunnerFullGameplayRoad()
 			iggy::playerInteractIntent(Id("target:move_pickup")),
 		}),
 		Frame({ iggy::playerInteractIntent(Id("target:blocked")) }, blockedContext),
-		Frame({ iggy::playerInteractIntent(Id("target:queue")) }, {}, rejectConfig),
 	};
 	iggy::runtime::RuntimePolicyGameplayFrameRunnerInput input { initial, frames, items };
-	input.initialState.commandQueue = fullQueue;
 
 	const iggy::runtime::RuntimePolicyGameplayFrameRunnerResult result =
 		iggy::runtime::RuntimePolicyGameplayFrameRunner {}.run(input);
@@ -351,8 +342,6 @@ void TestPolicyRunnerFullGameplayRoad()
 	Expect(result.ticks[5].report.interactionChanged && result.ticks[5].report.pickedUpCount == 1, "combo policy frame should report interaction and pickup");
 	Expect(result.ticks[6].report.pickedUpCount == 1, "move-then-interact policy frame should use post-move reach");
 	Expect(result.ticks[7].report.blockedIntentCount == 1, "context-blocked policy frame should report blocked intent");
-	Expect(result.ticks[8].frame.frame.interaction.playerInput.command.status == iggy::runtime::RuntimePlayerInputCommandRunnerStatus::QueueRejected, "queue-rejected policy frame should preserve rejection diagnostics");
-	Expect(result.ticks[8].report.inventoryEventCount == 0, "queue-rejected policy frame should produce no inventory events");
 
 	Expect(NearVec(result.finalState.session.player.position, { 1.0F, 0.0F }), "policy gameplay acceptance should return final player position");
 	ExpectTargetEnabled(result.finalState.interaction.targets, Id("target:door"), false, "policy gameplay acceptance should carry target toggle");
@@ -368,7 +357,6 @@ void TestPolicyRunnerFullGameplayRoad()
 	ExpectDropEnabled(result.finalState.inventory.drops, Id("drop:key"), false, "policy gameplay acceptance should consume combo pickup drop");
 	ExpectDropEnabled(result.finalState.inventory.drops, Id("drop:move"), false, "policy gameplay acceptance should consume post-move pickup drop");
 	ExpectDropEnabled(result.finalState.inventory.drops, Id("drop:blocked"), true, "policy gameplay acceptance should not consume blocked drop");
-	ExpectDropEnabled(result.finalState.inventory.drops, Id("drop:queue"), true, "policy gameplay acceptance should not consume queue-rejected drop");
 	Expect(result.inventoryEvents.events.size() == 12, "policy gameplay acceptance should aggregate four successful pickup event triplets");
 	if (result.inventoryEvents.events.size() == 12) {
 		ExpectInventoryEvent(result.inventoryEvents.events[0], iggy::InventoryEvent2DType::ItemAdded, Id("item:potion"), {}, 2, "policy gameplay acceptance event 0");
@@ -385,11 +373,44 @@ void TestPolicyRunnerFullGameplayRoad()
 	Expect(input.frames.size() == frames.size() && input.frames[1].playerIntents[0].targetId == Id("target:potion"), "policy gameplay acceptance should not mutate input frames");
 }
 
+void TestQueueRejectedMappedInteractPreservesDiagnosticsAndDoesNotMutate()
+{
+	const iggy::InteractionTarget2D target = Target("target:queue", iggy::InteractionTarget2DKind::Pickup);
+	const iggy::LevelItemDrop2D drop = Drop("drop:queue", "item:queue", 1);
+	const iggy::runtime::RuntimeInteractionState interaction {
+		Registry({ target }),
+		EffectCatalog({ Entry("target:queue", { iggy::pickupItemInteractionEffect(target.id, drop.id) }) }),
+	};
+	const iggy::runtime::RuntimeInventoryState inventory = InventoryState({}, { drop });
+	const iggy::runtime::RuntimeCommandQueueState fullQueue { { WaitFrame() } };
+	const iggy::runtime::RuntimeGameplayState initial = GameplayState(SessionWithPlayer(), interaction, inventory, fullQueue);
+	iggy::runtime::RuntimeCommandQueueConfig rejectConfig;
+	rejectConfig.maxFrames = 1;
+	const iggy::runtime::RuntimePolicyGameplayFrameRunnerInput input {
+		initial,
+		{ Frame({ iggy::playerInteractIntent(target.id) }, {}, rejectConfig) },
+		ItemCatalog({ Definition("item:queue", "Queue", 1) }),
+	};
+
+	const iggy::runtime::RuntimePolicyGameplayFrameRunnerResult result =
+		iggy::runtime::RuntimePolicyGameplayFrameRunner {}.run(input);
+
+	Expect(result.ticks.size() == 1, "queue-rejected policy acceptance should produce one tick");
+	Expect(result.ticks[0].frame.frame.interaction.playerInput.command.status == iggy::runtime::RuntimePlayerInputCommandRunnerStatus::QueueRejected, "queue-rejected policy acceptance should preserve rejection diagnostics");
+	Expect(result.ticks[0].report.inventoryEventCount == 0, "queue-rejected policy acceptance should report no inventory events");
+	Expect(result.ticks[0].frame.frame.pickup.status == iggy::runtime::RuntimePolicyPickupEffectFrameStatus::NoPickupEffects, "queue-rejected policy acceptance should skip pickup effects");
+	Expect(result.inventoryEvents.events.empty(), "queue-rejected policy acceptance should aggregate no inventory events");
+	Expect(result.finalState.inventory.inventory.stacks.empty(), "queue-rejected policy acceptance should not mutate inventory");
+	ExpectDropEnabled(result.finalState.inventory.drops, drop.id, true, "queue-rejected policy acceptance should not consume drop");
+	Expect(result.finalState.commandQueue.frames.size() == fullQueue.frames.size(), "queue-rejected policy acceptance should preserve full queue");
+	Expect(input.initialState.inventory.drops.find(drop.id)->enabled, "queue-rejected policy acceptance should not mutate input drops");
+}
+
 void TestExplicitCollisionWorldControlsMovementReachAndPickup()
 {
 	iggy::runtime::RuntimeSessionState session = SessionWithPlayer({ 0.0F, 0.0F });
 	SetCollisionCache(session, BlockingWorld());
-	const iggy::InteractionTarget2D target = Target("target:explicit", iggy::InteractionTarget2DKind::Pickup, { 1.0F, 0.0F });
+	const iggy::InteractionTarget2D target = Target("target:explicit", iggy::InteractionTarget2DKind::Pickup, { 0.0F, 0.0F }, 1.0F);
 	const iggy::LevelItemDrop2D drop = Drop("drop:explicit", "item:explicit", 1, { 1.0F, 0.0F });
 	const iggy::runtime::RuntimeInteractionState interaction {
 		Registry({ target }),
@@ -428,6 +449,7 @@ void TestExplicitCollisionWorldControlsMovementReachAndPickup()
 int main()
 {
 	TestPolicyRunnerFullGameplayRoad();
+	TestQueueRejectedMappedInteractPreservesDiagnosticsAndDoesNotMutate();
 	TestExplicitCollisionWorldControlsMovementReachAndPickup();
 
 	return Failures;
