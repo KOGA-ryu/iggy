@@ -2,6 +2,35 @@
 
 namespace iggy::runtime {
 
+namespace {
+
+RuntimePlayerInputInteractionEffectApplyFrameInput SeparateInput(
+	const RuntimePlayerInputInteractionStateApplyFrameInput &input)
+{
+	return {
+		input.playerInput,
+		input.interaction.targets,
+		input.interaction.effects,
+		input.interactionReach,
+	};
+}
+
+RuntimePlayerInputInteractionStateApplyFrameResult StateResultFrom(
+	const RuntimePlayerInputInteractionEffectApplyFrameResult &separate,
+	const RuntimeInteractionState &inputInteraction)
+{
+	RuntimePlayerInputInteractionStateApplyFrameResult result;
+	result.playerInput = separate.playerInput;
+	result.application = separate.application;
+	result.session = separate.session;
+	result.queue = separate.queue;
+	result.interaction.targets = separate.interactionTargets;
+	result.interaction.effects = inputInteraction.effects;
+	return result;
+}
+
+} // namespace
+
 RuntimePlayerInputInteractionEffectApplyFrameResult RuntimePlayerInputInteractionEffectApplyFrameStep::run(
 	const RuntimePlayerInputInteractionEffectApplyFrameInput &input) const
 {
@@ -47,6 +76,19 @@ RuntimePlayerInputInteractionEffectApplyFrameResult RuntimePlayerInputInteractio
 		input.interactionReach);
 	result.interactionTargets = result.application.registry;
 	return result;
+}
+
+RuntimePlayerInputInteractionStateApplyFrameResult RuntimePlayerInputInteractionEffectApplyFrameStep::runWithInteractionState(
+	const RuntimePlayerInputInteractionStateApplyFrameInput &input) const
+{
+	return StateResultFrom(run(SeparateInput(input)), input.interaction);
+}
+
+RuntimePlayerInputInteractionStateApplyFrameResult RuntimePlayerInputInteractionEffectApplyFrameStep::runWithInteractionState(
+	const RuntimePlayerInputInteractionStateApplyFrameInput &input,
+	const physics2d::CollisionWorld2D &explicitWorld) const
+{
+	return StateResultFrom(run(SeparateInput(input), explicitWorld), input.interaction);
 }
 
 } // namespace iggy::runtime

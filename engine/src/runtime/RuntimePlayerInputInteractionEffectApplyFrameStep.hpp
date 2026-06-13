@@ -2,6 +2,7 @@
 
 #include "runtime/RuntimeCommandQueue.hpp"
 #include "runtime/RuntimeInteractionEffectApplyFrameStep.hpp"
+#include "runtime/RuntimeInteractionState.hpp"
 #include "runtime/RuntimePlayerInputFrameStep.hpp"
 #include "runtime/RuntimeSessionState.hpp"
 #include "scene/interaction/InteractionEffectCatalog2D.hpp"
@@ -26,6 +27,20 @@ struct RuntimePlayerInputInteractionEffectApplyFrameResult {
 	InteractionTarget2DRegistry interactionTargets;
 };
 
+struct RuntimePlayerInputInteractionStateApplyFrameInput {
+	RuntimePlayerInputGatedFrameStepInput playerInput;
+	RuntimeInteractionState interaction;
+	InteractionReach2DConfig interactionReach;
+};
+
+struct RuntimePlayerInputInteractionStateApplyFrameResult {
+	RuntimePlayerInputGatedFrameStepResult playerInput;
+	RuntimeInteractionEffectApplyFrameResult application;
+	RuntimeSessionState session;
+	RuntimeCommandQueueState queue;
+	RuntimeInteractionState interaction;
+};
+
 class RuntimePlayerInputInteractionEffectApplyFrameStep {
 public:
 	[[nodiscard]] RuntimePlayerInputInteractionEffectApplyFrameResult run(
@@ -33,6 +48,13 @@ public:
 
 	[[nodiscard]] RuntimePlayerInputInteractionEffectApplyFrameResult run(
 		const RuntimePlayerInputInteractionEffectApplyFrameInput &input,
+		const physics2d::CollisionWorld2D &explicitWorld) const;
+
+	[[nodiscard]] RuntimePlayerInputInteractionStateApplyFrameResult runWithInteractionState(
+		const RuntimePlayerInputInteractionStateApplyFrameInput &input) const;
+
+	[[nodiscard]] RuntimePlayerInputInteractionStateApplyFrameResult runWithInteractionState(
+		const RuntimePlayerInputInteractionStateApplyFrameInput &input,
 		const physics2d::CollisionWorld2D &explicitWorld) const;
 };
 

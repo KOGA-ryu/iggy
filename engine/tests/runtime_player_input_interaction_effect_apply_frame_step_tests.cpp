@@ -111,6 +111,21 @@ iggy::runtime::RuntimePlayerInputInteractionEffectApplyFrameInput Input(
 	return { playerInput, targets, effects, reach };
 }
 
+iggy::runtime::RuntimeInteractionState InteractionState(
+	iggy::InteractionTarget2DRegistry targets,
+	iggy::InteractionEffectCatalog2D effects)
+{
+	return { targets, effects };
+}
+
+iggy::runtime::RuntimePlayerInputInteractionStateApplyFrameInput StateInput(
+	iggy::runtime::RuntimePlayerInputGatedFrameStepInput playerInput,
+	iggy::runtime::RuntimeInteractionState interaction,
+	iggy::InteractionReach2DConfig reach = {})
+{
+	return { playerInput, interaction, reach };
+}
+
 iggy::physics2d::CollisionObject2D Object(iggy::ResourceId id, iggy::Aabb2 bounds)
 {
 	return { id, iggy::physics2d::makeAabbShape(bounds), true };
@@ -455,6 +470,116 @@ void TestQueueRejectedExplicitWorldAlsoSkipsEffectApplication()
 	ExpectRegistryTargets(result.interactionTargets, targets, "explicit queue-rejected apply adapter should return original registry");
 }
 
+void TestStateOverloadAppliesToggleAndPreservesEffects()
+{
+	const std::vector<iggy::InteractionTarget2D> targets {
+		Target("target:state_toggle", iggy::InteractionTarget2DKind::Usable, { 0.0F, 0.0F }, 0.0F, true),
+	};
+	std::vector<iggy::InteractionTarget2D> expected = targets;
+	expected[0].enabled = false;
+	const iggy::InteractionEffectCatalog2D effects = Catalog({
+		Entry("target:state_toggle", { iggy::toggleTargetInteractionEffect(targets[0].id, false) }),
+	});
+	const iggy::runtime::RuntimeInteractionState interaction = InteractionState(Registry(targets), effects);
+
+	const iggy::runtime::RuntimePlayerInputInteractionStateApplyFrameResult result =
+		iggy::runtime::RuntimePlayerInputInteractionEffectApplyFrameStep {}.runWithInteractionState(
+			StateInput(
+				PlayerInput(SessionWithPlayer(), { iggy::playerInteractIntent(targets[0].id) }),
+				interaction));
+
+	Expect(result.application.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::Applied, "state apply adapter should apply toggle target");
+	Expect(result.application.mutated, "state apply adapter should mark mutation");
+	ExpectRegistryTargets(result.interaction.targets, expected, "state apply adapter should return updated interaction targets");
+	ExpectCatalogPreserved(result.interaction.effects, effects, "state apply adapter should preserve input interaction effects");
+	ExpectRegistryTargets(interaction.targets, targets, "state apply adapter should not mutate input interaction targets");
+	ExpectCatalogPreserved(interaction.effects, effects, "state apply adapter should not mutate input interaction effects");
+}
+
+void TestStateOverloadDeferredOnlyPreservesStateWithoutMutation()
+{
+	const iggy::InteractionTarget2D target = Target("target:state_deferred", iggy::InteractionTarget2DKind::Inspectable, { 0.0F, 0.0F }, 0.0F);
+	const iggy::InteractionEffectCatalog2D effects = Catalog({
+		Entry("target:state_deferred", {
+			iggy::inspectTextInteractionEffect(target.id, "Read"),
+			iggy::emitInteractionEventEffect(target.id, iggy::ResourceId { "event:state_deferred" }),
+		}),
+	});
+	const iggy::runtime::RuntimeInteractionState interaction = InteractionState(Registry({ target }), effects);
+
+	const iggy::runtime::RuntimePlayerInputInteractionStateApplyFrameResult result =
+		iggy::runtime::RuntimePlayerInputInteractionEffectApplyFrameStep {}.runWithInteractionState(
+			StateInput(
+				PlayerInput(SessionWithPlayer(), { iggy::playerInteractIntent(target.id) }),
+				interaction));
+
+	Expect(result.application.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::NoOp, "state deferred adapter should return NoOp");
+	Expect(!result.application.mutated, "state deferred adapter should not mutate");
+	ExpectRegistryTargets(result.interaction.targets, { target }, "state deferred adapter should preserve targets");
+	ExpectCatalogPreserved(result.interaction.effects, effects, "state deferred adapter should preserve effects");
+}
+
+void TestStateOverloadQueueRejectedDoesNotMutateTargets()
+{
+	const std::vector<iggy::InteractionTarget2D> targets {
+		Target("target:state_queue", iggy::InteractionTarget2DKind::Usable, { 0.0F, 0.0F }, 0.0F, true),
+	};
+	const iggy::InteractionEffectCatalog2D effects = Catalog({
+		Entry("target:state_queue", { iggy::toggleTargetInteractionEffect(targets[0].id, false) }),
+	});
+	const iggy::runtime::RuntimeInteractionState interaction = InteractionState(Registry(targets), effects);
+	const iggy::runtime::RuntimeCommandQueueState fullQueue { { WaitFrame() } };
+
+	const iggy::runtime::RuntimePlayerInputInteractionStateApplyFrameResult result =
+		iggy::runtime::RuntimePlayerInputInteractionEffectApplyFrameStep {}.runWithInteractionState(
+			StateInput(
+				PlayerInput(
+					SessionWithPlayer(),
+					{ iggy::playerInteractIntent(targets[0].id) },
+					{},
+					fullQueue,
+					{ 1 }),
+				interaction));
+
+	Expect(result.playerInput.command.status == iggy::runtime::RuntimePlayerInputCommandRunnerStatus::QueueRejected, "state queue-rejected adapter should preserve player input rejection");
+	Expect(result.playerInput.command.intake.mapping.frame.commands.size() == 1, "state queue-rejected adapter should preserve mapped frame diagnostics");
+	Expect(!result.application.hasInteractions(), "state queue-rejected adapter should skip application entries");
+	Expect(!result.application.mutated, "state queue-rejected adapter should not mutate application");
+	ExpectRegistryTargets(result.interaction.targets, targets, "state queue-rejected adapter should preserve interaction targets");
+	ExpectCatalogPreserved(result.interaction.effects, effects, "state queue-rejected adapter should preserve interaction effects");
+}
+
+void TestStateOverloadExplicitWorldAffectsMovementAndApplication()
+{
+	iggy::runtime::RuntimeSessionState session = SessionWithPlayer({ 0.0F, 0.0F });
+	SetCollisionCache(session, BlockingWorld());
+	const iggy::physics2d::CollisionWorld2D emptyWorld;
+	const std::vector<iggy::InteractionTarget2D> targets {
+		Target("target:state_explicit", iggy::InteractionTarget2DKind::Usable, { 1.0F, 0.0F }, 0.0F, true),
+	};
+	std::vector<iggy::InteractionTarget2D> expected = targets;
+	expected[0].enabled = false;
+	const iggy::InteractionEffectCatalog2D effects = Catalog({
+		Entry("target:state_explicit", { iggy::toggleTargetInteractionEffect(targets[0].id, false) }),
+	});
+	const iggy::runtime::RuntimeInteractionState interaction = InteractionState(Registry(targets), effects);
+
+	const iggy::runtime::RuntimePlayerInputInteractionStateApplyFrameResult result =
+		iggy::runtime::RuntimePlayerInputInteractionEffectApplyFrameStep {}.runWithInteractionState(
+			StateInput(
+				PlayerInput(session, {
+					iggy::playerMoveToPointIntent({ 2.0F, 0.0F }),
+					iggy::playerInteractIntent(targets[0].id),
+				}),
+				interaction),
+			emptyWorld);
+
+	Expect(NearVec(result.session.player.position, { 1.0F, 0.0F }), "state explicit adapter should preserve movement override result");
+	Expect(result.application.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::Applied, "state explicit adapter should apply after explicit-world movement");
+	ExpectRegistryTargets(result.interaction.targets, expected, "state explicit adapter should return updated targets");
+	ExpectCatalogPreserved(result.interaction.effects, effects, "state explicit adapter should preserve effects");
+}
+
 void TestInputsAreNotMutated()
 {
 	const iggy::InteractionTarget2D target = Target("target:immutable", iggy::InteractionTarget2DKind::Usable, { 0.0F, 0.0F }, 1.0F);
@@ -483,6 +608,30 @@ void TestInputsAreNotMutated()
 	Expect(input.interactionReach.extraReach == before.interactionReach.extraReach, "apply adapter should not mutate reach config");
 }
 
+void TestStateInputIsNotMutated()
+{
+	const iggy::InteractionTarget2D target = Target("target:state_immutable", iggy::InteractionTarget2DKind::Usable, { 0.0F, 0.0F }, 1.0F);
+	const iggy::InteractionEffectCatalog2D effects = Catalog({
+		Entry("target:state_immutable", { iggy::toggleTargetInteractionEffect(target.id, false) }),
+	});
+	iggy::runtime::RuntimePlayerInputInteractionStateApplyFrameInput input = StateInput(
+		PlayerInput(SessionWithPlayer(), { iggy::playerInteractIntent(target.id) }),
+		InteractionState(Registry({ target }), effects),
+		{ 0.25F });
+	const iggy::runtime::RuntimePlayerInputInteractionStateApplyFrameInput before = input;
+
+	const iggy::runtime::RuntimePlayerInputInteractionStateApplyFrameResult result =
+		iggy::runtime::RuntimePlayerInputInteractionEffectApplyFrameStep {}.runWithInteractionState(input);
+
+	Expect(result.application.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::Applied, "state immutability setup should apply");
+	Expect(input.playerInput.commandInput.session.tickIndex == before.playerInput.commandInput.session.tickIndex, "state apply adapter should not mutate input session");
+	Expect(SameQueue(input.playerInput.commandInput.queue, before.playerInput.commandInput.queue), "state apply adapter should not mutate input queue");
+	Expect(input.playerInput.commandInput.intents.size() == before.playerInput.commandInput.intents.size(), "state apply adapter should not mutate input intents");
+	ExpectRegistryTargets(input.interaction.targets, before.interaction.targets.targets(), "state apply adapter should not mutate input targets");
+	ExpectCatalogPreserved(input.interaction.effects, before.interaction.effects, "state apply adapter should not mutate input effects");
+	Expect(input.interactionReach.extraReach == before.interactionReach.extraReach, "state apply adapter should not mutate reach config");
+}
+
 } // namespace
 
 int main()
@@ -496,7 +645,12 @@ int main()
 	TestExplicitWorldOverloadAffectsMovementAndReachForApplication();
 	TestQueueRejectedSkipsEffectApplicationAndPreservesDiagnostics();
 	TestQueueRejectedExplicitWorldAlsoSkipsEffectApplication();
+	TestStateOverloadAppliesToggleAndPreservesEffects();
+	TestStateOverloadDeferredOnlyPreservesStateWithoutMutation();
+	TestStateOverloadQueueRejectedDoesNotMutateTargets();
+	TestStateOverloadExplicitWorldAffectsMovementAndApplication();
 	TestInputsAreNotMutated();
+	TestStateInputIsNotMutated();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;
