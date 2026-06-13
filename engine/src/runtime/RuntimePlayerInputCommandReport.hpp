@@ -11,6 +11,7 @@ enum class RuntimePlayerInputCommandEvent {
 	IntakeQueued,
 	QueueRejected,
 	IntentMapped,
+	IntentBlocked,
 	IntentRejected,
 	CommandFrameQueued,
 	CommandRunnerRan,
@@ -23,6 +24,18 @@ struct RuntimePlayerInputCommandReport {
 	RuntimeQueuedCommandRunnerResult runner;
 	std::vector<RuntimePlayerInputCommandEvent> events;
 	std::size_t acceptedCommandCount = 0;
+	std::size_t rejectedIntentCount = 0;
+	std::size_t queuedFrameCount = 0;
+	std::size_t tickResultCount = 0;
+};
+
+struct RuntimePlayerInputGatedCommandReport {
+	RuntimePlayerInputCommandRunnerStatus status = RuntimePlayerInputCommandRunnerStatus::Ran;
+	RuntimePlayerInputQueueGatedResult intake;
+	RuntimeQueuedCommandRunnerResult runner;
+	std::vector<RuntimePlayerInputCommandEvent> events;
+	std::size_t acceptedCommandCount = 0;
+	std::size_t blockedIntentCount = 0;
 	std::size_t rejectedIntentCount = 0;
 	std::size_t queuedFrameCount = 0;
 	std::size_t tickResultCount = 0;

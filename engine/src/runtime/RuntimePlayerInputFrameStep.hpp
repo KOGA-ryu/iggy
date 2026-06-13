@@ -19,12 +19,29 @@ struct RuntimePlayerInputFrameStepResult {
 	RuntimePlayerInputCommandReport report;
 };
 
+struct RuntimePlayerInputGatedFrameStepInput {
+	RuntimePlayerInputGatedCommandRunnerInput commandInput;
+};
+
+struct RuntimePlayerInputGatedFrameStepResult {
+	RuntimeSessionState session;
+	RuntimeCommandQueueState queue;
+	RuntimePlayerInputGatedCommandRunnerResult command;
+	RuntimePlayerInputGatedCommandReport report;
+};
+
 class RuntimePlayerInputFrameStep {
 public:
 	[[nodiscard]] RuntimePlayerInputFrameStepResult run(const RuntimePlayerInputFrameStepInput &input) const;
 
 	[[nodiscard]] RuntimePlayerInputFrameStepResult run(
 		const RuntimePlayerInputFrameStepInput &input,
+		const physics2d::CollisionWorld2D &explicitWorld) const;
+
+	[[nodiscard]] RuntimePlayerInputGatedFrameStepResult runGated(const RuntimePlayerInputGatedFrameStepInput &input) const;
+
+	[[nodiscard]] RuntimePlayerInputGatedFrameStepResult runGated(
+		const RuntimePlayerInputGatedFrameStepInput &input,
 		const physics2d::CollisionWorld2D &explicitWorld) const;
 };
 

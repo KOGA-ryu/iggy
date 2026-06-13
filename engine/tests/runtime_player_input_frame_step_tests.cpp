@@ -86,6 +86,28 @@ iggy::runtime::RuntimePlayerInputFrameStepInput Input(
 	};
 }
 
+iggy::runtime::RuntimePlayerInputGatedFrameStepInput GatedInput(
+	iggy::runtime::RuntimeSessionState session,
+	iggy::runtime::RuntimeCommandQueueState queue,
+	iggy::PlayerInputContext2D context,
+	std::vector<iggy::PlayerInputIntent2D> intents,
+	iggy::runtime::RuntimeCommandQueueConfig queueConfig = {})
+{
+	return {
+		{
+			session,
+			queue,
+			queueConfig,
+			PlayerId,
+			context,
+			intents,
+			{ 1.5F, 1.5F },
+			PlayerConfig(),
+			NpcConfig(),
+		},
+	};
+}
+
 iggy::physics2d::CollisionObject2D Object(iggy::ResourceId id, iggy::Aabb2 bounds)
 {
 	return { id, iggy::physics2d::makeAabbShape(bounds), true };
@@ -282,6 +304,172 @@ void TestNoExplicitOverloadUsesSessionDerivedCollisionCache()
 	Expect(result.report.tickResultCount == 1, "session collision report should count runner tick");
 }
 
+void TestDefaultContextGatedFrameBehavesLikeUngatedForSupportedMovement()
+{
+	const iggy::runtime::RuntimeSessionState session = SessionWithPlayer({ 0.0F, 0.0F });
+	const std::vector<iggy::PlayerInputIntent2D> intents {
+		iggy::playerMoveToPointIntent({ 2.0F, 0.0F }),
+	};
+	const iggy::runtime::RuntimePlayerInputFrameStepResult ungated = iggy::runtime::RuntimePlayerInputFrameStep {}.run(
+		Input(session, {}, intents));
+	const iggy::runtime::RuntimePlayerInputGatedFrameStepResult gated = iggy::runtime::RuntimePlayerInputFrameStep {}.runGated(
+		GatedInput(session, {}, {}, intents));
+
+	Expect(gated.command.status == iggy::runtime::RuntimePlayerInputCommandRunnerStatus::Ran, "default gated frame should run");
+	Expect(gated.command.intake.mapping.gateIssues.empty(), "default gated frame should have no gate issues");
+	Expect(gated.command.intake.mapping.mapping.issues.empty(), "default gated frame should have no nested mapping issues");
+	Expect(gated.report.acceptedCommandCount == ungated.report.acceptedCommandCount, "default gated report should match ungated accepted count");
+	Expect(gated.report.blockedIntentCount == 0, "default gated report should have no blocked intents");
+	Expect(gated.report.rejectedIntentCount == 0, "default gated report should have no rejected intents");
+	Expect(gated.report.tickResultCount == 1, "default gated report should count runner tick");
+	Expect(NearVec(gated.session.player.position, ungated.session.player.position), "default gated frame should match ungated movement");
+	Expect(gated.session.tickIndex == ungated.session.tickIndex, "default gated frame should match ungated tick index");
+	Expect(SameQueue(gated.queue, gated.command.queue), "default gated queue should come from command result");
+}
+
+void TestGatedContextBlockedMovementProducesGateReportAndDoesNotMove()
+{
+	iggy::PlayerInputContext2D context;
+	context.worldInputEnabled = false;
+	const iggy::PlayerInputIntent2D blockedMove = iggy::playerMoveToPointIntent({ 2.0F, 0.0F });
+	const iggy::runtime::RuntimeSessionState session = SessionWithPlayer({ 0.0F, 0.0F });
+
+	const iggy::runtime::RuntimePlayerInputGatedFrameStepResult result = iggy::runtime::RuntimePlayerInputFrameStep {}.runGated(
+		GatedInput(session, {}, context, { blockedMove }));
+
+	Expect(result.command.status == iggy::runtime::RuntimePlayerInputCommandRunnerStatus::Ran, "gated blocked frame should run");
+	Expect(result.command.intake.mapping.gateIssues.size() == 1, "gated blocked frame should preserve gate issue");
+	Expect(result.command.intake.mapping.gateIssues[0].gate.reason == iggy::PlayerInputIntentBlockReason::WorldInputDisabled, "gated blocked frame should preserve block reason");
+	ExpectIntentEquals(result.command.intake.mapping.gateIssues[0].gate.intent, blockedMove, "gated blocked frame should preserve blocked intent");
+	Expect(result.command.intake.mapping.mapping.issues.empty(), "gated blocked frame should have no nested mapping issue");
+	Expect(result.report.acceptedCommandCount == 0, "gated blocked report should have no accepted commands");
+	Expect(result.report.blockedIntentCount == 1, "gated blocked report should count blocked intent");
+	Expect(result.report.rejectedIntentCount == 0, "gated blocked report should have no rejected intents");
+	Expect(SameEvents(result.report.events, {
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntentBlocked,
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntakeQueued,
+		iggy::runtime::RuntimePlayerInputCommandEvent::CommandFrameQueued,
+		iggy::runtime::RuntimePlayerInputCommandEvent::CommandRunnerRan,
+	}), "gated blocked frame should report blocked and runner events");
+	Expect(NearVec(result.session.player.position, session.player.position), "gated blocked frame should not move player");
+	Expect(result.session.tickIndex == session.tickIndex + 1, "gated blocked frame should still tick once");
+}
+
+void TestGatedMixedAcceptedBlockedUnsupportedIntentsPreserveReportAndMovement()
+{
+	iggy::PlayerInputContext2D context;
+	context.interactionEnabled = false;
+	const iggy::PlayerInputIntent2D acceptedMove = iggy::playerMoveToPointIntent({ 2.0F, 0.0F });
+	const iggy::PlayerInputIntent2D blockedInteract = iggy::playerInteractIntent(TargetId);
+	const iggy::PlayerInputIntent2D unsupportedCancel = iggy::playerCancelIntent();
+
+	const iggy::runtime::RuntimePlayerInputGatedFrameStepResult result = iggy::runtime::RuntimePlayerInputFrameStep {}.runGated(
+		GatedInput(SessionWithPlayer({ 0.0F, 0.0F }), {}, context, { acceptedMove, blockedInteract, unsupportedCancel }));
+
+	Expect(result.command.intake.mapping.frame.commands.size() == 1, "gated mixed frame should map accepted command");
+	Expect(result.command.intake.mapping.gateIssues.size() == 1, "gated mixed frame should preserve blocked gate issue");
+	Expect(result.command.intake.mapping.mapping.issues.size() == 1, "gated mixed frame should preserve unsupported mapping issue");
+	Expect(result.report.acceptedCommandCount == 1, "gated mixed report should count accepted command");
+	Expect(result.report.blockedIntentCount == 1, "gated mixed report should count blocked intent");
+	Expect(result.report.rejectedIntentCount == 1, "gated mixed report should count rejected intent");
+	Expect(SameEvents(result.report.events, {
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntentMapped,
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntentBlocked,
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntentRejected,
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntakeQueued,
+		iggy::runtime::RuntimePlayerInputCommandEvent::CommandFrameQueued,
+		iggy::runtime::RuntimePlayerInputCommandEvent::CommandRunnerRan,
+	}), "gated mixed frame should preserve gated event order");
+	ExpectIntentEquals(result.command.intake.mapping.gateIssues[0].gate.intent, blockedInteract, "gated mixed frame should preserve blocked intent");
+	ExpectIntentEquals(result.command.intake.mapping.mapping.issues[0].intent, unsupportedCancel, "gated mixed frame should preserve unsupported intent");
+	Expect(NearVec(result.session.player.position, { 1.0F, 0.0F }), "gated mixed frame should execute accepted movement");
+}
+
+void TestGatedQueueRejectedPreservesUnchangedStateAndReport()
+{
+	iggy::PlayerInputContext2D context;
+	context.worldInputEnabled = false;
+	const iggy::runtime::RuntimeSessionState session = SessionWithPlayer();
+	const iggy::runtime::RuntimeCommandQueueState queue = Queue({ MoveFrame(2.0F, 0.0F) });
+
+	const iggy::runtime::RuntimePlayerInputGatedFrameStepResult result = iggy::runtime::RuntimePlayerInputFrameStep {}.runGated(
+		GatedInput(session, queue, context, {
+			iggy::playerMoveToPointIntent({ 4.0F, 0.0F }),
+			iggy::playerWaitIntent(),
+		}, { 1 }));
+
+	Expect(result.command.status == iggy::runtime::RuntimePlayerInputCommandRunnerStatus::QueueRejected, "gated full queue should reject frame step intake");
+	Expect(result.command.intake.status == iggy::runtime::RuntimePlayerInputQueueStatus::RejectedFull, "gated full queue should preserve intake rejection");
+	Expect(result.report.acceptedCommandCount == 1, "gated full queue report should preserve accepted diagnostics");
+	Expect(result.report.blockedIntentCount == 1, "gated full queue report should preserve blocked diagnostics");
+	Expect(result.report.queuedFrameCount == 0, "gated full queue report should not count queued frame");
+	Expect(result.report.tickResultCount == 0, "gated full queue report should not count ticks");
+	Expect(SameEvents(result.report.events, {
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntentMapped,
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntentBlocked,
+		iggy::runtime::RuntimePlayerInputCommandEvent::QueueRejected,
+		iggy::runtime::RuntimePlayerInputCommandEvent::CommandRunnerSkipped,
+	}), "gated full queue report should preserve rejected/skipped events");
+	Expect(result.session.tickIndex == session.tickIndex, "gated full queue frame step should not advance session");
+	ExpectPlayerAgent(result.session.player, session.player, "gated full queue frame step result");
+	Expect(SameQueue(result.queue, queue), "gated full queue frame step should preserve queue");
+}
+
+void TestGatedExplicitWorldOverloadPreservesExplicitCollisionPrecedence()
+{
+	iggy::runtime::RuntimeSessionState session = SessionWithPlayer({ 0.0F, 0.0F });
+	SetCollisionCache(session, BlockingWorld());
+	const iggy::physics2d::CollisionWorld2D emptyWorld;
+
+	const iggy::runtime::RuntimePlayerInputGatedFrameStepResult result = iggy::runtime::RuntimePlayerInputFrameStep {}.runGated(
+		GatedInput(session, {}, {}, { iggy::playerMoveToPointIntent({ 2.0F, 0.0F }) }),
+		emptyWorld);
+
+	Expect(result.command.status == iggy::runtime::RuntimePlayerInputCommandRunnerStatus::Ran, "gated explicit world frame step should run");
+	Expect(result.command.runner.runner.ticks.size() == 1, "gated explicit world frame step should produce one tick");
+	if (result.command.runner.runner.ticks.size() == 1) {
+		Expect(result.command.runner.runner.ticks[0].playerCommands.execution.movementResults.size() == 1, "gated explicit world frame step should preserve movement diagnostics");
+		Expect(result.command.runner.runner.ticks[0].playerCommands.execution.movementResults[0].status == iggy::PlayerMovementExecutionStatus::Moved, "gated explicit empty world should override session collision cache");
+	}
+	Expect(NearVec(result.session.player.position, { 1.0F, 0.0F }), "gated explicit empty world should allow movement");
+	Expect(result.report.acceptedCommandCount == 1, "gated explicit world report should count accepted command");
+}
+
+void TestGatedNoExplicitOverloadUsesSessionDerivedCollisionCache()
+{
+	iggy::runtime::RuntimeSessionState session = SessionWithPlayer({ 0.0F, 0.0F });
+	SetCollisionCache(session, BlockingWorld());
+
+	const iggy::runtime::RuntimePlayerInputGatedFrameStepResult result = iggy::runtime::RuntimePlayerInputFrameStep {}.runGated(
+		GatedInput(session, {}, {}, { iggy::playerMoveToPointIntent({ 2.0F, 0.0F }) }));
+
+	Expect(result.command.status == iggy::runtime::RuntimePlayerInputCommandRunnerStatus::Ran, "gated session collision frame step should run");
+	Expect(result.command.runner.runner.ticks.size() == 1, "gated session collision frame step should produce one tick");
+	if (result.command.runner.runner.ticks.size() == 1) {
+		Expect(result.command.runner.runner.ticks[0].playerCommands.execution.movementResults.size() == 1, "gated session collision frame step should preserve movement diagnostics");
+		Expect(result.command.runner.runner.ticks[0].playerCommands.execution.movementResults[0].status == iggy::PlayerMovementExecutionStatus::Blocked, "gated session collision cache should block movement");
+	}
+	Expect(NearVec(result.session.player.position, { 0.0F, 0.0F }), "gated session collision cache should prevent movement");
+	Expect(result.report.tickResultCount == 1, "gated session collision report should count runner tick");
+}
+
+void TestGatedMissingPlayerDiagnosticsArePreserved()
+{
+	const iggy::runtime::RuntimeSessionState session = SessionWithoutPlayer();
+	const iggy::runtime::RuntimePlayerInputGatedFrameStepResult result = iggy::runtime::RuntimePlayerInputFrameStep {}.runGated(
+		GatedInput(session, {}, {}, { iggy::playerMoveToPointIntent({ 2.0F, 0.0F }) }));
+
+	Expect(result.command.status == iggy::runtime::RuntimePlayerInputCommandRunnerStatus::Ran, "gated missing player frame step should run queued runner");
+	Expect(result.command.runner.runner.ticks.size() == 1, "gated missing player frame step should preserve runner tick");
+	if (result.command.runner.runner.ticks.size() == 1) {
+		Expect(result.command.runner.runner.ticks[0].playerCommands.planning.status == iggy::runtime::RuntimePlayerCommandPlanningStatus::MissingPlayer, "gated missing player frame step should preserve planning diagnostics");
+		Expect(result.command.runner.runner.ticks[0].playerCommands.execution.status == iggy::runtime::RuntimePlayerCommandExecutionStatus::MissingPlayer, "gated missing player frame step should preserve execution diagnostics");
+	}
+	Expect(result.report.runner.runner.ticks.size() == result.command.runner.runner.ticks.size(), "gated missing player report should copy runner diagnostics");
+	Expect(result.report.tickResultCount == 1, "gated missing player report should count tick");
+	Expect(!result.session.hasPlayer, "gated missing player frame step should not invent player");
+}
+
 void TestMissingPlayerDiagnosticsArePreserved()
 {
 	const iggy::runtime::RuntimeSessionState session = SessionWithoutPlayer();
@@ -322,6 +510,35 @@ void TestInputsAreNotMutated()
 	}
 }
 
+void TestGatedInputsAreNotMutated()
+{
+	iggy::runtime::RuntimePlayerInputGatedFrameStepInput input = GatedInput(
+		SessionWithPlayer({ 0.0F, 0.0F }),
+		Queue({ MoveFrame(2.0F, 0.0F) }),
+		{},
+		{ iggy::playerMoveToPointIntent({ 4.0F, 0.0F }), iggy::playerCancelIntent() },
+		{ 3 });
+	input.commandInput.context.worldInputEnabled = false;
+	const iggy::runtime::RuntimePlayerInputGatedFrameStepInput before = input;
+
+	const iggy::runtime::RuntimePlayerInputGatedFrameStepResult result = iggy::runtime::RuntimePlayerInputFrameStep {}.runGated(input);
+
+	Expect(result.command.status == iggy::runtime::RuntimePlayerInputCommandRunnerStatus::Ran, "gated immutability setup should run");
+	Expect(input.commandInput.session.tickIndex == before.commandInput.session.tickIndex, "gated frame step should not mutate input session tickIndex");
+	ExpectPlayerAgent(input.commandInput.session.player, before.commandInput.session.player, "gated input frame step session after run");
+	Expect(SameQueue(input.commandInput.queue, before.commandInput.queue), "gated frame step should not mutate input queue");
+	Expect(input.commandInput.queueConfig.maxFrames == before.commandInput.queueConfig.maxFrames, "gated frame step should not mutate queue config");
+	Expect(input.commandInput.actorId == before.commandInput.actorId, "gated frame step should not mutate actor id");
+	Expect(input.commandInput.context.playerControlEnabled == before.commandInput.context.playerControlEnabled, "gated frame step should not mutate player control flag");
+	Expect(input.commandInput.context.worldInputEnabled == before.commandInput.context.worldInputEnabled, "gated frame step should not mutate world input flag");
+	Expect(input.commandInput.context.interactionEnabled == before.commandInput.context.interactionEnabled, "gated frame step should not mutate interaction flag");
+	Expect(input.commandInput.context.cancelEnabled == before.commandInput.context.cancelEnabled, "gated frame step should not mutate cancel flag");
+	Expect(input.commandInput.intents.size() == before.commandInput.intents.size(), "gated frame step should not mutate intents");
+	for (std::size_t index = 0; index < input.commandInput.intents.size(); ++index) {
+		ExpectIntentEquals(input.commandInput.intents[index], before.commandInput.intents[index], "gated frame step should not mutate intent data");
+	}
+}
+
 } // namespace
 
 int main()
@@ -332,8 +549,16 @@ int main()
 	TestBoundedFullQueueReturnsUnchangedStateAndRejectedReport();
 	TestExplicitWorldOverloadPreservesExplicitCollisionPrecedence();
 	TestNoExplicitOverloadUsesSessionDerivedCollisionCache();
+	TestDefaultContextGatedFrameBehavesLikeUngatedForSupportedMovement();
+	TestGatedContextBlockedMovementProducesGateReportAndDoesNotMove();
+	TestGatedMixedAcceptedBlockedUnsupportedIntentsPreserveReportAndMovement();
+	TestGatedQueueRejectedPreservesUnchangedStateAndReport();
+	TestGatedExplicitWorldOverloadPreservesExplicitCollisionPrecedence();
+	TestGatedNoExplicitOverloadUsesSessionDerivedCollisionCache();
+	TestGatedMissingPlayerDiagnosticsArePreserved();
 	TestMissingPlayerDiagnosticsArePreserved();
 	TestInputsAreNotMutated();
+	TestGatedInputsAreNotMutated();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

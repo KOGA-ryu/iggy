@@ -74,6 +74,26 @@ iggy::runtime::RuntimePlayerInputCommandRunnerInput Input(
 	};
 }
 
+iggy::runtime::RuntimePlayerInputGatedCommandRunnerInput GatedInput(
+	iggy::runtime::RuntimeSessionState session,
+	iggy::runtime::RuntimeCommandQueueState queue,
+	iggy::PlayerInputContext2D context,
+	std::vector<iggy::PlayerInputIntent2D> intents,
+	iggy::runtime::RuntimeCommandQueueConfig queueConfig = {})
+{
+	return {
+		session,
+		queue,
+		queueConfig,
+		PlayerId,
+		context,
+		intents,
+		{ 1.5F, 1.5F },
+		PlayerConfig(),
+		NpcConfig(),
+	};
+}
+
 iggy::runtime::GameplayCommandFrame2D MoveFrame(float x, float y)
 {
 	return CommandFrame({ iggy::runtime::GameplayCommand2DFactory {}.moveToPoint(PlayerId, { x, y }) });
@@ -233,6 +253,158 @@ void TestMissingPlayerDiagnosticsArePreserved()
 	}
 }
 
+void TestGatedValidIntentReportsAcceptedCommandCountAndIntentMapped()
+{
+	const iggy::runtime::RuntimePlayerInputGatedCommandRunnerResult result = iggy::runtime::RuntimePlayerInputCommandRunner {}.runGated(
+		GatedInput(SessionWithPlayer(), {}, {}, {
+			iggy::playerMoveToPointIntent({ 2.0F, 0.0F }),
+			iggy::playerWaitIntent(),
+		}));
+
+	const iggy::runtime::RuntimePlayerInputGatedCommandReport report = iggy::runtime::RuntimePlayerInputCommandReporter {}.reportGated(result);
+
+	Expect(report.status == result.status, "gated valid report should copy runner status");
+	Expect(report.intake.status == result.intake.status, "gated valid report should copy intake status");
+	Expect(report.acceptedCommandCount == 2, "gated valid report should count accepted commands");
+	Expect(report.blockedIntentCount == 0, "gated valid report should have no blocked intents");
+	Expect(report.rejectedIntentCount == 0, "gated valid report should have no rejected intents");
+	Expect(report.queuedFrameCount == 1, "gated valid report should count queued frame");
+	Expect(report.tickResultCount == 1, "gated valid report should count one tick");
+	Expect(SameEvents(report.events, {
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntentMapped,
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntakeQueued,
+		iggy::runtime::RuntimePlayerInputCommandEvent::CommandFrameQueued,
+		iggy::runtime::RuntimePlayerInputCommandEvent::CommandRunnerRan,
+	}), "gated valid report should emit mapped and runner events");
+}
+
+void TestGatedContextBlockedIntentReportsBlockedCountAndEvent()
+{
+	iggy::PlayerInputContext2D context;
+	context.worldInputEnabled = false;
+	const iggy::runtime::RuntimePlayerInputGatedCommandRunnerResult result = iggy::runtime::RuntimePlayerInputCommandRunner {}.runGated(
+		GatedInput(SessionWithPlayer(), {}, context, {
+			iggy::playerMoveToPointIntent({ 2.0F, 0.0F }),
+		}));
+
+	const iggy::runtime::RuntimePlayerInputGatedCommandReport report = iggy::runtime::RuntimePlayerInputCommandReporter {}.reportGated(result);
+
+	Expect(report.acceptedCommandCount == 0, "gated blocked report should have no accepted commands");
+	Expect(report.blockedIntentCount == 1, "gated blocked report should count gate issue");
+	Expect(report.rejectedIntentCount == 0, "gated blocked report should have no nested mapping issues");
+	Expect(report.queuedFrameCount == 1, "gated blocked report should count queued empty frame");
+	Expect(report.tickResultCount == 1, "gated blocked report should count runner tick");
+	Expect(report.intake.mapping.gateIssues.size() == 1, "gated blocked report should preserve gate issue");
+	Expect(SameEvents(report.events, {
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntentBlocked,
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntakeQueued,
+		iggy::runtime::RuntimePlayerInputCommandEvent::CommandFrameQueued,
+		iggy::runtime::RuntimePlayerInputCommandEvent::CommandRunnerRan,
+	}), "gated blocked report should emit blocked and runner events");
+}
+
+void TestGatedUnsupportedUnblockedIntentReportsRejectedCountAndEvent()
+{
+	const iggy::runtime::RuntimePlayerInputGatedCommandRunnerResult result = iggy::runtime::RuntimePlayerInputCommandRunner {}.runGated(
+		GatedInput(SessionWithPlayer(), {}, {}, {
+			iggy::playerInspectIntent(TargetId),
+		}));
+
+	const iggy::runtime::RuntimePlayerInputGatedCommandReport report = iggy::runtime::RuntimePlayerInputCommandReporter {}.reportGated(result);
+
+	Expect(report.acceptedCommandCount == 0, "gated unsupported report should have no accepted commands");
+	Expect(report.blockedIntentCount == 0, "gated unsupported report should have no blocked intents");
+	Expect(report.rejectedIntentCount == 1, "gated unsupported report should count nested mapping issue");
+	Expect(report.queuedFrameCount == 1, "gated unsupported report should count queued frame");
+	Expect(report.tickResultCount == 1, "gated unsupported report should count runner tick");
+	Expect(report.intake.mapping.mapping.issues.size() == 1, "gated unsupported report should preserve nested mapping issue");
+	Expect(SameEvents(report.events, {
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntentRejected,
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntakeQueued,
+		iggy::runtime::RuntimePlayerInputCommandEvent::CommandFrameQueued,
+		iggy::runtime::RuntimePlayerInputCommandEvent::CommandRunnerRan,
+	}), "gated unsupported report should emit rejected and runner events");
+}
+
+void TestGatedMixedAcceptedBlockedUnsupportedReportsDeterministicEvents()
+{
+	iggy::PlayerInputContext2D context;
+	context.interactionEnabled = false;
+	const iggy::runtime::RuntimePlayerInputGatedCommandRunnerResult result = iggy::runtime::RuntimePlayerInputCommandRunner {}.runGated(
+		GatedInput(SessionWithPlayer(), {}, context, {
+			iggy::playerMoveToPointIntent({ 2.0F, 0.0F }),
+			iggy::playerInteractIntent(TargetId),
+			iggy::playerCancelIntent(),
+		}));
+
+	const iggy::runtime::RuntimePlayerInputGatedCommandReport report = iggy::runtime::RuntimePlayerInputCommandReporter {}.reportGated(result);
+
+	Expect(report.acceptedCommandCount == 1, "gated mixed report should count accepted command");
+	Expect(report.blockedIntentCount == 1, "gated mixed report should count blocked intent");
+	Expect(report.rejectedIntentCount == 1, "gated mixed report should count unsupported intent");
+	Expect(report.queuedFrameCount == 1, "gated mixed report should count queued frame");
+	Expect(report.tickResultCount == 1, "gated mixed report should count runner tick");
+	Expect(report.intake.mapping.gateIssues.size() == 1, "gated mixed report should preserve gate issues");
+	Expect(report.intake.mapping.mapping.issues.size() == 1, "gated mixed report should preserve nested mapping issues");
+	Expect(SameEvents(report.events, {
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntentMapped,
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntentBlocked,
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntentRejected,
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntakeQueued,
+		iggy::runtime::RuntimePlayerInputCommandEvent::CommandFrameQueued,
+		iggy::runtime::RuntimePlayerInputCommandEvent::CommandRunnerRan,
+	}), "gated mixed report should preserve deterministic event order");
+}
+
+void TestGatedQueueRejectedReportsSkippedRunnerAndNoQueuedFrameOrTicks()
+{
+	iggy::PlayerInputContext2D context;
+	context.worldInputEnabled = false;
+	const iggy::runtime::RuntimeCommandQueueState fullQueue = Queue({ MoveFrame(2.0F, 0.0F) });
+	const iggy::runtime::RuntimePlayerInputGatedCommandRunnerResult result = iggy::runtime::RuntimePlayerInputCommandRunner {}.runGated(
+		GatedInput(SessionWithPlayer(), fullQueue, context, {
+			iggy::playerMoveToPointIntent({ 4.0F, 0.0F }),
+			iggy::playerWaitIntent(),
+		}, { 1 }));
+
+	const iggy::runtime::RuntimePlayerInputGatedCommandReport report = iggy::runtime::RuntimePlayerInputCommandReporter {}.reportGated(result);
+
+	Expect(report.status == iggy::runtime::RuntimePlayerInputCommandRunnerStatus::QueueRejected, "gated queue rejected report should copy rejected status");
+	Expect(report.intake.status == iggy::runtime::RuntimePlayerInputQueueStatus::RejectedFull, "gated queue rejected report should preserve intake rejection");
+	Expect(report.acceptedCommandCount == 1, "gated queue rejected report should preserve accepted mapping count");
+	Expect(report.blockedIntentCount == 1, "gated queue rejected report should preserve blocked count");
+	Expect(report.rejectedIntentCount == 0, "gated queue rejected report should preserve rejected mapping count");
+	Expect(report.queuedFrameCount == 0, "gated queue rejected report should not count queued frame");
+	Expect(report.tickResultCount == 0, "gated queue rejected report should not count ticks");
+	Expect(report.runner.runner.ticks.empty(), "gated queue rejected report should preserve skipped runner diagnostics");
+	Expect(SameEvents(report.events, {
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntentMapped,
+		iggy::runtime::RuntimePlayerInputCommandEvent::IntentBlocked,
+		iggy::runtime::RuntimePlayerInputCommandEvent::QueueRejected,
+		iggy::runtime::RuntimePlayerInputCommandEvent::CommandRunnerSkipped,
+	}), "gated queue rejected report should emit mapped, blocked, rejected, skipped events");
+}
+
+void TestGatedMissingPlayerDiagnosticsArePreserved()
+{
+	const iggy::runtime::RuntimePlayerInputGatedCommandRunnerResult result = iggy::runtime::RuntimePlayerInputCommandRunner {}.runGated(
+		GatedInput(SessionWithoutPlayer(), {}, {}, {
+			iggy::playerMoveToPointIntent({ 2.0F, 0.0F }),
+		}));
+
+	const iggy::runtime::RuntimePlayerInputGatedCommandReport report = iggy::runtime::RuntimePlayerInputCommandReporter {}.reportGated(result);
+
+	Expect(report.status == iggy::runtime::RuntimePlayerInputCommandRunnerStatus::Ran, "gated missing player report should still be a ran report");
+	Expect(report.acceptedCommandCount == 1, "gated missing player report should count accepted command");
+	Expect(report.blockedIntentCount == 0, "gated missing player report should have no blocked intents");
+	Expect(report.tickResultCount == 1, "gated missing player report should count underlying tick");
+	Expect(report.runner.runner.ticks.size() == 1, "gated missing player report should preserve runner tick result");
+	if (report.runner.runner.ticks.size() == 1) {
+		Expect(report.runner.runner.ticks[0].playerCommands.planning.status == iggy::runtime::RuntimePlayerCommandPlanningStatus::MissingPlayer, "gated report should preserve missing-player planning diagnostics");
+		Expect(report.runner.runner.ticks[0].playerCommands.execution.status == iggy::runtime::RuntimePlayerCommandExecutionStatus::MissingPlayer, "gated report should preserve missing-player execution diagnostics");
+	}
+}
+
 void TestReporterDoesNotMutateInputResult()
 {
 	iggy::runtime::RuntimePlayerInputCommandRunnerResult result = iggy::runtime::RuntimePlayerInputCommandRunner {}.run(
@@ -255,6 +427,34 @@ void TestReporterDoesNotMutateInputResult()
 	ExpectPlayerAgent(result.session.player, before.session.player, "reported input result after reporter");
 }
 
+void TestGatedReporterDoesNotMutateInputResult()
+{
+	iggy::PlayerInputContext2D context;
+	context.interactionEnabled = false;
+	iggy::runtime::RuntimePlayerInputGatedCommandRunnerResult result = iggy::runtime::RuntimePlayerInputCommandRunner {}.runGated(
+		GatedInput(SessionWithPlayer(), Queue({ MoveFrame(2.0F, 0.0F) }), context, {
+			iggy::playerMoveToPointIntent({ 4.0F, 0.0F }),
+			iggy::playerInteractIntent(TargetId),
+			iggy::playerCancelIntent(),
+		}));
+	const iggy::runtime::RuntimePlayerInputGatedCommandRunnerResult before = result;
+
+	const iggy::runtime::RuntimePlayerInputGatedCommandReport report = iggy::runtime::RuntimePlayerInputCommandReporter {}.reportGated(result);
+
+	Expect(report.acceptedCommandCount == 1, "gated immutability setup should produce accepted count");
+	Expect(report.blockedIntentCount == 1, "gated immutability setup should produce blocked count");
+	Expect(report.rejectedIntentCount == 1, "gated immutability setup should produce rejected count");
+	Expect(result.status == before.status, "gated reporter should not mutate runner status");
+	Expect(result.intake.status == before.intake.status, "gated reporter should not mutate intake status");
+	Expect(SameFrame(result.intake.mapping.frame, before.intake.mapping.frame), "gated reporter should not mutate intake mapping frame");
+	Expect(result.intake.mapping.gateIssues.size() == before.intake.mapping.gateIssues.size(), "gated reporter should not mutate gate issues");
+	Expect(result.intake.mapping.mapping.issues.size() == before.intake.mapping.mapping.issues.size(), "gated reporter should not mutate nested mapping issues");
+	Expect(result.runner.runner.ticks.size() == before.runner.runner.ticks.size(), "gated reporter should not mutate runner ticks");
+	Expect(SameQueue(result.queue, before.queue), "gated reporter should not mutate result queue");
+	Expect(result.session.tickIndex == before.session.tickIndex, "gated reporter should not mutate result session");
+	ExpectPlayerAgent(result.session.player, before.session.player, "gated reported input result after reporter");
+}
+
 } // namespace
 
 int main()
@@ -264,7 +464,14 @@ int main()
 	TestMixedValidUnsupportedIntentsReportAcceptedRejectedCountsAndEvents();
 	TestQueueRejectedReportsSkippedRunnerAndNoQueuedFrameOrTicks();
 	TestMissingPlayerDiagnosticsArePreserved();
+	TestGatedValidIntentReportsAcceptedCommandCountAndIntentMapped();
+	TestGatedContextBlockedIntentReportsBlockedCountAndEvent();
+	TestGatedUnsupportedUnblockedIntentReportsRejectedCountAndEvent();
+	TestGatedMixedAcceptedBlockedUnsupportedReportsDeterministicEvents();
+	TestGatedQueueRejectedReportsSkippedRunnerAndNoQueuedFrameOrTicks();
+	TestGatedMissingPlayerDiagnosticsArePreserved();
 	TestReporterDoesNotMutateInputResult();
+	TestGatedReporterDoesNotMutateInputResult();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

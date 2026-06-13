@@ -24,4 +24,26 @@ RuntimePlayerInputFrameStepResult RuntimePlayerInputFrameStep::run(
 	return result;
 }
 
+RuntimePlayerInputGatedFrameStepResult RuntimePlayerInputFrameStep::runGated(const RuntimePlayerInputGatedFrameStepInput &input) const
+{
+	RuntimePlayerInputGatedFrameStepResult result;
+	result.command = RuntimePlayerInputCommandRunner {}.runGated(input.commandInput);
+	result.report = RuntimePlayerInputCommandReporter {}.reportGated(result.command);
+	result.session = result.command.session;
+	result.queue = result.command.queue;
+	return result;
+}
+
+RuntimePlayerInputGatedFrameStepResult RuntimePlayerInputFrameStep::runGated(
+	const RuntimePlayerInputGatedFrameStepInput &input,
+	const physics2d::CollisionWorld2D &explicitWorld) const
+{
+	RuntimePlayerInputGatedFrameStepResult result;
+	result.command = RuntimePlayerInputCommandRunner {}.runGated(input.commandInput, explicitWorld);
+	result.report = RuntimePlayerInputCommandReporter {}.reportGated(result.command);
+	result.session = result.command.session;
+	result.queue = result.command.queue;
+	return result;
+}
+
 } // namespace iggy::runtime
