@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <vector>
 
 #include "scene/ui/UiSettingsState.hpp"
 #include "support/TestHarness.hpp"
@@ -19,11 +20,25 @@ void TestDefaultSettingsStateUsesToolInventoryAndPanelDefaults()
 	const iggy::ui::UiSettingsState settings = iggy::ui::defaultUiSettingsState(inventory);
 
 	Expect(settings.themeId == Id("theme:default"), "default ui settings should name default theme");
+	Expect(settings.theme.base == "#101418", "default ui settings should own theme inputs");
+	Expect(settings.activePageId == Id("settings:theme"), "default ui settings should open theme page first");
 	Expect(settings.enabledToolIds.size() == iggy::ui::defaultEnabledUiToolIds(inventory).size(), "default ui settings should derive enabled tools from inventory");
 	Expect(settings.panelContent.size() >= 3, "default ui settings should include panel assignments");
 	Expect(settings.showRuntimeInspector, "default ui settings should show runtime inspector");
 	Expect(settings.showInteractionEvents, "default ui settings should show interaction events");
 	Expect(!settings.showCollisionDebug, "default ui settings should hide collision debug");
+}
+
+void TestDefaultSettingsPagesAreTableDriven()
+{
+	const std::vector<iggy::ui::UiSettingsPageDescriptor> pages = iggy::ui::defaultUiSettingsPages();
+
+	Expect(pages.size() == 3, "default ui settings pages should be a compact page table");
+	if (pages.size() == 3) {
+		Expect(pages[0].id == Id("settings:theme") && pages[0].label == "Theme", "first settings page should edit theme");
+		Expect(pages[1].id == Id("settings:tool_belt") && pages[1].label == "Tool Belt", "second settings page should edit tool belt");
+		Expect(pages[2].id == Id("settings:panels") && pages[2].label == "Panels", "third settings page should edit panel assignments");
+	}
 }
 
 void TestApplySettingsRebuildsWorkspaceBeltAndPanelContent()
@@ -76,6 +91,7 @@ void TestPanelContentAssignmentHelpersInsertUpdateAndFallback()
 int main()
 {
 	TestDefaultSettingsStateUsesToolInventoryAndPanelDefaults();
+	TestDefaultSettingsPagesAreTableDriven();
 	TestApplySettingsRebuildsWorkspaceBeltAndPanelContent();
 	TestPanelContentAssignmentHelpersInsertUpdateAndFallback();
 

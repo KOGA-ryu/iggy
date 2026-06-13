@@ -220,7 +220,7 @@ void TestEmptyInputReturnsGameplayStateThroughExistingSemanticsAndReport()
 	const iggy::runtime::RuntimeGameplayFrameResult result =
 		iggy::runtime::RuntimeGameplayFrameStep {}.run(Input(state, {}));
 
-	Expect(result.frame.playerInput.command.status == iggy::runtime::RuntimePlayerInputCommandRunnerStatus::Ran, "empty gameplay frame should run existing player input path");
+	Expect(result.frame.interaction.playerInput.command.status == iggy::runtime::RuntimePlayerInputCommandRunnerStatus::Ran, "empty gameplay frame should run existing player input path");
 	Expect(result.report.acceptedCommandCount == 0, "empty gameplay frame report should have no accepted commands");
 	Expect(result.report.pickedUpCount == 0, "empty gameplay frame report should have no pickups");
 	Expect(result.state.commandQueue.frames.empty(), "empty gameplay frame should return drained queue state");

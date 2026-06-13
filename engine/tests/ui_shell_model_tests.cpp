@@ -69,6 +69,56 @@ void TestMountedSlotLookup()
 	Expect(left == nullptr, "mounted ui slot lookup should return null for empty slot");
 }
 
+void TestMountedFeaturePanelsUseFeatureDescriptorsAndPanelAssignments()
+{
+	iggy::ui::UiFeatureRegistry registry;
+	registry.features = {
+		{
+			Id("feature:runtime"),
+			"Runtime",
+			{ iggy::ui::UiShellSlot::Main },
+			{
+				{ Id("panel:runtime"), "Runtime", Id("group:runtime"), iggy::ui::UiShellSlot::Right },
+				{ Id("panel:events"), "Events", Id("group:events"), iggy::ui::UiShellSlot::Bottom },
+			},
+			{ { Id("palette:tools"), "Tools" } },
+			{ { Id("chrome:settings"), "Settings" } },
+		},
+		{
+			Id("feature:missing_slot"),
+			"Missing Slot",
+			{ iggy::ui::UiShellSlot::Left },
+			{ { Id("panel:missing"), "Missing", Id("group:missing"), iggy::ui::UiShellSlot::Left } },
+			{},
+			{},
+		},
+	};
+	iggy::ui::UiWorkspaceLayout layout;
+	layout.bindings = {
+		{ iggy::ui::UiShellSlot::Main, Id("feature:runtime") },
+		{ iggy::ui::UiShellSlot::Right, Id("feature:missing_slot") },
+	};
+	layout.panelContent = {
+		{ Id("group:runtime"), iggy::ui::UiShellSlot::Left, false },
+		{ Id("group:events"), iggy::ui::UiShellSlot::Bottom, true },
+	};
+	layout.palettes = {
+		{ Id("palette:tools"), 30, 40 },
+	};
+
+	const std::vector<iggy::ui::UiMountedPanel> panels = iggy::ui::mountUiWorkspacePanels(layout, registry);
+	const std::vector<iggy::ui::UiMountedPalette> palettes = iggy::ui::mountUiWorkspacePalettes(layout, registry);
+	const std::vector<iggy::ui::UiMountedChromePanel> chrome = iggy::ui::mountUiWorkspaceChromePanels(layout, registry);
+
+	Expect(panels.size() == 2, "ui shell should mount panels supplied by valid mounted features only");
+	if (panels.size() == 2) {
+		Expect(panels[0].id == Id("panel:runtime") && panels[0].slot == iggy::ui::UiShellSlot::Left, "ui shell should apply panel assignment slot overrides");
+		Expect(panels[1].id == Id("panel:events") && panels[1].hidden, "ui shell should preserve hidden panel assignments");
+	}
+	Expect(palettes.size() == 1 && palettes[0].placement.x == 30 && palettes[0].placement.y == 40, "ui shell should mount feature palettes with workspace placement");
+	Expect(chrome.size() == 1 && chrome[0].id == Id("chrome:settings"), "ui shell should mount feature chrome panel descriptors");
+}
+
 void TestDefaultPanelStateMatchesReferenceShape()
 {
 	const iggy::ui::UiShellPanelsState state = iggy::ui::defaultUiShellPanelsState();
@@ -173,6 +223,7 @@ int main()
 	TestFindFeatureById();
 	TestMountWorkspaceSkipsMissingAndUnsupportedBindings();
 	TestMountedSlotLookup();
+	TestMountedFeaturePanelsUseFeatureDescriptorsAndPanelAssignments();
 	TestDefaultPanelStateMatchesReferenceShape();
 	TestPanelVisibilitySeparatesCollapsedAndAutoHidden();
 	TestPanelSizeClampUsesSlotBands();
