@@ -38,6 +38,7 @@ Transient frame data:
 - interaction plans
 - interaction effect plans
 - interaction effect application results
+- interaction events emitted while applying effects
 - NPC tick reports
 - collision query results
 - mutation/cache update results and command tick diagnostics
@@ -62,7 +63,7 @@ Save snapshots should exclude:
 - render command lists
 - collision query worlds if rebuildable from map data
 - command plans and per-tick reports
-- interaction plans, requested effect lists, application diagnostics, and interaction reports
+- interaction plans, requested effect lists, application diagnostics, interaction events, and interaction reports
 - mutation/cache update diagnostics
 - backend handles, windows, GPU resources
 - raw device input state
@@ -145,6 +146,8 @@ InteractionTarget2DRegistry + actor position + target id
   -> runtime reports
 ```
 
-Current effect application can return an updated `InteractionTarget2DRegistry` for target-toggle effects. That returned registry is scene/interaction state, but runtime does not persist it automatically. Inspect-text and emit-event effects are deferred diagnostics.
+Current effect application can return an updated `InteractionTarget2DRegistry` for target-toggle effects. It also records transient `InteractionEvent2D` values for target toggles, inspect-text requests, and emitted events. That returned registry is scene/interaction state, but runtime does not persist it automatically in `RuntimeSessionState`.
 
 Effects that mutate `LevelRuntimeState`, `PlayerAgentState`, inventory, combat, quests, or global event streams still require a separate ownership slice.
+
+`RuntimeInteractionState` may carry interaction targets/effects as an explicit caller-owned packet through runtime interaction steps. It is not currently part of authoritative session snapshots.

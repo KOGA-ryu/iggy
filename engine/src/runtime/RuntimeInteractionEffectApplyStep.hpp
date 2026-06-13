@@ -22,6 +22,7 @@ struct RuntimeInteractionEffectApplyResult {
 	RuntimeInteractionEffectCommandResult command;
 	InteractionEffectPlanApplyResult application;
 	InteractionTarget2DRegistry registry;
+	InteractionEventRecorder2D events;
 	bool mutated = false;
 };
 

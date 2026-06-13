@@ -73,6 +73,27 @@ bool SameEffects(const std::vector<iggy::InteractionEffect2D> &actual, const std
 	return true;
 }
 
+bool SameEvent(const iggy::InteractionEvent2D &actual, const iggy::InteractionEvent2D &expected)
+{
+	return actual.type == expected.type
+		&& actual.targetId == expected.targetId
+		&& actual.eventId == expected.eventId
+		&& actual.text == expected.text
+		&& actual.enabledValue == expected.enabledValue;
+}
+
+void ExpectEvents(
+	const iggy::InteractionEventRecorder2D &actual,
+	const std::vector<iggy::InteractionEvent2D> &expected,
+	const char *message)
+{
+	Expect(actual.events.size() == expected.size(), message);
+	if (actual.events.size() != expected.size())
+		return;
+	for (std::size_t index = 0; index < expected.size(); ++index)
+		Expect(SameEvent(actual.events[index], expected[index]), message);
+}
+
 void ExpectTarget(const iggy::InteractionTarget2D &actual, const iggy::InteractionTarget2D &expected, const char *message)
 {
 	Expect(actual.id == expected.id, message);
@@ -133,6 +154,7 @@ void TestNonInteractCommandReturnsInteractionNotReadyWithoutApplication()
 	Expect(result.status == iggy::runtime::RuntimeInteractionEffectApplyStatus::InteractionNotReady, "non-interact apply should return InteractionNotReady");
 	Expect(result.command.status == iggy::runtime::RuntimeInteractionEffectCommandStatus::NotInteractCommand, "non-interact apply should preserve command status");
 	Expect(result.application.entries.empty(), "non-interact apply should not apply effects");
+	ExpectEvents(result.events, {}, "non-interact apply should produce no events");
 	Expect(!result.mutated, "non-interact apply should not mutate");
 	ExpectRegistryTargets(result.registry, { target }, "non-interact apply should return original registry");
 }
@@ -155,6 +177,7 @@ void TestMissingPlayerReturnsInteractionNotReadyWithoutApplication()
 	Expect(result.status == iggy::runtime::RuntimeInteractionEffectApplyStatus::InteractionNotReady, "missing-player apply should return InteractionNotReady");
 	Expect(result.command.status == iggy::runtime::RuntimeInteractionEffectCommandStatus::MissingPlayer, "missing-player apply should preserve command status");
 	Expect(result.application.entries.empty(), "missing-player apply should not apply effects");
+	ExpectEvents(result.events, {}, "missing-player apply should produce no events");
 	Expect(!result.mutated, "missing-player apply should not mutate");
 	ExpectRegistryTargets(result.registry, { target }, "missing-player apply should return original registry");
 }
@@ -182,6 +205,10 @@ void TestReadyToggleTargetAppliesUpdatedRegistry()
 	Expect(result.application.appliedCount == 1, "ready toggle apply should count applied effect");
 	Expect(result.application.entries.size() == 1, "ready toggle apply should preserve application entry");
 	Expect(result.mutated, "ready toggle apply should mark mutated");
+	ExpectEvents(
+		result.events,
+		{ iggy::targetToggledInteractionEvent(original[0].id, false) },
+		"ready toggle apply should expose target toggled event");
 	ExpectRegistryTargets(result.registry, expected, "ready toggle apply should return updated registry");
 	ExpectRegistryTargets(targets, original, "ready toggle apply should not mutate original registry");
 }
@@ -209,6 +236,13 @@ void TestDeferredEffectsReturnNoOpWithEntriesPreserved()
 	Expect(result.application.entries.size() == 2, "deferred-only apply should preserve application entries");
 	Expect(result.application.deferredCount == 2, "deferred-only apply should count deferred effects");
 	Expect(!result.mutated, "deferred-only apply should not mutate");
+	ExpectEvents(
+		result.events,
+		{
+			iggy::inspectTextRequestedInteractionEvent(requested[0].targetId, requested[0].text),
+			iggy::interactionEventEmitted(requested[1].targetId, requested[1].eventId),
+		},
+		"deferred-only apply should expose deferred events");
 	ExpectRegistryTargets(result.registry, { target }, "deferred-only apply should return original registry");
 }
 
@@ -229,6 +263,7 @@ void TestReadyCommandWithNoEffectsReturnsNoOpWithoutApplication()
 	Expect(result.command.status == iggy::runtime::RuntimeInteractionEffectCommandStatus::NoEffects, "NoEffects command apply should preserve command status");
 	Expect(result.application.entries.empty(), "NoEffects command apply should not call plan applier");
 	Expect(result.application.plan.effects.empty(), "NoEffects command apply should keep default application plan");
+	ExpectEvents(result.events, {}, "NoEffects command apply should produce no events");
 	Expect(!result.mutated, "NoEffects command apply should not mutate");
 	ExpectRegistryTargets(result.registry, { target }, "NoEffects command apply should return original registry");
 }
@@ -256,12 +291,13 @@ void TestNonReadyInteractionReturnsOriginalRegistry()
 		Expect(result.status == iggy::runtime::RuntimeInteractionEffectApplyStatus::InteractionNotReady, "non-ready interaction apply should return InteractionNotReady");
 		Expect(result.command.status == iggy::runtime::RuntimeInteractionEffectCommandStatus::InteractionNotReady, "non-ready interaction apply should preserve command not-ready status");
 		Expect(result.application.entries.empty(), "non-ready interaction apply should not apply effects");
+		ExpectEvents(result.events, {}, "non-ready interaction apply should produce no events");
 		Expect(!result.mutated, "non-ready interaction apply should not mutate");
 		ExpectRegistryTargets(result.registry, { disabled, far }, "non-ready interaction apply should return original registry");
 	}
 }
 
-void TestApplicationFailureFromMissingToggleTarget()
+void TestApplicationFailureFromMissingToggleTargetPreservesEarlierEvents()
 {
 	const std::vector<iggy::InteractionTarget2D> targetsVector {
 		Target("target:ready", iggy::InteractionTarget2DKind::Usable, { 0.0F, 0.0F }, 0.0F, true),
@@ -273,18 +309,29 @@ void TestApplicationFailureFromMissingToggleTarget()
 		iggy::runtime::RuntimeInteractionEffectApplyStep {}.apply(
 			SessionWithPlayer({ 0.0F, 0.0F }),
 			targets,
-			Catalog({ Entry("target:ready", { iggy::toggleTargetInteractionEffect(iggy::ResourceId { "target:missing" }, false) }) }),
+			Catalog({
+				Entry("target:ready", {
+					iggy::inspectTextInteractionEffect(targetsVector[0].id, "Before failure"),
+					iggy::toggleTargetInteractionEffect(iggy::ResourceId { "target:missing" }, false),
+					iggy::emitInteractionEventEffect(targetsVector[0].id, iggy::ResourceId { "event:after_failure" }),
+				}),
+			}),
 			command);
 
 	Expect(result.status == iggy::runtime::RuntimeInteractionEffectApplyStatus::Failed, "missing toggle target should fail runtime apply");
 	Expect(result.command.status == iggy::runtime::RuntimeInteractionEffectCommandStatus::Ready, "missing toggle target should preserve ready command");
 	Expect(result.application.status == iggy::InteractionEffectPlanApplyStatus::Failed, "missing toggle target should preserve scene failure");
+	Expect(result.application.deferredCount == 1, "missing toggle target should preserve earlier deferred count");
 	Expect(result.application.failedCount == 1, "missing toggle target should count failure");
-	Expect(result.application.entries.size() == 1, "missing toggle target should preserve failed entry");
+	Expect(result.application.entries.size() == 2, "missing toggle target should stop after failed entry");
+	ExpectEvents(
+		result.events,
+		{ iggy::inspectTextRequestedInteractionEvent(targetsVector[0].id, "Before failure") },
+		"missing toggle target should preserve earlier runtime events");
 	Expect(!result.mutated, "missing toggle target should not mutate");
 	ExpectRegistryTargets(result.registry, targetsVector, "missing toggle target should return original registry");
-	if (result.application.entries.size() == 1)
-		Expect(result.application.entries[0].result.status == iggy::InteractionEffectApplyStatus::TargetMissing, "missing toggle target should preserve failed apply status");
+	if (result.application.entries.size() == 2)
+		Expect(result.application.entries[1].result.status == iggy::InteractionEffectApplyStatus::TargetMissing, "missing toggle target should preserve failed apply status");
 }
 
 void TestInputsAreNotMutated()
@@ -325,7 +372,7 @@ int main()
 	TestDeferredEffectsReturnNoOpWithEntriesPreserved();
 	TestReadyCommandWithNoEffectsReturnsNoOpWithoutApplication();
 	TestNonReadyInteractionReturnsOriginalRegistry();
-	TestApplicationFailureFromMissingToggleTarget();
+	TestApplicationFailureFromMissingToggleTargetPreservesEarlierEvents();
 	TestInputsAreNotMutated();
 
 	if (Failures != 0)

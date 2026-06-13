@@ -44,6 +44,7 @@ RuntimeInteractionEffectApplyResult RuntimeInteractionEffectApplyStep::apply(
 	result.application = InteractionEffectPlanApplier2D {}.apply(targets, result.command.effects);
 	result.status = RuntimeStatusForApplication(result.application.status);
 	result.registry = result.application.registry;
+	result.events = result.application.events;
 	result.mutated = result.application.mutated;
 	return result;
 }

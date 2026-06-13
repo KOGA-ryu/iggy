@@ -31,6 +31,7 @@ struct RuntimeInteractionEffectApplyFrameResult {
 	std::size_t noOpCount = 0;
 	std::size_t notReadyCount = 0;
 	std::size_t failedCount = 0;
+	InteractionEventRecorder2D events;
 	bool mutated = false;
 
 	[[nodiscard]] bool hasInteractions() const;

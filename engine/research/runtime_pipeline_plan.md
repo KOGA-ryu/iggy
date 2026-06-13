@@ -48,6 +48,7 @@ InteractionReach2D
 InteractionPlan2D
 InteractionEffectCatalog2D
 InteractionEffectPlan2D
+InteractionEvent2D
 InteractionTargetToggle2D
 InteractionEffectApplier2D
 InteractionEffectPlanApplier2D
@@ -83,6 +84,8 @@ RuntimeInteractionCommandFrameStep
 RuntimeInteractionEffectCommandStep
 RuntimeInteractionEffectCommandFrameStep
 RuntimeInteractionEffectApplyStep
+RuntimeInteractionEffectApplyFrameStep
+RuntimeInteractionState
 ```
 
 Runtime player-input interaction frames:
@@ -92,6 +95,7 @@ RuntimePlayerInputInteractionFrameStep
 RuntimePlayerInputInteractionFrameReporter
 RuntimePlayerInputInteractionEffectFrameStep
 RuntimePlayerInputInteractionEffectFrameReporter
+RuntimePlayerInputInteractionEffectApplyFrameStep
 ```
 
 Session ticking:
@@ -242,10 +246,25 @@ RuntimeInteractionEffectApplyStep
        -> InteractionEffectPlan2D
   -> InteractionEffectPlanApplier2D
        -> applies ToggleTarget to a returned InteractionTarget2DRegistry
-       -> defers InspectText and EmitEvent as reported entries
+       -> records ToggleTarget, InspectText, and EmitEvent interaction events
+
+RuntimeInteractionEffectApplyFrameStep
+  -> applies Interact commands sequentially
+  -> feeds each updated registry into the next command application
 ```
 
 This does not replace session state or own target registry lifetime. A caller must explicitly decide whether the returned registry becomes the next interaction target source.
+
+Player-input apply variant:
+
+```text
+RuntimePlayerInputInteractionEffectApplyFrameStep
+  -> RuntimePlayerInputFrameStep::runGated
+  -> RuntimeInteractionEffectApplyFrameStep
+  -> returns updated RuntimeInteractionState or explicit interaction target registry
+```
+
+This keeps interaction state explicit. It does not store interaction targets/effects inside `RuntimeSessionState`.
 
 ## Current Runtime Mutation Command Tick Order
 
@@ -284,7 +303,7 @@ Do not merge these into existing ticks without a dedicated ownership review:
 - presentation camera update
 - platform storage, compression, encryption, cloud sync, or save UI policy
 - raw device input
-- interaction target registry lifetime/persistence
+- interaction target registry lifetime/persistence beyond explicit `RuntimeInteractionState` values
 - interaction effects that mutate level/player/inventory/event state
 
 ## Likely Next Integration Choices
@@ -294,6 +313,6 @@ Possible future slices:
 - render-frame step that reads session carried render cache
 - camera/presentation state packet
 - save slot retention/overwrite policy if caller needs more than explicit slot store/list/delete calls
-- interaction target registry carrier/update step if callers need interaction target state to persist across frames
+- decide whether `RuntimeInteractionState` should remain a caller-owned sibling packet or become part of a broader session/presentation packet
 
 Pause before any slice that makes runtime infer map changes or own cache rebuild policy.

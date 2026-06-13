@@ -27,6 +27,8 @@ RuntimeInteractionEffectApplyFrameResult RuntimeInteractionEffectApplyFrameStep:
 		entry.commandIndex = index;
 		entry.result = RuntimeInteractionEffectApplyStep {}.apply(session, current, effects, command, reachConfig);
 		result.entries.push_back(entry);
+		for (const InteractionEvent2D &event : entry.result.events.events)
+			recordInteractionEvent(result.events, event);
 
 		current = entry.result.registry;
 		result.registry = current;

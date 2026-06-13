@@ -72,11 +72,12 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `InteractionReach2D::evaluate`: player/actor position to target reach query with explicit reach config.
 - `InteractionPlan2D::plan`: target query + reach into ready/blocked interaction plan.
 - `InteractionEffect2D`, effect factory helpers, `validate`: backend-free interaction effect intent data.
+- `InteractionEvent2D`, event factory helpers, `InteractionEventRecorder2D`: transient interaction event data emitted by effect application.
 - `InteractionEffectCatalog2D`, `InteractionEffectCatalog2DBuilder`: target id to ordered interaction effects.
 - `InteractionEffectPlan2D::plan`: ready interaction plan to requested effect list.
 - `InteractionTargetToggle2D::apply`: returns an updated interaction target registry with one target enabled/disabled when possible.
-- `InteractionEffectApplier2D::apply`: applies one interaction effect to an interaction target registry, applying toggle effects and deferring inspect/event effects.
-- `InteractionEffectPlanApplier2D::apply`: applies a ready effect plan to an interaction target registry and reports applied/deferred/no-op/failed counts.
+- `InteractionEffectApplier2D::apply`: applies one interaction effect to an interaction target registry, applying toggle effects and recording inspect/event/toggle events.
+- `InteractionEffectPlanApplier2D::apply`: applies a ready effect plan to an interaction target registry and reports applied/deferred/no-op/failed counts plus recorded events.
 
 ## `scene/player`
 
@@ -113,8 +114,11 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `RuntimeInteractionCommandStep`, `RuntimeInteractionCommandFrameStep`: evaluate Interact commands against scene interaction targets.
 - `RuntimeInteractionEffectCommandStep`, `RuntimeInteractionEffectCommandFrameStep`: evaluate ready interactions into requested effect plans without applying effects.
 - `RuntimeInteractionEffectApplyStep`: evaluates one Interact command and applies requested effects to a returned interaction target registry.
+- `RuntimeInteractionEffectApplyFrameStep`: applies Interact commands in a command frame sequentially against the carried interaction registry.
+- `RuntimeInteractionState`: runtime-carried interaction targets and effects packet; scene/interaction still owns target/effect semantics.
 - `RuntimePlayerInputInteractionFrameStep`, `RuntimePlayerInputInteractionFrameReporter`: gated input frame plus interaction diagnostics.
 - `RuntimePlayerInputInteractionEffectFrameStep`, `RuntimePlayerInputInteractionEffectFrameReporter`: gated input frame plus interaction/effect-plan diagnostics.
+- `RuntimePlayerInputInteractionEffectApplyFrameStep`: gated player input frame plus interaction effect application, returning updated interaction state/targets.
 - `RuntimeCollisionWorldProvider`: resolves explicit/session/empty collision world.
 - `RuntimeSessionCommandTick`: command step followed by session tick.
 - `RuntimeSessionCommandTickRunner`: bounded command-frame loop over command ticks.

@@ -122,6 +122,8 @@ Current anchors:
 - `InteractionReach2D`
 - `InteractionPlan2D`
 - `InteractionEffect2D`
+- `InteractionEvent2D`
+- `InteractionEventRecorder2D`
 - `InteractionEffectCatalog2D`
 - `InteractionEffectPlan2D`
 - `InteractionTargetToggle2D`
@@ -186,10 +188,13 @@ Current anchors:
 - `RuntimeInteractionEffectCommandStep`
 - `RuntimeInteractionEffectCommandFrameStep`
 - `RuntimeInteractionEffectApplyStep`
+- `RuntimeInteractionEffectApplyFrameStep`
+- `RuntimeInteractionState`
 - `RuntimePlayerInputInteractionFrameStep`
 - `RuntimePlayerInputInteractionFrameReporter`
 - `RuntimePlayerInputInteractionEffectFrameStep`
 - `RuntimePlayerInputInteractionEffectFrameReporter`
+- `RuntimePlayerInputInteractionEffectApplyFrameStep`
 - `RuntimeSessionCommandTick`
 - `RuntimeSessionCommandTickRunner`
 - `RuntimeLevelMutationStep`
@@ -219,6 +224,7 @@ Runtime may carry:
 - `LevelRuntimeState`
 - optional `PlayerAgentState`
 - `LevelDerivedCacheState`
+- explicit `RuntimeInteractionState` values passed through interaction/input steps
 
 Runtime does not own:
 - level tile mutation semantics
@@ -296,9 +302,13 @@ RuntimeInteractionEffectApplyStep
        -> InteractionEffectApplier2D
        -> InteractionTargetToggle2D
   -> returns updated InteractionTarget2DRegistry
+
+RuntimeInteractionEffectApplyFrameStep
+  -> applies Interact commands sequentially
+  -> carries the updated registry from one command to the next
 ```
 
-The current application boundary is limited to returning an updated interaction target registry. It does not store interaction targets in `RuntimeSessionState`, mutate `LevelRuntimeState`, or execute inventory/combat/quest/event behavior.
+The current application boundary is limited to returning an updated interaction target registry plus transient interaction events. `RuntimeInteractionState` can carry targets/effects through explicit runtime input steps, but it is not stored in `RuntimeSessionState`. This path does not mutate `LevelRuntimeState` or execute inventory/combat/quest behavior.
 
 Save snapshot ownership:
 

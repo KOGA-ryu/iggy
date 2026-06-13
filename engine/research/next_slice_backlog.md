@@ -41,16 +41,16 @@ Status labels:
    - purpose: refine reports or docs around input-intent gating, mapping, queueing, command running, and per-frame diagnostics if real callers need it.
    - caution: do not add raw device input mapping, move gate policy out of scene/player, or hide underlying runner diagnostics.
 
-6. Interaction target registry carrier/update policy
+6. Interaction state lifetime policy
    - status: `review`
-   - owner candidate: `scene/interaction` for registry state, runtime only for orchestration if session-level continuity is needed
-   - purpose: decide where updated `InteractionTarget2DRegistry` values live after `ToggleTarget` effects are applied.
-   - caution: target toggles can now return an updated registry, but no subsystem persists that registry across frames/session ticks yet.
+   - owner candidate: caller-owned sibling state, or runtime if session continuity is explicitly needed
+   - purpose: decide whether `RuntimeInteractionState` remains an explicit caller-owned packet or becomes part of a broader runtime session/presentation state.
+   - caution: target toggles can now update registries and player-input apply steps return updated interaction state, but `RuntimeSessionState` still does not own interaction targets/effects.
 
 7. Broader interaction effect application
    - status: `review`
    - owner candidate: depends on effect domain
-   - purpose: decide how deferred inspect text, emitted events, inventory/combat/quest effects, or level/player mutations become authoritative outcomes.
+   - purpose: decide how recorded interaction events, inventory/combat/quest effects, or level/player mutations become authoritative outcomes.
    - caution: keep this out of runtime until the target subsystem and save semantics are explicit.
 
 8. Raw input binding

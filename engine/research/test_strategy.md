@@ -55,7 +55,7 @@ Proves:
 - exact delegation to server primitives
 - interaction target/effect catalogs validate deterministically
 - interaction query/reach/plan/effect-plan helpers remain pure and report diagnostics
-- interaction effect appliers return updated registries and count applied/deferred/failed effects without mutating inputs
+- interaction effect appliers return updated registries, record events, and count applied/deferred/failed effects without mutating inputs
 
 Avoid:
 - runtime tick order
@@ -85,6 +85,7 @@ Proves:
 - queue push/drain and input-gate diagnostics are preserved without reinterpreting them
 - interaction and effect-plan diagnostics are preserved without applying effects
 - interaction effect-apply orchestration delegates to scene/interaction appliers and does not persist target registries implicitly
+- frame-level effect application applies interactions sequentially and keeps `RuntimeInteractionState` explicit
 - tick index changes only where the tick step owns them
 - derived caches copied/preserved, not rebuilt implicitly
 

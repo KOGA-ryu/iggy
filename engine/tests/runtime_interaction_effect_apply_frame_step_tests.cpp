@@ -90,6 +90,27 @@ bool SameEffects(const std::vector<iggy::InteractionEffect2D> &actual, const std
 	return true;
 }
 
+bool SameEvent(const iggy::InteractionEvent2D &actual, const iggy::InteractionEvent2D &expected)
+{
+	return actual.type == expected.type
+		&& actual.targetId == expected.targetId
+		&& actual.eventId == expected.eventId
+		&& actual.text == expected.text
+		&& actual.enabledValue == expected.enabledValue;
+}
+
+void ExpectEvents(
+	const iggy::InteractionEventRecorder2D &actual,
+	const std::vector<iggy::InteractionEvent2D> &expected,
+	const char *message)
+{
+	Expect(actual.events.size() == expected.size(), message);
+	if (actual.events.size() != expected.size())
+		return;
+	for (std::size_t index = 0; index < expected.size(); ++index)
+		Expect(SameEvent(actual.events[index], expected[index]), message);
+}
+
 void ExpectTarget(const iggy::InteractionTarget2D &actual, const iggy::InteractionTarget2D &expected, const char *message)
 {
 	Expect(actual.id == expected.id, message);
@@ -162,6 +183,7 @@ void TestEmptyFrameReturnsNoOp()
 	Expect(!result.hasInteractions(), "empty frame should have no interactions");
 	Expect(result.entries.empty(), "empty frame should have no entries");
 	Expect(result.appliedCount == 0 && result.noOpCount == 0 && result.notReadyCount == 0 && result.failedCount == 0, "empty frame should have zero counts");
+	ExpectEvents(result.events, {}, "empty frame should produce no events");
 	Expect(!result.mutated, "empty frame should not mutate");
 	ExpectRegistryTargets(result.registry, { target }, "empty frame should return original registry");
 }
@@ -182,6 +204,7 @@ void TestOnlyNonInteractCommandsIgnored()
 	Expect(result.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::NoOp, "non-interact frame should return NoOp");
 	Expect(!result.hasInteractions(), "non-interact frame should have no interactions");
 	Expect(result.entries.empty(), "non-interact frame should append no entries");
+	ExpectEvents(result.events, {}, "non-interact frame should produce no events");
 	ExpectRegistryTargets(result.registry, { target }, "non-interact frame should return original registry");
 }
 
@@ -207,6 +230,10 @@ void TestSingleToggleInteractionApplies()
 	Expect(result.entries.size() == 1, "single toggle frame should have one entry");
 	Expect(result.appliedCount == 1 && result.noOpCount == 0 && result.notReadyCount == 0 && result.failedCount == 0, "single toggle frame should count one applied interaction");
 	Expect(result.mutated, "single toggle frame should mark mutated");
+	ExpectEvents(
+		result.events,
+		{ iggy::targetToggledInteractionEvent(targetsVector[0].id, false) },
+		"single toggle frame should aggregate target toggled event");
 	ExpectRegistryTargets(result.registry, expected, "single toggle frame should return updated registry");
 	if (result.entries.size() == 1) {
 		Expect(result.entries[0].commandIndex == 0, "single toggle frame should preserve command index");
@@ -240,6 +267,13 @@ void TestSequentialInteractionsSeeCarriedRegistry()
 	Expect(result.appliedCount == 2, "sequential frame should count both applied interactions");
 	Expect(result.notReadyCount == 0 && result.failedCount == 0, "sequential frame should have no not-ready or failed interactions");
 	Expect(result.mutated, "sequential frame should mark mutation");
+	ExpectEvents(
+		result.events,
+		{
+			iggy::targetToggledInteractionEvent(targetsVector[1].id, true),
+			iggy::targetToggledInteractionEvent(targetsVector[1].id, false),
+		},
+		"sequential frame should aggregate events in command order");
 	ExpectRegistryTargets(result.registry, expected, "sequential frame should reflect ordered final registry");
 	if (result.entries.size() == 2) {
 		Expect(result.entries[0].result.registry.targets()[1].enabled, "first interaction should enable later target in carried registry");
@@ -276,6 +310,13 @@ void TestNoEffectsAndDeferredOnlyProduceNoOpEntries()
 	Expect(result.noOpCount == 2, "no-effects/deferred frame should count two no-op interactions");
 	Expect(result.appliedCount == 0 && result.notReadyCount == 0 && result.failedCount == 0, "no-effects/deferred frame should have no other counts");
 	Expect(!result.mutated, "no-effects/deferred frame should not mutate");
+	ExpectEvents(
+		result.events,
+		{
+			iggy::inspectTextRequestedInteractionEvent(deferred[0].targetId, deferred[0].text),
+			iggy::interactionEventEmitted(deferred[1].targetId, deferred[1].eventId),
+		},
+		"no-effects/deferred frame should aggregate deferred events from deferred entry only");
 	ExpectRegistryTargets(result.registry, targetsVector, "no-effects/deferred frame should return original registry");
 	if (result.entries.size() == 2) {
 		Expect(result.entries[0].result.command.status == iggy::runtime::RuntimeInteractionEffectCommandStatus::NoEffects, "no-effects entry should preserve command status");
@@ -310,6 +351,10 @@ void TestNotReadyInteractionContinuesToLaterInteractions()
 	Expect(result.appliedCount == 1, "not-ready then ready frame should continue to applied interaction");
 	Expect(result.failedCount == 0, "not-ready then ready frame should not fail");
 	Expect(result.mutated, "not-ready then ready frame should mark later mutation");
+	ExpectEvents(
+		result.events,
+		{ iggy::targetToggledInteractionEvent(targetsVector[1].id, false) },
+		"not-ready then ready frame should aggregate only later applied event");
 	ExpectRegistryTargets(result.registry, expected, "not-ready then ready frame should carry original registry to later success");
 	if (result.entries.size() == 2) {
 		Expect(result.entries[0].result.status == iggy::runtime::RuntimeInteractionEffectApplyStatus::InteractionNotReady, "first entry should be not ready");
@@ -334,7 +379,10 @@ void TestFailureStopsLaterInteractions()
 	});
 	const iggy::InteractionEffectCatalog2D effects = Catalog({
 		Entry("target:first", { iggy::toggleTargetInteractionEffect(targetsVector[0].id, false) }),
-		Entry("target:fail", { iggy::toggleTargetInteractionEffect(iggy::ResourceId { "target:missing" }, false) }),
+		Entry("target:fail", {
+			iggy::inspectTextInteractionEffect(targetsVector[1].id, "Before failure"),
+			iggy::toggleTargetInteractionEffect(iggy::ResourceId { "target:missing" }, false),
+		}),
 		Entry("target:later", { iggy::toggleTargetInteractionEffect(targetsVector[2].id, false) }),
 	});
 
@@ -347,6 +395,13 @@ void TestFailureStopsLaterInteractions()
 	Expect(result.failedCount == 1, "failed frame should count failure");
 	Expect(result.noOpCount == 0 && result.notReadyCount == 0, "failed frame should have no no-op or not-ready counts");
 	Expect(result.mutated, "failed frame should preserve prior mutation flag");
+	ExpectEvents(
+		result.events,
+		{
+			iggy::targetToggledInteractionEvent(targetsVector[0].id, false),
+			iggy::inspectTextRequestedInteractionEvent(targetsVector[1].id, "Before failure"),
+		},
+		"failed frame should preserve earlier command events and failed-entry earlier events only");
 	ExpectRegistryTargets(result.registry, expected, "failed frame should preserve registry state before failed effect");
 	if (result.entries.size() == 2) {
 		Expect(result.entries[1].result.status == iggy::runtime::RuntimeInteractionEffectApplyStatus::Failed, "failed entry should preserve failed status");
@@ -381,6 +436,13 @@ void TestMixedCommandIndexesPreserved()
 	Expect(result.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::Applied, "mixed command frame should return Applied");
 	Expect(result.entries.size() == 2, "mixed command frame should append only interaction entries");
 	Expect(result.appliedCount == 2, "mixed command frame should apply both interactions");
+	ExpectEvents(
+		result.events,
+		{
+			iggy::targetToggledInteractionEvent(targetsVector[0].id, false),
+			iggy::targetToggledInteractionEvent(targetsVector[1].id, false),
+		},
+		"mixed command frame should aggregate events by original interaction order");
 	ExpectRegistryTargets(result.registry, expected, "mixed command frame should return updated registry");
 	if (result.entries.size() == 2) {
 		Expect(result.entries[0].commandIndex == 1, "mixed command frame should preserve first interaction index");
