@@ -5,6 +5,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeAutosaveRotationPolicy.cpp
   src/runtime/RuntimeBinaryCodec.cpp
   src/runtime/RuntimeCommandQueue.cpp
+  src/runtime/RuntimeGameplayFrameRunner.cpp
   src/runtime/RuntimeGameplayFrameStep.cpp
   src/runtime/RuntimeGameplayFrameReporter.cpp
   src/runtime/RuntimeGameplayState.cpp

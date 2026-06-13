@@ -1,0 +1,68 @@
+#include "runtime/RuntimeGameplayFrameRunner.hpp"
+
+#include <utility>
+
+#include "runtime/RuntimeGameplayFrameReporter.hpp"
+
+namespace iggy::runtime {
+namespace {
+
+RuntimeGameplayFrameInput FrameInputFrom(
+	const RuntimeGameplayState &state,
+	const RuntimeGameplayFrameRunnerFrame &frame)
+{
+	RuntimeGameplayFrameInput input;
+	input.state = state;
+	input.playerInputContext = frame.playerInputContext;
+	input.actorId = frame.actorId;
+	input.playerIntents = frame.playerIntents;
+	input.commandQueueConfig = frame.commandQueueConfig;
+	input.fallbackPlayerPosition = frame.fallbackPlayerPosition;
+	input.playerCommandConfig = frame.playerCommandConfig;
+	input.npcConfig = frame.npcConfig;
+	input.interactionReach = frame.interactionReach;
+	input.pickup = frame.pickup;
+	return input;
+}
+
+void AppendTick(RuntimeGameplayFrameRunnerResult &result, RuntimeGameplayFrameResult frameResult)
+{
+	RuntimeGameplayFrameRunnerTick tick;
+	tick.frame = frameResult;
+	tick.report = RuntimeGameplayFrameReporter {}.report(frameResult);
+	result.finalState = frameResult.state;
+	result.ticks.push_back(std::move(tick));
+}
+
+} // namespace
+
+RuntimeGameplayFrameRunnerResult RuntimeGameplayFrameRunner::run(const RuntimeGameplayFrameRunnerInput &input) const
+{
+	RuntimeGameplayFrameRunnerResult result;
+	result.finalState = input.initialState;
+
+	for (const RuntimeGameplayFrameRunnerFrame &frame : input.frames) {
+		RuntimeGameplayFrameResult frameResult = RuntimeGameplayFrameStep {}.run(FrameInputFrom(result.finalState, frame));
+		AppendTick(result, frameResult);
+	}
+
+	return result;
+}
+
+RuntimeGameplayFrameRunnerResult RuntimeGameplayFrameRunner::run(
+	const RuntimeGameplayFrameRunnerInput &input,
+	const physics2d::CollisionWorld2D &explicitWorld) const
+{
+	RuntimeGameplayFrameRunnerResult result;
+	result.finalState = input.initialState;
+
+	for (const RuntimeGameplayFrameRunnerFrame &frame : input.frames) {
+		RuntimeGameplayFrameResult frameResult =
+			RuntimeGameplayFrameStep {}.run(FrameInputFrom(result.finalState, frame), explicitWorld);
+		AppendTick(result, frameResult);
+	}
+
+	return result;
+}
+
+} // namespace iggy::runtime
