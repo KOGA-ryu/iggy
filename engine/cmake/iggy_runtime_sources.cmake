@@ -14,6 +14,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeInteractionCommandStep.cpp
   src/runtime/RuntimeInventoryState.cpp
   src/runtime/RuntimeInteractionState.cpp
+  src/runtime/RuntimePickupStep.cpp
   src/runtime/RuntimeQueuedCommandRunner.cpp
   src/runtime/RuntimeQueuedMutationCommandRunner.cpp
   src/runtime/RuntimeSaveMetadata.cpp
