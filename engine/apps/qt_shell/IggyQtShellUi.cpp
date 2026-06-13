@@ -94,6 +94,30 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 			max-width: 6px;
 			min-height: 18px;
 		}
+		QFrame#rightPanelGrip {
+			background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+				stop:0 transparent, stop:0.43 transparent,
+				stop:0.44 %24, stop:0.56 %24,
+				stop:0.57 transparent, stop:1 transparent);
+		}
+		QFrame#bottomPanelGrip {
+			background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+				stop:0 transparent, stop:0.43 transparent,
+				stop:0.44 %24, stop:0.56 %24,
+				stop:0.57 transparent, stop:1 transparent);
+		}
+		QFrame#rightPanelGrip:hover {
+			background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+				stop:0 transparent, stop:0.43 transparent,
+				stop:0.44 %23, stop:0.56 %23,
+				stop:0.57 transparent, stop:1 transparent);
+		}
+		QFrame#bottomPanelGrip:hover {
+			background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+				stop:0 transparent, stop:0.43 transparent,
+				stop:0.44 %23, stop:0.56 %23,
+				stop:0.57 transparent, stop:1 transparent);
+		}
 		QLabel#panelTitle {
 			color: %2;
 			font-size: %9px;
@@ -110,6 +134,7 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 		}
 		QLabel#statusMode, QLabel#statusFile {
 			background: transparent;
+			font-family: "%25", monospace;
 			font-size: %16px;
 		}
 		QLabel#badgeLabel {
@@ -233,6 +258,36 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 			background: transparent;
 			border: none;
 		}
+		QScrollBar:vertical {
+			background: transparent;
+			width: 8px;
+			margin: 0;
+		}
+		QScrollBar:horizontal {
+			background: transparent;
+			height: 8px;
+			margin: 0;
+		}
+		QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
+			background: %6;
+			border-radius: 3px;
+		}
+		QScrollBar::handle:vertical {
+			min-height: 24px;
+		}
+		QScrollBar::handle:horizontal {
+			min-width: 24px;
+		}
+		QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {
+			background: %23;
+		}
+		QScrollBar::add-line, QScrollBar::sub-line {
+			width: 0;
+			height: 0;
+		}
+		QScrollBar::add-page, QScrollBar::sub-page {
+			background: transparent;
+		}
 		QListWidget {
 			alternate-background-color: %8;
 			outline: none;
@@ -297,7 +352,9 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 		.arg(toQString(theme.trafficMinimizeEdge))
 		.arg(toQString(theme.trafficZoom))
 		.arg(toQString(theme.trafficZoomEdge))
-		.arg(toQString(theme.accentSoft));
+		.arg(toQString(theme.accentSoft))
+		.arg(toQString(theme.borderMajor))
+		.arg(toQString(theme.codeFont));
 }
 
 QString slotName(ui::UiShellSlot slot)

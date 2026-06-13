@@ -15,6 +15,7 @@
 #include "scene/ui/UiToolInventory.hpp"
 
 class QEvent;
+class QPushButton;
 
 namespace iggy::qt_shell {
 
@@ -45,8 +46,15 @@ private:
 	[[nodiscard]] QWidget *buildMainSlot();
 	[[nodiscard]] QWidget *buildPanelSlot(ui::UiShellSlot slot, const char *objectName);
 	[[nodiscard]] QWidget *buildPanelContent(const ui::UiMountedPanel &panel);
+	[[nodiscard]] QWidget *buildRuntimeFramePanelContent();
+	[[nodiscard]] QWidget *buildInteractionEventsPanelContent();
+	[[nodiscard]] QWidget *buildInventoryPanelContent();
+	[[nodiscard]] QWidget *buildCollisionPanelContent();
+	[[nodiscard]] QWidget *buildUnavailablePanelContent(const ui::UiMountedPanel &panel);
+	[[nodiscard]] QPushButton *buildMountedChromePanelButton(const ui::UiMountedChromePanel &panel);
 	[[nodiscard]] QWidget *buildToolBelt();
 	[[nodiscard]] QWidget *buildPaletteStrip();
+	[[nodiscard]] QWidget *buildMountedPalette(const ui::UiMountedPalette &palette);
 	[[nodiscard]] QWidget *buildSettings();
 	[[nodiscard]] QWidget *buildSettingsPage(const ResourceId &pageId);
 	[[nodiscard]] QWidget *buildThemeSettingsPage();

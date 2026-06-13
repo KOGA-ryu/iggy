@@ -24,6 +24,7 @@
 #include <QStackedWidget>
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <utility>
 #include <vector>
@@ -116,6 +117,15 @@ QPushButton *makePanelToggleButton(const QString &tooltip)
 	return button;
 }
 
+QString objectNameForId(const QString &prefix, const ResourceId &id)
+{
+	QString name = prefix + toQString(id);
+	name.replace(':', '_');
+	name.replace('/', '_');
+	name.replace('-', '_');
+	return name;
+}
+
 QMenu *attachMenu(QPushButton *button)
 {
 	auto *menu = new QMenu(button);
@@ -136,27 +146,118 @@ public:
 	QWidget *mainSlot = nullptr;
 	QWidget *rightPanel = nullptr;
 	QWidget *bottomPanel = nullptr;
+	QWidget *rightGrip = nullptr;
+	QWidget *bottomGrip = nullptr;
+
+	bool eventFilter(QObject *watched, QEvent *event) override
+	{
+		if (watched != rightGrip && watched != bottomGrip)
+			return QFrame::eventFilter(watched, event);
+
+		switch (event->type()) {
+		case QEvent::MouseButtonPress: {
+			auto *mouse = static_cast<QMouseEvent *>(event);
+			if (mouse->button() != Qt::LeftButton)
+				break;
+			dragMode_ = watched == rightGrip ? DragMode::Right : DragMode::Bottom;
+			dragStart_ = mouse->globalPosition().toPoint();
+			dragStartRightWidth_ = rightWidth_;
+			dragStartBottomHeight_ = bottomHeight_;
+			event->accept();
+			return true;
+		}
+		case QEvent::MouseMove: {
+			if (dragMode_ == DragMode::None)
+				break;
+			auto *mouse = static_cast<QMouseEvent *>(event);
+			const QPoint delta = mouse->globalPosition().toPoint() - dragStart_;
+			if (dragMode_ == DragMode::Right)
+				rightWidth_ = dragStartRightWidth_ - delta.x();
+			else
+				bottomHeight_ = dragStartBottomHeight_ - delta.y();
+			layoutChildren();
+			event->accept();
+			return true;
+		}
+		case QEvent::MouseButtonRelease: {
+			auto *mouse = static_cast<QMouseEvent *>(event);
+			if (mouse->button() == Qt::LeftButton && dragMode_ != DragMode::None) {
+				dragMode_ = DragMode::None;
+				event->accept();
+				return true;
+			}
+			break;
+		}
+		default:
+			break;
+		}
+
+		return QFrame::eventFilter(watched, event);
+	}
 
 protected:
 	void resizeEvent(QResizeEvent *event) override
 	{
 		QFrame::resizeEvent(event);
+		layoutChildren();
+	}
+
+private:
+	enum class DragMode {
+		None,
+		Right,
+		Bottom,
+	};
+
+	void layoutChildren()
+	{
 		const int w = width();
 		const int h = height();
-		const int rightW = rightPanel != nullptr ? std::min(280, std::max(220, w / 4)) : 0;
-		const int bottomH = bottomPanel != nullptr ? std::min(220, std::max(160, h / 4)) : 0;
+		const int rightW = rightPanel != nullptr ? clampedRightWidth(w) : 0;
+		const int bottomH = bottomPanel != nullptr ? clampedBottomHeight(h) : 0;
 
 		if (mainSlot != nullptr)
 			mainSlot->setGeometry(0, 0, w, h);
 		if (rightPanel != nullptr)
 			rightPanel->setGeometry(w - rightW, 0, rightW, h - bottomH);
 		if (bottomPanel != nullptr)
-			bottomPanel->setGeometry(0, h - bottomH, w - rightW, bottomH);
+			bottomPanel->setGeometry(0, h - bottomH, w, bottomH);
+		if (rightGrip != nullptr)
+			rightGrip->setGeometry(w - rightW - 4, 0, 8, h - bottomH);
+		if (bottomGrip != nullptr)
+			bottomGrip->setGeometry(0, h - bottomH - 4, w, 8);
 		if (rightPanel != nullptr)
 			rightPanel->raise();
 		if (bottomPanel != nullptr)
 			bottomPanel->raise();
+		if (rightGrip != nullptr)
+			rightGrip->raise();
+		if (bottomGrip != nullptr)
+			bottomGrip->raise();
 	}
+
+	int clampedRightWidth(int availableWidth)
+	{
+		const int minWidth = std::min(180, availableWidth);
+		const int maxWidth = std::max(minWidth, availableWidth - 240);
+		rightWidth_ = std::clamp(rightWidth_, minWidth, maxWidth);
+		return rightWidth_;
+	}
+
+	int clampedBottomHeight(int availableHeight)
+	{
+		const int minHeight = std::min(120, availableHeight);
+		const int maxHeight = std::max(minHeight, availableHeight - 160);
+		bottomHeight_ = std::clamp(bottomHeight_, minHeight, maxHeight);
+		return bottomHeight_;
+	}
+
+	DragMode dragMode_ = DragMode::None;
+	QPoint dragStart_;
+	int dragStartRightWidth_ = 280;
+	int dragStartBottomHeight_ = 190;
+	int rightWidth_ = 280;
+	int bottomHeight_ = 190;
 };
 
 } // namespace
@@ -412,7 +513,7 @@ QWidget *IggyQtShellWindow::buildChrome()
 	});
 	layout->addSpacing(8);
 	for (const ui::UiMountedChromePanel &panel : model_.mountedChromePanels)
-		layout->addWidget(makeChromeButton(toQString(panel.label)));
+		layout->addWidget(buildMountedChromePanelButton(panel));
 	layout->addStretch(1);
 	layout->addWidget(settings);
 	layout->addWidget(bottomToggle);
@@ -486,6 +587,11 @@ QWidget *IggyQtShellWindow::buildWorkspaceHost()
 	host->mainSlot->show();
 
 	if (shouldShowPanel(model_, ui::UiShellSlot::Bottom, input_.panels.bottom, input_.windowWidth, input_.windowHeight)) {
+		host->bottomGrip = makeFrame("bottomPanelGrip");
+		host->bottomGrip->setParent(host);
+		host->bottomGrip->setCursor(Qt::SizeVerCursor);
+		host->bottomGrip->installEventFilter(host);
+		host->bottomGrip->show();
 		host->bottomPanel = buildPanelSlot(ui::UiShellSlot::Bottom, "bottomPanel");
 		host->bottomPanel->setParent(host);
 		host->bottomPanel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -494,6 +600,11 @@ QWidget *IggyQtShellWindow::buildWorkspaceHost()
 	}
 
 	if (shouldShowPanel(model_, ui::UiShellSlot::Right, input_.panels.right, input_.windowWidth, input_.windowHeight)) {
+		host->rightGrip = makeFrame("rightPanelGrip");
+		host->rightGrip->setParent(host);
+		host->rightGrip->setCursor(Qt::SizeHorCursor);
+		host->rightGrip->installEventFilter(host);
+		host->rightGrip->show();
 		host->rightPanel = buildPanelSlot(ui::UiShellSlot::Right, "rightPanel");
 		host->rightPanel->setParent(host);
 		host->rightPanel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
@@ -536,53 +647,14 @@ QWidget *IggyQtShellWindow::buildRail()
 QWidget *IggyQtShellWindow::buildMainSlot()
 {
 	auto *main = makeFrame("mainSlot");
-	auto *layout = new QVBoxLayout(main);
-	layout->setContentsMargins(14, 12, 14, 12);
-	layout->setSpacing(10);
-
-	auto *header = new QWidget;
-	auto *headerLayout = new QHBoxLayout(header);
-	headerLayout->setContentsMargins(0, 0, 0, 0);
-	headerLayout->setSpacing(8);
-	headerLayout->addWidget(makeLabel(QStringLiteral("Runtime Workspace"), "panelTitle"));
-	headerLayout->addStretch(1);
-	layout->addWidget(header);
-
-	auto *stage = makeFrame("canvasStage");
-	auto *stageLayout = new QVBoxLayout(stage);
-	stageLayout->setContentsMargins(12, 12, 12, 12);
-	stageLayout->setSpacing(10);
-
-	auto *toolbar = new QWidget;
-	auto *toolbarLayout = new QHBoxLayout(toolbar);
-	toolbarLayout->setContentsMargins(0, 0, 0, 0);
-	toolbarLayout->setSpacing(6);
-	toolbarLayout->addWidget(makeSectionLabel(QStringLiteral("Viewport")));
-	toolbarLayout->addStretch(1);
-	toolbarLayout->addWidget(makeChromeButton(QStringLiteral("Grid")));
-	toolbarLayout->addWidget(makeChromeButton(QStringLiteral("Snap")));
-	toolbarLayout->addWidget(makeChromeButton(QStringLiteral("Overlays")));
-	stageLayout->addWidget(toolbar);
-
-	auto *well = makeFrame("canvasWell");
-	auto *wellLayout = new QVBoxLayout(well);
-	wellLayout->setContentsMargins(14, 14, 14, 14);
-	wellLayout->setSpacing(8);
-	wellLayout->addStretch(1);
-	stageLayout->addWidget(well, 1);
-	layout->addWidget(stage, 1);
-
-	layout->addWidget(buildPaletteStrip());
-	layout->addWidget(buildToolBelt());
+	main->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 	return main;
 }
 
 QWidget *IggyQtShellWindow::buildPanelSlot(ui::UiShellSlot slot, const char *objectName)
 {
 	auto *panel = makeFrame(objectName);
-	panel->setMinimumWidth(slot == ui::UiShellSlot::Bottom ? 0 : 240);
-	if (slot != ui::UiShellSlot::Bottom)
-		panel->setMaximumWidth(380);
+	panel->setMinimumWidth(slot == ui::UiShellSlot::Bottom ? 0 : 180);
 	auto *layout = new QVBoxLayout(panel);
 	layout->setContentsMargins(12, 10, 12, 10);
 	layout->setSpacing(8);
@@ -618,37 +690,109 @@ QWidget *IggyQtShellWindow::buildPanelSlot(ui::UiShellSlot slot, const char *obj
 
 QWidget *IggyQtShellWindow::buildPanelContent(const ui::UiMountedPanel &panel)
 {
+	struct PanelRenderer {
+		ResourceId groupId;
+		QWidget *(IggyQtShellWindow::*build)();
+	};
+	static const std::array<PanelRenderer, 4> renderers = {{
+		{id("panel:runtime_frame"), &IggyQtShellWindow::buildRuntimeFramePanelContent},
+		{id("panel:interaction_events"), &IggyQtShellWindow::buildInteractionEventsPanelContent},
+		{id("panel:inventory"), &IggyQtShellWindow::buildInventoryPanelContent},
+		{id("panel:collision"), &IggyQtShellWindow::buildCollisionPanelContent},
+	}};
+
+	for (const PanelRenderer &renderer : renderers) {
+		if (renderer.groupId == panel.groupId)
+			return makeScrollHost((this->*renderer.build)());
+	}
+	return makeScrollHost(buildUnavailablePanelContent(panel));
+}
+
+QWidget *IggyQtShellWindow::buildRuntimeFramePanelContent()
+{
 	auto *content = new QWidget;
 	auto *layout = new QVBoxLayout(content);
 	layout->setContentsMargins(0, 0, 0, 0);
 	layout->setSpacing(6);
 
-	if (panel.groupId == id("panel:runtime_frame")) {
-		for (const ui::UiRuntimeFrameInspectorRow &row : model_.runtimeInspector.rows) {
-			auto *line = new QWidget;
-			auto *lineLayout = new QHBoxLayout(line);
-			lineLayout->setContentsMargins(0, 2, 0, 2);
-			lineLayout->setSpacing(8);
-			lineLayout->addWidget(makeLabel(toQString(row.key), "fieldLabel"));
-			lineLayout->addStretch(1);
-			lineLayout->addWidget(makeLabel(toQString(row.value), "mutedText"));
-			layout->addWidget(line);
-		}
-	} else if (panel.groupId == id("panel:interaction_events")) {
-		for (const ui::UiInteractionEventRow &row : model_.interactionEvents.rows) {
-			layout->addWidget(makeLabel(
-				QStringLiteral("%1 %2").arg(toQString(row.typeLabel), toQString(row.detail)),
-				"mutedText"));
-		}
-	} else if (panel.groupId == id("panel:inventory")) {
-		layout->addWidget(makeSectionLabel(QStringLiteral("Inventory")));
-		layout->addWidget(makeLabel(QStringLiteral("Empty"), "mutedText"));
-	} else if (panel.groupId == id("panel:collision")) {
-		layout->addWidget(makeSectionLabel(QStringLiteral("Collision")));
-		layout->addWidget(makeLabel(QStringLiteral("No debug draw source"), "mutedText"));
+	for (const ui::UiRuntimeFrameInspectorRow &row : model_.runtimeInspector.rows) {
+		auto *line = new QWidget;
+		line->setObjectName(QStringLiteral("inspectorRow"));
+		auto *lineLayout = new QHBoxLayout(line);
+		lineLayout->setContentsMargins(0, 2, 0, 2);
+		lineLayout->setSpacing(8);
+		lineLayout->addWidget(makeLabel(toQString(row.key), "fieldLabel"));
+		lineLayout->addStretch(1);
+		lineLayout->addWidget(makeLabel(toQString(row.value), "mutedText"));
+		layout->addWidget(line);
 	}
+	if (model_.runtimeInspector.rows.empty())
+		layout->addWidget(makeLabel(QStringLiteral("No runtime frame available."), "mutedText"));
 	layout->addStretch(1);
-	return makeScrollHost(content);
+	return content;
+}
+
+QWidget *IggyQtShellWindow::buildInteractionEventsPanelContent()
+{
+	auto *content = new QWidget;
+	auto *layout = new QVBoxLayout(content);
+	layout->setContentsMargins(0, 0, 0, 0);
+	layout->setSpacing(6);
+
+	for (const ui::UiInteractionEventRow &row : model_.interactionEvents.rows) {
+		layout->addWidget(makeLabel(
+			QStringLiteral("%1 %2").arg(toQString(row.typeLabel), toQString(row.detail)),
+			"mutedText"));
+	}
+	if (model_.interactionEvents.rows.empty())
+		layout->addWidget(makeLabel(QStringLiteral("No interaction events."), "mutedText"));
+	layout->addStretch(1);
+	return content;
+}
+
+QWidget *IggyQtShellWindow::buildInventoryPanelContent()
+{
+	auto *content = new QWidget;
+	auto *layout = new QVBoxLayout(content);
+	layout->setContentsMargins(0, 0, 0, 0);
+	layout->setSpacing(6);
+	layout->addWidget(makeSectionLabel(QStringLiteral("Inventory")));
+	layout->addWidget(makeLabel(QStringLiteral("Empty"), "mutedText"));
+	layout->addStretch(1);
+	return content;
+}
+
+QWidget *IggyQtShellWindow::buildCollisionPanelContent()
+{
+	auto *content = new QWidget;
+	auto *layout = new QVBoxLayout(content);
+	layout->setContentsMargins(0, 0, 0, 0);
+	layout->setSpacing(6);
+	layout->addWidget(makeSectionLabel(QStringLiteral("Collision")));
+	layout->addWidget(makeLabel(QStringLiteral("No debug draw source"), "mutedText"));
+	layout->addStretch(1);
+	return content;
+}
+
+QWidget *IggyQtShellWindow::buildUnavailablePanelContent(const ui::UiMountedPanel &panel)
+{
+	auto *content = new QWidget;
+	auto *layout = new QVBoxLayout(content);
+	layout->setContentsMargins(0, 0, 0, 0);
+	layout->setSpacing(6);
+	layout->addWidget(makeLabel(
+		QStringLiteral("No renderer for %1").arg(toQString(panel.groupId)),
+		"mutedText"));
+	layout->addStretch(1);
+	return content;
+}
+
+QPushButton *IggyQtShellWindow::buildMountedChromePanelButton(const ui::UiMountedChromePanel &panel)
+{
+	auto *button = makeChromeButton(toQString(panel.label));
+	button->setProperty("mountId", objectNameForId(QStringLiteral("chromePanel_"), panel.id));
+	button->setToolTip(toQString(panel.featureId));
+	return button;
 }
 
 QWidget *IggyQtShellWindow::buildToolBelt()
@@ -677,20 +821,26 @@ QWidget *IggyQtShellWindow::buildPaletteStrip()
 	auto *layout = new QHBoxLayout(host);
 	layout->setContentsMargins(0, 0, 0, 0);
 	layout->setSpacing(8);
-	for (const ui::UiMountedPalette &palette : model_.mountedPalettes) {
-		auto *frame = makeFrame("floatingPalette");
-		auto *paletteLayout = new QHBoxLayout(frame);
-		paletteLayout->setContentsMargins(8, 6, 8, 6);
-		paletteLayout->setSpacing(6);
-		paletteLayout->addWidget(makeFrame("paletteGrip"));
-		paletteLayout->addWidget(makeLabel(toQString(palette.label), "mutedText"));
-		paletteLayout->addWidget(makeLabel(
-			QStringLiteral("(%1, %2)").arg(palette.placement.x).arg(palette.placement.y),
-			"mutedText"));
-		layout->addWidget(frame);
-	}
+	for (const ui::UiMountedPalette &palette : model_.mountedPalettes)
+		layout->addWidget(buildMountedPalette(palette));
 	layout->addStretch(1);
 	return host;
+}
+
+QWidget *IggyQtShellWindow::buildMountedPalette(const ui::UiMountedPalette &palette)
+{
+	auto *frame = makeFrame("floatingPalette");
+	frame->setProperty("mountId", objectNameForId(QStringLiteral("palette_"), palette.id));
+	frame->setToolTip(toQString(palette.featureId));
+	auto *layout = new QHBoxLayout(frame);
+	layout->setContentsMargins(8, 6, 8, 6);
+	layout->setSpacing(6);
+	layout->addWidget(makeFrame("paletteGrip"));
+	layout->addWidget(makeLabel(toQString(palette.label), "mutedText"));
+	layout->addWidget(makeLabel(
+		QStringLiteral("(%1, %2)").arg(palette.placement.x).arg(palette.placement.y),
+		"mutedText"));
+	return frame;
 }
 
 QWidget *IggyQtShellWindow::buildSettings()
