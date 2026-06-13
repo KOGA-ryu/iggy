@@ -94,7 +94,7 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 			max-width: 6px;
 			min-height: 18px;
 		}
-		QFrame#rightPanelGrip {
+		QFrame#leftPanelGrip, QFrame#rightPanelGrip {
 			background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
 				stop:0 transparent, stop:0.43 transparent,
 				stop:0.44 %24, stop:0.56 %24,
@@ -106,7 +106,7 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 				stop:0.44 %24, stop:0.56 %24,
 				stop:0.57 transparent, stop:1 transparent);
 		}
-		QFrame#rightPanelGrip:hover {
+		QFrame#leftPanelGrip:hover, QFrame#rightPanelGrip:hover {
 			background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
 				stop:0 transparent, stop:0.43 transparent,
 				stop:0.44 %23, stop:0.56 %23,

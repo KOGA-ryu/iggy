@@ -260,6 +260,95 @@ private:
 	int bottomHeight_ = 190;
 };
 
+class ShellBodyHost final : public QFrame {
+public:
+	QWidget *leftPanel = nullptr;
+	QWidget *leftGrip = nullptr;
+	QWidget *workspace = nullptr;
+
+	bool eventFilter(QObject *watched, QEvent *event) override
+	{
+		if (watched != leftGrip)
+			return QFrame::eventFilter(watched, event);
+
+		switch (event->type()) {
+		case QEvent::MouseButtonPress: {
+			auto *mouse = static_cast<QMouseEvent *>(event);
+			if (mouse->button() != Qt::LeftButton)
+				break;
+			draggingLeft_ = true;
+			dragStart_ = mouse->globalPosition().toPoint();
+			dragStartLeftWidth_ = leftWidth_;
+			event->accept();
+			return true;
+		}
+		case QEvent::MouseMove: {
+			if (!draggingLeft_)
+				break;
+			auto *mouse = static_cast<QMouseEvent *>(event);
+			leftWidth_ = dragStartLeftWidth_ + (mouse->globalPosition().toPoint() - dragStart_).x();
+			layoutChildren();
+			event->accept();
+			return true;
+		}
+		case QEvent::MouseButtonRelease: {
+			auto *mouse = static_cast<QMouseEvent *>(event);
+			if (mouse->button() == Qt::LeftButton && draggingLeft_) {
+				draggingLeft_ = false;
+				event->accept();
+				return true;
+			}
+			break;
+		}
+		default:
+			break;
+		}
+
+		return QFrame::eventFilter(watched, event);
+	}
+
+protected:
+	void resizeEvent(QResizeEvent *event) override
+	{
+		QFrame::resizeEvent(event);
+		layoutChildren();
+	}
+
+private:
+	void layoutChildren()
+	{
+		const int w = width();
+		const int h = height();
+		const int leftW = leftPanel != nullptr ? clampedLeftWidth(w) : 0;
+
+		if (leftPanel != nullptr)
+			leftPanel->setGeometry(0, 0, leftW, h);
+		if (leftGrip != nullptr)
+			leftGrip->setGeometry(leftW - 4, 0, 8, h);
+		if (workspace != nullptr)
+			workspace->setGeometry(leftW, 0, w - leftW, h);
+		if (leftPanel != nullptr)
+			leftPanel->raise();
+		if (workspace != nullptr)
+			workspace->raise();
+		if (leftGrip != nullptr)
+			leftGrip->raise();
+	}
+
+	int clampedLeftWidth(int availableWidth)
+	{
+		const int minWidth = std::min(180, availableWidth);
+		const int maxWidth = std::max(minWidth, availableWidth - 320);
+		leftWidth_ = std::clamp(leftWidth_, minWidth, maxWidth);
+		return leftWidth_;
+	}
+
+	bool draggingLeft_ = false;
+	QPoint dragStart_;
+	int dragStartLeftWidth_ = 240;
+	int leftWidth_ = 240;
+};
+
 } // namespace
 
 IggyQtShellWindow::IggyQtShellWindow()
@@ -571,9 +660,23 @@ QWidget *IggyQtShellWindow::buildBody()
 	layout->setContentsMargins(0, 0, 0, 0);
 	layout->setSpacing(0);
 	layout->addWidget(buildRail());
-	if (shouldShowPanel(model_, ui::UiShellSlot::Left, input_.panels.left, input_.windowWidth, input_.windowHeight))
-		layout->addWidget(buildPanelSlot(ui::UiShellSlot::Left, "leftPanel"));
-	layout->addWidget(buildWorkspaceHost(), 1);
+
+	auto *host = new ShellBodyHost;
+	host->setObjectName(QStringLiteral("shellBodyHost"));
+	if (shouldShowPanel(model_, ui::UiShellSlot::Left, input_.panels.left, input_.windowWidth, input_.windowHeight)) {
+		host->leftPanel = buildPanelSlot(ui::UiShellSlot::Left, "leftPanel");
+		host->leftPanel->setParent(host);
+		host->leftPanel->show();
+		host->leftGrip = makeFrame("leftPanelGrip");
+		host->leftGrip->setParent(host);
+		host->leftGrip->setCursor(Qt::SizeHorCursor);
+		host->leftGrip->installEventFilter(host);
+		host->leftGrip->show();
+	}
+	host->workspace = buildWorkspaceHost();
+	host->workspace->setParent(host);
+	host->workspace->show();
+	layout->addWidget(host, 1);
 	return body;
 }
 
