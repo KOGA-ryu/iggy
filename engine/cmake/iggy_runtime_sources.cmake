@@ -7,6 +7,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeCommandQueue.cpp
   src/runtime/RuntimeMutationCommandQueue.cpp
   src/runtime/RuntimeQueuedCommandRunner.cpp
+  src/runtime/RuntimeQueuedMutationCommandRunner.cpp
   src/runtime/RuntimeSaveMetadata.cpp
   src/runtime/RuntimeSaveChunkArchive.cpp
   src/runtime/RuntimeSaveChunkArchiveCodec.cpp
