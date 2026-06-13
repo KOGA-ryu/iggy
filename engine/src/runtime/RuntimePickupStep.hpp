@@ -3,6 +3,7 @@
 #include "core/resource/ResourceId.hpp"
 #include "runtime/RuntimeInventoryState.hpp"
 #include "runtime/RuntimeSessionState.hpp"
+#include "scene/inventory/InventoryEvent2D.hpp"
 #include "scene/inventory/PickupPlan2D.hpp"
 #include "scene/inventory/PickupTransfer2D.hpp"
 
@@ -27,6 +28,7 @@ struct RuntimePickupResult {
 	PickupPlan2DResult plan;
 	PickupTransfer2DResult transfer;
 	bool changed = false;
+	InventoryEventRecorder2D events;
 };
 
 class RuntimePickupStep {

@@ -23,6 +23,7 @@ struct RuntimePickupEffectResult {
 	InteractionEffect2DStatus effectStatus = InteractionEffect2DStatus::Valid;
 	RuntimePickupResult pickup;
 	bool changed = false;
+	InventoryEventRecorder2D events;
 };
 
 class RuntimePickupEffectStep {

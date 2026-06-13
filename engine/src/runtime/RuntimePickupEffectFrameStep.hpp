@@ -32,6 +32,7 @@ struct RuntimePickupEffectFrameResult {
 	std::size_t notReadyCount = 0;
 	std::size_t failedCount = 0;
 	bool changed = false;
+	InventoryEventRecorder2D events;
 };
 
 class RuntimePickupEffectFrameStep {

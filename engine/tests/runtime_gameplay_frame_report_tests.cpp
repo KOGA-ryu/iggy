@@ -20,11 +20,26 @@ bool HasEvent(
 	return false;
 }
 
+void ExpectInventoryEvent(
+	const iggy::InventoryEvent2D &event,
+	iggy::InventoryEvent2DType type,
+	const iggy::ResourceId &itemId,
+	const iggy::ResourceId &dropId,
+	std::uint32_t count,
+	const char *message)
+{
+	Expect(event.type == type, message);
+	Expect(event.itemId == itemId, message);
+	Expect(event.dropId == dropId, message);
+	Expect(event.count == count, message);
+}
+
 iggy::runtime::RuntimeGameplayFrameResult ResultWithNestedReport(
 	iggy::runtime::RuntimePlayerInputInteractionPickupFrameReport nested)
 {
 	iggy::runtime::RuntimeGameplayFrameResult result;
 	result.report = nested;
+	result.inventoryEvents = nested.inventoryEvents;
 	return result;
 }
 
@@ -41,6 +56,7 @@ void TestEmptyNoOpReportHasZeroCountsAndPreservesNestedReport()
 	Expect(report.rejectedIntentCount == 0, "empty gameplay report should have zero rejected intents");
 	Expect(report.interactionEventCount == 0, "empty gameplay report should have zero interaction events");
 	Expect(report.pickedUpCount == 0, "empty gameplay report should have zero pickups");
+	Expect(report.inventoryEventCount == 0, "empty gameplay report should have zero inventory events");
 	Expect(!report.interactionChanged, "empty gameplay report should not mark interaction changed");
 	Expect(!report.inventoryChanged, "empty gameplay report should not mark inventory changed");
 	Expect(!report.hasEvents(), "empty gameplay report should have no summary events");
@@ -86,17 +102,35 @@ void TestToggleTargetReportProjectsInteractionChangeAndEventFacts()
 void TestPickupReportProjectsItemPickedUpAndInventoryChanged()
 {
 	iggy::runtime::RuntimePlayerInputInteractionPickupFrameReport nested;
+	const iggy::ResourceId dropId { "drop:potion" };
+	const iggy::ResourceId itemId { "item:potion" };
 	nested.acceptedCommandCount = 1;
 	nested.pickedUpCount = 2;
 	nested.inventoryChanged = true;
+	nested.inventoryEvents.events = {
+		iggy::itemAddedInventoryEvent(itemId, 3),
+		iggy::dropConsumedInventoryEvent(dropId),
+		iggy::itemPickedUpInventoryEvent(dropId, itemId, 3),
+	};
 
 	const iggy::runtime::RuntimeGameplayFrameReport report =
 		iggy::runtime::RuntimeGameplayFrameReporter {}.report(ResultWithNestedReport(nested));
 
 	Expect(report.pickedUpCount == 2, "pickup gameplay report should project picked-up count");
 	Expect(report.inventoryChanged, "pickup gameplay report should project inventory changed flag");
+	Expect(report.inventoryEventCount == 3, "pickup gameplay report should project inventory event count");
+	Expect(report.itemAddedEventCount == 1, "pickup gameplay report should count item added event");
+	Expect(report.dropConsumedEventCount == 1, "pickup gameplay report should count drop consumed event");
+	Expect(report.itemPickedUpEventCount == 1, "pickup gameplay report should count item picked up event");
+	Expect(report.pickupNotReadyEventCount == 0 && report.inventoryAddFailedEventCount == 0, "pickup gameplay report should count no not-ready/failure events");
+	if (report.inventoryEvents.events.size() == 3) {
+		ExpectInventoryEvent(report.inventoryEvents.events[0], iggy::InventoryEvent2DType::ItemAdded, itemId, {}, 3, "pickup gameplay report should preserve item added event");
+		ExpectInventoryEvent(report.inventoryEvents.events[1], iggy::InventoryEvent2DType::DropConsumed, {}, dropId, 0, "pickup gameplay report should preserve drop consumed event");
+		ExpectInventoryEvent(report.inventoryEvents.events[2], iggy::InventoryEvent2DType::ItemPickedUp, itemId, dropId, 3, "pickup gameplay report should preserve item picked up event");
+	}
 	Expect(HasEvent(report.events, iggy::runtime::RuntimeGameplayFrameEvent::InventoryChanged), "pickup gameplay report should emit inventory changed event");
 	Expect(HasEvent(report.events, iggy::runtime::RuntimeGameplayFrameEvent::ItemPickedUp), "pickup gameplay report should emit item picked up event");
+	Expect(HasEvent(report.events, iggy::runtime::RuntimeGameplayFrameEvent::InventoryEventRecorded), "pickup gameplay report should emit inventory event recorded event");
 }
 
 void TestContextBlockedInputReportsBlockedIntentOnly()
@@ -118,11 +152,13 @@ void TestQueueRejectedInputReportsRejectionAndNoMutation()
 {
 	iggy::runtime::RuntimePlayerInputInteractionPickupFrameReport nested;
 	nested.rejectedIntentCount = 1;
+	nested.inventoryEvents.events = {};
 
 	const iggy::runtime::RuntimeGameplayFrameReport report =
 		iggy::runtime::RuntimeGameplayFrameReporter {}.report(ResultWithNestedReport(nested));
 
 	Expect(report.rejectedIntentCount == 1, "queue-rejected gameplay report should project rejected intent count");
+	Expect(report.inventoryEventCount == 0, "queue-rejected gameplay report should project zero inventory events");
 	Expect(!report.interactionChanged, "queue-rejected gameplay report should not mark interaction changed");
 	Expect(!report.inventoryChanged, "queue-rejected gameplay report should not mark inventory changed");
 	Expect(HasEvent(report.events, iggy::runtime::RuntimeGameplayFrameEvent::PlayerIntentRejected), "queue-rejected gameplay report should emit rejected intent event");
@@ -141,6 +177,19 @@ void TestReporterPreservesNestedLowerLevelReportDetails()
 	nested.pickedUpCount = 7;
 	nested.pickupNotReadyCount = 8;
 	nested.pickupFailedCount = 9;
+	nested.inventoryEventCount = 5;
+	nested.itemAddedEventCount = 1;
+	nested.itemPickedUpEventCount = 1;
+	nested.dropConsumedEventCount = 1;
+	nested.pickupNotReadyEventCount = 1;
+	nested.inventoryAddFailedEventCount = 1;
+	nested.inventoryEvents.events = {
+		iggy::itemAddedInventoryEvent(iggy::ResourceId { "item:one" }, 1),
+		iggy::dropConsumedInventoryEvent(iggy::ResourceId { "drop:one" }),
+		iggy::itemPickedUpInventoryEvent(iggy::ResourceId { "drop:one" }, iggy::ResourceId { "item:one" }, 1),
+		iggy::pickupNotReadyInventoryEvent(iggy::ResourceId { "drop:missing" }),
+		iggy::inventoryAddFailedEvent(iggy::ResourceId { "item:bad" }, 2),
+	};
 	nested.interactionMutated = true;
 	nested.inventoryChanged = true;
 	nested.interaction.playerInput.queuedFrameCount = 10;
@@ -158,12 +207,20 @@ void TestReporterPreservesNestedLowerLevelReportDetails()
 	Expect(report.input.pickedUpCount == 7, "gameplay report should preserve nested pickup count");
 	Expect(report.input.pickupNotReadyCount == 8, "gameplay report should preserve nested pickup not-ready count");
 	Expect(report.input.pickupFailedCount == 9, "gameplay report should preserve nested pickup failed count");
+	Expect(report.input.inventoryEventCount == 5, "gameplay report should preserve nested inventory event count");
+	Expect(report.inventoryEventCount == 5, "gameplay report should project inventory event count");
+	Expect(report.itemAddedEventCount == 1, "gameplay report should project item added event count");
+	Expect(report.dropConsumedEventCount == 1, "gameplay report should project drop consumed event count");
+	Expect(report.itemPickedUpEventCount == 1, "gameplay report should project item picked up event count");
+	Expect(report.pickupNotReadyEventCount == 1, "gameplay report should project pickup not-ready inventory event count");
+	Expect(report.inventoryAddFailedEventCount == 1, "gameplay report should project inventory add failed event count");
 	Expect(report.input.interaction.playerInput.queuedFrameCount == 10, "gameplay report should preserve nested player input report");
 	Expect(report.input.interaction.playerInput.tickResultCount == 11, "gameplay report should preserve nested tick count");
 	Expect(report.pickupNotReadyCount == 8, "gameplay report should project pickup not-ready count");
 	Expect(report.pickupFailedCount == 9, "gameplay report should project pickup failed count");
 	Expect(HasEvent(report.events, iggy::runtime::RuntimeGameplayFrameEvent::PickupNotReady), "gameplay report should emit pickup not-ready event");
 	Expect(HasEvent(report.events, iggy::runtime::RuntimeGameplayFrameEvent::PickupFailed), "gameplay report should emit pickup failed event");
+	Expect(HasEvent(report.events, iggy::runtime::RuntimeGameplayFrameEvent::InventoryEventRecorded), "gameplay report should emit inventory event recorded event");
 }
 
 void TestReporterDoesNotMutateInputResult()
@@ -171,12 +228,16 @@ void TestReporterDoesNotMutateInputResult()
 	iggy::runtime::RuntimeGameplayFrameResult result;
 	result.report.acceptedCommandCount = 1;
 	result.report.inventoryChanged = true;
+	result.inventoryEvents.events = {
+		iggy::itemAddedInventoryEvent(iggy::ResourceId { "item:potion" }, 1),
+	};
 	const iggy::runtime::RuntimeGameplayFrameResult before = result;
 
 	(void)iggy::runtime::RuntimeGameplayFrameReporter {}.report(result);
 
 	Expect(result.report.acceptedCommandCount == before.report.acceptedCommandCount, "gameplay reporter should not mutate accepted command count");
 	Expect(result.report.inventoryChanged == before.report.inventoryChanged, "gameplay reporter should not mutate inventory changed flag");
+	Expect(result.inventoryEvents.events.size() == before.inventoryEvents.events.size(), "gameplay reporter should not mutate inventory events");
 }
 
 } // namespace

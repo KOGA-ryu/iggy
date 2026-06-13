@@ -218,6 +218,20 @@ void ExpectTargetEnabled(
 		Expect(target->enabled == enabled, message);
 }
 
+void ExpectInventoryEvent(
+	const iggy::InventoryEvent2D &event,
+	iggy::InventoryEvent2DType type,
+	const iggy::ResourceId &itemId,
+	const iggy::ResourceId &dropId,
+	std::uint32_t count,
+	const char *message)
+{
+	Expect(event.type == type, message);
+	Expect(event.itemId == itemId, message);
+	Expect(event.dropId == dropId, message);
+	Expect(event.count == count, message);
+}
+
 void TestMultiFrameMovementCarriesStateForward()
 {
 	const iggy::runtime::RuntimeGameplayState initial = GameplayState(SessionWithPlayer());
@@ -236,6 +250,7 @@ void TestMultiFrameMovementCarriesStateForward()
 	Expect(NearVec(result.ticks[2].frame.state.session.player.position, { 3.0F, 0.0F }), "third movement tick should carry second output");
 	Expect(NearVec(result.finalState.session.player.position, { 3.0F, 0.0F }), "movement acceptance runner should return accumulated final position");
 	Expect(result.ticks[0].report.acceptedCommandCount == 1 && result.ticks[1].report.acceptedCommandCount == 1 && result.ticks[2].report.acceptedCommandCount == 1, "movement reports should stay in frame order");
+	Expect(result.inventoryEvents.events.empty(), "movement-only runner should aggregate no inventory events");
 }
 
 void TestToggleCarriesAcrossFrames()
@@ -292,6 +307,54 @@ void TestPickupConsumesDropAcrossFrames()
 	Expect(result.ticks[1].report.pickupNotReadyCount == 1, "second pickup frame should report consumed drop as not ready");
 	Expect(SameStacks(result.finalState.inventory.inventory.stacks, { Stack("item:potion", 2) }), "pickup acceptance runner should carry picked-up stack");
 	Expect(result.finalState.inventory.drops.drops.size() == 1 && !result.finalState.inventory.drops.drops[0].enabled, "pickup acceptance runner should carry disabled drop");
+	Expect(result.inventoryEvents.events.size() == 4, "pickup acceptance runner should aggregate success and not-ready events");
+	if (result.inventoryEvents.events.size() == 4) {
+		ExpectInventoryEvent(result.inventoryEvents.events[0], iggy::InventoryEvent2DType::ItemAdded, Id("item:potion"), {}, 2, "pickup acceptance runner should aggregate first-frame item-added event");
+		ExpectInventoryEvent(result.inventoryEvents.events[1], iggy::InventoryEvent2DType::DropConsumed, {}, drop.id, 0, "pickup acceptance runner should aggregate first-frame drop-consumed event");
+		ExpectInventoryEvent(result.inventoryEvents.events[2], iggy::InventoryEvent2DType::ItemPickedUp, Id("item:potion"), drop.id, 2, "pickup acceptance runner should aggregate first-frame item-picked-up event");
+		ExpectInventoryEvent(result.inventoryEvents.events[3], iggy::InventoryEvent2DType::PickupNotReady, {}, drop.id, 0, "pickup acceptance runner should aggregate second-frame pickup-not-ready event");
+	}
+}
+
+void TestInventoryEventsAggregateAcrossPickupFramesWithNoPickupGap()
+{
+	const std::vector<iggy::InteractionTarget2D> targets {
+		Target("target:first", iggy::InteractionTarget2DKind::Pickup),
+		Target("target:second", iggy::InteractionTarget2DKind::Pickup),
+	};
+	const iggy::LevelItemDrop2D firstDrop = Drop("drop:first", "item:first", 1);
+	const iggy::LevelItemDrop2D secondDrop = Drop("drop:second", "item:second", 3);
+	const iggy::runtime::RuntimeInteractionState interaction {
+		Registry(targets),
+		Catalog({
+			Entry("target:first", { iggy::pickupItemInteractionEffect(Id("target:first"), firstDrop.id) }),
+			Entry("target:second", { iggy::pickupItemInteractionEffect(Id("target:second"), secondDrop.id) }),
+		}),
+	};
+	const iggy::runtime::RuntimeGameplayState initial =
+		GameplayState(SessionWithPlayer(), interaction, InventoryState({}, { firstDrop, secondDrop }));
+
+	const iggy::runtime::RuntimeGameplayFrameRunnerResult result =
+		iggy::runtime::RuntimeGameplayFrameRunner {}.run({
+			initial,
+			{
+				Frame({ iggy::playerInteractIntent(Id("target:first")) }),
+				Frame({ iggy::playerMoveToPointIntent({ 0.0F, 0.0F }) }),
+				Frame({ iggy::playerInteractIntent(Id("target:second")) }),
+			},
+		});
+
+	Expect(result.ticks.size() == 3, "pickup event gap runner should produce one tick per frame");
+	Expect(result.ticks[1].frame.inventoryEvents.events.empty(), "movement gap frame should produce no inventory events");
+	Expect(result.inventoryEvents.events.size() == 6, "runner should aggregate pickup events from frames around a no-pickup gap");
+	if (result.inventoryEvents.events.size() == 6) {
+		ExpectInventoryEvent(result.inventoryEvents.events[0], iggy::InventoryEvent2DType::ItemAdded, Id("item:first"), {}, 1, "first pickup item-added event should remain first");
+		ExpectInventoryEvent(result.inventoryEvents.events[1], iggy::InventoryEvent2DType::DropConsumed, {}, firstDrop.id, 0, "first pickup drop-consumed event should remain second");
+		ExpectInventoryEvent(result.inventoryEvents.events[2], iggy::InventoryEvent2DType::ItemPickedUp, Id("item:first"), firstDrop.id, 1, "first pickup item-picked-up event should remain third");
+		ExpectInventoryEvent(result.inventoryEvents.events[3], iggy::InventoryEvent2DType::ItemAdded, Id("item:second"), {}, 3, "second pickup item-added event should follow the no-pickup gap");
+		ExpectInventoryEvent(result.inventoryEvents.events[4], iggy::InventoryEvent2DType::DropConsumed, {}, secondDrop.id, 0, "second pickup drop-consumed event should follow the no-pickup gap");
+		ExpectInventoryEvent(result.inventoryEvents.events[5], iggy::InventoryEvent2DType::ItemPickedUp, Id("item:second"), secondDrop.id, 3, "second pickup item-picked-up event should follow the no-pickup gap");
+	}
 }
 
 void TestMixedInteractionAndPickupCarryBothStatePackets()
@@ -359,6 +422,13 @@ void TestQueueRejectionInMiddleFrameDoesNotMutateAndLaterFramesRun()
 	Expect(result.ticks[1].report.pickedUpCount == 0 && !result.ticks[1].report.inventoryChanged, "queue-rejected middle frame should not mutate inventory");
 	Expect(result.ticks[2].report.pickedUpCount == 1, "later unbounded frame should still run from carried state");
 	Expect(SameStacks(result.finalState.inventory.inventory.stacks, { Stack("item:queued", 1) }), "later frame should carry pickup into final state");
+	Expect(result.ticks[1].frame.inventoryEvents.events.empty(), "queue-rejected middle frame should have no frame inventory events");
+	Expect(result.inventoryEvents.events.size() == 3, "queue-rejected runner should aggregate only the later successful pickup events");
+	if (result.inventoryEvents.events.size() == 3) {
+		ExpectInventoryEvent(result.inventoryEvents.events[0], iggy::InventoryEvent2DType::ItemAdded, Id("item:queued"), {}, 1, "queue-rejected runner should aggregate later item-added event first");
+		ExpectInventoryEvent(result.inventoryEvents.events[1], iggy::InventoryEvent2DType::DropConsumed, {}, drop.id, 0, "queue-rejected runner should aggregate later drop-consumed event second");
+		ExpectInventoryEvent(result.inventoryEvents.events[2], iggy::InventoryEvent2DType::ItemPickedUp, Id("item:queued"), drop.id, 1, "queue-rejected runner should aggregate later item-picked-up event third");
+	}
 }
 
 void TestExplicitCollisionWorldAppliesAcrossMovementAndPickupFrames()
@@ -403,6 +473,7 @@ void TestEmptyFrameListReturnsInitialStateAndNoTicks()
 	Expect(result.ticks.empty(), "empty acceptance runner should produce no ticks");
 	ExpectPlayerAgent(result.finalState.session.player, initial.session.player, "empty acceptance runner should preserve session player");
 	Expect(SameStacks(result.finalState.inventory.inventory.stacks, { Stack("item:held", 3) }), "empty acceptance runner should preserve explicit inventory");
+	Expect(result.inventoryEvents.events.empty(), "empty acceptance runner should aggregate no inventory events");
 }
 
 void TestInitialStateAndFramesAreNotMutated()
@@ -438,6 +509,7 @@ int main()
 	TestMultiFrameMovementCarriesStateForward();
 	TestToggleCarriesAcrossFrames();
 	TestPickupConsumesDropAcrossFrames();
+	TestInventoryEventsAggregateAcrossPickupFramesWithNoPickupGap();
 	TestMixedInteractionAndPickupCarryBothStatePackets();
 	TestQueueRejectionInMiddleFrameDoesNotMutateAndLaterFramesRun();
 	TestExplicitCollisionWorldAppliesAcrossMovementAndPickupFrames();

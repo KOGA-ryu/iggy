@@ -213,6 +213,20 @@ bool HasEvent(
 	return false;
 }
 
+void ExpectInventoryEvent(
+	const iggy::InventoryEvent2D &event,
+	iggy::InventoryEvent2DType type,
+	const iggy::ResourceId &itemId,
+	const iggy::ResourceId &dropId,
+	std::uint32_t count,
+	const char *message)
+{
+	Expect(event.type == type, message);
+	Expect(event.itemId == itemId, message);
+	Expect(event.dropId == dropId, message);
+	Expect(event.count == count, message);
+}
+
 void TestEmptyInputReturnsGameplayStateThroughExistingSemanticsAndReport()
 {
 	const iggy::runtime::RuntimeGameplayState state = GameplayState(SessionWithPlayer());
@@ -223,6 +237,7 @@ void TestEmptyInputReturnsGameplayStateThroughExistingSemanticsAndReport()
 	Expect(result.frame.interaction.playerInput.command.status == iggy::runtime::RuntimePlayerInputCommandRunnerStatus::Ran, "empty gameplay frame should run existing player input path");
 	Expect(result.report.acceptedCommandCount == 0, "empty gameplay frame report should have no accepted commands");
 	Expect(result.report.pickedUpCount == 0, "empty gameplay frame report should have no pickups");
+	Expect(result.inventoryEvents.events.empty(), "empty gameplay frame should expose no inventory events");
 	Expect(result.state.commandQueue.frames.empty(), "empty gameplay frame should return drained queue state");
 	Expect(result.state.interaction.targets.targets().empty(), "empty gameplay frame should preserve empty interaction state");
 	Expect(result.state.inventory.inventory.stacks.empty(), "empty gameplay frame should preserve empty inventory");
@@ -280,6 +295,12 @@ void TestInteractPickupItemUpdatesReturnedInventoryState()
 	Expect(result.state.inventory.drops.drops.size() == 1 && !result.state.inventory.drops.drops[0].enabled, "gameplay frame should return consumed drop state");
 	Expect(result.report.pickedUpCount == 1, "gameplay frame report should count pickup");
 	Expect(result.report.inventoryChanged, "gameplay frame report should mark inventory changed");
+	Expect(result.inventoryEvents.events.size() == 3, "gameplay frame should expose pickup inventory events");
+	if (result.inventoryEvents.events.size() == 3) {
+		ExpectInventoryEvent(result.inventoryEvents.events[0], iggy::InventoryEvent2DType::ItemAdded, Id("item:potion"), {}, 2, "gameplay frame should preserve item added event");
+		ExpectInventoryEvent(result.inventoryEvents.events[1], iggy::InventoryEvent2DType::DropConsumed, {}, drop.id, 0, "gameplay frame should preserve drop consumed event");
+		ExpectInventoryEvent(result.inventoryEvents.events[2], iggy::InventoryEvent2DType::ItemPickedUp, Id("item:potion"), drop.id, 2, "gameplay frame should preserve item picked up event");
+	}
 }
 
 void TestCombinedToggleAndPickupUpdatesBothExplicitStatePackets()
@@ -329,6 +350,7 @@ void TestContextBlockedInteractLeavesExplicitStatesUnchanged()
 	Expect(result.state.interaction.targets.find(target.id)->enabled == target.enabled, "context-blocked gameplay frame should preserve interaction state");
 	Expect(result.state.inventory.inventory.stacks.empty(), "context-blocked gameplay frame should preserve inventory");
 	Expect(result.state.inventory.drops.drops.size() == 1 && result.state.inventory.drops.drops[0].enabled, "context-blocked gameplay frame should preserve drop");
+	Expect(result.inventoryEvents.events.empty(), "context-blocked gameplay frame should expose no inventory events");
 }
 
 void TestQueueRejectedInputPreservesDiagnosticsAndDoesNotMutateExplicitStates()
@@ -353,6 +375,7 @@ void TestQueueRejectedInputPreservesDiagnosticsAndDoesNotMutateExplicitStates()
 	Expect(result.state.commandQueue.frames.size() == 1, "queue-rejected gameplay frame should preserve original queue");
 	Expect(result.state.inventory.inventory.stacks.empty(), "queue-rejected gameplay frame should not consume pickup");
 	Expect(result.state.inventory.drops.drops.size() == 1 && result.state.inventory.drops.drops[0].enabled, "queue-rejected gameplay frame should preserve drops");
+	Expect(result.inventoryEvents.events.empty(), "queue-rejected gameplay frame should expose no inventory events");
 }
 
 void TestExplicitCollisionWorldOverloadAffectsMovementReachAndPickup()

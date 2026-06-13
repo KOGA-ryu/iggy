@@ -26,6 +26,7 @@ enum class RuntimePlayerInputInteractionPickupFrameEvent {
 struct RuntimePlayerInputInteractionPickupFrameReport {
 	RuntimePlayerInputInteractionEffectApplyFrameReport interaction;
 	RuntimePickupEffectFrameResult pickup;
+	InventoryEventRecorder2D inventoryEvents;
 	std::vector<RuntimePlayerInputInteractionPickupFrameEvent> events;
 	std::size_t acceptedCommandCount = 0;
 	std::size_t blockedIntentCount = 0;
@@ -36,6 +37,12 @@ struct RuntimePlayerInputInteractionPickupFrameReport {
 	std::size_t pickedUpCount = 0;
 	std::size_t pickupNotReadyCount = 0;
 	std::size_t pickupFailedCount = 0;
+	std::size_t inventoryEventCount = 0;
+	std::size_t itemAddedEventCount = 0;
+	std::size_t itemPickedUpEventCount = 0;
+	std::size_t dropConsumedEventCount = 0;
+	std::size_t pickupNotReadyEventCount = 0;
+	std::size_t inventoryAddFailedEventCount = 0;
 	bool interactionMutated = false;
 	bool inventoryChanged = false;
 };

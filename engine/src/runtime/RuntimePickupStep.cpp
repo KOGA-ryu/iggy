@@ -1,6 +1,15 @@
 #include "runtime/RuntimePickupStep.hpp"
 
 namespace iggy::runtime {
+namespace {
+
+void AppendEvents(InventoryEventRecorder2D &destination, const InventoryEventRecorder2D &source)
+{
+	for (const InventoryEvent2D &event : source.events)
+		recordInventoryEvent(destination, event);
+}
+
+} // namespace
 
 RuntimePickupResult RuntimePickupStep::pickup(
 	const RuntimeSessionState &session,
@@ -20,6 +29,7 @@ RuntimePickupResult RuntimePickupStep::pickup(
 	result.plan = PickupPlan2D {}.plan(inventory.drops, dropId, session.player.position, config.plan);
 	if (!result.plan.ready()) {
 		result.status = RuntimePickupStatus::PickupNotReady;
+		recordInventoryEvent(result.events, pickupNotReadyInventoryEvent(dropId));
 		return result;
 	}
 
@@ -30,6 +40,7 @@ RuntimePickupResult RuntimePickupStep::pickup(
 		config.transfer);
 	result.inventory.inventory = result.transfer.inventory;
 	result.inventory.drops = result.transfer.drops;
+	AppendEvents(result.events, result.transfer.events);
 
 	if (result.transfer.status != PickupTransfer2DStatus::Transferred) {
 		result.status = RuntimePickupStatus::TransferFailed;

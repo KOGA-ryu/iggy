@@ -106,6 +106,48 @@ bool SameDrops(
 	return true;
 }
 
+void ExpectNoEvents(const iggy::runtime::RuntimePickupResult &result, const char *message)
+{
+	Expect(result.events.events.empty(), message);
+}
+
+void ExpectEvent(
+	const iggy::InventoryEvent2D &event,
+	iggy::InventoryEvent2DType type,
+	const iggy::ResourceId &itemId,
+	const iggy::ResourceId &dropId,
+	std::uint32_t count,
+	const char *message)
+{
+	Expect(event.type == type, message);
+	Expect(event.itemId == itemId, message);
+	Expect(event.dropId == dropId, message);
+	Expect(event.count == count, message);
+}
+
+void ExpectPickupNotReadyEvent(
+	const iggy::runtime::RuntimePickupResult &result,
+	const iggy::ResourceId &dropId,
+	const char *message)
+{
+	Expect(result.events.events.size() == 1, message);
+	if (result.events.events.size() == 1)
+		ExpectEvent(result.events.events[0], iggy::InventoryEvent2DType::PickupNotReady, {}, dropId, 0, message);
+}
+
+void ExpectSuccessfulPickupEvents(
+	const iggy::runtime::RuntimePickupResult &result,
+	const iggy::LevelItemDrop2D &drop,
+	const char *message)
+{
+	Expect(result.events.events.size() == 3, message);
+	if (result.events.events.size() == 3) {
+		ExpectEvent(result.events.events[0], iggy::InventoryEvent2DType::ItemAdded, drop.itemId, {}, drop.count, message);
+		ExpectEvent(result.events.events[1], iggy::InventoryEvent2DType::DropConsumed, {}, drop.id, 0, message);
+		ExpectEvent(result.events.events[2], iggy::InventoryEvent2DType::ItemPickedUp, drop.itemId, drop.id, drop.count, message);
+	}
+}
+
 void TestMissingPlayerReturnsMissingPlayerWithoutPlanOrTransfer()
 {
 	iggy::runtime::RuntimeSessionState session = SessionWithPlayer();
@@ -123,6 +165,7 @@ void TestMissingPlayerReturnsMissingPlayerWithoutPlanOrTransfer()
 	Expect(SameDrops(result.inventory.drops.drops, inventory.drops.drops), "missing player pickup should preserve drops");
 	Expect(result.plan.status == iggy::PickupPlan2DStatus::DropNotFound, "missing player pickup should not run planner");
 	Expect(result.transfer.status == iggy::PickupTransfer2DStatus::PickupNotReady, "missing player pickup should not run transfer");
+	ExpectNoEvents(result, "missing player pickup should not record inventory events");
 }
 
 void TestMissingDropReturnsPickupNotReady()
@@ -138,6 +181,7 @@ void TestMissingDropReturnsPickupNotReady()
 	Expect(!result.changed, "missing drop pickup should not change inventory state");
 	Expect(SameStacks(result.inventory.inventory.stacks, inventory.inventory.stacks), "missing drop pickup should preserve inventory");
 	Expect(SameDrops(result.inventory.drops.drops, inventory.drops.drops), "missing drop pickup should preserve drops");
+	ExpectPickupNotReadyEvent(result, iggy::ResourceId { "drop:missing" }, "missing drop pickup should record PickupNotReady event");
 }
 
 void TestDisabledDropReturnsPickupNotReady()
@@ -153,6 +197,7 @@ void TestDisabledDropReturnsPickupNotReady()
 	Expect(!result.changed, "disabled drop pickup should not change inventory state");
 	Expect(SameStacks(result.inventory.inventory.stacks, inventory.inventory.stacks), "disabled drop pickup should preserve inventory");
 	Expect(SameDrops(result.inventory.drops.drops, inventory.drops.drops), "disabled drop pickup should preserve drops");
+	ExpectPickupNotReadyEvent(result, drop.id, "disabled drop pickup should record PickupNotReady event");
 }
 
 void TestOutOfRangeDropReturnsPickupNotReady()
@@ -166,6 +211,7 @@ void TestOutOfRangeDropReturnsPickupNotReady()
 	Expect(result.status == iggy::runtime::RuntimePickupStatus::PickupNotReady, "out-of-range drop pickup should not be ready");
 	Expect(result.plan.status == iggy::PickupPlan2DStatus::OutOfRange, "out-of-range pickup should preserve plan status");
 	Expect(!result.changed, "out-of-range drop pickup should not change inventory state");
+	ExpectPickupNotReadyEvent(result, drop.id, "out-of-range drop pickup should record PickupNotReady event");
 }
 
 void TestReadyPickupTransfersToEmptyInventoryAndDisablesDrop()
@@ -187,6 +233,7 @@ void TestReadyPickupTransfersToEmptyInventoryAndDisablesDrop()
 		disabled.enabled = false;
 		Expect(SameDrop(result.inventory.drops.drops[0], disabled), "ready pickup should disable drop by default");
 	}
+	ExpectSuccessfulPickupEvents(result, drop, "ready pickup should expose transfer inventory events");
 }
 
 void TestReadyPickupWithExistingStackIncrementsCount()
@@ -207,6 +254,7 @@ void TestReadyPickupWithExistingStackIncrementsCount()
 				   Stack("item:key", 1),
 			   }),
 		"existing stack runtime pickup should increment stack and preserve order");
+	ExpectSuccessfulPickupEvents(result, drop, "existing stack runtime pickup should expose transfer inventory events");
 }
 
 void TestRemoveConsumeModeRemovesDrop()
@@ -225,6 +273,7 @@ void TestRemoveConsumeModeRemovesDrop()
 	Expect(result.inventory.drops.drops.size() == 1, "remove mode runtime pickup should remove drop");
 	if (result.inventory.drops.drops.size() == 1)
 		Expect(SameDrop(result.inventory.drops.drops[0], second), "remove mode runtime pickup should preserve remaining drop");
+	ExpectSuccessfulPickupEvents(result, first, "remove mode runtime pickup should expose transfer inventory events");
 }
 
 void TestExtraReachConfigCanMakePickupReady()
@@ -260,6 +309,16 @@ void TestTransferFailurePreservesTransferDiagnosticsAndPartialInventory()
 	Expect(result.transfer.status == iggy::PickupTransfer2DStatus::InventoryAddFailed, "failed transfer should preserve transfer diagnostics");
 	Expect(SameStacks(result.inventory.inventory.stacks, inventory.inventory.stacks), "failed transfer should preserve returned transfer inventory");
 	Expect(SameDrops(result.inventory.drops.drops, inventory.drops.drops), "failed transfer should preserve returned transfer drops");
+	Expect(result.events.events.size() == 1, "failed transfer should preserve transfer events");
+	if (result.events.events.size() == 1) {
+		ExpectEvent(
+			result.events.events[0],
+			iggy::InventoryEvent2DType::InventoryAddFailed,
+			invalidDrop.itemId,
+			{},
+			invalidDrop.count,
+			"failed transfer should preserve InventoryAddFailed event");
+	}
 }
 
 void TestOriginalSessionAndInventoryStateAreNotMutated()

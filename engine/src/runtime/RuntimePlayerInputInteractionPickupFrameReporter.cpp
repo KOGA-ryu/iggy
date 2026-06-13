@@ -19,6 +19,24 @@ RuntimePlayerInputInteractionEffectApplyFrameResult InteractionResultFrom(
 	return result;
 }
 
+void CountInventoryEvents(RuntimePlayerInputInteractionPickupFrameReport &report)
+{
+	report.inventoryEventCount = report.inventoryEvents.events.size();
+	for (const InventoryEvent2D &event : report.inventoryEvents.events) {
+		if (event.type == InventoryEvent2DType::ItemAdded) {
+			++report.itemAddedEventCount;
+		} else if (event.type == InventoryEvent2DType::ItemPickedUp) {
+			++report.itemPickedUpEventCount;
+		} else if (event.type == InventoryEvent2DType::DropConsumed) {
+			++report.dropConsumedEventCount;
+		} else if (event.type == InventoryEvent2DType::PickupNotReady) {
+			++report.pickupNotReadyEventCount;
+		} else if (event.type == InventoryEvent2DType::InventoryAddFailed) {
+			++report.inventoryAddFailedEventCount;
+		}
+	}
+}
+
 } // namespace
 
 RuntimePlayerInputInteractionPickupFrameReport RuntimePlayerInputInteractionPickupFrameReporter::report(
@@ -27,6 +45,7 @@ RuntimePlayerInputInteractionPickupFrameReport RuntimePlayerInputInteractionPick
 	RuntimePlayerInputInteractionPickupFrameReport report;
 	report.interaction = RuntimePlayerInputInteractionEffectApplyFrameReporter {}.report(InteractionResultFrom(result.interaction));
 	report.pickup = result.pickup;
+	report.inventoryEvents = result.inventoryEvents;
 	report.acceptedCommandCount = report.interaction.acceptedCommandCount;
 	report.blockedIntentCount = report.interaction.blockedIntentCount;
 	report.rejectedIntentCount = report.interaction.rejectedIntentCount;
@@ -38,6 +57,7 @@ RuntimePlayerInputInteractionPickupFrameReport RuntimePlayerInputInteractionPick
 	report.pickupFailedCount = result.pickup.failedCount;
 	report.interactionMutated = report.interaction.mutated;
 	report.inventoryChanged = result.pickup.changed;
+	CountInventoryEvents(report);
 
 	if (report.acceptedCommandCount > 0)
 		report.events.push_back(RuntimePlayerInputInteractionPickupFrameEvent::PlayerCommandAccepted);

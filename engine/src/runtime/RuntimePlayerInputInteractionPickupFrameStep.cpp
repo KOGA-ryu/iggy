@@ -20,6 +20,7 @@ RuntimePlayerInputInteractionPickupFrameResult ResultFrom(
 	result.queue = interaction.queue;
 	result.interactionState = interaction.interaction;
 	result.inventory = result.pickup.inventory;
+	result.inventoryEvents = result.pickup.events;
 	return result;
 }
 

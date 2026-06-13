@@ -256,6 +256,41 @@ void ExpectRegistryTargets(
 		ExpectTarget(registry.targets()[index], expected[index], message);
 }
 
+void ExpectNoInventoryEvents(
+	const iggy::runtime::RuntimePlayerInputInteractionPickupFrameResult &result,
+	const char *message)
+{
+	Expect(result.inventoryEvents.events.empty(), message);
+}
+
+void ExpectInventoryEvent(
+	const iggy::InventoryEvent2D &event,
+	iggy::InventoryEvent2DType type,
+	const iggy::ResourceId &itemId,
+	const iggy::ResourceId &dropId,
+	std::uint32_t count,
+	const char *message)
+{
+	Expect(event.type == type, message);
+	Expect(event.itemId == itemId, message);
+	Expect(event.dropId == dropId, message);
+	Expect(event.count == count, message);
+}
+
+void ExpectSuccessfulPickupInventoryEventsAt(
+	const iggy::runtime::RuntimePlayerInputInteractionPickupFrameResult &result,
+	std::size_t offset,
+	const iggy::LevelItemDrop2D &drop,
+	const char *message)
+{
+	Expect(result.inventoryEvents.events.size() >= offset + 3, message);
+	if (result.inventoryEvents.events.size() >= offset + 3) {
+		ExpectInventoryEvent(result.inventoryEvents.events[offset], iggy::InventoryEvent2DType::ItemAdded, drop.itemId, {}, drop.count, message);
+		ExpectInventoryEvent(result.inventoryEvents.events[offset + 1], iggy::InventoryEvent2DType::DropConsumed, {}, drop.id, 0, message);
+		ExpectInventoryEvent(result.inventoryEvents.events[offset + 2], iggy::InventoryEvent2DType::ItemPickedUp, drop.itemId, drop.id, drop.count, message);
+	}
+}
+
 bool SameCommand(const iggy::runtime::GameplayCommand2D &actual, const iggy::runtime::GameplayCommand2D &expected)
 {
 	return actual.type == expected.type
@@ -345,6 +380,7 @@ void TestNoPickupItemEffectsLeavesInventoryUnchanged()
 	Expect(result.pickup.status == iggy::runtime::RuntimePickupEffectFrameStatus::NoPickupEffects, "no-pickup adapter should report no pickup effects");
 	Expect(result.pickup.entries.empty(), "no-pickup adapter should append no pickup entries");
 	ExpectInventoryState(result.inventory, inventory, "no-pickup adapter should preserve inventory state");
+	ExpectNoInventoryEvents(result, "no-pickup adapter should expose no inventory events");
 }
 
 void TestReachablePickupItemEffectTransfersItem()
@@ -374,6 +410,8 @@ void TestReachablePickupItemEffectTransfersItem()
 		disabled.enabled = false;
 		Expect(SameDrop(result.inventory.drops.drops[0], disabled), "pickup adapter should disable consumed drop");
 	}
+	Expect(result.inventoryEvents.events.size() == 3, "pickup adapter should expose pickup inventory events");
+	ExpectSuccessfulPickupInventoryEventsAt(result, 0, drop, "pickup adapter should preserve pickup inventory event order");
 }
 
 void TestExistingStackIncrementsAndRemoveModeRemovesDrop()
@@ -401,6 +439,8 @@ void TestExistingStackIncrementsAndRemoveModeRemovesDrop()
 	Expect(result.inventory.drops.drops.size() == 1, "remove-mode pickup adapter should remove consumed drop");
 	if (result.inventory.drops.drops.size() == 1)
 		Expect(SameDrop(result.inventory.drops.drops[0], other), "remove-mode pickup adapter should preserve remaining drop");
+	Expect(result.inventoryEvents.events.size() == 3, "remove-mode pickup adapter should expose pickup inventory events");
+	ExpectSuccessfulPickupInventoryEventsAt(result, 0, drop, "remove-mode pickup adapter should preserve requested pickup count in events");
 }
 
 void TestToggleAndPickupInSameInteractionUpdateBothStates()
@@ -437,6 +477,8 @@ void TestToggleAndPickupInSameInteractionUpdateBothStates()
 	if (result.pickup.entries.size() == 1)
 		Expect(result.pickup.entries[0].effectIndex == 1, "combo adapter should preserve pickup effect index after toggle");
 	Expect(SameStacks(result.inventory.inventory.stacks, { Stack("item:key", 1) }), "combo adapter should update inventory");
+	Expect(result.inventoryEvents.events.size() == 3, "combo adapter should expose pickup inventory events");
+	ExpectSuccessfulPickupInventoryEventsAt(result, 0, drop, "combo adapter should preserve pickup inventory events");
 }
 
 void TestContextBlockedInteractDoesNotMutateEitherState()
@@ -462,6 +504,7 @@ void TestContextBlockedInteractDoesNotMutateEitherState()
 	Expect(result.pickup.status == iggy::runtime::RuntimePickupEffectFrameStatus::NoPickupEffects, "context-blocked pickup adapter should find no pickup effects");
 	ExpectRegistryTargets(result.interactionState.targets, { target }, "context-blocked pickup adapter should preserve interaction targets");
 	ExpectInventoryState(result.inventory, inventory, "context-blocked pickup adapter should preserve inventory");
+	ExpectNoInventoryEvents(result, "context-blocked pickup adapter should expose no inventory events");
 }
 
 void TestQueueRejectedMappedInteractDoesNotConsumePickup()
@@ -488,6 +531,7 @@ void TestQueueRejectedMappedInteractDoesNotConsumePickup()
 	Expect(result.pickup.status == iggy::runtime::RuntimePickupEffectFrameStatus::NoPickupEffects, "queue-rejected pickup adapter should consume no pickup effects");
 	Expect(SameQueue(result.queue, fullQueue), "queue-rejected pickup adapter should preserve queue");
 	ExpectInventoryState(result.inventory, inventory, "queue-rejected pickup adapter should preserve inventory");
+	ExpectNoInventoryEvents(result, "queue-rejected pickup adapter should expose no inventory events");
 }
 
 void TestMissingDisabledAndOutOfRangeDropsMapThroughPickupResult()
@@ -528,6 +572,50 @@ void TestMissingDisabledAndOutOfRangeDropsMapThroughPickupResult()
 	ExpectInventoryState(missingResult.inventory, inventory, "missing drop pickup adapter should preserve inventory");
 	ExpectInventoryState(disabledResult.inventory, inventory, "disabled drop pickup adapter should preserve inventory");
 	ExpectInventoryState(farResult.inventory, inventory, "out-of-range drop pickup adapter should preserve inventory");
+	Expect(missingResult.inventoryEvents.events.size() == 1, "missing drop pickup adapter should expose not-ready event");
+	if (missingResult.inventoryEvents.events.size() == 1)
+		ExpectInventoryEvent(missingResult.inventoryEvents.events[0], iggy::InventoryEvent2DType::PickupNotReady, {}, iggy::ResourceId { "drop:missing" }, 0, "missing drop pickup adapter should preserve missing drop event");
+	Expect(disabledResult.inventoryEvents.events.size() == 1, "disabled drop pickup adapter should expose not-ready event");
+	if (disabledResult.inventoryEvents.events.size() == 1)
+		ExpectInventoryEvent(disabledResult.inventoryEvents.events[0], iggy::InventoryEvent2DType::PickupNotReady, {}, disabled.id, 0, "disabled drop pickup adapter should preserve disabled drop event");
+	Expect(farResult.inventoryEvents.events.size() == 1, "out-of-range drop pickup adapter should expose not-ready event");
+	if (farResult.inventoryEvents.events.size() == 1)
+		ExpectInventoryEvent(farResult.inventoryEvents.events[0], iggy::InventoryEvent2DType::PickupNotReady, {}, far.id, 0, "out-of-range drop pickup adapter should preserve far drop event");
+}
+
+void TestTransferFailureExposesInventoryFailureEvent()
+{
+	const iggy::InteractionTarget2D target = Target("target:invalid_drop", iggy::InteractionTarget2DKind::Pickup);
+	const iggy::LevelItemDrop2D invalidDrop = Drop("drop:invalid", "", 2);
+	iggy::LevelItemDrop2DRegistry drops;
+	drops.drops = { invalidDrop };
+	const iggy::runtime::RuntimeInventoryState inventory {
+		{},
+		drops,
+	};
+
+	const iggy::runtime::RuntimePlayerInputInteractionPickupFrameResult result =
+		iggy::runtime::RuntimePlayerInputInteractionPickupFrameStep {}.run(
+			Input(
+				InteractionInput(
+					PlayerInput(SessionWithPlayer(), { iggy::playerInteractIntent(target.id) }),
+					InteractionState(
+						Registry({ target }),
+						Catalog({ Entry("target:invalid_drop", { iggy::pickupItemInteractionEffect(target.id, invalidDrop.id) }) }))),
+				inventory));
+
+	Expect(result.pickup.status == iggy::runtime::RuntimePickupEffectFrameStatus::Failed, "invalid drop pickup adapter should report failed pickup frame");
+	Expect(result.pickup.failedCount == 1, "invalid drop pickup adapter should count failure");
+	ExpectInventoryState(result.inventory, inventory, "invalid drop pickup adapter should preserve failed inventory state");
+	Expect(result.inventoryEvents.events.size() == 1, "invalid drop pickup adapter should expose failure event");
+	if (result.inventoryEvents.events.size() == 1)
+		ExpectInventoryEvent(
+			result.inventoryEvents.events[0],
+			iggy::InventoryEvent2DType::InventoryAddFailed,
+			{},
+			{},
+			2,
+			"invalid drop pickup adapter should preserve inventory add failure event");
 }
 
 void TestMoveThenInteractCanMakePickupReachable()
@@ -554,6 +642,8 @@ void TestMoveThenInteractCanMakePickupReachable()
 	Expect(SameStacks(result.inventory.inventory.stacks, { Stack("item:after_move", 1) }), "move-then-pickup adapter should add moved-to item");
 	if (!result.pickup.entries.empty())
 		Expect(NearVec(result.pickup.entries[0].result.pickup.plan.actorPosition, { 1.0F, 0.0F }), "move-then-pickup adapter should evaluate pickup reach from post-move position");
+	Expect(result.inventoryEvents.events.size() == 3, "move-then-pickup adapter should expose pickup inventory events");
+	ExpectSuccessfulPickupInventoryEventsAt(result, 0, drop, "move-then-pickup adapter should preserve pickup events");
 }
 
 void TestExplicitWorldOverloadCanAffectMovementReachAndPickup()
@@ -582,6 +672,8 @@ void TestExplicitWorldOverloadCanAffectMovementReachAndPickup()
 	Expect(NearVec(result.session.player.position, { 1.0F, 0.0F }), "explicit-world pickup adapter should preserve movement override result");
 	Expect(result.pickup.status == iggy::runtime::RuntimePickupEffectFrameStatus::PickedUp, "explicit-world pickup adapter should pick up after movement override");
 	Expect(SameStacks(result.inventory.inventory.stacks, { Stack("item:explicit", 1) }), "explicit-world pickup adapter should add explicit-world item");
+	Expect(result.inventoryEvents.events.size() == 3, "explicit-world pickup adapter should expose pickup inventory events");
+	ExpectSuccessfulPickupInventoryEventsAt(result, 0, drop, "explicit-world pickup adapter should preserve pickup events");
 }
 
 void TestOriginalInputsAreNotMutated()
@@ -622,6 +714,7 @@ int main()
 	TestContextBlockedInteractDoesNotMutateEitherState();
 	TestQueueRejectedMappedInteractDoesNotConsumePickup();
 	TestMissingDisabledAndOutOfRangeDropsMapThroughPickupResult();
+	TestTransferFailureExposesInventoryFailureEvent();
 	TestMoveThenInteractCanMakePickupReachable();
 	TestExplicitWorldOverloadCanAffectMovementReachAndPickup();
 	TestOriginalInputsAreNotMutated();

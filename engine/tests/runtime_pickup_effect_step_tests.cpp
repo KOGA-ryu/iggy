@@ -125,6 +125,48 @@ void ExpectInventoryState(
 	Expect(SameDrops(actual.drops.drops, expected.drops.drops), message);
 }
 
+void ExpectNoEvents(const iggy::runtime::RuntimePickupEffectResult &result, const char *message)
+{
+	Expect(result.events.events.empty(), message);
+}
+
+void ExpectEvent(
+	const iggy::InventoryEvent2D &event,
+	iggy::InventoryEvent2DType type,
+	const iggy::ResourceId &itemId,
+	const iggy::ResourceId &dropId,
+	std::uint32_t count,
+	const char *message)
+{
+	Expect(event.type == type, message);
+	Expect(event.itemId == itemId, message);
+	Expect(event.dropId == dropId, message);
+	Expect(event.count == count, message);
+}
+
+void ExpectPickupNotReadyEvent(
+	const iggy::runtime::RuntimePickupEffectResult &result,
+	const iggy::ResourceId &dropId,
+	const char *message)
+{
+	Expect(result.events.events.size() == 1, message);
+	if (result.events.events.size() == 1)
+		ExpectEvent(result.events.events[0], iggy::InventoryEvent2DType::PickupNotReady, {}, dropId, 0, message);
+}
+
+void ExpectSuccessfulPickupEvents(
+	const iggy::runtime::RuntimePickupEffectResult &result,
+	const iggy::LevelItemDrop2D &drop,
+	const char *message)
+{
+	Expect(result.events.events.size() == 3, message);
+	if (result.events.events.size() == 3) {
+		ExpectEvent(result.events.events[0], iggy::InventoryEvent2DType::ItemAdded, drop.itemId, {}, drop.count, message);
+		ExpectEvent(result.events.events[1], iggy::InventoryEvent2DType::DropConsumed, {}, drop.id, 0, message);
+		ExpectEvent(result.events.events[2], iggy::InventoryEvent2DType::ItemPickedUp, drop.itemId, drop.id, drop.count, message);
+	}
+}
+
 void TestNonPickupEffectReturnsNotPickupEffectWithoutMutation()
 {
 	const iggy::runtime::RuntimeInventoryState inventory = InventoryState({}, { Drop("drop:potion") });
@@ -139,6 +181,7 @@ void TestNonPickupEffectReturnsNotPickupEffectWithoutMutation()
 	Expect(!result.changed, "non-pickup effect should not mark changed");
 	ExpectInventoryState(result.inventory, inventory, "non-pickup effect should preserve inventory state");
 	Expect(result.pickup.status == iggy::runtime::RuntimePickupStatus::PickupNotReady, "non-pickup effect should not run pickup");
+	ExpectNoEvents(result, "non-pickup effect should not record inventory events");
 }
 
 void TestInvalidPickupEffectReturnsInvalidEffectWithoutPickup()
@@ -155,6 +198,7 @@ void TestInvalidPickupEffectReturnsInvalidEffectWithoutPickup()
 	Expect(!result.changed, "invalid pickup effect should not mark changed");
 	ExpectInventoryState(result.inventory, inventory, "invalid pickup effect should preserve inventory state");
 	Expect(result.pickup.status == iggy::runtime::RuntimePickupStatus::PickupNotReady, "invalid pickup effect should not run pickup");
+	ExpectNoEvents(result, "invalid pickup effect should not record inventory events");
 }
 
 void TestMissingPlayerMapsToMissingPlayer()
@@ -173,6 +217,7 @@ void TestMissingPlayerMapsToMissingPlayer()
 	Expect(result.pickup.status == iggy::runtime::RuntimePickupStatus::MissingPlayer, "missing-player pickup effect should preserve pickup status");
 	Expect(!result.changed, "missing-player pickup effect should not mark changed");
 	ExpectInventoryState(result.inventory, inventory, "missing-player pickup effect should preserve inventory state");
+	ExpectNoEvents(result, "missing-player pickup effect should preserve empty pickup events");
 }
 
 void TestNotReadyDropsMapToPickupNotReady()
@@ -209,6 +254,9 @@ void TestNotReadyDropsMapToPickupNotReady()
 	ExpectInventoryState(missingResult.inventory, missingInventory, "missing drop pickup effect should preserve inventory");
 	ExpectInventoryState(disabledResult.inventory, disabledInventory, "disabled drop pickup effect should preserve inventory");
 	ExpectInventoryState(outOfRangeResult.inventory, outOfRangeInventory, "out-of-range pickup effect should preserve inventory");
+	ExpectPickupNotReadyEvent(missingResult, iggy::ResourceId { "drop:missing" }, "missing drop pickup effect should record PickupNotReady event");
+	ExpectPickupNotReadyEvent(disabledResult, iggy::ResourceId { "drop:disabled" }, "disabled drop pickup effect should record PickupNotReady event");
+	ExpectPickupNotReadyEvent(outOfRangeResult, iggy::ResourceId { "drop:far" }, "out-of-range pickup effect should record PickupNotReady event");
 }
 
 void TestReadyPickupTransfersItemAndDisablesDrop()
@@ -232,6 +280,7 @@ void TestReadyPickupTransfersItemAndDisablesDrop()
 		disabled.enabled = false;
 		Expect(SameDrop(result.inventory.drops.drops[0], disabled), "ready pickup effect should disable drop");
 	}
+	ExpectSuccessfulPickupEvents(result, drop, "ready pickup effect should propagate pickup inventory events");
 }
 
 void TestReadyPickupExistingStackIncrementsAndRemoveModeRemovesDrop()
@@ -255,6 +304,7 @@ void TestReadyPickupExistingStackIncrementsAndRemoveModeRemovesDrop()
 	Expect(result.inventory.drops.drops.size() == 1, "remove mode pickup effect should remove consumed drop");
 	if (result.inventory.drops.drops.size() == 1)
 		Expect(SameDrop(result.inventory.drops.drops[0], other), "remove mode pickup effect should preserve remaining drop");
+	ExpectSuccessfulPickupEvents(result, drop, "remove mode pickup effect should propagate pickup inventory events");
 }
 
 void TestTransferFailedPreservesDiagnostics()
@@ -278,6 +328,15 @@ void TestTransferFailedPreservesDiagnostics()
 	Expect(result.pickup.transfer.status == iggy::PickupTransfer2DStatus::InventoryAddFailed, "invalid ready drop pickup effect should preserve transfer diagnostics");
 	Expect(!result.changed, "invalid ready drop pickup effect should not mark changed");
 	ExpectInventoryState(result.inventory, inventory, "invalid ready drop pickup effect should preserve returned inventory state");
+	Expect(result.events.events.size() == 1, "invalid ready drop pickup effect should preserve transfer failure event");
+	if (result.events.events.size() == 1)
+		ExpectEvent(
+			result.events.events[0],
+			iggy::InventoryEvent2DType::InventoryAddFailed,
+			{},
+			{},
+			2,
+			"invalid ready drop pickup effect should record InventoryAddFailed event");
 }
 
 void TestOriginalInputsAreNotMutated()

@@ -11,6 +11,7 @@
 #include "runtime/RuntimeGameplayState.hpp"
 #include "runtime/RuntimePickupStep.hpp"
 #include "runtime/RuntimePlayerCommandExecutionStep.hpp"
+#include "scene/inventory/InventoryEvent2D.hpp"
 #include "scene/interaction/InteractionReach2D.hpp"
 #include "scene/player/PlayerInputIntent2D.hpp"
 #include "scene/player/PlayerInputIntentGate2D.hpp"
@@ -43,6 +44,7 @@ struct RuntimeGameplayFrameRunnerTick {
 struct RuntimeGameplayFrameRunnerResult {
 	RuntimeGameplayState finalState;
 	std::vector<RuntimeGameplayFrameRunnerTick> ticks;
+	InventoryEventRecorder2D inventoryEvents;
 };
 
 class RuntimeGameplayFrameRunner {

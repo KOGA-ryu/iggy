@@ -42,6 +42,7 @@ RuntimePickupEffectResult RuntimePickupEffectStep::apply(
 	result.status = StatusForPickup(result.pickup.status);
 	result.inventory = result.pickup.inventory;
 	result.changed = result.pickup.status == RuntimePickupStatus::PickedUp;
+	result.events = result.pickup.events;
 	return result;
 }
 

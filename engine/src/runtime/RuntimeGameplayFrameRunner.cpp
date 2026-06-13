@@ -25,11 +25,19 @@ RuntimeGameplayFrameInput FrameInputFrom(
 	return input;
 }
 
+void AppendInventoryEvents(InventoryEventRecorder2D &events, const InventoryEventRecorder2D &frameEvents)
+{
+	for (const InventoryEvent2D &event : frameEvents.events) {
+		recordInventoryEvent(events, event);
+	}
+}
+
 void AppendTick(RuntimeGameplayFrameRunnerResult &result, RuntimeGameplayFrameResult frameResult)
 {
 	RuntimeGameplayFrameRunnerTick tick;
 	tick.frame = frameResult;
 	tick.report = RuntimeGameplayFrameReporter {}.report(frameResult);
+	AppendInventoryEvents(result.inventoryEvents, frameResult.inventoryEvents);
 	result.finalState = frameResult.state;
 	result.ticks.push_back(std::move(tick));
 }

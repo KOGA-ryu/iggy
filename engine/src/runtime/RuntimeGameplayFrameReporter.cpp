@@ -7,10 +7,33 @@ bool RuntimeGameplayFrameReport::hasEvents() const
 	return !events.empty();
 }
 
+namespace {
+
+void CountInventoryEvents(RuntimeGameplayFrameReport &report)
+{
+	report.inventoryEventCount = report.inventoryEvents.events.size();
+	for (const InventoryEvent2D &event : report.inventoryEvents.events) {
+		if (event.type == InventoryEvent2DType::ItemAdded) {
+			++report.itemAddedEventCount;
+		} else if (event.type == InventoryEvent2DType::ItemPickedUp) {
+			++report.itemPickedUpEventCount;
+		} else if (event.type == InventoryEvent2DType::DropConsumed) {
+			++report.dropConsumedEventCount;
+		} else if (event.type == InventoryEvent2DType::PickupNotReady) {
+			++report.pickupNotReadyEventCount;
+		} else if (event.type == InventoryEvent2DType::InventoryAddFailed) {
+			++report.inventoryAddFailedEventCount;
+		}
+	}
+}
+
+} // namespace
+
 RuntimeGameplayFrameReport RuntimeGameplayFrameReporter::report(const RuntimeGameplayFrameResult &result) const
 {
 	RuntimeGameplayFrameReport report;
 	report.input = result.report;
+	report.inventoryEvents = result.inventoryEvents;
 	report.acceptedCommandCount = result.report.acceptedCommandCount;
 	report.blockedIntentCount = result.report.blockedIntentCount;
 	report.rejectedIntentCount = result.report.rejectedIntentCount;
@@ -20,6 +43,7 @@ RuntimeGameplayFrameReport RuntimeGameplayFrameReporter::report(const RuntimeGam
 	report.pickupFailedCount = result.report.pickupFailedCount;
 	report.interactionChanged = result.report.interactionMutated;
 	report.inventoryChanged = result.report.inventoryChanged;
+	CountInventoryEvents(report);
 
 	if (report.acceptedCommandCount > 0)
 		report.events.push_back(RuntimeGameplayFrameEvent::PlayerCommandAccepted);
@@ -43,6 +67,8 @@ RuntimeGameplayFrameReport RuntimeGameplayFrameReporter::report(const RuntimeGam
 		report.events.push_back(RuntimeGameplayFrameEvent::PickupNotReady);
 	if (report.pickupFailedCount > 0)
 		report.events.push_back(RuntimeGameplayFrameEvent::PickupFailed);
+	if (report.inventoryEventCount > 0)
+		report.events.push_back(RuntimeGameplayFrameEvent::InventoryEventRecorded);
 
 	return report;
 }

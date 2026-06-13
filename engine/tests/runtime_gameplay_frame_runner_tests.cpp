@@ -207,6 +207,20 @@ void ExpectTargetEnabled(
 		Expect(target->enabled == enabled, message);
 }
 
+void ExpectInventoryEvent(
+	const iggy::InventoryEvent2D &event,
+	iggy::InventoryEvent2DType type,
+	const iggy::ResourceId &itemId,
+	const iggy::ResourceId &dropId,
+	std::uint32_t count,
+	const char *message)
+{
+	Expect(event.type == type, message);
+	Expect(event.itemId == itemId, message);
+	Expect(event.dropId == dropId, message);
+	Expect(event.count == count, message);
+}
+
 void TestEmptyFramesReturnInitialStateUnchanged()
 {
 	const iggy::runtime::RuntimeGameplayState initial =
@@ -221,6 +235,7 @@ void TestEmptyFramesReturnInitialStateUnchanged()
 	Expect(result.finalState.commandQueue.frames.size() == 1, "empty gameplay frame runner should preserve command queue");
 	Expect(result.finalState.interaction.targets.targets().empty(), "empty gameplay frame runner should preserve interaction state");
 	Expect(result.finalState.inventory.inventory.stacks.empty(), "empty gameplay frame runner should preserve inventory state");
+	Expect(result.inventoryEvents.events.empty(), "empty gameplay frame runner should aggregate no inventory events");
 }
 
 void TestOneFrameMatchesGameplayFrameStepBehavior()
@@ -307,6 +322,13 @@ void TestPickupCarriesIntoLaterFrames()
 	Expect(result.ticks[1].report.pickupNotReadyCount == 1, "second pickup frame should see carried disabled drop");
 	Expect(SameStacks(result.finalState.inventory.inventory.stacks, { Stack("item:potion", 2) }), "pickup runner should carry inventory forward");
 	Expect(result.finalState.inventory.drops.drops.size() == 1 && !result.finalState.inventory.drops.drops[0].enabled, "pickup runner should carry consumed drop forward");
+	Expect(result.inventoryEvents.events.size() == 4, "pickup runner should aggregate pickup and later not-ready inventory events");
+	if (result.inventoryEvents.events.size() == 4) {
+		ExpectInventoryEvent(result.inventoryEvents.events[0], iggy::InventoryEvent2DType::ItemAdded, Id("item:potion"), {}, 2, "pickup runner should aggregate item-added event first");
+		ExpectInventoryEvent(result.inventoryEvents.events[1], iggy::InventoryEvent2DType::DropConsumed, {}, drop.id, 0, "pickup runner should aggregate drop-consumed event second");
+		ExpectInventoryEvent(result.inventoryEvents.events[2], iggy::InventoryEvent2DType::ItemPickedUp, Id("item:potion"), drop.id, 2, "pickup runner should aggregate item-picked-up event third");
+		ExpectInventoryEvent(result.inventoryEvents.events[3], iggy::InventoryEvent2DType::PickupNotReady, {}, drop.id, 0, "pickup runner should aggregate later pickup-not-ready event");
+	}
 }
 
 void TestReportsCollectedPerFrameWithExpectedFacts()

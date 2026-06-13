@@ -144,6 +144,39 @@ void ExpectInventoryState(
 	Expect(SameDrops(actual.drops.drops, expected.drops.drops), message);
 }
 
+void ExpectNoEvents(const iggy::runtime::RuntimePickupEffectFrameResult &result, const char *message)
+{
+	Expect(result.events.events.empty(), message);
+}
+
+void ExpectEvent(
+	const iggy::InventoryEvent2D &event,
+	iggy::InventoryEvent2DType type,
+	const iggy::ResourceId &itemId,
+	const iggy::ResourceId &dropId,
+	std::uint32_t count,
+	const char *message)
+{
+	Expect(event.type == type, message);
+	Expect(event.itemId == itemId, message);
+	Expect(event.dropId == dropId, message);
+	Expect(event.count == count, message);
+}
+
+void ExpectSuccessfulPickupEventsAt(
+	const iggy::runtime::RuntimePickupEffectFrameResult &result,
+	std::size_t offset,
+	const iggy::LevelItemDrop2D &drop,
+	const char *message)
+{
+	Expect(result.events.events.size() >= offset + 3, message);
+	if (result.events.events.size() >= offset + 3) {
+		ExpectEvent(result.events.events[offset], iggy::InventoryEvent2DType::ItemAdded, drop.itemId, {}, drop.count, message);
+		ExpectEvent(result.events.events[offset + 1], iggy::InventoryEvent2DType::DropConsumed, {}, drop.id, 0, message);
+		ExpectEvent(result.events.events[offset + 2], iggy::InventoryEvent2DType::ItemPickedUp, drop.itemId, drop.id, drop.count, message);
+	}
+}
+
 void TestNoInteractionEntriesOrNoPickupEffectsReturnsNoPickupEffects()
 {
 	const iggy::runtime::RuntimeInventoryState inventory = InventoryState({}, { Drop("drop:potion") });
@@ -163,9 +196,11 @@ void TestNoInteractionEntriesOrNoPickupEffectsReturnsNoPickupEffects()
 	Expect(emptyResult.entries.empty(), "empty pickup effect frame should produce no entries");
 	Expect(!emptyResult.changed, "empty pickup effect frame should not change");
 	ExpectInventoryState(emptyResult.inventory, inventory, "empty pickup effect frame should preserve inventory");
+	ExpectNoEvents(emptyResult, "empty pickup effect frame should not record inventory events");
 	Expect(nonPickupResult.status == iggy::runtime::RuntimePickupEffectFrameStatus::NoPickupEffects, "non-pickup effect frame should have no pickup effects");
 	Expect(nonPickupResult.entries.empty(), "non-pickup effect frame should not append entries");
 	ExpectInventoryState(nonPickupResult.inventory, inventory, "non-pickup effect frame should preserve inventory");
+	ExpectNoEvents(nonPickupResult, "non-pickup effect frame should not record inventory events");
 }
 
 void TestSinglePickupItemPicksUpAndUpdatesInventory()
@@ -199,6 +234,8 @@ void TestSinglePickupItemPicksUpAndUpdatesInventory()
 		disabled.enabled = false;
 		Expect(SameDrop(result.inventory.drops.drops[0], disabled), "single pickup effect should disable drop");
 	}
+	Expect(result.events.events.size() == 3, "single pickup effect should aggregate pickup events");
+	ExpectSuccessfulPickupEventsAt(result, 0, drop, "single pickup effect should preserve pickup event order");
 }
 
 void TestMultiplePickupEffectsCarryInventoryForwardInOrder()
@@ -237,6 +274,9 @@ void TestMultiplePickupEffectsCarryInventoryForwardInOrder()
 		Expect(!result.inventory.drops.drops[0].enabled, "first pickup effect should disable first drop");
 		Expect(!result.inventory.drops.drops[1].enabled, "second pickup effect should disable second drop");
 	}
+	Expect(result.events.events.size() == 6, "multiple pickup effects should aggregate all pickup events");
+	ExpectSuccessfulPickupEventsAt(result, 0, potion, "multiple pickup effects should preserve first pickup event order");
+	ExpectSuccessfulPickupEventsAt(result, 3, key, "multiple pickup effects should preserve second pickup event order");
 }
 
 void TestNotReadyPickupEffectsContinueToLaterPickups()
@@ -265,6 +305,12 @@ void TestNotReadyPickupEffectsContinueToLaterPickups()
 	Expect(result.notReadyCount == 2, "not-ready pickup effects should count not-ready entries");
 	Expect(result.entries.size() == 3, "not-ready pickup effects should preserve all pickup entries");
 	Expect(SameStacks(result.inventory.inventory.stacks, { Stack("item:ready", 2) }), "not-ready pickup effects should only add ready item");
+	Expect(result.events.events.size() == 5, "not-ready pickup effects should aggregate not-ready and later pickup events");
+	if (result.events.events.size() >= 2) {
+		ExpectEvent(result.events.events[0], iggy::InventoryEvent2DType::PickupNotReady, {}, disabled.id, 0, "disabled pickup should record not-ready event first");
+		ExpectEvent(result.events.events[1], iggy::InventoryEvent2DType::PickupNotReady, {}, far.id, 0, "out-of-range pickup should record not-ready event second");
+	}
+	ExpectSuccessfulPickupEventsAt(result, 2, ready, "later ready pickup should append success events after not-ready events");
 }
 
 void TestMissingPlayerProducesNotReadyEntriesWithoutMutation()
@@ -290,6 +336,7 @@ void TestMissingPlayerProducesNotReadyEntriesWithoutMutation()
 		Expect(result.entries[0].result.status == iggy::runtime::RuntimePickupEffectStatus::MissingPlayer, "missing player pickup entry should preserve MissingPlayer");
 	Expect(!result.changed, "missing player pickup effect frame should not change");
 	ExpectInventoryState(result.inventory, inventory, "missing player pickup effect frame should preserve inventory");
+	ExpectNoEvents(result, "missing player pickup effect frame should preserve empty pickup events");
 }
 
 void TestTransferFailureStopsLaterPickups()
@@ -323,6 +370,15 @@ void TestTransferFailureStopsLaterPickups()
 	}
 	Expect(!result.changed, "transfer failure before mutation should not mark changed");
 	ExpectInventoryState(result.inventory, inventory, "transfer failure should preserve returned inventory state");
+	Expect(result.events.events.size() == 1, "transfer failure should aggregate failure event and stop later events");
+	if (result.events.events.size() == 1)
+		ExpectEvent(
+			result.events.events[0],
+			iggy::InventoryEvent2DType::InventoryAddFailed,
+			{},
+			{},
+			2,
+			"transfer failure should preserve inventory add failure event");
 }
 
 void TestPlanApplicationOverloadUsesInteractionIndexZero()
@@ -342,6 +398,8 @@ void TestPlanApplicationOverloadUsesInteractionIndexZero()
 		Expect(result.entries[0].interactionIndex == 0, "plan application pickup effect should use interaction index zero");
 		Expect(result.entries[0].effectIndex == 5, "plan application pickup effect should preserve effect index");
 	}
+	Expect(result.events.events.size() == 3, "plan application pickup effect should aggregate events");
+	ExpectSuccessfulPickupEventsAt(result, 0, drop, "plan application pickup effect should preserve pickup events");
 }
 
 void TestOriginalInputsAreNotMutated()

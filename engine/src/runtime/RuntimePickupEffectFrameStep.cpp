@@ -14,6 +14,14 @@ bool FailedPickupResult(iggy::runtime::RuntimePickupEffectStatus status)
 		|| status == iggy::runtime::RuntimePickupEffectStatus::InvalidEffect;
 }
 
+void AppendEvents(
+	iggy::InventoryEventRecorder2D &destination,
+	const iggy::InventoryEventRecorder2D &source)
+{
+	for (const iggy::InventoryEvent2D &event : source.events)
+		iggy::recordInventoryEvent(destination, event);
+}
+
 void FinalizeStatus(iggy::runtime::RuntimePickupEffectFrameResult &result)
 {
 	if (result.failedCount > 0) {
@@ -47,6 +55,7 @@ bool ApplyPickupEffect(
 	entry.effectIndex = effectEntry.effectIndex;
 	entry.result = iggy::runtime::RuntimePickupEffectStep {}.apply(session, current, effectEntry.result.effect, config);
 	result.entries.push_back(entry);
+	AppendEvents(result.events, entry.result.events);
 
 	current = entry.result.inventory;
 	result.inventory = current;

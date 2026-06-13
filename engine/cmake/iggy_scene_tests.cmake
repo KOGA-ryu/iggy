@@ -18,6 +18,7 @@ iggy_add_test(interaction_target_toggle_2d_tests tests/interaction_target_toggle
 iggy_add_test(inventory_add_item_2d_tests tests/inventory_add_item_2d_tests.cpp)
 iggy_add_test(inventory_event_2d_tests tests/inventory_event_2d_tests.cpp)
 iggy_add_test(inventory_state_2d_tests tests/inventory_state_2d_tests.cpp)
+iggy_add_test(item_definition_2d_tests tests/item_definition_2d_tests.cpp)
 iggy_add_test(level_item_drop_consume_2d_tests tests/level_item_drop_consume_2d_tests.cpp)
 iggy_add_test(level_item_drop_2d_tests tests/level_item_drop_2d_tests.cpp)
 iggy_add_test(pickup_plan_2d_tests tests/pickup_plan_2d_tests.cpp)

@@ -20,6 +20,7 @@ struct RuntimePlayerInputInteractionPickupFrameResult {
 	RuntimeCommandQueueState queue;
 	RuntimeInteractionState interactionState;
 	RuntimeInventoryState inventory;
+	InventoryEventRecorder2D inventoryEvents;
 };
 
 class RuntimePlayerInputInteractionPickupFrameStep {

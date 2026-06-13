@@ -12,6 +12,7 @@
 #include "runtime/RuntimePlayerInputInteractionPickupFrameReport.hpp"
 #include "runtime/RuntimePlayerInputInteractionPickupFrameReporter.hpp"
 #include "runtime/RuntimePlayerInputInteractionPickupFrameStep.hpp"
+#include "scene/inventory/InventoryEvent2D.hpp"
 #include "scene/interaction/InteractionReach2D.hpp"
 #include "scene/player/PlayerInputIntent2D.hpp"
 #include "scene/player/PlayerInputIntentGate2D.hpp"
@@ -36,6 +37,7 @@ struct RuntimeGameplayFrameResult {
 	RuntimeGameplayState state;
 	RuntimePlayerInputInteractionPickupFrameResult frame;
 	RuntimePlayerInputInteractionPickupFrameReport report;
+	InventoryEventRecorder2D inventoryEvents;
 };
 
 class RuntimeGameplayFrameStep {

@@ -27,6 +27,7 @@ RuntimeGameplayFrameResult ResultFrom(const RuntimePlayerInputInteractionPickupF
 	RuntimeGameplayFrameResult result;
 	result.frame = frame;
 	result.report = RuntimePlayerInputInteractionPickupFrameReporter {}.report(frame);
+	result.inventoryEvents = frame.inventoryEvents;
 	result.state = {
 		frame.session,
 		frame.queue,
