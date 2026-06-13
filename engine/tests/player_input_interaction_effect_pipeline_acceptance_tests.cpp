@@ -128,6 +128,7 @@ bool SameEffect(const iggy::InteractionEffect2D &actual, const iggy::Interaction
 	return actual.type == expected.type
 		&& actual.targetId == expected.targetId
 		&& actual.eventId == expected.eventId
+		&& actual.dropId == expected.dropId
 		&& actual.text == expected.text
 		&& actual.enabledValue == expected.enabledValue;
 }

@@ -34,13 +34,15 @@ InteractionEffectApplyResult InteractionEffectApplier2D::apply(
 		return result;
 	}
 
-	if (effect.type == InteractionEffect2DType::InspectText || effect.type == InteractionEffect2DType::EmitEvent) {
+	if (effect.type == InteractionEffect2DType::InspectText
+		|| effect.type == InteractionEffect2DType::EmitEvent
+		|| effect.type == InteractionEffect2DType::PickupItem) {
 		result.status = InteractionEffectApplyStatus::Deferred;
 		if (effect.type == InteractionEffect2DType::InspectText) {
 			recordInteractionEvent(
 				result.events,
 				inspectTextRequestedInteractionEvent(effect.targetId, effect.text));
-		} else {
+		} else if (effect.type == InteractionEffect2DType::EmitEvent) {
 			recordInteractionEvent(
 				result.events,
 				interactionEventEmitted(effect.targetId, effect.eventId));

@@ -36,6 +36,15 @@ InteractionEffect2D emitInteractionEventEffect(ResourceId targetId, ResourceId e
 	return effect;
 }
 
+InteractionEffect2D pickupItemInteractionEffect(ResourceId targetId, ResourceId dropId)
+{
+	InteractionEffect2D effect;
+	effect.type = InteractionEffect2DType::PickupItem;
+	effect.targetId = std::move(targetId);
+	effect.dropId = std::move(dropId);
+	return effect;
+}
+
 InteractionEffect2DStatus validate(const InteractionEffect2D &effect)
 {
 	if (effect.type == InteractionEffect2DType::InspectText && effect.text.empty())
@@ -44,6 +53,8 @@ InteractionEffect2DStatus validate(const InteractionEffect2D &effect)
 		return InteractionEffect2DStatus::MissingTarget;
 	if (effect.type == InteractionEffect2DType::EmitEvent && effect.eventId.empty())
 		return InteractionEffect2DStatus::MissingEvent;
+	if (effect.type == InteractionEffect2DType::PickupItem && effect.dropId.empty())
+		return InteractionEffect2DStatus::MissingDropId;
 	return InteractionEffect2DStatus::Valid;
 }
 
