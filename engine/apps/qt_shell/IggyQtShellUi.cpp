@@ -23,11 +23,16 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 {
 	return QString(R"(
 		QWidget {
-			background: %1;
 			color: %2;
 			font-family: "%3", "Inter", sans-serif;
 			font-size: %4px;
 			font-weight: 400;
+		}
+		QMainWindow, QWidget#shellRoot, QWidget#settingsWindow {
+			background: %1;
+		}
+		QLabel {
+			background: transparent;
 		}
 		QFrame#topChrome {
 			background: %5;
@@ -44,7 +49,6 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 		QFrame#leftPanel, QFrame#rightPanel {
 			background: %5;
 			border-left: 1px solid %7;
-			border-right: 1px solid %6;
 		}
 		QFrame#bottomPanel {
 			background: %1;
@@ -54,19 +58,19 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 			background: %8;
 		}
 		QFrame#canvasStage {
-			background: %1;
-			border: 1px solid %6;
-			border-radius: 7px;
+			background: %8;
+			border: none;
+			border-radius: 0;
 		}
 		QFrame#canvasWell {
-			background: %14;
-			border: 1px solid %7;
-			border-radius: 5px;
+			background: %8;
+			border: none;
+			border-radius: 0;
 		}
 		QFrame#inspectorCard, QWidget#settingsRow {
-			background: %14;
-			border: 1px solid %7;
-			border-radius: 6px;
+			background: transparent;
+			border: none;
+			border-radius: 0;
 		}
 		QFrame#settingsSidebar {
 			background: %5;
@@ -76,9 +80,9 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 			background: %8;
 		}
 		QFrame#floatingPalette {
-			background: %14;
-			border: 1px solid %6;
-			border-radius: 6px;
+			background: transparent;
+			border: none;
+			border-radius: 0;
 		}
 		QFrame#paletteGrip {
 			background: %12;
@@ -106,13 +110,13 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 			font-size: %16px;
 		}
 		QLabel#badgeLabel {
-			background: %12;
-			border: 1px solid %13;
-			border-radius: 9px;
-			color: %2;
+			background: transparent;
+			border: none;
+			border-radius: 0;
+			color: %10;
 			font-size: %16px;
 			font-weight: 600;
-			padding: 2px 8px;
+			padding: 0;
 		}
 		QPushButton {
 			background: transparent;
@@ -126,11 +130,11 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 		}
 		QPushButton:hover {
 			background: %11;
-			border-color: %6;
+			border-color: transparent;
 		}
 		QPushButton:checked, QPushButton:pressed {
 			background: %12;
-			border-color: %13;
+			border-color: transparent;
 			font-weight: 600;
 		}
 		QPushButton:disabled {
@@ -142,11 +146,40 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 			padding-right: 9px;
 		}
 		QPushButton#panelToggleButton {
-			min-width: 28px;
-			max-width: 28px;
+			min-width: 30px;
+			max-width: 30px;
+			min-height: 30px;
+			max-height: 30px;
 			text-align: center;
-			padding-left: 0;
-			padding-right: 0;
+			padding: 0;
+		}
+		QPushButton#panelToggleButton[panelState="visible"] {
+			background: %12;
+		}
+		QPushButton#panelToggleButton[panelState="collapsed"] {
+			background: transparent;
+		}
+		QFrame#topChrome QPushButton#trafficClose,
+		QFrame#topChrome QPushButton#trafficMinimize,
+		QFrame#topChrome QPushButton#trafficZoom {
+			min-width: 12px;
+			max-width: 12px;
+			min-height: 12px;
+			max-height: 12px;
+			border-radius: 7px;
+			padding: 0;
+		}
+		QFrame#topChrome QPushButton#trafficClose {
+			background: %17;
+			border: 1px solid %18;
+		}
+		QFrame#topChrome QPushButton#trafficMinimize {
+			background: %19;
+			border: 1px solid %20;
+		}
+		QFrame#topChrome QPushButton#trafficZoom {
+			background: %21;
+			border: 1px solid %22;
 		}
 		QPushButton#railButton {
 			min-width: 32px;
@@ -158,15 +191,18 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 			font-weight: 700;
 		}
 		QPushButton#toolChip {
-			background: %14;
-			border-color: %7;
+			background: transparent;
+			border-color: transparent;
 			padding-left: 10px;
 			padding-right: 10px;
+		}
+		QPushButton#toolChip:checked {
+			background: %12;
 		}
 		QLineEdit, QComboBox, QListWidget, QSpinBox, QFontComboBox {
 			background: %14;
 			color: %2;
-			border: 1px solid %6;
+			border: 1px solid %7;
 			border-radius: 5px;
 			padding: 4px 6px;
 		}
@@ -207,26 +243,6 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 		QMenu::item:selected {
 			background: %11;
 		}
-		QPushButton#trafficClose, QPushButton#trafficMinimize, QPushButton#trafficZoom {
-			min-width: 12px;
-			max-width: 12px;
-			min-height: 12px;
-			max-height: 12px;
-			border-radius: 6px;
-			padding: 0;
-		}
-		QPushButton#trafficClose {
-			background: #ff5f57;
-			border-color: #cc4c46;
-		}
-		QPushButton#trafficMinimize {
-			background: #ffbd2e;
-			border-color: #cc9725;
-		}
-		QPushButton#trafficZoom {
-			background: #28c840;
-			border-color: #20a033;
-		}
 	)")
 		.arg(toQString(theme.base))
 		.arg(toQString(theme.text))
@@ -243,7 +259,13 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 		.arg(toQString(theme.borderFocus))
 		.arg(toQString(theme.control))
 		.arg(toQString(theme.rowSelected))
-		.arg(theme.fontSizeXs);
+		.arg(theme.fontSizeXs)
+		.arg(toQString(theme.trafficClose))
+		.arg(toQString(theme.trafficCloseEdge))
+		.arg(toQString(theme.trafficMinimize))
+		.arg(toQString(theme.trafficMinimizeEdge))
+		.arg(toQString(theme.trafficZoom))
+		.arg(toQString(theme.trafficZoomEdge));
 }
 
 QString slotName(ui::UiShellSlot slot)

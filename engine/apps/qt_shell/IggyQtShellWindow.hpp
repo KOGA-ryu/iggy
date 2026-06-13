@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QMainWindow>
+#include <QPoint>
 #include <QString>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -13,19 +14,27 @@
 #include "scene/ui/UiSettingsState.hpp"
 #include "scene/ui/UiToolInventory.hpp"
 
+class QEvent;
+
 namespace iggy::qt_shell {
 
 class IggyQtShellWindow final : public QMainWindow {
 public:
 	IggyQtShellWindow();
 
+protected:
+	bool eventFilter(QObject *watched, QEvent *event) override;
+
 private:
 	void buildShell();
+	void buildSettingsWindow();
+	void rebuildSettingsWindowContent();
 	void refreshBody();
 	void refreshStatusBar();
 	void refreshAfterModelChange();
 	void rebuildModel();
 	void applyTheme();
+	void openSettingsWindow();
 
 	[[nodiscard]] QWidget *buildChrome();
 	[[nodiscard]] QWidget *buildBody();
@@ -60,11 +69,15 @@ private:
 	ui::UiFeatureContext context_;
 	ui::UiRuntimeWorkspaceModelInput input_;
 	ui::UiRuntimeWorkspaceModel model_;
-	bool showSettings_ = false;
 	QWidget *root_ = nullptr;
 	QVBoxLayout *rootLayout_ = nullptr;
 	QWidget *body_ = nullptr;
 	QWidget *statusBar_ = nullptr;
+	QWidget *settingsWindow_ = nullptr;
+	QWidget *settingsWindowContent_ = nullptr;
+	QWidget *chrome_ = nullptr;
+	bool draggingChrome_ = false;
+	QPoint chromeDragOffset_;
 };
 
 } // namespace iggy::qt_shell

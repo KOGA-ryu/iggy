@@ -122,6 +122,7 @@ RuntimePolicyPickupEffectStep
 RuntimePolicyPickupEffectFrameStep
 RuntimePlayerInputInteractionPickupFrameStep
 RuntimePlayerInputInteractionPickupFrameReporter
+RuntimePlayerInputInteractionPolicyPickupFrameStep
 ```
 
 Gameplay frame orchestration:
@@ -132,6 +133,12 @@ RuntimeGameplayState
        -> RuntimePlayerInputInteractionPickupFrameStep
        -> RuntimeGameplayFrameReporter
   -> RuntimeGameplayFrameRunner
+
+RuntimeGameplayState + ItemDefinition2DCatalog
+  -> RuntimePolicyGameplayFrameStep
+       -> RuntimePlayerInputInteractionPolicyPickupFrameStep
+       -> RuntimePolicyGameplayFrameReporter
+  -> RuntimePolicyGameplayFrameRunner
 ```
 
 UI models and actions:
@@ -342,6 +349,24 @@ InteractionEffectPlanApplyResult
 
 This is the catalog-aware pickup path. Item definition lookup, stack-cap enforcement, inventory add events, pickup events, and drop-consume events remain `scene/inventory` behavior. Runtime only sequences policy pickup effects across applied interaction effects.
 
+Policy player-input pickup variant:
+
+```text
+RuntimePlayerInputInteractionPolicyPickupFrameStep
+  -> RuntimePlayerInputInteractionEffectApplyFrameStep
+       -> gated player input
+       -> command queue / command ticks
+       -> interaction effect application
+  -> RuntimePolicyPickupEffectFrameStep
+       -> catalog-aware pickup effects
+  -> updated RuntimeSessionState
+  -> updated RuntimeCommandQueueState
+  -> updated RuntimeInteractionState
+  -> updated RuntimeInventoryState
+```
+
+This is the policy-aware replacement candidate for the simple `RuntimePlayerInputInteractionPickupFrameStep`. It still keeps item definitions as an explicit input and keeps interaction/inventory state outside `RuntimeSessionState`.
+
 Gameplay frame variant:
 
 ```text
@@ -355,6 +380,24 @@ RuntimeGameplayState
 ```
 
 `RuntimeGameplayState` groups session, command queue, interaction state, and inventory state for frame orchestration. It does not make interaction or inventory fields part of `RuntimeSessionState`, and it does not change the save snapshot boundary by itself.
+
+Policy gameplay frame variant:
+
+```text
+RuntimeGameplayState + ItemDefinition2DCatalog
+  -> RuntimePolicyGameplayFrameStep
+       -> RuntimePlayerInputInteractionPolicyPickupFrameStep
+            -> RuntimePlayerInputInteractionEffectApplyFrameStep
+            -> RuntimePolicyPickupEffectFrameStep
+       -> RuntimePolicyGameplayFrameReport
+  -> updated RuntimeGameplayState
+
+RuntimePolicyGameplayFrameRunner
+  -> bounded loop over RuntimePolicyGameplayFrameStep
+  -> accumulates InventoryEventRecorder2D
+```
+
+This is the catalog-aware gameplay frame lane. It should be used when pickup stack limits and item definition diagnostics matter. It does not remove the simple gameplay frame lane yet.
 
 ## Current Runtime Mutation Command Tick Order
 
@@ -405,6 +448,6 @@ Possible future slices:
 - save slot retention/overwrite policy if caller needs more than explicit slot store/list/delete calls
 - decide whether `RuntimeInteractionState` should remain a caller-owned sibling packet or become part of a broader session/presentation packet
 - decide whether `RuntimeGameplayState` is the long-term top-level runtime packet and how its interaction/inventory fields relate to authoritative save snapshots
-- decide whether policy pickup should replace or coexist with the simple pickup path
+- decide whether policy gameplay frames should replace or coexist with the simple gameplay frame lane
 
 Pause before any slice that makes runtime infer map changes or own cache rebuild policy.

@@ -59,11 +59,11 @@ Status labels:
    - purpose: decide whether `RuntimeGameplayState` is the long-term runtime packet for session + command queue + interaction + inventory, and which inventory/drop fields become saveable.
    - caution: gameplay frame steps now carry explicit interaction and inventory state, but `RuntimeSessionState` and existing save snapshots still do not own those fields.
 
-9. Policy pickup consolidation
+9. Policy gameplay lane consolidation
    - status: `review`
    - owner candidate: `scene/inventory` for policy semantics, `runtime` for orchestration
-   - purpose: decide whether catalog-aware policy pickup should replace the simple pickup path in gameplay-frame orchestration, or whether both lanes intentionally coexist.
-   - caution: do not hide item-definition lookup, stack-cap diagnostics, or inventory event ordering inside runtime.
+   - purpose: decide whether `RuntimePolicyGameplayFrameStep` / Runner should replace the simple gameplay frame lane, or whether both lanes intentionally coexist.
+   - caution: do not hide item-definition lookup, stack-cap diagnostics, or inventory event ordering inside runtime, and do not remove source compatibility without a migration slice.
 
 10. UI action integration policy
    - status: `review`
@@ -86,4 +86,5 @@ Pause before any slice that:
 - makes runtime define tile mutation semantics
 - makes runtime rebuild caches implicitly during ticks
 - adds dynamic collision bodies
+- removes the simple gameplay frame lane in favor of policy gameplay frames without a migration plan
 - introduces an entity registry/ECS

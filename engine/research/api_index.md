@@ -151,8 +151,10 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `RuntimePolicyPickupEffectStep`: applies one `PickupItem` effect through `RuntimePolicyPickupStep`.
 - `RuntimePolicyPickupEffectFrameStep`: scans applied interaction effects and applies policy pickup effects sequentially.
 - `RuntimePlayerInputInteractionPickupFrameStep`, `RuntimePlayerInputInteractionPickupFrameReporter`: gated input + interaction apply + pickup-effect orchestration and reporting.
+- `RuntimePlayerInputInteractionPolicyPickupFrameStep`: gated input + interaction apply + catalog-aware pickup-effect orchestration.
 - `RuntimeGameplayState`: top-level runtime gameplay packet carrying session, command queue, interaction state, and inventory state.
 - `RuntimeGameplayFrameStep`, `RuntimeGameplayFrameRunner`, `RuntimeGameplayFrameReporter`: one-frame and bounded gameplay orchestration over input, interaction, pickup, command ticking, and reports.
+- `RuntimePolicyGameplayFrameStep`, `RuntimePolicyGameplayFrameRunner`, `RuntimePolicyGameplayFrameReporter`: catalog-aware gameplay frame orchestration and reporting over policy pickup.
 - `RuntimeCollisionWorldProvider`: resolves explicit/session/empty collision world.
 - `RuntimeSessionCommandTick`: command step followed by session tick.
 - `RuntimeSessionCommandTickRunner`: bounded command-frame loop over command ticks.
@@ -172,3 +174,8 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `RuntimeSaveSlotListing`: lists local save slots and optional metadata.
 - `RuntimeSaveSlotDeletion`: deletes one resolved local save slot file.
 - `RuntimeSessionSaver`, `RuntimeSessionLoader`: compose session snapshots, archives, envelopes, file IO, and restore config.
+
+## `apps/qt_shell`
+
+- `IggyQtShellWindow`: Qt host shell window that projects scene/ui models into desktop chrome, activity rail, workspace, panels, tool belt, palette, settings, and status bar widgets.
+- `IggyQtShellUi` helpers: Qt-only style/theme projection and widget factories such as `makeChromeButton`, `makeRailButton`, and `makeSectionLabel`.

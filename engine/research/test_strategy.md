@@ -98,6 +98,7 @@ Proves:
 - pickup orchestration preserves explicit `RuntimeInventoryState` and delegates transfer semantics to scene/inventory
 - policy pickup orchestration preserves item-definition/stack-policy diagnostics and inventory events without reimplementing scene/inventory rules
 - gameplay frame orchestration carries session, command queue, interaction state, inventory state, reports, and inventory events forward without changing lower-level semantics
+- policy gameplay frame orchestration proves item-definition catalog input, policy pickup diagnostics, report counts, runner carry-forward, and event accumulation without changing the simple gameplay frame lane
 - tick index changes only where the tick step owns them
 - derived caches copied/preserved, not rebuilt implicitly
 

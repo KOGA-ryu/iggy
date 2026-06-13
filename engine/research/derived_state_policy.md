@@ -187,3 +187,5 @@ ItemDefinition2DCatalog + RuntimeInventoryState + PickupPlan2DResult
 `RuntimePolicyPickupStep`, `RuntimePolicyPickupEffectStep`, and `RuntimePolicyPickupEffectFrameStep` orchestrate that policy lane from runtime context. They still do not make item definitions, inventory/drop registries, or inventory events part of `RuntimeSessionState` by themselves.
 
 `RuntimeGameplayState` can group session, command queue, interaction state, and inventory state for frame orchestration. Treat it as a runtime packet, not a save snapshot contract. A future save/session slice must explicitly decide which interaction and inventory fields become authoritative persisted state.
+
+`RuntimePolicyGameplayFrameStep` and `RuntimePolicyGameplayFrameRunner` are catalog-aware runtime orchestration over `RuntimeGameplayState`. They can carry updated interaction and inventory state forward and accumulate transient inventory events, but they still do not make `ItemDefinition2DCatalog`, interaction state, inventory state, or item drops part of the current `RuntimeSessionSnapshot`.

@@ -4,14 +4,19 @@
 #include <QCheckBox>
 #include <QColor>
 #include <QComboBox>
+#include <QEvent>
 #include <QFont>
 #include <QFontComboBox>
 #include <QFrame>
 #include <QHBoxLayout>
+#include <QIcon>
 #include <QLineEdit>
-#include <QListWidget>
 #include <QMenu>
+#include <QMouseEvent>
+#include <QPainter>
+#include <QPixmap>
 #include <QPushButton>
+#include <QSize>
 #include <QSpinBox>
 #include <QSplitter>
 #include <QStackedWidget>
@@ -62,6 +67,36 @@ QString swatchStyle(const std::string &hex, const ui::UiThemeTokens &theme)
 		.arg(color, toQString(theme.borderMajor));
 }
 
+QPixmap panelToggleIcon(ui::UiShellSlot slot, const QColor &frame, const QColor &bar, qreal devicePixelRatio)
+{
+	QPixmap pixmap(qRound(16 * devicePixelRatio), qRound(14 * devicePixelRatio));
+	pixmap.setDevicePixelRatio(devicePixelRatio);
+	pixmap.fill(Qt::transparent);
+
+	QPainter painter(&pixmap);
+	painter.setRenderHint(QPainter::Antialiasing, false);
+	painter.setPen(frame);
+	painter.drawRect(0, 0, 15, 13);
+
+	QRect barRect;
+	switch (slot) {
+	case ui::UiShellSlot::Left:
+		barRect = QRect(1, 1, 5, 12);
+		break;
+	case ui::UiShellSlot::Right:
+		barRect = QRect(10, 1, 5, 12);
+		break;
+	case ui::UiShellSlot::Bottom:
+		barRect = QRect(2, 8, 12, 5);
+		break;
+	case ui::UiShellSlot::Main:
+		break;
+	}
+	if (!barRect.isNull())
+		painter.fillRect(barRect, bar);
+	return pixmap;
+}
+
 QPushButton *makeTrafficButton(const char *objectName, const QString &tooltip)
 {
 	auto *button = new QPushButton;
@@ -70,9 +105,9 @@ QPushButton *makeTrafficButton(const char *objectName, const QString &tooltip)
 	return button;
 }
 
-QPushButton *makePanelToggleButton(const QString &label, const QString &tooltip)
+QPushButton *makePanelToggleButton(const QString &tooltip)
 {
-	auto *button = new QPushButton(label);
+	auto *button = new QPushButton;
 	button->setObjectName(QStringLiteral("panelToggleButton"));
 	button->setToolTip(tooltip);
 	button->setCheckable(true);
@@ -98,12 +133,15 @@ void removeWidgetFromLayout(QLayout *layout, QWidget *widget)
 
 IggyQtShellWindow::IggyQtShellWindow()
 {
+	setWindowFlag(Qt::FramelessWindowHint, true);
+	setMinimumSize(520, 420);
 	settings_ = ui::defaultUiSettingsState(inventory_);
 	input_ = ui::defaultUiRuntimeWorkspaceModelInput(inventory_);
 	context_.activeToolId = id("tool:select");
 	rebuildModel();
 	applyTheme();
 	buildShell();
+	buildSettingsWindow();
 	resize(1180, 760);
 	setWindowTitle(QStringLiteral("Iggy Qt Shell"));
 }
@@ -115,12 +153,39 @@ void IggyQtShellWindow::buildShell()
 	rootLayout_ = new QVBoxLayout(root_);
 	rootLayout_->setContentsMargins(0, 0, 0, 0);
 	rootLayout_->setSpacing(0);
-	rootLayout_->addWidget(buildChrome());
+	chrome_ = buildChrome();
+	rootLayout_->addWidget(chrome_);
 	body_ = buildBody();
 	rootLayout_->addWidget(body_, 1);
 	statusBar_ = buildStatusBar();
 	rootLayout_->addWidget(statusBar_);
 	setCentralWidget(root_);
+}
+
+void IggyQtShellWindow::buildSettingsWindow()
+{
+	if (settingsWindow_ != nullptr)
+		return;
+
+	settingsWindow_ = new QWidget(this, Qt::Tool);
+	settingsWindow_->setObjectName(QStringLiteral("settingsWindow"));
+	settingsWindow_->setAttribute(Qt::WA_StyledBackground, true);
+	settingsWindow_->setWindowTitle(QStringLiteral("Settings"));
+	auto *layout = new QVBoxLayout(settingsWindow_);
+	layout->setContentsMargins(0, 0, 0, 0);
+	layout->setSpacing(0);
+	settingsWindow_->resize(720, 680);
+	settingsWindow_->setStyleSheet(shellStyleSheet(ui::deriveUiThemeTokens(settings_.theme)));
+	rebuildSettingsWindowContent();
+}
+
+void IggyQtShellWindow::rebuildSettingsWindowContent()
+{
+	if (settingsWindow_ == nullptr || settingsWindow_->layout() == nullptr)
+		return;
+	removeWidgetFromLayout(settingsWindow_->layout(), settingsWindowContent_);
+	settingsWindowContent_ = buildSettings();
+	settingsWindow_->layout()->addWidget(settingsWindowContent_);
 }
 
 void IggyQtShellWindow::refreshBody()
@@ -131,7 +196,7 @@ void IggyQtShellWindow::refreshBody()
 	}
 	removeWidgetFromLayout(rootLayout_, body_);
 	body_ = buildBody();
-	rootLayout_->addWidget(body_, 1);
+	rootLayout_->insertWidget(1, body_, 1);
 }
 
 void IggyQtShellWindow::refreshStatusBar()
@@ -148,6 +213,7 @@ void IggyQtShellWindow::refreshAfterModelChange()
 	rebuildModel();
 	refreshBody();
 	refreshStatusBar();
+	rebuildSettingsWindowContent();
 }
 
 void IggyQtShellWindow::rebuildModel()
@@ -162,37 +228,116 @@ void IggyQtShellWindow::rebuildModel()
 void IggyQtShellWindow::applyTheme()
 {
 	setStyleSheet(shellStyleSheet(ui::deriveUiThemeTokens(settings_.theme)));
+	if (settingsWindow_ != nullptr)
+		settingsWindow_->setStyleSheet(shellStyleSheet(ui::deriveUiThemeTokens(settings_.theme)));
+
+	for (QPushButton *button : findChildren<QPushButton *>())
+		button->setCursor(Qt::PointingHandCursor);
+	if (settingsWindow_ != nullptr) {
+		for (QPushButton *button : settingsWindow_->findChildren<QPushButton *>())
+			button->setCursor(Qt::PointingHandCursor);
+	}
+}
+
+void IggyQtShellWindow::openSettingsWindow()
+{
+	if (settingsWindow_ == nullptr)
+		buildSettingsWindow();
+	settingsWindow_->show();
+	settingsWindow_->raise();
+	settingsWindow_->activateWindow();
+}
+
+bool IggyQtShellWindow::eventFilter(QObject *watched, QEvent *event)
+{
+	if (watched != chrome_)
+		return QMainWindow::eventFilter(watched, event);
+
+	switch (event->type()) {
+	case QEvent::MouseButtonPress: {
+		auto *mouse = static_cast<QMouseEvent *>(event);
+		if (mouse->button() == Qt::LeftButton) {
+			draggingChrome_ = true;
+			chromeDragOffset_ = mouse->globalPosition().toPoint() - frameGeometry().topLeft();
+			event->accept();
+			return true;
+		}
+		break;
+	}
+	case QEvent::MouseMove: {
+		if (draggingChrome_) {
+			auto *mouse = static_cast<QMouseEvent *>(event);
+			move(mouse->globalPosition().toPoint() - chromeDragOffset_);
+			event->accept();
+			return true;
+		}
+		break;
+	}
+	case QEvent::MouseButtonRelease: {
+		auto *mouse = static_cast<QMouseEvent *>(event);
+		if (mouse->button() == Qt::LeftButton && draggingChrome_) {
+			draggingChrome_ = false;
+			event->accept();
+			return true;
+		}
+		break;
+	}
+	case QEvent::MouseButtonDblClick:
+		isMaximized() ? showNormal() : showMaximized();
+		event->accept();
+		return true;
+	default:
+		break;
+	}
+	return QMainWindow::eventFilter(watched, event);
 }
 
 QWidget *IggyQtShellWindow::buildChrome()
 {
 	auto *chrome = makeFrame("topChrome");
 	chrome->setFixedHeight(42);
+	chrome->installEventFilter(this);
 	auto *layout = new QHBoxLayout(chrome);
 	layout->setContentsMargins(10, 0, 10, 0);
 	layout->setSpacing(6);
 
+	const ui::UiThemeTokens theme = ui::deriveUiThemeTokens(settings_.theme);
+	const auto applyToggleIcon = [this, &theme](QPushButton *button, ui::UiShellSlot slot, const ui::UiPanelState &state) {
+		const ui::UiPanelVisibility visibility = ui::uiPanelVisibility(slot, state, input_.windowWidth, input_.windowHeight);
+		QColor bar = QColor(toQString(theme.accent));
+		if (visibility == ui::UiPanelVisibility::Collapsed)
+			bar = QColor(toQString(theme.textFaint));
+		else if (visibility == ui::UiPanelVisibility::AutoHidden)
+			bar = QColor(toQString(theme.warning));
+		button->setProperty("panelState", panelVisibilityName(visibility).replace('-', '_'));
+		button->setIcon(QIcon(panelToggleIcon(slot, QColor(toQString(theme.textMuted)), bar, devicePixelRatioF())));
+		button->setIconSize(QSize(16, 14));
+	};
+
 	auto *closeButton = makeTrafficButton("trafficClose", QStringLiteral("Close window"));
-	auto *minimize = makeTrafficButton("trafficMinimize", QStringLiteral("Minimize window"));
-	auto *zoom = makeTrafficButton("trafficZoom", QStringLiteral("Zoom window"));
-	auto *leftToggle = makePanelToggleButton(QStringLiteral("L"), QStringLiteral("Toggle left panel"));
+	auto *minimizeButton = makeTrafficButton("trafficMinimize", QStringLiteral("Minimize window"));
+	auto *zoomButton = makeTrafficButton("trafficZoom", QStringLiteral("Zoom window"));
+	auto *leftToggle = makePanelToggleButton(QStringLiteral("Toggle left panel"));
 	auto *back = makeChromeButton(QStringLiteral("<"), QStringLiteral("Back"));
 	auto *forward = makeChromeButton(QStringLiteral(">"), QStringLiteral("Forward"));
 	auto *file = makeChromeButton(QStringLiteral("File"));
 	auto *edit = makeChromeButton(QStringLiteral("Edit"));
 	auto *view = makeChromeButton(QStringLiteral("View"));
 	auto *settings = makeChromeButton(QStringLiteral("Settings"), QStringLiteral("Open settings"));
-	auto *bottomToggle = makePanelToggleButton(QStringLiteral("_"), QStringLiteral("Toggle bottom panel"));
-	auto *rightToggle = makePanelToggleButton(QStringLiteral("R"), QStringLiteral("Toggle right panel"));
+	auto *bottomToggle = makePanelToggleButton(QStringLiteral("Toggle bottom panel"));
+	auto *rightToggle = makePanelToggleButton(QStringLiteral("Toggle right panel"));
 	back->setEnabled(false);
 	forward->setEnabled(false);
 	leftToggle->setChecked(!input_.panels.left.collapsed);
 	bottomToggle->setChecked(!input_.panels.bottom.collapsed);
 	rightToggle->setChecked(!input_.panels.right.collapsed);
+	applyToggleIcon(leftToggle, ui::UiShellSlot::Left, input_.panels.left);
+	applyToggleIcon(bottomToggle, ui::UiShellSlot::Bottom, input_.panels.bottom);
+	applyToggleIcon(rightToggle, ui::UiShellSlot::Right, input_.panels.right);
 
 	layout->addWidget(closeButton);
-	layout->addWidget(minimize);
-	layout->addWidget(zoom);
+	layout->addWidget(minimizeButton);
+	layout->addWidget(zoomButton);
 	layout->addSpacing(8);
 	layout->addWidget(leftToggle);
 	layout->addWidget(back);
@@ -229,13 +374,12 @@ QWidget *IggyQtShellWindow::buildChrome()
 	layout->addWidget(rightToggle);
 
 	connect(closeButton, &QPushButton::clicked, this, [this]() { close(); });
-	connect(minimize, &QPushButton::clicked, this, [this]() { showMinimized(); });
-	connect(zoom, &QPushButton::clicked, this, [this]() {
+	connect(minimizeButton, &QPushButton::clicked, this, [this]() { showMinimized(); });
+	connect(zoomButton, &QPushButton::clicked, this, [this]() {
 		isMaximized() ? showNormal() : showMaximized();
 	});
 	connect(settings, &QPushButton::clicked, this, [this]() {
-		showSettings_ = !showSettings_;
-		refreshBody();
+		openSettingsWindow();
 	});
 	connect(leftToggle, &QPushButton::clicked, this, [this]() {
 		input_.panels.left.collapsed = !input_.panels.left.collapsed;
@@ -284,12 +428,14 @@ QWidget *IggyQtShellWindow::buildBody()
 
 	auto *mainArea = new QSplitter(Qt::Horizontal);
 	mainArea->setChildrenCollapsible(false);
+	mainArea->setHandleWidth(2);
 	if (shouldShowPanel(model_, ui::UiShellSlot::Left, input_.panels.left, input_.windowWidth, input_.windowHeight))
 		mainArea->addWidget(buildPanelSlot(ui::UiShellSlot::Left, "leftPanel"));
 
 	auto *centerColumn = new QSplitter(Qt::Vertical);
 	centerColumn->setChildrenCollapsible(false);
-	centerColumn->addWidget(showSettings_ ? buildSettings() : buildMainSlot());
+	centerColumn->setHandleWidth(2);
+	centerColumn->addWidget(buildMainSlot());
 	if (shouldShowPanel(model_, ui::UiShellSlot::Bottom, input_.panels.bottom, input_.windowWidth, input_.windowHeight))
 		centerColumn->addWidget(buildPanelSlot(ui::UiShellSlot::Bottom, "bottomPanel"));
 	mainArea->addWidget(centerColumn);
@@ -309,8 +455,8 @@ QWidget *IggyQtShellWindow::buildRail()
 	layout->setContentsMargins(8, 8, 8, 8);
 	layout->setSpacing(6);
 
-	auto *runtime = makeRailButton(QStringLiteral("R"), QStringLiteral("Runtime"), !showSettings_);
-	auto *settings = makeRailButton(QStringLiteral("S"), QStringLiteral("Settings"), showSettings_);
+	auto *runtime = makeRailButton(QStringLiteral("R"), QStringLiteral("Runtime"), true);
+	auto *settings = makeRailButton(QStringLiteral("S"), QStringLiteral("Settings"), false);
 	layout->addWidget(runtime);
 	layout->addWidget(settings);
 	layout->addStretch(1);
@@ -322,12 +468,10 @@ QWidget *IggyQtShellWindow::buildRail()
 	layout->addWidget(help);
 
 	connect(runtime, &QPushButton::clicked, this, [this]() {
-		showSettings_ = false;
 		refreshBody();
 	});
 	connect(settings, &QPushButton::clicked, this, [this]() {
-		showSettings_ = true;
-		refreshBody();
+		openSettingsWindow();
 	});
 	return rail;
 }
@@ -344,9 +488,7 @@ QWidget *IggyQtShellWindow::buildMainSlot()
 	headerLayout->setContentsMargins(0, 0, 0, 0);
 	headerLayout->setSpacing(8);
 	headerLayout->addWidget(makeLabel(QStringLiteral("Runtime Workspace"), "panelTitle"));
-	headerLayout->addWidget(makeLabel(QStringLiteral("Qt shell"), "badgeLabel"));
 	headerLayout->addStretch(1);
-	headerLayout->addWidget(makeLabel(QStringLiteral("Mounted layout"), "mutedText"));
 	layout->addWidget(header);
 
 	auto *stage = makeFrame("canvasStage");
@@ -369,13 +511,7 @@ QWidget *IggyQtShellWindow::buildMainSlot()
 	auto *wellLayout = new QVBoxLayout(well);
 	wellLayout->setContentsMargins(14, 14, 14, 14);
 	wellLayout->setSpacing(8);
-	wellLayout->addWidget(makeLabel(QStringLiteral("Scene View"), "panelTitle"));
-	wellLayout->addWidget(makeLabel(QStringLiteral("Shell-only viewport surface"), "mutedText"));
-	auto *list = new QListWidget;
-	list->setAlternatingRowColors(true);
-	for (const ui::UiMountedSlot &slot : model_.mountedSlots)
-		list->addItem(QStringLiteral("%1 -> %2").arg(slotName(slot.slot), toQString(slot.featureId)));
-	wellLayout->addWidget(list, 1);
+	wellLayout->addStretch(1);
 	stageLayout->addWidget(well, 1);
 	layout->addWidget(stage, 1);
 
@@ -413,7 +549,6 @@ QWidget *IggyQtShellWindow::buildPanelSlot(ui::UiShellSlot slot, const char *obj
 		if (mounted.slot != slot || mounted.hidden)
 			continue;
 		layout->addWidget(makeSectionLabel(toQString(mounted.label)));
-		layout->addWidget(makeLabel(QStringLiteral("Feature: %1").arg(toQString(mounted.featureId)), "mutedText"));
 		layout->addWidget(buildPanelContent(mounted), 1);
 		added = true;
 	}
@@ -433,24 +568,20 @@ QWidget *IggyQtShellWindow::buildPanelContent(const ui::UiMountedPanel &panel)
 
 	if (panel.groupId == id("panel:runtime_frame")) {
 		for (const ui::UiRuntimeFrameInspectorRow &row : model_.runtimeInspector.rows) {
-			auto *card = makeFrame("inspectorCard");
-			auto *cardLayout = new QHBoxLayout(card);
-			cardLayout->setContentsMargins(8, 6, 8, 6);
-			cardLayout->setSpacing(8);
-			cardLayout->addWidget(makeLabel(toQString(row.key), "fieldLabel"));
-			cardLayout->addStretch(1);
-			cardLayout->addWidget(makeLabel(toQString(row.value), "mutedText"));
-			layout->addWidget(card);
+			auto *line = new QWidget;
+			auto *lineLayout = new QHBoxLayout(line);
+			lineLayout->setContentsMargins(0, 2, 0, 2);
+			lineLayout->setSpacing(8);
+			lineLayout->addWidget(makeLabel(toQString(row.key), "fieldLabel"));
+			lineLayout->addStretch(1);
+			lineLayout->addWidget(makeLabel(toQString(row.value), "mutedText"));
+			layout->addWidget(line);
 		}
 	} else if (panel.groupId == id("panel:interaction_events")) {
 		for (const ui::UiInteractionEventRow &row : model_.interactionEvents.rows) {
-			auto *card = makeFrame("inspectorCard");
-			auto *cardLayout = new QVBoxLayout(card);
-			cardLayout->setContentsMargins(8, 6, 8, 6);
-			cardLayout->setSpacing(2);
-			cardLayout->addWidget(makeLabel(toQString(row.typeLabel), "fieldLabel"));
-			cardLayout->addWidget(makeLabel(QStringLiteral("%1 %2").arg(toQString(row.targetId), toQString(row.detail)), "mutedText"));
-			layout->addWidget(card);
+			layout->addWidget(makeLabel(
+				QStringLiteral("%1 %2").arg(toQString(row.typeLabel), toQString(row.detail)),
+				"mutedText"));
 		}
 	} else if (panel.groupId == id("panel:inventory")) {
 		layout->addWidget(makeSectionLabel(QStringLiteral("Inventory")));

@@ -255,10 +255,14 @@ Current anchors:
 - `RuntimePolicyPickupEffectFrameStep`
 - `RuntimePlayerInputInteractionPickupFrameStep`
 - `RuntimePlayerInputInteractionPickupFrameReporter`
+- `RuntimePlayerInputInteractionPolicyPickupFrameStep`
 - `RuntimeGameplayState`
 - `RuntimeGameplayFrameStep`
 - `RuntimeGameplayFrameRunner`
 - `RuntimeGameplayFrameReporter`
+- `RuntimePolicyGameplayFrameStep`
+- `RuntimePolicyGameplayFrameRunner`
+- `RuntimePolicyGameplayFrameReporter`
 - `RuntimeSessionCommandTick`
 - `RuntimeSessionCommandTickRunner`
 - `RuntimeLevelMutationStep`
@@ -407,6 +411,19 @@ RuntimePolicyPickupEffectFrameStep
 
 The policy path is the catalog-aware pickup lane. Runtime supplies session/player context, explicit inventory/drop state, and an item definition catalog, then delegates item stack limits, add policy, drop consumption, and inventory events to `scene/inventory`.
 
+Policy gameplay orchestration:
+
+```text
+RuntimePolicyGameplayFrameStep
+  -> RuntimePlayerInputInteractionPolicyPickupFrameStep
+       -> RuntimePlayerInputInteractionEffectApplyFrameStep
+       -> RuntimePolicyPickupEffectFrameStep
+  -> RuntimePolicyGameplayFrameReporter
+  -> returns updated RuntimeGameplayState
+```
+
+This path is the catalog-aware gameplay frame lane. It groups session, command queue, interaction state, and inventory state in `RuntimeGameplayState`, but it does not make interaction or inventory fields part of `RuntimeSessionState` or the save snapshot contract by itself.
+
 Save snapshot ownership:
 
 ```text
@@ -423,3 +440,18 @@ RuntimeSessionSnapshot
 The save lane currently owns local save persistence: authoritative snapshot validation, chunk archive structure, byte-vector codecs, file envelope/checksum wrapping, local file read/write helpers, slot path policy, slot store/load, slot listing, slot deletion, and session save/load composition.
 
 It still does not own platform-specific storage, cloud saves, compression, encryption, cross-process locking, user-facing save UI, or broad retention policy unless a future slice scopes those explicitly.
+
+### `apps/qt_shell`
+
+Owns desktop Qt host projection: window chrome, activity rail, panels, tool belt, palette, settings pages, status bar, and Qt widget/style construction.
+
+Current anchors:
+- `IggyQtShellWindow`
+- `IggyQtShellUi`
+
+Does not own:
+- scene/ui model semantics
+- runtime command/session mutation
+- backend renderer/GPU ownership
+- save/load semantics
+- raw input-device contracts beyond Qt widget events
