@@ -6,6 +6,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeBinaryCodec.cpp
   src/runtime/RuntimeCommandQueue.cpp
   src/runtime/RuntimeMutationCommandQueue.cpp
+  src/runtime/RuntimeInteractionEffectApplyFrameStep.cpp
   src/runtime/RuntimeInteractionEffectApplyStep.cpp
   src/runtime/RuntimeInteractionEffectCommandFrameStep.cpp
   src/runtime/RuntimeInteractionEffectCommandStep.cpp

@@ -48,6 +48,9 @@ InteractionReach2D
 InteractionPlan2D
 InteractionEffectCatalog2D
 InteractionEffectPlan2D
+InteractionTargetToggle2D
+InteractionEffectApplier2D
+InteractionEffectPlanApplier2D
 ```
 
 Runtime input-command orchestration:
@@ -79,6 +82,7 @@ RuntimeInteractionCommandStep
 RuntimeInteractionCommandFrameStep
 RuntimeInteractionEffectCommandStep
 RuntimeInteractionEffectCommandFrameStep
+RuntimeInteractionEffectApplyStep
 ```
 
 Runtime player-input interaction frames:
@@ -229,6 +233,20 @@ RuntimePlayerInputFrameStep::runGated
        -> reports requested effects without applying them
 ```
 
+Effect-application variant:
+
+```text
+RuntimeInteractionEffectApplyStep
+  -> RuntimeInteractionEffectCommandStep
+       -> InteractionPlan2D
+       -> InteractionEffectPlan2D
+  -> InteractionEffectPlanApplier2D
+       -> applies ToggleTarget to a returned InteractionTarget2DRegistry
+       -> defers InspectText and EmitEvent as reported entries
+```
+
+This does not replace session state or own target registry lifetime. A caller must explicitly decide whether the returned registry becomes the next interaction target source.
+
 ## Current Runtime Mutation Command Tick Order
 
 ```text
@@ -266,7 +284,8 @@ Do not merge these into existing ticks without a dedicated ownership review:
 - presentation camera update
 - platform storage, compression, encryption, cloud sync, or save UI policy
 - raw device input
-- authoritative interaction effect application
+- interaction target registry lifetime/persistence
+- interaction effects that mutate level/player/inventory/event state
 
 ## Likely Next Integration Choices
 
@@ -275,6 +294,6 @@ Possible future slices:
 - render-frame step that reads session carried render cache
 - camera/presentation state packet
 - save slot retention/overwrite policy if caller needs more than explicit slot store/list/delete calls
-- interaction effect application policy once target/effect ownership is reviewed
+- interaction target registry carrier/update step if callers need interaction target state to persist across frames
 
 Pause before any slice that makes runtime infer map changes or own cache rebuild policy.

@@ -41,13 +41,19 @@ Status labels:
    - purpose: refine reports or docs around input-intent gating, mapping, queueing, command running, and per-frame diagnostics if real callers need it.
    - caution: do not add raw device input mapping, move gate policy out of scene/player, or hide underlying runner diagnostics.
 
-6. Interaction effect application policy
+6. Interaction target registry carrier/update policy
    - status: `review`
-   - owner candidate: `scene/interaction` for effect semantics, runtime only for orchestration
-   - purpose: decide how requested `InteractionEffect2D` values mutate authoritative state or emit events.
-   - caution: interaction target lookup, reach checks, effect catalogs, runtime interaction reports, and effect plans now exist; do not apply effects to level/player/inventory/event state until this boundary is reviewed.
+   - owner candidate: `scene/interaction` for registry state, runtime only for orchestration if session-level continuity is needed
+   - purpose: decide where updated `InteractionTarget2DRegistry` values live after `ToggleTarget` effects are applied.
+   - caution: target toggles can now return an updated registry, but no subsystem persists that registry across frames/session ticks yet.
 
-7. Raw input binding
+7. Broader interaction effect application
+   - status: `review`
+   - owner candidate: depends on effect domain
+   - purpose: decide how deferred inspect text, emitted events, inventory/combat/quest effects, or level/player mutations become authoritative outcomes.
+   - caution: keep this out of runtime until the target subsystem and save semantics are explicit.
+
+8. Raw input binding
    - status: `defer`
    - owner candidate: platform/input layer not defined yet
    - purpose: map keyboard/gamepad to `GameplayCommand2D`.

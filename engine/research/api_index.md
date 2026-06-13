@@ -74,6 +74,9 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `InteractionEffect2D`, effect factory helpers, `validate`: backend-free interaction effect intent data.
 - `InteractionEffectCatalog2D`, `InteractionEffectCatalog2DBuilder`: target id to ordered interaction effects.
 - `InteractionEffectPlan2D::plan`: ready interaction plan to requested effect list.
+- `InteractionTargetToggle2D::apply`: returns an updated interaction target registry with one target enabled/disabled when possible.
+- `InteractionEffectApplier2D::apply`: applies one interaction effect to an interaction target registry, applying toggle effects and deferring inspect/event effects.
+- `InteractionEffectPlanApplier2D::apply`: applies a ready effect plan to an interaction target registry and reports applied/deferred/no-op/failed counts.
 
 ## `scene/player`
 
@@ -109,6 +112,7 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `RuntimePlayerInputFrameStep`: one-frame wrapper around ungated or gated input command running plus reporting.
 - `RuntimeInteractionCommandStep`, `RuntimeInteractionCommandFrameStep`: evaluate Interact commands against scene interaction targets.
 - `RuntimeInteractionEffectCommandStep`, `RuntimeInteractionEffectCommandFrameStep`: evaluate ready interactions into requested effect plans without applying effects.
+- `RuntimeInteractionEffectApplyStep`: evaluates one Interact command and applies requested effects to a returned interaction target registry.
 - `RuntimePlayerInputInteractionFrameStep`, `RuntimePlayerInputInteractionFrameReporter`: gated input frame plus interaction diagnostics.
 - `RuntimePlayerInputInteractionEffectFrameStep`, `RuntimePlayerInputInteractionEffectFrameReporter`: gated input frame plus interaction/effect-plan diagnostics.
 - `RuntimeCollisionWorldProvider`: resolves explicit/session/empty collision world.

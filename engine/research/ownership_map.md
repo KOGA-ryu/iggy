@@ -124,11 +124,14 @@ Current anchors:
 - `InteractionEffect2D`
 - `InteractionEffectCatalog2D`
 - `InteractionEffectPlan2D`
+- `InteractionTargetToggle2D`
+- `InteractionEffectApplier2D`
+- `InteractionEffectPlanApplier2D`
 
 Does not own:
 - runtime command-frame order
 - player input queueing
-- authoritative effect application to level/player state
+- authoritative effect application to level/player state outside the interaction target registry
 - inventory, combat, or quest semantics
 - backend UI or rendering
 
@@ -182,6 +185,7 @@ Current anchors:
 - `RuntimeInteractionCommandFrameStep`
 - `RuntimeInteractionEffectCommandStep`
 - `RuntimeInteractionEffectCommandFrameStep`
+- `RuntimeInteractionEffectApplyStep`
 - `RuntimePlayerInputInteractionFrameStep`
 - `RuntimePlayerInputInteractionFrameReporter`
 - `RuntimePlayerInputInteractionEffectFrameStep`
@@ -282,6 +286,19 @@ GameplayCommandFrame2D
 ```
 
 Runtime may compose command frames with scene/interaction targets and effect catalogs, but scene/interaction owns target lookup, reach, ready/blocked status, and requested effect-plan semantics. Runtime does not apply effects to authoritative level/player state yet.
+
+Interaction effect application:
+
+```text
+RuntimeInteractionEffectApplyStep
+  -> RuntimeInteractionEffectCommandStep
+  -> InteractionEffectPlanApplier2D
+       -> InteractionEffectApplier2D
+       -> InteractionTargetToggle2D
+  -> returns updated InteractionTarget2DRegistry
+```
+
+The current application boundary is limited to returning an updated interaction target registry. It does not store interaction targets in `RuntimeSessionState`, mutate `LevelRuntimeState`, or execute inventory/combat/quest/event behavior.
 
 Save snapshot ownership:
 
