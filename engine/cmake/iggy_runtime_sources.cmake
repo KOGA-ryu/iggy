@@ -19,6 +19,8 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeInventoryState.cpp
   src/runtime/RuntimeInteractionState.cpp
   src/runtime/RuntimePolicyGameplayFrameStep.cpp
+  src/runtime/RuntimePolicyGameplayFrameReporter.cpp
+  src/runtime/RuntimePolicyGameplayFrameRunner.cpp
   src/runtime/RuntimePolicyPickupEffectFrameStep.cpp
   src/runtime/RuntimePolicyPickupEffectStep.cpp
   src/runtime/RuntimePolicyPickupStep.cpp
