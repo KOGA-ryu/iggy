@@ -62,6 +62,7 @@ Avoid:
 
 Proves:
 - command interpretation against `PlayerAgentState`
+- input intent validation, gating, and command-frame mapping
 - movement intent/application rules
 - physics delegation through `CharacterMove2D`
 - no mutation of inputs
@@ -77,11 +78,13 @@ Proves:
 - call order between existing lower-level steps
 - state carry-forward
 - diagnostics preservation
+- queue push/drain and input-gate diagnostics are preserved without reinterpreting them
 - tick index changes only where the tick step owns them
 - derived caches copied/preserved, not rebuilt implicitly
 
 Avoid:
 - duplicating scene/server logic
+- duplicating player input gate or mapper logic
 - hidden cache rebuilds
 - raw input mapping
 
@@ -123,4 +126,3 @@ Use these when relevant:
 - `engine/tests/support/CommandFrameFixtures.hpp`
 
 Add new support only for repeated mechanics. Keep domain-specific expected values visible in tests.
-

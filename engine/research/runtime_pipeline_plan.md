@@ -18,6 +18,9 @@ Player interpretation:
 PlayerAgentState
 PlayerCommandPlanner2D
 PlayerCommandFramePlanner2D
+PlayerInputIntentGate2D
+PlayerInputCommandFrameMapper2D
+PlayerInputGatedCommandFrameMapper2D
 ```
 
 Player execution:
@@ -42,6 +45,7 @@ Runtime input-command orchestration:
 PlayerInputIntent2D list
   -> RuntimePlayerInputQueueStep
        -> PlayerInputCommandFrameMapper2D
+       -> or PlayerInputGatedCommandFrameMapper2D with PlayerInputContext2D
        -> RuntimeCommandQueue
   -> RuntimeQueuedCommandRunner
        -> RuntimeSessionCommandTickRunner
@@ -158,6 +162,19 @@ input RuntimeSessionState + RuntimeCommandQueueState + PlayerInputIntent2D list
        -> runs RuntimeSessionCommandTickRunner
   -> RuntimePlayerInputCommandReporter
        -> summarizes intake, queue, runner, and tick diagnostics
+```
+
+Gated variant:
+
+```text
+input RuntimeSessionState + RuntimeCommandQueueState + PlayerInputContext2D + PlayerInputIntent2D list
+  -> RuntimePlayerInputQueueStep::pushGated
+       -> PlayerInputGatedCommandFrameMapper2D
+       -> gate issues for blocked/invalid intents
+       -> nested mapping issues for unblocked but unsupported intents
+       -> appends accepted command frame to RuntimeCommandQueueState
+  -> RuntimeQueuedCommandRunner
+  -> RuntimePlayerInputCommandReporter::reportGated
 ```
 
 ## Current Runtime Mutation Command Tick Order

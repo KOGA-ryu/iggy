@@ -98,6 +98,11 @@ Current anchors:
 - `PlayerCommandPlanner2D`
 - `PlayerCommandFramePlanner2D`
 - `PlayerMovementExecutor2D`
+- `PlayerInputIntent2D`
+- `PlayerInputIntentGate2D`
+- `PlayerInputCommandMapper2D`
+- `PlayerInputCommandFrameMapper2D`
+- `PlayerInputGatedCommandFrameMapper2D`
 
 Does not own:
 - raw input binding

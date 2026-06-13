@@ -38,8 +38,8 @@ Status labels:
 5. Runtime input command observability cleanup
    - status: `review`
    - owner candidate: `runtime`
-   - purpose: refine reports or docs around input-intent mapping, queueing, command running, and per-frame diagnostics if real callers need it.
-   - caution: do not add raw device input mapping or hide underlying runner diagnostics.
+   - purpose: refine reports or docs around input-intent gating, mapping, queueing, command running, and per-frame diagnostics if real callers need it.
+   - caution: do not add raw device input mapping, move gate policy out of scene/player, or hide underlying runner diagnostics.
 
 6. Interaction command execution
    - status: `review`

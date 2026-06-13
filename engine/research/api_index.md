@@ -71,6 +71,10 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `PlayerCommandPlanner2D`: one command to one player plan.
 - `PlayerCommandFramePlanner2D`: command frame to ordered player plans plus diagnostics.
 - `PlayerMovementExecutor2D::execute`: applies one movement plan through `physics2d::CharacterMove2D`.
+- `PlayerInputIntent2D`, intent factory helpers, `validate`: device-free player input intent data.
+- `PlayerInputIntentGate2D`: filters player input intents through scene/player input context rules.
+- `PlayerInputCommandMapper2D`, `PlayerInputCommandFrameMapper2D`: map accepted player input intents to gameplay commands.
+- `PlayerInputGatedCommandFrameMapper2D`: gates intents first, then maps accepted intents while preserving gate and mapping diagnostics.
 
 ## `scene/sprite`
 
@@ -88,11 +92,11 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `RuntimePlayerCommandExecutionStep`: executes first movement plan against caller-supplied collision world.
 - `RuntimePlayerCommandStep`: composes planning + execution.
 - `RuntimeCommandQueue`, `RuntimeCommandQueueState`: explicit gameplay command-frame queue data and push/drain operations.
-- `RuntimePlayerInputQueueStep`: maps player input intents into a gameplay command frame and queues it.
+- `RuntimePlayerInputQueueStep`: maps or gates player input intents into a gameplay command frame and queues it.
 - `RuntimeQueuedCommandRunner`: drains queued command frames through the session command tick runner.
-- `RuntimePlayerInputCommandRunner`: composes input intent mapping, command queue push, and queued command running.
-- `RuntimePlayerInputCommandReporter`: summarizes input command runner diagnostics without executing behavior.
-- `RuntimePlayerInputFrameStep`: one-frame wrapper around input command running plus reporting.
+- `RuntimePlayerInputCommandRunner`: composes input intent mapping/gating, command queue push, and queued command running.
+- `RuntimePlayerInputCommandReporter`: summarizes ungated or gated input command runner diagnostics without executing behavior.
+- `RuntimePlayerInputFrameStep`: one-frame wrapper around ungated or gated input command running plus reporting.
 - `RuntimeCollisionWorldProvider`: resolves explicit/session/empty collision world.
 - `RuntimeSessionCommandTick`: command step followed by session tick.
 - `RuntimeSessionCommandTickRunner`: bounded command-frame loop over command ticks.
