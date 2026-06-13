@@ -23,7 +23,6 @@ private:
 	void rebuild();
 	void rebuildModel();
 	void applyTheme();
-	void refreshPanelVisibilityFromWindowSize();
 
 	[[nodiscard]] QWidget *buildChrome();
 	[[nodiscard]] QWidget *buildBody();

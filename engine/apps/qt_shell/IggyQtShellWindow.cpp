@@ -4,17 +4,18 @@
 #include <QCheckBox>
 #include <QColor>
 #include <QComboBox>
+#include <QFont>
 #include <QFontComboBox>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPushButton>
-#include <QSignalBlocker>
 #include <QSpinBox>
 #include <QSplitter>
 #include <QStackedWidget>
 
+#include <algorithm>
 #include <cstddef>
 #include <utility>
 #include <vector>
