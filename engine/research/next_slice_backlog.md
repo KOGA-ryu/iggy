@@ -53,19 +53,25 @@ Status labels:
    - purpose: decide how recorded interaction events, inventory/combat/quest effects, or level/player mutations become authoritative outcomes.
    - caution: keep this out of runtime until the target subsystem and save semantics are explicit.
 
-8. Inventory/session lifetime policy
+8. Runtime gameplay state and save lifetime policy
    - status: `review`
-   - owner candidate: runtime if session-owned, caller-owned sibling state otherwise
-   - purpose: decide whether `RuntimeInventoryState` remains an explicit caller-owned packet or becomes part of `RuntimeSessionState` and save snapshots.
-   - caution: pickup transfer and runtime pickup steps now update explicit inventory/drop state, but session/save ownership is not settled.
+   - owner candidate: runtime if `RuntimeGameplayState` becomes the durable top-level packet; save lane only after explicit snapshot rules
+   - purpose: decide whether `RuntimeGameplayState` is the long-term runtime packet for session + command queue + interaction + inventory, and which inventory/drop fields become saveable.
+   - caution: gameplay frame steps now carry explicit interaction and inventory state, but `RuntimeSessionState` and existing save snapshots still do not own those fields.
 
-9. UI action integration policy
+9. Policy pickup consolidation
+   - status: `review`
+   - owner candidate: `scene/inventory` for policy semantics, `runtime` for orchestration
+   - purpose: decide whether catalog-aware policy pickup should replace the simple pickup path in gameplay-frame orchestration, or whether both lanes intentionally coexist.
+   - caution: do not hide item-definition lookup, stack-cap diagnostics, or inventory event ordering inside runtime.
+
+10. UI action integration policy
    - status: `review`
    - owner candidate: UI for action planning, runtime/caller for executing actions
    - purpose: decide how `UiActionPlan` should be invoked by a host loop without making UI own runtime mutation.
    - caution: UI models/tool intents exist, but backend window/input bindings and runtime execution remain out of scope.
 
-10. Raw input binding
+11. Raw input binding
    - status: `defer`
    - owner candidate: platform/input layer not defined yet
    - purpose: map keyboard/gamepad to `GameplayCommand2D`.

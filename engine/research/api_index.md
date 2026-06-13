@@ -83,10 +83,15 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 
 - `InventoryState2D`, `InventoryState2DBuilder`: player/scene inventory stack data with deterministic id/count validation.
 - `InventoryAddItem2D::add`: returns updated inventory with an added or incremented item stack.
+- `ItemDefinition2D`, `ItemDefinition2DCatalog`, `ItemDefinition2DCatalogBuilder`: item metadata and stack-limit source of truth.
+- `InventoryEvent2D`, event helpers, `InventoryEventRecorder2D`: transient inventory/pickup event data.
+- `InventoryStackPolicy2D::planAdd`: validates add requests against item definitions and current stack counts.
+- `InventoryPolicyAddItem2D::add`: policy-aware inventory add that preserves stack-policy diagnostics and records inventory events.
 - `LevelItemDrop2D`, `LevelItemDrop2DRegistry`, `LevelItemDrop2DRegistryBuilder`: level item-drop data and validated drop lookup table.
 - `LevelItemDropConsume2D::consume`: returns updated item-drop registry by disabling or removing a consumed drop.
 - `PickupPlan2D::plan`: actor position + drop id to ready/blocked pickup plan using pickup radius and extra reach.
 - `PickupTransfer2D::transfer`: applies a ready pickup plan to inventory and item-drop registries.
+- `PickupPolicyTransfer2D::transfer`: policy-aware pickup transfer using item definitions, policy add, drop consume, and inventory events.
 
 ## `scene/ui`
 
@@ -141,6 +146,13 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `RuntimeInventoryState`: explicit runtime-carried inventory + item-drop packet; not part of `RuntimeSessionState`.
 - `RuntimePickupStep`: session player + runtime inventory state + drop id to pickup transfer result.
 - `RuntimePickupEffectStep`: applies `PickupItem` interaction effects through `RuntimePickupStep`.
+- `RuntimePickupEffectFrameStep`: scans applied interaction effects and applies simple pickup effects sequentially.
+- `RuntimePolicyPickupStep`: policy-aware pickup using `ItemDefinition2DCatalog` and `PickupPolicyTransfer2D`.
+- `RuntimePolicyPickupEffectStep`: applies one `PickupItem` effect through `RuntimePolicyPickupStep`.
+- `RuntimePolicyPickupEffectFrameStep`: scans applied interaction effects and applies policy pickup effects sequentially.
+- `RuntimePlayerInputInteractionPickupFrameStep`, `RuntimePlayerInputInteractionPickupFrameReporter`: gated input + interaction apply + pickup-effect orchestration and reporting.
+- `RuntimeGameplayState`: top-level runtime gameplay packet carrying session, command queue, interaction state, and inventory state.
+- `RuntimeGameplayFrameStep`, `RuntimeGameplayFrameRunner`, `RuntimeGameplayFrameReporter`: one-frame and bounded gameplay orchestration over input, interaction, pickup, command ticking, and reports.
 - `RuntimeCollisionWorldProvider`: resolves explicit/session/empty collision world.
 - `RuntimeSessionCommandTick`: command step followed by session tick.
 - `RuntimeSessionCommandTickRunner`: bounded command-frame loop over command ticks.

@@ -42,10 +42,12 @@ Transient frame data:
 - interaction effect application results
 - interaction events emitted while applying effects
 - pickup plans
+- inventory events emitted while applying inventory/pickup effects
 - NPC tick reports
 - collision query results
 - mutation/cache update results and command tick diagnostics
 - player input interaction reports
+- gameplay frame reports
 
 ## Save Boundary
 
@@ -69,6 +71,7 @@ Save snapshots should exclude:
 - command plans and per-tick reports
 - interaction plans, requested effect lists, application diagnostics, interaction events, and interaction reports
 - pickup plans and pickup diagnostics
+- inventory events and pickup frame diagnostics
 - mutation/cache update diagnostics
 - backend handles, windows, GPU resources
 - raw device input state
@@ -170,3 +173,17 @@ LevelItemDrop2DRegistry + actor position + drop id
 ```
 
 Runtime can carry those updates through explicit `RuntimeInventoryState` and `RuntimePickupStep` / `RuntimePickupEffectStep`. `RuntimeSessionState` does not currently own inventory/drop state, and save snapshot shape for inventory/drop state is not defined yet.
+
+The catalog-aware path adds item definitions, stack policy, policy add, policy transfer, and inventory events:
+
+```text
+ItemDefinition2DCatalog + RuntimeInventoryState + PickupPlan2DResult
+  -> PickupPolicyTransfer2DResult
+       -> InventoryPolicyAddItem2DResult
+       -> LevelItemDropConsume2DResult
+       -> InventoryEventRecorder2D
+```
+
+`RuntimePolicyPickupStep`, `RuntimePolicyPickupEffectStep`, and `RuntimePolicyPickupEffectFrameStep` orchestrate that policy lane from runtime context. They still do not make item definitions, inventory/drop registries, or inventory events part of `RuntimeSessionState` by themselves.
+
+`RuntimeGameplayState` can group session, command queue, interaction state, and inventory state for frame orchestration. Treat it as a runtime packet, not a save snapshot contract. A future save/session slice must explicitly decide which interaction and inventory fields become authoritative persisted state.

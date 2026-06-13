@@ -57,8 +57,11 @@ Proves:
 - interaction query/reach/plan/effect-plan helpers remain pure and report diagnostics
 - interaction effect appliers return updated registries, record events, and count applied/deferred/failed effects without mutating inputs
 - inventory stacks and item-drop registries validate deterministically
+- item definition catalogs validate deterministic id/name/stack-limit policy
+- inventory stack policy proves catalog lookup, stack caps, duplicate ids by catalog policy, and no mutation
 - pickup plans preserve requested ids/positions, enforce enabled/range policy, and do not mutate inventories or drops
 - pickup transfers add inventory stacks and consume drops through source-of-truth helpers without mutating inputs
+- policy pickup transfers preserve stack-policy diagnostics, add/drop diagnostics, and inventory event ordering
 - UI models project runtime reports/settings/tool state into read-only model/action data
 
 Avoid:
@@ -93,6 +96,8 @@ Proves:
 - interaction effect-apply orchestration delegates to scene/interaction appliers and does not persist target registries implicitly
 - frame-level effect application applies interactions sequentially and keeps `RuntimeInteractionState` explicit
 - pickup orchestration preserves explicit `RuntimeInventoryState` and delegates transfer semantics to scene/inventory
+- policy pickup orchestration preserves item-definition/stack-policy diagnostics and inventory events without reimplementing scene/inventory rules
+- gameplay frame orchestration carries session, command queue, interaction state, inventory state, reports, and inventory events forward without changing lower-level semantics
 - tick index changes only where the tick step owns them
 - derived caches copied/preserved, not rebuilt implicitly
 

@@ -139,18 +139,25 @@ Does not own:
 
 ### `scene/inventory`
 
-Owns inventory stack data, level item-drop data, pickup planning, and pickup transfer semantics.
+Owns item definitions, inventory stack data, level item-drop data, pickup planning, pickup transfer semantics, and inventory/pickup events.
 
 Current anchors:
 - `InventoryState2D`
 - `InventoryState2DBuilder`
 - `InventoryAddItem2D`
+- `ItemDefinition2D`
+- `ItemDefinition2DCatalog`
+- `InventoryEvent2D`
+- `InventoryEventRecorder2D`
+- `InventoryStackPolicy2D`
+- `InventoryPolicyAddItem2D`
 - `LevelItemDrop2D`
 - `LevelItemDrop2DRegistry`
 - `LevelItemDrop2DRegistryBuilder`
 - `LevelItemDropConsume2D`
 - `PickupPlan2D`
 - `PickupTransfer2D`
+- `PickupPolicyTransfer2D`
 
 Does not own:
 - runtime command-frame order
@@ -242,6 +249,16 @@ Current anchors:
 - `RuntimeInventoryState`
 - `RuntimePickupStep`
 - `RuntimePickupEffectStep`
+- `RuntimePickupEffectFrameStep`
+- `RuntimePolicyPickupStep`
+- `RuntimePolicyPickupEffectStep`
+- `RuntimePolicyPickupEffectFrameStep`
+- `RuntimePlayerInputInteractionPickupFrameStep`
+- `RuntimePlayerInputInteractionPickupFrameReporter`
+- `RuntimeGameplayState`
+- `RuntimeGameplayFrameStep`
+- `RuntimeGameplayFrameRunner`
+- `RuntimeGameplayFrameReporter`
 - `RuntimeSessionCommandTick`
 - `RuntimeSessionCommandTickRunner`
 - `RuntimeLevelMutationStep`
@@ -273,6 +290,7 @@ Runtime may carry:
 - `LevelDerivedCacheState`
 - explicit `RuntimeInteractionState` values passed through interaction/input steps
 - explicit `RuntimeInventoryState` values passed through pickup steps
+- explicit `RuntimeGameplayState` values that group session, command queue, interaction state, and inventory state for gameplay-frame orchestration
 
 Runtime does not own:
 - level tile mutation semantics
@@ -371,6 +389,23 @@ RuntimePickupEffectStep
 ```
 
 Runtime can orchestrate pickup from a session player and explicit `RuntimeInventoryState`, but `scene/inventory` owns the inventory/drop mutation semantics. `RuntimeInventoryState` is not stored in `RuntimeSessionState` yet.
+
+Policy pickup orchestration:
+
+```text
+RuntimePolicyPickupEffectFrameStep
+  -> RuntimePolicyPickupEffectStep
+       -> RuntimePolicyPickupStep
+            -> PickupPlan2D
+            -> PickupPolicyTransfer2D
+                 -> InventoryPolicyAddItem2D
+                      -> InventoryStackPolicy2D
+                 -> LevelItemDropConsume2D
+            -> InventoryEventRecorder2D
+  -> returns updated RuntimeInventoryState
+```
+
+The policy path is the catalog-aware pickup lane. Runtime supplies session/player context, explicit inventory/drop state, and an item definition catalog, then delegates item stack limits, add policy, drop consumption, and inventory events to `scene/inventory`.
 
 Save snapshot ownership:
 

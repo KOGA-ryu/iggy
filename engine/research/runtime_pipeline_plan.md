@@ -101,15 +101,37 @@ RuntimePlayerInputInteractionEffectApplyFrameStep
 Inventory and pickup:
 
 ```text
+ItemDefinition2D
+ItemDefinition2DCatalog
 InventoryState2D
 LevelItemDrop2DRegistry
+InventoryEvent2D
 PickupPlan2D
 InventoryAddItem2D
 LevelItemDropConsume2D
 PickupTransfer2D
+InventoryStackPolicy2D
+InventoryPolicyAddItem2D
+PickupPolicyTransfer2D
 RuntimeInventoryState
 RuntimePickupStep
 RuntimePickupEffectStep
+RuntimePickupEffectFrameStep
+RuntimePolicyPickupStep
+RuntimePolicyPickupEffectStep
+RuntimePolicyPickupEffectFrameStep
+RuntimePlayerInputInteractionPickupFrameStep
+RuntimePlayerInputInteractionPickupFrameReporter
+```
+
+Gameplay frame orchestration:
+
+```text
+RuntimeGameplayState
+  -> RuntimeGameplayFrameStep
+       -> RuntimePlayerInputInteractionPickupFrameStep
+       -> RuntimeGameplayFrameReporter
+  -> RuntimeGameplayFrameRunner
 ```
 
 UI models and actions:
@@ -304,6 +326,36 @@ InteractionEffect2D::PickupItem
 
 This keeps inventory/drop state explicit. It does not store inventory or item drops inside `RuntimeSessionState`.
 
+Policy pickup effect variant:
+
+```text
+InteractionEffectPlanApplyResult
+  -> RuntimePolicyPickupEffectFrameStep
+       -> RuntimePolicyPickupEffectStep
+            -> RuntimePolicyPickupStep
+                 -> PickupPolicyTransfer2D
+                      -> InventoryPolicyAddItem2D
+                      -> LevelItemDropConsume2D
+            -> InventoryEventRecorder2D
+  -> updated RuntimeInventoryState
+```
+
+This is the catalog-aware pickup path. Item definition lookup, stack-cap enforcement, inventory add events, pickup events, and drop-consume events remain `scene/inventory` behavior. Runtime only sequences policy pickup effects across applied interaction effects.
+
+Gameplay frame variant:
+
+```text
+RuntimeGameplayState
+  -> RuntimeGameplayFrameStep
+       -> RuntimePlayerInputInteractionPickupFrameStep
+            -> RuntimePlayerInputInteractionEffectApplyFrameStep
+            -> RuntimePickupEffectFrameStep
+       -> RuntimeGameplayFrameReport
+  -> updated RuntimeGameplayState
+```
+
+`RuntimeGameplayState` groups session, command queue, interaction state, and inventory state for frame orchestration. It does not make interaction or inventory fields part of `RuntimeSessionState`, and it does not change the save snapshot boundary by itself.
+
 ## Current Runtime Mutation Command Tick Order
 
 ```text
@@ -352,6 +404,7 @@ Possible future slices:
 - camera/presentation state packet
 - save slot retention/overwrite policy if caller needs more than explicit slot store/list/delete calls
 - decide whether `RuntimeInteractionState` should remain a caller-owned sibling packet or become part of a broader session/presentation packet
-- decide whether `RuntimeInventoryState` should remain caller-owned or become part of authoritative session/save state
+- decide whether `RuntimeGameplayState` is the long-term top-level runtime packet and how its interaction/inventory fields relate to authoritative save snapshots
+- decide whether policy pickup should replace or coexist with the simple pickup path
 
 Pause before any slice that makes runtime infer map changes or own cache rebuild policy.
