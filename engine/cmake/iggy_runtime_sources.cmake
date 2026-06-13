@@ -12,6 +12,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeInteractionEffectCommandStep.cpp
   src/runtime/RuntimeInteractionCommandFrameStep.cpp
   src/runtime/RuntimeInteractionCommandStep.cpp
+  src/runtime/RuntimeInventoryState.cpp
   src/runtime/RuntimeInteractionState.cpp
   src/runtime/RuntimeQueuedCommandRunner.cpp
   src/runtime/RuntimeQueuedMutationCommandRunner.cpp
