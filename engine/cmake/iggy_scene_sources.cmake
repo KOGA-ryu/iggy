@@ -8,6 +8,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/interaction/InteractionEffectApplier2D.cpp
   src/scene/interaction/InteractionEffectCatalog2D.cpp
   src/scene/interaction/InteractionEffect2D.cpp
+  src/scene/interaction/InteractionEffectPlanApplier2D.cpp
   src/scene/interaction/InteractionEffectPlan2D.cpp
   src/scene/interaction/InteractionPlan2D.cpp
   src/scene/interaction/InteractionReach2D.cpp
