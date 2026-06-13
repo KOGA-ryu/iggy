@@ -161,6 +161,14 @@ Current anchors:
 - `RuntimeSessionSnapshotChunkDecoder`
 - `RuntimeSaveChunkArchiveEncoder`
 - `RuntimeSaveChunkArchiveDecoder`
+- `RuntimeSaveFileEnvelope`
+- `RuntimeSaveFileIO`
+- `RuntimeSaveSlotPathPolicy`
+- `RuntimeSaveSlotStore`
+- `RuntimeSaveSlotListing`
+- `RuntimeSaveSlotDeletion`
+- `RuntimeSessionSaver`
+- `RuntimeSessionLoader`
 - `RuntimeCollisionWorldProvider`
 
 Runtime may carry:
@@ -173,7 +181,7 @@ Runtime does not own:
 - cache rebuild policy
 - raw device input
 - backend renderer/window/GPU
-- save disk IO
+- platform storage, cloud sync, compression, or encryption
 - physics internals
 
 ## Current Precedence Rules
@@ -232,7 +240,10 @@ RuntimeSessionSnapshot
   -> RuntimeSessionSnapshotValidator
   -> RuntimeSessionSnapshotChunkEncoder / Decoder
   -> RuntimeSaveChunkArchiveEncoder / Decoder
-  -> byte vector
+  -> RuntimeSaveFileEnvelope
+  -> RuntimeSaveFileIO / RuntimeSaveSlotStore
 ```
 
-The save lane currently owns in-memory snapshot validation, chunk archive structure, and byte-vector codecs. It still does not own disk paths, file IO, compression, encryption, cloud saves, or platform storage.
+The save lane currently owns local save persistence: authoritative snapshot validation, chunk archive structure, byte-vector codecs, file envelope/checksum wrapping, local file read/write helpers, slot path policy, slot store/load, slot listing, slot deletion, and session save/load composition.
+
+It still does not own platform-specific storage, cloud saves, compression, encryption, cross-process locking, user-facing save UI, or broad retention policy unless a future slice scopes those explicitly.

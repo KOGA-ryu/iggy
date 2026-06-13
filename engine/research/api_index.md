@@ -99,3 +99,10 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `RuntimeSaveChunkArchive`, `RuntimeSaveChunkArchiveBuilder`, `RuntimeSaveChunkArchiveValidator`: backend-free chunked save archive data and validation.
 - `RuntimeSessionSnapshotChunkEncoder`, `RuntimeSessionSnapshotChunkDecoder`: convert snapshots to/from chunk archives.
 - `RuntimeSaveChunkArchiveEncoder`, `RuntimeSaveChunkArchiveDecoder`: convert chunk archives to/from byte vectors.
+- `RuntimeSaveFileEnvelopeEncoder`, `RuntimeSaveFileEnvelopeDecoder`: wrap/unwrap save payload bytes with envelope metadata and checksum validation.
+- `RuntimeSaveFileReader`, `RuntimeSaveFileWriter`: local file byte read/write helpers.
+- `RuntimeSaveSlotPathPolicy`: resolves validated local save slot paths.
+- `RuntimeSaveSlotStore`: stores and loads save envelopes through explicit slots.
+- `RuntimeSaveSlotListing`: lists local save slots and optional metadata.
+- `RuntimeSaveSlotDeletion`: deletes one resolved local save slot file.
+- `RuntimeSessionSaver`, `RuntimeSessionLoader`: compose session snapshots, archives, envelopes, file IO, and restore config.

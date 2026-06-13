@@ -94,9 +94,11 @@ RuntimeSessionSnapshotValidator
 RuntimeSessionSnapshotChunkEncoder
   -> RuntimeSaveChunkArchive
   -> RuntimeSaveChunkArchiveEncoder
-  -> byte vector
+  -> RuntimeSaveFileEnvelope
+  -> RuntimeSaveFileIO / RuntimeSaveSlotStore
 
-byte vector
+RuntimeSaveFileIO / RuntimeSaveSlotStore
+  -> RuntimeSaveFileEnvelope
   -> RuntimeSaveChunkArchiveDecoder
   -> RuntimeSessionSnapshotChunkDecoder
   -> RuntimeSessionSnapshotValidator
@@ -104,6 +106,15 @@ byte vector
 RuntimeSessionSnapshotRestorer
   -> RuntimeSessionBuilder
   -> rebuilds requested caches from restore config
+```
+
+Save slot management:
+
+```text
+RuntimeSaveSlotPathPolicy
+  -> RuntimeSaveSlotStore
+  -> RuntimeSaveSlotListing
+  -> RuntimeSaveSlotDeletion
 ```
 
 ## Current Runtime Command Tick Order
@@ -146,6 +157,7 @@ The caller still owns:
 - when tile edits are applied
 - when derived caches are refreshed or when the explicit mutation/cache step is called
 - when save snapshots are captured/restored
+- which save slot is read, written, listed, or deleted
 - presentation camera state
 - render-frame request timing
 
@@ -155,7 +167,7 @@ Do not merge these into existing ticks without a dedicated ownership review:
 
 - render frame building
 - presentation camera update
-- save disk IO, platform storage, compression, encryption, or cloud sync
+- platform storage, compression, encryption, cloud sync, or save UI policy
 - raw device input
 - command queue buffering
 
@@ -165,6 +177,6 @@ Possible future slices:
 
 - render-frame step that reads session carried render cache
 - camera/presentation state packet
-- save file IO wrapper around `RuntimeSaveChunkArchiveEncoder` / `RuntimeSaveChunkArchiveDecoder`
+- save slot retention/overwrite policy if caller needs more than explicit slot store/list/delete calls
 
 Pause before any slice that makes runtime infer map changes or own cache rebuild policy.

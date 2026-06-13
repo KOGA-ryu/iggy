@@ -110,11 +110,21 @@ Restoration should rebuild requested derived caches through `RuntimeSessionBuild
 
 ## Save Codec Rule
 
-The runtime save lane may own in-memory serialization contracts:
+The runtime save lane may own local persistence contracts for authoritative snapshots:
 
 - `RuntimeBinaryWriter` / `RuntimeBinaryReader`
 - `RuntimeSaveChunkArchive`
 - snapshot-to-chunk codecs
 - chunk-archive-to-byte-vector codecs
+- `RuntimeSaveFileEnvelope`
+- `RuntimeSaveFileIO`
+- `RuntimeSaveSlotPathPolicy`
+- `RuntimeSaveSlotStore`
+- `RuntimeSaveSlotListing`
+- `RuntimeSaveSlotDeletion`
+- `RuntimeSessionSaver`
+- `RuntimeSessionLoader`
 
-These are still not disk persistence. File paths, save slots, atomic writes, compression, encryption, cloud storage, and platform-specific storage remain separate future boundaries.
+These contracts may read and write local save files and manage explicit save slots. They still do not make derived caches authoritative or saveable.
+
+Compression, encryption, cloud storage, platform-specific storage, cross-process locking, save UI, and broad retention/overwrite policy remain separate future boundaries.

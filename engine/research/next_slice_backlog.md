@@ -21,11 +21,11 @@ Status labels:
    - purpose: decide whether camera state is session-owned or sibling presentation state.
    - caution: avoid mixing camera update with render backend.
 
-3. Save file IO wrapper around runtime save byte codecs
+3. Save slot retention/overwrite policy
    - status: `review`
    - owner candidate: `runtime`
-   - purpose: write/read byte vectors produced by `RuntimeSaveChunkArchiveEncoder` / `RuntimeSaveChunkArchiveDecoder`.
-   - caution: keep file paths, atomic writes, platform storage, compression, and encryption out unless explicitly scoped.
+   - purpose: define optional policy above explicit slot store/list/delete operations, such as overwrite prompts or retention limits.
+   - caution: keep platform storage, cloud sync, compression, encryption, and user-facing UI out unless explicitly scoped.
 
 ## Ready When Requested
 
@@ -58,7 +58,7 @@ Status labels:
 Pause before any slice that:
 
 - removes legacy runtime render-cache fields
-- introduces save disk IO or platform persistence
+- introduces platform save storage, cloud sync, compression, encryption, or save UI policy
 - makes runtime define tile mutation semantics
 - makes runtime rebuild caches implicitly during ticks
 - adds dynamic collision bodies
