@@ -18,11 +18,14 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/interaction/InteractionTargetToggle2D.cpp
   src/scene/inventory/InventoryAddItem2D.cpp
   src/scene/inventory/InventoryEvent2D.cpp
+  src/scene/inventory/InventoryPolicyAddItem2D.cpp
+  src/scene/inventory/InventoryStackPolicy2D.cpp
   src/scene/inventory/InventoryState2D.cpp
   src/scene/inventory/ItemDefinition2D.cpp
   src/scene/inventory/LevelItemDropConsume2D.cpp
   src/scene/inventory/LevelItemDrop2D.cpp
   src/scene/inventory/PickupPlan2D.cpp
+  src/scene/inventory/PickupPolicyTransfer2D.cpp
   src/scene/inventory/PickupTransfer2D.cpp
   src/scene/level/LevelBlueprint.cpp
   src/scene/level/LevelCollisionCacheState.cpp
