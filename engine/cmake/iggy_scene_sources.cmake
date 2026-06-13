@@ -5,6 +5,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/camera/CameraRig.cpp
   src/scene/camera/CameraShake.cpp
   src/scene/camera/CameraView.cpp
+  src/scene/interaction/InteractionEffectApplier2D.cpp
   src/scene/interaction/InteractionEffectCatalog2D.cpp
   src/scene/interaction/InteractionEffect2D.cpp
   src/scene/interaction/InteractionEffectPlan2D.cpp
@@ -12,6 +13,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/interaction/InteractionReach2D.cpp
   src/scene/interaction/InteractionTarget2D.cpp
   src/scene/interaction/InteractionTargetQuery2D.cpp
+  src/scene/interaction/InteractionTargetToggle2D.cpp
   src/scene/level/LevelBlueprint.cpp
   src/scene/level/LevelCollisionCacheState.cpp
   src/scene/level/LevelCollisionWorldBuilder.cpp
