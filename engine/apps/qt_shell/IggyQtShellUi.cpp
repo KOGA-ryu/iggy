@@ -75,7 +75,7 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 			border: none;
 			border-radius: 0;
 		}
-		QFrame#settingsSidebar {
+		QFrame#settingsPageStrip {
 			background: %5;
 			border-right: 1px solid %6;
 		}
@@ -202,12 +202,29 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 		QPushButton#toolChip:checked {
 			background: %12;
 		}
+		QPushButton#settingsPageButton {
+			min-height: 30px;
+			padding-left: 8px;
+			padding-right: 8px;
+		}
+		QPushButton#themeSwatchButton {
+			min-width: 22px;
+			max-width: 22px;
+			min-height: 22px;
+			max-height: 22px;
+			border-radius: 4px;
+			padding: 0;
+		}
 		QLineEdit, QComboBox, QListWidget, QSpinBox, QFontComboBox {
 			background: %14;
 			color: %2;
 			border: 1px solid %7;
 			border-radius: 5px;
 			padding: 4px 6px;
+		}
+		QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {
+			width: 0;
+			border: none;
 		}
 		QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QFontComboBox:focus {
 			border-color: %13;
@@ -226,6 +243,23 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 		}
 		QCheckBox {
 			spacing: 8px;
+		}
+		QCheckBox::indicator {
+			width: 26px;
+			height: 12px;
+			border-radius: 7px;
+		}
+		QCheckBox::indicator:unchecked {
+			background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+				stop:0 %10, stop:0.385 %10,
+				stop:0.386 %14, stop:1 %14);
+			border: 1px solid %6;
+		}
+		QCheckBox::indicator:checked {
+			background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+				stop:0 %23, stop:0.614 %23,
+				stop:0.615 %13, stop:1 %13);
+			border: 1px solid %13;
 		}
 		QMenu {
 			background: %5;
@@ -262,7 +296,8 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 		.arg(toQString(theme.trafficMinimize))
 		.arg(toQString(theme.trafficMinimizeEdge))
 		.arg(toQString(theme.trafficZoom))
-		.arg(toQString(theme.trafficZoomEdge));
+		.arg(toQString(theme.trafficZoomEdge))
+		.arg(toQString(theme.accentSoft));
 }
 
 QString slotName(ui::UiShellSlot slot)

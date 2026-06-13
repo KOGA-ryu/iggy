@@ -716,6 +716,7 @@ QWidget *IggyQtShellWindow::buildSettings()
 		QWidget *page = buildSettingsPage(pages[index].id);
 		stack->addWidget(page);
 		auto *button = makeToolButton(toQString(pages[index].label), settings_.activePageId == pages[index].id);
+		button->setObjectName(QStringLiteral("settingsPageButton"));
 		group->addButton(button);
 		stripLayout->addWidget(button);
 		connect(button, &QPushButton::clicked, this, [this, stack, index, pageId = pages[index].id]() {
