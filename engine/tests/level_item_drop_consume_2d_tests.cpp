@@ -56,6 +56,26 @@ bool SameDrops(
 	return true;
 }
 
+void ExpectNoEvents(const iggy::LevelItemDropConsume2DResult &result, const char *message)
+{
+	Expect(result.events.events.empty(), message);
+}
+
+void ExpectSingleDropConsumedEvent(
+	const iggy::LevelItemDropConsume2DResult &result,
+	const iggy::ResourceId &dropId,
+	const char *message)
+{
+	Expect(result.events.events.size() == 1, message);
+	if (result.events.events.size() == 1) {
+		const iggy::InventoryEvent2D &event = result.events.events[0];
+		Expect(event.type == iggy::InventoryEvent2DType::DropConsumed, message);
+		Expect(event.dropId == dropId, message);
+		Expect(event.itemId.empty(), message);
+		Expect(event.count == 0, message);
+	}
+}
+
 void TestEmptyDropId()
 {
 	const iggy::LevelItemDrop2DRegistry registry = Registry({ Drop("drop:potion") });
@@ -67,6 +87,7 @@ void TestEmptyDropId()
 	Expect(result.mode == iggy::LevelItemDropConsume2DMode::Disable, "empty drop id result should preserve default mode");
 	Expect(!result.changed, "empty drop id should not change registry");
 	Expect(SameDrops(result.registry.drops, registry.drops), "empty drop id should return copied original registry");
+	ExpectNoEvents(result, "empty drop id should not record inventory events");
 }
 
 void TestMissingDropId()
@@ -79,6 +100,7 @@ void TestMissingDropId()
 	Expect(result.dropId == iggy::ResourceId { "drop:missing" }, "missing drop id result should preserve requested id");
 	Expect(!result.changed, "missing drop id should not change registry");
 	Expect(SameDrops(result.registry.drops, registry.drops), "missing drop id should return copied original registry");
+	ExpectNoEvents(result, "missing drop id should not record inventory events");
 }
 
 void TestAlreadyDisabledDrop()
@@ -96,6 +118,7 @@ void TestAlreadyDisabledDrop()
 	Expect(result.mode == iggy::LevelItemDropConsume2DMode::Remove, "disabled drop result should preserve requested mode");
 	Expect(!result.changed, "disabled drop should not change registry");
 	Expect(SameDrops(result.registry.drops, registry.drops), "disabled drop should return copied original registry");
+	ExpectNoEvents(result, "disabled drop should not record inventory events");
 }
 
 void TestDisableModeConsumesDropAndPreservesFieldsAndOrder()
@@ -115,6 +138,7 @@ void TestDisableModeConsumesDropAndPreservesFieldsAndOrder()
 		Expect(SameDrop(result.registry.drops[0], expectedFirst), "disable mode should only disable matching drop");
 		Expect(SameDrop(result.registry.drops[1], second), "disable mode should preserve neighboring drop");
 	}
+	ExpectSingleDropConsumedEvent(result, first.id, "disable mode should record DropConsumed event");
 }
 
 void TestRemoveModeConsumesDropAndPreservesRemainingOrder()
@@ -136,6 +160,7 @@ void TestRemoveModeConsumesDropAndPreservesRemainingOrder()
 		Expect(SameDrop(result.registry.drops[0], first), "remove mode should preserve preceding drop");
 		Expect(SameDrop(result.registry.drops[1], third), "remove mode should preserve following drop order");
 	}
+	ExpectSingleDropConsumedEvent(result, second.id, "remove mode should record DropConsumed event");
 }
 
 void TestDuplicateIdsConsumeFirstOnly()

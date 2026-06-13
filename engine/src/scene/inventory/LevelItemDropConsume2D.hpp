@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/resource/ResourceId.hpp"
+#include "scene/inventory/InventoryEvent2D.hpp"
 #include "scene/inventory/LevelItemDrop2D.hpp"
 
 namespace iggy {
@@ -23,6 +24,7 @@ struct LevelItemDropConsume2DResult {
 	ResourceId dropId;
 	LevelItemDropConsume2DMode mode = LevelItemDropConsume2DMode::Disable;
 	bool changed = false;
+	InventoryEventRecorder2D events;
 };
 
 class LevelItemDropConsume2D {

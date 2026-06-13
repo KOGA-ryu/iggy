@@ -35,6 +35,7 @@ LevelItemDropConsume2DResult LevelItemDropConsume2D::consume(
 
 		result.status = LevelItemDropConsume2DStatus::Consumed;
 		result.changed = true;
+		recordInventoryEvent(result.events, dropConsumedInventoryEvent(dropId));
 		return result;
 	}
 
