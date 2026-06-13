@@ -18,6 +18,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeInteractionCommandStep.cpp
   src/runtime/RuntimeInventoryState.cpp
   src/runtime/RuntimeInteractionState.cpp
+  src/runtime/RuntimePolicyPickupEffectStep.cpp
   src/runtime/RuntimePolicyPickupStep.cpp
   src/runtime/RuntimePickupEffectFrameStep.cpp
   src/runtime/RuntimePickupEffectStep.cpp
