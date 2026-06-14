@@ -13,6 +13,8 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeNpcAiDecisionQueueStep.cpp
   src/runtime/RuntimeNpcAiCommandQueueStep.cpp
   src/runtime/RuntimeNpcAiMovementQueueStep.cpp
+  src/runtime/RuntimePlayerNpcAiCommandFrameStep.cpp
+  src/runtime/RuntimePlayerNpcAiQueueStep.cpp
   src/runtime/RuntimeInteractionEffectApplyFrameStep.cpp
   src/runtime/RuntimeInteractionEffectApplyStep.cpp
   src/runtime/RuntimeInteractionEffectCommandFrameStep.cpp
