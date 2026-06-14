@@ -1,6 +1,7 @@
 iggy_add_test(ai_map_2d_tests tests/ai_map_2d_tests.cpp)
 iggy_add_test(ai_map_query_2d_tests tests/ai_map_query_2d_tests.cpp)
 iggy_add_test(npc_ai_behavior_intent_2d_tests tests/npc_ai_behavior_intent_2d_tests.cpp)
+iggy_add_test(npc_ai_command_frame_mapper_2d_tests tests/npc_ai_command_frame_mapper_2d_tests.cpp)
 iggy_add_test(npc_ai_context_score_2d_tests tests/npc_ai_context_score_2d_tests.cpp)
 iggy_add_test(npc_ai_decision_2d_tests tests/npc_ai_decision_2d_tests.cpp)
 iggy_add_test(npc_ai_decision_pipeline_acceptance_tests tests/npc_ai_decision_pipeline_acceptance_tests.cpp)
