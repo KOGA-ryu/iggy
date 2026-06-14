@@ -110,6 +110,8 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/npc/NpcActorOccupancy2D.cpp
   src/scene/npc/NpcActorOccupancyQuery2D.cpp
   src/scene/npc/NpcActorPathReport2D.cpp
+  src/scene/npc/NpcActorPathStep2D.cpp
+  src/scene/npc/NpcActorPathStepOccupancyFilter2D.cpp
   src/scene/npc/NpcActorPostMoveReport2D.cpp
   src/scene/npc/NpcActorRouteTarget2D.cpp
   src/scene/npc/NpcActorState2D.cpp

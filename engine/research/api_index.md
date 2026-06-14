@@ -151,6 +151,8 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `NpcActorOccupancy2D`, `NpcActorOccupancyProjector2D`: read-only derived occupancy projection from NPC actor registry positions into occupied tile groups with duplicate-tile diagnostics; actor position remains actor truth.
 - `NpcActorOccupancyQuery2D`: read-only tile occupancy/blocking queries over derived NPC occupancy, including exact self-occupancy checks; no pathfinding or mutation.
 - `NpcActorPathReport2D`, `NpcActorPathReporter2D`: read-only pathfinding report over accepted NPC actor navigation requests using `NavigationGridPathfinder`; no step selection or mutation.
+- `NpcActorPathStep2D`, `NpcActorPathStepper2D`: read-only bounded movement-step proposal over found NPC actor paths using `NavigationPathFollower` and `NpcMoveMode` speed; no actor mutation or path-state ownership.
+- `NpcActorPathStepOccupancyFilter2D`, `NpcActorPathStepOccupancyFilterProjector2D`: read-only default hard-block occupancy filter over proposed NPC path steps; no reservations, sharing policy, or mutation.
 - `NpcActorPostMoveReport2D`, `NpcActorPostMoveReporter2D`: report-only post-move facts contract describing movement/block/rejection tiles and refresh needs without calling refresh/cache/runtime systems.
 - `NpcActorRouteTarget2D`, `NpcActorRouteTargetProjector2D`: read-only projection from movement intent into a concrete route target when one exists; fleeing requires an explicit escape destination and no pathfinding runs here.
 - `NpcPlayControlApply2D`, `NpcPlayControlApplier2D`: mutation boundary that applies a valid Play control proposal into NPC actor control registry data by value.
