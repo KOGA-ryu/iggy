@@ -105,7 +105,9 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/npc/NpcActorEscapeTarget2D.cpp
   src/scene/npc/NpcActorFrameState2D.cpp
   src/scene/npc/NpcActorMovementExecutor2D.cpp
+  src/scene/npc/NpcActorMovementFrameApply2D.cpp
   src/scene/npc/NpcActorMovementFrameIntent2D.cpp
+  src/scene/npc/NpcActorMovementFrameReport2D.cpp
   src/scene/npc/NpcActorMovementIntent2D.cpp
   src/scene/npc/NpcActorNavigationRequest2D.cpp
   src/scene/npc/NpcActorOccupancy2D.cpp
