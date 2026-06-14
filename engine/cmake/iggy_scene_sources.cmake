@@ -101,9 +101,16 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/level/LevelTileRenderCommands.cpp
   src/scene/level/LevelVisibleTiles.cpp
   src/scene/npc/NpcActorControlState2D.cpp
+  src/scene/npc/NpcActorEscapeRouteTarget2D.cpp
+  src/scene/npc/NpcActorEscapeTarget2D.cpp
   src/scene/npc/NpcActorFrameState2D.cpp
   src/scene/npc/NpcActorMovementFrameIntent2D.cpp
   src/scene/npc/NpcActorMovementIntent2D.cpp
+  src/scene/npc/NpcActorNavigationRequest2D.cpp
+  src/scene/npc/NpcActorOccupancy2D.cpp
+  src/scene/npc/NpcActorOccupancyQuery2D.cpp
+  src/scene/npc/NpcActorPathReport2D.cpp
+  src/scene/npc/NpcActorPostMoveReport2D.cpp
   src/scene/npc/NpcActorRouteTarget2D.cpp
   src/scene/npc/NpcActorState2D.cpp
   src/scene/npc/NpcBehaviorState.cpp

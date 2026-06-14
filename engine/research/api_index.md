@@ -143,8 +143,15 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `NpcMoveMode`: movement intensity vocabulary and speed multiplier helpers.
 - `NpcBehaviorState`: actor-carried active behavior state vocabulary and validation.
 - `NpcActorControlState2D`, `NpcActorControlState2DRegistry`, `NpcActorControlState2DRegistryBuilder`: scene-owned NPC objective/behavior/move-mode control packet and validated lookup table.
+- `NpcActorEscapeRouteTarget2D`, `NpcActorEscapeRouteTargetProjector2D`: read-only adapter that feeds a successful local escape target into route-target projection while preserving escape and route diagnostics; no pathfinding or mutation.
+- `NpcActorEscapeTarget2D`, `NpcActorEscapeTargetProjector2D`: read-only bounded local escape destination selection for `MoveAwayFrom` movement intents using level tile walkability; no pathfinding or mutation.
 - `NpcActorMovementIntent2D`, `NpcActorMovementIntentProjector2D`: read-only projection from joined actor/control frame state into one actor movement intent; no pathfinding or mutation.
 - `NpcActorMovementFrameIntent2D`, `NpcActorMovementFrameIntentProjector2D`: read-only batch projection from actor/control frame-state projection into per-actor movement intents; no pathfinding or mutation.
+- `NpcActorNavigationRequest2D`, `NpcActorNavigationRequestBuilder2D`: read-only adapter from ready NPC route targets to static tile-map navigation request validation; no pathfinding or mutation.
+- `NpcActorOccupancy2D`, `NpcActorOccupancyProjector2D`: read-only derived occupancy projection from NPC actor registry positions into occupied tile groups with duplicate-tile diagnostics; actor position remains actor truth.
+- `NpcActorOccupancyQuery2D`: read-only tile occupancy/blocking queries over derived NPC occupancy, including exact self-occupancy checks; no pathfinding or mutation.
+- `NpcActorPathReport2D`, `NpcActorPathReporter2D`: read-only pathfinding report over accepted NPC actor navigation requests using `NavigationGridPathfinder`; no step selection or mutation.
+- `NpcActorPostMoveReport2D`, `NpcActorPostMoveReporter2D`: report-only post-move facts contract describing movement/block/rejection tiles and refresh needs without calling refresh/cache/runtime systems.
 - `NpcActorRouteTarget2D`, `NpcActorRouteTargetProjector2D`: read-only projection from movement intent into a concrete route target when one exists; fleeing requires an explicit escape destination and no pathfinding runs here.
 - `NpcPlayControlApply2D`, `NpcPlayControlApplier2D`: mutation boundary that applies a valid Play control proposal into NPC actor control registry data by value.
 - `NpcPlayControlFrameApply2D`, `NpcPlayControlFrameApplier2D`: ordered batch mutation over NPC Play control proposals with sequential duplicate-NPC handling.

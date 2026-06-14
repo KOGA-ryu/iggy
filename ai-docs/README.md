@@ -14,6 +14,9 @@ source code.
 - [AI Mutation, Runtime, Movement, and Queueing](ai-mutation-runtime-movement-queueing.md): how reference games separate proposals from authoritative mutation, runtime state, actor movement, and queued work.
 - [NPC Actor Movement Planning Research](npc-actor-movement-planning-research.md): Iggy-specific route/path/step/executor slice plan from NPC control state to actor position mutation.
 - [NPC Escape Target Research](npc-escape-target-research.md): reference map for turning `MoveAwayFrom` into an explicit escape destination without faking route targets.
+- [NPC Occupancy and Actor Collision Research](npc-occupancy-collision-research.md): reference map for actor occupancy ownership, blocking, reservations, pathfinding collision checks, and post-move update costs.
+- [NPC Post-Move Consequences Research](npc-post-move-consequences-research.md): reference map for dirty facts, occupancy rebuild flags, visibility/cache/event deferral, and first post-move report shape.
+- [NPC Path Step Research](npc-path-step-research.md): reference map for route target, navigation request, path report, path-step proposal, and deferred path cache ownership.
 - [AI Skeleton Matrix](ai-skeleton-matrix.md): cross-game map of definition data, live actor state, objectives, executor state, movement, map authority, interaction sites, director AI, and save/load boundaries.
 - [AI Turn Pipeline Walkthroughs](ai-turn-pipeline-walkthroughs.md): per-game update paths showing how AI decisions become actions, movement, combat, or interaction work.
 - [AI Data Structures Map](ai-data-structures-map.md): compact list of the major structs/classes/enums that hold AI-related state in each reference.
