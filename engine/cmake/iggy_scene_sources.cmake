@@ -5,6 +5,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/ai/NpcAiContextScore2D.cpp
   src/scene/ai/NpcAiDecision2D.cpp
   src/scene/ai/NpcAiIntentTarget2D.cpp
+  src/scene/ai/NpcAiMovementCommandMapper2D.cpp
   src/scene/ai/NpcAiMovementProposal2D.cpp
   src/scene/ai/NpcAiNavigationRequest2D.cpp
   src/scene/ai/NpcAiPathReport2D.cpp
