@@ -136,6 +136,7 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `NpcBehaviorState`: actor-carried active behavior state vocabulary and validation.
 - `NpcActorControlState2D`, `NpcActorControlState2DRegistry`, `NpcActorControlState2DRegistryBuilder`: scene-owned NPC objective/behavior/move-mode control packet and validated lookup table.
 - `NpcPlayControlApply2D`, `NpcPlayControlApplier2D`: mutation boundary that applies a valid Play control proposal into NPC actor control registry data by value.
+- `NpcPlayControlFrameApply2D`, `NpcPlayControlFrameApplier2D`: ordered batch mutation over NPC Play control proposals with sequential duplicate-NPC handling.
 - `NpcActorFrameState2D`, `NpcActorFrameStateProjector2D`: per-frame actor + optional control join/projection with missing/orphan diagnostics.
 
 ## `scene/ui`
