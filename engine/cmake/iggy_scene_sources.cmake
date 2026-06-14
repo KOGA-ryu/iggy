@@ -52,6 +52,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/draft/DraftWallCutCompile2D.cpp
   src/scene/draft/DraftWallDoorAttach2D.cpp
   src/scene/draft/DraftWallDoorMorphPlan2D.cpp
+  src/scene/debug/SceneAsciiCanvas2D.cpp
   src/scene/interaction/InteractionEffectApplier2D.cpp
   src/scene/interaction/InteractionEffectCatalog2D.cpp
   src/scene/interaction/InteractionEffect2D.cpp

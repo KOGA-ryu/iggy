@@ -76,6 +76,10 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `DraftBuildingCompiler2D`: auditable building compile report for walls and doors.
 - `DraftLevelGeometryPlanner2D`: converts building compile wall segments into level/collision geometry plan data.
 
+## `scene/debug`
+
+- `SceneAsciiCanvas2D`: value-returning ASCII projection canvas for debug/import-proof rows and strings; not authoritative gameplay state.
+
 ## `scene/interaction`
 
 - `InteractionTarget2D`, `InteractionTarget2DRegistry`, `InteractionTarget2DRegistryBuilder`: authored/runtime interaction target data and validated target lookup table.

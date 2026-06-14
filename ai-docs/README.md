@@ -10,6 +10,7 @@ source code.
 - [AI Code Shape and Runtime Cost](ai-code-shape-and-runtime-cost.md): how to read AI code for loops, path/LOS cost, cache rebuilds, allocation, save/load repair, and scaling pressure.
 - [AI Compute Cost Ledger](ai-compute-cost-ledger.md): list of common AI/runtime compute costs, scaling shapes, per-game focus areas, and commands for finding hot spots.
 - [AI Actor Movement Research](ai-actor-movement-research.md): focused learning map of objective, path, movement state, position mutation, occupancy, post-move work, and movement compute costs.
+- [ASCII Dungeon Debug Projection Research](ascii-dungeon-debug-projection-research.md): NetHack/Edi/Iggy ownership map for ASCII import proof and cheap AI debug projection without making ASCII runtime truth.
 - [AI Mutation, Runtime, Movement, and Queueing](ai-mutation-runtime-movement-queueing.md): how reference games separate proposals from authoritative mutation, runtime state, actor movement, and queued work.
 - [AI Skeleton Matrix](ai-skeleton-matrix.md): cross-game map of definition data, live actor state, objectives, executor state, movement, map authority, interaction sites, director AI, and save/load boundaries.
 - [AI Turn Pipeline Walkthroughs](ai-turn-pipeline-walkthroughs.md): per-game update paths showing how AI decisions become actions, movement, combat, or interaction work.
