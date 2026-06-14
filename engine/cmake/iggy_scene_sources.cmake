@@ -1,4 +1,5 @@
 list(APPEND IGGY_ENGINE_SOURCES
+  src/scene/ai/AiMap2D.cpp
   src/scene/camera/CameraClamp.cpp
   src/scene/camera/CameraFollow.cpp
   src/scene/camera/CameraLookahead.cpp

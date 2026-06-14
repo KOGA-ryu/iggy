@@ -1,3 +1,4 @@
+iggy_add_test(ai_map_2d_tests tests/ai_map_2d_tests.cpp)
 iggy_add_test(camera_clamp_tests tests/camera_clamp_tests.cpp)
 iggy_add_test(camera_follow_tests tests/camera_follow_tests.cpp)
 iggy_add_test(camera_lookahead_tests tests/camera_lookahead_tests.cpp)
