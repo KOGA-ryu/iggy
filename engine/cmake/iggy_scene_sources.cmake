@@ -25,6 +25,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/ai/NpcIntelligencePool.cpp
   src/scene/ai/NpcIntelligenceDraw.cpp
   src/scene/ai/NpcPlay.cpp
+  src/scene/ai/NpcPlayControlProposal.cpp
   src/scene/ai/NpcRead.cpp
   src/scene/ai/NpcStrengthPool.cpp
   src/scene/ai/NpcStrengthDraw.cpp
