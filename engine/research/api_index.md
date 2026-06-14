@@ -145,6 +145,7 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `NpcActorControlState2D`, `NpcActorControlState2DRegistry`, `NpcActorControlState2DRegistryBuilder`: scene-owned NPC objective/behavior/move-mode control packet and validated lookup table.
 - `NpcActorEscapeRouteTarget2D`, `NpcActorEscapeRouteTargetProjector2D`: read-only adapter that feeds a successful local escape target into route-target projection while preserving escape and route diagnostics; no pathfinding or mutation.
 - `NpcActorEscapeTarget2D`, `NpcActorEscapeTargetProjector2D`: read-only bounded local escape destination selection for `MoveAwayFrom` movement intents using level tile walkability; no pathfinding or mutation.
+- `NpcActorMovementExecutor2D`: single-actor by-value movement executor that applies an allowed occupancy-filtered path step to a copied actor and emits post-move facts; no registry/runtime mutation.
 - `NpcActorMovementIntent2D`, `NpcActorMovementIntentProjector2D`: read-only projection from joined actor/control frame state into one actor movement intent; no pathfinding or mutation.
 - `NpcActorMovementFrameIntent2D`, `NpcActorMovementFrameIntentProjector2D`: read-only batch projection from actor/control frame-state projection into per-actor movement intents; no pathfinding or mutation.
 - `NpcActorNavigationRequest2D`, `NpcActorNavigationRequestBuilder2D`: read-only adapter from ready NPC route targets to static tile-map navigation request validation; no pathfinding or mutation.
