@@ -149,6 +149,50 @@ Does not own:
 - NPC AI
 - save/load format
 
+### `scene/ai`
+
+Owns map tactical AI context, NPC AI temperament/state inputs, auditable NPC AI decision reports, route/path/movement proposal transforms, and NPC AI command-frame mapping.
+
+Current anchors:
+- `AiMap2D`
+- `AiMapQuery2D`
+- `NpcAiBehaviorStore2D`
+- `NpcAiProfile2D`
+- `NpcAiCurrentState2D`
+- `NpcAiContextScore2D`
+- `NpcAiBehaviorIntent2D`
+- `NpcAiIntentTarget2D`
+- `NpcAiDecision2D`
+- `NpcAiRouteRequest2D`
+- `NpcAiNavigationRequest2D`
+- `NpcAiPathReport2D`
+- `NpcAiMovementProposal2D`
+- `NpcAiMovementCommandMapper2D`
+- `NpcAiCommandFrameMapper2D`
+
+Does not own:
+- runtime command queue lifetime
+- session tick order
+- player input intake
+- NPC movement execution
+- physics collision solving
+- save/load format
+
+### `scene/npc`
+
+Owns scene-level NPC actor identity and profile/current-goal state that can feed AI decisions.
+
+Current anchors:
+- `NpcActorState2D`
+- `NpcActorState2DRegistry`
+- `NpcActorState2DRegistryBuilder`
+
+Does not own:
+- tactical AI scoring or path planning
+- runtime command queue order
+- player command execution
+- save/load format
+
 ### `scene/interaction`
 
 Owns interaction target/effect data and scene-level interaction interpretation.
@@ -301,6 +345,11 @@ Current anchors:
 - `RuntimePolicyGameplayFrameStep`
 - `RuntimePolicyGameplayFrameRunner`
 - `RuntimePolicyGameplayFrameReporter`
+- `RuntimeNpcAiCommandQueueStep`
+- `RuntimeNpcAiMovementQueueStep`
+- `RuntimeNpcAiDecisionQueueStep`
+- `RuntimePlayerNpcAiQueueStep`
+- `RuntimePlayerNpcAiCommandFrameStep`
 - `RuntimeSessionCommandTick`
 - `RuntimeSessionCommandTickRunner`
 - `RuntimeLevelMutationStep`
@@ -336,6 +385,7 @@ Runtime may carry:
 
 Runtime does not own:
 - level tile mutation semantics
+- NPC AI decision/scoring semantics
 - cache rebuild policy
 - raw device input
 - backend renderer/window/GPU
@@ -461,6 +511,25 @@ RuntimePolicyGameplayFrameStep
 ```
 
 This path is the catalog-aware gameplay frame lane. It groups session, command queue, interaction state, and inventory state in `RuntimeGameplayState`, but it does not make interaction or inventory fields part of `RuntimeSessionState` or the save snapshot contract by itself.
+
+NPC AI queue orchestration:
+
+```text
+RuntimeNpcAiDecisionQueueStep
+  -> NpcAiDecision2D
+  -> NpcAiRouteRequest2D
+  -> NpcAiNavigationRequest2D
+  -> NpcAiPathReport2D
+  -> NpcAiMovementProposal2D
+  -> NpcAiCommandFrameMapper2D
+  -> RuntimeCommandQueue
+
+RuntimePlayerNpcAiQueueStep
+  -> RuntimePlayerInputQueueStep
+  -> RuntimeNpcAiDecisionQueueStep
+```
+
+Runtime chooses intake order and queue behavior. `scene/ai` owns scoring, target selection, route/path/movement-proposal semantics, and command-frame mapping. NPC AI queue steps should not mutate `RuntimeSessionState` or make NPC AI decisions authoritative save data by themselves.
 
 Save snapshot ownership:
 

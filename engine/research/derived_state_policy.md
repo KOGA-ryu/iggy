@@ -43,6 +43,7 @@ Transient frame data:
 - interaction events emitted while applying effects
 - pickup plans
 - inventory events emitted while applying inventory/pickup effects
+- NPC AI context scores, behavior intents, target selections, decisions, route requests, navigation requests, path reports, movement proposals, and command-frame mappings
 - NPC tick reports
 - collision query results
 - mutation/cache update results and command tick diagnostics
@@ -72,6 +73,7 @@ Save snapshots should exclude:
 - interaction plans, requested effect lists, application diagnostics, interaction events, and interaction reports
 - pickup plans and pickup diagnostics
 - inventory events and pickup frame diagnostics
+- NPC AI decision, path, movement proposal, queue, and command-frame diagnostics unless a later slice promotes actor state into snapshots
 - mutation/cache update diagnostics
 - backend handles, windows, GPU resources
 - raw device input state
@@ -189,3 +191,19 @@ ItemDefinition2DCatalog + RuntimeInventoryState + PickupPlan2DResult
 `RuntimeGameplayState` can group session, command queue, interaction state, and inventory state for frame orchestration. Treat it as a runtime packet, not a save snapshot contract. A future save/session slice must explicitly decide which interaction and inventory fields become authoritative persisted state.
 
 `RuntimePolicyGameplayFrameStep` and `RuntimePolicyGameplayFrameRunner` are catalog-aware runtime orchestration over `RuntimeGameplayState`. They can carry updated interaction and inventory state forward and accumulate transient inventory events, but they still do not make `ItemDefinition2DCatalog`, interaction state, inventory state, or item drops part of the current `RuntimeSessionSnapshot`.
+
+## NPC AI Rule
+
+NPC AI tactical maps, behavior presets, profiles, current AI state inputs, and actor registries are scene data. Decision outputs are transient reports:
+
+```text
+AiMap2D + NpcAiProfile2D + NpcAiCurrentState2D
+  -> NpcAiDecision2DResult
+  -> NpcAiRouteRequest2DResult
+  -> NpcAiNavigationRequest2DResult
+  -> NpcAiPathReport2DResult
+  -> NpcAiMovementProposal2DResult
+  -> NpcAiCommandFrameMapper2DResult
+```
+
+Runtime NPC AI queue steps can enqueue the resulting gameplay command frames, but they do not make AI reports authoritative. `NpcActorState2DRegistry` is a scene-owned actor-state candidate; its relationship to existing NPC agent state and save snapshots needs an explicit future boundary decision.

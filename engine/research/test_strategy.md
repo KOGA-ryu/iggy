@@ -62,6 +62,7 @@ Proves:
 - pickup plans preserve requested ids/positions, enforce enabled/range policy, and do not mutate inventories or drops
 - pickup transfers add inventory stacks and consume drops through source-of-truth helpers without mutating inputs
 - policy pickup transfers preserve stack-policy diagnostics, add/drop diagnostics, and inventory event ordering
+- NPC AI tactical maps, behavior stores, actor registries, decision reports, route/path reports, movement proposals, and command-frame mappers validate inputs, preserve order, and avoid mutation
 - UI models project runtime reports/settings/tool state into read-only model/action data
 
 Avoid:
@@ -99,6 +100,7 @@ Proves:
 - policy pickup orchestration preserves item-definition/stack-policy diagnostics and inventory events without reimplementing scene/inventory rules
 - gameplay frame orchestration carries session, command queue, interaction state, inventory state, reports, and inventory events forward without changing lower-level semantics
 - policy gameplay frame orchestration proves item-definition catalog input, policy pickup diagnostics, report counts, runner carry-forward, and event accumulation without changing the simple gameplay frame lane
+- NPC AI queue orchestration preserves scene/ai decision diagnostics, queue order, and command-runner behavior without reimplementing tactical scoring or path/movement proposal logic
 - tick index changes only where the tick step owns them
 - derived caches copied/preserved, not rebuilt implicitly
 
@@ -106,6 +108,7 @@ Avoid:
 - duplicating scene/server logic
 - duplicating player input gate or mapper logic
 - duplicating scene/interaction target, reach, or effect-plan rules
+- duplicating scene/ai scoring, routing, path-report, or movement-proposal rules
 - hidden cache rebuilds
 - raw input mapping
 

@@ -1,14 +1,16 @@
 list(APPEND IGGY_ENGINE_SOURCES
   src/scene/ai/AiMap2D.cpp
   src/scene/ai/AiMapQuery2D.cpp
-  src/scene/ai/NpcAiCommandFrameMapper2D.cpp
+  src/scene/ai/NpcAiBehaviorStore2D.cpp
   src/scene/ai/NpcAiBehaviorIntent2D.cpp
+  src/scene/ai/NpcAiCommandFrameMapper2D.cpp
   src/scene/ai/NpcAiContextScore2D.cpp
   src/scene/ai/NpcAiDecision2D.cpp
   src/scene/ai/NpcAiIntentTarget2D.cpp
   src/scene/ai/NpcAiMovementCommandMapper2D.cpp
   src/scene/ai/NpcAiMovementProposal2D.cpp
   src/scene/ai/NpcAiNavigationRequest2D.cpp
+  src/scene/ai/NpcObjective2D.cpp
   src/scene/ai/NpcAiPathReport2D.cpp
   src/scene/ai/NpcAiProfile2D.cpp
   src/scene/ai/NpcAiRouteRequest2D.cpp
@@ -74,6 +76,9 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/level/LevelTileRenderChunkVisibility.cpp
   src/scene/level/LevelTileRenderCommands.cpp
   src/scene/level/LevelVisibleTiles.cpp
+  src/scene/npc/NpcActorState2D.cpp
+  src/scene/npc/NpcBehaviorState2D.cpp
+  src/scene/npc/NpcMoveMode2D.cpp
   src/scene/player/PlayerAgentState.cpp
   src/scene/player/PlayerCommandFramePlanner2D.cpp
   src/scene/player/PlayerCommandPlanner2D.cpp

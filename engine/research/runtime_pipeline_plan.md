@@ -39,6 +39,29 @@ RuntimePlayerCommandExecutionStep
 RuntimePlayerCommandStep
 ```
 
+Scene NPC AI interpretation:
+
+```text
+AiMap2D
+AiMapQuery2D
+NpcAiBehaviorStore2D
+NpcAiProfile2D
+NpcAiCurrentState2D
+NpcAiDecision2D
+NpcAiRouteRequest2D
+NpcAiNavigationRequest2D
+NpcAiPathReport2D
+NpcAiMovementProposal2D
+NpcAiCommandFrameMapper2D
+```
+
+NPC actor state:
+
+```text
+NpcActorState2DRegistry
+  -> NpcAiCurrentState2D / RuntimeNpcAiDecisionQueueNpcInput
+```
+
 Scene interaction interpretation:
 
 ```text
@@ -66,6 +89,24 @@ PlayerInputIntent2D list
        -> RuntimeSessionCommandTickRunner
   -> RuntimePlayerInputCommandReporter
   -> RuntimePlayerInputFrameStep
+```
+
+Runtime NPC AI queue orchestration:
+
+```text
+RuntimeNpcAiDecisionQueueStep
+  -> scene/ai decision pipeline
+  -> RuntimeNpcAiMovementQueueStep
+       -> RuntimeNpcAiCommandQueueStep
+       -> RuntimeCommandQueue
+
+RuntimePlayerNpcAiQueueStep
+  -> RuntimePlayerInputQueueStep
+  -> RuntimeNpcAiDecisionQueueStep
+
+RuntimePlayerNpcAiCommandFrameStep
+  -> RuntimePlayerNpcAiQueueStep
+  -> RuntimeQueuedCommandRunner
 ```
 
 Runtime level mutation orchestration:
@@ -286,6 +327,35 @@ input RuntimeSessionState + RuntimeCommandQueueState + PlayerInputContext2D + Pl
   -> RuntimePlayerInputCommandReporter::reportGated
 ```
 
+NPC AI queue variant:
+
+```text
+input RuntimeCommandQueueState + AiMap2D + LevelTileMap + NPC AI inputs
+  -> RuntimeNpcAiDecisionQueueStep
+       -> NpcAiDecision2D
+       -> NpcAiRouteRequest2D
+       -> NpcAiNavigationRequest2D
+       -> NpcAiPathReport2D
+       -> NpcAiMovementProposal2D
+       -> NpcAiCommandFrameMapper2D
+       -> RuntimeCommandQueue
+```
+
+Player + NPC AI queue variant:
+
+```text
+RuntimePlayerNpcAiQueueStep
+  -> RuntimePlayerInputQueueStep
+  -> RuntimeNpcAiDecisionQueueStep
+  -> explicit order: PlayerThenNpcAi or NpcAiThenPlayer
+
+RuntimePlayerNpcAiCommandFrameStep
+  -> RuntimePlayerNpcAiQueueStep
+  -> RuntimeQueuedCommandRunner
+```
+
+Runtime owns queue order and command-runner composition. `scene/ai` remains the source of truth for tactical map lookup, scoring, intent, route/path reports, movement proposals, and command-frame mapping.
+
 Interaction variant:
 
 ```text
@@ -467,5 +537,6 @@ Possible future slices:
 - decide whether `RuntimeInteractionState` should remain a caller-owned sibling packet or become part of a broader session/presentation packet
 - decide whether `RuntimeGameplayState` is the long-term top-level runtime packet and how its interaction/inventory fields relate to authoritative save snapshots
 - decide whether policy gameplay frames should replace or coexist with the simple gameplay frame lane
+- decide how `NpcActorState2DRegistry` relates to existing `modules/npc_ai::NpcAgentState` and future save snapshots before runtime owns NPC actor lifetime
 
 Pause before any slice that makes runtime infer map changes or own cache rebuild policy.

@@ -104,6 +104,20 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `PickupTransfer2D::transfer`: applies a ready pickup plan to inventory and item-drop registries.
 - `PickupPolicyTransfer2D::transfer`: policy-aware pickup transfer using item definitions, policy add, drop consume, and inventory events.
 
+## `scene/ai`
+
+- `AiMap2D`, `AiMapQuery2D`: map-owned tactical AI substrate and read-only local situation query.
+- `NpcAiBehaviorStore2D`, `NpcAiBehaviorStore2DBuilder`: validated reusable NPC behavior presets for tuning/profile construction.
+- `NpcAiProfile2D`, `NpcAiCurrentState2D`: NPC temperament and current AI state data.
+- `NpcAiContextScore2D`, `NpcAiBehaviorIntent2D`, `NpcAiIntentTarget2D`, `NpcAiDecision2D`: read-only decision pipeline from tactical context and NPC bias to chosen instinct/anchor.
+- `NpcAiRouteRequest2D`, `NpcAiNavigationRequest2D`, `NpcAiPathReport2D`, `NpcAiMovementProposal2D`: route, navigation, path, and movement proposal reports.
+- `NpcAiMovementCommandMapper2D`, `NpcAiCommandFrameMapper2D`: convert movement proposals into runtime gameplay command data without queueing/execution.
+- Ace-facing naming guide: `engine/research/npc_ai_tuning_names.md`.
+
+## `scene/npc`
+
+- `NpcActorState2D`, `NpcActorState2DRegistry`, `NpcActorState2DRegistryBuilder`: scene-owned NPC actor identity/profile/current-goal state and validated lookup table.
+
 ## `scene/ui`
 
 - `UiToolBeltState` helpers: tool-belt navigation, occupied-cell normalization, pinned rows, and view projection.
@@ -166,6 +180,11 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `RuntimeGameplayState`: top-level runtime gameplay packet carrying session, command queue, interaction state, and inventory state.
 - `RuntimeGameplayFrameStep`, `RuntimeGameplayFrameRunner`, `RuntimeGameplayFrameReporter`: one-frame and bounded gameplay orchestration over input, interaction, pickup, command ticking, and reports.
 - `RuntimePolicyGameplayFrameStep`, `RuntimePolicyGameplayFrameRunner`, `RuntimePolicyGameplayFrameReporter`: catalog-aware gameplay frame orchestration and reporting over policy pickup.
+- `RuntimeNpcAiCommandQueueStep`: pushes already-mapped NPC AI command frames into the runtime command queue.
+- `RuntimeNpcAiMovementQueueStep`: maps NPC movement proposals to gameplay commands and queues them.
+- `RuntimeNpcAiDecisionQueueStep`: runs scene/ai decision, route, path, movement proposal, and command mapping for NPC inputs, then queues the result.
+- `RuntimePlayerNpcAiQueueStep`: composes player input queueing with NPC AI queueing in an explicit order.
+- `RuntimePlayerNpcAiCommandFrameStep`: runs combined player/NPC AI queue intake through the queued command runner.
 - `RuntimeCollisionWorldProvider`: resolves explicit/session/empty collision world.
 - `RuntimeSessionCommandTick`: command step followed by session tick.
 - `RuntimeSessionCommandTickRunner`: bounded command-frame loop over command ticks.

@@ -71,7 +71,19 @@ Status labels:
    - purpose: decide how `UiActionPlan` should be invoked by a host loop without making UI own runtime mutation.
    - caution: UI models/tool intents exist, but backend window/input bindings and runtime execution remain out of scope.
 
-11. Raw input binding
+11. NPC actor/session ownership policy
+   - status: `review`
+   - owner candidate: `scene/npc` for actor state, `runtime` only after session/save boundaries are explicit
+   - purpose: decide how `NpcActorState2DRegistry` relates to existing `modules/npc_ai::NpcAgentState`, runtime session state, and save snapshots.
+   - caution: do not let NPC AI queue steps become the owner of NPC actor lifetime or persisted AI decision reports.
+
+12. NPC AI runtime integration policy
+   - status: `review`
+   - owner candidate: `runtime` for queue order, `scene/ai` for decision semantics
+   - purpose: decide whether NPC AI queue/composition should feed the existing gameplay frame lanes, or remain a separate command-frame intake path.
+   - caution: preserve `scene/ai` as the source of scoring, routing, path, movement proposal, and command mapping rules.
+
+13. Raw input binding
    - status: `defer`
    - owner candidate: platform/input layer not defined yet
    - purpose: map keyboard/gamepad to `GameplayCommand2D`.
@@ -87,4 +99,5 @@ Pause before any slice that:
 - makes runtime rebuild caches implicitly during ticks
 - adds dynamic collision bodies
 - removes the simple gameplay frame lane in favor of policy gameplay frames without a migration plan
+- merges `NpcActorState2DRegistry` into runtime/session/save state without an ownership ruling
 - introduces an entity registry/ECS
