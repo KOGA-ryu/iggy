@@ -4,10 +4,9 @@ Reference repo: `/Users/kogaryu/iggy/DevilutionX-master`
 
 DevilutionX is useful because it shows a classic ARPG runtime where monster AI,
 animation mode, combat state, map occupancy, lighting, vision, save/load, and
-network determinism are tightly connected. The lesson for Iggy is not to copy the
-global structure. The lesson is how ARPG monsters bridge between static monster
-tables, live actor state, tile occupancy, path queries, LOS checks, and save
-state.
+network determinism are tightly connected. The useful lesson is how ARPG
+monsters bridge between static monster tables, live actor state, tile occupancy,
+path queries, LOS checks, and save state.
 
 ## Core Ownership Map
 
@@ -33,10 +32,9 @@ class, resistances, selection region, treasure, and experience.
 name/translation art, level, max HP, AI id, intelligence, damage, stat drain,
 resistance, pack behavior, custom hit/armor, and talk message.
 
-Iggy lesson: use data tables for profile facts and special-case overlays. An
-`NpcDefinition2D` can carry default AI id, movement/combat affordances, and
-animation tags; unique actors can override a small subset without becoming a new
-system.
+Learning point: DevilutionX uses data tables for profile facts and special-case
+overlays. Unique monsters override a subset of base monster facts without
+becoming a totally separate behavior system.
 
 ### Level Monster Type Cache
 
@@ -57,9 +55,8 @@ the current level.
 This is not the same as static monster data and not the same as live monster
 state. It is a runtime resource cache selected for the current dungeon level.
 
-Iggy lesson: separate static `NpcDefinition2D` from loaded runtime resources.
-Per-level actor resource caches should sit near asset/runtime state, not inside
-every NPC actor.
+Learning point: static monster data, per-level loaded resources, and live
+monster state are separate layers.
 
 ### Live Monster State
 
@@ -88,8 +85,9 @@ Two fields are especially instructive:
 - `MonsterMode`: current executable/visual state such as stand, movement,
   melee/ranged attack, hit recovery, death, delay, petrified, heal, talk.
 
-Iggy lesson: distinguish objective from execution mode. `NpcObjective2D` should
-not be the same thing as `NpcMoveMode2D` or animation state.
+Learning point: the reference distinguishes goal from execution mode. A monster
+can have durable intent while its current mode is standing, moving, attacking,
+dying, talking, or recovering.
 
 ### Dungeon Grid and Query State
 
@@ -115,9 +113,9 @@ The AI reads tile visibility, walkability, safety, occupancy, solid flags,
 doors, objects, and line checks through helpers. This means the map is not just
 render data. It is the query authority for movement and combat legality.
 
-Iggy lesson: a level-owned query world is appropriate for ARPG AI. Keep actor
-state in actor registries, but keep tile occupancy/collision/visibility lookup
-as derived level/runtime query state.
+Learning point: the dungeon grid is a query authority for ARPG AI. Tile
+occupancy, collision, visibility, and lighting are level/runtime data read by
+monster behavior.
 
 ## AI Update Flow
 
@@ -149,10 +147,9 @@ Useful files:
 11. Update mode/stance until the mode no longer chains.
 12. Process animation unless locked/special.
 
-Iggy lesson: AI tick should be explicit about phase order. Good phases for Iggy:
-refresh visibility/perception, update target memory, run objective/path planner,
-run behavior policy, emit action proposal, execute accepted mode, advance
-animation/reporting.
+Learning point: the monster tick has explicit phases: refresh visibility and
+target memory, run path planning, dispatch behavior policy, update mode, and
+advance animation.
 
 ## Behavior Dispatch
 
@@ -174,9 +171,9 @@ The behavior functions inspect mode, activity, distance, LOS, intelligence,
 previous mode variables, and map state. They start attacks, ranged attacks,
 special attacks, random walks, delays, retreats, or door checks.
 
-Iggy lesson: a behavior store can map profile ids to policy modules. Use the
-mapping idea, but return typed proposals instead of letting each policy mutate
-everything directly.
+Learning point: monster type data maps to behavior functions through an AI id.
+Each behavior inspects map/monster state and starts attacks, movement, delays,
+retreats, or special actions.
 
 ## Movement, Pathing, and LOS
 
@@ -209,9 +206,8 @@ checks. Before pathfinding, `AiPlanPath` tries a line-clear check and only plans
 when direct movement is blocked or search behavior has built up enough. Ranged
 AI separately checks missile line clear before attacking.
 
-Iggy lesson: keep pathfinding generic and inject level/actor legality. AI should
-not know every collision rule; it should ask a movement candidate/path query that
-knows the actor and the map.
+Learning point: pathfinding is generic and receives legality callbacks. Monster
+pathing wraps generic search with monster-specific accessibility and safety.
 
 ## Save/Load Ownership
 
@@ -268,10 +264,11 @@ Rebuilt or resynced after load:
 - missile flags and missile animation data
 - premium item compatibility changes
 
-Iggy lesson: save authoritative actor/session facts and enough level facts to
-restore the session. Rebuild indexes and presentation/runtime caches after load.
+Learning point: save/load persists actor/session facts and enough level facts to
+restore the session, then rebuilds or resyncs indexes, animation pointers,
+lighting, vision, item lookup, and other runtime data.
 
-## ARPG Patterns Worth Copying Conceptually
+## ARPG Reference Patterns
 
 - Monster definitions are data tables, not ad hoc code.
 - Unique monsters are overlays on base monster types.
@@ -283,7 +280,7 @@ restore the session. Rebuild indexes and presentation/runtime caches after load.
 - Dungeon occupancy arrays make entity queries cheap.
 - Save/load validates and resyncs runtime data after reading old state.
 
-## Do Not Copy
+## Legacy Costs
 
 - Global dungeon arrays as the only ownership mechanism.
 - Direct mutation from every AI function.
@@ -292,49 +289,17 @@ restore the session. Rebuild indexes and presentation/runtime caches after load.
 - Animation mode and behavior mode being too tightly coupled.
 - Large monolithic save/load functions.
 - Behavior dispatch as raw function pointers without typed proposal boundaries.
-- Network-determinism constraints unless Iggy explicitly needs multiplayer sync.
+- Network-determinism constraints add extra coupling.
 
-## Iggy Translation
+## Minimal Reference Lesson
 
-Good Iggy type shape:
+DevilutionX's ARPG monster skeleton:
 
-- `NpcDefinition2D`: static type data, tags, base stats, AI profile id.
-- `NpcUniqueOverlay2D`: optional actor/profile overrides.
-- `NpcRuntimeResourceCache2D`: loaded sprites/sounds/animation data for active
-  NPC definitions.
-- `NpcActorState2D`: live HP/status/position/target/objective/mode state.
-- `NpcObjective2D`: durable goal such as patrol, pursue, retreat, talk, heal.
-- `NpcActionMode2D`: current executable mode such as stand, move, attack, hit,
-  delay, death.
-- `NpcAiActivityState2D`: visible/asleep/alert/decaying activity timer.
-- `LevelOccupancyGrid2D`: derived grid for players, NPCs, items, objects.
-- `NpcMovementLegalityQuery2D`: level-owned query using tile, collision,
-  occupancy, safety, door, and actor capability.
-- `NpcAiPolicyStore2D`: maps profile ids to policy functions/modules.
-- `NpcActionProposal2D`: typed result from policy before runtime execution.
-
-Ownership recommendation:
-
-- `scene/npc`: definitions, overlays, actor state.
-- `scene/level`: tile data, tile properties, semantic regions.
-- `runtime`: active actor registries, tick order, command/proposal execution.
-- `runtime/cache` or `scene/level/cache`: occupancy grids, visibility/light/path
-  scratch data.
-- `assets/runtime`: loaded animation/sound resources for active definitions.
-- save snapshot: session facts, level id/seed, actors, inventory/items, quest
-  state, persistent exploration, persistent objects.
-
-## Minimal Iggy Lesson
-
-For an ARPG-like engine, NPC AI gets cleaner if each tick follows this shape:
-
-1. Actor state says who the NPC is and what it remembers.
-2. Definition/profile says what the NPC can do.
-3. Level query state says what is legal right now.
-4. AI policy proposes an action.
-5. Runtime accepts, rejects, or translates the action into movement/combat/events.
-6. Animation/render state follows the accepted action, not the other way around.
-7. Save/load persists actor/session truth and rebuilds query/render caches.
-
-DevilutionX proves that ARPG AI needs tight access to map occupancy, LOS, and
-session state. Iggy should keep that access explicit and typed instead of global.
+1. Static monster data says what the monster type can do.
+2. Per-level monster type cache owns loaded resources for active monster types.
+3. Live monster state stores HP, position, goal, mode, enemy memory, animation,
+   path state, and combat stats.
+4. Dungeon query arrays answer occupancy, LOS, light, and solidity questions.
+5. AI id dispatch chooses behavior.
+6. Behavior changes monster mode or starts movement/combat/special actions.
+7. Save/load persists session and actor truth, then rebuilds runtime caches.

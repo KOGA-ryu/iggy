@@ -4,7 +4,7 @@ Reference repo: `/Users/kogaryu/iggy/re3-miami`
 
 re3 Miami is useful because it shows open-world NPC behavior split across
 pedestrian objectives, executable ped states, movement intensity, threat/type
-data, attractors, vehicle autopilot, and path graphs. The Iggy lesson is the
+data, attractors, vehicle autopilot, and path graphs. The useful lesson is the
 layering, not the giant mutable `CPed` object.
 
 ## Core Ownership Map
@@ -30,9 +30,9 @@ dead peds, and related flags.
 Ped stats own personality/tuning values: flee distance, heading turn rate, fear,
 temper, lawfulness, attack strength, defense weakness, and behavior flags.
 
-Iggy lesson: separate faction/social threat profile from the actor state.
-`NpcThreatProfile2D` should be static or faction/profile data, not a per-frame
-decision result.
+Learning point: faction/social threat profile data is separate from live actor
+state. Runtime threat response combines static profile data with observed
+threats.
 
 ### Live Ped State
 
@@ -49,7 +49,7 @@ Useful files:
 - `/Users/kogaryu/iggy/re3-miami/src/peds/Ped.h:581`
 - `/Users/kogaryu/iggy/re3-miami/src/peds/Ped.h:639`
 
-`CPed` owns too much by Iggy standards, but the fields reveal useful layers:
+`CPed` owns many layers in one object, but the fields reveal useful layers:
 
 - `m_objective` and `m_prevObjective`: durable intention.
 - `m_nPedState` and `m_nLastPedState`: current executable/animation-like state.
@@ -60,9 +60,9 @@ Useful files:
 - `m_attractor` and `m_positionInQueue`: link into a map-owned interaction.
 - `m_pedStats` and `m_nPedType`: links back to static profile/type data.
 
-Iggy lesson: use separate types even if re3 stores them in one object:
-`NpcObjective2D`, `NpcBehaviorState2D`, `NpcMoveMode2D`,
-`NpcPerceptionMemory2D`, and `NpcPathFollowState2D`.
+Learning point: re3 stores objective, state, move mode, perception memory,
+attractor assignment, and path-follow state together on the ped, even though
+they are conceptually different layers.
 
 ## Objective, State, and Move Mode
 
@@ -92,9 +92,8 @@ The cleanest conceptual split:
 leaving, and leader changes as temporary objectives. `ProcessObjective` maps the
 durable objective into seek/flee/attack/enter-car state changes and move modes.
 
-Iggy lesson: do not let `NpcObjective2D` double as animation state or speed.
-Build proposals like "goto area walking" or "flee target running" as objective +
-move mode + target.
+Learning point: objective, executable state, and movement intensity are distinct
+layers. "Flee target running" is objective + move mode + target, not one field.
 
 ## Threat and Reaction Flow
 
@@ -114,9 +113,8 @@ Threat response is profile-shaped. A ped has fear/temper stats and type-level
 threat masks. Runtime scanning fills a threat entity/flag. Reaction code chooses
 whether to flee, fight, cower, duck, or resume idle behavior.
 
-Iggy lesson: implement a small `NpcThreatReaction2D` that maps
-`NpcThreatProfile2D + observed threat + actor state` into an intent/proposal.
-Do not bury this inside pathfinding or movement.
+Learning point: threat reaction combines profile data, observed threat, and live
+actor state. It is not only pathfinding or movement.
 
 ## Pathing and Wandering
 
@@ -145,9 +143,8 @@ ped.
 following. It stores the destination, abort radius, target entity, movement
 mode, and current node list on the ped.
 
-Iggy lesson: keep `LevelNavigationCache2D` as the graph owner. NPC behavior
-state may hold a short path-follow state, but should not own the path graph or
-map spawn rules.
+Learning point: the path graph is owned by `CPathFind`. Peds hold short
+path-follow buffers and destinations, not the whole graph or spawn rules.
 
 ## Attractors and Interaction Points
 
@@ -177,9 +174,9 @@ direction, and use direction.
 `SetNewAttraction` maps an accepted attractor to an objective and stores queue
 position on the ped. The ped does not own the attractor truth.
 
-Iggy lesson: this maps directly to `InteractionPoint2D` or
-`InteractionWorkSiteStore2D`: level-owned points with capacity, queue slots,
-approach/use positions, and accepted actor ids. NPCs only hold an assignment.
+Learning point: attractors are world-owned interaction points with capacity,
+queue slots, approach/use positions, and accepted actor ids. Peds hold their
+assignment and queue position.
 
 ## Vehicle AI and Autopilot
 
@@ -204,9 +201,8 @@ Vehicles own an `AutoPilot` object. Autopilot splits:
 - driving style: stop, slow down, avoid, plough through, ignore lights.
 - route/path node state, cruise speed, destination, target car.
 
-Iggy does not need vehicle AI now, but this is a good general pattern for
-actors with special movement controllers: objective/mission, temporary action,
-movement style, route scratch.
+Learning point: vehicle AI uses the same broad split: mission, temporary action,
+movement style, and route scratch.
 
 ## Routes and Scripted Movement
 
@@ -225,8 +221,8 @@ Useful files:
 Ped routes are global route points with route ids and positions. Peds hold route
 progress fields and can be assigned a follow-route objective.
 
-Iggy lesson: scripted route data should be map/level data. NPC state should only
-hold current route id and progress.
+Learning point: scripted route data is global route/map data. Ped state holds
+current route id and progress.
 
 ## Save/Load Ownership
 
@@ -253,36 +249,11 @@ Path save does not serialize the whole graph. It stores mutable path flags such
 as disabled and between-level bits; the base graph is loaded/generated
 elsewhere. Load also performs collision and streaming repair before full restore.
 
-Iggy lesson: persist actor/session truth and small mutable graph flags. Rebuild
-base navigation, collision, render, and UI/debug caches from authoritative data.
+Learning point: save/load persists actor/session truth and small mutable graph
+flags. Base navigation, collision, render, and presentation caches are rebuilt
+from authoritative data.
 
-## Iggy Translation
-
-Good candidate types:
-
-- `NpcThreatProfile2D`: static social/threat/avoid masks plus fear/temper style
-  tuning.
-- `NpcObjective2D`: durable goal, target id/position, timer, previous objective.
-- `NpcBehaviorState2D`: current executable state, wait state, timers, target
-  memory, current assignment.
-- `NpcMoveMode2D`: still, walk, jog, run, sprint.
-- `NpcPathFollowState2D`: current path node list, destination, abort distance,
-  target entity id, move mode.
-- `InteractionAttractor2D`: level-owned interaction point with approach/use
-  positions, heading constraints, capacity, queues, and timers.
-- `InteractionAttractorAssignment2D`: actor-owned handle to accepted attractor
-  plus queue position.
-- `FactionThreatMatrix2D`: map/faction-owned type relationship table.
-
-Ownership shape:
-
-- `scene/npc`: actor state, objective, move mode, behavior memory.
-- `scene/ai`: threat profile, objective processing, reaction policies.
-- `scene/level`: routes, navigation graph, attractors/interaction points.
-- `runtime`: accepted commands, dynamic snapshot, post-load repair.
-- `ui`: inspectors for objective/state/move mode/threat/attractor assignment.
-
-## What To Copy Conceptually
+## Reference Patterns
 
 - Objective/state/move-mode split.
 - Previous-objective restore for temporary actions.
@@ -292,20 +263,18 @@ Ownership shape:
 - Attractors as interaction points with capacity and queues.
 - Save only dynamic path flags, not the whole static graph.
 
-## Do Not Copy
+## Legacy Costs
 
 - Giant `CPed` object combining AI, animation, weapons, vehicle, chat, path,
   threat, interaction, and save fields.
 - Huge objective switch as the long-term architecture.
 - Raw pointer ownership/reference cleanup patterns.
 - Hardcoded city-specific objectives like taxis, pizza, and ice cream.
-- Vehicle-specific mission complexity before Iggy has equivalent gameplay.
 - Global singleton-heavy control flow.
 
-## Minimal Iggy Lesson
+## Minimal Reference Lesson
 
-For Iggy, the next useful NPC abstraction is not "smarter AI" in general. It is
-a clean data split:
+re3's clean open-world ped skeleton is:
 
 - objective: what the actor is trying to do
 - state: what it is executing now
@@ -313,5 +282,5 @@ a clean data split:
 - threat memory: what it currently reacts to
 - interaction assignment: which level-owned point/queue accepted it
 
-That is enough to grow inspect, talk, pickup, locked-door, and scripted
-interaction behavior without turning NPC state into a monolith.
+The strength is the layering; the cost is that many of those layers still live
+inside one very large `CPed` object.

@@ -6,6 +6,8 @@ source code.
 
 ## Studies
 
+- [AI Code Reading Playbook](ai-code-reading-playbook.md): reusable grep-driven method for turning unfamiliar AI code into an ownership map.
+- [AI Code Shape and Runtime Cost](ai-code-shape-and-runtime-cost.md): how to read AI code for loops, path/LOS cost, cache rebuilds, allocation, save/load repair, and scaling pressure.
 - [AI Skeleton Matrix](ai-skeleton-matrix.md): cross-game map of definition data, live actor state, objectives, executor state, movement, map authority, interaction sites, director AI, and save/load boundaries.
 - [AI Turn Pipeline Walkthroughs](ai-turn-pipeline-walkthroughs.md): per-game update paths showing how AI decisions become actions, movement, combat, or interaction work.
 - [AI Data Structures Map](ai-data-structures-map.md): compact list of the major structs/classes/enums that hold AI-related state in each reference.
@@ -29,4 +31,4 @@ For each game, look for:
 - what data is derived each turn or frame
 - how decisions become executable actions
 - what gets saved versus rebuilt
-- which ideas map cleanly to `/Users/kogaryu/iggy/engine`
+- how the same ownership boundaries repeat across different game genres
