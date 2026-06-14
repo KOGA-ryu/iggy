@@ -2,6 +2,9 @@
 #include <vector>
 
 #include "scene/draft/DraftLevelGeometryPlan2D.hpp"
+#include "scene/level/LevelCollisionSource2D.hpp"
+#include "scene/level/LevelCollisionSourceWorldBuilder2D.hpp"
+#include "servers/physics2d/CollisionOverlap2D.hpp"
 #include "support/TestHarness.hpp"
 
 namespace {
@@ -85,6 +88,29 @@ void ExpectBox(
 	Expect(actual.definitionId == segment.definitionId, message);
 }
 
+void ExpectBox(
+	const iggy::DraftLevelCollisionBox2D &actual,
+	const iggy::DraftSymbol2D &symbol,
+	std::size_t symbolIndex,
+	const char *message)
+{
+	Expect(actual.sourceWallId == symbol.id, message);
+	Expect(actual.sourceWallIndex == symbolIndex, message);
+	Expect(NearVec(actual.center, symbol.position), message);
+	Expect(NearVec(actual.size, symbol.size), message);
+	Expect(actual.rotationRadians == symbol.rotationRadians, message);
+	Expect(actual.assetId == symbol.assetId, message);
+	Expect(actual.definitionId == symbol.definitionId, message);
+}
+
+iggy::Aabb2 SmallQuery(iggy::Vec2 center)
+{
+	return {
+		{ center.x - 0.1F, center.y - 0.1F },
+		{ center.x + 0.1F, center.y + 0.1F },
+	};
+}
+
 bool SameSegments(
 	const std::vector<iggy::DraftCompiledWallSegment2D> &actual,
 	const std::vector<iggy::DraftCompiledWallSegment2D> &expected)
@@ -140,6 +166,89 @@ void TestWallDoorCutCompileProducesCollisionBoxesForSplitSegments()
 		ExpectBox(result.collisionBoxes[0], building.wallCuts.segments[0], "first split collision box should preserve first segment");
 		ExpectBox(result.collisionBoxes[1], building.wallCuts.segments[1], "second split collision box should preserve second segment");
 	}
+}
+
+void TestValidCollisionBlockerProducesGeometrySourceAndWorld()
+{
+	const iggy::DraftSymbol2D blocker =
+		Symbol("draft:blocker", iggy::DraftSymbol2DKind::CollisionBlocker, { 3.0F, 4.0F }, { 2.0F, 3.0F }, 0.0F, "asset:blocker", "definition:blocker");
+	const iggy::DraftBuildingCompile2DResult building =
+		iggy::DraftBuildingCompiler2D {}.compile(Document({ blocker }));
+
+	const iggy::DraftLevelGeometryPlan2DResult geometry = iggy::DraftLevelGeometryPlanner2D {}.plan(building);
+	const iggy::LevelCollisionSource2DBuildResult source = iggy::LevelCollisionSource2DBuilder {}.build(geometry);
+	const iggy::LevelCollisionSourceWorldBuilder2DResult world = iggy::LevelCollisionSourceWorldBuilder2D {}.build(source.source);
+
+	Expect(building.plan.collisionBlockers.size() == 1, "collision blocker should be classified in building compile plan");
+	Expect(geometry.collisionBoxes.size() == 1, "valid collision blocker should produce one geometry collision box");
+	Expect(geometry.issues.empty(), "valid collision blocker should produce no geometry issues");
+	if (geometry.collisionBoxes.size() == 1)
+		ExpectBox(geometry.collisionBoxes[0], blocker, 0, "collision blocker geometry box should preserve source symbol payload");
+	Expect(source.built && source.source.boxes.size() == 1, "valid collision blocker geometry should build one source box");
+	Expect(world.built && world.world.objects().size() == 1, "valid collision blocker source should build one collision object");
+	if (world.world.objects().size() == 1)
+		Expect(world.world.objects()[0].id == blocker.id, "collision blocker world object should preserve source symbol id");
+	Expect(iggy::physics2d::CollisionOverlap2D {}.queryAabb(world.world, SmallQuery({ 3.0F, 4.0F })).hits.size() == 1, "collision blocker world object should be queryable");
+}
+
+void TestDisabledCollisionBlockerIsIgnored()
+{
+	iggy::DraftSymbol2D blocker =
+		Symbol("draft:blocker", iggy::DraftSymbol2DKind::CollisionBlocker, { 3.0F, 4.0F }, { 2.0F, 3.0F });
+	blocker.enabled = false;
+	const iggy::DraftBuildingCompile2DResult building =
+		iggy::DraftBuildingCompiler2D {}.compile(Document({ blocker }));
+
+	const iggy::DraftLevelGeometryPlan2DResult result = iggy::DraftLevelGeometryPlanner2D {}.plan(building);
+
+	Expect(building.plan.collisionBlockers.empty(), "disabled collision blocker should not be classified for compile");
+	Expect(building.plan.ignoredDisabledSymbols.size() == 1, "disabled collision blocker should be recorded as ignored");
+	Expect(result.collisionBoxes.empty(), "disabled collision blocker should produce no geometry boxes");
+	Expect(result.issues.empty(), "disabled collision blocker should produce no geometry issues");
+}
+
+void TestNonPositiveCollisionBlockerSizeReportsIssue()
+{
+	const iggy::DraftSymbol2D blocker =
+		Symbol("draft:blocker", iggy::DraftSymbol2DKind::CollisionBlocker, { 3.0F, 4.0F }, { 0.0F, 3.0F });
+	const iggy::DraftBuildingCompile2DResult building =
+		iggy::DraftBuildingCompiler2D {}.compile(Document({ blocker }));
+
+	const iggy::DraftLevelGeometryPlan2DResult result = iggy::DraftLevelGeometryPlanner2D {}.plan(building);
+
+	Expect(result.collisionBoxes.empty(), "non-positive collision blocker should not produce geometry box");
+	Expect(result.issues.size() == 1, "non-positive collision blocker should produce issue");
+	if (result.issues.size() == 1) {
+		Expect(result.issues[0].code == iggy::DraftLevelGeometryPlan2DIssueCode::NonPositiveCollisionBlockerSize, "non-positive blocker issue should use NonPositiveCollisionBlockerSize");
+		Expect(result.issues[0].symbolIndex == 0, "non-positive blocker issue should preserve source symbol index");
+		Expect(result.issues[0].symbol.id == blocker.id, "non-positive blocker issue should preserve source symbol payload");
+	}
+}
+
+void TestWallDoorGeometryAndCollisionBlockerBothAppear()
+{
+	const iggy::DraftSymbol2D wall =
+		Symbol("draft:wall", iggy::DraftSymbol2DKind::Wall, { 0.0F, 0.0F }, { 10.0F, 2.0F });
+	const iggy::DraftSymbol2D door =
+		Symbol("draft:door", iggy::DraftSymbol2DKind::Door, { 0.0F, 0.0F }, { 2.0F, 2.0F });
+	const iggy::DraftSymbol2D blocker =
+		Symbol("draft:blocker", iggy::DraftSymbol2DKind::CollisionBlocker, { 8.0F, 0.0F }, { 2.0F, 2.0F }, 0.0F, "asset:blocker", "definition:blocker");
+	const iggy::DraftBuildingCompile2DResult building =
+		iggy::DraftBuildingCompiler2D {}.compile(Document({ wall, door, blocker }));
+
+	const iggy::DraftLevelGeometryPlan2DResult geometry = iggy::DraftLevelGeometryPlanner2D {}.plan(building);
+	const iggy::LevelCollisionSource2DBuildResult source = iggy::LevelCollisionSource2DBuilder {}.build(geometry);
+
+	Expect(building.wallCuts.segments.size() == 2, "mixed wall door blocker setup should split wall into two segments");
+	Expect(building.plan.collisionBlockers.size() == 1, "mixed wall door blocker setup should classify blocker");
+	Expect(geometry.collisionBoxes.size() == 3, "mixed wall door blocker setup should produce wall segment and blocker boxes");
+	Expect(geometry.issues.empty(), "mixed wall door blocker setup should produce no geometry issues");
+	if (geometry.collisionBoxes.size() == 3) {
+		ExpectBox(geometry.collisionBoxes[0], building.wallCuts.segments[0], "first mixed box should preserve first wall segment");
+		ExpectBox(geometry.collisionBoxes[1], building.wallCuts.segments[1], "second mixed box should preserve second wall segment");
+		ExpectBox(geometry.collisionBoxes[2], blocker, 2, "third mixed box should preserve collision blocker");
+	}
+	Expect(source.built && source.source.boxes.size() == 3, "mixed wall door blocker geometry should build three source boxes");
 }
 
 void TestBuildingCompileWithIssuesBlocksOutputByDefault()
@@ -250,6 +359,10 @@ int main()
 {
 	TestCleanBuildingCompileWithOneWallSegmentProducesOneCollisionBox();
 	TestWallDoorCutCompileProducesCollisionBoxesForSplitSegments();
+	TestValidCollisionBlockerProducesGeometrySourceAndWorld();
+	TestDisabledCollisionBlockerIsIgnored();
+	TestNonPositiveCollisionBlockerSizeReportsIssue();
+	TestWallDoorGeometryAndCollisionBlockerBothAppear();
 	TestBuildingCompileWithIssuesBlocksOutputByDefault();
 	TestIssueBearingCompileCanProduceValidOutputWhenAllowed();
 	TestNonPositiveSegmentSizeReportsIssueDefensively();
