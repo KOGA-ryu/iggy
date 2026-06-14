@@ -8,6 +8,7 @@
 #include "scene/ai/NpcFold.hpp"
 #include "scene/ai/NpcHand.hpp"
 #include "scene/ai/NpcMapRead.hpp"
+#include "scene/ai/NpcMapReadProjection.hpp"
 #include "scene/ai/NpcPlayControlProposal.hpp"
 #include "scene/ai/NpcRead.hpp"
 #include "scene/ai/NpcStrengthDraw.hpp"
@@ -94,21 +95,6 @@ iggy::NpcActorControlState2D Control(
 		behavior,
 		moveMode,
 	};
-}
-
-iggy::NpcRead AdaptMapReadToRead(const iggy::NpcMapRead &mapRead)
-{
-	iggy::NpcRead read;
-	read.hand = mapRead.hand;
-	read.issues = mapRead.issues;
-	for (const iggy::NpcMapReadEnt &ent : mapRead.rankedEnts) {
-		read.rankedEnts.push_back({
-			ent.ent,
-			ent.score,
-			ent.handIndex,
-		});
-	}
-	return read;
 }
 
 iggy::NpcPlayControlFrameReport2D ApplyAndReport(
@@ -236,7 +222,7 @@ MapSelectionFixture BuildMapSelectionFixture()
 	fixture.rawRead = iggy::NpcReader {}.read(fixture.hand);
 	fixture.rawPlay = iggy::NpcPlaySelector {}.play(fixture.rawRead);
 	fixture.mapRead = iggy::NpcMapReader {}.read(fixture.hand, fixture.mapQuery, { 0.0F, 4.0F, 0.0F, false });
-	fixture.adaptedMapRead = AdaptMapReadToRead(fixture.mapRead);
+	fixture.adaptedMapRead = iggy::NpcMapReadProjection {}.toRead(fixture.mapRead);
 	fixture.mapPlay = iggy::NpcPlaySelector {}.play(fixture.adaptedMapRead);
 	fixture.tell = iggy::NpcTeller {}.tell(fixture.mapPlay);
 	fixture.fold = iggy::NpcFolder {}.fold(fixture.tell);
@@ -318,7 +304,7 @@ void TestRequireMapTagMatchKeepsNeutralFallbackThroughControlPipeline()
 		iggy::NpcHandAssembler {}.assemble(strengthDraw, dexterityDraw, {}, {}, {}, {});
 	const iggy::NpcMapRead mapRead =
 		iggy::NpcMapReader {}.read(hand, mapQuery, { 0.0F, 1.0F, 0.0F, true });
-	const iggy::NpcRead adaptedRead = AdaptMapReadToRead(mapRead);
+	const iggy::NpcRead adaptedRead = iggy::NpcMapReadProjection {}.toRead(mapRead);
 	const iggy::NpcPlay play = iggy::NpcPlaySelector {}.play(adaptedRead);
 	const iggy::NpcTell tell = iggy::NpcTeller {}.tell(play);
 	const iggy::NpcFold fold = iggy::NpcFolder {}.fold(tell);
