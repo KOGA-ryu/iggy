@@ -44,7 +44,20 @@ Scene NPC AI interpretation:
 ```text
 AiMap2D
 AiMapQuery2D
-NpcAiBehaviorStore2D
+NpcAiBehaviorPool
+NpcTraitSet
+NpcStrengthPool / NpcStrengthDraw
+NpcDexterityPool / NpcDexterityDraw
+NpcConstitutionPool / NpcConstitutionDraw
+NpcIntelligencePool / NpcIntelligenceDraw
+NpcWisdomPool / NpcWisdomDraw
+NpcCharismaPool / NpcCharismaDraw
+NpcHand
+NpcRead
+NpcPlay
+NpcTell
+NpcFold
+NpcObjective
 NpcAiProfile2D
 NpcAiCurrentState2D
 NpcAiDecision2D
@@ -59,6 +72,8 @@ NPC actor state:
 
 ```text
 NpcActorState2DRegistry
+NpcActorControlState2DRegistry
+NpcActorFrameState2D
   -> NpcAiCurrentState2D / RuntimeNpcAiDecisionQueueNpcInput
 ```
 

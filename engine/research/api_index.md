@@ -107,7 +107,21 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 ## `scene/ai`
 
 - `AiMap2D`, `AiMapQuery2D`: map-owned tactical AI substrate and read-only local situation query.
-- `NpcAiBehaviorStore2D`, `NpcAiBehaviorStore2DBuilder`: validated reusable NPC behavior presets for tuning/profile construction.
+- `NpcTraitSet`: full Strength, Dexterity, Constitution, Intelligence, Wisdom, and Charisma score packet with 0..20 validation.
+- `NpcStrengthPool`, `NpcStrengthDraw`: Strength behavior pool entries and read-only unlock draw by strength score and behavior state.
+- `NpcDexterityPool`, `NpcDexterityDraw`: Dexterity behavior pool entries and read-only unlock draw by dexterity score and behavior state.
+- `NpcConstitutionPool`, `NpcConstitutionDraw`: Constitution behavior pool entries and read-only unlock draw by constitution score and behavior state.
+- `NpcIntelligencePool`, `NpcIntelligenceDraw`: Intelligence behavior pool entries and read-only unlock draw by intelligence score and behavior state.
+- `NpcWisdomPool`, `NpcWisdomDraw`: Wisdom behavior pool entries and read-only unlock draw by wisdom score and behavior state.
+- `NpcCharismaPool`, `NpcCharismaDraw`: Charisma behavior pool entries and read-only unlock draw by charisma score and behavior state.
+- `NpcHand`, `NpcHandAssembler`: read-only cross-trait candidate collection assembled from trait draw results.
+- `NpcRead`, `NpcReader`: conservative read-only ranking report over Hand entries using weight as the initial score.
+- `NpcPlay`, `NpcPlaySelector`: deterministic read-only Play commit selecting the first ranked Read entry.
+- `NpcTell`, `NpcTeller`: explanation/trace projection over Hand, Read, and Play facts.
+- `NpcFold`, `NpcFolder`: explicit keep/fold policy over Tell and Play score/issue facts.
+- `NpcAiBehaviorPool`, `NpcAiBehaviorPoolBuilder`: validated reusable NPC behavior presets for tuning/profile construction.
+- `NpcObjective`: durable NPC goal vocabulary and validation.
+- AI naming and semantic ownership contract: `engine/research/ai_naming_ownership.md`.
 - `NpcAiProfile2D`, `NpcAiCurrentState2D`: NPC temperament and current AI state data.
 - `NpcAiContextScore2D`, `NpcAiBehaviorIntent2D`, `NpcAiIntentTarget2D`, `NpcAiDecision2D`: read-only decision pipeline from tactical context and NPC bias to chosen instinct/anchor.
 - `NpcAiRouteRequest2D`, `NpcAiNavigationRequest2D`, `NpcAiPathReport2D`, `NpcAiMovementProposal2D`: route, navigation, path, and movement proposal reports.
@@ -117,6 +131,10 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 ## `scene/npc`
 
 - `NpcActorState2D`, `NpcActorState2DRegistry`, `NpcActorState2DRegistryBuilder`: scene-owned NPC actor identity/profile/current-goal state and validated lookup table.
+- `NpcMoveMode`: movement intensity vocabulary and speed multiplier helpers.
+- `NpcBehaviorState`: actor-carried active behavior state vocabulary and validation.
+- `NpcActorControlState2D`, `NpcActorControlState2DRegistry`, `NpcActorControlState2DRegistryBuilder`: scene-owned NPC objective/behavior/move-mode control packet and validated lookup table.
+- `NpcActorFrameState2D`, `NpcActorFrameStateProjector2D`: per-frame actor + optional control join/projection with missing/orphan diagnostics.
 
 ## `scene/ui`
 

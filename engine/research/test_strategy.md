@@ -62,7 +62,7 @@ Proves:
 - pickup plans preserve requested ids/positions, enforce enabled/range policy, and do not mutate inventories or drops
 - pickup transfers add inventory stacks and consume drops through source-of-truth helpers without mutating inputs
 - policy pickup transfers preserve stack-policy diagnostics, add/drop diagnostics, and inventory event ordering
-- NPC AI tactical maps, behavior stores, actor registries, decision reports, route/path reports, movement proposals, and command-frame mappers validate inputs, preserve order, and avoid mutation
+- NPC AI tactical maps, behavior pools, trait sets, trait pools/draws, hand/read/play/tell/fold reports, actor registries, control registries, decision reports, route/path reports, movement proposals, and command-frame mappers validate inputs, preserve order, and avoid mutation
 - UI models project runtime reports/settings/tool state into read-only model/action data
 
 Avoid:
@@ -108,7 +108,7 @@ Avoid:
 - duplicating scene/server logic
 - duplicating player input gate or mapper logic
 - duplicating scene/interaction target, reach, or effect-plan rules
-- duplicating scene/ai scoring, routing, path-report, or movement-proposal rules
+- duplicating scene/ai trait draw, hand/read/play/tell/fold, scoring, routing, path-report, or movement-proposal rules
 - hidden cache rebuilds
 - raw input mapping
 

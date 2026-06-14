@@ -1,7 +1,7 @@
 list(APPEND IGGY_ENGINE_SOURCES
   src/scene/ai/AiMap2D.cpp
   src/scene/ai/AiMapQuery2D.cpp
-  src/scene/ai/NpcAiBehaviorStore2D.cpp
+  src/scene/ai/NpcAiBehaviorPool.cpp
   src/scene/ai/NpcAiBehaviorIntent2D.cpp
   src/scene/ai/NpcAiCommandFrameMapper2D.cpp
   src/scene/ai/NpcAiContextScore2D.cpp
@@ -10,13 +10,28 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/ai/NpcAiMovementCommandMapper2D.cpp
   src/scene/ai/NpcAiMovementProposal2D.cpp
   src/scene/ai/NpcAiNavigationRequest2D.cpp
-  src/scene/ai/NpcObjective2D.cpp
+  src/scene/ai/NpcObjective.cpp
   src/scene/ai/NpcAiPathReport2D.cpp
   src/scene/ai/NpcAiProfile2D.cpp
   src/scene/ai/NpcAiRouteRequest2D.cpp
-  src/scene/ai/NpcStrengthStore2D.cpp
-  src/scene/ai/NpcStrengthStoreQuery2D.cpp
-  src/scene/ai/NpcTraitSet2D.cpp
+  src/scene/ai/NpcCharismaPool.cpp
+  src/scene/ai/NpcCharismaDraw.cpp
+  src/scene/ai/NpcConstitutionPool.cpp
+  src/scene/ai/NpcConstitutionDraw.cpp
+  src/scene/ai/NpcDexterityPool.cpp
+  src/scene/ai/NpcDexterityDraw.cpp
+  src/scene/ai/NpcFold.cpp
+  src/scene/ai/NpcHand.cpp
+  src/scene/ai/NpcIntelligencePool.cpp
+  src/scene/ai/NpcIntelligenceDraw.cpp
+  src/scene/ai/NpcPlay.cpp
+  src/scene/ai/NpcRead.cpp
+  src/scene/ai/NpcStrengthPool.cpp
+  src/scene/ai/NpcStrengthDraw.cpp
+  src/scene/ai/NpcTell.cpp
+  src/scene/ai/NpcTraitSet.cpp
+  src/scene/ai/NpcWisdomPool.cpp
+  src/scene/ai/NpcWisdomDraw.cpp
   src/scene/camera/CameraClamp.cpp
   src/scene/camera/CameraFollow.cpp
   src/scene/camera/CameraLookahead.cpp
@@ -82,8 +97,8 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/npc/NpcActorControlState2D.cpp
   src/scene/npc/NpcActorFrameState2D.cpp
   src/scene/npc/NpcActorState2D.cpp
-  src/scene/npc/NpcBehaviorState2D.cpp
-  src/scene/npc/NpcMoveMode2D.cpp
+  src/scene/npc/NpcBehaviorState.cpp
+  src/scene/npc/NpcMoveMode.cpp
   src/scene/player/PlayerAgentState.cpp
   src/scene/player/PlayerCommandFramePlanner2D.cpp
   src/scene/player/PlayerCommandPlanner2D.cpp

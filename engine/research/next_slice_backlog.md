@@ -74,7 +74,7 @@ Status labels:
 11. NPC actor/session ownership policy
    - status: `review`
    - owner candidate: `scene/npc` for actor state, `runtime` only after session/save boundaries are explicit
-   - purpose: decide how `NpcActorState2DRegistry` relates to existing `modules/npc_ai::NpcAgentState`, runtime session state, and save snapshots.
+   - purpose: decide how `NpcActorState2DRegistry`, `NpcActorControlState2DRegistry`, and `NpcActorFrameState2D` relate to existing `modules/npc_ai::NpcAgentState`, runtime session state, and save snapshots.
    - caution: do not let NPC AI queue steps become the owner of NPC actor lifetime or persisted AI decision reports.
 
 12. NPC AI runtime integration policy
@@ -99,5 +99,5 @@ Pause before any slice that:
 - makes runtime rebuild caches implicitly during ticks
 - adds dynamic collision bodies
 - removes the simple gameplay frame lane in favor of policy gameplay frames without a migration plan
-- merges `NpcActorState2DRegistry` into runtime/session/save state without an ownership ruling
+- merges NPC actor/control/frame registries into runtime/session/save state without an ownership ruling
 - introduces an entity registry/ECS

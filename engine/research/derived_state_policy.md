@@ -43,6 +43,7 @@ Transient frame data:
 - interaction events emitted while applying effects
 - pickup plans
 - inventory events emitted while applying inventory/pickup effects
+- NPC trait draw results, hand/read/play/tell/fold reports, and fold diagnostics
 - NPC AI context scores, behavior intents, target selections, decisions, route requests, navigation requests, path reports, movement proposals, and command-frame mappings
 - NPC tick reports
 - collision query results
@@ -73,6 +74,7 @@ Save snapshots should exclude:
 - interaction plans, requested effect lists, application diagnostics, interaction events, and interaction reports
 - pickup plans and pickup diagnostics
 - inventory events and pickup frame diagnostics
+- NPC trait draw, hand/read/play/tell/fold reports
 - NPC AI decision, path, movement proposal, queue, and command-frame diagnostics unless a later slice promotes actor state into snapshots
 - mutation/cache update diagnostics
 - backend handles, windows, GPU resources
@@ -194,9 +196,17 @@ ItemDefinition2DCatalog + RuntimeInventoryState + PickupPlan2DResult
 
 ## NPC AI Rule
 
-NPC AI tactical maps, behavior presets, profiles, current AI state inputs, and actor registries are scene data. Decision outputs are transient reports:
+NPC AI tactical maps, trait pools, behavior presets, profiles, current AI state inputs, and actor registries are scene data. Decision outputs are transient reports:
 
 ```text
+NpcTraitSet + Npc*Pool
+  -> Npc*DrawResult
+  -> NpcHand
+  -> NpcRead
+  -> NpcPlay
+  -> NpcTell
+  -> NpcFold
+
 AiMap2D + NpcAiProfile2D + NpcAiCurrentState2D
   -> NpcAiDecision2DResult
   -> NpcAiRouteRequest2DResult

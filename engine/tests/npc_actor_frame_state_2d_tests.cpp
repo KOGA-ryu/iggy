@@ -35,9 +35,9 @@ iggy::NpcActorState2D Actor(
 
 iggy::NpcActorControlState2D Control(
 	const char *npcId,
-	iggy::NpcObjective2D objective = iggy::waitNpcObjective2D(),
-	iggy::NpcBehaviorState2D behavior = iggy::idleNpcBehaviorState2D(),
-	iggy::NpcMoveMode2D moveMode = iggy::NpcMoveMode2D::Still)
+	iggy::NpcObjective objective = iggy::waitNpcObjective(),
+	iggy::NpcBehaviorState behavior = iggy::idleNpcBehaviorState(),
+	iggy::NpcMoveMode moveMode = iggy::NpcMoveMode::Still)
 {
 	return {
 		Id(npcId),
@@ -57,14 +57,14 @@ iggy::NpcActorControlState2DRegistry ControlRegistry(const std::vector<iggy::Npc
 	return iggy::NpcActorControlState2DRegistryBuilder {}.build(controls).registry;
 }
 
-bool SameObjective(const iggy::NpcObjective2D &actual, const iggy::NpcObjective2D &expected)
+bool SameObjective(const iggy::NpcObjective &actual, const iggy::NpcObjective &expected)
 {
 	return actual.type == expected.type
 		&& actual.targetId == expected.targetId
 		&& NearVec(actual.targetPosition, expected.targetPosition);
 }
 
-bool SameBehavior(const iggy::NpcBehaviorState2D &actual, const iggy::NpcBehaviorState2D &expected)
+bool SameBehavior(const iggy::NpcBehaviorState &actual, const iggy::NpcBehaviorState &expected)
 {
 	return actual.type == expected.type
 		&& actual.targetId == expected.targetId
@@ -133,9 +133,9 @@ void TestMatchingActorAndControlJoin()
 	const std::vector<iggy::NpcActorControlState2D> controls {
 		Control(
 			"npc:guard",
-			iggy::guardNpcObjective2D(Id("anchor:gate")),
-			iggy::waitingNpcBehaviorState2D(),
-			iggy::NpcMoveMode2D::Still),
+			iggy::guardNpcObjective(Id("anchor:gate")),
+			iggy::waitingNpcBehaviorState(),
+			iggy::NpcMoveMode::Still),
 	};
 
 	const iggy::NpcActorFrameState2DProjectionResult result =
@@ -158,9 +158,9 @@ void TestMultipleActorsPreserveActorOrder()
 		Actor("npc:third", "ai-profile:third", "faction:c", { 3.0F, 0.0F }),
 	};
 	const std::vector<iggy::NpcActorControlState2D> controls {
-		Control("npc:third", iggy::moveToNpcObjective2D({ 3.0F, 3.0F }), iggy::seekingNpcBehaviorState2D({ 3.0F, 3.0F }), iggy::NpcMoveMode2D::Run),
-		Control("npc:first", iggy::waitNpcObjective2D(), iggy::idleNpcBehaviorState2D(), iggy::NpcMoveMode2D::Still),
-		Control("npc:second", iggy::patrolNpcObjective2D(Id("patrol:two")), iggy::waitingNpcBehaviorState2D(), iggy::NpcMoveMode2D::Walk),
+		Control("npc:third", iggy::moveToNpcObjective({ 3.0F, 3.0F }), iggy::seekingNpcBehaviorState({ 3.0F, 3.0F }), iggy::NpcMoveMode::Run),
+		Control("npc:first", iggy::waitNpcObjective(), iggy::idleNpcBehaviorState(), iggy::NpcMoveMode::Still),
+		Control("npc:second", iggy::patrolNpcObjective(Id("patrol:two")), iggy::waitingNpcBehaviorState(), iggy::NpcMoveMode::Walk),
 	};
 
 	const iggy::NpcActorFrameState2DProjectionResult result =
@@ -205,7 +205,7 @@ void TestMissingControlCreatesIssueAndDefaultControl()
 void TestOrphanControlCreatesIssueOnly()
 {
 	const std::vector<iggy::NpcActorControlState2D> controls {
-		Control("npc:orphan", iggy::moveToNpcObjective2D({ 4.0F, 5.0F }), iggy::seekingNpcBehaviorState2D({ 4.0F, 5.0F }), iggy::NpcMoveMode2D::Jog),
+		Control("npc:orphan", iggy::moveToNpcObjective({ 4.0F, 5.0F }), iggy::seekingNpcBehaviorState({ 4.0F, 5.0F }), iggy::NpcMoveMode::Jog),
 	};
 
 	const iggy::NpcActorFrameState2DProjectionResult result =
@@ -253,8 +253,8 @@ void TestNamespacedAndUnqualifiedIdsAreDistinct()
 		Actor("npc:guard", "ai-profile:namespaced"),
 	};
 	const std::vector<iggy::NpcActorControlState2D> controls {
-		Control("npc:guard", iggy::patrolNpcObjective2D(Id("patrol:namespaced")), iggy::waitingNpcBehaviorState2D(), iggy::NpcMoveMode2D::Walk),
-		Control("guard", iggy::waitNpcObjective2D(), iggy::idleNpcBehaviorState2D(), iggy::NpcMoveMode2D::Still),
+		Control("npc:guard", iggy::patrolNpcObjective(Id("patrol:namespaced")), iggy::waitingNpcBehaviorState(), iggy::NpcMoveMode::Walk),
+		Control("guard", iggy::waitNpcObjective(), iggy::idleNpcBehaviorState(), iggy::NpcMoveMode::Still),
 	};
 
 	const iggy::NpcActorFrameState2DProjectionResult result =
@@ -277,8 +277,8 @@ void TestProjectionDoesNotMutateInputs()
 		Actor("npc:scout", "ai-profile:scout", "faction:town", { 3.0F, 4.0F }, "", false),
 	};
 	std::vector<iggy::NpcActorControlState2D> controls {
-		Control("npc:guard", iggy::guardNpcObjective2D(Id("anchor:gate")), iggy::waitingNpcBehaviorState2D(), iggy::NpcMoveMode2D::Still),
-		Control("npc:scout", iggy::moveToNpcObjective2D({ 8.0F, 9.0F }), iggy::seekingNpcBehaviorState2D({ 8.0F, 9.0F }), iggy::NpcMoveMode2D::Run),
+		Control("npc:guard", iggy::guardNpcObjective(Id("anchor:gate")), iggy::waitingNpcBehaviorState(), iggy::NpcMoveMode::Still),
+		Control("npc:scout", iggy::moveToNpcObjective({ 8.0F, 9.0F }), iggy::seekingNpcBehaviorState({ 8.0F, 9.0F }), iggy::NpcMoveMode::Run),
 	};
 	const std::vector<iggy::NpcActorState2D> actorsBefore = actors;
 	const std::vector<iggy::NpcActorControlState2D> controlsBefore = controls;

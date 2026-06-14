@@ -15,8 +15,8 @@ iggy::NpcActorControlState2DIssue Issue(
 	iggy::NpcActorControlState2DIssueCode code,
 	std::size_t controlIndex,
 	const iggy::NpcActorControlState2D &control,
-	const iggy::NpcObjective2DValidationResult &objectiveValidation,
-	const iggy::NpcBehaviorState2DValidationResult &behaviorValidation)
+	const iggy::NpcObjectiveValidationResult &objectiveValidation,
+	const iggy::NpcBehaviorStateValidationResult &behaviorValidation)
 {
 	return {
 		code,
@@ -52,8 +52,8 @@ NpcActorControlState2DRegistryBuildResult NpcActorControlState2DRegistryBuilder:
 
 	for (std::size_t index = 0; index < controls.size(); ++index) {
 		const NpcActorControlState2D &control = controls[index];
-		const NpcObjective2DValidationResult objectiveValidation = validate(control.objective);
-		const NpcBehaviorState2DValidationResult behaviorValidation = validate(control.behavior);
+		const NpcObjectiveValidationResult objectiveValidation = validate(control.objective);
+		const NpcBehaviorStateValidationResult behaviorValidation = validate(control.behavior);
 
 		if (control.npcId.empty()) {
 			result.issues.push_back(Issue(

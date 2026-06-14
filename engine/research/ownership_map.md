@@ -151,12 +151,31 @@ Does not own:
 
 ### `scene/ai`
 
-Owns map tactical AI context, NPC AI temperament/state inputs, auditable NPC AI decision reports, route/path/movement proposal transforms, and NPC AI command-frame mapping.
+Owns map tactical AI context, abstract NPC trait/action vocabulary, NPC AI temperament/state inputs, auditable NPC AI decision reports, route/path/movement proposal transforms, and NPC AI command-frame mapping.
 
 Current anchors:
 - `AiMap2D`
 - `AiMapQuery2D`
-- `NpcAiBehaviorStore2D`
+- `NpcAiBehaviorPool`
+- `NpcTraitSet`
+- `NpcStrengthPool`
+- `NpcStrengthDraw`
+- `NpcDexterityPool`
+- `NpcDexterityDraw`
+- `NpcConstitutionPool`
+- `NpcConstitutionDraw`
+- `NpcIntelligencePool`
+- `NpcIntelligenceDraw`
+- `NpcWisdomPool`
+- `NpcWisdomDraw`
+- `NpcCharismaPool`
+- `NpcCharismaDraw`
+- `NpcHand`
+- `NpcRead`
+- `NpcPlay`
+- `NpcTell`
+- `NpcFold`
+- `NpcObjective`
 - `NpcAiProfile2D`
 - `NpcAiCurrentState2D`
 - `NpcAiContextScore2D`
@@ -177,15 +196,23 @@ Does not own:
 - NPC movement execution
 - physics collision solving
 - save/load format
+- user-facing semantic name approval for new major AI layers
 
 ### `scene/npc`
 
-Owns scene-level NPC actor identity and profile/current-goal state that can feed AI decisions.
+Owns scene-level NPC actor identity, profile/current-goal state, active behavior/control state, movement mode, and per-frame actor/control projections that can feed AI decisions.
 
 Current anchors:
 - `NpcActorState2D`
 - `NpcActorState2DRegistry`
 - `NpcActorState2DRegistryBuilder`
+- `NpcBehaviorState`
+- `NpcMoveMode`
+- `NpcActorControlState2D`
+- `NpcActorControlState2DRegistry`
+- `NpcActorControlState2DRegistryBuilder`
+- `NpcActorFrameState2D`
+- `NpcActorFrameStateProjector2D`
 
 Does not own:
 - tactical AI scoring or path planning

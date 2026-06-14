@@ -17,9 +17,9 @@ iggy::ResourceId Id(const char *value)
 
 iggy::NpcActorControlState2D Control(
 	const char *npcId,
-	iggy::NpcObjective2D objective = iggy::waitNpcObjective2D(),
-	iggy::NpcBehaviorState2D behavior = iggy::idleNpcBehaviorState2D(),
-	iggy::NpcMoveMode2D moveMode = iggy::NpcMoveMode2D::Still)
+	iggy::NpcObjective objective = iggy::waitNpcObjective(),
+	iggy::NpcBehaviorState behavior = iggy::idleNpcBehaviorState(),
+	iggy::NpcMoveMode moveMode = iggy::NpcMoveMode::Still)
 {
 	return {
 		Id(npcId),
@@ -29,14 +29,14 @@ iggy::NpcActorControlState2D Control(
 	};
 }
 
-bool SameObjective(const iggy::NpcObjective2D &actual, const iggy::NpcObjective2D &expected)
+bool SameObjective(const iggy::NpcObjective &actual, const iggy::NpcObjective &expected)
 {
 	return actual.type == expected.type
 		&& actual.targetId == expected.targetId
 		&& NearVec(actual.targetPosition, expected.targetPosition);
 }
 
-bool SameBehavior(const iggy::NpcBehaviorState2D &actual, const iggy::NpcBehaviorState2D &expected)
+bool SameBehavior(const iggy::NpcBehaviorState &actual, const iggy::NpcBehaviorState &expected)
 {
 	return actual.type == expected.type
 		&& actual.targetId == expected.targetId
@@ -92,14 +92,14 @@ void TestSuccessfulBuildPreservesControlFacts()
 	const std::vector<iggy::NpcActorControlState2D> controls {
 		Control(
 			"npc:guard",
-			iggy::guardNpcObjective2D(Id("anchor:gate")),
-			iggy::waitingNpcBehaviorState2D(),
-			iggy::NpcMoveMode2D::Still),
+			iggy::guardNpcObjective(Id("anchor:gate")),
+			iggy::waitingNpcBehaviorState(),
+			iggy::NpcMoveMode::Still),
 		Control(
 			"npc:scout",
-			iggy::investigateNpcObjective2D({ 1.0F, 2.0F }),
-			iggy::seekingNpcBehaviorState2D({ 3.0F, 4.0F }),
-			iggy::NpcMoveMode2D::Run),
+			iggy::investigateNpcObjective({ 1.0F, 2.0F }),
+			iggy::seekingNpcBehaviorState({ 3.0F, 4.0F }),
+			iggy::NpcMoveMode::Run),
 	};
 
 	const iggy::NpcActorControlState2DRegistryBuildResult result =
@@ -153,9 +153,9 @@ void TestEmptyNpcIdFails()
 void TestDuplicateNpcIdFailsForLaterEntry()
 {
 	const std::vector<iggy::NpcActorControlState2D> controls {
-		Control("npc:guard", iggy::waitNpcObjective2D()),
+		Control("npc:guard", iggy::waitNpcObjective()),
 		Control("npc:scout"),
-		Control("npc:guard", iggy::moveToNpcObjective2D({ 4.0F, 5.0F })),
+		Control("npc:guard", iggy::moveToNpcObjective({ 4.0F, 5.0F })),
 	};
 
 	const iggy::NpcActorControlState2DRegistryBuildResult result =
@@ -174,7 +174,7 @@ void TestDuplicateNpcIdFailsForLaterEntry()
 void TestInvalidObjectiveFailsWithNestedDiagnostics()
 {
 	const iggy::NpcActorControlState2D control =
-		Control("npc:guard", iggy::attackNpcObjective2D({}), iggy::idleNpcBehaviorState2D());
+		Control("npc:guard", iggy::attackNpcObjective({}), iggy::idleNpcBehaviorState());
 
 	const iggy::NpcActorControlState2DRegistryBuildResult result =
 		iggy::NpcActorControlState2DRegistryBuilder {}.build({ control });
@@ -184,7 +184,7 @@ void TestInvalidObjectiveFailsWithNestedDiagnostics()
 	Expect(result.issues.size() == 1, "invalid objective should report one issue");
 	if (result.issues.size() == 1) {
 		Expect(result.issues[0].code == iggy::NpcActorControlState2DIssueCode::InvalidObjective, "invalid objective issue should use InvalidObjective");
-		Expect(result.issues[0].objectiveValidation.status == iggy::NpcObjective2DStatus::MissingTarget, "invalid objective issue should preserve nested objective status");
+		Expect(result.issues[0].objectiveValidation.status == iggy::NpcObjectiveStatus::MissingTarget, "invalid objective issue should preserve nested objective status");
 		Expect(SameObjective(result.issues[0].objectiveValidation.objective, control.objective), "invalid objective issue should preserve nested objective payload");
 		Expect(result.issues[0].behaviorValidation.ok(), "invalid objective issue should preserve valid behavior diagnostics");
 	}
@@ -193,7 +193,7 @@ void TestInvalidObjectiveFailsWithNestedDiagnostics()
 void TestInvalidBehaviorFailsWithNestedDiagnostics()
 {
 	const iggy::NpcActorControlState2D control =
-		Control("npc:guard", iggy::waitNpcObjective2D(), iggy::attackingNpcBehaviorState2D({}));
+		Control("npc:guard", iggy::waitNpcObjective(), iggy::attackingNpcBehaviorState({}));
 
 	const iggy::NpcActorControlState2DRegistryBuildResult result =
 		iggy::NpcActorControlState2DRegistryBuilder {}.build({ control });
@@ -203,7 +203,7 @@ void TestInvalidBehaviorFailsWithNestedDiagnostics()
 	Expect(result.issues.size() == 1, "invalid behavior should report one issue");
 	if (result.issues.size() == 1) {
 		Expect(result.issues[0].code == iggy::NpcActorControlState2DIssueCode::InvalidBehavior, "invalid behavior issue should use InvalidBehavior");
-		Expect(result.issues[0].behaviorValidation.status == iggy::NpcBehaviorState2DStatus::MissingTarget, "invalid behavior issue should preserve nested behavior status");
+		Expect(result.issues[0].behaviorValidation.status == iggy::NpcBehaviorStateStatus::MissingTarget, "invalid behavior issue should preserve nested behavior status");
 		Expect(SameBehavior(result.issues[0].behaviorValidation.state, control.behavior), "invalid behavior issue should preserve nested behavior payload");
 		Expect(result.issues[0].objectiveValidation.ok(), "invalid behavior issue should preserve valid objective diagnostics");
 	}
@@ -212,9 +212,9 @@ void TestInvalidBehaviorFailsWithNestedDiagnostics()
 void TestMoveModesArePreservedAndValid()
 {
 	const std::vector<iggy::NpcActorControlState2D> controls {
-		Control("npc:none", iggy::waitNpcObjective2D(), iggy::idleNpcBehaviorState2D(), iggy::NpcMoveMode2D::None),
-		Control("npc:still", iggy::waitNpcObjective2D(), iggy::idleNpcBehaviorState2D(), iggy::NpcMoveMode2D::Still),
-		Control("npc:run", iggy::moveToNpcObjective2D({ 3.0F, 0.0F }), iggy::seekingNpcBehaviorState2D({ 3.0F, 0.0F }), iggy::NpcMoveMode2D::Run),
+		Control("npc:none", iggy::waitNpcObjective(), iggy::idleNpcBehaviorState(), iggy::NpcMoveMode::None),
+		Control("npc:still", iggy::waitNpcObjective(), iggy::idleNpcBehaviorState(), iggy::NpcMoveMode::Still),
+		Control("npc:run", iggy::moveToNpcObjective({ 3.0F, 0.0F }), iggy::seekingNpcBehaviorState({ 3.0F, 0.0F }), iggy::NpcMoveMode::Run),
 	};
 
 	const iggy::NpcActorControlState2DRegistryBuildResult result =
@@ -224,9 +224,9 @@ void TestMoveModesArePreservedAndValid()
 	Expect(result.issues.empty(), "NPC actor control move modes should not overvalidate move mode");
 	Expect(result.registry.entries.size() == controls.size(), "NPC actor control move modes should preserve entry count");
 	if (result.registry.entries.size() == controls.size()) {
-		Expect(result.registry.entries[0].moveMode == iggy::NpcMoveMode2D::None, "None move mode should be preserved");
-		Expect(result.registry.entries[1].moveMode == iggy::NpcMoveMode2D::Still, "Still move mode should be preserved");
-		Expect(result.registry.entries[2].moveMode == iggy::NpcMoveMode2D::Run, "Run move mode should be preserved");
+		Expect(result.registry.entries[0].moveMode == iggy::NpcMoveMode::None, "None move mode should be preserved");
+		Expect(result.registry.entries[1].moveMode == iggy::NpcMoveMode::Still, "Still move mode should be preserved");
+		Expect(result.registry.entries[2].moveMode == iggy::NpcMoveMode::Run, "Run move mode should be preserved");
 	}
 }
 
@@ -255,8 +255,8 @@ void TestMultipleIssuesPreserveDeterministicOrder()
 {
 	const std::vector<iggy::NpcActorControlState2D> controls {
 		Control("npc:valid"),
-		Control("", iggy::attackNpcObjective2D({}), iggy::attackingNpcBehaviorState2D({})),
-		Control("npc:valid", iggy::followNpcObjective2D({}), iggy::idleNpcBehaviorState2D()),
+		Control("", iggy::attackNpcObjective({}), iggy::attackingNpcBehaviorState({})),
+		Control("npc:valid", iggy::followNpcObjective({}), iggy::idleNpcBehaviorState()),
 	};
 
 	const iggy::NpcActorControlState2DRegistryBuildResult result =
@@ -279,14 +279,14 @@ void TestBuildDoesNotMutateInputs()
 	std::vector<iggy::NpcActorControlState2D> controls {
 		Control(
 			"npc:guard",
-			iggy::guardNpcObjective2D(Id("anchor:gate")),
-			iggy::waitingNpcBehaviorState2D(),
-			iggy::NpcMoveMode2D::Still),
+			iggy::guardNpcObjective(Id("anchor:gate")),
+			iggy::waitingNpcBehaviorState(),
+			iggy::NpcMoveMode::Still),
 		Control(
 			"npc:scout",
-			iggy::moveToNpcObjective2D({ 5.0F, 6.0F }),
-			iggy::seekingNpcBehaviorState2D({ 5.0F, 6.0F }),
-			iggy::NpcMoveMode2D::Jog),
+			iggy::moveToNpcObjective({ 5.0F, 6.0F }),
+			iggy::seekingNpcBehaviorState({ 5.0F, 6.0F }),
+			iggy::NpcMoveMode::Jog),
 	};
 	const std::vector<iggy::NpcActorControlState2D> before = controls;
 
