@@ -28,6 +28,7 @@ enum class DraftLevelGeometryPlan2DIssueCode {
 	BuildingCompileHasIssues,
 	NonPositiveSegmentSize,
 	UnsupportedRotatedSegment,
+	NonPositiveCollisionBlockerSize,
 };
 
 struct DraftLevelGeometryPlan2DIssue {
@@ -35,6 +36,8 @@ struct DraftLevelGeometryPlan2DIssue {
 	std::size_t segmentIndex = 0;
 	DraftCompiledWallSegment2D segment;
 	std::size_t buildingIssueCount = 0;
+	std::size_t symbolIndex = 0;
+	DraftSymbol2D symbol;
 };
 
 struct DraftLevelGeometryPlan2DResult {

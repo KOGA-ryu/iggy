@@ -37,6 +37,11 @@ struct DraftMarkerPlan2D {
 	DraftSymbol2D symbol;
 };
 
+struct DraftCollisionBlockerPlan2D {
+	std::size_t symbolIndex = 0;
+	DraftSymbol2D symbol;
+};
+
 struct DraftIgnoredSymbol2D {
 	std::size_t symbolIndex = 0;
 	DraftSymbol2D symbol;
@@ -59,6 +64,7 @@ struct DraftCompilePlan2DResult {
 	std::vector<DraftItemDropPlan2D> itemDrops;
 	std::vector<DraftNpcPlan2D> npcs;
 	std::vector<DraftMarkerPlan2D> markers;
+	std::vector<DraftCollisionBlockerPlan2D> collisionBlockers;
 	std::vector<DraftIgnoredSymbol2D> ignoredDisabledSymbols;
 	std::vector<DraftCompilePlan2DIssue> issues;
 

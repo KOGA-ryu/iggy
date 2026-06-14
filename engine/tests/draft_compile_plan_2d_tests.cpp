@@ -83,6 +83,7 @@ void TestEmptyDocumentProducesEmptyPlan()
 	Expect(result.itemDrops.empty(), "empty draft compile plan should have no item drops");
 	Expect(result.npcs.empty(), "empty draft compile plan should have no npcs");
 	Expect(result.markers.empty(), "empty draft compile plan should have no markers");
+	Expect(result.collisionBlockers.empty(), "empty draft compile plan should have no collision blockers");
 	Expect(result.ignoredDisabledSymbols.empty(), "empty draft compile plan should have no ignored symbols");
 	Expect(result.issues.empty(), "empty draft compile plan should have no issues");
 	Expect(!result.hasIssues(), "empty draft compile plan should report no issues");
@@ -99,6 +100,7 @@ void TestMixedSymbolsAreClassified()
 		Symbol("draft:npc", iggy::DraftSymbol2DKind::Npc, { 6.0F, 0.0F }, { 1.0F, 2.0F }, 0.6F, "asset:npc", "definition:npc"),
 		Symbol("draft:region", iggy::DraftSymbol2DKind::Region, { 7.0F, 0.0F }, { 5.0F, 5.0F }, 0.7F, "asset:region", "definition:region"),
 		Symbol("draft:story", iggy::DraftSymbol2DKind::StoryMarker, { 8.0F, 0.0F }, { 0.0F, 0.0F }, 0.8F, "asset:story", "definition:story"),
+		Symbol("draft:blocker", iggy::DraftSymbol2DKind::CollisionBlocker, { 9.0F, 0.0F }, { 3.0F, 2.0F }, 0.0F, "asset:blocker", "definition:blocker"),
 	};
 
 	const iggy::DraftCompilePlan2DResult result =
@@ -110,6 +112,7 @@ void TestMixedSymbolsAreClassified()
 	Expect(result.itemDrops.size() == 1, "mixed draft compile plan should classify item drop");
 	Expect(result.npcs.size() == 1, "mixed draft compile plan should classify npc");
 	Expect(result.markers.size() == 2, "mixed draft compile plan should classify region and story markers together");
+	Expect(result.collisionBlockers.size() == 1, "mixed draft compile plan should classify collision blocker");
 	if (result.walls.size() == 1) {
 		Expect(result.walls[0].symbolIndex == 0, "wall plan should preserve original index");
 		ExpectSymbol(result.walls[0].symbol, symbols[0], "wall plan should copy symbol payload");
@@ -136,6 +139,10 @@ void TestMixedSymbolsAreClassified()
 		ExpectSymbol(result.markers[0].symbol, symbols[6], "marker plan should copy region payload");
 		ExpectSymbol(result.markers[1].symbol, symbols[7], "marker plan should copy story payload");
 	}
+	if (result.collisionBlockers.size() == 1) {
+		Expect(result.collisionBlockers[0].symbolIndex == 8, "collision blocker plan should preserve original index");
+		ExpectSymbol(result.collisionBlockers[0].symbol, symbols[8], "collision blocker plan should copy symbol payload");
+	}
 	Expect(!result.hasIssues(), "mixed known draft symbols should have no compile issues");
 }
 
@@ -144,19 +151,23 @@ void TestDisabledSymbolsAreIgnored()
 	const std::vector<iggy::DraftSymbol2D> symbols {
 		Symbol("draft:disabled_wall", iggy::DraftSymbol2DKind::Wall, { 1.0F, 0.0F }, { 1.0F, 1.0F }, 0.0F, "asset:wall", "definition:wall", false),
 		Symbol("draft:disabled_unknown", iggy::DraftSymbol2DKind::Unknown, { 2.0F, 0.0F }, { 1.0F, 1.0F }, 0.0F, "", "", false),
+		Symbol("draft:disabled_blocker", iggy::DraftSymbol2DKind::CollisionBlocker, { 3.0F, 0.0F }, { 2.0F, 2.0F }, 0.0F, "asset:blocker", "definition:blocker", false),
 	};
 
 	const iggy::DraftCompilePlan2DResult result =
 		iggy::DraftCompilePlanner2D {}.plan(Document(symbols));
 
 	Expect(result.walls.empty(), "disabled draft wall should not compile");
+	Expect(result.collisionBlockers.empty(), "disabled collision blocker should not compile");
 	Expect(result.issues.empty(), "disabled unknown draft symbol should not produce issue");
-	Expect(result.ignoredDisabledSymbols.size() == 2, "disabled draft symbols should be recorded as ignored");
-	if (result.ignoredDisabledSymbols.size() == 2) {
+	Expect(result.ignoredDisabledSymbols.size() == 3, "disabled draft symbols should be recorded as ignored");
+	if (result.ignoredDisabledSymbols.size() == 3) {
 		Expect(result.ignoredDisabledSymbols[0].symbolIndex == 0, "first ignored symbol should preserve index");
 		ExpectSymbol(result.ignoredDisabledSymbols[0].symbol, symbols[0], "first ignored symbol should copy payload");
 		Expect(result.ignoredDisabledSymbols[1].symbolIndex == 1, "second ignored symbol should preserve index");
 		ExpectSymbol(result.ignoredDisabledSymbols[1].symbol, symbols[1], "second ignored symbol should copy payload");
+		Expect(result.ignoredDisabledSymbols[2].symbolIndex == 2, "third ignored symbol should preserve index");
+		ExpectSymbol(result.ignoredDisabledSymbols[2].symbol, symbols[2], "third ignored symbol should copy payload");
 	}
 }
 

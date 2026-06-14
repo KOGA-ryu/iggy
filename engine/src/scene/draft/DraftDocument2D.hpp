@@ -18,6 +18,7 @@ enum class DraftSymbol2DKind {
 	Npc,
 	Region,
 	StoryMarker,
+	CollisionBlocker,
 };
 
 struct DraftSymbol2D {

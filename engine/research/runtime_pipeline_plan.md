@@ -170,6 +170,24 @@ RuntimeCollisionWorldProvider
   -> empty world
 ```
 
+Draft building collision compile:
+
+```text
+DraftDocument2D
+  -> DraftBuildingCompiler2D
+  -> DraftLevelGeometryPlanner2D
+  -> LevelCollisionSource2DBuilder
+  -> LevelCollisionSourceWorldBuilder2D
+  -> LevelCombinedDerivedCacheBuilder2D
+```
+
+`DraftDocument2D` is authored intent. `LevelCollisionSource2D` is derived
+compile output and source input for collision cache/world construction. It is
+not the authored source of truth for level layout and is not owned by
+`RuntimeSessionState`. Custom collision should be authored as draft/editor
+symbols and compiled into `LevelCollisionSource2D`; serializing compiled
+collision with provenance is future export/build-artifact work.
+
 Derived cache ownership:
 
 ```text

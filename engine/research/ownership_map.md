@@ -78,9 +78,21 @@ Current derived cache anchors:
 
 Current conversion anchors:
 - `LevelCollisionWorldBuilder`
+- `LevelCollisionSource2D`
+- `LevelCollisionSourceWorldBuilder2D`
+- `LevelCollisionWorldMerge2D`
+- `LevelCombinedDerivedCacheBuilder2D`
 - `LevelMutationCacheUpdateStep`
 - `LevelRenderFrame2D`
 - tile render chunk builders/updaters
+
+`LevelCollisionSource2D` is derived compile output. It is the source input
+for derived collision cache/world construction, not the authored source of
+truth for level layout and not runtime/session-owned state. Project/editor
+truth remains draft symbols for now. Future export/build artifacts may
+serialize compiled collision with provenance, but custom collision should be
+authored as draft/editor symbols and compiled into `LevelCollisionSource2D`,
+not hand-edited as compiled boxes.
 
 Does not own:
 - runtime tick order
@@ -88,6 +100,32 @@ Does not own:
 - physics query internals
 - backend rendering
 - save/load format
+
+### `scene/draft`
+
+Owns authored semantic draft data and auditable draft compile reports.
+
+Current anchors:
+- `DraftDocument2D`
+- `DraftCompilePlanner2D`
+- `DraftWallCompiler2D`
+- `DraftDoorCompiler2D`
+- `DraftWallDoorAttach2D`
+- `DraftWallDoorMorphPlanner2D`
+- `DraftWallCutCompiler2D`
+- `DraftBuildingCompiler2D`
+- `DraftLevelGeometryPlanner2D`
+
+`DraftDocument2D` is authored intent and the current project/editor source of
+truth. Draft compile results are derived reports that can feed scene/level
+builders explicitly; they do not become playable runtime state by themselves.
+
+Does not own:
+- runtime/session state
+- save/load or export persistence
+- physics collision world semantics
+- backend UI, canvas, or rendering
+- item, NPC, or interaction gameplay execution
 
 ### `scene/player`
 

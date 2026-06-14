@@ -24,6 +24,10 @@ struct LevelCollisionSourceBox2D {
 	ResourceId definitionId;
 };
 
+// Derived compile output used as source input for collision cache/world builders.
+// Project/editor truth remains authored draft symbols for now; custom collision
+// should be authored there and compiled into this packet instead of hand-editing
+// compiled boxes. This is not runtime/session-owned state.
 struct LevelCollisionSource2D {
 	std::vector<LevelCollisionSourceBox2D> boxes;
 };

@@ -29,6 +29,8 @@ DraftCompilePlan2DResult DraftCompilePlanner2D::plan(const DraftDocument2D &docu
 			result.npcs.push_back({ index, symbol });
 		} else if (symbol.kind == DraftSymbol2DKind::Region || symbol.kind == DraftSymbol2DKind::StoryMarker) {
 			result.markers.push_back({ index, symbol });
+		} else if (symbol.kind == DraftSymbol2DKind::CollisionBlocker) {
+			result.collisionBlockers.push_back({ index, symbol });
 		} else if (symbol.kind == DraftSymbol2DKind::Unknown) {
 			result.issues.push_back({
 				DraftCompilePlan2DIssueCode::UnknownSymbolKind,

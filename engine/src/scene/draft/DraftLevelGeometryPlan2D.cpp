@@ -26,6 +26,11 @@ namespace {
 	return segment.size.x > 0.0F && segment.size.y > 0.0F;
 }
 
+[[nodiscard]] bool HasPositiveSize(const DraftSymbol2D &symbol)
+{
+	return symbol.size.x > 0.0F && symbol.size.y > 0.0F;
+}
+
 [[nodiscard]] bool IsRotated(const DraftCompiledWallSegment2D &segment, float tolerance)
 {
 	return std::fabs(segment.rotationRadians) > tolerance;
@@ -42,6 +47,23 @@ namespace {
 		segmentIndex,
 		segment,
 		buildingIssueCount,
+		0,
+		{},
+	};
+}
+
+[[nodiscard]] DraftLevelGeometryPlan2DIssue CollisionBlockerIssue(
+	DraftLevelGeometryPlan2DIssueCode code,
+	std::size_t symbolIndex,
+	const DraftSymbol2D &symbol)
+{
+	return {
+		code,
+		0,
+		{},
+		0,
+		symbolIndex,
+		symbol,
 	};
 }
 
@@ -55,6 +77,19 @@ namespace {
 		segment.rotationRadians,
 		segment.assetId,
 		segment.definitionId,
+	};
+}
+
+[[nodiscard]] DraftLevelCollisionBox2D CollisionBox(const DraftCollisionBlockerPlan2D &blocker)
+{
+	return {
+		blocker.symbol.id,
+		blocker.symbolIndex,
+		blocker.symbol.position,
+		blocker.symbol.size,
+		blocker.symbol.rotationRadians,
+		blocker.symbol.assetId,
+		blocker.symbol.definitionId,
 	};
 }
 
@@ -94,6 +129,18 @@ DraftLevelGeometryPlan2DResult DraftLevelGeometryPlanner2D::plan(
 		}
 
 		result.collisionBoxes.push_back(CollisionBox(segment));
+	}
+
+	for (const DraftCollisionBlockerPlan2D &blocker : building.plan.collisionBlockers) {
+		if (!HasPositiveSize(blocker.symbol)) {
+			result.issues.push_back(CollisionBlockerIssue(
+				DraftLevelGeometryPlan2DIssueCode::NonPositiveCollisionBlockerSize,
+				blocker.symbolIndex,
+				blocker.symbol));
+			continue;
+		}
+
+		result.collisionBoxes.push_back(CollisionBox(blocker));
 	}
 
 	return result;

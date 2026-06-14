@@ -64,6 +64,17 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `LevelDerivedCacheState`, `LevelDerivedCacheBuilder`, `LevelDerivedCacheUpdater`: render + collision cache packet.
 - `LevelMutationCacheUpdateStep`: applies tile edits through `LevelTileMutation` and refreshes derived caches through `LevelDerivedCacheUpdater`.
 - `LevelRenderFrame2D`: data-only level render-frame builder.
+- `LevelCollisionSource2D`, `LevelCollisionSource2DBuilder`: derived collision build input produced from compile outputs; not authored layout truth and not runtime/session-owned state.
+- `LevelCollisionSourceWorldBuilder2D`, `LevelCollisionWorldMerge2D`, `LevelCombinedDerivedCacheBuilder2D`: opt-in collision world/cache construction from compiled collision source boxes plus tile-map collision.
+
+## `scene/draft`
+
+- `DraftDocument2D`, `DraftDocument2DBuilder`: authored semantic draft symbols; current project/editor source of truth for draft layout intent.
+- `DraftCompilePlanner2D`: classifies enabled draft symbols into planned output categories.
+- `DraftWallCompiler2D`, `DraftDoorCompiler2D`: validate and project wall/door symbols into compiled draft facts.
+- `DraftWallDoorAttach2D`, `DraftWallDoorMorphPlanner2D`, `DraftWallCutCompiler2D`: resolve wall/door relationships and produce final wall segment facts.
+- `DraftBuildingCompiler2D`: auditable building compile report for walls and doors.
+- `DraftLevelGeometryPlanner2D`: converts building compile wall segments into level/collision geometry plan data.
 
 ## `scene/interaction`
 
