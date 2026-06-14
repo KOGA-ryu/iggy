@@ -102,6 +102,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/npc/NpcMoveMode.cpp
   src/scene/npc/NpcPlayControlApply2D.cpp
   src/scene/npc/NpcPlayControlFrameApply2D.cpp
+  src/scene/npc/NpcPlayControlFrameReport2D.cpp
   src/scene/player/PlayerAgentState.cpp
   src/scene/player/PlayerCommandFramePlanner2D.cpp
   src/scene/player/PlayerCommandPlanner2D.cpp
