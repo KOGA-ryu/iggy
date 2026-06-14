@@ -55,6 +55,7 @@ NpcCharismaPool / NpcCharismaDraw
 NpcHand
 NpcRead
 NpcPlay
+NpcPlayControlProposal
 NpcTell
 NpcFold
 NpcObjective
@@ -73,6 +74,8 @@ NPC actor state:
 ```text
 NpcActorState2DRegistry
 NpcActorControlState2DRegistry
+NpcPlayControlFrameApply2D
+NpcPlayControlFrameReport2D
 NpcActorFrameState2D
   -> NpcAiCurrentState2D / RuntimeNpcAiDecisionQueueNpcInput
 ```

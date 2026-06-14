@@ -151,7 +151,7 @@ Does not own:
 
 ### `scene/ai`
 
-Owns map tactical AI context, abstract NPC trait/action vocabulary, NPC AI temperament/state inputs, auditable NPC AI decision reports, route/path/movement proposal transforms, and NPC AI command-frame mapping.
+Owns map tactical AI context, abstract NPC trait/action vocabulary, NPC AI temperament/state inputs, auditable NPC AI decision reports, Play-control proposal projection, route/path/movement proposal transforms, and NPC AI command-frame mapping.
 
 Current anchors:
 - `AiMap2D`
@@ -173,6 +173,7 @@ Current anchors:
 - `NpcHand`
 - `NpcRead`
 - `NpcPlay`
+- `NpcPlayControlProposal`
 - `NpcTell`
 - `NpcFold`
 - `NpcObjective`
@@ -200,7 +201,7 @@ Does not own:
 
 ### `scene/npc`
 
-Owns scene-level NPC actor identity, profile/current-goal state, active behavior/control state, movement mode, and per-frame actor/control projections that can feed AI decisions.
+Owns scene-level NPC actor identity, profile/current-goal state, active behavior/control state, movement mode, Play-control application/reporting over actor control registries, and per-frame actor/control projections that can feed AI decisions.
 
 Current anchors:
 - `NpcActorState2D`
@@ -211,6 +212,9 @@ Current anchors:
 - `NpcActorControlState2D`
 - `NpcActorControlState2DRegistry`
 - `NpcActorControlState2DRegistryBuilder`
+- `NpcPlayControlApply2D`
+- `NpcPlayControlFrameApply2D`
+- `NpcPlayControlFrameReport2D`
 - `NpcActorFrameState2D`
 - `NpcActorFrameStateProjector2D`
 

@@ -19,12 +19,15 @@ This is not a code rename plan. The C++ type names remain the source API names f
 | `NpcHand` | Candidate Hand | Cross-trait action candidates assembled from trait draws. |
 | `NpcRead` | Ranked Read | Conservative ranking report over the current hand. |
 | `NpcPlay` | Selected Play | Deterministic selected action candidate. |
+| `NpcPlayControlProposal` | Play Control Proposal | Proposed objective, behavior state, and move mode derived from a kept play. |
 | `NpcTell` | Play Trace | Explanation/report projection over hand, read, and play facts. |
 | `NpcFold` | Keep/Fold Gate | Explicit policy gate over the current play and issue facts. |
 | `NpcObjective` | Objective | Durable NPC goal vocabulary such as wait, patrol, guard, flee, follow, attack, move, or interact. |
 | `NpcActorState2D` | NPC Actor | Scene-owned NPC identity/profile/current-goal facts. |
 | `NpcActorState2DRegistry` | NPC Roster | Validated lookup table of NPC actors available to AI/runtime intake. |
 | `NpcActorControlState2D` | NPC Control State | Scene-owned objective, behavior state, and move mode for an NPC actor. |
+| `NpcPlayControlFrameApply2D` | Play Control Apply | Ordered application of Play control proposals to NPC control state. |
+| `NpcPlayControlFrameReport2D` | Play Control Report | Summary/report of applied, failed, appended, updated, duplicate, and changed control outcomes. |
 | `NpcActorFrameState2D` | NPC Frame State | Per-frame actor plus optional control projection. |
 | `NpcBehaviorState` | Behavior State | Actor-carried active behavior state, including target facts when required. |
 | `NpcMoveMode` | Move Mode | Actor movement intensity vocabulary and speed multiplier. |
@@ -83,12 +86,12 @@ Use these relationship names when describing the AI tuning pipeline in UI plans 
 6. Movement Ask: Path Result -> Move Proposal
 7. Runtime Action: Move Proposal -> Gameplay Command -> Runtime Queue
 8. Roster Input: NPC Roster -> NPC AI State inputs for runtime queue steps
-9. Trait Draw: Trait Scores + Trait Action Pools -> Candidate Hand -> Ranked Read -> Selected Play -> Play Trace -> Keep/Fold Gate
+9. Trait Draw: Trait Scores + Trait Action Pools -> Candidate Hand -> Ranked Read -> Selected Play -> Play Trace -> Keep/Fold Gate -> Play Control Proposal -> Play Control Apply/Report
 
 ## Ownership Notes
 
-- `scene/ai` owns map AI context, trait pools/draws, candidate hand/read/play/tell/fold reports, NPC AI temperament/state contracts, read-only decision reports, route/path reports, movement proposals, and command-frame mapping.
-- `scene/npc` owns NPC actor identity/profile/current-goal registry data, actor control state, move mode, behavior state, and frame projections.
+- `scene/ai` owns map AI context, trait pools/draws, candidate hand/read/play/tell/fold reports, Play-control proposals, NPC AI temperament/state contracts, read-only decision reports, route/path reports, movement proposals, and command-frame mapping.
+- `scene/npc` owns NPC actor identity/profile/current-goal registry data, actor control state, Play-control application/reporting, move mode, behavior state, and frame projections.
 - Runtime owns queue intake and command execution timing.
 - The Tactical Map is map-owned strategic structure.
 - NPC Temperament is NPC-carried bias, not authored map truth.

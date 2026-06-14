@@ -43,7 +43,7 @@ Transient frame data:
 - interaction events emitted while applying effects
 - pickup plans
 - inventory events emitted while applying inventory/pickup effects
-- NPC trait draw results, hand/read/play/tell/fold reports, and fold diagnostics
+- NPC trait draw results, hand/read/play/tell/fold reports, Play-control proposal/apply/report diagnostics, and fold diagnostics
 - NPC AI context scores, behavior intents, target selections, decisions, route requests, navigation requests, path reports, movement proposals, and command-frame mappings
 - NPC tick reports
 - collision query results
@@ -74,7 +74,7 @@ Save snapshots should exclude:
 - interaction plans, requested effect lists, application diagnostics, interaction events, and interaction reports
 - pickup plans and pickup diagnostics
 - inventory events and pickup frame diagnostics
-- NPC trait draw, hand/read/play/tell/fold reports
+- NPC trait draw, hand/read/play/tell/fold reports, and Play-control proposal/apply/report diagnostics
 - NPC AI decision, path, movement proposal, queue, and command-frame diagnostics unless a later slice promotes actor state into snapshots
 - mutation/cache update diagnostics
 - backend handles, windows, GPU resources
@@ -206,6 +206,9 @@ NpcTraitSet + Npc*Pool
   -> NpcPlay
   -> NpcTell
   -> NpcFold
+  -> NpcPlayControlProposal
+  -> NpcPlayControlFrameApply2DResult
+  -> NpcPlayControlFrameReport2D
 
 AiMap2D + NpcAiProfile2D + NpcAiCurrentState2D
   -> NpcAiDecision2DResult
@@ -216,4 +219,4 @@ AiMap2D + NpcAiProfile2D + NpcAiCurrentState2D
   -> NpcAiCommandFrameMapper2DResult
 ```
 
-Runtime NPC AI queue steps can enqueue the resulting gameplay command frames, but they do not make AI reports authoritative. `NpcActorState2DRegistry` is a scene-owned actor-state candidate; its relationship to existing NPC agent state and save snapshots needs an explicit future boundary decision.
+Runtime NPC AI queue steps can enqueue the resulting gameplay command frames, but they do not make AI reports authoritative. `NpcActorState2DRegistry` and `NpcActorControlState2DRegistry` are scene-owned actor-state candidates; their relationship to existing NPC agent state and save snapshots needs an explicit future boundary decision.
