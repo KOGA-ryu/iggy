@@ -12,6 +12,8 @@ source code.
 - [AI Actor Movement Research](ai-actor-movement-research.md): focused learning map of objective, path, movement state, position mutation, occupancy, post-move work, and movement compute costs.
 - [ASCII Dungeon Debug Projection Research](ascii-dungeon-debug-projection-research.md): NetHack/Edi/Iggy ownership map for ASCII import proof and cheap AI debug projection without making ASCII runtime truth.
 - [AI Mutation, Runtime, Movement, and Queueing](ai-mutation-runtime-movement-queueing.md): how reference games separate proposals from authoritative mutation, runtime state, actor movement, and queued work.
+- [NPC Actor Movement Planning Research](npc-actor-movement-planning-research.md): Iggy-specific route/path/step/executor slice plan from NPC control state to actor position mutation.
+- [NPC Escape Target Research](npc-escape-target-research.md): reference map for turning `MoveAwayFrom` into an explicit escape destination without faking route targets.
 - [AI Skeleton Matrix](ai-skeleton-matrix.md): cross-game map of definition data, live actor state, objectives, executor state, movement, map authority, interaction sites, director AI, and save/load boundaries.
 - [AI Turn Pipeline Walkthroughs](ai-turn-pipeline-walkthroughs.md): per-game update paths showing how AI decisions become actions, movement, combat, or interaction work.
 - [AI Data Structures Map](ai-data-structures-map.md): compact list of the major structs/classes/enums that hold AI-related state in each reference.

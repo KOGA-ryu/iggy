@@ -102,6 +102,9 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/level/LevelVisibleTiles.cpp
   src/scene/npc/NpcActorControlState2D.cpp
   src/scene/npc/NpcActorFrameState2D.cpp
+  src/scene/npc/NpcActorMovementFrameIntent2D.cpp
+  src/scene/npc/NpcActorMovementIntent2D.cpp
+  src/scene/npc/NpcActorRouteTarget2D.cpp
   src/scene/npc/NpcActorState2D.cpp
   src/scene/npc/NpcBehaviorState.cpp
   src/scene/npc/NpcMoveMode.cpp

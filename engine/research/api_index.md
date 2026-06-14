@@ -143,6 +143,9 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `NpcMoveMode`: movement intensity vocabulary and speed multiplier helpers.
 - `NpcBehaviorState`: actor-carried active behavior state vocabulary and validation.
 - `NpcActorControlState2D`, `NpcActorControlState2DRegistry`, `NpcActorControlState2DRegistryBuilder`: scene-owned NPC objective/behavior/move-mode control packet and validated lookup table.
+- `NpcActorMovementIntent2D`, `NpcActorMovementIntentProjector2D`: read-only projection from joined actor/control frame state into one actor movement intent; no pathfinding or mutation.
+- `NpcActorMovementFrameIntent2D`, `NpcActorMovementFrameIntentProjector2D`: read-only batch projection from actor/control frame-state projection into per-actor movement intents; no pathfinding or mutation.
+- `NpcActorRouteTarget2D`, `NpcActorRouteTargetProjector2D`: read-only projection from movement intent into a concrete route target when one exists; fleeing requires an explicit escape destination and no pathfinding runs here.
 - `NpcPlayControlApply2D`, `NpcPlayControlApplier2D`: mutation boundary that applies a valid Play control proposal into NPC actor control registry data by value.
 - `NpcPlayControlFrameApply2D`, `NpcPlayControlFrameApplier2D`: ordered batch mutation over NPC Play control proposals with sequential duplicate-NPC handling.
 - `NpcPlayControlFrameReport2D`, `NpcPlayControlFrameReporter2D`: projection-only report over NPC Play control frame apply results and summary events.
