@@ -116,6 +116,7 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `NpcCharismaPool`, `NpcCharismaDraw`: Charisma behavior pool entries and read-only unlock draw by charisma score and behavior state.
 - `NpcHand`, `NpcHandAssembler`: read-only cross-trait candidate collection assembled from trait draw results.
 - `NpcRead`, `NpcReader`: conservative read-only ranking report over Hand entries using weight as the initial score.
+- `NpcMapRead`, `NpcMapReader`: opt-in map-aware Read report that ranks Hand entries with local AI map tag matches and UI-tunable scoring config.
 - `NpcPlay`, `NpcPlaySelector`: deterministic read-only Play commit selecting the first ranked Read entry.
 - `NpcPlayControlProposal`, `NpcPlayControlProjector`: pure projection from kept Fold/selected Play facts into proposed objective, behavior state, and move mode data.
 - `NpcTell`, `NpcTeller`: explanation/trace projection over Hand, Read, and Play facts.
