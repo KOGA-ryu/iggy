@@ -14,6 +14,9 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/ai/NpcAiPathReport2D.cpp
   src/scene/ai/NpcAiProfile2D.cpp
   src/scene/ai/NpcAiRouteRequest2D.cpp
+  src/scene/ai/NpcStrengthStore2D.cpp
+  src/scene/ai/NpcStrengthStoreQuery2D.cpp
+  src/scene/ai/NpcTraitSet2D.cpp
   src/scene/camera/CameraClamp.cpp
   src/scene/camera/CameraFollow.cpp
   src/scene/camera/CameraLookahead.cpp
