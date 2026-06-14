@@ -54,6 +54,9 @@ NpcWisdomPool / NpcWisdomDraw
 NpcCharismaPool / NpcCharismaDraw
 NpcHand
 NpcRead
+NpcMapRead
+NpcMapReadProjection
+NpcMapPlayReport
 NpcPlay
 NpcPlayControlProposal
 NpcTell

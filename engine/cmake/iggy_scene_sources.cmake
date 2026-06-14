@@ -24,6 +24,8 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/ai/NpcHand.cpp
   src/scene/ai/NpcIntelligencePool.cpp
   src/scene/ai/NpcIntelligenceDraw.cpp
+  src/scene/ai/NpcMapPlayControlFrameStep2D.cpp
+  src/scene/ai/NpcMapPlayReport.cpp
   src/scene/ai/NpcMapRead.cpp
   src/scene/ai/NpcMapReadProjection.cpp
   src/scene/ai/NpcPlay.cpp

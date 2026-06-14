@@ -61,7 +61,7 @@ These are not bugs. They are places to measure before scaling.
 Path:
 
 ```text
-Trait Pools -> Draw -> Hand -> Read -> Play -> Tell -> Fold
+Trait Pools -> Draw -> Hand -> Read / MapRead -> MapPlayReport -> Play -> Tell -> Fold
 ```
 
 Likely costs:
@@ -69,6 +69,8 @@ Likely costs:
 - six trait draw passes over pool entries
 - `NpcHand` copies normalized Ent data and map tags
 - `NpcRead` copies Hand and ranked Ents, then sorts ranked candidates
+- `NpcMapRead` repeats candidate ranking with local map tag/weight scoring
+- `NpcMapPlayReport` preserves raw read, map-aware read, projected read, Play, Tell, and Fold facts by value
 - `NpcPlay` copies Read
 - `NpcTell` copies Play and emits explanation lines
 - `NpcFold` copies Tell

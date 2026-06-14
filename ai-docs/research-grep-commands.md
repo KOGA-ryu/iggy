@@ -384,3 +384,123 @@ nl -ba /Users/kogaryu/iggy/re3-miami/src/peds/Ped.h | sed -n '185,375p'
 nl -ba /Users/kogaryu/iggy/re3-miami/src/peds/PedAI.cpp | sed -n '760,840p'
 nl -ba /Users/kogaryu/iggy/re3-miami/src/peds/PedAttractor.h | sed -n '20,95p'
 ```
+
+## Actor Movement Focus
+
+Full notes: [AI Actor Movement Research](ai-actor-movement-research.md).
+
+These searches focus on the movement skeleton:
+
+```text
+intent/order/objective
+  -> path/candidate generation
+  -> movement state
+  -> position mutation
+  -> occupancy mutation
+  -> post-move work
+```
+
+### OpenXcom Movement
+
+```bash
+rg -n "class Pathfinding|calculate\\(|dequeuePath|UnitWalkBState|startWalking|keepWalking|abortPath|setPosition|setDirection|openDoor|TileEngine|canMove|validateUpDown" \
+  /Users/kogaryu/iggy/OpenXcom-master/src/Battlescape \
+  /Users/kogaryu/iggy/OpenXcom-master/src/Savegame
+```
+
+Why this syntax:
+
+- `Pathfinding|calculate\\(|dequeuePath` finds route creation and route draining.
+- `UnitWalkBState|startWalking|keepWalking` finds the live walk executor.
+- `setPosition|setDirection` finds authoritative unit mutation.
+- `TileEngine|openDoor|canMove|validateUpDown` finds terrain and post-move rules.
+
+### Warzone 2100 Movement
+
+```bash
+rg -n "struct MOVE_CONTROL|MOVE_CONTROL|moveUpdateDroid\\(|moveUpdateDroidPos|moveUpdateDroidDirection|moveCalc|moveDroidTo|moveCheck|path|Position|orderUpdateDroid|actionUpdateDroid" \
+  /Users/kogaryu/iggy/warzone2100-master/src/movedef.h \
+  /Users/kogaryu/iggy/warzone2100-master/src/move.cpp \
+  /Users/kogaryu/iggy/warzone2100-master/src/droid.cpp \
+  /Users/kogaryu/iggy/warzone2100-master/src/order.cpp \
+  /Users/kogaryu/iggy/warzone2100-master/src/action.cpp
+```
+
+Why this syntax:
+
+- `MOVE_CONTROL` finds route/path-follow state.
+- `orderUpdateDroid|actionUpdateDroid|moveUpdateDroid` finds the update chain.
+- `moveDroidTo|moveCheck` finds target setup and movement validation.
+- `moveUpdateDroidPos|moveUpdateDroidDirection` finds position and facing mutation.
+
+### NetHack Movement
+
+```bash
+rg -n "movemon\\(|dochug\\(|m_move\\(|mfndpos\\(|remove_monster|place_monster|mtrack|movement|MMOVE_|postmov|m_postmove_effect|m_move_aggress|mnexto|enexto" \
+  /Users/kogaryu/iggy/NetHack-NetHack-5.0/include/monst.h \
+  /Users/kogaryu/iggy/NetHack-NetHack-5.0/include/mfndpos.h \
+  /Users/kogaryu/iggy/NetHack-NetHack-5.0/src/mon.c \
+  /Users/kogaryu/iggy/NetHack-NetHack-5.0/src/monmove.c
+```
+
+Why this syntax:
+
+- `movement|mtrack|MMOVE_` finds live monster movement fields and constants.
+- `movemon|dochug|m_move` finds monster turn and movement flow.
+- `mfndpos` finds legal move candidate generation.
+- `remove_monster|place_monster|postmov` finds map mutation and post-move work.
+
+### DevilutionX Movement
+
+```bash
+rg -n "Start.*Walk|M_Start|StartWalk|AiPlanPath|FindPath|LineClear|Walk|MonsterMode|MonsterGoal|Move|monster.*position|dMonster|position|pathCount|ProcessMonsters|M_.*Walk|MAI|Dir" \
+  /Users/kogaryu/iggy/DevilutionX-master/Source/monster.h \
+  /Users/kogaryu/iggy/DevilutionX-master/Source/monster.cpp \
+  /Users/kogaryu/iggy/DevilutionX-master/Source/engine/path.h \
+  /Users/kogaryu/iggy/DevilutionX-master/Source/engine/path.cpp
+```
+
+Why this syntax:
+
+- `MonsterMode|MonsterGoal|pathCount` finds live AI and movement state.
+- `AiPlanPath|FindPath` finds route planning.
+- `Walk|Dir` finds step execution and direction legality.
+- `dMonster|position` finds dungeon occupancy and actor position truth.
+
+### KeeperFX Movement
+
+```bash
+rg -n "navigate|Navigation|move|movement|thing_in_map|thing.*position|move_creature|CreatureControl|Ariadne|path|route|waypoint|State|process_func_list|set_thing_position|move_thing|thing_in_wall|creature.*move" \
+  /Users/kogaryu/iggy/keeperfx-master/src/thing_navigate.c \
+  /Users/kogaryu/iggy/keeperfx-master/src/thing_navigate.h \
+  /Users/kogaryu/iggy/keeperfx-master/src/thing_creature.c \
+  /Users/kogaryu/iggy/keeperfx-master/src/creature_control.h \
+  /Users/kogaryu/iggy/keeperfx-master/src/ariadne.h \
+  /Users/kogaryu/iggy/keeperfx-master/src/creature_states.c
+```
+
+Why this syntax:
+
+- `CreatureControl|Navigation|Ariadne` finds movement state owners.
+- `path|route|waypoint` finds route-follow structure.
+- `move_creature|creature.*move` finds movement execution.
+- `thing_in_map|move_thing|thing.*position` finds map placement mutation.
+
+### re3 Miami Movement
+
+```bash
+rg -n "SetFollowPath|FollowPath|PathFind|m_nMoveState|PedState|SetMoveState|Seek|Move|SetObjective|ProcessObjective|m_pNextPathNode|m_nPathDir|m_vecMoveSpeed|m_vecAnimMoveDelta|Position|CPed::Process|CPed::Save" \
+  /Users/kogaryu/iggy/re3-miami/src/peds/Ped.h \
+  /Users/kogaryu/iggy/re3-miami/src/peds/Ped.cpp \
+  /Users/kogaryu/iggy/re3-miami/src/peds/PedAI.cpp \
+  /Users/kogaryu/iggy/re3-miami/src/control/PathFind.h \
+  /Users/kogaryu/iggy/re3-miami/src/control/PathFind.cpp \
+  /Users/kogaryu/iggy/re3-miami/src/control/AutoPilot.h
+```
+
+Why this syntax:
+
+- `SetObjective|ProcessObjective` finds high-level intent flow.
+- `PedState|m_nMoveState|SetMoveState` finds behavior state and locomotion state.
+- `SetFollowPath|FollowPath|m_pNextPathNode|m_nPathDir` finds path-follow state.
+- `m_vecMoveSpeed|m_vecAnimMoveDelta|Position` finds physical movement and actor truth.

@@ -151,7 +151,7 @@ Does not own:
 
 ### `scene/ai`
 
-Owns map tactical AI context, abstract NPC trait/action vocabulary, NPC AI temperament/state inputs, auditable NPC AI decision reports, Play-control proposal projection, route/path/movement proposal transforms, and NPC AI command-frame mapping.
+Owns map tactical AI context, abstract NPC trait/action vocabulary, NPC AI temperament/state inputs, auditable NPC AI decision reports, map-aware read/play reports, Play-control proposal projection, route/path/movement proposal transforms, and NPC AI command-frame mapping.
 
 Current anchors:
 - `AiMap2D`
@@ -172,6 +172,9 @@ Current anchors:
 - `NpcCharismaDraw`
 - `NpcHand`
 - `NpcRead`
+- `NpcMapRead`
+- `NpcMapReadProjection`
+- `NpcMapPlayReport`
 - `NpcPlay`
 - `NpcPlayControlProposal`
 - `NpcTell`
