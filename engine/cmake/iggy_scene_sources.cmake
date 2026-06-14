@@ -76,6 +76,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/level/LevelTileRenderChunkVisibility.cpp
   src/scene/level/LevelTileRenderCommands.cpp
   src/scene/level/LevelVisibleTiles.cpp
+  src/scene/npc/NpcActorControlState2D.cpp
   src/scene/npc/NpcActorState2D.cpp
   src/scene/npc/NpcBehaviorState2D.cpp
   src/scene/npc/NpcMoveMode2D.cpp
