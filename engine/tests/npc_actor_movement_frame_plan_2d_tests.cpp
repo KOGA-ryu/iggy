@@ -4,6 +4,7 @@
 
 #include "scene/npc/NpcActorMovementFrameApply2D.hpp"
 #include "scene/npc/NpcActorMovementFramePlan2D.hpp"
+#include "scene/npc/NpcActorOccupancyQuery2D.hpp"
 #include "support/LevelMapFixtures.hpp"
 #include "support/TestHarness.hpp"
 
@@ -258,6 +259,88 @@ void TestOccupancyBlockedStepStillPreparesRequest()
 	Expect(SameFilter(result.requests[0].filter, result.entries[0].filter), "blocked prepared request should copy blocked filter");
 }
 
+void TestDefaultConfigStillUsesHardBlockFilter()
+{
+	const iggy::LevelTileMap map = Map({ "...." });
+	const iggy::NpcActorState2DRegistry actors = Actors({
+		Actor("npc:mover", { 0.5F, 0.5F }),
+		Actor("npc:blocker", { 1.5F, 0.5F }),
+	});
+	const iggy::NpcActorControlState2DRegistry controls = Controls({
+		Control(
+			"npc:mover",
+			iggy::moveToNpcObjective({ 3.5F, 0.5F }),
+			iggy::seekingNpcBehaviorState({ 3.5F, 0.5F }),
+			iggy::NpcMoveMode::Walk),
+		Control("npc:blocker", iggy::waitNpcObjective(), iggy::idleNpcBehaviorState(), iggy::NpcMoveMode::Still),
+	});
+
+	const iggy::NpcActorMovementFramePlan2DResult result = Plan(actors, controls, map);
+
+	Expect(!result.entries[0].usedOccupancyPolicy, "default planner config should not use occupancy policy");
+	Expect(result.entries[0].policyFilter.status == iggy::NpcActorPathStepOccupancyPolicyFilter2DStatus::NoStepProposal, "default planner config should not populate policy diagnostics");
+	Expect(result.entries[0].filter.status == iggy::NpcActorPathStepOccupancyFilter2DStatus::BlockedByNpc, "default planner config should preserve old hard-block filter");
+	Expect(result.requestCount == 1 && result.blockedRequestCount == 1, "default planner config should preserve blocked request counts");
+}
+
+void TestOccupancyPolicyCapacityAllowsPreviouslyBlockedStep()
+{
+	const iggy::LevelTileMap map = Map({ "...." });
+	const iggy::NpcActorState2DRegistry actors = Actors({
+		Actor("npc:mover", { 0.5F, 0.5F }),
+		Actor("npc:occupant", { 1.5F, 0.5F }),
+	});
+	const iggy::NpcActorControlState2DRegistry controls = Controls({
+		Control(
+			"npc:mover",
+			iggy::moveToNpcObjective({ 3.5F, 0.5F }),
+			iggy::seekingNpcBehaviorState({ 3.5F, 0.5F }),
+			iggy::NpcMoveMode::Walk),
+		Control("npc:occupant", iggy::waitNpcObjective(), iggy::idleNpcBehaviorState(), iggy::NpcMoveMode::Still),
+	});
+	iggy::NpcActorMovementFramePlan2DConfig config;
+	config.useOccupancyPolicy = true;
+	config.occupancyPolicy.maxOccupantsPerTile = 2;
+
+	const iggy::NpcActorMovementFramePlan2DResult result = Plan(actors, controls, map, config);
+
+	Expect(result.requestCount == 1, "policy capacity should still produce caller-ready request");
+	Expect(result.blockedRequestCount == 0, "policy capacity should not count shared tile as blocked");
+	Expect(result.entries[0].usedOccupancyPolicy, "policy capacity should mark policy path");
+	Expect(result.entries[0].policyFilter.status == iggy::NpcActorPathStepOccupancyPolicyFilter2DStatus::Allowed, "policy capacity should allow entering occupied tile");
+	Expect(result.entries[0].policyFilter.policy.occupancyCount == 1, "policy capacity should preserve occupancy count");
+	Expect(result.entries[0].policyFilter.policy.effectiveOccupancyCount == 1, "policy capacity should preserve effective occupancy count");
+	Expect(result.entries[0].policyFilter.policy.capacity == 2, "policy capacity should preserve configured capacity");
+	Expect(result.entries[0].filter.status == iggy::NpcActorPathStepOccupancyFilter2DStatus::Allowed, "policy capacity should emit executor-compatible allowed filter");
+}
+
+void TestOccupancyPolicyDefaultCapacityMatchesHardBlock()
+{
+	const iggy::LevelTileMap map = Map({ "...." });
+	const iggy::NpcActorState2DRegistry actors = Actors({
+		Actor("npc:mover", { 0.5F, 0.5F }),
+		Actor("npc:blocker", { 1.5F, 0.5F }),
+	});
+	const iggy::NpcActorControlState2DRegistry controls = Controls({
+		Control(
+			"npc:mover",
+			iggy::moveToNpcObjective({ 3.5F, 0.5F }),
+			iggy::seekingNpcBehaviorState({ 3.5F, 0.5F }),
+			iggy::NpcMoveMode::Walk),
+		Control("npc:blocker", iggy::waitNpcObjective(), iggy::idleNpcBehaviorState(), iggy::NpcMoveMode::Still),
+	});
+	iggy::NpcActorMovementFramePlan2DConfig config;
+	config.useOccupancyPolicy = true;
+
+	const iggy::NpcActorMovementFramePlan2DResult result = Plan(actors, controls, map, config);
+
+	Expect(result.requestCount == 1 && result.blockedRequestCount == 1, "policy default capacity should match hard-block request counts");
+	Expect(result.entries[0].policyFilter.status == iggy::NpcActorPathStepOccupancyPolicyFilter2DStatus::BlockedByNpc, "policy default capacity should block occupied tile");
+	Expect(result.entries[0].policyFilter.blockingNpcId == Id("npc:blocker"), "policy default capacity should preserve blocker id");
+	Expect(result.entries[0].policyFilter.policy.capacity == 1, "policy default capacity should preserve default capacity");
+	Expect(result.entries[0].filter.status == iggy::NpcActorPathStepOccupancyFilter2DStatus::BlockedByNpc, "policy default capacity should emit blocked executor-compatible filter");
+}
+
 void TestNavigationRejectedPreparesNoRequest()
 {
 	const iggy::LevelTileMap map = Map({ ".#." });
@@ -356,6 +439,137 @@ void TestRequestOrderFollowsMovementEntryOrder()
 	Expect(result.requests[1].filter.step.npcId == Id("npc:second"), "second request should come from later moving entry");
 }
 
+void TestReservationRejectsSecondDifferentNpcSameDestination()
+{
+	const iggy::LevelTileMap map = Map({ "..." });
+	const iggy::NpcActorState2DRegistry actors = Actors({
+		Actor("npc:first", { 0.5F, 0.5F }),
+		Actor("npc:second", { 2.5F, 0.5F }),
+	});
+	const iggy::NpcActorControlState2DRegistry controls = Controls({
+		Control(
+			"npc:first",
+			iggy::moveToNpcObjective({ 1.5F, 0.5F }),
+			iggy::seekingNpcBehaviorState({ 1.5F, 0.5F }),
+			iggy::NpcMoveMode::Walk),
+		Control(
+			"npc:second",
+			iggy::moveToNpcObjective({ 1.5F, 0.5F }),
+			iggy::seekingNpcBehaviorState({ 1.5F, 0.5F }),
+			iggy::NpcMoveMode::Walk),
+	});
+	iggy::NpcActorMovementFramePlan2DConfig config;
+	config.runReservation = true;
+
+	const iggy::NpcActorMovementFramePlan2DResult result = Plan(actors, controls, map, config);
+	const iggy::NpcActorMovementFrameApply2DResult applied =
+		iggy::NpcActorMovementFrameApplier2D {}.apply(actors, result.requests);
+
+	Expect(result.preReservationRequestCount == 2, "reservation planner should preserve pre-reservation requests");
+	Expect(result.requestCount == 1, "default reservation should expose accepted-only final requests");
+	Expect(result.reservationAcceptedCount == 1 && result.reservationRejectedCount == 1, "default reservation should preserve accept/reject counts");
+	Expect(result.reservation.entries[1].status == iggy::NpcActorMovementReservationEntry2DStatus::ReservationBlocked, "default reservation should reject second same-tile npc");
+	Expect(result.entries[0].requestIndex.has_value() && *result.entries[0].requestIndex == 0, "accepted entry should preserve final request index");
+	Expect(!result.entries[1].requestIndex.has_value(), "reservation-rejected entry should not have final request index");
+	Expect(result.entries[1].preReservationRequestIndex.has_value() && *result.entries[1].preReservationRequestIndex == 1, "reservation-rejected entry should preserve pre-reservation index");
+	Expect(applied.movedCount == 1, "accepted-only planner requests should feed existing applier");
+	Expect(NearVec(applied.registry.actors[0].position, { 1.5F, 0.5F }), "first reserved actor should move");
+	Expect(NearVec(applied.registry.actors[1].position, { 2.5F, 0.5F }), "reservation-rejected actor should not move");
+}
+
+void TestReservationCapacityTwoAllowsTwoDifferentNpcsSameDestination()
+{
+	const iggy::LevelTileMap map = Map({ "..." });
+	const iggy::NpcActorState2DRegistry actors = Actors({
+		Actor("npc:first", { 0.5F, 0.5F }),
+		Actor("npc:second", { 2.5F, 0.5F }),
+	});
+	const iggy::NpcActorControlState2DRegistry controls = Controls({
+		Control(
+			"npc:first",
+			iggy::moveToNpcObjective({ 1.5F, 0.5F }),
+			iggy::seekingNpcBehaviorState({ 1.5F, 0.5F }),
+			iggy::NpcMoveMode::Walk),
+		Control(
+			"npc:second",
+			iggy::moveToNpcObjective({ 1.5F, 0.5F }),
+			iggy::seekingNpcBehaviorState({ 1.5F, 0.5F }),
+			iggy::NpcMoveMode::Walk),
+	});
+	iggy::NpcActorMovementFramePlan2DConfig config;
+	config.runReservation = true;
+	config.reservation.policy.maxOccupantsPerTile = 2;
+
+	const iggy::NpcActorMovementFramePlan2DResult result = Plan(actors, controls, map, config);
+	const iggy::NpcActorMovementFrameApply2DResult applied =
+		iggy::NpcActorMovementFrameApplier2D {}.apply(actors, result.requests);
+	const iggy::NpcActorOccupancy2D refreshed = iggy::NpcActorOccupancyProjector2D {}.project(applied.registry);
+
+	Expect(result.preReservationRequestCount == 2 && result.requestCount == 2, "capacity reservation should expose both final requests");
+	Expect(result.reservationAcceptedCount == 2 && result.reservationRejectedCount == 0, "capacity reservation should accept both requests");
+	Expect(applied.movedCount == 2, "capacity reservation requests should move both actors");
+	Expect(NearVec(applied.registry.actors[0].position, { 1.5F, 0.5F }), "first capacity actor should move");
+	Expect(NearVec(applied.registry.actors[1].position, { 1.5F, 0.5F }), "second capacity actor should move");
+	Expect(refreshed.hasIssues(), "capacity final registry should project duplicate occupancy inspectably");
+	Expect(npcActorOccupantsAt(refreshed, { 1, 0 }).npcIds.size() == 2, "capacity final occupancy should contain both actors");
+}
+
+void TestReservationPreservesBlockedDiagnosticsInFinalRequests()
+{
+	const iggy::LevelTileMap map = Map({ "...." });
+	const iggy::NpcActorState2DRegistry actors = Actors({
+		Actor("npc:mover", { 0.5F, 0.5F }),
+		Actor("npc:blocker", { 1.5F, 0.5F }),
+	});
+	const iggy::NpcActorControlState2DRegistry controls = Controls({
+		Control(
+			"npc:mover",
+			iggy::moveToNpcObjective({ 3.5F, 0.5F }),
+			iggy::seekingNpcBehaviorState({ 3.5F, 0.5F }),
+			iggy::NpcMoveMode::Walk),
+		Control("npc:blocker", iggy::waitNpcObjective(), iggy::idleNpcBehaviorState(), iggy::NpcMoveMode::Still),
+	});
+	iggy::NpcActorMovementFramePlan2DConfig config;
+	config.runReservation = true;
+
+	const iggy::NpcActorMovementFramePlan2DResult result = Plan(actors, controls, map, config);
+	const iggy::NpcActorMovementFrameApply2DResult applied =
+		iggy::NpcActorMovementFrameApplier2D {}.apply(actors, result.requests);
+
+	Expect(result.preReservationRequestCount == 1 && result.requestCount == 1, "reservation should pass blocked diagnostics through as final request");
+	Expect(result.reservationAcceptedCount == 1 && result.reservationRejectedCount == 0, "blocked non-movement request should not be reservation-rejected");
+	Expect(result.requests[0].filter.status == iggy::NpcActorPathStepOccupancyFilter2DStatus::BlockedByNpc, "final request should preserve blocked filter");
+	Expect(applied.blockedCount == 1 && !applied.changed, "blocked final request should feed existing applier diagnostics without movement");
+}
+
+void TestReservationSameNpcDuplicateDeterministicFromRawRegistry()
+{
+	const iggy::LevelTileMap map = Map({ "..." });
+	iggy::NpcActorState2DRegistry actors;
+	actors.actors = {
+		Actor("npc:mover", { 0.5F, 0.5F }),
+		Actor("npc:mover", { 2.5F, 0.5F }),
+	};
+	iggy::NpcActorControlState2DRegistry controls;
+	controls.entries = {
+		Control(
+			"npc:mover",
+			iggy::moveToNpcObjective({ 1.5F, 0.5F }),
+			iggy::seekingNpcBehaviorState({ 1.5F, 0.5F }),
+			iggy::NpcMoveMode::Walk),
+	};
+	iggy::NpcActorMovementFramePlan2DConfig config;
+	config.runReservation = true;
+
+	const iggy::NpcActorMovementFramePlan2DResult result = Plan(actors, controls, map, config);
+
+	Expect(result.preReservationRequestCount == 2, "raw duplicate same-npc registry should produce two requests for deterministic reservation coverage");
+	Expect(result.requestCount == 2, "same-npc duplicate reservations should remain accepted");
+	Expect(result.reservationRejectedCount == 0, "same-npc duplicate reservations should not reject each other");
+	Expect(result.entries[0].requestIndex.has_value() && *result.entries[0].requestIndex == 0, "first same-npc entry should keep final request index");
+	Expect(result.entries[1].requestIndex.has_value() && *result.entries[1].requestIndex == 1, "second same-npc entry should keep final request index");
+}
+
 void TestGeneratedRequestsCanFeedFrameApplierWithoutPlannerApplying()
 {
 	const iggy::LevelTileMap map = Map({ "...." });
@@ -412,10 +626,17 @@ int main()
 	TestSeekingActorPreparesAllowedRequest();
 	TestFleeingActorPreparesRequestThroughEscapeRoute();
 	TestOccupancyBlockedStepStillPreparesRequest();
+	TestDefaultConfigStillUsesHardBlockFilter();
+	TestOccupancyPolicyCapacityAllowsPreviouslyBlockedStep();
+	TestOccupancyPolicyDefaultCapacityMatchesHardBlock();
 	TestNavigationRejectedPreparesNoRequest();
 	TestPathNotFoundPreparesNoRequest();
 	TestIdleAndMissingControlPrepareNoRequests();
 	TestRequestOrderFollowsMovementEntryOrder();
+	TestReservationRejectsSecondDifferentNpcSameDestination();
+	TestReservationCapacityTwoAllowsTwoDifferentNpcsSameDestination();
+	TestReservationPreservesBlockedDiagnosticsInFinalRequests();
+	TestReservationSameNpcDuplicateDeterministicFromRawRegistry();
 	TestGeneratedRequestsCanFeedFrameApplierWithoutPlannerApplying();
 	TestInputsAreNotMutated();
 

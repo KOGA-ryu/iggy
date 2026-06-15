@@ -9,8 +9,10 @@
 #include "scene/npc/NpcActorFrameState2D.hpp"
 #include "scene/npc/NpcActorMovementFrameApply2D.hpp"
 #include "scene/npc/NpcActorMovementFrameIntent2D.hpp"
+#include "scene/npc/NpcActorMovementReservation2D.hpp"
 #include "scene/npc/NpcActorNavigationRequest2D.hpp"
 #include "scene/npc/NpcActorOccupancy2D.hpp"
+#include "scene/npc/NpcActorPathStepOccupancyPolicyFilter2D.hpp"
 #include "scene/npc/NpcActorPathReport2D.hpp"
 #include "scene/npc/NpcActorPathStep2D.hpp"
 #include "scene/npc/NpcActorPathStepOccupancyFilter2D.hpp"
@@ -40,6 +42,10 @@ struct NpcActorMovementFramePlan2DConfig {
 	NpcActorOccupancy2DConfig occupancy;
 	NpcActorPathStep2DConfig pathStep;
 	NpcActorPathStepOccupancyFilter2DConfig occupancyFilter;
+	bool useOccupancyPolicy = false;
+	NpcActorOccupancyPolicy2DConfig occupancyPolicy;
+	bool runReservation = false;
+	NpcActorMovementReservation2DConfig reservation;
 };
 
 struct NpcActorMovementFramePlan2DEntry {
@@ -51,6 +57,9 @@ struct NpcActorMovementFramePlan2DEntry {
 	NpcActorPathReport2D path;
 	NpcActorPathStep2D step;
 	NpcActorPathStepOccupancyFilter2D filter;
+	NpcActorPathStepOccupancyPolicyFilter2D policyFilter;
+	bool usedOccupancyPolicy = false;
+	std::optional<std::size_t> preReservationRequestIndex;
 	std::optional<std::size_t> requestIndex;
 	NpcActorMovementFrameApply2DRequest request;
 	NpcActorMovementFramePlan2DEntryStatus status = NpcActorMovementFramePlan2DEntryStatus::NoMovementIntent;
@@ -62,11 +71,16 @@ struct NpcActorMovementFramePlan2DResult {
 	NpcActorMovementFrameIntent2DResult movementIntents;
 	NpcActorOccupancy2D occupancy;
 	std::vector<NpcActorMovementFramePlan2DEntry> entries;
+	std::vector<NpcActorMovementFrameApply2DRequest> preReservationRequests;
+	NpcActorMovementReservation2DResult reservation;
 	std::vector<NpcActorMovementFrameApply2DRequest> requests;
 	std::size_t entryCount = 0;
 	std::size_t requestCount = 0;
+	std::size_t preReservationRequestCount = 0;
 	std::size_t preparedCount = 0;
 	std::size_t blockedRequestCount = 0;
+	std::size_t reservationAcceptedCount = 0;
+	std::size_t reservationRejectedCount = 0;
 	std::size_t noMovementIntentCount = 0;
 	std::size_t routeFailedCount = 0;
 	std::size_t escapeRouteFailedCount = 0;

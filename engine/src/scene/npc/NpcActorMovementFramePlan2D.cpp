@@ -40,6 +40,27 @@ void CountEntry(
 	}
 }
 
+void ApplyReservationToEntries(iggy::NpcActorMovementFramePlan2DResult &result)
+{
+	for (iggy::NpcActorMovementFramePlan2DEntry &entry : result.entries) {
+		entry.requestIndex.reset();
+	}
+
+	for (const iggy::NpcActorMovementReservation2DEntry &reservationEntry : result.reservation.entries) {
+		if (!reservationEntry.acceptedRequestIndex.has_value()) {
+			continue;
+		}
+
+		for (iggy::NpcActorMovementFramePlan2DEntry &entry : result.entries) {
+			if (entry.preReservationRequestIndex.has_value()
+				&& *entry.preReservationRequestIndex == reservationEntry.requestIndex) {
+				entry.requestIndex = *reservationEntry.acceptedRequestIndex;
+				break;
+			}
+		}
+	}
+}
+
 } // namespace
 
 namespace iggy {
@@ -108,10 +129,21 @@ NpcActorMovementFramePlan2DResult NpcActorMovementFramePlanner2D::plan(
 		}
 
 		entry.step = NpcActorPathStepper2D {}.step(entry.path, config.pathStep);
-		entry.filter = NpcActorPathStepOccupancyFilterProjector2D {}.filter(
-			entry.step,
-			result.occupancy,
-			config.occupancyFilter);
+		if (config.useOccupancyPolicy) {
+			NpcActorPathStepOccupancyPolicyFilter2DConfig policyConfig;
+			policyConfig.policy = config.occupancyPolicy;
+			entry.policyFilter = NpcActorPathStepOccupancyPolicyFilterProjector2D {}.filter(
+				entry.step,
+				result.occupancy,
+				policyConfig);
+			entry.filter = entry.policyFilter.filter;
+			entry.usedOccupancyPolicy = true;
+		} else {
+			entry.filter = NpcActorPathStepOccupancyFilterProjector2D {}.filter(
+				entry.step,
+				result.occupancy,
+				config.occupancyFilter);
+		}
 		if (!FilterPreparesRequest(entry.filter)) {
 			entry.status = NpcActorMovementFramePlan2DEntryStatus::StepNotProposed;
 			CountEntry(result, entry);
@@ -121,14 +153,27 @@ NpcActorMovementFramePlan2DResult NpcActorMovementFramePlanner2D::plan(
 
 		entry.status = NpcActorMovementFramePlan2DEntryStatus::RequestPrepared;
 		entry.requestPrepared = true;
-		entry.requestIndex = result.requests.size();
+		entry.preReservationRequestIndex = result.preReservationRequests.size();
+		entry.requestIndex = result.preReservationRequests.size();
 		entry.request.filter = entry.filter;
-		result.requests.push_back(entry.request);
+		result.preReservationRequests.push_back(entry.request);
+		if (!config.runReservation) {
+			result.requests.push_back(entry.request);
+		}
 		CountEntry(result, entry);
 		result.entries.push_back(entry);
 	}
 
+	if (config.runReservation) {
+		result.reservation = NpcActorMovementReservationProjector2D {}.reserve(result.preReservationRequests, config.reservation);
+		result.requests = result.reservation.acceptedRequests;
+		result.reservationAcceptedCount = result.reservation.acceptedCount;
+		result.reservationRejectedCount = result.reservation.rejectedCount;
+		ApplyReservationToEntries(result);
+	}
+
 	result.entryCount = result.entries.size();
+	result.preReservationRequestCount = result.preReservationRequests.size();
 	result.requestCount = result.requests.size();
 	result.status = result.requestCount > 0
 		? NpcActorMovementFramePlan2DStatus::Planned

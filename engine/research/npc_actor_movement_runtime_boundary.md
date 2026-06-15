@@ -47,6 +47,14 @@ prepared frame apply requests
 This reservation layer is derived decision data. It is not actor truth, runtime
 state, save state, or occupancy ownership.
 
+`NpcActorMovementFramePlan2D` can opt into this scene-only policy path through
+planner config. By default, it still uses the original hard-block occupancy
+filter and emits the same prepared request shape. When enabled, the planner can
+use `NpcActorPathStepOccupancyPolicyFilter2D` for policy-aware filtering and can
+run `NpcActorMovementReservation2D` before publishing final `plan.requests`.
+Planner outputs remain prepared apply requests; the planner still does not
+apply movement or mutate actor registries.
+
 ## Ownership
 
 - `RuntimeGameplayState` owns and carries `npcActors` and `npcControls` by value.
