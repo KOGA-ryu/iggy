@@ -53,15 +53,34 @@ Derived facts remain unsaved and rebuildable:
 
 These should be regenerated from authoritative actor/control/map/session state.
 
+## Archive-Level Gameplay Codec
+
+`RuntimeGameplaySnapshotChunkCodec` is the first archive-level codec for the
+gameplay snapshot packet. It composes the existing session snapshot chunks and
+then adds gameplay-owned chunks for:
+
+- command queue state
+- interaction state
+- inventory state
+- `NpcActorState2DRegistry`
+- `NpcActorControlState2DRegistry`
+
+This is still an in-memory `RuntimeSaveChunkArchive` boundary. It does not
+connect gameplay snapshots to save file envelopes, save slots, disk paths,
+format policy, or runtime frame behavior.
+
+The codec does not move NPC actor/control state into `RuntimeSessionState` or
+`RuntimeSessionSnapshot`. The nested session snapshot remains session-owned and
+is decoded through the existing session snapshot chunk decoder.
+
 ## Not In This Lane
 
 This lane does not change:
 
 - `RuntimeSessionSnapshot`
-- session snapshot chunk codecs
 - save file envelopes
 - save slots
 - disk serialization
 
-Gameplay snapshot disk persistence should be designed as a separate chunk/file
-codec lane after the data packet and validator are accepted.
+Gameplay snapshot disk persistence remains a later file/save-slot lane after
+the archive packet boundary is accepted.
