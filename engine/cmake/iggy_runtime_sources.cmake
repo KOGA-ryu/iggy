@@ -27,6 +27,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeNpcActorMovementPlannedFrameStep.cpp
   src/runtime/RuntimeNpcActorMovementRequestPlanStep.cpp
   src/runtime/RuntimeNpcAiControlPlannedFrameStep.cpp
+  src/runtime/RuntimeNpcAiProfileControlPlannedFrameStep.cpp
   src/runtime/RuntimeNpcAiMovementPlannedFrameRunner.cpp
   src/runtime/RuntimeNpcAiMovementPlannedFrameStep.cpp
   src/runtime/RuntimeNpcAiMovementRefreshFrameRunner.cpp
