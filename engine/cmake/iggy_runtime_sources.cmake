@@ -7,6 +7,8 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeCommandQueue.cpp
   src/runtime/RuntimeGameplaySaveSlotStore.cpp
   src/runtime/RuntimeGameplayOrchestratedFrameRunner.cpp
+  src/runtime/RuntimeGameplayOrchestratedFrameRunnerReporter.cpp
+  src/runtime/RuntimeGameplayOrchestratedFrameReporter.cpp
   src/runtime/RuntimeGameplayOrchestratedFrameStep.cpp
   src/runtime/RuntimeGameplayFrameRunner.cpp
   src/runtime/RuntimeGameplayFrameStep.cpp

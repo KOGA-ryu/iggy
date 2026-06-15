@@ -83,6 +83,12 @@ packet facts. It is a separate top-level helper for tools, tests, and
 simulations; it does not replace or wrap the old raw/policy gameplay frame
 runners.
 
+`RuntimeGameplayOrchestratedFrameReporter` and
+`RuntimeGameplayOrchestratedFrameRunnerReporter` project compact report packets
+from those explicit frame/runner results. They are engine data for future
+debug, IDE, or UI tooling; they do not run gameplay frames, execute caches,
+render, or mutate state.
+
 The optional scene-only reservation lane can sit between prepared requests and
 frame apply:
 
@@ -129,6 +135,7 @@ The optional helper layers are:
 7. `RuntimeNpcAiMovementRefreshFrameStep` and runner variants add refresh packet projection to 5/6 without executing downstream caches.
 8. `RuntimeGameplayOrchestratedFrameStep` composes the existing player frame path with 7 for one explicit caller-selected gameplay frame.
 9. `RuntimeGameplayOrchestratedFrameRunner` repeats 8 over caller-supplied frames without replacing raw/policy gameplay runners.
+10. Orchestrated frame/runner reporters project compact inspection packets over 8/9 without executing gameplay.
 
 ## Intentionally Not Included
 
