@@ -21,8 +21,11 @@ struct RuntimeNpcActorMovementRequestPlanResult {
 	NpcActorMovementFramePlan2DResult plan;
 	std::vector<NpcActorMovementFrameApply2DRequest> requests;
 	std::size_t requestCount = 0;
+	std::size_t preReservationRequestCount = 0;
 	std::size_t preparedCount = 0;
 	std::size_t blockedRequestCount = 0;
+	std::size_t reservationAcceptedCount = 0;
+	std::size_t reservationRejectedCount = 0;
 	std::size_t noMovementIntentCount = 0;
 	std::size_t routeFailedCount = 0;
 	std::size_t escapeRouteFailedCount = 0;

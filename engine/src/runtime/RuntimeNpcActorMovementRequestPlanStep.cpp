@@ -20,8 +20,11 @@ RuntimeNpcActorMovementRequestPlanResult RuntimeNpcActorMovementRequestPlanStep:
 		input.config);
 	result.requests = result.plan.requests;
 	result.requestCount = result.plan.requestCount;
+	result.preReservationRequestCount = result.plan.preReservationRequestCount;
 	result.preparedCount = result.plan.preparedCount;
 	result.blockedRequestCount = result.plan.blockedRequestCount;
+	result.reservationAcceptedCount = result.plan.reservationAcceptedCount;
+	result.reservationRejectedCount = result.plan.reservationRejectedCount;
 	result.noMovementIntentCount = result.plan.noMovementIntentCount;
 	result.routeFailedCount = result.plan.routeFailedCount;
 	result.escapeRouteFailedCount = result.plan.escapeRouteFailedCount;

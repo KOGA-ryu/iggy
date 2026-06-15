@@ -265,11 +265,15 @@ bool SameConfig(
 		&& NearVec(actual.route.escapeDestination, expected.route.escapeDestination)
 		&& actual.escapeRoute.escape.searchRadius == expected.escapeRoute.escape.searchRadius
 		&& actual.escapeRoute.escape.requireBetterThanCurrent == expected.escapeRoute.escape.requireBetterThanCurrent
-		&& actual.escapeRoute.route.arrivalTolerance == expected.escapeRoute.route.arrivalTolerance
-		&& actual.occupancy.includeAbsent == expected.occupancy.includeAbsent
-		&& actual.pathStep.baseStepDistance == expected.pathStep.baseStepDistance
-		&& actual.pathStep.arrivalTolerance == expected.pathStep.arrivalTolerance;
-}
+			&& actual.escapeRoute.route.arrivalTolerance == expected.escapeRoute.route.arrivalTolerance
+			&& actual.occupancy.includeAbsent == expected.occupancy.includeAbsent
+			&& actual.pathStep.baseStepDistance == expected.pathStep.baseStepDistance
+			&& actual.pathStep.arrivalTolerance == expected.pathStep.arrivalTolerance
+			&& actual.useOccupancyPolicy == expected.useOccupancyPolicy
+			&& actual.occupancyPolicy.maxOccupantsPerTile == expected.occupancyPolicy.maxOccupantsPerTile
+			&& actual.runReservation == expected.runReservation
+			&& actual.reservation.policy.maxOccupantsPerTile == expected.reservation.policy.maxOccupantsPerTile;
+	}
 
 void TestEmptyStateProducesNoRequests()
 {
@@ -393,6 +397,86 @@ void TestRequestsCanFeedRuntimeFrameButPlannerDoesNotApply()
 	Expect(frame.npcMovement.apply.movedCount == 1, "runtime frame should report generated request movement");
 }
 
+void TestOccupancyPolicyConfigAllowsPreviouslyBlockedRequest()
+{
+	const iggy::LevelTileMap map = Map({ "...." });
+	iggy::runtime::RuntimeGameplayState state = GameplayState(map);
+	state.npcActors = Actors({
+		Actor("npc:mover", { 0.5F, 0.5F }),
+		Actor("npc:blocker", { 1.5F, 0.5F }),
+	});
+	state.npcControls = Controls({
+		SeekingControl("npc:mover", { 3.5F, 0.5F }),
+		IdleControl("npc:blocker"),
+	});
+	iggy::NpcActorMovementFramePlan2DConfig config;
+	config.useOccupancyPolicy = true;
+	config.occupancyPolicy.maxOccupantsPerTile = 2;
+
+	const iggy::runtime::RuntimeNpcActorMovementRequestPlanResult result = Plan(state, map, config);
+
+	Expect(result.requestCount == 1, "policy-capacity runtime request planner should produce one request");
+	Expect(result.preReservationRequestCount == 1, "policy-capacity runtime request planner should mirror pre-reservation count");
+	Expect(result.blockedRequestCount == 0, "policy-capacity runtime request planner should not count the request as blocked");
+	Expect(result.plan.entries[0].usedOccupancyPolicy, "policy-capacity runtime request planner should preserve policy usage");
+	Expect(result.plan.entries[0].policyFilter.status == iggy::NpcActorPathStepOccupancyPolicyFilter2DStatus::Allowed, "policy-capacity runtime request planner should preserve allowed policy diagnostics");
+	Expect(result.requests[0].filter.status == iggy::NpcActorPathStepOccupancyFilter2DStatus::Allowed, "policy-capacity runtime request planner should emit executor-compatible allowed request");
+}
+
+void TestReservationConfigRejectsSecondSameDestinationRequest()
+{
+	const iggy::LevelTileMap map = Map({ "..." });
+	iggy::runtime::RuntimeGameplayState state = GameplayState(map);
+	state.npcActors = Actors({
+		Actor("npc:first", { 0.5F, 0.5F }),
+		Actor("npc:second", { 2.5F, 0.5F }),
+	});
+	state.npcControls = Controls({
+		SeekingControl("npc:first", { 1.5F, 0.5F }),
+		SeekingControl("npc:second", { 1.5F, 0.5F }),
+	});
+	iggy::NpcActorMovementFramePlan2DConfig config;
+	config.runReservation = true;
+
+	const iggy::runtime::RuntimeNpcActorMovementRequestPlanResult result = Plan(state, map, config);
+
+	Expect(result.preReservationRequestCount == 2, "reservation runtime request planner should preserve pre-reservation requests");
+	Expect(result.requestCount == 1, "reservation runtime request planner should expose accepted-only final requests");
+	Expect(result.reservationAcceptedCount == 1, "reservation runtime request planner should mirror accepted count");
+	Expect(result.reservationRejectedCount == 1, "reservation runtime request planner should mirror rejected count");
+	Expect(result.plan.reservation.entries.size() == 2, "reservation runtime request planner should preserve entry diagnostics");
+	Expect(result.plan.reservation.entries[0].status == iggy::NpcActorMovementReservationEntry2DStatus::Accepted, "first same-destination request should be accepted");
+	Expect(result.plan.reservation.entries[1].status == iggy::NpcActorMovementReservationEntry2DStatus::ReservationBlocked, "second same-destination request should be reservation blocked");
+	Expect(result.requests[0].filter.step.npcId == Id("npc:first"), "reservation runtime request planner should preserve accepted request order");
+}
+
+void TestReservationCapacityConfigAllowsTwoSameDestinationRequests()
+{
+	const iggy::LevelTileMap map = Map({ "..." });
+	iggy::runtime::RuntimeGameplayState state = GameplayState(map);
+	state.npcActors = Actors({
+		Actor("npc:first", { 0.5F, 0.5F }),
+		Actor("npc:second", { 2.5F, 0.5F }),
+	});
+	state.npcControls = Controls({
+		SeekingControl("npc:first", { 1.5F, 0.5F }),
+		SeekingControl("npc:second", { 1.5F, 0.5F }),
+	});
+	iggy::NpcActorMovementFramePlan2DConfig config;
+	config.runReservation = true;
+	config.reservation.policy.maxOccupantsPerTile = 2;
+
+	const iggy::runtime::RuntimeNpcActorMovementRequestPlanResult result = Plan(state, map, config);
+
+	Expect(result.preReservationRequestCount == 2, "capacity-two reservation runtime request planner should preserve pre-reservation requests");
+	Expect(result.requestCount == 2, "capacity-two reservation runtime request planner should expose both accepted requests");
+	Expect(result.reservationAcceptedCount == 2, "capacity-two reservation runtime request planner should mirror accepted count");
+	Expect(result.reservationRejectedCount == 0, "capacity-two reservation runtime request planner should mirror zero rejected count");
+	Expect(result.plan.reservation.acceptedRequests.size() == 2, "capacity-two reservation runtime request planner should preserve accepted requests");
+	Expect(result.requests[0].filter.step.npcId == Id("npc:first"), "capacity-two reservation should keep first request first");
+	Expect(result.requests[1].filter.step.npcId == Id("npc:second"), "capacity-two reservation should keep second request second");
+}
+
 void TestInputsAndConfigAreNotMutated()
 {
 	const iggy::LevelTileMap map = Map({ "...." });
@@ -404,6 +488,10 @@ void TestInputsAndConfigAreNotMutated()
 	iggy::NpcActorMovementFramePlan2DConfig config;
 	config.pathStep.baseStepDistance = 1.0F;
 	config.occupancy.includeAbsent = true;
+	config.useOccupancyPolicy = true;
+	config.occupancyPolicy.maxOccupantsPerTile = 2;
+	config.runReservation = true;
+	config.reservation.policy.maxOccupantsPerTile = 2;
 	const iggy::NpcActorMovementFramePlan2DConfig configBefore = config;
 
 	(void)iggy::runtime::RuntimeNpcActorMovementRequestPlanStep {}.plan({ state, map, config });
@@ -423,6 +511,9 @@ int main()
 	TestBlockedByNpcRequestIsPreserved();
 	TestIdleAndPathFailureProduceNoRequestsWithDiagnostics();
 	TestRequestsCanFeedRuntimeFrameButPlannerDoesNotApply();
+	TestOccupancyPolicyConfigAllowsPreviouslyBlockedRequest();
+	TestReservationConfigRejectsSecondSameDestinationRequest();
+	TestReservationCapacityConfigAllowsTwoSameDestinationRequests();
 	TestInputsAndConfigAreNotMutated();
 
 	return Failures;

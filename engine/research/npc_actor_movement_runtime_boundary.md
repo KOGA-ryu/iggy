@@ -32,6 +32,12 @@ actor/control registries
 
 The raw and policy runtime frame/runner paths consume those prepared requests unchanged. Runtime applies the prepared requests into the carried gameplay state through `RuntimeNpcActorMovementFrameStep`, which delegates registry mutation to `NpcActorMovementFrameApply2D`.
 
+`RuntimeNpcActorMovementRequestPlanStep` is the runtime-adjacent bridge for
+callers that want prepared requests from current `RuntimeGameplayState` plus a
+`LevelTileMap`. It passes the scene planner config through directly, including
+opt-in occupancy policy and reservation settings, and mirrors the resulting
+request/reservation counts for runtime-facing diagnostics.
+
 The optional scene-only reservation lane can sit between prepared requests and
 frame apply:
 
