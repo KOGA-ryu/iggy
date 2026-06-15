@@ -60,6 +60,12 @@ the control half. It resolves actor `aiProfileId` values into map-play control
 subjects, then delegates to `RuntimeNpcAiControlPlannedFrameStep`. This keeps
 profile trait lookup explicit and outside raw/policy gameplay frame steps.
 
+`RuntimeNpcAiProfileMovementPlannedFrameStep` is the profile-backed one-frame
+AI+movement helper. It runs profile-backed control planning/apply first, then
+uses the post-control gameplay state for actor movement planning/application.
+It remains caller-selected and does not make raw/policy gameplay frames
+auto-orchestrate AI or movement.
+
 `RuntimeNpcAiMovementPlannedFrameRunner` is the explicit sequence companion for
 that AI+movement path. It repeats the one-frame helper over caller-supplied
 frames for simulations, tests, and tools while keeping raw/policy gameplay
@@ -150,14 +156,15 @@ The optional helper layers are:
 3. `RuntimeNpcActorMovementPlannedFrameStep` composes 1 and 2 for one caller-selected frame.
 4. `RuntimeNpcActorMovementPlannedFrameRunner` repeats 3 over caller-supplied frames.
 5. `RuntimeNpcAiProfileControlPlannedFrameStep` resolves profile traits before caller-selected control planning when directly invoked.
-6. `RuntimeNpcAiMovementPlannedFrameStep` composes caller-selected AI control planning with one movement planned frame when directly invoked.
-7. `RuntimeNpcAiMovementPlannedFrameRunner` repeats 6 over caller-supplied AI+movement frames when directly invoked.
-8. `RuntimeNpcAiMovementRefreshFrameStep` and runner variants add refresh packet projection to 6/7 without executing downstream caches.
-9. `RuntimeGameplayOrchestratedFrameStep` composes the existing player frame path with 8 for one explicit caller-selected gameplay frame.
-10. `RuntimeGameplayOrchestratedFrameRunner` repeats 9 over caller-supplied frames without replacing raw/policy gameplay runners.
-11. Orchestrated frame/runner reporters project compact inspection packets over 9/10 without executing gameplay.
-12. `RuntimeGameplayScenarioRunner` is a lightweight scenario/replay harness over 10 and 11, intended for tests and future tooling packets rather than parser/UI integration.
-13. `RuntimeGameplayScenarioDefinition` and validator are typed authoring packets for tools to produce before conversion to the scenario runner input.
+6. `RuntimeNpcAiProfileMovementPlannedFrameStep` resolves profile traits before one caller-selected AI+movement planned frame.
+7. `RuntimeNpcAiMovementPlannedFrameStep` composes caller-selected AI control planning with one movement planned frame when directly invoked.
+8. `RuntimeNpcAiMovementPlannedFrameRunner` repeats 7 over caller-supplied AI+movement frames when directly invoked.
+9. `RuntimeNpcAiMovementRefreshFrameStep` and runner variants add refresh packet projection to 7/8 without executing downstream caches.
+10. `RuntimeGameplayOrchestratedFrameStep` composes the existing player frame path with 9 for one explicit caller-selected gameplay frame.
+11. `RuntimeGameplayOrchestratedFrameRunner` repeats 10 over caller-supplied frames without replacing raw/policy gameplay runners.
+12. Orchestrated frame/runner reporters project compact inspection packets over 10/11 without executing gameplay.
+13. `RuntimeGameplayScenarioRunner` is a lightweight scenario/replay harness over 11 and 12, intended for tests and future tooling packets rather than parser/UI integration.
+14. `RuntimeGameplayScenarioDefinition` and validator are typed authoring packets for tools to produce before conversion to the scenario runner input.
 
 ## Intentionally Not Included
 
