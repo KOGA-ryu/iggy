@@ -9,6 +9,8 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeGameplayFrameStep.cpp
   src/runtime/RuntimeGameplayFrameReporter.cpp
   src/runtime/RuntimeGameplayState.cpp
+  src/runtime/RuntimeGameplaySnapshot.cpp
+  src/runtime/RuntimeGameplaySnapshotValidator.cpp
   src/runtime/RuntimeMutationCommandQueue.cpp
   src/runtime/RuntimeNpcActorMovementFrameStep.cpp
   src/runtime/RuntimeNpcActorMovementRequestPlanStep.cpp

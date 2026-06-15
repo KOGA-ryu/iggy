@@ -156,6 +156,7 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `NpcActorNavigationRequest2D`, `NpcActorNavigationRequestBuilder2D`: read-only adapter from ready NPC route targets to static tile-map navigation request validation; no pathfinding or mutation.
 - `NpcActorOccupancy2D`, `NpcActorOccupancyProjector2D`: read-only derived occupancy projection from NPC actor registry positions into occupied tile groups with duplicate-tile diagnostics; actor position remains actor truth.
 - `NpcActorOccupancyQuery2D`: read-only tile occupancy/blocking queries over derived NPC occupancy, including exact self-occupancy checks; no pathfinding or mutation.
+- `NpcActorOccupancyRefresh2D`, `NpcActorOccupancyRefresher2D`: by-value refresh consumer that rebuilds derived NPC occupancy from the supplied actor registry only when movement refresh work requests `OccupancyRebuild`.
 - `NpcActorPathReport2D`, `NpcActorPathReporter2D`: read-only pathfinding report over accepted NPC actor navigation requests using `NavigationGridPathfinder`; no step selection or mutation.
 - `NpcActorPathStep2D`, `NpcActorPathStepper2D`: read-only bounded movement-step proposal over found NPC actor paths using `NavigationPathFollower` and `NpcMoveMode` speed; no actor mutation or path-state ownership.
 - `NpcActorPathStepOccupancyFilter2D`, `NpcActorPathStepOccupancyFilterProjector2D`: read-only default hard-block occupancy filter over proposed NPC path steps; no reservations, sharing policy, or mutation.
@@ -226,10 +227,13 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `RuntimePlayerInputInteractionPickupFrameStep`, `RuntimePlayerInputInteractionPickupFrameReporter`: gated input + interaction apply + pickup-effect orchestration and reporting.
 - `RuntimePlayerInputInteractionPolicyPickupFrameStep`: gated input + interaction apply + catalog-aware pickup-effect orchestration.
 - `RuntimeGameplayState`: top-level runtime gameplay packet carrying session, command queue, interaction state, inventory state, and NPC actor/control registries.
+- `RuntimeGameplaySnapshotBuilder`, `RuntimeGameplaySnapshotRestorer`: data-only gameplay snapshot capture/restore over `RuntimeGameplayState`, wrapping `RuntimeSessionSnapshot` plus gameplay-owned children without disk serialization.
+- `RuntimeGameplaySnapshotValidator`: pure validation/reporting over gameplay snapshots, preserving nested session validation plus new NPC actor/control bounds and join diagnostics.
 - `RuntimeGameplayFrameStep`, `RuntimeGameplayFrameRunner`, `RuntimeGameplayFrameReporter`: one-frame and bounded gameplay orchestration over input, interaction, pickup, command ticking, optional prepared NPC actor movement requests, per-tick NPC movement reports, and runner-level movement aggregation.
 - `RuntimePolicyGameplayFrameStep`, `RuntimePolicyGameplayFrameRunner`, `RuntimePolicyGameplayFrameReporter`: catalog-aware gameplay frame orchestration and reporting over policy pickup, optional prepared NPC actor movement requests, per-tick NPC movement reports, and runner-level movement aggregation.
 - `RuntimeNpcActorMovementFrameStep`: runtime adapter over prepared scene/npc movement apply requests; delegates actor registry mutation to scene/npc and returns updated `RuntimeGameplayState` without generating pathfinding or movement filters.
 - `RuntimeNpcActorMovementRequestPlanStep`: thin runtime-adjacent helper that delegates current gameplay NPC actor/control state plus a level map to `NpcActorMovementFramePlanner2D`, returning prepared movement requests without applying movement.
+- NPC actor save/load ownership boundary: `engine/research/npc_actor_save_load_ownership.md`.
 - `RuntimeNpcAiCommandQueueStep`: pushes already-mapped NPC AI command frames into the runtime command queue.
 - `RuntimeNpcAiMovementQueueStep`: maps NPC movement proposals to gameplay commands and queues them.
 - `RuntimeNpcAiDecisionQueueStep`: runs scene/ai decision, route, path, movement proposal, and command mapping for NPC inputs, then queues the result.
