@@ -56,6 +56,63 @@ iggy::runtime::GameplayCommandFrame2D WaitFrame()
 	return CommandFrame({ iggy::runtime::GameplayCommand2DFactory {}.wait(PlayerId) });
 }
 
+iggy::NpcActorState2D NpcActor(const char *npcId, iggy::Vec2 position = { 2.0F, 2.0F })
+{
+	return {
+		Id(npcId),
+		Id("profile:gameplay-frame"),
+		Id("faction:gameplay-frame"),
+		position,
+		{},
+		true,
+	};
+}
+
+iggy::NpcActorControlState2D NpcControl(const char *npcId)
+{
+	return {
+		Id(npcId),
+		iggy::waitNpcObjective(),
+		iggy::idleNpcBehaviorState(),
+		iggy::NpcMoveMode::Still,
+	};
+}
+
+iggy::NpcActorPathStepOccupancyFilter2D NpcMovementFilter(
+	const char *npcId,
+	iggy::Vec2 oldPosition,
+	iggy::Vec2 proposedPosition,
+	iggy::NpcActorPathStepOccupancyFilter2DStatus status = iggy::NpcActorPathStepOccupancyFilter2DStatus::Allowed,
+	bool requestsMovement = true,
+	const char *blockingNpcId = "")
+{
+	iggy::NpcActorPathStepOccupancyFilter2D filter;
+	filter.step.npcId = Id(npcId);
+	filter.step.oldPosition = oldPosition;
+	filter.step.proposedPosition = proposedPosition;
+	filter.step.oldTile = iggy::tileForPoint(oldPosition);
+	filter.step.proposedTile = iggy::tileForPoint(proposedPosition);
+	filter.step.moveMode = iggy::NpcMoveMode::Walk;
+	filter.step.status = status == iggy::NpcActorPathStepOccupancyFilter2DStatus::NoStepProposal
+		? iggy::NpcActorPathStep2DStatus::NoPath
+		: iggy::NpcActorPathStep2DStatus::Proposed;
+	filter.step.requestsMovement = status != iggy::NpcActorPathStepOccupancyFilter2DStatus::NoStepProposal;
+	filter.status = status;
+	filter.requestsMovement = requestsMovement;
+	if (blockingNpcId[0] != '\0') {
+		filter.blockingNpcId = Id(blockingNpcId);
+	}
+	return filter;
+}
+
+iggy::NpcActorMovementFrameApply2DRequest NpcMovementRequest(
+	const iggy::NpcActorPathStepOccupancyFilter2D &filter)
+{
+	iggy::NpcActorMovementFrameApply2DRequest request;
+	request.filter = filter;
+	return request;
+}
+
 iggy::InteractionTarget2D Target(
 	const char *id,
 	iggy::InteractionTarget2DKind kind = iggy::InteractionTarget2DKind::Usable,
@@ -225,6 +282,40 @@ void ExpectInventoryEvent(
 	Expect(event.itemId == itemId, message);
 	Expect(event.dropId == dropId, message);
 	Expect(event.count == count, message);
+}
+
+void ExpectNpcGameplayState(
+	const iggy::runtime::RuntimeGameplayState &actual,
+	const iggy::runtime::RuntimeGameplayState &expected,
+	const char *message)
+{
+	Expect(actual.npcActors.actors.size() == expected.npcActors.actors.size(), message);
+	Expect(actual.npcControls.entries.size() == expected.npcControls.entries.size(), message);
+	if (!actual.npcActors.actors.empty() && !expected.npcActors.actors.empty()) {
+		Expect(actual.npcActors.actors[0].npcId == expected.npcActors.actors[0].npcId, message);
+		Expect(NearVec(actual.npcActors.actors[0].position, expected.npcActors.actors[0].position), message);
+		Expect(actual.npcActors.actors[0].present == expected.npcActors.actors[0].present, message);
+	}
+	if (!actual.npcControls.entries.empty() && !expected.npcControls.entries.empty()) {
+		Expect(actual.npcControls.entries[0].npcId == expected.npcControls.entries[0].npcId, message);
+		Expect(actual.npcControls.entries[0].moveMode == expected.npcControls.entries[0].moveMode, message);
+		Expect(actual.npcControls.entries[0].objective.type == expected.npcControls.entries[0].objective.type, message);
+		Expect(actual.npcControls.entries[0].behavior.type == expected.npcControls.entries[0].behavior.type, message);
+	}
+}
+
+bool SameNpcMovementFilter(
+	const iggy::NpcActorPathStepOccupancyFilter2D &actual,
+	const iggy::NpcActorPathStepOccupancyFilter2D &expected)
+{
+	return actual.step.npcId == expected.step.npcId
+		&& NearVec(actual.step.oldPosition, expected.step.oldPosition)
+		&& NearVec(actual.step.proposedPosition, expected.step.proposedPosition)
+		&& actual.step.oldTile == expected.step.oldTile
+		&& actual.step.proposedTile == expected.step.proposedTile
+		&& actual.status == expected.status
+		&& actual.requestsMovement == expected.requestsMovement
+		&& actual.blockingNpcId == expected.blockingNpcId;
 }
 
 void TestEmptyInputReturnsGameplayStateThroughExistingSemanticsAndReport()
@@ -426,6 +517,115 @@ void TestOriginalGameplayStateInputIsNotMutated()
 	Expect(input.state.inventory.drops.drops.size() == 1 && input.state.inventory.drops.drops[0].enabled, "gameplay frame should not mutate input drops");
 }
 
+void TestNpcActorAndControlStateAreCarriedThroughGameplayFrame()
+{
+	const iggy::InteractionTarget2D target = Target("target:npc-carry", iggy::InteractionTarget2DKind::Pickup, { 1.0F, 0.0F }, 0.0F);
+	const iggy::LevelItemDrop2D drop = Drop("drop:npc-carry", "item:npc-carry", 1, { 1.0F, 0.0F }, 0.0F);
+	const iggy::runtime::RuntimeInteractionState interaction {
+		Registry({ target }),
+		Catalog({ Entry("target:npc-carry", { iggy::pickupItemInteractionEffect(target.id, drop.id) }) }),
+	};
+	iggy::runtime::RuntimeGameplayState state =
+		GameplayState(SessionWithPlayer({ 0.0F, 0.0F }), interaction, InventoryState({}, { drop }));
+	state.npcActors = { { NpcActor("npc:carried", { 4.0F, 5.0F }) } };
+	state.npcControls = { { NpcControl("npc:carried") } };
+	const iggy::runtime::RuntimeGameplayState original = state;
+
+	const iggy::runtime::RuntimeGameplayFrameResult result =
+		iggy::runtime::RuntimeGameplayFrameStep {}.run(Input(state, {
+			iggy::playerMoveToPointIntent({ 1.0F, 0.0F }),
+			iggy::playerInteractIntent(target.id),
+		}));
+
+	Expect(result.report.acceptedCommandCount == 2, "NPC carry setup should run player movement and pickup commands");
+	Expect(SameStacks(result.state.inventory.inventory.stacks, { Stack("item:npc-carry", 1) }), "NPC carry setup should still process pickup");
+	ExpectNpcGameplayState(result.state, state, "gameplay frame should carry NPC actor/control registries unchanged");
+	ExpectNpcGameplayState(state, original, "gameplay frame should not mutate input NPC actor/control registries");
+	Expect(!result.npcMovement.changed, "gameplay frame with no NPC movement requests should preserve no-op NPC movement result");
+	Expect(result.npcMovement.apply.requestCount == 0, "gameplay frame with no NPC movement requests should preserve zero NPC movement request count");
+}
+
+void TestPreparedNpcMovementRequestUpdatesReturnedActorAfterPlayerFrame()
+{
+	const iggy::InteractionTarget2D target = Target("target:npc-move-pickup", iggy::InteractionTarget2DKind::Pickup, { 1.0F, 0.0F }, 0.0F);
+	const iggy::LevelItemDrop2D drop = Drop("drop:npc-move-pickup", "item:npc-move-pickup", 1, { 1.0F, 0.0F }, 0.0F);
+	const iggy::runtime::RuntimeInteractionState interaction {
+		Registry({ target }),
+		Catalog({ Entry("target:npc-move-pickup", { iggy::pickupItemInteractionEffect(target.id, drop.id) }) }),
+	};
+	iggy::runtime::RuntimeGameplayState state =
+		GameplayState(SessionWithPlayer({ 0.0F, 0.0F }), interaction, InventoryState({}, { drop }));
+	state.npcActors = {
+		{
+			NpcActor("npc:mover", { 4.5F, 0.5F }),
+			NpcActor("npc:other", { 8.5F, 0.5F }),
+		},
+	};
+	state.npcControls = {
+		{
+			NpcControl("npc:mover"),
+			NpcControl("npc:other"),
+		},
+	};
+	const iggy::runtime::RuntimeGameplayState original = state;
+	const std::vector<iggy::NpcActorMovementFrameApply2DRequest> requests {
+		NpcMovementRequest(NpcMovementFilter("npc:mover", { 4.5F, 0.5F }, { 5.5F, 0.5F })),
+	};
+	const std::vector<iggy::NpcActorMovementFrameApply2DRequest> originalRequests = requests;
+	iggy::runtime::RuntimeGameplayFrameInput input =
+		Input(state, {
+			iggy::playerMoveToPointIntent({ 1.0F, 0.0F }),
+			iggy::playerInteractIntent(target.id),
+		});
+	input.npcMovementRequests = requests;
+
+	const iggy::runtime::RuntimeGameplayFrameResult result =
+		iggy::runtime::RuntimeGameplayFrameStep {}.run(input);
+
+	Expect(NearVec(result.state.session.player.position, { 1.0F, 0.0F }), "gameplay frame should preserve player movement result before NPC movement");
+	Expect(SameStacks(result.state.inventory.inventory.stacks, { Stack("item:npc-move-pickup", 1) }), "gameplay frame should preserve pickup result before NPC movement");
+	Expect(result.npcMovement.changed, "gameplay frame should preserve changed NPC movement result");
+	Expect(result.npcMovement.apply.movedCount == 1 && result.npcMovement.report.movedCount == 1, "gameplay frame should preserve NPC movement counts");
+	Expect(NearVec(result.state.npcActors.actors[0].position, { 5.5F, 0.5F }), "gameplay frame should apply prepared NPC actor movement");
+	Expect(NearVec(result.state.npcActors.actors[1].position, { 8.5F, 0.5F }), "gameplay frame should preserve unmoved NPC actor");
+	ExpectNpcGameplayState(state, original, "gameplay frame should not mutate input gameplay state");
+	Expect(SameNpcMovementFilter(input.npcMovementRequests[0].filter, originalRequests[0].filter), "gameplay frame should not mutate input NPC movement request");
+}
+
+void TestBlockedAndMissingNpcMovementProjectDiagnosticsWithoutActorChanges()
+{
+	iggy::runtime::RuntimeGameplayState state = GameplayState(SessionWithPlayer({ 0.0F, 0.0F }));
+	state.npcActors = {
+		{
+			NpcActor("npc:blocked", { 2.5F, 0.5F }),
+		},
+	};
+	state.npcControls = { { NpcControl("npc:blocked") } };
+	const iggy::runtime::RuntimeGameplayState original = state;
+	iggy::runtime::RuntimeGameplayFrameInput input = Input(state, {});
+	input.npcMovementRequests = {
+		NpcMovementRequest(NpcMovementFilter(
+			"npc:blocked",
+			{ 2.5F, 0.5F },
+			{ 3.5F, 0.5F },
+			iggy::NpcActorPathStepOccupancyFilter2DStatus::BlockedByNpc,
+			false,
+			"npc:blocker")),
+		NpcMovementRequest(NpcMovementFilter("npc:missing", { 4.5F, 0.5F }, { 5.5F, 0.5F })),
+	};
+
+	const iggy::runtime::RuntimeGameplayFrameResult result =
+		iggy::runtime::RuntimeGameplayFrameStep {}.run(input);
+
+	Expect(!result.npcMovement.changed, "blocked/missing NPC movement frame should not change actors");
+	Expect(NearVec(result.state.npcActors.actors[0].position, { 2.5F, 0.5F }), "blocked/missing NPC movement frame should preserve actor position");
+	Expect(result.npcMovement.apply.blockedCount == 1, "gameplay frame should preserve blocked NPC movement count");
+	Expect(result.npcMovement.apply.missingActorCount == 1, "gameplay frame should preserve missing actor count");
+	Expect(result.npcMovement.report.blockedCount == 1 && result.npcMovement.report.missingActorCount == 1, "gameplay frame should preserve NPC movement report diagnostics");
+	Expect(result.npcMovement.apply.entries[0].executor.postMove.blockingNpcId == Id("npc:blocker"), "gameplay frame should preserve blocking NPC id");
+	ExpectNpcGameplayState(state, original, "blocked/missing NPC movement frame should not mutate input gameplay state");
+}
+
 } // namespace
 
 int main()
@@ -439,6 +639,9 @@ int main()
 	TestQueueRejectedInputPreservesDiagnosticsAndDoesNotMutateExplicitStates();
 	TestExplicitCollisionWorldOverloadAffectsMovementReachAndPickup();
 	TestOriginalGameplayStateInputIsNotMutated();
+	TestNpcActorAndControlStateAreCarriedThroughGameplayFrame();
+	TestPreparedNpcMovementRequestUpdatesReturnedActorAfterPlayerFrame();
+	TestBlockedAndMissingNpcMovementProjectDiagnosticsWithoutActorChanges();
 
 	return Failures;
 }

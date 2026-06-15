@@ -50,10 +50,28 @@ template <typename T>
 struct HasItemDefinitionsField<T, std::void_t<decltype(&T::itemDefinitions)>> : std::true_type {
 };
 
+template <typename T, typename = void>
+struct HasNpcActorsField : std::false_type {
+};
+
+template <typename T>
+struct HasNpcActorsField<T, std::void_t<decltype(&T::npcActors)>> : std::true_type {
+};
+
+template <typename T, typename = void>
+struct HasNpcControlsField : std::false_type {
+};
+
+template <typename T>
+struct HasNpcControlsField<T, std::void_t<decltype(&T::npcControls)>> : std::true_type {
+};
+
 static_assert(!HasInteractionField<iggy::runtime::RuntimeSessionState>::value);
 static_assert(!HasInventoryField<iggy::runtime::RuntimeSessionState>::value);
 static_assert(!HasCommandQueueField<iggy::runtime::RuntimeSessionState>::value);
 static_assert(!HasItemDefinitionsField<iggy::runtime::RuntimeSessionState>::value);
+static_assert(!HasNpcActorsField<iggy::runtime::RuntimeSessionState>::value);
+static_assert(!HasNpcControlsField<iggy::runtime::RuntimeSessionState>::value);
 
 const iggy::ResourceId PlayerId { "player:policy-gameplay-frame" };
 
@@ -92,6 +110,28 @@ iggy::runtime::RuntimeSessionState SessionWithPlayer(iggy::Vec2 position = { 0.0
 iggy::runtime::GameplayCommandFrame2D WaitFrame()
 {
 	return CommandFrame({ iggy::runtime::GameplayCommand2DFactory {}.wait(PlayerId) });
+}
+
+iggy::NpcActorState2D NpcActor(const char *npcId, iggy::Vec2 position = { 2.0F, 2.0F })
+{
+	return {
+		Id(npcId),
+		Id("profile:policy-gameplay-frame"),
+		Id("faction:policy-gameplay-frame"),
+		position,
+		{},
+		true,
+	};
+}
+
+iggy::NpcActorControlState2D NpcControl(const char *npcId)
+{
+	return {
+		Id(npcId),
+		iggy::waitNpcObjective(),
+		iggy::idleNpcBehaviorState(),
+		iggy::NpcMoveMode::Still,
+	};
 }
 
 iggy::InteractionTarget2D Target(
@@ -274,6 +314,26 @@ void ExpectInventoryState(
 {
 	Expect(SameStacks(actual.inventory.stacks, expected.inventory.stacks), message);
 	Expect(SameDrops(actual.drops.drops, expected.drops.drops), message);
+}
+
+void ExpectNpcGameplayState(
+	const iggy::runtime::RuntimeGameplayState &actual,
+	const iggy::runtime::RuntimeGameplayState &expected,
+	const char *message)
+{
+	Expect(actual.npcActors.actors.size() == expected.npcActors.actors.size(), message);
+	Expect(actual.npcControls.entries.size() == expected.npcControls.entries.size(), message);
+	if (!actual.npcActors.actors.empty() && !expected.npcActors.actors.empty()) {
+		Expect(actual.npcActors.actors[0].npcId == expected.npcActors.actors[0].npcId, message);
+		Expect(NearVec(actual.npcActors.actors[0].position, expected.npcActors.actors[0].position), message);
+		Expect(actual.npcActors.actors[0].present == expected.npcActors.actors[0].present, message);
+	}
+	if (!actual.npcControls.entries.empty() && !expected.npcControls.entries.empty()) {
+		Expect(actual.npcControls.entries[0].npcId == expected.npcControls.entries[0].npcId, message);
+		Expect(actual.npcControls.entries[0].moveMode == expected.npcControls.entries[0].moveMode, message);
+		Expect(actual.npcControls.entries[0].objective.type == expected.npcControls.entries[0].objective.type, message);
+		Expect(actual.npcControls.entries[0].behavior.type == expected.npcControls.entries[0].behavior.type, message);
+	}
 }
 
 void ExpectTargetEnabled(
@@ -544,6 +604,33 @@ void TestInputStateIsNotMutated()
 	ExpectInventoryState(input.state.inventory, inventory, "policy gameplay frame should not mutate input inventory");
 }
 
+void TestNpcActorAndControlStateAreCarriedThroughPolicyGameplayFrame()
+{
+	const iggy::InteractionTarget2D target = Target("target:policy-npc-carry", iggy::InteractionTarget2DKind::Pickup, { 1.0F, 0.0F }, 0.0F);
+	const iggy::LevelItemDrop2D drop = Drop("drop:policy-npc-carry", "item:policy-npc-carry", 1, { 1.0F, 0.0F }, 0.0F);
+	const iggy::runtime::RuntimeInteractionState interaction {
+		Registry({ target }),
+		EffectCatalog({ Entry("target:policy-npc-carry", { iggy::pickupItemInteractionEffect(target.id, drop.id) }) }),
+	};
+	iggy::runtime::RuntimeGameplayState state =
+		GameplayState(SessionWithPlayer({ 0.0F, 0.0F }), interaction, InventoryState({}, { drop }));
+	state.npcActors = { { NpcActor("npc:policy-carried", { 6.0F, 7.0F }) } };
+	state.npcControls = { { NpcControl("npc:policy-carried") } };
+	const iggy::runtime::RuntimeGameplayState original = state;
+	const iggy::ItemDefinition2DCatalog items = ItemCatalog({ Definition("item:policy-npc-carry", "Policy NPC Carry", 1) });
+
+	const iggy::runtime::RuntimePolicyGameplayFrameResult result =
+		iggy::runtime::RuntimePolicyGameplayFrameStep {}.run(Input(state, {
+			iggy::playerMoveToPointIntent({ 1.0F, 0.0F }),
+			iggy::playerInteractIntent(target.id),
+		}, items));
+
+	Expect(result.frame.pickup.status == iggy::runtime::RuntimePolicyPickupEffectFrameStatus::PickedUp, "policy NPC carry setup should process pickup");
+	Expect(SameStacks(result.state.inventory.inventory.stacks, { Stack("item:policy-npc-carry", 1) }), "policy NPC carry setup should update inventory");
+	ExpectNpcGameplayState(result.state, original, "policy gameplay frame should carry NPC actor/control registries unchanged");
+	ExpectNpcGameplayState(state, original, "policy gameplay frame should not mutate input NPC actor/control registries");
+}
+
 } // namespace
 
 int main()
@@ -557,6 +644,7 @@ int main()
 	TestContextBlockedAndQueueRejectedDoNotMutateExplicitState();
 	TestExplicitCollisionWorldAffectsMovementReachAndPickup();
 	TestInputStateIsNotMutated();
+	TestNpcActorAndControlStateAreCarriedThroughPolicyGameplayFrame();
 
 	return Failures;
 }

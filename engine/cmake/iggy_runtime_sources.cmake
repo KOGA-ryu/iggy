@@ -10,6 +10,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeGameplayFrameReporter.cpp
   src/runtime/RuntimeGameplayState.cpp
   src/runtime/RuntimeMutationCommandQueue.cpp
+  src/runtime/RuntimeNpcActorMovementFrameStep.cpp
   src/runtime/RuntimeNpcAiDecisionQueueStep.cpp
   src/runtime/RuntimeNpcAiCommandQueueStep.cpp
   src/runtime/RuntimeNpcAiMovementQueueStep.cpp

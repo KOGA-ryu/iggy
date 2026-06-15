@@ -5,6 +5,7 @@
 
 #include "runtime/RuntimePlayerInputInteractionPickupFrameReport.hpp"
 #include "scene/inventory/InventoryEvent2D.hpp"
+#include "scene/npc/NpcActorMovementFrameReport2D.hpp"
 
 namespace iggy::runtime {
 
@@ -21,10 +22,16 @@ enum class RuntimeGameplayFrameEvent {
 	PickupFailed,
 	InteractionEventRecorded,
 	InventoryEventRecorded,
+	NpcMovementChanged,
+	NpcMovementBlocked,
+	NpcMovementRejected,
+	NpcMovementActorMissing,
+	NpcMovementRefreshNeeded,
 };
 
 struct RuntimeGameplayFrameReport {
 	RuntimePlayerInputInteractionPickupFrameReport input;
+	NpcActorMovementFrameReport2D npcMovement;
 	InventoryEventRecorder2D inventoryEvents;
 	std::vector<RuntimeGameplayFrameEvent> events;
 	std::size_t acceptedCommandCount = 0;
@@ -40,8 +47,19 @@ struct RuntimeGameplayFrameReport {
 	std::size_t dropConsumedEventCount = 0;
 	std::size_t pickupNotReadyEventCount = 0;
 	std::size_t inventoryAddFailedEventCount = 0;
+	std::size_t npcMovedCount = 0;
+	std::size_t npcBlockedMovementCount = 0;
+	std::size_t npcRejectedMovementCount = 0;
+	std::size_t npcMissingActorMovementCount = 0;
+	std::size_t npcMovementDirtyTileCount = 0;
 	bool interactionChanged = false;
 	bool inventoryChanged = false;
+	bool npcMovementChanged = false;
+	bool npcMovementNeedsOccupancyRebuild = false;
+	bool npcMovementNeedsAiMapQueryRefresh = false;
+	bool npcMovementNeedsInteractionRefresh = false;
+	bool npcMovementNeedsRenderRefresh = false;
+	bool npcMovementNeedsVisibilityRefresh = false;
 
 	[[nodiscard]] bool hasEvents() const;
 };

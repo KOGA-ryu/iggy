@@ -7,6 +7,7 @@
 #include "modules/npc_ai/NpcAgentController.hpp"
 #include "runtime/RuntimeCommandQueue.hpp"
 #include "runtime/RuntimeGameplayState.hpp"
+#include "runtime/RuntimeNpcActorMovementFrameStep.hpp"
 #include "runtime/RuntimePickupStep.hpp"
 #include "runtime/RuntimePlayerCommandExecutionStep.hpp"
 #include "runtime/RuntimePlayerInputInteractionPickupFrameReport.hpp"
@@ -31,6 +32,7 @@ struct RuntimeGameplayFrameInput {
 	npc_ai::NpcAgentTickConfig npcConfig;
 	InteractionReach2DConfig interactionReach;
 	RuntimePickupConfig pickup;
+	std::vector<NpcActorMovementFrameApply2DRequest> npcMovementRequests;
 };
 
 struct RuntimeGameplayFrameResult {
@@ -38,6 +40,7 @@ struct RuntimeGameplayFrameResult {
 	RuntimePlayerInputInteractionPickupFrameResult frame;
 	RuntimePlayerInputInteractionPickupFrameReport report;
 	InventoryEventRecorder2D inventoryEvents;
+	RuntimeNpcActorMovementFrameResult npcMovement;
 };
 
 class RuntimeGameplayFrameStep {

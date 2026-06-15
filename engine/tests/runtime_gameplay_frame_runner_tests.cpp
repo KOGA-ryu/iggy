@@ -57,6 +57,28 @@ iggy::runtime::GameplayCommandFrame2D WaitFrame()
 	return CommandFrame({ iggy::runtime::GameplayCommand2DFactory {}.wait(PlayerId) });
 }
 
+iggy::NpcActorState2D NpcActor(const char *npcId, iggy::Vec2 position = { 2.0F, 2.0F })
+{
+	return {
+		Id(npcId),
+		Id("profile:gameplay-frame-runner"),
+		Id("faction:gameplay-frame-runner"),
+		position,
+		{},
+		true,
+	};
+}
+
+iggy::NpcActorControlState2D NpcControl(const char *npcId)
+{
+	return {
+		Id(npcId),
+		iggy::waitNpcObjective(),
+		iggy::idleNpcBehaviorState(),
+		iggy::NpcMoveMode::Still,
+	};
+}
+
 iggy::InteractionTarget2D Target(
 	const char *id,
 	iggy::InteractionTarget2DKind kind = iggy::InteractionTarget2DKind::Usable,
@@ -219,6 +241,26 @@ void ExpectInventoryEvent(
 	Expect(event.itemId == itemId, message);
 	Expect(event.dropId == dropId, message);
 	Expect(event.count == count, message);
+}
+
+void ExpectNpcGameplayState(
+	const iggy::runtime::RuntimeGameplayState &actual,
+	const iggy::runtime::RuntimeGameplayState &expected,
+	const char *message)
+{
+	Expect(actual.npcActors.actors.size() == expected.npcActors.actors.size(), message);
+	Expect(actual.npcControls.entries.size() == expected.npcControls.entries.size(), message);
+	if (!actual.npcActors.actors.empty() && !expected.npcActors.actors.empty()) {
+		Expect(actual.npcActors.actors[0].npcId == expected.npcActors.actors[0].npcId, message);
+		Expect(NearVec(actual.npcActors.actors[0].position, expected.npcActors.actors[0].position), message);
+		Expect(actual.npcActors.actors[0].present == expected.npcActors.actors[0].present, message);
+	}
+	if (!actual.npcControls.entries.empty() && !expected.npcControls.entries.empty()) {
+		Expect(actual.npcControls.entries[0].npcId == expected.npcControls.entries[0].npcId, message);
+		Expect(actual.npcControls.entries[0].moveMode == expected.npcControls.entries[0].moveMode, message);
+		Expect(actual.npcControls.entries[0].objective.type == expected.npcControls.entries[0].objective.type, message);
+		Expect(actual.npcControls.entries[0].behavior.type == expected.npcControls.entries[0].behavior.type, message);
+	}
 }
 
 void TestEmptyFramesReturnInitialStateUnchanged()
@@ -409,6 +451,25 @@ void TestInputStateAndFrameVectorAreNotMutated()
 	Expect(input.frames[0].playerIntents[0].targetId == target.id, "runner should not mutate input player intent payload");
 }
 
+void TestRunnerCarriesNpcActorAndControlStateAcrossFrames()
+{
+	iggy::runtime::RuntimeGameplayState initial = GameplayState(SessionWithPlayer({ 0.0F, 0.0F }));
+	initial.npcActors = { { NpcActor("npc:runner-carried", { 8.0F, 9.0F }) } };
+	initial.npcControls = { { NpcControl("npc:runner-carried") } };
+	const std::vector<iggy::runtime::RuntimeGameplayFrameRunnerFrame> frames {
+		Frame({ iggy::playerMoveToPointIntent({ 1.0F, 0.0F }) }),
+		Frame({ iggy::playerMoveToPointIntent({ 2.0F, 0.0F }) }),
+	};
+
+	const iggy::runtime::RuntimeGameplayFrameRunnerResult result =
+		iggy::runtime::RuntimeGameplayFrameRunner {}.run({ initial, frames });
+
+	Expect(result.ticks.size() == 2, "NPC carry runner setup should produce both frames");
+	ExpectNpcGameplayState(result.ticks[0].frame.state, initial, "runner first frame should carry NPC actor/control registries");
+	ExpectNpcGameplayState(result.ticks[1].frame.state, initial, "runner second frame should carry NPC actor/control registries");
+	ExpectNpcGameplayState(result.finalState, initial, "runner final state should carry NPC actor/control registries");
+}
+
 } // namespace
 
 int main()
@@ -421,6 +482,7 @@ int main()
 	TestReportsCollectedPerFrameWithExpectedFacts();
 	TestExplicitWorldOverloadAppliesToEveryFrame();
 	TestInputStateAndFrameVectorAreNotMutated();
+	TestRunnerCarriesNpcActorAndControlStateAcrossFrames();
 
 	return Failures;
 }

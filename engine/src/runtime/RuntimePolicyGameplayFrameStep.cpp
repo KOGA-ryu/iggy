@@ -23,7 +23,9 @@ RuntimePlayerInputInteractionPolicyPickupFrameInput PickupFrameInputFrom(const R
 	return frameInput;
 }
 
-RuntimePolicyGameplayFrameResult ResultFrom(const RuntimePlayerInputInteractionPolicyPickupFrameResult &frame)
+RuntimePolicyGameplayFrameResult ResultFrom(
+	const RuntimePolicyGameplayFrameInput &input,
+	const RuntimePlayerInputInteractionPolicyPickupFrameResult &frame)
 {
 	RuntimePolicyGameplayFrameResult result;
 	result.frame = frame;
@@ -33,6 +35,8 @@ RuntimePolicyGameplayFrameResult ResultFrom(const RuntimePlayerInputInteractionP
 		frame.queue,
 		frame.interactionState,
 		frame.inventory,
+		input.state.npcActors,
+		input.state.npcControls,
 	};
 	return result;
 }
@@ -41,14 +45,14 @@ RuntimePolicyGameplayFrameResult ResultFrom(const RuntimePlayerInputInteractionP
 
 RuntimePolicyGameplayFrameResult RuntimePolicyGameplayFrameStep::run(const RuntimePolicyGameplayFrameInput &input) const
 {
-	return ResultFrom(RuntimePlayerInputInteractionPolicyPickupFrameStep {}.run(PickupFrameInputFrom(input)));
+	return ResultFrom(input, RuntimePlayerInputInteractionPolicyPickupFrameStep {}.run(PickupFrameInputFrom(input)));
 }
 
 RuntimePolicyGameplayFrameResult RuntimePolicyGameplayFrameStep::run(
 	const RuntimePolicyGameplayFrameInput &input,
 	const physics2d::CollisionWorld2D &explicitWorld) const
 {
-	return ResultFrom(RuntimePlayerInputInteractionPolicyPickupFrameStep {}.run(PickupFrameInputFrom(input), explicitWorld));
+	return ResultFrom(input, RuntimePlayerInputInteractionPolicyPickupFrameStep {}.run(PickupFrameInputFrom(input), explicitWorld));
 }
 
 } // namespace iggy::runtime

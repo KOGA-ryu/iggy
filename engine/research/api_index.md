@@ -222,9 +222,10 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `RuntimePolicyPickupEffectFrameStep`: scans applied interaction effects and applies policy pickup effects sequentially.
 - `RuntimePlayerInputInteractionPickupFrameStep`, `RuntimePlayerInputInteractionPickupFrameReporter`: gated input + interaction apply + pickup-effect orchestration and reporting.
 - `RuntimePlayerInputInteractionPolicyPickupFrameStep`: gated input + interaction apply + catalog-aware pickup-effect orchestration.
-- `RuntimeGameplayState`: top-level runtime gameplay packet carrying session, command queue, interaction state, and inventory state.
-- `RuntimeGameplayFrameStep`, `RuntimeGameplayFrameRunner`, `RuntimeGameplayFrameReporter`: one-frame and bounded gameplay orchestration over input, interaction, pickup, command ticking, and reports.
+- `RuntimeGameplayState`: top-level runtime gameplay packet carrying session, command queue, interaction state, inventory state, and NPC actor/control registries.
+- `RuntimeGameplayFrameStep`, `RuntimeGameplayFrameRunner`, `RuntimeGameplayFrameReporter`: one-frame and bounded gameplay orchestration over input, interaction, pickup, command ticking, optional prepared NPC actor movement requests, and reports.
 - `RuntimePolicyGameplayFrameStep`, `RuntimePolicyGameplayFrameRunner`, `RuntimePolicyGameplayFrameReporter`: catalog-aware gameplay frame orchestration and reporting over policy pickup.
+- `RuntimeNpcActorMovementFrameStep`: runtime adapter over prepared scene/npc movement apply requests; delegates actor registry mutation to scene/npc and returns updated `RuntimeGameplayState` without generating pathfinding or movement filters.
 - `RuntimeNpcAiCommandQueueStep`: pushes already-mapped NPC AI command frames into the runtime command queue.
 - `RuntimeNpcAiMovementQueueStep`: maps NPC movement proposals to gameplay commands and queues them.
 - `RuntimeNpcAiDecisionQueueStep`: runs scene/ai decision, route, path, movement proposal, and command mapping for NPC inputs, then queues the result.
