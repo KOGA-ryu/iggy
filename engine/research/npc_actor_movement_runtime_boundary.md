@@ -69,6 +69,20 @@ updates, UI, or gameplay frame loops. The runner derives previous occupancy
 from carried actor state at the start of each caller-supplied frame; that
 occupancy remains derived local helper data, not runtime truth.
 
+`RuntimeGameplayOrchestratedFrameStep` is a top-level explicit gameplay helper
+for tools and tests that want one readable frame call. It runs the existing
+player/input/interaction/pickup frame path first with prepared NPC movement
+requests disabled, then runs `RuntimeNpcAiMovementRefreshFrameStep` with the
+post-player gameplay state. This keeps NPC AI and movement orchestration
+caller-selected and out of the raw/policy gameplay frame steps.
+
+`RuntimeGameplayOrchestratedFrameRunner` repeats that explicit orchestrated
+frame over caller-supplied frames, carrying `RuntimeGameplayState` forward and
+aggregating player inventory events plus NPC control, movement, and refresh
+packet facts. It is a separate top-level helper for tools, tests, and
+simulations; it does not replace or wrap the old raw/policy gameplay frame
+runners.
+
 The optional scene-only reservation lane can sit between prepared requests and
 frame apply:
 
@@ -113,6 +127,8 @@ The optional helper layers are:
 5. `RuntimeNpcAiMovementPlannedFrameStep` composes caller-selected AI control planning with one movement planned frame when directly invoked.
 6. `RuntimeNpcAiMovementPlannedFrameRunner` repeats 5 over caller-supplied AI+movement frames when directly invoked.
 7. `RuntimeNpcAiMovementRefreshFrameStep` and runner variants add refresh packet projection to 5/6 without executing downstream caches.
+8. `RuntimeGameplayOrchestratedFrameStep` composes the existing player frame path with 7 for one explicit caller-selected gameplay frame.
+9. `RuntimeGameplayOrchestratedFrameRunner` repeats 8 over caller-supplied frames without replacing raw/policy gameplay runners.
 
 ## Intentionally Not Included
 
