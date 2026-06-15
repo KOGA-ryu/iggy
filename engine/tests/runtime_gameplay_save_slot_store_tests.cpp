@@ -261,6 +261,13 @@ std::vector<std::uint8_t> ReadBytes(const std::filesystem::path &path)
 	return read.bytes;
 }
 
+void SaveGameplaySlot(iggy::runtime::RuntimeSaveSlotId slot, iggy::runtime::RuntimeGameplaySnapshot snapshot = DefaultSnapshot())
+{
+	const iggy::runtime::RuntimeGameplaySaveSlotSaveResult save =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.save(snapshot, Config(), slot);
+	Expect(save.status == iggy::runtime::RuntimeGameplaySaveSlotStatus::Saved, "fixture should save gameplay slot");
+}
+
 void TestSaveDefaultSnapshotToSlot()
 {
 	ResetTempRoot();
@@ -437,6 +444,206 @@ void TestInputSnapshotImmutability()
 	Expect(snapshot.commandQueue.frames.size() == before.commandQueue.frames.size(), "gameplay slot save should not mutate command queue");
 }
 
+void TestInspectSlotStates()
+{
+	ResetTempRoot();
+	CreateSlotDirectory(iggy::runtime::RuntimeSaveSlotKind::Manual);
+	const iggy::runtime::RuntimeSaveSlotId existing = Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "slot1");
+	SaveGameplaySlot(existing);
+
+	const iggy::runtime::RuntimeGameplaySaveSlotInspectResult present =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.inspect(Config(), existing);
+	const iggy::runtime::RuntimeGameplaySaveSlotInspectResult missing =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.inspect(Config(), Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "missing"));
+	const iggy::runtime::RuntimeGameplaySaveSlotInspectResult invalid =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.inspect(Config(), Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "../bad"));
+
+	Expect(present.status == iggy::runtime::RuntimeGameplaySaveSlotManageStatus::Ok, "inspect existing slot should succeed");
+	Expect(present.exists && present.regularFile && present.readable, "inspect existing slot should report existing readable regular file");
+	Expect(missing.status == iggy::runtime::RuntimeGameplaySaveSlotManageStatus::Ok, "inspect missing valid slot should succeed");
+	Expect(!missing.exists && !missing.readable, "inspect missing valid slot should report missing facts");
+	Expect(invalid.status == iggy::runtime::RuntimeGameplaySaveSlotManageStatus::InvalidSlotPath, "inspect unsafe slot should reject traversal");
+	Expect(invalid.path.status == iggy::runtime::RuntimeSaveSlotPathStatus::InvalidSlotName, "inspect unsafe slot should preserve path diagnostic");
+}
+
+void TestListGameplaySlotsOnlySorted()
+{
+	ResetTempRoot();
+	CreateSlotDirectory(iggy::runtime::RuntimeSaveSlotKind::Manual);
+	CreateSlotDirectory(iggy::runtime::RuntimeSaveSlotKind::Auto);
+	CreateSlotDirectory(iggy::runtime::RuntimeSaveSlotKind::Quick);
+	SaveGameplaySlot(Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "b_slot"));
+	SaveGameplaySlot(Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "a_slot"));
+	SaveGameplaySlot(Slot(iggy::runtime::RuntimeSaveSlotKind::Auto, "auto_1"));
+	SaveGameplaySlot(Slot(iggy::runtime::RuntimeSaveSlotKind::Quick, "quick_1"));
+	WriteBytes(TempRoot() / "manual" / "notes.txt", { 1, 2, 3 });
+	WriteBytes(TempRoot() / "manual" / "bad.name.iggygameplay", { 1, 2, 3 });
+	std::filesystem::create_directory(TempRoot() / "manual" / "dir_slot.iggygameplay");
+
+	const iggy::runtime::RuntimeGameplaySaveSlotListResult list =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.list(Config());
+
+	Expect(list.status == iggy::runtime::RuntimeGameplaySaveSlotManageStatus::Ok, "valid gameplay slot list should succeed");
+	Expect(list.listed, "valid gameplay slot list should mark listed");
+	Expect(list.entries.size() == 4, "gameplay slot list should include only valid gameplay slot files");
+	if (list.entries.size() == 4) {
+		Expect(list.entries[0].slot.kind == iggy::runtime::RuntimeSaveSlotKind::Manual && list.entries[0].slot.name == "a_slot", "gameplay slot list should sort manual slots");
+		Expect(list.entries[1].slot.kind == iggy::runtime::RuntimeSaveSlotKind::Manual && list.entries[1].slot.name == "b_slot", "gameplay slot list should keep manual slots before auto");
+		Expect(list.entries[2].slot.kind == iggy::runtime::RuntimeSaveSlotKind::Auto && list.entries[2].slot.name == "auto_1", "gameplay slot list should include auto slots after manual");
+		Expect(list.entries[3].slot.kind == iggy::runtime::RuntimeSaveSlotKind::Quick && list.entries[3].slot.name == "quick_1", "gameplay slot list should include quick slots last");
+	}
+}
+
+void TestListMissingBaseDirectoryIsDeterministic()
+{
+	std::error_code ignored;
+	std::filesystem::remove_all(TempRoot(), ignored);
+
+	const iggy::runtime::RuntimeGameplaySaveSlotListResult missing =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.list(Config());
+	const iggy::runtime::RuntimeGameplaySaveSlotListResult empty =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.list(Config({}));
+
+	Expect(missing.status == iggy::runtime::RuntimeGameplaySaveSlotManageStatus::BaseDirectoryUnavailable, "missing gameplay slot base should report unavailable");
+	Expect(missing.listed, "missing gameplay slot base should be a deterministic listed attempt");
+	Expect(missing.entries.empty(), "missing gameplay slot base should have no entries");
+	Expect(empty.status == iggy::runtime::RuntimeGameplaySaveSlotManageStatus::BaseDirectoryUnavailable, "empty gameplay slot base should report unavailable");
+	Expect(!empty.listed, "empty gameplay slot base should not list");
+}
+
+void TestDeleteSlot()
+{
+	ResetTempRoot();
+	CreateSlotDirectory(iggy::runtime::RuntimeSaveSlotKind::Manual);
+	const iggy::runtime::RuntimeSaveSlotId slot = Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "slot1");
+	SaveGameplaySlot(slot);
+	WriteBytes(TempRoot() / "manual" / "unrelated.txt", { 7, 8, 9 });
+
+	const iggy::runtime::RuntimeGameplaySaveSlotDeleteResult removed =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.remove(Config(), slot);
+	const iggy::runtime::RuntimeGameplaySaveSlotDeleteResult missing =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.remove(Config(), slot);
+	const iggy::runtime::RuntimeGameplaySaveSlotDeleteResult invalid =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.remove(Config(), Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "../bad"));
+
+	Expect(removed.status == iggy::runtime::RuntimeGameplaySaveSlotManageStatus::Ok, "delete existing gameplay slot should succeed");
+	Expect(removed.existed && removed.deleted, "delete existing gameplay slot should report deletion facts");
+	Expect(!std::filesystem::exists(TempRoot() / "manual" / "slot1.iggygameplay"), "delete should remove requested gameplay slot");
+	Expect(std::filesystem::exists(TempRoot() / "manual" / "unrelated.txt"), "delete should leave unrelated files untouched");
+	Expect(missing.status == iggy::runtime::RuntimeGameplaySaveSlotManageStatus::NotFound, "delete missing gameplay slot should report NotFound");
+	Expect(invalid.status == iggy::runtime::RuntimeGameplaySaveSlotManageStatus::InvalidSlotPath, "delete unsafe gameplay slot should reject traversal");
+}
+
+void TestRenameSlotNoOverwrite()
+{
+	ResetTempRoot();
+	CreateSlotDirectory(iggy::runtime::RuntimeSaveSlotKind::Manual);
+	const iggy::runtime::RuntimeSaveSlotId source = Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "source");
+	const iggy::runtime::RuntimeSaveSlotId destination = Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "destination");
+	SaveGameplaySlot(source, ExplicitSnapshot());
+	const std::vector<std::uint8_t> before = ReadBytes(TempRoot() / "manual" / "source.iggygameplay");
+
+	const iggy::runtime::RuntimeGameplaySaveSlotMoveResult renamed =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.rename(Config(), source, destination);
+	const iggy::runtime::RuntimeGameplaySaveSlotLoadResult loaded =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.load(Config(), destination);
+
+	Expect(renamed.status == iggy::runtime::RuntimeGameplaySaveSlotManageStatus::Ok, "rename gameplay slot should succeed");
+	Expect(renamed.sourceExisted && !renamed.destinationExisted && renamed.completed, "rename gameplay slot should preserve move facts");
+	Expect(!std::filesystem::exists(TempRoot() / "manual" / "source.iggygameplay"), "rename should remove source file");
+	Expect(ReadBytes(TempRoot() / "manual" / "destination.iggygameplay") == before, "rename should preserve file bytes exactly");
+	Expect(loaded.status == iggy::runtime::RuntimeGameplaySaveSlotStatus::Loaded, "renamed gameplay slot should remain loadable");
+	ExpectLoadedState(loaded.state, ExplicitSnapshot(), "renamed gameplay slot should preserve snapshot contents");
+
+	SaveGameplaySlot(source, DefaultSnapshot());
+	const std::vector<std::uint8_t> sourceBefore = ReadBytes(TempRoot() / "manual" / "source.iggygameplay");
+	const std::vector<std::uint8_t> destinationBefore = ReadBytes(TempRoot() / "manual" / "destination.iggygameplay");
+	const iggy::runtime::RuntimeGameplaySaveSlotMoveResult conflict =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.rename(Config(), source, destination);
+
+	Expect(conflict.status == iggy::runtime::RuntimeGameplaySaveSlotManageStatus::AlreadyExists, "rename should not overwrite existing destination");
+	Expect(ReadBytes(TempRoot() / "manual" / "source.iggygameplay") == sourceBefore, "rename conflict should preserve source file");
+	Expect(ReadBytes(TempRoot() / "manual" / "destination.iggygameplay") == destinationBefore, "rename conflict should preserve destination file");
+}
+
+void TestRenameRejectsInvalidNamesAndMissingSource()
+{
+	ResetTempRoot();
+	CreateSlotDirectory(iggy::runtime::RuntimeSaveSlotKind::Manual);
+	SaveGameplaySlot(Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "source"));
+
+	const iggy::runtime::RuntimeGameplaySaveSlotMoveResult invalidSource =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.rename(Config(), Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "../bad"), Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "destination"));
+	const iggy::runtime::RuntimeGameplaySaveSlotMoveResult invalidDestination =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.rename(Config(), Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "source"), Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "../bad"));
+	const iggy::runtime::RuntimeGameplaySaveSlotMoveResult missing =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.rename(Config(), Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "missing"), Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "destination"));
+
+	Expect(invalidSource.status == iggy::runtime::RuntimeGameplaySaveSlotManageStatus::InvalidSlotPath, "rename invalid source should reject");
+	Expect(invalidDestination.status == iggy::runtime::RuntimeGameplaySaveSlotManageStatus::InvalidSlotPath, "rename invalid destination should reject");
+	Expect(missing.status == iggy::runtime::RuntimeGameplaySaveSlotManageStatus::NotFound, "rename missing source should report NotFound");
+	Expect(std::filesystem::exists(TempRoot() / "manual" / "source.iggygameplay"), "failed renames should preserve source file");
+}
+
+void TestCopySlotNoOverwrite()
+{
+	ResetTempRoot();
+	CreateSlotDirectory(iggy::runtime::RuntimeSaveSlotKind::Manual);
+	const iggy::runtime::RuntimeSaveSlotId source = Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "source");
+	const iggy::runtime::RuntimeSaveSlotId destination = Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "copy");
+	SaveGameplaySlot(source, ExplicitSnapshot());
+	const std::vector<std::uint8_t> before = ReadBytes(TempRoot() / "manual" / "source.iggygameplay");
+
+	const iggy::runtime::RuntimeGameplaySaveSlotMoveResult copied =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.copy(Config(), source, destination);
+	const iggy::runtime::RuntimeGameplaySaveSlotLoadResult loaded =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.load(Config(), destination);
+
+	Expect(copied.status == iggy::runtime::RuntimeGameplaySaveSlotManageStatus::Ok, "copy gameplay slot should succeed");
+	Expect(copied.sourceExisted && !copied.destinationExisted && copied.completed, "copy gameplay slot should preserve copy facts");
+	Expect(std::filesystem::exists(TempRoot() / "manual" / "source.iggygameplay"), "copy should preserve source file");
+	Expect(ReadBytes(TempRoot() / "manual" / "copy.iggygameplay") == before, "copy should preserve file bytes exactly");
+	Expect(loaded.status == iggy::runtime::RuntimeGameplaySaveSlotStatus::Loaded, "copied gameplay slot should remain loadable");
+	ExpectLoadedState(loaded.state, ExplicitSnapshot(), "copied gameplay slot should preserve snapshot contents");
+
+	const iggy::runtime::RuntimeGameplaySaveSlotMoveResult conflict =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.copy(Config(), source, destination);
+	const iggy::runtime::RuntimeGameplaySaveSlotMoveResult invalid =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.copy(Config(), source, Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "../bad"));
+
+	Expect(conflict.status == iggy::runtime::RuntimeGameplaySaveSlotManageStatus::AlreadyExists, "copy should not overwrite destination");
+	Expect(invalid.status == iggy::runtime::RuntimeGameplaySaveSlotManageStatus::InvalidSlotPath, "copy invalid destination should reject traversal");
+	Expect(ReadBytes(TempRoot() / "manual" / "source.iggygameplay") == before, "copy failures should preserve source file");
+}
+
+void TestReadSummary()
+{
+	ResetTempRoot();
+	CreateSlotDirectory(iggy::runtime::RuntimeSaveSlotKind::Manual);
+	const iggy::runtime::RuntimeSaveSlotId slot = Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "summary");
+	SaveGameplaySlot(slot, ExplicitSnapshot());
+	WriteBytes(TempRoot() / "manual" / "corrupt.iggygameplay", { 1, 2, 3, 4 });
+
+	const iggy::runtime::RuntimeGameplaySaveSlotSummaryResult summary =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.readSummary(Config(), slot);
+	const iggy::runtime::RuntimeGameplaySaveSlotSummaryResult corrupt =
+		iggy::runtime::RuntimeGameplaySaveSlotStore {}.readSummary(Config(), Slot(iggy::runtime::RuntimeSaveSlotKind::Manual, "corrupt"));
+
+	Expect(summary.status == iggy::runtime::RuntimeGameplaySaveSlotManageStatus::Ok, "summary should load a valid gameplay slot");
+	Expect(summary.loaded, "summary should report loaded when valid");
+	Expect(summary.summary.tickIndex == 31, "summary should report tick index");
+	Expect(summary.summary.hasPlayer, "summary should report player presence");
+	Expect(summary.summary.commandFrameCount == 1, "summary should count command frames");
+	Expect(summary.summary.interactionTargetCount == 1, "summary should count interaction targets");
+	Expect(summary.summary.interactionEffectCount == 1, "summary should count interaction effects");
+	Expect(summary.summary.inventoryStackCount == 1, "summary should count inventory stacks");
+	Expect(summary.summary.inventoryDropCount == 1, "summary should count inventory drops");
+	Expect(summary.summary.npcActorCount == 2, "summary should count NPC actors");
+	Expect(summary.summary.npcControlCount == 2, "summary should count NPC controls");
+	Expect(corrupt.status == iggy::runtime::RuntimeGameplaySaveSlotManageStatus::LoadFailed, "summary corrupt slot should map to load failure");
+	Expect(corrupt.load.status == iggy::runtime::RuntimeGameplaySnapshotLoadStatus::EnvelopeDecodeFailed, "summary corrupt slot should preserve nested diagnostics");
+}
+
 } // namespace
 
 int main()
@@ -452,6 +659,14 @@ int main()
 	TestCorruptSlotLoadFailure();
 	TestCustomExtensionIsHonored();
 	TestInputSnapshotImmutability();
+	TestInspectSlotStates();
+	TestListGameplaySlotsOnlySorted();
+	TestListMissingBaseDirectoryIsDeterministic();
+	TestDeleteSlot();
+	TestRenameSlotNoOverwrite();
+	TestRenameRejectsInvalidNamesAndMissingSource();
+	TestCopySlotNoOverwrite();
+	TestReadSummary();
 
 	return Failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

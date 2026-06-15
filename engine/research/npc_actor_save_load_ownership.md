@@ -100,6 +100,19 @@ This does not replace `RuntimeSaveSlotStore`, which remains the existing
 session-slot API. Gameplay slots are not wired to UI, editor menus, runtime
 autosave, command queues, migrations, or cross-format detection in this lane.
 
+The gameplay slot store also owns engine-only slot management helpers for future
+UI/editor callers:
+
+- inspect/existence/readable facts for one safe slot path
+- deterministic listing of valid gameplay slot files by configured extension
+- delete of one resolved gameplay slot file
+- no-overwrite rename and copy between safe gameplay slot names
+- full-load summary facts derived from `RuntimeGameplaySnapshotLoader`
+
+These helpers still operate only on gameplay snapshot files. They do not add
+save-browser UI, metadata menus, old/new format detection, runtime autosave, or
+session slot replacement.
+
 ## Not In This Lane
 
 This lane does not change:
