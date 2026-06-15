@@ -258,6 +258,7 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `RuntimeGameplayScenarioRunner`: engine replay/test/tooling harness over the explicit orchestrated frame runner and compact runner reporter; consumes an initial gameplay state plus scripted orchestrated frames and returns final state plus report packets without parser, UI, or save/load integration.
 - `RuntimeGameplayScenarioDefinition`, `RuntimeGameplayScenarioValidator`: typed scenario authoring contract and deterministic validation layer for future ASCII/Edi/IDE tooling; converts to `RuntimeGameplayScenario` without parsing external formats or running gameplay.
 - NPC actor save/load ownership boundary: `engine/research/npc_actor_save_load_ownership.md`.
+- `NpcAiProfileTraitCatalog`, `NpcAiProfileTraitResolver`: scene/ai profile-trait bridge that maps actor `aiProfileId` values to `NpcMapPlayControlFramePlanSubject` inputs for the map-play control planner; behavior-pool borrowing, inheritance, rank/profile-role naming, and runtime orchestration remain future work.
 - `RuntimeNpcAiCommandQueueStep`: pushes already-mapped NPC AI command frames into the runtime command queue.
 - `RuntimeNpcAiMovementQueueStep`: maps NPC movement proposals to gameplay commands and queues them.
 - `RuntimeNpcAiDecisionQueueStep`: runs scene/ai decision, route, path, movement proposal, and command mapping for NPC inputs, then queues the result.

@@ -13,6 +13,8 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/ai/NpcObjective.cpp
   src/scene/ai/NpcAiPathReport2D.cpp
   src/scene/ai/NpcAiProfile2D.cpp
+  src/scene/ai/NpcAiProfileTraitCatalog.cpp
+  src/scene/ai/NpcAiProfileTraitResolver.cpp
   src/scene/ai/NpcAiRouteRequest2D.cpp
   src/scene/ai/NpcCharismaPool.cpp
   src/scene/ai/NpcCharismaDraw.cpp
