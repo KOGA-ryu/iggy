@@ -89,6 +89,13 @@ from those explicit frame/runner results. They are engine data for future
 debug, IDE, or UI tooling; they do not run gameplay frames, execute caches,
 render, or mutate state.
 
+`RuntimeGameplayScenarioRunner` wraps the explicit orchestrated frame runner
+and runner reporter for tests, future replay tooling, and IDE/debug inspection.
+It consumes an initial gameplay state plus scripted orchestrated frames and
+returns the final gameplay state, nested runner result, and compact runner
+report. External formats such as ASCII/Edi can emit this scenario packet later;
+this boundary does not parse files, drive UI, or replace raw/policy runners.
+
 The optional scene-only reservation lane can sit between prepared requests and
 frame apply:
 
@@ -136,6 +143,7 @@ The optional helper layers are:
 8. `RuntimeGameplayOrchestratedFrameStep` composes the existing player frame path with 7 for one explicit caller-selected gameplay frame.
 9. `RuntimeGameplayOrchestratedFrameRunner` repeats 8 over caller-supplied frames without replacing raw/policy gameplay runners.
 10. Orchestrated frame/runner reporters project compact inspection packets over 8/9 without executing gameplay.
+11. `RuntimeGameplayScenarioRunner` is a lightweight scenario/replay harness over 9 and 10, intended for tests and future tooling packets rather than parser/UI integration.
 
 ## Intentionally Not Included
 
