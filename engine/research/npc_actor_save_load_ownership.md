@@ -89,15 +89,27 @@ replace or modify `RuntimeSessionSaveLoad`, and it does not add gameplay save
 slots, save metadata menus, migrations, automatic runtime snapshotting, or slot
 store behavior.
 
+## Gameplay Save Slots
+
+`RuntimeGameplaySaveSlotStore` is a separate engine-only named slot API around
+`RuntimeGameplaySnapshotSaveLoad`. It uses the existing slot path policy for
+slot-name safety and directory layout, but writes gameplay snapshot files through
+the gameplay snapshot saver/loader.
+
+This does not replace `RuntimeSaveSlotStore`, which remains the existing
+session-slot API. Gameplay slots are not wired to UI, editor menus, runtime
+autosave, command queues, migrations, or cross-format detection in this lane.
+
 ## Not In This Lane
 
 This lane does not change:
 
 - `RuntimeSessionSnapshot`
 - `RuntimeSessionSaveLoad`
+- `RuntimeSaveSlotStore`
 - save file envelopes
-- save slots
+- existing session save slots
 - existing session disk serialization
 
-Gameplay save-slot persistence remains a later lane after this direct
-gameplay snapshot file boundary is accepted.
+Gameplay save-slot UI, metadata browsing, and migration behavior remain later
+lanes after this engine-only slot API is accepted.
