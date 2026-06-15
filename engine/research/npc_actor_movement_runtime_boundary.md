@@ -96,6 +96,13 @@ returns the final gameplay state, nested runner result, and compact runner
 report. External formats such as ASCII/Edi can emit this scenario packet later;
 this boundary does not parse files, drive UI, or replace raw/policy runners.
 
+`RuntimeGameplayScenarioDefinition` and
+`RuntimeGameplayScenarioValidator` define the typed authoring packet that
+external tools should target before building a `RuntimeGameplayScenario`.
+Validation checks initial NPC actor/control joins and per-frame authoring facts
+such as movement-map shape and trait subjects. It does not parse ASCII/Edi,
+invoke UI/editor systems, or run gameplay.
+
 The optional scene-only reservation lane can sit between prepared requests and
 frame apply:
 
@@ -144,6 +151,7 @@ The optional helper layers are:
 9. `RuntimeGameplayOrchestratedFrameRunner` repeats 8 over caller-supplied frames without replacing raw/policy gameplay runners.
 10. Orchestrated frame/runner reporters project compact inspection packets over 8/9 without executing gameplay.
 11. `RuntimeGameplayScenarioRunner` is a lightweight scenario/replay harness over 9 and 10, intended for tests and future tooling packets rather than parser/UI integration.
+12. `RuntimeGameplayScenarioDefinition` and validator are typed authoring packets for tools to produce before conversion to the scenario runner input.
 
 ## Intentionally Not Included
 

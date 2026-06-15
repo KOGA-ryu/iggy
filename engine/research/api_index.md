@@ -256,6 +256,7 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `RuntimeGameplayOrchestratedFrameRunner`: explicit top-level gameplay sequence helper that repeats orchestrated player-first/NPC-second frames while carrying gameplay state and aggregating inventory, NPC movement, and refresh packet facts; old raw/policy runners remain prepared-request-only paths.
 - `RuntimeGameplayOrchestratedFrameReporter`, `RuntimeGameplayOrchestratedFrameRunnerReporter`: compact projection packets for explicit orchestrated frame/runner results, intended for tooling inspection without running gameplay loops or traversing all nested diagnostics.
 - `RuntimeGameplayScenarioRunner`: engine replay/test/tooling harness over the explicit orchestrated frame runner and compact runner reporter; consumes an initial gameplay state plus scripted orchestrated frames and returns final state plus report packets without parser, UI, or save/load integration.
+- `RuntimeGameplayScenarioDefinition`, `RuntimeGameplayScenarioValidator`: typed scenario authoring contract and deterministic validation layer for future ASCII/Edi/IDE tooling; converts to `RuntimeGameplayScenario` without parsing external formats or running gameplay.
 - NPC actor save/load ownership boundary: `engine/research/npc_actor_save_load_ownership.md`.
 - `RuntimeNpcAiCommandQueueStep`: pushes already-mapped NPC AI command frames into the runtime command queue.
 - `RuntimeNpcAiMovementQueueStep`: maps NPC movement proposals to gameplay commands and queues them.
