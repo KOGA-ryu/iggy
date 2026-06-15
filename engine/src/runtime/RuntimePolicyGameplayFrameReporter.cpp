@@ -42,6 +42,31 @@ void CountInventoryEvents(RuntimePolicyGameplayFrameReport &report)
 	}
 }
 
+void ProjectNpcMovement(RuntimePolicyGameplayFrameReport &report, const RuntimePolicyGameplayFrameResult &result)
+{
+	report.npcMovement = result.npcMovement.report;
+	report.npcMovedCount = report.npcMovement.movedCount;
+	report.npcBlockedMovementCount = report.npcMovement.blockedCount;
+	report.npcRejectedMovementCount = report.npcMovement.rejectedCount;
+	report.npcMissingActorMovementCount = report.npcMovement.missingActorCount;
+	report.npcMovementDirtyTileCount = report.npcMovement.dirtyTiles.size();
+	report.npcMovementChanged = report.npcMovement.changed();
+	report.npcMovementNeedsOccupancyRebuild = report.npcMovement.needsOccupancyRebuild;
+	report.npcMovementNeedsAiMapQueryRefresh = report.npcMovement.needsAiMapQueryRefresh;
+	report.npcMovementNeedsInteractionRefresh = report.npcMovement.needsInteractionRefresh;
+	report.npcMovementNeedsRenderRefresh = report.npcMovement.needsRenderRefresh;
+	report.npcMovementNeedsVisibilityRefresh = report.npcMovement.needsVisibilityRefresh;
+}
+
+bool NpcMovementNeedsRefresh(const RuntimePolicyGameplayFrameReport &report)
+{
+	return report.npcMovementNeedsOccupancyRebuild
+		|| report.npcMovementNeedsAiMapQueryRefresh
+		|| report.npcMovementNeedsInteractionRefresh
+		|| report.npcMovementNeedsRenderRefresh
+		|| report.npcMovementNeedsVisibilityRefresh;
+}
+
 } // namespace
 
 RuntimePolicyGameplayFrameReport RuntimePolicyGameplayFrameReporter::report(
@@ -62,6 +87,7 @@ RuntimePolicyGameplayFrameReport RuntimePolicyGameplayFrameReporter::report(
 	report.interactionChanged = report.interaction.mutated;
 	report.inventoryChanged = result.frame.pickup.changed;
 	CountInventoryEvents(report);
+	ProjectNpcMovement(report, result);
 
 	if (report.acceptedCommandCount > 0)
 		report.events.push_back(RuntimePolicyGameplayFrameEvent::PlayerCommandAccepted);
@@ -87,6 +113,16 @@ RuntimePolicyGameplayFrameReport RuntimePolicyGameplayFrameReporter::report(
 		report.events.push_back(RuntimePolicyGameplayFrameEvent::PickupFailed);
 	if (report.inventoryEventCount > 0)
 		report.events.push_back(RuntimePolicyGameplayFrameEvent::InventoryEventRecorded);
+	if (report.npcMovementChanged)
+		report.events.push_back(RuntimePolicyGameplayFrameEvent::NpcMovementChanged);
+	if (report.npcBlockedMovementCount > 0)
+		report.events.push_back(RuntimePolicyGameplayFrameEvent::NpcMovementBlocked);
+	if (report.npcRejectedMovementCount > 0)
+		report.events.push_back(RuntimePolicyGameplayFrameEvent::NpcMovementRejected);
+	if (report.npcMissingActorMovementCount > 0)
+		report.events.push_back(RuntimePolicyGameplayFrameEvent::NpcMovementActorMissing);
+	if (NpcMovementNeedsRefresh(report))
+		report.events.push_back(RuntimePolicyGameplayFrameEvent::NpcMovementRefreshNeeded);
 
 	return report;
 }

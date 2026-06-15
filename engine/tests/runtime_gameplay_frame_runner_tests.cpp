@@ -3,6 +3,7 @@
 
 #include "runtime/RuntimeGameplayFrameRunner.hpp"
 #include "runtime/RuntimeGameplayFrameReporter.hpp"
+#include "scene/level/TileCoord.hpp"
 #include "support/CommandFrameFixtures.hpp"
 #include "support/LevelMapFixtures.hpp"
 #include "support/PlayerFixtures.hpp"
@@ -77,6 +78,41 @@ iggy::NpcActorControlState2D NpcControl(const char *npcId)
 		iggy::idleNpcBehaviorState(),
 		iggy::NpcMoveMode::Still,
 	};
+}
+
+iggy::NpcActorPathStepOccupancyFilter2D NpcMovementFilter(
+	const char *npcId,
+	iggy::Vec2 oldPosition,
+	iggy::Vec2 proposedPosition,
+	iggy::NpcActorPathStepOccupancyFilter2DStatus status = iggy::NpcActorPathStepOccupancyFilter2DStatus::Allowed,
+	bool requestsMovement = true,
+	const char *blockingNpcId = "")
+{
+	iggy::NpcActorPathStepOccupancyFilter2D filter;
+	filter.step.npcId = Id(npcId);
+	filter.step.oldPosition = oldPosition;
+	filter.step.proposedPosition = proposedPosition;
+	filter.step.oldTile = iggy::tileForPoint(oldPosition);
+	filter.step.proposedTile = iggy::tileForPoint(proposedPosition);
+	filter.step.moveMode = iggy::NpcMoveMode::Walk;
+	filter.step.status = status == iggy::NpcActorPathStepOccupancyFilter2DStatus::NoStepProposal
+		? iggy::NpcActorPathStep2DStatus::NoPath
+		: iggy::NpcActorPathStep2DStatus::Proposed;
+	filter.step.requestsMovement = status != iggy::NpcActorPathStepOccupancyFilter2DStatus::NoStepProposal;
+	filter.status = status;
+	filter.requestsMovement = requestsMovement;
+	if (blockingNpcId[0] != '\0') {
+		filter.blockingNpcId = Id(blockingNpcId);
+	}
+	return filter;
+}
+
+iggy::NpcActorMovementFrameApply2DRequest NpcMovementRequest(
+	const iggy::NpcActorPathStepOccupancyFilter2D &filter)
+{
+	iggy::NpcActorMovementFrameApply2DRequest request;
+	request.filter = filter;
+	return request;
 }
 
 iggy::InteractionTarget2D Target(
@@ -178,6 +214,7 @@ iggy::runtime::RuntimeGameplayFrameInput FrameInput(
 	input.npcConfig = frame.npcConfig;
 	input.interactionReach = frame.interactionReach;
 	input.pickup = frame.pickup;
+	input.npcMovementRequests = frame.npcMovementRequests;
 	return input;
 }
 
@@ -263,6 +300,20 @@ void ExpectNpcGameplayState(
 	}
 }
 
+bool SameNpcMovementFilter(
+	const iggy::NpcActorPathStepOccupancyFilter2D &actual,
+	const iggy::NpcActorPathStepOccupancyFilter2D &expected)
+{
+	return actual.step.npcId == expected.step.npcId
+		&& NearVec(actual.step.oldPosition, expected.step.oldPosition)
+		&& NearVec(actual.step.proposedPosition, expected.step.proposedPosition)
+		&& actual.step.oldTile == expected.step.oldTile
+		&& actual.step.proposedTile == expected.step.proposedTile
+		&& actual.status == expected.status
+		&& actual.requestsMovement == expected.requestsMovement
+		&& actual.blockingNpcId == expected.blockingNpcId;
+}
+
 void TestEmptyFramesReturnInitialStateUnchanged()
 {
 	const iggy::runtime::RuntimeGameplayState initial =
@@ -278,6 +329,8 @@ void TestEmptyFramesReturnInitialStateUnchanged()
 	Expect(result.finalState.interaction.targets.targets().empty(), "empty gameplay frame runner should preserve interaction state");
 	Expect(result.finalState.inventory.inventory.stacks.empty(), "empty gameplay frame runner should preserve inventory state");
 	Expect(result.inventoryEvents.events.empty(), "empty gameplay frame runner should aggregate no inventory events");
+	Expect(result.npcMovedCount == 0, "empty gameplay frame runner should aggregate no NPC movement");
+	Expect(result.npcMovementDirtyTileCount == 0, "empty gameplay frame runner should aggregate no NPC dirty tiles");
 }
 
 void TestOneFrameMatchesGameplayFrameStepBehavior()
@@ -425,6 +478,89 @@ void TestExplicitWorldOverloadAppliesToEveryFrame()
 	Expect(NearVec(result.finalState.session.player.position, { 2.0F, 0.0F }), "explicit-world runner should carry movement across frames");
 }
 
+void TestPreparedNpcMovementAggregatesAndCarriesAcrossFrames()
+{
+	iggy::runtime::RuntimeGameplayState initial = GameplayState(SessionWithPlayer({ 0.0F, 0.0F }));
+	initial.npcActors = { { NpcActor("npc:runner-mover", { 4.5F, 0.5F }) } };
+	initial.npcControls = { { NpcControl("npc:runner-mover") } };
+	iggy::runtime::RuntimeGameplayFrameRunnerFrame first = Frame({});
+	first.npcMovementRequests = {
+		NpcMovementRequest(NpcMovementFilter("npc:runner-mover", { 4.5F, 0.5F }, { 5.5F, 0.5F })),
+	};
+	iggy::runtime::RuntimeGameplayFrameRunnerFrame second = Frame({});
+	second.npcMovementRequests = {
+		NpcMovementRequest(NpcMovementFilter("npc:runner-mover", { 5.5F, 0.5F }, { 6.5F, 0.5F })),
+	};
+	const std::vector<iggy::runtime::RuntimeGameplayFrameRunnerFrame> frames { first, second };
+
+	const iggy::runtime::RuntimeGameplayFrameRunnerResult result =
+		iggy::runtime::RuntimeGameplayFrameRunner {}.run({ initial, frames });
+
+	Expect(result.ticks.size() == 2, "NPC movement runner should preserve one tick per frame");
+	Expect(NearVec(result.ticks[0].frame.state.npcActors.actors[0].position, { 5.5F, 0.5F }), "first NPC movement frame should update actor");
+	Expect(NearVec(result.ticks[1].frame.state.npcActors.actors[0].position, { 6.5F, 0.5F }), "second NPC movement frame should carry previous actor position");
+	Expect(NearVec(result.finalState.npcActors.actors[0].position, { 6.5F, 0.5F }), "NPC movement runner should return final carried actor position");
+	Expect(result.npcMovedCount == 2, "NPC movement runner should aggregate moved count");
+	Expect(result.npcMovementDirtyTileCount == 4, "NPC movement runner should aggregate per-frame dirty tile counts");
+	Expect(result.npcMovementNeedsOccupancyRebuild, "NPC movement runner should aggregate occupancy refresh flag");
+	Expect(result.npcMovementNeedsAiMapQueryRefresh, "NPC movement runner should aggregate AI map refresh flag");
+	Expect(result.npcMovementNeedsInteractionRefresh, "NPC movement runner should aggregate interaction refresh flag");
+	Expect(result.npcMovementNeedsRenderRefresh, "NPC movement runner should aggregate render refresh flag");
+	Expect(result.npcMovementNeedsVisibilityRefresh, "NPC movement runner should aggregate visibility refresh flag");
+	Expect(result.ticks[0].report.npcMovedCount == 1 && result.ticks[1].report.npcMovedCount == 1, "NPC movement runner should preserve per-tick movement reports");
+	Expect(initial.npcActors.actors.size() == 1 && NearVec(initial.npcActors.actors[0].position, { 4.5F, 0.5F }), "NPC movement runner should not mutate input actor registry");
+}
+
+void TestBlockedAndMissingNpcMovementAggregateWithoutMovingActors()
+{
+	iggy::runtime::RuntimeGameplayState initial = GameplayState(SessionWithPlayer());
+	initial.npcActors = { { NpcActor("npc:runner-blocked", { 3.5F, 0.5F }) } };
+	iggy::runtime::RuntimeGameplayFrameRunnerFrame frame = Frame({});
+	frame.npcMovementRequests = {
+		NpcMovementRequest(NpcMovementFilter(
+			"npc:runner-blocked",
+			{ 3.5F, 0.5F },
+			{ 4.5F, 0.5F },
+			iggy::NpcActorPathStepOccupancyFilter2DStatus::BlockedByNpc,
+			false,
+			"npc:runner-blocker")),
+		NpcMovementRequest(NpcMovementFilter("npc:runner-missing", { 4.5F, 0.5F }, { 5.5F, 0.5F })),
+	};
+
+	const iggy::runtime::RuntimeGameplayFrameRunnerResult result =
+		iggy::runtime::RuntimeGameplayFrameRunner {}.run({ initial, { frame } });
+
+	Expect(result.npcMovedCount == 0, "blocked/missing NPC runner should aggregate no moved actors");
+	Expect(result.npcBlockedMovementCount == 1, "blocked/missing NPC runner should aggregate blocked count");
+	Expect(result.npcMissingActorMovementCount == 1, "blocked/missing NPC runner should aggregate missing actor count");
+	Expect(result.npcMovementDirtyTileCount == 0, "blocked/missing NPC runner should aggregate no dirty tiles");
+	Expect(!result.npcMovementNeedsOccupancyRebuild, "blocked/missing NPC runner should not aggregate refresh flags");
+	Expect(NearVec(result.finalState.npcActors.actors[0].position, { 3.5F, 0.5F }), "blocked/missing NPC runner should preserve actor position");
+	Expect(result.ticks.size() == 1 && result.ticks[0].report.npcBlockedMovementCount == 1, "blocked/missing NPC runner should preserve per-tick blocked report");
+}
+
+void TestExplicitWorldOverloadCarriesPreparedNpcMovement()
+{
+	iggy::runtime::RuntimeSessionState session = SessionWithPlayer({ 0.0F, 0.0F });
+	SetCollisionCache(session, BlockingWorld());
+	iggy::runtime::RuntimeGameplayState initial = GameplayState(session);
+	initial.npcActors = { { NpcActor("npc:runner-explicit", { 7.5F, 0.5F }) } };
+	iggy::runtime::RuntimeGameplayFrameRunnerFrame frame = Frame({
+		iggy::playerMoveToPointIntent({ 2.0F, 0.0F }),
+	});
+	frame.npcMovementRequests = {
+		NpcMovementRequest(NpcMovementFilter("npc:runner-explicit", { 7.5F, 0.5F }, { 8.5F, 0.5F })),
+	};
+	const iggy::physics2d::CollisionWorld2D emptyWorld;
+
+	const iggy::runtime::RuntimeGameplayFrameRunnerResult result =
+		iggy::runtime::RuntimeGameplayFrameRunner {}.run({ initial, { frame } }, emptyWorld);
+
+	Expect(NearVec(result.finalState.session.player.position, { 1.0F, 0.0F }), "explicit-world NPC runner should preserve explicit collision behavior");
+	Expect(NearVec(result.finalState.npcActors.actors[0].position, { 8.5F, 0.5F }), "explicit-world NPC runner should still apply prepared NPC movement");
+	Expect(result.npcMovedCount == 1, "explicit-world NPC runner should aggregate prepared NPC movement");
+}
+
 void TestInputStateAndFrameVectorAreNotMutated()
 {
 	const iggy::InteractionTarget2D target = Target("target:immutable", iggy::InteractionTarget2DKind::Pickup);
@@ -435,10 +571,13 @@ void TestInputStateAndFrameVectorAreNotMutated()
 	};
 	const iggy::runtime::RuntimeGameplayState initial =
 		GameplayState(SessionWithPlayer(), interaction, InventoryState({}, { drop }));
-	const std::vector<iggy::runtime::RuntimeGameplayFrameRunnerFrame> frames {
-		Frame({ iggy::playerInteractIntent(target.id) }),
+	iggy::runtime::RuntimeGameplayFrameRunnerFrame frame = Frame({ iggy::playerInteractIntent(target.id) });
+	frame.npcMovementRequests = {
+		NpcMovementRequest(NpcMovementFilter("npc:immutable-missing", { 4.5F, 0.5F }, { 5.5F, 0.5F })),
 	};
+	const std::vector<iggy::runtime::RuntimeGameplayFrameRunnerFrame> frames { frame };
 	const iggy::runtime::RuntimeGameplayFrameRunnerInput input { initial, frames };
+	const std::vector<iggy::runtime::RuntimeGameplayFrameRunnerFrame> originalFrames = frames;
 
 	const iggy::runtime::RuntimeGameplayFrameRunnerResult result =
 		iggy::runtime::RuntimeGameplayFrameRunner {}.run(input);
@@ -449,6 +588,8 @@ void TestInputStateAndFrameVectorAreNotMutated()
 	Expect(input.initialState.inventory.drops.drops.size() == 1 && input.initialState.inventory.drops.drops[0].enabled, "runner should not mutate input drops");
 	Expect(input.frames.size() == 1 && input.frames[0].playerIntents.size() == 1, "runner should not mutate input frame vector");
 	Expect(input.frames[0].playerIntents[0].targetId == target.id, "runner should not mutate input player intent payload");
+	Expect(input.frames[0].npcMovementRequests.size() == 1, "runner should not mutate input NPC movement request vector");
+	Expect(SameNpcMovementFilter(input.frames[0].npcMovementRequests[0].filter, originalFrames[0].npcMovementRequests[0].filter), "runner should not mutate input NPC movement request payload");
 }
 
 void TestRunnerCarriesNpcActorAndControlStateAcrossFrames()
@@ -468,6 +609,7 @@ void TestRunnerCarriesNpcActorAndControlStateAcrossFrames()
 	ExpectNpcGameplayState(result.ticks[0].frame.state, initial, "runner first frame should carry NPC actor/control registries");
 	ExpectNpcGameplayState(result.ticks[1].frame.state, initial, "runner second frame should carry NPC actor/control registries");
 	ExpectNpcGameplayState(result.finalState, initial, "runner final state should carry NPC actor/control registries");
+	Expect(result.npcMovedCount == 0 && result.npcBlockedMovementCount == 0, "runner should aggregate zero NPC movement when no requests are supplied");
 }
 
 } // namespace
@@ -481,6 +623,9 @@ int main()
 	TestPickupCarriesIntoLaterFrames();
 	TestReportsCollectedPerFrameWithExpectedFacts();
 	TestExplicitWorldOverloadAppliesToEveryFrame();
+	TestPreparedNpcMovementAggregatesAndCarriesAcrossFrames();
+	TestBlockedAndMissingNpcMovementAggregateWithoutMovingActors();
+	TestExplicitWorldOverloadCarriesPreparedNpcMovement();
 	TestInputStateAndFrameVectorAreNotMutated();
 	TestRunnerCarriesNpcActorAndControlStateAcrossFrames();
 

@@ -283,6 +283,54 @@ void TestMixedSummaryEventOrderIsDeterministic()
 	ExpectSummaryEventAt(report, 11, iggy::runtime::RuntimePolicyGameplayFrameEvent::InventoryEventRecorded, "mixed policy gameplay report event order 11");
 }
 
+void TestReporterProjectsNpcMovementFactsAndEvents()
+{
+	iggy::runtime::RuntimePolicyGameplayFrameResult result = EmptyResult();
+	result.npcMovement.report.movedCount = 1;
+	result.npcMovement.report.blockedCount = 1;
+	result.npcMovement.report.rejectedCount = 1;
+	result.npcMovement.report.missingActorCount = 1;
+	result.npcMovement.report.changedCount = 1;
+	result.npcMovement.report.apply.changed = true;
+	result.npcMovement.report.dirtyTiles = {
+		iggy::TileCoord { 1, 2 },
+		iggy::TileCoord { 2, 2 },
+	};
+	result.npcMovement.report.needsOccupancyRebuild = true;
+	result.npcMovement.report.needsAiMapQueryRefresh = true;
+	result.npcMovement.report.needsInteractionRefresh = true;
+	result.npcMovement.report.needsRenderRefresh = true;
+	result.npcMovement.report.needsVisibilityRefresh = true;
+	result.npcMovement.report.events = {
+		iggy::NpcActorMovementFrameEvent2D::MovementApplied,
+		iggy::NpcActorMovementFrameEvent2D::MovementBlocked,
+		iggy::NpcActorMovementFrameEvent2D::MovementRejected,
+		iggy::NpcActorMovementFrameEvent2D::ActorNotFound,
+		iggy::NpcActorMovementFrameEvent2D::MovementFrameChanged,
+	};
+
+	const iggy::runtime::RuntimePolicyGameplayFrameReport report =
+		iggy::runtime::RuntimePolicyGameplayFrameReporter {}.report(result);
+
+	Expect(report.npcMovedCount == 1, "policy gameplay report should project NPC moved count");
+	Expect(report.npcBlockedMovementCount == 1, "policy gameplay report should project NPC blocked count");
+	Expect(report.npcRejectedMovementCount == 1, "policy gameplay report should project NPC rejected count");
+	Expect(report.npcMissingActorMovementCount == 1, "policy gameplay report should project NPC missing actor count");
+	Expect(report.npcMovementDirtyTileCount == 2, "policy gameplay report should project NPC dirty tile count");
+	Expect(report.npcMovementChanged, "policy gameplay report should project NPC movement changed");
+	Expect(report.npcMovementNeedsOccupancyRebuild, "policy gameplay report should project NPC occupancy refresh");
+	Expect(report.npcMovementNeedsAiMapQueryRefresh, "policy gameplay report should project NPC AI map refresh");
+	Expect(report.npcMovementNeedsInteractionRefresh, "policy gameplay report should project NPC interaction refresh");
+	Expect(report.npcMovementNeedsRenderRefresh, "policy gameplay report should project NPC render refresh");
+	Expect(report.npcMovementNeedsVisibilityRefresh, "policy gameplay report should project NPC visibility refresh");
+	Expect(report.npcMovement.dirtyTiles.size() == 2, "policy gameplay report should preserve nested NPC movement report");
+	Expect(HasEvent(report.events, iggy::runtime::RuntimePolicyGameplayFrameEvent::NpcMovementChanged), "policy gameplay report should emit NPC changed event");
+	Expect(HasEvent(report.events, iggy::runtime::RuntimePolicyGameplayFrameEvent::NpcMovementBlocked), "policy gameplay report should emit NPC blocked event");
+	Expect(HasEvent(report.events, iggy::runtime::RuntimePolicyGameplayFrameEvent::NpcMovementRejected), "policy gameplay report should emit NPC rejected event");
+	Expect(HasEvent(report.events, iggy::runtime::RuntimePolicyGameplayFrameEvent::NpcMovementActorMissing), "policy gameplay report should emit NPC missing actor event");
+	Expect(HasEvent(report.events, iggy::runtime::RuntimePolicyGameplayFrameEvent::NpcMovementRefreshNeeded), "policy gameplay report should emit NPC refresh event");
+}
+
 void TestReporterDoesNotMutateInputResult()
 {
 	iggy::runtime::RuntimePolicyGameplayFrameResult result = EmptyResult();
@@ -313,6 +361,7 @@ int main()
 	TestContextBlockedAndQueueRejectedFactsProjectWithNoInventoryEvents();
 	TestToggleAndPickupReportsInteractionAndInventoryChanged();
 	TestMixedSummaryEventOrderIsDeterministic();
+	TestReporterProjectsNpcMovementFactsAndEvents();
 	TestReporterDoesNotMutateInputResult();
 
 	return Failures;

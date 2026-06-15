@@ -38,6 +38,11 @@ RuntimePolicyGameplayFrameResult ResultFrom(
 		input.state.npcActors,
 		input.state.npcControls,
 	};
+	result.npcMovement = RuntimeNpcActorMovementFrameStep {}.run({
+		result.state,
+		input.npcMovementRequests,
+	});
+	result.state = result.npcMovement.state;
 	return result;
 }
 

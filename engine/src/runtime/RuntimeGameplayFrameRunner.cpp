@@ -22,6 +22,7 @@ RuntimeGameplayFrameInput FrameInputFrom(
 	input.npcConfig = frame.npcConfig;
 	input.interactionReach = frame.interactionReach;
 	input.pickup = frame.pickup;
+	input.npcMovementRequests = frame.npcMovementRequests;
 	return input;
 }
 
@@ -38,6 +39,21 @@ void AppendTick(RuntimeGameplayFrameRunnerResult &result, RuntimeGameplayFrameRe
 	tick.frame = frameResult;
 	tick.report = RuntimeGameplayFrameReporter {}.report(frameResult);
 	AppendInventoryEvents(result.inventoryEvents, frameResult.inventoryEvents);
+	result.npcMovedCount += tick.report.npcMovedCount;
+	result.npcBlockedMovementCount += tick.report.npcBlockedMovementCount;
+	result.npcRejectedMovementCount += tick.report.npcRejectedMovementCount;
+	result.npcMissingActorMovementCount += tick.report.npcMissingActorMovementCount;
+	result.npcMovementDirtyTileCount += tick.report.npcMovementDirtyTileCount;
+	result.npcMovementNeedsOccupancyRebuild =
+		result.npcMovementNeedsOccupancyRebuild || tick.report.npcMovementNeedsOccupancyRebuild;
+	result.npcMovementNeedsAiMapQueryRefresh =
+		result.npcMovementNeedsAiMapQueryRefresh || tick.report.npcMovementNeedsAiMapQueryRefresh;
+	result.npcMovementNeedsInteractionRefresh =
+		result.npcMovementNeedsInteractionRefresh || tick.report.npcMovementNeedsInteractionRefresh;
+	result.npcMovementNeedsRenderRefresh =
+		result.npcMovementNeedsRenderRefresh || tick.report.npcMovementNeedsRenderRefresh;
+	result.npcMovementNeedsVisibilityRefresh =
+		result.npcMovementNeedsVisibilityRefresh || tick.report.npcMovementNeedsVisibilityRefresh;
 	result.finalState = frameResult.state;
 	result.ticks.push_back(std::move(tick));
 }

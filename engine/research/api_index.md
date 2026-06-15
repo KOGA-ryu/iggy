@@ -223,8 +223,8 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `RuntimePlayerInputInteractionPickupFrameStep`, `RuntimePlayerInputInteractionPickupFrameReporter`: gated input + interaction apply + pickup-effect orchestration and reporting.
 - `RuntimePlayerInputInteractionPolicyPickupFrameStep`: gated input + interaction apply + catalog-aware pickup-effect orchestration.
 - `RuntimeGameplayState`: top-level runtime gameplay packet carrying session, command queue, interaction state, inventory state, and NPC actor/control registries.
-- `RuntimeGameplayFrameStep`, `RuntimeGameplayFrameRunner`, `RuntimeGameplayFrameReporter`: one-frame and bounded gameplay orchestration over input, interaction, pickup, command ticking, optional prepared NPC actor movement requests, and reports.
-- `RuntimePolicyGameplayFrameStep`, `RuntimePolicyGameplayFrameRunner`, `RuntimePolicyGameplayFrameReporter`: catalog-aware gameplay frame orchestration and reporting over policy pickup.
+- `RuntimeGameplayFrameStep`, `RuntimeGameplayFrameRunner`, `RuntimeGameplayFrameReporter`: one-frame and bounded gameplay orchestration over input, interaction, pickup, command ticking, optional prepared NPC actor movement requests, per-tick NPC movement reports, and runner-level movement aggregation.
+- `RuntimePolicyGameplayFrameStep`, `RuntimePolicyGameplayFrameRunner`, `RuntimePolicyGameplayFrameReporter`: catalog-aware gameplay frame orchestration and reporting over policy pickup plus optional prepared NPC actor movement requests.
 - `RuntimeNpcActorMovementFrameStep`: runtime adapter over prepared scene/npc movement apply requests; delegates actor registry mutation to scene/npc and returns updated `RuntimeGameplayState` without generating pathfinding or movement filters.
 - `RuntimeNpcAiCommandQueueStep`: pushes already-mapped NPC AI command frames into the runtime command queue.
 - `RuntimeNpcAiMovementQueueStep`: maps NPC movement proposals to gameplay commands and queues them.
