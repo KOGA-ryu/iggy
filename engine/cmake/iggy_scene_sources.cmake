@@ -24,6 +24,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/ai/NpcHand.cpp
   src/scene/ai/NpcIntelligencePool.cpp
   src/scene/ai/NpcIntelligenceDraw.cpp
+  src/scene/ai/NpcMapPlayControlFramePlan.cpp
   src/scene/ai/NpcMapPlayControlFrameStep2D.cpp
   src/scene/ai/NpcMapPlayReport.cpp
   src/scene/ai/NpcMapRead.cpp
@@ -100,15 +101,18 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/level/LevelTileRenderChunkVisibility.cpp
   src/scene/level/LevelTileRenderCommands.cpp
   src/scene/level/LevelVisibleTiles.cpp
+  src/scene/npc/NpcActorAiMapRefresh2D.cpp
   src/scene/npc/NpcActorControlState2D.cpp
   src/scene/npc/NpcActorEscapeRouteTarget2D.cpp
   src/scene/npc/NpcActorEscapeTarget2D.cpp
   src/scene/npc/NpcActorFrameState2D.cpp
+  src/scene/npc/NpcActorInteractionRefresh2D.cpp
   src/scene/npc/NpcActorMovementExecutor2D.cpp
   src/scene/npc/NpcActorMovementFrameApply2D.cpp
   src/scene/npc/NpcActorMovementFrameIntent2D.cpp
   src/scene/npc/NpcActorMovementFramePlan2D.cpp
   src/scene/npc/NpcActorMovementFrameReport2D.cpp
+  src/scene/npc/NpcActorMovementRefreshFrame2D.cpp
   src/scene/npc/NpcActorMovementRefreshWork2D.cpp
   src/scene/npc/NpcActorMovementReservation2D.cpp
   src/scene/npc/NpcActorMovementReservedFrameApply2D.cpp
@@ -125,6 +129,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/npc/NpcActorPostMoveReport2D.cpp
   src/scene/npc/NpcActorRouteTarget2D.cpp
   src/scene/npc/NpcActorState2D.cpp
+  src/scene/npc/NpcActorVisualRefresh2D.cpp
   src/scene/npc/NpcBehaviorState.cpp
   src/scene/npc/NpcMoveMode.cpp
   src/scene/npc/NpcPlayControlApply2D.cpp

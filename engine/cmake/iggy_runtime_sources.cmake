@@ -16,7 +16,14 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeGameplaySnapshotValidator.cpp
   src/runtime/RuntimeMutationCommandQueue.cpp
   src/runtime/RuntimeNpcActorMovementFrameStep.cpp
+  src/runtime/RuntimeNpcActorMovementPlannedFrameRunner.cpp
+  src/runtime/RuntimeNpcActorMovementPlannedFrameStep.cpp
   src/runtime/RuntimeNpcActorMovementRequestPlanStep.cpp
+  src/runtime/RuntimeNpcAiControlPlannedFrameStep.cpp
+  src/runtime/RuntimeNpcAiMovementPlannedFrameRunner.cpp
+  src/runtime/RuntimeNpcAiMovementPlannedFrameStep.cpp
+  src/runtime/RuntimeNpcAiMovementRefreshFrameRunner.cpp
+  src/runtime/RuntimeNpcAiMovementRefreshFrameStep.cpp
   src/runtime/RuntimeNpcAiDecisionQueueStep.cpp
   src/runtime/RuntimeNpcAiCommandQueueStep.cpp
   src/runtime/RuntimeNpcAiMovementQueueStep.cpp

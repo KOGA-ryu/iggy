@@ -38,6 +38,37 @@ callers that want prepared requests from current `RuntimeGameplayState` plus a
 opt-in occupancy policy and reservation settings, and mirrors the resulting
 request/reservation counts for runtime-facing diagnostics.
 
+`RuntimeNpcActorMovementPlannedFrameStep` is the explicit convenience layer for
+callers that want planning and prepared movement application in one call. It
+composes `RuntimeNpcActorMovementRequestPlanStep` with
+`RuntimeNpcActorMovementFrameStep` only when directly invoked. It does not make
+raw or policy gameplay frame steps auto-plan movement.
+
+`RuntimeNpcActorMovementPlannedFrameRunner` is the sequence companion for the
+same explicit path. It repeats the planned-frame step over caller-supplied
+map/config frames, carrying the returned `RuntimeGameplayState` forward between
+frames and aggregating movement/request diagnostics. It also remains outside
+raw and policy gameplay runners.
+
+`RuntimeNpcAiMovementPlannedFrameStep` is the explicit one-frame AI+movement
+composition helper. It runs caller-selected AI control planning/apply first,
+then runs caller-selected movement planning/apply using the post-control state.
+It is not invoked by raw or policy gameplay frame steps.
+
+`RuntimeNpcAiMovementPlannedFrameRunner` is the explicit sequence companion for
+that AI+movement path. It repeats the one-frame helper over caller-supplied
+frames for simulations, tests, and tools while keeping raw/policy gameplay
+loops free of automatic NPC AI orchestration.
+
+`RuntimeNpcAiMovementRefreshFrameStep` and
+`RuntimeNpcAiMovementRefreshFrameRunner` add refresh packet projection to that
+explicit path. They compose planning, movement, and
+`NpcActorMovementRefreshFrameProjector2D`, but they do not execute occupancy
+cache consumers, interaction effects, AI decisions, visibility/FOV, render cache
+updates, UI, or gameplay frame loops. The runner derives previous occupancy
+from carried actor state at the start of each caller-supplied frame; that
+occupancy remains derived local helper data, not runtime truth.
+
 The optional scene-only reservation lane can sit between prepared requests and
 frame apply:
 
@@ -67,8 +98,21 @@ apply movement or mutate actor registries.
 - `RuntimeSessionState` does not own NPC actor or control registries.
 - `scene/npc` owns movement planning, route/path/step/filter semantics, single-actor execution, frame apply, and frame report semantics.
 - `scene/npc` owns occupancy policy and per-frame movement reservation semantics as explicit wrappers around prepared movement requests.
+- `scene/npc` owns movement-derived refresh work projections and pure refresh consumers such as occupancy rebuild selection, AI map query refresh facts, and interaction refresh fact extraction.
 - Runtime owns application of prepared movement requests into gameplay state.
-- Runtime does not generate NPC movement decisions, route targets, paths, occupancy filters, or planner requests in the current boundary.
+- Runtime may expose explicit runtime-adjacent helpers that call scene planners when directly selected by the caller.
+- Runtime may also expose explicit runtime-adjacent AI control helpers that call `scene/ai` planners when directly selected by the caller; raw/policy gameplay frames still do not auto-run AI control planning.
+- Runtime gameplay frame steps and runners do not generate NPC movement decisions, route targets, paths, occupancy filters, or planner requests in the current boundary.
+
+The optional helper layers are:
+
+1. `scene/npc` planner creates prepared requests.
+2. `RuntimeNpcActorMovementFrameStep` applies prepared requests.
+3. `RuntimeNpcActorMovementPlannedFrameStep` composes 1 and 2 for one caller-selected frame.
+4. `RuntimeNpcActorMovementPlannedFrameRunner` repeats 3 over caller-supplied frames.
+5. `RuntimeNpcAiMovementPlannedFrameStep` composes caller-selected AI control planning with one movement planned frame when directly invoked.
+6. `RuntimeNpcAiMovementPlannedFrameRunner` repeats 5 over caller-supplied AI+movement frames when directly invoked.
+7. `RuntimeNpcAiMovementRefreshFrameStep` and runner variants add refresh packet projection to 5/6 without executing downstream caches.
 
 ## Intentionally Not Included
 
@@ -76,13 +120,22 @@ This lane deliberately does not include:
 
 - runtime request generation
 - AI decision orchestration
-- occupancy rebuild or cache refresh consumers
+- runtime/cache execution of occupancy, interaction, AI map, render, or visibility refresh work
 - save/session snapshot ownership for NPC actor/control registries
 - command queue integration
 - spirit/swarm/faction/profile gameplay semantics beyond configurable occupancy capacity
 - rendering, bgfx, or Vulkan integration
 
-The current post-move refresh flags remain report facts only. They do not call cache, render, visibility, interaction, save, or runtime consumers.
+The current post-move refresh flags can be projected into explicit scene-level
+work packets and pure consumers. `NpcActorOccupancyRefresh2D` can rebuild
+derived NPC occupancy by value, `NpcActorAiMapRefresh2D` can report affected
+NPCs and optional pure AI map query diagnostics, and
+`NpcActorInteractionRefresh2D` can report dirty interaction facts.
+`NpcActorVisualRefresh2D` can split movement-derived visual work into separate
+render and visibility packets. `NpcActorMovementRefreshFrame2D` composes those
+refresh consumers into one inspectable movement refresh frame report. None of
+these calls runtime, cache, render, visibility, interaction effect, save, UI, or
+AI decision systems.
 
 ## Test Proof Points
 
