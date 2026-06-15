@@ -73,14 +73,31 @@ The codec does not move NPC actor/control state into `RuntimeSessionState` or
 `RuntimeSessionSnapshot`. The nested session snapshot remains session-owned and
 is decoded through the existing session snapshot chunk decoder.
 
+## Gameplay Snapshot File Boundary
+
+`RuntimeGameplaySnapshotSaveLoad` adds a gameplay-specific file/envelope IO
+boundary on top of the gameplay snapshot chunk codec. It serializes a
+`RuntimeGameplaySnapshot` through:
+
+1. `RuntimeGameplaySnapshotChunkCodec`
+2. `RuntimeSaveChunkArchiveCodec`
+3. `RuntimeSaveFileEnvelope`
+4. `RuntimeSaveFileIO`
+
+This provides gameplay snapshot bytes and direct file IO only. It does not
+replace or modify `RuntimeSessionSaveLoad`, and it does not add gameplay save
+slots, save metadata menus, migrations, automatic runtime snapshotting, or slot
+store behavior.
+
 ## Not In This Lane
 
 This lane does not change:
 
 - `RuntimeSessionSnapshot`
+- `RuntimeSessionSaveLoad`
 - save file envelopes
 - save slots
-- disk serialization
+- existing session disk serialization
 
-Gameplay snapshot disk persistence remains a later file/save-slot lane after
-the archive packet boundary is accepted.
+Gameplay save-slot persistence remains a later lane after this direct
+gameplay snapshot file boundary is accepted.

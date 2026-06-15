@@ -11,6 +11,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeGameplayState.cpp
   src/runtime/RuntimeGameplaySnapshot.cpp
   src/runtime/RuntimeGameplaySnapshotChunkCodec.cpp
+  src/runtime/RuntimeGameplaySnapshotSaveLoad.cpp
   src/runtime/RuntimeGameplaySnapshotValidator.cpp
   src/runtime/RuntimeMutationCommandQueue.cpp
   src/runtime/RuntimeNpcActorMovementFrameStep.cpp
