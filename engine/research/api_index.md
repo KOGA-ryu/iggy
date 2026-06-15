@@ -149,6 +149,7 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `NpcActorMovementFrameApply2D`, `NpcActorMovementFrameApplier2D`: by-value ordered registry movement apply layer that delegates found actor/filter pairs to the single-actor executor and preserves per-entry diagnostics; no runtime/session mutation.
 - `NpcActorMovementIntent2D`, `NpcActorMovementIntentProjector2D`: read-only projection from joined actor/control frame state into one actor movement intent; no pathfinding or mutation.
 - `NpcActorMovementFramePlan2D`, `NpcActorMovementFramePlanner2D`: scene-level read-only planner that composes actor/control frame state, route/navigation/path/step, and occupancy filtering into prepared movement frame apply requests; no apply/runtime mutation.
+- NPC actor movement runtime boundary: `engine/research/npc_actor_movement_runtime_boundary.md`.
 - `NpcActorMovementFrameReport2D`, `NpcActorMovementFrameReporter2D`: projection-only report over movement frame apply results with dirty-tile aggregation, refresh flags, and deterministic summary events; no cache/runtime consumers.
 - `NpcActorMovementFrameIntent2D`, `NpcActorMovementFrameIntentProjector2D`: read-only batch projection from actor/control frame-state projection into per-actor movement intents; no pathfinding or mutation.
 - `NpcActorNavigationRequest2D`, `NpcActorNavigationRequestBuilder2D`: read-only adapter from ready NPC route targets to static tile-map navigation request validation; no pathfinding or mutation.
