@@ -110,14 +110,18 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/npc/NpcActorMovementFramePlan2D.cpp
   src/scene/npc/NpcActorMovementFrameReport2D.cpp
   src/scene/npc/NpcActorMovementRefreshWork2D.cpp
+  src/scene/npc/NpcActorMovementReservation2D.cpp
+  src/scene/npc/NpcActorMovementReservedFrameApply2D.cpp
   src/scene/npc/NpcActorMovementIntent2D.cpp
   src/scene/npc/NpcActorNavigationRequest2D.cpp
   src/scene/npc/NpcActorOccupancy2D.cpp
+  src/scene/npc/NpcActorOccupancyPolicy2D.cpp
   src/scene/npc/NpcActorOccupancyQuery2D.cpp
   src/scene/npc/NpcActorOccupancyRefresh2D.cpp
   src/scene/npc/NpcActorPathReport2D.cpp
   src/scene/npc/NpcActorPathStep2D.cpp
   src/scene/npc/NpcActorPathStepOccupancyFilter2D.cpp
+  src/scene/npc/NpcActorPathStepOccupancyPolicyFilter2D.cpp
   src/scene/npc/NpcActorPostMoveReport2D.cpp
   src/scene/npc/NpcActorRouteTarget2D.cpp
   src/scene/npc/NpcActorState2D.cpp

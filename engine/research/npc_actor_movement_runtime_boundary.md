@@ -32,11 +32,27 @@ actor/control registries
 
 The raw and policy runtime frame/runner paths consume those prepared requests unchanged. Runtime applies the prepared requests into the carried gameplay state through `RuntimeNpcActorMovementFrameStep`, which delegates registry mutation to `NpcActorMovementFrameApply2D`.
 
+The optional scene-only reservation lane can sit between prepared requests and
+frame apply:
+
+```text
+prepared frame apply requests
+  + NpcActorOccupancy2D
+  + NpcActorOccupancyPolicy2D
+  -> NpcActorMovementReservation2D
+  -> NpcActorMovementReservedFrameApply2D
+  -> NpcActorMovementFrameApply2D
+```
+
+This reservation layer is derived decision data. It is not actor truth, runtime
+state, save state, or occupancy ownership.
+
 ## Ownership
 
 - `RuntimeGameplayState` owns and carries `npcActors` and `npcControls` by value.
 - `RuntimeSessionState` does not own NPC actor or control registries.
 - `scene/npc` owns movement planning, route/path/step/filter semantics, single-actor execution, frame apply, and frame report semantics.
+- `scene/npc` owns occupancy policy and per-frame movement reservation semantics as explicit wrappers around prepared movement requests.
 - Runtime owns application of prepared movement requests into gameplay state.
 - Runtime does not generate NPC movement decisions, route targets, paths, occupancy filters, or planner requests in the current boundary.
 
@@ -49,7 +65,7 @@ This lane deliberately does not include:
 - occupancy rebuild or cache refresh consumers
 - save/session snapshot ownership for NPC actor/control registries
 - command queue integration
-- reservations or spirit/swarm/tile-sharing occupancy policy
+- spirit/swarm/faction/profile gameplay semantics beyond configurable occupancy capacity
 - rendering, bgfx, or Vulkan integration
 
 The current post-move refresh flags remain report facts only. They do not call cache, render, visibility, interaction, save, or runtime consumers.
