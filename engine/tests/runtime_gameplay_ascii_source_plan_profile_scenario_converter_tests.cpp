@@ -426,6 +426,39 @@ void TestConvertedDefaultProfileScenarioRunsThroughProfileRunner()
 	Expect(converted.definition.initialState.session.level.map.width == run.state.session.level.map.width, "runner should preserve promoted session map");
 }
 
+void TestConvertedRegionAiMapProfileScenarioRunsThroughProfileRunner()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.regions = {
+		Region("region:patrol", 1, 2, 1, 3, { Id("role:patrol") }),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+	config.promoteRegionAiMap = true;
+	config.regionAiMap.policies = {
+		AiMapPolicy("role:patrol", { Id("tag:patrol") }),
+	};
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult converted =
+		Convert(plan, config);
+	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
+		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(converted.definition);
+
+	Expect(converted.ok(), "region-promoted profile scenario should convert");
+	Expect(run.ran(), "region-promoted profile scenario should run");
+	Expect(run.validation.ok(), "region-promoted profile scenario should validate in runner");
+	Expect(run.build.built, "region-promoted profile scenario should build before runner execution");
+	Expect(run.definition.frames[0].aiMap.nodes.size() == 1, "runner should preserve promoted profile frame ai map");
+	Expect(run.definition.frames[0].refreshAiMap.nodes.size() == 1, "runner should preserve promoted profile frame refresh ai map");
+	Expect(run.build.scenarioDefinition.frames[0].frame.aiMap.nodes.size() == 1, "runner build should lower promoted ai map into ordinary scenario frame");
+	Expect(run.build.scenarioDefinition.frames[0].frame.refreshAiMap.nodes.size() == 1, "runner build should lower promoted refresh ai map into ordinary scenario frame");
+	Expect(run.build.scenarioDefinition.frames[0].frame.aiMap.nodes[0].id == Id("region:patrol"), "runner build should preserve exact promoted ai map region id");
+	Expect(run.build.scenarioDefinition.frames[0].frame.refreshAiMap.nodes[0].id == Id("region:patrol"), "runner build should preserve exact promoted refresh ai map region id");
+	Expect(run.frameCount == 1, "region-promoted profile scenario should run one frame");
+	Expect(run.state.npcActors.actors.size() == 1, "region-promoted profile scenario should preserve promoted actor through runner");
+}
+
 void TestDefaultConfigLeavesRegionAiMapPromotionDisabled()
 {
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
@@ -501,6 +534,7 @@ void TestInvalidRegionAiMapPromotionBlocksConversion()
 	Expect(!result.regionAiMapPromotion.ok(), "invalid promoted ai map should preserve nested failure");
 	Expect(result.aiMapPromotionIssueCount == 1, "invalid promoted ai map should mirror issue count");
 	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::AiMapPromotionInvalid), "invalid promoted ai map should add conversion issue");
+	Expect(!result.converted, "invalid promoted ai map should not mark conversion complete");
 	Expect(result.definition.frames.empty(), "invalid promoted ai map should not publish profile scenario definition");
 }
 
@@ -543,6 +577,7 @@ int main()
 	TestMissingProfileCatalogSurfacesProfileScenarioValidationFailure();
 	TestFrameUsesPromotedMapAndDoesNotInventScripts();
 	TestConvertedDefaultProfileScenarioRunsThroughProfileRunner();
+	TestConvertedRegionAiMapProfileScenarioRunsThroughProfileRunner();
 	TestDefaultConfigLeavesRegionAiMapPromotionDisabled();
 	TestEnabledRegionAiMapPromotionPreservesNestedResult();
 	TestInvalidRegionAiMapPromotionBlocksConversion();
