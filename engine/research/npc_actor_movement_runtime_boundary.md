@@ -229,6 +229,7 @@ source plan directly so promotion facts are not lost in the shallow packet:
 ```text
 RuntimeGameplayAsciiSourcePlan
   -> RuntimeGameplayAsciiSourcePlanValidator
+  -> optional RuntimeGameplayAsciiSourcePlanRegionAiMapPromoter
   -> RuntimeGameplayAsciiSourcePlanProfileScenarioConverter
   -> RuntimeGameplayProfileScenarioDefinition
   -> RuntimeGameplayProfileScenarioValidator
@@ -244,9 +245,24 @@ The converter rejects invalid source plans, unsupported custom terrain,
 invalid actor/control registries, missing frame defaults, and invalid profile
 scenario definitions before reporting conversion success.
 
+Region-to-AI-map promotion is an explicit opt-in branch, not inferred source
+semantics. `RuntimeGameplayAsciiSourcePlanRegionAiMapPromoter` consumes source
+plan regions and caller-supplied role-tag policies. A region maps only when one
+of its role tags exactly matches a policy role tag; first match wins. Promoted
+AI map nodes use `region.regionId` exactly as the node id, region inclusive
+bounds for center and half-diagonal radius, and only the configured node tags,
+weights, and enabled flag. No links are generated, unmapped regions are
+non-fatal diagnostics by default, and no tag names imply behavior.
+
+When `RuntimeGameplayAsciiSourcePlanProfileScenarioConverter` enables region
+AI-map promotion and the promoter succeeds, the promoted `AiMap2D` is copied
+into both produced profile scenario `frame.aiMap` and `frame.refreshAiMap`.
+The frame movement map still comes from promoted terrain. If AI-map promotion
+fails, conversion fails before publishing a profile scenario definition.
+
 There is still no TOML parser, file IO, Edi/UI adapter, interaction marker
-promotion, frame scripting, region-to-AI-map promotion, or runtime gameplay
-auto-run in this boundary. A future TOML parser should target
+promotion, frame scripting, AI-map links, inferred role/tag semantics, or
+runtime gameplay auto-run in this boundary. A future TOML parser should target
 `RuntimeGameplayAsciiSourcePlan` first, then use this converter only after the
 in-memory source-plan validator accepts the authored packet.
 
