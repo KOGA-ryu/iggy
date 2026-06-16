@@ -499,6 +499,60 @@ void TestMovingFixtureRunsScenarioAndMovesNpcFromAuthoredControl()
 	Expect(rows == expected, "movement vertical path should render moved final ASCII debug rows");
 }
 
+void TestMultiFrameFixtureRunsScenarioAndMovesNpcAcrossFrames()
+{
+	const std::filesystem::path path = FixturePath("multi_frame_guard_room.toml");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult read =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(path);
+	iggy::runtime::RuntimeGameplayScenarioAuthoringPacket packet;
+	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
+	packet.hasAsciiSourcePlan = true;
+	packet.asciiSourcePlan = read.text.plan;
+	iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig adapterConfig;
+	adapterConfig.hasAsciiSourcePlanProfileScenarioConfig = true;
+	adapterConfig.asciiSourcePlanProfileScenario = ConverterConfig();
+
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
+		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(
+			packet,
+			adapterConfig);
+	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
+		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
+	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
+	const std::vector<std::string> expected {
+		"#######",
+		"#..A.@#",
+		"#.....#",
+		"#######",
+	};
+
+	Expect(read.ok(), "multi-frame vertical path should read checked-in TOML fixture");
+	Expect(read.text.plan.sourceId == Id("scenario:multi-frame-guard-room"), "multi-frame fixture should preserve source id");
+	Expect(read.text.plan.authoredControlCount() == 2, "multi-frame fixture should parse two authored controls");
+	Expect(adapter.ok(), "multi-frame vertical path should adapt parsed source plan to profile scenario");
+	Expect(adapter.asciiSourcePlanConversion.ok(), "multi-frame vertical path should preserve source-plan conversion success");
+	Expect(adapter.asciiSourcePlanConversion.authoredControlCount == 2, "multi-frame conversion should consume authored controls");
+	Expect(adapter.profileScenario.frames.size() == 2, "multi-frame conversion should publish two profile frames");
+	if (adapter.profileScenario.frames.size() == 2) {
+		Expect(adapter.profileScenario.frames[0].frameId == Id("frame:move-1"), "multi-frame conversion should preserve first frame id");
+		Expect(adapter.profileScenario.frames[1].frameId == Id("frame:move-2"), "multi-frame conversion should preserve second frame id");
+		Expect(adapter.profileScenario.frames[0].controlOverrides.size() == 1, "first multi-frame profile frame should carry override");
+		Expect(adapter.profileScenario.frames[1].controlOverrides.size() == 1, "second multi-frame profile frame should carry override");
+	}
+	Expect(run.ran(), "multi-frame vertical path should run converted profile scenario");
+	Expect(run.frameCount == 2, "multi-frame vertical path should execute two scenario frames");
+	Expect(run.npcMovementPlannedRequestCount == 2, "multi-frame vertical path should plan two NPC movement requests");
+	Expect(run.npcMovedCount == 2, "multi-frame vertical path should move one NPC twice");
+	Expect(run.npcActorsChanged, "multi-frame vertical path should mark NPC actors changed");
+	Expect(run.state.npcActors.actors.size() == 1, "multi-frame vertical path should preserve one final NPC actor");
+	if (!run.state.npcActors.actors.empty()) {
+		const iggy::NpcActorState2D &actor = run.state.npcActors.actors.front();
+		Expect(actor.npcId == Id("npc:guard"), "multi-frame final actor should preserve id");
+		Expect(actor.position.x == 3.5F && actor.position.y == 1.5F, "multi-frame vertical path should move actor two tiles");
+	}
+	Expect(rows == expected, "multi-frame vertical path should render moved final ASCII debug rows");
+}
+
 } // namespace
 
 int main()
@@ -515,6 +569,7 @@ int main()
 	TestValidFixtureFeedsAuthoringAdapterThroughParsedSourcePlan();
 	TestValidFixtureRunsScenarioAndRendersFinalDebugRows();
 	TestMovingFixtureRunsScenarioAndMovesNpcFromAuthoredControl();
+	TestMultiFrameFixtureRunsScenarioAndMovesNpcAcrossFrames();
 
 	CleanupTempRoot();
 
