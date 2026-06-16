@@ -150,3 +150,31 @@ Use these when relevant:
 - `engine/tests/support/CommandFrameFixtures.hpp`
 
 Add new support only for repeated mechanics. Keep domain-specific expected values visible in tests.
+
+## CTest Labels
+
+Engine tests are labeled at CMake registration time for local slice runs. Labels are additive: subsystem labels identify ownership area, and kind labels identify the shape of the test.
+
+Common subsystem labels:
+- `runtime`
+- `scene-ai`
+- `scene-npc`
+- `scene-level`
+- `servers`
+- `core`
+- `modules`
+- `save-load` for save/snapshot/slot/archive/envelope tests
+
+Common kind labels:
+- `unit`
+- `integration`
+- `acceptance`
+- `pipeline`
+
+Example commands:
+
+```sh
+ctest --test-dir engine/build -L runtime --output-on-failure
+ctest --test-dir engine/build -L acceptance --output-on-failure
+ctest --test-dir engine/build -L "runtime|save-load" --output-on-failure
+```

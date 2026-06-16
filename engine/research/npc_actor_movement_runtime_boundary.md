@@ -172,6 +172,7 @@ The optional helper layers are:
 13. `RuntimeGameplayScenarioRunner` is a lightweight scenario/replay harness over 11 and 12, intended for tests and future tooling packets rather than parser/UI integration.
 14. `RuntimeGameplayScenarioDefinition` and validator are typed authoring packets for tools to produce before conversion to the scenario runner input.
 15. `RuntimeGameplayProfileScenarioDefinition` and validator are profile-driven authoring packets that convert actor profile traits into ordinary scenario subjects from the initial actor registry.
+16. `RuntimeGameplayScenarioLedgerReporter` projects scenario execution results into compact ledger rows, final-state counts, and deterministic tooling events without running gameplay or adding UI/parser behavior.
 
 ## Intentionally Not Included
 

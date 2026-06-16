@@ -13,6 +13,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeGameplayProfileScenarioDefinition.cpp
   src/runtime/RuntimeGameplayProfileScenarioValidator.cpp
   src/runtime/RuntimeGameplayScenarioDefinition.cpp
+  src/runtime/RuntimeGameplayScenarioLedger.cpp
   src/runtime/RuntimeGameplayScenarioRunner.cpp
   src/runtime/RuntimeGameplayScenarioValidator.cpp
   src/runtime/RuntimeGameplayFrameRunner.cpp
