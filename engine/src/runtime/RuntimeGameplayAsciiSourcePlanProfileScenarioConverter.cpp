@@ -45,6 +45,14 @@ void AddIssue(
 	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::DuplicatePlayerStart:
 		++result.playerStartIssueCount;
 		break;
+	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::
+		InteractionTargetRegistryInvalid:
+		++result.interactionTargetRegistryIssueCount;
+		break;
+	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::
+		InteractionEffectCatalogInvalid:
+		++result.interactionEffectCatalogIssueCount;
+		break;
 	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::AiMapPromotionInvalid:
 		++result.aiMapPromotionIssueCount;
 		break;
@@ -152,6 +160,26 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue DuplicatePlayerStar
 	issue.row = row;
 	issue.column = column;
 	issue.glyph = glyph;
+	return issue;
+}
+
+RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue InteractionTargetIssue(
+	const InteractionTarget2DRegistryIssue &targetIssue)
+{
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue issue;
+	issue.code = RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::
+		InteractionTargetRegistryInvalid;
+	issue.interactionTargetIssue = targetIssue;
+	return issue;
+}
+
+RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue InteractionEffectIssue(
+	const InteractionEffectCatalog2DIssue &effectIssue)
+{
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue issue;
+	issue.code = RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::
+		InteractionEffectCatalogInvalid;
+	issue.interactionEffectIssue = effectIssue;
 	return issue;
 }
 
@@ -634,6 +662,135 @@ bool PromoteActorsAndControls(
 	return true;
 }
 
+InteractionTarget2DKind ConvertInteractionTargetKind(
+	RuntimeGameplayAsciiSourcePlanInteractionTargetKind kind)
+{
+	switch (kind) {
+	case RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Inspectable:
+		return InteractionTarget2DKind::Inspectable;
+	case RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Usable:
+		return InteractionTarget2DKind::Usable;
+	case RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Pickup:
+		return InteractionTarget2DKind::Pickup;
+	case RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Talk:
+		return InteractionTarget2DKind::Talk;
+	case RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Door:
+		return InteractionTarget2DKind::Door;
+	case RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Unknown:
+		return InteractionTarget2DKind::Unknown;
+	}
+	return InteractionTarget2DKind::Unknown;
+}
+
+Vec2 InteractionTargetPosition(
+	const RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget &authored)
+{
+	if (authored.localPosition.present) {
+		return {
+			static_cast<float>(authored.localPosition.x),
+			static_cast<float>(authored.localPosition.y),
+		};
+	}
+	return tileCenter({ authored.localTile.x, authored.localTile.y });
+}
+
+InteractionTarget2D InteractionTargetFromAuthoredTarget(
+	const RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget &authored)
+{
+	return {
+		authored.targetId,
+		ConvertInteractionTargetKind(authored.kind),
+		InteractionTargetPosition(authored),
+		static_cast<float>(authored.radius),
+		authored.enabled,
+	};
+}
+
+ResourceId EffectTargetId(
+	const RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget &authored)
+{
+	return authored.effectTargetId.empty()
+		? authored.targetId
+		: authored.effectTargetId;
+}
+
+bool EffectFromAuthoredTarget(
+	const RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget &authored,
+	InteractionEffect2D &effect)
+{
+	switch (authored.effect) {
+	case RuntimeGameplayAsciiSourcePlanInteractionEffectKind::None:
+		return false;
+	case RuntimeGameplayAsciiSourcePlanInteractionEffectKind::InspectText:
+		effect = inspectTextInteractionEffect(EffectTargetId(authored), authored.text);
+		return true;
+	case RuntimeGameplayAsciiSourcePlanInteractionEffectKind::ToggleTarget:
+		effect = toggleTargetInteractionEffect(
+			EffectTargetId(authored),
+			authored.enabledValue);
+		return true;
+	case RuntimeGameplayAsciiSourcePlanInteractionEffectKind::EmitEvent:
+		effect = emitInteractionEventEffect(EffectTargetId(authored), authored.eventId);
+		return true;
+	case RuntimeGameplayAsciiSourcePlanInteractionEffectKind::PickupItem:
+		effect = pickupItemInteractionEffect(EffectTargetId(authored), authored.dropId);
+		return true;
+	case RuntimeGameplayAsciiSourcePlanInteractionEffectKind::Unknown:
+		return false;
+	}
+	return false;
+}
+
+bool PromoteInteractionState(
+	const RuntimeGameplayAsciiSourcePlan &sourcePlan,
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult &result,
+	RuntimeInteractionState &interaction)
+{
+	std::vector<InteractionTarget2D> targets;
+	std::vector<InteractionEffectEntry2D> effectEntries;
+	targets.reserve(sourcePlan.authoredInteractionTargets.size());
+	effectEntries.reserve(sourcePlan.authoredInteractionTargets.size());
+
+	for (const RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget &authored :
+		sourcePlan.authoredInteractionTargets) {
+		targets.push_back(InteractionTargetFromAuthoredTarget(authored));
+
+		InteractionEffect2D effect;
+		if (EffectFromAuthoredTarget(authored, effect)) {
+			effectEntries.push_back({ authored.targetId, { effect } });
+		}
+	}
+
+	result.interactionTargetRegistry =
+		InteractionTarget2DRegistryBuilder {}.build(targets);
+	if (!result.interactionTargetRegistry.built) {
+		for (const InteractionTarget2DRegistryIssue &issue :
+			result.interactionTargetRegistry.issues) {
+			AddIssue(result, InteractionTargetIssue(issue));
+		}
+		return false;
+	}
+
+	interaction.targets = result.interactionTargetRegistry.registry;
+
+	if (!effectEntries.empty()) {
+		result.interactionEffectCatalog =
+			InteractionEffectCatalog2DBuilder {}.build(effectEntries);
+		if (!result.interactionEffectCatalog.built) {
+			for (const InteractionEffectCatalog2DIssue &issue :
+				result.interactionEffectCatalog.issues) {
+				AddIssue(result, InteractionEffectIssue(issue));
+			}
+			return false;
+		}
+		interaction.effects = result.interactionEffectCatalog.catalog;
+	}
+
+	result.promotedInteractionTargetCount = interaction.targets.targets().size();
+	result.promotedInteractionEffectEntryCount = interaction.effects.entries().size();
+	return true;
+}
+
 bool PromoteRegionAiMap(
 	const RuntimeGameplayAsciiSourcePlan &sourcePlan,
 	const RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig &config,
@@ -742,6 +899,7 @@ RuntimeGameplayProfileScenarioDefinition BuildDefinition(
 	const NpcActorState2DRegistry &actors,
 	const NpcActorControlState2DRegistry &controls,
 	const PlayerAgentState *player,
+	const RuntimeInteractionState &interaction,
 	const std::vector<AuthoredFrameGroup> &frameGroups,
 	const std::vector<PlayerInputIntent2D> &defaultPlayerIntents,
 	const AiMap2D *promotedAiMap)
@@ -760,9 +918,11 @@ RuntimeGameplayProfileScenarioDefinition BuildDefinition(
 	}
 	definition.initialState.npcActors = actors;
 	definition.initialState.npcControls = controls;
+	definition.initialState.interaction = interaction;
 	definition.profileTraits = config.profileTraits;
 	const auto appendFrame = [&](RuntimeGameplayProfileScenarioFrameDefinition frame) {
 		frame.movementMap = promotedMap;
+		frame.interactionTargets = interaction.targets;
 		if (promotedAiMap != nullptr) {
 			frame.aiMap = *promotedAiMap;
 			frame.refreshAiMap = *promotedAiMap;
@@ -864,6 +1024,17 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConverter::convert(
 		return result;
 	}
 
+	RuntimeInteractionState interaction;
+	if (!PromoteInteractionState(sourcePlan, result, interaction)) {
+		result.issueCount = result.issues.size();
+		result.status = result.interactionTargetRegistryIssueCount > 0
+			? RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::
+				InteractionTargetRegistryInvalid
+			: RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::
+				InteractionEffectCatalogInvalid;
+		return result;
+	}
+
 	if (!PromoteRegionAiMap(sourcePlan, config, result)) {
 		result.issueCount = result.issues.size();
 		result.status =
@@ -878,6 +1049,7 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConverter::convert(
 		result.actorRegistry.registry,
 		result.controlRegistry.registry,
 		hasPlayer ? &player : nullptr,
+		interaction,
 		frameGroups,
 		defaultPlayerIntents,
 		config.promoteRegionAiMap ? &result.regionAiMapPromotion.aiMap : nullptr);

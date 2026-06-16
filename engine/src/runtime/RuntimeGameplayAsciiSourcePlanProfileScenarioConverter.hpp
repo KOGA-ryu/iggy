@@ -6,6 +6,8 @@
 #include "runtime/RuntimeGameplayAsciiSourcePlanRegionAiMapPromoter.hpp"
 #include "runtime/RuntimeGameplayAsciiSourcePlanValidator.hpp"
 #include "runtime/RuntimeGameplayProfileScenarioValidator.hpp"
+#include "scene/interaction/InteractionEffectCatalog2D.hpp"
+#include "scene/interaction/InteractionTarget2D.hpp"
 #include "scene/npc/NpcActorControlState2D.hpp"
 #include "scene/npc/NpcActorState2D.hpp"
 
@@ -21,6 +23,8 @@ enum class RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus {
 	AuthoredControlInvalid,
 	AuthoredPlayerCommandInvalid,
 	PlayerStartInvalid,
+	InteractionTargetRegistryInvalid,
+	InteractionEffectCatalogInvalid,
 	AiMapPromotionInvalid,
 	ProfileScenarioInvalid,
 };
@@ -35,6 +39,8 @@ enum class RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode {
 	DuplicateAuthoredControlActor,
 	AmbiguousAuthoredPlayerCommandFrame,
 	DuplicatePlayerStart,
+	InteractionTargetRegistryInvalid,
+	InteractionEffectCatalogInvalid,
 	AiMapPromotionInvalid,
 	ProfileScenarioInvalid,
 };
@@ -68,6 +74,8 @@ struct RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue {
 	RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand authoredPlayerCommand;
 	NpcActorState2DIssue actorIssue;
 	NpcActorControlState2DIssue controlIssue;
+	InteractionTarget2DRegistryIssue interactionTargetIssue;
+	InteractionEffectCatalog2DIssue interactionEffectIssue;
 	RuntimeGameplayAsciiSourcePlanRegionAiMapPromotionIssue aiMapPromotionIssue;
 	RuntimeGameplayProfileScenarioIssue profileIssue;
 };
@@ -79,6 +87,8 @@ struct RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult {
 	LevelTileMap promotedMap;
 	NpcActorState2DRegistryBuildResult actorRegistry;
 	NpcActorControlState2DRegistryBuildResult controlRegistry;
+	InteractionTarget2DRegistryBuildResult interactionTargetRegistry;
+	InteractionEffectCatalog2DBuildResult interactionEffectCatalog;
 	RuntimeGameplayAsciiSourcePlanRegionAiMapPromotionResult regionAiMapPromotion;
 	RuntimeGameplayProfileScenarioDefinition definition;
 	RuntimeGameplayProfileScenarioValidationResult profileValidation;
@@ -95,6 +105,8 @@ struct RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult {
 	std::size_t authoredControlIssueCount = 0;
 	std::size_t authoredPlayerCommandIssueCount = 0;
 	std::size_t playerStartIssueCount = 0;
+	std::size_t interactionTargetRegistryIssueCount = 0;
+	std::size_t interactionEffectCatalogIssueCount = 0;
 	std::size_t aiMapPromotionIssueCount = 0;
 	std::size_t profileScenarioIssueCount = 0;
 	std::size_t promotedActorCount = 0;
@@ -102,6 +114,8 @@ struct RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult {
 	std::size_t defaultControlCount = 0;
 	std::size_t authoredControlCount = 0;
 	std::size_t authoredPlayerCommandCount = 0;
+	std::size_t promotedInteractionTargetCount = 0;
+	std::size_t promotedInteractionEffectEntryCount = 0;
 	std::size_t promotedAiMapRegionCount = 0;
 	std::size_t unmappedAiMapRegionCount = 0;
 

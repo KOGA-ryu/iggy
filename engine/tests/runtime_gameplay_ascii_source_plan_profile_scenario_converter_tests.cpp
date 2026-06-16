@@ -144,6 +144,19 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand MovePlayerToT
 	return command;
 }
 
+iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget InteractionTarget(
+	const char *targetId = "target:door")
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget target;
+	target.targetId = Id(targetId);
+	target.kind = iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Door;
+	target.localTile = { true, 2, 1 };
+	target.localPosition = { true, 2.5, 1.5 };
+	target.radius = 1.25;
+	target.enabled = false;
+	return target;
+}
+
 iggy::runtime::RuntimeGameplayAsciiSourcePlanGlyphLegendEntry PlayerStartLegend(
 	char glyph = '@',
 	const char *playerId = "player:source-plan")
@@ -318,6 +331,108 @@ void TestTerrainActorAndDefaultControlPromotion()
 	Expect(control.moveMode == iggy::NpcMoveMode::Still, "default control should use still move mode");
 	Expect(!result.definition.initialState.session.hasPlayer, "source plan without player start should preserve no-player state");
 	Expect(result.promotedPlayerCount == 0, "source plan without player start should promote zero players");
+}
+
+void TestNoAuthoredInteractionTargetsPreservesEmptyInteractionState()
+{
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "source plan without interaction targets should convert");
+	Expect(result.promotedInteractionTargetCount == 0, "no authored targets should promote zero interaction targets");
+	Expect(result.promotedInteractionEffectEntryCount == 0, "no authored targets should promote zero interaction effects");
+	Expect(result.definition.initialState.interaction.targets.targets().empty(), "initial state should preserve empty interaction target registry");
+	Expect(result.definition.initialState.interaction.effects.entries().empty(), "initial state should preserve empty interaction effect catalog");
+	Expect(result.definition.frames.size() == 1 && result.definition.frames[0].interactionTargets.targets().empty(), "frame should preserve empty interaction target registry");
+}
+
+void TestAuthoredInteractionTargetPromotesRuntimeInteractionState()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget target =
+		InteractionTarget("target:door");
+	target.effect =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionEffectKind::ToggleTarget;
+	target.effectTargetId = Id("target:door");
+	target.enabledValue = true;
+	plan.authoredInteractionTargets = { target };
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "authored interaction target should convert");
+	Expect(result.promotedInteractionTargetCount == 1, "one authored interaction target should be counted");
+	Expect(result.promotedInteractionEffectEntryCount == 1, "one authored effect entry should be counted");
+	const iggy::InteractionTarget2D *promoted =
+		result.definition.initialState.interaction.targets.find(Id("target:door"));
+	Expect(promoted != nullptr, "initial state should contain authored interaction target");
+	if (promoted != nullptr) {
+		Expect(promoted->kind == iggy::InteractionTarget2DKind::Door, "interaction target kind should be promoted");
+		Expect(promoted->position.x == 2.5F && promoted->position.y == 1.5F, "interaction target position should prefer authored point");
+		Expect(promoted->radius == 1.25F, "interaction target radius should be promoted");
+		Expect(!promoted->enabled, "interaction target enabled flag should be promoted");
+	}
+	const std::vector<iggy::InteractionEffectEntry2D> &entries =
+		result.definition.initialState.interaction.effects.entries();
+	Expect(entries.size() == 1 && entries[0].targetId == Id("target:door"), "interaction effect catalog should contain target entry");
+	if (entries.size() == 1 && entries[0].effects.size() == 1) {
+		Expect(entries[0].effects[0].type == iggy::InteractionEffect2DType::ToggleTarget, "interaction effect should promote toggle target");
+		Expect(entries[0].effects[0].targetId == Id("target:door"), "interaction effect should preserve effect target id");
+		Expect(entries[0].effects[0].enabledValue, "interaction effect should preserve enabled value");
+	}
+	Expect(result.definition.frames.size() == 1 && result.definition.frames[0].interactionTargets.find(Id("target:door")) != nullptr, "frame should receive promoted interaction targets");
+}
+
+void TestDuplicateAuthoredInteractionTargetBlocksConversion()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.authoredInteractionTargets = {
+		InteractionTarget("target:duplicate"),
+		InteractionTarget("target:duplicate"),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(!result.ok(), "duplicate authored interaction target should fail conversion");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::SourcePlanInvalid, "duplicate authored interaction target should fail at source validation");
+	Expect(result.sourcePlanIssueCount == 1, "duplicate authored interaction target should mirror one source issue");
+	Expect(!result.converted, "duplicate authored interaction target should not mark conversion complete");
+	Expect(result.definition.frames.empty(), "duplicate authored interaction target should not publish profile scenario definition");
+}
+
+void TestInvalidAuthoredInteractionEffectBlocksConversion()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget target =
+		InteractionTarget("target:inspect");
+	target.effect =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionEffectKind::InspectText;
+	plan.authoredInteractionTargets = { target };
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(!result.ok(), "invalid authored interaction effect should fail conversion");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::InteractionEffectCatalogInvalid, "invalid authored interaction effect should report interaction effect catalog invalid");
+	Expect(result.interactionEffectCatalogIssueCount == 1, "invalid authored interaction effect should be counted");
+	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::InteractionEffectCatalogInvalid), "invalid authored interaction effect issue should be present");
+	Expect(result.issues[0].interactionEffectIssue.effectStatus == iggy::InteractionEffect2DStatus::MissingText, "invalid authored interaction effect should preserve missing text status");
+	Expect(result.definition.frames.empty(), "invalid authored interaction effect should not publish profile scenario definition");
 }
 
 void TestGridPlayerStartPromotesRuntimePlayer()
@@ -970,6 +1085,10 @@ int main()
 	TestValidSourcePlanRequiresFrameDefaults();
 	TestValidSourcePlanAndFrameDefaultsPublishValidatedProfileScenario();
 	TestTerrainActorAndDefaultControlPromotion();
+	TestNoAuthoredInteractionTargetsPreservesEmptyInteractionState();
+	TestAuthoredInteractionTargetPromotesRuntimeInteractionState();
+	TestDuplicateAuthoredInteractionTargetBlocksConversion();
+	TestInvalidAuthoredInteractionEffectBlocksConversion();
 	TestGridPlayerStartPromotesRuntimePlayer();
 	TestAnnotatedPlayerStartPromotesRuntimePlayer();
 	TestDuplicatePlayerStartBlocksConversion();
