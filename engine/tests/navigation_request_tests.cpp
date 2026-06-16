@@ -35,10 +35,10 @@ void TestNoMovementProducesNoRequest()
 		"...",
 		"...",
 	});
-	const iggy::npc_ai::NpcMovementPlan plan;
-	const iggy::navigation::NavigationRequest request = iggy::navigation::NavigationGridValidator {}.validate(map, plan);
+	const iggy::navigation::NavigationGridValidationInput input;
+	const iggy::navigation::NavigationRequest request = iggy::navigation::NavigationGridValidator {}.validate(map, input);
 
-	Expect(request.status == iggy::navigation::NavigationRequestStatus::None, "no movement plan should produce no navigation request");
+	Expect(request.status == iggy::navigation::NavigationRequestStatus::None, "input without navigation should produce no navigation request");
 	Expect(!request.accepted(), "no movement request should not be accepted");
 	Expect(!request.destination.has_value(), "no movement request should not keep a destination");
 }
@@ -49,8 +49,12 @@ void TestMissingDestinationIsRejected()
 		"...",
 		"...",
 	});
-	const iggy::npc_ai::NpcMovementPlan plan { iggy::npc_ai::NpcMovementPlanType::MoveTo, {} };
-	const iggy::navigation::NavigationRequest request = iggy::navigation::NavigationGridValidator {}.validate(map, plan);
+	const iggy::navigation::NavigationGridValidationInput input {
+		true,
+		false,
+		{},
+	};
+	const iggy::navigation::NavigationRequest request = iggy::navigation::NavigationGridValidator {}.validate(map, input);
 
 	Expect(request.status == iggy::navigation::NavigationRequestStatus::MissingDestination, "move plan without destination should be rejected");
 	Expect(!request.accepted(), "missing destination request should not be accepted");
@@ -62,8 +66,12 @@ void TestOutOfBoundsDestinationIsRejected()
 		"...",
 		"...",
 	});
-	const iggy::npc_ai::NpcMovementPlan plan { iggy::npc_ai::NpcMovementPlanType::MoveTo, iggy::Vec2 { 3.5F, 1.5F } };
-	const iggy::navigation::NavigationRequest request = iggy::navigation::NavigationGridValidator {}.validate(map, plan);
+	const iggy::navigation::NavigationGridValidationInput input {
+		true,
+		true,
+		{ 3.5F, 1.5F },
+	};
+	const iggy::navigation::NavigationRequest request = iggy::navigation::NavigationGridValidator {}.validate(map, input);
 
 	Expect(request.status == iggy::navigation::NavigationRequestStatus::DestinationOutOfBounds, "out-of-bounds destination should be rejected");
 	Expect(!request.accepted(), "out-of-bounds destination should not be accepted");
@@ -76,8 +84,12 @@ void TestBlockedDestinationIsRejected()
 		"...",
 		".#.",
 	});
-	const iggy::npc_ai::NpcMovementPlan plan { iggy::npc_ai::NpcMovementPlanType::MoveTo, iggy::Vec2 { 1.5F, 1.5F } };
-	const iggy::navigation::NavigationRequest request = iggy::navigation::NavigationGridValidator {}.validate(map, plan);
+	const iggy::navigation::NavigationGridValidationInput input {
+		true,
+		true,
+		{ 1.5F, 1.5F },
+	};
+	const iggy::navigation::NavigationRequest request = iggy::navigation::NavigationGridValidator {}.validate(map, input);
 
 	Expect(request.status == iggy::navigation::NavigationRequestStatus::DestinationBlocked, "blocked destination should be rejected");
 	Expect(!request.accepted(), "blocked destination should not be accepted");
@@ -91,8 +103,12 @@ void TestWalkableDestinationIsAccepted()
 		"...",
 		".#.",
 	});
-	const iggy::npc_ai::NpcMovementPlan plan { iggy::npc_ai::NpcMovementPlanType::MoveTo, iggy::Vec2 { 2.5F, 1.5F } };
-	const iggy::navigation::NavigationRequest request = iggy::navigation::NavigationGridValidator {}.validate(map, plan);
+	const iggy::navigation::NavigationGridValidationInput input {
+		true,
+		true,
+		{ 2.5F, 1.5F },
+	};
+	const iggy::navigation::NavigationRequest request = iggy::navigation::NavigationGridValidator {}.validate(map, input);
 
 	Expect(request.status == iggy::navigation::NavigationRequestStatus::Accepted, "walkable destination should be accepted");
 	Expect(request.accepted(), "accepted destination should report accepted");

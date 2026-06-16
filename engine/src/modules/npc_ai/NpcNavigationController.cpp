@@ -12,11 +12,21 @@ NpcNavigationResult Result(NpcNavigationStatus status, Vec2 position, navigation
 	return { status, position, requestStatus, pathStatus, followState };
 }
 
+navigation::NavigationGridValidationInput ValidationInput(const NpcMovementPlan &plan)
+{
+	navigation::NavigationGridValidationInput input;
+	input.requestsNavigation = plan.type != NpcMovementPlanType::None;
+	input.hasDestination = plan.destination.has_value();
+	if (plan.destination.has_value())
+		input.destination = *plan.destination;
+	return input;
+}
+
 } // namespace
 
 NpcNavigationResult NpcNavigationController::step(const LevelTileMap &map, Vec2 currentPosition, const NpcMovementPlan &plan, navigation::NavigationPathFollowState followState, float maxDistance) const
 {
-	const navigation::NavigationRequest request = navigation::NavigationGridValidator {}.validate(map, plan);
+	const navigation::NavigationRequest request = navigation::NavigationGridValidator {}.validate(map, ValidationInput(plan));
 	if (request.status == navigation::NavigationRequestStatus::None)
 		return Result(NpcNavigationStatus::NoMovement, currentPosition, request.status, navigation::NavigationPathStatus::NoPath, followState);
 	if (!request.accepted())

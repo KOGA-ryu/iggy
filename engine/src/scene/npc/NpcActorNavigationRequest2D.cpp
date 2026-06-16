@@ -1,6 +1,5 @@
 #include "scene/npc/NpcActorNavigationRequest2D.hpp"
 
-#include "modules/npc_ai/NpcMovementPlan.hpp"
 #include "servers/navigation/NavigationGridValidator.hpp"
 
 namespace iggy {
@@ -22,11 +21,12 @@ NpcActorNavigationRequest2D NpcActorNavigationRequestBuilder2D::build(
 		return result;
 	}
 
-	const npc_ai::NpcMovementPlan plan {
-		npc_ai::NpcMovementPlanType::MoveTo,
+	const navigation::NavigationGridValidationInput input {
+		true,
+		true,
 		route.targetPosition,
 	};
-	result.request = navigation::NavigationGridValidator {}.validate(map, plan);
+	result.request = navigation::NavigationGridValidator {}.validate(map, input);
 	if (!result.request.accepted()) {
 		result.status = NpcActorNavigationRequest2DStatus::NavigationRejected;
 		return result;

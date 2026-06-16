@@ -23,4 +23,10 @@ struct NavigationRequest {
 	[[nodiscard]] bool accepted() const;
 };
 
+struct NavigationGridValidationInput {
+	bool requestsNavigation = false;
+	bool hasDestination = false;
+	Vec2 destination;
+};
+
 } // namespace iggy::navigation

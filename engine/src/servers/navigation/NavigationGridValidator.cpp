@@ -18,14 +18,14 @@ bool NavigationRequest::accepted() const
 	return status == NavigationRequestStatus::Accepted;
 }
 
-NavigationRequest NavigationGridValidator::validate(const LevelTileMap &map, const npc_ai::NpcMovementPlan &plan) const
+NavigationRequest NavigationGridValidator::validate(const LevelTileMap &map, const NavigationGridValidationInput &input) const
 {
-	if (plan.type == npc_ai::NpcMovementPlanType::None)
+	if (!input.requestsNavigation)
 		return Request(NavigationRequestStatus::None);
-	if (!plan.destination.has_value())
+	if (!input.hasDestination)
 		return Request(NavigationRequestStatus::MissingDestination);
 
-	const Vec2 destination = *plan.destination;
+	const Vec2 destination = input.destination;
 	const int tileX = static_cast<int>(std::floor(destination.x));
 	const int tileY = static_cast<int>(std::floor(destination.y));
 	const LevelTile *tile = map.tileAt(tileX, tileY);
