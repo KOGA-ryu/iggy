@@ -1,8 +1,8 @@
 #pragma once
 
-#include "modules/npc_ai/NpcAgentRenderCommands.hpp"
 #include "scene/camera/CameraState.hpp"
 #include "scene/camera/CameraView.hpp"
+#include "scene/level/LevelNpcAgentRenderCommands.hpp"
 #include "scene/level/LevelRuntimeState.hpp"
 #include "scene/level/LevelTileDrawList.hpp"
 #include "scene/level/LevelTileRenderChunkCache.hpp"
@@ -17,7 +17,7 @@ namespace iggy {
 struct LevelRenderFrame2DConfig {
 	CameraViewConfig cameraView;
 	LevelTileRenderCommandConfig tileCommands;
-	npc_ai::NpcAgentRenderCommandConfig npcCommands;
+	LevelNpcAgentRenderCommandConfig npcCommands;
 	bool includeNpcCommands = true;
 	bool useTileChunkCache = false;
 	const LevelTileRenderChunkCache *tileChunkCache = nullptr;

@@ -24,7 +24,7 @@ LevelRenderFrame2DResult LevelRenderFrame2D::build(const LevelRuntimeState &stat
 	}
 
 	if (config.includeNpcCommands) {
-		const render::RenderCommandList2D npcCommands = npc_ai::NpcAgentRenderCommands {}.build(state.npcAgents, config.npcCommands);
+		const render::RenderCommandList2D npcCommands = LevelNpcAgentRenderCommands {}.build(state.npcAgents, config.npcCommands);
 		composer.append(result.commands, npcCommands);
 	}
 
