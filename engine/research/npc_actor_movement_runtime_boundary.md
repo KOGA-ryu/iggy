@@ -151,6 +151,37 @@ profile trait resolution. External ASCII/Edi/IDE tooling should target typed
 scenario definitions or profile scenario definitions first, then let engine
 validation/build/runner/ledger packets handle the in-engine transition.
 
+## External Authoring Boundary
+
+The current external-authoring bridge is deliberately parser-free:
+
+```text
+external tool-owned data
+  -> RuntimeGameplayScenarioAuthoringAdapter
+  -> RuntimeGameplayProfileScenarioDefinition
+```
+
+`RuntimeGameplayScenarioAuthoringAdapter` accepts an explicit profile scenario
+definition packet today. Unsupported sources remain unsupported, missing
+profile scenario payloads are reported as adapter diagnostics, and the adapter
+does not validate, build, run, or ledger the scenario. Those steps remain owned
+by the profile scenario validator/builder/runner path.
+
+`RuntimeGameplayAsciiScenarioPacket` is the typed in-memory ASCII authoring
+packet that future ASCII/Edi/IDE tooling can target before conversion. It
+preserves source id, grid rows, marker declarations, and optional frame
+declarations by value. `RuntimeGameplayAsciiScenarioPacketValidator` validates
+only the packet structure: empty row policy, rectangular grid shape, duplicate
+markers, actor marker ids, known marker kinds, and unknown grid markers.
+
+There is intentionally no ASCII-to-profile-scenario converter yet. The next
+authoring lane should convert a validated ASCII packet into
+`RuntimeGameplayProfileScenarioDefinition`, including explicit choices for map
+construction, actor/control placement, profile catalog references, movement
+maps, and frame scripting. Until that lane exists, ASCII packets are validated
+authoring data only, not gameplay state, parser output from files, UI data, or
+runtime orchestration input.
+
 The optional scene-only reservation lane can sit between prepared requests and
 frame apply:
 
