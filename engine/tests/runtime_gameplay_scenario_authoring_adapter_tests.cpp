@@ -118,6 +118,12 @@ void TestDefaultPacketIsUnsupported()
 	Expect(result.status == iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterStatus::UnsupportedSource, "default authoring packet should be unsupported");
 	Expect(!result.ok() && !result.converted, "unsupported authoring packet should not convert");
 	Expect(result.packet.source == packet.source, "unsupported authoring result should preserve packet");
+	Expect(result.hasIssues() && result.issueCount == 1, "unsupported authoring packet should report one issue");
+	if (!result.issues.empty()) {
+		Expect(result.issues[0].code == iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterIssueCode::UnsupportedSource, "unsupported authoring issue should use UnsupportedSource");
+		Expect(result.issues[0].source == iggy::runtime::RuntimeGameplayScenarioAuthoringSource::Unsupported, "unsupported authoring issue should preserve source");
+		Expect(!result.issues[0].hasProfileScenario, "unsupported authoring issue should preserve missing payload flag");
+	}
 }
 
 void TestDeclaredProfileScenarioWithoutPayloadIsInvalid()
@@ -129,6 +135,12 @@ void TestDeclaredProfileScenarioWithoutPayloadIsInvalid()
 
 	Expect(result.status == iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterStatus::InvalidPacket, "missing profile payload should be invalid");
 	Expect(!result.ok() && !result.converted, "invalid authoring packet should not convert");
+	Expect(result.hasIssues() && result.issueCount == 1, "missing profile payload should report one issue");
+	if (!result.issues.empty()) {
+		Expect(result.issues[0].code == iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterIssueCode::MissingProfileScenarioPayload, "missing profile payload issue should use MissingProfileScenarioPayload");
+		Expect(result.issues[0].source == iggy::runtime::RuntimeGameplayScenarioAuthoringSource::ProfileScenarioDefinition, "missing profile payload issue should preserve source");
+		Expect(!result.issues[0].hasProfileScenario, "missing profile payload issue should preserve payload flag");
+	}
 }
 
 void TestProfileScenarioPacketConvertsByValue()
@@ -142,6 +154,7 @@ void TestProfileScenarioPacketConvertsByValue()
 
 	Expect(result.ok(), "profile scenario authoring packet should convert");
 	Expect(result.status == iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterStatus::Converted, "profile scenario authoring packet should report converted");
+	Expect(!result.hasIssues() && result.issueCount == 0, "converted profile scenario should have no adapter issues");
 	Expect(result.profileScenario.scenarioId == Id("scenario:authoring"), "profile scenario authoring adapter should preserve scenario id");
 	Expect(result.profileScenario.frames.size() == 1, "profile scenario authoring adapter should preserve frames");
 	Expect(result.profileScenario.initialState.npcActors.actors.size() == 1, "profile scenario authoring adapter should preserve initial actors");
@@ -175,6 +188,9 @@ void TestUnsupportedSourceWithPayloadDoesNotConvert()
 
 	Expect(result.status == iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterStatus::UnsupportedSource, "unsupported source should not be converted even with payload");
 	Expect(result.profileScenario.frames.empty(), "unsupported source should not copy converted profile scenario");
+	Expect(result.hasIssues() && result.issueCount == 1, "unsupported source with payload should report one issue");
+	if (!result.issues.empty())
+		Expect(result.issues[0].hasProfileScenario, "unsupported source issue should preserve payload-present flag");
 }
 
 void TestAdapterDoesNotMutatePacket()
