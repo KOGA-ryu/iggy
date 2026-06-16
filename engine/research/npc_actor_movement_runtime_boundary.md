@@ -72,6 +72,12 @@ actor registry into ordinary scenario frame subjects, then uses the existing
 scenario definition/runner path. It is not a parser, UI, save/load hook, or
 live per-frame profile resolver.
 
+`RuntimeGameplayProfileScenarioRunner` is the convenience path over that
+authoring packet. It validates the profile scenario, lowers it to a normal
+scenario, runs the existing scenario runner, and projects the scenario ledger.
+It is not a separate gameplay loop and does not add profile-specific frame
+runner orchestration.
+
 `RuntimeNpcAiMovementPlannedFrameRunner` is the explicit sequence companion for
 that AI+movement path. It repeats the one-frame helper over caller-supplied
 frames for simulations, tests, and tools while keeping raw/policy gameplay
