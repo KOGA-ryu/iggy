@@ -5,6 +5,10 @@
 #include <iostream>
 #include <string>
 
+#include "runtime/RuntimeGameplayAsciiSourcePlanProfileScenarioConverter.hpp"
+#include "runtime/RuntimeGameplayProfileScenarioValidator.hpp"
+#include "support/LevelMapFixtures.hpp"
+
 #ifndef IGGY_TEST_FIXTURE_DIR
 #error "IGGY_TEST_FIXTURE_DIR must point at engine/tests/fixtures/runtime/ascii_source_plan"
 #endif
@@ -66,6 +70,50 @@ bool HasIssue(
 		}
 	}
 	return false;
+}
+
+iggy::ResourceId Id(const char *value)
+{
+	return iggy::ResourceId(value);
+}
+
+iggy::NpcTraitSet Traits()
+{
+	iggy::NpcTraitSet traits;
+	traits.strength = 10;
+	return traits;
+}
+
+iggy::NpcAiProfileTraitCatalog Catalog(std::vector<iggy::NpcAiProfileTraitEntry> entries)
+{
+	const iggy::NpcAiProfileTraitCatalogBuildResult result =
+		iggy::NpcAiProfileTraitCatalogBuilder {}.build(entries);
+	Expect(result.built, "file reader fixture acceptance profile catalog should build");
+	return result.catalog;
+}
+
+iggy::runtime::RuntimeGameplayProfileScenarioFrameDefinition DefaultFrame()
+{
+	iggy::runtime::RuntimeGameplayProfileScenarioFrameDefinition frame;
+	frame.hasFrameId = true;
+	frame.frameId = Id("frame:fixture");
+	frame.movementMap = iggy::test::MapFromRows({
+		"#######",
+		"#.....#",
+		"#.....#",
+		"#######",
+	});
+	frame.movementMap.id = Id("level:fixture-default");
+	return frame;
+}
+
+iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig ConverterConfig()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config;
+	config.hasDefaultFrame = true;
+	config.defaultFrame = DefaultFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+	return config;
 }
 
 std::string ValidToml()
@@ -222,6 +270,46 @@ void TestSemanticInvalidFixturePreservesNestedSourceValidation()
 	Expect(result.text.sourcePlanIssueCount > 0, "semantic invalid fixture should preserve source validation issue count");
 }
 
+void TestValidFixtureConvertsToValidatedProfileScenario()
+{
+	const std::filesystem::path path = FixturePath("valid_guard_room.toml");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult read =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(path);
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConverterConfig();
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult conversion =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConverter {}.convert(
+			read.text.plan,
+			config);
+	const iggy::runtime::RuntimeGameplayProfileScenarioValidationResult validation =
+		iggy::runtime::RuntimeGameplayProfileScenarioValidator {}.validate(conversion.definition);
+
+	Expect(read.ok(), "fixture acceptance should read valid fixture");
+	Expect(conversion.ok(), "fixture source plan should convert to profile scenario");
+	Expect(conversion.converted, "fixture conversion should mark converted");
+	Expect(validation.ok(), "fixture converted profile scenario should validate");
+	Expect(conversion.definition.scenarioId == Id("scenario:guard-room"), "fixture conversion should preserve scenario id");
+	Expect(conversion.promotedMap.width == 7 && conversion.promotedMap.height == 4, "fixture conversion should promote map dimensions");
+	Expect(conversion.promotedMap.tileAt(0, 0) != nullptr && !conversion.promotedMap.tileAt(0, 0)->walkable, "fixture wall should promote as blocked");
+	Expect(conversion.promotedMap.tileAt(1, 1) != nullptr && conversion.promotedMap.tileAt(1, 1)->walkable, "fixture actor glyph should promote as walkable");
+	Expect(conversion.definition.frames.size() == 1, "fixture conversion should publish default frame");
+	if (!conversion.definition.frames.empty()) {
+		Expect(conversion.definition.frames[0].movementMap.width == conversion.promotedMap.width, "fixture frame movement map should use promoted map width");
+		Expect(conversion.definition.frames[0].movementMap.height == conversion.promotedMap.height, "fixture frame movement map should use promoted map height");
+	}
+	Expect(conversion.definition.initialState.npcActors.actors.size() == 1, "fixture conversion should promote one actor");
+	Expect(conversion.definition.initialState.npcControls.entries.size() == 1, "fixture conversion should create one default control");
+	if (!conversion.definition.initialState.npcActors.actors.empty()) {
+		const iggy::NpcActorState2D &actor =
+			conversion.definition.initialState.npcActors.actors.front();
+		Expect(actor.npcId == Id("npc:guard"), "fixture actor should preserve npc id");
+		Expect(actor.aiProfileId == Id("profile:guard"), "fixture actor should preserve profile id");
+		Expect(actor.position.x == 1.5F && actor.position.y == 1.5F, "fixture actor should preserve local position");
+	}
+	Expect(read.text.plan.sourceId == Id("scenario:guard-room"), "file reader should only expose source plan for converter");
+}
+
 } // namespace
 
 int main()
@@ -234,6 +322,7 @@ int main()
 	TestValidFixtureReadsAndParses();
 	TestCorruptFixturePreservesNestedParserDiagnostics();
 	TestSemanticInvalidFixturePreservesNestedSourceValidation();
+	TestValidFixtureConvertsToValidatedProfileScenario();
 
 	CleanupTempRoot();
 
