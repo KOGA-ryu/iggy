@@ -2,7 +2,6 @@
 #include <vector>
 
 #include "core/resource/ResourceId.hpp"
-#include "modules/npc_ai/NpcAgentRenderCommands.hpp"
 #include "scene/camera/CameraView.hpp"
 #include "scene/level/LevelTileDrawList.hpp"
 #include "scene/level/LevelTileRenderCommands.hpp"
@@ -59,14 +58,6 @@ void ExpectNoTexturePayload(const iggy::render::RenderCommand2D &command, const 
 void ExpectTexturePayload(const iggy::render::RenderCommand2D &command, const iggy::ResourceId &textureId, iggy::Rect2 sourceRect, const char *message)
 {
 	Expect(command.texture.textureId == textureId && SameRect(command.texture.sourceRect, sourceRect) && command.texture.hasSourceRect, message);
-}
-
-iggy::npc_ai::NpcAgentEntry Agent(const char *id, iggy::Vec2 position)
-{
-	iggy::npc_ai::NpcAgentEntry agent;
-	agent.id = iggy::ResourceId { id };
-	agent.state.position = position;
-	return agent;
 }
 
 void TestEmptyTargetAndEmptySourceRemainEmpty()
@@ -255,11 +246,9 @@ void TestTileAndNpcRenderCommandsComposeWithNormalizedOrder()
 	const iggy::LevelTileDrawListResult drawList = iggy::LevelTileDrawList {}.build(map, visible.tiles);
 	const iggy::render::RenderCommandList2D tileCommands = iggy::LevelTileRenderCommands {}.build(drawList, { { FloorMaterial, WallMaterial }, 1 });
 
-	const std::vector<iggy::npc_ai::NpcAgentEntry> agents {
-		Agent("npc:one", { 0.5F, 0.5F }),
-	};
-	const iggy::npc_ai::NpcAgentRenderCommandConfig npcConfig { NpcMaterial, { 1.0F, 1.0F }, { 0.5F, 0.5F }, 8 };
-	const iggy::render::RenderCommandList2D npcCommands = iggy::npc_ai::NpcAgentRenderCommands {}.build(agents, npcConfig);
+	const iggy::render::RenderCommandList2D npcCommands = List({
+		Command({ { 0.0F, 0.0F }, { 1.0F, 1.0F } }, NpcMaterial, 8, 42),
+	});
 
 	const iggy::render::RenderCommandList2D merged = iggy::render::RenderCommandList2DComposer {}.merged(tileCommands, npcCommands);
 
