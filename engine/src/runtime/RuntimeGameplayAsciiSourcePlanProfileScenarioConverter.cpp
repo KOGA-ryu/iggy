@@ -1,11 +1,16 @@
 #include "runtime/RuntimeGameplayAsciiSourcePlanProfileScenarioConverter.hpp"
 
+#include "scene/player/PlayerInputIntent2D.hpp"
+
 namespace iggy::runtime {
 namespace {
 
-struct AuthoredControlFrameGroup {
+struct AuthoredFrameGroup {
 	ResourceId frameId;
+	bool hasDeclarationIndex = false;
+	std::size_t declarationIndex = 0;
 	std::vector<NpcActorControlState2D> controls;
+	std::vector<PlayerInputIntent2D> playerIntents;
 };
 
 void AddIssue(
@@ -31,6 +36,10 @@ void AddIssue(
 	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::UnknownAuthoredControlActor:
 	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::DuplicateAuthoredControlActor:
 		++result.authoredControlIssueCount;
+		break;
+	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::
+		AmbiguousAuthoredPlayerCommandFrame:
+		++result.authoredPlayerCommandIssueCount;
 		break;
 	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::AiMapPromotionInvalid:
 		++result.aiMapPromotionIssueCount;
@@ -96,6 +105,16 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue AuthoredControlIssu
 	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue issue;
 	issue.code = code;
 	issue.authoredControl = control;
+	return issue;
+}
+
+RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue AuthoredPlayerCommandIssue(
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode code,
+	const RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand &command)
+{
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue issue;
+	issue.code = code;
+	issue.authoredPlayerCommand = command;
 	return issue;
 }
 
@@ -336,11 +355,45 @@ bool ReplaceControl(
 	return false;
 }
 
+AuthoredFrameGroup &FindOrCreateFrameGroup(
+	std::vector<AuthoredFrameGroup> &frameGroups,
+	const ResourceId &frameId,
+	bool hasDeclarationIndex,
+	std::size_t declarationIndex)
+{
+	for (AuthoredFrameGroup &candidate : frameGroups) {
+		if (candidate.frameId == frameId) {
+			return candidate;
+		}
+	}
+
+	AuthoredFrameGroup group;
+	group.frameId = frameId;
+	group.hasDeclarationIndex = hasDeclarationIndex;
+	group.declarationIndex = declarationIndex;
+
+	if (!hasDeclarationIndex) {
+		frameGroups.push_back(group);
+		return frameGroups.back();
+	}
+
+	for (auto iterator = frameGroups.begin(); iterator != frameGroups.end();
+		++iterator) {
+		if (iterator->hasDeclarationIndex &&
+			declarationIndex < iterator->declarationIndex) {
+			return *frameGroups.insert(iterator, group);
+		}
+	}
+
+	frameGroups.push_back(group);
+	return frameGroups.back();
+}
+
 bool ApplyAuthoredControls(
 	const RuntimeGameplayAsciiSourcePlan &sourcePlan,
 	const std::vector<NpcActorState2D> &actors,
 	std::vector<NpcActorControlState2D> &controls,
-	std::vector<AuthoredControlFrameGroup> &frameGroups,
+	std::vector<AuthoredFrameGroup> &frameGroups,
 	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult &result)
 {
 	result.authoredControlCount = sourcePlan.authoredControls.size();
@@ -356,20 +409,14 @@ bool ApplyAuthoredControls(
 		}
 
 		if (authored.hasFrameId) {
-			AuthoredControlFrameGroup *group = nullptr;
-			for (AuthoredControlFrameGroup &candidate : frameGroups) {
-				if (candidate.frameId == authored.frameId) {
-					group = &candidate;
-					break;
-				}
-			}
-			if (group == nullptr) {
-				frameGroups.push_back({ authored.frameId, {} });
-				group = &frameGroups.back();
-			}
+			AuthoredFrameGroup &group = FindOrCreateFrameGroup(
+				frameGroups,
+				authored.frameId,
+				authored.hasDeclarationIndex,
+				authored.declarationIndex);
 
 			bool duplicate = false;
-			for (const NpcActorControlState2D &control : group->controls) {
+			for (const NpcActorControlState2D &control : group.controls) {
 				if (control.npcId == authored.npcId) {
 					duplicate = true;
 					break;
@@ -381,10 +428,10 @@ bool ApplyAuthoredControls(
 					AuthoredControlIssue(
 						RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::DuplicateAuthoredControlActor,
 						authored));
-				continue;
+					continue;
 			}
 
-			group->controls.push_back(ControlFromAuthoredControl(authored));
+			group.controls.push_back(ControlFromAuthoredControl(authored));
 			continue;
 		}
 
@@ -411,10 +458,77 @@ bool ApplyAuthoredControls(
 	return result.authoredControlIssueCount == 0;
 }
 
+PlayerInputIntent2D PlayerIntentFromAuthoredCommand(
+	const RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand &command)
+{
+	switch (command.command) {
+	case RuntimeGameplayAsciiSourcePlanPlayerCommandKind::MoveToTile:
+		return playerMoveToTileIntent(command.targetTile);
+	case RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Unknown:
+		return {};
+	}
+	return {};
+}
+
+bool SourceHasFrameIdAuthoredFrames(
+	const RuntimeGameplayAsciiSourcePlan &sourcePlan)
+{
+	for (const RuntimeGameplayAsciiSourcePlanAuthoredControl &control :
+		sourcePlan.authoredControls) {
+		if (control.hasFrameId) {
+			return true;
+		}
+	}
+	for (const RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand &command :
+		sourcePlan.authoredPlayerCommands) {
+		if (command.hasFrameId) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool ApplyAuthoredPlayerCommands(
+	const RuntimeGameplayAsciiSourcePlan &sourcePlan,
+	std::vector<PlayerInputIntent2D> &defaultPlayerIntents,
+	std::vector<AuthoredFrameGroup> &frameGroups,
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult &result)
+{
+	result.authoredPlayerCommandCount =
+		sourcePlan.authoredPlayerCommands.size();
+	const bool hasFrameIdAuthoredFrames = SourceHasFrameIdAuthoredFrames(sourcePlan);
+	for (const RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand &command :
+		sourcePlan.authoredPlayerCommands) {
+		if (command.hasFrameId) {
+			AuthoredFrameGroup &group = FindOrCreateFrameGroup(
+				frameGroups,
+				command.frameId,
+				command.hasDeclarationIndex,
+				command.declarationIndex);
+			group.playerIntents.push_back(PlayerIntentFromAuthoredCommand(command));
+			continue;
+		}
+
+		if (hasFrameIdAuthoredFrames) {
+			AddIssue(
+				result,
+				AuthoredPlayerCommandIssue(
+					RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::
+						AmbiguousAuthoredPlayerCommandFrame,
+					command));
+			continue;
+		}
+
+		defaultPlayerIntents.push_back(PlayerIntentFromAuthoredCommand(command));
+	}
+
+	return result.authoredPlayerCommandIssueCount == 0;
+}
+
 bool PromoteActorsAndControls(
 	const RuntimeGameplayAsciiSourcePlan &sourcePlan,
 	const RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig &config,
-	std::vector<AuthoredControlFrameGroup> &frameGroups,
+	std::vector<AuthoredFrameGroup> &frameGroups,
 	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult &result)
 {
 	std::vector<NpcActorState2D> actors;
@@ -484,7 +598,8 @@ RuntimeGameplayProfileScenarioDefinition BuildDefinition(
 	const LevelTileMap &promotedMap,
 	const NpcActorState2DRegistry &actors,
 	const NpcActorControlState2DRegistry &controls,
-	const std::vector<AuthoredControlFrameGroup> &frameGroups,
+	const std::vector<AuthoredFrameGroup> &frameGroups,
+	const std::vector<PlayerInputIntent2D> &defaultPlayerIntents,
 	const AiMap2D *promotedAiMap)
 {
 	RuntimeGameplayProfileScenarioDefinition definition;
@@ -504,13 +619,22 @@ RuntimeGameplayProfileScenarioDefinition BuildDefinition(
 	};
 
 	if (frameGroups.empty()) {
-		appendFrame(config.defaultFrame);
+		RuntimeGameplayProfileScenarioFrameDefinition frame = config.defaultFrame;
+		frame.playerFrame.playerIntents.insert(
+			frame.playerFrame.playerIntents.end(),
+			defaultPlayerIntents.begin(),
+			defaultPlayerIntents.end());
+		appendFrame(frame);
 	} else {
-		for (const AuthoredControlFrameGroup &group : frameGroups) {
+		for (const AuthoredFrameGroup &group : frameGroups) {
 			RuntimeGameplayProfileScenarioFrameDefinition frame = config.defaultFrame;
 			frame.hasFrameId = true;
 			frame.frameId = group.frameId;
 			frame.controlOverrides = group.controls;
+			frame.playerFrame.playerIntents.insert(
+				frame.playerFrame.playerIntents.end(),
+				group.playerIntents.begin(),
+				group.playerIntents.end());
 			appendFrame(frame);
 		}
 	}
@@ -556,7 +680,7 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConverter::convert(
 		return result;
 	}
 
-	std::vector<AuthoredControlFrameGroup> frameGroups;
+	std::vector<AuthoredFrameGroup> frameGroups;
 	if (!PromoteActorsAndControls(sourcePlan, config, frameGroups, result)) {
 		result.issueCount = result.issues.size();
 		result.status = result.authoredControlIssueCount > 0
@@ -564,6 +688,18 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConverter::convert(
 			: !result.actorRegistry.built
 			? RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::ActorRegistryInvalid
 			: RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::ControlRegistryInvalid;
+		return result;
+	}
+
+	std::vector<PlayerInputIntent2D> defaultPlayerIntents;
+	if (!ApplyAuthoredPlayerCommands(
+			sourcePlan,
+			defaultPlayerIntents,
+			frameGroups,
+			result)) {
+		result.issueCount = result.issues.size();
+		result.status = RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::
+			AuthoredPlayerCommandInvalid;
 		return result;
 	}
 
@@ -581,6 +717,7 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConverter::convert(
 		result.actorRegistry.registry,
 		result.controlRegistry.registry,
 		frameGroups,
+		defaultPlayerIntents,
 		config.promoteRegionAiMap ? &result.regionAiMapPromotion.aiMap : nullptr);
 	result.profileValidation = RuntimeGameplayProfileScenarioValidator {}.validate(result.definition);
 	if (!result.profileValidation.ok()) {

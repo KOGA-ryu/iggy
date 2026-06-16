@@ -122,6 +122,28 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredControl SeekingControl(
 	return control;
 }
 
+iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand MovePlayerToTile(
+	int x,
+	int y,
+	const char *frameId = nullptr,
+	bool hasDeclarationIndex = false,
+	std::size_t declarationIndex = 0)
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand command;
+	command.hasFrameId = frameId != nullptr;
+	if (frameId != nullptr)
+		command.frameId = Id(frameId);
+	command.command =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanPlayerCommandKind::MoveToTile;
+	command.hasTargetTile = true;
+	command.hasTargetTileX = true;
+	command.hasTargetTileY = true;
+	command.targetTile = { x, y };
+	command.hasDeclarationIndex = hasDeclarationIndex;
+	command.declarationIndex = declarationIndex;
+	return command;
+}
+
 iggy::NpcTraitSet Traits()
 {
 	iggy::NpcTraitSet traits;
@@ -313,6 +335,129 @@ void TestFrameIdAuthoredControlsCreateScenarioFramesInFirstSeenOrder()
 	}
 	Expect(result.definition.initialState.npcControls.entries.size() == 1, "frame-id authored controls should keep initial controls valid");
 	Expect(result.definition.initialState.npcControls.entries[0].objective.type == iggy::NpcObjectiveType::Wait, "frame-id authored controls should not replace initial controls");
+}
+
+void TestNoFrameAuthoredPlayerCommandCreatesDefaultFrameIntent()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.authoredPlayerCommands = {
+		MovePlayerToTile(3, 1),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "no-frame authored player command should convert into default frame");
+	Expect(result.authoredPlayerCommandCount == 1, "authored player command should be counted");
+	Expect(result.definition.frames.size() == 1, "no-frame authored player command should keep default one-frame path");
+	Expect(result.definition.frames[0].playerFrame.playerIntents.size() == 1, "default frame should receive one player intent");
+	const iggy::PlayerInputIntent2D &intent =
+		result.definition.frames[0].playerFrame.playerIntents[0];
+	Expect(intent.type == iggy::PlayerInputIntent2DType::MoveToTile, "authored player command should become move-to-tile intent");
+	Expect(intent.tile.x == 3 && intent.tile.y == 1, "authored player command should preserve target tile");
+	Expect(result.definition.frames[0].controlOverrides.empty(), "no-frame player command should not invent NPC overrides");
+}
+
+void TestSharedFrameIdAuthoredPlayerCommandAndNpcControlShareFrame()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.authoredControls = {
+		SeekingControl("npc:guard", { 2.5F, 1.5F }, "frame:shared"),
+	};
+	plan.authoredControls[0].hasDeclarationIndex = true;
+	plan.authoredControls[0].declarationIndex = 0;
+	plan.authoredPlayerCommands = {
+		MovePlayerToTile(3, 1, "frame:shared", true, 1),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "shared-frame authored player command and NPC control should convert");
+	Expect(result.definition.frames.size() == 1, "shared frame id should produce one frame");
+	if (!result.definition.frames.empty()) {
+		Expect(result.definition.frames[0].frameId == Id("frame:shared"), "shared frame should preserve frame id");
+		Expect(result.definition.frames[0].controlOverrides.size() == 1, "shared frame should carry NPC control override");
+		Expect(result.definition.frames[0].playerFrame.playerIntents.size() == 1, "shared frame should carry player intent");
+		Expect(result.definition.frames[0].playerFrame.playerIntents[0].tile.x == 3, "shared frame player intent should preserve tile");
+	}
+}
+
+void TestPlayerOnlyFrameIdCreatesScenarioFrame()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.authoredPlayerCommands = {
+		MovePlayerToTile(3, 1, "frame:player-only"),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "player-only frame id should convert");
+	Expect(result.definition.frames.size() == 1, "player-only frame id should produce one frame");
+	if (!result.definition.frames.empty()) {
+		Expect(result.definition.frames[0].hasFrameId && result.definition.frames[0].frameId == Id("frame:player-only"), "player-only frame should preserve frame id");
+		Expect(result.definition.frames[0].controlOverrides.empty(), "player-only frame should not invent NPC overrides");
+		Expect(result.definition.frames[0].playerFrame.playerIntents.size() == 1, "player-only frame should publish player intent");
+	}
+}
+
+void TestAuthoredFrameGroupsPreserveCrossFamilyDeclarationOrder()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.authoredPlayerCommands = {
+		MovePlayerToTile(3, 1, "frame:player-first", true, 0),
+	};
+	plan.authoredControls = {
+		SeekingControl("npc:guard", { 2.5F, 1.5F }, "frame:npc-second"),
+	};
+	plan.authoredControls[0].hasDeclarationIndex = true;
+	plan.authoredControls[0].declarationIndex = 1;
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "cross-family authored frame groups should convert");
+	Expect(result.definition.frames.size() == 2, "cross-family authored frame groups should produce two frames");
+	if (result.definition.frames.size() == 2) {
+		Expect(result.definition.frames[0].frameId == Id("frame:player-first"), "player command declaration should be first frame");
+		Expect(result.definition.frames[1].frameId == Id("frame:npc-second"), "NPC control declaration should be second frame");
+	}
+}
+
+void TestNoFramePlayerCommandMixedWithFrameIdGroupFails()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.authoredControls = {
+		SeekingControl("npc:guard", { 2.5F, 1.5F }, "frame:npc"),
+	};
+	plan.authoredPlayerCommands = {
+		MovePlayerToTile(3, 1),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(!result.ok(), "no-frame player command mixed with frame-id groups should fail deterministically");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::AuthoredPlayerCommandInvalid, "ambiguous player command should report authored player command invalid");
+	Expect(result.authoredPlayerCommandIssueCount == 1, "ambiguous player command should be counted");
+	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::AmbiguousAuthoredPlayerCommandFrame), "ambiguous player command issue should be present");
+	Expect(result.definition.frames.empty(), "ambiguous player command should not publish runnable definition");
 }
 
 void TestDuplicateAuthoredControlActorWithinFrameBlocksConversion()
@@ -726,6 +871,11 @@ int main()
 	TestTerrainActorAndDefaultControlPromotion();
 	TestAuthoredControlReplacesDefaultControlForPromotedActor();
 	TestFrameIdAuthoredControlsCreateScenarioFramesInFirstSeenOrder();
+	TestNoFrameAuthoredPlayerCommandCreatesDefaultFrameIntent();
+	TestSharedFrameIdAuthoredPlayerCommandAndNpcControlShareFrame();
+	TestPlayerOnlyFrameIdCreatesScenarioFrame();
+	TestAuthoredFrameGroupsPreserveCrossFamilyDeclarationOrder();
+	TestNoFramePlayerCommandMixedWithFrameIdGroupFails();
 	TestDuplicateAuthoredControlActorWithinFrameBlocksConversion();
 	TestSameActorAcrossDifferentFrameIdsIsAllowed();
 	TestUnknownAuthoredControlActorBlocksConversion();
