@@ -10,8 +10,11 @@
 #include "runtime/RuntimeGameplayProfileScenarioRunner.hpp"
 #include "runtime/RuntimeGameplayProfileScenarioValidator.hpp"
 #include "runtime/RuntimeGameplayScenarioAuthoringAdapter.hpp"
+#include "scene/ai/NpcObjective.hpp"
 #include "scene/debug/SceneAsciiCanvas2D.hpp"
 #include "scene/level/TileCoord.hpp"
+#include "scene/npc/NpcBehaviorState.hpp"
+#include "scene/npc/NpcMoveMode.hpp"
 #include "support/LevelMapFixtures.hpp"
 
 #ifndef IGGY_TEST_FIXTURE_DIR
@@ -121,6 +124,18 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig Con
 	return config;
 }
 
+iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig MovingConverterConfig()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConverterConfig();
+	config.hasDefaultControl = true;
+	config.defaultControl.objective = iggy::moveToNpcObjective({ 2.5F, 1.5F });
+	config.defaultControl.behavior = iggy::seekingNpcBehaviorState({ 2.5F, 1.5F });
+	config.defaultControl.moveMode = iggy::NpcMoveMode::Walk;
+	config.defaultFrame.movementConfig.pathStep.baseStepDistance = 1.0F;
+	return config;
+}
+
 char GlyphForActor(
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlan &plan,
 	const iggy::ResourceId &npcId)
@@ -133,6 +148,22 @@ char GlyphForActor(
 	return 'N';
 }
 
+char BaseDebugGlyphForSource(
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlan &plan,
+	char glyph)
+{
+	for (const iggy::runtime::RuntimeGameplayAsciiSourcePlanGlyphLegendEntry &entry :
+		plan.legend) {
+		if (entry.glyph != glyph)
+			continue;
+		if (entry.kind == iggy::runtime::RuntimeGameplayAsciiSourcePlanGlyphKind::Actor
+			|| entry.scenarioMarkerKind == iggy::runtime::RuntimeGameplayAsciiScenarioMarkerKind::Actor) {
+			return '.';
+		}
+	}
+	return glyph;
+}
+
 std::vector<std::string> FinalDebugRows(
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlan &plan,
 	const iggy::runtime::RuntimeGameplayState &state)
@@ -143,7 +174,11 @@ std::vector<std::string> FinalDebugRows(
 	for (std::size_t row = 0; row < plan.grid.rows.size(); ++row) {
 		const std::string &text = plan.grid.rows[row];
 		for (std::size_t column = 0; column < text.size(); ++column) {
-			canvas = iggy::setSceneAsciiCanvas2DPoint(canvas, column, row, text[column]).canvas;
+			canvas = iggy::setSceneAsciiCanvas2DPoint(
+				canvas,
+				column,
+				row,
+				BaseDebugGlyphForSource(plan, text[column])).canvas;
 		}
 	}
 
@@ -431,6 +466,50 @@ void TestValidFixtureRunsScenarioAndRendersFinalDebugRows()
 	Expect(rows == expected, "vertical path should render final ASCII debug rows");
 }
 
+void TestValidFixtureRunsScenarioAndMovesNpcFromDefaultControl()
+{
+	const std::filesystem::path path = FixturePath("valid_guard_room.toml");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult read =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(path);
+	iggy::runtime::RuntimeGameplayScenarioAuthoringPacket packet;
+	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
+	packet.hasAsciiSourcePlan = true;
+	packet.asciiSourcePlan = read.text.plan;
+	iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig adapterConfig;
+	adapterConfig.hasAsciiSourcePlanProfileScenarioConfig = true;
+	adapterConfig.asciiSourcePlanProfileScenario = MovingConverterConfig();
+
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
+		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(
+			packet,
+			adapterConfig);
+	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
+		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
+	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
+	const std::vector<std::string> expected {
+		"#######",
+		"#.A..@#",
+		"#.....#",
+		"#######",
+	};
+
+	Expect(read.ok(), "movement vertical path should read checked-in TOML fixture");
+	Expect(adapter.ok(), "movement vertical path should adapt parsed source plan to profile scenario");
+	Expect(adapter.asciiSourcePlanConversion.ok(), "movement vertical path should preserve source-plan conversion success");
+	Expect(run.ran(), "movement vertical path should run converted profile scenario");
+	Expect(run.frameCount == 1, "movement vertical path should execute one scenario frame");
+	Expect(run.npcMovementPlannedRequestCount == 1, "movement vertical path should plan one NPC movement request");
+	Expect(run.npcMovedCount == 1, "movement vertical path should move one NPC");
+	Expect(run.npcActorsChanged, "movement vertical path should mark NPC actors changed");
+	Expect(run.state.npcActors.actors.size() == 1, "movement vertical path should preserve one final NPC actor");
+	if (!run.state.npcActors.actors.empty()) {
+		const iggy::NpcActorState2D &actor = run.state.npcActors.actors.front();
+		Expect(actor.npcId == Id("npc:guard"), "movement vertical path final actor should preserve id");
+		Expect(actor.position.x == 2.5F && actor.position.y == 1.5F, "movement vertical path should move actor one tile");
+	}
+	Expect(rows == expected, "movement vertical path should render moved final ASCII debug rows");
+}
+
 } // namespace
 
 int main()
@@ -446,6 +525,7 @@ int main()
 	TestValidFixtureConvertsToValidatedProfileScenario();
 	TestValidFixtureFeedsAuthoringAdapterThroughParsedSourcePlan();
 	TestValidFixtureRunsScenarioAndRendersFinalDebugRows();
+	TestValidFixtureRunsScenarioAndMovesNpcFromDefaultControl();
 
 	CleanupTempRoot();
 
