@@ -735,6 +735,54 @@ RuntimeGameplayAsciiSourcePlanTomlReadStatus StatusForParserIssues(
 	return RuntimeGameplayAsciiSourcePlanTomlReadStatus::SyntaxInvalid;
 }
 
+RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
+	const RuntimeGameplayAsciiSourcePlanIssue &sourceIssue)
+{
+	RuntimeGameplayAsciiSourcePlanTomlReadIssue issue;
+	issue.code = RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SourcePlanInvalid;
+	issue.detail = "parsed TOML source plan failed source-plan validation";
+	issue.sourceIssue = sourceIssue;
+
+	switch (sourceIssue.code) {
+	case RuntimeGameplayAsciiSourcePlanIssueCode::EmptyGlyph:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::DuplicateGlyph:
+		issue.table = "legend";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "glyph";
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AnnotatedCellOutOfBounds:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AnnotatedCellGlyphMismatch:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::DuplicateAnnotatedCellId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::EmptyActorMarkerId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::EmptyProfileMarkerId:
+		issue.table = "cells";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::InvalidRegionBounds:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::RegionOutOfBounds:
+		issue.table = "regions";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::EmptyRows:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::GridDimensionMismatch:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::RaggedRow:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::UnknownGridGlyph:
+		issue.table = "grid";
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsafeNoClaims:
+		issue.table = "no_claims";
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsafePromotionPolicy:
+		issue.table = "promotion";
+		break;
+	}
+
+	return issue;
+}
+
 } // namespace
 
 bool RuntimeGameplayAsciiSourcePlanTomlReadResult::ok() const
@@ -1173,12 +1221,11 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 	}
 
 	result.sourceValidation = RuntimeGameplayAsciiSourcePlanValidator {}.validate(result.plan);
-	result.sourcePlanIssueCount = result.sourceValidation.issueCount;
 	if (!result.sourceValidation.ok()) {
-		RuntimeGameplayAsciiSourcePlanTomlReadIssue issue;
-		issue.code = RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SourcePlanInvalid;
-		issue.detail = "parsed TOML source plan failed source-plan validation";
-		AddIssue(result, issue);
+		for (const RuntimeGameplayAsciiSourcePlanIssue &sourceIssue :
+			result.sourceValidation.issues) {
+			AddIssue(result, MirroredSourcePlanIssue(sourceIssue));
+		}
 		result.status = RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid;
 		return result;
 	}

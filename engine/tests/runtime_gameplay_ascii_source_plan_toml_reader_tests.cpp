@@ -46,6 +46,20 @@ const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *FindIssue(
 	return nullptr;
 }
 
+const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *FindSourceIssue(
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult &result,
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode code)
+{
+	for (const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue &issue :
+		result.issues) {
+		if (issue.code == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SourcePlanInvalid &&
+			issue.sourceIssue.code == code) {
+			return &issue;
+		}
+	}
+	return nullptr;
+}
+
 iggy::ResourceId Id(const char *value)
 {
 	return iggy::ResourceId(value);
@@ -305,7 +319,15 @@ void TestRaggedRowsSurfaceSourcePlanValidation()
 	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "ragged parsed rows should report source plan invalid");
 	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SourcePlanInvalid), "ragged parsed rows should add source-plan issue");
 	Expect(!result.sourceValidation.ok(), "ragged parsed rows should preserve nested validation failure");
-	Expect(result.sourcePlanIssueCount > 0, "ragged parsed rows should mirror nested source validation issue count");
+	Expect(result.sourcePlanIssueCount == result.sourceValidation.issueCount, "ragged parsed rows should mirror one TOML issue per nested source issue");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::RaggedRow);
+	Expect(issue != nullptr, "ragged parsed rows should mirror ragged row issue");
+	if (issue != nullptr) {
+		Expect(issue->line == 0, "mirrored ragged row issue should use synthetic line zero");
+		Expect(issue->table == "grid", "mirrored ragged row issue should report grid table");
+		Expect(!issue->hasTableIndex, "mirrored ragged row issue should not report table index");
+	}
 }
 
 void TestInvalidBackgroundGlyphFailsAsTypeInvalid()
@@ -352,7 +374,34 @@ void TestUnsafeNoClaimsSurfaceSourcePlanValidation()
 	Expect(!result.ok(), "unsafe no-claim should fail source validation");
 	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "unsafe no-claim should report source invalid");
 	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SourcePlanInvalid), "unsafe no-claim should add source-plan issue");
-	Expect(result.sourcePlanIssueCount > 0, "unsafe no-claim should mirror nested source validation issues");
+	Expect(result.sourcePlanIssueCount == result.sourceValidation.issueCount, "unsafe no-claim should mirror one TOML issue per nested source issue");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsafeNoClaims);
+	Expect(issue != nullptr, "unsafe no-claim should mirror unsafe no-claims source issue");
+	if (issue != nullptr) {
+		Expect(issue->line == 0, "mirrored unsafe no-claim should use synthetic line zero");
+		Expect(issue->table == "no_claims", "mirrored unsafe no-claim should report no_claims table");
+		Expect(!issue->hasTableIndex, "mirrored unsafe no-claim should not report repeated table index");
+	}
+}
+
+void TestUnsafePromotionSurfaceSourcePlanValidation()
+{
+	std::string text = RootGridLegendToml();
+	const std::size_t start = text.find("runtime_execution = false");
+	text.replace(start, std::string("runtime_execution = false").size(), "runtime_execution = true");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result = Read(text);
+
+	Expect(!result.ok(), "unsafe promotion should fail source validation");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "unsafe promotion should report source invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsafePromotionPolicy);
+	Expect(issue != nullptr, "unsafe promotion should mirror unsafe promotion source issue");
+	if (issue != nullptr) {
+		Expect(issue->line == 0, "mirrored unsafe promotion should use synthetic line zero");
+		Expect(issue->table == "promotion", "mirrored unsafe promotion should report promotion table");
+		Expect(!issue->hasTableIndex, "mirrored unsafe promotion should not report repeated table index");
+	}
 }
 
 void TestDuplicateLegendGlyphSurfacesSourcePlanValidation()
@@ -365,6 +414,18 @@ void TestDuplicateLegendGlyphSurfacesSourcePlanValidation()
 	Expect(!result.ok(), "duplicate legend glyph should fail source validation");
 	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "duplicate legend glyph should report source invalid");
 	Expect(result.sourceValidation.duplicateGlyphCount == 1, "duplicate legend glyph should preserve nested duplicate count");
+	Expect(result.sourcePlanIssueCount == result.sourceValidation.issueCount, "duplicate legend glyph should mirror one TOML issue per nested source issue");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::DuplicateGlyph);
+	Expect(issue != nullptr, "duplicate legend glyph should mirror duplicate source issue");
+	if (issue != nullptr) {
+		Expect(issue->line == 0, "mirrored duplicate legend glyph should use synthetic line zero");
+		Expect(issue->table == "legend", "mirrored duplicate legend glyph should report legend table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 1, "mirrored duplicate legend glyph should report second legend index");
+		Expect(issue->key == "glyph", "mirrored duplicate legend glyph should report glyph key");
+		Expect(issue->sourceIssue.index == 1 && issue->sourceIssue.firstIndex == 0, "mirrored duplicate legend glyph should copy source indexes");
+		Expect(issue->sourceIssue.glyph == 'A', "mirrored duplicate legend glyph should copy source glyph");
+	}
 }
 
 void TestUnknownLegendEnumFailsAsTypeInvalid()
@@ -437,7 +498,16 @@ void TestCellGlyphMismatchSurfacesSourcePlanValidation()
 	Expect(!result.ok(), "cell glyph mismatch should fail source validation");
 	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "cell glyph mismatch should report source invalid");
 	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SourcePlanInvalid), "cell glyph mismatch should add source-plan issue");
-	Expect(result.sourcePlanIssueCount > 0, "cell glyph mismatch should preserve nested source issues");
+	Expect(result.sourcePlanIssueCount == result.sourceValidation.issueCount, "cell glyph mismatch should mirror one TOML issue per nested source issue");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AnnotatedCellGlyphMismatch);
+	Expect(issue != nullptr, "cell glyph mismatch should mirror source issue");
+	if (issue != nullptr) {
+		Expect(issue->table == "cells", "mirrored cell glyph mismatch should report cells table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "mirrored cell glyph mismatch should report first cell index");
+		Expect(issue->sourceIssue.row == 1 && issue->sourceIssue.column == 1, "mirrored cell glyph mismatch should copy row/column");
+		Expect(issue->sourceIssue.glyph == '@', "mirrored cell glyph mismatch should copy annotated glyph");
+	}
 }
 
 void TestCellOutOfBoundsSurfacesSourcePlanValidation()
@@ -449,7 +519,15 @@ void TestCellOutOfBoundsSurfacesSourcePlanValidation()
 
 	Expect(!result.ok(), "out-of-bounds cell should fail source validation");
 	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "out-of-bounds cell should report source invalid");
-	Expect(result.sourcePlanIssueCount > 0, "out-of-bounds cell should preserve nested source issues");
+	Expect(result.sourcePlanIssueCount == result.sourceValidation.issueCount, "out-of-bounds cell should mirror one TOML issue per nested source issue");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AnnotatedCellOutOfBounds);
+	Expect(issue != nullptr, "out-of-bounds cell should mirror source issue");
+	if (issue != nullptr) {
+		Expect(issue->table == "cells", "mirrored out-of-bounds cell should report cells table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "mirrored out-of-bounds cell should report first cell index");
+		Expect(issue->sourceIssue.column == 8, "mirrored out-of-bounds cell should copy source column");
+	}
 }
 
 void TestWrongTypedCellFieldFailsAsTypeInvalid()
@@ -494,7 +572,15 @@ void TestInvalidRegionBoundsSurfaceSourcePlanValidation()
 
 	Expect(!result.ok(), "out-of-bounds region should fail source validation");
 	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "out-of-bounds region should report source invalid");
-	Expect(result.sourcePlanIssueCount > 0, "out-of-bounds region should preserve nested source issues");
+	Expect(result.sourcePlanIssueCount == result.sourceValidation.issueCount, "out-of-bounds region should mirror one TOML issue per nested source issue");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::RegionOutOfBounds);
+	Expect(issue != nullptr, "out-of-bounds region should mirror source issue");
+	if (issue != nullptr) {
+		Expect(issue->table == "regions", "mirrored out-of-bounds region should report regions table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "mirrored out-of-bounds region should report first region index");
+		Expect(issue->sourceIssue.row == 5, "mirrored out-of-bounds region should copy max row");
+	}
 }
 
 void TestUnsupportedRegionKeyReportsContext()
@@ -569,6 +655,7 @@ int main()
 	TestInvalidBackgroundGlyphFailsAsTypeInvalid();
 	TestNoClaimsPromotionAndLegendParse();
 	TestUnsafeNoClaimsSurfaceSourcePlanValidation();
+	TestUnsafePromotionSurfaceSourcePlanValidation();
 	TestDuplicateLegendGlyphSurfacesSourcePlanValidation();
 	TestUnknownLegendEnumFailsAsTypeInvalid();
 	TestInvalidLegendGlyphFailsAsTypeInvalid();
