@@ -1,0 +1,69 @@
+format_id = "iggy:ascii-source-plan"
+version = 1
+source_id = "scenario:moving-guard-room"
+source_ref = "authoring:checked-in-moving-fixture"
+
+[grid]
+width = 7
+height = 4
+background = "."
+rows = [
+  "#######",
+  "#A...@#",
+  "#.....#",
+  "#######",
+]
+
+[no_claims]
+runtime_truth = false
+gameplay_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[promotion]
+ready = false
+runtime_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[[legend]]
+glyph = "A"
+kind = "actor"
+role_id = "role:npc"
+role_tags = ["tag:guard"]
+maps_to_scenario_marker = true
+scenario_marker_kind = "actor"
+
+[[legend]]
+glyph = "@"
+kind = "player_start"
+role_id = "role:player-start"
+maps_to_scenario_marker = true
+scenario_marker_kind = "player_start"
+
+[[cells]]
+id = "cell:guard"
+row = 1
+column = 1
+glyph = "A"
+local_tile = { x = 1, y = 1 }
+local_position = { x = 1.5, y = 1.5 }
+cell_bounds = { min_x = 1.0, min_y = 1.0, max_x = 2.0, max_y = 2.0 }
+role_tags = ["tag:guard"]
+marker_id = "npc:guard"
+profile_id = "profile:guard"
+
+[[regions]]
+id = "region:room"
+min_row = 0
+min_column = 0
+max_row = 3
+max_column = 6
+role_tags = ["tag:room"]
+
+[[frame_controls]]
+frame_id = "frame:fixture"
+npc = "npc:guard"
+behavior = "seeking"
+move_mode = "walk"
+target = { x = 2.5, y = 1.5 }

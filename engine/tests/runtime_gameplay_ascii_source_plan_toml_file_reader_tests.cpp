@@ -10,11 +10,8 @@
 #include "runtime/RuntimeGameplayProfileScenarioRunner.hpp"
 #include "runtime/RuntimeGameplayProfileScenarioValidator.hpp"
 #include "runtime/RuntimeGameplayScenarioAuthoringAdapter.hpp"
-#include "scene/ai/NpcObjective.hpp"
 #include "scene/debug/SceneAsciiCanvas2D.hpp"
 #include "scene/level/TileCoord.hpp"
-#include "scene/npc/NpcBehaviorState.hpp"
-#include "scene/npc/NpcMoveMode.hpp"
 #include "support/LevelMapFixtures.hpp"
 
 #ifndef IGGY_TEST_FIXTURE_DIR
@@ -121,18 +118,6 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig Con
 	config.hasDefaultFrame = true;
 	config.defaultFrame = DefaultFrame();
 	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
-	return config;
-}
-
-iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig MovingConverterConfig()
-{
-	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
-		ConverterConfig();
-	config.hasDefaultControl = true;
-	config.defaultControl.objective = iggy::moveToNpcObjective({ 2.5F, 1.5F });
-	config.defaultControl.behavior = iggy::seekingNpcBehaviorState({ 2.5F, 1.5F });
-	config.defaultControl.moveMode = iggy::NpcMoveMode::Walk;
-	config.defaultFrame.movementConfig.pathStep.baseStepDistance = 1.0F;
 	return config;
 }
 
@@ -466,9 +451,9 @@ void TestValidFixtureRunsScenarioAndRendersFinalDebugRows()
 	Expect(rows == expected, "vertical path should render final ASCII debug rows");
 }
 
-void TestValidFixtureRunsScenarioAndMovesNpcFromDefaultControl()
+void TestMovingFixtureRunsScenarioAndMovesNpcFromAuthoredControl()
 {
-	const std::filesystem::path path = FixturePath("valid_guard_room.toml");
+	const std::filesystem::path path = FixturePath("moving_guard_room.toml");
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult read =
 		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(path);
 	iggy::runtime::RuntimeGameplayScenarioAuthoringPacket packet;
@@ -477,7 +462,7 @@ void TestValidFixtureRunsScenarioAndMovesNpcFromDefaultControl()
 	packet.asciiSourcePlan = read.text.plan;
 	iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig adapterConfig;
 	adapterConfig.hasAsciiSourcePlanProfileScenarioConfig = true;
-	adapterConfig.asciiSourcePlanProfileScenario = MovingConverterConfig();
+	adapterConfig.asciiSourcePlanProfileScenario = ConverterConfig();
 
 	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
 		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(
@@ -494,8 +479,12 @@ void TestValidFixtureRunsScenarioAndMovesNpcFromDefaultControl()
 	};
 
 	Expect(read.ok(), "movement vertical path should read checked-in TOML fixture");
+	Expect(read.text.plan.sourceId == Id("scenario:moving-guard-room"), "movement fixture should preserve source id");
+	Expect(read.text.plan.authoredControlCount() == 1, "movement fixture should parse one authored control");
 	Expect(adapter.ok(), "movement vertical path should adapt parsed source plan to profile scenario");
 	Expect(adapter.asciiSourcePlanConversion.ok(), "movement vertical path should preserve source-plan conversion success");
+	Expect(adapter.asciiSourcePlanConversion.authoredControlCount == 1, "movement conversion should consume authored control");
+	Expect(!adapterConfig.asciiSourcePlanProfileScenario.hasDefaultControl, "movement fixture should not rely on C++ default-control movement");
 	Expect(run.ran(), "movement vertical path should run converted profile scenario");
 	Expect(run.frameCount == 1, "movement vertical path should execute one scenario frame");
 	Expect(run.npcMovementPlannedRequestCount == 1, "movement vertical path should plan one NPC movement request");
@@ -525,7 +514,7 @@ int main()
 	TestValidFixtureConvertsToValidatedProfileScenario();
 	TestValidFixtureFeedsAuthoringAdapterThroughParsedSourcePlan();
 	TestValidFixtureRunsScenarioAndRendersFinalDebugRows();
-	TestValidFixtureRunsScenarioAndMovesNpcFromDefaultControl();
+	TestMovingFixtureRunsScenarioAndMovesNpcFromAuthoredControl();
 
 	CleanupTempRoot();
 
