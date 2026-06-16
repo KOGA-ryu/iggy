@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <vector>
 
+#include "runtime/RuntimeGameplayAsciiSourcePlanRegionAiMapPromoter.hpp"
 #include "runtime/RuntimeGameplayAsciiSourcePlanValidator.hpp"
 #include "runtime/RuntimeGameplayProfileScenarioValidator.hpp"
 #include "scene/npc/NpcActorControlState2D.hpp"
@@ -17,6 +18,7 @@ enum class RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus {
 	MissingFrameDefaults,
 	ActorRegistryInvalid,
 	ControlRegistryInvalid,
+	AiMapPromotionInvalid,
 	ProfileScenarioInvalid,
 };
 
@@ -26,6 +28,7 @@ enum class RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode {
 	MissingFrameDefaults,
 	ActorRegistryInvalid,
 	ControlRegistryInvalid,
+	AiMapPromotionInvalid,
 	ProfileScenarioInvalid,
 };
 
@@ -43,6 +46,8 @@ struct RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig {
 	ResourceId defaultGoalId;
 	bool hasDefaultControl = false;
 	NpcActorControlState2D defaultControl;
+	bool promoteRegionAiMap = false;
+	RuntimeGameplayAsciiSourcePlanRegionAiMapPromotionConfig regionAiMap;
 };
 
 struct RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue {
@@ -54,6 +59,7 @@ struct RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue {
 	RuntimeGameplayAsciiSourcePlanIssue sourceIssue;
 	NpcActorState2DIssue actorIssue;
 	NpcActorControlState2DIssue controlIssue;
+	RuntimeGameplayAsciiSourcePlanRegionAiMapPromotionIssue aiMapPromotionIssue;
 	RuntimeGameplayProfileScenarioIssue profileIssue;
 };
 
@@ -64,6 +70,7 @@ struct RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult {
 	LevelTileMap promotedMap;
 	NpcActorState2DRegistryBuildResult actorRegistry;
 	NpcActorControlState2DRegistryBuildResult controlRegistry;
+	RuntimeGameplayAsciiSourcePlanRegionAiMapPromotionResult regionAiMapPromotion;
 	RuntimeGameplayProfileScenarioDefinition definition;
 	RuntimeGameplayProfileScenarioValidationResult profileValidation;
 	std::vector<RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue> issues;
@@ -76,9 +83,12 @@ struct RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult {
 	std::size_t missingFrameDefaultsCount = 0;
 	std::size_t actorRegistryIssueCount = 0;
 	std::size_t controlRegistryIssueCount = 0;
+	std::size_t aiMapPromotionIssueCount = 0;
 	std::size_t profileScenarioIssueCount = 0;
 	std::size_t promotedActorCount = 0;
 	std::size_t defaultControlCount = 0;
+	std::size_t promotedAiMapRegionCount = 0;
+	std::size_t unmappedAiMapRegionCount = 0;
 
 	[[nodiscard]] bool ok() const;
 };

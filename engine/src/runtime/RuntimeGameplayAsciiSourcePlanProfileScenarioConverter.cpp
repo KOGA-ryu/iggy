@@ -23,6 +23,9 @@ void AddIssue(
 	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::ControlRegistryInvalid:
 		++result.controlRegistryIssueCount;
 		break;
+	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::AiMapPromotionInvalid:
+		++result.aiMapPromotionIssueCount;
+		break;
 	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::ProfileScenarioInvalid:
 		++result.profileScenarioIssueCount;
 		break;
@@ -83,6 +86,16 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue ProfileIssue(
 	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue issue;
 	issue.code = RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::ProfileScenarioInvalid;
 	issue.profileIssue = profileIssue;
+	return issue;
+}
+
+RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue AiMapPromotionIssue(
+	const RuntimeGameplayAsciiSourcePlanRegionAiMapPromotionIssue &aiMapPromotionIssue)
+{
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue issue;
+	issue.code =
+		RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::AiMapPromotionInvalid;
+	issue.aiMapPromotionIssue = aiMapPromotionIssue;
 	return issue;
 }
 
@@ -267,6 +280,32 @@ bool PromoteActorsAndControls(
 	return true;
 }
 
+bool PromoteRegionAiMap(
+	const RuntimeGameplayAsciiSourcePlan &sourcePlan,
+	const RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig &config,
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult &result)
+{
+	if (!config.promoteRegionAiMap) {
+		return true;
+	}
+
+	result.regionAiMapPromotion =
+		RuntimeGameplayAsciiSourcePlanRegionAiMapPromoter {}.promote(
+			sourcePlan,
+			config.regionAiMap);
+	result.promotedAiMapRegionCount = result.regionAiMapPromotion.mappedRegionCount;
+	result.unmappedAiMapRegionCount = result.regionAiMapPromotion.unmappedRegionCount;
+	if (result.regionAiMapPromotion.ok()) {
+		return true;
+	}
+
+	for (const RuntimeGameplayAsciiSourcePlanRegionAiMapPromotionIssue &issue :
+		result.regionAiMapPromotion.issues) {
+		AddIssue(result, AiMapPromotionIssue(issue));
+	}
+	return false;
+}
+
 RuntimeGameplayProfileScenarioDefinition BuildDefinition(
 	const RuntimeGameplayAsciiSourcePlan &sourcePlan,
 	const RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig &config,
@@ -331,6 +370,13 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConverter::convert(
 		result.status = !result.actorRegistry.built
 			? RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::ActorRegistryInvalid
 			: RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::ControlRegistryInvalid;
+		return result;
+	}
+
+	if (!PromoteRegionAiMap(sourcePlan, config, result)) {
+		result.issueCount = result.issues.size();
+		result.status =
+			RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::AiMapPromotionInvalid;
 		return result;
 	}
 

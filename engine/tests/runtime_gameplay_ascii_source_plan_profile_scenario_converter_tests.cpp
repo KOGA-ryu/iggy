@@ -76,6 +76,36 @@ iggy::runtime::RuntimeGameplayProfileScenarioFrameDefinition DefaultFrame()
 	return frame;
 }
 
+iggy::runtime::RuntimeGameplayAsciiSourcePlanRegion Region(
+	const char *id,
+	std::size_t minRow,
+	std::size_t minColumn,
+	std::size_t maxRow,
+	std::size_t maxColumn,
+	std::vector<iggy::ResourceId> roleTags)
+{
+	return {
+		true,
+		Id(id),
+		minRow,
+		minColumn,
+		maxRow,
+		maxColumn,
+		roleTags,
+	};
+}
+
+iggy::runtime::RuntimeGameplayAsciiSourcePlanRegionAiMapPolicy AiMapPolicy(
+	const char *roleTag,
+	std::vector<iggy::ResourceId> nodeTags = { Id("tag:patrol") })
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanRegionAiMapPolicy policy;
+	policy.roleTag = Id(roleTag);
+	policy.nodeTags = nodeTags;
+	policy.patrolWeight = 1.0F;
+	return policy;
+}
+
 iggy::NpcTraitSet Traits()
 {
 	iggy::NpcTraitSet traits;
@@ -396,6 +426,100 @@ void TestConvertedDefaultProfileScenarioRunsThroughProfileRunner()
 	Expect(converted.definition.initialState.session.level.map.width == run.state.session.level.map.width, "runner should preserve promoted session map");
 }
 
+void TestDefaultConfigLeavesRegionAiMapPromotionDisabled()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.regions = {
+		Region("region:patrol", 1, 2, 1, 3, { Id("role:patrol") }),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "default config with regions should still convert");
+	Expect(!result.config.promoteRegionAiMap, "default config should keep region ai map promotion disabled");
+	Expect(result.regionAiMapPromotion.regionCount == 0, "disabled region ai map promotion should not run promoter");
+	Expect(result.promotedAiMapRegionCount == 0 && result.unmappedAiMapRegionCount == 0, "disabled region ai map promotion should not mirror counts");
+	Expect(result.definition.frames.size() == 1, "disabled region ai map promotion should preserve default frame");
+	Expect(result.definition.frames[0].aiMap.nodes.empty(), "disabled region ai map promotion should not alter frame ai map");
+}
+
+void TestEnabledRegionAiMapPromotionPreservesNestedResult()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.regions = {
+		Region("region:patrol", 1, 2, 1, 3, { Id("role:patrol") }),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+	config.promoteRegionAiMap = true;
+	config.regionAiMap.policies = {
+		AiMapPolicy("role:patrol", { Id("tag:patrol"), Id("plain") }),
+	};
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "enabled region ai map promotion should convert");
+	Expect(result.regionAiMapPromotion.ok(), "enabled region ai map promotion should preserve nested success");
+	Expect(result.promotedAiMapRegionCount == 1 && result.unmappedAiMapRegionCount == 0, "enabled region ai map promotion should mirror counts");
+	Expect(result.regionAiMapPromotion.aiMap.nodes.size() == 1, "enabled region ai map promotion should preserve ai map node");
+	Expect(result.regionAiMapPromotion.aiMap.nodes[0].id == Id("region:patrol"), "enabled region ai map promotion should preserve exact region id");
+	Expect(result.regionAiMapPromotion.aiMap.nodes[0].tags == std::vector<iggy::ResourceId>({ Id("tag:patrol"), Id("plain") }), "enabled region ai map promotion should preserve configured node tags");
+	Expect(result.definition.frames[0].aiMap.nodes.empty(), "slice 2 should not wire promoted ai map into frames yet");
+}
+
+void TestInvalidRegionAiMapPromotionBlocksConversion()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.regions = {
+		Region("region:dupe", 1, 2, 1, 2, { Id("role:patrol") }),
+		Region("region:dupe", 1, 3, 1, 3, { Id("role:patrol") }),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+	config.promoteRegionAiMap = true;
+	config.regionAiMap.policies = { AiMapPolicy("role:patrol") };
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(!result.ok(), "invalid promoted ai map should block conversion");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::AiMapPromotionInvalid, "invalid promoted ai map should report ai map promotion status");
+	Expect(!result.regionAiMapPromotion.ok(), "invalid promoted ai map should preserve nested failure");
+	Expect(result.aiMapPromotionIssueCount == 1, "invalid promoted ai map should mirror issue count");
+	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::AiMapPromotionInvalid), "invalid promoted ai map should add conversion issue");
+	Expect(result.definition.frames.empty(), "invalid promoted ai map should not publish profile scenario definition");
+}
+
+void TestUnmappedRegionDoesNotBlockConversionByDefault()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.regions = {
+		Region("region:patrol", 1, 2, 1, 2, { Id("role:patrol") }),
+		Region("region:ignored", 1, 3, 1, 3, { Id("role:ignored") }),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+	config.promoteRegionAiMap = true;
+	config.regionAiMap.policies = { AiMapPolicy("role:patrol") };
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "unmapped ai map region should not block conversion by default");
+	Expect(result.regionAiMapPromotion.ok(), "unmapped ai map region should preserve nested non-fatal success");
+	Expect(result.promotedAiMapRegionCount == 1 && result.unmappedAiMapRegionCount == 1, "unmapped ai map region should mirror mapped/unmapped counts");
+	Expect(result.issueCount == 0, "unmapped ai map region should not become conversion issue by default");
+	Expect(result.regionAiMapPromotion.issues.size() == 1, "unmapped ai map region should remain inspectable in nested diagnostics");
+}
+
 } // namespace
 
 int main()
@@ -412,5 +536,9 @@ int main()
 	TestMissingProfileCatalogSurfacesProfileScenarioValidationFailure();
 	TestFrameUsesPromotedMapAndDoesNotInventScripts();
 	TestConvertedDefaultProfileScenarioRunsThroughProfileRunner();
+	TestDefaultConfigLeavesRegionAiMapPromotionDisabled();
+	TestEnabledRegionAiMapPromotionPreservesNestedResult();
+	TestInvalidRegionAiMapPromotionBlocksConversion();
+	TestUnmappedRegionDoesNotBlockConversionByDefault();
 	return Failures;
 }
