@@ -174,6 +174,15 @@ declarations by value. `RuntimeGameplayAsciiScenarioPacketValidator` validates
 only the packet structure: empty row policy, rectangular grid shape, duplicate
 markers, actor marker ids, known marker kinds, and unknown grid markers.
 
+`RuntimeGameplayAsciiSourcePlan` is the richer in-memory source-plan packet
+that sits before the typed scenario packet. It preserves `formatId`, `version`,
+`sourceId`, `sourceRef`, grid dimensions/rows, glyph legend, annotated cells,
+regions, `noClaims`, and `promotionPolicy`. `RuntimeGameplayAsciiSourcePlanValidator`
+checks the source-plan structure and verifies it remains safe authoring data.
+`RuntimeGameplayAsciiSourcePlanToPacketAdapter` lowers only representable facts
+into `RuntimeGameplayAsciiScenarioPacket` and reports unmappable authoring data
+instead of inventing gameplay semantics.
+
 The next ASCII source-plan lane should follow the local Gameguy precedent as a
 semantic pattern, not as a file-format precedent. Gameguy's useful anchors are:
 
@@ -204,7 +213,15 @@ ASCII source plan
 Source plans remain authoring evidence. They are not runtime truth, do not
 execute gameplay, do not parse files, and do not promote into gameplay/profile
 scenario definitions until a later explicit conversion lane defines those
-semantics.
+semantics. The current validated in-memory chain stops at:
+
+```text
+RuntimeGameplayAsciiSourcePlan
+  -> RuntimeGameplayAsciiSourcePlanValidator
+  -> RuntimeGameplayAsciiSourcePlanToPacketAdapter
+  -> RuntimeGameplayAsciiScenarioPacket
+  -> RuntimeGameplayAsciiScenarioPacketValidator
+```
 
 There is intentionally no ASCII-to-profile-scenario converter yet. The next
 authoring lane should convert a validated ASCII packet into
