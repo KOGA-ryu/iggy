@@ -776,6 +776,30 @@ RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
 			issue.line = locations.regionTableLines[sourceIssue.index];
 		}
 		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlMissingNpcId:
+		issue.table = "frame_controls";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "npc";
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlUnsupportedBehavior:
+		issue.table = "frame_controls";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "behavior";
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlUnsupportedMoveMode:
+		issue.table = "frame_controls";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "move_mode";
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlMissingTarget:
+		issue.table = "frame_controls";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "target";
+		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::EmptyRows:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::GridDimensionMismatch:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::RaggedRow:

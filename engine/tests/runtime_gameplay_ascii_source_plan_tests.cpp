@@ -155,6 +155,26 @@ void TestRegionsAndNoClaimFlagsAreExplicit()
 	Expect(!plan.safeForAuthoring(), "profile scenario conversion permission should make source plan unsafe for this boundary");
 }
 
+void TestAuthoredControlsPreserveMovementFactsAndExactIds()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan;
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredControl control;
+	control.hasFrameId = true;
+	control.frameId = Id("frame:one");
+	control.npcId = Id("npc:guard");
+	control.behavior = iggy::runtime::RuntimeGameplayAsciiSourcePlanControlBehavior::Seeking;
+	control.moveMode = iggy::runtime::RuntimeGameplayAsciiSourcePlanControlMoveMode::Walk;
+	control.targetPosition = { true, 2.5, 1.5 };
+	plan.authoredControls.push_back(control);
+
+	Expect(plan.authoredControlCount() == 1, "source plan should preserve authored control count");
+	Expect(plan.authoredControls[0].hasFrameId && plan.authoredControls[0].frameId == Id("frame:one"), "authored control should preserve optional frame id");
+	Expect(plan.authoredControls[0].npcId == Id("npc:guard"), "authored control should preserve exact npc id");
+	Expect(plan.authoredControls[0].behavior == iggy::runtime::RuntimeGameplayAsciiSourcePlanControlBehavior::Seeking, "authored control should preserve behavior");
+	Expect(plan.authoredControls[0].moveMode == iggy::runtime::RuntimeGameplayAsciiSourcePlanControlMoveMode::Walk, "authored control should preserve move mode");
+	Expect(plan.authoredControls[0].targetPosition.present && plan.authoredControls[0].targetPosition.x == 2.5 && plan.authoredControls[0].targetPosition.y == 1.5, "authored control should preserve target position");
+}
+
 void TestSourcePlanCopiesAreIndependent()
 {
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan;
@@ -174,15 +194,20 @@ void TestSourcePlanCopiesAreIndependent()
 	plan.annotatedCells = {
 		{ true, Id("cell:copy"), 0, 0, 'A', {}, {}, {}, { Id("tag:cell") }, Id("npc:copy"), Id("profile:copy") },
 	};
+	plan.authoredControls = {
+		{ true, Id("frame:copy"), Id("npc:copy"), iggy::runtime::RuntimeGameplayAsciiSourcePlanControlBehavior::Seeking, iggy::runtime::RuntimeGameplayAsciiSourcePlanControlMoveMode::Walk, { true, 2.5, 1.5 } },
+	};
 
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan copy = plan;
 	copy.grid.rows[0] = "..";
 	copy.legend[0].targetMarkerId = Id("npc:changed");
 	copy.annotatedCells[0].profileId = Id("profile:changed");
+	copy.authoredControls[0].npcId = Id("npc:changed");
 
 	Expect(plan.grid.rows[0] == "A.", "source plan copy should not mutate source rows");
 	Expect(plan.legend[0].targetMarkerId == Id("npc:copy"), "source plan copy should not mutate legend target id");
 	Expect(plan.annotatedCells[0].profileId == Id("profile:copy"), "source plan copy should not mutate annotated cell profile id");
+	Expect(plan.authoredControls[0].npcId == Id("npc:copy"), "source plan copy should not mutate authored controls");
 }
 
 } // namespace
@@ -194,6 +219,7 @@ int main()
 	TestLegendPreservesRolesAndScenarioMappings();
 	TestAnnotatedCellsPreserveLocalFactsAndExactIds();
 	TestRegionsAndNoClaimFlagsAreExplicit();
+	TestAuthoredControlsPreserveMovementFactsAndExactIds();
 	TestSourcePlanCopiesAreIndependent();
 	return Failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

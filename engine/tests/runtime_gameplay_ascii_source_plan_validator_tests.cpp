@@ -78,6 +78,18 @@ bool HasIssue(
 	return false;
 }
 
+const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue *FindIssue(
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult &result,
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode code)
+{
+	for (const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue &issue : result.issues) {
+		if (issue.code == code) {
+			return &issue;
+		}
+	}
+	return nullptr;
+}
+
 void TestValidSourcePlanPasses()
 {
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
@@ -209,6 +221,48 @@ void TestUnsafeNoClaimsAndPromotionPolicyFail()
 	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsafePromotionPolicy), "unsafe promotion policy should be reported");
 }
 
+void TestValidAuthoredControlPasses()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
+	plan.authoredControls = {
+		{ true, Id("frame:one"), Id("npc:guard"), iggy::runtime::RuntimeGameplayAsciiSourcePlanControlBehavior::Seeking, iggy::runtime::RuntimeGameplayAsciiSourcePlanControlMoveMode::Walk, { true, 2.5, 1.5 } },
+	};
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
+		Validate(plan);
+
+	Expect(result.ok(), "valid authored control should validate");
+	Expect(result.authoredControlCount == 1, "valid authored control should be counted");
+	Expect(result.authoredControlIssueCount == 0, "valid authored control should have no control issues");
+	Expect(result.plan.authoredControls[0].npcId == Id("npc:guard"), "validator should preserve exact authored control npc id");
+	Expect(result.plan.authoredControls[0].targetPosition.x == 2.5, "validator should preserve authored control target position");
+}
+
+void TestAuthoredControlIssuesFailInDeclarationOrder()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
+	plan.authoredControls = {
+		{ false, {}, {}, iggy::runtime::RuntimeGameplayAsciiSourcePlanControlBehavior::Seeking, iggy::runtime::RuntimeGameplayAsciiSourcePlanControlMoveMode::Walk, { true, 2.5, 1.5 } },
+		{ false, {}, Id("npc:bad-behavior"), iggy::runtime::RuntimeGameplayAsciiSourcePlanControlBehavior::Unknown, iggy::runtime::RuntimeGameplayAsciiSourcePlanControlMoveMode::Walk, { true, 2.5, 1.5 } },
+		{ false, {}, Id("npc:bad-mode"), iggy::runtime::RuntimeGameplayAsciiSourcePlanControlBehavior::Waiting, iggy::runtime::RuntimeGameplayAsciiSourcePlanControlMoveMode::Unknown, {} },
+		{ false, {}, Id("npc:missing-target"), iggy::runtime::RuntimeGameplayAsciiSourcePlanControlBehavior::Seeking, iggy::runtime::RuntimeGameplayAsciiSourcePlanControlMoveMode::Walk, {} },
+	};
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
+		Validate(plan);
+
+	Expect(!result.ok(), "invalid authored controls should fail validation");
+	Expect(result.authoredControlCount == 4, "authored control count should preserve declarations");
+	Expect(result.authoredControlIssueCount == 4, "authored control issue count should include all control issues");
+	Expect(result.issues[result.issues.size() - 4].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlMissingNpcId, "first authored control issue should be missing npc id");
+	Expect(result.issues[result.issues.size() - 3].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlUnsupportedBehavior, "second authored control issue should be unsupported behavior");
+	Expect(result.issues[result.issues.size() - 2].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlUnsupportedMoveMode, "third authored control issue should be unsupported move mode");
+	Expect(result.issues[result.issues.size() - 1].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlMissingTarget, "fourth authored control issue should be missing target");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue *targetIssue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlMissingTarget);
+	Expect(targetIssue != nullptr && targetIssue->index == 3 && targetIssue->id == Id("npc:missing-target"), "missing target issue should preserve control index and npc id");
+}
+
 void TestExactIdsAndInputImmutability()
 {
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
@@ -216,6 +270,9 @@ void TestExactIdsAndInputImmutability()
 	plan.annotatedCells[0].markerId = Id("plain-actor");
 	plan.annotatedCells[0].profileId = Id("profile:namespaced");
 	plan.regions[0].regionId = Id("plain-region");
+	plan.authoredControls = {
+		{ false, {}, Id("plain-actor"), iggy::runtime::RuntimeGameplayAsciiSourcePlanControlBehavior::Waiting, iggy::runtime::RuntimeGameplayAsciiSourcePlanControlMoveMode::Still, {} },
+	};
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlan before = plan;
 
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
@@ -230,6 +287,7 @@ void TestExactIdsAndInputImmutability()
 	Expect(plan.grid.rows == before.grid.rows, "validator should not mutate rows");
 	Expect(plan.annotatedCells[0].markerId == before.annotatedCells[0].markerId, "validator should not mutate annotated cells");
 	Expect(plan.regions[0].regionId == before.regions[0].regionId, "validator should not mutate regions");
+	Expect(plan.authoredControls[0].npcId == before.authoredControls[0].npcId, "validator should not mutate authored controls");
 }
 
 } // namespace
@@ -243,6 +301,8 @@ int main()
 	TestAnnotatedCellIssuesFail();
 	TestRegionIssuesFail();
 	TestUnsafeNoClaimsAndPromotionPolicyFail();
+	TestValidAuthoredControlPasses();
+	TestAuthoredControlIssuesFailInDeclarationOrder();
 	TestExactIdsAndInputImmutability();
 	return Failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

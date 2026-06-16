@@ -25,6 +25,10 @@ enum class RuntimeGameplayAsciiSourcePlanIssueCode {
 	DuplicateAnnotatedCellId,
 	InvalidRegionBounds,
 	RegionOutOfBounds,
+	AuthoredControlMissingNpcId,
+	AuthoredControlUnsupportedBehavior,
+	AuthoredControlUnsupportedMoveMode,
+	AuthoredControlMissingTarget,
 	EmptyActorMarkerId,
 	EmptyProfileMarkerId,
 	UnsafeNoClaims,
@@ -54,12 +58,14 @@ struct RuntimeGameplayAsciiSourcePlanValidationResult {
 	std::size_t legendCount = 0;
 	std::size_t annotatedCellCount = 0;
 	std::size_t regionCount = 0;
+	std::size_t authoredControlCount = 0;
 	std::size_t dimensionMismatchCount = 0;
 	std::size_t raggedRowCount = 0;
 	std::size_t duplicateGlyphCount = 0;
 	std::size_t unknownGridGlyphCount = 0;
 	std::size_t annotationIssueCount = 0;
 	std::size_t regionIssueCount = 0;
+	std::size_t authoredControlIssueCount = 0;
 	std::size_t unsafeBoundaryIssueCount = 0;
 
 	[[nodiscard]] bool ok() const;

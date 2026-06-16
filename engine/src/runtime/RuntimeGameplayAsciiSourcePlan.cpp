@@ -37,6 +37,11 @@ std::size_t RuntimeGameplayAsciiSourcePlan::regionCount() const
 	return regions.size();
 }
 
+std::size_t RuntimeGameplayAsciiSourcePlan::authoredControlCount() const
+{
+	return authoredControls.size();
+}
+
 bool RuntimeGameplayAsciiSourcePlan::safeForAuthoring() const
 {
 	return !noClaims.claimsRuntimeTruth &&

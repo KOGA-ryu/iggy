@@ -39,6 +39,12 @@ void AddIssue(
 	case RuntimeGameplayAsciiSourcePlanIssueCode::RegionOutOfBounds:
 		++result.regionIssueCount;
 		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlMissingNpcId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlUnsupportedBehavior:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlUnsupportedMoveMode:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlMissingTarget:
+		++result.authoredControlIssueCount;
+		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsafeNoClaims:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsafePromotionPolicy:
 		++result.unsafeBoundaryIssueCount;
@@ -273,6 +279,68 @@ void ValidateRegions(RuntimeGameplayAsciiSourcePlanValidationResult &result)
 	}
 }
 
+bool BehaviorSupported(RuntimeGameplayAsciiSourcePlanControlBehavior behavior)
+{
+	return behavior == RuntimeGameplayAsciiSourcePlanControlBehavior::Waiting ||
+		behavior == RuntimeGameplayAsciiSourcePlanControlBehavior::Seeking;
+}
+
+bool BehaviorNeedsTarget(RuntimeGameplayAsciiSourcePlanControlBehavior behavior)
+{
+	return behavior == RuntimeGameplayAsciiSourcePlanControlBehavior::Seeking;
+}
+
+bool MoveModeSupported(RuntimeGameplayAsciiSourcePlanControlMoveMode moveMode)
+{
+	return moveMode == RuntimeGameplayAsciiSourcePlanControlMoveMode::Still ||
+		moveMode == RuntimeGameplayAsciiSourcePlanControlMoveMode::Walk ||
+		moveMode == RuntimeGameplayAsciiSourcePlanControlMoveMode::Jog ||
+		moveMode == RuntimeGameplayAsciiSourcePlanControlMoveMode::Run ||
+		moveMode == RuntimeGameplayAsciiSourcePlanControlMoveMode::Sprint;
+}
+
+void ValidateAuthoredControls(RuntimeGameplayAsciiSourcePlanValidationResult &result)
+{
+	result.authoredControlCount = result.plan.authoredControls.size();
+
+	for (std::size_t index = 0; index < result.plan.authoredControls.size(); ++index) {
+		const RuntimeGameplayAsciiSourcePlanAuthoredControl &control =
+			result.plan.authoredControls[index];
+		if (control.npcId.empty()) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlMissingNpcId;
+			issue.index = index;
+			AddIssue(result, issue);
+		}
+
+		if (!BehaviorSupported(control.behavior)) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code =
+				RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlUnsupportedBehavior;
+			issue.index = index;
+			issue.id = control.npcId;
+			AddIssue(result, issue);
+		}
+
+		if (!MoveModeSupported(control.moveMode)) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code =
+				RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlUnsupportedMoveMode;
+			issue.index = index;
+			issue.id = control.npcId;
+			AddIssue(result, issue);
+		}
+
+		if (BehaviorNeedsTarget(control.behavior) && !control.targetPosition.present) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlMissingTarget;
+			issue.index = index;
+			issue.id = control.npcId;
+			AddIssue(result, issue);
+		}
+	}
+}
+
 void ValidateBoundaryFlags(RuntimeGameplayAsciiSourcePlanValidationResult &result)
 {
 	const RuntimeGameplayAsciiSourcePlanNoClaims &noClaims = result.plan.noClaims;
@@ -311,6 +379,7 @@ RuntimeGameplayAsciiSourcePlanValidator::validate(
 	const std::vector<char> legendGlyphs = ValidateLegend(result);
 	ValidateAnnotatedCells(result);
 	ValidateRegions(result);
+	ValidateAuthoredControls(result);
 	ValidateBoundaryFlags(result);
 	ValidateGridGlyphs(result, legendGlyphs);
 

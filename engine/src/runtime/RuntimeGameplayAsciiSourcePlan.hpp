@@ -49,6 +49,21 @@ struct RuntimeGameplayAsciiSourcePlanLocalPosition {
 	double y = 0.0;
 };
 
+enum class RuntimeGameplayAsciiSourcePlanControlBehavior {
+	Unknown,
+	Waiting,
+	Seeking,
+};
+
+enum class RuntimeGameplayAsciiSourcePlanControlMoveMode {
+	Unknown,
+	Still,
+	Walk,
+	Jog,
+	Run,
+	Sprint,
+};
+
 struct RuntimeGameplayAsciiSourcePlanGlyphLegendEntry {
 	char glyph = '\0';
 	RuntimeGameplayAsciiSourcePlanGlyphKind kind =
@@ -86,6 +101,17 @@ struct RuntimeGameplayAsciiSourcePlanRegion {
 	std::vector<ResourceId> roleTags;
 };
 
+struct RuntimeGameplayAsciiSourcePlanAuthoredControl {
+	bool hasFrameId = false;
+	ResourceId frameId;
+	ResourceId npcId;
+	RuntimeGameplayAsciiSourcePlanControlBehavior behavior =
+		RuntimeGameplayAsciiSourcePlanControlBehavior::Unknown;
+	RuntimeGameplayAsciiSourcePlanControlMoveMode moveMode =
+		RuntimeGameplayAsciiSourcePlanControlMoveMode::Unknown;
+	RuntimeGameplayAsciiSourcePlanLocalPosition targetPosition;
+};
+
 struct RuntimeGameplayAsciiSourcePlanNoClaims {
 	bool claimsRuntimeTruth = false;
 	bool claimsGameplayExecution = false;
@@ -111,6 +137,7 @@ struct RuntimeGameplayAsciiSourcePlan {
 	std::vector<RuntimeGameplayAsciiSourcePlanGlyphLegendEntry> legend;
 	std::vector<RuntimeGameplayAsciiSourcePlanAnnotatedCell> annotatedCells;
 	std::vector<RuntimeGameplayAsciiSourcePlanRegion> regions;
+	std::vector<RuntimeGameplayAsciiSourcePlanAuthoredControl> authoredControls;
 	RuntimeGameplayAsciiSourcePlanNoClaims noClaims;
 	RuntimeGameplayAsciiSourcePlanPromotionPolicy promotionPolicy;
 
@@ -119,6 +146,7 @@ struct RuntimeGameplayAsciiSourcePlan {
 	[[nodiscard]] std::size_t legendCount() const;
 	[[nodiscard]] std::size_t annotatedCellCount() const;
 	[[nodiscard]] std::size_t regionCount() const;
+	[[nodiscard]] std::size_t authoredControlCount() const;
 	[[nodiscard]] bool safeForAuthoring() const;
 };
 
