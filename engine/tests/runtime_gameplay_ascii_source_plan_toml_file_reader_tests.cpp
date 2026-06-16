@@ -5,6 +5,10 @@
 #include <iostream>
 #include <string>
 
+#ifndef IGGY_TEST_FIXTURE_DIR
+#error "IGGY_TEST_FIXTURE_DIR must point at engine/tests/fixtures/runtime/ascii_source_plan"
+#endif
+
 namespace {
 
 int Failures = 0;
@@ -25,6 +29,11 @@ std::filesystem::path TempRoot()
 std::filesystem::path TempPath(const char *name)
 {
 	return TempRoot() / name;
+}
+
+std::filesystem::path FixturePath(const char *name)
+{
+	return std::filesystem::path(IGGY_TEST_FIXTURE_DIR) / name;
 }
 
 void ResetTempRoot()
@@ -165,6 +174,54 @@ void TestInvalidTomlFilePreservesNestedDiagnostics()
 	Expect(!result.text.issues.empty(), "nested text reader should preserve diagnostics");
 }
 
+void TestValidFixtureReadsAndParses()
+{
+	const std::filesystem::path path = FixturePath("valid_guard_room.toml");
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult result =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(path);
+
+	Expect(result.ok(), "valid guard room fixture should parse");
+	Expect(result.path == path, "valid fixture result should preserve path");
+	Expect(result.bytesRead > 0, "valid fixture should report nonzero bytes read");
+	Expect(result.text.ok(), "valid fixture nested text reader should parse");
+	Expect(result.text.plan.sourceId == iggy::ResourceId("scenario:guard-room"), "valid fixture should preserve source id");
+	Expect(result.text.plan.grid.rows.size() == 4, "valid fixture should preserve grid rows");
+	Expect(result.text.plan.legend.size() == 2, "valid fixture should preserve legend entries");
+	Expect(result.text.plan.annotatedCells.size() == 1, "valid fixture should preserve annotated cell");
+	Expect(result.text.plan.annotatedCells.front().markerId == iggy::ResourceId("npc:guard"), "valid fixture should preserve actor marker id");
+}
+
+void TestCorruptFixturePreservesNestedParserDiagnostics()
+{
+	const std::filesystem::path path = FixturePath("corrupt_guard_room.toml");
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult result =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(path);
+
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadStatus::TomlReadFailed, "corrupt fixture should report TomlReadFailed");
+	Expect(result.path == path, "corrupt fixture result should preserve path");
+	Expect(result.bytesRead > 0, "corrupt fixture should report nonzero bytes read");
+	Expect(!result.text.ok(), "corrupt fixture nested text reader should fail");
+	Expect(!result.text.issues.empty(), "corrupt fixture should preserve nested parser issue");
+	Expect(result.text.status != iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "corrupt fixture should fail before source validation");
+}
+
+void TestSemanticInvalidFixturePreservesNestedSourceValidation()
+{
+	const std::filesystem::path path = FixturePath("semantic_invalid_guard_room.toml");
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult result =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(path);
+
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadStatus::TomlReadFailed, "semantic invalid fixture should report TomlReadFailed");
+	Expect(result.path == path, "semantic invalid fixture result should preserve path");
+	Expect(result.bytesRead > 0, "semantic invalid fixture should report nonzero bytes read");
+	Expect(!result.text.ok(), "semantic invalid fixture nested text reader should fail");
+	Expect(result.text.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "semantic invalid fixture should preserve nested source validation status");
+	Expect(result.text.sourcePlanIssueCount > 0, "semantic invalid fixture should preserve source validation issue count");
+}
+
 } // namespace
 
 int main()
@@ -174,6 +231,9 @@ int main()
 	TestDirectoryReportsNonRegularFile();
 	TestValidFileReadsAndParses();
 	TestInvalidTomlFilePreservesNestedDiagnostics();
+	TestValidFixtureReadsAndParses();
+	TestCorruptFixturePreservesNestedParserDiagnostics();
+	TestSemanticInvalidFixturePreservesNestedSourceValidation();
 
 	CleanupTempRoot();
 

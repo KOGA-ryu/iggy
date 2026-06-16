@@ -1,0 +1,42 @@
+format_id = "iggy:ascii-source-plan"
+version = 1
+source_id = "scenario:guard-room-invalid"
+
+[grid]
+width = 7
+height = 4
+background = "."
+rows = [
+  "#######",
+  "#....@#",
+  "#.....#",
+  "#######",
+]
+
+[no_claims]
+runtime_truth = false
+gameplay_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[promotion]
+ready = false
+runtime_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[[legend]]
+glyph = "A"
+kind = "actor"
+role_id = "role:npc"
+role_tags = ["tag:guard"]
+maps_to_scenario_marker = true
+scenario_marker_kind = "actor"
+
+[[cells]]
+id = "cell:guard"
+row = 1
+column = 1
+glyph = "A"
+marker_id = "npc:guard"
+profile_id = "profile:guard"
