@@ -60,6 +60,71 @@ rows = [
 )toml";
 }
 
+std::string RootGridLegendToml()
+{
+	return R"toml(
+format_id = "iggy:ascii-source-plan"
+version = 1
+source_id = "scenario:guard-room"
+source_ref = "authoring:manual-fixture"
+
+[grid]
+width = 7
+height = 4
+background = "."
+rows = [
+  "#######",
+  "#A...@#",
+  "#.....#",
+  "#######",
+]
+
+[no_claims]
+runtime_truth = false
+gameplay_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[promotion]
+ready = false
+runtime_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[[legend]]
+glyph = "A"
+kind = "actor"
+role_id = "role:npc"
+role_tags = ["tag:guard"]
+maps_to_scenario_marker = true
+scenario_marker_kind = "actor"
+target_marker_id = "npc:guard"
+target_profile_id = "profile:guard"
+
+[[legend]]
+glyph = "@"
+kind = "player_start"
+role_id = "role:player-start"
+maps_to_scenario_marker = true
+scenario_marker_kind = "player_start"
+
+[[legend]]
+glyph = "#"
+kind = "terrain"
+role_id = "role:wall"
+role_tags = ["tag:blocking"]
+maps_to_scenario_marker = true
+scenario_marker_kind = "wall"
+
+[[legend]]
+glyph = "."
+kind = "background"
+role_id = "role:floor"
+maps_to_scenario_marker = true
+scenario_marker_kind = "floor"
+)toml";
+}
+
 void TestEmptyInputFailsDeterministically()
 {
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result = Read("");
@@ -172,6 +237,77 @@ void TestInvalidBackgroundGlyphFailsAsTypeInvalid()
 	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::InvalidGlyphString), "multi-character background glyph should report invalid glyph");
 }
 
+void TestNoClaimsPromotionAndLegendParse()
+{
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(RootGridLegendToml());
+
+	Expect(result.ok(), "valid no-claims/promotion/legend TOML should parse");
+	Expect(result.plan.safeForAuthoring(), "false no-claims and promotion flags should remain safe");
+	Expect(result.plan.legend.size() == 4, "legend entries should parse");
+	Expect(result.plan.legend[0].glyph == 'A', "actor legend glyph should parse");
+	Expect(result.plan.legend[0].kind == iggy::runtime::RuntimeGameplayAsciiSourcePlanGlyphKind::Actor, "actor legend kind should parse");
+	Expect(result.plan.legend[0].roleId == Id("role:npc"), "actor legend role id should parse");
+	Expect(result.plan.legend[0].roleTags.size() == 1 && result.plan.legend[0].roleTags[0] == Id("tag:guard"), "actor legend role tags should parse");
+	Expect(result.plan.legend[0].mapsToScenarioMarker, "actor legend marker mapping should parse");
+	Expect(result.plan.legend[0].scenarioMarkerKind == iggy::runtime::RuntimeGameplayAsciiScenarioMarkerKind::Actor, "actor marker kind should parse");
+	Expect(result.plan.legend[0].targetMarkerId == Id("npc:guard"), "actor target marker id should parse exactly");
+	Expect(result.plan.legend[0].targetProfileId == Id("profile:guard"), "actor target profile id should parse exactly");
+	Expect(result.plan.legend[1].kind == iggy::runtime::RuntimeGameplayAsciiSourcePlanGlyphKind::PlayerStart, "player-start legend kind should parse");
+	Expect(result.plan.legend[1].scenarioMarkerKind == iggy::runtime::RuntimeGameplayAsciiScenarioMarkerKind::PlayerStart, "player-start marker kind should parse");
+	Expect(result.plan.legend[2].kind == iggy::runtime::RuntimeGameplayAsciiSourcePlanGlyphKind::Terrain, "terrain legend kind should parse");
+	Expect(result.plan.legend[3].kind == iggy::runtime::RuntimeGameplayAsciiSourcePlanGlyphKind::Background, "background legend kind should parse");
+}
+
+void TestUnsafeNoClaimsSurfaceSourcePlanValidation()
+{
+	std::string text = RootGridLegendToml();
+	const std::size_t start = text.find("runtime_truth = false");
+	text.replace(start, std::string("runtime_truth = false").size(), "runtime_truth = true");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result = Read(text);
+
+	Expect(!result.ok(), "unsafe no-claim should fail source validation");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "unsafe no-claim should report source invalid");
+	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SourcePlanInvalid), "unsafe no-claim should add source-plan issue");
+	Expect(result.sourcePlanIssueCount > 0, "unsafe no-claim should mirror nested source validation issues");
+}
+
+void TestDuplicateLegendGlyphSurfacesSourcePlanValidation()
+{
+	std::string text = RootGridLegendToml();
+	const std::size_t start = text.find("glyph = \"@\"");
+	text.replace(start, std::string("glyph = \"@\"").size(), "glyph = \"A\"");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result = Read(text);
+
+	Expect(!result.ok(), "duplicate legend glyph should fail source validation");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "duplicate legend glyph should report source invalid");
+	Expect(result.sourceValidation.duplicateGlyphCount == 1, "duplicate legend glyph should preserve nested duplicate count");
+}
+
+void TestUnknownLegendEnumFailsAsTypeInvalid()
+{
+	std::string text = RootGridLegendToml();
+	const std::size_t start = text.find("kind = \"actor\"");
+	text.replace(start, std::string("kind = \"actor\"").size(), "kind = \"monster\"");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result = Read(text);
+
+	Expect(!result.ok(), "unknown legend enum should fail");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::TypeInvalid, "unknown legend enum should report type invalid");
+	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::UnknownEnumValue), "unknown legend enum should report unknown enum");
+}
+
+void TestInvalidLegendGlyphFailsAsTypeInvalid()
+{
+	std::string text = RootGridLegendToml();
+	const std::size_t start = text.find("glyph = \"A\"");
+	text.replace(start, std::string("glyph = \"A\"").size(), "glyph = \"AA\"");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result = Read(text);
+
+	Expect(!result.ok(), "invalid legend glyph should fail");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::TypeInvalid, "invalid legend glyph should report type invalid");
+	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::InvalidGlyphString), "invalid legend glyph should report invalid glyph");
+}
+
 } // namespace
 
 int main()
@@ -184,5 +320,10 @@ int main()
 	TestWrongTypeFailsAsTypeInvalid();
 	TestRaggedRowsSurfaceSourcePlanValidation();
 	TestInvalidBackgroundGlyphFailsAsTypeInvalid();
+	TestNoClaimsPromotionAndLegendParse();
+	TestUnsafeNoClaimsSurfaceSourcePlanValidation();
+	TestDuplicateLegendGlyphSurfacesSourcePlanValidation();
+	TestUnknownLegendEnumFailsAsTypeInvalid();
+	TestInvalidLegendGlyphFailsAsTypeInvalid();
 	return Failures;
 }

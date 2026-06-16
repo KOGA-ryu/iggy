@@ -10,6 +10,9 @@ namespace {
 enum class Table {
 	Root,
 	Grid,
+	NoClaims,
+	Promotion,
+	Legend,
 };
 
 bool IsWhitespaceOnly(const std::string &text)
@@ -181,6 +184,16 @@ bool ParseBool(
 	return false;
 }
 
+std::vector<ResourceId> ToResourceIds(const std::vector<std::string> &values)
+{
+	std::vector<ResourceId> result;
+	result.reserve(values.size());
+	for (const std::string &value : values) {
+		result.push_back(ResourceId(value));
+	}
+	return result;
+}
+
 bool ParseGlyph(
 	const std::string &value,
 	char &out)
@@ -192,6 +205,72 @@ bool ParseGlyph(
 	}
 	out = parsed[0];
 	return true;
+}
+
+bool ParseGlyphKind(
+	const std::string &value,
+	RuntimeGameplayAsciiSourcePlanGlyphKind &out)
+{
+	if (value == "background") {
+		out = RuntimeGameplayAsciiSourcePlanGlyphKind::Background;
+		return true;
+	}
+	if (value == "terrain") {
+		out = RuntimeGameplayAsciiSourcePlanGlyphKind::Terrain;
+		return true;
+	}
+	if (value == "actor") {
+		out = RuntimeGameplayAsciiSourcePlanGlyphKind::Actor;
+		return true;
+	}
+	if (value == "player_start") {
+		out = RuntimeGameplayAsciiSourcePlanGlyphKind::PlayerStart;
+		return true;
+	}
+	if (value == "region_marker") {
+		out = RuntimeGameplayAsciiSourcePlanGlyphKind::RegionMarker;
+		return true;
+	}
+	if (value == "annotation") {
+		out = RuntimeGameplayAsciiSourcePlanGlyphKind::Annotation;
+		return true;
+	}
+	if (value == "unknown") {
+		out = RuntimeGameplayAsciiSourcePlanGlyphKind::Unknown;
+		return true;
+	}
+	return false;
+}
+
+bool ParseMarkerKind(
+	const std::string &value,
+	RuntimeGameplayAsciiScenarioMarkerKind &out)
+{
+	if (value == "empty") {
+		out = RuntimeGameplayAsciiScenarioMarkerKind::Empty;
+		return true;
+	}
+	if (value == "floor") {
+		out = RuntimeGameplayAsciiScenarioMarkerKind::Floor;
+		return true;
+	}
+	if (value == "wall") {
+		out = RuntimeGameplayAsciiScenarioMarkerKind::Wall;
+		return true;
+	}
+	if (value == "actor") {
+		out = RuntimeGameplayAsciiScenarioMarkerKind::Actor;
+		return true;
+	}
+	if (value == "player_start") {
+		out = RuntimeGameplayAsciiScenarioMarkerKind::PlayerStart;
+		return true;
+	}
+	if (value == "unknown") {
+		out = RuntimeGameplayAsciiScenarioMarkerKind::Unknown;
+		return true;
+	}
+	return false;
 }
 
 bool ParseStringArrayInline(
@@ -283,6 +362,32 @@ void AddWrongType(
 	issue.code = RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::WrongType;
 	issue.line = line;
 	issue.key = key;
+	AddIssue(result, issue);
+}
+
+void AddInvalidGlyph(
+	RuntimeGameplayAsciiSourcePlanTomlReadResult &result,
+	std::size_t line,
+	const std::string &key)
+{
+	RuntimeGameplayAsciiSourcePlanTomlReadIssue issue;
+	issue.code = RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::InvalidGlyphString;
+	issue.line = line;
+	issue.key = key;
+	AddIssue(result, issue);
+}
+
+void AddUnknownEnum(
+	RuntimeGameplayAsciiSourcePlanTomlReadResult &result,
+	std::size_t line,
+	const std::string &key,
+	const std::string &value)
+{
+	RuntimeGameplayAsciiSourcePlanTomlReadIssue issue;
+	issue.code = RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::UnknownEnumValue;
+	issue.line = line;
+	issue.key = key;
+	issue.detail = value;
 	AddIssue(result, issue);
 }
 
@@ -389,6 +494,19 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			sawGrid = true;
 			continue;
 		}
+		if (line == "[no_claims]") {
+			table = Table::NoClaims;
+			continue;
+		}
+		if (line == "[promotion]") {
+			table = Table::Promotion;
+			continue;
+		}
+		if (line == "[[legend]]") {
+			result.plan.legend.push_back({});
+			table = Table::Legend;
+			continue;
+		}
 		if (!line.empty() && line.front() == '[') {
 			AddUnsupported(result, lineNumber, "unsupported TOML table in source-plan reader slice");
 			continue;
@@ -443,6 +561,115 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			continue;
 		}
 
+		if (table == Table::NoClaims) {
+			bool parsed = false;
+			if (!ParseBool(value, parsed)) {
+				AddWrongType(result, lineNumber, key);
+			} else if (key == "runtime_truth") {
+				result.plan.noClaims.claimsRuntimeTruth = parsed;
+			} else if (key == "gameplay_execution") {
+				result.plan.noClaims.claimsGameplayExecution = parsed;
+			} else if (key == "file_parsing") {
+				result.plan.noClaims.claimsFileParsing = parsed;
+			} else if (key == "profile_scenario_conversion") {
+				result.plan.noClaims.claimsProfileScenarioConversion = parsed;
+			} else {
+				AddUnsupported(result, lineNumber, "unsupported no_claims key: " + key);
+			}
+			continue;
+		}
+
+		if (table == Table::Promotion) {
+			bool parsed = false;
+			if (!ParseBool(value, parsed)) {
+				AddWrongType(result, lineNumber, key);
+			} else if (key == "ready") {
+				result.plan.promotionPolicy.promotionReady = parsed;
+			} else if (key == "runtime_execution") {
+				result.plan.promotionPolicy.allowsRuntimeExecution = parsed;
+			} else if (key == "file_parsing") {
+				result.plan.promotionPolicy.allowsFileParsing = parsed;
+			} else if (key == "profile_scenario_conversion") {
+				result.plan.promotionPolicy.allowsProfileScenarioConversion = parsed;
+			} else {
+				AddUnsupported(result, lineNumber, "unsupported promotion key: " + key);
+			}
+			continue;
+		}
+
+		if (table == Table::Legend) {
+			RuntimeGameplayAsciiSourcePlanGlyphLegendEntry &entry =
+				result.plan.legend.back();
+			if (key == "glyph") {
+				char glyph = '\0';
+				if (!ParseGlyph(value, glyph)) {
+					AddInvalidGlyph(result, lineNumber, key);
+				} else {
+					entry.glyph = glyph;
+				}
+			} else if (key == "kind") {
+				std::string parsed;
+				RuntimeGameplayAsciiSourcePlanGlyphKind kind =
+					RuntimeGameplayAsciiSourcePlanGlyphKind::Unknown;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else if (!ParseGlyphKind(parsed, kind)) {
+					AddUnknownEnum(result, lineNumber, key, parsed);
+				} else {
+					entry.kind = kind;
+				}
+			} else if (key == "role_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					entry.roleId = ResourceId(parsed);
+				}
+			} else if (key == "role_tags") {
+				std::vector<std::string> parsed;
+				if (!ParseStringArrayInline(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					entry.roleTags = ToResourceIds(parsed);
+				}
+			} else if (key == "maps_to_scenario_marker") {
+				bool parsed = false;
+				if (!ParseBool(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					entry.mapsToScenarioMarker = parsed;
+				}
+			} else if (key == "scenario_marker_kind") {
+				std::string parsed;
+				RuntimeGameplayAsciiScenarioMarkerKind kind =
+					RuntimeGameplayAsciiScenarioMarkerKind::Unknown;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else if (!ParseMarkerKind(parsed, kind)) {
+					AddUnknownEnum(result, lineNumber, key, parsed);
+				} else {
+					entry.scenarioMarkerKind = kind;
+				}
+			} else if (key == "target_marker_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					entry.targetMarkerId = ResourceId(parsed);
+				}
+			} else if (key == "target_profile_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					entry.targetProfileId = ResourceId(parsed);
+				}
+			} else {
+				AddUnsupported(result, lineNumber, "unsupported legend key: " + key);
+			}
+			continue;
+		}
+
 		if (table == Table::Grid) {
 			if (key == "width") {
 				std::size_t parsed = 0;
@@ -461,11 +688,7 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			} else if (key == "background") {
 				char glyph = '\0';
 				if (!ParseGlyph(value, glyph)) {
-					RuntimeGameplayAsciiSourcePlanTomlReadIssue issue;
-					issue.code = RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::InvalidGlyphString;
-					issue.line = lineNumber;
-					issue.key = key;
-					AddIssue(result, issue);
+					AddInvalidGlyph(result, lineNumber, key);
 				} else {
 					result.plan.grid.backgroundGlyph = glyph;
 				}
