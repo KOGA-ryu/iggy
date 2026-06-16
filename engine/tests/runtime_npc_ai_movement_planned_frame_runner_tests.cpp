@@ -341,6 +341,7 @@ void TestSingleFrameMatchesDirectStep()
 			frames[0].pools,
 			frames[0].aiMap,
 			frames[0].controlConfig,
+			{},
 			frames[0].movementMap,
 			frames[0].movementConfig,
 		});
@@ -528,6 +529,7 @@ void TestManualLoopMatchesRunner()
 			frame.pools,
 			frame.aiMap,
 			frame.controlConfig,
+			{},
 			frame.movementMap,
 			frame.movementConfig,
 		});
