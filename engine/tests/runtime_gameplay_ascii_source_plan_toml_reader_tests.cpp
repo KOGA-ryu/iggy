@@ -372,7 +372,7 @@ void TestRaggedRowsSurfaceSourcePlanValidation()
 		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::RaggedRow);
 	Expect(issue != nullptr, "ragged parsed rows should mirror ragged row issue");
 	if (issue != nullptr) {
-		Expect(issue->line == 0, "mirrored ragged row issue should use synthetic line zero");
+		Expect(issue->line == LineOfNth(text, "rows = ["), "mirrored ragged row issue should report rows key line");
 		Expect(issue->table == "grid", "mirrored ragged row issue should report grid table");
 		Expect(!issue->hasTableIndex, "mirrored ragged row issue should not report table index");
 	}
@@ -427,7 +427,7 @@ void TestUnsafeNoClaimsSurfaceSourcePlanValidation()
 		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsafeNoClaims);
 	Expect(issue != nullptr, "unsafe no-claim should mirror unsafe no-claims source issue");
 	if (issue != nullptr) {
-		Expect(issue->line == 0, "mirrored unsafe no-claim should use synthetic line zero");
+		Expect(issue->line == LineOfNth(text, "[no_claims]"), "mirrored unsafe no-claim should report no_claims table line");
 		Expect(issue->table == "no_claims", "mirrored unsafe no-claim should report no_claims table");
 		Expect(!issue->hasTableIndex, "mirrored unsafe no-claim should not report repeated table index");
 	}
@@ -446,7 +446,7 @@ void TestUnsafePromotionSurfaceSourcePlanValidation()
 		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsafePromotionPolicy);
 	Expect(issue != nullptr, "unsafe promotion should mirror unsafe promotion source issue");
 	if (issue != nullptr) {
-		Expect(issue->line == 0, "mirrored unsafe promotion should use synthetic line zero");
+		Expect(issue->line == LineOfNth(text, "[promotion]"), "mirrored unsafe promotion should report promotion table line");
 		Expect(issue->table == "promotion", "mirrored unsafe promotion should report promotion table");
 		Expect(!issue->hasTableIndex, "mirrored unsafe promotion should not report repeated table index");
 	}
@@ -467,7 +467,7 @@ void TestDuplicateLegendGlyphSurfacesSourcePlanValidation()
 		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::DuplicateGlyph);
 	Expect(issue != nullptr, "duplicate legend glyph should mirror duplicate source issue");
 	if (issue != nullptr) {
-		Expect(issue->line == 0, "mirrored duplicate legend glyph should use synthetic line zero");
+		Expect(issue->line == LineOfNth(text, "[[legend]]", 1), "mirrored duplicate legend glyph should report offending legend table line");
 		Expect(issue->table == "legend", "mirrored duplicate legend glyph should report legend table");
 		Expect(issue->hasTableIndex && issue->tableIndex == 1, "mirrored duplicate legend glyph should report second legend index");
 		Expect(issue->key == "glyph", "mirrored duplicate legend glyph should report glyph key");
@@ -551,6 +551,7 @@ void TestCellGlyphMismatchSurfacesSourcePlanValidation()
 		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AnnotatedCellGlyphMismatch);
 	Expect(issue != nullptr, "cell glyph mismatch should mirror source issue");
 	if (issue != nullptr) {
+		Expect(issue->line == LineOfNth(text, "[[cells]]"), "mirrored cell glyph mismatch should report offending cell table line");
 		Expect(issue->table == "cells", "mirrored cell glyph mismatch should report cells table");
 		Expect(issue->hasTableIndex && issue->tableIndex == 0, "mirrored cell glyph mismatch should report first cell index");
 		Expect(issue->sourceIssue.row == 1 && issue->sourceIssue.column == 1, "mirrored cell glyph mismatch should copy row/column");
@@ -572,6 +573,7 @@ void TestCellOutOfBoundsSurfacesSourcePlanValidation()
 		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AnnotatedCellOutOfBounds);
 	Expect(issue != nullptr, "out-of-bounds cell should mirror source issue");
 	if (issue != nullptr) {
+		Expect(issue->line == LineOfNth(text, "[[cells]]"), "mirrored out-of-bounds cell should report offending cell table line");
 		Expect(issue->table == "cells", "mirrored out-of-bounds cell should report cells table");
 		Expect(issue->hasTableIndex && issue->tableIndex == 0, "mirrored out-of-bounds cell should report first cell index");
 		Expect(issue->sourceIssue.column == 8, "mirrored out-of-bounds cell should copy source column");
@@ -625,6 +627,7 @@ void TestInvalidRegionBoundsSurfaceSourcePlanValidation()
 		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::RegionOutOfBounds);
 	Expect(issue != nullptr, "out-of-bounds region should mirror source issue");
 	if (issue != nullptr) {
+		Expect(issue->line == LineOfNth(text, "[[regions]]"), "mirrored out-of-bounds region should report offending region table line");
 		Expect(issue->table == "regions", "mirrored out-of-bounds region should report regions table");
 		Expect(issue->hasTableIndex && issue->tableIndex == 0, "mirrored out-of-bounds region should report first region index");
 		Expect(issue->sourceIssue.row == 5, "mirrored out-of-bounds region should copy max row");

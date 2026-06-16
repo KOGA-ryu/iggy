@@ -736,7 +736,8 @@ RuntimeGameplayAsciiSourcePlanTomlReadStatus StatusForParserIssues(
 }
 
 RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
-	const RuntimeGameplayAsciiSourcePlanIssue &sourceIssue)
+	const RuntimeGameplayAsciiSourcePlanIssue &sourceIssue,
+	const RuntimeGameplayAsciiSourcePlanTomlSourceLocations &locations)
 {
 	RuntimeGameplayAsciiSourcePlanTomlReadIssue issue;
 	issue.code = RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SourcePlanInvalid;
@@ -750,6 +751,9 @@ RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
 		issue.hasTableIndex = true;
 		issue.tableIndex = sourceIssue.index;
 		issue.key = "glyph";
+		if (sourceIssue.index < locations.legendTableLines.size()) {
+			issue.line = locations.legendTableLines[sourceIssue.index];
+		}
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AnnotatedCellOutOfBounds:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AnnotatedCellGlyphMismatch:
@@ -759,24 +763,35 @@ RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
 		issue.table = "cells";
 		issue.hasTableIndex = true;
 		issue.tableIndex = sourceIssue.index;
+		if (sourceIssue.index < locations.annotatedCellTableLines.size()) {
+			issue.line = locations.annotatedCellTableLines[sourceIssue.index];
+		}
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::InvalidRegionBounds:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::RegionOutOfBounds:
 		issue.table = "regions";
 		issue.hasTableIndex = true;
 		issue.tableIndex = sourceIssue.index;
+		if (sourceIssue.index < locations.regionTableLines.size()) {
+			issue.line = locations.regionTableLines[sourceIssue.index];
+		}
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::EmptyRows:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::GridDimensionMismatch:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::RaggedRow:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::UnknownGridGlyph:
 		issue.table = "grid";
+		issue.line = locations.gridRowsLine != 0
+			? locations.gridRowsLine
+			: locations.gridTableLine;
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsafeNoClaims:
 		issue.table = "no_claims";
+		issue.line = locations.noClaimsTableLine;
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsafePromotionPolicy:
 		issue.table = "promotion";
+		issue.line = locations.promotionTableLine;
 		break;
 	}
 
@@ -1231,7 +1246,7 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 	if (!result.sourceValidation.ok()) {
 		for (const RuntimeGameplayAsciiSourcePlanIssue &sourceIssue :
 			result.sourceValidation.issues) {
-			AddIssue(result, MirroredSourcePlanIssue(sourceIssue));
+			AddIssue(result, MirroredSourcePlanIssue(sourceIssue, result.sourceLocations));
 		}
 		result.status = RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid;
 		return result;
