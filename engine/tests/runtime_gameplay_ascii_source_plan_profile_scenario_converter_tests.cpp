@@ -108,11 +108,13 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlanRegionAiMapPolicy AiMapPolicy(
 
 iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredControl SeekingControl(
 	const char *npcId = "npc:guard",
-	iggy::Vec2 target = { 2.5F, 1.5F })
+	iggy::Vec2 target = { 2.5F, 1.5F },
+	const char *frameId = nullptr)
 {
 	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredControl control;
-	control.hasFrameId = true;
-	control.frameId = Id("frame:ascii-profile");
+	control.hasFrameId = frameId != nullptr;
+	if (frameId != nullptr)
+		control.frameId = Id(frameId);
 	control.npcId = Id(npcId);
 	control.behavior = iggy::runtime::RuntimeGameplayAsciiSourcePlanControlBehavior::Seeking;
 	control.moveMode = iggy::runtime::RuntimeGameplayAsciiSourcePlanControlMoveMode::Walk;
@@ -280,6 +282,78 @@ void TestAuthoredControlReplacesDefaultControlForPromotedActor()
 	Expect(control.behavior.type == iggy::NpcBehaviorStateType::Seeking, "authored seeking control should promote seeking behavior");
 	Expect(control.behavior.targetPosition.x == 2.5F && control.behavior.targetPosition.y == 1.5F, "authored seeking behavior should preserve target");
 	Expect(control.moveMode == iggy::NpcMoveMode::Walk, "authored control should promote walk move mode");
+	Expect(result.definition.frames.size() == 1 && result.definition.frames[0].controlOverrides.empty(), "no-frame authored control should not create frame overrides");
+}
+
+void TestFrameIdAuthoredControlsCreateScenarioFramesInFirstSeenOrder()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.authoredControls = {
+		SeekingControl("npc:guard", { 2.5F, 1.5F }, "frame:move-one"),
+		SeekingControl("npc:guard", { 3.5F, 1.5F }, "frame:move-two"),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "frame-id authored controls should convert");
+	Expect(result.definition.frames.size() == 2, "frame-id authored controls should create one frame per first-seen frame id");
+	if (result.definition.frames.size() == 2) {
+		Expect(result.definition.frames[0].hasFrameId && result.definition.frames[0].frameId == Id("frame:move-one"), "first frame-id group should preserve first frame id");
+		Expect(result.definition.frames[1].hasFrameId && result.definition.frames[1].frameId == Id("frame:move-two"), "second frame-id group should preserve second frame id");
+		Expect(result.definition.frames[0].controlOverrides.size() == 1, "first frame-id group should publish one override");
+		Expect(result.definition.frames[1].controlOverrides.size() == 1, "second frame-id group should publish one override");
+		Expect(result.definition.frames[0].controlOverrides[0].objective.targetPosition.x == 2.5F, "first frame-id group should preserve first target");
+		Expect(result.definition.frames[1].controlOverrides[0].objective.targetPosition.x == 3.5F, "second frame-id group should preserve second target");
+		Expect(result.definition.frames[0].movementMap.width == result.promotedMap.width, "first frame-id frame should use promoted movement map");
+		Expect(result.definition.frames[1].movementMap.width == result.promotedMap.width, "second frame-id frame should use promoted movement map");
+	}
+	Expect(result.definition.initialState.npcControls.entries.size() == 1, "frame-id authored controls should keep initial controls valid");
+	Expect(result.definition.initialState.npcControls.entries[0].objective.type == iggy::NpcObjectiveType::Wait, "frame-id authored controls should not replace initial controls");
+}
+
+void TestDuplicateAuthoredControlActorWithinFrameBlocksConversion()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.authoredControls = {
+		SeekingControl("npc:guard", { 2.5F, 1.5F }, "frame:move-one"),
+		SeekingControl("npc:guard", { 3.5F, 1.5F }, "frame:move-one"),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(!result.ok(), "duplicate frame authored control actor should fail conversion");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::AuthoredControlInvalid, "duplicate frame authored control actor should report authored control invalid");
+	Expect(result.authoredControlIssueCount == 1, "duplicate frame authored control actor should be counted once");
+	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::DuplicateAuthoredControlActor), "duplicate frame authored control actor issue should be present");
+	Expect(result.issues[0].authoredControl.frameId == Id("frame:move-one"), "duplicate frame authored control issue should preserve frame id");
+	Expect(result.definition.frames.empty(), "duplicate frame authored control actor should not publish runnable definition");
+}
+
+void TestSameActorAcrossDifferentFrameIdsIsAllowed()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.authoredControls = {
+		SeekingControl("npc:guard", { 2.5F, 1.5F }, "frame:move-one"),
+		SeekingControl("npc:guard", { 3.5F, 1.5F }, "frame:move-two"),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "same actor in different frame-id groups should convert");
+	Expect(result.authoredControlIssueCount == 0, "same actor in different frame-id groups should not be duplicate");
+	Expect(result.definition.frames.size() == 2, "same actor in different frame-id groups should publish both frames");
 }
 
 void TestUnknownAuthoredControlActorBlocksConversion()
@@ -651,6 +725,9 @@ int main()
 	TestValidSourcePlanAndFrameDefaultsPublishValidatedProfileScenario();
 	TestTerrainActorAndDefaultControlPromotion();
 	TestAuthoredControlReplacesDefaultControlForPromotedActor();
+	TestFrameIdAuthoredControlsCreateScenarioFramesInFirstSeenOrder();
+	TestDuplicateAuthoredControlActorWithinFrameBlocksConversion();
+	TestSameActorAcrossDifferentFrameIdsIsAllowed();
 	TestUnknownAuthoredControlActorBlocksConversion();
 	TestDuplicateAuthoredControlActorBlocksConversion();
 	TestActorWithoutLocalPositionUsesTileCenter();
