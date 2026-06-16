@@ -8,6 +8,7 @@
 #include "runtime/RuntimeGameplayProfileScenarioValidator.hpp"
 #include "scene/interaction/InteractionEffectCatalog2D.hpp"
 #include "scene/interaction/InteractionTarget2D.hpp"
+#include "scene/inventory/LevelItemDrop2D.hpp"
 #include "scene/npc/NpcActorControlState2D.hpp"
 #include "scene/npc/NpcActorState2D.hpp"
 
@@ -25,6 +26,7 @@ enum class RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus {
 	PlayerStartInvalid,
 	InteractionTargetRegistryInvalid,
 	InteractionEffectCatalogInvalid,
+	ItemDropRegistryInvalid,
 	AiMapPromotionInvalid,
 	ProfileScenarioInvalid,
 };
@@ -41,6 +43,7 @@ enum class RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode {
 	DuplicatePlayerStart,
 	InteractionTargetRegistryInvalid,
 	InteractionEffectCatalogInvalid,
+	ItemDropRegistryInvalid,
 	AiMapPromotionInvalid,
 	ProfileScenarioInvalid,
 };
@@ -76,6 +79,7 @@ struct RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue {
 	NpcActorControlState2DIssue controlIssue;
 	InteractionTarget2DRegistryIssue interactionTargetIssue;
 	InteractionEffectCatalog2DIssue interactionEffectIssue;
+	LevelItemDrop2DIssue itemDropIssue;
 	RuntimeGameplayAsciiSourcePlanRegionAiMapPromotionIssue aiMapPromotionIssue;
 	RuntimeGameplayProfileScenarioIssue profileIssue;
 };
@@ -89,6 +93,7 @@ struct RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult {
 	NpcActorControlState2DRegistryBuildResult controlRegistry;
 	InteractionTarget2DRegistryBuildResult interactionTargetRegistry;
 	InteractionEffectCatalog2DBuildResult interactionEffectCatalog;
+	LevelItemDrop2DRegistryBuildResult itemDropRegistry;
 	RuntimeGameplayAsciiSourcePlanRegionAiMapPromotionResult regionAiMapPromotion;
 	RuntimeGameplayProfileScenarioDefinition definition;
 	RuntimeGameplayProfileScenarioValidationResult profileValidation;
@@ -107,6 +112,7 @@ struct RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult {
 	std::size_t playerStartIssueCount = 0;
 	std::size_t interactionTargetRegistryIssueCount = 0;
 	std::size_t interactionEffectCatalogIssueCount = 0;
+	std::size_t itemDropRegistryIssueCount = 0;
 	std::size_t aiMapPromotionIssueCount = 0;
 	std::size_t profileScenarioIssueCount = 0;
 	std::size_t promotedActorCount = 0;
@@ -116,6 +122,7 @@ struct RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult {
 	std::size_t authoredPlayerCommandCount = 0;
 	std::size_t promotedInteractionTargetCount = 0;
 	std::size_t promotedInteractionEffectEntryCount = 0;
+	std::size_t promotedItemDropCount = 0;
 	std::size_t promotedAiMapRegionCount = 0;
 	std::size_t unmappedAiMapRegionCount = 0;
 

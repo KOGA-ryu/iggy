@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <cstdlib>
 #include <string_view>
 #include <vector>
@@ -169,6 +170,25 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget Interacti
 	target.radius = 1.25;
 	target.enabled = false;
 	return target;
+}
+
+iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredItemDrop ItemDrop(
+	const char *dropId = "drop:key",
+	const char *itemId = "item:key",
+	int x = 2,
+	int y = 1,
+	std::uint32_t count = 1)
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredItemDrop drop;
+	drop.dropId = Id(dropId);
+	drop.itemId = Id(itemId);
+	drop.count = count;
+	drop.localTile = { true, x, y };
+	drop.localPosition = { true, static_cast<double>(x) + 0.5, static_cast<double>(y) + 0.5 };
+	drop.pickupRadius = 0.75;
+	drop.enabled = true;
+	drop.glyph = 'k';
+	return drop;
 }
 
 iggy::runtime::RuntimeGameplayAsciiSourcePlanGlyphLegendEntry PlayerStartLegend(
@@ -363,6 +383,72 @@ void TestNoAuthoredInteractionTargetsPreservesEmptyInteractionState()
 	Expect(result.definition.initialState.interaction.targets.targets().empty(), "initial state should preserve empty interaction target registry");
 	Expect(result.definition.initialState.interaction.effects.entries().empty(), "initial state should preserve empty interaction effect catalog");
 	Expect(result.definition.frames.size() == 1 && result.definition.frames[0].interactionTargets.targets().empty(), "frame should preserve empty interaction target registry");
+}
+
+void TestNoAuthoredItemDropsPreservesEmptyInventoryDrops()
+{
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "source plan without item drops should convert");
+	Expect(result.promotedItemDropCount == 0, "no authored item drops should promote zero drops");
+	Expect(result.itemDropRegistry.built, "empty item drop registry should still build");
+	Expect(result.definition.initialState.inventory.drops.drops.empty(), "initial state should preserve empty drop registry");
+	Expect(result.definition.initialState.inventory.inventory.stacks.empty(), "initial state should preserve empty inventory stacks");
+}
+
+void TestAuthoredItemDropPromotesRuntimeInventoryDrops()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.authoredItemDrops = {
+		ItemDrop("drop:key", "item:key", 3, 1, 2),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "authored item drop should convert");
+	Expect(result.promotedItemDropCount == 1, "one authored item drop should be counted");
+	Expect(result.itemDropRegistry.built, "authored item drop registry should build");
+	const iggy::LevelItemDrop2D *drop =
+		result.definition.initialState.inventory.drops.find(Id("drop:key"));
+	Expect(drop != nullptr, "initial state should contain authored item drop");
+	if (drop != nullptr) {
+		Expect(drop->itemId == Id("item:key"), "item drop should preserve item id");
+		Expect(drop->count == 2, "item drop should preserve count");
+		Expect(drop->position.x == 3.5F && drop->position.y == 1.5F, "item drop should prefer authored point position");
+		Expect(drop->pickupRadius == 0.75F, "item drop should preserve pickup radius");
+		Expect(drop->enabled, "item drop should preserve enabled flag");
+	}
+}
+
+void TestInvalidAuthoredItemDropsBlockConversion()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.authoredItemDrops = {
+		ItemDrop("drop:duplicate"),
+		ItemDrop("drop:duplicate"),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(!result.ok(), "duplicate authored item drop should fail conversion");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::SourcePlanInvalid, "duplicate authored item drop should fail at source validation");
+	Expect(result.sourcePlanIssueCount == 1, "duplicate authored item drop should mirror one source issue");
+	Expect(!result.converted, "duplicate authored item drop should not mark conversion complete");
+	Expect(result.definition.frames.empty(), "duplicate authored item drop should not publish profile scenario definition");
 }
 
 void TestAuthoredInteractionTargetPromotesRuntimeInteractionState()
@@ -1126,6 +1212,9 @@ int main()
 	TestValidSourcePlanAndFrameDefaultsPublishValidatedProfileScenario();
 	TestTerrainActorAndDefaultControlPromotion();
 	TestNoAuthoredInteractionTargetsPreservesEmptyInteractionState();
+	TestNoAuthoredItemDropsPreservesEmptyInventoryDrops();
+	TestAuthoredItemDropPromotesRuntimeInventoryDrops();
+	TestInvalidAuthoredItemDropsBlockConversion();
 	TestAuthoredInteractionTargetPromotesRuntimeInteractionState();
 	TestDuplicateAuthoredInteractionTargetBlocksConversion();
 	TestInvalidAuthoredInteractionEffectBlocksConversion();

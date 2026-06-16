@@ -1,5 +1,6 @@
 #include "runtime/RuntimeGameplayAsciiSourcePlanProfileScenarioConverter.hpp"
 
+#include "runtime/RuntimeInventoryState.hpp"
 #include "scene/player/PlayerAgentState.hpp"
 #include "scene/player/PlayerInputIntent2D.hpp"
 
@@ -52,6 +53,10 @@ void AddIssue(
 	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::
 		InteractionEffectCatalogInvalid:
 		++result.interactionEffectCatalogIssueCount;
+		break;
+	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::
+		ItemDropRegistryInvalid:
+		++result.itemDropRegistryIssueCount;
 		break;
 	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::AiMapPromotionInvalid:
 		++result.aiMapPromotionIssueCount;
@@ -180,6 +185,16 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue InteractionEffectIs
 	issue.code = RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::
 		InteractionEffectCatalogInvalid;
 	issue.interactionEffectIssue = effectIssue;
+	return issue;
+}
+
+RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue ItemDropIssue(
+	const LevelItemDrop2DIssue &dropIssue)
+{
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue issue;
+	issue.code = RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::
+		ItemDropRegistryInvalid;
+	issue.itemDropIssue = dropIssue;
 	return issue;
 }
 
@@ -793,6 +808,56 @@ bool PromoteInteractionState(
 	return true;
 }
 
+Vec2 ItemDropPosition(
+	const RuntimeGameplayAsciiSourcePlanAuthoredItemDrop &authored)
+{
+	if (authored.localPosition.present) {
+		return {
+			static_cast<float>(authored.localPosition.x),
+			static_cast<float>(authored.localPosition.y),
+		};
+	}
+	return tileCenter({ authored.localTile.x, authored.localTile.y });
+}
+
+LevelItemDrop2D ItemDropFromAuthoredDrop(
+	const RuntimeGameplayAsciiSourcePlanAuthoredItemDrop &authored)
+{
+	return {
+		authored.dropId,
+		authored.itemId,
+		authored.count,
+		ItemDropPosition(authored),
+		static_cast<float>(authored.pickupRadius),
+		authored.enabled,
+	};
+}
+
+bool PromoteInventoryState(
+	const RuntimeGameplayAsciiSourcePlan &sourcePlan,
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult &result,
+	RuntimeInventoryState &inventory)
+{
+	std::vector<LevelItemDrop2D> drops;
+	drops.reserve(sourcePlan.authoredItemDrops.size());
+	for (const RuntimeGameplayAsciiSourcePlanAuthoredItemDrop &authored :
+		sourcePlan.authoredItemDrops) {
+		drops.push_back(ItemDropFromAuthoredDrop(authored));
+	}
+
+	result.itemDropRegistry = LevelItemDrop2DRegistryBuilder {}.build(drops);
+	if (!result.itemDropRegistry.built) {
+		for (const LevelItemDrop2DIssue &issue : result.itemDropRegistry.issues) {
+			AddIssue(result, ItemDropIssue(issue));
+		}
+		return false;
+	}
+
+	inventory.drops = result.itemDropRegistry.registry;
+	result.promotedItemDropCount = inventory.drops.drops.size();
+	return true;
+}
+
 bool PromoteRegionAiMap(
 	const RuntimeGameplayAsciiSourcePlan &sourcePlan,
 	const RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig &config,
@@ -902,6 +967,7 @@ RuntimeGameplayProfileScenarioDefinition BuildDefinition(
 	const NpcActorControlState2DRegistry &controls,
 	const PlayerAgentState *player,
 	const RuntimeInteractionState &interaction,
+	const RuntimeInventoryState &inventory,
 	const std::vector<AuthoredFrameGroup> &frameGroups,
 	const std::vector<PlayerInputIntent2D> &defaultPlayerIntents,
 	const AiMap2D *promotedAiMap)
@@ -921,6 +987,7 @@ RuntimeGameplayProfileScenarioDefinition BuildDefinition(
 	definition.initialState.npcActors = actors;
 	definition.initialState.npcControls = controls;
 	definition.initialState.interaction = interaction;
+	definition.initialState.inventory = inventory;
 	definition.profileTraits = config.profileTraits;
 	const auto appendFrame = [&](RuntimeGameplayProfileScenarioFrameDefinition frame) {
 		frame.movementMap = promotedMap;
@@ -1037,6 +1104,14 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConverter::convert(
 		return result;
 	}
 
+	RuntimeInventoryState inventory;
+	if (!PromoteInventoryState(sourcePlan, result, inventory)) {
+		result.issueCount = result.issues.size();
+		result.status = RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::
+			ItemDropRegistryInvalid;
+		return result;
+	}
+
 	if (!PromoteRegionAiMap(sourcePlan, config, result)) {
 		result.issueCount = result.issues.size();
 		result.status =
@@ -1052,6 +1127,7 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConverter::convert(
 		result.controlRegistry.registry,
 		hasPlayer ? &player : nullptr,
 		interaction,
+		inventory,
 		frameGroups,
 		defaultPlayerIntents,
 		config.promoteRegionAiMap ? &result.regionAiMapPromotion.aiMap : nullptr);
