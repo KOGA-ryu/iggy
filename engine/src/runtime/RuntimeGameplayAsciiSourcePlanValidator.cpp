@@ -45,6 +45,10 @@ void AddIssue(
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlMissingTarget:
 		++result.authoredControlIssueCount;
 		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandUnsupportedCommand:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandMissingTarget:
+		++result.authoredPlayerCommandIssueCount;
+		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsafeNoClaims:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsafePromotionPolicy:
 		++result.unsafeBoundaryIssueCount;
@@ -341,6 +345,50 @@ void ValidateAuthoredControls(RuntimeGameplayAsciiSourcePlanValidationResult &re
 	}
 }
 
+bool PlayerCommandSupported(
+	RuntimeGameplayAsciiSourcePlanPlayerCommandKind command)
+{
+	return command ==
+		RuntimeGameplayAsciiSourcePlanPlayerCommandKind::MoveToTile;
+}
+
+bool PlayerCommandNeedsTarget(
+	RuntimeGameplayAsciiSourcePlanPlayerCommandKind command)
+{
+	return command ==
+		RuntimeGameplayAsciiSourcePlanPlayerCommandKind::MoveToTile;
+}
+
+void ValidateAuthoredPlayerCommands(
+	RuntimeGameplayAsciiSourcePlanValidationResult &result)
+{
+	result.authoredPlayerCommandCount =
+		result.plan.authoredPlayerCommands.size();
+
+	for (std::size_t index = 0;
+		index < result.plan.authoredPlayerCommands.size();
+		++index) {
+		const RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand &command =
+			result.plan.authoredPlayerCommands[index];
+
+		if (!PlayerCommandSupported(command.command)) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				AuthoredPlayerCommandUnsupportedCommand;
+			issue.index = index;
+			AddIssue(result, issue);
+		}
+
+		if (PlayerCommandNeedsTarget(command.command) && !command.hasTargetTile) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				AuthoredPlayerCommandMissingTarget;
+			issue.index = index;
+			AddIssue(result, issue);
+		}
+	}
+}
+
 void ValidateBoundaryFlags(RuntimeGameplayAsciiSourcePlanValidationResult &result)
 {
 	const RuntimeGameplayAsciiSourcePlanNoClaims &noClaims = result.plan.noClaims;
@@ -380,6 +428,7 @@ RuntimeGameplayAsciiSourcePlanValidator::validate(
 	ValidateAnnotatedCells(result);
 	ValidateRegions(result);
 	ValidateAuthoredControls(result);
+	ValidateAuthoredPlayerCommands(result);
 	ValidateBoundaryFlags(result);
 	ValidateGridGlyphs(result, legendGlyphs);
 

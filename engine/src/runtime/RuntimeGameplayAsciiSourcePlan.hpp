@@ -6,6 +6,7 @@
 
 #include "core/resource/ResourceId.hpp"
 #include "runtime/RuntimeGameplayAsciiScenarioPacket.hpp"
+#include "scene/level/TileCoord.hpp"
 
 namespace iggy::runtime {
 
@@ -64,6 +65,11 @@ enum class RuntimeGameplayAsciiSourcePlanControlMoveMode {
 	Sprint,
 };
 
+enum class RuntimeGameplayAsciiSourcePlanPlayerCommandKind {
+	Unknown,
+	MoveToTile,
+};
+
 struct RuntimeGameplayAsciiSourcePlanGlyphLegendEntry {
 	char glyph = '\0';
 	RuntimeGameplayAsciiSourcePlanGlyphKind kind =
@@ -110,6 +116,19 @@ struct RuntimeGameplayAsciiSourcePlanAuthoredControl {
 	RuntimeGameplayAsciiSourcePlanControlMoveMode moveMode =
 		RuntimeGameplayAsciiSourcePlanControlMoveMode::Unknown;
 	RuntimeGameplayAsciiSourcePlanLocalPosition targetPosition;
+	bool hasDeclarationIndex = false;
+	std::size_t declarationIndex = 0;
+};
+
+struct RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand {
+	bool hasFrameId = false;
+	ResourceId frameId;
+	RuntimeGameplayAsciiSourcePlanPlayerCommandKind command =
+		RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Unknown;
+	bool hasTargetTile = false;
+	TileCoord targetTile;
+	bool hasDeclarationIndex = false;
+	std::size_t declarationIndex = 0;
 };
 
 struct RuntimeGameplayAsciiSourcePlanNoClaims {
@@ -138,6 +157,8 @@ struct RuntimeGameplayAsciiSourcePlan {
 	std::vector<RuntimeGameplayAsciiSourcePlanAnnotatedCell> annotatedCells;
 	std::vector<RuntimeGameplayAsciiSourcePlanRegion> regions;
 	std::vector<RuntimeGameplayAsciiSourcePlanAuthoredControl> authoredControls;
+	std::vector<RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand>
+		authoredPlayerCommands;
 	RuntimeGameplayAsciiSourcePlanNoClaims noClaims;
 	RuntimeGameplayAsciiSourcePlanPromotionPolicy promotionPolicy;
 
@@ -147,6 +168,7 @@ struct RuntimeGameplayAsciiSourcePlan {
 	[[nodiscard]] std::size_t annotatedCellCount() const;
 	[[nodiscard]] std::size_t regionCount() const;
 	[[nodiscard]] std::size_t authoredControlCount() const;
+	[[nodiscard]] std::size_t authoredPlayerCommandCount() const;
 	[[nodiscard]] bool safeForAuthoring() const;
 };
 

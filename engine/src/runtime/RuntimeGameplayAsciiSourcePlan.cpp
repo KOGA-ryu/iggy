@@ -42,6 +42,11 @@ std::size_t RuntimeGameplayAsciiSourcePlan::authoredControlCount() const
 	return authoredControls.size();
 }
 
+std::size_t RuntimeGameplayAsciiSourcePlan::authoredPlayerCommandCount() const
+{
+	return authoredPlayerCommands.size();
+}
+
 bool RuntimeGameplayAsciiSourcePlan::safeForAuthoring() const
 {
 	return !noClaims.claimsRuntimeTruth &&

@@ -90,6 +90,23 @@ const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue *FindIssue(
 	return nullptr;
 }
 
+iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand MoveToTileCommand(
+	int x,
+	int y,
+	const char *frameId = nullptr)
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand command;
+	if (frameId != nullptr) {
+		command.hasFrameId = true;
+		command.frameId = Id(frameId);
+	}
+	command.command =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanPlayerCommandKind::MoveToTile;
+	command.hasTargetTile = true;
+	command.targetTile = { x, y };
+	return command;
+}
+
 void TestValidSourcePlanPasses()
 {
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
@@ -233,6 +250,7 @@ void TestValidAuthoredControlPasses()
 
 	Expect(result.ok(), "valid authored control should validate");
 	Expect(result.authoredControlCount == 1, "valid authored control should be counted");
+	Expect(result.authoredPlayerCommandCount == 0, "valid authored control test should report zero authored player commands");
 	Expect(result.authoredControlIssueCount == 0, "valid authored control should have no control issues");
 	Expect(result.plan.authoredControls[0].npcId == Id("npc:guard"), "validator should preserve exact authored control npc id");
 	Expect(result.plan.authoredControls[0].targetPosition.x == 2.5, "validator should preserve authored control target position");
@@ -263,6 +281,71 @@ void TestAuthoredControlIssuesFailInDeclarationOrder()
 	Expect(targetIssue != nullptr && targetIssue->index == 3 && targetIssue->id == Id("npc:missing-target"), "missing target issue should preserve control index and npc id");
 }
 
+void TestValidAuthoredPlayerCommandPasses()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
+	plan.authoredPlayerCommands = {
+		MoveToTileCommand(3, 1, "frame:player-move"),
+	};
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
+		Validate(plan);
+
+	Expect(result.ok(), "valid authored player command should validate");
+	Expect(result.authoredPlayerCommandCount == 1, "valid authored player command should be counted");
+	Expect(result.authoredPlayerCommandIssueCount == 0, "valid authored player command should have no issues");
+	Expect(result.plan.authoredPlayerCommands[0].frameId == Id("frame:player-move"), "validator should preserve authored player command frame id");
+	Expect(result.plan.authoredPlayerCommands[0].targetTile.x == 3 && result.plan.authoredPlayerCommands[0].targetTile.y == 1, "validator should preserve authored player command target tile");
+}
+
+void TestAuthoredPlayerCommandIssuesFailInDeclarationOrder()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand unknown;
+	unknown.command =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Unknown;
+	unknown.hasTargetTile = true;
+	unknown.targetTile = { 3, 1 };
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand missingTarget;
+	missingTarget.command =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanPlayerCommandKind::MoveToTile;
+	plan.authoredPlayerCommands = {
+		unknown,
+		missingTarget,
+	};
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
+		Validate(plan);
+
+	Expect(!result.ok(), "invalid authored player commands should fail validation");
+	Expect(result.authoredPlayerCommandCount == 2, "authored player command count should preserve declarations");
+	Expect(result.authoredPlayerCommandIssueCount == 2, "authored player command issues should be counted");
+	Expect(result.issues[result.issues.size() - 2].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandUnsupportedCommand, "first authored player command issue should be unsupported command");
+	Expect(result.issues[result.issues.size() - 1].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandMissingTarget, "second authored player command issue should be missing target");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue *targetIssue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandMissingTarget);
+	Expect(targetIssue != nullptr && targetIssue->index == 1, "missing player command target issue should preserve command index");
+}
+
+void TestMultiplePlayerCommandsPerFrameArePreserved()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
+	plan.authoredPlayerCommands = {
+		MoveToTileCommand(2, 1, "frame:shared"),
+		MoveToTileCommand(3, 1, "frame:shared"),
+		MoveToTileCommand(4, 1, "frame:next"),
+	};
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
+		Validate(plan);
+
+	Expect(result.ok(), "multiple authored player commands should validate because runtime frame input accepts multiple intents");
+	Expect(result.authoredPlayerCommandCount == 3, "validator should preserve player command count");
+	Expect(result.plan.authoredPlayerCommands[0].frameId == Id("frame:shared"), "first same-frame command should preserve frame id");
+	Expect(result.plan.authoredPlayerCommands[1].targetTile.x == 3, "second same-frame command should preserve order");
+	Expect(result.plan.authoredPlayerCommands[2].frameId == Id("frame:next"), "different-frame command should preserve frame id");
+}
+
 void TestExactIdsAndInputImmutability()
 {
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
@@ -272,6 +355,9 @@ void TestExactIdsAndInputImmutability()
 	plan.regions[0].regionId = Id("plain-region");
 	plan.authoredControls = {
 		{ false, {}, Id("plain-actor"), iggy::runtime::RuntimeGameplayAsciiSourcePlanControlBehavior::Waiting, iggy::runtime::RuntimeGameplayAsciiSourcePlanControlMoveMode::Still, {} },
+	};
+	plan.authoredPlayerCommands = {
+		MoveToTileCommand(3, 1, "plain-frame"),
 	};
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlan before = plan;
 
@@ -288,6 +374,7 @@ void TestExactIdsAndInputImmutability()
 	Expect(plan.annotatedCells[0].markerId == before.annotatedCells[0].markerId, "validator should not mutate annotated cells");
 	Expect(plan.regions[0].regionId == before.regions[0].regionId, "validator should not mutate regions");
 	Expect(plan.authoredControls[0].npcId == before.authoredControls[0].npcId, "validator should not mutate authored controls");
+	Expect(plan.authoredPlayerCommands[0].frameId == before.authoredPlayerCommands[0].frameId, "validator should not mutate authored player commands");
 }
 
 } // namespace
@@ -303,6 +390,9 @@ int main()
 	TestUnsafeNoClaimsAndPromotionPolicyFail();
 	TestValidAuthoredControlPasses();
 	TestAuthoredControlIssuesFailInDeclarationOrder();
+	TestValidAuthoredPlayerCommandPasses();
+	TestAuthoredPlayerCommandIssuesFailInDeclarationOrder();
+	TestMultiplePlayerCommandsPerFrameArePreserved();
 	TestExactIdsAndInputImmutability();
 	return Failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
