@@ -109,6 +109,21 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand MoveToTileCom
 	return command;
 }
 
+iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget InteractionTarget(
+	const char *targetId,
+	int x = 2,
+	int y = 1)
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget target;
+	target.targetId = Id(targetId);
+	target.kind =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Usable;
+	target.localTile = { true, x, y };
+	target.radius = 1.5;
+	target.enabled = true;
+	return target;
+}
+
 void TestValidSourcePlanPasses()
 {
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
@@ -283,6 +298,56 @@ void TestAuthoredControlIssuesFailInDeclarationOrder()
 	Expect(targetIssue != nullptr && targetIssue->index == 3 && targetIssue->id == Id("npc:missing-target"), "missing target issue should preserve control index and npc id");
 }
 
+void TestValidAuthoredInteractionTargetPasses()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
+	plan.authoredInteractionTargets = {
+		InteractionTarget("plain-target", 2, 1),
+	};
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
+		Validate(plan);
+
+	Expect(result.ok(), "valid authored interaction target should validate");
+	Expect(result.authoredInteractionTargetCount == 1, "valid authored interaction target should be counted");
+	Expect(result.authoredInteractionTargetIssueCount == 0, "valid authored interaction target should have no issues");
+	Expect(result.plan.authoredInteractionTargets[0].targetId == Id("plain-target"), "validator should preserve exact interaction target id");
+	Expect(result.plan.authoredInteractionTargets[0].localTile.x == 2 && result.plan.authoredInteractionTargets[0].localTile.y == 1, "validator should preserve interaction target tile");
+}
+
+void TestAuthoredInteractionTargetIssuesFailInDeclarationOrder()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget missingId =
+		InteractionTarget("target:missing-id");
+	missingId.targetId = {};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget duplicate =
+		InteractionTarget("target:duplicate");
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget duplicateAgain =
+		InteractionTarget("target:duplicate", 3, 1);
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget invalidPosition =
+		InteractionTarget("target:oob", 8, 1);
+	plan.authoredInteractionTargets = {
+		missingId,
+		duplicate,
+		duplicateAgain,
+		invalidPosition,
+	};
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
+		Validate(plan);
+
+	Expect(!result.ok(), "invalid authored interaction targets should fail validation");
+	Expect(result.authoredInteractionTargetCount == 4, "authored interaction target count should preserve declarations");
+	Expect(result.authoredInteractionTargetIssueCount == 3, "authored interaction target issues should be counted");
+	Expect(result.issues[result.issues.size() - 3].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetMissingId, "first authored interaction target issue should be missing id");
+	Expect(result.issues[result.issues.size() - 2].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetDuplicateId, "second authored interaction target issue should be duplicate id");
+	Expect(result.issues[result.issues.size() - 1].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetPositionOutOfBounds, "third authored interaction target issue should be invalid position");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue *duplicateIssue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetDuplicateId);
+	Expect(duplicateIssue != nullptr && duplicateIssue->index == 2 && duplicateIssue->firstIndex == 1 && duplicateIssue->id == Id("target:duplicate"), "duplicate target issue should preserve target id and indexes");
+}
+
 void TestValidAuthoredPlayerCommandPasses()
 {
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
@@ -358,6 +423,9 @@ void TestExactIdsAndInputImmutability()
 	plan.authoredControls = {
 		{ false, {}, Id("plain-actor"), iggy::runtime::RuntimeGameplayAsciiSourcePlanControlBehavior::Waiting, iggy::runtime::RuntimeGameplayAsciiSourcePlanControlMoveMode::Still, {} },
 	};
+	plan.authoredInteractionTargets = {
+		InteractionTarget("plain-target"),
+	};
 	plan.authoredPlayerCommands = {
 		MoveToTileCommand(3, 1, "plain-frame"),
 	};
@@ -371,11 +439,13 @@ void TestExactIdsAndInputImmutability()
 	Expect(result.plan.annotatedCells[0].markerId == Id("plain-actor"), "validator should preserve exact unqualified actor id");
 	Expect(result.plan.annotatedCells[0].profileId == Id("profile:namespaced"), "validator should preserve exact namespaced profile id");
 	Expect(result.plan.regions[0].regionId == Id("plain-region"), "validator should preserve exact unqualified region id");
+	Expect(result.plan.authoredInteractionTargets[0].targetId == Id("plain-target"), "validator should preserve exact authored interaction target id");
 	Expect(plan.sourceId == before.sourceId, "validator should not mutate source id");
 	Expect(plan.grid.rows == before.grid.rows, "validator should not mutate rows");
 	Expect(plan.annotatedCells[0].markerId == before.annotatedCells[0].markerId, "validator should not mutate annotated cells");
 	Expect(plan.regions[0].regionId == before.regions[0].regionId, "validator should not mutate regions");
 	Expect(plan.authoredControls[0].npcId == before.authoredControls[0].npcId, "validator should not mutate authored controls");
+	Expect(plan.authoredInteractionTargets[0].targetId == before.authoredInteractionTargets[0].targetId, "validator should not mutate authored interaction targets");
 	Expect(plan.authoredPlayerCommands[0].frameId == before.authoredPlayerCommands[0].frameId, "validator should not mutate authored player commands");
 }
 
@@ -392,6 +462,8 @@ int main()
 	TestUnsafeNoClaimsAndPromotionPolicyFail();
 	TestValidAuthoredControlPasses();
 	TestAuthoredControlIssuesFailInDeclarationOrder();
+	TestValidAuthoredInteractionTargetPasses();
+	TestAuthoredInteractionTargetIssuesFailInDeclarationOrder();
 	TestValidAuthoredPlayerCommandPasses();
 	TestAuthoredPlayerCommandIssuesFailInDeclarationOrder();
 	TestMultiplePlayerCommandsPerFrameArePreserved();

@@ -871,6 +871,53 @@ RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
 			issue.line = locations.frameControlTableLines[sourceIssue.index];
 		}
 		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetMissingId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetDuplicateId:
+		issue.table = "interaction_targets";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "target_id";
+		if (sourceIssue.index < locations.interactionTargetTableLines.size()) {
+			issue.line = locations.interactionTargetTableLines[sourceIssue.index];
+		}
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetUnsupportedKind:
+		issue.table = "interaction_targets";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "kind";
+		if (sourceIssue.index < locations.interactionTargetTableLines.size()) {
+			issue.line = locations.interactionTargetTableLines[sourceIssue.index];
+		}
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetMissingPosition:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetPositionOutOfBounds:
+		issue.table = "interaction_targets";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "position";
+		if (sourceIssue.index < locations.interactionTargetTableLines.size()) {
+			issue.line = locations.interactionTargetTableLines[sourceIssue.index];
+		}
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetInvalidRadius:
+		issue.table = "interaction_targets";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "radius";
+		if (sourceIssue.index < locations.interactionTargetTableLines.size()) {
+			issue.line = locations.interactionTargetTableLines[sourceIssue.index];
+		}
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetUnsupportedEffect:
+		issue.table = "interaction_targets";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "effect";
+		if (sourceIssue.index < locations.interactionTargetTableLines.size()) {
+			issue.line = locations.interactionTargetTableLines[sourceIssue.index];
+		}
+		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::
 		AuthoredPlayerCommandUnsupportedCommand:
 		issue.table = "frame_player_commands";

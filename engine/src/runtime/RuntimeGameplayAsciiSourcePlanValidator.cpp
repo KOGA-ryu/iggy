@@ -45,6 +45,15 @@ void AddIssue(
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlMissingTarget:
 		++result.authoredControlIssueCount;
 		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetMissingId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetDuplicateId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetUnsupportedKind:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetMissingPosition:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetPositionOutOfBounds:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetInvalidRadius:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetUnsupportedEffect:
+		++result.authoredInteractionTargetIssueCount;
+		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandUnsupportedCommand:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandMissingTarget:
 		++result.authoredPlayerCommandIssueCount;
@@ -345,6 +354,134 @@ void ValidateAuthoredControls(RuntimeGameplayAsciiSourcePlanValidationResult &re
 	}
 }
 
+bool InteractionTargetKindSupported(
+	RuntimeGameplayAsciiSourcePlanInteractionTargetKind kind)
+{
+	return kind == RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Inspectable ||
+		kind == RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Usable ||
+		kind == RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Pickup ||
+		kind == RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Talk ||
+		kind == RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Door;
+}
+
+bool InteractionEffectKindSupported(
+	RuntimeGameplayAsciiSourcePlanInteractionEffectKind effect)
+{
+	return effect == RuntimeGameplayAsciiSourcePlanInteractionEffectKind::None ||
+		effect == RuntimeGameplayAsciiSourcePlanInteractionEffectKind::InspectText ||
+		effect == RuntimeGameplayAsciiSourcePlanInteractionEffectKind::ToggleTarget ||
+		effect == RuntimeGameplayAsciiSourcePlanInteractionEffectKind::EmitEvent ||
+		effect == RuntimeGameplayAsciiSourcePlanInteractionEffectKind::PickupItem;
+}
+
+bool TileInBounds(
+	const RuntimeGameplayAsciiSourcePlanGrid &grid,
+	const RuntimeGameplayAsciiSourcePlanLocalTile &tile)
+{
+	return tile.x >= 0 && tile.y >= 0 &&
+		static_cast<std::size_t>(tile.x) < grid.width &&
+		static_cast<std::size_t>(tile.y) < grid.rows.size();
+}
+
+bool PositionInBounds(
+	const RuntimeGameplayAsciiSourcePlanGrid &grid,
+	const RuntimeGameplayAsciiSourcePlanLocalPosition &position)
+{
+	return position.x >= 0.0 && position.y >= 0.0 &&
+		position.x < static_cast<double>(grid.width) &&
+		position.y < static_cast<double>(grid.rows.size());
+}
+
+void ValidateAuthoredInteractionTargets(
+	RuntimeGameplayAsciiSourcePlanValidationResult &result)
+{
+	const RuntimeGameplayAsciiSourcePlanGrid &grid = result.plan.grid;
+	result.authoredInteractionTargetCount =
+		result.plan.authoredInteractionTargets.size();
+	std::vector<ResourceId> targetIds;
+	std::vector<std::size_t> targetIdIndexes;
+
+	for (std::size_t index = 0;
+		index < result.plan.authoredInteractionTargets.size();
+		++index) {
+		const RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget &target =
+			result.plan.authoredInteractionTargets[index];
+
+		if (target.targetId.empty()) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				AuthoredInteractionTargetMissingId;
+			issue.index = index;
+			AddIssue(result, issue);
+		} else {
+			for (std::size_t idIndex = 0; idIndex < targetIds.size(); ++idIndex) {
+				if (targetIds[idIndex] == target.targetId) {
+					RuntimeGameplayAsciiSourcePlanIssue issue;
+					issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+						AuthoredInteractionTargetDuplicateId;
+					issue.index = index;
+					issue.firstIndex = targetIdIndexes[idIndex];
+					issue.id = target.targetId;
+					AddIssue(result, issue);
+					break;
+				}
+			}
+			targetIds.push_back(target.targetId);
+			targetIdIndexes.push_back(index);
+		}
+
+		if (!InteractionTargetKindSupported(target.kind)) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				AuthoredInteractionTargetUnsupportedKind;
+			issue.index = index;
+			issue.id = target.targetId;
+			AddIssue(result, issue);
+		}
+
+		if (!target.localTile.present && !target.localPosition.present) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				AuthoredInteractionTargetMissingPosition;
+			issue.index = index;
+			issue.id = target.targetId;
+			AddIssue(result, issue);
+		} else if (
+			(target.localTile.present && !TileInBounds(grid, target.localTile)) ||
+			(target.localPosition.present &&
+				!PositionInBounds(grid, target.localPosition))) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				AuthoredInteractionTargetPositionOutOfBounds;
+			issue.index = index;
+			issue.id = target.targetId;
+			if (target.localTile.present) {
+				issue.row = static_cast<std::size_t>(target.localTile.y);
+				issue.column = static_cast<std::size_t>(target.localTile.x);
+			}
+			AddIssue(result, issue);
+		}
+
+		if (target.radius < 0.0) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				AuthoredInteractionTargetInvalidRadius;
+			issue.index = index;
+			issue.id = target.targetId;
+			AddIssue(result, issue);
+		}
+
+		if (!InteractionEffectKindSupported(target.effect)) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				AuthoredInteractionTargetUnsupportedEffect;
+			issue.index = index;
+			issue.id = target.targetId;
+			AddIssue(result, issue);
+		}
+	}
+}
+
 bool PlayerCommandSupported(
 	RuntimeGameplayAsciiSourcePlanPlayerCommandKind command)
 {
@@ -430,6 +567,7 @@ RuntimeGameplayAsciiSourcePlanValidator::validate(
 	ValidateAnnotatedCells(result);
 	ValidateRegions(result);
 	ValidateAuthoredControls(result);
+	ValidateAuthoredInteractionTargets(result);
 	ValidateAuthoredPlayerCommands(result);
 	ValidateBoundaryFlags(result);
 	ValidateGridGlyphs(result, legendGlyphs);

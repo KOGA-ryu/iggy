@@ -26,6 +26,7 @@ void TestDefaultSourcePlanIsEmptyAndSafe()
 	Expect(plan.legendCount() == 0, "default source plan should report zero legend entries");
 	Expect(plan.annotatedCellCount() == 0, "default source plan should report zero annotated cells");
 	Expect(plan.regionCount() == 0, "default source plan should report zero regions");
+	Expect(plan.authoredInteractionTargetCount() == 0, "default source plan should report zero authored interaction targets");
 	Expect(plan.safeForAuthoring(), "default source plan should be safe authoring data");
 }
 
@@ -175,6 +176,32 @@ void TestAuthoredControlsPreserveMovementFactsAndExactIds()
 	Expect(plan.authoredControls[0].targetPosition.present && plan.authoredControls[0].targetPosition.x == 2.5 && plan.authoredControls[0].targetPosition.y == 1.5, "authored control should preserve target position");
 }
 
+void TestAuthoredInteractionTargetsPreserveFactsAndExactIds()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan;
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget target;
+	target.targetId = Id("plain-target");
+	target.kind = iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Door;
+	target.localTile = { true, 2, 1 };
+	target.localPosition = { true, 2.5, 1.5 };
+	target.radius = 1.25;
+	target.enabled = false;
+	target.effect = iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionEffectKind::ToggleTarget;
+	target.effectTargetId = Id("target:door");
+	target.enabledValue = true;
+	plan.authoredInteractionTargets.push_back(target);
+
+	Expect(plan.authoredInteractionTargetCount() == 1, "source plan should preserve authored interaction target count");
+	Expect(plan.authoredInteractionTargets[0].targetId == Id("plain-target"), "authored interaction target should preserve exact target id");
+	Expect(plan.authoredInteractionTargets[0].kind == iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Door, "authored interaction target should preserve kind");
+	Expect(plan.authoredInteractionTargets[0].localTile.present && plan.authoredInteractionTargets[0].localTile.x == 2 && plan.authoredInteractionTargets[0].localTile.y == 1, "authored interaction target should preserve tile position");
+	Expect(plan.authoredInteractionTargets[0].localPosition.present && plan.authoredInteractionTargets[0].localPosition.x == 2.5 && plan.authoredInteractionTargets[0].localPosition.y == 1.5, "authored interaction target should preserve point position");
+	Expect(plan.authoredInteractionTargets[0].radius == 1.25, "authored interaction target should preserve radius");
+	Expect(!plan.authoredInteractionTargets[0].enabled, "authored interaction target should preserve enabled flag");
+	Expect(plan.authoredInteractionTargets[0].effect == iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionEffectKind::ToggleTarget, "authored interaction target should preserve effect kind");
+	Expect(plan.authoredInteractionTargets[0].effectTargetId == Id("target:door"), "authored interaction target should preserve effect target id");
+}
+
 void TestSourcePlanCopiesAreIndependent()
 {
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan;
@@ -197,17 +224,22 @@ void TestSourcePlanCopiesAreIndependent()
 	plan.authoredControls = {
 		{ true, Id("frame:copy"), Id("npc:copy"), iggy::runtime::RuntimeGameplayAsciiSourcePlanControlBehavior::Seeking, iggy::runtime::RuntimeGameplayAsciiSourcePlanControlMoveMode::Walk, { true, 2.5, 1.5 } },
 	};
+	plan.authoredInteractionTargets = {
+		{ Id("target:copy"), iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Usable, { true, 0, 0 } },
+	};
 
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan copy = plan;
 	copy.grid.rows[0] = "..";
 	copy.legend[0].targetMarkerId = Id("npc:changed");
 	copy.annotatedCells[0].profileId = Id("profile:changed");
 	copy.authoredControls[0].npcId = Id("npc:changed");
+	copy.authoredInteractionTargets[0].targetId = Id("target:changed");
 
 	Expect(plan.grid.rows[0] == "A.", "source plan copy should not mutate source rows");
 	Expect(plan.legend[0].targetMarkerId == Id("npc:copy"), "source plan copy should not mutate legend target id");
 	Expect(plan.annotatedCells[0].profileId == Id("profile:copy"), "source plan copy should not mutate annotated cell profile id");
 	Expect(plan.authoredControls[0].npcId == Id("npc:copy"), "source plan copy should not mutate authored controls");
+	Expect(plan.authoredInteractionTargets[0].targetId == Id("target:copy"), "source plan copy should not mutate authored interaction targets");
 }
 
 } // namespace
@@ -220,6 +252,7 @@ int main()
 	TestAnnotatedCellsPreserveLocalFactsAndExactIds();
 	TestRegionsAndNoClaimFlagsAreExplicit();
 	TestAuthoredControlsPreserveMovementFactsAndExactIds();
+	TestAuthoredInteractionTargetsPreserveFactsAndExactIds();
 	TestSourcePlanCopiesAreIndependent();
 	return Failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

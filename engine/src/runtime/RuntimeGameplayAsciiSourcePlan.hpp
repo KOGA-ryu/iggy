@@ -70,6 +70,24 @@ enum class RuntimeGameplayAsciiSourcePlanPlayerCommandKind {
 	MoveToTile,
 };
 
+enum class RuntimeGameplayAsciiSourcePlanInteractionTargetKind {
+	Unknown,
+	Inspectable,
+	Usable,
+	Pickup,
+	Talk,
+	Door,
+};
+
+enum class RuntimeGameplayAsciiSourcePlanInteractionEffectKind {
+	None,
+	InspectText,
+	ToggleTarget,
+	EmitEvent,
+	PickupItem,
+	Unknown,
+};
+
 struct RuntimeGameplayAsciiSourcePlanGlyphLegendEntry {
 	char glyph = '\0';
 	RuntimeGameplayAsciiSourcePlanGlyphKind kind =
@@ -120,6 +138,23 @@ struct RuntimeGameplayAsciiSourcePlanAuthoredControl {
 	std::size_t declarationIndex = 0;
 };
 
+struct RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget {
+	ResourceId targetId;
+	RuntimeGameplayAsciiSourcePlanInteractionTargetKind kind =
+		RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Unknown;
+	RuntimeGameplayAsciiSourcePlanLocalTile localTile;
+	RuntimeGameplayAsciiSourcePlanLocalPosition localPosition;
+	double radius = 0.0;
+	bool enabled = true;
+	RuntimeGameplayAsciiSourcePlanInteractionEffectKind effect =
+		RuntimeGameplayAsciiSourcePlanInteractionEffectKind::None;
+	ResourceId effectTargetId;
+	ResourceId eventId;
+	ResourceId dropId;
+	std::string text;
+	bool enabledValue = true;
+};
+
 struct RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand {
 	bool hasFrameId = false;
 	ResourceId frameId;
@@ -159,6 +194,8 @@ struct RuntimeGameplayAsciiSourcePlan {
 	std::vector<RuntimeGameplayAsciiSourcePlanAnnotatedCell> annotatedCells;
 	std::vector<RuntimeGameplayAsciiSourcePlanRegion> regions;
 	std::vector<RuntimeGameplayAsciiSourcePlanAuthoredControl> authoredControls;
+	std::vector<RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget>
+		authoredInteractionTargets;
 	std::vector<RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand>
 		authoredPlayerCommands;
 	RuntimeGameplayAsciiSourcePlanNoClaims noClaims;
@@ -170,6 +207,7 @@ struct RuntimeGameplayAsciiSourcePlan {
 	[[nodiscard]] std::size_t annotatedCellCount() const;
 	[[nodiscard]] std::size_t regionCount() const;
 	[[nodiscard]] std::size_t authoredControlCount() const;
+	[[nodiscard]] std::size_t authoredInteractionTargetCount() const;
 	[[nodiscard]] std::size_t authoredPlayerCommandCount() const;
 	[[nodiscard]] bool safeForAuthoring() const;
 };

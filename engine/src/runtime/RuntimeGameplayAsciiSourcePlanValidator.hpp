@@ -29,6 +29,13 @@ enum class RuntimeGameplayAsciiSourcePlanIssueCode {
 	AuthoredControlUnsupportedBehavior,
 	AuthoredControlUnsupportedMoveMode,
 	AuthoredControlMissingTarget,
+	AuthoredInteractionTargetMissingId,
+	AuthoredInteractionTargetDuplicateId,
+	AuthoredInteractionTargetUnsupportedKind,
+	AuthoredInteractionTargetMissingPosition,
+	AuthoredInteractionTargetPositionOutOfBounds,
+	AuthoredInteractionTargetInvalidRadius,
+	AuthoredInteractionTargetUnsupportedEffect,
 	AuthoredPlayerCommandUnsupportedCommand,
 	AuthoredPlayerCommandMissingTarget,
 	EmptyActorMarkerId,
@@ -69,6 +76,8 @@ struct RuntimeGameplayAsciiSourcePlanValidationResult {
 	std::size_t annotationIssueCount = 0;
 	std::size_t regionIssueCount = 0;
 	std::size_t authoredControlIssueCount = 0;
+	std::size_t authoredInteractionTargetCount = 0;
+	std::size_t authoredInteractionTargetIssueCount = 0;
 	std::size_t authoredPlayerCommandIssueCount = 0;
 	std::size_t unsafeBoundaryIssueCount = 0;
 
