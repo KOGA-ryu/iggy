@@ -144,6 +144,43 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand MovePlayerToT
 	return command;
 }
 
+iggy::runtime::RuntimeGameplayAsciiSourcePlanGlyphLegendEntry PlayerStartLegend(
+	char glyph = '@',
+	const char *playerId = "player:source-plan")
+{
+	return {
+		glyph,
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanGlyphKind::PlayerStart,
+		Id("role:player-start"),
+		{},
+		true,
+		iggy::runtime::RuntimeGameplayAsciiScenarioMarkerKind::PlayerStart,
+		Id(playerId),
+		{},
+	};
+}
+
+iggy::runtime::RuntimeGameplayAsciiSourcePlanAnnotatedCell PlayerStartCell(
+	std::size_t row,
+	std::size_t column,
+	char glyph = '@',
+	const char *playerId = "player:annotated")
+{
+	return {
+		true,
+		Id("cell:player-start"),
+		row,
+		column,
+		glyph,
+		{ true, static_cast<int>(column), static_cast<int>(row) },
+		{ false, 0.0, 0.0 },
+		{ true, static_cast<double>(column), static_cast<double>(row), static_cast<double>(column) + 1.0, static_cast<double>(row) + 1.0 },
+		{ Id("tag:player-start") },
+		Id(playerId),
+		{},
+	};
+}
+
 iggy::NpcTraitSet Traits()
 {
 	iggy::NpcTraitSet traits;
@@ -279,6 +316,70 @@ void TestTerrainActorAndDefaultControlPromotion()
 	Expect(control.objective.type == iggy::NpcObjectiveType::Wait, "default control should wait");
 	Expect(control.behavior.type == iggy::NpcBehaviorStateType::Waiting, "default control should use waiting behavior");
 	Expect(control.moveMode == iggy::NpcMoveMode::Still, "default control should use still move mode");
+	Expect(!result.definition.initialState.session.hasPlayer, "source plan without player start should preserve no-player state");
+	Expect(result.promotedPlayerCount == 0, "source plan without player start should promote zero players");
+}
+
+void TestGridPlayerStartPromotesRuntimePlayer()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.grid.rows[1] = "#A.@#";
+	plan.legend.push_back(PlayerStartLegend('@', "player:grid"));
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "grid player start should convert");
+	Expect(result.promotedPlayerCount == 1, "grid player start should promote one player");
+	Expect(result.definition.initialState.session.hasPlayer, "grid player start should set runtime player presence");
+	Expect(result.definition.initialState.session.player.id == Id("player:grid"), "grid player start should preserve target marker id");
+	Expect(result.definition.initialState.session.player.spawnTile == iggy::TileCoord { 3, 1 }, "grid player start should preserve spawn tile");
+	Expect(result.definition.initialState.session.player.position.x == 3.5F && result.definition.initialState.session.player.position.y == 1.5F, "grid player start should use tile center position");
+	Expect(result.definition.initialState.session.level.map.playerStart.x == 3 && result.definition.initialState.session.level.map.playerStart.y == 1, "grid player start should update promoted map player start");
+}
+
+void TestAnnotatedPlayerStartPromotesRuntimePlayer()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.grid.rows[1] = "#A.@#";
+	plan.legend.push_back(PlayerStartLegend());
+	plan.annotatedCells.push_back(PlayerStartCell(1, 3));
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "annotated player start should convert");
+	Expect(result.promotedPlayerCount == 1, "annotated player start should promote one player");
+	Expect(result.definition.initialState.session.hasPlayer, "annotated player start should set runtime player presence");
+	Expect(result.definition.initialState.session.player.id == Id("player:annotated"), "annotated player start should prefer annotated marker id");
+	Expect(result.definition.initialState.session.player.spawnTile == iggy::TileCoord { 3, 1 }, "annotated player start should preserve local tile");
+	Expect(result.definition.initialState.session.player.position.x == 3.5F && result.definition.initialState.session.player.position.y == 1.5F, "annotated player start should use tile center position");
+}
+
+void TestDuplicatePlayerStartBlocksConversion()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.grid.rows[1] = "#A@@#";
+	plan.legend.push_back(PlayerStartLegend());
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(!result.ok(), "duplicate player starts should fail conversion");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::PlayerStartInvalid, "duplicate player starts should report player start invalid");
+	Expect(result.playerStartIssueCount == 1, "duplicate player start should be counted once");
+	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::DuplicatePlayerStart), "duplicate player start issue should be present");
+	Expect(result.issues[0].row == 1 && result.issues[0].column == 3 && result.issues[0].glyph == '@', "duplicate player start issue should preserve duplicate location");
+	Expect(result.definition.frames.empty(), "duplicate player start should not publish runnable definition");
 }
 
 void TestAuthoredControlReplacesDefaultControlForPromotedActor()
@@ -869,6 +970,9 @@ int main()
 	TestValidSourcePlanRequiresFrameDefaults();
 	TestValidSourcePlanAndFrameDefaultsPublishValidatedProfileScenario();
 	TestTerrainActorAndDefaultControlPromotion();
+	TestGridPlayerStartPromotesRuntimePlayer();
+	TestAnnotatedPlayerStartPromotesRuntimePlayer();
+	TestDuplicatePlayerStartBlocksConversion();
 	TestAuthoredControlReplacesDefaultControlForPromotedActor();
 	TestFrameIdAuthoredControlsCreateScenarioFramesInFirstSeenOrder();
 	TestNoFrameAuthoredPlayerCommandCreatesDefaultFrameIntent();

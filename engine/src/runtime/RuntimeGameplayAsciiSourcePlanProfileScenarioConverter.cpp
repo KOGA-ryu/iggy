@@ -1,5 +1,6 @@
 #include "runtime/RuntimeGameplayAsciiSourcePlanProfileScenarioConverter.hpp"
 
+#include "scene/player/PlayerAgentState.hpp"
 #include "scene/player/PlayerInputIntent2D.hpp"
 
 namespace iggy::runtime {
@@ -40,6 +41,9 @@ void AddIssue(
 	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::
 		AmbiguousAuthoredPlayerCommandFrame:
 		++result.authoredPlayerCommandIssueCount;
+		break;
+	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::DuplicatePlayerStart:
+		++result.playerStartIssueCount;
 		break;
 	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::AiMapPromotionInvalid:
 		++result.aiMapPromotionIssueCount;
@@ -134,6 +138,20 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue AiMapPromotionIssue
 	issue.code =
 		RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::AiMapPromotionInvalid;
 	issue.aiMapPromotionIssue = aiMapPromotionIssue;
+	return issue;
+}
+
+RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue DuplicatePlayerStartIssue(
+	std::size_t row,
+	std::size_t column,
+	char glyph)
+{
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue issue;
+	issue.code =
+		RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::DuplicatePlayerStart;
+	issue.row = row;
+	issue.column = column;
+	issue.glyph = glyph;
 	return issue;
 }
 
@@ -237,6 +255,18 @@ bool IsActorCell(
 		|| legend->scenarioMarkerKind == RuntimeGameplayAsciiScenarioMarkerKind::Actor;
 }
 
+bool IsPlayerStartLegend(const RuntimeGameplayAsciiSourcePlanGlyphLegendEntry &legend)
+{
+	return legend.kind == RuntimeGameplayAsciiSourcePlanGlyphKind::PlayerStart
+		|| legend.scenarioMarkerKind == RuntimeGameplayAsciiScenarioMarkerKind::PlayerStart;
+}
+
+bool IsPlayerStartGlyph(const RuntimeGameplayAsciiSourcePlan &sourcePlan, char glyph)
+{
+	const RuntimeGameplayAsciiSourcePlanGlyphLegendEntry *legend = FindLegend(sourcePlan, glyph);
+	return legend != nullptr && IsPlayerStartLegend(*legend);
+}
+
 Vec2 ActorPosition(const RuntimeGameplayAsciiSourcePlanAnnotatedCell &cell)
 {
 	if (cell.localPosition.present) {
@@ -263,6 +293,44 @@ NpcActorState2D ActorFromCell(
 	actor.currentGoalId = config.defaultGoalId;
 	actor.present = true;
 	return actor;
+}
+
+TileCoord PlayerStartTile(const RuntimeGameplayAsciiSourcePlanAnnotatedCell &cell)
+{
+	if (cell.localTile.present) {
+		return { cell.localTile.x, cell.localTile.y };
+	}
+	return {
+		static_cast<int>(cell.column),
+		static_cast<int>(cell.row),
+	};
+}
+
+ResourceId PlayerIdFromLegendOrCell(
+	const RuntimeGameplayAsciiSourcePlanGlyphLegendEntry *legend,
+	const RuntimeGameplayAsciiSourcePlanAnnotatedCell *cell)
+{
+	if (cell != nullptr && !cell->markerId.empty()) {
+		return cell->markerId;
+	}
+	if (legend != nullptr && !legend->targetMarkerId.empty()) {
+		return legend->targetMarkerId;
+	}
+	return ResourceId("player:source-plan");
+}
+
+PlayerAgentState PlayerFromStart(
+	const RuntimeGameplayAsciiSourcePlanGlyphLegendEntry *legend,
+	const RuntimeGameplayAsciiSourcePlanAnnotatedCell *cell,
+	TileCoord tile)
+{
+	PlayerAgentState player;
+	player.id = PlayerIdFromLegendOrCell(legend, cell);
+	player.position = tileCenter(tile);
+	player.spawnTile = tile;
+	player.movementStatus = PlayerMovementStatus::Idle;
+	player.facing = PlayerFacing2D::South;
+	return player;
 }
 
 NpcActorControlState2D DefaultControlForActor(
@@ -592,12 +660,88 @@ bool PromoteRegionAiMap(
 	return false;
 }
 
+bool PromoteAnnotatedPlayerStart(
+	const RuntimeGameplayAsciiSourcePlan &sourcePlan,
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult &result,
+	PlayerAgentState &player)
+{
+	bool found = false;
+	for (const RuntimeGameplayAsciiSourcePlanAnnotatedCell &cell : sourcePlan.annotatedCells) {
+		const RuntimeGameplayAsciiSourcePlanGlyphLegendEntry *legend =
+			FindLegend(sourcePlan, cell.glyph);
+		if (legend == nullptr || !IsPlayerStartLegend(*legend)) {
+			continue;
+		}
+
+		if (found) {
+			AddIssue(result, DuplicatePlayerStartIssue(cell.row, cell.column, cell.glyph));
+			continue;
+		}
+
+		const TileCoord tile = PlayerStartTile(cell);
+		player = PlayerFromStart(legend, &cell, tile);
+		found = true;
+	}
+
+	return found;
+}
+
+bool PromoteGridPlayerStart(
+	const RuntimeGameplayAsciiSourcePlan &sourcePlan,
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult &result,
+	PlayerAgentState &player)
+{
+	bool found = false;
+	for (std::size_t row = 0; row < sourcePlan.grid.rows.size(); ++row) {
+		const std::string &line = sourcePlan.grid.rows[row];
+		for (std::size_t column = 0; column < line.size(); ++column) {
+			const char glyph = line[column];
+			if (!IsPlayerStartGlyph(sourcePlan, glyph)) {
+				continue;
+			}
+
+			if (found) {
+				AddIssue(result, DuplicatePlayerStartIssue(row, column, glyph));
+				continue;
+			}
+
+			const RuntimeGameplayAsciiSourcePlanGlyphLegendEntry *legend =
+				FindLegend(sourcePlan, glyph);
+			const TileCoord tile {
+				static_cast<int>(column),
+				static_cast<int>(row),
+			};
+			player = PlayerFromStart(legend, nullptr, tile);
+			found = true;
+		}
+	}
+	return found;
+}
+
+bool PromotePlayerStart(
+	const RuntimeGameplayAsciiSourcePlan &sourcePlan,
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult &result,
+	PlayerAgentState &player,
+	bool &hasPlayer)
+{
+	hasPlayer = PromoteAnnotatedPlayerStart(sourcePlan, result, player);
+	if (!hasPlayer) {
+		hasPlayer = PromoteGridPlayerStart(sourcePlan, result, player);
+	}
+	if (result.playerStartIssueCount > 0) {
+		return false;
+	}
+	result.promotedPlayerCount = hasPlayer ? 1 : 0;
+	return true;
+}
+
 RuntimeGameplayProfileScenarioDefinition BuildDefinition(
 	const RuntimeGameplayAsciiSourcePlan &sourcePlan,
 	const RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig &config,
 	const LevelTileMap &promotedMap,
 	const NpcActorState2DRegistry &actors,
 	const NpcActorControlState2DRegistry &controls,
+	const PlayerAgentState *player,
 	const std::vector<AuthoredFrameGroup> &frameGroups,
 	const std::vector<PlayerInputIntent2D> &defaultPlayerIntents,
 	const AiMap2D *promotedAiMap)
@@ -606,6 +750,14 @@ RuntimeGameplayProfileScenarioDefinition BuildDefinition(
 	definition.hasScenarioId = sourcePlan.hasSourceId;
 	definition.scenarioId = sourcePlan.sourceId;
 	definition.initialState.session.level.map = promotedMap;
+	if (player != nullptr) {
+		definition.initialState.session.hasPlayer = true;
+		definition.initialState.session.player = *player;
+		definition.initialState.session.level.map.playerStart = {
+			player->spawnTile.x,
+			player->spawnTile.y,
+		};
+	}
 	definition.initialState.npcActors = actors;
 	definition.initialState.npcControls = controls;
 	definition.profileTraits = config.profileTraits;
@@ -691,6 +843,15 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConverter::convert(
 		return result;
 	}
 
+	PlayerAgentState player;
+	bool hasPlayer = false;
+	if (!PromotePlayerStart(sourcePlan, result, player, hasPlayer)) {
+		result.issueCount = result.issues.size();
+		result.status =
+			RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::PlayerStartInvalid;
+		return result;
+	}
+
 	std::vector<PlayerInputIntent2D> defaultPlayerIntents;
 	if (!ApplyAuthoredPlayerCommands(
 			sourcePlan,
@@ -716,6 +877,7 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConverter::convert(
 		result.promotedMap,
 		result.actorRegistry.registry,
 		result.controlRegistry.registry,
+		hasPlayer ? &player : nullptr,
 		frameGroups,
 		defaultPlayerIntents,
 		config.promoteRegionAiMap ? &result.regionAiMapPromotion.aiMap : nullptr);
