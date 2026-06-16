@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "runtime/RuntimeGameplayAsciiSourcePlanProfileScenarioConverter.hpp"
+#include "runtime/RuntimeGameplayProfileScenarioRunner.hpp"
 #include "support/LevelMapFixtures.hpp"
 #include "support/TestHarness.hpp"
 
@@ -134,6 +135,8 @@ void TestInvalidSourcePlanShortCircuitsBeforePublishingDefinition()
 	Expect(result.sourcePlanIssueCount == result.sourceValidation.issueCount, "source issues should be mirrored");
 	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::SourcePlanInvalid), "source invalid issue should be present");
 	Expect(result.definition.frames.empty(), "invalid source plan should not publish profile scenario frames");
+	Expect(result.definition.initialState.npcActors.actors.empty(), "invalid source plan should not publish actors to run");
+	Expect(result.definition.initialState.npcControls.entries.empty(), "invalid source plan should not publish controls to run");
 	Expect(plan.grid.rows == before.grid.rows, "converter should not mutate invalid source plan");
 }
 
@@ -252,6 +255,8 @@ void TestUnsupportedCustomTerrainFailsBeforeDefinition()
 	Expect(result.unsupportedTerrainPromotionCount == 1, "unsupported custom terrain should be counted once");
 	Expect(result.issues[0].glyph == '~' && result.issues[0].row == 1 && result.issues[0].column == 2, "unsupported terrain issue should preserve glyph location");
 	Expect(result.definition.frames.empty(), "unsupported terrain should not publish profile scenario definition");
+	Expect(result.definition.initialState.npcActors.actors.empty(), "unsupported terrain should not publish actors to run");
+	Expect(result.definition.initialState.npcControls.entries.empty(), "unsupported terrain should not publish controls to run");
 }
 
 void TestMappedCustomTerrainPromotes()
@@ -366,6 +371,31 @@ void TestFrameUsesPromotedMapAndDoesNotInventScripts()
 	Expect(result.definition.frames[0].playerFrame.npcMovementRequests.empty(), "converter should not invent prepared movement script semantics");
 }
 
+void TestConvertedDefaultProfileScenarioRunsThroughProfileRunner()
+{
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult converted =
+		Convert(plan, config);
+	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
+		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(converted.definition);
+
+	Expect(converted.ok(), "runner acceptance requires converted profile scenario");
+	Expect(run.ran(), "converted default profile scenario should run");
+	Expect(run.validation.ok(), "converted default profile scenario should validate in runner");
+	Expect(run.frameCount == 1, "converted default profile scenario should run one frame");
+	Expect(run.ledger.hasProfileValidation, "converted default profile scenario ledger should preserve profile validation");
+	Expect(run.state.npcActors.actors.size() == 1, "converted default profile scenario should preserve promoted actor through runner");
+	Expect(run.state.npcControls.entries.size() == 1, "converted default profile scenario should preserve promoted control through runner");
+	Expect(run.state.npcActors.actors[0].npcId == Id("npc:guard"), "converted default profile scenario should preserve npc id after runner");
+	Expect(run.state.npcActors.actors[0].position.x == 1.5F && run.state.npcActors.actors[0].position.y == 1.5F, "converted default profile scenario should not invent movement");
+	Expect(run.npcMovedCount == 0 && !run.npcActorsChanged, "converted default profile scenario should remain no-op for movement");
+	Expect(converted.definition.initialState.session.level.map.width == run.state.session.level.map.width, "runner should preserve promoted session map");
+}
+
 } // namespace
 
 int main()
@@ -381,5 +411,6 @@ int main()
 	TestInvalidDefaultControlReportsControlRegistryInvalid();
 	TestMissingProfileCatalogSurfacesProfileScenarioValidationFailure();
 	TestFrameUsesPromotedMapAndDoesNotInventScripts();
+	TestConvertedDefaultProfileScenarioRunsThroughProfileRunner();
 	return Failures;
 }
