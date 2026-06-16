@@ -32,6 +32,20 @@ bool HasIssue(
 	return false;
 }
 
+const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *FindIssue(
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult &result,
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode code,
+	const std::string &key = {})
+{
+	for (const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue &issue :
+		result.issues) {
+		if (issue.code == code && (key.empty() || issue.key == key)) {
+			return &issue;
+		}
+	}
+	return nullptr;
+}
+
 iggy::ResourceId Id(const char *value)
 {
 	return iggy::ResourceId(value);
@@ -269,6 +283,15 @@ rows = ["."]
 	Expect(!result.ok(), "wrong typed width should fail");
 	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::TypeInvalid, "wrong typed width should report type invalid");
 	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::WrongType), "wrong typed width should report wrong type");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::WrongType, "width");
+	Expect(issue != nullptr, "wrong typed width should be findable by key");
+	if (issue != nullptr) {
+		Expect(issue->line > 0, "wrong typed width should report line");
+		Expect(issue->table == "grid", "wrong typed width should report grid table");
+		Expect(issue->key == "width", "wrong typed width should report width key");
+		Expect(!issue->hasTableIndex, "wrong typed width should not report repeated table index");
+	}
 }
 
 void TestRaggedRowsSurfaceSourcePlanValidation()
@@ -359,13 +382,22 @@ void TestUnknownLegendEnumFailsAsTypeInvalid()
 void TestInvalidLegendGlyphFailsAsTypeInvalid()
 {
 	std::string text = RootGridLegendToml();
-	const std::size_t start = text.find("glyph = \"A\"");
-	text.replace(start, std::string("glyph = \"A\"").size(), "glyph = \"AA\"");
+	const std::size_t start = text.find("glyph = \"@\"");
+	text.replace(start, std::string("glyph = \"@\"").size(), "glyph = \"@@\"");
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result = Read(text);
 
 	Expect(!result.ok(), "invalid legend glyph should fail");
 	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::TypeInvalid, "invalid legend glyph should report type invalid");
 	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::InvalidGlyphString), "invalid legend glyph should report invalid glyph");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::InvalidGlyphString, "glyph");
+	Expect(issue != nullptr, "invalid second legend glyph should be findable");
+	if (issue != nullptr) {
+		Expect(issue->line > 0, "invalid second legend glyph should report line");
+		Expect(issue->table == "legend", "invalid second legend glyph should report legend table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 1, "invalid second legend glyph should report zero-based legend index");
+		Expect(issue->key == "glyph", "invalid second legend glyph should report glyph key");
+	}
 }
 
 void TestCellsAndRegionsParse()
@@ -430,6 +462,15 @@ void TestWrongTypedCellFieldFailsAsTypeInvalid()
 	Expect(!result.ok(), "wrong typed cell row should fail");
 	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::TypeInvalid, "wrong typed cell row should report type invalid");
 	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::WrongType), "wrong typed cell row should report wrong type");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::WrongType, "row");
+	Expect(issue != nullptr, "wrong typed cell row should be findable");
+	if (issue != nullptr) {
+		Expect(issue->line > 0, "wrong typed cell row should report line");
+		Expect(issue->table == "cells", "wrong typed cell row should report cells table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "wrong typed cell row should report first cell index");
+		Expect(issue->key == "row", "wrong typed cell row should report row key");
+	}
 }
 
 void TestUnsupportedInlineCellShapeFailsAsUnsupported()
@@ -454,6 +495,26 @@ void TestInvalidRegionBoundsSurfaceSourcePlanValidation()
 	Expect(!result.ok(), "out-of-bounds region should fail source validation");
 	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "out-of-bounds region should report source invalid");
 	Expect(result.sourcePlanIssueCount > 0, "out-of-bounds region should preserve nested source issues");
+}
+
+void TestUnsupportedRegionKeyReportsContext()
+{
+	std::string text = RootGridLegendCellsRegionsToml();
+	const std::size_t start = text.find("role_tags = [\"tag:room\"]");
+	text.insert(start + std::string("role_tags = [\"tag:room\"]").size(), "\nunexpected = true");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result = Read(text);
+
+	Expect(!result.ok(), "unsupported region key should fail");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::UnsupportedSyntax, "unsupported region key should report unsupported status");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::UnsupportedNestedShape, "unexpected");
+	Expect(issue != nullptr, "unsupported region key should be findable by raw key");
+	if (issue != nullptr) {
+		Expect(issue->line > 0, "unsupported region key should report line");
+		Expect(issue->table == "regions", "unsupported region key should report regions table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "unsupported region key should report first region index");
+		Expect(issue->detail.find("unsupported regions key") != std::string::npos, "unsupported region key should preserve detail");
+	}
 }
 
 void TestTomlSourcePlanFeedsConverterAndProfileValidator()
@@ -517,6 +578,7 @@ int main()
 	TestWrongTypedCellFieldFailsAsTypeInvalid();
 	TestUnsupportedInlineCellShapeFailsAsUnsupported();
 	TestInvalidRegionBoundsSurfaceSourcePlanValidation();
+	TestUnsupportedRegionKeyReportsContext();
 	TestTomlSourcePlanFeedsConverterAndProfileValidator();
 	return Failures;
 }

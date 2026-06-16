@@ -32,8 +32,12 @@ struct RuntimeGameplayAsciiSourcePlanTomlReadIssue {
 		RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SyntaxError;
 	std::size_t line = 0;
 	std::size_t column = 0;
+	std::string table;
+	bool hasTableIndex = false;
+	std::size_t tableIndex = 0;
 	std::string key;
 	std::string detail;
+	RuntimeGameplayAsciiSourcePlanIssue sourceIssue;
 };
 
 struct RuntimeGameplayAsciiSourcePlanTomlReadResult {

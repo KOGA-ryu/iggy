@@ -27,6 +27,42 @@ enum class InlineShapeStatus {
 	Unsupported,
 };
 
+struct IssueContext {
+	Table table = Table::Root;
+	bool hasTableIndex = false;
+	std::size_t tableIndex = 0;
+};
+
+std::string TableName(Table table)
+{
+	switch (table) {
+	case Table::Root:
+		return "root";
+	case Table::Grid:
+		return "grid";
+	case Table::NoClaims:
+		return "no_claims";
+	case Table::Promotion:
+		return "promotion";
+	case Table::Legend:
+		return "legend";
+	case Table::Cells:
+		return "cells";
+	case Table::Regions:
+		return "regions";
+	}
+	return {};
+}
+
+void ApplyContext(
+	RuntimeGameplayAsciiSourcePlanTomlReadIssue &issue,
+	const IssueContext &context)
+{
+	issue.table = TableName(context.table);
+	issue.hasTableIndex = context.hasTableIndex;
+	issue.tableIndex = context.tableIndex;
+}
+
 bool IsWhitespaceOnly(const std::string &text)
 {
 	for (const unsigned char character : text) {
@@ -587,24 +623,28 @@ InlineShapeStatus ParseCellBounds(
 void AddWrongType(
 	RuntimeGameplayAsciiSourcePlanTomlReadResult &result,
 	std::size_t line,
-	const std::string &key)
+	const std::string &key,
+	const IssueContext &context)
 {
 	RuntimeGameplayAsciiSourcePlanTomlReadIssue issue;
 	issue.code = RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::WrongType;
 	issue.line = line;
 	issue.key = key;
+	ApplyContext(issue, context);
 	AddIssue(result, issue);
 }
 
 void AddInvalidGlyph(
 	RuntimeGameplayAsciiSourcePlanTomlReadResult &result,
 	std::size_t line,
-	const std::string &key)
+	const std::string &key,
+	const IssueContext &context)
 {
 	RuntimeGameplayAsciiSourcePlanTomlReadIssue issue;
 	issue.code = RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::InvalidGlyphString;
 	issue.line = line;
 	issue.key = key;
+	ApplyContext(issue, context);
 	AddIssue(result, issue);
 }
 
@@ -612,37 +652,45 @@ void AddUnknownEnum(
 	RuntimeGameplayAsciiSourcePlanTomlReadResult &result,
 	std::size_t line,
 	const std::string &key,
-	const std::string &value)
+	const std::string &value,
+	const IssueContext &context)
 {
 	RuntimeGameplayAsciiSourcePlanTomlReadIssue issue;
 	issue.code = RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::UnknownEnumValue;
 	issue.line = line;
 	issue.key = key;
 	issue.detail = value;
+	ApplyContext(issue, context);
 	AddIssue(result, issue);
 }
 
 void AddSyntax(
 	RuntimeGameplayAsciiSourcePlanTomlReadResult &result,
 	std::size_t line,
-	const std::string &detail)
+	const std::string &detail,
+	const IssueContext &context = {})
 {
 	RuntimeGameplayAsciiSourcePlanTomlReadIssue issue;
 	issue.code = RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SyntaxError;
 	issue.line = line;
 	issue.detail = detail;
+	ApplyContext(issue, context);
 	AddIssue(result, issue);
 }
 
 void AddUnsupported(
 	RuntimeGameplayAsciiSourcePlanTomlReadResult &result,
 	std::size_t line,
-	const std::string &detail)
+	const std::string &detail,
+	const IssueContext &context,
+	const std::string &key = {})
 {
 	RuntimeGameplayAsciiSourcePlanTomlReadIssue issue;
 	issue.code = RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::UnsupportedNestedShape;
 	issue.line = line;
+	issue.key = key;
 	issue.detail = detail;
+	ApplyContext(issue, context);
 	AddIssue(result, issue);
 }
 
@@ -650,12 +698,18 @@ void AddInlineShapeIssue(
 	RuntimeGameplayAsciiSourcePlanTomlReadResult &result,
 	std::size_t line,
 	const std::string &key,
-	InlineShapeStatus status)
+	InlineShapeStatus status,
+	const IssueContext &context)
 {
 	if (status == InlineShapeStatus::WrongType) {
-		AddWrongType(result, line, key);
+		AddWrongType(result, line, key, context);
 	} else if (status == InlineShapeStatus::Unsupported) {
-		AddUnsupported(result, line, "unsupported inline table shape for key: " + key);
+		AddUnsupported(
+			result,
+			line,
+			"unsupported inline table shape for key: " + key,
+			context,
+			key);
 	}
 }
 
@@ -705,6 +759,7 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 	}
 
 	Table table = Table::Root;
+	IssueContext context;
 	bool sawGrid = false;
 	bool readingRows = false;
 	std::vector<std::string> parsedRows;
@@ -721,7 +776,7 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			std::string row;
 			bool closed = false;
 			if (!ParseMultilineStringArrayItem(line, row, closed)) {
-				AddWrongType(result, lineNumber, "rows");
+				AddWrongType(result, lineNumber, "rows", context);
 				continue;
 			}
 			if (closed) {
@@ -735,46 +790,56 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 
 		if (line == "[grid]") {
 			table = Table::Grid;
+			context = { table, false, 0 };
 			sawGrid = true;
 			continue;
 		}
 		if (line == "[no_claims]") {
 			table = Table::NoClaims;
+			context = { table, false, 0 };
 			continue;
 		}
 		if (line == "[promotion]") {
 			table = Table::Promotion;
+			context = { table, false, 0 };
 			continue;
 		}
 		if (line == "[[legend]]") {
 			result.plan.legend.push_back({});
 			table = Table::Legend;
+			context = { table, true, result.plan.legend.size() - 1 };
 			continue;
 		}
 		if (line == "[[cells]]") {
 			result.plan.annotatedCells.push_back({});
 			table = Table::Cells;
+			context = { table, true, result.plan.annotatedCells.size() - 1 };
 			continue;
 		}
 		if (line == "[[regions]]") {
 			result.plan.regions.push_back({});
 			table = Table::Regions;
+			context = { table, true, result.plan.regions.size() - 1 };
 			continue;
 		}
 		if (!line.empty() && line.front() == '[') {
-			AddUnsupported(result, lineNumber, "unsupported TOML table in source-plan reader slice");
+			AddUnsupported(
+				result,
+				lineNumber,
+				"unsupported TOML table in source-plan reader slice",
+				context);
 			continue;
 		}
 
 		const std::size_t equals = line.find('=');
 		if (equals == std::string::npos) {
-			AddSyntax(result, lineNumber, "expected key = value");
+			AddSyntax(result, lineNumber, "expected key = value", context);
 			continue;
 		}
 		const std::string key = Trim(std::string_view(line).substr(0, equals));
 		const std::string value = Trim(std::string_view(line).substr(equals + 1));
 		if (key.empty()) {
-			AddSyntax(result, lineNumber, "empty key");
+			AddSyntax(result, lineNumber, "empty key", context);
 			continue;
 		}
 
@@ -782,21 +847,21 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			if (key == "format_id") {
 				std::string parsed;
 				if (!ParseQuotedString(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					result.plan.formatId = ResourceId(parsed);
 				}
 			} else if (key == "version") {
 				std::size_t parsed = 0;
 				if (!ParseUnsigned(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					result.plan.version = parsed;
 				}
 			} else if (key == "source_id") {
 				std::string parsed;
 				if (!ParseQuotedString(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					result.plan.hasSourceId = true;
 					result.plan.sourceId = ResourceId(parsed);
@@ -804,13 +869,13 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			} else if (key == "source_ref") {
 				std::string parsed;
 				if (!ParseQuotedString(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					result.plan.hasSourceRef = true;
 					result.plan.sourceRef = ResourceId(parsed);
 				}
 			} else {
-				AddUnsupported(result, lineNumber, "unsupported root key: " + key);
+				AddUnsupported(result, lineNumber, "unsupported root key: " + key, context, key);
 			}
 			continue;
 		}
@@ -818,7 +883,7 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 		if (table == Table::NoClaims) {
 			bool parsed = false;
 			if (!ParseBool(value, parsed)) {
-				AddWrongType(result, lineNumber, key);
+				AddWrongType(result, lineNumber, key, context);
 			} else if (key == "runtime_truth") {
 				result.plan.noClaims.claimsRuntimeTruth = parsed;
 			} else if (key == "gameplay_execution") {
@@ -828,7 +893,12 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			} else if (key == "profile_scenario_conversion") {
 				result.plan.noClaims.claimsProfileScenarioConversion = parsed;
 			} else {
-				AddUnsupported(result, lineNumber, "unsupported no_claims key: " + key);
+				AddUnsupported(
+					result,
+					lineNumber,
+					"unsupported no_claims key: " + key,
+					context,
+					key);
 			}
 			continue;
 		}
@@ -836,7 +906,7 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 		if (table == Table::Promotion) {
 			bool parsed = false;
 			if (!ParseBool(value, parsed)) {
-				AddWrongType(result, lineNumber, key);
+				AddWrongType(result, lineNumber, key, context);
 			} else if (key == "ready") {
 				result.plan.promotionPolicy.promotionReady = parsed;
 			} else if (key == "runtime_execution") {
@@ -846,7 +916,12 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			} else if (key == "profile_scenario_conversion") {
 				result.plan.promotionPolicy.allowsProfileScenarioConversion = parsed;
 			} else {
-				AddUnsupported(result, lineNumber, "unsupported promotion key: " + key);
+				AddUnsupported(
+					result,
+					lineNumber,
+					"unsupported promotion key: " + key,
+					context,
+					key);
 			}
 			continue;
 		}
@@ -857,7 +932,7 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			if (key == "glyph") {
 				char glyph = '\0';
 				if (!ParseGlyph(value, glyph)) {
-					AddInvalidGlyph(result, lineNumber, key);
+					AddInvalidGlyph(result, lineNumber, key, context);
 				} else {
 					entry.glyph = glyph;
 				}
@@ -866,30 +941,30 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 				RuntimeGameplayAsciiSourcePlanGlyphKind kind =
 					RuntimeGameplayAsciiSourcePlanGlyphKind::Unknown;
 				if (!ParseQuotedString(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else if (!ParseGlyphKind(parsed, kind)) {
-					AddUnknownEnum(result, lineNumber, key, parsed);
+					AddUnknownEnum(result, lineNumber, key, parsed, context);
 				} else {
 					entry.kind = kind;
 				}
 			} else if (key == "role_id") {
 				std::string parsed;
 				if (!ParseQuotedString(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					entry.roleId = ResourceId(parsed);
 				}
 			} else if (key == "role_tags") {
 				std::vector<std::string> parsed;
 				if (!ParseStringArrayInline(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					entry.roleTags = ToResourceIds(parsed);
 				}
 			} else if (key == "maps_to_scenario_marker") {
 				bool parsed = false;
 				if (!ParseBool(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					entry.mapsToScenarioMarker = parsed;
 				}
@@ -898,28 +973,28 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 				RuntimeGameplayAsciiScenarioMarkerKind kind =
 					RuntimeGameplayAsciiScenarioMarkerKind::Unknown;
 				if (!ParseQuotedString(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else if (!ParseMarkerKind(parsed, kind)) {
-					AddUnknownEnum(result, lineNumber, key, parsed);
+					AddUnknownEnum(result, lineNumber, key, parsed, context);
 				} else {
 					entry.scenarioMarkerKind = kind;
 				}
 			} else if (key == "target_marker_id") {
 				std::string parsed;
 				if (!ParseQuotedString(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					entry.targetMarkerId = ResourceId(parsed);
 				}
 			} else if (key == "target_profile_id") {
 				std::string parsed;
 				if (!ParseQuotedString(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					entry.targetProfileId = ResourceId(parsed);
 				}
 			} else {
-				AddUnsupported(result, lineNumber, "unsupported legend key: " + key);
+				AddUnsupported(result, lineNumber, "unsupported legend key: " + key, context, key);
 			}
 			continue;
 		}
@@ -930,7 +1005,7 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			if (key == "id") {
 				std::string parsed;
 				if (!ParseQuotedString(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					cell.hasCellId = true;
 					cell.cellId = ResourceId(parsed);
@@ -938,57 +1013,57 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			} else if (key == "row") {
 				std::size_t parsed = 0;
 				if (!ParseUnsigned(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					cell.row = parsed;
 				}
 			} else if (key == "column") {
 				std::size_t parsed = 0;
 				if (!ParseUnsigned(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					cell.column = parsed;
 				}
 			} else if (key == "glyph") {
 				char glyph = '\0';
 				if (!ParseGlyph(value, glyph)) {
-					AddInvalidGlyph(result, lineNumber, key);
+					AddInvalidGlyph(result, lineNumber, key, context);
 				} else {
 					cell.glyph = glyph;
 				}
 			} else if (key == "local_tile") {
 				const InlineShapeStatus status = ParseLocalTile(value, cell.localTile);
-				AddInlineShapeIssue(result, lineNumber, key, status);
+				AddInlineShapeIssue(result, lineNumber, key, status, context);
 			} else if (key == "local_position") {
 				const InlineShapeStatus status =
 					ParseLocalPosition(value, cell.localPosition);
-				AddInlineShapeIssue(result, lineNumber, key, status);
+				AddInlineShapeIssue(result, lineNumber, key, status, context);
 			} else if (key == "cell_bounds") {
 				const InlineShapeStatus status = ParseCellBounds(value, cell.cellBounds);
-				AddInlineShapeIssue(result, lineNumber, key, status);
+				AddInlineShapeIssue(result, lineNumber, key, status, context);
 			} else if (key == "role_tags") {
 				std::vector<std::string> parsed;
 				if (!ParseStringArrayInline(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					cell.roleTags = ToResourceIds(parsed);
 				}
 			} else if (key == "marker_id") {
 				std::string parsed;
 				if (!ParseQuotedString(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					cell.markerId = ResourceId(parsed);
 				}
 			} else if (key == "profile_id") {
 				std::string parsed;
 				if (!ParseQuotedString(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					cell.profileId = ResourceId(parsed);
 				}
 			} else {
-				AddUnsupported(result, lineNumber, "unsupported cells key: " + key);
+				AddUnsupported(result, lineNumber, "unsupported cells key: " + key, context, key);
 			}
 			continue;
 		}
@@ -998,7 +1073,7 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			if (key == "id") {
 				std::string parsed;
 				if (!ParseQuotedString(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					region.hasRegionId = true;
 					region.regionId = ResourceId(parsed);
@@ -1006,40 +1081,40 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			} else if (key == "min_row") {
 				std::size_t parsed = 0;
 				if (!ParseUnsigned(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					region.minRow = parsed;
 				}
 			} else if (key == "min_column") {
 				std::size_t parsed = 0;
 				if (!ParseUnsigned(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					region.minColumn = parsed;
 				}
 			} else if (key == "max_row") {
 				std::size_t parsed = 0;
 				if (!ParseUnsigned(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					region.maxRow = parsed;
 				}
 			} else if (key == "max_column") {
 				std::size_t parsed = 0;
 				if (!ParseUnsigned(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					region.maxColumn = parsed;
 				}
 			} else if (key == "role_tags") {
 				std::vector<std::string> parsed;
 				if (!ParseStringArrayInline(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					region.roleTags = ToResourceIds(parsed);
 				}
 			} else {
-				AddUnsupported(result, lineNumber, "unsupported regions key: " + key);
+				AddUnsupported(result, lineNumber, "unsupported regions key: " + key, context, key);
 			}
 			continue;
 		}
@@ -1048,21 +1123,21 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			if (key == "width") {
 				std::size_t parsed = 0;
 				if (!ParseUnsigned(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					result.plan.grid.width = parsed;
 				}
 			} else if (key == "height") {
 				std::size_t parsed = 0;
 				if (!ParseUnsigned(value, parsed)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					result.plan.grid.height = parsed;
 				}
 			} else if (key == "background") {
 				char glyph = '\0';
 				if (!ParseGlyph(value, glyph)) {
-					AddInvalidGlyph(result, lineNumber, key);
+					AddInvalidGlyph(result, lineNumber, key, context);
 				} else {
 					result.plan.grid.backgroundGlyph = glyph;
 				}
@@ -1074,18 +1149,18 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 				}
 				std::vector<std::string> rows;
 				if (!ParseStringArrayInline(value, rows)) {
-					AddWrongType(result, lineNumber, key);
+					AddWrongType(result, lineNumber, key, context);
 				} else {
 					result.plan.grid.rows = rows;
 				}
 			} else {
-				AddUnsupported(result, lineNumber, "unsupported grid key: " + key);
+				AddUnsupported(result, lineNumber, "unsupported grid key: " + key, context, key);
 			}
 		}
 	}
 
 	if (readingRows) {
-		AddSyntax(result, lines.size(), "unterminated rows array");
+		AddSyntax(result, lines.size(), "unterminated rows array", context);
 	}
 
 	if (!sawGrid) {
