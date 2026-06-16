@@ -651,6 +651,84 @@ void TestPlayerAndGuardFixtureRunsSharedFrameThroughScenario()
 	Expect(rows == expected, "player-and-guard vertical path should render moved NPC and moved player");
 }
 
+void TestPlayerInteractionFixtureRunsScenarioAndTogglesTarget()
+{
+	const std::filesystem::path path = FixturePath("player_interacts_guard_room.toml");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult read =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(path);
+	iggy::runtime::RuntimeGameplayScenarioAuthoringPacket packet;
+	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
+	packet.hasAsciiSourcePlan = true;
+	packet.asciiSourcePlan = read.text.plan;
+	iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig adapterConfig;
+	adapterConfig.hasAsciiSourcePlanProfileScenarioConfig = true;
+	adapterConfig.asciiSourcePlanProfileScenario = ConverterConfig();
+
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
+		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(
+			packet,
+			adapterConfig);
+	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
+		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
+	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
+	const std::vector<std::string> expected {
+		"#######",
+		"#A..@.#",
+		"#.....#",
+		"#######",
+	};
+
+	Expect(read.ok(), "player interaction fixture should read checked-in TOML fixture");
+	Expect(read.text.plan.sourceId == Id("scenario:player-interacts-guard-room"), "player interaction fixture should preserve source id");
+	Expect(read.text.plan.authoredInteractionTargetCount() == 1, "player interaction fixture should parse one authored interaction target");
+	Expect(read.text.plan.authoredPlayerCommandCount() == 1, "player interaction fixture should parse one authored player command");
+	Expect(adapter.ok(), "player interaction fixture should adapt parsed source plan");
+	Expect(adapter.asciiSourcePlanConversion.ok(), "player interaction fixture conversion should succeed");
+	Expect(adapter.asciiSourcePlanConversion.promotedInteractionTargetCount == 1, "player interaction conversion should promote one target");
+	Expect(adapter.asciiSourcePlanConversion.promotedInteractionEffectEntryCount == 1, "player interaction conversion should promote one effect entry");
+	Expect(adapter.asciiSourcePlanConversion.authoredPlayerCommandCount == 1, "player interaction conversion should consume authored player command");
+	Expect(adapter.profileScenario.initialState.session.hasPlayer, "player interaction conversion should promote player start");
+	Expect(adapter.profileScenario.initialState.interaction.targets.find(Id("target:door")) != nullptr, "player interaction conversion should publish interaction target");
+	if (adapter.profileScenario.frames.size() == 1) {
+		const iggy::runtime::RuntimeGameplayProfileScenarioFrameDefinition &frame =
+			adapter.profileScenario.frames[0];
+		Expect(frame.hasFrameId && frame.frameId == Id("frame:interact"), "player interaction frame should preserve frame id");
+		Expect(frame.playerFrame.playerIntents.size() == 1, "player interaction frame should carry player intent");
+		if (!frame.playerFrame.playerIntents.empty()) {
+			const iggy::PlayerInputIntent2D &intent = frame.playerFrame.playerIntents[0];
+			Expect(intent.type == iggy::PlayerInputIntent2DType::Interact, "player interaction command should become interact intent");
+			Expect(intent.targetId == Id("target:door"), "player interaction command should preserve target id");
+		}
+	}
+	Expect(run.ran(), "player interaction fixture should run converted profile scenario");
+	Expect(run.frameCount == 1, "player interaction fixture should execute one frame");
+	Expect(run.scenario.runner.acceptedCommandCount == 1, "player interaction fixture should accept authored interact command");
+	Expect(run.scenario.runner.interactionChanged, "player interaction fixture should mark interaction changed");
+	Expect(run.scenario.report.frames.size() == 1, "player interaction fixture should produce one frame report");
+	if (run.scenario.report.frames.size() == 1) {
+		const iggy::runtime::RuntimeGameplayOrchestratedFrameReport &frameReport =
+			run.scenario.report.frames[0];
+		Expect(frameReport.interactionChanged, "player interaction frame report should mark interaction changed");
+		Expect(frameReport.player.interactionEventCount == 1, "player interaction frame report should count interaction event");
+		Expect(frameReport.player.interactionChanged, "player interaction player report should mark interaction changed");
+	}
+	const iggy::InteractionTarget2D *finalTarget =
+		run.state.interaction.targets.find(Id("target:door"));
+	Expect(finalTarget != nullptr, "player interaction final state should preserve interaction target");
+	if (finalTarget != nullptr) {
+		Expect(!finalTarget->enabled, "player interaction final state should show target toggled disabled");
+	}
+	Expect(run.state.npcActors.actors.size() == 1, "player interaction fixture should preserve final NPC actor");
+	if (!run.state.npcActors.actors.empty()) {
+		const iggy::NpcActorState2D &actor = run.state.npcActors.actors.front();
+		Expect(actor.npcId == Id("npc:guard"), "player interaction final actor should preserve id");
+		Expect(actor.position.x == 1.5F && actor.position.y == 1.5F, "player interaction fixture should leave guard idle");
+	}
+	Expect(run.state.session.hasPlayer, "player interaction final state should preserve player");
+	Expect(run.state.session.player.position.x == 4.5F && run.state.session.player.position.y == 1.5F, "player interaction fixture should leave player at start tile");
+	Expect(rows == expected, "player interaction fixture should render final ASCII debug rows");
+}
+
 } // namespace
 
 int main()
@@ -669,6 +747,7 @@ int main()
 	TestMovingFixtureRunsScenarioAndMovesNpcFromAuthoredControl();
 	TestMultiFrameFixtureRunsScenarioAndMovesNpcAcrossFrames();
 	TestPlayerAndGuardFixtureRunsSharedFrameThroughScenario();
+	TestPlayerInteractionFixtureRunsScenarioAndTogglesTarget();
 
 	CleanupTempRoot();
 
