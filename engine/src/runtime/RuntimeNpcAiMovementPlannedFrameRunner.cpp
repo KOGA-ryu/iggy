@@ -1,5 +1,7 @@
 #include "runtime/RuntimeNpcAiMovementPlannedFrameRunner.hpp"
 
+#include "runtime/RuntimeNpcOrchestrationAggregates.hpp"
+
 namespace iggy::runtime {
 
 bool RuntimeNpcAiMovementPlannedFrameRunnerResult::hasFrames() const
@@ -22,6 +24,8 @@ RuntimeNpcAiMovementPlannedFrameRunnerResult RuntimeNpcAiMovementPlannedFrameRun
 	result.frameCount = input.frames.size();
 
 	RuntimeNpcAiMovementPlannedFrameStep step;
+	RuntimeNpcControlAggregate control;
+	RuntimeNpcMovementAggregate movement;
 	for (const RuntimeNpcAiMovementPlannedFrameRunnerFrame &frame : input.frames) {
 		RuntimeNpcAiMovementPlannedFrameResult frameResult = step.run({
 			result.state,
@@ -33,18 +37,8 @@ RuntimeNpcAiMovementPlannedFrameRunnerResult RuntimeNpcAiMovementPlannedFrameRun
 			frame.movementConfig,
 		});
 		result.state = frameResult.state;
-		result.controlPlannedRequestCount += frameResult.controlPlannedRequestCount;
-		result.controlAppliedCount += frameResult.controlAppliedCount;
-		result.controlFailedCount += frameResult.controlFailedCount;
-		result.controlMapChangedSelectionCount += frameResult.controlMapChangedSelectionCount;
-		result.movementPlannedRequestCount += frameResult.movementPlannedRequestCount;
-		result.movementPreReservationRequestCount += frameResult.movementPreReservationRequestCount;
-		result.movementReservationAcceptedCount += frameResult.movementReservationAcceptedCount;
-		result.movementReservationRejectedCount += frameResult.movementReservationRejectedCount;
-		result.movedCount += frameResult.movedCount;
-		result.blockedMovementCount += frameResult.blockedCount;
-		result.rejectedMovementCount += frameResult.rejectedCount;
-		result.missingActorMovementCount += frameResult.missingActorCount;
+		foldRuntimeNpcControlAggregate(control, frameResult);
+		foldRuntimeNpcMovementAggregate(movement, frameResult);
 		if (frameResult.changedControls) {
 			++result.controlChangedFrameCount;
 		}
@@ -54,18 +48,26 @@ RuntimeNpcAiMovementPlannedFrameRunnerResult RuntimeNpcAiMovementPlannedFrameRun
 		if (frameResult.changedState()) {
 			++result.changedFrameCount;
 		}
-		result.needsOccupancyRebuild =
-			result.needsOccupancyRebuild || frameResult.movement.movement.report.needsOccupancyRebuild;
-		result.needsAiMapQueryRefresh =
-			result.needsAiMapQueryRefresh || frameResult.movement.movement.report.needsAiMapQueryRefresh;
-		result.needsInteractionRefresh =
-			result.needsInteractionRefresh || frameResult.movement.movement.report.needsInteractionRefresh;
-		result.needsRenderRefresh =
-			result.needsRenderRefresh || frameResult.movement.movement.report.needsRenderRefresh;
-		result.needsVisibilityRefresh =
-			result.needsVisibilityRefresh || frameResult.movement.movement.report.needsVisibilityRefresh;
 		result.frameResults.push_back(frameResult);
 	}
+
+	result.controlPlannedRequestCount = control.plannedRequestCount;
+	result.controlAppliedCount = control.appliedCount;
+	result.controlFailedCount = control.failedCount;
+	result.controlMapChangedSelectionCount = control.mapChangedSelectionCount;
+	result.movementPlannedRequestCount = movement.plannedRequestCount;
+	result.movementPreReservationRequestCount = movement.preReservationRequestCount;
+	result.movementReservationAcceptedCount = movement.reservationAcceptedCount;
+	result.movementReservationRejectedCount = movement.reservationRejectedCount;
+	result.movedCount = movement.movedCount;
+	result.blockedMovementCount = movement.blockedMovementCount;
+	result.rejectedMovementCount = movement.rejectedMovementCount;
+	result.missingActorMovementCount = movement.missingActorMovementCount;
+	result.needsOccupancyRebuild = movement.needsOccupancyRefresh;
+	result.needsAiMapQueryRefresh = movement.needsAiMapRefresh;
+	result.needsInteractionRefresh = movement.needsInteractionRefresh;
+	result.needsRenderRefresh = movement.needsRenderRefresh;
+	result.needsVisibilityRefresh = movement.needsVisibilityRefresh;
 
 	return result;
 }

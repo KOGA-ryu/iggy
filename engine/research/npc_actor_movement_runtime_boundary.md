@@ -66,6 +66,12 @@ uses the post-control gameplay state for actor movement planning/application.
 It remains caller-selected and does not make raw/policy gameplay frames
 auto-orchestrate AI or movement.
 
+`RuntimeGameplayProfileScenarioDefinition` is the profile-driven authoring
+packet for scenarios. It resolves actor `aiProfileId` values from the initial
+actor registry into ordinary scenario frame subjects, then uses the existing
+scenario definition/runner path. It is not a parser, UI, save/load hook, or
+live per-frame profile resolver.
+
 `RuntimeNpcAiMovementPlannedFrameRunner` is the explicit sequence companion for
 that AI+movement path. It repeats the one-frame helper over caller-supplied
 frames for simulations, tests, and tools while keeping raw/policy gameplay
@@ -165,6 +171,7 @@ The optional helper layers are:
 12. Orchestrated frame/runner reporters project compact inspection packets over 10/11 without executing gameplay.
 13. `RuntimeGameplayScenarioRunner` is a lightweight scenario/replay harness over 11 and 12, intended for tests and future tooling packets rather than parser/UI integration.
 14. `RuntimeGameplayScenarioDefinition` and validator are typed authoring packets for tools to produce before conversion to the scenario runner input.
+15. `RuntimeGameplayProfileScenarioDefinition` and validator are profile-driven authoring packets that convert actor profile traits into ordinary scenario subjects from the initial actor registry.
 
 ## Intentionally Not Included
 

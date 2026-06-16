@@ -10,6 +10,8 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeGameplayOrchestratedFrameRunnerReporter.cpp
   src/runtime/RuntimeGameplayOrchestratedFrameReporter.cpp
   src/runtime/RuntimeGameplayOrchestratedFrameStep.cpp
+  src/runtime/RuntimeGameplayProfileScenarioDefinition.cpp
+  src/runtime/RuntimeGameplayProfileScenarioValidator.cpp
   src/runtime/RuntimeGameplayScenarioDefinition.cpp
   src/runtime/RuntimeGameplayScenarioRunner.cpp
   src/runtime/RuntimeGameplayScenarioValidator.cpp
@@ -33,6 +35,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeNpcAiMovementPlannedFrameStep.cpp
   src/runtime/RuntimeNpcAiMovementRefreshFrameRunner.cpp
   src/runtime/RuntimeNpcAiMovementRefreshFrameStep.cpp
+  src/runtime/RuntimeNpcOrchestrationAggregates.cpp
   src/runtime/RuntimeNpcAiDecisionQueueStep.cpp
   src/runtime/RuntimeNpcAiCommandQueueStep.cpp
   src/runtime/RuntimeNpcAiMovementQueueStep.cpp

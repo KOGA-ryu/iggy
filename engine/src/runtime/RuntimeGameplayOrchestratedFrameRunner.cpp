@@ -1,5 +1,7 @@
 #include "runtime/RuntimeGameplayOrchestratedFrameRunner.hpp"
 
+#include "runtime/RuntimeNpcOrchestrationAggregates.hpp"
+
 namespace iggy::runtime {
 namespace {
 
@@ -34,6 +36,9 @@ void AppendInventoryEvents(
 
 void AppendFrame(
 	RuntimeGameplayOrchestratedFrameRunnerResult &result,
+	RuntimeNpcControlAggregate &control,
+	RuntimeNpcMovementAggregate &movement,
+	RuntimeNpcRefreshAggregate &refresh,
 	RuntimeGameplayOrchestratedFrameResult frameResult)
 {
 	AppendInventoryEvents(result.inventoryEvents, frameResult.inventoryEvents);
@@ -42,24 +47,11 @@ void AppendFrame(
 	result.rejectedIntentCount += frameResult.rejectedIntentCount;
 	result.pickedUpCount += frameResult.pickedUpCount;
 	result.inventoryEventCount += frameResult.inventoryEventCount;
-	result.npcControlPlannedRequestCount += frameResult.npcControlPlannedRequestCount;
-	result.npcControlAppliedCount += frameResult.npcControlAppliedCount;
-	result.npcControlFailedCount += frameResult.npcControlFailedCount;
-	result.npcMovementPlannedRequestCount += frameResult.npcMovementPlannedRequestCount;
-	result.npcMovedCount += frameResult.npcMovedCount;
-	result.npcBlockedMovementCount += frameResult.npcBlockedMovementCount;
-	result.npcRejectedMovementCount += frameResult.npcRejectedMovementCount;
-	result.npcMissingActorMovementCount += frameResult.npcMissingActorMovementCount;
-	result.npcRefreshDirtyTileCount += frameResult.npcRefreshDirtyTileCount;
+	foldRuntimeNpcControlAggregate(control, frameResult);
+	foldRuntimeNpcMovementAggregate(movement, frameResult);
+	foldRuntimeNpcRefreshAggregate(refresh, frameResult);
 	result.interactionChanged = result.interactionChanged || frameResult.interactionChanged;
 	result.inventoryChanged = result.inventoryChanged || frameResult.inventoryChanged;
-	result.npcControlsChanged = result.npcControlsChanged || frameResult.npcControlsChanged;
-	result.npcActorsChanged = result.npcActorsChanged || frameResult.npcActorsChanged;
-	result.npcOccupancyRefreshed = result.npcOccupancyRefreshed || frameResult.npcOccupancyRefreshed;
-	result.npcInteractionRefreshed = result.npcInteractionRefreshed || frameResult.npcInteractionRefreshed;
-	result.npcAiMapRefreshed = result.npcAiMapRefreshed || frameResult.npcAiMapRefreshed;
-	result.npcRenderRefreshed = result.npcRenderRefreshed || frameResult.npcRenderRefreshed;
-	result.npcVisibilityRefreshed = result.npcVisibilityRefreshed || frameResult.npcVisibilityRefreshed;
 	if (frameResult.changedGameplayState() || frameResult.refreshedNpcData()) {
 		++result.changedFrameCount;
 	}
@@ -98,9 +90,29 @@ RuntimeGameplayOrchestratedFrameRunnerResult RuntimeGameplayOrchestratedFrameRun
 	result.frameCount = input.frames.size();
 
 	RuntimeGameplayOrchestratedFrameStep step;
+	RuntimeNpcControlAggregate control;
+	RuntimeNpcMovementAggregate movement;
+	RuntimeNpcRefreshAggregate refresh;
 	for (const RuntimeGameplayOrchestratedFrameRunnerFrame &frame : input.frames) {
-		AppendFrame(result, step.run(FrameInputFrom(result.state, frame)));
+		AppendFrame(result, control, movement, refresh, step.run(FrameInputFrom(result.state, frame)));
 	}
+
+	result.npcControlPlannedRequestCount = control.plannedRequestCount;
+	result.npcControlAppliedCount = control.appliedCount;
+	result.npcControlFailedCount = control.failedCount;
+	result.npcMovementPlannedRequestCount = movement.plannedRequestCount;
+	result.npcMovedCount = movement.movedCount;
+	result.npcBlockedMovementCount = movement.blockedMovementCount;
+	result.npcRejectedMovementCount = movement.rejectedMovementCount;
+	result.npcMissingActorMovementCount = movement.missingActorMovementCount;
+	result.npcRefreshDirtyTileCount = refresh.dirtyTileCount;
+	result.npcControlsChanged = control.controlsChanged;
+	result.npcActorsChanged = movement.actorsChanged;
+	result.npcOccupancyRefreshed = refresh.occupancyRefreshed;
+	result.npcInteractionRefreshed = refresh.interactionRefreshed;
+	result.npcAiMapRefreshed = refresh.aiMapRefreshed;
+	result.npcRenderRefreshed = refresh.renderRefreshed;
+	result.npcVisibilityRefreshed = refresh.visibilityRefreshed;
 
 	return result;
 }

@@ -1,5 +1,7 @@
 #include "runtime/RuntimeNpcAiMovementRefreshFrameRunner.hpp"
 
+#include "runtime/RuntimeNpcOrchestrationAggregates.hpp"
+
 #include "scene/npc/NpcActorOccupancy2D.hpp"
 
 namespace iggy::runtime {
@@ -33,6 +35,9 @@ RuntimeNpcAiMovementRefreshFrameRunnerResult RuntimeNpcAiMovementRefreshFrameRun
 	result.frameCount = input.frames.size();
 
 	RuntimeNpcAiMovementRefreshFrameStep step;
+	RuntimeNpcControlAggregate control;
+	RuntimeNpcMovementAggregate movement;
+	RuntimeNpcRefreshAggregate refresh;
 	for (const RuntimeNpcAiMovementRefreshFrameRunnerFrame &frame : input.frames) {
 		const NpcActorOccupancy2D previousOccupancy =
 			NpcActorOccupancyProjector2D {}.project(result.state.npcActors);
@@ -52,15 +57,9 @@ RuntimeNpcAiMovementRefreshFrameRunnerResult RuntimeNpcAiMovementRefreshFrameRun
 			frame.refreshConfig,
 		});
 		result.state = frameResult.state;
-		result.controlPlannedRequestCount += frameResult.controlPlannedRequestCount;
-		result.controlAppliedCount += frameResult.controlAppliedCount;
-		result.controlFailedCount += frameResult.controlFailedCount;
-		result.movementPlannedRequestCount += frameResult.movementPlannedRequestCount;
-		result.movedCount += frameResult.movedCount;
-		result.blockedMovementCount += frameResult.blockedMovementCount;
-		result.rejectedMovementCount += frameResult.rejectedMovementCount;
-		result.missingActorMovementCount += frameResult.missingActorMovementCount;
-		result.dirtyTileCount += frameResult.dirtyTileCount;
+		foldRuntimeNpcControlAggregate(control, frameResult);
+		foldRuntimeNpcMovementAggregate(movement, frameResult);
+		foldRuntimeNpcRefreshAggregate(refresh, frameResult);
 		if (frameResult.changedControls) {
 			++result.controlChangedFrameCount;
 		}
@@ -70,23 +69,23 @@ RuntimeNpcAiMovementRefreshFrameRunnerResult RuntimeNpcAiMovementRefreshFrameRun
 		if (frameResult.changedState()) {
 			++result.changedFrameCount;
 		}
-		if (frameResult.occupancyRefreshed) {
-			++result.occupancyRefreshCount;
-		}
-		if (frameResult.interactionRefreshed) {
-			++result.interactionRefreshCount;
-		}
-		if (frameResult.aiMapRefreshed) {
-			++result.aiMapRefreshCount;
-		}
-		if (frameResult.renderRefreshed) {
-			++result.renderRefreshCount;
-		}
-		if (frameResult.visibilityRefreshed) {
-			++result.visibilityRefreshCount;
-		}
 		result.frameResults.push_back(frameResult);
 	}
+
+	result.controlPlannedRequestCount = control.plannedRequestCount;
+	result.controlAppliedCount = control.appliedCount;
+	result.controlFailedCount = control.failedCount;
+	result.movementPlannedRequestCount = movement.plannedRequestCount;
+	result.movedCount = movement.movedCount;
+	result.blockedMovementCount = movement.blockedMovementCount;
+	result.rejectedMovementCount = movement.rejectedMovementCount;
+	result.missingActorMovementCount = movement.missingActorMovementCount;
+	result.dirtyTileCount = refresh.dirtyTileCount;
+	result.occupancyRefreshCount = refresh.occupancyRefreshCount;
+	result.interactionRefreshCount = refresh.interactionRefreshCount;
+	result.aiMapRefreshCount = refresh.aiMapRefreshCount;
+	result.renderRefreshCount = refresh.renderRefreshCount;
+	result.visibilityRefreshCount = refresh.visibilityRefreshCount;
 
 	return result;
 }

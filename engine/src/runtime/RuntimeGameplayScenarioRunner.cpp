@@ -1,5 +1,7 @@
 #include "runtime/RuntimeGameplayScenarioRunner.hpp"
 
+#include "runtime/RuntimeNpcOrchestrationAggregates.hpp"
+
 namespace iggy::runtime {
 namespace {
 
@@ -16,25 +18,32 @@ std::vector<RuntimeGameplayOrchestratedFrameRunnerFrame> FramesFromScenario(
 
 void CopyReportCounts(RuntimeGameplayScenarioResult &result)
 {
+	RuntimeNpcControlAggregate control;
+	RuntimeNpcMovementAggregate movement;
+	RuntimeNpcRefreshAggregate refresh;
+	foldRuntimeNpcControlAggregate(control, result.report);
+	foldRuntimeNpcMovementAggregate(movement, result.report);
+	foldRuntimeNpcRefreshAggregate(refresh, result.report);
+
 	result.frameCount = result.report.frameCount;
 	result.changedFrameCount = result.report.changedFrameCount;
 	result.inventoryEventCount = result.report.inventoryEventCount;
-	result.npcControlPlannedRequestCount = result.report.npcControlPlannedRequestCount;
-	result.npcControlAppliedCount = result.report.npcControlAppliedCount;
-	result.npcControlFailedCount = result.report.npcControlFailedCount;
-	result.npcMovementPlannedRequestCount = result.report.npcMovementPlannedRequestCount;
-	result.npcMovedCount = result.report.npcMovedCount;
-	result.npcBlockedMovementCount = result.report.npcBlockedMovementCount;
-	result.npcRejectedMovementCount = result.report.npcRejectedMovementCount;
-	result.npcMissingActorMovementCount = result.report.npcMissingActorMovementCount;
-	result.npcRefreshDirtyTileCount = result.report.npcRefreshDirtyTileCount;
-	result.npcControlsChanged = result.report.npcControlsChanged;
-	result.npcActorsChanged = result.report.npcActorsChanged;
-	result.npcOccupancyRefreshed = result.report.npcOccupancyRefreshed;
-	result.npcInteractionRefreshed = result.report.npcInteractionRefreshed;
-	result.npcAiMapRefreshed = result.report.npcAiMapRefreshed;
-	result.npcRenderRefreshed = result.report.npcRenderRefreshed;
-	result.npcVisibilityRefreshed = result.report.npcVisibilityRefreshed;
+	result.npcControlPlannedRequestCount = control.plannedRequestCount;
+	result.npcControlAppliedCount = control.appliedCount;
+	result.npcControlFailedCount = control.failedCount;
+	result.npcMovementPlannedRequestCount = movement.plannedRequestCount;
+	result.npcMovedCount = movement.movedCount;
+	result.npcBlockedMovementCount = movement.blockedMovementCount;
+	result.npcRejectedMovementCount = movement.rejectedMovementCount;
+	result.npcMissingActorMovementCount = movement.missingActorMovementCount;
+	result.npcRefreshDirtyTileCount = refresh.dirtyTileCount;
+	result.npcControlsChanged = control.controlsChanged;
+	result.npcActorsChanged = movement.actorsChanged;
+	result.npcOccupancyRefreshed = refresh.occupancyRefreshed;
+	result.npcInteractionRefreshed = refresh.interactionRefreshed;
+	result.npcAiMapRefreshed = refresh.aiMapRefreshed;
+	result.npcRenderRefreshed = refresh.renderRefreshed;
+	result.npcVisibilityRefreshed = refresh.visibilityRefreshed;
 }
 
 } // namespace

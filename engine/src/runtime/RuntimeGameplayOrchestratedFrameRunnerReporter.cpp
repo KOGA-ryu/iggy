@@ -1,5 +1,7 @@
 #include "runtime/RuntimeGameplayOrchestratedFrameRunnerReport.hpp"
 
+#include "runtime/RuntimeNpcOrchestrationAggregates.hpp"
+
 namespace iggy::runtime {
 namespace {
 
@@ -14,6 +16,9 @@ void AppendInventoryEvents(
 
 void AccumulateFrame(
 	RuntimeGameplayOrchestratedFrameRunnerReport &report,
+	RuntimeNpcControlAggregate &control,
+	RuntimeNpcMovementAggregate &movement,
+	RuntimeNpcRefreshAggregate &refresh,
 	const RuntimeGameplayOrchestratedFrameReport &frame)
 {
 	AppendInventoryEvents(report.inventoryEvents, frame.inventoryEvents);
@@ -22,24 +27,11 @@ void AccumulateFrame(
 	report.rejectedIntentCount += frame.rejectedIntentCount;
 	report.pickedUpCount += frame.pickedUpCount;
 	report.inventoryEventCount += frame.inventoryEventCount;
-	report.npcControlPlannedRequestCount += frame.npcControlPlannedRequestCount;
-	report.npcControlAppliedCount += frame.npcControlAppliedCount;
-	report.npcControlFailedCount += frame.npcControlFailedCount;
-	report.npcMovementPlannedRequestCount += frame.npcMovementPlannedRequestCount;
-	report.npcMovedCount += frame.npcMovedCount;
-	report.npcBlockedMovementCount += frame.npcBlockedMovementCount;
-	report.npcRejectedMovementCount += frame.npcRejectedMovementCount;
-	report.npcMissingActorMovementCount += frame.npcMissingActorMovementCount;
-	report.npcRefreshDirtyTileCount += frame.npcRefreshDirtyTileCount;
+	foldRuntimeNpcControlAggregate(control, frame);
+	foldRuntimeNpcMovementAggregate(movement, frame);
+	foldRuntimeNpcRefreshAggregate(refresh, frame);
 	report.interactionChanged = report.interactionChanged || frame.interactionChanged;
 	report.inventoryChanged = report.inventoryChanged || frame.inventoryChanged;
-	report.npcControlsChanged = report.npcControlsChanged || frame.npcControlsChanged;
-	report.npcActorsChanged = report.npcActorsChanged || frame.npcActorsChanged;
-	report.npcOccupancyRefreshed = report.npcOccupancyRefreshed || frame.npcOccupancyRefreshed;
-	report.npcInteractionRefreshed = report.npcInteractionRefreshed || frame.npcInteractionRefreshed;
-	report.npcAiMapRefreshed = report.npcAiMapRefreshed || frame.npcAiMapRefreshed;
-	report.npcRenderRefreshed = report.npcRenderRefreshed || frame.npcRenderRefreshed;
-	report.npcVisibilityRefreshed = report.npcVisibilityRefreshed || frame.npcVisibilityRefreshed;
 	if (frame.changed() || frame.refreshedNpcData()) {
 		++report.changedFrameCount;
 	}
@@ -118,11 +110,31 @@ RuntimeGameplayOrchestratedFrameRunnerReport RuntimeGameplayOrchestratedFrameRun
 	report.frameCount = result.frameCount;
 
 	RuntimeGameplayOrchestratedFrameReporter frameReporter;
+	RuntimeNpcControlAggregate control;
+	RuntimeNpcMovementAggregate movement;
+	RuntimeNpcRefreshAggregate refresh;
 	for (const RuntimeGameplayOrchestratedFrameResult &frameResult : result.frameResults) {
 		RuntimeGameplayOrchestratedFrameReport frame = frameReporter.report(frameResult);
-		AccumulateFrame(report, frame);
+		AccumulateFrame(report, control, movement, refresh, frame);
 		report.frames.push_back(frame);
 	}
+
+	report.npcControlPlannedRequestCount = control.plannedRequestCount;
+	report.npcControlAppliedCount = control.appliedCount;
+	report.npcControlFailedCount = control.failedCount;
+	report.npcMovementPlannedRequestCount = movement.plannedRequestCount;
+	report.npcMovedCount = movement.movedCount;
+	report.npcBlockedMovementCount = movement.blockedMovementCount;
+	report.npcRejectedMovementCount = movement.rejectedMovementCount;
+	report.npcMissingActorMovementCount = movement.missingActorMovementCount;
+	report.npcRefreshDirtyTileCount = refresh.dirtyTileCount;
+	report.npcControlsChanged = control.controlsChanged;
+	report.npcActorsChanged = movement.actorsChanged;
+	report.npcOccupancyRefreshed = refresh.occupancyRefreshed;
+	report.npcInteractionRefreshed = refresh.interactionRefreshed;
+	report.npcAiMapRefreshed = refresh.aiMapRefreshed;
+	report.npcRenderRefreshed = refresh.renderRefreshed;
+	report.npcVisibilityRefreshed = refresh.visibilityRefreshed;
 
 	AppendEvents(report);
 	return report;

@@ -1,5 +1,7 @@
 #include "runtime/RuntimeNpcActorMovementPlannedFrameRunner.hpp"
 
+#include "runtime/RuntimeNpcOrchestrationAggregates.hpp"
+
 namespace iggy::runtime {
 
 bool RuntimeNpcActorMovementPlannedFrameRunnerResult::hasFrames() const
@@ -22,6 +24,7 @@ RuntimeNpcActorMovementPlannedFrameRunnerResult RuntimeNpcActorMovementPlannedFr
 	result.frameCount = input.frames.size();
 
 	RuntimeNpcActorMovementPlannedFrameStep step;
+	RuntimeNpcMovementAggregate movement;
 	for (const RuntimeNpcActorMovementPlannedFrameRunnerFrame &frame : input.frames) {
 		RuntimeNpcActorMovementPlannedFrameResult frameResult = step.run({
 			result.state,
@@ -29,29 +32,26 @@ RuntimeNpcActorMovementPlannedFrameRunnerResult RuntimeNpcActorMovementPlannedFr
 			frame.config,
 		});
 		result.state = frameResult.state;
-		result.plannedRequestCount += frameResult.plannedRequestCount;
-		result.preReservationRequestCount += frameResult.preReservationRequestCount;
-		result.reservationAcceptedCount += frameResult.reservationAcceptedCount;
-		result.reservationRejectedCount += frameResult.reservationRejectedCount;
-		result.movedCount += frameResult.movedCount;
-		result.blockedMovementCount += frameResult.blockedCount;
-		result.rejectedMovementCount += frameResult.rejectedCount;
-		result.missingActorMovementCount += frameResult.missingActorCount;
+		foldRuntimeNpcMovementAggregate(movement, frameResult);
 		if (frameResult.changed) {
 			++result.changedFrameCount;
 		}
-		result.needsOccupancyRebuild =
-			result.needsOccupancyRebuild || frameResult.movement.report.needsOccupancyRebuild;
-		result.needsAiMapQueryRefresh =
-			result.needsAiMapQueryRefresh || frameResult.movement.report.needsAiMapQueryRefresh;
-		result.needsInteractionRefresh =
-			result.needsInteractionRefresh || frameResult.movement.report.needsInteractionRefresh;
-		result.needsRenderRefresh =
-			result.needsRenderRefresh || frameResult.movement.report.needsRenderRefresh;
-		result.needsVisibilityRefresh =
-			result.needsVisibilityRefresh || frameResult.movement.report.needsVisibilityRefresh;
 		result.frameResults.push_back(frameResult);
 	}
+
+	result.plannedRequestCount = movement.plannedRequestCount;
+	result.preReservationRequestCount = movement.preReservationRequestCount;
+	result.reservationAcceptedCount = movement.reservationAcceptedCount;
+	result.reservationRejectedCount = movement.reservationRejectedCount;
+	result.movedCount = movement.movedCount;
+	result.blockedMovementCount = movement.blockedMovementCount;
+	result.rejectedMovementCount = movement.rejectedMovementCount;
+	result.missingActorMovementCount = movement.missingActorMovementCount;
+	result.needsOccupancyRebuild = movement.needsOccupancyRefresh;
+	result.needsAiMapQueryRefresh = movement.needsAiMapRefresh;
+	result.needsInteractionRefresh = movement.needsInteractionRefresh;
+	result.needsRenderRefresh = movement.needsRenderRefresh;
+	result.needsVisibilityRefresh = movement.needsVisibilityRefresh;
 
 	return result;
 }
