@@ -281,7 +281,9 @@ RuntimeGameplayProfileScenarioDefinition BuildDefinition(
 	definition.initialState.npcActors = actors;
 	definition.initialState.npcControls = controls;
 	definition.profileTraits = config.profileTraits;
-	definition.frames.push_back(config.defaultFrame);
+	RuntimeGameplayProfileScenarioFrameDefinition frame = config.defaultFrame;
+	frame.movementMap = promotedMap;
+	definition.frames.push_back(frame);
 	return definition;
 }
 

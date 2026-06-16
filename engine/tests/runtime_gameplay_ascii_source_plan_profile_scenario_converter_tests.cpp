@@ -171,7 +171,7 @@ void TestValidSourcePlanAndFrameDefaultsPublishValidatedProfileScenario()
 	Expect(result.definition.scenarioId == Id("scenario:ascii-profile"), "converted definition should preserve source id");
 	Expect(result.definition.frames.size() == 1, "converted definition should preserve one default frame");
 	Expect(result.definition.frames[0].frameId == Id("frame:ascii-profile"), "converted definition should preserve frame id");
-	Expect(result.definition.frames[0].movementMap.id == Id("level:ascii-profile"), "converted definition should preserve frame movement map");
+	Expect(result.definition.frames[0].movementMap.id == Id("scenario:ascii-profile"), "converted definition should use promoted map as frame movement map");
 	Expect(plan.grid.rows == before.grid.rows, "converter should not mutate source plan");
 }
 
@@ -194,6 +194,7 @@ void TestTerrainActorAndDefaultControlPromotion()
 	Expect(result.promotedMap.tileAt(1, 1) != nullptr && result.promotedMap.tileAt(1, 1)->walkable, "actor glyph should promote as walkable floor");
 	Expect(result.promotedActorCount == 1 && result.defaultControlCount == 1, "one actor should create one default control");
 	Expect(result.definition.initialState.session.level.map.width == 5, "initial state should receive promoted map");
+	Expect(result.definition.frames.size() == 1 && result.definition.frames[0].movementMap.width == 5, "frame should receive promoted movement map");
 	Expect(result.definition.initialState.npcActors.actors.size() == 1, "initial state should receive promoted actor registry");
 	Expect(result.definition.initialState.npcControls.entries.size() == 1, "initial state should receive promoted control registry");
 	const iggy::NpcActorState2D &actor = result.definition.initialState.npcActors.actors[0];
@@ -323,6 +324,48 @@ void TestInvalidDefaultControlReportsControlRegistryInvalid()
 	Expect(result.definition.frames.empty(), "invalid control registry should not publish profile scenario definition");
 }
 
+void TestMissingProfileCatalogSurfacesProfileScenarioValidationFailure()
+{
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(!result.ok(), "missing profile catalog should fail through profile scenario validation");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::ProfileScenarioInvalid, "missing profile should report profile scenario invalid");
+	Expect(result.profileScenarioIssueCount > 0, "missing profile should be mirrored into conversion issues");
+	Expect(!result.profileValidation.ok(), "nested profile validation should fail");
+	Expect(result.profileValidation.missingProfileTraitCount == 1, "nested profile validation should preserve missing profile diagnostics");
+	Expect(result.definition.initialState.npcActors.actors.size() == 1, "profile validation failure should preserve promoted actor facts for audit");
+	Expect(result.definition.frames.size() == 1, "profile validation failure should preserve generated frame for audit");
+}
+
+void TestFrameUsesPromotedMapAndDoesNotInventScripts()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.hasSourceId = true;
+	plan.sourceId = Id("scenario:plain");
+	plan.annotatedCells[0].markerId = Id("plain-actor");
+	plan.annotatedCells[0].profileId = Id("profile:namespaced");
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:namespaced"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "exact id profile scenario should convert");
+	Expect(result.definition.scenarioId == Id("scenario:plain"), "converter should preserve exact source id");
+	Expect(result.definition.frames.size() == 1, "converter should produce exactly one default frame");
+	Expect(result.definition.frames[0].movementMap.id == Id("scenario:plain"), "default frame should use promoted map id");
+	Expect(result.definition.frames[0].movementMap.tiles.size() == result.definition.initialState.session.level.map.tiles.size(), "frame movement map should match promoted map tile count");
+	Expect(result.definition.initialState.npcActors.actors[0].npcId == Id("plain-actor"), "converter should preserve unqualified npc id");
+	Expect(result.definition.initialState.npcActors.actors[0].aiProfileId == Id("profile:namespaced"), "converter should preserve namespaced profile id");
+	Expect(result.definition.frames[0].playerFrame.npcMovementRequests.empty(), "converter should not invent prepared movement script semantics");
+}
+
 } // namespace
 
 int main()
@@ -336,5 +379,7 @@ int main()
 	TestMappedCustomTerrainPromotes();
 	TestDuplicatePromotedActorReportsActorRegistryInvalid();
 	TestInvalidDefaultControlReportsControlRegistryInvalid();
+	TestMissingProfileCatalogSurfacesProfileScenarioValidationFailure();
+	TestFrameUsesPromotedMapAndDoesNotInventScripts();
 	return Failures;
 }
