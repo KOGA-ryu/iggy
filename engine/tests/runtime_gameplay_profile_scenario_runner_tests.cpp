@@ -228,6 +228,9 @@ void TestValidProfileScenarioRunsAndMovesNpc()
 	Expect(result.npcMovedCount == 1, "valid profile scenario should move one actor");
 	Expect(result.changed(), "valid profile scenario should report changed");
 	Expect(HasEvent(result.ledger, iggy::runtime::RuntimeGameplayScenarioLedgerEvent::NpcActorMoved), "valid profile scenario should emit moved ledger event");
+	Expect(result.ledger.hasNpcAiExplanations(), "valid profile scenario should expose AI explanation ledger facts");
+	Expect(result.ledger.npcAiProfileResolvedCount == 1, "valid profile scenario should explain profile resolution");
+	Expect(result.ledger.npcAiControlProposedCount == 1 && result.ledger.npcAiControlAppliedCount == 1, "valid profile scenario should explain control proposal/application");
 	Expect(!result.state.npcActors.actors.empty() && NearVec(result.state.npcActors.actors[0].position, { 1.5F, 0.5F }), "valid profile scenario should update actor position");
 }
 
@@ -302,6 +305,8 @@ void TestManualCompositionParity()
 	Expect(result.npcMovedCount == scenario.npcMovedCount, "profile runner should match manual scenario moved count");
 	Expect(result.npcControlAppliedCount == scenario.npcControlAppliedCount, "profile runner should match manual control count");
 	Expect(result.ledger.frameCount == ledger.frameCount, "profile runner should match manual ledger frame count");
+	Expect(result.ledger.npcAiProfileResolvedCount == ledger.npcAiProfileResolvedCount, "profile runner should match manual AI explanation profile count");
+	Expect(result.ledger.npcAiControlAppliedCount == ledger.npcAiControlAppliedCount, "profile runner should match manual AI explanation apply count");
 	Expect(!result.state.npcActors.actors.empty() && !scenario.state.npcActors.actors.empty()
 		&& NearVec(result.state.npcActors.actors[0].position, scenario.state.npcActors.actors[0].position), "profile runner should match manual final actor position");
 }

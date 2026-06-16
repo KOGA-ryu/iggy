@@ -130,6 +130,49 @@ void AppendEvents(RuntimeGameplayScenarioLedger &ledger)
 			: RuntimeGameplayScenarioLedgerEvent::ScenarioUnchanged);
 }
 
+void AddAiExplanationCounts(
+	RuntimeGameplayScenarioLedger &ledger,
+	const NpcMapPlayControlExplainLedger &explanation)
+{
+	ledger.npcAiProfileResolvedCount += explanation.profileResolvedCount;
+	ledger.npcAiProfileMissingCount += explanation.profileMissingCount;
+	ledger.npcAiHandDrawnCount += explanation.handDrawnCount;
+	ledger.npcAiMapChangedSelectionCount += explanation.mapChangedSelectionCount;
+	ledger.npcAiPlayKeptCount += explanation.playKeptCount;
+	ledger.npcAiPlayFoldedCount += explanation.playFoldedCount;
+	ledger.npcAiControlProposedCount += explanation.controlProposedCount;
+	ledger.npcAiControlFailedCount += explanation.controlFailedCount;
+	ledger.npcAiControlAppliedCount += explanation.controlAppliedCount;
+	ledger.npcAiControlApplyFailedCount += explanation.controlApplyFailedCount;
+}
+
+void AddAiExplanations(
+	RuntimeGameplayScenarioLedger &ledger,
+	const RuntimeGameplayProfileScenarioDefinitionBuildResult &profileBuild)
+{
+	const std::size_t frameCount =
+		profileBuild.profileFrames.size() < ledger.result.runner.frameResults.size()
+			? profileBuild.profileFrames.size()
+			: ledger.result.runner.frameResults.size();
+
+	ledger.npcAiExplanations.clear();
+	ledger.npcAiExplanations.reserve(frameCount);
+	NpcMapPlayControlExplainLedgerReporter reporter;
+	for (std::size_t frameIndex = 0; frameIndex < frameCount; ++frameIndex) {
+		const RuntimeGameplayOrchestratedFrameResult &frame =
+			ledger.result.runner.frameResults[frameIndex];
+		const RuntimeNpcAiControlPlannedFrameResult &control =
+			frame.npcFrame.planned.control;
+		NpcMapPlayControlExplainLedger explanation = reporter.report(
+			profileBuild.profileFrames[frameIndex],
+			control.plan,
+			control.step);
+		AddAiExplanationCounts(ledger, explanation);
+		ledger.npcAiExplanations.push_back(explanation);
+	}
+	ledger.npcAiExplainFrameCount = ledger.npcAiExplanations.size();
+}
+
 } // namespace
 
 bool RuntimeGameplayScenarioLedger::empty() const
@@ -154,6 +197,11 @@ bool RuntimeGameplayScenarioLedger::refreshedNpcData() const
 bool RuntimeGameplayScenarioLedger::hasEvents() const
 {
 	return !events.empty();
+}
+
+bool RuntimeGameplayScenarioLedger::hasNpcAiExplanations() const
+{
+	return !npcAiExplanations.empty();
 }
 
 RuntimeGameplayScenarioLedger RuntimeGameplayScenarioLedgerReporter::report(
@@ -183,6 +231,7 @@ RuntimeGameplayScenarioLedger RuntimeGameplayScenarioLedgerReporter::report(
 	RuntimeGameplayScenarioLedger ledger = report(result);
 	ledger.hasProfileBuild = true;
 	ledger.profileBuild = profileBuild;
+	AddAiExplanations(ledger, profileBuild);
 	return ledger;
 }
 
@@ -195,6 +244,7 @@ RuntimeGameplayScenarioLedger RuntimeGameplayScenarioLedgerReporter::report(
 	ledger.hasProfileValidation = true;
 	ledger.profileBuild = profileValidation.build;
 	ledger.profileValidation = profileValidation;
+	AddAiExplanations(ledger, profileValidation.build);
 	return ledger;
 }
 

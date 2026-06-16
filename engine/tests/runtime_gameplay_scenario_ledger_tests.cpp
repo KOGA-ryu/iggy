@@ -351,6 +351,12 @@ void TestProfileScenarioFeedsLedger()
 	Expect(ledger.hasProfileBuild, "profile ledger should preserve profile build facts");
 	Expect(ledger.profileBuild.resolvedSubjectCount == 1, "profile ledger should copy profile build result");
 	Expect(ledger.npcControlAppliedCount == 1 && ledger.npcMovedCount == 1, "profile ledger should report normal scenario execution facts");
+	Expect(ledger.hasNpcAiExplanations(), "profile ledger should expose AI explanation rows");
+	Expect(ledger.npcAiExplainFrameCount == 1 && ledger.npcAiExplanations.size() == 1, "profile ledger should expose one explanation frame");
+	Expect(ledger.npcAiProfileResolvedCount == 1, "profile ledger should summarize profile resolution");
+	Expect(ledger.npcAiHandDrawnCount == 1, "profile ledger should summarize hand draw facts");
+	Expect(ledger.npcAiControlProposedCount == 1 && ledger.npcAiControlAppliedCount == 1, "profile ledger should summarize control explanation facts");
+	Expect(ledger.npcAiExplanations[0].profileResolvedCount == 1, "profile ledger should preserve nested explanation details");
 }
 
 } // namespace

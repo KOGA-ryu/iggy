@@ -5,6 +5,7 @@
 
 #include "runtime/RuntimeGameplayProfileScenarioValidator.hpp"
 #include "runtime/RuntimeGameplayScenarioRunner.hpp"
+#include "scene/ai/NpcMapPlayControlExplainLedger.hpp"
 
 namespace iggy::runtime {
 
@@ -61,6 +62,7 @@ struct RuntimeGameplayScenarioLedger {
 	bool hasProfileValidation = false;
 	RuntimeGameplayProfileScenarioDefinitionBuildResult profileBuild;
 	RuntimeGameplayProfileScenarioValidationResult profileValidation;
+	std::vector<NpcMapPlayControlExplainLedger> npcAiExplanations;
 	std::vector<RuntimeGameplayScenarioLedgerFrame> frames;
 	std::vector<RuntimeGameplayScenarioLedgerEvent> events;
 	std::size_t frameCount = 0;
@@ -87,11 +89,23 @@ struct RuntimeGameplayScenarioLedger {
 	std::size_t finalPresentNpcCount = 0;
 	std::size_t finalInventoryStackCount = 0;
 	std::size_t finalInventoryDropCount = 0;
+	std::size_t npcAiExplainFrameCount = 0;
+	std::size_t npcAiProfileResolvedCount = 0;
+	std::size_t npcAiProfileMissingCount = 0;
+	std::size_t npcAiHandDrawnCount = 0;
+	std::size_t npcAiMapChangedSelectionCount = 0;
+	std::size_t npcAiPlayKeptCount = 0;
+	std::size_t npcAiPlayFoldedCount = 0;
+	std::size_t npcAiControlProposedCount = 0;
+	std::size_t npcAiControlFailedCount = 0;
+	std::size_t npcAiControlAppliedCount = 0;
+	std::size_t npcAiControlApplyFailedCount = 0;
 
 	[[nodiscard]] bool empty() const;
 	[[nodiscard]] bool changed() const;
 	[[nodiscard]] bool refreshedNpcData() const;
 	[[nodiscard]] bool hasEvents() const;
+	[[nodiscard]] bool hasNpcAiExplanations() const;
 };
 
 class RuntimeGameplayScenarioLedgerReporter {
