@@ -13,6 +13,7 @@ struct RuntimeGameplayOrchestratedFrameRunnerFrame {
 	NpcMapPlayControlFramePlanPools pools;
 	AiMap2D aiMap;
 	NpcMapPlayControlFramePlanConfig controlConfig;
+	std::vector<NpcActorControlState2D> controlOverrides;
 	LevelTileMap movementMap;
 	NpcActorMovementFramePlan2DConfig movementConfig;
 	NpcActorOccupancy2D previousOccupancy;

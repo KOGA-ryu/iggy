@@ -162,6 +162,15 @@ iggy::runtime::RuntimeGameplayProfileScenarioFrameDefinition Frame(const char *i
 	return frame;
 }
 
+iggy::runtime::RuntimeGameplayProfileScenarioFrameDefinition FrameWithOverride(
+	const char *id,
+	iggy::NpcActorControlState2D overrideControl)
+{
+	iggy::runtime::RuntimeGameplayProfileScenarioFrameDefinition frame = Frame(id);
+	frame.controlOverrides = { overrideControl };
+	return frame;
+}
+
 iggy::runtime::RuntimeGameplayProfileScenarioDefinition Definition(
 	iggy::runtime::RuntimeGameplayState state,
 	iggy::NpcAiProfileTraitCatalog catalog,
@@ -283,6 +292,42 @@ void TestMultiFrameScenarioPreservesLedgerRows()
 	Expect(!result.state.npcActors.actors.empty() && NearVec(result.state.npcActors.actors[0].position, { 2.5F, 0.5F }), "multi-frame profile scenario should carry actor across frames");
 }
 
+void TestFrameControlOverridesMoveNpcAcrossFrames()
+{
+	const iggy::runtime::RuntimeGameplayState state =
+		State(
+			Actors({ Actor("npc:override", "profile:override", { 1.5F, 0.5F }) }),
+			Controls({ Control("npc:override", { 1.5F, 0.5F }, iggy::NpcMoveMode::Still) }));
+	const iggy::runtime::RuntimeGameplayProfileScenarioDefinition definition =
+		Definition(
+			state,
+			Catalog({ Profile("profile:override", Traits(12)) }),
+			{
+				FrameWithOverride(
+					"frame:override-one",
+					Control("npc:override", { 2.5F, 0.5F }, iggy::NpcMoveMode::Walk)),
+				FrameWithOverride(
+					"frame:override-two",
+					Control("npc:override", { 3.5F, 0.5F }, iggy::NpcMoveMode::Walk)),
+			});
+
+	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult result = Run(definition);
+
+	Expect(result.ran(), "profile scenario frame overrides should run");
+	Expect(result.validation.ok(), "profile scenario frame overrides should validate");
+	Expect(result.frameCount == 2, "profile scenario frame overrides should preserve frame count");
+	Expect(result.npcMovedCount == 2, "profile scenario frame overrides should move once per frame");
+	Expect(result.npcActorsChanged, "profile scenario frame overrides should mark actor changes");
+	Expect(result.build.scenarioDefinition.frames.size() == 2, "profile scenario frame overrides should build two ordinary frames");
+	if (result.build.scenarioDefinition.frames.size() == 2) {
+		Expect(result.build.scenarioDefinition.frames[0].frame.controlOverrides.size() == 1, "first ordinary frame should preserve override");
+		Expect(result.build.scenarioDefinition.frames[1].frame.controlOverrides.size() == 1, "second ordinary frame should preserve override");
+		Expect(result.build.scenarioDefinition.frames[0].frame.controlOverrides[0].objective.targetPosition.x == 2.5F, "first ordinary frame should preserve first target");
+		Expect(result.build.scenarioDefinition.frames[1].frame.controlOverrides[0].objective.targetPosition.x == 3.5F, "second ordinary frame should preserve second target");
+	}
+	Expect(!result.state.npcActors.actors.empty() && NearVec(result.state.npcActors.actors[0].position, { 3.5F, 0.5F }), "profile scenario frame overrides should carry actor to final target");
+}
+
 void TestManualCompositionParity()
 {
 	const iggy::runtime::RuntimeGameplayProfileScenarioDefinition definition =
@@ -346,6 +391,7 @@ void TestRunnerDoesNotMutateDefinition()
 	Expect(definition.profileTraits.entries.size() == before.profileTraits.entries.size(), "profile runner should not mutate catalog");
 	Expect(definition.frames.size() == before.frames.size(), "profile runner should not mutate frames");
 	Expect(definition.frames[0].frameId == before.frames[0].frameId, "profile runner should not mutate frame id");
+	Expect(definition.frames[0].controlOverrides.size() == before.frames[0].controlOverrides.size(), "profile runner should not mutate frame overrides");
 }
 
 } // namespace
@@ -356,6 +402,7 @@ int main()
 	TestValidProfileScenarioRunsAndMovesNpc();
 	TestInvalidProfileScenarioDoesNotRunGameplay();
 	TestMultiFrameScenarioPreservesLedgerRows();
+	TestFrameControlOverridesMoveNpcAcrossFrames();
 	TestManualCompositionParity();
 	TestNamespacedAndUnqualifiedIdsRemainExact();
 	TestRunnerDoesNotMutateDefinition();

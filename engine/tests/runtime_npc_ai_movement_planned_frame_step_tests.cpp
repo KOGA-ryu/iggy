@@ -220,6 +220,7 @@ iggy::runtime::RuntimeNpcAiMovementPlannedFrameInput Input(
 		pools,
 		aiMap,
 		controlConfig,
+		{},
 		movementMap,
 		movementConfig,
 	};

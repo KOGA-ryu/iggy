@@ -22,6 +22,7 @@ RuntimeNpcAiMovementRefreshFrameInput NpcFrameInputFrom(
 			input.pools,
 			input.aiMap,
 			input.controlConfig,
+			input.controlOverrides,
 			input.movementMap,
 			input.movementConfig,
 		},

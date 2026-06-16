@@ -1,6 +1,28 @@
 #include "runtime/RuntimeNpcAiMovementPlannedFrameStep.hpp"
 
 namespace iggy::runtime {
+namespace {
+
+RuntimeGameplayState ApplyControlOverrides(
+	RuntimeGameplayState state,
+	const std::vector<NpcActorControlState2D> &overrides)
+{
+	for (const NpcActorControlState2D &overrideControl : overrides) {
+		bool replaced = false;
+		for (NpcActorControlState2D &control : state.npcControls.entries) {
+			if (control.npcId == overrideControl.npcId) {
+				control = overrideControl;
+				replaced = true;
+				break;
+			}
+		}
+		if (!replaced)
+			state.npcControls.entries.push_back(overrideControl);
+	}
+	return state;
+}
+
+} // namespace
 
 bool RuntimeNpcAiMovementPlannedFrameResult::ranAnyRequests() const
 {
@@ -21,6 +43,7 @@ RuntimeNpcAiMovementPlannedFrameResult RuntimeNpcAiMovementPlannedFrameStep::run
 	result.pools = input.pools;
 	result.aiMap = input.aiMap;
 	result.controlConfig = input.controlConfig;
+	result.controlOverrides = input.controlOverrides;
 	result.movementMap = input.movementMap;
 	result.movementConfig = input.movementConfig;
 
@@ -32,8 +55,11 @@ RuntimeNpcAiMovementPlannedFrameResult RuntimeNpcAiMovementPlannedFrameStep::run
 		input.controlConfig,
 	});
 
+	const RuntimeGameplayState movementInputState =
+		ApplyControlOverrides(result.control.state, input.controlOverrides);
+
 	result.movement = RuntimeNpcActorMovementPlannedFrameStep {}.run({
-		result.control.state,
+		movementInputState,
 		input.movementMap,
 		input.movementConfig,
 	});
@@ -51,7 +77,7 @@ RuntimeNpcAiMovementPlannedFrameResult RuntimeNpcAiMovementPlannedFrameStep::run
 	result.blockedCount = result.movement.blockedCount;
 	result.rejectedCount = result.movement.rejectedCount;
 	result.missingActorCount = result.movement.missingActorCount;
-	result.changedControls = result.control.changedControls;
+	result.changedControls = result.control.changedControls || !input.controlOverrides.empty();
 	result.changedActors = result.movement.changed;
 	result.status = (result.controlPlannedRequestCount > 0 || result.movementPlannedRequestCount > 0)
 		? RuntimeNpcAiMovementPlannedFrameStatus::Ran

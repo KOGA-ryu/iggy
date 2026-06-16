@@ -48,6 +48,7 @@ RuntimeNpcAiMovementRefreshFrameRunnerResult RuntimeNpcAiMovementRefreshFrameRun
 				frame.pools,
 				frame.aiMap,
 				frame.controlConfig,
+				{},
 				frame.movementMap,
 				frame.movementConfig,
 			},

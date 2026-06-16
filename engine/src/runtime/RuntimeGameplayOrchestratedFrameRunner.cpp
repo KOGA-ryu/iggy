@@ -16,6 +16,7 @@ RuntimeGameplayOrchestratedFrameInput FrameInputFrom(
 	input.pools = frame.pools;
 	input.aiMap = frame.aiMap;
 	input.controlConfig = frame.controlConfig;
+	input.controlOverrides = frame.controlOverrides;
 	input.movementMap = frame.movementMap;
 	input.movementConfig = frame.movementConfig;
 	input.previousOccupancy = frame.previousOccupancy;

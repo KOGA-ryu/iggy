@@ -198,7 +198,7 @@ iggy::runtime::RuntimeNpcAiMovementRefreshFrameInput Input(
 	const iggy::NpcActorMovementRefreshFrame2DConfig &refreshConfig = {})
 {
 	return {
-		{ state, subjects, pools, plannedAiMap, controlConfig, movementMap, movementConfig },
+		{ state, subjects, pools, plannedAiMap, controlConfig, {}, movementMap, movementConfig },
 		previousOccupancy,
 		targets,
 		refreshAiMap,

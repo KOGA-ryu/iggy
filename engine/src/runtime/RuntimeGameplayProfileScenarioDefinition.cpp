@@ -13,6 +13,7 @@ RuntimeGameplayOrchestratedFrameRunnerFrame FrameFromProfileFrame(
 	result.pools = frame.pools;
 	result.aiMap = frame.aiMap;
 	result.controlConfig = frame.controlConfig;
+	result.controlOverrides = frame.controlOverrides;
 	result.movementMap = frame.movementMap;
 	result.movementConfig = frame.movementConfig;
 	result.previousOccupancy = frame.previousOccupancy;

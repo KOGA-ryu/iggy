@@ -33,6 +33,7 @@ RuntimeNpcAiMovementPlannedFrameRunnerResult RuntimeNpcAiMovementPlannedFrameRun
 			frame.pools,
 			frame.aiMap,
 			frame.controlConfig,
+			{},
 			frame.movementMap,
 			frame.movementConfig,
 		});

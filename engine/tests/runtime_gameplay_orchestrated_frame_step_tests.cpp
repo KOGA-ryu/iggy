@@ -544,6 +544,7 @@ void TestManualCompositionParityAndInputImmutability()
 				input.pools,
 				input.aiMap,
 				input.controlConfig,
+				{},
 				input.movementMap,
 				input.movementConfig,
 			},

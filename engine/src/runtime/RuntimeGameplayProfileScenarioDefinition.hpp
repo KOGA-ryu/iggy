@@ -6,6 +6,7 @@
 #include "core/resource/ResourceId.hpp"
 #include "runtime/RuntimeGameplayScenarioDefinition.hpp"
 #include "scene/ai/NpcAiProfileTraitResolver.hpp"
+#include "scene/npc/NpcActorControlState2D.hpp"
 
 namespace iggy::runtime {
 
@@ -17,6 +18,7 @@ struct RuntimeGameplayProfileScenarioFrameDefinition {
 	AiMap2D aiMap;
 	NpcAiProfileTraitResolverConfig profileConfig;
 	NpcMapPlayControlFramePlanConfig controlConfig;
+	std::vector<NpcActorControlState2D> controlOverrides;
 	LevelTileMap movementMap;
 	NpcActorMovementFramePlan2DConfig movementConfig;
 	NpcActorOccupancy2D previousOccupancy;
