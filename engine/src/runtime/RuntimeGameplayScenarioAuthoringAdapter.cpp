@@ -73,6 +73,17 @@ RuntimeGameplayScenarioAuthoringAdapterResult RuntimeGameplayScenarioAuthoringAd
 			return result;
 		}
 
+		result.asciiSourcePlanConversion =
+			RuntimeGameplayAsciiSourcePlanProfileScenarioConverter {}.convert(
+				packet.asciiSourcePlan,
+				config.asciiSourcePlanProfileScenario);
+		if (result.asciiSourcePlanConversion.ok()) {
+			result.profileScenario = result.asciiSourcePlanConversion.definition;
+			result.status = RuntimeGameplayScenarioAuthoringAdapterStatus::Converted;
+			result.converted = true;
+			return result;
+		}
+
 		result.status = RuntimeGameplayScenarioAuthoringAdapterStatus::ConversionFailed;
 		result.issues.push_back({
 			RuntimeGameplayScenarioAuthoringAdapterIssueCode::AsciiSourcePlanConversionFailed,
@@ -80,6 +91,7 @@ RuntimeGameplayScenarioAuthoringAdapterResult RuntimeGameplayScenarioAuthoringAd
 			packet.hasProfileScenario,
 			packet.hasAsciiSourcePlan,
 			config.hasAsciiSourcePlanProfileScenarioConfig,
+			result.asciiSourcePlanConversion.status,
 		});
 		result.issueCount = result.issues.size();
 		return result;
