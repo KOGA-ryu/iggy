@@ -216,10 +216,15 @@ TOML text using the supported ASCII source-plan subset
 for the currently supported TOML subset only. It supports root scalar fields,
 `[grid]`, `[no_claims]`, `[promotion]`, repeated `[[legend]]`,
 `[[cells]]`, and `[[regions]]` tables, then calls
-`RuntimeGameplayAsciiSourcePlanValidator` and preserves nested diagnostics. It
-does not claim general TOML compliance, does not read files, does not use a TOML
-library, does not lower to `RuntimeGameplayAsciiScenarioPacket`, does not
-promote to profile scenarios, and does not run gameplay.
+`RuntimeGameplayAsciiSourcePlanValidator` and preserves nested diagnostics.
+Reader results also carry table-line source locations for `[grid]`, `grid.rows`,
+`[no_claims]`, `[promotion]`, `[[legend]]`, `[[cells]]`, and `[[regions]]`;
+mirrored source-plan validation issues use those table lines where the mapping
+is clear. This is best-effort object/table correlation, not key-range or full
+TOML source mapping. The reader does not claim general TOML compliance, does not
+read files, does not use a TOML library, does not lower to
+`RuntimeGameplayAsciiScenarioPacket`, does not promote to profile scenarios, and
+does not run gameplay.
 
 Source plans remain authoring evidence. They are not runtime truth and do not
 execute gameplay. The shallow packet adapter remains a lossy authoring adapter
