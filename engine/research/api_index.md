@@ -123,6 +123,7 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `NpcMapRead`, `NpcMapReader`: opt-in map-aware Read report that ranks Hand entries with local AI map tag matches and UI-tunable scoring config.
 - `NpcMapReadProjection`: adapter from map-aware Read results into the existing `NpcRead` shape for Play/Fold consumers.
 - `NpcMapPlayReport`, `NpcMapPlayReporter`: read-only map-aware card-chain report preserving raw Read, map-aware Read, projected Read, Play, Tell, and Fold facts.
+- `NpcMapPlayControlExplainLedger`, `NpcMapPlayControlExplainLedgerReporter`: compact explanation ledger over profile resolution, map-play frame planning, and control frame step facts for future scenario/tooling inspection; projection only.
 - `NpcMapPlayControlFramePlan`, `NpcMapPlayControlFramePlanner`: scene-level read-only planner that joins actor/control frame state, per-NPC trait sets, six trait pools, and AI map queries into prepared `NpcMapPlayControlFrameStep2D` requests; no control apply/runtime mutation.
 - `NpcMapPlayControlFrameStep2D`, `NpcMapPlayControlFrameStepper2D`: scene-level thought/control orchestration from per-NPC map-aware play inputs to control proposals, frame apply, and frame report.
 - `NpcPlay`, `NpcPlaySelector`: deterministic read-only Play commit selecting the first ranked Read entry.
