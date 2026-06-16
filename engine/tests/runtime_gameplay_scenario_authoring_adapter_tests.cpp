@@ -109,6 +109,67 @@ iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult Convert(
 	return iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(packet);
 }
 
+iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult Convert(
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringPacket &packet,
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig &config)
+{
+	return iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(packet, config);
+}
+
+iggy::runtime::RuntimeGameplayAsciiSourcePlan SourcePlan()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan;
+	plan.formatId = Id("iggy:ascii-source-plan");
+	plan.hasSourceId = true;
+	plan.sourceId = Id("scenario:authoring-source-plan");
+	plan.grid.width = 3;
+	plan.grid.height = 3;
+	plan.grid.backgroundGlyph = '.';
+	plan.grid.rows = {
+		"###",
+		"#A#",
+		"###",
+	};
+	plan.legend = {
+		{
+			'A',
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanGlyphKind::Actor,
+			Id("role:npc"),
+			{ Id("tag:guard") },
+			true,
+			iggy::runtime::RuntimeGameplayAsciiScenarioMarkerKind::Actor,
+			Id("npc:source-plan"),
+			Id("profile:authoring"),
+		},
+	};
+	plan.annotatedCells = {
+		{
+			true,
+			Id("cell:source-plan"),
+			1,
+			1,
+			'A',
+			{ true, 1, 1 },
+			{ true, 1.5F, 1.5F },
+			{ false },
+			{ Id("tag:guard") },
+			Id("npc:source-plan"),
+			Id("profile:authoring"),
+		},
+	};
+	return plan;
+}
+
+iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig SourcePlanConfig()
+{
+	iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig config;
+	config.hasAsciiSourcePlanProfileScenarioConfig = true;
+	config.asciiSourcePlanProfileScenario.hasDefaultFrame = true;
+	config.asciiSourcePlanProfileScenario.defaultFrame = Frame();
+	config.asciiSourcePlanProfileScenario.profileTraits = Catalog();
+	return config;
+}
+
 void TestDefaultPacketIsUnsupported()
 {
 	const iggy::runtime::RuntimeGameplayScenarioAuthoringPacket packet;
@@ -123,6 +184,7 @@ void TestDefaultPacketIsUnsupported()
 		Expect(result.issues[0].code == iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterIssueCode::UnsupportedSource, "unsupported authoring issue should use UnsupportedSource");
 		Expect(result.issues[0].source == iggy::runtime::RuntimeGameplayScenarioAuthoringSource::Unsupported, "unsupported authoring issue should preserve source");
 		Expect(!result.issues[0].hasProfileScenario, "unsupported authoring issue should preserve missing payload flag");
+		Expect(!result.issues[0].hasAsciiSourcePlan, "unsupported authoring issue should preserve missing source-plan flag");
 	}
 }
 
@@ -141,6 +203,55 @@ void TestDeclaredProfileScenarioWithoutPayloadIsInvalid()
 		Expect(result.issues[0].source == iggy::runtime::RuntimeGameplayScenarioAuthoringSource::ProfileScenarioDefinition, "missing profile payload issue should preserve source");
 		Expect(!result.issues[0].hasProfileScenario, "missing profile payload issue should preserve payload flag");
 	}
+}
+
+void TestDeclaredAsciiSourcePlanWithoutPayloadIsInvalid()
+{
+	iggy::runtime::RuntimeGameplayScenarioAuthoringPacket packet;
+	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig config =
+		SourcePlanConfig();
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringPacket before = packet;
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig configBefore = config;
+
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult result =
+		Convert(packet, config);
+
+	Expect(result.status == iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterStatus::InvalidPacket, "missing source-plan payload should be invalid");
+	Expect(!result.ok() && !result.converted, "missing source-plan payload should not convert");
+	Expect(result.hasIssues() && result.issueCount == 1, "missing source-plan payload should report one issue");
+	if (!result.issues.empty()) {
+		Expect(result.issues[0].code == iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterIssueCode::MissingAsciiSourcePlanPayload, "missing source-plan payload issue should use MissingAsciiSourcePlanPayload");
+		Expect(result.issues[0].source == iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan, "missing source-plan payload issue should preserve source");
+		Expect(!result.issues[0].hasAsciiSourcePlan, "missing source-plan payload issue should preserve payload flag");
+		Expect(result.issues[0].hasAsciiSourcePlanConversionConfig, "missing source-plan payload issue should preserve config flag");
+	}
+	Expect(packet.source == before.source && packet.hasAsciiSourcePlan == before.hasAsciiSourcePlan, "missing source-plan payload path should not mutate packet");
+	Expect(config.hasAsciiSourcePlanProfileScenarioConfig == configBefore.hasAsciiSourcePlanProfileScenarioConfig, "missing source-plan payload path should not mutate config");
+}
+
+void TestAsciiSourcePlanWithoutConversionConfigIsInvalid()
+{
+	iggy::runtime::RuntimeGameplayScenarioAuthoringPacket packet;
+	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
+	packet.hasAsciiSourcePlan = true;
+	packet.asciiSourcePlan = SourcePlan();
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringPacket before = packet;
+
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult result =
+		Convert(packet);
+
+	Expect(result.status == iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterStatus::InvalidPacket, "source-plan without conversion config should be invalid");
+	Expect(!result.ok() && !result.converted, "source-plan without conversion config should not convert");
+	Expect(result.hasIssues() && result.issueCount == 1, "source-plan without conversion config should report one issue");
+	if (!result.issues.empty()) {
+		Expect(result.issues[0].code == iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterIssueCode::MissingAsciiSourcePlanConversionConfig, "source-plan without config issue should use MissingAsciiSourcePlanConversionConfig");
+		Expect(result.issues[0].source == iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan, "source-plan without config issue should preserve source");
+		Expect(result.issues[0].hasAsciiSourcePlan, "source-plan without config issue should preserve payload flag");
+		Expect(!result.issues[0].hasAsciiSourcePlanConversionConfig, "source-plan without config issue should preserve missing config flag");
+	}
+	Expect(result.packet.asciiSourcePlan.sourceId == Id("scenario:authoring-source-plan"), "source-plan without config result should preserve packet");
+	Expect(packet.asciiSourcePlan.sourceId == before.asciiSourcePlan.sourceId, "source-plan without config path should not mutate packet");
 }
 
 void TestProfileScenarioPacketConvertsByValue()
@@ -215,6 +326,8 @@ int main()
 {
 	TestDefaultPacketIsUnsupported();
 	TestDeclaredProfileScenarioWithoutPayloadIsInvalid();
+	TestDeclaredAsciiSourcePlanWithoutPayloadIsInvalid();
+	TestAsciiSourcePlanWithoutConversionConfigIsInvalid();
 	TestProfileScenarioPacketConvertsByValue();
 	TestConvertedProfileScenarioFeedsExistingBuilder();
 	TestUnsupportedSourceWithPayloadDoesNotConvert();

@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <vector>
 
+#include "runtime/RuntimeGameplayAsciiSourcePlanProfileScenarioConverter.hpp"
 #include "runtime/RuntimeGameplayProfileScenarioDefinition.hpp"
 
 namespace iggy::runtime {
@@ -10,17 +11,22 @@ namespace iggy::runtime {
 enum class RuntimeGameplayScenarioAuthoringSource {
 	Unsupported,
 	ProfileScenarioDefinition,
+	AsciiSourcePlan,
 };
 
 enum class RuntimeGameplayScenarioAuthoringAdapterStatus {
 	UnsupportedSource,
 	InvalidPacket,
 	Converted,
+	ConversionFailed,
 };
 
 enum class RuntimeGameplayScenarioAuthoringAdapterIssueCode {
 	UnsupportedSource,
 	MissingProfileScenarioPayload,
+	MissingAsciiSourcePlanPayload,
+	MissingAsciiSourcePlanConversionConfig,
+	AsciiSourcePlanConversionFailed,
 };
 
 struct RuntimeGameplayScenarioAuthoringAdapterIssue {
@@ -29,6 +35,10 @@ struct RuntimeGameplayScenarioAuthoringAdapterIssue {
 	RuntimeGameplayScenarioAuthoringSource source =
 		RuntimeGameplayScenarioAuthoringSource::Unsupported;
 	bool hasProfileScenario = false;
+	bool hasAsciiSourcePlan = false;
+	bool hasAsciiSourcePlanConversionConfig = false;
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus asciiSourcePlanConversionStatus =
+		RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::SourcePlanInvalid;
 };
 
 struct RuntimeGameplayScenarioAuthoringPacket {
@@ -36,11 +46,20 @@ struct RuntimeGameplayScenarioAuthoringPacket {
 		RuntimeGameplayScenarioAuthoringSource::Unsupported;
 	bool hasProfileScenario = false;
 	RuntimeGameplayProfileScenarioDefinition profileScenario;
+	bool hasAsciiSourcePlan = false;
+	RuntimeGameplayAsciiSourcePlan asciiSourcePlan;
+};
+
+struct RuntimeGameplayScenarioAuthoringAdapterConfig {
+	bool hasAsciiSourcePlanProfileScenarioConfig = false;
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig asciiSourcePlanProfileScenario;
 };
 
 struct RuntimeGameplayScenarioAuthoringAdapterResult {
 	RuntimeGameplayScenarioAuthoringPacket packet;
+	RuntimeGameplayScenarioAuthoringAdapterConfig config;
 	RuntimeGameplayProfileScenarioDefinition profileScenario;
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult asciiSourcePlanConversion;
 	RuntimeGameplayScenarioAuthoringAdapterStatus status =
 		RuntimeGameplayScenarioAuthoringAdapterStatus::UnsupportedSource;
 	std::vector<RuntimeGameplayScenarioAuthoringAdapterIssue> issues;
@@ -55,6 +74,9 @@ class RuntimeGameplayScenarioAuthoringAdapter {
 public:
 	[[nodiscard]] RuntimeGameplayScenarioAuthoringAdapterResult convert(
 		const RuntimeGameplayScenarioAuthoringPacket &packet) const;
+	[[nodiscard]] RuntimeGameplayScenarioAuthoringAdapterResult convert(
+		const RuntimeGameplayScenarioAuthoringPacket &packet,
+		const RuntimeGameplayScenarioAuthoringAdapterConfig &config) const;
 };
 
 } // namespace iggy::runtime
