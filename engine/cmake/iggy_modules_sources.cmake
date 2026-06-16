@@ -7,7 +7,6 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/modules/npc_ai/AwarenessSensor.cpp
   src/modules/npc_ai/NpcAgentBatchUpdater.cpp
   src/modules/npc_ai/NpcAgentController.cpp
-  src/modules/npc_ai/NpcAgentRenderCommands.cpp
   src/modules/npc_ai/NpcBrainTick.cpp
   src/modules/npc_ai/NpcIntentSelector.cpp
   src/modules/npc_ai/NpcMovementPlanner.cpp
