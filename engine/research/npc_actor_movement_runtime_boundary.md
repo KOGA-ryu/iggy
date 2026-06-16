@@ -126,6 +126,31 @@ Validation checks initial NPC actor/control joins and per-frame authoring facts
 such as movement-map shape and trait subjects. It does not parse ASCII/Edi,
 invoke UI/editor systems, or run gameplay.
 
+## Scenario/Profile Boundary Closeout
+
+The current profile-driven scenario path is intentionally frozen as this
+engine-only sequence:
+
+```text
+RuntimeGameplayProfileScenarioDefinition
+  -> RuntimeGameplayProfileScenarioValidator
+  -> RuntimeGameplayProfileScenarioDefinitionBuilder
+  -> RuntimeGameplayScenarioRunner
+  -> RuntimeGameplayScenarioLedgerReporter
+```
+
+The convenience `RuntimeGameplayProfileScenarioRunner` performs exactly that
+sequence in one explicit call. It is a tooling/test authoring helper over the
+normal scenario path, not a new gameplay loop, parser, autosave path, or UI
+integration point. Invalid profile scenarios stop at validation and do not run
+gameplay.
+
+Raw and policy gameplay frame paths remain prepared-request consumers. They do
+not auto-run NPC AI control planning, movement planning, scenario lowering, or
+profile trait resolution. External ASCII/Edi/IDE tooling should target typed
+scenario definitions or profile scenario definitions first, then let engine
+validation/build/runner/ledger packets handle the in-engine transition.
+
 The optional scene-only reservation lane can sit between prepared requests and
 frame apply:
 
