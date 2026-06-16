@@ -311,7 +311,8 @@ RuntimeGameplayProfileScenarioDefinition BuildDefinition(
 	const RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig &config,
 	const LevelTileMap &promotedMap,
 	const NpcActorState2DRegistry &actors,
-	const NpcActorControlState2DRegistry &controls)
+	const NpcActorControlState2DRegistry &controls,
+	const AiMap2D *promotedAiMap)
 {
 	RuntimeGameplayProfileScenarioDefinition definition;
 	definition.hasScenarioId = sourcePlan.hasSourceId;
@@ -322,6 +323,10 @@ RuntimeGameplayProfileScenarioDefinition BuildDefinition(
 	definition.profileTraits = config.profileTraits;
 	RuntimeGameplayProfileScenarioFrameDefinition frame = config.defaultFrame;
 	frame.movementMap = promotedMap;
+	if (promotedAiMap != nullptr) {
+		frame.aiMap = *promotedAiMap;
+		frame.refreshAiMap = *promotedAiMap;
+	}
 	definition.frames.push_back(frame);
 	return definition;
 }
@@ -385,7 +390,8 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConverter::convert(
 		config,
 		result.promotedMap,
 		result.actorRegistry.registry,
-		result.controlRegistry.registry);
+		result.controlRegistry.registry,
+		config.promoteRegionAiMap ? &result.regionAiMapPromotion.aiMap : nullptr);
 	result.profileValidation = RuntimeGameplayProfileScenarioValidator {}.validate(result.definition);
 	if (!result.profileValidation.ok()) {
 		for (const RuntimeGameplayProfileScenarioIssue &issue : result.profileValidation.issues) {

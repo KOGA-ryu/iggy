@@ -470,7 +470,14 @@ void TestEnabledRegionAiMapPromotionPreservesNestedResult()
 	Expect(result.regionAiMapPromotion.aiMap.nodes.size() == 1, "enabled region ai map promotion should preserve ai map node");
 	Expect(result.regionAiMapPromotion.aiMap.nodes[0].id == Id("region:patrol"), "enabled region ai map promotion should preserve exact region id");
 	Expect(result.regionAiMapPromotion.aiMap.nodes[0].tags == std::vector<iggy::ResourceId>({ Id("tag:patrol"), Id("plain") }), "enabled region ai map promotion should preserve configured node tags");
-	Expect(result.definition.frames[0].aiMap.nodes.empty(), "slice 2 should not wire promoted ai map into frames yet");
+	Expect(result.profileValidation.ok(), "region ai map converted definition should validate");
+	Expect(result.definition.frames[0].aiMap.nodes.size() == 1, "enabled region ai map promotion should wire frame ai map");
+	Expect(result.definition.frames[0].refreshAiMap.nodes.size() == 1, "enabled region ai map promotion should wire frame refresh ai map");
+	Expect(result.definition.frames[0].aiMap.nodes[0].id == Id("region:patrol"), "frame ai map should preserve exact region id");
+	Expect(result.definition.frames[0].refreshAiMap.nodes[0].id == Id("region:patrol"), "frame refresh ai map should preserve exact region id");
+	Expect(result.definition.frames[0].aiMap.nodes[0].tags == std::vector<iggy::ResourceId>({ Id("tag:patrol"), Id("plain") }), "frame ai map should preserve configured node tags");
+	Expect(result.definition.frames[0].refreshAiMap.nodes[0].tags == result.definition.frames[0].aiMap.nodes[0].tags, "frame refresh ai map should match frame ai map tags");
+	Expect(result.definition.frames[0].movementMap.id == Id("scenario:ascii-profile"), "region ai map promotion should still use promoted terrain map for movement map");
 }
 
 void TestInvalidRegionAiMapPromotionBlocksConversion()
