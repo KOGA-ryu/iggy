@@ -145,6 +145,10 @@ char BaseDebugGlyphForSource(
 			|| entry.scenarioMarkerKind == iggy::runtime::RuntimeGameplayAsciiScenarioMarkerKind::Actor) {
 			return '.';
 		}
+		if (entry.kind == iggy::runtime::RuntimeGameplayAsciiSourcePlanGlyphKind::PlayerStart
+			|| entry.scenarioMarkerKind == iggy::runtime::RuntimeGameplayAsciiScenarioMarkerKind::PlayerStart) {
+			return '.';
+		}
 	}
 	return glyph;
 }
@@ -178,6 +182,17 @@ std::vector<std::string> FinalDebugRows(
 			static_cast<std::size_t>(tile.x),
 			static_cast<std::size_t>(tile.y),
 			GlyphForActor(plan, actor.npcId)).canvas;
+	}
+
+	if (state.session.hasPlayer) {
+		const iggy::TileCoord tile = iggy::playerTile(state.session.player);
+		if (tile.x >= 0 && tile.y >= 0) {
+			canvas = iggy::setSceneAsciiCanvas2DPoint(
+				canvas,
+				static_cast<std::size_t>(tile.x),
+				static_cast<std::size_t>(tile.y),
+				'@').canvas;
+		}
 	}
 
 	return iggy::renderSceneAsciiCanvas2DRows(canvas);
@@ -433,7 +448,7 @@ void TestValidFixtureRunsScenarioAndRendersFinalDebugRows()
 	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
 	const std::vector<std::string> expected {
 		"#######",
-		"#A...@#",
+		"#A....#",
 		"#.....#",
 		"#######",
 	};
@@ -473,7 +488,7 @@ void TestMovingFixtureRunsScenarioAndMovesNpcFromAuthoredControl()
 	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
 	const std::vector<std::string> expected {
 		"#######",
-		"#.A..@#",
+		"#.A...#",
 		"#.....#",
 		"#######",
 	};
@@ -521,7 +536,7 @@ void TestMultiFrameFixtureRunsScenarioAndMovesNpcAcrossFrames()
 	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
 	const std::vector<std::string> expected {
 		"#######",
-		"#..A.@#",
+		"#..A..#",
 		"#.....#",
 		"#######",
 	};
@@ -553,6 +568,76 @@ void TestMultiFrameFixtureRunsScenarioAndMovesNpcAcrossFrames()
 	Expect(rows == expected, "multi-frame vertical path should render moved final ASCII debug rows");
 }
 
+void TestPlayerAndGuardFixtureRunsSharedFrameThroughScenario()
+{
+	const std::filesystem::path path = FixturePath("player_and_guard_room.toml");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult read =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(path);
+	iggy::runtime::RuntimeGameplayScenarioAuthoringPacket packet;
+	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
+	packet.hasAsciiSourcePlan = true;
+	packet.asciiSourcePlan = read.text.plan;
+	iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig adapterConfig;
+	adapterConfig.hasAsciiSourcePlanProfileScenarioConfig = true;
+	adapterConfig.asciiSourcePlanProfileScenario = ConverterConfig();
+
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
+		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(
+			packet,
+			adapterConfig);
+	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
+		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
+	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
+	const std::vector<std::string> expected {
+		"#######",
+		"#.A...#",
+		"#.....#",
+		"#######",
+	};
+
+	Expect(read.ok(), "player-and-guard fixture should read checked-in TOML fixture");
+	Expect(read.text.plan.sourceId == Id("scenario:player-and-guard-room"), "player-and-guard fixture should preserve source id");
+	Expect(read.text.plan.authoredControlCount() == 1, "player-and-guard fixture should parse one authored control");
+	Expect(read.text.plan.authoredPlayerCommandCount() == 1, "player-and-guard fixture should parse one authored player command");
+	Expect(adapter.ok(), "player-and-guard vertical path should adapt parsed source plan");
+	Expect(adapter.asciiSourcePlanConversion.ok(), "player-and-guard conversion should succeed");
+	Expect(adapter.asciiSourcePlanConversion.authoredControlCount == 1, "player-and-guard conversion should consume authored control");
+	Expect(adapter.asciiSourcePlanConversion.authoredPlayerCommandCount == 1, "player-and-guard conversion should consume authored player command");
+	Expect(adapter.profileScenario.frames.size() == 1, "shared player-and-guard frame should merge to one profile frame");
+	if (adapter.profileScenario.frames.size() == 1) {
+		const iggy::runtime::RuntimeGameplayProfileScenarioFrameDefinition &frame =
+			adapter.profileScenario.frames[0];
+		Expect(frame.hasFrameId && frame.frameId == Id("frame:shared"), "shared player-and-guard frame should preserve frame id");
+		Expect(frame.controlOverrides.size() == 1, "shared player-and-guard frame should carry NPC override");
+		Expect(frame.playerFrame.playerIntents.size() == 1, "shared player-and-guard frame should carry player intent");
+		if (!frame.playerFrame.playerIntents.empty()) {
+			const iggy::PlayerInputIntent2D &intent = frame.playerFrame.playerIntents[0];
+			Expect(intent.type == iggy::PlayerInputIntent2DType::MoveToTile, "shared player command should become move-to-tile intent");
+			Expect(intent.tile.x == 4 && intent.tile.y == 1, "shared player command should preserve target tile");
+		}
+	}
+	Expect(run.ran(), "player-and-guard vertical path should run converted profile scenario");
+	Expect(run.frameCount == 1, "player-and-guard vertical path should execute one shared frame");
+	Expect(run.scenario.runner.acceptedCommandCount == 1, "player-and-guard vertical path should accept authored player command");
+	Expect(!run.state.session.hasPlayer, "ASCII source-plan conversion does not yet promote player-start glyphs into runtime player state");
+	if (!run.scenario.runner.frameResults.empty()
+		&& !run.scenario.runner.frameResults[0].playerFrame.frame.interaction.playerInput.command.runner.runner.ticks.empty()) {
+		const iggy::runtime::RuntimeSessionCommandTickResult &tick =
+			run.scenario.runner.frameResults[0].playerFrame.frame.interaction.playerInput.command.runner.runner.ticks[0];
+		Expect(tick.playerCommands.planning.status == iggy::runtime::RuntimePlayerCommandPlanningStatus::MissingPlayer, "player-and-guard run should preserve missing-player planning diagnostic");
+		Expect(tick.playerCommands.execution.status == iggy::runtime::RuntimePlayerCommandExecutionStatus::MissingPlayer, "player-and-guard run should preserve missing-player execution diagnostic");
+	}
+	Expect(run.npcMovementPlannedRequestCount == 1, "player-and-guard vertical path should plan NPC movement");
+	Expect(run.npcMovedCount == 1, "player-and-guard vertical path should still move NPC");
+	Expect(run.state.npcActors.actors.size() == 1, "player-and-guard vertical path should preserve one final NPC actor");
+	if (!run.state.npcActors.actors.empty()) {
+		const iggy::NpcActorState2D &actor = run.state.npcActors.actors.front();
+		Expect(actor.npcId == Id("npc:guard"), "player-and-guard final actor should preserve id");
+		Expect(actor.position.x == 2.5F && actor.position.y == 1.5F, "player-and-guard vertical path should move actor one tile");
+	}
+	Expect(rows == expected, "player-and-guard vertical path should render moved NPC and no promoted player");
+}
+
 } // namespace
 
 int main()
@@ -570,6 +655,7 @@ int main()
 	TestValidFixtureRunsScenarioAndRendersFinalDebugRows();
 	TestMovingFixtureRunsScenarioAndMovesNpcFromAuthoredControl();
 	TestMultiFrameFixtureRunsScenarioAndMovesNpcAcrossFrames();
+	TestPlayerAndGuardFixtureRunsSharedFrameThroughScenario();
 
 	CleanupTempRoot();
 
