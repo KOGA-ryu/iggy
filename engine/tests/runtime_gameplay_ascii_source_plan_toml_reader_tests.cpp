@@ -3,6 +3,10 @@
 #include <iostream>
 #include <string>
 
+#include "runtime/RuntimeGameplayAsciiSourcePlanProfileScenarioConverter.hpp"
+#include "runtime/RuntimeGameplayProfileScenarioValidator.hpp"
+#include "support/LevelMapFixtures.hpp"
+
 namespace {
 
 int Failures = 0;
@@ -37,6 +41,36 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult Read(
 	const std::string &text)
 {
 	return iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReader {}.read(text);
+}
+
+iggy::NpcTraitSet Traits()
+{
+	iggy::NpcTraitSet traits;
+	traits.strength = 10;
+	return traits;
+}
+
+iggy::NpcAiProfileTraitCatalog Catalog(std::vector<iggy::NpcAiProfileTraitEntry> entries)
+{
+	const iggy::NpcAiProfileTraitCatalogBuildResult result =
+		iggy::NpcAiProfileTraitCatalogBuilder {}.build(entries);
+	Expect(result.built, "TOML reader acceptance profile catalog should build");
+	return result.catalog;
+}
+
+iggy::runtime::RuntimeGameplayProfileScenarioFrameDefinition DefaultFrame()
+{
+	iggy::runtime::RuntimeGameplayProfileScenarioFrameDefinition frame;
+	frame.hasFrameId = true;
+	frame.frameId = Id("frame:toml-reader");
+	frame.movementMap = iggy::test::MapFromRows({
+		"#######",
+		"#.....#",
+		"#.....#",
+		"#######",
+	});
+	frame.movementMap.id = Id("level:toml-reader");
+	return frame;
 }
 
 std::string RootGridToml()
@@ -422,6 +456,44 @@ void TestInvalidRegionBoundsSurfaceSourcePlanValidation()
 	Expect(result.sourcePlanIssueCount > 0, "out-of-bounds region should preserve nested source issues");
 }
 
+void TestTomlSourcePlanFeedsConverterAndProfileValidator()
+{
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
+		Read(RootGridLegendCellsRegionsToml());
+
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config;
+	config.hasDefaultFrame = true;
+	config.defaultFrame = DefaultFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult converted =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConverter {}.convert(
+			read.plan,
+			config);
+	const iggy::runtime::RuntimeGameplayProfileScenarioValidationResult validation =
+		iggy::runtime::RuntimeGameplayProfileScenarioValidator {}.validate(
+			converted.definition);
+
+	Expect(read.ok(), "acceptance TOML should parse into source plan");
+	Expect(read.sourceValidation.ok(), "acceptance TOML should validate as source plan");
+	Expect(read.plan.annotatedCells.size() == 1 && read.plan.regions.size() == 1, "reader should only publish source-plan facts");
+	Expect(converted.ok(), "parsed TOML source plan should convert with supplied C++ config");
+	Expect(validation.ok(), "converted parsed TOML source plan should validate as profile scenario");
+	Expect(converted.definition.scenarioId == Id("scenario:guard-room"), "converted scenario should preserve TOML source id");
+	Expect(converted.definition.initialState.session.level.map.width == 7, "converted session map should use TOML grid width");
+	Expect(converted.definition.initialState.session.level.map.height == 4, "converted session map should use TOML grid height");
+	Expect(converted.definition.initialState.npcActors.actors.size() == 1, "converted scenario should promote one TOML actor cell");
+	Expect(converted.definition.initialState.npcControls.entries.size() == 1, "converted scenario should create one default control");
+	const iggy::NpcActorState2D &actor =
+		converted.definition.initialState.npcActors.actors[0];
+	Expect(actor.npcId == Id("npc:guard"), "converted actor should preserve TOML marker id");
+	Expect(actor.aiProfileId == Id("profile:guard"), "converted actor should preserve TOML profile id");
+	Expect(actor.position.x == 1.5F && actor.position.y == 1.5F, "converted actor should preserve TOML local position");
+	Expect(converted.definition.frames.size() == 1, "converted scenario should use supplied default frame");
+	Expect(converted.definition.frames[0].movementMap.width == 7, "converted frame movement map should use TOML promoted map");
+	Expect(read.plan.annotatedCells[0].markerId == Id("npc:guard"), "converter should not mutate parsed TOML source plan");
+}
+
 } // namespace
 
 int main()
@@ -445,5 +517,6 @@ int main()
 	TestWrongTypedCellFieldFailsAsTypeInvalid();
 	TestUnsupportedInlineCellShapeFailsAsUnsupported();
 	TestInvalidRegionBoundsSurfaceSourcePlanValidation();
+	TestTomlSourcePlanFeedsConverterAndProfileValidator();
 	return Failures;
 }
