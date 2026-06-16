@@ -201,19 +201,19 @@ ordered later, with sections/tables such as `[grid]`, `[[legend]]`,
 parser-free and C++ in-memory, with format-neutral names such as
 `RuntimeGameplayAsciiSourcePlan`.
 
-The intended ASCII authoring pipeline is:
+The current ASCII authoring pipeline is:
 
 ```text
 ASCII source plan
   -> source-plan validation/report
   -> RuntimeGameplayAsciiScenarioPacket
-  -> later RuntimeGameplayProfileScenarioDefinition conversion
+  -> typed ASCII packet validation/report
 ```
 
 Source plans remain authoring evidence. They are not runtime truth, do not
-execute gameplay, do not parse files, and do not promote into gameplay/profile
-scenario definitions until a later explicit conversion lane defines those
-semantics. The current validated in-memory chain stops at:
+execute gameplay and do not parse files. The shallow packet adapter remains a
+lossy authoring adapter for tooling that only needs rows, markers, and frame
+declarations:
 
 ```text
 RuntimeGameplayAsciiSourcePlan
@@ -223,13 +223,32 @@ RuntimeGameplayAsciiSourcePlan
   -> RuntimeGameplayAsciiScenarioPacketValidator
 ```
 
-There is intentionally no ASCII-to-profile-scenario converter yet. The next
-authoring lane should convert a validated ASCII packet into
-`RuntimeGameplayProfileScenarioDefinition`, including explicit choices for map
-construction, actor/control placement, profile catalog references, movement
-maps, and frame scripting. Until that lane exists, ASCII packets are validated
-authoring data only, not gameplay state, parser output from files, UI data, or
-runtime orchestration input.
+The profile scenario promotion boundary is now separate and consumes the richer
+source plan directly so promotion facts are not lost in the shallow packet:
+
+```text
+RuntimeGameplayAsciiSourcePlan
+  -> RuntimeGameplayAsciiSourcePlanValidator
+  -> RuntimeGameplayAsciiSourcePlanProfileScenarioConverter
+  -> RuntimeGameplayProfileScenarioDefinition
+  -> RuntimeGameplayProfileScenarioValidator
+  -> RuntimeGameplayProfileScenarioRunner
+```
+
+`RuntimeGameplayAsciiSourcePlanProfileScenarioConverter` promotes only the
+currently accepted safe facts: terrain rows into a `LevelTileMap`, annotated NPC
+actor cells into `NpcActorState2DRegistry`, one default control per promoted
+actor, caller-supplied profile trait catalog, and a caller-supplied default
+profile scenario frame whose movement map is replaced with the promoted map.
+The converter rejects invalid source plans, unsupported custom terrain,
+invalid actor/control registries, missing frame defaults, and invalid profile
+scenario definitions before reporting conversion success.
+
+There is still no TOML parser, file IO, Edi/UI adapter, interaction marker
+promotion, frame scripting, region-to-AI-map promotion, or runtime gameplay
+auto-run in this boundary. A future TOML parser should target
+`RuntimeGameplayAsciiSourcePlan` first, then use this converter only after the
+in-memory source-plan validator accepts the authored packet.
 
 The optional scene-only reservation lane can sit between prepared requests and
 frame apply:
