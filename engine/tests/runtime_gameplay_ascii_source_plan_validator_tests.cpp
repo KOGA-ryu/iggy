@@ -103,6 +103,8 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand MoveToTileCom
 	command.command =
 		iggy::runtime::RuntimeGameplayAsciiSourcePlanPlayerCommandKind::MoveToTile;
 	command.hasTargetTile = true;
+	command.hasTargetTileX = true;
+	command.hasTargetTileY = true;
 	command.targetTile = { x, y };
 	return command;
 }

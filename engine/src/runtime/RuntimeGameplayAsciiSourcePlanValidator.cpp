@@ -379,7 +379,9 @@ void ValidateAuthoredPlayerCommands(
 			AddIssue(result, issue);
 		}
 
-		if (PlayerCommandNeedsTarget(command.command) && !command.hasTargetTile) {
+		if (PlayerCommandNeedsTarget(command.command) &&
+			!(command.hasTargetTile ||
+				(command.hasTargetTileX && command.hasTargetTileY))) {
 			RuntimeGameplayAsciiSourcePlanIssue issue;
 			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
 				AuthoredPlayerCommandMissingTarget;

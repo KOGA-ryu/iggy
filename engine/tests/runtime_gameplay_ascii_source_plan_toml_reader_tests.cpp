@@ -254,6 +254,18 @@ target = { x = 2.5, y = 1.5 }
 )toml";
 }
 
+std::string RootGridLegendCellsRegionsPlayerCommandToml()
+{
+	return RootGridLegendCellsRegionsToml() + R"toml(
+
+[[frame_player_commands]]
+frame_id = "frame:player-move"
+command = "move_to_tile"
+x = 3
+y = 1
+)toml";
+}
+
 void TestEmptyInputFailsDeterministically()
 {
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result = Read("");
@@ -747,6 +759,114 @@ void TestFrameControlUnsupportedTargetShapeReportsContext()
 	}
 }
 
+void TestFramePlayerCommandsParse()
+{
+	const std::string text = RootGridLegendCellsRegionsPlayerCommandToml();
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(result.ok(), "valid frame player command TOML should parse");
+	Expect(result.plan.authoredPlayerCommands.size() == 1, "one frame player command should parse");
+	Expect(result.sourceLocations.framePlayerCommandTableLines.size() == 1, "frame player command source location should be captured");
+	Expect(result.sourceLocations.framePlayerCommandTableLines[0] == LineOfNth(text, "[[frame_player_commands]]"), "frame player command source location should preserve table line");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand
+		&command = result.plan.authoredPlayerCommands[0];
+	Expect(command.hasFrameId && command.frameId == Id("frame:player-move"), "frame player command should parse optional frame id");
+	Expect(command.command == iggy::runtime::RuntimeGameplayAsciiSourcePlanPlayerCommandKind::MoveToTile, "frame player command should parse move_to_tile command");
+	Expect(command.hasTargetTile && command.hasTargetTileX && command.hasTargetTileY, "frame player command should parse complete target tile");
+	Expect(command.targetTile.x == 3 && command.targetTile.y == 1, "frame player command should preserve target tile coordinates");
+	Expect(command.hasDeclarationIndex && command.declarationIndex == 0, "frame player command should preserve authored declaration order");
+}
+
+void TestFramePlayerCommandInvalidFieldsReportContext()
+{
+	std::string text = RootGridLegendCellsRegionsPlayerCommandToml();
+	const std::size_t start = text.find("command = \"move_to_tile\"");
+	text.replace(
+		start,
+		std::string("command = \"move_to_tile\"").size(),
+		"command = \"jump\"");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "unknown frame player command should fail");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::TypeInvalid, "unknown frame player command should report type invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::UnknownEnumValue, "command");
+	Expect(issue != nullptr, "unknown frame player command issue should be findable");
+	if (issue != nullptr) {
+		Expect(issue->table == "frame_player_commands", "unknown frame player command should report frame_player_commands table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "unknown frame player command should report first table index");
+		Expect(issue->detail == "jump", "unknown frame player command should preserve raw value");
+	}
+}
+
+void TestFramePlayerCommandWrongTypedTargetReportsContext()
+{
+	std::string text = RootGridLegendCellsRegionsPlayerCommandToml();
+	const std::size_t start = text.find("x = 3");
+	text.replace(start, std::string("x = 3").size(), "x = \"3\"");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "wrong typed frame player command target should fail");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::TypeInvalid, "wrong typed frame player target should report type invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::WrongType, "x");
+	Expect(issue != nullptr, "wrong typed frame player target should be findable");
+	if (issue != nullptr) {
+		Expect(issue->table == "frame_player_commands", "wrong typed frame player target should report frame_player_commands table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "wrong typed frame player target should report first table index");
+		Expect(issue->key == "x", "wrong typed frame player target should report x key");
+	}
+}
+
+void TestFramePlayerCommandMissingTargetSurfacesSourcePlanValidation()
+{
+	std::string text = RootGridLegendCellsRegionsPlayerCommandToml();
+	const std::size_t start = text.find("y = 1\n");
+	text.erase(start, std::string("y = 1\n").size());
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "move_to_tile frame player command without full target should fail source validation");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "move_to_tile frame player command without full target should report source invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandMissingTarget);
+	Expect(issue != nullptr, "move_to_tile frame player command without full target should mirror source issue");
+	if (issue != nullptr) {
+		Expect(issue->line == LineOfNth(text, "[[frame_player_commands]]"), "mirrored frame player command target issue should report table line");
+		Expect(issue->table == "frame_player_commands", "mirrored frame player command target issue should report frame_player_commands table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "mirrored frame player command target issue should report first player command index");
+		Expect(issue->key == "target", "mirrored frame player command target issue should report target key");
+	}
+}
+
+void TestFrameAuthoredDeclarationOrderSpansControlsAndPlayerCommands()
+{
+	const std::string text = RootGridLegendCellsRegionsToml() + R"toml(
+
+[[frame_player_commands]]
+frame_id = "frame:first"
+command = "move_to_tile"
+x = 3
+y = 1
+
+[[frame_controls]]
+frame_id = "frame:second"
+npc = "npc:guard"
+behavior = "seeking"
+move_mode = "walk"
+target = { x = 2.5, y = 1.5 }
+)toml";
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(result.ok(), "mixed authored frame declarations should parse");
+	Expect(result.plan.authoredPlayerCommands[0].declarationIndex == 0, "player command should get first declaration index");
+	Expect(result.plan.authoredControls[0].declarationIndex == 1, "NPC control should get second declaration index");
+}
+
 void TestTomlSourcePlanFeedsConverterAndProfileValidator()
 {
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
@@ -815,6 +935,11 @@ int main()
 	TestFrameControlInvalidFieldsReportContext();
 	TestFrameControlMissingTargetSurfacesSourcePlanValidation();
 	TestFrameControlUnsupportedTargetShapeReportsContext();
+	TestFramePlayerCommandsParse();
+	TestFramePlayerCommandInvalidFieldsReportContext();
+	TestFramePlayerCommandWrongTypedTargetReportsContext();
+	TestFramePlayerCommandMissingTargetSurfacesSourcePlanValidation();
+	TestFrameAuthoredDeclarationOrderSpansControlsAndPlayerCommands();
 	TestTomlSourcePlanFeedsConverterAndProfileValidator();
 	return Failures;
 }

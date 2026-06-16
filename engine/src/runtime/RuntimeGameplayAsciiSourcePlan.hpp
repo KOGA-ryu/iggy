@@ -126,6 +126,8 @@ struct RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand {
 	RuntimeGameplayAsciiSourcePlanPlayerCommandKind command =
 		RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Unknown;
 	bool hasTargetTile = false;
+	bool hasTargetTileX = false;
+	bool hasTargetTileY = false;
 	TileCoord targetTile;
 	bool hasDeclarationIndex = false;
 	std::size_t declarationIndex = 0;

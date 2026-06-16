@@ -20,6 +20,7 @@ enum class Table {
 	Cells,
 	Regions,
 	FrameControls,
+	FramePlayerCommands,
 };
 
 enum class InlineShapeStatus {
@@ -53,6 +54,8 @@ std::string TableName(Table table)
 		return "regions";
 	case Table::FrameControls:
 		return "frame_controls";
+	case Table::FramePlayerCommands:
+		return "frame_player_commands";
 	}
 	return {};
 }
@@ -396,6 +399,17 @@ bool ParseControlMoveMode(
 	}
 	if (value == "sprint") {
 		out = RuntimeGameplayAsciiSourcePlanControlMoveMode::Sprint;
+		return true;
+	}
+	return false;
+}
+
+bool ParsePlayerCommandKind(
+	const std::string &value,
+	RuntimeGameplayAsciiSourcePlanPlayerCommandKind &out)
+{
+	if (value == "move_to_tile") {
+		out = RuntimeGameplayAsciiSourcePlanPlayerCommandKind::MoveToTile;
 		return true;
 	}
 	return false;
@@ -857,6 +871,26 @@ RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
 			issue.line = locations.frameControlTableLines[sourceIssue.index];
 		}
 		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::
+		AuthoredPlayerCommandUnsupportedCommand:
+		issue.table = "frame_player_commands";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "command";
+		if (sourceIssue.index < locations.framePlayerCommandTableLines.size()) {
+			issue.line = locations.framePlayerCommandTableLines[sourceIssue.index];
+		}
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::
+		AuthoredPlayerCommandMissingTarget:
+		issue.table = "frame_player_commands";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "target";
+		if (sourceIssue.index < locations.framePlayerCommandTableLines.size()) {
+			issue.line = locations.framePlayerCommandTableLines[sourceIssue.index];
+		}
+		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::EmptyRows:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::GridDimensionMismatch:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::RaggedRow:
@@ -906,6 +940,7 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 	IssueContext context;
 	bool sawGrid = false;
 	bool readingRows = false;
+	std::size_t authoredDeclarationIndex = 0;
 	std::vector<std::string> parsedRows;
 
 	const std::vector<std::string> lines = Lines(text);
@@ -974,9 +1009,27 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 		}
 		if (line == "[[frame_controls]]") {
 			result.plan.authoredControls.push_back({});
+			result.plan.authoredControls.back().hasDeclarationIndex = true;
+			result.plan.authoredControls.back().declarationIndex =
+				authoredDeclarationIndex++;
 			result.sourceLocations.frameControlTableLines.push_back(lineNumber);
 			table = Table::FrameControls;
 			context = { table, true, result.plan.authoredControls.size() - 1 };
+			continue;
+		}
+		if (line == "[[frame_player_commands]]") {
+			result.plan.authoredPlayerCommands.push_back({});
+			result.plan.authoredPlayerCommands.back().hasDeclarationIndex = true;
+			result.plan.authoredPlayerCommands.back().declarationIndex =
+				authoredDeclarationIndex++;
+			result.sourceLocations.framePlayerCommandTableLines.push_back(
+				lineNumber);
+			table = Table::FramePlayerCommands;
+			context = {
+				table,
+				true,
+				result.plan.authoredPlayerCommands.size() - 1,
+			};
 			continue;
 		}
 		if (!line.empty() && line.front() == '[') {
@@ -1322,6 +1375,59 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 				AddInlineShapeIssue(result, lineNumber, key, status, context);
 			} else {
 				AddUnsupported(result, lineNumber, "unsupported frame_controls key: " + key, context, key);
+			}
+			continue;
+		}
+
+		if (table == Table::FramePlayerCommands) {
+			RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand &command =
+				result.plan.authoredPlayerCommands.back();
+			if (key == "frame_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					command.hasFrameId = true;
+					command.frameId = ResourceId(parsed);
+				}
+			} else if (key == "command") {
+				std::string parsed;
+				RuntimeGameplayAsciiSourcePlanPlayerCommandKind kind =
+					RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Unknown;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else if (!ParsePlayerCommandKind(parsed, kind)) {
+					AddUnknownEnum(result, lineNumber, key, parsed, context);
+				} else {
+					command.command = kind;
+				}
+			} else if (key == "x") {
+				int parsed = 0;
+				if (!ParseSigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					command.targetTile.x = parsed;
+					command.hasTargetTileX = true;
+					command.hasTargetTile =
+						command.hasTargetTileX && command.hasTargetTileY;
+				}
+			} else if (key == "y") {
+				int parsed = 0;
+				if (!ParseSigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					command.targetTile.y = parsed;
+					command.hasTargetTileY = true;
+					command.hasTargetTile =
+						command.hasTargetTileX && command.hasTargetTileY;
+				}
+			} else {
+				AddUnsupported(
+					result,
+					lineNumber,
+					"unsupported frame_player_commands key: " + key,
+					context,
+					key);
 			}
 			continue;
 		}
