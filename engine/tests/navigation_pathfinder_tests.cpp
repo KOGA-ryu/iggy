@@ -14,8 +14,12 @@ using iggy::test::SameTile;
 
 iggy::navigation::NavigationRequest RequestFor(const iggy::LevelTileMap &map, iggy::Vec2 destination)
 {
-	const iggy::npc_ai::NpcMovementPlan plan { iggy::npc_ai::NpcMovementPlanType::MoveTo, destination };
-	return iggy::navigation::NavigationGridValidator {}.validate(map, plan);
+	const iggy::navigation::NavigationGridValidationInput input {
+		true,
+		true,
+		destination,
+	};
+	return iggy::navigation::NavigationGridValidator {}.validate(map, input);
 }
 
 void TestSameTilePath()
