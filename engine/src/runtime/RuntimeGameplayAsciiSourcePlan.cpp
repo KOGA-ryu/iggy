@@ -47,6 +47,11 @@ std::size_t RuntimeGameplayAsciiSourcePlan::authoredInteractionTargetCount() con
 	return authoredInteractionTargets.size();
 }
 
+std::size_t RuntimeGameplayAsciiSourcePlan::authoredItemDropCount() const
+{
+	return authoredItemDrops.size();
+}
+
 std::size_t RuntimeGameplayAsciiSourcePlan::authoredPlayerCommandCount() const
 {
 	return authoredPlayerCommands.size();

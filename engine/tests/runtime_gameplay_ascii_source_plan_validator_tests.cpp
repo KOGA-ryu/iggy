@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <cstdlib>
 
 #include "runtime/RuntimeGameplayAsciiSourcePlanValidator.hpp"
@@ -137,6 +138,25 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget Interacti
 	target.radius = 1.5;
 	target.enabled = true;
 	return target;
+}
+
+iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredItemDrop ItemDrop(
+	const char *dropId,
+	const char *itemId = "item:key",
+	int x = 2,
+	int y = 1,
+	std::uint32_t count = 1)
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredItemDrop drop;
+	drop.dropId = Id(dropId);
+	drop.itemId = Id(itemId);
+	drop.count = count;
+	drop.localTile = { true, x, y };
+	drop.localPosition = { true, static_cast<double>(x) + 0.5, static_cast<double>(y) + 0.5 };
+	drop.pickupRadius = 0.5;
+	drop.enabled = true;
+	drop.glyph = 'k';
+	return drop;
 }
 
 void TestValidSourcePlanPasses()
@@ -383,6 +403,78 @@ void TestValidAuthoredPlayerCommandPasses()
 	Expect(result.plan.authoredPlayerCommands[1].targetId == Id("target:door"), "validator should preserve authored interact command target id");
 }
 
+void TestValidAuthoredItemDropPasses()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
+	plan.authoredItemDrops = {
+		ItemDrop("plain-drop", "item:key", 3, 1, 2),
+	};
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
+		Validate(plan);
+
+	Expect(result.ok(), "valid authored item drop should validate");
+	Expect(result.authoredItemDropCount == 1, "valid authored item drop should be counted");
+	Expect(result.authoredItemDropIssueCount == 0, "valid authored item drop should have no issues");
+	Expect(result.plan.authoredItemDrops[0].dropId == Id("plain-drop"), "validator should preserve exact drop id");
+	Expect(result.plan.authoredItemDrops[0].itemId == Id("item:key"), "validator should preserve exact item id");
+	Expect(result.plan.authoredItemDrops[0].localTile.x == 3 && result.plan.authoredItemDrops[0].localTile.y == 1, "validator should preserve item drop tile");
+	Expect(result.plan.authoredItemDrops[0].count == 2, "validator should preserve item drop count");
+}
+
+void TestAuthoredItemDropIssuesFailInDeclarationOrder()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredItemDrop missingDropId =
+		ItemDrop("drop:missing-id");
+	missingDropId.dropId = {};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredItemDrop missingItemId =
+		ItemDrop("drop:missing-item");
+	missingItemId.itemId = {};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredItemDrop duplicate =
+		ItemDrop("drop:duplicate");
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredItemDrop duplicateAgain =
+		ItemDrop("drop:duplicate", "item:other", 3, 1);
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredItemDrop invalidCount =
+		ItemDrop("drop:zero-count", "item:key", 2, 1, 0);
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredItemDrop invalidPosition =
+		ItemDrop("drop:oob", "item:key", 8, 1);
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredItemDrop missingPosition =
+		ItemDrop("drop:missing-position");
+	missingPosition.localTile = {};
+	missingPosition.localPosition = {};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredItemDrop invalidRadius =
+		ItemDrop("drop:bad-radius");
+	invalidRadius.pickupRadius = -0.25;
+	plan.authoredItemDrops = {
+		missingDropId,
+		missingItemId,
+		duplicate,
+		duplicateAgain,
+		invalidCount,
+		invalidPosition,
+		missingPosition,
+		invalidRadius,
+	};
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
+		Validate(plan);
+
+	Expect(!result.ok(), "invalid authored item drops should fail validation");
+	Expect(result.authoredItemDropCount == 8, "authored item drop count should preserve declarations");
+	Expect(result.authoredItemDropIssueCount == 7, "authored item drop issues should be counted");
+	Expect(result.issues[result.issues.size() - 7].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropMissingDropId, "first authored item drop issue should be missing drop id");
+	Expect(result.issues[result.issues.size() - 6].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropMissingItemId, "second authored item drop issue should be missing item id");
+	Expect(result.issues[result.issues.size() - 5].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropDuplicateDropId, "third authored item drop issue should be duplicate drop id");
+	Expect(result.issues[result.issues.size() - 4].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropInvalidCount, "fourth authored item drop issue should be invalid count");
+	Expect(result.issues[result.issues.size() - 3].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropPositionOutOfBounds, "fifth authored item drop issue should be invalid position");
+	Expect(result.issues[result.issues.size() - 2].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropMissingPosition, "sixth authored item drop issue should be missing position");
+	Expect(result.issues[result.issues.size() - 1].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropInvalidPickupRadius, "seventh authored item drop issue should be invalid pickup radius");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue *duplicateIssue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropDuplicateDropId);
+	Expect(duplicateIssue != nullptr && duplicateIssue->index == 3 && duplicateIssue->firstIndex == 2 && duplicateIssue->id == Id("drop:duplicate"), "duplicate drop issue should preserve drop id and indexes");
+}
+
 void TestAuthoredPlayerCommandIssuesFailInDeclarationOrder()
 {
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
@@ -449,6 +541,9 @@ void TestExactIdsAndInputImmutability()
 	plan.authoredInteractionTargets = {
 		InteractionTarget("plain-target"),
 	};
+	plan.authoredItemDrops = {
+		ItemDrop("plain-drop", "item:namespaced"),
+	};
 	plan.authoredPlayerCommands = {
 		MoveToTileCommand(3, 1, "plain-frame"),
 	};
@@ -463,12 +558,15 @@ void TestExactIdsAndInputImmutability()
 	Expect(result.plan.annotatedCells[0].profileId == Id("profile:namespaced"), "validator should preserve exact namespaced profile id");
 	Expect(result.plan.regions[0].regionId == Id("plain-region"), "validator should preserve exact unqualified region id");
 	Expect(result.plan.authoredInteractionTargets[0].targetId == Id("plain-target"), "validator should preserve exact authored interaction target id");
+	Expect(result.plan.authoredItemDrops[0].dropId == Id("plain-drop"), "validator should preserve exact authored item drop id");
+	Expect(result.plan.authoredItemDrops[0].itemId == Id("item:namespaced"), "validator should preserve exact authored item id");
 	Expect(plan.sourceId == before.sourceId, "validator should not mutate source id");
 	Expect(plan.grid.rows == before.grid.rows, "validator should not mutate rows");
 	Expect(plan.annotatedCells[0].markerId == before.annotatedCells[0].markerId, "validator should not mutate annotated cells");
 	Expect(plan.regions[0].regionId == before.regions[0].regionId, "validator should not mutate regions");
 	Expect(plan.authoredControls[0].npcId == before.authoredControls[0].npcId, "validator should not mutate authored controls");
 	Expect(plan.authoredInteractionTargets[0].targetId == before.authoredInteractionTargets[0].targetId, "validator should not mutate authored interaction targets");
+	Expect(plan.authoredItemDrops[0].dropId == before.authoredItemDrops[0].dropId, "validator should not mutate authored item drops");
 	Expect(plan.authoredPlayerCommands[0].frameId == before.authoredPlayerCommands[0].frameId, "validator should not mutate authored player commands");
 }
 
@@ -488,6 +586,8 @@ int main()
 	TestValidAuthoredInteractionTargetPasses();
 	TestAuthoredInteractionTargetIssuesFailInDeclarationOrder();
 	TestValidAuthoredPlayerCommandPasses();
+	TestValidAuthoredItemDropPasses();
+	TestAuthoredItemDropIssuesFailInDeclarationOrder();
 	TestAuthoredPlayerCommandIssuesFailInDeclarationOrder();
 	TestMultiplePlayerCommandsPerFrameArePreserved();
 	TestExactIdsAndInputImmutability();

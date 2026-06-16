@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -156,6 +157,17 @@ struct RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget {
 	bool enabledValue = true;
 };
 
+struct RuntimeGameplayAsciiSourcePlanAuthoredItemDrop {
+	ResourceId dropId;
+	ResourceId itemId;
+	std::uint32_t count = 0;
+	RuntimeGameplayAsciiSourcePlanLocalTile localTile;
+	RuntimeGameplayAsciiSourcePlanLocalPosition localPosition;
+	double pickupRadius = 0.0;
+	bool enabled = true;
+	char glyph = '\0';
+};
+
 struct RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand {
 	bool hasFrameId = false;
 	ResourceId frameId;
@@ -198,6 +210,8 @@ struct RuntimeGameplayAsciiSourcePlan {
 	std::vector<RuntimeGameplayAsciiSourcePlanAuthoredControl> authoredControls;
 	std::vector<RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget>
 		authoredInteractionTargets;
+	std::vector<RuntimeGameplayAsciiSourcePlanAuthoredItemDrop>
+		authoredItemDrops;
 	std::vector<RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand>
 		authoredPlayerCommands;
 	RuntimeGameplayAsciiSourcePlanNoClaims noClaims;
@@ -210,6 +224,7 @@ struct RuntimeGameplayAsciiSourcePlan {
 	[[nodiscard]] std::size_t regionCount() const;
 	[[nodiscard]] std::size_t authoredControlCount() const;
 	[[nodiscard]] std::size_t authoredInteractionTargetCount() const;
+	[[nodiscard]] std::size_t authoredItemDropCount() const;
 	[[nodiscard]] std::size_t authoredPlayerCommandCount() const;
 	[[nodiscard]] bool safeForAuthoring() const;
 };

@@ -27,6 +27,7 @@ void TestDefaultSourcePlanIsEmptyAndSafe()
 	Expect(plan.annotatedCellCount() == 0, "default source plan should report zero annotated cells");
 	Expect(plan.regionCount() == 0, "default source plan should report zero regions");
 	Expect(plan.authoredInteractionTargetCount() == 0, "default source plan should report zero authored interaction targets");
+	Expect(plan.authoredItemDropCount() == 0, "default source plan should report zero authored item drops");
 	Expect(plan.safeForAuthoring(), "default source plan should be safe authoring data");
 }
 
@@ -202,6 +203,31 @@ void TestAuthoredInteractionTargetsPreserveFactsAndExactIds()
 	Expect(plan.authoredInteractionTargets[0].effectTargetId == Id("target:door"), "authored interaction target should preserve effect target id");
 }
 
+void TestAuthoredItemDropsPreserveFactsAndExactIds()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan;
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredItemDrop drop;
+	drop.dropId = Id("plain-drop");
+	drop.itemId = Id("item:key");
+	drop.count = 2;
+	drop.localTile = { true, 3, 1 };
+	drop.localPosition = { true, 3.5, 1.5 };
+	drop.pickupRadius = 0.75;
+	drop.enabled = false;
+	drop.glyph = 'k';
+	plan.authoredItemDrops.push_back(drop);
+
+	Expect(plan.authoredItemDropCount() == 1, "source plan should preserve authored item drop count");
+	Expect(plan.authoredItemDrops[0].dropId == Id("plain-drop"), "authored item drop should preserve exact drop id");
+	Expect(plan.authoredItemDrops[0].itemId == Id("item:key"), "authored item drop should preserve exact item id");
+	Expect(plan.authoredItemDrops[0].count == 2, "authored item drop should preserve count");
+	Expect(plan.authoredItemDrops[0].localTile.present && plan.authoredItemDrops[0].localTile.x == 3 && plan.authoredItemDrops[0].localTile.y == 1, "authored item drop should preserve tile position");
+	Expect(plan.authoredItemDrops[0].localPosition.present && plan.authoredItemDrops[0].localPosition.x == 3.5 && plan.authoredItemDrops[0].localPosition.y == 1.5, "authored item drop should preserve point position");
+	Expect(plan.authoredItemDrops[0].pickupRadius == 0.75, "authored item drop should preserve pickup radius");
+	Expect(!plan.authoredItemDrops[0].enabled, "authored item drop should preserve enabled flag");
+	Expect(plan.authoredItemDrops[0].glyph == 'k', "authored item drop should preserve optional glyph");
+}
+
 void TestSourcePlanCopiesAreIndependent()
 {
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan;
@@ -227,6 +253,9 @@ void TestSourcePlanCopiesAreIndependent()
 	plan.authoredInteractionTargets = {
 		{ Id("target:copy"), iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Usable, { true, 0, 0 } },
 	};
+	plan.authoredItemDrops = {
+		{ Id("drop:copy"), Id("item:copy"), 1, { true, 0, 0 }, {}, 0.0, true, 'k' },
+	};
 
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan copy = plan;
 	copy.grid.rows[0] = "..";
@@ -234,12 +263,14 @@ void TestSourcePlanCopiesAreIndependent()
 	copy.annotatedCells[0].profileId = Id("profile:changed");
 	copy.authoredControls[0].npcId = Id("npc:changed");
 	copy.authoredInteractionTargets[0].targetId = Id("target:changed");
+	copy.authoredItemDrops[0].dropId = Id("drop:changed");
 
 	Expect(plan.grid.rows[0] == "A.", "source plan copy should not mutate source rows");
 	Expect(plan.legend[0].targetMarkerId == Id("npc:copy"), "source plan copy should not mutate legend target id");
 	Expect(plan.annotatedCells[0].profileId == Id("profile:copy"), "source plan copy should not mutate annotated cell profile id");
 	Expect(plan.authoredControls[0].npcId == Id("npc:copy"), "source plan copy should not mutate authored controls");
 	Expect(plan.authoredInteractionTargets[0].targetId == Id("target:copy"), "source plan copy should not mutate authored interaction targets");
+	Expect(plan.authoredItemDrops[0].dropId == Id("drop:copy"), "source plan copy should not mutate authored item drops");
 }
 
 } // namespace
@@ -253,6 +284,7 @@ int main()
 	TestRegionsAndNoClaimFlagsAreExplicit();
 	TestAuthoredControlsPreserveMovementFactsAndExactIds();
 	TestAuthoredInteractionTargetsPreserveFactsAndExactIds();
+	TestAuthoredItemDropsPreserveFactsAndExactIds();
 	TestSourcePlanCopiesAreIndependent();
 	return Failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

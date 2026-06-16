@@ -979,6 +979,38 @@ RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
 			issue.line = locations.interactionTargetTableLines[sourceIssue.index];
 		}
 		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropMissingDropId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropDuplicateDropId:
+		issue.table = "item_drops";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "drop_id";
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropMissingItemId:
+		issue.table = "item_drops";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "item_id";
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropInvalidCount:
+		issue.table = "item_drops";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "count";
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropMissingPosition:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropPositionOutOfBounds:
+		issue.table = "item_drops";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "position";
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropInvalidPickupRadius:
+		issue.table = "item_drops";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "pickup_radius";
+		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::
 		AuthoredPlayerCommandUnsupportedCommand:
 		issue.table = "frame_player_commands";

@@ -54,6 +54,15 @@ void AddIssue(
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetUnsupportedEffect:
 		++result.authoredInteractionTargetIssueCount;
 		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropMissingDropId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropDuplicateDropId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropMissingItemId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropInvalidCount:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropMissingPosition:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropPositionOutOfBounds:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropInvalidPickupRadius:
+		++result.authoredItemDropIssueCount;
+		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandUnsupportedCommand:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandMissingTarget:
 		++result.authoredPlayerCommandIssueCount;
@@ -482,6 +491,94 @@ void ValidateAuthoredInteractionTargets(
 	}
 }
 
+void ValidateAuthoredItemDrops(
+	RuntimeGameplayAsciiSourcePlanValidationResult &result)
+{
+	const RuntimeGameplayAsciiSourcePlanGrid &grid = result.plan.grid;
+	result.authoredItemDropCount = result.plan.authoredItemDrops.size();
+	std::vector<ResourceId> dropIds;
+	std::vector<std::size_t> dropIdIndexes;
+
+	for (std::size_t index = 0; index < result.plan.authoredItemDrops.size();
+		++index) {
+		const RuntimeGameplayAsciiSourcePlanAuthoredItemDrop &drop =
+			result.plan.authoredItemDrops[index];
+
+		if (drop.dropId.empty()) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				AuthoredItemDropMissingDropId;
+			issue.index = index;
+			AddIssue(result, issue);
+		} else {
+			for (std::size_t idIndex = 0; idIndex < dropIds.size(); ++idIndex) {
+				if (dropIds[idIndex] == drop.dropId) {
+					RuntimeGameplayAsciiSourcePlanIssue issue;
+					issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+						AuthoredItemDropDuplicateDropId;
+					issue.index = index;
+					issue.firstIndex = dropIdIndexes[idIndex];
+					issue.id = drop.dropId;
+					AddIssue(result, issue);
+					break;
+				}
+			}
+			dropIds.push_back(drop.dropId);
+			dropIdIndexes.push_back(index);
+		}
+
+		if (drop.itemId.empty()) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				AuthoredItemDropMissingItemId;
+			issue.index = index;
+			issue.id = drop.dropId;
+			AddIssue(result, issue);
+		}
+
+		if (drop.count == 0) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				AuthoredItemDropInvalidCount;
+			issue.index = index;
+			issue.id = drop.dropId;
+			AddIssue(result, issue);
+		}
+
+		if (!drop.localTile.present && !drop.localPosition.present) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				AuthoredItemDropMissingPosition;
+			issue.index = index;
+			issue.id = drop.dropId;
+			AddIssue(result, issue);
+		} else if (
+			(drop.localTile.present && !TileInBounds(grid, drop.localTile)) ||
+			(drop.localPosition.present &&
+				!PositionInBounds(grid, drop.localPosition))) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				AuthoredItemDropPositionOutOfBounds;
+			issue.index = index;
+			issue.id = drop.dropId;
+			if (drop.localTile.present) {
+				issue.row = static_cast<std::size_t>(drop.localTile.y);
+				issue.column = static_cast<std::size_t>(drop.localTile.x);
+			}
+			AddIssue(result, issue);
+		}
+
+		if (drop.pickupRadius < 0.0) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				AuthoredItemDropInvalidPickupRadius;
+			issue.index = index;
+			issue.id = drop.dropId;
+			AddIssue(result, issue);
+		}
+	}
+}
+
 bool PlayerCommandSupported(
 	RuntimeGameplayAsciiSourcePlanPlayerCommandKind command)
 {
@@ -584,6 +681,7 @@ RuntimeGameplayAsciiSourcePlanValidator::validate(
 	ValidateRegions(result);
 	ValidateAuthoredControls(result);
 	ValidateAuthoredInteractionTargets(result);
+	ValidateAuthoredItemDrops(result);
 	ValidateAuthoredPlayerCommands(result);
 	ValidateBoundaryFlags(result);
 	ValidateGridGlyphs(result, legendGlyphs);
