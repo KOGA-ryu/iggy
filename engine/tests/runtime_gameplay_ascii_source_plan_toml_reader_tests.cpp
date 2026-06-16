@@ -294,6 +294,22 @@ enabled_value = true
 )toml";
 }
 
+std::string RootGridLegendCellsRegionsItemDropToml()
+{
+	return RootGridLegendCellsRegionsToml() + R"toml(
+
+[[item_drops]]
+drop_id = "plain-drop"
+item_id = "item:key"
+count = 2
+tile = { x = 3, y = 1 }
+position = { x = 3.5, y = 1.5 }
+pickup_radius = 0.75
+enabled = false
+glyph = "k"
+)toml";
+}
+
 void TestEmptyInputFailsDeterministically()
 {
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result = Read("");
@@ -870,6 +886,88 @@ void TestInteractionTargetUnsupportedTileShapeReportsContext()
 	}
 }
 
+void TestItemDropsParse()
+{
+	const std::string text = RootGridLegendCellsRegionsItemDropToml();
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(result.ok(), "valid item drop TOML should parse");
+	Expect(result.plan.authoredItemDrops.size() == 1, "one item drop should parse");
+	Expect(result.sourceLocations.itemDropTableLines.size() == 1, "item drop source location should be captured");
+	Expect(result.sourceLocations.itemDropTableLines[0] == LineOfNth(text, "[[item_drops]]"), "item drop source location should preserve table line");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredItemDrop &drop =
+		result.plan.authoredItemDrops[0];
+	Expect(drop.dropId == Id("plain-drop"), "item drop should parse exact drop id");
+	Expect(drop.itemId == Id("item:key"), "item drop should parse exact item id");
+	Expect(drop.count == 2, "item drop should parse count");
+	Expect(drop.localTile.present && drop.localTile.x == 3 && drop.localTile.y == 1, "item drop should parse tile");
+	Expect(drop.localPosition.present && drop.localPosition.x == 3.5 && drop.localPosition.y == 1.5, "item drop should parse point position");
+	Expect(drop.pickupRadius == 0.75, "item drop should parse pickup radius");
+	Expect(!drop.enabled, "item drop should parse enabled flag");
+	Expect(drop.glyph == 'k', "item drop should parse optional glyph");
+}
+
+void TestItemDropWrongTypedCountReportsContext()
+{
+	std::string text = RootGridLegendCellsRegionsItemDropToml();
+	const std::size_t start = text.find("count = 2");
+	text.replace(start, std::string("count = 2").size(), "count = \"2\"");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "wrong typed item drop count should fail");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::TypeInvalid, "wrong typed item drop count should report type invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::WrongType, "count");
+	Expect(issue != nullptr, "wrong typed item drop count issue should be findable");
+	if (issue != nullptr) {
+		Expect(issue->table == "item_drops", "wrong typed item drop count should report item_drops table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "wrong typed item drop count should report first table index");
+		Expect(issue->key == "count", "wrong typed item drop count should report count key");
+	}
+}
+
+void TestItemDropMissingIdSurfacesSourcePlanValidation()
+{
+	std::string text = RootGridLegendCellsRegionsItemDropToml();
+	const std::size_t start = text.find("drop_id = \"plain-drop\"\n");
+	text.erase(start, std::string("drop_id = \"plain-drop\"\n").size());
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "item drop without id should fail source validation");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "item drop without id should report source invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropMissingDropId);
+	Expect(issue != nullptr, "item drop without id should mirror source issue");
+	if (issue != nullptr) {
+		Expect(issue->line == LineOfNth(text, "[[item_drops]]"), "mirrored item drop id issue should report table line");
+		Expect(issue->table == "item_drops", "mirrored item drop id issue should report item_drops table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "mirrored item drop id issue should report first drop index");
+		Expect(issue->key == "drop_id", "mirrored item drop id issue should report drop_id key");
+	}
+}
+
+void TestItemDropUnsupportedTileShapeReportsContext()
+{
+	std::string text = RootGridLegendCellsRegionsItemDropToml();
+	const std::size_t start = text.find("tile = { x = 3, y = 1 }");
+	text.replace(start, std::string("tile = { x = 3, y = 1 }").size(), "tile = { x = 3, z = 1 }");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "unsupported item drop tile shape should fail");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::UnsupportedSyntax, "unsupported item drop tile shape should report unsupported");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::UnsupportedNestedShape, "tile");
+	Expect(issue != nullptr, "unsupported item drop tile issue should be findable");
+	if (issue != nullptr) {
+		Expect(issue->table == "item_drops", "unsupported item drop tile should report item_drops table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "unsupported item drop tile should report first table index");
+	}
+}
+
 void TestFramePlayerCommandsParse()
 {
 	const std::string text = RootGridLegendCellsRegionsPlayerCommandToml();
@@ -1087,6 +1185,10 @@ int main()
 	TestInteractionTargetInvalidFieldsReportContext();
 	TestInteractionTargetMissingIdSurfacesSourcePlanValidation();
 	TestInteractionTargetUnsupportedTileShapeReportsContext();
+	TestItemDropsParse();
+	TestItemDropWrongTypedCountReportsContext();
+	TestItemDropMissingIdSurfacesSourcePlanValidation();
+	TestItemDropUnsupportedTileShapeReportsContext();
 	TestFramePlayerCommandsParse();
 	TestFramePlayerInteractCommandParses();
 	TestFramePlayerCommandInvalidFieldsReportContext();

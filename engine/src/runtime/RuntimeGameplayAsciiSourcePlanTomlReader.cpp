@@ -3,8 +3,10 @@
 #include <charconv>
 #include <cctype>
 #include <cerrno>
+#include <cstdint>
 #include <cstdlib>
 #include <initializer_list>
+#include <limits>
 #include <string_view>
 #include <utility>
 
@@ -20,6 +22,7 @@ enum class Table {
 	Cells,
 	Regions,
 	InteractionTargets,
+	ItemDrops,
 	FrameControls,
 	FramePlayerCommands,
 };
@@ -55,6 +58,8 @@ std::string TableName(Table table)
 		return "regions";
 	case Table::InteractionTargets:
 		return "interaction_targets";
+	case Table::ItemDrops:
+		return "item_drops";
 	case Table::FrameControls:
 		return "frame_controls";
 	case Table::FramePlayerCommands:
@@ -985,18 +990,27 @@ RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
 		issue.hasTableIndex = true;
 		issue.tableIndex = sourceIssue.index;
 		issue.key = "drop_id";
+		if (sourceIssue.index < locations.itemDropTableLines.size()) {
+			issue.line = locations.itemDropTableLines[sourceIssue.index];
+		}
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropMissingItemId:
 		issue.table = "item_drops";
 		issue.hasTableIndex = true;
 		issue.tableIndex = sourceIssue.index;
 		issue.key = "item_id";
+		if (sourceIssue.index < locations.itemDropTableLines.size()) {
+			issue.line = locations.itemDropTableLines[sourceIssue.index];
+		}
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropInvalidCount:
 		issue.table = "item_drops";
 		issue.hasTableIndex = true;
 		issue.tableIndex = sourceIssue.index;
 		issue.key = "count";
+		if (sourceIssue.index < locations.itemDropTableLines.size()) {
+			issue.line = locations.itemDropTableLines[sourceIssue.index];
+		}
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropMissingPosition:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropPositionOutOfBounds:
@@ -1004,12 +1018,18 @@ RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
 		issue.hasTableIndex = true;
 		issue.tableIndex = sourceIssue.index;
 		issue.key = "position";
+		if (sourceIssue.index < locations.itemDropTableLines.size()) {
+			issue.line = locations.itemDropTableLines[sourceIssue.index];
+		}
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredItemDropInvalidPickupRadius:
 		issue.table = "item_drops";
 		issue.hasTableIndex = true;
 		issue.tableIndex = sourceIssue.index;
 		issue.key = "pickup_radius";
+		if (sourceIssue.index < locations.itemDropTableLines.size()) {
+			issue.line = locations.itemDropTableLines[sourceIssue.index];
+		}
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::
 		AuthoredPlayerCommandUnsupportedCommand:
@@ -1156,6 +1176,17 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 				table,
 				true,
 				result.plan.authoredInteractionTargets.size() - 1,
+			};
+			continue;
+		}
+		if (line == "[[item_drops]]") {
+			result.plan.authoredItemDrops.push_back({});
+			result.sourceLocations.itemDropTableLines.push_back(lineNumber);
+			table = Table::ItemDrops;
+			context = {
+				table,
+				true,
+				result.plan.authoredItemDrops.size() - 1,
 			};
 			continue;
 		}
@@ -1575,6 +1606,71 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 					result,
 					lineNumber,
 					"unsupported interaction_targets key: " + key,
+					context,
+					key);
+			}
+			continue;
+		}
+
+		if (table == Table::ItemDrops) {
+			RuntimeGameplayAsciiSourcePlanAuthoredItemDrop &drop =
+				result.plan.authoredItemDrops.back();
+			if (key == "drop_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					drop.dropId = ResourceId(parsed);
+				}
+			} else if (key == "item_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					drop.itemId = ResourceId(parsed);
+				}
+			} else if (key == "count") {
+				std::size_t parsed = 0;
+				if (!ParseUnsigned(value, parsed) ||
+					parsed > std::numeric_limits<std::uint32_t>::max()) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					drop.count = static_cast<std::uint32_t>(parsed);
+				}
+			} else if (key == "tile") {
+				const InlineShapeStatus status =
+					ParseLocalTile(value, drop.localTile);
+				AddInlineShapeIssue(result, lineNumber, key, status, context);
+			} else if (key == "position") {
+				const InlineShapeStatus status =
+					ParseLocalPosition(value, drop.localPosition);
+				AddInlineShapeIssue(result, lineNumber, key, status, context);
+			} else if (key == "pickup_radius") {
+				double parsed = 0.0;
+				if (!ParseDouble(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					drop.pickupRadius = parsed;
+				}
+			} else if (key == "enabled") {
+				bool parsed = false;
+				if (!ParseBool(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					drop.enabled = parsed;
+				}
+			} else if (key == "glyph") {
+				char glyph = '\0';
+				if (!ParseGlyph(value, glyph)) {
+					AddInvalidGlyph(result, lineNumber, key, context);
+				} else {
+					drop.glyph = glyph;
+				}
+			} else {
+				AddUnsupported(
+					result,
+					lineNumber,
+					"unsupported item_drops key: " + key,
 					context,
 					key);
 			}
