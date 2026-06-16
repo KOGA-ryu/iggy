@@ -1,9 +1,16 @@
 #include "runtime/RuntimeGameplayAsciiSourcePlanTomlReader.hpp"
 
+#include <charconv>
 #include <cctype>
+#include <string_view>
 
 namespace iggy::runtime {
 namespace {
+
+enum class Table {
+	Root,
+	Grid,
+};
 
 bool IsWhitespaceOnly(const std::string &text)
 {
@@ -13,6 +20,64 @@ bool IsWhitespaceOnly(const std::string &text)
 		}
 	}
 	return true;
+}
+
+std::string Trim(std::string_view value)
+{
+	std::size_t first = 0;
+	while (first < value.size() &&
+		std::isspace(static_cast<unsigned char>(value[first]))) {
+		++first;
+	}
+
+	std::size_t last = value.size();
+	while (last > first &&
+		std::isspace(static_cast<unsigned char>(value[last - 1]))) {
+		--last;
+	}
+
+	return std::string(value.substr(first, last - first));
+}
+
+std::string StripComment(std::string_view line)
+{
+	bool inString = false;
+	bool escaped = false;
+	for (std::size_t index = 0; index < line.size(); ++index) {
+		const char character = line[index];
+		if (escaped) {
+			escaped = false;
+			continue;
+		}
+		if (inString && character == '\\') {
+			escaped = true;
+			continue;
+		}
+		if (character == '"') {
+			inString = !inString;
+			continue;
+		}
+		if (!inString && character == '#') {
+			return std::string(line.substr(0, index));
+		}
+	}
+	return std::string(line);
+}
+
+std::vector<std::string> Lines(const std::string &text)
+{
+	std::vector<std::string> result;
+	std::size_t start = 0;
+	while (start <= text.size()) {
+		const std::size_t end = text.find('\n', start);
+		if (end == std::string::npos) {
+			result.push_back(text.substr(start));
+			break;
+		}
+		result.push_back(text.substr(start, end - start));
+		start = end + 1;
+	}
+	return result;
 }
 
 void AddIssue(
@@ -44,6 +109,229 @@ void AddIssue(
 	result.issueCount = result.issues.size();
 }
 
+bool ParseQuotedString(
+	const std::string &value,
+	std::string &out)
+{
+	if (value.size() < 2 || value.front() != '"' || value.back() != '"') {
+		return false;
+	}
+
+	out.clear();
+	bool escaped = false;
+	for (std::size_t index = 1; index + 1 < value.size(); ++index) {
+		const char character = value[index];
+		if (escaped) {
+			switch (character) {
+			case '"':
+			case '\\':
+				out.push_back(character);
+				break;
+			case 'n':
+				out.push_back('\n');
+				break;
+			case 't':
+				out.push_back('\t');
+				break;
+			default:
+				return false;
+			}
+			escaped = false;
+			continue;
+		}
+		if (character == '\\') {
+			escaped = true;
+			continue;
+		}
+		out.push_back(character);
+	}
+	return !escaped;
+}
+
+bool ParseUnsigned(
+	const std::string &value,
+	std::size_t &out)
+{
+	if (value.empty() || value.front() == '-') {
+		return false;
+	}
+	std::size_t parsed = 0;
+	const char *begin = value.data();
+	const char *end = value.data() + value.size();
+	const std::from_chars_result result = std::from_chars(begin, end, parsed);
+	if (result.ec != std::errc {} || result.ptr != end) {
+		return false;
+	}
+	out = parsed;
+	return true;
+}
+
+bool ParseBool(
+	const std::string &value,
+	bool &out)
+{
+	if (value == "true") {
+		out = true;
+		return true;
+	}
+	if (value == "false") {
+		out = false;
+		return true;
+	}
+	return false;
+}
+
+bool ParseGlyph(
+	const std::string &value,
+	char &out)
+{
+	std::string parsed;
+	if (!ParseQuotedString(value, parsed) || parsed.size() != 1 ||
+		static_cast<unsigned char>(parsed[0]) > 0x7F) {
+		return false;
+	}
+	out = parsed[0];
+	return true;
+}
+
+bool ParseStringArrayInline(
+	const std::string &value,
+	std::vector<std::string> &out)
+{
+	if (value.size() < 2 || value.front() != '[' || value.back() != ']') {
+		return false;
+	}
+	const std::string body = Trim(std::string_view(value).substr(1, value.size() - 2));
+	out.clear();
+	if (body.empty()) {
+		return true;
+	}
+
+	std::size_t index = 0;
+	while (index < body.size()) {
+		while (index < body.size() &&
+			std::isspace(static_cast<unsigned char>(body[index]))) {
+			++index;
+		}
+		if (index >= body.size() || body[index] != '"') {
+			return false;
+		}
+		std::size_t end = index + 1;
+		bool escaped = false;
+		for (; end < body.size(); ++end) {
+			const char character = body[end];
+			if (escaped) {
+				escaped = false;
+				continue;
+			}
+			if (character == '\\') {
+				escaped = true;
+				continue;
+			}
+			if (character == '"') {
+				break;
+			}
+		}
+		if (end >= body.size()) {
+			return false;
+		}
+		std::string parsed;
+		if (!ParseQuotedString(body.substr(index, end - index + 1), parsed)) {
+			return false;
+		}
+		out.push_back(parsed);
+		index = end + 1;
+		while (index < body.size() &&
+			std::isspace(static_cast<unsigned char>(body[index]))) {
+			++index;
+		}
+		if (index == body.size()) {
+			return true;
+		}
+		if (body[index] != ',') {
+			return false;
+		}
+		++index;
+	}
+	return true;
+}
+
+bool ParseMultilineStringArrayItem(
+	const std::string &value,
+	std::string &out,
+	bool &closed)
+{
+	closed = value == "]";
+	if (closed) {
+		return true;
+	}
+
+	std::string item = value;
+	if (!item.empty() && item.back() == ',') {
+		item.pop_back();
+		item = Trim(item);
+	}
+	return ParseQuotedString(item, out);
+}
+
+void AddWrongType(
+	RuntimeGameplayAsciiSourcePlanTomlReadResult &result,
+	std::size_t line,
+	const std::string &key)
+{
+	RuntimeGameplayAsciiSourcePlanTomlReadIssue issue;
+	issue.code = RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::WrongType;
+	issue.line = line;
+	issue.key = key;
+	AddIssue(result, issue);
+}
+
+void AddSyntax(
+	RuntimeGameplayAsciiSourcePlanTomlReadResult &result,
+	std::size_t line,
+	const std::string &detail)
+{
+	RuntimeGameplayAsciiSourcePlanTomlReadIssue issue;
+	issue.code = RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SyntaxError;
+	issue.line = line;
+	issue.detail = detail;
+	AddIssue(result, issue);
+}
+
+void AddUnsupported(
+	RuntimeGameplayAsciiSourcePlanTomlReadResult &result,
+	std::size_t line,
+	const std::string &detail)
+{
+	RuntimeGameplayAsciiSourcePlanTomlReadIssue issue;
+	issue.code = RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::UnsupportedNestedShape;
+	issue.line = line;
+	issue.detail = detail;
+	AddIssue(result, issue);
+}
+
+void AddMissingTable(
+	RuntimeGameplayAsciiSourcePlanTomlReadResult &result,
+	const std::string &table)
+{
+	RuntimeGameplayAsciiSourcePlanTomlReadIssue issue;
+	issue.code = RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::MissingTable;
+	issue.key = table;
+	AddIssue(result, issue);
+}
+
+RuntimeGameplayAsciiSourcePlanTomlReadStatus StatusForParserIssues(
+	const RuntimeGameplayAsciiSourcePlanTomlReadResult &result)
+{
+	if (result.unsupportedIssueCount > 0) {
+		return RuntimeGameplayAsciiSourcePlanTomlReadStatus::UnsupportedSyntax;
+	}
+	if (result.typeIssueCount > 0) {
+		return RuntimeGameplayAsciiSourcePlanTomlReadStatus::TypeInvalid;
+	}
+	return RuntimeGameplayAsciiSourcePlanTomlReadStatus::SyntaxInvalid;
+}
+
 } // namespace
 
 bool RuntimeGameplayAsciiSourcePlanTomlReadResult::ok() const
@@ -67,13 +355,163 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 		return result;
 	}
 
-	RuntimeGameplayAsciiSourcePlanTomlReadIssue issue;
-	issue.code = RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::UnsupportedNestedShape;
-	issue.line = 1;
-	issue.column = 1;
-	issue.detail = "TOML source-plan parsing is not implemented for this input yet";
-	AddIssue(result, issue);
-	result.status = RuntimeGameplayAsciiSourcePlanTomlReadStatus::UnsupportedSyntax;
+	Table table = Table::Root;
+	bool sawGrid = false;
+	bool readingRows = false;
+	std::vector<std::string> parsedRows;
+
+	const std::vector<std::string> lines = Lines(text);
+	for (std::size_t index = 0; index < lines.size(); ++index) {
+		const std::size_t lineNumber = index + 1;
+		const std::string line = Trim(StripComment(lines[index]));
+		if (line.empty()) {
+			continue;
+		}
+
+		if (readingRows) {
+			std::string row;
+			bool closed = false;
+			if (!ParseMultilineStringArrayItem(line, row, closed)) {
+				AddWrongType(result, lineNumber, "rows");
+				continue;
+			}
+			if (closed) {
+				result.plan.grid.rows = parsedRows;
+				readingRows = false;
+			} else {
+				parsedRows.push_back(row);
+			}
+			continue;
+		}
+
+		if (line == "[grid]") {
+			table = Table::Grid;
+			sawGrid = true;
+			continue;
+		}
+		if (!line.empty() && line.front() == '[') {
+			AddUnsupported(result, lineNumber, "unsupported TOML table in source-plan reader slice");
+			continue;
+		}
+
+		const std::size_t equals = line.find('=');
+		if (equals == std::string::npos) {
+			AddSyntax(result, lineNumber, "expected key = value");
+			continue;
+		}
+		const std::string key = Trim(std::string_view(line).substr(0, equals));
+		const std::string value = Trim(std::string_view(line).substr(equals + 1));
+		if (key.empty()) {
+			AddSyntax(result, lineNumber, "empty key");
+			continue;
+		}
+
+		if (table == Table::Root) {
+			if (key == "format_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					result.plan.formatId = ResourceId(parsed);
+				}
+			} else if (key == "version") {
+				std::size_t parsed = 0;
+				if (!ParseUnsigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					result.plan.version = parsed;
+				}
+			} else if (key == "source_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					result.plan.hasSourceId = true;
+					result.plan.sourceId = ResourceId(parsed);
+				}
+			} else if (key == "source_ref") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					result.plan.hasSourceRef = true;
+					result.plan.sourceRef = ResourceId(parsed);
+				}
+			} else {
+				AddUnsupported(result, lineNumber, "unsupported root key: " + key);
+			}
+			continue;
+		}
+
+		if (table == Table::Grid) {
+			if (key == "width") {
+				std::size_t parsed = 0;
+				if (!ParseUnsigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					result.plan.grid.width = parsed;
+				}
+			} else if (key == "height") {
+				std::size_t parsed = 0;
+				if (!ParseUnsigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					result.plan.grid.height = parsed;
+				}
+			} else if (key == "background") {
+				char glyph = '\0';
+				if (!ParseGlyph(value, glyph)) {
+					RuntimeGameplayAsciiSourcePlanTomlReadIssue issue;
+					issue.code = RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::InvalidGlyphString;
+					issue.line = lineNumber;
+					issue.key = key;
+					AddIssue(result, issue);
+				} else {
+					result.plan.grid.backgroundGlyph = glyph;
+				}
+			} else if (key == "rows") {
+				if (value == "[") {
+					readingRows = true;
+					parsedRows.clear();
+					continue;
+				}
+				std::vector<std::string> rows;
+				if (!ParseStringArrayInline(value, rows)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					result.plan.grid.rows = rows;
+				}
+			} else {
+				AddUnsupported(result, lineNumber, "unsupported grid key: " + key);
+			}
+		}
+	}
+
+	if (readingRows) {
+		AddSyntax(result, lines.size(), "unterminated rows array");
+	}
+
+	if (!sawGrid) {
+		AddMissingTable(result, "grid");
+	}
+
+	if (!result.issues.empty()) {
+		result.status = StatusForParserIssues(result);
+		return result;
+	}
+
+	result.sourceValidation = RuntimeGameplayAsciiSourcePlanValidator {}.validate(result.plan);
+	result.sourcePlanIssueCount = result.sourceValidation.issueCount;
+	if (!result.sourceValidation.ok()) {
+		RuntimeGameplayAsciiSourcePlanTomlReadIssue issue;
+		issue.code = RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SourcePlanInvalid;
+		issue.detail = "parsed TOML source plan failed source-plan validation";
+		AddIssue(result, issue);
+		result.status = RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid;
+		return result;
+	}
+
+	result.status = RuntimeGameplayAsciiSourcePlanTomlReadStatus::Parsed;
 	return result;
 }
 
