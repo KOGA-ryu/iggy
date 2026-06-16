@@ -88,6 +88,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/level/LevelCollisionWorldBuilder.cpp
   src/scene/level/LevelDerivedCacheState.cpp
   src/scene/level/LevelMutationCacheUpdateStep.cpp
+  src/scene/level/LevelNpcAgentRenderCommands.cpp
   src/scene/level/LevelNpcUpdateStep.cpp
   src/scene/level/LevelRenderCacheState.cpp
   src/scene/level/LevelRenderFrame2D.cpp
