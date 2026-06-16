@@ -840,32 +840,38 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			table = Table::Grid;
 			context = { table, false, 0 };
 			sawGrid = true;
+			result.sourceLocations.gridTableLine = lineNumber;
 			continue;
 		}
 		if (line == "[no_claims]") {
 			table = Table::NoClaims;
 			context = { table, false, 0 };
+			result.sourceLocations.noClaimsTableLine = lineNumber;
 			continue;
 		}
 		if (line == "[promotion]") {
 			table = Table::Promotion;
 			context = { table, false, 0 };
+			result.sourceLocations.promotionTableLine = lineNumber;
 			continue;
 		}
 		if (line == "[[legend]]") {
 			result.plan.legend.push_back({});
+			result.sourceLocations.legendTableLines.push_back(lineNumber);
 			table = Table::Legend;
 			context = { table, true, result.plan.legend.size() - 1 };
 			continue;
 		}
 		if (line == "[[cells]]") {
 			result.plan.annotatedCells.push_back({});
+			result.sourceLocations.annotatedCellTableLines.push_back(lineNumber);
 			table = Table::Cells;
 			context = { table, true, result.plan.annotatedCells.size() - 1 };
 			continue;
 		}
 		if (line == "[[regions]]") {
 			result.plan.regions.push_back({});
+			result.sourceLocations.regionTableLines.push_back(lineNumber);
 			table = Table::Regions;
 			context = { table, true, result.plan.regions.size() - 1 };
 			continue;
@@ -1190,6 +1196,7 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 					result.plan.grid.backgroundGlyph = glyph;
 				}
 			} else if (key == "rows") {
+				result.sourceLocations.gridRowsLine = lineNumber;
 				if (value == "[") {
 					readingRows = true;
 					parsedRows.clear();

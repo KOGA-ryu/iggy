@@ -71,6 +71,34 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult Read(
 	return iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReader {}.read(text);
 }
 
+std::size_t LineOfNth(
+	const std::string &text,
+	const std::string &needle,
+	std::size_t occurrence = 0)
+{
+	std::size_t line = 1;
+	std::size_t matched = 0;
+	std::size_t lineStart = 0;
+	while (lineStart <= text.size()) {
+		const std::size_t lineEnd = text.find('\n', lineStart);
+		const std::string current = lineEnd == std::string::npos
+			? text.substr(lineStart)
+			: text.substr(lineStart, lineEnd - lineStart);
+		if (current.find(needle) != std::string::npos) {
+			if (matched == occurrence) {
+				return line;
+			}
+			++matched;
+		}
+		if (lineEnd == std::string::npos) {
+			break;
+		}
+		lineStart = lineEnd + 1;
+		++line;
+	}
+	return 0;
+}
+
 iggy::NpcTraitSet Traits()
 {
 	iggy::NpcTraitSet traits;
@@ -252,6 +280,26 @@ void TestRootAndGridParse()
 	Expect(result.plan.grid.backgroundGlyph == '.', "grid background glyph should parse");
 	Expect(result.plan.grid.rows.size() == 4, "grid rows should parse");
 	Expect(result.plan.grid.rows[1] == "#.....#", "grid row contents should be preserved");
+}
+
+void TestSourceLocationsAreCaptured()
+{
+	const std::string text = RootGridLegendCellsRegionsToml();
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(result.ok(), "source location fixture should parse");
+	Expect(result.sourceLocations.gridTableLine == LineOfNth(text, "[grid]"), "grid table line should be captured");
+	Expect(result.sourceLocations.gridRowsLine == LineOfNth(text, "rows = ["), "grid rows key line should be captured");
+	Expect(result.sourceLocations.noClaimsTableLine == LineOfNth(text, "[no_claims]"), "no_claims table line should be captured");
+	Expect(result.sourceLocations.promotionTableLine == LineOfNth(text, "[promotion]"), "promotion table line should be captured");
+	Expect(result.sourceLocations.legendTableLines.size() == 4, "legend table lines should match parsed legend count");
+	Expect(result.sourceLocations.legendTableLines[0] == LineOfNth(text, "[[legend]]", 0), "first legend table line should be captured");
+	Expect(result.sourceLocations.legendTableLines[1] == LineOfNth(text, "[[legend]]", 1), "second legend table line should be captured");
+	Expect(result.sourceLocations.annotatedCellTableLines.size() == 1, "cell table lines should match parsed cell count");
+	Expect(result.sourceLocations.annotatedCellTableLines[0] == LineOfNth(text, "[[cells]]"), "cell table line should be captured");
+	Expect(result.sourceLocations.regionTableLines.size() == 1, "region table lines should match parsed region count");
+	Expect(result.sourceLocations.regionTableLines[0] == LineOfNth(text, "[[regions]]"), "region table line should be captured");
 }
 
 void TestCommentsAndInlineRowsParse()
@@ -648,6 +696,7 @@ int main()
 	TestEmptyInputFailsDeterministically();
 	TestUnsupportedInputFailsDeterministically();
 	TestRootAndGridParse();
+	TestSourceLocationsAreCaptured();
 	TestCommentsAndInlineRowsParse();
 	TestMissingGridFailsAsSyntax();
 	TestWrongTypeFailsAsTypeInvalid();
