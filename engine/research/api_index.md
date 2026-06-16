@@ -35,7 +35,7 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `NavigationGridValidator`: validates navigation grid inputs.
 - `NavigationGridPathfinder`: computes grid paths.
 - `NavigationPathFollower`: follows planned paths.
-- `NavigationRequest`, `NavigationPath`: navigation request/result data.
+- `NavigationGridValidationInput`, `NavigationRequest`, `NavigationPath`: NPC-agnostic navigation input/request/result data.
 
 ## `modules/animation`
 
@@ -49,6 +49,7 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `NpcAgentController`, `NpcAgentBatchUpdater`: NPC update orchestration.
 - `NpcAgentRenderCommands`: NPC state to render commands.
 - `NpcTickReporter`: NPC tick report generation.
+- Legacy NPC-agent runtime lane used by level/runtime/session/save/render compatibility. Newer `scene/ai` + `scene/npc` actor/control/profile/movement systems should adapt to shared services such as `servers/navigation` without making those services depend on `modules/npc_ai`.
 
 ## `scene/level`
 
