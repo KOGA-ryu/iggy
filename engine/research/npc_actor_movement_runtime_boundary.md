@@ -263,11 +263,13 @@ RuntimeGameplayAsciiSourcePlan
 `RuntimeGameplayAsciiSourcePlanProfileScenarioConverter` promotes only the
 currently accepted safe facts: terrain rows into a `LevelTileMap`, annotated NPC
 actor cells into `NpcActorState2DRegistry`, one default control per promoted
-actor, caller-supplied profile trait catalog, and a caller-supplied default
-profile scenario frame whose movement map is replaced with the promoted map.
-The converter rejects invalid source plans, unsupported custom terrain,
-invalid actor/control registries, missing frame defaults, and invalid profile
-scenario definitions before reporting conversion success.
+actor optionally replaced by a validated one-frame authored NPC control,
+caller-supplied profile trait catalog, and a caller-supplied default profile
+scenario frame whose movement map is replaced with the promoted map. The
+converter rejects invalid source plans, unsupported custom terrain, authored
+controls for unknown or duplicate actors, invalid actor/control registries,
+missing frame defaults, and invalid profile scenario definitions before
+reporting conversion success.
 
 Region-to-AI-map promotion is an explicit opt-in branch, not inferred source
 semantics. `RuntimeGameplayAsciiSourcePlanRegionAiMapPromoter` consumes source
