@@ -174,6 +174,38 @@ declarations by value. `RuntimeGameplayAsciiScenarioPacketValidator` validates
 only the packet structure: empty row policy, rectangular grid shape, duplicate
 markers, actor marker ids, known marker kinds, and unknown grid markers.
 
+The next ASCII source-plan lane should follow the local Gameguy precedent as a
+semantic pattern, not as a file-format precedent. Gameguy's useful anchors are:
+
+- `/Users/kogaryu/gameguy-3d-lab/contracts/gameguy_ascii_plan_v0.json`
+- `/Users/kogaryu/gameguy-3d-lab/data/architecture/ascii_plans/single_post_ascii_plan_fixture_v0.json`
+- `/Users/kogaryu/gameguy-3d-lab/scripts/validate_gameguy_ascii_plan_v0.py`
+- `/Users/kogaryu/gameguy-3d-lab/workflow/reports/3D-LAB-0094-measurement-backed-ascii-plan-v0/report.md`
+- `/Users/kogaryu/gameguy-3d-lab/scripts/compile_map_gameplay_surface_semantics_v0.py`
+
+The transferable idea is a cheap source-plan artifact with rows, glyph legend,
+annotated cells, regions, measurement or local-cell facts, validation reports,
+promotion policy, and explicit no-claims. The transferable idea is not JSON.
+Iggy's future disk authoring target should be TOML-shaped when file parsing is
+ordered later, with sections/tables such as `[grid]`, `[[legend]]`,
+`[[cells]]`, `[[regions]]`, and `[[frames]]`. This current lane should stay
+parser-free and C++ in-memory, with format-neutral names such as
+`RuntimeGameplayAsciiSourcePlan`.
+
+The intended ASCII authoring pipeline is:
+
+```text
+ASCII source plan
+  -> source-plan validation/report
+  -> RuntimeGameplayAsciiScenarioPacket
+  -> later RuntimeGameplayProfileScenarioDefinition conversion
+```
+
+Source plans remain authoring evidence. They are not runtime truth, do not
+execute gameplay, do not parse files, and do not promote into gameplay/profile
+scenario definitions until a later explicit conversion lane defines those
+semantics.
+
 There is intentionally no ASCII-to-profile-scenario converter yet. The next
 authoring lane should convert a validated ASCII packet into
 `RuntimeGameplayProfileScenarioDefinition`, including explicit choices for map
