@@ -204,7 +204,8 @@ parser-free and C++ in-memory, with format-neutral names such as
 The current ASCII authoring pipeline is:
 
 ```text
-TOML text using the supported ASCII source-plan subset
+TOML file, when file IO is desired
+  -> RuntimeGameplayAsciiSourcePlanTomlFileReader
   -> RuntimeGameplayAsciiSourcePlanTomlReader
   -> RuntimeGameplayAsciiSourcePlan
   -> source-plan validation/report
@@ -221,10 +222,17 @@ Reader results also carry table-line source locations for `[grid]`, `grid.rows`,
 `[no_claims]`, `[promotion]`, `[[legend]]`, `[[cells]]`, and `[[regions]]`;
 mirrored source-plan validation issues use those table lines where the mapping
 is clear. This is best-effort object/table correlation, not key-range or full
-TOML source mapping. The reader does not claim general TOML compliance, does not
-read files, does not use a TOML library, does not lower to
+TOML source mapping. The string reader does not claim general TOML compliance,
+does not read files, does not use a TOML library, does not lower to
 `RuntimeGameplayAsciiScenarioPacket`, does not promote to profile scenarios, and
 does not run gameplay.
+
+`RuntimeGameplayAsciiSourcePlanTomlFileReader` is a separate file boundary over
+the string reader. It reads one explicit regular file path, preserves the path,
+byte count, and nested text-reader result, and uses `text.input` as the only
+owned file-content copy after a successful read. It does not scan directories,
+does not use save/load slots, does not integrate with the authoring adapter, and
+does not convert or run scenarios.
 
 Source plans remain authoring evidence. They are not runtime truth and do not
 execute gameplay. The shallow packet adapter remains a lossy authoring adapter
@@ -276,9 +284,10 @@ into both produced profile scenario `frame.aiMap` and `frame.refreshAiMap`.
 The frame movement map still comes from promoted terrain. If AI-map promotion
 fails, conversion fails before publishing a profile scenario definition.
 
-There is still no TOML file parser, general TOML implementation, file IO,
-Edi/UI adapter, interaction marker promotion, frame scripting, AI-map links,
-inferred role/tag semantics, or runtime gameplay auto-run in this boundary.
+There is still no general TOML implementation, TOML dependency/library,
+directory scanning, save/load slot integration, Edi/UI adapter, interaction
+marker promotion, frame scripting, AI-map links, inferred role/tag semantics, or
+runtime gameplay auto-run in this boundary.
 Future external authoring should target `RuntimeGameplayAsciiSourcePlan` through
 the supported TOML subset reader first, then use the source-plan converter only
 after the in-memory source-plan validator accepts the authored packet.
