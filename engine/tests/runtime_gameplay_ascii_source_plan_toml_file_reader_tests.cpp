@@ -7,6 +7,7 @@
 
 #include "runtime/RuntimeGameplayAsciiSourcePlanProfileScenarioConverter.hpp"
 #include "runtime/RuntimeGameplayProfileScenarioValidator.hpp"
+#include "runtime/RuntimeGameplayScenarioAuthoringAdapter.hpp"
 #include "support/LevelMapFixtures.hpp"
 
 #ifndef IGGY_TEST_FIXTURE_DIR
@@ -310,6 +311,40 @@ void TestValidFixtureConvertsToValidatedProfileScenario()
 	Expect(read.text.plan.sourceId == Id("scenario:guard-room"), "file reader should only expose source plan for converter");
 }
 
+void TestValidFixtureFeedsAuthoringAdapterThroughParsedSourcePlan()
+{
+	const std::filesystem::path path = FixturePath("valid_guard_room.toml");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult read =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(path);
+	iggy::runtime::RuntimeGameplayScenarioAuthoringPacket packet;
+	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
+	packet.hasAsciiSourcePlan = true;
+	packet.asciiSourcePlan = read.text.plan;
+	iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig adapterConfig;
+	adapterConfig.hasAsciiSourcePlanProfileScenarioConfig = true;
+	adapterConfig.asciiSourcePlanProfileScenario = ConverterConfig();
+
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
+		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(
+			packet,
+			adapterConfig);
+	const iggy::runtime::RuntimeGameplayProfileScenarioValidationResult validation =
+		iggy::runtime::RuntimeGameplayProfileScenarioValidator {}.validate(
+			adapter.profileScenario);
+
+	Expect(read.ok(), "authoring adapter fixture acceptance should read valid fixture");
+	Expect(packet.asciiSourcePlan.sourceId == Id("scenario:guard-room"), "caller should pass parsed source plan into authoring adapter");
+	Expect(adapter.ok(), "authoring adapter should convert parsed source plan from fixture");
+	Expect(adapter.asciiSourcePlanConversion.ok(), "authoring adapter should preserve nested source-plan conversion result");
+	Expect(validation.ok(), "authoring adapter converted fixture profile scenario should validate");
+	Expect(adapter.profileScenario.scenarioId == Id("scenario:guard-room"), "authoring adapter should publish fixture scenario id");
+	Expect(adapter.profileScenario.initialState.npcActors.actors.size() == 1, "authoring adapter should publish fixture actor");
+	Expect(adapter.profileScenario.initialState.npcControls.entries.size() == 1, "authoring adapter should publish fixture control");
+	Expect(adapter.profileScenario.frames.size() == 1, "authoring adapter should publish fixture frame");
+	Expect(adapter.packet.asciiSourcePlan.sourceId == read.text.plan.sourceId, "authoring adapter should preserve parsed source-plan packet");
+	Expect(adapter.config.hasAsciiSourcePlanProfileScenarioConfig, "authoring adapter should preserve explicit conversion config");
+}
+
 } // namespace
 
 int main()
@@ -323,6 +358,7 @@ int main()
 	TestCorruptFixturePreservesNestedParserDiagnostics();
 	TestSemanticInvalidFixturePreservesNestedSourceValidation();
 	TestValidFixtureConvertsToValidatedProfileScenario();
+	TestValidFixtureFeedsAuthoringAdapterThroughParsedSourcePlan();
 
 	CleanupTempRoot();
 
