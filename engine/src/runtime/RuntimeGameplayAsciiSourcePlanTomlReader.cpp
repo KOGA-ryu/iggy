@@ -415,6 +415,10 @@ bool ParsePlayerCommandKind(
 		out = RuntimeGameplayAsciiSourcePlanPlayerCommandKind::MoveToTile;
 		return true;
 	}
+	if (value == "interact") {
+		out = RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Interact;
+		return true;
+	}
 	return false;
 }
 
@@ -1636,6 +1640,13 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 					command.hasTargetTileY = true;
 					command.hasTargetTile =
 						command.hasTargetTileX && command.hasTargetTileY;
+				}
+			} else if (key == "target_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					command.targetId = ResourceId(parsed);
 				}
 			} else {
 				AddUnsupported(

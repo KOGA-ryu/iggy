@@ -486,14 +486,21 @@ bool PlayerCommandSupported(
 	RuntimeGameplayAsciiSourcePlanPlayerCommandKind command)
 {
 	return command ==
-		RuntimeGameplayAsciiSourcePlanPlayerCommandKind::MoveToTile;
+			RuntimeGameplayAsciiSourcePlanPlayerCommandKind::MoveToTile ||
+		command == RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Interact;
 }
 
-bool PlayerCommandNeedsTarget(
+bool PlayerCommandNeedsTargetTile(
 	RuntimeGameplayAsciiSourcePlanPlayerCommandKind command)
 {
 	return command ==
 		RuntimeGameplayAsciiSourcePlanPlayerCommandKind::MoveToTile;
+}
+
+bool PlayerCommandNeedsTargetId(
+	RuntimeGameplayAsciiSourcePlanPlayerCommandKind command)
+{
+	return command == RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Interact;
 }
 
 void ValidateAuthoredPlayerCommands(
@@ -516,9 +523,18 @@ void ValidateAuthoredPlayerCommands(
 			AddIssue(result, issue);
 		}
 
-		if (PlayerCommandNeedsTarget(command.command) &&
+		if (PlayerCommandNeedsTargetTile(command.command) &&
 			!(command.hasTargetTile ||
 				(command.hasTargetTileX && command.hasTargetTileY))) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				AuthoredPlayerCommandMissingTarget;
+			issue.index = index;
+			AddIssue(result, issue);
+		}
+
+		if (PlayerCommandNeedsTargetId(command.command) &&
+			command.targetId.empty()) {
 			RuntimeGameplayAsciiSourcePlanIssue issue;
 			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
 				AuthoredPlayerCommandMissingTarget;

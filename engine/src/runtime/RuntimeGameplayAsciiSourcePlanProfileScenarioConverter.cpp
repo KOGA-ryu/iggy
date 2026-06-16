@@ -560,6 +560,8 @@ PlayerInputIntent2D PlayerIntentFromAuthoredCommand(
 	switch (command.command) {
 	case RuntimeGameplayAsciiSourcePlanPlayerCommandKind::MoveToTile:
 		return playerMoveToTileIntent(command.targetTile);
+	case RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Interact:
+		return playerInteractIntent(command.targetId);
 	case RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Unknown:
 		return {};
 	}

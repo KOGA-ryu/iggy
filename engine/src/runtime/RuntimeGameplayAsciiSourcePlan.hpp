@@ -68,6 +68,7 @@ enum class RuntimeGameplayAsciiSourcePlanControlMoveMode {
 enum class RuntimeGameplayAsciiSourcePlanPlayerCommandKind {
 	Unknown,
 	MoveToTile,
+	Interact,
 };
 
 enum class RuntimeGameplayAsciiSourcePlanInteractionTargetKind {
@@ -164,6 +165,7 @@ struct RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand {
 	bool hasTargetTileX = false;
 	bool hasTargetTileY = false;
 	TileCoord targetTile;
+	ResourceId targetId;
 	bool hasDeclarationIndex = false;
 	std::size_t declarationIndex = 0;
 };

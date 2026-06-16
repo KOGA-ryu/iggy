@@ -266,6 +266,17 @@ y = 1
 )toml";
 }
 
+std::string RootGridLegendCellsRegionsPlayerInteractCommandToml()
+{
+	return RootGridLegendCellsRegionsToml() + R"toml(
+
+[[frame_player_commands]]
+frame_id = "frame:interact"
+command = "interact"
+target_id = "target:door"
+)toml";
+}
+
 std::string RootGridLegendCellsRegionsInteractionTargetToml()
 {
 	return RootGridLegendCellsRegionsToml() + R"toml(
@@ -878,6 +889,22 @@ void TestFramePlayerCommandsParse()
 	Expect(command.hasDeclarationIndex && command.declarationIndex == 0, "frame player command should preserve authored declaration order");
 }
 
+void TestFramePlayerInteractCommandParses()
+{
+	const std::string text = RootGridLegendCellsRegionsPlayerInteractCommandToml();
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(result.ok(), "valid frame player interact command TOML should parse");
+	Expect(result.plan.authoredPlayerCommands.size() == 1, "one frame player interact command should parse");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand
+		&command = result.plan.authoredPlayerCommands[0];
+	Expect(command.hasFrameId && command.frameId == Id("frame:interact"), "frame player interact command should parse optional frame id");
+	Expect(command.command == iggy::runtime::RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Interact, "frame player command should parse interact command");
+	Expect(command.targetId == Id("target:door"), "frame player interact command should parse exact target id");
+	Expect(command.hasDeclarationIndex && command.declarationIndex == 0, "frame player interact command should preserve authored declaration order");
+}
+
 void TestFramePlayerCommandInvalidFieldsReportContext()
 {
 	std::string text = RootGridLegendCellsRegionsPlayerCommandToml();
@@ -939,6 +966,27 @@ void TestFramePlayerCommandMissingTargetSurfacesSourcePlanValidation()
 		Expect(issue->table == "frame_player_commands", "mirrored frame player command target issue should report frame_player_commands table");
 		Expect(issue->hasTableIndex && issue->tableIndex == 0, "mirrored frame player command target issue should report first player command index");
 		Expect(issue->key == "target", "mirrored frame player command target issue should report target key");
+	}
+}
+
+void TestFramePlayerInteractCommandMissingTargetSurfacesSourcePlanValidation()
+{
+	std::string text = RootGridLegendCellsRegionsPlayerInteractCommandToml();
+	const std::size_t start = text.find("target_id = \"target:door\"\n");
+	text.erase(start, std::string("target_id = \"target:door\"\n").size());
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "interact frame player command without target should fail source validation");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "interact frame player command without target should report source invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandMissingTarget);
+	Expect(issue != nullptr, "interact frame player command without target should mirror source issue");
+	if (issue != nullptr) {
+		Expect(issue->line == LineOfNth(text, "[[frame_player_commands]]"), "mirrored frame player interact target issue should report table line");
+		Expect(issue->table == "frame_player_commands", "mirrored frame player interact target issue should report frame_player_commands table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "mirrored frame player interact target issue should report first player command index");
+		Expect(issue->key == "target", "mirrored frame player interact target issue should report target key");
 	}
 }
 
@@ -1040,9 +1088,11 @@ int main()
 	TestInteractionTargetMissingIdSurfacesSourcePlanValidation();
 	TestInteractionTargetUnsupportedTileShapeReportsContext();
 	TestFramePlayerCommandsParse();
+	TestFramePlayerInteractCommandParses();
 	TestFramePlayerCommandInvalidFieldsReportContext();
 	TestFramePlayerCommandWrongTypedTargetReportsContext();
 	TestFramePlayerCommandMissingTargetSurfacesSourcePlanValidation();
+	TestFramePlayerInteractCommandMissingTargetSurfacesSourcePlanValidation();
 	TestFrameAuthoredDeclarationOrderSpansControlsAndPlayerCommands();
 	TestTomlSourcePlanFeedsConverterAndProfileValidator();
 	return Failures;

@@ -144,6 +144,20 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand MovePlayerToT
 	return command;
 }
 
+iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand InteractWithTarget(
+	const char *targetId,
+	const char *frameId = nullptr)
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand command;
+	command.hasFrameId = frameId != nullptr;
+	if (frameId != nullptr)
+		command.frameId = Id(frameId);
+	command.command =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Interact;
+	command.targetId = Id(targetId);
+	return command;
+}
+
 iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget InteractionTarget(
 	const char *targetId = "target:door")
 {
@@ -602,6 +616,32 @@ void TestSharedFrameIdAuthoredPlayerCommandAndNpcControlShareFrame()
 		Expect(result.definition.frames[0].controlOverrides.size() == 1, "shared frame should carry NPC control override");
 		Expect(result.definition.frames[0].playerFrame.playerIntents.size() == 1, "shared frame should carry player intent");
 		Expect(result.definition.frames[0].playerFrame.playerIntents[0].tile.x == 3, "shared frame player intent should preserve tile");
+	}
+}
+
+void TestAuthoredPlayerInteractCommandCreatesInteractIntent()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.authoredInteractionTargets = { InteractionTarget("target:door") };
+	plan.authoredPlayerCommands = {
+		InteractWithTarget("target:door", "frame:interact"),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "authored player interact command should convert");
+	Expect(result.definition.frames.size() == 1, "authored player interact command should create one frame");
+	if (!result.definition.frames.empty()) {
+		Expect(result.definition.frames[0].hasFrameId && result.definition.frames[0].frameId == Id("frame:interact"), "interact frame should preserve frame id");
+		Expect(result.definition.frames[0].playerFrame.playerIntents.size() == 1, "interact frame should carry one player intent");
+		const iggy::PlayerInputIntent2D &intent =
+			result.definition.frames[0].playerFrame.playerIntents[0];
+		Expect(intent.type == iggy::PlayerInputIntent2DType::Interact, "authored interact command should become interact intent");
+		Expect(intent.targetId == Id("target:door"), "authored interact command should preserve target id");
 	}
 }
 
@@ -1096,6 +1136,7 @@ int main()
 	TestFrameIdAuthoredControlsCreateScenarioFramesInFirstSeenOrder();
 	TestNoFrameAuthoredPlayerCommandCreatesDefaultFrameIntent();
 	TestSharedFrameIdAuthoredPlayerCommandAndNpcControlShareFrame();
+	TestAuthoredPlayerInteractCommandCreatesInteractIntent();
 	TestPlayerOnlyFrameIdCreatesScenarioFrame();
 	TestAuthoredFrameGroupsPreserveCrossFamilyDeclarationOrder();
 	TestNoFramePlayerCommandMixedWithFrameIdGroupFails();
