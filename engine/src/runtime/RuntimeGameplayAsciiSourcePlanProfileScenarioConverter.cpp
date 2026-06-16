@@ -23,6 +23,10 @@ void AddIssue(
 	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::ControlRegistryInvalid:
 		++result.controlRegistryIssueCount;
 		break;
+	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::UnknownAuthoredControlActor:
+	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::DuplicateAuthoredControlActor:
+		++result.authoredControlIssueCount;
+		break;
 	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::AiMapPromotionInvalid:
 		++result.aiMapPromotionIssueCount;
 		break;
@@ -77,6 +81,16 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue ControlIssue(
 	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue issue;
 	issue.code = RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::ControlRegistryInvalid;
 	issue.controlIssue = controlIssue;
+	return issue;
+}
+
+RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue AuthoredControlIssue(
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode code,
+	const RuntimeGameplayAsciiSourcePlanAuthoredControl &control)
+{
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue issue;
+	issue.code = code;
+	issue.authoredControl = control;
 	return issue;
 }
 
@@ -243,6 +257,121 @@ NpcActorControlState2D DefaultControlForActor(
 	return control;
 }
 
+bool ActorExists(const std::vector<NpcActorState2D> &actors, const ResourceId &npcId)
+{
+	for (const NpcActorState2D &actor : actors) {
+		if (actor.npcId == npcId)
+			return true;
+	}
+	return false;
+}
+
+NpcMoveMode ConvertMoveMode(RuntimeGameplayAsciiSourcePlanControlMoveMode mode)
+{
+	switch (mode) {
+	case RuntimeGameplayAsciiSourcePlanControlMoveMode::Still:
+		return NpcMoveMode::Still;
+	case RuntimeGameplayAsciiSourcePlanControlMoveMode::Walk:
+		return NpcMoveMode::Walk;
+	case RuntimeGameplayAsciiSourcePlanControlMoveMode::Jog:
+		return NpcMoveMode::Jog;
+	case RuntimeGameplayAsciiSourcePlanControlMoveMode::Run:
+		return NpcMoveMode::Run;
+	case RuntimeGameplayAsciiSourcePlanControlMoveMode::Sprint:
+		return NpcMoveMode::Sprint;
+	case RuntimeGameplayAsciiSourcePlanControlMoveMode::Unknown:
+		return NpcMoveMode::None;
+	}
+	return NpcMoveMode::None;
+}
+
+Vec2 TargetPosition(const RuntimeGameplayAsciiSourcePlanAuthoredControl &control)
+{
+	return {
+		static_cast<float>(control.targetPosition.x),
+		static_cast<float>(control.targetPosition.y),
+	};
+}
+
+NpcActorControlState2D ControlFromAuthoredControl(
+	const RuntimeGameplayAsciiSourcePlanAuthoredControl &authored)
+{
+	NpcActorControlState2D control;
+	control.npcId = authored.npcId;
+	control.moveMode = ConvertMoveMode(authored.moveMode);
+	switch (authored.behavior) {
+	case RuntimeGameplayAsciiSourcePlanControlBehavior::Waiting:
+		control.objective = waitNpcObjective();
+		control.behavior = waitingNpcBehaviorState();
+		return control;
+	case RuntimeGameplayAsciiSourcePlanControlBehavior::Seeking:
+		control.objective = moveToNpcObjective(TargetPosition(authored));
+		control.behavior = seekingNpcBehaviorState(TargetPosition(authored));
+		return control;
+	case RuntimeGameplayAsciiSourcePlanControlBehavior::Unknown:
+		control.objective = noneNpcObjective();
+		control.behavior = noneNpcBehaviorState();
+		return control;
+	}
+	control.objective = noneNpcObjective();
+	control.behavior = noneNpcBehaviorState();
+	return control;
+}
+
+bool ReplaceControl(
+	std::vector<NpcActorControlState2D> &controls,
+	const NpcActorControlState2D &replacement)
+{
+	for (NpcActorControlState2D &control : controls) {
+		if (control.npcId == replacement.npcId) {
+			control = replacement;
+			return true;
+		}
+	}
+	return false;
+}
+
+bool ApplyAuthoredControls(
+	const RuntimeGameplayAsciiSourcePlan &sourcePlan,
+	const std::vector<NpcActorState2D> &actors,
+	std::vector<NpcActorControlState2D> &controls,
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult &result)
+{
+	result.authoredControlCount = sourcePlan.authoredControls.size();
+	std::vector<ResourceId> controlledActors;
+	for (const RuntimeGameplayAsciiSourcePlanAuthoredControl &authored : sourcePlan.authoredControls) {
+		if (!ActorExists(actors, authored.npcId)) {
+			AddIssue(
+				result,
+				AuthoredControlIssue(
+					RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::UnknownAuthoredControlActor,
+					authored));
+			continue;
+		}
+
+		bool duplicate = false;
+		for (const ResourceId &controlledActor : controlledActors) {
+			if (controlledActor == authored.npcId) {
+				duplicate = true;
+				break;
+			}
+		}
+		if (duplicate) {
+			AddIssue(
+				result,
+				AuthoredControlIssue(
+					RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::DuplicateAuthoredControlActor,
+					authored));
+			continue;
+		}
+
+		controlledActors.push_back(authored.npcId);
+		ReplaceControl(controls, ControlFromAuthoredControl(authored));
+	}
+
+	return result.authoredControlIssueCount == 0;
+}
+
 bool PromoteActorsAndControls(
 	const RuntimeGameplayAsciiSourcePlan &sourcePlan,
 	const RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig &config,
@@ -257,6 +386,9 @@ bool PromoteActorsAndControls(
 		actors.push_back(actor);
 		controls.push_back(DefaultControlForActor(actor.npcId, config));
 	}
+
+	if (!ApplyAuthoredControls(sourcePlan, actors, controls, result))
+		return false;
 
 	result.actorRegistry = NpcActorState2DRegistryBuilder {}.build(actors);
 	if (!result.actorRegistry.built) {
@@ -372,7 +504,9 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConverter::convert(
 
 	if (!PromoteActorsAndControls(sourcePlan, config, result)) {
 		result.issueCount = result.issues.size();
-		result.status = !result.actorRegistry.built
+		result.status = result.authoredControlIssueCount > 0
+			? RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::AuthoredControlInvalid
+			: !result.actorRegistry.built
 			? RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::ActorRegistryInvalid
 			: RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::ControlRegistryInvalid;
 		return result;

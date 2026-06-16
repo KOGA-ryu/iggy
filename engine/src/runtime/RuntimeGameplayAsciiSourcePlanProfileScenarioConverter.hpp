@@ -18,6 +18,7 @@ enum class RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus {
 	MissingFrameDefaults,
 	ActorRegistryInvalid,
 	ControlRegistryInvalid,
+	AuthoredControlInvalid,
 	AiMapPromotionInvalid,
 	ProfileScenarioInvalid,
 };
@@ -28,6 +29,8 @@ enum class RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode {
 	MissingFrameDefaults,
 	ActorRegistryInvalid,
 	ControlRegistryInvalid,
+	UnknownAuthoredControlActor,
+	DuplicateAuthoredControlActor,
 	AiMapPromotionInvalid,
 	ProfileScenarioInvalid,
 };
@@ -57,6 +60,7 @@ struct RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue {
 	std::size_t column = 0;
 	char glyph = '\0';
 	RuntimeGameplayAsciiSourcePlanIssue sourceIssue;
+	RuntimeGameplayAsciiSourcePlanAuthoredControl authoredControl;
 	NpcActorState2DIssue actorIssue;
 	NpcActorControlState2DIssue controlIssue;
 	RuntimeGameplayAsciiSourcePlanRegionAiMapPromotionIssue aiMapPromotionIssue;
@@ -83,10 +87,12 @@ struct RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult {
 	std::size_t missingFrameDefaultsCount = 0;
 	std::size_t actorRegistryIssueCount = 0;
 	std::size_t controlRegistryIssueCount = 0;
+	std::size_t authoredControlIssueCount = 0;
 	std::size_t aiMapPromotionIssueCount = 0;
 	std::size_t profileScenarioIssueCount = 0;
 	std::size_t promotedActorCount = 0;
 	std::size_t defaultControlCount = 0;
+	std::size_t authoredControlCount = 0;
 	std::size_t promotedAiMapRegionCount = 0;
 	std::size_t unmappedAiMapRegionCount = 0;
 

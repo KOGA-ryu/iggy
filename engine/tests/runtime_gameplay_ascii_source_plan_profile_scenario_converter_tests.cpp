@@ -106,6 +106,20 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlanRegionAiMapPolicy AiMapPolicy(
 	return policy;
 }
 
+iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredControl SeekingControl(
+	const char *npcId = "npc:guard",
+	iggy::Vec2 target = { 2.5F, 1.5F })
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredControl control;
+	control.hasFrameId = true;
+	control.frameId = Id("frame:ascii-profile");
+	control.npcId = Id(npcId);
+	control.behavior = iggy::runtime::RuntimeGameplayAsciiSourcePlanControlBehavior::Seeking;
+	control.moveMode = iggy::runtime::RuntimeGameplayAsciiSourcePlanControlMoveMode::Walk;
+	control.targetPosition = { true, target.x, target.y };
+	return control;
+}
+
 iggy::NpcTraitSet Traits()
 {
 	iggy::NpcTraitSet traits;
@@ -241,6 +255,73 @@ void TestTerrainActorAndDefaultControlPromotion()
 	Expect(control.objective.type == iggy::NpcObjectiveType::Wait, "default control should wait");
 	Expect(control.behavior.type == iggy::NpcBehaviorStateType::Waiting, "default control should use waiting behavior");
 	Expect(control.moveMode == iggy::NpcMoveMode::Still, "default control should use still move mode");
+}
+
+void TestAuthoredControlReplacesDefaultControlForPromotedActor()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.authoredControls = { SeekingControl() };
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "authored control for promoted actor should convert");
+	Expect(result.authoredControlCount == 1, "authored control should be counted");
+	Expect(result.authoredControlIssueCount == 0, "valid authored control should have no conversion issues");
+	Expect(result.definition.initialState.npcControls.entries.size() == 1, "authored control conversion should publish one control");
+	const iggy::NpcActorControlState2D &control =
+		result.definition.initialState.npcControls.entries[0];
+	Expect(control.npcId == Id("npc:guard"), "authored control should preserve npc id");
+	Expect(control.objective.type == iggy::NpcObjectiveType::MoveTo, "authored seeking control should promote move-to objective");
+	Expect(control.objective.targetPosition.x == 2.5F && control.objective.targetPosition.y == 1.5F, "authored seeking objective should preserve target");
+	Expect(control.behavior.type == iggy::NpcBehaviorStateType::Seeking, "authored seeking control should promote seeking behavior");
+	Expect(control.behavior.targetPosition.x == 2.5F && control.behavior.targetPosition.y == 1.5F, "authored seeking behavior should preserve target");
+	Expect(control.moveMode == iggy::NpcMoveMode::Walk, "authored control should promote walk move mode");
+}
+
+void TestUnknownAuthoredControlActorBlocksConversion()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.authoredControls = { SeekingControl("npc:missing") };
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(!result.ok(), "authored control for unknown actor should fail conversion");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::AuthoredControlInvalid, "unknown authored control actor should report authored control invalid status");
+	Expect(result.authoredControlIssueCount == 1, "unknown authored control actor should be counted");
+	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::UnknownAuthoredControlActor), "unknown authored control actor issue should be present");
+	Expect(result.issues[0].authoredControl.npcId == Id("npc:missing"), "unknown authored control actor issue should preserve npc id");
+	Expect(result.definition.frames.empty(), "unknown authored control actor should not publish runnable definition");
+}
+
+void TestDuplicateAuthoredControlActorBlocksConversion()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.authoredControls = {
+		SeekingControl("npc:guard", { 2.5F, 1.5F }),
+		SeekingControl("npc:guard", { 3.5F, 1.5F }),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(!result.ok(), "duplicate authored control actor should fail conversion");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::AuthoredControlInvalid, "duplicate authored control actor should report authored control invalid status");
+	Expect(result.authoredControlCount == 2, "duplicate authored controls should preserve count");
+	Expect(result.authoredControlIssueCount == 1, "duplicate authored control actor should be counted once");
+	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::DuplicateAuthoredControlActor), "duplicate authored control actor issue should be present");
+	Expect(result.issues[0].authoredControl.targetPosition.x == 3.5, "duplicate authored control issue should preserve duplicate declaration");
+	Expect(result.definition.frames.empty(), "duplicate authored control actor should not publish runnable definition");
 }
 
 void TestActorWithoutLocalPositionUsesTileCenter()
@@ -569,6 +650,9 @@ int main()
 	TestValidSourcePlanRequiresFrameDefaults();
 	TestValidSourcePlanAndFrameDefaultsPublishValidatedProfileScenario();
 	TestTerrainActorAndDefaultControlPromotion();
+	TestAuthoredControlReplacesDefaultControlForPromotedActor();
+	TestUnknownAuthoredControlActorBlocksConversion();
+	TestDuplicateAuthoredControlActorBlocksConversion();
 	TestActorWithoutLocalPositionUsesTileCenter();
 	TestUnsupportedCustomTerrainFailsBeforeDefinition();
 	TestMappedCustomTerrainPromotes();
