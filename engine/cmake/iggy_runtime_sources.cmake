@@ -16,6 +16,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeGameplayAsciiSourcePlanAdapter.cpp
   src/runtime/RuntimeGameplayAsciiSourcePlan.cpp
   src/runtime/RuntimeGameplayAsciiSourcePlanProfileScenarioConverter.cpp
+  src/runtime/RuntimeGameplayAsciiSourcePlanRegionAiMapPromoter.cpp
   src/runtime/RuntimeGameplayAsciiSourcePlanValidator.cpp
   src/runtime/RuntimeGameplayProfileScenarioDefinition.cpp
   src/runtime/RuntimeGameplayProfileScenarioRunner.cpp
