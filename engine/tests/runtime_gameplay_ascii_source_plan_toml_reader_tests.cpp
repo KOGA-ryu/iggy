@@ -266,6 +266,23 @@ y = 1
 )toml";
 }
 
+std::string RootGridLegendCellsRegionsInteractionTargetToml()
+{
+	return RootGridLegendCellsRegionsToml() + R"toml(
+
+[[interaction_targets]]
+target_id = "plain-target"
+kind = "door"
+tile = { x = 3, y = 1 }
+position = { x = 3.5, y = 1.5 }
+radius = 1.25
+enabled = false
+effect = "toggle_target"
+effect_target_id = "plain-target"
+enabled_value = true
+)toml";
+}
+
 void TestEmptyInputFailsDeterministically()
 {
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result = Read("");
@@ -759,6 +776,89 @@ void TestFrameControlUnsupportedTargetShapeReportsContext()
 	}
 }
 
+void TestInteractionTargetsParse()
+{
+	const std::string text = RootGridLegendCellsRegionsInteractionTargetToml();
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(result.ok(), "valid interaction target TOML should parse");
+	Expect(result.plan.authoredInteractionTargets.size() == 1, "one interaction target should parse");
+	Expect(result.sourceLocations.interactionTargetTableLines.size() == 1, "interaction target source location should be captured");
+	Expect(result.sourceLocations.interactionTargetTableLines[0] == LineOfNth(text, "[[interaction_targets]]"), "interaction target source location should preserve table line");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget &target =
+		result.plan.authoredInteractionTargets[0];
+	Expect(target.targetId == Id("plain-target"), "interaction target should parse exact target id");
+	Expect(target.kind == iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Door, "interaction target should parse door kind");
+	Expect(target.localTile.present && target.localTile.x == 3 && target.localTile.y == 1, "interaction target should parse tile");
+	Expect(target.localPosition.present && target.localPosition.x == 3.5 && target.localPosition.y == 1.5, "interaction target should parse point position");
+	Expect(target.radius == 1.25, "interaction target should parse radius");
+	Expect(!target.enabled, "interaction target should parse enabled flag");
+	Expect(target.effect == iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionEffectKind::ToggleTarget, "interaction target should parse effect kind");
+	Expect(target.effectTargetId == Id("plain-target"), "interaction target should parse effect target id");
+	Expect(target.enabledValue, "interaction target should parse enabled value");
+}
+
+void TestInteractionTargetInvalidFieldsReportContext()
+{
+	std::string text = RootGridLegendCellsRegionsInteractionTargetToml();
+	const std::size_t start = text.find("kind = \"door\"");
+	text.replace(start, std::string("kind = \"door\"").size(), "kind = \"portal\"");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "unknown interaction target kind should fail");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::TypeInvalid, "unknown interaction target kind should report type invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::UnknownEnumValue, "kind");
+	Expect(issue != nullptr, "unknown interaction target kind issue should be findable");
+	if (issue != nullptr) {
+		Expect(issue->table == "interaction_targets", "unknown interaction target kind should report interaction_targets table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "unknown interaction target kind should report first table index");
+		Expect(issue->detail == "portal", "unknown interaction target kind should preserve raw value");
+	}
+}
+
+void TestInteractionTargetMissingIdSurfacesSourcePlanValidation()
+{
+	std::string text = RootGridLegendCellsRegionsInteractionTargetToml();
+	const std::size_t start = text.find("target_id = \"plain-target\"\n");
+	text.erase(start, std::string("target_id = \"plain-target\"\n").size());
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "interaction target without id should fail source validation");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "interaction target without id should report source invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetMissingId);
+	Expect(issue != nullptr, "interaction target without id should mirror source issue");
+	if (issue != nullptr) {
+		Expect(issue->line == LineOfNth(text, "[[interaction_targets]]"), "mirrored interaction target id issue should report table line");
+		Expect(issue->table == "interaction_targets", "mirrored interaction target id issue should report interaction_targets table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "mirrored interaction target id issue should report first target index");
+		Expect(issue->key == "target_id", "mirrored interaction target id issue should report target_id key");
+	}
+}
+
+void TestInteractionTargetUnsupportedTileShapeReportsContext()
+{
+	std::string text = RootGridLegendCellsRegionsInteractionTargetToml();
+	const std::size_t start = text.find("tile = { x = 3, y = 1 }");
+	text.replace(start, std::string("tile = { x = 3, y = 1 }").size(), "tile = { x = 3, z = 1 }");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "unsupported interaction target tile shape should fail");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::UnsupportedSyntax, "unsupported interaction target tile shape should report unsupported");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::UnsupportedNestedShape, "tile");
+	Expect(issue != nullptr, "unsupported interaction target tile issue should be findable");
+	if (issue != nullptr) {
+		Expect(issue->table == "interaction_targets", "unsupported interaction target tile should report interaction_targets table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "unsupported interaction target tile should report first table index");
+	}
+}
+
 void TestFramePlayerCommandsParse()
 {
 	const std::string text = RootGridLegendCellsRegionsPlayerCommandToml();
@@ -935,6 +1035,10 @@ int main()
 	TestFrameControlInvalidFieldsReportContext();
 	TestFrameControlMissingTargetSurfacesSourcePlanValidation();
 	TestFrameControlUnsupportedTargetShapeReportsContext();
+	TestInteractionTargetsParse();
+	TestInteractionTargetInvalidFieldsReportContext();
+	TestInteractionTargetMissingIdSurfacesSourcePlanValidation();
+	TestInteractionTargetUnsupportedTileShapeReportsContext();
 	TestFramePlayerCommandsParse();
 	TestFramePlayerCommandInvalidFieldsReportContext();
 	TestFramePlayerCommandWrongTypedTargetReportsContext();

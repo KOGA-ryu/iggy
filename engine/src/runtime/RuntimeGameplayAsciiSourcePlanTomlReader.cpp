@@ -19,6 +19,7 @@ enum class Table {
 	Legend,
 	Cells,
 	Regions,
+	InteractionTargets,
 	FrameControls,
 	FramePlayerCommands,
 };
@@ -52,6 +53,8 @@ std::string TableName(Table table)
 		return "cells";
 	case Table::Regions:
 		return "regions";
+	case Table::InteractionTargets:
+		return "interaction_targets";
 	case Table::FrameControls:
 		return "frame_controls";
 	case Table::FramePlayerCommands:
@@ -410,6 +413,60 @@ bool ParsePlayerCommandKind(
 {
 	if (value == "move_to_tile") {
 		out = RuntimeGameplayAsciiSourcePlanPlayerCommandKind::MoveToTile;
+		return true;
+	}
+	return false;
+}
+
+bool ParseInteractionTargetKind(
+	const std::string &value,
+	RuntimeGameplayAsciiSourcePlanInteractionTargetKind &out)
+{
+	if (value == "inspectable") {
+		out = RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Inspectable;
+		return true;
+	}
+	if (value == "usable") {
+		out = RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Usable;
+		return true;
+	}
+	if (value == "pickup") {
+		out = RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Pickup;
+		return true;
+	}
+	if (value == "talk") {
+		out = RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Talk;
+		return true;
+	}
+	if (value == "door") {
+		out = RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Door;
+		return true;
+	}
+	return false;
+}
+
+bool ParseInteractionEffectKind(
+	const std::string &value,
+	RuntimeGameplayAsciiSourcePlanInteractionEffectKind &out)
+{
+	if (value == "none") {
+		out = RuntimeGameplayAsciiSourcePlanInteractionEffectKind::None;
+		return true;
+	}
+	if (value == "inspect_text") {
+		out = RuntimeGameplayAsciiSourcePlanInteractionEffectKind::InspectText;
+		return true;
+	}
+	if (value == "toggle_target") {
+		out = RuntimeGameplayAsciiSourcePlanInteractionEffectKind::ToggleTarget;
+		return true;
+	}
+	if (value == "emit_event") {
+		out = RuntimeGameplayAsciiSourcePlanInteractionEffectKind::EmitEvent;
+		return true;
+	}
+	if (value == "pickup_item") {
+		out = RuntimeGameplayAsciiSourcePlanInteractionEffectKind::PickupItem;
 		return true;
 	}
 	return false;
@@ -1054,6 +1111,18 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			context = { table, true, result.plan.regions.size() - 1 };
 			continue;
 		}
+		if (line == "[[interaction_targets]]") {
+			result.plan.authoredInteractionTargets.push_back({});
+			result.sourceLocations.interactionTargetTableLines.push_back(
+				lineNumber);
+			table = Table::InteractionTargets;
+			context = {
+				table,
+				true,
+				result.plan.authoredInteractionTargets.size() - 1,
+			};
+			continue;
+		}
 		if (line == "[[frame_controls]]") {
 			result.plan.authoredControls.push_back({});
 			result.plan.authoredControls.back().hasDeclarationIndex = true;
@@ -1372,6 +1441,106 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 				}
 			} else {
 				AddUnsupported(result, lineNumber, "unsupported regions key: " + key, context, key);
+			}
+			continue;
+		}
+
+		if (table == Table::InteractionTargets) {
+			RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget &target =
+				result.plan.authoredInteractionTargets.back();
+			if (key == "target_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					target.targetId = ResourceId(parsed);
+				}
+			} else if (key == "kind") {
+				std::string parsed;
+				RuntimeGameplayAsciiSourcePlanInteractionTargetKind kind =
+					RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Unknown;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else if (!ParseInteractionTargetKind(parsed, kind)) {
+					AddUnknownEnum(result, lineNumber, key, parsed, context);
+				} else {
+					target.kind = kind;
+				}
+			} else if (key == "tile") {
+				const InlineShapeStatus status =
+					ParseLocalTile(value, target.localTile);
+				AddInlineShapeIssue(result, lineNumber, key, status, context);
+			} else if (key == "position") {
+				const InlineShapeStatus status =
+					ParseLocalPosition(value, target.localPosition);
+				AddInlineShapeIssue(result, lineNumber, key, status, context);
+			} else if (key == "radius") {
+				double parsed = 0.0;
+				if (!ParseDouble(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					target.radius = parsed;
+				}
+			} else if (key == "enabled") {
+				bool parsed = false;
+				if (!ParseBool(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					target.enabled = parsed;
+				}
+			} else if (key == "effect") {
+				std::string parsed;
+				RuntimeGameplayAsciiSourcePlanInteractionEffectKind effect =
+					RuntimeGameplayAsciiSourcePlanInteractionEffectKind::Unknown;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else if (!ParseInteractionEffectKind(parsed, effect)) {
+					AddUnknownEnum(result, lineNumber, key, parsed, context);
+				} else {
+					target.effect = effect;
+				}
+			} else if (key == "effect_target_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					target.effectTargetId = ResourceId(parsed);
+				}
+			} else if (key == "event_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					target.eventId = ResourceId(parsed);
+				}
+			} else if (key == "drop_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					target.dropId = ResourceId(parsed);
+				}
+			} else if (key == "text") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					target.text = parsed;
+				}
+			} else if (key == "enabled_value") {
+				bool parsed = false;
+				if (!ParseBool(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					target.enabledValue = parsed;
+				}
+			} else {
+				AddUnsupported(
+					result,
+					lineNumber,
+					"unsupported interaction_targets key: " + key,
+					context,
+					key);
 			}
 			continue;
 		}
