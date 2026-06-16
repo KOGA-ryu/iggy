@@ -4,10 +4,14 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include "runtime/RuntimeGameplayAsciiSourcePlanProfileScenarioConverter.hpp"
+#include "runtime/RuntimeGameplayProfileScenarioRunner.hpp"
 #include "runtime/RuntimeGameplayProfileScenarioValidator.hpp"
 #include "runtime/RuntimeGameplayScenarioAuthoringAdapter.hpp"
+#include "scene/debug/SceneAsciiCanvas2D.hpp"
+#include "scene/level/TileCoord.hpp"
 #include "support/LevelMapFixtures.hpp"
 
 #ifndef IGGY_TEST_FIXTURE_DIR
@@ -115,6 +119,48 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig Con
 	config.defaultFrame = DefaultFrame();
 	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
 	return config;
+}
+
+char GlyphForActor(
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlan &plan,
+	const iggy::ResourceId &npcId)
+{
+	for (const iggy::runtime::RuntimeGameplayAsciiSourcePlanAnnotatedCell &cell :
+		plan.annotatedCells) {
+		if (cell.markerId == npcId)
+			return cell.glyph;
+	}
+	return 'N';
+}
+
+std::vector<std::string> FinalDebugRows(
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlan &plan,
+	const iggy::runtime::RuntimeGameplayState &state)
+{
+	iggy::SceneAsciiCanvas2D canvas =
+		iggy::makeSceneAsciiCanvas2D(plan.grid.width, plan.grid.height, ' ');
+
+	for (std::size_t row = 0; row < plan.grid.rows.size(); ++row) {
+		const std::string &text = plan.grid.rows[row];
+		for (std::size_t column = 0; column < text.size(); ++column) {
+			canvas = iggy::setSceneAsciiCanvas2DPoint(canvas, column, row, text[column]).canvas;
+		}
+	}
+
+	for (const iggy::NpcActorState2D &actor : state.npcActors.actors) {
+		if (!actor.present)
+			continue;
+		const iggy::TileCoord tile = iggy::tileForPoint(actor.position);
+		if (tile.x < 0 || tile.y < 0)
+			continue;
+		canvas = iggy::setSceneAsciiCanvas2DPoint(
+			canvas,
+			static_cast<std::size_t>(tile.x),
+			static_cast<std::size_t>(tile.y),
+			GlyphForActor(plan, actor.npcId)).canvas;
+	}
+
+	return iggy::renderSceneAsciiCanvas2DRows(canvas);
 }
 
 std::string ValidToml()
@@ -345,6 +391,46 @@ void TestValidFixtureFeedsAuthoringAdapterThroughParsedSourcePlan()
 	Expect(adapter.config.hasAsciiSourcePlanProfileScenarioConfig, "authoring adapter should preserve explicit conversion config");
 }
 
+void TestValidFixtureRunsScenarioAndRendersFinalDebugRows()
+{
+	const std::filesystem::path path = FixturePath("valid_guard_room.toml");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult read =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(path);
+	iggy::runtime::RuntimeGameplayScenarioAuthoringPacket packet;
+	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
+	packet.hasAsciiSourcePlan = true;
+	packet.asciiSourcePlan = read.text.plan;
+	iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig adapterConfig;
+	adapterConfig.hasAsciiSourcePlanProfileScenarioConfig = true;
+	adapterConfig.asciiSourcePlanProfileScenario = ConverterConfig();
+
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
+		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(
+			packet,
+			adapterConfig);
+	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
+		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
+	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
+	const std::vector<std::string> expected {
+		"#######",
+		"#A...@#",
+		"#.....#",
+		"#######",
+	};
+
+	Expect(read.ok(), "vertical path should read checked-in TOML fixture");
+	Expect(adapter.ok(), "vertical path should adapt parsed source plan to profile scenario");
+	Expect(run.ran(), "vertical path should run converted profile scenario");
+	Expect(run.frameCount == 1, "vertical path should execute one scenario frame");
+	Expect(run.state.npcActors.actors.size() == 1, "vertical path should preserve final NPC actor");
+	if (!run.state.npcActors.actors.empty()) {
+		const iggy::NpcActorState2D &actor = run.state.npcActors.actors.front();
+		Expect(actor.npcId == Id("npc:guard"), "vertical path final actor should preserve id");
+		Expect(actor.position.x == 1.5F && actor.position.y == 1.5F, "vertical path default controls should not move actor");
+	}
+	Expect(rows == expected, "vertical path should render final ASCII debug rows");
+}
+
 } // namespace
 
 int main()
@@ -359,6 +445,7 @@ int main()
 	TestSemanticInvalidFixturePreservesNestedSourceValidation();
 	TestValidFixtureConvertsToValidatedProfileScenario();
 	TestValidFixtureFeedsAuthoringAdapterThroughParsedSourcePlan();
+	TestValidFixtureRunsScenarioAndRendersFinalDebugRows();
 
 	CleanupTempRoot();
 
