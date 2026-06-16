@@ -19,6 +19,7 @@ enum class Table {
 	Legend,
 	Cells,
 	Regions,
+	FrameControls,
 };
 
 enum class InlineShapeStatus {
@@ -50,6 +51,8 @@ std::string TableName(Table table)
 		return "cells";
 	case Table::Regions:
 		return "regions";
+	case Table::FrameControls:
+		return "frame_controls";
 	}
 	return {};
 }
@@ -351,6 +354,48 @@ bool ParseMarkerKind(
 	}
 	if (value == "unknown") {
 		out = RuntimeGameplayAsciiScenarioMarkerKind::Unknown;
+		return true;
+	}
+	return false;
+}
+
+bool ParseControlBehavior(
+	const std::string &value,
+	RuntimeGameplayAsciiSourcePlanControlBehavior &out)
+{
+	if (value == "waiting") {
+		out = RuntimeGameplayAsciiSourcePlanControlBehavior::Waiting;
+		return true;
+	}
+	if (value == "seeking") {
+		out = RuntimeGameplayAsciiSourcePlanControlBehavior::Seeking;
+		return true;
+	}
+	return false;
+}
+
+bool ParseControlMoveMode(
+	const std::string &value,
+	RuntimeGameplayAsciiSourcePlanControlMoveMode &out)
+{
+	if (value == "still") {
+		out = RuntimeGameplayAsciiSourcePlanControlMoveMode::Still;
+		return true;
+	}
+	if (value == "walk") {
+		out = RuntimeGameplayAsciiSourcePlanControlMoveMode::Walk;
+		return true;
+	}
+	if (value == "jog") {
+		out = RuntimeGameplayAsciiSourcePlanControlMoveMode::Jog;
+		return true;
+	}
+	if (value == "run") {
+		out = RuntimeGameplayAsciiSourcePlanControlMoveMode::Run;
+		return true;
+	}
+	if (value == "sprint") {
+		out = RuntimeGameplayAsciiSourcePlanControlMoveMode::Sprint;
 		return true;
 	}
 	return false;
@@ -781,24 +826,36 @@ RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
 		issue.hasTableIndex = true;
 		issue.tableIndex = sourceIssue.index;
 		issue.key = "npc";
+		if (sourceIssue.index < locations.frameControlTableLines.size()) {
+			issue.line = locations.frameControlTableLines[sourceIssue.index];
+		}
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlUnsupportedBehavior:
 		issue.table = "frame_controls";
 		issue.hasTableIndex = true;
 		issue.tableIndex = sourceIssue.index;
 		issue.key = "behavior";
+		if (sourceIssue.index < locations.frameControlTableLines.size()) {
+			issue.line = locations.frameControlTableLines[sourceIssue.index];
+		}
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlUnsupportedMoveMode:
 		issue.table = "frame_controls";
 		issue.hasTableIndex = true;
 		issue.tableIndex = sourceIssue.index;
 		issue.key = "move_mode";
+		if (sourceIssue.index < locations.frameControlTableLines.size()) {
+			issue.line = locations.frameControlTableLines[sourceIssue.index];
+		}
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlMissingTarget:
 		issue.table = "frame_controls";
 		issue.hasTableIndex = true;
 		issue.tableIndex = sourceIssue.index;
 		issue.key = "target";
+		if (sourceIssue.index < locations.frameControlTableLines.size()) {
+			issue.line = locations.frameControlTableLines[sourceIssue.index];
+		}
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::EmptyRows:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::GridDimensionMismatch:
@@ -913,6 +970,13 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			result.sourceLocations.regionTableLines.push_back(lineNumber);
 			table = Table::Regions;
 			context = { table, true, result.plan.regions.size() - 1 };
+			continue;
+		}
+		if (line == "[[frame_controls]]") {
+			result.plan.authoredControls.push_back({});
+			result.sourceLocations.frameControlTableLines.push_back(lineNumber);
+			table = Table::FrameControls;
+			context = { table, true, result.plan.authoredControls.size() - 1 };
 			continue;
 		}
 		if (!line.empty() && line.front() == '[') {
@@ -1208,6 +1272,56 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 				}
 			} else {
 				AddUnsupported(result, lineNumber, "unsupported regions key: " + key, context, key);
+			}
+			continue;
+		}
+
+		if (table == Table::FrameControls) {
+			RuntimeGameplayAsciiSourcePlanAuthoredControl &control =
+				result.plan.authoredControls.back();
+			if (key == "frame_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					control.hasFrameId = true;
+					control.frameId = ResourceId(parsed);
+				}
+			} else if (key == "npc") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					control.npcId = ResourceId(parsed);
+				}
+			} else if (key == "behavior") {
+				std::string parsed;
+				RuntimeGameplayAsciiSourcePlanControlBehavior behavior =
+					RuntimeGameplayAsciiSourcePlanControlBehavior::Unknown;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else if (!ParseControlBehavior(parsed, behavior)) {
+					AddUnknownEnum(result, lineNumber, key, parsed, context);
+				} else {
+					control.behavior = behavior;
+				}
+			} else if (key == "move_mode") {
+				std::string parsed;
+				RuntimeGameplayAsciiSourcePlanControlMoveMode moveMode =
+					RuntimeGameplayAsciiSourcePlanControlMoveMode::Unknown;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else if (!ParseControlMoveMode(parsed, moveMode)) {
+					AddUnknownEnum(result, lineNumber, key, parsed, context);
+				} else {
+					control.moveMode = moveMode;
+				}
+			} else if (key == "target") {
+				const InlineShapeStatus status =
+					ParseLocalPosition(value, control.targetPosition);
+				AddInlineShapeIssue(result, lineNumber, key, status, context);
+			} else {
+				AddUnsupported(result, lineNumber, "unsupported frame_controls key: " + key, context, key);
 			}
 			continue;
 		}

@@ -241,6 +241,19 @@ role_tags = ["tag:room"]
 )toml";
 }
 
+std::string RootGridLegendCellsRegionsControlToml()
+{
+	return RootGridLegendCellsRegionsToml() + R"toml(
+
+[[frame_controls]]
+frame_id = "frame:one"
+npc = "npc:guard"
+behavior = "seeking"
+move_mode = "walk"
+target = { x = 2.5, y = 1.5 }
+)toml";
+}
+
 void TestEmptyInputFailsDeterministically()
 {
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result = Read("");
@@ -654,6 +667,86 @@ void TestUnsupportedRegionKeyReportsContext()
 	}
 }
 
+void TestFrameControlsParse()
+{
+	const std::string text = RootGridLegendCellsRegionsControlToml();
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(result.ok(), "valid frame control TOML should parse");
+	Expect(result.plan.authoredControls.size() == 1, "one frame control should parse");
+	Expect(result.sourceLocations.frameControlTableLines.size() == 1, "frame control source location should be captured");
+	Expect(result.sourceLocations.frameControlTableLines[0] == LineOfNth(text, "[[frame_controls]]"), "frame control source location should preserve table line");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredControl &control =
+		result.plan.authoredControls[0];
+	Expect(control.hasFrameId && control.frameId == Id("frame:one"), "frame control should parse optional frame id");
+	Expect(control.npcId == Id("npc:guard"), "frame control should parse exact npc id");
+	Expect(control.behavior == iggy::runtime::RuntimeGameplayAsciiSourcePlanControlBehavior::Seeking, "frame control should parse seeking behavior");
+	Expect(control.moveMode == iggy::runtime::RuntimeGameplayAsciiSourcePlanControlMoveMode::Walk, "frame control should parse walk move mode");
+	Expect(control.targetPosition.present && control.targetPosition.x == 2.5 && control.targetPosition.y == 1.5, "frame control should parse target inline table");
+}
+
+void TestFrameControlInvalidFieldsReportContext()
+{
+	std::string text = RootGridLegendCellsRegionsControlToml();
+	const std::size_t start = text.find("move_mode = \"walk\"");
+	text.replace(start, std::string("move_mode = \"walk\"").size(), "move_mode = \"teleport\"");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "unknown frame control move mode should fail");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::TypeInvalid, "unknown frame control move mode should report type invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::UnknownEnumValue, "move_mode");
+	Expect(issue != nullptr, "unknown frame control move mode issue should be findable");
+	if (issue != nullptr) {
+		Expect(issue->table == "frame_controls", "unknown frame control move mode should report frame_controls table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "unknown frame control move mode should report first table index");
+		Expect(issue->detail == "teleport", "unknown frame control move mode should preserve raw value");
+	}
+}
+
+void TestFrameControlMissingTargetSurfacesSourcePlanValidation()
+{
+	std::string text = RootGridLegendCellsRegionsControlToml();
+	const std::size_t start = text.find("target = { x = 2.5, y = 1.5 }\n");
+	text.erase(start, std::string("target = { x = 2.5, y = 1.5 }\n").size());
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "seeking frame control without target should fail source validation");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "seeking frame control without target should report source invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlMissingTarget);
+	Expect(issue != nullptr, "seeking frame control without target should mirror source issue");
+	if (issue != nullptr) {
+		Expect(issue->line == LineOfNth(text, "[[frame_controls]]"), "mirrored frame control target issue should report table line");
+		Expect(issue->table == "frame_controls", "mirrored frame control target issue should report frame_controls table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "mirrored frame control target issue should report first control index");
+		Expect(issue->key == "target", "mirrored frame control target issue should report target key");
+		Expect(issue->sourceIssue.id == Id("npc:guard"), "mirrored frame control target issue should copy npc id");
+	}
+}
+
+void TestFrameControlUnsupportedTargetShapeReportsContext()
+{
+	std::string text = RootGridLegendCellsRegionsControlToml();
+	const std::size_t start = text.find("target = { x = 2.5, y = 1.5 }");
+	text.replace(start, std::string("target = { x = 2.5, y = 1.5 }").size(), "target = { x = 2.5, z = 1.5 }");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "unsupported frame control target shape should fail");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::UnsupportedSyntax, "unsupported frame control target shape should report unsupported");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::UnsupportedNestedShape, "target");
+	Expect(issue != nullptr, "unsupported frame control target shape issue should be findable");
+	if (issue != nullptr) {
+		Expect(issue->table == "frame_controls", "unsupported frame control target shape should report frame_controls table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "unsupported frame control target shape should report first table index");
+	}
+}
+
 void TestTomlSourcePlanFeedsConverterAndProfileValidator()
 {
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
@@ -718,6 +811,10 @@ int main()
 	TestUnsupportedInlineCellShapeFailsAsUnsupported();
 	TestInvalidRegionBoundsSurfaceSourcePlanValidation();
 	TestUnsupportedRegionKeyReportsContext();
+	TestFrameControlsParse();
+	TestFrameControlInvalidFieldsReportContext();
+	TestFrameControlMissingTargetSurfacesSourcePlanValidation();
+	TestFrameControlUnsupportedTargetShapeReportsContext();
 	TestTomlSourcePlanFeedsConverterAndProfileValidator();
 	return Failures;
 }
