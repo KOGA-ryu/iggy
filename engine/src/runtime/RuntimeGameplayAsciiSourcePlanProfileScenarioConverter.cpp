@@ -576,6 +576,7 @@ PlayerInputIntent2D PlayerIntentFromAuthoredCommand(
 	case RuntimeGameplayAsciiSourcePlanPlayerCommandKind::MoveToTile:
 		return playerMoveToTileIntent(command.targetTile);
 	case RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Interact:
+	case RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Pickup:
 		return playerInteractIntent(command.targetId);
 	case RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Unknown:
 		return {};

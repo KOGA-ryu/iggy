@@ -70,6 +70,7 @@ enum class RuntimeGameplayAsciiSourcePlanPlayerCommandKind {
 	Unknown,
 	MoveToTile,
 	Interact,
+	Pickup,
 };
 
 enum class RuntimeGameplayAsciiSourcePlanInteractionTargetKind {

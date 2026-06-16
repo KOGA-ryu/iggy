@@ -424,6 +424,10 @@ bool ParsePlayerCommandKind(
 		out = RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Interact;
 		return true;
 	}
+	if (value == "pickup") {
+		out = RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Pickup;
+		return true;
+	}
 	return false;
 }
 

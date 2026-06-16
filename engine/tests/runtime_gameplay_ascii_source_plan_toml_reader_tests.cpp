@@ -277,6 +277,17 @@ target_id = "target:door"
 )toml";
 }
 
+std::string RootGridLegendCellsRegionsPlayerPickupCommandToml()
+{
+	return RootGridLegendCellsRegionsToml() + R"toml(
+
+[[frame_player_commands]]
+frame_id = "frame:pickup"
+command = "pickup"
+target_id = "target:pickup"
+)toml";
+}
+
 std::string RootGridLegendCellsRegionsInteractionTargetToml()
 {
 	return RootGridLegendCellsRegionsToml() + R"toml(
@@ -1003,6 +1014,22 @@ void TestFramePlayerInteractCommandParses()
 	Expect(command.hasDeclarationIndex && command.declarationIndex == 0, "frame player interact command should preserve authored declaration order");
 }
 
+void TestFramePlayerPickupCommandParses()
+{
+	const std::string text = RootGridLegendCellsRegionsPlayerPickupCommandToml();
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(result.ok(), "valid frame player pickup command TOML should parse");
+	Expect(result.plan.authoredPlayerCommands.size() == 1, "one frame player pickup command should parse");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand
+		&command = result.plan.authoredPlayerCommands[0];
+	Expect(command.hasFrameId && command.frameId == Id("frame:pickup"), "frame player pickup command should parse optional frame id");
+	Expect(command.command == iggy::runtime::RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Pickup, "frame player command should parse pickup command");
+	Expect(command.targetId == Id("target:pickup"), "frame player pickup command should parse exact target id");
+	Expect(command.hasDeclarationIndex && command.declarationIndex == 0, "frame player pickup command should preserve authored declaration order");
+}
+
 void TestFramePlayerCommandInvalidFieldsReportContext()
 {
 	std::string text = RootGridLegendCellsRegionsPlayerCommandToml();
@@ -1085,6 +1112,27 @@ void TestFramePlayerInteractCommandMissingTargetSurfacesSourcePlanValidation()
 		Expect(issue->table == "frame_player_commands", "mirrored frame player interact target issue should report frame_player_commands table");
 		Expect(issue->hasTableIndex && issue->tableIndex == 0, "mirrored frame player interact target issue should report first player command index");
 		Expect(issue->key == "target", "mirrored frame player interact target issue should report target key");
+	}
+}
+
+void TestFramePlayerPickupCommandMissingTargetSurfacesSourcePlanValidation()
+{
+	std::string text = RootGridLegendCellsRegionsPlayerPickupCommandToml();
+	const std::size_t start = text.find("target_id = \"target:pickup\"\n");
+	text.erase(start, std::string("target_id = \"target:pickup\"\n").size());
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "pickup frame player command without target should fail source validation");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "pickup frame player command without target should report source invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandMissingTarget);
+	Expect(issue != nullptr, "pickup frame player command without target should mirror source issue");
+	if (issue != nullptr) {
+		Expect(issue->line == LineOfNth(text, "[[frame_player_commands]]"), "mirrored frame player pickup target issue should report table line");
+		Expect(issue->table == "frame_player_commands", "mirrored frame player pickup target issue should report frame_player_commands table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "mirrored frame player pickup target issue should report first player command index");
+		Expect(issue->key == "target", "mirrored frame player pickup target issue should report target key");
 	}
 }
 
@@ -1191,10 +1239,12 @@ int main()
 	TestItemDropUnsupportedTileShapeReportsContext();
 	TestFramePlayerCommandsParse();
 	TestFramePlayerInteractCommandParses();
+	TestFramePlayerPickupCommandParses();
 	TestFramePlayerCommandInvalidFieldsReportContext();
 	TestFramePlayerCommandWrongTypedTargetReportsContext();
 	TestFramePlayerCommandMissingTargetSurfacesSourcePlanValidation();
 	TestFramePlayerInteractCommandMissingTargetSurfacesSourcePlanValidation();
+	TestFramePlayerPickupCommandMissingTargetSurfacesSourcePlanValidation();
 	TestFrameAuthoredDeclarationOrderSpansControlsAndPlayerCommands();
 	TestTomlSourcePlanFeedsConverterAndProfileValidator();
 	return Failures;

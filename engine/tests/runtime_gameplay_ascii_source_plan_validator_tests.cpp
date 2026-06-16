@@ -125,6 +125,21 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand InteractComma
 	return command;
 }
 
+iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand PickupCommand(
+	const char *targetId,
+	const char *frameId = nullptr)
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand command;
+	if (frameId != nullptr) {
+		command.hasFrameId = true;
+		command.frameId = Id(frameId);
+	}
+	command.command =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Pickup;
+	command.targetId = Id(targetId);
+	return command;
+}
+
 iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget InteractionTarget(
 	const char *targetId,
 	int x = 2,
@@ -389,18 +404,21 @@ void TestValidAuthoredPlayerCommandPasses()
 	plan.authoredPlayerCommands = {
 		MoveToTileCommand(3, 1, "frame:player-move"),
 		InteractCommand("target:door", "frame:interact"),
+		PickupCommand("target:pickup", "frame:pickup"),
 	};
 
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
 		Validate(plan);
 
 	Expect(result.ok(), "valid authored player command should validate");
-	Expect(result.authoredPlayerCommandCount == 2, "valid authored player commands should be counted");
+	Expect(result.authoredPlayerCommandCount == 3, "valid authored player commands should be counted");
 	Expect(result.authoredPlayerCommandIssueCount == 0, "valid authored player command should have no issues");
 	Expect(result.plan.authoredPlayerCommands[0].frameId == Id("frame:player-move"), "validator should preserve authored player command frame id");
 	Expect(result.plan.authoredPlayerCommands[0].targetTile.x == 3 && result.plan.authoredPlayerCommands[0].targetTile.y == 1, "validator should preserve authored player command target tile");
 	Expect(result.plan.authoredPlayerCommands[1].command == iggy::runtime::RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Interact, "validator should preserve authored interact command kind");
 	Expect(result.plan.authoredPlayerCommands[1].targetId == Id("target:door"), "validator should preserve authored interact command target id");
+	Expect(result.plan.authoredPlayerCommands[2].command == iggy::runtime::RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Pickup, "validator should preserve authored pickup command kind");
+	Expect(result.plan.authoredPlayerCommands[2].targetId == Id("target:pickup"), "validator should preserve authored pickup target id");
 }
 
 void TestValidAuthoredItemDropPasses()
@@ -489,21 +507,26 @@ void TestAuthoredPlayerCommandIssuesFailInDeclarationOrder()
 	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand missingInteractionTarget;
 	missingInteractionTarget.command =
 		iggy::runtime::RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Interact;
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand missingPickupTarget;
+	missingPickupTarget.command =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Pickup;
 	plan.authoredPlayerCommands = {
 		unknown,
 		missingTarget,
 		missingInteractionTarget,
+		missingPickupTarget,
 	};
 
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
 		Validate(plan);
 
 	Expect(!result.ok(), "invalid authored player commands should fail validation");
-	Expect(result.authoredPlayerCommandCount == 3, "authored player command count should preserve declarations");
-	Expect(result.authoredPlayerCommandIssueCount == 3, "authored player command issues should be counted");
-	Expect(result.issues[result.issues.size() - 3].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandUnsupportedCommand, "first authored player command issue should be unsupported command");
-	Expect(result.issues[result.issues.size() - 2].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandMissingTarget, "second authored player command issue should be missing move target");
-	Expect(result.issues[result.issues.size() - 1].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandMissingTarget, "third authored player command issue should be missing interact target");
+	Expect(result.authoredPlayerCommandCount == 4, "authored player command count should preserve declarations");
+	Expect(result.authoredPlayerCommandIssueCount == 4, "authored player command issues should be counted");
+	Expect(result.issues[result.issues.size() - 4].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandUnsupportedCommand, "first authored player command issue should be unsupported command");
+	Expect(result.issues[result.issues.size() - 3].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandMissingTarget, "second authored player command issue should be missing move target");
+	Expect(result.issues[result.issues.size() - 2].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandMissingTarget, "third authored player command issue should be missing interact target");
+	Expect(result.issues[result.issues.size() - 1].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandMissingTarget, "fourth authored player command issue should be missing pickup target");
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue *targetIssue =
 		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandMissingTarget);
 	Expect(targetIssue != nullptr && targetIssue->index == 1, "missing player command target issue should preserve command index");

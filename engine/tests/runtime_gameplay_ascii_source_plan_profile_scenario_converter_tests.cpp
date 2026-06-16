@@ -159,6 +159,20 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand InteractWithT
 	return command;
 }
 
+iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand PickupTarget(
+	const char *targetId,
+	const char *frameId = nullptr)
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand command;
+	command.hasFrameId = frameId != nullptr;
+	if (frameId != nullptr)
+		command.frameId = Id(frameId);
+	command.command =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Pickup;
+	command.targetId = Id(targetId);
+	return command;
+}
+
 iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget InteractionTarget(
 	const char *targetId = "target:door")
 {
@@ -731,6 +745,42 @@ void TestAuthoredPlayerInteractCommandCreatesInteractIntent()
 	}
 }
 
+void TestAuthoredPlayerPickupCommandCreatesInteractIntent()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget target =
+		InteractionTarget("target:pickup");
+	target.kind = iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Pickup;
+	target.effect =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionEffectKind::PickupItem;
+	target.dropId = Id("drop:key");
+	plan.authoredInteractionTargets = { target };
+	plan.authoredItemDrops = {
+		ItemDrop("drop:key", "item:key", 2, 1),
+	};
+	plan.authoredPlayerCommands = {
+		PickupTarget("target:pickup", "frame:pickup"),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "authored player pickup command should convert");
+	Expect(result.definition.frames.size() == 1, "authored player pickup command should create one frame");
+	Expect(result.promotedItemDropCount == 1, "pickup command scenario should promote the referenced drop");
+	if (!result.definition.frames.empty()) {
+		Expect(result.definition.frames[0].hasFrameId && result.definition.frames[0].frameId == Id("frame:pickup"), "pickup frame should preserve frame id");
+		Expect(result.definition.frames[0].playerFrame.playerIntents.size() == 1, "pickup frame should carry one player intent");
+		const iggy::PlayerInputIntent2D &intent =
+			result.definition.frames[0].playerFrame.playerIntents[0];
+		Expect(intent.type == iggy::PlayerInputIntent2DType::Interact, "authored pickup command should reuse interact intent");
+		Expect(intent.targetId == Id("target:pickup"), "authored pickup command should preserve pickup interaction target id");
+	}
+}
+
 void TestPlayerOnlyFrameIdCreatesScenarioFrame()
 {
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
@@ -1226,6 +1276,7 @@ int main()
 	TestNoFrameAuthoredPlayerCommandCreatesDefaultFrameIntent();
 	TestSharedFrameIdAuthoredPlayerCommandAndNpcControlShareFrame();
 	TestAuthoredPlayerInteractCommandCreatesInteractIntent();
+	TestAuthoredPlayerPickupCommandCreatesInteractIntent();
 	TestPlayerOnlyFrameIdCreatesScenarioFrame();
 	TestAuthoredFrameGroupsPreserveCrossFamilyDeclarationOrder();
 	TestNoFramePlayerCommandMixedWithFrameIdGroupFails();

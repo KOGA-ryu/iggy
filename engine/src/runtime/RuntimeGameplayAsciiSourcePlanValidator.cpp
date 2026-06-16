@@ -584,7 +584,8 @@ bool PlayerCommandSupported(
 {
 	return command ==
 			RuntimeGameplayAsciiSourcePlanPlayerCommandKind::MoveToTile ||
-		command == RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Interact;
+		command == RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Interact ||
+		command == RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Pickup;
 }
 
 bool PlayerCommandNeedsTargetTile(
@@ -597,7 +598,8 @@ bool PlayerCommandNeedsTargetTile(
 bool PlayerCommandNeedsTargetId(
 	RuntimeGameplayAsciiSourcePlanPlayerCommandKind command)
 {
-	return command == RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Interact;
+	return command == RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Interact ||
+		command == RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Pickup;
 }
 
 void ValidateAuthoredPlayerCommands(
