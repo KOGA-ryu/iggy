@@ -133,10 +133,37 @@ char GlyphForActor(
 	return 'N';
 }
 
+char GlyphForItemDrop(
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlan &plan,
+	const iggy::ResourceId &dropId)
+{
+	for (const iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredItemDrop &drop :
+		plan.authoredItemDrops) {
+		if (drop.dropId == dropId && drop.glyph != '\0')
+			return drop.glyph;
+	}
+	return 'i';
+}
+
+bool IsAuthoredItemDropGlyph(
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlan &plan,
+	char glyph)
+{
+	for (const iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredItemDrop &drop :
+		plan.authoredItemDrops) {
+		if (drop.glyph == glyph && glyph != '\0')
+			return true;
+	}
+	return false;
+}
+
 char BaseDebugGlyphForSource(
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlan &plan,
 	char glyph)
 {
+	if (IsAuthoredItemDropGlyph(plan, glyph))
+		return '.';
+
 	for (const iggy::runtime::RuntimeGameplayAsciiSourcePlanGlyphLegendEntry &entry :
 		plan.legend) {
 		if (entry.glyph != glyph)
@@ -182,6 +209,19 @@ std::vector<std::string> FinalDebugRows(
 			static_cast<std::size_t>(tile.x),
 			static_cast<std::size_t>(tile.y),
 			GlyphForActor(plan, actor.npcId)).canvas;
+	}
+
+	for (const iggy::LevelItemDrop2D &drop : state.inventory.drops.drops) {
+		if (!drop.enabled)
+			continue;
+		const iggy::TileCoord tile = iggy::tileForPoint(drop.position);
+		if (tile.x < 0 || tile.y < 0)
+			continue;
+		canvas = iggy::setSceneAsciiCanvas2DPoint(
+			canvas,
+			static_cast<std::size_t>(tile.x),
+			static_cast<std::size_t>(tile.y),
+			GlyphForItemDrop(plan, drop.id)).canvas;
 	}
 
 	if (state.session.hasPlayer) {
@@ -729,6 +769,99 @@ void TestPlayerInteractionFixtureRunsScenarioAndTogglesTarget()
 	Expect(rows == expected, "player interaction fixture should render final ASCII debug rows");
 }
 
+void TestPlayerPickupFixtureRunsScenarioAndPicksUpItem()
+{
+	const std::filesystem::path path = FixturePath("player_picks_up_item_room.toml");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult read =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(path);
+	iggy::runtime::RuntimeGameplayScenarioAuthoringPacket packet;
+	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
+	packet.hasAsciiSourcePlan = true;
+	packet.asciiSourcePlan = read.text.plan;
+	iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig adapterConfig;
+	adapterConfig.hasAsciiSourcePlanProfileScenarioConfig = true;
+	adapterConfig.asciiSourcePlanProfileScenario = ConverterConfig();
+
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
+		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(
+			packet,
+			adapterConfig);
+	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
+		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
+	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
+	const std::vector<std::string> expected {
+		"#######",
+		"#A.@..#",
+		"#.....#",
+		"#######",
+	};
+
+	Expect(read.ok(), "player pickup fixture should read checked-in TOML fixture");
+	Expect(read.text.plan.sourceId == Id("scenario:player-picks-up-item-room"), "player pickup fixture should preserve source id");
+	Expect(read.text.plan.authoredItemDropCount() == 1, "player pickup fixture should parse one authored item drop");
+	Expect(read.text.plan.authoredInteractionTargetCount() == 1, "player pickup fixture should parse one pickup interaction target");
+	Expect(read.text.plan.authoredPlayerCommandCount() == 2, "player pickup fixture should parse move and pickup player commands");
+	Expect(adapter.ok(), "player pickup fixture should adapt parsed source plan");
+	Expect(adapter.asciiSourcePlanConversion.ok(), "player pickup fixture conversion should succeed");
+	Expect(adapter.asciiSourcePlanConversion.promotedItemDropCount == 1, "player pickup conversion should promote one item drop");
+	Expect(adapter.asciiSourcePlanConversion.promotedInteractionTargetCount == 1, "player pickup conversion should promote one pickup target");
+	Expect(adapter.asciiSourcePlanConversion.promotedInteractionEffectEntryCount == 1, "player pickup conversion should promote one pickup effect");
+	Expect(adapter.asciiSourcePlanConversion.authoredPlayerCommandCount == 2, "player pickup conversion should consume both authored player commands");
+	Expect(adapter.profileScenario.initialState.session.hasPlayer, "player pickup conversion should promote player start");
+	Expect(adapter.profileScenario.initialState.inventory.drops.find(Id("drop:key")) != nullptr, "player pickup conversion should publish item drop");
+	Expect(adapter.profileScenario.initialState.interaction.targets.find(Id("target:key")) != nullptr, "player pickup conversion should publish pickup target");
+	Expect(adapter.profileScenario.frames.size() == 2, "player pickup conversion should publish two profile frames");
+	if (adapter.profileScenario.frames.size() == 2) {
+		const iggy::runtime::RuntimeGameplayProfileScenarioFrameDefinition &moveFrame =
+			adapter.profileScenario.frames[0];
+		const iggy::runtime::RuntimeGameplayProfileScenarioFrameDefinition &pickupFrame =
+			adapter.profileScenario.frames[1];
+		Expect(moveFrame.hasFrameId && moveFrame.frameId == Id("frame:move-to-key"), "player pickup move frame should preserve frame id");
+		Expect(pickupFrame.hasFrameId && pickupFrame.frameId == Id("frame:pickup-key"), "player pickup pickup frame should preserve frame id");
+		Expect(moveFrame.playerFrame.playerIntents.size() == 1, "player pickup move frame should carry one intent");
+		Expect(pickupFrame.playerFrame.playerIntents.size() == 1, "player pickup pickup frame should carry one intent");
+		if (!moveFrame.playerFrame.playerIntents.empty()) {
+			const iggy::PlayerInputIntent2D &intent =
+				moveFrame.playerFrame.playerIntents[0];
+			Expect(intent.type == iggy::PlayerInputIntent2DType::MoveToTile, "player pickup first command should become move-to-tile intent");
+			Expect(intent.tile.x == 3 && intent.tile.y == 1, "player pickup first command should preserve target tile");
+		}
+		if (!pickupFrame.playerFrame.playerIntents.empty()) {
+			const iggy::PlayerInputIntent2D &intent =
+				pickupFrame.playerFrame.playerIntents[0];
+			Expect(intent.type == iggy::PlayerInputIntent2DType::Interact, "player pickup command should reuse interact intent");
+			Expect(intent.targetId == Id("target:key"), "player pickup command should preserve pickup target id");
+		}
+	}
+	Expect(run.ran(), "player pickup fixture should run converted profile scenario");
+	Expect(run.frameCount == 2, "player pickup fixture should execute move and pickup frames");
+	Expect(run.scenario.runner.acceptedCommandCount == 2, "player pickup fixture should accept both authored player commands");
+	Expect(run.scenario.runner.pickedUpCount == 1, "player pickup fixture should record one pickup");
+	Expect(run.scenario.runner.inventoryChanged, "player pickup fixture should mark inventory changed");
+	Expect(run.inventoryEventCount == 3, "player pickup fixture should record add, consume, and picked-up inventory events");
+	Expect(run.state.session.hasPlayer, "player pickup final state should preserve player");
+	Expect(run.state.session.player.position.x == 3.5F && run.state.session.player.position.y == 1.5F, "player pickup final state should keep player at moved tile");
+	const iggy::InventoryItemStack2D *stack =
+		run.state.inventory.inventory.find(Id("item:key"));
+	Expect(stack != nullptr, "player pickup final inventory should contain picked item");
+	if (stack != nullptr) {
+		Expect(stack->count == 1, "player pickup final inventory should preserve picked count");
+	}
+	const iggy::LevelItemDrop2D *drop =
+		run.state.inventory.drops.find(Id("drop:key"));
+	Expect(drop != nullptr, "player pickup final drops should preserve consumed drop record");
+	if (drop != nullptr) {
+		Expect(!drop->enabled, "player pickup final drop should be disabled after pickup");
+	}
+	Expect(run.state.npcActors.actors.size() == 1, "player pickup fixture should preserve final NPC actor");
+	if (!run.state.npcActors.actors.empty()) {
+		const iggy::NpcActorState2D &actor = run.state.npcActors.actors.front();
+		Expect(actor.npcId == Id("npc:guard"), "player pickup final actor should preserve id");
+		Expect(actor.position.x == 1.5F && actor.position.y == 1.5F, "player pickup fixture should leave guard idle");
+	}
+	Expect(rows == expected, "player pickup fixture should render moved player and consumed item");
+}
+
 } // namespace
 
 int main()
@@ -748,6 +881,7 @@ int main()
 	TestMultiFrameFixtureRunsScenarioAndMovesNpcAcrossFrames();
 	TestPlayerAndGuardFixtureRunsSharedFrameThroughScenario();
 	TestPlayerInteractionFixtureRunsScenarioAndTogglesTarget();
+	TestPlayerPickupFixtureRunsScenarioAndPicksUpItem();
 
 	CleanupTempRoot();
 
