@@ -1,0 +1,52 @@
+#include "runtime/RuntimeGameplayAsciiSourcePlan.hpp"
+
+namespace iggy::runtime {
+
+bool RuntimeGameplayAsciiSourcePlanGrid::hasRows() const
+{
+	return !rows.empty();
+}
+
+std::size_t RuntimeGameplayAsciiSourcePlanGrid::rowCount() const
+{
+	return rows.size();
+}
+
+bool RuntimeGameplayAsciiSourcePlan::hasRows() const
+{
+	return grid.hasRows();
+}
+
+std::size_t RuntimeGameplayAsciiSourcePlan::rowCount() const
+{
+	return grid.rowCount();
+}
+
+std::size_t RuntimeGameplayAsciiSourcePlan::legendCount() const
+{
+	return legend.size();
+}
+
+std::size_t RuntimeGameplayAsciiSourcePlan::annotatedCellCount() const
+{
+	return annotatedCells.size();
+}
+
+std::size_t RuntimeGameplayAsciiSourcePlan::regionCount() const
+{
+	return regions.size();
+}
+
+bool RuntimeGameplayAsciiSourcePlan::safeForAuthoring() const
+{
+	return !noClaims.claimsRuntimeTruth &&
+		!noClaims.claimsGameplayExecution &&
+		!noClaims.claimsFileParsing &&
+		!noClaims.claimsProfileScenarioConversion &&
+		!promotionPolicy.promotionReady &&
+		!promotionPolicy.allowsRuntimeExecution &&
+		!promotionPolicy.allowsFileParsing &&
+		!promotionPolicy.allowsProfileScenarioConversion;
+}
+
+} // namespace iggy::runtime
