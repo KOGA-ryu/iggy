@@ -125,6 +125,32 @@ scenario_marker_kind = "floor"
 )toml";
 }
 
+std::string RootGridLegendCellsRegionsToml()
+{
+	return RootGridLegendToml() + R"toml(
+
+[[cells]]
+id = "cell:guard"
+row = 1
+column = 1
+glyph = "A"
+local_tile = { x = 1, y = 1 }
+local_position = { x = 1.5, y = 1.5 }
+cell_bounds = { min_x = 1.0, min_y = 1.0, max_x = 2.0, max_y = 2.0 }
+role_tags = ["tag:guard", "tag:namespaced"]
+marker_id = "npc:guard"
+profile_id = "profile:guard"
+
+[[regions]]
+id = "region:room"
+min_row = 0
+min_column = 0
+max_row = 3
+max_column = 6
+role_tags = ["tag:room"]
+)toml";
+}
+
 void TestEmptyInputFailsDeterministically()
 {
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result = Read("");
@@ -308,6 +334,94 @@ void TestInvalidLegendGlyphFailsAsTypeInvalid()
 	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::InvalidGlyphString), "invalid legend glyph should report invalid glyph");
 }
 
+void TestCellsAndRegionsParse()
+{
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(RootGridLegendCellsRegionsToml());
+
+	Expect(result.ok(), "valid cells/regions TOML should parse");
+	Expect(result.plan.annotatedCells.size() == 1, "one annotated cell should parse");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanAnnotatedCell &cell =
+		result.plan.annotatedCells[0];
+	Expect(cell.hasCellId && cell.cellId == Id("cell:guard"), "cell id should parse exactly");
+	Expect(cell.row == 1 && cell.column == 1, "cell row/column should parse");
+	Expect(cell.glyph == 'A', "cell glyph should parse");
+	Expect(cell.localTile.present && cell.localTile.x == 1 && cell.localTile.y == 1, "local tile inline table should parse");
+	Expect(cell.localPosition.present && cell.localPosition.x == 1.5 && cell.localPosition.y == 1.5, "local position inline table should parse");
+	Expect(cell.cellBounds.present && cell.cellBounds.minX == 1.0 && cell.cellBounds.maxY == 2.0, "cell bounds inline table should parse");
+	Expect(cell.roleTags.size() == 2 && cell.roleTags[1] == Id("tag:namespaced"), "cell role tags should parse exactly");
+	Expect(cell.markerId == Id("npc:guard"), "cell marker id should parse exactly");
+	Expect(cell.profileId == Id("profile:guard"), "cell profile id should parse exactly");
+
+	Expect(result.plan.regions.size() == 1, "one region should parse");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanRegion &region =
+		result.plan.regions[0];
+	Expect(region.hasRegionId && region.regionId == Id("region:room"), "region id should parse exactly");
+	Expect(region.minRow == 0 && region.minColumn == 0 && region.maxRow == 3 && region.maxColumn == 6, "region bounds should parse");
+	Expect(region.roleTags.size() == 1 && region.roleTags[0] == Id("tag:room"), "region role tags should parse exactly");
+}
+
+void TestCellGlyphMismatchSurfacesSourcePlanValidation()
+{
+	std::string text = RootGridLegendCellsRegionsToml();
+	const std::size_t start = text.find("glyph = \"A\"\nlocal_tile");
+	text.replace(start, std::string("glyph = \"A\"").size(), "glyph = \"@\"");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result = Read(text);
+
+	Expect(!result.ok(), "cell glyph mismatch should fail source validation");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "cell glyph mismatch should report source invalid");
+	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SourcePlanInvalid), "cell glyph mismatch should add source-plan issue");
+	Expect(result.sourcePlanIssueCount > 0, "cell glyph mismatch should preserve nested source issues");
+}
+
+void TestCellOutOfBoundsSurfacesSourcePlanValidation()
+{
+	std::string text = RootGridLegendCellsRegionsToml();
+	const std::size_t start = text.find("column = 1");
+	text.replace(start, std::string("column = 1").size(), "column = 8");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result = Read(text);
+
+	Expect(!result.ok(), "out-of-bounds cell should fail source validation");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "out-of-bounds cell should report source invalid");
+	Expect(result.sourcePlanIssueCount > 0, "out-of-bounds cell should preserve nested source issues");
+}
+
+void TestWrongTypedCellFieldFailsAsTypeInvalid()
+{
+	std::string text = RootGridLegendCellsRegionsToml();
+	const std::size_t start = text.find("row = 1");
+	text.replace(start, std::string("row = 1").size(), "row = \"1\"");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result = Read(text);
+
+	Expect(!result.ok(), "wrong typed cell row should fail");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::TypeInvalid, "wrong typed cell row should report type invalid");
+	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::WrongType), "wrong typed cell row should report wrong type");
+}
+
+void TestUnsupportedInlineCellShapeFailsAsUnsupported()
+{
+	std::string text = RootGridLegendCellsRegionsToml();
+	const std::size_t start = text.find("local_tile = { x = 1, y = 1 }");
+	text.replace(start, std::string("local_tile = { x = 1, y = 1 }").size(), "local_tile = { x = 1, z = 1 }");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result = Read(text);
+
+	Expect(!result.ok(), "unsupported local tile shape should fail");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::UnsupportedSyntax, "unsupported local tile shape should report unsupported");
+	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::UnsupportedNestedShape), "unsupported local tile shape should report unsupported issue");
+}
+
+void TestInvalidRegionBoundsSurfaceSourcePlanValidation()
+{
+	std::string text = RootGridLegendCellsRegionsToml();
+	const std::size_t start = text.find("max_row = 3");
+	text.replace(start, std::string("max_row = 3").size(), "max_row = 5");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result = Read(text);
+
+	Expect(!result.ok(), "out-of-bounds region should fail source validation");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "out-of-bounds region should report source invalid");
+	Expect(result.sourcePlanIssueCount > 0, "out-of-bounds region should preserve nested source issues");
+}
+
 } // namespace
 
 int main()
@@ -325,5 +439,11 @@ int main()
 	TestDuplicateLegendGlyphSurfacesSourcePlanValidation();
 	TestUnknownLegendEnumFailsAsTypeInvalid();
 	TestInvalidLegendGlyphFailsAsTypeInvalid();
+	TestCellsAndRegionsParse();
+	TestCellGlyphMismatchSurfacesSourcePlanValidation();
+	TestCellOutOfBoundsSurfacesSourcePlanValidation();
+	TestWrongTypedCellFieldFailsAsTypeInvalid();
+	TestUnsupportedInlineCellShapeFailsAsUnsupported();
+	TestInvalidRegionBoundsSurfaceSourcePlanValidation();
 	return Failures;
 }

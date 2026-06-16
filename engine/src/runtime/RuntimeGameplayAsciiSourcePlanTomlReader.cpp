@@ -2,7 +2,11 @@
 
 #include <charconv>
 #include <cctype>
+#include <cerrno>
+#include <cstdlib>
+#include <initializer_list>
 #include <string_view>
+#include <utility>
 
 namespace iggy::runtime {
 namespace {
@@ -13,6 +17,14 @@ enum class Table {
 	NoClaims,
 	Promotion,
 	Legend,
+	Cells,
+	Regions,
+};
+
+enum class InlineShapeStatus {
+	Ok,
+	WrongType,
+	Unsupported,
 };
 
 bool IsWhitespaceOnly(const std::string &text)
@@ -163,6 +175,41 @@ bool ParseUnsigned(
 	const char *end = value.data() + value.size();
 	const std::from_chars_result result = std::from_chars(begin, end, parsed);
 	if (result.ec != std::errc {} || result.ptr != end) {
+		return false;
+	}
+	out = parsed;
+	return true;
+}
+
+bool ParseSigned(
+	const std::string &value,
+	int &out)
+{
+	if (value.empty()) {
+		return false;
+	}
+	int parsed = 0;
+	const char *begin = value.data();
+	const char *end = value.data() + value.size();
+	const std::from_chars_result result = std::from_chars(begin, end, parsed);
+	if (result.ec != std::errc {} || result.ptr != end) {
+		return false;
+	}
+	out = parsed;
+	return true;
+}
+
+bool ParseDouble(
+	const std::string &value,
+	double &out)
+{
+	if (value.empty()) {
+		return false;
+	}
+	errno = 0;
+	char *end = nullptr;
+	const double parsed = std::strtod(value.c_str(), &end);
+	if (errno != 0 || end == value.c_str() || *end != '\0') {
 		return false;
 	}
 	out = parsed;
@@ -353,6 +400,190 @@ bool ParseMultilineStringArrayItem(
 	return ParseQuotedString(item, out);
 }
 
+bool ParseInlineTableFields(
+	const std::string &value,
+	std::vector<std::pair<std::string, std::string>> &out)
+{
+	if (value.size() < 2 || value.front() != '{' || value.back() != '}') {
+		return false;
+	}
+
+	const std::string body = Trim(std::string_view(value).substr(1, value.size() - 2));
+	out.clear();
+	if (body.empty()) {
+		return true;
+	}
+
+	std::size_t start = 0;
+	while (start < body.size()) {
+		bool inString = false;
+		bool escaped = false;
+		std::size_t end = start;
+		for (; end < body.size(); ++end) {
+			const char character = body[end];
+			if (escaped) {
+				escaped = false;
+				continue;
+			}
+			if (inString && character == '\\') {
+				escaped = true;
+				continue;
+			}
+			if (character == '"') {
+				inString = !inString;
+				continue;
+			}
+			if (!inString && character == ',') {
+				break;
+			}
+		}
+		if (inString || escaped) {
+			return false;
+		}
+
+		const std::string item = Trim(std::string_view(body).substr(start, end - start));
+		const std::size_t equals = item.find('=');
+		if (item.empty() || equals == std::string::npos) {
+			return false;
+		}
+		const std::string key = Trim(std::string_view(item).substr(0, equals));
+		const std::string fieldValue = Trim(std::string_view(item).substr(equals + 1));
+		if (key.empty() || fieldValue.empty()) {
+			return false;
+		}
+		out.push_back({ key, fieldValue });
+		start = end + 1;
+	}
+
+	return true;
+}
+
+bool FindInlineField(
+	const std::vector<std::pair<std::string, std::string>> &fields,
+	const std::string &key,
+	std::string &out)
+{
+	for (const auto &field : fields) {
+		if (field.first == key) {
+			out = field.second;
+			return true;
+		}
+	}
+	return false;
+}
+
+bool InlineFieldsOnlyContain(
+	const std::vector<std::pair<std::string, std::string>> &fields,
+	std::initializer_list<const char *> keys)
+{
+	for (const auto &field : fields) {
+		bool found = false;
+		for (const char *key : keys) {
+			if (field.first == key) {
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
+			return false;
+		}
+	}
+	return true;
+}
+
+InlineShapeStatus ParseLocalTile(
+	const std::string &value,
+	RuntimeGameplayAsciiSourcePlanLocalTile &out)
+{
+	std::vector<std::pair<std::string, std::string>> fields;
+	if (!ParseInlineTableFields(value, fields) ||
+		!InlineFieldsOnlyContain(fields, { "x", "y" })) {
+		return InlineShapeStatus::Unsupported;
+	}
+
+	std::string xValue;
+	std::string yValue;
+	int x = 0;
+	int y = 0;
+	if (!FindInlineField(fields, "x", xValue) ||
+		!FindInlineField(fields, "y", yValue)) {
+		return InlineShapeStatus::Unsupported;
+	}
+	if (!ParseSigned(xValue, x) || !ParseSigned(yValue, y)) {
+		return InlineShapeStatus::WrongType;
+	}
+
+	out.present = true;
+	out.x = x;
+	out.y = y;
+	return InlineShapeStatus::Ok;
+}
+
+InlineShapeStatus ParseLocalPosition(
+	const std::string &value,
+	RuntimeGameplayAsciiSourcePlanLocalPosition &out)
+{
+	std::vector<std::pair<std::string, std::string>> fields;
+	if (!ParseInlineTableFields(value, fields) ||
+		!InlineFieldsOnlyContain(fields, { "x", "y" })) {
+		return InlineShapeStatus::Unsupported;
+	}
+
+	std::string xValue;
+	std::string yValue;
+	double x = 0.0;
+	double y = 0.0;
+	if (!FindInlineField(fields, "x", xValue) ||
+		!FindInlineField(fields, "y", yValue)) {
+		return InlineShapeStatus::Unsupported;
+	}
+	if (!ParseDouble(xValue, x) || !ParseDouble(yValue, y)) {
+		return InlineShapeStatus::WrongType;
+	}
+
+	out.present = true;
+	out.x = x;
+	out.y = y;
+	return InlineShapeStatus::Ok;
+}
+
+InlineShapeStatus ParseCellBounds(
+	const std::string &value,
+	RuntimeGameplayAsciiSourcePlanCellBox &out)
+{
+	std::vector<std::pair<std::string, std::string>> fields;
+	if (!ParseInlineTableFields(value, fields) ||
+		!InlineFieldsOnlyContain(fields, { "min_x", "min_y", "max_x", "max_y" })) {
+		return InlineShapeStatus::Unsupported;
+	}
+
+	std::string minXValue;
+	std::string minYValue;
+	std::string maxXValue;
+	std::string maxYValue;
+	double minX = 0.0;
+	double minY = 0.0;
+	double maxX = 0.0;
+	double maxY = 0.0;
+	if (!FindInlineField(fields, "min_x", minXValue) ||
+		!FindInlineField(fields, "min_y", minYValue) ||
+		!FindInlineField(fields, "max_x", maxXValue) ||
+		!FindInlineField(fields, "max_y", maxYValue)) {
+		return InlineShapeStatus::Unsupported;
+	}
+	if (!ParseDouble(minXValue, minX) || !ParseDouble(minYValue, minY) ||
+		!ParseDouble(maxXValue, maxX) || !ParseDouble(maxYValue, maxY)) {
+		return InlineShapeStatus::WrongType;
+	}
+
+	out.present = true;
+	out.minX = minX;
+	out.minY = minY;
+	out.maxX = maxX;
+	out.maxY = maxY;
+	return InlineShapeStatus::Ok;
+}
+
 void AddWrongType(
 	RuntimeGameplayAsciiSourcePlanTomlReadResult &result,
 	std::size_t line,
@@ -413,6 +644,19 @@ void AddUnsupported(
 	issue.line = line;
 	issue.detail = detail;
 	AddIssue(result, issue);
+}
+
+void AddInlineShapeIssue(
+	RuntimeGameplayAsciiSourcePlanTomlReadResult &result,
+	std::size_t line,
+	const std::string &key,
+	InlineShapeStatus status)
+{
+	if (status == InlineShapeStatus::WrongType) {
+		AddWrongType(result, line, key);
+	} else if (status == InlineShapeStatus::Unsupported) {
+		AddUnsupported(result, line, "unsupported inline table shape for key: " + key);
+	}
 }
 
 void AddMissingTable(
@@ -505,6 +749,16 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 		if (line == "[[legend]]") {
 			result.plan.legend.push_back({});
 			table = Table::Legend;
+			continue;
+		}
+		if (line == "[[cells]]") {
+			result.plan.annotatedCells.push_back({});
+			table = Table::Cells;
+			continue;
+		}
+		if (line == "[[regions]]") {
+			result.plan.regions.push_back({});
+			table = Table::Regions;
 			continue;
 		}
 		if (!line.empty() && line.front() == '[') {
@@ -666,6 +920,126 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 				}
 			} else {
 				AddUnsupported(result, lineNumber, "unsupported legend key: " + key);
+			}
+			continue;
+		}
+
+		if (table == Table::Cells) {
+			RuntimeGameplayAsciiSourcePlanAnnotatedCell &cell =
+				result.plan.annotatedCells.back();
+			if (key == "id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					cell.hasCellId = true;
+					cell.cellId = ResourceId(parsed);
+				}
+			} else if (key == "row") {
+				std::size_t parsed = 0;
+				if (!ParseUnsigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					cell.row = parsed;
+				}
+			} else if (key == "column") {
+				std::size_t parsed = 0;
+				if (!ParseUnsigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					cell.column = parsed;
+				}
+			} else if (key == "glyph") {
+				char glyph = '\0';
+				if (!ParseGlyph(value, glyph)) {
+					AddInvalidGlyph(result, lineNumber, key);
+				} else {
+					cell.glyph = glyph;
+				}
+			} else if (key == "local_tile") {
+				const InlineShapeStatus status = ParseLocalTile(value, cell.localTile);
+				AddInlineShapeIssue(result, lineNumber, key, status);
+			} else if (key == "local_position") {
+				const InlineShapeStatus status =
+					ParseLocalPosition(value, cell.localPosition);
+				AddInlineShapeIssue(result, lineNumber, key, status);
+			} else if (key == "cell_bounds") {
+				const InlineShapeStatus status = ParseCellBounds(value, cell.cellBounds);
+				AddInlineShapeIssue(result, lineNumber, key, status);
+			} else if (key == "role_tags") {
+				std::vector<std::string> parsed;
+				if (!ParseStringArrayInline(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					cell.roleTags = ToResourceIds(parsed);
+				}
+			} else if (key == "marker_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					cell.markerId = ResourceId(parsed);
+				}
+			} else if (key == "profile_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					cell.profileId = ResourceId(parsed);
+				}
+			} else {
+				AddUnsupported(result, lineNumber, "unsupported cells key: " + key);
+			}
+			continue;
+		}
+
+		if (table == Table::Regions) {
+			RuntimeGameplayAsciiSourcePlanRegion &region = result.plan.regions.back();
+			if (key == "id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					region.hasRegionId = true;
+					region.regionId = ResourceId(parsed);
+				}
+			} else if (key == "min_row") {
+				std::size_t parsed = 0;
+				if (!ParseUnsigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					region.minRow = parsed;
+				}
+			} else if (key == "min_column") {
+				std::size_t parsed = 0;
+				if (!ParseUnsigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					region.minColumn = parsed;
+				}
+			} else if (key == "max_row") {
+				std::size_t parsed = 0;
+				if (!ParseUnsigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					region.maxRow = parsed;
+				}
+			} else if (key == "max_column") {
+				std::size_t parsed = 0;
+				if (!ParseUnsigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					region.maxColumn = parsed;
+				}
+			} else if (key == "role_tags") {
+				std::vector<std::string> parsed;
+				if (!ParseStringArrayInline(value, parsed)) {
+					AddWrongType(result, lineNumber, key);
+				} else {
+					region.roleTags = ToResourceIds(parsed);
+				}
+			} else {
+				AddUnsupported(result, lineNumber, "unsupported regions key: " + key);
 			}
 			continue;
 		}
