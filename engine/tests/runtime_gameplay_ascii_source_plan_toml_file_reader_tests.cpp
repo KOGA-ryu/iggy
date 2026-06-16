@@ -382,6 +382,8 @@ void TestValidFixtureConvertsToValidatedProfileScenario()
 	}
 	Expect(conversion.definition.initialState.npcActors.actors.size() == 1, "fixture conversion should promote one actor");
 	Expect(conversion.definition.initialState.npcControls.entries.size() == 1, "fixture conversion should create one default control");
+	Expect(conversion.definition.initialState.session.hasPlayer, "fixture conversion should promote player start");
+	Expect(conversion.definition.initialState.session.player.position.x == 5.5F && conversion.definition.initialState.session.player.position.y == 1.5F, "fixture conversion should promote player at tile center");
 	if (!conversion.definition.initialState.npcActors.actors.empty()) {
 		const iggy::NpcActorState2D &actor =
 			conversion.definition.initialState.npcActors.actors.front();
@@ -421,6 +423,7 @@ void TestValidFixtureFeedsAuthoringAdapterThroughParsedSourcePlan()
 	Expect(adapter.profileScenario.scenarioId == Id("scenario:guard-room"), "authoring adapter should publish fixture scenario id");
 	Expect(adapter.profileScenario.initialState.npcActors.actors.size() == 1, "authoring adapter should publish fixture actor");
 	Expect(adapter.profileScenario.initialState.npcControls.entries.size() == 1, "authoring adapter should publish fixture control");
+	Expect(adapter.profileScenario.initialState.session.hasPlayer, "authoring adapter should publish fixture player start");
 	Expect(adapter.profileScenario.frames.size() == 1, "authoring adapter should publish fixture frame");
 	Expect(adapter.packet.asciiSourcePlan.sourceId == read.text.plan.sourceId, "authoring adapter should preserve parsed source-plan packet");
 	Expect(adapter.config.hasAsciiSourcePlanProfileScenarioConfig, "authoring adapter should preserve explicit conversion config");
@@ -448,7 +451,7 @@ void TestValidFixtureRunsScenarioAndRendersFinalDebugRows()
 	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
 	const std::vector<std::string> expected {
 		"#######",
-		"#A....#",
+		"#A...@#",
 		"#.....#",
 		"#######",
 	};
@@ -457,6 +460,8 @@ void TestValidFixtureRunsScenarioAndRendersFinalDebugRows()
 	Expect(adapter.ok(), "vertical path should adapt parsed source plan to profile scenario");
 	Expect(run.ran(), "vertical path should run converted profile scenario");
 	Expect(run.frameCount == 1, "vertical path should execute one scenario frame");
+	Expect(run.state.session.hasPlayer, "vertical path should preserve promoted player");
+	Expect(run.state.session.player.position.x == 5.5F && run.state.session.player.position.y == 1.5F, "vertical path should preserve idle player position");
 	Expect(run.state.npcActors.actors.size() == 1, "vertical path should preserve final NPC actor");
 	if (!run.state.npcActors.actors.empty()) {
 		const iggy::NpcActorState2D &actor = run.state.npcActors.actors.front();
@@ -488,7 +493,7 @@ void TestMovingFixtureRunsScenarioAndMovesNpcFromAuthoredControl()
 	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
 	const std::vector<std::string> expected {
 		"#######",
-		"#.A...#",
+		"#.A..@#",
 		"#.....#",
 		"#######",
 	};
@@ -536,7 +541,7 @@ void TestMultiFrameFixtureRunsScenarioAndMovesNpcAcrossFrames()
 	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
 	const std::vector<std::string> expected {
 		"#######",
-		"#..A..#",
+		"#..A.@#",
 		"#.....#",
 		"#######",
 	};
@@ -590,7 +595,7 @@ void TestPlayerAndGuardFixtureRunsSharedFrameThroughScenario()
 	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
 	const std::vector<std::string> expected {
 		"#######",
-		"#.A...#",
+		"#.A.@.#",
 		"#.....#",
 		"#######",
 	};
@@ -619,13 +624,21 @@ void TestPlayerAndGuardFixtureRunsSharedFrameThroughScenario()
 	Expect(run.ran(), "player-and-guard vertical path should run converted profile scenario");
 	Expect(run.frameCount == 1, "player-and-guard vertical path should execute one shared frame");
 	Expect(run.scenario.runner.acceptedCommandCount == 1, "player-and-guard vertical path should accept authored player command");
-	Expect(!run.state.session.hasPlayer, "ASCII source-plan conversion does not yet promote player-start glyphs into runtime player state");
+	Expect(run.state.session.hasPlayer, "player-and-guard vertical path should preserve promoted runtime player");
+	Expect(run.state.session.player.position.x == 4.5F && run.state.session.player.position.y == 1.5F, "player-and-guard vertical path should move player to authored tile");
 	if (!run.scenario.runner.frameResults.empty()
 		&& !run.scenario.runner.frameResults[0].playerFrame.frame.interaction.playerInput.command.runner.runner.ticks.empty()) {
 		const iggy::runtime::RuntimeSessionCommandTickResult &tick =
 			run.scenario.runner.frameResults[0].playerFrame.frame.interaction.playerInput.command.runner.runner.ticks[0];
-		Expect(tick.playerCommands.planning.status == iggy::runtime::RuntimePlayerCommandPlanningStatus::MissingPlayer, "player-and-guard run should preserve missing-player planning diagnostic");
-		Expect(tick.playerCommands.execution.status == iggy::runtime::RuntimePlayerCommandExecutionStatus::MissingPlayer, "player-and-guard run should preserve missing-player execution diagnostic");
+		Expect(tick.playerCommands.planning.status == iggy::runtime::RuntimePlayerCommandPlanningStatus::Planned, "player-and-guard run should plan player command");
+		Expect(tick.playerCommands.execution.status == iggy::runtime::RuntimePlayerCommandExecutionStatus::Executed, "player-and-guard run should execute player command");
+		Expect(tick.playerCommands.execution.executedPlanCount == 1, "player-and-guard run should execute one player plan");
+		if (!tick.playerCommands.execution.movementResults.empty()) {
+			const iggy::PlayerMovementExecutionResult &movement =
+				tick.playerCommands.execution.movementResults[0];
+			Expect(movement.status == iggy::PlayerMovementExecutionStatus::Moved, "player-and-guard run should move player");
+			Expect(movement.reachedTarget, "player-and-guard run should reach authored player tile");
+		}
 	}
 	Expect(run.npcMovementPlannedRequestCount == 1, "player-and-guard vertical path should plan NPC movement");
 	Expect(run.npcMovedCount == 1, "player-and-guard vertical path should still move NPC");
@@ -635,7 +648,7 @@ void TestPlayerAndGuardFixtureRunsSharedFrameThroughScenario()
 		Expect(actor.npcId == Id("npc:guard"), "player-and-guard final actor should preserve id");
 		Expect(actor.position.x == 2.5F && actor.position.y == 1.5F, "player-and-guard vertical path should move actor one tile");
 	}
-	Expect(rows == expected, "player-and-guard vertical path should render moved NPC and no promoted player");
+	Expect(rows == expected, "player-and-guard vertical path should render moved NPC and moved player");
 }
 
 } // namespace
