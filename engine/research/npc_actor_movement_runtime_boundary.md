@@ -263,13 +263,14 @@ RuntimeGameplayAsciiSourcePlan
 `RuntimeGameplayAsciiSourcePlanProfileScenarioConverter` promotes only the
 currently accepted safe facts: terrain rows into a `LevelTileMap`, annotated NPC
 actor cells into `NpcActorState2DRegistry`, one default control per promoted
-actor optionally replaced by a validated one-frame authored NPC control,
-caller-supplied profile trait catalog, and a caller-supplied default profile
-scenario frame whose movement map is replaced with the promoted map. The
-converter rejects invalid source plans, unsupported custom terrain, authored
-controls for unknown or duplicate actors, invalid actor/control registries,
-missing frame defaults, and invalid profile scenario definitions before
-reporting conversion success.
+actor optionally replaced by a validated no-frame authored NPC control, frame-id
+authored NPC controls as explicit per-frame control overrides, caller-supplied
+profile trait catalog, and a caller-supplied default profile scenario frame
+whose movement map is replaced with the promoted map. The converter rejects
+invalid source plans, unsupported custom terrain, authored controls for unknown
+actors, duplicate authored controls within the same effective frame, invalid
+actor/control registries, missing frame defaults, and invalid profile scenario
+definitions before reporting conversion success.
 
 Region-to-AI-map promotion is an explicit opt-in branch, not inferred source
 semantics. `RuntimeGameplayAsciiSourcePlanRegionAiMapPromoter` consumes source
@@ -288,8 +289,9 @@ fails, conversion fails before publishing a profile scenario definition.
 
 There is still no general TOML implementation, TOML dependency/library,
 directory scanning, save/load slot integration, Edi/UI adapter, interaction
-marker promotion, frame scripting, AI-map links, inferred role/tag semantics, or
-runtime gameplay auto-run in this boundary.
+marker promotion, broad frame scripting beyond explicit NPC control overrides,
+AI-map links, inferred role/tag semantics, or runtime gameplay auto-run in this
+boundary.
 Future external authoring should target `RuntimeGameplayAsciiSourcePlan` through
 the supported TOML subset reader first, then use the source-plan converter only
 after the in-memory source-plan validator accepts the authored packet.
