@@ -47,7 +47,6 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 
 - `NpcAgentState`, `NpcAgentEntry`: NPC runtime state records.
 - `NpcAgentController`, `NpcAgentBatchUpdater`: NPC update orchestration.
-- `NpcAgentRenderCommands`: NPC state to render commands.
 - `NpcTickReporter`: NPC tick report generation.
 - Legacy NPC-agent runtime lane used by level/runtime/session/save/render compatibility. Newer `scene/ai` + `scene/npc` actor/control/profile/movement systems should adapt to shared services such as `servers/navigation` without making those services depend on `modules/npc_ai`.
 
@@ -59,6 +58,7 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `LevelGridQuery` helpers: tile indexing, tile bounds, map containment, tile lookup.
 - `LevelVisibleTiles`, `LevelTileDrawList`, `LevelTileRenderCommands`: direct tile visibility/render-command path.
 - `LevelTileRenderChunkCache`, `LevelTileRenderChunkVisibility`, `LevelTileRenderChunkCommands`: cached tile render path.
+- `LevelNpcAgentRenderCommands`: scene-level legacy `LevelRuntimeState::npcAgents` render projection.
 - `LevelRenderCacheState`, `LevelRenderCacheBuilder`, `LevelRenderCacheUpdater`: derived render cache state.
 - `LevelCollisionWorldBuilder`: converts blocked tiles to `physics2d::CollisionWorld2D`.
 - `LevelCollisionCacheState`, `LevelCollisionCacheBuilder`, `LevelCollisionCacheUpdater`: derived collision cache state.
