@@ -275,6 +275,64 @@ void TestSemanticInvalidFixturePreservesNestedSourceValidation()
 	Expect(result.text.sourcePlanIssueCount > 0, "semantic invalid fixture should preserve source validation issue count");
 }
 
+void TestNegativeReadFixturesPreserveFirstDiagnostics()
+{
+	struct Case {
+		const char *name;
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus textStatus;
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode issueCode;
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode sourceCode;
+		const char *table;
+		const char *key;
+	};
+
+	const std::vector<Case> cases {
+		{
+			"bad_table_type_guard_room.toml",
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::TypeInvalid,
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::WrongType,
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::EmptyRows,
+			"grid",
+			"width",
+		},
+		{
+			"bad_interact_target_guard_room.toml",
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid,
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SourcePlanInvalid,
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandUnknownInteractionTarget,
+			"frame_player_commands",
+			"target_id",
+		},
+		{
+			"bad_pickup_target_guard_room.toml",
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid,
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SourcePlanInvalid,
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandInvalidPickupTarget,
+			"frame_player_commands",
+			"target_id",
+		},
+	};
+
+	for (const Case &testCase : cases) {
+		const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult result =
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(
+				FixturePath(testCase.name));
+		Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadStatus::TomlReadFailed, "negative fixture should report wrapper TOML read failure");
+		Expect(result.text.status == testCase.textStatus, "negative fixture should preserve nested text status");
+		Expect(!result.text.issues.empty(), "negative fixture should preserve nested text issue");
+		if (!result.text.issues.empty()) {
+			const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue &issue =
+				result.text.issues.front();
+			Expect(issue.code == testCase.issueCode, "negative fixture should preserve first nested issue code");
+			Expect(issue.table == testCase.table, "negative fixture should preserve first issue table");
+			Expect(issue.key == testCase.key, "negative fixture should preserve first issue key");
+			if (issue.code == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SourcePlanInvalid) {
+				Expect(issue.sourceIssue.code == testCase.sourceCode, "negative fixture should preserve mirrored source-plan issue code");
+			}
+		}
+	}
+}
+
 void TestValidFixtureConvertsToValidatedProfileScenario()
 {
 	const std::filesystem::path path = FixturePath("valid_guard_room.toml");
@@ -800,6 +858,7 @@ int main()
 	TestValidFixtureReadsAndParses();
 	TestCorruptFixturePreservesNestedParserDiagnostics();
 	TestSemanticInvalidFixturePreservesNestedSourceValidation();
+	TestNegativeReadFixturesPreserveFirstDiagnostics();
 	TestValidFixtureConvertsToValidatedProfileScenario();
 	TestValidFixtureFeedsAuthoringAdapterThroughParsedSourcePlan();
 	TestValidFixtureRunsScenarioAndRendersFinalDebugRows();

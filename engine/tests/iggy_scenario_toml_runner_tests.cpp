@@ -298,88 +298,8 @@ void TestNoArgUsage()
 		"no-arg CLI run");
 }
 
-std::string WrongTypeToml()
-{
-	return
-		"format_id = \"iggy:ascii-source-plan\"\n"
-		"version = 1\n"
-		"source_id = \"scenario:wrong-type\"\n"
-		"\n"
-		"[grid]\n"
-		"width = \"7\"\n"
-		"height = 4\n"
-		"background = \".\"\n"
-		"rows = [\n"
-		"  \"#######\",\n"
-		"  \"#A...@#\",\n"
-		"  \"#.....#\",\n"
-		"  \"#######\",\n"
-		"]\n";
-}
-
-std::string UnknownControlActorToml()
-{
-	return
-		"format_id = \"iggy:ascii-source-plan\"\n"
-		"version = 1\n"
-		"source_id = \"scenario:unknown-control-actor\"\n"
-		"\n"
-		"[grid]\n"
-		"width = 7\n"
-		"height = 4\n"
-		"background = \".\"\n"
-		"rows = [\n"
-		"  \"#######\",\n"
-		"  \"#A...@#\",\n"
-		"  \"#.....#\",\n"
-		"  \"#######\",\n"
-		"]\n"
-		"\n"
-		"[[legend]]\n"
-		"glyph = \"A\"\n"
-		"kind = \"actor\"\n"
-		"maps_to_scenario_marker = true\n"
-		"scenario_marker_kind = \"actor\"\n"
-		"\n"
-		"[[legend]]\n"
-		"glyph = \"@\"\n"
-		"kind = \"player_start\"\n"
-		"maps_to_scenario_marker = true\n"
-		"scenario_marker_kind = \"player_start\"\n"
-		"\n"
-		"[[profiles]]\n"
-		"id = \"profile:guard\"\n"
-		"strength = 10\n"
-		"dexterity = 10\n"
-		"constitution = 10\n"
-		"intelligence = 10\n"
-		"wisdom = 10\n"
-		"charisma = 10\n"
-		"\n"
-		"[[cells]]\n"
-		"id = \"cell:guard\"\n"
-		"row = 1\n"
-		"column = 1\n"
-		"glyph = \"A\"\n"
-		"local_tile = { x = 1, y = 1 }\n"
-		"local_position = { x = 1.5, y = 1.5 }\n"
-		"cell_bounds = { min_x = 1.0, min_y = 1.0, max_x = 2.0, max_y = 2.0 }\n"
-		"marker_id = \"npc:guard\"\n"
-		"profile_id = \"profile:guard\"\n"
-		"\n"
-		"[[frame_controls]]\n"
-		"frame_id = \"frame:unknown-control-actor\"\n"
-		"npc = \"npc:missing\"\n"
-		"behavior = \"seeking\"\n"
-		"move_mode = \"walk\"\n"
-		"target = { x = 2.5, y = 1.5 }\n";
-}
-
 void TestCliFailureDiagnosticsMatrix()
 {
-	TempTomlFile wrongType("wrong_type", WrongTypeToml());
-	TempTomlFile unknownControl("unknown_control", UnknownControlActorToml());
-
 	const std::vector<FailureCase> cases {
 		{
 			"missing file",
@@ -410,7 +330,7 @@ void TestCliFailureDiagnosticsMatrix()
 		},
 		{
 			"wrong TOML type",
-			{ wrongType.path.string() },
+			{ FixturePath("bad_table_type_guard_room.toml") },
 			2,
 			{
 				"status:\n",
@@ -436,8 +356,34 @@ void TestCliFailureDiagnosticsMatrix()
 			},
 		},
 		{
+			"source-plan bad interact target",
+			{ FixturePath("bad_interact_target_guard_room.toml") },
+			2,
+			{
+				"status:\n",
+				"result: read_failed",
+				"read_status: toml_read_failed",
+				"toml_status: source_plan_invalid",
+				"toml_issue: code=source_plan_invalid line=46 column=0 table=frame_player_commands key=target_id table_index=0",
+				"source_issue: code=authored_player_command_unknown_interaction_target index=0 row=0 column=0 id=target:missing",
+			},
+		},
+		{
+			"source-plan bad pickup target",
+			{ FixturePath("bad_pickup_target_guard_room.toml") },
+			2,
+			{
+				"status:\n",
+				"result: read_failed",
+				"read_status: toml_read_failed",
+				"toml_status: source_plan_invalid",
+				"toml_issue: code=source_plan_invalid line=48 column=0 table=frame_player_commands key=target_id table_index=0",
+				"source_issue: code=authored_player_command_invalid_pickup_target index=0 row=0 column=0 id=drop:missing",
+			},
+		},
+		{
 			"conversion issue",
-			{ unknownControl.path.string() },
+			{ FixturePath("unknown_control_actor_guard_room.toml") },
 			3,
 			{
 				"status:\n",
@@ -451,7 +397,7 @@ void TestCliFailureDiagnosticsMatrix()
 		},
 		{
 			"profile validation issue",
-			{ FixturePath("valid_guard_room.toml") },
+			{ FixturePath("missing_profile_guard_room.toml") },
 			3,
 			{
 				"status:\n",
@@ -904,7 +850,7 @@ void TestLintModeValidatesWithoutRunningScenario()
 		"lint semantic TOML");
 
 	const CommandResult conversion =
-		RunCli({ "--lint", FixturePath("valid_guard_room.toml") });
+		RunCli({ "--lint", FixturePath("missing_profile_guard_room.toml") });
 	Expect(conversion.exitCode == 3, "lint conversion issue should fail during conversion");
 	ExpectOutputContains(
 		conversion,
