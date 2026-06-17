@@ -1,5 +1,7 @@
 # Batch 28: Content Error Codes
 
+Status: complete.
+
 ## Goal
 Stabilize user-facing authoring error codes across reader, validator, converter, and CLI layers.
 
@@ -20,3 +22,9 @@ No broad error framework. No localization.
 
 ## Expected Result
 Authors get stable error identifiers for common failures.
+
+## Completed Coverage
+
+- Added `RuntimeGameplayAuthoringErrorCodes` as the runtime-owned printable string source for current authoring reader, source-plan, adapter, converter, profile, scenario, and run status/error codes.
+- Updated `iggy_scenario_toml_runner` diagnostics to print those shared code strings without changing the existing output contract.
+- Added focused unit coverage for representative stable code strings and kept CLI diagnostics smoke coverage green.
