@@ -68,3 +68,18 @@ Queue:
 43. `43_region_trigger_semantics_gate` - gate region trigger behavior.
 44. `44_package_metadata_manifest` - package metadata after package runner approval.
 45. `45_authoring_compatibility_migration_gate` - gate source-plan migration support.
+46. `46_authoring_facade_mode_matrix` - shared facade modes for run/lint/check/trace.
+47. `47_authoring_diagnostic_entries` - flattened user-facing diagnostic entries.
+48. `48_cli_output_contract_snapshots` - lock CLI textual output contracts.
+49. `49_manifest_sweep_test_target` - manifest-driven canonical fixture sweeps.
+50. `50_package_fixture_pack` - package examples after package runner approval.
+51. `51_file_package_parity` - parity between one-file and package scenarios.
+52. `52_no_claims_boundary_regression` - safety flag regression fixtures.
+53. `53_terrain_authoring_policy_gate` - gate terrain metadata expansion.
+54. `54_multi_actor_profile_fixture_pack` - multi-actor/profile fixture coverage.
+55. `55_interaction_effect_fixture_pack` - fixtures for existing interaction effects.
+56. `56_inventory_expectations` - final inventory expectation checks.
+57. `57_interaction_state_expectations` - final interaction state expectations.
+58. `58_actor_state_expectations` - final player/NPC state expectations.
+59. `59_authoring_run_summary_projection` - shared summary projection helper.
+60. `60_authoring_bucket_prune_gate` - prune stale/superseded bucket packets.
