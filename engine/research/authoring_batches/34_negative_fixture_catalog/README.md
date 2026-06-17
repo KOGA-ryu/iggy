@@ -1,5 +1,7 @@
 # Batch 34: Negative Fixture Catalog
 
+Status: complete.
+
 ## Goal
 Make failure fixtures first-class regression assets for parser, source validation, conversion, and run validation failures.
 
@@ -20,3 +22,10 @@ No parser compliance expansion or semantic validation beyond existing safe check
 
 ## Expected Result
 Failure behavior is covered by named fixtures instead of hidden inline setup.
+
+## Completed Coverage
+- Added regression-only fixtures for TOML type failure, missing profile traits, unknown NPC control actor, unknown player interaction target, and invalid pickup/drop target.
+- Documented negative fixtures in the ASCII source-plan fixture README.
+- Replaced inline CLI diagnostics setup with named fixtures and added fixture cases for interact/pickup target failures.
+- Added file-reader table coverage for first parser/source-validation diagnostics from negative fixtures.
+- Unsupported source-plan version was not added because the current source-plan reader/validator does not reject version values.
