@@ -37,6 +37,8 @@ Regression-only fixtures are kept for lower-level parser, adapter, and diagnosti
 - `bad_table_type_guard_room.toml`: TOML type failure fixture.
 - `unsupported_format_guard_room.toml`: source-plan validation failure fixture for unsupported `format_id`.
 - `unsupported_version_guard_room.toml`: source-plan validation failure fixture for unsupported `version`.
+- `unsafe_no_claims_guard_room.toml`: source-plan validation failure fixture for unsafe `[no_claims]` boundary flags.
+- `unsafe_promotion_guard_room.toml`: source-plan validation failure fixture for unsafe `[promotion]` boundary flags.
 - `semantic_invalid_guard_room.toml`: source-plan validation failure fixture for annotated-cell glyph mismatch.
 - `bad_interact_target_guard_room.toml`: source-plan validation failure fixture for unknown authored player interaction target.
 - `bad_pickup_target_guard_room.toml`: source-plan validation failure fixture for invalid authored pickup/drop target.

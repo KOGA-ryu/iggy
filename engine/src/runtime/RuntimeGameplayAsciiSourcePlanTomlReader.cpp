@@ -880,6 +880,46 @@ void AddMissingTable(
 	AddIssue(result, issue);
 }
 
+std::pair<std::string, std::size_t> NoClaimsKeyLocation(
+	std::size_t index,
+	const RuntimeGameplayAsciiSourcePlanTomlSourceLocations &locations)
+{
+	switch (index) {
+	case 0:
+		return { "runtime_truth", locations.noClaimsRuntimeTruthLine };
+	case 1:
+		return { "gameplay_execution", locations.noClaimsGameplayExecutionLine };
+	case 2:
+		return { "file_parsing", locations.noClaimsFileParsingLine };
+	case 3:
+		return {
+			"profile_scenario_conversion",
+			locations.noClaimsProfileScenarioConversionLine,
+		};
+	}
+	return { {}, 0 };
+}
+
+std::pair<std::string, std::size_t> PromotionKeyLocation(
+	std::size_t index,
+	const RuntimeGameplayAsciiSourcePlanTomlSourceLocations &locations)
+{
+	switch (index) {
+	case 0:
+		return { "ready", locations.promotionReadyLine };
+	case 1:
+		return { "runtime_execution", locations.promotionRuntimeExecutionLine };
+	case 2:
+		return { "file_parsing", locations.promotionFileParsingLine };
+	case 3:
+		return {
+			"profile_scenario_conversion",
+			locations.promotionProfileScenarioConversionLine,
+		};
+	}
+	return { {}, 0 };
+}
+
 RuntimeGameplayAsciiSourcePlanTomlReadStatus StatusForParserIssues(
 	const RuntimeGameplayAsciiSourcePlanTomlReadResult &result)
 {
@@ -1237,11 +1277,25 @@ RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsafeNoClaims:
 		issue.table = "no_claims";
-		issue.line = locations.noClaimsTableLine;
+		{
+			const std::pair<std::string, std::size_t> keyLocation =
+				NoClaimsKeyLocation(sourceIssue.index, locations);
+			issue.key = keyLocation.first;
+			issue.line = keyLocation.second != 0
+				? keyLocation.second
+				: locations.noClaimsTableLine;
+		}
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsafePromotionPolicy:
 		issue.table = "promotion";
-		issue.line = locations.promotionTableLine;
+		{
+			const std::pair<std::string, std::size_t> keyLocation =
+				PromotionKeyLocation(sourceIssue.index, locations);
+			issue.key = keyLocation.first;
+			issue.line = keyLocation.second != 0
+				? keyLocation.second
+				: locations.promotionTableLine;
+		}
 		break;
 	}
 
@@ -1545,12 +1599,17 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			if (!ParseBool(value, parsed)) {
 				AddWrongType(result, lineNumber, key, context);
 			} else if (key == "runtime_truth") {
+				result.sourceLocations.noClaimsRuntimeTruthLine = lineNumber;
 				result.plan.noClaims.claimsRuntimeTruth = parsed;
 			} else if (key == "gameplay_execution") {
+				result.sourceLocations.noClaimsGameplayExecutionLine = lineNumber;
 				result.plan.noClaims.claimsGameplayExecution = parsed;
 			} else if (key == "file_parsing") {
+				result.sourceLocations.noClaimsFileParsingLine = lineNumber;
 				result.plan.noClaims.claimsFileParsing = parsed;
 			} else if (key == "profile_scenario_conversion") {
+				result.sourceLocations.noClaimsProfileScenarioConversionLine =
+					lineNumber;
 				result.plan.noClaims.claimsProfileScenarioConversion = parsed;
 			} else {
 				AddUnsupported(
@@ -1568,12 +1627,17 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			if (!ParseBool(value, parsed)) {
 				AddWrongType(result, lineNumber, key, context);
 			} else if (key == "ready") {
+				result.sourceLocations.promotionReadyLine = lineNumber;
 				result.plan.promotionPolicy.promotionReady = parsed;
 			} else if (key == "runtime_execution") {
+				result.sourceLocations.promotionRuntimeExecutionLine = lineNumber;
 				result.plan.promotionPolicy.allowsRuntimeExecution = parsed;
 			} else if (key == "file_parsing") {
+				result.sourceLocations.promotionFileParsingLine = lineNumber;
 				result.plan.promotionPolicy.allowsFileParsing = parsed;
 			} else if (key == "profile_scenario_conversion") {
+				result.sourceLocations.promotionProfileScenarioConversionLine =
+					lineNumber;
 				result.plan.promotionPolicy.allowsProfileScenarioConversion = parsed;
 			} else {
 				AddUnsupported(

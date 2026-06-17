@@ -1,5 +1,7 @@
 # Batch 52: No-Claims Boundary Regression Pack
 
+Status: complete.
+
 ## Goal
 Harden the source-plan no-claims/promotion safety flags with explicit TOML fixtures and diagnostics.
 
@@ -20,3 +22,9 @@ Do not loosen safety flags. No runtime execution claims or file parsing claims b
 
 ## Expected Result
 Boundary safety claims cannot regress silently.
+
+## Completed Coverage
+- Added regression fixtures for unsafe `[no_claims]` and `[promotion]` boundary flags.
+- TOML mirrored source-plan diagnostics now identify the unsafe table, key, and source line.
+- Validator issues identify which unsafe flag tripped through the existing issue index field.
+- Focused file-reader and CLI failure matrices cover both unsafe boundary fixtures.

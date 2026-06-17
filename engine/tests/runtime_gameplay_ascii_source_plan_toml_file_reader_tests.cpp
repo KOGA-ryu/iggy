@@ -312,6 +312,22 @@ void TestNegativeReadFixturesPreserveFirstDiagnostics()
 			"width",
 		},
 		{
+			"unsafe_no_claims_guard_room.toml",
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid,
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SourcePlanInvalid,
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsafeNoClaims,
+			"no_claims",
+			"runtime_truth",
+		},
+		{
+			"unsafe_promotion_guard_room.toml",
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid,
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SourcePlanInvalid,
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsafePromotionPolicy,
+			"promotion",
+			"runtime_execution",
+		},
+		{
 			"bad_interact_target_guard_room.toml",
 			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid,
 			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SourcePlanInvalid,
@@ -342,6 +358,7 @@ void TestNegativeReadFixturesPreserveFirstDiagnostics()
 			Expect(issue.code == testCase.issueCode, "negative fixture should preserve first nested issue code");
 			Expect(issue.table == testCase.table, "negative fixture should preserve first issue table");
 			Expect(issue.key == testCase.key, "negative fixture should preserve first issue key");
+			Expect(issue.line > 0, "negative fixture should preserve first issue line");
 			if (issue.code == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SourcePlanInvalid) {
 				Expect(issue.sourceIssue.code == testCase.sourceCode, "negative fixture should preserve mirrored source-plan issue code");
 			}

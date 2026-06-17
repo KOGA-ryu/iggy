@@ -357,6 +357,12 @@ void TestUnsafeNoClaimsAndPromotionPolicyFail()
 	Expect(result.unsafeBoundaryIssueCount == 2, "unsafe boundary flags should be counted");
 	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsafeNoClaims), "unsafe no-claim should be reported");
 	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsafePromotionPolicy), "unsafe promotion policy should be reported");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue *noClaimsIssue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsafeNoClaims);
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue *promotionIssue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsafePromotionPolicy);
+	Expect(noClaimsIssue != nullptr && noClaimsIssue->index == 0, "unsafe no-claims issue should identify runtime_truth as first unsafe flag");
+	Expect(promotionIssue != nullptr && promotionIssue->index == 3, "unsafe promotion issue should identify profile_scenario_conversion as first unsafe flag");
 }
 
 void TestValidAuthoredControlPasses()

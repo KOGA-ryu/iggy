@@ -1,0 +1,26 @@
+format_id = "iggy:ascii-source-plan"
+version = 1
+source_id = "scenario:unsafe-promotion"
+source_ref = "authoring:negative-fixture"
+
+[grid]
+width = 3
+height = 3
+background = "."
+rows = [
+  "###",
+  "#.#",
+  "###",
+]
+
+[no_claims]
+runtime_truth = false
+gameplay_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[promotion]
+ready = false
+runtime_execution = true
+file_parsing = false
+profile_scenario_conversion = false

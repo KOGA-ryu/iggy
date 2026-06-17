@@ -918,6 +918,14 @@ void ValidateBoundaryFlags(RuntimeGameplayAsciiSourcePlanValidationResult &resul
 		noClaims.claimsFileParsing || noClaims.claimsProfileScenarioConversion) {
 		RuntimeGameplayAsciiSourcePlanIssue issue;
 		issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::UnsafeNoClaims;
+		if (noClaims.claimsRuntimeTruth)
+			issue.index = 0;
+		else if (noClaims.claimsGameplayExecution)
+			issue.index = 1;
+		else if (noClaims.claimsFileParsing)
+			issue.index = 2;
+		else
+			issue.index = 3;
 		AddIssue(result, issue);
 	}
 
@@ -927,6 +935,14 @@ void ValidateBoundaryFlags(RuntimeGameplayAsciiSourcePlanValidationResult &resul
 		promotion.allowsFileParsing || promotion.allowsProfileScenarioConversion) {
 		RuntimeGameplayAsciiSourcePlanIssue issue;
 		issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::UnsafePromotionPolicy;
+		if (promotion.promotionReady)
+			issue.index = 0;
+		else if (promotion.allowsRuntimeExecution)
+			issue.index = 1;
+		else if (promotion.allowsFileParsing)
+			issue.index = 2;
+		else
+			issue.index = 3;
 		AddIssue(result, issue);
 	}
 }

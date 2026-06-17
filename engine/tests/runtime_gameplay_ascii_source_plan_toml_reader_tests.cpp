@@ -441,7 +441,15 @@ void TestSourceLocationsAreCaptured()
 	Expect(result.sourceLocations.gridTableLine == LineOfNth(text, "[grid]"), "grid table line should be captured");
 	Expect(result.sourceLocations.gridRowsLine == LineOfNth(text, "rows = ["), "grid rows key line should be captured");
 	Expect(result.sourceLocations.noClaimsTableLine == LineOfNth(text, "[no_claims]"), "no_claims table line should be captured");
+	Expect(result.sourceLocations.noClaimsRuntimeTruthLine == LineOfNth(text, "runtime_truth"), "no_claims runtime_truth line should be captured");
+	Expect(result.sourceLocations.noClaimsGameplayExecutionLine == LineOfNth(text, "gameplay_execution"), "no_claims gameplay_execution line should be captured");
+	Expect(result.sourceLocations.noClaimsFileParsingLine == LineOfNth(text, "file_parsing"), "no_claims file_parsing line should be captured");
+	Expect(result.sourceLocations.noClaimsProfileScenarioConversionLine == LineOfNth(text, "profile_scenario_conversion"), "no_claims profile_scenario_conversion line should be captured");
 	Expect(result.sourceLocations.promotionTableLine == LineOfNth(text, "[promotion]"), "promotion table line should be captured");
+	Expect(result.sourceLocations.promotionReadyLine == LineOfNth(text, "ready"), "promotion ready line should be captured");
+	Expect(result.sourceLocations.promotionRuntimeExecutionLine == LineOfNth(text, "runtime_execution"), "promotion runtime_execution line should be captured");
+	Expect(result.sourceLocations.promotionFileParsingLine == LineOfNth(text, "file_parsing", 1), "promotion file_parsing line should be captured");
+	Expect(result.sourceLocations.promotionProfileScenarioConversionLine == LineOfNth(text, "profile_scenario_conversion", 1), "promotion profile_scenario_conversion line should be captured");
 	Expect(result.sourceLocations.legendTableLines.size() == 4, "legend table lines should match parsed legend count");
 	Expect(result.sourceLocations.legendTableLines[0] == LineOfNth(text, "[[legend]]", 0), "first legend table line should be captured");
 	Expect(result.sourceLocations.legendTableLines[1] == LineOfNth(text, "[[legend]]", 1), "second legend table line should be captured");
@@ -576,8 +584,9 @@ void TestUnsafeNoClaimsSurfaceSourcePlanValidation()
 		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsafeNoClaims);
 	Expect(issue != nullptr, "unsafe no-claim should mirror unsafe no-claims source issue");
 	if (issue != nullptr) {
-		Expect(issue->line == LineOfNth(text, "[no_claims]"), "mirrored unsafe no-claim should report no_claims table line");
 		Expect(issue->table == "no_claims", "mirrored unsafe no-claim should report no_claims table");
+		Expect(issue->key == "runtime_truth", "mirrored unsafe no-claim should report unsafe key");
+		Expect(issue->line == LineOfNth(text, "runtime_truth = true"), "mirrored unsafe no-claim should report unsafe key line");
 		Expect(!issue->hasTableIndex, "mirrored unsafe no-claim should not report repeated table index");
 	}
 }
@@ -595,8 +604,9 @@ void TestUnsafePromotionSurfaceSourcePlanValidation()
 		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsafePromotionPolicy);
 	Expect(issue != nullptr, "unsafe promotion should mirror unsafe promotion source issue");
 	if (issue != nullptr) {
-		Expect(issue->line == LineOfNth(text, "[promotion]"), "mirrored unsafe promotion should report promotion table line");
 		Expect(issue->table == "promotion", "mirrored unsafe promotion should report promotion table");
+		Expect(issue->key == "runtime_execution", "mirrored unsafe promotion should report unsafe key");
+		Expect(issue->line == LineOfNth(text, "runtime_execution = true"), "mirrored unsafe promotion should report unsafe key line");
 		Expect(!issue->hasTableIndex, "mirrored unsafe promotion should not report repeated table index");
 	}
 }

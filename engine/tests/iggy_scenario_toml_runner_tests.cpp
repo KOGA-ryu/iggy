@@ -369,6 +369,32 @@ void TestCliFailureDiagnosticsMatrix()
 			},
 		},
 		{
+			"unsafe no-claims source-plan boundary",
+			{ FixturePath("unsafe_no_claims_guard_room.toml") },
+			2,
+			{
+				"status:\n",
+				"result: read_failed",
+				"read_status: toml_read_failed",
+				"toml_status: source_plan_invalid",
+				"toml_issue: code=source_plan_invalid line=17 column=0 table=no_claims key=runtime_truth",
+				"source_issue: code=unsafe_no_claims index=0 row=0 column=0",
+			},
+		},
+		{
+			"unsafe promotion source-plan boundary",
+			{ FixturePath("unsafe_promotion_guard_room.toml") },
+			2,
+			{
+				"status:\n",
+				"result: read_failed",
+				"read_status: toml_read_failed",
+				"toml_status: source_plan_invalid",
+				"toml_issue: code=source_plan_invalid line=24 column=0 table=promotion key=runtime_execution",
+				"source_issue: code=unsafe_promotion_policy index=1 row=0 column=0",
+			},
+		},
+		{
 			"source-plan semantic issue",
 			{ FixturePath("semantic_invalid_guard_room.toml") },
 			2,
