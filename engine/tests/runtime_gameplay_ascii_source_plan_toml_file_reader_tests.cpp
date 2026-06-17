@@ -6,12 +6,11 @@
 #include <string>
 #include <vector>
 
+#include "runtime/RuntimeGameplayAsciiSourcePlanFinalDebugRows.hpp"
 #include "runtime/RuntimeGameplayAsciiSourcePlanProfileScenarioConverter.hpp"
 #include "runtime/RuntimeGameplayProfileScenarioRunner.hpp"
 #include "runtime/RuntimeGameplayProfileScenarioValidator.hpp"
 #include "runtime/RuntimeGameplayScenarioAuthoringAdapter.hpp"
-#include "scene/debug/SceneAsciiCanvas2D.hpp"
-#include "scene/level/TileCoord.hpp"
 #include "support/LevelMapFixtures.hpp"
 
 #ifndef IGGY_TEST_FIXTURE_DIR
@@ -119,123 +118,6 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig Con
 	config.defaultFrame = DefaultFrame();
 	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
 	return config;
-}
-
-char GlyphForActor(
-	const iggy::runtime::RuntimeGameplayAsciiSourcePlan &plan,
-	const iggy::ResourceId &npcId)
-{
-	for (const iggy::runtime::RuntimeGameplayAsciiSourcePlanAnnotatedCell &cell :
-		plan.annotatedCells) {
-		if (cell.markerId == npcId)
-			return cell.glyph;
-	}
-	return 'N';
-}
-
-char GlyphForItemDrop(
-	const iggy::runtime::RuntimeGameplayAsciiSourcePlan &plan,
-	const iggy::ResourceId &dropId)
-{
-	for (const iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredItemDrop &drop :
-		plan.authoredItemDrops) {
-		if (drop.dropId == dropId && drop.glyph != '\0')
-			return drop.glyph;
-	}
-	return 'i';
-}
-
-bool IsAuthoredItemDropGlyph(
-	const iggy::runtime::RuntimeGameplayAsciiSourcePlan &plan,
-	char glyph)
-{
-	for (const iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredItemDrop &drop :
-		plan.authoredItemDrops) {
-		if (drop.glyph == glyph && glyph != '\0')
-			return true;
-	}
-	return false;
-}
-
-char BaseDebugGlyphForSource(
-	const iggy::runtime::RuntimeGameplayAsciiSourcePlan &plan,
-	char glyph)
-{
-	if (IsAuthoredItemDropGlyph(plan, glyph))
-		return '.';
-
-	for (const iggy::runtime::RuntimeGameplayAsciiSourcePlanGlyphLegendEntry &entry :
-		plan.legend) {
-		if (entry.glyph != glyph)
-			continue;
-		if (entry.kind == iggy::runtime::RuntimeGameplayAsciiSourcePlanGlyphKind::Actor
-			|| entry.scenarioMarkerKind == iggy::runtime::RuntimeGameplayAsciiScenarioMarkerKind::Actor) {
-			return '.';
-		}
-		if (entry.kind == iggy::runtime::RuntimeGameplayAsciiSourcePlanGlyphKind::PlayerStart
-			|| entry.scenarioMarkerKind == iggy::runtime::RuntimeGameplayAsciiScenarioMarkerKind::PlayerStart) {
-			return '.';
-		}
-	}
-	return glyph;
-}
-
-std::vector<std::string> FinalDebugRows(
-	const iggy::runtime::RuntimeGameplayAsciiSourcePlan &plan,
-	const iggy::runtime::RuntimeGameplayState &state)
-{
-	iggy::SceneAsciiCanvas2D canvas =
-		iggy::makeSceneAsciiCanvas2D(plan.grid.width, plan.grid.height, ' ');
-
-	for (std::size_t row = 0; row < plan.grid.rows.size(); ++row) {
-		const std::string &text = plan.grid.rows[row];
-		for (std::size_t column = 0; column < text.size(); ++column) {
-			canvas = iggy::setSceneAsciiCanvas2DPoint(
-				canvas,
-				column,
-				row,
-				BaseDebugGlyphForSource(plan, text[column])).canvas;
-		}
-	}
-
-	for (const iggy::NpcActorState2D &actor : state.npcActors.actors) {
-		if (!actor.present)
-			continue;
-		const iggy::TileCoord tile = iggy::tileForPoint(actor.position);
-		if (tile.x < 0 || tile.y < 0)
-			continue;
-		canvas = iggy::setSceneAsciiCanvas2DPoint(
-			canvas,
-			static_cast<std::size_t>(tile.x),
-			static_cast<std::size_t>(tile.y),
-			GlyphForActor(plan, actor.npcId)).canvas;
-	}
-
-	for (const iggy::LevelItemDrop2D &drop : state.inventory.drops.drops) {
-		if (!drop.enabled)
-			continue;
-		const iggy::TileCoord tile = iggy::tileForPoint(drop.position);
-		if (tile.x < 0 || tile.y < 0)
-			continue;
-		canvas = iggy::setSceneAsciiCanvas2DPoint(
-			canvas,
-			static_cast<std::size_t>(tile.x),
-			static_cast<std::size_t>(tile.y),
-			GlyphForItemDrop(plan, drop.id)).canvas;
-	}
-
-	if (state.session.hasPlayer) {
-		const iggy::TileCoord tile = iggy::playerTile(state.session.player);
-		if (tile.x >= 0 && tile.y >= 0) {
-			canvas = iggy::setSceneAsciiCanvas2DPoint(
-				canvas,
-				static_cast<std::size_t>(tile.x),
-				static_cast<std::size_t>(tile.y),
-				'@').canvas;
-		}
-	}
-
-	return iggy::renderSceneAsciiCanvas2DRows(canvas);
 }
 
 std::string ValidToml()
@@ -488,7 +370,7 @@ void TestValidFixtureRunsScenarioAndRendersFinalDebugRows()
 			adapterConfig);
 	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
 		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
-	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
+	const std::vector<std::string> rows = iggy::runtime::finalDebugRowsForAsciiSourcePlan(read.text.plan, run.state);
 	const std::vector<std::string> expected {
 		"#######",
 		"#A...@#",
@@ -530,7 +412,7 @@ void TestMovingFixtureRunsScenarioAndMovesNpcFromAuthoredControl()
 			adapterConfig);
 	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
 		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
-	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
+	const std::vector<std::string> rows = iggy::runtime::finalDebugRowsForAsciiSourcePlan(read.text.plan, run.state);
 	const std::vector<std::string> expected {
 		"#######",
 		"#.A..@#",
@@ -578,7 +460,7 @@ void TestMultiFrameFixtureRunsScenarioAndMovesNpcAcrossFrames()
 			adapterConfig);
 	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
 		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
-	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
+	const std::vector<std::string> rows = iggy::runtime::finalDebugRowsForAsciiSourcePlan(read.text.plan, run.state);
 	const std::vector<std::string> expected {
 		"#######",
 		"#..A.@#",
@@ -632,7 +514,7 @@ void TestPlayerAndGuardFixtureRunsSharedFrameThroughScenario()
 			adapterConfig);
 	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
 		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
-	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
+	const std::vector<std::string> rows = iggy::runtime::finalDebugRowsForAsciiSourcePlan(read.text.plan, run.state);
 	const std::vector<std::string> expected {
 		"#######",
 		"#.A.@.#",
@@ -705,7 +587,7 @@ void TestSelfContainedFixtureRunsWithEmptyConverterConfig()
 		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(packet);
 	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
 		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
-	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
+	const std::vector<std::string> rows = iggy::runtime::finalDebugRowsForAsciiSourcePlan(read.text.plan, run.state);
 	const std::vector<std::string> expected {
 		"#######",
 		"#.A.@.#",
@@ -771,7 +653,7 @@ void TestPlayerInteractionFixtureRunsScenarioAndTogglesTarget()
 			adapterConfig);
 	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
 		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
-	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
+	const std::vector<std::string> rows = iggy::runtime::finalDebugRowsForAsciiSourcePlan(read.text.plan, run.state);
 	const std::vector<std::string> expected {
 		"#######",
 		"#A..@.#",
@@ -849,7 +731,7 @@ void TestPlayerPickupFixtureRunsScenarioAndPicksUpItem()
 			adapterConfig);
 	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
 		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
-	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
+	const std::vector<std::string> rows = iggy::runtime::finalDebugRowsForAsciiSourcePlan(read.text.plan, run.state);
 	const std::vector<std::string> expected {
 		"#######",
 		"#A.@..#",
