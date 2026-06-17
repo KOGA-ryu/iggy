@@ -1,5 +1,7 @@
 # Batch 31: Authoring Facade Parity Audit
 
+Status: complete.
+
 ## Goal
 Ensure the engine facade, CLI runner, and canonical fixture path all use one equivalent read-adapt-run-project sequence.
 
@@ -20,3 +22,9 @@ No new report framework, directory scanning, UI/Edi, or gameplay semantics.
 
 ## Expected Result
 CLI and future tools share the same authoring execution semantics without duplicate pipeline code.
+
+## Completed Coverage
+
+- Confirmed the CLI now delegates read/adapt/lint/run/project behavior to `RuntimeGameplayTomlScenarioFacade`.
+- Added CLI parity coverage that derives expected summary values, final rows, and trace frame blocks from a facade execution and asserts the CLI output matches those facade projections.
+- No additional gameplay semantics or reporting framework were added.
