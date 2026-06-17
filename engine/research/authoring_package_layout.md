@@ -21,9 +21,9 @@ RuntimeGameplayTomlScenarioFacade -> TOML file reader -> authoring adapter ->
 profile scenario runner -> summary/final-row projection
 ```
 
-`package.toml` is package metadata and indirection only. The package runner, if
-approved, should read this file from one explicit package path and then delegate
-to the existing facade using the declared main scenario file.
+`package.toml` is package metadata and indirection only. The package runner
+reads this file from one explicit package path and then delegates to the
+existing facade using the declared main scenario file.
 
 Initial package manifest shape:
 
@@ -31,6 +31,18 @@ Initial package manifest shape:
 format_id = "iggy:authored-scenario-package"
 version = 1
 main = "scenario.toml"
+```
+
+Run an explicit package directory from a configured build with:
+
+```sh
+engine/build/iggy_scenario_toml_runner engine/tests/fixtures/runtime/ascii_source_plan_packages/moving_guard_room_package
+```
+
+Passing the manifest file directly is also explicit:
+
+```sh
+engine/build/iggy_scenario_toml_runner engine/tests/fixtures/runtime/ascii_source_plan_packages/moving_guard_room_package/package.toml
 ```
 
 ## Package Rules
@@ -58,11 +70,9 @@ main = "scenario.toml"
 - A new TOML parser or broader TOML compliance claim.
 - New gameplay semantics.
 
-## Implementation Handoff
+## Implementation Boundary
 
-Before package execution is implemented, the gate should confirm:
-
-- package reading belongs in a narrow package facade/runner layer, not in the
+- Package reading belongs in a narrow package facade/runner layer, not in the
   source-plan parser or profile converter;
 - successful package execution delegates to `RuntimeGameplayTomlScenarioFacade`
   for the main TOML file;

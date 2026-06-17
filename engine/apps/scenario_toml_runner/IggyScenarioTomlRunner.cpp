@@ -6,6 +6,7 @@
 
 #include "runtime/RuntimeGameplayAuthoringErrorCodes.hpp"
 #include "runtime/RuntimeGameplayTomlScenarioFacade.hpp"
+#include "runtime/RuntimeGameplayTomlScenarioPackageFacade.hpp"
 
 namespace {
 
@@ -18,6 +19,70 @@ template <typename T>
 const char *ToString(T value)
 {
 	return iggy::runtime::runtimeGameplayAuthoringCodeText(value);
+}
+
+const char *ToString(
+	iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus status)
+{
+	switch (status) {
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::PackageReadFailed:
+		return "package_read_failed";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::PackageInvalid:
+		return "package_invalid";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::ScenarioReadFailed:
+		return "scenario_read_failed";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::ConversionFailed:
+		return "conversion_failed";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::LintFailed:
+		return "lint_failed";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::LintOk:
+		return "lint_ok";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::RunFailed:
+		return "run_failed";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::Ran:
+		return "ran";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::CheckFailed:
+		return "check_failed";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::CheckPassed:
+		return "check_passed";
+	}
+	return "unknown";
+}
+
+const char *ToString(
+	iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode code)
+{
+	switch (code) {
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::MissingPackagePath:
+		return "missing_package_path";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::PackagePathNotSupported:
+		return "package_path_not_supported";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::MissingManifest:
+		return "missing_manifest";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::ManifestReadFailed:
+		return "manifest_read_failed";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::SyntaxError:
+		return "syntax_error";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::DuplicateKey:
+		return "duplicate_key";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::UnsupportedKey:
+		return "unsupported_key";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::WrongType:
+		return "wrong_type";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::MissingFormatId:
+		return "missing_format_id";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::UnsupportedFormatId:
+		return "unsupported_format_id";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::MissingVersion:
+		return "missing_version";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::UnsupportedVersion:
+		return "unsupported_version";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::MissingMain:
+		return "missing_main";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::InvalidMainPath:
+		return "invalid_main_path";
+	}
+	return "unknown";
 }
 
 int Usage()
@@ -231,49 +296,32 @@ void PrintFirstProfileValidationIssue(
 	std::cerr << '\n';
 }
 
-} // namespace
-
-int main(int argc, char **argv)
+void PrintFirstPackageIssue(
+	const iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeResult &package)
 {
-	bool trace = false;
-	bool check = false;
-	bool lint = false;
-	const char *pathArgument = nullptr;
-	for (int index = 1; index < argc; ++index) {
-		const std::string_view argument(argv[index]);
-		if (argument == "--trace") {
-			trace = true;
-		} else if (argument == "--check") {
-			check = true;
-		} else if (argument == "--lint") {
-			lint = true;
-		} else if (pathArgument == nullptr) {
-			pathArgument = argv[index];
-		} else {
-			return Usage();
-		}
-	}
-	if (pathArgument == nullptr) {
-		return Usage();
-	}
+	if (package.issues.empty())
+		return;
 
-	const std::filesystem::path path(pathArgument);
-	iggy::runtime::RuntimeGameplayTomlScenarioFacadeConfig facadeConfig;
-	if (lint) {
-		facadeConfig.mode =
-			iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Lint;
-	} else if (check) {
-		facadeConfig.mode =
-			iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Check;
-	} else if (trace) {
-		facadeConfig.mode =
-			iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Trace;
-	}
-	facadeConfig.captureTraceFrames = trace;
-	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult scenario =
-		iggy::runtime::RuntimeGameplayTomlScenarioFacade {}.execute(
-			path,
-			facadeConfig);
+	const iggy::runtime::RuntimeGameplayTomlScenarioPackageIssue &issue =
+		package.issues.front();
+	std::cerr << "package_issue: code=" << ToString(issue.code);
+	if (!issue.path.empty())
+		std::cerr << " path=" << issue.path.string();
+	if (issue.line != 0)
+		std::cerr << " line=" << issue.line;
+	if (!issue.key.empty())
+		std::cerr << " key=" << issue.key;
+	if (!issue.detail.empty())
+		std::cerr << " detail=" << issue.detail;
+	std::cerr << '\n';
+}
+
+int PrintScenarioFacadeResult(
+	const std::filesystem::path &path,
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult &scenario,
+	bool lint,
+	bool trace)
+{
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult &read =
 		scenario.read;
 	if (scenario.status ==
@@ -374,4 +422,81 @@ int main(int argc, char **argv)
 		return 5;
 
 	return 0;
+}
+
+bool IsPackagePath(const std::filesystem::path &path)
+{
+	std::error_code ignored;
+	return std::filesystem::is_directory(path, ignored) ||
+		path.filename() == "package.toml";
+}
+
+} // namespace
+
+int main(int argc, char **argv)
+{
+	bool trace = false;
+	bool check = false;
+	bool lint = false;
+	const char *pathArgument = nullptr;
+	for (int index = 1; index < argc; ++index) {
+		const std::string_view argument(argv[index]);
+		if (argument == "--trace") {
+			trace = true;
+		} else if (argument == "--check") {
+			check = true;
+		} else if (argument == "--lint") {
+			lint = true;
+		} else if (pathArgument == nullptr) {
+			pathArgument = argv[index];
+		} else {
+			return Usage();
+		}
+	}
+	if (pathArgument == nullptr) {
+		return Usage();
+	}
+
+	const std::filesystem::path path(pathArgument);
+	iggy::runtime::RuntimeGameplayTomlScenarioFacadeConfig facadeConfig;
+	if (lint) {
+		facadeConfig.mode =
+			iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Lint;
+	} else if (check) {
+		facadeConfig.mode =
+			iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Check;
+	} else if (trace) {
+		facadeConfig.mode =
+			iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Trace;
+	}
+	facadeConfig.captureTraceFrames = trace;
+	if (IsPackagePath(path)) {
+		const iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeResult
+			package =
+				iggy::runtime::RuntimeGameplayTomlScenarioPackageFacade {}.execute(
+					path,
+					facadeConfig);
+		if (package.status ==
+				iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::PackageReadFailed ||
+			package.status ==
+				iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::PackageInvalid) {
+			std::cerr << "status:\n";
+			std::cerr << "result: package_failed\n";
+			std::cerr << "package_status: " << ToString(package.status) << '\n';
+			std::cerr << "issue_count: " << package.issues.size() << '\n';
+			PrintFirstPackageIssue(package);
+			return 2;
+		}
+		return PrintScenarioFacadeResult(
+			package.mainScenarioPath,
+			package.scenario,
+			lint,
+			trace);
+	}
+
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult scenario =
+		iggy::runtime::RuntimeGameplayTomlScenarioFacade {}.execute(
+			path,
+			facadeConfig);
+	return PrintScenarioFacadeResult(path, scenario, lint, trace);
 }

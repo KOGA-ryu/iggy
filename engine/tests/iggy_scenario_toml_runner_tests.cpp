@@ -19,6 +19,10 @@
 #error "IGGY_TEST_FIXTURE_DIR must point at engine/tests/fixtures/runtime/ascii_source_plan"
 #endif
 
+#ifndef IGGY_TEST_PACKAGE_FIXTURE_DIR
+#error "IGGY_TEST_PACKAGE_FIXTURE_DIR must point at engine/tests/fixtures/runtime/ascii_source_plan_packages"
+#endif
+
 namespace {
 
 int Failures = 0;
@@ -160,6 +164,11 @@ CommandResult RunCli(const std::vector<std::string> &args)
 std::string FixturePath(const char *name)
 {
 	return (std::filesystem::path(IGGY_TEST_FIXTURE_DIR) / name).string();
+}
+
+std::string PackageFixturePath(const char *name)
+{
+	return (std::filesystem::path(IGGY_TEST_PACKAGE_FIXTURE_DIR) / name).string();
 }
 
 std::string FixtureText(const char *name)
@@ -519,6 +528,78 @@ void TestCliOutputMatchesFacadeProjection()
 		"mixed_progression_room.toml",
 		true,
 		"mixed progression facade parity trace run");
+}
+
+void TestPackageDirectoryRunsScenario()
+{
+	const CommandResult result =
+		RunCli({ PackageFixturePath("moving_guard_room_package") });
+	Expect(result.exitCode == 0, "package directory CLI run should succeed");
+	ExpectOutputContains(
+		result,
+		{
+			"status:\nresult: ok\nsummary:\n",
+			"source_path: " +
+				PackageFixturePath("moving_guard_room_package/scenario.toml"),
+			"frame_count: 1",
+			"accepted_command_count: 0",
+			"picked_up_count: 0",
+			"interaction_changed: false",
+			"npc_moved_count: 1",
+			"npc_blocked_movement_count: 0",
+			FinalRowsBlock({ "#######", "#.A..@#", "#.....#", "#######" }),
+		},
+		"package directory CLI run");
+}
+
+void TestPackageManifestPathRunsScenario()
+{
+	const CommandResult result = RunCli(
+		{ PackageFixturePath("moving_guard_room_package/package.toml") });
+	Expect(result.exitCode == 0, "package manifest CLI run should succeed");
+	ExpectOutputContains(
+		result,
+		{
+			"status:\nresult: ok\nsummary:\n",
+			"source_path: " +
+				PackageFixturePath("moving_guard_room_package/scenario.toml"),
+			FinalRowsBlock({ "#######", "#.A..@#", "#.....#", "#######" }),
+		},
+		"package manifest CLI run");
+}
+
+void TestPackageManifestFailureDiagnostics()
+{
+	const std::filesystem::path packageRoot =
+		std::filesystem::temp_directory_path() /
+		"iggy_scenario_toml_runner_bad_package";
+	std::error_code ignored;
+	std::filesystem::remove_all(packageRoot, ignored);
+	std::filesystem::create_directories(packageRoot, ignored);
+	{
+		std::ofstream stream(packageRoot / "package.toml");
+		stream << R"toml(format_id = "iggy:authored-scenario-package"
+version = 2
+main = "scenario.toml"
+)toml";
+	}
+
+	const CommandResult result = RunCli({ packageRoot.string() });
+	Expect(result.exitCode == 2, "bad package CLI run should fail");
+	ExpectOutputContains(
+		result,
+		{
+			"status:\n",
+			"result: package_failed",
+			"package_status: package_invalid",
+			"issue_count: 1",
+			"package_issue: code=unsupported_version",
+			"key=version",
+			"detail=unsupported package version",
+		},
+		"bad package CLI run");
+
+	std::filesystem::remove_all(packageRoot, ignored);
 }
 
 void TestTraceMultiFrameGuardRoom()
@@ -1096,6 +1177,9 @@ int main()
 	TestCliFailureDiagnosticsMatrix();
 	TestCanonicalFixtures();
 	TestCliOutputMatchesFacadeProjection();
+	TestPackageDirectoryRunsScenario();
+	TestPackageManifestPathRunsScenario();
+	TestPackageManifestFailureDiagnostics();
 	TestTraceMultiFrameGuardRoom();
 	TestTraceMixedMiniScenario();
 	TestTraceMixedProgressionRoom();
