@@ -58,6 +58,17 @@ void WriteText(const std::filesystem::path &path, const std::string &text)
 	stream << text;
 }
 
+std::string ValidManifestText(const char *main = "scenario.toml")
+{
+	return std::string(R"toml(format_id = "iggy:authored-scenario-package"
+version = 1
+title = "Test Package"
+description = "Temporary test package."
+authoring_version = "iggy:ascii-source-plan@1"
+main = ")toml") + main + R"toml("
+)toml";
+}
+
 bool HasIssue(
 	const iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeResult &result,
 	iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode code)
@@ -92,6 +103,13 @@ void TestPackageDirectoryRunsMainScenario()
 		"package manifest should preserve format id");
 	Expect(result.manifest.version == 1,
 		"package manifest should preserve version");
+	Expect(result.manifest.title == "Moving Guard Room Package",
+		"package manifest should preserve title");
+	Expect(result.manifest.description ==
+		"Package wrapper for the canonical moving guard room scenario.",
+		"package manifest should preserve description");
+	Expect(result.manifest.authoringVersion == "iggy:ascii-source-plan@1",
+		"package manifest should preserve authoring version");
 	Expect(result.manifest.main == std::filesystem::path("scenario.toml"),
 		"package manifest should preserve main path");
 	Expect(result.scenario.status ==
@@ -187,6 +205,9 @@ void TestUnsupportedVersionFails()
 		package / "package.toml",
 		R"toml(format_id = "iggy:authored-scenario-package"
 version = 2
+title = "Bad Version"
+description = "Temporary bad version package."
+authoring_version = "iggy:ascii-source-plan@1"
 main = "scenario.toml"
 )toml");
 	const iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeResult result =
@@ -209,6 +230,9 @@ void TestEscapingMainPathFails()
 		package / "package.toml",
 		R"toml(format_id = "iggy:authored-scenario-package"
 version = 1
+title = "Escaping Main"
+description = "Temporary escaping main package."
+authoring_version = "iggy:ascii-source-plan@1"
 main = "../scenario.toml"
 )toml");
 	const iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeResult result =
@@ -224,15 +248,84 @@ main = "../scenario.toml"
 		"escaping package main path should report issue");
 }
 
-void TestMissingMainScenarioDelegatesReadFailure()
+void TestMissingTitleFails()
 {
-	const std::filesystem::path package = TempPackagePath("missing_main");
+	const std::filesystem::path package = TempPackagePath("missing_title");
 	WriteText(
 		package / "package.toml",
 		R"toml(format_id = "iggy:authored-scenario-package"
 version = 1
+description = "Temporary missing title package."
+authoring_version = "iggy:ascii-source-plan@1"
 main = "scenario.toml"
 )toml");
+	const iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeResult result =
+		iggy::runtime::RuntimeGameplayTomlScenarioPackageFacade {}.execute(
+			package);
+
+	Expect(result.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::PackageInvalid,
+		"missing package title should be invalid");
+	Expect(HasIssue(
+		result,
+		iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::MissingTitle),
+		"missing package title should report issue");
+}
+
+void TestEmptyDescriptionFails()
+{
+	const std::filesystem::path package = TempPackagePath("empty_description");
+	WriteText(
+		package / "package.toml",
+		R"toml(format_id = "iggy:authored-scenario-package"
+version = 1
+title = "Empty Description"
+description = ""
+authoring_version = "iggy:ascii-source-plan@1"
+main = "scenario.toml"
+)toml");
+	const iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeResult result =
+		iggy::runtime::RuntimeGameplayTomlScenarioPackageFacade {}.execute(
+			package);
+
+	Expect(result.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::PackageInvalid,
+		"empty package description should be invalid");
+	Expect(HasIssue(
+		result,
+		iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::InvalidMetadataValue),
+		"empty package description should report invalid metadata issue");
+}
+
+void TestMissingAuthoringVersionFails()
+{
+	const std::filesystem::path package =
+		TempPackagePath("missing_authoring_version");
+	WriteText(
+		package / "package.toml",
+		R"toml(format_id = "iggy:authored-scenario-package"
+version = 1
+title = "Missing Authoring Version"
+description = "Temporary missing authoring version package."
+main = "scenario.toml"
+)toml");
+	const iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeResult result =
+		iggy::runtime::RuntimeGameplayTomlScenarioPackageFacade {}.execute(
+			package);
+
+	Expect(result.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::PackageInvalid,
+		"missing package authoring version should be invalid");
+	Expect(HasIssue(
+		result,
+		iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::MissingAuthoringVersion),
+		"missing package authoring version should report issue");
+}
+
+void TestMissingMainScenarioDelegatesReadFailure()
+{
+	const std::filesystem::path package = TempPackagePath("missing_main");
+	WriteText(package / "package.toml", ValidManifestText());
 	const iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeResult result =
 		iggy::runtime::RuntimeGameplayTomlScenarioPackageFacade {}.execute(
 			package);
@@ -258,6 +351,9 @@ int main()
 	TestMissingManifestFails();
 	TestUnsupportedVersionFails();
 	TestEscapingMainPathFails();
+	TestMissingTitleFails();
+	TestEmptyDescriptionFails();
+	TestMissingAuthoringVersionFails();
 	TestMissingMainScenarioDelegatesReadFailure();
 
 	CleanupTempRoot();

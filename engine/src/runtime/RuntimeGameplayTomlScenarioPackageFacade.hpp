@@ -34,6 +34,10 @@ enum class RuntimeGameplayTomlScenarioPackageIssueCode {
 	UnsupportedFormatId,
 	MissingVersion,
 	UnsupportedVersion,
+	MissingTitle,
+	MissingDescription,
+	MissingAuthoringVersion,
+	InvalidMetadataValue,
 	MissingMain,
 	InvalidMainPath,
 };
@@ -41,6 +45,9 @@ enum class RuntimeGameplayTomlScenarioPackageIssueCode {
 struct RuntimeGameplayTomlScenarioPackageManifest {
 	std::string formatId;
 	int version = 0;
+	std::string title;
+	std::string description;
+	std::string authoringVersion;
 	std::filesystem::path main;
 };
 

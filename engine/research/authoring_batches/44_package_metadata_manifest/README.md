@@ -1,5 +1,7 @@
 # Batch 44: Package Metadata Manifest
 
+Status: complete.
+
 ## Goal
 If package execution is approved, add minimal package metadata that tools can display without changing scenario execution.
 
@@ -20,3 +22,12 @@ Do not proceed before Batch 17/18 approval. No directory discovery, dependency r
 
 ## Expected Result
 Packages can expose stable metadata to future tools without becoming a content management system.
+
+## Completed Coverage
+- Package manifests require display-only `title`, `description`, and
+  `authoring_version` metadata alongside the existing package format/version
+  and `main` scenario file.
+- The package facade preserves metadata on the result and validates missing or
+  empty metadata before delegating to the scenario facade.
+- The CLI prints package metadata in a separate `package:` section for package
+  runs while preserving delegated scenario execution behavior.

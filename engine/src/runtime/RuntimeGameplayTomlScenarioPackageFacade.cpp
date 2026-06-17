@@ -159,6 +159,9 @@ bool ReadManifest(RuntimeGameplayTomlScenarioPackageFacadeResult &result)
 
 	bool hasFormatId = false;
 	bool hasVersion = false;
+	bool hasTitle = false;
+	bool hasDescription = false;
+	bool hasAuthoringVersion = false;
 	bool hasMain = false;
 	std::string rawLine;
 	std::size_t lineNumber = 0;
@@ -240,6 +243,78 @@ bool ReadManifest(RuntimeGameplayTomlScenarioPackageFacadeResult &result)
 			}
 			result.manifest.version = parsed;
 			hasVersion = true;
+		} else if (key == "title") {
+			if (hasTitle) {
+				AddIssue(
+					result,
+					RuntimeGameplayTomlScenarioPackageIssueCode::DuplicateKey,
+					result.manifestPath,
+					lineNumber,
+					key,
+					"duplicate package manifest key");
+				return false;
+			}
+			std::string parsed;
+			if (!ParseQuotedString(value, parsed)) {
+				AddIssue(
+					result,
+					RuntimeGameplayTomlScenarioPackageIssueCode::WrongType,
+					result.manifestPath,
+					lineNumber,
+					key,
+					"title must be a string");
+				return false;
+			}
+			result.manifest.title = parsed;
+			hasTitle = true;
+		} else if (key == "description") {
+			if (hasDescription) {
+				AddIssue(
+					result,
+					RuntimeGameplayTomlScenarioPackageIssueCode::DuplicateKey,
+					result.manifestPath,
+					lineNumber,
+					key,
+					"duplicate package manifest key");
+				return false;
+			}
+			std::string parsed;
+			if (!ParseQuotedString(value, parsed)) {
+				AddIssue(
+					result,
+					RuntimeGameplayTomlScenarioPackageIssueCode::WrongType,
+					result.manifestPath,
+					lineNumber,
+					key,
+					"description must be a string");
+				return false;
+			}
+			result.manifest.description = parsed;
+			hasDescription = true;
+		} else if (key == "authoring_version") {
+			if (hasAuthoringVersion) {
+				AddIssue(
+					result,
+					RuntimeGameplayTomlScenarioPackageIssueCode::DuplicateKey,
+					result.manifestPath,
+					lineNumber,
+					key,
+					"duplicate package manifest key");
+				return false;
+			}
+			std::string parsed;
+			if (!ParseQuotedString(value, parsed)) {
+				AddIssue(
+					result,
+					RuntimeGameplayTomlScenarioPackageIssueCode::WrongType,
+					result.manifestPath,
+					lineNumber,
+					key,
+					"authoring_version must be a string");
+				return false;
+			}
+			result.manifest.authoringVersion = parsed;
+			hasAuthoringVersion = true;
 		} else if (key == "main") {
 			if (hasMain) {
 				AddIssue(
@@ -314,6 +389,66 @@ bool ReadManifest(RuntimeGameplayTomlScenarioPackageFacadeResult &result)
 			0,
 			"version",
 			"unsupported package version");
+		return false;
+	}
+	if (!hasTitle) {
+		AddIssue(
+			result,
+			RuntimeGameplayTomlScenarioPackageIssueCode::MissingTitle,
+			result.manifestPath,
+			0,
+			"title",
+			"package manifest is missing title");
+		return false;
+	}
+	if (Trim(result.manifest.title).empty()) {
+		AddIssue(
+			result,
+			RuntimeGameplayTomlScenarioPackageIssueCode::InvalidMetadataValue,
+			result.manifestPath,
+			0,
+			"title",
+			"title must not be empty");
+		return false;
+	}
+	if (!hasDescription) {
+		AddIssue(
+			result,
+			RuntimeGameplayTomlScenarioPackageIssueCode::MissingDescription,
+			result.manifestPath,
+			0,
+			"description",
+			"package manifest is missing description");
+		return false;
+	}
+	if (Trim(result.manifest.description).empty()) {
+		AddIssue(
+			result,
+			RuntimeGameplayTomlScenarioPackageIssueCode::InvalidMetadataValue,
+			result.manifestPath,
+			0,
+			"description",
+			"description must not be empty");
+		return false;
+	}
+	if (!hasAuthoringVersion) {
+		AddIssue(
+			result,
+			RuntimeGameplayTomlScenarioPackageIssueCode::MissingAuthoringVersion,
+			result.manifestPath,
+			0,
+			"authoring_version",
+			"package manifest is missing authoring_version");
+		return false;
+	}
+	if (Trim(result.manifest.authoringVersion).empty()) {
+		AddIssue(
+			result,
+			RuntimeGameplayTomlScenarioPackageIssueCode::InvalidMetadataValue,
+			result.manifestPath,
+			0,
+			"authoring_version",
+			"authoring_version must not be empty");
 		return false;
 	}
 	if (!hasMain) {

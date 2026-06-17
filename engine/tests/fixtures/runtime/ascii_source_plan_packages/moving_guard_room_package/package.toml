@@ -1,3 +1,6 @@
 format_id = "iggy:authored-scenario-package"
 version = 1
+title = "Moving Guard Room Package"
+description = "Package wrapper for the canonical moving guard room scenario."
+authoring_version = "iggy:ascii-source-plan@1"
 main = "scenario.toml"

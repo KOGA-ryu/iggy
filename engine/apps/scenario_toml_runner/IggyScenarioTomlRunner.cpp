@@ -77,6 +77,14 @@ const char *ToString(
 		return "missing_version";
 	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::UnsupportedVersion:
 		return "unsupported_version";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::MissingTitle:
+		return "missing_title";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::MissingDescription:
+		return "missing_description";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::MissingAuthoringVersion:
+		return "missing_authoring_version";
+	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::InvalidMetadataValue:
+		return "invalid_metadata_value";
 	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::MissingMain:
 		return "missing_main";
 	case iggy::runtime::RuntimeGameplayTomlScenarioPackageIssueCode::InvalidMainPath:
@@ -316,11 +324,29 @@ void PrintFirstPackageIssue(
 	std::cerr << '\n';
 }
 
+void PrintPackageMetadata(
+	const iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeResult *package)
+{
+	if (package == nullptr)
+		return;
+
+	std::cout << "package:\n";
+	std::cout << "package_path: " << package->packagePath.string() << '\n';
+	std::cout << "manifest_path: " << package->manifestPath.string() << '\n';
+	std::cout << "title: " << package->manifest.title << '\n';
+	std::cout << "description: " << package->manifest.description << '\n';
+	std::cout << "authoring_version: "
+		<< package->manifest.authoringVersion << '\n';
+	std::cout << "main: " << package->manifest.main.string() << '\n';
+}
+
 int PrintScenarioFacadeResult(
 	const std::filesystem::path &path,
 	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult &scenario,
 	bool lint,
-	bool trace)
+	bool trace,
+	const iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeResult *package =
+		nullptr)
 {
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult &read =
 		scenario.read;
@@ -375,6 +401,7 @@ int PrintScenarioFacadeResult(
 		std::cout << "frame_count: " << validation.frameCount << '\n';
 		std::cout << "adapter_status: " << ToString(adapter.status) << '\n';
 		std::cout << "profile_status: " << ToString(validation.status) << '\n';
+		PrintPackageMetadata(package);
 		return 0;
 	}
 
@@ -406,6 +433,7 @@ int PrintScenarioFacadeResult(
 	std::cout << "npc_moved_count: " << summary.npcMovedCount << '\n';
 	std::cout << "npc_blocked_movement_count: "
 		<< summary.npcBlockedMovementCount << '\n';
+	PrintPackageMetadata(package);
 	if (trace)
 		PrintTraceFrames(scenario.traceFrames);
 
@@ -491,7 +519,8 @@ int main(int argc, char **argv)
 			package.mainScenarioPath,
 			package.scenario,
 			lint,
-			trace);
+			trace,
+			&package);
 	}
 
 	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult scenario =

@@ -81,6 +81,10 @@ std::string NormalizeContractLine(const std::string &line)
 {
 	if (StartsWith(line, "source_path: "))
 		return "source_path: <path>";
+	if (StartsWith(line, "package_path: "))
+		return "package_path: <path>";
+	if (StartsWith(line, "manifest_path: "))
+		return "manifest_path: <path>";
 	if (StartsWith(line, "file_issue: ")) {
 		const std::string pathNeedle = " path=";
 		const std::string detailNeedle = " detail=";
@@ -547,6 +551,15 @@ void TestPackageDirectoryRunsScenario()
 			"interaction_changed: false",
 			"npc_moved_count: 1",
 			"npc_blocked_movement_count: 0",
+			"package:\n",
+			"package_path: " +
+				PackageFixturePath("moving_guard_room_package"),
+			"manifest_path: " +
+				PackageFixturePath("moving_guard_room_package/package.toml"),
+			"title: Moving Guard Room Package",
+			"description: Package wrapper for the canonical moving guard room scenario.",
+			"authoring_version: iggy:ascii-source-plan@1",
+			"main: scenario.toml",
 			FinalRowsBlock({ "#######", "#.A..@#", "#.....#", "#######" }),
 		},
 		"package directory CLI run");
@@ -563,6 +576,9 @@ void TestPackageManifestPathRunsScenario()
 			"status:\nresult: ok\nsummary:\n",
 			"source_path: " +
 				PackageFixturePath("moving_guard_room_package/scenario.toml"),
+			"package_path: " +
+				PackageFixturePath("moving_guard_room_package/package.toml"),
+			"title: Moving Guard Room Package",
 			FinalRowsBlock({ "#######", "#.A..@#", "#.....#", "#######" }),
 		},
 		"package manifest CLI run");
@@ -580,6 +596,9 @@ void TestPackageManifestFailureDiagnostics()
 		std::ofstream stream(packageRoot / "package.toml");
 		stream << R"toml(format_id = "iggy:authored-scenario-package"
 version = 2
+title = "Bad Package"
+description = "Package with an unsupported manifest version."
+authoring_version = "iggy:ascii-source-plan@1"
 main = "scenario.toml"
 )toml";
 	}

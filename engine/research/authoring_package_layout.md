@@ -30,6 +30,9 @@ Initial package manifest shape:
 ```toml
 format_id = "iggy:authored-scenario-package"
 version = 1
+title = "Example Authored Scenario"
+description = "Short human-readable package description."
+authoring_version = "iggy:ascii-source-plan@1"
 main = "scenario.toml"
 ```
 
@@ -52,6 +55,9 @@ engine/build/iggy_scenario_toml_runner engine/tests/fixtures/runtime/ascii_sourc
 - `main` names exactly one TOML scenario file inside the package directory.
 - `main` must be relative, must not be empty, and must not escape the package
   directory.
+- `title`, `description`, and `authoring_version` are required display
+  metadata. They are preserved for tools and do not change conversion or
+  runtime behavior.
 - The main TOML file owns gameplay authoring facts, expectations, and source
   plan version policy.
 - `README.md` is documentation only.
