@@ -379,6 +379,8 @@ const char *ToString(
 
 int Usage()
 {
+	std::cerr << "status:\n";
+	std::cerr << "result: usage_error\n";
 	std::cerr << "usage: iggy_scenario_toml_runner <path>\n";
 	return 1;
 }
@@ -507,10 +509,12 @@ int main(int argc, char **argv)
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult read =
 		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(path);
 	if (!read.ok()) {
-		std::cerr << "read failed: status=" << ToString(read.status)
-			<< " toml_status=" << ToString(read.text.status)
-			<< " issues=" << (read.issues.size() + read.text.issues.size())
-			<< '\n';
+		std::cerr << "status:\n";
+		std::cerr << "result: read_failed\n";
+		std::cerr << "read_status: " << ToString(read.status) << '\n';
+		std::cerr << "toml_status: " << ToString(read.text.status) << '\n';
+		std::cerr << "issue_count: "
+			<< (read.issues.size() + read.text.issues.size()) << '\n';
 		PrintFirstTomlIssue(read);
 		return 2;
 	}
@@ -523,10 +527,12 @@ int main(int argc, char **argv)
 	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
 		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(packet);
 	if (!adapter.ok()) {
-		std::cerr << "conversion failed: status=" << ToString(adapter.status)
-			<< " source_plan_status="
-			<< ToString(adapter.asciiSourcePlanConversion.status)
-			<< " issues="
+		std::cerr << "status:\n";
+		std::cerr << "result: conversion_failed\n";
+		std::cerr << "adapter_status: " << ToString(adapter.status) << '\n';
+		std::cerr << "source_plan_status: "
+			<< ToString(adapter.asciiSourcePlanConversion.status) << '\n';
+		std::cerr << "issue_count: "
 			<< (adapter.issues.size() + adapter.asciiSourcePlanConversion.issues.size())
 			<< '\n';
 		PrintFirstAdapterIssue(adapter);
@@ -537,8 +543,10 @@ int main(int argc, char **argv)
 	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
 		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
 	if (!run.ran()) {
-		std::cerr << "run failed: status=" << ToString(run.status)
-			<< " validation_issues=" << run.validation.issueCount
+		std::cerr << "status:\n";
+		std::cerr << "result: run_failed\n";
+		std::cerr << "run_status: " << ToString(run.status) << '\n';
+		std::cerr << "validation_issue_count: " << run.validation.issueCount
 			<< '\n';
 		if (!run.validation.issues.empty()) {
 			const iggy::runtime::RuntimeGameplayProfileScenarioIssue &issue =
@@ -555,6 +563,9 @@ int main(int argc, char **argv)
 		return 4;
 	}
 
+	std::cout << "status:\n";
+	std::cout << "result: ok\n";
+	std::cout << "summary:\n";
 	std::cout << "source_path: " << path.string() << '\n';
 	std::cout << "frame_count: " << run.frameCount << '\n';
 	std::cout << "accepted_command_count: "

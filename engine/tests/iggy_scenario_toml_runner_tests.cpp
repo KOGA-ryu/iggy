@@ -101,7 +101,14 @@ void TestNoArgUsage()
 {
 	const CommandResult result = RunCli({});
 	Expect(result.exitCode == 1, "no-arg CLI run should return usage failure");
-	Expect(Contains(result.output, "usage: iggy_scenario_toml_runner <path>"), "no-arg CLI run should print usage");
+	ExpectOutputContains(
+		result,
+		{
+			"status:\n",
+			"result: usage_error",
+			"usage: iggy_scenario_toml_runner <path>",
+		},
+		"no-arg CLI run");
 }
 
 void TestMissingPath()
@@ -111,7 +118,10 @@ void TestMissingPath()
 	ExpectOutputContains(
 		result,
 		{
-			"read failed: status=missing_file",
+			"status:\n",
+			"result: read_failed",
+			"read_status: missing_file",
+			"toml_status: syntax_invalid",
 			"file_issue: code=missing_file",
 			"detail=TOML source-plan file does not exist",
 		},
@@ -125,7 +135,10 @@ void TestCorruptTomlReportsSyntaxLocation()
 	ExpectOutputContains(
 		result,
 		{
-			"read failed: status=toml_read_failed toml_status=syntax_invalid",
+			"status:\n",
+			"result: read_failed",
+			"read_status: toml_read_failed",
+			"toml_status: syntax_invalid",
 			"file_issue: code=toml_read_failed",
 			"toml_issue: code=syntax_error line=1 column=0 table=root",
 			"detail=expected key = value",
@@ -141,7 +154,10 @@ void TestSemanticInvalidTomlReportsSourceIssue()
 	ExpectOutputContains(
 		result,
 		{
-			"read failed: status=toml_read_failed toml_status=source_plan_invalid",
+			"status:\n",
+			"result: read_failed",
+			"read_status: toml_read_failed",
+			"toml_status: source_plan_invalid",
 			"toml_issue: code=source_plan_invalid line=36 column=0 table=cells key= table_index=0",
 			"source_issue: code=annotated_cell_glyph_mismatch index=0 row=1 column=1 glyph=A",
 		},
@@ -155,7 +171,10 @@ void TestConversionFailureReportsMissingProfile()
 	ExpectOutputContains(
 		result,
 		{
-			"conversion failed: status=conversion_failed source_plan_status=profile_scenario_invalid",
+			"status:\n",
+			"result: conversion_failed",
+			"adapter_status: conversion_failed",
+			"source_plan_status: profile_scenario_invalid",
 			"adapter_issue: code=ascii_source_plan_conversion_failed source=ascii_source_plan",
 			"conversion_issue: code=profile_scenario_invalid",
 			"profile_issue: code=missing_profile_trait frame_index=0 actor_index=0 npc=npc:guard profile=profile:guard",
@@ -171,6 +190,7 @@ void TestSelfContainedGuardRoom()
 	ExpectOutputContains(
 		result,
 		{
+			"status:\nresult: ok\nsummary:\n",
 			"frame_count: 1",
 			"accepted_command_count: 1",
 			"picked_up_count: 0",
@@ -189,6 +209,7 @@ void TestPlayerInteractionRoom()
 	ExpectOutputContains(
 		result,
 		{
+			"status:\nresult: ok\nsummary:\n",
 			"frame_count: 1",
 			"accepted_command_count: 1",
 			"picked_up_count: 0",
@@ -207,6 +228,7 @@ void TestPlayerPickupRoom()
 	ExpectOutputContains(
 		result,
 		{
+			"status:\nresult: ok\nsummary:\n",
 			"frame_count: 2",
 			"accepted_command_count: 2",
 			"picked_up_count: 1",
