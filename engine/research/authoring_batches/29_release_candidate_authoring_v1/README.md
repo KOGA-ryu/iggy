@@ -1,5 +1,7 @@
 # Batch 29: Release Candidate Authoring v1
 
+Status: complete.
+
 ## Goal
 Freeze a minimal Authoring v1 acceptance set.
 
@@ -20,3 +22,11 @@ No feature additions in this packet.
 
 ## Expected Result
 Authoring v1 has a clear supported surface and acceptance set.
+
+## Completed Coverage
+- Added `engine/research/authoring_v1_release_candidate.md`.
+- Release-candidate acceptance now names the supported single-file TOML and
+  package inputs, run/lint/check/trace modes, expectations, diagnostics,
+  preview model, canonical fixtures, negative fixtures, package fixtures, and
+  package parity coverage.
+- No new scenario semantics were added.
