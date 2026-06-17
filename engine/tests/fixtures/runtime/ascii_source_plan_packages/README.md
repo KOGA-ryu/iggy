@@ -11,6 +11,12 @@ Run a package fixture from a configured build with:
 engine/build/iggy_scenario_toml_runner engine/tests/fixtures/runtime/ascii_source_plan_packages/moving_guard_room_package
 ```
 
+Engine callers that need data instead of CLI text can use
+`RuntimeGameplayAuthoringPreviewModel` over the same explicit package path. The
+preview model delegates to the package facade, preserves package metadata, and
+copies the delegated scenario summary, final rows, trace frames, diagnostics,
+and expectation comparison.
+
 Checked-in package fixtures:
 
 - `moving_guard_room_package`: positive package for basic NPC movement.

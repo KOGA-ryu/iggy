@@ -14,6 +14,12 @@ facts and the final rows or summary counts do not match.
 Use `--lint` before the path to validate parsing, conversion, and profile
 scenario shape without executing frames.
 
+Engine callers that need data instead of CLI text can use the read-only
+`RuntimeGameplayAuthoringPreviewModel` over the same explicit fixture path. The
+preview model delegates to the existing TOML scenario facade and exposes the
+same stable projections: status, diagnostics, summary counts, final rows, trace
+frames, and expectation comparison.
+
 Canonical success fixtures are stable examples and are covered by CLI golden rows:
 
 - `moving_guard_room.toml`: one guard actor moves from an authored `[[frame_controls]]` entry.
@@ -51,6 +57,16 @@ Canonical fixture contract:
 - Canonical success fixtures must run through `iggy_scenario_toml_runner <path>` with no C++ default frame, profile catalog, terrain policy, or other hidden converter config.
 - Canonical success fixtures must have stable CLI expectations in `iggy_scenario_toml_runner_tests.cpp`, including summary counts and final ASCII rows.
 - Regression-only fixtures may omit facts or contain invalid TOML/source-plan data when the omission or failure is the behavior under test.
+
+Exact executable examples:
+
+- Basic NPC movement: `moving_guard_room.toml`.
+- Player and NPC movement in one scenario: `player_and_guard_room.toml`.
+- Pickup: `player_picks_up_item_room.toml`.
+- Interaction toggle: `player_interacts_guard_room.toml`.
+- Required-item interaction: `locked_door_key_room.toml`.
+- Combined expectations, inventory, interaction, and actor state:
+  `mixed_progression_room.toml`.
 
 Supported tables by example:
 

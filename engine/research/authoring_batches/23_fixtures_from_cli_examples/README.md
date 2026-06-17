@@ -1,5 +1,7 @@
 # Batch 23: Fixtures From CLI Examples
 
+Status: complete.
+
 ## Goal
 Make docs/examples match the actual canonical fixtures and CLI output.
 
@@ -20,3 +22,12 @@ No docs generator unless it is trivial and local.
 
 ## Expected Result
 Fixture documentation stays grounded in executable examples.
+
+## Completed Coverage
+- Updated fixture docs to point at exact checked-in TOML fixtures for common
+  authored scenario examples instead of relying only on the long illustrative
+  table sample.
+- Documented that `RuntimeGameplayAuthoringPreviewModel` reads the same
+  explicit TOML/package paths and exposes existing facade projections for
+  non-CLI consumers.
+- No docs generator or production behavior changes were added.
