@@ -26,6 +26,13 @@ Regression-only fixtures are kept for lower-level parser, adapter, and diagnosti
 - `semantic_invalid_guard_room.toml`: source-plan validation failure fixture.
 - `corrupt_guard_room.toml`: TOML syntax failure fixture.
 
+Canonical fixture contract:
+
+- Canonical success fixtures must be self-contained: every actor `profile_id` must have a matching `[[profiles]]` entry in the same TOML file.
+- Canonical success fixtures must run through `iggy_scenario_toml_runner <path>` with no C++ default frame, profile catalog, terrain policy, or other hidden converter config.
+- Canonical success fixtures must have stable CLI expectations in `iggy_scenario_toml_runner_tests.cpp`, including summary counts and final ASCII rows.
+- Regression-only fixtures may omit facts or contain invalid TOML/source-plan data when the omission or failure is the behavior under test.
+
 Supported tables by example:
 
 ```toml
