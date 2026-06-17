@@ -45,6 +45,11 @@ void AddIssue(
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlMissingTarget:
 		++result.authoredControlIssueCount;
 		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredProfileMissingId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredProfileDuplicateId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredProfileInvalidTraits:
+		++result.authoredProfileIssueCount;
+		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetMissingId:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetDuplicateId:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetUnsupportedKind:
@@ -358,6 +363,53 @@ void ValidateAuthoredControls(RuntimeGameplayAsciiSourcePlanValidationResult &re
 			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredControlMissingTarget;
 			issue.index = index;
 			issue.id = control.npcId;
+			AddIssue(result, issue);
+		}
+	}
+}
+
+void ValidateAuthoredProfiles(RuntimeGameplayAsciiSourcePlanValidationResult &result)
+{
+	result.authoredProfileCount = result.plan.authoredProfiles.size();
+	std::vector<ResourceId> profileIds;
+	std::vector<std::size_t> profileIdIndexes;
+
+	for (std::size_t index = 0; index < result.plan.authoredProfiles.size();
+		++index) {
+		const RuntimeGameplayAsciiSourcePlanAuthoredProfile &profile =
+			result.plan.authoredProfiles[index];
+
+		if (profile.profileId.empty()) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code =
+				RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredProfileMissingId;
+			issue.index = index;
+			AddIssue(result, issue);
+		} else {
+			for (std::size_t idIndex = 0; idIndex < profileIds.size(); ++idIndex) {
+				if (profileIds[idIndex] == profile.profileId) {
+					RuntimeGameplayAsciiSourcePlanIssue issue;
+					issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+						AuthoredProfileDuplicateId;
+					issue.index = index;
+					issue.firstIndex = profileIdIndexes[idIndex];
+					issue.id = profile.profileId;
+					AddIssue(result, issue);
+					break;
+				}
+			}
+			profileIds.push_back(profile.profileId);
+			profileIdIndexes.push_back(index);
+		}
+
+		const NpcTraitSetValidationResult traitValidation =
+			iggy::validate(profile.traits);
+		if (!traitValidation.ok()) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code =
+				RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredProfileInvalidTraits;
+			issue.index = index;
+			issue.id = profile.profileId;
 			AddIssue(result, issue);
 		}
 	}
@@ -682,6 +734,7 @@ RuntimeGameplayAsciiSourcePlanValidator::validate(
 	ValidateAnnotatedCells(result);
 	ValidateRegions(result);
 	ValidateAuthoredControls(result);
+	ValidateAuthoredProfiles(result);
 	ValidateAuthoredInteractionTargets(result);
 	ValidateAuthoredItemDrops(result);
 	ValidateAuthoredPlayerCommands(result);

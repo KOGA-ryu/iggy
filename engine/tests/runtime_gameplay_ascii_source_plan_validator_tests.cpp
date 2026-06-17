@@ -174,6 +174,26 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredItemDrop ItemDrop(
 	return drop;
 }
 
+iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredProfile Profile(
+	const char *profileId,
+	int strength = 10,
+	int dexterity = 10,
+	int constitution = 10,
+	int intelligence = 10,
+	int wisdom = 10,
+	int charisma = 10)
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredProfile profile;
+	profile.profileId = Id(profileId);
+	profile.traits.strength = strength;
+	profile.traits.dexterity = dexterity;
+	profile.traits.constitution = constitution;
+	profile.traits.intelligence = intelligence;
+	profile.traits.wisdom = wisdom;
+	profile.traits.charisma = charisma;
+	return profile;
+}
+
 void TestValidSourcePlanPasses()
 {
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
@@ -187,6 +207,7 @@ void TestValidSourcePlanPasses()
 	Expect(result.legendCount == 1, "valid source plan should report legend count");
 	Expect(result.annotatedCellCount == 1, "valid source plan should report annotated cell count");
 	Expect(result.regionCount == 1, "valid source plan should report region count");
+	Expect(result.authoredProfileCount == 0, "valid source plan should report zero authored profiles");
 	Expect(result.plan.sourceId == Id("source:room-a"), "validator should preserve copied source plan");
 }
 
@@ -398,6 +419,60 @@ void TestAuthoredInteractionTargetIssuesFailInDeclarationOrder()
 	Expect(duplicateIssue != nullptr && duplicateIssue->index == 2 && duplicateIssue->firstIndex == 1 && duplicateIssue->id == Id("target:duplicate"), "duplicate target issue should preserve target id and indexes");
 }
 
+void TestValidAuthoredProfilePasses()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
+	plan.authoredProfiles = {
+		Profile("plain-profile", 12, 11, 10, 9, 8, 7),
+	};
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
+		Validate(plan);
+
+	Expect(result.ok(), "valid authored profile should validate");
+	Expect(result.authoredProfileCount == 1, "valid authored profile should be counted");
+	Expect(result.authoredProfileIssueCount == 0, "valid authored profile should have no issues");
+	Expect(result.plan.authoredProfiles[0].profileId == Id("plain-profile"), "validator should preserve exact authored profile id");
+	Expect(result.plan.authoredProfiles[0].traits.strength == 12, "validator should preserve authored profile strength");
+	Expect(result.plan.authoredProfiles[0].traits.charisma == 7, "validator should preserve authored profile charisma");
+}
+
+void TestAuthoredProfileIssuesFailInDeclarationOrder()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredProfile missingId =
+		Profile("profile:missing-id");
+	missingId.profileId = {};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredProfile duplicate =
+		Profile("profile:duplicate");
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredProfile duplicateAgain =
+		Profile("profile:duplicate", 11);
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredProfile invalidTraits =
+		Profile("profile:invalid", 21);
+	plan.authoredProfiles = {
+		missingId,
+		duplicate,
+		duplicateAgain,
+		invalidTraits,
+	};
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
+		Validate(plan);
+
+	Expect(!result.ok(), "invalid authored profiles should fail validation");
+	Expect(result.authoredProfileCount == 4, "authored profile count should preserve declarations");
+	Expect(result.authoredProfileIssueCount == 3, "authored profile issues should be counted");
+	Expect(result.issues[result.issues.size() - 3].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredProfileMissingId, "first authored profile issue should be missing id");
+	Expect(result.issues[result.issues.size() - 2].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredProfileDuplicateId, "second authored profile issue should be duplicate id");
+	Expect(result.issues[result.issues.size() - 1].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredProfileInvalidTraits, "third authored profile issue should be invalid traits");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue *duplicateIssue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredProfileDuplicateId);
+	Expect(duplicateIssue != nullptr && duplicateIssue->index == 2 && duplicateIssue->firstIndex == 1 && duplicateIssue->id == Id("profile:duplicate"), "duplicate profile issue should preserve profile id and indexes");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue *traitIssue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredProfileInvalidTraits);
+	Expect(traitIssue != nullptr && traitIssue->index == 3 && traitIssue->id == Id("profile:invalid"), "invalid trait issue should preserve profile id and index");
+}
+
 void TestValidAuthoredPlayerCommandPasses()
 {
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
@@ -561,6 +636,9 @@ void TestExactIdsAndInputImmutability()
 	plan.authoredControls = {
 		{ false, {}, Id("plain-actor"), iggy::runtime::RuntimeGameplayAsciiSourcePlanControlBehavior::Waiting, iggy::runtime::RuntimeGameplayAsciiSourcePlanControlMoveMode::Still, {} },
 	};
+	plan.authoredProfiles = {
+		Profile("plain-profile"),
+	};
 	plan.authoredInteractionTargets = {
 		InteractionTarget("plain-target"),
 	};
@@ -580,6 +658,7 @@ void TestExactIdsAndInputImmutability()
 	Expect(result.plan.annotatedCells[0].markerId == Id("plain-actor"), "validator should preserve exact unqualified actor id");
 	Expect(result.plan.annotatedCells[0].profileId == Id("profile:namespaced"), "validator should preserve exact namespaced profile id");
 	Expect(result.plan.regions[0].regionId == Id("plain-region"), "validator should preserve exact unqualified region id");
+	Expect(result.plan.authoredProfiles[0].profileId == Id("plain-profile"), "validator should preserve exact authored profile id");
 	Expect(result.plan.authoredInteractionTargets[0].targetId == Id("plain-target"), "validator should preserve exact authored interaction target id");
 	Expect(result.plan.authoredItemDrops[0].dropId == Id("plain-drop"), "validator should preserve exact authored item drop id");
 	Expect(result.plan.authoredItemDrops[0].itemId == Id("item:namespaced"), "validator should preserve exact authored item id");
@@ -588,6 +667,7 @@ void TestExactIdsAndInputImmutability()
 	Expect(plan.annotatedCells[0].markerId == before.annotatedCells[0].markerId, "validator should not mutate annotated cells");
 	Expect(plan.regions[0].regionId == before.regions[0].regionId, "validator should not mutate regions");
 	Expect(plan.authoredControls[0].npcId == before.authoredControls[0].npcId, "validator should not mutate authored controls");
+	Expect(plan.authoredProfiles[0].profileId == before.authoredProfiles[0].profileId, "validator should not mutate authored profiles");
 	Expect(plan.authoredInteractionTargets[0].targetId == before.authoredInteractionTargets[0].targetId, "validator should not mutate authored interaction targets");
 	Expect(plan.authoredItemDrops[0].dropId == before.authoredItemDrops[0].dropId, "validator should not mutate authored item drops");
 	Expect(plan.authoredPlayerCommands[0].frameId == before.authoredPlayerCommands[0].frameId, "validator should not mutate authored player commands");
@@ -606,6 +686,8 @@ int main()
 	TestUnsafeNoClaimsAndPromotionPolicyFail();
 	TestValidAuthoredControlPasses();
 	TestAuthoredControlIssuesFailInDeclarationOrder();
+	TestValidAuthoredProfilePasses();
+	TestAuthoredProfileIssuesFailInDeclarationOrder();
 	TestValidAuthoredInteractionTargetPasses();
 	TestAuthoredInteractionTargetIssuesFailInDeclarationOrder();
 	TestValidAuthoredPlayerCommandPasses();

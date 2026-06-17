@@ -42,6 +42,11 @@ std::size_t RuntimeGameplayAsciiSourcePlan::authoredControlCount() const
 	return authoredControls.size();
 }
 
+std::size_t RuntimeGameplayAsciiSourcePlan::authoredProfileCount() const
+{
+	return authoredProfiles.size();
+}
+
 std::size_t RuntimeGameplayAsciiSourcePlan::authoredInteractionTargetCount() const
 {
 	return authoredInteractionTargets.size();

@@ -29,6 +29,9 @@ enum class RuntimeGameplayAsciiSourcePlanIssueCode {
 	AuthoredControlUnsupportedBehavior,
 	AuthoredControlUnsupportedMoveMode,
 	AuthoredControlMissingTarget,
+	AuthoredProfileMissingId,
+	AuthoredProfileDuplicateId,
+	AuthoredProfileInvalidTraits,
 	AuthoredInteractionTargetMissingId,
 	AuthoredInteractionTargetDuplicateId,
 	AuthoredInteractionTargetUnsupportedKind,
@@ -75,6 +78,8 @@ struct RuntimeGameplayAsciiSourcePlanValidationResult {
 	std::size_t annotatedCellCount = 0;
 	std::size_t regionCount = 0;
 	std::size_t authoredControlCount = 0;
+	std::size_t authoredProfileCount = 0;
+	std::size_t authoredProfileIssueCount = 0;
 	std::size_t authoredPlayerCommandCount = 0;
 	std::size_t dimensionMismatchCount = 0;
 	std::size_t raggedRowCount = 0;

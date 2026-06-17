@@ -26,6 +26,7 @@ void TestDefaultSourcePlanIsEmptyAndSafe()
 	Expect(plan.legendCount() == 0, "default source plan should report zero legend entries");
 	Expect(plan.annotatedCellCount() == 0, "default source plan should report zero annotated cells");
 	Expect(plan.regionCount() == 0, "default source plan should report zero regions");
+	Expect(plan.authoredProfileCount() == 0, "default source plan should report zero authored profiles");
 	Expect(plan.authoredInteractionTargetCount() == 0, "default source plan should report zero authored interaction targets");
 	Expect(plan.authoredItemDropCount() == 0, "default source plan should report zero authored item drops");
 	Expect(plan.safeForAuthoring(), "default source plan should be safe authoring data");
@@ -177,6 +178,29 @@ void TestAuthoredControlsPreserveMovementFactsAndExactIds()
 	Expect(plan.authoredControls[0].targetPosition.present && plan.authoredControls[0].targetPosition.x == 2.5 && plan.authoredControls[0].targetPosition.y == 1.5, "authored control should preserve target position");
 }
 
+void TestAuthoredProfilesPreserveTraitsAndExactIds()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan;
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredProfile profile;
+	profile.profileId = Id("plain-profile");
+	profile.traits.strength = 12;
+	profile.traits.dexterity = 11;
+	profile.traits.constitution = 10;
+	profile.traits.intelligence = 9;
+	profile.traits.wisdom = 8;
+	profile.traits.charisma = 7;
+	plan.authoredProfiles.push_back(profile);
+
+	Expect(plan.authoredProfileCount() == 1, "source plan should preserve authored profile count");
+	Expect(plan.authoredProfiles[0].profileId == Id("plain-profile"), "authored profile should preserve exact profile id");
+	Expect(plan.authoredProfiles[0].traits.strength == 12, "authored profile should preserve strength");
+	Expect(plan.authoredProfiles[0].traits.dexterity == 11, "authored profile should preserve dexterity");
+	Expect(plan.authoredProfiles[0].traits.constitution == 10, "authored profile should preserve constitution");
+	Expect(plan.authoredProfiles[0].traits.intelligence == 9, "authored profile should preserve intelligence");
+	Expect(plan.authoredProfiles[0].traits.wisdom == 8, "authored profile should preserve wisdom");
+	Expect(plan.authoredProfiles[0].traits.charisma == 7, "authored profile should preserve charisma");
+}
+
 void TestAuthoredInteractionTargetsPreserveFactsAndExactIds()
 {
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan;
@@ -250,6 +274,9 @@ void TestSourcePlanCopiesAreIndependent()
 	plan.authoredControls = {
 		{ true, Id("frame:copy"), Id("npc:copy"), iggy::runtime::RuntimeGameplayAsciiSourcePlanControlBehavior::Seeking, iggy::runtime::RuntimeGameplayAsciiSourcePlanControlMoveMode::Walk, { true, 2.5, 1.5 } },
 	};
+	plan.authoredProfiles = {
+		{ Id("profile:copy"), {} },
+	};
 	plan.authoredInteractionTargets = {
 		{ Id("target:copy"), iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Usable, { true, 0, 0 } },
 	};
@@ -262,6 +289,7 @@ void TestSourcePlanCopiesAreIndependent()
 	copy.legend[0].targetMarkerId = Id("npc:changed");
 	copy.annotatedCells[0].profileId = Id("profile:changed");
 	copy.authoredControls[0].npcId = Id("npc:changed");
+	copy.authoredProfiles[0].profileId = Id("profile:changed");
 	copy.authoredInteractionTargets[0].targetId = Id("target:changed");
 	copy.authoredItemDrops[0].dropId = Id("drop:changed");
 
@@ -269,6 +297,7 @@ void TestSourcePlanCopiesAreIndependent()
 	Expect(plan.legend[0].targetMarkerId == Id("npc:copy"), "source plan copy should not mutate legend target id");
 	Expect(plan.annotatedCells[0].profileId == Id("profile:copy"), "source plan copy should not mutate annotated cell profile id");
 	Expect(plan.authoredControls[0].npcId == Id("npc:copy"), "source plan copy should not mutate authored controls");
+	Expect(plan.authoredProfiles[0].profileId == Id("profile:copy"), "source plan copy should not mutate authored profiles");
 	Expect(plan.authoredInteractionTargets[0].targetId == Id("target:copy"), "source plan copy should not mutate authored interaction targets");
 	Expect(plan.authoredItemDrops[0].dropId == Id("drop:copy"), "source plan copy should not mutate authored item drops");
 }
@@ -283,6 +312,7 @@ int main()
 	TestAnnotatedCellsPreserveLocalFactsAndExactIds();
 	TestRegionsAndNoClaimFlagsAreExplicit();
 	TestAuthoredControlsPreserveMovementFactsAndExactIds();
+	TestAuthoredProfilesPreserveTraitsAndExactIds();
 	TestAuthoredInteractionTargetsPreserveFactsAndExactIds();
 	TestAuthoredItemDropsPreserveFactsAndExactIds();
 	TestSourcePlanCopiesAreIndependent();

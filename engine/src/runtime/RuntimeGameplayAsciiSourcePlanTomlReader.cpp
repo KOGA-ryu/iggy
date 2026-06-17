@@ -941,6 +941,19 @@ RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
 			issue.line = locations.frameControlTableLines[sourceIssue.index];
 		}
 		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredProfileMissingId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredProfileDuplicateId:
+		issue.table = "profiles";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "id";
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredProfileInvalidTraits:
+		issue.table = "profiles";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "traits";
+		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetMissingId:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetDuplicateId:
 		issue.table = "interaction_targets";

@@ -7,6 +7,7 @@
 
 #include "core/resource/ResourceId.hpp"
 #include "runtime/RuntimeGameplayAsciiScenarioPacket.hpp"
+#include "scene/ai/NpcTraitSet.hpp"
 #include "scene/level/TileCoord.hpp"
 
 namespace iggy::runtime {
@@ -141,6 +142,11 @@ struct RuntimeGameplayAsciiSourcePlanAuthoredControl {
 	std::size_t declarationIndex = 0;
 };
 
+struct RuntimeGameplayAsciiSourcePlanAuthoredProfile {
+	ResourceId profileId;
+	NpcTraitSet traits;
+};
+
 struct RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget {
 	ResourceId targetId;
 	RuntimeGameplayAsciiSourcePlanInteractionTargetKind kind =
@@ -209,6 +215,7 @@ struct RuntimeGameplayAsciiSourcePlan {
 	std::vector<RuntimeGameplayAsciiSourcePlanAnnotatedCell> annotatedCells;
 	std::vector<RuntimeGameplayAsciiSourcePlanRegion> regions;
 	std::vector<RuntimeGameplayAsciiSourcePlanAuthoredControl> authoredControls;
+	std::vector<RuntimeGameplayAsciiSourcePlanAuthoredProfile> authoredProfiles;
 	std::vector<RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget>
 		authoredInteractionTargets;
 	std::vector<RuntimeGameplayAsciiSourcePlanAuthoredItemDrop>
@@ -224,6 +231,7 @@ struct RuntimeGameplayAsciiSourcePlan {
 	[[nodiscard]] std::size_t annotatedCellCount() const;
 	[[nodiscard]] std::size_t regionCount() const;
 	[[nodiscard]] std::size_t authoredControlCount() const;
+	[[nodiscard]] std::size_t authoredProfileCount() const;
 	[[nodiscard]] std::size_t authoredInteractionTargetCount() const;
 	[[nodiscard]] std::size_t authoredItemDropCount() const;
 	[[nodiscard]] std::size_t authoredPlayerCommandCount() const;
