@@ -8,6 +8,8 @@ Run a self-contained fixture from a configured build with:
 engine/build/iggy_scenario_toml_runner engine/tests/fixtures/runtime/ascii_source_plan/self_contained_guard_room.toml
 ```
 
+Add `--trace` before the path to include per-frame rows and counts.
+
 Canonical success fixtures:
 
 - `moving_guard_room.toml`: one guard actor moves from an authored `[[frame_controls]]` entry.
