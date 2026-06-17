@@ -706,20 +706,22 @@ int main(int argc, char **argv)
 	std::cout << "status:\n";
 	std::cout << "result: ok\n";
 	std::cout << "summary:\n";
-	std::cout << "source_path: " << path.string() << '\n';
-	std::cout << "frame_count: " << run.frameCount << '\n';
+	const iggy::runtime::RuntimeGameplayTomlScenarioRunSummaryProjection
+		&summary = scenario.runSummary;
+	std::cout << "source_path: " << summary.sourcePath.string() << '\n';
+	std::cout << "frame_count: " << summary.frameCount << '\n';
 	std::cout << "accepted_command_count: "
-		<< run.scenario.runner.acceptedCommandCount << '\n';
-	std::cout << "picked_up_count: " << run.scenario.runner.pickedUpCount << '\n';
+		<< summary.acceptedCommandCount << '\n';
+	std::cout << "picked_up_count: " << summary.pickedUpCount << '\n';
 	std::cout << "interaction_changed: "
-		<< (run.scenario.runner.interactionChanged ? "true" : "false") << '\n';
-	std::cout << "npc_moved_count: " << run.npcMovedCount << '\n';
+		<< (summary.interactionChanged ? "true" : "false") << '\n';
+	std::cout << "npc_moved_count: " << summary.npcMovedCount << '\n';
 	std::cout << "npc_blocked_movement_count: "
-		<< run.npcBlockedMovementCount << '\n';
+		<< summary.npcBlockedMovementCount << '\n';
 	if (trace)
 		PrintTraceFrames(scenario.traceFrames);
 
-	const std::vector<std::string> &rows = scenario.finalRows;
+	const std::vector<std::string> &rows = summary.finalRows;
 	const iggy::runtime::RuntimeGameplayTomlScenarioExpectationComparison
 		&comparison = scenario.expectationComparison;
 	PrintExpectationComparison(comparison);

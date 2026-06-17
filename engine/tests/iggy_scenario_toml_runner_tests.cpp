@@ -222,18 +222,19 @@ void ExpectCliMatchesFacadeRunProjection(
 
 	std::vector<std::string> needles {
 		"status:\nresult: ok\nsummary:\n",
-		std::string("frame_count: ") + std::to_string(facade.run.frameCount),
+		std::string("frame_count: ") +
+			std::to_string(facade.runSummary.frameCount),
 		std::string("accepted_command_count: ") +
-			std::to_string(facade.run.scenario.runner.acceptedCommandCount),
+			std::to_string(facade.runSummary.acceptedCommandCount),
 		std::string("picked_up_count: ") +
-			std::to_string(facade.run.scenario.runner.pickedUpCount),
+			std::to_string(facade.runSummary.pickedUpCount),
 		std::string("interaction_changed: ") +
-			(facade.run.scenario.runner.interactionChanged ? "true" : "false"),
+			(facade.runSummary.interactionChanged ? "true" : "false"),
 		std::string("npc_moved_count: ") +
-			std::to_string(facade.run.npcMovedCount),
+			std::to_string(facade.runSummary.npcMovedCount),
 		std::string("npc_blocked_movement_count: ") +
-			std::to_string(facade.run.npcBlockedMovementCount),
-		FinalRowsBlock(facade.finalRows),
+			std::to_string(facade.runSummary.npcBlockedMovementCount),
+		FinalRowsBlock(facade.runSummary.finalRows),
 	};
 	if (trace) {
 		needles.push_back("frames:\n");

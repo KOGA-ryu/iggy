@@ -86,6 +86,22 @@ void TestRunCanonicalFixture()
 	};
 	Expect(result.finalRows == expectedRows,
 		"run result should include projected final rows");
+	Expect(result.runSummary.sourcePath == FixturePath("mixed_mini_scenario.toml"),
+		"run result should project source path");
+	Expect(result.runSummary.frameCount == 3,
+		"run result should project frame count");
+	Expect(result.runSummary.acceptedCommandCount == 3,
+		"run result should project accepted command count");
+	Expect(result.runSummary.pickedUpCount == 1,
+		"run result should project pickup count");
+	Expect(result.runSummary.interactionChanged,
+		"run result should project interaction change");
+	Expect(result.runSummary.npcMovedCount == 1,
+		"run result should project NPC moved count");
+	Expect(result.runSummary.npcBlockedMovementCount == 0,
+		"run result should project NPC blocked movement count");
+	Expect(result.runSummary.finalRows == expectedRows,
+		"run result should project final rows");
 	Expect(!result.expectationComparison.present,
 		"fixture without expectations should report no expectation comparison");
 }

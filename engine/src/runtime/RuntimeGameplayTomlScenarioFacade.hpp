@@ -9,6 +9,7 @@
 #include "runtime/RuntimeGameplayProfileScenarioRunner.hpp"
 #include "runtime/RuntimeGameplayProfileScenarioValidator.hpp"
 #include "runtime/RuntimeGameplayScenarioAuthoringAdapter.hpp"
+#include "runtime/RuntimeGameplayTomlScenarioSummaryProjection.hpp"
 
 namespace iggy::runtime {
 
@@ -72,6 +73,7 @@ struct RuntimeGameplayTomlScenarioFacadeResult {
 	RuntimeGameplayProfileScenarioValidationResult validation;
 	RuntimeGameplayProfileScenarioRunResult run;
 	std::vector<std::string> finalRows;
+	RuntimeGameplayTomlScenarioRunSummaryProjection runSummary;
 	std::vector<RuntimeGameplayTomlScenarioTraceFrame> traceFrames;
 	RuntimeGameplayTomlScenarioExpectationComparison expectationComparison;
 	RuntimeGameplayTomlScenarioFacadeStatus status =

@@ -187,6 +187,10 @@ RuntimeGameplayTomlScenarioFacadeResult RuntimeGameplayTomlScenarioFacade::execu
 
 	result.finalRows =
 		finalDebugRowsForAsciiSourcePlan(result.read.text.plan, result.run.state);
+	result.runSummary = projectRuntimeGameplayTomlScenarioRunSummary(
+		result.path,
+		result.run,
+		result.finalRows);
 	if (ShouldTrace(config))
 		result.traceFrames = TraceFrames(result.read.text.plan, result.run);
 	result.expectationComparison = CompareExpectations(
