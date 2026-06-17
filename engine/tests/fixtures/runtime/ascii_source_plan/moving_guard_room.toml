@@ -41,6 +41,15 @@ role_id = "role:player-start"
 maps_to_scenario_marker = true
 scenario_marker_kind = "player_start"
 
+[[profiles]]
+id = "profile:guard"
+strength = 10
+dexterity = 10
+constitution = 10
+intelligence = 10
+wisdom = 10
+charisma = 10
+
 [[cells]]
 id = "cell:guard"
 row = 1

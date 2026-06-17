@@ -402,14 +402,9 @@ void TestMovingFixtureRunsScenarioAndMovesNpcFromAuthoredControl()
 	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
 	packet.hasAsciiSourcePlan = true;
 	packet.asciiSourcePlan = read.text.plan;
-	iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig adapterConfig;
-	adapterConfig.hasAsciiSourcePlanProfileScenarioConfig = true;
-	adapterConfig.asciiSourcePlanProfileScenario = ConverterConfig();
 
 	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
-		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(
-			packet,
-			adapterConfig);
+		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(packet);
 	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
 		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
 	const std::vector<std::string> rows = iggy::runtime::finalDebugRowsForAsciiSourcePlan(read.text.plan, run.state);
@@ -426,7 +421,8 @@ void TestMovingFixtureRunsScenarioAndMovesNpcFromAuthoredControl()
 	Expect(adapter.ok(), "movement vertical path should adapt parsed source plan to profile scenario");
 	Expect(adapter.asciiSourcePlanConversion.ok(), "movement vertical path should preserve source-plan conversion success");
 	Expect(adapter.asciiSourcePlanConversion.authoredControlCount == 1, "movement conversion should consume authored control");
-	Expect(!adapterConfig.asciiSourcePlanProfileScenario.hasDefaultControl, "movement fixture should not rely on C++ default-control movement");
+	Expect(!adapter.config.hasAsciiSourcePlanProfileScenarioConfig, "movement fixture should not need explicit source-plan conversion config");
+	Expect(!adapter.config.asciiSourcePlanProfileScenario.hasDefaultFrame, "movement fixture should not rely on C++ default frame");
 	Expect(run.ran(), "movement vertical path should run converted profile scenario");
 	Expect(run.frameCount == 1, "movement vertical path should execute one scenario frame");
 	Expect(run.npcMovementPlannedRequestCount == 1, "movement vertical path should plan one NPC movement request");
@@ -450,14 +446,9 @@ void TestMultiFrameFixtureRunsScenarioAndMovesNpcAcrossFrames()
 	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
 	packet.hasAsciiSourcePlan = true;
 	packet.asciiSourcePlan = read.text.plan;
-	iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig adapterConfig;
-	adapterConfig.hasAsciiSourcePlanProfileScenarioConfig = true;
-	adapterConfig.asciiSourcePlanProfileScenario = ConverterConfig();
 
 	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
-		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(
-			packet,
-			adapterConfig);
+		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(packet);
 	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
 		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
 	const std::vector<std::string> rows = iggy::runtime::finalDebugRowsForAsciiSourcePlan(read.text.plan, run.state);
@@ -504,14 +495,9 @@ void TestPlayerAndGuardFixtureRunsSharedFrameThroughScenario()
 	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
 	packet.hasAsciiSourcePlan = true;
 	packet.asciiSourcePlan = read.text.plan;
-	iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig adapterConfig;
-	adapterConfig.hasAsciiSourcePlanProfileScenarioConfig = true;
-	adapterConfig.asciiSourcePlanProfileScenario = ConverterConfig();
 
 	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
-		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(
-			packet,
-			adapterConfig);
+		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(packet);
 	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
 		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
 	const std::vector<std::string> rows = iggy::runtime::finalDebugRowsForAsciiSourcePlan(read.text.plan, run.state);

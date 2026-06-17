@@ -1,17 +1,17 @@
 format_id = "iggy:ascii-source-plan"
 version = 1
-source_id = "scenario:player-and-guard-room"
-source_ref = "authoring:checked-in-player-and-guard-fixture"
+source_id = "scenario:mixed-mini"
+source_ref = "authoring:checked-in-mixed-mini-fixture"
 
 [grid]
-width = 7
+width = 9
 height = 4
 background = "."
 rows = [
-  "#######",
-  "#A...@#",
-  "#.....#",
-  "#######",
+  "#########",
+  "#A@.k...#",
+  "#.......#",
+  "#########",
 ]
 
 [no_claims]
@@ -41,6 +41,13 @@ role_id = "role:player-start"
 maps_to_scenario_marker = true
 scenario_marker_kind = "player_start"
 
+[[legend]]
+glyph = "k"
+kind = "annotation"
+role_id = "role:item"
+role_tags = ["tag:key"]
+maps_to_scenario_marker = false
+
 [[profiles]]
 id = "profile:guard"
 strength = 10
@@ -67,18 +74,59 @@ id = "region:room"
 min_row = 0
 min_column = 0
 max_row = 3
-max_column = 6
+max_column = 8
 role_tags = ["tag:room"]
 
+[[item_drops]]
+drop_id = "drop:key"
+item_id = "item:key"
+count = 1
+tile = { x = 4, y = 1 }
+position = { x = 4.5, y = 1.5 }
+pickup_radius = 1.0
+enabled = true
+glyph = "k"
+
+[[interaction_targets]]
+target_id = "target:key"
+kind = "pickup"
+tile = { x = 4, y = 1 }
+position = { x = 4.5, y = 1.5 }
+radius = 1.0
+enabled = true
+effect = "pickup_item"
+drop_id = "drop:key"
+
+[[interaction_targets]]
+target_id = "target:lever"
+kind = "usable"
+tile = { x = 3, y = 1 }
+position = { x = 3.5, y = 1.5 }
+radius = 1.0
+enabled = true
+effect = "toggle_target"
+effect_target_id = "target:lever"
+enabled_value = false
+
 [[frame_controls]]
-frame_id = "frame:shared"
+frame_id = "frame:move-to-key"
 npc = "npc:guard"
 behavior = "seeking"
 move_mode = "walk"
 target = { x = 2.5, y = 1.5 }
 
 [[frame_player_commands]]
-frame_id = "frame:shared"
+frame_id = "frame:move-to-key"
 command = "move_to_tile"
-x = 4
+x = 3
 y = 1
+
+[[frame_player_commands]]
+frame_id = "frame:pickup-key"
+command = "pickup"
+target_id = "target:key"
+
+[[frame_player_commands]]
+frame_id = "frame:interact-lever"
+command = "interact"
+target_id = "target:lever"
