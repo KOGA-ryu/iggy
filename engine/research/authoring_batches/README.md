@@ -62,11 +62,11 @@ Queue:
 22. `[complete]` `22_schema_snapshot_tests` - snapshot supported TOML table/key surface.
 23. `[complete]` `23_fixtures_from_cli_examples` - derive docs/examples from canonical fixtures.
 24. `[complete]` `24_batch_queue_maintenance` - keep this bucket pruned and current.
-25. `[gated]` `25_runtime_authoring_cleanup_gate` - review cleanup targets after v1 hardening.
+25. `[complete]` `25_runtime_authoring_cleanup_gate` - review cleanup targets after v1 hardening.
 26. `[complete]` `26_minimal_editor_model` - engine-only model if prior gates pass.
-27. `[open]` `27_authored_scenario_perf_budget` - lightweight performance/size budget checks.
+27. `[complete]` `27_authored_scenario_perf_budget` - lightweight performance/size budget checks.
 28. `[complete]` `28_content_error_codes` - stable user-facing authoring error-code pass.
-29. `[open]` `29_release_candidate_authoring_v1` - freeze an Authoring v1 acceptance set.
+29. `[complete]` `29_release_candidate_authoring_v1` - freeze an Authoring v1 acceptance set.
 30. `[gated]` `30_post_v1_semantics_gate` - decide next gameplay semantics after v1.
 31. `[complete]` `31_authoring_facade_parity_audit` - keep CLI/facade execution paths equivalent.
 32. `[complete]` `32_canonical_fixture_manifest` - one test-owned canonical fixture source of truth.
@@ -97,4 +97,4 @@ Queue:
 57. `[complete]` `57_interaction_state_expectations` - final interaction state expectations.
 58. `[complete]` `58_actor_state_expectations` - final player/NPC state expectations.
 59. `[complete]` `59_authoring_run_summary_projection` - shared summary projection helper.
-60. `[gated]` `60_authoring_bucket_prune_gate` - prune stale/superseded bucket packets.
+60. `[complete]` `60_authoring_bucket_prune_gate` - prune stale/superseded bucket packets.
