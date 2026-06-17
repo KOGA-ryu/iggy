@@ -1443,6 +1443,30 @@ rows = [
 	}
 }
 
+void TestExpectInventoryStacksParse()
+{
+	const std::string toml = RootGridToml() + R"toml(
+
+[[expect_inventory_stacks]]
+item_id = "item:key"
+count = 1
+)toml";
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
+		Read(toml);
+
+	Expect(read.ok(), "expect inventory stack table should parse");
+	Expect(read.sourceValidation.ok(), "well-shaped expect inventory stack should validate");
+	Expect(read.plan.hasExpectations(), "expect inventory stack table should populate expectations");
+	Expect(read.plan.expectations.inventoryStacks.size() == 1, "expect inventory stack table should preserve stack count");
+	if (!read.plan.expectations.inventoryStacks.empty()) {
+		const iggy::runtime::RuntimeGameplayAsciiSourcePlanExpectedInventoryStack &stack =
+			read.plan.expectations.inventoryStacks[0];
+		Expect(stack.itemId == Id("item:key"), "expect inventory stack should preserve item id");
+		Expect(stack.count == 1, "expect inventory stack should preserve count");
+	}
+}
+
 void TestExpectWrongTypedFieldReportsContext()
 {
 	const std::string toml = RootGridToml() + R"toml(
@@ -1517,6 +1541,30 @@ rows = [
 		Expect(issue->hasTableIndex && issue->tableIndex == 0, "malformed expect trace rows should report table index");
 		Expect(issue->key == "rows", "malformed expect trace rows should report rows key");
 		Expect(issue->line == LineOfNth(toml, "rows = [", 1), "malformed expect trace rows should preserve source line");
+	}
+}
+
+void TestExpectInventoryStackShapeSurfacesSourcePlanValidation()
+{
+	const std::string toml = RootGridToml() + R"toml(
+
+[[expect_inventory_stacks]]
+item_id = "item:key"
+count = 0
+)toml";
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
+		Read(toml);
+
+	Expect(read.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "invalid expect inventory stack should report source-plan invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(read, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedInventoryStackInvalidCount);
+	Expect(issue != nullptr, "invalid expect inventory stack should surface source-plan issue");
+	if (issue != nullptr) {
+		Expect(issue->table == "expect_inventory_stacks", "invalid expect inventory stack should report inventory expectation table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "invalid expect inventory stack should report table index");
+		Expect(issue->key == "count", "invalid expect inventory stack should report count key");
+		Expect(issue->line == LineOfNth(toml, "[[expect_inventory_stacks]]"), "invalid expect inventory stack should preserve source line");
 	}
 }
 
@@ -1615,9 +1663,11 @@ int main()
 	TestExpectTableParses();
 	TestExpectInlineRowsParse();
 	TestExpectTraceFramesParse();
+	TestExpectInventoryStacksParse();
 	TestExpectWrongTypedFieldReportsContext();
 	TestExpectFinalRowsShapeSurfacesSourcePlanValidation();
 	TestExpectTraceFrameRowsShapeSurfacesSourcePlanValidation();
+	TestExpectInventoryStackShapeSurfacesSourcePlanValidation();
 	TestTomlSourcePlanFeedsConverterAndProfileValidator();
 	return Failures;
 }

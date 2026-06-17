@@ -284,6 +284,7 @@ void TestExpectationsPreserveFinalRowsAndSummaryCounts()
 	frame.hasNpcMovedCount = true;
 	frame.npcMovedCount = 2;
 	plan.expectations.traceFrames.push_back(frame);
+	plan.expectations.inventoryStacks.push_back({ Id("item:key"), 1 });
 
 	Expect(plan.hasExpectations(), "source plan should report authored expectations");
 	Expect(plan.expectations.hasFinalRows, "expectations should preserve final rows presence");
@@ -297,6 +298,8 @@ void TestExpectationsPreserveFinalRowsAndSummaryCounts()
 	Expect(plan.expectations.traceFrames[0].frameId == Id("frame:one"), "trace expectation should preserve frame id");
 	Expect(plan.expectations.traceFrames[0].rows[1] == "#@#", "trace expectation should preserve rows");
 	Expect(plan.expectations.traceFrames[0].hasAcceptedCommandCount && plan.expectations.traceFrames[0].acceptedCommandCount == 1, "trace expectation should preserve accepted command count");
+	Expect(plan.expectations.inventoryStacks.size() == 1, "expectations should preserve inventory stacks");
+	Expect(plan.expectations.inventoryStacks[0].itemId == Id("item:key") && plan.expectations.inventoryStacks[0].count == 1, "inventory expectation should preserve item id and count");
 }
 
 void TestSourcePlanCopiesAreIndependent()
@@ -340,6 +343,7 @@ void TestSourcePlanCopiesAreIndependent()
 	frame.hasRows = true;
 	frame.rows = { "A." };
 	plan.expectations.traceFrames.push_back(frame);
+	plan.expectations.inventoryStacks.push_back({ Id("item:copy"), 1 });
 
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan copy = plan;
 	copy.grid.rows[0] = "..";
@@ -352,6 +356,7 @@ void TestSourcePlanCopiesAreIndependent()
 	copy.expectations.finalRows[0] = "..";
 	copy.expectations.frameCount = 2;
 	copy.expectations.traceFrames[0].rows[0] = "..";
+	copy.expectations.inventoryStacks[0].itemId = Id("item:changed");
 
 	Expect(plan.grid.rows[0] == "A.", "source plan copy should not mutate source rows");
 	Expect(plan.legend[0].targetMarkerId == Id("npc:copy"), "source plan copy should not mutate legend target id");
@@ -363,6 +368,7 @@ void TestSourcePlanCopiesAreIndependent()
 	Expect(plan.expectations.finalRows[0] == "A.", "source plan copy should not mutate expectation rows");
 	Expect(plan.expectations.frameCount == 1, "source plan copy should not mutate expectation counts");
 	Expect(plan.expectations.traceFrames[0].rows[0] == "A.", "source plan copy should not mutate trace expectation rows");
+	Expect(plan.expectations.inventoryStacks[0].itemId == Id("item:copy"), "source plan copy should not mutate inventory expectations");
 }
 
 } // namespace

@@ -219,6 +219,11 @@ struct RuntimeGameplayAsciiSourcePlanExpectedTraceFrame {
 	std::size_t npcMovedCount = 0;
 };
 
+struct RuntimeGameplayAsciiSourcePlanExpectedInventoryStack {
+	ResourceId itemId;
+	std::uint32_t count = 0;
+};
+
 struct RuntimeGameplayAsciiSourcePlanExpectations {
 	bool hasFinalRows = false;
 	std::vector<std::string> finalRows;
@@ -233,6 +238,8 @@ struct RuntimeGameplayAsciiSourcePlanExpectations {
 	bool hasNpcMovedCount = false;
 	std::size_t npcMovedCount = 0;
 	std::vector<RuntimeGameplayAsciiSourcePlanExpectedTraceFrame> traceFrames;
+	std::vector<RuntimeGameplayAsciiSourcePlanExpectedInventoryStack>
+		inventoryStacks;
 
 	[[nodiscard]] bool hasAny() const;
 };

@@ -175,6 +175,12 @@ const char *runtimeGameplayAuthoringCodeText(
 		return "expected_trace_frame_rows_empty";
 	case Code::ExpectedTraceFrameRowsDimensionMismatch:
 		return "expected_trace_frame_rows_dimension_mismatch";
+	case Code::ExpectedInventoryStackMissingItemId:
+		return "expected_inventory_stack_missing_item_id";
+	case Code::ExpectedInventoryStackInvalidCount:
+		return "expected_inventory_stack_invalid_count";
+	case Code::ExpectedInventoryStackDuplicateItemId:
+		return "expected_inventory_stack_duplicate_item_id";
 	case Code::EmptyActorMarkerId:
 		return "empty_actor_marker_id";
 	case Code::EmptyProfileMarkerId:

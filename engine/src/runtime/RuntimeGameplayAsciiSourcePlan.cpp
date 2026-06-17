@@ -20,7 +20,8 @@ bool RuntimeGameplayAsciiSourcePlanExpectations::hasAny() const
 		hasPickedUpCount ||
 		hasInteractionChanged ||
 		hasNpcMovedCount ||
-		!traceFrames.empty();
+		!traceFrames.empty() ||
+		!inventoryStacks.empty();
 }
 
 bool RuntimeGameplayAsciiSourcePlan::hasRows() const

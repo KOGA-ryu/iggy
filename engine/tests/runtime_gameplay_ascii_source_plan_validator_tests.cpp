@@ -716,6 +716,7 @@ void TestExpectationShapeValidates()
 	frame.hasNpcMovedCount = true;
 	frame.npcMovedCount = 1;
 	plan.expectations.traceFrames.push_back(frame);
+	plan.expectations.inventoryStacks.push_back({ Id("item:key"), 1 });
 
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
 		Validate(plan);
@@ -727,6 +728,8 @@ void TestExpectationShapeValidates()
 	Expect(result.plan.expectations.hasNpcMovedCount && result.plan.expectations.npcMovedCount == 1, "validator should preserve expectation counts");
 	Expect(result.plan.expectations.traceFrames.size() == 1, "validator should preserve trace expectations");
 	Expect(result.plan.expectations.traceFrames[0].rows[1] == "#A..#", "validator should preserve trace expectation rows");
+	Expect(result.plan.expectations.inventoryStacks.size() == 1, "validator should preserve inventory expectations");
+	Expect(result.plan.expectations.inventoryStacks[0].itemId == Id("item:key"), "validator should preserve inventory expected item id");
 }
 
 void TestExpectationShapeIssuesFail()
@@ -773,6 +776,22 @@ void TestExpectationShapeIssuesFail()
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue *traceIssue =
 		FindIssue(traceResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedTraceFrameRowsDimensionMismatch);
 	Expect(traceIssue != nullptr && traceIssue->index == 0 && traceIssue->row == 1 && traceIssue->column == 3 && traceIssue->firstIndex == 5, "wrong-width trace expectation issue should preserve frame, row, and widths");
+
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan missingItem = ValidPlan();
+	missingItem.expectations.inventoryStacks.push_back({});
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult missingResult =
+		Validate(missingItem);
+	Expect(!missingResult.ok(), "missing expected inventory item id should fail");
+	Expect(HasIssue(missingResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedInventoryStackMissingItemId), "missing expected inventory item id should report issue");
+	Expect(HasIssue(missingResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedInventoryStackInvalidCount), "missing expected inventory count should report invalid count");
+
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan duplicateItem = ValidPlan();
+	duplicateItem.expectations.inventoryStacks.push_back({ Id("item:key"), 1 });
+	duplicateItem.expectations.inventoryStacks.push_back({ Id("item:key"), 2 });
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult duplicateResult =
+		Validate(duplicateItem);
+	Expect(!duplicateResult.ok(), "duplicate expected inventory item ids should fail");
+	Expect(HasIssue(duplicateResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedInventoryStackDuplicateItemId), "duplicate expected inventory item id should report issue");
 }
 
 void TestExactIdsAndInputImmutability()

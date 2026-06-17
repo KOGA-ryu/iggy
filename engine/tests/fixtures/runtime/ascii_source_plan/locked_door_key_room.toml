@@ -102,3 +102,7 @@ accepted_command_count = 2
 picked_up_count = 1
 interaction_changed = true
 npc_moved_count = 0
+
+[[expect_inventory_stacks]]
+item_id = "item:key"
+count = 1

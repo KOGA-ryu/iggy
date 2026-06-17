@@ -20,6 +20,7 @@ enum class Table {
 	Promotion,
 	Expect,
 	ExpectTraceFrames,
+	ExpectInventoryStacks,
 	Legend,
 	Cells,
 	Regions,
@@ -64,6 +65,8 @@ std::string TableName(Table table)
 		return "expect";
 	case Table::ExpectTraceFrames:
 		return "expect_trace_frames";
+	case Table::ExpectInventoryStacks:
+		return "expect_inventory_stacks";
 	case Table::Legend:
 		return "legend";
 	case Table::Cells:
@@ -1125,6 +1128,39 @@ RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
 				: locations.expectTraceFrameTableLines[sourceIssue.index];
 		}
 		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::
+		ExpectedInventoryStackMissingItemId:
+		issue.table = "expect_inventory_stacks";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "item_id";
+		if (sourceIssue.index <
+			locations.expectInventoryStackTableLines.size()) {
+			issue.line = locations.expectInventoryStackTableLines[sourceIssue.index];
+		}
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::
+		ExpectedInventoryStackInvalidCount:
+		issue.table = "expect_inventory_stacks";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "count";
+		if (sourceIssue.index <
+			locations.expectInventoryStackTableLines.size()) {
+			issue.line = locations.expectInventoryStackTableLines[sourceIssue.index];
+		}
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::
+		ExpectedInventoryStackDuplicateItemId:
+		issue.table = "expect_inventory_stacks";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "item_id";
+		if (sourceIssue.index <
+			locations.expectInventoryStackTableLines.size()) {
+			issue.line = locations.expectInventoryStackTableLines[sourceIssue.index];
+		}
+		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::EmptyRows:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::GridDimensionMismatch:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::RaggedRow:
@@ -1257,6 +1293,18 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 				table,
 				true,
 				result.plan.expectations.traceFrames.size() - 1,
+			};
+			continue;
+		}
+		if (line == "[[expect_inventory_stacks]]") {
+			result.plan.expectations.inventoryStacks.push_back({});
+			result.sourceLocations.expectInventoryStackTableLines.push_back(
+				lineNumber);
+			table = Table::ExpectInventoryStacks;
+			context = {
+				table,
+				true,
+				result.plan.expectations.inventoryStacks.size() - 1,
 			};
 			continue;
 		}
@@ -1577,6 +1625,35 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 					result,
 					lineNumber,
 					"unsupported expect_trace_frames key: " + key,
+					context,
+					key);
+			}
+			continue;
+		}
+
+		if (table == Table::ExpectInventoryStacks) {
+			RuntimeGameplayAsciiSourcePlanExpectedInventoryStack &stack =
+				result.plan.expectations.inventoryStacks.back();
+			if (key == "item_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					stack.itemId = ResourceId(parsed);
+				}
+			} else if (key == "count") {
+				std::size_t parsed = 0;
+				if (!ParseUnsigned(value, parsed) ||
+					parsed > std::numeric_limits<std::uint32_t>::max()) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					stack.count = static_cast<std::uint32_t>(parsed);
+				}
+			} else {
+				AddUnsupported(
+					result,
+					lineNumber,
+					"unsupported expect_inventory_stacks key: " + key,
 					context,
 					key);
 			}

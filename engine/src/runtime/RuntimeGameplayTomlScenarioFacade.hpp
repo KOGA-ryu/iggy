@@ -59,6 +59,8 @@ struct RuntimeGameplayTomlScenarioExpectationComparison {
 	bool npcMovedCountMatched = true;
 	bool checkedTraceFrames = false;
 	bool traceFramesMatched = true;
+	bool checkedInventoryStacks = false;
+	bool inventoryStacksMatched = true;
 };
 
 struct RuntimeGameplayTomlScenarioFacadeConfig {

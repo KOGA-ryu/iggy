@@ -49,6 +49,22 @@ std::vector<RuntimeGameplayTomlScenarioTraceFrame> TraceFrames(
 	return frames;
 }
 
+bool InventoryStacksMatch(
+	const std::vector<RuntimeGameplayAsciiSourcePlanExpectedInventoryStack>
+		&expected,
+	const std::vector<InventoryItemStack2D> &actual)
+{
+	if (expected.size() != actual.size())
+		return false;
+	for (std::size_t index = 0; index < expected.size(); ++index) {
+		if (expected[index].itemId != actual[index].itemId ||
+			expected[index].count != actual[index].count) {
+			return false;
+		}
+	}
+	return true;
+}
+
 RuntimeGameplayTomlScenarioExpectationComparison CompareExpectations(
 	const RuntimeGameplayAsciiSourcePlanExpectations &expectations,
 	const RuntimeGameplayProfileScenarioRunResult &run,
@@ -135,6 +151,14 @@ RuntimeGameplayTomlScenarioExpectationComparison CompareExpectations(
 			}
 		}
 		comparison.matched = comparison.matched && comparison.traceFramesMatched;
+	}
+	if (!expectations.inventoryStacks.empty()) {
+		comparison.checkedInventoryStacks = true;
+		comparison.inventoryStacksMatched = InventoryStacksMatch(
+			expectations.inventoryStacks,
+			run.state.inventory.inventory.stacks);
+		comparison.matched =
+			comparison.matched && comparison.inventoryStacksMatched;
 	}
 
 	return comparison;

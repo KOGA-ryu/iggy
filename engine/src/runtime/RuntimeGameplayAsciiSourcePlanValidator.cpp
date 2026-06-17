@@ -11,6 +11,18 @@ bool IsBuiltInTerrainGlyph(char glyph, char backgroundGlyph)
 	return glyph == backgroundGlyph || glyph == '.' || glyph == '#' || glyph == ' ';
 }
 
+bool HasEarlierMatchingExpectedInventoryStack(
+	const std::vector<RuntimeGameplayAsciiSourcePlanExpectedInventoryStack> &stacks,
+	std::size_t currentIndex)
+{
+	for (std::size_t index = 0; index < currentIndex; ++index) {
+		if (stacks[index].itemId == stacks[currentIndex].itemId) {
+			return true;
+		}
+	}
+	return false;
+}
+
 void AddIssue(
 	RuntimeGameplayAsciiSourcePlanValidationResult &result,
 	RuntimeGameplayAsciiSourcePlanIssue issue)
@@ -79,6 +91,12 @@ void AddIssue(
 	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedTraceFrameRowsEmpty:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::
 		ExpectedTraceFrameRowsDimensionMismatch:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::
+		ExpectedInventoryStackMissingItemId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::
+		ExpectedInventoryStackInvalidCount:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::
+		ExpectedInventoryStackDuplicateItemId:
 		++result.expectationIssueCount;
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsafeNoClaims:
@@ -864,6 +882,38 @@ void ValidateExpectations(RuntimeGameplayAsciiSourcePlanValidationResult &result
 				issue.column = frame.rows[row].size();
 				AddIssue(result, issue);
 			}
+		}
+	}
+
+	for (std::size_t index = 0; index < expectations.inventoryStacks.size();
+		++index) {
+		const RuntimeGameplayAsciiSourcePlanExpectedInventoryStack &stack =
+			expectations.inventoryStacks[index];
+		if (stack.itemId.empty()) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				ExpectedInventoryStackMissingItemId;
+			issue.index = index;
+			AddIssue(result, issue);
+		}
+		if (stack.count == 0) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				ExpectedInventoryStackInvalidCount;
+			issue.index = index;
+			issue.id = stack.itemId;
+			AddIssue(result, issue);
+		}
+		if (!stack.itemId.empty() &&
+			HasEarlierMatchingExpectedInventoryStack(
+				expectations.inventoryStacks,
+				index)) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				ExpectedInventoryStackDuplicateItemId;
+			issue.index = index;
+			issue.id = stack.itemId;
+			AddIssue(result, issue);
 		}
 	}
 }

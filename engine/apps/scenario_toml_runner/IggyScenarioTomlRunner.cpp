@@ -199,6 +199,9 @@ void PrintExpectationComparison(
 	if (comparison.checkedTraceFrames)
 		std::cout << "trace_frames: "
 			<< MatchText(comparison.traceFramesMatched) << '\n';
+	if (comparison.checkedInventoryStacks)
+		std::cout << "inventory_stacks: "
+			<< MatchText(comparison.inventoryStacksMatched) << '\n';
 }
 
 void PrintFirstProfileValidationIssue(

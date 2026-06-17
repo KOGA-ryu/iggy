@@ -225,6 +225,35 @@ void TestCheckModeComparesTraceExpectations()
 	}
 }
 
+void TestCheckModeComparesInventoryExpectations()
+{
+	iggy::runtime::RuntimeGameplayTomlScenarioFacadeConfig config;
+	config.mode = iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Check;
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult result =
+		iggy::runtime::RuntimeGameplayTomlScenarioFacade {}.execute(
+			FixturePath("locked_door_key_room.toml"),
+			config);
+
+	Expect(result.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::CheckPassed,
+		"check mode should pass when inventory expectations match");
+	Expect(result.expectationComparison.present,
+		"inventory expectation check should report present expectations");
+	Expect(result.expectationComparison.checkedInventoryStacks,
+		"inventory expectation check should compare inventory stacks");
+	Expect(result.expectationComparison.inventoryStacksMatched,
+		"inventory expectation check should report matched inventory stacks");
+	Expect(result.run.state.inventory.inventory.stacks.size() == 1,
+		"inventory expectation check should preserve final runtime stack");
+	if (result.run.state.inventory.inventory.stacks.size() == 1) {
+		Expect(result.run.state.inventory.inventory.stacks[0].itemId ==
+			iggy::ResourceId("item:key"),
+			"inventory expectation check should preserve final item id");
+		Expect(result.run.state.inventory.inventory.stacks[0].count == 1,
+			"inventory expectation check should preserve final item count");
+	}
+}
+
 void TestCheckModeFailsWithoutExpectations()
 {
 	iggy::runtime::RuntimeGameplayTomlScenarioFacadeConfig config;
@@ -291,6 +320,7 @@ int main()
 	TestLintModeValidatesWithoutRunning();
 	TestCheckModePassesWhenExpectationsMatch();
 	TestCheckModeComparesTraceExpectations();
+	TestCheckModeComparesInventoryExpectations();
 	TestCheckModeFailsWithoutExpectations();
 	TestReadFailureStopsBeforeConversion();
 	TestConversionFailureStopsBeforeRun();
