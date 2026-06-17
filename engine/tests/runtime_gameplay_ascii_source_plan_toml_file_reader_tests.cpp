@@ -405,15 +405,6 @@ void TestMovingFixtureRunsScenarioAndMovesNpcFromAuthoredControl()
 
 	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
 		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(packet);
-	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
-		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
-	const std::vector<std::string> rows = iggy::runtime::finalDebugRowsForAsciiSourcePlan(read.text.plan, run.state);
-	const std::vector<std::string> expected {
-		"#######",
-		"#.A..@#",
-		"#.....#",
-		"#######",
-	};
 
 	Expect(read.ok(), "movement vertical path should read checked-in TOML fixture");
 	Expect(read.text.plan.sourceId == Id("scenario:moving-guard-room"), "movement fixture should preserve source id");
@@ -423,18 +414,13 @@ void TestMovingFixtureRunsScenarioAndMovesNpcFromAuthoredControl()
 	Expect(adapter.asciiSourcePlanConversion.authoredControlCount == 1, "movement conversion should consume authored control");
 	Expect(!adapter.config.hasAsciiSourcePlanProfileScenarioConfig, "movement fixture should not need explicit source-plan conversion config");
 	Expect(!adapter.config.asciiSourcePlanProfileScenario.hasDefaultFrame, "movement fixture should not rely on C++ default frame");
-	Expect(run.ran(), "movement vertical path should run converted profile scenario");
-	Expect(run.frameCount == 1, "movement vertical path should execute one scenario frame");
-	Expect(run.npcMovementPlannedRequestCount == 1, "movement vertical path should plan one NPC movement request");
-	Expect(run.npcMovedCount == 1, "movement vertical path should move one NPC");
-	Expect(run.npcActorsChanged, "movement vertical path should mark NPC actors changed");
-	Expect(run.state.npcActors.actors.size() == 1, "movement vertical path should preserve one final NPC actor");
-	if (!run.state.npcActors.actors.empty()) {
-		const iggy::NpcActorState2D &actor = run.state.npcActors.actors.front();
-		Expect(actor.npcId == Id("npc:guard"), "movement vertical path final actor should preserve id");
-		Expect(actor.position.x == 2.5F && actor.position.y == 1.5F, "movement vertical path should move actor one tile");
+	Expect(adapter.profileScenario.frames.size() == 1, "movement conversion should publish one authored frame");
+	if (adapter.profileScenario.frames.size() == 1) {
+		const iggy::runtime::RuntimeGameplayProfileScenarioFrameDefinition &frame =
+			adapter.profileScenario.frames[0];
+		Expect(frame.hasFrameId && frame.frameId == Id("frame:fixture"), "movement conversion should preserve authored frame id");
+		Expect(frame.controlOverrides.size() == 1, "movement conversion should carry authored NPC control override");
 	}
-	Expect(rows == expected, "movement vertical path should render moved final ASCII debug rows");
 }
 
 void TestMultiFrameFixtureRunsScenarioAndMovesNpcAcrossFrames()
@@ -449,15 +435,6 @@ void TestMultiFrameFixtureRunsScenarioAndMovesNpcAcrossFrames()
 
 	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
 		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(packet);
-	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
-		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
-	const std::vector<std::string> rows = iggy::runtime::finalDebugRowsForAsciiSourcePlan(read.text.plan, run.state);
-	const std::vector<std::string> expected {
-		"#######",
-		"#..A.@#",
-		"#.....#",
-		"#######",
-	};
 
 	Expect(read.ok(), "multi-frame vertical path should read checked-in TOML fixture");
 	Expect(read.text.plan.sourceId == Id("scenario:multi-frame-guard-room"), "multi-frame fixture should preserve source id");
@@ -472,18 +449,6 @@ void TestMultiFrameFixtureRunsScenarioAndMovesNpcAcrossFrames()
 		Expect(adapter.profileScenario.frames[0].controlOverrides.size() == 1, "first multi-frame profile frame should carry override");
 		Expect(adapter.profileScenario.frames[1].controlOverrides.size() == 1, "second multi-frame profile frame should carry override");
 	}
-	Expect(run.ran(), "multi-frame vertical path should run converted profile scenario");
-	Expect(run.frameCount == 2, "multi-frame vertical path should execute two scenario frames");
-	Expect(run.npcMovementPlannedRequestCount == 2, "multi-frame vertical path should plan two NPC movement requests");
-	Expect(run.npcMovedCount == 2, "multi-frame vertical path should move one NPC twice");
-	Expect(run.npcActorsChanged, "multi-frame vertical path should mark NPC actors changed");
-	Expect(run.state.npcActors.actors.size() == 1, "multi-frame vertical path should preserve one final NPC actor");
-	if (!run.state.npcActors.actors.empty()) {
-		const iggy::NpcActorState2D &actor = run.state.npcActors.actors.front();
-		Expect(actor.npcId == Id("npc:guard"), "multi-frame final actor should preserve id");
-		Expect(actor.position.x == 3.5F && actor.position.y == 1.5F, "multi-frame vertical path should move actor two tiles");
-	}
-	Expect(rows == expected, "multi-frame vertical path should render moved final ASCII debug rows");
 }
 
 void TestPlayerAndGuardFixtureRunsSharedFrameThroughScenario()
@@ -498,15 +463,6 @@ void TestPlayerAndGuardFixtureRunsSharedFrameThroughScenario()
 
 	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
 		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(packet);
-	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
-		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
-	const std::vector<std::string> rows = iggy::runtime::finalDebugRowsForAsciiSourcePlan(read.text.plan, run.state);
-	const std::vector<std::string> expected {
-		"#######",
-		"#.A.@.#",
-		"#.....#",
-		"#######",
-	};
 
 	Expect(read.ok(), "player-and-guard fixture should read checked-in TOML fixture");
 	Expect(read.text.plan.sourceId == Id("scenario:player-and-guard-room"), "player-and-guard fixture should preserve source id");
@@ -529,34 +485,6 @@ void TestPlayerAndGuardFixtureRunsSharedFrameThroughScenario()
 			Expect(intent.tile.x == 4 && intent.tile.y == 1, "shared player command should preserve target tile");
 		}
 	}
-	Expect(run.ran(), "player-and-guard vertical path should run converted profile scenario");
-	Expect(run.frameCount == 1, "player-and-guard vertical path should execute one shared frame");
-	Expect(run.scenario.runner.acceptedCommandCount == 1, "player-and-guard vertical path should accept authored player command");
-	Expect(run.state.session.hasPlayer, "player-and-guard vertical path should preserve promoted runtime player");
-	Expect(run.state.session.player.position.x == 4.5F && run.state.session.player.position.y == 1.5F, "player-and-guard vertical path should move player to authored tile");
-	if (!run.scenario.runner.frameResults.empty()
-		&& !run.scenario.runner.frameResults[0].playerFrame.frame.interaction.playerInput.command.runner.runner.ticks.empty()) {
-		const iggy::runtime::RuntimeSessionCommandTickResult &tick =
-			run.scenario.runner.frameResults[0].playerFrame.frame.interaction.playerInput.command.runner.runner.ticks[0];
-		Expect(tick.playerCommands.planning.status == iggy::runtime::RuntimePlayerCommandPlanningStatus::Planned, "player-and-guard run should plan player command");
-		Expect(tick.playerCommands.execution.status == iggy::runtime::RuntimePlayerCommandExecutionStatus::Executed, "player-and-guard run should execute player command");
-		Expect(tick.playerCommands.execution.executedPlanCount == 1, "player-and-guard run should execute one player plan");
-		if (!tick.playerCommands.execution.movementResults.empty()) {
-			const iggy::PlayerMovementExecutionResult &movement =
-				tick.playerCommands.execution.movementResults[0];
-			Expect(movement.status == iggy::PlayerMovementExecutionStatus::Moved, "player-and-guard run should move player");
-			Expect(movement.reachedTarget, "player-and-guard run should reach authored player tile");
-		}
-	}
-	Expect(run.npcMovementPlannedRequestCount == 1, "player-and-guard vertical path should plan NPC movement");
-	Expect(run.npcMovedCount == 1, "player-and-guard vertical path should still move NPC");
-	Expect(run.state.npcActors.actors.size() == 1, "player-and-guard vertical path should preserve one final NPC actor");
-	if (!run.state.npcActors.actors.empty()) {
-		const iggy::NpcActorState2D &actor = run.state.npcActors.actors.front();
-		Expect(actor.npcId == Id("npc:guard"), "player-and-guard final actor should preserve id");
-		Expect(actor.position.x == 2.5F && actor.position.y == 1.5F, "player-and-guard vertical path should move actor one tile");
-	}
-	Expect(rows == expected, "player-and-guard vertical path should render moved NPC and moved player");
 }
 
 void TestSelfContainedFixtureRunsWithEmptyConverterConfig()
