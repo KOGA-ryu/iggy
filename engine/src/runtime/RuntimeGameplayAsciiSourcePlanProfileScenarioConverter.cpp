@@ -47,6 +47,10 @@ void AddIssue(
 		++result.playerStartIssueCount;
 		break;
 	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::
+		ProfileTraitCatalogInvalid:
+		++result.profileTraitCatalogIssueCount;
+		break;
+	case RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::
 		InteractionTargetRegistryInvalid:
 		++result.interactionTargetRegistryIssueCount;
 		break;
@@ -165,6 +169,16 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue DuplicatePlayerStar
 	issue.row = row;
 	issue.column = column;
 	issue.glyph = glyph;
+	return issue;
+}
+
+RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue ProfileTraitIssue(
+	const NpcAiProfileTraitCatalogIssue &profileTraitIssue)
+{
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue issue;
+	issue.code = RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::
+		ProfileTraitCatalogInvalid;
+	issue.profileTraitIssue = profileTraitIssue;
 	return issue;
 }
 
@@ -960,9 +974,36 @@ bool PromotePlayerStart(
 	return true;
 }
 
-RuntimeGameplayProfileScenarioDefinition BuildDefinition(
+bool PromoteProfileTraits(
 	const RuntimeGameplayAsciiSourcePlan &sourcePlan,
 	const RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig &config,
+	RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult &result)
+{
+	std::vector<NpcAiProfileTraitEntry> entries;
+	entries.reserve(sourcePlan.authoredProfiles.size() + config.profileTraits.entries.size());
+	for (const RuntimeGameplayAsciiSourcePlanAuthoredProfile &profile :
+		sourcePlan.authoredProfiles) {
+		entries.push_back({ profile.profileId, profile.traits });
+	}
+	for (const NpcAiProfileTraitEntry &entry : config.profileTraits.entries) {
+		entries.push_back(entry);
+	}
+
+	result.profileTraitCatalog = NpcAiProfileTraitCatalogBuilder {}.build(entries);
+	if (result.profileTraitCatalog.built) {
+		return true;
+	}
+
+	for (const NpcAiProfileTraitCatalogIssue &issue :
+		result.profileTraitCatalog.issues) {
+		AddIssue(result, ProfileTraitIssue(issue));
+	}
+	return false;
+}
+
+RuntimeGameplayProfileScenarioDefinition BuildDefinition(
+	const RuntimeGameplayAsciiSourcePlan &sourcePlan,
+	const NpcAiProfileTraitCatalog &profileTraits,
 	const RuntimeGameplayProfileScenarioFrameDefinition &frameTemplate,
 	const LevelTileMap &promotedMap,
 	const NpcActorState2DRegistry &actors,
@@ -990,7 +1031,7 @@ RuntimeGameplayProfileScenarioDefinition BuildDefinition(
 	definition.initialState.npcControls = controls;
 	definition.initialState.interaction = interaction;
 	definition.initialState.inventory = inventory;
-	definition.profileTraits = config.profileTraits;
+	definition.profileTraits = profileTraits;
 	const auto appendFrame = [&](RuntimeGameplayProfileScenarioFrameDefinition frame) {
 		frame.movementMap = promotedMap;
 		frame.interactionTargets = interaction.targets;
@@ -1118,9 +1159,16 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConverter::convert(
 		return result;
 	}
 
+	if (!PromoteProfileTraits(sourcePlan, config, result)) {
+		result.issueCount = result.issues.size();
+		result.status = RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::
+			ProfileTraitCatalogInvalid;
+		return result;
+	}
+
 	result.definition = BuildDefinition(
 		sourcePlan,
-		config,
+		result.profileTraitCatalog.catalog,
 		frameTemplate,
 		result.promotedMap,
 		result.actorRegistry.registry,

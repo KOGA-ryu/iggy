@@ -249,6 +249,26 @@ iggy::NpcTraitSet Traits()
 	return traits;
 }
 
+iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredProfile AuthoredProfile(
+	const char *profileId = "profile:guard",
+	int strength = 10,
+	int dexterity = 10,
+	int constitution = 10,
+	int intelligence = 10,
+	int wisdom = 10,
+	int charisma = 10)
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredProfile profile;
+	profile.profileId = Id(profileId);
+	profile.traits.strength = strength;
+	profile.traits.dexterity = dexterity;
+	profile.traits.constitution = constitution;
+	profile.traits.intelligence = intelligence;
+	profile.traits.wisdom = wisdom;
+	profile.traits.charisma = charisma;
+	return profile;
+}
+
 iggy::NpcAiProfileTraitCatalog Catalog(std::vector<iggy::NpcAiProfileTraitEntry> entries)
 {
 	const iggy::NpcAiProfileTraitCatalogBuildResult result =
@@ -1099,6 +1119,92 @@ void TestMissingProfileCatalogSurfacesProfileScenarioValidationFailure()
 	Expect(result.definition.frames.size() == 1, "profile validation failure should preserve generated frame for audit");
 }
 
+void TestAuthoredProfilesPromoteProfileTraitCatalog()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.authoredProfiles = {
+		AuthoredProfile("profile:guard", 12, 11, 10, 9, 8, 7),
+	};
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan);
+
+	Expect(result.ok(), "authored profiles should allow conversion without config profile catalog");
+	Expect(result.profileTraitCatalog.built, "authored profiles should build promoted profile trait catalog");
+	Expect(result.profileTraitCatalog.entryCount == 1, "authored profile catalog should preserve source profile count");
+	Expect(result.definition.profileTraits.entries.size() == 1, "definition should receive authored profile catalog");
+	const iggy::NpcAiProfileTraitEntry *profile =
+		result.definition.profileTraits.find(Id("profile:guard"));
+	Expect(profile != nullptr, "definition profile catalog should contain authored profile id");
+	if (profile != nullptr) {
+		Expect(profile->traits.strength == 12, "authored profile should preserve strength");
+		Expect(profile->traits.dexterity == 11, "authored profile should preserve dexterity");
+		Expect(profile->traits.charisma == 7, "authored profile should preserve charisma");
+	}
+	Expect(result.definition.initialState.npcActors.actors[0].aiProfileId == Id("profile:guard"), "actor profile reference should validate against authored profile");
+	Expect(result.definition.frames.size() == 1, "authored profile conversion should still use fallback frame");
+}
+
+void TestNoAuthoredProfilesUsesConfigProfileCatalog()
+{
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "source plan without authored profiles should use config profile catalog");
+	Expect(result.profileTraitCatalog.built, "config profile catalog should be mirrored through promotion result");
+	Expect(result.definition.profileTraits.contains(Id("profile:guard")), "definition should contain config profile when no TOML profile exists");
+}
+
+void TestAuthoredProfileConfigConflictFailsDeterministically()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.authoredProfiles = {
+		AuthoredProfile("profile:guard", 12),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
+		ConfigWithFrame();
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(!result.ok(), "authored/config profile id conflict should fail conversion");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::ProfileTraitCatalogInvalid, "profile conflict should report profile trait catalog invalid");
+	Expect(result.profileTraitCatalogIssueCount == 1, "profile conflict should mirror one catalog issue");
+	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::ProfileTraitCatalogInvalid), "profile conflict should add conversion issue");
+	Expect(!result.profileTraitCatalog.built, "profile conflict should preserve failed catalog build");
+	Expect(!result.profileTraitCatalog.issues.empty() && result.profileTraitCatalog.issues[0].code == iggy::NpcAiProfileTraitCatalogIssueCode::DuplicateProfileId, "profile conflict should preserve duplicate profile diagnostic");
+	if (!result.profileTraitCatalog.issues.empty()) {
+		Expect(result.profileTraitCatalog.issues[0].entryIndex == 1 && result.profileTraitCatalog.issues[0].firstEntryIndex == 0, "profile conflict should put authored profile before config duplicate");
+	}
+	Expect(result.definition.frames.empty(), "profile conflict should not publish runnable definition");
+}
+
+void TestDuplicateAuthoredProfilesFailSourceValidationBeforeConversion()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.authoredProfiles = {
+		AuthoredProfile("profile:guard"),
+		AuthoredProfile("profile:guard", 11),
+	};
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan);
+
+	Expect(!result.ok(), "duplicate authored profiles should fail source validation");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::SourcePlanInvalid, "duplicate authored profiles should report source plan invalid");
+	Expect(result.sourcePlanIssueCount == 1, "duplicate authored profile should mirror one source issue");
+	Expect(!result.sourceValidation.ok(), "duplicate authored profile should preserve source validation failure");
+	Expect(result.sourceValidation.authoredProfileIssueCount == 1, "source validation should count duplicate authored profile");
+	Expect(!result.issues.empty() && result.issues[0].sourceIssue.code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredProfileDuplicateId, "conversion issue should preserve duplicate authored profile source issue");
+	Expect(result.profileTraitCatalogIssueCount == 0, "duplicate authored profile should fail before profile catalog promotion");
+}
+
 void TestFrameUsesPromotedMapAndDoesNotInventScripts()
 {
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
@@ -1321,6 +1427,10 @@ int main()
 	TestDuplicatePromotedActorReportsActorRegistryInvalid();
 	TestInvalidDefaultControlReportsControlRegistryInvalid();
 	TestMissingProfileCatalogSurfacesProfileScenarioValidationFailure();
+	TestAuthoredProfilesPromoteProfileTraitCatalog();
+	TestNoAuthoredProfilesUsesConfigProfileCatalog();
+	TestAuthoredProfileConfigConflictFailsDeterministically();
+	TestDuplicateAuthoredProfilesFailSourceValidationBeforeConversion();
 	TestFrameUsesPromotedMapAndDoesNotInventScripts();
 	TestConvertedDefaultProfileScenarioRunsThroughProfileRunner();
 	TestConvertedRegionAiMapProfileScenarioRunsThroughProfileRunner();

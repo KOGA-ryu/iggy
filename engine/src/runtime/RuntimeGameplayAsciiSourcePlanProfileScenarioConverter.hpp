@@ -6,6 +6,7 @@
 #include "runtime/RuntimeGameplayAsciiSourcePlanRegionAiMapPromoter.hpp"
 #include "runtime/RuntimeGameplayAsciiSourcePlanValidator.hpp"
 #include "runtime/RuntimeGameplayProfileScenarioValidator.hpp"
+#include "scene/ai/NpcAiProfileTraitCatalog.hpp"
 #include "scene/interaction/InteractionEffectCatalog2D.hpp"
 #include "scene/interaction/InteractionTarget2D.hpp"
 #include "scene/inventory/LevelItemDrop2D.hpp"
@@ -24,6 +25,7 @@ enum class RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus {
 	AuthoredControlInvalid,
 	AuthoredPlayerCommandInvalid,
 	PlayerStartInvalid,
+	ProfileTraitCatalogInvalid,
 	InteractionTargetRegistryInvalid,
 	InteractionEffectCatalogInvalid,
 	ItemDropRegistryInvalid,
@@ -41,6 +43,7 @@ enum class RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode {
 	DuplicateAuthoredControlActor,
 	AmbiguousAuthoredPlayerCommandFrame,
 	DuplicatePlayerStart,
+	ProfileTraitCatalogInvalid,
 	InteractionTargetRegistryInvalid,
 	InteractionEffectCatalogInvalid,
 	ItemDropRegistryInvalid,
@@ -77,6 +80,7 @@ struct RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssue {
 	RuntimeGameplayAsciiSourcePlanAuthoredPlayerCommand authoredPlayerCommand;
 	NpcActorState2DIssue actorIssue;
 	NpcActorControlState2DIssue controlIssue;
+	NpcAiProfileTraitCatalogIssue profileTraitIssue;
 	InteractionTarget2DRegistryIssue interactionTargetIssue;
 	InteractionEffectCatalog2DIssue interactionEffectIssue;
 	LevelItemDrop2DIssue itemDropIssue;
@@ -91,6 +95,7 @@ struct RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult {
 	LevelTileMap promotedMap;
 	NpcActorState2DRegistryBuildResult actorRegistry;
 	NpcActorControlState2DRegistryBuildResult controlRegistry;
+	NpcAiProfileTraitCatalogBuildResult profileTraitCatalog;
 	InteractionTarget2DRegistryBuildResult interactionTargetRegistry;
 	InteractionEffectCatalog2DBuildResult interactionEffectCatalog;
 	LevelItemDrop2DRegistryBuildResult itemDropRegistry;
@@ -110,6 +115,7 @@ struct RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult {
 	std::size_t authoredControlIssueCount = 0;
 	std::size_t authoredPlayerCommandIssueCount = 0;
 	std::size_t playerStartIssueCount = 0;
+	std::size_t profileTraitCatalogIssueCount = 0;
 	std::size_t interactionTargetRegistryIssueCount = 0;
 	std::size_t interactionEffectCatalogIssueCount = 0;
 	std::size_t itemDropRegistryIssueCount = 0;
