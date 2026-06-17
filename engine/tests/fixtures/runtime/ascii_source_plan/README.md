@@ -10,7 +10,7 @@ engine/build/iggy_scenario_toml_runner engine/tests/fixtures/runtime/ascii_sourc
 
 Add `--trace` before the path to include per-frame rows and counts.
 
-Canonical success fixtures:
+Canonical success fixtures are stable examples and are covered by CLI golden rows:
 
 - `moving_guard_room.toml`: one guard actor moves from an authored `[[frame_controls]]` entry.
 - `multi_frame_guard_room.toml`: one guard actor moves across multiple authored frame ids.
@@ -19,7 +19,12 @@ Canonical success fixtures:
 - `player_picks_up_item_room.toml`: player moves near an authored item drop and picks it up.
 - `mixed_mini_scenario.toml`: small combined scenario with NPC movement, player movement, pickup, and interaction.
 
-Deliberately invalid or non-self-contained fixtures remain for diagnostics tests. For example, `valid_guard_room.toml` is parse-valid but omits profile facts so conversion can report a missing profile trait.
+Regression-only fixtures are kept for lower-level parser, adapter, and diagnostic tests:
+
+- `valid_guard_room.toml`: parse-valid but intentionally not self-contained; conversion should report a missing profile trait unless C++ config supplies it.
+- `self_contained_guard_room.toml`: focused empty-config adapter acceptance fixture; the canonical `player_and_guard_room.toml` covers the same visible final behavior.
+- `semantic_invalid_guard_room.toml`: source-plan validation failure fixture.
+- `corrupt_guard_room.toml`: TOML syntax failure fixture.
 
 Supported tables by example:
 
