@@ -112,9 +112,55 @@ void TestMissingPath()
 		result,
 		{
 			"read failed: status=missing_file",
-			"detail: TOML source-plan file does not exist",
+			"file_issue: code=missing_file",
+			"detail=TOML source-plan file does not exist",
 		},
 		"missing-path CLI run");
+}
+
+void TestCorruptTomlReportsSyntaxLocation()
+{
+	const CommandResult result = RunCli({ FixturePath("corrupt_guard_room.toml") });
+	Expect(result.exitCode == 2, "corrupt TOML should return read failure");
+	ExpectOutputContains(
+		result,
+		{
+			"read failed: status=toml_read_failed toml_status=syntax_invalid",
+			"file_issue: code=toml_read_failed",
+			"toml_issue: code=syntax_error line=1 column=0 table=root",
+			"detail=expected key = value",
+		},
+		"corrupt TOML CLI run");
+}
+
+void TestSemanticInvalidTomlReportsSourceIssue()
+{
+	const CommandResult result =
+		RunCli({ FixturePath("semantic_invalid_guard_room.toml") });
+	Expect(result.exitCode == 2, "semantic invalid TOML should return read failure");
+	ExpectOutputContains(
+		result,
+		{
+			"read failed: status=toml_read_failed toml_status=source_plan_invalid",
+			"toml_issue: code=source_plan_invalid line=36 column=0 table=cells key= table_index=0",
+			"source_issue: code=annotated_cell_glyph_mismatch index=0 row=1 column=1 glyph=A",
+		},
+		"semantic invalid TOML CLI run");
+}
+
+void TestConversionFailureReportsMissingProfile()
+{
+	const CommandResult result = RunCli({ FixturePath("valid_guard_room.toml") });
+	Expect(result.exitCode == 3, "non-self-contained fixture should return conversion failure");
+	ExpectOutputContains(
+		result,
+		{
+			"conversion failed: status=conversion_failed source_plan_status=profile_scenario_invalid",
+			"adapter_issue: code=ascii_source_plan_conversion_failed source=ascii_source_plan",
+			"conversion_issue: code=profile_scenario_invalid",
+			"profile_issue: code=missing_profile_trait frame_index=0 actor_index=0 npc=npc:guard profile=profile:guard",
+		},
+		"conversion failure CLI run");
 }
 
 void TestSelfContainedGuardRoom()
@@ -177,6 +223,9 @@ int main()
 {
 	TestNoArgUsage();
 	TestMissingPath();
+	TestCorruptTomlReportsSyntaxLocation();
+	TestSemanticInvalidTomlReportsSourceIssue();
+	TestConversionFailureReportsMissingProfile();
 	TestSelfContainedGuardRoom();
 	TestPlayerInteractionRoom();
 	TestPlayerPickupRoom();
