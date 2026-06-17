@@ -1,5 +1,7 @@
 # Batch 05: Golden Compare Mode
 
+Status: complete.
+
 ## Goal
 Add a CLI mode that returns nonzero when TOML-authored expectations do not match actual output.
 

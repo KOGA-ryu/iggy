@@ -9,6 +9,8 @@ engine/build/iggy_scenario_toml_runner engine/tests/fixtures/runtime/ascii_sourc
 ```
 
 Add `--trace` before the path to include per-frame rows and counts.
+Add `--check` before the path to return nonzero when a fixture has `[expect]`
+facts and the final rows or summary counts do not match.
 
 Canonical success fixtures are stable examples and are covered by CLI golden rows:
 

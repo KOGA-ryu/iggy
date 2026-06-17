@@ -186,7 +186,7 @@ void TestNoArgUsage()
 		{
 			"status:\n",
 			"result: usage_error",
-			"usage: iggy_scenario_toml_runner [--trace] <path>",
+			"usage: iggy_scenario_toml_runner [--trace] [--check] <path>",
 		},
 		"no-arg CLI run");
 }
@@ -589,6 +589,65 @@ npc_moved_count = 99
 		"mismatching expectation CLI run");
 }
 
+void TestCheckModeUsesExpectationComparisonForExitStatus()
+{
+	const std::string base = FixtureText("moving_guard_room.toml");
+	TempTomlFile matching("check_match", base + R"toml(
+
+[expect]
+final_rows = [
+  "#######",
+  "#.A..@#",
+  "#.....#",
+  "#######",
+]
+npc_moved_count = 1
+)toml");
+	TempTomlFile mismatching("check_mismatch", base + R"toml(
+
+[expect]
+npc_moved_count = 99
+)toml");
+
+	const CommandResult matched = RunCli({ "--check", matching.path.string() });
+	Expect(matched.exitCode == 0, "matching check-mode CLI run should succeed");
+	ExpectOutputContains(
+		matched,
+		{
+			"expectation:\n",
+			"present: true",
+			"result: matched",
+			"final_rows: matched",
+			"npc_moved_count: matched",
+		},
+		"matching check-mode CLI run");
+
+	const CommandResult mismatched =
+		RunCli({ "--check", mismatching.path.string() });
+	Expect(mismatched.exitCode == 5, "mismatching check-mode CLI run should fail");
+	ExpectOutputContains(
+		mismatched,
+		{
+			"expectation:\n",
+			"present: true",
+			"result: mismatched",
+			"npc_moved_count: mismatched",
+		},
+		"mismatching check-mode CLI run");
+
+	const CommandResult noExpectation =
+		RunCli({ "--check", FixturePath("moving_guard_room.toml") });
+	Expect(noExpectation.exitCode == 5, "check-mode without expectations should fail");
+	ExpectOutputContains(
+		noExpectation,
+		{
+			"expectation:\n",
+			"present: false",
+			"result: not_provided",
+		},
+		"check-mode without expectations");
+}
+
 } // namespace
 
 int main()
@@ -599,6 +658,7 @@ int main()
 	TestTraceMultiFrameGuardRoom();
 	TestTraceMixedMiniScenario();
 	TestExpectationComparisonReportsMatchAndMismatch();
+	TestCheckModeUsesExpectationComparisonForExitStatus();
 
 	if (Failures != 0)
 		return 1;

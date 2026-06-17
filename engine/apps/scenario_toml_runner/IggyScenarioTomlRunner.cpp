@@ -416,7 +416,7 @@ int Usage()
 {
 	std::cerr << "status:\n";
 	std::cerr << "result: usage_error\n";
-	std::cerr << "usage: iggy_scenario_toml_runner [--trace] <path>\n";
+	std::cerr << "usage: iggy_scenario_toml_runner [--trace] [--check] <path>\n";
 	return 1;
 }
 
@@ -680,13 +680,21 @@ void PrintExpectationComparison(const ExpectationComparison &comparison)
 int main(int argc, char **argv)
 {
 	bool trace = false;
+	bool check = false;
 	const char *pathArgument = nullptr;
-	if (argc == 2) {
-		pathArgument = argv[1];
-	} else if (argc == 3 && std::string_view(argv[1]) == "--trace") {
-		trace = true;
-		pathArgument = argv[2];
-	} else {
+	for (int index = 1; index < argc; ++index) {
+		const std::string_view argument(argv[index]);
+		if (argument == "--trace") {
+			trace = true;
+		} else if (argument == "--check") {
+			check = true;
+		} else if (pathArgument == nullptr) {
+			pathArgument = argv[index];
+		} else {
+			return Usage();
+		}
+	}
+	if (pathArgument == nullptr) {
 		return Usage();
 	}
 
@@ -764,11 +772,15 @@ int main(int argc, char **argv)
 
 	const std::vector<std::string> rows =
 		iggy::runtime::finalDebugRowsForAsciiSourcePlan(read.text.plan, run.state);
-	PrintExpectationComparison(
-		CompareExpectations(read.text.plan.expectations, run, rows));
+	const ExpectationComparison comparison =
+		CompareExpectations(read.text.plan.expectations, run, rows);
+	PrintExpectationComparison(comparison);
 	std::cout << "final_rows:\n";
 	for (const std::string &row : rows)
 		std::cout << row << '\n';
+
+	if (check && (!comparison.present || !comparison.matched))
+		return 5;
 
 	return 0;
 }
