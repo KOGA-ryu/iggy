@@ -8,6 +8,8 @@
 #include <sys/wait.h>
 #include <vector>
 
+#include "runtime/RuntimeGameplayTomlScenarioFacade.hpp"
+
 #ifndef IGGY_SCENARIO_TOML_RUNNER_PATH
 #error "IGGY_SCENARIO_TOML_RUNNER_PATH must point at iggy_scenario_toml_runner"
 #endif
@@ -164,6 +166,23 @@ std::string TraceFrameBlock(
 	return stream.str();
 }
 
+std::string TraceFrameBlock(
+	const iggy::runtime::RuntimeGameplayTomlScenarioTraceFrame &frame)
+{
+	std::ostringstream stream;
+	stream << "frame_index: " << frame.index << '\n';
+	stream << "frame_id: " << frame.frameId << '\n';
+	stream << "accepted_command_count: " << frame.acceptedCommandCount << '\n';
+	stream << "picked_up_count: " << frame.pickedUpCount << '\n';
+	stream << "interaction_changed: "
+		<< (frame.interactionChanged ? "true" : "false") << '\n';
+	stream << "npc_moved_count: " << frame.npcMovedCount << '\n';
+	stream << "rows:\n";
+	for (const std::string &row : frame.rows)
+		stream << row << '\n';
+	return stream.str();
+}
+
 void ExpectOutputContains(
 	const CommandResult &result,
 	const std::vector<std::string> &needles,
@@ -176,6 +195,55 @@ void ExpectOutputContains(
 			++Failures;
 		}
 	}
+}
+
+void ExpectCliMatchesFacadeRunProjection(
+	const char *fixtureName,
+	bool trace,
+	const char *context)
+{
+	iggy::runtime::RuntimeGameplayTomlScenarioFacadeConfig config;
+	config.captureTraceFrames = trace;
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult facade =
+		iggy::runtime::RuntimeGameplayTomlScenarioFacade {}.execute(
+			FixturePath(fixtureName),
+			config);
+	Expect(facade.status == iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::Ran,
+		(std::string(context) + " facade run should succeed").c_str());
+
+	std::vector<std::string> args;
+	if (trace)
+		args.push_back("--trace");
+	args.push_back(FixturePath(fixtureName));
+	const CommandResult cli = RunCli(args);
+	Expect(cli.exitCode == 0,
+		(std::string(context) + " CLI run should succeed").c_str());
+
+	std::vector<std::string> needles {
+		"status:\nresult: ok\nsummary:\n",
+		std::string("frame_count: ") + std::to_string(facade.run.frameCount),
+		std::string("accepted_command_count: ") +
+			std::to_string(facade.run.scenario.runner.acceptedCommandCount),
+		std::string("picked_up_count: ") +
+			std::to_string(facade.run.scenario.runner.pickedUpCount),
+		std::string("interaction_changed: ") +
+			(facade.run.scenario.runner.interactionChanged ? "true" : "false"),
+		std::string("npc_moved_count: ") +
+			std::to_string(facade.run.npcMovedCount),
+		std::string("npc_blocked_movement_count: ") +
+			std::to_string(facade.run.npcBlockedMovementCount),
+		FinalRowsBlock(facade.finalRows),
+	};
+	if (trace) {
+		needles.push_back("frames:\n");
+		for (const iggy::runtime::RuntimeGameplayTomlScenarioTraceFrame &frame :
+			facade.traceFrames)
+			needles.push_back(TraceFrameBlock(frame));
+	} else {
+		Expect(!Contains(cli.output, "frames:\n"),
+			(std::string(context) + " CLI run should not print trace frames").c_str());
+	}
+	ExpectOutputContains(cli, needles, context);
 }
 
 void TestNoArgUsage()
@@ -519,6 +587,18 @@ void TestCanonicalFixtures()
 			},
 			context.c_str());
 	}
+}
+
+void TestCliOutputMatchesFacadeProjection()
+{
+	ExpectCliMatchesFacadeRunProjection(
+		"mixed_mini_scenario.toml",
+		false,
+		"mixed mini facade parity run");
+	ExpectCliMatchesFacadeRunProjection(
+		"mixed_progression_room.toml",
+		true,
+		"mixed progression facade parity trace run");
 }
 
 void TestTraceMultiFrameGuardRoom()
@@ -897,6 +977,7 @@ int main()
 	TestNoArgUsage();
 	TestCliFailureDiagnosticsMatrix();
 	TestCanonicalFixtures();
+	TestCliOutputMatchesFacadeProjection();
 	TestTraceMultiFrameGuardRoom();
 	TestTraceMixedMiniScenario();
 	TestTraceMixedProgressionRoom();
