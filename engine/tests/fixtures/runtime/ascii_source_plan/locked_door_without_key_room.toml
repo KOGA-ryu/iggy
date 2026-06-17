@@ -1,0 +1,72 @@
+format_id = "iggy:ascii-source-plan"
+version = 1
+source_id = "scenario:locked-door-without-key-room"
+source_ref = "authoring:checked-in-locked-door-without-key-fixture"
+
+[grid]
+width = 7
+height = 4
+background = "."
+rows = [
+  "#######",
+  "#@....#",
+  "#.....#",
+  "#######",
+]
+
+[no_claims]
+runtime_truth = false
+gameplay_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[promotion]
+ready = false
+runtime_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[[legend]]
+glyph = "@"
+kind = "player_start"
+role_id = "role:player-start"
+maps_to_scenario_marker = true
+scenario_marker_kind = "player_start"
+
+[[regions]]
+id = "region:room"
+min_row = 0
+min_column = 0
+max_row = 3
+max_column = 6
+role_tags = ["tag:room"]
+
+[[interaction_targets]]
+target_id = "target:door"
+kind = "door"
+tile = { x = 4, y = 1 }
+position = { x = 4.5, y = 1.5 }
+radius = 4.0
+enabled = true
+effect = "toggle_target"
+effect_target_id = "target:door"
+required_item_id = "item:key"
+enabled_value = false
+
+[[frame_player_commands]]
+frame_id = "frame:try-door"
+command = "interact"
+target_id = "target:door"
+
+[expect]
+final_rows = [
+  "#######",
+  "#@....#",
+  "#.....#",
+  "#######",
+]
+frame_count = 1
+accepted_command_count = 1
+picked_up_count = 0
+interaction_changed = false
+npc_moved_count = 0

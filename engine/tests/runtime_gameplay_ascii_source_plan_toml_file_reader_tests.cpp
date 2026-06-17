@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "runtime/RuntimeGameplayAsciiSourcePlanFinalDebugRows.hpp"
@@ -709,6 +710,84 @@ void TestPlayerPickupFixtureRunsScenarioAndPicksUpItem()
 	Expect(rows == expected, "player pickup fixture should render moved player and consumed item");
 }
 
+void TestLockedDoorKeyFixturesGateDoorToggleOnInventory()
+{
+	const auto runFixture = [](const char *fixtureName) {
+		const std::filesystem::path path = FixturePath(fixtureName);
+		const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult read =
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(path);
+		iggy::runtime::RuntimeGameplayScenarioAuthoringPacket packet;
+		packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
+		packet.hasAsciiSourcePlan = true;
+		packet.asciiSourcePlan = read.text.plan;
+
+		const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
+			iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(packet);
+		const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
+			iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
+		return std::tuple { read, adapter, run };
+	};
+
+	const auto [positiveRead, positiveAdapter, positiveRun] =
+		runFixture("locked_door_key_room.toml");
+	const auto [negativeRead, negativeAdapter, negativeRun] =
+		runFixture("locked_door_without_key_room.toml");
+
+	Expect(positiveRead.ok(), "locked door key fixture should read checked-in TOML fixture");
+	Expect(positiveRead.text.plan.authoredInteractionTargetCount() == 2, "locked door key fixture should parse pickup and door targets");
+	Expect(positiveAdapter.ok(), "locked door key fixture should adapt parsed source plan");
+	Expect(positiveAdapter.profileScenario.frames.size() == 2, "locked door key fixture should publish pickup and door frames");
+	if (positiveAdapter.profileScenario.frames.size() == 2) {
+		const iggy::runtime::RuntimeInteractionRequiredItems &requirements =
+			positiveAdapter.profileScenario.frames[1].playerFrame.interactionRequiredItems;
+		Expect(requirements.size() == 1, "locked door key frame should carry one required item");
+		if (requirements.size() == 1) {
+			Expect(requirements[0].targetId == Id("target:door"), "locked door requirement should preserve target id");
+			Expect(requirements[0].itemId == Id("item:key"), "locked door requirement should preserve item id");
+		}
+	}
+	Expect(positiveRun.ran(), "locked door key fixture should run converted profile scenario");
+	Expect(positiveRun.frameCount == 2, "locked door key fixture should execute pickup and door frames");
+	Expect(positiveRun.scenario.runner.acceptedCommandCount == 2, "locked door key fixture should accept pickup and interact commands");
+	Expect(positiveRun.scenario.runner.pickedUpCount == 1, "locked door key fixture should pick up key");
+	Expect(positiveRun.scenario.runner.interactionChanged, "locked door key fixture should toggle door after pickup");
+	const iggy::InventoryItemStack2D *positiveKey =
+		positiveRun.state.inventory.inventory.find(Id("item:key"));
+	Expect(positiveKey != nullptr && positiveKey->count == 1, "locked door key final inventory should contain key");
+	const iggy::InteractionTarget2D *positiveDoor =
+		positiveRun.state.interaction.targets.find(Id("target:door"));
+	Expect(positiveDoor != nullptr, "locked door key final state should preserve door target");
+	if (positiveDoor != nullptr) {
+		Expect(!positiveDoor->enabled, "locked door key final door should be opened/disabled after key interaction");
+	}
+
+	Expect(negativeRead.ok(), "locked door without key fixture should read checked-in TOML fixture");
+	Expect(negativeRead.text.plan.authoredInteractionTargetCount() == 1, "locked door without key fixture should parse one door target");
+	Expect(negativeAdapter.ok(), "locked door without key fixture should adapt parsed source plan");
+	Expect(negativeAdapter.profileScenario.frames.size() == 1, "locked door without key fixture should publish one frame");
+	if (negativeAdapter.profileScenario.frames.size() == 1) {
+		const iggy::runtime::RuntimeInteractionRequiredItems &requirements =
+			negativeAdapter.profileScenario.frames[0].playerFrame.interactionRequiredItems;
+		Expect(requirements.size() == 1, "locked door without key frame should carry one required item");
+		if (requirements.size() == 1) {
+			Expect(requirements[0].targetId == Id("target:door"), "locked door without key requirement should preserve target id");
+			Expect(requirements[0].itemId == Id("item:key"), "locked door without key requirement should preserve item id");
+		}
+	}
+	Expect(negativeRun.ran(), "locked door without key fixture should run converted profile scenario");
+	Expect(negativeRun.frameCount == 1, "locked door without key fixture should execute one frame");
+	Expect(negativeRun.scenario.runner.acceptedCommandCount == 1, "locked door without key fixture should accept interact command");
+	Expect(negativeRun.scenario.runner.pickedUpCount == 0, "locked door without key fixture should not pick up anything");
+	Expect(!negativeRun.scenario.runner.interactionChanged, "locked door without key fixture should not mutate interaction state");
+	Expect(negativeRun.state.inventory.inventory.find(Id("item:key")) == nullptr, "locked door without key final inventory should not contain key");
+	const iggy::InteractionTarget2D *negativeDoor =
+		negativeRun.state.interaction.targets.find(Id("target:door"));
+	Expect(negativeDoor != nullptr, "locked door without key final state should preserve door target");
+	if (negativeDoor != nullptr) {
+		Expect(negativeDoor->enabled, "locked door without key final door should remain enabled/locked");
+	}
+}
+
 } // namespace
 
 int main()
@@ -730,6 +809,7 @@ int main()
 	TestSelfContainedFixtureRunsWithEmptyConverterConfig();
 	TestPlayerInteractionFixtureRunsScenarioAndTogglesTarget();
 	TestPlayerPickupFixtureRunsScenarioAndPicksUpItem();
+	TestLockedDoorKeyFixturesGateDoorToggleOnInventory();
 
 	CleanupTempRoot();
 

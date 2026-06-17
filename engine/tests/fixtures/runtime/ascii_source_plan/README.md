@@ -23,6 +23,8 @@ Canonical success fixtures are stable examples and are covered by CLI golden row
 - `player_picks_up_item_room.toml`: player moves near an authored item drop and picks it up.
 - `mixed_mini_scenario.toml`: small combined scenario with NPC movement, player movement, pickup, and interaction.
 - `mixed_progression_room.toml`: four-frame scenario that separates player movement, NPC movement, pickup, and interaction, with embedded `[expect]` rows/counts for `--check`.
+- `locked_door_key_room.toml`: player picks up a key item before interacting with a required-item door target.
+- `locked_door_without_key_room.toml`: player interacts with the same required-item door target without the key, leaving the target unchanged.
 
 Regression-only fixtures are kept for lower-level parser, adapter, and diagnostic tests:
 
@@ -112,6 +114,7 @@ radius = 1.0
 enabled = true
 effect = "toggle_target"
 effect_target_id = "target:lever"
+required_item_id = "item:key"
 enabled_value = false
 
 [[item_drops]]

@@ -440,6 +440,26 @@ void TestCanonicalFixtures()
 			1,
 			{ "##########", "#.A@.....#", "#........#", "##########" },
 		},
+		{
+			"locked_door_key_room.toml",
+			"locked door with key",
+			2,
+			2,
+			1,
+			true,
+			0,
+			{ "#######", "#@....#", "#.....#", "#######" },
+		},
+		{
+			"locked_door_without_key_room.toml",
+			"locked door without key",
+			1,
+			1,
+			0,
+			false,
+			0,
+			{ "#######", "#@....#", "#.....#", "#######" },
+		},
 	};
 
 	for (const GoldenFixture &fixture : fixtures) {
@@ -596,6 +616,69 @@ void TestTraceMixedProgressionRoom()
 			FinalRowsBlock({ "##########", "#.A@.....#", "#........#", "##########" }),
 		},
 		"mixed progression trace CLI run");
+}
+
+void TestTraceLockedDoorKeyRooms()
+{
+	const CommandResult positive =
+		RunCli({ "--trace", FixturePath("locked_door_key_room.toml") });
+	Expect(positive.exitCode == 0, "locked door key trace CLI run should succeed");
+	ExpectOutputContains(
+		positive,
+		{
+			"status:\nresult: ok\nsummary:\n",
+			"frame_count: 2",
+			"accepted_command_count: 2",
+			"picked_up_count: 1",
+			"interaction_changed: true",
+			"frames:\n",
+			TraceFrameBlock(
+				0,
+				"frame:pickup-key",
+				1,
+				1,
+				false,
+				0,
+				{ "#######", "#@....#", "#.....#", "#######" }),
+			TraceFrameBlock(
+				1,
+				"frame:open-door",
+				1,
+				0,
+				true,
+				0,
+				{ "#######", "#@....#", "#.....#", "#######" }),
+			"expectation:\n",
+			"result: matched",
+			FinalRowsBlock({ "#######", "#@....#", "#.....#", "#######" }),
+		},
+		"locked door key trace CLI run");
+
+	const CommandResult negative =
+		RunCli({ "--trace", FixturePath("locked_door_without_key_room.toml") });
+	Expect(negative.exitCode == 0, "locked door without key trace CLI run should succeed");
+	ExpectOutputContains(
+		negative,
+		{
+			"status:\nresult: ok\nsummary:\n",
+			"frame_count: 1",
+			"accepted_command_count: 1",
+			"picked_up_count: 0",
+			"interaction_changed: false",
+			"frames:\n",
+			TraceFrameBlock(
+				0,
+				"frame:try-door",
+				1,
+				0,
+				false,
+				0,
+				{ "#######", "#@....#", "#.....#", "#######" }),
+			"expectation:\n",
+			"result: matched",
+			FinalRowsBlock({ "#######", "#@....#", "#.....#", "#######" }),
+		},
+		"locked door without key trace CLI run");
 }
 
 void TestExpectationComparisonReportsMatchAndMismatch()
@@ -783,6 +866,7 @@ int main()
 	TestTraceMultiFrameGuardRoom();
 	TestTraceMixedMiniScenario();
 	TestTraceMixedProgressionRoom();
+	TestTraceLockedDoorKeyRooms();
 	TestExpectationComparisonReportsMatchAndMismatch();
 	TestCheckModeUsesExpectationComparisonForExitStatus();
 	TestLintModeValidatesWithoutRunningScenario();
