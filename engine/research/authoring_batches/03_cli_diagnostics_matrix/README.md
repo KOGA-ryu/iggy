@@ -1,5 +1,7 @@
 # Batch 03: CLI Diagnostics Matrix
 
+Status: complete.
+
 ## Goal
 Cover every intended CLI failure class with stable tests and useful first-error output.
 
