@@ -62,6 +62,6 @@ Queue:
 5. `05_authoring_projection_design_gate` - complete. Design summary/final-row/expectation projection helper.
 6. `06_diagnostic_projection_design_gate` - complete. Design flattened diagnostic entries.
 7. `07_fixture_manifest_design_gate` - complete. Design canonical fixture manifest source of truth.
-8. `08_test_ceremony_trim_audit` - pending. Audit redundant C++ fixture/test ceremony.
+8. `08_test_ceremony_trim_audit` - complete. Audit redundant C++ fixture/test ceremony.
 9. `09_smell_signal_dashboard` - pending. Document commands for tracking repo smells.
 10. `10_merge_readiness_protocol` - pending. Define merge protocol while builder continues.
