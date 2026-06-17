@@ -430,6 +430,16 @@ void TestCanonicalFixtures()
 			1,
 			{ "#########", "#.A@....#", "#.......#", "#########" },
 		},
+		{
+			"mixed_progression_room.toml",
+			"mixed progression room",
+			4,
+			3,
+			1,
+			true,
+			1,
+			{ "##########", "#.A@.....#", "#........#", "##########" },
+		},
 	};
 
 	for (const GoldenFixture &fixture : fixtures) {
@@ -532,6 +542,60 @@ void TestTraceMixedMiniScenario()
 			FinalRowsBlock({ "#########", "#.A@....#", "#.......#", "#########" }),
 		},
 		"mixed mini trace CLI run");
+}
+
+void TestTraceMixedProgressionRoom()
+{
+	const CommandResult result =
+		RunCli({ "--trace", FixturePath("mixed_progression_room.toml") });
+	Expect(result.exitCode == 0, "mixed progression trace CLI run should succeed");
+	ExpectOutputContains(
+		result,
+		{
+			"status:\nresult: ok\nsummary:\n",
+			"frame_count: 4",
+			"accepted_command_count: 3",
+			"picked_up_count: 1",
+			"interaction_changed: true",
+			"npc_moved_count: 1",
+			"frames:\n",
+			TraceFrameBlock(
+				0,
+				"frame:player-approaches",
+				1,
+				0,
+				false,
+				0,
+				{ "##########", "#A.@k....#", "#........#", "##########" }),
+			TraceFrameBlock(
+				1,
+				"frame:guard-patrol",
+				0,
+				0,
+				false,
+				1,
+				{ "##########", "#.A@k....#", "#........#", "##########" }),
+			TraceFrameBlock(
+				2,
+				"frame:pickup-key",
+				1,
+				1,
+				false,
+				0,
+				{ "##########", "#.A@.....#", "#........#", "##########" }),
+			TraceFrameBlock(
+				3,
+				"frame:interact-switch",
+				1,
+				0,
+				true,
+				0,
+				{ "##########", "#.A@.....#", "#........#", "##########" }),
+			"expectation:\n",
+			"result: matched",
+			FinalRowsBlock({ "##########", "#.A@.....#", "#........#", "##########" }),
+		},
+		"mixed progression trace CLI run");
 }
 
 void TestExpectationComparisonReportsMatchAndMismatch()
@@ -718,6 +782,7 @@ int main()
 	TestCanonicalFixtures();
 	TestTraceMultiFrameGuardRoom();
 	TestTraceMixedMiniScenario();
+	TestTraceMixedProgressionRoom();
 	TestExpectationComparisonReportsMatchAndMismatch();
 	TestCheckModeUsesExpectationComparisonForExitStatus();
 	TestLintModeValidatesWithoutRunningScenario();

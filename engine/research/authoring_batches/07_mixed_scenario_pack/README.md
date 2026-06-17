@@ -1,5 +1,7 @@
 # Batch 07: Mixed Scenario Pack
 
+Status: complete.
+
 ## Goal
 Add richer canonical examples that combine existing authored semantics.
 

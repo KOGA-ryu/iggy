@@ -22,6 +22,7 @@ Canonical success fixtures are stable examples and are covered by CLI golden row
 - `player_interacts_guard_room.toml`: player `interact` toggles an authored interaction target.
 - `player_picks_up_item_room.toml`: player moves near an authored item drop and picks it up.
 - `mixed_mini_scenario.toml`: small combined scenario with NPC movement, player movement, pickup, and interaction.
+- `mixed_progression_room.toml`: four-frame scenario that separates player movement, NPC movement, pickup, and interaction, with embedded `[expect]` rows/counts for `--check`.
 
 Regression-only fixtures are kept for lower-level parser, adapter, and diagnostic tests:
 

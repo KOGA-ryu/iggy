@@ -1,0 +1,145 @@
+format_id = "iggy:ascii-source-plan"
+version = 1
+source_id = "scenario:mixed-progression-room"
+source_ref = "authoring:checked-in-mixed-progression-fixture"
+
+[grid]
+width = 10
+height = 4
+background = "."
+rows = [
+  "##########",
+  "#A@.k....#",
+  "#........#",
+  "##########",
+]
+
+[no_claims]
+runtime_truth = false
+gameplay_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[promotion]
+ready = false
+runtime_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[[legend]]
+glyph = "A"
+kind = "actor"
+role_id = "role:npc"
+role_tags = ["tag:guard"]
+maps_to_scenario_marker = true
+scenario_marker_kind = "actor"
+
+[[legend]]
+glyph = "@"
+kind = "player_start"
+role_id = "role:player-start"
+maps_to_scenario_marker = true
+scenario_marker_kind = "player_start"
+
+[[legend]]
+glyph = "k"
+kind = "annotation"
+role_id = "role:item"
+role_tags = ["tag:key"]
+maps_to_scenario_marker = false
+
+[[profiles]]
+id = "profile:guard"
+strength = 10
+dexterity = 10
+constitution = 10
+intelligence = 10
+wisdom = 10
+charisma = 10
+
+[[cells]]
+id = "cell:guard"
+row = 1
+column = 1
+glyph = "A"
+local_tile = { x = 1, y = 1 }
+local_position = { x = 1.5, y = 1.5 }
+cell_bounds = { min_x = 1.0, min_y = 1.0, max_x = 2.0, max_y = 2.0 }
+role_tags = ["tag:guard"]
+marker_id = "npc:guard"
+profile_id = "profile:guard"
+
+[[regions]]
+id = "region:room"
+min_row = 0
+min_column = 0
+max_row = 3
+max_column = 9
+role_tags = ["tag:room"]
+
+[[item_drops]]
+drop_id = "drop:key"
+item_id = "item:key"
+count = 1
+tile = { x = 4, y = 1 }
+position = { x = 4.5, y = 1.5 }
+pickup_radius = 1.0
+enabled = true
+glyph = "k"
+
+[[interaction_targets]]
+target_id = "target:key"
+kind = "pickup"
+tile = { x = 4, y = 1 }
+position = { x = 4.5, y = 1.5 }
+radius = 1.0
+enabled = true
+effect = "pickup_item"
+drop_id = "drop:key"
+
+[[interaction_targets]]
+target_id = "target:switch"
+kind = "usable"
+tile = { x = 3, y = 1 }
+position = { x = 3.5, y = 1.5 }
+radius = 1.0
+enabled = true
+effect = "toggle_target"
+effect_target_id = "target:switch"
+enabled_value = false
+
+[[frame_player_commands]]
+frame_id = "frame:player-approaches"
+command = "move_to_tile"
+x = 3
+y = 1
+
+[[frame_controls]]
+frame_id = "frame:guard-patrol"
+npc = "npc:guard"
+behavior = "seeking"
+move_mode = "walk"
+target = { x = 2.5, y = 1.5 }
+
+[[frame_player_commands]]
+frame_id = "frame:pickup-key"
+command = "pickup"
+target_id = "target:key"
+
+[[frame_player_commands]]
+frame_id = "frame:interact-switch"
+command = "interact"
+target_id = "target:switch"
+
+[expect]
+final_rows = [
+  "##########",
+  "#.A@.....#",
+  "#........#",
+  "##########",
+]
+frame_count = 4
+accepted_command_count = 3
+picked_up_count = 1
+interaction_changed = true
+npc_moved_count = 1
