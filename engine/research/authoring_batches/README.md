@@ -2,6 +2,8 @@
 
 This directory is the builder work bucket for the TOML authored-scenario lane.
 
+For the broader project roadmap, see `../roadmap.md`.
+
 Builder workflow:
 - Pull the lowest-numbered packet that is not complete.
 - Execute one slice at a time.
