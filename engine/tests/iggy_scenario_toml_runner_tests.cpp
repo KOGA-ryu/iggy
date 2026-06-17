@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <sys/wait.h>
 #include <vector>
@@ -21,6 +22,16 @@ int Failures = 0;
 struct CommandResult {
 	int exitCode = -1;
 	std::string output;
+};
+
+struct GoldenFixture {
+	const char *name = "";
+	int frameCount = 0;
+	int acceptedCommandCount = 0;
+	int pickedUpCount = 0;
+	bool interactionChanged = false;
+	int npcMovedCount = 0;
+	std::vector<std::string> finalRows;
 };
 
 void Expect(bool condition, const char *message)
@@ -81,6 +92,15 @@ CommandResult RunCli(const std::vector<std::string> &args)
 std::string FixturePath(const char *name)
 {
 	return (std::filesystem::path(IGGY_TEST_FIXTURE_DIR) / name).string();
+}
+
+std::string FinalRowsBlock(const std::vector<std::string> &rows)
+{
+	std::ostringstream stream;
+	stream << "final_rows:\n";
+	for (const std::string &row : rows)
+		stream << row << '\n';
+	return stream.str();
 }
 
 void ExpectOutputContains(
@@ -182,61 +202,85 @@ void TestConversionFailureReportsMissingProfile()
 		"conversion failure CLI run");
 }
 
-void TestSelfContainedGuardRoom()
+void TestCanonicalFixtures()
 {
-	const CommandResult result =
-		RunCli({ FixturePath("self_contained_guard_room.toml") });
-	Expect(result.exitCode == 0, "self-contained fixture CLI run should succeed");
-	ExpectOutputContains(
-		result,
+	const std::vector<GoldenFixture> fixtures {
 		{
-			"status:\nresult: ok\nsummary:\n",
-			"frame_count: 1",
-			"accepted_command_count: 1",
-			"picked_up_count: 0",
-			"interaction_changed: false",
-			"npc_moved_count: 1",
-			"final_rows:\n#######\n#.A.@.#\n#.....#\n#######\n",
+			"moving_guard_room.toml",
+			1,
+			0,
+			0,
+			false,
+			1,
+			{ "#######", "#.A..@#", "#.....#", "#######" },
 		},
-		"self-contained fixture CLI run");
-}
+		{
+			"multi_frame_guard_room.toml",
+			2,
+			0,
+			0,
+			false,
+			2,
+			{ "#######", "#..A.@#", "#.....#", "#######" },
+		},
+		{
+			"player_and_guard_room.toml",
+			1,
+			1,
+			0,
+			false,
+			1,
+			{ "#######", "#.A.@.#", "#.....#", "#######" },
+		},
+		{
+			"player_interacts_guard_room.toml",
+			1,
+			1,
+			0,
+			true,
+			0,
+			{ "#######", "#A..@.#", "#.....#", "#######" },
+		},
+		{
+			"player_picks_up_item_room.toml",
+			2,
+			2,
+			1,
+			false,
+			0,
+			{ "#######", "#A.@..#", "#.....#", "#######" },
+		},
+		{
+			"mixed_mini_scenario.toml",
+			3,
+			3,
+			1,
+			true,
+			1,
+			{ "#########", "#.A@....#", "#.......#", "#########" },
+		},
+	};
 
-void TestPlayerInteractionRoom()
-{
-	const CommandResult result =
-		RunCli({ FixturePath("player_interacts_guard_room.toml") });
-	Expect(result.exitCode == 0, "player interaction fixture CLI run should succeed");
-	ExpectOutputContains(
-		result,
-		{
-			"status:\nresult: ok\nsummary:\n",
-			"frame_count: 1",
-			"accepted_command_count: 1",
-			"picked_up_count: 0",
-			"interaction_changed: true",
-			"npc_moved_count: 0",
-			"final_rows:\n#######\n#A..@.#\n#.....#\n#######\n",
-		},
-		"player interaction fixture CLI run");
-}
-
-void TestPlayerPickupRoom()
-{
-	const CommandResult result =
-		RunCli({ FixturePath("player_picks_up_item_room.toml") });
-	Expect(result.exitCode == 0, "player pickup fixture CLI run should succeed");
-	ExpectOutputContains(
-		result,
-		{
-			"status:\nresult: ok\nsummary:\n",
-			"frame_count: 2",
-			"accepted_command_count: 2",
-			"picked_up_count: 1",
-			"interaction_changed: false",
-			"npc_moved_count: 0",
-			"final_rows:\n#######\n#A.@..#\n#.....#\n#######\n",
-		},
-		"player pickup fixture CLI run");
+	for (const GoldenFixture &fixture : fixtures) {
+		const CommandResult result = RunCli({ FixturePath(fixture.name) });
+		Expect(result.exitCode == 0, "canonical fixture CLI run should succeed");
+		ExpectOutputContains(
+			result,
+			{
+				"status:\nresult: ok\nsummary:\n",
+				std::string("frame_count: ") + std::to_string(fixture.frameCount),
+				std::string("accepted_command_count: ") +
+					std::to_string(fixture.acceptedCommandCount),
+				std::string("picked_up_count: ") +
+					std::to_string(fixture.pickedUpCount),
+				std::string("interaction_changed: ") +
+					(fixture.interactionChanged ? "true" : "false"),
+				std::string("npc_moved_count: ") +
+					std::to_string(fixture.npcMovedCount),
+				FinalRowsBlock(fixture.finalRows),
+			},
+			fixture.name);
+	}
 }
 
 } // namespace
@@ -248,9 +292,7 @@ int main()
 	TestCorruptTomlReportsSyntaxLocation();
 	TestSemanticInvalidTomlReportsSourceIssue();
 	TestConversionFailureReportsMissingProfile();
-	TestSelfContainedGuardRoom();
-	TestPlayerInteractionRoom();
-	TestPlayerPickupRoom();
+	TestCanonicalFixtures();
 
 	if (Failures != 0)
 		return 1;
