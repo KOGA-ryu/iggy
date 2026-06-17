@@ -12,6 +12,7 @@
 #include "runtime/RuntimeGameplayProfileScenarioRunner.hpp"
 #include "runtime/RuntimeGameplayProfileScenarioValidator.hpp"
 #include "runtime/RuntimeGameplayScenarioAuthoringAdapter.hpp"
+#include "support/CanonicalAuthoringFixtures.hpp"
 #include "support/LevelMapFixtures.hpp"
 
 #ifndef IGGY_TEST_FIXTURE_DIR
@@ -879,6 +880,38 @@ void TestLockedDoorKeyFixturesGateDoorToggleOnInventory()
 	}
 }
 
+void TestCanonicalFixturesConvertWithoutHiddenCppDefaults()
+{
+	for (const iggy::test::CanonicalAuthoringFixture &fixture :
+		iggy::test::CanonicalAuthoringFixtures()) {
+		const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult read =
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(
+				FixturePath(fixture.name));
+
+		iggy::runtime::RuntimeGameplayScenarioAuthoringPacket packet;
+		packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
+		packet.hasAsciiSourcePlan = true;
+		packet.asciiSourcePlan = read.text.plan;
+
+		const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
+			iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(packet);
+		const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig &config =
+			adapter.asciiSourcePlanConversion.config;
+
+		Expect(read.ok(), "canonical fixture should read before hidden-default audit");
+		Expect(adapter.ok(), "canonical fixture should adapt with default authoring adapter config");
+		Expect(!adapter.config.hasAsciiSourcePlanProfileScenarioConfig, "canonical fixture should not set explicit adapter source-plan config");
+		Expect(!config.hasDefaultFrame, "canonical fixture should not use C++ default frame");
+		Expect(config.profileTraits.entries.empty(), "canonical fixture should not use C++ profile catalog");
+		Expect(config.terrain.empty(), "canonical fixture should not use C++ terrain promotion defaults");
+		Expect(!config.hasDefaultControl, "canonical fixture should not use C++ default NPC control");
+		Expect(!config.promoteRegionAiMap, "canonical fixture should not use C++ region AI map promotion");
+		Expect(config.regionAiMap.policies.empty(), "canonical fixture should not use C++ region AI map policies");
+		Expect(adapter.asciiSourcePlanConversion.profileTraitCatalog.built, "canonical fixture should build profile catalog from TOML facts");
+		Expect(adapter.profileScenario.frames.size() == adapter.asciiSourcePlanConversion.definition.frames.size(), "canonical fixture adapter should preserve converted frame count");
+	}
+}
+
 } // namespace
 
 int main()
@@ -902,6 +935,7 @@ int main()
 	TestPlayerInteractionFixtureRunsScenarioAndTogglesTarget();
 	TestPlayerPickupFixtureRunsScenarioAndPicksUpItem();
 	TestLockedDoorKeyFixturesGateDoorToggleOnInventory();
+	TestCanonicalFixturesConvertWithoutHiddenCppDefaults();
 
 	CleanupTempRoot();
 

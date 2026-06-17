@@ -1,5 +1,7 @@
 # Batch 38: No Hidden Defaults Audit
 
+Status: complete.
+
 ## Goal
 Ensure canonical authored scenarios do not depend on invisible C++ converter config while keeping lower-level override tests intact.
 
@@ -20,3 +22,9 @@ Do not delete config override coverage just because canonical fixtures are self-
 
 ## Expected Result
 The self-contained fixture promise remains enforceable.
+
+## Completed Coverage
+- Added a canonical-fixture audit that reads every canonical fixture and adapts it through the default authoring adapter path.
+- The audit asserts no explicit adapter config, C++ default frame, C++ profile catalog, terrain defaults, default control, or region AI map policy is supplied.
+- Existing explicit converter config tests remain in place as targeted override/regression coverage.
+- Canonical fixture CLI sweep still covers run/trace/check behavior separately from lower-level config override tests.
