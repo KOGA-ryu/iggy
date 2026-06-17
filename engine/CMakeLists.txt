@@ -92,4 +92,5 @@ if(IGGY_BUILD_TESTS)
   unset(IGGY_TEST_DEFAULT_LABELS)
 endif()
 
+include(cmake/iggy_scenario_toml_runner.cmake)
 include(cmake/iggy_qt_shell.cmake)
