@@ -64,4 +64,4 @@ Queue:
 7. `07_fixture_manifest_design_gate` - complete. Design canonical fixture manifest source of truth.
 8. `08_test_ceremony_trim_audit` - complete. Audit redundant C++ fixture/test ceremony.
 9. `09_smell_signal_dashboard` - complete. Document commands for tracking repo smells.
-10. `10_merge_readiness_protocol` - pending. Define merge protocol while builder continues.
+10. `10_merge_readiness_protocol` - complete. Define merge protocol while builder continues.
