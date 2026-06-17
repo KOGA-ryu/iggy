@@ -22,3 +22,13 @@ Do not delete lower-level coverage just because a CLI scenario passes.
 
 ## Expected Result
 Less test ceremony without losing behavior or diagnostics coverage.
+
+## Status
+Complete.
+
+## Completed Coverage
+- Kept lower-level file-reader, parser diagnostic, explicit converter config,
+  authoring adapter, and hidden-default audit coverage.
+- Removed duplicated canonical fixture direct-run ceremony from the TOML
+  file-reader tests; canonical runtime acceptance remains covered by the
+  manifest-driven CLI golden sweep.
