@@ -98,23 +98,49 @@ RuntimeGameplayTomlScenarioExpectationComparison CompareExpectations(
 	return comparison;
 }
 
+bool ShouldLint(const RuntimeGameplayTomlScenarioFacadeConfig &config)
+{
+	return config.mode == RuntimeGameplayTomlScenarioFacadeMode::Lint
+		|| config.lintOnly;
+}
+
+bool ShouldCheck(const RuntimeGameplayTomlScenarioFacadeConfig &config)
+{
+	return config.mode == RuntimeGameplayTomlScenarioFacadeMode::Check;
+}
+
+bool ShouldTrace(const RuntimeGameplayTomlScenarioFacadeConfig &config)
+{
+	return config.mode == RuntimeGameplayTomlScenarioFacadeMode::Trace
+		|| config.captureTraceFrames;
+}
+
 } // namespace
 
 bool RuntimeGameplayTomlScenarioFacadeResult::ok() const
 {
 	return status == RuntimeGameplayTomlScenarioFacadeStatus::Ran
-		|| status == RuntimeGameplayTomlScenarioFacadeStatus::LintOk;
+		|| status == RuntimeGameplayTomlScenarioFacadeStatus::LintOk
+		|| status == RuntimeGameplayTomlScenarioFacadeStatus::CheckPassed;
 }
 
 bool RuntimeGameplayTomlScenarioFacadeResult::ran() const
 {
-	return status == RuntimeGameplayTomlScenarioFacadeStatus::Ran;
+	return status == RuntimeGameplayTomlScenarioFacadeStatus::Ran
+		|| status == RuntimeGameplayTomlScenarioFacadeStatus::CheckPassed
+		|| status == RuntimeGameplayTomlScenarioFacadeStatus::CheckFailed;
 }
 
 bool RuntimeGameplayTomlScenarioFacadeResult::linted() const
 {
 	return status == RuntimeGameplayTomlScenarioFacadeStatus::LintOk
 		|| status == RuntimeGameplayTomlScenarioFacadeStatus::LintFailed;
+}
+
+bool RuntimeGameplayTomlScenarioFacadeResult::checked() const
+{
+	return status == RuntimeGameplayTomlScenarioFacadeStatus::CheckPassed
+		|| status == RuntimeGameplayTomlScenarioFacadeStatus::CheckFailed;
 }
 
 RuntimeGameplayTomlScenarioFacadeResult RuntimeGameplayTomlScenarioFacade::execute(
@@ -142,7 +168,7 @@ RuntimeGameplayTomlScenarioFacadeResult RuntimeGameplayTomlScenarioFacade::execu
 		return result;
 	}
 
-	if (config.lintOnly) {
+	if (ShouldLint(config)) {
 		result.validation = RuntimeGameplayProfileScenarioValidator {}.validate(
 			result.adapter.profileScenario);
 		result.status = result.validation.ok()
@@ -161,12 +187,19 @@ RuntimeGameplayTomlScenarioFacadeResult RuntimeGameplayTomlScenarioFacade::execu
 
 	result.finalRows =
 		finalDebugRowsForAsciiSourcePlan(result.read.text.plan, result.run.state);
-	if (config.captureTraceFrames)
+	if (ShouldTrace(config))
 		result.traceFrames = TraceFrames(result.read.text.plan, result.run);
 	result.expectationComparison = CompareExpectations(
 		result.read.text.plan.expectations,
 		result.run,
 		result.finalRows);
+	if (ShouldCheck(config)) {
+		result.status = result.expectationComparison.present
+			&& result.expectationComparison.matched
+			? RuntimeGameplayTomlScenarioFacadeStatus::CheckPassed
+			: RuntimeGameplayTomlScenarioFacadeStatus::CheckFailed;
+		return result;
+	}
 	result.status = RuntimeGameplayTomlScenarioFacadeStatus::Ran;
 	return result;
 }

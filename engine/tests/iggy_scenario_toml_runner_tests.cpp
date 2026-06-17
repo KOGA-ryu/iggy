@@ -203,7 +203,8 @@ void ExpectCliMatchesFacadeRunProjection(
 	const char *context)
 {
 	iggy::runtime::RuntimeGameplayTomlScenarioFacadeConfig config;
-	config.captureTraceFrames = trace;
+	if (trace)
+		config.mode = iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Trace;
 	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult facade =
 		iggy::runtime::RuntimeGameplayTomlScenarioFacade {}.execute(
 			FixturePath(fixtureName),

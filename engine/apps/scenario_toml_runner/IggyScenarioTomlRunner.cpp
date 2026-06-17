@@ -619,7 +619,16 @@ int main(int argc, char **argv)
 
 	const std::filesystem::path path(pathArgument);
 	iggy::runtime::RuntimeGameplayTomlScenarioFacadeConfig facadeConfig;
-	facadeConfig.lintOnly = lint;
+	if (lint) {
+		facadeConfig.mode =
+			iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Lint;
+	} else if (check) {
+		facadeConfig.mode =
+			iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Check;
+	} else if (trace) {
+		facadeConfig.mode =
+			iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Trace;
+	}
 	facadeConfig.captureTraceFrames = trace;
 	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult scenario =
 		iggy::runtime::RuntimeGameplayTomlScenarioFacade {}.execute(
@@ -718,7 +727,8 @@ int main(int argc, char **argv)
 	for (const std::string &row : rows)
 		std::cout << row << '\n';
 
-	if (check && (!comparison.present || !comparison.matched))
+	if (scenario.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::CheckFailed)
 		return 5;
 
 	return 0;

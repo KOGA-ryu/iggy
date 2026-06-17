@@ -19,6 +19,15 @@ enum class RuntimeGameplayTomlScenarioFacadeStatus {
 	LintOk,
 	RunFailed,
 	Ran,
+	CheckFailed,
+	CheckPassed,
+};
+
+enum class RuntimeGameplayTomlScenarioFacadeMode {
+	Run,
+	Lint,
+	Check,
+	Trace,
 };
 
 struct RuntimeGameplayTomlScenarioTraceFrame {
@@ -49,6 +58,8 @@ struct RuntimeGameplayTomlScenarioExpectationComparison {
 };
 
 struct RuntimeGameplayTomlScenarioFacadeConfig {
+	RuntimeGameplayTomlScenarioFacadeMode mode =
+		RuntimeGameplayTomlScenarioFacadeMode::Run;
 	bool lintOnly = false;
 	bool captureTraceFrames = false;
 };
@@ -69,6 +80,7 @@ struct RuntimeGameplayTomlScenarioFacadeResult {
 	[[nodiscard]] bool ok() const;
 	[[nodiscard]] bool ran() const;
 	[[nodiscard]] bool linted() const;
+	[[nodiscard]] bool checked() const;
 };
 
 class RuntimeGameplayTomlScenarioFacade {
