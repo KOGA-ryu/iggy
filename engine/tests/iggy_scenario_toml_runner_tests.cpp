@@ -126,7 +126,7 @@ void TestNoArgUsage()
 		{
 			"status:\n",
 			"result: usage_error",
-			"usage: iggy_scenario_toml_runner <path>",
+			"usage: iggy_scenario_toml_runner [--trace] <path>",
 		},
 		"no-arg CLI run");
 }

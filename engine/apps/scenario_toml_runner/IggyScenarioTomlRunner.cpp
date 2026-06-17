@@ -395,7 +395,7 @@ int Usage()
 {
 	std::cerr << "status:\n";
 	std::cerr << "result: usage_error\n";
-	std::cerr << "usage: iggy_scenario_toml_runner <path>\n";
+	std::cerr << "usage: iggy_scenario_toml_runner [--trace] <path>\n";
 	return 1;
 }
 
@@ -571,10 +571,18 @@ void PrintTraceFrames(const std::vector<TraceFrameProjection> &frames)
 
 int main(int argc, char **argv)
 {
-	if (argc != 2)
+	bool trace = false;
+	const char *pathArgument = nullptr;
+	if (argc == 2) {
+		pathArgument = argv[1];
+	} else if (argc == 3 && std::string_view(argv[1]) == "--trace") {
+		trace = true;
+		pathArgument = argv[2];
+	} else {
 		return Usage();
+	}
 
-	const std::filesystem::path path(argv[1]);
+	const std::filesystem::path path(pathArgument);
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult read =
 		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(path);
 	if (!read.ok()) {
@@ -643,6 +651,8 @@ int main(int argc, char **argv)
 	std::cout << "interaction_changed: "
 		<< (run.scenario.runner.interactionChanged ? "true" : "false") << '\n';
 	std::cout << "npc_moved_count: " << run.npcMovedCount << '\n';
+	if (trace)
+		PrintTraceFrames(TraceFrames(read.text.plan, run));
 	std::cout << "final_rows:\n";
 
 	const std::vector<std::string> rows =
