@@ -243,6 +243,8 @@ Done:
 - `19_editor_preview_model_gate`
 - `26_minimal_editor_model`
 - `23_fixtures_from_cli_examples`
+- UI workspace profile notes are recorded in
+  `engine/research/ui_integration_profiles.md`.
 
 Remaining exit work:
 - Decide first consumer: CLI-only preview inspection, Qt shell read-only panel,
