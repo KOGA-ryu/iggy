@@ -79,6 +79,53 @@ bool Contains(const std::string &text, const std::string &needle)
 	return text.find(needle) != std::string::npos;
 }
 
+bool StartsWith(const std::string &text, const char *prefix)
+{
+	return text.rfind(prefix, 0) == 0;
+}
+
+std::string NormalizeContractLine(const std::string &line)
+{
+	if (StartsWith(line, "source_path: "))
+		return "source_path: <path>";
+	if (StartsWith(line, "file_issue: ")) {
+		const std::string pathNeedle = " path=";
+		const std::string detailNeedle = " detail=";
+		const std::size_t path = line.find(pathNeedle);
+		const std::size_t detail = line.find(detailNeedle);
+		if (path != std::string::npos && detail != std::string::npos
+			&& path < detail) {
+			return line.substr(0, path + pathNeedle.size()) + "<path>" +
+				line.substr(detail);
+		}
+	}
+	return line;
+}
+
+std::string NormalizeContractOutput(const std::string &output)
+{
+	std::istringstream input(output);
+	std::ostringstream normalized;
+	std::string line;
+	while (std::getline(input, line))
+		normalized << NormalizeContractLine(line) << '\n';
+	return normalized.str();
+}
+
+void ExpectOutputContract(
+	const CommandResult &result,
+	const std::string &expected,
+	const char *context)
+{
+	const std::string actual = NormalizeContractOutput(result.output);
+	if (actual != expected) {
+		std::cerr << "FAIL: " << context << " output contract mismatch"
+			<< "\nexpected:\n" << expected
+			<< "\nactual:\n" << actual << '\n';
+		++Failures;
+	}
+}
+
 std::string ShellQuote(const std::string &value)
 {
 	std::string quoted = "'";
@@ -972,6 +1019,179 @@ void TestLintModeValidatesWithoutRunningScenario()
 		"lint conversion issue");
 }
 
+void TestCliOutputContractSnapshots()
+{
+	const CommandResult run =
+		RunCli({ FixturePath("moving_guard_room.toml") });
+	Expect(run.exitCode == 0, "run output contract fixture should succeed");
+	ExpectOutputContract(
+		run,
+		"status:\n"
+		"result: ok\n"
+		"summary:\n"
+		"source_path: <path>\n"
+		"frame_count: 1\n"
+		"accepted_command_count: 0\n"
+		"picked_up_count: 0\n"
+		"interaction_changed: false\n"
+		"npc_moved_count: 1\n"
+		"npc_blocked_movement_count: 0\n"
+		"expectation:\n"
+		"present: false\n"
+		"result: not_provided\n"
+		"final_rows:\n"
+		"#######\n"
+		"#.A..@#\n"
+		"#.....#\n"
+		"#######\n",
+		"run output contract");
+
+	const CommandResult trace =
+		RunCli({ "--trace", FixturePath("multi_frame_guard_room.toml") });
+	Expect(trace.exitCode == 0, "trace output contract fixture should succeed");
+	ExpectOutputContract(
+		trace,
+		"status:\n"
+		"result: ok\n"
+		"summary:\n"
+		"source_path: <path>\n"
+		"frame_count: 2\n"
+		"accepted_command_count: 0\n"
+		"picked_up_count: 0\n"
+		"interaction_changed: false\n"
+		"npc_moved_count: 2\n"
+		"npc_blocked_movement_count: 0\n"
+		"frames:\n"
+		"frame_index: 0\n"
+		"frame_id: frame:move-1\n"
+		"accepted_command_count: 0\n"
+		"picked_up_count: 0\n"
+		"interaction_changed: false\n"
+		"npc_moved_count: 1\n"
+		"rows:\n"
+		"#######\n"
+		"#.A..@#\n"
+		"#.....#\n"
+		"#######\n"
+		"frame_index: 1\n"
+		"frame_id: frame:move-2\n"
+		"accepted_command_count: 0\n"
+		"picked_up_count: 0\n"
+		"interaction_changed: false\n"
+		"npc_moved_count: 1\n"
+		"rows:\n"
+		"#######\n"
+		"#..A.@#\n"
+		"#.....#\n"
+		"#######\n"
+		"expectation:\n"
+		"present: false\n"
+		"result: not_provided\n"
+		"final_rows:\n"
+		"#######\n"
+		"#..A.@#\n"
+		"#.....#\n"
+		"#######\n",
+		"trace output contract");
+
+	const CommandResult lint =
+		RunCli({ "--lint", FixturePath("moving_guard_room.toml") });
+	Expect(lint.exitCode == 0, "lint output contract fixture should succeed");
+	ExpectOutputContract(
+		lint,
+		"status:\n"
+		"result: lint_ok\n"
+		"summary:\n"
+		"source_path: <path>\n"
+		"frame_count: 1\n"
+		"adapter_status: converted\n"
+		"profile_status: valid\n",
+		"lint output contract");
+
+	const std::string base = FixtureText("moving_guard_room.toml");
+	TempTomlFile checkMatch("contract_check_match", base + R"toml(
+
+[expect]
+final_rows = [
+  "#######",
+  "#.A..@#",
+  "#.....#",
+  "#######",
+]
+npc_moved_count = 1
+)toml");
+	const CommandResult check =
+		RunCli({ "--check", checkMatch.path.string() });
+	Expect(check.exitCode == 0, "check output contract fixture should succeed");
+	ExpectOutputContract(
+		check,
+		"status:\n"
+		"result: ok\n"
+		"summary:\n"
+		"source_path: <path>\n"
+		"frame_count: 1\n"
+		"accepted_command_count: 0\n"
+		"picked_up_count: 0\n"
+		"interaction_changed: false\n"
+		"npc_moved_count: 1\n"
+		"npc_blocked_movement_count: 0\n"
+		"expectation:\n"
+		"present: true\n"
+		"result: matched\n"
+		"final_rows: matched\n"
+		"npc_moved_count: matched\n"
+		"final_rows:\n"
+		"#######\n"
+		"#.A..@#\n"
+		"#.....#\n"
+		"#######\n",
+		"check success output contract");
+
+	TempTomlFile checkMismatch("contract_check_mismatch", base + R"toml(
+
+[expect]
+npc_moved_count = 99
+)toml");
+	const CommandResult mismatch =
+		RunCli({ "--check", checkMismatch.path.string() });
+	Expect(mismatch.exitCode == 5,
+		"check mismatch output contract fixture should fail");
+	ExpectOutputContract(
+		mismatch,
+		"status:\n"
+		"result: ok\n"
+		"summary:\n"
+		"source_path: <path>\n"
+		"frame_count: 1\n"
+		"accepted_command_count: 0\n"
+		"picked_up_count: 0\n"
+		"interaction_changed: false\n"
+		"npc_moved_count: 1\n"
+		"npc_blocked_movement_count: 0\n"
+		"expectation:\n"
+		"present: true\n"
+		"result: mismatched\n"
+		"npc_moved_count: mismatched\n"
+		"final_rows:\n"
+		"#######\n"
+		"#.A..@#\n"
+		"#.....#\n"
+		"#######\n",
+		"check mismatch output contract");
+
+	const CommandResult failure = RunCli({ FixturePath("missing.toml") });
+	Expect(failure.exitCode == 2, "failure output contract fixture should fail");
+	ExpectOutputContract(
+		failure,
+		"status:\n"
+		"result: read_failed\n"
+		"read_status: missing_file\n"
+		"toml_status: syntax_invalid\n"
+		"issue_count: 1\n"
+		"file_issue: code=missing_file path=<path> detail=TOML source-plan file does not exist\n",
+		"failure output contract");
+}
+
 } // namespace
 
 int main()
@@ -987,6 +1207,7 @@ int main()
 	TestExpectationComparisonReportsMatchAndMismatch();
 	TestCheckModeUsesExpectationComparisonForExitStatus();
 	TestLintModeValidatesWithoutRunningScenario();
+	TestCliOutputContractSnapshots();
 
 	if (Failures != 0)
 		return 1;
