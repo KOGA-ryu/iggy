@@ -106,9 +106,11 @@ iggy::runtime::RuntimePlayerInputInteractionEffectApplyFrameInput Input(
 	iggy::runtime::RuntimePlayerInputGatedFrameStepInput playerInput,
 	iggy::InteractionTarget2DRegistry targets,
 	iggy::InteractionEffectCatalog2D effects,
-	iggy::InteractionReach2DConfig reach = {})
+	iggy::InteractionReach2DConfig reach = {},
+	iggy::runtime::RuntimeInventoryState inventory = {},
+	iggy::runtime::RuntimeInteractionRequiredItems requiredItems = {})
 {
-	return { playerInput, targets, effects, reach };
+	return { playerInput, targets, effects, reach, inventory, requiredItems };
 }
 
 iggy::runtime::RuntimeInteractionState InteractionState(
@@ -121,9 +123,21 @@ iggy::runtime::RuntimeInteractionState InteractionState(
 iggy::runtime::RuntimePlayerInputInteractionStateApplyFrameInput StateInput(
 	iggy::runtime::RuntimePlayerInputGatedFrameStepInput playerInput,
 	iggy::runtime::RuntimeInteractionState interaction,
-	iggy::InteractionReach2DConfig reach = {})
+	iggy::InteractionReach2DConfig reach = {},
+	iggy::runtime::RuntimeInventoryState inventory = {},
+	iggy::runtime::RuntimeInteractionRequiredItems requiredItems = {})
 {
-	return { playerInput, interaction, reach };
+	return { playerInput, interaction, reach, inventory, requiredItems };
+}
+
+iggy::runtime::RuntimeInventoryState Inventory(std::vector<iggy::InventoryItemStack2D> stacks)
+{
+	iggy::runtime::RuntimeInventoryState state;
+	const iggy::InventoryState2DBuildResult result =
+		iggy::InventoryState2DBuilder {}.build(stacks);
+	Expect(result.built, "player input interaction effect apply frame inventory setup should build");
+	state.inventory = result.inventory;
+	return state;
 }
 
 iggy::physics2d::CollisionObject2D Object(iggy::ResourceId id, iggy::Aabb2 bounds)
@@ -419,6 +433,63 @@ void TestMoveThenInteractUsesPostMovePositionAndAppliesToggle()
 	}
 }
 
+void TestRequiredItemAllowsInteractionEffectWhenInventoryContainsItem()
+{
+	const std::vector<iggy::InteractionTarget2D> targets {
+		Target("target:locked_door", iggy::InteractionTarget2DKind::Door, { 0.0F, 0.0F }, 0.0F, true),
+	};
+	std::vector<iggy::InteractionTarget2D> expected = targets;
+	expected[0].enabled = false;
+	const iggy::ResourceId keyId { "item:key" };
+
+	const iggy::runtime::RuntimePlayerInputInteractionEffectApplyFrameResult result =
+		iggy::runtime::RuntimePlayerInputInteractionEffectApplyFrameStep {}.run(
+			Input(
+				PlayerInput(SessionWithPlayer({ 0.0F, 0.0F }), { iggy::playerInteractIntent(targets[0].id) }),
+				Registry(targets),
+				Catalog({ Entry("target:locked_door", { iggy::toggleTargetInteractionEffect(targets[0].id, false) }) }),
+				{},
+				Inventory({ { keyId, 1 } }),
+				{ { targets[0].id, keyId } }));
+
+	Expect(result.application.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::Applied, "required-item apply adapter should apply when inventory contains item");
+	Expect(result.application.appliedCount == 1, "required-item apply adapter should count applied interaction");
+	Expect(result.application.noOpCount == 0, "required-item apply adapter should not count no-op interaction when item is present");
+	ExpectEvents(
+		result.events,
+		{ iggy::targetToggledInteractionEvent(targets[0].id, false) },
+		"required-item apply adapter should emit toggle event when item is present");
+	ExpectRegistryTargets(result.interactionTargets, expected, "required-item apply adapter should toggle target when item is present");
+}
+
+void TestRequiredItemBlocksInteractionEffectWhenInventoryIsMissingItem()
+{
+	const std::vector<iggy::InteractionTarget2D> targets {
+		Target("target:locked_door", iggy::InteractionTarget2DKind::Door, { 0.0F, 0.0F }, 0.0F, true),
+	};
+	const iggy::ResourceId keyId { "item:key" };
+
+	const iggy::runtime::RuntimePlayerInputInteractionEffectApplyFrameResult result =
+		iggy::runtime::RuntimePlayerInputInteractionEffectApplyFrameStep {}.run(
+			Input(
+				PlayerInput(SessionWithPlayer({ 0.0F, 0.0F }), { iggy::playerInteractIntent(targets[0].id) }),
+				Registry(targets),
+				Catalog({ Entry("target:locked_door", { iggy::toggleTargetInteractionEffect(targets[0].id, false) }) }),
+				{},
+				Inventory({ { iggy::ResourceId { "item:other" }, 1 } }),
+				{ { targets[0].id, keyId } }));
+
+	Expect(result.playerInput.report.acceptedCommandCount == 1, "missing required item should still preserve accepted player command");
+	Expect(result.application.status == iggy::runtime::RuntimeInteractionEffectApplyFrameStatus::NoOp, "missing required item should no-op interaction application");
+	Expect(result.application.appliedCount == 0, "missing required item should not count applied interaction");
+	Expect(result.application.noOpCount == 1, "missing required item should count no-op interaction");
+	Expect(!result.application.mutated, "missing required item should not mutate interaction state");
+	ExpectEvents(result.events, {}, "missing required item should emit no interaction events");
+	ExpectRegistryTargets(result.interactionTargets, targets, "missing required item should leave target unchanged");
+	if (result.application.entries.size() == 1)
+		Expect(result.application.entries[0].result.command.status == iggy::runtime::RuntimeInteractionEffectCommandStatus::NoEffects, "missing required item should make the effect command report no effects");
+}
+
 void TestExplicitWorldOverloadAffectsMovementAndReachForApplication()
 {
 	iggy::runtime::RuntimeSessionState session = SessionWithPlayer({ 0.0F, 0.0F });
@@ -705,6 +776,8 @@ int main()
 	TestDisabledAndOutOfRangeTargetsDoNotMutateRegistry();
 	TestContextBlockedInteractDoesNotEnterApplicationFrame();
 	TestMoveThenInteractUsesPostMovePositionAndAppliesToggle();
+	TestRequiredItemAllowsInteractionEffectWhenInventoryContainsItem();
+	TestRequiredItemBlocksInteractionEffectWhenInventoryIsMissingItem();
 	TestExplicitWorldOverloadAffectsMovementAndReachForApplication();
 	TestQueueRejectedSkipsEffectApplicationAndPreservesDiagnostics();
 	TestQueueRejectedExplicitWorldAlsoSkipsEffectApplication();

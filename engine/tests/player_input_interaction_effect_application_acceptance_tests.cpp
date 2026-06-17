@@ -109,7 +109,7 @@ iggy::runtime::RuntimePlayerInputInteractionEffectApplyFrameInput Input(
 	iggy::InteractionEffectCatalog2D effects,
 	iggy::InteractionReach2DConfig reach = {})
 {
-	return { playerInput, targets, effects, reach };
+	return { playerInput, targets, effects, reach, {}, {} };
 }
 
 iggy::runtime::RuntimeInteractionState InteractionState(
@@ -124,7 +124,7 @@ iggy::runtime::RuntimePlayerInputInteractionStateApplyFrameInput StateInput(
 	iggy::runtime::RuntimeInteractionState interaction,
 	iggy::InteractionReach2DConfig reach = {})
 {
-	return { playerInput, interaction, reach };
+	return { playerInput, interaction, reach, {}, {} };
 }
 
 iggy::physics2d::CollisionObject2D Object(iggy::ResourceId id, iggy::Aabb2 bounds)

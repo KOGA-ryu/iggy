@@ -154,7 +154,7 @@ iggy::runtime::RuntimePlayerInputInteractionStateApplyFrameInput InteractionInpu
 	iggy::runtime::RuntimeInteractionState interaction,
 	iggy::InteractionReach2DConfig reach = {})
 {
-	return { playerInput, interaction, reach };
+	return { playerInput, interaction, reach, {}, {} };
 }
 
 iggy::runtime::RuntimePlayerInputInteractionPickupFrameInput Input(

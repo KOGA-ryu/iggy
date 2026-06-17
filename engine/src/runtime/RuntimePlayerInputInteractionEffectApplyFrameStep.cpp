@@ -12,7 +12,45 @@ RuntimePlayerInputInteractionEffectApplyFrameInput SeparateInput(
 		input.interaction.targets,
 		input.interaction.effects,
 		input.interactionReach,
+		input.inventory,
+		input.requiredItems,
 	};
+}
+
+const ResourceId *RequiredItemForTarget(
+	const RuntimeInteractionRequiredItems &requiredItems,
+	const ResourceId &targetId)
+{
+	for (const RuntimeInteractionRequiredItem &required : requiredItems) {
+		if (required.targetId == targetId && !required.itemId.empty())
+			return &required.itemId;
+	}
+	return nullptr;
+}
+
+InteractionEffectCatalog2D EffectsAllowedByInventory(
+	const InteractionEffectCatalog2D &effects,
+	const RuntimeInventoryState &inventory,
+	const RuntimeInteractionRequiredItems &requiredItems)
+{
+	if (requiredItems.empty())
+		return effects;
+
+	std::vector<InteractionEffectEntry2D> entries;
+	entries.reserve(effects.entries().size());
+	for (const InteractionEffectEntry2D &entry : effects.entries()) {
+		const ResourceId *requiredItem =
+			RequiredItemForTarget(requiredItems, entry.targetId);
+		if (requiredItem != nullptr &&
+			!inventory.inventory.contains(*requiredItem)) {
+			continue;
+		}
+		entries.push_back(entry);
+	}
+
+	const InteractionEffectCatalog2DBuildResult build =
+		InteractionEffectCatalog2DBuilder {}.build(entries);
+	return build.built ? build.catalog : InteractionEffectCatalog2D {};
 }
 
 RuntimePlayerInputInteractionStateApplyFrameResult StateResultFrom(
@@ -48,7 +86,10 @@ RuntimePlayerInputInteractionEffectApplyFrameResult RuntimePlayerInputInteractio
 	result.application = RuntimeInteractionEffectApplyFrameStep {}.apply(
 		result.session,
 		input.interactionTargets,
-		input.interactionEffects,
+		EffectsAllowedByInventory(
+			input.interactionEffects,
+			input.inventory,
+			input.requiredItems),
 		result.playerInput.command.intake.mapping.frame,
 		input.interactionReach);
 	result.interactionTargets = result.application.registry;
@@ -73,7 +114,10 @@ RuntimePlayerInputInteractionEffectApplyFrameResult RuntimePlayerInputInteractio
 	result.application = RuntimeInteractionEffectApplyFrameStep {}.apply(
 		result.session,
 		input.interactionTargets,
-		input.interactionEffects,
+		EffectsAllowedByInventory(
+			input.interactionEffects,
+			input.inventory,
+			input.requiredItems),
 		result.playerInput.command.intake.mapping.frame,
 		input.interactionReach);
 	result.interactionTargets = result.application.registry;

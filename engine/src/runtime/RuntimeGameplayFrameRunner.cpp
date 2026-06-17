@@ -21,6 +21,7 @@ RuntimeGameplayFrameInput FrameInputFrom(
 	input.playerCommandConfig = frame.playerCommandConfig;
 	input.npcConfig = frame.npcConfig;
 	input.interactionReach = frame.interactionReach;
+	input.interactionRequiredItems = frame.interactionRequiredItems;
 	input.pickup = frame.pickup;
 	input.npcMovementRequests = frame.npcMovementRequests;
 	return input;

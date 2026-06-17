@@ -17,6 +17,8 @@ RuntimePlayerInputInteractionPickupFrameInput PickupFrameInputFrom(const Runtime
 	frameInput.interactionInput.playerInput.commandInput.npcConfig = input.npcConfig;
 	frameInput.interactionInput.interaction = input.state.interaction;
 	frameInput.interactionInput.interactionReach = input.interactionReach;
+	frameInput.interactionInput.inventory = input.state.inventory;
+	frameInput.interactionInput.requiredItems = input.interactionRequiredItems;
 	frameInput.inventory = input.state.inventory;
 	frameInput.pickup = input.pickup;
 	return frameInput;

@@ -28,6 +28,7 @@ struct RuntimeGameplayFrameRunnerFrame {
 	RuntimePlayerCommandExecutionConfig playerCommandConfig;
 	npc_ai::NpcAgentTickConfig npcConfig;
 	InteractionReach2DConfig interactionReach;
+	RuntimeInteractionRequiredItems interactionRequiredItems;
 	RuntimePickupConfig pickup;
 	std::vector<NpcActorMovementFrameApply2DRequest> npcMovementRequests;
 };

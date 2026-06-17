@@ -1,8 +1,10 @@
 #pragma once
 
 #include "runtime/RuntimeCommandQueue.hpp"
+#include "runtime/RuntimeInteractionRequirement.hpp"
 #include "runtime/RuntimeInteractionEffectApplyFrameStep.hpp"
 #include "runtime/RuntimeInteractionState.hpp"
+#include "runtime/RuntimeInventoryState.hpp"
 #include "runtime/RuntimePlayerInputFrameStep.hpp"
 #include "runtime/RuntimeSessionState.hpp"
 #include "scene/interaction/InteractionEffectCatalog2D.hpp"
@@ -17,6 +19,8 @@ struct RuntimePlayerInputInteractionEffectApplyFrameInput {
 	InteractionTarget2DRegistry interactionTargets;
 	InteractionEffectCatalog2D interactionEffects;
 	InteractionReach2DConfig interactionReach;
+	RuntimeInventoryState inventory;
+	RuntimeInteractionRequiredItems requiredItems;
 };
 
 struct RuntimePlayerInputInteractionEffectApplyFrameResult {
@@ -32,6 +36,8 @@ struct RuntimePlayerInputInteractionStateApplyFrameInput {
 	RuntimePlayerInputGatedFrameStepInput playerInput;
 	RuntimeInteractionState interaction;
 	InteractionReach2DConfig interactionReach;
+	RuntimeInventoryState inventory;
+	RuntimeInteractionRequiredItems requiredItems;
 };
 
 struct RuntimePlayerInputInteractionStateApplyFrameResult {
