@@ -1,5 +1,7 @@
 # Batch 33: Trace Expectations
 
+Status: complete.
+
 ## Goal
 Extend authored expectations beyond final rows to optional per-frame trace expectations, using existing `--trace` output and no new execution behavior.
 
@@ -20,3 +22,10 @@ No new runtime semantics, broad golden framework, or external golden files unles
 
 ## Expected Result
 Multi-frame scenarios can self-check progression, not only final state.
+
+## Completed Coverage
+
+- Added optional `[[expect_trace_frames]]` source-plan facts for expected frame id, rows, accepted command count, picked-up count, interaction changed flag, and NPC moved count.
+- Validates expected trace row shape through source-plan diagnostics without changing scenario conversion or runtime execution.
+- Check mode compares trace expectations against the existing trace projection and captures trace frames automatically when those expectations are present.
+- `mixed_progression_room.toml` now self-checks all four progression frames.
