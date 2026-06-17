@@ -76,6 +76,9 @@ void AddIssue(
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedFinalRowsEmpty:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedFinalRowsDimensionMismatch:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedTraceFrameRowsEmpty:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::
+		ExpectedTraceFrameRowsDimensionMismatch:
 		++result.expectationIssueCount;
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsafeNoClaims:
@@ -793,35 +796,74 @@ void ValidateExpectations(RuntimeGameplayAsciiSourcePlanValidationResult &result
 {
 	const RuntimeGameplayAsciiSourcePlanExpectations &expectations =
 		result.plan.expectations;
-	if (!expectations.hasFinalRows) {
-		return;
-	}
 
-	if (expectations.finalRows.empty()) {
-		RuntimeGameplayAsciiSourcePlanIssue issue;
-		issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedFinalRowsEmpty;
-		AddIssue(result, issue);
-		return;
-	}
+	if (expectations.hasFinalRows) {
+		if (expectations.finalRows.empty()) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code =
+				RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedFinalRowsEmpty;
+			AddIssue(result, issue);
+			return;
+		}
 
-	if (expectations.finalRows.size() != result.plan.grid.rows.size()) {
-		RuntimeGameplayAsciiSourcePlanIssue issue;
-		issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
-			ExpectedFinalRowsDimensionMismatch;
-		issue.index = expectations.finalRows.size();
-		issue.firstIndex = result.plan.grid.rows.size();
-		AddIssue(result, issue);
-	}
-
-	for (std::size_t row = 0; row < expectations.finalRows.size(); ++row) {
-		if (expectations.finalRows[row].size() != result.plan.grid.width) {
+		if (expectations.finalRows.size() != result.plan.grid.rows.size()) {
 			RuntimeGameplayAsciiSourcePlanIssue issue;
 			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
 				ExpectedFinalRowsDimensionMismatch;
-			issue.row = row;
-			issue.index = expectations.finalRows[row].size();
-			issue.firstIndex = result.plan.grid.width;
+			issue.index = expectations.finalRows.size();
+			issue.firstIndex = result.plan.grid.rows.size();
 			AddIssue(result, issue);
+		}
+
+		for (std::size_t row = 0; row < expectations.finalRows.size(); ++row) {
+			if (expectations.finalRows[row].size() != result.plan.grid.width) {
+				RuntimeGameplayAsciiSourcePlanIssue issue;
+				issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+					ExpectedFinalRowsDimensionMismatch;
+				issue.row = row;
+				issue.index = expectations.finalRows[row].size();
+				issue.firstIndex = result.plan.grid.width;
+				AddIssue(result, issue);
+			}
+		}
+	}
+
+	for (std::size_t frameIndex = 0;
+		frameIndex < expectations.traceFrames.size();
+		++frameIndex) {
+		const RuntimeGameplayAsciiSourcePlanExpectedTraceFrame &frame =
+			expectations.traceFrames[frameIndex];
+		if (!frame.hasRows) {
+			continue;
+		}
+		if (frame.rows.empty()) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code =
+				RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedTraceFrameRowsEmpty;
+			issue.index = frameIndex;
+			AddIssue(result, issue);
+			continue;
+		}
+		if (frame.rows.size() != result.plan.grid.rows.size()) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				ExpectedTraceFrameRowsDimensionMismatch;
+			issue.index = frameIndex;
+			issue.firstIndex = frame.rows.size();
+			issue.row = result.plan.grid.rows.size();
+			AddIssue(result, issue);
+		}
+		for (std::size_t row = 0; row < frame.rows.size(); ++row) {
+			if (frame.rows[row].size() != result.plan.grid.width) {
+				RuntimeGameplayAsciiSourcePlanIssue issue;
+				issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+					ExpectedTraceFrameRowsDimensionMismatch;
+				issue.index = frameIndex;
+				issue.row = row;
+				issue.firstIndex = result.plan.grid.width;
+				issue.column = frame.rows[row].size();
+				AddIssue(result, issue);
+			}
 		}
 	}
 }

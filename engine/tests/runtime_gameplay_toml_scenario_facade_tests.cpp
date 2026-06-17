@@ -195,6 +195,36 @@ npc_moved_count = 1
 		"check mode should still honor explicit trace capture");
 }
 
+void TestCheckModeComparesTraceExpectations()
+{
+	iggy::runtime::RuntimeGameplayTomlScenarioFacadeConfig config;
+	config.mode = iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Check;
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult result =
+		iggy::runtime::RuntimeGameplayTomlScenarioFacade {}.execute(
+			FixturePath("mixed_progression_room.toml"),
+			config);
+
+	Expect(result.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::CheckPassed,
+		"check mode should pass when trace expectations match");
+	Expect(result.expectationComparison.present,
+		"trace expectation check should report present expectations");
+	Expect(result.expectationComparison.matched,
+		"trace expectation check should report matched expectations");
+	Expect(result.expectationComparison.checkedTraceFrames,
+		"trace expectation check should compare trace frames");
+	Expect(result.expectationComparison.traceFramesMatched,
+		"trace expectation check should report matched trace frames");
+	Expect(result.traceFrames.size() == 4,
+		"trace expectation check should capture trace frames without trace mode");
+	if (result.traceFrames.size() == 4) {
+		Expect(result.traceFrames[3].frameId == "frame:interact-switch",
+			"trace expectation check should preserve final trace frame id");
+		Expect(result.traceFrames[3].interactionChanged,
+			"trace expectation check should preserve frame interaction change");
+	}
+}
+
 void TestCheckModeFailsWithoutExpectations()
 {
 	iggy::runtime::RuntimeGameplayTomlScenarioFacadeConfig config;
@@ -260,6 +290,7 @@ int main()
 	TestRunCapturesTraceFramesWhenRequested();
 	TestLintModeValidatesWithoutRunning();
 	TestCheckModePassesWhenExpectationsMatch();
+	TestCheckModeComparesTraceExpectations();
 	TestCheckModeFailsWithoutExpectations();
 	TestReadFailureStopsBeforeConversion();
 	TestConversionFailureStopsBeforeRun();

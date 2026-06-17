@@ -143,3 +143,55 @@ accepted_command_count = 3
 picked_up_count = 1
 interaction_changed = true
 npc_moved_count = 1
+
+[[expect_trace_frames]]
+frame_id = "frame:player-approaches"
+accepted_command_count = 1
+picked_up_count = 0
+interaction_changed = false
+npc_moved_count = 0
+rows = [
+  "##########",
+  "#A.@k....#",
+  "#........#",
+  "##########",
+]
+
+[[expect_trace_frames]]
+frame_id = "frame:guard-patrol"
+accepted_command_count = 0
+picked_up_count = 0
+interaction_changed = false
+npc_moved_count = 1
+rows = [
+  "##########",
+  "#.A@k....#",
+  "#........#",
+  "##########",
+]
+
+[[expect_trace_frames]]
+frame_id = "frame:pickup-key"
+accepted_command_count = 1
+picked_up_count = 1
+interaction_changed = false
+npc_moved_count = 0
+rows = [
+  "##########",
+  "#.A@.....#",
+  "#........#",
+  "##########",
+]
+
+[[expect_trace_frames]]
+frame_id = "frame:interact-switch"
+accepted_command_count = 1
+picked_up_count = 0
+interaction_changed = true
+npc_moved_count = 0
+rows = [
+  "##########",
+  "#.A@.....#",
+  "#........#",
+  "##########",
+]

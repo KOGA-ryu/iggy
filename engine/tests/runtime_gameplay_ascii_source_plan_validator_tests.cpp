@@ -704,6 +704,18 @@ void TestExpectationShapeValidates()
 	plan.expectations.interactionChanged = false;
 	plan.expectations.hasNpcMovedCount = true;
 	plan.expectations.npcMovedCount = 1;
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanExpectedTraceFrame frame;
+	frame.hasFrameId = true;
+	frame.frameId = Id("frame:move");
+	frame.hasRows = true;
+	frame.rows = {
+		"#####",
+		"#A..#",
+		"#####",
+	};
+	frame.hasNpcMovedCount = true;
+	frame.npcMovedCount = 1;
+	plan.expectations.traceFrames.push_back(frame);
 
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
 		Validate(plan);
@@ -713,6 +725,8 @@ void TestExpectationShapeValidates()
 	Expect(result.plan.expectations.hasFinalRows, "validator should preserve expectation final rows");
 	Expect(result.plan.expectations.finalRows[1] == "#.A.#", "validator should preserve expectation row text");
 	Expect(result.plan.expectations.hasNpcMovedCount && result.plan.expectations.npcMovedCount == 1, "validator should preserve expectation counts");
+	Expect(result.plan.expectations.traceFrames.size() == 1, "validator should preserve trace expectations");
+	Expect(result.plan.expectations.traceFrames[0].rows[1] == "#A..#", "validator should preserve trace expectation rows");
 }
 
 void TestExpectationShapeIssuesFail()
@@ -741,6 +755,24 @@ void TestExpectationShapeIssuesFail()
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue *issue =
 		FindIssue(widthResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedFinalRowsDimensionMismatch);
 	Expect(issue != nullptr && issue->row == 1 && issue->index == 3 && issue->firstIndex == 5, "wrong-width expectation issue should preserve row and widths");
+
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan wrongTraceWidth = ValidPlan();
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanExpectedTraceFrame frame;
+	frame.hasRows = true;
+	frame.rows = {
+		"#####",
+		"#A#",
+		"#####",
+	};
+	wrongTraceWidth.expectations.traceFrames.push_back(frame);
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult traceResult =
+		Validate(wrongTraceWidth);
+
+	Expect(!traceResult.ok(), "wrong-width expected trace rows should fail");
+	Expect(traceResult.expectationIssueCount == 1, "wrong-width expected trace rows should count one expectation issue");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue *traceIssue =
+		FindIssue(traceResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedTraceFrameRowsDimensionMismatch);
+	Expect(traceIssue != nullptr && traceIssue->index == 0 && traceIssue->row == 1 && traceIssue->column == 3 && traceIssue->firstIndex == 5, "wrong-width trace expectation issue should preserve frame, row, and widths");
 }
 
 void TestExactIdsAndInputImmutability()

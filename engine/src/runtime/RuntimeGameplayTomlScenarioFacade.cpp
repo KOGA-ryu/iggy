@@ -3,6 +3,8 @@
 #include "runtime/RuntimeGameplayAuthoringDiagnostics.hpp"
 #include "runtime/RuntimeGameplayAsciiSourcePlanFinalDebugRows.hpp"
 
+#include <algorithm>
+
 namespace iggy::runtime {
 namespace {
 
@@ -50,7 +52,8 @@ std::vector<RuntimeGameplayTomlScenarioTraceFrame> TraceFrames(
 RuntimeGameplayTomlScenarioExpectationComparison CompareExpectations(
 	const RuntimeGameplayAsciiSourcePlanExpectations &expectations,
 	const RuntimeGameplayProfileScenarioRunResult &run,
-	const std::vector<std::string> &finalRows)
+	const std::vector<std::string> &finalRows,
+	const std::vector<RuntimeGameplayTomlScenarioTraceFrame> &traceFrames)
 {
 	RuntimeGameplayTomlScenarioExpectationComparison comparison;
 	comparison.present = expectations.hasAny();
@@ -95,6 +98,44 @@ RuntimeGameplayTomlScenarioExpectationComparison CompareExpectations(
 			expectations.npcMovedCount == run.npcMovedCount;
 		comparison.matched = comparison.matched && comparison.npcMovedCountMatched;
 	}
+	if (!expectations.traceFrames.empty()) {
+		comparison.checkedTraceFrames = true;
+		comparison.traceFramesMatched =
+			expectations.traceFrames.size() == traceFrames.size();
+		const std::size_t count = std::min(
+			expectations.traceFrames.size(),
+			traceFrames.size());
+		for (std::size_t index = 0; index < count; ++index) {
+			const RuntimeGameplayAsciiSourcePlanExpectedTraceFrame &expected =
+				expectations.traceFrames[index];
+			const RuntimeGameplayTomlScenarioTraceFrame &actual =
+				traceFrames[index];
+			if (expected.hasFrameId &&
+				IdText(expected.frameId) != actual.frameId) {
+				comparison.traceFramesMatched = false;
+			}
+			if (expected.hasRows && expected.rows != actual.rows) {
+				comparison.traceFramesMatched = false;
+			}
+			if (expected.hasAcceptedCommandCount &&
+				expected.acceptedCommandCount != actual.acceptedCommandCount) {
+				comparison.traceFramesMatched = false;
+			}
+			if (expected.hasPickedUpCount &&
+				expected.pickedUpCount != actual.pickedUpCount) {
+				comparison.traceFramesMatched = false;
+			}
+			if (expected.hasInteractionChanged &&
+				expected.interactionChanged != actual.interactionChanged) {
+				comparison.traceFramesMatched = false;
+			}
+			if (expected.hasNpcMovedCount &&
+				expected.npcMovedCount != actual.npcMovedCount) {
+				comparison.traceFramesMatched = false;
+			}
+		}
+		comparison.matched = comparison.matched && comparison.traceFramesMatched;
+	}
 
 	return comparison;
 }
@@ -114,6 +155,12 @@ bool ShouldTrace(const RuntimeGameplayTomlScenarioFacadeConfig &config)
 {
 	return config.mode == RuntimeGameplayTomlScenarioFacadeMode::Trace
 		|| config.captureTraceFrames;
+}
+
+bool NeedsTraceExpectationComparison(
+	const RuntimeGameplayAsciiSourcePlanExpectations &expectations)
+{
+	return !expectations.traceFrames.empty();
 }
 
 } // namespace
@@ -196,12 +243,15 @@ RuntimeGameplayTomlScenarioFacadeResult RuntimeGameplayTomlScenarioFacade::execu
 		result.path,
 		result.run,
 		result.finalRows);
-	if (ShouldTrace(config))
+	if (ShouldTrace(config) ||
+		NeedsTraceExpectationComparison(result.read.text.plan.expectations)) {
 		result.traceFrames = TraceFrames(result.read.text.plan, result.run);
+	}
 	result.expectationComparison = CompareExpectations(
 		result.read.text.plan.expectations,
 		result.run,
-		result.finalRows);
+		result.finalRows,
+		result.traceFrames);
 	if (ShouldCheck(config)) {
 		result.status = result.expectationComparison.present
 			&& result.expectationComparison.matched

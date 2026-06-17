@@ -19,7 +19,8 @@ bool RuntimeGameplayAsciiSourcePlanExpectations::hasAny() const
 		hasAcceptedCommandCount ||
 		hasPickedUpCount ||
 		hasInteractionChanged ||
-		hasNpcMovedCount;
+		hasNpcMovedCount ||
+		!traceFrames.empty();
 }
 
 bool RuntimeGameplayAsciiSourcePlan::hasRows() const

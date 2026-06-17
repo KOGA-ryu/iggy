@@ -270,6 +270,20 @@ void TestExpectationsPreserveFinalRowsAndSummaryCounts()
 	plan.expectations.interactionChanged = true;
 	plan.expectations.hasNpcMovedCount = true;
 	plan.expectations.npcMovedCount = 3;
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanExpectedTraceFrame frame;
+	frame.hasFrameId = true;
+	frame.frameId = Id("frame:one");
+	frame.hasRows = true;
+	frame.rows = { "###", "#@#", "###" };
+	frame.hasAcceptedCommandCount = true;
+	frame.acceptedCommandCount = 1;
+	frame.hasPickedUpCount = true;
+	frame.pickedUpCount = 0;
+	frame.hasInteractionChanged = true;
+	frame.interactionChanged = false;
+	frame.hasNpcMovedCount = true;
+	frame.npcMovedCount = 2;
+	plan.expectations.traceFrames.push_back(frame);
 
 	Expect(plan.hasExpectations(), "source plan should report authored expectations");
 	Expect(plan.expectations.hasFinalRows, "expectations should preserve final rows presence");
@@ -279,6 +293,10 @@ void TestExpectationsPreserveFinalRowsAndSummaryCounts()
 	Expect(plan.expectations.hasPickedUpCount && plan.expectations.pickedUpCount == 1, "expectations should preserve picked up count");
 	Expect(plan.expectations.hasInteractionChanged && plan.expectations.interactionChanged, "expectations should preserve interaction changed flag");
 	Expect(plan.expectations.hasNpcMovedCount && plan.expectations.npcMovedCount == 3, "expectations should preserve NPC moved count");
+	Expect(plan.expectations.traceFrames.size() == 1, "expectations should preserve expected trace frames");
+	Expect(plan.expectations.traceFrames[0].frameId == Id("frame:one"), "trace expectation should preserve frame id");
+	Expect(plan.expectations.traceFrames[0].rows[1] == "#@#", "trace expectation should preserve rows");
+	Expect(plan.expectations.traceFrames[0].hasAcceptedCommandCount && plan.expectations.traceFrames[0].acceptedCommandCount == 1, "trace expectation should preserve accepted command count");
 }
 
 void TestSourcePlanCopiesAreIndependent()
@@ -316,6 +334,12 @@ void TestSourcePlanCopiesAreIndependent()
 	plan.expectations.finalRows = { "A." };
 	plan.expectations.hasFrameCount = true;
 	plan.expectations.frameCount = 1;
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanExpectedTraceFrame frame;
+	frame.hasFrameId = true;
+	frame.frameId = Id("frame:copy");
+	frame.hasRows = true;
+	frame.rows = { "A." };
+	plan.expectations.traceFrames.push_back(frame);
 
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan copy = plan;
 	copy.grid.rows[0] = "..";
@@ -327,6 +351,7 @@ void TestSourcePlanCopiesAreIndependent()
 	copy.authoredItemDrops[0].dropId = Id("drop:changed");
 	copy.expectations.finalRows[0] = "..";
 	copy.expectations.frameCount = 2;
+	copy.expectations.traceFrames[0].rows[0] = "..";
 
 	Expect(plan.grid.rows[0] == "A.", "source plan copy should not mutate source rows");
 	Expect(plan.legend[0].targetMarkerId == Id("npc:copy"), "source plan copy should not mutate legend target id");
@@ -337,6 +362,7 @@ void TestSourcePlanCopiesAreIndependent()
 	Expect(plan.authoredItemDrops[0].dropId == Id("drop:copy"), "source plan copy should not mutate authored item drops");
 	Expect(plan.expectations.finalRows[0] == "A.", "source plan copy should not mutate expectation rows");
 	Expect(plan.expectations.frameCount == 1, "source plan copy should not mutate expectation counts");
+	Expect(plan.expectations.traceFrames[0].rows[0] == "A.", "source plan copy should not mutate trace expectation rows");
 }
 
 } // namespace

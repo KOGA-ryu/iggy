@@ -649,6 +649,7 @@ void TestTraceMixedProgressionRoom()
 				{ "##########", "#.A@.....#", "#........#", "##########" }),
 			"expectation:\n",
 			"result: matched",
+			"trace_frames: matched",
 			FinalRowsBlock({ "##########", "#.A@.....#", "#........#", "##########" }),
 		},
 		"mixed progression trace CLI run");

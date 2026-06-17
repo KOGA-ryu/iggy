@@ -52,6 +52,8 @@ enum class RuntimeGameplayAsciiSourcePlanIssueCode {
 	AuthoredPlayerCommandInvalidPickupTarget,
 	ExpectedFinalRowsEmpty,
 	ExpectedFinalRowsDimensionMismatch,
+	ExpectedTraceFrameRowsEmpty,
+	ExpectedTraceFrameRowsDimensionMismatch,
 	EmptyActorMarkerId,
 	EmptyProfileMarkerId,
 	UnsafeNoClaims,

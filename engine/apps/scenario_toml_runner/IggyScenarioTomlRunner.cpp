@@ -196,6 +196,9 @@ void PrintExpectationComparison(
 	if (comparison.checkedNpcMovedCount)
 		std::cout << "npc_moved_count: "
 			<< MatchText(comparison.npcMovedCountMatched) << '\n';
+	if (comparison.checkedTraceFrames)
+		std::cout << "trace_frames: "
+			<< MatchText(comparison.traceFramesMatched) << '\n';
 }
 
 void PrintFirstProfileValidationIssue(

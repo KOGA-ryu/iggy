@@ -19,6 +19,7 @@ enum class Table {
 	NoClaims,
 	Promotion,
 	Expect,
+	ExpectTraceFrames,
 	Legend,
 	Cells,
 	Regions,
@@ -39,6 +40,7 @@ enum class MultilineStringArrayTarget {
 	None,
 	GridRows,
 	ExpectFinalRows,
+	ExpectTraceFrameRows,
 };
 
 struct IssueContext {
@@ -60,6 +62,8 @@ std::string TableName(Table table)
 		return "promotion";
 	case Table::Expect:
 		return "expect";
+	case Table::ExpectTraceFrames:
+		return "expect_trace_frames";
 	case Table::Legend:
 		return "legend";
 	case Table::Cells:
@@ -1107,6 +1111,20 @@ RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
 			? locations.expectFinalRowsLine
 			: locations.expectTableLine;
 		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedTraceFrameRowsEmpty:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::
+		ExpectedTraceFrameRowsDimensionMismatch:
+		issue.table = "expect_trace_frames";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "rows";
+		if (sourceIssue.index <
+			locations.expectTraceFrameRowsLines.size()) {
+			issue.line = locations.expectTraceFrameRowsLines[sourceIssue.index] != 0
+				? locations.expectTraceFrameRowsLines[sourceIssue.index]
+				: locations.expectTraceFrameTableLines[sourceIssue.index];
+		}
+		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::EmptyRows:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::GridDimensionMismatch:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::RaggedRow:
@@ -1177,16 +1195,26 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 					lineNumber,
 					multilineTarget == MultilineStringArrayTarget::GridRows
 						? "rows"
-						: "final_rows",
+						: multilineTarget ==
+								MultilineStringArrayTarget::ExpectFinalRows
+							? "final_rows"
+							: "rows",
 					context);
 				continue;
 			}
 			if (closed) {
 				if (multilineTarget == MultilineStringArrayTarget::GridRows) {
 					result.plan.grid.rows = parsedRows;
-				} else {
+				} else if (
+					multilineTarget ==
+					MultilineStringArrayTarget::ExpectFinalRows) {
 					result.plan.expectations.hasFinalRows = true;
 					result.plan.expectations.finalRows = parsedRows;
+				} else if (!result.plan.expectations.traceFrames.empty()) {
+					RuntimeGameplayAsciiSourcePlanExpectedTraceFrame &frame =
+						result.plan.expectations.traceFrames.back();
+					frame.hasRows = true;
+					frame.rows = parsedRows;
 				}
 				multilineTarget = MultilineStringArrayTarget::None;
 			} else {
@@ -1218,6 +1246,18 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			table = Table::Expect;
 			context = { table, false, 0 };
 			result.sourceLocations.expectTableLine = lineNumber;
+			continue;
+		}
+		if (line == "[[expect_trace_frames]]") {
+			result.plan.expectations.traceFrames.push_back({});
+			result.sourceLocations.expectTraceFrameTableLines.push_back(lineNumber);
+			result.sourceLocations.expectTraceFrameRowsLines.push_back(0);
+			table = Table::ExpectTraceFrames;
+			context = {
+				table,
+				true,
+				result.plan.expectations.traceFrames.size() - 1,
+			};
 			continue;
 		}
 		if (line == "[[legend]]") {
@@ -1463,6 +1503,80 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 					result,
 					lineNumber,
 					"unsupported expect key: " + key,
+					context,
+					key);
+			}
+			continue;
+		}
+
+		if (table == Table::ExpectTraceFrames) {
+			RuntimeGameplayAsciiSourcePlanExpectedTraceFrame &frame =
+				result.plan.expectations.traceFrames.back();
+			if (key == "frame_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					frame.hasFrameId = true;
+					frame.frameId = ResourceId(parsed);
+				}
+			} else if (key == "rows") {
+				if (context.tableIndex <
+					result.sourceLocations.expectTraceFrameRowsLines.size()) {
+					result.sourceLocations
+						.expectTraceFrameRowsLines[context.tableIndex] =
+						lineNumber;
+				}
+				if (value == "[") {
+					multilineTarget =
+						MultilineStringArrayTarget::ExpectTraceFrameRows;
+					parsedRows.clear();
+					continue;
+				}
+				std::vector<std::string> rows;
+				if (!ParseStringArrayInline(value, rows)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					frame.hasRows = true;
+					frame.rows = rows;
+				}
+			} else if (key == "accepted_command_count") {
+				std::size_t parsed = 0;
+				if (!ParseUnsigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					frame.hasAcceptedCommandCount = true;
+					frame.acceptedCommandCount = parsed;
+				}
+			} else if (key == "picked_up_count") {
+				std::size_t parsed = 0;
+				if (!ParseUnsigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					frame.hasPickedUpCount = true;
+					frame.pickedUpCount = parsed;
+				}
+			} else if (key == "interaction_changed") {
+				bool parsed = false;
+				if (!ParseBool(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					frame.hasInteractionChanged = true;
+					frame.interactionChanged = parsed;
+				}
+			} else if (key == "npc_moved_count") {
+				std::size_t parsed = 0;
+				if (!ParseUnsigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					frame.hasNpcMovedCount = true;
+					frame.npcMovedCount = parsed;
+				}
+			} else {
+				AddUnsupported(
+					result,
+					lineNumber,
+					"unsupported expect_trace_frames key: " + key,
 					context,
 					key);
 			}

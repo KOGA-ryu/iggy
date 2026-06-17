@@ -171,6 +171,10 @@ const char *runtimeGameplayAuthoringCodeText(
 		return "expected_final_rows_empty";
 	case Code::ExpectedFinalRowsDimensionMismatch:
 		return "expected_final_rows_dimension_mismatch";
+	case Code::ExpectedTraceFrameRowsEmpty:
+		return "expected_trace_frame_rows_empty";
+	case Code::ExpectedTraceFrameRowsDimensionMismatch:
+		return "expected_trace_frame_rows_dimension_mismatch";
 	case Code::EmptyActorMarkerId:
 		return "empty_actor_marker_id";
 	case Code::EmptyProfileMarkerId:

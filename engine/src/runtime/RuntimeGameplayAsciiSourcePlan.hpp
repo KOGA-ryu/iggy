@@ -204,6 +204,21 @@ struct RuntimeGameplayAsciiSourcePlanPromotionPolicy {
 	bool allowsProfileScenarioConversion = false;
 };
 
+struct RuntimeGameplayAsciiSourcePlanExpectedTraceFrame {
+	bool hasFrameId = false;
+	ResourceId frameId;
+	bool hasRows = false;
+	std::vector<std::string> rows;
+	bool hasAcceptedCommandCount = false;
+	std::size_t acceptedCommandCount = 0;
+	bool hasPickedUpCount = false;
+	std::size_t pickedUpCount = 0;
+	bool hasInteractionChanged = false;
+	bool interactionChanged = false;
+	bool hasNpcMovedCount = false;
+	std::size_t npcMovedCount = 0;
+};
+
 struct RuntimeGameplayAsciiSourcePlanExpectations {
 	bool hasFinalRows = false;
 	std::vector<std::string> finalRows;
@@ -217,6 +232,7 @@ struct RuntimeGameplayAsciiSourcePlanExpectations {
 	bool interactionChanged = false;
 	bool hasNpcMovedCount = false;
 	std::size_t npcMovedCount = 0;
+	std::vector<RuntimeGameplayAsciiSourcePlanExpectedTraceFrame> traceFrames;
 
 	[[nodiscard]] bool hasAny() const;
 };
