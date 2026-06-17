@@ -1,0 +1,14 @@
+format_id = "iggy:other-source-plan"
+version = 1
+source_id = "scenario:unsupported-format"
+
+[grid]
+width = 7
+height = 4
+background = "."
+rows = [
+  "#######",
+  "#.....#",
+  "#.....#",
+  "#######",
+]

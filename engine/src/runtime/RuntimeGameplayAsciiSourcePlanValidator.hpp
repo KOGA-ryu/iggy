@@ -14,6 +14,8 @@ enum class RuntimeGameplayAsciiSourcePlanValidationStatus {
 };
 
 enum class RuntimeGameplayAsciiSourcePlanIssueCode {
+	UnsupportedFormatId,
+	UnsupportedVersion,
 	EmptyRows,
 	GridDimensionMismatch,
 	RaggedRow,
@@ -112,6 +114,7 @@ struct RuntimeGameplayAsciiSourcePlanValidationResult {
 	std::size_t authoredItemDropIssueCount = 0;
 	std::size_t authoredPlayerCommandIssueCount = 0;
 	std::size_t expectationIssueCount = 0;
+	std::size_t compatibilityIssueCount = 0;
 	std::size_t unsafeBoundaryIssueCount = 0;
 
 	[[nodiscard]] bool ok() const;

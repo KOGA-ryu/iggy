@@ -41,6 +41,8 @@ struct RuntimeGameplayAsciiSourcePlanTomlReadIssue {
 };
 
 struct RuntimeGameplayAsciiSourcePlanTomlSourceLocations {
+	std::size_t formatIdLine = 0;
+	std::size_t versionLine = 0;
 	std::size_t gridTableLine = 0;
 	std::size_t gridRowsLine = 0;
 	std::size_t noClaimsTableLine = 0;

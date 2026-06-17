@@ -343,6 +343,32 @@ void TestCliFailureDiagnosticsMatrix()
 			},
 		},
 		{
+			"unsupported source-plan format",
+			{ FixturePath("unsupported_format_guard_room.toml") },
+			2,
+			{
+				"status:\n",
+				"result: read_failed",
+				"read_status: toml_read_failed",
+				"toml_status: source_plan_invalid",
+				"toml_issue: code=source_plan_invalid line=1 column=0 table=root key=format_id",
+				"source_issue: code=unsupported_format_id index=0 row=0 column=0 id=iggy:other-source-plan",
+			},
+		},
+		{
+			"unsupported source-plan version",
+			{ FixturePath("unsupported_version_guard_room.toml") },
+			2,
+			{
+				"status:\n",
+				"result: read_failed",
+				"read_status: toml_read_failed",
+				"toml_status: source_plan_invalid",
+				"toml_issue: code=source_plan_invalid line=2 column=0 table=root key=version",
+				"source_issue: code=unsupported_version index=2 row=0 column=0",
+			},
+		},
+		{
 			"source-plan semantic issue",
 			{ FixturePath("semantic_invalid_guard_room.toml") },
 			2,

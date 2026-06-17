@@ -6,6 +6,9 @@
 namespace iggy::runtime {
 namespace {
 
+constexpr std::size_t SupportedSourcePlanVersion = 1;
+const ResourceId SupportedSourcePlanFormatId("iggy:ascii-source-plan");
+
 bool IsBuiltInTerrainGlyph(char glyph, char backgroundGlyph)
 {
 	return glyph == backgroundGlyph || glyph == '.' || glyph == '#' || glyph == ' ';
@@ -53,6 +56,10 @@ void AddIssue(
 	RuntimeGameplayAsciiSourcePlanIssue issue)
 {
 	switch (issue.code) {
+	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsupportedFormatId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsupportedVersion:
+		++result.compatibilityIssueCount;
+		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::GridDimensionMismatch:
 		++result.dimensionMismatchCount;
 		break;
@@ -147,6 +154,25 @@ void AddIssue(
 
 	result.issues.push_back(issue);
 	result.issueCount = result.issues.size();
+}
+
+void ValidateCompatibility(RuntimeGameplayAsciiSourcePlanValidationResult &result)
+{
+	if (!result.plan.formatId.empty() &&
+		result.plan.formatId != SupportedSourcePlanFormatId) {
+		RuntimeGameplayAsciiSourcePlanIssue issue;
+		issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::UnsupportedFormatId;
+		issue.id = result.plan.formatId;
+		AddIssue(result, issue);
+	}
+
+	if (result.plan.version != SupportedSourcePlanVersion) {
+		RuntimeGameplayAsciiSourcePlanIssue issue;
+		issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::UnsupportedVersion;
+		issue.index = result.plan.version;
+		issue.firstIndex = SupportedSourcePlanVersion;
+		AddIssue(result, issue);
+	}
 }
 
 void ValidateRows(RuntimeGameplayAsciiSourcePlanValidationResult &result)
@@ -1114,6 +1140,7 @@ RuntimeGameplayAsciiSourcePlanValidator::validate(
 	RuntimeGameplayAsciiSourcePlanValidationResult result;
 	result.plan = plan;
 
+	ValidateCompatibility(result);
 	ValidateRows(result);
 	const std::vector<char> legendGlyphs = ValidateLegend(result);
 	ValidateAnnotatedCells(result);

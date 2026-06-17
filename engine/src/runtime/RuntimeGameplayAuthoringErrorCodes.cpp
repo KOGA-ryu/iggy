@@ -95,6 +95,10 @@ const char *runtimeGameplayAuthoringCodeText(
 {
 	using Code = RuntimeGameplayAsciiSourcePlanIssueCode;
 	switch (code) {
+	case Code::UnsupportedFormatId:
+		return "unsupported_format_id";
+	case Code::UnsupportedVersion:
+		return "unsupported_version";
 	case Code::EmptyRows:
 		return "empty_rows";
 	case Code::GridDimensionMismatch:

@@ -288,6 +288,22 @@ void TestNegativeReadFixturesPreserveFirstDiagnostics()
 
 	const std::vector<Case> cases {
 		{
+			"unsupported_format_guard_room.toml",
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid,
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SourcePlanInvalid,
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsupportedFormatId,
+			"root",
+			"format_id",
+		},
+		{
+			"unsupported_version_guard_room.toml",
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid,
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::SourcePlanInvalid,
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsupportedVersion,
+			"root",
+			"version",
+		},
+		{
 			"bad_table_type_guard_room.toml",
 			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::TypeInvalid,
 			iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::WrongType,

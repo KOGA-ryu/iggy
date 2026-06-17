@@ -378,6 +378,57 @@ void TestRootAndGridParse()
 	Expect(result.plan.grid.rows[1] == "#.....#", "grid row contents should be preserved");
 }
 
+void TestSourcePlanVersionPolicy()
+{
+	const std::string unsupportedVersion = R"toml(
+format_id = "iggy:ascii-source-plan"
+version = 2
+
+[grid]
+width = 1
+height = 1
+background = "."
+rows = ["."]
+)toml";
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult versionRead =
+		Read(unsupportedVersion);
+
+	Expect(versionRead.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "unsupported source-plan version should report source-plan invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *versionIssue =
+		FindSourceIssue(versionRead, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsupportedVersion);
+	Expect(versionIssue != nullptr, "unsupported source-plan version should surface source-plan issue");
+	if (versionIssue != nullptr) {
+		Expect(versionIssue->table == "root", "unsupported source-plan version should report root table");
+		Expect(versionIssue->key == "version", "unsupported source-plan version should report version key");
+		Expect(versionIssue->line == LineOfNth(unsupportedVersion, "version = 2"), "unsupported source-plan version should preserve version line");
+		Expect(versionIssue->sourceIssue.index == 2 && versionIssue->sourceIssue.firstIndex == 1, "unsupported source-plan version should preserve actual and supported versions");
+	}
+
+	const std::string unsupportedFormat = R"toml(
+format_id = "iggy:other-source-plan"
+version = 1
+
+[grid]
+width = 1
+height = 1
+background = "."
+rows = ["."]
+)toml";
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult formatRead =
+		Read(unsupportedFormat);
+
+	Expect(formatRead.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "unsupported source-plan format id should report source-plan invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *formatIssue =
+		FindSourceIssue(formatRead, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsupportedFormatId);
+	Expect(formatIssue != nullptr, "unsupported source-plan format id should surface source-plan issue");
+	if (formatIssue != nullptr) {
+		Expect(formatIssue->table == "root", "unsupported source-plan format id should report root table");
+		Expect(formatIssue->key == "format_id", "unsupported source-plan format id should report format_id key");
+		Expect(formatIssue->line == LineOfNth(unsupportedFormat, "format_id"), "unsupported source-plan format id should preserve format line");
+		Expect(formatIssue->sourceIssue.id == Id("iggy:other-source-plan"), "unsupported source-plan format id should preserve format id");
+	}
+}
+
 void TestSourceLocationsAreCaptured()
 {
 	const std::string text = RootGridLegendCellsRegionsToml();
@@ -385,6 +436,8 @@ void TestSourceLocationsAreCaptured()
 		Read(text);
 
 	Expect(result.ok(), "source location fixture should parse");
+	Expect(result.sourceLocations.formatIdLine == LineOfNth(text, "format_id"), "format_id line should be captured");
+	Expect(result.sourceLocations.versionLine == LineOfNth(text, "version = 1"), "version line should be captured");
 	Expect(result.sourceLocations.gridTableLine == LineOfNth(text, "[grid]"), "grid table line should be captured");
 	Expect(result.sourceLocations.gridRowsLine == LineOfNth(text, "rows = ["), "grid rows key line should be captured");
 	Expect(result.sourceLocations.noClaimsTableLine == LineOfNth(text, "[no_claims]"), "no_claims table line should be captured");
@@ -1734,6 +1787,7 @@ int main()
 	TestEmptyInputFailsDeterministically();
 	TestUnsupportedInputFailsDeterministically();
 	TestRootAndGridParse();
+	TestSourcePlanVersionPolicy();
 	TestSourceLocationsAreCaptured();
 	TestCommentsAndInlineRowsParse();
 	TestMissingGridFailsAsSyntax();

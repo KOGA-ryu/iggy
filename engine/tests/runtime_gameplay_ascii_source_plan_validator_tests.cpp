@@ -211,6 +211,39 @@ void TestValidSourcePlanPasses()
 	Expect(result.plan.sourceId == Id("source:room-a"), "validator should preserve copied source plan");
 }
 
+void TestSourcePlanCompatibilityPolicy()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan accepted = ValidPlan();
+	accepted.formatId = Id("iggy:ascii-source-plan");
+	accepted.version = 1;
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult acceptedResult =
+		Validate(accepted);
+	Expect(acceptedResult.ok(), "current source-plan format and version should validate");
+	Expect(acceptedResult.compatibilityIssueCount == 0, "accepted source-plan compatibility facts should not count issues");
+
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan unsupportedVersion = ValidPlan();
+	unsupportedVersion.version = 2;
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult versionResult =
+		Validate(unsupportedVersion);
+	Expect(!versionResult.ok(), "unsupported source-plan version should fail");
+	Expect(HasIssue(versionResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsupportedVersion), "unsupported source-plan version should report issue");
+	Expect(versionResult.compatibilityIssueCount == 1, "unsupported source-plan version should count one compatibility issue");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue *versionIssue =
+		FindIssue(versionResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsupportedVersion);
+	Expect(versionIssue != nullptr && versionIssue->index == 2 && versionIssue->firstIndex == 1, "unsupported version issue should preserve actual and supported versions");
+
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan unsupportedFormat = ValidPlan();
+	unsupportedFormat.formatId = Id("iggy:other-source-plan");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult formatResult =
+		Validate(unsupportedFormat);
+	Expect(!formatResult.ok(), "unsupported source-plan format id should fail");
+	Expect(HasIssue(formatResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsupportedFormatId), "unsupported source-plan format id should report issue");
+	Expect(formatResult.compatibilityIssueCount == 1, "unsupported source-plan format id should count one compatibility issue");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue *formatIssue =
+		FindIssue(formatResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::UnsupportedFormatId);
+	Expect(formatIssue != nullptr && formatIssue->id == Id("iggy:other-source-plan"), "unsupported format issue should preserve format id");
+}
+
 void TestEmptyAndRaggedRowsFailDeterministically()
 {
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan empty;
@@ -955,6 +988,7 @@ void TestExactIdsAndInputImmutability()
 int main()
 {
 	TestValidSourcePlanPasses();
+	TestSourcePlanCompatibilityPolicy();
 	TestEmptyAndRaggedRowsFailDeterministically();
 	TestLegendGlyphIssuesFail();
 	TestUnknownGridGlyphFails();

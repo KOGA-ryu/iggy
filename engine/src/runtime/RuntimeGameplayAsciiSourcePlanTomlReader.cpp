@@ -902,6 +902,16 @@ RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
 	issue.sourceIssue = sourceIssue;
 
 	switch (sourceIssue.code) {
+	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsupportedFormatId:
+		issue.table = "root";
+		issue.key = "format_id";
+		issue.line = locations.formatIdLine;
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsupportedVersion:
+		issue.table = "root";
+		issue.key = "version";
+		issue.line = locations.versionLine;
+		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::EmptyGlyph:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::DuplicateGlyph:
 		issue.table = "legend";
@@ -1493,6 +1503,7 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 
 		if (table == Table::Root) {
 			if (key == "format_id") {
+				result.sourceLocations.formatIdLine = lineNumber;
 				std::string parsed;
 				if (!ParseQuotedString(value, parsed)) {
 					AddWrongType(result, lineNumber, key, context);
@@ -1500,6 +1511,7 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 					result.plan.formatId = ResourceId(parsed);
 				}
 			} else if (key == "version") {
+				result.sourceLocations.versionLine = lineNumber;
 				std::size_t parsed = 0;
 				if (!ParseUnsigned(value, parsed)) {
 					AddWrongType(result, lineNumber, key, context);
