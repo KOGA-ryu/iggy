@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "runtime/RuntimeGameplayTomlScenarioFacade.hpp"
+#include "support/CanonicalAuthoringFixtures.hpp"
 
 #ifndef IGGY_SCENARIO_TOML_RUNNER_PATH
 #error "IGGY_SCENARIO_TOML_RUNNER_PATH must point at iggy_scenario_toml_runner"
@@ -25,18 +26,6 @@ int Failures = 0;
 struct CommandResult {
 	int exitCode = -1;
 	std::string output;
-};
-
-struct GoldenFixture {
-	const char *name = "";
-	const char *label = "";
-	int frameCount = 0;
-	int acceptedCommandCount = 0;
-	int pickedUpCount = 0;
-	bool interactionChanged = false;
-	int npcMovedCount = 0;
-	int npcBlockedMovementCount = 0;
-	std::vector<std::string> finalRows;
 };
 
 struct TempTomlFile {
@@ -487,131 +476,15 @@ void TestCliFailureDiagnosticsMatrix()
 
 void TestCanonicalFixtures()
 {
-	const std::vector<GoldenFixture> fixtures {
-		{
-			"moving_guard_room.toml",
-			"movement only",
-			1,
-			0,
-			0,
-			false,
-			1,
-			0,
-			{ "#######", "#.A..@#", "#.....#", "#######" },
-		},
-		{
-			"multi_frame_guard_room.toml",
-			"multi-frame movement",
-			2,
-			0,
-			0,
-			false,
-			2,
-			0,
-			{ "#######", "#..A.@#", "#.....#", "#######" },
-		},
-		{
-			"player_and_guard_room.toml",
-			"player and NPC movement",
-			1,
-			1,
-			0,
-			false,
-			1,
-			0,
-			{ "#######", "#.A.@.#", "#.....#", "#######" },
-		},
-		{
-			"player_interacts_guard_room.toml",
-			"interaction toggle",
-			1,
-			1,
-			0,
-			true,
-			0,
-			0,
-			{ "#######", "#A..@.#", "#.....#", "#######" },
-		},
-		{
-			"player_picks_up_item_room.toml",
-			"pickup",
-			2,
-			2,
-			1,
-			false,
-			0,
-			0,
-			{ "#######", "#A.@..#", "#.....#", "#######" },
-		},
-		{
-			"mixed_mini_scenario.toml",
-			"mixed mini scenario",
-			3,
-			3,
-			1,
-			true,
-			1,
-			0,
-			{ "#########", "#.A@....#", "#.......#", "#########" },
-		},
-		{
-			"mixed_progression_room.toml",
-			"mixed progression room",
-			4,
-			3,
-			1,
-			true,
-			1,
-			0,
-			{ "##########", "#.A@.....#", "#........#", "##########" },
-		},
-		{
-			"locked_door_key_room.toml",
-			"locked door with key",
-			2,
-			2,
-			1,
-			true,
-			0,
-			0,
-			{ "#######", "#@....#", "#.....#", "#######" },
-		},
-		{
-			"locked_door_without_key_room.toml",
-			"locked door without key",
-			1,
-			1,
-			0,
-			false,
-			0,
-			0,
-			{ "#######", "#@....#", "#.....#", "#######" },
-		},
-		{
-			"npc_blocked_guard_room.toml",
-			"NPC blocked movement",
-			1,
-			0,
-			0,
-			false,
-			0,
-			1,
-			{ "#######", "#AB.@.#", "#.....#", "#######" },
-		},
-		{
-			"npc_reservation_guard_room.toml",
-			"NPC shared target movement",
-			1,
-			0,
-			0,
-			false,
-			2,
-			0,
-			{ "########", "#.B.@..#", "#......#", "########" },
-		},
-	};
-
-	for (const GoldenFixture &fixture : fixtures) {
+	for (const iggy::test::CanonicalAuthoringFixture &fixture :
+		iggy::test::CanonicalAuthoringFixtures()) {
+		Expect(fixture.expectedResult ==
+			iggy::test::CanonicalAuthoringFixtureExpectedResult::Success,
+			"canonical CLI sweep should only include success fixtures");
+		Expect(iggy::test::HasFixtureMode(
+			fixture.modes,
+			iggy::test::CanonicalAuthoringFixtureMode::Run),
+			"canonical CLI sweep fixtures should support run mode");
 		const CommandResult result = RunCli({ FixturePath(fixture.name) });
 		std::string context = std::string("canonical ") + fixture.label +
 			" fixture";
