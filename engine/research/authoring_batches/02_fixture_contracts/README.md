@@ -1,5 +1,7 @@
 # Batch 02: Fixture Contracts
 
+Status: complete.
+
 ## Goal
 Make the canonical fixture set explicit and easy to maintain.
 
