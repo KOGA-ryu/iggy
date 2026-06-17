@@ -26,6 +26,7 @@ struct CommandResult {
 
 struct GoldenFixture {
 	const char *name = "";
+	const char *label = "";
 	int frameCount = 0;
 	int acceptedCommandCount = 0;
 	int pickedUpCount = 0;
@@ -230,6 +231,7 @@ void TestCanonicalFixtures()
 	const std::vector<GoldenFixture> fixtures {
 		{
 			"moving_guard_room.toml",
+			"movement only",
 			1,
 			0,
 			0,
@@ -239,6 +241,7 @@ void TestCanonicalFixtures()
 		},
 		{
 			"multi_frame_guard_room.toml",
+			"multi-frame movement",
 			2,
 			0,
 			0,
@@ -248,6 +251,7 @@ void TestCanonicalFixtures()
 		},
 		{
 			"player_and_guard_room.toml",
+			"player and NPC movement",
 			1,
 			1,
 			0,
@@ -257,6 +261,7 @@ void TestCanonicalFixtures()
 		},
 		{
 			"player_interacts_guard_room.toml",
+			"interaction toggle",
 			1,
 			1,
 			0,
@@ -266,6 +271,7 @@ void TestCanonicalFixtures()
 		},
 		{
 			"player_picks_up_item_room.toml",
+			"pickup",
 			2,
 			2,
 			1,
@@ -275,6 +281,7 @@ void TestCanonicalFixtures()
 		},
 		{
 			"mixed_mini_scenario.toml",
+			"mixed mini scenario",
 			3,
 			3,
 			1,
@@ -286,8 +293,10 @@ void TestCanonicalFixtures()
 
 	for (const GoldenFixture &fixture : fixtures) {
 		const CommandResult result = RunCli({ FixturePath(fixture.name) });
-		Expect(result.exitCode == 0, "canonical fixture CLI run should succeed");
-		Expect(!Contains(result.output, "frames:\n"), "normal fixture CLI run should not print trace frames");
+		std::string context = std::string("canonical ") + fixture.label +
+			" fixture";
+		Expect(result.exitCode == 0, context.c_str());
+		Expect(!Contains(result.output, "frames:\n"), (context + " should not print trace frames").c_str());
 		ExpectOutputContains(
 			result,
 			{
@@ -303,7 +312,7 @@ void TestCanonicalFixtures()
 					std::to_string(fixture.npcMovedCount),
 				FinalRowsBlock(fixture.finalRows),
 			},
-			fixture.name);
+			context.c_str());
 	}
 }
 
