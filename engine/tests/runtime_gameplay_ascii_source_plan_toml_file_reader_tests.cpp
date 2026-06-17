@@ -643,14 +643,9 @@ void TestPlayerInteractionFixtureRunsScenarioAndTogglesTarget()
 	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
 	packet.hasAsciiSourcePlan = true;
 	packet.asciiSourcePlan = read.text.plan;
-	iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig adapterConfig;
-	adapterConfig.hasAsciiSourcePlanProfileScenarioConfig = true;
-	adapterConfig.asciiSourcePlanProfileScenario = ConverterConfig();
 
 	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
-		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(
-			packet,
-			adapterConfig);
+		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(packet);
 	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
 		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
 	const std::vector<std::string> rows = iggy::runtime::finalDebugRowsForAsciiSourcePlan(read.text.plan, run.state);
@@ -721,14 +716,9 @@ void TestPlayerPickupFixtureRunsScenarioAndPicksUpItem()
 	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
 	packet.hasAsciiSourcePlan = true;
 	packet.asciiSourcePlan = read.text.plan;
-	iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig adapterConfig;
-	adapterConfig.hasAsciiSourcePlanProfileScenarioConfig = true;
-	adapterConfig.asciiSourcePlanProfileScenario = ConverterConfig();
 
 	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
-		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(
-			packet,
-			adapterConfig);
+		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(packet);
 	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
 		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
 	const std::vector<std::string> rows = iggy::runtime::finalDebugRowsForAsciiSourcePlan(read.text.plan, run.state);
