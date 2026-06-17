@@ -160,6 +160,7 @@ struct RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget {
 	ResourceId effectTargetId;
 	ResourceId eventId;
 	ResourceId dropId;
+	ResourceId requiredItemId;
 	std::string text;
 	bool enabledValue = true;
 };

@@ -1800,6 +1800,13 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 				} else {
 					target.dropId = ResourceId(parsed);
 				}
+			} else if (key == "required_item_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					target.requiredItemId = ResourceId(parsed);
+				}
 			} else if (key == "text") {
 				std::string parsed;
 				if (!ParseQuotedString(value, parsed)) {

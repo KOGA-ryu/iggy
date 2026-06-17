@@ -316,6 +316,7 @@ radius = 1.25
 enabled = false
 effect = "toggle_target"
 effect_target_id = "plain-target"
+required_item_id = "item:key"
 enabled_value = true
 )toml";
 }
@@ -953,6 +954,7 @@ void TestInteractionTargetsParse()
 	Expect(!target.enabled, "interaction target should parse enabled flag");
 	Expect(target.effect == iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionEffectKind::ToggleTarget, "interaction target should parse effect kind");
 	Expect(target.effectTargetId == Id("plain-target"), "interaction target should parse effect target id");
+	Expect(target.requiredItemId == Id("item:key"), "interaction target should parse required item id");
 	Expect(target.enabledValue, "interaction target should parse enabled value");
 }
 

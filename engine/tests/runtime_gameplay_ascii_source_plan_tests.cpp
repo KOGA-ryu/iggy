@@ -214,6 +214,7 @@ void TestAuthoredInteractionTargetsPreserveFactsAndExactIds()
 	target.enabled = false;
 	target.effect = iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionEffectKind::ToggleTarget;
 	target.effectTargetId = Id("target:door");
+	target.requiredItemId = Id("item:key");
 	target.enabledValue = true;
 	plan.authoredInteractionTargets.push_back(target);
 
@@ -226,6 +227,7 @@ void TestAuthoredInteractionTargetsPreserveFactsAndExactIds()
 	Expect(!plan.authoredInteractionTargets[0].enabled, "authored interaction target should preserve enabled flag");
 	Expect(plan.authoredInteractionTargets[0].effect == iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionEffectKind::ToggleTarget, "authored interaction target should preserve effect kind");
 	Expect(plan.authoredInteractionTargets[0].effectTargetId == Id("target:door"), "authored interaction target should preserve effect target id");
+	Expect(plan.authoredInteractionTargets[0].requiredItemId == Id("item:key"), "authored interaction target should preserve required item id");
 }
 
 void TestAuthoredItemDropsPreserveFactsAndExactIds()
