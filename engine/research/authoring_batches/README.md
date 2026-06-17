@@ -52,18 +52,18 @@ Queue:
 12. `[deferred]` `12_authored_scenario_save_load_roundtrip` - persistence roundtrip proof.
 13. `[complete]` `13_fixture_ceremony_cleanup` - remove redundant C++ fixture ceremony.
 14. `[complete]` `14_authoring_package_layout` - proposed scenario package shape.
-15. `[gated]` `15_editor_handoff_gate` - final UI/Edi integration gate.
+15. `[complete]` `15_editor_handoff_gate` - final UI/Edi integration gate.
 16. `[complete]` `16_authoring_facade_api` - reusable engine API for file-to-run flow.
 17. `[complete]` `17_package_runner_gate` - review gate for directory/package execution.
 18. `[complete]` `18_package_runner_implementation` - package runner only if gate passes.
-19. `[gated]` `19_editor_preview_model_gate` - gate for engine-only preview model shape.
+19. `[complete]` `19_editor_preview_model_gate` - gate for engine-only preview model shape.
 20. `[open]` `20_authoring_diff_report` - compare two scenario runs without new semantics.
 21. `[complete]` `21_source_plan_version_policy` - explicit source-plan version compatibility.
 22. `[complete]` `22_schema_snapshot_tests` - snapshot supported TOML table/key surface.
-23. `[open]` `23_fixtures_from_cli_examples` - derive docs/examples from canonical fixtures.
+23. `[complete]` `23_fixtures_from_cli_examples` - derive docs/examples from canonical fixtures.
 24. `[complete]` `24_batch_queue_maintenance` - keep this bucket pruned and current.
 25. `[gated]` `25_runtime_authoring_cleanup_gate` - review cleanup targets after v1 hardening.
-26. `[gated]` `26_minimal_editor_model` - engine-only model if prior gates pass.
+26. `[complete]` `26_minimal_editor_model` - engine-only model if prior gates pass.
 27. `[open]` `27_authored_scenario_perf_budget` - lightweight performance/size budget checks.
 28. `[complete]` `28_content_error_codes` - stable user-facing authoring error-code pass.
 29. `[open]` `29_release_candidate_authoring_v1` - freeze an Authoring v1 acceptance set.
