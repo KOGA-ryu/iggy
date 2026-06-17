@@ -60,7 +60,7 @@ Queue:
 3. `03_authoring_bucket_status_sync` - complete. Reduce bucket workflow drift without renumbering packets.
 4. `04_cli_output_contract_inventory` - complete. Inventory current CLI output and exit-code contract.
 5. `05_authoring_projection_design_gate` - complete. Design summary/final-row/expectation projection helper.
-6. `06_diagnostic_projection_design_gate` - pending. Design flattened diagnostic entries.
+6. `06_diagnostic_projection_design_gate` - complete. Design flattened diagnostic entries.
 7. `07_fixture_manifest_design_gate` - pending. Design canonical fixture manifest source of truth.
 8. `08_test_ceremony_trim_audit` - pending. Audit redundant C++ fixture/test ceremony.
 9. `09_smell_signal_dashboard` - pending. Document commands for tracking repo smells.
