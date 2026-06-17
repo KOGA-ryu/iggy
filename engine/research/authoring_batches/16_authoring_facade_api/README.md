@@ -1,5 +1,7 @@
 # Batch 16: Authoring Facade API
 
+Status: complete.
+
 ## Goal
 Extract the CLI's file-to-run pipeline into a reusable engine/runtime helper that future tools can call without duplicating CLI code.
 
@@ -21,3 +23,9 @@ No directory scanning, no UI/Edi, no new gameplay semantics, no save/load.
 
 ## Expected Result
 CLI and future tools share one engine-level file-to-run facade.
+
+## Completed Coverage
+
+- `RuntimeGameplayTomlScenarioFacade` now owns the one-file TOML source-plan pipeline: file reader, authoring adapter, optional lint validation, profile scenario runner, final row projection, trace frame projection, and expectation comparison.
+- `iggy_scenario_toml_runner` calls the facade while preserving existing output sections and exit codes.
+- Focused facade tests cover run success, trace capture, lint-only validation, read failure, and conversion failure.
