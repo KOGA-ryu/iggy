@@ -12,8 +12,10 @@ after every small slice.
   TOML scenario facade.
 - The read-only authoring preview model exists for explicit TOML files and
   explicit package paths.
+- Authoring V1 is release-candidate defined for engine/test/dev-tool use, with
+  fixture-scale budgets and cleanup/prune gates recorded.
 - Full verification has stayed green through the recent stretches; the latest
-  preview model batch reported 340/340 tests.
+  Authoring V1 closure packet reported 341/341 tests.
 - Short-term implementation packets live in
   `engine/research/authoring_batches/`.
 
@@ -25,6 +27,7 @@ Recently completed optimized stretches:
   `13`, `24`.
 - Package boundary: `14`, `17`, `18`, `44`, `50`, `51`, `24`.
 - Editor read-only preview: `15`, `19`, `26`, `23`.
+- Authoring V1 release-candidate closure: `29`, `27`, `25`, `60`, `24`.
 
 ## Have
 
@@ -120,14 +123,10 @@ Recently completed optimized stretches:
 
 ### Immediate Authoring Stabilization
 
-- Update bucket status for recently completed editor-preview packets if not
-  already reflected.
-- Decide whether Authoring v1 is now release-candidate ready or needs remaining
-  fixture packs/perf checks first.
-- Run a prune/staleness pass over the batch queue and roadmap after the preview
-  stretch.
-- Keep API index current for facade, package, preview, check/lint/trace, and
-  package CLI behavior.
+- Keep API index current when facade, package, preview, check/lint/trace, or
+  package CLI behavior changes.
+- Pull the next authoring packet from `engine/research/authoring_batches/`
+  unless a planner-scoped stretch overrides raw queue order.
 
 ### Remaining Authoring Work
 
@@ -137,10 +136,10 @@ Recently completed optimized stretches:
 - ResourceId namespace policy.
 - Frame ordering policy.
 - Authoring warning-channel decision.
-- Authoring size/performance budget.
 - Source-plan compatibility/migration gate.
 - Authoring diff report.
-- Authoring release-candidate acceptance set.
+- Product/source-plan size-limit policy gate if fixture budgets prove
+  insufficient.
 
 ### Product And Runtime Work
 
@@ -179,7 +178,7 @@ Recently completed optimized stretches:
 
 ### 1. Authoring V1 Closure
 
-Status: mostly complete.
+Status: complete for engine/test/dev-tool use.
 
 Objective: make TOML single-file and package authoring stable,
 self-documenting, and self-checking.
@@ -194,22 +193,20 @@ Done:
 - Source-plan version/schema/subset hardening.
 - Package runner/metadata/parity.
 - Read-only preview model.
+- Release-candidate acceptance set.
+- Deterministic fixture-scale budget checks.
+- Runtime authoring cleanup gate.
+- Batch queue prune gate.
 
-Remaining exit work:
-- Decide Authoring v1 release-candidate acceptance.
-- Add any final missing fixture packs that are needed for confidence.
-- Update stale docs/API index.
-- Prune or defer remaining authoring bucket packets.
-
-Likely next packets:
-- `29_release_candidate_authoring_v1`
-- `24_batch_queue_maintenance`
-- `60_authoring_bucket_prune_gate`
-- `27_authored_scenario_perf_budget`
+Remaining adjacent work:
+- AI-map region fixture examples.
+- Multi-actor/profile fixture coverage.
+- Existing interaction effect fixture pack.
+- ResourceId namespace and frame-ordering policy.
 
 ### 2. Runtime/API Cleanup
 
-Status: ready for a gate, not for broad deletion.
+Status: cleanup gate complete; implementation is not started.
 
 Objective: reduce bloat after authoring contracts stabilized.
 
@@ -221,9 +218,9 @@ Exit criteria:
 - No gameplay behavior changes are introduced as cleanup.
 
 Candidate packets:
-- `25_runtime_authoring_cleanup_gate`
 - `59_authoring_run_summary_projection` is complete and should be treated as the
   first successful cleanup pattern.
+- A focused authoring test/support deduplication packet from Batch 25 evidence.
 - A focused counter/report projection cleanup packet from smell-audit evidence.
 - A focused CMake/test registration hygiene packet if useful.
 
@@ -339,24 +336,22 @@ Candidate gates:
 
 ## Near-Term Recommended Order
 
-1. Synchronize roadmap/API/bucket docs after the preview stretch.
-2. Run `29_release_candidate_authoring_v1` to define the Authoring v1 acceptance
-   set.
-3. Run `27_authored_scenario_perf_budget` to set lightweight size/cost checks.
-4. Run `25_runtime_authoring_cleanup_gate` to choose the next cleanup seam.
-5. Run `60_authoring_bucket_prune_gate` to remove stale/superseded queue items.
-6. Decide whether to do a small fixture pack (`11`, `54`, `55`) or move to
-   product-loop/editor-consumer gating.
-7. Gate save/load roundtrip only if Authoring v1 requires persistence proof.
+1. Return to the bucket raw next packet, `11_ai_map_region_fixtures`, unless a
+   planner-scoped stretch overrides raw order.
+2. Keep no-new-semantics fixture/policy packets ahead of new gameplay semantics
+   unless the planner explicitly opens a semantics gate.
+3. Use Batch 25 evidence to plan any behavior-preserving authoring test/support
+   cleanup before broad runtime wrapper work.
+4. Gate save/load roundtrip only if a later productization stretch explicitly
+   requires persistence proof.
 
 ## Open Decisions
 
-- Is Authoring v1 now release-candidate ready, or does it need AI-map,
-  multi-actor, interaction-effect, and perf-budget packets first?
+- Which remaining fixture/policy packet should follow Authoring V1 closure:
+  AI-map regions, multi-actor/profile coverage, existing interaction-effect
+  fixtures, ResourceId policy, or frame-ordering policy?
 - Is the first UI milestone a read-only Qt shell panel, a separate editor
   prototype, or no UI until product loop?
-- Should authored packages be part of Authoring v1, or an adjacent tooling
-  feature?
 - Do save/load roundtrip tests belong in Authoring v1 or later productization?
 - When does legacy `modules/npc_ai` become active migration work instead of
   compatibility debt?

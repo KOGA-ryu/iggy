@@ -28,3 +28,8 @@ Builder always has a current, ordered bucket to scoop from.
 - Updated the root queue with current complete/open/gated/deferred status.
 - Confirmed more than ten incomplete actionable or gated packets remain, so no
   replacement packets were added.
+
+## Latest Sync
+- Updated the broader roadmap after Authoring V1 release-candidate closure,
+  fixture budget checks, cleanup gate, and bucket prune gate.
+- Left raw next at `11_ai_map_region_fixtures`.
