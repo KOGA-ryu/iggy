@@ -53,3 +53,18 @@ Queue:
 28. `28_content_error_codes` - stable user-facing authoring error-code pass.
 29. `29_release_candidate_authoring_v1` - freeze an Authoring v1 acceptance set.
 30. `30_post_v1_semantics_gate` - decide next gameplay semantics after v1.
+31. `31_authoring_facade_parity_audit` - keep CLI/facade execution paths equivalent.
+32. `32_canonical_fixture_manifest` - one test-owned canonical fixture source of truth.
+33. `33_trace_expectations` - optional per-frame expectation checks.
+34. `34_negative_fixture_catalog` - first-class failure fixture catalog.
+35. `35_authoring_warning_channel_gate` - decide whether warnings are needed.
+36. `36_resource_id_namespace_policy` - authoring ResourceId convention policy.
+37. `37_frame_ordering_policy` - deterministic authored frame ordering checks.
+38. `38_no_hidden_defaults_audit` - enforce self-contained canonical fixtures.
+39. `39_toml_subset_stress_pack` - parser subset edge regression pack.
+40. `40_authoring_size_limits_gate` - decide source-plan scale limits.
+41. `41_emit_event_semantics_gate` - gate authored emit-event behavior.
+42. `42_talk_interaction_semantics_gate` - gate authored talk behavior.
+43. `43_region_trigger_semantics_gate` - gate region trigger behavior.
+44. `44_package_metadata_manifest` - package metadata after package runner approval.
+45. `45_authoring_compatibility_migration_gate` - gate source-plan migration support.
