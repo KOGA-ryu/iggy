@@ -21,6 +21,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeGameplayAsciiSourcePlanTomlFileReader.cpp
   src/runtime/RuntimeGameplayAsciiSourcePlanTomlReader.cpp
   src/runtime/RuntimeGameplayAsciiSourcePlanValidator.cpp
+  src/runtime/RuntimeGameplayTomlScenarioFacade.cpp
   src/runtime/RuntimeGameplayProfileScenarioDefinition.cpp
   src/runtime/RuntimeGameplayProfileScenarioRunner.cpp
   src/runtime/RuntimeGameplayProfileScenarioValidator.cpp

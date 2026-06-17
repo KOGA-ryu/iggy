@@ -4,11 +4,7 @@
 #include <string_view>
 #include <vector>
 
-#include "runtime/RuntimeGameplayAsciiSourcePlanFinalDebugRows.hpp"
-#include "runtime/RuntimeGameplayAsciiSourcePlanTomlFileReader.hpp"
-#include "runtime/RuntimeGameplayProfileScenarioRunner.hpp"
-#include "runtime/RuntimeGameplayProfileScenarioValidator.hpp"
-#include "runtime/RuntimeGameplayScenarioAuthoringAdapter.hpp"
+#include "runtime/RuntimeGameplayTomlScenarioFacade.hpp"
 
 namespace {
 
@@ -399,33 +395,6 @@ const char *ToString(
 	return "unknown";
 }
 
-struct TraceFrameProjection {
-	std::size_t index = 0;
-	std::string frameId;
-	std::size_t acceptedCommandCount = 0;
-	std::size_t pickedUpCount = 0;
-	bool interactionChanged = false;
-	std::size_t npcMovedCount = 0;
-	std::vector<std::string> rows;
-};
-
-struct ExpectationComparison {
-	bool present = false;
-	bool matched = true;
-	bool checkedFinalRows = false;
-	bool finalRowsMatched = true;
-	bool checkedFrameCount = false;
-	bool frameCountMatched = true;
-	bool checkedAcceptedCommandCount = false;
-	bool acceptedCommandCountMatched = true;
-	bool checkedPickedUpCount = false;
-	bool pickedUpCountMatched = true;
-	bool checkedInteractionChanged = false;
-	bool interactionChangedMatched = true;
-	bool checkedNpcMovedCount = false;
-	bool npcMovedCountMatched = true;
-};
-
 int Usage()
 {
 	std::cerr << "status:\n";
@@ -547,47 +516,12 @@ void PrintFirstConversionIssue(
 	}
 }
 
-std::string FrameIdText(
-	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult &run,
-	std::size_t frameIndex)
-{
-	if (frameIndex < run.definition.frames.size()) {
-		const iggy::runtime::RuntimeGameplayProfileScenarioFrameDefinition &frame =
-			run.definition.frames[frameIndex];
-		if (frame.hasFrameId && !frame.frameId.empty())
-			return IdText(frame.frameId);
-	}
-	return "<none>";
-}
-
-std::vector<TraceFrameProjection> TraceFrames(
-	const iggy::runtime::RuntimeGameplayAsciiSourcePlan &plan,
-	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult &run)
-{
-	std::vector<TraceFrameProjection> frames;
-	frames.reserve(run.scenario.runner.frameResults.size());
-	for (std::size_t index = 0; index < run.scenario.runner.frameResults.size();
-		++index) {
-		const iggy::runtime::RuntimeGameplayOrchestratedFrameResult &frameResult =
-			run.scenario.runner.frameResults[index];
-		TraceFrameProjection frame;
-		frame.index = index;
-		frame.frameId = FrameIdText(run, index);
-		frame.acceptedCommandCount = frameResult.acceptedCommandCount;
-		frame.pickedUpCount = frameResult.pickedUpCount;
-		frame.interactionChanged = frameResult.interactionChanged;
-		frame.npcMovedCount = frameResult.npcMovedCount;
-		frame.rows =
-			iggy::runtime::finalDebugRowsForAsciiSourcePlan(plan, frameResult.state);
-		frames.push_back(frame);
-	}
-	return frames;
-}
-
-void PrintTraceFrames(const std::vector<TraceFrameProjection> &frames)
+void PrintTraceFrames(
+	const std::vector<iggy::runtime::RuntimeGameplayTomlScenarioTraceFrame> &frames)
 {
 	std::cout << "frames:\n";
-	for (const TraceFrameProjection &frame : frames) {
+	for (const iggy::runtime::RuntimeGameplayTomlScenarioTraceFrame &frame :
+		frames) {
 		std::cout << "frame_index: " << frame.index << '\n';
 		std::cout << "frame_id: " << frame.frameId << '\n';
 		std::cout << "accepted_command_count: "
@@ -602,64 +536,14 @@ void PrintTraceFrames(const std::vector<TraceFrameProjection> &frames)
 	}
 }
 
-ExpectationComparison CompareExpectations(
-	const iggy::runtime::RuntimeGameplayAsciiSourcePlanExpectations &expectations,
-	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult &run,
-	const std::vector<std::string> &finalRows)
-{
-	ExpectationComparison comparison;
-	comparison.present = expectations.hasAny();
-	if (!comparison.present)
-		return comparison;
-
-	if (expectations.hasFinalRows) {
-		comparison.checkedFinalRows = true;
-		comparison.finalRowsMatched = expectations.finalRows == finalRows;
-		comparison.matched = comparison.matched && comparison.finalRowsMatched;
-	}
-	if (expectations.hasFrameCount) {
-		comparison.checkedFrameCount = true;
-		comparison.frameCountMatched = expectations.frameCount == run.frameCount;
-		comparison.matched = comparison.matched && comparison.frameCountMatched;
-	}
-	if (expectations.hasAcceptedCommandCount) {
-		comparison.checkedAcceptedCommandCount = true;
-		comparison.acceptedCommandCountMatched =
-			expectations.acceptedCommandCount ==
-			run.scenario.runner.acceptedCommandCount;
-		comparison.matched =
-			comparison.matched && comparison.acceptedCommandCountMatched;
-	}
-	if (expectations.hasPickedUpCount) {
-		comparison.checkedPickedUpCount = true;
-		comparison.pickedUpCountMatched =
-			expectations.pickedUpCount == run.scenario.runner.pickedUpCount;
-		comparison.matched = comparison.matched && comparison.pickedUpCountMatched;
-	}
-	if (expectations.hasInteractionChanged) {
-		comparison.checkedInteractionChanged = true;
-		comparison.interactionChangedMatched =
-			expectations.interactionChanged ==
-			run.scenario.runner.interactionChanged;
-		comparison.matched =
-			comparison.matched && comparison.interactionChangedMatched;
-	}
-	if (expectations.hasNpcMovedCount) {
-		comparison.checkedNpcMovedCount = true;
-		comparison.npcMovedCountMatched =
-			expectations.npcMovedCount == run.npcMovedCount;
-		comparison.matched = comparison.matched && comparison.npcMovedCountMatched;
-	}
-
-	return comparison;
-}
-
 const char *MatchText(bool matched)
 {
 	return matched ? "matched" : "mismatched";
 }
 
-void PrintExpectationComparison(const ExpectationComparison &comparison)
+void PrintExpectationComparison(
+	const iggy::runtime::RuntimeGameplayTomlScenarioExpectationComparison
+		&comparison)
 {
 	std::cout << "expectation:\n";
 	std::cout << "present: " << (comparison.present ? "true" : "false") << '\n';
@@ -734,9 +618,17 @@ int main(int argc, char **argv)
 	}
 
 	const std::filesystem::path path(pathArgument);
-	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult read =
-		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(path);
-	if (!read.ok()) {
+	iggy::runtime::RuntimeGameplayTomlScenarioFacadeConfig facadeConfig;
+	facadeConfig.lintOnly = lint;
+	facadeConfig.captureTraceFrames = trace;
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult scenario =
+		iggy::runtime::RuntimeGameplayTomlScenarioFacade {}.execute(
+			path,
+			facadeConfig);
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult &read =
+		scenario.read;
+	if (scenario.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::ReadFailed) {
 		std::cerr << "status:\n";
 		std::cerr << "result: read_failed\n";
 		std::cerr << "read_status: " << ToString(read.status) << '\n';
@@ -747,14 +639,10 @@ int main(int argc, char **argv)
 		return 2;
 	}
 
-	iggy::runtime::RuntimeGameplayScenarioAuthoringPacket packet;
-	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
-	packet.hasAsciiSourcePlan = true;
-	packet.asciiSourcePlan = read.text.plan;
-
-	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
-		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(packet);
-	if (!adapter.ok()) {
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult &adapter =
+		scenario.adapter;
+	if (scenario.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::ConversionFailed) {
 		std::cerr << "status:\n";
 		std::cerr << "result: conversion_failed\n";
 		std::cerr << "adapter_status: " << ToString(adapter.status) << '\n';
@@ -770,10 +658,9 @@ int main(int argc, char **argv)
 
 	if (lint) {
 		const iggy::runtime::RuntimeGameplayProfileScenarioValidationResult
-			validation =
-				iggy::runtime::RuntimeGameplayProfileScenarioValidator {}.validate(
-					adapter.profileScenario);
-		if (!validation.ok()) {
+			&validation = scenario.validation;
+		if (scenario.status ==
+			iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::LintFailed) {
 			std::cerr << "status:\n";
 			std::cerr << "result: lint_failed\n";
 			std::cerr << "adapter_status: " << ToString(adapter.status) << '\n';
@@ -794,9 +681,10 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
-	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
-		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
-	if (!run.ran()) {
+	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult &run =
+		scenario.run;
+	if (scenario.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::RunFailed) {
 		std::cerr << "status:\n";
 		std::cerr << "result: run_failed\n";
 		std::cerr << "run_status: " << ToString(run.status) << '\n';
@@ -820,12 +708,11 @@ int main(int argc, char **argv)
 	std::cout << "npc_blocked_movement_count: "
 		<< run.npcBlockedMovementCount << '\n';
 	if (trace)
-		PrintTraceFrames(TraceFrames(read.text.plan, run));
+		PrintTraceFrames(scenario.traceFrames);
 
-	const std::vector<std::string> rows =
-		iggy::runtime::finalDebugRowsForAsciiSourcePlan(read.text.plan, run.state);
-	const ExpectationComparison comparison =
-		CompareExpectations(read.text.plan.expectations, run, rows);
+	const std::vector<std::string> &rows = scenario.finalRows;
+	const iggy::runtime::RuntimeGameplayTomlScenarioExpectationComparison
+		&comparison = scenario.expectationComparison;
 	PrintExpectationComparison(comparison);
 	std::cout << "final_rows:\n";
 	for (const std::string &row : rows)

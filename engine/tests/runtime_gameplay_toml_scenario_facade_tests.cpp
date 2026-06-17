@@ -1,0 +1,159 @@
+#include "runtime/RuntimeGameplayTomlScenarioFacade.hpp"
+
+#include <filesystem>
+#include <iostream>
+#include <string>
+#include <vector>
+
+#ifndef IGGY_TEST_FIXTURE_DIR
+#error "IGGY_TEST_FIXTURE_DIR must point at engine/tests/fixtures/runtime/ascii_source_plan"
+#endif
+
+namespace {
+
+int Failures = 0;
+
+void Expect(bool condition, const char *message)
+{
+	if (!condition) {
+		std::cerr << "FAIL: " << message << '\n';
+		++Failures;
+	}
+}
+
+std::filesystem::path FixturePath(const char *name)
+{
+	return std::filesystem::path(IGGY_TEST_FIXTURE_DIR) / name;
+}
+
+void TestRunCanonicalFixture()
+{
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult result =
+		iggy::runtime::RuntimeGameplayTomlScenarioFacade {}.execute(
+			FixturePath("mixed_mini_scenario.toml"));
+
+	Expect(result.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::Ran,
+		"canonical fixture should run");
+	Expect(result.ok(), "run result should be ok");
+	Expect(result.read.ok(), "run result should include successful read");
+	Expect(result.adapter.ok(), "run result should include successful conversion");
+	Expect(result.run.ran(), "run result should include successful profile scenario run");
+	Expect(result.run.frameCount == 3, "run result should preserve frame count");
+	Expect(result.run.scenario.runner.acceptedCommandCount == 3,
+		"run result should preserve accepted command count");
+	Expect(result.run.scenario.runner.pickedUpCount == 1,
+		"run result should preserve pickup count");
+	Expect(result.run.scenario.runner.interactionChanged,
+		"run result should preserve interaction change");
+	Expect(result.run.npcMovedCount == 1,
+		"run result should preserve NPC moved count");
+	const std::vector<std::string> expectedRows {
+		"#########",
+		"#.A@....#",
+		"#.......#",
+		"#########",
+	};
+	Expect(result.finalRows == expectedRows,
+		"run result should include projected final rows");
+	Expect(!result.expectationComparison.present,
+		"fixture without expectations should report no expectation comparison");
+}
+
+void TestRunCapturesTraceFramesWhenRequested()
+{
+	iggy::runtime::RuntimeGameplayTomlScenarioFacadeConfig config;
+	config.captureTraceFrames = true;
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult result =
+		iggy::runtime::RuntimeGameplayTomlScenarioFacade {}.execute(
+			FixturePath("multi_frame_guard_room.toml"),
+			config);
+
+	Expect(result.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::Ran,
+		"trace fixture should run");
+	Expect(result.traceFrames.size() == 2,
+		"trace run should capture one projection per frame");
+	if (result.traceFrames.size() == 2) {
+		Expect(result.traceFrames[0].frameId == "frame:move-1",
+			"first trace frame should preserve frame id");
+		Expect(result.traceFrames[0].npcMovedCount == 1,
+			"first trace frame should preserve moved count");
+		Expect(result.traceFrames[1].frameId == "frame:move-2",
+			"second trace frame should preserve frame id");
+		Expect(result.traceFrames[1].rows ==
+			std::vector<std::string> {
+				"#######",
+				"#..A.@#",
+				"#.....#",
+				"#######",
+			},
+			"trace frame should include projected rows");
+	}
+}
+
+void TestLintModeValidatesWithoutRunning()
+{
+	iggy::runtime::RuntimeGameplayTomlScenarioFacadeConfig config;
+	config.lintOnly = true;
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult result =
+		iggy::runtime::RuntimeGameplayTomlScenarioFacade {}.execute(
+			FixturePath("moving_guard_room.toml"),
+			config);
+
+	Expect(result.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::LintOk,
+		"lint fixture should validate");
+	Expect(result.ok(), "lint result should be ok");
+	Expect(result.linted(), "lint result should report linted");
+	Expect(result.validation.ok(), "lint result should include validation");
+	Expect(result.validation.frameCount == 1,
+		"lint result should preserve validation frame count");
+	Expect(!result.run.ran(), "lint result should not run the scenario");
+	Expect(result.finalRows.empty(), "lint result should not project final rows");
+}
+
+void TestReadFailureStopsBeforeConversion()
+{
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult result =
+		iggy::runtime::RuntimeGameplayTomlScenarioFacade {}.execute(
+			FixturePath("missing_fixture.toml"));
+
+	Expect(result.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::ReadFailed,
+		"missing file should fail during read");
+	Expect(!result.ok(), "read failure result should not be ok");
+	Expect(!result.read.ok(), "read failure should include failed read");
+	Expect(!result.adapter.ok(), "read failure should not convert");
+	Expect(!result.run.ran(), "read failure should not run");
+}
+
+void TestConversionFailureStopsBeforeRun()
+{
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult result =
+		iggy::runtime::RuntimeGameplayTomlScenarioFacade {}.execute(
+			FixturePath("valid_guard_room.toml"));
+
+	Expect(result.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::ConversionFailed,
+		"missing profile catalog should fail during conversion");
+	Expect(!result.ok(), "conversion failure result should not be ok");
+	Expect(result.read.ok(), "conversion failure should include successful read");
+	Expect(!result.adapter.ok(), "conversion failure should include failed adapter result");
+	Expect(!result.run.ran(), "conversion failure should not run");
+}
+
+} // namespace
+
+int main()
+{
+	TestRunCanonicalFixture();
+	TestRunCapturesTraceFramesWhenRequested();
+	TestLintModeValidatesWithoutRunning();
+	TestReadFailureStopsBeforeConversion();
+	TestConversionFailureStopsBeforeRun();
+
+	if (Failures != 0)
+		return 1;
+	return 0;
+}
