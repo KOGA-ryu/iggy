@@ -631,6 +631,51 @@ void TestNegativePackageDelegatesScenarioFailure()
 		"negative package CLI run");
 }
 
+void TestPackageCliParityWithSourceFixture()
+{
+	const CommandResult source =
+		RunCli({ FixturePath("player_picks_up_item_room.toml") });
+	const CommandResult package =
+		RunCli({ PackageFixturePath("player_picks_up_item_package") });
+	Expect(source.exitCode == 0, "source pickup CLI parity run should succeed");
+	Expect(package.exitCode == source.exitCode,
+		"package pickup CLI parity run should match source exit code");
+	const std::vector<std::string> parityNeedles {
+		"frame_count: 2",
+		"accepted_command_count: 2",
+		"picked_up_count: 1",
+		"interaction_changed: false",
+		"npc_moved_count: 0",
+		"npc_blocked_movement_count: 0",
+		FinalRowsBlock({ "#######", "#A.@..#", "#.....#", "#######" }),
+	};
+	ExpectOutputContains(source, parityNeedles, "source pickup CLI parity");
+	ExpectOutputContains(package, parityNeedles, "package pickup CLI parity");
+
+	const CommandResult sourceNegative =
+		RunCli({ FixturePath("bad_pickup_target_guard_room.toml") });
+	const CommandResult packageNegative =
+		RunCli({ PackageFixturePath("bad_pickup_target_package") });
+	Expect(sourceNegative.exitCode == 2,
+		"source negative pickup CLI parity run should fail");
+	Expect(packageNegative.exitCode == sourceNegative.exitCode,
+		"package negative pickup CLI parity should match source exit code");
+	const std::vector<std::string> diagnosticNeedles {
+		"result: read_failed",
+		"toml_status: source_plan_invalid",
+		"source_issue: code=authored_player_command_invalid_pickup_target",
+		"id=drop:missing",
+	};
+	ExpectOutputContains(
+		sourceNegative,
+		diagnosticNeedles,
+		"source negative pickup CLI parity");
+	ExpectOutputContains(
+		packageNegative,
+		diagnosticNeedles,
+		"package negative pickup CLI parity");
+}
+
 void TestPackageManifestFailureDiagnostics()
 {
 	const std::filesystem::path packageRoot =
@@ -1247,6 +1292,7 @@ int main()
 	TestPackageManifestPathRunsScenario();
 	TestPackagePickupRunsScenario();
 	TestNegativePackageDelegatesScenarioFailure();
+	TestPackageCliParityWithSourceFixture();
 	TestPackageManifestFailureDiagnostics();
 	TestTraceMultiFrameGuardRoom();
 	TestTraceMixedMiniScenario();

@@ -1,5 +1,7 @@
 # Batch 51: File/Package Parity
 
+Status: complete.
+
 ## Goal
 Prove a package scenario and its equivalent one-file TOML scenario produce the same run/check/trace results.
 
@@ -20,3 +22,11 @@ No new package semantics, directory discovery, or output format changes.
 
 ## Expected Result
 Package mode is a wrapper around existing authoring semantics, not a separate behavior path.
+
+## Completed Coverage
+- Facade parity compares the package pickup fixture against the canonical
+  one-file pickup fixture across run, check, and trace modes.
+- CLI parity checks matching summary counts/final rows for the same positive
+  pair.
+- Negative parity compares a valid package manifest delegating to the bad
+  pickup target scenario with the equivalent one-file diagnostics.

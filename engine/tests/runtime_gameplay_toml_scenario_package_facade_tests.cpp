@@ -1,4 +1,5 @@
 #include "runtime/RuntimeGameplayTomlScenarioPackageFacade.hpp"
+#include "runtime/RuntimeGameplayTomlScenarioFacade.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -8,6 +9,10 @@
 
 #ifndef IGGY_TEST_PACKAGE_FIXTURE_DIR
 #error "IGGY_TEST_PACKAGE_FIXTURE_DIR must point at engine/tests/fixtures/runtime/ascii_source_plan_packages"
+#endif
+
+#ifndef IGGY_TEST_FIXTURE_DIR
+#error "IGGY_TEST_FIXTURE_DIR must point at engine/tests/fixtures/runtime/ascii_source_plan"
 #endif
 
 namespace {
@@ -22,9 +27,19 @@ void Expect(bool condition, const char *message)
 	}
 }
 
+void Expect(bool condition, const std::string &message)
+{
+	Expect(condition, message.c_str());
+}
+
 std::filesystem::path FixturePath(const char *name)
 {
 	return std::filesystem::path(IGGY_TEST_PACKAGE_FIXTURE_DIR) / name;
+}
+
+std::filesystem::path SourceFixturePath(const char *name)
+{
+	return std::filesystem::path(IGGY_TEST_FIXTURE_DIR) / name;
 }
 
 std::filesystem::path TempRoot()
@@ -79,6 +94,100 @@ bool HasIssue(
 			return true;
 	}
 	return false;
+}
+
+iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult ExecuteSourceFixture(
+	const char *name,
+	iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode mode)
+{
+	iggy::runtime::RuntimeGameplayTomlScenarioFacadeConfig config;
+	config.mode = mode;
+	config.captureTraceFrames =
+		mode == iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Trace;
+	return iggy::runtime::RuntimeGameplayTomlScenarioFacade {}.execute(
+		SourceFixturePath(name),
+		config);
+}
+
+iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeResult ExecutePackageFixture(
+	const char *name,
+	iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode mode)
+{
+	iggy::runtime::RuntimeGameplayTomlScenarioFacadeConfig config;
+	config.mode = mode;
+	config.captureTraceFrames =
+		mode == iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Trace;
+	return iggy::runtime::RuntimeGameplayTomlScenarioPackageFacade {}.execute(
+		FixturePath(name),
+		config);
+}
+
+void ExpectRunSummaryParity(
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult &source,
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult &package,
+	const char *context)
+{
+	Expect(package.runSummary.frameCount == source.runSummary.frameCount,
+		std::string(context) + " should match frame count");
+	Expect(package.runSummary.acceptedCommandCount ==
+		source.runSummary.acceptedCommandCount,
+		std::string(context) + " should match accepted command count");
+	Expect(package.runSummary.pickedUpCount == source.runSummary.pickedUpCount,
+		std::string(context) + " should match pickup count");
+	Expect(package.runSummary.interactionChanged ==
+		source.runSummary.interactionChanged,
+		std::string(context) + " should match interaction changed flag");
+	Expect(package.runSummary.npcMovedCount == source.runSummary.npcMovedCount,
+		std::string(context) + " should match NPC moved count");
+	Expect(package.runSummary.npcBlockedMovementCount ==
+		source.runSummary.npcBlockedMovementCount,
+		std::string(context) + " should match blocked NPC movement count");
+	Expect(package.runSummary.finalRows == source.runSummary.finalRows,
+		std::string(context) + " should match final rows");
+}
+
+void ExpectExpectationParity(
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult &source,
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult &package,
+	const char *context)
+{
+	Expect(package.expectationComparison.present ==
+		source.expectationComparison.present,
+		std::string(context) + " should match expectation presence");
+	Expect(package.expectationComparison.matched ==
+		source.expectationComparison.matched,
+		std::string(context) + " should match expectation result");
+}
+
+void ExpectTraceParity(
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult &source,
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult &package,
+	const char *context)
+{
+	Expect(package.traceFrames.size() == source.traceFrames.size(),
+		std::string(context) + " should match trace frame count");
+	if (package.traceFrames.size() != source.traceFrames.size())
+		return;
+
+	for (std::size_t index = 0; index < source.traceFrames.size(); ++index) {
+		Expect(package.traceFrames[index].frameId ==
+			source.traceFrames[index].frameId,
+			std::string(context) + " should match trace frame id");
+		Expect(package.traceFrames[index].acceptedCommandCount ==
+			source.traceFrames[index].acceptedCommandCount,
+			std::string(context) + " should match trace accepted command count");
+		Expect(package.traceFrames[index].pickedUpCount ==
+			source.traceFrames[index].pickedUpCount,
+			std::string(context) + " should match trace pickup count");
+		Expect(package.traceFrames[index].interactionChanged ==
+			source.traceFrames[index].interactionChanged,
+			std::string(context) + " should match trace interaction flag");
+		Expect(package.traceFrames[index].npcMovedCount ==
+			source.traceFrames[index].npcMovedCount,
+			std::string(context) + " should match trace NPC moved count");
+		Expect(package.traceFrames[index].rows == source.traceFrames[index].rows,
+			std::string(context) + " should match trace rows");
+	}
 }
 
 void TestPackageDirectoryRunsMainScenario()
@@ -194,6 +303,109 @@ void TestNegativePackageDelegatesSourcePlanFailure()
 	Expect(result.scenario.read.text.status ==
 		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid,
 		"negative package should preserve source-plan invalid status");
+}
+
+void TestPickupPackageRunCheckTraceParity()
+{
+	const char *sourceName = "player_picks_up_item_room.toml";
+	const char *packageName = "player_picks_up_item_package";
+
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult sourceRun =
+		ExecuteSourceFixture(
+			sourceName,
+			iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Run);
+	const iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeResult packageRun =
+		ExecutePackageFixture(
+			packageName,
+			iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Run);
+	Expect(sourceRun.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::Ran,
+		"source pickup run should succeed for parity");
+	Expect(packageRun.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::Ran,
+		"package pickup run should succeed for parity");
+	ExpectRunSummaryParity(sourceRun, packageRun.scenario, "pickup run parity");
+	ExpectExpectationParity(sourceRun, packageRun.scenario, "pickup run parity");
+
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult sourceCheck =
+		ExecuteSourceFixture(
+			sourceName,
+			iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Check);
+	const iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeResult packageCheck =
+		ExecutePackageFixture(
+			packageName,
+			iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Check);
+	Expect(packageCheck.scenario.status == sourceCheck.status,
+		"package pickup check should match source check status");
+	Expect(packageCheck.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::CheckFailed,
+		"package pickup check should preserve missing-expectation check result");
+	ExpectRunSummaryParity(sourceCheck, packageCheck.scenario, "pickup check parity");
+	ExpectExpectationParity(
+		sourceCheck,
+		packageCheck.scenario,
+		"pickup check parity");
+
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult sourceTrace =
+		ExecuteSourceFixture(
+			sourceName,
+			iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Trace);
+	const iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeResult packageTrace =
+		ExecutePackageFixture(
+			packageName,
+			iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Trace);
+	Expect(sourceTrace.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::Ran,
+		"source pickup trace should run for parity");
+	Expect(packageTrace.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::Ran,
+		"package pickup trace should run for parity");
+	ExpectRunSummaryParity(sourceTrace, packageTrace.scenario, "pickup trace parity");
+	ExpectExpectationParity(
+		sourceTrace,
+		packageTrace.scenario,
+		"pickup trace parity");
+	ExpectTraceParity(sourceTrace, packageTrace.scenario, "pickup trace parity");
+}
+
+void TestNegativePackageDiagnosticsParity()
+{
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult source =
+		ExecuteSourceFixture(
+			"bad_pickup_target_guard_room.toml",
+			iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Run);
+	const iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeResult package =
+		ExecutePackageFixture(
+			"bad_pickup_target_package",
+			iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Run);
+
+	Expect(source.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::ReadFailed,
+		"source negative pickup should fail during read");
+	Expect(package.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::ScenarioReadFailed,
+		"package negative pickup should fail during delegated read");
+	Expect(package.scenario.read.text.status == source.read.text.status,
+		"negative package should match source TOML status");
+	Expect(package.scenario.read.text.issues.size() == source.read.text.issues.size(),
+		"negative package should match source TOML issue count");
+	if (!source.read.text.issues.empty() &&
+		!package.scenario.read.text.issues.empty()) {
+		const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue
+			&sourceIssue = source.read.text.issues.front();
+		const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue
+			&packageIssue = package.scenario.read.text.issues.front();
+		Expect(packageIssue.code == sourceIssue.code,
+			"negative package should match source TOML issue code");
+		Expect(packageIssue.table == sourceIssue.table,
+			"negative package should match source TOML issue table");
+		Expect(packageIssue.key == sourceIssue.key,
+			"negative package should match source TOML issue key");
+		Expect(packageIssue.sourceIssue.code == sourceIssue.sourceIssue.code,
+			"negative package should match source-plan issue code");
+		Expect(packageIssue.sourceIssue.id == sourceIssue.sourceIssue.id,
+			"negative package should match source-plan issue id");
+	}
 }
 
 void TestPackageTraceModeDelegatesToScenarioFacade()
@@ -398,6 +610,8 @@ int main()
 	TestPackageManifestPathRunsMainScenario();
 	TestPickupPackageRunsMainScenario();
 	TestNegativePackageDelegatesSourcePlanFailure();
+	TestPickupPackageRunCheckTraceParity();
+	TestNegativePackageDiagnosticsParity();
 	TestPackageTraceModeDelegatesToScenarioFacade();
 	TestMissingPackagePathFails();
 	TestMissingManifestFails();
