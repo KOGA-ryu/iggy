@@ -31,9 +31,14 @@ Canonical success fixtures are stable examples and are covered by CLI golden row
 Regression-only fixtures are kept for lower-level parser, adapter, and diagnostic tests:
 
 - `valid_guard_room.toml`: parse-valid but intentionally not self-contained; conversion should report a missing profile trait unless C++ config supplies it.
+- `missing_profile_guard_room.toml`: parse-valid but intentionally omits `[[profiles]]`; default conversion should report `missing_profile_trait`.
 - `self_contained_guard_room.toml`: focused empty-config adapter acceptance fixture; the canonical `player_and_guard_room.toml` covers the same visible final behavior.
-- `semantic_invalid_guard_room.toml`: source-plan validation failure fixture.
 - `corrupt_guard_room.toml`: TOML syntax failure fixture.
+- `bad_table_type_guard_room.toml`: TOML type failure fixture.
+- `semantic_invalid_guard_room.toml`: source-plan validation failure fixture for annotated-cell glyph mismatch.
+- `bad_interact_target_guard_room.toml`: source-plan validation failure fixture for unknown authored player interaction target.
+- `bad_pickup_target_guard_room.toml`: source-plan validation failure fixture for invalid authored pickup/drop target.
+- `unknown_control_actor_guard_room.toml`: conversion failure fixture for `[[frame_controls]]` referencing an unpromoted NPC actor.
 
 Canonical fixture contract:
 
