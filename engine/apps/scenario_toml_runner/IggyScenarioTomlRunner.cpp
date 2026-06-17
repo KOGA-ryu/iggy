@@ -381,6 +381,16 @@ const char *ToString(
 	return "unknown";
 }
 
+struct TraceFrameProjection {
+	std::size_t index = 0;
+	std::string frameId;
+	std::size_t acceptedCommandCount = 0;
+	std::size_t pickedUpCount = 0;
+	bool interactionChanged = false;
+	std::size_t npcMovedCount = 0;
+	std::vector<std::string> rows;
+};
+
 int Usage()
 {
 	std::cerr << "status:\n";
@@ -499,6 +509,61 @@ void PrintFirstConversionIssue(
 				std::cerr << " npc=" << IdText(nested.npcId);
 			std::cerr << '\n';
 		}
+	}
+}
+
+std::string FrameIdText(
+	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult &run,
+	std::size_t frameIndex)
+{
+	if (frameIndex < run.definition.frames.size()) {
+		const iggy::runtime::RuntimeGameplayProfileScenarioFrameDefinition &frame =
+			run.definition.frames[frameIndex];
+		if (frame.hasFrameId && !frame.frameId.empty())
+			return IdText(frame.frameId);
+	}
+	return "<none>";
+}
+
+std::vector<TraceFrameProjection> TraceFrames(
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlan &plan,
+	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult &run)
+{
+	std::vector<TraceFrameProjection> frames;
+	frames.reserve(run.scenario.runner.frameResults.size());
+	for (std::size_t index = 0; index < run.scenario.runner.frameResults.size();
+		++index) {
+		const iggy::runtime::RuntimeGameplayOrchestratedFrameResult &frameResult =
+			run.scenario.runner.frameResults[index];
+		TraceFrameProjection frame;
+		frame.index = index;
+		frame.frameId = FrameIdText(run, index);
+		frame.acceptedCommandCount = frameResult.acceptedCommandCount;
+		frame.pickedUpCount = frameResult.pickedUpCount;
+		frame.interactionChanged = frameResult.interactionChanged;
+		frame.npcMovedCount = frameResult.npcMovedCount;
+		frame.rows =
+			iggy::runtime::finalDebugRowsForAsciiSourcePlan(plan, frameResult.state);
+		frames.push_back(frame);
+	}
+	return frames;
+}
+
+void PrintTraceFrames(const std::vector<TraceFrameProjection> &frames)
+{
+	std::cout << "frames:\n";
+	for (const TraceFrameProjection &frame : frames) {
+		std::cout << "frame_index: " << frame.index << '\n';
+		std::cout << "frame_id: " << frame.frameId << '\n';
+		std::cout << "accepted_command_count: "
+			<< frame.acceptedCommandCount << '\n';
+		std::cout << "picked_up_count: " << frame.pickedUpCount << '\n';
+		std::cout << "interaction_changed: "
+			<< (frame.interactionChanged ? "true" : "false") << '\n';
+		std::cout << "npc_moved_count: " << frame.npcMovedCount << '\n';
+		std::cout << "rows:\n";
+		for (const std::string &row : frame.rows)
+			std::cout << row << '\n';
 	}
 }
 
