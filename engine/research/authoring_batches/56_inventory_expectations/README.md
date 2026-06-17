@@ -1,5 +1,7 @@
 # Batch 56: Inventory Expectations
 
+Status: complete.
+
 ## Goal
 Extend authored expectations to verify final inventory facts after pickup scenarios.
 
@@ -20,3 +22,10 @@ No inventory item catalog expansion, equipment, containers, or save/load changes
 
 ## Expected Result
 Pickup scenarios can self-check inventory, not just final rows/counts.
+
+## Completed Coverage
+
+- Added optional `[[expect_inventory_stacks]]` source-plan facts for expected final inventory item id and count.
+- Validates inventory expectation shape for missing item ids, zero counts, and duplicate item ids without changing gameplay.
+- Check mode compares expected stacks against final `RuntimeGameplayState.inventory.inventory.stacks`.
+- `locked_door_key_room.toml` now self-checks that picking up the key leaves `item:key` in final inventory.
