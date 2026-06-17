@@ -1255,6 +1255,80 @@ void TestFramePlayerPickupCommandMissingTargetSurfacesSourcePlanValidation()
 	}
 }
 
+void TestFramePlayerInteractUnknownTargetSurfacesSourcePlanValidation()
+{
+	const std::string text = RootGridLegendCellsRegionsToml() + R"toml(
+
+[[interaction_targets]]
+target_id = "target:door"
+kind = "door"
+tile = { x = 3, y = 1 }
+radius = 1.0
+enabled = true
+
+[[frame_player_commands]]
+frame_id = "frame:interact"
+command = "interact"
+target_id = "target:missing"
+)toml";
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "interact command with unknown authored target should fail source validation");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "unknown interact target should report source invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandUnknownInteractionTarget);
+	Expect(issue != nullptr, "unknown interact target should mirror source issue");
+	if (issue != nullptr) {
+		Expect(issue->line == LineOfNth(text, "[[frame_player_commands]]"), "unknown interact target issue should report player command table line");
+		Expect(issue->table == "frame_player_commands", "unknown interact target issue should report frame_player_commands table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "unknown interact target issue should report first player command index");
+		Expect(issue->key == "target_id", "unknown interact target issue should report target_id key");
+		Expect(issue->sourceIssue.id == Id("target:missing"), "unknown interact target issue should preserve target id");
+	}
+}
+
+void TestFramePlayerPickupInvalidTargetSurfacesSourcePlanValidation()
+{
+	const std::string text = RootGridLegendCellsRegionsToml() + R"toml(
+
+[[interaction_targets]]
+target_id = "target:door"
+kind = "door"
+tile = { x = 3, y = 1 }
+radius = 1.0
+enabled = true
+
+[[item_drops]]
+drop_id = "drop:key"
+item_id = "item:key"
+count = 1
+tile = { x = 3, y = 1 }
+pickup_radius = 1.0
+enabled = true
+
+[[frame_player_commands]]
+frame_id = "frame:pickup"
+command = "pickup"
+target_id = "target:door"
+)toml";
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "pickup command with non-pickup target should fail source validation");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "invalid pickup target should report source invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandInvalidPickupTarget);
+	Expect(issue != nullptr, "invalid pickup target should mirror source issue");
+	if (issue != nullptr) {
+		Expect(issue->line == LineOfNth(text, "[[frame_player_commands]]"), "invalid pickup target issue should report player command table line");
+		Expect(issue->table == "frame_player_commands", "invalid pickup target issue should report frame_player_commands table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "invalid pickup target issue should report first player command index");
+		Expect(issue->key == "target_id", "invalid pickup target issue should report target_id key");
+		Expect(issue->sourceIssue.id == Id("target:door"), "invalid pickup target issue should preserve target id");
+	}
+}
+
 void TestFrameAuthoredDeclarationOrderSpansControlsAndPlayerCommands()
 {
 	const std::string text = RootGridLegendCellsRegionsToml() + R"toml(
@@ -1369,6 +1443,8 @@ int main()
 	TestFramePlayerCommandMissingTargetSurfacesSourcePlanValidation();
 	TestFramePlayerInteractCommandMissingTargetSurfacesSourcePlanValidation();
 	TestFramePlayerPickupCommandMissingTargetSurfacesSourcePlanValidation();
+	TestFramePlayerInteractUnknownTargetSurfacesSourcePlanValidation();
+	TestFramePlayerPickupInvalidTargetSurfacesSourcePlanValidation();
 	TestFrameAuthoredDeclarationOrderSpansControlsAndPlayerCommands();
 	TestTomlSourcePlanFeedsConverterAndProfileValidator();
 	return Failures;

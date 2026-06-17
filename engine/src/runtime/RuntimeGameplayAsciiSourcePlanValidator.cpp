@@ -70,6 +70,8 @@ void AddIssue(
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandUnsupportedCommand:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandMissingTarget:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandUnknownInteractionTarget:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandInvalidPickupTarget:
 		++result.authoredPlayerCommandIssueCount;
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsafeNoClaims:
@@ -654,6 +656,46 @@ bool PlayerCommandNeedsTargetId(
 		command == RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Pickup;
 }
 
+bool HasAuthoredInteractionTarget(
+	const RuntimeGameplayAsciiSourcePlan &plan,
+	const ResourceId &targetId)
+{
+	for (const RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget &target :
+		plan.authoredInteractionTargets) {
+		if (target.targetId == targetId) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool HasAuthoredPickupTarget(
+	const RuntimeGameplayAsciiSourcePlan &plan,
+	const ResourceId &targetId)
+{
+	for (const RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget &target :
+		plan.authoredInteractionTargets) {
+		if (target.targetId == targetId &&
+			target.kind == RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Pickup) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool HasAuthoredItemDrop(
+	const RuntimeGameplayAsciiSourcePlan &plan,
+	const ResourceId &dropId)
+{
+	for (const RuntimeGameplayAsciiSourcePlanAuthoredItemDrop &drop :
+		plan.authoredItemDrops) {
+		if (drop.dropId == dropId) {
+			return true;
+		}
+	}
+	return false;
+}
+
 void ValidateAuthoredPlayerCommands(
 	RuntimeGameplayAsciiSourcePlanValidationResult &result)
 {
@@ -690,6 +732,34 @@ void ValidateAuthoredPlayerCommands(
 			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
 				AuthoredPlayerCommandMissingTarget;
 			issue.index = index;
+			AddIssue(result, issue);
+		}
+
+		if (command.command ==
+				RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Interact &&
+			!command.targetId.empty() &&
+			!result.plan.authoredInteractionTargets.empty() &&
+			!HasAuthoredInteractionTarget(result.plan, command.targetId)) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				AuthoredPlayerCommandUnknownInteractionTarget;
+			issue.index = index;
+			issue.id = command.targetId;
+			AddIssue(result, issue);
+		}
+
+		if (command.command ==
+				RuntimeGameplayAsciiSourcePlanPlayerCommandKind::Pickup &&
+			!command.targetId.empty() &&
+			(!result.plan.authoredInteractionTargets.empty() ||
+				!result.plan.authoredItemDrops.empty()) &&
+			!HasAuthoredPickupTarget(result.plan, command.targetId) &&
+			!HasAuthoredItemDrop(result.plan, command.targetId)) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				AuthoredPlayerCommandInvalidPickupTarget;
+			issue.index = index;
+			issue.id = command.targetId;
 			AddIssue(result, issue);
 		}
 	}

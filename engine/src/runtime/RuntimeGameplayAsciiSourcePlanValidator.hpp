@@ -48,6 +48,8 @@ enum class RuntimeGameplayAsciiSourcePlanIssueCode {
 	AuthoredItemDropInvalidPickupRadius,
 	AuthoredPlayerCommandUnsupportedCommand,
 	AuthoredPlayerCommandMissingTarget,
+	AuthoredPlayerCommandUnknownInteractionTarget,
+	AuthoredPlayerCommandInvalidPickupTarget,
 	EmptyActorMarkerId,
 	EmptyProfileMarkerId,
 	UnsafeNoClaims,

@@ -177,6 +177,10 @@ const char *ToString(
 		return "authored_player_command_unsupported_command";
 	case Code::AuthoredPlayerCommandMissingTarget:
 		return "authored_player_command_missing_target";
+	case Code::AuthoredPlayerCommandUnknownInteractionTarget:
+		return "authored_player_command_unknown_interaction_target";
+	case Code::AuthoredPlayerCommandInvalidPickupTarget:
+		return "authored_player_command_invalid_pickup_target";
 	case Code::EmptyActorMarkerId:
 		return "empty_actor_marker_id";
 	case Code::EmptyProfileMarkerId:

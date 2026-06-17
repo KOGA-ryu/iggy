@@ -1077,6 +1077,18 @@ RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
 			issue.line = locations.framePlayerCommandTableLines[sourceIssue.index];
 		}
 		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::
+		AuthoredPlayerCommandUnknownInteractionTarget:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::
+		AuthoredPlayerCommandInvalidPickupTarget:
+		issue.table = "frame_player_commands";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "target_id";
+		if (sourceIssue.index < locations.framePlayerCommandTableLines.size()) {
+			issue.line = locations.framePlayerCommandTableLines[sourceIssue.index];
+		}
+		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::EmptyRows:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::GridDimensionMismatch:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::RaggedRow:

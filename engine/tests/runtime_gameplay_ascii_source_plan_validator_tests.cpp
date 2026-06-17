@@ -607,6 +607,65 @@ void TestAuthoredPlayerCommandIssuesFailInDeclarationOrder()
 	Expect(targetIssue != nullptr && targetIssue->index == 1, "missing player command target issue should preserve command index");
 }
 
+void TestAuthoredPlayerCommandTargetReferencesValidateWhenAuthoredTargetsExist()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget pickup =
+		InteractionTarget("target:key");
+	pickup.kind =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionTargetKind::Pickup;
+	plan.authoredInteractionTargets = {
+		InteractionTarget("target:door"),
+		pickup,
+	};
+	plan.authoredItemDrops = {
+		ItemDrop("drop:key"),
+	};
+	plan.authoredPlayerCommands = {
+		InteractCommand("target:door"),
+		PickupCommand("target:key"),
+		PickupCommand("drop:key"),
+	};
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
+		Validate(plan);
+
+	Expect(result.ok(), "player command authored target references should validate when ids exist");
+	Expect(result.authoredPlayerCommandCount == 3, "valid target references should preserve command count");
+	Expect(result.authoredPlayerCommandIssueCount == 0, "valid target references should not add player command issues");
+}
+
+void TestAuthoredPlayerCommandUnknownReferencesFailWhenAuthoredTargetsExist()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
+	plan.authoredInteractionTargets = {
+		InteractionTarget("target:door"),
+	};
+	plan.authoredItemDrops = {
+		ItemDrop("drop:key"),
+	};
+	plan.authoredPlayerCommands = {
+		InteractCommand("target:missing"),
+		PickupCommand("target:door"),
+		PickupCommand("drop:missing"),
+	};
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
+		Validate(plan);
+
+	Expect(!result.ok(), "unknown player command target references should fail validation");
+	Expect(result.authoredPlayerCommandIssueCount == 3, "unknown target references should count player command issues");
+	Expect(result.issues[result.issues.size() - 3].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandUnknownInteractionTarget, "first cross-reference issue should be unknown interaction target");
+	Expect(result.issues[result.issues.size() - 2].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandInvalidPickupTarget, "second cross-reference issue should be invalid pickup target type");
+	Expect(result.issues[result.issues.size() - 1].code == iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandInvalidPickupTarget, "third cross-reference issue should be unknown pickup target");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue *interactIssue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandUnknownInteractionTarget);
+	Expect(interactIssue != nullptr && interactIssue->index == 0 && interactIssue->id == Id("target:missing"), "unknown interact target issue should preserve command index and target id");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue *pickupIssue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandInvalidPickupTarget);
+	Expect(pickupIssue != nullptr && pickupIssue->index == 1 && pickupIssue->id == Id("target:door"), "invalid pickup target issue should preserve command index and target id");
+}
+
 void TestMultiplePlayerCommandsPerFrameArePreserved()
 {
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
@@ -694,6 +753,8 @@ int main()
 	TestValidAuthoredItemDropPasses();
 	TestAuthoredItemDropIssuesFailInDeclarationOrder();
 	TestAuthoredPlayerCommandIssuesFailInDeclarationOrder();
+	TestAuthoredPlayerCommandTargetReferencesValidateWhenAuthoredTargetsExist();
+	TestAuthoredPlayerCommandUnknownReferencesFailWhenAuthoredTargetsExist();
 	TestMultiplePlayerCommandsPerFrameArePreserved();
 	TestExactIdsAndInputImmutability();
 	return Failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
