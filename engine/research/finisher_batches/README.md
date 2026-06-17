@@ -68,7 +68,7 @@ Queue:
 11. `11_api_roadmap_drift_cleanup` - complete. Sync API/roadmap docs with completed authoring surfaces.
 12. `12_authoring_test_support_extraction` - complete. Extract repeated authoring test helpers.
 13. `13_package_facade_parity_assertion_helper` - complete. Extract package/file parity assertion helpers.
-14. `14_runtime_report_duplication_audit` - pending. Audit repeated runtime count/report fields.
+14. `14_runtime_report_duplication_audit` - complete. Audit repeated runtime count/report fields.
 15. `15_projection_status_mapping_audit` - pending. Audit duplicate projection/status mapping.
 16. `16_cmake_authoring_test_hygiene_gate` - pending. Assess authoring CMake test registration hygiene.
 17. `17_finisher_merge_hygiene_update` - pending. Update finisher merge/rebase protocol after cleanup stretch.
