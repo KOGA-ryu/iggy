@@ -161,11 +161,13 @@ external tool-owned data
   -> RuntimeGameplayProfileScenarioDefinition
 ```
 
-`RuntimeGameplayScenarioAuthoringAdapter` accepts an explicit profile scenario
-definition packet today. Unsupported sources remain unsupported, missing
-profile scenario payloads are reported as adapter diagnostics, and the adapter
-does not validate, build, run, or ledger the scenario. Those steps remain owned
-by the profile scenario validator/builder/runner path.
+`RuntimeGameplayScenarioAuthoringAdapter` accepts explicit profile scenario
+definition packets and valid ASCII source-plan packets. ASCII source plans use a
+default source-plan conversion config unless callers provide an explicit config
+override. Unsupported sources remain unsupported, missing payloads are reported
+as adapter diagnostics, and the adapter does not build, run, or ledger the
+scenario. Those steps remain owned by the profile scenario validator/builder/
+runner path.
 
 `RuntimeGameplayAsciiScenarioPacket` is the typed in-memory ASCII authoring
 packet that future ASCII/Edi/IDE tooling can target before conversion. It
