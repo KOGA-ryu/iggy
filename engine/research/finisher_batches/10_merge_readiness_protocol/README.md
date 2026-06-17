@@ -16,7 +16,8 @@ Branch posture:
 - Finisher branch: `codex/finisher-roadmap`
 - Finisher worktree: `/Users/kogaryu/iggy-finisher`
 - Builder worktree: `/Users/kogaryu/iggy`
-- Finisher changes are intentionally docs-only in the initial packet set.
+- Initial packets were docs-only. Cleanup stretch packets 12 and 13 also added
+  test-support headers and test-only refactors.
 
 Before rebasing or merging:
 - Check builder status from `/Users/kogaryu/iggy` with
@@ -67,6 +68,27 @@ Verification gates:
   - All source/test gates.
   - Explicit review of CLI output and exit-code tests.
   - No textual output change unless tests lock the new contract.
+
+Post-cleanup-stretch update:
+- Finisher now owns two test-support helper headers:
+  - `engine/tests/support/AuthoringTestSupport.hpp`
+  - `engine/tests/support/AuthoringParityTestSupport.hpp`
+- Current likely merge hotspots:
+  - `engine/research/finisher_batches/README.md`
+  - `engine/research/finisher_batches/*/README.md`
+  - `engine/tests/iggy_scenario_toml_runner_tests.cpp`
+  - `engine/tests/iggy_scenario_toml_runner_manifest_sweep_tests.cpp`
+  - `engine/tests/runtime_gameplay_toml_scenario_package_facade_tests.cpp`
+  - `engine/tests/runtime_gameplay_authoring_preview_model_tests.cpp`
+- Treat conflicts in the helper headers as finisher-owned unless builder has
+  intentionally adopted or replaced those helpers.
+- Treat conflicts in CLI output text, exit-code checks, package behavior, TOML
+  parsing, facade semantics, or save/load code as builder/planner-owned until
+  explicitly reassigned.
+- For the cleanup stretch, packet 12 verified with focused authoring/package
+  tests plus full `ctest --test-dir engine/build --output-on-failure`
+  passing 341/341. Packet 13 verified with package facade and CLI tests. Packet
+  14-16 were docs-only gates verified with `git diff --check`.
 
 Result:
 - Merge readiness protocol documented as docs only.
