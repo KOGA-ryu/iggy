@@ -25,6 +25,8 @@ Canonical success fixtures are stable examples and are covered by CLI golden row
 - `mixed_progression_room.toml`: four-frame scenario that separates player movement, NPC movement, pickup, and interaction, with embedded `[expect]` rows/counts for `--check`.
 - `locked_door_key_room.toml`: player picks up a key item before interacting with a required-item door target.
 - `locked_door_without_key_room.toml`: player interacts with the same required-item door target without the key, leaving the target unchanged.
+- `npc_blocked_guard_room.toml`: one NPC attempts to move into another NPC's occupied tile and is blocked.
+- `npc_reservation_guard_room.toml`: two NPCs target the same tile in one frame, showing the current default shared-destination movement outcome.
 
 Regression-only fixtures are kept for lower-level parser, adapter, and diagnostic tests:
 

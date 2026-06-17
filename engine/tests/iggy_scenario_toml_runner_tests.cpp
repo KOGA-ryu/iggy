@@ -33,6 +33,7 @@ struct GoldenFixture {
 	int pickedUpCount = 0;
 	bool interactionChanged = false;
 	int npcMovedCount = 0;
+	int npcBlockedMovementCount = 0;
 	std::vector<std::string> finalRows;
 };
 
@@ -378,6 +379,7 @@ void TestCanonicalFixtures()
 			0,
 			false,
 			1,
+			0,
 			{ "#######", "#.A..@#", "#.....#", "#######" },
 		},
 		{
@@ -388,6 +390,7 @@ void TestCanonicalFixtures()
 			0,
 			false,
 			2,
+			0,
 			{ "#######", "#..A.@#", "#.....#", "#######" },
 		},
 		{
@@ -398,6 +401,7 @@ void TestCanonicalFixtures()
 			0,
 			false,
 			1,
+			0,
 			{ "#######", "#.A.@.#", "#.....#", "#######" },
 		},
 		{
@@ -407,6 +411,7 @@ void TestCanonicalFixtures()
 			1,
 			0,
 			true,
+			0,
 			0,
 			{ "#######", "#A..@.#", "#.....#", "#######" },
 		},
@@ -418,6 +423,7 @@ void TestCanonicalFixtures()
 			1,
 			false,
 			0,
+			0,
 			{ "#######", "#A.@..#", "#.....#", "#######" },
 		},
 		{
@@ -428,6 +434,7 @@ void TestCanonicalFixtures()
 			1,
 			true,
 			1,
+			0,
 			{ "#########", "#.A@....#", "#.......#", "#########" },
 		},
 		{
@@ -438,6 +445,7 @@ void TestCanonicalFixtures()
 			1,
 			true,
 			1,
+			0,
 			{ "##########", "#.A@.....#", "#........#", "##########" },
 		},
 		{
@@ -447,6 +455,7 @@ void TestCanonicalFixtures()
 			2,
 			1,
 			true,
+			0,
 			0,
 			{ "#######", "#@....#", "#.....#", "#######" },
 		},
@@ -458,7 +467,30 @@ void TestCanonicalFixtures()
 			0,
 			false,
 			0,
+			0,
 			{ "#######", "#@....#", "#.....#", "#######" },
+		},
+		{
+			"npc_blocked_guard_room.toml",
+			"NPC blocked movement",
+			1,
+			0,
+			0,
+			false,
+			0,
+			1,
+			{ "#######", "#AB.@.#", "#.....#", "#######" },
+		},
+		{
+			"npc_reservation_guard_room.toml",
+			"NPC shared target movement",
+			1,
+			0,
+			0,
+			false,
+			2,
+			0,
+			{ "########", "#.B.@..#", "#......#", "########" },
 		},
 	};
 
@@ -481,6 +513,8 @@ void TestCanonicalFixtures()
 					(fixture.interactionChanged ? "true" : "false"),
 				std::string("npc_moved_count: ") +
 					std::to_string(fixture.npcMovedCount),
+				std::string("npc_blocked_movement_count: ") +
+					std::to_string(fixture.npcBlockedMovementCount),
 				FinalRowsBlock(fixture.finalRows),
 			},
 			context.c_str());

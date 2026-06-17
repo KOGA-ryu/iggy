@@ -1,0 +1,111 @@
+format_id = "iggy:ascii-source-plan"
+version = 1
+source_id = "scenario:npc-blocked-guard-room"
+source_ref = "authoring:checked-in-npc-blocked-fixture"
+
+[grid]
+width = 7
+height = 4
+background = "."
+rows = [
+  "#######",
+  "#AB.@.#",
+  "#.....#",
+  "#######",
+]
+
+[no_claims]
+runtime_truth = false
+gameplay_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[promotion]
+ready = false
+runtime_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[[legend]]
+glyph = "A"
+kind = "actor"
+role_id = "role:npc"
+role_tags = ["tag:mover"]
+maps_to_scenario_marker = true
+scenario_marker_kind = "actor"
+
+[[legend]]
+glyph = "B"
+kind = "actor"
+role_id = "role:npc"
+role_tags = ["tag:blocker"]
+maps_to_scenario_marker = true
+scenario_marker_kind = "actor"
+
+[[legend]]
+glyph = "@"
+kind = "player_start"
+role_id = "role:player-start"
+maps_to_scenario_marker = true
+scenario_marker_kind = "player_start"
+
+[[profiles]]
+id = "profile:guard"
+strength = 10
+dexterity = 10
+constitution = 10
+intelligence = 10
+wisdom = 10
+charisma = 10
+
+[[cells]]
+id = "cell:mover"
+row = 1
+column = 1
+glyph = "A"
+local_tile = { x = 1, y = 1 }
+local_position = { x = 1.5, y = 1.5 }
+cell_bounds = { min_x = 1.0, min_y = 1.0, max_x = 2.0, max_y = 2.0 }
+role_tags = ["tag:mover"]
+marker_id = "npc:mover"
+profile_id = "profile:guard"
+
+[[cells]]
+id = "cell:blocker"
+row = 1
+column = 2
+glyph = "B"
+local_tile = { x = 2, y = 1 }
+local_position = { x = 2.5, y = 1.5 }
+cell_bounds = { min_x = 2.0, min_y = 1.0, max_x = 3.0, max_y = 2.0 }
+role_tags = ["tag:blocker"]
+marker_id = "npc:blocker"
+profile_id = "profile:guard"
+
+[[regions]]
+id = "region:room"
+min_row = 0
+min_column = 0
+max_row = 3
+max_column = 6
+role_tags = ["tag:room"]
+
+[[frame_controls]]
+frame_id = "frame:blocked"
+npc = "npc:mover"
+behavior = "seeking"
+move_mode = "walk"
+target = { x = 2.5, y = 1.5 }
+
+[expect]
+final_rows = [
+  "#######",
+  "#AB.@.#",
+  "#.....#",
+  "#######",
+]
+frame_count = 1
+accepted_command_count = 0
+picked_up_count = 0
+interaction_changed = false
+npc_moved_count = 0

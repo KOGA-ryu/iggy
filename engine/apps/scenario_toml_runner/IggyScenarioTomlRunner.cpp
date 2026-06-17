@@ -817,6 +817,8 @@ int main(int argc, char **argv)
 	std::cout << "interaction_changed: "
 		<< (run.scenario.runner.interactionChanged ? "true" : "false") << '\n';
 	std::cout << "npc_moved_count: " << run.npcMovedCount << '\n';
+	std::cout << "npc_blocked_movement_count: "
+		<< run.npcBlockedMovementCount << '\n';
 	if (trace)
 		PrintTraceFrames(TraceFrames(read.text.plan, run));
 

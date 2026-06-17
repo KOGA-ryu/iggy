@@ -1,0 +1,118 @@
+format_id = "iggy:ascii-source-plan"
+version = 1
+source_id = "scenario:npc-reservation-guard-room"
+source_ref = "authoring:checked-in-npc-reservation-fixture"
+
+[grid]
+width = 8
+height = 4
+background = "."
+rows = [
+  "########",
+  "#A.B@..#",
+  "#......#",
+  "########",
+]
+
+[no_claims]
+runtime_truth = false
+gameplay_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[promotion]
+ready = false
+runtime_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[[legend]]
+glyph = "A"
+kind = "actor"
+role_id = "role:npc"
+role_tags = ["tag:first"]
+maps_to_scenario_marker = true
+scenario_marker_kind = "actor"
+
+[[legend]]
+glyph = "B"
+kind = "actor"
+role_id = "role:npc"
+role_tags = ["tag:second"]
+maps_to_scenario_marker = true
+scenario_marker_kind = "actor"
+
+[[legend]]
+glyph = "@"
+kind = "player_start"
+role_id = "role:player-start"
+maps_to_scenario_marker = true
+scenario_marker_kind = "player_start"
+
+[[profiles]]
+id = "profile:guard"
+strength = 10
+dexterity = 10
+constitution = 10
+intelligence = 10
+wisdom = 10
+charisma = 10
+
+[[cells]]
+id = "cell:first"
+row = 1
+column = 1
+glyph = "A"
+local_tile = { x = 1, y = 1 }
+local_position = { x = 1.5, y = 1.5 }
+cell_bounds = { min_x = 1.0, min_y = 1.0, max_x = 2.0, max_y = 2.0 }
+role_tags = ["tag:first"]
+marker_id = "npc:first"
+profile_id = "profile:guard"
+
+[[cells]]
+id = "cell:second"
+row = 1
+column = 3
+glyph = "B"
+local_tile = { x = 3, y = 1 }
+local_position = { x = 3.5, y = 1.5 }
+cell_bounds = { min_x = 3.0, min_y = 1.0, max_x = 4.0, max_y = 2.0 }
+role_tags = ["tag:second"]
+marker_id = "npc:second"
+profile_id = "profile:guard"
+
+[[regions]]
+id = "region:room"
+min_row = 0
+min_column = 0
+max_row = 3
+max_column = 7
+role_tags = ["tag:room"]
+
+[[frame_controls]]
+frame_id = "frame:contested"
+npc = "npc:first"
+behavior = "seeking"
+move_mode = "walk"
+target = { x = 2.5, y = 1.5 }
+
+[[frame_controls]]
+frame_id = "frame:contested"
+npc = "npc:second"
+behavior = "seeking"
+move_mode = "walk"
+target = { x = 2.5, y = 1.5 }
+
+[expect]
+final_rows = [
+  "########",
+  "#.B.@..#",
+  "#......#",
+  "########",
+]
+frame_count = 1
+accepted_command_count = 0
+picked_up_count = 0
+interaction_changed = false
+npc_moved_count = 2
