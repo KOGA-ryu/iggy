@@ -51,11 +51,11 @@ Queue:
 11. `[open]` `11_ai_map_region_fixtures` - AI map region examples.
 12. `[deferred]` `12_authored_scenario_save_load_roundtrip` - persistence roundtrip proof.
 13. `[complete]` `13_fixture_ceremony_cleanup` - remove redundant C++ fixture ceremony.
-14. `[deferred]` `14_authoring_package_layout` - proposed scenario package shape.
+14. `[complete]` `14_authoring_package_layout` - proposed scenario package shape.
 15. `[gated]` `15_editor_handoff_gate` - final UI/Edi integration gate.
 16. `[complete]` `16_authoring_facade_api` - reusable engine API for file-to-run flow.
-17. `[gated]` `17_package_runner_gate` - review gate for directory/package execution.
-18. `[gated]` `18_package_runner_implementation` - package runner only if gate passes.
+17. `[complete]` `17_package_runner_gate` - review gate for directory/package execution.
+18. `[complete]` `18_package_runner_implementation` - package runner only if gate passes.
 19. `[gated]` `19_editor_preview_model_gate` - gate for engine-only preview model shape.
 20. `[open]` `20_authoring_diff_report` - compare two scenario runs without new semantics.
 21. `[complete]` `21_source_plan_version_policy` - explicit source-plan version compatibility.
@@ -81,14 +81,14 @@ Queue:
 41. `[gated]` `41_emit_event_semantics_gate` - gate authored emit-event behavior.
 42. `[gated]` `42_talk_interaction_semantics_gate` - gate authored talk behavior.
 43. `[gated]` `43_region_trigger_semantics_gate` - gate region trigger behavior.
-44. `[gated]` `44_package_metadata_manifest` - package metadata after package runner approval.
+44. `[complete]` `44_package_metadata_manifest` - package metadata after package runner approval.
 45. `[gated]` `45_authoring_compatibility_migration_gate` - gate source-plan migration support.
 46. `[complete]` `46_authoring_facade_mode_matrix` - shared facade modes for run/lint/check/trace.
 47. `[complete]` `47_authoring_diagnostic_entries` - flattened user-facing diagnostic entries.
 48. `[complete]` `48_cli_output_contract_snapshots` - lock CLI textual output contracts.
 49. `[complete]` `49_manifest_sweep_test_target` - manifest-driven canonical fixture sweeps.
-50. `[gated]` `50_package_fixture_pack` - package examples after package runner approval.
-51. `[gated]` `51_file_package_parity` - parity between one-file and package scenarios.
+50. `[complete]` `50_package_fixture_pack` - package examples after package runner approval.
+51. `[complete]` `51_file_package_parity` - parity between one-file and package scenarios.
 52. `[complete]` `52_no_claims_boundary_regression` - safety flag regression fixtures.
 53. `[gated]` `53_terrain_authoring_policy_gate` - gate terrain metadata expansion.
 54. `[open]` `54_multi_actor_profile_fixture_pack` - multi-actor/profile fixture coverage.
