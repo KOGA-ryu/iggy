@@ -68,6 +68,18 @@ rows = [
   "#######",
 ]
 
+[no_claims]
+runtime_truth = false
+gameplay_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[promotion]
+ready = false
+runtime_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
 [[legend]]
 glyph = "A"
 kind = "actor"
@@ -101,6 +113,14 @@ local_position = { x = 1.5, y = 1.5 }
 cell_bounds = { min_x = 1.0, min_y = 1.0, max_x = 2.0, max_y = 2.0 }
 marker_id = "npc:guard"
 profile_id = "profile:guard"
+
+[[regions]]
+id = "region:room"
+min_row = 0
+min_column = 0
+max_row = 3
+max_column = 6
+role_tags = ["tag:room"]
 
 [[frame_controls]]
 frame_id = "frame:shared"
@@ -149,6 +169,34 @@ accepted_command_count = 1
 picked_up_count = 0
 interaction_changed = false
 npc_moved_count = 1
+
+[[expect_trace_frames]]
+frame_id = "frame:shared"
+rows = [
+  "#######",
+  "#.A@k.#",
+  "#.....#",
+  "#######",
+]
+accepted_command_count = 1
+picked_up_count = 0
+interaction_changed = false
+npc_moved_count = 1
+
+[[expect_inventory_stacks]]
+item_id = "item:key"
+count = 1
+
+[[expect_interaction_targets]]
+target_id = "target:lever"
+enabled = false
+
+[[expect_actor_states]]
+actor_id = "npc:guard"
+tile = { x = 2, y = 1 }
+
+[expect_player_state]
+tile = { x = 3, y = 1 }
 ```
 
 Non-goals for these fixtures: scripting, UI/Edi behavior, save/load behavior, directory scanning, and a full TOML implementation.

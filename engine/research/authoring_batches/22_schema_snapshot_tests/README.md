@@ -1,5 +1,7 @@
 # Batch 22: Schema Snapshot Tests
 
+Status: complete.
+
 ## Goal
 Snapshot the supported TOML table/key surface so accidental authoring format drift is visible.
 
@@ -20,3 +22,9 @@ No full TOML schema language. No external schema dependency.
 
 ## Expected Result
 Format surface changes are deliberate and reviewed.
+
+## Completed Coverage
+- Added a test-owned supported TOML table/key snapshot in `runtime_gameplay_ascii_source_plan_toml_schema_snapshot_tests`.
+- Canonical fixtures are checked against the snapshot so table/key drift is caught in tests.
+- Unsupported table, root key, and repeated-table key diagnostics are covered.
+- Fixture README examples now include expectation tables in the supported surface overview.
