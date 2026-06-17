@@ -38,3 +38,18 @@ Queue:
 13. `13_fixture_ceremony_cleanup` - remove redundant C++ fixture ceremony.
 14. `14_authoring_package_layout` - proposed scenario package shape.
 15. `15_editor_handoff_gate` - final UI/Edi integration gate.
+16. `16_authoring_facade_api` - reusable engine API for file-to-run flow.
+17. `17_package_runner_gate` - review gate for directory/package execution.
+18. `18_package_runner_implementation` - package runner only if gate passes.
+19. `19_editor_preview_model_gate` - gate for engine-only preview model shape.
+20. `20_authoring_diff_report` - compare two scenario runs without new semantics.
+21. `21_source_plan_version_policy` - explicit source-plan version compatibility.
+22. `22_schema_snapshot_tests` - snapshot supported TOML table/key surface.
+23. `23_fixtures_from_cli_examples` - derive docs/examples from canonical fixtures.
+24. `24_batch_queue_maintenance` - keep this bucket pruned and current.
+25. `25_runtime_authoring_cleanup_gate` - review cleanup targets after v1 hardening.
+26. `26_minimal_editor_model` - engine-only model if prior gates pass.
+27. `27_authored_scenario_perf_budget` - lightweight performance/size budget checks.
+28. `28_content_error_codes` - stable user-facing authoring error-code pass.
+29. `29_release_candidate_authoring_v1` - freeze an Authoring v1 acceptance set.
+30. `30_post_v1_semantics_gate` - decide next gameplay semantics after v1.
