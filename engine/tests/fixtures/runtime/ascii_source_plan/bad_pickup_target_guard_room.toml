@@ -1,0 +1,51 @@
+format_id = "iggy:ascii-source-plan"
+version = 1
+source_id = "scenario:bad-pickup-target"
+source_ref = "authoring:negative-bad-pickup-target"
+
+[grid]
+width = 7
+height = 4
+background = "."
+rows = [
+  "#######",
+  "#..k.@#",
+  "#.....#",
+  "#######",
+]
+
+[no_claims]
+runtime_truth = false
+gameplay_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[promotion]
+ready = false
+runtime_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[[legend]]
+glyph = "@"
+kind = "player_start"
+role_id = "role:player-start"
+maps_to_scenario_marker = true
+scenario_marker_kind = "player_start"
+
+[[legend]]
+glyph = "k"
+kind = "annotation"
+role_id = "role:item"
+
+[[item_drops]]
+drop_id = "drop:key"
+item_id = "item:key"
+count = 1
+tile = { x = 3, y = 1 }
+glyph = "k"
+
+[[frame_player_commands]]
+frame_id = "frame:bad-pickup"
+command = "pickup"
+target_id = "drop:missing"

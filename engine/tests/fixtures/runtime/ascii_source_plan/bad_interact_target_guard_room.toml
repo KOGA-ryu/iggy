@@ -1,0 +1,49 @@
+format_id = "iggy:ascii-source-plan"
+version = 1
+source_id = "scenario:bad-interact-target"
+source_ref = "authoring:negative-bad-interact-target"
+
+[grid]
+width = 7
+height = 4
+background = "."
+rows = [
+  "#######",
+  "#....@#",
+  "#.....#",
+  "#######",
+]
+
+[no_claims]
+runtime_truth = false
+gameplay_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[promotion]
+ready = false
+runtime_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[[legend]]
+glyph = "@"
+kind = "player_start"
+role_id = "role:player-start"
+maps_to_scenario_marker = true
+scenario_marker_kind = "player_start"
+
+[[interaction_targets]]
+target_id = "target:known"
+kind = "usable"
+tile = { x = 3, y = 1 }
+radius = 1.0
+enabled = true
+effect = "toggle_target"
+effect_target_id = "target:known"
+enabled_value = false
+
+[[frame_player_commands]]
+frame_id = "frame:bad-interact"
+command = "interact"
+target_id = "target:missing"
