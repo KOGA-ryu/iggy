@@ -1,6 +1,6 @@
 # 12 Authoring Test Support Extraction
 
-Status: pending.
+Status: complete.
 
 Goal: extract test-only helpers for repeated authoring fixture paths, package
 paths, CLI invocation, final-row blocks, and common output assertions.
@@ -22,3 +22,12 @@ Guardrails:
 Verification:
 - Focused build/run for touched test targets.
 - Full CTest at batch end if test support changes land.
+
+Result:
+- Added `engine/tests/support/AuthoringTestSupport.hpp` for test-only authoring
+  fixture paths, package paths, CLI invocation, final-row blocks, fixture text,
+  string containment, and common CLI output containment assertions.
+- Updated selected authoring CLI, manifest sweep, package facade, and preview
+  model tests to use the shared helper.
+- Preserved existing assertions, expected output fragments, exit-code checks,
+  fixture names, and production code.

@@ -1,14 +1,12 @@
-#include <array>
-#include <cstdio>
 #include <fstream>
 #include <filesystem>
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <sys/wait.h>
 #include <vector>
 
 #include "runtime/RuntimeGameplayTomlScenarioFacade.hpp"
+#include "support/AuthoringTestSupport.hpp"
 #include "support/CanonicalAuthoringFixtures.hpp"
 
 #ifndef IGGY_SCENARIO_TOML_RUNNER_PATH
@@ -27,10 +25,7 @@ namespace {
 
 int Failures = 0;
 
-struct CommandResult {
-	int exitCode = -1;
-	std::string output;
-};
+using CommandResult = iggy::test::AuthoringCliCommandResult;
 
 struct TempTomlFile {
 	std::filesystem::path path;
@@ -69,7 +64,7 @@ void Expect(bool condition, const char *message)
 
 bool Contains(const std::string &text, const std::string &needle)
 {
-	return text.find(needle) != std::string::npos;
+	return iggy::test::Contains(text, needle);
 }
 
 bool StartsWith(const std::string &text, const char *prefix)
@@ -123,73 +118,35 @@ void ExpectOutputContract(
 	}
 }
 
-std::string ShellQuote(const std::string &value)
-{
-	std::string quoted = "'";
-	for (char ch : value) {
-		if (ch == '\'')
-			quoted += "'\\''";
-		else
-			quoted += ch;
-	}
-	quoted += "'";
-	return quoted;
-}
-
-int DecodeExitCode(int status)
-{
-	if (WIFEXITED(status))
-		return WEXITSTATUS(status);
-	return -1;
-}
-
 CommandResult RunCli(const std::vector<std::string> &args)
 {
-	std::string command = ShellQuote(IGGY_SCENARIO_TOML_RUNNER_PATH);
-	for (const std::string &arg : args) {
-		command += ' ';
-		command += ShellQuote(arg);
-	}
-	command += " 2>&1";
-
-	CommandResult result;
-	std::array<char, 256> buffer {};
-	FILE *pipe = popen(command.c_str(), "r");
-	if (pipe == nullptr) {
-		result.output = "popen failed";
-		return result;
-	}
-	while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr)
-		result.output += buffer.data();
-	result.exitCode = DecodeExitCode(pclose(pipe));
-	return result;
+	return iggy::test::RunAuthoringCli(IGGY_SCENARIO_TOML_RUNNER_PATH, args);
 }
 
 std::string FixturePath(const char *name)
 {
-	return (std::filesystem::path(IGGY_TEST_FIXTURE_DIR) / name).string();
+	return iggy::test::AuthoringSourceFixturePathString(
+		IGGY_TEST_FIXTURE_DIR,
+		name);
 }
 
 std::string PackageFixturePath(const char *name)
 {
-	return (std::filesystem::path(IGGY_TEST_PACKAGE_FIXTURE_DIR) / name).string();
+	return iggy::test::AuthoringPackageFixturePathString(
+		IGGY_TEST_PACKAGE_FIXTURE_DIR,
+		name);
 }
 
 std::string FixtureText(const char *name)
 {
-	std::ifstream stream(FixturePath(name));
-	std::ostringstream text;
-	text << stream.rdbuf();
-	return text.str();
+	return iggy::test::AuthoringSourceFixtureText(
+		IGGY_TEST_FIXTURE_DIR,
+		name);
 }
 
 std::string FinalRowsBlock(const std::vector<std::string> &rows)
 {
-	std::ostringstream stream;
-	stream << "final_rows:\n";
-	for (const std::string &row : rows)
-		stream << row << '\n';
-	return stream.str();
+	return iggy::test::FinalRowsBlock(rows);
 }
 
 std::string TraceFrameBlock(
@@ -237,13 +194,7 @@ void ExpectOutputContains(
 	const std::vector<std::string> &needles,
 	const char *context)
 {
-	for (const std::string &needle : needles) {
-		if (!Contains(result.output, needle)) {
-			std::cerr << "FAIL: " << context << " missing: " << needle
-				<< "\noutput:\n" << result.output << '\n';
-			++Failures;
-		}
-	}
+	iggy::test::ExpectOutputContains(result, needles, context, Failures);
 }
 
 void ExpectCliMatchesFacadeRunProjection(

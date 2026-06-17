@@ -1,12 +1,10 @@
-#include <array>
-#include <cstdio>
 #include <filesystem>
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <sys/wait.h>
 #include <vector>
 
+#include "support/AuthoringTestSupport.hpp"
 #include "support/CanonicalAuthoringFixtures.hpp"
 
 #ifndef IGGY_SCENARIO_TOML_RUNNER_PATH
@@ -21,10 +19,7 @@ namespace {
 
 int Failures = 0;
 
-struct CommandResult {
-	int exitCode = -1;
-	std::string output;
-};
+using CommandResult = iggy::test::AuthoringCliCommandResult;
 
 void Expect(bool condition, const std::string &message)
 {
@@ -36,63 +31,24 @@ void Expect(bool condition, const std::string &message)
 
 bool Contains(const std::string &text, const std::string &needle)
 {
-	return text.find(needle) != std::string::npos;
-}
-
-std::string ShellQuote(const std::string &value)
-{
-	std::string quoted = "'";
-	for (char ch : value) {
-		if (ch == '\'')
-			quoted += "'\\''";
-		else
-			quoted += ch;
-	}
-	quoted += "'";
-	return quoted;
-}
-
-int DecodeExitCode(int status)
-{
-	if (WIFEXITED(status))
-		return WEXITSTATUS(status);
-	return -1;
+	return iggy::test::Contains(text, needle);
 }
 
 CommandResult RunCli(const std::vector<std::string> &args)
 {
-	std::string command = ShellQuote(IGGY_SCENARIO_TOML_RUNNER_PATH);
-	for (const std::string &arg : args) {
-		command += ' ';
-		command += ShellQuote(arg);
-	}
-	command += " 2>&1";
-
-	CommandResult result;
-	std::array<char, 256> buffer {};
-	FILE *pipe = popen(command.c_str(), "r");
-	if (pipe == nullptr) {
-		result.output = "popen failed";
-		return result;
-	}
-	while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr)
-		result.output += buffer.data();
-	result.exitCode = DecodeExitCode(pclose(pipe));
-	return result;
+	return iggy::test::RunAuthoringCli(IGGY_SCENARIO_TOML_RUNNER_PATH, args);
 }
 
 std::string FixturePath(const char *name)
 {
-	return (std::filesystem::path(IGGY_TEST_FIXTURE_DIR) / name).string();
+	return iggy::test::AuthoringSourceFixturePathString(
+		IGGY_TEST_FIXTURE_DIR,
+		name);
 }
 
 std::string FinalRowsBlock(const std::vector<std::string> &rows)
 {
-	std::ostringstream stream;
-	stream << "final_rows:\n";
-	for (const std::string &row : rows)
-		stream << row << '\n';
-	return stream.str();
+	return iggy::test::FinalRowsBlock(rows);
 }
 
 void ExpectOutputContains(
@@ -100,13 +56,7 @@ void ExpectOutputContains(
 	const std::vector<std::string> &needles,
 	const std::string &context)
 {
-	for (const std::string &needle : needles) {
-		if (!Contains(result.output, needle)) {
-			std::cerr << "FAIL: " << context << " missing: " << needle
-				<< "\noutput:\n" << result.output << '\n';
-			++Failures;
-		}
-	}
+	iggy::test::ExpectOutputContains(result, needles, context, Failures);
 }
 
 std::vector<std::string> SummaryNeedles(

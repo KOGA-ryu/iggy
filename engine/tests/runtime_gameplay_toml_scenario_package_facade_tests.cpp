@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "support/AuthoringTestSupport.hpp"
+
 #ifndef IGGY_TEST_PACKAGE_FIXTURE_DIR
 #error "IGGY_TEST_PACKAGE_FIXTURE_DIR must point at engine/tests/fixtures/runtime/ascii_source_plan_packages"
 #endif
@@ -34,12 +36,16 @@ void Expect(bool condition, const std::string &message)
 
 std::filesystem::path FixturePath(const char *name)
 {
-	return std::filesystem::path(IGGY_TEST_PACKAGE_FIXTURE_DIR) / name;
+	return iggy::test::AuthoringPackageFixturePath(
+		IGGY_TEST_PACKAGE_FIXTURE_DIR,
+		name);
 }
 
 std::filesystem::path SourceFixturePath(const char *name)
 {
-	return std::filesystem::path(IGGY_TEST_FIXTURE_DIR) / name;
+	return iggy::test::AuthoringSourceFixturePath(
+		IGGY_TEST_FIXTURE_DIR,
+		name);
 }
 
 std::filesystem::path TempRoot()
