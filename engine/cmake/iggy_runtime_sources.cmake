@@ -12,6 +12,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeGameplayOrchestratedFrameStep.cpp
   src/runtime/RuntimeGameplayAuthoringDiagnostics.cpp
   src/runtime/RuntimeGameplayAuthoringErrorCodes.cpp
+  src/runtime/RuntimeGameplayAuthoringPreviewModel.cpp
   src/runtime/RuntimeGameplayScenarioAuthoringAdapter.cpp
   src/runtime/RuntimeGameplayAsciiScenarioPacket.cpp
   src/runtime/RuntimeGameplayAsciiScenarioPacketValidator.cpp
