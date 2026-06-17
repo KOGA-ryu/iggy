@@ -700,13 +700,9 @@ void TestSelfContainedFixtureRunsWithEmptyConverterConfig()
 	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
 	packet.hasAsciiSourcePlan = true;
 	packet.asciiSourcePlan = read.text.plan;
-	iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig adapterConfig;
-	adapterConfig.hasAsciiSourcePlanProfileScenarioConfig = true;
 
 	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
-		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(
-			packet,
-			adapterConfig);
+		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(packet);
 	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
 		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
 	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
@@ -722,7 +718,7 @@ void TestSelfContainedFixtureRunsWithEmptyConverterConfig()
 	Expect(read.text.plan.authoredProfileCount() == 1, "self-contained fixture should parse one authored profile");
 	Expect(read.text.plan.authoredControlCount() == 1, "self-contained fixture should parse one authored control");
 	Expect(read.text.plan.authoredPlayerCommandCount() == 1, "self-contained fixture should parse one authored player command");
-	Expect(adapter.config.hasAsciiSourcePlanProfileScenarioConfig, "self-contained fixture should still opt into source-plan conversion");
+	Expect(!adapter.config.hasAsciiSourcePlanProfileScenarioConfig, "self-contained fixture should not need explicit source-plan conversion config");
 	Expect(!adapter.config.asciiSourcePlanProfileScenario.hasDefaultFrame, "self-contained fixture should not supply C++ default frame");
 	Expect(adapter.config.asciiSourcePlanProfileScenario.profileTraits.entries.empty(), "self-contained fixture should not supply C++ profile catalog");
 	Expect(adapter.ok(), "self-contained fixture should adapt parsed source plan with empty converter config");
