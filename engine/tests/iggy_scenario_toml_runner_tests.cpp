@@ -720,6 +720,28 @@ void TestTraceLockedDoorKeyRooms()
 		"locked door without key trace CLI run");
 }
 
+void TestCheckPlayerAndGuardActorStateExpectations()
+{
+	const CommandResult result =
+		RunCli({ "--check", FixturePath("player_and_guard_room.toml") });
+	Expect(result.exitCode == 0, "player-and-guard check CLI run should succeed");
+	ExpectOutputContains(
+		result,
+		{
+			"status:\nresult: ok\nsummary:\n",
+			"frame_count: 1",
+			"accepted_command_count: 1",
+			"npc_moved_count: 1",
+			"expectation:\n",
+			"present: true",
+			"result: matched",
+			"actor_states: matched",
+			"player_state: matched",
+			FinalRowsBlock({ "#######", "#.A.@.#", "#.....#", "#######" }),
+		},
+		"player-and-guard check CLI run");
+}
+
 void TestExpectationComparisonReportsMatchAndMismatch()
 {
 	const std::string base = FixtureText("moving_guard_room.toml");
@@ -1080,6 +1102,7 @@ int main()
 	TestTraceMixedMiniScenario();
 	TestTraceMixedProgressionRoom();
 	TestTraceLockedDoorKeyRooms();
+	TestCheckPlayerAndGuardActorStateExpectations();
 	TestExpectationComparisonReportsMatchAndMismatch();
 	TestCheckModeUsesExpectationComparisonForExitStatus();
 	TestLintModeValidatesWithoutRunningScenario();

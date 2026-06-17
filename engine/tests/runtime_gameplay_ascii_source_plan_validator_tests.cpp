@@ -819,6 +819,81 @@ void TestExpectationShapeIssuesFail()
 		Validate(duplicateTarget);
 	Expect(!duplicateTargetResult.ok(), "duplicate expected interaction targets should fail");
 	Expect(HasIssue(duplicateTargetResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedInteractionTargetDuplicateId), "duplicate expected interaction target should report issue");
+
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan validActorState = ValidPlan();
+	validActorState.expectations.actorStates.push_back(
+		{ Id("npc:guard"), { 2, 1 }, true });
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult validActorStateResult =
+		Validate(validActorState);
+	Expect(validActorStateResult.ok(), "known expected actor state with tile should validate");
+
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan missingActorId = ValidPlan();
+	missingActorId.expectations.actorStates.push_back(
+		{ {}, { 2, 1 }, true });
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult missingActorIdResult =
+		Validate(missingActorId);
+	Expect(!missingActorIdResult.ok(), "expected actor state without actor id should fail");
+	Expect(HasIssue(missingActorIdResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedActorStateMissingId), "missing expected actor id should report issue");
+
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan unknownActorState = ValidPlan();
+	unknownActorState.expectations.actorStates.push_back(
+		{ Id("npc:missing"), { 2, 1 }, true });
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult unknownActorStateResult =
+		Validate(unknownActorState);
+	Expect(!unknownActorStateResult.ok(), "unknown expected actor state should fail");
+	Expect(HasIssue(unknownActorStateResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedActorStateUnknownId), "unknown expected actor state should report issue");
+
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan duplicateActorState = ValidPlan();
+	duplicateActorState.expectations.actorStates.push_back(
+		{ Id("npc:guard"), { 2, 1 }, true });
+	duplicateActorState.expectations.actorStates.push_back(
+		{ Id("npc:guard"), { 3, 1 }, true });
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult duplicateActorStateResult =
+		Validate(duplicateActorState);
+	Expect(!duplicateActorStateResult.ok(), "duplicate expected actor states should fail");
+	Expect(HasIssue(duplicateActorStateResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedActorStateDuplicateId), "duplicate expected actor state should report issue");
+
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan missingActorTile = ValidPlan();
+	missingActorTile.expectations.actorStates.push_back(
+		{ Id("npc:guard"), {}, false });
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult missingActorTileResult =
+		Validate(missingActorTile);
+	Expect(!missingActorTileResult.ok(), "expected actor state without tile should fail");
+	Expect(HasIssue(missingActorTileResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedActorStateMissingTile), "missing expected actor tile should report issue");
+
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan missingPlayer = ValidPlan();
+	missingPlayer.expectations.hasPlayerState = true;
+	missingPlayer.expectations.playerState = { { 2, 1 }, true };
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult missingPlayerResult =
+		Validate(missingPlayer);
+	Expect(!missingPlayerResult.ok(), "expected player state without player start should fail");
+	Expect(HasIssue(missingPlayerResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedPlayerStateMissingPlayer), "missing expected player should report issue");
+
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan validPlayerState = ValidPlan();
+	validPlayerState.grid.rows[1] = "#A.@#";
+	validPlayerState.legend.push_back(
+		{
+			'@',
+			iggy::runtime::RuntimeGameplayAsciiSourcePlanGlyphKind::PlayerStart,
+			Id("role:player"),
+			{},
+			true,
+			iggy::runtime::RuntimeGameplayAsciiScenarioMarkerKind::PlayerStart,
+			Id("player:one"),
+			{},
+		});
+	validPlayerState.expectations.hasPlayerState = true;
+	validPlayerState.expectations.playerState = { { 2, 1 }, true };
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult validPlayerStateResult =
+		Validate(validPlayerState);
+	Expect(validPlayerStateResult.ok(), "expected player state with player start should validate");
+
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan missingPlayerTile = validPlayerState;
+	missingPlayerTile.expectations.playerState = {};
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult missingPlayerTileResult =
+		Validate(missingPlayerTile);
+	Expect(!missingPlayerTileResult.ok(), "expected player state without tile should fail");
+	Expect(HasIssue(missingPlayerTileResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedPlayerStateMissingTile), "missing expected player tile should report issue");
 }
 
 void TestExactIdsAndInputImmutability()

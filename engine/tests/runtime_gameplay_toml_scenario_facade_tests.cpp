@@ -276,6 +276,28 @@ void TestCheckModeComparesInteractionTargetExpectations()
 		"interaction expectation check should preserve final disabled door");
 }
 
+void TestCheckModeComparesActorAndPlayerStateExpectations()
+{
+	iggy::runtime::RuntimeGameplayTomlScenarioFacadeConfig config;
+	config.mode = iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Check;
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult result =
+		iggy::runtime::RuntimeGameplayTomlScenarioFacade {}.execute(
+			FixturePath("player_and_guard_room.toml"),
+			config);
+
+	Expect(result.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::CheckPassed,
+		"check mode should pass when actor and player state expectations match");
+	Expect(result.expectationComparison.checkedActorStates,
+		"actor state expectation check should compare actor states");
+	Expect(result.expectationComparison.actorStatesMatched,
+		"actor state expectation check should report matched actor states");
+	Expect(result.expectationComparison.checkedPlayerState,
+		"player state expectation check should compare player state");
+	Expect(result.expectationComparison.playerStateMatched,
+		"player state expectation check should report matched player state");
+}
+
 void TestCheckModeFailsWithoutExpectations()
 {
 	iggy::runtime::RuntimeGameplayTomlScenarioFacadeConfig config;
@@ -344,6 +366,7 @@ int main()
 	TestCheckModeComparesTraceExpectations();
 	TestCheckModeComparesInventoryExpectations();
 	TestCheckModeComparesInteractionTargetExpectations();
+	TestCheckModeComparesActorAndPlayerStateExpectations();
 	TestCheckModeFailsWithoutExpectations();
 	TestReadFailureStopsBeforeConversion();
 	TestConversionFailureStopsBeforeRun();

@@ -3,6 +3,8 @@
 #include "runtime/RuntimeGameplayAuthoringDiagnostics.hpp"
 #include "runtime/RuntimeGameplayAsciiSourcePlanFinalDebugRows.hpp"
 
+#include "scene/player/PlayerAgentState.hpp"
+
 #include <algorithm>
 
 namespace iggy::runtime {
@@ -78,6 +80,29 @@ bool InteractionTargetsMatch(
 		}
 	}
 	return true;
+}
+
+bool ActorStatesMatch(
+	const std::vector<RuntimeGameplayAsciiSourcePlanExpectedActorState>
+		&expected,
+	const NpcActorState2DRegistry &actual)
+{
+	for (const RuntimeGameplayAsciiSourcePlanExpectedActorState &actor :
+		expected) {
+		const NpcActorState2D *actualActor = actual.find(actor.actorId);
+		if (actualActor == nullptr ||
+			tileForPoint(actualActor->position) != actor.tile) {
+			return false;
+		}
+	}
+	return true;
+}
+
+bool PlayerStateMatches(
+	const RuntimeGameplayAsciiSourcePlanExpectedPlayerState &expected,
+	const RuntimeSessionState &session)
+{
+	return session.hasPlayer && playerTile(session.player) == expected.tile;
 }
 
 RuntimeGameplayTomlScenarioExpectationComparison CompareExpectations(
@@ -182,6 +207,19 @@ RuntimeGameplayTomlScenarioExpectationComparison CompareExpectations(
 			run.state.interaction.targets);
 		comparison.matched =
 			comparison.matched && comparison.interactionTargetsMatched;
+	}
+	if (!expectations.actorStates.empty()) {
+		comparison.checkedActorStates = true;
+		comparison.actorStatesMatched = ActorStatesMatch(
+			expectations.actorStates,
+			run.state.npcActors);
+		comparison.matched = comparison.matched && comparison.actorStatesMatched;
+	}
+	if (expectations.hasPlayerState) {
+		comparison.checkedPlayerState = true;
+		comparison.playerStateMatched =
+			PlayerStateMatches(expectations.playerState, run.state.session);
+		comparison.matched = comparison.matched && comparison.playerStateMatched;
 	}
 
 	return comparison;

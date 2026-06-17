@@ -36,6 +36,18 @@ bool HasEarlierMatchingExpectedInteractionTarget(
 	return false;
 }
 
+bool HasEarlierMatchingExpectedActorState(
+	const std::vector<RuntimeGameplayAsciiSourcePlanExpectedActorState> &actors,
+	std::size_t currentIndex)
+{
+	for (std::size_t index = 0; index < currentIndex; ++index) {
+		if (actors[index].actorId == actors[currentIndex].actorId) {
+			return true;
+		}
+	}
+	return false;
+}
+
 void AddIssue(
 	RuntimeGameplayAsciiSourcePlanValidationResult &result,
 	RuntimeGameplayAsciiSourcePlanIssue issue)
@@ -116,6 +128,12 @@ void AddIssue(
 		ExpectedInteractionTargetDuplicateId:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::
 		ExpectedInteractionTargetUnknownId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedActorStateMissingId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedActorStateDuplicateId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedActorStateUnknownId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedActorStateMissingTile:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedPlayerStateMissingTile:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedPlayerStateMissingPlayer:
 		++result.expectationIssueCount;
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsafeNoClaims:
@@ -713,6 +731,64 @@ bool HasAuthoredInteractionTarget(
 	return false;
 }
 
+bool HasAuthoredActor(
+	const RuntimeGameplayAsciiSourcePlan &plan,
+	const ResourceId &actorId)
+{
+	for (const RuntimeGameplayAsciiSourcePlanAnnotatedCell &cell :
+		plan.annotatedCells) {
+		if (cell.markerId == actorId) {
+			for (const RuntimeGameplayAsciiSourcePlanGlyphLegendEntry &entry :
+				plan.legend) {
+				if (entry.glyph == cell.glyph &&
+					(entry.kind ==
+							RuntimeGameplayAsciiSourcePlanGlyphKind::Actor ||
+						entry.scenarioMarkerKind ==
+							RuntimeGameplayAsciiScenarioMarkerKind::Actor)) {
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
+bool IsPlayerStartLegend(const RuntimeGameplayAsciiSourcePlanGlyphLegendEntry &entry)
+{
+	return entry.kind == RuntimeGameplayAsciiSourcePlanGlyphKind::PlayerStart ||
+		entry.scenarioMarkerKind ==
+			RuntimeGameplayAsciiScenarioMarkerKind::PlayerStart;
+}
+
+bool IsPlayerStartGlyph(const RuntimeGameplayAsciiSourcePlan &plan, char glyph)
+{
+	for (const RuntimeGameplayAsciiSourcePlanGlyphLegendEntry &entry :
+		plan.legend) {
+		if (entry.glyph == glyph && IsPlayerStartLegend(entry)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool HasPlayerStart(const RuntimeGameplayAsciiSourcePlan &plan)
+{
+	for (const RuntimeGameplayAsciiSourcePlanAnnotatedCell &cell :
+		plan.annotatedCells) {
+		if (IsPlayerStartGlyph(plan, cell.glyph)) {
+			return true;
+		}
+	}
+	for (const std::string &row : plan.grid.rows) {
+		for (char glyph : row) {
+			if (IsPlayerStartGlyph(plan, glyph)) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 bool HasAuthoredPickupTarget(
 	const RuntimeGameplayAsciiSourcePlan &plan,
 	const ResourceId &targetId)
@@ -964,6 +1040,61 @@ void ValidateExpectations(RuntimeGameplayAsciiSourcePlanValidationResult &result
 				ExpectedInteractionTargetUnknownId;
 			issue.index = index;
 			issue.id = target.targetId;
+			AddIssue(result, issue);
+		}
+	}
+
+	for (std::size_t index = 0; index < expectations.actorStates.size();
+		++index) {
+		const RuntimeGameplayAsciiSourcePlanExpectedActorState &actor =
+			expectations.actorStates[index];
+		if (actor.actorId.empty()) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code =
+				RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedActorStateMissingId;
+			issue.index = index;
+			AddIssue(result, issue);
+			continue;
+		}
+		if (HasEarlierMatchingExpectedActorState(
+				expectations.actorStates,
+				index)) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code =
+				RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedActorStateDuplicateId;
+			issue.index = index;
+			issue.id = actor.actorId;
+			AddIssue(result, issue);
+		}
+		if (!HasAuthoredActor(result.plan, actor.actorId)) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code =
+				RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedActorStateUnknownId;
+			issue.index = index;
+			issue.id = actor.actorId;
+			AddIssue(result, issue);
+		}
+		if (!actor.hasTile) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code =
+				RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedActorStateMissingTile;
+			issue.index = index;
+			issue.id = actor.actorId;
+			AddIssue(result, issue);
+		}
+	}
+
+	if (expectations.hasPlayerState) {
+		if (!HasPlayerStart(result.plan)) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				ExpectedPlayerStateMissingPlayer;
+			AddIssue(result, issue);
+		}
+		if (!expectations.playerState.hasTile) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				ExpectedPlayerStateMissingTile;
 			AddIssue(result, issue);
 		}
 	}

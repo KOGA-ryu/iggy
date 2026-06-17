@@ -1,5 +1,7 @@
 # Batch 58: Actor State Expectations
 
+Status: complete.
+
 ## Goal
 Extend authored expectations to verify final NPC/player tile or position facts for movement scenarios.
 
@@ -20,3 +22,10 @@ No pathfinding changes, movement tolerance policy beyond existing deterministic 
 
 ## Expected Result
 Movement fixture failures identify which actor/player state mismatched.
+
+## Completed Coverage
+- Added optional `[[expect_actor_states]]` facts for expected final NPC actor tile by actor id.
+- Added optional `[expect_player_state]` facts for expected final player tile when a player start is authored.
+- Source-plan validation rejects missing, duplicate, and unknown expected actor ids, missing actor tiles, missing player tiles, and player expectations without an authored player start.
+- Check mode compares expected actor/player tiles against final `RuntimeGameplayState` without changing movement semantics.
+- `player_and_guard_room.toml` now self-checks final guard and player tiles.

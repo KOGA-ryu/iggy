@@ -1501,6 +1501,35 @@ enabled = false
 	}
 }
 
+void TestExpectActorAndPlayerStatesParse()
+{
+	const std::string toml = RootGridLegendCellsRegionsToml() + R"toml(
+
+[[expect_actor_states]]
+actor_id = "npc:guard"
+tile = { x = 3, y = 1 }
+
+[expect_player_state]
+tile = { x = 4, y = 1 }
+)toml";
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
+		Read(toml);
+
+	Expect(read.ok(), "expect actor and player state tables should parse");
+	Expect(read.sourceValidation.ok(), "well-shaped actor and player state expectations should validate");
+	Expect(read.plan.hasExpectations(), "actor and player state tables should populate expectations");
+	Expect(read.plan.expectations.actorStates.size() == 1, "expect actor state table should preserve actor count");
+	if (!read.plan.expectations.actorStates.empty()) {
+		const iggy::runtime::RuntimeGameplayAsciiSourcePlanExpectedActorState &actor =
+			read.plan.expectations.actorStates[0];
+		Expect(actor.actorId == Id("npc:guard"), "expect actor state should preserve actor id");
+		Expect(actor.hasTile && actor.tile == iggy::TileCoord { 3, 1 }, "expect actor state should preserve tile");
+	}
+	Expect(read.plan.expectations.hasPlayerState, "expect player state table should mark player state present");
+	Expect(read.plan.expectations.playerState.hasTile && read.plan.expectations.playerState.tile == iggy::TileCoord { 4, 1 }, "expect player state should preserve tile");
+}
+
 void TestExpectWrongTypedFieldReportsContext()
 {
 	const std::string toml = RootGridToml() + R"toml(
@@ -1636,6 +1665,30 @@ enabled = false
 	}
 }
 
+void TestExpectActorStateUnknownSurfacesSourcePlanValidation()
+{
+	const std::string toml = RootGridLegendCellsRegionsToml() + R"toml(
+
+[[expect_actor_states]]
+actor_id = "npc:missing"
+tile = { x = 3, y = 1 }
+)toml";
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
+		Read(toml);
+
+	Expect(read.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "unknown expect actor state should report source-plan invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(read, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedActorStateUnknownId);
+	Expect(issue != nullptr, "unknown expect actor state should surface source-plan issue");
+	if (issue != nullptr) {
+		Expect(issue->table == "expect_actor_states", "unknown expect actor state should report actor state expectation table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "unknown expect actor state should report table index");
+		Expect(issue->key == "actor_id", "unknown expect actor state should report actor_id key");
+		Expect(issue->line == LineOfNth(toml, "[[expect_actor_states]]"), "unknown expect actor state should preserve source line");
+	}
+}
+
 void TestTomlSourcePlanFeedsConverterAndProfileValidator()
 {
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
@@ -1733,11 +1786,13 @@ int main()
 	TestExpectTraceFramesParse();
 	TestExpectInventoryStacksParse();
 	TestExpectInteractionTargetsParse();
+	TestExpectActorAndPlayerStatesParse();
 	TestExpectWrongTypedFieldReportsContext();
 	TestExpectFinalRowsShapeSurfacesSourcePlanValidation();
 	TestExpectTraceFrameRowsShapeSurfacesSourcePlanValidation();
 	TestExpectInventoryStackShapeSurfacesSourcePlanValidation();
 	TestExpectInteractionTargetUnknownSurfacesSourcePlanValidation();
+	TestExpectActorStateUnknownSurfacesSourcePlanValidation();
 	TestTomlSourcePlanFeedsConverterAndProfileValidator();
 	return Failures;
 }

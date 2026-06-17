@@ -187,6 +187,18 @@ const char *runtimeGameplayAuthoringCodeText(
 		return "expected_interaction_target_duplicate_id";
 	case Code::ExpectedInteractionTargetUnknownId:
 		return "expected_interaction_target_unknown_id";
+	case Code::ExpectedActorStateMissingId:
+		return "expected_actor_state_missing_id";
+	case Code::ExpectedActorStateDuplicateId:
+		return "expected_actor_state_duplicate_id";
+	case Code::ExpectedActorStateUnknownId:
+		return "expected_actor_state_unknown_id";
+	case Code::ExpectedActorStateMissingTile:
+		return "expected_actor_state_missing_tile";
+	case Code::ExpectedPlayerStateMissingTile:
+		return "expected_player_state_missing_tile";
+	case Code::ExpectedPlayerStateMissingPlayer:
+		return "expected_player_state_missing_player";
 	case Code::EmptyActorMarkerId:
 		return "empty_actor_marker_id";
 	case Code::EmptyProfileMarkerId:

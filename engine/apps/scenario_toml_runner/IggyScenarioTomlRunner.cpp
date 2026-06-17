@@ -205,6 +205,12 @@ void PrintExpectationComparison(
 	if (comparison.checkedInteractionTargets)
 		std::cout << "interaction_targets: "
 			<< MatchText(comparison.interactionTargetsMatched) << '\n';
+	if (comparison.checkedActorStates)
+		std::cout << "actor_states: "
+			<< MatchText(comparison.actorStatesMatched) << '\n';
+	if (comparison.checkedPlayerState)
+		std::cout << "player_state: "
+			<< MatchText(comparison.playerStateMatched) << '\n';
 }
 
 void PrintFirstProfileValidationIssue(

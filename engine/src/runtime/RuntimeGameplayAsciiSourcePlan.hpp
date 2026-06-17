@@ -229,6 +229,17 @@ struct RuntimeGameplayAsciiSourcePlanExpectedInteractionTarget {
 	bool enabled = true;
 };
 
+struct RuntimeGameplayAsciiSourcePlanExpectedActorState {
+	ResourceId actorId;
+	TileCoord tile;
+	bool hasTile = false;
+};
+
+struct RuntimeGameplayAsciiSourcePlanExpectedPlayerState {
+	TileCoord tile;
+	bool hasTile = false;
+};
+
 struct RuntimeGameplayAsciiSourcePlanExpectations {
 	bool hasFinalRows = false;
 	std::vector<std::string> finalRows;
@@ -247,6 +258,9 @@ struct RuntimeGameplayAsciiSourcePlanExpectations {
 		inventoryStacks;
 	std::vector<RuntimeGameplayAsciiSourcePlanExpectedInteractionTarget>
 		interactionTargets;
+	std::vector<RuntimeGameplayAsciiSourcePlanExpectedActorState> actorStates;
+	bool hasPlayerState = false;
+	RuntimeGameplayAsciiSourcePlanExpectedPlayerState playerState;
 
 	[[nodiscard]] bool hasAny() const;
 };

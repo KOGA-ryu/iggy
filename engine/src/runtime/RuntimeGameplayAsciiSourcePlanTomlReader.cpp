@@ -22,6 +22,8 @@ enum class Table {
 	ExpectTraceFrames,
 	ExpectInventoryStacks,
 	ExpectInteractionTargets,
+	ExpectActorStates,
+	ExpectPlayerState,
 	Legend,
 	Cells,
 	Regions,
@@ -70,6 +72,10 @@ std::string TableName(Table table)
 		return "expect_inventory_stacks";
 	case Table::ExpectInteractionTargets:
 		return "expect_interaction_targets";
+	case Table::ExpectActorStates:
+		return "expect_actor_states";
+	case Table::ExpectPlayerState:
+		return "expect_player_state";
 	case Table::Legend:
 		return "legend";
 	case Table::Cells:
@@ -1180,6 +1186,36 @@ RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
 				locations.expectInteractionTargetTableLines[sourceIssue.index];
 		}
 		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedActorStateMissingId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedActorStateDuplicateId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedActorStateUnknownId:
+		issue.table = "expect_actor_states";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "actor_id";
+		if (sourceIssue.index < locations.expectActorStateTableLines.size()) {
+			issue.line = locations.expectActorStateTableLines[sourceIssue.index];
+		}
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedActorStateMissingTile:
+		issue.table = "expect_actor_states";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "tile";
+		if (sourceIssue.index < locations.expectActorStateTableLines.size()) {
+			issue.line = locations.expectActorStateTableLines[sourceIssue.index];
+		}
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedPlayerStateMissingTile:
+		issue.table = "expect_player_state";
+		issue.key = "tile";
+		issue.line = locations.expectPlayerStateTableLine;
+		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedPlayerStateMissingPlayer:
+		issue.table = "expect_player_state";
+		issue.key = "tile";
+		issue.line = locations.expectPlayerStateTableLine;
+		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::EmptyRows:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::GridDimensionMismatch:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::RaggedRow:
@@ -1337,6 +1373,25 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 				true,
 				result.plan.expectations.interactionTargets.size() - 1,
 			};
+			continue;
+		}
+		if (line == "[[expect_actor_states]]") {
+			result.plan.expectations.actorStates.push_back({});
+			result.sourceLocations.expectActorStateTableLines.push_back(
+				lineNumber);
+			table = Table::ExpectActorStates;
+			context = {
+				table,
+				true,
+				result.plan.expectations.actorStates.size() - 1,
+			};
+			continue;
+		}
+		if (line == "[expect_player_state]") {
+			result.plan.expectations.hasPlayerState = true;
+			result.sourceLocations.expectPlayerStateTableLine = lineNumber;
+			table = Table::ExpectPlayerState;
+			context = { table, false, 0 };
 			continue;
 		}
 		if (line == "[[legend]]") {
@@ -1713,6 +1768,73 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 					result,
 					lineNumber,
 					"unsupported expect_interaction_targets key: " + key,
+					context,
+					key);
+			}
+			continue;
+		}
+
+		if (table == Table::ExpectActorStates) {
+			RuntimeGameplayAsciiSourcePlanExpectedActorState &actor =
+				result.plan.expectations.actorStates.back();
+			if (key == "actor_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					actor.actorId = ResourceId(parsed);
+				}
+			} else if (key == "tile") {
+				RuntimeGameplayAsciiSourcePlanLocalTile tile;
+				const InlineShapeStatus status = ParseLocalTile(value, tile);
+				if (status == InlineShapeStatus::Ok) {
+					actor.hasTile = true;
+					actor.tile = { tile.x, tile.y };
+				} else if (status == InlineShapeStatus::WrongType) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					AddUnsupported(
+						result,
+						lineNumber,
+						"unsupported expect_actor_states tile shape",
+						context,
+						key);
+				}
+			} else {
+				AddUnsupported(
+					result,
+					lineNumber,
+					"unsupported expect_actor_states key: " + key,
+					context,
+					key);
+			}
+			continue;
+		}
+
+		if (table == Table::ExpectPlayerState) {
+			RuntimeGameplayAsciiSourcePlanExpectedPlayerState &player =
+				result.plan.expectations.playerState;
+			if (key == "tile") {
+				RuntimeGameplayAsciiSourcePlanLocalTile tile;
+				const InlineShapeStatus status = ParseLocalTile(value, tile);
+				if (status == InlineShapeStatus::Ok) {
+					player.hasTile = true;
+					player.tile = { tile.x, tile.y };
+				} else if (status == InlineShapeStatus::WrongType) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					AddUnsupported(
+						result,
+						lineNumber,
+						"unsupported expect_player_state tile shape",
+						context,
+						key);
+				}
+			} else {
+				AddUnsupported(
+					result,
+					lineNumber,
+					"unsupported expect_player_state key: " + key,
 					context,
 					key);
 			}

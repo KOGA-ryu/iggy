@@ -82,3 +82,10 @@ frame_id = "frame:shared"
 command = "move_to_tile"
 x = 4
 y = 1
+
+[[expect_actor_states]]
+actor_id = "npc:guard"
+tile = { x = 2, y = 1 }
+
+[expect_player_state]
+tile = { x = 4, y = 1 }

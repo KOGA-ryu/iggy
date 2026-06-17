@@ -286,6 +286,10 @@ void TestExpectationsPreserveFinalRowsAndSummaryCounts()
 	plan.expectations.traceFrames.push_back(frame);
 	plan.expectations.inventoryStacks.push_back({ Id("item:key"), 1 });
 	plan.expectations.interactionTargets.push_back({ Id("target:door"), false });
+	plan.expectations.actorStates.push_back(
+		{ Id("npc:guard"), { 3, 1 }, true });
+	plan.expectations.hasPlayerState = true;
+	plan.expectations.playerState = { { 2, 1 }, true };
 
 	Expect(plan.hasExpectations(), "source plan should report authored expectations");
 	Expect(plan.expectations.hasFinalRows, "expectations should preserve final rows presence");
@@ -303,6 +307,9 @@ void TestExpectationsPreserveFinalRowsAndSummaryCounts()
 	Expect(plan.expectations.inventoryStacks[0].itemId == Id("item:key") && plan.expectations.inventoryStacks[0].count == 1, "inventory expectation should preserve item id and count");
 	Expect(plan.expectations.interactionTargets.size() == 1, "expectations should preserve interaction target states");
 	Expect(plan.expectations.interactionTargets[0].targetId == Id("target:door") && !plan.expectations.interactionTargets[0].enabled, "interaction expectation should preserve target id and enabled state");
+	Expect(plan.expectations.actorStates.size() == 1, "expectations should preserve actor states");
+	Expect(plan.expectations.actorStates[0].actorId == Id("npc:guard") && plan.expectations.actorStates[0].tile == iggy::TileCoord { 3, 1 }, "actor state expectation should preserve actor id and tile");
+	Expect(plan.expectations.hasPlayerState && plan.expectations.playerState.tile == iggy::TileCoord { 2, 1 }, "player state expectation should preserve tile");
 }
 
 void TestSourcePlanCopiesAreIndependent()
@@ -348,6 +355,10 @@ void TestSourcePlanCopiesAreIndependent()
 	plan.expectations.traceFrames.push_back(frame);
 	plan.expectations.inventoryStacks.push_back({ Id("item:copy"), 1 });
 	plan.expectations.interactionTargets.push_back({ Id("target:copy"), false });
+	plan.expectations.actorStates.push_back(
+		{ Id("npc:copy"), { 1, 0 }, true });
+	plan.expectations.hasPlayerState = true;
+	plan.expectations.playerState = { { 2, 0 }, true };
 
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan copy = plan;
 	copy.grid.rows[0] = "..";
@@ -362,6 +373,8 @@ void TestSourcePlanCopiesAreIndependent()
 	copy.expectations.traceFrames[0].rows[0] = "..";
 	copy.expectations.inventoryStacks[0].itemId = Id("item:changed");
 	copy.expectations.interactionTargets[0].targetId = Id("target:changed");
+	copy.expectations.actorStates[0].actorId = Id("npc:changed");
+	copy.expectations.playerState.tile = { 9, 9 };
 
 	Expect(plan.grid.rows[0] == "A.", "source plan copy should not mutate source rows");
 	Expect(plan.legend[0].targetMarkerId == Id("npc:copy"), "source plan copy should not mutate legend target id");
@@ -375,6 +388,8 @@ void TestSourcePlanCopiesAreIndependent()
 	Expect(plan.expectations.traceFrames[0].rows[0] == "A.", "source plan copy should not mutate trace expectation rows");
 	Expect(plan.expectations.inventoryStacks[0].itemId == Id("item:copy"), "source plan copy should not mutate inventory expectations");
 	Expect(plan.expectations.interactionTargets[0].targetId == Id("target:copy"), "source plan copy should not mutate interaction expectations");
+	Expect(plan.expectations.actorStates[0].actorId == Id("npc:copy"), "source plan copy should not mutate actor state expectations");
+	Expect(plan.expectations.playerState.tile == iggy::TileCoord { 2, 0 }, "source plan copy should not mutate player state expectation");
 }
 
 } // namespace

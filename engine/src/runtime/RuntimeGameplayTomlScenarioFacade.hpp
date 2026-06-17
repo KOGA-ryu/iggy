@@ -63,6 +63,10 @@ struct RuntimeGameplayTomlScenarioExpectationComparison {
 	bool inventoryStacksMatched = true;
 	bool checkedInteractionTargets = false;
 	bool interactionTargetsMatched = true;
+	bool checkedActorStates = false;
+	bool actorStatesMatched = true;
+	bool checkedPlayerState = false;
+	bool playerStateMatched = true;
 };
 
 struct RuntimeGameplayTomlScenarioFacadeConfig {
