@@ -498,6 +498,7 @@ void TestAuthoredInteractionTargetPromotesRuntimeInteractionState()
 	target.effect =
 		iggy::runtime::RuntimeGameplayAsciiSourcePlanInteractionEffectKind::ToggleTarget;
 	target.effectTargetId = Id("target:door");
+	target.requiredItemId = Id("item:key");
 	target.enabledValue = true;
 	plan.authoredInteractionTargets = { target };
 	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config =
@@ -528,6 +529,15 @@ void TestAuthoredInteractionTargetPromotesRuntimeInteractionState()
 		Expect(entries[0].effects[0].enabledValue, "interaction effect should preserve enabled value");
 	}
 	Expect(result.definition.frames.size() == 1 && result.definition.frames[0].interactionTargets.find(Id("target:door")) != nullptr, "frame should receive promoted interaction targets");
+	if (result.definition.frames.size() == 1) {
+		const iggy::runtime::RuntimeInteractionRequiredItems &requiredItems =
+			result.definition.frames[0].playerFrame.interactionRequiredItems;
+		Expect(requiredItems.size() == 1, "frame should receive one promoted interaction required item");
+		if (requiredItems.size() == 1) {
+			Expect(requiredItems[0].targetId == Id("target:door"), "promoted interaction requirement should preserve target id");
+			Expect(requiredItems[0].itemId == Id("item:key"), "promoted interaction requirement should preserve item id");
+		}
+	}
 }
 
 void TestDuplicateAuthoredInteractionTargetBlocksConversion()

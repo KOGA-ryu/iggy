@@ -873,6 +873,20 @@ bool PromoteInventoryState(
 	return true;
 }
 
+RuntimeInteractionRequiredItems RequiredItemsFromAuthoredTargets(
+	const RuntimeGameplayAsciiSourcePlan &sourcePlan)
+{
+	RuntimeInteractionRequiredItems requiredItems;
+	for (const RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget &target :
+		sourcePlan.authoredInteractionTargets) {
+		if (target.requiredItemId.empty()) {
+			continue;
+		}
+		requiredItems.push_back({ target.targetId, target.requiredItemId });
+	}
+	return requiredItems;
+}
+
 bool PromoteRegionAiMap(
 	const RuntimeGameplayAsciiSourcePlan &sourcePlan,
 	const RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig &config,
@@ -1011,6 +1025,7 @@ RuntimeGameplayProfileScenarioDefinition BuildDefinition(
 	const PlayerAgentState *player,
 	const RuntimeInteractionState &interaction,
 	const RuntimeInventoryState &inventory,
+	const RuntimeInteractionRequiredItems &requiredItems,
 	const std::vector<AuthoredFrameGroup> &frameGroups,
 	const std::vector<PlayerInputIntent2D> &defaultPlayerIntents,
 	const AiMap2D *promotedAiMap)
@@ -1035,6 +1050,10 @@ RuntimeGameplayProfileScenarioDefinition BuildDefinition(
 	const auto appendFrame = [&](RuntimeGameplayProfileScenarioFrameDefinition frame) {
 		frame.movementMap = promotedMap;
 		frame.interactionTargets = interaction.targets;
+		frame.playerFrame.interactionRequiredItems.insert(
+			frame.playerFrame.interactionRequiredItems.end(),
+			requiredItems.begin(),
+			requiredItems.end());
 		if (promotedAiMap != nullptr) {
 			frame.aiMap = *promotedAiMap;
 			frame.refreshAiMap = *promotedAiMap;
@@ -1151,6 +1170,8 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConverter::convert(
 			ItemDropRegistryInvalid;
 		return result;
 	}
+	const RuntimeInteractionRequiredItems requiredItems =
+		RequiredItemsFromAuthoredTargets(sourcePlan);
 
 	if (!PromoteRegionAiMap(sourcePlan, config, result)) {
 		result.issueCount = result.issues.size();
@@ -1176,6 +1197,7 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConverter::convert(
 		hasPlayer ? &player : nullptr,
 		interaction,
 		inventory,
+		requiredItems,
 		frameGroups,
 		defaultPlayerIntents,
 		config.promoteRegionAiMap ? &result.regionAiMapPromotion.aiMap : nullptr);
