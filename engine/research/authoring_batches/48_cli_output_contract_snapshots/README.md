@@ -1,5 +1,7 @@
 # Batch 48: CLI Output Contract Snapshots
 
+Status: complete.
+
 ## Goal
 Lock the textual CLI contract for normal, trace, lint, check, and failure modes after those modes exist.
 
@@ -20,3 +22,9 @@ No JSON/machine format, broad snapshot framework, or external golden files unles
 
 ## Expected Result
 CLI output remains stable for users and future tooling.
+
+## Completed Coverage
+
+- Added path-normalized CLI output contract snapshots for run, trace, lint, check success, check mismatch, and read failure modes.
+- Snapshots lock section order and key field shape without external golden files or JSON/machine-format output.
+- Existing broader CLI fixture, trace, check, lint, and failure assertions remain in place.
