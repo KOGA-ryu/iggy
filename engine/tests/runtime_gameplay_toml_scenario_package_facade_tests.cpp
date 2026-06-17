@@ -146,6 +146,56 @@ void TestPackageManifestPathRunsMainScenario()
 		"package manifest path should resolve main scenario path");
 }
 
+void TestPickupPackageRunsMainScenario()
+{
+	const std::filesystem::path package =
+		FixturePath("player_picks_up_item_package");
+	const iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeResult result =
+		iggy::runtime::RuntimeGameplayTomlScenarioPackageFacade {}.execute(
+			package);
+
+	Expect(result.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::Ran,
+		"pickup package directory should run");
+	Expect(result.manifest.title == "Player Picks Up Item Package",
+		"pickup package manifest should preserve title");
+	Expect(result.scenario.runSummary.frameCount == 2,
+		"pickup package should preserve delegated frame count");
+	Expect(result.scenario.runSummary.acceptedCommandCount == 2,
+		"pickup package should preserve accepted command count");
+	Expect(result.scenario.runSummary.pickedUpCount == 1,
+		"pickup package should preserve pickup count");
+	Expect(result.scenario.runSummary.finalRows ==
+		std::vector<std::string> {
+			"#######",
+			"#A.@..#",
+			"#.....#",
+			"#######",
+		},
+		"pickup package should preserve final rows");
+}
+
+void TestNegativePackageDelegatesSourcePlanFailure()
+{
+	const std::filesystem::path package =
+		FixturePath("bad_pickup_target_package");
+	const iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeResult result =
+		iggy::runtime::RuntimeGameplayTomlScenarioPackageFacade {}.execute(
+			package);
+
+	Expect(result.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::ScenarioReadFailed,
+		"negative package should fail in delegated scenario read");
+	Expect(result.issues.empty(),
+		"negative package should not report manifest issues");
+	Expect(result.scenario.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::ReadFailed,
+		"negative package should preserve delegated read failure");
+	Expect(result.scenario.read.text.status ==
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid,
+		"negative package should preserve source-plan invalid status");
+}
+
 void TestPackageTraceModeDelegatesToScenarioFacade()
 {
 	iggy::runtime::RuntimeGameplayTomlScenarioFacadeConfig config;
@@ -346,6 +396,8 @@ int main()
 
 	TestPackageDirectoryRunsMainScenario();
 	TestPackageManifestPathRunsMainScenario();
+	TestPickupPackageRunsMainScenario();
+	TestNegativePackageDelegatesSourcePlanFailure();
 	TestPackageTraceModeDelegatesToScenarioFacade();
 	TestMissingPackagePathFails();
 	TestMissingManifestFails();

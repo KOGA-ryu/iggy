@@ -1,0 +1,6 @@
+format_id = "iggy:authored-scenario-package"
+version = 1
+title = "Bad Pickup Target Package"
+description = "Package wrapper for a negative pickup target source-plan scenario."
+authoring_version = "iggy:ascii-source-plan@1"
+main = "scenario.toml"

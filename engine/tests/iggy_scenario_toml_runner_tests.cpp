@@ -584,6 +584,53 @@ void TestPackageManifestPathRunsScenario()
 		"package manifest CLI run");
 }
 
+void TestPackagePickupRunsScenario()
+{
+	const CommandResult result =
+		RunCli({ PackageFixturePath("player_picks_up_item_package") });
+	Expect(result.exitCode == 0, "pickup package CLI run should succeed");
+	ExpectOutputContains(
+		result,
+		{
+			"status:\nresult: ok\nsummary:\n",
+			"source_path: " +
+				PackageFixturePath("player_picks_up_item_package/scenario.toml"),
+			"frame_count: 2",
+			"accepted_command_count: 2",
+			"picked_up_count: 1",
+			"interaction_changed: false",
+			"npc_moved_count: 0",
+			"npc_blocked_movement_count: 0",
+			"package:\n",
+			"title: Player Picks Up Item Package",
+			"authoring_version: iggy:ascii-source-plan@1",
+			"main: scenario.toml",
+			FinalRowsBlock({ "#######", "#A.@..#", "#.....#", "#######" }),
+		},
+		"pickup package CLI run");
+}
+
+void TestNegativePackageDelegatesScenarioFailure()
+{
+	const CommandResult result =
+		RunCli({ PackageFixturePath("bad_pickup_target_package") });
+	Expect(result.exitCode == 2, "negative package CLI run should fail");
+	ExpectOutputContains(
+		result,
+		{
+			"status:\n",
+			"result: read_failed",
+			"read_status: toml_read_failed",
+			"toml_status: source_plan_invalid",
+			"toml_issue: code=source_plan_invalid",
+			"table=frame_player_commands",
+			"key=target_id",
+			"source_issue: code=authored_player_command_invalid_pickup_target",
+			"id=drop:missing",
+		},
+		"negative package CLI run");
+}
+
 void TestPackageManifestFailureDiagnostics()
 {
 	const std::filesystem::path packageRoot =
@@ -1198,6 +1245,8 @@ int main()
 	TestCliOutputMatchesFacadeProjection();
 	TestPackageDirectoryRunsScenario();
 	TestPackageManifestPathRunsScenario();
+	TestPackagePickupRunsScenario();
+	TestNegativePackageDelegatesScenarioFailure();
 	TestPackageManifestFailureDiagnostics();
 	TestTraceMultiFrameGuardRoom();
 	TestTraceMixedMiniScenario();

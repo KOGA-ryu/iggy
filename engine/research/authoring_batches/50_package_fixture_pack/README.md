@@ -1,5 +1,7 @@
 # Batch 50: Package Fixture Pack
 
+Status: complete.
+
 ## Goal
 If package execution lands, add a small checked-in package fixture pack mirroring canonical single-file scenarios.
 
@@ -20,3 +22,11 @@ Do not proceed before package runner approval. No recursive discovery, dependenc
 
 ## Expected Result
 Package mode has executable examples without replacing one-file TOML fixtures.
+
+## Completed Coverage
+- Added package fixture documentation under
+  `engine/tests/fixtures/runtime/ascii_source_plan_packages/`.
+- Kept the existing movement package and added package-local pickup and
+  negative pickup-target fixtures.
+- Package facade and CLI tests cover positive movement, positive pickup, and a
+  valid package manifest that delegates to a failing source-plan scenario.
