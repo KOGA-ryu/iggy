@@ -7,6 +7,9 @@
 #include <string>
 #include <vector>
 
+#include "support/AuthoringParityTestSupport.hpp"
+#include "support/AuthoringTestSupport.hpp"
+
 #ifndef IGGY_TEST_PACKAGE_FIXTURE_DIR
 #error "IGGY_TEST_PACKAGE_FIXTURE_DIR must point at engine/tests/fixtures/runtime/ascii_source_plan_packages"
 #endif
@@ -34,12 +37,16 @@ void Expect(bool condition, const std::string &message)
 
 std::filesystem::path FixturePath(const char *name)
 {
-	return std::filesystem::path(IGGY_TEST_PACKAGE_FIXTURE_DIR) / name;
+	return iggy::test::AuthoringPackageFixturePath(
+		IGGY_TEST_PACKAGE_FIXTURE_DIR,
+		name);
 }
 
 std::filesystem::path SourceFixturePath(const char *name)
 {
-	return std::filesystem::path(IGGY_TEST_FIXTURE_DIR) / name;
+	return iggy::test::AuthoringSourceFixturePath(
+		IGGY_TEST_FIXTURE_DIR,
+		name);
 }
 
 std::filesystem::path TempRoot()
@@ -120,74 +127,6 @@ iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeResult ExecutePackageFixt
 	return iggy::runtime::RuntimeGameplayTomlScenarioPackageFacade {}.execute(
 		FixturePath(name),
 		config);
-}
-
-void ExpectRunSummaryParity(
-	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult &source,
-	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult &package,
-	const char *context)
-{
-	Expect(package.runSummary.frameCount == source.runSummary.frameCount,
-		std::string(context) + " should match frame count");
-	Expect(package.runSummary.acceptedCommandCount ==
-		source.runSummary.acceptedCommandCount,
-		std::string(context) + " should match accepted command count");
-	Expect(package.runSummary.pickedUpCount == source.runSummary.pickedUpCount,
-		std::string(context) + " should match pickup count");
-	Expect(package.runSummary.interactionChanged ==
-		source.runSummary.interactionChanged,
-		std::string(context) + " should match interaction changed flag");
-	Expect(package.runSummary.npcMovedCount == source.runSummary.npcMovedCount,
-		std::string(context) + " should match NPC moved count");
-	Expect(package.runSummary.npcBlockedMovementCount ==
-		source.runSummary.npcBlockedMovementCount,
-		std::string(context) + " should match blocked NPC movement count");
-	Expect(package.runSummary.finalRows == source.runSummary.finalRows,
-		std::string(context) + " should match final rows");
-}
-
-void ExpectExpectationParity(
-	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult &source,
-	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult &package,
-	const char *context)
-{
-	Expect(package.expectationComparison.present ==
-		source.expectationComparison.present,
-		std::string(context) + " should match expectation presence");
-	Expect(package.expectationComparison.matched ==
-		source.expectationComparison.matched,
-		std::string(context) + " should match expectation result");
-}
-
-void ExpectTraceParity(
-	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult &source,
-	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult &package,
-	const char *context)
-{
-	Expect(package.traceFrames.size() == source.traceFrames.size(),
-		std::string(context) + " should match trace frame count");
-	if (package.traceFrames.size() != source.traceFrames.size())
-		return;
-
-	for (std::size_t index = 0; index < source.traceFrames.size(); ++index) {
-		Expect(package.traceFrames[index].frameId ==
-			source.traceFrames[index].frameId,
-			std::string(context) + " should match trace frame id");
-		Expect(package.traceFrames[index].acceptedCommandCount ==
-			source.traceFrames[index].acceptedCommandCount,
-			std::string(context) + " should match trace accepted command count");
-		Expect(package.traceFrames[index].pickedUpCount ==
-			source.traceFrames[index].pickedUpCount,
-			std::string(context) + " should match trace pickup count");
-		Expect(package.traceFrames[index].interactionChanged ==
-			source.traceFrames[index].interactionChanged,
-			std::string(context) + " should match trace interaction flag");
-		Expect(package.traceFrames[index].npcMovedCount ==
-			source.traceFrames[index].npcMovedCount,
-			std::string(context) + " should match trace NPC moved count");
-		Expect(package.traceFrames[index].rows == source.traceFrames[index].rows,
-			std::string(context) + " should match trace rows");
-	}
 }
 
 void TestPackageDirectoryRunsMainScenario()
@@ -324,8 +263,16 @@ void TestPickupPackageRunCheckTraceParity()
 	Expect(packageRun.status ==
 		iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::Ran,
 		"package pickup run should succeed for parity");
-	ExpectRunSummaryParity(sourceRun, packageRun.scenario, "pickup run parity");
-	ExpectExpectationParity(sourceRun, packageRun.scenario, "pickup run parity");
+	iggy::test::ExpectTomlScenarioRunSummaryParity(
+		sourceRun,
+		packageRun.scenario,
+		"pickup run parity",
+		Failures);
+	iggy::test::ExpectTomlScenarioExpectationParity(
+		sourceRun,
+		packageRun.scenario,
+		"pickup run parity",
+		Failures);
 
 	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult sourceCheck =
 		ExecuteSourceFixture(
@@ -340,11 +287,16 @@ void TestPickupPackageRunCheckTraceParity()
 	Expect(packageCheck.status ==
 		iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::CheckFailed,
 		"package pickup check should preserve missing-expectation check result");
-	ExpectRunSummaryParity(sourceCheck, packageCheck.scenario, "pickup check parity");
-	ExpectExpectationParity(
+	iggy::test::ExpectTomlScenarioRunSummaryParity(
 		sourceCheck,
 		packageCheck.scenario,
-		"pickup check parity");
+		"pickup check parity",
+		Failures);
+	iggy::test::ExpectTomlScenarioExpectationParity(
+		sourceCheck,
+		packageCheck.scenario,
+		"pickup check parity",
+		Failures);
 
 	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult sourceTrace =
 		ExecuteSourceFixture(
@@ -360,12 +312,21 @@ void TestPickupPackageRunCheckTraceParity()
 	Expect(packageTrace.status ==
 		iggy::runtime::RuntimeGameplayTomlScenarioPackageFacadeStatus::Ran,
 		"package pickup trace should run for parity");
-	ExpectRunSummaryParity(sourceTrace, packageTrace.scenario, "pickup trace parity");
-	ExpectExpectationParity(
+	iggy::test::ExpectTomlScenarioRunSummaryParity(
 		sourceTrace,
 		packageTrace.scenario,
-		"pickup trace parity");
-	ExpectTraceParity(sourceTrace, packageTrace.scenario, "pickup trace parity");
+		"pickup trace parity",
+		Failures);
+	iggy::test::ExpectTomlScenarioExpectationParity(
+		sourceTrace,
+		packageTrace.scenario,
+		"pickup trace parity",
+		Failures);
+	iggy::test::ExpectTomlScenarioTraceParity(
+		sourceTrace,
+		packageTrace.scenario,
+		"pickup trace parity",
+		Failures);
 }
 
 void TestNegativePackageDiagnosticsParity()
