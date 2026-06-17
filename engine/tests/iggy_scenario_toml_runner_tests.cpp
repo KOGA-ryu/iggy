@@ -1,5 +1,6 @@
 #include <array>
 #include <cstdio>
+#include <fstream>
 #include <filesystem>
 #include <iostream>
 #include <sstream>
@@ -33,6 +34,33 @@ struct GoldenFixture {
 	bool interactionChanged = false;
 	int npcMovedCount = 0;
 	std::vector<std::string> finalRows;
+};
+
+struct TempTomlFile {
+	std::filesystem::path path;
+
+	TempTomlFile(const char *label, const std::string &text)
+	{
+		static int counter = 0;
+		path = std::filesystem::temp_directory_path() /
+			("iggy_scenario_toml_runner_" + std::string(label) + "_" +
+				std::to_string(++counter) + ".toml");
+		std::ofstream stream(path);
+		stream << text;
+	}
+
+	~TempTomlFile()
+	{
+		std::error_code ignored;
+		std::filesystem::remove(path, ignored);
+	}
+};
+
+struct FailureCase {
+	const char *label = "";
+	std::vector<std::string> args;
+	int exitCode = 0;
+	std::vector<std::string> needles;
 };
 
 void Expect(bool condition, const char *message)
@@ -155,75 +183,180 @@ void TestNoArgUsage()
 		"no-arg CLI run");
 }
 
-void TestMissingPath()
+std::string WrongTypeToml()
 {
-	const CommandResult result = RunCli({ FixturePath("missing.toml") });
-	Expect(result.exitCode == 2, "missing TOML path should return read failure");
-	ExpectOutputContains(
-		result,
-		{
-			"status:\n",
-			"result: read_failed",
-			"read_status: missing_file",
-			"toml_status: syntax_invalid",
-			"file_issue: code=missing_file",
-			"detail=TOML source-plan file does not exist",
-		},
-		"missing-path CLI run");
+	return
+		"format_id = \"iggy:ascii-source-plan\"\n"
+		"version = 1\n"
+		"source_id = \"scenario:wrong-type\"\n"
+		"\n"
+		"[grid]\n"
+		"width = \"7\"\n"
+		"height = 4\n"
+		"background = \".\"\n"
+		"rows = [\n"
+		"  \"#######\",\n"
+		"  \"#A...@#\",\n"
+		"  \"#.....#\",\n"
+		"  \"#######\",\n"
+		"]\n";
 }
 
-void TestCorruptTomlReportsSyntaxLocation()
+std::string UnknownControlActorToml()
 {
-	const CommandResult result = RunCli({ FixturePath("corrupt_guard_room.toml") });
-	Expect(result.exitCode == 2, "corrupt TOML should return read failure");
-	ExpectOutputContains(
-		result,
-		{
-			"status:\n",
-			"result: read_failed",
-			"read_status: toml_read_failed",
-			"toml_status: syntax_invalid",
-			"file_issue: code=toml_read_failed",
-			"toml_issue: code=syntax_error line=1 column=0 table=root",
-			"detail=expected key = value",
-		},
-		"corrupt TOML CLI run");
+	return
+		"format_id = \"iggy:ascii-source-plan\"\n"
+		"version = 1\n"
+		"source_id = \"scenario:unknown-control-actor\"\n"
+		"\n"
+		"[grid]\n"
+		"width = 7\n"
+		"height = 4\n"
+		"background = \".\"\n"
+		"rows = [\n"
+		"  \"#######\",\n"
+		"  \"#A...@#\",\n"
+		"  \"#.....#\",\n"
+		"  \"#######\",\n"
+		"]\n"
+		"\n"
+		"[[legend]]\n"
+		"glyph = \"A\"\n"
+		"kind = \"actor\"\n"
+		"maps_to_scenario_marker = true\n"
+		"scenario_marker_kind = \"actor\"\n"
+		"\n"
+		"[[legend]]\n"
+		"glyph = \"@\"\n"
+		"kind = \"player_start\"\n"
+		"maps_to_scenario_marker = true\n"
+		"scenario_marker_kind = \"player_start\"\n"
+		"\n"
+		"[[profiles]]\n"
+		"id = \"profile:guard\"\n"
+		"strength = 10\n"
+		"dexterity = 10\n"
+		"constitution = 10\n"
+		"intelligence = 10\n"
+		"wisdom = 10\n"
+		"charisma = 10\n"
+		"\n"
+		"[[cells]]\n"
+		"id = \"cell:guard\"\n"
+		"row = 1\n"
+		"column = 1\n"
+		"glyph = \"A\"\n"
+		"local_tile = { x = 1, y = 1 }\n"
+		"local_position = { x = 1.5, y = 1.5 }\n"
+		"cell_bounds = { min_x = 1.0, min_y = 1.0, max_x = 2.0, max_y = 2.0 }\n"
+		"marker_id = \"npc:guard\"\n"
+		"profile_id = \"profile:guard\"\n"
+		"\n"
+		"[[frame_controls]]\n"
+		"frame_id = \"frame:unknown-control-actor\"\n"
+		"npc = \"npc:missing\"\n"
+		"behavior = \"seeking\"\n"
+		"move_mode = \"walk\"\n"
+		"target = { x = 2.5, y = 1.5 }\n";
 }
 
-void TestSemanticInvalidTomlReportsSourceIssue()
+void TestCliFailureDiagnosticsMatrix()
 {
-	const CommandResult result =
-		RunCli({ FixturePath("semantic_invalid_guard_room.toml") });
-	Expect(result.exitCode == 2, "semantic invalid TOML should return read failure");
-	ExpectOutputContains(
-		result,
-		{
-			"status:\n",
-			"result: read_failed",
-			"read_status: toml_read_failed",
-			"toml_status: source_plan_invalid",
-			"toml_issue: code=source_plan_invalid line=36 column=0 table=cells key= table_index=0",
-			"source_issue: code=annotated_cell_glyph_mismatch index=0 row=1 column=1 glyph=A",
-		},
-		"semantic invalid TOML CLI run");
-}
+	TempTomlFile wrongType("wrong_type", WrongTypeToml());
+	TempTomlFile unknownControl("unknown_control", UnknownControlActorToml());
 
-void TestConversionFailureReportsMissingProfile()
-{
-	const CommandResult result = RunCli({ FixturePath("valid_guard_room.toml") });
-	Expect(result.exitCode == 3, "non-self-contained fixture should return conversion failure");
-	ExpectOutputContains(
-		result,
+	const std::vector<FailureCase> cases {
 		{
-			"status:\n",
-			"result: conversion_failed",
-			"adapter_status: conversion_failed",
-			"source_plan_status: profile_scenario_invalid",
-			"adapter_issue: code=ascii_source_plan_conversion_failed source=ascii_source_plan",
-			"conversion_issue: code=profile_scenario_invalid",
-			"profile_issue: code=missing_profile_trait frame_index=0 actor_index=0 npc=npc:guard profile=profile:guard",
+			"missing file",
+			{ FixturePath("missing.toml") },
+			2,
+			{
+				"status:\n",
+				"result: read_failed",
+				"read_status: missing_file",
+				"toml_status: syntax_invalid",
+				"file_issue: code=missing_file",
+				"detail=TOML source-plan file does not exist",
+			},
 		},
-		"conversion failure CLI run");
+		{
+			"corrupt TOML",
+			{ FixturePath("corrupt_guard_room.toml") },
+			2,
+			{
+				"status:\n",
+				"result: read_failed",
+				"read_status: toml_read_failed",
+				"toml_status: syntax_invalid",
+				"file_issue: code=toml_read_failed",
+				"toml_issue: code=syntax_error line=1 column=0 table=root",
+				"detail=expected key = value",
+			},
+		},
+		{
+			"wrong TOML type",
+			{ wrongType.path.string() },
+			2,
+			{
+				"status:\n",
+				"result: read_failed",
+				"read_status: toml_read_failed",
+				"toml_status: type_invalid",
+				"file_issue: code=toml_read_failed",
+				"toml_issue: code=wrong_type line=",
+				"table=grid key=width",
+			},
+		},
+		{
+			"source-plan semantic issue",
+			{ FixturePath("semantic_invalid_guard_room.toml") },
+			2,
+			{
+				"status:\n",
+				"result: read_failed",
+				"read_status: toml_read_failed",
+				"toml_status: source_plan_invalid",
+				"toml_issue: code=source_plan_invalid line=36 column=0 table=cells key= table_index=0",
+				"source_issue: code=annotated_cell_glyph_mismatch index=0 row=1 column=1 glyph=A",
+			},
+		},
+		{
+			"conversion issue",
+			{ unknownControl.path.string() },
+			3,
+			{
+				"status:\n",
+				"result: conversion_failed",
+				"adapter_status: conversion_failed",
+				"source_plan_status: authored_control_invalid",
+				"adapter_issue: code=ascii_source_plan_conversion_failed source=ascii_source_plan",
+				"conversion_issue: code=unknown_authored_control_actor",
+				"npc=npc:missing",
+			},
+		},
+		{
+			"profile validation issue",
+			{ FixturePath("valid_guard_room.toml") },
+			3,
+			{
+				"status:\n",
+				"result: conversion_failed",
+				"adapter_status: conversion_failed",
+				"source_plan_status: profile_scenario_invalid",
+				"adapter_issue: code=ascii_source_plan_conversion_failed source=ascii_source_plan",
+				"conversion_issue: code=profile_scenario_invalid",
+				"profile_issue: code=missing_profile_trait frame_index=0 actor_index=0 npc=npc:guard profile=profile:guard",
+			},
+		},
+	};
+
+	for (const FailureCase &testCase : cases) {
+		const CommandResult result = RunCli(testCase.args);
+		const std::string context = std::string("CLI failure matrix ") +
+			testCase.label;
+		Expect(result.exitCode == testCase.exitCode, context.c_str());
+		ExpectOutputContains(result, testCase.needles, context.c_str());
+	}
 }
 
 void TestCanonicalFixtures()
@@ -398,10 +531,7 @@ void TestTraceMixedMiniScenario()
 int main()
 {
 	TestNoArgUsage();
-	TestMissingPath();
-	TestCorruptTomlReportsSyntaxLocation();
-	TestSemanticInvalidTomlReportsSourceIssue();
-	TestConversionFailureReportsMissingProfile();
+	TestCliFailureDiagnosticsMatrix();
 	TestCanonicalFixtures();
 	TestTraceMultiFrameGuardRoom();
 	TestTraceMixedMiniScenario();
