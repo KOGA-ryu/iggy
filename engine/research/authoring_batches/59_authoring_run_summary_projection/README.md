@@ -1,5 +1,7 @@
 # Batch 59: Authoring Run Summary Projection
 
+Status: complete.
+
 ## Goal
 Extract current CLI summary counts into a pure projection helper shared by CLI, facade, tests, and future preview models.
 
@@ -20,3 +22,10 @@ No broad report/ledger additions, new execution semantics, or UI/Edi.
 
 ## Expected Result
 Summary counts have one source of truth for CLI/facade/preview work.
+
+## Completed Coverage
+
+- Added `RuntimeGameplayTomlScenarioRunSummaryProjection` and `projectRuntimeGameplayTomlScenarioRunSummary` for the current CLI run summary fields plus final rows.
+- `RuntimeGameplayTomlScenarioFacadeResult` now carries the projected run summary after successful scenario execution.
+- `iggy_scenario_toml_runner` prints run summary values and final rows from the shared projection without changing output text.
+- Focused projection, facade, and CLI tests cover the shared summary path.
