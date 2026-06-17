@@ -181,6 +181,12 @@ const char *runtimeGameplayAuthoringCodeText(
 		return "expected_inventory_stack_invalid_count";
 	case Code::ExpectedInventoryStackDuplicateItemId:
 		return "expected_inventory_stack_duplicate_item_id";
+	case Code::ExpectedInteractionTargetMissingId:
+		return "expected_interaction_target_missing_id";
+	case Code::ExpectedInteractionTargetDuplicateId:
+		return "expected_interaction_target_duplicate_id";
+	case Code::ExpectedInteractionTargetUnknownId:
+		return "expected_interaction_target_unknown_id";
 	case Code::EmptyActorMarkerId:
 		return "empty_actor_marker_id";
 	case Code::EmptyProfileMarkerId:

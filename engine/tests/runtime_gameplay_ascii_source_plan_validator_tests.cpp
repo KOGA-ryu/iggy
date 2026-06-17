@@ -717,6 +717,10 @@ void TestExpectationShapeValidates()
 	frame.npcMovedCount = 1;
 	plan.expectations.traceFrames.push_back(frame);
 	plan.expectations.inventoryStacks.push_back({ Id("item:key"), 1 });
+	plan.authoredInteractionTargets = {
+		InteractionTarget("target:door"),
+	};
+	plan.expectations.interactionTargets.push_back({ Id("target:door"), false });
 
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
 		Validate(plan);
@@ -730,6 +734,8 @@ void TestExpectationShapeValidates()
 	Expect(result.plan.expectations.traceFrames[0].rows[1] == "#A..#", "validator should preserve trace expectation rows");
 	Expect(result.plan.expectations.inventoryStacks.size() == 1, "validator should preserve inventory expectations");
 	Expect(result.plan.expectations.inventoryStacks[0].itemId == Id("item:key"), "validator should preserve inventory expected item id");
+	Expect(result.plan.expectations.interactionTargets.size() == 1, "validator should preserve interaction expectations");
+	Expect(result.plan.expectations.interactionTargets[0].targetId == Id("target:door"), "validator should preserve interaction expected target id");
 }
 
 void TestExpectationShapeIssuesFail()
@@ -792,6 +798,27 @@ void TestExpectationShapeIssuesFail()
 		Validate(duplicateItem);
 	Expect(!duplicateResult.ok(), "duplicate expected inventory item ids should fail");
 	Expect(HasIssue(duplicateResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedInventoryStackDuplicateItemId), "duplicate expected inventory item id should report issue");
+
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan unknownTarget = ValidPlan();
+	unknownTarget.authoredInteractionTargets = {
+		InteractionTarget("target:known"),
+	};
+	unknownTarget.expectations.interactionTargets.push_back({ Id("target:missing"), false });
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult unknownResult =
+		Validate(unknownTarget);
+	Expect(!unknownResult.ok(), "unknown expected interaction target should fail");
+	Expect(HasIssue(unknownResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedInteractionTargetUnknownId), "unknown expected interaction target should report issue");
+
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan duplicateTarget = ValidPlan();
+	duplicateTarget.authoredInteractionTargets = {
+		InteractionTarget("target:door"),
+	};
+	duplicateTarget.expectations.interactionTargets.push_back({ Id("target:door"), false });
+	duplicateTarget.expectations.interactionTargets.push_back({ Id("target:door"), true });
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult duplicateTargetResult =
+		Validate(duplicateTarget);
+	Expect(!duplicateTargetResult.ok(), "duplicate expected interaction targets should fail");
+	Expect(HasIssue(duplicateTargetResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedInteractionTargetDuplicateId), "duplicate expected interaction target should report issue");
 }
 
 void TestExactIdsAndInputImmutability()

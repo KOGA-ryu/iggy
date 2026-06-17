@@ -106,3 +106,7 @@ npc_moved_count = 0
 [[expect_inventory_stacks]]
 item_id = "item:key"
 count = 1
+
+[[expect_interaction_targets]]
+target_id = "target:door"
+enabled = false

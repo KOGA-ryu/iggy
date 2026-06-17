@@ -688,6 +688,7 @@ void TestTraceLockedDoorKeyRooms()
 			"expectation:\n",
 			"result: matched",
 			"inventory_stacks: matched",
+			"interaction_targets: matched",
 			FinalRowsBlock({ "#######", "#@....#", "#.....#", "#######" }),
 		},
 		"locked door key trace CLI run");

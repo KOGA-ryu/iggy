@@ -202,6 +202,9 @@ void PrintExpectationComparison(
 	if (comparison.checkedInventoryStacks)
 		std::cout << "inventory_stacks: "
 			<< MatchText(comparison.inventoryStacksMatched) << '\n';
+	if (comparison.checkedInteractionTargets)
+		std::cout << "interaction_targets: "
+			<< MatchText(comparison.interactionTargetsMatched) << '\n';
 }
 
 void PrintFirstProfileValidationIssue(

@@ -224,6 +224,11 @@ struct RuntimeGameplayAsciiSourcePlanExpectedInventoryStack {
 	std::uint32_t count = 0;
 };
 
+struct RuntimeGameplayAsciiSourcePlanExpectedInteractionTarget {
+	ResourceId targetId;
+	bool enabled = true;
+};
+
 struct RuntimeGameplayAsciiSourcePlanExpectations {
 	bool hasFinalRows = false;
 	std::vector<std::string> finalRows;
@@ -240,6 +245,8 @@ struct RuntimeGameplayAsciiSourcePlanExpectations {
 	std::vector<RuntimeGameplayAsciiSourcePlanExpectedTraceFrame> traceFrames;
 	std::vector<RuntimeGameplayAsciiSourcePlanExpectedInventoryStack>
 		inventoryStacks;
+	std::vector<RuntimeGameplayAsciiSourcePlanExpectedInteractionTarget>
+		interactionTargets;
 
 	[[nodiscard]] bool hasAny() const;
 };

@@ -50,6 +50,7 @@ struct RuntimeGameplayAsciiSourcePlanTomlSourceLocations {
 	std::vector<std::size_t> expectTraceFrameTableLines;
 	std::vector<std::size_t> expectTraceFrameRowsLines;
 	std::vector<std::size_t> expectInventoryStackTableLines;
+	std::vector<std::size_t> expectInteractionTargetTableLines;
 	std::vector<std::size_t> legendTableLines;
 	std::vector<std::size_t> annotatedCellTableLines;
 	std::vector<std::size_t> regionTableLines;

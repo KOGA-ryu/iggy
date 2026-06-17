@@ -285,6 +285,7 @@ void TestExpectationsPreserveFinalRowsAndSummaryCounts()
 	frame.npcMovedCount = 2;
 	plan.expectations.traceFrames.push_back(frame);
 	plan.expectations.inventoryStacks.push_back({ Id("item:key"), 1 });
+	plan.expectations.interactionTargets.push_back({ Id("target:door"), false });
 
 	Expect(plan.hasExpectations(), "source plan should report authored expectations");
 	Expect(plan.expectations.hasFinalRows, "expectations should preserve final rows presence");
@@ -300,6 +301,8 @@ void TestExpectationsPreserveFinalRowsAndSummaryCounts()
 	Expect(plan.expectations.traceFrames[0].hasAcceptedCommandCount && plan.expectations.traceFrames[0].acceptedCommandCount == 1, "trace expectation should preserve accepted command count");
 	Expect(plan.expectations.inventoryStacks.size() == 1, "expectations should preserve inventory stacks");
 	Expect(plan.expectations.inventoryStacks[0].itemId == Id("item:key") && plan.expectations.inventoryStacks[0].count == 1, "inventory expectation should preserve item id and count");
+	Expect(plan.expectations.interactionTargets.size() == 1, "expectations should preserve interaction target states");
+	Expect(plan.expectations.interactionTargets[0].targetId == Id("target:door") && !plan.expectations.interactionTargets[0].enabled, "interaction expectation should preserve target id and enabled state");
 }
 
 void TestSourcePlanCopiesAreIndependent()
@@ -344,6 +347,7 @@ void TestSourcePlanCopiesAreIndependent()
 	frame.rows = { "A." };
 	plan.expectations.traceFrames.push_back(frame);
 	plan.expectations.inventoryStacks.push_back({ Id("item:copy"), 1 });
+	plan.expectations.interactionTargets.push_back({ Id("target:copy"), false });
 
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan copy = plan;
 	copy.grid.rows[0] = "..";
@@ -357,6 +361,7 @@ void TestSourcePlanCopiesAreIndependent()
 	copy.expectations.frameCount = 2;
 	copy.expectations.traceFrames[0].rows[0] = "..";
 	copy.expectations.inventoryStacks[0].itemId = Id("item:changed");
+	copy.expectations.interactionTargets[0].targetId = Id("target:changed");
 
 	Expect(plan.grid.rows[0] == "A.", "source plan copy should not mutate source rows");
 	Expect(plan.legend[0].targetMarkerId == Id("npc:copy"), "source plan copy should not mutate legend target id");
@@ -369,6 +374,7 @@ void TestSourcePlanCopiesAreIndependent()
 	Expect(plan.expectations.frameCount == 1, "source plan copy should not mutate expectation counts");
 	Expect(plan.expectations.traceFrames[0].rows[0] == "A.", "source plan copy should not mutate trace expectation rows");
 	Expect(plan.expectations.inventoryStacks[0].itemId == Id("item:copy"), "source plan copy should not mutate inventory expectations");
+	Expect(plan.expectations.interactionTargets[0].targetId == Id("target:copy"), "source plan copy should not mutate interaction expectations");
 }
 
 } // namespace

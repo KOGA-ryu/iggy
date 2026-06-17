@@ -23,6 +23,19 @@ bool HasEarlierMatchingExpectedInventoryStack(
 	return false;
 }
 
+bool HasEarlierMatchingExpectedInteractionTarget(
+	const std::vector<RuntimeGameplayAsciiSourcePlanExpectedInteractionTarget>
+		&targets,
+	std::size_t currentIndex)
+{
+	for (std::size_t index = 0; index < currentIndex; ++index) {
+		if (targets[index].targetId == targets[currentIndex].targetId) {
+			return true;
+		}
+	}
+	return false;
+}
+
 void AddIssue(
 	RuntimeGameplayAsciiSourcePlanValidationResult &result,
 	RuntimeGameplayAsciiSourcePlanIssue issue)
@@ -97,6 +110,12 @@ void AddIssue(
 		ExpectedInventoryStackInvalidCount:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::
 		ExpectedInventoryStackDuplicateItemId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::
+		ExpectedInteractionTargetMissingId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::
+		ExpectedInteractionTargetDuplicateId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::
+		ExpectedInteractionTargetUnknownId:
 		++result.expectationIssueCount;
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsafeNoClaims:
@@ -913,6 +932,38 @@ void ValidateExpectations(RuntimeGameplayAsciiSourcePlanValidationResult &result
 				ExpectedInventoryStackDuplicateItemId;
 			issue.index = index;
 			issue.id = stack.itemId;
+			AddIssue(result, issue);
+		}
+	}
+
+	for (std::size_t index = 0; index < expectations.interactionTargets.size();
+		++index) {
+		const RuntimeGameplayAsciiSourcePlanExpectedInteractionTarget &target =
+			expectations.interactionTargets[index];
+		if (target.targetId.empty()) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				ExpectedInteractionTargetMissingId;
+			issue.index = index;
+			AddIssue(result, issue);
+			continue;
+		}
+		if (HasEarlierMatchingExpectedInteractionTarget(
+				expectations.interactionTargets,
+				index)) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				ExpectedInteractionTargetDuplicateId;
+			issue.index = index;
+			issue.id = target.targetId;
+			AddIssue(result, issue);
+		}
+		if (!HasAuthoredInteractionTarget(result.plan, target.targetId)) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				ExpectedInteractionTargetUnknownId;
+			issue.index = index;
+			issue.id = target.targetId;
 			AddIssue(result, issue);
 		}
 	}

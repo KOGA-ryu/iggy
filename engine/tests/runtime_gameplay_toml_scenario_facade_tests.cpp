@@ -254,6 +254,28 @@ void TestCheckModeComparesInventoryExpectations()
 	}
 }
 
+void TestCheckModeComparesInteractionTargetExpectations()
+{
+	iggy::runtime::RuntimeGameplayTomlScenarioFacadeConfig config;
+	config.mode = iggy::runtime::RuntimeGameplayTomlScenarioFacadeMode::Check;
+	const iggy::runtime::RuntimeGameplayTomlScenarioFacadeResult result =
+		iggy::runtime::RuntimeGameplayTomlScenarioFacade {}.execute(
+			FixturePath("locked_door_key_room.toml"),
+			config);
+
+	Expect(result.status ==
+		iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::CheckPassed,
+		"check mode should pass when interaction target expectations match");
+	Expect(result.expectationComparison.checkedInteractionTargets,
+		"interaction expectation check should compare interaction targets");
+	Expect(result.expectationComparison.interactionTargetsMatched,
+		"interaction expectation check should report matched interaction targets");
+	const iggy::InteractionTarget2D *door =
+		result.run.state.interaction.targets.find(iggy::ResourceId("target:door"));
+	Expect(door != nullptr && !door->enabled,
+		"interaction expectation check should preserve final disabled door");
+}
+
 void TestCheckModeFailsWithoutExpectations()
 {
 	iggy::runtime::RuntimeGameplayTomlScenarioFacadeConfig config;
@@ -321,6 +343,7 @@ int main()
 	TestCheckModePassesWhenExpectationsMatch();
 	TestCheckModeComparesTraceExpectations();
 	TestCheckModeComparesInventoryExpectations();
+	TestCheckModeComparesInteractionTargetExpectations();
 	TestCheckModeFailsWithoutExpectations();
 	TestReadFailureStopsBeforeConversion();
 	TestConversionFailureStopsBeforeRun();

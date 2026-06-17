@@ -1467,6 +1467,40 @@ count = 1
 	}
 }
 
+void TestExpectInteractionTargetsParse()
+{
+	const std::string toml = RootGridToml() + R"toml(
+
+[[interaction_targets]]
+target_id = "target:door"
+kind = "usable"
+tile = { x = 3, y = 1 }
+radius = 1.0
+enabled = true
+effect = "toggle_target"
+effect_target_id = "target:door"
+enabled_value = false
+
+[[expect_interaction_targets]]
+target_id = "target:door"
+enabled = false
+)toml";
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
+		Read(toml);
+
+	Expect(read.ok(), "expect interaction target table should parse");
+	Expect(read.sourceValidation.ok(), "well-shaped expect interaction target should validate");
+	Expect(read.plan.hasExpectations(), "expect interaction target table should populate expectations");
+	Expect(read.plan.expectations.interactionTargets.size() == 1, "expect interaction target table should preserve target count");
+	if (!read.plan.expectations.interactionTargets.empty()) {
+		const iggy::runtime::RuntimeGameplayAsciiSourcePlanExpectedInteractionTarget &target =
+			read.plan.expectations.interactionTargets[0];
+		Expect(target.targetId == Id("target:door"), "expect interaction target should preserve target id");
+		Expect(!target.enabled, "expect interaction target should preserve enabled state");
+	}
+}
+
 void TestExpectWrongTypedFieldReportsContext()
 {
 	const std::string toml = RootGridToml() + R"toml(
@@ -1568,6 +1602,40 @@ count = 0
 	}
 }
 
+void TestExpectInteractionTargetUnknownSurfacesSourcePlanValidation()
+{
+	const std::string toml = RootGridToml() + R"toml(
+
+[[interaction_targets]]
+target_id = "target:door"
+kind = "usable"
+tile = { x = 3, y = 1 }
+radius = 1.0
+enabled = true
+effect = "toggle_target"
+effect_target_id = "target:door"
+enabled_value = false
+
+[[expect_interaction_targets]]
+target_id = "target:missing"
+enabled = false
+)toml";
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
+		Read(toml);
+
+	Expect(read.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "unknown expect interaction target should report source-plan invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(read, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedInteractionTargetUnknownId);
+	Expect(issue != nullptr, "unknown expect interaction target should surface source-plan issue");
+	if (issue != nullptr) {
+		Expect(issue->table == "expect_interaction_targets", "unknown expect interaction target should report interaction expectation table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "unknown expect interaction target should report table index");
+		Expect(issue->key == "target_id", "unknown expect interaction target should report target_id key");
+		Expect(issue->line == LineOfNth(toml, "[[expect_interaction_targets]]"), "unknown expect interaction target should preserve source line");
+	}
+}
+
 void TestTomlSourcePlanFeedsConverterAndProfileValidator()
 {
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
@@ -1664,10 +1732,12 @@ int main()
 	TestExpectInlineRowsParse();
 	TestExpectTraceFramesParse();
 	TestExpectInventoryStacksParse();
+	TestExpectInteractionTargetsParse();
 	TestExpectWrongTypedFieldReportsContext();
 	TestExpectFinalRowsShapeSurfacesSourcePlanValidation();
 	TestExpectTraceFrameRowsShapeSurfacesSourcePlanValidation();
 	TestExpectInventoryStackShapeSurfacesSourcePlanValidation();
+	TestExpectInteractionTargetUnknownSurfacesSourcePlanValidation();
 	TestTomlSourcePlanFeedsConverterAndProfileValidator();
 	return Failures;
 }

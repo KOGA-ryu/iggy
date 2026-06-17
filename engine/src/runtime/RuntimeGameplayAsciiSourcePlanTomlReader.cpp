@@ -21,6 +21,7 @@ enum class Table {
 	Expect,
 	ExpectTraceFrames,
 	ExpectInventoryStacks,
+	ExpectInteractionTargets,
 	Legend,
 	Cells,
 	Regions,
@@ -67,6 +68,8 @@ std::string TableName(Table table)
 		return "expect_trace_frames";
 	case Table::ExpectInventoryStacks:
 		return "expect_inventory_stacks";
+	case Table::ExpectInteractionTargets:
+		return "expect_interaction_targets";
 	case Table::Legend:
 		return "legend";
 	case Table::Cells:
@@ -1161,6 +1164,22 @@ RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
 			issue.line = locations.expectInventoryStackTableLines[sourceIssue.index];
 		}
 		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::
+		ExpectedInteractionTargetMissingId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::
+		ExpectedInteractionTargetDuplicateId:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::
+		ExpectedInteractionTargetUnknownId:
+		issue.table = "expect_interaction_targets";
+		issue.hasTableIndex = true;
+		issue.tableIndex = sourceIssue.index;
+		issue.key = "target_id";
+		if (sourceIssue.index <
+			locations.expectInteractionTargetTableLines.size()) {
+			issue.line =
+				locations.expectInteractionTargetTableLines[sourceIssue.index];
+		}
+		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::EmptyRows:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::GridDimensionMismatch:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::RaggedRow:
@@ -1305,6 +1324,18 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 				table,
 				true,
 				result.plan.expectations.inventoryStacks.size() - 1,
+			};
+			continue;
+		}
+		if (line == "[[expect_interaction_targets]]") {
+			result.plan.expectations.interactionTargets.push_back({});
+			result.sourceLocations.expectInteractionTargetTableLines.push_back(
+				lineNumber);
+			table = Table::ExpectInteractionTargets;
+			context = {
+				table,
+				true,
+				result.plan.expectations.interactionTargets.size() - 1,
 			};
 			continue;
 		}
@@ -1654,6 +1685,34 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 					result,
 					lineNumber,
 					"unsupported expect_inventory_stacks key: " + key,
+					context,
+					key);
+			}
+			continue;
+		}
+
+		if (table == Table::ExpectInteractionTargets) {
+			RuntimeGameplayAsciiSourcePlanExpectedInteractionTarget &target =
+				result.plan.expectations.interactionTargets.back();
+			if (key == "target_id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					target.targetId = ResourceId(parsed);
+				}
+			} else if (key == "enabled") {
+				bool parsed = false;
+				if (!ParseBool(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					target.enabled = parsed;
+				}
+			} else {
+				AddUnsupported(
+					result,
+					lineNumber,
+					"unsupported expect_interaction_targets key: " + key,
 					context,
 					key);
 			}

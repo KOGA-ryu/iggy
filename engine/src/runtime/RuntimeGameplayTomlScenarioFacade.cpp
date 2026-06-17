@@ -65,6 +65,21 @@ bool InventoryStacksMatch(
 	return true;
 }
 
+bool InteractionTargetsMatch(
+	const std::vector<RuntimeGameplayAsciiSourcePlanExpectedInteractionTarget>
+		&expected,
+	const InteractionTarget2DRegistry &actual)
+{
+	for (const RuntimeGameplayAsciiSourcePlanExpectedInteractionTarget &target :
+		expected) {
+		const InteractionTarget2D *actualTarget = actual.find(target.targetId);
+		if (actualTarget == nullptr || actualTarget->enabled != target.enabled) {
+			return false;
+		}
+	}
+	return true;
+}
+
 RuntimeGameplayTomlScenarioExpectationComparison CompareExpectations(
 	const RuntimeGameplayAsciiSourcePlanExpectations &expectations,
 	const RuntimeGameplayProfileScenarioRunResult &run,
@@ -159,6 +174,14 @@ RuntimeGameplayTomlScenarioExpectationComparison CompareExpectations(
 			run.state.inventory.inventory.stacks);
 		comparison.matched =
 			comparison.matched && comparison.inventoryStacksMatched;
+	}
+	if (!expectations.interactionTargets.empty()) {
+		comparison.checkedInteractionTargets = true;
+		comparison.interactionTargetsMatched = InteractionTargetsMatch(
+			expectations.interactionTargets,
+			run.state.interaction.targets);
+		comparison.matched =
+			comparison.matched && comparison.interactionTargetsMatched;
 	}
 
 	return comparison;
