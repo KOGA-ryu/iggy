@@ -49,6 +49,7 @@ struct RuntimeGameplayAsciiSourcePlanTomlSourceLocations {
 	std::vector<std::size_t> annotatedCellTableLines;
 	std::vector<std::size_t> regionTableLines;
 	std::vector<std::size_t> frameControlTableLines;
+	std::vector<std::size_t> profileTableLines;
 	std::vector<std::size_t> interactionTargetTableLines;
 	std::vector<std::size_t> itemDropTableLines;
 	std::vector<std::size_t> framePlayerCommandTableLines;

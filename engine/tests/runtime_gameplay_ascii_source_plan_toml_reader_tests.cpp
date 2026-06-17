@@ -266,6 +266,21 @@ y = 1
 )toml";
 }
 
+std::string RootGridLegendCellsRegionsProfileToml()
+{
+	return RootGridLegendCellsRegionsToml() + R"toml(
+
+[[profiles]]
+id = "plain-profile"
+strength = 12
+dexterity = 11
+constitution = 10
+intelligence = 9
+wisdom = 8
+charisma = 7
+)toml";
+}
+
 std::string RootGridLegendCellsRegionsPlayerInteractCommandToml()
 {
 	return RootGridLegendCellsRegionsToml() + R"toml(
@@ -814,6 +829,110 @@ void TestFrameControlUnsupportedTargetShapeReportsContext()
 	}
 }
 
+void TestProfilesParse()
+{
+	const std::string text = RootGridLegendCellsRegionsProfileToml();
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(result.ok(), "valid profile TOML should parse");
+	Expect(result.plan.authoredProfiles.size() == 1, "one profile should parse");
+	Expect(result.sourceLocations.profileTableLines.size() == 1, "profile source location should be captured");
+	Expect(result.sourceLocations.profileTableLines[0] == LineOfNth(text, "[[profiles]]"), "profile source location should preserve table line");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredProfile &profile =
+		result.plan.authoredProfiles[0];
+	Expect(profile.profileId == Id("plain-profile"), "profile should parse exact id");
+	Expect(profile.traits.strength == 12, "profile should parse strength");
+	Expect(profile.traits.dexterity == 11, "profile should parse dexterity");
+	Expect(profile.traits.constitution == 10, "profile should parse constitution");
+	Expect(profile.traits.intelligence == 9, "profile should parse intelligence");
+	Expect(profile.traits.wisdom == 8, "profile should parse wisdom");
+	Expect(profile.traits.charisma == 7, "profile should parse charisma");
+}
+
+void TestProfileWrongTypedTraitReportsContext()
+{
+	std::string text = RootGridLegendCellsRegionsProfileToml();
+	const std::size_t start = text.find("strength = 12");
+	text.replace(start, std::string("strength = 12").size(), "strength = \"12\"");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "wrong typed profile trait should fail");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::TypeInvalid, "wrong typed profile trait should report type invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::WrongType, "strength");
+	Expect(issue != nullptr, "wrong typed profile trait issue should be findable");
+	if (issue != nullptr) {
+		Expect(issue->table == "profiles", "wrong typed profile trait should report profiles table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "wrong typed profile trait should report first profile index");
+		Expect(issue->key == "strength", "wrong typed profile trait should report strength key");
+	}
+}
+
+void TestProfileMissingIdSurfacesSourcePlanValidation()
+{
+	std::string text = RootGridLegendCellsRegionsProfileToml();
+	const std::size_t start = text.find("id = \"plain-profile\"\n");
+	text.erase(start, std::string("id = \"plain-profile\"\n").size());
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "profile without id should fail source validation");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "profile without id should report source invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredProfileMissingId);
+	Expect(issue != nullptr, "profile without id should mirror source issue");
+	if (issue != nullptr) {
+		Expect(issue->line == LineOfNth(text, "[[profiles]]"), "mirrored profile id issue should report table line");
+		Expect(issue->table == "profiles", "mirrored profile id issue should report profiles table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "mirrored profile id issue should report first profile index");
+		Expect(issue->key == "id", "mirrored profile id issue should report id key");
+	}
+}
+
+void TestProfileInvalidTraitSurfacesSourcePlanValidation()
+{
+	std::string text = RootGridLegendCellsRegionsProfileToml();
+	const std::size_t start = text.find("strength = 12");
+	text.replace(start, std::string("strength = 12").size(), "strength = 21");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "out-of-range profile trait should fail source validation");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "out-of-range profile trait should report source invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredProfileInvalidTraits);
+	Expect(issue != nullptr, "out-of-range profile trait should mirror source issue");
+	if (issue != nullptr) {
+		Expect(issue->line == LineOfNth(text, "[[profiles]]"), "mirrored invalid profile trait should report table line");
+		Expect(issue->table == "profiles", "mirrored invalid profile trait should report profiles table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "mirrored invalid profile trait should report first profile index");
+		Expect(issue->key == "traits", "mirrored invalid profile trait should report traits key");
+		Expect(issue->sourceIssue.id == Id("plain-profile"), "mirrored invalid profile trait should preserve profile id");
+	}
+}
+
+void TestUnsupportedProfileKeyReportsContext()
+{
+	std::string text = RootGridLegendCellsRegionsProfileToml();
+	const std::size_t start = text.find("charisma = 7");
+	text.insert(start + std::string("charisma = 7").size(), "\nluck = 10");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult result =
+		Read(text);
+
+	Expect(!result.ok(), "unsupported profile key should fail");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::UnsupportedSyntax, "unsupported profile key should report unsupported");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::UnsupportedNestedShape, "luck");
+	Expect(issue != nullptr, "unsupported profile key should be findable");
+	if (issue != nullptr) {
+		Expect(issue->table == "profiles", "unsupported profile key should report profiles table");
+		Expect(issue->hasTableIndex && issue->tableIndex == 0, "unsupported profile key should report first profile index");
+		Expect(issue->detail.find("unsupported profiles key") != std::string::npos, "unsupported profile key should preserve detail");
+	}
+}
+
 void TestInteractionTargetsParse()
 {
 	const std::string text = RootGridLegendCellsRegionsInteractionTargetToml();
@@ -1229,6 +1348,11 @@ int main()
 	TestFrameControlInvalidFieldsReportContext();
 	TestFrameControlMissingTargetSurfacesSourcePlanValidation();
 	TestFrameControlUnsupportedTargetShapeReportsContext();
+	TestProfilesParse();
+	TestProfileWrongTypedTraitReportsContext();
+	TestProfileMissingIdSurfacesSourcePlanValidation();
+	TestProfileInvalidTraitSurfacesSourcePlanValidation();
+	TestUnsupportedProfileKeyReportsContext();
 	TestInteractionTargetsParse();
 	TestInteractionTargetInvalidFieldsReportContext();
 	TestInteractionTargetMissingIdSurfacesSourcePlanValidation();

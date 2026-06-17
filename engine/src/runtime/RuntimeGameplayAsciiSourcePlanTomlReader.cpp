@@ -21,6 +21,7 @@ enum class Table {
 	Legend,
 	Cells,
 	Regions,
+	Profiles,
 	InteractionTargets,
 	ItemDrops,
 	FrameControls,
@@ -56,6 +57,8 @@ std::string TableName(Table table)
 		return "cells";
 	case Table::Regions:
 		return "regions";
+	case Table::Profiles:
+		return "profiles";
 	case Table::InteractionTargets:
 		return "interaction_targets";
 	case Table::ItemDrops:
@@ -947,12 +950,18 @@ RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
 		issue.hasTableIndex = true;
 		issue.tableIndex = sourceIssue.index;
 		issue.key = "id";
+		if (sourceIssue.index < locations.profileTableLines.size()) {
+			issue.line = locations.profileTableLines[sourceIssue.index];
+		}
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredProfileInvalidTraits:
 		issue.table = "profiles";
 		issue.hasTableIndex = true;
 		issue.tableIndex = sourceIssue.index;
 		issue.key = "traits";
+		if (sourceIssue.index < locations.profileTableLines.size()) {
+			issue.line = locations.profileTableLines[sourceIssue.index];
+		}
 		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetMissingId:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredInteractionTargetDuplicateId:
@@ -1182,6 +1191,13 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			result.sourceLocations.regionTableLines.push_back(lineNumber);
 			table = Table::Regions;
 			context = { table, true, result.plan.regions.size() - 1 };
+			continue;
+		}
+		if (line == "[[profiles]]") {
+			result.plan.authoredProfiles.push_back({});
+			result.sourceLocations.profileTableLines.push_back(lineNumber);
+			table = Table::Profiles;
+			context = { table, true, result.plan.authoredProfiles.size() - 1 };
 			continue;
 		}
 		if (line == "[[interaction_targets]]") {
@@ -1525,6 +1541,69 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 				}
 			} else {
 				AddUnsupported(result, lineNumber, "unsupported regions key: " + key, context, key);
+			}
+			continue;
+		}
+
+		if (table == Table::Profiles) {
+			RuntimeGameplayAsciiSourcePlanAuthoredProfile &profile =
+				result.plan.authoredProfiles.back();
+			if (key == "id") {
+				std::string parsed;
+				if (!ParseQuotedString(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					profile.profileId = ResourceId(parsed);
+				}
+			} else if (key == "strength") {
+				int parsed = 0;
+				if (!ParseSigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					profile.traits.strength = parsed;
+				}
+			} else if (key == "dexterity") {
+				int parsed = 0;
+				if (!ParseSigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					profile.traits.dexterity = parsed;
+				}
+			} else if (key == "constitution") {
+				int parsed = 0;
+				if (!ParseSigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					profile.traits.constitution = parsed;
+				}
+			} else if (key == "intelligence") {
+				int parsed = 0;
+				if (!ParseSigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					profile.traits.intelligence = parsed;
+				}
+			} else if (key == "wisdom") {
+				int parsed = 0;
+				if (!ParseSigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					profile.traits.wisdom = parsed;
+				}
+			} else if (key == "charisma") {
+				int parsed = 0;
+				if (!ParseSigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					profile.traits.charisma = parsed;
+				}
+			} else {
+				AddUnsupported(
+					result,
+					lineNumber,
+					"unsupported profiles key: " + key,
+					context,
+					key);
 			}
 			continue;
 		}
