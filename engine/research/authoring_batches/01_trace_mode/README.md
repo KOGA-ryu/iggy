@@ -1,5 +1,7 @@
 # Batch 01: Trace Mode
 
+Status: complete.
+
 ## Goal
 Add optional per-frame trace output to `iggy_scenario_toml_runner` so authored scenarios can be debugged frame by frame.
 
