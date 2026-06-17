@@ -963,6 +963,7 @@ bool PromotePlayerStart(
 RuntimeGameplayProfileScenarioDefinition BuildDefinition(
 	const RuntimeGameplayAsciiSourcePlan &sourcePlan,
 	const RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig &config,
+	const RuntimeGameplayProfileScenarioFrameDefinition &frameTemplate,
 	const LevelTileMap &promotedMap,
 	const NpcActorState2DRegistry &actors,
 	const NpcActorControlState2DRegistry &controls,
@@ -1001,7 +1002,7 @@ RuntimeGameplayProfileScenarioDefinition BuildDefinition(
 	};
 
 	if (frameGroups.empty()) {
-		RuntimeGameplayProfileScenarioFrameDefinition frame = config.defaultFrame;
+		RuntimeGameplayProfileScenarioFrameDefinition frame = frameTemplate;
 		frame.playerFrame.playerIntents.insert(
 			frame.playerFrame.playerIntents.end(),
 			defaultPlayerIntents.begin(),
@@ -1009,7 +1010,7 @@ RuntimeGameplayProfileScenarioDefinition BuildDefinition(
 		appendFrame(frame);
 	} else {
 		for (const AuthoredFrameGroup &group : frameGroups) {
-			RuntimeGameplayProfileScenarioFrameDefinition frame = config.defaultFrame;
+			RuntimeGameplayProfileScenarioFrameDefinition frame = frameTemplate;
 			frame.hasFrameId = true;
 			frame.frameId = group.frameId;
 			frame.controlOverrides = group.controls;
@@ -1049,18 +1050,15 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConverter::convert(
 		return result;
 	}
 
-	if (!config.hasDefaultFrame) {
-		AddIssue(result, MissingFrameDefaultsIssue());
-		result.issueCount = result.issues.size();
-		result.status = RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::MissingFrameDefaults;
-		return result;
-	}
-
 	if (!PromoteTerrain(sourcePlan, config, result)) {
 		result.issueCount = result.issues.size();
 		result.status = RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::UnsupportedTerrainPromotion;
 		return result;
 	}
+
+	RuntimeGameplayProfileScenarioFrameDefinition frameTemplate =
+		config.hasDefaultFrame ? config.defaultFrame : RuntimeGameplayProfileScenarioFrameDefinition {};
+	frameTemplate.movementMap = result.promotedMap;
 
 	std::vector<AuthoredFrameGroup> frameGroups;
 	if (!PromoteActorsAndControls(sourcePlan, config, frameGroups, result)) {
@@ -1123,6 +1121,7 @@ RuntimeGameplayAsciiSourcePlanProfileScenarioConverter::convert(
 	result.definition = BuildDefinition(
 		sourcePlan,
 		config,
+		frameTemplate,
 		result.promotedMap,
 		result.actorRegistry.registry,
 		result.controlRegistry.registry,

@@ -306,19 +306,24 @@ void TestInvalidSourcePlanShortCircuitsBeforePublishingDefinition()
 	Expect(plan.grid.rows == before.grid.rows, "converter should not mutate invalid source plan");
 }
 
-void TestValidSourcePlanRequiresFrameDefaults()
+void TestValidSourcePlanUsesFallbackFrameWhenDefaultsMissing()
 {
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config;
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
 
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
-		Convert(plan);
+		Convert(plan, config);
 
-	Expect(!result.ok(), "missing frame defaults should not convert");
-	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::MissingFrameDefaults, "missing frame defaults should be deterministic status");
-	Expect(result.sourceValidation.ok(), "missing frame defaults should run after source validation passes");
-	Expect(result.missingFrameDefaultsCount == 1, "missing frame defaults should be counted once");
-	Expect(HasIssue(result, iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionIssueCode::MissingFrameDefaults), "missing frame defaults issue should be present");
-	Expect(result.definition.frames.empty(), "missing frame defaults should not publish profile scenario frames");
+	Expect(result.ok(), "valid source plan should convert with fallback frame when defaults are missing");
+	Expect(result.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::Converted, "fallback frame conversion should report converted");
+	Expect(result.sourceValidation.ok(), "fallback frame conversion should run after source validation passes");
+	Expect(result.missingFrameDefaultsCount == 0, "fallback frame conversion should not count missing frame defaults");
+	Expect(result.definition.frames.size() == 1, "fallback frame conversion should publish one profile scenario frame");
+	if (!result.definition.frames.empty()) {
+		Expect(!result.definition.frames[0].hasFrameId, "fallback default frame should not invent a frame id");
+		Expect(result.definition.frames[0].movementMap.id == Id("scenario:ascii-profile"), "fallback default frame should use promoted map");
+	}
 }
 
 void TestValidSourcePlanAndFrameDefaultsPublishValidatedProfileScenario()
@@ -665,6 +670,31 @@ void TestFrameIdAuthoredControlsCreateScenarioFramesInFirstSeenOrder()
 	}
 	Expect(result.definition.initialState.npcControls.entries.size() == 1, "frame-id authored controls should keep initial controls valid");
 	Expect(result.definition.initialState.npcControls.entries[0].objective.type == iggy::NpcObjectiveType::Wait, "frame-id authored controls should not replace initial controls");
+}
+
+void TestFrameIdAuthoredControlsUseFallbackFrameShape()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	plan.authoredControls = {
+		SeekingControl("npc:guard", { 2.5F, 1.5F }, "frame:move-one"),
+		SeekingControl("npc:guard", { 3.5F, 1.5F }, "frame:move-two"),
+	};
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig config;
+	config.profileTraits = Catalog({ { Id("profile:guard"), Traits() } });
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionResult result =
+		Convert(plan, config);
+
+	Expect(result.ok(), "frame-id authored controls should convert with fallback frame shape");
+	Expect(result.definition.frames.size() == 2, "fallback frame shape should still produce one frame per authored frame id");
+	if (result.definition.frames.size() == 2) {
+		Expect(result.definition.frames[0].hasFrameId && result.definition.frames[0].frameId == Id("frame:move-one"), "fallback first frame-id group should preserve first frame id");
+		Expect(result.definition.frames[1].hasFrameId && result.definition.frames[1].frameId == Id("frame:move-two"), "fallback second frame-id group should preserve second frame id");
+		Expect(result.definition.frames[0].movementMap.id == Id("scenario:ascii-profile"), "fallback first frame should use promoted map");
+		Expect(result.definition.frames[1].movementMap.id == Id("scenario:ascii-profile"), "fallback second frame should use promoted map");
+		Expect(result.definition.frames[0].controlOverrides.size() == 1, "fallback first frame should carry override");
+		Expect(result.definition.frames[1].controlOverrides.size() == 1, "fallback second frame should carry override");
+	}
 }
 
 void TestNoFrameAuthoredPlayerCommandCreatesDefaultFrameIntent()
@@ -1258,7 +1288,7 @@ void TestUnmappedRegionDoesNotBlockConversionByDefault()
 int main()
 {
 	TestInvalidSourcePlanShortCircuitsBeforePublishingDefinition();
-	TestValidSourcePlanRequiresFrameDefaults();
+	TestValidSourcePlanUsesFallbackFrameWhenDefaultsMissing();
 	TestValidSourcePlanAndFrameDefaultsPublishValidatedProfileScenario();
 	TestTerrainActorAndDefaultControlPromotion();
 	TestNoAuthoredInteractionTargetsPreservesEmptyInteractionState();
@@ -1273,6 +1303,7 @@ int main()
 	TestDuplicatePlayerStartBlocksConversion();
 	TestAuthoredControlReplacesDefaultControlForPromotedActor();
 	TestFrameIdAuthoredControlsCreateScenarioFramesInFirstSeenOrder();
+	TestFrameIdAuthoredControlsUseFallbackFrameShape();
 	TestNoFrameAuthoredPlayerCommandCreatesDefaultFrameIntent();
 	TestSharedFrameIdAuthoredPlayerCommandAndNpcControlShareFrame();
 	TestAuthoredPlayerInteractCommandCreatesInteractIntent();

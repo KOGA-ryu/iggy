@@ -309,7 +309,7 @@ void TestInvalidAsciiSourcePlanPreservesNestedConversionFailure()
 	Expect(packet.asciiSourcePlan.grid.rows == before.asciiSourcePlan.grid.rows, "invalid source-plan conversion should not mutate packet");
 }
 
-void TestMissingFrameDefaultsPreservesNestedConversionFailure()
+void TestMissingProfileCatalogPreservesNestedConversionFailure()
 {
 	iggy::runtime::RuntimeGameplayScenarioAuthoringPacket packet;
 	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
@@ -322,13 +322,13 @@ void TestMissingFrameDefaultsPreservesNestedConversionFailure()
 	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult result =
 		Convert(packet, config);
 
-	Expect(result.status == iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterStatus::ConversionFailed, "missing frame defaults should map to ConversionFailed");
-	Expect(result.asciiSourcePlanConversion.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::MissingFrameDefaults, "missing frame defaults should preserve nested converter status");
-	Expect(result.profileScenario.frames.empty(), "missing frame defaults should not publish profile scenario");
-	Expect(result.hasIssues() && result.issueCount == 1, "missing frame defaults should report one adapter issue");
+	Expect(result.status == iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterStatus::ConversionFailed, "missing profile catalog should map to ConversionFailed");
+	Expect(result.asciiSourcePlanConversion.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::ProfileScenarioInvalid, "missing profile catalog should preserve nested converter status");
+	Expect(result.profileScenario.frames.empty(), "missing profile catalog should not publish profile scenario through adapter");
+	Expect(result.hasIssues() && result.issueCount == 1, "missing profile catalog should report one adapter issue");
 	if (!result.issues.empty())
-		Expect(result.issues[0].asciiSourcePlanConversionStatus == iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::MissingFrameDefaults, "missing frame defaults issue should preserve nested status");
-	Expect(config.hasAsciiSourcePlanProfileScenarioConfig == configBefore.hasAsciiSourcePlanProfileScenarioConfig, "missing frame defaults path should not mutate config");
+		Expect(result.issues[0].asciiSourcePlanConversionStatus == iggy::runtime::RuntimeGameplayAsciiSourcePlanProfileScenarioConversionStatus::ProfileScenarioInvalid, "missing profile catalog issue should preserve nested status");
+	Expect(config.hasAsciiSourcePlanProfileScenarioConfig == configBefore.hasAsciiSourcePlanProfileScenarioConfig, "missing profile catalog path should not mutate config");
 }
 
 void TestProfileScenarioPacketConvertsByValue()
@@ -407,7 +407,7 @@ int main()
 	TestAsciiSourcePlanWithoutConversionConfigIsInvalid();
 	TestAsciiSourcePlanDelegatesToConverter();
 	TestInvalidAsciiSourcePlanPreservesNestedConversionFailure();
-	TestMissingFrameDefaultsPreservesNestedConversionFailure();
+	TestMissingProfileCatalogPreservesNestedConversionFailure();
 	TestProfileScenarioPacketConvertsByValue();
 	TestConvertedProfileScenarioFeedsExistingBuilder();
 	TestUnsupportedSourceWithPayloadDoesNotConvert();
