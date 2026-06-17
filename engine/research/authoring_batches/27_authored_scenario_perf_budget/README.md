@@ -1,5 +1,7 @@
 # Batch 27: Authored Scenario Perf Budget
 
+Status: complete.
+
 ## Goal
 Add lightweight performance/size guardrails for authored scenario execution.
 
@@ -20,3 +22,11 @@ No profiler framework. No flaky timing gates.
 
 ## Expected Result
 The authored lane has visible scale assumptions.
+
+## Completed Coverage
+- Added a deterministic canonical fixture budget test instead of wall-clock
+  timing.
+- The budget covers source file bytes, grid size, source fact counts, authored
+  frame/input counts, interaction/drop counts, and expectation rows.
+- Documented the Authoring V1 fixture scale budget as a test/dev-harness
+  envelope, not a runtime cap.

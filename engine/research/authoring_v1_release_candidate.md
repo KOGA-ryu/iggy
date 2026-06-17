@@ -102,6 +102,23 @@ The current acceptance suite includes:
   parity tests;
 - negative fixture catalog coverage.
 
+## Fixture Scale Budget
+
+Canonical fixtures are intentionally small and deterministic. The test-owned
+budget guards the current fixture lane against accidental growth without using
+wall-clock timing:
+
+- source file size: no more than 8 KiB;
+- grid size: no more than 8 rows, 16 columns, or 128 cells;
+- source facts: no more than 16 legend entries, 16 annotated cells, 8 regions,
+  8 authored profiles, 8 authored frame ids, 8 NPC controls, 8 player commands,
+  8 interaction targets, or 8 item drops;
+- expectations: no more than 8 trace frames and 48 expected row strings.
+
+These are development fixture budgets, not runtime caps or gameplay design
+limits. Larger authored scenarios should introduce an explicit budget update and
+focused coverage rather than silently expanding the canonical pack.
+
 ## Non-Goals
 
 - UI/Edi implementation or mutation APIs.
