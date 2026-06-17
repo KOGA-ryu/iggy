@@ -1,5 +1,7 @@
 # Batch 13: Fixture Ceremony Cleanup
 
+Status: complete.
+
 ## Goal
 Remove redundant C++ fixture ceremony made obsolete by self-contained TOML and CLI golden tests.
 
@@ -22,9 +24,6 @@ Do not delete lower-level coverage just because a CLI scenario passes.
 
 ## Expected Result
 Less test ceremony without losing behavior or diagnostics coverage.
-
-## Status
-Complete.
 
 ## Completed Coverage
 - Kept lower-level file-reader, parser diagnostic, explicit converter config,
