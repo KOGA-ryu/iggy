@@ -10,6 +10,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeGameplayOrchestratedFrameRunnerReporter.cpp
   src/runtime/RuntimeGameplayOrchestratedFrameReporter.cpp
   src/runtime/RuntimeGameplayOrchestratedFrameStep.cpp
+  src/runtime/RuntimeGameplayAuthoringErrorCodes.cpp
   src/runtime/RuntimeGameplayScenarioAuthoringAdapter.cpp
   src/runtime/RuntimeGameplayAsciiScenarioPacket.cpp
   src/runtime/RuntimeGameplayAsciiScenarioPacketValidator.cpp
