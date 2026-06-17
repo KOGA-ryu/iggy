@@ -1,5 +1,6 @@
 #include "runtime/RuntimeGameplayTomlScenarioFacade.hpp"
 
+#include "runtime/RuntimeGameplayAuthoringDiagnostics.hpp"
 #include "runtime/RuntimeGameplayAsciiSourcePlanFinalDebugRows.hpp"
 
 namespace iggy::runtime {
@@ -154,6 +155,7 @@ RuntimeGameplayTomlScenarioFacadeResult RuntimeGameplayTomlScenarioFacade::execu
 	result.read = RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(path);
 	if (!result.read.ok()) {
 		result.status = RuntimeGameplayTomlScenarioFacadeStatus::ReadFailed;
+		result.diagnostics = projectRuntimeGameplayAuthoringDiagnostics(result);
 		return result;
 	}
 
@@ -165,6 +167,7 @@ RuntimeGameplayTomlScenarioFacadeResult RuntimeGameplayTomlScenarioFacade::execu
 	result.adapter = RuntimeGameplayScenarioAuthoringAdapter {}.convert(packet);
 	if (!result.adapter.ok()) {
 		result.status = RuntimeGameplayTomlScenarioFacadeStatus::ConversionFailed;
+		result.diagnostics = projectRuntimeGameplayAuthoringDiagnostics(result);
 		return result;
 	}
 
@@ -174,6 +177,7 @@ RuntimeGameplayTomlScenarioFacadeResult RuntimeGameplayTomlScenarioFacade::execu
 		result.status = result.validation.ok()
 			? RuntimeGameplayTomlScenarioFacadeStatus::LintOk
 			: RuntimeGameplayTomlScenarioFacadeStatus::LintFailed;
+		result.diagnostics = projectRuntimeGameplayAuthoringDiagnostics(result);
 		return result;
 	}
 
@@ -182,6 +186,7 @@ RuntimeGameplayTomlScenarioFacadeResult RuntimeGameplayTomlScenarioFacade::execu
 	result.validation = result.run.validation;
 	if (!result.run.ran()) {
 		result.status = RuntimeGameplayTomlScenarioFacadeStatus::RunFailed;
+		result.diagnostics = projectRuntimeGameplayAuthoringDiagnostics(result);
 		return result;
 	}
 

@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "runtime/RuntimeGameplayAuthoringDiagnostics.hpp"
 #include "runtime/RuntimeGameplayAsciiSourcePlanTomlFileReader.hpp"
 #include "runtime/RuntimeGameplayProfileScenarioRunner.hpp"
 #include "runtime/RuntimeGameplayProfileScenarioValidator.hpp"
@@ -75,6 +76,7 @@ struct RuntimeGameplayTomlScenarioFacadeResult {
 	std::vector<std::string> finalRows;
 	RuntimeGameplayTomlScenarioRunSummaryProjection runSummary;
 	std::vector<RuntimeGameplayTomlScenarioTraceFrame> traceFrames;
+	std::vector<RuntimeGameplayAuthoringDiagnosticEntry> diagnostics;
 	RuntimeGameplayTomlScenarioExpectationComparison expectationComparison;
 	RuntimeGameplayTomlScenarioFacadeStatus status =
 		RuntimeGameplayTomlScenarioFacadeStatus::ReadFailed;
