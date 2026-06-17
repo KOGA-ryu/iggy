@@ -1742,6 +1742,231 @@ tile = { x = 3, y = 1 }
 	}
 }
 
+void TestSubsetWhitespaceCommentsAndEscapedStringsParse()
+{
+	const std::string toml = R"toml(
+  # leading whitespace and comments are ignored
+	format_id = "iggy:ascii-source-plan" # trailing comments are ignored
+version = 1
+source_ref = "authoring:manual\tfixture"
+
+  [grid]
+width = 3
+height = 2
+background = "."
+rows = [ "###", "#.#" ] # compact inline arrays are accepted
+
+[[interaction_targets]]
+target_id = "target:sign"
+kind = "inspectable"
+tile = { x = 1, y = 1 }
+radius = 1.0
+enabled = true
+effect = "inspect_text"
+text = "read # literally, then \"quoted\" text"
+)toml";
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
+		Read(toml);
+
+	Expect(read.ok(), "subset stress whitespace/comments/escaped strings should parse");
+	Expect(read.plan.hasSourceRef && read.plan.sourceRef == Id("authoring:manual\tfixture"), "escaped tab in quoted string should be preserved");
+	Expect(read.plan.grid.rows.size() == 2 && read.plan.grid.rows[1] == "#.#", "inline rows with spaces should parse");
+	Expect(read.plan.authoredInteractionTargets.size() == 1, "interaction target should parse after comments");
+	if (!read.plan.authoredInteractionTargets.empty()) {
+		const iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredInteractionTarget &target =
+			read.plan.authoredInteractionTargets[0];
+		Expect(target.text == "read # literally, then \"quoted\" text", "comments inside strings and escaped quotes should be preserved");
+	}
+}
+
+void TestSubsetTableOrderingAndInterleavedFrameDeclarationsParse()
+{
+	const std::string toml = R"toml(
+format_id = "iggy:ascii-source-plan"
+version = 1
+source_id = "scenario:ordered"
+
+[[profiles]]
+id = "profile:guard"
+strength = 10
+dexterity = 10
+constitution = 10
+intelligence = 10
+wisdom = 10
+charisma = 10
+
+[[legend]]
+glyph = "A"
+kind = "actor"
+role_id = "role:npc"
+maps_to_scenario_marker = true
+scenario_marker_kind = "actor"
+
+[[legend]]
+glyph = "@"
+kind = "player_start"
+role_id = "role:player-start"
+maps_to_scenario_marker = true
+scenario_marker_kind = "player_start"
+
+[[frame_player_commands]]
+frame_id = "frame:first"
+command = "move_to_tile"
+x = 3
+y = 1
+
+[[cells]]
+id = "cell:guard"
+row = 1
+column = 1
+glyph = "A"
+local_tile = { x = 1, y = 1 }
+marker_id = "npc:guard"
+profile_id = "profile:guard"
+
+[[frame_controls]]
+frame_id = "frame:second"
+npc = "npc:guard"
+behavior = "seeking"
+move_mode = "walk"
+target = { x = 2.5, y = 1.5 }
+
+[grid]
+width = 5
+height = 3
+background = "."
+rows = [
+  "#####",
+  "#A.@#",
+  "#####",
+]
+)toml";
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
+		Read(toml);
+
+	Expect(read.ok(), "subset stress reordered supported tables should parse");
+	Expect(read.plan.grid.width == 5 && read.plan.grid.height == 3, "grid should parse even when it appears after repeated tables");
+	Expect(read.plan.authoredProfiles.size() == 1, "profile table should parse before grid");
+	Expect(read.plan.authoredPlayerCommands.size() == 1, "player command should parse before actor cell");
+	Expect(read.plan.authoredControls.size() == 1, "NPC control should parse after actor cell");
+	Expect(read.plan.authoredPlayerCommands[0].declarationIndex == 0, "first interleaved authored frame declaration should keep order");
+	Expect(read.plan.authoredControls[0].declarationIndex == 1, "second interleaved authored frame declaration should keep order");
+}
+
+void TestSubsetRepeatedTablesAndInlineTableFieldOrderParse()
+{
+	const std::string toml = RootGridLegendCellsRegionsToml() + R"toml(
+
+[[item_drops]]
+drop_id = "drop:first"
+item_id = "item:key"
+count = 1
+tile = { y = 1, x = 3 }
+pickup_radius = 1.0
+enabled = true
+glyph = "k"
+
+[[item_drops]]
+drop_id = "drop:second"
+item_id = "item:coin"
+count = 2
+position = { y = 1.5, x = 4.5 }
+pickup_radius = 1.0
+enabled = false
+glyph = "c"
+
+[[expect_trace_frames]]
+frame_id = "frame:first"
+rows = ["#######", "#A...@#", "#.....#", "#######"]
+
+[[expect_trace_frames]]
+frame_id = "frame:second"
+rows = ["#######", "#.A..@#", "#.....#", "#######"]
+)toml";
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
+		Read(toml);
+
+	Expect(read.ok(), "subset stress repeated tables and reordered inline fields should parse");
+	Expect(read.plan.authoredItemDrops.size() == 2, "repeated item_drops tables should append");
+	if (read.plan.authoredItemDrops.size() == 2) {
+		Expect(read.plan.authoredItemDrops[0].localTile.present &&
+			read.plan.authoredItemDrops[0].localTile.x == 3 &&
+			read.plan.authoredItemDrops[0].localTile.y == 1,
+			"inline tile fields should parse by key regardless of order");
+		Expect(read.plan.authoredItemDrops[1].localPosition.present &&
+			read.plan.authoredItemDrops[1].localPosition.x == 4.5 &&
+			read.plan.authoredItemDrops[1].localPosition.y == 1.5,
+			"inline position fields should parse by key regardless of order");
+	}
+	Expect(read.plan.expectations.traceFrames.size() == 2, "repeated expectation trace frames should append");
+}
+
+void TestSubsetUnsupportedTomlFeaturesReportDiagnostics()
+{
+	const std::string singleQuoted = R"toml(
+format_id = 'iggy:ascii-source-plan'
+version = 1
+
+[grid]
+width = 1
+height = 1
+background = "."
+rows = ["."]
+)toml";
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult singleRead =
+		Read(singleQuoted);
+	Expect(singleRead.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::TypeInvalid, "single-quoted strings should remain unsupported as wrong type");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *formatIssue =
+		FindIssue(singleRead, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::WrongType, "format_id");
+	Expect(formatIssue != nullptr, "single-quoted strings should report the affected key");
+	if (formatIssue != nullptr) {
+		Expect(formatIssue->table == "root", "single-quoted root string should report root table");
+	}
+
+	const std::string dottedTable = R"toml(
+format_id = "iggy:ascii-source-plan"
+version = 1
+
+[grid.rows]
+value = ["."]
+)toml";
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult dottedRead =
+		Read(dottedTable);
+	Expect(dottedRead.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::UnsupportedSyntax, "dotted tables should report unsupported syntax");
+	Expect(HasIssue(dottedRead, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::UnsupportedNestedShape), "dotted tables should report unsupported issue");
+
+	const std::string inlineArrayOfTables = R"toml(
+format_id = "iggy:ascii-source-plan"
+version = 1
+
+[grid]
+width = 1
+height = 1
+background = "."
+rows = ["."]
+
+[[cells]]
+id = "cell:bad"
+row = 0
+column = 0
+glyph = "."
+role_tags = [{ id = "tag:unsupported" }]
+)toml";
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult arrayRead =
+		Read(inlineArrayOfTables);
+	Expect(arrayRead.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::TypeInvalid, "arrays of inline tables should remain unsupported as wrong type");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *roleTagsIssue =
+		FindIssue(arrayRead, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::WrongType, "role_tags");
+	Expect(roleTagsIssue != nullptr, "unsupported array shape should report the affected key");
+	if (roleTagsIssue != nullptr) {
+		Expect(roleTagsIssue->table == "cells", "unsupported array shape should report repeated table context");
+		Expect(roleTagsIssue->hasTableIndex && roleTagsIssue->tableIndex == 0, "unsupported array shape should report repeated table index");
+	}
+}
+
 void TestTomlSourcePlanFeedsConverterAndProfileValidator()
 {
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
@@ -1847,6 +2072,10 @@ int main()
 	TestExpectInventoryStackShapeSurfacesSourcePlanValidation();
 	TestExpectInteractionTargetUnknownSurfacesSourcePlanValidation();
 	TestExpectActorStateUnknownSurfacesSourcePlanValidation();
+	TestSubsetWhitespaceCommentsAndEscapedStringsParse();
+	TestSubsetTableOrderingAndInterleavedFrameDeclarationsParse();
+	TestSubsetRepeatedTablesAndInlineTableFieldOrderParse();
+	TestSubsetUnsupportedTomlFeaturesReportDiagnostics();
 	TestTomlSourcePlanFeedsConverterAndProfileValidator();
 	return Failures;
 }
