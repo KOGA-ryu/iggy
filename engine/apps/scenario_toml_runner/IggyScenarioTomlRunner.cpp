@@ -7,6 +7,7 @@
 #include "runtime/RuntimeGameplayAsciiSourcePlanFinalDebugRows.hpp"
 #include "runtime/RuntimeGameplayAsciiSourcePlanTomlFileReader.hpp"
 #include "runtime/RuntimeGameplayProfileScenarioRunner.hpp"
+#include "runtime/RuntimeGameplayProfileScenarioValidator.hpp"
 #include "runtime/RuntimeGameplayScenarioAuthoringAdapter.hpp"
 
 namespace {
@@ -348,6 +349,19 @@ const char *ToString(
 }
 
 const char *ToString(
+	iggy::runtime::RuntimeGameplayProfileScenarioValidationStatus status)
+{
+	using Status = iggy::runtime::RuntimeGameplayProfileScenarioValidationStatus;
+	switch (status) {
+	case Status::Valid:
+		return "valid";
+	case Status::Invalid:
+		return "invalid";
+	}
+	return "unknown";
+}
+
+const char *ToString(
 	iggy::runtime::RuntimeGameplayScenarioIssueCode code)
 {
 	using Code = iggy::runtime::RuntimeGameplayScenarioIssueCode;
@@ -416,7 +430,7 @@ int Usage()
 {
 	std::cerr << "status:\n";
 	std::cerr << "result: usage_error\n";
-	std::cerr << "usage: iggy_scenario_toml_runner [--trace] [--check] <path>\n";
+	std::cerr << "usage: iggy_scenario_toml_runner [--trace] [--check] [--lint] <path>\n";
 	return 1;
 }
 
@@ -675,12 +689,31 @@ void PrintExpectationComparison(const ExpectationComparison &comparison)
 			<< MatchText(comparison.npcMovedCountMatched) << '\n';
 }
 
+void PrintFirstProfileValidationIssue(
+	const iggy::runtime::RuntimeGameplayProfileScenarioValidationResult &validation)
+{
+	if (validation.issues.empty())
+		return;
+
+	const iggy::runtime::RuntimeGameplayProfileScenarioIssue &issue =
+		validation.issues.front();
+	std::cerr << "profile_issue: code=" << ToString(issue.code)
+		<< " frame_index=" << issue.frameIndex
+		<< " actor_index=" << issue.actorIndex;
+	if (!issue.npcId.empty())
+		std::cerr << " npc=" << IdText(issue.npcId);
+	if (!issue.profileId.empty())
+		std::cerr << " profile=" << IdText(issue.profileId);
+	std::cerr << '\n';
+}
+
 } // namespace
 
 int main(int argc, char **argv)
 {
 	bool trace = false;
 	bool check = false;
+	bool lint = false;
 	const char *pathArgument = nullptr;
 	for (int index = 1; index < argc; ++index) {
 		const std::string_view argument(argv[index]);
@@ -688,6 +721,8 @@ int main(int argc, char **argv)
 			trace = true;
 		} else if (argument == "--check") {
 			check = true;
+		} else if (argument == "--lint") {
+			lint = true;
 		} else if (pathArgument == nullptr) {
 			pathArgument = argv[index];
 		} else {
@@ -733,6 +768,32 @@ int main(int argc, char **argv)
 		return 3;
 	}
 
+	if (lint) {
+		const iggy::runtime::RuntimeGameplayProfileScenarioValidationResult
+			validation =
+				iggy::runtime::RuntimeGameplayProfileScenarioValidator {}.validate(
+					adapter.profileScenario);
+		if (!validation.ok()) {
+			std::cerr << "status:\n";
+			std::cerr << "result: lint_failed\n";
+			std::cerr << "adapter_status: " << ToString(adapter.status) << '\n';
+			std::cerr << "profile_status: " << ToString(validation.status) << '\n';
+			std::cerr << "validation_issue_count: " << validation.issueCount
+				<< '\n';
+			PrintFirstProfileValidationIssue(validation);
+			return 4;
+		}
+
+		std::cout << "status:\n";
+		std::cout << "result: lint_ok\n";
+		std::cout << "summary:\n";
+		std::cout << "source_path: " << path.string() << '\n';
+		std::cout << "frame_count: " << validation.frameCount << '\n';
+		std::cout << "adapter_status: " << ToString(adapter.status) << '\n';
+		std::cout << "profile_status: " << ToString(validation.status) << '\n';
+		return 0;
+	}
+
 	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
 		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
 	if (!run.ran()) {
@@ -741,18 +802,7 @@ int main(int argc, char **argv)
 		std::cerr << "run_status: " << ToString(run.status) << '\n';
 		std::cerr << "validation_issue_count: " << run.validation.issueCount
 			<< '\n';
-		if (!run.validation.issues.empty()) {
-			const iggy::runtime::RuntimeGameplayProfileScenarioIssue &issue =
-				run.validation.issues.front();
-			std::cerr << "profile_issue: code=" << ToString(issue.code)
-				<< " frame_index=" << issue.frameIndex
-				<< " actor_index=" << issue.actorIndex;
-			if (!issue.npcId.empty())
-				std::cerr << " npc=" << IdText(issue.npcId);
-			if (!issue.profileId.empty())
-				std::cerr << " profile=" << IdText(issue.profileId);
-			std::cerr << '\n';
-		}
+		PrintFirstProfileValidationIssue(run.validation);
 		return 4;
 	}
 

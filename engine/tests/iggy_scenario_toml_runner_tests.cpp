@@ -186,7 +186,7 @@ void TestNoArgUsage()
 		{
 			"status:\n",
 			"result: usage_error",
-			"usage: iggy_scenario_toml_runner [--trace] [--check] <path>",
+			"usage: iggy_scenario_toml_runner [--trace] [--check] [--lint] <path>",
 		},
 		"no-arg CLI run");
 }
@@ -648,6 +648,67 @@ npc_moved_count = 99
 		"check-mode without expectations");
 }
 
+void TestLintModeValidatesWithoutRunningScenario()
+{
+	const CommandResult valid =
+		RunCli({ "--lint", FixturePath("moving_guard_room.toml") });
+	Expect(valid.exitCode == 0, "lint valid fixture should succeed");
+	ExpectOutputContains(
+		valid,
+		{
+			"status:\n",
+			"result: lint_ok",
+			"summary:\n",
+			"source_path: ",
+			"frame_count: 1",
+			"adapter_status: converted",
+			"profile_status: valid",
+		},
+		"lint valid fixture");
+	Expect(!Contains(valid.output, "final_rows:\n"), "lint valid fixture should not print final rows");
+	Expect(!Contains(valid.output, "expectation:\n"), "lint valid fixture should not compare expectations");
+	Expect(!Contains(valid.output, "accepted_command_count:"), "lint valid fixture should not print run counts");
+
+	const CommandResult corrupt =
+		RunCli({ "--lint", FixturePath("corrupt_guard_room.toml") });
+	Expect(corrupt.exitCode == 2, "lint corrupt TOML should fail during read");
+	ExpectOutputContains(
+		corrupt,
+		{
+			"status:\n",
+			"result: read_failed",
+			"toml_status: syntax_invalid",
+			"toml_issue: code=syntax_error",
+		},
+		"lint corrupt TOML");
+
+	const CommandResult semantic =
+		RunCli({ "--lint", FixturePath("semantic_invalid_guard_room.toml") });
+	Expect(semantic.exitCode == 2, "lint semantic TOML should fail during read validation");
+	ExpectOutputContains(
+		semantic,
+		{
+			"status:\n",
+			"result: read_failed",
+			"toml_status: source_plan_invalid",
+			"source_issue: code=annotated_cell_glyph_mismatch",
+		},
+		"lint semantic TOML");
+
+	const CommandResult conversion =
+		RunCli({ "--lint", FixturePath("valid_guard_room.toml") });
+	Expect(conversion.exitCode == 3, "lint conversion issue should fail during conversion");
+	ExpectOutputContains(
+		conversion,
+		{
+			"status:\n",
+			"result: conversion_failed",
+			"source_plan_status: profile_scenario_invalid",
+			"profile_issue: code=missing_profile_trait",
+		},
+		"lint conversion issue");
+}
+
 } // namespace
 
 int main()
@@ -659,6 +720,7 @@ int main()
 	TestTraceMixedMiniScenario();
 	TestExpectationComparisonReportsMatchAndMismatch();
 	TestCheckModeUsesExpectationComparisonForExitStatus();
+	TestLintModeValidatesWithoutRunningScenario();
 
 	if (Failures != 0)
 		return 1;

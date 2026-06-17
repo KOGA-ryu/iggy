@@ -1,5 +1,7 @@
 # Batch 06: Lint Mode
 
+Status: complete.
+
 ## Goal
 Add CLI validation without scenario execution.
 
