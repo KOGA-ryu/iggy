@@ -118,6 +118,19 @@ position = { x = 4.5, y = 1.5 }
 pickup_radius = 1.0
 enabled = true
 glyph = "k"
+
+[expect]
+final_rows = [
+  "#######",
+  "#.A@..#",
+  "#.....#",
+  "#######",
+]
+frame_count = 1
+accepted_command_count = 1
+picked_up_count = 0
+interaction_changed = false
+npc_moved_count = 1
 ```
 
 Non-goals for these fixtures: scripting, UI/Edi behavior, save/load behavior, directory scanning, and a full TOML implementation.

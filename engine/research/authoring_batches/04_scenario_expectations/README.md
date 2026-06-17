@@ -1,5 +1,7 @@
 # Batch 04: Scenario Expectations
 
+Status: complete.
+
 ## Goal
 Allow TOML scenarios to declare simple expected final outcomes for the CLI to report.
 
