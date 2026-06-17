@@ -160,6 +160,16 @@ iggy::runtime::RuntimeGameplayAsciiSourcePlan SourcePlan()
 	return plan;
 }
 
+iggy::runtime::RuntimeGameplayAsciiSourcePlan SelfContainedSourcePlan()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = SourcePlan();
+	iggy::runtime::RuntimeGameplayAsciiSourcePlanAuthoredProfile profile;
+	profile.profileId = Id("profile:authoring");
+	profile.traits = Traits();
+	plan.authoredProfiles = { profile };
+	return plan;
+}
+
 iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig SourcePlanConfig()
 {
 	iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig config;
@@ -230,28 +240,48 @@ void TestDeclaredAsciiSourcePlanWithoutPayloadIsInvalid()
 	Expect(config.hasAsciiSourcePlanProfileScenarioConfig == configBefore.hasAsciiSourcePlanProfileScenarioConfig, "missing source-plan payload path should not mutate config");
 }
 
-void TestAsciiSourcePlanWithoutConversionConfigIsInvalid()
+void TestAsciiSourcePlanWithoutConversionConfigUsesDefaultConversion()
 {
 	iggy::runtime::RuntimeGameplayScenarioAuthoringPacket packet;
 	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
 	packet.hasAsciiSourcePlan = true;
-	packet.asciiSourcePlan = SourcePlan();
+	packet.asciiSourcePlan = SelfContainedSourcePlan();
 	const iggy::runtime::RuntimeGameplayScenarioAuthoringPacket before = packet;
 
 	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult result =
 		Convert(packet);
 
-	Expect(result.status == iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterStatus::InvalidPacket, "source-plan without conversion config should be invalid");
-	Expect(!result.ok() && !result.converted, "source-plan without conversion config should not convert");
-	Expect(result.hasIssues() && result.issueCount == 1, "source-plan without conversion config should report one issue");
-	if (!result.issues.empty()) {
-		Expect(result.issues[0].code == iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterIssueCode::MissingAsciiSourcePlanConversionConfig, "source-plan without config issue should use MissingAsciiSourcePlanConversionConfig");
-		Expect(result.issues[0].source == iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan, "source-plan without config issue should preserve source");
-		Expect(result.issues[0].hasAsciiSourcePlan, "source-plan without config issue should preserve payload flag");
-		Expect(!result.issues[0].hasAsciiSourcePlanConversionConfig, "source-plan without config issue should preserve missing config flag");
-	}
+	Expect(result.ok(), "self-contained source-plan without conversion config should convert");
+	Expect(result.status == iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterStatus::Converted, "self-contained source-plan without config should report Converted");
+	Expect(result.converted, "self-contained source-plan without config should mark converted");
+	Expect(!result.hasIssues() && result.issueCount == 0, "self-contained source-plan without config should not add adapter issues");
+	Expect(!result.config.hasAsciiSourcePlanProfileScenarioConfig, "source-plan without config result should preserve absent explicit config flag");
+	Expect(result.asciiSourcePlanConversion.ok(), "source-plan without config should preserve successful nested conversion result");
+	Expect(!result.asciiSourcePlanConversion.config.hasDefaultFrame, "source-plan without config should use default nested frame config");
+	Expect(result.asciiSourcePlanConversion.config.profileTraits.entries.empty(), "source-plan without config should use default nested profile config");
+	Expect(result.profileScenario.scenarioId == Id("scenario:authoring-source-plan"), "source-plan without config should publish converted profile scenario");
+	Expect(result.profileScenario.profileTraits.contains(Id("profile:authoring")), "source-plan without config should use authored profile traits");
+	Expect(result.profileScenario.frames.size() == 1, "source-plan without config should publish fallback frame");
 	Expect(result.packet.asciiSourcePlan.sourceId == Id("scenario:authoring-source-plan"), "source-plan without config result should preserve packet");
 	Expect(packet.asciiSourcePlan.sourceId == before.asciiSourcePlan.sourceId, "source-plan without config path should not mutate packet");
+}
+
+void TestAsciiSourcePlanWithEmptyConfigUsesDefaultConversion()
+{
+	iggy::runtime::RuntimeGameplayScenarioAuthoringPacket packet;
+	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
+	packet.hasAsciiSourcePlan = true;
+	packet.asciiSourcePlan = SelfContainedSourcePlan();
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig config;
+
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult result =
+		Convert(packet, config);
+
+	Expect(result.ok(), "self-contained source-plan with empty adapter config should convert");
+	Expect(result.status == iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterStatus::Converted, "self-contained source-plan with empty config should report Converted");
+	Expect(!result.config.hasAsciiSourcePlanProfileScenarioConfig, "empty adapter config should remain non-explicit");
+	Expect(result.asciiSourcePlanConversion.ok(), "empty adapter config should delegate to default nested converter config");
+	Expect(result.profileScenario.profileTraits.contains(Id("profile:authoring")), "empty adapter config should use authored profile traits");
 }
 
 void TestAsciiSourcePlanDelegatesToConverter()
@@ -287,14 +317,12 @@ void TestInvalidAsciiSourcePlanPreservesNestedConversionFailure()
 	iggy::runtime::RuntimeGameplayScenarioAuthoringPacket packet;
 	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
 	packet.hasAsciiSourcePlan = true;
-	packet.asciiSourcePlan = SourcePlan();
+	packet.asciiSourcePlan = SelfContainedSourcePlan();
 	packet.asciiSourcePlan.grid.rows[1] = "#Z#";
 	const iggy::runtime::RuntimeGameplayScenarioAuthoringPacket before = packet;
-	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig config =
-		SourcePlanConfig();
 
 	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult result =
-		Convert(packet, config);
+		Convert(packet);
 
 	Expect(result.status == iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterStatus::ConversionFailed, "invalid source-plan conversion should report ConversionFailed");
 	Expect(!result.ok() && !result.converted, "invalid source-plan conversion should not publish as converted");
@@ -315,8 +343,7 @@ void TestMissingProfileCatalogPreservesNestedConversionFailure()
 	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
 	packet.hasAsciiSourcePlan = true;
 	packet.asciiSourcePlan = SourcePlan();
-	iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig config;
-	config.hasAsciiSourcePlanProfileScenarioConfig = true;
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig config;
 	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig configBefore = config;
 
 	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult result =
@@ -404,7 +431,8 @@ int main()
 	TestDefaultPacketIsUnsupported();
 	TestDeclaredProfileScenarioWithoutPayloadIsInvalid();
 	TestDeclaredAsciiSourcePlanWithoutPayloadIsInvalid();
-	TestAsciiSourcePlanWithoutConversionConfigIsInvalid();
+	TestAsciiSourcePlanWithoutConversionConfigUsesDefaultConversion();
+	TestAsciiSourcePlanWithEmptyConfigUsesDefaultConversion();
 	TestAsciiSourcePlanDelegatesToConverter();
 	TestInvalidAsciiSourcePlanPreservesNestedConversionFailure();
 	TestMissingProfileCatalogPreservesNestedConversionFailure();

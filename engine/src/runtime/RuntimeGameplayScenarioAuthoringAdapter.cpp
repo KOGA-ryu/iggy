@@ -60,23 +60,14 @@ RuntimeGameplayScenarioAuthoringAdapterResult RuntimeGameplayScenarioAuthoringAd
 			return result;
 		}
 
-		if (!config.hasAsciiSourcePlanProfileScenarioConfig) {
-			result.status = RuntimeGameplayScenarioAuthoringAdapterStatus::InvalidPacket;
-			result.issues.push_back({
-				RuntimeGameplayScenarioAuthoringAdapterIssueCode::MissingAsciiSourcePlanConversionConfig,
-				packet.source,
-				packet.hasProfileScenario,
-				packet.hasAsciiSourcePlan,
-				config.hasAsciiSourcePlanProfileScenarioConfig,
-			});
-			result.issueCount = result.issues.size();
-			return result;
-		}
-
+		const RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig
+			conversionConfig = config.hasAsciiSourcePlanProfileScenarioConfig
+			? config.asciiSourcePlanProfileScenario
+			: RuntimeGameplayAsciiSourcePlanProfileScenarioConversionConfig {};
 		result.asciiSourcePlanConversion =
 			RuntimeGameplayAsciiSourcePlanProfileScenarioConverter {}.convert(
 				packet.asciiSourcePlan,
-				config.asciiSourcePlanProfileScenario);
+				conversionConfig);
 		if (result.asciiSourcePlanConversion.ok()) {
 			result.profileScenario = result.asciiSourcePlanConversion.definition;
 			result.status = RuntimeGameplayScenarioAuthoringAdapterStatus::Converted;
