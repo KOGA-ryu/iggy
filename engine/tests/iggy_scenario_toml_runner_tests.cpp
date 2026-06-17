@@ -103,6 +103,29 @@ std::string FinalRowsBlock(const std::vector<std::string> &rows)
 	return stream.str();
 }
 
+std::string TraceFrameBlock(
+	int index,
+	const char *frameId,
+	int acceptedCommandCount,
+	int pickedUpCount,
+	bool interactionChanged,
+	int npcMovedCount,
+	const std::vector<std::string> &rows)
+{
+	std::ostringstream stream;
+	stream << "frame_index: " << index << '\n';
+	stream << "frame_id: " << frameId << '\n';
+	stream << "accepted_command_count: " << acceptedCommandCount << '\n';
+	stream << "picked_up_count: " << pickedUpCount << '\n';
+	stream << "interaction_changed: "
+		<< (interactionChanged ? "true" : "false") << '\n';
+	stream << "npc_moved_count: " << npcMovedCount << '\n';
+	stream << "rows:\n";
+	for (const std::string &row : rows)
+		stream << row << '\n';
+	return stream.str();
+}
+
 void ExpectOutputContains(
 	const CommandResult &result,
 	const std::vector<std::string> &needles,
@@ -264,6 +287,7 @@ void TestCanonicalFixtures()
 	for (const GoldenFixture &fixture : fixtures) {
 		const CommandResult result = RunCli({ FixturePath(fixture.name) });
 		Expect(result.exitCode == 0, "canonical fixture CLI run should succeed");
+		Expect(!Contains(result.output, "frames:\n"), "normal fixture CLI run should not print trace frames");
 		ExpectOutputContains(
 			result,
 			{
@@ -283,6 +307,83 @@ void TestCanonicalFixtures()
 	}
 }
 
+void TestTraceMultiFrameGuardRoom()
+{
+	const CommandResult result =
+		RunCli({ "--trace", FixturePath("multi_frame_guard_room.toml") });
+	Expect(result.exitCode == 0, "multi-frame trace CLI run should succeed");
+	ExpectOutputContains(
+		result,
+		{
+			"status:\nresult: ok\nsummary:\n",
+			"frame_count: 2",
+			"npc_moved_count: 2",
+			"frames:\n",
+			TraceFrameBlock(
+				0,
+				"frame:move-1",
+				0,
+				0,
+				false,
+				1,
+				{ "#######", "#.A..@#", "#.....#", "#######" }),
+			TraceFrameBlock(
+				1,
+				"frame:move-2",
+				0,
+				0,
+				false,
+				1,
+				{ "#######", "#..A.@#", "#.....#", "#######" }),
+			FinalRowsBlock({ "#######", "#..A.@#", "#.....#", "#######" }),
+		},
+		"multi-frame trace CLI run");
+}
+
+void TestTraceMixedMiniScenario()
+{
+	const CommandResult result =
+		RunCli({ "--trace", FixturePath("mixed_mini_scenario.toml") });
+	Expect(result.exitCode == 0, "mixed mini trace CLI run should succeed");
+	ExpectOutputContains(
+		result,
+		{
+			"status:\nresult: ok\nsummary:\n",
+			"frame_count: 3",
+			"accepted_command_count: 3",
+			"picked_up_count: 1",
+			"interaction_changed: true",
+			"npc_moved_count: 1",
+			"frames:\n",
+			TraceFrameBlock(
+				0,
+				"frame:move-to-key",
+				1,
+				0,
+				false,
+				1,
+				{ "#########", "#.A@k...#", "#.......#", "#########" }),
+			TraceFrameBlock(
+				1,
+				"frame:pickup-key",
+				1,
+				1,
+				false,
+				0,
+				{ "#########", "#.A@....#", "#.......#", "#########" }),
+			TraceFrameBlock(
+				2,
+				"frame:interact-lever",
+				1,
+				0,
+				true,
+				0,
+				{ "#########", "#.A@....#", "#.......#", "#########" }),
+			FinalRowsBlock({ "#########", "#.A@....#", "#.......#", "#########" }),
+		},
+		"mixed mini trace CLI run");
+}
+
 } // namespace
 
 int main()
@@ -293,6 +394,8 @@ int main()
 	TestSemanticInvalidTomlReportsSourceIssue();
 	TestConversionFailureReportsMissingProfile();
 	TestCanonicalFixtures();
+	TestTraceMultiFrameGuardRoom();
+	TestTraceMixedMiniScenario();
 
 	if (Failures != 0)
 		return 1;
