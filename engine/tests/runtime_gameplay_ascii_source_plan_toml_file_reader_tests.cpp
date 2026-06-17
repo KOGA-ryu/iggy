@@ -691,6 +691,71 @@ void TestPlayerAndGuardFixtureRunsSharedFrameThroughScenario()
 	Expect(rows == expected, "player-and-guard vertical path should render moved NPC and moved player");
 }
 
+void TestSelfContainedFixtureRunsWithEmptyConverterConfig()
+{
+	const std::filesystem::path path = FixturePath("self_contained_guard_room.toml");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReadResult read =
+		iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlFileReader {}.read(path);
+	iggy::runtime::RuntimeGameplayScenarioAuthoringPacket packet;
+	packet.source = iggy::runtime::RuntimeGameplayScenarioAuthoringSource::AsciiSourcePlan;
+	packet.hasAsciiSourcePlan = true;
+	packet.asciiSourcePlan = read.text.plan;
+	iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterConfig adapterConfig;
+	adapterConfig.hasAsciiSourcePlanProfileScenarioConfig = true;
+
+	const iggy::runtime::RuntimeGameplayScenarioAuthoringAdapterResult adapter =
+		iggy::runtime::RuntimeGameplayScenarioAuthoringAdapter {}.convert(
+			packet,
+			adapterConfig);
+	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult run =
+		iggy::runtime::RuntimeGameplayProfileScenarioRunner {}.run(adapter.profileScenario);
+	const std::vector<std::string> rows = FinalDebugRows(read.text.plan, run.state);
+	const std::vector<std::string> expected {
+		"#######",
+		"#.A.@.#",
+		"#.....#",
+		"#######",
+	};
+
+	Expect(read.ok(), "self-contained fixture should read checked-in TOML fixture");
+	Expect(read.text.plan.sourceId == Id("scenario:self-contained-guard-room"), "self-contained fixture should preserve source id");
+	Expect(read.text.plan.authoredProfileCount() == 1, "self-contained fixture should parse one authored profile");
+	Expect(read.text.plan.authoredControlCount() == 1, "self-contained fixture should parse one authored control");
+	Expect(read.text.plan.authoredPlayerCommandCount() == 1, "self-contained fixture should parse one authored player command");
+	Expect(adapter.config.hasAsciiSourcePlanProfileScenarioConfig, "self-contained fixture should still opt into source-plan conversion");
+	Expect(!adapter.config.asciiSourcePlanProfileScenario.hasDefaultFrame, "self-contained fixture should not supply C++ default frame");
+	Expect(adapter.config.asciiSourcePlanProfileScenario.profileTraits.entries.empty(), "self-contained fixture should not supply C++ profile catalog");
+	Expect(adapter.ok(), "self-contained fixture should adapt parsed source plan with empty converter config");
+	Expect(adapter.asciiSourcePlanConversion.ok(), "self-contained fixture conversion should succeed");
+	Expect(adapter.asciiSourcePlanConversion.profileTraitCatalog.built, "self-contained conversion should build profile catalog from TOML");
+	Expect(adapter.asciiSourcePlanConversion.profileTraitCatalog.entryCount == 1, "self-contained conversion should use one TOML profile");
+	Expect(adapter.profileScenario.profileTraits.contains(Id("profile:guard")), "self-contained profile scenario should contain TOML-authored profile");
+	Expect(adapter.profileScenario.frames.size() == 1, "self-contained fixture should publish one shared profile frame");
+	if (adapter.profileScenario.frames.size() == 1) {
+		const iggy::runtime::RuntimeGameplayProfileScenarioFrameDefinition &frame =
+			adapter.profileScenario.frames[0];
+		Expect(frame.hasFrameId && frame.frameId == Id("frame:shared"), "self-contained shared frame should preserve frame id");
+		Expect(frame.movementMap.id == Id("scenario:self-contained-guard-room"), "self-contained fallback frame should use promoted TOML map");
+		Expect(frame.controlOverrides.size() == 1, "self-contained shared frame should carry NPC override");
+		Expect(frame.playerFrame.playerIntents.size() == 1, "self-contained shared frame should carry player intent");
+	}
+	Expect(run.ran(), "self-contained fixture should run converted profile scenario");
+	Expect(run.validation.ok(), "self-contained fixture runner validation should pass");
+	Expect(run.frameCount == 1, "self-contained fixture should execute one shared frame");
+	Expect(run.scenario.runner.acceptedCommandCount == 1, "self-contained fixture should accept authored player command");
+	Expect(run.npcMovementPlannedRequestCount == 1, "self-contained fixture should plan NPC movement");
+	Expect(run.npcMovedCount == 1, "self-contained fixture should move NPC");
+	Expect(run.state.session.hasPlayer, "self-contained final state should preserve player");
+	Expect(run.state.session.player.position.x == 4.5F && run.state.session.player.position.y == 1.5F, "self-contained fixture should move player to authored tile");
+	Expect(run.state.npcActors.actors.size() == 1, "self-contained fixture should preserve one final NPC actor");
+	if (!run.state.npcActors.actors.empty()) {
+		const iggy::NpcActorState2D &actor = run.state.npcActors.actors.front();
+		Expect(actor.npcId == Id("npc:guard"), "self-contained final actor should preserve id");
+		Expect(actor.position.x == 2.5F && actor.position.y == 1.5F, "self-contained fixture should move actor one tile");
+	}
+	Expect(rows == expected, "self-contained fixture should render moved NPC and moved player");
+}
+
 void TestPlayerInteractionFixtureRunsScenarioAndTogglesTarget()
 {
 	const std::filesystem::path path = FixturePath("player_interacts_guard_room.toml");
@@ -880,6 +945,7 @@ int main()
 	TestMovingFixtureRunsScenarioAndMovesNpcFromAuthoredControl();
 	TestMultiFrameFixtureRunsScenarioAndMovesNpcAcrossFrames();
 	TestPlayerAndGuardFixtureRunsSharedFrameThroughScenario();
+	TestSelfContainedFixtureRunsWithEmptyConverterConfig();
 	TestPlayerInteractionFixtureRunsScenarioAndTogglesTarget();
 	TestPlayerPickupFixtureRunsScenarioAndPicksUpItem();
 
