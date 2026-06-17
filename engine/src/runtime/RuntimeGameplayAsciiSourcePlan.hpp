@@ -203,6 +203,23 @@ struct RuntimeGameplayAsciiSourcePlanPromotionPolicy {
 	bool allowsProfileScenarioConversion = false;
 };
 
+struct RuntimeGameplayAsciiSourcePlanExpectations {
+	bool hasFinalRows = false;
+	std::vector<std::string> finalRows;
+	bool hasFrameCount = false;
+	std::size_t frameCount = 0;
+	bool hasAcceptedCommandCount = false;
+	std::size_t acceptedCommandCount = 0;
+	bool hasPickedUpCount = false;
+	std::size_t pickedUpCount = 0;
+	bool hasInteractionChanged = false;
+	bool interactionChanged = false;
+	bool hasNpcMovedCount = false;
+	std::size_t npcMovedCount = 0;
+
+	[[nodiscard]] bool hasAny() const;
+};
+
 struct RuntimeGameplayAsciiSourcePlan {
 	ResourceId formatId;
 	std::size_t version = 1;
@@ -224,6 +241,7 @@ struct RuntimeGameplayAsciiSourcePlan {
 		authoredPlayerCommands;
 	RuntimeGameplayAsciiSourcePlanNoClaims noClaims;
 	RuntimeGameplayAsciiSourcePlanPromotionPolicy promotionPolicy;
+	RuntimeGameplayAsciiSourcePlanExpectations expectations;
 
 	[[nodiscard]] bool hasRows() const;
 	[[nodiscard]] std::size_t rowCount() const;
@@ -235,6 +253,7 @@ struct RuntimeGameplayAsciiSourcePlan {
 	[[nodiscard]] std::size_t authoredInteractionTargetCount() const;
 	[[nodiscard]] std::size_t authoredItemDropCount() const;
 	[[nodiscard]] std::size_t authoredPlayerCommandCount() const;
+	[[nodiscard]] bool hasExpectations() const;
 	[[nodiscard]] bool safeForAuthoring() const;
 };
 

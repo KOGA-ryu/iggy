@@ -181,6 +181,10 @@ const char *ToString(
 		return "authored_player_command_unknown_interaction_target";
 	case Code::AuthoredPlayerCommandInvalidPickupTarget:
 		return "authored_player_command_invalid_pickup_target";
+	case Code::ExpectedFinalRowsEmpty:
+		return "expected_final_rows_empty";
+	case Code::ExpectedFinalRowsDimensionMismatch:
+		return "expected_final_rows_dimension_mismatch";
 	case Code::EmptyActorMarkerId:
 		return "empty_actor_marker_id";
 	case Code::EmptyProfileMarkerId:
@@ -391,6 +395,23 @@ struct TraceFrameProjection {
 	std::vector<std::string> rows;
 };
 
+struct ExpectationComparison {
+	bool present = false;
+	bool matched = true;
+	bool checkedFinalRows = false;
+	bool finalRowsMatched = true;
+	bool checkedFrameCount = false;
+	bool frameCountMatched = true;
+	bool checkedAcceptedCommandCount = false;
+	bool acceptedCommandCountMatched = true;
+	bool checkedPickedUpCount = false;
+	bool pickedUpCountMatched = true;
+	bool checkedInteractionChanged = false;
+	bool interactionChangedMatched = true;
+	bool checkedNpcMovedCount = false;
+	bool npcMovedCountMatched = true;
+};
+
 int Usage()
 {
 	std::cerr << "status:\n";
@@ -567,6 +588,93 @@ void PrintTraceFrames(const std::vector<TraceFrameProjection> &frames)
 	}
 }
 
+ExpectationComparison CompareExpectations(
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanExpectations &expectations,
+	const iggy::runtime::RuntimeGameplayProfileScenarioRunResult &run,
+	const std::vector<std::string> &finalRows)
+{
+	ExpectationComparison comparison;
+	comparison.present = expectations.hasAny();
+	if (!comparison.present)
+		return comparison;
+
+	if (expectations.hasFinalRows) {
+		comparison.checkedFinalRows = true;
+		comparison.finalRowsMatched = expectations.finalRows == finalRows;
+		comparison.matched = comparison.matched && comparison.finalRowsMatched;
+	}
+	if (expectations.hasFrameCount) {
+		comparison.checkedFrameCount = true;
+		comparison.frameCountMatched = expectations.frameCount == run.frameCount;
+		comparison.matched = comparison.matched && comparison.frameCountMatched;
+	}
+	if (expectations.hasAcceptedCommandCount) {
+		comparison.checkedAcceptedCommandCount = true;
+		comparison.acceptedCommandCountMatched =
+			expectations.acceptedCommandCount ==
+			run.scenario.runner.acceptedCommandCount;
+		comparison.matched =
+			comparison.matched && comparison.acceptedCommandCountMatched;
+	}
+	if (expectations.hasPickedUpCount) {
+		comparison.checkedPickedUpCount = true;
+		comparison.pickedUpCountMatched =
+			expectations.pickedUpCount == run.scenario.runner.pickedUpCount;
+		comparison.matched = comparison.matched && comparison.pickedUpCountMatched;
+	}
+	if (expectations.hasInteractionChanged) {
+		comparison.checkedInteractionChanged = true;
+		comparison.interactionChangedMatched =
+			expectations.interactionChanged ==
+			run.scenario.runner.interactionChanged;
+		comparison.matched =
+			comparison.matched && comparison.interactionChangedMatched;
+	}
+	if (expectations.hasNpcMovedCount) {
+		comparison.checkedNpcMovedCount = true;
+		comparison.npcMovedCountMatched =
+			expectations.npcMovedCount == run.npcMovedCount;
+		comparison.matched = comparison.matched && comparison.npcMovedCountMatched;
+	}
+
+	return comparison;
+}
+
+const char *MatchText(bool matched)
+{
+	return matched ? "matched" : "mismatched";
+}
+
+void PrintExpectationComparison(const ExpectationComparison &comparison)
+{
+	std::cout << "expectation:\n";
+	std::cout << "present: " << (comparison.present ? "true" : "false") << '\n';
+	if (!comparison.present) {
+		std::cout << "result: not_provided\n";
+		return;
+	}
+
+	std::cout << "result: " << MatchText(comparison.matched) << '\n';
+	if (comparison.checkedFinalRows)
+		std::cout << "final_rows: " << MatchText(comparison.finalRowsMatched)
+			<< '\n';
+	if (comparison.checkedFrameCount)
+		std::cout << "frame_count: " << MatchText(comparison.frameCountMatched)
+			<< '\n';
+	if (comparison.checkedAcceptedCommandCount)
+		std::cout << "accepted_command_count: "
+			<< MatchText(comparison.acceptedCommandCountMatched) << '\n';
+	if (comparison.checkedPickedUpCount)
+		std::cout << "picked_up_count: "
+			<< MatchText(comparison.pickedUpCountMatched) << '\n';
+	if (comparison.checkedInteractionChanged)
+		std::cout << "interaction_changed: "
+			<< MatchText(comparison.interactionChangedMatched) << '\n';
+	if (comparison.checkedNpcMovedCount)
+		std::cout << "npc_moved_count: "
+			<< MatchText(comparison.npcMovedCountMatched) << '\n';
+}
+
 } // namespace
 
 int main(int argc, char **argv)
@@ -653,10 +761,12 @@ int main(int argc, char **argv)
 	std::cout << "npc_moved_count: " << run.npcMovedCount << '\n';
 	if (trace)
 		PrintTraceFrames(TraceFrames(read.text.plan, run));
-	std::cout << "final_rows:\n";
 
 	const std::vector<std::string> rows =
 		iggy::runtime::finalDebugRowsForAsciiSourcePlan(read.text.plan, run.state);
+	PrintExpectationComparison(
+		CompareExpectations(read.text.plan.expectations, run, rows));
+	std::cout << "final_rows:\n";
 	for (const std::string &row : rows)
 		std::cout << row << '\n';
 

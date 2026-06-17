@@ -685,6 +685,64 @@ void TestMultiplePlayerCommandsPerFrameArePreserved()
 	Expect(result.plan.authoredPlayerCommands[2].frameId == Id("frame:next"), "different-frame command should preserve frame id");
 }
 
+void TestExpectationShapeValidates()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
+	plan.expectations.hasFinalRows = true;
+	plan.expectations.finalRows = {
+		"#####",
+		"#.A.#",
+		"#####",
+	};
+	plan.expectations.hasFrameCount = true;
+	plan.expectations.frameCount = 1;
+	plan.expectations.hasAcceptedCommandCount = true;
+	plan.expectations.acceptedCommandCount = 0;
+	plan.expectations.hasPickedUpCount = true;
+	plan.expectations.pickedUpCount = 0;
+	plan.expectations.hasInteractionChanged = true;
+	plan.expectations.interactionChanged = false;
+	plan.expectations.hasNpcMovedCount = true;
+	plan.expectations.npcMovedCount = 1;
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult result =
+		Validate(plan);
+
+	Expect(result.ok(), "well-shaped expectations should validate");
+	Expect(result.expectationIssueCount == 0, "well-shaped expectations should have no expectation issues");
+	Expect(result.plan.expectations.hasFinalRows, "validator should preserve expectation final rows");
+	Expect(result.plan.expectations.finalRows[1] == "#.A.#", "validator should preserve expectation row text");
+	Expect(result.plan.expectations.hasNpcMovedCount && result.plan.expectations.npcMovedCount == 1, "validator should preserve expectation counts");
+}
+
+void TestExpectationShapeIssuesFail()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan emptyRows = ValidPlan();
+	emptyRows.expectations.hasFinalRows = true;
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult emptyResult =
+		Validate(emptyRows);
+
+	Expect(!emptyResult.ok(), "empty expected final rows should fail");
+	Expect(emptyResult.expectationIssueCount == 1, "empty expected final rows should count one expectation issue");
+	Expect(HasIssue(emptyResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedFinalRowsEmpty), "empty expected final rows should report issue");
+
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan wrongWidth = ValidPlan();
+	wrongWidth.expectations.hasFinalRows = true;
+	wrongWidth.expectations.finalRows = {
+		"#####",
+		"#A#",
+		"#####",
+	};
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanValidationResult widthResult =
+		Validate(wrongWidth);
+
+	Expect(!widthResult.ok(), "wrong-width expected final rows should fail");
+	Expect(widthResult.expectationIssueCount == 1, "wrong-width expected final rows should count one expectation issue");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanIssue *issue =
+		FindIssue(widthResult, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedFinalRowsDimensionMismatch);
+	Expect(issue != nullptr && issue->row == 1 && issue->index == 3 && issue->firstIndex == 5, "wrong-width expectation issue should preserve row and widths");
+}
+
 void TestExactIdsAndInputImmutability()
 {
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan = ValidPlan();
@@ -706,6 +764,12 @@ void TestExactIdsAndInputImmutability()
 	};
 	plan.authoredPlayerCommands = {
 		MoveToTileCommand(3, 1, "plain-frame"),
+	};
+	plan.expectations.hasFinalRows = true;
+	plan.expectations.finalRows = {
+		"#####",
+		"#A..#",
+		"#####",
 	};
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlan before = plan;
 
@@ -730,6 +794,7 @@ void TestExactIdsAndInputImmutability()
 	Expect(plan.authoredInteractionTargets[0].targetId == before.authoredInteractionTargets[0].targetId, "validator should not mutate authored interaction targets");
 	Expect(plan.authoredItemDrops[0].dropId == before.authoredItemDrops[0].dropId, "validator should not mutate authored item drops");
 	Expect(plan.authoredPlayerCommands[0].frameId == before.authoredPlayerCommands[0].frameId, "validator should not mutate authored player commands");
+	Expect(plan.expectations.finalRows == before.expectations.finalRows, "validator should not mutate expectations");
 }
 
 } // namespace
@@ -756,6 +821,8 @@ int main()
 	TestAuthoredPlayerCommandTargetReferencesValidateWhenAuthoredTargetsExist();
 	TestAuthoredPlayerCommandUnknownReferencesFailWhenAuthoredTargetsExist();
 	TestMultiplePlayerCommandsPerFrameArePreserved();
+	TestExpectationShapeValidates();
+	TestExpectationShapeIssuesFail();
 	TestExactIdsAndInputImmutability();
 	return Failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -50,6 +50,8 @@ enum class RuntimeGameplayAsciiSourcePlanIssueCode {
 	AuthoredPlayerCommandMissingTarget,
 	AuthoredPlayerCommandUnknownInteractionTarget,
 	AuthoredPlayerCommandInvalidPickupTarget,
+	ExpectedFinalRowsEmpty,
+	ExpectedFinalRowsDimensionMismatch,
 	EmptyActorMarkerId,
 	EmptyProfileMarkerId,
 	UnsafeNoClaims,
@@ -95,6 +97,7 @@ struct RuntimeGameplayAsciiSourcePlanValidationResult {
 	std::size_t authoredItemDropCount = 0;
 	std::size_t authoredItemDropIssueCount = 0;
 	std::size_t authoredPlayerCommandIssueCount = 0;
+	std::size_t expectationIssueCount = 0;
 	std::size_t unsafeBoundaryIssueCount = 0;
 
 	[[nodiscard]] bool ok() const;

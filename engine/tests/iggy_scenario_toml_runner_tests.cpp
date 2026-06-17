@@ -123,6 +123,14 @@ std::string FixturePath(const char *name)
 	return (std::filesystem::path(IGGY_TEST_FIXTURE_DIR) / name).string();
 }
 
+std::string FixtureText(const char *name)
+{
+	std::ifstream stream(FixturePath(name));
+	std::ostringstream text;
+	text << stream.rdbuf();
+	return text.str();
+}
+
 std::string FinalRowsBlock(const std::vector<std::string> &rows)
 {
 	std::ostringstream stream;
@@ -526,6 +534,61 @@ void TestTraceMixedMiniScenario()
 		"mixed mini trace CLI run");
 }
 
+void TestExpectationComparisonReportsMatchAndMismatch()
+{
+	const std::string base = FixtureText("moving_guard_room.toml");
+	TempTomlFile matching("expect_match", base + R"toml(
+
+[expect]
+final_rows = [
+  "#######",
+  "#.A..@#",
+  "#.....#",
+  "#######",
+]
+frame_count = 1
+accepted_command_count = 0
+picked_up_count = 0
+interaction_changed = false
+npc_moved_count = 1
+)toml");
+	TempTomlFile mismatching("expect_mismatch", base + R"toml(
+
+[expect]
+npc_moved_count = 99
+)toml");
+
+	const CommandResult matched = RunCli({ matching.path.string() });
+	Expect(matched.exitCode == 0, "matching expectation CLI run should succeed");
+	ExpectOutputContains(
+		matched,
+		{
+			"expectation:\n",
+			"present: true",
+			"result: matched",
+			"final_rows: matched",
+			"frame_count: matched",
+			"accepted_command_count: matched",
+			"picked_up_count: matched",
+			"interaction_changed: matched",
+			"npc_moved_count: matched",
+			FinalRowsBlock({ "#######", "#.A..@#", "#.....#", "#######" }),
+		},
+		"matching expectation CLI run");
+
+	const CommandResult mismatched = RunCli({ mismatching.path.string() });
+	Expect(mismatched.exitCode == 0, "mismatching expectation CLI run should still succeed");
+	ExpectOutputContains(
+		mismatched,
+		{
+			"expectation:\n",
+			"present: true",
+			"result: mismatched",
+			"npc_moved_count: mismatched",
+		},
+		"mismatching expectation CLI run");
+}
+
 } // namespace
 
 int main()
@@ -535,6 +598,7 @@ int main()
 	TestCanonicalFixtures();
 	TestTraceMultiFrameGuardRoom();
 	TestTraceMixedMiniScenario();
+	TestExpectationComparisonReportsMatchAndMismatch();
 
 	if (Failures != 0)
 		return 1;

@@ -29,6 +29,7 @@ void TestDefaultSourcePlanIsEmptyAndSafe()
 	Expect(plan.authoredProfileCount() == 0, "default source plan should report zero authored profiles");
 	Expect(plan.authoredInteractionTargetCount() == 0, "default source plan should report zero authored interaction targets");
 	Expect(plan.authoredItemDropCount() == 0, "default source plan should report zero authored item drops");
+	Expect(!plan.hasExpectations(), "default source plan should not have expectations");
 	Expect(plan.safeForAuthoring(), "default source plan should be safe authoring data");
 }
 
@@ -252,6 +253,32 @@ void TestAuthoredItemDropsPreserveFactsAndExactIds()
 	Expect(plan.authoredItemDrops[0].glyph == 'k', "authored item drop should preserve optional glyph");
 }
 
+void TestExpectationsPreserveFinalRowsAndSummaryCounts()
+{
+	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan;
+	plan.expectations.hasFinalRows = true;
+	plan.expectations.finalRows = { "###", "#@#", "###" };
+	plan.expectations.hasFrameCount = true;
+	plan.expectations.frameCount = 2;
+	plan.expectations.hasAcceptedCommandCount = true;
+	plan.expectations.acceptedCommandCount = 1;
+	plan.expectations.hasPickedUpCount = true;
+	plan.expectations.pickedUpCount = 1;
+	plan.expectations.hasInteractionChanged = true;
+	plan.expectations.interactionChanged = true;
+	plan.expectations.hasNpcMovedCount = true;
+	plan.expectations.npcMovedCount = 3;
+
+	Expect(plan.hasExpectations(), "source plan should report authored expectations");
+	Expect(plan.expectations.hasFinalRows, "expectations should preserve final rows presence");
+	Expect(plan.expectations.finalRows[1] == "#@#", "expectations should preserve final rows exactly");
+	Expect(plan.expectations.hasFrameCount && plan.expectations.frameCount == 2, "expectations should preserve frame count");
+	Expect(plan.expectations.hasAcceptedCommandCount && plan.expectations.acceptedCommandCount == 1, "expectations should preserve accepted command count");
+	Expect(plan.expectations.hasPickedUpCount && plan.expectations.pickedUpCount == 1, "expectations should preserve picked up count");
+	Expect(plan.expectations.hasInteractionChanged && plan.expectations.interactionChanged, "expectations should preserve interaction changed flag");
+	Expect(plan.expectations.hasNpcMovedCount && plan.expectations.npcMovedCount == 3, "expectations should preserve NPC moved count");
+}
+
 void TestSourcePlanCopiesAreIndependent()
 {
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan plan;
@@ -283,6 +310,10 @@ void TestSourcePlanCopiesAreIndependent()
 	plan.authoredItemDrops = {
 		{ Id("drop:copy"), Id("item:copy"), 1, { true, 0, 0 }, {}, 0.0, true, 'k' },
 	};
+	plan.expectations.hasFinalRows = true;
+	plan.expectations.finalRows = { "A." };
+	plan.expectations.hasFrameCount = true;
+	plan.expectations.frameCount = 1;
 
 	iggy::runtime::RuntimeGameplayAsciiSourcePlan copy = plan;
 	copy.grid.rows[0] = "..";
@@ -292,6 +323,8 @@ void TestSourcePlanCopiesAreIndependent()
 	copy.authoredProfiles[0].profileId = Id("profile:changed");
 	copy.authoredInteractionTargets[0].targetId = Id("target:changed");
 	copy.authoredItemDrops[0].dropId = Id("drop:changed");
+	copy.expectations.finalRows[0] = "..";
+	copy.expectations.frameCount = 2;
 
 	Expect(plan.grid.rows[0] == "A.", "source plan copy should not mutate source rows");
 	Expect(plan.legend[0].targetMarkerId == Id("npc:copy"), "source plan copy should not mutate legend target id");
@@ -300,6 +333,8 @@ void TestSourcePlanCopiesAreIndependent()
 	Expect(plan.authoredProfiles[0].profileId == Id("profile:copy"), "source plan copy should not mutate authored profiles");
 	Expect(plan.authoredInteractionTargets[0].targetId == Id("target:copy"), "source plan copy should not mutate authored interaction targets");
 	Expect(plan.authoredItemDrops[0].dropId == Id("drop:copy"), "source plan copy should not mutate authored item drops");
+	Expect(plan.expectations.finalRows[0] == "A.", "source plan copy should not mutate expectation rows");
+	Expect(plan.expectations.frameCount == 1, "source plan copy should not mutate expectation counts");
 }
 
 } // namespace
@@ -315,6 +350,7 @@ int main()
 	TestAuthoredProfilesPreserveTraitsAndExactIds();
 	TestAuthoredInteractionTargetsPreserveFactsAndExactIds();
 	TestAuthoredItemDropsPreserveFactsAndExactIds();
+	TestExpectationsPreserveFinalRowsAndSummaryCounts();
 	TestSourcePlanCopiesAreIndependent();
 	return Failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

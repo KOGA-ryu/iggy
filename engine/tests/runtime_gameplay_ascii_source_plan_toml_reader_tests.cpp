@@ -1354,6 +1354,104 @@ target = { x = 2.5, y = 1.5 }
 	Expect(result.plan.authoredControls[0].declarationIndex == 1, "NPC control should get second declaration index");
 }
 
+void TestExpectTableParses()
+{
+	const std::string toml = RootGridToml() + R"toml(
+
+[expect]
+final_rows = [
+  "#######",
+  "#..@..#",
+  "#.....#",
+  "#######",
+]
+frame_count = 2
+accepted_command_count = 1
+picked_up_count = 1
+interaction_changed = true
+npc_moved_count = 3
+)toml";
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
+		Read(toml);
+
+	Expect(read.ok(), "expect table should parse");
+	Expect(read.sourceValidation.ok(), "well-shaped expect table should validate");
+	Expect(read.plan.hasExpectations(), "expect table should populate source-plan expectations");
+	Expect(read.plan.expectations.hasFinalRows, "expect table should mark final rows present");
+	Expect(read.plan.expectations.finalRows[1] == "#..@..#", "expect table should preserve expected row text");
+	Expect(read.plan.expectations.hasFrameCount && read.plan.expectations.frameCount == 2, "expect table should preserve frame count");
+	Expect(read.plan.expectations.hasAcceptedCommandCount && read.plan.expectations.acceptedCommandCount == 1, "expect table should preserve accepted command count");
+	Expect(read.plan.expectations.hasPickedUpCount && read.plan.expectations.pickedUpCount == 1, "expect table should preserve picked up count");
+	Expect(read.plan.expectations.hasInteractionChanged && read.plan.expectations.interactionChanged, "expect table should preserve interaction flag");
+	Expect(read.plan.expectations.hasNpcMovedCount && read.plan.expectations.npcMovedCount == 3, "expect table should preserve NPC moved count");
+}
+
+void TestExpectInlineRowsParse()
+{
+	const std::string toml = RootGridToml() + R"toml(
+
+[expect]
+final_rows = ["#######", "#..@..#", "#.....#", "#######"]
+)toml";
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
+		Read(toml);
+
+	Expect(read.ok(), "inline expect final rows should parse");
+	Expect(read.plan.expectations.hasFinalRows, "inline expect final rows should mark rows present");
+	Expect(read.plan.expectations.finalRows.size() == 4, "inline expect final rows should preserve row count");
+	Expect(read.plan.expectations.finalRows[1] == "#..@..#", "inline expect final rows should preserve row text");
+}
+
+void TestExpectWrongTypedFieldReportsContext()
+{
+	const std::string toml = RootGridToml() + R"toml(
+
+[expect]
+frame_count = "two"
+)toml";
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
+		Read(toml);
+
+	Expect(read.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::TypeInvalid, "wrong typed expect field should report type invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindIssue(read, iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssueCode::WrongType, "frame_count");
+	Expect(issue != nullptr, "wrong typed expect field should report wrong type");
+	if (issue != nullptr) {
+		Expect(issue->table == "expect", "wrong typed expect field should report expect table");
+		Expect(issue->line == LineOfNth(toml, "frame_count"), "wrong typed expect field should preserve source line");
+	}
+}
+
+void TestExpectFinalRowsShapeSurfacesSourcePlanValidation()
+{
+	const std::string toml = RootGridToml() + R"toml(
+
+[expect]
+final_rows = [
+  "#######",
+  "#@#",
+  "#.....#",
+  "#######",
+]
+)toml";
+
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
+		Read(toml);
+
+	Expect(read.status == iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadStatus::SourcePlanInvalid, "malformed expect final rows should report source-plan invalid");
+	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadIssue *issue =
+		FindSourceIssue(read, iggy::runtime::RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedFinalRowsDimensionMismatch);
+	Expect(issue != nullptr, "malformed expect final rows should surface source-plan issue");
+	if (issue != nullptr) {
+		Expect(issue->table == "expect", "malformed expect final rows should report expect table");
+		Expect(issue->key == "final_rows", "malformed expect final rows should report final_rows key");
+		Expect(issue->line == LineOfNth(toml, "final_rows"), "malformed expect final rows should preserve source line");
+	}
+}
+
 void TestTomlSourcePlanFeedsConverterAndProfileValidator()
 {
 	const iggy::runtime::RuntimeGameplayAsciiSourcePlanTomlReadResult read =
@@ -1446,6 +1544,10 @@ int main()
 	TestFramePlayerInteractUnknownTargetSurfacesSourcePlanValidation();
 	TestFramePlayerPickupInvalidTargetSurfacesSourcePlanValidation();
 	TestFrameAuthoredDeclarationOrderSpansControlsAndPlayerCommands();
+	TestExpectTableParses();
+	TestExpectInlineRowsParse();
+	TestExpectWrongTypedFieldReportsContext();
+	TestExpectFinalRowsShapeSurfacesSourcePlanValidation();
 	TestTomlSourcePlanFeedsConverterAndProfileValidator();
 	return Failures;
 }

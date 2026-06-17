@@ -18,6 +18,7 @@ enum class Table {
 	Grid,
 	NoClaims,
 	Promotion,
+	Expect,
 	Legend,
 	Cells,
 	Regions,
@@ -32,6 +33,12 @@ enum class InlineShapeStatus {
 	Ok,
 	WrongType,
 	Unsupported,
+};
+
+enum class MultilineStringArrayTarget {
+	None,
+	GridRows,
+	ExpectFinalRows,
 };
 
 struct IssueContext {
@@ -51,6 +58,8 @@ std::string TableName(Table table)
 		return "no_claims";
 	case Table::Promotion:
 		return "promotion";
+	case Table::Expect:
+		return "expect";
 	case Table::Legend:
 		return "legend";
 	case Table::Cells:
@@ -1089,6 +1098,15 @@ RuntimeGameplayAsciiSourcePlanTomlReadIssue MirroredSourcePlanIssue(
 			issue.line = locations.framePlayerCommandTableLines[sourceIssue.index];
 		}
 		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedFinalRowsEmpty:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::
+		ExpectedFinalRowsDimensionMismatch:
+		issue.table = "expect";
+		issue.key = "final_rows";
+		issue.line = locations.expectFinalRowsLine != 0
+			? locations.expectFinalRowsLine
+			: locations.expectTableLine;
+		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::EmptyRows:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::GridDimensionMismatch:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::RaggedRow:
@@ -1137,7 +1155,8 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 	Table table = Table::Root;
 	IssueContext context;
 	bool sawGrid = false;
-	bool readingRows = false;
+	MultilineStringArrayTarget multilineTarget =
+		MultilineStringArrayTarget::None;
 	std::size_t authoredDeclarationIndex = 0;
 	std::vector<std::string> parsedRows;
 
@@ -1149,16 +1168,27 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			continue;
 		}
 
-		if (readingRows) {
+		if (multilineTarget != MultilineStringArrayTarget::None) {
 			std::string row;
 			bool closed = false;
 			if (!ParseMultilineStringArrayItem(line, row, closed)) {
-				AddWrongType(result, lineNumber, "rows", context);
+				AddWrongType(
+					result,
+					lineNumber,
+					multilineTarget == MultilineStringArrayTarget::GridRows
+						? "rows"
+						: "final_rows",
+					context);
 				continue;
 			}
 			if (closed) {
-				result.plan.grid.rows = parsedRows;
-				readingRows = false;
+				if (multilineTarget == MultilineStringArrayTarget::GridRows) {
+					result.plan.grid.rows = parsedRows;
+				} else {
+					result.plan.expectations.hasFinalRows = true;
+					result.plan.expectations.finalRows = parsedRows;
+				}
+				multilineTarget = MultilineStringArrayTarget::None;
 			} else {
 				parsedRows.push_back(row);
 			}
@@ -1182,6 +1212,12 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			table = Table::Promotion;
 			context = { table, false, 0 };
 			result.sourceLocations.promotionTableLine = lineNumber;
+			continue;
+		}
+		if (line == "[expect]") {
+			table = Table::Expect;
+			context = { table, false, 0 };
+			result.sourceLocations.expectTableLine = lineNumber;
 			continue;
 		}
 		if (line == "[[legend]]") {
@@ -1358,6 +1394,75 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 					result,
 					lineNumber,
 					"unsupported promotion key: " + key,
+					context,
+					key);
+			}
+			continue;
+		}
+
+		if (table == Table::Expect) {
+			RuntimeGameplayAsciiSourcePlanExpectations &expectations =
+				result.plan.expectations;
+			if (key == "final_rows") {
+				result.sourceLocations.expectFinalRowsLine = lineNumber;
+				if (value == "[") {
+					multilineTarget =
+						MultilineStringArrayTarget::ExpectFinalRows;
+					parsedRows.clear();
+					continue;
+				}
+				std::vector<std::string> rows;
+				if (!ParseStringArrayInline(value, rows)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					expectations.hasFinalRows = true;
+					expectations.finalRows = rows;
+				}
+			} else if (key == "frame_count") {
+				std::size_t parsed = 0;
+				if (!ParseUnsigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					expectations.hasFrameCount = true;
+					expectations.frameCount = parsed;
+				}
+			} else if (key == "accepted_command_count") {
+				std::size_t parsed = 0;
+				if (!ParseUnsigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					expectations.hasAcceptedCommandCount = true;
+					expectations.acceptedCommandCount = parsed;
+				}
+			} else if (key == "picked_up_count") {
+				std::size_t parsed = 0;
+				if (!ParseUnsigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					expectations.hasPickedUpCount = true;
+					expectations.pickedUpCount = parsed;
+				}
+			} else if (key == "interaction_changed") {
+				bool parsed = false;
+				if (!ParseBool(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					expectations.hasInteractionChanged = true;
+					expectations.interactionChanged = parsed;
+				}
+			} else if (key == "npc_moved_count") {
+				std::size_t parsed = 0;
+				if (!ParseUnsigned(value, parsed)) {
+					AddWrongType(result, lineNumber, key, context);
+				} else {
+					expectations.hasNpcMovedCount = true;
+					expectations.npcMovedCount = parsed;
+				}
+			} else {
+				AddUnsupported(
+					result,
+					lineNumber,
+					"unsupported expect key: " + key,
 					context,
 					key);
 			}
@@ -1920,7 +2025,7 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 			} else if (key == "rows") {
 				result.sourceLocations.gridRowsLine = lineNumber;
 				if (value == "[") {
-					readingRows = true;
+					multilineTarget = MultilineStringArrayTarget::GridRows;
 					parsedRows.clear();
 					continue;
 				}
@@ -1936,8 +2041,8 @@ RuntimeGameplayAsciiSourcePlanTomlReadResult RuntimeGameplayAsciiSourcePlanTomlR
 		}
 	}
 
-	if (readingRows) {
-		AddSyntax(result, lines.size(), "unterminated rows array", context);
+	if (multilineTarget != MultilineStringArrayTarget::None) {
+		AddSyntax(result, lines.size(), "unterminated string array", context);
 	}
 
 	if (!sawGrid) {

@@ -12,6 +12,16 @@ std::size_t RuntimeGameplayAsciiSourcePlanGrid::rowCount() const
 	return rows.size();
 }
 
+bool RuntimeGameplayAsciiSourcePlanExpectations::hasAny() const
+{
+	return hasFinalRows ||
+		hasFrameCount ||
+		hasAcceptedCommandCount ||
+		hasPickedUpCount ||
+		hasInteractionChanged ||
+		hasNpcMovedCount;
+}
+
 bool RuntimeGameplayAsciiSourcePlan::hasRows() const
 {
 	return grid.hasRows();
@@ -60,6 +70,11 @@ std::size_t RuntimeGameplayAsciiSourcePlan::authoredItemDropCount() const
 std::size_t RuntimeGameplayAsciiSourcePlan::authoredPlayerCommandCount() const
 {
 	return authoredPlayerCommands.size();
+}
+
+bool RuntimeGameplayAsciiSourcePlan::hasExpectations() const
+{
+	return expectations.hasAny();
 }
 
 bool RuntimeGameplayAsciiSourcePlan::safeForAuthoring() const

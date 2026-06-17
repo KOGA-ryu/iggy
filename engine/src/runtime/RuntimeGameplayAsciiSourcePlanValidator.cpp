@@ -74,6 +74,10 @@ void AddIssue(
 	case RuntimeGameplayAsciiSourcePlanIssueCode::AuthoredPlayerCommandInvalidPickupTarget:
 		++result.authoredPlayerCommandIssueCount;
 		break;
+	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedFinalRowsEmpty:
+	case RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedFinalRowsDimensionMismatch:
+		++result.expectationIssueCount;
+		break;
 	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsafeNoClaims:
 	case RuntimeGameplayAsciiSourcePlanIssueCode::UnsafePromotionPolicy:
 		++result.unsafeBoundaryIssueCount;
@@ -785,6 +789,43 @@ void ValidateBoundaryFlags(RuntimeGameplayAsciiSourcePlanValidationResult &resul
 	}
 }
 
+void ValidateExpectations(RuntimeGameplayAsciiSourcePlanValidationResult &result)
+{
+	const RuntimeGameplayAsciiSourcePlanExpectations &expectations =
+		result.plan.expectations;
+	if (!expectations.hasFinalRows) {
+		return;
+	}
+
+	if (expectations.finalRows.empty()) {
+		RuntimeGameplayAsciiSourcePlanIssue issue;
+		issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::ExpectedFinalRowsEmpty;
+		AddIssue(result, issue);
+		return;
+	}
+
+	if (expectations.finalRows.size() != result.plan.grid.rows.size()) {
+		RuntimeGameplayAsciiSourcePlanIssue issue;
+		issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+			ExpectedFinalRowsDimensionMismatch;
+		issue.index = expectations.finalRows.size();
+		issue.firstIndex = result.plan.grid.rows.size();
+		AddIssue(result, issue);
+	}
+
+	for (std::size_t row = 0; row < expectations.finalRows.size(); ++row) {
+		if (expectations.finalRows[row].size() != result.plan.grid.width) {
+			RuntimeGameplayAsciiSourcePlanIssue issue;
+			issue.code = RuntimeGameplayAsciiSourcePlanIssueCode::
+				ExpectedFinalRowsDimensionMismatch;
+			issue.row = row;
+			issue.index = expectations.finalRows[row].size();
+			issue.firstIndex = result.plan.grid.width;
+			AddIssue(result, issue);
+		}
+	}
+}
+
 } // namespace
 
 bool RuntimeGameplayAsciiSourcePlanValidationResult::ok() const
@@ -808,6 +849,7 @@ RuntimeGameplayAsciiSourcePlanValidator::validate(
 	ValidateAuthoredInteractionTargets(result);
 	ValidateAuthoredItemDrops(result);
 	ValidateAuthoredPlayerCommands(result);
+	ValidateExpectations(result);
 	ValidateBoundaryFlags(result);
 	ValidateGridGlyphs(result, legendGlyphs);
 
