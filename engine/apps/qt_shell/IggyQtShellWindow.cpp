@@ -33,6 +33,7 @@
 
 #include "IggyQtShellUi.hpp"
 #include "runtime/RuntimeGameplayAuthoringPreviewModel.hpp"
+#include "runtime/RuntimeGameplayProductInputContext.hpp"
 #include "scene/ui/UiAuthoringPreviewPanelModel.hpp"
 #include "scene/ui/UiProductPlayModePanelModel.hpp"
 #include "scene/ui/UiTheme.hpp"
@@ -648,9 +649,16 @@ void IggyQtShellWindow::runProductManualStep()
 	if (!productManualStepAvailable())
 		return;
 
+	runtime::RuntimeGameplayProductInputFrame2D requestInputFrame =
+		productInputFrame_;
+	requestInputFrame.bindingContext =
+		runtime::RuntimeGameplayProductInputContext {}
+			.build(productPlayState_)
+			.bindingContext;
+
 	runtime::RuntimeGameplayProductFrameRequestInput input;
 	input.state = productPlayState_;
-	input.inputFrame = productInputFrame_;
+	input.inputFrame = requestInputFrame;
 	input.presentationCamera = productPresentationCameraConfig();
 
 	const runtime::RuntimeGameplayProductFrameRequestResult result =
