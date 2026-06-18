@@ -27,6 +27,7 @@
 class QEvent;
 class QFrame;
 class QKeyEvent;
+class QMouseEvent;
 class QPushButton;
 class QTimer;
 
@@ -86,6 +87,7 @@ private:
 	bool recordProductKeyEvent(
 		QKeyEvent &event,
 		runtime::RuntimeGameplayProductInputEventKind kind);
+	bool recordProductViewportPrimaryTilePress(QMouseEvent &event);
 
 	[[nodiscard]] QWidget *buildChrome();
 	[[nodiscard]] QWidget *buildBody();

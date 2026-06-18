@@ -35,6 +35,7 @@
 #include "IggyQtShellUi.hpp"
 #include "runtime/RuntimeGameplayAuthoringPreviewModel.hpp"
 #include "runtime/RuntimeGameplayProductInputContext.hpp"
+#include "runtime/RuntimeGameplayProductPointerProjection.hpp"
 #include "scene/ui/UiAuthoringPreviewPanelModel.hpp"
 #include "scene/ui/UiProductPlayModePanelModel.hpp"
 #include "scene/ui/UiTheme.hpp"
@@ -786,8 +787,68 @@ bool IggyQtShellWindow::recordProductKeyEvent(
 	return true;
 }
 
+bool IggyQtShellWindow::recordProductViewportPrimaryTilePress(QMouseEvent &event)
+{
+	if (event.button() != Qt::LeftButton)
+		return false;
+	if (!productPlayInputFocusAvailable() || !productPlayInputFocusEnabled())
+		return false;
+	if (productViewport_ == nullptr ||
+			productViewport_->width() <= 0 ||
+			productViewport_->height() <= 0)
+		return false;
+
+	const auto cameraConfig = productPresentationCameraConfig();
+	const runtime::RuntimeGameplayProductPresentationCameraResult camera =
+		runtime::RuntimeGameplayProductPresentationCamera {}.build(
+			productPlayState_,
+			cameraConfig);
+
+	runtime::RuntimeGameplayProductPointerProjectionInput projectionInput;
+	projectionInput.viewportPoint = {
+		static_cast<float>(event.position().x()),
+		static_cast<float>(event.position().y()),
+	};
+	projectionInput.viewportSize = {
+		static_cast<float>(productViewport_->width()),
+		static_cast<float>(productViewport_->height()),
+	};
+	projectionInput.camera = camera.presentationCamera;
+	projectionInput.cameraView = cameraConfig.cameraView;
+	const runtime::RuntimeGameplayProductPointerProjectionResult projection =
+		runtime::RuntimeGameplayProductPointerProjection {}.project(
+			projectionInput);
+
+	runtime::RuntimeGameplayProductInputEvent2D productEvent;
+	productEvent.control =
+		runtime::RuntimeGameplayProductInputControl2D::PrimaryTile;
+	productEvent.kind = runtime::RuntimeGameplayProductInputEventKind::Pressed;
+	productEvent.hasTile = true;
+	productEvent.tile = projection.tile;
+
+	const runtime::RuntimeGameplayProductInputAccumulatorRecordResult record =
+		runtime::RuntimeGameplayProductInputAccumulator {}.record(
+			productInputAccumulator_,
+			productEvent);
+	if (!record.changed)
+		return false;
+	productInputAccumulator_ = record.state;
+	return true;
+}
+
 bool IggyQtShellWindow::eventFilter(QObject *watched, QEvent *event)
 {
+	if (watched == productViewport_) {
+		if (event != nullptr && event->type() == QEvent::MouseButtonPress) {
+			auto *mouse = static_cast<QMouseEvent *>(event);
+			if (recordProductViewportPrimaryTilePress(*mouse)) {
+				event->accept();
+				return true;
+			}
+		}
+		return QMainWindow::eventFilter(watched, event);
+	}
+
 	if (watched != chrome_)
 		return QMainWindow::eventFilter(watched, event);
 
@@ -1109,6 +1170,7 @@ QWidget *IggyQtShellWindow::buildMainSlot()
 		productViewport_->setSizePolicy(
 			QSizePolicy::Expanding,
 			QSizePolicy::Expanding);
+		productViewport_->installEventFilter(this);
 		layout->addWidget(productViewport_, 1);
 	}
 
