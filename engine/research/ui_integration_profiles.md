@@ -250,7 +250,10 @@ Hard stops for product play UI projection:
   latest-frame synthesis, frame stepping/manual stepping, app tick loop, or
   frame pump from the focus toggle.
 - No settings persistence or keyboard shortcut for the focus toggle.
-- No mutation of product play mode state or runtime/gameplay state.
+- No product play mode mutation from scene/UI projection code; Qt launch/focus
+  code may update only the durable current focus bit through
+  `RuntimeGameplayProductPlayMode::withInputFocus(...)`. Runtime/gameplay state
+  mutation remains prohibited.
 - No raw input, camera, presentation, or render-frame persistence in
   gameplay/session/product-loop/play-mode/save truth.
 - No hidden default camera/render config inside the UI model.
