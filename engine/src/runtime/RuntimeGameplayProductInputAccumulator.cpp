@@ -32,14 +32,14 @@ bool IsOneShotControl(RuntimeGameplayProductInputControl2D control)
 	case RuntimeGameplayProductInputControl2D::Inspect:
 	case RuntimeGameplayProductInputControl2D::Wait:
 	case RuntimeGameplayProductInputControl2D::Cancel:
+	case RuntimeGameplayProductInputControl2D::PrimaryPoint:
+	case RuntimeGameplayProductInputControl2D::PrimaryTile:
 		return true;
 	case RuntimeGameplayProductInputControl2D::None:
 	case RuntimeGameplayProductInputControl2D::MoveNorth:
 	case RuntimeGameplayProductInputControl2D::MoveSouth:
 	case RuntimeGameplayProductInputControl2D::MoveWest:
 	case RuntimeGameplayProductInputControl2D::MoveEast:
-	case RuntimeGameplayProductInputControl2D::PrimaryPoint:
-	case RuntimeGameplayProductInputControl2D::PrimaryTile:
 		break;
 	}
 	return false;

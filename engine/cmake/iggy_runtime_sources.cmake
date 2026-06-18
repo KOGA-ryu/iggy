@@ -23,6 +23,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeGameplayProductPlaySurfaceFrame.cpp
   src/runtime/RuntimeGameplayProductPresentationCamera.cpp
   src/runtime/RuntimeGameplayProductPresentationFrame.cpp
+  src/runtime/RuntimeGameplayProductPointerProjection.cpp
   src/runtime/RuntimeGameplayProductScenarioLoader.cpp
   src/runtime/RuntimeGameplayScenarioAuthoringAdapter.cpp
   src/runtime/RuntimeGameplayAsciiScenarioPacket.cpp

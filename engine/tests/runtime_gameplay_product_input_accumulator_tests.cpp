@@ -296,24 +296,79 @@ void TestOneShotReleaseIsNoOp()
 		"one-shot release should emit no frame events");
 }
 
-void TestPrimaryControlsAreNotAccumulated()
+void TestPrimaryTilePressEmitsOnceWithPayloadPreserved()
+{
+	iggy::runtime::RuntimeGameplayProductInputEvent2D tile =
+		Event(Control::PrimaryTile);
+	tile.hasTile = true;
+	tile.tile = { 4, 5 };
+	const auto record = Record({}, tile);
+
+	const auto first = BuildFrame(record.state);
+	const auto second = BuildFrame(first.state);
+
+	Expect(record.changed && record.pendingOneShotCount == 1,
+		"PrimaryTile press should add one pending one-shot event");
+	Expect(first.oneShotEventCount == 1 && first.eventCount == 1,
+		"PrimaryTile press should emit once on next frame");
+	if (first.frame.events.size() == 1) {
+		const auto &event = first.frame.events[0];
+		Expect(event.control == Control::PrimaryTile &&
+				event.kind == Kind::Pressed &&
+				event.hasTile &&
+				event.tile == iggy::TileCoord { 4, 5 },
+			"PrimaryTile event should preserve tile payload");
+	}
+	Expect(second.eventCount == 0,
+		"PrimaryTile one-shot should be drained after one frame");
+}
+
+void TestPrimaryPointPressEmitsOnceWithPayloadPreserved()
 {
 	iggy::runtime::RuntimeGameplayProductInputEvent2D point =
 		Event(Control::PrimaryPoint);
 	point.hasWorldPoint = true;
 	point.worldPoint = { 2.0F, 3.0F };
-	iggy::runtime::RuntimeGameplayProductInputEvent2D tile =
-		Event(Control::PrimaryTile);
-	tile.hasTile = true;
-	tile.tile = { 4, 5 };
+	const auto record = Record({}, point);
+
+	const auto first = BuildFrame(record.state);
+	const auto second = BuildFrame(first.state);
+
+	Expect(record.changed && record.pendingOneShotCount == 1,
+		"PrimaryPoint press should add one pending one-shot event");
+	Expect(first.oneShotEventCount == 1 && first.eventCount == 1,
+		"PrimaryPoint press should emit once on next frame");
+	if (first.frame.events.size() == 1) {
+		const auto &event = first.frame.events[0];
+		Expect(event.control == Control::PrimaryPoint &&
+				event.kind == Kind::Pressed &&
+				event.hasWorldPoint &&
+				NearVec(event.worldPoint, { 2.0F, 3.0F }),
+			"PrimaryPoint event should preserve world-point payload");
+	}
+	Expect(second.eventCount == 0,
+		"PrimaryPoint one-shot should be drained after one frame");
+}
+
+void TestPrimaryReleaseIsNoOp()
+{
+	auto pointRelease = Event(Control::PrimaryPoint, Kind::Released);
+	pointRelease.hasWorldPoint = true;
+	pointRelease.worldPoint = { 2.0F, 3.0F };
+	auto tileRelease = Event(Control::PrimaryTile, Kind::Released);
+	tileRelease.hasTile = true;
+	tileRelease.tile = { 4, 5 };
 
 	iggy::runtime::RuntimeGameplayProductInputAccumulatorState state;
-	state = Record(state, point).state;
-	state = Record(state, tile).state;
-	const auto frame = BuildFrame(state);
+	const auto point = Record(state, pointRelease);
+	state = point.state;
+	const auto tile = Record(state, tileRelease);
+	const auto frame = BuildFrame(tile.state);
 
+	Expect(!point.changed && !tile.changed,
+		"primary release events should not change accumulator state");
 	Expect(frame.eventCount == 0,
-		"PrimaryPoint and PrimaryTile are out of accumulator v1");
+		"primary release events should emit no frame events");
 }
 
 void TestFrameCarriesBindingContextAndDoesNotMutateInputs()
@@ -417,7 +472,9 @@ int main()
 	TestOppositeCardinalsPreservePressOrder();
 	TestOneShotPressEmitsOnceAndCanBePressedAgain();
 	TestOneShotReleaseIsNoOp();
-	TestPrimaryControlsAreNotAccumulated();
+	TestPrimaryTilePressEmitsOnceWithPayloadPreserved();
+	TestPrimaryPointPressEmitsOnceWithPayloadPreserved();
+	TestPrimaryReleaseIsNoOp();
 	TestFrameCarriesBindingContextAndDoesNotMutateInputs();
 	TestClearReturnsEmptyState();
 	TestHeldMovementFlowsThroughRepeatedFrameRequests();
