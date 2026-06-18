@@ -620,6 +620,52 @@ void IggyQtShellWindow::toggleProductPlayInputFocus()
 	setProductPlayInputFocus(!productPlayInputFocusEnabled());
 }
 
+bool IggyQtShellWindow::productManualStepAvailable() const
+{
+	return hasProductPlayMode_
+		&& productPlayBuild_.status ==
+			runtime::RuntimeGameplayProductPlayModeBuildStatus::Ready;
+}
+
+runtime::RuntimeGameplayProductPresentationCameraConfig
+IggyQtShellWindow::productPresentationCameraConfig() const
+{
+	runtime::RuntimeGameplayProductPresentationCameraConfig config;
+	config.hasPreviousCamera = hasProductPresentationCamera_;
+	if (hasProductPresentationCamera_)
+		config.previousCamera = productPresentationCamera_;
+	config.fallbackCamera = { { 0.0F, 0.0F } };
+	config.cameraView = { { 16.0F, 12.0F }, 1.0F };
+	config.includeNpcCommands = true;
+	config.useTileChunkCache = false;
+	config.tileChunkCache = nullptr;
+	config.rig.follow = { 1000.0F, 0.0F };
+	return config;
+}
+
+void IggyQtShellWindow::runProductManualStep()
+{
+	if (!productManualStepAvailable())
+		return;
+
+	runtime::RuntimeGameplayProductFrameRequestInput input;
+	input.state = productPlayState_;
+	input.inputFrame = productInputFrame_;
+	input.presentationCamera = productPresentationCameraConfig();
+
+	const runtime::RuntimeGameplayProductFrameRequestResult result =
+		runtime::RuntimeGameplayProductFrameRequest {}.run(input);
+	productPlayState_ = result.state;
+	latestProductPlayModeFrame_ = result.frame;
+	hasLatestProductPlayModeFrame_ = true;
+	productPresentationCamera_ = result.presentationCamera.presentationCamera;
+	hasProductPresentationCamera_ = true;
+	context_.productPlayModeState = &productPlayState_;
+	context_.latestProductPlayModeFrame = &latestProductPlayModeFrame_;
+	clearProductInputFrame();
+	refreshAfterModelChange();
+}
+
 void IggyQtShellWindow::clearProductInputFrame()
 {
 	productInputFrame_ = {};
@@ -833,6 +879,11 @@ QWidget *IggyQtShellWindow::buildChrome()
 	productFocus->setEnabled(productPlayInputFocusAvailable());
 	connect(productFocus, &QAction::toggled, this, [this](bool enabled) {
 		setProductPlayInputFocus(enabled);
+	});
+	auto *productStep = viewMenu->addAction(QStringLiteral("Product Step"));
+	productStep->setEnabled(productManualStepAvailable());
+	connect(productStep, &QAction::triggered, this, [this]() {
+		runProductManualStep();
 	});
 	layout->addSpacing(8);
 	for (const ui::UiMountedChromePanel &panel : model_.mountedChromePanels)

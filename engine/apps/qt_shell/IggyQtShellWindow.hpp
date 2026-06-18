@@ -12,10 +12,12 @@
 #include <string>
 
 #include "runtime/RuntimeGameplayAuthoringPreviewModel.hpp"
+#include "runtime/RuntimeGameplayProductFrameRequest.hpp"
 #include "runtime/RuntimeGameplayProductInputAdapter.hpp"
 #include "runtime/RuntimeGameplayProductLoop.hpp"
 #include "runtime/RuntimeGameplayProductPlayMode.hpp"
 #include "runtime/RuntimeGameplayProductScenarioLoader.hpp"
+#include "scene/camera/CameraState.hpp"
 #include "runtime/RuntimeGameplayTomlScenarioFacade.hpp"
 #include "scene/ui/UiFeatureContext.hpp"
 #include "scene/ui/UiRuntimeWorkspaceModel.hpp"
@@ -68,6 +70,10 @@ private:
 	[[nodiscard]] bool productPlayInputFocusAvailable() const;
 	void setProductPlayInputFocus(bool enabled);
 	void toggleProductPlayInputFocus();
+	[[nodiscard]] bool productManualStepAvailable() const;
+	[[nodiscard]] runtime::RuntimeGameplayProductPresentationCameraConfig
+	productPresentationCameraConfig() const;
+	void runProductManualStep();
 	void clearProductInputFrame();
 	void appendProductInputEvent(runtime::RuntimeGameplayProductInputEvent2D event);
 	[[nodiscard]] std::optional<runtime::RuntimeGameplayProductInputControl2D>
@@ -126,6 +132,10 @@ private:
 	runtime::RuntimeGameplayProductPlayModeBuildResult productPlayBuild_;
 	runtime::RuntimeGameplayProductPlayModeState productPlayState_;
 	runtime::RuntimeGameplayProductInputFrame2D productInputFrame_;
+	runtime::RuntimeGameplayProductPlayModeFrameResult latestProductPlayModeFrame_;
+	bool hasLatestProductPlayModeFrame_ = false;
+	CameraState productPresentationCamera_;
+	bool hasProductPresentationCamera_ = false;
 	bool hasProductPlayMode_ = false;
 	QWidget *root_ = nullptr;
 	QVBoxLayout *rootLayout_ = nullptr;
