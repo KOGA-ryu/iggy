@@ -13,6 +13,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeGameplayAuthoringDiagnostics.cpp
   src/runtime/RuntimeGameplayAuthoringErrorCodes.cpp
   src/runtime/RuntimeGameplayAuthoringPreviewModel.cpp
+  src/runtime/RuntimeGameplayProductFrameRequest.cpp
   src/runtime/RuntimeGameplayProductInputAdapter.cpp
   src/runtime/RuntimeGameplayProductLoop.cpp
   src/runtime/RuntimeGameplayProductPlayMode.cpp
