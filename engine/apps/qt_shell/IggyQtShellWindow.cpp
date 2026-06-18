@@ -1,5 +1,6 @@
 #include "IggyQtShellWindow.hpp"
 
+#include <QAction>
 #include <QButtonGroup>
 #include <QCheckBox>
 #include <QColor>
@@ -589,6 +590,33 @@ void IggyQtShellWindow::openSettingsWindow()
 	settingsWindow_->activateWindow();
 }
 
+bool IggyQtShellWindow::productPlayInputFocusEnabled() const
+{
+	return productPlayInputFocusAvailable() && productPlayState_.hasInputFocus;
+}
+
+bool IggyQtShellWindow::productPlayInputFocusAvailable() const
+{
+	return hasProductPlayMode_
+		&& productPlayBuild_.status == runtime::RuntimeGameplayProductPlayModeBuildStatus::Ready;
+}
+
+void IggyQtShellWindow::setProductPlayInputFocus(bool enabled)
+{
+	if (!productPlayInputFocusAvailable())
+		return;
+	productPlayState_ =
+		runtime::RuntimeGameplayProductPlayMode {}.withInputFocus(productPlayState_, enabled);
+	context_.productPlayModeState = &productPlayState_;
+	context_.latestProductPlayModeFrame = nullptr;
+	refreshAfterModelChange();
+}
+
+void IggyQtShellWindow::toggleProductPlayInputFocus()
+{
+	setProductPlayInputFocus(!productPlayInputFocusEnabled());
+}
+
 bool IggyQtShellWindow::eventFilter(QObject *watched, QEvent *event)
 {
 	if (watched != chrome_)
@@ -705,6 +733,13 @@ QWidget *IggyQtShellWindow::buildChrome()
 		input_.panels.right.collapsed = true;
 		input_.panels.bottom.collapsed = true;
 		refreshAfterModelChange();
+	});
+	auto *productFocus = viewMenu->addAction(QStringLiteral("Product Input Focus"));
+	productFocus->setCheckable(true);
+	productFocus->setChecked(productPlayInputFocusEnabled());
+	productFocus->setEnabled(productPlayInputFocusAvailable());
+	connect(productFocus, &QAction::toggled, this, [this](bool enabled) {
+		setProductPlayInputFocus(enabled);
 	});
 	layout->addSpacing(8);
 	for (const ui::UiMountedChromePanel &panel : model_.mountedChromePanels)

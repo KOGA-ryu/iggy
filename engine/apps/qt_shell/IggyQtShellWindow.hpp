@@ -59,6 +59,10 @@ private:
 	void rebuildModel();
 	void applyTheme();
 	void openSettingsWindow();
+	[[nodiscard]] bool productPlayInputFocusEnabled() const;
+	[[nodiscard]] bool productPlayInputFocusAvailable() const;
+	void setProductPlayInputFocus(bool enabled);
+	void toggleProductPlayInputFocus();
 
 	[[nodiscard]] QWidget *buildChrome();
 	[[nodiscard]] QWidget *buildBody();
