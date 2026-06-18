@@ -150,8 +150,13 @@ Recently completed optimized stretches:
   invoking `RuntimeGameplayProductFrameRequest` exactly once, updating only
   replaceable app-shell transient play state/latest frame/presentation camera,
   clearing transient product input after executed requests, and refreshing the
-  existing read-only product play panel without automatic frame pumping,
-  settings persistence, shortcuts, or runtime semantic changes.
+  existing read-only product play panel without settings persistence, shortcuts,
+  or runtime semantic changes.
+- Qt shell `Product Frame Pump` View-menu toggle for ready `--play` sessions,
+  using window-owned `QTimer` timing at 250 ms / 4 Hz through the same one-frame
+  helper as manual Step. It is app-shell-owned replaceable timing only, updates
+  transient shell play state/latest frame/presentation camera/accumulator state,
+  and does not persist pump settings or add runtime/product semantics.
 - Runtime authoring diagnostic projection with stable printable error-code
   strings.
 - Runtime summary projection for CLI/facade summary and final rows.
@@ -249,9 +254,10 @@ Recently completed optimized stretches:
   caller-requested manual frames; the Qt shell now exposes a ready-state manual
   `Product Step` action that executes one frame request; the shell now stores
   transient held/one-shot product input in an accumulator and enriches only
-  accumulator frame output with projected current-player-tile binding context.
-  Next product runtime work is automatic frame pump ownership, player/modern NPC
-  render projection, pause/retry/reset policy, completion/failure evaluation,
+  accumulator frame output with projected current-player-tile binding context;
+  the Qt shell now has replaceable app-owned `Product Frame Pump` timing for
+  ready `--play` sessions. Next product runtime work is player/modern NPC render
+  projection, pause/retry/reset policy, completion/failure evaluation,
   save/load UX, and further shell integration such as mouse/world/tile input
   mapping if approved.
 - Rendering backend/presentation layer.
@@ -418,11 +424,20 @@ Done:
   transient app-shell `productPlayState_`, latest frame/context pointer, and
   presentation camera, preserve held movement across steps, drain one-shots
   after executed steps, and refresh the product play panel.
+- Qt shell `Product Frame Pump` is a checkable View-menu action for ready
+  `--play` sessions. It is Qt/app-shell-owned replaceable timing only, driven by
+  a window-owned `QTimer` at 250 ms / 4 Hz. Manual Step and timer ticks share the
+  same one-frame helper: accumulator output plus projected input context, stored
+  returned accumulator state, one `RuntimeGameplayProductFrameRequest` call,
+  transient play-state/latest-frame/previous-camera/context-pointer update, and
+  product play panel refresh. Pump availability is ready product play only,
+  independent of `Product Input Focus`; the timer stops if product play becomes
+  unavailable or not ready, and it does not auto-stop on `NoFrameAvailable`.
 
 Remaining exit work:
 - Add source-linked diagnostics and richer trace/expectation inspection.
-- Decide when the product shell should move from manual step requests to an
-  automatic frame pump, and when it supplies any input mapping beyond the
+- Decide when the product shell should move beyond the temporary Qt-owned frame
+  pump into an owned app loop, and when it supplies any input mapping beyond the
   supported keyboard controls.
 - Gate any build canvas, structured authoring controls, or source/TOML
   roundtrip separately.
@@ -497,9 +512,11 @@ camera policy chooses caller-owned transient camera/config for presentation, and
 play-mode frame call for caller-requested manual frames. Qt `Product Step`
 invokes one frame request for ready `--play` sessions using accumulator frame
 output enriched with projected current-player-tile binding context before
-updating replaceable app-shell transient state. There is still no automatic
-app/tick loop, mouse/world/tile input mapping, target lookup, UX policy, or
-save/load productization yet.
+updating replaceable app-shell transient state. Qt `Product Frame Pump` adds
+app-shell-owned 250 ms / 4 Hz timing around that same one-frame helper for ready
+`--play` sessions. There is still no mouse/world/tile input mapping, target
+lookup, player/modern NPC render projection, UX policy, or save/load
+productization yet.
 
 Objective: move from engine harness to playable/editor-backed game loop.
 
@@ -623,6 +640,15 @@ Done:
   fallback/view defaults with NPC commands enabled and tile chunk cache
   disabled; they are not settings/save truth. The projected binding context is
   request-input only and is not persisted in the accumulator state.
+- Qt shell `Product Frame Pump` is a ready-state View-menu toggle for `--play`
+  sessions. It owns only replaceable Qt timing/action checked state via a
+  window-owned `QTimer` at 250 ms / 4 Hz, shares the same one-frame helper as
+  manual Step, and updates only transient app-shell product play state, input
+  accumulator state, latest frame, previous presentation camera, product play
+  state context pointer, and panel projection. It stops if product play becomes
+  unavailable/not ready, does not stop on `NoFrameAvailable`, and persists no
+  pump enabled state, interval, keybinding, input, camera, latest-frame, or
+  render-frame data.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -635,7 +661,6 @@ Exit criteria:
 First gates:
 - Mouse/world/tile input mapping only if a later product shell gate approves it.
 - Player sprite and modern `RuntimeGameplayState::npcActors` render projection.
-- Automatic product frame pump ownership.
 - Pause/retry/reset policy.
 - Completion/failure evaluator.
 - Save-slot UX ownership.

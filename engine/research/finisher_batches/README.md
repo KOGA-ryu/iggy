@@ -93,3 +93,4 @@ Queue:
 36. `36_qt_product_manual_step_status_sync` - complete. Sync planning/API docs after Qt product manual Step consumer integration.
 37. `37_product_input_context_projection_status_sync` - complete. Sync planning/API docs after product input binding context projection integration.
 38. `38_product_input_accumulator_status_sync` - complete. Sync planning/API docs after product held input accumulator integration.
+39. `39_qt_product_frame_pump_status_sync` - complete. Sync planning/API docs after Qt product frame pump toggle integration.

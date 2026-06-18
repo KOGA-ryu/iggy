@@ -194,9 +194,10 @@ Qt `--play` launch/load/build consumer plus ready-state focus toggle and
 ready/focused keyboard product input mapping; runtime/product presentation
 camera policy, manual frame request wrapper, product input context projection,
 product input accumulator, and Qt manual Step with accumulator output plus
-transient current-player-tile context projection are complete, while frame
-pumping, mouse/world/tile input mapping, target discovery, cadence policy, and
-broader UI execution remain gated.
+transient current-player-tile context projection are complete; Qt product frame
+pump toggle is complete as replaceable app-shell timing. Mouse/world/tile input
+mapping, target discovery, product UX/save semantics, and broader UI execution
+remain gated.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
@@ -325,13 +326,30 @@ Qt manual Step consumer:
 - Camera/config defaults are shell presentation defaults only and are not
   settings/save truth.
 
+Qt frame pump toggle:
+- The View menu exposes a checkable `Product Frame Pump` action for ready
+  `--play` sessions only.
+- The pump is Qt/app-shell-owned replaceable timing through a window-owned
+  `QTimer` at 250 ms / 4 Hz.
+- Manual Step and timer ticks share the same one-frame helper: accumulator
+  output plus projected input context, returned accumulator state storage, one
+  `RuntimeGameplayProductFrameRequest` call, transient shell state updates, and
+  product play panel refresh.
+- The pump is independent of `Product Input Focus`; focus remains only the input
+  gate.
+- The timer stops when product play becomes unavailable or not ready, but does
+  not auto-stop on `NoFrameAvailable`.
+- Pump enabled state, interval, and keybindings are not persisted.
+
 Hard stops for product play UI projection:
 - No product frame execution, `RuntimeGameplayProductPlayMode::frame(...)`,
   `RuntimeGameplayProductPlaySurfaceFrame::build(...)`, app tick loop, or frame
   pump from scene/UI projection code.
 - No raw Qt/device event persistence; supported keyboard mapping may produce
   only transient product input events inside the Qt shell.
-- No UI execution, frame stepping, automatic app/tick loop, or frame pump.
+- No scene/UI projection-owned execution, frame stepping, app tick loop, or
+  frame pump; the Qt shell pump is the separately documented replaceable
+  app-shell timing path.
 - No product loader/file/package/TOML APIs called from scene/UI model code.
 - No calls to `RuntimeGameplayProductPlayMode::frame`,
   `RuntimeGameplayProductPlaySurfaceFrame::build`, loader APIs, or product
@@ -368,10 +386,19 @@ Hard stops for product play UI projection:
   from input context projection.
 - No accumulator state persistence in runtime/session/gameplay/product-loop/
   play-mode state, snapshots, saves, settings, or scene/UI models.
-- No raw Qt key/event storage, cadence/rate policy, automatic frame pump,
-  mouse screen-to-world/tile mapping, `PrimaryPoint`/`PrimaryTile`, target
+- No raw Qt key/event storage, cadence/rate policy, accumulator-owned frame
+  pump, mouse screen-to-world/tile mapping, `PrimaryPoint`/`PrimaryTile`, target
   search, or reach lookup in accumulator state.
-- No automatic app/tick loop or frame pump from Qt manual Step.
+- No runtime/product semantic ownership by Qt frame pump.
+- No pump enabled state, interval, keybindings, input accumulator, pump state,
+  camera, latest frame, or render-frame persistence in runtime/session/
+  gameplay/product-loop/play-mode snapshots, saves, settings, or scene/UI model
+  truth.
+- No player sprite or modern NPC actor render projection, mouse
+  screen-to-world/tile mapping, `PrimaryPoint`/`PrimaryTile`, target discovery,
+  target search, reach lookup, pause/retry/reset/completion/failure/save-load
+  productization, package scanning/watching/discovery, source mutation, raw Qt
+  event persistence, or runtime/product semantic changes from Qt frame pump.
 - No settings persistence or keyboard shortcut for Qt manual Step.
 - No hidden default camera/render config inside the UI model.
 - No pause/retry/reset, completion/failure, save/load productization, package
