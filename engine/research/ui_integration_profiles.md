@@ -198,9 +198,9 @@ transient current-player-tile context projection are complete; Qt product frame
 pump toggle is complete as replaceable app-shell timing; runtime/product actor
 debug/material quad projection is complete; runtime/product pointer projection
 and explicit primary point/tile accumulator event preservation are complete.
-Product viewport/canvas ownership plus a thin Qt mouse consumer, textured
-sprites/animation/material policy, target discovery, product UX/save semantics,
-and broader UI execution remain gated.
+Qt product viewport ownership is complete as an inert app-shell surface.
+Thin Qt mouse consumer, textured sprites/animation/material policy, target
+discovery, product UX/save semantics, and broader UI execution remain gated.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
@@ -315,8 +315,21 @@ Runtime pointer projection:
   non-positive zoom, and zero-axis degenerate viewports.
 - It returns status/flags/world point/tile for a future consumer to choose
   `PrimaryTile`, `PrimaryPoint`, or both under a separate policy gate.
-- The Qt mouse consumer, product viewport/canvas coordinate owner, and
-  point-vs-tile emission policy remain future work.
+- The Qt mouse consumer and point-vs-tile emission policy remain future work.
+
+Qt product viewport owner:
+- Product play sessions create an inert `QFrame#productViewport` inside
+  `QFrame#mainSlot`, including failed/not-ready play sessions.
+- The viewport uses zero-margin/zero-spacing layout, expanding size policy, and
+  local `QFrame#productViewport` styling only.
+- `productViewport_` is reset to null on main-slot rebuilds where no viewport is
+  created.
+- The viewport is a stable future event/render target boundary, not input
+  readiness, render semantics, product input mapping, runtime truth, or scene/UI
+  model truth.
+- No mouse handler, event filter, `RuntimeGameplayProductPointerProjection` call,
+  `PrimaryPoint`/`PrimaryTile` synthesis, render command drawing, or canvas
+  polish is included.
 
 Qt manual Step consumer:
 - The View menu exposes `Product Step` for ready `--play` sessions only.
@@ -393,6 +406,8 @@ Hard stops for product play UI projection:
 - No Qt mouse consumer, `QMouseEvent`, `QPoint`, QWidget coordinate use, or Qt
   types in runtime/scene/product APIs.
 - No `PrimaryPoint` or `PrimaryTile` creation from Qt input mapping.
+- No event filter or mouse handler on `productViewport_`, and no calls to
+  `RuntimeGameplayProductPointerProjection` from Qt.
 - No settings persistence or keyboard shortcut for the focus toggle.
 - No product play mode mutation from scene/UI projection code; Qt launch/focus
   code may update only the durable current focus bit through
@@ -422,12 +437,13 @@ Hard stops for product play UI projection:
   gameplay/product-loop/play-mode snapshots, saves, settings, or scene/UI model
   truth.
 - No textured sprite/animation sampling, new art/assets/material registry,
-  package discovery, Qt mouse consumer, product viewport/canvas ownership,
+  package discovery, Qt mouse consumer,
   target discovery, target search, reach lookup,
   pause/retry/reset/completion/failure/save-load productization, package
   scanning/watching/discovery, source mutation, raw Qt event persistence,
-  projected pointer persistence, render command/config persistence, or
-  runtime/product semantic changes from Qt frame pump.
+  projected pointer persistence, viewport geometry/state persistence, render
+  command/config persistence, render command drawing, canvas polish, or
+  runtime/product semantic changes from Qt frame pump or viewport ownership.
 - No settings persistence or keyboard shortcut for Qt manual Step.
 - No hidden default camera/render config inside the UI model.
 - No pause/retry/reset, completion/failure, save/load productization, package
@@ -437,8 +453,8 @@ Hard stops for product play UI projection:
 
 1. Source-linked diagnostics.
 2. Visual trace playback.
-3. Product viewport/canvas owner plus thin Qt mouse consumer only after an
-   explicit product shell gate.
+3. Thin Qt mouse consumer targeting `productViewport_` only after an explicit
+   product shell gate.
 4. Latest-frame presentation integration beyond the read-only panel, if needed.
 5. Automatic app tick loop / frame pump.
 7. Build canvas for placement.

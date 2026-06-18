@@ -106,6 +106,11 @@ Recently completed optimized stretches:
   plus `tileForPoint(...)` tile, returning status/flags/world/tile for future
   policy without owning Qt mouse input, viewport/canvas coordinates, target
   lookup, interaction execution, or persistence.
+- Qt shell `productViewport_` owner for product play sessions: an inert
+  `QFrame#productViewport` created only when product play mode exists, including
+  failed/not-ready play sessions, with expanding layout inside `QFrame#mainSlot`
+  and no mouse consumer, event filter, pointer projection call, product input
+  synthesis, render drawing, or runtime/scene API change.
 - Runtime `RuntimeGameplayProductInputContext` for app-neutral product binding
   context projection, returning default gates plus current player tile only when
   product play state is loaded and has a player, without target discovery,
@@ -270,10 +275,11 @@ Recently completed optimized stretches:
   ready `--play` sessions; runtime/product presentation now appends
   debug/material player and modern NPC actor quads after level rendering;
   runtime/product pointer projection plus explicit primary point/tile
-  accumulator event preservation exists. Next product runtime work is product
-  viewport/canvas ownership with a thin Qt mouse consumer if approved, textured
-  sprite/animation/material/asset policy, pause/retry/reset policy,
-  completion/failure evaluation, and save/load UX.
+  accumulator event preservation exists; Qt shell now owns an inert
+  product-play viewport frame as a future event/render target boundary. Next
+  product runtime work is a thin Qt mouse consumer targeting that viewport if
+  approved, textured sprite/animation/material/asset policy, pause/retry/reset
+  policy, completion/failure evaluation, and save/load UX.
 - Rendering backend/presentation layer.
 - Audio server boundary.
 - Save/load productization and authored package roundtrip.
@@ -533,6 +539,10 @@ coordinate owner, target lookup, textured sprite/animation/material/asset
 policy, UX policy, or save/load productization yet. Product Pointer Tile Input
 Mapping Option A is complete as runtime/product projection and accumulator event
 preservation only.
+Qt Product Viewport Owner is complete as a temporary app-shell viewport/canvas
+boundary: product play sessions now get an inert `QFrame#productViewport`, but
+it has no mouse handler, event filter, pointer projection call, render command
+drawing, or product input synthesis yet.
 
 Objective: move from engine harness to playable/editor-backed game loop.
 
@@ -606,6 +616,12 @@ Done:
   context pointers, reveals `panel:product_play`, and leaves latest frame null.
   Bad paths still open the shell and show failed load/build state; `--play` and
   `--preview` are mutually exclusive with exit code 2.
+- Qt shell builds an inert `QFrame#productViewport` in the main slot whenever
+  product play mode exists, including failed/not-ready play sessions. It uses
+  zero-margin/zero-spacing layout, expanding size policy, and local viewport
+  stylesheet only; `productViewport_` is reset to null on rebuilds where no
+  viewport is created. The viewport is a stable future event/render target
+  boundary, not input readiness or runtime truth.
 - Qt shell `Product Input Focus` toggles are enabled/applicable only for ready
   product play state. The action updates only current `productPlayState_` via
   `RuntimeGameplayProductPlayMode {}.withInputFocus(...)`, keeps product play
@@ -695,8 +711,9 @@ Done:
 - Product pointer projection is runtime/product and Qt-free:
   `RuntimeGameplayProductPointerProjection` provides the camera/view math needed
   for a future focused ready-play Qt mouse consumer to emit transient
-  `PrimaryTile` and/or `PrimaryPoint` events into the accumulator. That Qt
-  consumer, product viewport/canvas ownership, and point-vs-tile policy remain
+  `PrimaryTile` and/or `PrimaryPoint` events into the accumulator. The Qt
+  viewport owner now provides an inert target for that future consumer, but
+  mouse handling, pointer projection calls, and point-vs-tile policy remain
   separate gates.
 
 Exit criteria:
@@ -708,8 +725,8 @@ Exit criteria:
 - Save/load user-facing state.
 
 First gates:
-- Product viewport/canvas owner and thin Qt mouse consumer if a later product
-  shell gate approves it.
+- Thin Qt mouse consumer targeting `productViewport_` if a later product shell
+  gate approves it.
 - Target discovery/search/reach and hover/selection workflows.
 - Textured sprite/animation/material/asset policy over the debug/material actor
   quads.
