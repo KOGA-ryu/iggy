@@ -18,19 +18,23 @@ For the operating model, see
 | Platform | tmux control room, scripts, CMake, CI lanes, local macros | How do we make departments faster? |
 | Integration | branch health, merge order, reviewer gates, final verification | How do we land completed work safely? |
 
-Each department has one permanent visible planner station. Supporting roles are
-available, but they are on-demand resources rather than permanent tmux tabs:
+Each department has one visible Terminal window with three permanent Codex
+tabs:
 
 - **planner**: owns the department bucket, refines slices, dispatches work;
 - **builder**: implements scoped feature or fixture work;
+- **reviewer**: adversarial gate for ownership, risk, and fit.
+
+Supporting roles are on-demand resources rather than permanent tmux tabs:
+
 - **researcher**: scouts semantics, prior art, repo surfaces, compute costs;
-- **reviewer**: adversarial gate for ownership, risk, and fit;
 - **finisher**: cleanup, docs, test-support extraction, merge polish;
 - **apprentice/Spark**: short-lived scouts or tiny bounded implementation tasks.
 
 The head planner stays in the Codex app. The six visible department terminals
-are planner desks only. Workers communicate back through briefs, replies,
-commits, and merge-gate notes.
+host the department planner, builder, and reviewer. Researcher/finisher/Spark
+workers communicate back through briefs, replies, commits, and gate notes when
+they are explicitly activated.
 
 ## Hub Rules
 

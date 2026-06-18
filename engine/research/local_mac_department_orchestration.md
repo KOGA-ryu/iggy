@@ -18,11 +18,12 @@ department terminal window.
   current, build helper scripts/macros, decide merge order, run the integration
   gate, and recycle stale context at clean boundaries.
 
-Departments do the work in isolated local branches, but the visible floor is
-planner-only. Each department has one planner station. Builders, researchers,
-reviewers, finishers, and apprentice/Spark workers are created or consulted on
-demand through Codex threads, subagents, or separate branch worktrees. They are
-not permanent tabs that must all run at once.
+Departments do the work in isolated local branches. The visible floor is one
+Terminal window per department, with three Codex-hosted tmux tabs: `planner`,
+`builder`, and `reviewer`. Researchers, finishers, and apprentice/Spark workers
+are created or consulted on demand through Codex threads, subagents, or
+separate branch worktrees. They are not permanent tabs that must all run at
+once.
 
 | Department | Typical role | Work area |
 | --- | --- | --- |
@@ -51,10 +52,9 @@ Use `--reset` when stale worker tabs exist:
 engine/tools/iggy-dept-up.sh --reset
 ```
 
-The helper opens one visible Terminal window per department planner. The Codex
-app remains the head planner, so the operating floor is seven planners total:
-the head planner plus six department planners. Each department Terminal window
-attaches to its own tmux session:
+The helper opens one visible Terminal window per department. The Codex app
+remains the head planner. Each department Terminal window attaches to its own
+tmux session:
 
 | Department | tmux session | Default worktree |
 | --- | --- | --- |
@@ -65,11 +65,16 @@ attaches to its own tmux session:
 | Platform | `iggy-platform` | `/Users/kogaryu/iggy-platform` when present, otherwise integration |
 | Integration | `iggy-integration` | `/Users/kogaryu/iggy` |
 
-Inside each department tmux session, the only permanent window is `planner`.
-Workers are pulled in when there is work for them:
+Inside each department tmux session, the permanent windows are:
+
+- `planner`: owns the department bucket and dispatch;
+- `builder`: implements planner-scoped packets;
+- `reviewer`: gates ownership, risk, semantics, tests, and merge fit.
+
+Other workers are pulled in when there is work for them:
 
 - a persistent Codex worker thread for a real branch;
-- a reviewer/researcher thread for a read-only gate;
+- a researcher thread for a read-only scout;
 - a short-lived subagent or Spark slot for bounded scans or mechanical tasks;
 - a local worktree branch when implementation is approved.
 
@@ -147,10 +152,10 @@ Rules:
 - Departments do not edit another department's worktree.
 - Department planners own their local bucket and dispatch.
 - Builders own feature behavior and fixtures for their department branch.
-- Finishers own cleanup, bloat reduction, docs, and test-support work for their
-  department branch.
-- Reviewers and researchers are read-only unless explicitly assigned a docs
-  packet.
+- Reviewers gate the planner and builder before merge.
+- Finishers own cleanup, bloat reduction, docs, and test-support work when
+  explicitly activated for a department branch.
+- Researchers are read-only unless explicitly assigned a docs packet.
 - Apprentices/Spark scouts are normally read-only or narrowly scoped test/docs
   workers and are closed after returning results.
 
@@ -296,13 +301,12 @@ implicit and should be split.
 Use this as the current preferred pattern:
 
 - Head planner/hub: owns the complete roadmap and departments.
-- Runtime department: one branch per runtime/session/save/report stretch.
-- AI/NPC department: one branch per AI-map/profile/NPC/navigation stretch.
-- Authoring department: one branch per TOML/package/preview/content stretch.
-- UI/Product department: planner/designers first, then UI implementation.
-- Platform department: tools, scripts, CMake lanes, local macros, workflow.
-- Integration department: branch health, merge order, reviewer gates, final
-  verification, roadmap sync.
+- Runtime department: planner/builder/reviewer tabs for runtime/session/save/report stretches.
+- AI/NPC department: planner/builder/reviewer tabs for AI-map/profile/NPC/navigation stretches.
+- Authoring department: planner/builder/reviewer tabs for TOML/package/preview/content stretches.
+- UI/Product department: planner/builder/reviewer tabs for product surfaces and UI implementation.
+- Platform department: planner/builder/reviewer tabs for tools, scripts, CMake lanes, local macros, workflow.
+- Integration department: planner/builder/reviewer tabs for branch health, merge order, gates, final verification, roadmap sync.
 - Reviewer/researcher lanes: feed departments and gates, normally read-only.
 - Apprentice/Spark: temporary scouts or tiny bounded work packets.
 - Hub: keeps departments fed, prevents shared-file collisions, and integrates.
