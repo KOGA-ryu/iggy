@@ -222,9 +222,10 @@ Exit criteria:
 Status: Packets 1, 2, 3A, 3B-A, 4-A, 4-B, the app-neutral play-surface frame,
 play-mode state, read-only product play UI projection, Qt `--play` launch
 consumer, Qt product input focus toggle, and ready/focused Qt keyboard product
-input mapping complete; next work is camera lifecycle policy, render projection
-gaps, product frame stepping/frame pump ownership, any further mouse/world/tile
-input mapping, and first-play UX policy gates.
+input mapping complete; runtime/product presentation camera policy complete;
+next work is render projection gaps, product frame stepping/frame pump
+ownership, any further mouse/world/tile input mapping, and first-play UX policy
+gates.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -450,10 +451,28 @@ Qt keyboard product input mapping complete:
   presentation frames, latest-frame results, product frame steps, manual step
   actions, app tick loops, or frame pumps.
 
+Product presentation camera policy complete:
+- `RuntimeGameplayProductPresentationCamera` is an app-neutral runtime/product
+  policy for choosing transient caller-owned `CameraState` plus
+  `LevelRenderFrame2DConfig` from product play state and caller-owned config.
+- Not-loaded state supports previous-camera and fallback-camera selection.
+- Loaded state supports player initialization and previous-camera player follow
+  through existing `CameraRig`.
+- Follow-disabled paths preserve previous/fallback behavior.
+- Clamp behavior is reported through result flags from `CameraRig`.
+- Render config forwarding preserves view/camera view config, NPC command flag,
+  tile chunk cache flag, and cache pointer.
+- The policy does not execute frames, call
+  `RuntimeGameplayProductPlaySurfaceFrame::build(...)`, call
+  `RuntimeGameplayProductPlayMode::frame(...)`, call product input
+  adapter/binding, persist camera/presentation/render-frame data, or add
+  Qt/UI/CLI behavior.
+
 Remaining input gate questions:
 - Is mouse/world/tile input mapping needed after keyboard mapping, and where
   should any future mapping beyond supported keys remain transient?
-- Who owns camera lifecycle/follow/rig/clamp policy?
+- When does the product shell request presentation camera policy and feed latest
+  play frames?
 - When are player sprite and modern `RuntimeGameplayState::npcActors` render
   projections added?
 - Who owns product frame stepping and the automatic app/tick loop around
@@ -464,7 +483,6 @@ Remaining input gate questions:
 
 Output:
 - one optional mouse/world/tile input mapping packet, if needed;
-- one camera lifecycle/presentation policy packet;
 - one product frame stepping/frame pump packet;
 - one updated implementation order packet;
 - one verification plan.
@@ -482,8 +500,8 @@ Hard stops:
 - do not persist raw input or context overrides in runtime/session/product-loop
   state or snapshots;
 - do not put presentation/camera state into gameplay truth;
-- do not add camera lifecycle/follow/rig/clamp ownership to the projection
-  wrapper;
+- do not store presentation camera policy output as gameplay/session/product-loop
+  or play-mode truth;
 - do not productize save/load in the next input or presentation packet;
 - do not add pause/retry/reset or completion/failure/win/lose semantics in the
   input or presentation packet;
@@ -526,6 +544,9 @@ Hard stops:
 - do not call product loader/file/package/TOML APIs from play mode;
 - do not add player sprite or modern NPC actor render projection without a
   separate gate;
+- do not add Qt/UI/CLI behavior, product frame stepping, app tick loop, product
+  input adapter/binding execution, or raw input changes to presentation camera
+  policy;
 - do not persist derived caches as save truth.
 
 ## Phase 5: Presentation / Render Integration
@@ -533,11 +554,11 @@ Hard stops:
 Status: projection-only product presentation wrapper, runtime-only app-neutral
 play-surface frame, app-neutral play-mode state, read-only product play UI
 projection, Qt `--play` launch/load/build consumer, and Qt product input focus
-toggle plus ready/focused keyboard product input mapping integrated; camera
-lifecycle policy, player sprite projection, modern NPC actor projection, product
-frame stepping/frame pump, further input mapping beyond supported keyboard
-controls, and UI execution beyond launch/focus/input capture remain separate
-gates.
+toggle plus ready/focused keyboard product input mapping integrated; product
+presentation camera policy integrated; player sprite projection, modern NPC
+actor projection, product frame stepping/frame pump, further input mapping
+beyond supported keyboard controls, and UI execution beyond launch/focus/input
+capture remain separate gates.
 
 Goal: turn runtime state into visible play state.
 
@@ -558,9 +579,9 @@ Packets:
    - ready play mode -> focus bit toggle -> read-only panel refresh.
 7. Qt keyboard product input mapping. Complete:
    - ready/focused key press/release -> transient latest product input event.
-8. Camera lifecycle/presentation policy:
-   - follow/rig/clamp ownership outside gameplay truth; screen/world transforms
-     remain separate.
+8. Runtime product presentation camera policy. Complete:
+   - product play state + caller config -> transient camera/render config using
+     existing follow/rig/clamp behavior outside gameplay truth.
 9. Debug overlay projection:
    - trace/final rows, AI map, collision, path, interactions, inventory.
 10. UI presentation adapter:
@@ -634,7 +655,7 @@ Implementation packets:
 4-F. Qt product play launch/load/build consumer. Complete.
 4-G-A. Qt product play focus toggle. Complete.
 4-G-B. Qt keyboard product input mapping. Complete.
-4-H. Camera lifecycle/presentation policy.
+4-H. Product presentation camera policy. Complete.
 5. Product frame stepping/frame pump.
 6. Player sprite and modern NPC actor render projection.
 7. Pause/retry/reset.
@@ -768,12 +789,12 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 16. Qt product play launch/load/build consumer is integrated.
 17. Qt product play focus toggle is integrated.
 18. Qt keyboard product input mapping is integrated.
-19. Dispatch camera lifecycle policy, product frame stepping/frame pump, further
+19. Product presentation camera policy is integrated.
+20. Dispatch product frame stepping/frame pump, render projection gaps, further
     input mapping, or a focused-input follow-up, depending on planner scope.
 
 Do not broaden the next Product Loop packet into pause/retry/reset,
 completion/failure, save/load productization, product-loop signature changes,
-command/gate execution, camera lifecycle/follow/rig/clamp ownership, Qt/UI/CLI
-behavior, raw OS event types, raw input persistence, player sprite/modern NPC
-actor render projection, or new gameplay semantics unless the user explicitly
-reprioritizes.
+command/gate execution, presentation state persistence, Qt/UI/CLI behavior,
+raw OS event types, raw input persistence, player sprite/modern NPC actor render
+projection, or new gameplay semantics unless the user explicitly reprioritizes.

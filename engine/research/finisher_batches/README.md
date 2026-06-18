@@ -88,3 +88,4 @@ Queue:
 31. `31_qt_product_play_launch_status_sync` - complete. Sync planning/API docs after Qt product play launch/load/build consumer integration.
 32. `32_qt_product_play_focus_status_sync` - complete. Sync planning/API docs after Qt product play focus toggle integration.
 33. `33_qt_product_input_mapping_status_sync` - complete. Sync planning/API docs after Qt-local product input key mapping integration.
+34. `34_product_presentation_camera_status_sync` - complete. Sync planning/API docs after runtime/product presentation camera policy integration.

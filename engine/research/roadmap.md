@@ -100,6 +100,11 @@ Recently completed optimized stretches:
   and `LevelRenderFrame2DConfig`; it returns a `LevelRenderFrame2DResult`
   without stepping gameplay or owning camera lifecycle, UI, render backend, or
   persistence.
+- Runtime `RuntimeGameplayProductPresentationCamera` for app-neutral
+  presentation camera policy that chooses transient caller-owned
+  `CameraState` plus `LevelRenderFrame2DConfig` from product play state and
+  caller config, using existing `CameraRig` follow/clamp behavior without frame
+  execution, Qt/UI, input mapping, or persistence.
 - Runtime `RuntimeGameplayProductPlaySurfaceFrame` for one caller-requested,
   app-neutral product play frame, composing product input adaptation, player
   input binding, one product-loop step with per-step context override, and
@@ -218,7 +223,8 @@ Recently completed optimized stretches:
   for one caller-requested focused play frame; app-neutral play-mode state now
   stores only durable loop state and input focus; the Qt shell now maps
   supported keys to transient product input events for ready, focused `--play`
-  sessions. Next product runtime work is camera lifecycle policy,
+  sessions; the runtime/product camera policy now selects transient
+  caller-owned camera/config for presentation. Next product runtime work is
   player/modern NPC render projection, product frame stepping/frame pump,
   pause/retry/reset policy, completion/failure evaluation, save/load UX, and
   further shell integration such as mouse/world/tile input mapping if approved.
@@ -346,12 +352,18 @@ Done:
   cancel. The frame is latest-event bounded, clears on focus disable, ignores
   auto-repeat and unsupported keys, keeps binding context default, and stores no
   raw `QKeyEvent` objects or pointers.
+- `RuntimeGameplayProductPresentationCamera` chooses caller-owned transient
+  camera and render config for product presentation. It handles not-loaded
+  previous/fallback camera selection, loaded player initialization,
+  previous-camera player follow through `CameraRig`, follow-disabled
+  previous/fallback behavior, clamp result flags, and render config forwarding
+  for view/camera config, NPC command rendering, tile chunk cache, and cache
+  pointer.
 
 Remaining exit work:
 - Add source-linked diagnostics and richer trace/expectation inspection.
-- Decide when the product shell supplies camera/render config, latest play
-  frames, frame pumping, and any input mapping beyond the supported keyboard
-  controls.
+- Decide when the product shell supplies latest play frames, frame pumping, and
+  any input mapping beyond the supported keyboard controls.
 - Gate any build canvas, structured authoring controls, or source/TOML
   roundtrip separately.
 - Keep editing/mutation APIs out until a separate gate approves them.
@@ -419,9 +431,10 @@ camera/config, an app-neutral one-frame play-surface composition facade, and
 durable app-neutral play-mode state storing only loop state plus focus. Product
 play UI projection is read-only and context-provided, and Qt `--play PATH`
 launch/load/build context wiring, a ready-state focus toggle, and ready/focused
-keyboard-to-product-input-event mapping exist. There is still no product frame
-execution, automatic app/tick loop, camera policy, mouse/world/tile input
-mapping, UX policy, or save/load productization yet.
+keyboard-to-product-input-event mapping exist. The runtime/product presentation
+camera policy chooses caller-owned transient camera/config for presentation.
+There is still no product frame execution, automatic app/tick loop,
+mouse/world/tile input mapping, UX policy, or save/load productization yet.
 
 Objective: move from engine harness to playable/editor-backed game loop.
 
@@ -500,6 +513,15 @@ Done:
   default; no current-player tile, selected target, hovered target, scene/UI
   model exposure, settings exposure, raw `QKeyEvent` persistence, adapter call,
   binding call, frame step, or camera/render config is added.
+- `RuntimeGameplayProductPresentationCamera` is an app-neutral runtime/product
+  camera policy. It chooses transient caller-owned `CameraState` plus
+  `LevelRenderFrame2DConfig` from product play state and caller-owned config,
+  supports not-loaded previous/fallback selection, loaded-player
+  initialization, previous-camera player follow through existing `CameraRig`,
+  follow-disabled previous/fallback behavior, clamp result flags, and render
+  config forwarding. It does not execute frames, call play-surface build, call
+  product input adapter/binding, persist presentation state, or add Qt/UI/CLI
+  behavior.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -511,7 +533,8 @@ Exit criteria:
 
 First gates:
 - Mouse/world/tile input mapping only if a later product shell gate approves it.
-- Camera lifecycle/follow/rig/clamp policy.
+- Product shell ownership for when to request presentation camera policy and
+  feed latest play frames.
 - Player sprite and modern `RuntimeGameplayState::npcActors` render projection.
 - Product frame stepping/frame pump ownership.
 - Pause/retry/reset policy.

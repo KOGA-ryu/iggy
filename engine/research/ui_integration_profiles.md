@@ -191,8 +191,9 @@ Hard stops for the first milestone:
 
 Status: complete for the read-only product play panel model, context seam, and
 Qt `--play` launch/load/build consumer plus ready-state focus toggle and
-ready/focused keyboard product input mapping; frame pumping, camera policy,
-mouse/world/tile input mapping, and gameplay execution remain gated.
+ready/focused keyboard product input mapping; runtime/product presentation
+camera policy is complete, while frame pumping, mouse/world/tile input mapping,
+and gameplay execution remain gated.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
@@ -251,6 +252,17 @@ Qt keyboard input mapping:
 - Binding context remains default; no current-player tile, selected target,
   hovered target, scene/UI model exposure, or settings exposure was added.
 
+Runtime presentation camera policy:
+- `RuntimeGameplayProductPresentationCamera` is an app-neutral runtime/product
+  policy that chooses transient caller-owned `CameraState` plus
+  `LevelRenderFrame2DConfig` from product play state and caller-owned config.
+- It supports not-loaded previous/fallback camera selection, loaded player
+  initialization, previous-camera player follow through existing `CameraRig`,
+  follow-disabled previous/fallback behavior, clamp result flags, and render
+  config forwarding.
+- It does not execute frames, call play-surface build, call product input
+  adapter/binding, persist presentation state, or add Qt/UI/CLI behavior.
+
 Hard stops for product play UI projection:
 - No product frame execution, `RuntimeGameplayProductPlayMode::frame(...)`,
   `RuntimeGameplayProductPlaySurfaceFrame::build(...)`, app tick loop, or frame
@@ -282,6 +294,7 @@ Hard stops for product play UI projection:
   gameplay/session/product-loop/play-mode/save/settings/scene-UI truth.
 - No camera, presentation, or render-frame persistence in
   gameplay/session/product-loop/play-mode/save truth.
+- No presentation camera policy output stored in scene/UI models or settings.
 - No hidden default camera/render config inside the UI model.
 - No pause/retry/reset, completion/failure, save/load productization, package
   scanning/watching/discovery, source mutation, or new gameplay semantics.
@@ -291,7 +304,7 @@ Hard stops for product play UI projection:
 1. Source-linked diagnostics.
 2. Visual trace playback.
 3. Mouse/world/tile input mapping only after an explicit product shell gate.
-4. Camera lifecycle/presentation policy.
+4. Product shell frame pump and latest-frame presentation integration.
 5. Product frame stepping / automatic app tick loop / frame pump.
 7. Build canvas for placement.
 8. Structured authoring controls for existing facts.
