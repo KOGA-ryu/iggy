@@ -219,10 +219,11 @@ Exit criteria:
 
 ## Phase 4: Product Loop Gate
 
-Status: Packets 1, 2, 3A, 3B-A, 4-A, and 4-B complete; next work is product
-shell/play surface and focused input ownership, optional Qt/raw-device event
-adaptation, camera lifecycle policy, render projection gaps, and first-play UX
-policy gates.
+Status: Packets 1, 2, 3A, 3B-A, 4-A, 4-B, and the app-neutral play-surface
+frame complete; next work is product shell/play mode and focused input
+ownership, optional Qt/raw-device event adaptation after shell/focus ownership
+is scoped, camera lifecycle policy, render projection gaps, automatic app/tick
+loop ownership, and first-play UX policy gates.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -313,21 +314,47 @@ Packet 4-B complete:
   sprites, render modern `RuntimeGameplayState::npcActors`, perform IO, touch
   UI/CLI, or add save/load behavior.
 
+Play-surface frame complete:
+- `RuntimeGameplayProductPlaySurfaceFrame` is a runtime-only app-neutral facade
+  for one caller-requested play frame.
+- It composes existing public surfaces: `RuntimeGameplayProductInputAdapter`,
+  `PlayerInputBinding2D`, `RuntimeGameplayProductLoop` one-frame step with
+  per-step context override, and `RuntimeGameplayProductPresentationFrame`.
+- Focused flow is product input events to binding actions, then player
+  intents/context, then exactly one product-loop step, then presentation
+  projection using the returned step state.
+- Not-loaded flow skips adapter/binding/step, delegates to the presentation
+  wrapper, and counts input events as ignored.
+- No-frame/exhausted flow skips adapter/binding/step, synthesizes a no-frame
+  step guard result, renders current loaded state through the presentation
+  wrapper, and counts input events as ignored.
+- Unfocused flow ignores transient events before adapter semantics, runs
+  adapter/binding on empty events/actions with carried context, steps once with
+  empty intents/context override, and presents post-step state.
+- The result exposes nested adapter, binding, step, and presentation results
+  plus ignored input count.
+- The facade is not a Qt shell, product launch mode, automatic tick loop, UI
+  adapter, raw OS event mapper, camera lifecycle owner, or save/load surface.
+
 Remaining input gate questions:
-- Is a Qt/raw-device adapter needed before shell integration, and where does it
-  convert raw input into transient product input events?
-- What shell/play surface owns focus and input routing?
+- What product shell/play mode owns focus and input routing around the
+  app-neutral play-surface frame?
+- Is a Qt/raw-device adapter needed after shell/focus ownership is scoped, and
+  where does it convert raw input into transient product input events?
 - Who owns camera lifecycle/follow/rig/clamp policy?
 - When are player sprite and modern `RuntimeGameplayState::npcActors` render
   projections added?
+- Who owns the automatic app/tick loop around caller-requested frames?
 - Who owns pause/retry/reset?
 - What state must save/load for the first playable slice?
 - What does completion/failure mean in the first slice?
 
 Output:
-- one optional Qt/raw-device adapter packet if needed;
-- one product shell/play surface ownership packet;
+- one product shell/play mode and focused input ownership packet;
+- one optional Qt/raw-device adapter packet after product shell/focus ownership
+  is scoped, if needed;
 - one camera lifecycle/presentation policy packet;
+- one automatic app/tick loop packet;
 - one updated implementation order packet;
 - one verification plan.
 
@@ -350,15 +377,21 @@ Hard stops:
 - do not add pause/retry/reset or completion/failure/win/lose semantics in the
   input or presentation packet;
 - do not treat `RuntimeGameplayProductPresentationFrame` as Qt shell/play mode;
+- do not treat `RuntimeGameplayProductPlaySurfaceFrame` as Qt shell, product
+  launch mode, automatic tick loop, or UI adapter;
+- do not persist raw input in runtime session/gameplay/product-loop state,
+  snapshots, saves, or UI models;
 - do not add player sprite or modern NPC actor render projection without a
   separate gate;
 - do not persist derived caches as save truth.
 
 ## Phase 5: Presentation / Render Integration
 
-Status: first projection-only product presentation wrapper integrated; app
-surface, camera lifecycle policy, player sprite projection, modern NPC actor
-projection, and UI presentation adapter remain separate gates.
+Status: projection-only product presentation wrapper and runtime-only
+app-neutral play-surface frame integrated; Qt shell/play mode, raw-device
+adapter, camera lifecycle policy, player sprite projection, modern NPC actor
+projection, automatic app/tick loop, and UI presentation adapter remain separate
+gates.
 
 Goal: turn runtime state into visible play state.
 
@@ -366,12 +399,15 @@ Packets:
 1. Caller-driven product presentation frame. Complete:
    - loaded product loop state + caller-owned camera/config -> level render
      frame result.
-2. Camera lifecycle/presentation policy:
+2. Runtime product play-surface frame. Complete:
+   - transient product input events + focus/context/camera/config -> nested
+     adapter, binding, one-step, and presentation results.
+3. Camera lifecycle/presentation policy:
    - follow/rig/clamp ownership outside gameplay truth; screen/world transforms
      remain separate.
-3. Debug overlay projection:
+4. Debug overlay projection:
    - trace/final rows, AI map, collision, path, interactions, inventory.
-4. UI presentation adapter:
+5. UI presentation adapter:
    - convert render frame data into the chosen shell/app surface.
 
 Hard stops:
@@ -436,9 +472,10 @@ Implementation packets:
 3B-B. Optional Qt/raw-device adapter into transient product input events.
 4-A. Product loop per-step input context override. Complete.
 4-B. Projection-only product presentation frame. Complete.
-4-C. Product shell/play surface and focused input ownership.
-4-D. Camera lifecycle/presentation policy.
-5. Gameplay tick loop.
+4-C. Runtime product play-surface frame. Complete.
+4-D. Product shell/play mode and focused input ownership.
+4-E. Camera lifecycle/presentation policy.
+5. Automatic app/tick loop.
 6. Player sprite and modern NPC actor render projection.
 7. Pause/retry/reset.
 8. Minimal save/load if approved.
@@ -565,11 +602,13 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 11. Product Loop Packet 4-A per-step input context override is integrated.
 12. Product Loop Packet 4-B projection-only product presentation frame is
     integrated.
-13. Dispatch product shell/play surface ownership, camera lifecycle policy, or
-    optional Qt/raw-device adapter, depending on planner scope.
+13. Runtime product play-surface frame is integrated.
+14. Dispatch product shell/play mode and focused input ownership, camera
+    lifecycle policy, automatic app/tick loop, or optional Qt/raw-device
+    adapter, depending on planner scope.
 
 Do not broaden the next Product Loop packet into pause/retry/reset,
 completion/failure, save/load productization, product-loop signature changes,
-command/gate execution, camera lifecycle/follow/rig/clamp ownership, player
-sprite/modern NPC actor render projection, or new gameplay semantics unless the
-user explicitly reprioritizes.
+command/gate execution, camera lifecycle/follow/rig/clamp ownership, Qt/UI/CLI
+behavior, raw OS event types, player sprite/modern NPC actor render projection,
+or new gameplay semantics unless the user explicitly reprioritizes.
