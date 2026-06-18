@@ -17,6 +17,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeGameplayProductActorRenderCommands.cpp
   src/runtime/RuntimeGameplayProductInputAccumulator.cpp
   src/runtime/RuntimeGameplayProductInputContext.cpp
+  src/runtime/RuntimeGameplayProductInputFrameTargetContext.cpp
   src/runtime/RuntimeGameplayProductInputTargetContext.cpp
   src/runtime/RuntimeGameplayProductInteractionTargetQuery.cpp
   src/runtime/RuntimeGameplayProductInputAdapter.cpp
