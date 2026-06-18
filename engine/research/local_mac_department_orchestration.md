@@ -18,10 +18,11 @@ department terminal window.
   current, build helper scripts/macros, decide merge order, run the integration
   gate, and recycle stale context at clean boundaries.
 
-Departments do the work in isolated local branches. Each department has a
-planner, builder, researcher, reviewer, finisher, and apprentice/Spark slot,
-even if some slots are staffed by a persistent Codex thread and some are
-short-lived subagents.
+Departments do the work in isolated local branches, but the visible floor is
+planner-only. Each department has one planner station. Builders, researchers,
+reviewers, finishers, and apprentice/Spark workers are created or consulted on
+demand through Codex threads, subagents, or separate branch worktrees. They are
+not permanent tabs that must all run at once.
 
 | Department | Typical role | Work area |
 | --- | --- | --- |
@@ -29,7 +30,8 @@ short-lived subagents.
 | AI/NPC | profiles, AI maps, actor movement, navigation, legacy NPC migration | one topic worktree per AI/NPC stretch |
 | Authoring | TOML/package/preview/facade/content fixtures | one topic worktree per authoring stretch |
 | UI/Product | shell, preview consumption, editor surfaces, play/debug UX | one topic worktree per UI stretch |
-| Platform/Integration | CMake, CI lanes, scripts/macros, merge/release hygiene | integration branch plus tooling worktrees |
+| Platform | CMake, CI lanes, scripts/macros, developer workflow | integration branch plus tooling worktrees |
+| Integration | merge gates, branch health, integration verification, release hygiene | integration branch |
 
 The current worktree topology is always discovered with:
 
@@ -43,8 +45,16 @@ The local tmux department floor is created with:
 engine/tools/iggy-dept-up.sh
 ```
 
-The helper opens one visible Terminal window per department. Each department
-Terminal window attaches to its own tmux session:
+Use `--reset` when stale worker tabs exist:
+
+```sh
+engine/tools/iggy-dept-up.sh --reset
+```
+
+The helper opens one visible Terminal window per department planner. The Codex
+app remains the head planner, so the operating floor is seven planners total:
+the head planner plus six department planners. Each department Terminal window
+attaches to its own tmux session:
 
 | Department | tmux session | Default worktree |
 | --- | --- | --- |
@@ -55,18 +65,17 @@ Terminal window attaches to its own tmux session:
 | Platform | `iggy-platform` | `/Users/kogaryu/iggy-platform` when present, otherwise integration |
 | Integration | `iggy-integration` | `/Users/kogaryu/iggy` |
 
-Inside each department tmux session, the worker tabs/windows are:
+Inside each department tmux session, the only permanent window is `planner`.
+Workers are pulled in when there is work for them:
 
-- `planner`
-- `builder`
-- `reviewer`
-- `researcher`
-- `finisher`
-- `apprentice`
+- a persistent Codex worker thread for a real branch;
+- a reviewer/researcher thread for a read-only gate;
+- a short-lived subagent or Spark slot for bounded scans or mechanical tasks;
+- a local worktree branch when implementation is approved.
 
-The terminal windows are command surfaces and status dashboards; the workers
-still communicate durable results through commits, bucket docs, and Codex
-briefs.
+The terminal windows are command surfaces and status dashboards. Durable
+communication still happens through commits, bucket docs, and department bus
+files.
 
 Do not treat a hardcoded snapshot in any doc as authoritative. Verify the local
 state before assigning, rebasing, or merging.
@@ -85,6 +94,8 @@ The durable state is on disk:
 
 - `engine/research/roadmap.md` for project state;
 - `engine/research/departments/` for department charters and buckets;
+- `engine/research/departments/<dept>/{inbox,outbox,replies,decisions}/` for
+  local bus artifacts;
 - `engine/research/authoring_batches/` for legacy/builder authoring packets;
 - `engine/research/finisher_batches/` for cleanup packets;
 - focused research docs such as API indexes, boundary notes, closeout notes, and
@@ -104,10 +115,10 @@ surface is clear. The better pattern is:
 2. Have reviewer/researcher scope repo fit and conflict risk.
 3. Assign a department planner a scoped stretch with file ownership and hard
    stops.
-4. The department planner uses its researcher/reviewer to refine semantics,
-   data ownership, compute costs, and Codex-vs-Spark split.
-5. The department builder/finisher/apprentice executes coherent packets on the
-   department branch.
+4. The department planner uses researcher/reviewer input when semantics, data
+   ownership, compute costs, or Codex-vs-Spark split are unclear.
+5. The department planner dispatches builder/finisher/apprentice work only when
+   there is a bounded branch packet or scan ready.
 6. Merge only through the hub after verification and review.
 
 Use the raw bucket order only when there is no better scoped stretch. A
@@ -289,7 +300,9 @@ Use this as the current preferred pattern:
 - AI/NPC department: one branch per AI-map/profile/NPC/navigation stretch.
 - Authoring department: one branch per TOML/package/preview/content stretch.
 - UI/Product department: planner/designers first, then UI implementation.
-- Platform/Integration department: tools, CMake, CI lanes, merge hygiene.
+- Platform department: tools, scripts, CMake lanes, local macros, workflow.
+- Integration department: branch health, merge order, reviewer gates, final
+  verification, roadmap sync.
 - Reviewer/researcher lanes: feed departments and gates, normally read-only.
 - Apprentice/Spark: temporary scouts or tiny bounded work packets.
 - Hub: keeps departments fed, prevents shared-file collisions, and integrates.

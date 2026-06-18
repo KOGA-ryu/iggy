@@ -1,5 +1,13 @@
 # Platform And Integration Department
 
+Status: legacy combined charter. Current workflow splits this into:
+
+- `engine/research/departments/platform/README.md`
+- `engine/research/departments/integration/README.md`
+
+Keep this file only as a historical bridge until outstanding references are
+cleaned up.
+
 ## Charter
 
 Own local orchestration scripts, tmux department control room, CMake/test
