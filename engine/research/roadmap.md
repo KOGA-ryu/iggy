@@ -122,6 +122,13 @@ Recently completed optimized stretches:
   `find(...)` and `findTileCenter(...)` status/results, and no Qt/runtime/product
   wiring, reach/LOS/occupancy/pathfinding/kind-priority policy, click-to-interact
   execution, persistence, or gameplay semantics.
+- Runtime `RuntimeGameplayProductInteractionTargetQuery` for read-only
+  product-state target query reports: point or tile-center queries delegate to
+  `InteractionTargetSpatialQuery2D`, found targets are copied into the result,
+  reach is annotated only when the current product state has a player, and the
+  surface does not mutate selected/hovered context, convert `PrimaryTile` to
+  `Interact`, execute commands/effects, persist query state, or add Qt/UI
+  behavior.
 - Runtime `RuntimeGameplayProductInputContext` for app-neutral product binding
   context projection, returning default gates plus current player tile only when
   product play state is loaded and has a player, without target discovery,
@@ -288,10 +295,12 @@ Recently completed optimized stretches:
   runtime/product pointer projection plus explicit primary point/tile
   accumulator event preservation exists; Qt shell now owns a
   product-play viewport frame as an event/render target boundary and has a
-  focused ready-play left-click `PrimaryTile` consumer for that viewport. Next
-  product runtime work is wiring target context/search/reach policy on top of
-  the scene-only spatial query primitive, then interaction execution if
-  approved, textured sprite/animation/material/asset policy,
+  focused ready-play left-click `PrimaryTile` consumer for that viewport; the
+  runtime/product interaction target query now reports point/tile-center target
+  lookup plus reach annotation read-only. Next product runtime work is deciding
+  how those reports feed transient target context or explicit interaction
+  intent, then interaction execution if approved, textured sprite/animation/
+  material/asset policy,
   pause/retry/reset policy, completion/failure evaluation, and save/load UX.
 - Rendering backend/presentation layer.
 - Audio server boundary.
@@ -550,10 +559,12 @@ app-shell-owned 250 ms / 4 Hz timing around that same one-frame helper for ready
 `--play` sessions. Product Pointer Tile Input Mapping Option A is complete as
 runtime/product projection and accumulator event preservation, and the Qt shell
 now records focused ready left-clicks on `productViewport_` as transient
-`PrimaryTile` pressed events. There is still no target lookup, hover/selection,
-interaction execution, right/middle/move/wheel/double-click/drag behavior,
-textured sprite/animation/material/asset policy, UX policy, or save/load
-productization yet.
+`PrimaryTile` pressed events. Runtime/product target lookup now exists as a
+read-only report surface over point or tile-center queries with optional reach
+annotation. There is still no hover/selection context mutation, `PrimaryTile` to
+`Interact` conversion, interaction execution, right/middle/move/wheel/
+double-click/drag behavior, textured sprite/animation/material/asset policy, UX
+policy, or save/load productization yet.
 Qt Product Viewport Owner is complete as a temporary app-shell viewport/canvas
 boundary: product play sessions get `QFrame#productViewport`; the current input
 policy is left-click `PrimaryTile` only and render command drawing/canvas polish
@@ -564,6 +575,12 @@ distance to clamped target radius plus clamped extra radius, returns the nearest
 eligible target with registry-order tie behavior, supports tile-center queries,
 and keeps Qt/product wiring, selected/hovered target context, reach policy, and
 interaction execution separate.
+RuntimeGameplayProductInteractionTargetQuery is complete as an app-neutral
+runtime/product read-only report surface: it maps point or tile-center requests
+against current product play state targets through the spatial query primitive,
+copies found target payloads into the report, annotates reach only when a player
+exists, and keeps selected/hovered state, input conversion, command/effect
+execution, Qt behavior, and persistence separate.
 
 Objective: move from engine harness to playable/editor-backed game loop.
 
@@ -751,6 +768,12 @@ Done:
   boundary matches, while preserving first registry entry on exact distance
   ties. It does not project hovered/selected context, check reach, execute
   interactions, or wire Qt/product input.
+- Product interaction target query is runtime/product and read-only:
+  `RuntimeGameplayProductInteractionTargetQuery` accepts product play state plus
+  a point or tile-center query, preserves nested spatial result details, copies
+  the found target, and annotates reach through `InteractionReach2D` only when
+  the state has a player. It does not use `InteractionPlan2D`, mutate target
+  context, synthesize input, or execute interactions.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -761,8 +784,9 @@ Exit criteria:
 - Save/load user-facing state.
 
 First gates:
-- Target context wiring/search/reach and hover/selection workflows on top of the
-  scene-only spatial query primitive.
+- Target context wiring/hover/selection workflows on top of the read-only
+  product target query report.
+- Explicit interact target synthesis and reach-gated interaction execution.
 - Point-vs-tile / `PrimaryPoint` behavior beyond the current `PrimaryTile`
   policy.
 - Textured sprite/animation/material/asset policy over the debug/material actor

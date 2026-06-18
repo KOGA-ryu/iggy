@@ -232,9 +232,11 @@ runtime/product pointer projection plus accumulator event preservation; Qt
 product viewport owner complete as an app-shell viewport boundary; thin Qt
 product mouse `PrimaryTile` consumer complete for focused ready left-clicks on
 that viewport; scene-only `InteractionTargetSpatialQuery2D` complete as the pure
-spatial lookup primitive; next work is target context wiring/search/reach,
-interaction execution, textured sprite/animation/material/asset policy, and
-first-play UX policy gates.
+spatial lookup primitive; runtime/product `RuntimeGameplayProductInteractionTargetQuery`
+complete as a read-only point/tile-center target query plus reach report; next
+work is target context wiring, explicit interact target synthesis,
+reach-gated interaction execution, textured sprite/animation/material/asset
+policy, and first-play UX policy gates.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -687,8 +689,10 @@ Qt product frame pump toggle complete:
   frame request, play mode, input accumulator, or gameplay semantics.
 
 Remaining input gate questions:
-- What target context/search/reach policy should consume the current
-  `PrimaryTile` intent using `InteractionTargetSpatialQuery2D`?
+- How should transient hovered/selected target context consume the read-only
+  `RuntimeGameplayProductInteractionTargetQuery` report?
+- Should explicit interact target synthesis consume a `TargetFound` report, and
+  should it require `reachable=true`?
 - Should a later point-vs-tile policy add `PrimaryPoint` or world-point payloads
   beyond the current `PrimaryTile`-only click behavior?
 - Should selected/hovered target context be projected later, and what explicit
@@ -700,8 +704,8 @@ Remaining input gate questions:
 - What does completion/failure mean in the first slice?
 
 Output:
-- one optional target context/search/reach packet over the scene spatial query,
-  if approved;
+- one optional target context / explicit interact-target packet over the product
+  query report, if approved;
 - one textured sprite / animation / material policy packet, if approved;
 - one updated implementation order packet;
 - one verification plan.
@@ -894,9 +898,13 @@ Packets:
    - scene-only `InteractionTargetSpatialQuery2D` -> nearest enabled target in
      range for a point or tile center, with clamped radius policy and
      registry-order tie behavior; no Qt/runtime/product wiring or execution.
-19. Debug overlay projection:
+19. Product interaction target query. Complete:
+   - runtime/product read-only report over point or tile-center target lookup
+     plus optional player reach annotation; no selected/hovered state mutation,
+     input conversion, command/effect planning, Qt behavior, or execution.
+20. Debug overlay projection:
    - trace/final rows, AI map, collision, path, interactions, inventory.
-20. UI presentation adapter:
+21. UI presentation adapter:
    - convert render frame data into the chosen shell/app surface.
 
 Hard stops:
@@ -1123,15 +1131,16 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 27. Qt product viewport owner is integrated.
 28. Thin Qt product mouse `PrimaryTile` consumer is integrated.
 29. Interaction target spatial query is integrated.
-30. Dispatch target context/search/reach wiring, interaction execution,
-    point-vs-tile policy, textured sprite / animation / material policy, render
-    projection gaps, further input mapping, or a focused-input follow-up,
-    depending on planner scope.
+30. Runtime/product interaction target query report is integrated.
+31. Dispatch target context wiring, explicit interact target synthesis,
+    reach-gated interaction execution, point-vs-tile policy, textured sprite /
+    animation / material policy, render projection gaps, further input mapping,
+    or a focused-input follow-up, depending on planner scope.
 
 Do not broaden the next Product Loop packet into pause/retry/reset,
 completion/failure, save/load productization, product-loop signature changes,
 command/gate execution, presentation state persistence, Qt/UI/CLI behavior,
 raw OS event types, raw input persistence, textured sprite/animation/material
-policy, target context wiring/search/reach beyond the approved scene spatial
-query primitive, additional Qt mouse behavior, render command drawing, canvas
+policy, target context wiring/search/reach beyond the approved read-only product
+query report, additional Qt mouse behavior, render command drawing, canvas
 polish, or new gameplay semantics unless the user explicitly reprioritizes.
