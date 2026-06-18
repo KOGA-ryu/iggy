@@ -610,7 +610,7 @@ void IggyQtShellWindow::setProductPlayInputFocus(bool enabled)
 	productPlayState_ =
 		runtime::RuntimeGameplayProductPlayMode {}.withInputFocus(productPlayState_, enabled);
 	if (!enabled)
-		clearProductInputFrame();
+		clearProductInputAccumulator();
 	context_.productPlayModeState = &productPlayState_;
 	context_.latestProductPlayModeFrame = nullptr;
 	refreshAfterModelChange();
@@ -649,16 +649,19 @@ void IggyQtShellWindow::runProductManualStep()
 	if (!productManualStepAvailable())
 		return;
 
-	runtime::RuntimeGameplayProductInputFrame2D requestInputFrame =
-		productInputFrame_;
-	requestInputFrame.bindingContext =
-		runtime::RuntimeGameplayProductInputContext {}
-			.build(productPlayState_)
-			.bindingContext;
+	runtime::RuntimeGameplayProductInputAccumulatorFrameInput frameInput;
+	frameInput.state = productInputAccumulator_;
+	frameInput.bindingContext = runtime::RuntimeGameplayProductInputContext {}
+									.build(productPlayState_)
+									.bindingContext;
+	const runtime::RuntimeGameplayProductInputAccumulatorFrameResult frame =
+		runtime::RuntimeGameplayProductInputAccumulator {}.buildFrame(
+			frameInput);
+	productInputAccumulator_ = frame.state;
 
 	runtime::RuntimeGameplayProductFrameRequestInput input;
 	input.state = productPlayState_;
-	input.inputFrame = requestInputFrame;
+	input.inputFrame = frame.frame;
 	input.presentationCamera = productPresentationCameraConfig();
 
 	const runtime::RuntimeGameplayProductFrameRequestResult result =
@@ -670,19 +673,14 @@ void IggyQtShellWindow::runProductManualStep()
 	hasProductPresentationCamera_ = true;
 	context_.productPlayModeState = &productPlayState_;
 	context_.latestProductPlayModeFrame = &latestProductPlayModeFrame_;
-	clearProductInputFrame();
 	refreshAfterModelChange();
 }
 
-void IggyQtShellWindow::clearProductInputFrame()
+void IggyQtShellWindow::clearProductInputAccumulator()
 {
-	productInputFrame_ = {};
-}
-
-void IggyQtShellWindow::appendProductInputEvent(
-	runtime::RuntimeGameplayProductInputEvent2D event)
-{
-	productInputFrame_.events.push_back(std::move(event));
+	productInputAccumulator_ =
+		runtime::RuntimeGameplayProductInputAccumulator {}.clear(
+			productInputAccumulator_);
 }
 
 std::optional<runtime::RuntimeGameplayProductInputControl2D>
@@ -735,8 +733,10 @@ bool IggyQtShellWindow::recordProductKeyEvent(
 	runtime::RuntimeGameplayProductInputEvent2D productEvent;
 	productEvent.control = *control;
 	productEvent.kind = kind;
-	clearProductInputFrame();
-	appendProductInputEvent(std::move(productEvent));
+	productInputAccumulator_ =
+		runtime::RuntimeGameplayProductInputAccumulator {}
+			.record(productInputAccumulator_, productEvent)
+			.state;
 	return true;
 }
 

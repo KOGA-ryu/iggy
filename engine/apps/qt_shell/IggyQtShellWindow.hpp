@@ -13,7 +13,7 @@
 
 #include "runtime/RuntimeGameplayAuthoringPreviewModel.hpp"
 #include "runtime/RuntimeGameplayProductFrameRequest.hpp"
-#include "runtime/RuntimeGameplayProductInputAdapter.hpp"
+#include "runtime/RuntimeGameplayProductInputAccumulator.hpp"
 #include "runtime/RuntimeGameplayProductLoop.hpp"
 #include "runtime/RuntimeGameplayProductPlayMode.hpp"
 #include "runtime/RuntimeGameplayProductScenarioLoader.hpp"
@@ -74,8 +74,7 @@ private:
 	[[nodiscard]] runtime::RuntimeGameplayProductPresentationCameraConfig
 	productPresentationCameraConfig() const;
 	void runProductManualStep();
-	void clearProductInputFrame();
-	void appendProductInputEvent(runtime::RuntimeGameplayProductInputEvent2D event);
+	void clearProductInputAccumulator();
 	[[nodiscard]] std::optional<runtime::RuntimeGameplayProductInputControl2D>
 	mapQtKeyToProductControl(int key) const;
 	bool recordProductKeyEvent(
@@ -131,7 +130,7 @@ private:
 	runtime::RuntimeGameplayProductLoopBuildResult productLoopBuild_;
 	runtime::RuntimeGameplayProductPlayModeBuildResult productPlayBuild_;
 	runtime::RuntimeGameplayProductPlayModeState productPlayState_;
-	runtime::RuntimeGameplayProductInputFrame2D productInputFrame_;
+	runtime::RuntimeGameplayProductInputAccumulatorState productInputAccumulator_;
 	runtime::RuntimeGameplayProductPlayModeFrameResult latestProductPlayModeFrame_;
 	bool hasLatestProductPlayModeFrame_ = false;
 	CameraState productPresentationCamera_;
