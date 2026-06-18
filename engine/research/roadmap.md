@@ -129,6 +129,12 @@ Recently completed optimized stretches:
   surface does not mutate selected/hovered context, convert `PrimaryTile` to
   `Interact`, execute commands/effects, persist query state, or add Qt/UI
   behavior.
+- Runtime `RuntimeGameplayProductInputTargetContext` for transient binding
+  context enrichment from an already-computed target query report: a valid found
+  target projects only hovered target id into a copied
+  `PlayerInputBindingContext2D`, unchanged paths preserve the base context
+  exactly, and the helper does not own hover lifecycle, selected target state,
+  reach gating, input conversion, execution, persistence, or Qt/UI behavior.
 - Runtime `RuntimeGameplayProductInputContext` for app-neutral product binding
   context projection, returning default gates plus current player tile only when
   product play state is loaded and has a player, without target discovery,
@@ -297,10 +303,12 @@ Recently completed optimized stretches:
   product-play viewport frame as an event/render target boundary and has a
   focused ready-play left-click `PrimaryTile` consumer for that viewport; the
   runtime/product interaction target query now reports point/tile-center target
-  lookup plus reach annotation read-only. Next product runtime work is deciding
-  how those reports feed transient target context or explicit interaction
-  intent, then interaction execution if approved, textured sprite/animation/
-  material/asset policy,
+  lookup plus reach annotation read-only, and
+  `RuntimeGameplayProductInputTargetContext` can enrich a copied transient
+  binding context with a hovered target id from that report. Next product runtime
+  work is deciding when the helper is consumed by frame request/play-surface
+  context wiring or explicit interaction intent, then interaction execution if
+  approved, textured sprite/animation/material/asset policy,
   pause/retry/reset policy, completion/failure evaluation, and save/load UX.
 - Rendering backend/presentation layer.
 - Audio server boundary.
@@ -581,6 +589,13 @@ against current product play state targets through the spatial query primitive,
 copies found target payloads into the report, annotates reach only when a player
 exists, and keeps selected/hovered state, input conversion, command/effect
 execution, Qt behavior, and persistence separate.
+RuntimeGameplayProductInputTargetContext is complete as a runtime/product
+projection helper: it starts from a copied base binding context and, only for a
+valid `TargetFound` query with a non-empty target id, replaces hovered target
+fields and reports `TargetProjected`. Non-found/invalid paths return
+`Unchanged` while preserving base selected target, hover, current player tile,
+and input gates; reach remains report annotation and no lifecycle, execution,
+or persistence policy is added.
 
 Objective: move from engine harness to playable/editor-backed game loop.
 
@@ -760,8 +775,8 @@ Done:
   from `productPresentationCameraConfig().cameraView.viewportSize` before
   calling the projection helper, and builds presentation camera policy
   read-only from `productPlayState_`. Point-vs-tile / `PrimaryPoint` behavior,
-  target context wiring/search/reach, and interaction execution remain separate
-  gates.
+  target context wiring/lifecycle/reach beyond the enrichment helper, and
+  interaction execution remain separate gates.
 - Interaction target spatial query is scene-only and pure:
   `InteractionTargetSpatialQuery2D` finds the nearest enabled target in range of
   a point or tile center, including zero-radius same-position hits and exact
@@ -774,6 +789,12 @@ Done:
   the found target, and annotates reach through `InteractionReach2D` only when
   the state has a player. It does not use `InteractionPlan2D`, mutate target
   context, synthesize input, or execute interactions.
+- Product input target context projection is runtime/product and enrichment-only:
+  `RuntimeGameplayProductInputTargetContext` copies a base binding context and
+  projects a hovered target id only from a valid found query result. It preserves
+  selected target fields and existing hover on unchanged paths, does not require
+  reachability, and does not change `RuntimeGameplayProductInputContext`,
+  adapters, frame requests, play-surface behavior, or command/effect execution.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -784,8 +805,9 @@ Exit criteria:
 - Save/load user-facing state.
 
 First gates:
-- Target context wiring/hover/selection workflows on top of the read-only
-  product target query report.
+- Frame request/play-surface wiring for transient target context enrichment.
+- Hover lifecycle and selected-target workflows beyond the helper's one-shot
+  enrichment.
 - Explicit interact target synthesis and reach-gated interaction execution.
 - Point-vs-tile / `PrimaryPoint` behavior beyond the current `PrimaryTile`
   policy.

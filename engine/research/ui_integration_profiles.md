@@ -203,9 +203,12 @@ Thin Qt mouse `PrimaryTile` consumer is complete for focused ready left-clicks
 on the viewport. Scene-only `InteractionTargetSpatialQuery2D` is complete as a
 pure spatial lookup primitive, and runtime/product
 `RuntimeGameplayProductInteractionTargetQuery` is complete as a read-only
-point/tile-center target query plus reach report. Textured
-sprites/animation/material policy, target context wiring, explicit interaction
-execution, product UX/save semantics, and broader UI execution remain gated.
+point/tile-center target query plus reach report, and
+`RuntimeGameplayProductInputTargetContext` is complete as transient
+hovered-target binding context enrichment from that report. Textured
+sprites/animation/material policy, frame request/play-surface context wiring,
+explicit interaction execution, product UX/save semantics, and broader UI
+execution remain gated.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
@@ -374,6 +377,22 @@ Runtime product interaction target query:
   `Interact`, execute click-to-interact, use `InteractionPlan2D`, change
   command/gate/effect semantics, persist query results, or add Qt behavior.
 
+Runtime product input target context:
+- `RuntimeGameplayProductInputTargetContext` copies a base
+  `PlayerInputBindingContext2D` and enriches it from an already-computed product
+  interaction target query report.
+- Valid `TargetFound` reports with `hasTarget` and a non-empty target id set
+  hovered target fields, copy a diagnostic hovered id, and return
+  `TargetProjected`.
+- Not-loaded, missing-query, target-not-found, invalid found reports, and empty
+  target ids return `Unchanged` with the base context copied exactly.
+- It preserves selected target fields, existing hover on unchanged paths, current
+  player tile, and input gate flags; valid found reports replace only hover.
+- Reachability is not required, and reach remains query/report annotation only.
+- It does not own hover lifecycle, clear hover on misses, synthesize
+  `Interact`/`Inspect` targets, mutate query/product/gameplay/input state, or
+  wire frame request/play-surface behavior.
+
 Qt manual Step consumer:
 - The View menu exposes `Product Step` for ready `--play` sessions only.
 - The action is independent of `Product Input Focus`; when focus is false,
@@ -469,8 +488,9 @@ Hard stops for product play UI projection:
 - No selected/hovered target discovery, interaction target search, reach lookup,
   mouse screen-to-world/tile mapping, `PrimaryPoint`, or `PrimaryTile` synthesis
   from input context projection. Scene-only spatial lookup is available as a
-  primitive and product target query reports are available read-only, but both
-  remain unwired to UI/product context mutation.
+  primitive, product target query reports are available read-only, and product
+  input target context enrichment exists, but they remain unwired to frame
+  request/play-surface context mutation here.
 - No accumulator state persistence in runtime/session/gameplay/product-loop/
   play-mode state, snapshots, saves, settings, or scene/UI models.
 - No raw Qt key/event storage, cadence/rate policy, accumulator-owned frame
@@ -482,7 +502,8 @@ Hard stops for product play UI projection:
   truth.
 - No textured sprite/animation sampling, new art/assets/material registry,
   package discovery, additional Qt mouse behavior, target context wiring,
-  target search, reach lookup beyond the read-only product query report,
+  target search, reach lookup beyond the read-only product query/enrichment
+  helpers,
   pause/retry/reset/completion/failure/save-load productization, package
   scanning/watching/discovery, source mutation, raw Qt event persistence,
   projected pointer persistence, viewport geometry/state persistence, render

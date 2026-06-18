@@ -100,3 +100,4 @@ Queue:
 43. `43_qt_product_primary_tile_mouse_status_sync` - complete. Sync planning/API docs after thin Qt product primary-tile mouse consumer integration.
 44. `44_interaction_target_spatial_query_status_sync` - complete. Sync planning/API docs after scene-only interaction target spatial query integration.
 45. `45_product_interaction_target_query_status_sync` - complete. Sync planning/API docs after runtime/product interaction target query integration.
+46. `46_product_input_target_context_status_sync` - complete. Sync planning/API docs after runtime/product input target context projection integration.
