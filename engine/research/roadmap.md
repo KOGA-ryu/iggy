@@ -105,6 +105,10 @@ Recently completed optimized stretches:
   input binding, one product-loop step with per-step context override, and
   presentation projection without adding Qt/UI, raw OS event, automatic tick
   loop, or launch-mode ownership.
+- Runtime `RuntimeGameplayProductPlayMode` for app-neutral durable play-mode
+  state that stores only product loop state plus an input-focus bit and
+  delegates one requested frame to the play-surface frame without owning Qt/UI,
+  raw input, camera/presentation persistence, or app tick-loop behavior.
 - Runtime authoring diagnostic projection with stable printable error-code
   strings.
 - Runtime summary projection for CLI/facade summary and final rows.
@@ -193,11 +197,12 @@ Recently completed optimized stretches:
   layer plus runtime/product transient input adapter and per-step product loop
   input context override plus projection-only product presentation frame exist;
   the app-neutral runtime play-surface frame now composes those public surfaces
-  for one caller-requested focused play frame; next product runtime work is
+  for one caller-requested focused play frame; app-neutral play-mode state now
+  stores only durable loop state and input focus. Next product runtime work is
   optional Qt/raw-device adapter wiring after shell/focus ownership is scoped,
-  product shell/play mode, camera lifecycle policy, player/modern NPC render
-  projection, automatic app/tick loop, pause/retry/reset policy,
-  completion/failure evaluation, save/load UX, and shell integration.
+  product shell/UI launch and focus ownership, camera lifecycle policy,
+  player/modern NPC render projection, automatic app/tick loop, pause/retry/reset
+  policy, completion/failure evaluation, save/load UX, and shell integration.
 - Rendering backend/presentation layer.
 - Audio server boundary.
 - Save/load productization and authored package roundtrip.
@@ -365,14 +370,15 @@ Hard stops:
 
 ### 6. Product Loop
 
-Status: Packets 1, 2, 3A, 3B-A, 4-A, 4-B, and play-surface frame complete;
-product runtime has a load boundary, caller-driven one-frame step, optional
-per-step input context override, scene/player normalized input binding, a
-runtime/product input adapter for transient product input events, a
+Status: Packets 1, 2, 3A, 3B-A, 4-A, 4-B, play-surface frame, and play-mode
+state complete; product runtime has a load boundary, caller-driven one-frame
+step, optional per-step input context override, scene/player normalized input
+binding, a runtime/product input adapter for transient product input events, a
 projection-only presentation wrapper over loaded loop state plus caller-owned
-camera/config, and an app-neutral one-frame play-surface composition facade, but
-no Qt/raw-device shell adapter, product launch/play mode, automatic app/tick
-loop, UX policy, or save/load
+camera/config, an app-neutral one-frame play-surface composition facade, and
+durable app-neutral play-mode state storing only loop state plus focus, but no
+Qt/raw-device shell adapter, product launch/UI mode, automatic app/tick loop, UX
+policy, or save/load
 productization yet.
 
 Objective: move from engine harness to playable/editor-backed game loop.
@@ -418,6 +424,12 @@ Done:
   states skip input adaptation/binding/step and count transient input events as
   ignored; unfocused frames ignore transient events before adapter semantics,
   step once with empty intents/context override, and present the post-step state.
+- `RuntimeGameplayProductPlayMode` owns durable state only as
+  `RuntimeGameplayProductLoopState loop` plus `hasInputFocus`; builds mirror
+  loop build status and copy ready loop state, focus defaults true, focus
+  toggles preserve loop state, and `frame(...)` delegates exactly once to
+  `RuntimeGameplayProductPlaySurfaceFrame` with transient input/camera/config,
+  carrying stepped loop state forward only on `Stepped`.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -428,7 +440,7 @@ Exit criteria:
 - Save/load user-facing state.
 
 First gates:
-- Product shell/play mode and focused input ownership.
+- Product shell/UI launch and focused input ownership around play mode.
 - Optional Qt/raw-device adapter into transient product input events after
   shell/focus ownership is scoped.
 - Camera lifecycle/follow/rig/clamp policy.

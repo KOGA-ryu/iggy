@@ -83,3 +83,4 @@ Queue:
 26. `26_product_loop_context_override_status_sync` - complete. Sync planning/API docs after per-step product loop input context override integration.
 27. `27_product_presentation_frame_status_sync` - complete. Sync planning/API docs after projection-only product presentation frame integration.
 28. `28_product_play_surface_frame_status_sync` - complete. Sync planning/API docs after runtime-only product play-surface frame integration.
+29. `29_product_play_mode_status_sync` - complete. Sync planning/API docs after runtime-only product play-mode state integration.
