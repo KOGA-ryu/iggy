@@ -190,8 +190,8 @@ Hard stops for the first milestone:
 ## Product Play UI Projection
 
 Status: complete for the read-only product play panel model, context seam, and
-Qt `--play` launch/load/build consumer; frame pumping, raw input, camera policy,
-and gameplay execution remain gated.
+Qt `--play` launch/load/build consumer plus ready-state focus toggle; frame
+pumping, raw input, camera policy, and gameplay execution remain gated.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
@@ -221,6 +221,17 @@ Qt launch consumer:
 - Missing `--play` path exits 2.
 - Bad filesystem paths still open the shell and display failed load/build state.
 
+Qt focus toggle:
+- The View menu exposes a checkable `Product Input Focus` action for ready
+  `--play` sessions.
+- The action is enabled/applicable only for ready product play state.
+- Toggling updates only the durable current product play focus bit, keeps
+  product play context pointers stable, clears latest product play frame to
+  absent, and refreshes the read-only product play panel.
+- Failed-load product play sessions keep the action disabled/non-applicable.
+- Launch still starts focused by default through runtime play-mode build
+  defaults.
+
 Hard stops for product play UI projection:
 - No product frame execution, `RuntimeGameplayProductPlayMode::frame(...)`,
   `RuntimeGameplayProductPlaySurfaceFrame::build(...)`, app tick loop, or frame
@@ -233,6 +244,12 @@ Hard stops for product play UI projection:
   step/run functions from scene/UI.
 - No default camera/render config, product input events, presentation frame, or
   latest frame result synthesis in Qt launch.
+- No raw Qt key/mouse/focus event routing into product input events from the
+  focus toggle.
+- No product input events, default camera/render config, presentation frames,
+  latest-frame synthesis, frame stepping/manual stepping, app tick loop, or
+  frame pump from the focus toggle.
+- No settings persistence or keyboard shortcut for the focus toggle.
 - No mutation of product play mode state or runtime/gameplay state.
 - No raw input, camera, presentation, or render-frame persistence in
   gameplay/session/product-loop/play-mode/save truth.
@@ -244,10 +261,9 @@ Hard stops for product play UI projection:
 
 1. Source-linked diagnostics.
 2. Visual trace playback.
-3. Focused input ownership around product play mode.
-4. Optional Qt/raw-device adapter after shell/focus ownership is scoped.
-5. Camera lifecycle/presentation policy.
-6. Product frame stepping / automatic app tick loop / frame pump.
+3. Qt/raw-device input mapping after focus ownership is scoped.
+4. Camera lifecycle/presentation policy.
+5. Product frame stepping / automatic app tick loop / frame pump.
 7. Build canvas for placement.
 8. Structured authoring controls for existing facts.
 9. Source/TOML roundtrip only after an explicit gate.

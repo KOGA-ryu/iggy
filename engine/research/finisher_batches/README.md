@@ -86,3 +86,4 @@ Queue:
 29. `29_product_play_mode_status_sync` - complete. Sync planning/API docs after runtime-only product play-mode state integration.
 30. `30_product_play_ui_projection_status_sync` - complete. Sync planning/API docs after read-only product play UI projection integration.
 31. `31_qt_product_play_launch_status_sync` - complete. Sync planning/API docs after Qt product play launch/load/build consumer integration.
+32. `32_qt_product_play_focus_status_sync` - complete. Sync planning/API docs after Qt product play focus toggle integration.

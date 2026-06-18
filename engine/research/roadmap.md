@@ -118,6 +118,10 @@ Recently completed optimized stretches:
   builds loop/play-mode state, wires stable product play context pointers, and
   reveals the existing read-only product play panel without stepping frames or
   mapping raw input.
+- Qt shell `Product Input Focus` View-menu toggle for ready `--play` sessions,
+  updating only durable current `RuntimeGameplayProductPlayMode` focus state and
+  refreshing the read-only product play panel without routing Qt input events or
+  stepping frames.
 - Runtime authoring diagnostic projection with stable printable error-code
   strings.
 - Runtime summary projection for CLI/facade summary and final rows.
@@ -208,10 +212,10 @@ Recently completed optimized stretches:
   the app-neutral runtime play-surface frame now composes those public surfaces
   for one caller-requested focused play frame; app-neutral play-mode state now
   stores only durable loop state and input focus. Next product runtime work is
-  optional Qt/raw-device adapter wiring after shell/focus ownership is scoped,
-  focused input ownership, camera lifecycle policy, player/modern NPC render
-  projection, product frame stepping/frame pump, pause/retry/reset policy,
-  completion/failure evaluation, save/load UX, and shell integration.
+  Qt/raw-device input mapping ownership, camera lifecycle policy,
+  player/modern NPC render projection, product frame stepping/frame pump,
+  pause/retry/reset policy, completion/failure evaluation, save/load UX, and
+  shell integration.
 - Rendering backend/presentation layer.
 - Audio server boundary.
 - Save/load productization and authored package roundtrip.
@@ -326,12 +330,15 @@ Done:
   reveals the existing read-only `panel:product_play`.
 - `--play` is mutually exclusive with `--preview`; missing `--play` path and
   combined play/preview usage exit with code 2.
+- In `--play` sessions, the View menu exposes a checkable `Product Input Focus`
+  action when product play is ready. Toggling it updates the durable current
+  play-mode focus bit and refreshes `panel:product_play`; failed-load play
+  sessions keep the action disabled/non-applicable.
 
 Remaining exit work:
 - Add source-linked diagnostics and richer trace/expectation inspection.
-- Decide when the product shell supplies raw-device input, focus routing beyond
-  launch/build state, camera/render config, latest play frames, and frame
-  pumping.
+- Decide when the product shell supplies raw-device input, camera/render config,
+  latest play frames, and frame pumping.
 - Gate any build canvas, structured authoring controls, or source/TOML
   roundtrip separately.
 - Keep editing/mutation APIs out until a separate gate approves them.
@@ -398,9 +405,9 @@ projection-only presentation wrapper over loaded loop state plus caller-owned
 camera/config, an app-neutral one-frame play-surface composition facade, and
 durable app-neutral play-mode state storing only loop state plus focus. Product
 play UI projection is read-only and context-provided, and Qt `--play PATH`
-launch/load/build context wiring exists. There is still no Qt/raw-device input
-adapter, product frame execution, automatic app/tick loop, UX policy, or
-save/load
+launch/load/build context wiring plus a ready-state focus toggle exists. There
+is still no Qt/raw-device input adapter, product frame execution, automatic
+app/tick loop, UX policy, or save/load
 productization yet.
 
 Objective: move from engine harness to playable/editor-backed game loop.
@@ -465,6 +472,11 @@ Done:
   context pointers, reveals `panel:product_play`, and leaves latest frame null.
   Bad paths still open the shell and show failed load/build state; `--play` and
   `--preview` are mutually exclusive with exit code 2.
+- Qt shell `Product Input Focus` toggles are enabled/applicable only for ready
+  product play state. The action updates only current `productPlayState_` via
+  `RuntimeGameplayProductPlayMode {}.withInputFocus(...)`, keeps product play
+  context pointers stable, clears latest frame to null, and refreshes the
+  read-only product play panel so its `hasInputFocus` row changes.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -475,7 +487,6 @@ Exit criteria:
 - Save/load user-facing state.
 
 First gates:
-- Focused input ownership around play mode.
 - Optional Qt/raw-device adapter into transient product input events after
   shell/focus ownership is scoped.
 - Camera lifecycle/follow/rig/clamp policy.
