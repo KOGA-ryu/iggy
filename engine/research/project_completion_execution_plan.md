@@ -219,8 +219,9 @@ Exit criteria:
 
 ## Phase 4: Product Loop Gate
 
-Status: Packets 1, 2, and 3A complete; next input work is the app/product raw
-event adapter and any product loop context integration decision.
+Status: Packets 1, 2, 3A, and 3B-A complete; next input work is optional
+Qt/raw-device event adaptation and any product loop context integration
+decision.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -267,8 +268,24 @@ Packet 3A complete:
 - Binding does not apply gate rules or command mapping; `Inspect` and `Cancel`
   remain intents only.
 
-Packet 3B gate questions:
-- Where does raw Qt/device input become normalized actions?
+Packet 3B-A complete:
+- `RuntimeGameplayProductInputAdapter` maps transient product input events to
+  `PlayerInputBindingAction2D` actions plus carried
+  `PlayerInputBindingContext2D`.
+- The adapter is device-agnostic runtime/product surface, not Qt shell wiring or
+  product shell launch/play mode.
+- Release/no-op policy, cardinal movement controls to tile deltas,
+  interact/inspect target copy or fallback handoff, wait/cancel, primary
+  tile/point payload validation, unsupported-control issues, stable counts,
+  order preservation, and input immutability are covered.
+- Downstream binding to player intents remains owned by `PlayerInputBinding2D`.
+- The adapter does not call the product loop, step gameplay, execute gates or
+  commands, map Qt/OS events, own camera/render data, or add save/persistence
+  semantics.
+
+Remaining input gate questions:
+- Is a Qt/raw-device adapter needed before shell integration, and where does it
+  convert raw input into transient product input events?
 - Does product loop state need a context override/update API, or should context
   remain product/app-owned input adapter data?
 - Who owns camera/presentation state?
@@ -277,7 +294,7 @@ Packet 3B gate questions:
 - What does completion/failure mean in the first slice?
 
 Output:
-- one raw input adapter packet;
+- one optional Qt/raw-device adapter packet if needed;
 - one context integration decision if needed;
 - one updated implementation order packet;
 - one verification plan.
@@ -287,12 +304,13 @@ Hard stops:
 - do not call TOML/package facades or file IO from the product loop;
 - do not use full scenario/profile runners from the product loop;
 - do not hide raw input inside runtime session state;
-- do not add Qt/OS event types to scene/player or runtime binding surfaces;
+- do not add Qt/OS event types to scene/player or runtime product input
+  surfaces;
 - do not add gate execution or command mapping to `PlayerInputBinding2D`;
 - do not change `RuntimeGameplayProductLoop` signatures or stepping as part of
-  input adapter docs;
+  input work;
 - do not put presentation/camera state into gameplay truth;
-- do not productize save/load in Packet 3B;
+- do not productize save/load in the next input packet;
 - do not add pause/retry/reset or completion/failure/win/lose semantics in the
   input adapter packet;
 - do not persist derived caches as save truth.
@@ -369,7 +387,8 @@ Implementation packets:
 1. Product scenario loader. Complete.
 2. Product-owned loop state/step. Complete.
 3A. Scene/player normalized input binding. Complete.
-3B. App/product adapter from raw device or Qt events to normalized actions.
+3B-A. Runtime/product transient input event adapter. Complete.
+3B-B. Optional Qt/raw-device adapter into transient product input events.
 4. Product loop context integration decision if needed.
 5. Gameplay tick loop.
 6. Render/presentation surface.
@@ -494,9 +513,11 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 7. Use the integrated load-only product scenario loader as Product Loop Packet 1.
 8. Product Loop Packet 2 product-owned loop state/step is integrated.
 9. Product Loop Packet 3A scene/player normalized input binding is integrated.
-10. Dispatch Product Loop Packet 3B as the app/product raw event adapter or
-    context integration decision, depending on planner scope.
+10. Product Loop Packet 3B-A runtime/product input adapter is integrated.
+11. Dispatch optional Qt/raw-device adapter or product loop context integration
+    decision, depending on planner scope.
 
-Do not broaden Product Loop Packet 3B into presentation/camera, pause/retry/reset,
-completion/failure, save/load productization, product-loop signature changes, or
-new gameplay semantics unless the user explicitly reprioritizes.
+Do not broaden the next Product Loop packet into presentation/camera,
+pause/retry/reset, completion/failure, save/load productization, product-loop
+signature changes, command/gate execution, or new gameplay semantics unless the
+user explicitly reprioritizes.
