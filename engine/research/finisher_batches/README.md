@@ -92,3 +92,4 @@ Queue:
 35. `35_product_frame_request_status_sync` - complete. Sync planning/API docs after runtime/product manual frame request wrapper integration.
 36. `36_qt_product_manual_step_status_sync` - complete. Sync planning/API docs after Qt product manual Step consumer integration.
 37. `37_product_input_context_projection_status_sync` - complete. Sync planning/API docs after product input binding context projection integration.
+38. `38_product_input_accumulator_status_sync` - complete. Sync planning/API docs after product held input accumulator integration.

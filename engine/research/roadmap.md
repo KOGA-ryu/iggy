@@ -95,6 +95,11 @@ Recently completed optimized stretches:
   events to normalized `PlayerInputBindingAction2D` actions plus carried binding
   context; it does not call the product loop, step gameplay, or own Qt/device,
   camera, render, save/load, gate, or command behavior.
+- Runtime `RuntimeGameplayProductInputAccumulator` for shell-neutral transient
+  product input state, storing held movement controls and pending one-shot
+  product events by value, emitting held movement each requested frame and
+  draining one-shots without Qt/raw event types, cadence policy, persistence, or
+  `PrimaryPoint`/`PrimaryTile` synthesis.
 - Runtime `RuntimeGameplayProductInputContext` for app-neutral product binding
   context projection, returning default gates plus current player tile only when
   product play state is loaded and has a player, without target discovery,
@@ -137,10 +142,10 @@ Recently completed optimized stretches:
   refreshing the read-only product play panel without routing Qt input events or
   stepping frames.
 - Qt shell ready/focused `--play` keyboard mapping from supported key
-  press/release events into an app-shell-owned transient
-  `RuntimeGameplayProductInputFrame2D`, bounded to the latest mapped event and
-  storing product input events only without raw Qt event persistence, adapter or
-  binding calls, frame stepping, or camera/render ownership.
+  press/release events into app-shell-owned transient
+  `RuntimeGameplayProductInputAccumulatorState`, storing product controls/events
+  only without raw Qt event persistence, adapter or binding calls, frame
+  stepping, cadence policy, or camera/render ownership.
 - Qt shell `Product Step` View-menu action for ready `--play` sessions,
   invoking `RuntimeGameplayProductFrameRequest` exactly once, updating only
   replaceable app-shell transient play state/latest frame/presentation camera,
@@ -242,8 +247,9 @@ Recently completed optimized stretches:
   caller-owned camera/config for presentation; the runtime/product frame request
   wrapper now composes camera selection plus exactly one play-mode frame call for
   caller-requested manual frames; the Qt shell now exposes a ready-state manual
-  `Product Step` action that executes one frame request and enriches only a
-  local request-frame copy with projected current-player-tile binding context.
+  `Product Step` action that executes one frame request; the shell now stores
+  transient held/one-shot product input in an accumulator and enriches only
+  accumulator frame output with projected current-player-tile binding context.
   Next product runtime work is automatic frame pump ownership, player/modern NPC
   render projection, pause/retry/reset policy, completion/failure evaluation,
   save/load UX, and further shell integration such as mouse/world/tile input
@@ -367,11 +373,11 @@ Done:
   play-mode focus bit and refreshes `panel:product_play`; failed-load play
   sessions keep the action disabled/non-applicable.
 - Ready, focused `--play` sessions map supported Qt key press/release events to
-  transient product input events in `IggyQtShellWindow`: Arrow/WASD cardinal
-  movement, `E`/Return/Enter interact, `I` inspect, Space wait, and Escape
-  cancel. The frame is latest-event bounded, clears on focus disable, ignores
-  auto-repeat and unsupported keys, keeps binding context default, and stores no
-  raw `QKeyEvent` objects or pointers.
+  transient product accumulator state in `IggyQtShellWindow`: Arrow/WASD held
+  cardinal movement, `E`/Return/Enter interact, `I` inspect, Space wait, and
+  Escape cancel. Focus disable clears the accumulator; auto-repeat and
+  unsupported keys are ignored; raw `QKeyEvent` objects or pointers are not
+  stored.
 - `RuntimeGameplayProductPresentationCamera` chooses caller-owned transient
   camera and render config for product presentation. It handles not-loaded
   previous/fallback camera selection, loaded player initialization,
@@ -390,17 +396,28 @@ Done:
   `NotLoaded`, `LoadedWithoutPlayer`, and `Projected`; projected contexts keep
   default gates and set only `hasCurrentPlayerTile/currentPlayerTile` from the
   loaded state's existing `playerTile(...)` when a current player exists.
+- `RuntimeGameplayProductInputAccumulator` stores product-level transient input
+  state only: held `MoveNorth`/`MoveSouth`/`MoveWest`/`MoveEast` controls plus
+  pending one-shot `Interact`/`Inspect`/`Wait`/`Cancel` events. Held movement
+  press adds a control, duplicate held press is suppressed, release removes held
+  movement, and release of non-held movement is a no-op. One-shot press queues
+  one event and one-shot release is a no-op. Frame output emits ordinary
+  `Pressed` events for held movement each requested frame followed by pending
+  one-shots in press order, carries supplied binding context, preserves held
+  controls, drains one-shots in returned state, and `clear(...)` returns empty
+  transient state.
 - Qt shell `Product Step` is enabled only for ready `--play` sessions and is
   independent of `Product Input Focus`: when focus is false, existing
   play-surface behavior ignores input but still consumes one available frame
-  with empty intents/context. Executed steps build
-  `RuntimeGameplayProductFrameRequestInput` from current app-shell play state,
-  a local request-frame copy enriched with projected binding context, and
-  shell-owned presentation camera config, call
+  with empty intents/context. Executed steps build accumulator frame output with
+  projected binding context, store the returned accumulator state before the
+  frame request, build `RuntimeGameplayProductFrameRequestInput` from current
+  app-shell play state, accumulator output, and shell-owned presentation camera
+  config, call
   `RuntimeGameplayProductFrameRequest {}.run(input)` once, replace only
   transient app-shell `productPlayState_`, latest frame/context pointer, and
-  presentation camera, clear stored transient product input after every executed
-  request, and refresh the product play panel.
+  presentation camera, preserve held movement across steps, drain one-shots
+  after executed steps, and refresh the product play panel.
 
 Remaining exit work:
 - Add source-linked diagnostics and richer trace/expectation inspection.
@@ -478,8 +495,8 @@ keyboard-to-product-input-event mapping exist. The runtime/product presentation
 camera policy chooses caller-owned transient camera/config for presentation, and
 `RuntimeGameplayProductFrameRequest` composes that policy with exactly one
 play-mode frame call for caller-requested manual frames. Qt `Product Step`
-invokes one frame request for ready `--play` sessions and enriches only a local
-request-frame copy with projected current-player-tile binding context before
+invokes one frame request for ready `--play` sessions using accumulator frame
+output enriched with projected current-player-tile binding context before
 updating replaceable app-shell transient state. There is still no automatic
 app/tick loop, mouse/world/tile input mapping, target lookup, UX policy, or
 save/load productization yet.
@@ -551,16 +568,22 @@ Done:
   `RuntimeGameplayProductPlayMode {}.withInputFocus(...)`, keeps product play
   context pointers stable, clears latest frame to null, and refreshes the
   read-only product play panel so its `hasInputFocus` row changes.
-- Qt shell keyboard mapping records only product input events into an
-  app-shell-owned transient `RuntimeGameplayProductInputFrame2D` when product
-  play exists, play-mode build is ready, and product input focus is enabled.
-  Disabling focus clears the frame. Each supported key press/release clears the
-  frame before appending one latest event; auto-repeat and unsupported keys are
-  ignored. Arrow/WASD map to cardinal movement, `E`/Return/Enter to interact,
-  `I` to inspect, Space to wait, and Escape to cancel. Binding context remains
-  default; no current-player tile, selected target, hovered target, scene/UI
-  model exposure, settings exposure, raw `QKeyEvent` persistence, adapter call,
-  binding call, frame step, or camera/render config is added.
+- Qt shell keyboard mapping records product input controls into an
+  app-shell-owned transient `RuntimeGameplayProductInputAccumulatorState` when
+  product play exists, play-mode build is ready, and product input focus is
+  enabled. Disabling focus clears the accumulator. Auto-repeat and unsupported
+  keys are ignored. Arrow/WASD map to held cardinal movement controls;
+  `E`/Return/Enter, `I`, Space, and Escape queue one-shot interact, inspect,
+  wait, and cancel events. No raw `QKeyEvent` persistence, adapter call, binding
+  call, frame step, camera/render config, UI model exposure, or settings
+  exposure is added.
+- `RuntimeGameplayProductInputAccumulator` is a shell-neutral return-by-value
+  transient input helper. Held movement controls are exactly
+  `MoveNorth`/`MoveSouth`/`MoveWest`/`MoveEast`; one-shot controls are exactly
+  `Interact`/`Inspect`/`Wait`/`Cancel`. Held movement emits ordinary `Pressed`
+  events each frame in held press order before pending one-shot press order,
+  preserves held controls, drains one-shots in returned state, carries supplied
+  binding context, and never synthesizes `PrimaryPoint` or `PrimaryTile`.
 - `RuntimeGameplayProductPresentationCamera` is an app-neutral runtime/product
   camera policy. It chooses transient caller-owned `CameraState` plus
   `LevelRenderFrame2DConfig` from product play state and caller-owned config,
@@ -588,17 +611,18 @@ Done:
   state, search targets, map mouse input, synthesize `PrimaryPoint` or
   `PrimaryTile`, add cadence/pump behavior, or persist binding context.
 - Qt shell `Product Step` is a ready-state View-menu action for `--play`
-  sessions. It builds request input from current `productPlayState_`, transient
-  request-frame input enriched with projected binding context, and shell-owned
+  sessions. It builds accumulator frame output with projected binding context,
+  stores the returned accumulator state before the frame request, builds request
+  input from current `productPlayState_`, that frame output, and shell-owned
   camera config, runs `RuntimeGameplayProductFrameRequest` once, replaces only
   `productPlayState_`, `latestProductPlayModeFrame_`, the stable product play
-  context pointer, and `productPresentationCamera_`, clears product input after
-  each executed request, and refreshes the read-only product play panel. If the
-  action is unavailable, input is not silently cleared. Shell camera defaults
-  are presentation-only fallback/view defaults with NPC commands enabled and
-  tile chunk cache disabled; they are not settings/save truth. The projected
-  binding context is not written back into `productInputFrame_`, which remains
-  latest raw/product event storage only.
+  context pointer, and `productPresentationCamera_`, preserves held movement
+  across steps, drains one-shots after executed steps, and refreshes the
+  read-only product play panel. If the action is unavailable, accumulator state
+  is not silently cleared. Shell camera defaults are presentation-only
+  fallback/view defaults with NPC commands enabled and tile chunk cache
+  disabled; they are not settings/save truth. The projected binding context is
+  request-input only and is not persisted in the accumulator state.
 
 Exit criteria:
 - Load a package or explicit scenario.

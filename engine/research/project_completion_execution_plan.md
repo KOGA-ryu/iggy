@@ -223,9 +223,10 @@ Status: Packets 1, 2, 3A, 3B-A, 4-A, 4-B, the app-neutral play-surface frame,
 play-mode state, read-only product play UI projection, Qt `--play` launch
 consumer, Qt product input focus toggle, and ready/focused Qt keyboard product
 input mapping complete; runtime/product presentation camera policy complete;
-runtime/product manual frame request wrapper complete; Qt product manual Step
-consumer complete; product input binding context projection complete; next work
-is render projection gaps, automatic frame pump ownership, any further
+runtime/product manual frame request wrapper complete; product input binding
+context projection complete; product input accumulator complete; Qt product
+manual Step consumer now uses accumulator output plus projected context; next
+work is render projection gaps, automatic frame pump ownership, any further
 mouse/world/tile input mapping, and first-play UX policy gates.
 
 Goal: define and build the first playable loop boundary without making authoring
@@ -428,21 +429,19 @@ Qt product play focus toggle complete:
 
 Qt keyboard product input mapping complete:
 - The Qt shell maps supported keyboard press/release events for ready, focused
-  `--play` sessions into the app-shell-owned transient
-  `RuntimeGameplayProductInputFrame2D productInputFrame_`.
-- It records product input events only, not raw `QKeyEvent` objects or pointers.
+  `--play` sessions into app-shell-owned transient product accumulator state.
+- It records product controls/events only, not raw `QKeyEvent` objects or
+  pointers.
 - Events are recorded only when product play mode exists, play-mode build status
   is `RuntimeGameplayProductPlayModeBuildStatus::Ready`, and
   `productPlayInputFocusEnabled()` is true.
 - Disabled focus, failed load, or not-ready play state records no event; turning
-  product input focus off clears the transient input frame.
-- The input frame is latest-event bounded: recording clears the frame before
-  appending one event.
+  product input focus off clears accumulator state.
 - Auto-repeat and unsupported keys are ignored.
 - Arrow/WASD map to `MoveNorth`, `MoveSouth`, `MoveWest`, and `MoveEast`;
   `E`/Return/Enter map to `Interact`; `I` maps to `Inspect`; Space maps to
   `Wait`; Escape maps to `Cancel`.
-- `productInputFrame_.bindingContext` remains default; no current-player tile,
+- Binding context is supplied later when building request frame output; no
   selected target, hovered target, scene/UI model exposure, or settings exposure
   was added.
 - The mapping does not call `RuntimeGameplayProductPlayMode::frame(...)`,
@@ -507,6 +506,30 @@ Product input binding context projection complete:
   runtime/session/gameplay/product-loop/play-mode state, snapshots, saves,
   settings, or scene/UI models.
 
+Product input accumulator complete:
+- `RuntimeGameplayProductInputAccumulator` is a shell-neutral return-by-value
+  transient input helper.
+- Accumulator state stores product-level data only: held
+  `RuntimeGameplayProductInputControl2D` values and pending
+  `RuntimeGameplayProductInputEvent2D` one-shot events.
+- Held movement controls are exactly `MoveNorth`, `MoveSouth`, `MoveWest`, and
+  `MoveEast`.
+- One-shot controls are exactly `Interact`, `Inspect`, `Wait`, and `Cancel`.
+- Held movement press adds a control, duplicate held press is suppressed,
+  release removes held movement, and release of non-held movement is a no-op.
+- One-shot press queues an event and one-shot release is a no-op.
+- Frame output emits ordinary `Pressed` events for held movement controls every
+  requested frame, followed by pending one-shot events once, preserving held
+  press order before one-shot press order.
+- `buildFrame(...)` carries supplied `PlayerInputBindingContext2D`, preserves
+  held controls, and drains one-shots in the returned state.
+- `clear(...)` returns empty transient state.
+- `PrimaryPoint` and `PrimaryTile` remain out of accumulator v1; no point/tile
+  synthesis is added.
+- Accumulator state is not raw Qt input and is not persisted in
+  runtime/session/gameplay/product-loop/play-mode state, snapshots, saves,
+  settings, or scene/UI models.
+
 Qt product manual Step consumer complete:
 - The Qt shell View menu includes a `Product Step` action for ready `--play`
   sessions.
@@ -515,19 +538,21 @@ Qt product manual Step consumer complete:
 - It is independent of `Product Input Focus`; when focus is false, existing
   play-surface behavior ignores input but still consumes one available frame
   with empty intents/context.
-- Executing the action builds a local request-frame copy from transient
-  `productInputFrame_`, enriches that local copy with projected binding context,
-  and builds `RuntimeGameplayProductFrameRequestInput` from current
-  `productPlayState_`, the enriched local request frame, and shell-owned camera
-  config.
+- Qt stores accumulator state instead of a latest-edge `productInputFrame_`.
+- Key recording maps keys to product controls and records product events into
+  accumulator state without clearing per key event.
+- Focus-disabled state clears accumulator state.
+- Executing the action builds accumulator frame output with projected binding
+  context, stores the returned accumulator state before the frame request, and
+  builds `RuntimeGameplayProductFrameRequestInput` from current
+  `productPlayState_`, accumulator output, and shell-owned camera config.
 - It calls `RuntimeGameplayProductFrameRequest {}.run(input)` exactly once.
 - It updates only replaceable app-shell transient state: `productPlayState_`,
   `latestProductPlayModeFrame_` plus the stable product play panel context
   pointer, and `productPresentationCamera_` for the next request.
-- It clears `productInputFrame_` after every executed request, including
-  `Stepped`, `NoFrameAvailable`, and `NotLoaded`.
-- It does not persist derived binding context back into `productInputFrame_`;
-  that member remains latest raw/product event storage only.
+- It preserves held movement across steps and drains one-shots after each
+  executed Step.
+- It does not persist derived binding context back into accumulator state.
 - If no request executes because Step is unavailable, input is not silently
   cleared.
 - It refreshes the existing product play panel after the request.
@@ -545,6 +570,8 @@ Remaining input gate questions:
   should any future mapping beyond supported keys remain transient?
 - Should selected/hovered target context be projected later, and what explicit
   target ownership/search gate would be required?
+- Should any future automatic frame pump reuse accumulator output, and what
+  explicit cadence/rate policy would be required?
 - When are player sprite and modern `RuntimeGameplayState::npcActors` render
   projections added?
 - Who owns automatic app/tick-loop frame pumping around caller-requested frames?
@@ -636,6 +663,15 @@ Hard stops:
   reach lookup, mouse screen-to-world/tile mapping, `PrimaryPoint`,
   `PrimaryTile`, held-key cadence, repeat behavior, input accumulator, or frame
   pump behavior to product input context projection;
+- do not persist accumulator state in runtime/session/gameplay/product-loop/
+  play-mode state, snapshots, saves, settings, or scene/UI models;
+- do not add raw Qt key/event storage, cadence/rate policy, automatic frame
+  pump behavior, mouse screen-to-world/tile mapping, `PrimaryPoint`,
+  `PrimaryTile`, selected/hovered target discovery, interaction reach lookup,
+  target search, player/modern NPC render expansion, pause/retry/reset/
+  completion/failure/save-load productization, package scanning/watching/
+  discovery, or source mutation to product input accumulator or its Qt
+  integration;
 - do not persist derived caches as save truth.
 
 ## Phase 5: Presentation / Render Integration
@@ -645,11 +681,11 @@ play-surface frame, app-neutral play-mode state, read-only product play UI
 projection, Qt `--play` launch/load/build consumer, and Qt product input focus
 toggle plus ready/focused keyboard product input mapping integrated; product
 presentation camera policy and manual frame request wrapper integrated; Qt
-manual Step consumer integrated; product input binding context projection
-integrated; player sprite projection, modern NPC actor projection, automatic
-frame pump, further input mapping beyond supported keyboard controls, target
-context projection, and UI execution beyond launch/focus/input capture/manual
-step remain separate gates.
+manual Step consumer integrated; product input binding context projection and
+product input accumulator integrated; player sprite projection, modern NPC actor
+projection, automatic frame pump, further input mapping beyond supported
+keyboard controls, target context projection, cadence policy, and UI execution
+beyond launch/focus/input capture/manual step remain separate gates.
 
 Goal: turn runtime state into visible play state.
 
@@ -678,12 +714,14 @@ Packets:
 10. Product input binding context projection. Complete:
    - loaded product play state with player -> current-player-tile binding
      context only.
-11. Qt product manual Step consumer. Complete:
-   - ready `--play` View action -> one frame request -> transient shell state
-     update and panel refresh.
-12. Debug overlay projection:
+11. Product input accumulator. Complete:
+   - held movement + one-shot product events -> transient request frame output.
+12. Qt product manual Step consumer. Complete:
+   - ready `--play` View action -> accumulator output + one frame request ->
+     transient shell state update and panel refresh.
+13. Debug overlay projection:
    - trace/final rows, AI map, collision, path, interactions, inventory.
-13. UI presentation adapter:
+14. UI presentation adapter:
    - convert render frame data into the chosen shell/app surface.
 
 Hard stops:
@@ -757,7 +795,8 @@ Implementation packets:
 4-H. Product presentation camera policy. Complete.
 4-I. Product manual frame request wrapper. Complete.
 4-J. Product input binding context projection. Complete.
-5. Qt product manual Step consumer with context enrichment. Complete.
+4-K. Product input accumulator. Complete.
+5. Qt product manual Step consumer with accumulator/context enrichment. Complete.
 5-B. Automatic frame pump if approved.
 6. Player sprite and modern NPC actor render projection.
 7. Pause/retry/reset.
@@ -894,8 +933,10 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 19. Product presentation camera policy is integrated.
 20. Product manual frame request wrapper is integrated.
 21. Product input binding context projection is integrated.
-22. Qt product manual Step consumer uses transient projected binding context.
-23. Dispatch automatic frame pump, render projection gaps, further input
+22. Product input accumulator is integrated.
+23. Qt product manual Step consumer uses accumulator output plus transient
+    projected binding context.
+24. Dispatch automatic frame pump, render projection gaps, further input
     mapping, or a focused-input follow-up, depending on planner scope.
 
 Do not broaden the next Product Loop packet into pause/retry/reset,

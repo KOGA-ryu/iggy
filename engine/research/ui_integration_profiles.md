@@ -193,9 +193,10 @@ Status: complete for the read-only product play panel model, context seam, and
 Qt `--play` launch/load/build consumer plus ready-state focus toggle and
 ready/focused keyboard product input mapping; runtime/product presentation
 camera policy, manual frame request wrapper, product input context projection,
-and Qt manual Step with transient current-player-tile context projection are
-complete, while frame pumping, mouse/world/tile input mapping, target discovery,
-and broader UI execution remain gated.
+product input accumulator, and Qt manual Step with accumulator output plus
+transient current-player-tile context projection are complete, while frame
+pumping, mouse/world/tile input mapping, target discovery, cadence policy, and
+broader UI execution remain gated.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
@@ -238,21 +239,19 @@ Qt focus toggle:
 
 Qt keyboard input mapping:
 - Ready, focused `--play` sessions map supported Qt key press/release events
-  into the app-shell-owned transient
-  `RuntimeGameplayProductInputFrame2D productInputFrame_`.
-- The shell stores product input events only, not raw `QKeyEvent` objects or
+  into app-shell-owned transient product accumulator state.
+- The shell stores product controls/events only, not raw `QKeyEvent` objects or
   pointers.
 - Product input events are recorded only when product play mode exists,
   play-mode build status is ready, and product input focus is enabled.
 - Disabled focus, failed-load, and not-ready play sessions record no event; when
-  focus is disabled, the transient input frame is cleared.
-- The frame is latest-event bounded: each accepted key clears the frame before
-  appending one event.
+  focus is disabled, accumulator state is cleared.
 - Auto-repeat and unsupported keys are ignored. Arrow/WASD map to movement,
   `E`/Return/Enter to interact, `I` to inspect, Space to wait, and Escape to
   cancel.
-- Binding context remains default; no current-player tile, selected target,
-  hovered target, scene/UI model exposure, or settings exposure was added.
+- Binding context is supplied later when building request frame output; no
+  selected target, hovered target, scene/UI model exposure, or settings exposure
+  was added.
 
 Runtime presentation camera policy:
 - `RuntimeGameplayProductPresentationCamera` is an app-neutral runtime/product
@@ -288,24 +287,40 @@ Runtime input context projection:
   targets, map mouse input, synthesize `PrimaryPoint`/`PrimaryTile`, or add
   cadence/pump behavior.
 
+Runtime input accumulator:
+- `RuntimeGameplayProductInputAccumulator` stores product-level transient input
+  state only: held movement controls and pending one-shot product events.
+- Held movement controls are `MoveNorth`, `MoveSouth`, `MoveWest`, and
+  `MoveEast`; one-shot controls are `Interact`, `Inspect`, `Wait`, and
+  `Cancel`.
+- Held movement presses are deduplicated, releases remove held movement, and
+  one-shot releases are no-ops.
+- Frame output emits held movement `Pressed` events each requested frame before
+  one-shot events, carries supplied binding context, preserves held controls,
+  drains one-shots, and never synthesizes `PrimaryPoint`/`PrimaryTile`.
+- `clear(...)` returns empty transient state.
+
 Qt manual Step consumer:
 - The View menu exposes `Product Step` for ready `--play` sessions only.
 - The action is independent of `Product Input Focus`; when focus is false,
   existing play-surface behavior ignores input but still consumes one available
   frame with empty intents/context.
-- Executing Step builds a local request-frame copy from transient
-  `productInputFrame_`, enriches that local copy with projected binding context,
-  and builds `RuntimeGameplayProductFrameRequestInput` from current
-  `productPlayState_`, the enriched local frame, and shell-owned presentation
-  camera config, then calls
+- Qt stores accumulator state instead of a latest-edge `productInputFrame_`.
+- Key recording maps supported keys to product controls/events and records into
+  accumulator state without clearing per key event.
+- Focus disable clears accumulator state.
+- Executing Step builds accumulator frame output with projected binding context,
+  stores the returned accumulator state before the frame request, and builds
+  `RuntimeGameplayProductFrameRequestInput` from current `productPlayState_`,
+  accumulator output, and shell-owned presentation camera config, then calls
   `RuntimeGameplayProductFrameRequest {}.run(input)` exactly once.
 - The shell updates only replaceable transient app-shell state:
   `productPlayState_`, latest product play frame/context pointer, and
   `productPresentationCamera_`.
-- The shell clears `productInputFrame_` after each executed request regardless
-  of request status, but does not clear it when Step is unavailable.
-- The projected context is not written back into `productInputFrame_`; that
-  member remains latest raw/product event storage only.
+- The shell preserves held movement across steps and drains one-shots after each
+  executed Step.
+- The projected context is not written back into accumulator state.
+- If Step is unavailable, accumulator state is not silently cleared.
 - The existing read-only product play panel is refreshed after the request.
 - Camera/config defaults are shell presentation defaults only and are not
   settings/save truth.
@@ -347,10 +362,15 @@ Hard stops for product play UI projection:
   scene/UI projection code.
 - No projected binding context persistence in runtime/session/gameplay/
   product-loop/play-mode state, snapshots, saves, settings, scene/UI models, or
-  `productInputFrame_`.
+  accumulator state.
 - No selected/hovered target discovery, interaction target search, reach lookup,
   mouse screen-to-world/tile mapping, `PrimaryPoint`, or `PrimaryTile` synthesis
   from input context projection.
+- No accumulator state persistence in runtime/session/gameplay/product-loop/
+  play-mode state, snapshots, saves, settings, or scene/UI models.
+- No raw Qt key/event storage, cadence/rate policy, automatic frame pump,
+  mouse screen-to-world/tile mapping, `PrimaryPoint`/`PrimaryTile`, target
+  search, or reach lookup in accumulator state.
 - No automatic app/tick loop or frame pump from Qt manual Step.
 - No settings persistence or keyboard shortcut for Qt manual Step.
 - No hidden default camera/render config inside the UI model.
