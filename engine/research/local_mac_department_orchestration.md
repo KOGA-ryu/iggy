@@ -2,36 +2,50 @@
 
 This is Iggy's local version of the department workflow. It borrows the useful
 structure from the `edi` orchestration notes, but it is not the same setup:
-there is no Linux worker box, no SSH dependency, and no remote tmux bus. All
-work happens on this Mac through local git worktrees, Codex threads, short-lived
-subagents, and repo-owned handoff docs.
+there is no Linux worker box and no SSH dependency. Work happens on this Mac
+through local tmux department windows, local git worktrees, Codex threads,
+short-lived subagents, and repo-owned handoff docs.
 
 ## Operating Model
 
-The hub is the conductor. In practice, the hub is the current planning session
-plus the integration worktree:
+The hub is the conductor. In practice, the hub is the current planning session,
+the local tmux control room, and the integration worktree:
 
 - Integration worktree: `/Users/kogaryu/iggy`
 - Integration branch: `master`
-- Hub responsibilities: plan workstreams, assign departments, keep roadmap and
-  buckets current, decide merge order, run the integration gate, and recycle
-  stale context at clean boundaries.
+- Hub responsibilities: own the whole roadmap, assign departments, keep buckets
+  current, build helper scripts/macros, decide merge order, run the integration
+  gate, and recycle stale context at clean boundaries.
 
-Departments do the work in isolated local branches:
+Departments do the work in isolated local branches. Each department has a
+planner, builder, researcher, reviewer, finisher, and apprentice/Spark slot,
+even if some slots are staffed by a persistent Codex thread and some are
+short-lived subagents.
 
 | Department | Typical role | Work area |
 | --- | --- | --- |
-| Builder | Feature, fixture, and product work | one topic worktree per feature |
-| Finisher | Cleanup, bloat reduction, docs, test-support extraction | one cleanup worktree |
-| Reviewer | Read-only gate, adversarial fit checks, merge risk | current repo or requested branch |
-| Researcher | Read-only scouting, roadmap shape, external/internal prior art | current repo or requested branch |
-| Apprentice/Spark | Short-lived scouts, CI lane maps, conflict maps, small analysis | subagent only; normally no commits |
+| Runtime | gameplay loop, sessions, save/load, frame runners, reports | one topic worktree per runtime stretch |
+| AI/NPC | profiles, AI maps, actor movement, navigation, legacy NPC migration | one topic worktree per AI/NPC stretch |
+| Authoring | TOML/package/preview/facade/content fixtures | one topic worktree per authoring stretch |
+| UI/Product | shell, preview consumption, editor surfaces, play/debug UX | one topic worktree per UI stretch |
+| Platform/Integration | CMake, CI lanes, scripts/macros, merge/release hygiene | integration branch plus tooling worktrees |
 
 The current worktree topology is always discovered with:
 
 ```sh
 git worktree list
 ```
+
+The local tmux control room is created with:
+
+```sh
+engine/tools/iggy-dept-up.sh
+```
+
+The helper opens one tmux session with windows for hub, runtime, AI/NPC,
+authoring, UI/product, platform, integration, and research. The windows are
+command surfaces and status dashboards; the workers still communicate durable
+results through commits, bucket docs, and Codex briefs.
 
 Do not treat a hardcoded snapshot in any doc as authoritative. Verify the local
 state before assigning, rebasing, or merging.
@@ -49,8 +63,9 @@ In this repo, the message doorbell is one of:
 The durable state is on disk:
 
 - `engine/research/roadmap.md` for project state;
-- `engine/research/authoring_batches/` for builder packets;
-- `engine/research/finisher_batches/` for finisher packets;
+- `engine/research/departments/` for department charters and buckets;
+- `engine/research/authoring_batches/` for legacy/builder authoring packets;
+- `engine/research/finisher_batches/` for cleanup packets;
 - focused research docs such as API indexes, boundary notes, closeout notes, and
   smell/audit notes;
 - commits and branch history.
@@ -66,32 +81,46 @@ surface is clear. The better pattern is:
 
 1. Build or refresh a bucket of related packets.
 2. Have reviewer/researcher scope repo fit and conflict risk.
-3. Assign a department a scoped stretch with file ownership and hard stops.
-4. Let the department commit coherent packets on its branch.
-5. Merge only through the hub after verification and review.
+3. Assign a department planner a scoped stretch with file ownership and hard
+   stops.
+4. The department planner uses its researcher/reviewer to refine semantics,
+   data ownership, compute costs, and Codex-vs-Spark split.
+5. The department builder/finisher/apprentice executes coherent packets on the
+   department branch.
+6. Merge only through the hub after verification and review.
 
 Use the raw bucket order only when there is no better scoped stretch. A
 planner-scoped stretch overrides raw packet order until it completes or blocks.
 
 ## Department Branch Rules
 
-Each department gets its own worktree and branch. Branch names should describe
-the department and topic, for example:
+Each department gets its own worktree and branch. Use the helper when creating
+a new local fork:
 
-- `codex/builder-ai-map-regions`
-- `codex/finisher-runtime-cleanup`
+```sh
+engine/tools/iggy-dept-worktree.sh runtime report-cleanup
+engine/tools/iggy-dept-worktree.sh ai region-ai-map
+```
+
+Branch names should describe the department and topic, for example:
+
+- `codex/runtime-report-cleanup`
+- `codex/ai-region-ai-map`
 - `codex/ui-preview-consumption`
+- `codex/authoring-diff-report`
 
 Rules:
 
 - Departments do not work directly on integration `master`.
 - Departments do not edit another department's worktree.
-- Builder owns feature behavior and fixtures for its branch.
-- Finisher owns cleanup, bloat reduction, docs, and test-support work for its
-  branch.
-- Reviewer and researcher are read-only unless explicitly assigned a docs packet.
-- Apprentice/Spark scouts are normally read-only and closed after returning
-  results.
+- Department planners own their local bucket and dispatch.
+- Builders own feature behavior and fixtures for their department branch.
+- Finishers own cleanup, bloat reduction, docs, and test-support work for their
+  department branch.
+- Reviewers and researchers are read-only unless explicitly assigned a docs
+  packet.
+- Apprentices/Spark scouts are normally read-only or narrowly scoped test/docs
+  workers and are closed after returning results.
 
 If two branches need the same file, the hub serializes that file's work or
 assigns one branch as owner and makes the other wait.
@@ -103,7 +132,8 @@ The default flow for a substantial feature or cleanup lane is:
 ```text
 research/reviewer scout
   -> hub scopes department order
-  -> builder or finisher branch work
+  -> department planner refines and dispatches
+  -> builder, finisher, or apprentice branch work
   -> focused branch verification
   -> department batch-end brief
   -> reviewer merge gate
@@ -202,7 +232,7 @@ At a tick, a fresh or recycled hub reads:
 
 1. this document;
 2. `engine/research/roadmap.md`;
-3. active bucket READMEs;
+3. active department bucket READMEs;
 4. recent branch commits and `git worktree list`;
 5. latest worker briefs from persistent Codex threads.
 
@@ -233,14 +263,15 @@ implicit and should be split.
 
 Use this as the current preferred pattern:
 
-- Builder: one feature branch, owns the feature's fixtures/tests/docs.
-- Finisher: one cleanup branch, owns bloat reduction and behavior-preserving
-  cleanup.
-- Reviewer: read-only gate before builder starts and before integration merges.
-- Researcher: read-only map of next workstreams and risk signals.
-- Apprentice/Spark: temporary scouts for CI lanes, merge risk, and narrow codebase
-  questions.
-- Hub: keeps the departments fed, prevents shared-file collisions, and integrates.
+- Head planner/hub: owns the complete roadmap and departments.
+- Runtime department: one branch per runtime/session/save/report stretch.
+- AI/NPC department: one branch per AI-map/profile/NPC/navigation stretch.
+- Authoring department: one branch per TOML/package/preview/content stretch.
+- UI/Product department: planner/designers first, then UI implementation.
+- Platform/Integration department: tools, CMake, CI lanes, merge hygiene.
+- Reviewer/researcher lanes: feed departments and gates, normally read-only.
+- Apprentice/Spark: temporary scouts or tiny bounded work packets.
+- Hub: keeps departments fed, prevents shared-file collisions, and integrates.
 
 The goal is not maximum parallel edits. The goal is maximum independent
 throughput with clear ownership and cheap integration.
