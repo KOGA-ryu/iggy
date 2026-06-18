@@ -85,6 +85,7 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 
 - `InteractionTarget2D`, `InteractionTarget2DRegistry`, `InteractionTarget2DRegistryBuilder`: authored/runtime interaction target data and validated target lookup table.
 - `InteractionTargetQuery2D::find`: read-only target lookup with missing/disabled/not-found diagnostics.
+- `InteractionTargetSpatialQuery2D`: scene-only pure spatial lookup over `InteractionTarget2DRegistry`. It exposes `Found` / `NotFound` status, optional non-negative extra radius, result target id/payload/index/distance/allowed distance plus `hasTarget()`, and `find(...)` / `findTileCenter(...)`. The query scans enabled targets in registry order, uses Euclidean distance to target position, clamps target radius and extra radius at zero, matches `distance <= allowedDistance` including zero-radius same-position hits, picks the nearest eligible target, preserves registry order for exact ties, and delegates tile-center queries through `tileCenter(...)` without mutating the registry, persisting results, adding Qt/runtime/product wiring, reach/LOS/occupancy/pathfinding/kind-priority/z-order/layer policy, click-to-interact execution, command/gate semantics, or gameplay behavior.
 - `InteractionReach2D::evaluate`: player/actor position to target reach query with explicit reach config.
 - `InteractionPlan2D::plan`: target query + reach into ready/blocked interaction plan.
 - `InteractionEffect2D`, effect factory helpers, `validate`: backend-free interaction effect intent data.

@@ -231,9 +231,10 @@ projection complete; Product Pointer Tile Input Mapping Option A complete as
 runtime/product pointer projection plus accumulator event preservation; Qt
 product viewport owner complete as an app-shell viewport boundary; thin Qt
 product mouse `PrimaryTile` consumer complete for focused ready left-clicks on
-that viewport; next work is target discovery/search/reach, interaction
-execution, textured sprite/animation/material/asset policy, and first-play UX
-policy gates.
+that viewport; scene-only `InteractionTargetSpatialQuery2D` complete as the pure
+spatial lookup primitive; next work is target context wiring/search/reach,
+interaction execution, textured sprite/animation/material/asset policy, and
+first-play UX policy gates.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -686,8 +687,8 @@ Qt product frame pump toggle complete:
   frame request, play mode, input accumulator, or gameplay semantics.
 
 Remaining input gate questions:
-- What target discovery/search/reach policy should consume the current
-  `PrimaryTile` intent?
+- What target context/search/reach policy should consume the current
+  `PrimaryTile` intent using `InteractionTargetSpatialQuery2D`?
 - Should a later point-vs-tile policy add `PrimaryPoint` or world-point payloads
   beyond the current `PrimaryTile`-only click behavior?
 - Should selected/hovered target context be projected later, and what explicit
@@ -699,7 +700,8 @@ Remaining input gate questions:
 - What does completion/failure mean in the first slice?
 
 Output:
-- one optional target discovery/search/reach packet, if approved;
+- one optional target context/search/reach packet over the scene spatial query,
+  if approved;
 - one textured sprite / animation / material policy packet, if approved;
 - one updated implementation order packet;
 - one verification plan.
@@ -888,9 +890,13 @@ Packets:
 17. Thin Qt product mouse primary-tile consumer. Complete:
    - focused ready left-click on `productViewport_` -> normalized camera-view
      projection -> one transient `PrimaryTile` pressed event.
-18. Debug overlay projection:
+18. Interaction target spatial query. Complete:
+   - scene-only `InteractionTargetSpatialQuery2D` -> nearest enabled target in
+     range for a point or tile center, with clamped radius policy and
+     registry-order tie behavior; no Qt/runtime/product wiring or execution.
+19. Debug overlay projection:
    - trace/final rows, AI map, collision, path, interactions, inventory.
-19. UI presentation adapter:
+20. UI presentation adapter:
    - convert render frame data into the chosen shell/app surface.
 
 Hard stops:
@@ -1116,15 +1122,16 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
     integrated.
 27. Qt product viewport owner is integrated.
 28. Thin Qt product mouse `PrimaryTile` consumer is integrated.
-29. Dispatch target discovery/search/reach, interaction execution, point-vs-tile
-    policy, textured sprite / animation / material policy, render projection
-    gaps, further input mapping, or a focused-input follow-up, depending on
-    planner scope.
+29. Interaction target spatial query is integrated.
+30. Dispatch target context/search/reach wiring, interaction execution,
+    point-vs-tile policy, textured sprite / animation / material policy, render
+    projection gaps, further input mapping, or a focused-input follow-up,
+    depending on planner scope.
 
 Do not broaden the next Product Loop packet into pause/retry/reset,
 completion/failure, save/load productization, product-loop signature changes,
 command/gate execution, presentation state persistence, Qt/UI/CLI behavior,
 raw OS event types, raw input persistence, textured sprite/animation/material
-policy, target discovery/search/reach, additional Qt mouse behavior, render
-command drawing, canvas polish, or new gameplay semantics unless the user
-explicitly reprioritizes.
+policy, target context wiring/search/reach beyond the approved scene spatial
+query primitive, additional Qt mouse behavior, render command drawing, canvas
+polish, or new gameplay semantics unless the user explicitly reprioritizes.

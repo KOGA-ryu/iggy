@@ -116,6 +116,12 @@ Recently completed optimized stretches:
   coordinates into configured product camera-view span; no `PrimaryPoint`, world
   payload, right/middle/move/wheel/double-click/drag/hover behavior, frame
   execution, persistence, or runtime/product API change.
+- Scene `InteractionTargetSpatialQuery2D` for pure spatial lookup over
+  `InteractionTarget2DRegistry`: enabled targets only, Euclidean distance,
+  clamped target/extra radius, nearest eligible target with registry-order ties,
+  `find(...)` and `findTileCenter(...)` status/results, and no Qt/runtime/product
+  wiring, reach/LOS/occupancy/pathfinding/kind-priority policy, click-to-interact
+  execution, persistence, or gameplay semantics.
 - Runtime `RuntimeGameplayProductInputContext` for app-neutral product binding
   context projection, returning default gates plus current player tile only when
   product play state is loaded and has a player, without target discovery,
@@ -283,8 +289,9 @@ Recently completed optimized stretches:
   accumulator event preservation exists; Qt shell now owns a
   product-play viewport frame as an event/render target boundary and has a
   focused ready-play left-click `PrimaryTile` consumer for that viewport. Next
-  product runtime work is target discovery/search/reach and interaction
-  execution if approved, textured sprite/animation/material/asset policy,
+  product runtime work is wiring target context/search/reach policy on top of
+  the scene-only spatial query primitive, then interaction execution if
+  approved, textured sprite/animation/material/asset policy,
   pause/retry/reset policy, completion/failure evaluation, and save/load UX.
 - Rendering backend/presentation layer.
 - Audio server boundary.
@@ -551,6 +558,12 @@ Qt Product Viewport Owner is complete as a temporary app-shell viewport/canvas
 boundary: product play sessions get `QFrame#productViewport`; the current input
 policy is left-click `PrimaryTile` only and render command drawing/canvas polish
 remain separate.
+InteractionTargetSpatialQuery2D is complete as a scene-only lookup primitive:
+it scans enabled interaction targets in registry order, compares Euclidean
+distance to clamped target radius plus clamped extra radius, returns the nearest
+eligible target with registry-order tie behavior, supports tile-center queries,
+and keeps Qt/product wiring, selected/hovered target context, reach policy, and
+interaction execution separate.
 
 Objective: move from engine harness to playable/editor-backed game loop.
 
@@ -730,7 +743,14 @@ Done:
   from `productPresentationCameraConfig().cameraView.viewportSize` before
   calling the projection helper, and builds presentation camera policy
   read-only from `productPlayState_`. Point-vs-tile / `PrimaryPoint` behavior,
-  target discovery, and interaction execution remain separate gates.
+  target context wiring/search/reach, and interaction execution remain separate
+  gates.
+- Interaction target spatial query is scene-only and pure:
+  `InteractionTargetSpatialQuery2D` finds the nearest enabled target in range of
+  a point or tile center, including zero-radius same-position hits and exact
+  boundary matches, while preserving first registry entry on exact distance
+  ties. It does not project hovered/selected context, check reach, execute
+  interactions, or wire Qt/product input.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -741,7 +761,8 @@ Exit criteria:
 - Save/load user-facing state.
 
 First gates:
-- Target discovery/search/reach and hover/selection workflows.
+- Target context wiring/search/reach and hover/selection workflows on top of the
+  scene-only spatial query primitive.
 - Point-vs-tile / `PrimaryPoint` behavior beyond the current `PrimaryTile`
   policy.
 - Textured sprite/animation/material/asset policy over the debug/material actor

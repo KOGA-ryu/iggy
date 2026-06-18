@@ -200,9 +200,10 @@ debug/material quad projection is complete; runtime/product pointer projection
 and explicit primary point/tile accumulator event preservation are complete.
 Qt product viewport ownership is complete as an app-shell surface.
 Thin Qt mouse `PrimaryTile` consumer is complete for focused ready left-clicks
-on the viewport. Textured sprites/animation/material policy, target discovery,
-interaction execution, product UX/save semantics, and broader UI execution
-remain gated.
+on the viewport. Scene-only `InteractionTargetSpatialQuery2D` is complete as a
+pure spatial lookup primitive. Textured sprites/animation/material policy,
+target context wiring/search/reach, interaction execution, product UX/save
+semantics, and broader UI execution remain gated.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
@@ -346,6 +347,17 @@ Qt product mouse primary-tile consumer:
   camera or pointer state.
 - Product Step and Product Frame Pump consume the accumulator later.
 
+Interaction target spatial query:
+- `InteractionTargetSpatialQuery2D` is scene-only and performs pure spatial
+  lookup over `InteractionTarget2DRegistry`.
+- It scans enabled targets in registry order, compares Euclidean distance to
+  `max(0, target.radius) + max(0, extraRadius)`, picks the nearest eligible
+  target, preserves first registry entry for exact distance ties, and supports
+  point or tile-center queries.
+- It does not project selected/hovered context, execute interactions, check
+  reach/LOS/occupancy/pathfinding, define kind-priority/z-order/layer policy,
+  or wire Qt/product input.
+
 Qt manual Step consumer:
 - The View menu exposes `Product Step` for ready `--play` sessions only.
 - The action is independent of `Product Input Focus`; when focus is false,
@@ -440,7 +452,8 @@ Hard stops for product play UI projection:
   accumulator state.
 - No selected/hovered target discovery, interaction target search, reach lookup,
   mouse screen-to-world/tile mapping, `PrimaryPoint`, or `PrimaryTile` synthesis
-  from input context projection.
+  from input context projection. Scene-only spatial lookup is available as a
+  primitive but remains unwired to UI/product context.
 - No accumulator state persistence in runtime/session/gameplay/product-loop/
   play-mode state, snapshots, saves, settings, or scene/UI models.
 - No raw Qt key/event storage, cadence/rate policy, accumulator-owned frame
@@ -451,8 +464,8 @@ Hard stops for product play UI projection:
   gameplay/product-loop/play-mode snapshots, saves, settings, or scene/UI model
   truth.
 - No textured sprite/animation sampling, new art/assets/material registry,
-  package discovery, additional Qt mouse behavior,
-  target discovery, target search, reach lookup,
+  package discovery, additional Qt mouse behavior, target context wiring,
+  target search, reach lookup beyond the scene spatial query primitive,
   pause/retry/reset/completion/failure/save-load productization, package
   scanning/watching/discovery, source mutation, raw Qt event persistence,
   projected pointer persistence, viewport geometry/state persistence, render
