@@ -1,5 +1,6 @@
 #include "runtime/RuntimePlayerInputInteractionPickupFrameReporter.hpp"
 
+#include "runtime/RuntimeInventoryEventCountProjection.hpp"
 #include "runtime/RuntimePlayerInputInteractionEffectApplyFrameReporter.hpp"
 
 namespace iggy::runtime {
@@ -19,22 +20,17 @@ RuntimePlayerInputInteractionEffectApplyFrameResult InteractionResultFrom(
 	return result;
 }
 
-void CountInventoryEvents(RuntimePlayerInputInteractionPickupFrameReport &report)
+void ProjectInventoryEvents(RuntimePlayerInputInteractionPickupFrameReport &report)
 {
-	report.inventoryEventCount = report.inventoryEvents.events.size();
-	for (const InventoryEvent2D &event : report.inventoryEvents.events) {
-		if (event.type == InventoryEvent2DType::ItemAdded) {
-			++report.itemAddedEventCount;
-		} else if (event.type == InventoryEvent2DType::ItemPickedUp) {
-			++report.itemPickedUpEventCount;
-		} else if (event.type == InventoryEvent2DType::DropConsumed) {
-			++report.dropConsumedEventCount;
-		} else if (event.type == InventoryEvent2DType::PickupNotReady) {
-			++report.pickupNotReadyEventCount;
-		} else if (event.type == InventoryEvent2DType::InventoryAddFailed) {
-			++report.inventoryAddFailedEventCount;
-		}
-	}
+	const RuntimeInventoryEventCountProjection projection =
+		projectRuntimeInventoryEventCounts(report.inventoryEvents);
+	report.inventoryEventCount = projection.inventoryEventCount;
+	report.itemAddedEventCount = projection.itemAddedEventCount;
+	report.itemPickedUpEventCount = projection.itemPickedUpEventCount;
+	report.dropConsumedEventCount = projection.dropConsumedEventCount;
+	report.pickupNotReadyEventCount = projection.pickupNotReadyEventCount;
+	report.inventoryAddFailedEventCount =
+		projection.inventoryAddFailedEventCount;
 }
 
 } // namespace
@@ -57,7 +53,7 @@ RuntimePlayerInputInteractionPickupFrameReport RuntimePlayerInputInteractionPick
 	report.pickupFailedCount = result.pickup.failedCount;
 	report.interactionMutated = report.interaction.mutated;
 	report.inventoryChanged = result.pickup.changed;
-	CountInventoryEvents(report);
+	ProjectInventoryEvents(report);
 
 	if (report.acceptedCommandCount > 0)
 		report.events.push_back(RuntimePlayerInputInteractionPickupFrameEvent::PlayerCommandAccepted);
