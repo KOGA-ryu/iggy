@@ -1,6 +1,6 @@
 #include "runtime/RuntimeGameplayScenarioRunner.hpp"
 
-#include "runtime/RuntimeNpcOrchestrationAggregates.hpp"
+#include "runtime/RuntimeGameplayScenarioReportProjection.hpp"
 
 namespace iggy::runtime {
 namespace {
@@ -14,36 +14,6 @@ std::vector<RuntimeGameplayOrchestratedFrameRunnerFrame> FramesFromScenario(
 		runnerFrames.push_back(frame.frame);
 	}
 	return runnerFrames;
-}
-
-void CopyReportCounts(RuntimeGameplayScenarioResult &result)
-{
-	RuntimeNpcControlAggregate control;
-	RuntimeNpcMovementAggregate movement;
-	RuntimeNpcRefreshAggregate refresh;
-	foldRuntimeNpcControlAggregate(control, result.report);
-	foldRuntimeNpcMovementAggregate(movement, result.report);
-	foldRuntimeNpcRefreshAggregate(refresh, result.report);
-
-	result.frameCount = result.report.frameCount;
-	result.changedFrameCount = result.report.changedFrameCount;
-	result.inventoryEventCount = result.report.inventoryEventCount;
-	result.npcControlPlannedRequestCount = control.plannedRequestCount;
-	result.npcControlAppliedCount = control.appliedCount;
-	result.npcControlFailedCount = control.failedCount;
-	result.npcMovementPlannedRequestCount = movement.plannedRequestCount;
-	result.npcMovedCount = movement.movedCount;
-	result.npcBlockedMovementCount = movement.blockedMovementCount;
-	result.npcRejectedMovementCount = movement.rejectedMovementCount;
-	result.npcMissingActorMovementCount = movement.missingActorMovementCount;
-	result.npcRefreshDirtyTileCount = refresh.dirtyTileCount;
-	result.npcControlsChanged = control.controlsChanged;
-	result.npcActorsChanged = movement.actorsChanged;
-	result.npcOccupancyRefreshed = refresh.occupancyRefreshed;
-	result.npcInteractionRefreshed = refresh.interactionRefreshed;
-	result.npcAiMapRefreshed = refresh.aiMapRefreshed;
-	result.npcRenderRefreshed = refresh.renderRefreshed;
-	result.npcVisibilityRefreshed = refresh.visibilityRefreshed;
 }
 
 } // namespace
@@ -79,7 +49,7 @@ RuntimeGameplayScenarioResult RuntimeGameplayScenarioRunner::run(const RuntimeGa
 	result.runner = RuntimeGameplayOrchestratedFrameRunner {}.run(runnerInput);
 	result.report = RuntimeGameplayOrchestratedFrameRunnerReporter {}.report(result.runner);
 	result.state = result.runner.state;
-	CopyReportCounts(result);
+	applyRuntimeGameplayScenarioResultProjection(result, result.report);
 	return result;
 }
 

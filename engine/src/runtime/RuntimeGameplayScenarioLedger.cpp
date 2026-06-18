@@ -1,73 +1,9 @@
 #include "runtime/RuntimeGameplayScenarioLedger.hpp"
 
-#include "runtime/RuntimeNpcOrchestrationAggregates.hpp"
+#include "runtime/RuntimeGameplayScenarioReportProjection.hpp"
 
 namespace iggy::runtime {
 namespace {
-
-RuntimeGameplayScenarioLedgerFrame FrameFromReport(
-	std::size_t frameIndex,
-	const RuntimeGameplayOrchestratedFrameReport &report)
-{
-	RuntimeNpcControlAggregate control;
-	RuntimeNpcMovementAggregate movement;
-	RuntimeNpcRefreshAggregate refresh;
-	foldRuntimeNpcControlAggregate(control, report);
-	foldRuntimeNpcMovementAggregate(movement, report);
-	foldRuntimeNpcRefreshAggregate(refresh, report);
-
-	RuntimeGameplayScenarioLedgerFrame frame;
-	frame.frameIndex = frameIndex;
-	frame.changed = report.changed() || report.refreshedNpcData();
-	frame.inventoryEventCount = report.inventoryEventCount;
-	frame.npcControlPlannedRequestCount = control.plannedRequestCount;
-	frame.npcControlAppliedCount = control.appliedCount;
-	frame.npcControlFailedCount = control.failedCount;
-	frame.npcControlsChanged = control.controlsChanged;
-	frame.npcMovementPlannedRequestCount = movement.plannedRequestCount;
-	frame.npcMovedCount = movement.movedCount;
-	frame.npcBlockedMovementCount = movement.blockedMovementCount;
-	frame.npcRejectedMovementCount = movement.rejectedMovementCount;
-	frame.npcMissingActorMovementCount = movement.missingActorMovementCount;
-	frame.npcActorsChanged = movement.actorsChanged;
-	frame.npcRefreshDirtyTileCount = refresh.dirtyTileCount;
-	frame.npcOccupancyRefreshed = refresh.occupancyRefreshed;
-	frame.npcInteractionRefreshed = refresh.interactionRefreshed;
-	frame.npcAiMapRefreshed = refresh.aiMapRefreshed;
-	frame.npcRenderRefreshed = refresh.renderRefreshed;
-	frame.npcVisibilityRefreshed = refresh.visibilityRefreshed;
-	return frame;
-}
-
-void CopySummary(RuntimeGameplayScenarioLedger &ledger)
-{
-	RuntimeNpcControlAggregate control;
-	RuntimeNpcMovementAggregate movement;
-	RuntimeNpcRefreshAggregate refresh;
-	foldRuntimeNpcControlAggregate(control, ledger.result.report);
-	foldRuntimeNpcMovementAggregate(movement, ledger.result.report);
-	foldRuntimeNpcRefreshAggregate(refresh, ledger.result.report);
-
-	ledger.frameCount = ledger.result.frameCount;
-	ledger.changedFrameCount = ledger.result.changedFrameCount;
-	ledger.inventoryEventCount = ledger.result.inventoryEventCount;
-	ledger.npcControlPlannedRequestCount = control.plannedRequestCount;
-	ledger.npcControlAppliedCount = control.appliedCount;
-	ledger.npcControlFailedCount = control.failedCount;
-	ledger.npcControlsChanged = control.controlsChanged;
-	ledger.npcMovementPlannedRequestCount = movement.plannedRequestCount;
-	ledger.npcMovedCount = movement.movedCount;
-	ledger.npcBlockedMovementCount = movement.blockedMovementCount;
-	ledger.npcRejectedMovementCount = movement.rejectedMovementCount;
-	ledger.npcMissingActorMovementCount = movement.missingActorMovementCount;
-	ledger.npcActorsChanged = movement.actorsChanged;
-	ledger.npcRefreshDirtyTileCount = refresh.dirtyTileCount;
-	ledger.npcOccupancyRefreshed = refresh.occupancyRefreshed;
-	ledger.npcInteractionRefreshed = refresh.interactionRefreshed;
-	ledger.npcAiMapRefreshed = refresh.aiMapRefreshed;
-	ledger.npcRenderRefreshed = refresh.renderRefreshed;
-	ledger.npcVisibilityRefreshed = refresh.visibilityRefreshed;
-}
 
 void CopyFinalStateFacts(RuntimeGameplayScenarioLedger &ledger)
 {
@@ -212,12 +148,13 @@ RuntimeGameplayScenarioLedger RuntimeGameplayScenarioLedgerReporter::report(
 	ledger.status = result.hasFrames()
 		? RuntimeGameplayScenarioLedgerStatus::Reported
 		: RuntimeGameplayScenarioLedgerStatus::Empty;
-	CopySummary(ledger);
+	applyRuntimeGameplayScenarioLedgerSummaryProjection(ledger, result);
 	CopyFinalStateFacts(ledger);
 
 	ledger.frames.reserve(result.report.frames.size());
 	for (std::size_t frameIndex = 0; frameIndex < result.report.frames.size(); ++frameIndex) {
-		ledger.frames.push_back(FrameFromReport(frameIndex, result.report.frames[frameIndex]));
+		ledger.frames.push_back(
+			projectRuntimeGameplayScenarioLedgerFrame(frameIndex, result.report.frames[frameIndex]));
 	}
 
 	AppendEvents(ledger);

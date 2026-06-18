@@ -73,3 +73,4 @@ Queue:
 16. `16_cmake_authoring_test_hygiene_gate` - complete. Assess authoring CMake test registration hygiene.
 17. `17_finisher_merge_hygiene_update` - complete. Update finisher merge/rebase protocol after cleanup stretch.
 18. `18_runtime_report_count_projection_cleanup` - complete. Extract repeated inventory-event count projection.
+19. `19_runtime_scenario_ledger_npc_projection_cleanup` - complete. Extract shared scenario/ledger NPC aggregate projection.
