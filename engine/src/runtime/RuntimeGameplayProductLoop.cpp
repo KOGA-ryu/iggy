@@ -5,25 +5,28 @@ namespace {
 
 RuntimeGameplayOrchestratedFrameInput InputFromFrame(
 	RuntimeGameplayOrchestratedFrameRunnerFrame frame,
-	const RuntimeGameplayState &state,
-	const std::vector<PlayerInputIntent2D> &playerIntents)
+	const RuntimeGameplayProductLoopStepInput &input)
 {
-	RuntimeGameplayOrchestratedFrameInput input;
-	frame.playerFrame.state = state;
-	frame.playerFrame.playerIntents = playerIntents;
-	input.playerFrame = frame.playerFrame;
-	input.subjects = frame.subjects;
-	input.pools = frame.pools;
-	input.aiMap = frame.aiMap;
-	input.controlConfig = frame.controlConfig;
-	input.controlOverrides = frame.controlOverrides;
-	input.movementMap = frame.movementMap;
-	input.movementConfig = frame.movementConfig;
-	input.previousOccupancy = frame.previousOccupancy;
-	input.interactionTargets = frame.interactionTargets;
-	input.refreshAiMap = frame.refreshAiMap;
-	input.refreshConfig = frame.refreshConfig;
-	return input;
+	frame.playerFrame.state = input.state.currentState;
+	frame.playerFrame.playerIntents = input.playerIntents;
+	if (input.hasPlayerInputContextOverride)
+		frame.playerFrame.playerInputContext =
+			input.playerInputContextOverride;
+
+	RuntimeGameplayOrchestratedFrameInput frameInput;
+	frameInput.playerFrame = frame.playerFrame;
+	frameInput.subjects = frame.subjects;
+	frameInput.pools = frame.pools;
+	frameInput.aiMap = frame.aiMap;
+	frameInput.controlConfig = frame.controlConfig;
+	frameInput.controlOverrides = frame.controlOverrides;
+	frameInput.movementMap = frame.movementMap;
+	frameInput.movementConfig = frame.movementConfig;
+	frameInput.previousOccupancy = frame.previousOccupancy;
+	frameInput.interactionTargets = frame.interactionTargets;
+	frameInput.refreshAiMap = frame.refreshAiMap;
+	frameInput.refreshConfig = frame.refreshConfig;
+	return frameInput;
 }
 
 RuntimeGameplayProductLoopStepResult StepWithFrame(
@@ -33,7 +36,7 @@ RuntimeGameplayProductLoopStepResult StepWithFrame(
 	RuntimeGameplayProductLoopStepResult result;
 	result.frameIndex = input.state.nextFrameIndex;
 	result.frame = RuntimeGameplayOrchestratedFrameStep {}.run(
-		InputFromFrame(frame, input.state.currentState, input.playerIntents));
+		InputFromFrame(frame, input));
 	result.state = input.state;
 	result.state.currentState = result.frame.state;
 	++result.state.nextFrameIndex;
@@ -49,7 +52,7 @@ RuntimeGameplayProductLoopStepResult StepWithFrame(
 	RuntimeGameplayProductLoopStepResult result;
 	result.frameIndex = input.state.nextFrameIndex;
 	result.frame = RuntimeGameplayOrchestratedFrameStep {}.run(
-		InputFromFrame(frame, input.state.currentState, input.playerIntents),
+		InputFromFrame(frame, input),
 		explicitWorld);
 	result.state = input.state;
 	result.state.currentState = result.frame.state;

@@ -59,6 +59,16 @@ bool SameIntent(
 		&& actual.targetId == expected.targetId;
 }
 
+bool SameContext(
+	const iggy::PlayerInputContext2D &actual,
+	const iggy::PlayerInputContext2D &expected)
+{
+	return actual.playerControlEnabled == expected.playerControlEnabled
+		&& actual.worldInputEnabled == expected.worldInputEnabled
+		&& actual.interactionEnabled == expected.interactionEnabled
+		&& actual.cancelEnabled == expected.cancelEnabled;
+}
+
 template <typename T, typename = void>
 struct HasFinalRowsField : std::false_type {
 };
@@ -136,6 +146,13 @@ iggy::physics2d::CollisionWorld2D World(
 		iggy::physics2d::CollisionWorld2DBuilder {}.build(objects);
 	Expect(result.built, "product loop collision world should build");
 	return result.world;
+}
+
+iggy::PlayerInputContext2D WorldInputDisabledContext()
+{
+	iggy::PlayerInputContext2D context;
+	context.worldInputEnabled = false;
+	return context;
 }
 
 void TestBuildFromSuccessfulDirectTomlLoad()
@@ -228,6 +245,74 @@ void TestStepRunsOneFrameWithCallerMoveIntent()
 	Expect(input.playerIntents.size() == intentsBefore.size() &&
 			SameIntent(input.playerIntents[0], intentsBefore[0]),
 		"step should not mutate input intent vector");
+}
+
+void TestPlayerInputContextOverrideBlocksCallerMoveIntent()
+{
+	const BuildResult build = BuildFixture("moving_guard_room.toml");
+	iggy::runtime::RuntimeGameplayProductLoopStepInput input;
+	input.state = build.state;
+	input.playerIntents = { iggy::playerMoveToTileIntent({ 4, 1 }) };
+	input.hasPlayerInputContextOverride = true;
+	input.playerInputContextOverride = WorldInputDisabledContext();
+	const iggy::runtime::RuntimeGameplayProductLoopStepInput before = input;
+	const iggy::TileCoord startingTile =
+		iggy::playerTile(build.state.currentState.session.player);
+	const iggy::Vec2 startingPosition =
+		build.state.currentState.session.player.position;
+
+	const StepResult result =
+		iggy::runtime::RuntimeGameplayProductLoop {}.step(input);
+
+	Expect(result.status ==
+			iggy::runtime::RuntimeGameplayProductLoopStepStatus::Stepped,
+		"context override should still step frame");
+	Expect(result.frame.blockedIntentCount == 1,
+		"world-input-disabled override should block caller move intent");
+	Expect(result.frame.acceptedCommandCount == 0,
+		"world-input-disabled override should accept no player commands");
+	Expect(iggy::playerTile(result.state.currentState.session.player) ==
+			startingTile,
+		"blocked override should leave player tile unchanged");
+	Expect(NearVec(
+			   result.state.currentState.session.player.position,
+			   startingPosition),
+		"blocked override should leave player position unchanged");
+	Expect(!result.frame.input.playerFrame.playerInputContext.worldInputEnabled,
+		"frame input should expose overridden world input context");
+	Expect(input.hasPlayerInputContextOverride ==
+			before.hasPlayerInputContextOverride,
+		"step should not mutate override presence flag");
+	Expect(SameContext(
+			   input.playerInputContextOverride,
+			   before.playerInputContextOverride),
+		"step should not mutate override context");
+}
+
+void TestAllEnabledPlayerInputContextOverrideAllowsCallerMoveIntent()
+{
+	const BuildResult build = BuildFixture("moving_guard_room.toml");
+	iggy::runtime::RuntimeGameplayProductLoopStepInput input;
+	input.state = build.state;
+	input.playerIntents = { iggy::playerMoveToTileIntent({ 4, 1 }) };
+	input.hasPlayerInputContextOverride = true;
+	input.playerInputContextOverride = {};
+
+	const StepResult result =
+		iggy::runtime::RuntimeGameplayProductLoop {}.step(input);
+
+	Expect(result.status ==
+			iggy::runtime::RuntimeGameplayProductLoopStepStatus::Stepped,
+		"all-enabled context override should step frame");
+	Expect(result.frame.acceptedCommandCount == 1,
+		"all-enabled context override should accept move intent");
+	Expect(result.frame.blockedIntentCount == 0,
+		"all-enabled context override should not block move intent");
+	Expect(iggy::playerTile(result.state.currentState.session.player) ==
+			iggy::TileCoord { 4, 1 },
+		"all-enabled context override should update current player state");
+	Expect(result.frame.input.playerFrame.playerInputContext.worldInputEnabled,
+		"frame input should expose all-enabled override context");
 }
 
 void TestCallerIntentsReplaceAuthoredFrameIntents()
@@ -362,6 +447,45 @@ void TestExplicitCollisionWorldOverloadCanBlockMovement()
 		"explicit collision world should block player movement through existing behavior");
 }
 
+void TestExplicitCollisionWorldOverloadPreservesContextOverride()
+{
+	const BuildResult build = BuildFixture("moving_guard_room.toml");
+	iggy::runtime::RuntimeGameplayProductLoopStepInput input;
+	input.state = build.state;
+	input.playerIntents = { iggy::playerMoveToTileIntent({ 4, 1 }) };
+	input.hasPlayerInputContextOverride = true;
+	input.playerInputContextOverride = WorldInputDisabledContext();
+	const iggy::runtime::RuntimeGameplayProductLoopStepInput before = input;
+	const iggy::Vec2 startingPosition =
+		build.state.currentState.session.player.position;
+	const iggy::physics2d::CollisionWorld2D blockingWorld =
+		World({ Object("wall:block-player-target", { { 4.0F, 1.0F }, { 5.0F, 2.0F } }) });
+
+	const StepResult result =
+		iggy::runtime::RuntimeGameplayProductLoop {}.step(input, blockingWorld);
+
+	Expect(result.status ==
+			iggy::runtime::RuntimeGameplayProductLoopStepStatus::Stepped,
+		"explicit collision world override step should still step");
+	Expect(result.frame.blockedIntentCount == 1,
+		"explicit collision world overload should preserve context gate block");
+	Expect(result.frame.acceptedCommandCount == 0,
+		"explicit collision world overload should not accept context-blocked intent");
+	Expect(!result.frame.input.playerFrame.playerInputContext.worldInputEnabled,
+		"explicit collision world frame input should expose override context");
+	Expect(NearVec(
+			   result.state.currentState.session.player.position,
+			   startingPosition),
+		"explicit collision world context block should leave player position unchanged");
+	Expect(input.hasPlayerInputContextOverride ==
+			before.hasPlayerInputContextOverride,
+		"explicit collision world step should not mutate override flag");
+	Expect(SameContext(
+			   input.playerInputContextOverride,
+			   before.playerInputContextOverride),
+		"explicit collision world step should not mutate override context");
+}
+
 } // namespace
 
 int main()
@@ -369,11 +493,14 @@ int main()
 	TestBuildFromSuccessfulDirectTomlLoad();
 	TestBuildFromFailedLoadDoesNotProduceLoadedState();
 	TestStepRunsOneFrameWithCallerMoveIntent();
+	TestPlayerInputContextOverrideBlocksCallerMoveIntent();
+	TestAllEnabledPlayerInputContextOverrideAllowsCallerMoveIntent();
 	TestCallerIntentsReplaceAuthoredFrameIntents();
 	TestMultipleStepsCarryCurrentStateForward();
 	TestExhaustedFramesReturnNoFrameWithoutMutation();
 	TestNotLoadedStateReturnsNotLoadedWithoutMutation();
 	TestExplicitCollisionWorldOverloadCanBlockMovement();
+	TestExplicitCollisionWorldOverloadPreservesContextOverride();
 
 	if (Failures != 0)
 		return 1;

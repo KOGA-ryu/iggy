@@ -7,6 +7,7 @@
 #include "runtime/RuntimeGameplayOrchestratedFrameStep.hpp"
 #include "runtime/RuntimeGameplayProductScenarioLoader.hpp"
 #include "runtime/RuntimeGameplayScenarioRunner.hpp"
+#include "scene/player/PlayerInputIntentGate2D.hpp"
 #include "servers/physics2d/CollisionWorld2D.hpp"
 
 namespace iggy::runtime {
@@ -48,6 +49,8 @@ enum class RuntimeGameplayProductLoopStepStatus {
 struct RuntimeGameplayProductLoopStepInput {
 	RuntimeGameplayProductLoopState state;
 	std::vector<PlayerInputIntent2D> playerIntents;
+	bool hasPlayerInputContextOverride = false;
+	PlayerInputContext2D playerInputContextOverride;
 };
 
 struct RuntimeGameplayProductLoopStepResult {
