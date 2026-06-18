@@ -49,6 +49,7 @@ Regression-only fixtures are kept for lower-level parser, adapter, and diagnosti
 - `bad_interact_target_guard_room.toml`: source-plan validation failure fixture for unknown authored player interaction target.
 - `bad_pickup_target_guard_room.toml`: source-plan validation failure fixture for invalid authored pickup/drop target.
 - `unknown_control_actor_guard_room.toml`: conversion failure fixture for `[[frame_controls]]` referencing an unpromoted NPC actor.
+- `region_ai_map_room.toml`: explicit C++ region-to-AI-map promotion regression fixture; not covered by CLI/default facade conversion because region AI-map policies are currently converter config, not TOML facts.
 
 Canonical fixture contract:
 

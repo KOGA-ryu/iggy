@@ -1,0 +1,65 @@
+format_id = "iggy:ascii-source-plan"
+version = 1
+source_id = "scenario:region-ai-map-room"
+source_ref = "authoring:region-ai-map-regression"
+
+[grid]
+width = 7
+height = 5
+background = "."
+rows = [
+  "#######",
+  "#A....#",
+  "#.....#",
+  "#.....#",
+  "#######",
+]
+
+[no_claims]
+runtime_truth = false
+gameplay_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[promotion]
+ready = false
+runtime_execution = false
+file_parsing = false
+profile_scenario_conversion = false
+
+[[legend]]
+glyph = "A"
+kind = "actor"
+role_id = "role:npc"
+role_tags = ["tag:guard"]
+maps_to_scenario_marker = true
+scenario_marker_kind = "actor"
+
+[[profiles]]
+id = "profile:guard"
+strength = 10
+dexterity = 10
+constitution = 10
+intelligence = 10
+wisdom = 10
+charisma = 10
+
+[[cells]]
+id = "cell:guard"
+row = 1
+column = 1
+glyph = "A"
+local_tile = { x = 1, y = 1 }
+local_position = { x = 1.5, y = 1.5 }
+cell_bounds = { min_x = 1.0, min_y = 1.0, max_x = 2.0, max_y = 2.0 }
+role_tags = ["tag:guard"]
+marker_id = "npc:guard"
+profile_id = "profile:guard"
+
+[[regions]]
+id = "region:patrol-zone"
+min_row = 1
+min_column = 3
+max_row = 2
+max_column = 5
+role_tags = ["role:patrol-region", "tag:quiet-zone"]
