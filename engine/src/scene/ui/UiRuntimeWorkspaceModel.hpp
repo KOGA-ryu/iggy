@@ -6,6 +6,7 @@
 #include "scene/ui/UiFeatureContext.hpp"
 #include "scene/ui/UiAuthoringPreviewPanelModel.hpp"
 #include "scene/ui/UiInteractionEventPanelModel.hpp"
+#include "scene/ui/UiProductPlayModePanelModel.hpp"
 #include "scene/ui/UiRuntimeFrameInspectorModel.hpp"
 #include "scene/ui/UiSettingsState.hpp"
 #include "scene/ui/UiShellModel.hpp"
@@ -69,9 +70,11 @@ struct UiRuntimeWorkspaceModel {
 	UiRuntimeFrameInspectorModel runtimeInspector;
 	UiInteractionEventPanelModel interactionEvents;
 	UiAuthoringPreviewPanelModel authoringPreview;
+	UiProductPlayModePanelModel productPlayMode;
 	bool hasRuntimeContext = false;
 	bool hasInteractionEventContext = false;
 	bool hasAuthoringPreviewContext = false;
+	bool hasProductPlayModeContext = false;
 	std::vector<UiRuntimeWorkspaceDiagnosticRow> diagnostics;
 
 	[[nodiscard]] bool hasDiagnostics() const;

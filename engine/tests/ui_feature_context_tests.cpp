@@ -1,6 +1,7 @@
 #include <cstdlib>
 
 #include "runtime/RuntimeGameplayAuthoringPreviewModel.hpp"
+#include "runtime/RuntimeGameplayProductPlayMode.hpp"
 #include "runtime/RuntimePlayerInputInteractionEffectFrameReport.hpp"
 #include "runtime/RuntimeSessionState.hpp"
 #include "scene/interaction/InteractionEvent2D.hpp"
@@ -20,6 +21,7 @@ void TestEmptyFeatureContextHasNoRuntimePointers()
 	Expect(!iggy::ui::uiFeatureContextHasFrameReport(context), "empty ui feature context should not have frame report");
 	Expect(!iggy::ui::uiFeatureContextHasInteractionEvents(context), "empty ui feature context should not have interaction events");
 	Expect(!iggy::ui::uiFeatureContextHasAuthoringPreview(context), "empty ui feature context should not have authoring preview");
+	Expect(!iggy::ui::uiFeatureContextHasProductPlayMode(context), "empty ui feature context should not have product play mode");
 }
 
 void TestFeatureContextReportsPresentRuntimePointers()
@@ -27,12 +29,18 @@ void TestFeatureContextReportsPresentRuntimePointers()
 	iggy::runtime::RuntimeSessionState session;
 	iggy::runtime::RuntimePlayerInputInteractionEffectFrameReport report;
 	iggy::runtime::RuntimeGameplayAuthoringPreviewModel preview;
+	iggy::runtime::RuntimeGameplayProductPlayModeBuildResult productBuild;
+	iggy::runtime::RuntimeGameplayProductPlayModeState productState;
+	iggy::runtime::RuntimeGameplayProductPlayModeFrameResult productFrame;
 	iggy::InteractionEventRecorder2D events;
 	iggy::ui::UiFeatureContext context;
 	context.session = &session;
 	context.latestFrameReport = &report;
 	context.interactionEvents = &events;
 	context.authoringPreview = &preview;
+	context.productPlayModeBuild = &productBuild;
+	context.productPlayModeState = &productState;
+	context.latestProductPlayModeFrame = &productFrame;
 	context.activeToolId = iggy::ResourceId { "tool:inspect" };
 	context.selectedActorId = iggy::ResourceId { "actor:player" };
 	context.selectedTargetId = iggy::ResourceId { "target:door" };
@@ -41,9 +49,29 @@ void TestFeatureContextReportsPresentRuntimePointers()
 	Expect(iggy::ui::uiFeatureContextHasFrameReport(context), "ui feature context should report frame report pointer");
 	Expect(iggy::ui::uiFeatureContextHasInteractionEvents(context), "ui feature context should report interaction event pointer");
 	Expect(iggy::ui::uiFeatureContextHasAuthoringPreview(context), "ui feature context should report authoring preview pointer");
+	Expect(iggy::ui::uiFeatureContextHasProductPlayMode(context), "ui feature context should report product play mode pointer");
 	Expect(context.activeToolId == iggy::ResourceId { "tool:inspect" }, "ui feature context should preserve active tool id");
 	Expect(context.selectedActorId == iggy::ResourceId { "actor:player" }, "ui feature context should preserve selected actor id");
 	Expect(context.selectedTargetId == iggy::ResourceId { "target:door" }, "ui feature context should preserve selected target id");
+}
+
+void TestProductPlayContextReportsAnyPresentPointer()
+{
+	iggy::runtime::RuntimeGameplayProductPlayModeBuildResult productBuild;
+	iggy::runtime::RuntimeGameplayProductPlayModeState productState;
+	iggy::runtime::RuntimeGameplayProductPlayModeFrameResult productFrame;
+
+	iggy::ui::UiFeatureContext context;
+	context.productPlayModeBuild = &productBuild;
+	Expect(iggy::ui::uiFeatureContextHasProductPlayMode(context), "ui feature context should report product play build pointer");
+
+	context.productPlayModeBuild = nullptr;
+	context.productPlayModeState = &productState;
+	Expect(iggy::ui::uiFeatureContextHasProductPlayMode(context), "ui feature context should report product play state pointer");
+
+	context.productPlayModeState = nullptr;
+	context.latestProductPlayModeFrame = &productFrame;
+	Expect(iggy::ui::uiFeatureContextHasProductPlayMode(context), "ui feature context should report latest product play frame pointer");
 }
 
 void TestShellActionsAreOptionalCallables()
@@ -66,6 +94,7 @@ int main()
 {
 	TestEmptyFeatureContextHasNoRuntimePointers();
 	TestFeatureContextReportsPresentRuntimePointers();
+	TestProductPlayContextReportsAnyPresentPointer();
 	TestShellActionsAreOptionalCallables();
 
 	if (Failures != 0)

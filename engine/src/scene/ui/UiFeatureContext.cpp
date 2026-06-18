@@ -22,4 +22,11 @@ bool uiFeatureContextHasAuthoringPreview(const UiFeatureContext &context)
 	return context.authoringPreview != nullptr;
 }
 
+bool uiFeatureContextHasProductPlayMode(const UiFeatureContext &context)
+{
+	return context.productPlayModeBuild != nullptr
+		|| context.productPlayModeState != nullptr
+		|| context.latestProductPlayModeFrame != nullptr;
+}
+
 } // namespace iggy::ui

@@ -24,6 +24,14 @@ void TestDefaultSettingsStateUsesToolInventoryAndPanelDefaults()
 	Expect(settings.activePageId == Id("settings:theme"), "default ui settings should open theme page first");
 	Expect(settings.enabledToolIds.size() == iggy::ui::defaultEnabledUiToolIds(inventory).size(), "default ui settings should derive enabled tools from inventory");
 	Expect(settings.panelContent.size() >= 3, "default ui settings should include panel assignments");
+	const bool hasProductPlayPanel = [&settings]() {
+		for (const iggy::ui::UiPanelContentAssignment &assignment : settings.panelContent) {
+			if (assignment.groupId == Id("panel:product_play"))
+				return assignment.hidden && assignment.slot == iggy::ui::UiShellSlot::Right;
+		}
+		return false;
+	}();
+	Expect(hasProductPlayPanel, "default ui settings should keep product play panel hidden by default");
 	Expect(settings.showRuntimeInspector, "default ui settings should show runtime inspector");
 	Expect(settings.showInteractionEvents, "default ui settings should show interaction events");
 	Expect(settings.showAuthoringPreview, "default ui settings should allow authoring preview");

@@ -154,6 +154,14 @@ UiFeatureRegistry defaultUiRuntimeWorkspaceFeatureRegistry()
 			{},
 			{},
 		},
+		{
+			Id("feature:product_play"),
+			"Product Play",
+			{ UiShellSlot::Right, UiShellSlot::Bottom },
+			{ { Id("panel:product_play"), "Product Play", Id("panel:product_play"), UiShellSlot::Right } },
+			{},
+			{},
+		},
 	};
 	return registry;
 }
@@ -178,6 +186,7 @@ UiWorkspaceLayout defaultUiRuntimeWorkspaceLayout(const UiToolInventory &invento
 		{ Id("panel:interaction_events"), UiShellSlot::Bottom, false },
 		{ Id("panel:inventory"), UiShellSlot::Left, false },
 		{ Id("panel:authoring_preview"), UiShellSlot::Right, true },
+		{ Id("panel:product_play"), UiShellSlot::Right, true },
 	};
 	return workspace;
 }
@@ -267,6 +276,15 @@ UiRuntimeWorkspaceModel buildUiRuntimeWorkspaceModel(const UiRuntimeWorkspaceMod
 		if (input.context.authoringPreview != nullptr) {
 			model.authoringPreview = buildUiAuthoringPreviewPanelModel(*input.context.authoringPreview);
 		}
+	}
+
+	model.hasProductPlayModeContext = uiFeatureContextHasProductPlayMode(input.context);
+	if (model.hasProductPlayModeContext) {
+		model.productPlayMode = buildUiProductPlayModePanelModel({
+			input.context.productPlayModeBuild,
+			input.context.productPlayModeState,
+			input.context.latestProductPlayModeFrame,
+		});
 	}
 
 	return model;

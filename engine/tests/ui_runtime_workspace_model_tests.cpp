@@ -1,6 +1,7 @@
 #include <cstdlib>
 
 #include "runtime/RuntimeGameplayAuthoringPreviewModel.hpp"
+#include "runtime/RuntimeGameplayProductPlayMode.hpp"
 #include "runtime/RuntimePlayerInputInteractionEffectFrameReport.hpp"
 #include "runtime/RuntimeSessionState.hpp"
 #include "scene/interaction/InteractionEvent2D.hpp"
@@ -65,6 +66,7 @@ void TestDefaultEmptyContextBuildsValidWorkspaceWithDiagnostics()
 	Expect(FindDiagnostic(model, "runtime.frame_report") != nullptr, "workspace model should diagnose missing frame report");
 	Expect(FindDiagnostic(model, "interaction.events") != nullptr, "workspace model should diagnose missing interaction event recorder");
 	Expect(FindDiagnostic(model, "authoring.preview") == nullptr, "workspace model should treat missing authoring preview as optional");
+	Expect(FindDiagnostic(model, "product.play") == nullptr, "workspace model should treat missing product play as optional");
 }
 
 void TestRuntimeContextProducesRuntimeInspectorPanelData()
@@ -123,6 +125,57 @@ void TestAuthoringPreviewProducesPreviewPanelData()
 	Expect(model.authoringPreview.present, "workspace model should project authoring preview panel data");
 	Expect(model.authoringPreview.finalRows == std::vector<std::string>({ "###", "#@#", "###" }), "workspace model should preserve authoring final rows");
 	Expect(FindDiagnostic(model, "authoring.preview") == nullptr, "workspace model should not diagnose present authoring preview as missing");
+}
+
+void TestProductPlayContextProducesHiddenPanelData()
+{
+	iggy::ui::UiRuntimeWorkspaceModelInput input = iggy::ui::defaultUiRuntimeWorkspaceModelInput();
+	iggy::runtime::RuntimeGameplayProductPlayModeBuildResult build;
+	build.status = iggy::runtime::RuntimeGameplayProductPlayModeBuildStatus::Ready;
+	build.loop.status = iggy::runtime::RuntimeGameplayProductLoopStatus::Ready;
+	iggy::runtime::RuntimeGameplayProductPlayModeState state;
+	state.loop.loaded = true;
+	state.loop.scenario.frames.resize(2);
+	state.loop.nextFrameIndex = 1;
+	state.hasInputFocus = false;
+	iggy::runtime::RuntimeGameplayProductPlayModeFrameResult frame;
+	frame.status = iggy::runtime::RuntimeGameplayProductPlayModeFrameStatus::Stepped;
+	frame.surface.status = iggy::runtime::RuntimeGameplayProductPlaySurfaceFrameStatus::Stepped;
+	frame.surface.ignoredInputEventCount = 3;
+	input.context.productPlayModeBuild = &build;
+	input.context.productPlayModeState = &state;
+	input.context.latestProductPlayModeFrame = &frame;
+
+	const iggy::ui::UiRuntimeWorkspaceModel model = iggy::ui::buildUiRuntimeWorkspaceModel(input);
+
+	Expect(model.hasProductPlayModeContext, "workspace model should report product play mode context");
+	Expect(model.productPlayMode.present, "workspace model should project product play mode panel data");
+	Expect(model.productPlayMode.state.size() == 4, "workspace model should preserve product play state rows");
+	const iggy::ui::UiRuntimeWorkspacePanelProjection *panel =
+		FindPanelProjection(model, Id("panel:product_play"));
+	Expect(panel != nullptr && panel->hidden &&
+			panel->visibility == iggy::ui::UiPanelVisibility::Collapsed,
+		"workspace model should register product play panel hidden by default");
+	Expect(FindDiagnostic(model, "product.play") == nullptr,
+		"workspace model should not diagnose present product play context");
+}
+
+void TestProductPlayFeatureAndPanelAreRegistered()
+{
+	const iggy::ui::UiFeatureRegistry registry =
+		iggy::ui::defaultUiRuntimeWorkspaceFeatureRegistry();
+	const iggy::ui::UiFeatureDescriptor *feature =
+		iggy::ui::findUiFeature(registry, Id("feature:product_play"));
+
+	Expect(feature != nullptr, "workspace registry should include product play feature");
+	Expect(feature != nullptr && feature->panels.size() == 1,
+		"product play feature should register one panel");
+	if (feature != nullptr && !feature->panels.empty()) {
+		Expect(feature->panels[0].id == Id("panel:product_play"),
+			"product play feature should register product play panel id");
+		Expect(feature->panels[0].groupId == Id("panel:product_play"),
+			"product play feature should register product play panel group");
+	}
 }
 
 void TestDisabledToolsAreFilteredFromBeltAndAvailableToolViews()
@@ -215,6 +268,8 @@ int main()
 	TestRuntimeContextProducesRuntimeInspectorPanelData();
 	TestInteractionRecorderProducesInteractionPanelData();
 	TestAuthoringPreviewProducesPreviewPanelData();
+	TestProductPlayContextProducesHiddenPanelData();
+	TestProductPlayFeatureAndPanelAreRegistered();
 	TestDisabledToolsAreFilteredFromBeltAndAvailableToolViews();
 	TestPanelAssignmentsAndPalettesComeFromSettingsAndWorkspace();
 	TestProjectionDoesNotMutateInputs();
