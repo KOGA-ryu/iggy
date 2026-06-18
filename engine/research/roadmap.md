@@ -4,6 +4,9 @@ This is the internal project roadmap checkpoint. It is broader than the
 authoring batch bucket and should be updated after project-shaping batches, not
 after every small slice.
 
+For the detailed completion backlog, use
+`engine/research/project_completion_todo.md`.
+
 ## Current Checkpoint
 
 - The TOML authored-scenario lane has moved from a CLI harness into reusable
