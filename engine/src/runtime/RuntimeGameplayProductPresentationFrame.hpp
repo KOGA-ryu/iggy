@@ -1,5 +1,6 @@
 #pragma once
 
+#include "runtime/RuntimeGameplayProductActorRenderCommands.hpp"
 #include "runtime/RuntimeGameplayProductLoop.hpp"
 #include "scene/camera/CameraState.hpp"
 #include "scene/level/LevelRenderFrame2D.hpp"
@@ -15,6 +16,7 @@ struct RuntimeGameplayProductPresentationFrameInput {
 	RuntimeGameplayProductLoopState state;
 	CameraState presentationCamera;
 	LevelRenderFrame2DConfig levelRenderConfig;
+	RuntimeGameplayProductActorRenderCommandConfig actorRenderConfig;
 };
 
 struct RuntimeGameplayProductPresentationFrameResult {
@@ -22,6 +24,7 @@ struct RuntimeGameplayProductPresentationFrameResult {
 		RuntimeGameplayProductPresentationFrameStatus::NotLoaded;
 	CameraState presentationCamera;
 	LevelRenderFrame2DResult levelFrame;
+	RuntimeGameplayProductActorRenderCommandResult actorCommands;
 };
 
 class RuntimeGameplayProductPresentationFrame {

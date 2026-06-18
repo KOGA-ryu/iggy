@@ -1,5 +1,7 @@
 #include "runtime/RuntimeGameplayProductPresentationFrame.hpp"
 
+#include "servers/render/RenderCommandList2DComposer.hpp"
+
 namespace iggy::runtime {
 
 RuntimeGameplayProductPresentationFrameResult
@@ -18,6 +20,12 @@ RuntimeGameplayProductPresentationFrame::build(
 		input.state.currentState.session.level,
 		input.presentationCamera,
 		input.levelRenderConfig);
+	result.actorCommands = RuntimeGameplayProductActorRenderCommands {}.build(
+		input.state.currentState,
+		input.actorRenderConfig);
+	render::RenderCommandList2DComposer {}.append(
+		result.levelFrame.commands,
+		result.actorCommands.commands);
 	result.status = RuntimeGameplayProductPresentationFrameStatus::Rendered;
 	return result;
 }

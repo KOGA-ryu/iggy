@@ -32,6 +32,19 @@ iggy::npc_ai::NpcAgentEntry Agent(const char *id, iggy::Vec2 position)
 	return agent;
 }
 
+iggy::NpcActorState2D Actor(
+	const char *id,
+	iggy::Vec2 position,
+	bool present = true)
+{
+	iggy::NpcActorState2D actor;
+	actor.npcId = iggy::ResourceId { id };
+	actor.aiProfileId = iggy::ResourceId { "profile:test" };
+	actor.position = position;
+	actor.present = present;
+	return actor;
+}
+
 iggy::LevelRuntimeState Level(
 	std::vector<std::string_view> rows,
 	std::vector<iggy::npc_ai::NpcAgentEntry> agents = {})
@@ -128,16 +141,39 @@ bool SameProductState(
 	const iggy::runtime::RuntimeGameplayProductLoopState &actual,
 	const iggy::runtime::RuntimeGameplayProductLoopState &expected)
 {
-	return actual.loaded == expected.loaded
-		&& actual.nextFrameIndex == expected.nextFrameIndex
-		&& actual.currentState.session.level.map.width ==
-			expected.currentState.session.level.map.width
-		&& actual.currentState.session.level.map.height ==
-			expected.currentState.session.level.map.height
-		&& actual.currentState.session.level.map.tiles.size() ==
-			expected.currentState.session.level.map.tiles.size()
-		&& actual.currentState.session.level.npcAgents.size() ==
-			expected.currentState.session.level.npcAgents.size();
+	if (actual.loaded != expected.loaded ||
+			actual.nextFrameIndex != expected.nextFrameIndex ||
+			actual.currentState.session.hasPlayer !=
+				expected.currentState.session.hasPlayer ||
+			!NearVec(
+				actual.currentState.session.player.position,
+				expected.currentState.session.player.position) ||
+			actual.currentState.session.level.map.width !=
+				expected.currentState.session.level.map.width ||
+			actual.currentState.session.level.map.height !=
+				expected.currentState.session.level.map.height ||
+			actual.currentState.session.level.map.tiles.size() !=
+				expected.currentState.session.level.map.tiles.size() ||
+			actual.currentState.session.level.npcAgents.size() !=
+				expected.currentState.session.level.npcAgents.size() ||
+			actual.currentState.npcActors.actors.size() !=
+				expected.currentState.npcActors.actors.size())
+		return false;
+
+	for (std::size_t index = 0;
+			index < actual.currentState.npcActors.actors.size();
+			++index) {
+		const iggy::NpcActorState2D &actualActor =
+			actual.currentState.npcActors.actors[index];
+		const iggy::NpcActorState2D &expectedActor =
+			expected.currentState.npcActors.actors[index];
+		if (actualActor.npcId != expectedActor.npcId ||
+				actualActor.present != expectedActor.present ||
+				!NearVec(actualActor.position, expectedActor.position))
+			return false;
+	}
+
+	return true;
 }
 
 iggy::runtime::RuntimeGameplayProductPresentationFrameResult BuildPresentation(
@@ -162,6 +198,9 @@ void TestUnloadedStateDoesNotRenderNonEmptyLevel()
 		"unloaded result should copy presentation camera");
 	Expect(result.levelFrame.commands.commands.empty(),
 		"unloaded state should leave render commands default-empty");
+	Expect(result.actorCommands.commandCount == 0 &&
+			result.actorCommands.commands.commands.empty(),
+		"unloaded state should not build actor render commands");
 	Expect(!result.levelFrame.visibleTiles.hasTiles &&
 			result.levelFrame.visibleTiles.tiles.empty(),
 		"unloaded state should not compute visible tiles");
@@ -195,6 +234,8 @@ void TestLoadedStateMatchesDirectLevelRenderFrame()
 		"loaded result should copy presentation camera");
 	Expect(SameLevelFrame(result.levelFrame, direct),
 		"loaded product presentation should match direct level render frame");
+	Expect(result.actorCommands.commandCount == 0,
+		"loaded state without product actors should surface empty actor commands");
 }
 
 void TestCameraChangesVisibleBoundsWithoutMutation()
@@ -278,6 +319,98 @@ void TestRenderConfigForwardsNpcCommandPolicy()
 	}
 }
 
+void TestLoadedStateAppendsActorCommandsAfterLevelCommands()
+{
+	iggy::runtime::RuntimeGameplayProductPresentationFrameInput input;
+	input.state = ProductState(Level({
+		"..",
+		"..",
+	}, {
+		Agent("npc:legacy", { 0.5F, 0.5F }),
+	}));
+	input.state.currentState.session.hasPlayer = true;
+	input.state.currentState.session.player.position = { 0.5F, 1.5F };
+	input.state.currentState.npcActors.actors = {
+		Actor("npc:modern", { 1.5F, 1.5F }),
+		Actor("npc:absent", { 1.5F, 0.5F }, false),
+	};
+	input.presentationCamera = { { 1.0F, 1.0F } };
+	input.levelRenderConfig = Config();
+
+	const iggy::LevelRenderFrame2DResult direct =
+		iggy::LevelRenderFrame2D {}.build(
+			input.state.currentState.session.level,
+			input.presentationCamera,
+			input.levelRenderConfig);
+	const iggy::runtime::RuntimeGameplayProductPresentationFrameResult result =
+		BuildPresentation(input);
+
+	Expect(result.status == PresentationStatus::Rendered,
+		"actor append setup should render loaded state");
+	Expect(result.actorCommands.emittedPlayer &&
+			result.actorCommands.emittedNpcActorCount == 1 &&
+			result.actorCommands.commandCount == 2,
+		"actor render result should surface player and present NPC actor counts");
+	Expect(result.levelFrame.commands.commands.size() ==
+			direct.commands.commands.size() + 2,
+		"presentation frame should append actor commands after direct level commands");
+	if (result.levelFrame.commands.commands.size() ==
+			direct.commands.commands.size() + 2) {
+		const std::size_t playerIndex = direct.commands.commands.size();
+		const std::size_t npcIndex = playerIndex + 1;
+		Expect(result.levelFrame.commands.commands[playerIndex].materialId ==
+				iggy::ResourceId { "material:player" },
+			"appended player command should use default product player material");
+		Expect(result.levelFrame.commands.commands[playerIndex].order == playerIndex,
+			"appended player command order should follow level command count");
+		Expect(SameBounds(
+				   result.levelFrame.commands.commands[playerIndex].worldBounds,
+				   { { 0.0F, 1.0F }, { 1.0F, 2.0F } }),
+			"appended player command should use player position bounds");
+		Expect(result.levelFrame.commands.commands[npcIndex].materialId ==
+				iggy::ResourceId { "material:npc_actor" },
+			"appended NPC actor command should use default product NPC actor material");
+		Expect(result.levelFrame.commands.commands[npcIndex].order == npcIndex,
+			"appended NPC actor command order should follow player command");
+		Expect(SameBounds(
+				   result.levelFrame.commands.commands[npcIndex].worldBounds,
+				   { { 1.0F, 1.0F }, { 2.0F, 2.0F } }),
+			"appended NPC actor command should use NPC actor position bounds");
+	}
+}
+
+void TestActorRenderConfigCanDisableProjection()
+{
+	iggy::runtime::RuntimeGameplayProductPresentationFrameInput input;
+	input.state = ProductState(Level({ "." }));
+	input.state.currentState.session.hasPlayer = true;
+	input.state.currentState.session.player.position = { 0.5F, 0.5F };
+	input.state.currentState.npcActors.actors = {
+		Actor("npc:modern", { 0.5F, 0.5F }),
+	};
+	input.presentationCamera = { { 0.5F, 0.5F } };
+	input.levelRenderConfig = Config(false);
+	input.levelRenderConfig.cameraView.viewportSize = { 1.0F, 1.0F };
+	input.actorRenderConfig.includePlayer = false;
+	input.actorRenderConfig.includeNpcActors = false;
+
+	const iggy::LevelRenderFrame2DResult direct =
+		iggy::LevelRenderFrame2D {}.build(
+			input.state.currentState.session.level,
+			input.presentationCamera,
+			input.levelRenderConfig);
+	const iggy::runtime::RuntimeGameplayProductPresentationFrameResult result =
+		BuildPresentation(input);
+
+	Expect(result.status == PresentationStatus::Rendered,
+		"disabled actor projection setup should render loaded state");
+	Expect(result.actorCommands.commandCount == 0 &&
+			result.actorCommands.commands.commands.empty(),
+		"disabled actor projection should surface empty actor result");
+	Expect(SameLevelFrame(result.levelFrame, direct),
+		"disabled actor projection should preserve direct level render frame parity");
+}
+
 void TestCacheForwardingDoesNotMutateCache()
 {
 	iggy::runtime::RuntimeGameplayProductPresentationFrameInput input;
@@ -334,6 +467,8 @@ void TestProductLoopStateRemainsUnchanged()
 	}));
 	input.presentationCamera = { { 1.0F, 1.0F } };
 	input.levelRenderConfig = Config();
+	const iggy::runtime::RuntimeGameplayProductActorRenderCommandConfig
+		actorConfigBefore = input.actorRenderConfig;
 	const iggy::runtime::RuntimeGameplayProductLoopState before = input.state;
 
 	const iggy::runtime::RuntimeGameplayProductPresentationFrameResult result =
@@ -349,6 +484,12 @@ void TestProductLoopStateRemainsUnchanged()
 			   input.state.currentState.session.level.npcAgents[0].state.position,
 			   before.currentState.session.level.npcAgents[0].state.position),
 		"presentation frame should not mutate legacy NPC agent position");
+	Expect(input.actorRenderConfig.includePlayer == actorConfigBefore.includePlayer &&
+			input.actorRenderConfig.includeNpcActors ==
+				actorConfigBefore.includeNpcActors &&
+			input.actorRenderConfig.playerMaterialId ==
+				actorConfigBefore.playerMaterialId,
+		"presentation frame should not mutate actor render config");
 }
 
 } // namespace
@@ -359,6 +500,8 @@ int main()
 	TestLoadedStateMatchesDirectLevelRenderFrame();
 	TestCameraChangesVisibleBoundsWithoutMutation();
 	TestRenderConfigForwardsNpcCommandPolicy();
+	TestLoadedStateAppendsActorCommandsAfterLevelCommands();
+	TestActorRenderConfigCanDisableProjection();
 	TestCacheForwardingDoesNotMutateCache();
 	TestProductLoopStateRemainsUnchanged();
 
