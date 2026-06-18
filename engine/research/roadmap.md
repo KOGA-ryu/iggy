@@ -105,6 +105,11 @@ Recently completed optimized stretches:
   `CameraState` plus `LevelRenderFrame2DConfig` from product play state and
   caller config, using existing `CameraRig` follow/clamp behavior without frame
   execution, Qt/UI, input mapping, or persistence.
+- Runtime `RuntimeGameplayProductFrameRequest` for app-neutral manual product
+  frame requests, composing presentation camera policy first and then one
+  `RuntimeGameplayProductPlayMode::frame(...)` call with the selected transient
+  camera/render config while leaving input draining, previous-camera storage,
+  latest-frame storage, and presentation ownership to the caller.
 - Runtime `RuntimeGameplayProductPlaySurfaceFrame` for one caller-requested,
   app-neutral product play frame, composing product input adaptation, player
   input binding, one product-loop step with per-step context override, and
@@ -224,8 +229,10 @@ Recently completed optimized stretches:
   stores only durable loop state and input focus; the Qt shell now maps
   supported keys to transient product input events for ready, focused `--play`
   sessions; the runtime/product camera policy now selects transient
-  caller-owned camera/config for presentation. Next product runtime work is
-  player/modern NPC render projection, product frame stepping/frame pump,
+  caller-owned camera/config for presentation; the runtime/product frame request
+  wrapper now composes camera selection plus exactly one play-mode frame call for
+  caller-requested manual frames. Next product runtime work is product shell
+  ownership for invoking frame requests, player/modern NPC render projection,
   pause/retry/reset policy, completion/failure evaluation, save/load UX, and
   further shell integration such as mouse/world/tile input mapping if approved.
 - Rendering backend/presentation layer.
@@ -359,11 +366,18 @@ Done:
   previous/fallback behavior, clamp result flags, and render config forwarding
   for view/camera config, NPC command rendering, tile chunk cache, and cache
   pointer.
+- `RuntimeGameplayProductFrameRequest` builds presentation camera policy first,
+  calls `RuntimeGameplayProductPlayMode::frame(...)` exactly once with the
+  selected transient camera/render config, maps play-mode frame status to
+  request status, carries the nested next play-mode state, projects supplied
+  input event count plus nested ignored input count, and preserves nested camera
+  and play-mode frame results without inventing flattened fields.
 
 Remaining exit work:
 - Add source-linked diagnostics and richer trace/expectation inspection.
-- Decide when the product shell supplies latest play frames, frame pumping, and
-  any input mapping beyond the supported keyboard controls.
+- Decide when the product shell invokes frame requests, stores latest play
+  frames/previous camera, drains transient input frames, and supplies any input
+  mapping beyond the supported keyboard controls.
 - Gate any build canvas, structured authoring controls, or source/TOML
   roundtrip separately.
 - Keep editing/mutation APIs out until a separate gate approves them.
@@ -432,9 +446,12 @@ durable app-neutral play-mode state storing only loop state plus focus. Product
 play UI projection is read-only and context-provided, and Qt `--play PATH`
 launch/load/build context wiring, a ready-state focus toggle, and ready/focused
 keyboard-to-product-input-event mapping exist. The runtime/product presentation
-camera policy chooses caller-owned transient camera/config for presentation.
-There is still no product frame execution, automatic app/tick loop,
-mouse/world/tile input mapping, UX policy, or save/load productization yet.
+camera policy chooses caller-owned transient camera/config for presentation, and
+`RuntimeGameplayProductFrameRequest` composes that policy with exactly one
+play-mode frame call for caller-requested manual frames. There is still no Qt
+Step button, automatic app/tick loop, input-frame draining policy,
+previous-camera/latest-frame storage in runtime state, mouse/world/tile input
+mapping, UX policy, or save/load productization yet.
 
 Objective: move from engine harness to playable/editor-backed game loop.
 
@@ -522,6 +539,15 @@ Done:
   config forwarding. It does not execute frames, call play-surface build, call
   product input adapter/binding, persist presentation state, or add Qt/UI/CLI
   behavior.
+- `RuntimeGameplayProductFrameRequest` is an app-neutral runtime/product manual
+  frame request wrapper. It computes `RuntimeGameplayProductPresentationCamera`
+  first, then calls `RuntimeGameplayProductPlayMode::frame(...)` exactly once
+  with the selected transient camera/render config. It maps nested frame status
+  to request status, returns the carried next play-mode state, exposes supplied
+  input event count and nested ignored input count, and preserves nested camera
+  and play-mode frame results. The caller still owns transient input-frame
+  clearing/draining, previous-camera storage, latest-frame storage, and
+  presentation state ownership.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -533,10 +559,10 @@ Exit criteria:
 
 First gates:
 - Mouse/world/tile input mapping only if a later product shell gate approves it.
-- Product shell ownership for when to request presentation camera policy and
-  feed latest play frames.
+- Product shell ownership for when to invoke frame requests, drain input frames,
+  and store previous camera/latest play frames.
 - Player sprite and modern `RuntimeGameplayState::npcActors` render projection.
-- Product frame stepping/frame pump ownership.
+- Automatic product frame pump ownership.
 - Pause/retry/reset policy.
 - Completion/failure evaluator.
 - Save-slot UX ownership.

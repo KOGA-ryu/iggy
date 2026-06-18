@@ -223,9 +223,10 @@ Status: Packets 1, 2, 3A, 3B-A, 4-A, 4-B, the app-neutral play-surface frame,
 play-mode state, read-only product play UI projection, Qt `--play` launch
 consumer, Qt product input focus toggle, and ready/focused Qt keyboard product
 input mapping complete; runtime/product presentation camera policy complete;
-next work is render projection gaps, product frame stepping/frame pump
-ownership, any further mouse/world/tile input mapping, and first-play UX policy
-gates.
+runtime/product manual frame request wrapper complete; next work is product
+shell ownership for invoking frame requests, render projection gaps, automatic
+frame pump ownership, any further mouse/world/tile input mapping, and first-play
+UX policy gates.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -468,22 +469,45 @@ Product presentation camera policy complete:
   adapter/binding, persist camera/presentation/render-frame data, or add
   Qt/UI/CLI behavior.
 
+Product manual frame request wrapper complete:
+- `RuntimeGameplayProductFrameRequest` is an app-neutral runtime/product wrapper
+  for one caller-requested manual product frame.
+- It composes `RuntimeGameplayProductPresentationCamera {}.build(...)` first.
+- It then calls `RuntimeGameplayProductPlayMode {}.frame(...)` exactly once with
+  the selected transient camera/render config.
+- It maps play-mode frame status directly to frame-request status.
+- It returns the carried next `RuntimeGameplayProductPlayModeState` from the
+  nested play-mode frame result.
+- It projects `inputEventCount` from the supplied transient input frame and
+  `ignoredInputEventCount` from the nested play-surface result.
+- It preserves nested camera and play-mode frame results without flattening
+  invented fields.
+- Caller ownership remains explicit for input-frame clearing/draining,
+  previous-camera storage, latest-frame storage, and presentation state
+  ownership.
+- The wrapper does not change `RuntimeGameplayProductPlayMode::frame(...)`,
+  add Qt/UI/CLI behavior, add a Qt manual Step button, add an automatic tick
+  loop/frame pump, map mouse screen-to-world/tile coordinates, enrich context
+  from game state, run post-step camera follow, persist raw input/camera/latest
+  frame state, expand player/modern NPC render projection, or add UX/save/load
+  semantics.
+
 Remaining input gate questions:
 - Is mouse/world/tile input mapping needed after keyboard mapping, and where
   should any future mapping beyond supported keys remain transient?
-- When does the product shell request presentation camera policy and feed latest
-  play frames?
+- When does the product shell invoke frame requests, drain transient input
+  frames, and store previous camera/latest frame results?
 - When are player sprite and modern `RuntimeGameplayState::npcActors` render
   projections added?
-- Who owns product frame stepping and the automatic app/tick loop around
-  caller-requested frames?
+- Who owns automatic app/tick-loop frame pumping around caller-requested frames?
 - Who owns pause/retry/reset?
 - What state must save/load for the first playable slice?
 - What does completion/failure mean in the first slice?
 
 Output:
 - one optional mouse/world/tile input mapping packet, if needed;
-- one product frame stepping/frame pump packet;
+- one product shell manual frame request integration packet;
+- one automatic frame pump packet, if needed;
 - one updated implementation order packet;
 - one verification plan.
 
@@ -547,6 +571,11 @@ Hard stops:
 - do not add Qt/UI/CLI behavior, product frame stepping, app tick loop, product
   input adapter/binding execution, or raw input changes to presentation camera
   policy;
+- do not add Qt/UI/CLI behavior, Qt manual Step button, automatic tick
+  loop/frame pump, input-frame draining policy, previous-camera/latest-frame
+  storage, context enrichment from game state, post-step camera follow, mouse
+  screen-to-world/tile mapping, raw input persistence, save/load, or UX
+  semantics to product frame request;
 - do not persist derived caches as save truth.
 
 ## Phase 5: Presentation / Render Integration
@@ -555,10 +584,11 @@ Status: projection-only product presentation wrapper, runtime-only app-neutral
 play-surface frame, app-neutral play-mode state, read-only product play UI
 projection, Qt `--play` launch/load/build consumer, and Qt product input focus
 toggle plus ready/focused keyboard product input mapping integrated; product
-presentation camera policy integrated; player sprite projection, modern NPC
-actor projection, product frame stepping/frame pump, further input mapping
-beyond supported keyboard controls, and UI execution beyond launch/focus/input
-capture remain separate gates.
+presentation camera policy and manual frame request wrapper integrated; player
+sprite projection, modern NPC actor projection, product shell invocation of
+frame requests, automatic frame pump, further input mapping beyond supported
+keyboard controls, and UI execution beyond launch/focus/input capture remain
+separate gates.
 
 Goal: turn runtime state into visible play state.
 
@@ -582,9 +612,11 @@ Packets:
 8. Runtime product presentation camera policy. Complete:
    - product play state + caller config -> transient camera/render config using
      existing follow/rig/clamp behavior outside gameplay truth.
-9. Debug overlay projection:
+9. Runtime product manual frame request wrapper. Complete:
+   - camera policy + exactly one play-mode frame -> nested request result.
+10. Debug overlay projection:
    - trace/final rows, AI map, collision, path, interactions, inventory.
-10. UI presentation adapter:
+11. UI presentation adapter:
    - convert render frame data into the chosen shell/app surface.
 
 Hard stops:
@@ -656,7 +688,9 @@ Implementation packets:
 4-G-A. Qt product play focus toggle. Complete.
 4-G-B. Qt keyboard product input mapping. Complete.
 4-H. Product presentation camera policy. Complete.
-5. Product frame stepping/frame pump.
+4-I. Product manual frame request wrapper. Complete.
+5. Product shell frame request integration / manual step surface.
+5-B. Automatic frame pump if approved.
 6. Player sprite and modern NPC actor render projection.
 7. Pause/retry/reset.
 8. Minimal save/load if approved.
@@ -790,8 +824,10 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 17. Qt product play focus toggle is integrated.
 18. Qt keyboard product input mapping is integrated.
 19. Product presentation camera policy is integrated.
-20. Dispatch product frame stepping/frame pump, render projection gaps, further
-    input mapping, or a focused-input follow-up, depending on planner scope.
+20. Product manual frame request wrapper is integrated.
+21. Dispatch product shell frame request integration, automatic frame pump,
+    render projection gaps, further input mapping, or a focused-input follow-up,
+    depending on planner scope.
 
 Do not broaden the next Product Loop packet into pause/retry/reset,
 completion/failure, save/load productization, product-loop signature changes,

@@ -192,8 +192,9 @@ Hard stops for the first milestone:
 Status: complete for the read-only product play panel model, context seam, and
 Qt `--play` launch/load/build consumer plus ready-state focus toggle and
 ready/focused keyboard product input mapping; runtime/product presentation
-camera policy is complete, while frame pumping, mouse/world/tile input mapping,
-and gameplay execution remain gated.
+camera policy and manual frame request wrapper are complete, while product shell
+request invocation, frame pumping, mouse/world/tile input mapping, and UI
+execution remain gated.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
@@ -263,10 +264,23 @@ Runtime presentation camera policy:
 - It does not execute frames, call play-surface build, call product input
   adapter/binding, persist presentation state, or add Qt/UI/CLI behavior.
 
+Runtime manual frame request wrapper:
+- `RuntimeGameplayProductFrameRequest` composes presentation camera policy first
+  and then calls `RuntimeGameplayProductPlayMode::frame(...)` exactly once with
+  selected transient camera/render config.
+- It maps nested play-mode frame status to request status, returns carried next
+  play-mode state, projects supplied input event count and nested ignored input
+  count, and preserves nested camera/play-mode frame results.
+- Caller code owns transient input-frame clearing/draining, previous-camera
+  storage, latest-frame storage, and presentation state ownership.
+- It does not add Qt/UI/CLI behavior, a manual Step button, automatic tick
+  loop/frame pump, mouse screen-to-world/tile mapping, raw input persistence,
+  save/load, UX semantics, or gameplay semantics.
+
 Hard stops for product play UI projection:
 - No product frame execution, `RuntimeGameplayProductPlayMode::frame(...)`,
   `RuntimeGameplayProductPlaySurfaceFrame::build(...)`, app tick loop, or frame
-  pump.
+  pump from scene/UI projection code.
 - No raw Qt/device event persistence; supported keyboard mapping may produce
   only transient product input events inside the Qt shell.
 - No UI execution, frame stepping, automatic app/tick loop, or frame pump.
@@ -295,6 +309,9 @@ Hard stops for product play UI projection:
 - No camera, presentation, or render-frame persistence in
   gameplay/session/product-loop/play-mode/save truth.
 - No presentation camera policy output stored in scene/UI models or settings.
+- No product frame request invocation, input-frame clearing/draining, previous
+  camera storage, latest-frame storage, or presentation state ownership inside
+  scene/UI projection code.
 - No hidden default camera/render config inside the UI model.
 - No pause/retry/reset, completion/failure, save/load productization, package
   scanning/watching/discovery, source mutation, or new gameplay semantics.
@@ -304,8 +321,9 @@ Hard stops for product play UI projection:
 1. Source-linked diagnostics.
 2. Visual trace playback.
 3. Mouse/world/tile input mapping only after an explicit product shell gate.
-4. Product shell frame pump and latest-frame presentation integration.
-5. Product frame stepping / automatic app tick loop / frame pump.
+4. Product shell frame-request invocation and latest-frame presentation
+   integration.
+5. Automatic app tick loop / frame pump.
 7. Build canvas for placement.
 8. Structured authoring controls for existing facts.
 9. Source/TOML roundtrip only after an explicit gate.
