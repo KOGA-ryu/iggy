@@ -219,8 +219,7 @@ Exit criteria:
 
 ## Phase 4: Product Loop Gate
 
-Status: Packet 1 load-only scenario loader complete; Packet 2 is
-product-owned loop state/step.
+Status: Packets 1 and 2 complete; Packet 3 is input binding.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -239,26 +238,43 @@ Packet 1 complete:
   save/load, package discovery/scanning/watching, source mutation, or new
   gameplay semantics.
 
-Packet 2 gate questions:
-- What product-owned loop state wraps the loaded scenario definition and
-  mutable gameplay state?
-- What is the smallest caller-driven product step over that state?
+Packet 2 complete:
+- `RuntimeGameplayProductLoop` builds product loop state from a successful
+  `RuntimeGameplayProductScenarioLoadResult`.
+- Product loop state copies identity/package metadata, definition, lowered
+  scenario from `load.validation.build.scenario`, initial/current state, and
+  starts at `nextFrameIndex = 0`.
+- Each step consumes exactly one lowered frame, replaces authored/scripted
+  player frame intents with caller-provided `PlayerInputIntent2D`, runs one
+  `RuntimeGameplayOrchestratedFrameStep`, carries current state forward, and
+  increments `nextFrameIndex`.
+- Guard statuses cover failed load, not-loaded state, and exhausted frames.
+- The explicit collision-world overload delegates to existing frame-step
+  behavior without building or caching worlds.
+
+Packet 3 gate questions:
 - Where does raw input map into player intents?
+- What minimal input binding API feeds `PlayerInputIntent2D` into the product
+  loop without hiding raw device input in `RuntimeSessionState`?
 - Who owns camera/presentation state?
 - Who owns pause/retry/reset?
 - What state must save/load for the first playable slice?
 - What does completion/failure mean in the first slice?
 
 Output:
-- one product-loop state/step packet;
+- one input binding packet;
 - one updated implementation order packet;
 - one verification plan.
 
 Hard stops:
 - do not make authoring facade own product runtime;
+- do not call TOML/package facades or file IO from the product loop;
+- do not use full scenario/profile runners from the product loop;
 - do not hide raw input inside runtime session state;
 - do not put presentation/camera state into gameplay truth;
-- do not productize save/load in Packet 2;
+- do not productize save/load in Packet 3;
+- do not add pause/retry/reset or completion/failure/win/lose semantics in the
+  input binding packet;
 - do not persist derived caches as save truth.
 
 ## Phase 5: Presentation / Render Integration
@@ -331,7 +347,7 @@ Default content:
 
 Implementation packets:
 1. Product scenario loader. Complete.
-2. Product-owned loop state/step.
+2. Product-owned loop state/step. Complete.
 3. Input binding.
 4. Gameplay tick loop.
 5. Render/presentation surface.
@@ -454,8 +470,9 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 5. Send researcher/reviewer a legacy NPC compatibility map packet.
 6. Use the integrated read-only UI preview consumer as product-loop input.
 7. Use the integrated load-only product scenario loader as Product Loop Packet 1.
-8. Dispatch Product Loop Packet 2 as product-owned loop state/step.
+8. Product Loop Packet 2 product-owned loop state/step is integrated.
+9. Dispatch Product Loop Packet 3 as input binding.
 
-Do not broaden Product Loop Packet 2 into raw device input, presentation/camera,
-save/load productization, or new gameplay semantics unless the user explicitly
-reprioritizes.
+Do not broaden Product Loop Packet 3 into presentation/camera, pause/retry/reset,
+completion/failure, save/load productization, or new gameplay semantics unless
+the user explicitly reprioritizes.

@@ -84,6 +84,10 @@ Recently completed optimized stretches:
 - Runtime `RuntimeGameplayProductScenarioLoader` for load-only product scenario
   setup over explicit TOML files, package directories, and `package.toml` paths;
   it reads, adapts, and validates without running frames.
+- Runtime `RuntimeGameplayProductLoop` for product-owned one-frame stepping over
+  successful loader output; it consumes caller-provided player input intents and
+  carries current gameplay state without owning raw input, presentation, or
+  persistence.
 - Runtime authoring diagnostic projection with stable printable error-code
   strings.
 - Runtime summary projection for CLI/facade summary and final rows.
@@ -167,9 +171,10 @@ Recently completed optimized stretches:
 
 - Runtime cleanup after authoring contracts stabilize.
 - Legacy NPC migration plan with explicit deletion prerequisites.
-- Product scenario loading exists for explicit TOML/package paths; next product
-  runtime work is product-owned loop state/step, device input mapping, gameplay
-  tick, render presentation, save/load UX, and shell integration.
+- Product scenario loading and product-owned one-frame stepping exist for
+  explicit TOML/package paths; next product runtime work is input binding,
+  presentation/camera adapter, pause/retry/reset policy, completion/failure
+  evaluation, save/load UX, and shell integration.
 - Rendering backend/presentation layer.
 - Audio server boundary.
 - Save/load productization and authored package roundtrip.
@@ -337,8 +342,9 @@ Hard stops:
 
 ### 6. Product Loop
 
-Status: Packet 1 load-only scenario loader complete; product runtime loop is
-not implemented.
+Status: Packets 1 and 2 complete; product runtime loop has a load boundary and
+caller-driven one-frame step, but no input binding, presentation, UX policy, or
+save/load productization yet.
 
 Objective: move from engine harness to playable/editor-backed game loop.
 
@@ -350,6 +356,12 @@ Done:
   presentation/camera, save/load productization, or UI behavior.
 - Package manifest/path parsing is shared through
   `RuntimeGameplayTomlScenarioPackageReader`.
+- `RuntimeGameplayProductLoop` builds product loop state from a successful load,
+  starts at `nextFrameIndex = 0`, steps exactly one lowered scenario frame per
+  call, replaces authored/scripted player frame intents with caller-provided
+  `PlayerInputIntent2D`, runs `RuntimeGameplayOrchestratedFrameStep`, carries
+  current state forward, and reports failed-load/not-loaded/exhausted-frame
+  guard statuses.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -360,9 +372,10 @@ Exit criteria:
 - Save/load user-facing state.
 
 First gates:
-- Product-owned loop state/step over the loaded scenario.
 - Input binding ownership.
 - Render/presentation ownership.
+- Pause/retry/reset policy.
+- Completion/failure evaluator.
 - Save-slot UX ownership.
 
 ### 7. Systems Expansion
