@@ -67,6 +67,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/interaction/InteractionReach2D.cpp
   src/scene/interaction/InteractionTarget2D.cpp
   src/scene/interaction/InteractionTargetQuery2D.cpp
+  src/scene/interaction/InteractionTargetSpatialQuery2D.cpp
   src/scene/interaction/InteractionTargetToggle2D.cpp
   src/scene/inventory/InventoryAddItem2D.cpp
   src/scene/inventory/InventoryEvent2D.cpp
