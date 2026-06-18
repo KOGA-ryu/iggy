@@ -12,6 +12,7 @@
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QIcon>
+#include <QKeyEvent>
 #include <QLineEdit>
 #include <QMenu>
 #include <QMouseEvent>
@@ -607,6 +608,8 @@ void IggyQtShellWindow::setProductPlayInputFocus(bool enabled)
 		return;
 	productPlayState_ =
 		runtime::RuntimeGameplayProductPlayMode {}.withInputFocus(productPlayState_, enabled);
+	if (!enabled)
+		clearProductInputFrame();
 	context_.productPlayModeState = &productPlayState_;
 	context_.latestProductPlayModeFrame = nullptr;
 	refreshAfterModelChange();
@@ -615,6 +618,72 @@ void IggyQtShellWindow::setProductPlayInputFocus(bool enabled)
 void IggyQtShellWindow::toggleProductPlayInputFocus()
 {
 	setProductPlayInputFocus(!productPlayInputFocusEnabled());
+}
+
+void IggyQtShellWindow::clearProductInputFrame()
+{
+	productInputFrame_ = {};
+}
+
+void IggyQtShellWindow::appendProductInputEvent(
+	runtime::RuntimeGameplayProductInputEvent2D event)
+{
+	productInputFrame_.events.push_back(std::move(event));
+}
+
+std::optional<runtime::RuntimeGameplayProductInputControl2D>
+IggyQtShellWindow::mapQtKeyToProductControl(int key) const
+{
+	using runtime::RuntimeGameplayProductInputControl2D;
+	switch (key) {
+	case Qt::Key_Up:
+	case Qt::Key_W:
+		return RuntimeGameplayProductInputControl2D::MoveNorth;
+	case Qt::Key_Down:
+	case Qt::Key_S:
+		return RuntimeGameplayProductInputControl2D::MoveSouth;
+	case Qt::Key_Left:
+	case Qt::Key_A:
+		return RuntimeGameplayProductInputControl2D::MoveWest;
+	case Qt::Key_Right:
+	case Qt::Key_D:
+		return RuntimeGameplayProductInputControl2D::MoveEast;
+	case Qt::Key_E:
+	case Qt::Key_Return:
+	case Qt::Key_Enter:
+		return RuntimeGameplayProductInputControl2D::Interact;
+	case Qt::Key_I:
+		return RuntimeGameplayProductInputControl2D::Inspect;
+	case Qt::Key_Space:
+		return RuntimeGameplayProductInputControl2D::Wait;
+	case Qt::Key_Escape:
+		return RuntimeGameplayProductInputControl2D::Cancel;
+	default:
+		break;
+	}
+	return std::nullopt;
+}
+
+bool IggyQtShellWindow::recordProductKeyEvent(
+	QKeyEvent &event,
+	runtime::RuntimeGameplayProductInputEventKind kind)
+{
+	if (event.isAutoRepeat())
+		return false;
+	if (!productPlayInputFocusEnabled())
+		return false;
+
+	const std::optional<runtime::RuntimeGameplayProductInputControl2D> control =
+		mapQtKeyToProductControl(event.key());
+	if (!control.has_value())
+		return false;
+
+	runtime::RuntimeGameplayProductInputEvent2D productEvent;
+	productEvent.control = *control;
+	productEvent.kind = kind;
+	clearProductInputFrame();
+	appendProductInputEvent(std::move(productEvent));
+	return true;
 }
 
 bool IggyQtShellWindow::eventFilter(QObject *watched, QEvent *event)
@@ -659,6 +728,30 @@ bool IggyQtShellWindow::eventFilter(QObject *watched, QEvent *event)
 		break;
 	}
 	return QMainWindow::eventFilter(watched, event);
+}
+
+void IggyQtShellWindow::keyPressEvent(QKeyEvent *event)
+{
+	if (event != nullptr
+		&& recordProductKeyEvent(
+			*event,
+			runtime::RuntimeGameplayProductInputEventKind::Pressed)) {
+		event->accept();
+		return;
+	}
+	QMainWindow::keyPressEvent(event);
+}
+
+void IggyQtShellWindow::keyReleaseEvent(QKeyEvent *event)
+{
+	if (event != nullptr
+		&& recordProductKeyEvent(
+			*event,
+			runtime::RuntimeGameplayProductInputEventKind::Released)) {
+		event->accept();
+		return;
+	}
+	QMainWindow::keyReleaseEvent(event);
 }
 
 QWidget *IggyQtShellWindow::buildChrome()

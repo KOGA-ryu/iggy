@@ -8,9 +8,11 @@
 
 #include <filesystem>
 #include <functional>
+#include <optional>
 #include <string>
 
 #include "runtime/RuntimeGameplayAuthoringPreviewModel.hpp"
+#include "runtime/RuntimeGameplayProductInputAdapter.hpp"
 #include "runtime/RuntimeGameplayProductLoop.hpp"
 #include "runtime/RuntimeGameplayProductPlayMode.hpp"
 #include "runtime/RuntimeGameplayProductScenarioLoader.hpp"
@@ -21,6 +23,7 @@
 #include "scene/ui/UiToolInventory.hpp"
 
 class QEvent;
+class QKeyEvent;
 class QPushButton;
 
 namespace iggy::qt_shell {
@@ -47,6 +50,8 @@ public:
 
 protected:
 	bool eventFilter(QObject *watched, QEvent *event) override;
+	void keyPressEvent(QKeyEvent *event) override;
+	void keyReleaseEvent(QKeyEvent *event) override;
 
 private:
 	void buildShell();
@@ -63,6 +68,13 @@ private:
 	[[nodiscard]] bool productPlayInputFocusAvailable() const;
 	void setProductPlayInputFocus(bool enabled);
 	void toggleProductPlayInputFocus();
+	void clearProductInputFrame();
+	void appendProductInputEvent(runtime::RuntimeGameplayProductInputEvent2D event);
+	[[nodiscard]] std::optional<runtime::RuntimeGameplayProductInputControl2D>
+	mapQtKeyToProductControl(int key) const;
+	bool recordProductKeyEvent(
+		QKeyEvent &event,
+		runtime::RuntimeGameplayProductInputEventKind kind);
 
 	[[nodiscard]] QWidget *buildChrome();
 	[[nodiscard]] QWidget *buildBody();
@@ -113,6 +125,7 @@ private:
 	runtime::RuntimeGameplayProductLoopBuildResult productLoopBuild_;
 	runtime::RuntimeGameplayProductPlayModeBuildResult productPlayBuild_;
 	runtime::RuntimeGameplayProductPlayModeState productPlayState_;
+	runtime::RuntimeGameplayProductInputFrame2D productInputFrame_;
 	bool hasProductPlayMode_ = false;
 	QWidget *root_ = nullptr;
 	QVBoxLayout *rootLayout_ = nullptr;
