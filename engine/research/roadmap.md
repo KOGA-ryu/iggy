@@ -96,6 +96,10 @@ Recently completed optimized stretches:
 
 - Authoring batch bucket with numbered packets and hard stops.
 - Finisher worktree/bucket exists for docs/coordination/cleanup work.
+- Local Mac department orchestration is documented in
+  `engine/research/local_mac_department_orchestration.md`: hub-led planning,
+  local worktrees, builder/finisher/reviewer/researcher departments, apprentice
+  scouts, merge gates, verification lanes, and context ticks.
 - Roadmap, API index, compatibility debt notes, smell dashboard, and merge
   protocol documents exist.
 
@@ -127,6 +131,9 @@ Recently completed optimized stretches:
   package CLI behavior changes.
 - Pull the next authoring packet from `engine/research/authoring_batches/`
   unless a planner-scoped stretch overrides raw queue order.
+- Use the local department workflow for substantial work: scope with
+  reviewer/researcher, assign builder/finisher to isolated worktrees, and merge
+  through the integration hub after focused plus integration verification.
 
 ### Remaining Authoring Work
 
