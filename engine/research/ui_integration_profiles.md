@@ -196,9 +196,11 @@ camera policy, manual frame request wrapper, product input context projection,
 product input accumulator, and Qt manual Step with accumulator output plus
 transient current-player-tile context projection are complete; Qt product frame
 pump toggle is complete as replaceable app-shell timing; runtime/product actor
-debug/material quad projection is complete. Textured sprites/animation/material
-policy, mouse/world/tile input mapping, target discovery, product UX/save
-semantics, and broader UI execution remain gated.
+debug/material quad projection is complete; runtime/product pointer projection
+and explicit primary point/tile accumulator event preservation are complete.
+Product viewport/canvas ownership plus a thin Qt mouse consumer, textured
+sprites/animation/material policy, target discovery, product UX/save semantics,
+and broader UI execution remain gated.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
@@ -294,13 +296,27 @@ Runtime input accumulator:
   state only: held movement controls and pending one-shot product events.
 - Held movement controls are `MoveNorth`, `MoveSouth`, `MoveWest`, and
   `MoveEast`; one-shot controls are `Interact`, `Inspect`, `Wait`, and
-  `Cancel`.
+  `Cancel`, plus explicit `PrimaryPoint` and `PrimaryTile`.
 - Held movement presses are deduplicated, releases remove held movement, and
-  one-shot releases are no-ops.
+  one-shot and primary releases are no-ops.
 - Frame output emits held movement `Pressed` events each requested frame before
   one-shot events, carries supplied binding context, preserves held controls,
-  drains one-shots, and never synthesizes `PrimaryPoint`/`PrimaryTile`.
+  preserves explicit primary point/tile payloads, drains one-shots, and never
+  synthesizes `PrimaryPoint`/`PrimaryTile`.
 - `clear(...)` returns empty transient state.
+
+Runtime pointer projection:
+- `RuntimeGameplayProductPointerProjection` maps viewport-local points through
+  existing `CameraView` normalization to world point plus `tileForPoint(...)`
+  tile.
+- It uses `CameraState`, `CameraView`, `CameraViewConfig`, and `TileCoord` only;
+  no Qt types.
+- It preserves `CameraView` behavior for negative viewport dimensions,
+  non-positive zoom, and zero-axis degenerate viewports.
+- It returns status/flags/world point/tile for a future consumer to choose
+  `PrimaryTile`, `PrimaryPoint`, or both under a separate policy gate.
+- The Qt mouse consumer, product viewport/canvas coordinate owner, and
+  point-vs-tile emission policy remain future work.
 
 Qt manual Step consumer:
 - The View menu exposes `Product Step` for ready `--play` sessions only.
@@ -374,8 +390,9 @@ Hard stops for product play UI projection:
   frame pump from the focus toggle.
 - No `RuntimeGameplayProductInputAdapter::map(...)` or
   `PlayerInputBinding2D::bind(...)` calls from Qt input mapping.
-- No mouse position to world/tile mapping, `PrimaryPoint`, or `PrimaryTile`
-  mapping.
+- No Qt mouse consumer, `QMouseEvent`, `QPoint`, QWidget coordinate use, or Qt
+  types in runtime/scene/product APIs.
+- No `PrimaryPoint` or `PrimaryTile` creation from Qt input mapping.
 - No settings persistence or keyboard shortcut for the focus toggle.
 - No product play mode mutation from scene/UI projection code; Qt launch/focus
   code may update only the durable current focus bit through
@@ -398,20 +415,19 @@ Hard stops for product play UI projection:
 - No accumulator state persistence in runtime/session/gameplay/product-loop/
   play-mode state, snapshots, saves, settings, or scene/UI models.
 - No raw Qt key/event storage, cadence/rate policy, accumulator-owned frame
-  pump, mouse screen-to-world/tile mapping, `PrimaryPoint`/`PrimaryTile`, target
-  search, or reach lookup in accumulator state.
+  pump, pointer synthesis, target search, or reach lookup in accumulator state.
 - No runtime/product semantic ownership by Qt frame pump.
 - No pump enabled state, interval, keybindings, input accumulator, pump state,
   camera, latest frame, or render-frame persistence in runtime/session/
   gameplay/product-loop/play-mode snapshots, saves, settings, or scene/UI model
   truth.
 - No textured sprite/animation sampling, new art/assets/material registry,
-  package discovery, mouse screen-to-world/tile mapping,
-  `PrimaryPoint`/`PrimaryTile`, target discovery, target search, reach lookup,
+  package discovery, Qt mouse consumer, product viewport/canvas ownership,
+  target discovery, target search, reach lookup,
   pause/retry/reset/completion/failure/save-load productization, package
-  scanning/watching/discovery, source mutation, raw Qt event persistence, render
-  command/config persistence, or runtime/product semantic changes from Qt frame
-  pump.
+  scanning/watching/discovery, source mutation, raw Qt event persistence,
+  projected pointer persistence, render command/config persistence, or
+  runtime/product semantic changes from Qt frame pump.
 - No settings persistence or keyboard shortcut for Qt manual Step.
 - No hidden default camera/render config inside the UI model.
 - No pause/retry/reset, completion/failure, save/load productization, package
@@ -421,7 +437,8 @@ Hard stops for product play UI projection:
 
 1. Source-linked diagnostics.
 2. Visual trace playback.
-3. Mouse/world/tile input mapping only after an explicit product shell gate.
+3. Product viewport/canvas owner plus thin Qt mouse consumer only after an
+   explicit product shell gate.
 4. Latest-frame presentation integration beyond the read-only panel, if needed.
 5. Automatic app tick loop / frame pump.
 7. Build canvas for placement.

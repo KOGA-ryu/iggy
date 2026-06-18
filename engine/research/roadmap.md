@@ -98,8 +98,14 @@ Recently completed optimized stretches:
 - Runtime `RuntimeGameplayProductInputAccumulator` for shell-neutral transient
   product input state, storing held movement controls and pending one-shot
   product events by value, emitting held movement each requested frame and
-  draining one-shots without Qt/raw event types, cadence policy, persistence, or
-  `PrimaryPoint`/`PrimaryTile` synthesis.
+  draining one-shots, and preserving explicit `PrimaryPoint`/`PrimaryTile`
+  pressed events as payload-carrying one-shots without Qt/raw event types,
+  cadence policy, persistence, or pointer synthesis.
+- Runtime `RuntimeGameplayProductPointerProjection` for Qt-free viewport-local
+  point projection through existing `CameraView` normalization into world point
+  plus `tileForPoint(...)` tile, returning status/flags/world/tile for future
+  policy without owning Qt mouse input, viewport/canvas coordinates, target
+  lookup, interaction execution, or persistence.
 - Runtime `RuntimeGameplayProductInputContext` for app-neutral product binding
   context projection, returning default gates plus current player tile only when
   product play state is loaded and has a player, without target discovery,
@@ -262,10 +268,12 @@ Recently completed optimized stretches:
   accumulator frame output with projected current-player-tile binding context;
   the Qt shell now has replaceable app-owned `Product Frame Pump` timing for
   ready `--play` sessions; runtime/product presentation now appends
-  debug/material player and modern NPC actor quads after level rendering. Next
-  product runtime work is textured sprite/animation/material/asset policy,
-  pause/retry/reset policy, completion/failure evaluation, save/load UX, and
-  further shell integration such as mouse/world/tile input mapping if approved.
+  debug/material player and modern NPC actor quads after level rendering;
+  runtime/product pointer projection plus explicit primary point/tile
+  accumulator event preservation exists. Next product runtime work is product
+  viewport/canvas ownership with a thin Qt mouse consumer if approved, textured
+  sprite/animation/material/asset policy, pause/retry/reset policy,
+  completion/failure evaluation, and save/load UX.
 - Rendering backend/presentation layer.
 - Audio server boundary.
 - Save/load productization and authored package roundtrip.
@@ -520,9 +528,11 @@ invokes one frame request for ready `--play` sessions using accumulator frame
 output enriched with projected current-player-tile binding context before
 updating replaceable app-shell transient state. Qt `Product Frame Pump` adds
 app-shell-owned 250 ms / 4 Hz timing around that same one-frame helper for ready
-`--play` sessions. There is still no mouse/world/tile input mapping, target
-lookup, textured sprite/animation/material/asset policy, UX policy, or
-save/load productization yet.
+`--play` sessions. There is still no Qt mouse consumer, product viewport/canvas
+coordinate owner, target lookup, textured sprite/animation/material/asset
+policy, UX policy, or save/load productization yet. Product Pointer Tile Input
+Mapping Option A is complete as runtime/product projection and accumulator event
+preservation only.
 
 Objective: move from engine harness to playable/editor-backed game loop.
 
@@ -616,7 +626,17 @@ Done:
   `Interact`/`Inspect`/`Wait`/`Cancel`. Held movement emits ordinary `Pressed`
   events each frame in held press order before pending one-shot press order,
   preserves held controls, drains one-shots in returned state, carries supplied
-  binding context, and never synthesizes `PrimaryPoint` or `PrimaryTile`.
+  binding context, and preserves explicit pressed `PrimaryPoint` and
+  `PrimaryTile` events with their payloads as pending one-shots. Primary
+  releases are no-ops; the accumulator still does not synthesize point/tile
+  events.
+- `RuntimeGameplayProductPointerProjection` maps viewport-local points through
+  existing `CameraView` normalization to a world point plus `tileForPoint(...)`
+  tile using only `CameraState`, `CameraView`, `CameraViewConfig`, and
+  `TileCoord`. It preserves `CameraView` behavior for negative viewport
+  dimensions, non-positive zoom, and zero-axis degenerate viewports, and returns
+  projection status/flags/world point/tile for a later consumer to choose
+  `PrimaryPoint`, `PrimaryTile`, or both under a separate policy gate.
 - `RuntimeGameplayProductPresentationCamera` is an app-neutral runtime/product
   camera policy. It chooses transient caller-owned `CameraState` plus
   `LevelRenderFrame2DConfig` from product play state and caller-owned config,
@@ -672,6 +692,12 @@ Done:
   render commands. Qt product play/manual Step/pump receive the commands only
   through the existing frame request/latest-frame path and do not own render
   semantics.
+- Product pointer projection is runtime/product and Qt-free:
+  `RuntimeGameplayProductPointerProjection` provides the camera/view math needed
+  for a future focused ready-play Qt mouse consumer to emit transient
+  `PrimaryTile` and/or `PrimaryPoint` events into the accumulator. That Qt
+  consumer, product viewport/canvas ownership, and point-vs-tile policy remain
+  separate gates.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -682,7 +708,9 @@ Exit criteria:
 - Save/load user-facing state.
 
 First gates:
-- Mouse/world/tile input mapping only if a later product shell gate approves it.
+- Product viewport/canvas owner and thin Qt mouse consumer if a later product
+  shell gate approves it.
+- Target discovery/search/reach and hover/selection workflows.
 - Textured sprite/animation/material/asset policy over the debug/material actor
   quads.
 - Pause/retry/reset policy.
