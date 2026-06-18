@@ -187,14 +187,53 @@ Hard stops for the first milestone:
 - No UI-owned parsing.
 - No new scenario semantics.
 
+## Product Play UI Projection
+
+Status: complete for the read-only product play panel model and context seam;
+product shell launch, frame pumping, raw input, and camera policy remain gated.
+
+The current product play UI projection:
+- Extends `UiFeatureContext` with direct product play build/state/latest-frame
+  pointers and a presence helper.
+- Registers `feature:product_play` and `panel:product_play` in the runtime
+  workspace model.
+- Projects supplied product play pointers through
+  `UiProductPlayModePanelModel`.
+- Populates the product play panel only when product play context exists.
+- Emits no missing-context diagnostic when product play context is absent.
+- Keeps the product play panel hidden by default through existing panel
+  assignments/settings behavior.
+- Displays rows/counts from existing runtime fields: build/loop status,
+  identity paths, loaded/focus/frame index/scenario frame count, latest
+  frame/surface status, ignored input count, adapter counts, binding counts,
+  step status/frame/counts, and presentation/render counts.
+
+Hard stops for product play UI projection:
+- No Qt shell behavior, product launch mode, `--play`, app shell behavior, CLI
+  behavior, or raw Qt/device event mapping.
+- No UI execution, frame stepping, automatic app/tick loop, or frame pump.
+- No product loader/file/package/TOML APIs called from scene/UI model code.
+- No calls to `RuntimeGameplayProductPlayMode::frame`,
+  `RuntimeGameplayProductPlaySurfaceFrame::build`, loader APIs, or product
+  step/run functions from scene/UI.
+- No mutation of product play mode state or runtime/gameplay state.
+- No raw input, camera, presentation, or render-frame persistence in
+  gameplay/session/product-loop/play-mode/save truth.
+- No hidden default camera/render config inside the UI model.
+- No pause/retry/reset, completion/failure, save/load productization, package
+  scanning/watching/discovery, source mutation, or new gameplay semantics.
+
 ## Later Milestones
 
 1. Source-linked diagnostics.
 2. Visual trace playback.
-3. Product play shell.
-4. Build canvas for placement.
-5. Structured authoring controls for existing facts.
-6. Source/TOML roundtrip only after an explicit gate.
+3. Product shell/UI launch and focused input ownership.
+4. Optional Qt/raw-device adapter after shell/focus ownership is scoped.
+5. Camera lifecycle/presentation policy.
+6. Automatic app/tick loop/frame pump.
+7. Build canvas for placement.
+8. Structured authoring controls for existing facts.
+9. Source/TOML roundtrip only after an explicit gate.
 
 ## Open Decisions
 

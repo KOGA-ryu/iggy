@@ -109,6 +109,10 @@ Recently completed optimized stretches:
   state that stores only product loop state plus an input-focus bit and
   delegates one requested frame to the play-surface frame without owning Qt/UI,
   raw input, camera/presentation persistence, or app tick-loop behavior.
+- Scene/UI `UiProductPlayModePanelModel` and product play feature context seam
+  for read-only projection of product play build/state/latest-frame pointers
+  into `feature:product_play` / `panel:product_play` rows without UI execution,
+  stepping, loading, raw input, camera defaults, or state mutation.
 - Runtime authoring diagnostic projection with stable printable error-code
   strings.
 - Runtime summary projection for CLI/facade summary and final rows.
@@ -308,10 +312,15 @@ Done:
 - `UiAuthoringPreviewPanelModel` projects
   `RuntimeGameplayAuthoringPreviewModel` into UI rows/sections without UI-owned
   parsing or mutation.
+- `UiProductPlayModePanelModel` projects provided product play build/state/latest
+  frame pointers into read-only rows for `feature:product_play` /
+  `panel:product_play`; the panel is hidden by default and exists only when
+  product play context is supplied.
 
 Remaining exit work:
 - Add source-linked diagnostics and richer trace/expectation inspection.
-- Decide when the preview panel should connect to a product play shell.
+- Decide when a product shell/UI launch surface supplies product play context,
+  focus, raw-device input, and frame pumping.
 - Gate any build canvas, structured authoring controls, or source/TOML
   roundtrip separately.
 - Keep editing/mutation APIs out until a separate gate approves them.
@@ -376,7 +385,8 @@ step, optional per-step input context override, scene/player normalized input
 binding, a runtime/product input adapter for transient product input events, a
 projection-only presentation wrapper over loaded loop state plus caller-owned
 camera/config, an app-neutral one-frame play-surface composition facade, and
-durable app-neutral play-mode state storing only loop state plus focus, but no
+durable app-neutral play-mode state storing only loop state plus focus. Product
+play UI projection is read-only and context-provided, but there is still no
 Qt/raw-device shell adapter, product launch/UI mode, automatic app/tick loop, UX
 policy, or save/load
 productization yet.
@@ -430,6 +440,11 @@ Done:
   toggles preserve loop state, and `frame(...)` delegates exactly once to
   `RuntimeGameplayProductPlaySurfaceFrame` with transient input/camera/config,
   carrying stepped loop state forward only on `Stepped`.
+- `UiProductPlayModePanelModel` is a read-only scene/UI projection over provided
+  product play build/state/latest-frame pointers, showing build/loop status,
+  identity paths, loaded/focus/frame facts, latest frame status, ignored input,
+  adapter/binding/step/presentation counts, and render counts without calling
+  loaders, frame stepping, product run APIs, or mutating product/runtime state.
 
 Exit criteria:
 - Load a package or explicit scenario.
