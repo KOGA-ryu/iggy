@@ -57,6 +57,10 @@ QString shellStyleSheet(const ui::UiThemeTokens &theme)
 		QFrame#mainSlot {
 			background: %8;
 		}
+		QFrame#productViewport {
+			background: %8;
+			border: none;
+		}
 		QFrame#workspaceOverlayHost {
 			background: %8;
 		}

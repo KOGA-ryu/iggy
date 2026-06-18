@@ -25,6 +25,7 @@
 #include "scene/ui/UiToolInventory.hpp"
 
 class QEvent;
+class QFrame;
 class QKeyEvent;
 class QPushButton;
 class QTimer;
@@ -148,6 +149,7 @@ private:
 	QWidget *settingsWindow_ = nullptr;
 	QWidget *settingsWindowContent_ = nullptr;
 	QWidget *chrome_ = nullptr;
+	QFrame *productViewport_ = nullptr;
 	bool draggingChrome_ = false;
 	QPoint chromeDragOffset_;
 	QTimer *productFramePumpTimer_ = nullptr;

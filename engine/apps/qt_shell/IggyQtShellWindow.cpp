@@ -1098,6 +1098,20 @@ QWidget *IggyQtShellWindow::buildMainSlot()
 {
 	auto *main = makeFrame("mainSlot");
 	main->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+	productViewport_ = nullptr;
+
+	if (hasProductPlayMode_) {
+		auto *layout = new QVBoxLayout(main);
+		layout->setContentsMargins(0, 0, 0, 0);
+		layout->setSpacing(0);
+
+		productViewport_ = makeFrame("productViewport");
+		productViewport_->setSizePolicy(
+			QSizePolicy::Expanding,
+			QSizePolicy::Expanding);
+		layout->addWidget(productViewport_, 1);
+	}
+
 	return main;
 }
 
