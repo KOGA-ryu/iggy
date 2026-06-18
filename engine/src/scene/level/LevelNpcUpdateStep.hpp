@@ -4,7 +4,7 @@
 
 #include "core/math/Vec2.hpp"
 #include "modules/npc_ai/NpcAgentBatch.hpp"
-#include "modules/npc_ai/NpcAgentController.hpp"
+#include "modules/npc_ai/NpcAgentTickConfig.hpp"
 #include "scene/level/LevelTileMap.hpp"
 
 namespace iggy {

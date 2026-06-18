@@ -1,5 +1,6 @@
 #include "modules/npc_ai/NpcAgentBatchUpdater.hpp"
 
+#include "modules/npc_ai/NpcAgentController.hpp"
 #include "modules/npc_ai/NpcTickReporter.hpp"
 
 namespace iggy::npc_ai {

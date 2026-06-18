@@ -74,3 +74,4 @@ Queue:
 17. `17_finisher_merge_hygiene_update` - complete. Update finisher merge/rebase protocol after cleanup stretch.
 18. `18_runtime_report_count_projection_cleanup` - complete. Extract repeated inventory-event count projection.
 19. `19_runtime_scenario_ledger_npc_projection_cleanup` - complete. Extract shared scenario/ledger NPC aggregate projection.
+20. `20_legacy_npc_tick_config_include_trim` - complete. Split NPC tick config into a narrow header and trim config-only controller includes.

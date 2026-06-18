@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "core/math/Vec2.hpp"
-#include "modules/npc_ai/NpcAgentController.hpp"
+#include "modules/npc_ai/NpcAgentTickConfig.hpp"
 #include "runtime/GameplayCommand2D.hpp"
 #include "runtime/RuntimePlayerCommandExecutionStep.hpp"
 #include "runtime/RuntimeSessionCommandTick.hpp"

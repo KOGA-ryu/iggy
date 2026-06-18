@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/math/Vec2.hpp"
-#include "modules/npc_ai/NpcAgentController.hpp"
+#include "modules/npc_ai/NpcAgentTickConfig.hpp"
 #include "runtime/RuntimePlayerCommandExecutionStep.hpp"
 #include "runtime/RuntimePlayerNpcAiQueueStep.hpp"
 #include "runtime/RuntimeQueuedCommandRunner.hpp"

@@ -4,7 +4,7 @@
 
 #include "core/math/Vec2.hpp"
 #include "core/resource/ResourceId.hpp"
-#include "modules/npc_ai/NpcAgentController.hpp"
+#include "modules/npc_ai/NpcAgentTickConfig.hpp"
 #include "runtime/RuntimeCommandQueue.hpp"
 #include "runtime/RuntimeGameplayFrameReport.hpp"
 #include "runtime/RuntimeGameplayFrameStep.hpp"

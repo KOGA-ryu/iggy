@@ -4,7 +4,6 @@
 
 #include "core/math/Vec2.hpp"
 #include "modules/npc_ai/AwarenessState.hpp"
-#include "modules/npc_ai/NpcAgentController.hpp"
 #include "modules/npc_ai/NpcIntent.hpp"
 #include "modules/npc_ai/NpcMovementPlan.hpp"
 #include "modules/npc_ai/NpcNavigationController.hpp"
