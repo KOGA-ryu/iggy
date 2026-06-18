@@ -142,6 +142,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/scene/player/PlayerAgentState.cpp
   src/scene/player/PlayerCommandFramePlanner2D.cpp
   src/scene/player/PlayerCommandPlanner2D.cpp
+  src/scene/player/PlayerInputBinding2D.cpp
   src/scene/player/PlayerInputGatedCommandFrameMapper2D.cpp
   src/scene/player/PlayerInputCommandFrameMapper2D.cpp
   src/scene/player/PlayerInputCommandMapper2D.cpp
