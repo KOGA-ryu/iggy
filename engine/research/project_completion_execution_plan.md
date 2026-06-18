@@ -226,9 +226,10 @@ input mapping complete; runtime/product presentation camera policy complete;
 runtime/product manual frame request wrapper complete; product input binding
 context projection complete; product input accumulator complete; Qt product
 manual Step consumer now uses accumulator output plus projected context; Qt
-product frame pump toggle complete; next work is render projection gaps,
-player/modern NPC render projection, any further mouse/world/tile input
-mapping, and first-play UX policy gates.
+product frame pump toggle complete; product gameplay actor debug/material quad
+projection complete; next work is textured sprite/animation/material/asset
+policy, any further mouse/world/tile input mapping, and first-play UX policy
+gates.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -311,13 +312,36 @@ Packet 4-B complete:
   `LevelRenderFrame2DConfig`.
 - Loaded product loop state projects `state.currentState.session.level` through
   existing `LevelRenderFrame2D::build(...)` and returns a
-  `LevelRenderFrame2DResult` with `Rendered` status.
+  `LevelRenderFrame2DResult` with `Rendered` status, then appends product actor
+  debug/material quad commands after level render commands.
 - Not-loaded product loop state returns `NotLoaded`, echoes/copies the camera,
-  and leaves the level frame default.
+  leaves the level frame default, and emits no actor commands.
 - The wrapper does not step gameplay, change product-loop state/index/context
-  behavior, own camera lifecycle, persist presentation data, render player
-  sprites, render modern `RuntimeGameplayState::npcActors`, perform IO, touch
-  UI/CLI, or add save/load behavior.
+  behavior, own camera lifecycle, persist presentation data, render textured
+  sprites or animation, perform IO, touch UI/CLI, or add save/load behavior.
+
+Product gameplay actor render projection complete:
+- Added runtime-only `RuntimeGameplayProductActorRenderCommands`.
+- It projects current gameplay actors into untextured debug/material quad render
+  commands without mutating or owning player/NPC state.
+- It emits the player when `state.session.hasPlayer` is true, then present
+  modern NPC actors from `state.npcActors.actors` in registry order.
+- Defaults are `material:player`, `material:npc_actor`, centered 1x1 quads, and
+  layer 20, with configurable include flags, material IDs, size, anchor, and
+  layer.
+- Bounds follow the legacy NPC render convention: negative size is normalized,
+  position subtracts size times anchor, and zero-size degenerate bounds are
+  allowed.
+- Result exposes the command list plus emitted player/NPC/command counts.
+- `RuntimeGameplayProductPresentationFrame` carries actor render config/result
+  and appends actor commands after `LevelRenderFrame2D` output through
+  `RenderCommandList2DComposer::append(...)`.
+- Qt product play/manual Step/pump can receive latest-frame presentation
+  commands that include product actor quads through the existing frame request
+  path, but Qt does not own render semantics.
+- This is not textured sprite/animation sampling, asset-driven rendering, a
+  material registry/package discovery feature, or a render/backend ownership
+  change.
 
 Play-surface frame complete:
 - `RuntimeGameplayProductPlaySurfaceFrame` is a runtime-only app-neutral facade
@@ -489,8 +513,8 @@ Product manual frame request wrapper complete:
   add Qt/UI/CLI behavior, add a Qt manual Step button, add an automatic tick
   loop/frame pump, map mouse screen-to-world/tile coordinates, enrich context
   from game state, run post-step camera follow, persist raw input/camera/latest
-  frame state, expand player/modern NPC render projection, or add UX/save/load
-  semantics.
+  frame state, add textured sprite/animation/material policy, or add UX/save/
+  load semantics.
 
 Product input binding context projection complete:
 - `RuntimeGameplayProductInputContext` is an app-neutral runtime/product
@@ -561,7 +585,7 @@ Qt product manual Step consumer complete:
   defaults, NPC commands enabled, and tile chunk cache disabled. They are not
   persisted in settings or saves.
 - The action does not add automatic app/tick loops, frame pumps, mouse
-  screen-to-world/tile mapping, player/modern NPC render expansion,
+  screen-to-world/tile mapping, textured sprite/animation/material policy,
   pause/retry/reset/completion/failure/save-load semantics, package
   scanning/watching/discovery, source mutation, held-key cadence behavior,
   settings persistence, or keyboard shortcuts.
@@ -596,15 +620,15 @@ Remaining input gate questions:
   should any future mapping beyond supported keys remain transient?
 - Should selected/hovered target context be projected later, and what explicit
   target ownership/search gate would be required?
-- When are player sprite and modern `RuntimeGameplayState::npcActors` render
-  projections added?
+- What textured sprite/animation/material/asset policy should replace or extend
+  the current debug/material actor quads?
 - Who owns pause/retry/reset?
 - What state must save/load for the first playable slice?
 - What does completion/failure mean in the first slice?
 
 Output:
 - one optional mouse/world/tile input mapping packet, if needed;
-- one player sprite / modern NPC render projection packet, if approved;
+- one textured sprite / animation / material policy packet, if approved;
 - one updated implementation order packet;
 - one verification plan.
 
@@ -663,8 +687,8 @@ Hard stops:
 - do not persist camera, presentation, or render-frame data as
   gameplay/session/product-loop/play-mode/save truth;
 - do not call product loader/file/package/TOML APIs from play mode;
-- do not add player sprite or modern NPC actor render projection without a
-  separate gate;
+- do not add textured sprite/animation sampling, new art/assets, material
+  registry, or package discovery without a separate gate;
 - do not add Qt/UI/CLI behavior, product frame stepping, app tick loop, product
   input adapter/binding execution, or raw input changes to presentation camera
   policy;
@@ -674,7 +698,7 @@ Hard stops:
   screen-to-world/tile mapping, raw input persistence, save/load, or UX
   semantics to product frame request;
 - do not add automatic app/tick loops, frame pumps, mouse screen-to-world/tile
-  mapping, player/modern NPC render expansion, pause/retry/reset/completion/
+  mapping, textured sprite/animation/material policy, pause/retry/reset/completion/
   failure/save-load semantics, package scanning/watching/discovery, source
   mutation, held-key cadence behavior, settings persistence, or keyboard
   shortcuts to Qt manual Step;
@@ -691,7 +715,7 @@ Hard stops:
 - do not add raw Qt key/event storage, cadence/rate policy, automatic frame
   pump behavior, mouse screen-to-world/tile mapping, `PrimaryPoint`,
   `PrimaryTile`, selected/hovered target discovery, interaction reach lookup,
-  target search, player/modern NPC render expansion, pause/retry/reset/
+  target search, textured sprite/animation/material policy, pause/retry/reset/
   completion/failure/save-load productization, package scanning/watching/
   discovery, or source mutation to product input accumulator or its Qt
   integration;
@@ -700,13 +724,21 @@ Hard stops:
   pump state, camera, latest frame, or render-frame data in runtime/session/
   gameplay/product-loop/play-mode snapshots, saves, settings, or scene/UI model
   truth;
-- do not add player sprite or modern NPC actor render projection,
-  mouse screen-to-world/tile mapping, `PrimaryPoint`/`PrimaryTile`,
+- do not add textured sprite/animation/material policy, mouse
+  screen-to-world/tile mapping, `PrimaryPoint`/`PrimaryTile`,
   selected/hovered target discovery, interaction target search/reach lookup,
   pause/retry/reset/completion/failure/save-load productization, package
   scanning/watching/discovery, source mutation, raw Qt event persistence, or
   product loop/frame request/play mode/input accumulator semantic changes to
   Qt product frame pump;
+- do not persist render commands, actor render config, camera/presentation
+  state, pump state, raw input, accumulator state, latest frame, or Qt state in
+  runtime/session/gameplay/product-loop/play-mode snapshots, saves, settings, or
+  scene/UI model truth;
+- do not make product actor render projection own player/NPC state, mutate
+  gameplay state, sample textured sprites/animation, add art/assets/material
+  registry/package discovery, add Qt types, or change product loop/frame
+  request/play mode stepping semantics;
 - do not persist derived caches as save truth.
 
 ## Phase 5: Presentation / Render Integration
@@ -718,10 +750,11 @@ toggle plus ready/focused keyboard product input mapping integrated; product
 presentation camera policy and manual frame request wrapper integrated; Qt
 manual Step consumer integrated; product input binding context projection and
 product input accumulator integrated; Qt product frame pump toggle integrated;
-player sprite projection, modern NPC actor projection, further input mapping
-beyond supported keyboard controls, target context projection, product UX/save
-semantics, and UI execution beyond launch/focus/input capture/manual step/pump
-remain separate gates.
+product gameplay actor debug/material quad projection integrated; textured
+sprites/animation/material/asset policy, further input mapping beyond supported
+keyboard controls, target context projection, product UX/save semantics, and UI
+execution beyond launch/focus/input capture/manual step/pump remain separate
+gates.
 
 Goal: turn runtime state into visible play state.
 
@@ -758,9 +791,12 @@ Packets:
 13. Qt product frame pump toggle. Complete:
    - ready `--play` View toggle -> 250 ms Qt timer using the same one-frame
      helper as manual Step.
-14. Debug overlay projection:
+14. Product gameplay actor render projection. Complete:
+   - current player + present modern NPC actors -> untextured debug/material
+     quad commands appended after level render output.
+15. Debug overlay projection:
    - trace/final rows, AI map, collision, path, interactions, inventory.
-15. UI presentation adapter:
+16. UI presentation adapter:
    - convert render frame data into the chosen shell/app surface.
 
 Hard stops:
@@ -837,7 +873,8 @@ Implementation packets:
 4-K. Product input accumulator. Complete.
 5. Qt product manual Step consumer with accumulator/context enrichment. Complete.
 5-B. Qt product frame pump toggle. Complete.
-6. Player sprite and modern NPC actor render projection.
+6. Product gameplay actor debug/material quad render projection. Complete.
+6-B. Textured sprite/animation/material/asset policy if approved.
 7. Pause/retry/reset.
 8. Minimal save/load if approved.
 9. Acceptance fixture/demo.
@@ -976,12 +1013,13 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 23. Qt product manual Step consumer uses accumulator output plus transient
     projected binding context.
 24. Qt product frame pump toggle is integrated.
-25. Dispatch player sprite / modern NPC render projection, render projection
+25. Product gameplay actor debug/material quad render projection is integrated.
+26. Dispatch textured sprite / animation / material policy, render projection
     gaps, further input mapping, or a focused-input follow-up, depending on
     planner scope.
 
 Do not broaden the next Product Loop packet into pause/retry/reset,
 completion/failure, save/load productization, product-loop signature changes,
 command/gate execution, presentation state persistence, Qt/UI/CLI behavior,
-raw OS event types, raw input persistence, player sprite/modern NPC actor render
-projection, or new gameplay semantics unless the user explicitly reprioritizes.
+raw OS event types, raw input persistence, textured sprite/animation/material
+policy, or new gameplay semantics unless the user explicitly reprioritizes.

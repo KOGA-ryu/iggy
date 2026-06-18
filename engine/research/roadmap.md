@@ -109,6 +109,11 @@ Recently completed optimized stretches:
   and `LevelRenderFrame2DConfig`; it returns a `LevelRenderFrame2DResult`
   without stepping gameplay or owning camera lifecycle, UI, render backend, or
   persistence.
+- Runtime `RuntimeGameplayProductActorRenderCommands` for projection-only
+  debug/material quad commands over current gameplay actors: player first when
+  present, then present modern NPC actors in registry order, using centered 1x1
+  default `material:player` / `material:npc_actor` quads on layer 20 without
+  textured sprite/animation sampling, assets, state mutation, or persistence.
 - Runtime `RuntimeGameplayProductPresentationCamera` for app-neutral
   presentation camera policy that chooses transient caller-owned
   `CameraState` plus `LevelRenderFrame2DConfig` from product play state and
@@ -256,10 +261,11 @@ Recently completed optimized stretches:
   transient held/one-shot product input in an accumulator and enriches only
   accumulator frame output with projected current-player-tile binding context;
   the Qt shell now has replaceable app-owned `Product Frame Pump` timing for
-  ready `--play` sessions. Next product runtime work is player/modern NPC render
-  projection, pause/retry/reset policy, completion/failure evaluation,
-  save/load UX, and further shell integration such as mouse/world/tile input
-  mapping if approved.
+  ready `--play` sessions; runtime/product presentation now appends
+  debug/material player and modern NPC actor quads after level rendering. Next
+  product runtime work is textured sprite/animation/material/asset policy,
+  pause/retry/reset policy, completion/failure evaluation, save/load UX, and
+  further shell integration such as mouse/world/tile input mapping if approved.
 - Rendering backend/presentation layer.
 - Audio server boundary.
 - Save/load productization and authored package roundtrip.
@@ -515,8 +521,8 @@ output enriched with projected current-player-tile binding context before
 updating replaceable app-shell transient state. Qt `Product Frame Pump` adds
 app-shell-owned 250 ms / 4 Hz timing around that same one-frame helper for ready
 `--play` sessions. There is still no mouse/world/tile input mapping, target
-lookup, player/modern NPC render projection, UX policy, or save/load
-productization yet.
+lookup, textured sprite/animation/material/asset policy, UX policy, or
+save/load productization yet.
 
 Objective: move from engine harness to playable/editor-backed game loop.
 
@@ -550,8 +556,18 @@ Done:
 - `RuntimeGameplayProductPresentationFrame` projects a loaded product loop
   state's `currentState.session.level` through existing
   `LevelRenderFrame2D::build(...)` using caller-owned `CameraState` and
-  `LevelRenderFrame2DConfig`; unloaded state returns `NotLoaded`, echoes the
-  camera, and leaves the level frame default.
+  `LevelRenderFrame2DConfig`, then appends product actor debug/material quads
+  after level render commands using `RenderCommandList2DComposer::append(...)`;
+  unloaded state returns `NotLoaded`, echoes the camera, leaves the level frame
+  default, and emits no actor commands.
+- `RuntimeGameplayProductActorRenderCommands` projects current gameplay actors
+  into untextured debug/material quad render commands without mutating player or
+  NPC state. It emits the player first when `state.session.hasPlayer` is true,
+  then present `state.npcActors.actors` entries in registry order, using
+  configurable include flags, material IDs, size, anchor, and layer defaults
+  (`material:player`, `material:npc_actor`, centered 1x1 quads, layer 20).
+  Bounds follow the legacy NPC convention: negative sizes normalize, positions
+  subtract size times anchor, and zero-size degenerate bounds are allowed.
 - `RuntimeGameplayProductPlaySurfaceFrame` composes
   `RuntimeGameplayProductInputAdapter`, `PlayerInputBinding2D`,
   `RuntimeGameplayProductLoop`, and `RuntimeGameplayProductPresentationFrame`
@@ -649,6 +665,13 @@ Done:
   unavailable/not ready, does not stop on `NoFrameAvailable`, and persists no
   pump enabled state, interval, keybinding, input, camera, latest-frame, or
   render-frame data.
+- Product actor render projection is runtime-only and projection-only:
+  `RuntimeGameplayProductActorRenderCommands` emits debug/material quads for
+  the current player and present modern NPC actors, and
+  `RuntimeGameplayProductPresentationFrame` appends those commands after level
+  render commands. Qt product play/manual Step/pump receive the commands only
+  through the existing frame request/latest-frame path and do not own render
+  semantics.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -660,7 +683,8 @@ Exit criteria:
 
 First gates:
 - Mouse/world/tile input mapping only if a later product shell gate approves it.
-- Player sprite and modern `RuntimeGameplayState::npcActors` render projection.
+- Textured sprite/animation/material/asset policy over the debug/material actor
+  quads.
 - Pause/retry/reset policy.
 - Completion/failure evaluator.
 - Save-slot UX ownership.

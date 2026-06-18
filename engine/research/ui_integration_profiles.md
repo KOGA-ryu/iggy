@@ -195,9 +195,10 @@ ready/focused keyboard product input mapping; runtime/product presentation
 camera policy, manual frame request wrapper, product input context projection,
 product input accumulator, and Qt manual Step with accumulator output plus
 transient current-player-tile context projection are complete; Qt product frame
-pump toggle is complete as replaceable app-shell timing. Mouse/world/tile input
-mapping, target discovery, product UX/save semantics, and broader UI execution
-remain gated.
+pump toggle is complete as replaceable app-shell timing; runtime/product actor
+debug/material quad projection is complete. Textured sprites/animation/material
+policy, mouse/world/tile input mapping, target discovery, product UX/save
+semantics, and broader UI execution remain gated.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
@@ -341,6 +342,16 @@ Qt frame pump toggle:
   not auto-stop on `NoFrameAvailable`.
 - Pump enabled state, interval, and keybindings are not persisted.
 
+Product actor render projection:
+- Runtime presentation can now include untextured debug/material quad commands
+  for the current player and present modern NPC actors through
+  `RuntimeGameplayProductActorRenderCommands`.
+- The commands are appended after level render output by
+  `RuntimeGameplayProductPresentationFrame` and can reach Qt product play
+  latest-frame presentation data through the existing frame request path.
+- Qt does not own actor render semantics, actor state, materials, assets, or
+  render persistence.
+
 Hard stops for product play UI projection:
 - No product frame execution, `RuntimeGameplayProductPlayMode::frame(...)`,
   `RuntimeGameplayProductPlaySurfaceFrame::build(...)`, app tick loop, or frame
@@ -372,8 +383,8 @@ Hard stops for product play UI projection:
   mutation remains prohibited.
 - No raw Qt event or product input event persistence in
   gameplay/session/product-loop/play-mode/save/settings/scene-UI truth.
-- No camera, presentation, or render-frame persistence in
-  gameplay/session/product-loop/play-mode/save truth.
+- No camera, presentation, render commands, actor render config, or render-frame
+  persistence in gameplay/session/product-loop/play-mode/save truth.
 - No presentation camera policy output stored in scene/UI models or settings.
 - No product frame request invocation, input-frame clearing/draining, previous
   camera storage, latest-frame storage, or presentation state ownership inside
@@ -394,11 +405,13 @@ Hard stops for product play UI projection:
   camera, latest frame, or render-frame persistence in runtime/session/
   gameplay/product-loop/play-mode snapshots, saves, settings, or scene/UI model
   truth.
-- No player sprite or modern NPC actor render projection, mouse
-  screen-to-world/tile mapping, `PrimaryPoint`/`PrimaryTile`, target discovery,
-  target search, reach lookup, pause/retry/reset/completion/failure/save-load
-  productization, package scanning/watching/discovery, source mutation, raw Qt
-  event persistence, or runtime/product semantic changes from Qt frame pump.
+- No textured sprite/animation sampling, new art/assets/material registry,
+  package discovery, mouse screen-to-world/tile mapping,
+  `PrimaryPoint`/`PrimaryTile`, target discovery, target search, reach lookup,
+  pause/retry/reset/completion/failure/save-load productization, package
+  scanning/watching/discovery, source mutation, raw Qt event persistence, render
+  command/config persistence, or runtime/product semantic changes from Qt frame
+  pump.
 - No settings persistence or keyboard shortcut for Qt manual Step.
 - No hidden default camera/render config inside the UI model.
 - No pause/retry/reset, completion/failure, save/load productization, package
