@@ -187,6 +187,7 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `UiToolIntent`, `buildUiToolIntentActionPlan`, `executeUiActionPlan`: UI intent to host action plan without directly mutating runtime state.
 - `UiSettingsState`, `applyUiSettingsToWorkspace`: UI settings projected into workspace layout.
 - `UiRuntimeFrameInspectorModel`, `UiInteractionEventPanelModel`: read-only UI models from runtime reports and interaction events.
+- `UiAuthoringPreviewPanelModel`: read-only UI projection over `RuntimeGameplayAuthoringPreviewModel`, producing authoring preview sections/rows for explicit TOML or package paths without UI-owned parsing, watching, or source mutation.
 
 ## `scene/player`
 
@@ -309,4 +310,5 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 ## `apps/qt_shell`
 
 - `IggyQtShellWindow`: Qt host shell window that projects scene/ui models into desktop chrome, activity rail, workspace, panels, tool belt, palette, settings, and status bar widgets.
+- `iggy_qt_shell --preview PATH --preview-mode run|trace|check|lint`: read-only Qt shell authoring preview consumer for explicit TOML/package paths, rendered as `panel:authoring_preview`.
 - `IggyQtShellUi` helpers: Qt-only style/theme projection and widget factories such as `makeChromeButton`, `makeRailButton`, and `makeSectionLabel`.

@@ -164,9 +164,15 @@ Primary content:
 
 ## First UI Milestone
 
+Status: complete for the existing Qt shell read-only preview consumer.
+
 The first safe UI milestone is a read-only preview consumer:
-- Accept one explicit TOML file path or package path.
+- Accept one explicit TOML file path or package path through
+  `iggy_qt_shell --preview PATH`.
+- Select preview mode with `--preview-mode run|trace|check|lint`.
 - Call the runtime read-only preview model.
+- Project preview state through `UiAuthoringPreviewPanelModel`.
+- Render the `panel:authoring_preview` panel in the existing Qt shell.
 - Show package metadata when present.
 - Show diagnostics.
 - Show summary/final rows.
@@ -183,18 +189,15 @@ Hard stops for the first milestone:
 
 ## Later Milestones
 
-1. Read-only preview panel.
-2. Source-linked diagnostics.
-3. Visual trace playback.
+1. Source-linked diagnostics.
+2. Visual trace playback.
+3. Product play shell.
 4. Build canvas for placement.
 5. Structured authoring controls for existing facts.
 6. Source/TOML roundtrip only after an explicit gate.
-7. Product play shell.
 
 ## Open Decisions
 
-- Should the first UI consumer live in the existing Qt shell or a separate
-  authoring tool?
 - Should Play and Build be separate app modes or tabs in one shell?
 - Should TOML source view be always visible, optional, or debug-only?
 - What is the first editable fact: terrain, actors, interactions, or frame

@@ -66,7 +66,8 @@ Goal: make the next implementation packet evidence-backed.
 Packets:
 1. Runtime cleanup scout.
 2. Legacy NPC compatibility map.
-3. UI preview consumer gate.
+3. UI preview consumer gate. Complete for Milestone 1; later UI milestones
+   remain gated.
 4. Authoring maintenance status sweep.
 
 Verification:
@@ -76,7 +77,7 @@ Verification:
 Exit criteria:
 - One finisher-ready runtime cleanup packet exists.
 - One legacy NPC migration map exists.
-- One UI preview milestone decision exists.
+- UI preview Milestone 1 is integrated, and later UI milestones remain gated.
 - Authoring bucket status does not conflict with roadmap.
 
 ## Phase 1: Runtime Cleanup And Debt Containment
@@ -164,19 +165,21 @@ Focused verification:
 
 ## Phase 3: UI Preview Consumer
 
-Status: decision gate before code.
+Status: Milestone 1 implemented and integrated in the existing Qt shell;
+remaining UI/editor milestones stay gated.
 
 Goal: consume existing read-only preview model in a UI surface without creating
 editor mutation.
 
-Decision needed:
-- first consumer is existing Qt shell, separate preview app, or CLI-only delay.
+Milestone 1 completed:
+- first consumer is the existing Qt shell;
+- `iggy_qt_shell --preview PATH` accepts one explicit TOML file or package path;
+- `--preview-mode run|trace|check|lint` selects the read-only preview mode;
+- `UiAuthoringPreviewPanelModel` projects
+  `RuntimeGameplayAuthoringPreviewModel` into UI sections/rows;
+- `panel:authoring_preview` renders the read-only preview panel.
 
-Default assumption:
-- existing Qt shell gets a read-only preview panel if it already has a suitable
-  shell surface; otherwise build a separate minimal preview app target.
-
-Milestone 1 display:
+Milestone 1 display surface:
 - selected path;
 - package metadata when present;
 - read/adapt/convert/run/check status;
@@ -187,6 +190,13 @@ Milestone 1 display:
 - expectation result;
 - actor/player final state where available;
 - interaction target and inventory expectation state where available.
+
+Remaining later UI milestones:
+- source-linked diagnostics;
+- richer visual trace playback and expectation inspection;
+- product/play shell boundary;
+- build canvas and structured authoring controls only after separate gates;
+- source/TOML roundtrip only after explicit mutation/roundtrip approval.
 
 Hard stops:
 - no editing;
@@ -199,7 +209,9 @@ Hard stops:
 Focused verification:
 - preview model tests;
 - UI model/projection tests;
-- screenshot/browser/UI checks only if an actual frontend target is added.
+- shell smoke for explicit preview options;
+- screenshot/browser/UI checks only when an interactive visual QA packet opens
+  that scope.
 
 Exit criteria:
 - a user can open one explicit TOML/package path and inspect status/diagnostics
@@ -207,7 +219,8 @@ Exit criteria:
 
 ## Phase 4: Product Loop Gate
 
-Status: after UI preview gate or in parallel as docs/scout.
+Status: after read-only UI preview Milestone 1; ready for docs/scout before
+product-loop code.
 
 Goal: define the first playable loop boundary.
 
@@ -420,8 +433,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 3. Let finisher build the behavior-preserving cleanup.
 4. Merge and run integration verification.
 5. Send researcher/reviewer a legacy NPC compatibility map packet.
-6. Send UI/Product a preview consumer gate packet.
-7. Choose product loop gate after those reports.
+6. Use the integrated read-only UI preview consumer as product-loop input.
+7. Choose product loop gate after those reports and integration results.
 
-Do not start product-loop implementation until the first cleanup and UI preview
-gate are complete, unless the user explicitly reprioritizes.
+Do not start product-loop implementation until the first cleanup and read-only
+UI preview Milestone 1 are complete, unless the user explicitly reprioritizes.

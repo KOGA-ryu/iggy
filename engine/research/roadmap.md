@@ -17,10 +17,13 @@ For phase order and dispatch gates, use
   TOML scenario facade.
 - The read-only authoring preview model exists for explicit TOML files and
   explicit package paths.
+- The first read-only UI preview consumer is integrated in the existing Qt
+  shell via explicit `--preview PATH` and `--preview-mode run|trace|check|lint`
+  options.
 - Authoring V1 is release-candidate defined for engine/test/dev-tool use, with
   fixture-scale budgets and cleanup/prune gates recorded.
 - Full verification has stayed green through the recent stretches; the latest
-  Authoring V1 closure packet reported 341/341 tests.
+  UI preview consumer integration reported 343/343 tests.
 - Short-term implementation packets live in
   `engine/research/authoring_batches/`.
 
@@ -117,9 +120,11 @@ Recently completed optimized stretches:
 - Derived cache migration still has compatibility mirrors.
 - Save/load works for runtime state, but authored package save/load roundtrip is
   not proven.
-- UI exists as shell/models, but not as an authoring editor or playable product
-  shell.
-- Read-only preview model exists, but no editor UI consumes it yet.
+- UI exists as shell/models plus a first read-only authoring preview panel in
+  the Qt shell, but not as an authoring editor or playable product shell.
+- Read-only preview model is consumed by the existing Qt shell for explicit
+  TOML/package paths; source-linked diagnostics, visual trace playback, play
+  shell integration, and editor mutation are still gated.
 - Render is command/resource/cache level, not product-grade presentation.
 - Audio is effectively unbuilt.
 - Physics is enough for current AABB movement/query constraints, not a broad
@@ -162,15 +167,18 @@ Recently completed optimized stretches:
 - Rendering backend/presentation layer.
 - Audio server boundary.
 - Save/load productization and authored package roundtrip.
-- Editor UI consuming the read-only preview model.
+- Source-linked diagnostics and richer visual trace playback for the read-only
+  preview panel.
+- Product/play shell integration after the product-loop gate.
+- Editor mutation only after explicit authoring roundtrip/source mutation gates.
 - Gameplay semantics beyond the current set: inspect/talk/event gates, region
   triggers, equipment, combat, progression, win/fail conditions.
 - Performance and scale policy for authored content and runtime hot paths.
 
 ## Avoid / Defer
 
-- Do not build UI/Edi mutation before the read-only preview model is consumed
-  safely.
+- Do not turn the read-only preview consumer into UI/Edi mutation without an
+  explicit source roundtrip/mutation gate.
 - Do not add a generic scripting/event language to TOML.
 - Do not add JSON or a TOML dependency unless a packet explicitly opens that
   policy.
@@ -243,7 +251,8 @@ Hard stops:
 
 ### 3. Editor Readiness
 
-Status: backend model complete; UI handoff not started.
+Status: first read-only Qt shell preview consumer integrated; later UI/editor
+work remains gated.
 
 Objective: let tools preview authored TOML/package scenarios without mutation.
 
@@ -254,17 +263,25 @@ Done:
 - `23_fixtures_from_cli_examples`
 - UI workspace profile notes are recorded in
   `engine/research/ui_integration_profiles.md`.
+- Existing Qt shell accepts explicit `--preview PATH` plus
+  `--preview-mode run|trace|check|lint` and renders a read-only
+  `panel:authoring_preview`.
+- `UiAuthoringPreviewPanelModel` projects
+  `RuntimeGameplayAuthoringPreviewModel` into UI rows/sections without UI-owned
+  parsing or mutation.
 
 Remaining exit work:
-- Decide first consumer: CLI-only preview inspection, Qt shell read-only panel,
-  or separate editor prototype.
-- Add UI-facing examples only if a consumer exists.
+- Add source-linked diagnostics and richer trace/expectation inspection.
+- Decide when the preview panel should connect to a product play shell.
+- Gate any build canvas, structured authoring controls, or source/TOML
+  roundtrip separately.
 - Keep editing/mutation APIs out until a separate gate approves them.
 
 Likely next packets:
-- A read-only preview consumer gate.
-- A UI ownership gate for Qt shell vs separate editor.
-- A preview-model API index update.
+- A source-linked diagnostics projection/display packet.
+- A visual trace playback packet.
+- A product/play shell boundary packet.
+- A future editor mutation/roundtrip gate only after read-only UI remains stable.
 
 ### 4. Package And Content Pipeline
 
