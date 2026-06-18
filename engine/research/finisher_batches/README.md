@@ -91,3 +91,4 @@ Queue:
 34. `34_product_presentation_camera_status_sync` - complete. Sync planning/API docs after runtime/product presentation camera policy integration.
 35. `35_product_frame_request_status_sync` - complete. Sync planning/API docs after runtime/product manual frame request wrapper integration.
 36. `36_qt_product_manual_step_status_sync` - complete. Sync planning/API docs after Qt product manual Step consumer integration.
+37. `37_product_input_context_projection_status_sync` - complete. Sync planning/API docs after product input binding context projection integration.

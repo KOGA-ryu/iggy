@@ -95,6 +95,10 @@ Recently completed optimized stretches:
   events to normalized `PlayerInputBindingAction2D` actions plus carried binding
   context; it does not call the product loop, step gameplay, or own Qt/device,
   camera, render, save/load, gate, or command behavior.
+- Runtime `RuntimeGameplayProductInputContext` for app-neutral product binding
+  context projection, returning default gates plus current player tile only when
+  product play state is loaded and has a player, without target discovery,
+  mouse mapping, primary input synthesis, persistence, or pump/cadence policy.
 - Runtime `RuntimeGameplayProductPresentationFrame` for projection-only product
   presentation over loaded product loop state plus caller-owned `CameraState`
   and `LevelRenderFrame2DConfig`; it returns a `LevelRenderFrame2DResult`
@@ -238,10 +242,12 @@ Recently completed optimized stretches:
   caller-owned camera/config for presentation; the runtime/product frame request
   wrapper now composes camera selection plus exactly one play-mode frame call for
   caller-requested manual frames; the Qt shell now exposes a ready-state manual
-  `Product Step` action that executes one frame request. Next product runtime
-  work is automatic frame pump ownership, player/modern NPC render projection,
-  pause/retry/reset policy, completion/failure evaluation, save/load UX, and
-  further shell integration such as mouse/world/tile input mapping if approved.
+  `Product Step` action that executes one frame request and enriches only a
+  local request-frame copy with projected current-player-tile binding context.
+  Next product runtime work is automatic frame pump ownership, player/modern NPC
+  render projection, pause/retry/reset policy, completion/failure evaluation,
+  save/load UX, and further shell integration such as mouse/world/tile input
+  mapping if approved.
 - Rendering backend/presentation layer.
 - Audio server boundary.
 - Save/load productization and authored package roundtrip.
@@ -379,15 +385,21 @@ Done:
   request status, carries the nested next play-mode state, projects supplied
   input event count plus nested ignored input count, and preserves nested camera
   and play-mode frame results without inventing flattened fields.
+- `RuntimeGameplayProductInputContext` projects transient
+  `PlayerInputBindingContext2D` for product play input. Statuses are
+  `NotLoaded`, `LoadedWithoutPlayer`, and `Projected`; projected contexts keep
+  default gates and set only `hasCurrentPlayerTile/currentPlayerTile` from the
+  loaded state's existing `playerTile(...)` when a current player exists.
 - Qt shell `Product Step` is enabled only for ready `--play` sessions and is
   independent of `Product Input Focus`: when focus is false, existing
   play-surface behavior ignores input but still consumes one available frame
   with empty intents/context. Executed steps build
   `RuntimeGameplayProductFrameRequestInput` from current app-shell play state,
-  transient product input, and shell-owned presentation camera config, call
+  a local request-frame copy enriched with projected binding context, and
+  shell-owned presentation camera config, call
   `RuntimeGameplayProductFrameRequest {}.run(input)` once, replace only
   transient app-shell `productPlayState_`, latest frame/context pointer, and
-  presentation camera, clear transient product input after every executed
+  presentation camera, clear stored transient product input after every executed
   request, and refresh the product play panel.
 
 Remaining exit work:
@@ -466,10 +478,11 @@ keyboard-to-product-input-event mapping exist. The runtime/product presentation
 camera policy chooses caller-owned transient camera/config for presentation, and
 `RuntimeGameplayProductFrameRequest` composes that policy with exactly one
 play-mode frame call for caller-requested manual frames. Qt `Product Step`
-invokes one frame request for ready `--play` sessions and updates only
-replaceable app-shell transient state. There is still no automatic app/tick
-loop, mouse/world/tile input mapping, UX policy, or save/load productization
-yet.
+invokes one frame request for ready `--play` sessions and enriches only a local
+request-frame copy with projected current-player-tile binding context before
+updating replaceable app-shell transient state. There is still no automatic
+app/tick loop, mouse/world/tile input mapping, target lookup, UX policy, or
+save/load productization yet.
 
 Objective: move from engine harness to playable/editor-backed game loop.
 
@@ -566,16 +579,26 @@ Done:
   and play-mode frame results. The caller still owns transient input-frame
   clearing/draining, previous-camera storage, latest-frame storage, and
   presentation state ownership.
+- `RuntimeGameplayProductInputContext` is an app-neutral runtime/product
+  projection for transient request binding context. It reports `NotLoaded`,
+  `LoadedWithoutPlayer`, or `Projected`, returns default
+  `PlayerInputBindingContext2D` gates, and sets only current player tile from
+  loaded product play state using existing `playerTile(...)` when a player
+  exists. It does not set selected or hovered targets, inspect interaction
+  state, search targets, map mouse input, synthesize `PrimaryPoint` or
+  `PrimaryTile`, add cadence/pump behavior, or persist binding context.
 - Qt shell `Product Step` is a ready-state View-menu action for `--play`
   sessions. It builds request input from current `productPlayState_`, transient
-  `productInputFrame_`, and shell-owned camera config, runs
-  `RuntimeGameplayProductFrameRequest` once, replaces only
+  request-frame input enriched with projected binding context, and shell-owned
+  camera config, runs `RuntimeGameplayProductFrameRequest` once, replaces only
   `productPlayState_`, `latestProductPlayModeFrame_`, the stable product play
   context pointer, and `productPresentationCamera_`, clears product input after
   each executed request, and refreshes the read-only product play panel. If the
   action is unavailable, input is not silently cleared. Shell camera defaults
   are presentation-only fallback/view defaults with NPC commands enabled and
-  tile chunk cache disabled; they are not settings/save truth.
+  tile chunk cache disabled; they are not settings/save truth. The projected
+  binding context is not written back into `productInputFrame_`, which remains
+  latest raw/product event storage only.
 
 Exit criteria:
 - Load a package or explicit scenario.

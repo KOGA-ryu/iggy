@@ -192,9 +192,10 @@ Hard stops for the first milestone:
 Status: complete for the read-only product play panel model, context seam, and
 Qt `--play` launch/load/build consumer plus ready-state focus toggle and
 ready/focused keyboard product input mapping; runtime/product presentation
-camera policy and manual frame request wrapper are complete, while product shell
-manual Step is complete, and frame pumping, mouse/world/tile input mapping, and
-broader UI execution remain gated.
+camera policy, manual frame request wrapper, product input context projection,
+and Qt manual Step with transient current-player-tile context projection are
+complete, while frame pumping, mouse/world/tile input mapping, target discovery,
+and broader UI execution remain gated.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
@@ -277,20 +278,34 @@ Runtime manual frame request wrapper:
   loop/frame pump, mouse screen-to-world/tile mapping, raw input persistence,
   save/load, UX semantics, or gameplay semantics.
 
+Runtime input context projection:
+- `RuntimeGameplayProductInputContext` projects transient
+  `PlayerInputBindingContext2D` for product play input.
+- It reports `NotLoaded`, `LoadedWithoutPlayer`, or `Projected`.
+- It returns default binding gates and sets only current player tile from loaded
+  product play state when a player exists.
+- It does not set selected/hovered targets, inspect interaction state, search
+  targets, map mouse input, synthesize `PrimaryPoint`/`PrimaryTile`, or add
+  cadence/pump behavior.
+
 Qt manual Step consumer:
 - The View menu exposes `Product Step` for ready `--play` sessions only.
 - The action is independent of `Product Input Focus`; when focus is false,
   existing play-surface behavior ignores input but still consumes one available
   frame with empty intents/context.
-- Executing Step builds `RuntimeGameplayProductFrameRequestInput` from current
-  `productPlayState_`, transient `productInputFrame_`, and shell-owned
-  presentation camera config, then calls
+- Executing Step builds a local request-frame copy from transient
+  `productInputFrame_`, enriches that local copy with projected binding context,
+  and builds `RuntimeGameplayProductFrameRequestInput` from current
+  `productPlayState_`, the enriched local frame, and shell-owned presentation
+  camera config, then calls
   `RuntimeGameplayProductFrameRequest {}.run(input)` exactly once.
 - The shell updates only replaceable transient app-shell state:
   `productPlayState_`, latest product play frame/context pointer, and
   `productPresentationCamera_`.
 - The shell clears `productInputFrame_` after each executed request regardless
   of request status, but does not clear it when Step is unavailable.
+- The projected context is not written back into `productInputFrame_`; that
+  member remains latest raw/product event storage only.
 - The existing read-only product play panel is refreshed after the request.
 - Camera/config defaults are shell presentation defaults only and are not
   settings/save truth.
@@ -330,6 +345,12 @@ Hard stops for product play UI projection:
 - No product frame request invocation, input-frame clearing/draining, previous
   camera storage, latest-frame storage, or presentation state ownership inside
   scene/UI projection code.
+- No projected binding context persistence in runtime/session/gameplay/
+  product-loop/play-mode state, snapshots, saves, settings, scene/UI models, or
+  `productInputFrame_`.
+- No selected/hovered target discovery, interaction target search, reach lookup,
+  mouse screen-to-world/tile mapping, `PrimaryPoint`, or `PrimaryTile` synthesis
+  from input context projection.
 - No automatic app/tick loop or frame pump from Qt manual Step.
 - No settings persistence or keyboard shortcut for Qt manual Step.
 - No hidden default camera/render config inside the UI model.
