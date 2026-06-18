@@ -30,6 +30,8 @@
 #include <vector>
 
 #include "IggyQtShellUi.hpp"
+#include "runtime/RuntimeGameplayAuthoringPreviewModel.hpp"
+#include "scene/ui/UiAuthoringPreviewPanelModel.hpp"
 #include "scene/ui/UiTheme.hpp"
 
 namespace iggy::qt_shell {
@@ -131,6 +133,49 @@ QMenu *attachMenu(QPushButton *button)
 	auto *menu = new QMenu(button);
 	button->setMenu(menu);
 	return menu;
+}
+
+void addKeyValueRow(QVBoxLayout *layout, const ui::UiAuthoringPreviewPanelRow &row)
+{
+	auto *line = new QWidget;
+	auto *lineLayout = new QHBoxLayout(line);
+	lineLayout->setContentsMargins(0, 1, 0, 1);
+	lineLayout->setSpacing(8);
+	lineLayout->addWidget(makeLabel(toQString(row.key), "fieldLabel"));
+	lineLayout->addStretch(1);
+	lineLayout->addWidget(makeLabel(toQString(row.value), "mutedText"));
+	layout->addWidget(line);
+}
+
+void addRowSection(
+	QVBoxLayout *layout,
+	const QString &title,
+	const std::vector<ui::UiAuthoringPreviewPanelRow> &rows,
+	const QString &emptyText = QStringLiteral("None"))
+{
+	layout->addWidget(makeSectionLabel(title));
+	if (rows.empty()) {
+		layout->addWidget(makeLabel(emptyText, "mutedText"));
+		return;
+	}
+	for (const ui::UiAuthoringPreviewPanelRow &row : rows)
+		addKeyValueRow(layout, row);
+}
+
+void addStringSection(
+	QVBoxLayout *layout,
+	const QString &title,
+	const std::vector<std::string> &rows,
+	const QString &emptyText = QStringLiteral("None"),
+	const char *objectName = "mutedText")
+{
+	layout->addWidget(makeSectionLabel(title));
+	if (rows.empty()) {
+		layout->addWidget(makeLabel(emptyText, "mutedText"));
+		return;
+	}
+	for (const std::string &row : rows)
+		layout->addWidget(makeLabel(toQString(row), objectName));
 }
 
 void removeWidgetFromLayout(QLayout *layout, QWidget *widget)
@@ -351,7 +396,7 @@ private:
 
 } // namespace
 
-IggyQtShellWindow::IggyQtShellWindow()
+IggyQtShellWindow::IggyQtShellWindow(IggyQtShellPreviewOptions previewOptions)
 {
 	setWindowFlag(Qt::FramelessWindowHint, true);
 	setMinimumSize(520, 420);
@@ -363,6 +408,17 @@ IggyQtShellWindow::IggyQtShellWindow()
 	input_.panels.right.collapsed = false;
 	input_.panels.bottom.collapsed = false;
 	context_.activeToolId = id("tool:select");
+	if (previewOptions.enabled) {
+		authoringPreview_ =
+			runtime::RuntimeGameplayAuthoringPreviewModelBuilder {}.build(
+				previewOptions.path,
+				previewOptions.config);
+		hasAuthoringPreview_ = true;
+		context_.authoringPreview = &authoringPreview_;
+		setPanelContentAssignment(
+			settings_.panelContent,
+			{ id("panel:authoring_preview"), ui::UiShellSlot::Right, false });
+	}
 	rebuildModel();
 	applyTheme();
 	buildShell();
@@ -797,11 +853,12 @@ QWidget *IggyQtShellWindow::buildPanelContent(const ui::UiMountedPanel &panel)
 		ResourceId groupId;
 		QWidget *(IggyQtShellWindow::*build)();
 	};
-	static const std::array<PanelRenderer, 4> renderers = {{
+	static const std::array<PanelRenderer, 5> renderers = {{
 		{id("panel:runtime_frame"), &IggyQtShellWindow::buildRuntimeFramePanelContent},
 		{id("panel:interaction_events"), &IggyQtShellWindow::buildInteractionEventsPanelContent},
 		{id("panel:inventory"), &IggyQtShellWindow::buildInventoryPanelContent},
 		{id("panel:collision"), &IggyQtShellWindow::buildCollisionPanelContent},
+		{id("panel:authoring_preview"), &IggyQtShellWindow::buildAuthoringPreviewPanelContent},
 	}};
 
 	for (const PanelRenderer &renderer : renderers) {
@@ -873,6 +930,50 @@ QWidget *IggyQtShellWindow::buildCollisionPanelContent()
 	layout->setSpacing(6);
 	layout->addWidget(makeSectionLabel(QStringLiteral("Collision")));
 	layout->addWidget(makeLabel(QStringLiteral("No debug draw source"), "mutedText"));
+	layout->addStretch(1);
+	return content;
+}
+
+QWidget *IggyQtShellWindow::buildAuthoringPreviewPanelContent()
+{
+	auto *content = new QWidget;
+	auto *layout = new QVBoxLayout(content);
+	layout->setContentsMargins(0, 0, 0, 0);
+	layout->setSpacing(6);
+
+	if (!hasAuthoringPreview_ || !model_.authoringPreview.present) {
+		layout->addWidget(makeLabel(QStringLiteral("No authoring preview loaded."), "mutedText"));
+		layout->addStretch(1);
+		return content;
+	}
+
+	addRowSection(layout, QStringLiteral("Header"), model_.authoringPreview.header);
+	addRowSection(layout, QStringLiteral("Package"), model_.authoringPreview.packageMetadata);
+	addRowSection(layout, QStringLiteral("Status"), model_.authoringPreview.status);
+	addRowSection(layout, QStringLiteral("Summary"), model_.authoringPreview.summary);
+	addStringSection(layout, QStringLiteral("Diagnostics"), model_.authoringPreview.diagnostics);
+	addStringSection(layout, QStringLiteral("Package Issues"), model_.authoringPreview.packageIssues);
+	addStringSection(
+		layout,
+		QStringLiteral("Final Rows"),
+		model_.authoringPreview.finalRows,
+		QStringLiteral("No final rows."),
+		"statusFile");
+
+	layout->addWidget(makeSectionLabel(QStringLiteral("Trace Frames")));
+	if (model_.authoringPreview.traceFrames.empty()) {
+		layout->addWidget(makeLabel(QStringLiteral("No trace frames."), "mutedText"));
+	} else {
+		for (const ui::UiAuthoringPreviewTraceFrameView &frame : model_.authoringPreview.traceFrames) {
+			layout->addWidget(makeLabel(toQString(frame.label), "fieldLabel"));
+			for (const ui::UiAuthoringPreviewPanelRow &row : frame.summary)
+				addKeyValueRow(layout, row);
+			for (const std::string &row : frame.rows)
+				layout->addWidget(makeLabel(toQString(row), "statusFile"));
+		}
+	}
+
+	addRowSection(layout, QStringLiteral("Expectations"), model_.authoringPreview.expectation);
 	layout->addStretch(1);
 	return content;
 }

@@ -26,6 +26,7 @@ void TestDefaultSettingsStateUsesToolInventoryAndPanelDefaults()
 	Expect(settings.panelContent.size() >= 3, "default ui settings should include panel assignments");
 	Expect(settings.showRuntimeInspector, "default ui settings should show runtime inspector");
 	Expect(settings.showInteractionEvents, "default ui settings should show interaction events");
+	Expect(settings.showAuthoringPreview, "default ui settings should allow authoring preview");
 	Expect(!settings.showCollisionDebug, "default ui settings should hide collision debug");
 }
 

@@ -5,6 +5,7 @@
 
 #include "core/resource/ResourceId.hpp"
 #include "runtime/GameplayCommand2D.hpp"
+#include "runtime/RuntimeGameplayAuthoringPreviewModel.hpp"
 #include "runtime/RuntimePlayerInputInteractionEffectFrameReport.hpp"
 #include "runtime/RuntimeSessionState.hpp"
 #include "scene/interaction/InteractionEvent2D.hpp"
@@ -15,6 +16,7 @@ struct UiFeatureContext {
 	const runtime::RuntimeSessionState *session = nullptr;
 	const runtime::RuntimePlayerInputInteractionEffectFrameReport *latestFrameReport = nullptr;
 	const InteractionEventRecorder2D *interactionEvents = nullptr;
+	const runtime::RuntimeGameplayAuthoringPreviewModel *authoringPreview = nullptr;
 	ResourceId activeToolId;
 	ResourceId selectedActorId;
 	ResourceId selectedTargetId;
@@ -32,5 +34,6 @@ struct UiShellActions {
 [[nodiscard]] bool uiFeatureContextHasSession(const UiFeatureContext &context);
 [[nodiscard]] bool uiFeatureContextHasFrameReport(const UiFeatureContext &context);
 [[nodiscard]] bool uiFeatureContextHasInteractionEvents(const UiFeatureContext &context);
+[[nodiscard]] bool uiFeatureContextHasAuthoringPreview(const UiFeatureContext &context);
 
 } // namespace iggy::ui

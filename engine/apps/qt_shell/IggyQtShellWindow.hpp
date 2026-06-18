@@ -6,9 +6,12 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
+#include <filesystem>
 #include <functional>
 #include <string>
 
+#include "runtime/RuntimeGameplayAuthoringPreviewModel.hpp"
+#include "runtime/RuntimeGameplayTomlScenarioFacade.hpp"
 #include "scene/ui/UiFeatureContext.hpp"
 #include "scene/ui/UiRuntimeWorkspaceModel.hpp"
 #include "scene/ui/UiSettingsState.hpp"
@@ -19,9 +22,15 @@ class QPushButton;
 
 namespace iggy::qt_shell {
 
+struct IggyQtShellPreviewOptions {
+	bool enabled = false;
+	std::filesystem::path path;
+	runtime::RuntimeGameplayTomlScenarioFacadeConfig config;
+};
+
 class IggyQtShellWindow final : public QMainWindow {
 public:
-	IggyQtShellWindow();
+	explicit IggyQtShellWindow(IggyQtShellPreviewOptions previewOptions = {});
 
 protected:
 	bool eventFilter(QObject *watched, QEvent *event) override;
@@ -50,6 +59,7 @@ private:
 	[[nodiscard]] QWidget *buildInteractionEventsPanelContent();
 	[[nodiscard]] QWidget *buildInventoryPanelContent();
 	[[nodiscard]] QWidget *buildCollisionPanelContent();
+	[[nodiscard]] QWidget *buildAuthoringPreviewPanelContent();
 	[[nodiscard]] QWidget *buildUnavailablePanelContent(const ui::UiMountedPanel &panel);
 	[[nodiscard]] QPushButton *buildMountedChromePanelButton(const ui::UiMountedChromePanel &panel);
 	[[nodiscard]] QWidget *buildToolBelt();
@@ -79,6 +89,8 @@ private:
 	ui::UiFeatureContext context_;
 	ui::UiRuntimeWorkspaceModelInput input_;
 	ui::UiRuntimeWorkspaceModel model_;
+	runtime::RuntimeGameplayAuthoringPreviewModel authoringPreview_;
+	bool hasAuthoringPreview_ = false;
 	QWidget *root_ = nullptr;
 	QVBoxLayout *rootLayout_ = nullptr;
 	QWidget *body_ = nullptr;

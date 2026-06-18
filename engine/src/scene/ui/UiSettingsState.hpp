@@ -23,6 +23,7 @@ struct UiSettingsState {
 	std::vector<UiPanelContentAssignment> panelContent;
 	bool showRuntimeInspector = true;
 	bool showInteractionEvents = true;
+	bool showAuthoringPreview = true;
 	bool showCollisionDebug = false;
 };
 

@@ -1,5 +1,6 @@
 #include <cstdlib>
 
+#include "runtime/RuntimeGameplayAuthoringPreviewModel.hpp"
 #include "runtime/RuntimePlayerInputInteractionEffectFrameReport.hpp"
 #include "runtime/RuntimeSessionState.hpp"
 #include "scene/interaction/InteractionEvent2D.hpp"
@@ -63,6 +64,7 @@ void TestDefaultEmptyContextBuildsValidWorkspaceWithDiagnostics()
 	Expect(FindDiagnostic(model, "runtime.session") != nullptr, "workspace model should diagnose missing session");
 	Expect(FindDiagnostic(model, "runtime.frame_report") != nullptr, "workspace model should diagnose missing frame report");
 	Expect(FindDiagnostic(model, "interaction.events") != nullptr, "workspace model should diagnose missing interaction event recorder");
+	Expect(FindDiagnostic(model, "authoring.preview") == nullptr, "workspace model should treat missing authoring preview as optional");
 }
 
 void TestRuntimeContextProducesRuntimeInspectorPanelData()
@@ -101,6 +103,26 @@ void TestInteractionRecorderProducesInteractionPanelData()
 	Expect(model.interactionEvents.targetToggleCount == 1, "workspace model should preserve toggle event count");
 	Expect(model.interactionEvents.inspectTextRequestCount == 1, "workspace model should preserve inspect event count");
 	Expect(FindDiagnostic(model, "interaction.events") == nullptr, "workspace model should not diagnose present interaction recorder as missing");
+}
+
+void TestAuthoringPreviewProducesPreviewPanelData()
+{
+	iggy::ui::UiRuntimeWorkspaceModelInput input = iggy::ui::defaultUiRuntimeWorkspaceModelInput();
+	iggy::runtime::RuntimeGameplayAuthoringPreviewModel preview;
+	preview.inputPath = "fixtures/mixed_mini_scenario.toml";
+	preview.sourcePath = "fixtures/mixed_mini_scenario.toml";
+	preview.status = iggy::runtime::RuntimeGameplayAuthoringPreviewStatus::Ran;
+	preview.scenarioStatus = iggy::runtime::RuntimeGameplayTomlScenarioFacadeStatus::Ran;
+	preview.summary.frameCount = 1;
+	preview.finalRows = { "###", "#@#", "###" };
+	input.context.authoringPreview = &preview;
+
+	const iggy::ui::UiRuntimeWorkspaceModel model = iggy::ui::buildUiRuntimeWorkspaceModel(input);
+
+	Expect(model.hasAuthoringPreviewContext, "workspace model should report authoring preview context");
+	Expect(model.authoringPreview.present, "workspace model should project authoring preview panel data");
+	Expect(model.authoringPreview.finalRows == std::vector<std::string>({ "###", "#@#", "###" }), "workspace model should preserve authoring final rows");
+	Expect(FindDiagnostic(model, "authoring.preview") == nullptr, "workspace model should not diagnose present authoring preview as missing");
 }
 
 void TestDisabledToolsAreFilteredFromBeltAndAvailableToolViews()
@@ -192,6 +214,7 @@ int main()
 	TestDefaultEmptyContextBuildsValidWorkspaceWithDiagnostics();
 	TestRuntimeContextProducesRuntimeInspectorPanelData();
 	TestInteractionRecorderProducesInteractionPanelData();
+	TestAuthoringPreviewProducesPreviewPanelData();
 	TestDisabledToolsAreFilteredFromBeltAndAvailableToolViews();
 	TestPanelAssignmentsAndPalettesComeFromSettingsAndWorkspace();
 	TestProjectionDoesNotMutateInputs();

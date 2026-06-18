@@ -146,6 +146,14 @@ UiFeatureRegistry defaultUiRuntimeWorkspaceFeatureRegistry()
 			{},
 			{},
 		},
+		{
+			Id("feature:authoring_preview"),
+			"Authoring Preview",
+			{ UiShellSlot::Right, UiShellSlot::Bottom },
+			{ { Id("panel:authoring_preview"), "Authoring Preview", Id("panel:authoring_preview"), UiShellSlot::Right } },
+			{},
+			{},
+		},
 	};
 	return registry;
 }
@@ -159,6 +167,7 @@ UiWorkspaceLayout defaultUiRuntimeWorkspaceLayout(const UiToolInventory &invento
 		{ UiShellSlot::Main, Id("feature:runtime_frame_inspector") },
 		{ UiShellSlot::Bottom, Id("feature:interaction_events") },
 		{ UiShellSlot::Left, Id("feature:inventory") },
+		{ UiShellSlot::Right, Id("feature:authoring_preview") },
 	};
 	workspace.toolBelt = buildUiToolBeltLayout(inventory, defaultEnabledUiToolIds(inventory));
 	workspace.palettes = {
@@ -168,6 +177,7 @@ UiWorkspaceLayout defaultUiRuntimeWorkspaceLayout(const UiToolInventory &invento
 		{ Id("panel:runtime_frame"), UiShellSlot::Right, false },
 		{ Id("panel:interaction_events"), UiShellSlot::Bottom, false },
 		{ Id("panel:inventory"), UiShellSlot::Left, false },
+		{ Id("panel:authoring_preview"), UiShellSlot::Right, true },
 	};
 	return workspace;
 }
@@ -249,6 +259,13 @@ UiRuntimeWorkspaceModel buildUiRuntimeWorkspaceModel(const UiRuntimeWorkspaceMod
 				UiRuntimeWorkspaceDiagnosticSeverity::Warning,
 				"interaction.events",
 				"Interaction event recorder context is missing");
+		}
+	}
+
+	if (input.settings.showAuthoringPreview) {
+		model.hasAuthoringPreviewContext = uiFeatureContextHasAuthoringPreview(input.context);
+		if (input.context.authoringPreview != nullptr) {
+			model.authoringPreview = buildUiAuthoringPreviewPanelModel(*input.context.authoringPreview);
 		}
 	}
 

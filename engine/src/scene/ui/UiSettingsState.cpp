@@ -22,6 +22,7 @@ UiSettingsState defaultUiSettingsState(const UiToolInventory &inventory)
 		{ ResourceId { "panel:runtime_frame" }, UiShellSlot::Right, false },
 		{ ResourceId { "panel:interaction_events" }, UiShellSlot::Bottom, false },
 		{ ResourceId { "panel:inventory" }, UiShellSlot::Left, false },
+		{ ResourceId { "panel:authoring_preview" }, UiShellSlot::Right, true },
 		{ ResourceId { "panel:collision" }, UiShellSlot::Right, true },
 	};
 	return state;

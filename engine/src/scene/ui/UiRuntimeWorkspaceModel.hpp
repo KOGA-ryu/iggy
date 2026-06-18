@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "scene/ui/UiFeatureContext.hpp"
+#include "scene/ui/UiAuthoringPreviewPanelModel.hpp"
 #include "scene/ui/UiInteractionEventPanelModel.hpp"
 #include "scene/ui/UiRuntimeFrameInspectorModel.hpp"
 #include "scene/ui/UiSettingsState.hpp"
@@ -67,8 +68,10 @@ struct UiRuntimeWorkspaceModel {
 	std::vector<UiPalettePlacement> palettes;
 	UiRuntimeFrameInspectorModel runtimeInspector;
 	UiInteractionEventPanelModel interactionEvents;
+	UiAuthoringPreviewPanelModel authoringPreview;
 	bool hasRuntimeContext = false;
 	bool hasInteractionEventContext = false;
+	bool hasAuthoringPreviewContext = false;
 	std::vector<UiRuntimeWorkspaceDiagnosticRow> diagnostics;
 
 	[[nodiscard]] bool hasDiagnostics() const;

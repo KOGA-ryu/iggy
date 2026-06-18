@@ -17,4 +17,9 @@ bool uiFeatureContextHasInteractionEvents(const UiFeatureContext &context)
 	return context.interactionEvents != nullptr;
 }
 
+bool uiFeatureContextHasAuthoringPreview(const UiFeatureContext &context)
+{
+	return context.authoringPreview != nullptr;
+}
+
 } // namespace iggy::ui
