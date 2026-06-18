@@ -189,8 +189,9 @@ Hard stops for the first milestone:
 
 ## Product Play UI Projection
 
-Status: complete for the read-only product play panel model and context seam;
-product shell launch, frame pumping, raw input, and camera policy remain gated.
+Status: complete for the read-only product play panel model, context seam, and
+Qt `--play` launch/load/build consumer; frame pumping, raw input, camera policy,
+and gameplay execution remain gated.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
@@ -208,14 +209,30 @@ The current product play UI projection:
   frame/surface status, ignored input count, adapter counts, binding counts,
   step status/frame/counts, and presentation/render counts.
 
+Qt launch consumer:
+- `iggy_qt_shell --play PATH` accepts one explicit TOML file, package directory,
+  or `package.toml` path for product load/build/play-mode build.
+- The shell stores load, loop, play-mode build results and play-mode state in
+  `IggyQtShellWindow` for stable UI context pointers.
+- The shell sets product play context pointers and reveals the existing
+  read-only `panel:product_play`.
+- Latest product play frame remains absent until a later frame-step/tick gate.
+- `--play` and `--preview` are mutually exclusive and exit 2 when combined.
+- Missing `--play` path exits 2.
+- Bad filesystem paths still open the shell and display failed load/build state.
+
 Hard stops for product play UI projection:
-- No Qt shell behavior, product launch mode, `--play`, app shell behavior, CLI
-  behavior, or raw Qt/device event mapping.
+- No product frame execution, `RuntimeGameplayProductPlayMode::frame(...)`,
+  `RuntimeGameplayProductPlaySurfaceFrame::build(...)`, app tick loop, or frame
+  pump.
+- No raw Qt/device event mapping.
 - No UI execution, frame stepping, automatic app/tick loop, or frame pump.
 - No product loader/file/package/TOML APIs called from scene/UI model code.
 - No calls to `RuntimeGameplayProductPlayMode::frame`,
   `RuntimeGameplayProductPlaySurfaceFrame::build`, loader APIs, or product
   step/run functions from scene/UI.
+- No default camera/render config, product input events, presentation frame, or
+  latest frame result synthesis in Qt launch.
 - No mutation of product play mode state or runtime/gameplay state.
 - No raw input, camera, presentation, or render-frame persistence in
   gameplay/session/product-loop/play-mode/save truth.
@@ -227,10 +244,10 @@ Hard stops for product play UI projection:
 
 1. Source-linked diagnostics.
 2. Visual trace playback.
-3. Product shell/UI launch and focused input ownership.
+3. Focused input ownership around product play mode.
 4. Optional Qt/raw-device adapter after shell/focus ownership is scoped.
 5. Camera lifecycle/presentation policy.
-6. Automatic app/tick loop/frame pump.
+6. Product frame stepping / automatic app tick loop / frame pump.
 7. Build canvas for placement.
 8. Structured authoring controls for existing facts.
 9. Source/TOML roundtrip only after an explicit gate.

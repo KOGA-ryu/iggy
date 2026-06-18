@@ -113,6 +113,11 @@ Recently completed optimized stretches:
   for read-only projection of product play build/state/latest-frame pointers
   into `feature:product_play` / `panel:product_play` rows without UI execution,
   stepping, loading, raw input, camera defaults, or state mutation.
+- Qt shell `iggy_qt_shell --play PATH` launch/load/build consumer for explicit
+  product scenario paths, mutually exclusive with `--preview`, which loads,
+  builds loop/play-mode state, wires stable product play context pointers, and
+  reveals the existing read-only product play panel without stepping frames or
+  mapping raw input.
 - Runtime authoring diagnostic projection with stable printable error-code
   strings.
 - Runtime summary projection for CLI/facade summary and final rows.
@@ -204,9 +209,9 @@ Recently completed optimized stretches:
   for one caller-requested focused play frame; app-neutral play-mode state now
   stores only durable loop state and input focus. Next product runtime work is
   optional Qt/raw-device adapter wiring after shell/focus ownership is scoped,
-  product shell/UI launch and focus ownership, camera lifecycle policy,
-  player/modern NPC render projection, automatic app/tick loop, pause/retry/reset
-  policy, completion/failure evaluation, save/load UX, and shell integration.
+  focused input ownership, camera lifecycle policy, player/modern NPC render
+  projection, product frame stepping/frame pump, pause/retry/reset policy,
+  completion/failure evaluation, save/load UX, and shell integration.
 - Rendering backend/presentation layer.
 - Audio server boundary.
 - Save/load productization and authored package roundtrip.
@@ -316,11 +321,17 @@ Done:
   frame pointers into read-only rows for `feature:product_play` /
   `panel:product_play`; the panel is hidden by default and exists only when
   product play context is supplied.
+- Existing Qt shell accepts explicit `--play PATH`, runs product load/loop
+  build/play-mode build only, stores stable product play context pointers, and
+  reveals the existing read-only `panel:product_play`.
+- `--play` is mutually exclusive with `--preview`; missing `--play` path and
+  combined play/preview usage exit with code 2.
 
 Remaining exit work:
 - Add source-linked diagnostics and richer trace/expectation inspection.
-- Decide when a product shell/UI launch surface supplies product play context,
-  focus, raw-device input, and frame pumping.
+- Decide when the product shell supplies raw-device input, focus routing beyond
+  launch/build state, camera/render config, latest play frames, and frame
+  pumping.
 - Gate any build canvas, structured authoring controls, or source/TOML
   roundtrip separately.
 - Keep editing/mutation APIs out until a separate gate approves them.
@@ -386,9 +397,10 @@ binding, a runtime/product input adapter for transient product input events, a
 projection-only presentation wrapper over loaded loop state plus caller-owned
 camera/config, an app-neutral one-frame play-surface composition facade, and
 durable app-neutral play-mode state storing only loop state plus focus. Product
-play UI projection is read-only and context-provided, but there is still no
-Qt/raw-device shell adapter, product launch/UI mode, automatic app/tick loop, UX
-policy, or save/load
+play UI projection is read-only and context-provided, and Qt `--play PATH`
+launch/load/build context wiring exists. There is still no Qt/raw-device input
+adapter, product frame execution, automatic app/tick loop, UX policy, or
+save/load
 productization yet.
 
 Objective: move from engine harness to playable/editor-backed game loop.
@@ -445,6 +457,14 @@ Done:
   identity paths, loaded/focus/frame facts, latest frame status, ignored input,
   adapter/binding/step/presentation counts, and render counts without calling
   loaders, frame stepping, product run APIs, or mutating product/runtime state.
+- `iggy_qt_shell --play PATH` is an explicit-path Qt launch consumer that runs
+  `RuntimeGameplayProductScenarioLoader::load(path)`,
+  `RuntimeGameplayProductLoop::build(load)`, and
+  `RuntimeGameplayProductPlayMode::build(loopBuild)`, stores the load/loop/play
+  build results plus play-mode state in `IggyQtShellWindow`, wires product play
+  context pointers, reveals `panel:product_play`, and leaves latest frame null.
+  Bad paths still open the shell and show failed load/build state; `--play` and
+  `--preview` are mutually exclusive with exit code 2.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -455,12 +475,12 @@ Exit criteria:
 - Save/load user-facing state.
 
 First gates:
-- Product shell/UI launch and focused input ownership around play mode.
+- Focused input ownership around play mode.
 - Optional Qt/raw-device adapter into transient product input events after
   shell/focus ownership is scoped.
 - Camera lifecycle/follow/rig/clamp policy.
 - Player sprite and modern `RuntimeGameplayState::npcActors` render projection.
-- Automatic app/tick loop ownership.
+- Product frame stepping/frame pump ownership.
 - Pause/retry/reset policy.
 - Completion/failure evaluator.
 - Save-slot UX ownership.

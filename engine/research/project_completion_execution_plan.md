@@ -220,11 +220,11 @@ Exit criteria:
 ## Phase 4: Product Loop Gate
 
 Status: Packets 1, 2, 3A, 3B-A, 4-A, 4-B, the app-neutral play-surface frame,
-play-mode state, and read-only product play UI projection complete; next work is
-product shell/UI launch and focused input ownership around play mode, optional
-Qt/raw-device event adaptation after shell/focus ownership is scoped, camera
-lifecycle policy, render projection gaps, automatic app/tick loop ownership,
-and first-play UX policy gates.
+play-mode state, read-only product play UI projection, and Qt `--play` launch
+consumer complete; next work is focused input ownership around play mode,
+optional Qt/raw-device event adaptation after shell/focus ownership is scoped,
+camera lifecycle policy, render projection gaps, product frame stepping/frame
+pump ownership, and first-play UX policy gates.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -379,25 +379,45 @@ Product play UI projection complete:
   create default camera/render config, map raw input, or add Qt shell/product
   launch behavior.
 
+Qt product play launch consumer complete:
+- `iggy_qt_shell --play PATH` is an explicit-path launch/load/build consumer.
+- Launch runs only `RuntimeGameplayProductScenarioLoader::load(path)`,
+  `RuntimeGameplayProductLoop::build(load)`, and
+  `RuntimeGameplayProductPlayMode::build(loopBuild)`.
+- `IggyQtShellWindow` stores load, loop, play-mode build results and play-mode
+  state so product play panel context pointers remain stable.
+- The shell sets product play context pointers, reveals existing read-only
+  `panel:product_play`, and leaves the latest product play frame pointer null.
+- `--play` and `--preview` are mutually exclusive and hard-error with exit 2.
+- Missing `--play` path exits 2.
+- Present but bad filesystem paths still open the Qt shell and show failed
+  load/build state through the product play panel.
+- Existing `--preview` behavior remains unchanged.
+- Launch does not step frames, call `RuntimeGameplayProductPlayMode::frame(...)`
+  or `RuntimeGameplayProductPlaySurfaceFrame::build(...)`, map raw Qt/device
+  input, create product input events, create camera/render config, create
+  presentation frames, pump app ticks, save/load, scan/watch/discover packages,
+  or add gameplay semantics.
+
 Remaining input gate questions:
-- What product shell/UI launch surface owns focus and input routing around
-  app-neutral play mode?
 - Is a Qt/raw-device adapter needed after shell/focus ownership is scoped, and
   where does it convert raw input into transient product input events?
+- What owns focused input routing around app-neutral play mode after launch?
 - Who owns camera lifecycle/follow/rig/clamp policy?
 - When are player sprite and modern `RuntimeGameplayState::npcActors` render
   projections added?
-- Who owns the automatic app/tick loop around caller-requested frames?
+- Who owns product frame stepping and the automatic app/tick loop around
+  caller-requested frames?
 - Who owns pause/retry/reset?
 - What state must save/load for the first playable slice?
 - What does completion/failure mean in the first slice?
 
 Output:
-- one product shell/UI launch and focused input ownership packet;
+- one focused input ownership packet;
 - one optional Qt/raw-device adapter packet after product shell/focus ownership
   is scoped, if needed;
 - one camera lifecycle/presentation policy packet;
-- one automatic app/tick loop packet;
+- one product frame stepping/frame pump packet;
 - one updated implementation order packet;
 - one verification plan.
 
@@ -430,6 +450,11 @@ Hard stops:
   `RuntimeGameplayProductPlaySurfaceFrame::build`, loader APIs, or product
   step/run functions from scene/UI projections;
 - do not mutate product play mode state or runtime/gameplay state from scene/UI;
+- do not call `RuntimeGameplayProductPlayMode::frame(...)` or
+  `RuntimeGameplayProductPlaySurfaceFrame::build(...)` from Qt launch;
+- do not add product input events, default camera/render config, latest frame
+  synthesis, product frame stepping, or app tick-loop/frame pump to Qt launch;
+- do not combine `--play` and `--preview`;
 - do not persist raw input in runtime session/gameplay/product-loop state,
   snapshots, saves, or UI models;
 - do not persist raw input in play-mode state; only durable focus is stored;
@@ -443,10 +468,11 @@ Hard stops:
 ## Phase 5: Presentation / Render Integration
 
 Status: projection-only product presentation wrapper, runtime-only app-neutral
-play-surface frame, app-neutral play-mode state, and read-only product play UI
-projection integrated; Qt shell/play mode, raw-device adapter, camera lifecycle
-policy, player sprite projection, modern NPC actor projection, automatic
-app/tick loop, and UI execution/launch adapter remain separate gates.
+play-surface frame, app-neutral play-mode state, read-only product play UI
+projection, and Qt `--play` launch/load/build consumer integrated; raw-device
+adapter, camera lifecycle policy, player sprite projection, modern NPC actor
+projection, product frame stepping/frame pump, and UI execution beyond launch
+remain separate gates.
 
 Goal: turn runtime state into visible play state.
 
@@ -461,12 +487,14 @@ Packets:
    - durable loop state + focus bit -> caller-requested play-surface frames.
 4. Read-only product play UI projection. Complete:
    - supplied build/state/latest-frame pointers -> product play panel rows.
-5. Camera lifecycle/presentation policy:
+5. Qt product play launch consumer. Complete:
+   - explicit path -> load/build/play-mode context pointers -> read-only panel.
+6. Camera lifecycle/presentation policy:
    - follow/rig/clamp ownership outside gameplay truth; screen/world transforms
      remain separate.
-6. Debug overlay projection:
+7. Debug overlay projection:
    - trace/final rows, AI map, collision, path, interactions, inventory.
-7. UI presentation adapter:
+8. UI presentation adapter:
    - convert render frame data into the chosen shell/app surface.
 
 Hard stops:
@@ -534,9 +562,10 @@ Implementation packets:
 4-C. Runtime product play-surface frame. Complete.
 4-D. Runtime product play-mode state. Complete.
 4-E. Read-only product play UI projection/context. Complete.
-4-F. Product shell/UI launch and focused input ownership.
-4-G. Camera lifecycle/presentation policy.
-5. Automatic app/tick loop.
+4-F. Qt product play launch/load/build consumer. Complete.
+4-G. Focused input ownership.
+4-H. Camera lifecycle/presentation policy.
+5. Product frame stepping/frame pump.
 6. Player sprite and modern NPC actor render projection.
 7. Pause/retry/reset.
 8. Minimal save/load if approved.
@@ -666,8 +695,9 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 13. Runtime product play-surface frame is integrated.
 14. Runtime product play-mode state is integrated.
 15. Read-only product play UI projection/context is integrated.
-16. Dispatch product shell/UI launch and focused input ownership, camera
-    lifecycle policy, automatic app/tick loop/frame pump, or optional Qt/raw-device
+16. Qt product play launch/load/build consumer is integrated.
+17. Dispatch focused input ownership, camera lifecycle policy, product frame
+    stepping/frame pump, or optional Qt/raw-device
     adapter, depending on planner scope.
 
 Do not broaden the next Product Loop packet into pause/retry/reset,
