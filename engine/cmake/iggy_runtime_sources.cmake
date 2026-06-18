@@ -13,6 +13,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeGameplayAuthoringDiagnostics.cpp
   src/runtime/RuntimeGameplayAuthoringErrorCodes.cpp
   src/runtime/RuntimeGameplayAuthoringPreviewModel.cpp
+  src/runtime/RuntimeGameplayProductScenarioLoader.cpp
   src/runtime/RuntimeGameplayScenarioAuthoringAdapter.cpp
   src/runtime/RuntimeGameplayAsciiScenarioPacket.cpp
   src/runtime/RuntimeGameplayAsciiScenarioPacketValidator.cpp
@@ -26,6 +27,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeGameplayAsciiSourcePlanValidator.cpp
   src/runtime/RuntimeGameplayTomlScenarioFacade.cpp
   src/runtime/RuntimeGameplayTomlScenarioPackageFacade.cpp
+  src/runtime/RuntimeGameplayTomlScenarioPackageReader.cpp
   src/runtime/RuntimeGameplayTomlScenarioSummaryProjection.cpp
   src/runtime/RuntimeGameplayProfileScenarioDefinition.cpp
   src/runtime/RuntimeGameplayProfileScenarioRunner.cpp

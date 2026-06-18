@@ -1,10 +1,10 @@
 #pragma once
 
 #include <filesystem>
-#include <string>
 #include <vector>
 
 #include "runtime/RuntimeGameplayTomlScenarioFacade.hpp"
+#include "runtime/RuntimeGameplayTomlScenarioPackageReader.hpp"
 
 namespace iggy::runtime {
 
@@ -19,45 +19,6 @@ enum class RuntimeGameplayTomlScenarioPackageFacadeStatus {
 	Ran,
 	CheckFailed,
 	CheckPassed,
-};
-
-enum class RuntimeGameplayTomlScenarioPackageIssueCode {
-	MissingPackagePath,
-	PackagePathNotSupported,
-	MissingManifest,
-	ManifestReadFailed,
-	SyntaxError,
-	DuplicateKey,
-	UnsupportedKey,
-	WrongType,
-	MissingFormatId,
-	UnsupportedFormatId,
-	MissingVersion,
-	UnsupportedVersion,
-	MissingTitle,
-	MissingDescription,
-	MissingAuthoringVersion,
-	InvalidMetadataValue,
-	MissingMain,
-	InvalidMainPath,
-};
-
-struct RuntimeGameplayTomlScenarioPackageManifest {
-	std::string formatId;
-	int version = 0;
-	std::string title;
-	std::string description;
-	std::string authoringVersion;
-	std::filesystem::path main;
-};
-
-struct RuntimeGameplayTomlScenarioPackageIssue {
-	RuntimeGameplayTomlScenarioPackageIssueCode code =
-		RuntimeGameplayTomlScenarioPackageIssueCode::MissingManifest;
-	std::filesystem::path path;
-	std::size_t line = 0;
-	std::string key;
-	std::string detail;
 };
 
 struct RuntimeGameplayTomlScenarioPackageFacadeResult {
