@@ -76,3 +76,4 @@ Queue:
 19. `19_runtime_scenario_ledger_npc_projection_cleanup` - complete. Extract shared scenario/ledger NPC aggregate projection.
 20. `20_legacy_npc_tick_config_include_trim` - complete. Split NPC tick config into a narrow header and trim config-only controller includes.
 21. `21_ui_preview_consumer_status_sync` - complete. Sync planning docs after read-only Qt preview consumer integration.
+22. `22_product_loader_status_sync` - complete. Sync planning/API docs after load-only product scenario loader integration.

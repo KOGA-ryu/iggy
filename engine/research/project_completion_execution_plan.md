@@ -219,14 +219,30 @@ Exit criteria:
 
 ## Phase 4: Product Loop Gate
 
-Status: after read-only UI preview Milestone 1; ready for docs/scout before
-product-loop code.
+Status: Packet 1 load-only scenario loader complete; Packet 2 is
+product-owned loop state/step.
 
-Goal: define the first playable loop boundary.
+Goal: define and build the first playable loop boundary without making authoring
+or session state own product concerns.
 
-Gate questions:
-- Does product loop load package through package facade or a thinner runtime
-  loader?
+Packet 1 complete:
+- `RuntimeGameplayProductScenarioLoader` supports explicit TOML files, package
+  directories, and `package.toml` paths.
+- The loader reads TOML, adapts through
+  `RuntimeGameplayScenarioAuthoringAdapter`, validates with
+  `RuntimeGameplayProfileScenarioValidator`, and exposes
+  `RuntimeGameplayProfileScenarioDefinition` plus initial state.
+- `RuntimeGameplayTomlScenarioPackageReader` owns shared package
+  manifest/path reading for the package facade and product loader.
+- The loader is load-only: no frame execution, final rows, trace, check,
+  expectation comparison, CLI output, UI, raw input mapping, render/camera,
+  save/load, package discovery/scanning/watching, source mutation, or new
+  gameplay semantics.
+
+Packet 2 gate questions:
+- What product-owned loop state wraps the loaded scenario definition and
+  mutable gameplay state?
+- What is the smallest caller-driven product step over that state?
 - Where does raw input map into player intents?
 - Who owns camera/presentation state?
 - Who owns pause/retry/reset?
@@ -234,13 +250,15 @@ Gate questions:
 - What does completion/failure mean in the first slice?
 
 Output:
-- one product-loop architecture packet;
-- one implementation order packet;
+- one product-loop state/step packet;
+- one updated implementation order packet;
 - one verification plan.
 
 Hard stops:
 - do not make authoring facade own product runtime;
 - do not hide raw input inside runtime session state;
+- do not put presentation/camera state into gameplay truth;
+- do not productize save/load in Packet 2;
 - do not persist derived caches as save truth.
 
 ## Phase 5: Presentation / Render Integration
@@ -312,13 +330,14 @@ Default content:
 - visible success/failure/reset behavior.
 
 Implementation packets:
-1. Product scenario loader.
-2. Input binding.
-3. Gameplay tick loop.
-4. Render/presentation surface.
-5. Pause/retry/reset.
-6. Minimal save/load if approved.
-7. Acceptance fixture/demo.
+1. Product scenario loader. Complete.
+2. Product-owned loop state/step.
+3. Input binding.
+4. Gameplay tick loop.
+5. Render/presentation surface.
+6. Pause/retry/reset.
+7. Minimal save/load if approved.
+8. Acceptance fixture/demo.
 
 Verification:
 - focused runtime/product tests;
@@ -434,7 +453,9 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 4. Merge and run integration verification.
 5. Send researcher/reviewer a legacy NPC compatibility map packet.
 6. Use the integrated read-only UI preview consumer as product-loop input.
-7. Choose product loop gate after those reports and integration results.
+7. Use the integrated load-only product scenario loader as Product Loop Packet 1.
+8. Dispatch Product Loop Packet 2 as product-owned loop state/step.
 
-Do not start product-loop implementation until the first cleanup and read-only
-UI preview Milestone 1 are complete, unless the user explicitly reprioritizes.
+Do not broaden Product Loop Packet 2 into raw device input, presentation/camera,
+save/load productization, or new gameplay semantics unless the user explicitly
+reprioritizes.

@@ -75,10 +75,15 @@ Recently completed optimized stretches:
   and final debug row projection.
 - Runtime `RuntimeGameplayTomlScenarioFacade` for run/lint/check/trace over
   explicit one-file TOML scenarios.
+- Runtime `RuntimeGameplayTomlScenarioPackageReader` for shared explicit
+  package directory/manifest path reading without package discovery or scanning.
 - Runtime `RuntimeGameplayTomlScenarioPackageFacade` for explicit package
   directory or manifest paths, delegating to the TOML scenario facade.
 - Runtime `RuntimeGameplayAuthoringPreviewModel` for read-only preview over TOML
   files and packages.
+- Runtime `RuntimeGameplayProductScenarioLoader` for load-only product scenario
+  setup over explicit TOML files, package directories, and `package.toml` paths;
+  it reads, adapts, and validates without running frames.
 - Runtime authoring diagnostic projection with stable printable error-code
   strings.
 - Runtime summary projection for CLI/facade summary and final rows.
@@ -162,8 +167,9 @@ Recently completed optimized stretches:
 
 - Runtime cleanup after authoring contracts stabilize.
 - Legacy NPC migration plan with explicit deletion prerequisites.
-- Product runtime loop: package load, device input, gameplay tick, render
-  presentation, save/load UX, and shell integration.
+- Product scenario loading exists for explicit TOML/package paths; next product
+  runtime work is product-owned loop state/step, device input mapping, gameplay
+  tick, render presentation, save/load UX, and shell integration.
 - Rendering backend/presentation layer.
 - Audio server boundary.
 - Save/load productization and authored package roundtrip.
@@ -331,9 +337,19 @@ Hard stops:
 
 ### 6. Product Loop
 
-Status: not started.
+Status: Packet 1 load-only scenario loader complete; product runtime loop is
+not implemented.
 
 Objective: move from engine harness to playable/editor-backed game loop.
+
+Done:
+- `RuntimeGameplayProductScenarioLoader` loads explicit TOML files, package
+  directories, and `package.toml` paths into validated profile scenario
+  definitions plus initial state.
+- Loader is load-only: no frame execution, check/trace/final rows, raw input,
+  presentation/camera, save/load productization, or UI behavior.
+- Package manifest/path parsing is shared through
+  `RuntimeGameplayTomlScenarioPackageReader`.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -344,7 +360,7 @@ Exit criteria:
 - Save/load user-facing state.
 
 First gates:
-- Product shell target: CLI harness, Qt shell, or separate app.
+- Product-owned loop state/step over the loaded scenario.
 - Input binding ownership.
 - Render/presentation ownership.
 - Save-slot UX ownership.
