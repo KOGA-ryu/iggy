@@ -6,6 +6,7 @@ SHELL_BIN="${SHELL:-/bin/zsh}"
 OPEN_TERMINAL=1
 RESET=0
 START_CODEX=1
+CHECK_ONLY=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -18,9 +19,13 @@ while [[ $# -gt 0 ]]; do
     --shell-only)
       START_CODEX=0
       ;;
+    --check)
+      CHECK_ONLY=1
+      OPEN_TERMINAL=0
+      ;;
     --help|-h)
       cat <<'EOF'
-Usage: engine/tools/iggy-dept-up.sh [--no-open] [--reset] [--shell-only]
+Usage: engine/tools/iggy-dept-up.sh [--no-open] [--reset] [--shell-only] [--check]
 
 Creates the local Mac department floor as visible department stations:
 runtime, ai_npc, authoring, ui_product, platform, and integration.
@@ -34,6 +39,8 @@ Options:
   --reset    Recreate department sessions so stale worker tabs are removed.
   --shell-only
              Leave each planner station at a shell instead of launching Codex.
+  --check    Verify each department has planner, builder, and reviewer tabs,
+             each hosted by Codex CLI. Does not create sessions.
 
 Set IGGY_CODEX_ARGS to pass local Codex CLI flags, for example:
   IGGY_CODEX_ARGS='--model gpt-5.4-codex' engine/tools/iggy-dept-up.sh --reset
@@ -50,6 +57,14 @@ done
 
 session_name() {
   printf 'iggy-%s' "$1"
+}
+
+departments() {
+  printf '%s\n' runtime ai_npc authoring ui_product platform integration
+}
+
+required_roles() {
+  printf '%s\n' planner builder reviewer
 }
 
 existing_or_root() {
@@ -159,9 +174,52 @@ end tell
 APPLESCRIPT
 }
 
+check_department_sessions() {
+  local failed=0
+  local dept session role command windows
+
+  for dept in $(departments); do
+    session="$(session_name "$dept")"
+    if ! tmux has-session -t "$session" 2>/dev/null; then
+      echo "missing session: $session" >&2
+      failed=1
+      continue
+    fi
+
+    windows="$(tmux list-windows -t "$session" -F '#{window_name}' | sort | paste -sd ',' -)"
+    if [[ "$windows" != "builder,planner,reviewer" ]]; then
+      echo "$session has wrong tabs: $windows" >&2
+      failed=1
+    fi
+
+    for role in $(required_roles); do
+      if ! tmux list-windows -t "$session" -F '#{window_name}' | grep -qx "$role"; then
+        echo "$session missing tab: $role" >&2
+        failed=1
+        continue
+      fi
+
+      command="$(tmux list-panes -t "$session:$role" -F '#{pane_current_command}' | head -n 1)"
+      if [[ "$command" != codex* ]]; then
+        echo "$session:$role is not Codex-hosted: $command" >&2
+        failed=1
+      else
+        printf '%-18s %-8s %s\n' "$session" "$role" "$command"
+      fi
+    done
+  done
+
+  return "$failed"
+}
+
 if ! command -v tmux >/dev/null 2>&1; then
   echo "tmux is required" >&2
   exit 1
+fi
+
+if [[ "$CHECK_ONLY" -eq 1 ]]; then
+  check_department_sessions
+  exit $?
 fi
 
 RUNTIME_DIR="$(existing_or_root "/Users/kogaryu/iggy-finisher")"
@@ -178,11 +236,11 @@ ensure_department_session ui_product "$UI_PRODUCT_DIR"
 ensure_department_session platform "$PLATFORM_DIR"
 ensure_department_session integration "$INTEGRATION_DIR"
 
-for dept in runtime ai_npc authoring ui_product platform integration; do
+for dept in $(departments); do
   open_terminal_window "$(session_name "$dept")"
 done
 
 echo "Department sessions ready:"
-for dept in runtime ai_npc authoring ui_product platform integration; do
+for dept in $(departments); do
   printf '  %-12s tmux attach -t %s\n' "$dept" "$(session_name "$dept")"
 done
