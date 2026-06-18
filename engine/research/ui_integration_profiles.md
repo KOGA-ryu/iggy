@@ -205,10 +205,12 @@ pure spatial lookup primitive, and runtime/product
 `RuntimeGameplayProductInteractionTargetQuery` is complete as a read-only
 point/tile-center target query plus reach report, and
 `RuntimeGameplayProductInputTargetContext` is complete as transient
-hovered-target binding context enrichment from that report. Textured
-sprites/animation/material policy, frame request/play-surface context wiring,
-explicit interaction execution, product UX/save semantics, and broader UI
-execution remain gated.
+hovered-target binding context enrichment from that report. Runtime/product
+`RuntimeGameplayProductInputFrameTargetContext` is complete as opt-in pre-frame
+target-context enrichment over the latest eligible `PrimaryTile` pressed event.
+Textured sprites/animation/material policy, Qt/manual Step/pump or frame
+request/play-surface context wiring decisions, explicit interaction execution,
+product UX/save semantics, and broader UI execution remain gated.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
@@ -393,6 +395,24 @@ Runtime product input target context:
   `Interact`/`Inspect` targets, mutate query/product/gameplay/input state, or
   wire frame request/play-surface behavior.
 
+Runtime product input frame target context:
+- `RuntimeGameplayProductInputFrameTargetContext` is an opt-in pre-frame helper
+  between accumulator output and frame request.
+- It copies the input frame, scans events in order, and uses the latest eligible
+  `PrimaryTile` pressed event with a tile payload.
+- If no eligible event exists, it returns `NoEligiblePrimaryTile` with the copied
+  frame unchanged.
+- Missing tile payloads and `PrimaryTile` releases are ineligible and preserved
+  for existing adapter behavior.
+- It queries `RuntimeGameplayProductInteractionTargetQuery` as `TileCenter`,
+  forwards spatial/reach configs, applies `RuntimeGameplayProductInputTargetContext`
+  to the input frame's base binding context, and replaces only the copied frame
+  binding context when projection succeeds.
+- It preserves all events unchanged and in order, treats reach as diagnostic
+  only, and does not synthesize `Interact`/`Inspect`, inject target ids into
+  events, mutate product/input state, or change frame request/play-surface/input
+  adapter behavior.
+
 Qt manual Step consumer:
 - The View menu exposes `Product Step` for ready `--play` sessions only.
 - The action is independent of `Product Input Focus`; when focus is false,
@@ -489,8 +509,9 @@ Hard stops for product play UI projection:
   mouse screen-to-world/tile mapping, `PrimaryPoint`, or `PrimaryTile` synthesis
   from input context projection. Scene-only spatial lookup is available as a
   primitive, product target query reports are available read-only, and product
-  input target context enrichment exists, but they remain unwired to frame
-  request/play-surface context mutation here.
+  input target context enrichment plus opt-in frame enrichment exist, but they
+  remain unwired to Qt/manual Step/pump and frame request/play-surface context
+  mutation here.
 - No accumulator state persistence in runtime/session/gameplay/product-loop/
   play-mode state, snapshots, saves, settings, or scene/UI models.
 - No raw Qt key/event storage, cadence/rate policy, accumulator-owned frame
@@ -503,7 +524,7 @@ Hard stops for product play UI projection:
 - No textured sprite/animation sampling, new art/assets/material registry,
   package discovery, additional Qt mouse behavior, target context wiring,
   target search, reach lookup beyond the read-only product query/enrichment
-  helpers,
+  helpers, automatic frame request/play-surface ownership of frame enrichment,
   pause/retry/reset/completion/failure/save-load productization, package
   scanning/watching/discovery, source mutation, raw Qt event persistence,
   projected pointer persistence, viewport geometry/state persistence, render

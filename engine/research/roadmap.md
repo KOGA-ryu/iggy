@@ -135,6 +135,13 @@ Recently completed optimized stretches:
   `PlayerInputBindingContext2D`, unchanged paths preserve the base context
   exactly, and the helper does not own hover lifecycle, selected target state,
   reach gating, input conversion, execution, persistence, or Qt/UI behavior.
+- Runtime `RuntimeGameplayProductInputFrameTargetContext` for opt-in pre-frame
+  enrichment: copies a product input frame, finds the latest eligible
+  `PrimaryTile` pressed event with tile payload, queries target/reach as a
+  tile-center report, applies target-context enrichment to the copied frame
+  binding context only, preserves events unchanged/in order, and does not
+  auto-run from frame request/play surface or convert `PrimaryTile` to
+  `Interact`.
 - Runtime `RuntimeGameplayProductInputContext` for app-neutral product binding
   context projection, returning default gates plus current player tile only when
   product play state is loaded and has a player, without target discovery,
@@ -305,10 +312,14 @@ Recently completed optimized stretches:
   runtime/product interaction target query now reports point/tile-center target
   lookup plus reach annotation read-only, and
   `RuntimeGameplayProductInputTargetContext` can enrich a copied transient
-  binding context with a hovered target id from that report. Next product runtime
-  work is deciding when the helper is consumed by frame request/play-surface
-  context wiring or explicit interaction intent, then interaction execution if
-  approved, textured sprite/animation/material/asset policy,
+  binding context with a hovered target id from that report. The opt-in
+  `RuntimeGameplayProductInputFrameTargetContext` helper can now consume a frame's
+  latest eligible `PrimaryTile` pressed event, run that query/enrichment, and
+  return a copied frame with only binding context replaced. Next product runtime
+  work is deciding whether Qt/manual Step/pump or frame request/play surface
+  should call it, or whether explicit interaction intent should be synthesized,
+  then interaction execution if approved, textured sprite/animation/material/asset
+  policy,
   pause/retry/reset policy, completion/failure evaluation, and save/load UX.
 - Rendering backend/presentation layer.
 - Audio server boundary.
@@ -596,6 +607,14 @@ fields and reports `TargetProjected`. Non-found/invalid paths return
 `Unchanged` while preserving base selected target, hover, current player tile,
 and input gates; reach remains report annotation and no lifecycle, execution,
 or persistence policy is added.
+RuntimeGameplayProductInputFrameTargetContext is complete as an opt-in
+runtime/product pre-frame helper: it copies the input frame, finds the latest
+eligible `PrimaryTile` pressed event with a tile payload, runs the product target
+query as a tile-center lookup, applies target-context enrichment to the copied
+frame binding context, preserves all events unchanged, and returns diagnostics.
+It does not auto-wire frame request/play surface, synthesize `Interact`/`Inspect`
+targets, inject target ids into events, persist hover, or change adapter/command
+semantics.
 
 Objective: move from engine harness to playable/editor-backed game loop.
 
@@ -795,6 +814,12 @@ Done:
   selected target fields and existing hover on unchanged paths, does not require
   reachability, and does not change `RuntimeGameplayProductInputContext`,
   adapters, frame requests, play-surface behavior, or command/effect execution.
+- Product input frame target context is runtime/product and opt-in:
+  `RuntimeGameplayProductInputFrameTargetContext` scans a copied frame for the
+  latest eligible primary-tile press, forwards spatial/reach configs to the
+  query helper, applies target-context enrichment to the frame binding context,
+  and keeps event order/payloads intact. Missing-tile and release primary events
+  stay ineligible for this helper and preserved for existing adapter behavior.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -805,7 +830,8 @@ Exit criteria:
 - Save/load user-facing state.
 
 First gates:
-- Frame request/play-surface wiring for transient target context enrichment.
+- Qt/manual Step/pump or frame request/play-surface wiring decision for the
+  opt-in pre-frame target-context enrichment helper.
 - Hover lifecycle and selected-target workflows beyond the helper's one-shot
   enrichment.
 - Explicit interact target synthesis and reach-gated interaction execution.

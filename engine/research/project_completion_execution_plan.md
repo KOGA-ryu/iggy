@@ -235,10 +235,12 @@ that viewport; scene-only `InteractionTargetSpatialQuery2D` complete as the pure
 spatial lookup primitive; runtime/product `RuntimeGameplayProductInteractionTargetQuery`
 complete as a read-only point/tile-center target query plus reach report;
 runtime/product `RuntimeGameplayProductInputTargetContext` complete as transient
-hovered-target binding context enrichment from that report; next work is frame
-request/play-surface context wiring, explicit interact target synthesis,
-reach-gated interaction execution, textured sprite/animation/material/asset
-policy, and first-play UX policy gates.
+hovered-target binding context enrichment from that report; runtime/product
+`RuntimeGameplayProductInputFrameTargetContext` complete as opt-in pre-frame
+enrichment over the latest eligible `PrimaryTile` pressed event; next work is
+Qt/manual Step/pump or frame request/play-surface wiring decisions, explicit
+interact target synthesis, reach-gated interaction execution, textured
+sprite/animation/material/asset policy, and first-play UX policy gates.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -607,6 +609,33 @@ Product input target context projection complete:
   input adapter behavior, `RuntimeGameplayProductInputContext::build(state)`, or
   command/effect execution.
 
+Product input frame target context enrichment complete:
+- `RuntimeGameplayProductInputFrameTargetContext` is an opt-in runtime/product
+  pre-frame helper between accumulator output and frame request.
+- Input carries product play mode state, product input frame,
+  `InteractionTargetSpatialQuery2DConfig`, and `InteractionReach2DConfig`.
+- Result carries `Unchanged`, `NoEligiblePrimaryTile`, or `TargetProjected`,
+  copied/enriched frame, primary tile diagnostics, nested product target query
+  result, and nested input target context result.
+- The helper starts by copying the input frame and scanning events in order for
+  eligible `PrimaryTile` pressed events with `hasTile = true`.
+- The latest eligible `PrimaryTile` wins; event index and tile are recorded.
+- Missing tile payloads and `PrimaryTile` releases are ineligible and preserved
+  for existing adapter behavior.
+- The chosen tile queries `RuntimeGameplayProductInteractionTargetQuery` as
+  `TileCenter` with forwarded spatial/reach configs.
+- The helper applies `RuntimeGameplayProductInputTargetContext` to the input
+  frame's base binding context and the query result.
+- It replaces only the copied frame binding context; all events are preserved
+  unchanged and in order.
+- It returns `TargetProjected` only when target-context projection succeeds;
+  otherwise it returns `Unchanged` while preserving diagnostics.
+- Reach is diagnostic only and not a projection gate.
+- It does not synthesize `Interact`/`Inspect`, inject target ids into events,
+  change `PrimaryTile` semantics, mutate input frame/play state/accumulator/
+  product/gameplay state/query result/base context, or change adapter,
+  command/effect, frame request, or play-surface behavior.
+
 Product input accumulator complete:
 - `RuntimeGameplayProductInputAccumulator` is a shell-neutral return-by-value
   transient input helper.
@@ -709,8 +738,9 @@ Qt product frame pump toggle complete:
   frame request, play mode, input accumulator, or gameplay semantics.
 
 Remaining input gate questions:
-- When should frame request/play-surface wiring consume
-  `RuntimeGameplayProductInputTargetContext` output?
+- Should Qt manual Step/pump call `RuntimeGameplayProductInputFrameTargetContext`
+  before frame request, or should frame request/play surface ever own that
+  enrichment?
 - Who owns hover lifecycle, clearing, and selected-target workflows beyond this
   enrichment-only helper?
 - Should explicit interact target synthesis consume a `TargetFound` report, and
@@ -726,8 +756,8 @@ Remaining input gate questions:
 - What does completion/failure mean in the first slice?
 
 Output:
-- one optional frame request/play-surface context wiring or explicit
-  interact-target packet over the product query/context helpers, if approved;
+- one optional Qt/manual Step/pump or frame request/play-surface context wiring
+  packet over the product query/context helpers, if approved;
 - one textured sprite / animation / material policy packet, if approved;
 - one updated implementation order packet;
 - one verification plan.
@@ -929,9 +959,14 @@ Packets:
      into transient hovered binding context while preserving base selected target,
      unchanged hover, current player tile, and gates; no lifecycle, execution,
      persistence, or wiring change.
-21. Debug overlay projection:
+21. Product input frame target context enrichment. Complete:
+   - runtime/product opt-in pre-frame helper that finds the latest eligible
+     `PrimaryTile` pressed event, queries target/reach, enriches only copied frame
+     binding context, and preserves events; no auto frame request/play-surface
+     wiring or `PrimaryTile` to `Interact` conversion.
+22. Debug overlay projection:
    - trace/final rows, AI map, collision, path, interactions, inventory.
-22. UI presentation adapter:
+23. UI presentation adapter:
    - convert render frame data into the chosen shell/app surface.
 
 Hard stops:
@@ -1160,17 +1195,19 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 29. Interaction target spatial query is integrated.
 30. Runtime/product interaction target query report is integrated.
 31. Runtime/product input target context projection is integrated.
-32. Dispatch frame request/play-surface context wiring, explicit interact target
-    synthesis, reach-gated interaction execution, hover lifecycle, selected-target
-    workflow, point-vs-tile policy, textured sprite / animation / material
-    policy, render projection gaps, further input mapping, or a focused-input
-    follow-up, depending on planner scope.
+32. Runtime/product input frame target context enrichment is integrated.
+33. Dispatch Qt/manual Step/pump or frame request/play-surface context wiring,
+    explicit interact target synthesis, reach-gated interaction execution, hover
+    lifecycle, selected-target workflow, point-vs-tile policy, textured sprite /
+    animation / material policy, render projection gaps, further input mapping,
+    or a focused-input follow-up, depending on planner scope.
 
 Do not broaden the next Product Loop packet into pause/retry/reset,
 completion/failure, save/load productization, product-loop signature changes,
 command/gate execution, presentation state persistence, Qt/UI/CLI behavior,
 raw OS event types, raw input persistence, textured sprite/animation/material
 policy, target context wiring/lifecycle/reach beyond the approved read-only
-product query and enrichment helpers, additional Qt mouse behavior, render command
-drawing, canvas polish, or new gameplay semantics unless the user explicitly
+product query and enrichment helpers, automatic frame request/play-surface
+ownership of enrichment, additional Qt mouse behavior, render command drawing,
+canvas polish, or new gameplay semantics unless the user explicitly
 reprioritizes.

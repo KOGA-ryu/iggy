@@ -101,3 +101,4 @@ Queue:
 44. `44_interaction_target_spatial_query_status_sync` - complete. Sync planning/API docs after scene-only interaction target spatial query integration.
 45. `45_product_interaction_target_query_status_sync` - complete. Sync planning/API docs after runtime/product interaction target query integration.
 46. `46_product_input_target_context_status_sync` - complete. Sync planning/API docs after runtime/product input target context projection integration.
+47. `47_product_input_frame_target_context_status_sync` - complete. Sync planning/API docs after runtime/product input frame target context enrichment integration.
