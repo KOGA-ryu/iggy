@@ -137,6 +137,12 @@ Recently completed optimized stretches:
   `RuntimeGameplayProductInputFrame2D`, bounded to the latest mapped event and
   storing product input events only without raw Qt event persistence, adapter or
   binding calls, frame stepping, or camera/render ownership.
+- Qt shell `Product Step` View-menu action for ready `--play` sessions,
+  invoking `RuntimeGameplayProductFrameRequest` exactly once, updating only
+  replaceable app-shell transient play state/latest frame/presentation camera,
+  clearing transient product input after executed requests, and refreshing the
+  existing read-only product play panel without automatic frame pumping,
+  settings persistence, shortcuts, or runtime semantic changes.
 - Runtime authoring diagnostic projection with stable printable error-code
   strings.
 - Runtime summary projection for CLI/facade summary and final rows.
@@ -231,8 +237,9 @@ Recently completed optimized stretches:
   sessions; the runtime/product camera policy now selects transient
   caller-owned camera/config for presentation; the runtime/product frame request
   wrapper now composes camera selection plus exactly one play-mode frame call for
-  caller-requested manual frames. Next product runtime work is product shell
-  ownership for invoking frame requests, player/modern NPC render projection,
+  caller-requested manual frames; the Qt shell now exposes a ready-state manual
+  `Product Step` action that executes one frame request. Next product runtime
+  work is automatic frame pump ownership, player/modern NPC render projection,
   pause/retry/reset policy, completion/failure evaluation, save/load UX, and
   further shell integration such as mouse/world/tile input mapping if approved.
 - Rendering backend/presentation layer.
@@ -372,12 +379,22 @@ Done:
   request status, carries the nested next play-mode state, projects supplied
   input event count plus nested ignored input count, and preserves nested camera
   and play-mode frame results without inventing flattened fields.
+- Qt shell `Product Step` is enabled only for ready `--play` sessions and is
+  independent of `Product Input Focus`: when focus is false, existing
+  play-surface behavior ignores input but still consumes one available frame
+  with empty intents/context. Executed steps build
+  `RuntimeGameplayProductFrameRequestInput` from current app-shell play state,
+  transient product input, and shell-owned presentation camera config, call
+  `RuntimeGameplayProductFrameRequest {}.run(input)` once, replace only
+  transient app-shell `productPlayState_`, latest frame/context pointer, and
+  presentation camera, clear transient product input after every executed
+  request, and refresh the product play panel.
 
 Remaining exit work:
 - Add source-linked diagnostics and richer trace/expectation inspection.
-- Decide when the product shell invokes frame requests, stores latest play
-  frames/previous camera, drains transient input frames, and supplies any input
-  mapping beyond the supported keyboard controls.
+- Decide when the product shell should move from manual step requests to an
+  automatic frame pump, and when it supplies any input mapping beyond the
+  supported keyboard controls.
 - Gate any build canvas, structured authoring controls, or source/TOML
   roundtrip separately.
 - Keep editing/mutation APIs out until a separate gate approves them.
@@ -448,10 +465,11 @@ launch/load/build context wiring, a ready-state focus toggle, and ready/focused
 keyboard-to-product-input-event mapping exist. The runtime/product presentation
 camera policy chooses caller-owned transient camera/config for presentation, and
 `RuntimeGameplayProductFrameRequest` composes that policy with exactly one
-play-mode frame call for caller-requested manual frames. There is still no Qt
-Step button, automatic app/tick loop, input-frame draining policy,
-previous-camera/latest-frame storage in runtime state, mouse/world/tile input
-mapping, UX policy, or save/load productization yet.
+play-mode frame call for caller-requested manual frames. Qt `Product Step`
+invokes one frame request for ready `--play` sessions and updates only
+replaceable app-shell transient state. There is still no automatic app/tick
+loop, mouse/world/tile input mapping, UX policy, or save/load productization
+yet.
 
 Objective: move from engine harness to playable/editor-backed game loop.
 
@@ -548,6 +566,16 @@ Done:
   and play-mode frame results. The caller still owns transient input-frame
   clearing/draining, previous-camera storage, latest-frame storage, and
   presentation state ownership.
+- Qt shell `Product Step` is a ready-state View-menu action for `--play`
+  sessions. It builds request input from current `productPlayState_`, transient
+  `productInputFrame_`, and shell-owned camera config, runs
+  `RuntimeGameplayProductFrameRequest` once, replaces only
+  `productPlayState_`, `latestProductPlayModeFrame_`, the stable product play
+  context pointer, and `productPresentationCamera_`, clears product input after
+  each executed request, and refreshes the read-only product play panel. If the
+  action is unavailable, input is not silently cleared. Shell camera defaults
+  are presentation-only fallback/view defaults with NPC commands enabled and
+  tile chunk cache disabled; they are not settings/save truth.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -559,8 +587,6 @@ Exit criteria:
 
 First gates:
 - Mouse/world/tile input mapping only if a later product shell gate approves it.
-- Product shell ownership for when to invoke frame requests, drain input frames,
-  and store previous camera/latest play frames.
 - Player sprite and modern `RuntimeGameplayState::npcActors` render projection.
 - Automatic product frame pump ownership.
 - Pause/retry/reset policy.

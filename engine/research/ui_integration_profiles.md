@@ -193,8 +193,8 @@ Status: complete for the read-only product play panel model, context seam, and
 Qt `--play` launch/load/build consumer plus ready-state focus toggle and
 ready/focused keyboard product input mapping; runtime/product presentation
 camera policy and manual frame request wrapper are complete, while product shell
-request invocation, frame pumping, mouse/world/tile input mapping, and UI
-execution remain gated.
+manual Step is complete, and frame pumping, mouse/world/tile input mapping, and
+broader UI execution remain gated.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
@@ -277,6 +277,24 @@ Runtime manual frame request wrapper:
   loop/frame pump, mouse screen-to-world/tile mapping, raw input persistence,
   save/load, UX semantics, or gameplay semantics.
 
+Qt manual Step consumer:
+- The View menu exposes `Product Step` for ready `--play` sessions only.
+- The action is independent of `Product Input Focus`; when focus is false,
+  existing play-surface behavior ignores input but still consumes one available
+  frame with empty intents/context.
+- Executing Step builds `RuntimeGameplayProductFrameRequestInput` from current
+  `productPlayState_`, transient `productInputFrame_`, and shell-owned
+  presentation camera config, then calls
+  `RuntimeGameplayProductFrameRequest {}.run(input)` exactly once.
+- The shell updates only replaceable transient app-shell state:
+  `productPlayState_`, latest product play frame/context pointer, and
+  `productPresentationCamera_`.
+- The shell clears `productInputFrame_` after each executed request regardless
+  of request status, but does not clear it when Step is unavailable.
+- The existing read-only product play panel is refreshed after the request.
+- Camera/config defaults are shell presentation defaults only and are not
+  settings/save truth.
+
 Hard stops for product play UI projection:
 - No product frame execution, `RuntimeGameplayProductPlayMode::frame(...)`,
   `RuntimeGameplayProductPlaySurfaceFrame::build(...)`, app tick loop, or frame
@@ -312,6 +330,8 @@ Hard stops for product play UI projection:
 - No product frame request invocation, input-frame clearing/draining, previous
   camera storage, latest-frame storage, or presentation state ownership inside
   scene/UI projection code.
+- No automatic app/tick loop or frame pump from Qt manual Step.
+- No settings persistence or keyboard shortcut for Qt manual Step.
 - No hidden default camera/render config inside the UI model.
 - No pause/retry/reset, completion/failure, save/load productization, package
   scanning/watching/discovery, source mutation, or new gameplay semantics.
@@ -321,8 +341,7 @@ Hard stops for product play UI projection:
 1. Source-linked diagnostics.
 2. Visual trace playback.
 3. Mouse/world/tile input mapping only after an explicit product shell gate.
-4. Product shell frame-request invocation and latest-frame presentation
-   integration.
+4. Latest-frame presentation integration beyond the read-only panel, if needed.
 5. Automatic app tick loop / frame pump.
 7. Build canvas for placement.
 8. Structured authoring controls for existing facts.
