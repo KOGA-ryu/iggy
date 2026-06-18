@@ -80,3 +80,4 @@ Queue:
 23. `23_product_loop_status_sync` - complete. Sync planning/API docs after product-owned one-frame loop integration.
 24. `24_player_input_binding_status_sync` - complete. Sync planning/API docs after scene/player normalized input binding integration.
 25. `25_product_input_adapter_status_sync` - complete. Sync planning/API docs after runtime/product input adapter integration.
+26. `26_product_loop_context_override_status_sync` - complete. Sync planning/API docs after per-step product loop input context override integration.

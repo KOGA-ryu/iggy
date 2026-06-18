@@ -86,8 +86,8 @@ Recently completed optimized stretches:
   it reads, adapts, and validates without running frames.
 - Runtime `RuntimeGameplayProductLoop` for product-owned one-frame stepping over
   successful loader output; it consumes caller-provided player input intents and
-  carries current gameplay state without owning raw input, presentation, or
-  persistence.
+  optional per-step input context overrides, and carries current gameplay state
+  without owning raw input, presentation, or persistence.
 - Scene/player `PlayerInputBinding2D` for device-agnostic normalized action to
   `PlayerInputIntent2D` binding; it reports binding issues and preserves action
   order without applying gate rules or command mapping.
@@ -180,10 +180,10 @@ Recently completed optimized stretches:
 - Legacy NPC migration plan with explicit deletion prerequisites.
 - Product scenario loading and product-owned one-frame stepping exist for
   explicit TOML/package paths, and the scene/player normalized input binding
-  layer plus runtime/product transient input adapter exist; next product runtime
-  work is optional Qt/raw-device adapter wiring, context integration decisions,
-  presentation/camera adapter, pause/retry/reset policy, completion/failure
-  evaluation, save/load UX, and shell integration.
+  layer plus runtime/product transient input adapter and per-step product loop
+  input context override exist; next product runtime work is optional
+  Qt/raw-device adapter wiring, presentation/camera adapter, pause/retry/reset
+  policy, completion/failure evaluation, save/load UX, and shell integration.
 - Rendering backend/presentation layer.
 - Audio server boundary.
 - Save/load productization and authored package roundtrip.
@@ -351,10 +351,11 @@ Hard stops:
 
 ### 6. Product Loop
 
-Status: Packets 1, 2, 3A, and 3B-A complete; product runtime loop has a load
-boundary, caller-driven one-frame step, scene/player normalized input binding,
-and a runtime/product input adapter for transient product input events, but no
-Qt/raw-device shell adapter, presentation, UX policy, or save/load
+Status: Packets 1, 2, 3A, 3B-A, and 4-A complete; product runtime loop has a
+load boundary, caller-driven one-frame step, optional per-step input context
+override, scene/player normalized input binding, and a runtime/product input
+adapter for transient product input events, but no Qt/raw-device shell adapter,
+presentation, UX policy, or save/load
 productization yet.
 
 Objective: move from engine harness to playable/editor-backed game loop.
@@ -373,6 +374,10 @@ Done:
   `PlayerInputIntent2D`, runs `RuntimeGameplayOrchestratedFrameStep`, carries
   current state forward, and reports failed-load/not-loaded/exhausted-frame
   guard statuses.
+- `RuntimeGameplayProductLoopStepInput` can carry an optional per-step
+  `PlayerInputContext2D` override; unset steps preserve the authored/lowered
+  frame context, and set overrides flow into the existing lower-level
+  frame-step/gate path without persisting context as gameplay or save truth.
 - `PlayerInputBinding2D` maps device-agnostic normalized actions into
   `PlayerInputIntent2D`, carrying `PlayerInputContext2D` as data, preserving
   action order, reporting stable counts/issues, and excluding no-op/issues from
@@ -393,7 +398,6 @@ Exit criteria:
 
 First gates:
 - Optional Qt/raw-device adapter into transient product input events.
-- Product loop context integration decision if needed.
 - Render/presentation ownership.
 - Pause/retry/reset policy.
 - Completion/failure evaluator.

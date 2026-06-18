@@ -219,9 +219,9 @@ Exit criteria:
 
 ## Phase 4: Product Loop Gate
 
-Status: Packets 1, 2, 3A, and 3B-A complete; next input work is optional
-Qt/raw-device event adaptation and any product loop context integration
-decision.
+Status: Packets 1, 2, 3A, 3B-A, and 4-A complete; next work is presentation
+and camera ownership, optional Qt/raw-device event adaptation, and first-play UX
+policy gates.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -283,11 +283,23 @@ Packet 3B-A complete:
   commands, map Qt/OS events, own camera/render data, or add save/persistence
   semantics.
 
+Packet 4-A complete:
+- `RuntimeGameplayProductLoopStepInput` supports an optional per-step
+  `PlayerInputContext2D` override.
+- Default behavior is unchanged: when no override is set, product loop keeps the
+  authored/lowered frame context while replacing current state and caller
+  intents.
+- When the override is set, normal and explicit collision-world step paths pass
+  it into the existing lower-level frame-step/gate path.
+- The override is per-step policy only; it is not persisted in product loop
+  state, runtime session/gameplay state, save snapshots, or UI models.
+- Product-loop load behavior, frame indexing, collision-world behavior, and
+  caller-intent replacement semantics are unchanged beyond the optional context
+  override.
+
 Remaining input gate questions:
 - Is a Qt/raw-device adapter needed before shell integration, and where does it
   convert raw input into transient product input events?
-- Does product loop state need a context override/update API, or should context
-  remain product/app-owned input adapter data?
 - Who owns camera/presentation state?
 - Who owns pause/retry/reset?
 - What state must save/load for the first playable slice?
@@ -295,7 +307,7 @@ Remaining input gate questions:
 
 Output:
 - one optional Qt/raw-device adapter packet if needed;
-- one context integration decision if needed;
+- one presentation/camera ownership scout or adapter packet;
 - one updated implementation order packet;
 - one verification plan.
 
@@ -308,7 +320,9 @@ Hard stops:
   surfaces;
 - do not add gate execution or command mapping to `PlayerInputBinding2D`;
 - do not change `RuntimeGameplayProductLoop` signatures or stepping as part of
-  input work;
+  later input work;
+- do not persist raw input or context overrides in runtime/session/product-loop
+  state or snapshots;
 - do not put presentation/camera state into gameplay truth;
 - do not productize save/load in the next input packet;
 - do not add pause/retry/reset or completion/failure/win/lose semantics in the
@@ -389,7 +403,8 @@ Implementation packets:
 3A. Scene/player normalized input binding. Complete.
 3B-A. Runtime/product transient input event adapter. Complete.
 3B-B. Optional Qt/raw-device adapter into transient product input events.
-4. Product loop context integration decision if needed.
+4-A. Product loop per-step input context override. Complete.
+4-B. Presentation/camera ownership scout or adapter.
 5. Gameplay tick loop.
 6. Render/presentation surface.
 7. Pause/retry/reset.
@@ -514,8 +529,9 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 8. Product Loop Packet 2 product-owned loop state/step is integrated.
 9. Product Loop Packet 3A scene/player normalized input binding is integrated.
 10. Product Loop Packet 3B-A runtime/product input adapter is integrated.
-11. Dispatch optional Qt/raw-device adapter or product loop context integration
-    decision, depending on planner scope.
+11. Product Loop Packet 4-A per-step input context override is integrated.
+12. Dispatch presentation/camera ownership scout or optional Qt/raw-device
+    adapter, depending on planner scope.
 
 Do not broaden the next Product Loop packet into presentation/camera,
 pause/retry/reset, completion/failure, save/load productization, product-loop
