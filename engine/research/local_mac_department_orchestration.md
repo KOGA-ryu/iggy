@@ -8,8 +8,9 @@ short-lived subagents, and repo-owned handoff docs.
 
 ## Operating Model
 
-The hub is the conductor. In practice, the hub is the current planning session,
-the local tmux control room, and the integration worktree:
+The hub is the conductor. In practice, the hub is the current Codex app
+planning session plus the integration worktree. The hub does not live inside a
+department terminal window.
 
 - Integration worktree: `/Users/kogaryu/iggy`
 - Integration branch: `master`
@@ -36,16 +37,36 @@ The current worktree topology is always discovered with:
 git worktree list
 ```
 
-The local tmux control room is created with:
+The local tmux department floor is created with:
 
 ```sh
 engine/tools/iggy-dept-up.sh
 ```
 
-The helper opens one tmux session with windows for hub, runtime, AI/NPC,
-authoring, UI/product, platform, integration, and research. The windows are
-command surfaces and status dashboards; the workers still communicate durable
-results through commits, bucket docs, and Codex briefs.
+The helper opens one visible Terminal window per department. Each department
+Terminal window attaches to its own tmux session:
+
+| Department | tmux session | Default worktree |
+| --- | --- | --- |
+| Runtime | `iggy-runtime` | `/Users/kogaryu/iggy-finisher` when present |
+| AI/NPC | `iggy-ai_npc` | `/Users/kogaryu/iggy-builder-aimap` when present |
+| Authoring | `iggy-authoring` | `/Users/kogaryu/iggy-authoring` when present, otherwise integration |
+| UI/Product | `iggy-ui_product` | `/Users/kogaryu/iggy-ui-product` when present, otherwise integration |
+| Platform | `iggy-platform` | `/Users/kogaryu/iggy-platform` when present, otherwise integration |
+| Integration | `iggy-integration` | `/Users/kogaryu/iggy` |
+
+Inside each department tmux session, the worker tabs/windows are:
+
+- `planner`
+- `builder`
+- `reviewer`
+- `researcher`
+- `finisher`
+- `apprentice`
+
+The terminal windows are command surfaces and status dashboards; the workers
+still communicate durable results through commits, bucket docs, and Codex
+briefs.
 
 Do not treat a hardcoded snapshot in any doc as authoritative. Verify the local
 state before assigning, rebasing, or merging.
