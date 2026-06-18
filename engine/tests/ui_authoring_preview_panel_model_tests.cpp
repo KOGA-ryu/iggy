@@ -39,6 +39,14 @@ void ExpectRowValue(
 	Expect(row != nullptr && row->value == value, message);
 }
 
+void ExpectRowAbsent(
+	const std::vector<iggy::ui::UiAuthoringPreviewPanelRow> &rows,
+	const std::string &key,
+	const char *message)
+{
+	Expect(FindRow(rows, key) == nullptr, message);
+}
+
 iggy::runtime::RuntimeGameplayAuthoringPreviewModel BaseRunPreview()
 {
 	iggy::runtime::RuntimeGameplayAuthoringPreviewModel preview;
@@ -53,7 +61,7 @@ iggy::runtime::RuntimeGameplayAuthoringPreviewModel BaseRunPreview()
 	preview.summary.pickedUpCount = 1;
 	preview.summary.interactionChanged = true;
 	preview.summary.npcMovedCount = 1;
-	preview.summary.npcBlockedMovementCount = 0;
+	preview.summary.npcBlockedMovementCount = 2;
 	preview.finalRows = {
 		"#####",
 		"#A@.#",
@@ -80,6 +88,9 @@ void TestTomlFileHeaderStatusAndSummaryProjection()
 	ExpectRowValue(model.summary, "picked up", "1", "preview panel should project pickup count");
 	ExpectRowValue(model.summary, "interaction changed", "yes", "preview panel should project interaction change");
 	ExpectRowValue(model.summary, "NPC moved", "1", "preview panel should project NPC movement");
+	ExpectRowValue(model.summary, "NPC blocked movement", "2", "preview panel should project NPC blocked movement");
+	ExpectRowAbsent(model.summary, "rejected commands", "preview panel should not invent rejected command count");
+	ExpectRowAbsent(model.summary, "blocked commands", "preview panel should not label NPC blocked movement as blocked commands");
 }
 
 void TestPackageMetadataProjection()

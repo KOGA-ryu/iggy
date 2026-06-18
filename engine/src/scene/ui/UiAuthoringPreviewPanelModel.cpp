@@ -205,8 +205,6 @@ UiAuthoringPreviewPanelModel buildUiAuthoringPreviewPanelModel(
 	model.summary = {
 		{ "frame count", std::to_string(preview.summary.frameCount) },
 		{ "accepted commands", std::to_string(preview.summary.acceptedCommandCount) },
-		{ "rejected commands", "0" },
-		{ "blocked commands", std::to_string(preview.summary.npcBlockedMovementCount) },
 		{ "picked up", std::to_string(preview.summary.pickedUpCount) },
 		{ "interaction changed", BoolText(preview.summary.interactionChanged) },
 		{ "NPC moved", std::to_string(preview.summary.npcMovedCount) },
