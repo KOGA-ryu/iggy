@@ -9,7 +9,7 @@ For the builder bucket, see `../authoring_batches/`.
 
 Worktree:
 - Path: `/Users/kogaryu/iggy-finisher`
-- Branch: `codex/finisher-roadmap`
+- Branch: `codex/finisher-runtime-cleanup`
 - Created from builder baseline `c6c2800a` (`Mark authoring facade API packet complete`).
 
 Finisher workflow:
@@ -72,3 +72,4 @@ Queue:
 15. `15_projection_status_mapping_audit` - complete. Audit duplicate projection/status mapping.
 16. `16_cmake_authoring_test_hygiene_gate` - complete. Assess authoring CMake test registration hygiene.
 17. `17_finisher_merge_hygiene_update` - complete. Update finisher merge/rebase protocol after cleanup stretch.
+18. `18_runtime_report_count_projection_cleanup` - complete. Extract repeated inventory-event count projection.
