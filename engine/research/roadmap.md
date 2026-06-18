@@ -88,6 +88,9 @@ Recently completed optimized stretches:
   successful loader output; it consumes caller-provided player input intents and
   carries current gameplay state without owning raw input, presentation, or
   persistence.
+- Scene/player `PlayerInputBinding2D` for device-agnostic normalized action to
+  `PlayerInputIntent2D` binding; it reports binding issues and preserves action
+  order without applying gate rules or command mapping.
 - Runtime authoring diagnostic projection with stable printable error-code
   strings.
 - Runtime summary projection for CLI/facade summary and final rows.
@@ -172,9 +175,11 @@ Recently completed optimized stretches:
 - Runtime cleanup after authoring contracts stabilize.
 - Legacy NPC migration plan with explicit deletion prerequisites.
 - Product scenario loading and product-owned one-frame stepping exist for
-  explicit TOML/package paths; next product runtime work is input binding,
-  presentation/camera adapter, pause/retry/reset policy, completion/failure
-  evaluation, save/load UX, and shell integration.
+  explicit TOML/package paths, and the scene/player normalized input binding
+  layer exists; next product runtime work is app/product raw device or Qt event
+  adapter wiring, context integration decisions, presentation/camera adapter,
+  pause/retry/reset policy, completion/failure evaluation, save/load UX, and
+  shell integration.
 - Rendering backend/presentation layer.
 - Audio server boundary.
 - Save/load productization and authored package roundtrip.
@@ -342,9 +347,10 @@ Hard stops:
 
 ### 6. Product Loop
 
-Status: Packets 1 and 2 complete; product runtime loop has a load boundary and
-caller-driven one-frame step, but no input binding, presentation, UX policy, or
-save/load productization yet.
+Status: Packets 1, 2, and 3A complete; product runtime loop has a load boundary,
+caller-driven one-frame step, and scene/player normalized input binding, but no
+app/product raw input adapter, presentation, UX policy, or save/load
+productization yet.
 
 Objective: move from engine harness to playable/editor-backed game loop.
 
@@ -362,6 +368,10 @@ Done:
   `PlayerInputIntent2D`, runs `RuntimeGameplayOrchestratedFrameStep`, carries
   current state forward, and reports failed-load/not-loaded/exhausted-frame
   guard statuses.
+- `PlayerInputBinding2D` maps device-agnostic normalized actions into
+  `PlayerInputIntent2D`, carrying `PlayerInputContext2D` as data, preserving
+  action order, reporting stable counts/issues, and excluding no-op/issues from
+  emitted intents.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -372,7 +382,8 @@ Exit criteria:
 - Save/load user-facing state.
 
 First gates:
-- Input binding ownership.
+- App/product adapter for raw device or Qt events into normalized actions.
+- Product loop context integration decision if needed.
 - Render/presentation ownership.
 - Pause/retry/reset policy.
 - Completion/failure evaluator.

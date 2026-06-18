@@ -196,6 +196,7 @@ Purpose: fast source-of-truth lookup for major public engine types and functions
 - `PlayerCommandFramePlanner2D`: command frame to ordered player plans plus diagnostics.
 - `PlayerMovementExecutor2D::execute`: applies one movement plan through `physics2d::CharacterMove2D`.
 - `PlayerInputIntent2D`, intent factory helpers, `validate`: device-free player input intent data.
+- `PlayerInputBinding2D`: pure scene/player normalized action binding into `PlayerInputIntent2D`, carrying `PlayerInputContext2D` as data. It supports move point/tile/delta, interact/inspect target fallback, wait, cancel, no-op, stable issue/count reporting, and action-order-preserving emitted intents while excluding no-op/issues; it does not own Qt/OS event types, camera transforms, gate rules, command mapping, runtime/session state, save/load, or product-loop stepping.
 - `PlayerInputIntentGate2D`: filters player input intents through scene/player input context rules.
 - `PlayerInputCommandMapper2D`, `PlayerInputCommandFrameMapper2D`: map accepted player input intents to gameplay commands.
 - `PlayerInputGatedCommandFrameMapper2D`: gates intents first, then maps accepted intents while preserving gate and mapping diagnostics.

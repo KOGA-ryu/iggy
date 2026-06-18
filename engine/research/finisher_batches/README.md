@@ -78,3 +78,4 @@ Queue:
 21. `21_ui_preview_consumer_status_sync` - complete. Sync planning docs after read-only Qt preview consumer integration.
 22. `22_product_loader_status_sync` - complete. Sync planning/API docs after load-only product scenario loader integration.
 23. `23_product_loop_status_sync` - complete. Sync planning/API docs after product-owned one-frame loop integration.
+24. `24_player_input_binding_status_sync` - complete. Sync planning/API docs after scene/player normalized input binding integration.
