@@ -9,6 +9,9 @@ Short-term packet queues can still live in focused buckets such as
 `authoring_batches/` and `finisher_batches/`. This document is the higher-level
 source of truth for what remains.
 
+For phase order, dispatch templates, and verification gates, use
+`engine/research/project_completion_execution_plan.md`.
+
 ## Operating Rules
 
 - Keep the old thread/packet workflow unless a new orchestration setup is

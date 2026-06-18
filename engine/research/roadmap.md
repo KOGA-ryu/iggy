@@ -6,6 +6,8 @@ after every small slice.
 
 For the detailed completion backlog, use
 `engine/research/project_completion_todo.md`.
+For phase order and dispatch gates, use
+`engine/research/project_completion_execution_plan.md`.
 
 ## Current Checkpoint
 
