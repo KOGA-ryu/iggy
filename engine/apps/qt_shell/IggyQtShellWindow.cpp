@@ -32,6 +32,7 @@
 #include "IggyQtShellUi.hpp"
 #include "runtime/RuntimeGameplayAuthoringPreviewModel.hpp"
 #include "scene/ui/UiAuthoringPreviewPanelModel.hpp"
+#include "scene/ui/UiProductPlayModePanelModel.hpp"
 #include "scene/ui/UiTheme.hpp"
 
 namespace iggy::qt_shell {
@@ -147,6 +148,18 @@ void addKeyValueRow(QVBoxLayout *layout, const ui::UiAuthoringPreviewPanelRow &r
 	layout->addWidget(line);
 }
 
+void addKeyValueRow(QVBoxLayout *layout, const ui::UiProductPlayModePanelRow &row)
+{
+	auto *line = new QWidget;
+	auto *lineLayout = new QHBoxLayout(line);
+	lineLayout->setContentsMargins(0, 1, 0, 1);
+	lineLayout->setSpacing(8);
+	lineLayout->addWidget(makeLabel(toQString(row.key), "fieldLabel"));
+	lineLayout->addStretch(1);
+	lineLayout->addWidget(makeLabel(toQString(row.value), "mutedText"));
+	layout->addWidget(line);
+}
+
 void addRowSection(
 	QVBoxLayout *layout,
 	const QString &title,
@@ -159,6 +172,21 @@ void addRowSection(
 		return;
 	}
 	for (const ui::UiAuthoringPreviewPanelRow &row : rows)
+		addKeyValueRow(layout, row);
+}
+
+void addRowSection(
+	QVBoxLayout *layout,
+	const QString &title,
+	const std::vector<ui::UiProductPlayModePanelRow> &rows,
+	const QString &emptyText = QStringLiteral("None"))
+{
+	layout->addWidget(makeSectionLabel(title));
+	if (rows.empty()) {
+		layout->addWidget(makeLabel(emptyText, "mutedText"));
+		return;
+	}
+	for (const ui::UiProductPlayModePanelRow &row : rows)
 		addKeyValueRow(layout, row);
 }
 
@@ -396,7 +424,7 @@ private:
 
 } // namespace
 
-IggyQtShellWindow::IggyQtShellWindow(IggyQtShellPreviewOptions previewOptions)
+IggyQtShellWindow::IggyQtShellWindow(IggyQtShellLaunchOptions launchOptions)
 {
 	setWindowFlag(Qt::FramelessWindowHint, true);
 	setMinimumSize(520, 420);
@@ -408,16 +436,38 @@ IggyQtShellWindow::IggyQtShellWindow(IggyQtShellPreviewOptions previewOptions)
 	input_.panels.right.collapsed = false;
 	input_.panels.bottom.collapsed = false;
 	context_.activeToolId = id("tool:select");
-	if (previewOptions.enabled) {
+	if (launchOptions.preview.enabled) {
 		authoringPreview_ =
 			runtime::RuntimeGameplayAuthoringPreviewModelBuilder {}.build(
-				previewOptions.path,
-				previewOptions.config);
+				launchOptions.preview.path,
+				launchOptions.preview.config);
 		hasAuthoringPreview_ = true;
 		context_.authoringPreview = &authoringPreview_;
 		setPanelContentAssignment(
 			settings_.panelContent,
 			{ id("panel:authoring_preview"), ui::UiShellSlot::Right, false });
+	}
+	if (launchOptions.play.enabled) {
+		productLoad_ =
+			runtime::RuntimeGameplayProductScenarioLoader {}.load(
+				launchOptions.play.path);
+		productLoopBuild_ =
+			runtime::RuntimeGameplayProductLoop {}.build(productLoad_);
+		productPlayBuild_ =
+			runtime::RuntimeGameplayProductPlayMode {}.build(productLoopBuild_);
+		if (productPlayBuild_.status ==
+			runtime::RuntimeGameplayProductPlayModeBuildStatus::Ready) {
+			productPlayState_ = productPlayBuild_.state;
+		}
+		hasProductPlayMode_ = true;
+		context_.productPlayModeBuild = &productPlayBuild_;
+		context_.productPlayModeState = &productPlayState_;
+		context_.latestProductPlayModeFrame = nullptr;
+		input_.workspace.bindings.push_back(
+			{ ui::UiShellSlot::Right, id("feature:product_play") });
+		setPanelContentAssignment(
+			settings_.panelContent,
+			{ id("panel:product_play"), ui::UiShellSlot::Right, false });
 	}
 	rebuildModel();
 	applyTheme();
@@ -853,12 +903,13 @@ QWidget *IggyQtShellWindow::buildPanelContent(const ui::UiMountedPanel &panel)
 		ResourceId groupId;
 		QWidget *(IggyQtShellWindow::*build)();
 	};
-	static const std::array<PanelRenderer, 5> renderers = {{
+	static const std::array<PanelRenderer, 6> renderers = {{
 		{id("panel:runtime_frame"), &IggyQtShellWindow::buildRuntimeFramePanelContent},
 		{id("panel:interaction_events"), &IggyQtShellWindow::buildInteractionEventsPanelContent},
 		{id("panel:inventory"), &IggyQtShellWindow::buildInventoryPanelContent},
 		{id("panel:collision"), &IggyQtShellWindow::buildCollisionPanelContent},
 		{id("panel:authoring_preview"), &IggyQtShellWindow::buildAuthoringPreviewPanelContent},
+		{id("panel:product_play"), &IggyQtShellWindow::buildProductPlayModePanelContent},
 	}};
 
 	for (const PanelRenderer &renderer : renderers) {
@@ -974,6 +1025,31 @@ QWidget *IggyQtShellWindow::buildAuthoringPreviewPanelContent()
 	}
 
 	addRowSection(layout, QStringLiteral("Expectations"), model_.authoringPreview.expectation);
+	layout->addStretch(1);
+	return content;
+}
+
+QWidget *IggyQtShellWindow::buildProductPlayModePanelContent()
+{
+	auto *content = new QWidget;
+	auto *layout = new QVBoxLayout(content);
+	layout->setContentsMargins(0, 0, 0, 0);
+	layout->setSpacing(6);
+
+	if (!hasProductPlayMode_ || !model_.productPlayMode.present) {
+		layout->addWidget(makeLabel(QStringLiteral("No product play mode loaded."), "mutedText"));
+		layout->addStretch(1);
+		return content;
+	}
+
+	addRowSection(layout, QStringLiteral("Build"), model_.productPlayMode.buildStatus);
+	addRowSection(layout, QStringLiteral("Identity"), model_.productPlayMode.identity);
+	addRowSection(layout, QStringLiteral("State"), model_.productPlayMode.state);
+	addRowSection(layout, QStringLiteral("Latest Frame"), model_.productPlayMode.latestFrame);
+	addRowSection(layout, QStringLiteral("Adapter"), model_.productPlayMode.adapter);
+	addRowSection(layout, QStringLiteral("Binding"), model_.productPlayMode.binding);
+	addRowSection(layout, QStringLiteral("Step"), model_.productPlayMode.step);
+	addRowSection(layout, QStringLiteral("Presentation"), model_.productPlayMode.presentation);
 	layout->addStretch(1);
 	return content;
 }

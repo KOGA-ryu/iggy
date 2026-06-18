@@ -11,12 +11,12 @@ namespace {
 struct ParsedArgs {
 	bool ok = true;
 	std::string error;
-	iggy::qt_shell::IggyQtShellPreviewOptions preview;
+	iggy::qt_shell::IggyQtShellLaunchOptions launch;
 };
 
 void PrintUsage(const char *program)
 {
-	std::cerr << "usage: " << program << " [--preview PATH] [--preview-mode run|trace|check|lint]\n";
+	std::cerr << "usage: " << program << " [--preview PATH] [--preview-mode run|trace|check|lint] [--play PATH]\n";
 }
 
 bool ApplyPreviewMode(
@@ -61,8 +61,8 @@ ParsedArgs ParseArgs(int argc, char **argv)
 				parsed.error = "--preview requires a path";
 				return parsed;
 			}
-			parsed.preview.enabled = true;
-			parsed.preview.path = std::filesystem::path(argv[++index]);
+			parsed.launch.preview.enabled = true;
+			parsed.launch.preview.path = std::filesystem::path(argv[++index]);
 			continue;
 		}
 		if (arg == "--preview-mode") {
@@ -71,11 +71,21 @@ ParsedArgs ParseArgs(int argc, char **argv)
 				parsed.error = "--preview-mode requires run, trace, check, or lint";
 				return parsed;
 			}
-			if (!ApplyPreviewMode(argv[++index], parsed.preview.config)) {
+			if (!ApplyPreviewMode(argv[++index], parsed.launch.preview.config)) {
 				parsed.ok = false;
 				parsed.error = "unsupported --preview-mode";
 				return parsed;
 			}
+			continue;
+		}
+		if (arg == "--play") {
+			if (index + 1 >= argc) {
+				parsed.ok = false;
+				parsed.error = "--play requires a path";
+				return parsed;
+			}
+			parsed.launch.play.enabled = true;
+			parsed.launch.play.path = std::filesystem::path(argv[++index]);
 			continue;
 		}
 		if (arg == "--help" || arg == "-h") {
@@ -83,6 +93,11 @@ ParsedArgs ParseArgs(int argc, char **argv)
 			parsed.error.clear();
 			return parsed;
 		}
+	}
+	if (parsed.launch.play.enabled && parsed.launch.preview.enabled) {
+		parsed.ok = false;
+		parsed.error = "--play cannot be combined with --preview";
+		return parsed;
 	}
 	return parsed;
 }
@@ -100,7 +115,7 @@ int main(int argc, char **argv)
 	}
 
 	QApplication app(argc, argv);
-	iggy::qt_shell::IggyQtShellWindow window(parsed.preview);
+	iggy::qt_shell::IggyQtShellWindow window(parsed.launch);
 	window.show();
 	return app.exec();
 }

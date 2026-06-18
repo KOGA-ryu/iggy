@@ -11,6 +11,9 @@
 #include <string>
 
 #include "runtime/RuntimeGameplayAuthoringPreviewModel.hpp"
+#include "runtime/RuntimeGameplayProductLoop.hpp"
+#include "runtime/RuntimeGameplayProductPlayMode.hpp"
+#include "runtime/RuntimeGameplayProductScenarioLoader.hpp"
 #include "runtime/RuntimeGameplayTomlScenarioFacade.hpp"
 #include "scene/ui/UiFeatureContext.hpp"
 #include "scene/ui/UiRuntimeWorkspaceModel.hpp"
@@ -28,9 +31,19 @@ struct IggyQtShellPreviewOptions {
 	runtime::RuntimeGameplayTomlScenarioFacadeConfig config;
 };
 
+struct IggyQtShellPlayOptions {
+	bool enabled = false;
+	std::filesystem::path path;
+};
+
+struct IggyQtShellLaunchOptions {
+	IggyQtShellPreviewOptions preview;
+	IggyQtShellPlayOptions play;
+};
+
 class IggyQtShellWindow final : public QMainWindow {
 public:
-	explicit IggyQtShellWindow(IggyQtShellPreviewOptions previewOptions = {});
+	explicit IggyQtShellWindow(IggyQtShellLaunchOptions launchOptions = {});
 
 protected:
 	bool eventFilter(QObject *watched, QEvent *event) override;
@@ -60,6 +73,7 @@ private:
 	[[nodiscard]] QWidget *buildInventoryPanelContent();
 	[[nodiscard]] QWidget *buildCollisionPanelContent();
 	[[nodiscard]] QWidget *buildAuthoringPreviewPanelContent();
+	[[nodiscard]] QWidget *buildProductPlayModePanelContent();
 	[[nodiscard]] QWidget *buildUnavailablePanelContent(const ui::UiMountedPanel &panel);
 	[[nodiscard]] QPushButton *buildMountedChromePanelButton(const ui::UiMountedChromePanel &panel);
 	[[nodiscard]] QWidget *buildToolBelt();
@@ -91,6 +105,11 @@ private:
 	ui::UiRuntimeWorkspaceModel model_;
 	runtime::RuntimeGameplayAuthoringPreviewModel authoringPreview_;
 	bool hasAuthoringPreview_ = false;
+	runtime::RuntimeGameplayProductScenarioLoadResult productLoad_;
+	runtime::RuntimeGameplayProductLoopBuildResult productLoopBuild_;
+	runtime::RuntimeGameplayProductPlayModeBuildResult productPlayBuild_;
+	runtime::RuntimeGameplayProductPlayModeState productPlayState_;
+	bool hasProductPlayMode_ = false;
 	QWidget *root_ = nullptr;
 	QVBoxLayout *rootLayout_ = nullptr;
 	QWidget *body_ = nullptr;
