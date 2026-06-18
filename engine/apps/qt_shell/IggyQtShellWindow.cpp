@@ -28,6 +28,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <utility>
 #include <vector>
@@ -803,16 +804,20 @@ bool IggyQtShellWindow::recordProductViewportPrimaryTilePress(QMouseEvent &event
 		runtime::RuntimeGameplayProductPresentationCamera {}.build(
 			productPlayState_,
 			cameraConfig);
+	const Vec2 viewSize = cameraConfig.cameraView.viewportSize;
+	if (viewSize.x == 0.0F || viewSize.y == 0.0F)
+		return false;
 
 	runtime::RuntimeGameplayProductPointerProjectionInput projectionInput;
 	projectionInput.viewportPoint = {
-		static_cast<float>(event.position().x()),
-		static_cast<float>(event.position().y()),
+		static_cast<float>(event.position().x()) /
+			static_cast<float>(productViewport_->width()) *
+			std::fabs(viewSize.x),
+		static_cast<float>(event.position().y()) /
+			static_cast<float>(productViewport_->height()) *
+			std::fabs(viewSize.y),
 	};
-	projectionInput.viewportSize = {
-		static_cast<float>(productViewport_->width()),
-		static_cast<float>(productViewport_->height()),
-	};
+	projectionInput.viewportSize = viewSize;
 	projectionInput.camera = camera.presentationCamera;
 	projectionInput.cameraView = cameraConfig.cameraView;
 	const runtime::RuntimeGameplayProductPointerProjectionResult projection =
