@@ -190,8 +190,9 @@ Hard stops for the first milestone:
 ## Product Play UI Projection
 
 Status: complete for the read-only product play panel model, context seam, and
-Qt `--play` launch/load/build consumer plus ready-state focus toggle; frame
-pumping, raw input, camera policy, and gameplay execution remain gated.
+Qt `--play` launch/load/build consumer plus ready-state focus toggle and
+ready/focused keyboard product input mapping; frame pumping, camera policy,
+mouse/world/tile input mapping, and gameplay execution remain gated.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
@@ -232,11 +233,30 @@ Qt focus toggle:
 - Launch still starts focused by default through runtime play-mode build
   defaults.
 
+Qt keyboard input mapping:
+- Ready, focused `--play` sessions map supported Qt key press/release events
+  into the app-shell-owned transient
+  `RuntimeGameplayProductInputFrame2D productInputFrame_`.
+- The shell stores product input events only, not raw `QKeyEvent` objects or
+  pointers.
+- Product input events are recorded only when product play mode exists,
+  play-mode build status is ready, and product input focus is enabled.
+- Disabled focus, failed-load, and not-ready play sessions record no event; when
+  focus is disabled, the transient input frame is cleared.
+- The frame is latest-event bounded: each accepted key clears the frame before
+  appending one event.
+- Auto-repeat and unsupported keys are ignored. Arrow/WASD map to movement,
+  `E`/Return/Enter to interact, `I` to inspect, Space to wait, and Escape to
+  cancel.
+- Binding context remains default; no current-player tile, selected target,
+  hovered target, scene/UI model exposure, or settings exposure was added.
+
 Hard stops for product play UI projection:
 - No product frame execution, `RuntimeGameplayProductPlayMode::frame(...)`,
   `RuntimeGameplayProductPlaySurfaceFrame::build(...)`, app tick loop, or frame
   pump.
-- No raw Qt/device event mapping.
+- No raw Qt/device event persistence; supported keyboard mapping may produce
+  only transient product input events inside the Qt shell.
 - No UI execution, frame stepping, automatic app/tick loop, or frame pump.
 - No product loader/file/package/TOML APIs called from scene/UI model code.
 - No calls to `RuntimeGameplayProductPlayMode::frame`,
@@ -249,12 +269,18 @@ Hard stops for product play UI projection:
 - No product input events, default camera/render config, presentation frames,
   latest-frame synthesis, frame stepping/manual stepping, app tick loop, or
   frame pump from the focus toggle.
+- No `RuntimeGameplayProductInputAdapter::map(...)` or
+  `PlayerInputBinding2D::bind(...)` calls from Qt input mapping.
+- No mouse position to world/tile mapping, `PrimaryPoint`, or `PrimaryTile`
+  mapping.
 - No settings persistence or keyboard shortcut for the focus toggle.
 - No product play mode mutation from scene/UI projection code; Qt launch/focus
   code may update only the durable current focus bit through
   `RuntimeGameplayProductPlayMode::withInputFocus(...)`. Runtime/gameplay state
   mutation remains prohibited.
-- No raw input, camera, presentation, or render-frame persistence in
+- No raw Qt event or product input event persistence in
+  gameplay/session/product-loop/play-mode/save/settings/scene-UI truth.
+- No camera, presentation, or render-frame persistence in
   gameplay/session/product-loop/play-mode/save truth.
 - No hidden default camera/render config inside the UI model.
 - No pause/retry/reset, completion/failure, save/load productization, package
@@ -264,7 +290,7 @@ Hard stops for product play UI projection:
 
 1. Source-linked diagnostics.
 2. Visual trace playback.
-3. Qt/raw-device input mapping after focus ownership is scoped.
+3. Mouse/world/tile input mapping only after an explicit product shell gate.
 4. Camera lifecycle/presentation policy.
 5. Product frame stepping / automatic app tick loop / frame pump.
 7. Build canvas for placement.

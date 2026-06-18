@@ -221,10 +221,10 @@ Exit criteria:
 
 Status: Packets 1, 2, 3A, 3B-A, 4-A, 4-B, the app-neutral play-surface frame,
 play-mode state, read-only product play UI projection, Qt `--play` launch
-consumer, and Qt product input focus toggle complete; next work is optional
-Qt/raw-device event adaptation after shell/focus ownership is scoped, camera
-lifecycle policy, render projection gaps, product frame stepping/frame pump
-ownership, and first-play UX policy gates.
+consumer, Qt product input focus toggle, and ready/focused Qt keyboard product
+input mapping complete; next work is camera lifecycle policy, render projection
+gaps, product frame stepping/frame pump ownership, any further mouse/world/tile
+input mapping, and first-play UX policy gates.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -424,9 +424,35 @@ Qt product play focus toggle complete:
   camera/render config, presentation frames, latest-frame results, frame steps,
   app tick loops, settings persistence, or keyboard shortcuts.
 
+Qt keyboard product input mapping complete:
+- The Qt shell maps supported keyboard press/release events for ready, focused
+  `--play` sessions into the app-shell-owned transient
+  `RuntimeGameplayProductInputFrame2D productInputFrame_`.
+- It records product input events only, not raw `QKeyEvent` objects or pointers.
+- Events are recorded only when product play mode exists, play-mode build status
+  is `RuntimeGameplayProductPlayModeBuildStatus::Ready`, and
+  `productPlayInputFocusEnabled()` is true.
+- Disabled focus, failed load, or not-ready play state records no event; turning
+  product input focus off clears the transient input frame.
+- The input frame is latest-event bounded: recording clears the frame before
+  appending one event.
+- Auto-repeat and unsupported keys are ignored.
+- Arrow/WASD map to `MoveNorth`, `MoveSouth`, `MoveWest`, and `MoveEast`;
+  `E`/Return/Enter map to `Interact`; `I` maps to `Inspect`; Space maps to
+  `Wait`; Escape maps to `Cancel`.
+- `productInputFrame_.bindingContext` remains default; no current-player tile,
+  selected target, hovered target, scene/UI model exposure, or settings exposure
+  was added.
+- The mapping does not call `RuntimeGameplayProductPlayMode::frame(...)`,
+  `RuntimeGameplayProductPlaySurfaceFrame::build(...)`,
+  `RuntimeGameplayProductInputAdapter::map(...)`, or
+  `PlayerInputBinding2D::bind(...)`; it does not create camera/render config,
+  presentation frames, latest-frame results, product frame steps, manual step
+  actions, app tick loops, or frame pumps.
+
 Remaining input gate questions:
-- Is a Qt/raw-device adapter needed after shell/focus ownership is scoped, and
-  where does it convert raw input into transient product input events?
+- Is mouse/world/tile input mapping needed after keyboard mapping, and where
+  should any future mapping beyond supported keys remain transient?
 - Who owns camera lifecycle/follow/rig/clamp policy?
 - When are player sprite and modern `RuntimeGameplayState::npcActors` render
   projections added?
@@ -437,8 +463,7 @@ Remaining input gate questions:
 - What does completion/failure mean in the first slice?
 
 Output:
-- one optional Qt/raw-device adapter packet after product shell/focus ownership
-  is scoped, if needed;
+- one optional mouse/world/tile input mapping packet, if needed;
 - one camera lifecycle/presentation policy packet;
 - one product frame stepping/frame pump packet;
 - one updated implementation order packet;
@@ -484,6 +509,15 @@ Hard stops:
   synthesis, product frame stepping/manual stepping, or app tick-loop/frame pump
   to the focus toggle;
 - do not persist focus toggle state into settings or add a keyboard shortcut;
+- do not store raw `QKeyEvent` objects or pointers outside Qt shell event
+  handling;
+- do not call `RuntimeGameplayProductInputAdapter::map(...)`,
+  `PlayerInputBinding2D::bind(...)`,
+  `RuntimeGameplayProductPlayMode::frame(...)`, or
+  `RuntimeGameplayProductPlaySurfaceFrame::build(...)` from Qt input mapping;
+- do not map mouse position to world/tile coordinates or create `PrimaryPoint`
+  or `PrimaryTile` input from Qt input mapping;
+- do not expose product input frames through scene/UI models or settings;
 - do not persist raw input in runtime session/gameplay/product-loop state,
   snapshots, saves, or UI models;
 - do not persist raw input in play-mode state; only durable focus is stored;
@@ -499,9 +533,11 @@ Hard stops:
 Status: projection-only product presentation wrapper, runtime-only app-neutral
 play-surface frame, app-neutral play-mode state, read-only product play UI
 projection, Qt `--play` launch/load/build consumer, and Qt product input focus
-toggle integrated; raw-device adapter, camera lifecycle policy, player sprite
-projection, modern NPC actor projection, product frame stepping/frame pump, and
-UI execution beyond launch/focus remain separate gates.
+toggle plus ready/focused keyboard product input mapping integrated; camera
+lifecycle policy, player sprite projection, modern NPC actor projection, product
+frame stepping/frame pump, further input mapping beyond supported keyboard
+controls, and UI execution beyond launch/focus/input capture remain separate
+gates.
 
 Goal: turn runtime state into visible play state.
 
@@ -520,12 +556,14 @@ Packets:
    - explicit path -> load/build/play-mode context pointers -> read-only panel.
 6. Qt product input focus toggle. Complete:
    - ready play mode -> focus bit toggle -> read-only panel refresh.
-7. Camera lifecycle/presentation policy:
+7. Qt keyboard product input mapping. Complete:
+   - ready/focused key press/release -> transient latest product input event.
+8. Camera lifecycle/presentation policy:
    - follow/rig/clamp ownership outside gameplay truth; screen/world transforms
      remain separate.
-8. Debug overlay projection:
+9. Debug overlay projection:
    - trace/final rows, AI map, collision, path, interactions, inventory.
-9. UI presentation adapter:
+10. UI presentation adapter:
    - convert render frame data into the chosen shell/app surface.
 
 Hard stops:
@@ -587,7 +625,7 @@ Implementation packets:
 2. Product-owned loop state/step. Complete.
 3A. Scene/player normalized input binding. Complete.
 3B-A. Runtime/product transient input event adapter. Complete.
-3B-B. Optional Qt/raw-device adapter into transient product input events.
+3B-B. Optional further raw-device adapter into transient product input events.
 4-A. Product loop per-step input context override. Complete.
 4-B. Projection-only product presentation frame. Complete.
 4-C. Runtime product play-surface frame. Complete.
@@ -595,7 +633,7 @@ Implementation packets:
 4-E. Read-only product play UI projection/context. Complete.
 4-F. Qt product play launch/load/build consumer. Complete.
 4-G-A. Qt product play focus toggle. Complete.
-4-G-B. Qt/raw-device input mapping.
+4-G-B. Qt keyboard product input mapping. Complete.
 4-H. Camera lifecycle/presentation policy.
 5. Product frame stepping/frame pump.
 6. Player sprite and modern NPC actor render projection.
@@ -729,9 +767,9 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 15. Read-only product play UI projection/context is integrated.
 16. Qt product play launch/load/build consumer is integrated.
 17. Qt product play focus toggle is integrated.
-18. Dispatch Qt/raw-device input mapping, camera lifecycle policy, product frame
-    stepping/frame pump, or a focused-input follow-up, depending on planner
-    scope.
+18. Qt keyboard product input mapping is integrated.
+19. Dispatch camera lifecycle policy, product frame stepping/frame pump, further
+    input mapping, or a focused-input follow-up, depending on planner scope.
 
 Do not broaden the next Product Loop packet into pause/retry/reset,
 completion/failure, save/load productization, product-loop signature changes,

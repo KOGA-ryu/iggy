@@ -122,6 +122,11 @@ Recently completed optimized stretches:
   updating only durable current `RuntimeGameplayProductPlayMode` focus state and
   refreshing the read-only product play panel without routing Qt input events or
   stepping frames.
+- Qt shell ready/focused `--play` keyboard mapping from supported key
+  press/release events into an app-shell-owned transient
+  `RuntimeGameplayProductInputFrame2D`, bounded to the latest mapped event and
+  storing product input events only without raw Qt event persistence, adapter or
+  binding calls, frame stepping, or camera/render ownership.
 - Runtime authoring diagnostic projection with stable printable error-code
   strings.
 - Runtime summary projection for CLI/facade summary and final rows.
@@ -211,11 +216,12 @@ Recently completed optimized stretches:
   input context override plus projection-only product presentation frame exist;
   the app-neutral runtime play-surface frame now composes those public surfaces
   for one caller-requested focused play frame; app-neutral play-mode state now
-  stores only durable loop state and input focus. Next product runtime work is
-  Qt/raw-device input mapping ownership, camera lifecycle policy,
+  stores only durable loop state and input focus; the Qt shell now maps
+  supported keys to transient product input events for ready, focused `--play`
+  sessions. Next product runtime work is camera lifecycle policy,
   player/modern NPC render projection, product frame stepping/frame pump,
   pause/retry/reset policy, completion/failure evaluation, save/load UX, and
-  shell integration.
+  further shell integration such as mouse/world/tile input mapping if approved.
 - Rendering backend/presentation layer.
 - Audio server boundary.
 - Save/load productization and authored package roundtrip.
@@ -334,11 +340,18 @@ Done:
   action when product play is ready. Toggling it updates the durable current
   play-mode focus bit and refreshes `panel:product_play`; failed-load play
   sessions keep the action disabled/non-applicable.
+- Ready, focused `--play` sessions map supported Qt key press/release events to
+  transient product input events in `IggyQtShellWindow`: Arrow/WASD cardinal
+  movement, `E`/Return/Enter interact, `I` inspect, Space wait, and Escape
+  cancel. The frame is latest-event bounded, clears on focus disable, ignores
+  auto-repeat and unsupported keys, keeps binding context default, and stores no
+  raw `QKeyEvent` objects or pointers.
 
 Remaining exit work:
 - Add source-linked diagnostics and richer trace/expectation inspection.
-- Decide when the product shell supplies raw-device input, camera/render config,
-  latest play frames, and frame pumping.
+- Decide when the product shell supplies camera/render config, latest play
+  frames, frame pumping, and any input mapping beyond the supported keyboard
+  controls.
 - Gate any build canvas, structured authoring controls, or source/TOML
   roundtrip separately.
 - Keep editing/mutation APIs out until a separate gate approves them.
@@ -405,10 +418,10 @@ projection-only presentation wrapper over loaded loop state plus caller-owned
 camera/config, an app-neutral one-frame play-surface composition facade, and
 durable app-neutral play-mode state storing only loop state plus focus. Product
 play UI projection is read-only and context-provided, and Qt `--play PATH`
-launch/load/build context wiring plus a ready-state focus toggle exists. There
-is still no Qt/raw-device input adapter, product frame execution, automatic
-app/tick loop, UX policy, or save/load
-productization yet.
+launch/load/build context wiring, a ready-state focus toggle, and ready/focused
+keyboard-to-product-input-event mapping exist. There is still no product frame
+execution, automatic app/tick loop, camera policy, mouse/world/tile input
+mapping, UX policy, or save/load productization yet.
 
 Objective: move from engine harness to playable/editor-backed game loop.
 
@@ -477,6 +490,16 @@ Done:
   `RuntimeGameplayProductPlayMode {}.withInputFocus(...)`, keeps product play
   context pointers stable, clears latest frame to null, and refreshes the
   read-only product play panel so its `hasInputFocus` row changes.
+- Qt shell keyboard mapping records only product input events into an
+  app-shell-owned transient `RuntimeGameplayProductInputFrame2D` when product
+  play exists, play-mode build is ready, and product input focus is enabled.
+  Disabling focus clears the frame. Each supported key press/release clears the
+  frame before appending one latest event; auto-repeat and unsupported keys are
+  ignored. Arrow/WASD map to cardinal movement, `E`/Return/Enter to interact,
+  `I` to inspect, Space to wait, and Escape to cancel. Binding context remains
+  default; no current-player tile, selected target, hovered target, scene/UI
+  model exposure, settings exposure, raw `QKeyEvent` persistence, adapter call,
+  binding call, frame step, or camera/render config is added.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -487,8 +510,7 @@ Exit criteria:
 - Save/load user-facing state.
 
 First gates:
-- Optional Qt/raw-device adapter into transient product input events after
-  shell/focus ownership is scoped.
+- Mouse/world/tile input mapping only if a later product shell gate approves it.
 - Camera lifecycle/follow/rig/clamp policy.
 - Player sprite and modern `RuntimeGameplayState::npcActors` render projection.
 - Product frame stepping/frame pump ownership.
