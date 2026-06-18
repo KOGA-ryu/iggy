@@ -15,6 +15,7 @@ list(APPEND IGGY_ENGINE_SOURCES
   src/runtime/RuntimeGameplayAuthoringPreviewModel.cpp
   src/runtime/RuntimeGameplayProductInputAdapter.cpp
   src/runtime/RuntimeGameplayProductLoop.cpp
+  src/runtime/RuntimeGameplayProductPresentationFrame.cpp
   src/runtime/RuntimeGameplayProductScenarioLoader.cpp
   src/runtime/RuntimeGameplayScenarioAuthoringAdapter.cpp
   src/runtime/RuntimeGameplayAsciiScenarioPacket.cpp
