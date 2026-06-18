@@ -106,11 +106,16 @@ Recently completed optimized stretches:
   plus `tileForPoint(...)` tile, returning status/flags/world/tile for future
   policy without owning Qt mouse input, viewport/canvas coordinates, target
   lookup, interaction execution, or persistence.
-- Qt shell `productViewport_` owner for product play sessions: an inert
-  `QFrame#productViewport` created only when product play mode exists, including
+- Qt shell `productViewport_` owner for product play sessions:
+  `QFrame#productViewport` is created only when product play mode exists, including
   failed/not-ready play sessions, with expanding layout inside `QFrame#mainSlot`
-  and no mouse consumer, event filter, pointer projection call, product input
-  synthesis, render drawing, or runtime/scene API change.
+  and no render drawing or runtime/scene API change.
+- Qt shell thin primary-tile mouse consumer on `productViewport_`: focused,
+  ready left-button press records exactly one transient `PrimaryTile` pressed
+  event in the product input accumulator after normalizing Qt pixel-local
+  coordinates into configured product camera-view span; no `PrimaryPoint`, world
+  payload, right/middle/move/wheel/double-click/drag/hover behavior, frame
+  execution, persistence, or runtime/product API change.
 - Runtime `RuntimeGameplayProductInputContext` for app-neutral product binding
   context projection, returning default gates plus current player tile only when
   product play state is loaded and has a player, without target discovery,
@@ -275,11 +280,12 @@ Recently completed optimized stretches:
   ready `--play` sessions; runtime/product presentation now appends
   debug/material player and modern NPC actor quads after level rendering;
   runtime/product pointer projection plus explicit primary point/tile
-  accumulator event preservation exists; Qt shell now owns an inert
-  product-play viewport frame as a future event/render target boundary. Next
-  product runtime work is a thin Qt mouse consumer targeting that viewport if
-  approved, textured sprite/animation/material/asset policy, pause/retry/reset
-  policy, completion/failure evaluation, and save/load UX.
+  accumulator event preservation exists; Qt shell now owns a
+  product-play viewport frame as an event/render target boundary and has a
+  focused ready-play left-click `PrimaryTile` consumer for that viewport. Next
+  product runtime work is target discovery/search/reach and interaction
+  execution if approved, textured sprite/animation/material/asset policy,
+  pause/retry/reset policy, completion/failure evaluation, and save/load UX.
 - Rendering backend/presentation layer.
 - Audio server boundary.
 - Save/load productization and authored package roundtrip.
@@ -534,15 +540,17 @@ invokes one frame request for ready `--play` sessions using accumulator frame
 output enriched with projected current-player-tile binding context before
 updating replaceable app-shell transient state. Qt `Product Frame Pump` adds
 app-shell-owned 250 ms / 4 Hz timing around that same one-frame helper for ready
-`--play` sessions. There is still no Qt mouse consumer, product viewport/canvas
-coordinate owner, target lookup, textured sprite/animation/material/asset
-policy, UX policy, or save/load productization yet. Product Pointer Tile Input
-Mapping Option A is complete as runtime/product projection and accumulator event
-preservation only.
+`--play` sessions. Product Pointer Tile Input Mapping Option A is complete as
+runtime/product projection and accumulator event preservation, and the Qt shell
+now records focused ready left-clicks on `productViewport_` as transient
+`PrimaryTile` pressed events. There is still no target lookup, hover/selection,
+interaction execution, right/middle/move/wheel/double-click/drag behavior,
+textured sprite/animation/material/asset policy, UX policy, or save/load
+productization yet.
 Qt Product Viewport Owner is complete as a temporary app-shell viewport/canvas
-boundary: product play sessions now get an inert `QFrame#productViewport`, but
-it has no mouse handler, event filter, pointer projection call, render command
-drawing, or product input synthesis yet.
+boundary: product play sessions get `QFrame#productViewport`; the current input
+policy is left-click `PrimaryTile` only and render command drawing/canvas polish
+remain separate.
 
 Objective: move from engine harness to playable/editor-backed game loop.
 
@@ -616,12 +624,18 @@ Done:
   context pointers, reveals `panel:product_play`, and leaves latest frame null.
   Bad paths still open the shell and show failed load/build state; `--play` and
   `--preview` are mutually exclusive with exit code 2.
-- Qt shell builds an inert `QFrame#productViewport` in the main slot whenever
-  product play mode exists, including failed/not-ready play sessions. It uses
+- Qt shell builds `QFrame#productViewport` in the main slot whenever product
+  play mode exists, including failed/not-ready play sessions. It uses
   zero-margin/zero-spacing layout, expanding size policy, and local viewport
   stylesheet only; `productViewport_` is reset to null on rebuilds where no
-  viewport is created. The viewport is a stable future event/render target
-  boundary, not input readiness or runtime truth.
+  viewport is created. The viewport is a stable event/render target boundary,
+  not input readiness or runtime truth.
+- Qt shell installs a viewport-only event filter for product play sessions.
+  Focused, ready left mouse press on `productViewport_` records one transient
+  `RuntimeGameplayProductInputEvent2D` with `control = PrimaryTile`, `kind =
+  Pressed`, `hasTile = true`, and `tile = projection.tile` in the product input
+  accumulator. The handler accepts/returns true only when that product event is
+  recorded; otherwise it falls through.
 - Qt shell `Product Input Focus` toggles are enabled/applicable only for ready
   product play state. The action updates only current `productPlayState_` via
   `RuntimeGameplayProductPlayMode {}.withInputFocus(...)`, keeps product play
@@ -710,11 +724,13 @@ Done:
   semantics.
 - Product pointer projection is runtime/product and Qt-free:
   `RuntimeGameplayProductPointerProjection` provides the camera/view math needed
-  for a future focused ready-play Qt mouse consumer to emit transient
-  `PrimaryTile` and/or `PrimaryPoint` events into the accumulator. The Qt
-  viewport owner now provides an inert target for that future consumer, but
-  mouse handling, pointer projection calls, and point-vs-tile policy remain
-  separate gates.
+  for Qt to emit transient `PrimaryTile` events into the accumulator. The
+  corrected Qt handler normalizes `QMouseEvent::position()` by
+  `productViewport_` pixel width/height into the configured camera-view span
+  from `productPresentationCameraConfig().cameraView.viewportSize` before
+  calling the projection helper, and builds presentation camera policy
+  read-only from `productPlayState_`. Point-vs-tile / `PrimaryPoint` behavior,
+  target discovery, and interaction execution remain separate gates.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -725,9 +741,9 @@ Exit criteria:
 - Save/load user-facing state.
 
 First gates:
-- Thin Qt mouse consumer targeting `productViewport_` if a later product shell
-  gate approves it.
 - Target discovery/search/reach and hover/selection workflows.
+- Point-vs-tile / `PrimaryPoint` behavior beyond the current `PrimaryTile`
+  policy.
 - Textured sprite/animation/material/asset policy over the debug/material actor
   quads.
 - Pause/retry/reset policy.
