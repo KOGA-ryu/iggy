@@ -27,6 +27,7 @@
 class QEvent;
 class QKeyEvent;
 class QPushButton;
+class QTimer;
 
 namespace iggy::qt_shell {
 
@@ -71,9 +72,13 @@ private:
 	void setProductPlayInputFocus(bool enabled);
 	void toggleProductPlayInputFocus();
 	[[nodiscard]] bool productManualStepAvailable() const;
+	[[nodiscard]] bool productFramePumpAvailable() const;
+	[[nodiscard]] bool productFramePumpEnabled() const;
+	void setProductFramePumpEnabled(bool enabled);
 	[[nodiscard]] runtime::RuntimeGameplayProductPresentationCameraConfig
 	productPresentationCameraConfig() const;
 	void runProductManualStep();
+	void runProductFrameRequestOnce();
 	void clearProductInputAccumulator();
 	[[nodiscard]] std::optional<runtime::RuntimeGameplayProductInputControl2D>
 	mapQtKeyToProductControl(int key) const;
@@ -145,6 +150,7 @@ private:
 	QWidget *chrome_ = nullptr;
 	bool draggingChrome_ = false;
 	QPoint chromeDragOffset_;
+	QTimer *productFramePumpTimer_ = nullptr;
 };
 
 } // namespace iggy::qt_shell

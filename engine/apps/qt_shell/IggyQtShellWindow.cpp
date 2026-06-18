@@ -24,6 +24,7 @@
 #include <QSizePolicy>
 #include <QSpinBox>
 #include <QStackedWidget>
+#include <QTimer>
 
 #include <algorithm>
 #include <array>
@@ -439,6 +440,15 @@ IggyQtShellWindow::IggyQtShellWindow(IggyQtShellLaunchOptions launchOptions)
 	input_.panels.right.collapsed = false;
 	input_.panels.bottom.collapsed = false;
 	context_.activeToolId = id("tool:select");
+	productFramePumpTimer_ = new QTimer(this);
+	productFramePumpTimer_->setInterval(250);
+	connect(productFramePumpTimer_, &QTimer::timeout, this, [this]() {
+		if (!productFramePumpAvailable()) {
+			setProductFramePumpEnabled(false);
+			return;
+		}
+		runProductFrameRequestOnce();
+	});
 	if (launchOptions.preview.enabled) {
 		authoringPreview_ =
 			runtime::RuntimeGameplayAuthoringPreviewModelBuilder {}.build(
@@ -628,6 +638,34 @@ bool IggyQtShellWindow::productManualStepAvailable() const
 			runtime::RuntimeGameplayProductPlayModeBuildStatus::Ready;
 }
 
+bool IggyQtShellWindow::productFramePumpAvailable() const
+{
+	return productManualStepAvailable();
+}
+
+bool IggyQtShellWindow::productFramePumpEnabled() const
+{
+	return productFramePumpTimer_ != nullptr && productFramePumpTimer_->isActive();
+}
+
+void IggyQtShellWindow::setProductFramePumpEnabled(bool enabled)
+{
+	if (productFramePumpTimer_ == nullptr)
+		return;
+	if (enabled && !productFramePumpAvailable()) {
+		productFramePumpTimer_->stop();
+		refreshAfterModelChange();
+		return;
+	}
+	if (enabled) {
+		if (!productFramePumpTimer_->isActive())
+			productFramePumpTimer_->start();
+	} else {
+		productFramePumpTimer_->stop();
+	}
+	refreshAfterModelChange();
+}
+
 runtime::RuntimeGameplayProductPresentationCameraConfig
 IggyQtShellWindow::productPresentationCameraConfig() const
 {
@@ -645,6 +683,14 @@ IggyQtShellWindow::productPresentationCameraConfig() const
 }
 
 void IggyQtShellWindow::runProductManualStep()
+{
+	if (!productManualStepAvailable())
+		return;
+
+	runProductFrameRequestOnce();
+}
+
+void IggyQtShellWindow::runProductFrameRequestOnce()
 {
 	if (!productManualStepAvailable())
 		return;
@@ -892,6 +938,14 @@ QWidget *IggyQtShellWindow::buildChrome()
 	productStep->setEnabled(productManualStepAvailable());
 	connect(productStep, &QAction::triggered, this, [this]() {
 		runProductManualStep();
+	});
+	auto *productFramePump =
+		viewMenu->addAction(QStringLiteral("Product Frame Pump"));
+	productFramePump->setCheckable(true);
+	productFramePump->setChecked(productFramePumpEnabled());
+	productFramePump->setEnabled(productFramePumpAvailable());
+	connect(productFramePump, &QAction::toggled, this, [this](bool enabled) {
+		setProductFramePumpEnabled(enabled);
 	});
 	layout->addSpacing(8);
 	for (const ui::UiMountedChromePanel &panel : model_.mountedChromePanels)
