@@ -333,8 +333,13 @@ Recently completed optimized stretches:
   frame pump now call that helper through their shared one-frame path, the Qt
   product viewport can draw the latest frame's existing quad render commands as
   a temporary debug-material presentation consumer, and the viewport can overlay
-  a thin Qt-only target highlight from latest target-context diagnostics. Next
-  product runtime work is deciding whether frame request/play surface should own
+  a thin Qt-only target highlight from latest target-context diagnostics. Native
+  `iggy_native_play` now has no-Qt scripted controls/debugger support for
+  deterministic product-path stepping: `--scripted-controls LIST`,
+  `--scripted-control-interval-ms`, `--debug-scripted-controls`,
+  `--dump-final-state`, `--expect-player-tiles 'x,y;x,y'`, and
+  `--quit-after-script`. Next product runtime work is deciding whether frame
+  request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
   execution if approved, real renderer ownership, textured sprite/animation/
@@ -618,6 +623,15 @@ when latest transient target-context diagnostics contain a copied target. It
 uses copied target position/radius, marks reachable/unreachable/no-reach with
 local styles, and does not run target queries, synthesize input, select targets,
 execute interactions, persist highlight state, or change runtime APIs.
+Native scripted controls/debugger are complete for no-Qt product play:
+`iggy_native_play --play PATH --scripted-controls LIST` injects scripted controls
+through the same product input path as keyboard controls, supports
+`--scripted-control-interval-ms`, `--debug-scripted-controls`,
+`--dump-final-state`, `--expect-player-tiles 'x,y;x,y'`, and
+`--quit-after-script`, and reports expectation mismatches with nonzero exit plus
+the actual player tile. Final-state dump prints player tile, next frame index,
+render command count, active input count, and held input count after the scripted
+sequence completes.
 InteractionTargetSpatialQuery2D is complete as a scene-only lookup primitive:
 it scans enabled interaction targets in registry order, compares Euclidean
 distance to clamped target radius plus clamped extra radius, returns the nearest
@@ -897,6 +911,15 @@ Done:
   Paint uses copied target payload position/radius and reach annotation only; it
   runs no target query and adds no label, target id text, selected marker, trail,
   click animation, command execution, or richer overlay.
+- Native scripted controls/debugger are no-Qt app-shell tooling:
+  scripted controls inject the same product input path as keyboard controls, and
+  `--debug-scripted-controls` prints before/after player tile, frame request,
+  play mode, surface, and loop statuses, input and ignored event counts,
+  accepted/blocked/rejected counts, `npcMoved`, and render command count.
+  `--dump-final-state` prints player tile, next frame index, render command
+  count, active input count, and held input count after the script completes.
+  This does not change gameplay semantics, runtime/product APIs, persistence,
+  Qt, or render asset/material/glTF policy.
 
 Exit criteria:
 - Load a package or explicit scenario.

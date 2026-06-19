@@ -218,6 +218,19 @@ policy, real renderer ownership, richer overlays/labels, richer diagnostics,
 frame request/play-surface ownership, explicit interaction execution, product
 UX/save semantics, and broader UI execution remain gated.
 
+Native `iggy_native_play` scripted controls/debugger is complete as a no-Qt
+app-shell harness over the same product input path as keyboard controls. It
+supports `--scripted-controls LIST`, `--scripted-control-interval-ms`,
+`--debug-scripted-controls`, `--dump-final-state`,
+`--expect-player-tiles 'x,y;x,y'`, and `--quit-after-script`; debugger output
+reports before/after player tile, frame request/play mode/surface/loop statuses,
+input/ignored event counts, accepted/blocked/rejected counts, `npcMoved`, and
+render command count. Final-state dump reports player tile, next frame index,
+render command count, active input count, and held input count. Expectation
+mismatch exits nonzero and reports the actual tile. It does not change gameplay
+semantics, runtime/product APIs, Qt behavior, persistence, or render
+asset/material/glTF policy.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.

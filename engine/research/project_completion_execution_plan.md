@@ -243,10 +243,12 @@ read-only target-context diagnostics projection is complete in the product panel
 thin Qt product viewport render command drawing is complete as a temporary
 app-shell consumer of existing latest-frame quad commands; thin Qt target
 highlight overlay is complete as a visual annotation over latest target-context
-diagnostics; next work is optional richer overlays/labels or diagnostics, frame
-request/play-surface ownership decisions, explicit interact target synthesis,
-reach-gated interaction execution, real renderer ownership, textured
-sprite/animation/material/asset policy, and first-play UX policy gates.
+diagnostics; native no-Qt scripted controls/debugger is complete for
+deterministic product-path stepping and expectation checks; next work is optional
+richer overlays/labels or diagnostics, frame request/play-surface ownership
+decisions, explicit interact target synthesis, reach-gated interaction
+execution, real renderer ownership, textured sprite/animation/material/asset
+policy, and first-play UX policy gates.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -507,6 +509,27 @@ Thin Qt product target highlight overlay complete:
 - It changes no runtime/product/scene/UI/render-command APIs and persists no
   target diagnostics, highlight state, viewport geometry, camera/presentation
   state, render-frame data, raw input, accumulator state, or Qt state.
+
+Native scripted controls/debugger complete:
+- `iggy_native_play --play PATH --scripted-controls LIST` runs comma-separated
+  controls such as `east,east,south` or `right*3,wait`.
+- `--scripted-control-interval-ms` controls delay between scripted controls.
+- `--debug-scripted-controls` prints per-step product frame diagnostics.
+- `--dump-final-state` prints final scripted state after the scripted sequence
+  completes.
+- `--expect-player-tiles 'x,y;x,y'` validates the player tile after each expanded
+  scripted control.
+- `--quit-after-script` exits after the scripted sequence completes.
+- Scripted controls inject the same product input path as keyboard controls.
+- Debug output includes before/after player tile, frame request/play mode/
+  surface/loop statuses, input and ignored event counts, accepted/blocked/
+  rejected counts, `npcMoved`, and render command count.
+- Final-state dump includes player tile, next frame index, render command count,
+  active input count, and held input count.
+- Expectation mismatch exits nonzero and reports the actual player tile.
+- This is native no-Qt app-shell tooling only: no gameplay semantics change,
+  runtime/product API change, Qt path, persistence, or render asset/material/glTF
+  policy.
 
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
@@ -1095,9 +1118,13 @@ Packets:
 25. Thin Qt product target highlight overlay. Complete:
    - `ProductViewportWidget` paints a Qt-only outline/tint marker from latest
      target-context diagnostics after command quads.
-26. Debug overlay projection:
+26. Native scripted controls/debugger. Complete:
+   - `iggy_native_play` can inject scripted controls through the same product
+     input path as keyboard controls, print per-step diagnostics, validate
+     expected player tiles, dump final scripted state, and quit after the script.
+27. Debug overlay projection:
    - trace/final rows, AI map, collision, path, interactions, inventory.
-27. UI presentation adapter:
+28. UI presentation adapter:
    - convert render frame data into the chosen shell/app surface.
 
 Hard stops:
@@ -1331,7 +1358,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 34. Product input target-context diagnostics projection is integrated.
 35. Thin Qt product viewport render command drawer is integrated.
 36. Thin Qt product target highlight overlay is integrated.
-37. Dispatch richer diagnostics display, overlays/labels, frame request/
+37. Native no-Qt scripted controls/debugger is integrated.
+38. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, real renderer ownership, textured sprite / animation /
@@ -1348,3 +1376,5 @@ ownership of enrichment, diagnostics persistence or exposure beyond compact
 read-only panel rows and thin target marker, additional Qt mouse behavior, render
 command drawing beyond the approved Qt latest-frame drawer, canvas polish, or new
 gameplay semantics unless the user explicitly reprioritizes.
+Do not treat native scripted controls/debugger as gameplay semantics, runtime/
+product API, Qt path, persistence, or render asset/material/glTF policy.
