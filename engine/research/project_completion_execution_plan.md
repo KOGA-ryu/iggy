@@ -1055,6 +1055,32 @@ Native static mesh built-in export CLI complete:
   server/draw-list API change, gameplay/scripted/final-state semantic change,
   or docs mixed into source.
 
+Native static mesh export policy complete:
+- `NativeStaticMeshExportPolicy.hpp` adds app-local value-only export metadata.
+- `NativeStaticMeshBuiltInExportId` contains `Cube`, `Bean`, and `NpcMarker`.
+- `NativeStaticMeshExportAssetRef` carries `id`, `name`, and
+  `defaultFilename`; `NativeStaticMeshExportPolicy` carries `assets`.
+- `DefaultNativeStaticMeshExportPolicy()` returns stable refs in order:
+  `Cube` / `cube` / `cube.igmesh`, `Bean` / `bean` / `bean.igmesh`, and
+  `NpcMarker` / `npc-marker` / `npc-marker.igmesh`.
+- `FindNativeStaticMeshExportAsset(policy, name)` performs first-match lookup.
+- `BuiltInNativeStaticMeshExportAsset(id)` maps ids to existing built-in CPU
+  mesh assets.
+- Existing `--dump-static-mesh-asset NAME` now resolves through the policy
+  before writing raw `.igmesh`, preserving accepted names, unknown-name error,
+  conflict behavior, and raw stdout output.
+- Tests cover stable default order, exact names/filenames, basename-only
+  filenames, lookup, missing-name null, duplicate first-match, and writer-valid
+  built-in meshes.
+- This is not file writing, `--output`, fixture rewrite/canonicalization,
+  arbitrary asset path input, directory scanning, package discovery,
+  registry/catalog/manifest expansion, source mutation, glTF/glb/JSON parser or
+  dependency work, `.igmesh` schema expansion, material/texture/descriptor/
+  sampler/normals/UV/animation/scene graph/metadata fields, renderer behavior,
+  `NativeVulkanRenderer.cpp`, public renderer API, runtime/product/scene/server/
+  draw-list API change, gameplay/scripted/final-state semantic change, or docs
+  mixed into source.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -1940,7 +1966,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 54. Native static mesh text writer is integrated.
 55. Native static mesh fixture writer roundtrip tests are integrated.
 56. Native static mesh built-in export CLI is integrated.
-57. Dispatch richer diagnostics display, overlays/labels, frame request/
+57. Native static mesh export policy is integrated.
+58. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

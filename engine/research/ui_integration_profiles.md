@@ -544,6 +544,17 @@ add glTF/glb/JSON parsing, expand `.igmesh` schema, change renderer behavior,
 change runtime/product/scene/server/draw-list APIs, or change gameplay/scripted/
 final-state semantics.
 
+Native static mesh export policy is complete as app-local value-only metadata:
+`NativeStaticMeshExportPolicy.hpp` records stable built-in export refs for
+`cube`, `bean`, and `npc-marker` with default filenames `cube.igmesh`,
+`bean.igmesh`, and `npc-marker.igmesh`, provides first-match lookup, and maps
+ids to the existing built-in CPU mesh assets. The native export CLI now resolves
+through this policy before writing raw `.igmesh`, while preserving accepted
+names, unknown-name and conflict failures, and raw stdout output. This is not an
+output writer, arbitrary path input, asset registry/catalog, discovery/scanning,
+glTF/glb/JSON parser, `.igmesh` schema expansion, renderer behavior change, or
+gameplay/scripted/final-state semantic change.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.

@@ -421,6 +421,11 @@ Recently completed optimized stretches:
   deterministic `.igmesh` text to stdout, and exits before `NativeVulkanApp`,
   SDL, or Vulkan launch; unknown names and conflicts with
   `--dump-static-model-load-report` fail nonzero with compact errors.
+  Native static mesh export policy now adds value-only
+  `NativeStaticMeshExportPolicy.hpp` for the built-in export names, default
+  filenames, and id-to-CPU-mesh mapping; the existing dump CLI resolves through
+  that policy while preserving accepted names, raw stdout, unknown-name errors,
+  and conflict behavior.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1364,6 +1369,29 @@ expansion, materials/textures/descriptors/samplers/normals/UVs/animation/scene
 graph fields, renderer behavior/API change, runtime/product/scene/server/
 draw-list API change, gameplay/scripted/final-state semantic change, or docs
 mixed into source.
+
+Native Static Mesh Export Policy is complete as value-only native app metadata:
+`NativeStaticMeshExportPolicy.hpp` defines `NativeStaticMeshBuiltInExportId`
+with `Cube`, `Bean`, and `NpcMarker`; `NativeStaticMeshExportAssetRef` with
+`id`, `name`, and `defaultFilename`; and `NativeStaticMeshExportPolicy` with
+`assets`. `DefaultNativeStaticMeshExportPolicy()` returns stable refs in order:
+`Cube` / `cube` / `cube.igmesh`, `Bean` / `bean` / `bean.igmesh`, and
+`NpcMarker` / `npc-marker` / `npc-marker.igmesh`.
+`FindNativeStaticMeshExportAsset(policy, name)` performs first-match lookup, and
+`BuiltInNativeStaticMeshExportAsset(id)` maps ids to the existing built-in CPU
+mesh assets. Existing `--dump-static-mesh-asset NAME` now resolves through the
+policy before writing raw `.igmesh`, preserving accepted names, unknown-name
+error behavior, conflict behavior with `--dump-static-model-load-report`, and
+raw deterministic stdout. Tests cover stable default order, exact names and
+filenames, basename-only filenames, lookup, missing-name null, duplicate
+first-match, and writer-valid built-in meshes. This is not file writing,
+`--output`, fixture rewrite/canonicalization, arbitrary asset path input,
+directory scanning, package discovery, registry/catalog/manifest expansion,
+source mutation, glTF/glb/JSON parser/dependency work, `.igmesh` schema
+expansion, material/texture/descriptor/sampler/normals/UV/animation/scene graph
+metadata, renderer behavior, `NativeVulkanRenderer.cpp`, public renderer API,
+runtime/product/scene/server/draw-list API change, gameplay/scripted/final-state
+semantic change, or docs mixed into source.
 
 Exit criteria:
 - Load a package or explicit scenario.
