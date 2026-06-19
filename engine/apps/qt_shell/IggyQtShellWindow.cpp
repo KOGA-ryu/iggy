@@ -1,6 +1,7 @@
 #include "IggyQtShellWindow.hpp"
 
 #include <QAction>
+#include <QApplication>
 #include <QButtonGroup>
 #include <QCheckBox>
 #include <QColor>
@@ -27,6 +28,7 @@
 #include <QSpinBox>
 #include <QStackedWidget>
 #include <QTimer>
+#include <QWidget>
 
 #include <algorithm>
 #include <array>
@@ -75,6 +77,15 @@ ui::UiPanelState panelStateFor(const ui::UiShellPanelsState &panels, ui::UiShell
 		break;
 	}
 	return {};
+}
+
+bool shouldSkipProductKeyCaptureForFocus(QWidget *widget)
+{
+	if (widget == nullptr)
+		return false;
+	return qobject_cast<QLineEdit *>(widget) != nullptr ||
+		qobject_cast<QSpinBox *>(widget) != nullptr ||
+		qobject_cast<QComboBox *>(widget) != nullptr;
 }
 
 QString swatchStyle(const std::string &hex, const ui::UiThemeTokens &theme)
@@ -617,6 +628,8 @@ IggyQtShellWindow::IggyQtShellWindow(IggyQtShellLaunchOptions launchOptions)
 		}
 		runProductFrameRequestOnce();
 	});
+	if (qApp != nullptr)
+		qApp->installEventFilter(this);
 	if (launchOptions.preview.enabled) {
 		authoringPreview_ =
 			runtime::RuntimeGameplayAuthoringPreviewModelBuilder {}.build(
@@ -1031,6 +1044,23 @@ bool IggyQtShellWindow::recordProductViewportPrimaryTilePress(QMouseEvent &event
 
 bool IggyQtShellWindow::eventFilter(QObject *watched, QEvent *event)
 {
+	QWidget *focusWidget = QApplication::focusWidget();
+	if (event != nullptr &&
+			(event->type() == QEvent::KeyPress ||
+				event->type() == QEvent::KeyRelease) &&
+			(focusWidget == nullptr || focusWidget->window() == this) &&
+			!shouldSkipProductKeyCaptureForFocus(focusWidget)) {
+		auto *key = static_cast<QKeyEvent *>(event);
+		const runtime::RuntimeGameplayProductInputEventKind kind =
+			event->type() == QEvent::KeyPress
+			? runtime::RuntimeGameplayProductInputEventKind::Pressed
+			: runtime::RuntimeGameplayProductInputEventKind::Released;
+		if (recordProductKeyEvent(*key, kind)) {
+			event->accept();
+			return true;
+		}
+	}
+
 	if (watched == productViewport_) {
 		if (event != nullptr && event->type() == QEvent::MouseButtonPress) {
 			auto *mouse = static_cast<QMouseEvent *>(event);
