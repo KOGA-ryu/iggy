@@ -19,6 +19,7 @@ using iggy::test::Failures;
 using iggy::test::MapFromRows;
 using iggy::test::NearVec;
 using iggy::test::PlayerAgent;
+using iggy::test::SameBounds;
 
 using Control = iggy::runtime::RuntimeGameplayProductInputControl2D;
 using Kind = iggy::runtime::RuntimeGameplayProductInputEventKind;
@@ -27,6 +28,7 @@ using RequestStatus =
 using LoopStatus = iggy::runtime::RuntimeGameplayProductLoopStatus;
 
 const iggy::ResourceId PlayerId { "player:input-accumulator" };
+const iggy::ResourceId PlayerMaterial { "material:player" };
 
 iggy::runtime::RuntimeGameplayProductInputEvent2D Event(
 	Control control,
@@ -165,6 +167,17 @@ iggy::runtime::RuntimeGameplayProductFrameRequestResult RunFrameRequest(
 	input.inputFrame = frame;
 	input.presentationCamera = CameraConfig();
 	return iggy::runtime::RuntimeGameplayProductFrameRequest {}.run(input);
+}
+
+const iggy::render::RenderCommand2D *FindPlayerCommand(
+	const iggy::runtime::RuntimeGameplayProductFrameRequestResult &result)
+{
+	for (const iggy::render::RenderCommand2D &command :
+		result.frame.surface.presentation.levelFrame.commands.commands) {
+		if (command.materialId == PlayerMaterial)
+			return &command;
+	}
+	return nullptr;
 }
 
 bool SameContext(
@@ -459,6 +472,26 @@ void TestHeldMovementFlowsThroughRepeatedFrameRequests()
 	Expect(iggy::playerTile(secondResult.state.loop.currentState.session.player) ==
 			iggy::TileCoord { 2, 0 },
 		"second held movement frame should move east again without new raw input");
+	const iggy::render::RenderCommand2D *firstPlayer =
+		FindPlayerCommand(firstResult);
+	const iggy::render::RenderCommand2D *secondPlayer =
+		FindPlayerCommand(secondResult);
+	Expect(firstPlayer != nullptr,
+		"first held movement frame should render a player command");
+	Expect(secondPlayer != nullptr,
+		"second held movement frame should render a player command");
+	if (firstPlayer != nullptr) {
+		Expect(SameBounds(
+				   firstPlayer->worldBounds,
+				   { { 1.0F, 0.0F }, { 2.0F, 1.0F } }),
+			"first held movement frame should render moved player quad");
+	}
+	if (secondPlayer != nullptr) {
+		Expect(SameBounds(
+				   secondPlayer->worldBounds,
+				   { { 2.0F, 0.0F }, { 3.0F, 1.0F } }),
+			"second held movement frame should render repeatedly moved player quad");
+	}
 }
 
 } // namespace
