@@ -523,6 +523,7 @@ public:
 		cleanupSwapchain();
 
 		destroyMeshResource(playerMesh_);
+		destroyMeshResource(npcMesh_);
 		destroyMeshResource(cubeMesh_);
 
 		for (std::size_t i = 0; i < imageAvailableSemaphores_.size(); ++i) {
@@ -1108,10 +1109,11 @@ private:
 	void createSceneMeshes()
 	{
 		cubeMesh_ = createMeshResource(NativeCubeStaticMeshAsset());
+		npcMesh_ = createMeshResource(NativeNpcMarkerStaticMeshAsset());
 		playerMesh_ = createMeshResource(NativeBeanStaticMeshAsset());
 		registerModelSlot(NativeVulkanModelSlot::Floor, cubeMesh_);
 		registerModelSlot(NativeVulkanModelSlot::Wall, cubeMesh_);
-		registerModelSlot(NativeVulkanModelSlot::NpcActor, cubeMesh_);
+		registerModelSlot(NativeVulkanModelSlot::NpcActor, npcMesh_);
 		registerModelSlot(NativeVulkanModelSlot::Player, playerMesh_);
 	}
 
@@ -1420,6 +1422,7 @@ private:
 	std::vector<VkFramebuffer> swapchainFramebuffers_;
 	VkCommandPool commandPool_ = VK_NULL_HANDLE;
 	NativeVulkanMeshResource cubeMesh_;
+	NativeVulkanMeshResource npcMesh_;
 	NativeVulkanMeshResource playerMesh_;
 	NativeVulkanModelRegistry modelRegistry_;
 	std::vector<VkCommandBuffer> commandBuffers_;

@@ -126,4 +126,79 @@ struct NativeStaticMeshAsset {
 	return asset;
 }
 
+[[nodiscard]] inline NativeStaticMeshAsset NativeNpcMarkerStaticMeshAsset()
+{
+	constexpr float Pi = 3.14159265358979323846F;
+	constexpr std::uint16_t SegmentCount = 14;
+	constexpr std::array<float, 7> RingHeights {
+		-0.54F,
+		-0.40F,
+		-0.12F,
+		0.18F,
+		0.38F,
+		0.50F,
+		0.56F,
+	};
+	constexpr std::array<float, 7> RingRadii {
+		0.06F,
+		0.24F,
+		0.30F,
+		0.24F,
+		0.16F,
+		0.10F,
+		0.02F,
+	};
+
+	NativeStaticMeshAsset asset;
+	asset.vertices.reserve(RingHeights.size() * SegmentCount);
+	for (std::uint16_t ring = 0; ring < RingHeights.size(); ++ring) {
+		const float t = static_cast<float>(ring) /
+			static_cast<float>(RingHeights.size() - 1U);
+		for (std::uint16_t segment = 0; segment < SegmentCount; ++segment) {
+			const float angle =
+				2.0F * Pi * static_cast<float>(segment) /
+				static_cast<float>(SegmentCount);
+			const float ridge =
+				1.0F + 0.08F * std::sin(angle * 3.0F + t * Pi);
+			asset.vertices.push_back({
+				{
+					RingRadii[ring] * ridge * std::cos(angle),
+					RingHeights[ring],
+					RingRadii[ring] * (1.0F - 0.08F * std::cos(angle)) * std::sin(angle),
+				},
+				{
+					0.95F,
+					0.66F + 0.12F * t,
+					0.28F + 0.08F * std::sin(angle + t * Pi),
+				},
+			});
+		}
+	}
+
+	const std::uint16_t ringCount =
+		static_cast<std::uint16_t>(RingHeights.size());
+	asset.indices.reserve(
+		static_cast<std::size_t>(ringCount - 1U) *
+		static_cast<std::size_t>(SegmentCount) *
+		6U);
+	for (std::uint16_t ring = 0; ring + 1U < ringCount; ++ring) {
+		for (std::uint16_t segment = 0; segment < SegmentCount; ++segment) {
+			const std::uint16_t nextSegment =
+				static_cast<std::uint16_t>((segment + 1U) % SegmentCount);
+			const std::uint16_t current =
+				static_cast<std::uint16_t>(ring * SegmentCount + segment);
+			const std::uint16_t next =
+				static_cast<std::uint16_t>(ring * SegmentCount + nextSegment);
+			const std::uint16_t upper =
+				static_cast<std::uint16_t>((ring + 1U) * SegmentCount + segment);
+			const std::uint16_t upperNext =
+				static_cast<std::uint16_t>((ring + 1U) * SegmentCount + nextSegment);
+			asset.indices.insert(
+				asset.indices.end(),
+				{ current, upper, next, next, upper, upperNext });
+		}
+	}
+	return asset;
+}
+
 } // namespace iggy::native_play
