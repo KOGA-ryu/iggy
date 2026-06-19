@@ -2,6 +2,7 @@
 
 #include "NativeStaticMeshAsset.hpp"
 #include "NativeStaticMeshAssetLoader.hpp"
+#include "NativeStaticModelPolicy.hpp"
 
 #include <SDL.h>
 #include <SDL_vulkan.h>
@@ -20,6 +21,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 
 namespace iggy::native_play {
 namespace {
@@ -158,15 +160,26 @@ std::filesystem::path ShaderPath(const char *filename)
 	return std::filesystem::path(IGGY_NATIVE_PLAY_SHADER_DIR) / filename;
 }
 
-std::filesystem::path NativePlayAssetPath(const char *filename)
+std::filesystem::path NativePlayAssetPath(std::string_view filename)
 {
-	return std::filesystem::path(IGGY_NATIVE_PLAY_ASSET_DIR) / filename;
+	return std::filesystem::path(IGGY_NATIVE_PLAY_ASSET_DIR) / std::string(filename);
+}
+
+std::filesystem::path NativeStaticModelAssetPath(NativeStaticModelSlot slot)
+{
+	const NativeStaticModelPolicy policy = DefaultNativeStaticModelPolicy();
+	const NativeStaticModelAssetRef *asset =
+		FindNativeStaticModelAsset(policy, slot);
+	if (asset == nullptr)
+		return NativePlayAssetPath({});
+	return NativePlayAssetPath(asset->meshFilename);
 }
 
 NativeStaticMeshAsset NativePlayerStaticMeshAsset()
 {
 	const NativeStaticMeshAssetLoadResult result =
-		LoadNativeStaticMeshAssetFile(NativePlayAssetPath("player.igmesh"));
+		LoadNativeStaticMeshAssetFile(
+			NativeStaticModelAssetPath(NativeStaticModelSlot::Player));
 	if (result.loaded())
 		return result.asset;
 	return NativeBeanStaticMeshAsset();
@@ -175,7 +188,8 @@ NativeStaticMeshAsset NativePlayerStaticMeshAsset()
 NativeStaticMeshAsset NativeNpcStaticMeshAsset()
 {
 	const NativeStaticMeshAssetLoadResult result =
-		LoadNativeStaticMeshAssetFile(NativePlayAssetPath("npc.igmesh"));
+		LoadNativeStaticMeshAssetFile(
+			NativeStaticModelAssetPath(NativeStaticModelSlot::NpcActor));
 	if (result.loaded())
 		return result.asset;
 	return NativeNpcMarkerStaticMeshAsset();
@@ -183,12 +197,14 @@ NativeStaticMeshAsset NativeNpcStaticMeshAsset()
 
 NativeStaticMeshAssetLoadResult LoadNativeFloorStaticMeshAsset()
 {
-	return LoadNativeStaticMeshAssetFile(NativePlayAssetPath("floor.igmesh"));
+	return LoadNativeStaticMeshAssetFile(
+		NativeStaticModelAssetPath(NativeStaticModelSlot::Floor));
 }
 
 NativeStaticMeshAssetLoadResult LoadNativeWallStaticMeshAsset()
 {
-	return LoadNativeStaticMeshAssetFile(NativePlayAssetPath("wall.igmesh"));
+	return LoadNativeStaticMeshAssetFile(
+		NativeStaticModelAssetPath(NativeStaticModelSlot::Wall));
 }
 
 bool HasInstanceExtension(const std::vector<VkExtensionProperties> &available, const char *name)
