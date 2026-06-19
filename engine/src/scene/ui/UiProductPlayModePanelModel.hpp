@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "runtime/RuntimeGameplayProductInputFrameTargetContext.hpp"
 #include "runtime/RuntimeGameplayProductPlayMode.hpp"
 
 namespace iggy::ui {
@@ -16,6 +17,7 @@ struct UiProductPlayModePanelModelInput {
 	const runtime::RuntimeGameplayProductPlayModeBuildResult *build = nullptr;
 	const runtime::RuntimeGameplayProductPlayModeState *state = nullptr;
 	const runtime::RuntimeGameplayProductPlayModeFrameResult *latestFrame = nullptr;
+	const runtime::RuntimeGameplayProductInputFrameTargetContextResult *latestTargetContext = nullptr;
 };
 
 struct UiProductPlayModePanelModel {
@@ -28,6 +30,7 @@ struct UiProductPlayModePanelModel {
 	std::vector<UiProductPlayModePanelRow> binding;
 	std::vector<UiProductPlayModePanelRow> step;
 	std::vector<UiProductPlayModePanelRow> presentation;
+	std::vector<UiProductPlayModePanelRow> targetContext;
 };
 
 [[nodiscard]] UiProductPlayModePanelModel buildUiProductPlayModePanelModel(

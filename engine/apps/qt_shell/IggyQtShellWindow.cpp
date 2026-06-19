@@ -479,6 +479,8 @@ IggyQtShellWindow::IggyQtShellWindow(IggyQtShellLaunchOptions launchOptions)
 		context_.productPlayModeBuild = &productPlayBuild_;
 		context_.productPlayModeState = &productPlayState_;
 		context_.latestProductPlayModeFrame = nullptr;
+		hasLatestProductInputFrameTargetContext_ = false;
+		context_.latestProductInputFrameTargetContext = nullptr;
 		input_.workspace.bindings.push_back(
 			{ ui::UiShellSlot::Right, id("feature:product_play") });
 		setPanelContentAssignment(
@@ -622,8 +624,11 @@ void IggyQtShellWindow::setProductPlayInputFocus(bool enabled)
 		return;
 	productPlayState_ =
 		runtime::RuntimeGameplayProductPlayMode {}.withInputFocus(productPlayState_, enabled);
-	if (!enabled)
+	if (!enabled) {
 		clearProductInputAccumulator();
+		hasLatestProductInputFrameTargetContext_ = false;
+		context_.latestProductInputFrameTargetContext = nullptr;
+	}
 	context_.productPlayModeState = &productPlayState_;
 	context_.latestProductPlayModeFrame = nullptr;
 	refreshAfterModelChange();
@@ -716,10 +721,14 @@ void IggyQtShellWindow::runProductFrameRequestOnce()
 				{},
 				{},
 			});
+	latestProductInputFrameTargetContext_ = enrichedFrame;
+	hasLatestProductInputFrameTargetContext_ = true;
+	context_.latestProductInputFrameTargetContext =
+		&latestProductInputFrameTargetContext_;
 
 	runtime::RuntimeGameplayProductFrameRequestInput input;
 	input.state = productPlayState_;
-	input.inputFrame = enrichedFrame.frame;
+	input.inputFrame = latestProductInputFrameTargetContext_.frame;
 	input.presentationCamera = productPresentationCameraConfig();
 
 	const runtime::RuntimeGameplayProductFrameRequestResult result =
@@ -1382,6 +1391,7 @@ QWidget *IggyQtShellWindow::buildProductPlayModePanelContent()
 	addRowSection(layout, QStringLiteral("Binding"), model_.productPlayMode.binding);
 	addRowSection(layout, QStringLiteral("Step"), model_.productPlayMode.step);
 	addRowSection(layout, QStringLiteral("Presentation"), model_.productPlayMode.presentation);
+	addRowSection(layout, QStringLiteral("Target Context"), model_.productPlayMode.targetContext);
 	layout->addStretch(1);
 	return content;
 }

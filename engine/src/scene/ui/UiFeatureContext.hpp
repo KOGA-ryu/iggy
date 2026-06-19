@@ -6,6 +6,7 @@
 #include "core/resource/ResourceId.hpp"
 #include "runtime/GameplayCommand2D.hpp"
 #include "runtime/RuntimeGameplayAuthoringPreviewModel.hpp"
+#include "runtime/RuntimeGameplayProductInputFrameTargetContext.hpp"
 #include "runtime/RuntimeGameplayProductPlayMode.hpp"
 #include "runtime/RuntimePlayerInputInteractionEffectFrameReport.hpp"
 #include "runtime/RuntimeSessionState.hpp"
@@ -21,6 +22,7 @@ struct UiFeatureContext {
 	const runtime::RuntimeGameplayProductPlayModeBuildResult *productPlayModeBuild = nullptr;
 	const runtime::RuntimeGameplayProductPlayModeState *productPlayModeState = nullptr;
 	const runtime::RuntimeGameplayProductPlayModeFrameResult *latestProductPlayModeFrame = nullptr;
+	const runtime::RuntimeGameplayProductInputFrameTargetContextResult *latestProductInputFrameTargetContext = nullptr;
 	ResourceId activeToolId;
 	ResourceId selectedActorId;
 	ResourceId selectedTargetId;

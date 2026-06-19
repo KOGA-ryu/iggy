@@ -14,6 +14,7 @@
 #include "runtime/RuntimeGameplayAuthoringPreviewModel.hpp"
 #include "runtime/RuntimeGameplayProductFrameRequest.hpp"
 #include "runtime/RuntimeGameplayProductInputAccumulator.hpp"
+#include "runtime/RuntimeGameplayProductInputFrameTargetContext.hpp"
 #include "runtime/RuntimeGameplayProductLoop.hpp"
 #include "runtime/RuntimeGameplayProductPlayMode.hpp"
 #include "runtime/RuntimeGameplayProductScenarioLoader.hpp"
@@ -141,6 +142,8 @@ private:
 	runtime::RuntimeGameplayProductInputAccumulatorState productInputAccumulator_;
 	runtime::RuntimeGameplayProductPlayModeFrameResult latestProductPlayModeFrame_;
 	bool hasLatestProductPlayModeFrame_ = false;
+	runtime::RuntimeGameplayProductInputFrameTargetContextResult latestProductInputFrameTargetContext_;
+	bool hasLatestProductInputFrameTargetContext_ = false;
 	CameraState productPresentationCamera_;
 	bool hasProductPresentationCamera_ = false;
 	bool hasProductPlayMode_ = false;

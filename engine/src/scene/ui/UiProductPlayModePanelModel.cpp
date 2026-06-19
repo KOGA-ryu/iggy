@@ -93,6 +93,53 @@ std::string PresentationStatusText(
 	return "unknown";
 }
 
+std::string TargetContextStatusText(
+	runtime::RuntimeGameplayProductInputFrameTargetContextStatus status)
+{
+	switch (status) {
+	case runtime::RuntimeGameplayProductInputFrameTargetContextStatus::Unchanged:
+		return "Unchanged";
+	case runtime::RuntimeGameplayProductInputFrameTargetContextStatus::NoEligiblePrimaryTile:
+		return "NoEligiblePrimaryTile";
+	case runtime::RuntimeGameplayProductInputFrameTargetContextStatus::TargetProjected:
+		return "TargetProjected";
+	}
+	return "unknown";
+}
+
+std::string TargetQueryStatusText(
+	runtime::RuntimeGameplayProductInteractionTargetQueryStatus status)
+{
+	switch (status) {
+	case runtime::RuntimeGameplayProductInteractionTargetQueryStatus::NotLoaded:
+		return "NotLoaded";
+	case runtime::RuntimeGameplayProductInteractionTargetQueryStatus::MissingQuery:
+		return "MissingQuery";
+	case runtime::RuntimeGameplayProductInteractionTargetQueryStatus::TargetNotFound:
+		return "TargetNotFound";
+	case runtime::RuntimeGameplayProductInteractionTargetQueryStatus::TargetFound:
+		return "TargetFound";
+	}
+	return "unknown";
+}
+
+std::string TargetProjectionStatusText(
+	runtime::RuntimeGameplayProductInputTargetContextStatus status)
+{
+	switch (status) {
+	case runtime::RuntimeGameplayProductInputTargetContextStatus::Unchanged:
+		return "Unchanged";
+	case runtime::RuntimeGameplayProductInputTargetContextStatus::TargetProjected:
+		return "TargetProjected";
+	}
+	return "unknown";
+}
+
+std::string TileText(TileCoord tile)
+{
+	return std::to_string(tile.x) + "," + std::to_string(tile.y);
+}
+
 const runtime::RuntimeGameplayProductLoopState *IdentityLoopState(
 	const UiProductPlayModePanelModelInput &input)
 {
@@ -153,6 +200,54 @@ void AppendIdentityRows(
 	}
 }
 
+void AppendTargetContextRows(
+	UiProductPlayModePanelModel &model,
+	const UiProductPlayModePanelModelInput &input)
+{
+	if (input.latestTargetContext == nullptr)
+		return;
+
+	const runtime::RuntimeGameplayProductInputFrameTargetContextResult &context =
+		*input.latestTargetContext;
+	model.targetContext.push_back(
+		{ "targetContext.status", TargetContextStatusText(context.status) });
+	model.targetContext.push_back(
+		{ "targetContext.hasPrimaryTileEvent",
+			BoolText(context.hasPrimaryTileEvent) });
+	if (context.hasPrimaryTileEvent) {
+		model.targetContext.push_back(
+			{ "targetContext.primaryTileEventIndex",
+				std::to_string(context.primaryTileEventIndex) });
+		model.targetContext.push_back(
+			{ "targetContext.primaryTile", TileText(context.primaryTile) });
+	}
+	model.targetContext.push_back(
+		{ "targetContext.target.status",
+			TargetQueryStatusText(context.target.status) });
+	model.targetContext.push_back(
+		{ "targetContext.target.hasTarget",
+			BoolText(context.target.hasTarget) });
+	if (context.target.hasTarget && !context.target.targetId.empty()) {
+		model.targetContext.push_back(
+			{ "targetContext.target.targetId",
+				std::string(context.target.targetId.value()) });
+	}
+	model.targetContext.push_back(
+		{ "targetContext.target.hasPlayer",
+			BoolText(context.target.hasPlayer) });
+	model.targetContext.push_back(
+		{ "targetContext.target.hasReach",
+			BoolText(context.target.hasReach) });
+	if (context.target.hasReach) {
+		model.targetContext.push_back(
+			{ "targetContext.target.reachable",
+				BoolText(context.target.reachable) });
+	}
+	model.targetContext.push_back(
+		{ "targetContext.projection.status",
+			TargetProjectionStatusText(context.targetContext.status) });
+}
+
 } // namespace
 
 UiProductPlayModePanelModel buildUiProductPlayModePanelModel(
@@ -172,6 +267,7 @@ UiProductPlayModePanelModel buildUiProductPlayModePanelModel(
 	}
 
 	AppendIdentityRows(model, input);
+	AppendTargetContextRows(model, input);
 
 	if (input.state != nullptr) {
 		model.state = {

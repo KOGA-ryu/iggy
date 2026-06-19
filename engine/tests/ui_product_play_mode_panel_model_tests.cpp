@@ -19,6 +19,12 @@ using PresentationStatus =
 	iggy::runtime::RuntimeGameplayProductPresentationFrameStatus;
 using SurfaceStatus =
 	iggy::runtime::RuntimeGameplayProductPlaySurfaceFrameStatus;
+using TargetContextStatus =
+	iggy::runtime::RuntimeGameplayProductInputFrameTargetContextStatus;
+using TargetProjectionStatus =
+	iggy::runtime::RuntimeGameplayProductInputTargetContextStatus;
+using TargetQueryStatus =
+	iggy::runtime::RuntimeGameplayProductInteractionTargetQueryStatus;
 
 const iggy::ui::UiProductPlayModePanelRow *FindRow(
 	const std::vector<iggy::ui::UiProductPlayModePanelRow> &rows,
@@ -115,6 +121,29 @@ iggy::runtime::RuntimeGameplayProductPlayModeFrameResult SteppedFrame()
 	frame.surface.presentation.levelFrame.visibleTiles.tiles.resize(12);
 	frame.surface.presentation.levelFrame.visibleTileChunks.chunkIndexes.resize(13);
 	return frame;
+}
+
+iggy::runtime::RuntimeGameplayProductInputFrameTargetContextResult
+TargetContext(
+	TargetContextStatus status,
+	bool hasPrimaryTileEvent = false,
+	TargetQueryStatus targetStatus = TargetQueryStatus::NotLoaded,
+	bool hasTarget = false,
+	iggy::ResourceId targetId = {},
+	TargetProjectionStatus projectionStatus = TargetProjectionStatus::Unchanged)
+{
+	iggy::runtime::RuntimeGameplayProductInputFrameTargetContextResult result;
+	result.status = status;
+	result.hasPrimaryTileEvent = hasPrimaryTileEvent;
+	if (hasPrimaryTileEvent) {
+		result.primaryTileEventIndex = 3;
+		result.primaryTile = { 4, 5 };
+	}
+	result.target.status = targetStatus;
+	result.target.hasTarget = hasTarget;
+	result.target.targetId = targetId;
+	result.targetContext.status = projectionStatus;
+	return result;
 }
 
 void TestReadyLoadedFocusedSteppedProjection()
@@ -271,6 +300,180 @@ void TestStepRowsUseSourceFieldNames()
 		"product play panel should use source field names for step counts");
 }
 
+void TestNoTargetContextPointerAddsNoRows()
+{
+	const iggy::runtime::RuntimeGameplayProductPlayModeBuildResult build =
+		ReadyBuild();
+
+	const iggy::ui::UiProductPlayModePanelModel model =
+		iggy::ui::buildUiProductPlayModePanelModel(
+			{ &build, nullptr, nullptr, nullptr });
+
+	Expect(model.targetContext.empty(),
+		"product play panel should not invent target-context rows without diagnostics pointer");
+}
+
+void TestNoEligiblePrimaryTileTargetContextProjection()
+{
+	const iggy::runtime::RuntimeGameplayProductPlayModeBuildResult build =
+		ReadyBuild();
+	const auto context = TargetContext(
+		TargetContextStatus::NoEligiblePrimaryTile,
+		false,
+		TargetQueryStatus::NotLoaded);
+
+	const iggy::ui::UiProductPlayModePanelModel model =
+		iggy::ui::buildUiProductPlayModePanelModel(
+			{ &build, nullptr, nullptr, &context });
+
+	ExpectRowValue(model.targetContext,
+		"targetContext.status",
+		"NoEligiblePrimaryTile",
+		"product play panel should project no-eligible target context status");
+	ExpectRowValue(model.targetContext,
+		"targetContext.hasPrimaryTileEvent",
+		"no",
+		"product play panel should project missing primary tile flag");
+	ExpectRowAbsent(model.targetContext,
+		"targetContext.primaryTileEventIndex",
+		"product play panel should omit primary tile index when no event exists");
+	ExpectRowAbsent(model.targetContext,
+		"targetContext.primaryTile",
+		"product play panel should omit primary tile when no event exists");
+	ExpectRowValue(model.targetContext,
+		"targetContext.target.status",
+		"NotLoaded",
+		"product play panel should project nested target query status");
+	ExpectRowValue(model.targetContext,
+		"targetContext.projection.status",
+		"Unchanged",
+		"product play panel should project unchanged target projection status");
+}
+
+void TestPrimaryTileMissTargetContextProjection()
+{
+	const iggy::runtime::RuntimeGameplayProductPlayModeBuildResult build =
+		ReadyBuild();
+	const auto context = TargetContext(
+		TargetContextStatus::Unchanged,
+		true,
+		TargetQueryStatus::TargetNotFound);
+
+	const iggy::ui::UiProductPlayModePanelModel model =
+		iggy::ui::buildUiProductPlayModePanelModel(
+			{ &build, nullptr, nullptr, &context });
+
+	ExpectRowValue(model.targetContext,
+		"targetContext.status",
+		"Unchanged",
+		"product play panel should project unchanged target-context status");
+	ExpectRowValue(model.targetContext,
+		"targetContext.hasPrimaryTileEvent",
+		"yes",
+		"product play panel should project primary tile flag");
+	ExpectRowValue(model.targetContext,
+		"targetContext.primaryTileEventIndex",
+		"3",
+		"product play panel should project primary tile event index");
+	ExpectRowValue(model.targetContext,
+		"targetContext.primaryTile",
+		"4,5",
+		"product play panel should project compact primary tile coordinates");
+	ExpectRowValue(model.targetContext,
+		"targetContext.target.status",
+		"TargetNotFound",
+		"product play panel should project target-not-found status");
+	ExpectRowValue(model.targetContext,
+		"targetContext.target.hasTarget",
+		"no",
+		"product play panel should project missing target flag");
+	ExpectRowValue(model.targetContext,
+		"targetContext.projection.status",
+		"Unchanged",
+		"product play panel should project unchanged target projection");
+}
+
+void TestTargetProjectedContextProjection()
+{
+	const iggy::runtime::RuntimeGameplayProductPlayModeBuildResult build =
+		ReadyBuild();
+	auto context = TargetContext(
+		TargetContextStatus::TargetProjected,
+		true,
+		TargetQueryStatus::TargetFound,
+		true,
+		iggy::ResourceId { "target:door" },
+		TargetProjectionStatus::TargetProjected);
+	context.target.hasPlayer = true;
+	context.target.hasReach = true;
+	context.target.reachable = true;
+
+	const iggy::ui::UiProductPlayModePanelModel model =
+		iggy::ui::buildUiProductPlayModePanelModel(
+			{ &build, nullptr, nullptr, &context });
+
+	ExpectRowValue(model.targetContext,
+		"targetContext.status",
+		"TargetProjected",
+		"product play panel should project target-projected status");
+	ExpectRowValue(model.targetContext,
+		"targetContext.target.status",
+		"TargetFound",
+		"product play panel should project found target status");
+	ExpectRowValue(model.targetContext,
+		"targetContext.target.hasTarget",
+		"yes",
+		"product play panel should project has-target flag");
+	ExpectRowValue(model.targetContext,
+		"targetContext.target.targetId",
+		"target:door",
+		"product play panel should project target id");
+	ExpectRowValue(model.targetContext,
+		"targetContext.target.hasPlayer",
+		"yes",
+		"product play panel should project has-player flag");
+	ExpectRowValue(model.targetContext,
+		"targetContext.target.hasReach",
+		"yes",
+		"product play panel should project has-reach flag");
+	ExpectRowValue(model.targetContext,
+		"targetContext.target.reachable",
+		"yes",
+		"product play panel should project reachable flag");
+	ExpectRowValue(model.targetContext,
+		"targetContext.projection.status",
+		"TargetProjected",
+		"product play panel should project target projection status");
+}
+
+void TestOutOfRangeFoundTargetStillProjectsDiagnostics()
+{
+	const iggy::runtime::RuntimeGameplayProductPlayModeBuildResult build =
+		ReadyBuild();
+	auto context = TargetContext(
+		TargetContextStatus::TargetProjected,
+		true,
+		TargetQueryStatus::TargetFound,
+		true,
+		iggy::ResourceId { "target:far" },
+		TargetProjectionStatus::TargetProjected);
+	context.target.hasReach = true;
+	context.target.reachable = false;
+
+	const iggy::ui::UiProductPlayModePanelModel model =
+		iggy::ui::buildUiProductPlayModePanelModel(
+			{ &build, nullptr, nullptr, &context });
+
+	ExpectRowValue(model.targetContext,
+		"targetContext.status",
+		"TargetProjected",
+		"out-of-range found target should still project target context status");
+	ExpectRowValue(model.targetContext,
+		"targetContext.target.reachable",
+		"no",
+		"out-of-range found target should project reach annotation only");
+}
+
 } // namespace
 
 int main()
@@ -280,6 +483,11 @@ int main()
 	TestNoFrameAndPresentationProjection();
 	TestUnfocusedAndNestedCountsProjection();
 	TestStepRowsUseSourceFieldNames();
+	TestNoTargetContextPointerAddsNoRows();
+	TestNoEligiblePrimaryTileTargetContextProjection();
+	TestPrimaryTileMissTargetContextProjection();
+	TestTargetProjectedContextProjection();
+	TestOutOfRangeFoundTargetStillProjectsDiagnostics();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

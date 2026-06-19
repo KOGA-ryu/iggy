@@ -284,6 +284,7 @@ UiRuntimeWorkspaceModel buildUiRuntimeWorkspaceModel(const UiRuntimeWorkspaceMod
 			input.context.productPlayModeBuild,
 			input.context.productPlayModeState,
 			input.context.latestProductPlayModeFrame,
+			input.context.latestProductInputFrameTargetContext,
 		});
 	}
 

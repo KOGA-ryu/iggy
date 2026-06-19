@@ -51,6 +51,17 @@ const iggy::ui::UiRuntimeWorkspacePanelProjection *FindPanelProjection(
 	return nullptr;
 }
 
+const iggy::ui::UiProductPlayModePanelRow *FindProductRow(
+	const std::vector<iggy::ui::UiProductPlayModePanelRow> &rows,
+	const std::string &key)
+{
+	for (const iggy::ui::UiProductPlayModePanelRow &row : rows) {
+		if (row.key == key)
+			return &row;
+	}
+	return nullptr;
+}
+
 void TestDefaultEmptyContextBuildsValidWorkspaceWithDiagnostics()
 {
 	const iggy::ui::UiRuntimeWorkspaceModelInput input = iggy::ui::defaultUiRuntimeWorkspaceModelInput();
@@ -158,6 +169,66 @@ void TestProductPlayContextProducesHiddenPanelData()
 		"workspace model should register product play panel hidden by default");
 	Expect(FindDiagnostic(model, "product.play") == nullptr,
 		"workspace model should not diagnose present product play context");
+}
+
+void TestProductPlayContextProjectsTargetContextRows()
+{
+	iggy::ui::UiRuntimeWorkspaceModelInput input = iggy::ui::defaultUiRuntimeWorkspaceModelInput();
+	iggy::runtime::RuntimeGameplayProductPlayModeBuildResult build;
+	build.status = iggy::runtime::RuntimeGameplayProductPlayModeBuildStatus::Ready;
+	iggy::runtime::RuntimeGameplayProductInputFrameTargetContextResult targetContext;
+	targetContext.status =
+		iggy::runtime::RuntimeGameplayProductInputFrameTargetContextStatus::TargetProjected;
+	targetContext.hasPrimaryTileEvent = true;
+	targetContext.primaryTileEventIndex = 2;
+	targetContext.primaryTile = { 7, 8 };
+	targetContext.target.status =
+		iggy::runtime::RuntimeGameplayProductInteractionTargetQueryStatus::TargetFound;
+	targetContext.target.hasTarget = true;
+	targetContext.target.targetId = Id("target:door");
+	targetContext.targetContext.status =
+		iggy::runtime::RuntimeGameplayProductInputTargetContextStatus::TargetProjected;
+	input.context.productPlayModeBuild = &build;
+	input.context.latestProductInputFrameTargetContext = &targetContext;
+
+	const iggy::ui::UiRuntimeWorkspaceModel model =
+		iggy::ui::buildUiRuntimeWorkspaceModel(input);
+
+	Expect(model.hasProductPlayModeContext,
+		"workspace model should preserve product play presence with target context");
+	Expect(model.productPlayMode.present,
+		"workspace model should build product play panel with target context");
+	const iggy::ui::UiProductPlayModePanelRow *status =
+		FindProductRow(model.productPlayMode.targetContext,
+			"targetContext.status");
+	const iggy::ui::UiProductPlayModePanelRow *targetId =
+		FindProductRow(model.productPlayMode.targetContext,
+			"targetContext.target.targetId");
+	Expect(status != nullptr && status->value == "TargetProjected",
+		"workspace model should project target-context status row");
+	Expect(targetId != nullptr && targetId->value == "target:door",
+		"workspace model should project target id row");
+}
+
+void TestTargetContextAloneDoesNotCreateProductPlayContext()
+{
+	iggy::ui::UiRuntimeWorkspaceModelInput input = iggy::ui::defaultUiRuntimeWorkspaceModelInput();
+	iggy::runtime::RuntimeGameplayProductInputFrameTargetContextResult targetContext;
+	targetContext.status =
+		iggy::runtime::RuntimeGameplayProductInputFrameTargetContextStatus::NoEligiblePrimaryTile;
+	input.context.latestProductInputFrameTargetContext = &targetContext;
+
+	const iggy::ui::UiRuntimeWorkspaceModel model =
+		iggy::ui::buildUiRuntimeWorkspaceModel(input);
+
+	Expect(!model.hasProductPlayModeContext,
+		"workspace model should not treat target diagnostics alone as product play context");
+	Expect(!model.productPlayMode.present,
+		"workspace model should not build product panel from target diagnostics alone");
+	Expect(model.productPlayMode.targetContext.empty(),
+		"workspace model should not project target rows without product play context");
+	Expect(FindDiagnostic(model, "product.play") == nullptr,
+		"workspace model should not diagnose target-only product context as missing");
 }
 
 void TestProductPlayFeatureAndPanelAreRegistered()
@@ -269,6 +340,8 @@ int main()
 	TestInteractionRecorderProducesInteractionPanelData();
 	TestAuthoringPreviewProducesPreviewPanelData();
 	TestProductPlayContextProducesHiddenPanelData();
+	TestProductPlayContextProjectsTargetContextRows();
+	TestTargetContextAloneDoesNotCreateProductPlayContext();
 	TestProductPlayFeatureAndPanelAreRegistered();
 	TestDisabledToolsAreFilteredFromBeltAndAvailableToolViews();
 	TestPanelAssignmentsAndPalettesComeFromSettingsAndWorkspace();

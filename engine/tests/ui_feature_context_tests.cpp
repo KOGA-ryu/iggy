@@ -1,6 +1,7 @@
 #include <cstdlib>
 
 #include "runtime/RuntimeGameplayAuthoringPreviewModel.hpp"
+#include "runtime/RuntimeGameplayProductInputFrameTargetContext.hpp"
 #include "runtime/RuntimeGameplayProductPlayMode.hpp"
 #include "runtime/RuntimePlayerInputInteractionEffectFrameReport.hpp"
 #include "runtime/RuntimeSessionState.hpp"
@@ -32,6 +33,7 @@ void TestFeatureContextReportsPresentRuntimePointers()
 	iggy::runtime::RuntimeGameplayProductPlayModeBuildResult productBuild;
 	iggy::runtime::RuntimeGameplayProductPlayModeState productState;
 	iggy::runtime::RuntimeGameplayProductPlayModeFrameResult productFrame;
+	iggy::runtime::RuntimeGameplayProductInputFrameTargetContextResult targetContext;
 	iggy::InteractionEventRecorder2D events;
 	iggy::ui::UiFeatureContext context;
 	context.session = &session;
@@ -41,6 +43,7 @@ void TestFeatureContextReportsPresentRuntimePointers()
 	context.productPlayModeBuild = &productBuild;
 	context.productPlayModeState = &productState;
 	context.latestProductPlayModeFrame = &productFrame;
+	context.latestProductInputFrameTargetContext = &targetContext;
 	context.activeToolId = iggy::ResourceId { "tool:inspect" };
 	context.selectedActorId = iggy::ResourceId { "actor:player" };
 	context.selectedTargetId = iggy::ResourceId { "target:door" };
@@ -60,12 +63,17 @@ void TestProductPlayContextReportsAnyPresentPointer()
 	iggy::runtime::RuntimeGameplayProductPlayModeBuildResult productBuild;
 	iggy::runtime::RuntimeGameplayProductPlayModeState productState;
 	iggy::runtime::RuntimeGameplayProductPlayModeFrameResult productFrame;
+	iggy::runtime::RuntimeGameplayProductInputFrameTargetContextResult targetContext;
 
 	iggy::ui::UiFeatureContext context;
+	context.latestProductInputFrameTargetContext = &targetContext;
+	Expect(!iggy::ui::uiFeatureContextHasProductPlayMode(context), "ui feature context should not report product play mode from diagnostics pointer alone");
+
 	context.productPlayModeBuild = &productBuild;
 	Expect(iggy::ui::uiFeatureContextHasProductPlayMode(context), "ui feature context should report product play build pointer");
 
 	context.productPlayModeBuild = nullptr;
+	context.latestProductInputFrameTargetContext = nullptr;
 	context.productPlayModeState = &productState;
 	Expect(iggy::ui::uiFeatureContextHasProductPlayMode(context), "ui feature context should report product play state pointer");
 
