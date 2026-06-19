@@ -115,3 +115,4 @@ Queue:
 58. `58_native_model_slot_cube_fallback_registry_status_sync` - complete. Sync planning/API docs after native renderer-private model slot/cube fallback registry integration.
 59. `59_native_static_mesh_asset_data_model_status_sync` - complete. Sync planning/API docs after native backend-free static mesh asset data model integration.
 60. `60_native_procedural_bean_mesh_slot_binding_status_sync` - complete. Sync planning/API docs after native procedural bean mesh player slot binding integration.
+61. `61_native_procedural_npc_mesh_slot_binding_status_sync` - complete. Sync planning/API docs after native procedural NPC marker mesh slot binding integration.
