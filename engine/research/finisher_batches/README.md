@@ -105,3 +105,4 @@ Queue:
 48. `48_qt_product_input_frame_target_context_consumer_status_sync` - complete. Sync planning/API docs after Qt product input frame target context consumer integration.
 49. `49_product_input_target_context_diagnostics_projection_status_sync` - complete. Sync planning/API docs after product input target-context diagnostics projection integration.
 50. `50_qt_product_viewport_render_drawer_status_sync` - complete. Sync planning/API docs after thin Qt product viewport render command drawer integration.
+51. `51_qt_product_target_highlight_overlay_status_sync` - complete. Sync planning/API docs after thin Qt product target highlight overlay integration.

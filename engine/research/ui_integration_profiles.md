@@ -212,10 +212,11 @@ Qt manual Step and Product Frame Pump now consume that helper through the shared
 one-frame path, and compact read-only target-context diagnostics now project into
 the product play panel. Thin Qt product viewport render command drawing is
 complete as a temporary app-shell consumer of existing latest-frame quad
-commands. Textured sprites/animation/material policy, real renderer ownership,
-target highlighting/overlays, richer diagnostics, frame request/play-surface
-ownership, explicit interaction execution, product UX/save semantics, and broader
-UI execution remain gated.
+commands. Thin Qt target highlight overlay is complete as a visual annotation
+over latest target-context diagnostics. Textured sprites/animation/material
+policy, real renderer ownership, richer overlays/labels, richer diagnostics,
+frame request/play-surface ownership, explicit interaction execution, product
+UX/save semantics, and broader UI execution remain gated.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
@@ -530,6 +531,27 @@ Thin Qt product viewport render command drawer:
 - It remains a temporary app-shell/debug-material renderer over existing
   latest-frame data, not the long-term renderer.
 
+Thin Qt product target highlight overlay:
+- `ProductViewportWidget` accepts a const pointer to the latest transient
+  `RuntimeGameplayProductInputFrameTargetContextResult` diagnostics.
+- `buildMainSlot()` passes
+  `hasLatestProductInputFrameTargetContext_ ? &latestProductInputFrameTargetContext_ : nullptr`
+  into the viewport.
+- The paint path draws render command quads first, then draws the target overlay
+  afterward.
+- The overlay draws only when latest frame exists, diagnostics pointer exists,
+  diagnostics target has `hasTarget = true`, camera-view bounds are
+  non-degenerate, and widget size is positive.
+- It uses copied diagnostics target payload only: target position and
+  non-negative radius. It does not run target queries from paint.
+- It maps a world-space marker from position plus/minus radius through the
+  existing viewport world-to-pixel helper and uses a Qt-local minimum marker for
+  tiny or zero-radius targets.
+- Reach is visual annotation only: reachable, unreachable, and no-reach choose
+  different local styles, and unreachable targets are still shown.
+- The overlay is outline/tint only: no label, target id text, selected marker,
+  trail, click animation, command execution, or richer overlay.
+
 Hard stops for product play UI projection:
 - No product frame execution, `RuntimeGameplayProductPlayMode::frame(...)`,
   `RuntimeGameplayProductPlaySurfaceFrame::build(...)`, app tick loop, or frame
@@ -597,8 +619,9 @@ Hard stops for product play UI projection:
   scanning/watching/discovery, source mutation, raw Qt event persistence,
   projected pointer persistence, viewport geometry/state persistence, render
   command/config persistence, render command drawing beyond the approved Qt
-  latest-frame drawer, canvas polish, target highlighting, or runtime/product
-  semantic changes from Qt frame pump, viewport ownership, or viewport painting.
+  latest-frame drawer, canvas polish, target highlighting beyond the approved
+  thin Qt marker, or runtime/product semantic changes from Qt frame pump,
+  viewport ownership, or viewport painting.
 - No settings persistence or keyboard shortcut for Qt manual Step.
 - No hidden default camera/render config inside the UI model.
 - No pause/retry/reset, completion/failure, save/load productization, package

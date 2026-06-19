@@ -241,11 +241,12 @@ enrichment over the latest eligible `PrimaryTile` pressed event; Qt manual Step
 and frame pump now consume that helper through the shared one-frame path; compact
 read-only target-context diagnostics projection is complete in the product panel;
 thin Qt product viewport render command drawing is complete as a temporary
-app-shell consumer of existing latest-frame quad commands; next work is optional
-target highlighting/overlays or richer diagnostics, frame request/play-surface
-ownership decisions, explicit interact target synthesis, reach-gated interaction
-execution, real renderer ownership, textured sprite/animation/material/asset
-policy, and first-play UX policy gates.
+app-shell consumer of existing latest-frame quad commands; thin Qt target
+highlight overlay is complete as a visual annotation over latest target-context
+diagnostics; next work is optional richer overlays/labels or diagnostics, frame
+request/play-surface ownership decisions, explicit interact target synthesis,
+reach-gated interaction execution, real renderer ownership, textured
+sprite/animation/material/asset policy, and first-play UX policy gates.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -450,8 +451,8 @@ Qt product viewport owner complete:
   `QFrame#productViewport` only.
 - It creates a stable event/render target boundary, but does not define target
   discovery, runtime truth, or long-term renderer ownership.
-- No target highlighting, canvas polish, runtime/product/scene/UI API change, or
-  persistence change is included.
+- No target highlighting from viewport ownership itself, canvas polish,
+  runtime/product/scene/UI API change, or persistence change is included.
 
 Thin Qt product viewport render command drawer complete:
 - `QFrame#productViewport` is a Qt-local paint-capable widget that draws
@@ -479,8 +480,33 @@ Thin Qt product viewport render command drawer complete:
 - It is a temporary app-shell/debug-material renderer over existing latest-frame
   data, not the long-term renderer.
 - Paint events do not execute frames, change pump timing, change input behavior,
-  create render commands, add target highlighting, persist viewport/camera/
-  presentation data, or change runtime/product/scene/render command APIs.
+  create render commands, add target highlighting from the drawer itself, persist
+  viewport/camera/presentation data, or change runtime/product/scene/render
+  command APIs.
+
+Thin Qt product target highlight overlay complete:
+- `ProductViewportWidget` accepts a const pointer to the latest transient
+  `RuntimeGameplayProductInputFrameTargetContextResult` diagnostics.
+- `buildMainSlot()` passes
+  `hasLatestProductInputFrameTargetContext_ ? &latestProductInputFrameTargetContext_ : nullptr`
+  into the viewport.
+- The paint path draws existing render command quads first, then draws the
+  target overlay afterward.
+- The overlay draws only when latest frame exists, diagnostics pointer exists,
+  diagnostics target has `hasTarget = true`, camera view bounds are
+  non-degenerate, and widget size is positive.
+- It uses copied diagnostics target payload only: target position and
+  non-negative radius. It does not run target queries from paint.
+- It builds a world-space marker from position plus/minus radius, maps it
+  through the existing viewport world-to-pixel helper, and uses a Qt-local
+  minimum marker for tiny or zero-radius targets.
+- Reach is visual annotation only: reachable, unreachable, or no-reach choose
+  different local styles; unreachable targets are still shown.
+- The overlay is outline/tint only: no label, target id text, selected marker,
+  trail, click animation, command execution, or richer overlay.
+- It changes no runtime/product/scene/UI/render-command APIs and persists no
+  target diagnostics, highlight state, viewport geometry, camera/presentation
+  state, render-frame data, raw input, accumulator state, or Qt state.
 
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
@@ -824,8 +850,9 @@ Qt product frame pump toggle complete:
 Remaining input gate questions:
 - Should frame request/play surface ever own target-context enrichment, or should
   it remain an app-shell pre-frame caller decision?
-- Should target-context diagnostics grow beyond compact panel rows into target
-  highlighting/overlays, logs, status text, or richer inspection?
+- Should target-context diagnostics grow beyond compact panel rows and the thin
+  Qt target marker into richer overlays/labels, logs, status text, or deeper
+  inspection?
 - Who owns hover lifecycle, clearing, and selected-target workflows beyond this
   enrichment-only helper?
 - Should explicit interact target synthesis consume a `TargetFound` report, and
@@ -842,9 +869,8 @@ Remaining input gate questions:
 - What does completion/failure mean in the first slice?
 
 Output:
-- one optional richer diagnostics, target highlighting/overlay, or frame request/
-  play-surface ownership packet over the product query/context helpers, if
-  approved;
+- one optional richer diagnostics, overlays/labels, or frame request/play-surface
+  ownership packet over the product query/context helpers, if approved;
 - one real renderer ownership or textured sprite / animation / material policy
   packet, if approved;
 - one updated implementation order packet;
@@ -984,10 +1010,11 @@ manual Step consumer integrated; product input binding context projection and
 product input accumulator integrated; Qt product frame pump toggle integrated;
 product gameplay actor debug/material quad projection integrated; thin Qt
 product viewport render command drawer integrated as temporary latest-frame quad
-drawing; textured sprites/animation/material/asset policy, target highlighting,
-real renderer ownership, interaction execution, product UX/save semantics, and
-UI execution beyond launch/focus/input capture/manual step/pump/viewport
-ownership/primary-tile mouse input remain separate gates.
+drawing; thin Qt target highlight overlay integrated as a visual annotation over
+latest diagnostics; textured sprites/animation/material/asset policy, richer
+overlays/labels, real renderer ownership, interaction execution, product UX/save
+semantics, and UI execution beyond launch/focus/input capture/manual step/pump/
+viewport ownership/primary-tile mouse input remain separate gates.
 
 Goal: turn runtime state into visible play state.
 
@@ -1065,9 +1092,12 @@ Packets:
 24. Thin Qt product viewport render command drawer. Complete:
    - `QFrame#productViewport` paints existing latest-frame quad render commands
      as temporary untextured debug/material rectangles.
-25. Debug overlay projection:
+25. Thin Qt product target highlight overlay. Complete:
+   - `ProductViewportWidget` paints a Qt-only outline/tint marker from latest
+     target-context diagnostics after command quads.
+26. Debug overlay projection:
    - trace/final rows, AI map, collision, path, interactions, inventory.
-26. UI presentation adapter:
+27. UI presentation adapter:
    - convert render frame data into the chosen shell/app surface.
 
 Hard stops:
@@ -1300,7 +1330,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 33. Qt product input frame target context consumer is integrated.
 34. Product input target-context diagnostics projection is integrated.
 35. Thin Qt product viewport render command drawer is integrated.
-36. Dispatch richer diagnostics display, target highlighting, frame request/
+36. Thin Qt product target highlight overlay is integrated.
+37. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, real renderer ownership, textured sprite / animation /
@@ -1314,6 +1345,6 @@ raw OS event types, raw input persistence, textured sprite/animation/material
 policy, target context wiring/lifecycle/reach beyond the approved read-only
 product query/enrichment/diagnostics helpers, automatic frame request/play-surface
 ownership of enrichment, diagnostics persistence or exposure beyond compact
-read-only panel rows, additional Qt mouse behavior, render command drawing beyond
-the approved Qt latest-frame drawer, canvas polish, or new gameplay semantics
-unless the user explicitly reprioritizes.
+read-only panel rows and thin target marker, additional Qt mouse behavior, render
+command drawing beyond the approved Qt latest-frame drawer, canvas polish, or new
+gameplay semantics unless the user explicitly reprioritizes.

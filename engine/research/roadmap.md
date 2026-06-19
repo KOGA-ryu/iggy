@@ -122,6 +122,12 @@ Recently completed optimized stretches:
   command vector order, draws only quad commands, ignores textures, uses Qt-local
   material debug colors, and does not execute frames, change runtime/scene APIs,
   own long-term renderer semantics, or persist presentation data.
+- Qt shell thin product target highlight overlay: `ProductViewportWidget` accepts
+  a const pointer to the latest transient target-context diagnostics and paints
+  a Qt-local outline/tint marker after command quads when a copied diagnostics
+  target exists. It uses copied target position/radius only, performs no
+  paint-time target query, treats reach as visual annotation, and does not add
+  labels, selection, interaction execution, persistence, or runtime API changes.
 - Scene `InteractionTargetSpatialQuery2D` for pure spatial lookup over
   `InteractionTarget2DRegistry`: enabled targets only, Euclidean distance,
   clamped target/extra radius, nearest eligible target with registry-order ties,
@@ -324,14 +330,16 @@ Recently completed optimized stretches:
   `RuntimeGameplayProductInputFrameTargetContext` helper can now consume a frame's
   latest eligible `PrimaryTile` pressed event, run that query/enrichment, and
   return a copied frame with only binding context replaced. Qt manual Step and
-  frame pump now call that helper through their shared one-frame path and the
-  Qt product viewport can draw the latest frame's existing quad render commands
-  as a temporary debug-material presentation consumer. Next product runtime work
-  is deciding whether frame request/play surface should own enrichment, whether
-  target highlighting or richer diagnostics should be surfaced, or whether
-  explicit interaction intent should be synthesized, then interaction execution
-  if approved, real renderer ownership, textured sprite/animation/material/asset policy,
-  pause/retry/reset policy, completion/failure evaluation, and save/load UX.
+  frame pump now call that helper through their shared one-frame path, the Qt
+  product viewport can draw the latest frame's existing quad render commands as
+  a temporary debug-material presentation consumer, and the viewport can overlay
+  a thin Qt-only target highlight from latest target-context diagnostics. Next
+  product runtime work is deciding whether frame request/play surface should own
+  enrichment, whether richer overlays/labels or diagnostics should be surfaced,
+  or whether explicit interaction intent should be synthesized, then interaction
+  execution if approved, real renderer ownership, textured sprite/animation/
+  material/asset policy, pause/retry/reset policy, completion/failure
+  evaluation, and save/load UX.
 - Rendering backend/presentation layer.
 - Audio server boundary.
 - Save/load productization and authored package roundtrip.
@@ -602,8 +610,14 @@ boundary: product play sessions get `QFrame#productViewport`; the current input
 policy is left-click `PrimaryTile` only. Thin Qt Product Viewport Render Command
 Drawer is complete as a temporary app-shell presentation consumer: the viewport
 draws existing latest-frame quad render commands with Qt-local debug colors,
-without becoming renderer ownership, canvas polish, target highlighting, texture
-sampling, or gameplay truth.
+without becoming renderer ownership, canvas polish, texture sampling, or gameplay
+truth.
+Thin Qt Product Target Highlight Overlay is complete as a Qt-only visual
+consumer: the viewport draws an outline/tint marker after render-command quads
+when latest transient target-context diagnostics contain a copied target. It
+uses copied target position/radius, marks reachable/unreachable/no-reach with
+local styles, and does not run target queries, synthesize input, select targets,
+execute interactions, persist highlight state, or change runtime APIs.
 InteractionTargetSpatialQuery2D is complete as a scene-only lookup primitive:
 it scans enabled interaction targets in registry order, compares Euclidean
 distance to clamped target radius plus clamped extra radius, returns the nearest
@@ -874,8 +888,15 @@ Done:
   `QFrame#productViewport` paints only existing latest-frame render commands as
   temporary untextured debug/material rectangles. Paint events do not execute
   frames, sort commands, load textures, create render commands, change input
-  behavior, add target highlighting, or persist camera/presentation/viewport
-  state as runtime or save truth.
+  behavior, add target highlighting from the drawer itself, or persist camera/
+  presentation/viewport state as runtime or save truth.
+- Qt product target highlight overlay is app-shell thin:
+  `ProductViewportWidget` receives the latest target-context diagnostics pointer,
+  paints command quads first, then paints a target marker only when latest frame,
+  diagnostics target, non-degenerate camera view, and positive widget size exist.
+  Paint uses copied target payload position/radius and reach annotation only; it
+  runs no target query and adds no label, target id text, selected marker, trail,
+  click animation, command execution, or richer overlay.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -886,8 +907,8 @@ Exit criteria:
 - Save/load user-facing state.
 
 First gates:
-- Target highlighting/overlays or richer diagnostics beyond the compact panel
-  rows and temporary quad drawer.
+- Richer overlays/labels or diagnostics beyond the compact panel rows and thin
+  target highlight marker.
 - Frame request/play-surface ownership decision for target-context enrichment.
 - Hover lifecycle and selected-target workflows beyond the helper's one-shot
   enrichment.
