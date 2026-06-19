@@ -214,10 +214,10 @@ the product play panel. Thin Qt product viewport render command drawing is
 complete as a temporary app-shell consumer of existing latest-frame quad
 commands. Thin Qt target highlight overlay is complete as a visual annotation
 over latest target-context diagnostics. Textured sprites/animation/material
-policy, pipeline/shader/resource ownership cleanup, model-slot/static asset
-policy, renderer expansion, backend validation, richer overlays/labels, richer
-diagnostics, frame request/play-surface ownership, explicit interaction
-execution, product UX/save semantics, and broader UI execution remain gated.
+policy, model-slot/static asset policy, renderer expansion, backend validation,
+richer overlays/labels, richer diagnostics, frame request/play-surface
+ownership, explicit interaction execution, product UX/save semantics, and
+broader UI execution remain gated.
 
 Native `iggy_native_play` scripted controls/debugger is complete as a no-Qt
 app-shell harness over the same product input path as keyboard controls. It
@@ -300,6 +300,25 @@ glTF/assets/textures/materials/animation, Linux/dGPU policy, and backend
 abstraction remain separate. The known allocation failure-path risk between
 `vkCreateBuffer` and ownership assignment pre-existed the wrapper and remains a
 future RAII/allocation exception-safety gate.
+
+Native pipeline/shader resource wrapping is complete as no-Qt renderer-private
+resource cleanup inside `NativeVulkanRenderer.cpp`: the existing render pass,
+pipeline layout, graphics pipeline, and shader module handles now use private
+`NativeVulkanShaderModuleResource` and `NativeVulkanPipelineResource` structs
+plus `HasShaderModule`/`HasPipeline` readiness helpers. `createRenderPass()`
+fills `pipeline_.renderPass`; `createShaderModule(...)` returns a wrapped shader
+module; `destroyShaderModule(...)` centralizes shader module destruction/reset;
+command recording and draw code use `pipeline_.renderPass`, `pipeline_.layout`,
+and `pipeline_.graphics`; and `destroyPipelineResource(...)` centralizes
+graphics pipeline, pipeline layout, and render pass destruction/reset.
+Shader filenames, shader stage setup, `pName = "main"`, vertex input, fixed
+pipeline state, push constant range, render pass semantics, command-buffer bind
+behavior, and swapchain recreate behavior are intended unchanged. Public
+renderer API, `IggyNativePlay.cpp`, CMake, shader files, runtime/product/scene
+APIs, product session, draw-list data, CLI/debugger output, app-shell behavior,
+descriptors/samplers/materials/textures, model slots, asset/glTF loaders,
+staging/device-local upload policy, Linux/dGPU policy, and backend abstraction
+remain separate.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame

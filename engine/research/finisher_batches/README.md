@@ -111,3 +111,4 @@ Queue:
 54. `54_native_product_session_extraction_status_sync` - complete. Sync planning/API docs after native product session extraction integration.
 55. `55_native_vulkan_renderer_skeleton_extraction_status_sync` - complete. Sync planning/API docs after native Vulkan renderer skeleton extraction integration.
 56. `56_native_gpu_mesh_resource_wrapper_status_sync` - complete. Sync planning/API docs after native renderer-private GPU mesh resource wrapper integration.
+57. `57_native_pipeline_shader_resource_wrapper_status_sync` - complete. Sync planning/API docs after native renderer-private pipeline/shader resource wrapper integration.

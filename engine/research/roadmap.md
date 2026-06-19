@@ -353,13 +353,17 @@ Recently completed optimized stretches:
   renderer input. Native GPU mesh resource wrapping now keeps the existing cube
   mesh path renderer-private while centralizing vertex/index buffer readiness and
   idempotent destruction without changing upload policy, draw behavior, model
-  mapping, shaders, or public renderer API.
+  mapping, shaders, or public renderer API. Native pipeline/shader resource
+  wrapping now keeps the existing render pass, pipeline layout, graphics
+  pipeline, and shader module handles renderer-private while centralizing
+  shader module and pipeline destruction/reset without changing shader files,
+  shader interfaces, pipeline state, draw behavior, or public renderer API.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
-  execution if approved, app-shell/CLI extraction, pipeline/shader/resource
-  ownership cleanup, model-slot/static asset policy, textured sprite/animation/
-  material policy, backend validation/abstraction, pause/retry/reset policy,
+  execution if approved, app-shell/CLI extraction, model-slot/static asset
+  policy, textured sprite/animation/material policy, backend validation/
+  abstraction, pause/retry/reset policy,
   completion/failure evaluation, and save/load UX.
 - Rendering backend/presentation layer.
 - Audio server boundary.
@@ -1005,6 +1009,24 @@ asset loader, resource catalog, staging/device-local upload policy, glTF/
 texture/material/animation packet, or public renderer API change. The
 pre-existing allocation failure-path risk between `vkCreateBuffer` and ownership
 assignment remains future RAII/exception-safety work, not a new blocker.
+Native Pipeline/Shader Resource Wrapper is complete for no-Qt renderer prep:
+`NativeVulkanRenderer.cpp` now wraps the existing render pass, pipeline layout,
+graphics pipeline, and shader module handles in renderer-private resource
+structs. `createRenderPass()` fills `pipeline_.renderPass`;
+`createShaderModule(...)` returns a wrapped shader module; shader modules are
+destroyed and reset through `destroyShaderModule(...)`; draw and command
+recording use `pipeline_.layout`, `pipeline_.renderPass`, and
+`pipeline_.graphics`; and `destroyPipelineResource(...)` destroys graphics
+pipeline, pipeline layout, and render pass in that order before resetting the
+resource. Shader filenames, shader file-read behavior, stage setup,
+`pName = "main"`, vertex input, fixed pipeline state, push constant range,
+render pass attachments/dependency/layouts, command-buffer bind behavior, and
+swapchain recreate behavior are unchanged. `NativeVulkanRenderer.hpp`,
+`IggyNativePlay.cpp`, CMake, shader files, runtime/product/scene APIs, product
+session, and draw-list data are unchanged. This is renderer-private ownership
+cleanup, not a public renderer API change, descriptor/sampler/material/texture
+packet, model-slot binding, asset/glTF loader, shader-interface change, staging
+upload policy, Linux/dGPU validation policy, or backend abstraction.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -1023,9 +1045,8 @@ First gates:
 - Explicit interact target synthesis and reach-gated interaction execution.
 - Point-vs-tile / `PrimaryPoint` behavior beyond the current `PrimaryTile`
   policy.
-- Pipeline/shader/resource ownership cleanup, model-slot/static asset policy,
-  renderer expansion, textured sprite/animation/material policy over the debug/
-  material actor quads, and any canvas polish.
+- Model-slot/static asset policy, renderer expansion, textured sprite/animation/
+  material policy over the debug/material actor quads, and any canvas polish.
 - Pause/retry/reset policy.
 - Completion/failure evaluator.
 - Save-slot UX ownership.
