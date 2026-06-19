@@ -231,6 +231,19 @@ mismatch exits nonzero and reports the actual tile. It does not change gameplay
 semantics, runtime/product APIs, Qt behavior, persistence, or render
 asset/material/glTF policy.
 
+Native scene draw-list extraction is complete as no-Qt renderer prep:
+`NativeSceneDrawList.hpp` defines backend-neutral app-local draw items and pure
+transform helpers under `iggy::native_play`, with nullable runtime gameplay state
+plus seconds as input. `IggyNativePlay.cpp` adapts current product play state
+through `nativeSceneDrawState()` and keeps Vulkan command recording as the
+consumer of returned draw items. Fallback player cube, floor y/x order, wall
+`tileAt(...)` policy, NPC registry order, player-last ordering, transforms,
+tints, inclusion policy, and vector order are intended unchanged. Vulkan
+mesh-buffer ownership, renderer/swapchain/pipeline/command-buffer extraction,
+SDL/input/scripted-control/free-play/gameplay stepping, Qt behavior, CLI/debugger
+output, glTF/assets/textures/materials/animation/shader policy, and visual
+behavior changes remain separate.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.

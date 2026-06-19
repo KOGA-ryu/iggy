@@ -338,8 +338,11 @@ Recently completed optimized stretches:
   deterministic product-path stepping: `--scripted-controls LIST`,
   `--scripted-control-interval-ms`, `--debug-scripted-controls`,
   `--dump-final-state`, `--expect-player-tiles 'x,y;x,y'`, and
-  `--quit-after-script`. Next product runtime work is deciding whether frame
-  request/play surface should own
+  `--quit-after-script`. Native no-Qt renderer prep now has a backend-neutral
+  app-local scene draw-list extraction in `NativeSceneDrawList.hpp`, keeping
+  draw-item ordering and transforms out of Vulkan command recording without
+  extracting mesh-buffer ownership or renderer/swapchain/pipeline resources.
+  Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
   execution if approved, real renderer ownership, textured sprite/animation/
@@ -632,6 +635,17 @@ through the same product input path as keyboard controls, supports
 the actual player tile. Final-state dump prints player tile, next frame index,
 render command count, active input count, and held input count after the scripted
 sequence completes.
+Native Scene Draw List Extraction is complete for no-Qt renderer prep:
+`NativeSceneDrawList.hpp` defines `NativeSceneModelId`, `NativeSceneDrawItem`,
+`NativeSceneDrawListInput`, pure transform helpers, and
+`BuildNativeSceneDrawItems(...)` under `iggy::native_play`. `IggyNativePlay.cpp`
+adapts `product_->play.state.loop.currentState` through `nativeSceneDrawState()`
+and records Vulkan commands from the returned draw items as before. Null state
+or product state without a player keeps the fallback rotating player cube; floor
+cubes are emitted for all map tiles in y/x order; wall cubes are emitted only
+for non-walkable tiles through existing `tileAt(...)` behavior; present modern
+NPC actors are emitted in registry order; the player is appended last; and
+transforms, tints, inclusion policy, and vector order are intended unchanged.
 InteractionTargetSpatialQuery2D is complete as a scene-only lookup primitive:
 it scans enabled interaction targets in registry order, compares Euclidean
 distance to clamped target radius plus clamped extra radius, returns the nearest
@@ -920,6 +934,16 @@ Done:
   count, active input count, and held input count after the script completes.
   This does not change gameplay semantics, runtime/product APIs, persistence,
   Qt, or render asset/material/glTF policy.
+- Native scene draw-list extraction is no-Qt app-local renderer prep:
+  `BuildNativeSceneDrawItems({ nativeSceneDrawState(), seconds })` produces
+  backend-neutral draw items from nullable runtime gameplay state and seconds,
+  while Vulkan command recording consumes those draw items as before. This is a
+  header-only extraction with no CMake change, no runtime/product/scene/server/
+  render-command API change, no SDL/input/scripted-control/free-play/gameplay
+  stepping change, no CLI/debugger output/docs change in the source packet, no
+  glTF/assets/textures/materials/animation/shader change, and no intended visual
+  behavior change. Vulkan mesh-buffer ownership and renderer/swapchain/pipeline/
+  command-buffer extraction remain separate later packets.
 
 Exit criteria:
 - Load a package or explicit scenario.

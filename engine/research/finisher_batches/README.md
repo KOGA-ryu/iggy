@@ -107,3 +107,4 @@ Queue:
 50. `50_qt_product_viewport_render_drawer_status_sync` - complete. Sync planning/API docs after thin Qt product viewport render command drawer integration.
 51. `51_qt_product_target_highlight_overlay_status_sync` - complete. Sync planning/API docs after thin Qt product target highlight overlay integration.
 52. `52_native_scripted_controls_debugger_status_sync` - complete. Sync planning/API docs after native scripted controls, debugger, expectations, and final-state dump integration.
+53. `53_native_scene_draw_list_extraction_status_sync` - complete. Sync planning/API docs after native scene draw-list extraction integration.

@@ -244,8 +244,9 @@ thin Qt product viewport render command drawing is complete as a temporary
 app-shell consumer of existing latest-frame quad commands; thin Qt target
 highlight overlay is complete as a visual annotation over latest target-context
 diagnostics; native no-Qt scripted controls/debugger is complete for
-deterministic product-path stepping and expectation checks; next work is optional
-richer overlays/labels or diagnostics, frame request/play-surface ownership
+deterministic product-path stepping and expectation checks; native no-Qt
+scene draw-list extraction is complete as backend-neutral app-local renderer
+prep; next work is optional richer overlays/labels or diagnostics, frame request/play-surface ownership
 decisions, explicit interact target synthesis, reach-gated interaction
 execution, real renderer ownership, textured sprite/animation/material/asset
 policy, and first-play UX policy gates.
@@ -530,6 +531,34 @@ Native scripted controls/debugger complete:
 - This is native no-Qt app-shell tooling only: no gameplay semantics change,
   runtime/product API change, Qt path, persistence, or render asset/material/glTF
   policy.
+
+Native scene draw-list extraction complete:
+- `NativeSceneDrawList.hpp` defines `NativeSceneModelId`,
+  `NativeSceneDrawItem`, `NativeSceneDrawListInput`, pure transform helpers, and
+  `BuildNativeSceneDrawItems(...)` under `iggy::native_play`.
+- Input is nullable `const runtime::RuntimeGameplayState *state` plus `seconds`.
+- `IggyNativePlay.cpp` adapts `product_->play.state.loop.currentState` through
+  `nativeSceneDrawState()` and calls
+  `BuildNativeSceneDrawItems({ nativeSceneDrawState(), seconds })`; Vulkan
+  command recording consumes the returned draw items as before.
+- Null state or product state with no player keeps the fallback rotating player
+  cube.
+- Floor cubes are emitted for all map tiles in y/x order.
+- Wall cubes are emitted only for non-walkable tiles through existing
+  `tileAt(...)` behavior.
+- Present modern NPC actors are emitted in registry order.
+- Player is appended last.
+- Transforms, tints, inclusion policy, and vector order are intended unchanged.
+- This is a header-only extraction, so no CMake change is included.
+- No Vulkan mesh-buffer ownership extraction, renderer class/swapchain/render
+  pass/pipeline/shader module/command pool/command buffer/descriptor/buffer
+  upload or destruction extraction, runtime/product/scene/server/render-command
+  API change, CLI/debugger output change, SDL/input/scripted-control/free-play/
+  gameplay stepping change, glTF/assets/textures/materials/animation/shader
+  change, or intended visual behavior change is included.
+- Vulkan mesh-buffer ownership remains a separate later packet; renderer/
+  swapchain/pipeline/command-buffer extraction remains separate from mesh-buffer
+  ownership and debugger CLI/output/docs changes.
 
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
@@ -1122,9 +1151,13 @@ Packets:
    - `iggy_native_play` can inject scripted controls through the same product
      input path as keyboard controls, print per-step diagnostics, validate
      expected player tiles, dump final scripted state, and quit after the script.
-27. Debug overlay projection:
+27. Native scene draw-list extraction. Complete:
+   - `NativeSceneDrawList.hpp` builds backend-neutral app-local draw items from
+     nullable product runtime state plus seconds; Vulkan command recording
+     consumes the returned items as before.
+28. Debug overlay projection:
    - trace/final rows, AI map, collision, path, interactions, inventory.
-28. UI presentation adapter:
+29. UI presentation adapter:
    - convert render frame data into the chosen shell/app surface.
 
 Hard stops:
@@ -1359,7 +1392,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 35. Thin Qt product viewport render command drawer is integrated.
 36. Thin Qt product target highlight overlay is integrated.
 37. Native no-Qt scripted controls/debugger is integrated.
-38. Dispatch richer diagnostics display, overlays/labels, frame request/
+38. Native scene draw-list extraction is integrated.
+39. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, real renderer ownership, textured sprite / animation /
@@ -1378,3 +1412,8 @@ command drawing beyond the approved Qt latest-frame drawer, canvas polish, or ne
 gameplay semantics unless the user explicitly reprioritizes.
 Do not treat native scripted controls/debugger as gameplay semantics, runtime/
 product API, Qt path, persistence, or render asset/material/glTF policy.
+Do not treat native scene draw-list extraction as Vulkan mesh-buffer ownership,
+renderer/swapchain/pipeline/command-buffer extraction, runtime/product/scene/
+server/render-command API change, SDL/input/scripted-control/free-play/gameplay
+stepping change, CLI/debugger docs/output change, or glTF/assets/textures/
+materials/animation/shader policy.
