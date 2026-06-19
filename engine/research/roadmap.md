@@ -398,7 +398,14 @@ Recently completed optimized stretches:
   `NpcActor`, `Player` order, records per-slot filename/status/fallback/issues/
   vertex/index counts, aggregates loaded/failed/missing counts, and maps report
   fallbacks to `Cube`, `Cube`, `ProceduralNpcMarker`, and `ProceduralBean`.
-  `NativeVulkanRenderer.cpp` was not touched.
+  `NativeVulkanRenderer.cpp` was not touched. Native static model load report
+  CLI dumping now adds `iggy_native_play --dump-static-model-load-report`; the
+  app builds `BuildNativeStaticModelLoadReport(DefaultNativeStaticModelPolicy(),
+  IGGY_NATIVE_PLAY_ASSET_DIR)`, prints a compact aggregate plus one slot row per
+  fixed slot, and exits before `NativeVulkanApp` construction/run. The command
+  returns 0 only when all fixed slots load, returns nonzero for missing/failed
+  slots, and does not require `--play`, scripted controls, SDL display
+  availability, or Vulkan renderer initialization beyond normal binary linkage.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1249,6 +1256,31 @@ texture/descriptor/sampler policy, normals/UVs/animation/skins/scene graph/
 transforms work, staging/device-local upload policy, Linux/dGPU policy, backend
 abstraction, CLI/debugger output change, or gameplay/input/scripted-control
 change.
+
+Native Static Model Load Report CLI Dump is complete for no-Qt asset
+diagnostics: `iggy_native_play` accepts `--dump-static-model-load-report` through
+`LaunchOptions::dumpStaticModelLoadReport`, argument parsing, and help text in
+`IggyNativePlay.cpp`. Main dispatch builds
+`BuildNativeStaticModelLoadReport(DefaultNativeStaticModelPolicy(),
+IGGY_NATIVE_PLAY_ASSET_DIR)`, prints a compact stdout report, and exits before
+`NativeVulkanApp` construction/run. Exit code is 0 only when all fixed slots are
+loaded and nonzero if any fixed slot is missing or failed. The dump does not
+require `--play`, scripted controls, SDL display availability, or Vulkan
+renderer initialization beyond normal binary linkage. Output starts with
+`static-model-load-report loaded=N failed=N missing=N`, followed by one row per
+slot with slot, filename or `<missing>`, status, fallback, vertices, indices,
+and issues; current checked-in assets report Floor 4/6, Wall 8/36, NpcActor
+7/30, and Player 6/24. Existing play/scripted/debug/final-state behavior and
+output are preserved except for the added help option. This is not a glTF/glb
+parser, GLB binary parser, JSON parser, custom glTF subset parser, dependency
+fetch, package install, web lookup, `.igmesh` schema change, file discovery,
+directory scanning, package discovery, asset registry/catalog, manifest
+expansion, model authoring policy, renderer API change, `NativeVulkanRenderer`
+change, `NativeSceneDrawList.hpp` change, runtime/product/scene/server API
+change, gameplay/input/scripted-control semantic change, shader/material/
+texture/descriptor/sampler policy, normals/UVs/animation/skins/scene graph/
+transforms work, staging/device-local upload policy, Linux/dGPU policy, or
+backend abstraction.
 
 Exit criteria:
 - Load a package or explicit scenario.

@@ -491,6 +491,22 @@ descriptor/sampler policy, staging/device-local upload, Linux/dGPU policy,
 backend abstraction, CLI/debugger output, or gameplay/input/scripted-control
 behavior.
 
+Native static model load report CLI dumping is complete as no-Qt app-shell asset
+diagnostics: `iggy_native_play --dump-static-model-load-report` builds the
+default policy report against `IGGY_NATIVE_PLAY_ASSET_DIR`, prints compact
+stdout, and exits before `NativeVulkanApp` construction/run. It returns 0 only
+when all fixed slots are loaded and nonzero for any missing/failed fixed slot.
+It does not require `--play`, scripted controls, SDL display availability, or
+Vulkan renderer initialization beyond normal binary linkage. Output is an
+aggregate `static-model-load-report loaded=N failed=N missing=N` plus one row
+per slot with filename/status/fallback/counts/issues; current checked-in assets
+report Floor 4/6, Wall 8/36, NpcActor 7/30, and Player 6/24. Existing
+play/scripted/debug/final-state output remains preserved except for the added
+help option. This does not add glTF/glb/JSON parsing, `.igmesh` schema changes,
+discovery/catalog/manifest policy, renderer mutation, runtime/product/scene API
+changes, shader/material/texture policy, staging/device-local upload, Linux/dGPU
+policy, backend abstraction, or gameplay/input/scripted-control semantics.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.

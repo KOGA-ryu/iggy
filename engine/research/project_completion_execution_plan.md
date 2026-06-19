@@ -945,6 +945,37 @@ Native static model load report complete:
   abstraction, CLI/debugger output change, or gameplay/input/scripted-control
   change.
 
+Native static model load report CLI dump complete:
+- `iggy_native_play` now supports `--dump-static-model-load-report`.
+- `LaunchOptions::dumpStaticModelLoadReport` plus parse/help text are wired in
+  `IggyNativePlay.cpp`.
+- Main dispatch builds
+  `BuildNativeStaticModelLoadReport(DefaultNativeStaticModelPolicy(),
+  IGGY_NATIVE_PLAY_ASSET_DIR)`, prints a compact stdout report, and exits before
+  `NativeVulkanApp` construction/run.
+- Exit code is 0 only when every fixed slot is loaded; it is nonzero if any
+  fixed slot is missing or failed.
+- The command does not require `--play`, scripted controls, SDL display
+  availability, or Vulkan renderer initialization beyond normal binary linkage.
+- Compact output starts with
+  `static-model-load-report loaded=N failed=N missing=N`.
+- Each slot row prints slot, filename or `<missing>`, status, fallback, vertices,
+  indices, and issues.
+- Current checked-in asset output includes Floor 4/6, Wall 8/36, NpcActor 7/30,
+  and Player 6/24.
+- Existing play/scripted/debug/final-state behavior and output are preserved
+  except for the added help option.
+- This is not a glTF/glb parser, GLB binary parser, JSON parser, custom glTF
+  subset parser, dependency fetch, package install, web lookup, `.igmesh`
+  schema change, file discovery, directory scanning, package discovery, asset
+  registry/catalog, manifest expansion, model authoring policy,
+  `NativeVulkanRenderer.cpp` change, public renderer API change,
+  `NativeSceneDrawList.hpp` change, runtime/product/scene/server API change,
+  gameplay/input/scripted-control semantic change, shader/material/texture/
+  descriptor/sampler policy, normals/UVs/animation/skins/scene graph/transforms
+  work, staging/device-local upload policy, Linux/dGPU policy, or backend
+  abstraction.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -1826,7 +1857,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 50. Native floor/wall mesh asset binding is integrated.
 51. Native static model slot policy is integrated.
 52. Native static model load report is integrated.
-53. Dispatch richer diagnostics display, overlays/labels, frame request/
+53. Native static model load report CLI dump is integrated.
+54. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under
