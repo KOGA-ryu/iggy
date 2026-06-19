@@ -1030,6 +1030,31 @@ Native static mesh fixture writer roundtrip complete:
   app-shell/CLI change, gameplay/input/scripted-control change, or docs mixed
   into source.
 
+Native static mesh built-in export CLI complete:
+- `iggy_native_play` now supports `--dump-static-mesh-asset NAME`.
+- Supported names are exactly `cube`, `bean`, and `npc-marker`.
+- The command selects the existing built-in procedural mesh, serializes it
+  through `WriteNativeStaticMeshAssetText(...)`, prints the writer's raw
+  deterministic `.igmesh` text to stdout, and exits 0 before
+  `NativeVulkanApp` construction, SDL initialization, or Vulkan launch.
+- Unknown names fail nonzero with a compact error such as
+  `iggy_native_play: unknown static mesh asset: nope`.
+- Combining `--dump-static-model-load-report` with
+  `--dump-static-mesh-asset` fails nonzero with a compact conflict error so
+  stdout formats stay unambiguous.
+- Existing help/report/scripted/final-state/product/session/render behavior is
+  preserved except for the added help option.
+- Sample output for `cube`, `bean`, and `npc-marker` starts with
+  `# Native static mesh asset`; cube output includes cube vertex rows and a
+  later `tri 0 1 2`, while bean and NPC marker output include their existing
+  procedural vertex rows.
+- This is not file writing, fixture rewriting, arbitrary asset path input,
+  checked-in asset normalization, glTF/glb/JSON parsing, dependency work,
+  schema expansion, material/texture/descriptor/sampler/normals/UV/animation/
+  scene graph work, renderer behavior or API change, runtime/product/scene/
+  server/draw-list API change, gameplay/scripted/final-state semantic change,
+  or docs mixed into source.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -1914,7 +1939,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 53. Native static model load report CLI dump is integrated.
 54. Native static mesh text writer is integrated.
 55. Native static mesh fixture writer roundtrip tests are integrated.
-56. Dispatch richer diagnostics display, overlays/labels, frame request/
+56. Native static mesh built-in export CLI is integrated.
+57. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

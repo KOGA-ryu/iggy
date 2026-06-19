@@ -531,6 +531,19 @@ schemas, file writing/export, discovery/catalog/manifest policy, public renderer
 API, draw-list/runtime/product/scene/server API, shader/material/texture policy,
 or gameplay/input/scripted-control semantics.
 
+Native static mesh built-in export CLI is complete as a no-Qt app-shell
+diagnostic: `iggy_native_play --dump-static-mesh-asset NAME` supports exactly
+`cube`, `bean`, and `npc-marker`, serializes the selected existing built-in
+procedural mesh with `WriteNativeStaticMeshAssetText(...)`, prints raw
+deterministic `.igmesh` text to stdout, and exits before `NativeVulkanApp`,
+SDL, or Vulkan launch. Unknown names fail nonzero with compact errors, and the
+option conflicts with `--dump-static-model-load-report` to avoid ambiguous
+stdout formats. This adds only a help/diagnostic path; it does not write files,
+rewrite fixtures, accept arbitrary asset paths, normalize checked-in assets,
+add glTF/glb/JSON parsing, expand `.igmesh` schema, change renderer behavior,
+change runtime/product/scene/server/draw-list APIs, or change gameplay/scripted/
+final-state semantics.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.

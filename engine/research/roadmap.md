@@ -414,6 +414,13 @@ Recently completed optimized stretches:
   `.igmesh` fixture, writes it, reloads it, writes it again, and asserts
   canonical writer idempotence for floor, wall, NPC, and player assets; it also
   adds procedural NPC marker write/reload count coverage.
+  Native static mesh built-in export CLI dumping now adds
+  `iggy_native_play --dump-static-mesh-asset NAME` for the existing procedural
+  `cube`, `bean`, and `npc-marker` meshes. The app serializes the selected
+  built-in mesh with `WriteNativeStaticMeshAssetText(...)`, prints raw
+  deterministic `.igmesh` text to stdout, and exits before `NativeVulkanApp`,
+  SDL, or Vulkan launch; unknown names and conflicts with
+  `--dump-static-model-load-report` fail nonzero with compact errors.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1335,6 +1342,27 @@ directory scanning, package discovery, registry/catalog, manifest expansion,
 authoring package policy, renderer behavior change, `NativeVulkanRenderer.cpp`
 change, public renderer API change, draw-list/runtime/product/scene/server API
 change, app-shell/CLI change, gameplay/input/scripted-control change, or docs
+mixed into source.
+
+Native Static Mesh Built-In Export CLI is complete as an app-shell diagnostic:
+`iggy_native_play --dump-static-mesh-asset NAME` supports exactly `cube`,
+`bean`, and `npc-marker`. The command selects the existing built-in procedural
+mesh, serializes it through `WriteNativeStaticMeshAssetText(...)`, prints the
+writer's raw deterministic `.igmesh` text to stdout, and exits 0 before
+`NativeVulkanApp` construction, SDL initialization, or Vulkan launch. Unknown
+names fail nonzero with a compact error such as
+`iggy_native_play: unknown static mesh asset: nope`; combining
+`--dump-static-model-load-report` with `--dump-static-mesh-asset` also fails
+nonzero to avoid ambiguous stdout formats. Sample output for `cube`, `bean`,
+and `npc-marker` starts with `# Native static mesh asset`; cube output includes
+cube vertex rows and a later `tri 0 1 2`, while bean and NPC marker output emit
+their existing procedural vertex rows. Existing help/report/scripted/final-state/
+product/session/render behavior is preserved except for the added help option.
+This is not file writing, fixture rewriting, arbitrary asset path input,
+checked-in asset normalization, glTF/glb/JSON parsing, dependency work, schema
+expansion, materials/textures/descriptors/samplers/normals/UVs/animation/scene
+graph fields, renderer behavior/API change, runtime/product/scene/server/
+draw-list API change, gameplay/scripted/final-state semantic change, or docs
 mixed into source.
 
 Exit criteria:

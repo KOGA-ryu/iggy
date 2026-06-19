@@ -125,3 +125,4 @@ Queue:
 68. `68_native_static_model_load_report_cli_status_sync` - complete. Sync planning/API docs after native static model load report CLI integration.
 69. `69_native_static_mesh_text_writer_status_sync` - complete. Sync planning/API docs after native static mesh text writer integration.
 70. `70_native_static_mesh_fixture_writer_roundtrip_status_sync` - complete. Sync planning/API docs after native static mesh fixture writer roundtrip test integration.
+71. `71_native_static_mesh_built_in_export_cli_status_sync` - complete. Sync planning/API docs after native static mesh built-in export CLI integration.
