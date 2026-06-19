@@ -117,6 +117,14 @@ struct ProductLoadState {
 	iggy::runtime::RuntimeGameplayProductPlayModeBuildResult play;
 };
 
+struct NativeMeshGpuBuffers {
+	VkBuffer vertexBuffer = VK_NULL_HANDLE;
+	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
+	VkBuffer indexBuffer = VK_NULL_HANDLE;
+	VkDeviceMemory indexMemory = VK_NULL_HANDLE;
+	std::uint32_t indexCount = 0;
+};
+
 void ThrowIfFailed(VkResult result, const char *message)
 {
 	if (result != VK_SUCCESS)
@@ -721,7 +729,7 @@ private:
 		createDepthResources();
 		createFramebuffers();
 		createCommandPool();
-		createCubeBuffers();
+		createSceneMeshes();
 		createCommandBuffers();
 		createSyncObjects();
 	}
@@ -1431,25 +1439,38 @@ private:
 		vkUnmapMemory(device_, memory);
 	}
 
-	void createCubeBuffers()
+	NativeMeshGpuBuffers createMeshBuffers(
+		const std::vector<Vertex3D> &vertices,
+		const std::vector<std::uint16_t> &indices)
 	{
-		const VkDeviceSize vertexSize = sizeof(CubeVertices[0]) * CubeVertices.size();
+		NativeMeshGpuBuffers mesh;
+		if (vertices.empty() || indices.empty())
+			return mesh;
+
+		const VkDeviceSize vertexSize = sizeof(vertices[0]) * vertices.size();
 		createBuffer(
 			vertexSize,
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			vertexBuffer_,
-			vertexBufferMemory_);
-		copyToBuffer(vertexBufferMemory_, CubeVertices.data(), vertexSize);
+			mesh.vertexBuffer,
+			mesh.vertexMemory);
+		copyToBuffer(mesh.vertexMemory, vertices.data(), vertexSize);
 
-		const VkDeviceSize indexSize = sizeof(CubeIndices[0]) * CubeIndices.size();
+		const VkDeviceSize indexSize = sizeof(indices[0]) * indices.size();
 		createBuffer(
 			indexSize,
 			VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			indexBuffer_,
-			indexBufferMemory_);
-		copyToBuffer(indexBufferMemory_, CubeIndices.data(), indexSize);
+			mesh.indexBuffer,
+			mesh.indexMemory);
+		copyToBuffer(mesh.indexMemory, indices.data(), indexSize);
+		mesh.indexCount = static_cast<std::uint32_t>(indices.size());
+		return mesh;
+	}
+
+	void createSceneMeshes()
+	{
+		cubeMesh_ = createMeshBuffers(CubeVertices, CubeIndices);
 	}
 
 	void createFramebuffers()
@@ -1606,12 +1627,23 @@ private:
 			{ 0.0F, 1.0F, 0.0F });
 	}
 
-	void drawCube(
+	void drawMesh(
 		VkCommandBuffer commandBuffer,
+		const NativeMeshGpuBuffers &mesh,
 		const Mat4 &viewProjection,
 		const Mat4 &model,
 		std::array<float, 4> tint) const
 	{
+		if (mesh.vertexBuffer == VK_NULL_HANDLE ||
+				mesh.indexBuffer == VK_NULL_HANDLE ||
+				mesh.indexCount == 0)
+			return;
+
+		const VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
+		const VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(commandBuffer, mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
 		const PushConstants constants =
 			pushConstantsForModel(viewProjection, model, tint);
 		vkCmdPushConstants(
@@ -1623,11 +1655,20 @@ private:
 			&constants);
 		vkCmdDrawIndexed(
 			commandBuffer,
-			static_cast<std::uint32_t>(CubeIndices.size()),
+			mesh.indexCount,
 			1,
 			0,
 			0,
 			0);
+	}
+
+	void drawCube(
+		VkCommandBuffer commandBuffer,
+		const Mat4 &viewProjection,
+		const Mat4 &model,
+		std::array<float, 4> tint) const
+	{
+		drawMesh(commandBuffer, cubeMesh_, viewProjection, model, tint);
 	}
 
 	void drawLevelPlaceholders(
@@ -1714,11 +1755,6 @@ private:
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline_);
-
-		const VkBuffer vertexBuffers[] = { vertexBuffer_ };
-		const VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-		vkCmdBindIndexBuffer(commandBuffer, indexBuffer_, 0, VK_INDEX_TYPE_UINT16);
 
 		using Clock = std::chrono::steady_clock;
 		const float seconds =
@@ -1921,6 +1957,19 @@ private:
 		}
 	}
 
+	void destroyMesh(NativeMeshGpuBuffers &mesh)
+	{
+		if (mesh.indexBuffer != VK_NULL_HANDLE)
+			vkDestroyBuffer(device_, mesh.indexBuffer, nullptr);
+		if (mesh.indexMemory != VK_NULL_HANDLE)
+			vkFreeMemory(device_, mesh.indexMemory, nullptr);
+		if (mesh.vertexBuffer != VK_NULL_HANDLE)
+			vkDestroyBuffer(device_, mesh.vertexBuffer, nullptr);
+		if (mesh.vertexMemory != VK_NULL_HANDLE)
+			vkFreeMemory(device_, mesh.vertexMemory, nullptr);
+		mesh = {};
+	}
+
 	void cleanup()
 	{
 		if (device_ != VK_NULL_HANDLE)
@@ -1928,14 +1977,7 @@ private:
 
 		cleanupSwapchain();
 
-		if (indexBuffer_ != VK_NULL_HANDLE)
-			vkDestroyBuffer(device_, indexBuffer_, nullptr);
-		if (indexBufferMemory_ != VK_NULL_HANDLE)
-			vkFreeMemory(device_, indexBufferMemory_, nullptr);
-		if (vertexBuffer_ != VK_NULL_HANDLE)
-			vkDestroyBuffer(device_, vertexBuffer_, nullptr);
-		if (vertexBufferMemory_ != VK_NULL_HANDLE)
-			vkFreeMemory(device_, vertexBufferMemory_, nullptr);
+		destroyMesh(cubeMesh_);
 
 		for (std::size_t i = 0; i < imageAvailableSemaphores_.size(); ++i) {
 			if (imageAvailableSemaphores_[i] != VK_NULL_HANDLE)
@@ -1988,10 +2030,7 @@ private:
 	VkImageView depthImageView_ = VK_NULL_HANDLE;
 	std::vector<VkFramebuffer> swapchainFramebuffers_;
 	VkCommandPool commandPool_ = VK_NULL_HANDLE;
-	VkBuffer vertexBuffer_ = VK_NULL_HANDLE;
-	VkDeviceMemory vertexBufferMemory_ = VK_NULL_HANDLE;
-	VkBuffer indexBuffer_ = VK_NULL_HANDLE;
-	VkDeviceMemory indexBufferMemory_ = VK_NULL_HANDLE;
+	NativeMeshGpuBuffers cubeMesh_;
 	std::vector<VkCommandBuffer> commandBuffers_;
 	std::vector<VkSemaphore> imageAvailableSemaphores_;
 	std::vector<VkSemaphore> renderFinishedSemaphores_;
