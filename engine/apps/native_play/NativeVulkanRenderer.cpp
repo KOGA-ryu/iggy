@@ -85,6 +85,19 @@ struct NativeVulkanMeshResource {
 	std::uint32_t indexCount = 0;
 };
 
+enum class NativeVulkanModelSlot {
+	Floor,
+	Wall,
+	NpcActor,
+	Player,
+};
+
+constexpr std::size_t NativeVulkanModelSlotCount = 4;
+
+struct NativeVulkanModelRegistry {
+	std::array<const NativeVulkanMeshResource *, NativeVulkanModelSlotCount> meshes {};
+};
+
 struct NativeVulkanShaderModuleResource {
 	VkShaderModule module = VK_NULL_HANDLE;
 };
@@ -105,6 +118,26 @@ bool HasMesh(const NativeVulkanMeshResource &mesh)
 	return HasBuffer(mesh.vertex) &&
 		HasBuffer(mesh.index) &&
 		mesh.indexCount > 0;
+}
+
+std::size_t ModelSlotIndex(NativeVulkanModelSlot slot)
+{
+	return static_cast<std::size_t>(slot);
+}
+
+std::optional<NativeVulkanModelSlot> ModelSlotForSceneModel(NativeSceneModelId modelId)
+{
+	switch (modelId) {
+	case NativeSceneModelId::Floor:
+		return NativeVulkanModelSlot::Floor;
+	case NativeSceneModelId::Wall:
+		return NativeVulkanModelSlot::Wall;
+	case NativeSceneModelId::NpcActor:
+		return NativeVulkanModelSlot::NpcActor;
+	case NativeSceneModelId::Player:
+		return NativeVulkanModelSlot::Player;
+	}
+	return std::nullopt;
 }
 
 bool HasShaderModule(const NativeVulkanShaderModuleResource &shader)
@@ -1097,6 +1130,10 @@ private:
 	void createSceneMeshes()
 	{
 		cubeMesh_ = createMeshResource(CubeVertices, CubeIndices);
+		registerModelSlot(NativeVulkanModelSlot::Floor, cubeMesh_);
+		registerModelSlot(NativeVulkanModelSlot::Wall, cubeMesh_);
+		registerModelSlot(NativeVulkanModelSlot::NpcActor, cubeMesh_);
+		registerModelSlot(NativeVulkanModelSlot::Player, cubeMesh_);
 	}
 
 	void createFramebuffers()
@@ -1222,16 +1259,24 @@ private:
 			0);
 	}
 
+	void registerModelSlot(
+		NativeVulkanModelSlot slot,
+		const NativeVulkanMeshResource &mesh)
+	{
+		modelRegistry_.meshes[ModelSlotIndex(slot)] = &mesh;
+	}
+
+	const NativeVulkanMeshResource *meshForModelSlot(NativeVulkanModelSlot slot) const
+	{
+		return modelRegistry_.meshes[ModelSlotIndex(slot)];
+	}
+
 	const NativeVulkanMeshResource *meshForSceneModel(NativeSceneModelId modelId) const
 	{
-		switch (modelId) {
-		case NativeSceneModelId::Floor:
-		case NativeSceneModelId::Wall:
-		case NativeSceneModelId::NpcActor:
-		case NativeSceneModelId::Player:
-			return &cubeMesh_;
-		}
-		return nullptr;
+		const std::optional<NativeVulkanModelSlot> slot = ModelSlotForSceneModel(modelId);
+		if (!slot.has_value())
+			return nullptr;
+		return meshForModelSlot(*slot);
 	}
 
 	void drawSceneDrawItems(
@@ -1346,6 +1391,7 @@ private:
 		destroyBuffer(mesh.index);
 		destroyBuffer(mesh.vertex);
 		mesh = {};
+		modelRegistry_ = {};
 	}
 
 	void destroyShaderModule(NativeVulkanShaderModuleResource &shader)
@@ -1395,6 +1441,7 @@ private:
 	std::vector<VkFramebuffer> swapchainFramebuffers_;
 	VkCommandPool commandPool_ = VK_NULL_HANDLE;
 	NativeVulkanMeshResource cubeMesh_;
+	NativeVulkanModelRegistry modelRegistry_;
 	std::vector<VkCommandBuffer> commandBuffers_;
 	std::vector<VkSemaphore> imageAvailableSemaphores_;
 	std::vector<VkSemaphore> renderFinishedSemaphores_;
