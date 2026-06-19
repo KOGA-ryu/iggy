@@ -30,6 +30,9 @@
 #include "runtime/RuntimeGameplayProductPlayMode.hpp"
 #include "runtime/RuntimeGameplayProductPresentationCamera.hpp"
 #include "runtime/RuntimeGameplayProductScenarioLoader.hpp"
+#include "scene/level/TileCoord.hpp"
+#include "scene/npc/NpcActorState2D.hpp"
+#include "scene/player/PlayerAgentState.hpp"
 
 namespace {
 
@@ -296,6 +299,43 @@ MapSdlKeyToProductControl(SDL_Keycode key)
 		break;
 	}
 	return std::nullopt;
+}
+
+bool IsMovementControl(runtime::RuntimeGameplayProductInputControl2D control)
+{
+	switch (control) {
+	case runtime::RuntimeGameplayProductInputControl2D::MoveNorth:
+	case runtime::RuntimeGameplayProductInputControl2D::MoveSouth:
+	case runtime::RuntimeGameplayProductInputControl2D::MoveWest:
+	case runtime::RuntimeGameplayProductInputControl2D::MoveEast:
+		return true;
+	case runtime::RuntimeGameplayProductInputControl2D::None:
+	case runtime::RuntimeGameplayProductInputControl2D::Interact:
+	case runtime::RuntimeGameplayProductInputControl2D::Inspect:
+	case runtime::RuntimeGameplayProductInputControl2D::Wait:
+	case runtime::RuntimeGameplayProductInputControl2D::Cancel:
+	case runtime::RuntimeGameplayProductInputControl2D::PrimaryPoint:
+	case runtime::RuntimeGameplayProductInputControl2D::PrimaryTile:
+		break;
+	}
+	return false;
+}
+
+iggy::TileCoord MovementDelta(runtime::RuntimeGameplayProductInputControl2D control)
+{
+	switch (control) {
+	case runtime::RuntimeGameplayProductInputControl2D::MoveNorth:
+		return { 0, -1 };
+	case runtime::RuntimeGameplayProductInputControl2D::MoveSouth:
+		return { 0, 1 };
+	case runtime::RuntimeGameplayProductInputControl2D::MoveWest:
+		return { -1, 0 };
+	case runtime::RuntimeGameplayProductInputControl2D::MoveEast:
+		return { 1, 0 };
+	default:
+		break;
+	}
+	return {};
 }
 
 LaunchOptions ParseArgs(int argc, char **argv)
@@ -709,6 +749,24 @@ private:
 		if (!product_.has_value())
 			return false;
 
+		if (IsMovementControl(control)) {
+			const auto previousActive = activeMovementControls_;
+			activeMovementControls_.erase(
+				std::remove(
+					activeMovementControls_.begin(),
+					activeMovementControls_.end(),
+					control),
+				activeMovementControls_.end());
+			if (kind == runtime::RuntimeGameplayProductInputEventKind::Pressed)
+				activeMovementControls_.push_back(control);
+			syncNativeHeldMovementControl();
+
+			if (activeMovementControls_ == previousActive)
+				return false;
+			nextProductTick_ = std::chrono::steady_clock::now();
+			return true;
+		}
+
 		runtime::RuntimeGameplayProductInputEvent2D event;
 		event.control = control;
 		event.kind = kind;
@@ -723,6 +781,77 @@ private:
 		return true;
 	}
 
+	void syncNativeHeldMovementControl()
+	{
+		auto &held = productInputAccumulator_.heldControls;
+		held.erase(
+			std::remove_if(
+				held.begin(),
+				held.end(),
+				IsMovementControl),
+			held.end());
+		if (!activeMovementControls_.empty())
+			held.push_back(activeMovementControls_.back());
+	}
+
+	bool nativeMovementTargetAllowed(
+		runtime::RuntimeGameplayProductInputControl2D control,
+		const runtime::RuntimeGameplayProductPlayModeState &playState) const
+	{
+		if (!playState.loop.loaded ||
+				!playState.loop.currentState.session.hasPlayer)
+			return true;
+
+		const auto &state = playState.loop.currentState;
+		const iggy::TileCoord current =
+			iggy::playerTile(state.session.player);
+		const iggy::TileCoord delta = MovementDelta(control);
+		const iggy::TileCoord target {
+			current.x + delta.x,
+			current.y + delta.y,
+		};
+
+		const iggy::LevelTile *tile =
+			state.session.level.map.tileAt(target.x, target.y);
+		if (tile == nullptr || !tile->walkable)
+			return false;
+
+		for (const iggy::NpcActorState2D &actor : state.npcActors.actors) {
+			if (actor.present && iggy::tileForPoint(actor.position) == target)
+				return false;
+		}
+		return true;
+	}
+
+	void applyNativeMovementGuard(
+		const runtime::RuntimeGameplayProductPlayModeState &playState)
+	{
+		bool removed = false;
+		activeMovementControls_.erase(
+			std::remove_if(
+				activeMovementControls_.begin(),
+				activeMovementControls_.end(),
+				[this, &playState](runtime::RuntimeGameplayProductInputControl2D control) {
+					return !nativeMovementTargetAllowed(control, playState);
+				}),
+			activeMovementControls_.end());
+
+		auto &held = productInputAccumulator_.heldControls;
+		const auto beforeSize = held.size();
+		held.erase(
+			std::remove_if(
+				held.begin(),
+				held.end(),
+				[this, &playState](runtime::RuntimeGameplayProductInputControl2D control) {
+					return IsMovementControl(control) &&
+						!nativeMovementTargetAllowed(control, playState);
+				}),
+			held.end());
+		removed = held.size() != beforeSize;
+		if (removed)
+			syncNativeHeldMovementControl();
+	}
+
 	void runProductFrameRequestOnce()
 	{
 		if (!product_.has_value())
@@ -731,6 +860,7 @@ private:
 		runtime::RuntimeGameplayProductPlayModeState &playState =
 			product_->play.state;
 		loopProductFrameCursorForNativePrototype(playState);
+		applyNativeMovementGuard(playState);
 
 		runtime::RuntimeGameplayProductInputAccumulatorFrameInput frameInput;
 		frameInput.state = productInputAccumulator_;
@@ -1541,6 +1671,24 @@ private:
 				}
 			}
 		}
+
+		for (const iggy::NpcActorState2D &actor :
+				product_->play.state.loop.currentState.npcActors.actors) {
+			if (!actor.present)
+				continue;
+			const Vec3 position {
+				actor.position.x - mapWidth * 0.5F,
+				0.38F,
+				actor.position.y - mapHeight * 0.5F,
+			};
+			drawCube(
+				commandBuffer,
+				viewProjection,
+				Multiply(
+					Translation(position),
+					Scale({ 0.62F, 0.62F, 0.62F })),
+				{ 1.0F, 0.55F, 0.18F, 1.0F });
+		}
 	}
 
 	void recordCommandBuffer(VkCommandBuffer commandBuffer, std::uint32_t imageIndex)
@@ -1814,6 +1962,7 @@ private:
 	LaunchOptions options_;
 	std::optional<ProductLoadState> product_;
 	runtime::RuntimeGameplayProductInputAccumulatorState productInputAccumulator_;
+	std::vector<runtime::RuntimeGameplayProductInputControl2D> activeMovementControls_;
 	runtime::RuntimeGameplayProductPlayModeFrameResult latestProductPlayModeFrame_;
 	bool hasLatestProductPlayModeFrame_ = false;
 	iggy::CameraState productPresentationCamera_;
