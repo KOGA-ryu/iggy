@@ -85,6 +85,16 @@ struct NativeVulkanMeshResource {
 	std::uint32_t indexCount = 0;
 };
 
+struct NativeVulkanShaderModuleResource {
+	VkShaderModule module = VK_NULL_HANDLE;
+};
+
+struct NativeVulkanPipelineResource {
+	VkRenderPass renderPass = VK_NULL_HANDLE;
+	VkPipelineLayout layout = VK_NULL_HANDLE;
+	VkPipeline graphics = VK_NULL_HANDLE;
+};
+
 bool HasBuffer(const NativeVulkanBufferResource &buffer)
 {
 	return buffer.buffer != VK_NULL_HANDLE && buffer.memory != VK_NULL_HANDLE;
@@ -95,6 +105,18 @@ bool HasMesh(const NativeVulkanMeshResource &mesh)
 	return HasBuffer(mesh.vertex) &&
 		HasBuffer(mesh.index) &&
 		mesh.indexCount > 0;
+}
+
+bool HasShaderModule(const NativeVulkanShaderModuleResource &shader)
+{
+	return shader.module != VK_NULL_HANDLE;
+}
+
+bool HasPipeline(const NativeVulkanPipelineResource &pipeline)
+{
+	return pipeline.renderPass != VK_NULL_HANDLE &&
+		pipeline.layout != VK_NULL_HANDLE &&
+		pipeline.graphics != VK_NULL_HANDLE;
 }
 
 void ThrowIfFailed(VkResult result, const char *message)
@@ -757,20 +779,20 @@ private:
 		renderPassInfo.pDependencies = &dependency;
 
 		ThrowIfFailed(
-			vkCreateRenderPass(device_, &renderPassInfo, nullptr, &renderPass_),
+			vkCreateRenderPass(device_, &renderPassInfo, nullptr, &pipeline_.renderPass),
 			"failed to create Vulkan render pass");
 	}
 
-	VkShaderModule createShaderModule(const std::vector<char> &code)
+	NativeVulkanShaderModuleResource createShaderModule(const std::vector<char> &code)
 	{
 		VkShaderModuleCreateInfo createInfo {};
 		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 		createInfo.codeSize = code.size();
 		createInfo.pCode = reinterpret_cast<const std::uint32_t *>(code.data());
 
-		VkShaderModule shaderModule = VK_NULL_HANDLE;
+		NativeVulkanShaderModuleResource shaderModule;
 		ThrowIfFailed(
-			vkCreateShaderModule(device_, &createInfo, nullptr, &shaderModule),
+			vkCreateShaderModule(device_, &createInfo, nullptr, &shaderModule.module),
 			"failed to create Vulkan shader module");
 		return shaderModule;
 	}
@@ -781,19 +803,19 @@ private:
 			ReadBinaryFile(ShaderPath("cube.vert.spv"));
 		const std::vector<char> fragmentShaderCode =
 			ReadBinaryFile(ShaderPath("cube.frag.spv"));
-		VkShaderModule vertexShader = createShaderModule(vertexShaderCode);
-		VkShaderModule fragmentShader = createShaderModule(fragmentShaderCode);
+		NativeVulkanShaderModuleResource vertexShader = createShaderModule(vertexShaderCode);
+		NativeVulkanShaderModuleResource fragmentShader = createShaderModule(fragmentShaderCode);
 
 		VkPipelineShaderStageCreateInfo vertexStage {};
 		vertexStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		vertexStage.stage = VK_SHADER_STAGE_VERTEX_BIT;
-		vertexStage.module = vertexShader;
+		vertexStage.module = vertexShader.module;
 		vertexStage.pName = "main";
 
 		VkPipelineShaderStageCreateInfo fragmentStage {};
 		fragmentStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		fragmentStage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-		fragmentStage.module = fragmentShader;
+		fragmentStage.module = fragmentShader.module;
 		fragmentStage.pName = "main";
 
 		const VkPipelineShaderStageCreateInfo shaderStages[] = {
@@ -883,7 +905,7 @@ private:
 		pipelineLayoutInfo.pushConstantRangeCount = 1;
 		pipelineLayoutInfo.pPushConstantRanges = &pushConstant;
 		ThrowIfFailed(
-			vkCreatePipelineLayout(device_, &pipelineLayoutInfo, nullptr, &pipelineLayout_),
+			vkCreatePipelineLayout(device_, &pipelineLayoutInfo, nullptr, &pipeline_.layout),
 			"failed to create Vulkan pipeline layout");
 
 		VkGraphicsPipelineCreateInfo pipelineInfo {};
@@ -897,8 +919,8 @@ private:
 		pipelineInfo.pMultisampleState = &multisampling;
 		pipelineInfo.pDepthStencilState = &depthStencil;
 		pipelineInfo.pColorBlendState = &colorBlending;
-		pipelineInfo.layout = pipelineLayout_;
-		pipelineInfo.renderPass = renderPass_;
+		pipelineInfo.layout = pipeline_.layout;
+		pipelineInfo.renderPass = pipeline_.renderPass;
 		pipelineInfo.subpass = 0;
 
 		ThrowIfFailed(
@@ -908,11 +930,11 @@ private:
 				1,
 				&pipelineInfo,
 				nullptr,
-				&graphicsPipeline_),
+				&pipeline_.graphics),
 			"failed to create Vulkan graphics pipeline");
 
-		vkDestroyShaderModule(device_, fragmentShader, nullptr);
-		vkDestroyShaderModule(device_, vertexShader, nullptr);
+		destroyShaderModule(fragmentShader);
+		destroyShaderModule(vertexShader);
 	}
 
 	void createImage(
@@ -1087,7 +1109,7 @@ private:
 			};
 			VkFramebufferCreateInfo framebufferInfo {};
 			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			framebufferInfo.renderPass = renderPass_;
+			framebufferInfo.renderPass = pipeline_.renderPass;
 			framebufferInfo.attachmentCount = 2;
 			framebufferInfo.pAttachments = attachments;
 			framebufferInfo.width = swapchainExtent_.width;
@@ -1186,7 +1208,7 @@ private:
 			pushConstantsForModel(viewProjection, model, tint);
 		vkCmdPushConstants(
 			commandBuffer,
-			pipelineLayout_,
+			pipeline_.layout,
 			VK_SHADER_STAGE_VERTEX_BIT,
 			0,
 			sizeof(PushConstants),
@@ -1242,7 +1264,7 @@ private:
 
 		VkRenderPassBeginInfo renderPassInfo {};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = renderPass_;
+		renderPassInfo.renderPass = pipeline_.renderPass;
 		renderPassInfo.framebuffer = swapchainFramebuffers_[imageIndex];
 		renderPassInfo.renderArea.offset = { 0, 0 };
 		renderPassInfo.renderArea.extent = swapchainExtent_;
@@ -1250,7 +1272,7 @@ private:
 		renderPassInfo.pClearValues = clearValues.data();
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline_);
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.graphics);
 
 		if (input.drawItems != nullptr)
 			drawSceneDrawItems(commandBuffer, input.viewProjection, *input.drawItems);
@@ -1298,19 +1320,7 @@ private:
 			depthImageMemory_ = VK_NULL_HANDLE;
 		}
 
-		if (graphicsPipeline_ != VK_NULL_HANDLE) {
-			vkDestroyPipeline(device_, graphicsPipeline_, nullptr);
-			graphicsPipeline_ = VK_NULL_HANDLE;
-		}
-		if (pipelineLayout_ != VK_NULL_HANDLE) {
-			vkDestroyPipelineLayout(device_, pipelineLayout_, nullptr);
-			pipelineLayout_ = VK_NULL_HANDLE;
-		}
-
-		if (renderPass_ != VK_NULL_HANDLE) {
-			vkDestroyRenderPass(device_, renderPass_, nullptr);
-			renderPass_ = VK_NULL_HANDLE;
-		}
+		destroyPipelineResource(pipeline_);
 
 		for (VkImageView imageView : swapchainImageViews_)
 			vkDestroyImageView(device_, imageView, nullptr);
@@ -1338,6 +1348,33 @@ private:
 		mesh = {};
 	}
 
+	void destroyShaderModule(NativeVulkanShaderModuleResource &shader)
+	{
+		if (HasShaderModule(shader))
+			vkDestroyShaderModule(device_, shader.module, nullptr);
+		shader = {};
+	}
+
+	void destroyPipelineResource(NativeVulkanPipelineResource &pipeline)
+	{
+		const bool hasAnyPipelineHandle = HasPipeline(pipeline) ||
+			pipeline.graphics != VK_NULL_HANDLE ||
+			pipeline.layout != VK_NULL_HANDLE ||
+			pipeline.renderPass != VK_NULL_HANDLE;
+		if (!hasAnyPipelineHandle) {
+			pipeline = {};
+			return;
+		}
+
+		if (pipeline.graphics != VK_NULL_HANDLE)
+			vkDestroyPipeline(device_, pipeline.graphics, nullptr);
+		if (pipeline.layout != VK_NULL_HANDLE)
+			vkDestroyPipelineLayout(device_, pipeline.layout, nullptr);
+		if (pipeline.renderPass != VK_NULL_HANDLE)
+			vkDestroyRenderPass(device_, pipeline.renderPass, nullptr);
+		pipeline = {};
+	}
+
 	SDL_Window *window_ = nullptr;
 	VkInstance instance_ = VK_NULL_HANDLE;
 	VkSurfaceKHR surface_ = VK_NULL_HANDLE;
@@ -1351,9 +1388,7 @@ private:
 	VkFormat swapchainImageFormat_ = VK_FORMAT_UNDEFINED;
 	VkExtent2D swapchainExtent_ {};
 	std::vector<VkImageView> swapchainImageViews_;
-	VkRenderPass renderPass_ = VK_NULL_HANDLE;
-	VkPipelineLayout pipelineLayout_ = VK_NULL_HANDLE;
-	VkPipeline graphicsPipeline_ = VK_NULL_HANDLE;
+	NativeVulkanPipelineResource pipeline_;
 	VkImage depthImage_ = VK_NULL_HANDLE;
 	VkDeviceMemory depthImageMemory_ = VK_NULL_HANDLE;
 	VkImageView depthImageView_ = VK_NULL_HANDLE;
