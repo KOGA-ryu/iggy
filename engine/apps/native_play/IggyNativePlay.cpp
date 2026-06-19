@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <chrono>
 #include <cstdint>
 #include <cstddef>
@@ -93,6 +94,15 @@ struct LaunchOptions {
 	bool showHelp = false;
 	bool hasPlayPath = false;
 	std::filesystem::path playPath;
+	std::vector<std::string> scriptedControls;
+	std::chrono::milliseconds scriptedControlInterval = ProductTickInterval;
+	bool quitAfterScriptedControls = false;
+};
+
+struct ScriptedProductControl {
+	runtime::RuntimeGameplayProductInputControl2D control =
+		runtime::RuntimeGameplayProductInputControl2D::None;
+	std::string label;
 };
 
 struct QueueFamilyIndices {
@@ -322,6 +332,101 @@ MapSdlKeyToProductControl(SDL_Keycode key)
 	return std::nullopt;
 }
 
+std::string Lowercase(std::string value)
+{
+	for (char &character : value)
+		character = static_cast<char>(
+			std::tolower(static_cast<unsigned char>(character)));
+	return value;
+}
+
+std::string Trim(std::string value)
+{
+	const auto first = std::find_if_not(
+		value.begin(),
+		value.end(),
+		[](unsigned char character) { return std::isspace(character) != 0; });
+	const auto last = std::find_if_not(
+		value.rbegin(),
+		value.rend(),
+		[](unsigned char character) { return std::isspace(character) != 0; })
+		.base();
+	if (first >= last)
+		return {};
+	return std::string(first, last);
+}
+
+std::optional<runtime::RuntimeGameplayProductInputControl2D>
+ScriptedControlFromToken(const std::string &token)
+{
+	using runtime::RuntimeGameplayProductInputControl2D;
+	const std::string value = Lowercase(Trim(token));
+	if (value == "up" || value == "north" || value == "w")
+		return RuntimeGameplayProductInputControl2D::MoveNorth;
+	if (value == "down" || value == "south" || value == "s")
+		return RuntimeGameplayProductInputControl2D::MoveSouth;
+	if (value == "left" || value == "west" || value == "a")
+		return RuntimeGameplayProductInputControl2D::MoveWest;
+	if (value == "right" || value == "east" || value == "d")
+		return RuntimeGameplayProductInputControl2D::MoveEast;
+	if (value == "interact" || value == "e" || value == "enter")
+		return RuntimeGameplayProductInputControl2D::Interact;
+	if (value == "inspect" || value == "i")
+		return RuntimeGameplayProductInputControl2D::Inspect;
+	if (value == "wait" || value == "space")
+		return RuntimeGameplayProductInputControl2D::Wait;
+	if (value == "cancel" || value == "escape" || value == "esc")
+		return RuntimeGameplayProductInputControl2D::Cancel;
+	return std::nullopt;
+}
+
+std::size_t ParsePositiveCount(const std::string &value, const char *name)
+{
+	if (value.empty())
+		throw std::runtime_error(std::string(name) + " requires a positive integer");
+	std::size_t consumed = 0;
+	const unsigned long parsed = std::stoul(value, &consumed);
+	if (consumed != value.size() || parsed == 0)
+		throw std::runtime_error(std::string(name) + " requires a positive integer");
+	return static_cast<std::size_t>(parsed);
+}
+
+std::vector<ScriptedProductControl>
+ParseScriptedControls(const std::vector<std::string> &specs)
+{
+	std::vector<ScriptedProductControl> controls;
+	for (const std::string &spec : specs) {
+		std::size_t start = 0;
+		while (start <= spec.size()) {
+			const std::size_t comma = spec.find(',', start);
+			const std::string rawToken = Trim(spec.substr(
+				start,
+				comma == std::string::npos ? std::string::npos : comma - start));
+			if (!rawToken.empty()) {
+				const std::size_t repeatMarker = rawToken.find('*');
+				const std::string controlToken = repeatMarker == std::string::npos
+					? rawToken
+					: Trim(rawToken.substr(0, repeatMarker));
+				const std::size_t repeatCount = repeatMarker == std::string::npos
+					? 1
+					: ParsePositiveCount(
+						Trim(rawToken.substr(repeatMarker + 1)),
+						"scripted control repeat");
+				const std::optional<runtime::RuntimeGameplayProductInputControl2D>
+					control = ScriptedControlFromToken(controlToken);
+				if (!control.has_value())
+					throw std::runtime_error("unknown scripted control: " + controlToken);
+				for (std::size_t i = 0; i < repeatCount; ++i)
+					controls.push_back({ *control, Lowercase(controlToken) });
+			}
+			if (comma == std::string::npos)
+				break;
+			start = comma + 1;
+		}
+	}
+	return controls;
+}
+
 bool IsMovementControl(runtime::RuntimeGameplayProductInputControl2D control)
 {
 	switch (control) {
@@ -375,8 +480,28 @@ LaunchOptions ParseArgs(int argc, char **argv)
 			options.playPath = argv[++i];
 			continue;
 		}
+		if (arg == "--scripted-controls") {
+			if (i + 1 >= argc)
+				throw std::runtime_error("--scripted-controls requires a comma-separated list");
+			options.scriptedControls.push_back(argv[++i]);
+			continue;
+		}
+		if (arg == "--scripted-control-interval-ms") {
+			if (i + 1 >= argc)
+				throw std::runtime_error("--scripted-control-interval-ms requires a value");
+			options.scriptedControlInterval = std::chrono::milliseconds(
+				static_cast<int>(
+					ParsePositiveCount(argv[++i], "--scripted-control-interval-ms")));
+			continue;
+		}
+		if (arg == "--quit-after-script") {
+			options.quitAfterScriptedControls = true;
+			continue;
+		}
 		throw std::runtime_error("unknown argument: " + arg);
 	}
+	if (!options.scriptedControls.empty() && !options.hasPlayPath)
+		throw std::runtime_error("--scripted-controls requires --play");
 	return options;
 }
 
@@ -384,9 +509,11 @@ void PrintUsage()
 {
 	std::cout
 		<< "Usage: iggy_native_play [--play PATH]\n"
+		<< "       iggy_native_play --play PATH --scripted-controls LIST [--quit-after-script]\n"
 		<< "\n"
-		<< "Opens the native SDL/Vulkan play shell. This first native shell\n"
-		<< "validates --play scenarios and presents a Vulkan clear frame.\n";
+		<< "Opens the native SDL/Vulkan play shell. Scripted controls are comma-separated\n"
+		<< "tokens such as east,east,south or right*3,wait. They inject the same product\n"
+		<< "input path as keyboard controls.\n";
 }
 
 void ConfigureMoltenVkIcdFallback()
@@ -693,6 +820,7 @@ public:
 	{
 		if (options_.hasPlayPath)
 			product_ = LoadProductScenario(options_.playPath);
+		scriptedControls_ = ParseScriptedControls(options_.scriptedControls);
 	}
 
 	~NativeVulkanApp()
@@ -800,6 +928,46 @@ private:
 		productInputAccumulator_ = record.state;
 		nextProductTick_ = std::chrono::steady_clock::now();
 		return true;
+	}
+
+	void applyScriptedProductControl(const ScriptedProductControl &scripted)
+	{
+		using runtime::RuntimeGameplayProductInputEventKind;
+		if (!product_.has_value())
+			return;
+
+		if (IsMovementControl(scripted.control)) {
+			recordProductInput(scripted.control, RuntimeGameplayProductInputEventKind::Pressed);
+			runProductFrameRequestOnce();
+			recordProductInput(scripted.control, RuntimeGameplayProductInputEventKind::Released);
+		} else {
+			recordProductInput(scripted.control, RuntimeGameplayProductInputEventKind::Pressed);
+			runProductFrameRequestOnce();
+		}
+
+		std::cout << "scripted control: " << scripted.label;
+		const auto &state = product_->play.state.loop.currentState;
+		if (state.session.hasPlayer) {
+			const iggy::TileCoord tile = iggy::playerTile(state.session.player);
+			std::cout << " playerTile=" << tile.x << "," << tile.y;
+		}
+		std::cout << std::endl;
+	}
+
+	bool stepScriptedControlsIfDue()
+	{
+		if (scriptedControlIndex_ >= scriptedControls_.size())
+			return false;
+
+		const auto now = std::chrono::steady_clock::now();
+		if (now < nextScriptedControlAt_)
+			return false;
+
+		applyScriptedProductControl(scriptedControls_[scriptedControlIndex_]);
+		++scriptedControlIndex_;
+		nextScriptedControlAt_ = now + options_.scriptedControlInterval;
+		return scriptedControlIndex_ >= scriptedControls_.size() &&
+			options_.quitAfterScriptedControls;
 	}
 
 	void syncNativeHeldMovementControl()
@@ -1925,8 +2093,11 @@ private:
 						event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
 					framebufferResized_ = true;
 			}
+			const bool quitAfterScriptedStep = stepScriptedControlsIfDue();
 			stepProductIfDue();
 			drawFrame();
+			if (quitAfterScriptedStep)
+				running = false;
 		}
 
 		if (device_ != VK_NULL_HANDLE)
@@ -2042,6 +2213,8 @@ private:
 	std::optional<ProductLoadState> product_;
 	runtime::RuntimeGameplayProductInputAccumulatorState productInputAccumulator_;
 	std::vector<runtime::RuntimeGameplayProductInputControl2D> activeMovementControls_;
+	std::vector<ScriptedProductControl> scriptedControls_;
+	std::size_t scriptedControlIndex_ = 0;
 	runtime::RuntimeGameplayProductPlayModeFrameResult latestProductPlayModeFrame_;
 	bool hasLatestProductPlayModeFrame_ = false;
 	iggy::CameraState productPresentationCamera_;
@@ -2078,6 +2251,8 @@ private:
 		std::chrono::steady_clock::now();
 	std::chrono::steady_clock::time_point nextProductTick_ =
 		std::chrono::steady_clock::now() + ProductTickInterval;
+	std::chrono::steady_clock::time_point nextScriptedControlAt_ =
+		std::chrono::steady_clock::now();
 };
 
 } // namespace
