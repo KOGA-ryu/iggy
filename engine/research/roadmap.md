@@ -358,13 +358,17 @@ Recently completed optimized stretches:
   pipeline, and shader module handles renderer-private while centralizing
   shader module and pipeline destruction/reset without changing shader files,
   shader interfaces, pipeline state, draw behavior, or public renderer API.
+  Native model-slot/cube fallback registry groundwork now maps
+  `NativeSceneModelId` through renderer-private model slots to the existing cube
+  mesh fallback without changing draw-item order, cube mesh data, shader
+  interface, push constants, tint behavior, or public renderer API.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
-  execution if approved, app-shell/CLI extraction, model-slot/static asset
-  policy, textured sprite/animation/material policy, backend validation/
-  abstraction, pause/retry/reset policy,
-  completion/failure evaluation, and save/load UX.
+  execution if approved, app-shell/CLI extraction, real static mesh loading,
+  materials/textures/assets, descriptor/sampler policy, package/authoring asset
+  policy, backend validation/abstraction, pause/retry/reset policy, completion/
+  failure evaluation, and save/load UX.
 - Rendering backend/presentation layer.
 - Audio server boundary.
 - Save/load productization and authored package roundtrip.
@@ -1027,6 +1031,20 @@ session, and draw-list data are unchanged. This is renderer-private ownership
 cleanup, not a public renderer API change, descriptor/sampler/material/texture
 packet, model-slot binding, asset/glTF loader, shader-interface change, staging
 upload policy, Linux/dGPU validation policy, or backend abstraction.
+Native Model Slot / Cube Fallback Registry is complete for no-Qt renderer prep:
+`NativeVulkanRenderer.cpp` now has renderer-private `NativeVulkanModelSlot` and
+`NativeVulkanModelRegistry` types. `NativeSceneModelId` maps to model slots,
+then model slots resolve to mesh bindings. `createSceneMeshes()` still creates
+the existing cube mesh and registers `Floor`, `Wall`, `NpcActor`, and `Player`
+slots to the same cube fallback. `meshForSceneModel(...)` delegates through
+`ModelSlotForSceneModel(...)` and `meshForModelSlot(...)`, while draw-item
+iteration/order remains unchanged. This preserves the same `NativeSceneModelId`
+surface, mesh readiness behavior, cube mesh, draw parameters, shader pipeline,
+push constants, and tint behavior. This is model-slot groundwork only: no public
+renderer API, app-shell, draw-list, shader, runtime/product/scene, CLI/debugger,
+gameplay, asset loading, mesh file IO, descriptors/samplers, textures/materials,
+glTF, package discovery, staging/device-local upload, Linux/dGPU validation, or
+backend abstraction work is included.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -1045,8 +1063,9 @@ First gates:
 - Explicit interact target synthesis and reach-gated interaction execution.
 - Point-vs-tile / `PrimaryPoint` behavior beyond the current `PrimaryTile`
   policy.
-- Model-slot/static asset policy, renderer expansion, textured sprite/animation/
-  material policy over the debug/material actor quads, and any canvas polish.
+- Real static mesh loading, materials/textures/assets, descriptor/sampler
+  policy, package/authoring asset policy, renderer expansion, and any canvas
+  polish.
 - Pause/retry/reset policy.
 - Completion/failure evaluator.
 - Save-slot UX ownership.

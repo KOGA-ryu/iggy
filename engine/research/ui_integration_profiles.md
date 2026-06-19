@@ -214,10 +214,11 @@ the product play panel. Thin Qt product viewport render command drawing is
 complete as a temporary app-shell consumer of existing latest-frame quad
 commands. Thin Qt target highlight overlay is complete as a visual annotation
 over latest target-context diagnostics. Textured sprites/animation/material
-policy, model-slot/static asset policy, renderer expansion, backend validation,
-richer overlays/labels, richer diagnostics, frame request/play-surface
-ownership, explicit interaction execution, product UX/save semantics, and
-broader UI execution remain gated.
+policy, real static mesh loading, materials/textures/assets, descriptor/sampler
+policy, package/authoring asset policy, renderer expansion, backend validation,
+richer overlays/labels, richer diagnostics, frame request/play-surface ownership,
+explicit interaction execution, product UX/save semantics, and broader UI
+execution remain gated.
 
 Native `iggy_native_play` scripted controls/debugger is complete as a no-Qt
 app-shell harness over the same product input path as keyboard controls. It
@@ -319,6 +320,22 @@ APIs, product session, draw-list data, CLI/debugger output, app-shell behavior,
 descriptors/samplers/materials/textures, model slots, asset/glTF loaders,
 staging/device-local upload policy, Linux/dGPU policy, and backend abstraction
 remain separate.
+
+Native model-slot/cube fallback registry is complete as no-Qt renderer-private
+groundwork inside `NativeVulkanRenderer.cpp`: `NativeSceneModelId` now maps to
+renderer-private `NativeVulkanModelSlot` values, then `NativeVulkanModelRegistry`
+resolves slots to mesh bindings. `createSceneMeshes()` still creates the
+existing cube mesh and registers `Floor`, `Wall`, `NpcActor`, and `Player` slots
+to that same cube fallback; `meshForSceneModel(...)` delegates through
+`ModelSlotForSceneModel(...)` and `meshForModelSlot(...)`; and draw-item vector
+iteration/order is unchanged. The same scene model ids, mesh readiness behavior,
+cube mesh, draw parameters, shader pipeline, push constants, and tint behavior
+are intended unchanged. Public renderer API, `IggyNativePlay.cpp`,
+`NativeVulkanRenderer.hpp`, `NativeSceneDrawList.hpp`, CMake, shaders, runtime/
+product/scene APIs, product session, tests, CLI/debugger output, gameplay
+semantics, descriptors/samplers, textures/materials/assets/glTF, asset loaders,
+model file IO, package discovery, authoring asset policy, staging/device-local
+upload policy, Linux/dGPU policy, and backend abstraction remain separate.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
