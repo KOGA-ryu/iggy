@@ -1,3 +1,4 @@
 packet	status	department	owner	source_commit	source_review	docs_commit	docs_review	blocked_reason	next_action	updated
 65_native_floor_wall_mesh_asset_binding	complete	integration	finisher	75fea578	PASS	55e6348c	not_requested		closed source and docs after native floor/wall mesh asset binding	2026-06-19
 66_native_static_model_policy_scout	complete	integration	finisher	36e5881f	PASS-planner	da381e3f	not_requested		closed source and docs after native static model policy	2026-06-19
+67_native_static_model_loader_scout	research	integration	researcher						Scout next native static model loader/parser boundary after static model slot policy; decide .igmesh expansion vs glTF dependency gate	2026-06-19
