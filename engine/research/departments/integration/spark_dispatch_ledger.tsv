@@ -3,3 +3,4 @@ packet	status	department	owner	source_commit	source_review	docs_commit	docs_revi
 66_native_static_model_policy_scout	complete	integration	finisher	36e5881f	PASS-planner	da381e3f	not_requested		closed source and docs after native static model policy	2026-06-19
 67_native_static_model_loader_scout	complete	integration	finisher	8b125b81	PASS-planner	02cdd582	not_requested		closed source and docs after native static model load report	2026-06-19
 68_native_static_asset_next_boundary_scout	complete	integration	finisher	2766132a	PASS-planner	c2cb68d3	not_requested		closed source and docs after native static model load report CLI	2026-06-19
+69_native_static_asset_format_dependency_scout	research	integration	researcher						Scout next native static asset step after CLI diagnostics; choose .igmesh evolution, glTF dependency gate, or renderer asset cleanup	2026-06-19
