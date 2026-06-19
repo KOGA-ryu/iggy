@@ -7,3 +7,4 @@ packet	status	department	owner	source_commit	source_review	docs_commit	docs_revi
 70_native_static_mesh_authoring_export_scout	complete	integration	finisher	bfa660be	PASS-planner	4fbaffa7	not_requested		closed source and docs after native static mesh fixture writer roundtrip	2026-06-19
 71_native_static_mesh_export_cli_scout	complete	integration	finisher	f651f706	PASS-planner	89b7a4ca	not_requested		closed source and docs after native static mesh built-in export CLI	2026-06-19
 72_native_static_asset_authoring_policy_scout	complete	integration	finisher	64ce4594	PASS-planner	87f4a62f	not_requested		closed source and docs after native static mesh export policy	2026-06-19
+73_native_static_mesh_file_export_scout	research	integration	researcher						Scout controlled native static mesh file export after export policy; decide stdout-only extension, --output path gate, package policy, glTF gate, or renderer cleanup	2026-06-19
