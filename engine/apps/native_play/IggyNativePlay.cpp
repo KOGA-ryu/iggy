@@ -22,16 +22,25 @@
 #include <vector>
 
 #include "runtime/RuntimeGameplayProductLoop.hpp"
+#include "runtime/RuntimeGameplayProductFrameRequest.hpp"
+#include "runtime/RuntimeGameplayProductInputAccumulator.hpp"
+#include "runtime/RuntimeGameplayProductInputContext.hpp"
+#include "runtime/RuntimeGameplayProductInputFrameTargetAction.hpp"
+#include "runtime/RuntimeGameplayProductInputFrameTargetContext.hpp"
 #include "runtime/RuntimeGameplayProductPlayMode.hpp"
+#include "runtime/RuntimeGameplayProductPresentationCamera.hpp"
 #include "runtime/RuntimeGameplayProductScenarioLoader.hpp"
 
 namespace {
+
+namespace runtime = iggy::runtime;
 
 constexpr int InitialWindowWidth = 1280;
 constexpr int InitialWindowHeight = 720;
 constexpr int MaxFramesInFlight = 2;
 constexpr float Pi = 3.14159265358979323846F;
 constexpr VkFormat DepthFormat = VK_FORMAT_D32_SFLOAT;
+constexpr auto ProductTickInterval = std::chrono::milliseconds(250);
 
 #ifndef IGGY_NATIVE_PLAY_SHADER_DIR
 #define IGGY_NATIVE_PLAY_SHADER_DIR "."
@@ -185,6 +194,24 @@ Mat4 RotationX(float radians)
 	return matrix;
 }
 
+Mat4 Translation(Vec3 offset)
+{
+	Mat4 matrix = Identity();
+	matrix.values[12] = offset.x;
+	matrix.values[13] = offset.y;
+	matrix.values[14] = offset.z;
+	return matrix;
+}
+
+Mat4 Scale(Vec3 value)
+{
+	Mat4 matrix = Identity();
+	matrix.values[0] = value.x;
+	matrix.values[5] = value.y;
+	matrix.values[10] = value.z;
+	return matrix;
+}
+
 Mat4 Perspective(float fovRadians, float aspect, float nearPlane, float farPlane)
 {
 	const float f = 1.0F / std::tan(fovRadians * 0.5F);
@@ -235,6 +262,39 @@ std::vector<char> ReadBinaryFile(const std::filesystem::path &path)
 std::filesystem::path ShaderPath(const char *filename)
 {
 	return std::filesystem::path(IGGY_NATIVE_PLAY_SHADER_DIR) / filename;
+}
+
+std::optional<iggy::runtime::RuntimeGameplayProductInputControl2D>
+MapSdlKeyToProductControl(SDL_Keycode key)
+{
+	using iggy::runtime::RuntimeGameplayProductInputControl2D;
+	switch (key) {
+	case SDLK_UP:
+	case SDLK_w:
+		return RuntimeGameplayProductInputControl2D::MoveNorth;
+	case SDLK_DOWN:
+	case SDLK_s:
+		return RuntimeGameplayProductInputControl2D::MoveSouth;
+	case SDLK_LEFT:
+	case SDLK_a:
+		return RuntimeGameplayProductInputControl2D::MoveWest;
+	case SDLK_RIGHT:
+	case SDLK_d:
+		return RuntimeGameplayProductInputControl2D::MoveEast;
+	case SDLK_e:
+	case SDLK_RETURN:
+	case SDLK_KP_ENTER:
+		return RuntimeGameplayProductInputControl2D::Interact;
+	case SDLK_i:
+		return RuntimeGameplayProductInputControl2D::Inspect;
+	case SDLK_SPACE:
+		return RuntimeGameplayProductInputControl2D::Wait;
+	case SDLK_ESCAPE:
+		return RuntimeGameplayProductInputControl2D::Cancel;
+	default:
+		break;
+	}
+	return std::nullopt;
 }
 
 LaunchOptions ParseArgs(int argc, char **argv)
@@ -623,6 +683,90 @@ private:
 		createCubeBuffers();
 		createCommandBuffers();
 		createSyncObjects();
+	}
+
+	runtime::RuntimeGameplayProductPresentationCameraConfig
+	productPresentationCameraConfig() const
+	{
+		runtime::RuntimeGameplayProductPresentationCameraConfig config;
+		config.hasPreviousCamera = hasProductPresentationCamera_;
+		if (hasProductPresentationCamera_)
+			config.previousCamera = productPresentationCamera_;
+		config.fallbackCamera = { { 0.0F, 0.0F } };
+		config.cameraView = { { 16.0F, 12.0F }, 1.0F };
+		config.includeNpcCommands = true;
+		config.useTileChunkCache = false;
+		config.tileChunkCache = nullptr;
+		config.rig.follow = { 1000.0F, 0.0F };
+		return config;
+	}
+
+	bool recordProductInput(
+		runtime::RuntimeGameplayProductInputControl2D control,
+		runtime::RuntimeGameplayProductInputEventKind kind)
+	{
+		if (!product_.has_value())
+			return false;
+
+		runtime::RuntimeGameplayProductInputEvent2D event;
+		event.control = control;
+		event.kind = kind;
+		const runtime::RuntimeGameplayProductInputAccumulatorRecordResult record =
+			runtime::RuntimeGameplayProductInputAccumulator {}.record(
+				productInputAccumulator_,
+				event);
+		if (!record.changed)
+			return false;
+		productInputAccumulator_ = record.state;
+		nextProductTick_ = std::chrono::steady_clock::now();
+		return true;
+	}
+
+	void runProductFrameRequestOnce()
+	{
+		if (!product_.has_value())
+			return;
+
+		runtime::RuntimeGameplayProductPlayModeState &playState =
+			product_->play.state;
+
+		runtime::RuntimeGameplayProductInputAccumulatorFrameInput frameInput;
+		frameInput.state = productInputAccumulator_;
+		frameInput.bindingContext =
+			runtime::RuntimeGameplayProductInputContext {}
+				.build(playState)
+				.bindingContext;
+		const runtime::RuntimeGameplayProductInputAccumulatorFrameResult frame =
+			runtime::RuntimeGameplayProductInputAccumulator {}.buildFrame(
+				frameInput);
+		productInputAccumulator_ = frame.state;
+
+		const runtime::RuntimeGameplayProductInputFrameTargetContextResult
+			targetContext =
+				runtime::RuntimeGameplayProductInputFrameTargetContext {}.enrich({
+					playState,
+					frame.frame,
+					{},
+					{},
+				});
+		const runtime::RuntimeGameplayProductInputFrameTargetActionResult
+			targetAction =
+				runtime::RuntimeGameplayProductInputFrameTargetAction {}.synthesize(
+					{ targetContext });
+
+		runtime::RuntimeGameplayProductFrameRequestInput input;
+		input.state = playState;
+		input.inputFrame = targetAction.frame;
+		input.presentationCamera = productPresentationCameraConfig();
+
+		const runtime::RuntimeGameplayProductFrameRequestResult result =
+			runtime::RuntimeGameplayProductFrameRequest {}.run(input);
+		playState = result.state;
+		latestProductPlayModeFrame_ = result.frame;
+		hasLatestProductPlayModeFrame_ = true;
+		productPresentationCamera_ =
+			result.presentationCamera.presentationCamera;
+		hasProductPresentationCamera_ = true;
 	}
 
 	void createInstance()
@@ -1253,18 +1397,52 @@ private:
 			: static_cast<float>(swapchainExtent_.width) /
 				static_cast<float>(swapchainExtent_.height);
 
-		const Mat4 model = Multiply(
-			RotationY(seconds * 0.85F),
-			RotationX(seconds * 0.35F));
-		const Mat4 view = LookAt(
-			{ 2.25F, 1.75F, 3.25F },
-			{ 0.0F, 0.0F, 0.0F },
-			{ 0.0F, 1.0F, 0.0F });
+		const Mat4 model = cubeModelMatrix(seconds);
+		const Mat4 view = cameraViewMatrix();
 		const Mat4 projection = Perspective(55.0F * Pi / 180.0F, aspect, 0.1F, 100.0F);
 
 		PushConstants constants;
 		constants.mvp = Multiply(Multiply(projection, view), model);
 		return constants;
+	}
+
+	Mat4 cubeModelMatrix(float seconds) const
+	{
+		if (!product_.has_value() ||
+				!product_->play.state.loop.currentState.session.hasPlayer) {
+			return Multiply(
+				RotationY(seconds * 0.85F),
+				RotationX(seconds * 0.35F));
+		}
+
+		const auto &session =
+			product_->play.state.loop.currentState.session;
+		const auto &map = session.level.map;
+		const Vec3 playerPosition {
+			session.player.position.x - static_cast<float>(map.width) * 0.5F,
+			0.5F,
+			session.player.position.y - static_cast<float>(map.height) * 0.5F,
+		};
+		return Multiply(
+			Translation(playerPosition),
+			Scale({ 0.75F, 0.75F, 0.75F }));
+	}
+
+	Mat4 cameraViewMatrix() const
+	{
+		float extent = 6.0F;
+		if (product_.has_value()) {
+			const auto &map =
+				product_->play.state.loop.currentState.session.level.map;
+			extent = std::max<float>(
+				extent,
+				static_cast<float>(std::max(map.width, map.height)));
+		}
+
+		return LookAt(
+			{ 0.0F, extent * 0.85F, extent * 1.15F },
+			{ 0.0F, 0.0F, 0.0F },
+			{ 0.0F, 1.0F, 0.0F });
 	}
 
 	void recordCommandBuffer(VkCommandBuffer commandBuffer, std::uint32_t imageIndex)
@@ -1413,17 +1591,50 @@ private:
 			while (SDL_PollEvent(&event) != 0) {
 				if (event.type == SDL_QUIT)
 					running = false;
-				if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
-					running = false;
+				if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
+					if (event.type == SDL_KEYDOWN &&
+							event.key.keysym.sym == SDLK_ESCAPE)
+						running = false;
+					if (event.key.repeat == 0) {
+						const std::optional<runtime::RuntimeGameplayProductInputControl2D>
+							control = MapSdlKeyToProductControl(event.key.keysym.sym);
+						if (control.has_value()) {
+							recordProductInput(
+								*control,
+								event.type == SDL_KEYDOWN
+								? runtime::RuntimeGameplayProductInputEventKind::Pressed
+								: runtime::RuntimeGameplayProductInputEventKind::Released);
+						}
+					}
+				}
 				if (event.type == SDL_WINDOWEVENT &&
 						event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
 					framebufferResized_ = true;
 			}
+			stepProductIfDue();
 			drawFrame();
 		}
 
 		if (device_ != VK_NULL_HANDLE)
 			ThrowIfFailed(vkDeviceWaitIdle(device_), "failed to idle Vulkan device");
+	}
+
+	void stepProductIfDue()
+	{
+		if (!product_.has_value())
+			return;
+		if (productInputAccumulator_.heldControls.empty() &&
+				productInputAccumulator_.pendingOneShotEvents.empty())
+			return;
+
+		const auto now = std::chrono::steady_clock::now();
+		if (now < nextProductTick_)
+			return;
+
+		runProductFrameRequestOnce();
+		nextProductTick_ += ProductTickInterval;
+		if (nextProductTick_ < now)
+			nextProductTick_ = now + ProductTickInterval;
 	}
 
 	void cleanupSwapchain()
@@ -1509,6 +1720,11 @@ private:
 
 	LaunchOptions options_;
 	std::optional<ProductLoadState> product_;
+	runtime::RuntimeGameplayProductInputAccumulatorState productInputAccumulator_;
+	runtime::RuntimeGameplayProductPlayModeFrameResult latestProductPlayModeFrame_;
+	bool hasLatestProductPlayModeFrame_ = false;
+	iggy::CameraState productPresentationCamera_;
+	bool hasProductPresentationCamera_ = false;
 	SDL_Window *window_ = nullptr;
 	VkInstance instance_ = VK_NULL_HANDLE;
 	VkSurfaceKHR surface_ = VK_NULL_HANDLE;
@@ -1542,6 +1758,8 @@ private:
 	bool framebufferResized_ = false;
 	std::chrono::steady_clock::time_point startTime_ =
 		std::chrono::steady_clock::now();
+	std::chrono::steady_clock::time_point nextProductTick_ =
+		std::chrono::steady_clock::now() + ProductTickInterval;
 };
 
 } // namespace
