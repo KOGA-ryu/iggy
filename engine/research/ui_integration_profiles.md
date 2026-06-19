@@ -519,6 +519,18 @@ behavior, app-shell/CLI behavior, public renderer API, draw-list/runtime/product
 scene/server API, shader/material/texture policy, or gameplay/input/scripted-
 control semantics.
 
+Native static mesh fixture writer roundtrip coverage is complete as test-only
+validation: `native_static_mesh_asset_writer_tests.cpp` now roundtrips the
+checked-in renderer-bound floor, wall, NPC, and player `.igmesh` fixtures through
+load, write, reload, and canonical second write/idempotence checks, with counts
+4/6, 8/36, 7/30, and 6/24 respectively. It also adds procedural NPC marker
+write/reload count coverage beside the existing procedural bean coverage. CMake
+only adds the test asset root compile definition to the writer test. This does
+not change production source, renderer behavior, app shell/CLI, fixtures,
+schemas, file writing/export, discovery/catalog/manifest policy, public renderer
+API, draw-list/runtime/product/scene/server API, shader/material/texture policy,
+or gameplay/input/scripted-control semantics.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.

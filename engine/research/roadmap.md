@@ -410,6 +410,10 @@ Recently completed optimized stretches:
   `NativeStaticMeshAssetWriter.hpp`, serializing the current `.igmesh` text
   format deterministically with a fixed header comment, vertex rows, and
   triangle rows; invalid or non-triangle input reports issues and emits no text.
+  Test-only fixture roundtrip coverage now loads each checked-in renderer-bound
+  `.igmesh` fixture, writes it, reloads it, writes it again, and asserts
+  canonical writer idempotence for floor, wall, NPC, and player assets; it also
+  adds procedural NPC marker write/reload count coverage.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1310,6 +1314,28 @@ manifest expansion, authoring policy, renderer behavior change,
 `NativeVulkanRenderer.cpp` change, public renderer API change, draw-list/
 runtime/product/scene/server API change, app-shell/CLI change, gameplay/input/
 scripted-control change, or docs mixed into source.
+
+Native Static Mesh Fixture Writer Roundtrip is complete as a test-only extension
+of `native_static_mesh_asset_writer_tests.cpp`: checked-in renderer-bound
+`.igmesh` fixtures now roundtrip through `LoadNativeStaticMeshAssetFile`,
+`WriteNativeStaticMeshAssetText`, `LoadNativeStaticMeshAssetText`, and a second
+canonical write/idempotence assertion. Covered fixture counts are
+`floor.igmesh` 4 vertices / 6 indices, `wall.igmesh` 8 / 36, `npc.igmesh`
+7 / 30, and `player.igmesh` 6 / 24. The packet also adds procedural NPC marker
+write/reload count coverage to pair with existing procedural bean coverage.
+CMake only adds `IGGY_NATIVE_PLAY_TEST_ASSET_DIR` to
+`native_static_mesh_asset_writer_tests`. No production source, renderer, app
+shell, asset fixture, CLI, shader, runtime/product/scene, or docs changes were
+part of the source packet. This is not a glTF/glb/JSON parser, GLB/custom
+parser, dependency fetch, package install, vendoring, web lookup, `.igmesh`
+schema expansion or fixture rewrite, file writing/export CLI, normals/UVs/
+materials/textures/descriptors/samplers/skins/animation/scene graph/transforms/
+metadata fields, file discovery beyond explicit checked-in test filenames,
+directory scanning, package discovery, registry/catalog, manifest expansion,
+authoring package policy, renderer behavior change, `NativeVulkanRenderer.cpp`
+change, public renderer API change, draw-list/runtime/product/scene/server API
+change, app-shell/CLI change, gameplay/input/scripted-control change, or docs
+mixed into source.
 
 Exit criteria:
 - Load a package or explicit scenario.

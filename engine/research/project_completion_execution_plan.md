@@ -1005,6 +1005,31 @@ Native static mesh text writer complete:
   draw-list/runtime/product/scene/server API change, app-shell/CLI change,
   gameplay/input/scripted-control change, or docs mixed into source.
 
+Native static mesh fixture writer roundtrip complete:
+- This is a test-only extension of `native_static_mesh_asset_writer_tests.cpp`.
+- Writer roundtrip now covers checked-in renderer-bound `.igmesh` fixtures:
+  `floor.igmesh` 4 vertices / 6 indices, `wall.igmesh` 8 / 36,
+  `npc.igmesh` 7 / 30, and `player.igmesh` 6 / 24.
+- Each fixture test loads with `LoadNativeStaticMeshAssetFile`, writes with
+  `WriteNativeStaticMeshAssetText`, reloads with `LoadNativeStaticMeshAssetText`,
+  writes again, and asserts canonical writer idempotence.
+- Procedural NPC marker write/reload count coverage was added to pair with
+  existing procedural bean coverage.
+- CMake only adds `IGGY_NATIVE_PLAY_TEST_ASSET_DIR` to
+  `native_static_mesh_asset_writer_tests`.
+- No production source, renderer, app shell, asset fixture, CLI, shader,
+  runtime/product/scene, or docs changes were in the source packet.
+- This is not a glTF/glb/JSON parser, GLB/custom parser, dependency fetch,
+  package install, vendoring, web lookup, `.igmesh` schema expansion or fixture
+  rewrite, file writing/export CLI, normals/UVs/materials/textures/descriptors/
+  samplers/skins/animation/scene graph/transforms/metadata fields, file
+  discovery beyond explicit checked-in test filenames, directory scanning,
+  package discovery, registry/catalog, manifest expansion, authoring package
+  policy, renderer behavior change, `NativeVulkanRenderer.cpp` change, public
+  renderer API change, draw-list/runtime/product/scene/server API change,
+  app-shell/CLI change, gameplay/input/scripted-control change, or docs mixed
+  into source.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -1888,7 +1913,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 52. Native static model load report is integrated.
 53. Native static model load report CLI dump is integrated.
 54. Native static mesh text writer is integrated.
-55. Dispatch richer diagnostics display, overlays/labels, frame request/
+55. Native static mesh fixture writer roundtrip tests are integrated.
+56. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under
