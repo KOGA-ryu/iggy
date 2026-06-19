@@ -1,5 +1,7 @@
 #include "NativeVulkanRenderer.hpp"
 
+#include "NativeStaticMeshAsset.hpp"
+
 #include <SDL.h>
 #include <SDL_vulkan.h>
 #include <vulkan/vulkan.h>
@@ -28,34 +30,9 @@ constexpr VkFormat DepthFormat = VK_FORMAT_D32_SFLOAT;
 #define IGGY_NATIVE_PLAY_SHADER_DIR "."
 #endif
 
-struct Vertex3D {
-	std::array<float, 3> position {};
-	std::array<float, 3> color {};
-};
-
 struct PushConstants {
 	Mat4 mvp;
 	std::array<float, 4> tint { 1.0F, 1.0F, 1.0F, 1.0F };
-};
-
-const std::vector<Vertex3D> CubeVertices {
-	{ { -0.5F, -0.5F, -0.5F }, { 0.10F, 0.55F, 0.95F } },
-	{ { 0.5F, -0.5F, -0.5F }, { 0.25F, 0.80F, 0.95F } },
-	{ { 0.5F, 0.5F, -0.5F }, { 0.95F, 0.75F, 0.25F } },
-	{ { -0.5F, 0.5F, -0.5F }, { 0.90F, 0.35F, 0.50F } },
-	{ { -0.5F, -0.5F, 0.5F }, { 0.25F, 0.70F, 0.45F } },
-	{ { 0.5F, -0.5F, 0.5F }, { 0.70F, 0.45F, 0.95F } },
-	{ { 0.5F, 0.5F, 0.5F }, { 0.95F, 0.55F, 0.20F } },
-	{ { -0.5F, 0.5F, 0.5F }, { 0.85F, 0.85F, 0.45F } },
-};
-
-const std::vector<std::uint16_t> CubeIndices {
-	0, 1, 2, 2, 3, 0,
-	4, 6, 5, 6, 4, 7,
-	0, 4, 5, 5, 1, 0,
-	3, 2, 6, 6, 7, 3,
-	1, 5, 6, 6, 2, 1,
-	0, 3, 7, 7, 4, 0,
 };
 
 struct QueueFamilyIndices {
@@ -407,7 +384,7 @@ VkVertexInputBindingDescription CubeVertexBindingDescription()
 {
 	VkVertexInputBindingDescription description {};
 	description.binding = 0;
-	description.stride = sizeof(Vertex3D);
+	description.stride = sizeof(NativeStaticMeshVertex);
 	description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 	return description;
 }
@@ -418,11 +395,11 @@ std::array<VkVertexInputAttributeDescription, 2> CubeVertexAttributeDescriptions
 	descriptions[0].binding = 0;
 	descriptions[0].location = 0;
 	descriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-	descriptions[0].offset = offsetof(Vertex3D, position);
+	descriptions[0].offset = offsetof(NativeStaticMeshVertex, position);
 	descriptions[1].binding = 0;
 	descriptions[1].location = 1;
 	descriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-	descriptions[1].offset = offsetof(Vertex3D, color);
+	descriptions[1].offset = offsetof(NativeStaticMeshVertex, color);
 	return descriptions;
 }
 
@@ -1102,34 +1079,34 @@ private:
 		vkUnmapMemory(device_, buffer.memory);
 	}
 
-	NativeVulkanMeshResource createMeshResource(
-		const std::vector<Vertex3D> &vertices,
-		const std::vector<std::uint16_t> &indices)
+	NativeVulkanMeshResource createMeshResource(const NativeStaticMeshAsset &asset)
 	{
 		NativeVulkanMeshResource mesh;
-		if (vertices.empty() || indices.empty())
+		if (!IsNativeStaticMeshAssetValid(asset))
 			return mesh;
 
-		const VkDeviceSize vertexSize = sizeof(vertices[0]) * vertices.size();
+		const VkDeviceSize vertexSize =
+			sizeof(asset.vertices[0]) * asset.vertices.size();
 		mesh.vertex = createBuffer(
 			vertexSize,
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-		copyToBuffer(mesh.vertex, vertices.data(), vertexSize);
+		copyToBuffer(mesh.vertex, asset.vertices.data(), vertexSize);
 
-		const VkDeviceSize indexSize = sizeof(indices[0]) * indices.size();
+		const VkDeviceSize indexSize =
+			sizeof(asset.indices[0]) * asset.indices.size();
 		mesh.index = createBuffer(
 			indexSize,
 			VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-		copyToBuffer(mesh.index, indices.data(), indexSize);
-		mesh.indexCount = static_cast<std::uint32_t>(indices.size());
+		copyToBuffer(mesh.index, asset.indices.data(), indexSize);
+		mesh.indexCount = static_cast<std::uint32_t>(asset.indices.size());
 		return mesh;
 	}
 
 	void createSceneMeshes()
 	{
-		cubeMesh_ = createMeshResource(CubeVertices, CubeIndices);
+		cubeMesh_ = createMeshResource(NativeCubeStaticMeshAsset());
 		registerModelSlot(NativeVulkanModelSlot::Floor, cubeMesh_);
 		registerModelSlot(NativeVulkanModelSlot::Wall, cubeMesh_);
 		registerModelSlot(NativeVulkanModelSlot::NpcActor, cubeMesh_);
