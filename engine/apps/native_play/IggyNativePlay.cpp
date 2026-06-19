@@ -36,9 +36,9 @@ using iggy::native_play::Mat4;
 using iggy::native_play::Multiply;
 using iggy::native_play::NativeProductSession;
 using iggy::native_play::NativeProductSessionConfig;
-using iggy::native_play::NativeScriptedProductControl;
 using iggy::native_play::NativeSceneDrawItem;
 using iggy::native_play::NativeSceneModelId;
+using iggy::native_play::ParseNativeScriptedProductControls;
 using iggy::native_play::Perspective;
 
 constexpr int InitialWindowWidth = 1280;
@@ -175,14 +175,6 @@ MapSdlKeyToProductControl(SDL_Keycode key)
 	return std::nullopt;
 }
 
-std::string Lowercase(std::string value)
-{
-	for (char &character : value)
-		character = static_cast<char>(
-			std::tolower(static_cast<unsigned char>(character)));
-	return value;
-}
-
 std::string Trim(std::string value)
 {
 	const auto first = std::find_if_not(
@@ -197,30 +189,6 @@ std::string Trim(std::string value)
 	if (first >= last)
 		return {};
 	return std::string(first, last);
-}
-
-std::optional<runtime::RuntimeGameplayProductInputControl2D>
-ScriptedControlFromToken(const std::string &token)
-{
-	using runtime::RuntimeGameplayProductInputControl2D;
-	const std::string value = Lowercase(Trim(token));
-	if (value == "up" || value == "north" || value == "w")
-		return RuntimeGameplayProductInputControl2D::MoveNorth;
-	if (value == "down" || value == "south" || value == "s")
-		return RuntimeGameplayProductInputControl2D::MoveSouth;
-	if (value == "left" || value == "west" || value == "a")
-		return RuntimeGameplayProductInputControl2D::MoveWest;
-	if (value == "right" || value == "east" || value == "d")
-		return RuntimeGameplayProductInputControl2D::MoveEast;
-	if (value == "interact" || value == "e" || value == "enter")
-		return RuntimeGameplayProductInputControl2D::Interact;
-	if (value == "inspect" || value == "i")
-		return RuntimeGameplayProductInputControl2D::Inspect;
-	if (value == "wait" || value == "space")
-		return RuntimeGameplayProductInputControl2D::Wait;
-	if (value == "cancel" || value == "escape" || value == "esc")
-		return RuntimeGameplayProductInputControl2D::Cancel;
-	return std::nullopt;
 }
 
 std::size_t ParsePositiveCount(const std::string &value, const char *name)
@@ -272,42 +240,6 @@ std::vector<iggy::TileCoord> ParseExpectedTiles(const std::string &spec)
 		start = separator + 1;
 	}
 	return tiles;
-}
-
-std::vector<NativeScriptedProductControl>
-ParseScriptedControls(const std::vector<std::string> &specs)
-{
-	std::vector<NativeScriptedProductControl> controls;
-	for (const std::string &spec : specs) {
-		std::size_t start = 0;
-		while (start <= spec.size()) {
-			const std::size_t comma = spec.find(',', start);
-			const std::string rawToken = Trim(spec.substr(
-				start,
-				comma == std::string::npos ? std::string::npos : comma - start));
-			if (!rawToken.empty()) {
-				const std::size_t repeatMarker = rawToken.find('*');
-				const std::string controlToken = repeatMarker == std::string::npos
-					? rawToken
-					: Trim(rawToken.substr(0, repeatMarker));
-				const std::size_t repeatCount = repeatMarker == std::string::npos
-					? 1
-					: ParsePositiveCount(
-						Trim(rawToken.substr(repeatMarker + 1)),
-						"scripted control repeat");
-				const std::optional<runtime::RuntimeGameplayProductInputControl2D>
-					control = ScriptedControlFromToken(controlToken);
-				if (!control.has_value())
-					throw std::runtime_error("unknown scripted control: " + controlToken);
-				for (std::size_t i = 0; i < repeatCount; ++i)
-					controls.push_back({ *control, Lowercase(controlToken) });
-			}
-			if (comma == std::string::npos)
-				break;
-			start = comma + 1;
-		}
-	}
-	return controls;
 }
 
 LaunchOptions ParseArgs(int argc, char **argv)
@@ -371,8 +303,8 @@ LaunchOptions ParseArgs(int argc, char **argv)
 	if (!options.expectedPlayerTiles.empty() && options.scriptedControls.empty())
 		throw std::runtime_error("--expect-player-tiles requires --scripted-controls");
 	if (!options.expectedPlayerTiles.empty()) {
-		const std::vector<NativeScriptedProductControl> controls =
-			ParseScriptedControls(options.scriptedControls);
+		const auto controls =
+			ParseNativeScriptedProductControls(options.scriptedControls);
 		if (options.expectedPlayerTiles.size() != controls.size())
 			throw std::runtime_error("--expect-player-tiles count must match expanded scripted controls");
 	}
@@ -679,7 +611,7 @@ public:
 		if (options_.hasPlayPath) {
 			NativeProductSessionConfig config;
 			config.playPath = options_.playPath;
-			config.scriptedControls = ParseScriptedControls(options_.scriptedControls);
+			config.scriptedControlSpecs = options_.scriptedControls;
 			config.productTickInterval = ProductTickInterval;
 			config.scriptedControlInterval = options_.scriptedControlInterval;
 			config.quitAfterScriptedControls = options_.quitAfterScriptedControls;

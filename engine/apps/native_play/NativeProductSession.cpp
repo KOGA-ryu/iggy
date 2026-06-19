@@ -1,6 +1,7 @@
 #include "NativeProductSession.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <iostream>
 #include <stdexcept>
 #include <utility>
@@ -138,9 +139,100 @@ TileCoord MovementDelta(runtime::RuntimeGameplayProductInputControl2D control)
 
 } // namespace
 
+std::vector<NativeScriptedProductControl>
+ParseNativeScriptedProductControls(const std::vector<std::string> &specs)
+{
+	const auto lowercase = [](std::string value) {
+		for (char &character : value)
+			character = static_cast<char>(
+				std::tolower(static_cast<unsigned char>(character)));
+		return value;
+	};
+	const auto trim = [](std::string value) {
+		const auto first = std::find_if_not(
+			value.begin(),
+			value.end(),
+			[](unsigned char character) { return std::isspace(character) != 0; });
+		const auto last = std::find_if_not(
+			value.rbegin(),
+			value.rend(),
+			[](unsigned char character) { return std::isspace(character) != 0; })
+			.base();
+		if (first >= last)
+			return std::string {};
+		return std::string(first, last);
+	};
+	const auto parsePositiveCount = [](const std::string &value, const char *name) {
+		if (value.empty())
+			throw std::runtime_error(std::string(name) + " requires a positive integer");
+		std::size_t consumed = 0;
+		const unsigned long parsed = std::stoul(value, &consumed);
+		if (consumed != value.size() || parsed == 0)
+			throw std::runtime_error(std::string(name) + " requires a positive integer");
+		return static_cast<std::size_t>(parsed);
+	};
+	const auto scriptedControlFromToken =
+		[&lowercase, &trim](const std::string &token)
+		-> std::optional<runtime::RuntimeGameplayProductInputControl2D> {
+		using runtime::RuntimeGameplayProductInputControl2D;
+		const std::string value = lowercase(trim(token));
+		if (value == "up" || value == "north" || value == "w")
+			return RuntimeGameplayProductInputControl2D::MoveNorth;
+		if (value == "down" || value == "south" || value == "s")
+			return RuntimeGameplayProductInputControl2D::MoveSouth;
+		if (value == "left" || value == "west" || value == "a")
+			return RuntimeGameplayProductInputControl2D::MoveWest;
+		if (value == "right" || value == "east" || value == "d")
+			return RuntimeGameplayProductInputControl2D::MoveEast;
+		if (value == "interact" || value == "e" || value == "enter")
+			return RuntimeGameplayProductInputControl2D::Interact;
+		if (value == "inspect" || value == "i")
+			return RuntimeGameplayProductInputControl2D::Inspect;
+		if (value == "wait" || value == "space")
+			return RuntimeGameplayProductInputControl2D::Wait;
+		if (value == "cancel" || value == "escape" || value == "esc")
+			return RuntimeGameplayProductInputControl2D::Cancel;
+		return std::nullopt;
+	};
+
+	std::vector<NativeScriptedProductControl> controls;
+	for (const std::string &spec : specs) {
+		std::size_t start = 0;
+		while (start <= spec.size()) {
+			const std::size_t comma = spec.find(',', start);
+			const std::string rawToken = trim(spec.substr(
+				start,
+				comma == std::string::npos ? std::string::npos : comma - start));
+			if (!rawToken.empty()) {
+				const std::size_t repeatMarker = rawToken.find('*');
+				const std::string controlToken = repeatMarker == std::string::npos
+					? rawToken
+					: trim(rawToken.substr(0, repeatMarker));
+				const std::size_t repeatCount = repeatMarker == std::string::npos
+					? 1
+					: parsePositiveCount(
+						trim(rawToken.substr(repeatMarker + 1)),
+						"scripted control repeat");
+				const std::optional<runtime::RuntimeGameplayProductInputControl2D>
+					control = scriptedControlFromToken(controlToken);
+				if (!control.has_value())
+					throw std::runtime_error("unknown scripted control: " + controlToken);
+				for (std::size_t i = 0; i < repeatCount; ++i)
+					controls.push_back({ *control, lowercase(controlToken) });
+			}
+			if (comma == std::string::npos)
+				break;
+			start = comma + 1;
+		}
+	}
+	return controls;
+}
+
 NativeProductSession::NativeProductSession(NativeProductSessionConfig config)
 	: config_(std::move(config))
 	, product_(LoadProductScenario(config_.playPath))
+	, scriptedControls_(
+		ParseNativeScriptedProductControls(config_.scriptedControlSpecs))
 {
 	const auto now = std::chrono::steady_clock::now();
 	nextProductTick_ = now + config_.productTickInterval;
@@ -342,7 +434,7 @@ void NativeProductSession::applyScriptedProductControl(
 
 bool NativeProductSession::stepScriptedControlsIfDue()
 {
-	if (scriptedControlIndex_ >= config_.scriptedControls.size())
+	if (scriptedControlIndex_ >= scriptedControls_.size())
 		return false;
 
 	const auto now = std::chrono::steady_clock::now();
@@ -351,11 +443,11 @@ bool NativeProductSession::stepScriptedControlsIfDue()
 
 	applyScriptedProductControl(
 		scriptedControlIndex_,
-		config_.scriptedControls[scriptedControlIndex_]);
+		scriptedControls_[scriptedControlIndex_]);
 	++scriptedControlIndex_;
 	nextScriptedControlAt_ = now + config_.scriptedControlInterval;
 	const bool completedScript =
-		scriptedControlIndex_ >= config_.scriptedControls.size();
+		scriptedControlIndex_ >= scriptedControls_.size();
 	if (completedScript && config_.dumpFinalState &&
 			!dumpedFinalScriptedState_) {
 		dumpFinalScriptedState();

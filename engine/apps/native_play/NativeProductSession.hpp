@@ -33,7 +33,7 @@ struct NativeProductLoadState {
 
 struct NativeProductSessionConfig {
 	std::filesystem::path playPath;
-	std::vector<NativeScriptedProductControl> scriptedControls;
+	std::vector<std::string> scriptedControlSpecs;
 	std::chrono::milliseconds productTickInterval { 250 };
 	std::chrono::milliseconds scriptedControlInterval { 250 };
 	bool quitAfterScriptedControls = false;
@@ -41,6 +41,9 @@ struct NativeProductSessionConfig {
 	bool dumpFinalState = false;
 	std::vector<TileCoord> expectedPlayerTiles;
 };
+
+[[nodiscard]] std::vector<NativeScriptedProductControl>
+ParseNativeScriptedProductControls(const std::vector<std::string> &specs);
 
 class NativeProductSession {
 public:
@@ -84,6 +87,7 @@ private:
 
 	NativeProductSessionConfig config_;
 	NativeProductLoadState product_;
+	std::vector<NativeScriptedProductControl> scriptedControls_;
 	runtime::RuntimeGameplayProductInputAccumulatorState inputAccumulator_;
 	std::vector<runtime::RuntimeGameplayProductInputControl2D> activeMovementControls_;
 	std::size_t scriptedControlIndex_ = 0;
