@@ -475,6 +475,22 @@ gated to a constrained subset: one mesh, one primitive, triangles, required
 positions, optional vertex colors/default later, indexed `uint16` first, and no
 materials, textures, normals, UVs, animation, skins, scene graph, or transforms.
 
+Native static model load reporting is complete as backend-free app-local
+inspection over the value-only policy and `.igmesh` loader:
+`NativeStaticModelLoadReport.hpp` iterates `Floor`, `Wall`, `NpcActor`, and
+`Player`; records per-slot filename/status/fallback/issues/vertex/index counts;
+aggregates loaded/failed/missing counts; maps report-only fallbacks to cube,
+cube, procedural NPC marker, and procedural bean; and loads only explicit policy
+refs through `FindNativeStaticModelAsset(...)` plus
+`LoadNativeStaticMeshAssetFile(assetRoot / meshFilename)`. It does not touch
+`NativeVulkanRenderer.cpp`, mutate renderer state, or add GPU/Vulkan/SDL
+behavior. It is not file discovery, package discovery, registry/catalog,
+manifest policy, glTF/glb parsing, JSON/GLB parsing, dependency work, shared
+render-server ownership, public renderer API work, shader/material/texture/
+descriptor/sampler policy, staging/device-local upload, Linux/dGPU policy,
+backend abstraction, CLI/debugger output, or gameplay/input/scripted-control
+behavior.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.

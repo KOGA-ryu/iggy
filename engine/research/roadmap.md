@@ -391,7 +391,14 @@ Recently completed optimized stretches:
   `.igmesh` filenames; and `FindNativeStaticModelAsset(...)` performs first-match
   lookup. `NativeVulkanRenderer.cpp` consumes the policy for filenames while
   preserving the current loaded `.igmesh` behavior and fallbacks. The policy has
-  no filesystem, parser, GPU, or Vulkan knowledge.
+  no filesystem, parser, GPU, or Vulkan knowledge. Native static model load
+  reporting now adds backend-free app-local `NativeStaticModelLoadReport.hpp`,
+  which reports over the existing value-only policy and `.igmesh` loader without
+  mutating renderer state. It iterates fixed slots in `Floor`, `Wall`,
+  `NpcActor`, `Player` order, records per-slot filename/status/fallback/issues/
+  vertex/index counts, aggregates loaded/failed/missing counts, and maps report
+  fallbacks to `Cube`, `Cube`, `ProceduralNpcMarker`, and `ProceduralBean`.
+  `NativeVulkanRenderer.cpp` was not touched.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1216,6 +1223,32 @@ The future glTF subset remains separately gated: one mesh, one primitive,
 triangles, required positions, optional vertex colors/default later, indexed
 `uint16` first, and no materials, textures, normals, UVs, animation, skins,
 scene graph, or transforms.
+
+Native Static Model Load Report, .igmesh Policy Path is complete for no-Qt
+renderer prep: `NativeStaticModelLoadReport.hpp` adds a backend-free app-local
+report builder over the existing value-only `NativeStaticModelPolicy` and
+existing `.igmesh` loader. `BuildNativeStaticModelLoadReport(...)` iterates the
+fixed slot order `Floor`, `Wall`, `NpcActor`, `Player`; uses
+`FindNativeStaticModelAsset(policy, slot)` and
+`LoadNativeStaticMeshAssetFile(assetRoot / meshFilename)` only for explicit
+policy refs; and records per-slot `slot`, `meshFilename`, `status`, `fallback`,
+`issueCount`, `vertexCount`, and `indexCount`. Status values are
+`MissingPolicyRef`, `Loaded`, and `LoadFailed`; aggregate counts are loaded,
+failed, and missing. Report-only fallback mapping is `Floor -> Cube`,
+`Wall -> Cube`, `NpcActor -> ProceduralNpcMarker`, and
+`Player -> ProceduralBean`. Tests cover default checked-in assets and counts
+(`floor` 4/6, `wall` 8/36, `npc` 7/30, `player` 6/24), missing policy refs, bad
+filename load failure, and no inference of unlisted assets.
+`NativeVulkanRenderer.cpp` is untouched, so there is no renderer mutation or
+GPU/Vulkan/SDL behavior. This is not a glTF/glb parser, GLB binary parser, JSON
+parser, custom glTF subset parser, dependency fetch, package install, file
+discovery, package discovery, registry/catalog, model authoring policy, asset
+manifest, shared render-server move, public renderer API change, app shell
+change, runtime/product/scene/server/draw-list API change, shader/material/
+texture/descriptor/sampler policy, normals/UVs/animation/skins/scene graph/
+transforms work, staging/device-local upload policy, Linux/dGPU policy, backend
+abstraction, CLI/debugger output change, or gameplay/input/scripted-control
+change.
 
 Exit criteria:
 - Load a package or explicit scenario.
