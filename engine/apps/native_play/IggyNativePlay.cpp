@@ -125,8 +125,15 @@ struct NativeMeshGpuBuffers {
 	std::uint32_t indexCount = 0;
 };
 
+enum class NativeSceneModelId {
+	Floor,
+	Wall,
+	NpcActor,
+	Player,
+};
+
 struct NativeSceneDrawItem {
-	const NativeMeshGpuBuffers *mesh = nullptr;
+	NativeSceneModelId modelId = NativeSceneModelId::Player;
 	Mat4 model;
 	std::array<float, 4> tint { 1.0F, 1.0F, 1.0F, 1.0F };
 };
@@ -1668,20 +1675,34 @@ private:
 			0);
 	}
 
-	void appendCubeDraw(
+	const NativeMeshGpuBuffers *meshForSceneModel(NativeSceneModelId modelId) const
+	{
+		switch (modelId) {
+		case NativeSceneModelId::Floor:
+		case NativeSceneModelId::Wall:
+		case NativeSceneModelId::NpcActor:
+		case NativeSceneModelId::Player:
+			return &cubeMesh_;
+		}
+		return nullptr;
+	}
+
+	void appendSceneDraw(
 		std::vector<NativeSceneDrawItem> &drawItems,
+		NativeSceneModelId modelId,
 		const Mat4 &model,
 		std::array<float, 4> tint) const
 	{
-		drawItems.push_back({ &cubeMesh_, model, tint });
+		drawItems.push_back({ modelId, model, tint });
 	}
 
 	std::vector<NativeSceneDrawItem> buildSceneDrawItems(float seconds) const
 	{
 		std::vector<NativeSceneDrawItem> drawItems;
 		if (!product_.has_value()) {
-			appendCubeDraw(
+			appendSceneDraw(
 				drawItems,
+				NativeSceneModelId::Player,
 				playerCubeModelMatrix(seconds),
 				{ 0.18F, 0.70F, 1.0F, 1.0F });
 			return drawItems;
@@ -1693,8 +1714,9 @@ private:
 		const float mapHeight = static_cast<float>(map.height);
 		for (int y = 0; y < map.height; ++y) {
 			for (int x = 0; x < map.width; ++x) {
-				appendCubeDraw(
+				appendSceneDraw(
 					drawItems,
+					NativeSceneModelId::Floor,
 					tileCubeModelMatrix(
 						x,
 						y,
@@ -1706,8 +1728,9 @@ private:
 
 				const iggy::LevelTile *tile = map.tileAt(x, y);
 				if (tile != nullptr && !tile->walkable) {
-					appendCubeDraw(
+					appendSceneDraw(
 						drawItems,
+						NativeSceneModelId::Wall,
 						tileCubeModelMatrix(
 							x,
 							y,
@@ -1729,16 +1752,18 @@ private:
 				0.38F,
 				actor.position.y - mapHeight * 0.5F,
 			};
-			appendCubeDraw(
+			appendSceneDraw(
 				drawItems,
+				NativeSceneModelId::NpcActor,
 				Multiply(
 					Translation(position),
 					Scale({ 0.62F, 0.62F, 0.62F })),
 				{ 1.0F, 0.55F, 0.18F, 1.0F });
 		}
 
-		appendCubeDraw(
+		appendSceneDraw(
 			drawItems,
+			NativeSceneModelId::Player,
 			playerCubeModelMatrix(seconds),
 			{ 0.18F, 0.70F, 1.0F, 1.0F });
 		return drawItems;
@@ -1750,9 +1775,10 @@ private:
 		const std::vector<NativeSceneDrawItem> &drawItems) const
 	{
 		for (const NativeSceneDrawItem &item : drawItems) {
-			if (item.mesh == nullptr)
+			const NativeMeshGpuBuffers *mesh = meshForSceneModel(item.modelId);
+			if (mesh == nullptr)
 				continue;
-			drawMesh(commandBuffer, *item.mesh, viewProjection, item.model, item.tint);
+			drawMesh(commandBuffer, *mesh, viewProjection, item.model, item.tint);
 		}
 	}
 
