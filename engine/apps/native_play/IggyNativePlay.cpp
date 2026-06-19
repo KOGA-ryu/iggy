@@ -17,6 +17,7 @@
 #include "NativePlayMath.hpp"
 #include "NativeProductSession.hpp"
 #include "NativeSceneDrawList.hpp"
+#include "NativeStaticMeshExportPolicy.hpp"
 #include "NativeStaticMeshAssetWriter.hpp"
 #include "NativeStaticModelLoadReport.hpp"
 #include "NativeStaticModelPolicy.hpp"
@@ -27,13 +28,14 @@ namespace {
 namespace runtime = iggy::runtime;
 using iggy::native_play::BuildNativeSceneDrawItems;
 using iggy::native_play::BuildNativeStaticModelLoadReport;
+using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
+using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
 using iggy::native_play::DefaultNativeStaticModelPolicy;
+using iggy::native_play::FindNativeStaticMeshExportAsset;
 using iggy::native_play::LookAt;
 using iggy::native_play::Mat4;
 using iggy::native_play::Multiply;
-using iggy::native_play::NativeBeanStaticMeshAsset;
-using iggy::native_play::NativeCubeStaticMeshAsset;
-using iggy::native_play::NativeNpcMarkerStaticMeshAsset;
+using iggy::native_play::NativeStaticMeshExportAssetRef;
 using iggy::native_play::NativeStaticModelFallbackKind;
 using iggy::native_play::NativeStaticModelLoadEntry;
 using iggy::native_play::NativeStaticModelLoadReport;
@@ -346,27 +348,18 @@ void PrintNativeStaticModelLoadReport(const NativeStaticModelLoadReport &report)
 	}
 }
 
-std::optional<NativeStaticMeshAsset> BuiltInNativeStaticMeshAssetByName(
-	const std::string &name)
-{
-	if (name == "cube")
-		return NativeCubeStaticMeshAsset();
-	if (name == "bean")
-		return NativeBeanStaticMeshAsset();
-	if (name == "npc-marker")
-		return NativeNpcMarkerStaticMeshAsset();
-	return std::nullopt;
-}
-
 void PrintNativeStaticMeshAssetDump(const std::string &name)
 {
-	const std::optional<NativeStaticMeshAsset> asset =
-		BuiltInNativeStaticMeshAssetByName(name);
-	if (!asset.has_value())
+	const auto policy = DefaultNativeStaticMeshExportPolicy();
+	const NativeStaticMeshExportAssetRef *assetRef =
+		FindNativeStaticMeshExportAsset(policy, name);
+	if (assetRef == nullptr)
 		throw std::runtime_error("unknown static mesh asset: " + name);
 
+	const NativeStaticMeshAsset asset =
+		BuiltInNativeStaticMeshExportAsset(assetRef->id);
 	const NativeStaticMeshAssetWriteResult result =
-		WriteNativeStaticMeshAssetText(*asset);
+		WriteNativeStaticMeshAssetText(asset);
 	if (!result.written()) {
 		throw std::runtime_error(
 			"failed to write static mesh asset: " + name +
