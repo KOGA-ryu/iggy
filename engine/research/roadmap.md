@@ -320,9 +320,9 @@ Recently completed optimized stretches:
   return a copied frame with only binding context replaced. Qt manual Step and
   frame pump now call that helper through their shared one-frame path. Next
   product runtime work is deciding whether frame request/play surface should own
-  enrichment, whether diagnostics should be surfaced, or whether explicit
-  interaction intent should be synthesized, then interaction execution if
-  approved, textured sprite/animation/material/asset policy,
+  enrichment, whether richer diagnostics/highlighting should be surfaced, or
+  whether explicit interaction intent should be synthesized, then interaction
+  execution if approved, textured sprite/animation/material/asset policy,
   pause/retry/reset policy, completion/failure evaluation, and save/load UX.
 - Rendering backend/presentation layer.
 - Audio server boundary.
@@ -620,14 +620,16 @@ frame binding context, preserves all events unchanged, and returns diagnostics.
 It does not auto-wire frame request/play surface, synthesize `Interact`/`Inspect`
 targets, inject target ids into events, persist hover, or change adapter/command
 semantics.
-Qt Product Input Frame Target Context Consumer is complete as a thin caller in
-`IggyQtShellWindow::runProductFrameRequestOnce()`: after accumulator
-`buildFrame(...)` and storing the returned accumulator state, but before
-`RuntimeGameplayProductFrameRequest`, Qt calls
+Qt Product Input Frame Target Context Consumer is complete as a thin caller and
+diagnostics projector in `IggyQtShellWindow::runProductFrameRequestOnce()`: after
+accumulator `buildFrame(...)` and storing the returned accumulator state, but
+before `RuntimeGameplayProductFrameRequest`, Qt calls
 `RuntimeGameplayProductInputFrameTargetContext {}.enrich(...)` with
 `productPlayState_`, the built frame, and default spatial/reach configs. It
-passes the copied/enriched frame into the request, stores no helper diagnostics,
-and leaves focus gating, mouse/key mapping, pump timing, manual Step
+stores the latest transient helper result in replaceable app-shell state, wires
+the stable diagnostics pointer into `UiFeatureContext`, passes the stored copied/
+enriched frame into the request, clears diagnostics when Product Input Focus is
+disabled, and leaves focus gating, mouse/key mapping, pump timing, manual Step
 availability, accumulator drain, and runtime helper semantics unchanged.
 
 Objective: move from engine harness to playable/editor-backed game loop.
@@ -692,8 +694,10 @@ Done:
 - `UiProductPlayModePanelModel` is a read-only scene/UI projection over provided
   product play build/state/latest-frame pointers, showing build/loop status,
   identity paths, loaded/focus/frame facts, latest frame status, ignored input,
-  adapter/binding/step/presentation counts, and render counts without calling
-  loaders, frame stepping, product run APIs, or mutating product/runtime state.
+  adapter/binding/step/presentation counts, render counts, and compact
+  target-context diagnostics rows when a latest diagnostics pointer is provided,
+  without calling loaders, frame stepping, product run APIs, or mutating
+  product/runtime state.
 - `iggy_qt_shell --play PATH` is an explicit-path Qt launch consumer that runs
   `RuntimeGameplayProductScenarioLoader::load(path)`,
   `RuntimeGameplayProductLoop::build(load)`, and
@@ -774,7 +778,8 @@ Done:
 - Qt shell `Product Step` is a ready-state View-menu action for `--play`
   sessions. It builds accumulator frame output with projected binding context,
   stores the returned accumulator state, enriches a copied frame through
-  `RuntimeGameplayProductInputFrameTargetContext`, builds request input from
+  `RuntimeGameplayProductInputFrameTargetContext`, stores the latest transient
+  target-context diagnostics for read-only projection, builds request input from
   current `productPlayState_`, the enriched frame, and shell-owned camera config,
   runs `RuntimeGameplayProductFrameRequest` once, replaces only
   `productPlayState_`, `latestProductPlayModeFrame_`, the stable product play
@@ -838,9 +843,10 @@ Done:
 - Qt product input frame target context consumer is app-shell thin:
   manual Step and frame pump both call the opt-in helper through
   `runProductFrameRequestOnce()`, pass the enriched frame to the frame request,
-  and intentionally discard helper diagnostics. Qt does not store target query,
-  reach, primary-tile, or target-context results and does not expose them in the
-  product panel, settings, logs, status text, or scene/UI models.
+  and store only the latest transient helper result for read-only compact panel
+  projection. Qt does not expose full copied frames, all events, full target
+  payloads, or nested structs, and diagnostics alone do not create product play
+  context.
 
 Exit criteria:
 - Load a package or explicit scenario.

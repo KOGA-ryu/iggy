@@ -238,10 +238,12 @@ runtime/product `RuntimeGameplayProductInputTargetContext` complete as transient
 hovered-target binding context enrichment from that report; runtime/product
 `RuntimeGameplayProductInputFrameTargetContext` complete as opt-in pre-frame
 enrichment over the latest eligible `PrimaryTile` pressed event; Qt manual Step
-and frame pump now consume that helper through the shared one-frame path; next
-work is diagnostics display, frame request/play-surface ownership decisions,
-explicit interact target synthesis, reach-gated interaction execution, textured
-sprite/animation/material/asset policy, and first-play UX policy gates.
+and frame pump now consume that helper through the shared one-frame path; compact
+read-only target-context diagnostics projection is complete in the product panel;
+next work is optional richer diagnostics/highlighting, frame request/play-surface
+ownership decisions, explicit interact target synthesis, reach-gated interaction
+execution, textured sprite/animation/material/asset policy, and first-play UX
+policy gates.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -653,14 +655,37 @@ Qt product input frame target context consumer complete:
   `productInputAccumulator_ = frame.state` remains before the frame request.
 - On `NoEligiblePrimaryTile` or `Unchanged`, the helper returns a copied unchanged
   frame and Qt passes that frame without branching.
-- Qt does not store `enrichedFrame` diagnostics, target-query result,
-  target-context result, primary tile index/tile, or reach result.
-- No diagnostics are exposed in product panel, scene/ui models, settings, logs,
-  or status text.
+- Qt stores the latest transient helper result, sets the has flag, wires
+  `context_.latestProductInputFrameTargetContext` to the stable member, and
+  exposes compact read-only product panel rows.
+- Product Input Focus disable clears accumulator state plus latest target-context
+  diagnostics/pointer; enabling focus does not synthesize diagnostics.
+- Widget/body refreshes do not clear the member; the pointer remains stable
+  through rebuilds.
+- No diagnostics are exposed in settings, logs, or status text.
 - Product Input Focus gating, mouse event handling, keyboard mapping, pump
   timing, and manual Step availability remain unchanged.
 - Qt does not own target lookup semantics and introduces no Qt types into
   runtime/product APIs.
+
+Product input target-context diagnostics projection complete:
+- `UiFeatureContext` carries a const diagnostics pointer, but
+  `uiFeatureContextHasProductPlayMode(...)` does not include it, so diagnostics
+  alone do not create product play context.
+- `UiRuntimeWorkspaceModel` passes diagnostics into the product panel only when
+  product play context is already present.
+- `UiProductPlayModePanelModel` adds compact `targetContext` rows and does not
+  require latest-frame rows.
+- No diagnostics pointer produces no target-context rows.
+- Rows are source-shaped and compact: `targetContext.status`,
+  `targetContext.hasPrimaryTileEvent`, conditional
+  `targetContext.primaryTileEventIndex`, conditional `targetContext.primaryTile`,
+  `targetContext.target.status`, `targetContext.target.hasTarget`, conditional
+  `targetContext.target.targetId`, `targetContext.target.hasPlayer`,
+  `targetContext.target.hasReach`, conditional `targetContext.target.reachable`,
+  and `targetContext.projection.status`.
+- The projection does not dump copied frames, all events, full target payloads,
+  or nested structs.
 
 Product input accumulator complete:
 - `RuntimeGameplayProductInputAccumulator` is a shell-neutral return-by-value
@@ -768,8 +793,8 @@ Qt product frame pump toggle complete:
 Remaining input gate questions:
 - Should frame request/play surface ever own target-context enrichment, or should
   it remain an app-shell pre-frame caller decision?
-- What helper diagnostics, if any, should be shown in product panels, render
-  highlighting, logs, or status text?
+- Should target-context diagnostics grow beyond compact panel rows into render
+  highlighting, logs, status text, or richer inspection?
 - Who owns hover lifecycle, clearing, and selected-target workflows beyond this
   enrichment-only helper?
 - Should explicit interact target synthesis consume a `TargetFound` report, and
@@ -785,7 +810,7 @@ Remaining input gate questions:
 - What does completion/failure mean in the first slice?
 
 Output:
-- one optional diagnostics display, highlighting, or frame request/play-surface
+- one optional richer diagnostics, highlighting, or frame request/play-surface
   ownership packet over the product query/context helpers, if approved;
 - one textured sprite / animation / material policy packet, if approved;
 - one updated implementation order packet;
@@ -996,10 +1021,14 @@ Packets:
 22. Qt product input frame target context consumer. Complete:
    - shared Qt one-frame path calls the opt-in helper after accumulator
      `buildFrame(...)` / state storage and before frame request, passes the
-     enriched frame forward, and stores/exposes no helper diagnostics.
-23. Debug overlay projection:
+     enriched frame forward, and stores/exposes only compact target-context rows.
+23. Product input target-context diagnostics projection. Complete:
+   - Qt stores the latest transient helper result, wires a stable const pointer
+     into product play UI context, and `UiProductPlayModePanelModel` projects
+     compact `targetContext` rows only when product play context exists.
+24. Debug overlay projection:
    - trace/final rows, AI map, collision, path, interactions, inventory.
-24. UI presentation adapter:
+25. UI presentation adapter:
    - convert render frame data into the chosen shell/app surface.
 
 Hard stops:
@@ -1230,18 +1259,21 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 31. Runtime/product input target context projection is integrated.
 32. Runtime/product input frame target context enrichment is integrated.
 33. Qt product input frame target context consumer is integrated.
-34. Dispatch diagnostics display, frame request/play-surface ownership, explicit
-    interact target synthesis, reach-gated interaction execution, hover lifecycle,
-    selected-target workflow, point-vs-tile policy, textured sprite / animation /
-    material policy, render projection gaps, further input mapping, or a
-    focused-input follow-up, depending on planner scope.
+34. Product input target-context diagnostics projection is integrated.
+35. Dispatch richer diagnostics display, render highlighting, frame request/
+    play-surface ownership, explicit interact target synthesis, reach-gated
+    interaction execution, hover lifecycle, selected-target workflow,
+    point-vs-tile policy, textured sprite / animation / material policy, render
+    projection gaps, further input mapping, or a focused-input follow-up,
+    depending on planner scope.
 
 Do not broaden the next Product Loop packet into pause/retry/reset,
 completion/failure, save/load productization, product-loop signature changes,
 command/gate execution, presentation state persistence, Qt/UI/CLI behavior,
 raw OS event types, raw input persistence, textured sprite/animation/material
 policy, target context wiring/lifecycle/reach beyond the approved read-only
-product query and enrichment helpers, automatic frame request/play-surface
-ownership of enrichment, diagnostics persistence/exposure beyond the approved
-thin Qt caller, additional Qt mouse behavior, render command drawing, canvas
-polish, or new gameplay semantics unless the user explicitly reprioritizes.
+product query/enrichment/diagnostics helpers, automatic frame request/play-surface
+ownership of enrichment, diagnostics persistence or exposure beyond compact
+read-only panel rows, additional Qt mouse behavior, render command drawing,
+canvas polish, or new gameplay semantics unless the user explicitly
+reprioritizes.

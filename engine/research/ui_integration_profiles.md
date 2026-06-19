@@ -209,9 +209,11 @@ hovered-target binding context enrichment from that report. Runtime/product
 `RuntimeGameplayProductInputFrameTargetContext` is complete as opt-in pre-frame
 target-context enrichment over the latest eligible `PrimaryTile` pressed event.
 Qt manual Step and Product Frame Pump now consume that helper through the shared
-one-frame path. Textured sprites/animation/material policy, diagnostics display,
-frame request/play-surface ownership, explicit interaction execution, product
-UX/save semantics, and broader UI execution remain gated.
+one-frame path, and compact read-only target-context diagnostics now project into
+the product play panel. Textured sprites/animation/material policy, richer
+diagnostics/highlighting, frame request/play-surface ownership, explicit
+interaction execution, product UX/save semantics, and broader UI execution remain
+gated.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
@@ -425,13 +427,37 @@ Qt product input frame target context consumer:
 - Qt passes `enrichedFrame.frame` to the frame request input. `Unchanged` and
   `NoEligiblePrimaryTile` paths still pass the copied unchanged frame without
   branching.
-- Qt stores no helper diagnostics, target-query result, target-context result,
-  primary tile index/tile, or reach result, and exposes none of them through
-  product panel rows, scene/UI models, settings, logs, or status text.
+- Qt stores the latest transient helper result beside existing transient input,
+  latest-frame, and camera state, then wires a stable const pointer through
+  `UiFeatureContext`.
+- Product Input Focus disable clears accumulator state plus latest target-context
+  diagnostics/pointer; enabling focus does not synthesize diagnostics.
+- Widget/body refreshes do not clear the member; the pointer remains stable
+  through rebuilds.
+- Qt exposes no diagnostics in settings, logs, or status text.
 - Product Input Focus gating, mouse event handling, keyboard mapping, pump
   timing, accumulator one-shot drain, held-control behavior, and manual Step
   availability are unchanged.
 - Qt remains a thin caller and does not own target lookup semantics.
+
+Product input target-context diagnostics projection:
+- `UiFeatureContext` carries a const diagnostics pointer, but
+  `uiFeatureContextHasProductPlayMode(...)` ignores it, so diagnostics alone do
+  not create product play context.
+- `UiRuntimeWorkspaceModel` passes diagnostics into the product panel only when
+  product play context is already present.
+- `UiProductPlayModePanelModel` adds compact `targetContext` rows and does not
+  require latest-frame rows.
+- No diagnostics pointer produces no target-context rows.
+- Rows are source-shaped and compact: `targetContext.status`,
+  `targetContext.hasPrimaryTileEvent`, conditional
+  `targetContext.primaryTileEventIndex`, conditional `targetContext.primaryTile`,
+  `targetContext.target.status`, `targetContext.target.hasTarget`, conditional
+  `targetContext.target.targetId`, `targetContext.target.hasPlayer`,
+  `targetContext.target.hasReach`, conditional `targetContext.target.reachable`,
+  and `targetContext.projection.status`.
+- The projection does not dump copied frames, all events, full target payloads,
+  or nested structs.
 
 Qt manual Step consumer:
 - The View menu exposes `Product Step` for ready `--play` sessions only.
@@ -546,7 +572,7 @@ Hard stops for product play UI projection:
   package discovery, additional Qt mouse behavior, target context wiring,
   target search, reach lookup beyond the read-only product query/enrichment
   helpers, automatic frame request/play-surface ownership of frame enrichment,
-  diagnostics persistence or display from the Qt helper call,
+  diagnostics persistence or display beyond compact read-only panel rows,
   pause/retry/reset/completion/failure/save-load productization, package
   scanning/watching/discovery, source mutation, raw Qt event persistence,
   projected pointer persistence, viewport geometry/state persistence, render
