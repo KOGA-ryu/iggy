@@ -35,19 +35,18 @@
 #include "scene/player/PlayerAgentState.hpp"
 
 #include "NativePlayMath.hpp"
+#include "NativeSceneDrawList.hpp"
 
 namespace {
 
 namespace runtime = iggy::runtime;
+using iggy::native_play::BuildNativeSceneDrawItems;
 using iggy::native_play::LookAt;
 using iggy::native_play::Mat4;
 using iggy::native_play::Multiply;
+using iggy::native_play::NativeSceneDrawItem;
+using iggy::native_play::NativeSceneModelId;
 using iggy::native_play::Perspective;
-using iggy::native_play::RotationX;
-using iggy::native_play::RotationY;
-using iggy::native_play::Scale;
-using iggy::native_play::Translation;
-using iggy::native_play::Vec3;
 
 constexpr int InitialWindowWidth = 1280;
 constexpr int InitialWindowHeight = 720;
@@ -136,19 +135,6 @@ struct NativeMeshGpuBuffers {
 	VkBuffer indexBuffer = VK_NULL_HANDLE;
 	VkDeviceMemory indexMemory = VK_NULL_HANDLE;
 	std::uint32_t indexCount = 0;
-};
-
-enum class NativeSceneModelId {
-	Floor,
-	Wall,
-	NpcActor,
-	Player,
-};
-
-struct NativeSceneDrawItem {
-	NativeSceneModelId modelId = NativeSceneModelId::Player;
-	Mat4 model;
-	std::array<float, 4> tint { 1.0F, 1.0F, 1.0F, 1.0F };
 };
 
 void ThrowIfFailed(VkResult result, const char *message)
@@ -1868,44 +1854,6 @@ private:
 		return constants;
 	}
 
-	Mat4 playerCubeModelMatrix(float seconds) const
-	{
-		if (!product_.has_value() ||
-				!product_->play.state.loop.currentState.session.hasPlayer) {
-			return Multiply(
-				RotationY(seconds * 0.85F),
-				RotationX(seconds * 0.35F));
-		}
-
-		const auto &session =
-			product_->play.state.loop.currentState.session;
-		const auto &map = session.level.map;
-		const Vec3 playerPosition {
-			session.player.position.x - static_cast<float>(map.width) * 0.5F,
-			0.5F,
-			session.player.position.y - static_cast<float>(map.height) * 0.5F,
-		};
-		return Multiply(
-			Translation(playerPosition),
-			Scale({ 0.75F, 0.75F, 0.75F }));
-	}
-
-	Mat4 tileCubeModelMatrix(
-		int x,
-		int y,
-		float mapWidth,
-		float mapHeight,
-		float verticalCenter,
-		Vec3 scale) const
-	{
-		const Vec3 position {
-			static_cast<float>(x) + 0.5F - mapWidth * 0.5F,
-			verticalCenter,
-			static_cast<float>(y) + 0.5F - mapHeight * 0.5F,
-		};
-		return Multiply(Translation(position), Scale(scale));
-	}
-
 	Mat4 cameraViewMatrix() const
 	{
 		float extent = 6.0F;
@@ -1921,6 +1869,13 @@ private:
 			{ 0.0F, extent * 0.85F, extent * 1.15F },
 			{ 0.0F, 0.0F, 0.0F },
 			{ 0.0F, 1.0F, 0.0F });
+	}
+
+	const runtime::RuntimeGameplayState *nativeSceneDrawState() const
+	{
+		if (!product_.has_value())
+			return nullptr;
+		return &product_->play.state.loop.currentState;
 	}
 
 	void drawMesh(
@@ -1970,88 +1925,6 @@ private:
 		return nullptr;
 	}
 
-	void appendSceneDraw(
-		std::vector<NativeSceneDrawItem> &drawItems,
-		NativeSceneModelId modelId,
-		const Mat4 &model,
-		std::array<float, 4> tint) const
-	{
-		drawItems.push_back({ modelId, model, tint });
-	}
-
-	std::vector<NativeSceneDrawItem> buildSceneDrawItems(float seconds) const
-	{
-		std::vector<NativeSceneDrawItem> drawItems;
-		if (!product_.has_value()) {
-			appendSceneDraw(
-				drawItems,
-				NativeSceneModelId::Player,
-				playerCubeModelMatrix(seconds),
-				{ 0.18F, 0.70F, 1.0F, 1.0F });
-			return drawItems;
-		}
-
-		const auto &map =
-			product_->play.state.loop.currentState.session.level.map;
-		const float mapWidth = static_cast<float>(map.width);
-		const float mapHeight = static_cast<float>(map.height);
-		for (int y = 0; y < map.height; ++y) {
-			for (int x = 0; x < map.width; ++x) {
-				appendSceneDraw(
-					drawItems,
-					NativeSceneModelId::Floor,
-					tileCubeModelMatrix(
-						x,
-						y,
-						mapWidth,
-						mapHeight,
-						-0.055F,
-						{ 0.96F, 0.10F, 0.96F }),
-					{ 0.20F, 0.34F, 0.26F, 1.0F });
-
-				const iggy::LevelTile *tile = map.tileAt(x, y);
-				if (tile != nullptr && !tile->walkable) {
-					appendSceneDraw(
-						drawItems,
-						NativeSceneModelId::Wall,
-						tileCubeModelMatrix(
-							x,
-							y,
-							mapWidth,
-							mapHeight,
-							0.38F,
-							{ 0.96F, 0.78F, 0.96F }),
-						{ 0.38F, 0.40F, 0.48F, 1.0F });
-				}
-			}
-		}
-
-		for (const iggy::NpcActorState2D &actor :
-				product_->play.state.loop.currentState.npcActors.actors) {
-			if (!actor.present)
-				continue;
-			const Vec3 position {
-				actor.position.x - mapWidth * 0.5F,
-				0.38F,
-				actor.position.y - mapHeight * 0.5F,
-			};
-			appendSceneDraw(
-				drawItems,
-				NativeSceneModelId::NpcActor,
-				Multiply(
-					Translation(position),
-					Scale({ 0.62F, 0.62F, 0.62F })),
-				{ 1.0F, 0.55F, 0.18F, 1.0F });
-		}
-
-		appendSceneDraw(
-			drawItems,
-			NativeSceneModelId::Player,
-			playerCubeModelMatrix(seconds),
-			{ 0.18F, 0.70F, 1.0F, 1.0F });
-		return drawItems;
-	}
-
 	void drawSceneDrawItems(
 		VkCommandBuffer commandBuffer,
 		const Mat4 &viewProjection,
@@ -2094,7 +1967,7 @@ private:
 			std::chrono::duration<float>(Clock::now() - startTime_).count();
 		const Mat4 viewProjection = viewProjectionMatrix();
 		const std::vector<NativeSceneDrawItem> drawItems =
-			buildSceneDrawItems(seconds);
+			BuildNativeSceneDrawItems({ nativeSceneDrawState(), seconds });
 		drawSceneDrawItems(commandBuffer, viewProjection, drawItems);
 		vkCmdEndRenderPass(commandBuffer);
 
