@@ -342,6 +342,9 @@ Recently completed optimized stretches:
   app-local scene draw-list extraction in `NativeSceneDrawList.hpp`, keeping
   draw-item ordering and transforms out of Vulkan command recording without
   extracting mesh-buffer ownership or renderer/swapchain/pipeline resources.
+  Native no-Qt product play state/request/script orchestration now lives in
+  app-local `NativeProductSession`, while `IggyNativePlay.cpp` remains the SDL,
+  CLI/help, draw-list/camera orchestration, and Vulkan renderer owner.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -942,8 +945,22 @@ Done:
   render-command API change, no SDL/input/scripted-control/free-play/gameplay
   stepping change, no CLI/debugger output/docs change in the source packet, no
   glTF/assets/textures/materials/animation/shader change, and no intended visual
-  behavior change. Vulkan mesh-buffer ownership and renderer/swapchain/pipeline/
-  command-buffer extraction remain separate later packets.
+behavior change. Vulkan mesh-buffer ownership and renderer/swapchain/pipeline/
+command-buffer extraction remain separate later packets.
+Native Product Session Extraction is complete for no-Qt app-shell separation:
+`NativeProductSession.hpp/.cpp` add app-local `iggy::native_play::NativeProductSession`
+and `NativeProductSessionConfig`. The session owns/delegates product load/play
+state, product input accumulator, active movement controls, latest product frame
+and has flag, presentation camera and has flag, scripted-control cadence/state,
+final dump state, movement guard, camera request config, and one-frame product
+request/tick flow. `IggyNativePlay.cpp` remains the app shell and renderer owner:
+`LaunchOptions`/CLI parsing/help, SDL key mapping/event loop/window lifecycle,
+Vulkan setup/swapchain/render pass/pipeline/shaders/command buffers/buffer
+upload/mesh ownership/destruction, and draw-list/camera orchestration remain
+there. `NativeProductSessionConfig` carries raw scripted-control specs, and the
+session constructor loads the product scenario before parsing scripted controls,
+preserving pre-extraction side-effect/error ordering; `ParseArgs` still uses the
+shared parser only for `--expect-player-tiles` count validation.
 
 Exit criteria:
 - Load a package or explicit scenario.

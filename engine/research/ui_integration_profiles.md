@@ -244,6 +244,24 @@ SDL/input/scripted-control/free-play/gameplay stepping, Qt behavior, CLI/debugge
 output, glTF/assets/textures/materials/animation/shader policy, and visual
 behavior changes remain separate.
 
+Native product session extraction is complete as no-Qt app-local product
+orchestration: `NativeProductSession.hpp/.cpp` own/delegate product load/play
+state, input accumulator, active movement controls, latest frame, presentation
+camera, scripted-control cadence/state, final dump state, movement guard, camera
+request config, and one-frame product request/tick flow. `IggyNativePlay.cpp`
+remains the app shell and renderer owner for CLI parsing/help, SDL key mapping
+and event/window lifecycle, Vulkan setup/swapchain/render pass/pipeline/shaders/
+command buffers/buffer upload/mesh ownership/destruction, plus draw-list/camera
+orchestration. The session loads the product scenario before parsing raw
+scripted-control specs, preserving pre-extraction load-before-parse ordering;
+`ParseArgs` still uses the shared parser only for expected-player-tile count
+validation. Output/error strings and normal scripted final-state behavior are
+intended unchanged. Runtime/product/scene/server/render-command APIs, gameplay/
+input/scripted-control semantics, CLI/debugger output, SDL extraction, renderer
+class/skeleton extraction, mesh-buffer ownership, `NativePlayMath.hpp`,
+`NativeSceneDrawList.hpp`, glTF/assets/textures/material registry/animation/
+shader work remain separate.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.
