@@ -26,14 +26,16 @@ RuntimeGameplayProductLoopStepResult NoFrameStep(
 }
 
 RuntimeGameplayProductLoopStepInput StepInput(
-	RuntimeGameplayProductLoopState state,
+	const RuntimeGameplayProductPlaySurfaceFrameInput &surfaceInput,
 	const PlayerInputBinding2DResult &binding)
 {
 	RuntimeGameplayProductLoopStepInput input;
-	input.state = state;
+	input.state = surfaceInput.state;
 	input.playerIntents = binding.intents;
 	input.hasPlayerInputContextOverride = true;
 	input.playerInputContextOverride = binding.inputContext;
+	input.allowFreePlayFrameWhenNoFrameAvailable =
+		surfaceInput.allowFreePlayFrameWhenNoFrameAvailable;
 	return input;
 }
 
@@ -66,7 +68,8 @@ RuntimeGameplayProductPlaySurfaceFrame::build(
 		return result;
 	}
 
-	if (input.state.nextFrameIndex >= input.state.scenario.frames.size()) {
+	if (input.state.nextFrameIndex >= input.state.scenario.frames.size() &&
+			!input.allowFreePlayFrameWhenNoFrameAvailable) {
 		result.status =
 			RuntimeGameplayProductPlaySurfaceFrameStatus::NoFrameAvailable;
 		result.ignoredInputEventCount = input.inputFrame.events.size();
@@ -89,7 +92,7 @@ RuntimeGameplayProductPlaySurfaceFrame::build(
 		result.inputAdapter.bindingContext,
 		result.inputAdapter.actions);
 	result.step = RuntimeGameplayProductLoop {}.step(
-		StepInput(input.state, result.playerBinding));
+		StepInput(input, result.playerBinding));
 	result.status = result.step.status ==
 			RuntimeGameplayProductLoopStepStatus::Stepped
 		? RuntimeGameplayProductPlaySurfaceFrameStatus::Stepped

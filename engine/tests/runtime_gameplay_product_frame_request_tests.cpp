@@ -279,6 +279,39 @@ void TestNoFrameRequestRunsCameraAndPresentsCurrentState()
 		"exhausted request should surface ignored input count");
 }
 
+void TestFreePlayNoFrameRequestRunsInputWithoutAdvancingFrameCursor()
+{
+	iggy::runtime::RuntimeGameplayProductFrameRequestInput input;
+	input.state = ReadyState(1);
+	input.state.loop.nextFrameIndex = input.state.loop.scenario.frames.size();
+	input.inputFrame = InputFrame({ TileEvent({ 2, 0 }) });
+	input.allowFreePlayFrameWhenNoFrameAvailable = true;
+	input.presentationCamera = CameraConfig();
+
+	const auto result = Run(input);
+
+	Expect(result.status == RequestStatus::Stepped,
+		"free-play exhausted request should report stepped");
+	Expect(result.presentationCamera.status == CameraStatus::Initialized,
+		"free-play exhausted request should still run camera policy");
+	Expect(result.frame.status == FrameStatus::Stepped,
+		"free-play exhausted request should preserve play-mode stepped status");
+	Expect(result.frame.surface.status == SurfaceStatus::Stepped,
+		"free-play exhausted request should preserve play-surface stepped status");
+	Expect(result.frame.surface.inputAdapter.eventCount == 1 &&
+			result.frame.surface.playerBinding.emittedIntentCount == 1,
+		"free-play exhausted request should map and bind supplied input");
+	Expect(result.frame.surface.step.frame.acceptedCommandCount == 1,
+		"free-play exhausted request should apply player input");
+	Expect(result.state.loop.nextFrameIndex == input.state.loop.nextFrameIndex,
+		"free-play exhausted request should not advance frame cursor");
+	Expect(iggy::playerTile(result.state.loop.currentState.session.player) ==
+			iggy::TileCoord { 2, 0 },
+		"free-play exhausted request should update player through runtime");
+	Expect(result.ignoredInputEventCount == 0,
+		"free-play exhausted focused request should not ignore input");
+}
+
 void TestUnfocusedRequestIgnoresInputButConsumesFrame()
 {
 	iggy::runtime::RuntimeGameplayProductFrameRequestInput input;
@@ -401,6 +434,7 @@ int main()
 	TestReadyFocusedRequestRunsCameraAndFrameOnce();
 	TestNotLoadedRequestUsesCameraFallbackAndSkipsWork();
 	TestNoFrameRequestRunsCameraAndPresentsCurrentState();
+	TestFreePlayNoFrameRequestRunsInputWithoutAdvancingFrameCursor();
 	TestUnfocusedRequestIgnoresInputButConsumesFrame();
 	TestPreviousCameraCanBeFedIntoNextRequest();
 	TestInputsAndNestedResultsArePreserved();

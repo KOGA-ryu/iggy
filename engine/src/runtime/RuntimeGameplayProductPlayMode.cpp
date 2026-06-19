@@ -52,6 +52,8 @@ RuntimeGameplayProductPlayModeFrameResult RuntimeGameplayProductPlayMode::frame(
 	surfaceInput.state = input.state.loop;
 	surfaceInput.inputFrame = input.inputFrame;
 	surfaceInput.hasInputFocus = input.state.hasInputFocus;
+	surfaceInput.allowFreePlayFrameWhenNoFrameAvailable =
+		input.allowFreePlayFrameWhenNoFrameAvailable;
 	surfaceInput.presentationCamera = input.presentationCamera;
 	surfaceInput.levelRenderConfig = input.levelRenderConfig;
 

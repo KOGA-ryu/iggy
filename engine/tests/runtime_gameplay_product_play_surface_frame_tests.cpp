@@ -256,6 +256,48 @@ void TestNoFrameAvailableSkipsInputAndRendersCurrentState()
 		"exhausted loaded presentation should render level commands");
 }
 
+void TestFreePlayNoFramePathMapsBindsStepsAndPresents()
+{
+	iggy::runtime::RuntimeGameplayProductLoopBuildResult build =
+		BuildFixture("moving_guard_room.toml");
+	iggy::runtime::RuntimeGameplayProductPlaySurfaceFrameInput input;
+	input.state = build.state;
+	input.state.nextFrameIndex = input.state.scenario.frames.size();
+	input.allowFreePlayFrameWhenNoFrameAvailable = true;
+	input.inputFrame.events = { TileEvent({ 4, 1 }) };
+	input.inputFrame.bindingContext.input.worldInputEnabled = true;
+	input.presentationCamera = { { 1.0F, 1.0F } };
+	input.levelRenderConfig = Config();
+
+	const iggy::runtime::RuntimeGameplayProductPlaySurfaceFrameResult result =
+		BuildSurface(input);
+
+	Expect(result.status == PlayStatus::Stepped,
+		"free-play exhausted surface should step when explicitly enabled");
+	Expect(result.ignoredInputEventCount == 0,
+		"free-play exhausted surface should not ignore focused input events");
+	Expect(result.inputAdapter.eventCount == 1 &&
+			result.inputAdapter.emittedActionCount == 1,
+		"free-play exhausted surface should map input events");
+	Expect(result.playerBinding.actionCount == 1 &&
+			result.playerBinding.emittedIntentCount == 1,
+		"free-play exhausted surface should bind input actions");
+	Expect(result.step.status ==
+			iggy::runtime::RuntimeGameplayProductLoopStepStatus::Stepped,
+		"free-play exhausted surface should step product loop");
+	Expect(result.step.state.nextFrameIndex == input.state.nextFrameIndex,
+		"free-play exhausted surface should not advance frame cursor");
+	Expect(result.step.frame.acceptedCommandCount == 1,
+		"free-play exhausted surface should apply player input");
+	Expect(result.step.frame.npcMovedCount == 0,
+		"free-play exhausted surface should not replay scripted NPC movement");
+	Expect(iggy::playerTile(result.step.state.currentState.session.player) ==
+			iggy::TileCoord { 4, 1 },
+		"free-play exhausted surface should move player");
+	Expect(result.presentation.status == PresentationStatus::Rendered,
+		"free-play exhausted surface should present post-step state");
+}
+
 void TestFocusedPathMapsBindsStepsAndPresentsPostStep()
 {
 	const iggy::runtime::RuntimeGameplayProductLoopBuildResult build =
@@ -441,6 +483,7 @@ int main()
 {
 	TestNotLoadedSkipsInputAndStep();
 	TestNoFrameAvailableSkipsInputAndRendersCurrentState();
+	TestFreePlayNoFramePathMapsBindsStepsAndPresents();
 	TestFocusedPathMapsBindsStepsAndPresentsPostStep();
 	TestFocusedPathSurfacesAdapterAndBindingIssues();
 	TestUnfocusedPathIgnoresEventsButStepsWithContextOverride();

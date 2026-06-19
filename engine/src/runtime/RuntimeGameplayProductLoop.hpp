@@ -51,6 +51,7 @@ struct RuntimeGameplayProductLoopStepInput {
 	std::vector<PlayerInputIntent2D> playerIntents;
 	bool hasPlayerInputContextOverride = false;
 	PlayerInputContext2D playerInputContextOverride;
+	bool allowFreePlayFrameWhenNoFrameAvailable = false;
 };
 
 struct RuntimeGameplayProductLoopStepResult {

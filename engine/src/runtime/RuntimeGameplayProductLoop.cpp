@@ -44,6 +44,20 @@ RuntimeGameplayProductLoopStepResult StepWithFrame(
 	return result;
 }
 
+RuntimeGameplayProductLoopStepResult StepWithFreePlayFrame(
+	const RuntimeGameplayProductLoopStepInput &input,
+	const RuntimeGameplayOrchestratedFrameRunnerFrame &frame)
+{
+	RuntimeGameplayProductLoopStepResult result;
+	result.frameIndex = input.state.nextFrameIndex;
+	result.frame = RuntimeGameplayOrchestratedFrameStep {}.run(
+		InputFromFrame(frame, input));
+	result.state = input.state;
+	result.state.currentState = result.frame.state;
+	result.status = RuntimeGameplayProductLoopStepStatus::Stepped;
+	return result;
+}
+
 RuntimeGameplayProductLoopStepResult StepWithFrame(
 	const RuntimeGameplayProductLoopStepInput &input,
 	const RuntimeGameplayOrchestratedFrameRunnerFrame &frame,
@@ -59,6 +73,42 @@ RuntimeGameplayProductLoopStepResult StepWithFrame(
 	++result.state.nextFrameIndex;
 	result.status = RuntimeGameplayProductLoopStepStatus::Stepped;
 	return result;
+}
+
+RuntimeGameplayProductLoopStepResult StepWithFreePlayFrame(
+	const RuntimeGameplayProductLoopStepInput &input,
+	const RuntimeGameplayOrchestratedFrameRunnerFrame &frame,
+	const physics2d::CollisionWorld2D &explicitWorld)
+{
+	RuntimeGameplayProductLoopStepResult result;
+	result.frameIndex = input.state.nextFrameIndex;
+	result.frame = RuntimeGameplayOrchestratedFrameStep {}.run(
+		InputFromFrame(frame, input),
+		explicitWorld);
+	result.state = input.state;
+	result.state.currentState = result.frame.state;
+	result.status = RuntimeGameplayProductLoopStepStatus::Stepped;
+	return result;
+}
+
+RuntimeGameplayOrchestratedFrameRunnerFrame FreePlayFrameFrom(
+	const RuntimeGameplayProductLoopState &state)
+{
+	RuntimeGameplayOrchestratedFrameRunnerFrame frame;
+	if (!state.scenario.frames.empty())
+		frame = state.scenario.frames.back().frame;
+
+	frame.playerFrame.state = state.currentState;
+	frame.playerFrame.playerIntents.clear();
+	frame.playerFrame.npcMovementRequests.clear();
+	frame.subjects.clear();
+	frame.controlOverrides.clear();
+	frame.movementMap = state.currentState.session.level.map;
+	frame.previousOccupancy = NpcActorOccupancyProjector2D {}.project(
+		state.currentState.npcActors,
+		frame.movementConfig.occupancy);
+	frame.interactionTargets = state.currentState.interaction.targets;
+	return frame;
 }
 
 RuntimeGameplayProductLoopStepResult InitialStepResult(
@@ -81,6 +131,11 @@ bool StepUnavailable(RuntimeGameplayProductLoopStepResult &result)
 		return true;
 	}
 	return false;
+}
+
+bool HasAuthoredFrameAvailable(const RuntimeGameplayProductLoopState &state)
+{
+	return state.nextFrameIndex < state.scenario.frames.size();
 }
 
 } // namespace
@@ -117,7 +172,11 @@ RuntimeGameplayProductLoopStepResult RuntimeGameplayProductLoop::step(
 {
 	RuntimeGameplayProductLoopStepResult guarded = InitialStepResult(input);
 	if (StepUnavailable(guarded))
-		return guarded;
+		return input.allowFreePlayFrameWhenNoFrameAvailable
+				&& input.state.loaded
+				&& !HasAuthoredFrameAvailable(input.state)
+			? StepWithFreePlayFrame(input, FreePlayFrameFrom(input.state))
+			: guarded;
 	return StepWithFrame(
 		input,
 		input.state.scenario.frames[input.state.nextFrameIndex].frame);
@@ -129,7 +188,14 @@ RuntimeGameplayProductLoopStepResult RuntimeGameplayProductLoop::step(
 {
 	RuntimeGameplayProductLoopStepResult guarded = InitialStepResult(input);
 	if (StepUnavailable(guarded))
-		return guarded;
+		return input.allowFreePlayFrameWhenNoFrameAvailable
+				&& input.state.loaded
+				&& !HasAuthoredFrameAvailable(input.state)
+			? StepWithFreePlayFrame(
+				input,
+				FreePlayFrameFrom(input.state),
+				explicitWorld)
+			: guarded;
 	return StepWithFrame(
 		input,
 		input.state.scenario.frames[input.state.nextFrameIndex].frame,

@@ -880,7 +880,6 @@ private:
 
 		runtime::RuntimeGameplayProductPlayModeState &playState =
 			product_->play.state;
-		loopProductFrameCursorForNativePrototype(playState);
 		applyNativeMovementGuard(playState);
 
 		runtime::RuntimeGameplayProductInputAccumulatorFrameInput frameInput;
@@ -910,6 +909,7 @@ private:
 		runtime::RuntimeGameplayProductFrameRequestInput input;
 		input.state = playState;
 		input.inputFrame = targetAction.frame;
+		input.allowFreePlayFrameWhenNoFrameAvailable = true;
 		input.presentationCamera = productPresentationCameraConfig();
 
 		const runtime::RuntimeGameplayProductFrameRequestResult result =
@@ -920,16 +920,6 @@ private:
 		productPresentationCamera_ =
 			result.presentationCamera.presentationCamera;
 		hasProductPresentationCamera_ = true;
-	}
-
-	void loopProductFrameCursorForNativePrototype(
-		runtime::RuntimeGameplayProductPlayModeState &playState) const
-	{
-		if (!playState.loop.loaded || playState.loop.scenario.frames.empty())
-			return;
-		if (playState.loop.nextFrameIndex < playState.loop.scenario.frames.size())
-			return;
-		playState.loop.nextFrameIndex = 0;
 	}
 
 	void createInstance()

@@ -16,6 +16,7 @@ enum class RuntimeGameplayProductFrameRequestStatus {
 struct RuntimeGameplayProductFrameRequestInput {
 	RuntimeGameplayProductPlayModeState state;
 	RuntimeGameplayProductInputFrame2D inputFrame;
+	bool allowFreePlayFrameWhenNoFrameAvailable = false;
 	RuntimeGameplayProductPresentationCameraConfig presentationCamera;
 };
 

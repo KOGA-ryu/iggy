@@ -21,6 +21,7 @@ struct RuntimeGameplayProductPlaySurfaceFrameInput {
 	RuntimeGameplayProductLoopState state;
 	RuntimeGameplayProductInputFrame2D inputFrame;
 	bool hasInputFocus = true;
+	bool allowFreePlayFrameWhenNoFrameAvailable = false;
 	CameraState presentationCamera;
 	LevelRenderFrame2DConfig levelRenderConfig;
 };

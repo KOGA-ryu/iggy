@@ -32,6 +32,8 @@ RuntimeGameplayProductFrameRequestResult RuntimeGameplayProductFrameRequest::run
 	RuntimeGameplayProductPlayModeFrameInput frameInput;
 	frameInput.state = input.state;
 	frameInput.inputFrame = input.inputFrame;
+	frameInput.allowFreePlayFrameWhenNoFrameAvailable =
+		input.allowFreePlayFrameWhenNoFrameAvailable;
 	frameInput.presentationCamera = result.presentationCamera.presentationCamera;
 	frameInput.levelRenderConfig = result.presentationCamera.levelRenderConfig;
 

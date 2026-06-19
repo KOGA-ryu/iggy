@@ -406,6 +406,47 @@ void TestExhaustedFramesReturnNoFrameWithoutMutation()
 		"exhausted step should not mutate current state");
 }
 
+void TestFreePlayStepRunsInputWithoutAdvancingFrameCursor()
+{
+	const BuildResult build = BuildFixture("moving_guard_room.toml");
+	iggy::runtime::RuntimeGameplayProductLoopStepInput scripted;
+	scripted.state = build.state;
+	const StepResult scriptedResult =
+		iggy::runtime::RuntimeGameplayProductLoop {}.step(scripted);
+
+	iggy::runtime::RuntimeGameplayProductLoopStepInput freePlay;
+	freePlay.state = scriptedResult.state;
+	freePlay.playerIntents = { iggy::playerMoveToTileIntent({ 4, 1 }) };
+	freePlay.hasPlayerInputContextOverride = true;
+	freePlay.playerInputContextOverride = {};
+	freePlay.allowFreePlayFrameWhenNoFrameAvailable = true;
+	const iggy::runtime::RuntimeGameplayProductLoopState before =
+		freePlay.state;
+
+	const StepResult result =
+		iggy::runtime::RuntimeGameplayProductLoop {}.step(freePlay);
+
+	Expect(scriptedResult.state.nextFrameIndex ==
+			scriptedResult.state.scenario.frames.size(),
+		"free-play setup should exhaust authored frames");
+	Expect(result.status ==
+			iggy::runtime::RuntimeGameplayProductLoopStepStatus::Stepped,
+		"free-play product loop should step when explicitly enabled");
+	Expect(result.frameIndex == before.nextFrameIndex,
+		"free-play step should report exhausted frame cursor");
+	Expect(result.state.nextFrameIndex == before.nextFrameIndex,
+		"free-play step should not consume or rewind authored frames");
+	Expect(result.frame.acceptedCommandCount == 1,
+		"free-play step should accept caller movement intent");
+	Expect(result.frame.npcMovedCount == 0,
+		"free-play step should not replay authored NPC movement");
+	Expect(iggy::playerTile(result.state.currentState.session.player) ==
+			iggy::TileCoord { 4, 1 },
+		"free-play step should update current player state");
+	Expect(freePlay.allowFreePlayFrameWhenNoFrameAvailable,
+		"free-play step should not mutate caller opt-in flag");
+}
+
 void TestNotLoadedStateReturnsNotLoadedWithoutMutation()
 {
 	iggy::runtime::RuntimeGameplayProductLoopStepInput input;
@@ -498,6 +539,7 @@ int main()
 	TestCallerIntentsReplaceAuthoredFrameIntents();
 	TestMultipleStepsCarryCurrentStateForward();
 	TestExhaustedFramesReturnNoFrameWithoutMutation();
+	TestFreePlayStepRunsInputWithoutAdvancingFrameCursor();
 	TestNotLoadedStateReturnsNotLoadedWithoutMutation();
 	TestExplicitCollisionWorldOverloadCanBlockMovement();
 	TestExplicitCollisionWorldOverloadPreservesContextOverride();
