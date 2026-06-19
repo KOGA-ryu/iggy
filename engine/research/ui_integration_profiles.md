@@ -215,11 +215,11 @@ complete as a temporary app-shell consumer of existing latest-frame quad
 commands. Thin Qt target highlight overlay is complete as a visual annotation
 over latest target-context diagnostics. Textured sprites/animation/material
 policy, real file loading, glTF/static model parsing, asset registry/catalog,
-materials/textures/descriptors/samplers, non-cube model slot binding, package/
-authoring asset policy, renderer expansion, backend validation, richer overlays/
-labels, richer diagnostics, frame request/play-surface ownership, explicit
-interaction execution, product UX/save semantics, and broader UI execution
-remain gated.
+materials/textures/descriptors/samplers, non-cube model slot expansion beyond
+the procedural player bean, package/authoring asset policy, renderer expansion,
+backend validation, richer overlays/labels, richer diagnostics, frame request/
+play-surface ownership, explicit interaction execution, product UX/save
+semantics, and broader UI execution remain gated.
 
 Native `iggy_native_play` scripted controls/debugger is complete as a no-Qt
 app-shell harness over the same product input path as keyboard controls. It
@@ -355,6 +355,21 @@ files/interfaces, CMake, tests, loader/file IO, glTF/static model parsing,
 materials/textures/descriptors/samplers, resource catalog, staging/device-local
 upload, Linux/dGPU policy, backend abstraction, model slot binding behavior,
 CLI/debugger output, and gameplay/session/input/scripted-control behavior remain
+separate.
+
+Native procedural bean mesh slot binding is complete as the first no-Qt
+non-cube mesh proof: `NativeStaticMeshAsset.hpp` now provides
+`NativeBeanStaticMeshAsset()` as an in-memory procedural mesh using the existing
+position/color vertex shape and `std::uint16_t` indexed triangles.
+`NativeVulkanRenderer.cpp` creates a separate `playerMesh_` from that asset and
+registers only `NativeVulkanModelSlot::Player` to it. `Floor`, `Wall`, and
+`NpcActor` stay on the cube fallback. The existing shader interface, vertex
+binding, push constants, item tint, host-visible/coherent upload path,
+`VK_INDEX_TYPE_UINT16` draw path, app shell, product session, draw-list order,
+camera, CLI/debugger output, and public renderer API remain unchanged. Loader
+work, file IO, glTF/static model parsing, asset registries/catalogs,
+materials/textures/descriptors/samplers, staging/device-local upload, Linux/
+dGPU policy, backend abstraction, and gameplay/session/input behavior remain
 separate.
 
 The current product play UI projection:

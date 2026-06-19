@@ -365,15 +365,17 @@ Recently completed optimized stretches:
   static mesh asset data groundwork now moves the cube's CPU positions, colors,
   and `std::uint16_t` indices into backend-free `NativeStaticMeshAsset` data
   while preserving the vertex-color pipeline shape, host-visible/coherent upload,
-  model slot cube fallback behavior, and indexed draw behavior.
+  model slot cube fallback behavior, and indexed draw behavior. Native
+  procedural bean mesh binding now adds a second CPU static mesh helper and binds
+  only the `Player` model slot to that non-cube mesh while keeping floor, wall,
+  and NPC slots on the cube fallback.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
   execution if approved, app-shell/CLI extraction, real file loading, glTF/static
   model parsing, asset registry/catalog, materials/textures/descriptors/samplers,
-  non-cube model slot binding, package/authoring asset policy, backend
-  validation/abstraction, pause/retry/reset policy, completion/failure
-  evaluation, and save/load UX.
+  package/authoring asset policy, backend validation/abstraction,
+  pause/retry/reset policy, completion/failure evaluation, and save/load UX.
 - Rendering backend/presentation layer.
 - Audio server boundary.
 - Save/load productization and authored package roundtrip.
@@ -1068,6 +1070,21 @@ draw-list, shader, loader, file IO, glTF, material/texture/descriptor/sampler,
 resource catalog, staging/device-local upload, Linux/dGPU, backend abstraction,
 model slot binding behavior, CLI/debugger output, or gameplay/session/input/
 scripted-control change is included.
+Native Procedural Bean Mesh Slot Binding is complete for no-Qt renderer prep:
+`NativeStaticMeshAsset.hpp` adds `NativeBeanStaticMeshAsset()`, an in-memory
+procedural non-cube mesh using the existing `NativeStaticMeshVertex` position/
+color shape and `std::uint16_t` indexed triangles. `NativeVulkanRenderer.cpp`
+creates a separate `playerMesh_` from that CPU asset and binds only
+`NativeVulkanModelSlot::Player` to it; `Floor`, `Wall`, and `NpcActor` remain
+registered to the cube fallback. Upload still uses the existing
+host-visible/coherent mesh resource path, vertex binding/attributes remain the
+same two `vec3` shader inputs, indexed draw remains `VK_INDEX_TYPE_UINT16`, and
+draw-item order, tints, camera, product/session behavior, CLI/debugger output,
+and public renderer API are unchanged. This is procedural in-memory mesh slot
+proof only: no loader, file IO, glTF/static model parsing, asset registry/
+catalog, material/texture/descriptor/sampler policy, shader change, staging/
+device-local upload, Linux/dGPU validation, backend abstraction, runtime/
+product/scene API, app shell, or gameplay behavior change is included.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -1087,7 +1104,7 @@ First gates:
 - Point-vs-tile / `PrimaryPoint` behavior beyond the current `PrimaryTile`
   policy.
 - Real file loading, glTF/static model parsing, asset registry/catalog,
-  materials/textures/descriptors/samplers, non-cube model slot binding,
+  materials/textures/descriptors/samplers, non-cube model slot expansion,
   package/authoring asset policy, renderer expansion, and any canvas polish.
 - Pause/retry/reset policy.
 - Completion/failure evaluator.

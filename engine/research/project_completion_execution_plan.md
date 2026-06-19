@@ -256,12 +256,14 @@ deterministic product-path stepping and expectation checks; native no-Qt
   model-slot/cube fallback registry is complete as renderer-private model-slot
   groundwork over the existing cube mesh; native no-Qt static mesh asset data
   model is complete as backend-free CPU mesh data for the existing cube fallback;
-  next work is optional richer overlays/labels or diagnostics, frame request/
-  play-surface ownership decisions, explicit interact target synthesis,
-  reach-gated interaction execution, app shell/CLI extraction, real file loading,
-  glTF/static model parsing, asset registry/catalog, materials/textures/
-  descriptors/samplers, non-cube model slot binding, package/authoring asset
-  policy, backend validation/abstraction, and first-play UX policy gates.
+  native no-Qt procedural bean mesh slot binding is complete as the first
+  non-cube in-memory player mesh proof; next work is optional richer overlays/
+  labels or diagnostics, frame request/play-surface ownership decisions,
+  explicit interact target synthesis, reach-gated interaction execution, app
+  shell/CLI extraction, real file loading, glTF/static model parsing, asset
+  registry/catalog, materials/textures/descriptors/samplers, non-cube model slot
+  expansion beyond the procedural player bean, package/authoring asset policy,
+  backend validation/abstraction, and first-play UX policy gates.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -751,9 +753,27 @@ Native static mesh asset data model complete:
   model slot binding behavior, CLI/debugger output, or gameplay/session/input/
   scripted-control change is included.
 - Real file loading, glTF/static model parsing, asset registry/catalog,
-  materials/textures/descriptors/samplers, model slot binding to non-cube assets,
-  staging/device-local upload, and shared render-server ownership remain future
-  gates.
+  materials/textures/descriptors/samplers, model slot expansion beyond the
+  procedural player bean, staging/device-local upload, and shared render-server
+  ownership remain future gates.
+
+Native procedural bean mesh slot binding complete:
+- `NativeStaticMeshAsset.hpp` adds `NativeBeanStaticMeshAsset()` as an in-memory
+  procedural non-cube CPU mesh using the existing `NativeStaticMeshVertex`
+  position/color shape and `std::uint16_t` indexed triangles.
+- `NativeVulkanRenderer.cpp` creates a separate `playerMesh_` from that asset.
+- `NativeVulkanModelSlot::Player` now binds to `playerMesh_`; `Floor`, `Wall`,
+  and `NpcActor` stay bound to the cube fallback.
+- Upload remains host-visible/coherent through the existing mesh resource path.
+- Vertex binding/attributes still expose the same two `vec3` shader inputs, and
+  indexed draw remains `VK_INDEX_TYPE_UINT16`.
+- Draw-item order, tints, camera, product/session behavior, CLI/debugger output,
+  and public renderer API are unchanged.
+- This is procedural in-memory mesh slot proof only: no loader, file IO, glTF/
+  static model parsing, asset registry/catalog, material/texture/descriptor/
+  sampler policy, shader change, staging/device-local upload, Linux/dGPU
+  validation, backend abstraction, runtime/product/scene API, app shell, or
+  gameplay behavior change is included.
 
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
@@ -1260,11 +1280,11 @@ product viewport render command drawer integrated as temporary latest-frame quad
 drawing; thin Qt target highlight overlay integrated as a visual annotation over
 latest diagnostics; textured sprites/animation/material/asset policy, richer
 overlays/labels, real file loading, glTF/static model parsing, asset registry/
-catalog, materials/textures/descriptors/samplers, non-cube model slot binding,
-package/authoring asset policy, renderer expansion, backend validation,
-interaction execution, product UX/save semantics, and UI execution beyond launch/
-focus/input capture/manual step/pump/viewport ownership/primary-tile mouse input
-remain separate gates.
+catalog, materials/textures/descriptors/samplers, non-cube model slot expansion
+beyond the procedural player bean, package/authoring asset policy, renderer
+expansion, backend validation, interaction execution, product UX/save semantics,
+and UI execution beyond launch/focus/input capture/manual step/pump/viewport
+ownership/primary-tile mouse input remain separate gates.
 
 Goal: turn runtime state into visible play state.
 
@@ -1628,14 +1648,15 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 42. Native pipeline/shader resource wrapper is integrated.
 43. Native model-slot/cube fallback registry is integrated.
 44. Native static mesh asset data model is integrated.
-45. Dispatch richer diagnostics display, overlays/labels, frame request/
+45. Native procedural bean mesh slot binding is integrated.
+46. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, real file loading, glTF/static model parsing, asset
     registry/catalog, materials/textures/descriptors/samplers, non-cube model
-    slot binding, package/authoring asset policy, renderer expansion, render
-    projection gaps, backend validation, further input mapping, or a
-    focused-input follow-up, depending on planner scope.
+    slot expansion, package/authoring asset policy, renderer expansion, render
+    projection gaps, backend validation, further input mapping, or a focused-
+    input follow-up, depending on planner scope.
 
 Do not broaden the next Product Loop packet into pause/retry/reset,
 completion/failure, save/load productization, product-loop signature changes,
@@ -1705,3 +1726,9 @@ changes, loader work, file IO, glTF/static model parsing, material/texture/
 descriptor/sampler policy, resource catalog, staging/device-local upload,
 Linux/dGPU validation, backend abstraction, model slot binding behavior changes,
 CLI/debugger output changes, or gameplay/session/input/scripted-control changes.
+Do not treat native procedural bean mesh slot binding as public renderer API
+change, app-shell change, product session change, runtime/product/scene API
+change, draw-list change, shader change, loader work, file IO, glTF/static model
+parsing, material/texture/descriptor/sampler policy, resource catalog, staging/
+device-local upload, Linux/dGPU validation, backend abstraction, CLI/debugger
+output change, or gameplay/session/input/scripted-control change.
