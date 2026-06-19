@@ -97,6 +97,8 @@ struct LaunchOptions {
 	std::vector<std::string> scriptedControls;
 	std::chrono::milliseconds scriptedControlInterval = ProductTickInterval;
 	bool quitAfterScriptedControls = false;
+	bool debugScriptedControls = false;
+	std::vector<iggy::TileCoord> expectedPlayerTiles;
 };
 
 struct ScriptedProductControl {
@@ -380,6 +382,11 @@ ScriptedControlFromToken(const std::string &token)
 	return std::nullopt;
 }
 
+std::string TileText(iggy::TileCoord tile)
+{
+	return std::to_string(tile.x) + "," + std::to_string(tile.y);
+}
+
 std::size_t ParsePositiveCount(const std::string &value, const char *name)
 {
 	if (value.empty())
@@ -389,6 +396,46 @@ std::size_t ParsePositiveCount(const std::string &value, const char *name)
 	if (consumed != value.size() || parsed == 0)
 		throw std::runtime_error(std::string(name) + " requires a positive integer");
 	return static_cast<std::size_t>(parsed);
+}
+
+int ParseIntStrict(const std::string &value, const char *name)
+{
+	if (value.empty())
+		throw std::runtime_error(std::string(name) + " requires an integer");
+	std::size_t consumed = 0;
+	const int parsed = std::stoi(value, &consumed);
+	if (consumed != value.size())
+		throw std::runtime_error(std::string(name) + " requires an integer");
+	return parsed;
+}
+
+iggy::TileCoord ParseExpectedTile(const std::string &value)
+{
+	const std::size_t comma = value.find(',');
+	if (comma == std::string::npos)
+		throw std::runtime_error("expected player tile must use x,y format");
+	return {
+		ParseIntStrict(Trim(value.substr(0, comma)), "expected player tile x"),
+		ParseIntStrict(Trim(value.substr(comma + 1)), "expected player tile y"),
+	};
+}
+
+std::vector<iggy::TileCoord> ParseExpectedTiles(const std::string &spec)
+{
+	std::vector<iggy::TileCoord> tiles;
+	std::size_t start = 0;
+	while (start <= spec.size()) {
+		const std::size_t separator = spec.find(';', start);
+		const std::string token = Trim(spec.substr(
+			start,
+			separator == std::string::npos ? std::string::npos : separator - start));
+		if (!token.empty())
+			tiles.push_back(ParseExpectedTile(token));
+		if (separator == std::string::npos)
+			break;
+		start = separator + 1;
+	}
+	return tiles;
 }
 
 std::vector<ScriptedProductControl>
@@ -425,6 +472,58 @@ ParseScriptedControls(const std::vector<std::string> &specs)
 		}
 	}
 	return controls;
+}
+
+const char *FrameRequestStatusText(runtime::RuntimeGameplayProductFrameRequestStatus status)
+{
+	switch (status) {
+	case runtime::RuntimeGameplayProductFrameRequestStatus::Stepped:
+		return "Stepped";
+	case runtime::RuntimeGameplayProductFrameRequestStatus::NotLoaded:
+		return "NotLoaded";
+	case runtime::RuntimeGameplayProductFrameRequestStatus::NoFrameAvailable:
+		return "NoFrameAvailable";
+	}
+	return "Unknown";
+}
+
+const char *PlayModeFrameStatusText(runtime::RuntimeGameplayProductPlayModeFrameStatus status)
+{
+	switch (status) {
+	case runtime::RuntimeGameplayProductPlayModeFrameStatus::Stepped:
+		return "Stepped";
+	case runtime::RuntimeGameplayProductPlayModeFrameStatus::NotLoaded:
+		return "NotLoaded";
+	case runtime::RuntimeGameplayProductPlayModeFrameStatus::NoFrameAvailable:
+		return "NoFrameAvailable";
+	}
+	return "Unknown";
+}
+
+const char *PlaySurfaceStatusText(runtime::RuntimeGameplayProductPlaySurfaceFrameStatus status)
+{
+	switch (status) {
+	case runtime::RuntimeGameplayProductPlaySurfaceFrameStatus::Stepped:
+		return "Stepped";
+	case runtime::RuntimeGameplayProductPlaySurfaceFrameStatus::NotLoaded:
+		return "NotLoaded";
+	case runtime::RuntimeGameplayProductPlaySurfaceFrameStatus::NoFrameAvailable:
+		return "NoFrameAvailable";
+	}
+	return "Unknown";
+}
+
+const char *LoopStepStatusText(runtime::RuntimeGameplayProductLoopStepStatus status)
+{
+	switch (status) {
+	case runtime::RuntimeGameplayProductLoopStepStatus::Stepped:
+		return "Stepped";
+	case runtime::RuntimeGameplayProductLoopStepStatus::NotLoaded:
+		return "NotLoaded";
+	case runtime::RuntimeGameplayProductLoopStepStatus::NoFrameAvailable:
+		return "NoFrameAvailable";
+	}
+	return "Unknown";
 }
 
 bool IsMovementControl(runtime::RuntimeGameplayProductInputControl2D control)
@@ -498,10 +597,32 @@ LaunchOptions ParseArgs(int argc, char **argv)
 			options.quitAfterScriptedControls = true;
 			continue;
 		}
+		if (arg == "--debug-scripted-controls") {
+			options.debugScriptedControls = true;
+			continue;
+		}
+		if (arg == "--expect-player-tiles") {
+			if (i + 1 >= argc)
+				throw std::runtime_error("--expect-player-tiles requires a semicolon-separated list");
+			std::vector<iggy::TileCoord> parsed = ParseExpectedTiles(argv[++i]);
+			options.expectedPlayerTiles.insert(
+				options.expectedPlayerTiles.end(),
+				parsed.begin(),
+				parsed.end());
+			continue;
+		}
 		throw std::runtime_error("unknown argument: " + arg);
 	}
 	if (!options.scriptedControls.empty() && !options.hasPlayPath)
 		throw std::runtime_error("--scripted-controls requires --play");
+	if (!options.expectedPlayerTiles.empty() && options.scriptedControls.empty())
+		throw std::runtime_error("--expect-player-tiles requires --scripted-controls");
+	if (!options.expectedPlayerTiles.empty()) {
+		const std::vector<ScriptedProductControl> controls =
+			ParseScriptedControls(options.scriptedControls);
+		if (options.expectedPlayerTiles.size() != controls.size())
+			throw std::runtime_error("--expect-player-tiles count must match expanded scripted controls");
+	}
 	return options;
 }
 
@@ -513,7 +634,9 @@ void PrintUsage()
 		<< "\n"
 		<< "Opens the native SDL/Vulkan play shell. Scripted controls are comma-separated\n"
 		<< "tokens such as east,east,south or right*3,wait. They inject the same product\n"
-		<< "input path as keyboard controls.\n";
+		<< "input path as keyboard controls. Add --debug-scripted-controls to print\n"
+		<< "per-step frame diagnostics. Add --expect-player-tiles 'x,y;x,y' to fail\n"
+		<< "when scripted movement does not land on the expected tiles.\n";
 }
 
 void ConfigureMoltenVkIcdFallback()
@@ -930,27 +1053,95 @@ private:
 		return true;
 	}
 
-	void applyScriptedProductControl(const ScriptedProductControl &scripted)
+	std::optional<iggy::TileCoord> currentPlayerTile() const
+	{
+		if (!product_.has_value())
+			return std::nullopt;
+		const auto &state = product_->play.state.loop.currentState;
+		if (!state.session.hasPlayer)
+			return std::nullopt;
+		return iggy::playerTile(state.session.player);
+	}
+
+	void traceScriptedProductControl(
+		std::size_t index,
+		const ScriptedProductControl &scripted,
+		std::optional<iggy::TileCoord> beforeTile,
+		const runtime::RuntimeGameplayProductFrameRequestResult &result,
+		std::optional<iggy::TileCoord> afterTile) const
+	{
+		const auto &surface = result.frame.surface;
+		const auto &step = surface.step;
+		const auto &frame = step.frame;
+		const auto &presentation = surface.presentation;
+		std::cout
+			<< "scripted debug[" << index << "]"
+			<< " control=" << scripted.label
+			<< " before=" << (beforeTile.has_value() ? TileText(*beforeTile) : "none")
+			<< " after=" << (afterTile.has_value() ? TileText(*afterTile) : "none")
+			<< " request=" << FrameRequestStatusText(result.status)
+			<< " playMode=" << PlayModeFrameStatusText(result.frame.status)
+			<< " surface=" << PlaySurfaceStatusText(surface.status)
+			<< " loop=" << LoopStepStatusText(step.status)
+			<< " inputEvents=" << result.inputEventCount
+			<< " ignoredInputEvents=" << result.ignoredInputEventCount
+			<< " accepted=" << frame.acceptedCommandCount
+			<< " blocked=" << frame.blockedIntentCount
+			<< " rejected=" << frame.rejectedIntentCount
+			<< " npcMoved=" << frame.npcMovedCount
+			<< " renderCommands=" << presentation.levelFrame.commands.commands.size()
+			<< std::endl;
+	}
+
+	void expectScriptedPlayerTile(
+		std::size_t index,
+		std::optional<iggy::TileCoord> actualTile) const
+	{
+		if (index >= options_.expectedPlayerTiles.size())
+			return;
+		if (!actualTile.has_value())
+			throw std::runtime_error(
+				"scripted control expectation failed: no player tile after step " +
+				std::to_string(index));
+
+		const iggy::TileCoord expected = options_.expectedPlayerTiles[index];
+		if (actualTile->x == expected.x && actualTile->y == expected.y)
+			return;
+
+		throw std::runtime_error(
+			"scripted control expectation failed at step " +
+			std::to_string(index) +
+			": expected playerTile=" + TileText(expected) +
+			" actual=" + TileText(*actualTile));
+	}
+
+	void applyScriptedProductControl(
+		std::size_t index,
+		const ScriptedProductControl &scripted)
 	{
 		using runtime::RuntimeGameplayProductInputEventKind;
 		if (!product_.has_value())
 			return;
 
+		const std::optional<iggy::TileCoord> beforeTile = currentPlayerTile();
+		std::optional<runtime::RuntimeGameplayProductFrameRequestResult> result;
 		if (IsMovementControl(scripted.control)) {
 			recordProductInput(scripted.control, RuntimeGameplayProductInputEventKind::Pressed);
-			runProductFrameRequestOnce();
+			result = runProductFrameRequestOnce();
 			recordProductInput(scripted.control, RuntimeGameplayProductInputEventKind::Released);
 		} else {
 			recordProductInput(scripted.control, RuntimeGameplayProductInputEventKind::Pressed);
-			runProductFrameRequestOnce();
+			result = runProductFrameRequestOnce();
 		}
 
+		const std::optional<iggy::TileCoord> afterTile = currentPlayerTile();
+		if (result.has_value() && options_.debugScriptedControls)
+			traceScriptedProductControl(index, scripted, beforeTile, *result, afterTile);
+		expectScriptedPlayerTile(index, afterTile);
+
 		std::cout << "scripted control: " << scripted.label;
-		const auto &state = product_->play.state.loop.currentState;
-		if (state.session.hasPlayer) {
-			const iggy::TileCoord tile = iggy::playerTile(state.session.player);
-			std::cout << " playerTile=" << tile.x << "," << tile.y;
-		}
+		if (afterTile.has_value())
+			std::cout << " playerTile=" << TileText(*afterTile);
 		std::cout << std::endl;
 	}
 
@@ -963,7 +1154,9 @@ private:
 		if (now < nextScriptedControlAt_)
 			return false;
 
-		applyScriptedProductControl(scriptedControls_[scriptedControlIndex_]);
+		applyScriptedProductControl(
+			scriptedControlIndex_,
+			scriptedControls_[scriptedControlIndex_]);
 		++scriptedControlIndex_;
 		nextScriptedControlAt_ = now + options_.scriptedControlInterval;
 		return scriptedControlIndex_ >= scriptedControls_.size() &&
@@ -1041,10 +1234,11 @@ private:
 			syncNativeHeldMovementControl();
 	}
 
-	void runProductFrameRequestOnce()
+	std::optional<runtime::RuntimeGameplayProductFrameRequestResult>
+	runProductFrameRequestOnce()
 	{
 		if (!product_.has_value())
-			return;
+			return std::nullopt;
 
 		runtime::RuntimeGameplayProductPlayModeState &playState =
 			product_->play.state;
@@ -1088,6 +1282,7 @@ private:
 		productPresentationCamera_ =
 			result.presentationCamera.presentationCamera;
 		hasProductPresentationCamera_ = true;
+		return result;
 	}
 
 	void createInstance()
@@ -2116,7 +2311,7 @@ private:
 		if (now < nextProductTick_)
 			return;
 
-		runProductFrameRequestOnce();
+		(void)runProductFrameRequestOnce();
 		nextProductTick_ += ProductTickInterval;
 		if (nextProductTick_ < now)
 			nextProductTick_ = now + ProductTickInterval;
