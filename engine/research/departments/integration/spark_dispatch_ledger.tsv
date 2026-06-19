@@ -6,4 +6,4 @@ packet	status	department	owner	source_commit	source_review	docs_commit	docs_revi
 69_native_static_asset_format_dependency_scout	complete	integration	finisher	d743a279	PASS-planner	ff611ae9	not_requested		closed source and docs after native static mesh text writer	2026-06-19
 70_native_static_mesh_authoring_export_scout	complete	integration	finisher	bfa660be	PASS-planner	4fbaffa7	not_requested		closed source and docs after native static mesh fixture writer roundtrip	2026-06-19
 71_native_static_mesh_export_cli_scout	complete	integration	finisher	f651f706	PASS-planner	89b7a4ca	not_requested		closed source and docs after native static mesh built-in export CLI	2026-06-19
-72_native_static_asset_authoring_policy_scout	build_ready	integration	builder		PASS-planner				Build Native Static Mesh Export Policy from researcher PASS; reviewer is post-facto unless builder reports a boundary conflict	2026-06-19
+72_native_static_asset_authoring_policy_scout	docs_ready	integration	finisher	64ce4594	PASS-planner				Planner source gate passed; release static mesh export policy docs sync, reviewer may review post-facto	2026-06-19
