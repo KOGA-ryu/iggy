@@ -17,6 +17,7 @@
 #include "NativePlayMath.hpp"
 #include "NativeProductSession.hpp"
 #include "NativeSceneDrawList.hpp"
+#include "NativeStaticMeshAssetWriter.hpp"
 #include "NativeStaticModelLoadReport.hpp"
 #include "NativeStaticModelPolicy.hpp"
 #include "NativeVulkanRenderer.hpp"
@@ -30,11 +31,16 @@ using iggy::native_play::DefaultNativeStaticModelPolicy;
 using iggy::native_play::LookAt;
 using iggy::native_play::Mat4;
 using iggy::native_play::Multiply;
+using iggy::native_play::NativeBeanStaticMeshAsset;
+using iggy::native_play::NativeCubeStaticMeshAsset;
+using iggy::native_play::NativeNpcMarkerStaticMeshAsset;
 using iggy::native_play::NativeStaticModelFallbackKind;
 using iggy::native_play::NativeStaticModelLoadEntry;
 using iggy::native_play::NativeStaticModelLoadReport;
 using iggy::native_play::NativeStaticModelLoadStatus;
 using iggy::native_play::NativeStaticModelSlot;
+using iggy::native_play::NativeStaticMeshAsset;
+using iggy::native_play::NativeStaticMeshAssetWriteResult;
 using iggy::native_play::NativeProductSession;
 using iggy::native_play::NativeProductSessionConfig;
 using iggy::native_play::NativeSceneDrawItem;
@@ -42,6 +48,7 @@ using iggy::native_play::NativeVulkanFrameInput;
 using iggy::native_play::NativeVulkanRenderer;
 using iggy::native_play::ParseNativeScriptedProductControls;
 using iggy::native_play::Perspective;
+using iggy::native_play::WriteNativeStaticMeshAssetText;
 
 constexpr int InitialWindowWidth = 1280;
 constexpr int InitialWindowHeight = 720;
@@ -55,6 +62,8 @@ constexpr auto ProductTickInterval = std::chrono::milliseconds(250);
 struct LaunchOptions {
 	bool showHelp = false;
 	bool dumpStaticModelLoadReport = false;
+	bool hasStaticMeshAssetDumpName = false;
+	std::string staticMeshAssetDumpName;
 	bool hasPlayPath = false;
 	std::filesystem::path playPath;
 	std::vector<std::string> scriptedControls;
@@ -178,6 +187,13 @@ LaunchOptions ParseArgs(int argc, char **argv)
 			options.dumpStaticModelLoadReport = true;
 			continue;
 		}
+		if (arg == "--dump-static-mesh-asset") {
+			if (i + 1 >= argc)
+				throw std::runtime_error("--dump-static-mesh-asset requires a name");
+			options.hasStaticMeshAssetDumpName = true;
+			options.staticMeshAssetDumpName = argv[++i];
+			continue;
+		}
 		if (arg == "--play") {
 			if (i + 1 >= argc)
 				throw std::runtime_error("--play requires a scenario path");
@@ -225,6 +241,8 @@ LaunchOptions ParseArgs(int argc, char **argv)
 	}
 	if (!options.scriptedControls.empty() && !options.hasPlayPath)
 		throw std::runtime_error("--scripted-controls requires --play");
+	if (options.dumpStaticModelLoadReport && options.hasStaticMeshAssetDumpName)
+		throw std::runtime_error("--dump-static-model-load-report cannot be combined with --dump-static-mesh-asset");
 	if (options.dumpFinalState && options.scriptedControls.empty())
 		throw std::runtime_error("--dump-final-state requires --scripted-controls");
 	if (!options.expectedPlayerTiles.empty() && options.scriptedControls.empty())
@@ -249,6 +267,8 @@ void PrintUsage()
 		<< "Asset diagnostics options:\n"
 		<< "  --dump-static-model-load-report      Print static model asset load status\n"
 		<< "                                       without launching SDL/Vulkan.\n"
+		<< "  --dump-static-mesh-asset NAME        Print a built-in .igmesh asset.\n"
+		<< "                                       Names: cube, bean, npc-marker.\n"
 		<< "\n"
 		<< "Scripted control options:\n"
 		<< "  --scripted-controls LIST             Comma-separated controls such as\n"
@@ -324,6 +344,35 @@ void PrintNativeStaticModelLoadReport(const NativeStaticModelLoadReport &report)
 			<< " issues=" << entry.issueCount
 			<< "\n";
 	}
+}
+
+std::optional<NativeStaticMeshAsset> BuiltInNativeStaticMeshAssetByName(
+	const std::string &name)
+{
+	if (name == "cube")
+		return NativeCubeStaticMeshAsset();
+	if (name == "bean")
+		return NativeBeanStaticMeshAsset();
+	if (name == "npc-marker")
+		return NativeNpcMarkerStaticMeshAsset();
+	return std::nullopt;
+}
+
+void PrintNativeStaticMeshAssetDump(const std::string &name)
+{
+	const std::optional<NativeStaticMeshAsset> asset =
+		BuiltInNativeStaticMeshAssetByName(name);
+	if (!asset.has_value())
+		throw std::runtime_error("unknown static mesh asset: " + name);
+
+	const NativeStaticMeshAssetWriteResult result =
+		WriteNativeStaticMeshAssetText(*asset);
+	if (!result.written()) {
+		throw std::runtime_error(
+			"failed to write static mesh asset: " + name +
+			" issues=" + std::to_string(result.issues.size()));
+	}
+	std::cout << result.text;
 }
 
 void ConfigureMoltenVkIcdFallback()
@@ -533,6 +582,10 @@ int main(int argc, char **argv)
 					IGGY_NATIVE_PLAY_ASSET_DIR);
 			PrintNativeStaticModelLoadReport(report);
 			return report.failedCount == 0 && report.missingCount == 0 ? 0 : 1;
+		}
+		if (options.hasStaticMeshAssetDumpName) {
+			PrintNativeStaticMeshAssetDump(options.staticMeshAssetDumpName);
+			return 0;
 		}
 
 		NativeVulkanApp app(options);
