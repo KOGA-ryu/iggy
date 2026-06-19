@@ -7,6 +7,10 @@
 
 #include "support/TestHarness.hpp"
 
+#ifndef IGGY_NATIVE_PLAY_TEST_ASSET_DIR
+#error "IGGY_NATIVE_PLAY_TEST_ASSET_DIR must point at apps/native_play/assets"
+#endif
+
 namespace {
 
 using iggy::native_play::LoadNativeStaticMeshAssetFile;
@@ -100,6 +104,18 @@ tri 0 1 2
 	CleanupTempRoot();
 }
 
+void TestLoadsNativePlayerAssetFixture()
+{
+	const std::filesystem::path path =
+		std::filesystem::path(IGGY_NATIVE_PLAY_TEST_ASSET_DIR) / "player.igmesh";
+
+	const NativeStaticMeshAssetLoadResult result = LoadNativeStaticMeshAssetFile(path);
+
+	Expect(result.loaded(), "checked-in native player asset should load");
+	Expect(result.asset.vertices.size() == 6, "native player asset should preserve vertex count");
+	Expect(result.asset.indices.size() == 24, "native player asset should preserve index count");
+}
+
 void TestMissingFileReportsOpenFailure()
 {
 	ResetTempRoot();
@@ -170,6 +186,7 @@ int main()
 {
 	TestLoadsTriangleFromText();
 	TestLoadsTriangleFromFile();
+	TestLoadsNativePlayerAssetFixture();
 	TestMissingFileReportsOpenFailure();
 	TestUnknownDirectiveReportsIssue();
 	TestMalformedVertexAndTriangleReportIssues();

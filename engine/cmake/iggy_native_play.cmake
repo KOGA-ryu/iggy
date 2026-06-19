@@ -49,6 +49,7 @@ if(Vulkan_FOUND AND SDL2_FOUND AND GLSLC_EXECUTABLE)
   target_include_directories(iggy_native_play PRIVATE src)
   target_compile_definitions(iggy_native_play PRIVATE
     IGGY_NATIVE_PLAY_SHADER_DIR="${IGGY_NATIVE_PLAY_SHADER_OUTPUT_DIR}"
+    IGGY_NATIVE_PLAY_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/apps/native_play/assets"
   )
 else()
   if(NOT Vulkan_FOUND)

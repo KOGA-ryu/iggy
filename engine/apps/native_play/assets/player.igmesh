@@ -1,0 +1,16 @@
+# Minimal player mesh for the native Vulkan renderer text-loader path.
+# Format: v x y z r g b, tri i0 i1 i2
+v 0.00 0.62 0.00 0.30 0.90 1.00
+v -0.34 0.18 -0.20 0.10 0.55 0.95
+v 0.34 0.18 -0.20 0.20 0.75 1.00
+v 0.38 0.02 0.18 0.52 0.88 1.00
+v -0.38 0.02 0.18 0.18 0.68 0.92
+v 0.00 -0.50 0.00 0.08 0.40 0.80
+tri 0 1 2
+tri 0 2 3
+tri 0 3 4
+tri 0 4 1
+tri 5 2 1
+tri 5 3 2
+tri 5 4 3
+tri 5 1 4

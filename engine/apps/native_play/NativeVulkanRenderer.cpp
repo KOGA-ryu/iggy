@@ -1,6 +1,7 @@
 #include "NativeVulkanRenderer.hpp"
 
 #include "NativeStaticMeshAsset.hpp"
+#include "NativeStaticMeshAssetLoader.hpp"
 
 #include <SDL.h>
 #include <SDL_vulkan.h>
@@ -28,6 +29,10 @@ constexpr VkFormat DepthFormat = VK_FORMAT_D32_SFLOAT;
 
 #ifndef IGGY_NATIVE_PLAY_SHADER_DIR
 #define IGGY_NATIVE_PLAY_SHADER_DIR "."
+#endif
+
+#ifndef IGGY_NATIVE_PLAY_ASSET_DIR
+#define IGGY_NATIVE_PLAY_ASSET_DIR "."
 #endif
 
 struct PushConstants {
@@ -151,6 +156,20 @@ std::vector<char> ReadBinaryFile(const std::filesystem::path &path)
 std::filesystem::path ShaderPath(const char *filename)
 {
 	return std::filesystem::path(IGGY_NATIVE_PLAY_SHADER_DIR) / filename;
+}
+
+std::filesystem::path NativePlayAssetPath(const char *filename)
+{
+	return std::filesystem::path(IGGY_NATIVE_PLAY_ASSET_DIR) / filename;
+}
+
+NativeStaticMeshAsset NativePlayerStaticMeshAsset()
+{
+	const NativeStaticMeshAssetLoadResult result =
+		LoadNativeStaticMeshAssetFile(NativePlayAssetPath("player.igmesh"));
+	if (result.loaded())
+		return result.asset;
+	return NativeBeanStaticMeshAsset();
 }
 
 bool HasInstanceExtension(const std::vector<VkExtensionProperties> &available, const char *name)
@@ -1110,7 +1129,7 @@ private:
 	{
 		cubeMesh_ = createMeshResource(NativeCubeStaticMeshAsset());
 		npcMesh_ = createMeshResource(NativeNpcMarkerStaticMeshAsset());
-		playerMesh_ = createMeshResource(NativeBeanStaticMeshAsset());
+		playerMesh_ = createMeshResource(NativePlayerStaticMeshAsset());
 		registerModelSlot(NativeVulkanModelSlot::Floor, cubeMesh_);
 		registerModelSlot(NativeVulkanModelSlot::Wall, cubeMesh_);
 		registerModelSlot(NativeVulkanModelSlot::NpcActor, npcMesh_);
