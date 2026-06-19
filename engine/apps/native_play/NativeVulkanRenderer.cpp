@@ -172,6 +172,15 @@ NativeStaticMeshAsset NativePlayerStaticMeshAsset()
 	return NativeBeanStaticMeshAsset();
 }
 
+NativeStaticMeshAsset NativeNpcStaticMeshAsset()
+{
+	const NativeStaticMeshAssetLoadResult result =
+		LoadNativeStaticMeshAssetFile(NativePlayAssetPath("npc.igmesh"));
+	if (result.loaded())
+		return result.asset;
+	return NativeNpcMarkerStaticMeshAsset();
+}
+
 bool HasInstanceExtension(const std::vector<VkExtensionProperties> &available, const char *name)
 {
 	return std::any_of(available.begin(), available.end(), [name](const auto &extension) {
@@ -1128,7 +1137,7 @@ private:
 	void createSceneMeshes()
 	{
 		cubeMesh_ = createMeshResource(NativeCubeStaticMeshAsset());
-		npcMesh_ = createMeshResource(NativeNpcMarkerStaticMeshAsset());
+		npcMesh_ = createMeshResource(NativeNpcStaticMeshAsset());
 		playerMesh_ = createMeshResource(NativePlayerStaticMeshAsset());
 		registerModelSlot(NativeVulkanModelSlot::Floor, cubeMesh_);
 		registerModelSlot(NativeVulkanModelSlot::Wall, cubeMesh_);

@@ -116,6 +116,18 @@ void TestLoadsNativePlayerAssetFixture()
 	Expect(result.asset.indices.size() == 24, "native player asset should preserve index count");
 }
 
+void TestLoadsNativeNpcAssetFixture()
+{
+	const std::filesystem::path path =
+		std::filesystem::path(IGGY_NATIVE_PLAY_TEST_ASSET_DIR) / "npc.igmesh";
+
+	const NativeStaticMeshAssetLoadResult result = LoadNativeStaticMeshAssetFile(path);
+
+	Expect(result.loaded(), "checked-in native NPC asset should load");
+	Expect(result.asset.vertices.size() == 7, "native NPC asset should preserve vertex count");
+	Expect(result.asset.indices.size() == 30, "native NPC asset should preserve index count");
+}
+
 void TestMissingFileReportsOpenFailure()
 {
 	ResetTempRoot();
@@ -187,6 +199,7 @@ int main()
 	TestLoadsTriangleFromText();
 	TestLoadsTriangleFromFile();
 	TestLoadsNativePlayerAssetFixture();
+	TestLoadsNativeNpcAssetFixture();
 	TestMissingFileReportsOpenFailure();
 	TestUnknownDirectiveReportsIssue();
 	TestMalformedVertexAndTriangleReportIssues();

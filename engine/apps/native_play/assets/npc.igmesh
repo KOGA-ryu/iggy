@@ -1,0 +1,19 @@
+# Minimal NPC mesh for the native Vulkan renderer text-loader path.
+# Format: v x y z r g b, tri i0 i1 i2
+v 0.00 0.62 0.00 1.00 0.72 0.26
+v 0.00 0.24 -0.28 0.92 0.48 0.18
+v 0.32 0.18 -0.06 1.00 0.62 0.20
+v 0.20 0.12 0.30 0.95 0.78 0.32
+v -0.20 0.12 0.30 0.80 0.42 0.58
+v -0.32 0.18 -0.06 0.88 0.36 0.42
+v 0.00 -0.54 0.00 0.52 0.24 0.32
+tri 0 1 2
+tri 0 2 3
+tri 0 3 4
+tri 0 4 5
+tri 0 5 1
+tri 6 2 1
+tri 6 3 2
+tri 6 4 3
+tri 6 5 4
+tri 6 1 5
