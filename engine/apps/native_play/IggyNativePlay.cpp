@@ -21,20 +21,10 @@
 #include <utility>
 #include <vector>
 
-#include "runtime/RuntimeGameplayProductLoop.hpp"
-#include "runtime/RuntimeGameplayProductFrameRequest.hpp"
-#include "runtime/RuntimeGameplayProductInputAccumulator.hpp"
-#include "runtime/RuntimeGameplayProductInputContext.hpp"
-#include "runtime/RuntimeGameplayProductInputFrameTargetAction.hpp"
-#include "runtime/RuntimeGameplayProductInputFrameTargetContext.hpp"
-#include "runtime/RuntimeGameplayProductPlayMode.hpp"
-#include "runtime/RuntimeGameplayProductPresentationCamera.hpp"
-#include "runtime/RuntimeGameplayProductScenarioLoader.hpp"
 #include "scene/level/TileCoord.hpp"
-#include "scene/npc/NpcActorState2D.hpp"
-#include "scene/player/PlayerAgentState.hpp"
 
 #include "NativePlayMath.hpp"
+#include "NativeProductSession.hpp"
 #include "NativeSceneDrawList.hpp"
 
 namespace {
@@ -44,6 +34,9 @@ using iggy::native_play::BuildNativeSceneDrawItems;
 using iggy::native_play::LookAt;
 using iggy::native_play::Mat4;
 using iggy::native_play::Multiply;
+using iggy::native_play::NativeProductSession;
+using iggy::native_play::NativeProductSessionConfig;
+using iggy::native_play::NativeScriptedProductControl;
 using iggy::native_play::NativeSceneDrawItem;
 using iggy::native_play::NativeSceneModelId;
 using iggy::native_play::Perspective;
@@ -101,12 +94,6 @@ struct LaunchOptions {
 	std::vector<iggy::TileCoord> expectedPlayerTiles;
 };
 
-struct ScriptedProductControl {
-	runtime::RuntimeGameplayProductInputControl2D control =
-		runtime::RuntimeGameplayProductInputControl2D::None;
-	std::string label;
-};
-
 struct QueueFamilyIndices {
 	std::optional<std::uint32_t> graphicsFamily;
 	std::optional<std::uint32_t> presentFamily;
@@ -121,12 +108,6 @@ struct SwapchainSupport {
 	VkSurfaceCapabilitiesKHR capabilities {};
 	std::vector<VkSurfaceFormatKHR> formats;
 	std::vector<VkPresentModeKHR> presentModes;
-};
-
-struct ProductLoadState {
-	iggy::runtime::RuntimeGameplayProductScenarioLoadResult load;
-	iggy::runtime::RuntimeGameplayProductLoopBuildResult loop;
-	iggy::runtime::RuntimeGameplayProductPlayModeBuildResult play;
 };
 
 struct NativeMeshGpuBuffers {
@@ -242,11 +223,6 @@ ScriptedControlFromToken(const std::string &token)
 	return std::nullopt;
 }
 
-std::string TileText(iggy::TileCoord tile)
-{
-	return std::to_string(tile.x) + "," + std::to_string(tile.y);
-}
-
 std::size_t ParsePositiveCount(const std::string &value, const char *name)
 {
 	if (value.empty())
@@ -298,10 +274,10 @@ std::vector<iggy::TileCoord> ParseExpectedTiles(const std::string &spec)
 	return tiles;
 }
 
-std::vector<ScriptedProductControl>
+std::vector<NativeScriptedProductControl>
 ParseScriptedControls(const std::vector<std::string> &specs)
 {
-	std::vector<ScriptedProductControl> controls;
+	std::vector<NativeScriptedProductControl> controls;
 	for (const std::string &spec : specs) {
 		std::size_t start = 0;
 		while (start <= spec.size()) {
@@ -332,95 +308,6 @@ ParseScriptedControls(const std::vector<std::string> &specs)
 		}
 	}
 	return controls;
-}
-
-const char *FrameRequestStatusText(runtime::RuntimeGameplayProductFrameRequestStatus status)
-{
-	switch (status) {
-	case runtime::RuntimeGameplayProductFrameRequestStatus::Stepped:
-		return "Stepped";
-	case runtime::RuntimeGameplayProductFrameRequestStatus::NotLoaded:
-		return "NotLoaded";
-	case runtime::RuntimeGameplayProductFrameRequestStatus::NoFrameAvailable:
-		return "NoFrameAvailable";
-	}
-	return "Unknown";
-}
-
-const char *PlayModeFrameStatusText(runtime::RuntimeGameplayProductPlayModeFrameStatus status)
-{
-	switch (status) {
-	case runtime::RuntimeGameplayProductPlayModeFrameStatus::Stepped:
-		return "Stepped";
-	case runtime::RuntimeGameplayProductPlayModeFrameStatus::NotLoaded:
-		return "NotLoaded";
-	case runtime::RuntimeGameplayProductPlayModeFrameStatus::NoFrameAvailable:
-		return "NoFrameAvailable";
-	}
-	return "Unknown";
-}
-
-const char *PlaySurfaceStatusText(runtime::RuntimeGameplayProductPlaySurfaceFrameStatus status)
-{
-	switch (status) {
-	case runtime::RuntimeGameplayProductPlaySurfaceFrameStatus::Stepped:
-		return "Stepped";
-	case runtime::RuntimeGameplayProductPlaySurfaceFrameStatus::NotLoaded:
-		return "NotLoaded";
-	case runtime::RuntimeGameplayProductPlaySurfaceFrameStatus::NoFrameAvailable:
-		return "NoFrameAvailable";
-	}
-	return "Unknown";
-}
-
-const char *LoopStepStatusText(runtime::RuntimeGameplayProductLoopStepStatus status)
-{
-	switch (status) {
-	case runtime::RuntimeGameplayProductLoopStepStatus::Stepped:
-		return "Stepped";
-	case runtime::RuntimeGameplayProductLoopStepStatus::NotLoaded:
-		return "NotLoaded";
-	case runtime::RuntimeGameplayProductLoopStepStatus::NoFrameAvailable:
-		return "NoFrameAvailable";
-	}
-	return "Unknown";
-}
-
-bool IsMovementControl(runtime::RuntimeGameplayProductInputControl2D control)
-{
-	switch (control) {
-	case runtime::RuntimeGameplayProductInputControl2D::MoveNorth:
-	case runtime::RuntimeGameplayProductInputControl2D::MoveSouth:
-	case runtime::RuntimeGameplayProductInputControl2D::MoveWest:
-	case runtime::RuntimeGameplayProductInputControl2D::MoveEast:
-		return true;
-	case runtime::RuntimeGameplayProductInputControl2D::None:
-	case runtime::RuntimeGameplayProductInputControl2D::Interact:
-	case runtime::RuntimeGameplayProductInputControl2D::Inspect:
-	case runtime::RuntimeGameplayProductInputControl2D::Wait:
-	case runtime::RuntimeGameplayProductInputControl2D::Cancel:
-	case runtime::RuntimeGameplayProductInputControl2D::PrimaryPoint:
-	case runtime::RuntimeGameplayProductInputControl2D::PrimaryTile:
-		break;
-	}
-	return false;
-}
-
-iggy::TileCoord MovementDelta(runtime::RuntimeGameplayProductInputControl2D control)
-{
-	switch (control) {
-	case runtime::RuntimeGameplayProductInputControl2D::MoveNorth:
-		return { 0, -1 };
-	case runtime::RuntimeGameplayProductInputControl2D::MoveSouth:
-		return { 0, 1 };
-	case runtime::RuntimeGameplayProductInputControl2D::MoveWest:
-		return { -1, 0 };
-	case runtime::RuntimeGameplayProductInputControl2D::MoveEast:
-		return { 1, 0 };
-	default:
-		break;
-	}
-	return {};
 }
 
 LaunchOptions ParseArgs(int argc, char **argv)
@@ -484,7 +371,7 @@ LaunchOptions ParseArgs(int argc, char **argv)
 	if (!options.expectedPlayerTiles.empty() && options.scriptedControls.empty())
 		throw std::runtime_error("--expect-player-tiles requires --scripted-controls");
 	if (!options.expectedPlayerTiles.empty()) {
-		const std::vector<ScriptedProductControl> controls =
+		const std::vector<NativeScriptedProductControl> controls =
 			ParseScriptedControls(options.scriptedControls);
 		if (options.expectedPlayerTiles.size() != controls.size())
 			throw std::runtime_error("--expect-player-tiles count must match expanded scripted controls");
@@ -532,33 +419,6 @@ void ConfigureMoltenVkIcdFallback()
 		}
 	}
 #endif
-}
-
-ProductLoadState LoadProductScenario(const std::filesystem::path &path)
-{
-	ProductLoadState state;
-	state.load = iggy::runtime::RuntimeGameplayProductScenarioLoader {}.load(path);
-	if (!state.load.ok()) {
-		std::cerr << "Failed to load product scenario: " << path << "\n";
-		for (const auto &issue : state.load.issues) {
-			std::cerr << "  " << issue.path;
-			if (!issue.key.empty())
-				std::cerr << " [" << issue.key << "]";
-			if (!issue.detail.empty())
-				std::cerr << ": " << issue.detail;
-			std::cerr << "\n";
-		}
-		throw std::runtime_error("product scenario load failed");
-	}
-
-	state.loop = iggy::runtime::RuntimeGameplayProductLoop {}.build(state.load);
-	state.play = iggy::runtime::RuntimeGameplayProductPlayMode {}.build(state.loop);
-	if (state.play.status !=
-			iggy::runtime::RuntimeGameplayProductPlayModeBuildStatus::Ready)
-		throw std::runtime_error("product play mode build failed");
-
-	std::cout << "Loaded product scenario: " << state.load.sourcePath << std::endl;
-	return state;
 }
 
 bool HasInstanceExtension(const std::vector<VkExtensionProperties> &available, const char *name)
@@ -816,9 +676,18 @@ public:
 	explicit NativeVulkanApp(const LaunchOptions &options)
 		: options_(options)
 	{
-		if (options_.hasPlayPath)
-			product_ = LoadProductScenario(options_.playPath);
-		scriptedControls_ = ParseScriptedControls(options_.scriptedControls);
+		if (options_.hasPlayPath) {
+			NativeProductSessionConfig config;
+			config.playPath = options_.playPath;
+			config.scriptedControls = ParseScriptedControls(options_.scriptedControls);
+			config.productTickInterval = ProductTickInterval;
+			config.scriptedControlInterval = options_.scriptedControlInterval;
+			config.quitAfterScriptedControls = options_.quitAfterScriptedControls;
+			config.debugScriptedControls = options_.debugScriptedControls;
+			config.dumpFinalState = options_.dumpFinalState;
+			config.expectedPlayerTiles = options_.expectedPlayerTiles;
+			productSession_.emplace(std::move(config));
+		}
 	}
 
 	~NativeVulkanApp()
@@ -871,334 +740,6 @@ private:
 		createSceneMeshes();
 		createCommandBuffers();
 		createSyncObjects();
-	}
-
-	runtime::RuntimeGameplayProductPresentationCameraConfig
-	productPresentationCameraConfig() const
-	{
-		runtime::RuntimeGameplayProductPresentationCameraConfig config;
-		config.hasPreviousCamera = hasProductPresentationCamera_;
-		if (hasProductPresentationCamera_)
-			config.previousCamera = productPresentationCamera_;
-		config.fallbackCamera = { { 0.0F, 0.0F } };
-		config.cameraView = { { 16.0F, 12.0F }, 1.0F };
-		config.includeNpcCommands = true;
-		config.useTileChunkCache = false;
-		config.tileChunkCache = nullptr;
-		config.rig.follow = { 1000.0F, 0.0F };
-		return config;
-	}
-
-	bool recordProductInput(
-		runtime::RuntimeGameplayProductInputControl2D control,
-		runtime::RuntimeGameplayProductInputEventKind kind)
-	{
-		if (!product_.has_value())
-			return false;
-
-		if (IsMovementControl(control)) {
-			const auto previousActive = activeMovementControls_;
-			activeMovementControls_.erase(
-				std::remove(
-					activeMovementControls_.begin(),
-					activeMovementControls_.end(),
-					control),
-				activeMovementControls_.end());
-			if (kind == runtime::RuntimeGameplayProductInputEventKind::Pressed)
-				activeMovementControls_.push_back(control);
-			syncNativeHeldMovementControl();
-
-			if (activeMovementControls_ == previousActive)
-				return false;
-			nextProductTick_ = std::chrono::steady_clock::now();
-			return true;
-		}
-
-		runtime::RuntimeGameplayProductInputEvent2D event;
-		event.control = control;
-		event.kind = kind;
-		const runtime::RuntimeGameplayProductInputAccumulatorRecordResult record =
-			runtime::RuntimeGameplayProductInputAccumulator {}.record(
-				productInputAccumulator_,
-				event);
-		if (!record.changed)
-			return false;
-		productInputAccumulator_ = record.state;
-		nextProductTick_ = std::chrono::steady_clock::now();
-		return true;
-	}
-
-	std::optional<iggy::TileCoord> currentPlayerTile() const
-	{
-		if (!product_.has_value())
-			return std::nullopt;
-		const auto &state = product_->play.state.loop.currentState;
-		if (!state.session.hasPlayer)
-			return std::nullopt;
-		return iggy::playerTile(state.session.player);
-	}
-
-	void traceScriptedProductControl(
-		std::size_t index,
-		const ScriptedProductControl &scripted,
-		std::optional<iggy::TileCoord> beforeTile,
-		const runtime::RuntimeGameplayProductFrameRequestResult &result,
-		std::optional<iggy::TileCoord> afterTile) const
-	{
-		const auto &surface = result.frame.surface;
-		const auto &step = surface.step;
-		const auto &frame = step.frame;
-		const auto &presentation = surface.presentation;
-		std::cout
-			<< "scripted debug[" << index << "]"
-			<< " control=" << scripted.label
-			<< " before=" << (beforeTile.has_value() ? TileText(*beforeTile) : "none")
-			<< " after=" << (afterTile.has_value() ? TileText(*afterTile) : "none")
-			<< " request=" << FrameRequestStatusText(result.status)
-			<< " playMode=" << PlayModeFrameStatusText(result.frame.status)
-			<< " surface=" << PlaySurfaceStatusText(surface.status)
-			<< " loop=" << LoopStepStatusText(step.status)
-			<< " inputEvents=" << result.inputEventCount
-			<< " ignoredInputEvents=" << result.ignoredInputEventCount
-			<< " accepted=" << frame.acceptedCommandCount
-			<< " blocked=" << frame.blockedIntentCount
-			<< " rejected=" << frame.rejectedIntentCount
-			<< " npcMoved=" << frame.npcMovedCount
-			<< " renderCommands=" << presentation.levelFrame.commands.commands.size()
-			<< std::endl;
-	}
-
-	void expectScriptedPlayerTile(
-		std::size_t index,
-		std::optional<iggy::TileCoord> actualTile) const
-	{
-		if (index >= options_.expectedPlayerTiles.size())
-			return;
-		if (!actualTile.has_value())
-			throw std::runtime_error(
-				"scripted control expectation failed: no player tile after step " +
-				std::to_string(index));
-
-		const iggy::TileCoord expected = options_.expectedPlayerTiles[index];
-		if (actualTile->x == expected.x && actualTile->y == expected.y)
-			return;
-
-		throw std::runtime_error(
-			"scripted control expectation failed at step " +
-			std::to_string(index) +
-			": expected playerTile=" + TileText(expected) +
-			" actual=" + TileText(*actualTile));
-	}
-
-	std::size_t latestRenderCommandCount() const
-	{
-		if (!hasLatestProductPlayModeFrame_)
-			return 0;
-		return latestProductPlayModeFrame_
-			.surface
-			.presentation
-			.levelFrame
-			.commands
-			.commands
-			.size();
-	}
-
-	std::size_t nextProductFrameIndex() const
-	{
-		if (!product_.has_value())
-			return 0;
-		return product_->play.state.loop.nextFrameIndex;
-	}
-
-	void dumpFinalScriptedState() const
-	{
-		const std::optional<iggy::TileCoord> playerTile =
-			currentPlayerTile();
-		std::cout
-			<< "scripted final-state"
-			<< " playerTile="
-			<< (playerTile.has_value() ? TileText(*playerTile) : "none")
-			<< " nextFrameIndex=" << nextProductFrameIndex()
-			<< " renderCommands=" << latestRenderCommandCount()
-			<< " activeInputCount=" << activeMovementControls_.size()
-			<< " heldInputCount="
-			<< productInputAccumulator_.heldControls.size()
-			<< std::endl;
-	}
-
-	void applyScriptedProductControl(
-		std::size_t index,
-		const ScriptedProductControl &scripted)
-	{
-		using runtime::RuntimeGameplayProductInputEventKind;
-		if (!product_.has_value())
-			return;
-
-		const std::optional<iggy::TileCoord> beforeTile = currentPlayerTile();
-		std::optional<runtime::RuntimeGameplayProductFrameRequestResult> result;
-		if (IsMovementControl(scripted.control)) {
-			recordProductInput(scripted.control, RuntimeGameplayProductInputEventKind::Pressed);
-			result = runProductFrameRequestOnce();
-			recordProductInput(scripted.control, RuntimeGameplayProductInputEventKind::Released);
-		} else {
-			recordProductInput(scripted.control, RuntimeGameplayProductInputEventKind::Pressed);
-			result = runProductFrameRequestOnce();
-		}
-
-		const std::optional<iggy::TileCoord> afterTile = currentPlayerTile();
-		if (result.has_value() && options_.debugScriptedControls)
-			traceScriptedProductControl(index, scripted, beforeTile, *result, afterTile);
-		expectScriptedPlayerTile(index, afterTile);
-
-		std::cout << "scripted control: " << scripted.label;
-		if (afterTile.has_value())
-			std::cout << " playerTile=" << TileText(*afterTile);
-		std::cout << std::endl;
-	}
-
-	bool stepScriptedControlsIfDue()
-	{
-		if (scriptedControlIndex_ >= scriptedControls_.size())
-			return false;
-
-		const auto now = std::chrono::steady_clock::now();
-		if (now < nextScriptedControlAt_)
-			return false;
-
-		applyScriptedProductControl(
-			scriptedControlIndex_,
-			scriptedControls_[scriptedControlIndex_]);
-		++scriptedControlIndex_;
-		nextScriptedControlAt_ = now + options_.scriptedControlInterval;
-		const bool completedScript = scriptedControlIndex_ >= scriptedControls_.size();
-		if (completedScript && options_.dumpFinalState &&
-				!dumpedFinalScriptedState_) {
-			dumpFinalScriptedState();
-			dumpedFinalScriptedState_ = true;
-		}
-		return completedScript && options_.quitAfterScriptedControls;
-	}
-
-	void syncNativeHeldMovementControl()
-	{
-		auto &held = productInputAccumulator_.heldControls;
-		held.erase(
-			std::remove_if(
-				held.begin(),
-				held.end(),
-				IsMovementControl),
-			held.end());
-		if (!activeMovementControls_.empty())
-			held.push_back(activeMovementControls_.back());
-	}
-
-	bool nativeMovementTargetAllowed(
-		runtime::RuntimeGameplayProductInputControl2D control,
-		const runtime::RuntimeGameplayProductPlayModeState &playState) const
-	{
-		if (!playState.loop.loaded ||
-				!playState.loop.currentState.session.hasPlayer)
-			return true;
-
-		const auto &state = playState.loop.currentState;
-		const iggy::TileCoord current =
-			iggy::playerTile(state.session.player);
-		const iggy::TileCoord delta = MovementDelta(control);
-		const iggy::TileCoord target {
-			current.x + delta.x,
-			current.y + delta.y,
-		};
-
-		const iggy::LevelTile *tile =
-			state.session.level.map.tileAt(target.x, target.y);
-		if (tile == nullptr || !tile->walkable)
-			return false;
-
-		for (const iggy::NpcActorState2D &actor : state.npcActors.actors) {
-			if (actor.present && iggy::tileForPoint(actor.position) == target)
-				return false;
-		}
-		return true;
-	}
-
-	void applyNativeMovementGuard(
-		const runtime::RuntimeGameplayProductPlayModeState &playState)
-	{
-		bool removed = false;
-		activeMovementControls_.erase(
-			std::remove_if(
-				activeMovementControls_.begin(),
-				activeMovementControls_.end(),
-				[this, &playState](runtime::RuntimeGameplayProductInputControl2D control) {
-					return !nativeMovementTargetAllowed(control, playState);
-				}),
-			activeMovementControls_.end());
-
-		auto &held = productInputAccumulator_.heldControls;
-		const auto beforeSize = held.size();
-		held.erase(
-			std::remove_if(
-				held.begin(),
-				held.end(),
-				[this, &playState](runtime::RuntimeGameplayProductInputControl2D control) {
-					return IsMovementControl(control) &&
-						!nativeMovementTargetAllowed(control, playState);
-				}),
-			held.end());
-		removed = held.size() != beforeSize;
-		if (removed)
-			syncNativeHeldMovementControl();
-	}
-
-	std::optional<runtime::RuntimeGameplayProductFrameRequestResult>
-	runProductFrameRequestOnce()
-	{
-		if (!product_.has_value())
-			return std::nullopt;
-
-		runtime::RuntimeGameplayProductPlayModeState &playState =
-			product_->play.state;
-		applyNativeMovementGuard(playState);
-
-		runtime::RuntimeGameplayProductInputAccumulatorFrameInput frameInput;
-		frameInput.state = productInputAccumulator_;
-		frameInput.bindingContext =
-			runtime::RuntimeGameplayProductInputContext {}
-				.build(playState)
-				.bindingContext;
-		const runtime::RuntimeGameplayProductInputAccumulatorFrameResult frame =
-			runtime::RuntimeGameplayProductInputAccumulator {}.buildFrame(
-				frameInput);
-		productInputAccumulator_ = frame.state;
-
-		const runtime::RuntimeGameplayProductInputFrameTargetContextResult
-			targetContext =
-				runtime::RuntimeGameplayProductInputFrameTargetContext {}.enrich({
-					playState,
-					frame.frame,
-					{},
-					{},
-				});
-		const runtime::RuntimeGameplayProductInputFrameTargetActionResult
-			targetAction =
-				runtime::RuntimeGameplayProductInputFrameTargetAction {}.synthesize(
-					{ targetContext });
-
-		runtime::RuntimeGameplayProductFrameRequestInput input;
-		input.state = playState;
-		input.inputFrame = targetAction.frame;
-		input.allowFreePlayFrameWhenNoFrameAvailable = true;
-		input.presentationCamera = productPresentationCameraConfig();
-
-		const runtime::RuntimeGameplayProductFrameRequestResult result =
-			runtime::RuntimeGameplayProductFrameRequest {}.run(input);
-		playState = result.state;
-		latestProductPlayModeFrame_ = result.frame;
-		hasLatestProductPlayModeFrame_ = true;
-		productPresentationCamera_ =
-			result.presentationCamera.presentationCamera;
-		hasProductPresentationCamera_ = true;
-		return result;
 	}
 
 	void createInstance()
@@ -1857,12 +1398,15 @@ private:
 	Mat4 cameraViewMatrix() const
 	{
 		float extent = 6.0F;
-		if (product_.has_value()) {
-			const auto &map =
-				product_->play.state.loop.currentState.session.level.map;
-			extent = std::max<float>(
-				extent,
-				static_cast<float>(std::max(map.width, map.height)));
+		if (productSession_.has_value()) {
+			const runtime::RuntimeGameplayState *state =
+				productSession_->currentGameplayState();
+			if (state != nullptr) {
+				const auto &map = state->session.level.map;
+				extent = std::max<float>(
+					extent,
+					static_cast<float>(std::max(map.width, map.height)));
+			}
 		}
 
 		return LookAt(
@@ -1873,9 +1417,9 @@ private:
 
 	const runtime::RuntimeGameplayState *nativeSceneDrawState() const
 	{
-		if (!product_.has_value())
+		if (!productSession_.has_value())
 			return nullptr;
-		return &product_->play.state.loop.currentState;
+		return productSession_->currentGameplayState();
 	}
 
 	void drawMesh(
@@ -2078,8 +1622,8 @@ private:
 					if (event.key.repeat == 0) {
 						const std::optional<runtime::RuntimeGameplayProductInputControl2D>
 							control = MapSdlKeyToProductControl(event.key.keysym.sym);
-						if (control.has_value()) {
-							recordProductInput(
+						if (control.has_value() && productSession_.has_value()) {
+							(void)productSession_->recordInput(
 								*control,
 								event.type == SDL_KEYDOWN
 								? runtime::RuntimeGameplayProductInputEventKind::Pressed
@@ -2091,8 +1635,11 @@ private:
 						event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
 					framebufferResized_ = true;
 			}
-			const bool quitAfterScriptedStep = stepScriptedControlsIfDue();
-			stepProductIfDue();
+			const bool quitAfterScriptedStep =
+				productSession_.has_value() &&
+				productSession_->stepScriptedControlsIfDue();
+			if (productSession_.has_value())
+				productSession_->stepProductIfDue();
 			drawFrame();
 			if (quitAfterScriptedStep)
 				running = false;
@@ -2100,24 +1647,6 @@ private:
 
 		if (device_ != VK_NULL_HANDLE)
 			ThrowIfFailed(vkDeviceWaitIdle(device_), "failed to idle Vulkan device");
-	}
-
-	void stepProductIfDue()
-	{
-		if (!product_.has_value())
-			return;
-		if (productInputAccumulator_.heldControls.empty() &&
-				productInputAccumulator_.pendingOneShotEvents.empty())
-			return;
-
-		const auto now = std::chrono::steady_clock::now();
-		if (now < nextProductTick_)
-			return;
-
-		(void)runProductFrameRequestOnce();
-		nextProductTick_ += ProductTickInterval;
-		if (nextProductTick_ < now)
-			nextProductTick_ = now + ProductTickInterval;
 	}
 
 	void cleanupSwapchain()
@@ -2208,16 +1737,7 @@ private:
 	}
 
 	LaunchOptions options_;
-	std::optional<ProductLoadState> product_;
-	runtime::RuntimeGameplayProductInputAccumulatorState productInputAccumulator_;
-	std::vector<runtime::RuntimeGameplayProductInputControl2D> activeMovementControls_;
-	std::vector<ScriptedProductControl> scriptedControls_;
-	std::size_t scriptedControlIndex_ = 0;
-	bool dumpedFinalScriptedState_ = false;
-	runtime::RuntimeGameplayProductPlayModeFrameResult latestProductPlayModeFrame_;
-	bool hasLatestProductPlayModeFrame_ = false;
-	iggy::CameraState productPresentationCamera_;
-	bool hasProductPresentationCamera_ = false;
+	std::optional<NativeProductSession> productSession_;
 	SDL_Window *window_ = nullptr;
 	VkInstance instance_ = VK_NULL_HANDLE;
 	VkSurfaceKHR surface_ = VK_NULL_HANDLE;
@@ -2247,10 +1767,6 @@ private:
 	std::size_t currentFrame_ = 0;
 	bool framebufferResized_ = false;
 	std::chrono::steady_clock::time_point startTime_ =
-		std::chrono::steady_clock::now();
-	std::chrono::steady_clock::time_point nextProductTick_ =
-		std::chrono::steady_clock::now() + ProductTickInterval;
-	std::chrono::steady_clock::time_point nextScriptedControlAt_ =
 		std::chrono::steady_clock::now();
 };
 
