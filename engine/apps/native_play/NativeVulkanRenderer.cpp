@@ -74,13 +74,28 @@ struct SwapchainSupport {
 	std::vector<VkPresentModeKHR> presentModes;
 };
 
-struct NativeMeshGpuBuffers {
-	VkBuffer vertexBuffer = VK_NULL_HANDLE;
-	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
-	VkBuffer indexBuffer = VK_NULL_HANDLE;
-	VkDeviceMemory indexMemory = VK_NULL_HANDLE;
+struct NativeVulkanBufferResource {
+	VkBuffer buffer = VK_NULL_HANDLE;
+	VkDeviceMemory memory = VK_NULL_HANDLE;
+};
+
+struct NativeVulkanMeshResource {
+	NativeVulkanBufferResource vertex;
+	NativeVulkanBufferResource index;
 	std::uint32_t indexCount = 0;
 };
+
+bool HasBuffer(const NativeVulkanBufferResource &buffer)
+{
+	return buffer.buffer != VK_NULL_HANDLE && buffer.memory != VK_NULL_HANDLE;
+}
+
+bool HasMesh(const NativeVulkanMeshResource &mesh)
+{
+	return HasBuffer(mesh.vertex) &&
+		HasBuffer(mesh.index) &&
+		mesh.indexCount > 0;
+}
 
 void ThrowIfFailed(VkResult result, const char *message)
 {
@@ -475,7 +490,7 @@ public:
 
 		cleanupSwapchain();
 
-		destroyMesh(cubeMesh_);
+		destroyMeshResource(cubeMesh_);
 
 		for (std::size_t i = 0; i < imageAvailableSemaphores_.size(); ++i) {
 			if (imageAvailableSemaphores_[i] != VK_NULL_HANDLE)
@@ -983,13 +998,12 @@ private:
 			VK_IMAGE_ASPECT_DEPTH_BIT);
 	}
 
-	void createBuffer(
+	NativeVulkanBufferResource createBuffer(
 		VkDeviceSize size,
 		VkBufferUsageFlags usage,
-		VkMemoryPropertyFlags properties,
-		VkBuffer &buffer,
-		VkDeviceMemory &bufferMemory)
+		VkMemoryPropertyFlags properties)
 	{
+		NativeVulkanBufferResource buffer;
 		VkBufferCreateInfo bufferInfo {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		bufferInfo.size = size;
@@ -997,11 +1011,11 @@ private:
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 		ThrowIfFailed(
-			vkCreateBuffer(device_, &bufferInfo, nullptr, &buffer),
+			vkCreateBuffer(device_, &bufferInfo, nullptr, &buffer.buffer),
 			"failed to create Vulkan buffer");
 
 		VkMemoryRequirements memoryRequirements {};
-		vkGetBufferMemoryRequirements(device_, buffer, &memoryRequirements);
+		vkGetBufferMemoryRequirements(device_, buffer.buffer, &memoryRequirements);
 
 		VkMemoryAllocateInfo allocInfo {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -1012,55 +1026,55 @@ private:
 			properties);
 
 		ThrowIfFailed(
-			vkAllocateMemory(device_, &allocInfo, nullptr, &bufferMemory),
+			vkAllocateMemory(device_, &allocInfo, nullptr, &buffer.memory),
 			"failed to allocate Vulkan buffer memory");
 		ThrowIfFailed(
-			vkBindBufferMemory(device_, buffer, bufferMemory, 0),
+			vkBindBufferMemory(device_, buffer.buffer, buffer.memory, 0),
 			"failed to bind Vulkan buffer memory");
+		return buffer;
 	}
 
-	void copyToBuffer(VkDeviceMemory memory, const void *data, VkDeviceSize size)
+	void copyToBuffer(
+		const NativeVulkanBufferResource &buffer,
+		const void *data,
+		VkDeviceSize size)
 	{
 		void *mapped = nullptr;
 		ThrowIfFailed(
-			vkMapMemory(device_, memory, 0, size, 0, &mapped),
+			vkMapMemory(device_, buffer.memory, 0, size, 0, &mapped),
 			"failed to map Vulkan buffer memory");
 		std::memcpy(mapped, data, static_cast<std::size_t>(size));
-		vkUnmapMemory(device_, memory);
+		vkUnmapMemory(device_, buffer.memory);
 	}
 
-	NativeMeshGpuBuffers createMeshBuffers(
+	NativeVulkanMeshResource createMeshResource(
 		const std::vector<Vertex3D> &vertices,
 		const std::vector<std::uint16_t> &indices)
 	{
-		NativeMeshGpuBuffers mesh;
+		NativeVulkanMeshResource mesh;
 		if (vertices.empty() || indices.empty())
 			return mesh;
 
 		const VkDeviceSize vertexSize = sizeof(vertices[0]) * vertices.size();
-		createBuffer(
+		mesh.vertex = createBuffer(
 			vertexSize,
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			mesh.vertexBuffer,
-			mesh.vertexMemory);
-		copyToBuffer(mesh.vertexMemory, vertices.data(), vertexSize);
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		copyToBuffer(mesh.vertex, vertices.data(), vertexSize);
 
 		const VkDeviceSize indexSize = sizeof(indices[0]) * indices.size();
-		createBuffer(
+		mesh.index = createBuffer(
 			indexSize,
 			VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			mesh.indexBuffer,
-			mesh.indexMemory);
-		copyToBuffer(mesh.indexMemory, indices.data(), indexSize);
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		copyToBuffer(mesh.index, indices.data(), indexSize);
 		mesh.indexCount = static_cast<std::uint32_t>(indices.size());
 		return mesh;
 	}
 
 	void createSceneMeshes()
 	{
-		cubeMesh_ = createMeshBuffers(CubeVertices, CubeIndices);
+		cubeMesh_ = createMeshResource(CubeVertices, CubeIndices);
 	}
 
 	void createFramebuffers()
@@ -1151,20 +1165,22 @@ private:
 
 	void drawMesh(
 		VkCommandBuffer commandBuffer,
-		const NativeMeshGpuBuffers &mesh,
+		const NativeVulkanMeshResource &mesh,
 		const Mat4 &viewProjection,
 		const Mat4 &model,
 		std::array<float, 4> tint) const
 	{
-		if (mesh.vertexBuffer == VK_NULL_HANDLE ||
-				mesh.indexBuffer == VK_NULL_HANDLE ||
-				mesh.indexCount == 0)
+		if (!HasMesh(mesh))
 			return;
 
-		const VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
+		const VkBuffer vertexBuffers[] = { mesh.vertex.buffer };
 		const VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-		vkCmdBindIndexBuffer(commandBuffer, mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindIndexBuffer(
+			commandBuffer,
+			mesh.index.buffer,
+			0,
+			VK_INDEX_TYPE_UINT16);
 
 		const PushConstants constants =
 			pushConstantsForModel(viewProjection, model, tint);
@@ -1184,7 +1200,7 @@ private:
 			0);
 	}
 
-	const NativeMeshGpuBuffers *meshForSceneModel(NativeSceneModelId modelId) const
+	const NativeVulkanMeshResource *meshForSceneModel(NativeSceneModelId modelId) const
 	{
 		switch (modelId) {
 		case NativeSceneModelId::Floor:
@@ -1202,7 +1218,7 @@ private:
 		const std::vector<NativeSceneDrawItem> &drawItems) const
 	{
 		for (const NativeSceneDrawItem &item : drawItems) {
-			const NativeMeshGpuBuffers *mesh = meshForSceneModel(item.modelId);
+			const NativeVulkanMeshResource *mesh = meshForSceneModel(item.modelId);
 			if (mesh == nullptr)
 				continue;
 			drawMesh(commandBuffer, *mesh, viewProjection, item.model, item.tint);
@@ -1306,16 +1322,19 @@ private:
 		}
 	}
 
-	void destroyMesh(NativeMeshGpuBuffers &mesh)
+	void destroyBuffer(NativeVulkanBufferResource &buffer)
 	{
-		if (mesh.indexBuffer != VK_NULL_HANDLE)
-			vkDestroyBuffer(device_, mesh.indexBuffer, nullptr);
-		if (mesh.indexMemory != VK_NULL_HANDLE)
-			vkFreeMemory(device_, mesh.indexMemory, nullptr);
-		if (mesh.vertexBuffer != VK_NULL_HANDLE)
-			vkDestroyBuffer(device_, mesh.vertexBuffer, nullptr);
-		if (mesh.vertexMemory != VK_NULL_HANDLE)
-			vkFreeMemory(device_, mesh.vertexMemory, nullptr);
+		if (buffer.buffer != VK_NULL_HANDLE)
+			vkDestroyBuffer(device_, buffer.buffer, nullptr);
+		if (buffer.memory != VK_NULL_HANDLE)
+			vkFreeMemory(device_, buffer.memory, nullptr);
+		buffer = {};
+	}
+
+	void destroyMeshResource(NativeVulkanMeshResource &mesh)
+	{
+		destroyBuffer(mesh.index);
+		destroyBuffer(mesh.vertex);
 		mesh = {};
 	}
 
@@ -1340,7 +1359,7 @@ private:
 	VkImageView depthImageView_ = VK_NULL_HANDLE;
 	std::vector<VkFramebuffer> swapchainFramebuffers_;
 	VkCommandPool commandPool_ = VK_NULL_HANDLE;
-	NativeMeshGpuBuffers cubeMesh_;
+	NativeVulkanMeshResource cubeMesh_;
 	std::vector<VkCommandBuffer> commandBuffers_;
 	std::vector<VkSemaphore> imageAvailableSemaphores_;
 	std::vector<VkSemaphore> renderFinishedSemaphores_;
