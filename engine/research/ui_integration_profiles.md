@@ -555,6 +555,21 @@ output writer, arbitrary path input, asset registry/catalog, discovery/scanning,
 glTF/glb/JSON parser, `.igmesh` schema expansion, renderer behavior change, or
 gameplay/scripted/final-state semantic change.
 
+Native static mesh output directory export CLI is complete as a constrained
+no-Qt app-shell/file-export diagnostic: `NativeStaticMeshFileExport.hpp`
+validates policy lookup, existing output directory, directory type, target
+nonexistence, writer success, file open, and write success, returning structured
+status without printing or throwing for expected validation failures.
+`iggy_native_play --dump-static-mesh-asset NAME --output-dir DIR` writes
+`DIR/defaultFilename` from the export policy and prints compact status such as
+`static-mesh-export name=cube output=/tmp/iggy-native-export-smoke/cube.igmesh bytes=523`.
+Raw stdout dumping remains unchanged without `--output-dir`, and the CLI still
+rejects output-dir without dump, unknown assets, report conflicts, and existing
+targets. This does not create directories, overwrite, force, delete, rename,
+rewrite fixtures, accept arbitrary output paths, add discovery/catalog/manifest
+policy, parse glTF/glb/JSON, expand `.igmesh`, change renderer behavior, or
+change gameplay/input/scripted/final-state semantics.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.

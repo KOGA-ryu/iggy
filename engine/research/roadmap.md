@@ -426,6 +426,11 @@ Recently completed optimized stretches:
   filenames, and id-to-CPU-mesh mapping; the existing dump CLI resolves through
   that policy while preserving accepted names, raw stdout, unknown-name errors,
   and conflict behavior.
+  Native static mesh output-directory export now adds header-only
+  `NativeStaticMeshFileExport.hpp` and optional
+  `--output-dir DIR` for `--dump-static-mesh-asset NAME`, writing
+  `DIR/defaultFilename` only when the directory already exists and the target
+  does not; stdout dumping remains unchanged without `--output-dir`.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1392,6 +1397,34 @@ expansion, material/texture/descriptor/sampler/normals/UV/animation/scene graph
 metadata, renderer behavior, `NativeVulkanRenderer.cpp`, public renderer API,
 runtime/product/scene/server/draw-list API change, gameplay/scripted/final-state
 semantic change, or docs mixed into source.
+
+Native Static Mesh Output Directory Export CLI is complete as a constrained
+file-export path for built-in `.igmesh` dumps: header-only
+`NativeStaticMeshFileExport.hpp` adds
+`ExportNativeStaticMeshAssetToDirectory(...)`, which validates policy lookup,
+existing output directory, directory type, target nonexistence, writer success,
+file open, and write success. Expected validation failures return
+status/result data and do not print or throw. `iggy_native_play
+--dump-static-mesh-asset NAME` now accepts optional `--output-dir DIR`; without
+it, raw `.igmesh` stdout is unchanged. With it, the CLI writes to
+`DIR/defaultFilename` from `NativeStaticMeshExportPolicy` and prints compact
+status such as
+`static-mesh-export name=cube output=/tmp/iggy-native-export-smoke/cube.igmesh bytes=523`.
+`--output-dir` requires `--dump-static-mesh-asset`, the static model load report
+conflict remains, unknown assets still report
+`iggy_native_play: unknown static mesh asset: nope`, and existing targets fail
+with `TargetAlreadyExists`. Tests cover export to a temp directory plus reload,
+default policy exports, unknown assets, missing output directory, file-not-
+directory output path, target already exists, and no parent directory creation.
+This is not arbitrary `--output PATH`, overwrite/force/delete/rename/temp-file
+replacement, fixture rewrite/canonicalization, checked-in fixture writes by
+default, production directory creation, package discovery, scanning, registry/
+catalog/manifest expansion, source mutation, glTF/glb/JSON parser/dependency
+work, `.igmesh` schema expansion, materials/textures/descriptors/samplers/
+normals/UVs/skins/animation/transforms/scene graph/metadata fields, renderer
+behavior, `NativeVulkanRenderer.cpp`, public renderer API, runtime/product/
+scene/server/draw-list API change, or gameplay/input/scripted-control/
+final-state semantic change.
 
 Exit criteria:
 - Load a package or explicit scenario.
