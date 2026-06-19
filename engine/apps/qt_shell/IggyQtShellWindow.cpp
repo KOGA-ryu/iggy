@@ -1139,11 +1139,18 @@ QWidget *IggyQtShellWindow::buildChrome()
 	auto *file = makeChromeButton(QStringLiteral("File"));
 	auto *edit = makeChromeButton(QStringLiteral("Edit"));
 	auto *view = makeChromeButton(QStringLiteral("View"));
+	auto *productPlay = makeChromeButton(
+		productFramePumpEnabled() ? QStringLiteral("Pause")
+								  : QStringLiteral("Play"),
+		QStringLiteral("Toggle product frame pump"));
 	auto *settings = makeChromeButton(QStringLiteral("Settings"), QStringLiteral("Open settings"));
 	auto *bottomToggle = makePanelToggleButton(QStringLiteral("Toggle bottom panel"));
 	auto *rightToggle = makePanelToggleButton(QStringLiteral("Toggle right panel"));
 	back->setEnabled(false);
 	forward->setEnabled(false);
+	productPlay->setCheckable(true);
+	productPlay->setChecked(productFramePumpEnabled());
+	productPlay->setEnabled(productFramePumpAvailable());
 	leftToggle->setChecked(!input_.panels.left.collapsed);
 	bottomToggle->setChecked(!input_.panels.bottom.collapsed);
 	rightToggle->setChecked(!input_.panels.right.collapsed);
@@ -1161,6 +1168,7 @@ QWidget *IggyQtShellWindow::buildChrome()
 	layout->addWidget(file);
 	layout->addWidget(edit);
 	layout->addWidget(view);
+	layout->addWidget(productPlay);
 	auto *fileMenu = attachMenu(file);
 	fileMenu->addAction(QStringLiteral("New Workspace"))->setEnabled(false);
 	fileMenu->addAction(QStringLiteral("Open"))->setEnabled(false);
@@ -1216,6 +1224,9 @@ QWidget *IggyQtShellWindow::buildChrome()
 	});
 	connect(settings, &QPushButton::clicked, this, [this]() {
 		openSettingsWindow();
+	});
+	connect(productPlay, &QPushButton::clicked, this, [this](bool checked) {
+		setProductFramePumpEnabled(checked);
 	});
 	connect(leftToggle, &QPushButton::clicked, this, [this]() {
 		input_.panels.left.collapsed = !input_.panels.left.collapsed;
