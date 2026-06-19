@@ -17,6 +17,7 @@
 #include "NativePlayMath.hpp"
 #include "NativeProductSession.hpp"
 #include "NativeSceneDrawList.hpp"
+#include "NativeStaticMeshFileExport.hpp"
 #include "NativeStaticMeshExportPolicy.hpp"
 #include "NativeStaticMeshAssetWriter.hpp"
 #include "NativeStaticModelLoadReport.hpp"
@@ -31,6 +32,7 @@ using iggy::native_play::BuildNativeStaticModelLoadReport;
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
 using iggy::native_play::DefaultNativeStaticModelPolicy;
+using iggy::native_play::ExportNativeStaticMeshAssetToDirectory;
 using iggy::native_play::FindNativeStaticMeshExportAsset;
 using iggy::native_play::LookAt;
 using iggy::native_play::Mat4;
@@ -41,6 +43,8 @@ using iggy::native_play::NativeStaticModelLoadEntry;
 using iggy::native_play::NativeStaticModelLoadReport;
 using iggy::native_play::NativeStaticModelLoadStatus;
 using iggy::native_play::NativeStaticModelSlot;
+using iggy::native_play::NativeStaticMeshFileExportResult;
+using iggy::native_play::NativeStaticMeshFileExportStatus;
 using iggy::native_play::NativeStaticMeshAsset;
 using iggy::native_play::NativeStaticMeshAssetWriteResult;
 using iggy::native_play::NativeProductSession;
@@ -66,6 +70,8 @@ struct LaunchOptions {
 	bool dumpStaticModelLoadReport = false;
 	bool hasStaticMeshAssetDumpName = false;
 	std::string staticMeshAssetDumpName;
+	bool hasStaticMeshAssetOutputDir = false;
+	std::filesystem::path staticMeshAssetOutputDir;
 	bool hasPlayPath = false;
 	std::filesystem::path playPath;
 	std::vector<std::string> scriptedControls;
@@ -196,6 +202,13 @@ LaunchOptions ParseArgs(int argc, char **argv)
 			options.staticMeshAssetDumpName = argv[++i];
 			continue;
 		}
+		if (arg == "--output-dir") {
+			if (i + 1 >= argc)
+				throw std::runtime_error("--output-dir requires a directory");
+			options.hasStaticMeshAssetOutputDir = true;
+			options.staticMeshAssetOutputDir = argv[++i];
+			continue;
+		}
 		if (arg == "--play") {
 			if (i + 1 >= argc)
 				throw std::runtime_error("--play requires a scenario path");
@@ -245,6 +258,8 @@ LaunchOptions ParseArgs(int argc, char **argv)
 		throw std::runtime_error("--scripted-controls requires --play");
 	if (options.dumpStaticModelLoadReport && options.hasStaticMeshAssetDumpName)
 		throw std::runtime_error("--dump-static-model-load-report cannot be combined with --dump-static-mesh-asset");
+	if (options.hasStaticMeshAssetOutputDir && !options.hasStaticMeshAssetDumpName)
+		throw std::runtime_error("--output-dir requires --dump-static-mesh-asset");
 	if (options.dumpFinalState && options.scriptedControls.empty())
 		throw std::runtime_error("--dump-final-state requires --scripted-controls");
 	if (!options.expectedPlayerTiles.empty() && options.scriptedControls.empty())
@@ -271,6 +286,8 @@ void PrintUsage()
 		<< "                                       without launching SDL/Vulkan.\n"
 		<< "  --dump-static-mesh-asset NAME        Print a built-in .igmesh asset.\n"
 		<< "                                       Names: cube, bean, npc-marker.\n"
+		<< "  --output-dir DIR                    Write dumped mesh to DIR/default\n"
+		<< "                                       filename instead of stdout.\n"
 		<< "\n"
 		<< "Scripted control options:\n"
 		<< "  --scripted-controls LIST             Comma-separated controls such as\n"
@@ -366,6 +383,57 @@ void PrintNativeStaticMeshAssetDump(const std::string &name)
 			" issues=" + std::to_string(result.issues.size()));
 	}
 	std::cout << result.text;
+}
+
+const char *NativeStaticMeshFileExportStatusName(
+	NativeStaticMeshFileExportStatus status)
+{
+	switch (status) {
+	case NativeStaticMeshFileExportStatus::Exported:
+		return "Exported";
+	case NativeStaticMeshFileExportStatus::UnknownAsset:
+		return "UnknownAsset";
+	case NativeStaticMeshFileExportStatus::MissingOutputDirectory:
+		return "MissingOutputDirectory";
+	case NativeStaticMeshFileExportStatus::OutputDirectoryNotDirectory:
+		return "OutputDirectoryNotDirectory";
+	case NativeStaticMeshFileExportStatus::TargetAlreadyExists:
+		return "TargetAlreadyExists";
+	case NativeStaticMeshFileExportStatus::WriterFailed:
+		return "WriterFailed";
+	case NativeStaticMeshFileExportStatus::FileOpenFailed:
+		return "FileOpenFailed";
+	case NativeStaticMeshFileExportStatus::WriteFailed:
+		return "WriteFailed";
+	}
+	return "Unknown";
+}
+
+void PrintNativeStaticMeshAssetFileExport(
+	const std::string &name,
+	const std::filesystem::path &directory)
+{
+	const NativeStaticMeshFileExportResult result =
+		ExportNativeStaticMeshAssetToDirectory(
+			DefaultNativeStaticMeshExportPolicy(),
+			name,
+			directory);
+	if (result.status == NativeStaticMeshFileExportStatus::UnknownAsset)
+		throw std::runtime_error("unknown static mesh asset: " + name);
+	if (result.status != NativeStaticMeshFileExportStatus::Exported) {
+		throw std::runtime_error(
+			std::string { "static mesh export failed: " } +
+			NativeStaticMeshFileExportStatusName(result.status) +
+			" output=" + result.outputPath.string() +
+			" issues=" + std::to_string(result.issueCount));
+	}
+
+	std::cout
+		<< "static-mesh-export"
+		<< " name=" << name
+		<< " output=" << result.outputPath.string()
+		<< " bytes=" << result.byteCount
+		<< "\n";
 }
 
 void ConfigureMoltenVkIcdFallback()
@@ -577,7 +645,13 @@ int main(int argc, char **argv)
 			return report.failedCount == 0 && report.missingCount == 0 ? 0 : 1;
 		}
 		if (options.hasStaticMeshAssetDumpName) {
-			PrintNativeStaticMeshAssetDump(options.staticMeshAssetDumpName);
+			if (options.hasStaticMeshAssetOutputDir) {
+				PrintNativeStaticMeshAssetFileExport(
+					options.staticMeshAssetDumpName,
+					options.staticMeshAssetOutputDir);
+			} else {
+				PrintNativeStaticMeshAssetDump(options.staticMeshAssetDumpName);
+			}
 			return 0;
 		}
 
