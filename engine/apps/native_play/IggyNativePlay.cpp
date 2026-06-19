@@ -63,6 +63,7 @@ struct Vertex3D {
 
 struct PushConstants {
 	Mat4 mvp;
+	std::array<float, 4> tint { 1.0F, 1.0F, 1.0F, 1.0F };
 };
 
 const std::vector<Vertex3D> CubeVertices {
@@ -729,6 +730,7 @@ private:
 
 		runtime::RuntimeGameplayProductPlayModeState &playState =
 			product_->play.state;
+		loopProductFrameCursorForNativePrototype(playState);
 
 		runtime::RuntimeGameplayProductInputAccumulatorFrameInput frameInput;
 		frameInput.state = productInputAccumulator_;
@@ -767,6 +769,16 @@ private:
 		productPresentationCamera_ =
 			result.presentationCamera.presentationCamera;
 		hasProductPresentationCamera_ = true;
+	}
+
+	void loopProductFrameCursorForNativePrototype(
+		runtime::RuntimeGameplayProductPlayModeState &playState) const
+	{
+		if (!playState.loop.loaded || playState.loop.scenario.frames.empty())
+			return;
+		if (playState.loop.nextFrameIndex < playState.loop.scenario.frames.size())
+			return;
+		playState.loop.nextFrameIndex = 0;
 	}
 
 	void createInstance()
@@ -1385,28 +1397,31 @@ private:
 		}
 	}
 
-	PushConstants pushConstantsForFrame() const
+	Mat4 viewProjectionMatrix() const
 	{
-		using Clock = std::chrono::steady_clock;
-		const auto now = Clock::now();
-		const float seconds =
-			std::chrono::duration<float>(now - startTime_).count();
 		const float aspect =
 			swapchainExtent_.height == 0
 			? 1.0F
 			: static_cast<float>(swapchainExtent_.width) /
 				static_cast<float>(swapchainExtent_.height);
 
-		const Mat4 model = cubeModelMatrix(seconds);
 		const Mat4 view = cameraViewMatrix();
 		const Mat4 projection = Perspective(55.0F * Pi / 180.0F, aspect, 0.1F, 100.0F);
+		return Multiply(projection, view);
+	}
 
+	PushConstants pushConstantsForModel(
+		const Mat4 &viewProjection,
+		const Mat4 &model,
+		std::array<float, 4> tint) const
+	{
 		PushConstants constants;
-		constants.mvp = Multiply(Multiply(projection, view), model);
+		constants.mvp = Multiply(viewProjection, model);
+		constants.tint = tint;
 		return constants;
 	}
 
-	Mat4 cubeModelMatrix(float seconds) const
+	Mat4 playerCubeModelMatrix(float seconds) const
 	{
 		if (!product_.has_value() ||
 				!product_->play.state.loop.currentState.session.hasPlayer) {
@@ -1428,6 +1443,22 @@ private:
 			Scale({ 0.75F, 0.75F, 0.75F }));
 	}
 
+	Mat4 tileCubeModelMatrix(
+		int x,
+		int y,
+		float mapWidth,
+		float mapHeight,
+		float verticalCenter,
+		Vec3 scale) const
+	{
+		const Vec3 position {
+			static_cast<float>(x) + 0.5F - mapWidth * 0.5F,
+			verticalCenter,
+			static_cast<float>(y) + 0.5F - mapHeight * 0.5F,
+		};
+		return Multiply(Translation(position), Scale(scale));
+	}
+
 	Mat4 cameraViewMatrix() const
 	{
 		float extent = 6.0F;
@@ -1443,6 +1474,73 @@ private:
 			{ 0.0F, extent * 0.85F, extent * 1.15F },
 			{ 0.0F, 0.0F, 0.0F },
 			{ 0.0F, 1.0F, 0.0F });
+	}
+
+	void drawCube(
+		VkCommandBuffer commandBuffer,
+		const Mat4 &viewProjection,
+		const Mat4 &model,
+		std::array<float, 4> tint) const
+	{
+		const PushConstants constants =
+			pushConstantsForModel(viewProjection, model, tint);
+		vkCmdPushConstants(
+			commandBuffer,
+			pipelineLayout_,
+			VK_SHADER_STAGE_VERTEX_BIT,
+			0,
+			sizeof(PushConstants),
+			&constants);
+		vkCmdDrawIndexed(
+			commandBuffer,
+			static_cast<std::uint32_t>(CubeIndices.size()),
+			1,
+			0,
+			0,
+			0);
+	}
+
+	void drawLevelPlaceholders(
+		VkCommandBuffer commandBuffer,
+		const Mat4 &viewProjection) const
+	{
+		if (!product_.has_value())
+			return;
+
+		const auto &map =
+			product_->play.state.loop.currentState.session.level.map;
+		const float mapWidth = static_cast<float>(map.width);
+		const float mapHeight = static_cast<float>(map.height);
+		for (int y = 0; y < map.height; ++y) {
+			for (int x = 0; x < map.width; ++x) {
+				drawCube(
+					commandBuffer,
+					viewProjection,
+					tileCubeModelMatrix(
+						x,
+						y,
+						mapWidth,
+						mapHeight,
+						-0.055F,
+						{ 0.96F, 0.10F, 0.96F }),
+					{ 0.20F, 0.34F, 0.26F, 1.0F });
+
+				const iggy::LevelTile *tile = map.tileAt(x, y);
+				if (tile != nullptr && !tile->walkable) {
+					drawCube(
+						commandBuffer,
+						viewProjection,
+						tileCubeModelMatrix(
+							x,
+							y,
+							mapWidth,
+							mapHeight,
+							0.38F,
+							{ 0.96F, 0.78F, 0.96F }),
+						{ 0.38F, 0.40F, 0.48F, 1.0F });
+				}
+			}
+		}
 	}
 
 	void recordCommandBuffer(VkCommandBuffer commandBuffer, std::uint32_t imageIndex)
@@ -1474,21 +1572,16 @@ private:
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 		vkCmdBindIndexBuffer(commandBuffer, indexBuffer_, 0, VK_INDEX_TYPE_UINT16);
 
-		const PushConstants constants = pushConstantsForFrame();
-		vkCmdPushConstants(
+		using Clock = std::chrono::steady_clock;
+		const float seconds =
+			std::chrono::duration<float>(Clock::now() - startTime_).count();
+		const Mat4 viewProjection = viewProjectionMatrix();
+		drawLevelPlaceholders(commandBuffer, viewProjection);
+		drawCube(
 			commandBuffer,
-			pipelineLayout_,
-			VK_SHADER_STAGE_VERTEX_BIT,
-			0,
-			sizeof(PushConstants),
-			&constants);
-		vkCmdDrawIndexed(
-			commandBuffer,
-			static_cast<std::uint32_t>(CubeIndices.size()),
-			1,
-			0,
-			0,
-			0);
+			viewProjection,
+			playerCubeModelMatrix(seconds),
+			{ 0.18F, 0.70F, 1.0F, 1.0F });
 		vkCmdEndRenderPass(commandBuffer);
 
 		ThrowIfFailed(
