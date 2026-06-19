@@ -214,7 +214,7 @@ the product play panel. Thin Qt product viewport render command drawing is
 complete as a temporary app-shell consumer of existing latest-frame quad
 commands. Thin Qt target highlight overlay is complete as a visual annotation
 over latest target-context diagnostics. Textured sprites/animation/material
-policy, NPC or other model-slot file binding, glTF/static model parsing, asset
+policy, floor/wall or other model-slot file binding, glTF/static model parsing, asset
 registry/catalog, materials/textures/descriptors/samplers, package/authoring
 asset policy, renderer expansion, backend validation, richer overlays/labels,
 richer diagnostics, frame request/play-surface ownership, explicit interaction
@@ -418,6 +418,20 @@ static model parsing, asset registry/catalog, material/texture/descriptor/
 sampler policy, shader change, staging/device-local upload, runtime/product/
 scene API, app shell behavior, CLI/debugger output, or gameplay behavior change
 is included.
+
+Native NPC mesh asset binding is complete as the second no-Qt loaded mesh slot
+binding: `engine/apps/native_play/assets/npc.igmesh` is a checked-in minimal
+native NPC text mesh asset, and `NativeVulkanRenderer.cpp` loads `npc.igmesh`
+through `LoadNativeStaticMeshAssetFile(...)` while creating scene meshes. A
+valid loaded asset becomes `npcMesh_` and remains bound to
+`NativeVulkanModelSlot::NpcActor`; if loading fails or validates false, the
+procedural NPC marker remains the silent fallback.
+`native_static_mesh_asset_loader_tests` validates the checked-in NPC asset
+fixture. This binds one loaded text mesh to one renderer-private NPC model slot
+only: no public renderer API, CLI option, package discovery, glTF/static model
+parsing, asset registry/catalog, material/texture/descriptor/sampler policy,
+shader change, staging/device-local upload, runtime/product/scene API, app shell
+behavior, CLI/debugger output, or gameplay behavior change is included.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame

@@ -841,6 +841,23 @@ Native player mesh asset binding complete:
   change, staging/device-local upload, runtime/product/scene API, app shell
   behavior, CLI/debugger output, or gameplay behavior change is included.
 
+Native NPC mesh asset binding complete:
+- `engine/apps/native_play/assets/npc.igmesh` adds a checked-in minimal native
+  NPC text mesh asset.
+- `NativeVulkanRenderer.cpp` loads `npc.igmesh` through
+  `LoadNativeStaticMeshAssetFile(...)` while creating scene meshes.
+- A valid loaded asset becomes `npcMesh_` and remains bound to
+  `NativeVulkanModelSlot::NpcActor`.
+- If loading fails or validates false, the existing procedural NPC marker remains
+  the silent fallback.
+- `native_static_mesh_asset_loader_tests` now validates the checked-in NPC asset
+  fixture.
+- This binds one loaded text mesh to one renderer-private NPC model slot only:
+  no public renderer API, CLI option, package discovery, glTF/static model
+  parsing, asset registry/catalog, material/texture/descriptor/sampler policy,
+  shader change, staging/device-local upload, runtime/product/scene API, app
+  shell behavior, CLI/debugger output, or gameplay behavior change is included.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -1345,7 +1362,7 @@ product gameplay actor debug/material quad projection integrated; thin Qt
 product viewport render command drawer integrated as temporary latest-frame quad
 drawing; thin Qt target highlight overlay integrated as a visual annotation over
 latest diagnostics; textured sprites/animation/material/asset policy, richer
-overlays/labels, NPC or other model-slot file binding, glTF/static model
+overlays/labels, floor/wall or other model-slot file binding, glTF/static model
 parsing, asset registry/catalog, materials/textures/descriptors/samplers,
 additional model slot expansion, package/authoring asset policy, renderer
 expansion, backend validation, interaction execution, product UX/save semantics,
@@ -1718,10 +1735,11 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 46. Native procedural NPC mesh slot binding is integrated.
 47. Native static mesh text loader is integrated.
 48. Native player mesh asset binding is integrated.
-49. Dispatch richer diagnostics display, overlays/labels, frame request/
+49. Native NPC mesh asset binding is integrated.
+50. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
-    point-vs-tile policy, NPC or other model-slot file binding, glTF/static
+    point-vs-tile policy, floor/wall or other model-slot file binding, glTF/static
     model parsing, asset registry/catalog, materials/textures/descriptors/
     samplers, non-cube model slot expansion, package/authoring asset policy,
     renderer expansion, render projection gaps, backend validation, further
@@ -1815,6 +1833,13 @@ sampler policy, resource catalog, staging/device-local upload, Linux/dGPU
 validation, backend abstraction, CLI/debugger output change, or gameplay/
 session/input/scripted-control change.
 Do not treat native player mesh asset binding as public renderer API change,
+app-shell/CLI option change, product session change, runtime/product/scene API
+change, draw-list change, shader change, glTF/static model parsing, asset
+registry/catalog, material/texture/descriptor/sampler policy, resource catalog,
+staging/device-local upload, Linux/dGPU validation, backend abstraction,
+CLI/debugger output change, or gameplay/session/input/scripted-control change.
+
+Do not treat native NPC mesh asset binding as public renderer API change,
 app-shell/CLI option change, product session change, runtime/product/scene API
 change, draw-list change, shader change, glTF/static model parsing, asset
 registry/catalog, material/texture/descriptor/sampler policy, resource catalog,

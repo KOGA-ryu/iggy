@@ -374,11 +374,14 @@ Recently completed optimized stretches:
   `std::uint16_t` triangles, with focused parser/file tests. Native player mesh
   asset binding now ships `apps/native_play/assets/player.igmesh`, loads it
   through that text loader, binds it to the `Player` slot when valid, and keeps
-  the procedural bean as fallback.
+  the procedural bean as fallback. Native NPC mesh asset binding now ships
+  `apps/native_play/assets/npc.igmesh`, loads it through the same text loader,
+  binds it to the `NpcActor` slot when valid, and keeps the procedural NPC
+  marker as fallback.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
-  execution if approved, app-shell/CLI extraction, NPC or other model-slot file
+  execution if approved, app-shell/CLI extraction, floor/wall or other model-slot file
   binding, glTF/static model parsing, asset registry/catalog,
   materials/textures/descriptors/samplers,
   package/authoring asset policy, backend validation/abstraction,
@@ -1140,6 +1143,18 @@ package discovery, glTF/static model parsing, asset registry/catalog,
 material/texture/descriptor/sampler policy, shader change, staging/device-local
 upload, runtime/product/scene API, app shell behavior, CLI/debugger output, or
 gameplay behavior change is included.
+Native NPC Mesh Asset Binding is complete for no-Qt renderer prep:
+`engine/apps/native_play/assets/npc.igmesh` adds a checked-in minimal native NPC
+text mesh asset. `NativeVulkanRenderer.cpp` loads `npc.igmesh` through
+`LoadNativeStaticMeshAssetFile(...)` when creating scene meshes. A valid loaded
+asset becomes `npcMesh_` and remains bound to `NativeVulkanModelSlot::NpcActor`;
+if loading fails or validates false, the existing procedural NPC marker remains
+the silent fallback. The loader test now validates the checked-in NPC asset
+fixture. This binds one loaded text mesh to one renderer-private NPC model slot
+only: no public renderer API, CLI option, package discovery, glTF/static model
+parsing, asset registry/catalog, material/texture/descriptor/sampler policy,
+shader change, staging/device-local upload, runtime/product/scene API, app shell
+behavior, CLI/debugger output, or gameplay behavior change is included.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -1158,7 +1173,7 @@ First gates:
 - Explicit interact target synthesis and reach-gated interaction execution.
 - Point-vs-tile / `PrimaryPoint` behavior beyond the current `PrimaryTile`
   policy.
-- NPC or other model-slot file binding, glTF/static model parsing, asset
+- Floor/wall or other model-slot file binding, glTF/static model parsing, asset
   registry/catalog, materials/textures/descriptors/samplers, non-cube model slot
   expansion, package/authoring asset policy, renderer expansion, and any canvas
   polish.
