@@ -128,6 +128,30 @@ void TestLoadsNativeNpcAssetFixture()
 	Expect(result.asset.indices.size() == 30, "native NPC asset should preserve index count");
 }
 
+void TestLoadsNativeFloorAssetFixture()
+{
+	const std::filesystem::path path =
+		std::filesystem::path(IGGY_NATIVE_PLAY_TEST_ASSET_DIR) / "floor.igmesh";
+
+	const NativeStaticMeshAssetLoadResult result = LoadNativeStaticMeshAssetFile(path);
+
+	Expect(result.loaded(), "checked-in native floor asset should load");
+	Expect(result.asset.vertices.size() == 4, "native floor asset should preserve vertex count");
+	Expect(result.asset.indices.size() == 6, "native floor asset should preserve index count");
+}
+
+void TestLoadsNativeWallAssetFixture()
+{
+	const std::filesystem::path path =
+		std::filesystem::path(IGGY_NATIVE_PLAY_TEST_ASSET_DIR) / "wall.igmesh";
+
+	const NativeStaticMeshAssetLoadResult result = LoadNativeStaticMeshAssetFile(path);
+
+	Expect(result.loaded(), "checked-in native wall asset should load");
+	Expect(result.asset.vertices.size() == 8, "native wall asset should preserve vertex count");
+	Expect(result.asset.indices.size() == 36, "native wall asset should preserve index count");
+}
+
 void TestMissingFileReportsOpenFailure()
 {
 	ResetTempRoot();
@@ -200,6 +224,8 @@ int main()
 	TestLoadsTriangleFromFile();
 	TestLoadsNativePlayerAssetFixture();
 	TestLoadsNativeNpcAssetFixture();
+	TestLoadsNativeFloorAssetFixture();
+	TestLoadsNativeWallAssetFixture();
 	TestMissingFileReportsOpenFailure();
 	TestUnknownDirectiveReportsIssue();
 	TestMalformedVertexAndTriangleReportIssues();

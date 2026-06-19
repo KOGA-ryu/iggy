@@ -181,6 +181,16 @@ NativeStaticMeshAsset NativeNpcStaticMeshAsset()
 	return NativeNpcMarkerStaticMeshAsset();
 }
 
+NativeStaticMeshAssetLoadResult LoadNativeFloorStaticMeshAsset()
+{
+	return LoadNativeStaticMeshAssetFile(NativePlayAssetPath("floor.igmesh"));
+}
+
+NativeStaticMeshAssetLoadResult LoadNativeWallStaticMeshAsset()
+{
+	return LoadNativeStaticMeshAssetFile(NativePlayAssetPath("wall.igmesh"));
+}
+
 bool HasInstanceExtension(const std::vector<VkExtensionProperties> &available, const char *name)
 {
 	return std::any_of(available.begin(), available.end(), [name](const auto &extension) {
@@ -552,6 +562,8 @@ public:
 
 		destroyMeshResource(playerMesh_);
 		destroyMeshResource(npcMesh_);
+		destroyMeshResource(wallMesh_);
+		destroyMeshResource(floorMesh_);
 		destroyMeshResource(cubeMesh_);
 
 		for (std::size_t i = 0; i < imageAvailableSemaphores_.size(); ++i) {
@@ -1137,10 +1149,20 @@ private:
 	void createSceneMeshes()
 	{
 		cubeMesh_ = createMeshResource(NativeCubeStaticMeshAsset());
+		const NativeStaticMeshAssetLoadResult floor = LoadNativeFloorStaticMeshAsset();
+		if (floor.loaded())
+			floorMesh_ = createMeshResource(floor.asset);
+		const NativeStaticMeshAssetLoadResult wall = LoadNativeWallStaticMeshAsset();
+		if (wall.loaded())
+			wallMesh_ = createMeshResource(wall.asset);
 		npcMesh_ = createMeshResource(NativeNpcStaticMeshAsset());
 		playerMesh_ = createMeshResource(NativePlayerStaticMeshAsset());
-		registerModelSlot(NativeVulkanModelSlot::Floor, cubeMesh_);
-		registerModelSlot(NativeVulkanModelSlot::Wall, cubeMesh_);
+		registerModelSlot(
+			NativeVulkanModelSlot::Floor,
+			HasMesh(floorMesh_) ? floorMesh_ : cubeMesh_);
+		registerModelSlot(
+			NativeVulkanModelSlot::Wall,
+			HasMesh(wallMesh_) ? wallMesh_ : cubeMesh_);
 		registerModelSlot(NativeVulkanModelSlot::NpcActor, npcMesh_);
 		registerModelSlot(NativeVulkanModelSlot::Player, playerMesh_);
 	}
@@ -1450,6 +1472,8 @@ private:
 	std::vector<VkFramebuffer> swapchainFramebuffers_;
 	VkCommandPool commandPool_ = VK_NULL_HANDLE;
 	NativeVulkanMeshResource cubeMesh_;
+	NativeVulkanMeshResource floorMesh_;
+	NativeVulkanMeshResource wallMesh_;
 	NativeVulkanMeshResource npcMesh_;
 	NativeVulkanMeshResource playerMesh_;
 	NativeVulkanModelRegistry modelRegistry_;

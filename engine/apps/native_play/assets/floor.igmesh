@@ -1,0 +1,8 @@
+# Minimal floor mesh for the native Vulkan renderer text-loader path.
+# Format: v x y z r g b, tri i0 i1 i2
+v -0.50 0.00 -0.50 0.28 0.42 0.32
+v 0.50 0.00 -0.50 0.32 0.48 0.36
+v 0.50 0.00 0.50 0.24 0.38 0.30
+v -0.50 0.00 0.50 0.22 0.34 0.28
+tri 0 1 2
+tri 2 3 0
