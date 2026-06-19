@@ -117,3 +117,4 @@ Queue:
 60. `60_native_procedural_bean_mesh_slot_binding_status_sync` - complete. Sync planning/API docs after native procedural bean mesh player slot binding integration.
 61. `61_native_procedural_npc_mesh_slot_binding_status_sync` - complete. Sync planning/API docs after native procedural NPC marker mesh slot binding integration.
 62. `62_native_static_mesh_text_loader_status_sync` - complete. Sync planning/API docs after native static mesh text loader integration.
+63. `63_native_player_mesh_asset_binding_status_sync` - complete. Sync planning/API docs after native player mesh asset file binding integration.

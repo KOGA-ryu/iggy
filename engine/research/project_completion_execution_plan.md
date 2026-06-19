@@ -261,10 +261,10 @@ deterministic product-path stepping and expectation checks; native no-Qt
   binding is complete as the second non-cube in-memory slot proof; next work is
   optional richer overlays/labels or diagnostics, frame request/play-surface
   ownership decisions, explicit interact target synthesis, reach-gated
-  interaction execution, app shell/CLI extraction, renderer binding for loaded
-  mesh files, glTF/static model parsing, asset registry/catalog,
-  materials/textures/descriptors/samplers, non-cube model slot expansion beyond
-  the procedural player/NPC meshes, package/authoring asset policy, backend
+  interaction execution, app shell/CLI extraction, NPC or other model-slot file
+  binding, glTF/static model parsing, asset registry/catalog, materials/
+  textures/descriptors/samplers, non-cube model slot expansion beyond the
+  procedural player/NPC meshes, package/authoring asset policy, backend
   validation/abstraction, and first-play UX policy gates.
 
 Goal: define and build the first playable loop boundary without making authoring
@@ -822,6 +822,25 @@ Native static mesh text loader complete:
   local upload, runtime/product/scene API, app shell, or gameplay behavior
   change is included.
 
+Native player mesh asset binding complete:
+- `engine/apps/native_play/assets/player.igmesh` adds the first checked-in
+  minimal text mesh asset.
+- `iggy_native_play` now receives `IGGY_NATIVE_PLAY_ASSET_DIR` pointing at
+  `apps/native_play/assets`.
+- `NativeVulkanRenderer.cpp` loads `player.igmesh` through
+  `LoadNativeStaticMeshAssetFile(...)` while creating scene meshes.
+- A valid loaded asset becomes `playerMesh_` and remains bound to
+  `NativeVulkanModelSlot::Player`.
+- If loading fails or validates false, the existing procedural bean remains the
+  silent fallback.
+- `native_static_mesh_asset_loader_tests` now validates the checked-in player
+  asset fixture.
+- This binds one loaded text mesh to one renderer-private model slot only: no
+  public renderer API, CLI option, package discovery, glTF/static model parsing,
+  asset registry/catalog, material/texture/descriptor/sampler policy, shader
+  change, staging/device-local upload, runtime/product/scene API, app shell
+  behavior, CLI/debugger output, or gameplay behavior change is included.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -1326,13 +1345,12 @@ product gameplay actor debug/material quad projection integrated; thin Qt
 product viewport render command drawer integrated as temporary latest-frame quad
 drawing; thin Qt target highlight overlay integrated as a visual annotation over
 latest diagnostics; textured sprites/animation/material/asset policy, richer
-overlays/labels, renderer binding for loaded mesh files, glTF/static model
+overlays/labels, NPC or other model-slot file binding, glTF/static model
 parsing, asset registry/catalog, materials/textures/descriptors/samplers,
-non-cube model slot expansion beyond the procedural player/NPC meshes, package/
-authoring asset policy, renderer expansion, backend validation, interaction
-execution, product UX/save semantics, and UI execution beyond launch/focus/input
-capture/manual step/pump/viewport ownership/primary-tile mouse input remain
-separate gates.
+additional model slot expansion, package/authoring asset policy, renderer
+expansion, backend validation, interaction execution, product UX/save semantics,
+and UI execution beyond launch/focus/input capture/manual step/pump/viewport
+ownership/primary-tile mouse input remain separate gates.
 
 Goal: turn runtime state into visible play state.
 
@@ -1699,10 +1717,11 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 45. Native procedural bean mesh slot binding is integrated.
 46. Native procedural NPC mesh slot binding is integrated.
 47. Native static mesh text loader is integrated.
-48. Dispatch richer diagnostics display, overlays/labels, frame request/
+48. Native player mesh asset binding is integrated.
+49. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
-    point-vs-tile policy, renderer binding for loaded mesh files, glTF/static
+    point-vs-tile policy, NPC or other model-slot file binding, glTF/static
     model parsing, asset registry/catalog, materials/textures/descriptors/
     samplers, non-cube model slot expansion, package/authoring asset policy,
     renderer expansion, render projection gaps, backend validation, further
@@ -1795,3 +1814,9 @@ glTF/static model parsing, asset registry/catalog, material/texture/descriptor/
 sampler policy, resource catalog, staging/device-local upload, Linux/dGPU
 validation, backend abstraction, CLI/debugger output change, or gameplay/
 session/input/scripted-control change.
+Do not treat native player mesh asset binding as public renderer API change,
+app-shell/CLI option change, product session change, runtime/product/scene API
+change, draw-list change, shader change, glTF/static model parsing, asset
+registry/catalog, material/texture/descriptor/sampler policy, resource catalog,
+staging/device-local upload, Linux/dGPU validation, backend abstraction,
+CLI/debugger output change, or gameplay/session/input/scripted-control change.

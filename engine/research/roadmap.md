@@ -371,13 +371,15 @@ Recently completed optimized stretches:
   binding now adds a separate marker mesh for `NpcActor`, leaving floor and wall
   slots on the cube fallback. Native static mesh text loading now adds an
   app-local `.igmesh`-style text reader for position/color vertices and
-  `std::uint16_t` triangles, with focused parser/file tests but no renderer
-  binding yet.
+  `std::uint16_t` triangles, with focused parser/file tests. Native player mesh
+  asset binding now ships `apps/native_play/assets/player.igmesh`, loads it
+  through that text loader, binds it to the `Player` slot when valid, and keeps
+  the procedural bean as fallback.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
-  execution if approved, app-shell/CLI extraction, renderer binding for loaded
-  mesh files, glTF/static model parsing, asset registry/catalog,
+  execution if approved, app-shell/CLI extraction, NPC or other model-slot file
+  binding, glTF/static model parsing, asset registry/catalog,
   materials/textures/descriptors/samplers,
   package/authoring asset policy, backend validation/abstraction,
   pause/retry/reset policy, completion/failure evaluation, and save/load UX.
@@ -1124,6 +1126,20 @@ renderer slot binding to loaded files, CLI option, package discovery, glTF,
 asset registry/catalog, material/texture/descriptor/sampler policy, shader
 change, staging/device-local upload, runtime/product/scene API, app shell, or
 gameplay behavior change is included.
+Native Player Mesh Asset Binding is complete for no-Qt renderer prep:
+`engine/apps/native_play/assets/player.igmesh` adds the first checked-in
+minimal text mesh asset. `iggy_native_play` now receives an
+`IGGY_NATIVE_PLAY_ASSET_DIR` compile definition, and `NativeVulkanRenderer.cpp`
+loads `player.igmesh` through `LoadNativeStaticMeshAssetFile(...)` when creating
+scene meshes. A valid loaded asset becomes `playerMesh_` and remains bound to
+`NativeVulkanModelSlot::Player`; if loading fails or validates false, the
+existing procedural bean remains the silent fallback. The loader test now
+validates the checked-in player asset fixture. This binds one loaded text mesh
+to one renderer-private model slot only: no public renderer API, CLI option,
+package discovery, glTF/static model parsing, asset registry/catalog,
+material/texture/descriptor/sampler policy, shader change, staging/device-local
+upload, runtime/product/scene API, app shell behavior, CLI/debugger output, or
+gameplay behavior change is included.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -1142,7 +1158,7 @@ First gates:
 - Explicit interact target synthesis and reach-gated interaction execution.
 - Point-vs-tile / `PrimaryPoint` behavior beyond the current `PrimaryTile`
   policy.
-- Renderer binding for loaded mesh files, glTF/static model parsing, asset
+- NPC or other model-slot file binding, glTF/static model parsing, asset
   registry/catalog, materials/textures/descriptors/samplers, non-cube model slot
   expansion, package/authoring asset policy, renderer expansion, and any canvas
   polish.
