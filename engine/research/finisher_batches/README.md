@@ -102,3 +102,4 @@ Queue:
 45. `45_product_interaction_target_query_status_sync` - complete. Sync planning/API docs after runtime/product interaction target query integration.
 46. `46_product_input_target_context_status_sync` - complete. Sync planning/API docs after runtime/product input target context projection integration.
 47. `47_product_input_frame_target_context_status_sync` - complete. Sync planning/API docs after runtime/product input frame target context enrichment integration.
+48. `48_qt_product_input_frame_target_context_consumer_status_sync` - complete. Sync planning/API docs after Qt product input frame target context consumer integration.

@@ -208,9 +208,10 @@ point/tile-center target query plus reach report, and
 hovered-target binding context enrichment from that report. Runtime/product
 `RuntimeGameplayProductInputFrameTargetContext` is complete as opt-in pre-frame
 target-context enrichment over the latest eligible `PrimaryTile` pressed event.
-Textured sprites/animation/material policy, Qt/manual Step/pump or frame
-request/play-surface context wiring decisions, explicit interaction execution,
-product UX/save semantics, and broader UI execution remain gated.
+Qt manual Step and Product Frame Pump now consume that helper through the shared
+one-frame path. Textured sprites/animation/material policy, diagnostics display,
+frame request/play-surface ownership, explicit interaction execution, product
+UX/save semantics, and broader UI execution remain gated.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
@@ -413,6 +414,25 @@ Runtime product input frame target context:
   events, mutate product/input state, or change frame request/play-surface/input
   adapter behavior.
 
+Qt product input frame target context consumer:
+- `IggyQtShellWindow::runProductFrameRequestOnce()` calls
+  `RuntimeGameplayProductInputFrameTargetContext {}.enrich(...)` after
+  accumulator `buildFrame(...)` and after storing `productInputAccumulator_ =
+  frame.state`, but before `RuntimeGameplayProductFrameRequest`.
+- Manual `Product Step` and `Product Frame Pump` both use this path.
+- The call uses current `productPlayState_`, the built frame, and default
+  spatial/reach configs.
+- Qt passes `enrichedFrame.frame` to the frame request input. `Unchanged` and
+  `NoEligiblePrimaryTile` paths still pass the copied unchanged frame without
+  branching.
+- Qt stores no helper diagnostics, target-query result, target-context result,
+  primary tile index/tile, or reach result, and exposes none of them through
+  product panel rows, scene/UI models, settings, logs, or status text.
+- Product Input Focus gating, mouse event handling, keyboard mapping, pump
+  timing, accumulator one-shot drain, held-control behavior, and manual Step
+  availability are unchanged.
+- Qt remains a thin caller and does not own target lookup semantics.
+
 Qt manual Step consumer:
 - The View menu exposes `Product Step` for ready `--play` sessions only.
 - The action is independent of `Product Input Focus`; when focus is false,
@@ -423,9 +443,10 @@ Qt manual Step consumer:
   accumulator state without clearing per key event.
 - Focus disable clears accumulator state.
 - Executing Step builds accumulator frame output with projected binding context,
-  stores the returned accumulator state before the frame request, and builds
-  `RuntimeGameplayProductFrameRequestInput` from current `productPlayState_`,
-  accumulator output, and shell-owned presentation camera config, then calls
+  stores the returned accumulator state, enriches a copied input frame target
+  context, and builds `RuntimeGameplayProductFrameRequestInput` from current
+  `productPlayState_`, enriched frame output, and shell-owned presentation camera
+  config, then calls
   `RuntimeGameplayProductFrameRequest {}.run(input)` exactly once.
 - The shell updates only replaceable transient app-shell state:
   `productPlayState_`, latest product play frame/context pointer, and
@@ -509,9 +530,9 @@ Hard stops for product play UI projection:
   mouse screen-to-world/tile mapping, `PrimaryPoint`, or `PrimaryTile` synthesis
   from input context projection. Scene-only spatial lookup is available as a
   primitive, product target query reports are available read-only, and product
-  input target context enrichment plus opt-in frame enrichment exist, but they
-  remain unwired to Qt/manual Step/pump and frame request/play-surface context
-  mutation here.
+  input target context enrichment plus opt-in frame enrichment exist. Qt consumes
+  the frame helper only as a thin caller in the shared one-frame path; frame
+  request/play-surface ownership remains absent.
 - No accumulator state persistence in runtime/session/gameplay/product-loop/
   play-mode state, snapshots, saves, settings, or scene/UI models.
 - No raw Qt key/event storage, cadence/rate policy, accumulator-owned frame
@@ -525,6 +546,7 @@ Hard stops for product play UI projection:
   package discovery, additional Qt mouse behavior, target context wiring,
   target search, reach lookup beyond the read-only product query/enrichment
   helpers, automatic frame request/play-surface ownership of frame enrichment,
+  diagnostics persistence or display from the Qt helper call,
   pause/retry/reset/completion/failure/save-load productization, package
   scanning/watching/discovery, source mutation, raw Qt event persistence,
   projected pointer persistence, viewport geometry/state persistence, render

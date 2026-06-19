@@ -237,9 +237,10 @@ complete as a read-only point/tile-center target query plus reach report;
 runtime/product `RuntimeGameplayProductInputTargetContext` complete as transient
 hovered-target binding context enrichment from that report; runtime/product
 `RuntimeGameplayProductInputFrameTargetContext` complete as opt-in pre-frame
-enrichment over the latest eligible `PrimaryTile` pressed event; next work is
-Qt/manual Step/pump or frame request/play-surface wiring decisions, explicit
-interact target synthesis, reach-gated interaction execution, textured
+enrichment over the latest eligible `PrimaryTile` pressed event; Qt manual Step
+and frame pump now consume that helper through the shared one-frame path; next
+work is diagnostics display, frame request/play-surface ownership decisions,
+explicit interact target synthesis, reach-gated interaction execution, textured
 sprite/animation/material/asset policy, and first-play UX policy gates.
 
 Goal: define and build the first playable loop boundary without making authoring
@@ -636,6 +637,31 @@ Product input frame target context enrichment complete:
   product/gameplay state/query result/base context, or change adapter,
   command/effect, frame request, or play-surface behavior.
 
+Qt product input frame target context consumer complete:
+- `IggyQtShellWindow::runProductFrameRequestOnce()` is the thin Qt caller of
+  `RuntimeGameplayProductInputFrameTargetContext`.
+- Manual `Product Step` and Qt `Product Frame Pump` both use it because both
+  already share that one-frame helper.
+- Qt calls `RuntimeGameplayProductInputFrameTargetContext {}.enrich(...)` after
+  accumulator `buildFrame(...)` and after `productInputAccumulator_ = frame.state`,
+  but before `RuntimeGameplayProductFrameRequest {}.run(input)`.
+- The call uses `productPlayState_`, `frame.frame`, and default spatial/reach
+  configs.
+- Qt passes `enrichedFrame.frame` to
+  `RuntimeGameplayProductFrameRequestInput::inputFrame`.
+- Accumulator one-shot drain and held-control behavior are unchanged because
+  `productInputAccumulator_ = frame.state` remains before the frame request.
+- On `NoEligiblePrimaryTile` or `Unchanged`, the helper returns a copied unchanged
+  frame and Qt passes that frame without branching.
+- Qt does not store `enrichedFrame` diagnostics, target-query result,
+  target-context result, primary tile index/tile, or reach result.
+- No diagnostics are exposed in product panel, scene/ui models, settings, logs,
+  or status text.
+- Product Input Focus gating, mouse event handling, keyboard mapping, pump
+  timing, and manual Step availability remain unchanged.
+- Qt does not own target lookup semantics and introduces no Qt types into
+  runtime/product APIs.
+
 Product input accumulator complete:
 - `RuntimeGameplayProductInputAccumulator` is a shell-neutral return-by-value
   transient input helper.
@@ -690,15 +716,17 @@ Qt product manual Step consumer complete:
   accumulator state without clearing per key event.
 - Focus-disabled state clears accumulator state.
 - Executing the action builds accumulator frame output with projected binding
-  context, stores the returned accumulator state before the frame request, and
-  builds `RuntimeGameplayProductFrameRequestInput` from current
-  `productPlayState_`, accumulator output, and shell-owned camera config.
+  context, stores the returned accumulator state, enriches a copied frame with
+  `RuntimeGameplayProductInputFrameTargetContext`, and builds
+  `RuntimeGameplayProductFrameRequestInput` from current `productPlayState_`,
+  enriched frame output, and shell-owned camera config.
 - It calls `RuntimeGameplayProductFrameRequest {}.run(input)` exactly once.
 - It updates only replaceable app-shell transient state: `productPlayState_`,
   `latestProductPlayModeFrame_` plus the stable product play panel context
   pointer, and `productPresentationCamera_` for the next request.
 - It preserves held movement across steps and drains one-shots after each
-  executed Step.
+  executed Step; target-context enrichment happens after accumulator state is
+  stored, so accumulator behavior is unchanged.
 - It does not persist derived binding context back into accumulator state.
 - If no request executes because Step is unavailable, input is not silently
   cleared.
@@ -738,9 +766,10 @@ Qt product frame pump toggle complete:
   frame request, play mode, input accumulator, or gameplay semantics.
 
 Remaining input gate questions:
-- Should Qt manual Step/pump call `RuntimeGameplayProductInputFrameTargetContext`
-  before frame request, or should frame request/play surface ever own that
-  enrichment?
+- Should frame request/play surface ever own target-context enrichment, or should
+  it remain an app-shell pre-frame caller decision?
+- What helper diagnostics, if any, should be shown in product panels, render
+  highlighting, logs, or status text?
 - Who owns hover lifecycle, clearing, and selected-target workflows beyond this
   enrichment-only helper?
 - Should explicit interact target synthesis consume a `TargetFound` report, and
@@ -756,8 +785,8 @@ Remaining input gate questions:
 - What does completion/failure mean in the first slice?
 
 Output:
-- one optional Qt/manual Step/pump or frame request/play-surface context wiring
-  packet over the product query/context helpers, if approved;
+- one optional diagnostics display, highlighting, or frame request/play-surface
+  ownership packet over the product query/context helpers, if approved;
 - one textured sprite / animation / material policy packet, if approved;
 - one updated implementation order packet;
 - one verification plan.
@@ -964,9 +993,13 @@ Packets:
      `PrimaryTile` pressed event, queries target/reach, enriches only copied frame
      binding context, and preserves events; no auto frame request/play-surface
      wiring or `PrimaryTile` to `Interact` conversion.
-22. Debug overlay projection:
+22. Qt product input frame target context consumer. Complete:
+   - shared Qt one-frame path calls the opt-in helper after accumulator
+     `buildFrame(...)` / state storage and before frame request, passes the
+     enriched frame forward, and stores/exposes no helper diagnostics.
+23. Debug overlay projection:
    - trace/final rows, AI map, collision, path, interactions, inventory.
-23. UI presentation adapter:
+24. UI presentation adapter:
    - convert render frame data into the chosen shell/app surface.
 
 Hard stops:
@@ -1196,11 +1229,12 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 30. Runtime/product interaction target query report is integrated.
 31. Runtime/product input target context projection is integrated.
 32. Runtime/product input frame target context enrichment is integrated.
-33. Dispatch Qt/manual Step/pump or frame request/play-surface context wiring,
-    explicit interact target synthesis, reach-gated interaction execution, hover
-    lifecycle, selected-target workflow, point-vs-tile policy, textured sprite /
-    animation / material policy, render projection gaps, further input mapping,
-    or a focused-input follow-up, depending on planner scope.
+33. Qt product input frame target context consumer is integrated.
+34. Dispatch diagnostics display, frame request/play-surface ownership, explicit
+    interact target synthesis, reach-gated interaction execution, hover lifecycle,
+    selected-target workflow, point-vs-tile policy, textured sprite / animation /
+    material policy, render projection gaps, further input mapping, or a
+    focused-input follow-up, depending on planner scope.
 
 Do not broaden the next Product Loop packet into pause/retry/reset,
 completion/failure, save/load productization, product-loop signature changes,
@@ -1208,6 +1242,6 @@ command/gate execution, presentation state persistence, Qt/UI/CLI behavior,
 raw OS event types, raw input persistence, textured sprite/animation/material
 policy, target context wiring/lifecycle/reach beyond the approved read-only
 product query and enrichment helpers, automatic frame request/play-surface
-ownership of enrichment, additional Qt mouse behavior, render command drawing,
-canvas polish, or new gameplay semantics unless the user explicitly
-reprioritizes.
+ownership of enrichment, diagnostics persistence/exposure beyond the approved
+thin Qt caller, additional Qt mouse behavior, render command drawing, canvas
+polish, or new gameplay semantics unless the user explicitly reprioritizes.

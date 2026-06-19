@@ -196,14 +196,16 @@ Recently completed optimized stretches:
 - Qt shell `Product Step` View-menu action for ready `--play` sessions,
   invoking `RuntimeGameplayProductFrameRequest` exactly once, updating only
   replaceable app-shell transient play state/latest frame/presentation camera,
+  enriching the copied input frame target context through the shared helper,
   clearing transient product input after executed requests, and refreshing the
   existing read-only product play panel without settings persistence, shortcuts,
   or runtime semantic changes.
 - Qt shell `Product Frame Pump` View-menu toggle for ready `--play` sessions,
   using window-owned `QTimer` timing at 250 ms / 4 Hz through the same one-frame
-  helper as manual Step. It is app-shell-owned replaceable timing only, updates
-  transient shell play state/latest frame/presentation camera/accumulator state,
-  and does not persist pump settings or add runtime/product semantics.
+  helper as manual Step, including the same target-context enrichment call. It is
+  app-shell-owned replaceable timing only, updates transient shell play
+  state/latest frame/presentation camera/accumulator state, and does not persist
+  pump settings or add runtime/product semantics.
 - Runtime authoring diagnostic projection with stable printable error-code
   strings.
 - Runtime summary projection for CLI/facade summary and final rows.
@@ -315,11 +317,12 @@ Recently completed optimized stretches:
   binding context with a hovered target id from that report. The opt-in
   `RuntimeGameplayProductInputFrameTargetContext` helper can now consume a frame's
   latest eligible `PrimaryTile` pressed event, run that query/enrichment, and
-  return a copied frame with only binding context replaced. Next product runtime
-  work is deciding whether Qt/manual Step/pump or frame request/play surface
-  should call it, or whether explicit interaction intent should be synthesized,
-  then interaction execution if approved, textured sprite/animation/material/asset
-  policy,
+  return a copied frame with only binding context replaced. Qt manual Step and
+  frame pump now call that helper through their shared one-frame path. Next
+  product runtime work is deciding whether frame request/play surface should own
+  enrichment, whether diagnostics should be surfaced, or whether explicit
+  interaction intent should be synthesized, then interaction execution if
+  approved, textured sprite/animation/material/asset policy,
   pause/retry/reset policy, completion/failure evaluation, and save/load UX.
 - Rendering backend/presentation layer.
 - Audio server boundary.
@@ -580,8 +583,10 @@ runtime/product projection and accumulator event preservation, and the Qt shell
 now records focused ready left-clicks on `productViewport_` as transient
 `PrimaryTile` pressed events. Runtime/product target lookup now exists as a
 read-only report surface over point or tile-center queries with optional reach
-annotation. There is still no hover/selection context mutation, `PrimaryTile` to
-`Interact` conversion, interaction execution, right/middle/move/wheel/
+annotation, and Qt manual Step/frame pump now apply opt-in pre-frame target
+context enrichment before frame requests. There is still no durable hover or
+selection state, `PrimaryTile` to `Interact` conversion, interaction execution,
+right/middle/move/wheel/
 double-click/drag behavior, textured sprite/animation/material/asset policy, UX
 policy, or save/load productization yet.
 Qt Product Viewport Owner is complete as a temporary app-shell viewport/canvas
@@ -615,6 +620,15 @@ frame binding context, preserves all events unchanged, and returns diagnostics.
 It does not auto-wire frame request/play surface, synthesize `Interact`/`Inspect`
 targets, inject target ids into events, persist hover, or change adapter/command
 semantics.
+Qt Product Input Frame Target Context Consumer is complete as a thin caller in
+`IggyQtShellWindow::runProductFrameRequestOnce()`: after accumulator
+`buildFrame(...)` and storing the returned accumulator state, but before
+`RuntimeGameplayProductFrameRequest`, Qt calls
+`RuntimeGameplayProductInputFrameTargetContext {}.enrich(...)` with
+`productPlayState_`, the built frame, and default spatial/reach configs. It
+passes the copied/enriched frame into the request, stores no helper diagnostics,
+and leaves focus gating, mouse/key mapping, pump timing, manual Step
+availability, accumulator drain, and runtime helper semantics unchanged.
 
 Objective: move from engine harness to playable/editor-backed game loop.
 
@@ -759,9 +773,10 @@ Done:
   `PrimaryTile`, add cadence/pump behavior, or persist binding context.
 - Qt shell `Product Step` is a ready-state View-menu action for `--play`
   sessions. It builds accumulator frame output with projected binding context,
-  stores the returned accumulator state before the frame request, builds request
-  input from current `productPlayState_`, that frame output, and shell-owned
-  camera config, runs `RuntimeGameplayProductFrameRequest` once, replaces only
+  stores the returned accumulator state, enriches a copied frame through
+  `RuntimeGameplayProductInputFrameTargetContext`, builds request input from
+  current `productPlayState_`, the enriched frame, and shell-owned camera config,
+  runs `RuntimeGameplayProductFrameRequest` once, replaces only
   `productPlayState_`, `latestProductPlayModeFrame_`, the stable product play
   context pointer, and `productPresentationCamera_`, preserves held movement
   across steps, drains one-shots after executed steps, and refreshes the
@@ -773,12 +788,12 @@ Done:
 - Qt shell `Product Frame Pump` is a ready-state View-menu toggle for `--play`
   sessions. It owns only replaceable Qt timing/action checked state via a
   window-owned `QTimer` at 250 ms / 4 Hz, shares the same one-frame helper as
-  manual Step, and updates only transient app-shell product play state, input
-  accumulator state, latest frame, previous presentation camera, product play
-  state context pointer, and panel projection. It stops if product play becomes
-  unavailable/not ready, does not stop on `NoFrameAvailable`, and persists no
-  pump enabled state, interval, keybinding, input, camera, latest-frame, or
-  render-frame data.
+  manual Step including input-frame target-context enrichment, and updates only
+  transient app-shell product play state, input accumulator state, latest frame,
+  previous presentation camera, product play state context pointer, and panel
+  projection. It stops if product play becomes unavailable/not ready, does not
+  stop on `NoFrameAvailable`, and persists no pump enabled state, interval,
+  keybinding, input, camera, latest-frame, or render-frame data.
 - Product actor render projection is runtime-only and projection-only:
   `RuntimeGameplayProductActorRenderCommands` emits debug/material quads for
   the current player and present modern NPC actors, and
@@ -820,6 +835,12 @@ Done:
   query helper, applies target-context enrichment to the frame binding context,
   and keeps event order/payloads intact. Missing-tile and release primary events
   stay ineligible for this helper and preserved for existing adapter behavior.
+- Qt product input frame target context consumer is app-shell thin:
+  manual Step and frame pump both call the opt-in helper through
+  `runProductFrameRequestOnce()`, pass the enriched frame to the frame request,
+  and intentionally discard helper diagnostics. Qt does not store target query,
+  reach, primary-tile, or target-context results and does not expose them in the
+  product panel, settings, logs, status text, or scene/UI models.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -830,8 +851,9 @@ Exit criteria:
 - Save/load user-facing state.
 
 First gates:
-- Qt/manual Step/pump or frame request/play-surface wiring decision for the
-  opt-in pre-frame target-context enrichment helper.
+- Diagnostics display or panel/render highlighting for the target context
+  enrichment path.
+- Frame request/play-surface ownership decision for target-context enrichment.
 - Hover lifecycle and selected-target workflows beyond the helper's one-shot
   enrichment.
 - Explicit interact target synthesis and reach-gated interaction execution.
