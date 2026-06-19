@@ -1,3 +1,3 @@
 packet	status	department	owner	source_commit	source_review	docs_commit	docs_review	blocked_reason	next_action	updated
 65_native_floor_wall_mesh_asset_binding	complete	integration	finisher	75fea578	PASS	55e6348c	not_requested		closed source and docs after native floor/wall mesh asset binding	2026-06-19
-66_native_static_model_policy_scout	build_ready	integration	builder						Planner override: build Native Static Model Slot Policy, .igmesh First from Researcher PASS; reviewer gates source after commit	2026-06-19
+66_native_static_model_policy_scout	source_review	integration	reviewer	36e5881f					Reviewer gates source commit for Native Static Model Slot Policy, .igmesh First	2026-06-19
