@@ -109,3 +109,4 @@ Queue:
 52. `52_native_scripted_controls_debugger_status_sync` - complete. Sync planning/API docs after native scripted controls, debugger, expectations, and final-state dump integration.
 53. `53_native_scene_draw_list_extraction_status_sync` - complete. Sync planning/API docs after native scene draw-list extraction integration.
 54. `54_native_product_session_extraction_status_sync` - complete. Sync planning/API docs after native product session extraction integration.
+55. `55_native_vulkan_renderer_skeleton_extraction_status_sync` - complete. Sync planning/API docs after native Vulkan renderer skeleton extraction integration.

@@ -214,9 +214,10 @@ the product play panel. Thin Qt product viewport render command drawing is
 complete as a temporary app-shell consumer of existing latest-frame quad
 commands. Thin Qt target highlight overlay is complete as a visual annotation
 over latest target-context diagnostics. Textured sprites/animation/material
-policy, real renderer ownership, richer overlays/labels, richer diagnostics,
-frame request/play-surface ownership, explicit interaction execution, product
-UX/save semantics, and broader UI execution remain gated.
+policy, GPU resource wrappers, renderer expansion, backend validation, richer
+overlays/labels, richer diagnostics, frame request/play-surface ownership,
+explicit interaction execution, product UX/save semantics, and broader UI
+execution remain gated.
 
 Native `iggy_native_play` scripted controls/debugger is complete as a no-Qt
 app-shell harness over the same product input path as keyboard controls. It
@@ -249,10 +250,10 @@ orchestration: `NativeProductSession.hpp/.cpp` own/delegate product load/play
 state, input accumulator, active movement controls, latest frame, presentation
 camera, scripted-control cadence/state, final dump state, movement guard, camera
 request config, and one-frame product request/tick flow. `IggyNativePlay.cpp`
-remains the app shell and renderer owner for CLI parsing/help, SDL key mapping
-and event/window lifecycle, Vulkan setup/swapchain/render pass/pipeline/shaders/
-command buffers/buffer upload/mesh ownership/destruction, plus draw-list/camera
-orchestration. The session loads the product scenario before parsing raw
+keeps app-shell responsibilities for CLI parsing/help, SDL key mapping and
+event/window lifecycle, plus draw-list/camera orchestration; later native
+renderer skeleton extraction moves Vulkan lifetime/draw submission behind
+`NativeVulkanRenderer`. The session loads the product scenario before parsing raw
 scripted-control specs, preserving pre-extraction load-before-parse ordering;
 `ParseArgs` still uses the shared parser only for expected-player-tile count
 validation. Output/error strings and normal scripted final-state behavior are
@@ -261,6 +262,26 @@ input/scripted-control semantics, CLI/debugger output, SDL extraction, renderer
 class/skeleton extraction, mesh-buffer ownership, `NativePlayMath.hpp`,
 `NativeSceneDrawList.hpp`, glTF/assets/textures/material registry/animation/
 shader work remain separate.
+
+Native Vulkan renderer skeleton extraction is complete as no-Qt app-local
+renderer separation: `NativeVulkanRenderer.hpp/.cpp` define
+`iggy::native_play::NativeVulkanRenderer` with a minimal pimpl surface and
+`NativeVulkanFrameInput` carrying a view-projection matrix plus borrowed
+draw-item vector pointer. Vulkan lifetime/resources, swapchain, render pass,
+pipeline, depth, framebuffers, command pool, command buffers, sync, cube mesh,
+recording, acquire/submit/present, recreate, and cleanup now live in
+`NativeVulkanRenderer.cpp`; CMake registers that source for `iggy_native_play`.
+`IggyNativePlay.cpp` remains CLI/help/validation, MoltenVK fallback setup, SDL
+init/window/event loop/destruction/quit, SDL key mapping, product session,
+seconds/camera/draw-list orchestration, and per-frame renderer input owner. The
+renderer stores only a non-owning `SDL_Window *` for Vulkan interop, consumes
+per-call draw items synchronously, and does not depend on `NativeProductSession`,
+runtime gameplay state, product loop/frame request, scripted controls, or
+`BuildNativeSceneDrawItems(...)`. Debugger CLI/output strings, gameplay/product/
+session/input/scripted-control semantics, runtime/product/scene/server/render-
+command APIs, `NativePlayMath.hpp`, `NativeSceneDrawList.hpp`, shader behavior,
+generalized mesh/resource ownership, glTF/assets/textures/material registry/
+animation, Linux/dGPU policy, and backend abstraction remain separate.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame

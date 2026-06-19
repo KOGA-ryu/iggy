@@ -247,11 +247,13 @@ diagnostics; native no-Qt scripted controls/debugger is complete for
 deterministic product-path stepping and expectation checks; native no-Qt
 scene draw-list extraction is complete as backend-neutral app-local renderer
 prep; native no-Qt product session extraction is complete as app-local product
-state/request/script orchestration; next work is optional richer overlays/labels
-or diagnostics, frame request/play-surface ownership
-decisions, explicit interact target synthesis, reach-gated interaction
-execution, real renderer ownership, textured sprite/animation/material/asset
-policy, and first-play UX policy gates.
+state/request/script orchestration; native no-Qt Vulkan renderer skeleton
+extraction is complete as app-local renderer lifetime/draw submission
+separation; next work is optional richer overlays/labels or diagnostics, frame
+request/play-surface ownership decisions, explicit interact target synthesis,
+reach-gated interaction execution, GPU mesh resource wrapping, app shell/CLI
+extraction, textured sprite/animation/material/asset policy, backend
+validation/abstraction, and first-play UX policy gates.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -569,11 +571,10 @@ Native product session extraction complete:
   active movement controls, latest product frame plus has flag, presentation
   camera plus has flag, scripted-control cadence/state, final dump state,
   movement guard, camera request config, and one-frame product request/tick flow.
-- `IggyNativePlay.cpp` remains the app shell and renderer owner:
+- `IggyNativePlay.cpp` keeps app-shell responsibilities for
   `LaunchOptions`/CLI parsing/help, SDL key mapping/event loop/window lifecycle,
-  Vulkan setup/swapchain/render pass/pipeline/shaders/command buffers/buffer
-  upload/mesh ownership/destruction, and draw-list/camera orchestration stay
-  there.
+  and draw-list/camera orchestration; later native renderer skeleton extraction
+  moves Vulkan lifetime/draw submission behind `NativeVulkanRenderer`.
 - CMake registers `apps/native_play/NativeProductSession.cpp` for
   `iggy_native_play`.
 - `NativeProductSession.*` is app-local and non-SDL/non-Vulkan; it does not use
@@ -602,6 +603,46 @@ Native product session extraction complete:
   registry/animation/shader work is included.
 - Renderer/swapchain/pipeline/command-buffer extraction and mesh-buffer
   ownership remain separate future packets.
+
+Native Vulkan renderer skeleton extraction complete:
+- `NativeVulkanRenderer.hpp/.cpp` defines app-local
+  `iggy::native_play::NativeVulkanRenderer` with a minimal pimpl public surface.
+- `NativeVulkanFrameInput` carries `Mat4 viewProjection` and a borrowed
+  draw-item vector pointer.
+- `NativeVulkanRenderer` exposes `initialize(SDL_Window *)`, `drawFrame(...)`,
+  `markFramebufferResized()`, `aspectRatio()`, `waitIdle()`, and `cleanup()`.
+- Vulkan lifetime/resources, swapchain, render pass, pipeline, depth,
+  framebuffers, command pool, command buffers, sync, cube mesh, recording,
+  acquire/submit/present, recreate, and cleanup code moved from
+  `IggyNativePlay.cpp` to `NativeVulkanRenderer.cpp`.
+- `IggyNativePlay.cpp` remains CLI/help/validation, MoltenVK fallback setup, SDL
+  init/window/event loop/destruction/quit, SDL key mapping, product session
+  calls, seconds/camera/draw-list orchestration, and per-frame renderer input
+  owner.
+- The renderer stores only a non-owning `SDL_Window *` for Vulkan interop and is
+  not the SDL app shell.
+- The renderer does not depend on `NativeProductSession`, runtime gameplay
+  state, product loop/frame request, scripted controls, or
+  `BuildNativeSceneDrawItems(...)`.
+- Input lifetime is per-call: the app builds local draw items, passes a pointer
+  through `NativeVulkanFrameInput`, and the renderer consumes it synchronously
+  without storing it.
+- The cube mesh moved mechanically into the renderer because command recording
+  and draw submission moved; this is not a generalized mesh/resource
+  abstraction.
+- CMake registers `apps/native_play/NativeVulkanRenderer.cpp` for
+  `iggy_native_play`.
+- No debugger CLI/output string changes, SDL app-shell extraction beyond
+  delegated renderer calls/window/resize/wait/cleanup, gameplay/product/session/
+  input/scripted-control semantic changes, runtime/product/scene/server/
+  render-command API changes, `NativeProductSession` dependency in the renderer,
+  `NativePlayMath.hpp` behavior change, `NativeSceneDrawList.hpp` behavior
+  change, shader behavior/interface change, new shaders, generalized mesh/
+  resource registry, glTF/assets/textures/material registry/animation work,
+  Linux/dGPU validation policy, or backend abstraction is included.
+- GPU mesh resource wrapper, app shell/CLI extraction, glTF/assets/textures/
+  materials, animation, Linux/dGPU validation, and backend abstraction remain
+  separate future packets.
 
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
@@ -956,9 +997,9 @@ Remaining input gate questions:
   beyond the current `PrimaryTile`-only click behavior?
 - Should selected target projection be added later, and what hover lifecycle or
   ownership gate would be required around the current enrichment helper?
-- What real renderer ownership, textured sprite/animation/material/asset policy,
-  or canvas polish should replace or extend the current debug/material actor
-  quads and temporary Qt drawer?
+- What GPU resource ownership, renderer expansion, textured sprite/animation/
+  material/asset policy, or canvas polish should replace or extend the current
+  debug/material actor quads and temporary Qt drawer?
 - Who owns pause/retry/reset?
 - What state must save/load for the first playable slice?
 - What does completion/failure mean in the first slice?
@@ -966,8 +1007,8 @@ Remaining input gate questions:
 Output:
 - one optional richer diagnostics, overlays/labels, or frame request/play-surface
   ownership packet over the product query/context helpers, if approved;
-- one real renderer ownership or textured sprite / animation / material policy
-  packet, if approved;
+- one GPU resource wrapper, renderer expansion, or textured sprite / animation /
+  material policy packet, if approved;
 - one updated implementation order packet;
 - one verification plan.
 
@@ -1107,9 +1148,10 @@ product gameplay actor debug/material quad projection integrated; thin Qt
 product viewport render command drawer integrated as temporary latest-frame quad
 drawing; thin Qt target highlight overlay integrated as a visual annotation over
 latest diagnostics; textured sprites/animation/material/asset policy, richer
-overlays/labels, real renderer ownership, interaction execution, product UX/save
-semantics, and UI execution beyond launch/focus/input capture/manual step/pump/
-viewport ownership/primary-tile mouse input remain separate gates.
+overlays/labels, GPU resource wrappers, renderer expansion, backend validation,
+interaction execution, product UX/save semantics, and UI execution beyond launch/
+focus/input capture/manual step/pump/viewport ownership/primary-tile mouse input
+remain separate gates.
 
 Goal: turn runtime state into visible play state.
 
@@ -1200,11 +1242,17 @@ Packets:
      consumes the returned items as before.
 28. Native product session extraction. Complete:
    - `NativeProductSession` owns app-local product load/play/input/script/final
-     dump/session tick flow while `IggyNativePlay.cpp` remains SDL, CLI/help,
-     draw-list/camera orchestration, and Vulkan renderer owner.
-29. Debug overlay projection:
+     dump/session tick flow while `IggyNativePlay.cpp` keeps SDL, CLI/help, and
+     draw-list/camera orchestration responsibilities.
+29. Native Vulkan renderer skeleton extraction. Complete:
+   - `NativeVulkanRenderer` owns app-local Vulkan lifetime/swapchain/render
+     pass/pipeline/depth/framebuffer/command/sync/cube-mesh recording and
+     cleanup behind a pimpl surface while `IggyNativePlay.cpp` remains CLI/help,
+     SDL app shell, product session, seconds/camera/draw-list orchestration, and
+     per-frame renderer input owner.
+30. Debug overlay projection:
    - trace/final rows, AI map, collision, path, interactions, inventory.
-30. UI presentation adapter:
+31. UI presentation adapter:
    - convert render frame data into the chosen shell/app surface.
 
 Hard stops:
@@ -1441,12 +1489,14 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 37. Native no-Qt scripted controls/debugger is integrated.
 38. Native scene draw-list extraction is integrated.
 39. Native product session extraction is integrated.
-40. Dispatch richer diagnostics display, overlays/labels, frame request/
+40. Native Vulkan renderer skeleton extraction is integrated.
+41. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
-    point-vs-tile policy, real renderer ownership, textured sprite / animation /
-    material policy, render projection gaps, further input mapping, or a
-    focused-input follow-up, depending on planner scope.
+    point-vs-tile policy, GPU resource wrappers, renderer expansion, textured
+    sprite / animation / material policy, render projection gaps, backend
+    validation, further input mapping, or a focused-input follow-up, depending
+    on planner scope.
 
 Do not broaden the next Product Loop packet into pause/retry/reset,
 completion/failure, save/load productization, product-loop signature changes,
@@ -1473,3 +1523,12 @@ pipeline/command buffer/buffer upload/destruction extraction, renderer
 class/skeleton extraction, mesh-buffer ownership change, `NativePlayMath.hpp` or
 `NativeSceneDrawList.hpp` behavior change, or glTF/assets/textures/material
 registry/animation/shader work.
+Do not treat native Vulkan renderer skeleton extraction as debugger CLI/output
+string changes, SDL app-shell extraction beyond delegated renderer calls/window/
+resize/wait/cleanup, SDL init/window/event-loop ownership transfer,
+gameplay/product/session/input/scripted-control semantic changes, runtime/
+product/scene/server/render-command API changes, renderer dependency on
+`NativeProductSession` or runtime gameplay state, `NativePlayMath.hpp` behavior
+change, `NativeSceneDrawList.hpp` behavior change, shader behavior/interface
+change, generalized mesh/resource registry, glTF/assets/textures/material
+registry/animation work, Linux/dGPU validation policy, or backend abstraction.

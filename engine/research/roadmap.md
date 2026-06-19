@@ -344,12 +344,19 @@ Recently completed optimized stretches:
   extracting mesh-buffer ownership or renderer/swapchain/pipeline resources.
   Native no-Qt product play state/request/script orchestration now lives in
   app-local `NativeProductSession`, while `IggyNativePlay.cpp` remains the SDL,
-  CLI/help, draw-list/camera orchestration, and Vulkan renderer owner.
+  CLI/help, draw-list/camera orchestration, and app shell owner. Native Vulkan
+  renderer skeleton extraction now moves Vulkan lifetime/swapchain/render pass/
+  pipeline/depth/framebuffer/command/sync/cube-mesh recording and cleanup into
+  app-local `NativeVulkanRenderer`, while `IggyNativePlay.cpp` still owns
+  CLI/help/validation, MoltenVK fallback setup, SDL lifecycle/event loop,
+  product session calls, seconds/camera/draw-list orchestration, and per-frame
+  renderer input.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
-  execution if approved, real renderer ownership, textured sprite/animation/
-  material/asset policy, pause/retry/reset policy, completion/failure
+  execution if approved, GPU mesh resource wrapping, app-shell/CLI extraction,
+  textured sprite/animation/material/asset policy, backend validation/
+  abstraction, pause/retry/reset policy, completion/failure
   evaluation, and save/load UX.
 - Rendering backend/presentation layer.
 - Audio server boundary.
@@ -953,14 +960,31 @@ and `NativeProductSessionConfig`. The session owns/delegates product load/play
 state, product input accumulator, active movement controls, latest product frame
 and has flag, presentation camera and has flag, scripted-control cadence/state,
 final dump state, movement guard, camera request config, and one-frame product
-request/tick flow. `IggyNativePlay.cpp` remains the app shell and renderer owner:
+request/tick flow. `IggyNativePlay.cpp` keeps app-shell responsibilities:
 `LaunchOptions`/CLI parsing/help, SDL key mapping/event loop/window lifecycle,
-Vulkan setup/swapchain/render pass/pipeline/shaders/command buffers/buffer
-upload/mesh ownership/destruction, and draw-list/camera orchestration remain
-there. `NativeProductSessionConfig` carries raw scripted-control specs, and the
+and draw-list/camera orchestration remain there; later native renderer skeleton
+extraction moves Vulkan lifetime/draw submission behind `NativeVulkanRenderer`.
+`NativeProductSessionConfig` carries raw scripted-control specs, and the
 session constructor loads the product scenario before parsing scripted controls,
 preserving pre-extraction side-effect/error ordering; `ParseArgs` still uses the
 shared parser only for `--expect-player-tiles` count validation.
+Native Vulkan Renderer Skeleton Extraction is complete for no-Qt renderer prep:
+`NativeVulkanRenderer.hpp/.cpp` add app-local
+`iggy::native_play::NativeVulkanRenderer` with a minimal pimpl public surface.
+`NativeVulkanFrameInput` carries `Mat4 viewProjection` plus a borrowed draw-item
+vector pointer, and the renderer exposes `initialize(SDL_Window *)`,
+`drawFrame(...)`, `markFramebufferResized()`, `aspectRatio()`, `waitIdle()`, and
+`cleanup()`. Vulkan lifetime/resources, swapchain, render pass, pipeline, depth,
+framebuffers, command pool, command buffers, sync, cube mesh, recording,
+acquire/submit/present, recreate, and cleanup moved from `IggyNativePlay.cpp`
+to `NativeVulkanRenderer.cpp`. `IggyNativePlay.cpp` remains CLI/help/validation,
+MoltenVK fallback setup, SDL init/window/event loop/destruction/quit, SDL key
+mapping, product session calls, seconds/camera/draw-list orchestration, and
+per-frame renderer input owner. The renderer stores only a non-owning
+`SDL_Window *` for Vulkan interop, consumes per-call draw input synchronously,
+does not depend on product/session/scripted controls or
+`BuildNativeSceneDrawItems(...)`, and does not introduce generalized mesh/
+resource ownership beyond the mechanical cube mesh move.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -979,8 +1003,8 @@ First gates:
 - Explicit interact target synthesis and reach-gated interaction execution.
 - Point-vs-tile / `PrimaryPoint` behavior beyond the current `PrimaryTile`
   policy.
-- Real renderer ownership, textured sprite/animation/material/asset policy over
-  the debug/material actor quads, and any canvas polish.
+- GPU resource wrappers, renderer expansion, textured sprite/animation/material/
+  asset policy over the debug/material actor quads, and any canvas polish.
 - Pause/retry/reset policy.
 - Completion/failure evaluator.
 - Save-slot UX ownership.
