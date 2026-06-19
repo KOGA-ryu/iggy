@@ -180,6 +180,16 @@ QRectF productViewportWorldRectToPixels(
 	return QRectF(topLeft, bottomRight).normalized();
 }
 
+QColor productViewportTargetHighlightColor(
+	const runtime::RuntimeGameplayProductInteractionTargetQueryResult &target)
+{
+	if (!target.hasReach)
+		return QColor(230, 230, 220, 230);
+	if (target.reachable)
+		return QColor(62, 220, 184, 235);
+	return QColor(238, 133, 70, 235);
+}
+
 class ProductViewportWidget final : public QFrame {
 public:
 	explicit ProductViewportWidget(QWidget *parent = nullptr)
@@ -193,6 +203,14 @@ public:
 		const runtime::RuntimeGameplayProductPlayModeFrameResult *frame)
 	{
 		latestFrame_ = frame;
+		update();
+	}
+
+	void setLatestTargetContext(
+		const runtime::RuntimeGameplayProductInputFrameTargetContextResult
+			*targetContext)
+	{
+		latestTargetContext_ = targetContext;
 		update();
 	}
 
@@ -230,11 +248,56 @@ protected:
 			painter.setPen(QPen(outline, 1.0));
 			painter.drawRect(rect);
 		}
+
+		drawTargetHighlight(painter, viewBounds);
 	}
 
 private:
+	void drawTargetHighlight(QPainter &painter, Aabb2 viewBounds) const
+	{
+		if (latestTargetContext_ == nullptr
+			|| !latestTargetContext_->target.hasTarget)
+			return;
+
+		const InteractionTarget2D &target =
+			latestTargetContext_->target.target;
+		const float radius = std::max(0.0F, target.radius);
+		const Aabb2 markerBounds {
+			{ target.position.x - radius, target.position.y - radius },
+			{ target.position.x + radius, target.position.y + radius },
+		};
+		QRectF marker = productViewportWorldRectToPixels(
+			markerBounds,
+			viewBounds,
+			width(),
+			height());
+		constexpr qreal MinimumMarkerSize = 8.0;
+		if (marker.width() < MinimumMarkerSize
+			|| marker.height() < MinimumMarkerSize) {
+			const QPointF center = marker.center();
+			const qreal markerWidth = std::max(marker.width(), MinimumMarkerSize);
+			const qreal markerHeight =
+				std::max(marker.height(), MinimumMarkerSize);
+			marker = QRectF(
+				center.x() - markerWidth * 0.5,
+				center.y() - markerHeight * 0.5,
+				markerWidth,
+				markerHeight);
+		}
+
+		const QColor color =
+			productViewportTargetHighlightColor(latestTargetContext_->target);
+		QColor tint = color;
+		tint.setAlpha(38);
+		painter.setBrush(tint);
+		painter.setPen(QPen(color, 2.0));
+		painter.drawEllipse(marker);
+	}
+
 	const runtime::RuntimeGameplayProductPlayModeFrameResult *latestFrame_ =
 		nullptr;
+	const runtime::RuntimeGameplayProductInputFrameTargetContextResult
+		*latestTargetContext_ = nullptr;
 };
 
 QMenu *attachMenu(QPushButton *button)
@@ -1295,6 +1358,10 @@ QWidget *IggyQtShellWindow::buildMainSlot()
 		viewport->setLatestFrame(
 			hasLatestProductPlayModeFrame_ ? &latestProductPlayModeFrame_
 										   : nullptr);
+		viewport->setLatestTargetContext(
+			hasLatestProductInputFrameTargetContext_
+				? &latestProductInputFrameTargetContext_
+				: nullptr);
 		productViewport_ = viewport;
 		productViewport_->setSizePolicy(
 			QSizePolicy::Expanding,
