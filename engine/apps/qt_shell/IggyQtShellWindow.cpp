@@ -39,6 +39,7 @@
 #include "IggyQtShellUi.hpp"
 #include "runtime/RuntimeGameplayAuthoringPreviewModel.hpp"
 #include "runtime/RuntimeGameplayProductInputContext.hpp"
+#include "runtime/RuntimeGameplayProductInputFrameTargetAction.hpp"
 #include "runtime/RuntimeGameplayProductInputFrameTargetContext.hpp"
 #include "runtime/RuntimeGameplayProductPointerProjection.hpp"
 #include "scene/ui/UiAuthoringPreviewPanelModel.hpp"
@@ -889,10 +890,14 @@ void IggyQtShellWindow::runProductFrameRequestOnce()
 	hasLatestProductInputFrameTargetContext_ = true;
 	context_.latestProductInputFrameTargetContext =
 		&latestProductInputFrameTargetContext_;
+	const runtime::RuntimeGameplayProductInputFrameTargetActionResult
+		targetAction =
+			runtime::RuntimeGameplayProductInputFrameTargetAction {}.synthesize(
+				{ latestProductInputFrameTargetContext_ });
 
 	runtime::RuntimeGameplayProductFrameRequestInput input;
 	input.state = productPlayState_;
-	input.inputFrame = latestProductInputFrameTargetContext_.frame;
+	input.inputFrame = targetAction.frame;
 	input.presentationCamera = productPresentationCameraConfig();
 
 	const runtime::RuntimeGameplayProductFrameRequestResult result =
