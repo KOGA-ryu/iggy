@@ -369,12 +369,16 @@ Recently completed optimized stretches:
   procedural bean mesh binding now adds a second CPU static mesh helper and binds
   only the `Player` model slot to that non-cube mesh. Native procedural NPC mesh
   binding now adds a separate marker mesh for `NpcActor`, leaving floor and wall
-  slots on the cube fallback.
+  slots on the cube fallback. Native static mesh text loading now adds an
+  app-local `.igmesh`-style text reader for position/color vertices and
+  `std::uint16_t` triangles, with focused parser/file tests but no renderer
+  binding yet.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
-  execution if approved, app-shell/CLI extraction, real file loading, glTF/static
-  model parsing, asset registry/catalog, materials/textures/descriptors/samplers,
+  execution if approved, app-shell/CLI extraction, renderer binding for loaded
+  mesh files, glTF/static model parsing, asset registry/catalog,
+  materials/textures/descriptors/samplers,
   package/authoring asset policy, backend validation/abstraction,
   pause/retry/reset policy, completion/failure evaluation, and save/load UX.
 - Rendering backend/presentation layer.
@@ -1105,6 +1109,21 @@ proof only: no loader, file IO, glTF/static model parsing, asset registry/
 catalog, material/texture/descriptor/sampler policy, shader change, staging/
 device-local upload, Linux/dGPU validation, backend abstraction, runtime/
 product/scene API, app shell, or gameplay behavior change is included.
+Native Static Mesh Text Loader is complete for no-Qt renderer prep:
+`NativeStaticMeshAssetLoader.hpp` adds an app-local header-only text loader for
+the existing `NativeStaticMeshAsset` CPU mesh shape. It parses comments and
+blank lines plus `v x y z r g b` vertex records and `tri i0 i1 i2` triangle
+records into `NativeStaticMeshVertex` data and `std::uint16_t` indices.
+`LoadNativeStaticMeshAssetText(...)` and `LoadNativeStaticMeshAssetFile(...)`
+return `NativeStaticMeshAssetLoadResult` with structured issues for file-open
+failure, unknown directives, malformed vertices, malformed triangles, out-of-
+range indices, extra tokens, and invalid final meshes. A focused
+`native_static_mesh_asset_loader_tests` target covers valid text/file loading
+and the main failure modes. This is a minimal native text mesh loader only: no
+renderer slot binding to loaded files, CLI option, package discovery, glTF,
+asset registry/catalog, material/texture/descriptor/sampler policy, shader
+change, staging/device-local upload, runtime/product/scene API, app shell, or
+gameplay behavior change is included.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -1123,9 +1142,10 @@ First gates:
 - Explicit interact target synthesis and reach-gated interaction execution.
 - Point-vs-tile / `PrimaryPoint` behavior beyond the current `PrimaryTile`
   policy.
-- Real file loading, glTF/static model parsing, asset registry/catalog,
-  materials/textures/descriptors/samplers, non-cube model slot expansion,
-  package/authoring asset policy, renderer expansion, and any canvas polish.
+- Renderer binding for loaded mesh files, glTF/static model parsing, asset
+  registry/catalog, materials/textures/descriptors/samplers, non-cube model slot
+  expansion, package/authoring asset policy, renderer expansion, and any canvas
+  polish.
 - Pause/retry/reset policy.
 - Completion/failure evaluator.
 - Save-slot UX ownership.

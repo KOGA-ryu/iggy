@@ -261,11 +261,11 @@ deterministic product-path stepping and expectation checks; native no-Qt
   binding is complete as the second non-cube in-memory slot proof; next work is
   optional richer overlays/labels or diagnostics, frame request/play-surface
   ownership decisions, explicit interact target synthesis, reach-gated
-  interaction execution, app shell/CLI extraction, real file loading,
-  glTF/static model parsing, asset registry/catalog, materials/textures/
-  descriptors/samplers, non-cube model slot expansion beyond the procedural
-  player/NPC meshes, package/authoring asset policy, backend validation/
-  abstraction, and first-play UX policy gates.
+  interaction execution, app shell/CLI extraction, renderer binding for loaded
+  mesh files, glTF/static model parsing, asset registry/catalog,
+  materials/textures/descriptors/samplers, non-cube model slot expansion beyond
+  the procedural player/NPC meshes, package/authoring asset policy, backend
+  validation/abstraction, and first-play UX policy gates.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -800,6 +800,28 @@ Native procedural NPC mesh slot binding complete:
   validation, backend abstraction, runtime/product/scene API, app shell, or
   gameplay behavior change is included.
 
+Native static mesh text loader complete:
+- `NativeStaticMeshAssetLoader.hpp` adds an app-local header-only text loader
+  for the existing `NativeStaticMeshAsset` CPU mesh shape.
+- The text format supports comments, blank lines, `v x y z r g b` vertex
+  records, and `tri i0 i1 i2` triangle records.
+- `LoadNativeStaticMeshAssetText(...)` and
+  `LoadNativeStaticMeshAssetFile(...)` return `NativeStaticMeshAssetLoadResult`
+  with the parsed asset plus structured issues.
+- Issue codes cover file-open failure, unknown directives, malformed vertices,
+  malformed triangles, out-of-range indices, extra tokens, and invalid final
+  meshes.
+- `native_static_mesh_asset_loader_tests` covers valid text loading, valid file
+  loading, missing files, unknown directives, malformed records, extra tokens,
+  range failures, and invalid final mesh validation.
+- CMake registers only the focused loader test; `iggy_native_play` behavior is
+  unchanged.
+- This is a minimal native text mesh loader only: no renderer slot binding to
+  loaded files, CLI option, package discovery, glTF, asset registry/catalog,
+  material/texture/descriptor/sampler policy, shader change, staging/device-
+  local upload, runtime/product/scene API, app shell, or gameplay behavior
+  change is included.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -1304,12 +1326,13 @@ product gameplay actor debug/material quad projection integrated; thin Qt
 product viewport render command drawer integrated as temporary latest-frame quad
 drawing; thin Qt target highlight overlay integrated as a visual annotation over
 latest diagnostics; textured sprites/animation/material/asset policy, richer
-overlays/labels, real file loading, glTF/static model parsing, asset registry/
-catalog, materials/textures/descriptors/samplers, non-cube model slot expansion
-beyond the procedural player/NPC meshes, package/authoring asset policy,
-renderer expansion, backend validation, interaction execution, product UX/save
-semantics, and UI execution beyond launch/focus/input capture/manual step/pump/
-viewport ownership/primary-tile mouse input remain separate gates.
+overlays/labels, renderer binding for loaded mesh files, glTF/static model
+parsing, asset registry/catalog, materials/textures/descriptors/samplers,
+non-cube model slot expansion beyond the procedural player/NPC meshes, package/
+authoring asset policy, renderer expansion, backend validation, interaction
+execution, product UX/save semantics, and UI execution beyond launch/focus/input
+capture/manual step/pump/viewport ownership/primary-tile mouse input remain
+separate gates.
 
 Goal: turn runtime state into visible play state.
 
@@ -1675,14 +1698,15 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 44. Native static mesh asset data model is integrated.
 45. Native procedural bean mesh slot binding is integrated.
 46. Native procedural NPC mesh slot binding is integrated.
-47. Dispatch richer diagnostics display, overlays/labels, frame request/
+47. Native static mesh text loader is integrated.
+48. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
-    point-vs-tile policy, real file loading, glTF/static model parsing, asset
-    registry/catalog, materials/textures/descriptors/samplers, non-cube model
-    slot expansion, package/authoring asset policy, renderer expansion, render
-    projection gaps, backend validation, further input mapping, or a focused-
-    input follow-up, depending on planner scope.
+    point-vs-tile policy, renderer binding for loaded mesh files, glTF/static
+    model parsing, asset registry/catalog, materials/textures/descriptors/
+    samplers, non-cube model slot expansion, package/authoring asset policy,
+    renderer expansion, render projection gaps, backend validation, further
+    input mapping, or a focused-input follow-up, depending on planner scope.
 
 Do not broaden the next Product Loop packet into pause/retry/reset,
 completion/failure, save/load productization, product-loop signature changes,
@@ -1764,3 +1788,10 @@ change, draw-list change, shader change, loader work, file IO, glTF/static model
 parsing, material/texture/descriptor/sampler policy, resource catalog, staging/
 device-local upload, Linux/dGPU validation, backend abstraction, CLI/debugger
 output change, or gameplay/session/input/scripted-control change.
+Do not treat native static mesh text loading as renderer slot binding to loaded
+files, public renderer API change, app-shell/CLI option change, product session
+change, runtime/product/scene API change, draw-list change, shader change,
+glTF/static model parsing, asset registry/catalog, material/texture/descriptor/
+sampler policy, resource catalog, staging/device-local upload, Linux/dGPU
+validation, backend abstraction, CLI/debugger output change, or gameplay/
+session/input/scripted-control change.

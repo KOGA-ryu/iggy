@@ -214,12 +214,12 @@ the product play panel. Thin Qt product viewport render command drawing is
 complete as a temporary app-shell consumer of existing latest-frame quad
 commands. Thin Qt target highlight overlay is complete as a visual annotation
 over latest target-context diagnostics. Textured sprites/animation/material
-policy, real file loading, glTF/static model parsing, asset registry/catalog,
-materials/textures/descriptors/samplers, non-cube model slot expansion beyond
-the procedural player/NPC meshes, package/authoring asset policy, renderer
-expansion, backend validation, richer overlays/labels, richer diagnostics, frame
-request/play-surface ownership, explicit interaction execution, product UX/save
-semantics, and broader UI execution remain gated.
+policy, renderer binding for loaded mesh files, glTF/static model parsing, asset
+registry/catalog, materials/textures/descriptors/samplers, non-cube model slot
+expansion beyond the procedural player/NPC meshes, package/authoring asset
+policy, renderer expansion, backend validation, richer overlays/labels, richer
+diagnostics, frame request/play-surface ownership, explicit interaction
+execution, product UX/save semantics, and broader UI execution remain gated.
 
 Native `iggy_native_play` scripted controls/debugger is complete as a no-Qt
 app-shell harness over the same product input path as keyboard controls. It
@@ -389,6 +389,20 @@ unchanged. Loader work, file IO, glTF/static model parsing, asset registries/
 catalogs, materials/textures/descriptors/samplers, staging/device-local upload,
 Linux/dGPU policy, backend abstraction, and gameplay/session/input behavior
 remain separate.
+
+Native static mesh text loading is complete as app-local no-Qt mesh-file
+groundwork: `NativeStaticMeshAssetLoader.hpp` parses a minimal text format into
+the existing `NativeStaticMeshAsset` CPU shape. The format supports comments,
+blank lines, `v x y z r g b` vertex records, and `tri i0 i1 i2` triangle
+records. The text and file loaders return parsed mesh data plus structured
+issues for open failures, unknown directives, malformed records, out-of-range
+indices, extra tokens, and invalid final meshes. A focused
+`native_static_mesh_asset_loader_tests` target covers valid text/file loading
+and the main failure modes. This does not bind loaded files to renderer slots,
+add CLI options, package discovery, glTF parsing, asset registries/catalogs,
+materials/textures/descriptors/samplers, shader changes, staging/device-local
+upload, Linux/dGPU policy, backend abstraction, app-shell behavior, or gameplay/
+session/input behavior.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame

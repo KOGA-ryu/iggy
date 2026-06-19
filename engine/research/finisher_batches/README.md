@@ -116,3 +116,4 @@ Queue:
 59. `59_native_static_mesh_asset_data_model_status_sync` - complete. Sync planning/API docs after native backend-free static mesh asset data model integration.
 60. `60_native_procedural_bean_mesh_slot_binding_status_sync` - complete. Sync planning/API docs after native procedural bean mesh player slot binding integration.
 61. `61_native_procedural_npc_mesh_slot_binding_status_sync` - complete. Sync planning/API docs after native procedural NPC marker mesh slot binding integration.
+62. `62_native_static_mesh_text_loader_status_sync` - complete. Sync planning/API docs after native static mesh text loader integration.
