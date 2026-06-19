@@ -1,6 +1,10 @@
 iggy_add_test(core_math_tests tests/core_math_tests.cpp)
 iggy_add_test(core_resource_tests tests/core_resource_tests.cpp)
 iggy_add_test(asset_catalog_tests tests/asset_catalog_tests.cpp)
+iggy_add_test(native_static_model_load_report_tests tests/native_static_model_load_report_tests.cpp LABELS native unit)
+target_compile_definitions(native_static_model_load_report_tests PRIVATE
+  IGGY_NATIVE_PLAY_TEST_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/apps/native_play/assets"
+)
 iggy_add_test(native_static_model_policy_tests tests/native_static_model_policy_tests.cpp LABELS native unit)
 iggy_add_test(native_static_mesh_asset_loader_tests tests/native_static_mesh_asset_loader_tests.cpp LABELS native unit)
 target_compile_definitions(native_static_mesh_asset_loader_tests PRIVATE
