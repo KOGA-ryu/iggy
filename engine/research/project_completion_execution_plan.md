@@ -254,12 +254,14 @@ deterministic product-path stepping and expectation checks; native no-Qt
   shader resource wrapping is complete as renderer-private render pass, pipeline
   layout, graphics pipeline, and shader module ownership cleanup; native no-Qt
   model-slot/cube fallback registry is complete as renderer-private model-slot
-  groundwork over the existing cube mesh; next work is optional richer overlays/
-  labels or diagnostics, frame request/play-surface ownership decisions, explicit
-  interact target synthesis, reach-gated interaction execution, app shell/CLI
-  extraction, real static mesh loading, materials/textures/assets, descriptor/
-  sampler policy, package/authoring asset policy, backend validation/
-  abstraction, and first-play UX policy gates.
+  groundwork over the existing cube mesh; native no-Qt static mesh asset data
+  model is complete as backend-free CPU mesh data for the existing cube fallback;
+  next work is optional richer overlays/labels or diagnostics, frame request/
+  play-surface ownership decisions, explicit interact target synthesis,
+  reach-gated interaction execution, app shell/CLI extraction, real file loading,
+  glTF/static model parsing, asset registry/catalog, materials/textures/
+  descriptors/samplers, non-cube model slot binding, package/authoring asset
+  policy, backend validation/abstraction, and first-play UX policy gates.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -723,6 +725,35 @@ Native model-slot/cube fallback registry complete:
   texture/material/asset/glTF, asset loader, model file IO, package discovery,
   resource catalog, authoring asset policy, staging/device-local upload,
   Linux/dGPU validation, or backend abstraction change is included.
+
+Native static mesh asset data model complete:
+- `NativeStaticMeshAsset.hpp` adds an app-local backend-free CPU mesh asset
+  model.
+- `NativeStaticMeshVertex` uses `Vec3 position` and
+  `std::array<float, 3> color` to preserve the current vertex-color pipeline
+  shape.
+- `NativeStaticMeshAsset` stores vertices plus `std::uint16_t` indices.
+- Inline validation covers non-empty vertices, non-empty indices, index range
+  checks, and current `std::uint32_t` draw-count fit.
+- `NativeCubeStaticMeshAsset()` preserves the previous cube positions, colors,
+  and indices exactly.
+- `NativeVulkanRenderer.cpp` consumes `NativeStaticMeshAsset` for cube upload.
+- Vertex binding/attributes use `NativeStaticMeshVertex` while preserving two
+  `vec3` shader inputs.
+- Upload remains host-visible/coherent, and indexed draw remains
+  `VK_INDEX_TYPE_UINT16`.
+- Existing model slot bindings and cube fallback behavior remain unchanged:
+  `Floor`, `Wall`, `NpcActor`, and `Player` still use the same cube mesh.
+- This is no-loader static mesh data groundwork only: no `.cpp`, CMake, tests,
+  public renderer API, app shell, product session, runtime/product/scene API,
+  draw-list, shader, loader, file IO, glTF, material/texture/descriptor/sampler,
+  resource catalog, staging/device-local upload, Linux/dGPU, backend abstraction,
+  model slot binding behavior, CLI/debugger output, or gameplay/session/input/
+  scripted-control change is included.
+- Real file loading, glTF/static model parsing, asset registry/catalog,
+  materials/textures/descriptors/samplers, model slot binding to non-cube assets,
+  staging/device-local upload, and shared render-server ownership remain future
+  gates.
 
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
@@ -1228,11 +1259,12 @@ product gameplay actor debug/material quad projection integrated; thin Qt
 product viewport render command drawer integrated as temporary latest-frame quad
 drawing; thin Qt target highlight overlay integrated as a visual annotation over
 latest diagnostics; textured sprites/animation/material/asset policy, richer
-overlays/labels, real static mesh loading, materials/textures/assets,
-descriptor/sampler policy, package/authoring asset policy, renderer expansion,
-backend validation, interaction execution, product UX/save semantics, and UI
-execution beyond launch/focus/input capture/manual step/pump/viewport ownership/
-primary-tile mouse input remain separate gates.
+overlays/labels, real file loading, glTF/static model parsing, asset registry/
+catalog, materials/textures/descriptors/samplers, non-cube model slot binding,
+package/authoring asset policy, renderer expansion, backend validation,
+interaction execution, product UX/save semantics, and UI execution beyond launch/
+focus/input capture/manual step/pump/viewport ownership/primary-tile mouse input
+remain separate gates.
 
 Goal: turn runtime state into visible play state.
 
@@ -1347,9 +1379,14 @@ Packets:
    - `NativeVulkanRenderer.cpp` maps `NativeSceneModelId` through renderer-private
      model slots to the existing cube fallback mesh while preserving draw-item
      order, cube mesh behavior, shader pipeline, push constants, and tinting.
-33. Debug overlay projection:
+33. Native static mesh asset data model. Complete:
+   - `NativeStaticMeshAsset.hpp` defines backend-free CPU static mesh data and
+     the cube asset; `NativeVulkanRenderer.cpp` consumes it for the existing cube
+     fallback without adding loaders, file IO, materials, or slot binding
+     changes.
+34. Debug overlay projection:
    - trace/final rows, AI map, collision, path, interactions, inventory.
-34. UI presentation adapter:
+35. UI presentation adapter:
    - convert render frame data into the chosen shell/app surface.
 
 Hard stops:
@@ -1590,13 +1627,15 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 41. Native GPU mesh resource wrapper is integrated.
 42. Native pipeline/shader resource wrapper is integrated.
 43. Native model-slot/cube fallback registry is integrated.
-44. Dispatch richer diagnostics display, overlays/labels, frame request/
+44. Native static mesh asset data model is integrated.
+45. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
-    point-vs-tile policy, real static mesh loading, materials/textures/assets,
-    descriptor/sampler policy, package/authoring asset policy, renderer
-    expansion, render projection gaps, backend validation, further input
-    mapping, or a focused-input follow-up, depending on planner scope.
+    point-vs-tile policy, real file loading, glTF/static model parsing, asset
+    registry/catalog, materials/textures/descriptors/samplers, non-cube model
+    slot binding, package/authoring asset policy, renderer expansion, render
+    projection gaps, backend validation, further input mapping, or a
+    focused-input follow-up, depending on planner scope.
 
 Do not broaden the next Product Loop packet into pause/retry/reset,
 completion/failure, save/load productization, product-loop signature changes,
@@ -1659,3 +1698,10 @@ CLI/debugger output change, gameplay/product/session/input/scripted-control
 change, descriptor/sampler work, textures/materials/assets/glTF, asset loader,
 model file IO, package discovery, resource catalog, authoring asset policy,
 staging/device-local upload, Linux/dGPU validation, or backend abstraction.
+Do not treat native static mesh asset data model as `.cpp` behavior expansion,
+CMake changes, tests, public renderer API changes, app-shell changes, product
+session changes, runtime/product/scene API changes, draw-list changes, shader
+changes, loader work, file IO, glTF/static model parsing, material/texture/
+descriptor/sampler policy, resource catalog, staging/device-local upload,
+Linux/dGPU validation, backend abstraction, model slot binding behavior changes,
+CLI/debugger output changes, or gameplay/session/input/scripted-control changes.

@@ -214,11 +214,12 @@ the product play panel. Thin Qt product viewport render command drawing is
 complete as a temporary app-shell consumer of existing latest-frame quad
 commands. Thin Qt target highlight overlay is complete as a visual annotation
 over latest target-context diagnostics. Textured sprites/animation/material
-policy, real static mesh loading, materials/textures/assets, descriptor/sampler
-policy, package/authoring asset policy, renderer expansion, backend validation,
-richer overlays/labels, richer diagnostics, frame request/play-surface ownership,
-explicit interaction execution, product UX/save semantics, and broader UI
-execution remain gated.
+policy, real file loading, glTF/static model parsing, asset registry/catalog,
+materials/textures/descriptors/samplers, non-cube model slot binding, package/
+authoring asset policy, renderer expansion, backend validation, richer overlays/
+labels, richer diagnostics, frame request/play-surface ownership, explicit
+interaction execution, product UX/save semantics, and broader UI execution
+remain gated.
 
 Native `iggy_native_play` scripted controls/debugger is complete as a no-Qt
 app-shell harness over the same product input path as keyboard controls. It
@@ -336,6 +337,25 @@ product/scene APIs, product session, tests, CLI/debugger output, gameplay
 semantics, descriptors/samplers, textures/materials/assets/glTF, asset loaders,
 model file IO, package discovery, authoring asset policy, staging/device-local
 upload policy, Linux/dGPU policy, and backend abstraction remain separate.
+
+Native static mesh asset data model is complete as no-Qt backend-free CPU mesh
+groundwork: `NativeStaticMeshAsset.hpp` defines `NativeStaticMeshVertex` with
+`Vec3 position` plus `std::array<float, 3> color`, `NativeStaticMeshAsset`
+vertices plus `std::uint16_t` indices, inline validation for non-empty vertices/
+indices, index range checks, and current `std::uint32_t` draw-count fit, plus
+`NativeCubeStaticMeshAsset()` carrying the previous cube positions, colors, and
+indices exactly. `NativeVulkanRenderer.cpp` consumes `NativeStaticMeshAsset` for
+the cube fallback upload; vertex binding/attributes use `NativeStaticMeshVertex`
+while preserving the two-`vec3` shader inputs; upload remains host-visible/
+coherent; indexed draw remains `VK_INDEX_TYPE_UINT16`; and `Floor`, `Wall`,
+`NpcActor`, and `Player` still use the same cube mesh through existing model
+slots. This is no-loader static mesh data groundwork only. Public renderer API,
+app shell, product session, runtime/product/scene APIs, draw-list data, shader
+files/interfaces, CMake, tests, loader/file IO, glTF/static model parsing,
+materials/textures/descriptors/samplers, resource catalog, staging/device-local
+upload, Linux/dGPU policy, backend abstraction, model slot binding behavior,
+CLI/debugger output, and gameplay/session/input/scripted-control behavior remain
+separate.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame

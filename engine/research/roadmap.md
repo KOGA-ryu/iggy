@@ -361,14 +361,19 @@ Recently completed optimized stretches:
   Native model-slot/cube fallback registry groundwork now maps
   `NativeSceneModelId` through renderer-private model slots to the existing cube
   mesh fallback without changing draw-item order, cube mesh data, shader
-  interface, push constants, tint behavior, or public renderer API.
+  interface, push constants, tint behavior, or public renderer API. Native
+  static mesh asset data groundwork now moves the cube's CPU positions, colors,
+  and `std::uint16_t` indices into backend-free `NativeStaticMeshAsset` data
+  while preserving the vertex-color pipeline shape, host-visible/coherent upload,
+  model slot cube fallback behavior, and indexed draw behavior.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
-  execution if approved, app-shell/CLI extraction, real static mesh loading,
-  materials/textures/assets, descriptor/sampler policy, package/authoring asset
-  policy, backend validation/abstraction, pause/retry/reset policy, completion/
-  failure evaluation, and save/load UX.
+  execution if approved, app-shell/CLI extraction, real file loading, glTF/static
+  model parsing, asset registry/catalog, materials/textures/descriptors/samplers,
+  non-cube model slot binding, package/authoring asset policy, backend
+  validation/abstraction, pause/retry/reset policy, completion/failure
+  evaluation, and save/load UX.
 - Rendering backend/presentation layer.
 - Audio server boundary.
 - Save/load productization and authored package roundtrip.
@@ -1045,6 +1050,24 @@ renderer API, app-shell, draw-list, shader, runtime/product/scene, CLI/debugger,
 gameplay, asset loading, mesh file IO, descriptors/samplers, textures/materials,
 glTF, package discovery, staging/device-local upload, Linux/dGPU validation, or
 backend abstraction work is included.
+Native Static Mesh Asset Data Model is complete for no-Qt renderer prep:
+`NativeStaticMeshAsset.hpp` adds an app-local backend-free CPU mesh asset model.
+`NativeStaticMeshVertex` stores `Vec3 position` plus
+`std::array<float, 3> color`, preserving the current two-`vec3` vertex-color
+pipeline shape, and `NativeStaticMeshAsset` stores vertices plus
+`std::uint16_t` indices. Inline validation covers non-empty vertices, non-empty
+indices, index range checks, and current `std::uint32_t` draw-count fit.
+`NativeCubeStaticMeshAsset()` preserves the previous cube positions, colors, and
+indices exactly. `NativeVulkanRenderer.cpp` now consumes `NativeStaticMeshAsset`
+for cube upload; vertex binding/attributes use `NativeStaticMeshVertex`; upload
+remains host-visible/coherent; indexed draw remains `VK_INDEX_TYPE_UINT16`; and
+`Floor`, `Wall`, `NpcActor`, and `Player` still bind to the same cube fallback.
+This is no-loader static mesh data groundwork only: no `.cpp`, CMake, tests,
+public renderer API, app shell, product session, runtime/product/scene API,
+draw-list, shader, loader, file IO, glTF, material/texture/descriptor/sampler,
+resource catalog, staging/device-local upload, Linux/dGPU, backend abstraction,
+model slot binding behavior, CLI/debugger output, or gameplay/session/input/
+scripted-control change is included.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -1063,9 +1086,9 @@ First gates:
 - Explicit interact target synthesis and reach-gated interaction execution.
 - Point-vs-tile / `PrimaryPoint` behavior beyond the current `PrimaryTile`
   policy.
-- Real static mesh loading, materials/textures/assets, descriptor/sampler
-  policy, package/authoring asset policy, renderer expansion, and any canvas
-  polish.
+- Real file loading, glTF/static model parsing, asset registry/catalog,
+  materials/textures/descriptors/samplers, non-cube model slot binding,
+  package/authoring asset policy, renderer expansion, and any canvas polish.
 - Pause/retry/reset policy.
 - Completion/failure evaluator.
 - Save-slot UX ownership.

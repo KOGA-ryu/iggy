@@ -113,3 +113,4 @@ Queue:
 56. `56_native_gpu_mesh_resource_wrapper_status_sync` - complete. Sync planning/API docs after native renderer-private GPU mesh resource wrapper integration.
 57. `57_native_pipeline_shader_resource_wrapper_status_sync` - complete. Sync planning/API docs after native renderer-private pipeline/shader resource wrapper integration.
 58. `58_native_model_slot_cube_fallback_registry_status_sync` - complete. Sync planning/API docs after native renderer-private model slot/cube fallback registry integration.
+59. `59_native_static_mesh_asset_data_model_status_sync` - complete. Sync planning/API docs after native backend-free static mesh asset data model integration.
