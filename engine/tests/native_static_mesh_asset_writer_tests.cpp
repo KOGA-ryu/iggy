@@ -2,15 +2,18 @@
 #include "../apps/native_play/NativeStaticMeshAssetWriter.hpp"
 
 #include <cstdlib>
+#include <filesystem>
 #include <string>
 
 #include "support/TestHarness.hpp"
 
 namespace {
 
+using iggy::native_play::LoadNativeStaticMeshAssetFile;
 using iggy::native_play::LoadNativeStaticMeshAssetText;
 using iggy::native_play::NativeBeanStaticMeshAsset;
 using iggy::native_play::NativeCubeStaticMeshAsset;
+using iggy::native_play::NativeNpcMarkerStaticMeshAsset;
 using iggy::native_play::NativeStaticMeshAsset;
 using iggy::native_play::NativeStaticMeshAssetLoadResult;
 using iggy::native_play::NativeStaticMeshAssetWriteIssueCode;
@@ -19,6 +22,15 @@ using iggy::native_play::WriteNativeStaticMeshAssetText;
 using iggy::test::Expect;
 using iggy::test::Failures;
 using iggy::test::Near;
+
+#ifndef IGGY_NATIVE_PLAY_TEST_ASSET_DIR
+#define IGGY_NATIVE_PLAY_TEST_ASSET_DIR ""
+#endif
+
+std::filesystem::path AssetRoot()
+{
+	return std::filesystem::path { IGGY_NATIVE_PLAY_TEST_ASSET_DIR };
+}
 
 NativeStaticMeshAsset TriangleMesh()
 {
@@ -41,6 +53,45 @@ bool HasIssue(
 			return true;
 	}
 	return false;
+}
+
+void ExpectAssetFixtureWriterRoundtrip(
+	const char *filename,
+	std::size_t expectedVertexCount,
+	std::size_t expectedIndexCount)
+{
+	const NativeStaticMeshAssetLoadResult loaded =
+		LoadNativeStaticMeshAssetFile(AssetRoot() / filename);
+	Expect(loaded.loaded(), std::string { filename } + " should load");
+	Expect(
+		loaded.asset.vertices.size() == expectedVertexCount,
+		std::string { filename } + " should have expected vertex count");
+	Expect(
+		loaded.asset.indices.size() == expectedIndexCount,
+		std::string { filename } + " should have expected index count");
+
+	const NativeStaticMeshAssetWriteResult firstWrite =
+		WriteNativeStaticMeshAssetText(loaded.asset);
+	Expect(firstWrite.written(), std::string { filename } + " should write");
+
+	const NativeStaticMeshAssetLoadResult reloaded =
+		LoadNativeStaticMeshAssetText(firstWrite.text);
+	Expect(reloaded.loaded(), std::string { filename } + " written text should reload");
+	Expect(
+		reloaded.asset.vertices.size() == expectedVertexCount,
+		std::string { filename } + " roundtrip should preserve vertex count");
+	Expect(
+		reloaded.asset.indices.size() == expectedIndexCount,
+		std::string { filename } + " roundtrip should preserve index count");
+
+	const NativeStaticMeshAssetWriteResult secondWrite =
+		WriteNativeStaticMeshAssetText(reloaded.asset);
+	Expect(
+		secondWrite.written(),
+		std::string { filename } + " second write should succeed");
+	Expect(
+		firstWrite.text == secondWrite.text,
+		std::string { filename } + " writer output should be canonical after reload");
 }
 
 void TestValidTriangleWritesDeterministicTextAndReloads()
@@ -107,6 +158,28 @@ void TestProceduralBeanWritesAndReloadsCounts()
 	Expect(loaded.asset.indices.size() == bean.indices.size(), "bean roundtrip should preserve index count");
 }
 
+void TestProceduralNpcMarkerWritesAndReloadsCounts()
+{
+	const NativeStaticMeshAsset npc = NativeNpcMarkerStaticMeshAsset();
+	const NativeStaticMeshAssetWriteResult result =
+		WriteNativeStaticMeshAssetText(npc);
+
+	Expect(result.written(), "procedural NPC marker should write");
+	const NativeStaticMeshAssetLoadResult loaded =
+		LoadNativeStaticMeshAssetText(result.text);
+	Expect(loaded.loaded(), "written procedural NPC marker should reload");
+	Expect(loaded.asset.vertices.size() == npc.vertices.size(), "NPC marker roundtrip should preserve vertex count");
+	Expect(loaded.asset.indices.size() == npc.indices.size(), "NPC marker roundtrip should preserve index count");
+}
+
+void TestCheckedInFixtureAssetsRoundtripThroughWriter()
+{
+	ExpectAssetFixtureWriterRoundtrip("floor.igmesh", 4, 6);
+	ExpectAssetFixtureWriterRoundtrip("wall.igmesh", 8, 36);
+	ExpectAssetFixtureWriterRoundtrip("npc.igmesh", 7, 30);
+	ExpectAssetFixtureWriterRoundtrip("player.igmesh", 6, 24);
+}
+
 void TestInvalidEmptyMeshReportsIssueAndNoText()
 {
 	const NativeStaticMeshAssetWriteResult result =
@@ -161,6 +234,8 @@ int main()
 	TestValidTriangleWritesDeterministicTextAndReloads();
 	TestCubeWritesAndReloadsRepresentativeData();
 	TestProceduralBeanWritesAndReloadsCounts();
+	TestProceduralNpcMarkerWritesAndReloadsCounts();
+	TestCheckedInFixtureAssetsRoundtripThroughWriter();
 	TestInvalidEmptyMeshReportsIssueAndNoText();
 	TestNonTriangleIndexCountReportsIssueAndNoText();
 	TestWriterOutputIsDeterministicAcrossCalls();

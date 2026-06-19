@@ -11,3 +11,6 @@ target_compile_definitions(native_static_mesh_asset_loader_tests PRIVATE
   IGGY_NATIVE_PLAY_TEST_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/apps/native_play/assets"
 )
 iggy_add_test(native_static_mesh_asset_writer_tests tests/native_static_mesh_asset_writer_tests.cpp LABELS native unit)
+target_compile_definitions(native_static_mesh_asset_writer_tests PRIVATE
+  IGGY_NATIVE_PLAY_TEST_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/apps/native_play/assets"
+)
