@@ -94,3 +94,4 @@ endif()
 
 include(cmake/iggy_scenario_toml_runner.cmake)
 include(cmake/iggy_qt_shell.cmake)
+include(cmake/iggy_native_play.cmake)
