@@ -36,6 +36,7 @@ if(Vulkan_FOUND AND SDL2_FOUND AND GLSLC_EXECUTABLE)
   add_executable(iggy_native_play
     apps/native_play/IggyNativePlay.cpp
     apps/native_play/NativeProductSession.cpp
+    apps/native_play/NativeVulkanRenderer.cpp
   )
   add_dependencies(iggy_native_play iggy_native_play_shaders)
 
