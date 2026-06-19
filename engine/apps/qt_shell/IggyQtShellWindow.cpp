@@ -17,6 +17,8 @@
 #include <QMenu>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPaintEvent>
+#include <QPen>
 #include <QPixmap>
 #include <QPushButton>
 #include <QResizeEvent>
@@ -30,6 +32,7 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -135,6 +138,104 @@ QString objectNameForId(const QString &prefix, const ResourceId &id)
 	name.replace('-', '_');
 	return name;
 }
+
+QColor productViewportMaterialColor(const ResourceId &materialId)
+{
+	const std::string_view material = materialId.value();
+	if (material == "material:floor")
+		return QColor(78, 99, 90, 210);
+	if (material == "material:wall")
+		return QColor(44, 48, 52, 235);
+	if (material == "material:player")
+		return QColor(61, 174, 224, 230);
+	if (material == "material:npc_actor")
+		return QColor(226, 156, 55, 230);
+	if (material == "material:npc")
+		return QColor(142, 96, 164, 220);
+	return QColor(112, 118, 124, 210);
+}
+
+QRectF productViewportWorldRectToPixels(
+	Aabb2 commandBounds,
+	Aabb2 viewBounds,
+	int widgetWidth,
+	int widgetHeight)
+{
+	const float worldMinX = std::min(commandBounds.min.x, commandBounds.max.x);
+	const float worldMaxX = std::max(commandBounds.min.x, commandBounds.max.x);
+	const float worldMinY = std::min(commandBounds.min.y, commandBounds.max.y);
+	const float worldMaxY = std::max(commandBounds.min.y, commandBounds.max.y);
+	const float viewWidth = viewBounds.max.x - viewBounds.min.x;
+	const float viewHeight = viewBounds.max.y - viewBounds.min.y;
+	const auto mapX = [viewBounds, viewWidth, widgetWidth](float worldX) {
+		return static_cast<qreal>((worldX - viewBounds.min.x) / viewWidth)
+			* static_cast<qreal>(widgetWidth);
+	};
+	const auto mapY = [viewBounds, viewHeight, widgetHeight](float worldY) {
+		return static_cast<qreal>((worldY - viewBounds.min.y) / viewHeight)
+			* static_cast<qreal>(widgetHeight);
+	};
+	const QPointF topLeft { mapX(worldMinX), mapY(worldMinY) };
+	const QPointF bottomRight { mapX(worldMaxX), mapY(worldMaxY) };
+	return QRectF(topLeft, bottomRight).normalized();
+}
+
+class ProductViewportWidget final : public QFrame {
+public:
+	explicit ProductViewportWidget(QWidget *parent = nullptr)
+		: QFrame(parent)
+	{
+		setObjectName(QStringLiteral("productViewport"));
+		setAttribute(Qt::WA_StyledBackground, true);
+	}
+
+	void setLatestFrame(
+		const runtime::RuntimeGameplayProductPlayModeFrameResult *frame)
+	{
+		latestFrame_ = frame;
+		update();
+	}
+
+protected:
+	void paintEvent(QPaintEvent *event) override
+	{
+		QFrame::paintEvent(event);
+		if (latestFrame_ == nullptr || width() <= 0 || height() <= 0)
+			return;
+
+		const LevelRenderFrame2DResult &levelFrame =
+			latestFrame_->surface.presentation.levelFrame;
+		const Aabb2 viewBounds = levelFrame.cameraView.bounds;
+		const float viewWidth = viewBounds.max.x - viewBounds.min.x;
+		const float viewHeight = viewBounds.max.y - viewBounds.min.y;
+		if (viewWidth == 0.0F || viewHeight == 0.0F)
+			return;
+
+		QPainter painter(this);
+		painter.setRenderHint(QPainter::Antialiasing, false);
+		for (const render::RenderCommand2D &command :
+			 levelFrame.commands.commands) {
+			if (command.type != render::RenderCommand2DType::Quad)
+				continue;
+
+			const QRectF rect = productViewportWorldRectToPixels(
+				command.worldBounds,
+				viewBounds,
+				width(),
+				height());
+			const QColor fill = productViewportMaterialColor(command.materialId);
+			QColor outline = fill.darker(135);
+			outline.setAlpha(230);
+			painter.fillRect(rect, fill);
+			painter.setPen(QPen(outline, 1.0));
+			painter.drawRect(rect);
+		}
+	}
+
+private:
+	const runtime::RuntimeGameplayProductPlayModeFrameResult *latestFrame_ =
+		nullptr;
+};
 
 QMenu *attachMenu(QPushButton *button)
 {
@@ -1190,7 +1291,11 @@ QWidget *IggyQtShellWindow::buildMainSlot()
 		layout->setContentsMargins(0, 0, 0, 0);
 		layout->setSpacing(0);
 
-		productViewport_ = makeFrame("productViewport");
+		auto *viewport = new ProductViewportWidget(main);
+		viewport->setLatestFrame(
+			hasLatestProductPlayModeFrame_ ? &latestProductPlayModeFrame_
+										   : nullptr);
+		productViewport_ = viewport;
 		productViewport_->setSizePolicy(
 			QSizePolicy::Expanding,
 			QSizePolicy::Expanding);
