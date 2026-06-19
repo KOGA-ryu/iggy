@@ -18,6 +18,9 @@ the integrated state is sound.
 - Builder: only for integration scripts or mechanical merge helpers.
 - Finisher: roadmap/bucket sync after merges.
 - Apprentice/Spark: status scans and focused changed-file inventory.
+  Spark also watches `spark_dispatch_ledger.tsv` through
+  `engine/tools/iggy-spark-dispatch.sh` so blocked packet handoffs are visible
+  to the planner.
 
 ## Bucket
 
