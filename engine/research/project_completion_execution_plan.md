@@ -976,6 +976,35 @@ Native static model load report CLI dump complete:
   work, staging/device-local upload policy, Linux/dGPU policy, or backend
   abstraction.
 
+Native static mesh text writer complete:
+- `NativeStaticMeshAssetWriter.hpp` adds pure app-local text serialization.
+- `WriteNativeStaticMeshAssetText(const NativeStaticMeshAsset &)` serializes the
+  currently loaded `.igmesh` text format.
+- Output is deterministic and newline-terminated:
+  - fixed header comment `# Native static mesh asset`;
+  - one `v x y z r g b` row per vertex in order;
+  - one `tri a b c` row per three indices in order.
+- Result/issue types are
+  `NativeStaticMeshAssetWriteIssueCode::{InvalidMesh, NonTriangleIndexCount}`
+  and `NativeStaticMeshAssetWriteResult::{text, issues, written()}`.
+- The writer refuses non-serializable input without mutation or repair:
+  invalid/empty meshes report `InvalidMesh` and no text, while valid indices
+  with a non-multiple-of-three count report `NonTriangleIndexCount` and no text
+  or `tri` rows.
+- `IsNativeStaticMeshAssetValid(...)` semantics are unchanged.
+- Tests cover deterministic triangle text plus reload, cube roundtrip
+  representative data, procedural bean counts, empty invalid mesh,
+  non-triangle index count, and deterministic repeated calls.
+- This is not a glTF/glb/JSON parser, GLB binary parser, custom glTF subset
+  parser, dependency fetch, package install, vendoring, web lookup, `.igmesh`
+  schema expansion beyond serializing the current format, normals/UVs/materials/
+  textures/descriptors/samplers/skins/animation/scene graph/transforms/metadata
+  fields, file writing, file discovery, directory scanning, package discovery,
+  registry/catalog, manifest expansion, authoring policy, renderer behavior
+  change, `NativeVulkanRenderer.cpp` change, public renderer API change,
+  draw-list/runtime/product/scene/server API change, app-shell/CLI change,
+  gameplay/input/scripted-control change, or docs mixed into source.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -1858,7 +1887,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 51. Native static model slot policy is integrated.
 52. Native static model load report is integrated.
 53. Native static model load report CLI dump is integrated.
-54. Dispatch richer diagnostics display, overlays/labels, frame request/
+54. Native static mesh text writer is integrated.
+55. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

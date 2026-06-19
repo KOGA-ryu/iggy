@@ -507,6 +507,18 @@ discovery/catalog/manifest policy, renderer mutation, runtime/product/scene API
 changes, shader/material/texture policy, staging/device-local upload, Linux/dGPU
 policy, backend abstraction, or gameplay/input/scripted-control semantics.
 
+Native static mesh text writing is complete as pure app-local `.igmesh`
+roundtrip support: `NativeStaticMeshAssetWriter.hpp` serializes the current
+loaded text format with a fixed header, ordered vertex rows, ordered triangle
+rows, and deterministic newline-terminated output. It reports `InvalidMesh` or
+`NonTriangleIndexCount` instead of mutating or repairing non-serializable input,
+emits no text on failure, and leaves `IsNativeStaticMeshAssetValid(...)`
+semantics unchanged. This is not glTF/glb/JSON parsing, `.igmesh` schema
+expansion, file writing, discovery/scanning/catalog/manifest policy, renderer
+behavior, app-shell/CLI behavior, public renderer API, draw-list/runtime/product/
+scene/server API, shader/material/texture policy, or gameplay/input/scripted-
+control semantics.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.

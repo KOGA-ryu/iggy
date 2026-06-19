@@ -406,6 +406,10 @@ Recently completed optimized stretches:
   returns 0 only when all fixed slots load, returns nonzero for missing/failed
   slots, and does not require `--play`, scripted controls, SDL display
   availability, or Vulkan renderer initialization beyond normal binary linkage.
+  Native static mesh text writing now adds pure app-local
+  `NativeStaticMeshAssetWriter.hpp`, serializing the current `.igmesh` text
+  format deterministically with a fixed header comment, vertex rows, and
+  triangle rows; invalid or non-triangle input reports issues and emits no text.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1281,6 +1285,31 @@ change, gameplay/input/scripted-control semantic change, shader/material/
 texture/descriptor/sampler policy, normals/UVs/animation/skins/scene graph/
 transforms work, staging/device-local upload policy, Linux/dGPU policy, or
 backend abstraction.
+
+Native Static Mesh Text Writer / Roundtrip is complete for no-Qt asset
+groundwork: `NativeStaticMeshAssetWriter.hpp` adds pure app-local
+`WriteNativeStaticMeshAssetText(const NativeStaticMeshAsset &)`, serializing the
+currently loaded `.igmesh` text format. Successful output is deterministic and
+newline-terminated: fixed header `# Native static mesh asset`, one
+`v x y z r g b` row per vertex in order, and one `tri a b c` row per three
+indices in order. `NativeStaticMeshAssetWriteIssueCode` contains `InvalidMesh`
+and `NonTriangleIndexCount`; `NativeStaticMeshAssetWriteResult` carries `text`,
+`issues`, and `written()`. The writer refuses non-serializable input without
+mutation or repair: invalid/empty mesh reports `InvalidMesh` with no text, and
+valid indices whose count is not a multiple of three report
+`NonTriangleIndexCount` with no text/tri rows. `IsNativeStaticMeshAssetValid(...)`
+semantics are unchanged. Tests cover deterministic triangle text plus reload,
+cube roundtrip representative data, procedural bean counts, empty invalid mesh,
+non-triangle index count, and deterministic repeated calls. This is not a
+glTF/glb/JSON parser, GLB binary parser, custom glTF subset parser, dependency
+fetch, package install, vendoring, web lookup, `.igmesh` schema expansion beyond
+serializing the current format, normals/UVs/materials/textures/descriptors/
+samplers/skins/animation/scene graph/transforms/metadata fields, file writing,
+file discovery, directory scanning, package discovery, registry/catalog,
+manifest expansion, authoring policy, renderer behavior change,
+`NativeVulkanRenderer.cpp` change, public renderer API change, draw-list/
+runtime/product/scene/server API change, app-shell/CLI change, gameplay/input/
+scripted-control change, or docs mixed into source.
 
 Exit criteria:
 - Load a package or explicit scenario.
