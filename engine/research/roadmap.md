@@ -108,14 +108,20 @@ Recently completed optimized stretches:
   lookup, interaction execution, or persistence.
 - Qt shell `productViewport_` owner for product play sessions:
   `QFrame#productViewport` is created only when product play mode exists, including
-  failed/not-ready play sessions, with expanding layout inside `QFrame#mainSlot`
-  and no render drawing or runtime/scene API change.
+  failed/not-ready play sessions, with expanding layout inside `QFrame#mainSlot`.
 - Qt shell thin primary-tile mouse consumer on `productViewport_`: focused,
   ready left-button press records exactly one transient `PrimaryTile` pressed
   event in the product input accumulator after normalizing Qt pixel-local
   coordinates into configured product camera-view span; no `PrimaryPoint`, world
   payload, right/middle/move/wheel/double-click/drag/hover behavior, frame
   execution, persistence, or runtime/product API change.
+- Qt shell thin product viewport render command drawer: `QFrame#productViewport`
+  now paints existing latest product play frame render commands from app-shell
+  transient `latestProductPlayModeFrame_` data as untextured debug/material
+  rectangles. It maps latest-frame camera-view bounds to widget pixels, keeps
+  command vector order, draws only quad commands, ignores textures, uses Qt-local
+  material debug colors, and does not execute frames, change runtime/scene APIs,
+  own long-term renderer semantics, or persist presentation data.
 - Scene `InteractionTargetSpatialQuery2D` for pure spatial lookup over
   `InteractionTarget2DRegistry`: enabled targets only, Euclidean distance,
   clamped target/extra radius, nearest eligible target with registry-order ties,
@@ -318,11 +324,13 @@ Recently completed optimized stretches:
   `RuntimeGameplayProductInputFrameTargetContext` helper can now consume a frame's
   latest eligible `PrimaryTile` pressed event, run that query/enrichment, and
   return a copied frame with only binding context replaced. Qt manual Step and
-  frame pump now call that helper through their shared one-frame path. Next
-  product runtime work is deciding whether frame request/play surface should own
-  enrichment, whether richer diagnostics/highlighting should be surfaced, or
-  whether explicit interaction intent should be synthesized, then interaction
-  execution if approved, textured sprite/animation/material/asset policy,
+  frame pump now call that helper through their shared one-frame path and the
+  Qt product viewport can draw the latest frame's existing quad render commands
+  as a temporary debug-material presentation consumer. Next product runtime work
+  is deciding whether frame request/play surface should own enrichment, whether
+  target highlighting or richer diagnostics should be surfaced, or whether
+  explicit interaction intent should be synthesized, then interaction execution
+  if approved, real renderer ownership, textured sprite/animation/material/asset policy,
   pause/retry/reset policy, completion/failure evaluation, and save/load UX.
 - Rendering backend/presentation layer.
 - Audio server boundary.
@@ -591,8 +599,11 @@ double-click/drag behavior, textured sprite/animation/material/asset policy, UX
 policy, or save/load productization yet.
 Qt Product Viewport Owner is complete as a temporary app-shell viewport/canvas
 boundary: product play sessions get `QFrame#productViewport`; the current input
-policy is left-click `PrimaryTile` only and render command drawing/canvas polish
-remain separate.
+policy is left-click `PrimaryTile` only. Thin Qt Product Viewport Render Command
+Drawer is complete as a temporary app-shell presentation consumer: the viewport
+draws existing latest-frame quad render commands with Qt-local debug colors,
+without becoming renderer ownership, canvas polish, target highlighting, texture
+sampling, or gameplay truth.
 InteractionTargetSpatialQuery2D is complete as a scene-only lookup primitive:
 it scans enabled interaction targets in registry order, compares Euclidean
 distance to clamped target radius plus clamped extra radius, returns the nearest
@@ -712,6 +723,18 @@ Done:
   stylesheet only; `productViewport_` is reset to null on rebuilds where no
   viewport is created. The viewport is a stable event/render target boundary,
   not input readiness or runtime truth.
+- Qt shell `QFrame#productViewport` now uses a Qt-local paint path to draw
+  existing latest product play frame render commands from
+  `latestProductPlayModeFrame_.surface.presentation.levelFrame.commands.commands`
+  using `latestProductPlayModeFrame_.surface.presentation.levelFrame.cameraView.bounds`
+  as visible world bounds. It maps command world bounds to widget pixel
+  rectangles, normalizes world bounds and mapped `QRectF` defensively, keeps
+  x/y orientation direct with no flip, skips commands when no latest frame,
+  non-positive widget size, or zero camera-view axes are present, iterates the
+  command vector without Qt-side sorting, draws only `RenderCommand2DType::Quad`
+  as untextured flat rectangles, ignores texture payloads, and uses Qt-local
+  hardcoded debug colors for floor, wall, player, NPC actor, legacy NPC, and
+  fallback materials.
 - Qt shell installs a viewport-only event filter for product play sessions.
   Focused, ready left mouse press on `productViewport_` records one transient
   `RuntimeGameplayProductInputEvent2D` with `control = PrimaryTile`, `kind =
@@ -847,6 +870,12 @@ Done:
   projection. Qt does not expose full copied frames, all events, full target
   payloads, or nested structs, and diagnostics alone do not create product play
   context.
+- Qt product viewport render command drawer is app-shell thin:
+  `QFrame#productViewport` paints only existing latest-frame render commands as
+  temporary untextured debug/material rectangles. Paint events do not execute
+  frames, sort commands, load textures, create render commands, change input
+  behavior, add target highlighting, or persist camera/presentation/viewport
+  state as runtime or save truth.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -857,16 +886,16 @@ Exit criteria:
 - Save/load user-facing state.
 
 First gates:
-- Diagnostics display or panel/render highlighting for the target context
-  enrichment path.
+- Target highlighting/overlays or richer diagnostics beyond the compact panel
+  rows and temporary quad drawer.
 - Frame request/play-surface ownership decision for target-context enrichment.
 - Hover lifecycle and selected-target workflows beyond the helper's one-shot
   enrichment.
 - Explicit interact target synthesis and reach-gated interaction execution.
 - Point-vs-tile / `PrimaryPoint` behavior beyond the current `PrimaryTile`
   policy.
-- Textured sprite/animation/material/asset policy over the debug/material actor
-  quads.
+- Real renderer ownership, textured sprite/animation/material/asset policy over
+  the debug/material actor quads, and any canvas polish.
 - Pause/retry/reset policy.
 - Completion/failure evaluator.
 - Save-slot UX ownership.

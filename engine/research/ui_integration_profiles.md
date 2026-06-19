@@ -210,10 +210,12 @@ hovered-target binding context enrichment from that report. Runtime/product
 target-context enrichment over the latest eligible `PrimaryTile` pressed event.
 Qt manual Step and Product Frame Pump now consume that helper through the shared
 one-frame path, and compact read-only target-context diagnostics now project into
-the product play panel. Textured sprites/animation/material policy, richer
-diagnostics/highlighting, frame request/play-surface ownership, explicit
-interaction execution, product UX/save semantics, and broader UI execution remain
-gated.
+the product play panel. Thin Qt product viewport render command drawing is
+complete as a temporary app-shell consumer of existing latest-frame quad
+commands. Textured sprites/animation/material policy, real renderer ownership,
+target highlighting/overlays, richer diagnostics, frame request/play-surface
+ownership, explicit interaction execution, product UX/save semantics, and broader
+UI execution remain gated.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
@@ -337,8 +339,8 @@ Qt product viewport owner:
   local `QFrame#productViewport` styling only.
 - `productViewport_` is reset to null on main-slot rebuilds where no viewport is
   created.
-- The viewport is a stable event/render target boundary, not render semantics,
-  runtime truth, or scene/UI model truth.
+- The viewport is a stable event/render target boundary, not long-term renderer
+  semantics, runtime truth, or scene/UI model truth.
 
 Qt product mouse primary-tile consumer:
 - `productViewport_` installs a viewport-only event filter for product play
@@ -510,6 +512,24 @@ Product actor render projection:
 - Qt does not own actor render semantics, actor state, materials, assets, or
   render persistence.
 
+Thin Qt product viewport render command drawer:
+- `QFrame#productViewport` is now a Qt-local paint-capable widget that draws
+  existing latest product play frame render commands.
+- It consumes only stable, transient app-shell latest-frame data from
+  `latestProductPlayModeFrame_`: the level-frame command vector and
+  latest-frame camera-view bounds.
+- It maps command world bounds to current widget pixel rectangles using latest
+  frame camera-view bounds as visible world bounds, normalizes command world
+  bounds and mapped `QRectF`, maps x and y directly with no flip, and preserves
+  command vector order with no Qt-side layer/order sorting.
+- It skips commands when there is no latest frame, widget size is non-positive,
+  or camera-view width/height is zero; background still paints normally.
+- It draws only `RenderCommand2DType::Quad` commands as untextured flat
+  rectangles, ignores texture payloads, and uses Qt-local hardcoded debug colors
+  for floor, wall, player, NPC actor, legacy NPC, and fallback materials.
+- It remains a temporary app-shell/debug-material renderer over existing
+  latest-frame data, not the long-term renderer.
+
 Hard stops for product play UI projection:
 - No product frame execution, `RuntimeGameplayProductPlayMode::frame(...)`,
   `RuntimeGameplayProductPlaySurfaceFrame::build(...)`, app tick loop, or frame
@@ -576,8 +596,9 @@ Hard stops for product play UI projection:
   pause/retry/reset/completion/failure/save-load productization, package
   scanning/watching/discovery, source mutation, raw Qt event persistence,
   projected pointer persistence, viewport geometry/state persistence, render
-  command/config persistence, render command drawing, canvas polish, or
-  runtime/product semantic changes from Qt frame pump or viewport ownership.
+  command/config persistence, render command drawing beyond the approved Qt
+  latest-frame drawer, canvas polish, target highlighting, or runtime/product
+  semantic changes from Qt frame pump, viewport ownership, or viewport painting.
 - No settings persistence or keyboard shortcut for Qt manual Step.
 - No hidden default camera/render config inside the UI model.
 - No pause/retry/reset, completion/failure, save/load productization, package
