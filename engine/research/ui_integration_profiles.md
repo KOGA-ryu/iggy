@@ -214,7 +214,8 @@ the product play panel. Thin Qt product viewport render command drawing is
 complete as a temporary app-shell consumer of existing latest-frame quad
 commands. Thin Qt target highlight overlay is complete as a visual annotation
 over latest target-context diagnostics. Textured sprites/animation/material
-policy, other model-slot file binding, glTF/static model parsing, asset
+policy, other model-slot file binding, glTF/glb parsing under the future
+constrained subset, asset
 registry/catalog, materials/textures/descriptors/samplers, package/authoring
 asset policy, renderer expansion, backend validation, richer overlays/labels,
 richer diagnostics, frame request/play-surface ownership, explicit interaction
@@ -455,6 +456,24 @@ registry/catalog, material/texture/descriptor/sampler policy, shader change,
 staging/device-local upload, Linux/dGPU policy, backend abstraction,
 runtime/product/scene/draw-list API, app shell behavior, CLI/debugger output, or
 gameplay/session/input/scripted-control change is included.
+
+Native static model slot policy is complete as app-local no-Qt value-only model
+selection policy: `NativeStaticModelPolicy.hpp` defines `NativeStaticModelSlot`
+for `Floor`, `Wall`, `NpcActor`, and `Player`; `NativeStaticModelAssetRef` for
+`{ slot, meshFilename }`; `NativeStaticModelPolicy` with a `models` vector; a
+stable default `.igmesh` policy for `floor.igmesh`, `wall.igmesh`, `npc.igmesh`,
+and `player.igmesh`; and `FindNativeStaticModelAsset(...)` first-match lookup.
+The policy has no filesystem/file loading/parsing/GPU/Vulkan knowledge.
+`NativeVulkanRenderer.cpp` consumes it only for filenames while preserving the
+existing loaded `.igmesh` behavior and fallbacks. This is not a glTF/glb parser,
+JSON/GLB dependency, shared render-server move, public renderer API change, app
+shell change, runtime/product/scene/server/draw-list API change, shader/material/
+texture/descriptor/sampler policy, staging/device-local upload policy,
+Linux/dGPU policy, backend abstraction, CLI/debugger output change, or gameplay/
+session/input/scripted-control change. Future glTF/glb work remains separately
+gated to a constrained subset: one mesh, one primitive, triangles, required
+positions, optional vertex colors/default later, indexed `uint16` first, and no
+materials, textures, normals, UVs, animation, skins, scene graph, or transforms.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame

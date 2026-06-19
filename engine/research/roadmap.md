@@ -383,12 +383,20 @@ Recently completed optimized stretches:
   creation, creates `floorMesh_` / `wallMesh_` only for successful loaded
   assets, and registers `Floor` / `Wall` to those meshes only when
   `HasMesh(...)` succeeds; fallback reuses the existing `cubeMesh_` without
-  duplicate cube GPU uploads, and player/NPC bindings remain unchanged.
+  duplicate cube GPU uploads, and player/NPC bindings remain unchanged. Native
+  static model slot policy now adds app-local value-only
+  `NativeStaticModelPolicy.hpp`: `NativeStaticModelSlot` covers `Floor`, `Wall`,
+  `NpcActor`, and `Player`; `NativeStaticModelAssetRef` carries `{ slot,
+  meshFilename }`; `DefaultNativeStaticModelPolicy()` maps those slots to stable
+  `.igmesh` filenames; and `FindNativeStaticModelAsset(...)` performs first-match
+  lookup. `NativeVulkanRenderer.cpp` consumes the policy for filenames while
+  preserving the current loaded `.igmesh` behavior and fallbacks. The policy has
+  no filesystem, parser, GPU, or Vulkan knowledge.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
   execution if approved, app-shell/CLI extraction, other model-slot file binding,
-  glTF/static model parsing, asset registry/catalog,
+  glTF/glb parsing under the future constrained subset, asset registry/catalog,
   materials/textures/descriptors/samplers,
   package/authoring asset policy, backend validation/abstraction,
   pause/retry/reset policy, completion/failure evaluation, and save/load UX.
@@ -1186,6 +1194,29 @@ shader change, staging/device-local upload, Linux/dGPU policy, backend
 abstraction, runtime/product/scene/draw-list API, CLI/debugger output, or
 gameplay/session/input/scripted-control change is included.
 
+Native Static Model Slot Policy, .igmesh First is complete for no-Qt renderer
+prep: `NativeStaticModelPolicy.hpp` adds an app-local value-only policy under
+`engine/apps/native_play`. `NativeStaticModelSlot` lists `Floor`, `Wall`,
+`NpcActor`, and `Player`; `NativeStaticModelAssetRef` carries a slot plus
+`meshFilename`; `NativeStaticModelPolicy` stores a `models` vector;
+`DefaultNativeStaticModelPolicy()` maps `Floor -> floor.igmesh`,
+`Wall -> wall.igmesh`, `NpcActor -> npc.igmesh`, and `Player -> player.igmesh`;
+and `FindNativeStaticModelAsset(...)` returns the first matching slot. The policy
+has no filesystem, file loading, parsing, GPU, or Vulkan knowledge.
+`NativeVulkanRenderer.cpp` consumes the policy only to choose filenames for the
+existing loaded `.igmesh` path, preserving current load behavior and fallback
+meshes. The source packet adds focused policy tests for stable default entries,
+lookup, missing slots, duplicate first-match behavior, and value-only filenames.
+This is not a glTF/glb parser, JSON/GLB dependency, shared render-server move,
+public renderer API change, app shell change, runtime/product/scene/server/
+draw-list API change, shader/material/texture/descriptor/sampler policy,
+staging/device-local upload policy, Linux/dGPU policy, backend abstraction,
+CLI/debugger output change, or gameplay/session/input/scripted-control change.
+The future glTF subset remains separately gated: one mesh, one primitive,
+triangles, required positions, optional vertex colors/default later, indexed
+`uint16` first, and no materials, textures, normals, UVs, animation, skins,
+scene graph, or transforms.
+
 Exit criteria:
 - Load a package or explicit scenario.
 - Bind device input to player intents.
@@ -1203,7 +1234,7 @@ First gates:
 - Explicit interact target synthesis and reach-gated interaction execution.
 - Point-vs-tile / `PrimaryPoint` behavior beyond the current `PrimaryTile`
   policy.
-- Other model-slot file binding, glTF/static model parsing, asset
+- Other model-slot file binding, glTF/glb parsing under the constrained subset, asset
   registry/catalog, materials/textures/descriptors/samplers, non-cube model slot
   expansion, package/authoring asset policy, renderer expansion, and any canvas
   polish.
