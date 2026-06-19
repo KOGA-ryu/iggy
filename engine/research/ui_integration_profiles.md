@@ -214,10 +214,10 @@ the product play panel. Thin Qt product viewport render command drawing is
 complete as a temporary app-shell consumer of existing latest-frame quad
 commands. Thin Qt target highlight overlay is complete as a visual annotation
 over latest target-context diagnostics. Textured sprites/animation/material
-policy, GPU resource wrappers, renderer expansion, backend validation, richer
-overlays/labels, richer diagnostics, frame request/play-surface ownership,
-explicit interaction execution, product UX/save semantics, and broader UI
-execution remain gated.
+policy, pipeline/shader/resource ownership cleanup, model-slot/static asset
+policy, renderer expansion, backend validation, richer overlays/labels, richer
+diagnostics, frame request/play-surface ownership, explicit interaction
+execution, product UX/save semantics, and broader UI execution remain gated.
 
 Native `iggy_native_play` scripted controls/debugger is complete as a no-Qt
 app-shell harness over the same product input path as keyboard controls. It
@@ -282,6 +282,24 @@ session/input/scripted-control semantics, runtime/product/scene/server/render-
 command APIs, `NativePlayMath.hpp`, `NativeSceneDrawList.hpp`, shader behavior,
 generalized mesh/resource ownership, glTF/assets/textures/material registry/
 animation, Linux/dGPU policy, and backend abstraction remain separate.
+
+Native GPU mesh resource wrapping is complete as no-Qt renderer-private resource
+cleanup inside `NativeVulkanRenderer.cpp`: the existing cube mesh path now uses
+private `NativeVulkanBufferResource` and `NativeVulkanMeshResource` structs plus
+`HasBuffer`/`HasMesh` readiness helpers. Cube vertex/index upload remains
+host-visible/coherent and keeps caller-provided usage flags; cube data, all
+scene model ids mapping to the single cube mesh, draw order, shader interface,
+push constants, tint behavior, and `VK_INDEX_TYPE_UINT16` indexed draw
+parameters are intended unchanged. `destroyBuffer(...)` and
+`destroyMeshResource(...)` centralize buffer-before-memory destruction,
+index-before-vertex cleanup, and reset-to-default idempotence. Public renderer
+API, `IggyNativePlay.cpp`, CMake, shader files, runtime/product/scene APIs,
+`NativeSceneDrawList.hpp`, CLI/debugger output, app-shell behavior, staging/
+device-local upload policy, mesh registries/model slots, asset loaders, file IO,
+glTF/assets/textures/materials/animation, Linux/dGPU policy, and backend
+abstraction remain separate. The known allocation failure-path risk between
+`vkCreateBuffer` and ownership assignment pre-existed the wrapper and remains a
+future RAII/allocation exception-safety gate.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame

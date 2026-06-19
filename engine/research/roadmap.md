@@ -350,14 +350,17 @@ Recently completed optimized stretches:
   app-local `NativeVulkanRenderer`, while `IggyNativePlay.cpp` still owns
   CLI/help/validation, MoltenVK fallback setup, SDL lifecycle/event loop,
   product session calls, seconds/camera/draw-list orchestration, and per-frame
-  renderer input.
+  renderer input. Native GPU mesh resource wrapping now keeps the existing cube
+  mesh path renderer-private while centralizing vertex/index buffer readiness and
+  idempotent destruction without changing upload policy, draw behavior, model
+  mapping, shaders, or public renderer API.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
-  execution if approved, GPU mesh resource wrapping, app-shell/CLI extraction,
-  textured sprite/animation/material/asset policy, backend validation/
-  abstraction, pause/retry/reset policy, completion/failure
-  evaluation, and save/load UX.
+  execution if approved, app-shell/CLI extraction, pipeline/shader/resource
+  ownership cleanup, model-slot/static asset policy, textured sprite/animation/
+  material policy, backend validation/abstraction, pause/retry/reset policy,
+  completion/failure evaluation, and save/load UX.
 - Rendering backend/presentation layer.
 - Audio server boundary.
 - Save/load productization and authored package roundtrip.
@@ -985,6 +988,23 @@ per-frame renderer input owner. The renderer stores only a non-owning
 does not depend on product/session/scripted controls or
 `BuildNativeSceneDrawItems(...)`, and does not introduce generalized mesh/
 resource ownership beyond the mechanical cube mesh move.
+Native GPU Mesh Resource Wrapper is complete for no-Qt renderer prep:
+`NativeVulkanRenderer.cpp` now wraps the existing cube mesh GPU buffers in
+renderer-private `NativeVulkanBufferResource` and `NativeVulkanMeshResource`
+structs, with `HasBuffer`/`HasMesh` readiness checks. Buffer creation still uses
+caller-provided usage flags and host-visible/coherent upload memory for the cube
+vertex/index buffers. Cube data, all scene model ids mapping to the single cube
+mesh, draw order, shader interface, push constants, tint behavior, and
+`VK_INDEX_TYPE_UINT16` indexed draw parameters are unchanged. Cleanup is
+centralized through `destroyBuffer(...)` and `destroyMeshResource(...)`, with
+buffer-before-memory destruction, index-before-vertex mesh cleanup, and
+reset-to-default idempotence. `NativeVulkanRenderer.hpp`, `IggyNativePlay.cpp`,
+CMake, shaders, runtime/product/scene APIs, and draw-list data are unchanged.
+This is a private renderer cleanup, not a mesh registry, model-slot binding,
+asset loader, resource catalog, staging/device-local upload policy, glTF/
+texture/material/animation packet, or public renderer API change. The
+pre-existing allocation failure-path risk between `vkCreateBuffer` and ownership
+assignment remains future RAII/exception-safety work, not a new blocker.
 
 Exit criteria:
 - Load a package or explicit scenario.
@@ -1003,8 +1023,9 @@ First gates:
 - Explicit interact target synthesis and reach-gated interaction execution.
 - Point-vs-tile / `PrimaryPoint` behavior beyond the current `PrimaryTile`
   policy.
-- GPU resource wrappers, renderer expansion, textured sprite/animation/material/
-  asset policy over the debug/material actor quads, and any canvas polish.
+- Pipeline/shader/resource ownership cleanup, model-slot/static asset policy,
+  renderer expansion, textured sprite/animation/material policy over the debug/
+  material actor quads, and any canvas polish.
 - Pause/retry/reset policy.
 - Completion/failure evaluator.
 - Save-slot UX ownership.

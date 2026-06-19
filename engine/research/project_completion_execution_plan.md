@@ -245,15 +245,17 @@ app-shell consumer of existing latest-frame quad commands; thin Qt target
 highlight overlay is complete as a visual annotation over latest target-context
 diagnostics; native no-Qt scripted controls/debugger is complete for
 deterministic product-path stepping and expectation checks; native no-Qt
-scene draw-list extraction is complete as backend-neutral app-local renderer
-prep; native no-Qt product session extraction is complete as app-local product
-state/request/script orchestration; native no-Qt Vulkan renderer skeleton
-extraction is complete as app-local renderer lifetime/draw submission
-separation; next work is optional richer overlays/labels or diagnostics, frame
-request/play-surface ownership decisions, explicit interact target synthesis,
-reach-gated interaction execution, GPU mesh resource wrapping, app shell/CLI
-extraction, textured sprite/animation/material/asset policy, backend
-validation/abstraction, and first-play UX policy gates.
+  scene draw-list extraction is complete as backend-neutral app-local renderer
+  prep; native no-Qt product session extraction is complete as app-local product
+  state/request/script orchestration; native no-Qt Vulkan renderer skeleton
+  extraction is complete as app-local renderer lifetime/draw submission
+  separation; native no-Qt GPU mesh resource wrapping is complete as
+  renderer-private cube mesh buffer ownership cleanup; next work is optional
+  richer overlays/labels or diagnostics, frame request/play-surface ownership
+  decisions, explicit interact target synthesis, reach-gated interaction
+  execution, app shell/CLI extraction, pipeline/shader/resource ownership
+  cleanup, model-slot/static asset policy, textured sprite/animation/material
+  policy, backend validation/abstraction, and first-play UX policy gates.
 
 Goal: define and build the first playable loop boundary without making authoring
 or session state own product concerns.
@@ -640,9 +642,33 @@ Native Vulkan renderer skeleton extraction complete:
   change, shader behavior/interface change, new shaders, generalized mesh/
   resource registry, glTF/assets/textures/material registry/animation work,
   Linux/dGPU validation policy, or backend abstraction is included.
-- GPU mesh resource wrapper, app shell/CLI extraction, glTF/assets/textures/
-  materials, animation, Linux/dGPU validation, and backend abstraction remain
-  separate future packets.
+- App shell/CLI extraction, pipeline/shader/resource ownership cleanup,
+  model-slot/static asset policy, glTF/assets/textures/materials, animation,
+  Linux/dGPU validation, and backend abstraction remain separate future packets.
+
+Native GPU mesh resource wrapper complete:
+- `NativeVulkanRenderer.cpp` wraps the existing cube mesh GPU buffers in
+  renderer-private `NativeVulkanBufferResource` and
+  `NativeVulkanMeshResource` structs.
+- `HasBuffer` and `HasMesh` centralize readiness checks for the existing cube
+  mesh path.
+- Buffer creation still uses caller-provided usage flags and memory properties;
+  cube vertex/index upload remains host-visible/coherent.
+- Cube data, all scene model ids mapping to the single cube mesh, draw order,
+  shader interface, push constants, tint behavior, and `VK_INDEX_TYPE_UINT16`
+  indexed draw parameters are preserved.
+- Destruction is centralized through `destroyBuffer(...)` and
+  `destroyMeshResource(...)`, preserving buffer-before-memory destruction,
+  index-before-vertex cleanup, and reset-to-default idempotence.
+- `NativeVulkanRenderer.hpp`, `IggyNativePlay.cpp`, CMake, shader files,
+  runtime/product/scene APIs, and `NativeSceneDrawList.hpp` are unchanged.
+- This is renderer-private ownership cleanup only: no public renderer API
+  change, app-shell behavior change, mesh registry, model-slot binding, resource
+  catalog, asset loader, new file IO policy, staging/device-local upload policy,
+  glTF/assets/textures/materials/animation, or shader change is included.
+- The pre-existing failure-path behavior where a throw between `vkCreateBuffer`
+  and ownership assignment can leak a transient resource remains future RAII/
+  allocation exception-safety work; it was not introduced by this packet.
 
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
@@ -1148,10 +1174,11 @@ product gameplay actor debug/material quad projection integrated; thin Qt
 product viewport render command drawer integrated as temporary latest-frame quad
 drawing; thin Qt target highlight overlay integrated as a visual annotation over
 latest diagnostics; textured sprites/animation/material/asset policy, richer
-overlays/labels, GPU resource wrappers, renderer expansion, backend validation,
-interaction execution, product UX/save semantics, and UI execution beyond launch/
-focus/input capture/manual step/pump/viewport ownership/primary-tile mouse input
-remain separate gates.
+overlays/labels, pipeline/shader/resource ownership cleanup, model-slot/static
+asset policy, renderer expansion, backend validation, interaction execution,
+product UX/save semantics, and UI execution beyond launch/focus/input capture/
+manual step/pump/viewport ownership/primary-tile mouse input remain separate
+gates.
 
 Goal: turn runtime state into visible play state.
 
@@ -1250,9 +1277,15 @@ Packets:
      cleanup behind a pimpl surface while `IggyNativePlay.cpp` remains CLI/help,
      SDL app shell, product session, seconds/camera/draw-list orchestration, and
      per-frame renderer input owner.
-30. Debug overlay projection:
+30. Native GPU mesh resource wrapper. Complete:
+   - `NativeVulkanRenderer.cpp` wraps the existing cube mesh vertex/index GPU
+     buffers in renderer-private resource structs, centralizes readiness and
+     idempotent destruction, and preserves host-visible/coherent upload, cube
+     data, model mapping, draw parameters, shader interface, and public renderer
+     API.
+31. Debug overlay projection:
    - trace/final rows, AI map, collision, path, interactions, inventory.
-31. UI presentation adapter:
+32. UI presentation adapter:
    - convert render frame data into the chosen shell/app surface.
 
 Hard stops:
@@ -1490,13 +1523,14 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 38. Native scene draw-list extraction is integrated.
 39. Native product session extraction is integrated.
 40. Native Vulkan renderer skeleton extraction is integrated.
-41. Dispatch richer diagnostics display, overlays/labels, frame request/
+41. Native GPU mesh resource wrapper is integrated.
+42. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
-    point-vs-tile policy, GPU resource wrappers, renderer expansion, textured
-    sprite / animation / material policy, render projection gaps, backend
-    validation, further input mapping, or a focused-input follow-up, depending
-    on planner scope.
+    point-vs-tile policy, renderer expansion, pipeline/shader/resource ownership
+    cleanup, model-slot/static asset policy, textured sprite / animation /
+    material policy, render projection gaps, backend validation, further input
+    mapping, or a focused-input follow-up, depending on planner scope.
 
 Do not broaden the next Product Loop packet into pause/retry/reset,
 completion/failure, save/load productization, product-loop signature changes,
@@ -1532,3 +1566,12 @@ product/scene/server/render-command API changes, renderer dependency on
 change, `NativeSceneDrawList.hpp` behavior change, shader behavior/interface
 change, generalized mesh/resource registry, glTF/assets/textures/material
 registry/animation work, Linux/dGPU validation policy, or backend abstraction.
+Do not treat native GPU mesh resource wrapping as public renderer API change,
+`IggyNativePlay.cpp` app-shell behavior change, CLI/debugger output change, SDL
+app-shell extraction, gameplay/product/session/input/scripted-control semantic
+change, runtime/product/scene/server/render-command API change,
+`NativeSceneDrawList.hpp` model-id or draw-order change, shader interface/source
+change, new shader, glTF/assets/textures/materials/animation, mesh registry,
+model-slot binding, resource catalog, resource handles, asset loader, new file
+IO policy, staging buffer/device-local upload policy, Linux/dGPU validation
+policy, or backend abstraction.
