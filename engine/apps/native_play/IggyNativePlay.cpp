@@ -125,6 +125,12 @@ struct NativeMeshGpuBuffers {
 	std::uint32_t indexCount = 0;
 };
 
+struct NativeSceneDrawItem {
+	const NativeMeshGpuBuffers *mesh = nullptr;
+	Mat4 model;
+	std::array<float, 4> tint { 1.0F, 1.0F, 1.0F, 1.0F };
+};
+
 void ThrowIfFailed(VkResult result, const char *message)
 {
 	if (result != VK_SUCCESS)
@@ -1662,21 +1668,24 @@ private:
 			0);
 	}
 
-	void drawCube(
-		VkCommandBuffer commandBuffer,
-		const Mat4 &viewProjection,
+	void appendCubeDraw(
+		std::vector<NativeSceneDrawItem> &drawItems,
 		const Mat4 &model,
 		std::array<float, 4> tint) const
 	{
-		drawMesh(commandBuffer, cubeMesh_, viewProjection, model, tint);
+		drawItems.push_back({ &cubeMesh_, model, tint });
 	}
 
-	void drawLevelPlaceholders(
-		VkCommandBuffer commandBuffer,
-		const Mat4 &viewProjection) const
+	std::vector<NativeSceneDrawItem> buildSceneDrawItems(float seconds) const
 	{
-		if (!product_.has_value())
-			return;
+		std::vector<NativeSceneDrawItem> drawItems;
+		if (!product_.has_value()) {
+			appendCubeDraw(
+				drawItems,
+				playerCubeModelMatrix(seconds),
+				{ 0.18F, 0.70F, 1.0F, 1.0F });
+			return drawItems;
+		}
 
 		const auto &map =
 			product_->play.state.loop.currentState.session.level.map;
@@ -1684,9 +1693,8 @@ private:
 		const float mapHeight = static_cast<float>(map.height);
 		for (int y = 0; y < map.height; ++y) {
 			for (int x = 0; x < map.width; ++x) {
-				drawCube(
-					commandBuffer,
-					viewProjection,
+				appendCubeDraw(
+					drawItems,
 					tileCubeModelMatrix(
 						x,
 						y,
@@ -1698,9 +1706,8 @@ private:
 
 				const iggy::LevelTile *tile = map.tileAt(x, y);
 				if (tile != nullptr && !tile->walkable) {
-					drawCube(
-						commandBuffer,
-						viewProjection,
+					appendCubeDraw(
+						drawItems,
 						tileCubeModelMatrix(
 							x,
 							y,
@@ -1722,13 +1729,30 @@ private:
 				0.38F,
 				actor.position.y - mapHeight * 0.5F,
 			};
-			drawCube(
-				commandBuffer,
-				viewProjection,
+			appendCubeDraw(
+				drawItems,
 				Multiply(
 					Translation(position),
 					Scale({ 0.62F, 0.62F, 0.62F })),
 				{ 1.0F, 0.55F, 0.18F, 1.0F });
+		}
+
+		appendCubeDraw(
+			drawItems,
+			playerCubeModelMatrix(seconds),
+			{ 0.18F, 0.70F, 1.0F, 1.0F });
+		return drawItems;
+	}
+
+	void drawSceneDrawItems(
+		VkCommandBuffer commandBuffer,
+		const Mat4 &viewProjection,
+		const std::vector<NativeSceneDrawItem> &drawItems) const
+	{
+		for (const NativeSceneDrawItem &item : drawItems) {
+			if (item.mesh == nullptr)
+				continue;
+			drawMesh(commandBuffer, *item.mesh, viewProjection, item.model, item.tint);
 		}
 	}
 
@@ -1760,12 +1784,9 @@ private:
 		const float seconds =
 			std::chrono::duration<float>(Clock::now() - startTime_).count();
 		const Mat4 viewProjection = viewProjectionMatrix();
-		drawLevelPlaceholders(commandBuffer, viewProjection);
-		drawCube(
-			commandBuffer,
-			viewProjection,
-			playerCubeModelMatrix(seconds),
-			{ 0.18F, 0.70F, 1.0F, 1.0F });
+		const std::vector<NativeSceneDrawItem> drawItems =
+			buildSceneDrawItems(seconds);
+		drawSceneDrawItems(commandBuffer, viewProjection, drawItems);
 		vkCmdEndRenderPass(commandBuffer);
 
 		ThrowIfFailed(
