@@ -98,6 +98,7 @@ struct LaunchOptions {
 	std::chrono::milliseconds scriptedControlInterval = ProductTickInterval;
 	bool quitAfterScriptedControls = false;
 	bool debugScriptedControls = false;
+	bool dumpFinalState = false;
 	std::vector<iggy::TileCoord> expectedPlayerTiles;
 };
 
@@ -601,6 +602,10 @@ LaunchOptions ParseArgs(int argc, char **argv)
 			options.debugScriptedControls = true;
 			continue;
 		}
+		if (arg == "--dump-final-state") {
+			options.dumpFinalState = true;
+			continue;
+		}
 		if (arg == "--expect-player-tiles") {
 			if (i + 1 >= argc)
 				throw std::runtime_error("--expect-player-tiles requires a semicolon-separated list");
@@ -615,6 +620,8 @@ LaunchOptions ParseArgs(int argc, char **argv)
 	}
 	if (!options.scriptedControls.empty() && !options.hasPlayPath)
 		throw std::runtime_error("--scripted-controls requires --play");
+	if (options.dumpFinalState && options.scriptedControls.empty())
+		throw std::runtime_error("--dump-final-state requires --scripted-controls");
 	if (!options.expectedPlayerTiles.empty() && options.scriptedControls.empty())
 		throw std::runtime_error("--expect-player-tiles requires --scripted-controls");
 	if (!options.expectedPlayerTiles.empty()) {
@@ -630,13 +637,22 @@ void PrintUsage()
 {
 	std::cout
 		<< "Usage: iggy_native_play [--play PATH]\n"
-		<< "       iggy_native_play --play PATH --scripted-controls LIST [--quit-after-script]\n"
+		<< "       iggy_native_play --play PATH --scripted-controls LIST [OPTIONS]\n"
 		<< "\n"
-		<< "Opens the native SDL/Vulkan play shell. Scripted controls are comma-separated\n"
-		<< "tokens such as east,east,south or right*3,wait. They inject the same product\n"
-		<< "input path as keyboard controls. Add --debug-scripted-controls to print\n"
-		<< "per-step frame diagnostics. Add --expect-player-tiles 'x,y;x,y' to fail\n"
-		<< "when scripted movement does not land on the expected tiles.\n";
+		<< "Opens the native SDL/Vulkan play shell.\n"
+		<< "\n"
+		<< "Scripted control options:\n"
+		<< "  --scripted-controls LIST             Comma-separated controls such as\n"
+		<< "                                       east,east,south or right*3,wait.\n"
+		<< "  --scripted-control-interval-ms N     Delay between scripted controls.\n"
+		<< "  --debug-scripted-controls            Print per-step frame diagnostics.\n"
+		<< "  --dump-final-state                   Print final player tile, next frame\n"
+		<< "                                       index, render command count, and\n"
+		<< "                                       active/held input counts after the\n"
+		<< "                                       scripted sequence completes.\n"
+		<< "  --expect-player-tiles 'x,y;x,y'      Fail unless scripted steps land on\n"
+		<< "                                       the expected player tiles.\n"
+		<< "  --quit-after-script                  Exit after the scripted sequence.\n";
 }
 
 void ConfigureMoltenVkIcdFallback()
@@ -1115,6 +1131,42 @@ private:
 			" actual=" + TileText(*actualTile));
 	}
 
+	std::size_t latestRenderCommandCount() const
+	{
+		if (!hasLatestProductPlayModeFrame_)
+			return 0;
+		return latestProductPlayModeFrame_
+			.surface
+			.presentation
+			.levelFrame
+			.commands
+			.commands
+			.size();
+	}
+
+	std::size_t nextProductFrameIndex() const
+	{
+		if (!product_.has_value())
+			return 0;
+		return product_->play.state.loop.nextFrameIndex;
+	}
+
+	void dumpFinalScriptedState() const
+	{
+		const std::optional<iggy::TileCoord> playerTile =
+			currentPlayerTile();
+		std::cout
+			<< "scripted final-state"
+			<< " playerTile="
+			<< (playerTile.has_value() ? TileText(*playerTile) : "none")
+			<< " nextFrameIndex=" << nextProductFrameIndex()
+			<< " renderCommands=" << latestRenderCommandCount()
+			<< " activeInputCount=" << activeMovementControls_.size()
+			<< " heldInputCount="
+			<< productInputAccumulator_.heldControls.size()
+			<< std::endl;
+	}
+
 	void applyScriptedProductControl(
 		std::size_t index,
 		const ScriptedProductControl &scripted)
@@ -1159,8 +1211,13 @@ private:
 			scriptedControls_[scriptedControlIndex_]);
 		++scriptedControlIndex_;
 		nextScriptedControlAt_ = now + options_.scriptedControlInterval;
-		return scriptedControlIndex_ >= scriptedControls_.size() &&
-			options_.quitAfterScriptedControls;
+		const bool completedScript = scriptedControlIndex_ >= scriptedControls_.size();
+		if (completedScript && options_.dumpFinalState &&
+				!dumpedFinalScriptedState_) {
+			dumpFinalScriptedState();
+			dumpedFinalScriptedState_ = true;
+		}
+		return completedScript && options_.quitAfterScriptedControls;
 	}
 
 	void syncNativeHeldMovementControl()
@@ -2410,6 +2467,7 @@ private:
 	std::vector<runtime::RuntimeGameplayProductInputControl2D> activeMovementControls_;
 	std::vector<ScriptedProductControl> scriptedControls_;
 	std::size_t scriptedControlIndex_ = 0;
+	bool dumpedFinalScriptedState_ = false;
 	runtime::RuntimeGameplayProductPlayModeFrameResult latestProductPlayModeFrame_;
 	bool hasLatestProductPlayModeFrame_ = false;
 	iggy::CameraState productPresentationCamera_;
