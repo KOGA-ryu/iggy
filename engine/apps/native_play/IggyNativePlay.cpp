@@ -17,15 +17,24 @@
 #include "NativePlayMath.hpp"
 #include "NativeProductSession.hpp"
 #include "NativeSceneDrawList.hpp"
+#include "NativeStaticModelLoadReport.hpp"
+#include "NativeStaticModelPolicy.hpp"
 #include "NativeVulkanRenderer.hpp"
 
 namespace {
 
 namespace runtime = iggy::runtime;
 using iggy::native_play::BuildNativeSceneDrawItems;
+using iggy::native_play::BuildNativeStaticModelLoadReport;
+using iggy::native_play::DefaultNativeStaticModelPolicy;
 using iggy::native_play::LookAt;
 using iggy::native_play::Mat4;
 using iggy::native_play::Multiply;
+using iggy::native_play::NativeStaticModelFallbackKind;
+using iggy::native_play::NativeStaticModelLoadEntry;
+using iggy::native_play::NativeStaticModelLoadReport;
+using iggy::native_play::NativeStaticModelLoadStatus;
+using iggy::native_play::NativeStaticModelSlot;
 using iggy::native_play::NativeProductSession;
 using iggy::native_play::NativeProductSessionConfig;
 using iggy::native_play::NativeSceneDrawItem;
@@ -39,8 +48,13 @@ constexpr int InitialWindowHeight = 720;
 constexpr float Pi = 3.14159265358979323846F;
 constexpr auto ProductTickInterval = std::chrono::milliseconds(250);
 
+#ifndef IGGY_NATIVE_PLAY_ASSET_DIR
+#define IGGY_NATIVE_PLAY_ASSET_DIR "."
+#endif
+
 struct LaunchOptions {
 	bool showHelp = false;
+	bool dumpStaticModelLoadReport = false;
 	bool hasPlayPath = false;
 	std::filesystem::path playPath;
 	std::vector<std::string> scriptedControls;
@@ -160,6 +174,10 @@ LaunchOptions ParseArgs(int argc, char **argv)
 			options.showHelp = true;
 			continue;
 		}
+		if (arg == "--dump-static-model-load-report") {
+			options.dumpStaticModelLoadReport = true;
+			continue;
+		}
 		if (arg == "--play") {
 			if (i + 1 >= argc)
 				throw std::runtime_error("--play requires a scenario path");
@@ -228,6 +246,10 @@ void PrintUsage()
 		<< "\n"
 		<< "Opens the native SDL/Vulkan play shell.\n"
 		<< "\n"
+		<< "Asset diagnostics options:\n"
+		<< "  --dump-static-model-load-report      Print static model asset load status\n"
+		<< "                                       without launching SDL/Vulkan.\n"
+		<< "\n"
 		<< "Scripted control options:\n"
 		<< "  --scripted-controls LIST             Comma-separated controls such as\n"
 		<< "                                       east,east,south or right*3,wait.\n"
@@ -240,6 +262,68 @@ void PrintUsage()
 		<< "  --expect-player-tiles 'x,y;x,y'      Fail unless scripted steps land on\n"
 		<< "                                       the expected player tiles.\n"
 		<< "  --quit-after-script                  Exit after the scripted sequence.\n";
+}
+
+const char *NativeStaticModelSlotName(NativeStaticModelSlot slot)
+{
+	switch (slot) {
+	case NativeStaticModelSlot::Floor:
+		return "Floor";
+	case NativeStaticModelSlot::Wall:
+		return "Wall";
+	case NativeStaticModelSlot::NpcActor:
+		return "NpcActor";
+	case NativeStaticModelSlot::Player:
+		return "Player";
+	}
+	return "Unknown";
+}
+
+const char *NativeStaticModelLoadStatusName(NativeStaticModelLoadStatus status)
+{
+	switch (status) {
+	case NativeStaticModelLoadStatus::MissingPolicyRef:
+		return "MissingPolicyRef";
+	case NativeStaticModelLoadStatus::Loaded:
+		return "Loaded";
+	case NativeStaticModelLoadStatus::LoadFailed:
+		return "LoadFailed";
+	}
+	return "Unknown";
+}
+
+const char *NativeStaticModelFallbackKindName(NativeStaticModelFallbackKind fallback)
+{
+	switch (fallback) {
+	case NativeStaticModelFallbackKind::Cube:
+		return "Cube";
+	case NativeStaticModelFallbackKind::ProceduralBean:
+		return "ProceduralBean";
+	case NativeStaticModelFallbackKind::ProceduralNpcMarker:
+		return "ProceduralNpcMarker";
+	}
+	return "Unknown";
+}
+
+void PrintNativeStaticModelLoadReport(const NativeStaticModelLoadReport &report)
+{
+	std::cout
+		<< "static-model-load-report"
+		<< " loaded=" << report.loadedCount
+		<< " failed=" << report.failedCount
+		<< " missing=" << report.missingCount
+		<< "\n";
+	for (const NativeStaticModelLoadEntry &entry : report.entries) {
+		std::cout
+			<< "slot=" << NativeStaticModelSlotName(entry.slot)
+			<< " filename=" << (entry.meshFilename.empty() ? "<missing>" : entry.meshFilename)
+			<< " status=" << NativeStaticModelLoadStatusName(entry.status)
+			<< " fallback=" << NativeStaticModelFallbackKindName(entry.fallback)
+			<< " vertices=" << entry.vertexCount
+			<< " indices=" << entry.indexCount
+			<< " issues=" << entry.issueCount
+			<< "\n";
+	}
 }
 
 void ConfigureMoltenVkIcdFallback()
@@ -441,6 +525,14 @@ int main(int argc, char **argv)
 		if (options.showHelp) {
 			PrintUsage();
 			return 0;
+		}
+		if (options.dumpStaticModelLoadReport) {
+			const NativeStaticModelLoadReport report =
+				BuildNativeStaticModelLoadReport(
+					DefaultNativeStaticModelPolicy(),
+					IGGY_NATIVE_PLAY_ASSET_DIR);
+			PrintNativeStaticModelLoadReport(report);
+			return report.failedCount == 0 && report.missingCount == 0 ? 0 : 1;
 		}
 
 		NativeVulkanApp app(options);
