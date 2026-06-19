@@ -1,3 +1,4 @@
 iggy_add_test(core_math_tests tests/core_math_tests.cpp)
 iggy_add_test(core_resource_tests tests/core_resource_tests.cpp)
 iggy_add_test(asset_catalog_tests tests/asset_catalog_tests.cpp)
+iggy_add_test(native_static_mesh_asset_loader_tests tests/native_static_mesh_asset_loader_tests.cpp LABELS native unit)
