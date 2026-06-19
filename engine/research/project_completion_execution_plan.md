@@ -716,8 +716,9 @@ Native model-slot/cube fallback registry complete:
   slots resolve to a mesh binding.
 - The initial `createSceneMeshes()` registry bound `Floor`, `Wall`, `NpcActor`,
   and `Player` slots to the same cube fallback; later procedural mesh packets
-  now bind `Player` to the bean mesh and `NpcActor` to the NPC marker mesh while
-  `Floor`/`Wall` stay on the cube fallback.
+  bound `Player` to the bean mesh and `NpcActor` to the NPC marker mesh; the
+  later floor/wall asset binding packet supersedes the terrain slots when
+  loaded assets validate.
 - `meshForSceneModel(...)` delegates through `ModelSlotForSceneModel(...)` and
   `meshForModelSlot(...)`.
 - Draw-item iteration and vector order remain unchanged.
@@ -749,8 +750,10 @@ Native static mesh asset data model complete:
 - Upload remains host-visible/coherent, and indexed draw remains
   `VK_INDEX_TYPE_UINT16`.
 - Existing cube upload behavior remained unchanged in that packet; the cube
-  fallback now remains the `Floor`/`Wall` mesh while later procedural helpers
-  use the same CPU mesh shape for player and NPC model slots.
+  fallback was still the `Floor`/`Wall` mesh at that stage while later
+  procedural helpers used the same CPU mesh shape for player and NPC model
+  slots. Later floor/wall loaded assets supersede those terrain slots when
+  valid.
 - This is no-loader static mesh data groundwork only: no `.cpp`, CMake, tests,
   public renderer API, app shell, product session, runtime/product/scene API,
   draw-list, shader, loader, file IO, glTF, material/texture/descriptor/sampler,
@@ -768,8 +771,9 @@ Native procedural bean mesh slot binding complete:
   position/color shape and `std::uint16_t` indexed triangles.
 - `NativeVulkanRenderer.cpp` creates a separate `playerMesh_` from that asset.
 - `NativeVulkanModelSlot::Player` now binds to `playerMesh_`; `Floor` and
-  `Wall` stay bound to the cube fallback, and `NpcActor` is covered by the NPC
-  marker binding below.
+  `Wall` still used the cube fallback at that stage, and `NpcActor` is covered
+  by the NPC marker binding below. Later floor/wall loaded assets supersede
+  those terrain slots when valid.
 - Upload remains host-visible/coherent through the existing mesh resource path.
 - Vertex binding/attributes still expose the same two `vec3` shader inputs, and
   indexed draw remains `VK_INDEX_TYPE_UINT16`.
@@ -788,7 +792,9 @@ Native procedural NPC mesh slot binding complete:
   triangles.
 - `NativeVulkanRenderer.cpp` creates a separate `npcMesh_` from that asset.
 - `NativeVulkanModelSlot::NpcActor` now binds to `npcMesh_`; `Player` stays
-  bound to the bean mesh, and `Floor`/`Wall` stay bound to the cube fallback.
+  bound to the bean mesh, and `Floor`/`Wall` still used the cube fallback at
+  that stage. Later floor/wall loaded assets supersede those terrain slots when
+  valid.
 - Upload remains host-visible/coherent through the existing mesh resource path.
 - Vertex binding/attributes still expose the same two `vec3` shader inputs, and
   indexed draw remains `VK_INDEX_TYPE_UINT16`.
@@ -857,6 +863,30 @@ Native NPC mesh asset binding complete:
   parsing, asset registry/catalog, material/texture/descriptor/sampler policy,
   shader change, staging/device-local upload, runtime/product/scene API, app
   shell behavior, CLI/debugger output, or gameplay behavior change is included.
+
+Native floor/wall mesh asset binding complete:
+- `engine/apps/native_play/assets/floor.igmesh` and
+  `engine/apps/native_play/assets/wall.igmesh` add checked-in native text mesh
+  assets for the floor and wall slots.
+- `NativeVulkanRenderer.cpp` loads both via
+  `LoadNativeStaticMeshAssetFile(NativePlayAssetPath(...))` during scene mesh
+  creation.
+- `floorMesh_` and `wallMesh_` are created only for successful loaded assets.
+- `NativeVulkanModelSlot::Floor` and `NativeVulkanModelSlot::Wall` register to
+  those loaded meshes only when `HasMesh(...)` succeeds.
+- If either file load fails or validates false, that slot reuses the existing
+  `cubeMesh_` fallback; floor/wall fallback does not duplicate cube GPU mesh
+  uploads.
+- `native_static_mesh_asset_loader_tests` validates checked-in floor and wall
+  fixture counts.
+- Existing Player and NPC file bindings remain unchanged.
+- This binds two loaded text mesh assets to renderer-private floor/wall slots
+  only: no public renderer API, CMake, app-shell/CLI option, package discovery,
+  glTF/static model parsing, asset registry/catalog, material/texture/
+  descriptor/sampler policy, shader change, staging/device-local upload,
+  Linux/dGPU policy, backend abstraction, runtime/product/scene/draw-list API,
+  CLI/debugger output, or gameplay/session/input/scripted-control change is
+  included.
 
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
@@ -1362,7 +1392,7 @@ product gameplay actor debug/material quad projection integrated; thin Qt
 product viewport render command drawer integrated as temporary latest-frame quad
 drawing; thin Qt target highlight overlay integrated as a visual annotation over
 latest diagnostics; textured sprites/animation/material/asset policy, richer
-overlays/labels, floor/wall or other model-slot file binding, glTF/static model
+overlays/labels, other model-slot file binding, glTF/static model
 parsing, asset registry/catalog, materials/textures/descriptors/samplers,
 additional model slot expansion, package/authoring asset policy, renderer
 expansion, backend validation, interaction execution, product UX/save semantics,
@@ -1736,11 +1766,12 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 47. Native static mesh text loader is integrated.
 48. Native player mesh asset binding is integrated.
 49. Native NPC mesh asset binding is integrated.
-50. Dispatch richer diagnostics display, overlays/labels, frame request/
+50. Native floor/wall mesh asset binding is integrated.
+51. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
-    point-vs-tile policy, floor/wall or other model-slot file binding, glTF/static
-    model parsing, asset registry/catalog, materials/textures/descriptors/
+    point-vs-tile policy, other model-slot file binding, glTF/static model
+    parsing, asset registry/catalog, materials/textures/descriptors/
     samplers, non-cube model slot expansion, package/authoring asset policy,
     renderer expansion, render projection gaps, backend validation, further
     input mapping, or a focused-input follow-up, depending on planner scope.

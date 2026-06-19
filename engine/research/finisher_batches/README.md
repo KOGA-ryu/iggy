@@ -119,3 +119,4 @@ Queue:
 62. `62_native_static_mesh_text_loader_status_sync` - complete. Sync planning/API docs after native static mesh text loader integration.
 63. `63_native_player_mesh_asset_binding_status_sync` - complete. Sync planning/API docs after native player mesh asset file binding integration.
 64. `64_native_npc_mesh_asset_binding_status_sync` - complete. Sync planning/API docs after native NPC mesh asset file binding integration.
+65. `65_native_floor_wall_mesh_asset_binding_status_sync` - complete. Sync planning/API docs after native floor/wall mesh asset file binding integration.

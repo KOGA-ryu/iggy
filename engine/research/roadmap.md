@@ -377,12 +377,18 @@ Recently completed optimized stretches:
   the procedural bean as fallback. Native NPC mesh asset binding now ships
   `apps/native_play/assets/npc.igmesh`, loads it through the same text loader,
   binds it to the `NpcActor` slot when valid, and keeps the procedural NPC
-  marker as fallback.
+  marker as fallback. Native floor/wall mesh asset binding now ships
+  `apps/native_play/assets/floor.igmesh` and `wall.igmesh`, loads both through
+  `LoadNativeStaticMeshAssetFile(NativePlayAssetPath(...))` during scene mesh
+  creation, creates `floorMesh_` / `wallMesh_` only for successful loaded
+  assets, and registers `Floor` / `Wall` to those meshes only when
+  `HasMesh(...)` succeeds; fallback reuses the existing `cubeMesh_` without
+  duplicate cube GPU uploads, and player/NPC bindings remain unchanged.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
-  execution if approved, app-shell/CLI extraction, floor/wall or other model-slot file
-  binding, glTF/static model parsing, asset registry/catalog,
+  execution if approved, app-shell/CLI extraction, other model-slot file binding,
+  glTF/static model parsing, asset registry/catalog,
   materials/textures/descriptors/samplers,
   package/authoring asset policy, backend validation/abstraction,
   pause/retry/reset policy, completion/failure evaluation, and save/load UX.
@@ -1052,9 +1058,10 @@ Native Model Slot / Cube Fallback Registry is complete for no-Qt renderer prep:
 `NativeVulkanRenderer.cpp` now has renderer-private `NativeVulkanModelSlot` and
 `NativeVulkanModelRegistry` types. `NativeSceneModelId` maps to model slots,
 then model slots resolve to mesh bindings. The initial registry bound every slot
-to the cube fallback; later procedural mesh packets now bind `Player` to the
-bean mesh and `NpcActor` to the NPC marker mesh while `Floor` and `Wall` remain
-on the cube fallback. `meshForSceneModel(...)` delegates through
+to the cube fallback; later procedural mesh packets bound `Player` to the
+bean mesh and `NpcActor` to the NPC marker mesh, and the later floor/wall asset
+binding packet supersedes the terrain slots when loaded assets validate.
+`meshForSceneModel(...)` delegates through
 `ModelSlotForSceneModel(...)` and `meshForModelSlot(...)`, while draw-item
 iteration/order remains unchanged. This preserves the same `NativeSceneModelId`
 surface, mesh readiness behavior, draw parameters, shader pipeline, push
@@ -1074,8 +1081,10 @@ indices, index range checks, and current `std::uint32_t` draw-count fit.
 indices exactly. `NativeVulkanRenderer.cpp` now consumes `NativeStaticMeshAsset`
 for cube upload; vertex binding/attributes use `NativeStaticMeshVertex`; upload
 remains host-visible/coherent; indexed draw remains `VK_INDEX_TYPE_UINT16`; and
-the cube fallback remains the floor/wall mesh while later procedural helpers use
-the same CPU mesh shape for player and NPC model slots.
+the cube fallback was still the floor/wall mesh at that stage while later
+procedural helpers used the same CPU mesh shape for player and NPC model slots.
+The later floor/wall loaded asset binding supersedes the terrain slots when
+those files validate.
 This is no-loader static mesh data groundwork only: no `.cpp`, CMake, tests,
 public renderer API, app shell, product session, runtime/product/scene API,
 draw-list, shader, loader, file IO, glTF, material/texture/descriptor/sampler,
@@ -1087,8 +1096,9 @@ Native Procedural Bean Mesh Slot Binding is complete for no-Qt renderer prep:
 procedural non-cube mesh using the existing `NativeStaticMeshVertex` position/
 color shape and `std::uint16_t` indexed triangles. `NativeVulkanRenderer.cpp`
 creates a separate `playerMesh_` from that CPU asset and binds only
-`NativeVulkanModelSlot::Player` to it; `Floor` and `Wall` remain registered to
-the cube fallback, and `NpcActor` is covered by the NPC marker binding below.
+`NativeVulkanModelSlot::Player` to it; `Floor` and `Wall` still used the cube
+fallback at that stage, and `NpcActor` is covered by the NPC marker binding
+below. Later floor/wall loaded assets supersede those terrain slots when valid.
 Upload still uses the existing
 host-visible/coherent mesh resource path, vertex binding/attributes remain the
 same two `vec3` shader inputs, indexed draw remains `VK_INDEX_TYPE_UINT16`, and
@@ -1104,7 +1114,8 @@ in-memory procedural tapered marker mesh using the same position/color vertex
 shape and `std::uint16_t` indexed triangles. `NativeVulkanRenderer.cpp` creates
 a separate `npcMesh_` from that CPU asset and binds
 `NativeVulkanModelSlot::NpcActor` to it; `Player` remains bound to the bean
-mesh, while `Floor` and `Wall` stay registered to the cube fallback. Upload
+mesh, while `Floor` and `Wall` still used the cube fallback at that stage.
+Later floor/wall loaded assets supersede those terrain slots when valid. Upload
 still uses the existing
 host-visible/coherent mesh resource path, vertex binding/attributes remain the
 same two `vec3` shader inputs, indexed draw remains `VK_INDEX_TYPE_UINT16`, and
@@ -1156,6 +1167,25 @@ parsing, asset registry/catalog, material/texture/descriptor/sampler policy,
 shader change, staging/device-local upload, runtime/product/scene API, app shell
 behavior, CLI/debugger output, or gameplay behavior change is included.
 
+Native Floor/Wall Mesh Asset Binding is complete for no-Qt renderer prep:
+`engine/apps/native_play/assets/floor.igmesh` and
+`engine/apps/native_play/assets/wall.igmesh` add checked-in native text mesh
+assets for the floor and wall model slots. `NativeVulkanRenderer.cpp` loads
+both through `LoadNativeStaticMeshAssetFile(NativePlayAssetPath(...))` when
+creating scene meshes. Successful loaded assets become `floorMesh_` and
+`wallMesh_`; `NativeVulkanModelSlot::Floor` and `NativeVulkanModelSlot::Wall`
+register to those loaded meshes only when `HasMesh(...)` succeeds. If either
+asset fails to load or validates false, that slot reuses the existing
+`cubeMesh_` fallback, with no duplicate cube GPU mesh upload for floor/wall
+fallback. `native_static_mesh_asset_loader_tests` validates the checked-in floor
+and wall fixture counts, and Player/NPC bindings remain unchanged. This binds
+two loaded text mesh assets to renderer-private floor/wall slots only: no public
+renderer API, CMake, app-shell/CLI option, package discovery, glTF/static model
+parsing, asset registry/catalog, material/texture/descriptor/sampler policy,
+shader change, staging/device-local upload, Linux/dGPU policy, backend
+abstraction, runtime/product/scene/draw-list API, CLI/debugger output, or
+gameplay/session/input/scripted-control change is included.
+
 Exit criteria:
 - Load a package or explicit scenario.
 - Bind device input to player intents.
@@ -1173,7 +1203,7 @@ First gates:
 - Explicit interact target synthesis and reach-gated interaction execution.
 - Point-vs-tile / `PrimaryPoint` behavior beyond the current `PrimaryTile`
   policy.
-- Floor/wall or other model-slot file binding, glTF/static model parsing, asset
+- Other model-slot file binding, glTF/static model parsing, asset
   registry/catalog, materials/textures/descriptors/samplers, non-cube model slot
   expansion, package/authoring asset policy, renderer expansion, and any canvas
   polish.
