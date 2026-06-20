@@ -1847,9 +1847,43 @@ Native static mesh package directory manifest read diagnostics complete:
 - This docs packet does not add package directory reader status/data changes,
   verification/export behavior changes, CLI changes, exact deterministic
   verification replacement, semantic package acceptance, generated-text
-  comparison, package acceptance validation, per-mesh-manifest asset rows,
-  package-vs-mesh row comparisons, policy/built-in id reconstruction,
-  `.igmesh` loading, geometry validation, package loading,
+  comparison, package acceptance validation, package-vs-mesh row comparisons,
+  policy/built-in id reconstruction, `.igmesh` loading, geometry validation,
+  package loading,
+  discovery/scanning/catalog/registry, exact-extra-file rejection, repair,
+  source mutation, write behavior, renderer behavior, `NativeVulkanRenderer.cpp`,
+  model-slot expansion, runtime/product/scene/server APIs,
+  gameplay/scripted/final-state behavior, fixture/generated asset changes,
+  CMake changes, glTF/glb/JSON dependency/parser work,
+  schema/material/texture/normal/UV/animation expansion, docs-in-source, or next
+  source packet scope.
+
+Native static mesh package directory manifest asset rows complete:
+- Package directory report now emits parsed nested mesh manifest asset rows only
+  when the projected nested manifest reads successfully.
+- New diagnostic row shape:
+  `manifestAsset=<name> filename=<filename> vertices=<vertexCount> indices=<indexCount> bytes=<byteCount>`.
+- Rows are emitted after any `manifestReadIssue` block and before existing
+  package-declared `asset=` rows.
+- Valid batch export reports three manifest rows:
+  - `manifestAsset=cube filename=cube.igmesh vertices=8 indices=36 bytes=523`
+  - `manifestAsset=bean filename=bean.igmesh vertices=234 indices=1296 bytes=23882`
+  - `manifestAsset=npc-marker filename=npc-marker.igmesh vertices=98 indices=504 bytes=9474`
+- Missing or malformed nested mesh manifests remain diagnostic-only: no
+  `manifestAsset=` rows are emitted, package asset rows remain present,
+  `status=Read` and CLI exit 0 are preserved.
+- Builder verification passed `native_static_mesh_export_package_directory_report_tests`,
+  focused `ctest -R native_static_mesh_export_package_directory_report_tests`,
+  `iggy_native_play`, valid/missing/malformed package directory report smokes,
+  `git diff --check`, and `git diff --cached --check` before source commit.
+- This docs packet does not add package-vs-mesh comparison semantics,
+  validity/mismatch statuses, semantic package acceptance, generated-text
+  comparison, package acceptance validation, exact deterministic verification
+  replacement, package directory reader status/data changes, `readOk()` changes,
+  CLI exit behavior changes, verification/export behavior changes,
+  policy/built-in id reconstruction, `.igmesh` loading, geometry validation,
+  asset path traversal from mesh-manifest rows, file facts for
+  mesh-manifest-declared filenames, package loading,
   discovery/scanning/catalog/registry, exact-extra-file rejection, repair,
   source mutation, write behavior, renderer behavior, `NativeVulkanRenderer.cpp`,
   model-slot expansion, runtime/product/scene/server APIs,
@@ -2837,7 +2871,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 81. Native static mesh export manifest file reader is integrated.
 82. Native static mesh package directory manifest read diagnostics are
     integrated.
-83. Dispatch richer diagnostics display, overlays/labels, frame request/
+83. Native static mesh package directory manifest asset rows are integrated.
+84. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

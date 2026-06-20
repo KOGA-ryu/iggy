@@ -685,8 +685,11 @@ mesh manifest path for diagnostics only, appending `manifestRead=ok|invalid`
 and `manifestReadIssues=N` summary facts and deterministic
 `manifestReadIssue` rows without changing `readOk()`, CLI exit behavior, asset
 rows, package directory reader status/data, verification, export, or package
-loading. It does not load `.igmesh`, validate geometry, compare package rows to
-mesh rows, inspect directories beyond known paths, or change native app behavior.
+loading. When the nested manifest reads successfully, it also emits
+diagnostic-only `manifestAsset=` rows for each parsed mesh manifest asset before
+the package-declared `asset=` rows. It does not load `.igmesh`, validate
+geometry, compare package rows to mesh rows, inspect directories beyond known
+paths, or change native app behavior.
 
 Native static mesh package directory report CLI is complete as a thin native
 app-shell dump over the report builder. `iggy_native_play
@@ -740,9 +743,18 @@ and CLI exit status are unchanged, so missing/malformed nested mesh manifests
 remain `status=Read` diagnostics and do not suppress package asset rows. This
 does not add package directory reader status/data changes, verification/export
 semantics, generated-text comparison, package acceptance validation,
-per-mesh-manifest asset rows, package-vs-mesh row comparisons, `.igmesh`
-loading, geometry validation, discovery/scanning, source mutation, or write
-behavior.
+package-vs-mesh row comparisons, `.igmesh` loading, geometry validation,
+discovery/scanning, source mutation, or write behavior.
+
+Native static mesh package directory manifest asset rows are complete as
+diagnostic-only report rows. Valid nested mesh manifests now add
+`manifestAsset=<name> filename=<filename> vertices=<vertexCount> indices=<indexCount> bytes=<byteCount>`
+rows after any manifest read issues and before package asset rows. Missing or
+malformed nested mesh manifests still emit no `manifestAsset=` rows and keep
+package asset rows present with `status=Read` / CLI exit 0. These rows do not
+add package-vs-mesh comparisons, mismatch statuses, semantic acceptance,
+verification integration, `.igmesh` loading, geometry validation, asset path
+traversal, mesh-manifest file facts, renderer behavior, or write behavior.
 
 Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play

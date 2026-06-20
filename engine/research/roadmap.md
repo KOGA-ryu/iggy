@@ -530,6 +530,9 @@ Recently completed optimized stretches:
   adding `manifestRead=...` summary facts and deterministic `manifestReadIssue`
   rows without changing `readOk()`, CLI exit behavior, verification, export, or
   package directory reader data.
+  Native static mesh package directory manifest asset rows now emit parsed
+  nested mesh manifest `manifestAsset=...` rows when manifest reading succeeds,
+  still without package-vs-mesh comparison semantics or status/exit changes.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -2166,14 +2169,42 @@ Malformed nested manifest smoke exited 0 and printed
 does not add package directory reader status/data changes, verification/export
 behavior changes, CLI changes, exact deterministic verification replacement,
 semantic package acceptance, generated-text comparison, package acceptance
-validation, per-mesh-manifest asset rows, package-vs-mesh row comparisons,
-policy/built-in id reconstruction, `.igmesh` loading, geometry validation,
-package loading, discovery/scanning/catalog/registry, exact-extra-file
-rejection, repair, source mutation, write behavior, renderer behavior,
+validation, package-vs-mesh row comparisons, policy/built-in id reconstruction,
+`.igmesh` loading, geometry validation, package loading,
+discovery/scanning/catalog/registry, exact-extra-file rejection, repair, source
+mutation, write behavior, renderer behavior,
 `NativeVulkanRenderer.cpp`, model-slot expansion, runtime/product/scene/server
 APIs, gameplay/scripted/final-state behavior, fixture/generated asset changes,
 CMake changes, glTF/glb/JSON dependencies/parsers, schema/material/texture/
 normal/UV/animation expansion, docs-in-source, or next source packet scope.
+
+Native Static Mesh Package Directory Manifest Asset Rows are complete as
+diagnostic row projection in the package directory report. When the projected
+nested mesh manifest reads successfully, the report emits parsed nested mesh
+manifest asset rows after any `manifestReadIssue` block and before existing
+package-declared `asset=` rows. The row shape is
+`manifestAsset=<name> filename=<filename> vertices=<vertexCount> indices=<indexCount> bytes=<byteCount>`.
+Valid batch export reports three rows:
+`manifestAsset=cube filename=cube.igmesh vertices=8 indices=36 bytes=523`,
+`manifestAsset=bean filename=bean.igmesh vertices=234 indices=1296 bytes=23882`,
+and
+`manifestAsset=npc-marker filename=npc-marker.igmesh vertices=98 indices=504 bytes=9474`.
+Missing or malformed nested mesh manifests remain diagnostic-only: no
+`manifestAsset=` rows are emitted, package asset rows remain present,
+`status=Read` and CLI exit 0 are preserved. This docs packet does not add
+package-vs-mesh comparison semantics, validity/mismatch statuses, semantic
+package acceptance, generated-text comparison, package acceptance validation,
+exact deterministic verification replacement, package directory reader
+status/data changes, `readOk()` changes, CLI exit behavior changes,
+policy/built-in id reconstruction, `.igmesh` loading, geometry validation, asset
+path traversal from mesh-manifest rows, file facts for mesh-manifest-declared
+filenames, package loading, discovery/scanning/catalog/registry,
+exact-extra-file rejection, repair, source mutation, write behavior, renderer
+behavior, `NativeVulkanRenderer.cpp`, model-slot expansion,
+runtime/product/scene/server APIs, gameplay/scripted/final-state behavior,
+fixture/generated asset changes, CMake changes, glTF/glb/JSON
+dependencies/parsers, schema/material/texture/normal/UV/animation expansion,
+docs-in-source, or next source packet scope.
 
 Exit criteria:
 - Load a package or explicit scenario.
