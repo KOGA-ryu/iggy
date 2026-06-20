@@ -2,9 +2,11 @@
 
 #include "NativeStaticMeshExportPackageDirectoryReader.hpp"
 
+#include <cstdint>
 #include <filesystem>
 #include <sstream>
 #include <string>
+#include <system_error>
 
 namespace iggy::native_play {
 
@@ -75,6 +77,32 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 	NativeStaticMeshExportPackageDirectoryReport report;
 	report.read = ReadNativeStaticMeshExportPackageDirectory(directory);
 
+	struct PathFacts {
+		bool exists = false;
+		bool regularFile = false;
+		std::uintmax_t byteCount = 0;
+	};
+
+	const auto pathFacts = [](const std::filesystem::path &path) {
+		PathFacts facts;
+		std::error_code statusError;
+		const std::filesystem::file_status status =
+			std::filesystem::status(path, statusError);
+		if (statusError) {
+			return facts;
+		}
+		facts.exists = std::filesystem::exists(status);
+		facts.regularFile = std::filesystem::is_regular_file(status);
+		if (facts.regularFile) {
+			std::error_code sizeError;
+			facts.byteCount = std::filesystem::file_size(path, sizeError);
+			if (sizeError) {
+				facts.byteCount = 0;
+			}
+		}
+		return facts;
+	};
+
 	std::ostringstream stream;
 	stream
 		<< "static-mesh-export-package-directory-report"
@@ -84,16 +112,23 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 		<< " assets=" << report.read.assets.size()
 		<< " issues=" << report.read.issueCount;
 	if (!report.read.packageManifestPath.empty()) {
+		const PathFacts facts = pathFacts(report.read.packageManifestPath);
 		stream
 			<< " packageManifest="
-			<< report.read.packageManifestPath.string();
+			<< report.read.packageManifestPath.string()
+			<< " packageManifestExists=" << (facts.exists ? 1 : 0)
+			<< " packageManifestRegularFile=" << (facts.regularFile ? 1 : 0)
+			<< " packageManifestBytes=" << facts.byteCount;
 	}
 	if (!report.read.manifestPath.empty()) {
+		const PathFacts facts = pathFacts(report.read.manifestPath);
 		stream
 			<< " manifest="
 			<< report.read.manifestPath.string()
 			<< " manifestExists="
-			<< (std::filesystem::exists(report.read.manifestPath) ? 1 : 0);
+			<< (facts.exists ? 1 : 0)
+			<< " manifestRegularFile=" << (facts.regularFile ? 1 : 0)
+			<< " manifestBytes=" << facts.byteCount;
 	}
 	stream << "\n";
 
@@ -110,11 +145,14 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 
 	for (const NativeStaticMeshExportPackageDirectoryAsset &asset :
 			report.read.assets) {
+		const PathFacts facts = pathFacts(asset.path);
 		stream
 			<< "asset=" << asset.name
 			<< " filename=" << asset.filename
 			<< " path=" << asset.path.string()
-			<< " exists=" << (std::filesystem::exists(asset.path) ? 1 : 0)
+			<< " exists=" << (facts.exists ? 1 : 0)
+			<< " regularFile=" << (facts.regularFile ? 1 : 0)
+			<< " bytes=" << facts.byteCount
 			<< "\n";
 	}
 
