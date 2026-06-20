@@ -648,6 +648,17 @@ package semantics, source mutation, overwrite/create-directory policy, fixture
 rewrites, renderer behavior, JSON/glTF/glb parsing, `.igmesh` schema changes,
 or gameplay/scripted/final-state changes.
 
+Native static mesh export verification report CLI is complete as a read-only
+report over the existing verifier: `iggy_native_play
+--dump-static-mesh-export-verification-report --output-dir DIR` prints a
+summary plus per-asset rows with actual/expected counts before native app
+construction or SDL/Vulkan startup. Failed verification prints the report before
+returning nonzero through the compact `iggy_native_play:` error style. Existing
+`--verify-static-mesh-export` output and behavior remain unchanged. This adds no
+writes, repair, scanning, package/catalog/parser/schema/material/texture
+behavior, renderer behavior, native app CMake source registration, or gameplay/
+scripted/final-state changes.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.

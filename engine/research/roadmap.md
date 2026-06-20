@@ -460,6 +460,11 @@ Recently completed optimized stretches:
   `iggy_native_play --verify-static-mesh-export --output-dir DIR`, validating
   the manifest sidecar and expected policy files/counts before NativeVulkanApp,
   SDL, or Vulkan startup while ignoring unrelated extra files.
+  Native static mesh export verification reporting now adds a read-only report
+  builder around the existing verifier and
+  `iggy_native_play --dump-static-mesh-export-verification-report --output-dir DIR`,
+  printing summary and per-asset rows before startup while preserving existing
+  `--verify-static-mesh-export` output and behavior.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1611,6 +1616,33 @@ directory/temp replacement policy, arbitrary output paths beyond existing
 `NativeVulkanRenderer.cpp`, JSON/glTF/glb parser/dependency work, `.igmesh`
 schema/material/texture/normal/UV/animation behavior, gameplay/scripted/
 final-state behavior, or next research/scout implementation.
+
+Native Static Mesh Export Verification Report CLI is complete as a read-only
+report surface around `VerifyNativeStaticMeshExportDirectory(policy,
+directory)`. `iggy_native_play
+--dump-static-mesh-export-verification-report --output-dir DIR` exits before
+`NativeVulkanApp` construction, SDL startup, or Vulkan startup. Success prints
+a summary plus one row per asset in the default export policy, for example:
+`static-mesh-export-verification-report status=Verified output=/tmp/iggy-native-verify-report-smoke-80.PBsYB2 verified=3 issues=0`,
+`asset=cube filename=cube.igmesh status=Verified vertices=8 expectedVertices=8 indices=36 expectedIndices=36 issues=0`,
+`asset=bean filename=bean.igmesh status=Verified vertices=234 expectedVertices=234 indices=1296 expectedIndices=1296 issues=0`, and
+`asset=npc-marker filename=npc-marker.igmesh status=Verified vertices=98 expectedVertices=98 indices=504 expectedIndices=504 issues=0`.
+Failed verification prints the report first, then exits nonzero through the
+existing compact `iggy_native_play:` error style, for example:
+`static-mesh-export-verification-report status=MissingManifest output=/tmp/iggy-native-verify-report-missing-80.EG7aZh verified=0 issues=0 problem=/tmp/iggy-native-verify-report-missing-80.EG7aZh/static-mesh-export-manifest.txt`
+then
+`iggy_native_play: static mesh export verification report failed: MissingManifest output=/tmp/iggy-native-verify-report-missing-80.EG7aZh/static-mesh-export-manifest.txt issues=0`.
+Existing `--verify-static-mesh-export` output and behavior are preserved. The
+report mode conflicts with `--verify-static-mesh-export`,
+`--export-static-mesh-assets`, `--dump-static-mesh-asset`,
+`--dump-static-mesh-export-report`, `--dump-static-mesh-export-manifest`, and
+`--dump-static-model-load-report`, and requires `--output-dir`. This docs packet
+does not change source, tests, CMake, assets, shaders, runtime,
+`NativeVulkanRenderer.cpp`, renderer behavior, shader behavior, asset fixtures,
+runtime/product/scene/server APIs, docs-in-source, native app CMake source
+registration, writes/repair/scanning/package/catalog/parser/schema/material/
+texture behavior, gameplay/scripted/final-state behavior, or next research/
+scout implementation.
 
 Exit criteria:
 - Load a package or explicit scenario.

@@ -1293,6 +1293,35 @@ Native static mesh export directory verification CLI complete:
   schema/material/texture/normal/UV/animation behavior, gameplay/scripted/
   final-state behavior, or next research/scout source implementation.
 
+Native static mesh export verification report CLI complete:
+- Added a read-only report builder around
+  `VerifyNativeStaticMeshExportDirectory(policy, directory)`.
+- Added `iggy_native_play --dump-static-mesh-export-verification-report
+  --output-dir DIR`, exiting before `NativeVulkanApp`, SDL, or Vulkan startup.
+- Success prints a summary plus per-asset rows for the existing default export
+  policy:
+  `static-mesh-export-verification-report status=Verified output=/tmp/iggy-native-verify-report-smoke-80.PBsYB2 verified=3 issues=0`;
+  `asset=cube filename=cube.igmesh status=Verified vertices=8 expectedVertices=8 indices=36 expectedIndices=36 issues=0`;
+  `asset=bean filename=bean.igmesh status=Verified vertices=234 expectedVertices=234 indices=1296 expectedIndices=1296 issues=0`;
+  `asset=npc-marker filename=npc-marker.igmesh status=Verified vertices=98 expectedVertices=98 indices=504 expectedIndices=504 issues=0`.
+- Failed verification prints the report, then returns nonzero through the
+  existing compact `iggy_native_play:` error style. Missing manifest output
+  includes
+  `static-mesh-export-verification-report status=MissingManifest output=/tmp/iggy-native-verify-report-missing-80.EG7aZh verified=0 issues=0 problem=/tmp/iggy-native-verify-report-missing-80.EG7aZh/static-mesh-export-manifest.txt`
+  followed by
+  `iggy_native_play: static mesh export verification report failed: MissingManifest output=/tmp/iggy-native-verify-report-missing-80.EG7aZh/static-mesh-export-manifest.txt issues=0`.
+- Existing `--verify-static-mesh-export` output and behavior are preserved.
+- Report mode conflicts with `--verify-static-mesh-export`,
+  `--export-static-mesh-assets`, `--dump-static-mesh-asset`,
+  `--dump-static-mesh-export-report`, `--dump-static-mesh-export-manifest`, and
+  `--dump-static-model-load-report`, and requires `--output-dir`.
+- This docs packet does not change source, tests, CMake, assets, shaders,
+  runtime, `NativeVulkanRenderer.cpp`, renderer behavior, shader behavior, asset
+  fixtures, runtime/product/scene/server APIs, docs-in-source, native app CMake
+  source registration, writes/repair/scanning/package/catalog/parser/schema/
+  material/texture behavior, gameplay/scripted/final-state behavior, or next
+  research/scout source implementation.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -2186,7 +2215,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 62. Native static mesh export manifest text builder CLI is integrated.
 63. Native static mesh batch manifest sidecar export is integrated.
 64. Native static mesh export directory verification CLI is integrated.
-65. Dispatch richer diagnostics display, overlays/labels, frame request/
+65. Native static mesh export verification report CLI is integrated.
+66. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under
