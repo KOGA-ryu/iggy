@@ -1188,6 +1188,24 @@ directory report/reader behavior, package loading/discovery, `.igmesh` loading
 beyond existing verifier behavior, renderer/model-slot behavior, and parser
 scope are preserved.
 
+Native static mesh export verification report failure text renderer extraction
+is complete without changing visible report text or report builders. The pure
+`BuildNativeStaticMeshExportDirectoryVerificationReportFailureText(const NativeStaticMeshExportDirectoryVerificationReport &report)`
+helper now lives in `NativeStaticMeshExportDirectoryVerificationReport.hpp` and
+serializes only the compact failure body:
+`static mesh export verification report failed: <Status> output=<path> issues=<N>`.
+`PrintNativeStaticMeshExportDirectoryVerificationReport(...)` still prints and
+flushes `report.text` before failure handling, then delegates the failure body
+to the helper while the app-level catch path owns the `iggy_native_play:` prefix
+and newline. Output selection remains `report.verification.problemPath` when
+present and `report.verification.outputDirectory` otherwise. Report rows, report
+text renderer, report data/full builders, `verified()` semantics, direct
+verification success/failure helpers, package-directory report behavior,
+verifier internals/result shape/status ordering/issue counts, CLI parser/help/
+dispatch/conflict/exit behavior, renderer/model-slot behavior, assets/fixtures,
+schema, parser scope, and `NativeStaticMeshExportPackageDirectoryReport.hpp`
+remain unchanged.
+
 Native static mesh verification report builder parity coverage is complete as a
 test-only update. Existing data-builder/full-builder parity and text-renderer
 parity assertions now cover missing output directory, file path instead of

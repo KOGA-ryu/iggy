@@ -587,6 +587,11 @@ Recently completed optimized stretches:
   the data builder stores the verifier result in `report.verification` and
   returns with `report.text` empty, while the full builder still assigns text
   through the report text renderer helper.
+  Native static mesh export verification report failure text renderer
+  extraction now adds
+  `BuildNativeStaticMeshExportDirectoryVerificationReportFailureText(...)`; the
+  report CLI still prints and flushes `report.text` before delegating only the
+  compact failure body to the helper.
   Native static mesh verification report builder parity coverage now extends
   existing data-builder/full-builder and text-renderer parity assertions across
   missing output directory, file-not-directory, manifest mismatch, package
@@ -2617,6 +2622,33 @@ acceptance semantics, package directory report/reader behavior, package
 loading/discovery, `.igmesh` loading beyond existing verifier behavior,
 renderer/model-slot behavior, CMake, assets, fixtures, glTF/glb/JSON parser
 work, or next source packet scope.
+
+Native Static Mesh Export Verification Report Failure Text Renderer Extraction
+is complete as a behavior-preserving report failure-body cleanup.
+`NativeStaticMeshExportDirectoryVerificationReport.hpp` now exposes pure
+`BuildNativeStaticMeshExportDirectoryVerificationReportFailureText(const NativeStaticMeshExportDirectoryVerificationReport &report)`,
+which serializes only the compact failure body:
+`static mesh export verification report failed: <Status> output=<path> issues=<N>`.
+The helper excludes the app-level `iggy_native_play:` prefix and embedded
+trailing newline, preserving the existing catch path ownership. Report failure
+output path selection remains `report.verification.problemPath` when present and
+`report.verification.outputDirectory` otherwise.
+`PrintNativeStaticMeshExportDirectoryVerificationReport(...)` still prints and
+flushes `report.text` before failure handling, then throws using the helper.
+Report text rendering, data/full builders, direct verification success/failure
+helpers, and package-directory report failure rendering are unchanged. Source
+verification passed `native_static_mesh_export_directory_verification_report_tests`,
+`iggy_native_play`, missing-manifest report stdout summary and stderr compact
+failure body smoke, verified report summary output smoke, source
+`git diff --check`, and source `git diff --cached --check`. This packet does
+not change report text rows, report text renderer, report data builder, full
+builder, `verified()` semantics, direct verification helpers, package-directory
+report behavior, verifier internals/result shape/status ordering/issue-count
+semantics, CLI parser/help/dispatch/conflict/exit behavior, app-level error
+prefix/newline behavior, docs/source mixing, CMake, renderer, assets/fixtures,
+sidecar generation, export write policy, schema, parser/dependency work,
+package loading/acceptance, or
+`NativeStaticMeshExportPackageDirectoryReport.hpp`.
 
 Native Static Mesh Verification Report Builder Parity Coverage is complete as a
 test-only coverage packet. Existing data-builder/full-builder parity and
