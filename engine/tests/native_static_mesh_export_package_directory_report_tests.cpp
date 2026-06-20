@@ -17,7 +17,9 @@ using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReport;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
 using iggy::native_play::ExportNativeStaticMeshPolicyToDirectory;
 using iggy::native_play::NativeStaticMeshExportManifestFilename;
+using iggy::native_play::NativeStaticMeshExportPackageDirectoryAssetFacts;
 using iggy::native_play::NativeStaticMeshExportPackageDirectoryManifestComparisonCode;
+using iggy::native_play::NativeStaticMeshExportPackageDirectoryPathFacts;
 using iggy::native_play::NativeStaticMeshExportPackageDirectoryReadStatus;
 using iggy::native_play::NativeStaticMeshExportPackageDirectoryReport;
 using iggy::native_play::NativeStaticMeshExportPackageManifestSidecarFilename;
@@ -72,6 +74,31 @@ void ExportDefaultBatch()
 NativeStaticMeshExportPackageDirectoryReport BuildDefaultReport()
 {
 	return BuildNativeStaticMeshExportPackageDirectoryReport(TempRoot());
+}
+
+const NativeStaticMeshExportPackageDirectoryAssetFacts *FindAssetFacts(
+	const NativeStaticMeshExportPackageDirectoryReport &report,
+	const std::string &name)
+{
+	for (const NativeStaticMeshExportPackageDirectoryAssetFacts &facts :
+			report.assetFacts) {
+		if (facts.asset.name == name) {
+			return &facts;
+		}
+	}
+	return nullptr;
+}
+
+void ExpectFacts(
+	const NativeStaticMeshExportPackageDirectoryPathFacts &facts,
+	bool exists,
+	bool regularFile,
+	std::uintmax_t byteCount,
+	const char *message)
+{
+	Expect(facts.exists == exists, message);
+	Expect(facts.regularFile == regularFile, message);
+	Expect(facts.byteCount == byteCount, message);
 }
 
 void TestBatchExportedDirectoryReportReads()
@@ -139,6 +166,38 @@ void TestBatchExportedDirectoryReportReads()
 	Expect(
 		report.text.find("packageManifestReadIssue") == std::string::npos,
 		"successful package directory report should not include read issue rows");
+	Expect(
+		report.packageManifestFactsRecorded,
+		"successful package directory report should record package manifest file facts");
+	ExpectFacts(
+		report.packageManifestFacts,
+		true,
+		true,
+		FileByteCount(TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename),
+		"successful package directory report should expose package manifest file facts");
+	Expect(
+		report.manifestFactsRecorded,
+		"successful package directory report should record nested manifest file facts");
+	ExpectFacts(
+		report.manifestFacts,
+		true,
+		true,
+		FileByteCount(TempRoot() / NativeStaticMeshExportManifestFilename),
+		"successful package directory report should expose nested manifest file facts");
+	Expect(
+		report.assetFacts.size() == 3,
+		"successful package directory report should expose package-declared asset file facts");
+	const NativeStaticMeshExportPackageDirectoryAssetFacts *cubeFacts =
+		FindAssetFacts(report, "cube");
+	Expect(cubeFacts != nullptr, "successful package directory report should expose cube facts");
+	if (cubeFacts != nullptr) {
+		ExpectFacts(
+			cubeFacts->facts,
+			true,
+			true,
+			FileByteCount(TempRoot() / "cube.igmesh"),
+			"successful package directory report should expose cube file facts");
+	}
 	Expect(
 		report.manifestReadAttempted,
 		"successful package directory report should attempt nested manifest read");
@@ -410,6 +469,21 @@ void TestMissingPackageSidecarReportIncludesIssueRow()
 			packageManifest.string()) != std::string::npos,
 		"missing package sidecar report should include file-open issue row");
 	Expect(
+		report.packageManifestFactsRecorded,
+		"missing package sidecar report should record package manifest file facts");
+	ExpectFacts(
+		report.packageManifestFacts,
+		false,
+		false,
+		0,
+		"missing package sidecar report should expose missing package manifest file facts");
+	Expect(
+		!report.manifestFactsRecorded,
+		"missing package sidecar report should not record nested manifest file facts");
+	Expect(
+		report.assetFacts.empty(),
+		"missing package sidecar report should not expose asset file facts");
+	Expect(
 		!report.manifestReadAttempted,
 		"missing package sidecar report should not attempt nested manifest read");
 	Expect(
@@ -449,6 +523,21 @@ void TestMalformedPackageSidecarReportIncludesIssueRow()
 			"packageManifestReadIssue code=MalformedHeader line=1 token=static-mesh-export-package") !=
 			std::string::npos,
 		"malformed package sidecar report should include parser issue row");
+	Expect(
+		report.packageManifestFactsRecorded,
+		"malformed package sidecar report should record package manifest file facts");
+	ExpectFacts(
+		report.packageManifestFacts,
+		true,
+		true,
+		FileByteCount(packageManifest),
+		"malformed package sidecar report should expose package manifest file facts");
+	Expect(
+		!report.manifestFactsRecorded,
+		"malformed package sidecar report should not record nested manifest file facts");
+	Expect(
+		report.assetFacts.empty(),
+		"malformed package sidecar report should not expose asset file facts");
 	Expect(
 		!report.manifestReadAttempted,
 		"malformed package sidecar report should not attempt nested manifest read");
@@ -493,6 +582,15 @@ void TestMissingNestedManifestStillReportsRead()
 			(TempRoot() / NativeStaticMeshExportManifestFilename).string()) !=
 			std::string::npos,
 		"missing nested mesh manifest should report file-open issue row");
+	Expect(
+		report.manifestFactsRecorded,
+		"missing nested mesh manifest should record nested manifest file facts");
+	ExpectFacts(
+		report.manifestFacts,
+		false,
+		false,
+		0,
+		"missing nested mesh manifest should expose missing nested manifest file facts");
 	Expect(
 		report.manifestReadAttempted,
 		"missing nested mesh manifest should expose attempted nested manifest read");
@@ -578,6 +676,17 @@ void TestMissingDeclaredAssetStillReportsRead()
 			(TempRoot() / "cube.igmesh").string() +
 				" exists=0 regularFile=0 bytes=0") != std::string::npos,
 		"missing declared mesh asset path should report missing file facts");
+	const NativeStaticMeshExportPackageDirectoryAssetFacts *cubeFacts =
+		FindAssetFacts(report, "cube");
+	Expect(cubeFacts != nullptr, "missing declared mesh asset should expose cube facts");
+	if (cubeFacts != nullptr) {
+		ExpectFacts(
+			cubeFacts->facts,
+			false,
+			false,
+			0,
+			"missing declared mesh asset should expose missing cube file facts");
+	}
 	Expect(
 		report.text.find(
 			"asset=bean filename=bean.igmesh path=" +
@@ -608,6 +717,17 @@ void TestDirectoryAtDeclaredAssetStillReportsRead()
 			(TempRoot() / "cube.igmesh").string() +
 				" exists=1 regularFile=0 bytes=0") != std::string::npos,
 		"directory at declared mesh asset path should report non-regular file facts");
+	const NativeStaticMeshExportPackageDirectoryAssetFacts *cubeFacts =
+		FindAssetFacts(report, "cube");
+	Expect(cubeFacts != nullptr, "directory at declared mesh asset should expose cube facts");
+	if (cubeFacts != nullptr) {
+		ExpectFacts(
+			cubeFacts->facts,
+			true,
+			false,
+			0,
+			"directory at declared mesh asset should expose non-regular cube facts");
+	}
 	CleanupTempRoot();
 }
 
