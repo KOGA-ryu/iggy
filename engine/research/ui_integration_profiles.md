@@ -1028,6 +1028,21 @@ reader/parser syntax, package verification integration, discovery/scanning,
 write/repair behavior, renderer behavior, `.igmesh` schema changes, or gameplay
 semantics.
 
+Native static mesh export package manifest status text helper extraction is
+complete without changing visible package manifest output or CLI behavior. The
+central `NativeStaticMeshExportPackageManifestStatusText(...)` helper now lives
+in `NativeStaticMeshExportPackageManifest.hpp` beside
+`NativeStaticMeshExportPackageManifestStatus`.
+`PrintNativeStaticMeshExportPackageManifest()` compact failure text uses it,
+preserving status strings `Built`, `InvalidPolicy`, and fallback `Unknown`.
+Successful `--dump-static-mesh-export-package-manifest` output remains byte-for-
+byte unchanged for the header, cube/bean/npc-marker rows, row order, format id,
+version, nested manifest filename, asset count, and trailing newlines. This does
+not change builder validation or write semantics, `written()` behavior, readers,
+generated package sidecar content, CLI parser/help/dispatch/conflicts, mesh
+manifest helper behavior, verification, file export, export report, export
+policy, asset writer, renderer/model-slot behavior, or parser scope.
+
 Native static mesh package manifest text reader is complete as a dependency-free
 and filesystem-free in-memory parser for the generated package manifest grammar.
 It accepts only the generated header and `asset=NAME filename=FILENAME` rows,

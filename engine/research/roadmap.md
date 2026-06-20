@@ -487,6 +487,10 @@ Recently completed optimized stretches:
   `iggy_native_play --dump-static-mesh-export-package-manifest`, producing
   deterministic no-write package-manifest text after package-policy validation
   before NativeVulkanApp, SDL, or Vulkan startup.
+  Native static mesh export package manifest status text helper extraction now
+  centralizes `NativeStaticMeshExportPackageManifestStatusText(...)` beside the
+  package manifest status enum; the package manifest dump compact failure text
+  uses it while preserving successful package manifest output byte-for-byte.
   Native static mesh batch package manifest sidecar export now writes
   `static-mesh-export-package-manifest.txt` alongside batch-exported meshes and
   `static-mesh-export-manifest.txt`, preflighting the package sidecar before
@@ -1933,6 +1937,28 @@ dependencies, `.igmesh` schema, fixtures, docs-in-source, gameplay/scripted/
 final-state behavior, `NativeVulkanRenderer.cpp`, shader behavior,
 runtime/product/scene/server APIs, renderer loading, native app CMake source
 registration, or next research/scout implementation.
+
+Native Static Mesh Export Package Manifest Status Text Helper Extraction is
+complete as a behavior-preserving status text cleanup. The central inline helper
+`NativeStaticMeshExportPackageManifestStatusText(...)` now lives beside
+`NativeStaticMeshExportPackageManifestStatus` in
+`NativeStaticMeshExportPackageManifest.hpp`, and
+`PrintNativeStaticMeshExportPackageManifest()` compact failure text uses the
+central helper. Stable strings are `Built`, `InvalidPolicy`, and fallback
+`Unknown`. Direct package manifest status tests cover `Built`, `InvalidPolicy`,
+and `Unknown` fallback. Source verification passed
+`native_static_mesh_export_package_manifest_tests`, `iggy_native_play`, exact
+CLI smoke for `--dump-static-mesh-export-package-manifest`, and source
+`git diff --check`. Successful `--dump-static-mesh-export-package-manifest`
+output is preserved byte-for-byte for default built-ins: header,
+cube/bean/npc-marker rows, row order, format id, version, nested manifest
+filename, asset count, and trailing newlines. This packet does not change
+compact failure string shape or status text, builder validation/write semantics,
+`written()` behavior, reader/file-reader behavior, generated package sidecar
+content, CLI parser/help/dispatch/conflicts, mesh manifest helper behavior,
+package-directory/exact verification/file export/export report/export policy/
+asset writer behavior, CMake, fixtures, assets, renderer/model-slot behavior,
+package loading/discovery, schema, or glTF/glb/JSON parser work.
 
 Native Static Mesh Batch Package Manifest Sidecar Export is complete for batch
 export only. `ExportNativeStaticMeshPolicyToDirectory(...)` now writes an
