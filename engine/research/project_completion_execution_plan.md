@@ -1886,7 +1886,8 @@ complete:
 - Package directory report now performs diagnostic-only comparison between
   package sidecar asset rows and parsed nested mesh manifest rows, only when the
   nested manifest reads successfully.
-- Summary appends `manifestMatches=N manifestMismatches=N` when
+- Summary appends
+  `manifestMatches=N manifestMismatches=N manifestComparisonIssues=N` when
   `manifestRead=ok`.
 - New deterministic mismatch rows are emitted after `manifestAsset=` rows and
   before package `asset=` rows:
@@ -1894,8 +1895,9 @@ complete:
   - `manifestComparison code=MissingFromPackage manifestAsset=<manifestName> manifestFilename=<manifestFilename>`
   - `manifestComparison code=FilenameMismatch asset=<name> packageFilename=<packageFilename> manifestFilename=<manifestFilename>`
 - Comparison is by asset name and filename only.
-- Valid default batch export reports `manifestMatches=3 manifestMismatches=0`
-  and no `manifestComparison` rows.
+- Valid default batch export reports
+  `manifestMatches=3 manifestMismatches=0 manifestComparisonIssues=0` and no
+  `manifestComparison` rows.
 - Missing-from-manifest smoke exited 0 and printed
   `manifestComparison code=MissingFromManifest asset=npc-marker packageFilename=npc-marker.igmesh`.
 - Missing-from-package smoke exited 0 and printed
@@ -1924,6 +1926,30 @@ complete:
   CMake changes, glTF/glb/JSON dependency/parser work,
   schema/material/texture/normal/UV/animation expansion, docs-in-source, or next
   source packet scope.
+
+Native static mesh package directory comparison issue count diagnostics
+complete:
+- Package directory report summary now includes `manifestComparisonIssues=N`
+  when nested manifest comparison runs.
+- `manifestComparisonIssues` equals the number of emitted `manifestComparison`
+  rows and matches `manifestComparisons.size()`.
+- Valid default export prints
+  `manifestMatches=3 manifestMismatches=0 manifestComparisonIssues=0` and still
+  emits no comparison rows.
+- One-row mismatch cases print `manifestComparisonIssues=1` while preserving
+  existing row text and order for `MissingFromManifest`, `MissingFromPackage`,
+  and `FilenameMismatch`.
+- Missing/malformed nested manifests still emit no comparison summary/rows and
+  preserve existing `manifestRead=invalid manifestReadIssues=N` behavior.
+- Builder verification passed `native_static_mesh_export_package_directory_report_tests`,
+  focused `ctest -R native_static_mesh_export_package_directory_report_tests`,
+  `iggy_native_play`, and source `git diff --check`.
+- This docs packet does not change core `issues=`, `report.read.issueCount`,
+  package directory reader status/data, `readOk()`, CLI exit behavior,
+  verification behavior, package acceptance, generated sidecar text, export
+  behavior, renderer behavior, docs-in-source, CMake, assets, fixtures,
+  `.igmesh` loading, geometry validation, discovery/scanning, write policy, or
+  next source packet scope.
 
 Native static mesh package manifest text reader complete:
 - Added a dependency-free, filesystem-free in-memory reader for the current
@@ -2907,7 +2933,9 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 83. Native static mesh package directory manifest asset rows are integrated.
 84. Native static mesh package directory manifest row comparison diagnostics are
     integrated.
-85. Dispatch richer diagnostics display, overlays/labels, frame request/
+85. Native static mesh package directory comparison issue count diagnostics are
+    integrated.
+86. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

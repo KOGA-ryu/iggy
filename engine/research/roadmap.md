@@ -538,6 +538,10 @@ Recently completed optimized stretches:
   filename only, adding `manifestMatches`/`manifestMismatches` summary facts and
   deterministic `manifestComparison` rows without acceptance, verification, or
   nonzero semantics.
+  Native static mesh package directory comparison issue count diagnostics now
+  append `manifestComparisonIssues=N` whenever comparison runs, matching the
+  emitted `manifestComparison` row count without changing core `issues=`,
+  `readOk()`, status, CLI exit, verification, or package acceptance semantics.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -2204,9 +2208,11 @@ Native Static Mesh Package Directory Manifest Row Comparison Diagnostics are
 complete as diagnostic-only comparison output in the package directory report.
 When the nested mesh manifest reads successfully, the report compares package
 sidecar asset rows to parsed nested mesh manifest rows by asset name and
-filename only. Summary rows append `manifestMatches=N manifestMismatches=N`;
-valid default batch export reports `manifestMatches=3 manifestMismatches=0` and
-no `manifestComparison` rows. Deterministic mismatch rows are emitted after
+filename only. Summary rows append
+`manifestMatches=N manifestMismatches=N manifestComparisonIssues=N`; valid
+default batch export reports
+`manifestMatches=3 manifestMismatches=0 manifestComparisonIssues=0` and no
+`manifestComparison` rows. Deterministic mismatch rows are emitted after
 `manifestAsset=` rows and before package `asset=` rows:
 `manifestComparison code=MissingFromManifest asset=<packageName> packageFilename=<packageFilename>`,
 `manifestComparison code=MissingFromPackage manifestAsset=<manifestName> manifestFilename=<manifestFilename>`,
@@ -2233,6 +2239,25 @@ runtime/product/scene/server APIs, gameplay/scripted/final-state behavior,
 fixture/generated asset changes, CMake changes, glTF/glb/JSON
 dependencies/parsers, schema/material/texture/normal/UV/animation expansion,
 docs-in-source, or next source packet scope.
+
+Native Static Mesh Package Directory Comparison Issue Count Diagnostics are
+complete as summary text in the package directory report. When nested manifest
+comparison runs (`manifestRead=ok`), summary rows now include
+`manifestComparisonIssues=N`; the value equals the number of emitted
+`manifestComparison` rows and matches `manifestComparisons.size()`. Valid
+default export prints
+`manifestMatches=3 manifestMismatches=0 manifestComparisonIssues=0`, emits no
+comparison rows, and keeps existing `manifestAsset=` and package `asset=` rows.
+One-row mismatch cases print `manifestComparisonIssues=1` while preserving
+existing row text and order for `MissingFromManifest`, `MissingFromPackage`, and
+`FilenameMismatch`. Missing or malformed nested manifests still emit no
+comparison summary or rows and preserve existing
+`manifestRead=invalid manifestReadIssues=N` diagnostics. This docs packet does
+not change core `issues=`, `report.read.issueCount`, package directory reader
+status/data, `readOk()`, CLI exit behavior, verification behavior, package
+acceptance, generated sidecar text, export behavior, renderer behavior,
+docs-in-source, CMake, assets, fixtures, `.igmesh` loading, geometry validation,
+discovery/scanning, write policy, or next source packet scope.
 
 Exit criteria:
 - Load a package or explicit scenario.

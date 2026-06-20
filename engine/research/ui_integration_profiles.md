@@ -759,15 +759,18 @@ Native static mesh package directory manifest row comparison diagnostics are
 complete as diagnostic-only report rows. When the nested manifest reads
 successfully, the report compares package sidecar rows to parsed mesh manifest
 rows by asset name and filename only, appends
-`manifestMatches=N manifestMismatches=N`, and emits deterministic
-`manifestComparison` rows for missing-from-manifest, missing-from-package, and
-filename-mismatch cases. Valid default exports report `manifestMatches=3
-manifestMismatches=0` and no comparison rows. Missing/malformed nested manifests
-emit no comparison summary or rows and keep existing `manifestReadIssue`
-diagnostics. These rows do not add package acceptance, verification, nonzero CLI
-behavior, issue-count/status semantics, generated-text comparison, `.igmesh`
-loading, geometry validation, policy reconstruction, discovery/scanning, source
-mutation, or write behavior.
+`manifestMatches=N manifestMismatches=N manifestComparisonIssues=N`, and emits
+deterministic `manifestComparison` rows for missing-from-manifest,
+missing-from-package, and filename-mismatch cases. `manifestComparisonIssues`
+equals the emitted comparison row count and does not alter core `issues=` or
+`report.read.issueCount`. Valid default exports report
+`manifestMatches=3 manifestMismatches=0 manifestComparisonIssues=0` and no
+comparison rows. Missing/malformed nested manifests emit no comparison summary
+or rows and keep existing `manifestReadIssue` diagnostics. These rows do not
+add package acceptance, verification, nonzero CLI behavior,
+issue-count/status semantics, generated-text comparison, `.igmesh` loading,
+geometry validation, policy reconstruction, discovery/scanning, source mutation,
+or write behavior.
 
 Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play
