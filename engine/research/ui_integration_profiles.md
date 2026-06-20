@@ -644,6 +644,20 @@ create directories, overwrite files, accept arbitrary output paths, rewrite
 fixtures, add discovery/catalog policy, parse JSON/glTF/glb, change renderer
 behavior, or change gameplay/scripted/final-state semantics.
 
+Native static mesh export manifest status text helper extraction is complete
+without changing visible manifest output or CLI behavior. The central
+`NativeStaticMeshExportManifestStatusText(...)` helper now lives in
+`NativeStaticMeshExportManifest.hpp` beside `NativeStaticMeshExportManifestStatus`.
+`PrintNativeStaticMeshExportManifest()` compact failure text uses it, preserving
+status strings `Built`, `InvalidPolicy`, `WriterFailed`, and fallback
+`Unknown`. Successful `--dump-static-mesh-export-manifest` output remains byte-
+for-byte unchanged for the header, cube/bean/npc-marker rows, order, counts,
+byte totals, and trailing newlines. This does not change builder validation or
+write semantics, `written()` behavior, readers, generated sidecar content, CLI
+parser/help/dispatch/conflicts, package manifest status/helper behavior,
+verification, file export, export report, export policy, asset writer, renderer/
+model-slot behavior, or parser scope.
+
 Native static mesh batch manifest sidecar export is complete as constrained
 batch-export file output: `iggy_native_play --export-static-mesh-assets
 --output-dir DIR` now writes the three built-in `.igmesh` files plus
