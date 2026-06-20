@@ -548,6 +548,12 @@ Recently completed optimized stretches:
   `CompareNativeStaticMeshExportPackageDirectoryManifestRows(...)` while
   preserving report text/order, counts, statuses, CLI exit behavior, and
   verification/export behavior.
+  Native static mesh package directory structured manifest diagnostics now expose
+  `manifestReadAttempted`, `manifestRead`, and `manifestComparison` on
+  `NativeStaticMeshExportPackageDirectoryReport`, routing existing report output
+  through those fields without changing text, rows, statuses, `readOk()`,
+  `issues=`, CLI exit behavior, verification, package acceptance, or export
+  behavior.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -2288,6 +2294,34 @@ CLI exit behavior, core `issues=`, package acceptance/semantic verification,
 scanning/discovery, `.igmesh` loading, geometry validation, policy/built-in
 reconstruction, renderer behavior, fixtures/generated assets, glTF/glb/JSON
 parser work, or next source packet scope.
+
+Native Static Mesh Package Directory Structured Manifest Diagnostics are
+complete as a structured-data exposure with unchanged report text. The
+`NativeStaticMeshExportPackageDirectoryReport` now carries
+`manifestReadAttempted`, `manifestRead`, and `manifestComparison`, and the
+builder populates those fields instead of keeping nested manifest read and
+comparison diagnostics as local-only variables. `manifestReadAttempted` is true
+only when package directory read succeeds and a projected nested manifest path is
+available. `manifestRead` stores
+`ReadNativeStaticMeshExportManifestFile(report.read.manifestPath)` when
+attempted. `manifestComparison` is populated only when
+`manifestReadAttempted && manifestRead.read()`; otherwise it remains
+default/empty. Focused assertions cover valid export, combined mismatch,
+missing/malformed nested manifest, and missing/malformed package sidecar paths.
+Valid CLI smoke still has unchanged `manifestMatches=3 manifestMismatches=0
+manifestComparisonIssues=0`, no `manifestComparison` rows, and existing
+`manifestAsset=` plus package `asset=` rows. Combined mismatch output remains
+`manifestMatches=1 manifestMismatches=3 manifestComparisonIssues=3` with row
+order `FilenameMismatch`, `MissingFromManifest`, `MissingFromPackage`. Missing
+or malformed nested manifests still print
+`manifestRead=invalid manifestReadIssues=1`, no `manifestAsset=`, no
+`manifestComparison`, and no comparison summary fields. This docs packet does
+not change report text, rows, summary fields, statuses, `readOk()`, CLI exit
+behavior, core `issues=`, package directory reader/status data, manifest reader
+behavior, verification/export behavior, package acceptance/semantic
+verification, scanning/discovery, `.igmesh` loading, geometry validation,
+policy/built-in reconstruction, renderer behavior, fixtures/generated assets,
+glTF/glb/JSON parser work, or next source packet scope.
 
 Exit criteria:
 - Load a package or explicit scenario.

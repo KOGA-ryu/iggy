@@ -1982,6 +1982,37 @@ Native static mesh package directory manifest comparison helper complete:
   behavior, fixtures/generated assets, glTF/glb/JSON parser work, or next source
   packet scope.
 
+Native static mesh package directory structured manifest diagnostics complete:
+- Extended `NativeStaticMeshExportPackageDirectoryReport` with structured
+  diagnostics: `manifestReadAttempted`, `manifestRead`, and
+  `manifestComparison`.
+- The builder now populates those fields instead of keeping nested manifest read
+  and comparison diagnostics as local-only variables.
+- `manifestReadAttempted` is true only when package directory read succeeds and
+  a projected nested manifest path is available.
+- `manifestRead` stores
+  `ReadNativeStaticMeshExportManifestFile(report.read.manifestPath)` when
+  attempted.
+- `manifestComparison` is populated only when
+  `manifestReadAttempted && manifestRead.read()`; otherwise it remains
+  default/empty.
+- Report text output is preserved exactly: summary fields, row order/content,
+  missing/malformed nested manifest behavior, package read failure behavior,
+  `readOk()`, CLI exit behavior, `issues=`, verification behavior, package
+  acceptance semantics, and export behavior are unchanged.
+- Focused assertions cover valid export, combined mismatch, missing/malformed
+  nested manifest, and missing/malformed package sidecar paths.
+- Builder verification passed `native_static_mesh_export_package_directory_report_tests`,
+  focused `ctest -R native_static_mesh_export_package_directory_report_tests`,
+  `iggy_native_play`, and source `git diff --check`.
+- This docs packet does not add report text changes, new rows, summary fields,
+  statuses, `readOk()` changes, CLI exit changes, core `issues=` changes,
+  package directory reader/status changes, manifest reader changes,
+  verification/export behavior changes, package acceptance/semantic
+  verification, scanning/discovery, `.igmesh` loading, geometry validation,
+  policy/built-in reconstruction, renderer changes, fixtures/generated assets,
+  glTF/glb/JSON parser work, or next source packet scope.
+
 Native static mesh package manifest text reader complete:
 - Added a dependency-free, filesystem-free in-memory reader for the current
   generated package manifest text grammar.
@@ -2968,7 +2999,9 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
     integrated.
 86. Native static mesh package directory manifest comparison helper is
     integrated.
-87. Dispatch richer diagnostics display, overlays/labels, frame request/
+87. Native static mesh package directory structured manifest diagnostics are
+    integrated.
+88. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

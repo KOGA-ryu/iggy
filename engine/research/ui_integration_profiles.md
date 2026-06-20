@@ -789,6 +789,22 @@ package-directory reader status changes, `.igmesh` loading, geometry validation,
 policy reconstruction, discovery/scanning, source mutation, renderer behavior,
 or write behavior.
 
+Native static mesh package directory structured manifest diagnostics are
+complete without changing report text. `NativeStaticMeshExportPackageDirectoryReport`
+now exposes `manifestReadAttempted`, `manifestRead`, and `manifestComparison`;
+the builder routes existing nested manifest read and comparison data through
+those fields instead of local-only variables. `manifestReadAttempted` is set only
+after successful package directory read with a projected nested manifest path,
+`manifestRead` stores the explicit nested manifest file reader result when
+attempted, and `manifestComparison` is populated only when that read succeeds.
+Focused coverage proves the structured fields mirror existing output for valid
+export, combined mismatch, missing/malformed nested manifests, and
+missing/malformed package sidecars. This does not change summary/row text,
+`readOk()`, CLI exit behavior, core `issues=`, package directory reader status,
+manifest reader behavior, verification/export behavior, package acceptance,
+`.igmesh` loading, geometry validation, policy reconstruction, renderer
+behavior, or write behavior.
+
 Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play
 --dump-static-mesh-export-verification-report --output-dir DIR` prints a
