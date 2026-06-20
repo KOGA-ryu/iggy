@@ -542,6 +542,12 @@ Recently completed optimized stretches:
   append `manifestComparisonIssues=N` whenever comparison runs, matching the
   emitted `manifestComparison` row count without changing core `issues=`,
   `readOk()`, status, CLI exit, verification, or package acceptance semantics.
+  Native static mesh package directory manifest comparison helper extraction now
+  moves the package-vs-nested-mesh-manifest row comparison loops into
+  `NativeStaticMeshExportPackageDirectoryManifestComparisonResult` and
+  `CompareNativeStaticMeshExportPackageDirectoryManifestRows(...)` while
+  preserving report text/order, counts, statuses, CLI exit behavior, and
+  verification/export behavior.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -2258,6 +2264,30 @@ status/data, `readOk()`, CLI exit behavior, verification behavior, package
 acceptance, generated sidecar text, export behavior, renderer behavior,
 docs-in-source, CMake, assets, fixtures, `.igmesh` loading, geometry validation,
 discovery/scanning, write policy, or next source packet scope.
+
+Native Static Mesh Package Directory Manifest Comparison Helper is complete as a
+behavior-preserving extraction. Package-vs-nested-mesh-manifest row comparison
+now lives in `NativeStaticMeshExportPackageDirectoryManifestComparisonResult` and
+`CompareNativeStaticMeshExportPackageDirectoryManifestRows(...)`. The helper
+preserves package-order `MissingFromManifest` and `FilenameMismatch` rows first,
+then manifest-order `MissingFromPackage` rows. Report output text/order,
+`manifestMatches`, `manifestMismatches`, `manifestComparisonIssues`, `readOk()`,
+CLI exit behavior, package directory reader status/data, and verification/export
+behavior are unchanged. Valid CLI smoke still prints
+`manifestMatches=3 manifestMismatches=0 manifestComparisonIssues=0`, no
+`manifestComparison` rows, and existing `manifestAsset=` plus package `asset=`
+rows. Combined mismatch coverage verifies `manifestMatches=1
+manifestMismatches=3 manifestComparisonIssues=3` with row order
+`FilenameMismatch`, `MissingFromManifest`, `MissingFromPackage`. Missing or
+malformed nested manifest smokes still print
+`manifestRead=invalid manifestReadIssues=1`, no `manifestAsset=`, no
+`manifestComparison`, and no comparison summary fields. This docs packet does
+not change docs-in-source, `IggyNativePlay.cpp`, CMake, package directory reader
+status/data, manifest reader behavior, verification/export behavior, `readOk()`,
+CLI exit behavior, core `issues=`, package acceptance/semantic verification,
+scanning/discovery, `.igmesh` loading, geometry validation, policy/built-in
+reconstruction, renderer behavior, fixtures/generated assets, glTF/glb/JSON
+parser work, or next source packet scope.
 
 Exit criteria:
 - Load a package or explicit scenario.

@@ -155,3 +155,4 @@ Queue:
 98. `98_native_static_mesh_package_directory_manifest_asset_rows_status_sync` - complete. Sync planning/API docs after native static mesh package directory manifest asset rows integration.
 99. `99_native_static_mesh_package_directory_manifest_row_comparison_diagnostics_status_sync` - complete. Sync planning/API docs after native static mesh package directory manifest row comparison diagnostics integration.
 100. `100_native_static_mesh_package_directory_comparison_issue_count_diagnostics_status_sync` - complete. Sync planning/API docs after native static mesh package directory comparison issue count diagnostics integration.
+101. `101_native_static_mesh_package_directory_manifest_comparison_helper_status_sync` - complete. Sync planning/API docs after native static mesh package directory manifest comparison helper integration.

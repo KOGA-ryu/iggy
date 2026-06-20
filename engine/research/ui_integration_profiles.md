@@ -772,6 +772,23 @@ issue-count/status semantics, generated-text comparison, `.igmesh` loading,
 geometry validation, policy reconstruction, discovery/scanning, source mutation,
 or write behavior.
 
+Native static mesh package directory manifest comparison helper extraction is
+complete as a behavior-preserving app-local report structure. The extracted
+surface is `NativeStaticMeshExportPackageDirectoryManifestComparisonResult` plus
+`CompareNativeStaticMeshExportPackageDirectoryManifestRows(...)`, and it
+preserves row ordering, summary counts, `readOk()`, CLI exit behavior, and report
+output text. Comparison rows remain package-order `MissingFromManifest` /
+`FilenameMismatch` first, then manifest-order `MissingFromPackage`. Combined
+mismatch coverage proves `manifestMatches=1 manifestMismatches=3
+manifestComparisonIssues=3` with row order `FilenameMismatch`,
+`MissingFromManifest`, `MissingFromPackage`; missing or malformed nested
+manifests still emit no comparison summary/rows and keep
+`manifestRead=invalid manifestReadIssues=1`. This does not add package
+acceptance, verification, nonzero CLI behavior, core `issues=` changes,
+package-directory reader status changes, `.igmesh` loading, geometry validation,
+policy reconstruction, discovery/scanning, source mutation, renderer behavior,
+or write behavior.
+
 Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play
 --dump-static-mesh-export-verification-report --output-dir DIR` prints a
