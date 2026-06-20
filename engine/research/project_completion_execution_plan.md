@@ -1485,6 +1485,40 @@ Native static mesh verification summary sidecar diagnostics complete:
   `.igmesh` schema, fixtures, docs-in-source, or next research/scout source
   implementation.
 
+Native static mesh package manifest verification reader diagnostics complete:
+- `ReadNativeStaticMeshExportPackageManifestFile(...)` is now wired into
+  explicit-directory verification after package sidecar existence and before
+  exact deterministic text comparison.
+- Added verifier status `PackageManifestReadFailed`.
+- Added compact diagnostic field `packageManifestReadIssueCount` on
+  `NativeStaticMeshExportDirectoryVerificationResult`.
+- Malformed or unreadable package sidecars now return
+  `PackageManifestReadFailed`, set `problemPath` to the package sidecar, keep
+  `manifestVerified=true`, keep `packageManifestVerified=false`, and do not scan
+  asset geometry.
+- Parse-valid but non-exact package sidecars still return
+  `PackageManifestMismatch`.
+- Missing package sidecar still returns `MissingPackageManifest`.
+- Package sidecar is still not checked when mesh manifest verification fails
+  first.
+- Malformed package sidecar verify failure shape:
+  `iggy_native_play: static mesh export verification failed: PackageManifestReadFailed output=/tmp/iggy-native-verify-reader-88-bad.8iYAKS/static-mesh-export-package-manifest.txt issues=1`.
+- Malformed package sidecar report summary shape:
+  `static-mesh-export-verification-report status=PackageManifestReadFailed output=/tmp/iggy-native-verify-reader-88-bad.8iYAKS verified=0 issues=1 manifest=ok packageManifest=invalid problem=/tmp/iggy-native-verify-reader-88-bad.8iYAKS/static-mesh-export-package-manifest.txt`.
+- Parse-valid exact mismatch remains `PackageManifestMismatch` with
+  `packageManifest=mismatch`.
+- Valid export still reports:
+  `static-mesh-export-verify output=<tmpdir> verified=3 manifest=ok packageManifest=ok`.
+- This docs packet does not change source, tests, CMake, assets, shaders,
+  runtime, package directory readers/reports/loading, discovery/scanning/catalog/
+  registry behavior, export behavior, overwrite/create-directory/temp
+  replacement/arbitrary output path behavior, exact-extra-file rejection, repair
+  behavior, CLI flags, semantic package acceptance replacing exact deterministic
+  text verification, policy/built-in id reconstruction from package rows,
+  renderer behavior, shader behavior, runtime/product/scene/server APIs,
+  `.igmesh` schema, fixtures, gameplay, docs-in-source, or next research/scout
+  source implementation.
+
 Native static mesh package manifest text reader complete:
 - Added a dependency-free, filesystem-free in-memory reader for the current
   generated package manifest text grammar.
@@ -2452,7 +2486,9 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 70. Native static mesh verification summary sidecar diagnostics are integrated.
 71. Native static mesh package manifest text reader is integrated.
 72. Native static mesh package manifest file reader is integrated.
-73. Dispatch richer diagnostics display, overlays/labels, frame request/
+73. Native static mesh package manifest verification reader diagnostics are
+    integrated.
+74. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

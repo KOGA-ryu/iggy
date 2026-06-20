@@ -496,6 +496,10 @@ Recently completed optimized stretches:
   wrapper that opens only the supplied file in binary mode, delegates to the text
   reader, and reports `FileOpenFailed` without directory inference or verifier/
   CLI integration.
+  Native static mesh package manifest verification reader diagnostics now wire
+  that file reader into explicit-directory verification after package sidecar
+  existence and before exact deterministic text comparison, reporting malformed
+  sidecars as `PackageManifestReadFailed` with `packageManifest=invalid`.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1855,6 +1859,34 @@ rejection, verification/report/export/CLI integration, policy reconstruction or
 built-in id reconstruction from manifest rows, export write behavior, CLI
 flags, renderer behavior, schema behavior, fixture rewrites, docs-in-source, or
 next research/scout implementation.
+
+Native Static Mesh Package Manifest Verification Reader Diagnostics is complete
+for explicit-directory verification. `ReadNativeStaticMeshExportPackageManifestFile(...)`
+is now wired into `VerifyNativeStaticMeshExportDirectory(...)` after package
+sidecar existence and before exact deterministic text comparison. The verifier
+adds `PackageManifestReadFailed` and `packageManifestReadIssueCount` on
+`NativeStaticMeshExportDirectoryVerificationResult`. Malformed or unreadable
+package sidecars return `PackageManifestReadFailed`, set `problemPath` to the
+package sidecar, keep `manifestVerified=true`, keep
+`packageManifestVerified=false`, and do not scan asset geometry. Parse-valid but
+non-exact package sidecars still return `PackageManifestMismatch`; missing
+package sidecars still return `MissingPackageManifest`; package sidecars are
+still not checked when mesh manifest verification fails first. Malformed package
+sidecar verifier failures report
+`iggy_native_play: static mesh export verification failed: PackageManifestReadFailed output=/tmp/iggy-native-verify-reader-88-bad.8iYAKS/static-mesh-export-package-manifest.txt issues=1`.
+Report summaries for malformed sidecars include
+`static-mesh-export-verification-report status=PackageManifestReadFailed output=/tmp/iggy-native-verify-reader-88-bad.8iYAKS verified=0 issues=1 manifest=ok packageManifest=invalid problem=/tmp/iggy-native-verify-reader-88-bad.8iYAKS/static-mesh-export-package-manifest.txt`.
+This preserves exact deterministic package text verification: parse-valid exact
+mismatches remain `PackageManifestMismatch` with `packageManifest=mismatch`,
+while valid exports still report `manifest=ok packageManifest=ok`. This docs
+packet does not change source, tests, CMake, assets, shaders, runtime, package
+directory readers/reports/loading, discovery/scanning/catalog/registry behavior,
+export behavior, overwrite/create-directory/temp replacement/arbitrary output
+path behavior, exact-extra-file rejection, repair behavior, CLI flags, semantic
+package acceptance replacing exact text verification, policy/built-in id
+reconstruction from package rows, renderer behavior, shader behavior,
+runtime/product/scene/server APIs, `.igmesh` schema, fixtures, gameplay,
+docs-in-source, or next research/scout implementation.
 
 Exit criteria:
 - Load a package or explicit scenario.

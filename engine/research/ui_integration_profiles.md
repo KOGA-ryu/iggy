@@ -648,12 +648,16 @@ success. Missing mesh sidecars fail with `MissingManifest`; missing or
 mismatched package sidecars fail with `MissingPackageManifest` or
 `PackageManifestMismatch`.
 Package sidecar verification happens after mesh manifest equality and before
-asset geometry checks. Extra unrelated files are ignored; the verifier remains
-read-only and explicit-directory-only and does not add package parser/reader
-syntax, semantic package-manifest parsing, discovery/scanning, package
-semantics, source mutation, overwrite/create-directory policy, fixture rewrites,
-renderer behavior, JSON/glTF/glb parsing, `.igmesh` schema changes, or
-gameplay/scripted/final-state changes.
+asset geometry checks. The verifier now reads the package sidecar through the
+explicit-file reader before exact deterministic text comparison; malformed or
+unreadable sidecars fail as `PackageManifestReadFailed` and report
+`packageManifest=invalid`. Parse-valid exact mismatches remain
+`PackageManifestMismatch` with `packageManifest=mismatch`. Extra unrelated files
+are ignored; the verifier remains read-only and explicit-directory-only and
+does not add package directory reading, semantic package acceptance, discovery/
+scanning, package semantics, source mutation, overwrite/create-directory policy,
+fixture rewrites, renderer behavior, JSON/glTF/glb parsing, `.igmesh` schema
+changes, or gameplay/scripted/final-state changes.
 
 Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play
