@@ -1205,6 +1205,35 @@ Native static mesh export policy validation complete:
   byte math, valid default CLI output, gameplay/scripted/final-state behavior,
   or Linux/dGPU validation.
 
+Native static mesh export manifest text builder complete:
+- `NativeStaticMeshExportManifest.hpp` adds header-only app-local
+  `BuildNativeStaticMeshExportManifestText(...)`.
+- The builder validates the supplied `NativeStaticMeshExportPolicy`, then uses
+  `BuildNativeStaticMeshExportReport(...)` for stable asset counts and writer
+  byte counts.
+- `NativeStaticMeshExportManifestResult` reports `Built`, `InvalidPolicy`, or
+  `WriterFailed`.
+- `iggy_native_play --dump-static-mesh-export-manifest` prints deterministic
+  manifest text to stdout and exits before `NativeVulkanApp` construction or
+  SDL/Vulkan startup.
+- Sample output:
+  `static-mesh-export-manifest version=1 assets=3 bytes=33879`;
+  `asset=cube filename=cube.igmesh vertices=8 indices=36 bytes=523`;
+  `asset=bean filename=bean.igmesh vertices=234 indices=1296 bytes=23882`;
+  `asset=npc-marker filename=npc-marker.igmesh vertices=98 indices=504 bytes=9474`.
+- The manifest mode conflicts with `--output-dir`,
+  `--export-static-mesh-assets`, `--dump-static-mesh-export-report`,
+  `--dump-static-mesh-asset`, and `--dump-static-model-load-report`.
+- Existing valid export report and batch export output remain unchanged.
+- This docs packet does not change source, tests, CMake, assets, shaders,
+  runtime, sidecar file writes, package/export manifest files on disk,
+  overwrite/create-directory/temp-file policy, arbitrary output paths, checked-
+  in fixture canonicalization/rewrite, package discovery, directory scanning,
+  registry/catalog expansion, source mutation, material/texture/schema changes,
+  JSON/glTF/glb parser/dependency work, renderer behavior,
+  `NativeVulkanRenderer.cpp`, native app CMake source registration, gameplay/
+  scripted/final-state behavior, or docs mixed into source.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -2095,7 +2124,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 59. Native static mesh built-in batch export CLI is integrated.
 60. Native static mesh export report CLI is integrated.
 61. Native static mesh export policy validation is integrated.
-62. Dispatch richer diagnostics display, overlays/labels, frame request/
+62. Native static mesh export manifest text builder CLI is integrated.
+63. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

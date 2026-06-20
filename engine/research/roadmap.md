@@ -445,6 +445,11 @@ Recently completed optimized stretches:
   `ValidateNativeStaticMeshExportPolicy(...)`, structured validation issues,
   and `InvalidPolicy` rejection for single/batch file export before lookup,
   directory checks, target preflight, writer work, or writes.
+  Native static mesh export manifest text building now adds
+  `NativeStaticMeshExportManifest.hpp` and
+  `iggy_native_play --dump-static-mesh-export-manifest`, producing deterministic
+  manifest text from validated export policy/report data without writing files
+  or starting NativeVulkanApp, SDL, or Vulkan.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1516,6 +1521,34 @@ policy, renderer loading cleanup, `NativeVulkanRenderer.cpp` changes,
 glTF/glb/JSON parser/dependency work, `.igmesh` schema/writer/loader/report
 byte math changes, valid default CLI output changes, gameplay/scripted/
 final-state behavior changes, or Linux/dGPU validation.
+
+Native Static Mesh Export Manifest Text Builder is complete as a deterministic
+no-write manifest surface: header-only app-local
+`NativeStaticMeshExportManifest.hpp` adds
+`BuildNativeStaticMeshExportManifestText(...)`. The builder validates the
+supplied `NativeStaticMeshExportPolicy`, then uses
+`BuildNativeStaticMeshExportReport(...)` for stable asset counts and writer byte
+counts. `NativeStaticMeshExportManifestResult` reports `Built`,
+`InvalidPolicy`, or `WriterFailed`. `iggy_native_play
+--dump-static-mesh-export-manifest` prints deterministic manifest text and exits
+before `NativeVulkanApp` construction, SDL startup, or Vulkan startup. Sample
+output is:
+`static-mesh-export-manifest version=1 assets=3 bytes=33879`,
+`asset=cube filename=cube.igmesh vertices=8 indices=36 bytes=523`,
+`asset=bean filename=bean.igmesh vertices=234 indices=1296 bytes=23882`, and
+`asset=npc-marker filename=npc-marker.igmesh vertices=98 indices=504 bytes=9474`.
+The manifest mode conflicts with `--output-dir`,
+`--export-static-mesh-assets`, `--dump-static-mesh-export-report`,
+`--dump-static-mesh-asset`, and `--dump-static-model-load-report`. Existing
+valid export report and batch export output remain unchanged. This is not a
+source/test/CMake/asset/shader/runtime change in the docs packet and does not
+add sidecar file writes, package/export manifest files on disk, overwrite/
+create-directory/temp-file policy, arbitrary output paths, checked-in fixture
+canonicalization or rewrite, package discovery, directory scanning, registry/
+catalog expansion, source mutation, material/texture/schema changes, JSON/
+glTF/glb parser/dependency work, renderer behavior changes,
+`NativeVulkanRenderer.cpp` changes, native app CMake source registration
+changes, gameplay/scripted/final-state changes, or docs mixed into source.
 
 Exit criteria:
 - Load a package or explicit scenario.

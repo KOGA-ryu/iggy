@@ -131,3 +131,4 @@ Queue:
 74. `74_native_static_mesh_built_in_batch_export_cli_status_sync` - complete. Sync planning/API docs after native static mesh built-in batch export CLI integration.
 75. `75_native_static_mesh_export_report_cli_status_sync` - complete. Sync planning/API docs after native static mesh export report CLI integration.
 76. `76_native_static_mesh_export_policy_validation_status_sync` - complete. Sync planning/API docs after native static mesh export policy validation integration.
+77. `77_native_static_mesh_export_manifest_text_builder_status_sync` - complete. Sync planning/API docs after native static mesh export manifest text builder CLI integration.

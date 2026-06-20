@@ -606,6 +606,21 @@ manifests, sidecar output, discovery/catalog policy, fixture canonicalization,
 overwrite/create-directory policy, renderer loading cleanup, glTF/glb/JSON
 parsing, `.igmesh` schema changes, or gameplay/scripted/final-state changes.
 
+Native static mesh export manifest CLI is complete as a no-write app-shell
+diagnostic: `NativeStaticMeshExportManifest.hpp` builds deterministic manifest
+text by validating the export policy and reusing the export report for stable
+asset counts and writer byte counts. `iggy_native_play
+--dump-static-mesh-export-manifest` prints rows such as
+`static-mesh-export-manifest version=1 assets=3 bytes=33879`, then `cube`,
+`bean`, and `npc-marker` filename/count/byte rows, and exits before native app
+construction or SDL/Vulkan startup. The mode conflicts with output-dir, batch
+export, export report, single mesh dump, and static model load report modes.
+Existing valid export report and batch export output remain unchanged. This
+does not write sidecar files, create package/export manifest files on disk,
+create directories, overwrite files, accept arbitrary output paths, rewrite
+fixtures, add discovery/catalog policy, parse JSON/glTF/glb, change renderer
+behavior, or change gameplay/scripted/final-state semantics.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.
