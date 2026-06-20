@@ -33,6 +33,9 @@ struct NativeStaticMeshExportPackageDirectoryManifestComparisonResult {
 
 struct NativeStaticMeshExportPackageDirectoryReport {
 	NativeStaticMeshExportPackageDirectoryReadResult read;
+	bool manifestReadAttempted = false;
+	NativeStaticMeshExportManifestReadResult manifestRead;
+	NativeStaticMeshExportPackageDirectoryManifestComparisonResult manifestComparison;
 	std::string text;
 
 	[[nodiscard]] bool readOk() const
@@ -209,20 +212,16 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 	NativeStaticMeshExportPackageDirectoryReport report;
 	report.read = ReadNativeStaticMeshExportPackageDirectory(directory);
 
-	NativeStaticMeshExportManifestReadResult manifestRead;
-	bool hasManifestRead = false;
 	if (report.read.read() && !report.read.manifestPath.empty()) {
-		manifestRead = ReadNativeStaticMeshExportManifestFile(
+		report.manifestRead = ReadNativeStaticMeshExportManifestFile(
 			report.read.manifestPath);
-		hasManifestRead = true;
+		report.manifestReadAttempted = true;
 	}
 
-	NativeStaticMeshExportPackageDirectoryManifestComparisonResult
-		manifestComparison;
-	if (hasManifestRead && manifestRead.read()) {
-		manifestComparison = CompareNativeStaticMeshExportPackageDirectoryManifestRows(
+	if (report.manifestReadAttempted && report.manifestRead.read()) {
+		report.manifestComparison = CompareNativeStaticMeshExportPackageDirectoryManifestRows(
 			report.read.assets,
-			manifestRead.document.assets);
+			report.manifestRead.document.assets);
 	}
 
 	struct PathFacts {
@@ -277,15 +276,15 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 			<< (facts.exists ? 1 : 0)
 			<< " manifestRegularFile=" << (facts.regularFile ? 1 : 0)
 			<< " manifestBytes=" << facts.byteCount;
-		if (hasManifestRead) {
+		if (report.manifestReadAttempted) {
 			stream
-				<< " manifestRead=" << (manifestRead.read() ? "ok" : "invalid")
-				<< " manifestReadIssues=" << manifestRead.issues.size();
-			if (manifestRead.read()) {
+				<< " manifestRead=" << (report.manifestRead.read() ? "ok" : "invalid")
+				<< " manifestReadIssues=" << report.manifestRead.issues.size();
+			if (report.manifestRead.read()) {
 				stream
-					<< " manifestMatches=" << manifestComparison.matchCount
-					<< " manifestMismatches=" << manifestComparison.comparisons.size()
-					<< " manifestComparisonIssues=" << manifestComparison.comparisons.size();
+					<< " manifestMatches=" << report.manifestComparison.matchCount
+					<< " manifestMismatches=" << report.manifestComparison.comparisons.size()
+					<< " manifestComparisonIssues=" << report.manifestComparison.comparisons.size();
 			}
 		}
 	}
@@ -302,9 +301,9 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 			<< "\n";
 	}
 
-	if (hasManifestRead && !manifestRead.read()) {
+	if (report.manifestReadAttempted && !report.manifestRead.read()) {
 		for (const NativeStaticMeshExportManifestReadIssue &issue :
-				manifestRead.issues) {
+				report.manifestRead.issues) {
 			stream
 				<< "manifestReadIssue"
 				<< " code=" << NativeStaticMeshExportPackageDirectoryMeshManifestIssueCodeText(
@@ -315,9 +314,9 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 		}
 	}
 
-	if (hasManifestRead && manifestRead.read()) {
+	if (report.manifestReadAttempted && report.manifestRead.read()) {
 		for (const NativeStaticMeshExportManifestAssetRow &asset :
-				manifestRead.document.assets) {
+				report.manifestRead.document.assets) {
 			stream
 				<< "manifestAsset=" << asset.name
 				<< " filename=" << asset.filename
@@ -329,7 +328,7 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 	}
 
 	for (const NativeStaticMeshExportPackageDirectoryManifestComparison &comparison :
-			manifestComparison.comparisons) {
+			report.manifestComparison.comparisons) {
 		stream
 			<< "manifestComparison"
 			<< " code=" << NativeStaticMeshExportPackageDirectoryManifestComparisonCodeText(

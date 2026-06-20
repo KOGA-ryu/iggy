@@ -17,6 +17,7 @@ using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReport;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
 using iggy::native_play::ExportNativeStaticMeshPolicyToDirectory;
 using iggy::native_play::NativeStaticMeshExportManifestFilename;
+using iggy::native_play::NativeStaticMeshExportPackageDirectoryManifestComparisonCode;
 using iggy::native_play::NativeStaticMeshExportPackageDirectoryReadStatus;
 using iggy::native_play::NativeStaticMeshExportPackageDirectoryReport;
 using iggy::native_play::NativeStaticMeshExportPackageManifestSidecarFilename;
@@ -138,6 +139,21 @@ void TestBatchExportedDirectoryReportReads()
 	Expect(
 		report.text.find("packageManifestReadIssue") == std::string::npos,
 		"successful package directory report should not include read issue rows");
+	Expect(
+		report.manifestReadAttempted,
+		"successful package directory report should attempt nested manifest read");
+	Expect(
+		report.manifestRead.read(),
+		"successful package directory report should expose successful nested manifest read");
+	Expect(
+		report.manifestRead.document.assets.size() == 3,
+		"successful package directory report should expose nested manifest asset rows");
+	Expect(
+		report.manifestComparison.matchCount == 3,
+		"successful package directory report should expose structured manifest match count");
+	Expect(
+		report.manifestComparison.comparisons.empty(),
+		"successful package directory report should expose no structured manifest comparisons");
 	Expect(
 		report.text.find("\nmanifestReadIssue code=") == std::string::npos,
 		"successful package directory report should not include manifest read issue rows");
@@ -291,6 +307,26 @@ void TestCombinedComparisonOrderingStillReportsRead()
 		missingFromPackage != std::string::npos,
 		"combined comparison mismatch should include missing-from-package row");
 	Expect(
+		report.manifestComparison.matchCount == 1,
+		"combined comparison mismatch should expose structured match count");
+	Expect(
+		report.manifestComparison.comparisons.size() == 3,
+		"combined comparison mismatch should expose structured comparison count");
+	if (report.manifestComparison.comparisons.size() == 3) {
+		Expect(
+			report.manifestComparison.comparisons[0].code ==
+				NativeStaticMeshExportPackageDirectoryManifestComparisonCode::FilenameMismatch,
+			"combined comparison mismatch should expose filename mismatch first");
+		Expect(
+			report.manifestComparison.comparisons[1].code ==
+				NativeStaticMeshExportPackageDirectoryManifestComparisonCode::MissingFromManifest,
+			"combined comparison mismatch should expose missing-from-manifest second");
+		Expect(
+			report.manifestComparison.comparisons[2].code ==
+				NativeStaticMeshExportPackageDirectoryManifestComparisonCode::MissingFromPackage,
+			"combined comparison mismatch should expose missing-from-package third");
+	}
+	Expect(
 		filenameMismatch < missingFromManifest &&
 			missingFromManifest < missingFromPackage,
 		"combined comparison mismatch should emit package-order rows before manifest-only rows");
@@ -374,6 +410,13 @@ void TestMissingPackageSidecarReportIncludesIssueRow()
 			packageManifest.string()) != std::string::npos,
 		"missing package sidecar report should include file-open issue row");
 	Expect(
+		!report.manifestReadAttempted,
+		"missing package sidecar report should not attempt nested manifest read");
+	Expect(
+		report.manifestComparison.matchCount == 0 &&
+			report.manifestComparison.comparisons.empty(),
+		"missing package sidecar report should expose empty structured manifest comparison");
+	Expect(
 		report.text.find("asset=cube") == std::string::npos,
 		"missing package sidecar report should not include asset rows");
 	CleanupTempRoot();
@@ -406,6 +449,13 @@ void TestMalformedPackageSidecarReportIncludesIssueRow()
 			"packageManifestReadIssue code=MalformedHeader line=1 token=static-mesh-export-package") !=
 			std::string::npos,
 		"malformed package sidecar report should include parser issue row");
+	Expect(
+		!report.manifestReadAttempted,
+		"malformed package sidecar report should not attempt nested manifest read");
+	Expect(
+		report.manifestComparison.matchCount == 0 &&
+			report.manifestComparison.comparisons.empty(),
+		"malformed package sidecar report should expose empty structured manifest comparison");
 	Expect(
 		report.text.find("asset=cube") == std::string::npos,
 		"malformed package sidecar report should not include asset rows");
@@ -444,6 +494,16 @@ void TestMissingNestedManifestStillReportsRead()
 			std::string::npos,
 		"missing nested mesh manifest should report file-open issue row");
 	Expect(
+		report.manifestReadAttempted,
+		"missing nested mesh manifest should expose attempted nested manifest read");
+	Expect(
+		!report.manifestRead.read(),
+		"missing nested mesh manifest should expose failed nested manifest read");
+	Expect(
+		report.manifestComparison.matchCount == 0 &&
+			report.manifestComparison.comparisons.empty(),
+		"missing nested mesh manifest should expose empty structured manifest comparison");
+	Expect(
 		report.text.find("manifestAsset=") == std::string::npos,
 		"missing nested mesh manifest should not emit manifest asset rows");
 	Expect(
@@ -478,6 +538,16 @@ void TestMalformedNestedManifestStillReportsRead()
 			"manifestReadIssue code=UnsupportedVersion line=1 token=2") !=
 			std::string::npos,
 		"malformed nested mesh manifest should report parser issue row");
+	Expect(
+		report.manifestReadAttempted,
+		"malformed nested mesh manifest should expose attempted nested manifest read");
+	Expect(
+		!report.manifestRead.read(),
+		"malformed nested mesh manifest should expose failed nested manifest read");
+	Expect(
+		report.manifestComparison.matchCount == 0 &&
+			report.manifestComparison.comparisons.empty(),
+		"malformed nested mesh manifest should expose empty structured manifest comparison");
 	Expect(
 		report.text.find("manifestAsset=") == std::string::npos,
 		"malformed nested mesh manifest should not emit manifest asset rows");
