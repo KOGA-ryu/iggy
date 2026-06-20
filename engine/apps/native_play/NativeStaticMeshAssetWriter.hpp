@@ -6,6 +6,7 @@
 #include <limits>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace iggy::native_play {
@@ -29,6 +30,18 @@ struct NativeStaticMeshAssetWriteResult {
 		return issues.empty() && !text.empty();
 	}
 };
+
+[[nodiscard]] inline std::string BuildNativeStaticMeshAssetWriteFailureText(
+	std::string_view name,
+	const NativeStaticMeshAssetWriteResult &result)
+{
+	std::ostringstream stream;
+	stream
+		<< "failed to write static mesh asset: "
+		<< name
+		<< " issues=" << result.issues.size();
+	return stream.str();
+}
 
 inline void AddNativeStaticMeshAssetWriteIssue(
 	NativeStaticMeshAssetWriteResult &result,

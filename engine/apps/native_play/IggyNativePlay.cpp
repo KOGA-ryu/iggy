@@ -35,6 +35,7 @@ namespace {
 namespace runtime = iggy::runtime;
 using iggy::native_play::BuildNativeSceneDrawItems;
 using iggy::native_play::BuildNativeStaticModelLoadReport;
+using iggy::native_play::BuildNativeStaticMeshAssetWriteFailureText;
 using iggy::native_play::BuildNativeStaticMeshExportManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageManifestFailureText;
@@ -520,11 +521,9 @@ void PrintNativeStaticMeshAssetDump(const std::string &name)
 		BuiltInNativeStaticMeshExportAsset(assetRef->id);
 	const NativeStaticMeshAssetWriteResult result =
 		WriteNativeStaticMeshAssetText(asset);
-	if (!result.written()) {
+	if (!result.written())
 		throw std::runtime_error(
-			"failed to write static mesh asset: " + name +
-			" issues=" + std::to_string(result.issues.size()));
-	}
+			BuildNativeStaticMeshAssetWriteFailureText(name, result));
 	std::cout << result.text;
 }
 

@@ -9,6 +9,7 @@
 
 namespace {
 
+using iggy::native_play::BuildNativeStaticMeshAssetWriteFailureText;
 using iggy::native_play::LoadNativeStaticMeshAssetFile;
 using iggy::native_play::LoadNativeStaticMeshAssetText;
 using iggy::native_play::NativeBeanStaticMeshAsset;
@@ -192,6 +193,18 @@ void TestInvalidEmptyMeshReportsIssueAndNoText()
 		"invalid empty mesh should report invalid mesh issue");
 }
 
+void TestInvalidEmptyMeshFailureText()
+{
+	const NativeStaticMeshAssetWriteResult result =
+		WriteNativeStaticMeshAssetText({});
+
+	Expect(!result.written(), "invalid empty mesh failure text test should not write");
+	Expect(
+		BuildNativeStaticMeshAssetWriteFailureText("empty", result) ==
+			"failed to write static mesh asset: empty issues=1",
+		"invalid empty mesh failure text should include name and issue count");
+}
+
 void TestNonTriangleIndexCountReportsIssueAndNoText()
 {
 	NativeStaticMeshAsset asset;
@@ -212,6 +225,25 @@ void TestNonTriangleIndexCountReportsIssueAndNoText()
 	Expect(
 		!HasIssue(result, NativeStaticMeshAssetWriteIssueCode::InvalidMesh),
 		"non-triangle index mesh with valid indices should not report invalid mesh");
+}
+
+void TestNonTriangleIndexCountFailureText()
+{
+	NativeStaticMeshAsset asset;
+	asset.vertices = {
+		{ { 0.0F, 0.0F, 0.0F }, { 1.0F, 1.0F, 1.0F } },
+		{ { 1.0F, 0.0F, 0.0F }, { 1.0F, 1.0F, 1.0F } },
+	};
+	asset.indices = { 0, 1 };
+
+	const NativeStaticMeshAssetWriteResult result =
+		WriteNativeStaticMeshAssetText(asset);
+
+	Expect(!result.written(), "non-triangle failure text test should not write");
+	Expect(
+		BuildNativeStaticMeshAssetWriteFailureText("line", result) ==
+			"failed to write static mesh asset: line issues=1",
+		"non-triangle failure text should include name and issue count");
 }
 
 void TestWriterOutputIsDeterministicAcrossCalls()
@@ -237,7 +269,9 @@ int main()
 	TestProceduralNpcMarkerWritesAndReloadsCounts();
 	TestCheckedInFixtureAssetsRoundtripThroughWriter();
 	TestInvalidEmptyMeshReportsIssueAndNoText();
+	TestInvalidEmptyMeshFailureText();
 	TestNonTriangleIndexCountReportsIssueAndNoText();
+	TestNonTriangleIndexCountFailureText();
 	TestWriterOutputIsDeterministicAcrossCalls();
 
 	if (Failures != 0)
