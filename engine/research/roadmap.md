@@ -459,6 +459,10 @@ Recently completed optimized stretches:
   single-file failure branch delegates the message body after preserving the
   unknown-asset special case, with the app prefix/newline still supplied by the
   existing exception/catch path.
+  Native static mesh batch export success text renderer extraction now adds
+  `BuildNativeStaticMeshFileExportBatchSuccessText(...)`; batch success stdout
+  delegates to it after the existing `Exported` status check while preserving
+  batch failure output selection and compact failure text.
   Native static mesh built-in batch export now adds
   `ExportNativeStaticMeshPolicyToDirectory(...)` and
   `iggy_native_play --export-static-mesh-assets --output-dir DIR`, preflighting
@@ -1820,6 +1824,32 @@ behavior, exact verification behavior, generated sidecars, export write policy,
 package loading/discovery/acceptance, `NativeVulkanRenderer.cpp`, renderer/
 model-slot behavior, checked-in assets or fixtures, `.igmesh` schema/loading,
 or glTF/glb/JSON parser work.
+
+Native Static Mesh Batch Export Success Text Renderer Extraction is complete as
+a behavior-preserving batch stdout cleanup. `NativeStaticMeshFileExport.hpp` now
+exposes pure `BuildNativeStaticMeshFileExportBatchSuccessText(const
+NativeStaticMeshFileExportBatchResult &result)`, which serializes only the
+successful batch export stdout line:
+`static-mesh-export-batch output=<dir> exported=<N> bytes=<N> manifest=<path> manifestBytes=<N> packageManifest=<path> packageManifestBytes=<N>\n`.
+`PrintNativeStaticMeshAssetBatchExport(...)` delegates to the helper only after
+the existing `Exported` status check. Batch failure path/output selection and
+compact failure text remain unchanged. Exact helper coverage uses a real
+successful default batch export result. Source verification passed
+`native_static_mesh_file_export_tests`, `iggy_native_play`, success smoke
+matching `exported=3`, `bytes=33879`, `manifestBytes=272`, and
+`packageManifestBytes=250`, file existence checks for `cube.igmesh`,
+`bean.igmesh`, `npc-marker.igmesh`, `static-mesh-export-manifest.txt`, and
+`static-mesh-export-package-manifest.txt`, collision smoke preserving
+`iggy_native_play: static mesh batch export failed: TargetAlreadyExists output=/tmp/iggy-native-batch-success-renderer-125/static-mesh-export-manifest.txt issues=0`,
+source `git diff --check`, and source `git diff --cached --check`. This packet
+does not change batch failure text extraction, batch failure output or issue
+selection, export status assignment, preflight/write order,
+no-overwrite/no-create-directory behavior, sidecar filenames or content, byte
+count semantics, CLI parser/help/dispatch/conflict/exit behavior, static model
+behavior, package directory report behavior, exact verification behavior,
+generated sidecars beyond existing export behavior, package loading/discovery/
+acceptance, `NativeVulkanRenderer.cpp`, renderer/model-slot behavior, checked-in
+assets or fixtures, `.igmesh` schema/loading, or glTF/glb/JSON parser work.
 
 Native Static Mesh Built-In Batch Export CLI is complete as a constrained
 multi-file export path for the default built-in mesh policy:

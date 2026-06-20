@@ -179,3 +179,4 @@ Queue:
 122. `122_native_static_mesh_export_report_text_renderer_extraction_status_sync` - complete. Sync planning/API docs after native static mesh export report text renderer extraction.
 123. `123_native_static_mesh_single_file_export_success_text_renderer_extraction_status_sync` - complete. Sync planning/API docs after native static mesh single file export success text renderer extraction.
 124. `124_native_static_mesh_single_file_export_failure_text_renderer_extraction_status_sync` - complete. Sync planning/API docs after native static mesh single file export failure text renderer extraction.
+125. `125_native_static_mesh_batch_export_success_text_renderer_extraction_status_sync` - complete. Sync planning/API docs after native static mesh batch export success text renderer extraction.
