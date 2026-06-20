@@ -700,6 +700,19 @@ geometry, check nested file existence, scan directories, reject extra files,
 reconstruct export policy/built-in ids, integrate CLI/export/verification/
 renderer/package loading, or change native app behavior.
 
+Native static mesh package directory read status text helper extraction is
+complete without changing visible report text or CLI behavior. The
+`NativeStaticMeshExportPackageDirectoryReadStatusText(...)` helper now lives in
+`NativeStaticMeshExportPackageDirectoryReader.hpp` beside the read status/result
+types and returns `Read`, `MissingDirectory`, `DirectoryNotDirectory`,
+`PackageManifestReadFailed`, or `Unknown`. Package-directory report summary
+rendering and compact CLI failure status text keep using the same helper name
+through includes. This does not change row order, issue counts, `readOk()`, CLI
+parser/dispatch/exit behavior, package-directory reader status/data behavior,
+exact verification, generated sidecar/export behavior, package acceptance,
+write policy, renderer/model-slot behavior, `.igmesh` loading beyond existing
+verifier behavior, parser scope, or gameplay semantics.
+
 Native static mesh package directory reporting is complete as a no-write report
 builder over the directory reader. The report summary includes status,
 directory, asset count, issue count, and available package/nested manifest

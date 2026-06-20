@@ -550,6 +550,11 @@ Recently completed optimized stretches:
   mesh export manifest reader enum in `NativeStaticMeshExportManifest.hpp`;
   package-directory report nested mesh `manifestReadIssue` rows use it while the
   package manifest issue helper remains separate for its different enum.
+  Native static mesh package directory read status text helper extraction now
+  moves `NativeStaticMeshExportPackageDirectoryReadStatusText(...)` to
+  `NativeStaticMeshExportPackageDirectoryReader.hpp` beside the read status and
+  result boundary; package-directory report summaries and compact CLI failure
+  status text keep using the same helper name through includes.
   Native static mesh package directory manifest read diagnostics now parse the
   already-projected nested mesh manifest path from the package directory report,
   adding `manifestRead=...` summary facts and deterministic `manifestReadIssue`
@@ -2113,6 +2118,9 @@ adds `NativeStaticMeshExportPackageDirectoryReadStatus`,
 `NativeStaticMeshExportPackageDirectoryAsset`,
 `NativeStaticMeshExportPackageDirectoryReadResult`, and
 `ReadNativeStaticMeshExportPackageDirectory(const std::filesystem::path &directory)`.
+`NativeStaticMeshExportPackageDirectoryReadStatusText(...)` also lives at this
+reader/result boundary and returns stable strings `Read`, `MissingDirectory`,
+`DirectoryNotDirectory`, `PackageManifestReadFailed`, and fallback `Unknown`.
 The reader records the supplied directory, requires it to exist and be a
 directory, composes `directory / static-mesh-export-package-manifest.txt`, and
 delegates to `ReadNativeStaticMeshExportPackageManifestFile(...)`. On package
@@ -2125,7 +2133,9 @@ row order. `read()` returns true only for `Read`. Tests cover batch-exported
 temp directory reads, missing directory, file path as `DirectoryNotDirectory`,
 missing and malformed package sidecars as `PackageManifestReadFailed`, removed
 nested mesh manifest not failing, removed declared mesh asset not failing, and
-extra unrelated files being ignored. This does not compare package sidecar text
+extra unrelated files being ignored. Direct status-text tests cover `Read`,
+`MissingDirectory`, `DirectoryNotDirectory`, `PackageManifestReadFailed`, and
+`Unknown` fallback. This does not compare package sidecar text
 to generated default text, verify nested mesh manifest text, parse mesh export
 manifests, load `.igmesh` assets, check geometry, check existence of nested
 manifest or asset files, reconstruct export policy or built-in ids from package
@@ -2140,8 +2150,9 @@ Native Static Mesh Package Directory Report Builder is complete as a header-only
 no-write report surface over `ReadNativeStaticMeshExportPackageDirectory(...)`.
 `NativeStaticMeshExportPackageDirectoryReport.hpp` adds
 `NativeStaticMeshExportPackageDirectoryReport`,
-`NativeStaticMeshExportPackageDirectoryReadStatusText(...)`, local package
-manifest read issue code text mapping for report rows, and
+the reader-boundary `NativeStaticMeshExportPackageDirectoryReadStatusText(...)`
+for summary/failure status text, central package manifest issue code text mapping
+for report rows, and
 `BuildNativeStaticMeshExportPackageDirectoryReport(const std::filesystem::path &directory)`.
 The report summary includes status, explicit directory, asset count, issue
 count, package manifest path when available, and nested mesh manifest path when

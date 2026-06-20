@@ -166,3 +166,4 @@ Queue:
 109. `109_native_static_mesh_package_directory_report_builder_parity_coverage_status_sync` - complete. Sync planning/API docs after native static mesh package directory report builder parity coverage.
 110. `110_native_static_mesh_package_manifest_read_issue_text_helper_extraction_status_sync` - complete. Sync planning/API docs after native static mesh package manifest read issue text helper extraction.
 111. `111_native_static_mesh_export_manifest_read_issue_text_helper_extraction_status_sync` - complete. Sync planning/API docs after native static mesh export manifest read issue text helper extraction.
+112. `112_native_static_mesh_package_directory_read_status_text_helper_extraction_status_sync` - complete. Sync planning/API docs after native static mesh package directory read status text helper extraction.
