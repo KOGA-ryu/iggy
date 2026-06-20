@@ -497,6 +497,10 @@ Recently completed optimized stretches:
   centralizes `NativeStaticMeshExportManifestStatusText(...)` beside the mesh
   export manifest status enum; the dump path compact failure text uses it while
   preserving successful manifest output byte-for-byte.
+  Native static mesh export manifest failure text renderer extraction now adds
+  `BuildNativeStaticMeshExportManifestFailureText(...)`; the dump path delegates
+  the non-written failure body through it after the existing `!result.written()`
+  check while preserving app-level prefix/newline behavior.
   Native static mesh batch export now writes `cube.igmesh`, `bean.igmesh`,
   `npc-marker.igmesh`, and one `static-mesh-export-manifest.txt` sidecar whose
   content is exactly `BuildNativeStaticMeshExportManifestText(policy).text`,
@@ -2056,6 +2060,31 @@ parser/help/dispatch/conflicts, package manifest status/helper behavior,
 package-directory/exact verification/file export/export report/export policy/
 asset writer behavior, CMake, fixtures, assets, renderer/model-slot behavior,
 package loading/discovery, schema, or glTF/glb/JSON parser work.
+
+Native Static Mesh Export Manifest Failure Text Renderer Extraction is complete
+as a behavior-preserving manifest stderr body cleanup.
+`NativeStaticMeshExportManifest.hpp` now exposes pure
+`BuildNativeStaticMeshExportManifestFailureText(const
+NativeStaticMeshExportManifestResult &result)` beside the mesh export manifest
+result/status boundary. The helper serializes only the failure message body:
+`static mesh export manifest failed: <Status> issues=<N>`, excluding the
+app-level `iggy_native_play:` prefix and trailing newline because the existing
+exception/catch path still supplies both. `PrintNativeStaticMeshExportManifest()`
+delegates the non-written failure body through the helper after the existing
+`!result.written()` check. Successful manifest dumping still prints
+`result.text` unchanged, and exact invalid-policy helper coverage was added.
+Source verification passed `native_static_mesh_export_manifest_tests`,
+`iggy_native_play`, successful manifest smoke matching the exact header and
+cube/bean/npc-marker asset rows, source `git diff --check`, and source
+`git diff --cached --check`. This packet does not change successful
+`--dump-static-mesh-export-manifest` output, generated manifest text, manifest
+build semantics, `written()` semantics, `NativeStaticMeshExportManifestResult`
+data shape, status strings, issue count semantics, CLI parser/help/dispatch/
+conflict/exit behavior, app-level error prefix/newline behavior, package
+manifest failure extraction, package directory report behavior, exact
+verification/report behavior, file export helpers, static model surfaces,
+`NativeVulkanRenderer.cpp`, renderer/model-slot behavior, checked-in assets or
+fixtures, `.igmesh` schema/loading, or glTF/glb/JSON parser work.
 
 Native Static Mesh Batch Manifest Sidecar Export is complete for batch export
 only: `ExportNativeStaticMeshPolicyToDirectory(...)` now writes policy mesh

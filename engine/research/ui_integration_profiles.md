@@ -800,6 +800,22 @@ parser/help/dispatch/conflicts, package manifest status/helper behavior,
 verification, file export, export report, export policy, asset writer, renderer/
 model-slot behavior, or parser scope.
 
+Native static mesh export manifest failure text renderer extraction is complete
+without changing visible manifest success output or CLI error wrapping. The pure
+`BuildNativeStaticMeshExportManifestFailureText(const NativeStaticMeshExportManifestResult &result)`
+helper now lives in `NativeStaticMeshExportManifest.hpp` and serializes only the
+non-written failure body:
+`static mesh export manifest failed: <Status> issues=<N>`.
+It intentionally excludes the `iggy_native_play:` prefix and trailing newline;
+the existing exception/catch path still supplies both.
+`PrintNativeStaticMeshExportManifest()` delegates to it only after the existing
+`!result.written()` check. Successful manifest text, generated sidecar content,
+manifest build semantics, `written()` semantics, result data shape, status
+strings, issue count semantics, CLI parser/help/dispatch/conflicts/exit
+behavior, package manifest behavior, package-directory/exact verification/file
+export/export report/static model surfaces, renderer/model-slot behavior, and
+parser scope remain unchanged.
+
 Native static mesh batch manifest sidecar export is complete as constrained
 batch-export file output: `iggy_native_play --export-static-mesh-assets
 --output-dir DIR` now writes the three built-in `.igmesh` files plus
