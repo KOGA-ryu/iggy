@@ -733,6 +733,8 @@ const char *NativeStaticMeshExportDirectoryVerificationStatusName(
 		return "ManifestBuildFailed";
 	case NativeStaticMeshExportDirectoryVerificationStatus::MissingPackageManifest:
 		return "MissingPackageManifest";
+	case NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestReadFailed:
+		return "PackageManifestReadFailed";
 	case NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestMismatch:
 		return "PackageManifestMismatch";
 	case NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestBuildFailed:

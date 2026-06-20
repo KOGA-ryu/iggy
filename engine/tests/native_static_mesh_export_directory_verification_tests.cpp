@@ -205,7 +205,12 @@ void TestPackageManifestMismatchFails()
 	ExportDefaultBatch();
 	const std::filesystem::path packageManifest =
 		TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename;
-	WriteText(packageManifest, "mismatch\n");
+	WriteText(
+		packageManifest,
+		"static-mesh-export-package-manifest format=iggy:native-static-mesh-export-package version=1 manifest=other-manifest.txt assets=3\n"
+		"asset=cube filename=cube.igmesh\n"
+		"asset=bean filename=bean.igmesh\n"
+		"asset=npc-marker filename=npc-marker.igmesh\n");
 
 	const NativeStaticMeshExportDirectoryVerificationResult result = VerifyDefault();
 
@@ -224,6 +229,41 @@ void TestPackageManifestMismatchFails()
 		!result.packageManifestVerified,
 		"package manifest mismatch should not mark package manifest verified");
 	Expect(result.entries.empty(), "package manifest mismatch should not verify asset entries");
+	CleanupTempRoot();
+}
+
+void TestMalformedPackageManifestReadFails()
+{
+	ResetTempRoot();
+	ExportDefaultBatch();
+	const std::filesystem::path packageManifest =
+		TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename;
+	WriteText(packageManifest, "static-mesh-export-package format=bad\n");
+
+	const NativeStaticMeshExportDirectoryVerificationResult result = VerifyDefault();
+
+	Expect(
+		result.status == NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestReadFailed,
+		"malformed package manifest should fail with read-failed status");
+	Expect(
+		result.problemPath == packageManifest,
+		"malformed package manifest should report package manifest problem path");
+	Expect(
+		result.packageManifestReadIssueCount > 0,
+		"malformed package manifest should report read issue count");
+	Expect(
+		result.issueCount == result.packageManifestReadIssueCount,
+		"malformed package manifest should expose read issues as result issues");
+	Expect(
+		result.manifestVerified,
+		"malformed package manifest should preserve manifest verified flag");
+	Expect(
+		result.packageManifestPath == packageManifest,
+		"malformed package manifest should report package manifest path");
+	Expect(
+		!result.packageManifestVerified,
+		"malformed package manifest should not mark package manifest verified");
+	Expect(result.entries.empty(), "malformed package manifest should not verify asset entries");
 	CleanupTempRoot();
 }
 
@@ -341,6 +381,7 @@ int main()
 	TestMissingManifestFails();
 	TestManifestMismatchFails();
 	TestMissingPackageManifestFails();
+	TestMalformedPackageManifestReadFails();
 	TestPackageManifestMismatchFails();
 	TestMissingExpectedAssetFails();
 	TestCorruptExpectedAssetFailsWithLoadIssue();

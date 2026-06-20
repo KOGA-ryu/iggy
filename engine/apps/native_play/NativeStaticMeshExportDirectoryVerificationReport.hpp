@@ -45,6 +45,8 @@ struct NativeStaticMeshExportDirectoryVerificationReport {
 		return "ManifestBuildFailed";
 	case NativeStaticMeshExportDirectoryVerificationStatus::MissingPackageManifest:
 		return "MissingPackageManifest";
+	case NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestReadFailed:
+		return "PackageManifestReadFailed";
 	case NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestMismatch:
 		return "PackageManifestMismatch";
 	case NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestBuildFailed:
@@ -72,6 +74,8 @@ struct NativeStaticMeshExportDirectoryVerificationReport {
 		return "ok";
 	if (verification.status == NativeStaticMeshExportDirectoryVerificationStatus::MissingPackageManifest)
 		return "missing";
+	if (verification.status == NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestReadFailed)
+		return "invalid";
 	if (verification.status == NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestMismatch)
 		return "mismatch";
 	return "not-checked";

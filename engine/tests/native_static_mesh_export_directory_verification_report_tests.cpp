@@ -218,7 +218,12 @@ void TestPackageManifestMismatchReportFails()
 	ExportDefaultBatch();
 	const std::filesystem::path packageManifest =
 		TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename;
-	WriteText(packageManifest, "mismatch\n");
+	WriteText(
+		packageManifest,
+		"static-mesh-export-package-manifest format=iggy:native-static-mesh-export-package version=1 manifest=other-manifest.txt assets=3\n"
+		"asset=cube filename=cube.igmesh\n"
+		"asset=bean filename=bean.igmesh\n"
+		"asset=npc-marker filename=npc-marker.igmesh\n");
 
 	const NativeStaticMeshExportDirectoryVerificationReport report =
 		BuildDefaultReport();
@@ -239,6 +244,39 @@ void TestPackageManifestMismatchReportFails()
 	Expect(
 		report.verification.entries.empty(),
 		"package manifest mismatch report should not include asset entries");
+	CleanupTempRoot();
+}
+
+void TestMalformedPackageManifestReportFails()
+{
+	ResetTempRoot();
+	ExportDefaultBatch();
+	const std::filesystem::path packageManifest =
+		TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename;
+	WriteText(packageManifest, "static-mesh-export-package format=bad\n");
+
+	const NativeStaticMeshExportDirectoryVerificationReport report =
+		BuildDefaultReport();
+
+	Expect(!report.verified(), "malformed package manifest report should fail");
+	Expect(
+		report.verification.status == NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestReadFailed,
+		"malformed package manifest report should expose read-failed status");
+	Expect(
+		report.text.find("status=PackageManifestReadFailed") != std::string::npos,
+		"malformed package manifest report should include status text");
+	Expect(
+		report.text.find("problem=" + packageManifest.string()) != std::string::npos,
+		"malformed package manifest report should include package manifest problem path");
+	Expect(
+		report.text.find("manifest=ok packageManifest=invalid") != std::string::npos,
+		"malformed package manifest report should include invalid sidecar diagnostics");
+	Expect(
+		report.verification.packageManifestReadIssueCount > 0,
+		"malformed package manifest report should expose read issue count");
+	Expect(
+		report.verification.entries.empty(),
+		"malformed package manifest report should not include asset entries");
 	CleanupTempRoot();
 }
 
@@ -329,6 +367,7 @@ int main()
 	TestMissingManifestReportFails();
 	TestManifestMismatchReportFails();
 	TestMissingPackageManifestReportFails();
+	TestMalformedPackageManifestReportFails();
 	TestPackageManifestMismatchReportFails();
 	TestMissingAssetReportFailsWithEntry();
 	TestCorruptAssetReportFailsWithIssueCount();

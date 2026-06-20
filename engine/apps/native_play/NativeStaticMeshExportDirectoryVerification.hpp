@@ -28,6 +28,7 @@ enum class NativeStaticMeshExportDirectoryVerificationStatus {
 	GeometryMismatch,
 	ManifestBuildFailed,
 	MissingPackageManifest,
+	PackageManifestReadFailed,
 	PackageManifestMismatch,
 	PackageManifestBuildFailed,
 };
@@ -55,6 +56,7 @@ struct NativeStaticMeshExportDirectoryVerificationResult {
 	std::vector<NativeStaticMeshExportDirectoryVerificationEntry> entries;
 	std::size_t verifiedCount = 0;
 	std::size_t issueCount = 0;
+	std::size_t packageManifestReadIssueCount = 0;
 	bool manifestVerified = false;
 	bool packageManifestVerified = false;
 
@@ -161,6 +163,16 @@ VerifyNativeStaticMeshExportDirectory(
 		result.status =
 			NativeStaticMeshExportDirectoryVerificationStatus::MissingPackageManifest;
 		result.problemPath = result.packageManifestPath;
+		return result;
+	}
+	const NativeStaticMeshExportPackageManifestReadResult readPackageManifest =
+		ReadNativeStaticMeshExportPackageManifestFile(result.packageManifestPath);
+	if (!readPackageManifest.read()) {
+		result.status =
+			NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestReadFailed;
+		result.problemPath = result.packageManifestPath;
+		result.packageManifestReadIssueCount = readPackageManifest.issues.size();
+		result.issueCount = result.packageManifestReadIssueCount;
 		return result;
 	}
 	if (NativeStaticMeshExportReadTextFile(result.packageManifestPath) != packageManifest.text) {
