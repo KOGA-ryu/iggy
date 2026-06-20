@@ -83,6 +83,16 @@ void TestBatchExportedDirectoryVerifies()
 	Expect(result.verifiedCount == 3, "verification should count all default assets");
 	Expect(result.entries.size() == 3, "verification should report all default assets");
 	Expect(result.issueCount == 0, "verified directory should have no issues");
+	Expect(
+		result.manifestPath == TempRoot() / NativeStaticMeshExportManifestFilename,
+		"verified directory should report manifest path");
+	Expect(
+		result.packageManifestPath == TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename,
+		"verified directory should report package manifest path");
+	Expect(result.manifestVerified, "verified directory should mark manifest verified");
+	Expect(
+		result.packageManifestVerified,
+		"verified directory should mark package manifest verified");
 	CleanupTempRoot();
 }
 
@@ -129,6 +139,14 @@ void TestMissingManifestFails()
 	Expect(
 		result.status == NativeStaticMeshExportDirectoryVerificationStatus::MissingManifest,
 		"missing manifest should fail verification");
+	Expect(result.manifestPath == TempRoot() / NativeStaticMeshExportManifestFilename, "missing manifest should report manifest path");
+	Expect(!result.manifestVerified, "missing manifest should not mark manifest verified");
+	Expect(
+		result.packageManifestPath.empty(),
+		"missing manifest should not report package manifest path");
+	Expect(
+		!result.packageManifestVerified,
+		"missing manifest should not mark package manifest verified");
 	CleanupTempRoot();
 }
 
@@ -144,6 +162,13 @@ void TestManifestMismatchFails()
 		result.status == NativeStaticMeshExportDirectoryVerificationStatus::ManifestMismatch,
 		"manifest mismatch should fail verification");
 	Expect(result.issueCount > 0, "manifest mismatch should report issue count");
+	Expect(!result.manifestVerified, "manifest mismatch should not mark manifest verified");
+	Expect(
+		result.packageManifestPath.empty(),
+		"manifest mismatch should not report package manifest path");
+	Expect(
+		!result.packageManifestVerified,
+		"manifest mismatch should not mark package manifest verified");
 	CleanupTempRoot();
 }
 
@@ -163,6 +188,14 @@ void TestMissingPackageManifestFails()
 	Expect(
 		result.problemPath == packageManifest,
 		"missing package manifest should report package manifest problem path");
+	Expect(result.manifestVerified, "missing package manifest should preserve manifest verified flag");
+	Expect(
+		result.packageManifestPath == packageManifest,
+		"missing package manifest should report package manifest path");
+	Expect(
+		!result.packageManifestVerified,
+		"missing package manifest should not mark package manifest verified");
+	Expect(result.entries.empty(), "missing package manifest should not verify asset entries");
 	CleanupTempRoot();
 }
 
@@ -183,6 +216,14 @@ void TestPackageManifestMismatchFails()
 		result.problemPath == packageManifest,
 		"package manifest mismatch should report package manifest problem path");
 	Expect(result.issueCount > 0, "package manifest mismatch should report issue count");
+	Expect(result.manifestVerified, "package manifest mismatch should preserve manifest verified flag");
+	Expect(
+		result.packageManifestPath == packageManifest,
+		"package manifest mismatch should report package manifest path");
+	Expect(
+		!result.packageManifestVerified,
+		"package manifest mismatch should not mark package manifest verified");
+	Expect(result.entries.empty(), "package manifest mismatch should not verify asset entries");
 	CleanupTempRoot();
 }
 

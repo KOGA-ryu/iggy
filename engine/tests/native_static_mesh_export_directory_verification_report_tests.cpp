@@ -86,6 +86,9 @@ void TestBatchExportedDirectoryReportSucceeds()
 		report.text.find("static-mesh-export-verification-report status=Verified") != std::string::npos,
 		"report should include verified summary row");
 	Expect(
+		report.text.find("manifest=ok packageManifest=ok") != std::string::npos,
+		"verified report should include sidecar success diagnostics");
+	Expect(
 		report.text.find("asset=cube filename=cube.igmesh status=Verified vertices=8 expectedVertices=8 indices=36 expectedIndices=36 issues=0") != std::string::npos,
 		"report should include cube entry row");
 	Expect(
@@ -154,6 +157,9 @@ void TestMissingManifestReportFails()
 	Expect(
 		report.text.find("problem=" + manifest.string()) != std::string::npos,
 		"missing manifest report should include manifest problem path");
+	Expect(
+		report.text.find("manifest=missing packageManifest=not-checked") != std::string::npos,
+		"missing manifest report should not claim package manifest was checked");
 	CleanupTempRoot();
 }
 
@@ -170,6 +176,9 @@ void TestManifestMismatchReportFails()
 	Expect(
 		report.verification.status == NativeStaticMeshExportDirectoryVerificationStatus::ManifestMismatch,
 		"manifest mismatch report should expose status");
+	Expect(
+		report.text.find("manifest=mismatch packageManifest=not-checked") != std::string::npos,
+		"manifest mismatch report should not claim package manifest was checked");
 	CleanupTempRoot();
 }
 
@@ -194,6 +203,12 @@ void TestMissingPackageManifestReportFails()
 	Expect(
 		report.text.find("problem=" + packageManifest.string()) != std::string::npos,
 		"missing package manifest report should include package manifest problem path");
+	Expect(
+		report.text.find("manifest=ok packageManifest=missing") != std::string::npos,
+		"missing package manifest report should include sidecar diagnostics");
+	Expect(
+		report.verification.entries.empty(),
+		"missing package manifest report should not include asset entries");
 	CleanupTempRoot();
 }
 
@@ -218,6 +233,12 @@ void TestPackageManifestMismatchReportFails()
 	Expect(
 		report.text.find("problem=" + packageManifest.string()) != std::string::npos,
 		"package manifest mismatch report should include package manifest problem path");
+	Expect(
+		report.text.find("manifest=ok packageManifest=mismatch") != std::string::npos,
+		"package manifest mismatch report should include sidecar diagnostics");
+	Expect(
+		report.verification.entries.empty(),
+		"package manifest mismatch report should not include asset entries");
 	CleanupTempRoot();
 }
 

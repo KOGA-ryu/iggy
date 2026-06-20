@@ -50,9 +50,13 @@ struct NativeStaticMeshExportDirectoryVerificationResult {
 		NativeStaticMeshExportDirectoryVerificationStatus::Verified;
 	std::filesystem::path outputDirectory;
 	std::filesystem::path problemPath;
+	std::filesystem::path manifestPath;
+	std::filesystem::path packageManifestPath;
 	std::vector<NativeStaticMeshExportDirectoryVerificationEntry> entries;
 	std::size_t verifiedCount = 0;
 	std::size_t issueCount = 0;
+	bool manifestVerified = false;
+	bool packageManifestVerified = false;
 
 	[[nodiscard]] bool verified() const
 	{
@@ -122,19 +126,21 @@ VerifyNativeStaticMeshExportDirectory(
 
 	const std::filesystem::path manifestPath =
 		directory / NativeStaticMeshExportManifestFilename;
-	if (!std::filesystem::exists(manifestPath)) {
+	result.manifestPath = manifestPath;
+	if (!std::filesystem::exists(result.manifestPath)) {
 		result.status =
 			NativeStaticMeshExportDirectoryVerificationStatus::MissingManifest;
-		result.problemPath = manifestPath;
+		result.problemPath = result.manifestPath;
 		return result;
 	}
-	if (NativeStaticMeshExportReadTextFile(manifestPath) != manifest.text) {
+	if (NativeStaticMeshExportReadTextFile(result.manifestPath) != manifest.text) {
 		result.status =
 			NativeStaticMeshExportDirectoryVerificationStatus::ManifestMismatch;
-		result.problemPath = manifestPath;
+		result.problemPath = result.manifestPath;
 		++result.issueCount;
 		return result;
 	}
+	result.manifestVerified = true;
 
 	NativeStaticMeshExportPackagePolicy packagePolicy =
 		DefaultNativeStaticMeshExportPackagePolicy();
@@ -150,19 +156,21 @@ VerifyNativeStaticMeshExportDirectory(
 
 	const std::filesystem::path packageManifestPath =
 		directory / NativeStaticMeshExportPackageManifestSidecarFilename;
-	if (!std::filesystem::exists(packageManifestPath)) {
+	result.packageManifestPath = packageManifestPath;
+	if (!std::filesystem::exists(result.packageManifestPath)) {
 		result.status =
 			NativeStaticMeshExportDirectoryVerificationStatus::MissingPackageManifest;
-		result.problemPath = packageManifestPath;
+		result.problemPath = result.packageManifestPath;
 		return result;
 	}
-	if (NativeStaticMeshExportReadTextFile(packageManifestPath) != packageManifest.text) {
+	if (NativeStaticMeshExportReadTextFile(result.packageManifestPath) != packageManifest.text) {
 		result.status =
 			NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestMismatch;
-		result.problemPath = packageManifestPath;
+		result.problemPath = result.packageManifestPath;
 		++result.issueCount;
 		return result;
 	}
+	result.packageManifestVerified = true;
 
 	const NativeStaticMeshExportReport report =
 		BuildNativeStaticMeshExportReport(policy);

@@ -764,6 +764,7 @@ void PrintNativeStaticMeshExportDirectoryVerification(
 		<< " output=" << result.outputDirectory.string()
 		<< " verified=" << result.verifiedCount
 		<< " manifest=ok"
+		<< " packageManifest=ok"
 		<< "\n";
 }
 

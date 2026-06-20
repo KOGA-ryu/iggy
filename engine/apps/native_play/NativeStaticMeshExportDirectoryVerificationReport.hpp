@@ -53,6 +53,30 @@ struct NativeStaticMeshExportDirectoryVerificationReport {
 	return "Unknown";
 }
 
+[[nodiscard]] inline const char *NativeStaticMeshExportDirectoryVerificationManifestState(
+	const NativeStaticMeshExportDirectoryVerificationResult &verification)
+{
+	if (verification.manifestVerified)
+		return "ok";
+	if (verification.status == NativeStaticMeshExportDirectoryVerificationStatus::MissingManifest)
+		return "missing";
+	if (verification.status == NativeStaticMeshExportDirectoryVerificationStatus::ManifestMismatch)
+		return "mismatch";
+	return "not-checked";
+}
+
+[[nodiscard]] inline const char *NativeStaticMeshExportDirectoryVerificationPackageManifestState(
+	const NativeStaticMeshExportDirectoryVerificationResult &verification)
+{
+	if (verification.packageManifestVerified)
+		return "ok";
+	if (verification.status == NativeStaticMeshExportDirectoryVerificationStatus::MissingPackageManifest)
+		return "missing";
+	if (verification.status == NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestMismatch)
+		return "mismatch";
+	return "not-checked";
+}
+
 [[nodiscard]] inline NativeStaticMeshExportDirectoryVerificationReport
 BuildNativeStaticMeshExportDirectoryVerificationReport(
 	const NativeStaticMeshExportPolicy &policy,
@@ -68,7 +92,11 @@ BuildNativeStaticMeshExportDirectoryVerificationReport(
 			report.verification.status)
 		<< " output=" << report.verification.outputDirectory.string()
 		<< " verified=" << report.verification.verifiedCount
-		<< " issues=" << report.verification.issueCount;
+		<< " issues=" << report.verification.issueCount
+		<< " manifest=" << NativeStaticMeshExportDirectoryVerificationManifestState(
+			report.verification)
+		<< " packageManifest=" << NativeStaticMeshExportDirectoryVerificationPackageManifestState(
+			report.verification);
 	if (!report.verification.problemPath.empty())
 		stream << " problem=" << report.verification.problemPath.string();
 	stream << "\n";
