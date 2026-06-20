@@ -252,6 +252,18 @@ void TestMalformedPackageManifestReadFails()
 		result.packageManifestReadIssueCount > 0,
 		"malformed package manifest should report read issue count");
 	Expect(
+		result.packageManifestReadIssues.size() ==
+			result.packageManifestReadIssueCount,
+		"malformed package manifest should store read issues");
+	if (!result.packageManifestReadIssues.empty()) {
+		Expect(
+			result.packageManifestReadIssues[0].line == 1,
+			"malformed package manifest should preserve read issue line");
+		Expect(
+			result.packageManifestReadIssues[0].token == "static-mesh-export-package",
+			"malformed package manifest should preserve read issue token");
+	}
+	Expect(
 		result.issueCount == result.packageManifestReadIssueCount,
 		"malformed package manifest should expose read issues as result issues");
 	Expect(

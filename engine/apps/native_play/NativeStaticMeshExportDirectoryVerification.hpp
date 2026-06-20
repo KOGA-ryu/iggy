@@ -54,6 +54,7 @@ struct NativeStaticMeshExportDirectoryVerificationResult {
 	std::filesystem::path manifestPath;
 	std::filesystem::path packageManifestPath;
 	std::vector<NativeStaticMeshExportDirectoryVerificationEntry> entries;
+	std::vector<NativeStaticMeshExportPackageManifestReadIssue> packageManifestReadIssues;
 	std::size_t verifiedCount = 0;
 	std::size_t issueCount = 0;
 	std::size_t packageManifestReadIssueCount = 0;
@@ -171,7 +172,9 @@ VerifyNativeStaticMeshExportDirectory(
 		result.status =
 			NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestReadFailed;
 		result.problemPath = result.packageManifestPath;
-		result.packageManifestReadIssueCount = readPackageManifest.issues.size();
+		result.packageManifestReadIssues = readPackageManifest.issues;
+		result.packageManifestReadIssueCount =
+			result.packageManifestReadIssues.size();
 		result.issueCount = result.packageManifestReadIssueCount;
 		return result;
 	}
