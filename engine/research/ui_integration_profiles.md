@@ -519,6 +519,21 @@ dispatch/conflicts/exit behavior, renderer/model-slot behavior, static mesh
 export/report/manifest/package/verification/package-directory behavior, or parser
 scope.
 
+Native static model fallback kind text helper extraction is complete without
+changing visible load-report output or CLI behavior. The enum-owned
+`NativeStaticModelFallbackKindText(...)` helper now lives in
+`NativeStaticModelLoadReport.hpp` beside `NativeStaticModelFallbackKind`, and
+static model load report `fallback=...` rendering uses it. Stable fallback
+strings are `Cube`, `ProceduralBean`, `ProceduralNpcMarker`, and fallback
+`Unknown`. Successful `--dump-static-model-load-report` output remains byte-for-
+byte unchanged for the summary row, fixed row order, slot names, filenames,
+statuses, fallback names, counts, issue counts, and trailing newlines. This does
+not change `NativeStaticModelPolicy.hpp`, fallback assignment behavior, static
+model policy defaults or lookup, CLI parser/help/dispatch/conflicts/exit
+behavior, renderer/model-slot behavior, static mesh export/report/manifest/
+package/verification/package-directory behavior, `.igmesh` schema/loading, or
+parser scope.
+
 Native static model load report CLI dumping is complete as no-Qt app-shell asset
 diagnostics: `iggy_native_play --dump-static-model-load-report` builds the
 default policy report against `IGGY_NATIVE_PLAY_ASSET_DIR`, prints compact
