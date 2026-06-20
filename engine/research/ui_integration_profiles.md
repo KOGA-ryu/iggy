@@ -607,6 +607,17 @@ report modes. It does not write files, validate output dirs, inspect the
 filesystem, change renderer behavior, expand `.igmesh`, add asset discovery, or
 change gameplay/scripted/final-state semantics.
 
+Native static mesh export report status text helper extraction is complete
+without changing visible report output or CLI behavior. The central
+`NativeStaticMeshExportReportStatusText(...)` helper now lives in
+`NativeStaticMeshExportReport.hpp` beside `NativeStaticMeshExportReportStatus`.
+Export report row rendering uses it, preserving the default summary and asset
+rows byte-for-byte, including `status=Writable`, vertices, indices, bytes,
+issues, row order, and trailing newlines. This does not change report
+construction, writer/policy behavior, CLI parser/help/dispatch/conflicts,
+filesystem/write behavior, verifier/package-directory/file export/manifest/
+package manifest behavior, renderer/model-slot behavior, or parser scope.
+
 Native static mesh export policy validation is complete as backend-free and
 filesystem-free guard logic: `ValidateNativeStaticMeshExportPolicy(...)` reports
 empty names, duplicate names, empty default filenames, filename separators, and

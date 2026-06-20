@@ -445,6 +445,10 @@ Recently completed optimized stretches:
   `iggy_native_play --dump-static-mesh-export-report`, reporting built-in export
   writability, counts, and bytes without writing files or inspecting output
   directories.
+  Native static mesh export report status text helper extraction now centralizes
+  `NativeStaticMeshExportReportStatusText(...)` beside the report status enum;
+  export report row rendering uses it while preserving the default
+  `status=Writable` report output byte-for-byte.
   Native static mesh export policy validation now adds backend-free
   `ValidateNativeStaticMeshExportPolicy(...)`, structured validation issues,
   and `InvalidPolicy` rejection for single/batch file export before lookup,
@@ -1679,6 +1683,25 @@ dependency work, `.igmesh` schema expansion, material/texture/descriptor/
 sampler/normals/UV/animation/scene graph/metadata fields,
 `NativeVulkanRenderer.cpp`, public renderer API, or runtime/product/scene/
 server/draw-list API changes.
+
+Native Static Mesh Export Report Status Text Helper Extraction is complete as a
+behavior-preserving status text cleanup. The central inline helper
+`NativeStaticMeshExportReportStatusText(...)` now lives beside
+`NativeStaticMeshExportReportStatus` in `NativeStaticMeshExportReport.hpp`, and
+export report row rendering uses the central helper. Stable strings are
+`Writable`, `WriterFailed`, and fallback `Unknown`. Direct export report status
+tests cover `Writable`, `WriterFailed`, and `Unknown` fallback. Source
+verification passed `native_static_mesh_export_report_tests`,
+`iggy_native_play`, exact CLI smoke for `--dump-static-mesh-export-report`, and
+source `git diff --check`. The default export report output is preserved byte-
+for-byte: summary row, cube/bean/npc-marker asset rows, row order,
+`status=Writable`, vertices, indices, bytes, issues, and trailing newlines.
+This packet does not change export report output, row order, counts, status
+assignment, CLI parser/help/dispatch/conflicts, report construction,
+writer/policy behavior, filesystem/write behavior, verifier/package-directory/
+file export/manifest/package manifest behavior, CMake, fixtures, assets,
+renderer/model-slot behavior, package loading/discovery, schema, or
+glTF/glb/JSON parser work.
 
 Native Static Mesh Export Policy Validation is complete as backend-free policy
 guarding: `ValidateNativeStaticMeshExportPolicy(...)` now lives in
