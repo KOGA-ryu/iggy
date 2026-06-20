@@ -12,6 +12,21 @@ enum class NativeStaticModelSlot {
 	Player,
 };
 
+[[nodiscard]] inline const char *NativeStaticModelSlotText(NativeStaticModelSlot slot)
+{
+	switch (slot) {
+	case NativeStaticModelSlot::Floor:
+		return "Floor";
+	case NativeStaticModelSlot::Wall:
+		return "Wall";
+	case NativeStaticModelSlot::NpcActor:
+		return "NpcActor";
+	case NativeStaticModelSlot::Player:
+		return "Player";
+	}
+	return "Unknown";
+}
+
 struct NativeStaticModelAssetRef {
 	NativeStaticModelSlot slot = NativeStaticModelSlot::Player;
 	std::string meshFilename;

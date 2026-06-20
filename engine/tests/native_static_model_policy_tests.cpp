@@ -12,6 +12,7 @@ using iggy::native_play::FindNativeStaticModelAsset;
 using iggy::native_play::NativeStaticModelAssetRef;
 using iggy::native_play::NativeStaticModelPolicy;
 using iggy::native_play::NativeStaticModelSlot;
+using iggy::native_play::NativeStaticModelSlotText;
 using iggy::test::Expect;
 using iggy::test::Failures;
 
@@ -97,6 +98,28 @@ void TestPolicyHelpersAreValueOnly()
 	}
 }
 
+void TestStaticModelSlotText()
+{
+	Expect(
+		std::string(NativeStaticModelSlotText(NativeStaticModelSlot::Floor)) == "Floor",
+		"floor static model slot text should match stable spelling");
+	Expect(
+		std::string(NativeStaticModelSlotText(NativeStaticModelSlot::Wall)) == "Wall",
+		"wall static model slot text should match stable spelling");
+	Expect(
+		std::string(NativeStaticModelSlotText(NativeStaticModelSlot::NpcActor)) ==
+			"NpcActor",
+		"NPC actor static model slot text should match stable spelling");
+	Expect(
+		std::string(NativeStaticModelSlotText(NativeStaticModelSlot::Player)) ==
+			"Player",
+		"player static model slot text should match stable spelling");
+	Expect(
+		std::string(NativeStaticModelSlotText(static_cast<NativeStaticModelSlot>(999))) ==
+			"Unknown",
+		"static model slot text should report unknown fallback");
+}
+
 } // namespace
 
 int main()
@@ -106,6 +129,7 @@ int main()
 	TestMissingSlotReturnsNull();
 	TestDuplicateSlotReturnsFirstMatch();
 	TestPolicyHelpersAreValueOnly();
+	TestStaticModelSlotText();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

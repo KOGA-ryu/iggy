@@ -55,6 +55,7 @@ using iggy::native_play::NativeStaticModelLoadEntry;
 using iggy::native_play::NativeStaticModelLoadReport;
 using iggy::native_play::NativeStaticModelLoadStatus;
 using iggy::native_play::NativeStaticModelSlot;
+using iggy::native_play::NativeStaticModelSlotText;
 using iggy::native_play::NativeStaticMeshFileExportBatchEntry;
 using iggy::native_play::NativeStaticMeshFileExportBatchResult;
 using iggy::native_play::NativeStaticMeshFileExportResult;
@@ -476,21 +477,6 @@ void PrintUsage()
 		<< "  --quit-after-script                  Exit after the scripted sequence.\n";
 }
 
-const char *NativeStaticModelSlotName(NativeStaticModelSlot slot)
-{
-	switch (slot) {
-	case NativeStaticModelSlot::Floor:
-		return "Floor";
-	case NativeStaticModelSlot::Wall:
-		return "Wall";
-	case NativeStaticModelSlot::NpcActor:
-		return "NpcActor";
-	case NativeStaticModelSlot::Player:
-		return "Player";
-	}
-	return "Unknown";
-}
-
 const char *NativeStaticModelLoadStatusName(NativeStaticModelLoadStatus status)
 {
 	switch (status) {
@@ -527,7 +513,7 @@ void PrintNativeStaticModelLoadReport(const NativeStaticModelLoadReport &report)
 		<< "\n";
 	for (const NativeStaticModelLoadEntry &entry : report.entries) {
 		std::cout
-			<< "slot=" << NativeStaticModelSlotName(entry.slot)
+			<< "slot=" << NativeStaticModelSlotText(entry.slot)
 			<< " filename=" << (entry.meshFilename.empty() ? "<missing>" : entry.meshFilename)
 			<< " status=" << NativeStaticModelLoadStatusName(entry.status)
 			<< " fallback=" << NativeStaticModelFallbackKindName(entry.fallback)
