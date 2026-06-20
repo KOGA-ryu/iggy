@@ -21,6 +21,7 @@
 #include "NativeStaticMeshExportDirectoryVerificationReport.hpp"
 #include "NativeStaticMeshFileExport.hpp"
 #include "NativeStaticMeshExportManifest.hpp"
+#include "NativeStaticMeshExportPackageDirectoryReport.hpp"
 #include "NativeStaticMeshExportPackageManifest.hpp"
 #include "NativeStaticMeshExportPolicy.hpp"
 #include "NativeStaticMeshExportReport.hpp"
@@ -36,6 +37,7 @@ using iggy::native_play::BuildNativeSceneDrawItems;
 using iggy::native_play::BuildNativeStaticModelLoadReport;
 using iggy::native_play::BuildNativeStaticMeshExportManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageManifestText;
+using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReport;
 using iggy::native_play::BuildNativeStaticMeshExportReport;
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
@@ -64,6 +66,8 @@ using iggy::native_play::NativeStaticMeshExportManifestResult;
 using iggy::native_play::NativeStaticMeshExportManifestStatus;
 using iggy::native_play::NativeStaticMeshExportPackageManifestResult;
 using iggy::native_play::NativeStaticMeshExportPackageManifestStatus;
+using iggy::native_play::NativeStaticMeshExportPackageDirectoryReport;
+using iggy::native_play::NativeStaticMeshExportPackageDirectoryReadStatusText;
 using iggy::native_play::NativeStaticMeshAsset;
 using iggy::native_play::NativeStaticMeshAssetWriteResult;
 using iggy::native_play::NativeStaticMeshExportDirectoryVerificationReport;
@@ -93,6 +97,7 @@ struct LaunchOptions {
 	bool dumpStaticModelLoadReport = false;
 	bool dumpStaticMeshExportManifest = false;
 	bool dumpStaticMeshExportPackageManifest = false;
+	bool dumpStaticMeshExportPackageDirectoryReport = false;
 	bool dumpStaticMeshExportReport = false;
 	bool dumpStaticMeshExportVerificationReport = false;
 	bool hasStaticMeshAssetDumpName = false;
@@ -232,6 +237,10 @@ LaunchOptions ParseArgs(int argc, char **argv)
 			options.dumpStaticMeshExportPackageManifest = true;
 			continue;
 		}
+		if (arg == "--dump-static-mesh-export-package-directory-report") {
+			options.dumpStaticMeshExportPackageDirectoryReport = true;
+			continue;
+		}
 		if (arg == "--dump-static-mesh-export-report") {
 			options.dumpStaticMeshExportReport = true;
 			continue;
@@ -325,6 +334,24 @@ LaunchOptions ParseArgs(int argc, char **argv)
 		throw std::runtime_error("--dump-static-mesh-export-package-manifest cannot be combined with --dump-static-mesh-asset");
 	if (options.dumpStaticMeshExportPackageManifest && options.dumpStaticModelLoadReport)
 		throw std::runtime_error("--dump-static-mesh-export-package-manifest cannot be combined with --dump-static-model-load-report");
+	if (options.dumpStaticMeshExportPackageDirectoryReport && !options.hasStaticMeshAssetOutputDir)
+		throw std::runtime_error("--dump-static-mesh-export-package-directory-report requires --output-dir");
+	if (options.dumpStaticMeshExportPackageDirectoryReport && options.dumpStaticModelLoadReport)
+		throw std::runtime_error("--dump-static-mesh-export-package-directory-report cannot be combined with --dump-static-model-load-report");
+	if (options.dumpStaticMeshExportPackageDirectoryReport && options.dumpStaticMeshExportPackageManifest)
+		throw std::runtime_error("--dump-static-mesh-export-package-directory-report cannot be combined with --dump-static-mesh-export-package-manifest");
+	if (options.dumpStaticMeshExportPackageDirectoryReport && options.dumpStaticMeshExportVerificationReport)
+		throw std::runtime_error("--dump-static-mesh-export-package-directory-report cannot be combined with --dump-static-mesh-export-verification-report");
+	if (options.dumpStaticMeshExportPackageDirectoryReport && options.verifyStaticMeshExport)
+		throw std::runtime_error("--dump-static-mesh-export-package-directory-report cannot be combined with --verify-static-mesh-export");
+	if (options.dumpStaticMeshExportPackageDirectoryReport && options.exportStaticMeshAssets)
+		throw std::runtime_error("--dump-static-mesh-export-package-directory-report cannot be combined with --export-static-mesh-assets");
+	if (options.dumpStaticMeshExportPackageDirectoryReport && options.hasStaticMeshAssetDumpName)
+		throw std::runtime_error("--dump-static-mesh-export-package-directory-report cannot be combined with --dump-static-mesh-asset");
+	if (options.dumpStaticMeshExportPackageDirectoryReport && options.dumpStaticMeshExportReport)
+		throw std::runtime_error("--dump-static-mesh-export-package-directory-report cannot be combined with --dump-static-mesh-export-report");
+	if (options.dumpStaticMeshExportPackageDirectoryReport && options.dumpStaticMeshExportManifest)
+		throw std::runtime_error("--dump-static-mesh-export-package-directory-report cannot be combined with --dump-static-mesh-export-manifest");
 	if (options.dumpStaticMeshExportVerificationReport && options.verifyStaticMeshExport)
 		throw std::runtime_error("--dump-static-mesh-export-verification-report cannot be combined with --verify-static-mesh-export");
 	if (options.dumpStaticMeshExportVerificationReport && options.exportStaticMeshAssets)
@@ -381,8 +408,9 @@ LaunchOptions ParseArgs(int argc, char **argv)
 			!options.hasStaticMeshAssetDumpName &&
 			!options.exportStaticMeshAssets &&
 			!options.verifyStaticMeshExport &&
+			!options.dumpStaticMeshExportPackageDirectoryReport &&
 			!options.dumpStaticMeshExportVerificationReport)
-		throw std::runtime_error("--output-dir requires --dump-static-mesh-asset, --export-static-mesh-assets, --verify-static-mesh-export, or --dump-static-mesh-export-verification-report");
+		throw std::runtime_error("--output-dir requires --dump-static-mesh-asset, --export-static-mesh-assets, --verify-static-mesh-export, --dump-static-mesh-export-verification-report, or --dump-static-mesh-export-package-directory-report");
 	if (options.dumpFinalState && options.scriptedControls.empty())
 		throw std::runtime_error("--dump-final-state requires --scripted-controls");
 	if (!options.expectedPlayerTiles.empty() && options.scriptedControls.empty())
@@ -423,6 +451,9 @@ void PrintUsage()
 		<< "  --dump-static-mesh-export-verification-report\n"
 		<< "                                       Print static mesh export verification\n"
 		<< "                                       rows for --output-dir.\n"
+		<< "  --dump-static-mesh-export-package-directory-report\n"
+		<< "                                       Print static mesh export package\n"
+		<< "                                       directory rows for --output-dir.\n"
 		<< "  --output-dir DIR                    Write dumped mesh to DIR/default\n"
 		<< "                                       filename instead of stdout.\n"
 		<< "\n"
@@ -791,6 +822,21 @@ void PrintNativeStaticMeshExportDirectoryVerificationReport(
 	}
 }
 
+void PrintNativeStaticMeshExportPackageDirectoryReport(
+	const std::filesystem::path &directory)
+{
+	const NativeStaticMeshExportPackageDirectoryReport report =
+		BuildNativeStaticMeshExportPackageDirectoryReport(directory);
+	std::cout << report.text << std::flush;
+	if (!report.readOk()) {
+		throw std::runtime_error(
+			std::string { "static mesh export package directory report failed: " } +
+			NativeStaticMeshExportPackageDirectoryReadStatusText(report.read.status) +
+			" output=" + report.read.directory.string() +
+			" issues=" + std::to_string(report.read.issueCount));
+	}
+}
+
 void ConfigureMoltenVkIcdFallback()
 {
 #if defined(__APPLE__)
@@ -1017,6 +1063,11 @@ int main(int argc, char **argv)
 		}
 		if (options.dumpStaticMeshExportVerificationReport) {
 			PrintNativeStaticMeshExportDirectoryVerificationReport(
+				options.staticMeshAssetOutputDir);
+			return 0;
+		}
+		if (options.dumpStaticMeshExportPackageDirectoryReport) {
+			PrintNativeStaticMeshExportPackageDirectoryReport(
 				options.staticMeshAssetOutputDir);
 			return 0;
 		}
