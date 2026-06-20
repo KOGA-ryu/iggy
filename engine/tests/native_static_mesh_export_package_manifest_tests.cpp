@@ -9,6 +9,7 @@
 
 namespace {
 
+using iggy::native_play::BuildNativeStaticMeshExportPackageManifestFailureText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageManifestText;
 using iggy::native_play::DefaultNativeStaticMeshExportPackagePolicy;
 using iggy::native_play::NativeStaticMeshExportPackageManifestReadIssueCode;
@@ -473,6 +474,22 @@ void TestPackageManifestStatusText()
 		"package manifest status text should report unknown fallback");
 }
 
+void TestPackageManifestFailureText()
+{
+	NativeStaticMeshExportPackagePolicy policy =
+		DefaultNativeStaticMeshExportPackagePolicy();
+	policy.version = 2;
+
+	const NativeStaticMeshExportPackageManifestResult result =
+		BuildNativeStaticMeshExportPackageManifestText(policy);
+
+	Expect(!result.written(), "package manifest failure text result should not write");
+	Expect(
+		BuildNativeStaticMeshExportPackageManifestFailureText(result) ==
+			"static mesh export package manifest failed: InvalidPolicy issues=1",
+		"package manifest failure text should match CLI contract");
+}
+
 } // namespace
 
 int main()
@@ -505,6 +522,7 @@ int main()
 	TestFileReaderPropagatesTextReaderIssues();
 	TestReadIssueCodeText();
 	TestPackageManifestStatusText();
+	TestPackageManifestFailureText();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

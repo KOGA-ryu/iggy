@@ -37,6 +37,7 @@ using iggy::native_play::BuildNativeSceneDrawItems;
 using iggy::native_play::BuildNativeStaticModelLoadReport;
 using iggy::native_play::BuildNativeStaticMeshExportManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageManifestText;
+using iggy::native_play::BuildNativeStaticMeshExportPackageManifestFailureText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReport;
 using iggy::native_play::BuildNativeStaticMeshExportReport;
 using iggy::native_play::BuildNativeStaticMeshExportReportText;
@@ -67,8 +68,6 @@ using iggy::native_play::NativeStaticMeshFileExportStatusText;
 using iggy::native_play::NativeStaticMeshExportReport;
 using iggy::native_play::NativeStaticMeshExportManifestResult;
 using iggy::native_play::NativeStaticMeshExportPackageManifestResult;
-using iggy::native_play::NativeStaticMeshExportPackageManifestStatus;
-using iggy::native_play::NativeStaticMeshExportPackageManifestStatusText;
 using iggy::native_play::NativeStaticMeshExportPackageDirectoryReport;
 using iggy::native_play::NativeStaticMeshExportPackageDirectoryReadStatusText;
 using iggy::native_play::NativeStaticMeshAsset;
@@ -500,12 +499,9 @@ void PrintNativeStaticMeshExportPackageManifest()
 	const NativeStaticMeshExportPackageManifestResult result =
 		BuildNativeStaticMeshExportPackageManifestText(
 			DefaultNativeStaticMeshExportPackagePolicy());
-	if (!result.written()) {
+	if (!result.written())
 		throw std::runtime_error(
-			std::string { "static mesh export package manifest failed: " } +
-			NativeStaticMeshExportPackageManifestStatusText(result.status) +
-			" issues=" + std::to_string(result.issueCount));
-	}
+			BuildNativeStaticMeshExportPackageManifestFailureText(result));
 	std::cout << result.text;
 }
 
