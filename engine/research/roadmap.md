@@ -505,6 +505,10 @@ Recently completed optimized stretches:
   `ValidateNativeStaticMeshExportPolicy(...)`, structured validation issues,
   and `InvalidPolicy` rejection for single/batch file export before lookup,
   directory checks, target preflight, writer work, or writes.
+  Native static mesh export policy validation issue text helper extraction now
+  adds `NativeStaticMeshExportPolicyValidationIssueCodeText(...)` beside the
+  base policy validation issue enum; no CLI/app-shell/report/package-policy
+  diagnostics consume it yet, so output bytes remain unchanged.
   Native static mesh export manifest text building now adds
   `NativeStaticMeshExportManifest.hpp` and
   `iggy_native_play --dump-static-mesh-export-manifest`, producing deterministic
@@ -2141,6 +2145,33 @@ policy, renderer loading cleanup, `NativeVulkanRenderer.cpp` changes,
 glTF/glb/JSON parser/dependency work, `.igmesh` schema/writer/loader/report
 byte math changes, valid default CLI output changes, gameplay/scripted/
 final-state behavior changes, or Linux/dGPU validation.
+
+Native Static Mesh Export Policy Validation Issue Text Helper Extraction is
+complete as an enum-owned base export policy validation issue text helper
+cleanup. `NativeStaticMeshExportPolicy.hpp` now exposes
+`NativeStaticMeshExportPolicyValidationIssueCodeText(NativeStaticMeshExportPolicyValidationIssueCode code)`
+beside the validation issue enum. The exact mappings are `EmptyName`,
+`DuplicateName`, `EmptyDefaultFilename`, `DefaultFilenameContainsSeparator`,
+`DuplicateDefaultFilename`, and fallback `Unknown` for out-of-range values. No
+CLI/app-shell/report/package-policy diagnostics consume the helper yet; output
+bytes remain unchanged. Direct export policy tests cover every current
+validation issue-code string and the out-of-range fallback. Existing validation
+behavior is preserved: issue generation order/counts, result data,
+`assetIndex`/`previousAssetIndex`/`value` fields, default policy, lookup
+behavior, built-in asset mapping, and unknown asset failure text are unchanged.
+Source verification passed `native_static_mesh_export_policy_tests`,
+`native_static_mesh_export_package_policy_tests`, source `git diff --check`, and
+source `git diff --cached --check`. This packet does not change
+`IggyNativePlay.cpp`, `NativeStaticMeshExportPackagePolicy.hpp`, package-policy
+helper extraction, file export, manifest, package manifest, verification,
+report, package-directory, loader, writer, renderer, static model, CMake,
+source/docs mixing, assets/fixtures, package loading/acceptance/discovery,
+exact verifier behavior, generated sidecars, export write policy, schema,
+parser/dependency work, or runtime output. Planner note: after packet 137 docs
+sync, the next step should be a decision/scout toward visible static asset
+pipeline consumption such as package acceptance/loading, renderer/package
+model-slot consumption, or authoring workflow integration unless the user
+overrides; do not assume another helper-only packet.
 
 Native Static Mesh Export Manifest Text Builder is complete as a deterministic
 no-write manifest surface: header-only app-local

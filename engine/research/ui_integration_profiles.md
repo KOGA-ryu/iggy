@@ -837,6 +837,25 @@ manifests, sidecar output, discovery/catalog policy, fixture canonicalization,
 overwrite/create-directory policy, renderer loading cleanup, glTF/glb/JSON
 parsing, `.igmesh` schema changes, or gameplay/scripted/final-state changes.
 
+Native static mesh export policy validation issue text helper extraction is
+complete as an enum-owned validation issue string cleanup with no visible output
+change. `NativeStaticMeshExportPolicyValidationIssueCodeText(NativeStaticMeshExportPolicyValidationIssueCode code)`
+now lives beside the base export policy validation issue enum in
+`NativeStaticMeshExportPolicy.hpp` and maps `EmptyName`, `DuplicateName`,
+`EmptyDefaultFilename`, `DefaultFilenameContainsSeparator`,
+`DuplicateDefaultFilename`, and out-of-range fallback `Unknown`. No
+CLI/app-shell/report/package-policy diagnostics consume the helper yet; output
+bytes remain unchanged. Validation issue generation order/counts, result data,
+`assetIndex`/`previousAssetIndex`/`value` fields, default policy, lookup
+behavior, built-in asset mapping, unknown asset failure text, file export,
+manifest/package manifest, verification/report/package-directory behavior,
+loader/writer behavior, renderer/static model behavior, source/CMake files,
+assets/fixtures, generated sidecars, export write policy, schema,
+parser/dependency work, and runtime output remain unchanged. Planner note:
+after this docs sync, the next step should be a decision/scout toward visible
+static asset pipeline consumption unless the user overrides, not an assumed
+helper-only continuation.
+
 Native static mesh export manifest CLI is complete as a no-write app-shell
 diagnostic: `NativeStaticMeshExportManifest.hpp` builds deterministic manifest
 text by validating the export policy and reusing the export report for stable
