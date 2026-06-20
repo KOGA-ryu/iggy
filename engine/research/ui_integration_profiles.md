@@ -652,12 +652,18 @@ asset geometry checks. The verifier now reads the package sidecar through the
 explicit-file reader before exact deterministic text comparison; malformed or
 unreadable sidecars fail as `PackageManifestReadFailed` and report
 `packageManifest=invalid`. Parse-valid exact mismatches remain
-`PackageManifestMismatch` with `packageManifest=mismatch`. Extra unrelated files
-are ignored; the verifier remains read-only and explicit-directory-only and
-does not add package directory reading, semantic package acceptance, discovery/
-scanning, package semantics, source mutation, overwrite/create-directory policy,
-fixture rewrites, renderer behavior, JSON/glTF/glb parsing, `.igmesh` schema
-changes, or gameplay/scripted/final-state changes.
+`PackageManifestMismatch` with `packageManifest=mismatch`. For
+`PackageManifestReadFailed`, structured package manifest read issues are
+preserved on the verification result and report rows are emitted after the
+summary and before asset rows, for example
+`packageManifestReadIssue code=MalformedHeader line=1 token=static-mesh-export-package`.
+Missing package sidecars, parse-valid mismatches, and mesh-manifest failures do
+not emit package read issue rows. Extra unrelated files are ignored; the
+verifier remains read-only and explicit-directory-only and does not add package
+directory reading, semantic package acceptance, discovery/scanning, package
+semantics, source mutation, overwrite/create-directory policy, fixture rewrites,
+renderer behavior, JSON/glTF/glb parsing, `.igmesh` schema changes, or
+gameplay/scripted/final-state changes.
 
 Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play

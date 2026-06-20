@@ -500,6 +500,9 @@ Recently completed optimized stretches:
   that file reader into explicit-directory verification after package sidecar
   existence and before exact deterministic text comparison, reporting malformed
   sidecars as `PackageManifestReadFailed` with `packageManifest=invalid`.
+  Native static mesh verification package read issue rows now preserve
+  structured package manifest reader issues on verifier failures and print
+  deterministic `packageManifestReadIssue ...` rows in the verification report.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1887,6 +1890,37 @@ package acceptance replacing exact text verification, policy/built-in id
 reconstruction from package rows, renderer behavior, shader behavior,
 runtime/product/scene/server APIs, `.igmesh` schema, fixtures, gameplay,
 docs-in-source, or next research/scout implementation.
+
+Native Static Mesh Verification Package Read Issue Rows are complete for
+read-only verification reporting. `NativeStaticMeshExportDirectoryVerificationResult`
+now carries structured package manifest read issues in
+`packageManifestReadIssues` for `PackageManifestReadFailed` results.
+`VerifyNativeStaticMeshExportDirectory(...)` copies
+`readPackageManifest.issues`, sets `packageManifestReadIssueCount` from the
+vector size, and keeps `issueCount` equal to that count. Existing
+`PackageManifestReadFailed`, `packageManifest=invalid`,
+`manifestVerified=true`, `packageManifestVerified=false`, empty asset entries,
+and verification ordering are preserved. Parse-valid but exact-mismatched
+package sidecars remain `PackageManifestMismatch` with no read issue rows;
+missing package sidecars remain `MissingPackageManifest` with no read issue
+rows; mesh manifest failures still prevent package sidecar read rows.
+`BuildNativeStaticMeshExportDirectoryVerificationReport(...)` now emits
+deterministic package manifest reader issue rows after the summary and before
+asset rows when `packageManifestReadIssues` is non-empty, for example
+`packageManifestReadIssue code=MalformedHeader line=1 token=static-mesh-export-package`.
+Fresh valid export verification reports no read issue rows, malformed package
+sidecar reports keep the compact verifier failure
+`PackageManifestReadFailed ... issues=1`, and parse-valid exact mismatch
+reports remain `PackageManifestMismatch` / `packageManifest=mismatch` without
+read issue rows. This docs packet does not change source, tests, CMake, assets,
+shaders, runtime, CLI flags, ParseArgs, usage text, package directory readers/
+reports/loading, discovery/scanning/catalog/registry/source mutation/repair/
+exact-extra-file rejection, export behavior, overwrite/create-directory/temp
+replacement/arbitrary output path policy, semantic package acceptance replacing
+exact deterministic text verification, policy/built-in id reconstruction from
+package rows, renderer behavior, runtime/product/scene/server APIs, gameplay,
+`.igmesh` schema, fixtures, dependencies, docs-in-source, or next research/
+scout implementation.
 
 Exit criteria:
 - Load a package or explicit scenario.
