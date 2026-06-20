@@ -851,6 +851,20 @@ rows, summary fields, status changes, `readOk()` changes, CLI exit changes, core
 loading, geometry validation, policy reconstruction, discovery/scanning,
 renderer behavior, or write behavior.
 
+Native static mesh package directory report builder parity coverage is complete
+as a test-only update. Existing data-builder/full-builder parity and
+text-renderer parity assertions now cover missing-from-manifest comparison,
+missing-from-package comparison, filename mismatch comparison, missing directory,
+file path instead of directory, malformed package sidecar data-builder parity,
+malformed nested manifest, directory at declared asset path, and extra unrelated
+file ignored branches. This does not change production source, report text, CLI
+behavior, package-directory read behavior/status/issue counts/rows, manifest
+comparison row/count semantics, file facts, verifier behavior, exact sidecar
+matching, generated sidecar/export behavior, package acceptance, package
+directory report/reader internals, package loading/discovery, `.igmesh` loading
+beyond existing verifier behavior, renderer/model-slot behavior, or parser
+scope.
+
 Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play
 --dump-static-mesh-export-verification-report --output-dir DIR` prints a

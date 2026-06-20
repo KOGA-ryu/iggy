@@ -586,6 +586,12 @@ Recently completed optimized stretches:
   `BuildNativeStaticMeshExportPackageDirectoryReportData(const std::filesystem::path &directory)`,
   which returns diagnostics with empty `text`; the full builder calls it and then
   assigns text through the renderer helper without changing report behavior.
+  Native static mesh package directory report builder parity coverage now extends
+  existing data-builder/full-builder and text-renderer parity assertions across
+  missing-from-manifest, missing-from-package, filename mismatch, missing
+  directory, file-not-directory, malformed package sidecar, malformed nested
+  manifest, directory-at-declared-asset, and extra-file-ignored branches without
+  changing production source or package-directory report behavior.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -2494,6 +2500,26 @@ text, write policy, nested mesh-manifest-only path facts, `.igmesh` loading,
 geometry validation, policy/built-in reconstruction, discovery/scanning/catalog/
 registry, exact-extra-file rejection, renderer/model slot/schema/gameplay
 behavior, glTF/glb/JSON parser work, or next source packet scope.
+
+Native Static Mesh Package Directory Report Builder Parity Coverage is complete
+as a test-only coverage packet. Existing data-builder/full-builder parity and
+text-renderer parity assertions now cover missing-from-manifest comparison,
+missing-from-package comparison, filename mismatch comparison, missing directory,
+file path instead of directory, malformed package sidecar data-builder parity,
+malformed nested manifest, directory at declared asset path, and extra unrelated
+file ignored branches. The tests use existing
+`BuildNativeStaticMeshExportPackageDirectoryReportData(...)`,
+`ExpectDataBuilderMatchesFullReport(...)`, and `ExpectTextRendererMatches(...)`
+helpers. Source verification passed focused package-directory report tests,
+`iggy_native_play`, valid package-directory report smoke, missing package
+sidecar smoke, missing nested mesh manifest smoke, and source `git diff --check`.
+This packet changed no production source, report text, CLI behavior, package-
+directory read behavior/status/issue counts/rows, manifest comparison row/count
+semantics, file facts, verifier behavior, exact sidecar matching, generated
+sidecar/export behavior, package acceptance semantics, package directory report/
+reader internals, package loading/discovery, `.igmesh` loading beyond existing
+verifier behavior, renderer/model-slot behavior, CMake, assets, fixtures,
+glTF/glb/JSON parser work, or next source packet scope.
 
 Exit criteria:
 - Load a package or explicit scenario.

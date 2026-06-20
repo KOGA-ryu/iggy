@@ -2185,6 +2185,32 @@ Native static mesh package directory report data builder extraction complete:
   exact-extra-file rejection, renderer/model-slot/schema/gameplay behavior,
   glTF/glb/JSON parser work, or next source packet scope.
 
+Native static mesh package directory report builder parity coverage complete:
+- Test-only packet; no production source changed.
+- Added existing data-builder/full-builder parity and text-renderer parity
+  assertions to remaining package-directory report branches: missing-from-
+  manifest comparison, missing-from-package comparison, filename mismatch
+  comparison, missing directory, file path instead of directory, malformed
+  package sidecar data-builder parity, malformed nested manifest, directory at
+  declared asset path, and extra unrelated file ignored.
+- Coverage uses existing helpers
+  `BuildNativeStaticMeshExportPackageDirectoryReportData(...)`,
+  `ExpectDataBuilderMatchesFullReport(...)`, and
+  `ExpectTextRendererMatches(...)`.
+- Source verification passed `native_static_mesh_export_package_directory_report_tests`,
+  focused `ctest -R native_static_mesh_export_package_directory_report_tests`,
+  `iggy_native_play`, valid package-directory report smoke, missing package
+  sidecar smoke, missing nested mesh manifest smoke, and source
+  `git diff --check`.
+- This docs packet does not change package-directory report/reader internals,
+  production source, report text, CLI behavior, package-directory read
+  behavior/status/issue counts/rows, manifest comparison row/count semantics,
+  file facts, verifier behavior, exact sidecar matching, generated sidecar/
+  export behavior, package acceptance semantics, package loading/discovery,
+  `.igmesh` loading beyond existing verifier behavior, renderer/model-slot
+  behavior, CMake, assets, fixtures, glTF/glb/JSON parser work, or next source
+  packet scope.
+
 Native static mesh package manifest text reader complete:
 - Added a dependency-free, filesystem-free in-memory reader for the current
   generated package manifest text grammar.
@@ -3184,7 +3210,9 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
     integrated.
 93. Native static mesh package directory report data builder extraction is
     integrated.
-94. Dispatch richer diagnostics display, overlays/labels, frame request/
+94. Native static mesh package directory report builder parity coverage is
+    integrated.
+95. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under
