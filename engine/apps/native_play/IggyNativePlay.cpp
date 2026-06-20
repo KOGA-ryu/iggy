@@ -63,6 +63,7 @@ using iggy::native_play::NativeStaticMeshFileExportStatusText;
 using iggy::native_play::NativeStaticMeshExportReport;
 using iggy::native_play::NativeStaticMeshExportReportEntry;
 using iggy::native_play::NativeStaticMeshExportReportStatus;
+using iggy::native_play::NativeStaticMeshExportReportStatusText;
 using iggy::native_play::NativeStaticMeshExportManifestResult;
 using iggy::native_play::NativeStaticMeshExportManifestStatus;
 using iggy::native_play::NativeStaticMeshExportPackageManifestResult;
@@ -535,18 +536,6 @@ void PrintNativeStaticModelLoadReport(const NativeStaticModelLoadReport &report)
 	}
 }
 
-const char *NativeStaticMeshExportReportStatusName(
-	NativeStaticMeshExportReportStatus status)
-{
-	switch (status) {
-	case NativeStaticMeshExportReportStatus::Writable:
-		return "Writable";
-	case NativeStaticMeshExportReportStatus::WriterFailed:
-		return "WriterFailed";
-	}
-	return "Unknown";
-}
-
 void PrintNativeStaticMeshExportReport(const NativeStaticMeshExportReport &report)
 {
 	std::cout
@@ -560,7 +549,7 @@ void PrintNativeStaticMeshExportReport(const NativeStaticMeshExportReport &repor
 		std::cout
 			<< "asset=" << entry.name
 			<< " filename=" << entry.defaultFilename
-			<< " status=" << NativeStaticMeshExportReportStatusName(entry.status)
+			<< " status=" << NativeStaticMeshExportReportStatusText(entry.status)
 			<< " vertices=" << entry.vertexCount
 			<< " indices=" << entry.indexCount
 			<< " bytes=" << entry.byteCount

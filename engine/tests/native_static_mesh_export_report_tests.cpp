@@ -19,6 +19,7 @@ using iggy::native_play::NativeStaticMeshExportPolicy;
 using iggy::native_play::NativeStaticMeshExportReport;
 using iggy::native_play::NativeStaticMeshExportReportEntry;
 using iggy::native_play::NativeStaticMeshExportReportStatus;
+using iggy::native_play::NativeStaticMeshExportReportStatusText;
 using iggy::native_play::WriteNativeStaticMeshAssetText;
 using iggy::test::Expect;
 using iggy::test::Failures;
@@ -138,6 +139,22 @@ void TestCustomPolicyPreservesOrderAndDuplicateRefs()
 	Expect(report.entries[1].defaultFilename == "cube-b.igmesh", "second duplicate filename should be preserved");
 }
 
+void TestExportReportStatusText()
+{
+	Expect(
+		std::string(NativeStaticMeshExportReportStatusText(
+			NativeStaticMeshExportReportStatus::Writable)) == "Writable",
+		"writable export report status text should match stable spelling");
+	Expect(
+		std::string(NativeStaticMeshExportReportStatusText(
+			NativeStaticMeshExportReportStatus::WriterFailed)) == "WriterFailed",
+		"writer-failed export report status text should match stable spelling");
+	Expect(
+		std::string(NativeStaticMeshExportReportStatusText(
+			static_cast<NativeStaticMeshExportReportStatus>(999))) == "Unknown",
+		"export report status text should report unknown fallback");
+}
+
 } // namespace
 
 int main()
@@ -146,6 +163,7 @@ int main()
 	TestDefaultReportEntriesAreWritable();
 	TestDefaultReportAggregatesTotals();
 	TestCustomPolicyPreservesOrderAndDuplicateRefs();
+	TestExportReportStatusText();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

@@ -14,6 +14,18 @@ enum class NativeStaticMeshExportReportStatus {
 	WriterFailed,
 };
 
+[[nodiscard]] inline const char *NativeStaticMeshExportReportStatusText(
+	NativeStaticMeshExportReportStatus status)
+{
+	switch (status) {
+	case NativeStaticMeshExportReportStatus::Writable:
+		return "Writable";
+	case NativeStaticMeshExportReportStatus::WriterFailed:
+		return "WriterFailed";
+	}
+	return "Unknown";
+}
+
 struct NativeStaticMeshExportReportEntry {
 	NativeStaticMeshBuiltInExportId id = NativeStaticMeshBuiltInExportId::Cube;
 	std::string name;
