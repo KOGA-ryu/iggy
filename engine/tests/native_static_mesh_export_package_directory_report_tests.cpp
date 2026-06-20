@@ -110,7 +110,7 @@ void TestBatchExportedDirectoryReportReads()
 				" manifestExists=1 manifestRegularFile=1 manifestBytes=" +
 				std::to_string(FileByteCount(
 					TempRoot() / NativeStaticMeshExportManifestFilename)) +
-				" manifestRead=ok manifestReadIssues=0 manifestMatches=3 manifestMismatches=0") !=
+				" manifestRead=ok manifestReadIssues=0 manifestMatches=3 manifestMismatches=0 manifestComparisonIssues=0") !=
 			std::string::npos,
 		"package directory report should include nested manifest file and read facts");
 	Expect(
@@ -142,7 +142,7 @@ void TestBatchExportedDirectoryReportReads()
 		report.text.find("\nmanifestReadIssue code=") == std::string::npos,
 		"successful package directory report should not include manifest read issue rows");
 	Expect(
-		report.text.find("manifestComparison") == std::string::npos,
+		report.text.find("\nmanifestComparison code=") == std::string::npos,
 		"successful package directory report should not include comparison rows");
 	Expect(
 		report.text.find(
@@ -183,7 +183,7 @@ void TestMissingFromManifestComparisonStillReportsRead()
 
 	Expect(report.readOk(), "missing-from-manifest comparison should not fail package report");
 	Expect(
-		report.text.find("manifestRead=ok manifestReadIssues=0 manifestMatches=2 manifestMismatches=1") !=
+		report.text.find("manifestRead=ok manifestReadIssues=0 manifestMatches=2 manifestMismatches=1 manifestComparisonIssues=1") !=
 			std::string::npos,
 		"missing-from-manifest comparison should update manifest comparison counts");
 	Expect(
@@ -213,7 +213,7 @@ void TestMissingFromPackageComparisonStillReportsRead()
 
 	Expect(report.readOk(), "missing-from-package comparison should not fail package report");
 	Expect(
-		report.text.find("manifestRead=ok manifestReadIssues=0 manifestMatches=3 manifestMismatches=1") !=
+		report.text.find("manifestRead=ok manifestReadIssues=0 manifestMatches=3 manifestMismatches=1 manifestComparisonIssues=1") !=
 			std::string::npos,
 		"missing-from-package comparison should update manifest comparison counts");
 	Expect(
@@ -243,7 +243,7 @@ void TestFilenameMismatchComparisonStillReportsRead()
 
 	Expect(report.readOk(), "filename mismatch comparison should not fail package report");
 	Expect(
-		report.text.find("manifestRead=ok manifestReadIssues=0 manifestMatches=2 manifestMismatches=1") !=
+		report.text.find("manifestRead=ok manifestReadIssues=0 manifestMatches=2 manifestMismatches=1 manifestComparisonIssues=1") !=
 			std::string::npos,
 		"filename mismatch comparison should update manifest comparison counts");
 	Expect(
@@ -407,7 +407,7 @@ void TestMissingNestedManifestStillReportsRead()
 		report.text.find("manifestAsset=") == std::string::npos,
 		"missing nested mesh manifest should not emit manifest asset rows");
 	Expect(
-		report.text.find("manifestComparison") == std::string::npos,
+		report.text.find("\nmanifestComparison code=") == std::string::npos,
 		"missing nested mesh manifest should not emit comparison rows");
 	Expect(
 		report.text.find("asset=cube filename=cube.igmesh") != std::string::npos,
@@ -442,7 +442,7 @@ void TestMalformedNestedManifestStillReportsRead()
 		report.text.find("manifestAsset=") == std::string::npos,
 		"malformed nested mesh manifest should not emit manifest asset rows");
 	Expect(
-		report.text.find("manifestComparison") == std::string::npos,
+		report.text.find("\nmanifestComparison code=") == std::string::npos,
 		"malformed nested mesh manifest should not emit comparison rows");
 	Expect(
 		report.text.find("asset=cube filename=cube.igmesh") != std::string::npos,

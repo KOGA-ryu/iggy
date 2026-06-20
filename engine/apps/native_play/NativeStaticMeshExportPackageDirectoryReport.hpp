@@ -267,7 +267,8 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 			if (manifestRead.read()) {
 				stream
 					<< " manifestMatches=" << manifestMatchCount
-					<< " manifestMismatches=" << manifestComparisons.size();
+					<< " manifestMismatches=" << manifestComparisons.size()
+					<< " manifestComparisonIssues=" << manifestComparisons.size();
 			}
 		}
 	}
