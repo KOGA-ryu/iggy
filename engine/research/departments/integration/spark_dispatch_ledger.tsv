@@ -70,4 +70,5 @@ packet	status	department	owner	source_commit	source_review	docs_commit	docs_revi
 133_native_static_asset_next_boundary_scout	complete	integration	finisher	889e1834	PASS-planner	5c684b37	not_requested		closed source and docs after native static mesh asset dump writer failure text renderer extraction	2026-06-20
 134_native_static_asset_next_boundary_scout	complete	integration	finisher	daee0f85	PASS-planner	9529d035	not_requested		closed source and docs after native static mesh unknown asset failure text helper extraction	2026-06-20
 135_native_static_asset_next_boundary_scout	complete	integration	finisher	5869297d	PASS-planner	178ac182	not_requested		closed source and docs after native static mesh asset writer issue text helper extraction	2026-06-20
-136_native_static_asset_next_boundary_scout	docs_ready	integration	finisher	a91e298b	PASS-planner				Sync Native Static Mesh Asset Loader Issue Text Helper Extraction docs from source commit a91e298b	2026-06-20
+136_native_static_asset_next_boundary_scout	complete	integration	finisher	a91e298b	PASS-planner	dc53db1d	not_requested		closed source and docs after native static mesh asset loader issue text helper extraction	2026-06-20
+137_native_static_asset_next_boundary_scout	research	integration	researcher						Scout next native static asset boundary after loader issue text helper	2026-06-20
