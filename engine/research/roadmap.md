@@ -675,6 +675,11 @@ Recently completed optimized stretches:
   `BuildNativeStaticMeshExportPackageDirectoryReportData(const std::filesystem::path &directory)`,
   which returns diagnostics with empty `text`; the full builder calls it and then
   assigns text through the renderer helper without changing report behavior.
+  Native static mesh package directory report failure text renderer extraction
+  now adds
+  `BuildNativeStaticMeshExportPackageDirectoryReportFailureText(...)`; the CLI
+  still prints and flushes `report.text` before delegating only the compact
+  non-`readOk()` failure body to the helper.
   Native static mesh package directory report builder parity coverage now extends
   existing data-builder/full-builder and text-renderer parity assertions across
   missing-from-manifest, missing-from-package, filename mismatch, missing
@@ -3121,6 +3126,37 @@ text, write policy, nested mesh-manifest-only path facts, `.igmesh` loading,
 geometry validation, policy/built-in reconstruction, discovery/scanning/catalog/
 registry, exact-extra-file rejection, renderer/model slot/schema/gameplay
 behavior, glTF/glb/JSON parser work, or next source packet scope.
+
+Native Static Mesh Package Directory Report Failure Text Renderer Extraction is
+complete as a behavior-preserving package-directory report failure-body cleanup.
+`NativeStaticMeshExportPackageDirectoryReport.hpp` now exposes pure
+`BuildNativeStaticMeshExportPackageDirectoryReportFailureText(const NativeStaticMeshExportPackageDirectoryReport &report)`,
+which serializes only the compact non-`readOk()` failure body:
+`static mesh export package directory report failed: <Status> output=<directory> issues=<N>`.
+The helper excludes the app-level `iggy_native_play:` prefix and embedded
+trailing newline, preserving existing catch path ownership. It uses
+`NativeStaticMeshExportPackageDirectoryReadStatusText(report.read.status)`,
+`report.read.directory.string()`, and `report.read.issueCount` exactly as the
+previous inline CLI code did. Output selection remains the package directory
+string only; no problem-path behavior or sidecar path substitution was added.
+`PrintNativeStaticMeshExportPackageDirectoryReport(...)` still prints and
+flushes `report.text` before failure handling, then throws using the helper.
+Package-directory report text rendering, data/full builders, reader behavior,
+`readOk()`, and verification/report code are unchanged. Source verification
+passed `native_static_mesh_export_package_directory_report_tests`,
+`iggy_native_play`, missing-directory package report stdout/stderr smoke,
+successful package report summary output smoke, missing package sidecar compact
+failure body smoke using package directory output and issue count, source
+`git diff --check`, and source `git diff --cached --check`. This packet does
+not change package-directory report text rows, report text renderer, report data
+builder, full builder, reader behavior, read result shape, read status
+semantics, `readOk()` semantics,
+`NativeStaticMeshExportPackageDirectoryReadStatusText(...)`, verification/report
+code, exact verification semantics, CLI parser/help/dispatch/conflict/exit
+behavior, app-level error prefix/newline behavior, built-in asset dump writer,
+docs/source mixing, CMake, renderer, assets/fixtures, sidecar generation, export
+write policy, schema, parser/dependency work, package loading/discovery/
+acceptance, extra-file policy, or static model behavior.
 
 Native Static Mesh Package Directory Report Builder Parity Coverage is complete
 as a test-only coverage packet. Existing data-builder/full-builder parity and

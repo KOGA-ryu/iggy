@@ -2814,6 +2814,41 @@ Native static mesh package directory report data builder extraction complete:
   exact-extra-file rejection, renderer/model-slot/schema/gameplay behavior,
   glTF/glb/JSON parser work, or next source packet scope.
 
+Native static mesh package directory report failure text renderer extraction complete:
+- Added pure package-directory report failure body helper
+  `BuildNativeStaticMeshExportPackageDirectoryReportFailureText(const NativeStaticMeshExportPackageDirectoryReport &report)`
+  beside the package-directory report wrapper boundary in
+  `NativeStaticMeshExportPackageDirectoryReport.hpp`.
+- The helper serializes only the compact non-`readOk()` failure body:
+  `static mesh export package directory report failed: <Status> output=<directory> issues=<N>`.
+- The helper excludes the app-level `iggy_native_play:` prefix and embedded
+  trailing newline; the existing catch path still owns that prefix/newline.
+- The helper uses
+  `NativeStaticMeshExportPackageDirectoryReadStatusText(report.read.status)`,
+  `report.read.directory.string()`, and `report.read.issueCount` exactly as the
+  previous inline CLI code did.
+- Output selection is `report.read.directory.string()` only; there is no
+  problem-path behavior or sidecar path substitution.
+- `PrintNativeStaticMeshExportPackageDirectoryReport(...)` still prints and
+  flushes `report.text` before failure handling, then throws using the helper.
+- Package-directory report text rendering, data/full builders, reader behavior,
+  `readOk()`, and verification/report code were not changed.
+- Source verification passed
+  `native_static_mesh_export_package_directory_report_tests`,
+  `iggy_native_play`, missing-directory package report stdout/stderr smoke,
+  successful package report summary output smoke, missing package sidecar compact
+  failure body smoke using package directory output and issue count, source
+  `git diff --check`, and source `git diff --cached --check`.
+- This docs packet does not change package-directory report text rows, report
+  text renderer, report data builder, full builder, reader behavior, read result
+  shape, read status semantics, `readOk()` semantics,
+  `NativeStaticMeshExportPackageDirectoryReadStatusText(...)`, verification/
+  report code, exact verification semantics, CLI parser/help/dispatch/conflict/
+  exit behavior, app-level error prefix/newline behavior, built-in asset dump
+  writer behavior, docs/source mixing, CMake, renderer, assets/fixtures, sidecar
+  generation, export write policy, schema, parser/dependency work, package
+  loading/discovery/acceptance, extra-file policy, or static model behavior.
+
 Native static mesh package directory report builder parity coverage complete:
 - Test-only packet; no production source changed.
 - Added existing data-builder/full-builder parity and text-renderer parity
@@ -3877,9 +3912,11 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
     integrated.
 115. Native static mesh package directory report data builder extraction is
     integrated.
-116. Native static mesh package directory report builder parity coverage is
+116. Native static mesh package directory report failure text renderer
+    extraction is integrated.
+117. Native static mesh package directory report builder parity coverage is
     integrated.
-117. Dispatch richer diagnostics display, overlays/labels, frame request/
+118. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

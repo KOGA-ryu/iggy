@@ -1129,6 +1129,27 @@ rows, summary fields, status changes, `readOk()` changes, CLI exit changes, core
 loading, geometry validation, policy reconstruction, discovery/scanning,
 renderer behavior, or write behavior.
 
+Native static mesh package directory report failure text renderer extraction is
+complete without changing visible report text or report builders. The pure
+`BuildNativeStaticMeshExportPackageDirectoryReportFailureText(const NativeStaticMeshExportPackageDirectoryReport &report)`
+helper now lives in `NativeStaticMeshExportPackageDirectoryReport.hpp` and
+serializes only the compact non-`readOk()` failure body:
+`static mesh export package directory report failed: <Status> output=<directory> issues=<N>`.
+`PrintNativeStaticMeshExportPackageDirectoryReport(...)` still prints and
+flushes `report.text` before failure handling, then delegates the failure body
+to the helper while the app-level catch path owns the `iggy_native_play:` prefix
+and newline. The helper uses
+`NativeStaticMeshExportPackageDirectoryReadStatusText(report.read.status)`,
+`report.read.directory.string()`, and `report.read.issueCount` exactly as the
+previous inline CLI code did. Output selection is only the package directory
+string; there is no problem-path behavior or sidecar path substitution. Package
+directory report rows, text renderer, data/full builders, reader behavior, read
+result shape, read status semantics, `readOk()`, verification/report code, exact
+verification semantics, CLI parser/help/dispatch/conflict/exit behavior,
+renderer/model-slot behavior, assets/fixtures, schema, parser scope, package
+loading/discovery/acceptance, extra-file policy, and static model behavior
+remain unchanged.
+
 Native static mesh package directory report builder parity coverage is complete
 as a test-only update. Existing data-builder/full-builder parity and
 text-renderer parity assertions now cover missing-from-manifest comparison,
