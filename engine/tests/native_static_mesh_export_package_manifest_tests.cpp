@@ -1,6 +1,8 @@
 #include "../apps/native_play/NativeStaticMeshExportPackageManifest.hpp"
 
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <string>
 
 #include "support/TestHarness.hpp"
@@ -14,6 +16,7 @@ using iggy::native_play::NativeStaticMeshExportPackageManifestReadResult;
 using iggy::native_play::NativeStaticMeshExportPackageManifestResult;
 using iggy::native_play::NativeStaticMeshExportPackageManifestStatus;
 using iggy::native_play::NativeStaticMeshExportPackagePolicy;
+using iggy::native_play::ReadNativeStaticMeshExportPackageManifestFile;
 using iggy::native_play::ReadNativeStaticMeshExportPackageManifestText;
 using iggy::test::Expect;
 using iggy::test::Failures;
@@ -148,6 +151,18 @@ void ExpectReadIssue(
 		ReadNativeStaticMeshExportPackageManifestText(text);
 	Expect(!result.read(), "malformed package manifest should not read");
 	Expect(HasReadIssue(result, code), message);
+}
+
+std::filesystem::path TempPackageManifestPath(const char *name)
+{
+	return std::filesystem::temp_directory_path() /
+		("iggy-native-package-manifest-" + std::string { name } + ".txt");
+}
+
+void WriteTextFile(const std::filesystem::path &path, const std::string &text)
+{
+	std::ofstream file(path, std::ios::binary);
+	file << text;
 }
 
 void TestDefaultPackageManifestReadsBack()
@@ -324,6 +339,84 @@ void TestReaderRejectsSeparatorManifestFilename()
 		"separator-containing package manifest nested manifest filename should be reported");
 }
 
+void TestFileReaderReadsGeneratedManifest()
+{
+	const std::filesystem::path path = TempPackageManifestPath("generated");
+	std::filesystem::remove(path);
+	const NativeStaticMeshExportPackageManifestResult manifest =
+		BuildNativeStaticMeshExportPackageManifestText(
+			DefaultNativeStaticMeshExportPackagePolicy());
+	WriteTextFile(path, manifest.text);
+
+	const NativeStaticMeshExportPackageManifestReadResult result =
+		ReadNativeStaticMeshExportPackageManifestFile(path);
+
+	std::filesystem::remove(path);
+	Expect(result.read(), "package manifest file reader should read generated text");
+	Expect(
+		result.document.formatId == "iggy:native-static-mesh-export-package",
+		"package manifest file reader should preserve format id");
+	Expect(result.document.version == 1, "package manifest file reader should preserve version");
+	Expect(
+		result.document.manifestFilename == "static-mesh-export-manifest.txt",
+		"package manifest file reader should preserve nested manifest filename");
+	Expect(result.document.assets.size() == 3, "package manifest file reader should preserve rows");
+	if (result.document.assets.size() == 3) {
+		Expect(result.document.assets[0].name == "cube", "file reader first row should be cube");
+		Expect(
+			result.document.assets[2].filename == "npc-marker.igmesh",
+			"file reader last row filename should be npc-marker.igmesh");
+	}
+}
+
+void TestFileReaderReportsMissingFile()
+{
+	const std::filesystem::path path = TempPackageManifestPath("missing");
+	std::filesystem::remove(path);
+
+	const NativeStaticMeshExportPackageManifestReadResult result =
+		ReadNativeStaticMeshExportPackageManifestFile(path);
+
+	Expect(!result.read(), "missing package manifest file should not read");
+	Expect(result.issues.size() == 1, "missing package manifest file should report one issue");
+	Expect(
+		HasReadIssue(
+			result,
+			NativeStaticMeshExportPackageManifestReadIssueCode::FileOpenFailed),
+		"missing package manifest file should report file-open failure");
+	if (!result.issues.empty()) {
+		Expect(result.issues[0].line == 0, "file-open failure should use line zero");
+		Expect(
+			result.issues[0].token == path.string(),
+			"file-open failure should report the supplied path");
+	}
+}
+
+void TestFileReaderPropagatesTextReaderIssues()
+{
+	const std::filesystem::path path = TempPackageManifestPath("malformed");
+	std::filesystem::remove(path);
+	WriteTextFile(
+		path,
+		"static-mesh-export-package-manifest format=bad version=1 manifest=static-mesh-export-manifest.txt assets=0\n");
+
+	const NativeStaticMeshExportPackageManifestReadResult result =
+		ReadNativeStaticMeshExportPackageManifestFile(path);
+
+	std::filesystem::remove(path);
+	Expect(!result.read(), "malformed package manifest file should not read");
+	Expect(
+		HasReadIssue(
+			result,
+			NativeStaticMeshExportPackageManifestReadIssueCode::UnsupportedFormatId),
+		"malformed package manifest file should propagate text reader issue");
+	Expect(
+		!HasReadIssue(
+			result,
+			NativeStaticMeshExportPackageManifestReadIssueCode::FileOpenFailed),
+		"malformed readable file should not report file-open failure");
+}
+
 } // namespace
 
 int main()
@@ -351,6 +444,9 @@ int main()
 	TestReaderRejectsDuplicateAssetFilenames();
 	TestReaderRejectsSeparatorFilenames();
 	TestReaderRejectsSeparatorManifestFilename();
+	TestFileReaderReadsGeneratedManifest();
+	TestFileReaderReportsMissingFile();
+	TestFileReaderPropagatesTextReaderIssues();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

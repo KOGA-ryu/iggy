@@ -4,6 +4,8 @@
 
 #include <cstddef>
 #include <cctype>
+#include <filesystem>
+#include <fstream>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -46,6 +48,7 @@ struct NativeStaticMeshExportPackageManifestDocument {
 };
 
 enum class NativeStaticMeshExportPackageManifestReadIssueCode {
+	FileOpenFailed,
 	EmptyInput,
 	MalformedHeader,
 	UnsupportedFormatId,
@@ -389,6 +392,25 @@ ReadNativeStaticMeshExportPackageManifestText(std::string_view text)
 	}
 
 	return result;
+}
+
+[[nodiscard]] inline NativeStaticMeshExportPackageManifestReadResult
+ReadNativeStaticMeshExportPackageManifestFile(const std::filesystem::path &path)
+{
+	std::ifstream file(path, std::ios::binary);
+	if (!file.is_open()) {
+		NativeStaticMeshExportPackageManifestReadResult result;
+		AddNativeStaticMeshExportPackageManifestReadIssue(
+			result,
+			NativeStaticMeshExportPackageManifestReadIssueCode::FileOpenFailed,
+			0,
+			path.string());
+		return result;
+	}
+
+	std::ostringstream buffer;
+	buffer << file.rdbuf();
+	return ReadNativeStaticMeshExportPackageManifestText(buffer.str());
 }
 
 } // namespace iggy::native_play
