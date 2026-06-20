@@ -441,6 +441,10 @@ Recently completed optimized stretches:
   `iggy_native_play --dump-static-mesh-export-report`, reporting built-in export
   writability, counts, and bytes without writing files or inspecting output
   directories.
+  Native static mesh export policy validation now adds backend-free
+  `ValidateNativeStaticMeshExportPolicy(...)`, structured validation issues,
+  and `InvalidPolicy` rejection for single/batch file export before lookup,
+  directory checks, target preflight, writer work, or writes.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1487,6 +1491,31 @@ dependency work, `.igmesh` schema expansion, material/texture/descriptor/
 sampler/normals/UV/animation/scene graph/metadata fields,
 `NativeVulkanRenderer.cpp`, public renderer API, or runtime/product/scene/
 server/draw-list API changes.
+
+Native Static Mesh Export Policy Validation is complete as backend-free policy
+guarding: `ValidateNativeStaticMeshExportPolicy(...)` now lives in
+`NativeStaticMeshExportPolicy.hpp` with structured
+`NativeStaticMeshExportPolicyValidationIssueCode` values for `EmptyName`,
+`DuplicateName`, `EmptyDefaultFilename`, `DefaultFilenameContainsSeparator`, and
+`DuplicateDefaultFilename`. `NativeStaticMeshExportPolicyValidationIssue` records
+issue details, and `NativeStaticMeshExportPolicyValidationResult::valid()`
+reports whether a policy is clean. Validation is filesystem-free and GPU-free.
+The default export policy is unchanged: `cube` / `cube.igmesh`, `bean` /
+`bean.igmesh`, and `npc-marker` / `npc-marker.igmesh`. `NativeStaticMeshFileExport.hpp`
+now validates supplied policies before single or batch export performs asset
+lookup, directory checks, target preflight, writer work, or writes.
+`NativeStaticMeshFileExportStatus::InvalidPolicy` and native CLI status text are
+available for invalid policy rejection; invalid single and batch exports return
+`InvalidPolicy` with issue counts and write no files. Valid default export
+report and valid default batch export output remain unchanged. This is not a
+source/test/CMake/asset/shader/runtime change in the docs packet and does not
+add package/export manifests, sidecar output, package discovery, registry/
+catalog/manifest expansion, source mutation, authoring package policy, checked-
+in fixture canonicalization, overwrite/force/create-directory/temp replacement
+policy, renderer loading cleanup, `NativeVulkanRenderer.cpp` changes,
+glTF/glb/JSON parser/dependency work, `.igmesh` schema/writer/loader/report
+byte math changes, valid default CLI output changes, gameplay/scripted/
+final-state behavior changes, or Linux/dGPU validation.
 
 Exit criteria:
 - Load a package or explicit scenario.

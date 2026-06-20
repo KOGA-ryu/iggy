@@ -595,6 +595,17 @@ report modes. It does not write files, validate output dirs, inspect the
 filesystem, change renderer behavior, expand `.igmesh`, add asset discovery, or
 change gameplay/scripted/final-state semantics.
 
+Native static mesh export policy validation is complete as backend-free and
+filesystem-free guard logic: `ValidateNativeStaticMeshExportPolicy(...)` reports
+empty names, duplicate names, empty default filenames, filename separators, and
+duplicate default filenames before file export work starts. Single and batch
+exports now return `InvalidPolicy` with issue counts before lookup, directory
+checks, target preflight, writer work, or writes; the default policy and valid
+default report/batch outputs remain unchanged. This does not add package
+manifests, sidecar output, discovery/catalog policy, fixture canonicalization,
+overwrite/create-directory policy, renderer loading cleanup, glTF/glb/JSON
+parsing, `.igmesh` schema changes, or gameplay/scripted/final-state changes.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.

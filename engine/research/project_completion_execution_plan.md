@@ -1177,6 +1177,34 @@ Native static mesh export report CLI complete:
   product/scene/server/draw-list API change, or gameplay/input/scripted-control/
   final-state semantic change.
 
+Native static mesh export policy validation complete:
+- `ValidateNativeStaticMeshExportPolicy(...)` adds backend-free and filesystem-
+  free validation in `NativeStaticMeshExportPolicy.hpp`.
+- Structured issue codes are
+  `NativeStaticMeshExportPolicyValidationIssueCode::{EmptyName, DuplicateName, EmptyDefaultFilename, DefaultFilenameContainsSeparator, DuplicateDefaultFilename}`.
+- `NativeStaticMeshExportPolicyValidationIssue` records issue details, and
+  `NativeStaticMeshExportPolicyValidationResult::valid()` reports clean policy
+  status.
+- The default export policy remains unchanged: `cube` / `cube.igmesh`, `bean` /
+  `bean.igmesh`, and `npc-marker` / `npc-marker.igmesh`.
+- `NativeStaticMeshFileExport.hpp` validates supplied policies before single or
+  batch file export performs asset lookup, directory checks, target preflight,
+  writer work, or writes.
+- `NativeStaticMeshFileExportStatus::InvalidPolicy` plus native CLI status-name
+  text now covers invalid policies.
+- Invalid single export and invalid batch export both return `InvalidPolicy`
+  with issue counts and write no files.
+- Valid default export report and valid default batch export output remain
+  unchanged.
+- This docs packet does not change source, tests, CMake, assets, shaders,
+  runtime, package/export manifests, sidecar output, package discovery,
+  registry/catalog/manifest expansion, source mutation, authoring package
+  policy, checked-in fixture canonicalization, overwrite/force/create-directory/
+  temp replacement policy, renderer loading cleanup, `NativeVulkanRenderer.cpp`,
+  glTF/glb/JSON parser/dependency work, `.igmesh` schema/writer/loader/report
+  byte math, valid default CLI output, gameplay/scripted/final-state behavior,
+  or Linux/dGPU validation.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -2066,7 +2094,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 58. Native static mesh output directory export CLI is integrated.
 59. Native static mesh built-in batch export CLI is integrated.
 60. Native static mesh export report CLI is integrated.
-61. Dispatch richer diagnostics display, overlays/labels, frame request/
+61. Native static mesh export policy validation is integrated.
+62. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under
