@@ -450,6 +450,11 @@ Recently completed optimized stretches:
   `iggy_native_play --dump-static-mesh-export-manifest`, producing deterministic
   manifest text from validated export policy/report data without writing files
   or starting NativeVulkanApp, SDL, or Vulkan.
+  Native static mesh batch export now writes `cube.igmesh`, `bean.igmesh`,
+  `npc-marker.igmesh`, and one `static-mesh-export-manifest.txt` sidecar whose
+  content is exactly `BuildNativeStaticMeshExportManifestText(policy).text`,
+  while single-asset stdout/output-dir export remains unchanged and writes no
+  sidecar.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1549,6 +1554,33 @@ catalog expansion, source mutation, material/texture/schema changes, JSON/
 glTF/glb parser/dependency work, renderer behavior changes,
 `NativeVulkanRenderer.cpp` changes, native app CMake source registration
 changes, gameplay/scripted/final-state changes, or docs mixed into source.
+
+Native Static Mesh Batch Manifest Sidecar Export is complete for batch export
+only: `ExportNativeStaticMeshPolicyToDirectory(...)` now writes policy mesh
+files plus one manifest sidecar named exactly `static-mesh-export-manifest.txt`.
+The sidecar content is exactly
+`BuildNativeStaticMeshExportManifestText(policy).text`. Batch export preflights
+the sidecar target before mesh writes and applies the same no-overwrite
+`TargetAlreadyExists` policy; batch results now report `manifestOutputPath` and
+`manifestByteCount`. CLI batch success output includes stable `manifest=...`
+and `manifestBytes=...` fields, for example:
+`static-mesh-export-batch output=/tmp/iggy-native-sidecar-smoke-78 exported=3 bytes=33879 manifest=/tmp/iggy-native-sidecar-smoke-78/static-mesh-export-manifest.txt manifestBytes=272`.
+The sidecar content shape is:
+`static-mesh-export-manifest version=1 assets=3 bytes=33879`,
+`asset=cube filename=cube.igmesh vertices=8 indices=36 bytes=523`,
+`asset=bean filename=bean.igmesh vertices=234 indices=1296 bytes=23882`, and
+`asset=npc-marker filename=npc-marker.igmesh vertices=98 indices=504 bytes=9474`.
+An existing sidecar target fails before mesh writes with a compact error such as
+`iggy_native_play: static mesh batch export failed: TargetAlreadyExists output=/tmp/iggy-native-sidecar-existing-78/static-mesh-export-manifest.txt issues=0`.
+Single-asset stdout and single-asset output-dir export remain unchanged; single
+output-dir export writes no sidecar. This docs packet does not change source,
+tests, CMake, assets, shaders, runtime, package discovery/scanning, registry/
+catalog expansion, package semantics, source mutation, overwrite/force/create-
+directory/temp replacement, checked-in fixture rewrites/canonicalization,
+renderer behavior, `NativeVulkanRenderer.cpp`, JSON/glTF/glb parser/dependency
+work, `.igmesh` schema expansion, materials/textures/normals/UVs/animation/
+schema work, gameplay/scripted/final-state behavior, or next research/scout
+implementation.
 
 Exit criteria:
 - Load a package or explicit scenario.

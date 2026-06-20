@@ -621,6 +621,19 @@ create directories, overwrite files, accept arbitrary output paths, rewrite
 fixtures, add discovery/catalog policy, parse JSON/glTF/glb, change renderer
 behavior, or change gameplay/scripted/final-state semantics.
 
+Native static mesh batch manifest sidecar export is complete as constrained
+batch-export file output: `iggy_native_play --export-static-mesh-assets
+--output-dir DIR` now writes the three built-in `.igmesh` files plus
+`static-mesh-export-manifest.txt`. The sidecar content is exactly the manifest
+builder text, and batch success output includes `manifest=...` and
+`manifestBytes=...` fields. Batch export preflights the sidecar target before
+mesh writes and reports `TargetAlreadyExists` on the sidecar path without
+overwriting or writing mesh files. Single-asset stdout and output-dir export
+remain unchanged and write no sidecar. This does not add package discovery,
+registry/catalog expansion, package semantics, overwrite/force/create-directory
+policy, fixture rewrites, renderer behavior, JSON/glTF/glb parsing, `.igmesh`
+schema expansion, or gameplay/scripted/final-state changes.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.
