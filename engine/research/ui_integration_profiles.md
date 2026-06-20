@@ -685,6 +685,16 @@ verify nested files, parse mesh manifests, load `.igmesh`, inspect directories
 beyond the reader, integrate CLI/export/verification/package loading, or change
 native app behavior.
 
+Native static mesh package directory report CLI is complete as a thin native
+app-shell dump over the report builder. `iggy_native_play
+--dump-static-mesh-export-package-directory-report --output-dir DIR` prints the
+report before SDL/Vulkan startup and returns success only when the directory
+reader reports `Read`; failures print report text first, then use the existing
+compact `iggy_native_play:` error path. The CLI remains non-verifying: missing
+nested mesh manifests still report `Read` with projected paths, and the flag
+does not add package loading, scanning, export mutation, renderer behavior, or
+native app play/session behavior changes.
+
 Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play
 --dump-static-mesh-export-verification-report --output-dir DIR` prints a

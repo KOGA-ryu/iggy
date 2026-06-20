@@ -1632,6 +1632,50 @@ Native static mesh package directory report builder complete:
   dependencies, fixture rewrites, runtime/product/scene/server APIs, gameplay,
   or next source packet scope.
 
+Native static mesh package directory report CLI complete:
+- Added CLI flag `--dump-static-mesh-export-package-directory-report`.
+- The flag requires `--output-dir DIR` and is included in the existing
+  output-dir allow-list.
+- The flag conflicts with existing dump/report/export/verify/asset/model modes:
+  `--dump-static-model-load-report`,
+  `--dump-static-mesh-export-package-manifest`,
+  `--dump-static-mesh-export-verification-report`, `--verify-static-mesh-export`,
+  `--export-static-mesh-assets`, `--dump-static-mesh-asset`,
+  `--dump-static-mesh-export-report`, and
+  `--dump-static-mesh-export-manifest`.
+- Added help text for the new flag.
+- Early dispatch calls
+  `BuildNativeStaticMeshExportPackageDirectoryReport(outputDir)`, writes
+  `report.text` to stdout, and returns success only when `report.readOk()` is
+  true.
+- On non-`Read`, it prints report text first, then exits nonzero through the
+  existing `iggy_native_play:` error path with compact status/output/issues.
+- Dispatch happens before `NativeVulkanApp` construction and before SDL/Vulkan
+  startup.
+- `--help` includes the new flag.
+- Running the flag without `--output-dir` fails nonzero with `requires --output-dir`.
+- Valid export/report smoke includes `status=Read`, `assets=3`, `issues=0`,
+  package manifest path, nested manifest path, and three asset rows.
+- Missing package sidecar smoke fails nonzero after report text with
+  `PackageManifestReadFailed`, `issues=1`, and
+  `packageManifestReadIssue code=FileOpenFailed`.
+- Malformed package sidecar smoke fails nonzero after report text with
+  `PackageManifestReadFailed` and parser issue row.
+- Missing nested `static-mesh-export-manifest.txt` smoke exits zero with
+  `status=Read` and projected paths, proving the CLI report remains
+  non-verifying.
+- Conflict smoke with `--verify-static-mesh-export` fails during parse/conflict
+  handling.
+- This docs packet does not change source, tests, CMake, assets, shaders,
+  runtime, package loading, verification semantics, scanning/discovery, export
+  mutation, renderer behavior, source parser/dependency work, package report
+  builder, `NativeVulkanRenderer.cpp`, model-slot expansion, package discovery/
+  scanning/catalog/registry, source mutation, repair, exact-extra-file
+  rejection, export behavior, write policy, deterministic verification
+  replacement, export-policy/built-in id reconstruction, `.igmesh` schema/
+  material/texture/normal/UV/animation expansion, gameplay/scripted/final-state
+  behavior, fixture rewrites, docs-in-source, or next source packet scope.
+
 Native static mesh package manifest text reader complete:
 - Added a dependency-free, filesystem-free in-memory reader for the current
   generated package manifest text grammar.
@@ -2604,7 +2648,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 74. Native static mesh verification package read issue rows are integrated.
 75. Native static mesh package directory reader is integrated.
 76. Native static mesh package directory report builder is integrated.
-77. Dispatch richer diagnostics display, overlays/labels, frame request/
+77. Native static mesh package directory report CLI is integrated.
+78. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

@@ -510,6 +510,10 @@ Recently completed optimized stretches:
   Native static mesh package directory reporting now adds a header-only no-write
   report builder over that reader, printing a summary, optional package manifest
   read issue rows, and parsed asset rows without inspecting beyond the reader.
+  Native static mesh package directory report CLI now adds
+  `iggy_native_play --dump-static-mesh-export-package-directory-report --output-dir DIR`,
+  dispatching before NativeVulkanApp/SDL/Vulkan startup and returning success
+  only when the package directory report read succeeds.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1989,6 +1993,37 @@ schema/material/texture/normal/UV/animation expansion, glTF/JSON dependencies,
 fixture rewrites, runtime/product/scene/server APIs, gameplay, source/test/
 CMake/assets/shader/runtime files in this docs packet, or next source packet
 scope.
+
+Native Static Mesh Package Directory Report CLI is complete for the native
+no-Qt app shell. `iggy_native_play` now accepts
+`--dump-static-mesh-export-package-directory-report`; the flag requires
+`--output-dir DIR` and is included in the output-dir allow-list. It conflicts
+with `--dump-static-model-load-report`,
+`--dump-static-mesh-export-package-manifest`,
+`--dump-static-mesh-export-verification-report`, `--verify-static-mesh-export`,
+`--export-static-mesh-assets`, `--dump-static-mesh-asset`,
+`--dump-static-mesh-export-report`, and
+`--dump-static-mesh-export-manifest`. Help text includes the new flag. Early
+dispatch calls `BuildNativeStaticMeshExportPackageDirectoryReport(outputDir)`,
+writes `report.text` to stdout, and returns success only when `report.readOk()`
+is true. On non-`Read`, it prints report text first, then exits nonzero through
+the existing `iggy_native_play:` error path with compact status/output/issues.
+Dispatch happens before `NativeVulkanApp` construction and before SDL/Vulkan
+startup. Valid export/report smoke output includes `status=Read`, `assets=3`,
+`issues=0`, package manifest path, nested manifest path, and three asset rows.
+Missing and malformed package sidecar smokes fail nonzero after report text with
+`PackageManifestReadFailed` and package read issue rows. Missing nested
+`static-mesh-export-manifest.txt` still exits zero with `status=Read` and
+projected paths, so the CLI report remains non-verifying. This does not change
+package loading, verification semantics, scanning/discovery, export mutation,
+renderer behavior, source parser/dependency work, package report builder,
+`NativeVulkanRenderer.cpp`, model-slot expansion, package discovery/scanning/
+catalog/registry, source mutation, repair, exact-extra-file rejection, export
+behavior, write policy, deterministic verification replacement,
+export-policy/built-in id reconstruction, `.igmesh` schema/material/texture/
+normal/UV/animation expansion, gameplay/scripted/final-state behavior, fixture
+rewrites, docs-in-source, CMake, source/test/assets/shader/runtime files in this
+docs packet, or next source packet scope.
 
 Exit criteria:
 - Load a package or explicit scenario.
