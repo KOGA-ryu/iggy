@@ -508,6 +508,11 @@ Recently completed optimized stretches:
   `BuildNativeStaticMeshExportDirectoryVerificationReportText(const NativeStaticMeshExportDirectoryVerificationReport &report)`;
   the full builder still verifies with `VerifyNativeStaticMeshExportDirectory(...)`
   and assigns `report.text` from the helper with byte-for-byte text preserved.
+  Native static mesh export verification report data builder extraction now adds
+  `BuildNativeStaticMeshExportDirectoryVerificationReportData(const NativeStaticMeshExportPolicy &policy, const std::filesystem::path &directory)`;
+  the data builder stores the verifier result in `report.verification` and
+  returns with `report.text` empty, while the full builder still assigns text
+  through the report text renderer helper.
   Native static mesh package directory reading now adds a header-only explicit
   directory reader that reads `static-mesh-export-package-manifest.txt` and
   projects nested manifest and asset paths without checking file existence,
@@ -2018,6 +2023,30 @@ generated sidecar/export behavior, package acceptance semantics, package
 directory report behavior, package loading/discovery, `.igmesh` loading beyond
 existing verifier behavior, renderer/model-slot behavior, CMake, assets,
 fixtures, glTF/glb/JSON parser work, or next source packet scope.
+
+Native Static Mesh Export Verification Report Data Builder Extraction is
+complete as a behavior-preserving structured-data split. The new no-text helper
+`BuildNativeStaticMeshExportDirectoryVerificationReportData(const NativeStaticMeshExportPolicy &policy, const std::filesystem::path &directory)`
+constructs `NativeStaticMeshExportDirectoryVerificationReport`, assigns
+`report.verification = VerifyNativeStaticMeshExportDirectory(policy, directory)`,
+and returns with `report.text` empty. The full
+`BuildNativeStaticMeshExportDirectoryVerificationReport(policy, directory)` now
+calls the data builder, assigns
+`report.text = BuildNativeStaticMeshExportDirectoryVerificationReportText(report)`,
+and returns the same full report behavior. Report text and verification
+semantics are preserved: status, verified count, issue count, problem path,
+sidecar paths/states, package read issue count/rows, entries, entry
+statuses/counts, CLI behavior, and failure behavior. Focused tests compare
+data-builder structured fields against the full builder and assert empty data
+builder text for valid export, missing mesh manifest, missing package manifest,
+malformed package sidecar, missing asset, and geometry mismatch; existing
+text-renderer parity checks remain intact. This docs packet does not change
+verifier internals, verification status/order/issue counts, report text, CLI
+behavior, exact sidecar matching, generated sidecar/export behavior, package
+acceptance semantics, package directory report/reader behavior, package
+loading/discovery, `.igmesh` loading beyond existing verifier behavior,
+renderer/model-slot behavior, CMake, assets, fixtures, glTF/glb/JSON parser
+work, or next source packet scope.
 
 Native Static Mesh Package Directory Reader is complete as a header-only,
 explicit-directory package read helper. `NativeStaticMeshExportPackageDirectoryReader.hpp`

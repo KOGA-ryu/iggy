@@ -879,6 +879,23 @@ package directory report behavior, package loading/discovery, `.igmesh` loading
 beyond existing verifier behavior, renderer/model-slot behavior, or parser
 scope.
 
+Native static mesh export verification report data builder extraction is
+complete without changing visible report text, verifier behavior, or CLI
+behavior. The no-text helper
+`BuildNativeStaticMeshExportDirectoryVerificationReportData(const NativeStaticMeshExportPolicy &policy, const std::filesystem::path &directory)`
+constructs the report surface, stores
+`VerifyNativeStaticMeshExportDirectory(policy, directory)` in
+`report.verification`, and leaves `report.text` empty. The full
+`BuildNativeStaticMeshExportDirectoryVerificationReport(policy, directory)` now
+calls that data builder and then assigns text through
+`BuildNativeStaticMeshExportDirectoryVerificationReportText(report)`. Statuses,
+verified counts, issue counts, problem paths, sidecar state fields, package read
+issue rows, entries, entry statuses/counts, CLI exit behavior, exact sidecar
+matching, generated sidecar/export behavior, package acceptance, package
+directory report/reader behavior, package loading/discovery, `.igmesh` loading
+beyond existing verifier behavior, renderer/model-slot behavior, and parser
+scope are preserved.
+
 Native static mesh export package policy is complete as value-only metadata:
 `NativeStaticMeshExportPackagePolicy.hpp` defines the stable format id
 `iggy:native-static-mesh-export-package`, version `1`, and manifest filename
