@@ -69,6 +69,7 @@ using iggy::native_play::NativeStaticMeshExportManifestStatus;
 using iggy::native_play::NativeStaticMeshExportManifestStatusText;
 using iggy::native_play::NativeStaticMeshExportPackageManifestResult;
 using iggy::native_play::NativeStaticMeshExportPackageManifestStatus;
+using iggy::native_play::NativeStaticMeshExportPackageManifestStatusText;
 using iggy::native_play::NativeStaticMeshExportPackageDirectoryReport;
 using iggy::native_play::NativeStaticMeshExportPackageDirectoryReadStatusText;
 using iggy::native_play::NativeStaticMeshAsset;
@@ -559,18 +560,6 @@ void PrintNativeStaticMeshExportReport(const NativeStaticMeshExportReport &repor
 	}
 }
 
-const char *NativeStaticMeshExportPackageManifestStatusName(
-	NativeStaticMeshExportPackageManifestStatus status)
-{
-	switch (status) {
-	case NativeStaticMeshExportPackageManifestStatus::Built:
-		return "Built";
-	case NativeStaticMeshExportPackageManifestStatus::InvalidPolicy:
-		return "InvalidPolicy";
-	}
-	return "Unknown";
-}
-
 void PrintNativeStaticMeshExportManifest()
 {
 	const NativeStaticMeshExportManifestResult result =
@@ -593,7 +582,7 @@ void PrintNativeStaticMeshExportPackageManifest()
 	if (!result.written()) {
 		throw std::runtime_error(
 			std::string { "static mesh export package manifest failed: " } +
-			NativeStaticMeshExportPackageManifestStatusName(result.status) +
+			NativeStaticMeshExportPackageManifestStatusText(result.status) +
 			" issues=" + std::to_string(result.issueCount));
 	}
 	std::cout << result.text;

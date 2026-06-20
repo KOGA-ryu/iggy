@@ -16,6 +16,7 @@ using iggy::native_play::NativeStaticMeshExportPackageManifestReadIssueCodeText;
 using iggy::native_play::NativeStaticMeshExportPackageManifestReadResult;
 using iggy::native_play::NativeStaticMeshExportPackageManifestResult;
 using iggy::native_play::NativeStaticMeshExportPackageManifestStatus;
+using iggy::native_play::NativeStaticMeshExportPackageManifestStatusText;
 using iggy::native_play::NativeStaticMeshExportPackagePolicy;
 using iggy::native_play::ReadNativeStaticMeshExportPackageManifestFile;
 using iggy::native_play::ReadNativeStaticMeshExportPackageManifestText;
@@ -454,6 +455,24 @@ void TestReadIssueCodeText()
 		"package manifest read issue code text should report unknown fallback");
 }
 
+void TestPackageManifestStatusText()
+{
+	Expect(
+		std::string(NativeStaticMeshExportPackageManifestStatusText(
+			NativeStaticMeshExportPackageManifestStatus::Built)) == "Built",
+		"built package manifest status text should match stable spelling");
+	Expect(
+		std::string(NativeStaticMeshExportPackageManifestStatusText(
+			NativeStaticMeshExportPackageManifestStatus::InvalidPolicy)) ==
+			"InvalidPolicy",
+		"invalid-policy package manifest status text should match stable spelling");
+	Expect(
+		std::string(NativeStaticMeshExportPackageManifestStatusText(
+			static_cast<NativeStaticMeshExportPackageManifestStatus>(999))) ==
+			"Unknown",
+		"package manifest status text should report unknown fallback");
+}
+
 } // namespace
 
 int main()
@@ -485,6 +504,7 @@ int main()
 	TestFileReaderReportsMissingFile();
 	TestFileReaderPropagatesTextReaderIssues();
 	TestReadIssueCodeText();
+	TestPackageManifestStatusText();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

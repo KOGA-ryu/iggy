@@ -22,6 +22,18 @@ enum class NativeStaticMeshExportPackageManifestStatus {
 	InvalidPolicy,
 };
 
+[[nodiscard]] inline const char *NativeStaticMeshExportPackageManifestStatusText(
+	NativeStaticMeshExportPackageManifestStatus status)
+{
+	switch (status) {
+	case NativeStaticMeshExportPackageManifestStatus::Built:
+		return "Built";
+	case NativeStaticMeshExportPackageManifestStatus::InvalidPolicy:
+		return "InvalidPolicy";
+	}
+	return "Unknown";
+}
+
 struct NativeStaticMeshExportPackageManifestResult {
 	NativeStaticMeshExportPackageManifestStatus status =
 		NativeStaticMeshExportPackageManifestStatus::InvalidPolicy;
