@@ -12,6 +12,7 @@
 namespace {
 
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
+using iggy::native_play::BuildNativeStaticMeshExportDirectoryVerificationFailureText;
 using iggy::native_play::BuildNativeStaticMeshExportDirectoryVerificationSuccessText;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
 using iggy::native_play::ExportNativeStaticMeshAssetToDirectory;
@@ -130,6 +131,27 @@ void TestMissingOutputDirectoryFailsWithoutCreatingIt()
 	Expect(!std::filesystem::exists(TempRoot()), "verification should not create parent directory");
 }
 
+void TestMissingOutputDirectoryFailureText()
+{
+	CleanupTempRoot();
+	const std::filesystem::path missing = TempRoot() / "missing";
+	const NativeStaticMeshExportDirectoryVerificationResult result =
+		VerifyNativeStaticMeshExportDirectory(
+			DefaultNativeStaticMeshExportPolicy(),
+			missing);
+
+	Expect(
+		result.status == NativeStaticMeshExportDirectoryVerificationStatus::MissingOutputDirectory,
+		"missing output directory failure text test should fail verification");
+	const std::string expected =
+		"static mesh export verification failed: MissingOutputDirectory output=" +
+		missing.string() +
+		" issues=0";
+	Expect(
+		BuildNativeStaticMeshExportDirectoryVerificationFailureText(result) == expected,
+		"missing output directory failure text should use output directory fallback");
+}
+
 void TestFilePathInsteadOfDirectoryFails()
 {
 	ResetTempRoot();
@@ -166,6 +188,27 @@ void TestMissingManifestFails()
 	Expect(
 		!result.packageManifestVerified,
 		"missing manifest should not mark package manifest verified");
+	CleanupTempRoot();
+}
+
+void TestMissingManifestFailureText()
+{
+	ResetTempRoot();
+	ExportDefaultBatch();
+	std::filesystem::remove(TempRoot() / NativeStaticMeshExportManifestFilename);
+
+	const NativeStaticMeshExportDirectoryVerificationResult result = VerifyDefault();
+
+	Expect(
+		result.status == NativeStaticMeshExportDirectoryVerificationStatus::MissingManifest,
+		"missing manifest failure text test should fail verification");
+	const std::string expected =
+		"static mesh export verification failed: MissingManifest output=" +
+		(TempRoot() / NativeStaticMeshExportManifestFilename).string() +
+		" issues=0";
+	Expect(
+		BuildNativeStaticMeshExportDirectoryVerificationFailureText(result) == expected,
+		"missing manifest failure text should use problem path");
 	CleanupTempRoot();
 }
 
@@ -215,6 +258,29 @@ void TestMissingPackageManifestFails()
 		!result.packageManifestVerified,
 		"missing package manifest should not mark package manifest verified");
 	Expect(result.entries.empty(), "missing package manifest should not verify asset entries");
+	CleanupTempRoot();
+}
+
+void TestMissingPackageManifestFailureText()
+{
+	ResetTempRoot();
+	ExportDefaultBatch();
+	const std::filesystem::path packageManifest =
+		TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename;
+	std::filesystem::remove(packageManifest);
+
+	const NativeStaticMeshExportDirectoryVerificationResult result = VerifyDefault();
+
+	Expect(
+		result.status == NativeStaticMeshExportDirectoryVerificationStatus::MissingPackageManifest,
+		"missing package manifest failure text test should fail verification");
+	const std::string expected =
+		"static mesh export verification failed: MissingPackageManifest output=" +
+		packageManifest.string() +
+		" issues=0";
+	Expect(
+		BuildNativeStaticMeshExportDirectoryVerificationFailureText(result) == expected,
+		"missing package manifest failure text should use package manifest problem path");
 	CleanupTempRoot();
 }
 
@@ -446,10 +512,13 @@ int main()
 	TestBatchExportedDirectoryVerifies();
 	TestVerificationSuccessText();
 	TestMissingOutputDirectoryFailsWithoutCreatingIt();
+	TestMissingOutputDirectoryFailureText();
 	TestFilePathInsteadOfDirectoryFails();
 	TestMissingManifestFails();
+	TestMissingManifestFailureText();
 	TestManifestMismatchFails();
 	TestMissingPackageManifestFails();
+	TestMissingPackageManifestFailureText();
 	TestMalformedPackageManifestReadFails();
 	TestPackageManifestMismatchFails();
 	TestMissingExpectedAssetFails();
