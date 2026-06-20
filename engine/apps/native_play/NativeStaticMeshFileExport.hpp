@@ -110,6 +110,23 @@ struct NativeStaticMeshFileExportBatchResult {
 	return stream.str();
 }
 
+[[nodiscard]] inline std::string BuildNativeStaticMeshFileExportBatchSuccessText(
+	const NativeStaticMeshFileExportBatchResult &result)
+{
+	std::ostringstream stream;
+	stream
+		<< "static-mesh-export-batch"
+		<< " output=" << result.outputDirectory.string()
+		<< " exported=" << result.exportedCount
+		<< " bytes=" << result.byteCount
+		<< " manifest=" << result.manifestOutputPath.string()
+		<< " manifestBytes=" << result.manifestByteCount
+		<< " packageManifest=" << result.packageManifestOutputPath.string()
+		<< " packageManifestBytes=" << result.packageManifestByteCount
+		<< "\n";
+	return stream.str();
+}
+
 [[nodiscard]] inline NativeStaticMeshFileExportResult ExportNativeStaticMeshAssetToDirectory(
 	const NativeStaticMeshExportPolicy &policy,
 	const std::string &name,

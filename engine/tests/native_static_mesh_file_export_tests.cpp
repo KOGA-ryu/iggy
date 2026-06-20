@@ -17,6 +17,7 @@ namespace {
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
 using iggy::native_play::BuildNativeStaticMeshExportManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageManifestText;
+using iggy::native_play::BuildNativeStaticMeshFileExportBatchSuccessText;
 using iggy::native_play::BuildNativeStaticMeshFileExportFailureText;
 using iggy::native_play::BuildNativeStaticMeshFileExportSuccessText;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
@@ -447,6 +448,30 @@ void TestSingleExportInvalidPolicyFailureText()
 	CleanupTempRoot();
 }
 
+void TestBatchExportSuccessText()
+{
+	ResetTempRoot();
+	const NativeStaticMeshFileExportBatchResult result =
+		ExportNativeStaticMeshPolicyToDirectory(
+			DefaultNativeStaticMeshExportPolicy(),
+			TempRoot());
+
+	Expect(
+		result.status == NativeStaticMeshFileExportStatus::Exported,
+		"batch export success text test should export default policy");
+	const std::string expected =
+		"static-mesh-export-batch output=" + TempRoot().string() +
+		" exported=3 bytes=33879 manifest=" +
+		(TempRoot() / NativeStaticMeshExportManifestFilename).string() +
+		" manifestBytes=272 packageManifest=" +
+		(TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename).string() +
+		" packageManifestBytes=250\n";
+	Expect(
+		BuildNativeStaticMeshFileExportBatchSuccessText(result) == expected,
+		"batch export success text should match CLI contract");
+	CleanupTempRoot();
+}
+
 void TestInvalidPolicyRejectsSingleExportWithoutWriting()
 {
 	ResetTempRoot();
@@ -536,6 +561,7 @@ int main()
 	TestSingleExportSuccessText();
 	TestSingleExportTargetExistsFailureText();
 	TestSingleExportInvalidPolicyFailureText();
+	TestBatchExportSuccessText();
 	TestInvalidPolicyRejectsSingleExportWithoutWriting();
 	TestInvalidPolicyRejectsBatchExportBeforeWriting();
 	TestFileExportStatusText();
