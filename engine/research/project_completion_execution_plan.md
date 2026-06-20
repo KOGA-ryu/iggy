@@ -1322,6 +1322,33 @@ Native static mesh export verification report CLI complete:
   material/texture behavior, gameplay/scripted/final-state behavior, or next
   research/scout source implementation.
 
+Native static mesh export package policy complete:
+- Added header-only, app-local, value-only
+  `NativeStaticMeshExportPackagePolicy`.
+- Stable constants are
+  `NativeStaticMeshExportPackageFormatId =
+  "iggy:native-static-mesh-export-package"`,
+  `NativeStaticMeshExportPackageFormatVersion = 1`, and
+  `NativeStaticMeshExportPackageManifestFilename =
+  "static-mesh-export-manifest.txt"`.
+- `DefaultNativeStaticMeshExportPackagePolicy()` wraps
+  `DefaultNativeStaticMeshExportPolicy()`.
+- `ValidateNativeStaticMeshExportPackagePolicy(...)` performs deterministic
+  metadata validation only; it does not access the filesystem or mutate, export,
+  or verify package directories.
+- Validation issue codes are `EmptyFormatId`, `UnsupportedFormatId`,
+  `UnsupportedVersion`, `EmptyManifestFilename`,
+  `ManifestFilenameContainsSeparator`,
+  `ManifestFilenameCollidesWithAssetFilename`, and `InvalidMeshExportPolicy`
+  with nested issue count surfaced.
+- This docs packet does not change source, tests, CMake, assets, shaders,
+  runtime, `IggyNativePlay.cpp`, `NativeVulkanRenderer.cpp`, renderer behavior,
+  shader behavior, fixtures, runtime/product/scene/server APIs, native app CMake
+  source registration, CLI behavior, parser behavior, package discovery/
+  scanning, package IO, overwrite/create-dir policy, `.igmesh` schema,
+  material/texture/normal/UV/animation behavior, gameplay behavior, or next
+  research/scout source implementation.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -2216,7 +2243,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 63. Native static mesh batch manifest sidecar export is integrated.
 64. Native static mesh export directory verification CLI is integrated.
 65. Native static mesh export verification report CLI is integrated.
-66. Dispatch richer diagnostics display, overlays/labels, frame request/
+66. Native static mesh export package policy is integrated.
+67. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

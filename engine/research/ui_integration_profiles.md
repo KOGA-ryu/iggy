@@ -659,6 +659,16 @@ writes, repair, scanning, package/catalog/parser/schema/material/texture
 behavior, renderer behavior, native app CMake source registration, or gameplay/
 scripted/final-state changes.
 
+Native static mesh export package policy is complete as value-only metadata:
+`NativeStaticMeshExportPackagePolicy.hpp` defines the stable format id
+`iggy:native-static-mesh-export-package`, version `1`, and manifest filename
+`static-mesh-export-manifest.txt`, then wraps the default mesh export policy.
+Its validation is deterministic and filesystem-free, covering unsupported
+metadata, manifest filename separators/collisions, and invalid nested mesh
+export policies. It does not add CLI behavior, package IO, discovery/scanning,
+parsing, renderer behavior, schema/material/texture changes, or gameplay
+semantics.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.

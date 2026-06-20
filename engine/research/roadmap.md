@@ -465,6 +465,11 @@ Recently completed optimized stretches:
   `iggy_native_play --dump-static-mesh-export-verification-report --output-dir DIR`,
   printing summary and per-asset rows before startup while preserving existing
   `--verify-static-mesh-export` output and behavior.
+  Native static mesh export package policy now adds value-only
+  `NativeStaticMeshExportPackagePolicy` metadata and deterministic validation
+  for the export package format id, version, manifest filename, and nested mesh
+  export policy without filesystem access, package IO, CLI changes, or renderer
+  behavior changes.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1643,6 +1648,29 @@ runtime/product/scene/server APIs, docs-in-source, native app CMake source
 registration, writes/repair/scanning/package/catalog/parser/schema/material/
 texture behavior, gameplay/scripted/final-state behavior, or next research/
 scout implementation.
+
+Native Static Mesh Export Package Policy is complete as a header-only,
+app-local, value-only policy surface. `NativeStaticMeshExportPackagePolicy`
+defines stable metadata for native static mesh export packages:
+`NativeStaticMeshExportPackageFormatId =
+"iggy:native-static-mesh-export-package"`,
+`NativeStaticMeshExportPackageFormatVersion = 1`, and
+`NativeStaticMeshExportPackageManifestFilename =
+"static-mesh-export-manifest.txt"`. `DefaultNativeStaticMeshExportPackagePolicy()`
+wraps `DefaultNativeStaticMeshExportPolicy()`. `ValidateNativeStaticMeshExportPackagePolicy(...)`
+performs deterministic metadata validation only and does not access the
+filesystem, mutate/export package directories, or verify package directories.
+Validation issues cover `EmptyFormatId`, `UnsupportedFormatId`,
+`UnsupportedVersion`, `EmptyManifestFilename`,
+`ManifestFilenameContainsSeparator`,
+`ManifestFilenameCollidesWithAssetFilename`, and `InvalidMeshExportPolicy` with
+nested issue count surfaced. This docs packet does not change source, tests,
+CMake, assets, shaders, runtime, `IggyNativePlay.cpp`,
+`NativeVulkanRenderer.cpp`, renderer behavior, shader behavior, fixtures,
+runtime/product/scene/server APIs, native app CMake source registration, CLI,
+parser behavior, package discovery/scanning, package IO, overwrite/create-dir
+policy, `.igmesh` schema, material/texture/normal/UV/animation behavior,
+gameplay behavior, or next research/scout implementation.
 
 Exit criteria:
 - Load a package or explicit scenario.
