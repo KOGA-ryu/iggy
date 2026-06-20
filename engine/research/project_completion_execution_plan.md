@@ -1264,6 +1264,35 @@ Native static mesh batch manifest sidecar export complete:
   schema work, gameplay/scripted/final-state behavior, or next research/scout
   source implementation.
 
+Native static mesh export directory verification CLI complete:
+- Added read-only `VerifyNativeStaticMeshExportDirectory(policy, directory)`.
+- The verifier validates the supplied export policy, requires an existing output
+  directory, compares `static-mesh-export-manifest.txt` exactly to
+  `BuildNativeStaticMeshExportManifestText(policy).text`, then loads only
+  expected policy files and checks vertex/index counts against the export report.
+- Extra unrelated files are ignored; no directory scanning/discovery semantics
+  are introduced.
+- Added `iggy_native_play --verify-static-mesh-export --output-dir DIR`, exiting
+  before `NativeVulkanApp`, SDL, or Vulkan startup.
+- Success output shape:
+  `static-mesh-export-verify output=/tmp/iggy-native-verify-smoke-79 verified=3 manifest=ok`.
+- Missing manifest failure shape:
+  `iggy_native_play: static mesh export verification failed: MissingManifest output=/tmp/iggy-native-verify-missing-79/static-mesh-export-manifest.txt issues=0`.
+- Single-export directories fail with the same `MissingManifest` shape because
+  single output-dir export writes no sidecar.
+- Verify conflicts with `--export-static-mesh-assets`,
+  `--dump-static-mesh-asset`, `--dump-static-mesh-export-report`,
+  `--dump-static-mesh-export-manifest`, and
+  `--dump-static-model-load-report`.
+- This docs packet does not change source, tests, CMake, assets, shaders,
+  runtime, directory scanning/discovery beyond expected policy files, package
+  discovery, registry/catalog/package semantics, source mutation, overwrite/
+  force/create-directory/temp replacement policy, arbitrary output paths beyond
+  existing `--output-dir`, fixture rewrites/canonicalization, renderer behavior,
+  `NativeVulkanRenderer.cpp`, JSON/glTF/glb parser/dependency work, `.igmesh`
+  schema/material/texture/normal/UV/animation behavior, gameplay/scripted/
+  final-state behavior, or next research/scout source implementation.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -2156,7 +2185,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 61. Native static mesh export policy validation is integrated.
 62. Native static mesh export manifest text builder CLI is integrated.
 63. Native static mesh batch manifest sidecar export is integrated.
-64. Dispatch richer diagnostics display, overlays/labels, frame request/
+64. Native static mesh export directory verification CLI is integrated.
+65. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

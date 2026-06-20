@@ -455,6 +455,11 @@ Recently completed optimized stretches:
   content is exactly `BuildNativeStaticMeshExportManifestText(policy).text`,
   while single-asset stdout/output-dir export remains unchanged and writes no
   sidecar.
+  Native static mesh export directory verification now adds read-only
+  `VerifyNativeStaticMeshExportDirectory(...)` and
+  `iggy_native_play --verify-static-mesh-export --output-dir DIR`, validating
+  the manifest sidecar and expected policy files/counts before NativeVulkanApp,
+  SDL, or Vulkan startup while ignoring unrelated extra files.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1581,6 +1586,31 @@ renderer behavior, `NativeVulkanRenderer.cpp`, JSON/glTF/glb parser/dependency
 work, `.igmesh` schema expansion, materials/textures/normals/UVs/animation/
 schema work, gameplay/scripted/final-state behavior, or next research/scout
 implementation.
+
+Native Static Mesh Export Directory Verification CLI is complete as a read-only
+verification path: `VerifyNativeStaticMeshExportDirectory(policy, directory)`
+validates the supplied export policy, requires an existing output directory,
+compares `static-mesh-export-manifest.txt` exactly to
+`BuildNativeStaticMeshExportManifestText(policy).text`, then loads only expected
+policy files and checks vertex/index counts against the export report. Extra
+unrelated files are ignored; no directory scanning/discovery semantics are
+introduced. `iggy_native_play --verify-static-mesh-export --output-dir DIR`
+prints `static-mesh-export-verify output=/tmp/iggy-native-verify-smoke-79 verified=3 manifest=ok`
+on success and exits before `NativeVulkanApp` construction, SDL startup, or
+Vulkan startup. Missing manifest failures report the manifest path, for example
+`iggy_native_play: static mesh export verification failed: MissingManifest output=/tmp/iggy-native-verify-missing-79/static-mesh-export-manifest.txt issues=0`;
+single-export directories fail the same way because they intentionally have no
+sidecar. The verify mode conflicts with `--export-static-mesh-assets`,
+`--dump-static-mesh-asset`, `--dump-static-mesh-export-report`,
+`--dump-static-mesh-export-manifest`, and `--dump-static-model-load-report`.
+This docs packet does not change source, tests, CMake, assets, shaders, runtime,
+directory scanning/discovery beyond expected policy files, package discovery,
+registry/catalog/package semantics, source mutation, overwrite/force/create-
+directory/temp replacement policy, arbitrary output paths beyond existing
+`--output-dir`, fixture rewrites/canonicalization, renderer behavior,
+`NativeVulkanRenderer.cpp`, JSON/glTF/glb parser/dependency work, `.igmesh`
+schema/material/texture/normal/UV/animation behavior, gameplay/scripted/
+final-state behavior, or next research/scout implementation.
 
 Exit criteria:
 - Load a package or explicit scenario.

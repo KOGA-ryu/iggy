@@ -634,6 +634,20 @@ registry/catalog expansion, package semantics, overwrite/force/create-directory
 policy, fixture rewrites, renderer behavior, JSON/glTF/glb parsing, `.igmesh`
 schema expansion, or gameplay/scripted/final-state changes.
 
+Native static mesh export directory verification CLI is complete as a read-only
+app-shell diagnostic: `VerifyNativeStaticMeshExportDirectory(...)` validates
+policy, requires an existing output directory, compares
+`static-mesh-export-manifest.txt` exactly to the manifest builder text, then
+loads only expected policy files and checks counts against the export report.
+`iggy_native_play --verify-static-mesh-export --output-dir DIR` exits before
+native app construction or SDL/Vulkan startup and prints
+`static-mesh-export-verify ... verified=3 manifest=ok` on success. Missing
+sidecars, including single-export directories, fail with `MissingManifest`.
+Extra unrelated files are ignored; the verifier does not add discovery/scanning,
+package semantics, source mutation, overwrite/create-directory policy, fixture
+rewrites, renderer behavior, JSON/glTF/glb parsing, `.igmesh` schema changes,
+or gameplay/scripted/final-state changes.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.
