@@ -679,6 +679,17 @@ reader/parser syntax, package verification integration, discovery/scanning,
 write/repair behavior, renderer behavior, `.igmesh` schema changes, or gameplay
 semantics.
 
+Native static mesh batch package manifest sidecar export is complete as
+batch-only file output. `iggy_native_play --export-static-mesh-assets
+--output-dir DIR` now writes `static-mesh-export-package-manifest.txt` alongside
+the mesh files and `static-mesh-export-manifest.txt`, reports
+`packageManifest=...` and `packageManifestBytes=...`, and preflights the package
+sidecar before mesh writes. Single export still writes no sidecars, the package
+manifest dump remains no-write, and verify/report paths continue to ignore the
+extra package sidecar. This adds no package parser/reader, package discovery,
+package verification integration, exact-extra-file validation, renderer
+behavior, `.igmesh` schema changes, or gameplay semantics.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.

@@ -475,6 +475,11 @@ Recently completed optimized stretches:
   `iggy_native_play --dump-static-mesh-export-package-manifest`, producing
   deterministic no-write package-manifest text after package-policy validation
   before NativeVulkanApp, SDL, or Vulkan startup.
+  Native static mesh batch package manifest sidecar export now writes
+  `static-mesh-export-package-manifest.txt` alongside batch-exported meshes and
+  `static-mesh-export-manifest.txt`, preflighting the package sidecar before
+  asset writes while leaving single export, the no-write package-manifest dump,
+  and existing verification paths unchanged.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1704,6 +1709,32 @@ dependencies, `.igmesh` schema, fixtures, docs-in-source, gameplay/scripted/
 final-state behavior, `NativeVulkanRenderer.cpp`, shader behavior,
 runtime/product/scene/server APIs, renderer loading, native app CMake source
 registration, or next research/scout implementation.
+
+Native Static Mesh Batch Package Manifest Sidecar Export is complete for batch
+export only. `ExportNativeStaticMeshPolicyToDirectory(...)` now writes an
+additional package sidecar named exactly
+`static-mesh-export-package-manifest.txt`; the sidecar content is exactly
+`BuildNativeStaticMeshExportPackageManifestText(packagePolicy).text`, with
+`packagePolicy.meshPolicy` composed from the mesh policy passed to the batch
+export. `NativeStaticMeshExportPackagePolicy::manifestFilename` remains
+unchanged and continues to name the nested mesh export manifest
+`static-mesh-export-manifest.txt`. Batch export preflights the package sidecar
+target before asset and mesh-manifest writes. A pre-existing package sidecar
+returns `TargetAlreadyExists`, preserves that file, and writes no meshes or mesh
+manifest. Successful CLI output now includes `packageManifest=...` and
+`packageManifestBytes=250` fields. Single export still writes only the selected
+`.igmesh` and no sidecars; `--dump-static-mesh-export-package-manifest` remains
+no-write and unchanged; existing verify and verification-report paths are
+unchanged and continue ignoring the extra package sidecar. This docs packet does
+not change source, tests, CMake, assets, shaders, runtime, package
+parser/reader behavior, package discovery/scanning/catalog/registry, package
+verification integration, exact-extra-file validation, overwrite/force/
+create-dir/temp replacement/arbitrary output path behavior, single-export
+sidecar behavior, fixture rewrites, renderer behavior, `NativeVulkanRenderer.cpp`,
+model-slot binding, gameplay/scripted/final-state behavior, shader behavior,
+native app source registration, `.igmesh` schema/material/texture/normal/UV/
+animation behavior, glTF/glb/JSON parser dependencies, third-party dependencies,
+docs-in-source, or next research/scout implementation.
 
 Exit criteria:
 - Load a package or explicit scenario.

@@ -1383,6 +1383,39 @@ Native static mesh export package manifest text builder complete:
   loading, native app CMake source registration, or next research/scout source
   implementation.
 
+Native static mesh batch package manifest sidecar export complete:
+- Batch export now writes an additional package manifest sidecar:
+  `static-mesh-export-package-manifest.txt`.
+- Package sidecar content is exactly
+  `BuildNativeStaticMeshExportPackageManifestText(packagePolicy).text`, with
+  `packagePolicy.meshPolicy` composed from the mesh policy passed to batch
+  export.
+- `NativeStaticMeshExportPackagePolicy::manifestFilename` remains unchanged and
+  continues to name the nested mesh export manifest
+  `static-mesh-export-manifest.txt`.
+- Batch preflights the package sidecar target before asset and mesh-manifest
+  writes.
+- A pre-existing package sidecar returns `TargetAlreadyExists`, preserves the
+  file, and writes no meshes or mesh manifest.
+- CLI batch success output now includes stable `packageManifest=...` and
+  `packageManifestBytes=...` fields, for example
+  `static-mesh-export-batch output=/tmp/iggy-native-package-sidecar-smoke-83.OV3EYV exported=3 bytes=33879 manifest=/tmp/iggy-native-package-sidecar-smoke-83.OV3EYV/static-mesh-export-manifest.txt manifestBytes=272 packageManifest=/tmp/iggy-native-package-sidecar-smoke-83.OV3EYV/static-mesh-export-package-manifest.txt packageManifestBytes=250`.
+- Single export remains unchanged and writes only the selected `.igmesh` with no
+  sidecars.
+- `--dump-static-mesh-export-package-manifest` remains no-write and unchanged.
+- Existing verify and verification-report paths remain unchanged and continue
+  ignoring the extra package sidecar.
+- This docs packet does not change source, tests, CMake, assets, shaders,
+  runtime, package parser/reader behavior, package discovery/scanning/catalog/
+  registry, package verification integration, exact-extra-file validation,
+  overwrite/force/create-dir/temp replacement/arbitrary output path behavior,
+  single-export sidecar behavior, fixture rewrites, renderer behavior,
+  `NativeVulkanRenderer.cpp`, model-slot binding, gameplay/scripted/final-state
+  behavior, shader behavior, native app source registration, `.igmesh` schema/
+  material/texture/normal/UV/animation behavior, glTF/glb/JSON parser
+  dependencies, third-party dependencies, docs-in-source, or next research/scout
+  source implementation.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -2279,7 +2312,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 65. Native static mesh export verification report CLI is integrated.
 66. Native static mesh export package policy is integrated.
 67. Native static mesh export package manifest text builder CLI is integrated.
-68. Dispatch richer diagnostics display, overlays/labels, frame request/
+68. Native static mesh batch package manifest sidecar export is integrated.
+69. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under
