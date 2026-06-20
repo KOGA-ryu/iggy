@@ -715,9 +715,15 @@ loading, generated-text comparison, or package loading.
 Native static mesh export manifest text reading is complete as an in-memory
 reader for the generated mesh export manifest grammar. It validates version,
 count, byte, row, basename-only filename, unsigned numeric row fact, duplicate,
-and total byte invariants without file IO. The nested mesh manifest remains
-unintegrated with package directory reports and verification: no file reader,
-package directory integration, `.igmesh` loading, geometry validation,
+and total byte invariants without package-directory integration.
+
+Native static mesh export manifest file reading is complete as an explicit
+supplied-path helper over that text reader. It opens the supplied path in binary
+mode, reports one `FileOpenFailed` issue with `line=0` and
+`token=path.string()` when opening fails, and delegates successful reads to the
+unchanged text reader. The nested mesh manifest remains unintegrated with
+package directory reports and verification: no default path composition,
+package directory read, `.igmesh` loading, geometry validation,
 CLI/export/verification behavior change, or policy/built-in id reconstruction
 was added.
 

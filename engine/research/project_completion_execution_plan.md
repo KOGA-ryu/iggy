@@ -1775,13 +1775,37 @@ Native static mesh export manifest text reader complete:
   `iggy_native_play`, the unchanged export manifest CLI smoke, optional
   no-change package directory report smoke, `git diff --check`, and
   `git diff --cached --check` before source commit.
-- This docs packet does not add filesystem/file IO reading for mesh export
-  manifests, package-directory reader/report integration,
+- The text reader is separate from package-directory reader/report integration
+  and does not reconstruct `NativeStaticMeshExportPolicy` or built-in ids from
+  mesh manifest rows, load `.igmesh` assets, validate geometry, or change
+  CLI/export behavior.
+
+Native static mesh export manifest file reader complete:
+- Added `NativeStaticMeshExportManifestReadIssueCode::FileOpenFailed`.
+- Added
+  `ReadNativeStaticMeshExportManifestFile(const std::filesystem::path &path)`.
+- The file wrapper opens exactly the supplied path in binary mode.
+- On open failure, it returns one `FileOpenFailed` issue with `line=0` and
+  `token=path.string()`.
+- On open success, it reads the full file into memory and delegates unchanged to
+  `ReadNativeStaticMeshExportManifestText(...)`.
+- Tests cover generated-file read success, missing explicit file
+  `FileOpenFailed`, and propagation of text-reader issues from a readable
+  malformed file.
+- Existing mesh export manifest text reader behavior and generated manifest
+  output are unchanged.
+- Builder verification passed `native_static_mesh_export_manifest_tests`,
+  focused `ctest -R native_static_mesh_export_manifest_tests`,
+  `iggy_native_play`, the unchanged export manifest CLI smoke, optional
+  no-change package directory report smoke, `git diff --check`, and
+  `git diff --cached --check` before source commit.
+- This docs packet does not add package-directory reader/report integration,
   verification/report/export/CLI behavior changes, package loading,
   discovery/scanning/catalog/registry, semantic package acceptance,
-  exact-extra-file rejection, repair behavior, reconstruction of
+  exact-extra-file rejection, repair behavior, default path composition,
+  directory traversal, reading via package directory, reconstruction of
   `NativeStaticMeshExportPolicy` or built-in ids from mesh manifest rows,
-  nested mesh manifest file reading, `.igmesh` loading, geometry validation,
+  nested mesh manifest report rows, `.igmesh` loading, geometry validation,
   schema/material/texture/normal/UV/animation expansion, renderer behavior,
   `NativeVulkanRenderer.cpp`, model-slot expansion, runtime/product/scene/server
   APIs, gameplay/scripted/final-state behavior, fixture/generated asset changes,
@@ -2764,7 +2788,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 78. Native static mesh package directory presence diagnostics are integrated.
 79. Native static mesh package directory file fact diagnostics are integrated.
 80. Native static mesh export manifest text reader is integrated.
-81. Dispatch richer diagnostics display, overlays/labels, frame request/
+81. Native static mesh export manifest file reader is integrated.
+82. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

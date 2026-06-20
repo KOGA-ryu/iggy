@@ -521,10 +521,10 @@ Recently completed optimized stretches:
   regular-file and byte-count facts for the package sidecar, nested manifest,
   and declared assets while keeping missing paths, directories, and size
   failures as `regularFile=0 bytes=0`.
-  Native static mesh export manifest text reading now adds an in-memory,
-  dependency-free reader for the generated mesh export manifest grammar,
-  validating deterministic row/count/byte invariants without file IO or
-  package-directory integration.
+  Native static mesh export manifest reading now has in-memory text parsing plus
+  an explicit supplied-path file wrapper that opens binary, reports
+  `FileOpenFailed` on missing files, and still avoids package-directory,
+  verification, export, or CLI integration.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -2109,12 +2109,27 @@ default manifest readback was tested against builder output and report facts,
 preserving version, asset count, byte count, row order, and row facts. Existing
 `iggy_native_play --dump-static-mesh-export-manifest` output remains
 `static-mesh-export-manifest version=1 assets=3 bytes=33879` with cube
-8/36/523, bean 234/1296/23882, and npc-marker 98/504/9474 rows. This docs
-packet does not add a filesystem/file IO reader for mesh export manifests,
+8/36/523, bean 234/1296/23882, and npc-marker 98/504/9474 rows. This reader is
+separate from package-directory/report/verification integration and does not
+reconstruct `NativeStaticMeshExportPolicy` or built-in ids from mesh manifest
+rows, load `.igmesh` assets, validate geometry, or change CLI/export behavior.
+
+Native Static Mesh Export Manifest File Reader is complete as an explicit-file
+wrapper over the mesh export manifest text reader. `NativeStaticMeshExportManifest.hpp`
+now adds `NativeStaticMeshExportManifestReadIssueCode::FileOpenFailed` and
+`ReadNativeStaticMeshExportManifestFile(const std::filesystem::path &path)`.
+The wrapper opens exactly the supplied path in binary mode; on open failure it
+returns one `FileOpenFailed` issue with `line=0` and `token=path.string()`. On
+open success it reads the full file into memory and delegates unchanged to
+`ReadNativeStaticMeshExportManifestText(...)`, so existing text-reader behavior
+and generated manifest output are unchanged. Tests cover generated-file read
+success, missing explicit file `FileOpenFailed`, and propagation of text-reader
+issues from a readable malformed file. This docs packet does not add
 package-directory reader/report integration, verification/report/export/CLI
 behavior changes, package loading/discovery/scanning/catalog/registry, semantic
-package acceptance, exact-extra-file rejection, repair behavior, policy/built-in
-id reconstruction from mesh manifest rows, nested mesh manifest file reading,
+package acceptance, exact-extra-file rejection, repair behavior, default path
+composition, directory traversal, package-directory reads, policy/built-in id
+reconstruction from mesh manifest rows, nested mesh manifest report rows,
 `.igmesh` loading, geometry validation, schema/material/texture/normal/UV/
 animation expansion, renderer behavior, `NativeVulkanRenderer.cpp`, model-slot
 expansion, runtime/product/scene/server APIs, gameplay/scripted/final-state
