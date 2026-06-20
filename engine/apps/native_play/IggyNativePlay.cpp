@@ -39,6 +39,7 @@ using iggy::native_play::BuildNativeStaticMeshExportManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageManifestFailureText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReport;
+using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReportFailureText;
 using iggy::native_play::BuildNativeStaticMeshExportReport;
 using iggy::native_play::BuildNativeStaticMeshExportReportText;
 using iggy::native_play::BuildNativeStaticMeshFileExportBatchFailureText;
@@ -72,7 +73,6 @@ using iggy::native_play::NativeStaticMeshExportReport;
 using iggy::native_play::NativeStaticMeshExportManifestResult;
 using iggy::native_play::NativeStaticMeshExportPackageManifestResult;
 using iggy::native_play::NativeStaticMeshExportPackageDirectoryReport;
-using iggy::native_play::NativeStaticMeshExportPackageDirectoryReadStatusText;
 using iggy::native_play::NativeStaticMeshAsset;
 using iggy::native_play::NativeStaticMeshAssetWriteResult;
 using iggy::native_play::NativeStaticMeshExportDirectoryVerificationReport;
@@ -590,13 +590,9 @@ void PrintNativeStaticMeshExportPackageDirectoryReport(
 	const NativeStaticMeshExportPackageDirectoryReport report =
 		BuildNativeStaticMeshExportPackageDirectoryReport(directory);
 	std::cout << report.text << std::flush;
-	if (!report.readOk()) {
+	if (!report.readOk())
 		throw std::runtime_error(
-			std::string { "static mesh export package directory report failed: " } +
-			NativeStaticMeshExportPackageDirectoryReadStatusText(report.read.status) +
-			" output=" + report.read.directory.string() +
-			" issues=" + std::to_string(report.read.issueCount));
-	}
+			BuildNativeStaticMeshExportPackageDirectoryReportFailureText(report));
 }
 
 void ConfigureMoltenVkIcdFallback()

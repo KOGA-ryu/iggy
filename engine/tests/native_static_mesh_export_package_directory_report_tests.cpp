@@ -15,6 +15,7 @@ namespace {
 
 using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReport;
 using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReportData;
+using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReportFailureText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReportText;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
 using iggy::native_play::ExportNativeStaticMeshPolicyToDirectory;
@@ -565,6 +566,26 @@ void TestMissingDirectoryReportFails()
 		"package directory report should not create parent directories");
 }
 
+void TestMissingDirectoryReportFailureText()
+{
+	CleanupTempRoot();
+	const std::filesystem::path missing = TempRoot() / "missing";
+
+	const NativeStaticMeshExportPackageDirectoryReport report =
+		BuildNativeStaticMeshExportPackageDirectoryReport(missing);
+
+	Expect(
+		report.read.status == NativeStaticMeshExportPackageDirectoryReadStatus::MissingDirectory,
+		"missing directory package report failure text test should expose missing-directory status");
+	const std::string expected =
+		"static mesh export package directory report failed: MissingDirectory output=" +
+		missing.string() +
+		" issues=0";
+	Expect(
+		BuildNativeStaticMeshExportPackageDirectoryReportFailureText(report) == expected,
+		"missing directory package report failure text should use read directory");
+}
+
 void TestFilePathInsteadOfDirectoryReportFails()
 {
 	ResetTempRoot();
@@ -662,6 +683,29 @@ void TestMissingPackageSidecarReportIncludesIssueRow()
 	Expect(
 		report.text.find("asset=cube") == std::string::npos,
 		"missing package sidecar report should not include asset rows");
+	CleanupTempRoot();
+}
+
+void TestMissingPackageSidecarReportFailureText()
+{
+	ResetTempRoot();
+	ExportDefaultBatch();
+	const std::filesystem::path packageManifest =
+		TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename;
+	std::filesystem::remove(packageManifest);
+
+	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
+
+	Expect(
+		report.read.status == NativeStaticMeshExportPackageDirectoryReadStatus::PackageManifestReadFailed,
+		"missing package sidecar failure text test should expose read-failed status");
+	const std::string expected =
+		"static mesh export package directory report failed: PackageManifestReadFailed output=" +
+		TempRoot().string() +
+		" issues=1";
+	Expect(
+		BuildNativeStaticMeshExportPackageDirectoryReportFailureText(report) == expected,
+		"missing package sidecar failure text should use directory and issue count");
 	CleanupTempRoot();
 }
 
@@ -982,8 +1026,10 @@ int main()
 	TestFilenameMismatchComparisonStillReportsRead();
 	TestCombinedComparisonOrderingStillReportsRead();
 	TestMissingDirectoryReportFails();
+	TestMissingDirectoryReportFailureText();
 	TestFilePathInsteadOfDirectoryReportFails();
 	TestMissingPackageSidecarReportIncludesIssueRow();
+	TestMissingPackageSidecarReportFailureText();
 	TestMalformedPackageSidecarReportIncludesIssueRow();
 	TestMissingNestedManifestStillReportsRead();
 	TestMalformedNestedManifestStillReportsRead();

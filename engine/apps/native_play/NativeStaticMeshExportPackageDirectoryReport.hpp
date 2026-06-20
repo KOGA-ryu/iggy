@@ -60,6 +60,18 @@ struct NativeStaticMeshExportPackageDirectoryReport {
 	}
 };
 
+[[nodiscard]] inline std::string BuildNativeStaticMeshExportPackageDirectoryReportFailureText(
+	const NativeStaticMeshExportPackageDirectoryReport &report)
+{
+	std::ostringstream stream;
+	stream
+		<< "static mesh export package directory report failed: "
+		<< NativeStaticMeshExportPackageDirectoryReadStatusText(report.read.status)
+		<< " output=" << report.read.directory.string()
+		<< " issues=" << report.read.issueCount;
+	return stream.str();
+}
+
 [[nodiscard]] inline const char *NativeStaticMeshExportPackageDirectoryManifestComparisonCodeText(
 	NativeStaticMeshExportPackageDirectoryManifestComparisonCode code)
 {
