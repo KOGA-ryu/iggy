@@ -8,6 +8,7 @@
 
 namespace {
 
+using iggy::native_play::BuildUnknownNativeStaticMeshExportAssetFailureText;
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
 using iggy::native_play::FindNativeStaticMeshExportAsset;
@@ -81,6 +82,14 @@ void TestMissingNameReturnsNull()
 	Expect(
 		FindNativeStaticMeshExportAsset(policy, "floor") == nullptr,
 		"missing export name should return null");
+}
+
+void TestUnknownAssetFailureText()
+{
+	Expect(
+		BuildUnknownNativeStaticMeshExportAssetFailureText("nope") ==
+			"unknown static mesh asset: nope",
+		"unknown static mesh asset failure text should include asset name");
 }
 
 void TestDuplicateNameReturnsFirstMatch()
@@ -246,6 +255,7 @@ int main()
 	TestDefaultPolicyContainsStableRefs();
 	TestLookupReturnsMatchingRefs();
 	TestMissingNameReturnsNull();
+	TestUnknownAssetFailureText();
 	TestDuplicateNameReturnsFirstMatch();
 	TestBuiltInIdHelperProducesWriterValidMeshes();
 	TestDefaultPolicyValidatesCleanly();

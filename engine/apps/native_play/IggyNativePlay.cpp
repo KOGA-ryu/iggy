@@ -36,6 +36,7 @@ namespace runtime = iggy::runtime;
 using iggy::native_play::BuildNativeSceneDrawItems;
 using iggy::native_play::BuildNativeStaticModelLoadReport;
 using iggy::native_play::BuildNativeStaticMeshAssetWriteFailureText;
+using iggy::native_play::BuildUnknownNativeStaticMeshExportAssetFailureText;
 using iggy::native_play::BuildNativeStaticMeshExportManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageManifestFailureText;
@@ -515,7 +516,8 @@ void PrintNativeStaticMeshAssetDump(const std::string &name)
 	const NativeStaticMeshExportAssetRef *assetRef =
 		FindNativeStaticMeshExportAsset(policy, name);
 	if (assetRef == nullptr)
-		throw std::runtime_error("unknown static mesh asset: " + name);
+		throw std::runtime_error(
+			BuildUnknownNativeStaticMeshExportAssetFailureText(name));
 
 	const NativeStaticMeshAsset asset =
 		BuiltInNativeStaticMeshExportAsset(assetRef->id);
@@ -537,7 +539,8 @@ void PrintNativeStaticMeshAssetFileExport(
 			name,
 			directory);
 	if (result.status == NativeStaticMeshFileExportStatus::UnknownAsset)
-		throw std::runtime_error("unknown static mesh asset: " + name);
+		throw std::runtime_error(
+			BuildUnknownNativeStaticMeshExportAssetFailureText(name));
 	if (result.status != NativeStaticMeshFileExportStatus::Exported)
 		throw std::runtime_error(BuildNativeStaticMeshFileExportFailureText(result));
 

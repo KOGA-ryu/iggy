@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace iggy::native_play {
@@ -69,6 +70,12 @@ struct NativeStaticMeshExportPolicyValidationResult {
 			return &asset;
 	}
 	return nullptr;
+}
+
+[[nodiscard]] inline std::string BuildUnknownNativeStaticMeshExportAssetFailureText(
+	std::string_view name)
+{
+	return std::string { "unknown static mesh asset: " } + std::string { name };
 }
 
 inline void AddNativeStaticMeshExportPolicyValidationIssue(
