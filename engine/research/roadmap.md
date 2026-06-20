@@ -464,6 +464,9 @@ Recently completed optimized stretches:
   `NativeStaticMeshExportReportStatusText(...)` beside the report status enum;
   export report row rendering uses it while preserving the default
   `status=Writable` report output byte-for-byte.
+  Native static mesh export report text renderer extraction now adds
+  `BuildNativeStaticMeshExportReportText(...)`; app-shell report printing
+  delegates to it while preserving export report text byte-for-byte.
   Native static mesh export policy validation now adds backend-free
   `ValidateNativeStaticMeshExportPolicy(...)`, structured validation issues,
   and `InvalidPolicy` rejection for single/batch file export before lookup,
@@ -1820,6 +1823,28 @@ writer/policy behavior, filesystem/write behavior, verifier/package-directory/
 file export/manifest/package manifest behavior, CMake, fixtures, assets,
 renderer/model-slot behavior, package loading/discovery, schema, or
 glTF/glb/JSON parser work.
+
+Native Static Mesh Export Report Text Renderer Extraction is complete as a
+behavior-preserving report serialization cleanup. `NativeStaticMeshExportReport.hpp`
+now exposes pure header-only `BuildNativeStaticMeshExportReportText(const
+NativeStaticMeshExportReport &report)`. `PrintNativeStaticMeshExportReport(...)`
+delegates to the renderer helper, and CLI output/exit behavior remains
+unchanged. The renderer preserves the existing static mesh export report text
+format exactly: summary row, entry row order, `asset=`, `filename=`, `status=`,
+vertex/index/byte/issue counts, and trailing newlines. Source cleanup removed
+no-longer-needed app-shell direct using declarations for export report
+entry/status text rendering. Exact text tests cover the default three-row report
+and a custom duplicate two-entry policy report. Source verification passed
+`native_static_mesh_export_report_tests`, `iggy_native_play`, CLI smoke for
+`--dump-static-mesh-export-report`, `rg` checks for the exact summary row and
+all three default asset rows, source `git diff --check`, and source
+`git diff --cached --check`. This packet does not change export policy defaults,
+report data-building semantics, writer behavior, byte count semantics, CLI
+parser/help/dispatch/conflict/exit behavior, static model behavior, manifest/
+package/verification/package-directory behavior, exact verification behavior,
+generated sidecars, export write policy, package loading/discovery/acceptance,
+`NativeVulkanRenderer.cpp`, renderer/model-slot behavior, checked-in assets or
+fixtures, `.igmesh` schema/loading, or glTF/glb/JSON parser work.
 
 Native Static Mesh Export Policy Validation is complete as backend-free policy
 guarding: `ValidateNativeStaticMeshExportPolicy(...)` now lives in

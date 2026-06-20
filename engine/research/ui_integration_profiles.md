@@ -677,6 +677,22 @@ construction, writer/policy behavior, CLI parser/help/dispatch/conflicts,
 filesystem/write behavior, verifier/package-directory/file export/manifest/
 package manifest behavior, renderer/model-slot behavior, or parser scope.
 
+Native static mesh export report text renderer extraction is complete without
+changing visible report output or CLI behavior. The pure header-only
+`BuildNativeStaticMeshExportReportText(const NativeStaticMeshExportReport &report)`
+renderer now lives in `NativeStaticMeshExportReport.hpp`, and
+`PrintNativeStaticMeshExportReport(...)` delegates to it. The preserved text
+format includes the summary row, entry row order, `asset=`, `filename=`,
+`status=`, vertex/index/byte/issue counts, and trailing newlines. Exact text
+coverage now includes the default three-row report and a custom duplicate
+two-entry policy report. This does not change export policy defaults, report
+data-building semantics, writer behavior, byte count semantics, CLI parser/help/
+dispatch/conflict/exit behavior, static model behavior, manifest/package/
+verification/package-directory behavior, exact verification behavior, generated
+sidecars, export write policy, package loading/discovery/acceptance, renderer/
+model-slot behavior, checked-in assets or fixtures, `.igmesh` schema/loading, or
+parser scope.
+
 Native static mesh export policy validation is complete as backend-free and
 filesystem-free guard logic: `ValidateNativeStaticMeshExportPolicy(...)` reports
 empty names, duplicate names, empty default filenames, filename separators, and
