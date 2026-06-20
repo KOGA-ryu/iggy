@@ -40,6 +40,7 @@ using iggy::native_play::BuildNativeStaticMeshExportPackageManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReport;
 using iggy::native_play::BuildNativeStaticMeshExportReport;
 using iggy::native_play::BuildNativeStaticMeshExportReportText;
+using iggy::native_play::BuildNativeStaticMeshFileExportBatchFailureText;
 using iggy::native_play::BuildNativeStaticMeshFileExportBatchSuccessText;
 using iggy::native_play::BuildNativeStaticMeshFileExportFailureText;
 using iggy::native_play::BuildNativeStaticMeshFileExportSuccessText;
@@ -556,31 +557,8 @@ void PrintNativeStaticMeshAssetBatchExport(const std::filesystem::path &director
 		ExportNativeStaticMeshPolicyToDirectory(
 			DefaultNativeStaticMeshExportPolicy(),
 			directory);
-	if (result.status != NativeStaticMeshFileExportStatus::Exported) {
-		std::filesystem::path output = result.outputDirectory;
-		std::size_t issueCount = result.issueCount;
-		if (result.status == NativeStaticMeshFileExportStatus::TargetAlreadyExists &&
-				result.entries.empty() &&
-				!result.manifestOutputPath.empty())
-			output = result.manifestOutputPath;
-		if (result.status == NativeStaticMeshFileExportStatus::TargetAlreadyExists &&
-				result.entries.empty() &&
-				!result.packageManifestOutputPath.empty())
-			output = result.packageManifestOutputPath;
-		for (const NativeStaticMeshFileExportBatchEntry &entry : result.entries) {
-			if (entry.result.status == result.status) {
-				if (!entry.result.outputPath.empty())
-					output = entry.result.outputPath;
-				issueCount += entry.result.issueCount;
-				break;
-			}
-		}
-		throw std::runtime_error(
-			std::string { "static mesh batch export failed: " } +
-			NativeStaticMeshFileExportStatusText(result.status) +
-			" output=" + output.string() +
-			" issues=" + std::to_string(issueCount));
-	}
+	if (result.status != NativeStaticMeshFileExportStatus::Exported)
+		throw std::runtime_error(BuildNativeStaticMeshFileExportBatchFailureText(result));
 
 	std::cout << BuildNativeStaticMeshFileExportBatchSuccessText(result);
 }

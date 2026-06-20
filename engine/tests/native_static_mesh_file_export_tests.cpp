@@ -17,6 +17,7 @@ namespace {
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
 using iggy::native_play::BuildNativeStaticMeshExportManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageManifestText;
+using iggy::native_play::BuildNativeStaticMeshFileExportBatchFailureText;
 using iggy::native_play::BuildNativeStaticMeshFileExportBatchSuccessText;
 using iggy::native_play::BuildNativeStaticMeshFileExportFailureText;
 using iggy::native_play::BuildNativeStaticMeshFileExportSuccessText;
@@ -472,6 +473,72 @@ void TestBatchExportSuccessText()
 	CleanupTempRoot();
 }
 
+void TestBatchManifestTargetExistsFailureText()
+{
+	ResetTempRoot();
+	WriteText(TempRoot() / NativeStaticMeshExportManifestFilename, "existing");
+	const NativeStaticMeshFileExportBatchResult result =
+		ExportNativeStaticMeshPolicyToDirectory(
+			DefaultNativeStaticMeshExportPolicy(),
+			TempRoot());
+
+	Expect(
+		result.status == NativeStaticMeshFileExportStatus::TargetAlreadyExists,
+		"batch manifest collision failure text test should reject existing manifest");
+	const std::string expected =
+		"static mesh batch export failed: TargetAlreadyExists output=" +
+		(TempRoot() / NativeStaticMeshExportManifestFilename).string() +
+		" issues=0";
+	Expect(
+		BuildNativeStaticMeshFileExportBatchFailureText(result) == expected,
+		"batch manifest collision failure text should match CLI contract");
+	CleanupTempRoot();
+}
+
+void TestBatchPackageManifestTargetExistsFailureText()
+{
+	ResetTempRoot();
+	WriteText(TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename, "existing");
+	const NativeStaticMeshFileExportBatchResult result =
+		ExportNativeStaticMeshPolicyToDirectory(
+			DefaultNativeStaticMeshExportPolicy(),
+			TempRoot());
+
+	Expect(
+		result.status == NativeStaticMeshFileExportStatus::TargetAlreadyExists,
+		"batch package manifest collision failure text test should reject existing package manifest");
+	const std::string expected =
+		"static mesh batch export failed: TargetAlreadyExists output=" +
+		(TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename).string() +
+		" issues=0";
+	Expect(
+		BuildNativeStaticMeshFileExportBatchFailureText(result) == expected,
+		"batch package manifest collision failure text should match CLI contract");
+	CleanupTempRoot();
+}
+
+void TestBatchAssetTargetExistsFailureText()
+{
+	ResetTempRoot();
+	WriteText(TempRoot() / "bean.igmesh", "existing");
+	const NativeStaticMeshFileExportBatchResult result =
+		ExportNativeStaticMeshPolicyToDirectory(
+			DefaultNativeStaticMeshExportPolicy(),
+			TempRoot());
+
+	Expect(
+		result.status == NativeStaticMeshFileExportStatus::TargetAlreadyExists,
+		"batch asset collision failure text test should reject existing asset target");
+	const std::string expected =
+		"static mesh batch export failed: TargetAlreadyExists output=" +
+		(TempRoot() / "bean.igmesh").string() +
+		" issues=0";
+	Expect(
+		BuildNativeStaticMeshFileExportBatchFailureText(result) == expected,
+		"batch asset collision failure text should match CLI contract");
+	CleanupTempRoot();
+}
+
 void TestInvalidPolicyRejectsSingleExportWithoutWriting()
 {
 	ResetTempRoot();
@@ -562,6 +629,9 @@ int main()
 	TestSingleExportTargetExistsFailureText();
 	TestSingleExportInvalidPolicyFailureText();
 	TestBatchExportSuccessText();
+	TestBatchManifestTargetExistsFailureText();
+	TestBatchPackageManifestTargetExistsFailureText();
+	TestBatchAssetTargetExistsFailureText();
 	TestInvalidPolicyRejectsSingleExportWithoutWriting();
 	TestInvalidPolicyRejectsBatchExportBeforeWriting();
 	TestFileExportStatusText();

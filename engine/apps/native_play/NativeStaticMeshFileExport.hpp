@@ -127,6 +127,37 @@ struct NativeStaticMeshFileExportBatchResult {
 	return stream.str();
 }
 
+[[nodiscard]] inline std::string BuildNativeStaticMeshFileExportBatchFailureText(
+	const NativeStaticMeshFileExportBatchResult &result)
+{
+	std::filesystem::path output = result.outputDirectory;
+	std::size_t issueCount = result.issueCount;
+	if (result.status == NativeStaticMeshFileExportStatus::TargetAlreadyExists &&
+			result.entries.empty() &&
+			!result.manifestOutputPath.empty())
+		output = result.manifestOutputPath;
+	if (result.status == NativeStaticMeshFileExportStatus::TargetAlreadyExists &&
+			result.entries.empty() &&
+			!result.packageManifestOutputPath.empty())
+		output = result.packageManifestOutputPath;
+	for (const NativeStaticMeshFileExportBatchEntry &entry : result.entries) {
+		if (entry.result.status == result.status) {
+			if (!entry.result.outputPath.empty())
+				output = entry.result.outputPath;
+			issueCount += entry.result.issueCount;
+			break;
+		}
+	}
+
+	std::ostringstream stream;
+	stream
+		<< "static mesh batch export failed: "
+		<< NativeStaticMeshFileExportStatusText(result.status)
+		<< " output=" << output.string()
+		<< " issues=" << issueCount;
+	return stream.str();
+}
+
 [[nodiscard]] inline NativeStaticMeshFileExportResult ExportNativeStaticMeshAssetToDirectory(
 	const NativeStaticMeshExportPolicy &policy,
 	const std::string &name,
