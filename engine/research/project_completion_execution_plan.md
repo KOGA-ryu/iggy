@@ -1876,14 +1876,47 @@ Native static mesh package directory manifest asset rows complete:
   focused `ctest -R native_static_mesh_export_package_directory_report_tests`,
   `iggy_native_play`, valid/missing/malformed package directory report smokes,
   `git diff --check`, and `git diff --cached --check` before source commit.
-- This docs packet does not add package-vs-mesh comparison semantics,
-  validity/mismatch statuses, semantic package acceptance, generated-text
-  comparison, package acceptance validation, exact deterministic verification
-  replacement, package directory reader status/data changes, `readOk()` changes,
-  CLI exit behavior changes, verification/export behavior changes,
-  policy/built-in id reconstruction, `.igmesh` loading, geometry validation,
-  asset path traversal from mesh-manifest rows, file facts for
-  mesh-manifest-declared filenames, package loading,
+- This diagnostics surface does not load `.igmesh`, validate geometry, traverse
+  asset paths from mesh-manifest rows, add file facts for mesh-manifest-declared
+  filenames, change package directory reader status/data, change `readOk()`,
+  change CLI exit behavior, or change verification/export behavior.
+
+Native static mesh package directory manifest row comparison diagnostics
+complete:
+- Package directory report now performs diagnostic-only comparison between
+  package sidecar asset rows and parsed nested mesh manifest rows, only when the
+  nested manifest reads successfully.
+- Summary appends `manifestMatches=N manifestMismatches=N` when
+  `manifestRead=ok`.
+- New deterministic mismatch rows are emitted after `manifestAsset=` rows and
+  before package `asset=` rows:
+  - `manifestComparison code=MissingFromManifest asset=<packageName> packageFilename=<packageFilename>`
+  - `manifestComparison code=MissingFromPackage manifestAsset=<manifestName> manifestFilename=<manifestFilename>`
+  - `manifestComparison code=FilenameMismatch asset=<name> packageFilename=<packageFilename> manifestFilename=<manifestFilename>`
+- Comparison is by asset name and filename only.
+- Valid default batch export reports `manifestMatches=3 manifestMismatches=0`
+  and no `manifestComparison` rows.
+- Missing-from-manifest smoke exited 0 and printed
+  `manifestComparison code=MissingFromManifest asset=npc-marker packageFilename=npc-marker.igmesh`.
+- Missing-from-package smoke exited 0 and printed
+  `manifestComparison code=MissingFromPackage manifestAsset=extra manifestFilename=extra.igmesh`.
+- Filename-mismatch smoke exited 0 and printed
+  `manifestComparison code=FilenameMismatch asset=cube packageFilename=cube.igmesh manifestFilename=cube-renamed.igmesh`.
+- Missing or malformed nested manifest smokes exited 0 and emitted no
+  `manifestComparison` rows while preserving existing `manifestReadIssue` rows.
+- Builder verification passed `native_static_mesh_export_package_directory_report_tests`,
+  focused `ctest -R native_static_mesh_export_package_directory_report_tests`,
+  `iggy_native_play`, valid and mismatch package directory report smokes,
+  missing/malformed nested manifest smokes, `git diff --check`, and
+  `git diff --cached --check` before source commit.
+- This docs packet does not add package acceptance, verification, nonzero CLI
+  behavior, issue-count/status semantics, exact deterministic verification
+  replacement, generated-text comparison, semantic package acceptance, package
+  acceptance validation, package directory reader status/data changes,
+  `readOk()` changes, CLI exit behavior changes, policy/built-in id
+  reconstruction, `.igmesh` loading, geometry validation, asset path traversal
+  from mesh-manifest rows, file facts for mesh-manifest-declared filenames,
+  package loading,
   discovery/scanning/catalog/registry, exact-extra-file rejection, repair,
   source mutation, write behavior, renderer behavior, `NativeVulkanRenderer.cpp`,
   model-slot expansion, runtime/product/scene/server APIs,
@@ -2872,7 +2905,9 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 82. Native static mesh package directory manifest read diagnostics are
     integrated.
 83. Native static mesh package directory manifest asset rows are integrated.
-84. Dispatch richer diagnostics display, overlays/labels, frame request/
+84. Native static mesh package directory manifest row comparison diagnostics are
+    integrated.
+85. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

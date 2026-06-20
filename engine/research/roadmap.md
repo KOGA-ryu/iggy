@@ -533,6 +533,11 @@ Recently completed optimized stretches:
   Native static mesh package directory manifest asset rows now emit parsed
   nested mesh manifest `manifestAsset=...` rows when manifest reading succeeds,
   still without package-vs-mesh comparison semantics or status/exit changes.
+  Native static mesh package directory manifest row comparison diagnostics now
+  compare package sidecar rows to parsed mesh manifest rows by asset name and
+  filename only, adding `manifestMatches`/`manifestMismatches` summary facts and
+  deterministic `manifestComparison` rows without acceptance, verification, or
+  nonzero semantics.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -2191,14 +2196,37 @@ and
 `manifestAsset=npc-marker filename=npc-marker.igmesh vertices=98 indices=504 bytes=9474`.
 Missing or malformed nested mesh manifests remain diagnostic-only: no
 `manifestAsset=` rows are emitted, package asset rows remain present,
-`status=Read` and CLI exit 0 are preserved. This docs packet does not add
-package-vs-mesh comparison semantics, validity/mismatch statuses, semantic
-package acceptance, generated-text comparison, package acceptance validation,
-exact deterministic verification replacement, package directory reader
-status/data changes, `readOk()` changes, CLI exit behavior changes,
-policy/built-in id reconstruction, `.igmesh` loading, geometry validation, asset
-path traversal from mesh-manifest rows, file facts for mesh-manifest-declared
-filenames, package loading, discovery/scanning/catalog/registry,
+`status=Read` and CLI exit 0 are preserved. This diagnostics surface does not
+load `.igmesh`, validate geometry, traverse asset paths from mesh-manifest rows,
+or add file facts for mesh-manifest-declared filenames.
+
+Native Static Mesh Package Directory Manifest Row Comparison Diagnostics are
+complete as diagnostic-only comparison output in the package directory report.
+When the nested mesh manifest reads successfully, the report compares package
+sidecar asset rows to parsed nested mesh manifest rows by asset name and
+filename only. Summary rows append `manifestMatches=N manifestMismatches=N`;
+valid default batch export reports `manifestMatches=3 manifestMismatches=0` and
+no `manifestComparison` rows. Deterministic mismatch rows are emitted after
+`manifestAsset=` rows and before package `asset=` rows:
+`manifestComparison code=MissingFromManifest asset=<packageName> packageFilename=<packageFilename>`,
+`manifestComparison code=MissingFromPackage manifestAsset=<manifestName> manifestFilename=<manifestFilename>`,
+and
+`manifestComparison code=FilenameMismatch asset=<name> packageFilename=<packageFilename> manifestFilename=<manifestFilename>`.
+Missing-from-manifest smoke exited 0 and printed
+`manifestComparison code=MissingFromManifest asset=npc-marker packageFilename=npc-marker.igmesh`.
+Missing-from-package smoke exited 0 and printed
+`manifestComparison code=MissingFromPackage manifestAsset=extra manifestFilename=extra.igmesh`.
+Filename-mismatch smoke exited 0 and printed
+`manifestComparison code=FilenameMismatch asset=cube packageFilename=cube.igmesh manifestFilename=cube-renamed.igmesh`.
+Missing or malformed nested manifests emit no comparison summary or rows and
+preserve existing `manifestReadIssue` diagnostics. This docs packet does not add
+package acceptance, verification, nonzero CLI behavior, issue-count/status
+semantics, exact deterministic verification replacement, generated-text
+comparison, semantic package acceptance, package acceptance validation, package
+directory reader status/data changes, `readOk()` changes, CLI exit behavior
+changes, policy/built-in id reconstruction, `.igmesh` loading, geometry
+validation, asset path traversal from mesh-manifest rows, file facts for
+mesh-manifest-declared filenames, package loading, discovery/scanning/catalog/registry,
 exact-extra-file rejection, repair, source mutation, write behavior, renderer
 behavior, `NativeVulkanRenderer.cpp`, model-slot expansion,
 runtime/product/scene/server APIs, gameplay/scripted/final-state behavior,

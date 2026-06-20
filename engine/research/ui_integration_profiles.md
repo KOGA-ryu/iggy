@@ -752,9 +752,22 @@ diagnostic-only report rows. Valid nested mesh manifests now add
 rows after any manifest read issues and before package asset rows. Missing or
 malformed nested mesh manifests still emit no `manifestAsset=` rows and keep
 package asset rows present with `status=Read` / CLI exit 0. These rows do not
-add package-vs-mesh comparisons, mismatch statuses, semantic acceptance,
-verification integration, `.igmesh` loading, geometry validation, asset path
-traversal, mesh-manifest file facts, renderer behavior, or write behavior.
+load `.igmesh`, validate geometry, traverse asset paths, add mesh-manifest file
+facts, change renderer behavior, or change write behavior.
+
+Native static mesh package directory manifest row comparison diagnostics are
+complete as diagnostic-only report rows. When the nested manifest reads
+successfully, the report compares package sidecar rows to parsed mesh manifest
+rows by asset name and filename only, appends
+`manifestMatches=N manifestMismatches=N`, and emits deterministic
+`manifestComparison` rows for missing-from-manifest, missing-from-package, and
+filename-mismatch cases. Valid default exports report `manifestMatches=3
+manifestMismatches=0` and no comparison rows. Missing/malformed nested manifests
+emit no comparison summary or rows and keep existing `manifestReadIssue`
+diagnostics. These rows do not add package acceptance, verification, nonzero CLI
+behavior, issue-count/status semantics, generated-text comparison, `.igmesh`
+loading, geometry validation, policy reconstruction, discovery/scanning, source
+mutation, or write behavior.
 
 Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play
