@@ -33,6 +33,24 @@ enum class NativeStaticMeshExportPolicyValidationIssueCode {
 	DuplicateDefaultFilename,
 };
 
+[[nodiscard]] inline const char *NativeStaticMeshExportPolicyValidationIssueCodeText(
+	NativeStaticMeshExportPolicyValidationIssueCode code)
+{
+	switch (code) {
+	case NativeStaticMeshExportPolicyValidationIssueCode::EmptyName:
+		return "EmptyName";
+	case NativeStaticMeshExportPolicyValidationIssueCode::DuplicateName:
+		return "DuplicateName";
+	case NativeStaticMeshExportPolicyValidationIssueCode::EmptyDefaultFilename:
+		return "EmptyDefaultFilename";
+	case NativeStaticMeshExportPolicyValidationIssueCode::DefaultFilenameContainsSeparator:
+		return "DefaultFilenameContainsSeparator";
+	case NativeStaticMeshExportPolicyValidationIssueCode::DuplicateDefaultFilename:
+		return "DuplicateDefaultFilename";
+	}
+	return "Unknown";
+}
+
 struct NativeStaticMeshExportPolicyValidationIssue {
 	NativeStaticMeshExportPolicyValidationIssueCode code =
 		NativeStaticMeshExportPolicyValidationIssueCode::EmptyName;

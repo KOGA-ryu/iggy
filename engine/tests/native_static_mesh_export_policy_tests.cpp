@@ -17,6 +17,7 @@ using iggy::native_play::NativeStaticMeshExportAssetRef;
 using iggy::native_play::NativeStaticMeshExportPolicy;
 using iggy::native_play::NativeStaticMeshExportPolicyValidationIssue;
 using iggy::native_play::NativeStaticMeshExportPolicyValidationIssueCode;
+using iggy::native_play::NativeStaticMeshExportPolicyValidationIssueCodeText;
 using iggy::native_play::NativeStaticMeshExportPolicyValidationResult;
 using iggy::native_play::NativeStaticMeshAssetWriteResult;
 using iggy::native_play::ValidateNativeStaticMeshExportPolicy;
@@ -135,6 +136,38 @@ bool HasValidationIssue(
 			return true;
 	}
 	return false;
+}
+
+void TestValidationIssueCodeText()
+{
+	Expect(
+		std::string { NativeStaticMeshExportPolicyValidationIssueCodeText(
+			NativeStaticMeshExportPolicyValidationIssueCode::EmptyName) } == "EmptyName",
+		"empty-name validation issue text should match");
+	Expect(
+		std::string { NativeStaticMeshExportPolicyValidationIssueCodeText(
+			NativeStaticMeshExportPolicyValidationIssueCode::DuplicateName) } == "DuplicateName",
+		"duplicate-name validation issue text should match");
+	Expect(
+		std::string { NativeStaticMeshExportPolicyValidationIssueCodeText(
+			NativeStaticMeshExportPolicyValidationIssueCode::EmptyDefaultFilename) } ==
+			"EmptyDefaultFilename",
+		"empty-filename validation issue text should match");
+	Expect(
+		std::string { NativeStaticMeshExportPolicyValidationIssueCodeText(
+			NativeStaticMeshExportPolicyValidationIssueCode::DefaultFilenameContainsSeparator) } ==
+			"DefaultFilenameContainsSeparator",
+		"filename-separator validation issue text should match");
+	Expect(
+		std::string { NativeStaticMeshExportPolicyValidationIssueCodeText(
+			NativeStaticMeshExportPolicyValidationIssueCode::DuplicateDefaultFilename) } ==
+			"DuplicateDefaultFilename",
+		"duplicate-filename validation issue text should match");
+	Expect(
+		std::string { NativeStaticMeshExportPolicyValidationIssueCodeText(
+			static_cast<NativeStaticMeshExportPolicyValidationIssueCode>(999)) } ==
+			"Unknown",
+		"unknown validation issue text should use fallback");
 }
 
 void TestDefaultPolicyValidatesCleanly()
@@ -258,6 +291,7 @@ int main()
 	TestUnknownAssetFailureText();
 	TestDuplicateNameReturnsFirstMatch();
 	TestBuiltInIdHelperProducesWriterValidMeshes();
+	TestValidationIssueCodeText();
 	TestDefaultPolicyValidatesCleanly();
 	TestPolicyValidationRejectsEmptyName();
 	TestPolicyValidationRejectsDuplicateName();
