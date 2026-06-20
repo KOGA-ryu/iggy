@@ -17,6 +17,7 @@ using iggy::native_play::NativeStaticModelFallbackKind;
 using iggy::native_play::NativeStaticModelLoadEntry;
 using iggy::native_play::NativeStaticModelLoadReport;
 using iggy::native_play::NativeStaticModelLoadStatus;
+using iggy::native_play::NativeStaticModelLoadStatusText;
 using iggy::native_play::NativeStaticModelPolicy;
 using iggy::native_play::NativeStaticModelSlot;
 using iggy::test::Expect;
@@ -180,6 +181,26 @@ void TestReportDoesNotInferUnlistedExistingAssets()
 	Expect(player != nullptr && player->status == NativeStaticModelLoadStatus::MissingPolicyRef, "unlisted player should stay missing");
 }
 
+void TestStaticModelLoadStatusText()
+{
+	Expect(
+		std::string(NativeStaticModelLoadStatusText(
+			NativeStaticModelLoadStatus::MissingPolicyRef)) == "MissingPolicyRef",
+		"missing-policy-ref load status text should match stable spelling");
+	Expect(
+		std::string(NativeStaticModelLoadStatusText(
+			NativeStaticModelLoadStatus::Loaded)) == "Loaded",
+		"loaded status text should match stable spelling");
+	Expect(
+		std::string(NativeStaticModelLoadStatusText(
+			NativeStaticModelLoadStatus::LoadFailed)) == "LoadFailed",
+		"load-failed status text should match stable spelling");
+	Expect(
+		std::string(NativeStaticModelLoadStatusText(
+			static_cast<NativeStaticModelLoadStatus>(999))) == "Unknown",
+		"static model load status text should report unknown fallback");
+}
+
 } // namespace
 
 int main()
@@ -188,6 +209,7 @@ int main()
 	TestMissingPolicyRefReportsFallbackKind();
 	TestBadFilenameReportsLoadFailedWithIssueCount();
 	TestReportDoesNotInferUnlistedExistingAssets();
+	TestStaticModelLoadStatusText();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

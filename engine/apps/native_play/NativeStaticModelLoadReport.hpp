@@ -17,6 +17,20 @@ enum class NativeStaticModelLoadStatus {
 	LoadFailed,
 };
 
+[[nodiscard]] inline const char *NativeStaticModelLoadStatusText(
+	NativeStaticModelLoadStatus status)
+{
+	switch (status) {
+	case NativeStaticModelLoadStatus::MissingPolicyRef:
+		return "MissingPolicyRef";
+	case NativeStaticModelLoadStatus::Loaded:
+		return "Loaded";
+	case NativeStaticModelLoadStatus::LoadFailed:
+		return "LoadFailed";
+	}
+	return "Unknown";
+}
+
 enum class NativeStaticModelFallbackKind {
 	Cube,
 	ProceduralBean,

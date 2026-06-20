@@ -54,6 +54,7 @@ using iggy::native_play::NativeStaticModelFallbackKind;
 using iggy::native_play::NativeStaticModelLoadEntry;
 using iggy::native_play::NativeStaticModelLoadReport;
 using iggy::native_play::NativeStaticModelLoadStatus;
+using iggy::native_play::NativeStaticModelLoadStatusText;
 using iggy::native_play::NativeStaticModelSlot;
 using iggy::native_play::NativeStaticModelSlotText;
 using iggy::native_play::NativeStaticMeshFileExportBatchEntry;
@@ -477,19 +478,6 @@ void PrintUsage()
 		<< "  --quit-after-script                  Exit after the scripted sequence.\n";
 }
 
-const char *NativeStaticModelLoadStatusName(NativeStaticModelLoadStatus status)
-{
-	switch (status) {
-	case NativeStaticModelLoadStatus::MissingPolicyRef:
-		return "MissingPolicyRef";
-	case NativeStaticModelLoadStatus::Loaded:
-		return "Loaded";
-	case NativeStaticModelLoadStatus::LoadFailed:
-		return "LoadFailed";
-	}
-	return "Unknown";
-}
-
 const char *NativeStaticModelFallbackKindName(NativeStaticModelFallbackKind fallback)
 {
 	switch (fallback) {
@@ -515,7 +503,7 @@ void PrintNativeStaticModelLoadReport(const NativeStaticModelLoadReport &report)
 		std::cout
 			<< "slot=" << NativeStaticModelSlotText(entry.slot)
 			<< " filename=" << (entry.meshFilename.empty() ? "<missing>" : entry.meshFilename)
-			<< " status=" << NativeStaticModelLoadStatusName(entry.status)
+			<< " status=" << NativeStaticModelLoadStatusText(entry.status)
 			<< " fallback=" << NativeStaticModelFallbackKindName(entry.fallback)
 			<< " vertices=" << entry.vertexCount
 			<< " indices=" << entry.indexCount
