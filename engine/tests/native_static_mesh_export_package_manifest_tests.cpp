@@ -9,9 +9,12 @@ namespace {
 
 using iggy::native_play::BuildNativeStaticMeshExportPackageManifestText;
 using iggy::native_play::DefaultNativeStaticMeshExportPackagePolicy;
+using iggy::native_play::NativeStaticMeshExportPackageManifestReadIssueCode;
+using iggy::native_play::NativeStaticMeshExportPackageManifestReadResult;
 using iggy::native_play::NativeStaticMeshExportPackageManifestResult;
 using iggy::native_play::NativeStaticMeshExportPackageManifestStatus;
 using iggy::native_play::NativeStaticMeshExportPackagePolicy;
+using iggy::native_play::ReadNativeStaticMeshExportPackageManifestText;
 using iggy::test::Expect;
 using iggy::test::Failures;
 
@@ -125,6 +128,202 @@ void TestBuilderDoesNotNeedFilesystemState()
 		"package manifest should use supplied manifest filename value");
 }
 
+bool HasReadIssue(
+	const NativeStaticMeshExportPackageManifestReadResult &result,
+	NativeStaticMeshExportPackageManifestReadIssueCode code)
+{
+	for (const auto &issue : result.issues) {
+		if (issue.code == code)
+			return true;
+	}
+	return false;
+}
+
+void ExpectReadIssue(
+	std::string text,
+	NativeStaticMeshExportPackageManifestReadIssueCode code,
+	const char *message)
+{
+	const NativeStaticMeshExportPackageManifestReadResult result =
+		ReadNativeStaticMeshExportPackageManifestText(text);
+	Expect(!result.read(), "malformed package manifest should not read");
+	Expect(HasReadIssue(result, code), message);
+}
+
+void TestDefaultPackageManifestReadsBack()
+{
+	const NativeStaticMeshExportPackageManifestResult manifest =
+		BuildNativeStaticMeshExportPackageManifestText(
+			DefaultNativeStaticMeshExportPackagePolicy());
+
+	const NativeStaticMeshExportPackageManifestReadResult result =
+		ReadNativeStaticMeshExportPackageManifestText(manifest.text);
+
+	Expect(result.read(), "default package manifest should read back");
+	Expect(
+		result.document.formatId == "iggy:native-static-mesh-export-package",
+		"read package manifest should preserve format id");
+	Expect(result.document.version == 1, "read package manifest should preserve version");
+	Expect(
+		result.document.manifestFilename == "static-mesh-export-manifest.txt",
+		"read package manifest should preserve nested manifest filename");
+	Expect(result.document.assets.size() == 3, "read package manifest should have assets");
+	if (result.document.assets.size() == 3) {
+		Expect(result.document.assets[0].name == "cube", "first asset should be cube");
+		Expect(
+			result.document.assets[0].filename == "cube.igmesh",
+			"first asset filename should be cube.igmesh");
+		Expect(result.document.assets[1].name == "bean", "second asset should be bean");
+		Expect(
+			result.document.assets[1].filename == "bean.igmesh",
+			"second asset filename should be bean.igmesh");
+		Expect(
+			result.document.assets[2].name == "npc-marker",
+			"third asset should be NPC marker");
+		Expect(
+			result.document.assets[2].filename == "npc-marker.igmesh",
+			"third asset filename should be npc-marker.igmesh");
+	}
+}
+
+void TestReaderRejectsEmptyInput()
+{
+	ExpectReadIssue(
+		{},
+		NativeStaticMeshExportPackageManifestReadIssueCode::EmptyInput,
+		"empty package manifest should report empty input");
+}
+
+void TestReaderRejectsBadHeaderToken()
+{
+	ExpectReadIssue(
+		"static-mesh-export-package format=iggy:native-static-mesh-export-package version=1 manifest=static-mesh-export-manifest.txt assets=0\n",
+		NativeStaticMeshExportPackageManifestReadIssueCode::MalformedHeader,
+		"bad package manifest header token should report malformed header");
+}
+
+void TestReaderRejectsUnsupportedFormat()
+{
+	ExpectReadIssue(
+		"static-mesh-export-package-manifest format=bad version=1 manifest=static-mesh-export-manifest.txt assets=0\n",
+		NativeStaticMeshExportPackageManifestReadIssueCode::UnsupportedFormatId,
+		"unsupported package manifest format should report unsupported format");
+}
+
+void TestReaderRejectsUnsupportedVersion()
+{
+	ExpectReadIssue(
+		"static-mesh-export-package-manifest format=iggy:native-static-mesh-export-package version=2 manifest=static-mesh-export-manifest.txt assets=0\n",
+		NativeStaticMeshExportPackageManifestReadIssueCode::UnsupportedVersion,
+		"unsupported package manifest version should report unsupported version");
+}
+
+void TestReaderRejectsMalformedAssetCount()
+{
+	ExpectReadIssue(
+		"static-mesh-export-package-manifest format=iggy:native-static-mesh-export-package version=1 manifest=static-mesh-export-manifest.txt assets=three\n",
+		NativeStaticMeshExportPackageManifestReadIssueCode::MalformedAssetCount,
+		"malformed package manifest asset count should be reported");
+}
+
+void TestReaderRejectsMissingHeaderFields()
+{
+	ExpectReadIssue(
+		"static-mesh-export-package-manifest format=iggy:native-static-mesh-export-package version=1 manifest=static-mesh-export-manifest.txt\n",
+		NativeStaticMeshExportPackageManifestReadIssueCode::MissingField,
+		"missing package manifest header fields should be reported");
+}
+
+void TestReaderRejectsExtraHeaderTokens()
+{
+	ExpectReadIssue(
+		"static-mesh-export-package-manifest format=iggy:native-static-mesh-export-package version=1 manifest=static-mesh-export-manifest.txt assets=0 extra=1\n",
+		NativeStaticMeshExportPackageManifestReadIssueCode::ExtraToken,
+		"extra package manifest header token should be reported");
+}
+
+void TestReaderRejectsMissingAssetFields()
+{
+	ExpectReadIssue(
+		"static-mesh-export-package-manifest format=iggy:native-static-mesh-export-package version=1 manifest=static-mesh-export-manifest.txt assets=1\n"
+		"asset=cube\n",
+		NativeStaticMeshExportPackageManifestReadIssueCode::MissingField,
+		"missing package manifest asset row fields should be reported");
+}
+
+void TestReaderRejectsExtraAssetTokens()
+{
+	ExpectReadIssue(
+		"static-mesh-export-package-manifest format=iggy:native-static-mesh-export-package version=1 manifest=static-mesh-export-manifest.txt assets=1\n"
+		"asset=cube filename=cube.igmesh extra=1\n",
+		NativeStaticMeshExportPackageManifestReadIssueCode::ExtraToken,
+		"extra package manifest asset row token should be reported");
+}
+
+void TestReaderRejectsMalformedAssetRow()
+{
+	ExpectReadIssue(
+		"static-mesh-export-package-manifest format=iggy:native-static-mesh-export-package version=1 manifest=static-mesh-export-manifest.txt assets=1\n"
+		"asset= filename=cube.igmesh\n",
+		NativeStaticMeshExportPackageManifestReadIssueCode::MalformedAssetRow,
+		"malformed package manifest asset row should be reported");
+}
+
+void TestReaderRejectsUnexpectedLine()
+{
+	ExpectReadIssue(
+		"static-mesh-export-package-manifest format=iggy:native-static-mesh-export-package version=1 manifest=static-mesh-export-manifest.txt assets=0\n"
+		"comment nope\n",
+		NativeStaticMeshExportPackageManifestReadIssueCode::UnexpectedLine,
+		"unexpected package manifest line should be reported");
+}
+
+void TestReaderRejectsAssetCountMismatch()
+{
+	ExpectReadIssue(
+		"static-mesh-export-package-manifest format=iggy:native-static-mesh-export-package version=1 manifest=static-mesh-export-manifest.txt assets=2\n"
+		"asset=cube filename=cube.igmesh\n",
+		NativeStaticMeshExportPackageManifestReadIssueCode::AssetCountMismatch,
+		"package manifest asset count mismatch should be reported");
+}
+
+void TestReaderRejectsDuplicateAssetNames()
+{
+	ExpectReadIssue(
+		"static-mesh-export-package-manifest format=iggy:native-static-mesh-export-package version=1 manifest=static-mesh-export-manifest.txt assets=2\n"
+		"asset=cube filename=cube.igmesh\n"
+		"asset=cube filename=bean.igmesh\n",
+		NativeStaticMeshExportPackageManifestReadIssueCode::DuplicateAssetName,
+		"duplicate package manifest asset names should be reported");
+}
+
+void TestReaderRejectsDuplicateAssetFilenames()
+{
+	ExpectReadIssue(
+		"static-mesh-export-package-manifest format=iggy:native-static-mesh-export-package version=1 manifest=static-mesh-export-manifest.txt assets=2\n"
+		"asset=cube filename=cube.igmesh\n"
+		"asset=bean filename=cube.igmesh\n",
+		NativeStaticMeshExportPackageManifestReadIssueCode::DuplicateAssetFilename,
+		"duplicate package manifest asset filenames should be reported");
+}
+
+void TestReaderRejectsSeparatorFilenames()
+{
+	ExpectReadIssue(
+		"static-mesh-export-package-manifest format=iggy:native-static-mesh-export-package version=1 manifest=static-mesh-export-manifest.txt assets=1\n"
+		"asset=cube filename=models/cube.igmesh\n",
+		NativeStaticMeshExportPackageManifestReadIssueCode::MalformedAssetRow,
+		"separator-containing package manifest asset filename should be reported");
+}
+
+void TestReaderRejectsSeparatorManifestFilename()
+{
+	ExpectReadIssue(
+		"static-mesh-export-package-manifest format=iggy:native-static-mesh-export-package version=1 manifest=exports/static-mesh-export-manifest.txt assets=0\n",
+		NativeStaticMeshExportPackageManifestReadIssueCode::MalformedHeader,
+		"separator-containing package manifest nested manifest filename should be reported");
+}
+
 } // namespace
 
 int main()
@@ -135,6 +334,23 @@ int main()
 	TestRepeatedCallsAreDeterministic();
 	TestInvalidPolicyReturnsFailureWithoutText();
 	TestBuilderDoesNotNeedFilesystemState();
+	TestDefaultPackageManifestReadsBack();
+	TestReaderRejectsEmptyInput();
+	TestReaderRejectsBadHeaderToken();
+	TestReaderRejectsUnsupportedFormat();
+	TestReaderRejectsUnsupportedVersion();
+	TestReaderRejectsMalformedAssetCount();
+	TestReaderRejectsMissingHeaderFields();
+	TestReaderRejectsExtraHeaderTokens();
+	TestReaderRejectsMissingAssetFields();
+	TestReaderRejectsExtraAssetTokens();
+	TestReaderRejectsMalformedAssetRow();
+	TestReaderRejectsUnexpectedLine();
+	TestReaderRejectsAssetCountMismatch();
+	TestReaderRejectsDuplicateAssetNames();
+	TestReaderRejectsDuplicateAssetFilenames();
+	TestReaderRejectsSeparatorFilenames();
+	TestReaderRejectsSeparatorManifestFilename();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;
