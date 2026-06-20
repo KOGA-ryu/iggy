@@ -19,6 +19,22 @@ struct NativeStaticMeshExportDirectoryVerificationReport {
 	}
 };
 
+[[nodiscard]] inline std::string BuildNativeStaticMeshExportDirectoryVerificationReportFailureText(
+	const NativeStaticMeshExportDirectoryVerificationReport &report)
+{
+	const std::filesystem::path output = report.verification.problemPath.empty()
+		? report.verification.outputDirectory
+		: report.verification.problemPath;
+	std::ostringstream stream;
+	stream
+		<< "static mesh export verification report failed: "
+		<< NativeStaticMeshExportDirectoryVerificationStatusText(
+			report.verification.status)
+		<< " output=" << output.string()
+		<< " issues=" << report.verification.issueCount;
+	return stream.str();
+}
+
 [[nodiscard]] inline const char *NativeStaticMeshExportDirectoryVerificationManifestState(
 	const NativeStaticMeshExportDirectoryVerificationResult &verification)
 {

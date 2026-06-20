@@ -14,6 +14,7 @@ namespace {
 
 using iggy::native_play::BuildNativeStaticMeshExportDirectoryVerificationReport;
 using iggy::native_play::BuildNativeStaticMeshExportDirectoryVerificationReportData;
+using iggy::native_play::BuildNativeStaticMeshExportDirectoryVerificationReportFailureText;
 using iggy::native_play::BuildNativeStaticMeshExportDirectoryVerificationReportText;
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
@@ -227,6 +228,27 @@ void TestMissingOutputDirectoryReportFails()
 		"missing directory report should include problem path");
 }
 
+void TestMissingOutputDirectoryReportFailureText()
+{
+	CleanupTempRoot();
+	const std::filesystem::path missing = TempRoot() / "missing";
+	const NativeStaticMeshExportDirectoryVerificationReport report =
+		BuildNativeStaticMeshExportDirectoryVerificationReport(
+			DefaultNativeStaticMeshExportPolicy(),
+			missing);
+
+	Expect(
+		report.verification.status == NativeStaticMeshExportDirectoryVerificationStatus::MissingOutputDirectory,
+		"missing output directory report failure text test should fail verification");
+	const std::string expected =
+		"static mesh export verification report failed: MissingOutputDirectory output=" +
+		missing.string() +
+		" issues=0";
+	Expect(
+		BuildNativeStaticMeshExportDirectoryVerificationReportFailureText(report) == expected,
+		"missing output directory report failure text should use output directory fallback");
+}
+
 void TestFilePathInsteadOfDirectoryReportFails()
 {
 	ResetTempRoot();
@@ -291,6 +313,30 @@ void TestMissingManifestReportFails()
 	Expect(
 		report.text.find("packageManifestReadIssue") == std::string::npos,
 		"missing manifest report should not include package manifest read issue rows");
+	CleanupTempRoot();
+}
+
+void TestMissingManifestReportFailureText()
+{
+	ResetTempRoot();
+	ExportDefaultBatch();
+	const std::filesystem::path manifest =
+		TempRoot() / NativeStaticMeshExportManifestFilename;
+	std::filesystem::remove(manifest);
+
+	const NativeStaticMeshExportDirectoryVerificationReport report =
+		BuildDefaultReport();
+
+	Expect(
+		report.verification.status == NativeStaticMeshExportDirectoryVerificationStatus::MissingManifest,
+		"missing manifest report failure text test should fail verification");
+	const std::string expected =
+		"static mesh export verification report failed: MissingManifest output=" +
+		manifest.string() +
+		" issues=0";
+	Expect(
+		BuildNativeStaticMeshExportDirectoryVerificationReportFailureText(report) == expected,
+		"missing manifest report failure text should use manifest problem path");
 	CleanupTempRoot();
 }
 
@@ -368,6 +414,30 @@ void TestMissingPackageManifestReportFails()
 	Expect(
 		report.verification.entries.empty(),
 		"missing package manifest report should not include asset entries");
+	CleanupTempRoot();
+}
+
+void TestMissingPackageManifestReportFailureText()
+{
+	ResetTempRoot();
+	ExportDefaultBatch();
+	const std::filesystem::path packageManifest =
+		TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename;
+	std::filesystem::remove(packageManifest);
+
+	const NativeStaticMeshExportDirectoryVerificationReport report =
+		BuildDefaultReport();
+
+	Expect(
+		report.verification.status == NativeStaticMeshExportDirectoryVerificationStatus::MissingPackageManifest,
+		"missing package manifest report failure text test should fail verification");
+	const std::string expected =
+		"static mesh export verification report failed: MissingPackageManifest output=" +
+		packageManifest.string() +
+		" issues=0";
+	Expect(
+		BuildNativeStaticMeshExportDirectoryVerificationReportFailureText(report) == expected,
+		"missing package manifest report failure text should use package manifest problem path");
 	CleanupTempRoot();
 }
 
@@ -599,10 +669,13 @@ int main()
 {
 	TestBatchExportedDirectoryReportSucceeds();
 	TestMissingOutputDirectoryReportFails();
+	TestMissingOutputDirectoryReportFailureText();
 	TestFilePathInsteadOfDirectoryReportFails();
 	TestMissingManifestReportFails();
+	TestMissingManifestReportFailureText();
 	TestManifestMismatchReportFails();
 	TestMissingPackageManifestReportFails();
+	TestMissingPackageManifestReportFailureText();
 	TestMalformedPackageManifestReportFails();
 	TestPackageManifestMismatchReportFails();
 	TestMissingAssetReportFailsWithEntry();
