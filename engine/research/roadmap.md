@@ -561,6 +561,11 @@ Recently completed optimized stretches:
   manifest, nested manifest, and package-declared asset facts on
   `NativeStaticMeshExportPackageDirectoryReport`, while preserving report text
   exactly.
+  Native static mesh package directory report text renderer extraction now moves
+  existing serialization into
+  `BuildNativeStaticMeshExportPackageDirectoryReportText(const NativeStaticMeshExportPackageDirectoryReport &report)`;
+  the builder still collects structured data, assigns `report.text` from the
+  helper, and preserves report text byte-for-byte.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -2351,6 +2356,30 @@ package sidecar, missing nested mesh manifest, missing declared package asset,
 and directory-at-declared-asset. Report text output is unchanged: no new rows,
 summary fields, row-order changes, statuses, counts, tokens, or newline changes.
 This docs packet does not change `readOk()`, CLI exit behavior, core `issues=`,
+package directory reader status/data, exact verification/export/package
+acceptance, generated sidecar text, write policy, nested mesh-manifest-only path
+facts, `.igmesh` loading, geometry validation, policy/built-in reconstruction,
+discovery/scanning/catalog/registry, exact-extra-file rejection, renderer/model
+slot/schema/gameplay behavior, glTF/glb/JSON parser work, or next source packet
+scope.
+
+Native Static Mesh Package Directory Report Text Renderer Extraction is complete
+as a behavior-preserving serialization split. The new header-only helper
+`BuildNativeStaticMeshExportPackageDirectoryReportText(const NativeStaticMeshExportPackageDirectoryReport &report)`
+owns existing package directory report text serialization, while
+`BuildNativeStaticMeshExportPackageDirectoryReport(...)` still collects
+structured report data and then assigns
+`report.text = BuildNativeStaticMeshExportPackageDirectoryReportText(report)`.
+The renderer consumes existing structured fields only: `read`,
+`packageManifestFacts`, `manifestFacts`, package manifest read issues,
+`manifestRead`, `manifestComparison`, and `assetFacts`. Current report text is
+preserved byte-for-byte for summary rows, field order, issue rows, manifest
+asset rows, comparison rows, package asset rows, counts, tokens, paths, and
+newlines. Focused tests compare renderer output to `report.text` for valid
+export, missing package sidecar, malformed package sidecar, missing nested
+manifest, combined comparison mismatch, and missing declared asset. This docs
+packet does not change report text, rows, summary fields, row order, statuses,
+counts, tokens, newlines, `readOk()`, CLI exit behavior, core `issues=`,
 package directory reader status/data, exact verification/export/package
 acceptance, generated sidecar text, write policy, nested mesh-manifest-only path
 facts, `.igmesh` loading, geometry validation, policy/built-in reconstruction,

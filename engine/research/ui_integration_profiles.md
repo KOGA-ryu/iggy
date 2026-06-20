@@ -822,6 +822,21 @@ cases is unchanged. This does not add rows, summary fields, status changes,
 package acceptance semantics, `.igmesh` loading, geometry validation, policy
 reconstruction, discovery/scanning, renderer behavior, or write behavior.
 
+Native static mesh package directory report text renderer extraction is complete
+without changing visible report text. The new helper
+`BuildNativeStaticMeshExportPackageDirectoryReportText(const NativeStaticMeshExportPackageDirectoryReport &report)`
+serializes the existing structured report data, and
+`BuildNativeStaticMeshExportPackageDirectoryReport(...)` assigns `report.text`
+from that helper after collecting the report. The renderer reads existing
+structured fields only: `read`, package and nested manifest file facts, package
+manifest read issues, nested manifest read diagnostics, manifest comparison, and
+asset facts. Summary rows, field order, issue rows, manifest asset rows,
+comparison rows, package asset rows, counts, tokens, paths, and newlines are
+preserved byte-for-byte. This does not add rows, summary fields, status changes,
+`readOk()` changes, CLI exit changes, core `issues=` changes, verification or
+package acceptance semantics, `.igmesh` loading, geometry validation, policy
+reconstruction, discovery/scanning, renderer behavior, or write behavior.
+
 Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play
 --dump-static-mesh-export-verification-report --output-dir DIR` prints a
