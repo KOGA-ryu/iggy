@@ -109,9 +109,10 @@ void TestBatchExportedDirectoryReportReads()
 			"manifest=" + (TempRoot() / NativeStaticMeshExportManifestFilename).string() +
 				" manifestExists=1 manifestRegularFile=1 manifestBytes=" +
 				std::to_string(FileByteCount(
-					TempRoot() / NativeStaticMeshExportManifestFilename))) !=
+					TempRoot() / NativeStaticMeshExportManifestFilename)) +
+				" manifestRead=ok manifestReadIssues=0") !=
 			std::string::npos,
-		"package directory report should include nested manifest file facts");
+		"package directory report should include nested manifest file and read facts");
 	Expect(
 		report.text.find(
 			"asset=cube filename=cube.igmesh path=" +
@@ -137,6 +138,9 @@ void TestBatchExportedDirectoryReportReads()
 	Expect(
 		report.text.find("packageManifestReadIssue") == std::string::npos,
 		"successful package directory report should not include read issue rows");
+	Expect(
+		report.text.find("\nmanifestReadIssue code=") == std::string::npos,
+		"successful package directory report should not include manifest read issue rows");
 	CleanupTempRoot();
 }
 
@@ -277,8 +281,47 @@ void TestMissingNestedManifestStillReportsRead()
 			std::string::npos,
 		"missing nested mesh manifest should report missing file facts");
 	Expect(
+		report.text.find("manifestRead=invalid manifestReadIssues=1") !=
+			std::string::npos,
+		"missing nested mesh manifest should report invalid manifest read state");
+	Expect(
+		report.text.find(
+			"manifestReadIssue code=FileOpenFailed line=0 token=" +
+			(TempRoot() / NativeStaticMeshExportManifestFilename).string()) !=
+			std::string::npos,
+		"missing nested mesh manifest should report file-open issue row");
+	Expect(
 		report.text.find("asset=cube filename=cube.igmesh") != std::string::npos,
 		"missing nested mesh manifest should not suppress asset rows");
+	CleanupTempRoot();
+}
+
+void TestMalformedNestedManifestStillReportsRead()
+{
+	ResetTempRoot();
+	ExportDefaultBatch();
+	WriteText(
+		TempRoot() / NativeStaticMeshExportManifestFilename,
+		"static-mesh-export-manifest version=2 assets=0 bytes=0\n");
+
+	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
+
+	Expect(report.readOk(), "malformed nested mesh manifest should not fail package report");
+	Expect(
+		report.text.find("status=Read") != std::string::npos,
+		"malformed nested mesh manifest package report should stay read");
+	Expect(
+		report.text.find("manifestRead=invalid manifestReadIssues=1") !=
+			std::string::npos,
+		"malformed nested mesh manifest should report invalid manifest read state");
+	Expect(
+		report.text.find(
+			"manifestReadIssue code=UnsupportedVersion line=1 token=2") !=
+			std::string::npos,
+		"malformed nested mesh manifest should report parser issue row");
+	Expect(
+		report.text.find("asset=cube filename=cube.igmesh") != std::string::npos,
+		"malformed nested mesh manifest should not suppress asset rows");
 	CleanupTempRoot();
 }
 
@@ -361,6 +404,7 @@ int main()
 	TestMissingPackageSidecarReportIncludesIssueRow();
 	TestMalformedPackageSidecarReportIncludesIssueRow();
 	TestMissingNestedManifestStillReportsRead();
+	TestMalformedNestedManifestStillReportsRead();
 	TestMissingDeclaredAssetStillReportsRead();
 	TestDirectoryAtDeclaredAssetStillReportsRead();
 	TestExtraUnrelatedFileIsIgnored();

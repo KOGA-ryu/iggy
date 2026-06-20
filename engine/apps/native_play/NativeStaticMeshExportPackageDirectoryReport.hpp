@@ -1,5 +1,6 @@
 #pragma once
 
+#include "NativeStaticMeshExportManifest.hpp"
 #include "NativeStaticMeshExportPackageDirectoryReader.hpp"
 
 #include <cstdint>
@@ -70,12 +71,56 @@ struct NativeStaticMeshExportPackageDirectoryReport {
 	return "Unknown";
 }
 
+[[nodiscard]] inline const char *NativeStaticMeshExportPackageDirectoryMeshManifestIssueCodeText(
+	NativeStaticMeshExportManifestReadIssueCode code)
+{
+	switch (code) {
+	case NativeStaticMeshExportManifestReadIssueCode::FileOpenFailed:
+		return "FileOpenFailed";
+	case NativeStaticMeshExportManifestReadIssueCode::EmptyInput:
+		return "EmptyInput";
+	case NativeStaticMeshExportManifestReadIssueCode::MalformedHeader:
+		return "MalformedHeader";
+	case NativeStaticMeshExportManifestReadIssueCode::UnsupportedVersion:
+		return "UnsupportedVersion";
+	case NativeStaticMeshExportManifestReadIssueCode::MalformedAssetCount:
+		return "MalformedAssetCount";
+	case NativeStaticMeshExportManifestReadIssueCode::MalformedByteCount:
+		return "MalformedByteCount";
+	case NativeStaticMeshExportManifestReadIssueCode::MissingField:
+		return "MissingField";
+	case NativeStaticMeshExportManifestReadIssueCode::MalformedAssetRow:
+		return "MalformedAssetRow";
+	case NativeStaticMeshExportManifestReadIssueCode::AssetCountMismatch:
+		return "AssetCountMismatch";
+	case NativeStaticMeshExportManifestReadIssueCode::ByteCountMismatch:
+		return "ByteCountMismatch";
+	case NativeStaticMeshExportManifestReadIssueCode::DuplicateAssetName:
+		return "DuplicateAssetName";
+	case NativeStaticMeshExportManifestReadIssueCode::DuplicateAssetFilename:
+		return "DuplicateAssetFilename";
+	case NativeStaticMeshExportManifestReadIssueCode::ExtraToken:
+		return "ExtraToken";
+	case NativeStaticMeshExportManifestReadIssueCode::UnexpectedLine:
+		return "UnexpectedLine";
+	}
+	return "Unknown";
+}
+
 [[nodiscard]] inline NativeStaticMeshExportPackageDirectoryReport
 BuildNativeStaticMeshExportPackageDirectoryReport(
 	const std::filesystem::path &directory)
 {
 	NativeStaticMeshExportPackageDirectoryReport report;
 	report.read = ReadNativeStaticMeshExportPackageDirectory(directory);
+
+	NativeStaticMeshExportManifestReadResult manifestRead;
+	bool hasManifestRead = false;
+	if (report.read.read() && !report.read.manifestPath.empty()) {
+		manifestRead = ReadNativeStaticMeshExportManifestFile(
+			report.read.manifestPath);
+		hasManifestRead = true;
+	}
 
 	struct PathFacts {
 		bool exists = false;
@@ -129,6 +174,11 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 			<< (facts.exists ? 1 : 0)
 			<< " manifestRegularFile=" << (facts.regularFile ? 1 : 0)
 			<< " manifestBytes=" << facts.byteCount;
+		if (hasManifestRead) {
+			stream
+				<< " manifestRead=" << (manifestRead.read() ? "ok" : "invalid")
+				<< " manifestReadIssues=" << manifestRead.issues.size();
+		}
 	}
 	stream << "\n";
 
@@ -141,6 +191,19 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 			<< " line=" << issue.line
 			<< " token=" << issue.token
 			<< "\n";
+	}
+
+	if (hasManifestRead && !manifestRead.read()) {
+		for (const NativeStaticMeshExportManifestReadIssue &issue :
+				manifestRead.issues) {
+			stream
+				<< "manifestReadIssue"
+				<< " code=" << NativeStaticMeshExportPackageDirectoryMeshManifestIssueCodeText(
+					issue.code)
+				<< " line=" << issue.line
+				<< " token=" << issue.token
+				<< "\n";
+		}
 	}
 
 	for (const NativeStaticMeshExportPackageDirectoryAsset &asset :
