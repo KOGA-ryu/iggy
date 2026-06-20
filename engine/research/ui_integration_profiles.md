@@ -620,6 +620,19 @@ renderer/model-slot behavior, assets/fixtures, schema, package
 loading/discovery/acceptance, generated sidecars, export write policy, exact
 verifier behavior, and CMake remain unchanged.
 
+Native static mesh asset writer issue text helper extraction is complete as an
+enum-owned writer issue string cleanup with no visible CLI text change.
+`NativeStaticMeshAssetWriteIssueCodeText(NativeStaticMeshAssetWriteIssueCode code)`
+now lives beside the writer issue enum in `NativeStaticMeshAssetWriter.hpp` and
+maps `InvalidMesh`, `NonTriangleIndexCount`, and out-of-range fallback
+`Unknown`. No CLI/app-shell text consumes the helper yet; writer failure text
+continues to use issue count only. Raw `.igmesh` output, writer result shape,
+`written()` semantics, issue generation/order/counts, writer failure text, CLI
+behavior, loader/parser, export policy, package/verification, renderer,
+assets/fixtures, schema, package loading/acceptance/discovery, export write
+policy, generated sidecars, exact verifier behavior, source/CMake files, and
+docs/source separation remain unchanged.
+
 Native static mesh unknown asset failure text helper extraction is complete
 without changing visible error formatting. The pure
 `BuildUnknownNativeStaticMeshExportAssetFailureText(std::string_view name)`

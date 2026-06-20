@@ -440,6 +440,10 @@ Recently completed optimized stretches:
   adds `BuildNativeStaticMeshAssetWriteFailureText(...)`; writer failures in the
   raw asset dump path delegate only the compact body through it while preserving
   unknown-asset handling and raw `.igmesh` success stdout.
+  Native static mesh asset writer issue text helper extraction now adds
+  `NativeStaticMeshAssetWriteIssueCodeText(...)` beside the writer issue enum
+  with stable `InvalidMesh`, `NonTriangleIndexCount`, and `Unknown` strings; no
+  CLI/app-shell text consumes it yet.
   Native static mesh unknown asset failure text helper extraction now adds
   `BuildUnknownNativeStaticMeshExportAssetFailureText(...)` beside the export
   policy lookup surface; raw dump and single output-dir export unknown-asset
@@ -1758,6 +1762,26 @@ verification report, package-directory report, static model behavior, renderer
 behavior, assets/fixtures, schema, package loading/discovery/acceptance,
 generated sidecars, export write policy, exact verifier behavior, docs/source
 mixing, or CMake.
+
+Native Static Mesh Asset Writer Issue Text Helper Extraction is complete as an
+enum-owned writer issue text helper cleanup. `NativeStaticMeshAssetWriter.hpp`
+now exposes
+`NativeStaticMeshAssetWriteIssueCodeText(NativeStaticMeshAssetWriteIssueCode code)`
+beside `NativeStaticMeshAssetWriteIssueCode`. The exact mappings are
+`InvalidMesh`, `NonTriangleIndexCount`, and fallback `Unknown` for out-of-range
+values. No CLI/app-shell text consumes the helper yet; writer failure text still
+uses issue count only. Direct writer tests cover both current issue-code strings
+and the out-of-range fallback. Source verification passed
+`native_static_mesh_asset_writer_tests`, `iggy_native_play`, raw cube dump smoke
+preserving `# Native static mesh asset` and `tri 0 1 2`, unknown-asset smoke
+preserving `iggy_native_play: unknown static mesh asset: nope`, source
+`git diff --check`, and source `git diff --cached --check`. This packet does
+not change `IggyNativePlay.cpp`, CMake, loader/parser, export policy,
+package/verification, renderer, assets/fixtures, schema, package
+loading/acceptance/discovery, export write policy, generated sidecar, exact
+verifier behavior, writer failure text, raw writer output, issue
+generation/order/counts, writer result shape, `written()` semantics, or CLI
+behavior.
 
 Native Static Mesh Unknown Asset Failure Text Helper Extraction is complete as
 a behavior-preserving unknown-asset failure-body cleanup. `NativeStaticMeshExportPolicy.hpp`
