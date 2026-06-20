@@ -206,6 +206,19 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 		}
 	}
 
+	if (hasManifestRead && manifestRead.read()) {
+		for (const NativeStaticMeshExportManifestAssetRow &asset :
+				manifestRead.document.assets) {
+			stream
+				<< "manifestAsset=" << asset.name
+				<< " filename=" << asset.filename
+				<< " vertices=" << asset.vertexCount
+				<< " indices=" << asset.indexCount
+				<< " bytes=" << asset.byteCount
+				<< "\n";
+		}
+	}
+
 	for (const NativeStaticMeshExportPackageDirectoryAsset &asset :
 			report.read.assets) {
 		const PathFacts facts = pathFacts(asset.path);

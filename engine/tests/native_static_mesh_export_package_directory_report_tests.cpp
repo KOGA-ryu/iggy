@@ -141,6 +141,28 @@ void TestBatchExportedDirectoryReportReads()
 	Expect(
 		report.text.find("\nmanifestReadIssue code=") == std::string::npos,
 		"successful package directory report should not include manifest read issue rows");
+	Expect(
+		report.text.find(
+			"manifestAsset=cube filename=cube.igmesh vertices=8 indices=36 bytes=523") !=
+			std::string::npos,
+		"successful package directory report should include cube manifest asset row");
+	Expect(
+		report.text.find(
+			"manifestAsset=bean filename=bean.igmesh vertices=234 indices=1296 bytes=23882") !=
+			std::string::npos,
+		"successful package directory report should include bean manifest asset row");
+	Expect(
+		report.text.find(
+			"manifestAsset=npc-marker filename=npc-marker.igmesh vertices=98 indices=504 bytes=9474") !=
+			std::string::npos,
+		"successful package directory report should include NPC marker manifest asset row");
+	Expect(
+		report.text.find("manifestAsset=cube") < report.text.find("manifestAsset=bean") &&
+			report.text.find("manifestAsset=bean") <
+				report.text.find("manifestAsset=npc-marker") &&
+			report.text.find("manifestAsset=npc-marker") <
+				report.text.find("asset=cube filename=cube.igmesh path="),
+		"manifest asset rows should preserve manifest order and precede package asset rows");
 	CleanupTempRoot();
 }
 
@@ -291,6 +313,9 @@ void TestMissingNestedManifestStillReportsRead()
 			std::string::npos,
 		"missing nested mesh manifest should report file-open issue row");
 	Expect(
+		report.text.find("manifestAsset=") == std::string::npos,
+		"missing nested mesh manifest should not emit manifest asset rows");
+	Expect(
 		report.text.find("asset=cube filename=cube.igmesh") != std::string::npos,
 		"missing nested mesh manifest should not suppress asset rows");
 	CleanupTempRoot();
@@ -319,6 +344,9 @@ void TestMalformedNestedManifestStillReportsRead()
 			"manifestReadIssue code=UnsupportedVersion line=1 token=2") !=
 			std::string::npos,
 		"malformed nested mesh manifest should report parser issue row");
+	Expect(
+		report.text.find("manifestAsset=") == std::string::npos,
+		"malformed nested mesh manifest should not emit manifest asset rows");
 	Expect(
 		report.text.find("asset=cube filename=cube.igmesh") != std::string::npos,
 		"malformed nested mesh manifest should not suppress asset rows");
