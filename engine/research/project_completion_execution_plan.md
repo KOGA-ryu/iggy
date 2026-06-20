@@ -1676,6 +1676,35 @@ Native static mesh package directory report CLI complete:
   material/texture/normal/UV/animation expansion, gameplay/scripted/final-state
   behavior, fixture rewrites, docs-in-source, or next source packet scope.
 
+Native static mesh package directory presence diagnostics complete:
+- Package directory report now emits read-only presence facts for paths already
+  projected by the package directory reader.
+- Summary appends `manifestExists=1|0` when the nested mesh manifest path is
+  available.
+- Asset rows append `exists=1|0` for each declared package asset path.
+- `readOk()` and CLI exit semantics are unchanged: missing nested mesh manifest
+  or declared mesh asset remains `status=Read` / exit 0; missing package sidecar
+  remains `PackageManifestReadFailed` / nonzero.
+- Valid package directory smoke prints `manifestExists=1` plus `exists=1` for
+  `cube`, `bean`, and `npc-marker`.
+- Missing nested mesh manifest smoke exits 0 with `status=Read` and
+  `manifestExists=0`.
+- Missing declared asset smoke exits 0 with `cube.igmesh exists=0` and remaining
+  assets `exists=1`.
+- Missing package sidecar smoke exits nonzero with `PackageManifestReadFailed`
+  and `FileOpenFailed` issue row.
+- Changed files stayed within approved report/test surfaces.
+- This docs packet does not change source, tests, CMake, assets, shaders,
+  runtime, CLI parser behavior, renderer behavior, verification semantics,
+  export behavior, docs-in-source, package discovery/scanning/catalog/registry,
+  exact-extra-file rejection, repair, source mutation, arbitrary package loading,
+  nested mesh manifest parsing, `.igmesh` loading, geometry checks,
+  generated-text comparison, policy reconstruction, built-in id reconstruction,
+  export write behavior, overwrite/create-dir/temp replacement/arbitrary output
+  path policy, fixtures/generated assets, gameplay/scripted/final-state
+  behavior, `NativeVulkanRenderer.cpp`, glTF/glb/JSON parser/dependency work, or
+  next source packet scope.
+
 Native static mesh package manifest text reader complete:
 - Added a dependency-free, filesystem-free in-memory reader for the current
   generated package manifest text grammar.
@@ -2649,7 +2678,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 75. Native static mesh package directory reader is integrated.
 76. Native static mesh package directory report builder is integrated.
 77. Native static mesh package directory report CLI is integrated.
-78. Dispatch richer diagnostics display, overlays/labels, frame request/
+78. Native static mesh package directory presence diagnostics are integrated.
+79. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

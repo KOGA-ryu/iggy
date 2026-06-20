@@ -514,6 +514,9 @@ Recently completed optimized stretches:
   `iggy_native_play --dump-static-mesh-export-package-directory-report --output-dir DIR`,
   dispatching before NativeVulkanApp/SDL/Vulkan startup and returning success
   only when the package directory report read succeeds.
+  Native static mesh package directory presence diagnostics now append
+  `manifestExists=1|0` and per-asset `exists=1|0` facts to that report without
+  changing read success, CLI exit semantics, verification, export, or loading.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -2024,6 +2027,29 @@ export-policy/built-in id reconstruction, `.igmesh` schema/material/texture/
 normal/UV/animation expansion, gameplay/scripted/final-state behavior, fixture
 rewrites, docs-in-source, CMake, source/test/assets/shader/runtime files in this
 docs packet, or next source packet scope.
+
+Native Static Mesh Package Directory Presence Diagnostics are complete for the
+package directory report. The report now emits read-only presence facts for
+paths already projected by the package directory reader: summary rows append
+`manifestExists=1|0` when the nested mesh manifest path is available, and asset
+rows append `exists=1|0` for each declared package asset path. `readOk()` and
+CLI exit semantics are unchanged: missing nested mesh manifest or declared mesh
+asset remains `status=Read` / exit 0, while a missing package sidecar remains
+`PackageManifestReadFailed` / nonzero. Valid package directory smoke prints
+`manifestExists=1` plus `exists=1` for `cube`, `bean`, and `npc-marker`; missing
+nested `static-mesh-export-manifest.txt` prints `status=Read` and
+`manifestExists=0`; missing declared `cube.igmesh` prints `exists=0` for cube
+and `exists=1` for remaining assets; missing package sidecar still reports
+`PackageManifestReadFailed` and a `FileOpenFailed` issue row. This does not add
+nested mesh manifest parsing, `.igmesh` loading, generated-text comparison,
+directory scanning, policy reconstruction, CLI parser changes, export behavior
+changes, renderer changes, docs-in-source, CMake changes, package discovery/
+scanning/catalog/registry, exact-extra-file rejection, repair, source mutation,
+arbitrary package loading, geometry checks, built-in id reconstruction, export
+write behavior, overwrite/create-dir/temp replacement/arbitrary output path
+policy, fixture/generated asset changes, gameplay/scripted/final-state changes,
+`NativeVulkanRenderer.cpp`, glTF/glb/JSON parser/dependency work, source/test/
+assets/shader/runtime files in this docs packet, or next source packet scope.
 
 Exit criteria:
 - Load a package or explicit scenario.

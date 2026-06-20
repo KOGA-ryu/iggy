@@ -695,6 +695,13 @@ nested mesh manifests still report `Read` with projected paths, and the flag
 does not add package loading, scanning, export mutation, renderer behavior, or
 native app play/session behavior changes.
 
+Native static mesh package directory presence diagnostics are complete as
+read-only report fields. The package directory report now appends
+`manifestExists=1|0` when the nested manifest path is available and
+`exists=1|0` on each declared asset row. These facts do not change `readOk()`,
+CLI exit status, verification semantics, export behavior, directory scanning,
+mesh loading, generated-text comparison, or package loading.
+
 Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play
 --dump-static-mesh-export-verification-report --output-dir DIR` prints a
