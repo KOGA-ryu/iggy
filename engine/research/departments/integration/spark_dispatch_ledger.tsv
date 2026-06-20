@@ -20,4 +20,5 @@ packet	status	department	owner	source_commit	source_review	docs_commit	docs_revi
 83_native_static_asset_next_boundary_scout	complete	integration	finisher	a1801e2d	PASS-planner	94f52638	not_requested		closed source and docs after native static mesh batch package manifest sidecar export	2026-06-20
 84_native_static_asset_next_boundary_scout	complete	integration	finisher	358b6512	PASS-planner	b376e54a	not_requested		closed source and docs after native static mesh package sidecar verification	2026-06-20
 85_native_static_asset_next_boundary_scout	complete	integration	finisher	0e032380	PASS-planner	cdb4161d	not_requested		closed source and docs after native static mesh verification summary sidecar diagnostics	2026-06-20
-86_native_static_asset_next_boundary_scout	docs_ready	integration	finisher	8cf216a0	PASS-planner				Sync docs/API for Native Static Mesh Package Manifest Text Reader	2026-06-20
+86_native_static_asset_next_boundary_scout	complete	integration	finisher	8cf216a0	PASS-planner	b04a4e3c	not_requested		closed source and docs after native static mesh package manifest text reader	2026-06-20
+87_native_static_asset_next_boundary_scout	research	integration	researcher						Scout next native static asset boundary after package manifest reader	2026-06-20
