@@ -534,6 +534,22 @@ behavior, renderer/model-slot behavior, static mesh export/report/manifest/
 package/verification/package-directory behavior, `.igmesh` schema/loading, or
 parser scope.
 
+Native static model load report text renderer extraction is complete without
+changing visible load-report output or CLI behavior. The pure header-only
+`BuildNativeStaticModelLoadReportText(const NativeStaticModelLoadReport &report)`
+renderer now lives in `NativeStaticModelLoadReport.hpp`, and
+`PrintNativeStaticModelLoadReport(...)` delegates to it. The preserved text
+format includes the summary row, entry row order, `slot=`,
+`filename=<missing>` handling, `status=`, `fallback=`, vertex/index/issue
+counts, and trailing newlines. Exact text coverage now includes the default
+checked-in asset report and a missing-policy-ref report branch. This does not
+change static model policy defaults or lookup, fallback assignment behavior,
+report data-building semantics, CLI parser/help/dispatch/conflict/exit behavior,
+renderer/model-slot behavior, checked-in assets or fixtures, `.igmesh`
+schema/loading, static mesh export/package/verification/package-directory
+behavior, exact verification behavior, generated sidecar/export write policy, or
+parser scope.
+
 Native static model load report CLI dumping is complete as no-Qt app-shell asset
 diagnostics: `iggy_native_play --dump-static-model-load-report` builds the
 default policy report against `IGGY_NATIVE_PLAY_ASSET_DIR`, prints compact
