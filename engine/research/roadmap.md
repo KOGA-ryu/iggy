@@ -503,6 +503,11 @@ Recently completed optimized stretches:
   Native static mesh verification package read issue rows now preserve
   structured package manifest reader issues on verifier failures and print
   deterministic `packageManifestReadIssue ...` rows in the verification report.
+  Native static mesh export verification report text renderer extraction now
+  moves existing verification report serialization into
+  `BuildNativeStaticMeshExportDirectoryVerificationReportText(const NativeStaticMeshExportDirectoryVerificationReport &report)`;
+  the full builder still verifies with `VerifyNativeStaticMeshExportDirectory(...)`
+  and assigns `report.text` from the helper with byte-for-byte text preserved.
   Native static mesh package directory reading now adds a header-only explicit
   directory reader that reads `static-mesh-export-package-manifest.txt` and
   projects nested manifest and asset paths without checking file existence,
@@ -1989,6 +1994,30 @@ exact deterministic text verification, policy/built-in id reconstruction from
 package rows, renderer behavior, runtime/product/scene/server APIs, gameplay,
 `.igmesh` schema, fixtures, dependencies, docs-in-source, or next research/
 scout implementation.
+
+Native Static Mesh Export Verification Report Text Renderer Extraction is
+complete as a behavior-preserving serialization split. The new pure helper
+`BuildNativeStaticMeshExportDirectoryVerificationReportText(const NativeStaticMeshExportDirectoryVerificationReport &report)`
+owns existing verification report text serialization. The full
+`BuildNativeStaticMeshExportDirectoryVerificationReport(policy, directory)`
+still calls `VerifyNativeStaticMeshExportDirectory(policy, directory)`, assigns
+`report.text = BuildNativeStaticMeshExportDirectoryVerificationReportText(report)`,
+and returns the same report surface. Report text is preserved byte-for-byte:
+summary row, `status=`, `output=`, `verified=`, `issues=`, `manifest=`,
+`packageManifest=`, optional `problem=`, package manifest read issue rows, asset
+rows, row order, paths, tokens, counts, and trailing newlines. Focused parity
+coverage compares renderer output to `report.text` for valid export, missing
+mesh manifest, missing package manifest, malformed package sidecar, missing
+asset, and geometry mismatch. Valid CLI smoke still reports `status=Verified`,
+`manifest=ok packageManifest=ok`, and verified cube/bean/npc-marker rows.
+Missing package sidecar and malformed package sidecar smokes keep existing
+nonzero CLI behavior and report rows for `MissingPackageManifest` and
+`PackageManifestReadFailed`. This docs packet does not change verification data,
+status/order/issue counts, CLI exit behavior, exact sidecar matching,
+generated sidecar/export behavior, package acceptance semantics, package
+directory report behavior, package loading/discovery, `.igmesh` loading beyond
+existing verifier behavior, renderer/model-slot behavior, CMake, assets,
+fixtures, glTF/glb/JSON parser work, or next source packet scope.
 
 Native Static Mesh Package Directory Reader is complete as a header-only,
 explicit-directory package read helper. `NativeStaticMeshExportPackageDirectoryReader.hpp`

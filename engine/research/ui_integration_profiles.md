@@ -864,6 +864,21 @@ package/catalog/parser/schema/material/texture
 behavior, renderer behavior, native app CMake source registration, or gameplay/
 scripted/final-state changes.
 
+Native static mesh export verification report text renderer extraction is
+complete without changing visible report text or CLI behavior. The pure helper
+`BuildNativeStaticMeshExportDirectoryVerificationReportText(const NativeStaticMeshExportDirectoryVerificationReport &report)`
+serializes the existing verification report data, while
+`BuildNativeStaticMeshExportDirectoryVerificationReport(policy, directory)` still
+verifies through `VerifyNativeStaticMeshExportDirectory(policy, directory)` and
+assigns `report.text` from the helper. Summary row fields, sidecar state fields,
+optional problem path, package manifest read issue rows, asset rows, row order,
+paths, tokens, counts, and trailing newlines are preserved byte-for-byte. This
+does not change verification data/status/order/issue counts, CLI exit behavior,
+exact sidecar matching, generated sidecar/export behavior, package acceptance,
+package directory report behavior, package loading/discovery, `.igmesh` loading
+beyond existing verifier behavior, renderer/model-slot behavior, or parser
+scope.
+
 Native static mesh export package policy is complete as value-only metadata:
 `NativeStaticMeshExportPackagePolicy.hpp` defines the stable format id
 `iggy:native-static-mesh-export-package`, version `1`, and manifest filename
