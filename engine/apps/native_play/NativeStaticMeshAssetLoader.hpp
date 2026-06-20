@@ -24,6 +24,28 @@ enum class NativeStaticMeshAssetLoadIssueCode {
 	InvalidMesh,
 };
 
+[[nodiscard]] inline const char *NativeStaticMeshAssetLoadIssueCodeText(
+	NativeStaticMeshAssetLoadIssueCode code)
+{
+	switch (code) {
+	case NativeStaticMeshAssetLoadIssueCode::FileOpenFailed:
+		return "FileOpenFailed";
+	case NativeStaticMeshAssetLoadIssueCode::UnknownDirective:
+		return "UnknownDirective";
+	case NativeStaticMeshAssetLoadIssueCode::MalformedVertex:
+		return "MalformedVertex";
+	case NativeStaticMeshAssetLoadIssueCode::MalformedTriangle:
+		return "MalformedTriangle";
+	case NativeStaticMeshAssetLoadIssueCode::IndexOutOfRange:
+		return "IndexOutOfRange";
+	case NativeStaticMeshAssetLoadIssueCode::ExtraToken:
+		return "ExtraToken";
+	case NativeStaticMeshAssetLoadIssueCode::InvalidMesh:
+		return "InvalidMesh";
+	}
+	return "Unknown";
+}
+
 struct NativeStaticMeshAssetLoadIssue {
 	NativeStaticMeshAssetLoadIssueCode code =
 		NativeStaticMeshAssetLoadIssueCode::InvalidMesh;

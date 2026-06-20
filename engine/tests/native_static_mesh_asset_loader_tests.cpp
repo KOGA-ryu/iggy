@@ -16,6 +16,7 @@ namespace {
 using iggy::native_play::LoadNativeStaticMeshAssetFile;
 using iggy::native_play::LoadNativeStaticMeshAssetText;
 using iggy::native_play::NativeStaticMeshAssetLoadIssueCode;
+using iggy::native_play::NativeStaticMeshAssetLoadIssueCodeText;
 using iggy::native_play::NativeStaticMeshAssetLoadResult;
 using iggy::test::Expect;
 using iggy::test::Failures;
@@ -59,6 +60,42 @@ bool HasIssue(
 			return true;
 	}
 	return false;
+}
+
+void TestLoadIssueCodeText()
+{
+	Expect(
+		std::string { NativeStaticMeshAssetLoadIssueCodeText(
+			NativeStaticMeshAssetLoadIssueCode::FileOpenFailed) } == "FileOpenFailed",
+		"file-open loader issue text should match");
+	Expect(
+		std::string { NativeStaticMeshAssetLoadIssueCodeText(
+			NativeStaticMeshAssetLoadIssueCode::UnknownDirective) } == "UnknownDirective",
+		"unknown-directive loader issue text should match");
+	Expect(
+		std::string { NativeStaticMeshAssetLoadIssueCodeText(
+			NativeStaticMeshAssetLoadIssueCode::MalformedVertex) } == "MalformedVertex",
+		"malformed-vertex loader issue text should match");
+	Expect(
+		std::string { NativeStaticMeshAssetLoadIssueCodeText(
+			NativeStaticMeshAssetLoadIssueCode::MalformedTriangle) } == "MalformedTriangle",
+		"malformed-triangle loader issue text should match");
+	Expect(
+		std::string { NativeStaticMeshAssetLoadIssueCodeText(
+			NativeStaticMeshAssetLoadIssueCode::IndexOutOfRange) } == "IndexOutOfRange",
+		"index-range loader issue text should match");
+	Expect(
+		std::string { NativeStaticMeshAssetLoadIssueCodeText(
+			NativeStaticMeshAssetLoadIssueCode::ExtraToken) } == "ExtraToken",
+		"extra-token loader issue text should match");
+	Expect(
+		std::string { NativeStaticMeshAssetLoadIssueCodeText(
+			NativeStaticMeshAssetLoadIssueCode::InvalidMesh) } == "InvalidMesh",
+		"invalid-mesh loader issue text should match");
+	Expect(
+		std::string { NativeStaticMeshAssetLoadIssueCodeText(
+			static_cast<NativeStaticMeshAssetLoadIssueCode>(999)) } == "Unknown",
+		"unknown loader issue text should use fallback");
 }
 
 void TestLoadsTriangleFromText()
@@ -220,6 +257,7 @@ tri 0 1 0
 
 int main()
 {
+	TestLoadIssueCodeText();
 	TestLoadsTriangleFromText();
 	TestLoadsTriangleFromFile();
 	TestLoadsNativePlayerAssetFixture();
