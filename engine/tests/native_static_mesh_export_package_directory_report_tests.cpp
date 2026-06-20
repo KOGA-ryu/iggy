@@ -14,6 +14,7 @@
 namespace {
 
 using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReport;
+using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReportData;
 using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReportText;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
 using iggy::native_play::ExportNativeStaticMeshPolicyToDirectory;
@@ -109,13 +110,107 @@ void ExpectTextRendererMatches(
 	Expect(BuildNativeStaticMeshExportPackageDirectoryReportText(report) == report.text, message);
 }
 
+void ExpectFactsMatch(
+	const NativeStaticMeshExportPackageDirectoryPathFacts &actual,
+	const NativeStaticMeshExportPackageDirectoryPathFacts &expected,
+	const char *message)
+{
+	Expect(actual.exists == expected.exists, message);
+	Expect(actual.regularFile == expected.regularFile, message);
+	Expect(actual.byteCount == expected.byteCount, message);
+}
+
+void ExpectDataBuilderMatchesFullReport(
+	const NativeStaticMeshExportPackageDirectoryReport &dataReport,
+	const NativeStaticMeshExportPackageDirectoryReport &fullReport,
+	const char *message)
+{
+	Expect(dataReport.text.empty(), message);
+	Expect(dataReport.read.status == fullReport.read.status, message);
+	Expect(dataReport.read.issueCount == fullReport.read.issueCount, message);
+	Expect(dataReport.read.directory == fullReport.read.directory, message);
+	Expect(dataReport.read.packageManifestPath == fullReport.read.packageManifestPath, message);
+	Expect(dataReport.read.manifestPath == fullReport.read.manifestPath, message);
+	Expect(dataReport.read.assets.size() == fullReport.read.assets.size(), message);
+	Expect(
+		dataReport.read.packageManifestReadIssues.size() ==
+			fullReport.read.packageManifestReadIssues.size(),
+		message);
+	Expect(dataReport.manifestReadAttempted == fullReport.manifestReadAttempted, message);
+	Expect(dataReport.manifestRead.read() == fullReport.manifestRead.read(), message);
+	Expect(
+		dataReport.manifestRead.issues.size() == fullReport.manifestRead.issues.size(),
+		message);
+	Expect(
+		dataReport.manifestRead.document.assets.size() ==
+			fullReport.manifestRead.document.assets.size(),
+		message);
+	Expect(
+		dataReport.manifestComparison.matchCount ==
+			fullReport.manifestComparison.matchCount,
+		message);
+	Expect(
+		dataReport.manifestComparison.comparisons.size() ==
+			fullReport.manifestComparison.comparisons.size(),
+		message);
+	for (std::size_t index = 0;
+			index < dataReport.manifestComparison.comparisons.size() &&
+				index < fullReport.manifestComparison.comparisons.size();
+			++index) {
+		Expect(
+			dataReport.manifestComparison.comparisons[index].code ==
+				fullReport.manifestComparison.comparisons[index].code,
+			message);
+		Expect(
+			dataReport.manifestComparison.comparisons[index].name ==
+				fullReport.manifestComparison.comparisons[index].name,
+			message);
+		Expect(
+			dataReport.manifestComparison.comparisons[index].packageFilename ==
+				fullReport.manifestComparison.comparisons[index].packageFilename,
+			message);
+		Expect(
+			dataReport.manifestComparison.comparisons[index].manifestFilename ==
+				fullReport.manifestComparison.comparisons[index].manifestFilename,
+			message);
+	}
+	Expect(
+		dataReport.packageManifestFactsRecorded ==
+			fullReport.packageManifestFactsRecorded,
+		message);
+	ExpectFactsMatch(dataReport.packageManifestFacts, fullReport.packageManifestFacts, message);
+	Expect(dataReport.manifestFactsRecorded == fullReport.manifestFactsRecorded, message);
+	ExpectFactsMatch(dataReport.manifestFacts, fullReport.manifestFacts, message);
+	Expect(dataReport.assetFacts.size() == fullReport.assetFacts.size(), message);
+	for (std::size_t index = 0;
+			index < dataReport.assetFacts.size() && index < fullReport.assetFacts.size();
+			++index) {
+		Expect(dataReport.assetFacts[index].asset.name == fullReport.assetFacts[index].asset.name, message);
+		Expect(
+			dataReport.assetFacts[index].asset.filename ==
+				fullReport.assetFacts[index].asset.filename,
+			message);
+		Expect(dataReport.assetFacts[index].asset.path == fullReport.assetFacts[index].asset.path, message);
+		ExpectFactsMatch(
+			dataReport.assetFacts[index].facts,
+			fullReport.assetFacts[index].facts,
+			message);
+	}
+}
+
 void TestBatchExportedDirectoryReportReads()
 {
 	ResetTempRoot();
 	ExportDefaultBatch();
 
 	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
+	const NativeStaticMeshExportPackageDirectoryReport dataReport =
+		BuildNativeStaticMeshExportPackageDirectoryReportData(TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"successful package directory data builder should match full report structured fields");
 	ExpectTextRendererMatches(
 		report,
 		"successful package directory report text renderer should reproduce report text");
@@ -355,7 +450,13 @@ void TestCombinedComparisonOrderingStillReportsRead()
 		"asset=extra filename=extra.igmesh vertices=1 indices=3 bytes=7\n");
 
 	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
+	const NativeStaticMeshExportPackageDirectoryReport dataReport =
+		BuildNativeStaticMeshExportPackageDirectoryReportData(TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"combined comparison data builder should match full report structured fields");
 	ExpectTextRendererMatches(
 		report,
 		"combined comparison report text renderer should reproduce report text");
@@ -458,7 +559,13 @@ void TestMissingPackageSidecarReportIncludesIssueRow()
 	std::filesystem::remove(packageManifest);
 
 	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
+	const NativeStaticMeshExportPackageDirectoryReport dataReport =
+		BuildNativeStaticMeshExportPackageDirectoryReportData(TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"missing package sidecar data builder should match full report structured fields");
 	ExpectTextRendererMatches(
 		report,
 		"missing package sidecar report text renderer should reproduce report text");
@@ -578,7 +685,13 @@ void TestMissingNestedManifestStillReportsRead()
 	std::filesystem::remove(TempRoot() / NativeStaticMeshExportManifestFilename);
 
 	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
+	const NativeStaticMeshExportPackageDirectoryReport dataReport =
+		BuildNativeStaticMeshExportPackageDirectoryReportData(TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"missing nested manifest data builder should match full report structured fields");
 	ExpectTextRendererMatches(
 		report,
 		"missing nested manifest report text renderer should reproduce report text");
@@ -688,7 +801,13 @@ void TestMissingDeclaredAssetStillReportsRead()
 	std::filesystem::remove(TempRoot() / "cube.igmesh");
 
 	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
+	const NativeStaticMeshExportPackageDirectoryReport dataReport =
+		BuildNativeStaticMeshExportPackageDirectoryReportData(TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"missing declared asset data builder should match full report structured fields");
 	ExpectTextRendererMatches(
 		report,
 		"missing declared asset report text renderer should reproduce report text");

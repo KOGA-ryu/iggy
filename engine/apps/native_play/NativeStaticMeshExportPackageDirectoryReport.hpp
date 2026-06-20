@@ -362,7 +362,7 @@ CompareNativeStaticMeshExportPackageDirectoryManifestRows(
 }
 
 [[nodiscard]] inline NativeStaticMeshExportPackageDirectoryReport
-BuildNativeStaticMeshExportPackageDirectoryReport(
+BuildNativeStaticMeshExportPackageDirectoryReportData(
 	const std::filesystem::path &directory)
 {
 	NativeStaticMeshExportPackageDirectoryReport report;
@@ -400,6 +400,15 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 		});
 	}
 
+	return report;
+}
+
+[[nodiscard]] inline NativeStaticMeshExportPackageDirectoryReport
+BuildNativeStaticMeshExportPackageDirectoryReport(
+	const std::filesystem::path &directory)
+{
+	NativeStaticMeshExportPackageDirectoryReport report =
+		BuildNativeStaticMeshExportPackageDirectoryReportData(directory);
 	report.text = BuildNativeStaticMeshExportPackageDirectoryReportText(report);
 	return report;
 }
