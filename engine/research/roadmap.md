@@ -521,6 +521,10 @@ Recently completed optimized stretches:
   regular-file and byte-count facts for the package sidecar, nested manifest,
   and declared assets while keeping missing paths, directories, and size
   failures as `regularFile=0 bytes=0`.
+  Native static mesh export manifest text reading now adds an in-memory,
+  dependency-free reader for the generated mesh export manifest grammar,
+  validating deterministic row/count/byte invariants without file IO or
+  package-directory integration.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -2085,6 +2089,38 @@ behavior, overwrite/create-dir/temp replacement/arbitrary output path policy,
 fixture/generated asset changes, gameplay/scripted/final-state behavior,
 `NativeVulkanRenderer.cpp`, source/test/assets/shader/runtime files in this
 docs packet, or next source packet scope.
+
+Native Static Mesh Export Manifest Text Reader is complete as an in-memory,
+dependency-free reader for the current generated native static mesh export
+manifest grammar only. `NativeStaticMeshExportManifest.hpp` now includes
+`NativeStaticMeshExportManifestAssetRow`,
+`NativeStaticMeshExportManifestDocument`,
+`NativeStaticMeshExportManifestReadIssueCode`,
+`NativeStaticMeshExportManifestReadIssue`,
+`NativeStaticMeshExportManifestReadResult`, and
+`ReadNativeStaticMeshExportManifestText(std::string_view)`. The accepted grammar
+is exactly header `static-mesh-export-manifest version=1 assets=N bytes=N` plus
+rows `asset=NAME filename=FILENAME vertices=V indices=I bytes=B`. The reader
+validates empty input, malformed header, unsupported version, malformed asset
+and byte counts, missing fields, extra tokens, malformed or unexpected rows,
+basename-only filenames, unsigned numeric row facts, duplicate asset names and
+filenames, asset count mismatch, and total byte count mismatch. Generated
+default manifest readback was tested against builder output and report facts,
+preserving version, asset count, byte count, row order, and row facts. Existing
+`iggy_native_play --dump-static-mesh-export-manifest` output remains
+`static-mesh-export-manifest version=1 assets=3 bytes=33879` with cube
+8/36/523, bean 234/1296/23882, and npc-marker 98/504/9474 rows. This docs
+packet does not add a filesystem/file IO reader for mesh export manifests,
+package-directory reader/report integration, verification/report/export/CLI
+behavior changes, package loading/discovery/scanning/catalog/registry, semantic
+package acceptance, exact-extra-file rejection, repair behavior, policy/built-in
+id reconstruction from mesh manifest rows, nested mesh manifest file reading,
+`.igmesh` loading, geometry validation, schema/material/texture/normal/UV/
+animation expansion, renderer behavior, `NativeVulkanRenderer.cpp`, model-slot
+expansion, runtime/product/scene/server APIs, gameplay/scripted/final-state
+behavior, fixture/generated asset changes, CMake changes, glTF/glb/JSON
+dependencies/parsers, write-policy changes, docs-in-source, or next source
+packet scope.
 
 Exit criteria:
 - Load a package or explicit scenario.

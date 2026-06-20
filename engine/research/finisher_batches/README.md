@@ -149,3 +149,4 @@ Queue:
 92. `92_native_static_mesh_package_directory_report_cli_status_sync` - complete. Sync planning/API docs after native static mesh package directory report CLI integration.
 93. `93_native_static_mesh_package_directory_presence_diagnostics_status_sync` - complete. Sync planning/API docs after native static mesh package directory presence diagnostics integration.
 94. `94_native_static_mesh_package_directory_file_fact_diagnostics_status_sync` - complete. Sync planning/API docs after native static mesh package directory file fact diagnostics integration.
+95. `95_native_static_mesh_export_manifest_text_reader_status_sync` - complete. Sync planning/API docs after native static mesh export manifest text reader integration.

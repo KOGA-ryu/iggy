@@ -712,6 +712,15 @@ additional read-only report fields. The package sidecar summary now includes
 status, verification semantics, export behavior, directory scanning, mesh
 loading, generated-text comparison, or package loading.
 
+Native static mesh export manifest text reading is complete as an in-memory
+reader for the generated mesh export manifest grammar. It validates version,
+count, byte, row, basename-only filename, unsigned numeric row fact, duplicate,
+and total byte invariants without file IO. The nested mesh manifest remains
+unintegrated with package directory reports and verification: no file reader,
+package directory integration, `.igmesh` loading, geometry validation,
+CLI/export/verification behavior change, or policy/built-in id reconstruction
+was added.
+
 Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play
 --dump-static-mesh-export-verification-report --output-dir DIR` prints a
