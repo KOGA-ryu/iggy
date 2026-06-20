@@ -680,10 +680,13 @@ builder over the directory reader. The report summary includes status,
 directory, asset count, issue count, and available package/nested manifest
 paths; successful reports print parsed asset rows in package-manifest row order,
 and package manifest read failures print deterministic
-`packageManifestReadIssue` rows. It uses only the reader result and does not
-verify nested files, parse mesh manifests, load `.igmesh`, inspect directories
-beyond the reader, integrate CLI/export/verification/package loading, or change
-native app behavior.
+`packageManifestReadIssue` rows. It also parses the already-projected nested
+mesh manifest path for diagnostics only, appending `manifestRead=ok|invalid`
+and `manifestReadIssues=N` summary facts and deterministic
+`manifestReadIssue` rows without changing `readOk()`, CLI exit behavior, asset
+rows, package directory reader status/data, verification, export, or package
+loading. It does not load `.igmesh`, validate geometry, compare package rows to
+mesh rows, inspect directories beyond known paths, or change native app behavior.
 
 Native static mesh package directory report CLI is complete as a thin native
 app-shell dump over the report builder. `iggy_native_play
@@ -691,9 +694,10 @@ app-shell dump over the report builder. `iggy_native_play
 report before SDL/Vulkan startup and returns success only when the directory
 reader reports `Read`; failures print report text first, then use the existing
 compact `iggy_native_play:` error path. The CLI remains non-verifying: missing
-nested mesh manifests still report `Read` with projected paths, and the flag
-does not add package loading, scanning, export mutation, renderer behavior, or
-native app play/session behavior changes.
+nested mesh manifests still report `Read` with projected paths, file facts, and
+`manifestRead=invalid` diagnostics, and the flag does not add package loading,
+scanning, export mutation, renderer behavior, or native app play/session
+behavior changes.
 
 Native static mesh package directory presence diagnostics are complete as
 read-only report fields. The package directory report now appends
@@ -722,10 +726,23 @@ supplied-path helper over that text reader. It opens the supplied path in binary
 mode, reports one `FileOpenFailed` issue with `line=0` and
 `token=path.string()` when opening fails, and delegates successful reads to the
 unchanged text reader. The nested mesh manifest remains unintegrated with
-package directory reports and verification: no default path composition,
-package directory read, `.igmesh` loading, geometry validation,
-CLI/export/verification behavior change, or policy/built-in id reconstruction
-was added.
+verification/export behavior: no default path composition outside explicit
+callers, `.igmesh` loading, geometry validation, CLI/export/verification
+behavior change, or policy/built-in id reconstruction was added.
+
+Native static mesh package directory manifest read diagnostics are complete as a
+report-only use of that explicit file reader. When the package directory reader
+succeeds, the report reads the already-projected nested mesh manifest path and
+prints `manifestRead=ok manifestReadIssues=0` or
+`manifestRead=invalid manifestReadIssues=N`, with deterministic
+`manifestReadIssue` rows for missing or malformed nested manifests. `readOk()`
+and CLI exit status are unchanged, so missing/malformed nested mesh manifests
+remain `status=Read` diagnostics and do not suppress package asset rows. This
+does not add package directory reader status/data changes, verification/export
+semantics, generated-text comparison, package acceptance validation,
+per-mesh-manifest asset rows, package-vs-mesh row comparisons, `.igmesh`
+loading, geometry validation, discovery/scanning, source mutation, or write
+behavior.
 
 Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play

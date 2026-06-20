@@ -525,6 +525,11 @@ Recently completed optimized stretches:
   an explicit supplied-path file wrapper that opens binary, reports
   `FileOpenFailed` on missing files, and still avoids package-directory,
   verification, export, or CLI integration.
+  Native static mesh package directory manifest read diagnostics now parse the
+  already-projected nested mesh manifest path from the package directory report,
+  adding `manifestRead=...` summary facts and deterministic `manifestReadIssue`
+  rows without changing `readOk()`, CLI exit behavior, verification, export, or
+  package directory reader data.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -2136,6 +2141,39 @@ expansion, runtime/product/scene/server APIs, gameplay/scripted/final-state
 behavior, fixture/generated asset changes, CMake changes, glTF/glb/JSON
 dependencies/parsers, write-policy changes, docs-in-source, or next source
 packet scope.
+
+Native Static Mesh Package Directory Manifest Read Diagnostics are complete for
+the package directory report. The report now parses the already-projected nested
+mesh manifest path with `ReadNativeStaticMeshExportManifestFile(...)`, but only
+when package directory read succeeds. Summary rows append nested manifest read
+diagnostics when `manifestPath` is available: valid/readable manifests print
+`manifestRead=ok manifestReadIssues=0`, while missing, unreadable, or malformed
+manifests print `manifestRead=invalid manifestReadIssues=N`. The report emits
+deterministic nested manifest read issue rows after existing
+`packageManifestReadIssue` rows and before asset rows, using
+`manifestReadIssue code=<CodeText> line=<line> token=<token>`.
+`NativeStaticMeshExportPackageDirectoryReport::readOk()` is unchanged and still
+wraps package directory read status only. Missing or malformed nested mesh
+manifests remain diagnostic-only: package directory report output remains
+`status=Read`, CLI exits 0, and package asset rows remain present. Valid smoke
+printed `manifestRead=ok manifestReadIssues=0` plus existing package, manifest,
+and asset file facts. Missing nested manifest smoke exited 0 and printed
+`manifestRead=invalid manifestReadIssues=1` plus
+`manifestReadIssue code=FileOpenFailed line=0 token=<manifest path>`.
+Malformed nested manifest smoke exited 0 and printed
+`manifestRead=invalid manifestReadIssues=1` plus
+`manifestReadIssue code=UnsupportedVersion line=1 token=2`. This docs packet
+does not add package directory reader status/data changes, verification/export
+behavior changes, CLI changes, exact deterministic verification replacement,
+semantic package acceptance, generated-text comparison, package acceptance
+validation, per-mesh-manifest asset rows, package-vs-mesh row comparisons,
+policy/built-in id reconstruction, `.igmesh` loading, geometry validation,
+package loading, discovery/scanning/catalog/registry, exact-extra-file
+rejection, repair, source mutation, write behavior, renderer behavior,
+`NativeVulkanRenderer.cpp`, model-slot expansion, runtime/product/scene/server
+APIs, gameplay/scripted/final-state behavior, fixture/generated asset changes,
+CMake changes, glTF/glb/JSON dependencies/parsers, schema/material/texture/
+normal/UV/animation expansion, docs-in-source, or next source packet scope.
 
 Exit criteria:
 - Load a package or explicit scenario.

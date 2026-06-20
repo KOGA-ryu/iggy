@@ -1812,6 +1812,52 @@ Native static mesh export manifest file reader complete:
   CMake changes, glTF/glb/JSON dependency/parser work, write-policy changes,
   docs-in-source, or next source packet scope.
 
+Native static mesh package directory manifest read diagnostics complete:
+- Package directory report now parses the already-projected nested mesh manifest
+  path with `ReadNativeStaticMeshExportManifestFile(...)`, but only when package
+  directory read succeeds.
+- Summary rows append nested manifest read diagnostics when `manifestPath` is
+  available:
+  - valid/readable: `manifestRead=ok manifestReadIssues=0`
+  - missing, unreadable, or malformed:
+    `manifestRead=invalid manifestReadIssues=N`
+- The report emits deterministic nested manifest read issue rows after existing
+  `packageManifestReadIssue` rows and before asset rows:
+  `manifestReadIssue code=<CodeText> line=<line> token=<token>`.
+- `NativeStaticMeshExportPackageDirectoryReport::readOk()` is unchanged and
+  still wraps package directory read status only.
+- Missing or malformed nested mesh manifest remains diagnostic-only: package
+  directory report still returns `status=Read`, CLI exits 0, and package asset
+  rows remain present.
+- Valid smoke passed: batch export followed by package directory report printed
+  `manifestRead=ok manifestReadIssues=0` plus existing package, manifest, and
+  asset file facts.
+- Missing nested manifest smoke exited 0 and printed
+  `manifestRead=invalid manifestReadIssues=1` plus
+  `manifestReadIssue code=FileOpenFailed line=0 token=<manifest path>`, with
+  asset rows still present.
+- Malformed nested manifest smoke exited 0 and printed
+  `manifestRead=invalid manifestReadIssues=1` plus
+  `manifestReadIssue code=UnsupportedVersion line=1 token=2`, with asset rows
+  still present.
+- Builder verification passed `native_static_mesh_export_package_directory_report_tests`,
+  focused `ctest -R native_static_mesh_export_package_directory_report_tests`,
+  `iggy_native_play`, valid/missing/malformed package directory report smokes,
+  `git diff --check`, and `git diff --cached --check` before source commit.
+- This docs packet does not add package directory reader status/data changes,
+  verification/export behavior changes, CLI changes, exact deterministic
+  verification replacement, semantic package acceptance, generated-text
+  comparison, package acceptance validation, per-mesh-manifest asset rows,
+  package-vs-mesh row comparisons, policy/built-in id reconstruction,
+  `.igmesh` loading, geometry validation, package loading,
+  discovery/scanning/catalog/registry, exact-extra-file rejection, repair,
+  source mutation, write behavior, renderer behavior, `NativeVulkanRenderer.cpp`,
+  model-slot expansion, runtime/product/scene/server APIs,
+  gameplay/scripted/final-state behavior, fixture/generated asset changes,
+  CMake changes, glTF/glb/JSON dependency/parser work,
+  schema/material/texture/normal/UV/animation expansion, docs-in-source, or next
+  source packet scope.
+
 Native static mesh package manifest text reader complete:
 - Added a dependency-free, filesystem-free in-memory reader for the current
   generated package manifest text grammar.
@@ -2789,7 +2835,9 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 79. Native static mesh package directory file fact diagnostics are integrated.
 80. Native static mesh export manifest text reader is integrated.
 81. Native static mesh export manifest file reader is integrated.
-82. Dispatch richer diagnostics display, overlays/labels, frame request/
+82. Native static mesh package directory manifest read diagnostics are
+    integrated.
+83. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under
