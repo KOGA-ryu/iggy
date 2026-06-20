@@ -40,6 +40,7 @@ using iggy::native_play::BuildNativeStaticMeshExportPackageManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReport;
 using iggy::native_play::BuildNativeStaticMeshExportReport;
 using iggy::native_play::BuildNativeStaticMeshExportReportText;
+using iggy::native_play::BuildNativeStaticMeshFileExportSuccessText;
 using iggy::native_play::BuildNativeStaticModelLoadReportText;
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
@@ -549,12 +550,7 @@ void PrintNativeStaticMeshAssetFileExport(
 			" issues=" + std::to_string(result.issueCount));
 	}
 
-	std::cout
-		<< "static-mesh-export"
-		<< " name=" << name
-		<< " output=" << result.outputPath.string()
-		<< " bytes=" << result.byteCount
-		<< "\n";
+	std::cout << BuildNativeStaticMeshFileExportSuccessText(name, result);
 }
 
 void PrintNativeStaticMeshAssetBatchExport(const std::filesystem::path &directory)

@@ -17,6 +17,7 @@ namespace {
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
 using iggy::native_play::BuildNativeStaticMeshExportManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageManifestText;
+using iggy::native_play::BuildNativeStaticMeshFileExportSuccessText;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
 using iggy::native_play::DefaultNativeStaticMeshExportPackagePolicy;
 using iggy::native_play::ExportNativeStaticMeshAssetToDirectory;
@@ -380,6 +381,28 @@ void TestSingleExportDoesNotWriteManifestSidecar()
 	CleanupTempRoot();
 }
 
+void TestSingleExportSuccessText()
+{
+	ResetTempRoot();
+	const NativeStaticMeshFileExportResult result =
+		ExportNativeStaticMeshAssetToDirectory(
+			DefaultNativeStaticMeshExportPolicy(),
+			"cube",
+			TempRoot());
+
+	Expect(
+		result.status == NativeStaticMeshFileExportStatus::Exported,
+		"single export success text test should export cube");
+	const std::string expected =
+		"static-mesh-export name=cube output=" +
+		(TempRoot() / "cube.igmesh").string() +
+		" bytes=523\n";
+	Expect(
+		BuildNativeStaticMeshFileExportSuccessText("cube", result) == expected,
+		"single export success text should match CLI contract");
+	CleanupTempRoot();
+}
+
 void TestInvalidPolicyRejectsSingleExportWithoutWriting()
 {
 	ResetTempRoot();
@@ -466,6 +489,7 @@ int main()
 	TestBatchManifestTargetAlreadyExistsPreflightsBeforeWriting();
 	TestBatchPackageManifestTargetAlreadyExistsPreflightsBeforeWriting();
 	TestSingleExportDoesNotWriteManifestSidecar();
+	TestSingleExportSuccessText();
 	TestInvalidPolicyRejectsSingleExportWithoutWriting();
 	TestInvalidPolicyRejectsBatchExportBeforeWriting();
 	TestFileExportStatusText();

@@ -8,7 +8,9 @@
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -81,6 +83,20 @@ struct NativeStaticMeshFileExportBatchResult {
 	std::size_t packageManifestByteCount = 0;
 	std::size_t issueCount = 0;
 };
+
+[[nodiscard]] inline std::string BuildNativeStaticMeshFileExportSuccessText(
+	std::string_view name,
+	const NativeStaticMeshFileExportResult &result)
+{
+	std::ostringstream stream;
+	stream
+		<< "static-mesh-export"
+		<< " name=" << name
+		<< " output=" << result.outputPath.string()
+		<< " bytes=" << result.byteCount
+		<< "\n";
+	return stream.str();
+}
 
 [[nodiscard]] inline NativeStaticMeshFileExportResult ExportNativeStaticMeshAssetToDirectory(
 	const NativeStaticMeshExportPolicy &policy,
