@@ -22,6 +22,20 @@ enum class NativeStaticMeshExportManifestStatus {
 	WriterFailed,
 };
 
+[[nodiscard]] inline const char *NativeStaticMeshExportManifestStatusText(
+	NativeStaticMeshExportManifestStatus status)
+{
+	switch (status) {
+	case NativeStaticMeshExportManifestStatus::Built:
+		return "Built";
+	case NativeStaticMeshExportManifestStatus::InvalidPolicy:
+		return "InvalidPolicy";
+	case NativeStaticMeshExportManifestStatus::WriterFailed:
+		return "WriterFailed";
+	}
+	return "Unknown";
+}
+
 struct NativeStaticMeshExportManifestResult {
 	NativeStaticMeshExportManifestStatus status =
 		NativeStaticMeshExportManifestStatus::InvalidPolicy;
