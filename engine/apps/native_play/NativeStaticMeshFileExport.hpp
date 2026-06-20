@@ -14,6 +14,7 @@ namespace iggy::native_play {
 
 enum class NativeStaticMeshFileExportStatus {
 	Exported,
+	InvalidPolicy,
 	UnknownAsset,
 	MissingOutputDirectory,
 	OutputDirectoryNotDirectory,
@@ -52,6 +53,14 @@ struct NativeStaticMeshFileExportBatchResult {
 	const std::filesystem::path &directory)
 {
 	NativeStaticMeshFileExportResult result;
+
+	const NativeStaticMeshExportPolicyValidationResult validation =
+		ValidateNativeStaticMeshExportPolicy(policy);
+	if (!validation.valid()) {
+		result.status = NativeStaticMeshFileExportStatus::InvalidPolicy;
+		result.issueCount = validation.issues.size();
+		return result;
+	}
 
 	const NativeStaticMeshExportAssetRef *assetRef =
 		FindNativeStaticMeshExportAsset(policy, name);
@@ -106,6 +115,14 @@ ExportNativeStaticMeshPolicyToDirectory(
 {
 	NativeStaticMeshFileExportBatchResult result;
 	result.outputDirectory = directory;
+
+	const NativeStaticMeshExportPolicyValidationResult validation =
+		ValidateNativeStaticMeshExportPolicy(policy);
+	if (!validation.valid()) {
+		result.status = NativeStaticMeshFileExportStatus::InvalidPolicy;
+		result.issueCount = validation.issues.size();
+		return result;
+	}
 
 	if (!std::filesystem::exists(directory)) {
 		result.status = NativeStaticMeshFileExportStatus::MissingOutputDirectory;

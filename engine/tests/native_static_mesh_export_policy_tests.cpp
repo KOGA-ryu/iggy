@@ -14,7 +14,11 @@ using iggy::native_play::FindNativeStaticMeshExportAsset;
 using iggy::native_play::NativeStaticMeshBuiltInExportId;
 using iggy::native_play::NativeStaticMeshExportAssetRef;
 using iggy::native_play::NativeStaticMeshExportPolicy;
+using iggy::native_play::NativeStaticMeshExportPolicyValidationIssue;
+using iggy::native_play::NativeStaticMeshExportPolicyValidationIssueCode;
+using iggy::native_play::NativeStaticMeshExportPolicyValidationResult;
 using iggy::native_play::NativeStaticMeshAssetWriteResult;
+using iggy::native_play::ValidateNativeStaticMeshExportPolicy;
 using iggy::native_play::WriteNativeStaticMeshAssetText;
 using iggy::test::Expect;
 using iggy::test::Failures;
@@ -113,6 +117,128 @@ void TestBuiltInIdHelperProducesWriterValidMeshes()
 	}
 }
 
+bool HasValidationIssue(
+	const NativeStaticMeshExportPolicyValidationResult &result,
+	NativeStaticMeshExportPolicyValidationIssueCode code)
+{
+	for (const NativeStaticMeshExportPolicyValidationIssue &issue : result.issues) {
+		if (issue.code == code)
+			return true;
+	}
+	return false;
+}
+
+void TestDefaultPolicyValidatesCleanly()
+{
+	const NativeStaticMeshExportPolicyValidationResult result =
+		ValidateNativeStaticMeshExportPolicy(DefaultNativeStaticMeshExportPolicy());
+
+	Expect(result.valid(), "default export policy should validate cleanly");
+	Expect(result.issues.empty(), "default export policy should not report issues");
+}
+
+void TestPolicyValidationRejectsEmptyName()
+{
+	const NativeStaticMeshExportPolicy policy {
+		{ { NativeStaticMeshBuiltInExportId::Cube, "", "cube.igmesh" } },
+	};
+
+	const NativeStaticMeshExportPolicyValidationResult result =
+		ValidateNativeStaticMeshExportPolicy(policy);
+
+	Expect(!result.valid(), "empty export name should invalidate policy");
+	Expect(
+		HasValidationIssue(
+			result,
+			NativeStaticMeshExportPolicyValidationIssueCode::EmptyName),
+		"empty export name should report empty-name issue");
+}
+
+void TestPolicyValidationRejectsDuplicateName()
+{
+	const NativeStaticMeshExportPolicy policy {
+		{
+			{ NativeStaticMeshBuiltInExportId::Cube, "duplicate", "cube.igmesh" },
+			{ NativeStaticMeshBuiltInExportId::Bean, "duplicate", "bean.igmesh" },
+		},
+	};
+
+	const NativeStaticMeshExportPolicyValidationResult result =
+		ValidateNativeStaticMeshExportPolicy(policy);
+
+	Expect(!result.valid(), "duplicate export name should invalidate policy");
+	Expect(
+		HasValidationIssue(
+			result,
+			NativeStaticMeshExportPolicyValidationIssueCode::DuplicateName),
+		"duplicate export name should report duplicate-name issue");
+}
+
+void TestPolicyValidationRejectsEmptyDefaultFilename()
+{
+	const NativeStaticMeshExportPolicy policy {
+		{ { NativeStaticMeshBuiltInExportId::Cube, "cube", "" } },
+	};
+
+	const NativeStaticMeshExportPolicyValidationResult result =
+		ValidateNativeStaticMeshExportPolicy(policy);
+
+	Expect(!result.valid(), "empty default filename should invalidate policy");
+	Expect(
+		HasValidationIssue(
+			result,
+			NativeStaticMeshExportPolicyValidationIssueCode::EmptyDefaultFilename),
+		"empty default filename should report empty-filename issue");
+}
+
+void TestPolicyValidationRejectsDefaultFilenameSeparators()
+{
+	const NativeStaticMeshExportPolicy slashPolicy {
+		{ { NativeStaticMeshBuiltInExportId::Cube, "cube", "nested/cube.igmesh" } },
+	};
+	const NativeStaticMeshExportPolicy backslashPolicy {
+		{ { NativeStaticMeshBuiltInExportId::Cube, "cube", "nested\\cube.igmesh" } },
+	};
+
+	const NativeStaticMeshExportPolicyValidationResult slashResult =
+		ValidateNativeStaticMeshExportPolicy(slashPolicy);
+	const NativeStaticMeshExportPolicyValidationResult backslashResult =
+		ValidateNativeStaticMeshExportPolicy(backslashPolicy);
+
+	Expect(!slashResult.valid(), "slash default filename should invalidate policy");
+	Expect(
+		HasValidationIssue(
+			slashResult,
+			NativeStaticMeshExportPolicyValidationIssueCode::DefaultFilenameContainsSeparator),
+		"slash default filename should report separator issue");
+	Expect(!backslashResult.valid(), "backslash default filename should invalidate policy");
+	Expect(
+		HasValidationIssue(
+			backslashResult,
+			NativeStaticMeshExportPolicyValidationIssueCode::DefaultFilenameContainsSeparator),
+		"backslash default filename should report separator issue");
+}
+
+void TestPolicyValidationRejectsDuplicateDefaultFilename()
+{
+	const NativeStaticMeshExportPolicy policy {
+		{
+			{ NativeStaticMeshBuiltInExportId::Cube, "cube", "same.igmesh" },
+			{ NativeStaticMeshBuiltInExportId::Bean, "bean", "same.igmesh" },
+		},
+	};
+
+	const NativeStaticMeshExportPolicyValidationResult result =
+		ValidateNativeStaticMeshExportPolicy(policy);
+
+	Expect(!result.valid(), "duplicate default filename should invalidate policy");
+	Expect(
+		HasValidationIssue(
+			result,
+			NativeStaticMeshExportPolicyValidationIssueCode::DuplicateDefaultFilename),
+		"duplicate default filename should report duplicate-filename issue");
+}
+
 } // namespace
 
 int main()
@@ -122,6 +248,12 @@ int main()
 	TestMissingNameReturnsNull();
 	TestDuplicateNameReturnsFirstMatch();
 	TestBuiltInIdHelperProducesWriterValidMeshes();
+	TestDefaultPolicyValidatesCleanly();
+	TestPolicyValidationRejectsEmptyName();
+	TestPolicyValidationRejectsDuplicateName();
+	TestPolicyValidationRejectsEmptyDefaultFilename();
+	TestPolicyValidationRejectsDefaultFilenameSeparators();
+	TestPolicyValidationRejectsDuplicateDefaultFilename();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

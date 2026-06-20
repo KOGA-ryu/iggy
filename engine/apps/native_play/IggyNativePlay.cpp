@@ -463,6 +463,8 @@ const char *NativeStaticMeshFileExportStatusName(
 	switch (status) {
 	case NativeStaticMeshFileExportStatus::Exported:
 		return "Exported";
+	case NativeStaticMeshFileExportStatus::InvalidPolicy:
+		return "InvalidPolicy";
 	case NativeStaticMeshFileExportStatus::UnknownAsset:
 		return "UnknownAsset";
 	case NativeStaticMeshFileExportStatus::MissingOutputDirectory:

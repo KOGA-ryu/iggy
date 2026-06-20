@@ -244,6 +244,45 @@ void TestBatchTargetAlreadyExistsPreflightsBeforeWriting()
 	CleanupTempRoot();
 }
 
+void TestInvalidPolicyRejectsSingleExportWithoutWriting()
+{
+	ResetTempRoot();
+	const NativeStaticMeshExportPolicy policy {
+		{ { iggy::native_play::NativeStaticMeshBuiltInExportId::Cube, "", "cube.igmesh" } },
+	};
+
+	const NativeStaticMeshFileExportResult result =
+		ExportNativeStaticMeshAssetToDirectory(policy, "cube", TempRoot());
+
+	Expect(
+		result.status == NativeStaticMeshFileExportStatus::InvalidPolicy,
+		"single export should reject invalid policy");
+	Expect(result.issueCount > 0, "invalid policy result should surface validation issue count");
+	Expect(std::filesystem::is_empty(TempRoot()), "invalid policy single export should not create files");
+	CleanupTempRoot();
+}
+
+void TestInvalidPolicyRejectsBatchExportBeforeWriting()
+{
+	ResetTempRoot();
+	const NativeStaticMeshExportPolicy policy {
+		{
+			{ iggy::native_play::NativeStaticMeshBuiltInExportId::Cube, "cube", "same.igmesh" },
+			{ iggy::native_play::NativeStaticMeshBuiltInExportId::Bean, "bean", "same.igmesh" },
+		},
+	};
+
+	const NativeStaticMeshFileExportBatchResult result =
+		ExportNativeStaticMeshPolicyToDirectory(policy, TempRoot());
+
+	Expect(
+		result.status == NativeStaticMeshFileExportStatus::InvalidPolicy,
+		"batch export should reject invalid policy");
+	Expect(result.issueCount > 0, "batch invalid policy should surface validation issue count");
+	Expect(std::filesystem::is_empty(TempRoot()), "batch invalid policy should not create files");
+	CleanupTempRoot();
+}
+
 } // namespace
 
 int main()
@@ -257,6 +296,8 @@ int main()
 	TestBatchOutputPathMustBeDirectory();
 	TestTargetAlreadyExistsIsRejected();
 	TestBatchTargetAlreadyExistsPreflightsBeforeWriting();
+	TestInvalidPolicyRejectsSingleExportWithoutWriting();
+	TestInvalidPolicyRejectsBatchExportBeforeWriting();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;
