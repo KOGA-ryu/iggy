@@ -896,6 +896,17 @@ directory report/reader behavior, package loading/discovery, `.igmesh` loading
 beyond existing verifier behavior, renderer/model-slot behavior, and parser
 scope are preserved.
 
+Native static mesh verification report builder parity coverage is complete as a
+test-only update. Existing data-builder/full-builder parity and text-renderer
+parity assertions now cover missing output directory, file path instead of
+directory, manifest mismatch, package manifest mismatch, corrupt asset/load
+failure, and extra unrelated file ignored branches. This does not change
+production source, report text, CLI behavior, verifier behavior/status/count/row
+semantics, package read issue semantics, exact sidecar matching, generated
+sidecar/export behavior, package acceptance, package directory report/reader
+behavior, package loading/discovery, `.igmesh` loading beyond existing verifier
+behavior, renderer/model-slot behavior, or parser scope.
+
 Native static mesh export package policy is complete as value-only metadata:
 `NativeStaticMeshExportPackagePolicy.hpp` defines the stable format id
 `iggy:native-static-mesh-export-package`, version `1`, and manifest filename

@@ -513,6 +513,11 @@ Recently completed optimized stretches:
   the data builder stores the verifier result in `report.verification` and
   returns with `report.text` empty, while the full builder still assigns text
   through the report text renderer helper.
+  Native static mesh verification report builder parity coverage now extends
+  existing data-builder/full-builder and text-renderer parity assertions across
+  missing output directory, file-not-directory, manifest mismatch, package
+  manifest mismatch, corrupt asset/load failure, and extra-file-ignored branches
+  without changing production source or report behavior.
   Native static mesh package directory reading now adds a header-only explicit
   directory reader that reads `static-mesh-export-package-manifest.txt` and
   projects nested manifest and asset paths without checking file existence,
@@ -2047,6 +2052,23 @@ acceptance semantics, package directory report/reader behavior, package
 loading/discovery, `.igmesh` loading beyond existing verifier behavior,
 renderer/model-slot behavior, CMake, assets, fixtures, glTF/glb/JSON parser
 work, or next source packet scope.
+
+Native Static Mesh Verification Report Builder Parity Coverage is complete as a
+test-only coverage packet. Existing data-builder/full-builder parity and
+text-renderer parity assertions now cover missing output directory, file path
+instead of directory, manifest mismatch, package manifest mismatch, corrupt
+asset/load failure, and extra unrelated file ignored branches. The tests use the
+existing `BuildNativeStaticMeshExportDirectoryVerificationReportData(...)`,
+`ExpectDataBuilderMatchesFullReport(...)`, and `ExpectTextRendererMatches(...)`
+helpers. Source verification passed focused verification report tests,
+`iggy_native_play`, CLI smokes for valid export, missing package sidecar, and
+malformed package sidecar, and source `git diff --check`. This packet changed no
+production source, report text, CLI behavior, verifier behavior/status/counts/
+rows, package read issue semantics, exact sidecar matching, generated sidecar/
+export behavior, package acceptance semantics, package directory report/reader
+behavior, package loading/discovery, `.igmesh` loading beyond existing verifier
+behavior, renderer/model-slot behavior, CMake, assets, fixtures, glTF/glb/JSON
+parser work, or next source packet scope.
 
 Native Static Mesh Package Directory Reader is complete as a header-only,
 explicit-directory package read helper. `NativeStaticMeshExportPackageDirectoryReader.hpp`
