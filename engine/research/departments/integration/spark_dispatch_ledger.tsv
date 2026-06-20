@@ -72,4 +72,4 @@ packet	status	department	owner	source_commit	source_review	docs_commit	docs_revi
 135_native_static_asset_next_boundary_scout	complete	integration	finisher	5869297d	PASS-planner	178ac182	not_requested		closed source and docs after native static mesh asset writer issue text helper extraction	2026-06-20
 136_native_static_asset_next_boundary_scout	complete	integration	finisher	a91e298b	PASS-planner	dc53db1d	not_requested		closed source and docs after native static mesh asset loader issue text helper extraction	2026-06-20
 137_native_static_asset_next_boundary_scout	complete	integration	finisher	27da604a	PASS-planner	9da51b6b	not_requested		closed source and docs after native static mesh export policy validation issue text helper extraction	2026-06-20
-138_native_static_asset_consumption_decision_scout	research	integration	researcher						Scout visible native static asset pipeline consumption path after helper ladder	2026-06-20
+138_native_static_asset_consumption_decision_scout	build_ready	integration	builder		PASS-planner				Build Native Static Mesh Export Package Directory Load Data Model from consumption scout PASS	2026-06-20
