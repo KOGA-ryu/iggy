@@ -39,4 +39,4 @@ packet	status	department	owner	source_commit	source_review	docs_commit	docs_revi
 102_native_static_asset_next_boundary_scout	complete	integration	finisher	c7839fed	PASS-planner	c9f60552	not_requested		closed source and docs after native static mesh package directory structured manifest diagnostics	2026-06-20
 103_native_static_asset_next_boundary_scout	complete	integration	finisher	43ac5cb6	PASS-planner	dd21e3a2	not_requested		closed source and docs after native static mesh package directory structured file facts	2026-06-20
 104_native_static_asset_next_boundary_scout	complete	integration	finisher	554b746d	PASS-planner	2bab936d	not_requested		closed source and docs after native static mesh package directory report text renderer extraction	2026-06-20
-105_native_static_asset_next_boundary_scout	build_ready	integration	builder		PASS-planner				Build Native Static Mesh Package Directory Report Data Builder Extraction from researcher PASS	2026-06-20
+105_native_static_asset_next_boundary_scout	docs_ready	integration	finisher	689988c0	PASS-planner				Sync Native Static Mesh Package Directory Report Data Builder Extraction docs from source commit 689988c0	2026-06-20
