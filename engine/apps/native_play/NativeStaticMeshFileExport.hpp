@@ -98,6 +98,18 @@ struct NativeStaticMeshFileExportBatchResult {
 	return stream.str();
 }
 
+[[nodiscard]] inline std::string BuildNativeStaticMeshFileExportFailureText(
+	const NativeStaticMeshFileExportResult &result)
+{
+	std::ostringstream stream;
+	stream
+		<< "static mesh export failed: "
+		<< NativeStaticMeshFileExportStatusText(result.status)
+		<< " output=" << result.outputPath.string()
+		<< " issues=" << result.issueCount;
+	return stream.str();
+}
+
 [[nodiscard]] inline NativeStaticMeshFileExportResult ExportNativeStaticMeshAssetToDirectory(
 	const NativeStaticMeshExportPolicy &policy,
 	const std::string &name,

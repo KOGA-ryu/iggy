@@ -17,6 +17,7 @@ namespace {
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
 using iggy::native_play::BuildNativeStaticMeshExportManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageManifestText;
+using iggy::native_play::BuildNativeStaticMeshFileExportFailureText;
 using iggy::native_play::BuildNativeStaticMeshFileExportSuccessText;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
 using iggy::native_play::DefaultNativeStaticMeshExportPackagePolicy;
@@ -403,6 +404,49 @@ void TestSingleExportSuccessText()
 	CleanupTempRoot();
 }
 
+void TestSingleExportTargetExistsFailureText()
+{
+	ResetTempRoot();
+	WriteText(TempRoot() / "cube.igmesh", "existing");
+	const NativeStaticMeshFileExportResult result =
+		ExportNativeStaticMeshAssetToDirectory(
+			DefaultNativeStaticMeshExportPolicy(),
+			"cube",
+			TempRoot());
+
+	Expect(
+		result.status == NativeStaticMeshFileExportStatus::TargetAlreadyExists,
+		"single export failure text test should reject existing cube target");
+	const std::string expected =
+		"static mesh export failed: TargetAlreadyExists output=" +
+		(TempRoot() / "cube.igmesh").string() +
+		" issues=0";
+	Expect(
+		BuildNativeStaticMeshFileExportFailureText(result) == expected,
+		"single export target-exists failure text should match CLI contract");
+	CleanupTempRoot();
+}
+
+void TestSingleExportInvalidPolicyFailureText()
+{
+	ResetTempRoot();
+	const NativeStaticMeshExportPolicy policy {
+		{ { iggy::native_play::NativeStaticMeshBuiltInExportId::Cube, "", "cube.igmesh" } },
+	};
+
+	const NativeStaticMeshFileExportResult result =
+		ExportNativeStaticMeshAssetToDirectory(policy, "cube", TempRoot());
+
+	Expect(
+		result.status == NativeStaticMeshFileExportStatus::InvalidPolicy,
+		"single export invalid-policy failure text test should reject invalid policy");
+	Expect(
+		BuildNativeStaticMeshFileExportFailureText(result) ==
+			"static mesh export failed: InvalidPolicy output= issues=1",
+		"single export invalid-policy failure text should preserve empty output path");
+	CleanupTempRoot();
+}
+
 void TestInvalidPolicyRejectsSingleExportWithoutWriting()
 {
 	ResetTempRoot();
@@ -490,6 +534,8 @@ int main()
 	TestBatchPackageManifestTargetAlreadyExistsPreflightsBeforeWriting();
 	TestSingleExportDoesNotWriteManifestSidecar();
 	TestSingleExportSuccessText();
+	TestSingleExportTargetExistsFailureText();
+	TestSingleExportInvalidPolicyFailureText();
 	TestInvalidPolicyRejectsSingleExportWithoutWriting();
 	TestInvalidPolicyRejectsBatchExportBeforeWriting();
 	TestFileExportStatusText();

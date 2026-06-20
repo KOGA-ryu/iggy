@@ -40,6 +40,7 @@ using iggy::native_play::BuildNativeStaticMeshExportPackageManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReport;
 using iggy::native_play::BuildNativeStaticMeshExportReport;
 using iggy::native_play::BuildNativeStaticMeshExportReportText;
+using iggy::native_play::BuildNativeStaticMeshFileExportFailureText;
 using iggy::native_play::BuildNativeStaticMeshFileExportSuccessText;
 using iggy::native_play::BuildNativeStaticModelLoadReportText;
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
@@ -542,13 +543,8 @@ void PrintNativeStaticMeshAssetFileExport(
 			directory);
 	if (result.status == NativeStaticMeshFileExportStatus::UnknownAsset)
 		throw std::runtime_error("unknown static mesh asset: " + name);
-	if (result.status != NativeStaticMeshFileExportStatus::Exported) {
-		throw std::runtime_error(
-			std::string { "static mesh export failed: " } +
-			NativeStaticMeshFileExportStatusText(result.status) +
-			" output=" + result.outputPath.string() +
-			" issues=" + std::to_string(result.issueCount));
-	}
+	if (result.status != NativeStaticMeshFileExportStatus::Exported)
+		throw std::runtime_error(BuildNativeStaticMeshFileExportFailureText(result));
 
 	std::cout << BuildNativeStaticMeshFileExportSuccessText(name, result);
 }
