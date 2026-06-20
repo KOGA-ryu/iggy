@@ -391,8 +391,11 @@ Recently completed optimized stretches:
   `.igmesh` filenames; and `FindNativeStaticModelAsset(...)` performs first-match
   lookup. `NativeVulkanRenderer.cpp` consumes the policy for filenames while
   preserving the current loaded `.igmesh` behavior and fallbacks. The policy has
-  no filesystem, parser, GPU, or Vulkan knowledge. Native static model load
-  reporting now adds backend-free app-local `NativeStaticModelLoadReport.hpp`,
+  no filesystem, parser, GPU, or Vulkan knowledge. Native static model slot text
+  helper extraction now centralizes `NativeStaticModelSlotText(...)` beside the
+  model slot enum; static model load report `slot=...` rendering uses it while
+  preserving report output byte-for-byte. Native static model load reporting now
+  adds backend-free app-local `NativeStaticModelLoadReport.hpp`,
   which reports over the existing value-only policy and `.igmesh` loader without
   mutating renderer state. It iterates fixed slots in `Floor`, `Wall`,
   `NpcActor`, `Player` order, records per-slot filename/status/fallback/issues/
@@ -1447,6 +1450,30 @@ The future glTF subset remains separately gated: one mesh, one primitive,
 triangles, required positions, optional vertex colors/default later, indexed
 `uint16` first, and no materials, textures, normals, UVs, animation, skins,
 scene graph, or transforms.
+
+Native Static Model Slot Text Helper Extraction is complete as a behavior-
+preserving slot text cleanup. The central inline helper
+`NativeStaticModelSlotText(...)` now lives beside `NativeStaticModelSlot` in
+`NativeStaticModelPolicy.hpp`. The static model load report `slot=...` rendering
+uses the central helper after removing the CLI-local
+`NativeStaticModelSlotName(...)` switch from `IggyNativePlay.cpp`. Stable slot
+strings are `Floor`, `Wall`, `NpcActor`, `Player`, and fallback `Unknown`.
+Direct static model policy tests cover all four slots plus `Unknown` fallback.
+`NativeStaticModelLoadStatusName(...)` and
+`NativeStaticModelFallbackKindName(...)` remain local and unchanged for possible
+later packets. Source verification passed `native_static_model_policy_tests`,
+`iggy_native_play`, exact CLI smoke for `--dump-static-model-load-report`, and
+source `git diff --check`; `NativeVulkanRenderer.cpp` rebuilt because it includes
+the edited policy header, but no renderer source changed. Successful
+`--dump-static-model-load-report` output is preserved byte-for-byte for checked-
+in assets: summary row, fixed row order, slot names, filenames, statuses,
+fallbacks, counts, issue counts, and trailing newlines. This packet does not
+change static model policy defaults or lookup, static model load report output,
+row order, load status behavior, fallback behavior, CLI parser/help/dispatch/
+conflict/exit behavior, renderer/model-slot behavior, static mesh export/report/
+manifest/package/verification/package-directory behavior, CMake, fixtures,
+assets, package loading/discovery, write policy, schema, or glTF/glb/JSON parser
+work.
 
 Native Static Model Load Report, .igmesh Policy Path is complete for no-Qt
 renderer prep: `NativeStaticModelLoadReport.hpp` adds a backend-free app-local

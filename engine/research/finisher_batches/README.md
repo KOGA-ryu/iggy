@@ -172,3 +172,4 @@ Queue:
 115. `115_native_static_mesh_export_report_status_text_helper_extraction_status_sync` - complete. Sync planning/API docs after native static mesh export report status text helper extraction.
 116. `116_native_static_mesh_export_manifest_status_text_helper_extraction_status_sync` - complete. Sync planning/API docs after native static mesh export manifest status text helper extraction.
 117. `117_native_static_mesh_export_package_manifest_status_text_helper_extraction_status_sync` - complete. Sync planning/API docs after native static mesh export package manifest status text helper extraction.
+118. `118_native_static_model_slot_text_helper_extraction_status_sync` - complete. Sync planning/API docs after native static model slot text helper extraction.

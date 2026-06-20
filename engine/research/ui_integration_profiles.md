@@ -475,6 +475,19 @@ gated to a constrained subset: one mesh, one primitive, triangles, required
 positions, optional vertex colors/default later, indexed `uint16` first, and no
 materials, textures, normals, UVs, animation, skins, scene graph, or transforms.
 
+Native static model slot text helper extraction is complete without changing
+visible load-report output or CLI behavior. The central
+`NativeStaticModelSlotText(...)` helper now lives in
+`NativeStaticModelPolicy.hpp` beside `NativeStaticModelSlot`, and static model
+load report `slot=...` rendering uses it. The load-status and fallback-kind text
+helpers remain local and unchanged. Successful
+`--dump-static-model-load-report` output remains byte-for-byte unchanged for the
+summary row, fixed row order, slot names, filenames, statuses, fallbacks, counts,
+issue counts, and trailing newlines. This does not change static model policy
+defaults or lookup, load status/fallback behavior, CLI parser/help/dispatch/
+conflicts/exit behavior, renderer/model-slot behavior, static mesh export/report/
+manifest/package/verification/package-directory behavior, or parser scope.
+
 Native static model load reporting is complete as backend-free app-local
 inspection over the value-only policy and `.igmesh` loader:
 `NativeStaticModelLoadReport.hpp` iterates `Floor`, `Wall`, `NpcActor`, and
