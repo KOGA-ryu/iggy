@@ -515,6 +515,11 @@ Recently completed optimized stretches:
   adds `BuildNativeStaticMeshExportDirectoryVerificationSuccessText(...)`; the
   verify CLI delegates only successful stdout after `result.verified()` is true
   while preserving all failure rendering and verifier semantics.
+  Native static mesh export verification failure text renderer extraction now
+  adds `BuildNativeStaticMeshExportDirectoryVerificationFailureText(...)`; the
+  verify CLI delegates only the non-verified failure body through it while
+  preserving problem-path selection, app-level prefix/newline behavior, and
+  success output.
   Native static mesh export verification reporting now adds a read-only report
   builder around the existing verifier and
   `iggy_native_play --dump-static-mesh-export-verification-report --output-dir DIR`,
@@ -2197,6 +2202,34 @@ CMake/docs mixing, ledger state, sidecar generation, export write policy,
 package loading/discovery/acceptance, `NativeVulkanRenderer.cpp`, renderer/
 model-slot behavior, checked-in assets or fixtures, `.igmesh` schema/loading, or
 glTF/glb/JSON parser work.
+
+Native Static Mesh Export Verification Failure Text Renderer Extraction is
+complete as a behavior-preserving verify failure-body cleanup.
+`NativeStaticMeshExportDirectoryVerification.hpp` now exposes pure
+`BuildNativeStaticMeshExportDirectoryVerificationFailureText(const NativeStaticMeshExportDirectoryVerificationResult &result)`,
+which serializes only the non-verified `--verify-static-mesh-export` failure
+body:
+`static mesh export verification failed: <Status> output=<path> issues=<N>`.
+The helper excludes the app-level `iggy_native_play:` prefix and embedded
+trailing newline, preserving the existing catch path ownership. Output path
+selection remains `problemPath` when present and `outputDirectory` otherwise.
+`PrintNativeStaticMeshExportDirectoryVerification(...)` throws using the helper
+after `!result.verified()`, while success text remains routed through the
+existing success helper. Source verification passed
+`native_static_mesh_export_directory_verification_tests`, `iggy_native_play`,
+missing manifest failure smoke, missing package manifest failure smoke,
+unchanged verification success smoke, source `git diff --check`, and source
+`git diff --cached --check`. This packet does not change verification report/
+package-directory report behavior, verifier behavior/status ordering/result
+shape, `VerifyNativeStaticMeshExportDirectory(...)`, `verified()` semantics,
+status strings, problem-path setting, issue-count semantics, package manifest
+read diagnostics, exact sidecar matching, CLI parser/help/dispatch/conflict/
+exit behavior, app-level error prefix/newline behavior, built-in asset dumps,
+file export, manifest/package-manifest behavior, CMake/docs mixing, ledger
+state, sidecar generation, export write policy, package loading/discovery/
+acceptance, `NativeVulkanRenderer.cpp`, renderer/model-slot behavior,
+checked-in assets or fixtures, `.igmesh` schema/loading, or glTF/glb/JSON parser
+work.
 
 Native Static Mesh Export Verification Report CLI is complete as a read-only
 report surface around `VerifyNativeStaticMeshExportDirectory(policy,

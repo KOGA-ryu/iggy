@@ -888,6 +888,23 @@ package-directory reports, file export, manifest/package-manifest behavior,
 renderer/model-slot behavior, checked-in assets or fixtures, `.igmesh`
 schema/loading, and parser scope remain unchanged.
 
+Native static mesh export verification failure text renderer extraction is
+complete without changing visible success behavior or verifier semantics. The
+pure
+`BuildNativeStaticMeshExportDirectoryVerificationFailureText(const NativeStaticMeshExportDirectoryVerificationResult &result)`
+helper now lives in `NativeStaticMeshExportDirectoryVerification.hpp` and
+serializes only the non-verified failure body:
+`static mesh export verification failed: <Status> output=<path> issues=<N>`.
+`PrintNativeStaticMeshExportDirectoryVerification(...)` delegates to it after
+`!result.verified()`, leaving app-level `iggy_native_play:` prefix/newline
+behavior in the existing catch path. Output selection remains `problemPath` when
+present and `outputDirectory` otherwise. Verification success text, reports,
+package-directory reports, verifier status ordering/result shape, status strings,
+issue counts, problem-path setting, package manifest read diagnostics, exact
+sidecar matching, CLI parser/help/dispatch/conflict/exit behavior, file export,
+manifest/package-manifest behavior, renderer/model-slot behavior, checked-in
+assets or fixtures, `.igmesh` schema/loading, and parser scope remain unchanged.
+
 Native static mesh package manifest read issue text helper extraction is
 complete without changing visible report text or CLI behavior. The central
 `NativeStaticMeshExportPackageManifestReadIssueCodeText(...)` helper now lives in
