@@ -136,3 +136,4 @@ Queue:
 79. `79_native_static_mesh_export_directory_verification_cli_status_sync` - complete. Sync planning/API docs after native static mesh export directory verification CLI integration.
 80. `80_native_static_mesh_export_verification_report_cli_status_sync` - complete. Sync planning/API docs after native static mesh export verification report CLI integration.
 81. `81_native_static_mesh_export_package_policy_status_sync` - complete. Sync planning/API docs after native static mesh export package policy integration.
+82. `82_native_static_mesh_export_package_manifest_text_builder_status_sync` - complete. Sync planning/API docs after native static mesh export package manifest text builder integration.

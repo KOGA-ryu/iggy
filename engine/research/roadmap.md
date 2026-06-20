@@ -470,6 +470,11 @@ Recently completed optimized stretches:
   for the export package format id, version, manifest filename, and nested mesh
   export policy without filesystem access, package IO, CLI changes, or renderer
   behavior changes.
+  Native static mesh export package manifest text building now adds
+  `NativeStaticMeshExportPackageManifest.hpp` and
+  `iggy_native_play --dump-static-mesh-export-package-manifest`, producing
+  deterministic no-write package-manifest text after package-policy validation
+  before NativeVulkanApp, SDL, or Vulkan startup.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1671,6 +1676,34 @@ runtime/product/scene/server APIs, native app CMake source registration, CLI,
 parser behavior, package discovery/scanning, package IO, overwrite/create-dir
 policy, `.igmesh` schema, material/texture/normal/UV/animation behavior,
 gameplay behavior, or next research/scout implementation.
+
+Native Static Mesh Export Package Manifest Text Builder is complete as a
+header-only, app-local, deterministic no-write manifest builder.
+`NativeStaticMeshExportPackageManifest.hpp` adds
+`NativeStaticMeshExportPackageManifestStatus { Built, InvalidPolicy }`,
+`NativeStaticMeshExportPackageManifestResult { status, text, issueCount,
+written() }`, and `BuildNativeStaticMeshExportPackageManifestText(const
+NativeStaticMeshExportPackagePolicy &)`. The builder validates package policy
+first with `ValidateNativeStaticMeshExportPackagePolicy(...)`; invalid policy
+returns `InvalidPolicy`, issue count, and no text. It does not access the
+filesystem or write files. `iggy_native_play
+--dump-static-mesh-export-package-manifest` exits before `NativeVulkanApp`
+construction, SDL startup, or Vulkan startup. Sample output is:
+`static-mesh-export-package-manifest format=iggy:native-static-mesh-export-package version=1 manifest=static-mesh-export-manifest.txt assets=3`,
+`asset=cube filename=cube.igmesh`, `asset=bean filename=bean.igmesh`, and
+`asset=npc-marker filename=npc-marker.igmesh`. The CLI conflicts with
+`--output-dir`, `--export-static-mesh-assets`, `--verify-static-mesh-export`,
+`--dump-static-mesh-export-verification-report`,
+`--dump-static-mesh-export-manifest`, `--dump-static-mesh-export-report`,
+`--dump-static-mesh-asset`, and `--dump-static-model-load-report`. This docs
+packet does not change source, tests, CMake, assets, shaders, runtime, package
+file IO, reader/parser syntax, package verification integration, package
+discovery/scanning/catalog/registry, write/repair behavior,
+overwrite/create-dir policy, renderer behavior, model-slot binding, glTF/JSON
+dependencies, `.igmesh` schema, fixtures, docs-in-source, gameplay/scripted/
+final-state behavior, `NativeVulkanRenderer.cpp`, shader behavior,
+runtime/product/scene/server APIs, renderer loading, native app CMake source
+registration, or next research/scout implementation.
 
 Exit criteria:
 - Load a package or explicit scenario.

@@ -1349,6 +1349,40 @@ Native static mesh export package policy complete:
   material/texture/normal/UV/animation behavior, gameplay behavior, or next
   research/scout source implementation.
 
+Native static mesh export package manifest text builder complete:
+- Added header-only, app-local `NativeStaticMeshExportPackageManifest.hpp`.
+- Added `NativeStaticMeshExportPackageManifestStatus { Built, InvalidPolicy }`.
+- Added `NativeStaticMeshExportPackageManifestResult { status, text,
+  issueCount, written() }`.
+- Added `BuildNativeStaticMeshExportPackageManifestText(const
+  NativeStaticMeshExportPackagePolicy &)`.
+- The builder validates package policy first with
+  `ValidateNativeStaticMeshExportPackagePolicy(...)`; invalid policy returns
+  `InvalidPolicy`, issue count, and no text.
+- The builder is deterministic and no-write/no-filesystem.
+- Added `iggy_native_play --dump-static-mesh-export-package-manifest`, exiting
+  before `NativeVulkanApp`, SDL, or Vulkan startup.
+- Sample output:
+  `static-mesh-export-package-manifest format=iggy:native-static-mesh-export-package version=1 manifest=static-mesh-export-manifest.txt assets=3`;
+  `asset=cube filename=cube.igmesh`;
+  `asset=bean filename=bean.igmesh`;
+  `asset=npc-marker filename=npc-marker.igmesh`.
+- The CLI conflicts with `--output-dir`, `--export-static-mesh-assets`,
+  `--verify-static-mesh-export`,
+  `--dump-static-mesh-export-verification-report`,
+  `--dump-static-mesh-export-manifest`,
+  `--dump-static-mesh-export-report`, `--dump-static-mesh-asset`, and
+  `--dump-static-model-load-report`.
+- This docs packet does not change source, tests, CMake, assets, shaders,
+  runtime, package file IO, reader/parser syntax, package verification
+  integration, package discovery/scanning/catalog/registry, write/repair
+  behavior, overwrite/create-dir policy, renderer behavior, model-slot binding,
+  glTF/JSON dependencies, `.igmesh` schema, fixture rewrites, docs-in-source,
+  gameplay/scripted/final-state behavior, `NativeVulkanRenderer.cpp`, shader
+  behavior, checked-in fixtures, runtime/product/scene/server APIs, renderer
+  loading, native app CMake source registration, or next research/scout source
+  implementation.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -2244,7 +2278,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 64. Native static mesh export directory verification CLI is integrated.
 65. Native static mesh export verification report CLI is integrated.
 66. Native static mesh export package policy is integrated.
-67. Dispatch richer diagnostics display, overlays/labels, frame request/
+67. Native static mesh export package manifest text builder CLI is integrated.
+68. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

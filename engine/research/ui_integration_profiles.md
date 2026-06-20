@@ -669,6 +669,16 @@ export policies. It does not add CLI behavior, package IO, discovery/scanning,
 parsing, renderer behavior, schema/material/texture changes, or gameplay
 semantics.
 
+Native static mesh export package manifest CLI is complete as a no-write
+app-shell diagnostic: `NativeStaticMeshExportPackageManifest.hpp` builds
+deterministic package manifest text after validating package policy.
+`iggy_native_play --dump-static-mesh-export-package-manifest` prints the package
+format/version, manifest filename, asset count, and asset filename rows before
+native app construction or SDL/Vulkan startup. It does not add package file IO,
+reader/parser syntax, package verification integration, discovery/scanning,
+write/repair behavior, renderer behavior, `.igmesh` schema changes, or gameplay
+semantics.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.
