@@ -14,6 +14,7 @@ namespace {
 using iggy::native_play::BuildNativeStaticModelLoadReport;
 using iggy::native_play::DefaultNativeStaticModelPolicy;
 using iggy::native_play::NativeStaticModelFallbackKind;
+using iggy::native_play::NativeStaticModelFallbackKindText;
 using iggy::native_play::NativeStaticModelLoadEntry;
 using iggy::native_play::NativeStaticModelLoadReport;
 using iggy::native_play::NativeStaticModelLoadStatus;
@@ -201,6 +202,26 @@ void TestStaticModelLoadStatusText()
 		"static model load status text should report unknown fallback");
 }
 
+void TestStaticModelFallbackKindText()
+{
+	Expect(
+		std::string(NativeStaticModelFallbackKindText(
+			NativeStaticModelFallbackKind::Cube)) == "Cube",
+		"cube fallback kind text should match stable spelling");
+	Expect(
+		std::string(NativeStaticModelFallbackKindText(
+			NativeStaticModelFallbackKind::ProceduralBean)) == "ProceduralBean",
+		"procedural bean fallback kind text should match stable spelling");
+	Expect(
+		std::string(NativeStaticModelFallbackKindText(
+			NativeStaticModelFallbackKind::ProceduralNpcMarker)) == "ProceduralNpcMarker",
+		"procedural NPC marker fallback kind text should match stable spelling");
+	Expect(
+		std::string(NativeStaticModelFallbackKindText(
+			static_cast<NativeStaticModelFallbackKind>(999))) == "Unknown",
+		"static model fallback kind text should report unknown fallback");
+}
+
 } // namespace
 
 int main()
@@ -210,6 +231,7 @@ int main()
 	TestBadFilenameReportsLoadFailedWithIssueCount();
 	TestReportDoesNotInferUnlistedExistingAssets();
 	TestStaticModelLoadStatusText();
+	TestStaticModelFallbackKindText();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

@@ -50,7 +50,7 @@ using iggy::native_play::LookAt;
 using iggy::native_play::Mat4;
 using iggy::native_play::Multiply;
 using iggy::native_play::NativeStaticMeshExportAssetRef;
-using iggy::native_play::NativeStaticModelFallbackKind;
+using iggy::native_play::NativeStaticModelFallbackKindText;
 using iggy::native_play::NativeStaticModelLoadEntry;
 using iggy::native_play::NativeStaticModelLoadReport;
 using iggy::native_play::NativeStaticModelLoadStatus;
@@ -478,19 +478,6 @@ void PrintUsage()
 		<< "  --quit-after-script                  Exit after the scripted sequence.\n";
 }
 
-const char *NativeStaticModelFallbackKindName(NativeStaticModelFallbackKind fallback)
-{
-	switch (fallback) {
-	case NativeStaticModelFallbackKind::Cube:
-		return "Cube";
-	case NativeStaticModelFallbackKind::ProceduralBean:
-		return "ProceduralBean";
-	case NativeStaticModelFallbackKind::ProceduralNpcMarker:
-		return "ProceduralNpcMarker";
-	}
-	return "Unknown";
-}
-
 void PrintNativeStaticModelLoadReport(const NativeStaticModelLoadReport &report)
 {
 	std::cout
@@ -504,7 +491,7 @@ void PrintNativeStaticModelLoadReport(const NativeStaticModelLoadReport &report)
 			<< "slot=" << NativeStaticModelSlotText(entry.slot)
 			<< " filename=" << (entry.meshFilename.empty() ? "<missing>" : entry.meshFilename)
 			<< " status=" << NativeStaticModelLoadStatusText(entry.status)
-			<< " fallback=" << NativeStaticModelFallbackKindName(entry.fallback)
+			<< " fallback=" << NativeStaticModelFallbackKindText(entry.fallback)
 			<< " vertices=" << entry.vertexCount
 			<< " indices=" << entry.indexCount
 			<< " issues=" << entry.issueCount

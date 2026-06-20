@@ -37,6 +37,20 @@ enum class NativeStaticModelFallbackKind {
 	ProceduralNpcMarker,
 };
 
+[[nodiscard]] inline const char *NativeStaticModelFallbackKindText(
+	NativeStaticModelFallbackKind fallback)
+{
+	switch (fallback) {
+	case NativeStaticModelFallbackKind::Cube:
+		return "Cube";
+	case NativeStaticModelFallbackKind::ProceduralBean:
+		return "ProceduralBean";
+	case NativeStaticModelFallbackKind::ProceduralNpcMarker:
+		return "ProceduralNpcMarker";
+	}
+	return "Unknown";
+}
+
 struct NativeStaticModelLoadEntry {
 	NativeStaticModelSlot slot = NativeStaticModelSlot::Player;
 	std::string meshFilename;
