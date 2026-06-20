@@ -76,40 +76,6 @@ struct NativeStaticMeshExportPackageDirectoryReport {
 	return "Unknown";
 }
 
-[[nodiscard]] inline const char *NativeStaticMeshExportPackageDirectoryManifestIssueCodeText(
-	NativeStaticMeshExportPackageManifestReadIssueCode code)
-{
-	switch (code) {
-	case NativeStaticMeshExportPackageManifestReadIssueCode::FileOpenFailed:
-		return "FileOpenFailed";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::EmptyInput:
-		return "EmptyInput";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::MalformedHeader:
-		return "MalformedHeader";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::UnsupportedFormatId:
-		return "UnsupportedFormatId";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::UnsupportedVersion:
-		return "UnsupportedVersion";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::MalformedAssetCount:
-		return "MalformedAssetCount";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::MissingField:
-		return "MissingField";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::MalformedAssetRow:
-		return "MalformedAssetRow";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::AssetCountMismatch:
-		return "AssetCountMismatch";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::DuplicateAssetName:
-		return "DuplicateAssetName";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::DuplicateAssetFilename:
-		return "DuplicateAssetFilename";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::ExtraToken:
-		return "ExtraToken";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::UnexpectedLine:
-		return "UnexpectedLine";
-	}
-	return "Unknown";
-}
-
 [[nodiscard]] inline const char *NativeStaticMeshExportPackageDirectoryMeshManifestIssueCodeText(
 	NativeStaticMeshExportManifestReadIssueCode code)
 {
@@ -289,7 +255,7 @@ CompareNativeStaticMeshExportPackageDirectoryManifestRows(
 			report.read.packageManifestReadIssues) {
 		stream
 			<< "packageManifestReadIssue"
-			<< " code=" << NativeStaticMeshExportPackageDirectoryManifestIssueCodeText(
+			<< " code=" << NativeStaticMeshExportPackageManifestReadIssueCodeText(
 				issue.code)
 			<< " line=" << issue.line
 			<< " token=" << issue.token

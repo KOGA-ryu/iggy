@@ -55,40 +55,6 @@ struct NativeStaticMeshExportDirectoryVerificationReport {
 	return "Unknown";
 }
 
-[[nodiscard]] inline const char *NativeStaticMeshExportPackageManifestReadIssueCodeText(
-	NativeStaticMeshExportPackageManifestReadIssueCode code)
-{
-	switch (code) {
-	case NativeStaticMeshExportPackageManifestReadIssueCode::FileOpenFailed:
-		return "FileOpenFailed";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::EmptyInput:
-		return "EmptyInput";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::MalformedHeader:
-		return "MalformedHeader";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::UnsupportedFormatId:
-		return "UnsupportedFormatId";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::UnsupportedVersion:
-		return "UnsupportedVersion";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::MalformedAssetCount:
-		return "MalformedAssetCount";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::MissingField:
-		return "MissingField";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::MalformedAssetRow:
-		return "MalformedAssetRow";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::AssetCountMismatch:
-		return "AssetCountMismatch";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::DuplicateAssetName:
-		return "DuplicateAssetName";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::DuplicateAssetFilename:
-		return "DuplicateAssetFilename";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::ExtraToken:
-		return "ExtraToken";
-	case NativeStaticMeshExportPackageManifestReadIssueCode::UnexpectedLine:
-		return "UnexpectedLine";
-	}
-	return "Unknown";
-}
-
 [[nodiscard]] inline const char *NativeStaticMeshExportDirectoryVerificationManifestState(
 	const NativeStaticMeshExportDirectoryVerificationResult &verification)
 {
