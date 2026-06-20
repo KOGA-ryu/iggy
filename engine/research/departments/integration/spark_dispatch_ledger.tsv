@@ -54,4 +54,5 @@ packet	status	department	owner	source_commit	source_review	docs_commit	docs_revi
 117_native_static_asset_next_boundary_scout	complete	integration	finisher	866691ff	PASS-planner	7918b6dc	not_requested		closed source and docs after native static mesh export package manifest status text helper extraction	2026-06-20
 118_native_static_asset_next_boundary_scout	complete	integration	finisher	f956d6d8	PASS-planner	292cdc22	not_requested		closed source and docs after native static model slot text helper extraction	2026-06-20
 119_native_static_asset_next_boundary_scout	complete	integration	finisher	c886bf6a	PASS-planner	b4caa45d	not_requested		closed source and docs after native static model load status text helper extraction	2026-06-20
-120_native_static_asset_next_boundary_scout	docs_ready	integration	finisher	20440310	PASS-planner				Sync Native Static Model Fallback Kind Text Helper Extraction docs from source commit 20440310	2026-06-20
+120_native_static_asset_next_boundary_scout	complete	integration	finisher	20440310	PASS-planner	851854ee	not_requested		closed source and docs after native static model fallback kind text helper extraction	2026-06-20
+121_native_static_asset_next_boundary_scout	research	integration	researcher						Research Native Static Asset Next Boundary Scout after static model fallback kind text helper extraction	2026-06-20
