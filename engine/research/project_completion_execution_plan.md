@@ -3006,6 +3006,44 @@ Native static mesh package directory report builder parity coverage complete:
   behavior, CMake, assets, fixtures, glTF/glb/JSON parser work, or next source
   packet scope.
 
+Native static mesh export package directory load data model complete:
+- Added header-only explicit-directory consumption API
+  `LoadNativeStaticMeshExportPackageDirectory(...)` in
+  `NativeStaticMeshExportPackageDirectoryLoad.hpp`.
+- The load flow consumes an exported package directory through the existing
+  package directory reader, projected nested mesh manifest file reader,
+  package-vs-manifest comparison helper, and `.igmesh` loader.
+- `NativeStaticMeshExportPackageDirectoryLoadResult` carries top-level status,
+  supplied directory, package directory read result, nested mesh manifest read
+  result, package-vs-manifest comparison result, loaded asset rows,
+  `loadedCount`, `issueCount`, and `loaded()` predicate.
+- Per-asset rows carry package asset identity/path, manifest row, expected
+  vertex/index counts, actual loaded vertex/index counts, load issues, issue
+  count, loaded `NativeStaticMeshAsset`, per-row status, and `loaded()`
+  predicate.
+- Status boundaries cover `Loaded`, `PackageDirectoryReadFailed`,
+  `ManifestReadFailed`, `ManifestComparisonFailed`, `MissingAsset`,
+  `AssetLoadFailed`, and `GeometryMismatch`; per-asset statuses cover `Loaded`,
+  `MissingAsset`, `AssetLoadFailed`, and `GeometryMismatch`.
+- This is consumption-oriented data-model work, not helper cleanup.
+- Loading is explicit-directory only, follows package-declared files only after
+  package/manifest rows compare cleanly, ignores unrelated extras, and does not
+  scan, discover, catalog, or register packages.
+- Source verification passed `native_static_mesh_export_package_directory_reader_tests`,
+  `native_static_mesh_export_package_directory_report_tests`,
+  `native_static_mesh_file_export_tests`, source `git diff --check`, and source
+  `git diff --cached --check`.
+- This docs packet does not change `IggyNativePlay.cpp`, CLI/parser/help/
+  dispatch behavior, renderer/model-slot/Vulkan/shader/visual/runtime behavior,
+  static model policy conversion, export behavior/write policy/sidecar
+  generation, exact verifier/report behavior, package-directory reader/report
+  behavior, CMake, assets/fixtures, schema/material/texture/normal/UV/animation
+  scope, package discovery/catalog/registry, package acceptance beyond this
+  data-model API, glTF/glb/JSON parser/dependency work, source/docs mixing, or
+  ledger state.
+- Planner note: stop after this docs sync; do not assume an automatic next
+  packet should be opened unless the user resumes.
+
 Native static mesh package manifest text reader complete:
 - Added a dependency-free, filesystem-free in-memory reader for the current
   generated package manifest text grammar.
@@ -4055,7 +4093,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
     extraction is integrated.
 122. Native static mesh package directory report builder parity coverage is
     integrated.
-123. Dispatch richer diagnostics display, overlays/labels, frame request/
+123. Native static mesh export package directory load data model is integrated.
+124. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

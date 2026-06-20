@@ -1249,6 +1249,30 @@ directory report/reader internals, package loading/discovery, `.igmesh` loading
 beyond existing verifier behavior, renderer/model-slot behavior, or parser
 scope.
 
+Native static mesh export package directory load data model is complete as the
+first explicit package-directory consumption API. `NativeStaticMeshExportPackageDirectoryLoad.hpp`
+adds `LoadNativeStaticMeshExportPackageDirectory(...)`, which consumes an
+exported package directory through package sidecar read, projected nested mesh
+manifest read, package-vs-manifest row comparison, and then `.igmesh` loading
+for package-declared files only. The load result carries status, supplied
+directory, package directory read result, nested manifest read result,
+comparison result, loaded asset rows, loaded count, issue count, and `loaded()`.
+Each loaded row carries package asset identity/path, manifest row, expected and
+actual vertex/index counts, load issues, issue count, loaded
+`NativeStaticMeshAsset`, per-row status, and `loaded()`. Status boundaries cover
+loaded, package directory read failure, manifest read failure, manifest
+comparison failure, missing asset, asset load failure, and geometry mismatch.
+Loading is explicit-directory only, ignores unrelated extras, and does not scan,
+discover, catalog, or register packages. This is consumption-oriented data-model
+work, not helper cleanup. It does not change CLI/parser/help/dispatch, renderer/
+model-slot/Vulkan/shader/visual/runtime behavior, static model policy
+conversion, export behavior/write policy/sidecar generation, exact
+verifier/report behavior, package-directory reader/report behavior, CMake,
+assets/fixtures, schema/material/texture/normal/UV/animation scope, package
+discovery/catalog/registry, package acceptance beyond this data-model API, or
+glTF/glb/JSON parser/dependency work. Stop after this docs sync unless the user
+resumes.
+
 Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play
 --dump-static-mesh-export-verification-report --output-dir DIR` prints a

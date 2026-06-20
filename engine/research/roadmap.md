@@ -707,6 +707,12 @@ Recently completed optimized stretches:
   directory, file-not-directory, malformed package sidecar, malformed nested
   manifest, directory-at-declared-asset, and extra-file-ignored branches without
   changing production source or package-directory report behavior.
+  Native static mesh export package directory load data model now adds
+  `NativeStaticMeshExportPackageDirectoryLoad.hpp` and
+  `LoadNativeStaticMeshExportPackageDirectory(...)` as the first explicit
+  package-directory consumption API, loading package-declared CPU
+  `NativeStaticMeshAsset` rows after package sidecar, nested mesh manifest, and
+  package-vs-manifest comparison succeed.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -3313,6 +3319,40 @@ sidecar/export behavior, package acceptance semantics, package directory report/
 reader internals, package loading/discovery, `.igmesh` loading beyond existing
 verifier behavior, renderer/model-slot behavior, CMake, assets, fixtures,
 glTF/glb/JSON parser work, or next source packet scope.
+
+Native Static Mesh Export Package Directory Load Data Model is complete as the
+first explicit package-directory consumption API. `NativeStaticMeshExportPackageDirectoryLoad.hpp`
+adds `LoadNativeStaticMeshExportPackageDirectory(...)`, which consumes an
+exported package directory by reading the package sidecar with
+`ReadNativeStaticMeshExportPackageDirectory(...)`, reading the projected nested
+mesh manifest with `ReadNativeStaticMeshExportManifestFile(...)`, comparing
+package rows to manifest rows with
+`CompareNativeStaticMeshExportPackageDirectoryManifestRows(...)`, and loading
+only package-declared `.igmesh` files through the existing static mesh asset
+loader. `NativeStaticMeshExportPackageDirectoryLoadResult` carries status,
+directory, package directory read result, nested mesh manifest read result,
+package-vs-manifest comparison result, loaded asset rows, `loadedCount`,
+`issueCount`, and `loaded()` predicate. Per-asset rows carry package identity/
+path, manifest row, expected and actual vertex/index counts, load issues, issue
+count, loaded `NativeStaticMeshAsset`, per-row status, and `loaded()`
+predicate. Status boundaries cover `Loaded`, `PackageDirectoryReadFailed`,
+`ManifestReadFailed`, `ManifestComparisonFailed`, `MissingAsset`,
+`AssetLoadFailed`, and `GeometryMismatch`; per-asset statuses cover `Loaded`,
+`MissingAsset`, `AssetLoadFailed`, and `GeometryMismatch`. Loading is explicit-
+directory only, follows package-declared rows only after package/manifest rows
+compare cleanly, ignores unrelated extras, and does not scan, discover, catalog,
+or register packages. Source verification passed focused package-directory
+reader tests, package-directory report tests, file-export tests, source
+`git diff --check`, and source `git diff --cached --check`. This is
+consumption-oriented data-model work, not helper cleanup. It does not change
+`IggyNativePlay.cpp`, CLI/parser/help/dispatch behavior, renderer/model-slot/
+Vulkan/shader/visual/runtime behavior, static model policy conversion, export
+behavior/write policy/sidecar generation, exact verifier/report behavior,
+package-directory reader/report behavior, CMake, assets/fixtures, schema/
+material/texture/normal/UV/animation scope, package discovery/catalog/registry,
+package acceptance beyond this data-model API, glTF/glb/JSON parser/dependency
+work, source/docs mixing, or ledger state. Stop after this docs sync; do not
+assume an automatic next packet should be opened unless the user resumes.
 
 Exit criteria:
 - Load a package or explicit scenario.
