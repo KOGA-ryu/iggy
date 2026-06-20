@@ -637,16 +637,22 @@ schema expansion, or gameplay/scripted/final-state changes.
 Native static mesh export directory verification CLI is complete as a read-only
 app-shell diagnostic: `VerifyNativeStaticMeshExportDirectory(...)` validates
 policy, requires an existing output directory, compares
-`static-mesh-export-manifest.txt` exactly to the manifest builder text, then
-loads only expected policy files and checks counts against the export report.
+`static-mesh-export-manifest.txt` exactly to the manifest builder text, compares
+`static-mesh-export-package-manifest.txt` exactly to package manifest builder
+text, then loads only expected policy files and checks counts against the export
+report.
 `iggy_native_play --verify-static-mesh-export --output-dir DIR` exits before
 native app construction or SDL/Vulkan startup and prints
 `static-mesh-export-verify ... verified=3 manifest=ok` on success. Missing
-sidecars, including single-export directories, fail with `MissingManifest`.
-Extra unrelated files are ignored; the verifier does not add discovery/scanning,
-package semantics, source mutation, overwrite/create-directory policy, fixture
-rewrites, renderer behavior, JSON/glTF/glb parsing, `.igmesh` schema changes,
-or gameplay/scripted/final-state changes.
+mesh sidecars fail with `MissingManifest`; missing or mismatched package
+sidecars fail with `MissingPackageManifest` or `PackageManifestMismatch`.
+Package sidecar verification happens after mesh manifest equality and before
+asset geometry checks. Extra unrelated files are ignored; the verifier remains
+read-only and explicit-directory-only and does not add package parser/reader
+syntax, semantic package-manifest parsing, discovery/scanning, package
+semantics, source mutation, overwrite/create-directory policy, fixture rewrites,
+renderer behavior, JSON/glTF/glb parsing, `.igmesh` schema changes, or
+gameplay/scripted/final-state changes.
 
 Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play
@@ -685,10 +691,10 @@ batch-only file output. `iggy_native_play --export-static-mesh-assets
 the mesh files and `static-mesh-export-manifest.txt`, reports
 `packageManifest=...` and `packageManifestBytes=...`, and preflights the package
 sidecar before mesh writes. Single export still writes no sidecars, the package
-manifest dump remains no-write, and verify/report paths continue to ignore the
-extra package sidecar. This adds no package parser/reader, package discovery,
-package verification integration, exact-extra-file validation, renderer
-behavior, `.igmesh` schema changes, or gameplay semantics.
+manifest dump remains no-write, and verifier/report paths now require the
+package sidecar. This adds no package parser/reader, package discovery,
+exact-extra-file validation, renderer behavior, `.igmesh` schema changes, or
+gameplay semantics.
 
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame

@@ -479,7 +479,11 @@ Recently completed optimized stretches:
   `static-mesh-export-package-manifest.txt` alongside batch-exported meshes and
   `static-mesh-export-manifest.txt`, preflighting the package sidecar before
   asset writes while leaving single export, the no-write package-manifest dump,
-  and existing verification paths unchanged.
+  and the no-write package-manifest dump unchanged.
+  Native static mesh package sidecar verification now requires
+  `static-mesh-export-package-manifest.txt` in export directories: verifier and
+  verification-report paths check exact package-manifest text after mesh
+  manifest equality and before asset geometry checks.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1724,8 +1728,8 @@ returns `TargetAlreadyExists`, preserves that file, and writes no meshes or mesh
 manifest. Successful CLI output now includes `packageManifest=...` and
 `packageManifestBytes=250` fields. Single export still writes only the selected
 `.igmesh` and no sidecars; `--dump-static-mesh-export-package-manifest` remains
-no-write and unchanged; existing verify and verification-report paths are
-unchanged and continue ignoring the extra package sidecar. This docs packet does
+no-write and unchanged. The later package sidecar verification packet makes
+verify and verification-report paths require the package sidecar. This docs packet does
 not change source, tests, CMake, assets, shaders, runtime, package
 parser/reader behavior, package discovery/scanning/catalog/registry, package
 verification integration, exact-extra-file validation, overwrite/force/
@@ -1735,6 +1739,35 @@ model-slot binding, gameplay/scripted/final-state behavior, shader behavior,
 native app source registration, `.igmesh` schema/material/texture/normal/UV/
 animation behavior, glTF/glb/JSON parser dependencies, third-party dependencies,
 docs-in-source, or next research/scout implementation.
+
+Native Static Mesh Package Sidecar Verification is complete for the existing
+read-only export-directory verifier. `VerifyNativeStaticMeshExportDirectory(...)`
+now requires `static-mesh-export-package-manifest.txt` after checking the output
+directory and exact mesh manifest text, and before asset geometry checks. The
+expected package sidecar text is built read-only with
+`BuildNativeStaticMeshExportPackageManifestText(...)` from a package policy
+composed from the verification mesh policy. New package-specific statuses are
+`MissingPackageManifest`, `PackageManifestMismatch`, and
+`PackageManifestBuildFailed`, and status-to-text mappings are updated for both
+the verification report helper and CLI error text. No new CLI flag was added:
+existing `iggy_native_play --verify-static-mesh-export --output-dir DIR` and
+`iggy_native_play --dump-static-mesh-export-verification-report --output-dir DIR`
+now fail/report missing or mismatched package sidecars. Missing package sidecar
+failure reports
+`iggy_native_play: static mesh export verification failed: MissingPackageManifest output=/tmp/iggy-native-package-verify-missing-84.RIkcIc/static-mesh-export-package-manifest.txt issues=0`;
+the report path prints
+`static-mesh-export-verification-report status=MissingPackageManifest output=/tmp/iggy-native-package-verify-missing-84.RIkcIc verified=0 issues=0 problem=/tmp/iggy-native-package-verify-missing-84.RIkcIc/static-mesh-export-package-manifest.txt`
+before the compact `iggy_native_play:` failure. Mismatched package sidecars
+report `PackageManifestMismatch` with `issues=1`. Verification remains
+read-only and explicit-directory only. This docs packet does not change source,
+tests, CMake, assets, shaders, runtime, package parser/reader syntax, semantic
+parsing of package manifest rows, discovery/scanning/catalog/registry,
+exact-extra-file rejection, repair/loading, export write behavior, overwrite/
+create-dir policy, CLI flags, single-export sidecars, fixture rewrites, renderer
+behavior, `NativeVulkanRenderer.cpp`, `.igmesh` schema, glTF/glb/JSON
+dependencies, docs-in-source, native app CMake source registration,
+runtime/product/scene/server APIs, gameplay/scripted/final-state behavior, or
+next research/scout implementation.
 
 Exit criteria:
 - Load a package or explicit scenario.

@@ -1403,8 +1403,8 @@ Native static mesh batch package manifest sidecar export complete:
 - Single export remains unchanged and writes only the selected `.igmesh` with no
   sidecars.
 - `--dump-static-mesh-export-package-manifest` remains no-write and unchanged.
-- Existing verify and verification-report paths remain unchanged and continue
-  ignoring the extra package sidecar.
+- The later package sidecar verification packet makes existing verify and
+  verification-report paths require the package sidecar.
 - This docs packet does not change source, tests, CMake, assets, shaders,
   runtime, package parser/reader behavior, package discovery/scanning/catalog/
   registry, package verification integration, exact-extra-file validation,
@@ -1414,6 +1414,46 @@ Native static mesh batch package manifest sidecar export complete:
   behavior, shader behavior, native app source registration, `.igmesh` schema/
   material/texture/normal/UV/animation behavior, glTF/glb/JSON parser
   dependencies, third-party dependencies, docs-in-source, or next research/scout
+  source implementation.
+
+Native static mesh package sidecar verification complete:
+- `VerifyNativeStaticMeshExportDirectory(...)` now requires the package sidecar
+  `static-mesh-export-package-manifest.txt`.
+- Verification still checks the output directory and exact mesh manifest text
+  first.
+- Package sidecar verification happens after mesh manifest equality and before
+  asset geometry checks.
+- Expected package sidecar text is built read-only with
+  `BuildNativeStaticMeshExportPackageManifestText(...)` from a package policy
+  composed from the verification mesh policy.
+- Added package-specific statuses: `MissingPackageManifest`,
+  `PackageManifestMismatch`, and `PackageManifestBuildFailed`.
+- Status-to-text mappings were updated for the verification report helper and
+  CLI error text.
+- No new CLI flag was added; existing `--verify-static-mesh-export` and
+  `--dump-static-mesh-export-verification-report` now fail/report missing or
+  mismatched package sidecars.
+- Missing package sidecar verifier failure shape:
+  `iggy_native_play: static mesh export verification failed: MissingPackageManifest output=/tmp/iggy-native-package-verify-missing-84.RIkcIc/static-mesh-export-package-manifest.txt issues=0`.
+- Missing package sidecar report failure shape:
+  `static-mesh-export-verification-report status=MissingPackageManifest output=/tmp/iggy-native-package-verify-missing-84.RIkcIc verified=0 issues=0 problem=/tmp/iggy-native-package-verify-missing-84.RIkcIc/static-mesh-export-package-manifest.txt`
+  followed by
+  `iggy_native_play: static mesh export verification report failed: MissingPackageManifest output=/tmp/iggy-native-package-verify-missing-84.RIkcIc/static-mesh-export-package-manifest.txt issues=0`.
+- Mismatched package sidecar verifier failure shape:
+  `iggy_native_play: static mesh export verification failed: PackageManifestMismatch output=/tmp/iggy-native-package-verify-mismatch-84.vVqdH6/static-mesh-export-package-manifest.txt issues=1`.
+- Mismatched package sidecar report failure shape:
+  `static-mesh-export-verification-report status=PackageManifestMismatch output=/tmp/iggy-native-package-verify-mismatch-84.vVqdH6 verified=0 issues=1 problem=/tmp/iggy-native-package-verify-mismatch-84.vVqdH6/static-mesh-export-package-manifest.txt`
+  followed by
+  `iggy_native_play: static mesh export verification report failed: PackageManifestMismatch output=/tmp/iggy-native-package-verify-mismatch-84.vVqdH6/static-mesh-export-package-manifest.txt issues=1`.
+- Verification remains read-only and explicit-directory only.
+- This docs packet does not change source, tests, CMake, assets, shaders,
+  runtime, package parser/reader syntax, semantic parsing of package manifest
+  rows, discovery/scanning/catalog/registry, exact-extra-file rejection,
+  repair/loading, export write behavior, overwrite/create-dir policy, CLI flags,
+  single-export sidecars, fixture rewrites, renderer behavior,
+  `NativeVulkanRenderer.cpp`, `.igmesh` schema, glTF/glb/JSON dependencies,
+  docs-in-source, native app CMake source registration, runtime/product/scene/
+  server APIs, gameplay/scripted/final-state behavior, or next research/scout
   source implementation.
 
 Thin Qt product mouse primary-tile consumer complete:
@@ -2313,7 +2353,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 66. Native static mesh export package policy is integrated.
 67. Native static mesh export package manifest text builder CLI is integrated.
 68. Native static mesh batch package manifest sidecar export is integrated.
-69. Dispatch richer diagnostics display, overlays/labels, frame request/
+69. Native static mesh package sidecar verification is integrated.
+70. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under
