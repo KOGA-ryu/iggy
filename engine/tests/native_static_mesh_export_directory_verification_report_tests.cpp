@@ -19,6 +19,7 @@ using iggy::native_play::NativeStaticMeshBuiltInExportId;
 using iggy::native_play::NativeStaticMeshExportDirectoryVerificationReport;
 using iggy::native_play::NativeStaticMeshExportDirectoryVerificationStatus;
 using iggy::native_play::NativeStaticMeshExportManifestFilename;
+using iggy::native_play::NativeStaticMeshExportPackageManifestSidecarFilename;
 using iggy::native_play::NativeStaticMeshFileExportBatchResult;
 using iggy::native_play::NativeStaticMeshFileExportStatus;
 using iggy::native_play::WriteNativeStaticMeshAssetText;
@@ -172,6 +173,54 @@ void TestManifestMismatchReportFails()
 	CleanupTempRoot();
 }
 
+void TestMissingPackageManifestReportFails()
+{
+	ResetTempRoot();
+	ExportDefaultBatch();
+	const std::filesystem::path packageManifest =
+		TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename;
+	std::filesystem::remove(packageManifest);
+
+	const NativeStaticMeshExportDirectoryVerificationReport report =
+		BuildDefaultReport();
+
+	Expect(!report.verified(), "missing package manifest report should fail");
+	Expect(
+		report.verification.status == NativeStaticMeshExportDirectoryVerificationStatus::MissingPackageManifest,
+		"missing package manifest report should expose status");
+	Expect(
+		report.text.find("status=MissingPackageManifest") != std::string::npos,
+		"missing package manifest report should include status text");
+	Expect(
+		report.text.find("problem=" + packageManifest.string()) != std::string::npos,
+		"missing package manifest report should include package manifest problem path");
+	CleanupTempRoot();
+}
+
+void TestPackageManifestMismatchReportFails()
+{
+	ResetTempRoot();
+	ExportDefaultBatch();
+	const std::filesystem::path packageManifest =
+		TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename;
+	WriteText(packageManifest, "mismatch\n");
+
+	const NativeStaticMeshExportDirectoryVerificationReport report =
+		BuildDefaultReport();
+
+	Expect(!report.verified(), "package manifest mismatch report should fail");
+	Expect(
+		report.verification.status == NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestMismatch,
+		"package manifest mismatch report should expose status");
+	Expect(
+		report.text.find("status=PackageManifestMismatch") != std::string::npos,
+		"package manifest mismatch report should include status text");
+	Expect(
+		report.text.find("problem=" + packageManifest.string()) != std::string::npos,
+		"package manifest mismatch report should include package manifest problem path");
+	CleanupTempRoot();
+}
+
 void TestMissingAssetReportFailsWithEntry()
 {
 	ResetTempRoot();
@@ -258,6 +307,8 @@ int main()
 	TestFilePathInsteadOfDirectoryReportFails();
 	TestMissingManifestReportFails();
 	TestManifestMismatchReportFails();
+	TestMissingPackageManifestReportFails();
+	TestPackageManifestMismatchReportFails();
 	TestMissingAssetReportFailsWithEntry();
 	TestCorruptAssetReportFailsWithIssueCount();
 	TestGeometryMismatchReportFails();

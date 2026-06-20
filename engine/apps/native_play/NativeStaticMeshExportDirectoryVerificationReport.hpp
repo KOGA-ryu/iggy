@@ -43,6 +43,12 @@ struct NativeStaticMeshExportDirectoryVerificationReport {
 		return "GeometryMismatch";
 	case NativeStaticMeshExportDirectoryVerificationStatus::ManifestBuildFailed:
 		return "ManifestBuildFailed";
+	case NativeStaticMeshExportDirectoryVerificationStatus::MissingPackageManifest:
+		return "MissingPackageManifest";
+	case NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestMismatch:
+		return "PackageManifestMismatch";
+	case NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestBuildFailed:
+		return "PackageManifestBuildFailed";
 	}
 	return "Unknown";
 }

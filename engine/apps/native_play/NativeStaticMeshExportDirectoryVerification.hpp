@@ -3,6 +3,7 @@
 #include "NativeStaticMeshAssetLoader.hpp"
 #include "NativeStaticMeshFileExport.hpp"
 #include "NativeStaticMeshExportManifest.hpp"
+#include "NativeStaticMeshExportPackageManifest.hpp"
 #include "NativeStaticMeshExportPolicy.hpp"
 #include "NativeStaticMeshExportReport.hpp"
 
@@ -26,6 +27,9 @@ enum class NativeStaticMeshExportDirectoryVerificationStatus {
 	AssetLoadFailed,
 	GeometryMismatch,
 	ManifestBuildFailed,
+	MissingPackageManifest,
+	PackageManifestMismatch,
+	PackageManifestBuildFailed,
 };
 
 struct NativeStaticMeshExportDirectoryVerificationEntry {
@@ -128,6 +132,34 @@ VerifyNativeStaticMeshExportDirectory(
 		result.status =
 			NativeStaticMeshExportDirectoryVerificationStatus::ManifestMismatch;
 		result.problemPath = manifestPath;
+		++result.issueCount;
+		return result;
+	}
+
+	NativeStaticMeshExportPackagePolicy packagePolicy =
+		DefaultNativeStaticMeshExportPackagePolicy();
+	packagePolicy.meshPolicy = policy;
+	const NativeStaticMeshExportPackageManifestResult packageManifest =
+		BuildNativeStaticMeshExportPackageManifestText(packagePolicy);
+	if (!packageManifest.written()) {
+		result.status =
+			NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestBuildFailed;
+		result.issueCount = packageManifest.issueCount;
+		return result;
+	}
+
+	const std::filesystem::path packageManifestPath =
+		directory / NativeStaticMeshExportPackageManifestSidecarFilename;
+	if (!std::filesystem::exists(packageManifestPath)) {
+		result.status =
+			NativeStaticMeshExportDirectoryVerificationStatus::MissingPackageManifest;
+		result.problemPath = packageManifestPath;
+		return result;
+	}
+	if (NativeStaticMeshExportReadTextFile(packageManifestPath) != packageManifest.text) {
+		result.status =
+			NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestMismatch;
+		result.problemPath = packageManifestPath;
 		++result.issueCount;
 		return result;
 	}

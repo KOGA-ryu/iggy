@@ -19,6 +19,7 @@ using iggy::native_play::NativeStaticMeshBuiltInExportId;
 using iggy::native_play::NativeStaticMeshExportDirectoryVerificationResult;
 using iggy::native_play::NativeStaticMeshExportDirectoryVerificationStatus;
 using iggy::native_play::NativeStaticMeshExportManifestFilename;
+using iggy::native_play::NativeStaticMeshExportPackageManifestSidecarFilename;
 using iggy::native_play::NativeStaticMeshExportPolicy;
 using iggy::native_play::NativeStaticMeshFileExportBatchResult;
 using iggy::native_play::NativeStaticMeshFileExportResult;
@@ -146,6 +147,45 @@ void TestManifestMismatchFails()
 	CleanupTempRoot();
 }
 
+void TestMissingPackageManifestFails()
+{
+	ResetTempRoot();
+	ExportDefaultBatch();
+	const std::filesystem::path packageManifest =
+		TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename;
+	std::filesystem::remove(packageManifest);
+
+	const NativeStaticMeshExportDirectoryVerificationResult result = VerifyDefault();
+
+	Expect(
+		result.status == NativeStaticMeshExportDirectoryVerificationStatus::MissingPackageManifest,
+		"missing package manifest should fail verification");
+	Expect(
+		result.problemPath == packageManifest,
+		"missing package manifest should report package manifest problem path");
+	CleanupTempRoot();
+}
+
+void TestPackageManifestMismatchFails()
+{
+	ResetTempRoot();
+	ExportDefaultBatch();
+	const std::filesystem::path packageManifest =
+		TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename;
+	WriteText(packageManifest, "mismatch\n");
+
+	const NativeStaticMeshExportDirectoryVerificationResult result = VerifyDefault();
+
+	Expect(
+		result.status == NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestMismatch,
+		"package manifest mismatch should fail verification");
+	Expect(
+		result.problemPath == packageManifest,
+		"package manifest mismatch should report package manifest problem path");
+	Expect(result.issueCount > 0, "package manifest mismatch should report issue count");
+	CleanupTempRoot();
+}
+
 void TestMissingExpectedAssetFails()
 {
 	ResetTempRoot();
@@ -259,6 +299,8 @@ int main()
 	TestFilePathInsteadOfDirectoryFails();
 	TestMissingManifestFails();
 	TestManifestMismatchFails();
+	TestMissingPackageManifestFails();
+	TestPackageManifestMismatchFails();
 	TestMissingExpectedAssetFails();
 	TestCorruptExpectedAssetFailsWithLoadIssue();
 	TestGeometryMismatchFails();
