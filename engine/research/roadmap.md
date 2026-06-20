@@ -517,6 +517,10 @@ Recently completed optimized stretches:
   Native static mesh package directory presence diagnostics now append
   `manifestExists=1|0` and per-asset `exists=1|0` facts to that report without
   changing read success, CLI exit semantics, verification, export, or loading.
+  Native static mesh package directory file fact diagnostics now add non-throwing
+  regular-file and byte-count facts for the package sidecar, nested manifest,
+  and declared assets while keeping missing paths, directories, and size
+  failures as `regularFile=0 bytes=0`.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -2050,6 +2054,37 @@ write behavior, overwrite/create-dir/temp replacement/arbitrary output path
 policy, fixture/generated asset changes, gameplay/scripted/final-state changes,
 `NativeVulkanRenderer.cpp`, glTF/glb/JSON parser/dependency work, source/test/
 assets/shader/runtime files in this docs packet, or next source packet scope.
+
+Native Static Mesh Package Directory File Fact Diagnostics are complete for the
+package directory report. The report now adds read-only filesystem facts for
+already-known package paths: summary rows include package sidecar facts
+`packageManifestExists=1|0 packageManifestRegularFile=1|0 packageManifestBytes=N`;
+summary rows keep nested mesh manifest presence and add
+`manifestRegularFile=1|0 manifestBytes=N`; asset rows keep `exists=1|0` and add
+`regularFile=1|0 bytes=N`. Facts use non-throwing `std::filesystem` status and
+file-size calls; missing paths, directories, and size failures report
+`regularFile=0 bytes=0`. `readOk()` and CLI exit semantics are unchanged:
+missing nested mesh manifest, missing declared asset, and directory-at-asset
+remain `status=Read` / exit 0; missing package sidecar remains
+`PackageManifestReadFailed` / nonzero after report text. Valid package directory
+smoke prints regular-file byte counts for package manifest `250`, nested
+manifest `272`, cube `523`, bean `23882`, and npc-marker `9474`. Missing nested
+mesh manifest prints `manifestExists=0 manifestRegularFile=0 manifestBytes=0`;
+missing declared `cube.igmesh` prints `exists=0 regularFile=0 bytes=0`;
+directory-at-asset prints `exists=1 regularFile=0 bytes=0`; missing package
+sidecar prints
+`packageManifestExists=0 packageManifestRegularFile=0 packageManifestBytes=0`
+with the existing `FileOpenFailed` issue row. This does not add CLI changes,
+renderer changes, verification/export behavior changes, docs-in-source, CMake
+changes, runtime/product changes, shader changes, glTF/JSON/parser changes,
+schema-scope changes, package discovery/scanning/catalog/registry,
+exact-extra-file rejection, repair, source mutation, arbitrary package loading,
+nested mesh manifest parsing, `.igmesh` loading, geometry checks,
+generated-text comparison, policy/built-in id reconstruction, export write
+behavior, overwrite/create-dir/temp replacement/arbitrary output path policy,
+fixture/generated asset changes, gameplay/scripted/final-state behavior,
+`NativeVulkanRenderer.cpp`, source/test/assets/shader/runtime files in this
+docs packet, or next source packet scope.
 
 Exit criteria:
 - Load a package or explicit scenario.

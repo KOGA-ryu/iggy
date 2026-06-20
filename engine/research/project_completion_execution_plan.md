@@ -1705,6 +1705,45 @@ Native static mesh package directory presence diagnostics complete:
   behavior, `NativeVulkanRenderer.cpp`, glTF/glb/JSON parser/dependency work, or
   next source packet scope.
 
+Native static mesh package directory file fact diagnostics complete:
+- Package directory report now adds read-only filesystem facts for already-known
+  package paths.
+- Summary now includes package sidecar facts:
+  `packageManifestExists=1|0 packageManifestRegularFile=1|0 packageManifestBytes=N`.
+- Summary keeps nested mesh manifest presence and adds
+  `manifestRegularFile=1|0 manifestBytes=N`.
+- Asset rows keep `exists=1|0` and add `regularFile=1|0 bytes=N`.
+- Facts use non-throwing `std::filesystem` status/file-size calls; missing
+  paths, directories, and size failures report `regularFile=0 bytes=0`.
+- `readOk()` and CLI exit semantics are unchanged: missing nested mesh manifest,
+  missing declared asset, and directory-at-asset remain `status=Read` / exit 0;
+  missing package sidecar remains `PackageManifestReadFailed` / nonzero after
+  report text.
+- Valid package directory smoke prints package sidecar, nested manifest, and all
+  asset rows as existing regular files with byte counts: package manifest `250`,
+  nested manifest `272`, cube `523`, bean `23882`, npc-marker `9474`.
+- Missing nested mesh manifest smoke exits 0 with
+  `manifestExists=0 manifestRegularFile=0 manifestBytes=0`.
+- Missing declared asset smoke exits 0 with
+  `cube.igmesh exists=0 regularFile=0 bytes=0`.
+- Directory-at-asset smoke exits 0 with
+  `cube.igmesh exists=1 regularFile=0 bytes=0`.
+- Missing package sidecar smoke exits nonzero with `PackageManifestReadFailed`,
+  `packageManifestExists=0 packageManifestRegularFile=0 packageManifestBytes=0`,
+  and the existing `FileOpenFailed` issue row.
+- Changed files stayed within approved report/test surfaces.
+- The only export helper references are existing test setup.
+- This docs packet does not change source, tests, CMake, assets, shaders,
+  runtime, CLI behavior, renderer behavior, verification/export behavior,
+  docs-in-source, package discovery/scanning/catalog/registry,
+  exact-extra-file rejection, repair, source mutation, arbitrary package loading,
+  nested mesh manifest parsing, `.igmesh` loading, geometry checks,
+  generated-text comparison, policy/built-in id reconstruction, export write
+  behavior, overwrite/create-dir/temp replacement/arbitrary output path policy,
+  fixtures/generated assets, gameplay/scripted/final-state behavior,
+  `NativeVulkanRenderer.cpp`, glTF/glb/JSON parser/dependency work, or next
+  source packet scope.
+
 Native static mesh package manifest text reader complete:
 - Added a dependency-free, filesystem-free in-memory reader for the current
   generated package manifest text grammar.
@@ -2679,7 +2718,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 76. Native static mesh package directory report builder is integrated.
 77. Native static mesh package directory report CLI is integrated.
 78. Native static mesh package directory presence diagnostics are integrated.
-79. Dispatch richer diagnostics display, overlays/labels, frame request/
+79. Native static mesh package directory file fact diagnostics are integrated.
+80. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

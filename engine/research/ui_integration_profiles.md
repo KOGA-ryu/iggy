@@ -702,6 +702,16 @@ read-only report fields. The package directory report now appends
 CLI exit status, verification semantics, export behavior, directory scanning,
 mesh loading, generated-text comparison, or package loading.
 
+Native static mesh package directory file fact diagnostics are complete as
+additional read-only report fields. The package sidecar summary now includes
+`packageManifestExists`, `packageManifestRegularFile`, and
+`packageManifestBytes`; the nested manifest summary includes
+`manifestRegularFile` and `manifestBytes`; asset rows include `regularFile` and
+`bytes`. Missing paths, directories, and size failures report
+`regularFile=0 bytes=0`, and these facts do not change `readOk()`, CLI exit
+status, verification semantics, export behavior, directory scanning, mesh
+loading, generated-text comparison, or package loading.
+
 Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play
 --dump-static-mesh-export-verification-report --output-dir DIR` prints a
