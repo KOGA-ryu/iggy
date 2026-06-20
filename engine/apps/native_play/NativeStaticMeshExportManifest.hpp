@@ -5,6 +5,8 @@
 
 #include <cstddef>
 #include <cctype>
+#include <filesystem>
+#include <fstream>
 #include <limits>
 #include <sstream>
 #include <string>
@@ -49,6 +51,7 @@ struct NativeStaticMeshExportManifestDocument {
 };
 
 enum class NativeStaticMeshExportManifestReadIssueCode {
+	FileOpenFailed,
 	EmptyInput,
 	MalformedHeader,
 	UnsupportedVersion,
@@ -447,6 +450,25 @@ ReadNativeStaticMeshExportManifestText(std::string_view text)
 	}
 
 	return result;
+}
+
+[[nodiscard]] inline NativeStaticMeshExportManifestReadResult
+ReadNativeStaticMeshExportManifestFile(const std::filesystem::path &path)
+{
+	std::ifstream file(path, std::ios::binary);
+	if (!file.is_open()) {
+		NativeStaticMeshExportManifestReadResult result;
+		AddNativeStaticMeshExportManifestReadIssue(
+			result,
+			NativeStaticMeshExportManifestReadIssueCode::FileOpenFailed,
+			0,
+			path.string());
+		return result;
+	}
+
+	std::ostringstream buffer;
+	buffer << file.rdbuf();
+	return ReadNativeStaticMeshExportManifestText(buffer.str());
 }
 
 } // namespace iggy::native_play

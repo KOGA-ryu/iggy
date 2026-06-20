@@ -3,6 +3,8 @@
 #include "../apps/native_play/NativeStaticMeshExportReport.hpp"
 
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <string>
 
 #include "support/TestHarness.hpp"
@@ -20,6 +22,7 @@ using iggy::native_play::NativeStaticMeshExportManifestStatus;
 using iggy::native_play::NativeStaticMeshExportPolicy;
 using iggy::native_play::NativeStaticMeshExportReport;
 using iggy::native_play::NativeStaticMeshExportReportEntry;
+using iggy::native_play::ReadNativeStaticMeshExportManifestFile;
 using iggy::native_play::ReadNativeStaticMeshExportManifestText;
 using iggy::test::Expect;
 using iggy::test::Failures;
@@ -39,6 +42,18 @@ std::string ExpectedManifestText(const NativeStaticMeshExportReport &report)
 			" bytes=" + std::to_string(entry.byteCount) + "\n";
 	}
 	return text;
+}
+
+std::filesystem::path TempManifestPath(const std::string &name)
+{
+	return std::filesystem::temp_directory_path() /
+		("iggy_native_static_mesh_export_manifest_" + name + ".txt");
+}
+
+void WriteTextFile(const std::filesystem::path &path, const std::string &text)
+{
+	std::ofstream file(path, std::ios::binary);
+	file << text;
 }
 
 void TestDefaultManifestMatchesReport()
@@ -270,6 +285,93 @@ void TestManifestReaderRejectsCountMismatches()
 		"wrong total byte count should report byte-count mismatch");
 }
 
+void TestFileReaderReadsGeneratedManifest()
+{
+	const std::filesystem::path path = TempManifestPath("generated");
+	std::filesystem::remove(path);
+	const NativeStaticMeshExportManifestResult manifest =
+		BuildNativeStaticMeshExportManifestText(DefaultNativeStaticMeshExportPolicy());
+	const NativeStaticMeshExportReport report =
+		BuildNativeStaticMeshExportReport(DefaultNativeStaticMeshExportPolicy());
+	WriteTextFile(path, manifest.text);
+
+	const NativeStaticMeshExportManifestReadResult result =
+		ReadNativeStaticMeshExportManifestFile(path);
+
+	std::filesystem::remove(path);
+	Expect(result.read(), "mesh export manifest file reader should read generated text");
+	Expect(result.document.version == 1, "mesh export manifest file reader should preserve version");
+	Expect(
+		result.document.assetCount == report.assetCount,
+		"mesh export manifest file reader should preserve asset count");
+	Expect(
+		result.document.byteCount == report.byteCount,
+		"mesh export manifest file reader should preserve total byte count");
+	Expect(
+		result.document.assets.size() == report.entries.size(),
+		"mesh export manifest file reader should preserve rows");
+	if (result.document.assets.size() == report.entries.size() &&
+			result.document.assets.size() >= 3) {
+		Expect(result.document.assets[0].name == "cube", "file reader first row should be cube");
+		Expect(
+			result.document.assets[0].vertexCount == report.entries[0].vertexCount &&
+				result.document.assets[0].indexCount == report.entries[0].indexCount &&
+				result.document.assets[0].byteCount == report.entries[0].byteCount,
+			"file reader should preserve first row facts");
+		Expect(
+			result.document.assets[2].filename == "npc-marker.igmesh",
+			"file reader last row filename should be npc-marker.igmesh");
+	}
+}
+
+void TestFileReaderReportsMissingFile()
+{
+	const std::filesystem::path path = TempManifestPath("missing");
+	std::filesystem::remove(path);
+
+	const NativeStaticMeshExportManifestReadResult result =
+		ReadNativeStaticMeshExportManifestFile(path);
+
+	Expect(!result.read(), "missing mesh export manifest file should not read");
+	Expect(result.issues.size() == 1, "missing mesh export manifest file should report one issue");
+	Expect(
+		HasReadIssue(
+			result,
+			NativeStaticMeshExportManifestReadIssueCode::FileOpenFailed),
+		"missing mesh export manifest file should report file-open failure");
+	if (!result.issues.empty()) {
+		Expect(result.issues[0].line == 0, "file-open failure should use line zero");
+		Expect(
+			result.issues[0].token == path.string(),
+			"file-open failure should report the supplied path");
+	}
+}
+
+void TestFileReaderPropagatesTextReaderIssues()
+{
+	const std::filesystem::path path = TempManifestPath("malformed");
+	std::filesystem::remove(path);
+	WriteTextFile(
+		path,
+		"static-mesh-export-manifest version=2 assets=0 bytes=0\n");
+
+	const NativeStaticMeshExportManifestReadResult result =
+		ReadNativeStaticMeshExportManifestFile(path);
+
+	std::filesystem::remove(path);
+	Expect(!result.read(), "malformed mesh export manifest file should not read");
+	Expect(
+		HasReadIssue(
+			result,
+			NativeStaticMeshExportManifestReadIssueCode::UnsupportedVersion),
+		"malformed mesh export manifest file should propagate text reader issue");
+	Expect(
+		!HasReadIssue(
+			result,
+			NativeStaticMeshExportManifestReadIssueCode::FileOpenFailed),
+		"malformed readable file should not report file-open failure");
+}
+
 } // namespace
 
 int main()
@@ -287,6 +389,9 @@ int main()
 	TestManifestReaderRejectsMalformedRows();
 	TestManifestReaderRejectsDuplicateRows();
 	TestManifestReaderRejectsCountMismatches();
+	TestFileReaderReadsGeneratedManifest();
+	TestFileReaderReportsMissingFile();
+	TestFileReaderPropagatesTextReaderIssues();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;
