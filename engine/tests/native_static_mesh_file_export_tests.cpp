@@ -1,10 +1,12 @@
 #include "../apps/native_play/NativeStaticMeshAssetLoader.hpp"
 #include "../apps/native_play/NativeStaticMeshAssetWriter.hpp"
 #include "../apps/native_play/NativeStaticMeshFileExport.hpp"
+#include "../apps/native_play/NativeStaticMeshExportManifest.hpp"
 
 #include <cstdlib>
 #include <fstream>
 #include <filesystem>
+#include <iterator>
 #include <string>
 
 #include "support/TestHarness.hpp"
@@ -12,6 +14,7 @@
 namespace {
 
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
+using iggy::native_play::BuildNativeStaticMeshExportManifestText;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
 using iggy::native_play::ExportNativeStaticMeshAssetToDirectory;
 using iggy::native_play::ExportNativeStaticMeshPolicyToDirectory;
@@ -24,6 +27,8 @@ using iggy::native_play::NativeStaticMeshExportAssetRef;
 using iggy::native_play::NativeStaticMeshExportPolicy;
 using iggy::native_play::NativeStaticMeshFileExportResult;
 using iggy::native_play::NativeStaticMeshFileExportStatus;
+using iggy::native_play::NativeStaticMeshExportManifestFilename;
+using iggy::native_play::NativeStaticMeshExportManifestResult;
 using iggy::native_play::WriteNativeStaticMeshAssetText;
 using iggy::test::Expect;
 using iggy::test::Failures;
@@ -51,6 +56,15 @@ void WriteText(const std::filesystem::path &path, const std::string &text)
 {
 	std::ofstream file(path, std::ios::binary);
 	file << text;
+}
+
+std::string ReadText(const std::filesystem::path &path)
+{
+	std::ifstream file(path, std::ios::binary);
+	return {
+		std::istreambuf_iterator<char>(file),
+		std::istreambuf_iterator<char>(),
+	};
 }
 
 void TestExportsDefaultPolicyAssetsAndReloads()
@@ -95,6 +109,9 @@ void TestBatchExportsDefaultPolicyAssetsAndReloads()
 		"batch export should succeed");
 	Expect(result.entries.size() == policy.assets.size(), "batch export should report every policy asset");
 	Expect(result.exportedCount == policy.assets.size(), "batch export should count exported assets");
+	Expect(
+		result.manifestOutputPath == TempRoot() / NativeStaticMeshExportManifestFilename,
+		"batch export should report manifest output path");
 
 	std::size_t expectedBytes = 0;
 	for (const NativeStaticMeshExportAssetRef &asset : policy.assets) {
@@ -110,6 +127,19 @@ void TestBatchExportsDefaultPolicyAssetsAndReloads()
 		expectedBytes += expected.text.size();
 	}
 	Expect(result.byteCount == expectedBytes, "batch byte count should match writer text sizes");
+
+	const NativeStaticMeshExportManifestResult manifest =
+		BuildNativeStaticMeshExportManifestText(policy);
+	Expect(manifest.written(), "default manifest should write");
+	Expect(
+		std::filesystem::exists(result.manifestOutputPath),
+		"batch export should write manifest sidecar");
+	Expect(
+		ReadText(result.manifestOutputPath) == manifest.text,
+		"batch manifest sidecar should match manifest builder output");
+	Expect(
+		result.manifestByteCount == manifest.text.size(),
+		"batch manifest byte count should match manifest text size");
 
 	CleanupTempRoot();
 }
@@ -241,6 +271,50 @@ void TestBatchTargetAlreadyExistsPreflightsBeforeWriting()
 		"batch existing target should be rejected");
 	Expect(!std::filesystem::exists(TempRoot() / "cube.igmesh"), "batch preflight should not write earlier assets");
 	Expect(!std::filesystem::exists(TempRoot() / "npc-marker.igmesh"), "batch preflight should not write later assets");
+	Expect(
+		!std::filesystem::exists(TempRoot() / NativeStaticMeshExportManifestFilename),
+		"batch target collision should not write manifest sidecar");
+	CleanupTempRoot();
+}
+
+void TestBatchManifestTargetAlreadyExistsPreflightsBeforeWriting()
+{
+	ResetTempRoot();
+	WriteText(TempRoot() / NativeStaticMeshExportManifestFilename, "existing");
+
+	const NativeStaticMeshFileExportBatchResult result =
+		ExportNativeStaticMeshPolicyToDirectory(
+			DefaultNativeStaticMeshExportPolicy(),
+			TempRoot());
+
+	Expect(
+		result.status == NativeStaticMeshFileExportStatus::TargetAlreadyExists,
+		"existing manifest target should reject batch export");
+	Expect(!std::filesystem::exists(TempRoot() / "cube.igmesh"), "manifest collision should not write cube");
+	Expect(!std::filesystem::exists(TempRoot() / "bean.igmesh"), "manifest collision should not write bean");
+	Expect(!std::filesystem::exists(TempRoot() / "npc-marker.igmesh"), "manifest collision should not write NPC marker");
+	Expect(
+		ReadText(TempRoot() / NativeStaticMeshExportManifestFilename) == "existing",
+		"manifest collision should not overwrite existing sidecar");
+	CleanupTempRoot();
+}
+
+void TestSingleExportDoesNotWriteManifestSidecar()
+{
+	ResetTempRoot();
+	const NativeStaticMeshFileExportResult result =
+		ExportNativeStaticMeshAssetToDirectory(
+			DefaultNativeStaticMeshExportPolicy(),
+			"cube",
+			TempRoot());
+
+	Expect(
+		result.status == NativeStaticMeshFileExportStatus::Exported,
+		"single export should still succeed");
+	Expect(std::filesystem::exists(TempRoot() / "cube.igmesh"), "single export should write selected mesh");
+	Expect(
+		!std::filesystem::exists(TempRoot() / NativeStaticMeshExportManifestFilename),
+		"single export should not write manifest sidecar");
 	CleanupTempRoot();
 }
 
@@ -296,6 +370,8 @@ int main()
 	TestBatchOutputPathMustBeDirectory();
 	TestTargetAlreadyExistsIsRejected();
 	TestBatchTargetAlreadyExistsPreflightsBeforeWriting();
+	TestBatchManifestTargetAlreadyExistsPreflightsBeforeWriting();
+	TestSingleExportDoesNotWriteManifestSidecar();
 	TestInvalidPolicyRejectsSingleExportWithoutWriting();
 	TestInvalidPolicyRejectsBatchExportBeforeWriting();
 

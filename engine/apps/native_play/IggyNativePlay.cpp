@@ -568,6 +568,10 @@ void PrintNativeStaticMeshAssetBatchExport(const std::filesystem::path &director
 	if (result.status != NativeStaticMeshFileExportStatus::Exported) {
 		std::filesystem::path output = result.outputDirectory;
 		std::size_t issueCount = result.issueCount;
+		if (result.status == NativeStaticMeshFileExportStatus::TargetAlreadyExists &&
+				result.entries.empty() &&
+				!result.manifestOutputPath.empty())
+			output = result.manifestOutputPath;
 		for (const NativeStaticMeshFileExportBatchEntry &entry : result.entries) {
 			if (entry.result.status == result.status) {
 				if (!entry.result.outputPath.empty())
@@ -588,6 +592,8 @@ void PrintNativeStaticMeshAssetBatchExport(const std::filesystem::path &director
 		<< " output=" << result.outputDirectory.string()
 		<< " exported=" << result.exportedCount
 		<< " bytes=" << result.byteCount
+		<< " manifest=" << result.manifestOutputPath.string()
+		<< " manifestBytes=" << result.manifestByteCount
 		<< "\n";
 }
 

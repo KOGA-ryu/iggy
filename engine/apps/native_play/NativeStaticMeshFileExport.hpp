@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NativeStaticMeshAssetWriter.hpp"
+#include "NativeStaticMeshExportManifest.hpp"
 #include "NativeStaticMeshExportPolicy.hpp"
 
 #include <cstddef>
@@ -11,6 +12,9 @@
 #include <vector>
 
 namespace iggy::native_play {
+
+inline constexpr const char *NativeStaticMeshExportManifestFilename =
+	"static-mesh-export-manifest.txt";
 
 enum class NativeStaticMeshFileExportStatus {
 	Exported,
@@ -41,9 +45,11 @@ struct NativeStaticMeshFileExportBatchResult {
 	NativeStaticMeshFileExportStatus status =
 		NativeStaticMeshFileExportStatus::Exported;
 	std::filesystem::path outputDirectory;
+	std::filesystem::path manifestOutputPath;
 	std::vector<NativeStaticMeshFileExportBatchEntry> entries;
 	std::size_t exportedCount = 0;
 	std::size_t byteCount = 0;
+	std::size_t manifestByteCount = 0;
 	std::size_t issueCount = 0;
 };
 
@@ -133,6 +139,12 @@ ExportNativeStaticMeshPolicyToDirectory(
 		return result;
 	}
 
+	result.manifestOutputPath = directory / NativeStaticMeshExportManifestFilename;
+	if (std::filesystem::exists(result.manifestOutputPath)) {
+		result.status = NativeStaticMeshFileExportStatus::TargetAlreadyExists;
+		return result;
+	}
+
 	for (const NativeStaticMeshExportAssetRef &assetRef : policy.assets) {
 		NativeStaticMeshFileExportBatchEntry entry;
 		entry.name = assetRef.name;
@@ -144,6 +156,14 @@ ExportNativeStaticMeshPolicyToDirectory(
 			return result;
 		}
 		result.entries.push_back(std::move(entry));
+	}
+
+	const NativeStaticMeshExportManifestResult manifest =
+		BuildNativeStaticMeshExportManifestText(policy);
+	result.issueCount += manifest.issueCount;
+	if (!manifest.written()) {
+		result.status = NativeStaticMeshFileExportStatus::WriterFailed;
+		return result;
 	}
 
 	std::vector<std::string> texts;
@@ -184,6 +204,19 @@ ExportNativeStaticMeshPolicyToDirectory(
 		result.byteCount += entryResult.byteCount;
 		++result.exportedCount;
 	}
+
+	std::ofstream manifestFile(result.manifestOutputPath, std::ios::binary);
+	if (!manifestFile.is_open()) {
+		result.status = NativeStaticMeshFileExportStatus::FileOpenFailed;
+		return result;
+	}
+	manifestFile << manifest.text;
+	manifestFile.close();
+	if (!manifestFile) {
+		result.status = NativeStaticMeshFileExportStatus::WriteFailed;
+		return result;
+	}
+	result.manifestByteCount = manifest.text.size();
 
 	result.status = NativeStaticMeshFileExportStatus::Exported;
 	return result;
