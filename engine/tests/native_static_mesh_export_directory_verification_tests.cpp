@@ -12,6 +12,7 @@
 namespace {
 
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
+using iggy::native_play::BuildNativeStaticMeshExportDirectoryVerificationSuccessText;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
 using iggy::native_play::ExportNativeStaticMeshAssetToDirectory;
 using iggy::native_play::ExportNativeStaticMeshPolicyToDirectory;
@@ -94,6 +95,23 @@ void TestBatchExportedDirectoryVerifies()
 	Expect(
 		result.packageManifestVerified,
 		"verified directory should mark package manifest verified");
+	CleanupTempRoot();
+}
+
+void TestVerificationSuccessText()
+{
+	ResetTempRoot();
+	ExportDefaultBatch();
+
+	const NativeStaticMeshExportDirectoryVerificationResult result = VerifyDefault();
+
+	Expect(result.verified(), "success text test should verify default batch export");
+	const std::string expected =
+		"static-mesh-export-verify output=" + TempRoot().string() +
+		" verified=3 manifest=ok packageManifest=ok\n";
+	Expect(
+		BuildNativeStaticMeshExportDirectoryVerificationSuccessText(result) == expected,
+		"verification success text should match CLI contract");
 	CleanupTempRoot();
 }
 
@@ -426,6 +444,7 @@ void TestVerificationStatusText()
 int main()
 {
 	TestBatchExportedDirectoryVerifies();
+	TestVerificationSuccessText();
 	TestMissingOutputDirectoryFailsWithoutCreatingIt();
 	TestFilePathInsteadOfDirectoryFails();
 	TestMissingManifestFails();

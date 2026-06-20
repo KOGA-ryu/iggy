@@ -103,6 +103,20 @@ struct NativeStaticMeshExportDirectoryVerificationResult {
 	}
 };
 
+[[nodiscard]] inline std::string BuildNativeStaticMeshExportDirectoryVerificationSuccessText(
+	const NativeStaticMeshExportDirectoryVerificationResult &result)
+{
+	std::ostringstream stream;
+	stream
+		<< "static-mesh-export-verify"
+		<< " output=" << result.outputDirectory.string()
+		<< " verified=" << result.verifiedCount
+		<< " manifest=ok"
+		<< " packageManifest=ok"
+		<< "\n";
+	return stream.str();
+}
+
 [[nodiscard]] inline std::string NativeStaticMeshExportReadTextFile(
 	const std::filesystem::path &path)
 {

@@ -52,6 +52,7 @@ using iggy::native_play::DefaultNativeStaticModelPolicy;
 using iggy::native_play::ExportNativeStaticMeshAssetToDirectory;
 using iggy::native_play::ExportNativeStaticMeshPolicyToDirectory;
 using iggy::native_play::BuildNativeStaticMeshExportDirectoryVerificationReport;
+using iggy::native_play::BuildNativeStaticMeshExportDirectoryVerificationSuccessText;
 using iggy::native_play::BuildNativeStaticMeshExportManifestFailureText;
 using iggy::native_play::FindNativeStaticMeshExportAsset;
 using iggy::native_play::LookAt;
@@ -572,13 +573,7 @@ void PrintNativeStaticMeshExportDirectoryVerification(
 			" issues=" + std::to_string(result.issueCount));
 	}
 
-	std::cout
-		<< "static-mesh-export-verify"
-		<< " output=" << result.outputDirectory.string()
-		<< " verified=" << result.verifiedCount
-		<< " manifest=ok"
-		<< " packageManifest=ok"
-		<< "\n";
+	std::cout << BuildNativeStaticMeshExportDirectoryVerificationSuccessText(result);
 }
 
 void PrintNativeStaticMeshExportDirectoryVerificationReport(
