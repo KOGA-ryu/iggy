@@ -12,6 +12,7 @@
 namespace {
 
 using iggy::native_play::BuildNativeStaticMeshExportDirectoryVerificationReport;
+using iggy::native_play::BuildNativeStaticMeshExportDirectoryVerificationReportText;
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
 using iggy::native_play::ExportNativeStaticMeshPolicyToDirectory;
@@ -69,6 +70,13 @@ NativeStaticMeshExportDirectoryVerificationReport BuildDefaultReport()
 		TempRoot());
 }
 
+void ExpectTextRendererMatches(
+	const NativeStaticMeshExportDirectoryVerificationReport &report,
+	const char *message)
+{
+	Expect(BuildNativeStaticMeshExportDirectoryVerificationReportText(report) == report.text, message);
+}
+
 void TestBatchExportedDirectoryReportSucceeds()
 {
 	ResetTempRoot();
@@ -77,6 +85,9 @@ void TestBatchExportedDirectoryReportSucceeds()
 	const NativeStaticMeshExportDirectoryVerificationReport report =
 		BuildDefaultReport();
 
+	ExpectTextRendererMatches(
+		report,
+		"verified report text renderer should reproduce report text");
 	Expect(report.verified(), "batch-exported directory report should verify");
 	Expect(
 		report.verification.status == NativeStaticMeshExportDirectoryVerificationStatus::Verified,
@@ -153,6 +164,9 @@ void TestMissingManifestReportFails()
 	const NativeStaticMeshExportDirectoryVerificationReport report =
 		BuildDefaultReport();
 
+	ExpectTextRendererMatches(
+		report,
+		"missing manifest report text renderer should reproduce report text");
 	Expect(!report.verified(), "missing manifest report should fail");
 	Expect(
 		report.verification.status == NativeStaticMeshExportDirectoryVerificationStatus::MissingManifest,
@@ -202,6 +216,9 @@ void TestMissingPackageManifestReportFails()
 	const NativeStaticMeshExportDirectoryVerificationReport report =
 		BuildDefaultReport();
 
+	ExpectTextRendererMatches(
+		report,
+		"missing package manifest report text renderer should reproduce report text");
 	Expect(!report.verified(), "missing package manifest report should fail");
 	Expect(
 		report.verification.status == NativeStaticMeshExportDirectoryVerificationStatus::MissingPackageManifest,
@@ -273,6 +290,9 @@ void TestMalformedPackageManifestReportFails()
 	const NativeStaticMeshExportDirectoryVerificationReport report =
 		BuildDefaultReport();
 
+	ExpectTextRendererMatches(
+		report,
+		"malformed package manifest report text renderer should reproduce report text");
 	Expect(!report.verified(), "malformed package manifest report should fail");
 	Expect(
 		report.verification.status == NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestReadFailed,
@@ -312,6 +332,9 @@ void TestMissingAssetReportFailsWithEntry()
 	const NativeStaticMeshExportDirectoryVerificationReport report =
 		BuildDefaultReport();
 
+	ExpectTextRendererMatches(
+		report,
+		"missing asset report text renderer should reproduce report text");
 	Expect(!report.verified(), "missing asset report should fail");
 	Expect(
 		report.verification.status == NativeStaticMeshExportDirectoryVerificationStatus::MissingAsset,
@@ -356,6 +379,9 @@ void TestGeometryMismatchReportFails()
 	const NativeStaticMeshExportDirectoryVerificationReport report =
 		BuildDefaultReport();
 
+	ExpectTextRendererMatches(
+		report,
+		"geometry mismatch report text renderer should reproduce report text");
 	Expect(!report.verified(), "geometry mismatch report should fail");
 	Expect(
 		report.verification.status == NativeStaticMeshExportDirectoryVerificationStatus::GeometryMismatch,

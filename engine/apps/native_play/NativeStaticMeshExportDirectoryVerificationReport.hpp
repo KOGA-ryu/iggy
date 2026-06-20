@@ -115,14 +115,9 @@ struct NativeStaticMeshExportDirectoryVerificationReport {
 	return "not-checked";
 }
 
-[[nodiscard]] inline NativeStaticMeshExportDirectoryVerificationReport
-BuildNativeStaticMeshExportDirectoryVerificationReport(
-	const NativeStaticMeshExportPolicy &policy,
-	const std::filesystem::path &directory)
+[[nodiscard]] inline std::string BuildNativeStaticMeshExportDirectoryVerificationReportText(
+	const NativeStaticMeshExportDirectoryVerificationReport &report)
 {
-	NativeStaticMeshExportDirectoryVerificationReport report;
-	report.verification = VerifyNativeStaticMeshExportDirectory(policy, directory);
-
 	std::ostringstream stream;
 	stream
 		<< "static-mesh-export-verification-report"
@@ -165,7 +160,17 @@ BuildNativeStaticMeshExportDirectoryVerificationReport(
 			<< "\n";
 	}
 
-	report.text = stream.str();
+	return stream.str();
+}
+
+[[nodiscard]] inline NativeStaticMeshExportDirectoryVerificationReport
+BuildNativeStaticMeshExportDirectoryVerificationReport(
+	const NativeStaticMeshExportPolicy &policy,
+	const std::filesystem::path &directory)
+{
+	NativeStaticMeshExportDirectoryVerificationReport report;
+	report.verification = VerifyNativeStaticMeshExportDirectory(policy, directory);
+	report.text = BuildNativeStaticMeshExportDirectoryVerificationReportText(report);
 	return report;
 }
 
