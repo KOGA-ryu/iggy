@@ -2,6 +2,7 @@
 #include "../apps/native_play/NativeStaticMeshExportDirectoryVerificationReport.hpp"
 #include "../apps/native_play/NativeStaticMeshFileExport.hpp"
 
+#include <cstddef>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -12,6 +13,7 @@
 namespace {
 
 using iggy::native_play::BuildNativeStaticMeshExportDirectoryVerificationReport;
+using iggy::native_play::BuildNativeStaticMeshExportDirectoryVerificationReportData;
 using iggy::native_play::BuildNativeStaticMeshExportDirectoryVerificationReportText;
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
@@ -77,6 +79,77 @@ void ExpectTextRendererMatches(
 	Expect(BuildNativeStaticMeshExportDirectoryVerificationReportText(report) == report.text, message);
 }
 
+void ExpectDataBuilderMatchesFullReport(
+	const NativeStaticMeshExportDirectoryVerificationReport &dataReport,
+	const NativeStaticMeshExportDirectoryVerificationReport &fullReport,
+	const char *message)
+{
+	Expect(dataReport.text.empty(), message);
+	Expect(dataReport.verification.status == fullReport.verification.status, message);
+	Expect(dataReport.verification.outputDirectory == fullReport.verification.outputDirectory, message);
+	Expect(dataReport.verification.problemPath == fullReport.verification.problemPath, message);
+	Expect(dataReport.verification.manifestPath == fullReport.verification.manifestPath, message);
+	Expect(
+		dataReport.verification.packageManifestPath ==
+			fullReport.verification.packageManifestPath,
+		message);
+	Expect(dataReport.verification.verifiedCount == fullReport.verification.verifiedCount, message);
+	Expect(dataReport.verification.issueCount == fullReport.verification.issueCount, message);
+	Expect(
+		dataReport.verification.packageManifestReadIssueCount ==
+			fullReport.verification.packageManifestReadIssueCount,
+		message);
+	Expect(
+		dataReport.verification.manifestVerified ==
+			fullReport.verification.manifestVerified,
+		message);
+	Expect(
+		dataReport.verification.packageManifestVerified ==
+			fullReport.verification.packageManifestVerified,
+		message);
+	Expect(
+		dataReport.verification.packageManifestReadIssues.size() ==
+			fullReport.verification.packageManifestReadIssues.size(),
+		message);
+	for (std::size_t index = 0;
+			index < dataReport.verification.packageManifestReadIssues.size() &&
+				index < fullReport.verification.packageManifestReadIssues.size();
+			++index) {
+		Expect(
+			dataReport.verification.packageManifestReadIssues[index].code ==
+				fullReport.verification.packageManifestReadIssues[index].code,
+			message);
+		Expect(
+			dataReport.verification.packageManifestReadIssues[index].line ==
+				fullReport.verification.packageManifestReadIssues[index].line,
+			message);
+		Expect(
+			dataReport.verification.packageManifestReadIssues[index].token ==
+				fullReport.verification.packageManifestReadIssues[index].token,
+			message);
+	}
+	Expect(
+		dataReport.verification.entries.size() ==
+			fullReport.verification.entries.size(),
+		message);
+	for (std::size_t index = 0;
+			index < dataReport.verification.entries.size() &&
+				index < fullReport.verification.entries.size();
+			++index) {
+		const auto &dataEntry = dataReport.verification.entries[index];
+		const auto &fullEntry = fullReport.verification.entries[index];
+		Expect(dataEntry.name == fullEntry.name, message);
+		Expect(dataEntry.filename == fullEntry.filename, message);
+		Expect(dataEntry.status == fullEntry.status, message);
+		Expect(dataEntry.path == fullEntry.path, message);
+		Expect(dataEntry.vertexCount == fullEntry.vertexCount, message);
+		Expect(dataEntry.indexCount == fullEntry.indexCount, message);
+		Expect(dataEntry.expectedVertexCount == fullEntry.expectedVertexCount, message);
+		Expect(dataEntry.expectedIndexCount == fullEntry.expectedIndexCount, message);
+		Expect(dataEntry.issueCount == fullEntry.issueCount, message);
+	}
+}
+
 void TestBatchExportedDirectoryReportSucceeds()
 {
 	ResetTempRoot();
@@ -84,7 +157,15 @@ void TestBatchExportedDirectoryReportSucceeds()
 
 	const NativeStaticMeshExportDirectoryVerificationReport report =
 		BuildDefaultReport();
+	const NativeStaticMeshExportDirectoryVerificationReport dataReport =
+		BuildNativeStaticMeshExportDirectoryVerificationReportData(
+			DefaultNativeStaticMeshExportPolicy(),
+			TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"verified report data builder should match full report structured fields");
 	ExpectTextRendererMatches(
 		report,
 		"verified report text renderer should reproduce report text");
@@ -163,7 +244,15 @@ void TestMissingManifestReportFails()
 
 	const NativeStaticMeshExportDirectoryVerificationReport report =
 		BuildDefaultReport();
+	const NativeStaticMeshExportDirectoryVerificationReport dataReport =
+		BuildNativeStaticMeshExportDirectoryVerificationReportData(
+			DefaultNativeStaticMeshExportPolicy(),
+			TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"missing manifest report data builder should match full report structured fields");
 	ExpectTextRendererMatches(
 		report,
 		"missing manifest report text renderer should reproduce report text");
@@ -215,7 +304,15 @@ void TestMissingPackageManifestReportFails()
 
 	const NativeStaticMeshExportDirectoryVerificationReport report =
 		BuildDefaultReport();
+	const NativeStaticMeshExportDirectoryVerificationReport dataReport =
+		BuildNativeStaticMeshExportDirectoryVerificationReportData(
+			DefaultNativeStaticMeshExportPolicy(),
+			TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"missing package manifest report data builder should match full report structured fields");
 	ExpectTextRendererMatches(
 		report,
 		"missing package manifest report text renderer should reproduce report text");
@@ -289,7 +386,15 @@ void TestMalformedPackageManifestReportFails()
 
 	const NativeStaticMeshExportDirectoryVerificationReport report =
 		BuildDefaultReport();
+	const NativeStaticMeshExportDirectoryVerificationReport dataReport =
+		BuildNativeStaticMeshExportDirectoryVerificationReportData(
+			DefaultNativeStaticMeshExportPolicy(),
+			TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"malformed package manifest report data builder should match full report structured fields");
 	ExpectTextRendererMatches(
 		report,
 		"malformed package manifest report text renderer should reproduce report text");
@@ -331,7 +436,15 @@ void TestMissingAssetReportFailsWithEntry()
 
 	const NativeStaticMeshExportDirectoryVerificationReport report =
 		BuildDefaultReport();
+	const NativeStaticMeshExportDirectoryVerificationReport dataReport =
+		BuildNativeStaticMeshExportDirectoryVerificationReportData(
+			DefaultNativeStaticMeshExportPolicy(),
+			TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"missing asset report data builder should match full report structured fields");
 	ExpectTextRendererMatches(
 		report,
 		"missing asset report text renderer should reproduce report text");
@@ -378,7 +491,15 @@ void TestGeometryMismatchReportFails()
 
 	const NativeStaticMeshExportDirectoryVerificationReport report =
 		BuildDefaultReport();
+	const NativeStaticMeshExportDirectoryVerificationReport dataReport =
+		BuildNativeStaticMeshExportDirectoryVerificationReportData(
+			DefaultNativeStaticMeshExportPolicy(),
+			TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"geometry mismatch report data builder should match full report structured fields");
 	ExpectTextRendererMatches(
 		report,
 		"geometry mismatch report text renderer should reproduce report text");

@@ -164,12 +164,22 @@ struct NativeStaticMeshExportDirectoryVerificationReport {
 }
 
 [[nodiscard]] inline NativeStaticMeshExportDirectoryVerificationReport
-BuildNativeStaticMeshExportDirectoryVerificationReport(
+BuildNativeStaticMeshExportDirectoryVerificationReportData(
 	const NativeStaticMeshExportPolicy &policy,
 	const std::filesystem::path &directory)
 {
 	NativeStaticMeshExportDirectoryVerificationReport report;
 	report.verification = VerifyNativeStaticMeshExportDirectory(policy, directory);
+	return report;
+}
+
+[[nodiscard]] inline NativeStaticMeshExportDirectoryVerificationReport
+BuildNativeStaticMeshExportDirectoryVerificationReport(
+	const NativeStaticMeshExportPolicy &policy,
+	const std::filesystem::path &directory)
+{
+	NativeStaticMeshExportDirectoryVerificationReport report =
+		BuildNativeStaticMeshExportDirectoryVerificationReportData(policy, directory);
 	report.text = BuildNativeStaticMeshExportDirectoryVerificationReportText(report);
 	return report;
 }
