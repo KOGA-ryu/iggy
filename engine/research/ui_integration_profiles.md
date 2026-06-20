@@ -690,6 +690,24 @@ conflicts/exit behavior, static model behavior, package directory report
 behavior, exact verification behavior, renderer/model-slot behavior, checked-in
 assets or fixtures, `.igmesh` schema/loading, or parser scope.
 
+Native static mesh batch export failure text renderer extraction is complete
+without changing visible batch failure behavior. The pure
+`BuildNativeStaticMeshFileExportBatchFailureText(const NativeStaticMeshFileExportBatchResult &result)`
+helper now lives in `NativeStaticMeshFileExport.hpp` and serializes only the
+batch non-`Exported` failure body:
+`static mesh batch export failed: <Status> output=<path> issues=<N>`.
+It intentionally excludes the `iggy_native_play:` prefix and trailing newline;
+the existing exception/catch path still supplies both. Output-path and
+issue-count selection are unchanged: default output is the output directory,
+manifest/package manifest collisions select their sidecar paths, and the first
+matching non-`Exported` entry can select its asset path plus entry issue count.
+Batch success text, single-export text, export data shape, export status
+assignment, preflight/write order, sidecar filenames/content, byte count
+semantics, CLI parser/help/dispatch/conflicts/exit behavior, static model
+behavior, package directory diagnostics, exact verification behavior, renderer/
+model-slot behavior, checked-in assets or fixtures, `.igmesh` schema/loading,
+and parser scope remain unchanged.
+
 Native static mesh built-in batch export CLI is complete as a constrained
 no-Qt app-shell batch export: `ExportNativeStaticMeshPolicyToDirectory(...)`
 preflights the output directory and all default target filenames before writing,
