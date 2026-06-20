@@ -59,6 +59,7 @@ using iggy::native_play::NativeStaticMeshFileExportBatchEntry;
 using iggy::native_play::NativeStaticMeshFileExportBatchResult;
 using iggy::native_play::NativeStaticMeshFileExportResult;
 using iggy::native_play::NativeStaticMeshFileExportStatus;
+using iggy::native_play::NativeStaticMeshFileExportStatusText;
 using iggy::native_play::NativeStaticMeshExportReport;
 using iggy::native_play::NativeStaticMeshExportReportEntry;
 using iggy::native_play::NativeStaticMeshExportReportStatus;
@@ -642,32 +643,6 @@ void PrintNativeStaticMeshAssetDump(const std::string &name)
 	std::cout << result.text;
 }
 
-const char *NativeStaticMeshFileExportStatusName(
-	NativeStaticMeshFileExportStatus status)
-{
-	switch (status) {
-	case NativeStaticMeshFileExportStatus::Exported:
-		return "Exported";
-	case NativeStaticMeshFileExportStatus::InvalidPolicy:
-		return "InvalidPolicy";
-	case NativeStaticMeshFileExportStatus::UnknownAsset:
-		return "UnknownAsset";
-	case NativeStaticMeshFileExportStatus::MissingOutputDirectory:
-		return "MissingOutputDirectory";
-	case NativeStaticMeshFileExportStatus::OutputDirectoryNotDirectory:
-		return "OutputDirectoryNotDirectory";
-	case NativeStaticMeshFileExportStatus::TargetAlreadyExists:
-		return "TargetAlreadyExists";
-	case NativeStaticMeshFileExportStatus::WriterFailed:
-		return "WriterFailed";
-	case NativeStaticMeshFileExportStatus::FileOpenFailed:
-		return "FileOpenFailed";
-	case NativeStaticMeshFileExportStatus::WriteFailed:
-		return "WriteFailed";
-	}
-	return "Unknown";
-}
-
 void PrintNativeStaticMeshAssetFileExport(
 	const std::string &name,
 	const std::filesystem::path &directory)
@@ -682,7 +657,7 @@ void PrintNativeStaticMeshAssetFileExport(
 	if (result.status != NativeStaticMeshFileExportStatus::Exported) {
 		throw std::runtime_error(
 			std::string { "static mesh export failed: " } +
-			NativeStaticMeshFileExportStatusName(result.status) +
+			NativeStaticMeshFileExportStatusText(result.status) +
 			" output=" + result.outputPath.string() +
 			" issues=" + std::to_string(result.issueCount));
 	}
@@ -722,7 +697,7 @@ void PrintNativeStaticMeshAssetBatchExport(const std::filesystem::path &director
 		}
 		throw std::runtime_error(
 			std::string { "static mesh batch export failed: " } +
-			NativeStaticMeshFileExportStatusName(result.status) +
+			NativeStaticMeshFileExportStatusText(result.status) +
 			" output=" + output.string() +
 			" issues=" + std::to_string(issueCount));
 	}

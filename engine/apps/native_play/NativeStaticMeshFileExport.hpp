@@ -29,6 +29,32 @@ enum class NativeStaticMeshFileExportStatus {
 	WriteFailed,
 };
 
+[[nodiscard]] inline const char *NativeStaticMeshFileExportStatusText(
+	NativeStaticMeshFileExportStatus status)
+{
+	switch (status) {
+	case NativeStaticMeshFileExportStatus::Exported:
+		return "Exported";
+	case NativeStaticMeshFileExportStatus::InvalidPolicy:
+		return "InvalidPolicy";
+	case NativeStaticMeshFileExportStatus::UnknownAsset:
+		return "UnknownAsset";
+	case NativeStaticMeshFileExportStatus::MissingOutputDirectory:
+		return "MissingOutputDirectory";
+	case NativeStaticMeshFileExportStatus::OutputDirectoryNotDirectory:
+		return "OutputDirectoryNotDirectory";
+	case NativeStaticMeshFileExportStatus::TargetAlreadyExists:
+		return "TargetAlreadyExists";
+	case NativeStaticMeshFileExportStatus::WriterFailed:
+		return "WriterFailed";
+	case NativeStaticMeshFileExportStatus::FileOpenFailed:
+		return "FileOpenFailed";
+	case NativeStaticMeshFileExportStatus::WriteFailed:
+		return "WriteFailed";
+	}
+	return "Unknown";
+}
+
 struct NativeStaticMeshFileExportResult {
 	NativeStaticMeshFileExportStatus status =
 		NativeStaticMeshFileExportStatus::UnknownAsset;

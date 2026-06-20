@@ -30,6 +30,7 @@ using iggy::native_play::NativeStaticMeshExportAssetRef;
 using iggy::native_play::NativeStaticMeshExportPolicy;
 using iggy::native_play::NativeStaticMeshFileExportResult;
 using iggy::native_play::NativeStaticMeshFileExportStatus;
+using iggy::native_play::NativeStaticMeshFileExportStatusText;
 using iggy::native_play::NativeStaticMeshExportManifestFilename;
 using iggy::native_play::NativeStaticMeshExportManifestResult;
 using iggy::native_play::NativeStaticMeshExportPackageManifestSidecarFilename;
@@ -418,6 +419,37 @@ void TestInvalidPolicyRejectsBatchExportBeforeWriting()
 	CleanupTempRoot();
 }
 
+void TestFileExportStatusText()
+{
+	struct Case {
+		NativeStaticMeshFileExportStatus status;
+		const char *text;
+	};
+
+	const Case cases[] = {
+		{ NativeStaticMeshFileExportStatus::Exported, "Exported" },
+		{ NativeStaticMeshFileExportStatus::InvalidPolicy, "InvalidPolicy" },
+		{ NativeStaticMeshFileExportStatus::UnknownAsset, "UnknownAsset" },
+		{ NativeStaticMeshFileExportStatus::MissingOutputDirectory, "MissingOutputDirectory" },
+		{ NativeStaticMeshFileExportStatus::OutputDirectoryNotDirectory, "OutputDirectoryNotDirectory" },
+		{ NativeStaticMeshFileExportStatus::TargetAlreadyExists, "TargetAlreadyExists" },
+		{ NativeStaticMeshFileExportStatus::WriterFailed, "WriterFailed" },
+		{ NativeStaticMeshFileExportStatus::FileOpenFailed, "FileOpenFailed" },
+		{ NativeStaticMeshFileExportStatus::WriteFailed, "WriteFailed" },
+	};
+
+	for (const Case &testCase : cases) {
+		Expect(
+			std::string(NativeStaticMeshFileExportStatusText(testCase.status)) ==
+				testCase.text,
+			"file export status text should match stable spelling");
+	}
+	Expect(
+		std::string(NativeStaticMeshFileExportStatusText(
+			static_cast<NativeStaticMeshFileExportStatus>(999))) == "Unknown",
+		"file export status text should report unknown fallback");
+}
+
 } // namespace
 
 int main()
@@ -436,6 +468,7 @@ int main()
 	TestSingleExportDoesNotWriteManifestSidecar();
 	TestInvalidPolicyRejectsSingleExportWithoutWriting();
 	TestInvalidPolicyRejectsBatchExportBeforeWriting();
+	TestFileExportStatusText();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;
