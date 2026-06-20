@@ -2013,6 +2013,41 @@ Native static mesh package directory structured manifest diagnostics complete:
   policy/built-in reconstruction, renderer changes, fixtures/generated assets,
   glTF/glb/JSON parser work, or next source packet scope.
 
+Native static mesh package directory structured file facts complete:
+- Added structured package-directory path facts:
+  `NativeStaticMeshExportPackageDirectoryPathFacts`,
+  `ReadNativeStaticMeshExportPackageDirectoryPathFacts(...)`, and
+  `NativeStaticMeshExportPackageDirectoryAssetFacts`.
+- Extended `NativeStaticMeshExportPackageDirectoryReport` with
+  `packageManifestFactsRecorded`, `packageManifestFacts`,
+  `manifestFactsRecorded`, `manifestFacts`, and `assetFacts`.
+- The builder replaced its local path-facts lambda with the structured helper
+  and changed text rendering to consume stored facts.
+- `packageManifestFactsRecorded` / `packageManifestFacts` are populated when
+  `report.read.packageManifestPath` is available, including missing/malformed
+  package sidecar cases.
+- `manifestFactsRecorded` / `manifestFacts` are populated when
+  `report.read.manifestPath` is available, including missing/malformed nested
+  manifest cases.
+- `assetFacts` mirrors `report.read.assets` in package-declared row order and
+  stores file facts for package-declared asset paths only.
+- Nested mesh-manifest-declared-only rows do not receive path facts.
+- Report text output is preserved exactly: no new rows, new summary fields,
+  row-order changes, status/count/token changes, or newline changes.
+- Focused coverage covers valid export, missing package sidecar, malformed
+  package sidecar, missing nested mesh manifest, missing declared package asset,
+  and directory-at-declared-asset.
+- Builder verification passed `native_static_mesh_export_package_directory_report_tests`,
+  focused `ctest -R native_static_mesh_export_package_directory_report_tests`,
+  `iggy_native_play`, and source `git diff --check`.
+- This docs packet does not change `readOk()`, CLI exit behavior, core
+  `issues=`, package directory reader status/data, exact verification/export/
+  package acceptance, generated sidecar text, write policy, nested
+  mesh-manifest-only path facts, `.igmesh` loading, geometry validation,
+  policy/built-in reconstruction, discovery/scanning/catalog/registry,
+  exact-extra-file rejection, renderer/model-slot/schema/gameplay behavior,
+  glTF/glb/JSON parser work, or next source packet scope.
+
 Native static mesh package manifest text reader complete:
 - Added a dependency-free, filesystem-free in-memory reader for the current
   generated package manifest text grammar.
@@ -3001,7 +3036,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
     integrated.
 87. Native static mesh package directory structured manifest diagnostics are
     integrated.
-88. Dispatch richer diagnostics display, overlays/labels, frame request/
+88. Native static mesh package directory structured file facts are integrated.
+89. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

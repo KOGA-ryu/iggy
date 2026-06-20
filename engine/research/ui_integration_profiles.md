@@ -805,6 +805,23 @@ manifest reader behavior, verification/export behavior, package acceptance,
 `.igmesh` loading, geometry validation, policy reconstruction, renderer
 behavior, or write behavior.
 
+Native static mesh package directory structured file facts are complete without
+changing report text. The package directory report now exposes
+`NativeStaticMeshExportPackageDirectoryPathFacts`,
+`ReadNativeStaticMeshExportPackageDirectoryPathFacts(...)`,
+`NativeStaticMeshExportPackageDirectoryAssetFacts`,
+`packageManifestFactsRecorded`, `packageManifestFacts`, `manifestFactsRecorded`,
+`manifestFacts`, and `assetFacts`. Package sidecar facts are recorded when the
+package sidecar path is known, nested mesh manifest facts are recorded when the
+nested manifest path is known, and `assetFacts` mirrors package-declared assets
+in package row order. The report does not add file facts for nested
+mesh-manifest-declared-only rows. Existing text for valid exports, missing or
+malformed sidecars/manifests, missing declared assets, and directory-at-asset
+cases is unchanged. This does not add rows, summary fields, status changes,
+`readOk()` changes, CLI exit changes, core `issues=` changes, verification or
+package acceptance semantics, `.igmesh` loading, geometry validation, policy
+reconstruction, discovery/scanning, renderer behavior, or write behavior.
+
 Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play
 --dump-static-mesh-export-verification-report --output-dir DIR` prints a

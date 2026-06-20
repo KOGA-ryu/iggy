@@ -554,6 +554,13 @@ Recently completed optimized stretches:
   through those fields without changing text, rows, statuses, `readOk()`,
   `issues=`, CLI exit behavior, verification, package acceptance, or export
   behavior.
+  Native static mesh package directory structured file facts now expose
+  `NativeStaticMeshExportPackageDirectoryPathFacts`,
+  `ReadNativeStaticMeshExportPackageDirectoryPathFacts(...)`,
+  `NativeStaticMeshExportPackageDirectoryAssetFacts`, and stored package
+  manifest, nested manifest, and package-declared asset facts on
+  `NativeStaticMeshExportPackageDirectoryReport`, while preserving report text
+  exactly.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -2322,6 +2329,34 @@ behavior, verification/export behavior, package acceptance/semantic
 verification, scanning/discovery, `.igmesh` loading, geometry validation,
 policy/built-in reconstruction, renderer behavior, fixtures/generated assets,
 glTF/glb/JSON parser work, or next source packet scope.
+
+Native Static Mesh Package Directory Structured File Facts are complete as a
+structured-data exposure with unchanged report text. The report now has
+`NativeStaticMeshExportPackageDirectoryPathFacts`,
+`ReadNativeStaticMeshExportPackageDirectoryPathFacts(...)`, and
+`NativeStaticMeshExportPackageDirectoryAssetFacts`, plus stored fields on
+`NativeStaticMeshExportPackageDirectoryReport`: `packageManifestFactsRecorded`,
+`packageManifestFacts`, `manifestFactsRecorded`, `manifestFacts`, and
+`assetFacts`. The builder replaces its local path-facts lambda with the
+structured helper and renders the same existing text from the stored facts.
+`packageManifestFactsRecorded` / `packageManifestFacts` are populated when
+`report.read.packageManifestPath` is available, including missing or malformed
+package sidecar cases. `manifestFactsRecorded` / `manifestFacts` are populated
+when `report.read.manifestPath` is available, including missing or malformed
+nested manifest cases. `assetFacts` mirrors `report.read.assets` in
+package-declared row order and stores facts only for package-declared asset
+paths. Nested mesh-manifest-declared-only rows do not receive file facts.
+Focused coverage includes valid export, missing package sidecar, malformed
+package sidecar, missing nested mesh manifest, missing declared package asset,
+and directory-at-declared-asset. Report text output is unchanged: no new rows,
+summary fields, row-order changes, statuses, counts, tokens, or newline changes.
+This docs packet does not change `readOk()`, CLI exit behavior, core `issues=`,
+package directory reader status/data, exact verification/export/package
+acceptance, generated sidecar text, write policy, nested mesh-manifest-only path
+facts, `.igmesh` loading, geometry validation, policy/built-in reconstruction,
+discovery/scanning/catalog/registry, exact-extra-file rejection, renderer/model
+slot/schema/gameplay behavior, glTF/glb/JSON parser work, or next source packet
+scope.
 
 Exit criteria:
 - Load a package or explicit scenario.
