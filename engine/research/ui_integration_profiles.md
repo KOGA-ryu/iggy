@@ -620,6 +620,25 @@ renderer/model-slot behavior, assets/fixtures, schema, package
 loading/discovery/acceptance, generated sidecars, export write policy, exact
 verifier behavior, and CMake remain unchanged.
 
+Native static mesh unknown asset failure text helper extraction is complete
+without changing visible error formatting. The pure
+`BuildUnknownNativeStaticMeshExportAssetFailureText(std::string_view name)`
+helper now lives in `NativeStaticMeshExportPolicy.hpp` beside the export policy
+lookup surface and serializes only
+`unknown static mesh asset: <name>`. `PrintNativeStaticMeshAssetDump(...)` and
+`PrintNativeStaticMeshAssetFileExport(...)` route their unknown-asset branches
+through the helper while preserving branch ordering and the app-level
+`iggy_native_play:` prefix/newline catch behavior. Raw `.igmesh` success stdout,
+single export success, generic non-unknown file export failure text, writer
+failure helper behavior, policy lookup, and `UnknownAsset` result semantics
+remain unchanged. There are no `NativeStaticMeshAssetWriter.hpp`,
+`NativeStaticMeshFileExport.hpp`, default policy, built-in mesh, output path
+selection, CLI parser/help/dispatch/conflict, file export, batch export,
+manifest/package manifest, verification, verification report,
+package-directory report, static model, renderer/model-slot, assets/fixtures,
+schema, package loading/discovery/acceptance, generated sidecar, export write
+policy, exact verifier, source/CMake, or docs/source split changes.
+
 Native static mesh export policy is complete as app-local value-only metadata:
 `NativeStaticMeshExportPolicy.hpp` records stable built-in export refs for
 `cube`, `bean`, and `npc-marker` with default filenames `cube.igmesh`,

@@ -440,6 +440,11 @@ Recently completed optimized stretches:
   adds `BuildNativeStaticMeshAssetWriteFailureText(...)`; writer failures in the
   raw asset dump path delegate only the compact body through it while preserving
   unknown-asset handling and raw `.igmesh` success stdout.
+  Native static mesh unknown asset failure text helper extraction now adds
+  `BuildUnknownNativeStaticMeshExportAssetFailureText(...)` beside the export
+  policy lookup surface; raw dump and single output-dir export unknown-asset
+  failures share the compact body helper while preserving branch ordering and
+  app-level error prefix behavior.
   Native static mesh export policy now adds value-only
   `NativeStaticMeshExportPolicy.hpp` for the built-in export names, default
   filenames, and id-to-CPU-mesh mapping; the existing dump CLI resolves through
@@ -1753,6 +1758,29 @@ verification report, package-directory report, static model behavior, renderer
 behavior, assets/fixtures, schema, package loading/discovery/acceptance,
 generated sidecars, export write policy, exact verifier behavior, docs/source
 mixing, or CMake.
+
+Native Static Mesh Unknown Asset Failure Text Helper Extraction is complete as
+a behavior-preserving unknown-asset failure-body cleanup. `NativeStaticMeshExportPolicy.hpp`
+now exposes
+`BuildUnknownNativeStaticMeshExportAssetFailureText(std::string_view name)`
+beside the static mesh export policy lookup surface. The helper serializes only
+the compact body `unknown static mesh asset: <name>`, without embedded
+`iggy_native_play:` prefix or trailing newline; the existing app-level catch path
+still owns that prefix/newline. `PrintNativeStaticMeshAssetDump(...)` and
+`PrintNativeStaticMeshAssetFileExport(...)` route unknown-asset failures through
+the helper while preserving branch ordering. Exact helper coverage plus CLI
+smokes cover raw dump unknown asset failure, output-dir export unknown asset
+failure, and unchanged raw cube dump output (`# Native static mesh asset` and
+`tri 0 1 2`). This packet does not change `NativeStaticMeshAssetWriter.hpp`,
+`NativeStaticMeshFileExport.hpp`, default policy, lookup behavior, built-in mesh
+data, output path selection, raw dump success output, single export helper
+behavior, generic non-unknown file export failure text, writer failure helper
+behavior, CLI parser/help/dispatch/conflict behavior, app-level catch behavior,
+file export, batch export, manifest/package manifest, verification, verification
+report, package-directory report, static model behavior, renderer behavior,
+assets/fixtures, schema, package loading/discovery/acceptance, generated
+sidecars, export write policy, exact verifier behavior, source/CMake files, or
+docs/source separation.
 
 Native Static Mesh Export Policy is complete as value-only native app metadata:
 `NativeStaticMeshExportPolicy.hpp` defines `NativeStaticMeshBuiltInExportId`
