@@ -141,3 +141,4 @@ Queue:
 84. `84_native_static_mesh_package_sidecar_verification_status_sync` - complete. Sync planning/API docs after native static mesh package sidecar verification integration.
 85. `85_native_static_mesh_verification_summary_sidecar_diagnostics_status_sync` - complete. Sync planning/API docs after native static mesh verification summary sidecar diagnostics integration.
 86. `86_native_static_mesh_package_manifest_text_reader_status_sync` - complete. Sync planning/API docs after native static mesh package manifest text reader integration.
+87. `87_native_static_mesh_package_manifest_file_reader_status_sync` - complete. Sync planning/API docs after native static mesh package manifest file reader integration.

@@ -697,6 +697,14 @@ policy or built-in ids. It is not wired into CLI, verification, export, file IO,
 package directory reading, discovery/scanning, repair/loading, renderer
 behavior, schema behavior, or gameplay semantics.
 
+Native static mesh package manifest file reader is complete as an explicit-file
+wrapper over that text reader. It opens only the supplied path in binary mode,
+reads the full file, delegates to the text parser, and reports `FileOpenFailed`
+with line `0` and the supplied path token when opening fails. It does not infer
+directories, validate companion meshes, reconstruct policy/built-in ids, or
+integrate with CLI, verification/report, export, discovery/scanning, renderer
+behavior, schema behavior, or gameplay semantics.
+
 Native static mesh batch package manifest sidecar export is complete as
 batch-only file output. `iggy_native_play --export-static-mesh-assets
 --output-dir DIR` now writes `static-mesh-export-package-manifest.txt` alongside

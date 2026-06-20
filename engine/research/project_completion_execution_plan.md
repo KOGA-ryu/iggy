@@ -1524,6 +1524,33 @@ Native static mesh package manifest text reader complete:
   behavior, CLI flags, renderer behavior, schema behavior, fixture rewrites,
   docs-in-source, or next research/scout source implementation.
 
+Native static mesh package manifest file reader complete:
+- Added explicit-file package manifest reader API:
+  `ReadNativeStaticMeshExportPackageManifestFile(const std::filesystem::path &path)`.
+- The wrapper opens exactly the supplied path in binary mode, reads the full
+  file, and delegates to `ReadNativeStaticMeshExportPackageManifestText(...)`.
+- Added `NativeStaticMeshExportPackageManifestReadIssueCode::FileOpenFailed`.
+- On file open failure, the wrapper returns one issue with line `0` and token
+  set to `path.string()`.
+- Existing text-reader grammar and malformed-input behavior are unchanged.
+- No directory inference, companion mesh validation, CLI integration,
+  verification/report integration, export behavior, renderer behavior, or
+  docs-in-source changes.
+- Tests cover generated default package manifest text written to a temp file
+  reading successfully and preserving parsed format, version, nested manifest
+  filename, and asset rows.
+- Tests cover missing file reporting exactly one `FileOpenFailed` issue with
+  line `0` and supplied path token.
+- Tests cover malformed readable files propagating text-reader issue codes
+  without reporting file-open failure.
+- This docs packet does not change source, tests, CMake, assets, shaders,
+  runtime, package directory readers, directory summaries/reports, loading,
+  discovery/scanning/catalog/registry behavior, exact-extra-file rejection,
+  verification/report/export/CLI integration, policy reconstruction or built-in
+  id reconstruction from manifest rows, export write behavior, CLI flags,
+  renderer behavior, schema behavior, fixture rewrites, docs-in-source, or next
+  research/scout source implementation.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -2424,7 +2451,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 69. Native static mesh package sidecar verification is integrated.
 70. Native static mesh verification summary sidecar diagnostics are integrated.
 71. Native static mesh package manifest text reader is integrated.
-72. Dispatch richer diagnostics display, overlays/labels, frame request/
+72. Native static mesh package manifest file reader is integrated.
+73. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

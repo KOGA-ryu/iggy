@@ -492,6 +492,10 @@ Recently completed optimized stretches:
   filesystem-free in-memory reader for the generated package-manifest grammar,
   validating header and asset rows without CLI, export, verification, renderer,
   file IO, or policy reconstruction integration.
+  Native static mesh package manifest file reading now adds an explicit-path
+  wrapper that opens only the supplied file in binary mode, delegates to the text
+  reader, and reports `FileOpenFailed` without directory inference or verifier/
+  CLI integration.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1830,6 +1834,27 @@ discovery/scanning/catalog/registry behavior, repair/loading, exact-extra-file
 rejection, policy reconstruction from rows, export write behavior, CLI flags,
 renderer behavior, schema behavior, fixture rewrites, docs-in-source, or next
 research/scout implementation.
+
+Native Static Mesh Package Manifest File Reader is complete as an explicit-file
+wrapper over the package manifest text reader.
+`ReadNativeStaticMeshExportPackageManifestFile(const std::filesystem::path &path)`
+opens exactly the supplied path in binary mode, reads the full file, and
+delegates to `ReadNativeStaticMeshExportPackageManifestText(...)`.
+`NativeStaticMeshExportPackageManifestReadIssueCode::FileOpenFailed` was added;
+on file-open failure the wrapper returns one issue with line `0` and token set
+to `path.string()`. Existing text-reader grammar and malformed-input behavior
+are unchanged. Tests cover generated default package manifest text written to a
+temp file reading successfully while preserving parsed format, version, nested
+manifest filename, and asset rows; missing file reporting exactly one
+`FileOpenFailed` issue with line `0` and supplied path token; and malformed
+readable files propagating text-reader issue codes without reporting
+file-open failure. This docs packet does not change source, tests, CMake,
+assets, shaders, runtime, package directory readers, directory summaries/
+reports, loading, discovery/scanning/catalog/registry behavior, exact-extra-file
+rejection, verification/report/export/CLI integration, policy reconstruction or
+built-in id reconstruction from manifest rows, export write behavior, CLI
+flags, renderer behavior, schema behavior, fixture rewrites, docs-in-source, or
+next research/scout implementation.
 
 Exit criteria:
 - Load a package or explicit scenario.
