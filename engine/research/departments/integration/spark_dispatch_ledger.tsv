@@ -32,4 +32,4 @@ packet	status	department	owner	source_commit	source_review	docs_commit	docs_revi
 95_native_static_asset_next_boundary_scout	complete	integration	finisher	1229e0ac	PASS-planner	b7c4feaa	not_requested		closed source and docs after native static mesh export manifest text reader	2026-06-20
 96_native_static_asset_next_boundary_scout	complete	integration	finisher	442c014c	PASS-planner	9332a92a	not_requested		closed source and docs after native static mesh export manifest file reader	2026-06-20
 97_native_static_asset_next_boundary_scout	complete	integration	finisher	4dadf5c9	PASS-planner	58ebdc77	not_requested		closed source and docs after native static mesh package directory manifest read diagnostics	2026-06-20
-98_native_static_asset_next_boundary_scout	build_ready	integration	builder		PASS-planner				Build Native Static Mesh Package Directory Manifest Asset Rows from researcher PASS	2026-06-20
+98_native_static_asset_next_boundary_scout	docs_ready	integration	finisher	ae27d03b	PASS-planner				Sync docs/API for Native Static Mesh Package Directory Manifest Asset Rows	2026-06-20
