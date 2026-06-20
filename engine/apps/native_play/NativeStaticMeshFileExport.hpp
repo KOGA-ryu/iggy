@@ -7,6 +7,8 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace iggy::native_play {
 
@@ -25,6 +27,21 @@ struct NativeStaticMeshFileExportResult {
 	NativeStaticMeshFileExportStatus status =
 		NativeStaticMeshFileExportStatus::UnknownAsset;
 	std::filesystem::path outputPath;
+	std::size_t byteCount = 0;
+	std::size_t issueCount = 0;
+};
+
+struct NativeStaticMeshFileExportBatchEntry {
+	std::string name;
+	NativeStaticMeshFileExportResult result;
+};
+
+struct NativeStaticMeshFileExportBatchResult {
+	NativeStaticMeshFileExportStatus status =
+		NativeStaticMeshFileExportStatus::Exported;
+	std::filesystem::path outputDirectory;
+	std::vector<NativeStaticMeshFileExportBatchEntry> entries;
+	std::size_t exportedCount = 0;
 	std::size_t byteCount = 0;
 	std::size_t issueCount = 0;
 };
@@ -79,6 +96,79 @@ struct NativeStaticMeshFileExportResult {
 
 	result.status = NativeStaticMeshFileExportStatus::Exported;
 	result.byteCount = write.text.size();
+	return result;
+}
+
+[[nodiscard]] inline NativeStaticMeshFileExportBatchResult
+ExportNativeStaticMeshPolicyToDirectory(
+	const NativeStaticMeshExportPolicy &policy,
+	const std::filesystem::path &directory)
+{
+	NativeStaticMeshFileExportBatchResult result;
+	result.outputDirectory = directory;
+
+	if (!std::filesystem::exists(directory)) {
+		result.status = NativeStaticMeshFileExportStatus::MissingOutputDirectory;
+		return result;
+	}
+	if (!std::filesystem::is_directory(directory)) {
+		result.status = NativeStaticMeshFileExportStatus::OutputDirectoryNotDirectory;
+		return result;
+	}
+
+	for (const NativeStaticMeshExportAssetRef &assetRef : policy.assets) {
+		NativeStaticMeshFileExportBatchEntry entry;
+		entry.name = assetRef.name;
+		entry.result.outputPath = directory / assetRef.defaultFilename;
+		if (std::filesystem::exists(entry.result.outputPath)) {
+			entry.result.status = NativeStaticMeshFileExportStatus::TargetAlreadyExists;
+			result.status = NativeStaticMeshFileExportStatus::TargetAlreadyExists;
+			result.entries.push_back(std::move(entry));
+			return result;
+		}
+		result.entries.push_back(std::move(entry));
+	}
+
+	std::vector<std::string> texts;
+	texts.reserve(policy.assets.size());
+	for (std::size_t index = 0; index < policy.assets.size(); ++index) {
+		const NativeStaticMeshAssetWriteResult write =
+			WriteNativeStaticMeshAssetText(
+				BuiltInNativeStaticMeshExportAsset(policy.assets[index].id));
+		result.entries[index].result.issueCount = write.issues.size();
+		result.issueCount += write.issues.size();
+		if (!write.written()) {
+			result.entries[index].result.status =
+				NativeStaticMeshFileExportStatus::WriterFailed;
+			result.status = NativeStaticMeshFileExportStatus::WriterFailed;
+			return result;
+		}
+		texts.push_back(write.text);
+	}
+
+	for (std::size_t index = 0; index < result.entries.size(); ++index) {
+		NativeStaticMeshFileExportResult &entryResult = result.entries[index].result;
+		std::ofstream file(entryResult.outputPath, std::ios::binary);
+		if (!file.is_open()) {
+			entryResult.status = NativeStaticMeshFileExportStatus::FileOpenFailed;
+			result.status = NativeStaticMeshFileExportStatus::FileOpenFailed;
+			return result;
+		}
+		file << texts[index];
+		file.close();
+		if (!file) {
+			entryResult.status = NativeStaticMeshFileExportStatus::WriteFailed;
+			result.status = NativeStaticMeshFileExportStatus::WriteFailed;
+			return result;
+		}
+
+		entryResult.status = NativeStaticMeshFileExportStatus::Exported;
+		entryResult.byteCount = texts[index].size();
+		result.byteCount += entryResult.byteCount;
+		++result.exportedCount;
+	}
+
+	result.status = NativeStaticMeshFileExportStatus::Exported;
 	return result;
 }
 

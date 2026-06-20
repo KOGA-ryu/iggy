@@ -14,10 +14,12 @@ namespace {
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
 using iggy::native_play::ExportNativeStaticMeshAssetToDirectory;
+using iggy::native_play::ExportNativeStaticMeshPolicyToDirectory;
 using iggy::native_play::FindNativeStaticMeshExportAsset;
 using iggy::native_play::LoadNativeStaticMeshAssetFile;
 using iggy::native_play::NativeStaticMeshAssetLoadResult;
 using iggy::native_play::NativeStaticMeshAssetWriteResult;
+using iggy::native_play::NativeStaticMeshFileExportBatchResult;
 using iggy::native_play::NativeStaticMeshExportAssetRef;
 using iggy::native_play::NativeStaticMeshExportPolicy;
 using iggy::native_play::NativeStaticMeshFileExportResult;
@@ -81,6 +83,37 @@ void TestExportsDefaultPolicyAssetsAndReloads()
 	CleanupTempRoot();
 }
 
+void TestBatchExportsDefaultPolicyAssetsAndReloads()
+{
+	ResetTempRoot();
+	const NativeStaticMeshExportPolicy policy = DefaultNativeStaticMeshExportPolicy();
+	const NativeStaticMeshFileExportBatchResult result =
+		ExportNativeStaticMeshPolicyToDirectory(policy, TempRoot());
+
+	Expect(
+		result.status == NativeStaticMeshFileExportStatus::Exported,
+		"batch export should succeed");
+	Expect(result.entries.size() == policy.assets.size(), "batch export should report every policy asset");
+	Expect(result.exportedCount == policy.assets.size(), "batch export should count exported assets");
+
+	std::size_t expectedBytes = 0;
+	for (const NativeStaticMeshExportAssetRef &asset : policy.assets) {
+		const std::filesystem::path output = TempRoot() / asset.defaultFilename;
+		Expect(std::filesystem::exists(output), asset.name + " batch output should exist");
+		const NativeStaticMeshAssetLoadResult loaded =
+			LoadNativeStaticMeshAssetFile(output);
+		Expect(loaded.loaded(), asset.name + " batch output should reload");
+
+		const NativeStaticMeshAssetWriteResult expected =
+			WriteNativeStaticMeshAssetText(BuiltInNativeStaticMeshExportAsset(asset.id));
+		Expect(expected.written(), asset.name + " expected writer output should write");
+		expectedBytes += expected.text.size();
+	}
+	Expect(result.byteCount == expectedBytes, "batch byte count should match writer text sizes");
+
+	CleanupTempRoot();
+}
+
 void TestUnknownAssetDoesNotCreateFiles()
 {
 	ResetTempRoot();
@@ -113,6 +146,21 @@ void TestMissingOutputDirectoryRejectedWithoutCreatingParents()
 	Expect(!std::filesystem::exists(TempRoot()), "export should not create parent directories");
 }
 
+void TestBatchMissingOutputDirectoryRejectedWithoutCreatingParents()
+{
+	CleanupTempRoot();
+	const std::filesystem::path missing = TempRoot() / "missing";
+	const NativeStaticMeshFileExportBatchResult result =
+		ExportNativeStaticMeshPolicyToDirectory(
+			DefaultNativeStaticMeshExportPolicy(),
+			missing);
+
+	Expect(
+		result.status == NativeStaticMeshFileExportStatus::MissingOutputDirectory,
+		"batch missing output directory should be rejected");
+	Expect(!std::filesystem::exists(TempRoot()), "batch export should not create parent directories");
+}
+
 void TestOutputPathMustBeDirectory()
 {
 	ResetTempRoot();
@@ -129,6 +177,24 @@ void TestOutputPathMustBeDirectory()
 		result.status == NativeStaticMeshFileExportStatus::OutputDirectoryNotDirectory,
 		"file output path should be rejected as not directory");
 	Expect(!std::filesystem::exists(filePath / "cube.igmesh"), "not-directory export should not create target");
+	CleanupTempRoot();
+}
+
+void TestBatchOutputPathMustBeDirectory()
+{
+	ResetTempRoot();
+	const std::filesystem::path filePath = TempRoot() / "not-a-directory";
+	WriteText(filePath, "not a directory");
+
+	const NativeStaticMeshFileExportBatchResult result =
+		ExportNativeStaticMeshPolicyToDirectory(
+			DefaultNativeStaticMeshExportPolicy(),
+			filePath);
+
+	Expect(
+		result.status == NativeStaticMeshFileExportStatus::OutputDirectoryNotDirectory,
+		"batch file output path should be rejected as not directory");
+	Expect(!std::filesystem::exists(filePath / "cube.igmesh"), "batch not-directory export should not create target");
 	CleanupTempRoot();
 }
 
@@ -156,15 +222,41 @@ void TestTargetAlreadyExistsIsRejected()
 	CleanupTempRoot();
 }
 
+void TestBatchTargetAlreadyExistsPreflightsBeforeWriting()
+{
+	ResetTempRoot();
+	const NativeStaticMeshExportPolicy policy = DefaultNativeStaticMeshExportPolicy();
+	const NativeStaticMeshExportAssetRef *bean =
+		FindNativeStaticMeshExportAsset(policy, "bean");
+	Expect(bean != nullptr, "bean policy ref should exist");
+	if (bean == nullptr)
+		return;
+
+	WriteText(TempRoot() / bean->defaultFilename, "existing");
+	const NativeStaticMeshFileExportBatchResult result =
+		ExportNativeStaticMeshPolicyToDirectory(policy, TempRoot());
+
+	Expect(
+		result.status == NativeStaticMeshFileExportStatus::TargetAlreadyExists,
+		"batch existing target should be rejected");
+	Expect(!std::filesystem::exists(TempRoot() / "cube.igmesh"), "batch preflight should not write earlier assets");
+	Expect(!std::filesystem::exists(TempRoot() / "npc-marker.igmesh"), "batch preflight should not write later assets");
+	CleanupTempRoot();
+}
+
 } // namespace
 
 int main()
 {
 	TestExportsDefaultPolicyAssetsAndReloads();
+	TestBatchExportsDefaultPolicyAssetsAndReloads();
 	TestUnknownAssetDoesNotCreateFiles();
 	TestMissingOutputDirectoryRejectedWithoutCreatingParents();
+	TestBatchMissingOutputDirectoryRejectedWithoutCreatingParents();
 	TestOutputPathMustBeDirectory();
+	TestBatchOutputPathMustBeDirectory();
 	TestTargetAlreadyExistsIsRejected();
+	TestBatchTargetAlreadyExistsPreflightsBeforeWriting();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;
