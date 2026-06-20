@@ -361,7 +361,16 @@ void TestMissingFromManifestComparisonStillReportsRead()
 		"asset=bean filename=bean.igmesh vertices=234 indices=1296 bytes=23882\n");
 
 	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
+	const NativeStaticMeshExportPackageDirectoryReport dataReport =
+		BuildNativeStaticMeshExportPackageDirectoryReportData(TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"missing-from-manifest comparison data builder should match full report structured fields");
+	ExpectTextRendererMatches(
+		report,
+		"missing-from-manifest comparison report text renderer should reproduce report text");
 	Expect(report.readOk(), "missing-from-manifest comparison should not fail package report");
 	Expect(
 		report.text.find("manifestRead=ok manifestReadIssues=0 manifestMatches=2 manifestMismatches=1 manifestComparisonIssues=1") !=
@@ -391,7 +400,16 @@ void TestMissingFromPackageComparisonStillReportsRead()
 		"asset=extra filename=extra.igmesh vertices=1 indices=3 bytes=7\n");
 
 	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
+	const NativeStaticMeshExportPackageDirectoryReport dataReport =
+		BuildNativeStaticMeshExportPackageDirectoryReportData(TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"missing-from-package comparison data builder should match full report structured fields");
+	ExpectTextRendererMatches(
+		report,
+		"missing-from-package comparison report text renderer should reproduce report text");
 	Expect(report.readOk(), "missing-from-package comparison should not fail package report");
 	Expect(
 		report.text.find("manifestRead=ok manifestReadIssues=0 manifestMatches=3 manifestMismatches=1 manifestComparisonIssues=1") !=
@@ -421,7 +439,16 @@ void TestFilenameMismatchComparisonStillReportsRead()
 		"asset=npc-marker filename=npc-marker.igmesh vertices=98 indices=504 bytes=9474\n");
 
 	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
+	const NativeStaticMeshExportPackageDirectoryReport dataReport =
+		BuildNativeStaticMeshExportPackageDirectoryReportData(TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"filename mismatch comparison data builder should match full report structured fields");
+	ExpectTextRendererMatches(
+		report,
+		"filename mismatch comparison report text renderer should reproduce report text");
 	Expect(report.readOk(), "filename mismatch comparison should not fail package report");
 	Expect(
 		report.text.find("manifestRead=ok manifestReadIssues=0 manifestMatches=2 manifestMismatches=1 manifestComparisonIssues=1") !=
@@ -514,7 +541,16 @@ void TestMissingDirectoryReportFails()
 
 	const NativeStaticMeshExportPackageDirectoryReport report =
 		BuildNativeStaticMeshExportPackageDirectoryReport(missing);
+	const NativeStaticMeshExportPackageDirectoryReport dataReport =
+		BuildNativeStaticMeshExportPackageDirectoryReportData(missing);
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"missing package directory data builder should match full report structured fields");
+	ExpectTextRendererMatches(
+		report,
+		"missing package directory report text renderer should reproduce report text");
 	Expect(!report.readOk(), "missing package directory report should fail");
 	Expect(
 		report.read.status == NativeStaticMeshExportPackageDirectoryReadStatus::MissingDirectory,
@@ -537,7 +573,16 @@ void TestFilePathInsteadOfDirectoryReportFails()
 
 	const NativeStaticMeshExportPackageDirectoryReport report =
 		BuildNativeStaticMeshExportPackageDirectoryReport(filePath);
+	const NativeStaticMeshExportPackageDirectoryReport dataReport =
+		BuildNativeStaticMeshExportPackageDirectoryReportData(filePath);
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"file package directory data builder should match full report structured fields");
+	ExpectTextRendererMatches(
+		report,
+		"file package directory report text renderer should reproduce report text");
 	Expect(!report.readOk(), "file package directory report should fail");
 	Expect(
 		report.read.status == NativeStaticMeshExportPackageDirectoryReadStatus::DirectoryNotDirectory,
@@ -629,7 +674,13 @@ void TestMalformedPackageSidecarReportIncludesIssueRow()
 	WriteText(packageManifest, "static-mesh-export-package format=bad\n");
 
 	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
+	const NativeStaticMeshExportPackageDirectoryReport dataReport =
+		BuildNativeStaticMeshExportPackageDirectoryReportData(TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"malformed package sidecar data builder should match full report structured fields");
 	ExpectTextRendererMatches(
 		report,
 		"malformed package sidecar report text renderer should reproduce report text");
@@ -758,7 +809,16 @@ void TestMalformedNestedManifestStillReportsRead()
 		"static-mesh-export-manifest version=2 assets=0 bytes=0\n");
 
 	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
+	const NativeStaticMeshExportPackageDirectoryReport dataReport =
+		BuildNativeStaticMeshExportPackageDirectoryReportData(TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"malformed nested manifest data builder should match full report structured fields");
+	ExpectTextRendererMatches(
+		report,
+		"malformed nested manifest report text renderer should reproduce report text");
 	Expect(report.readOk(), "malformed nested mesh manifest should not fail package report");
 	Expect(
 		report.text.find("status=Read") != std::string::npos,
@@ -851,7 +911,16 @@ void TestDirectoryAtDeclaredAssetStillReportsRead()
 	std::filesystem::create_directory(TempRoot() / "cube.igmesh", ignored);
 
 	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
+	const NativeStaticMeshExportPackageDirectoryReport dataReport =
+		BuildNativeStaticMeshExportPackageDirectoryReportData(TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"directory at declared asset data builder should match full report structured fields");
+	ExpectTextRendererMatches(
+		report,
+		"directory at declared asset report text renderer should reproduce report text");
 	Expect(report.readOk(), "directory at declared mesh asset should not fail package report");
 	Expect(
 		report.text.find("status=Read") != std::string::npos,
@@ -883,7 +952,16 @@ void TestExtraUnrelatedFileIsIgnored()
 	WriteText(TempRoot() / "unrelated.txt", "ignored");
 
 	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
+	const NativeStaticMeshExportPackageDirectoryReport dataReport =
+		BuildNativeStaticMeshExportPackageDirectoryReportData(TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"extra unrelated file data builder should match full report structured fields");
+	ExpectTextRendererMatches(
+		report,
+		"extra unrelated file report text renderer should reproduce report text");
 	Expect(report.readOk(), "extra unrelated file should not fail package report");
 	Expect(
 		report.text.find("unrelated.txt") == std::string::npos,
