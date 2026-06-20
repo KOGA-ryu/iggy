@@ -677,6 +677,19 @@ matching, generated sidecar/export behavior, package acceptance, renderer/model-
 slot behavior, `.igmesh` loading beyond existing verifier behavior, parser
 scope, or gameplay semantics.
 
+Native static mesh export manifest read issue text helper extraction is complete
+without changing package-directory report text or CLI behavior. The central
+`NativeStaticMeshExportManifestReadIssueCodeText(...)` helper now lives in
+`NativeStaticMeshExportManifest.hpp`; package-directory report nested mesh
+`manifestReadIssue` rows route through it. This mirrors the package manifest
+helper extraction while staying on the separate
+`NativeStaticMeshExportManifestReadIssueCode` enum. This does not change summary
+fields, row order, issue counts, tokens, trailing newlines, `readOk()`, CLI exit
+behavior, reader/package-directory read behavior, exact verification, generated
+sidecar/export behavior, package acceptance, package manifest helper behavior,
+renderer/model-slot behavior, `.igmesh` loading beyond existing verifier
+behavior, parser scope, or gameplay semantics.
+
 Native static mesh package directory reading is complete as a separate
 header-only explicit-directory helper. `ReadNativeStaticMeshExportPackageDirectory(...)`
 reads only `static-mesh-export-package-manifest.txt` through the explicit-file

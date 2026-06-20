@@ -1918,6 +1918,31 @@ Native static mesh export manifest file reader complete:
   CMake changes, glTF/glb/JSON dependency/parser work, write-policy changes,
   docs-in-source, or next source packet scope.
 
+Native static mesh export manifest read issue text helper extraction complete:
+- Added central inline helper
+  `NativeStaticMeshExportManifestReadIssueCodeText(...)` beside the mesh export
+  manifest read enum/reader in `NativeStaticMeshExportManifest.hpp`.
+- Removed the redundant local nested mesh manifest issue-code mapper from
+  `NativeStaticMeshExportPackageDirectoryReport.hpp`.
+- Package-directory report `manifestReadIssue` rows now route through the
+  central mesh manifest helper.
+- This mirrors the package manifest helper extraction while staying on the
+  separate `NativeStaticMeshExportManifestReadIssueCode` enum.
+- Direct mesh export manifest tests cover every current read issue enum string
+  plus the `Unknown` fallback.
+- Source verification passed `native_static_mesh_export_manifest_tests`, focused
+  mesh manifest `ctest`, package-directory report test build and focused
+  `ctest`, `iggy_native_play`, missing nested mesh manifest smoke preserving
+  `manifestReadIssue code=FileOpenFailed`, and source `git diff --check`.
+- This docs packet does not change package-directory report text, summary
+  fields, `manifestReadIssue` rows, tokens, counts, row order, trailing
+  newlines, `readOk()`, CLI exit behavior, reader behavior, exact verification,
+  generated sidecar/export behavior, package acceptance semantics, package
+  manifest helper behavior, package-directory reader/status behavior, verifier
+  internals, export behavior, package loading/discovery, `.igmesh` loading
+  beyond existing verifier behavior, renderer/model-slot behavior, CMake, assets,
+  fixtures, glTF/glb/JSON parser work, or next source packet scope.
+
 Native static mesh package directory manifest read diagnostics complete:
 - Package directory report now parses the already-projected nested mesh manifest
   path with `ReadNativeStaticMeshExportManifestFile(...)`, but only when package
@@ -3223,25 +3248,27 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 83. Native static mesh package directory file fact diagnostics are integrated.
 84. Native static mesh export manifest text reader is integrated.
 85. Native static mesh export manifest file reader is integrated.
-86. Native static mesh package directory manifest read diagnostics are
+86. Native static mesh export manifest read issue text helper extraction is
     integrated.
-87. Native static mesh package directory manifest asset rows are integrated.
-88. Native static mesh package directory manifest row comparison diagnostics are
+87. Native static mesh package directory manifest read diagnostics are
     integrated.
-89. Native static mesh package directory comparison issue count diagnostics are
+88. Native static mesh package directory manifest asset rows are integrated.
+89. Native static mesh package directory manifest row comparison diagnostics are
     integrated.
-90. Native static mesh package directory manifest comparison helper is
+90. Native static mesh package directory comparison issue count diagnostics are
     integrated.
-91. Native static mesh package directory structured manifest diagnostics are
+91. Native static mesh package directory manifest comparison helper is
     integrated.
-92. Native static mesh package directory structured file facts are integrated.
-93. Native static mesh package directory report text renderer extraction is
+92. Native static mesh package directory structured manifest diagnostics are
     integrated.
-94. Native static mesh package directory report data builder extraction is
+93. Native static mesh package directory structured file facts are integrated.
+94. Native static mesh package directory report text renderer extraction is
     integrated.
-95. Native static mesh package directory report builder parity coverage is
+95. Native static mesh package directory report data builder extraction is
     integrated.
-96. Dispatch richer diagnostics display, overlays/labels, frame request/
+96. Native static mesh package directory report builder parity coverage is
+    integrated.
+97. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

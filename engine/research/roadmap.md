@@ -545,6 +545,11 @@ Recently completed optimized stretches:
   an explicit supplied-path file wrapper that opens binary, reports
   `FileOpenFailed` on missing files, and still avoids package-directory,
   verification, export, or CLI integration.
+  Native static mesh export manifest read issue text helper extraction now
+  centralizes `NativeStaticMeshExportManifestReadIssueCodeText(...)` beside the
+  mesh export manifest reader enum in `NativeStaticMeshExportManifest.hpp`;
+  package-directory report nested mesh `manifestReadIssue` rows use it while the
+  package manifest issue helper remains separate for its different enum.
   Native static mesh package directory manifest read diagnostics now parse the
   already-projected nested mesh manifest path from the package directory report,
   adding `manifestRead=...` summary facts and deterministic `manifestReadIssue`
@@ -2294,6 +2299,30 @@ expansion, runtime/product/scene/server APIs, gameplay/scripted/final-state
 behavior, fixture/generated asset changes, CMake changes, glTF/glb/JSON
 dependencies/parsers, write-policy changes, docs-in-source, or next source
 packet scope.
+
+Native Static Mesh Export Manifest Read Issue Text Helper Extraction is complete
+as the mesh export manifest counterpart to the package manifest helper
+extraction. The new central inline helper
+`NativeStaticMeshExportManifestReadIssueCodeText(...)` lives beside the mesh
+export manifest read enum and reader in `NativeStaticMeshExportManifest.hpp`.
+Package-directory report nested mesh `manifestReadIssue` rows now route through
+that central mesh manifest helper after the redundant local mapper was removed
+from `NativeStaticMeshExportPackageDirectoryReport.hpp`. This stays separate
+from packet 110's package manifest helper because it maps
+`NativeStaticMeshExportManifestReadIssueCode`, not the package manifest read
+enum. Direct mesh export manifest tests cover every current read issue enum
+string plus the `Unknown` fallback. Source verification passed mesh export
+manifest tests, package-directory report tests, `iggy_native_play`, a missing
+nested mesh manifest smoke that still reports
+`manifestReadIssue code=FileOpenFailed`, and source `git diff --check`. This
+packet does not change package-directory report text, summary fields,
+`manifestReadIssue` rows, tokens, counts, row order, trailing newlines,
+`readOk()`, CLI exit behavior, reader behavior, exact verification, generated
+sidecar/export behavior, package acceptance semantics, package manifest helper
+behavior, package-directory reader/status behavior, verifier internals, package
+loading/discovery, `.igmesh` loading beyond existing verifier behavior,
+renderer/model-slot behavior, CMake, assets, fixtures, glTF/glb/JSON parser
+work, or next source packet scope.
 
 Native Static Mesh Package Directory Manifest Read Diagnostics are complete for
 the package directory report. The report now parses the already-projected nested
