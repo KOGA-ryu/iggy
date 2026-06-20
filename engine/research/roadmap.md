@@ -436,6 +436,11 @@ Recently completed optimized stretches:
   `iggy_native_play --export-static-mesh-assets --output-dir DIR`, preflighting
   the output directory and all default targets before writing
   `cube.igmesh`, `bean.igmesh`, and `npc-marker.igmesh`.
+  Native static mesh export reporting now adds
+  `NativeStaticMeshExportReport.hpp` and
+  `iggy_native_play --dump-static-mesh-export-report`, reporting built-in export
+  writability, counts, and bytes without writing files or inspecting output
+  directories.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1456,6 +1461,32 @@ material/texture/descriptor/sampler/normals/UV/animation/scene graph/metadata
 fields, renderer behavior, `NativeVulkanRenderer.cpp`, public renderer API,
 runtime/product/scene/server/draw-list API change, or gameplay/scripted/
 final-state semantic change.
+
+Native Static Mesh Export Report CLI is complete as a no-write diagnostics
+surface: header-only app-local `NativeStaticMeshExportReport.hpp` adds
+`BuildNativeStaticMeshExportReport(...)` over `DefaultNativeStaticMeshExportPolicy()`
+or supplied policies. Report entries include export name, default filename,
+built-in id, writable status, issue count, vertex count, index count, and writer
+byte count. Aggregates include asset count, writable count, total bytes, and
+total issues. `iggy_native_play --dump-static-mesh-export-report` prints the
+report and exits before `NativeVulkanApp` construction or SDL/Vulkan startup.
+Sample output is:
+`static-mesh-export-report assets=3 writable=3 bytes=33879 issues=0`,
+`asset=cube filename=cube.igmesh status=Writable vertices=8 indices=36 bytes=523 issues=0`,
+`asset=bean filename=bean.igmesh status=Writable vertices=234 indices=1296 bytes=23882 issues=0`,
+and
+`asset=npc-marker filename=npc-marker.igmesh status=Writable vertices=98 indices=504 bytes=9474 issues=0`.
+The report mode conflicts with `--output-dir`, `--export-static-mesh-assets`,
+`--dump-static-mesh-asset`, and `--dump-static-model-load-report`. The report
+path does not write files, validate output dirs/paths, touch renderer behavior,
+inspect the filesystem, or change gameplay/scripted/final-state semantics. It
+does not add arbitrary output paths, overwrite/force/create-directory policy,
+checked-in fixture rewrites/canonicalization, package discovery/scanning,
+registry/catalog/manifest expansion, source mutation, glTF/glb/JSON parser/
+dependency work, `.igmesh` schema expansion, material/texture/descriptor/
+sampler/normals/UV/animation/scene graph/metadata fields,
+`NativeVulkanRenderer.cpp`, public renderer API, or runtime/product/scene/
+server/draw-list API changes.
 
 Exit criteria:
 - Load a package or explicit scenario.

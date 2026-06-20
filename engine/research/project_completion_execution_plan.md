@@ -1147,6 +1147,36 @@ Native static mesh built-in batch export CLI complete:
   `NativeVulkanRenderer.cpp`, public renderer API, runtime/product/scene/server/
   draw-list API change, or gameplay/scripted/final-state semantic change.
 
+Native static mesh export report CLI complete:
+- `NativeStaticMeshExportReport.hpp` adds header-only app-local
+  `BuildNativeStaticMeshExportReport(...)` over
+  `DefaultNativeStaticMeshExportPolicy()` or supplied policies.
+- Report entries include export name, default filename, built-in id, writable
+  status, issue count, vertex count, index count, and writer byte count.
+- Aggregates include asset count, writable count, total bytes, and total issues.
+- `iggy_native_play --dump-static-mesh-export-report` prints the report and
+  exits before `NativeVulkanApp` construction or SDL/Vulkan startup.
+- Sample output:
+  `static-mesh-export-report assets=3 writable=3 bytes=33879 issues=0`;
+  `asset=cube filename=cube.igmesh status=Writable vertices=8 indices=36 bytes=523 issues=0`;
+  `asset=bean filename=bean.igmesh status=Writable vertices=234 indices=1296 bytes=23882 issues=0`;
+  `asset=npc-marker filename=npc-marker.igmesh status=Writable vertices=98 indices=504 bytes=9474 issues=0`.
+- Conflict outputs are:
+  `iggy_native_play: --dump-static-mesh-export-report cannot be combined with --output-dir`,
+  `iggy_native_play: --dump-static-mesh-export-report cannot be combined with --export-static-mesh-assets`,
+  `iggy_native_play: --dump-static-mesh-export-report cannot be combined with --dump-static-mesh-asset`, and
+  `iggy_native_play: --dump-static-mesh-export-report cannot be combined with --dump-static-model-load-report`.
+- The report path does not write files, validate output directories/paths, touch
+  renderer behavior, or inspect the filesystem.
+- This is not arbitrary `--output PATH`, overwrite/force/create-directory
+  policy, checked-in fixture rewrite/canonicalization, package discovery/
+  scanning, registry/catalog/manifest expansion, source mutation, glTF/glb/JSON
+  parser/dependency work, `.igmesh` schema expansion, material/texture/
+  descriptor/sampler/normals/UV/animation/scene graph/metadata fields,
+  renderer behavior, `NativeVulkanRenderer.cpp`, public renderer API, runtime/
+  product/scene/server/draw-list API change, or gameplay/input/scripted-control/
+  final-state semantic change.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -2035,7 +2065,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 57. Native static mesh export policy is integrated.
 58. Native static mesh output directory export CLI is integrated.
 59. Native static mesh built-in batch export CLI is integrated.
-60. Dispatch richer diagnostics display, overlays/labels, frame request/
+60. Native static mesh export report CLI is integrated.
+61. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

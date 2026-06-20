@@ -584,6 +584,17 @@ directory creation, fixture rewrites, package discovery/scanning, registry/
 catalog/manifest policy, glTF/glb/JSON parsing, `.igmesh` schema expansion,
 renderer behavior, or gameplay/scripted/final-state semantic changes.
 
+Native static mesh export report CLI is complete as a no-write app-shell
+diagnostic: `NativeStaticMeshExportReport.hpp` reports export name, default
+filename, built-in id, writable status, issue count, vertex count, index count,
+and writer byte count for built-in export policy assets.
+`iggy_native_play --dump-static-mesh-export-report` prints aggregate and per-
+asset rows, exits before native app construction or SDL/Vulkan startup, and
+conflicts with output-dir, single export, batch export, and static model load
+report modes. It does not write files, validate output dirs, inspect the
+filesystem, change renderer behavior, expand `.igmesh`, add asset discovery, or
+change gameplay/scripted/final-state semantics.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.
