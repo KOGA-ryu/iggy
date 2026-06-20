@@ -1759,6 +1759,30 @@ directory/temp replacement policy, arbitrary output paths beyond existing
 schema/material/texture/normal/UV/animation behavior, gameplay/scripted/
 final-state behavior, or next research/scout implementation.
 
+Native Static Mesh Export Directory Verification Status Text Helper Extraction
+is complete as a behavior-preserving status text cleanup. The central inline
+helper `NativeStaticMeshExportDirectoryVerificationStatusText(...)` now lives
+beside `NativeStaticMeshExportDirectoryVerificationStatus` in
+`NativeStaticMeshExportDirectoryVerification.hpp`. Verification report summary
+and per-asset status rendering plus the two compact CLI failure paths now use
+that helper after removing the report-local and CLI-local duplicate switches.
+Stable strings are `Verified`, `InvalidPolicy`, `MissingOutputDirectory`,
+`OutputDirectoryNotDirectory`, `MissingManifest`, `ManifestMismatch`,
+`MissingAsset`, `AssetLoadFailed`, `GeometryMismatch`, `ManifestBuildFailed`,
+`MissingPackageManifest`, `PackageManifestReadFailed`,
+`PackageManifestMismatch`, `PackageManifestBuildFailed`, and fallback `Unknown`.
+Direct verification tests cover every current status plus `Unknown`. Source
+verification passed verification tests, verification report tests,
+`iggy_native_play`, valid export verification smoke, missing-manifest
+verification failure smoke, missing-manifest verification report failure smoke,
+and source `git diff --check`. This packet does not change report text,
+per-asset status text, compact CLI failure strings, CLI parser/dispatch/help/
+success output, verifier logic, status ordering, issue counts, problem paths,
+verified flags, entry data, sidecar matching, generated sidecar/export behavior,
+package acceptance semantics, package-directory diagnostics, CMake, fixtures,
+assets, renderer/model-slot behavior, package loading/discovery, schema, or
+glTF/glb/JSON parser work.
+
 Native Static Mesh Export Verification Report CLI is complete as a read-only
 report surface around `VerifyNativeStaticMeshExportDirectory(policy,
 directory)`. `iggy_native_play

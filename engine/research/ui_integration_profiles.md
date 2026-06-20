@@ -665,6 +665,18 @@ semantics, source mutation, overwrite/create-directory policy, fixture rewrites,
 renderer behavior, JSON/glTF/glb parsing, `.igmesh` schema changes, or
 gameplay/scripted/final-state changes.
 
+Native static mesh export directory verification status text helper extraction
+is complete without changing visible report text or CLI behavior. The central
+`NativeStaticMeshExportDirectoryVerificationStatusText(...)` helper now lives in
+`NativeStaticMeshExportDirectoryVerification.hpp` beside the verifier status
+enum. Verification report summary and per-asset statuses plus both compact CLI
+failure paths use it, preserving strings including `MissingManifest`,
+`PackageManifestReadFailed`, and `PackageManifestBuildFailed`. This does not
+change CLI parser/dispatch/help/success output, verifier logic, status ordering,
+issue counts, problem paths, verified flags, entry data, sidecar matching,
+generated sidecar/export behavior, package acceptance, package-directory
+diagnostics, renderer/model-slot behavior, or parser scope.
+
 Native static mesh package manifest read issue text helper extraction is
 complete without changing visible report text or CLI behavior. The central
 `NativeStaticMeshExportPackageManifestReadIssueCodeText(...)` helper now lives in
