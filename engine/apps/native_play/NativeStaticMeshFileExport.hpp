@@ -2,6 +2,7 @@
 
 #include "NativeStaticMeshAssetWriter.hpp"
 #include "NativeStaticMeshExportManifest.hpp"
+#include "NativeStaticMeshExportPackageManifest.hpp"
 #include "NativeStaticMeshExportPolicy.hpp"
 
 #include <cstddef>
@@ -46,10 +47,12 @@ struct NativeStaticMeshFileExportBatchResult {
 		NativeStaticMeshFileExportStatus::Exported;
 	std::filesystem::path outputDirectory;
 	std::filesystem::path manifestOutputPath;
+	std::filesystem::path packageManifestOutputPath;
 	std::vector<NativeStaticMeshFileExportBatchEntry> entries;
 	std::size_t exportedCount = 0;
 	std::size_t byteCount = 0;
 	std::size_t manifestByteCount = 0;
+	std::size_t packageManifestByteCount = 0;
 	std::size_t issueCount = 0;
 };
 
@@ -144,6 +147,12 @@ ExportNativeStaticMeshPolicyToDirectory(
 		result.status = NativeStaticMeshFileExportStatus::TargetAlreadyExists;
 		return result;
 	}
+	result.packageManifestOutputPath =
+		directory / NativeStaticMeshExportPackageManifestSidecarFilename;
+	if (std::filesystem::exists(result.packageManifestOutputPath)) {
+		result.status = NativeStaticMeshFileExportStatus::TargetAlreadyExists;
+		return result;
+	}
 
 	for (const NativeStaticMeshExportAssetRef &assetRef : policy.assets) {
 		NativeStaticMeshFileExportBatchEntry entry;
@@ -162,6 +171,16 @@ ExportNativeStaticMeshPolicyToDirectory(
 		BuildNativeStaticMeshExportManifestText(policy);
 	result.issueCount += manifest.issueCount;
 	if (!manifest.written()) {
+		result.status = NativeStaticMeshFileExportStatus::WriterFailed;
+		return result;
+	}
+	NativeStaticMeshExportPackagePolicy packagePolicy =
+		DefaultNativeStaticMeshExportPackagePolicy();
+	packagePolicy.meshPolicy = policy;
+	const NativeStaticMeshExportPackageManifestResult packageManifest =
+		BuildNativeStaticMeshExportPackageManifestText(packagePolicy);
+	result.issueCount += packageManifest.issueCount;
+	if (!packageManifest.written()) {
 		result.status = NativeStaticMeshFileExportStatus::WriterFailed;
 		return result;
 	}
@@ -217,6 +236,19 @@ ExportNativeStaticMeshPolicyToDirectory(
 		return result;
 	}
 	result.manifestByteCount = manifest.text.size();
+
+	std::ofstream packageManifestFile(result.packageManifestOutputPath, std::ios::binary);
+	if (!packageManifestFile.is_open()) {
+		result.status = NativeStaticMeshFileExportStatus::FileOpenFailed;
+		return result;
+	}
+	packageManifestFile << packageManifest.text;
+	packageManifestFile.close();
+	if (!packageManifestFile) {
+		result.status = NativeStaticMeshFileExportStatus::WriteFailed;
+		return result;
+	}
+	result.packageManifestByteCount = packageManifest.text.size();
 
 	result.status = NativeStaticMeshFileExportStatus::Exported;
 	return result;

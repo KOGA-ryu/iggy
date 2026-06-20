@@ -2,6 +2,7 @@
 #include "../apps/native_play/NativeStaticMeshAssetWriter.hpp"
 #include "../apps/native_play/NativeStaticMeshFileExport.hpp"
 #include "../apps/native_play/NativeStaticMeshExportManifest.hpp"
+#include "../apps/native_play/NativeStaticMeshExportPackageManifest.hpp"
 
 #include <cstdlib>
 #include <fstream>
@@ -15,7 +16,9 @@ namespace {
 
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
 using iggy::native_play::BuildNativeStaticMeshExportManifestText;
+using iggy::native_play::BuildNativeStaticMeshExportPackageManifestText;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
+using iggy::native_play::DefaultNativeStaticMeshExportPackagePolicy;
 using iggy::native_play::ExportNativeStaticMeshAssetToDirectory;
 using iggy::native_play::ExportNativeStaticMeshPolicyToDirectory;
 using iggy::native_play::FindNativeStaticMeshExportAsset;
@@ -29,6 +32,9 @@ using iggy::native_play::NativeStaticMeshFileExportResult;
 using iggy::native_play::NativeStaticMeshFileExportStatus;
 using iggy::native_play::NativeStaticMeshExportManifestFilename;
 using iggy::native_play::NativeStaticMeshExportManifestResult;
+using iggy::native_play::NativeStaticMeshExportPackageManifestSidecarFilename;
+using iggy::native_play::NativeStaticMeshExportPackageManifestResult;
+using iggy::native_play::NativeStaticMeshExportPackagePolicy;
 using iggy::native_play::WriteNativeStaticMeshAssetText;
 using iggy::test::Expect;
 using iggy::test::Failures;
@@ -112,6 +118,9 @@ void TestBatchExportsDefaultPolicyAssetsAndReloads()
 	Expect(
 		result.manifestOutputPath == TempRoot() / NativeStaticMeshExportManifestFilename,
 		"batch export should report manifest output path");
+	Expect(
+		result.packageManifestOutputPath == TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename,
+		"batch export should report package manifest output path");
 
 	std::size_t expectedBytes = 0;
 	for (const NativeStaticMeshExportAssetRef &asset : policy.assets) {
@@ -140,6 +149,21 @@ void TestBatchExportsDefaultPolicyAssetsAndReloads()
 	Expect(
 		result.manifestByteCount == manifest.text.size(),
 		"batch manifest byte count should match manifest text size");
+	NativeStaticMeshExportPackagePolicy packagePolicy =
+		DefaultNativeStaticMeshExportPackagePolicy();
+	packagePolicy.meshPolicy = policy;
+	const NativeStaticMeshExportPackageManifestResult packageManifest =
+		BuildNativeStaticMeshExportPackageManifestText(packagePolicy);
+	Expect(packageManifest.written(), "default package manifest should write");
+	Expect(
+		std::filesystem::exists(result.packageManifestOutputPath),
+		"batch export should write package manifest sidecar");
+	Expect(
+		ReadText(result.packageManifestOutputPath) == packageManifest.text,
+		"batch package manifest sidecar should match package manifest builder output");
+	Expect(
+		result.packageManifestByteCount == packageManifest.text.size(),
+		"batch package manifest byte count should match package manifest text size");
 
 	CleanupTempRoot();
 }
@@ -274,6 +298,9 @@ void TestBatchTargetAlreadyExistsPreflightsBeforeWriting()
 	Expect(
 		!std::filesystem::exists(TempRoot() / NativeStaticMeshExportManifestFilename),
 		"batch target collision should not write manifest sidecar");
+	Expect(
+		!std::filesystem::exists(TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename),
+		"batch target collision should not write package manifest sidecar");
 	CleanupTempRoot();
 }
 
@@ -294,8 +321,39 @@ void TestBatchManifestTargetAlreadyExistsPreflightsBeforeWriting()
 	Expect(!std::filesystem::exists(TempRoot() / "bean.igmesh"), "manifest collision should not write bean");
 	Expect(!std::filesystem::exists(TempRoot() / "npc-marker.igmesh"), "manifest collision should not write NPC marker");
 	Expect(
+		!std::filesystem::exists(TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename),
+		"manifest collision should not write package manifest sidecar");
+	Expect(
 		ReadText(TempRoot() / NativeStaticMeshExportManifestFilename) == "existing",
 		"manifest collision should not overwrite existing sidecar");
+	CleanupTempRoot();
+}
+
+void TestBatchPackageManifestTargetAlreadyExistsPreflightsBeforeWriting()
+{
+	ResetTempRoot();
+	WriteText(TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename, "existing");
+
+	const NativeStaticMeshFileExportBatchResult result =
+		ExportNativeStaticMeshPolicyToDirectory(
+			DefaultNativeStaticMeshExportPolicy(),
+			TempRoot());
+
+	Expect(
+		result.status == NativeStaticMeshFileExportStatus::TargetAlreadyExists,
+		"existing package manifest target should reject batch export");
+	Expect(
+		result.packageManifestOutputPath == TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename,
+		"package manifest collision should report package manifest output path");
+	Expect(!std::filesystem::exists(TempRoot() / "cube.igmesh"), "package manifest collision should not write cube");
+	Expect(!std::filesystem::exists(TempRoot() / "bean.igmesh"), "package manifest collision should not write bean");
+	Expect(!std::filesystem::exists(TempRoot() / "npc-marker.igmesh"), "package manifest collision should not write NPC marker");
+	Expect(
+		!std::filesystem::exists(TempRoot() / NativeStaticMeshExportManifestFilename),
+		"package manifest collision should not write mesh manifest sidecar");
+	Expect(
+		ReadText(TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename) == "existing",
+		"package manifest collision should not overwrite existing sidecar");
 	CleanupTempRoot();
 }
 
@@ -315,6 +373,9 @@ void TestSingleExportDoesNotWriteManifestSidecar()
 	Expect(
 		!std::filesystem::exists(TempRoot() / NativeStaticMeshExportManifestFilename),
 		"single export should not write manifest sidecar");
+	Expect(
+		!std::filesystem::exists(TempRoot() / NativeStaticMeshExportPackageManifestSidecarFilename),
+		"single export should not write package manifest sidecar");
 	CleanupTempRoot();
 }
 
@@ -371,6 +432,7 @@ int main()
 	TestTargetAlreadyExistsIsRejected();
 	TestBatchTargetAlreadyExistsPreflightsBeforeWriting();
 	TestBatchManifestTargetAlreadyExistsPreflightsBeforeWriting();
+	TestBatchPackageManifestTargetAlreadyExistsPreflightsBeforeWriting();
 	TestSingleExportDoesNotWriteManifestSidecar();
 	TestInvalidPolicyRejectsSingleExportWithoutWriting();
 	TestInvalidPolicyRejectsBatchExportBeforeWriting();

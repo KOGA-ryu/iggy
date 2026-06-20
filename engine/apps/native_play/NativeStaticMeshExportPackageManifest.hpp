@@ -8,6 +8,9 @@
 
 namespace iggy::native_play {
 
+inline constexpr const char *NativeStaticMeshExportPackageManifestSidecarFilename =
+	"static-mesh-export-package-manifest.txt";
+
 enum class NativeStaticMeshExportPackageManifestStatus {
 	Built,
 	InvalidPolicy,
