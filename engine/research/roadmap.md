@@ -450,6 +450,10 @@ Recently completed optimized stretches:
   `NativeStaticMeshFileExportStatusText(...)` beside
   `NativeStaticMeshFileExportStatus`; single-export and batch-export compact CLI
   failure paths use it while preserving status strings and failure prefixes.
+  Native static mesh single file export success text renderer extraction now
+  adds `BuildNativeStaticMeshFileExportSuccessText(...)`; single-file output-dir
+  success stdout delegates to it after the existing `Exported` check while
+  preserving unknown/non-`Exported` failures and batch text.
   Native static mesh built-in batch export now adds
   `ExportNativeStaticMeshPolicyToDirectory(...)` and
   `iggy_native_play --export-static-mesh-assets --output-dir DIR`, preflighting
@@ -1752,6 +1756,32 @@ no-overwrite/no-create-directory behavior, CLI parser/dispatch/conflicts,
 verifier/package-directory/report/generated text behavior, CMake, fixtures,
 assets, renderer/model-slot behavior, package loading/discovery, schema, or
 glTF/glb/JSON parser work.
+
+Native Static Mesh Single File Export Success Text Renderer Extraction is
+complete as a behavior-preserving single-export stdout cleanup.
+`NativeStaticMeshFileExport.hpp` now exposes pure
+`BuildNativeStaticMeshFileExportSuccessText(std::string_view name, const
+NativeStaticMeshFileExportResult &result)`, which serializes only the successful
+single-file export compact stdout line:
+`static-mesh-export name=<name> output=<path> bytes=<N>\n`.
+`PrintNativeStaticMeshAssetFileExport(...)` delegates to the helper only after
+the existing `Exported` status check. Unknown-asset failure text, non-`Exported`
+failure text, and batch export success/failure text are preserved exactly. Exact
+text coverage uses a real successful cube single export result. Source
+verification passed `native_static_mesh_file_export_tests`, `iggy_native_play`,
+a single-export smoke preserving
+`static-mesh-export name=cube output=/tmp/iggy-native-single-export-renderer-123/cube.igmesh bytes=523`,
+target-exists collision smoke preserving `static mesh export failed:
+TargetAlreadyExists`, source `git diff --check`, and source
+`git diff --cached --check`. This packet does not change export policy defaults,
+export status assignment, write/preflight order, issue or byte count semantics,
+output path selection, no-overwrite/no-create-directory behavior, CLI parser/
+help/dispatch/conflict/exit behavior, unknown-asset failure text, non-`Exported`
+failure text, batch export success/failure text, static model behavior,
+manifest/package/verification/package-directory behavior, exact verification
+behavior, generated sidecars, export write policy, package loading/discovery/
+acceptance, `NativeVulkanRenderer.cpp`, renderer/model-slot behavior, checked-in
+assets or fixtures, `.igmesh` schema/loading, or glTF/glb/JSON parser work.
 
 Native Static Mesh Built-In Batch Export CLI is complete as a constrained
 multi-file export path for the default built-in mesh policy:

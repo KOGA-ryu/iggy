@@ -1242,6 +1242,34 @@ Native static mesh file export status text helper extraction complete:
   report/generated text behavior, CMake, fixtures, assets, renderer/model-slot
   behavior, package loading/discovery, schema, or glTF/glb/JSON parser work.
 
+Native static mesh single file export success text renderer extraction complete:
+- Added pure header helper
+  `BuildNativeStaticMeshFileExportSuccessText(std::string_view name, const NativeStaticMeshFileExportResult &result)`
+  in `NativeStaticMeshFileExport.hpp`.
+- The helper serializes only the successful single-file export compact stdout
+  line:
+  `static-mesh-export name=<name> output=<path> bytes=<N>\n`.
+- `PrintNativeStaticMeshAssetFileExport(...)` now delegates to the helper after
+  the existing `Exported` status check.
+- Unknown-asset failure text, non-`Exported` failure text, and batch export
+  success/failure text are preserved exactly.
+- Exact text tests cover a real successful cube single export result.
+- Source verification passed `native_static_mesh_file_export_tests`,
+  `iggy_native_play`, a single-export smoke preserving
+  `static-mesh-export name=cube output=/tmp/iggy-native-single-export-renderer-123/cube.igmesh bytes=523`,
+  target-exists collision smoke preserving
+  `static mesh export failed: TargetAlreadyExists`, source `git diff --check`,
+  and source `git diff --cached --check`.
+- This docs packet does not change export policy defaults, export status
+  assignment, write/preflight order, issue or byte count semantics, output path
+  selection, no-overwrite/no-create-directory behavior, CLI parser/help/dispatch/
+  conflict/exit behavior, unknown-asset failure text, non-`Exported` failure
+  text, batch export success/failure text, static model behavior, manifest/
+  package/verification/package-directory behavior, exact verification behavior,
+  generated sidecars, export write policy, package loading/discovery/acceptance,
+  `NativeVulkanRenderer.cpp`, renderer/model-slot behavior, checked-in assets or
+  fixtures, `.igmesh` schema/loading, or glTF/glb/JSON parser work.
+
 Native static mesh built-in batch export CLI complete:
 - `ExportNativeStaticMeshPolicyToDirectory(...)` exports every asset in
   `DefaultNativeStaticMeshExportPolicy()` to `DIR/defaultFilename`.
@@ -3516,70 +3544,72 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 61. Native static mesh export policy is integrated.
 62. Native static mesh output directory export CLI is integrated.
 63. Native static mesh file export status text helper extraction is integrated.
-64. Native static mesh built-in batch export CLI is integrated.
-65. Native static mesh export report CLI is integrated.
-66. Native static mesh export report status text helper extraction is
+64. Native static mesh single file export success text renderer extraction is
     integrated.
-67. Native static mesh export report text renderer extraction is integrated.
-68. Native static mesh export policy validation is integrated.
-69. Native static mesh export manifest text builder CLI is integrated.
-70. Native static mesh export manifest status text helper extraction is
+65. Native static mesh built-in batch export CLI is integrated.
+66. Native static mesh export report CLI is integrated.
+67. Native static mesh export report status text helper extraction is
     integrated.
-71. Native static mesh batch manifest sidecar export is integrated.
-72. Native static mesh export directory verification CLI is integrated.
-73. Native static mesh export directory verification status text helper
+68. Native static mesh export report text renderer extraction is integrated.
+69. Native static mesh export policy validation is integrated.
+70. Native static mesh export manifest text builder CLI is integrated.
+71. Native static mesh export manifest status text helper extraction is
+    integrated.
+72. Native static mesh batch manifest sidecar export is integrated.
+73. Native static mesh export directory verification CLI is integrated.
+74. Native static mesh export directory verification status text helper
     extraction is integrated.
-74. Native static mesh export verification report CLI is integrated.
-75. Native static mesh export verification report text renderer extraction is
+75. Native static mesh export verification report CLI is integrated.
+76. Native static mesh export verification report text renderer extraction is
     integrated.
-76. Native static mesh export verification report data builder extraction is
+77. Native static mesh export verification report data builder extraction is
     integrated.
-77. Native static mesh verification report builder parity coverage is
+78. Native static mesh verification report builder parity coverage is
     integrated.
-78. Native static mesh export package policy is integrated.
-79. Native static mesh export package manifest text builder CLI is integrated.
-80. Native static mesh export package manifest status text helper extraction is
+79. Native static mesh export package policy is integrated.
+80. Native static mesh export package manifest text builder CLI is integrated.
+81. Native static mesh export package manifest status text helper extraction is
     integrated.
-81. Native static mesh batch package manifest sidecar export is integrated.
-82. Native static mesh package sidecar verification is integrated.
-83. Native static mesh verification summary sidecar diagnostics are integrated.
-84. Native static mesh package manifest text reader is integrated.
-85. Native static mesh package manifest file reader is integrated.
-86. Native static mesh package manifest verification reader diagnostics are
+82. Native static mesh batch package manifest sidecar export is integrated.
+83. Native static mesh package sidecar verification is integrated.
+84. Native static mesh verification summary sidecar diagnostics are integrated.
+85. Native static mesh package manifest text reader is integrated.
+86. Native static mesh package manifest file reader is integrated.
+87. Native static mesh package manifest verification reader diagnostics are
     integrated.
-87. Native static mesh verification package read issue rows are integrated.
-88. Native static mesh package manifest read issue text helper extraction is
+88. Native static mesh verification package read issue rows are integrated.
+89. Native static mesh package manifest read issue text helper extraction is
     integrated.
-89. Native static mesh package directory reader is integrated.
-90. Native static mesh package directory read status text helper extraction is
+90. Native static mesh package directory reader is integrated.
+91. Native static mesh package directory read status text helper extraction is
     integrated.
-91. Native static mesh package directory report builder is integrated.
-92. Native static mesh package directory report CLI is integrated.
-93. Native static mesh package directory presence diagnostics are integrated.
-94. Native static mesh package directory file fact diagnostics are integrated.
-95. Native static mesh export manifest text reader is integrated.
-96. Native static mesh export manifest file reader is integrated.
-97. Native static mesh export manifest read issue text helper extraction is
+92. Native static mesh package directory report builder is integrated.
+93. Native static mesh package directory report CLI is integrated.
+94. Native static mesh package directory presence diagnostics are integrated.
+95. Native static mesh package directory file fact diagnostics are integrated.
+96. Native static mesh export manifest text reader is integrated.
+97. Native static mesh export manifest file reader is integrated.
+98. Native static mesh export manifest read issue text helper extraction is
     integrated.
-98. Native static mesh package directory manifest read diagnostics are
+99. Native static mesh package directory manifest read diagnostics are
     integrated.
-99. Native static mesh package directory manifest asset rows are integrated.
-100. Native static mesh package directory manifest row comparison diagnostics are
+100. Native static mesh package directory manifest asset rows are integrated.
+101. Native static mesh package directory manifest row comparison diagnostics are
     integrated.
-101. Native static mesh package directory comparison issue count diagnostics are
+102. Native static mesh package directory comparison issue count diagnostics are
     integrated.
-102. Native static mesh package directory manifest comparison helper is
+103. Native static mesh package directory manifest comparison helper is
     integrated.
-103. Native static mesh package directory structured manifest diagnostics are
+104. Native static mesh package directory structured manifest diagnostics are
     integrated.
-104. Native static mesh package directory structured file facts are integrated.
-105. Native static mesh package directory report text renderer extraction is
+105. Native static mesh package directory structured file facts are integrated.
+106. Native static mesh package directory report text renderer extraction is
     integrated.
-106. Native static mesh package directory report data builder extraction is
+107. Native static mesh package directory report data builder extraction is
     integrated.
-107. Native static mesh package directory report builder parity coverage is
+108. Native static mesh package directory report builder parity coverage is
     integrated.
-108. Dispatch richer diagnostics display, overlays/labels, frame request/
+109. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

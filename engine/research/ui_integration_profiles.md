@@ -641,6 +641,23 @@ path selection, sidecar writes, no-overwrite/no-create-directory behavior, CLI
 parser/dispatch/conflicts, verifier/package-directory/report/generated text
 behavior, renderer/model-slot behavior, or parser scope.
 
+Native static mesh single file export success text renderer extraction is
+complete without changing visible export behavior. The pure
+`BuildNativeStaticMeshFileExportSuccessText(std::string_view name, const
+NativeStaticMeshFileExportResult &result)` helper now lives in
+`NativeStaticMeshFileExport.hpp` and serializes only successful single-file
+export stdout:
+`static-mesh-export name=<name> output=<path> bytes=<N>\n`.
+`PrintNativeStaticMeshAssetFileExport(...)` delegates to it only after the
+existing `Exported` status check. Unknown-asset failure text, non-`Exported`
+failure text, and batch export success/failure text remain unchanged. This does
+not change export policy defaults, export status assignment, write/preflight
+order, issue or byte count semantics, output path selection, no-overwrite/no-
+create-directory behavior, CLI parser/help/dispatch/conflicts/exit behavior,
+static model behavior, manifest/package/verification/package-directory behavior,
+renderer/model-slot behavior, checked-in assets or fixtures, `.igmesh`
+schema/loading, or parser scope.
+
 Native static mesh built-in batch export CLI is complete as a constrained
 no-Qt app-shell batch export: `ExportNativeStaticMeshPolicyToDirectory(...)`
 preflights the output directory and all default target filenames before writing,
