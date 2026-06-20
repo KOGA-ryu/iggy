@@ -49,6 +49,17 @@ struct NativeStaticMeshExportManifestResult {
 	}
 };
 
+[[nodiscard]] inline std::string BuildNativeStaticMeshExportManifestFailureText(
+	const NativeStaticMeshExportManifestResult &result)
+{
+	std::ostringstream stream;
+	stream
+		<< "static mesh export manifest failed: "
+		<< NativeStaticMeshExportManifestStatusText(result.status)
+		<< " issues=" << result.issueCount;
+	return stream.str();
+}
+
 struct NativeStaticMeshExportManifestAssetRow {
 	std::string name;
 	std::string filename;

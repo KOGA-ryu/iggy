@@ -11,6 +11,7 @@
 
 namespace {
 
+using iggy::native_play::BuildNativeStaticMeshExportManifestFailureText;
 using iggy::native_play::BuildNativeStaticMeshExportManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportReport;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
@@ -431,6 +432,25 @@ void TestManifestStatusText()
 		"mesh export manifest status text should report unknown fallback");
 }
 
+void TestManifestFailureText()
+{
+	const NativeStaticMeshExportPolicy policy {
+		{
+			{ NativeStaticMeshBuiltInExportId::Cube, "cube", "same.igmesh" },
+			{ NativeStaticMeshBuiltInExportId::Bean, "bean", "same.igmesh" },
+		},
+	};
+
+	const NativeStaticMeshExportManifestResult result =
+		BuildNativeStaticMeshExportManifestText(policy);
+
+	Expect(!result.written(), "failure text test result should not write");
+	Expect(
+		BuildNativeStaticMeshExportManifestFailureText(result) ==
+			"static mesh export manifest failed: InvalidPolicy issues=1",
+		"mesh export manifest failure text should match CLI contract");
+}
+
 } // namespace
 
 int main()
@@ -453,6 +473,7 @@ int main()
 	TestFileReaderPropagatesTextReaderIssues();
 	TestReadIssueCodeText();
 	TestManifestStatusText();
+	TestManifestFailureText();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;
