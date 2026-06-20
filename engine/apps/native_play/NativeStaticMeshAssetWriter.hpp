@@ -16,6 +16,18 @@ enum class NativeStaticMeshAssetWriteIssueCode {
 	NonTriangleIndexCount,
 };
 
+[[nodiscard]] inline const char *NativeStaticMeshAssetWriteIssueCodeText(
+	NativeStaticMeshAssetWriteIssueCode code)
+{
+	switch (code) {
+	case NativeStaticMeshAssetWriteIssueCode::InvalidMesh:
+		return "InvalidMesh";
+	case NativeStaticMeshAssetWriteIssueCode::NonTriangleIndexCount:
+		return "NonTriangleIndexCount";
+	}
+	return "Unknown";
+}
+
 struct NativeStaticMeshAssetWriteIssue {
 	NativeStaticMeshAssetWriteIssueCode code =
 		NativeStaticMeshAssetWriteIssueCode::InvalidMesh;

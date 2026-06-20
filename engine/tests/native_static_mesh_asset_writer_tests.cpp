@@ -18,6 +18,7 @@ using iggy::native_play::NativeNpcMarkerStaticMeshAsset;
 using iggy::native_play::NativeStaticMeshAsset;
 using iggy::native_play::NativeStaticMeshAssetLoadResult;
 using iggy::native_play::NativeStaticMeshAssetWriteIssueCode;
+using iggy::native_play::NativeStaticMeshAssetWriteIssueCodeText;
 using iggy::native_play::NativeStaticMeshAssetWriteResult;
 using iggy::native_play::WriteNativeStaticMeshAssetText;
 using iggy::test::Expect;
@@ -181,6 +182,23 @@ void TestCheckedInFixtureAssetsRoundtripThroughWriter()
 	ExpectAssetFixtureWriterRoundtrip("player.igmesh", 6, 24);
 }
 
+void TestWriteIssueCodeText()
+{
+	Expect(
+		std::string { NativeStaticMeshAssetWriteIssueCodeText(
+			NativeStaticMeshAssetWriteIssueCode::InvalidMesh) } == "InvalidMesh",
+		"invalid mesh write issue text should match");
+	Expect(
+		std::string { NativeStaticMeshAssetWriteIssueCodeText(
+			NativeStaticMeshAssetWriteIssueCode::NonTriangleIndexCount) } ==
+			"NonTriangleIndexCount",
+		"non-triangle write issue text should match");
+	Expect(
+		std::string { NativeStaticMeshAssetWriteIssueCodeText(
+			static_cast<NativeStaticMeshAssetWriteIssueCode>(999)) } == "Unknown",
+		"unknown write issue text should use fallback");
+}
+
 void TestInvalidEmptyMeshReportsIssueAndNoText()
 {
 	const NativeStaticMeshAssetWriteResult result =
@@ -268,6 +286,7 @@ int main()
 	TestProceduralBeanWritesAndReloadsCounts();
 	TestProceduralNpcMarkerWritesAndReloadsCounts();
 	TestCheckedInFixtureAssetsRoundtripThroughWriter();
+	TestWriteIssueCodeText();
 	TestInvalidEmptyMeshReportsIssueAndNoText();
 	TestInvalidEmptyMeshFailureText();
 	TestNonTriangleIndexCountReportsIssueAndNoText();
