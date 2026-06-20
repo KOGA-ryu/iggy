@@ -91,7 +91,9 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 	if (!report.read.manifestPath.empty()) {
 		stream
 			<< " manifest="
-			<< report.read.manifestPath.string();
+			<< report.read.manifestPath.string()
+			<< " manifestExists="
+			<< (std::filesystem::exists(report.read.manifestPath) ? 1 : 0);
 	}
 	stream << "\n";
 
@@ -112,6 +114,7 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 			<< "asset=" << asset.name
 			<< " filename=" << asset.filename
 			<< " path=" << asset.path.string()
+			<< " exists=" << (std::filesystem::exists(asset.path) ? 1 : 0)
 			<< "\n";
 	}
 

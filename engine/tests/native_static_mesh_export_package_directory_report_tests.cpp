@@ -98,19 +98,22 @@ void TestBatchExportedDirectoryReportReads()
 			std::string::npos,
 		"package directory report should include nested manifest path");
 	Expect(
+		report.text.find("manifestExists=1") != std::string::npos,
+		"package directory report should include existing nested manifest diagnostic");
+	Expect(
 		report.text.find(
 			"asset=cube filename=cube.igmesh path=" +
-			(TempRoot() / "cube.igmesh").string()) != std::string::npos,
+			(TempRoot() / "cube.igmesh").string() + " exists=1") != std::string::npos,
 		"package directory report should include cube asset row");
 	Expect(
 		report.text.find(
 			"asset=bean filename=bean.igmesh path=" +
-			(TempRoot() / "bean.igmesh").string()) != std::string::npos,
+			(TempRoot() / "bean.igmesh").string() + " exists=1") != std::string::npos,
 		"package directory report should include bean asset row");
 	Expect(
 		report.text.find(
 			"asset=npc-marker filename=npc-marker.igmesh path=" +
-			(TempRoot() / "npc-marker.igmesh").string()) != std::string::npos,
+			(TempRoot() / "npc-marker.igmesh").string() + " exists=1") != std::string::npos,
 		"package directory report should include NPC marker asset row");
 	Expect(
 		report.text.find("packageManifestReadIssue") == std::string::npos,
@@ -241,6 +244,9 @@ void TestMissingNestedManifestStillReportsRead()
 			std::string::npos,
 		"missing nested mesh manifest path should still be reported");
 	Expect(
+		report.text.find("manifestExists=0") != std::string::npos,
+		"missing nested mesh manifest should report missing presence diagnostic");
+	Expect(
 		report.text.find("asset=cube filename=cube.igmesh") != std::string::npos,
 		"missing nested mesh manifest should not suppress asset rows");
 	CleanupTempRoot();
@@ -261,8 +267,13 @@ void TestMissingDeclaredAssetStillReportsRead()
 	Expect(
 		report.text.find(
 			"asset=cube filename=cube.igmesh path=" +
-			(TempRoot() / "cube.igmesh").string()) != std::string::npos,
-		"missing declared mesh asset path should still be reported");
+			(TempRoot() / "cube.igmesh").string() + " exists=0") != std::string::npos,
+		"missing declared mesh asset path should report missing presence diagnostic");
+	Expect(
+		report.text.find(
+			"asset=bean filename=bean.igmesh path=" +
+			(TempRoot() / "bean.igmesh").string() + " exists=1") != std::string::npos,
+		"present declared mesh asset path should report existing presence diagnostic");
 	CleanupTempRoot();
 }
 
