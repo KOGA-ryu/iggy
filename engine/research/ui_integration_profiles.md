@@ -675,6 +675,16 @@ geometry, check nested file existence, scan directories, reject extra files,
 reconstruct export policy/built-in ids, integrate CLI/export/verification/
 renderer/package loading, or change native app behavior.
 
+Native static mesh package directory reporting is complete as a no-write report
+builder over the directory reader. The report summary includes status,
+directory, asset count, issue count, and available package/nested manifest
+paths; successful reports print parsed asset rows in package-manifest row order,
+and package manifest read failures print deterministic
+`packageManifestReadIssue` rows. It uses only the reader result and does not
+verify nested files, parse mesh manifests, load `.igmesh`, inspect directories
+beyond the reader, integrate CLI/export/verification/package loading, or change
+native app behavior.
+
 Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play
 --dump-static-mesh-export-verification-report --output-dir DIR` prints a

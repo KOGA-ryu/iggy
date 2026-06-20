@@ -1595,6 +1595,43 @@ Native static mesh package directory reader complete:
   runtime/product/scene/server APIs, change gameplay, add glTF/JSON dependency,
   change schema/fixtures/CMake/docs-in-source, or open the next source packet.
 
+Native static mesh package directory report builder complete:
+- Added header-only no-write report builder over
+  `ReadNativeStaticMeshExportPackageDirectory(...)`.
+- New API includes `NativeStaticMeshExportPackageDirectoryReport`,
+  `NativeStaticMeshExportPackageDirectoryReadStatusText(...)`, local package
+  manifest read issue code text mapping for report rows, and
+  `BuildNativeStaticMeshExportPackageDirectoryReport(const std::filesystem::path &directory)`.
+- Report summary includes status, explicit directory, asset count, issue count,
+  package manifest path when available, and nested mesh manifest path when
+  available.
+- Successful reports emit one asset row per parsed package asset in row order:
+  `asset=<name> filename=<filename> path=<directory/filename>`.
+- Package manifest read failures emit deterministic
+  `packageManifestReadIssue code=... line=... token=...` rows.
+- The report uses only the package directory reader result and does not verify
+  nested files or inspect beyond the reader.
+- Valid exported directory report tests include summary and three asset rows.
+- Missing directory reports summary only and creates nothing.
+- File-not-directory reports summary only.
+- Missing package sidecar reports `PackageManifestReadFailed` plus
+  `FileOpenFailed` issue row.
+- Malformed package sidecar reports parser issue row.
+- Removing nested mesh manifest still reports `Read` and projected manifest
+  path.
+- Removing a declared mesh asset still reports `Read` and projected asset path.
+- Extra unrelated file still reports `Read` and does not appear in output.
+- This docs packet does not change source, tests, CMake, assets, shaders,
+  runtime, CLI flags, ParseArgs/usage, native app behavior, verification/export/
+  package-loading integration, package loading, renderer integration,
+  model-slot expansion, discovery/scanning/catalog/registry/source mutation/
+  repair/exact-extra-file rejection, export behavior, overwrite/create-directory/
+  temp replacement/arbitrary output path policy, semantic package acceptance,
+  policy reconstruction, mesh manifest parser, `.igmesh` loading, geometry
+  checks, schema/material/texture/normal/UV/animation expansion, glTF/JSON
+  dependencies, fixture rewrites, runtime/product/scene/server APIs, gameplay,
+  or next source packet scope.
+
 Native static mesh package manifest text reader complete:
 - Added a dependency-free, filesystem-free in-memory reader for the current
   generated package manifest text grammar.
@@ -2566,7 +2603,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
     integrated.
 74. Native static mesh verification package read issue rows are integrated.
 75. Native static mesh package directory reader is integrated.
-76. Dispatch richer diagnostics display, overlays/labels, frame request/
+76. Native static mesh package directory report builder is integrated.
+77. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

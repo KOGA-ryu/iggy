@@ -507,6 +507,9 @@ Recently completed optimized stretches:
   directory reader that reads `static-mesh-export-package-manifest.txt` and
   projects nested manifest and asset paths without checking file existence,
   loading meshes, scanning directories, or integrating with CLI/verification.
+  Native static mesh package directory reporting now adds a header-only no-write
+  report builder over that reader, printing a summary, optional package manifest
+  read issue rows, and parsed asset rows without inspecting beyond the reader.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1954,6 +1957,38 @@ overwrite/create-directory/temp replacement/arbitrary output path policy,
 change runtime/product/scene/server APIs, change gameplay, add glTF/JSON
 dependencies, change schema/fixtures/CMake/docs-in-source, or open the next
 source packet.
+
+Native Static Mesh Package Directory Report Builder is complete as a header-only
+no-write report surface over `ReadNativeStaticMeshExportPackageDirectory(...)`.
+`NativeStaticMeshExportPackageDirectoryReport.hpp` adds
+`NativeStaticMeshExportPackageDirectoryReport`,
+`NativeStaticMeshExportPackageDirectoryReadStatusText(...)`, local package
+manifest read issue code text mapping for report rows, and
+`BuildNativeStaticMeshExportPackageDirectoryReport(const std::filesystem::path &directory)`.
+The report summary includes status, explicit directory, asset count, issue
+count, package manifest path when available, and nested mesh manifest path when
+available. Successful reports emit one asset row per parsed package asset in row
+order: `asset=<name> filename=<filename> path=<directory/filename>`. Package
+manifest read failures emit deterministic
+`packageManifestReadIssue code=... line=... token=...` rows. The report uses
+only the package directory reader result and does not verify nested files or
+inspect beyond the reader. Tests cover valid exported directory summaries and
+three asset rows, missing directory summary-only output, file-not-directory
+summary-only output, missing package sidecar `PackageManifestReadFailed` with
+`FileOpenFailed`, malformed package sidecar parser issue rows, removed nested
+mesh manifest still reporting `Read` with projected manifest path, removed
+declared mesh asset still reporting `Read` with projected asset path, and extra
+unrelated files not appearing in output. This does not change CLI flags,
+ParseArgs, usage text, native app behavior, verification/export/package-loading
+integration, package loading, renderer integration, model-slot expansion,
+discovery/scanning/catalog/registry/source mutation/repair/exact-extra-file
+rejection, export behavior, overwrite/create-directory/temp replacement/
+arbitrary output path policy, semantic package acceptance, policy
+reconstruction, mesh manifest parsing, `.igmesh` loading, geometry checks,
+schema/material/texture/normal/UV/animation expansion, glTF/JSON dependencies,
+fixture rewrites, runtime/product/scene/server APIs, gameplay, source/test/
+CMake/assets/shader/runtime files in this docs packet, or next source packet
+scope.
 
 Exit criteria:
 - Load a package or explicit scenario.
