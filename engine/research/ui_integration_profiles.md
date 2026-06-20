@@ -1201,6 +1201,23 @@ generated package sidecar content, CLI parser/help/dispatch/conflicts, mesh
 manifest helper behavior, verification, file export, export report, export
 policy, asset writer, renderer/model-slot behavior, or parser scope.
 
+Native static mesh export package manifest failure text renderer extraction is
+complete without changing visible package manifest success output or CLI error
+wrapping. The pure
+`BuildNativeStaticMeshExportPackageManifestFailureText(const NativeStaticMeshExportPackageManifestResult &result)`
+helper now lives in `NativeStaticMeshExportPackageManifest.hpp` and serializes
+only the non-written package manifest failure body:
+`static mesh export package manifest failed: <Status> issues=<N>`.
+It intentionally excludes the `iggy_native_play:` prefix and trailing newline;
+the existing exception/catch path still supplies both.
+`PrintNativeStaticMeshExportPackageManifest()` delegates to it only after the
+existing `!result.written()` check. Successful package manifest text, generated
+package sidecar content, package manifest build semantics, `written()`
+semantics, result data shape, status strings, issue count semantics, CLI parser/
+help/dispatch/conflicts/exit behavior, mesh manifest failure text, file export
+helpers, verification/report/package-directory behavior, static model surfaces,
+renderer/model-slot behavior, and parser scope remain unchanged.
+
 Native static mesh package manifest text reader is complete as a dependency-free
 and filesystem-free in-memory parser for the generated package manifest grammar.
 It accepts only the generated header and `asset=NAME filename=FILENAME` rows,
