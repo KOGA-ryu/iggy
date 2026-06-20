@@ -603,6 +603,23 @@ add glTF/glb/JSON parsing, expand `.igmesh` schema, change renderer behavior,
 change runtime/product/scene/server/draw-list APIs, or change gameplay/scripted/
 final-state semantics.
 
+Native static mesh asset dump writer failure text renderer extraction is
+complete without changing visible success or unknown-asset behavior. The pure
+`BuildNativeStaticMeshAssetWriteFailureText(std::string_view name, const NativeStaticMeshAssetWriteResult &result)`
+helper now lives in `NativeStaticMeshAssetWriter.hpp` and serializes only the
+writer failure body:
+`failed to write static mesh asset: <name> issues=<N>`.
+`PrintNativeStaticMeshAssetDump(...)` delegates to it only after writer failure,
+while unknown-asset handling remains before writer work and raw `.igmesh`
+success stdout remains unchanged. The helper uses `result.issues.size()`.
+Writer result shape, `written()` semantics, issue generation, mesh validity,
+default policy, lookup, built-in meshes, CLI parser/help/dispatch/conflicts,
+file export, batch export, manifest/package manifest, verification,
+verification report, package-directory report, static model behavior,
+renderer/model-slot behavior, assets/fixtures, schema, package
+loading/discovery/acceptance, generated sidecars, export write policy, exact
+verifier behavior, and CMake remain unchanged.
+
 Native static mesh export policy is complete as app-local value-only metadata:
 `NativeStaticMeshExportPolicy.hpp` records stable built-in export refs for
 `cube`, `bean`, and `npc-marker` with default filenames `cube.igmesh`,

@@ -436,6 +436,10 @@ Recently completed optimized stretches:
   deterministic `.igmesh` text to stdout, and exits before `NativeVulkanApp`,
   SDL, or Vulkan launch; unknown names and conflicts with
   `--dump-static-model-load-report` fail nonzero with compact errors.
+  Native static mesh asset dump writer failure text renderer extraction now
+  adds `BuildNativeStaticMeshAssetWriteFailureText(...)`; writer failures in the
+  raw asset dump path delegate only the compact body through it while preserving
+  unknown-asset handling and raw `.igmesh` success stdout.
   Native static mesh export policy now adds value-only
   `NativeStaticMeshExportPolicy.hpp` for the built-in export names, default
   filenames, and id-to-CPU-mesh mapping; the existing dump CLI resolves through
@@ -1724,6 +1728,31 @@ expansion, materials/textures/descriptors/samplers/normals/UVs/animation/scene
 graph fields, renderer behavior/API change, runtime/product/scene/server/
 draw-list API change, gameplay/scripted/final-state semantic change, or docs
 mixed into source.
+
+Native Static Mesh Asset Dump Writer Failure Text Renderer Extraction is
+complete as a behavior-preserving raw dump failure-body cleanup.
+`NativeStaticMeshAssetWriter.hpp` now exposes pure
+`BuildNativeStaticMeshAssetWriteFailureText(std::string_view name, const NativeStaticMeshAssetWriteResult &result)`,
+which serializes only the compact writer failure body:
+`failed to write static mesh asset: <name> issues=<N>`. The helper excludes the
+app-level `iggy_native_play:` prefix and embedded trailing newline, preserving
+the existing catch path ownership. It uses `result.issues.size()` exactly as the
+previous inline CLI code did. `PrintNativeStaticMeshAssetDump(...)` still keeps
+unknown-asset handling before writer work and still writes raw successful
+`.igmesh` text to stdout. Exact helper coverage covers invalid writer results.
+Source verification passed `native_static_mesh_asset_writer_tests`,
+`iggy_native_play`, raw cube dump smoke preserving `# Native static mesh asset`
+and `tri 0 1 2`, unknown-asset smoke preserving
+`iggy_native_play: unknown static mesh asset: nope`, source
+`git diff --check`, and source `git diff --cached --check`. This packet does
+not change unknown-asset behavior, raw asset dump success helper/output, writer
+result shape, `written()` semantics, issue generation, mesh validity, default
+policy, lookup, built-in mesh behavior, CLI parser/help/dispatch/conflict
+behavior, file export, batch export, manifest/package manifest, verification,
+verification report, package-directory report, static model behavior, renderer
+behavior, assets/fixtures, schema, package loading/discovery/acceptance,
+generated sidecars, export write policy, exact verifier behavior, docs/source
+mixing, or CMake.
 
 Native Static Mesh Export Policy is complete as value-only native app metadata:
 `NativeStaticMeshExportPolicy.hpp` defines `NativeStaticMeshBuiltInExportId`
