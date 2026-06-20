@@ -203,7 +203,18 @@ void TestMissingOutputDirectoryReportFails()
 		BuildNativeStaticMeshExportDirectoryVerificationReport(
 			DefaultNativeStaticMeshExportPolicy(),
 			missing);
+	const NativeStaticMeshExportDirectoryVerificationReport dataReport =
+		BuildNativeStaticMeshExportDirectoryVerificationReportData(
+			DefaultNativeStaticMeshExportPolicy(),
+			missing);
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"missing directory report data builder should match full report structured fields");
+	ExpectTextRendererMatches(
+		report,
+		"missing directory report text renderer should reproduce report text");
 	Expect(!report.verified(), "missing directory report should fail");
 	Expect(
 		report.verification.status == NativeStaticMeshExportDirectoryVerificationStatus::MissingOutputDirectory,
@@ -226,7 +237,18 @@ void TestFilePathInsteadOfDirectoryReportFails()
 		BuildNativeStaticMeshExportDirectoryVerificationReport(
 			DefaultNativeStaticMeshExportPolicy(),
 			filePath);
+	const NativeStaticMeshExportDirectoryVerificationReport dataReport =
+		BuildNativeStaticMeshExportDirectoryVerificationReportData(
+			DefaultNativeStaticMeshExportPolicy(),
+			filePath);
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"file output path report data builder should match full report structured fields");
+	ExpectTextRendererMatches(
+		report,
+		"file output path report text renderer should reproduce report text");
 	Expect(!report.verified(), "file output path report should fail");
 	Expect(
 		report.verification.status == NativeStaticMeshExportDirectoryVerificationStatus::OutputDirectoryNotDirectory,
@@ -280,7 +302,18 @@ void TestManifestMismatchReportFails()
 
 	const NativeStaticMeshExportDirectoryVerificationReport report =
 		BuildDefaultReport();
+	const NativeStaticMeshExportDirectoryVerificationReport dataReport =
+		BuildNativeStaticMeshExportDirectoryVerificationReportData(
+			DefaultNativeStaticMeshExportPolicy(),
+			TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"manifest mismatch report data builder should match full report structured fields");
+	ExpectTextRendererMatches(
+		report,
+		"manifest mismatch report text renderer should reproduce report text");
 	Expect(!report.verified(), "manifest mismatch report should fail");
 	Expect(
 		report.verification.status == NativeStaticMeshExportDirectoryVerificationStatus::ManifestMismatch,
@@ -353,7 +386,18 @@ void TestPackageManifestMismatchReportFails()
 
 	const NativeStaticMeshExportDirectoryVerificationReport report =
 		BuildDefaultReport();
+	const NativeStaticMeshExportDirectoryVerificationReport dataReport =
+		BuildNativeStaticMeshExportDirectoryVerificationReportData(
+			DefaultNativeStaticMeshExportPolicy(),
+			TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"package manifest mismatch report data builder should match full report structured fields");
+	ExpectTextRendererMatches(
+		report,
+		"package manifest mismatch report text renderer should reproduce report text");
 	Expect(!report.verified(), "package manifest mismatch report should fail");
 	Expect(
 		report.verification.status == NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestMismatch,
@@ -466,7 +510,18 @@ void TestCorruptAssetReportFailsWithIssueCount()
 
 	const NativeStaticMeshExportDirectoryVerificationReport report =
 		BuildDefaultReport();
+	const NativeStaticMeshExportDirectoryVerificationReport dataReport =
+		BuildNativeStaticMeshExportDirectoryVerificationReportData(
+			DefaultNativeStaticMeshExportPolicy(),
+			TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"corrupt asset report data builder should match full report structured fields");
+	ExpectTextRendererMatches(
+		report,
+		"corrupt asset report text renderer should reproduce report text");
 	Expect(!report.verified(), "corrupt asset report should fail");
 	Expect(
 		report.verification.status == NativeStaticMeshExportDirectoryVerificationStatus::AssetLoadFailed,
@@ -521,7 +576,18 @@ void TestExtraUnrelatedFileIsIgnored()
 
 	const NativeStaticMeshExportDirectoryVerificationReport report =
 		BuildDefaultReport();
+	const NativeStaticMeshExportDirectoryVerificationReport dataReport =
+		BuildNativeStaticMeshExportDirectoryVerificationReportData(
+			DefaultNativeStaticMeshExportPolicy(),
+			TempRoot());
 
+	ExpectDataBuilderMatchesFullReport(
+		dataReport,
+		report,
+		"extra unrelated file report data builder should match full report structured fields");
+	ExpectTextRendererMatches(
+		report,
+		"extra unrelated file report text renderer should reproduce report text");
 	Expect(report.verified(), "extra unrelated file should not fail report");
 	Expect(report.verification.verifiedCount == 3, "extra unrelated file should not change verified count");
 	CleanupTempRoot();
