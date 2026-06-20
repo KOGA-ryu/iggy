@@ -566,6 +566,11 @@ Recently completed optimized stretches:
   `BuildNativeStaticMeshExportPackageDirectoryReportText(const NativeStaticMeshExportPackageDirectoryReport &report)`;
   the builder still collects structured data, assigns `report.text` from the
   helper, and preserves report text byte-for-byte.
+  Native static mesh package directory report data builder extraction now moves
+  structured collection into
+  `BuildNativeStaticMeshExportPackageDirectoryReportData(const std::filesystem::path &directory)`,
+  which returns diagnostics with empty `text`; the full builder calls it and then
+  assigns text through the renderer helper without changing report behavior.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -2386,6 +2391,29 @@ facts, `.igmesh` loading, geometry validation, policy/built-in reconstruction,
 discovery/scanning/catalog/registry, exact-extra-file rejection, renderer/model
 slot/schema/gameplay behavior, glTF/glb/JSON parser work, or next source packet
 scope.
+
+Native Static Mesh Package Directory Report Data Builder Extraction is complete
+as a behavior-preserving structured-data split. The new no-text helper
+`BuildNativeStaticMeshExportPackageDirectoryReportData(const std::filesystem::path &directory)`
+performs structured package report data collection and leaves `report.text`
+empty. Its responsibilities are the package directory read, nested mesh manifest
+read attempt/result, package-vs-nested-manifest comparison, package sidecar
+facts, nested manifest facts, and package-declared asset facts.
+`BuildNativeStaticMeshExportPackageDirectoryReport(...)` remains the full report
+builder by calling the data builder and then assigning
+`report.text = BuildNativeStaticMeshExportPackageDirectoryReportText(report)`.
+Full report text and behavior are preserved exactly: no report text, row,
+summary field, row-order, status, count, token, or newline changes. Focused
+tests compare no-text data-builder structured fields against the full builder
+for valid export, missing package sidecar, missing nested manifest, combined
+comparison mismatch, and missing declared asset; full builder text is still
+checked against the text renderer helper. This docs packet does not change
+`readOk()`, CLI exit behavior, core `issues=`, package directory reader
+status/data, exact verification/export/package acceptance, generated sidecar
+text, write policy, nested mesh-manifest-only path facts, `.igmesh` loading,
+geometry validation, policy/built-in reconstruction, discovery/scanning/catalog/
+registry, exact-extra-file rejection, renderer/model slot/schema/gameplay
+behavior, glTF/glb/JSON parser work, or next source packet scope.
 
 Exit criteria:
 - Load a package or explicit scenario.

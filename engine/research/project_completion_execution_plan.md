@@ -2077,6 +2077,35 @@ Native static mesh package directory report text renderer extraction complete:
   exact-extra-file rejection, renderer/model-slot/schema/gameplay behavior,
   glTF/glb/JSON parser work, or next source packet scope.
 
+Native static mesh package directory report data builder extraction complete:
+- Added no-text structured data builder
+  `BuildNativeStaticMeshExportPackageDirectoryReportData(const std::filesystem::path &directory)`.
+- Moved existing structured report data collection into that helper: package
+  directory read, nested mesh manifest read attempt/result, package-vs-nested-
+  manifest comparison, package sidecar facts, nested manifest facts, and
+  package-declared asset facts.
+- The data builder returns structured diagnostics with `text` empty.
+- `BuildNativeStaticMeshExportPackageDirectoryReport(...)` remains the full
+  report builder by calling the data builder and then assigning
+  `report.text = BuildNativeStaticMeshExportPackageDirectoryReportText(report)`.
+- Full report text output and behavior are preserved exactly: no report text
+  changes, rows, summary fields, row order, status/count/token changes, or
+  newline changes.
+- Focused tests compare no-text data-builder structured fields against the full
+  builder for valid export, missing package sidecar, missing nested manifest,
+  combined comparison mismatch, and missing declared asset.
+- Full builder text is still checked against the text renderer helper.
+- Builder verification passed `native_static_mesh_export_package_directory_report_tests`,
+  focused `ctest -R native_static_mesh_export_package_directory_report_tests`,
+  `iggy_native_play`, and source `git diff --check`.
+- This docs packet does not change `readOk()`, CLI exit behavior, core
+  `issues=`, package directory reader status/data, exact verification/export/
+  package acceptance, generated sidecar text, write policy, nested
+  mesh-manifest-only path facts, `.igmesh` loading, geometry validation,
+  policy/built-in reconstruction, discovery/scanning/catalog/registry,
+  exact-extra-file rejection, renderer/model-slot/schema/gameplay behavior,
+  glTF/glb/JSON parser work, or next source packet scope.
+
 Native static mesh package manifest text reader complete:
 - Added a dependency-free, filesystem-free in-memory reader for the current
   generated package manifest text grammar.
@@ -3068,7 +3097,9 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 88. Native static mesh package directory structured file facts are integrated.
 89. Native static mesh package directory report text renderer extraction is
     integrated.
-90. Dispatch richer diagnostics display, overlays/labels, frame request/
+90. Native static mesh package directory report data builder extraction is
+    integrated.
+91. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under
