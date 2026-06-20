@@ -16,6 +16,7 @@ using iggy::native_play::BuildNativeStaticMeshExportReport;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
 using iggy::native_play::NativeStaticMeshBuiltInExportId;
 using iggy::native_play::NativeStaticMeshExportManifestReadIssueCode;
+using iggy::native_play::NativeStaticMeshExportManifestReadIssueCodeText;
 using iggy::native_play::NativeStaticMeshExportManifestReadResult;
 using iggy::native_play::NativeStaticMeshExportManifestResult;
 using iggy::native_play::NativeStaticMeshExportManifestStatus;
@@ -372,6 +373,43 @@ void TestFileReaderPropagatesTextReaderIssues()
 		"malformed readable file should not report file-open failure");
 }
 
+void TestReadIssueCodeText()
+{
+	struct Case {
+		NativeStaticMeshExportManifestReadIssueCode code;
+		const char *text;
+	};
+
+	const Case cases[] = {
+		{ NativeStaticMeshExportManifestReadIssueCode::FileOpenFailed, "FileOpenFailed" },
+		{ NativeStaticMeshExportManifestReadIssueCode::EmptyInput, "EmptyInput" },
+		{ NativeStaticMeshExportManifestReadIssueCode::MalformedHeader, "MalformedHeader" },
+		{ NativeStaticMeshExportManifestReadIssueCode::UnsupportedVersion, "UnsupportedVersion" },
+		{ NativeStaticMeshExportManifestReadIssueCode::MalformedAssetCount, "MalformedAssetCount" },
+		{ NativeStaticMeshExportManifestReadIssueCode::MalformedByteCount, "MalformedByteCount" },
+		{ NativeStaticMeshExportManifestReadIssueCode::MissingField, "MissingField" },
+		{ NativeStaticMeshExportManifestReadIssueCode::MalformedAssetRow, "MalformedAssetRow" },
+		{ NativeStaticMeshExportManifestReadIssueCode::AssetCountMismatch, "AssetCountMismatch" },
+		{ NativeStaticMeshExportManifestReadIssueCode::ByteCountMismatch, "ByteCountMismatch" },
+		{ NativeStaticMeshExportManifestReadIssueCode::DuplicateAssetName, "DuplicateAssetName" },
+		{ NativeStaticMeshExportManifestReadIssueCode::DuplicateAssetFilename, "DuplicateAssetFilename" },
+		{ NativeStaticMeshExportManifestReadIssueCode::ExtraToken, "ExtraToken" },
+		{ NativeStaticMeshExportManifestReadIssueCode::UnexpectedLine, "UnexpectedLine" },
+	};
+
+	for (const Case &testCase : cases) {
+		Expect(
+			std::string(NativeStaticMeshExportManifestReadIssueCodeText(
+				testCase.code)) == testCase.text,
+			"mesh export manifest read issue code text should match stable spelling");
+	}
+	Expect(
+		std::string(NativeStaticMeshExportManifestReadIssueCodeText(
+			static_cast<NativeStaticMeshExportManifestReadIssueCode>(999))) ==
+			"Unknown",
+		"mesh export manifest read issue code text should report unknown fallback");
+}
+
 } // namespace
 
 int main()
@@ -392,6 +430,7 @@ int main()
 	TestFileReaderReadsGeneratedManifest();
 	TestFileReaderReportsMissingFile();
 	TestFileReaderPropagatesTextReaderIssues();
+	TestReadIssueCodeText();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;
