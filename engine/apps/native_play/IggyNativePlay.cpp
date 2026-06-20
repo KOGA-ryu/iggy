@@ -21,6 +21,7 @@
 #include "NativeStaticMeshExportDirectoryVerificationReport.hpp"
 #include "NativeStaticMeshFileExport.hpp"
 #include "NativeStaticMeshExportManifest.hpp"
+#include "NativeStaticMeshExportPackageManifest.hpp"
 #include "NativeStaticMeshExportPolicy.hpp"
 #include "NativeStaticMeshExportReport.hpp"
 #include "NativeStaticMeshAssetWriter.hpp"
@@ -34,6 +35,7 @@ namespace runtime = iggy::runtime;
 using iggy::native_play::BuildNativeSceneDrawItems;
 using iggy::native_play::BuildNativeStaticModelLoadReport;
 using iggy::native_play::BuildNativeStaticMeshExportManifestText;
+using iggy::native_play::BuildNativeStaticMeshExportPackageManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportReport;
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
@@ -60,11 +62,14 @@ using iggy::native_play::NativeStaticMeshExportReportEntry;
 using iggy::native_play::NativeStaticMeshExportReportStatus;
 using iggy::native_play::NativeStaticMeshExportManifestResult;
 using iggy::native_play::NativeStaticMeshExportManifestStatus;
+using iggy::native_play::NativeStaticMeshExportPackageManifestResult;
+using iggy::native_play::NativeStaticMeshExportPackageManifestStatus;
 using iggy::native_play::NativeStaticMeshAsset;
 using iggy::native_play::NativeStaticMeshAssetWriteResult;
 using iggy::native_play::NativeStaticMeshExportDirectoryVerificationReport;
 using iggy::native_play::NativeStaticMeshExportDirectoryVerificationResult;
 using iggy::native_play::NativeStaticMeshExportDirectoryVerificationStatus;
+using iggy::native_play::DefaultNativeStaticMeshExportPackagePolicy;
 using iggy::native_play::NativeProductSession;
 using iggy::native_play::NativeProductSessionConfig;
 using iggy::native_play::NativeSceneDrawItem;
@@ -87,6 +92,7 @@ struct LaunchOptions {
 	bool showHelp = false;
 	bool dumpStaticModelLoadReport = false;
 	bool dumpStaticMeshExportManifest = false;
+	bool dumpStaticMeshExportPackageManifest = false;
 	bool dumpStaticMeshExportReport = false;
 	bool dumpStaticMeshExportVerificationReport = false;
 	bool hasStaticMeshAssetDumpName = false;
@@ -222,6 +228,10 @@ LaunchOptions ParseArgs(int argc, char **argv)
 			options.dumpStaticMeshExportManifest = true;
 			continue;
 		}
+		if (arg == "--dump-static-mesh-export-package-manifest") {
+			options.dumpStaticMeshExportPackageManifest = true;
+			continue;
+		}
 		if (arg == "--dump-static-mesh-export-report") {
 			options.dumpStaticMeshExportReport = true;
 			continue;
@@ -299,6 +309,22 @@ LaunchOptions ParseArgs(int argc, char **argv)
 	}
 	if (!options.scriptedControls.empty() && !options.hasPlayPath)
 		throw std::runtime_error("--scripted-controls requires --play");
+	if (options.dumpStaticMeshExportPackageManifest && options.hasStaticMeshAssetOutputDir)
+		throw std::runtime_error("--dump-static-mesh-export-package-manifest cannot be combined with --output-dir");
+	if (options.dumpStaticMeshExportPackageManifest && options.exportStaticMeshAssets)
+		throw std::runtime_error("--dump-static-mesh-export-package-manifest cannot be combined with --export-static-mesh-assets");
+	if (options.dumpStaticMeshExportPackageManifest && options.verifyStaticMeshExport)
+		throw std::runtime_error("--dump-static-mesh-export-package-manifest cannot be combined with --verify-static-mesh-export");
+	if (options.dumpStaticMeshExportPackageManifest && options.dumpStaticMeshExportVerificationReport)
+		throw std::runtime_error("--dump-static-mesh-export-package-manifest cannot be combined with --dump-static-mesh-export-verification-report");
+	if (options.dumpStaticMeshExportPackageManifest && options.dumpStaticMeshExportManifest)
+		throw std::runtime_error("--dump-static-mesh-export-package-manifest cannot be combined with --dump-static-mesh-export-manifest");
+	if (options.dumpStaticMeshExportPackageManifest && options.dumpStaticMeshExportReport)
+		throw std::runtime_error("--dump-static-mesh-export-package-manifest cannot be combined with --dump-static-mesh-export-report");
+	if (options.dumpStaticMeshExportPackageManifest && options.hasStaticMeshAssetDumpName)
+		throw std::runtime_error("--dump-static-mesh-export-package-manifest cannot be combined with --dump-static-mesh-asset");
+	if (options.dumpStaticMeshExportPackageManifest && options.dumpStaticModelLoadReport)
+		throw std::runtime_error("--dump-static-mesh-export-package-manifest cannot be combined with --dump-static-model-load-report");
 	if (options.dumpStaticMeshExportVerificationReport && options.verifyStaticMeshExport)
 		throw std::runtime_error("--dump-static-mesh-export-verification-report cannot be combined with --verify-static-mesh-export");
 	if (options.dumpStaticMeshExportVerificationReport && options.exportStaticMeshAssets)
@@ -383,6 +409,9 @@ void PrintUsage()
 		<< "                                       without launching SDL/Vulkan.\n"
 		<< "  --dump-static-mesh-export-manifest  Print built-in mesh export manifest\n"
 		<< "                                       without writing files.\n"
+		<< "  --dump-static-mesh-export-package-manifest\n"
+		<< "                                       Print built-in mesh export package\n"
+		<< "                                       manifest without writing files.\n"
 		<< "  --dump-static-mesh-export-report    Print built-in mesh export status\n"
 		<< "                                       without writing files.\n"
 		<< "  --dump-static-mesh-asset NAME        Print a built-in .igmesh asset.\n"
@@ -521,6 +550,18 @@ const char *NativeStaticMeshExportManifestStatusName(
 	return "Unknown";
 }
 
+const char *NativeStaticMeshExportPackageManifestStatusName(
+	NativeStaticMeshExportPackageManifestStatus status)
+{
+	switch (status) {
+	case NativeStaticMeshExportPackageManifestStatus::Built:
+		return "Built";
+	case NativeStaticMeshExportPackageManifestStatus::InvalidPolicy:
+		return "InvalidPolicy";
+	}
+	return "Unknown";
+}
+
 void PrintNativeStaticMeshExportManifest()
 {
 	const NativeStaticMeshExportManifestResult result =
@@ -530,6 +571,20 @@ void PrintNativeStaticMeshExportManifest()
 		throw std::runtime_error(
 			std::string { "static mesh export manifest failed: " } +
 			NativeStaticMeshExportManifestStatusName(result.status) +
+			" issues=" + std::to_string(result.issueCount));
+	}
+	std::cout << result.text;
+}
+
+void PrintNativeStaticMeshExportPackageManifest()
+{
+	const NativeStaticMeshExportPackageManifestResult result =
+		BuildNativeStaticMeshExportPackageManifestText(
+			DefaultNativeStaticMeshExportPackagePolicy());
+	if (!result.written()) {
+		throw std::runtime_error(
+			std::string { "static mesh export package manifest failed: " } +
+			NativeStaticMeshExportPackageManifestStatusName(result.status) +
 			" issues=" + std::to_string(result.issueCount));
 	}
 	std::cout << result.text;
@@ -931,6 +986,10 @@ int main(int argc, char **argv)
 		}
 		if (options.dumpStaticMeshExportManifest) {
 			PrintNativeStaticMeshExportManifest();
+			return 0;
+		}
+		if (options.dumpStaticMeshExportPackageManifest) {
+			PrintNativeStaticMeshExportPackageManifest();
 			return 0;
 		}
 		if (options.dumpStaticMeshExportReport) {
