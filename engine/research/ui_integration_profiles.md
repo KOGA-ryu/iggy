@@ -570,6 +570,20 @@ rewrite fixtures, accept arbitrary output paths, add discovery/catalog/manifest
 policy, parse glTF/glb/JSON, expand `.igmesh`, change renderer behavior, or
 change gameplay/input/scripted/final-state semantics.
 
+Native static mesh built-in batch export CLI is complete as a constrained
+no-Qt app-shell batch export: `ExportNativeStaticMeshPolicyToDirectory(...)`
+preflights the output directory and all default target filenames before writing,
+then `iggy_native_play --export-static-mesh-assets --output-dir DIR` writes
+`cube.igmesh`, `bean.igmesh`, and `npc-marker.igmesh` and prints a compact
+status such as
+`static-mesh-export-batch output=/tmp/iggy-native-export-batch-smoke exported=3 bytes=33879`.
+Single-asset stdout and single-asset output-dir behavior remains unchanged, and
+batch conflicts with single-asset dump and static model load report modes. This
+does not add arbitrary output paths, overwrite/force/delete/rename behavior,
+directory creation, fixture rewrites, package discovery/scanning, registry/
+catalog/manifest policy, glTF/glb/JSON parsing, `.igmesh` schema expansion,
+renderer behavior, or gameplay/scripted/final-state semantic changes.
+
 The current product play UI projection:
 - Extends `UiFeatureContext` with direct product play build/state/latest-frame
   pointers and a presence helper.

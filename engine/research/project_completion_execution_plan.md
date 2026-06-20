@@ -1115,6 +1115,38 @@ Native static mesh output directory export CLI complete:
   product/scene/server/draw-list API change, or gameplay/input/scripted-control/
   final-state semantic change.
 
+Native static mesh built-in batch export CLI complete:
+- `ExportNativeStaticMeshPolicyToDirectory(...)` exports every asset in
+  `DefaultNativeStaticMeshExportPolicy()` to `DIR/defaultFilename`.
+- The batch helper preflights output directory existence/type and all target
+  filenames before writing, so common validation failures write no files.
+- Batch result/entry structs carry aggregate status, output directory, exported
+  count, total byte count, issue count, and per-asset file export results.
+- `iggy_native_play --export-static-mesh-assets --output-dir DIR` writes
+  `cube.igmesh`, `bean.igmesh`, and `npc-marker.igmesh`.
+- Batch success prints compact status only, for example
+  `static-mesh-export-batch output=/tmp/iggy-native-export-batch-smoke exported=3 bytes=33879`.
+- Existing single-asset stdout and single-asset output-dir behavior remains
+  unchanged.
+- Batch requires `--output-dir`, cannot combine with
+  `--dump-static-mesh-asset`, and cannot combine with
+  `--dump-static-model-load-report`.
+- Documented failures include:
+  `iggy_native_play: --export-static-mesh-assets requires --output-dir`,
+  `iggy_native_play: --export-static-mesh-assets cannot be combined with --dump-static-mesh-asset`,
+  `iggy_native_play: --dump-static-model-load-report cannot be combined with --dump-static-mesh-asset`, and
+  `iggy_native_play: --dump-static-model-load-report cannot be combined with --export-static-mesh-assets`.
+- Re-running into existing output fails with
+  `iggy_native_play: static mesh batch export failed: TargetAlreadyExists output=/tmp/iggy-native-export-batch-smoke/cube.igmesh issues=0`.
+- This is not arbitrary `--output PATH`, overwrite/force/delete/rename,
+  temp-file replacement, in-place canonicalization, checked-in fixture rewrite,
+  production directory creation, package discovery/scanning, registry/catalog/
+  manifest expansion, source mutation, glTF/glb/JSON parser/dependency work,
+  `.igmesh` schema expansion, material/texture/descriptor/sampler/normals/UV/
+  animation/scene graph/metadata fields, renderer behavior,
+  `NativeVulkanRenderer.cpp`, public renderer API, runtime/product/scene/server/
+  draw-list API change, or gameplay/scripted/final-state semantic change.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -2002,7 +2034,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 56. Native static mesh built-in export CLI is integrated.
 57. Native static mesh export policy is integrated.
 58. Native static mesh output directory export CLI is integrated.
-59. Dispatch richer diagnostics display, overlays/labels, frame request/
+59. Native static mesh built-in batch export CLI is integrated.
+60. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under

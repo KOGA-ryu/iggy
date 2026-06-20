@@ -431,6 +431,11 @@ Recently completed optimized stretches:
   `--output-dir DIR` for `--dump-static-mesh-asset NAME`, writing
   `DIR/defaultFilename` only when the directory already exists and the target
   does not; stdout dumping remains unchanged without `--output-dir`.
+  Native static mesh built-in batch export now adds
+  `ExportNativeStaticMeshPolicyToDirectory(...)` and
+  `iggy_native_play --export-static-mesh-assets --output-dir DIR`, preflighting
+  the output directory and all default targets before writing
+  `cube.igmesh`, `bean.igmesh`, and `npc-marker.igmesh`.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1424,6 +1429,32 @@ work, `.igmesh` schema expansion, materials/textures/descriptors/samplers/
 normals/UVs/skins/animation/transforms/scene graph/metadata fields, renderer
 behavior, `NativeVulkanRenderer.cpp`, public renderer API, runtime/product/
 scene/server/draw-list API change, or gameplay/input/scripted-control/
+final-state semantic change.
+
+Native Static Mesh Built-In Batch Export CLI is complete as a constrained
+multi-file export path for the default built-in mesh policy:
+`ExportNativeStaticMeshPolicyToDirectory(...)` exports every
+`DefaultNativeStaticMeshExportPolicy()` asset to `DIR/defaultFilename`. The
+batch helper preflights output directory existence/type and all target filenames
+before writing, so common validation failures write no files. It returns batch
+result/entry structs with aggregate status, output directory, exported count,
+total byte count, issue count, and per-asset file export results.
+`iggy_native_play --export-static-mesh-assets --output-dir DIR` writes
+`cube.igmesh`, `bean.igmesh`, and `npc-marker.igmesh` and prints compact success
+only, such as
+`static-mesh-export-batch output=/tmp/iggy-native-export-batch-smoke exported=3 bytes=33879`.
+Existing single-asset stdout and single-asset output-dir behavior are unchanged.
+Parser conflicts are explicit: batch requires `--output-dir`, cannot combine
+with `--dump-static-mesh-asset`, and cannot combine with
+`--dump-static-model-load-report`. Re-running into existing output reports
+`TargetAlreadyExists` for the first blocked target. This is not arbitrary
+`--output PATH`, overwrite/force/delete/rename/temp-file replacement, in-place
+canonicalization, checked-in fixture rewrite, production directory creation,
+package discovery/scanning, registry/catalog/manifest expansion, source
+mutation, glTF/glb/JSON parser/dependency work, `.igmesh` schema expansion,
+material/texture/descriptor/sampler/normals/UV/animation/scene graph/metadata
+fields, renderer behavior, `NativeVulkanRenderer.cpp`, public renderer API,
+runtime/product/scene/server/draw-list API change, or gameplay/scripted/
 final-state semantic change.
 
 Exit criteria:
