@@ -511,6 +511,10 @@ Recently completed optimized stretches:
   `iggy_native_play --verify-static-mesh-export --output-dir DIR`, validating
   the manifest sidecar and expected policy files/counts before NativeVulkanApp,
   SDL, or Vulkan startup while ignoring unrelated extra files.
+  Native static mesh export verification success text renderer extraction now
+  adds `BuildNativeStaticMeshExportDirectoryVerificationSuccessText(...)`; the
+  verify CLI delegates only successful stdout after `result.verified()` is true
+  while preserving all failure rendering and verifier semantics.
   Native static mesh export verification reporting now adds a read-only report
   builder around the existing verifier and
   `iggy_native_play --dump-static-mesh-export-verification-report --output-dir DIR`,
@@ -2165,6 +2169,33 @@ success output, verifier logic, status ordering, issue counts, problem paths,
 verified flags, entry data, sidecar matching, generated sidecar/export behavior,
 package acceptance semantics, package-directory diagnostics, CMake, fixtures,
 assets, renderer/model-slot behavior, package loading/discovery, schema, or
+glTF/glb/JSON parser work.
+
+Native Static Mesh Export Verification Success Text Renderer Extraction is
+complete as a behavior-preserving verify stdout cleanup.
+`NativeStaticMeshExportDirectoryVerification.hpp` now exposes pure
+`BuildNativeStaticMeshExportDirectoryVerificationSuccessText(const NativeStaticMeshExportDirectoryVerificationResult &result)`,
+which serializes only successful `--verify-static-mesh-export` stdout:
+`static-mesh-export-verify output=<dir> verified=<N> manifest=ok packageManifest=ok\n`.
+`PrintNativeStaticMeshExportDirectoryVerification(...)` delegates only the
+existing success `std::cout` block to the helper after `result.verified()` is
+known true. Verification failure rendering, problem-path selection, issue-count
+semantics, status ordering, exact sidecar matching, package manifest read
+diagnostics, CLI exit behavior, `VerifyNativeStaticMeshExportDirectory(...)`,
+result data shape, `verified()` semantics, sidecar state semantics, and
+app-level error prefix/newline behavior are unchanged. Exact helper coverage
+uses a real verified default batch export result. Source verification passed
+`native_static_mesh_export_directory_verification_tests`, `iggy_native_play`,
+success smoke preserving
+`static-mesh-export-verify output=/tmp/iggy-native-verify-success-renderer-129 verified=3 manifest=ok packageManifest=ok`,
+failure smoke preserving
+`iggy_native_play: static mesh export verification failed: MissingManifest output=/tmp/iggy-native-verify-failure-renderer-129/static-mesh-export-manifest.txt issues=0`,
+source `git diff --check`, and source `git diff --cached --check`. This packet
+does not change verification report/package-directory report behavior, built-in
+asset dump behavior, file export behavior, manifest/package-manifest behavior,
+CMake/docs mixing, ledger state, sidecar generation, export write policy,
+package loading/discovery/acceptance, `NativeVulkanRenderer.cpp`, renderer/
+model-slot behavior, checked-in assets or fixtures, `.igmesh` schema/loading, or
 glTF/glb/JSON parser work.
 
 Native Static Mesh Export Verification Report CLI is complete as a read-only

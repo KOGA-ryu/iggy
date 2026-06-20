@@ -872,6 +872,22 @@ issue counts, problem paths, verified flags, entry data, sidecar matching,
 generated sidecar/export behavior, package acceptance, package-directory
 diagnostics, renderer/model-slot behavior, or parser scope.
 
+Native static mesh export verification success text renderer extraction is
+complete without changing visible failure behavior or verifier semantics. The
+pure
+`BuildNativeStaticMeshExportDirectoryVerificationSuccessText(const NativeStaticMeshExportDirectoryVerificationResult &result)`
+helper now lives in `NativeStaticMeshExportDirectoryVerification.hpp` and
+serializes only successful verify stdout:
+`static-mesh-export-verify output=<dir> verified=<N> manifest=ok packageManifest=ok\n`.
+`PrintNativeStaticMeshExportDirectoryVerification(...)` delegates to it only
+after `result.verified()` is known true. Verification failure rendering, problem
+paths, issue counts, status ordering, exact sidecar matching, package manifest
+read diagnostics, CLI exit behavior, verifier result data, `verified()`, sidecar
+state semantics, app-level error prefix/newline behavior, verification reports,
+package-directory reports, file export, manifest/package-manifest behavior,
+renderer/model-slot behavior, checked-in assets or fixtures, `.igmesh`
+schema/loading, and parser scope remain unchanged.
+
 Native static mesh package manifest read issue text helper extraction is
 complete without changing visible report text or CLI behavior. The central
 `NativeStaticMeshExportPackageManifestReadIssueCodeText(...)` helper now lives in
