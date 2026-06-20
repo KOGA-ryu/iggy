@@ -257,6 +257,46 @@ void TestFilenameMismatchComparisonStillReportsRead()
 	CleanupTempRoot();
 }
 
+void TestCombinedComparisonOrderingStillReportsRead()
+{
+	ResetTempRoot();
+	ExportDefaultBatch();
+	WriteText(
+		TempRoot() / NativeStaticMeshExportManifestFilename,
+		"static-mesh-export-manifest version=1 assets=3 bytes=24412\n"
+		"asset=cube filename=cube-renamed.igmesh vertices=8 indices=36 bytes=523\n"
+		"asset=bean filename=bean.igmesh vertices=234 indices=1296 bytes=23882\n"
+		"asset=extra filename=extra.igmesh vertices=1 indices=3 bytes=7\n");
+
+	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
+
+	Expect(report.readOk(), "combined comparison mismatch should not fail package report");
+	Expect(
+		report.text.find("manifestRead=ok manifestReadIssues=0 manifestMatches=1 manifestMismatches=3 manifestComparisonIssues=3") !=
+			std::string::npos,
+		"combined comparison mismatch should update manifest comparison counts");
+	const std::size_t filenameMismatch = report.text.find(
+		"manifestComparison code=FilenameMismatch asset=cube packageFilename=cube.igmesh manifestFilename=cube-renamed.igmesh");
+	const std::size_t missingFromManifest = report.text.find(
+		"manifestComparison code=MissingFromManifest asset=npc-marker packageFilename=npc-marker.igmesh");
+	const std::size_t missingFromPackage = report.text.find(
+		"manifestComparison code=MissingFromPackage manifestAsset=extra manifestFilename=extra.igmesh");
+	Expect(
+		filenameMismatch != std::string::npos,
+		"combined comparison mismatch should include filename mismatch row");
+	Expect(
+		missingFromManifest != std::string::npos,
+		"combined comparison mismatch should include missing-from-manifest row");
+	Expect(
+		missingFromPackage != std::string::npos,
+		"combined comparison mismatch should include missing-from-package row");
+	Expect(
+		filenameMismatch < missingFromManifest &&
+			missingFromManifest < missingFromPackage,
+		"combined comparison mismatch should emit package-order rows before manifest-only rows");
+	CleanupTempRoot();
+}
+
 void TestMissingDirectoryReportFails()
 {
 	CleanupTempRoot();
@@ -527,6 +567,7 @@ int main()
 	TestMissingFromManifestComparisonStillReportsRead();
 	TestMissingFromPackageComparisonStillReportsRead();
 	TestFilenameMismatchComparisonStillReportsRead();
+	TestCombinedComparisonOrderingStillReportsRead();
 	TestMissingDirectoryReportFails();
 	TestFilePathInsteadOfDirectoryReportFails();
 	TestMissingPackageSidecarReportIncludesIssueRow();

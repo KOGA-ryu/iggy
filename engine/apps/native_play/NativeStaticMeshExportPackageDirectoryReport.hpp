@@ -26,6 +26,11 @@ struct NativeStaticMeshExportPackageDirectoryManifestComparison {
 	std::string manifestFilename;
 };
 
+struct NativeStaticMeshExportPackageDirectoryManifestComparisonResult {
+	std::size_t matchCount = 0;
+	std::vector<NativeStaticMeshExportPackageDirectoryManifestComparison> comparisons;
+};
+
 struct NativeStaticMeshExportPackageDirectoryReport {
 	NativeStaticMeshExportPackageDirectoryReadResult read;
 	std::string text;
@@ -136,6 +141,67 @@ struct NativeStaticMeshExportPackageDirectoryReport {
 	return "Unknown";
 }
 
+[[nodiscard]] inline NativeStaticMeshExportPackageDirectoryManifestComparisonResult
+CompareNativeStaticMeshExportPackageDirectoryManifestRows(
+	const std::vector<NativeStaticMeshExportPackageDirectoryAsset> &packageAssets,
+	const std::vector<NativeStaticMeshExportManifestAssetRow> &manifestAssets)
+{
+	NativeStaticMeshExportPackageDirectoryManifestComparisonResult result;
+	for (const NativeStaticMeshExportPackageDirectoryAsset &packageAsset :
+			packageAssets) {
+		const NativeStaticMeshExportManifestAssetRow *matchingManifestAsset =
+			nullptr;
+		for (const NativeStaticMeshExportManifestAssetRow &manifestAsset :
+				manifestAssets) {
+			if (manifestAsset.name == packageAsset.name) {
+				matchingManifestAsset = &manifestAsset;
+				break;
+			}
+		}
+		if (matchingManifestAsset == nullptr) {
+			result.comparisons.push_back({
+				NativeStaticMeshExportPackageDirectoryManifestComparisonCode::MissingFromManifest,
+				packageAsset.name,
+				packageAsset.filename,
+				{},
+			});
+			continue;
+		}
+		if (matchingManifestAsset->filename != packageAsset.filename) {
+			result.comparisons.push_back({
+				NativeStaticMeshExportPackageDirectoryManifestComparisonCode::FilenameMismatch,
+				packageAsset.name,
+				packageAsset.filename,
+				matchingManifestAsset->filename,
+			});
+			continue;
+		}
+		++result.matchCount;
+	}
+
+	for (const NativeStaticMeshExportManifestAssetRow &manifestAsset :
+			manifestAssets) {
+		bool hasPackageAsset = false;
+		for (const NativeStaticMeshExportPackageDirectoryAsset &packageAsset :
+				packageAssets) {
+			if (packageAsset.name == manifestAsset.name) {
+				hasPackageAsset = true;
+				break;
+			}
+		}
+		if (!hasPackageAsset) {
+			result.comparisons.push_back({
+				NativeStaticMeshExportPackageDirectoryManifestComparisonCode::MissingFromPackage,
+				manifestAsset.name,
+				{},
+				manifestAsset.filename,
+			});
+		}
+	}
+
+	return result;
+}
+
 [[nodiscard]] inline NativeStaticMeshExportPackageDirectoryReport
 BuildNativeStaticMeshExportPackageDirectoryReport(
 	const std::filesystem::path &directory)
@@ -151,61 +217,12 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 		hasManifestRead = true;
 	}
 
-	std::size_t manifestMatchCount = 0;
-	std::vector<NativeStaticMeshExportPackageDirectoryManifestComparison>
-		manifestComparisons;
+	NativeStaticMeshExportPackageDirectoryManifestComparisonResult
+		manifestComparison;
 	if (hasManifestRead && manifestRead.read()) {
-		for (const NativeStaticMeshExportPackageDirectoryAsset &packageAsset :
-				report.read.assets) {
-			const NativeStaticMeshExportManifestAssetRow *matchingManifestAsset =
-				nullptr;
-			for (const NativeStaticMeshExportManifestAssetRow &manifestAsset :
-					manifestRead.document.assets) {
-				if (manifestAsset.name == packageAsset.name) {
-					matchingManifestAsset = &manifestAsset;
-					break;
-				}
-			}
-			if (matchingManifestAsset == nullptr) {
-				manifestComparisons.push_back({
-					NativeStaticMeshExportPackageDirectoryManifestComparisonCode::MissingFromManifest,
-					packageAsset.name,
-					packageAsset.filename,
-					{},
-				});
-				continue;
-			}
-			if (matchingManifestAsset->filename != packageAsset.filename) {
-				manifestComparisons.push_back({
-					NativeStaticMeshExportPackageDirectoryManifestComparisonCode::FilenameMismatch,
-					packageAsset.name,
-					packageAsset.filename,
-					matchingManifestAsset->filename,
-				});
-				continue;
-			}
-			++manifestMatchCount;
-		}
-
-		for (const NativeStaticMeshExportManifestAssetRow &manifestAsset :
-				manifestRead.document.assets) {
-			bool hasPackageAsset = false;
-			for (const NativeStaticMeshExportPackageDirectoryAsset &packageAsset :
-					report.read.assets) {
-				if (packageAsset.name == manifestAsset.name) {
-					hasPackageAsset = true;
-					break;
-				}
-			}
-			if (!hasPackageAsset) {
-				manifestComparisons.push_back({
-					NativeStaticMeshExportPackageDirectoryManifestComparisonCode::MissingFromPackage,
-					manifestAsset.name,
-					{},
-					manifestAsset.filename,
-				});
-			}
-		}
+		manifestComparison = CompareNativeStaticMeshExportPackageDirectoryManifestRows(
+			report.read.assets,
+			manifestRead.document.assets);
 	}
 
 	struct PathFacts {
@@ -266,9 +283,9 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 				<< " manifestReadIssues=" << manifestRead.issues.size();
 			if (manifestRead.read()) {
 				stream
-					<< " manifestMatches=" << manifestMatchCount
-					<< " manifestMismatches=" << manifestComparisons.size()
-					<< " manifestComparisonIssues=" << manifestComparisons.size();
+					<< " manifestMatches=" << manifestComparison.matchCount
+					<< " manifestMismatches=" << manifestComparison.comparisons.size()
+					<< " manifestComparisonIssues=" << manifestComparison.comparisons.size();
 			}
 		}
 	}
@@ -312,7 +329,7 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 	}
 
 	for (const NativeStaticMeshExportPackageDirectoryManifestComparison &comparison :
-			manifestComparisons) {
+			manifestComparison.comparisons) {
 		stream
 			<< "manifestComparison"
 			<< " code=" << NativeStaticMeshExportPackageDirectoryManifestComparisonCodeText(
