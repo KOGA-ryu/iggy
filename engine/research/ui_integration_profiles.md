@@ -688,6 +688,15 @@ reader/parser syntax, package verification integration, discovery/scanning,
 write/repair behavior, renderer behavior, `.igmesh` schema changes, or gameplay
 semantics.
 
+Native static mesh package manifest text reader is complete as a dependency-free
+and filesystem-free in-memory parser for the generated package manifest grammar.
+It accepts only the generated header and `asset=NAME filename=FILENAME` rows,
+validates metadata, counts, basename-only filenames, duplicate rows, missing
+fields, extra tokens, and malformed rows, and does not reconstruct export
+policy or built-in ids. It is not wired into CLI, verification, export, file IO,
+package directory reading, discovery/scanning, repair/loading, renderer
+behavior, schema behavior, or gameplay semantics.
+
 Native static mesh batch package manifest sidecar export is complete as
 batch-only file output. `iggy_native_play --export-static-mesh-assets
 --output-dir DIR` now writes `static-mesh-export-package-manifest.txt` alongside

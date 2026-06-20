@@ -488,6 +488,10 @@ Recently completed optimized stretches:
   manifest/package manifest paths and verified flags in the read-only
   verification result; report summaries print `manifest=... packageManifest=...`
   and `--verify-static-mesh-export` success prints `packageManifest=ok`.
+  Native static mesh package manifest text reading now adds a dependency-free,
+  filesystem-free in-memory reader for the generated package-manifest grammar,
+  validating header and asset rows without CLI, export, verification, renderer,
+  file IO, or policy reconstruction integration.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1797,6 +1801,35 @@ parser/reader semantics, discovery/scanning/catalog/registry behavior, export
 write behavior, CLI flags, single-export sidecars, renderer behavior, shader
 behavior, runtime/product/scene/server APIs, `.igmesh` schema, fixtures,
 docs-in-source, or next research/scout implementation.
+
+Native Static Mesh Package Manifest Text Reader is complete as a dependency-free,
+filesystem-free in-memory reader for the current generated package manifest
+text grammar. `NativeStaticMeshExportPackageManifest.hpp` now includes
+`NativeStaticMeshExportPackageManifestDocument`,
+`NativeStaticMeshExportPackageManifestAssetRow`,
+`NativeStaticMeshExportPackageManifestReadIssueCode`,
+`NativeStaticMeshExportPackageManifestReadIssue`,
+`NativeStaticMeshExportPackageManifestReadResult`, and
+`ReadNativeStaticMeshExportPackageManifestText(...)`. The parser accepts only
+the generated header form
+`static-mesh-export-package-manifest format=... version=... manifest=... assets=N`
+and asset rows of `asset=NAME filename=FILENAME`. It validates format id,
+version, nested manifest filename, asset count, basename-only filenames,
+nonempty names/filenames, duplicate asset names, duplicate filenames,
+unexpected lines, missing fields, extra tokens, and malformed rows. It does not
+reconstruct `NativeStaticMeshExportPolicy` or built-in ids from manifest rows.
+Tests roundtrip the generated default package manifest text through the reader
+and cover empty input, bad header token, unsupported format/version, malformed
+asset count, missing header/asset fields, extra header/asset tokens, malformed
+asset rows, unexpected lines, asset count mismatch, duplicate names, duplicate
+filenames, separator-containing asset filenames, and separator-containing nested
+manifest filenames. This docs packet does not change source, tests, CMake,
+assets, shaders, runtime, filesystem access, package sidecar file reading,
+verification/report/export/CLI integration, package directory readers,
+discovery/scanning/catalog/registry behavior, repair/loading, exact-extra-file
+rejection, policy reconstruction from rows, export write behavior, CLI flags,
+renderer behavior, schema behavior, fixture rewrites, docs-in-source, or next
+research/scout implementation.
 
 Exit criteria:
 - Load a package or explicit scenario.

@@ -1485,6 +1485,45 @@ Native static mesh verification summary sidecar diagnostics complete:
   `.igmesh` schema, fixtures, docs-in-source, or next research/scout source
   implementation.
 
+Native static mesh package manifest text reader complete:
+- Added a dependency-free, filesystem-free in-memory reader for the current
+  generated package manifest text grammar.
+- New document/data surface includes
+  `NativeStaticMeshExportPackageManifestDocument`,
+  `NativeStaticMeshExportPackageManifestAssetRow`,
+  `NativeStaticMeshExportPackageManifestReadIssueCode`,
+  `NativeStaticMeshExportPackageManifestReadIssue`,
+  `NativeStaticMeshExportPackageManifestReadResult`, and
+  `ReadNativeStaticMeshExportPackageManifestText(...)`.
+- Parser accepts only the generated header grammar:
+  `static-mesh-export-package-manifest format=... version=... manifest=... assets=N`.
+- Parser accepts only generated asset rows:
+  `asset=NAME filename=FILENAME`.
+- Reader validates format id, version, nested manifest filename, asset count,
+  basename-only filenames, nonempty names/filenames, duplicate asset names,
+  duplicate filenames, unexpected lines, missing fields, extra tokens, and
+  malformed rows.
+- Reader does not reconstruct `NativeStaticMeshExportPolicy` or built-in ids
+  from manifest rows.
+- No CLI, verification, export, renderer, file IO, CMake, docs-in-source, or
+  runtime behavior changes.
+- Tests roundtrip the generated default package manifest text through the
+  reader and assert format, version, nested manifest filename, and asset row
+  order.
+- Malformed-input tests cover empty input, bad header token, unsupported format,
+  unsupported version, malformed asset count, missing header fields, missing
+  asset fields, extra header tokens, extra asset tokens, malformed asset row,
+  unexpected line, asset count mismatch, duplicate asset names, duplicate asset
+  filenames, separator-containing asset filenames, and separator-containing
+  nested manifest filename.
+- This docs packet does not change source, tests, CMake, assets, shaders,
+  runtime, filesystem access or package sidecar file reading,
+  verification/report/export/CLI integration, package directory readers,
+  discovery/scanning/catalog/registry behavior, repair/loading,
+  exact-extra-file rejection, policy reconstruction from rows, export write
+  behavior, CLI flags, renderer behavior, schema behavior, fixture rewrites,
+  docs-in-source, or next research/scout source implementation.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -2384,7 +2423,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 68. Native static mesh batch package manifest sidecar export is integrated.
 69. Native static mesh package sidecar verification is integrated.
 70. Native static mesh verification summary sidecar diagnostics are integrated.
-71. Dispatch richer diagnostics display, overlays/labels, frame request/
+71. Native static mesh package manifest text reader is integrated.
+72. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under
