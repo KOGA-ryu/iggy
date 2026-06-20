@@ -4,6 +4,7 @@
 #include "NativeStaticMeshExportPolicy.hpp"
 
 #include <cstddef>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -77,6 +78,31 @@ struct NativeStaticMeshExportReport {
 		report.issueCount += entry.issueCount;
 	}
 	return report;
+}
+
+[[nodiscard]] inline std::string BuildNativeStaticMeshExportReportText(
+	const NativeStaticMeshExportReport &report)
+{
+	std::ostringstream stream;
+	stream
+		<< "static-mesh-export-report"
+		<< " assets=" << report.assetCount
+		<< " writable=" << report.writableCount
+		<< " bytes=" << report.byteCount
+		<< " issues=" << report.issueCount
+		<< "\n";
+	for (const NativeStaticMeshExportReportEntry &entry : report.entries) {
+		stream
+			<< "asset=" << entry.name
+			<< " filename=" << entry.defaultFilename
+			<< " status=" << NativeStaticMeshExportReportStatusText(entry.status)
+			<< " vertices=" << entry.vertexCount
+			<< " indices=" << entry.indexCount
+			<< " bytes=" << entry.byteCount
+			<< " issues=" << entry.issueCount
+			<< "\n";
+	}
+	return stream.str();
 }
 
 } // namespace iggy::native_play

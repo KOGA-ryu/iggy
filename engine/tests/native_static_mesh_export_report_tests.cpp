@@ -11,6 +11,7 @@
 namespace {
 
 using iggy::native_play::BuildNativeStaticMeshExportReport;
+using iggy::native_play::BuildNativeStaticMeshExportReportText;
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
 using iggy::native_play::NativeStaticMeshAssetWriteResult;
@@ -155,6 +156,42 @@ void TestExportReportStatusText()
 		"export report status text should report unknown fallback");
 }
 
+void TestDefaultReportText()
+{
+	const NativeStaticMeshExportReport report =
+		BuildNativeStaticMeshExportReport(DefaultNativeStaticMeshExportPolicy());
+
+	const std::string expected =
+		"static-mesh-export-report assets=3 writable=3 bytes=33879 issues=0\n"
+		"asset=cube filename=cube.igmesh status=Writable vertices=8 indices=36 bytes=523 issues=0\n"
+		"asset=bean filename=bean.igmesh status=Writable vertices=234 indices=1296 bytes=23882 issues=0\n"
+		"asset=npc-marker filename=npc-marker.igmesh status=Writable vertices=98 indices=504 bytes=9474 issues=0\n";
+	Expect(
+		BuildNativeStaticMeshExportReportText(report) == expected,
+		"default static mesh export report text should match CLI contract");
+}
+
+void TestCustomPolicyReportText()
+{
+	const NativeStaticMeshExportPolicy policy {
+		{
+			{ NativeStaticMeshBuiltInExportId::Bean, "duplicate", "bean-a.igmesh" },
+			{ NativeStaticMeshBuiltInExportId::Cube, "duplicate", "cube-b.igmesh" },
+		},
+	};
+
+	const NativeStaticMeshExportReport report =
+		BuildNativeStaticMeshExportReport(policy);
+
+	const std::string expected =
+		"static-mesh-export-report assets=2 writable=2 bytes=24405 issues=0\n"
+		"asset=duplicate filename=bean-a.igmesh status=Writable vertices=234 indices=1296 bytes=23882 issues=0\n"
+		"asset=duplicate filename=cube-b.igmesh status=Writable vertices=8 indices=36 bytes=523 issues=0\n";
+	Expect(
+		BuildNativeStaticMeshExportReportText(report) == expected,
+		"custom static mesh export report text should preserve duplicate policy row order");
+}
+
 } // namespace
 
 int main()
@@ -164,6 +201,8 @@ int main()
 	TestDefaultReportAggregatesTotals();
 	TestCustomPolicyPreservesOrderAndDuplicateRefs();
 	TestExportReportStatusText();
+	TestDefaultReportText();
+	TestCustomPolicyReportText();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

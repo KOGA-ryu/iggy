@@ -39,6 +39,7 @@ using iggy::native_play::BuildNativeStaticMeshExportManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReport;
 using iggy::native_play::BuildNativeStaticMeshExportReport;
+using iggy::native_play::BuildNativeStaticMeshExportReportText;
 using iggy::native_play::BuildNativeStaticModelLoadReportText;
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
@@ -59,9 +60,6 @@ using iggy::native_play::NativeStaticMeshFileExportResult;
 using iggy::native_play::NativeStaticMeshFileExportStatus;
 using iggy::native_play::NativeStaticMeshFileExportStatusText;
 using iggy::native_play::NativeStaticMeshExportReport;
-using iggy::native_play::NativeStaticMeshExportReportEntry;
-using iggy::native_play::NativeStaticMeshExportReportStatus;
-using iggy::native_play::NativeStaticMeshExportReportStatusText;
 using iggy::native_play::NativeStaticMeshExportManifestResult;
 using iggy::native_play::NativeStaticMeshExportManifestStatus;
 using iggy::native_play::NativeStaticMeshExportManifestStatusText;
@@ -481,24 +479,7 @@ void PrintNativeStaticModelLoadReport(const NativeStaticModelLoadReport &report)
 
 void PrintNativeStaticMeshExportReport(const NativeStaticMeshExportReport &report)
 {
-	std::cout
-		<< "static-mesh-export-report"
-		<< " assets=" << report.assetCount
-		<< " writable=" << report.writableCount
-		<< " bytes=" << report.byteCount
-		<< " issues=" << report.issueCount
-		<< "\n";
-	for (const NativeStaticMeshExportReportEntry &entry : report.entries) {
-		std::cout
-			<< "asset=" << entry.name
-			<< " filename=" << entry.defaultFilename
-			<< " status=" << NativeStaticMeshExportReportStatusText(entry.status)
-			<< " vertices=" << entry.vertexCount
-			<< " indices=" << entry.indexCount
-			<< " bytes=" << entry.byteCount
-			<< " issues=" << entry.issueCount
-			<< "\n";
-	}
+	std::cout << BuildNativeStaticMeshExportReportText(report);
 }
 
 void PrintNativeStaticMeshExportManifest()
