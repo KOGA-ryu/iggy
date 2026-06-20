@@ -50,4 +50,4 @@ packet	status	department	owner	source_commit	source_review	docs_commit	docs_revi
 113_native_static_asset_next_boundary_scout	complete	integration	finisher	e43a5e9a	PASS-planner	617f43a5	not_requested		closed source and docs after native static mesh export directory verification status text helper extraction	2026-06-20
 114_native_static_asset_next_boundary_scout	complete	integration	finisher	43b5916a	PASS-planner	a08265d8	not_requested		closed source and docs after native static mesh file export status text helper extraction	2026-06-20
 115_native_static_asset_next_boundary_scout	complete	integration	finisher	06f1251a	PASS-planner	ab7d935a	not_requested		closed source and docs after native static mesh export report status text helper extraction	2026-06-20
-116_native_static_asset_next_boundary_scout	build_ready	integration	builder		PASS-planner				Build Native Static Mesh Export Manifest Status Text Helper Extraction from researcher PASS	2026-06-20
+116_native_static_asset_next_boundary_scout	docs_ready	integration	finisher	49b1bc4c	PASS-planner				Sync Native Static Mesh Export Manifest Status Text Helper Extraction docs from source commit 49b1bc4c	2026-06-20
