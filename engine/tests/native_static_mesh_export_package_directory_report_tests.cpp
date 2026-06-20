@@ -110,7 +110,7 @@ void TestBatchExportedDirectoryReportReads()
 				" manifestExists=1 manifestRegularFile=1 manifestBytes=" +
 				std::to_string(FileByteCount(
 					TempRoot() / NativeStaticMeshExportManifestFilename)) +
-				" manifestRead=ok manifestReadIssues=0") !=
+				" manifestRead=ok manifestReadIssues=0 manifestMatches=3 manifestMismatches=0") !=
 			std::string::npos,
 		"package directory report should include nested manifest file and read facts");
 	Expect(
@@ -142,6 +142,9 @@ void TestBatchExportedDirectoryReportReads()
 		report.text.find("\nmanifestReadIssue code=") == std::string::npos,
 		"successful package directory report should not include manifest read issue rows");
 	Expect(
+		report.text.find("manifestComparison") == std::string::npos,
+		"successful package directory report should not include comparison rows");
+	Expect(
 		report.text.find(
 			"manifestAsset=cube filename=cube.igmesh vertices=8 indices=36 bytes=523") !=
 			std::string::npos,
@@ -163,6 +166,94 @@ void TestBatchExportedDirectoryReportReads()
 			report.text.find("manifestAsset=npc-marker") <
 				report.text.find("asset=cube filename=cube.igmesh path="),
 		"manifest asset rows should preserve manifest order and precede package asset rows");
+	CleanupTempRoot();
+}
+
+void TestMissingFromManifestComparisonStillReportsRead()
+{
+	ResetTempRoot();
+	ExportDefaultBatch();
+	WriteText(
+		TempRoot() / NativeStaticMeshExportManifestFilename,
+		"static-mesh-export-manifest version=1 assets=2 bytes=24405\n"
+		"asset=cube filename=cube.igmesh vertices=8 indices=36 bytes=523\n"
+		"asset=bean filename=bean.igmesh vertices=234 indices=1296 bytes=23882\n");
+
+	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
+
+	Expect(report.readOk(), "missing-from-manifest comparison should not fail package report");
+	Expect(
+		report.text.find("manifestRead=ok manifestReadIssues=0 manifestMatches=2 manifestMismatches=1") !=
+			std::string::npos,
+		"missing-from-manifest comparison should update manifest comparison counts");
+	Expect(
+		report.text.find(
+			"manifestComparison code=MissingFromManifest asset=npc-marker packageFilename=npc-marker.igmesh") !=
+			std::string::npos,
+		"missing-from-manifest comparison should emit deterministic comparison row");
+	Expect(
+		report.text.find("asset=npc-marker filename=npc-marker.igmesh") != std::string::npos,
+		"missing-from-manifest comparison should keep package asset rows");
+	CleanupTempRoot();
+}
+
+void TestMissingFromPackageComparisonStillReportsRead()
+{
+	ResetTempRoot();
+	ExportDefaultBatch();
+	WriteText(
+		TempRoot() / NativeStaticMeshExportManifestFilename,
+		"static-mesh-export-manifest version=1 assets=4 bytes=33886\n"
+		"asset=cube filename=cube.igmesh vertices=8 indices=36 bytes=523\n"
+		"asset=bean filename=bean.igmesh vertices=234 indices=1296 bytes=23882\n"
+		"asset=npc-marker filename=npc-marker.igmesh vertices=98 indices=504 bytes=9474\n"
+		"asset=extra filename=extra.igmesh vertices=1 indices=3 bytes=7\n");
+
+	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
+
+	Expect(report.readOk(), "missing-from-package comparison should not fail package report");
+	Expect(
+		report.text.find("manifestRead=ok manifestReadIssues=0 manifestMatches=3 manifestMismatches=1") !=
+			std::string::npos,
+		"missing-from-package comparison should update manifest comparison counts");
+	Expect(
+		report.text.find(
+			"manifestComparison code=MissingFromPackage manifestAsset=extra manifestFilename=extra.igmesh") !=
+			std::string::npos,
+		"missing-from-package comparison should emit deterministic comparison row");
+	Expect(
+		report.text.find("manifestAsset=extra filename=extra.igmesh vertices=1 indices=3 bytes=7") !=
+			std::string::npos,
+		"missing-from-package comparison should keep projected manifest asset row");
+	CleanupTempRoot();
+}
+
+void TestFilenameMismatchComparisonStillReportsRead()
+{
+	ResetTempRoot();
+	ExportDefaultBatch();
+	WriteText(
+		TempRoot() / NativeStaticMeshExportManifestFilename,
+		"static-mesh-export-manifest version=1 assets=3 bytes=33879\n"
+		"asset=cube filename=cube-renamed.igmesh vertices=8 indices=36 bytes=523\n"
+		"asset=bean filename=bean.igmesh vertices=234 indices=1296 bytes=23882\n"
+		"asset=npc-marker filename=npc-marker.igmesh vertices=98 indices=504 bytes=9474\n");
+
+	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
+
+	Expect(report.readOk(), "filename mismatch comparison should not fail package report");
+	Expect(
+		report.text.find("manifestRead=ok manifestReadIssues=0 manifestMatches=2 manifestMismatches=1") !=
+			std::string::npos,
+		"filename mismatch comparison should update manifest comparison counts");
+	Expect(
+		report.text.find(
+			"manifestComparison code=FilenameMismatch asset=cube packageFilename=cube.igmesh manifestFilename=cube-renamed.igmesh") !=
+			std::string::npos,
+		"filename mismatch comparison should emit deterministic comparison row");
+	Expect(
+		report.text.find("asset=cube filename=cube.igmesh path=") != std::string::npos,
+		"filename mismatch comparison should keep package asset row");
 	CleanupTempRoot();
 }
 
@@ -316,6 +407,9 @@ void TestMissingNestedManifestStillReportsRead()
 		report.text.find("manifestAsset=") == std::string::npos,
 		"missing nested mesh manifest should not emit manifest asset rows");
 	Expect(
+		report.text.find("manifestComparison") == std::string::npos,
+		"missing nested mesh manifest should not emit comparison rows");
+	Expect(
 		report.text.find("asset=cube filename=cube.igmesh") != std::string::npos,
 		"missing nested mesh manifest should not suppress asset rows");
 	CleanupTempRoot();
@@ -347,6 +441,9 @@ void TestMalformedNestedManifestStillReportsRead()
 	Expect(
 		report.text.find("manifestAsset=") == std::string::npos,
 		"malformed nested mesh manifest should not emit manifest asset rows");
+	Expect(
+		report.text.find("manifestComparison") == std::string::npos,
+		"malformed nested mesh manifest should not emit comparison rows");
 	Expect(
 		report.text.find("asset=cube filename=cube.igmesh") != std::string::npos,
 		"malformed nested mesh manifest should not suppress asset rows");
@@ -427,6 +524,9 @@ void TestExtraUnrelatedFileIsIgnored()
 int main()
 {
 	TestBatchExportedDirectoryReportReads();
+	TestMissingFromManifestComparisonStillReportsRead();
+	TestMissingFromPackageComparisonStillReportsRead();
+	TestFilenameMismatchComparisonStillReportsRead();
 	TestMissingDirectoryReportFails();
 	TestFilePathInsteadOfDirectoryReportFails();
 	TestMissingPackageSidecarReportIncludesIssueRow();

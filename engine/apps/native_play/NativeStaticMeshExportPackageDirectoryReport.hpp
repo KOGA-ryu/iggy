@@ -8,8 +8,23 @@
 #include <sstream>
 #include <string>
 #include <system_error>
+#include <vector>
 
 namespace iggy::native_play {
+
+enum class NativeStaticMeshExportPackageDirectoryManifestComparisonCode {
+	MissingFromManifest,
+	MissingFromPackage,
+	FilenameMismatch,
+};
+
+struct NativeStaticMeshExportPackageDirectoryManifestComparison {
+	NativeStaticMeshExportPackageDirectoryManifestComparisonCode code =
+		NativeStaticMeshExportPackageDirectoryManifestComparisonCode::MissingFromManifest;
+	std::string name;
+	std::string packageFilename;
+	std::string manifestFilename;
+};
 
 struct NativeStaticMeshExportPackageDirectoryReport {
 	NativeStaticMeshExportPackageDirectoryReadResult read;
@@ -107,6 +122,20 @@ struct NativeStaticMeshExportPackageDirectoryReport {
 	return "Unknown";
 }
 
+[[nodiscard]] inline const char *NativeStaticMeshExportPackageDirectoryManifestComparisonCodeText(
+	NativeStaticMeshExportPackageDirectoryManifestComparisonCode code)
+{
+	switch (code) {
+	case NativeStaticMeshExportPackageDirectoryManifestComparisonCode::MissingFromManifest:
+		return "MissingFromManifest";
+	case NativeStaticMeshExportPackageDirectoryManifestComparisonCode::MissingFromPackage:
+		return "MissingFromPackage";
+	case NativeStaticMeshExportPackageDirectoryManifestComparisonCode::FilenameMismatch:
+		return "FilenameMismatch";
+	}
+	return "Unknown";
+}
+
 [[nodiscard]] inline NativeStaticMeshExportPackageDirectoryReport
 BuildNativeStaticMeshExportPackageDirectoryReport(
 	const std::filesystem::path &directory)
@@ -120,6 +149,63 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 		manifestRead = ReadNativeStaticMeshExportManifestFile(
 			report.read.manifestPath);
 		hasManifestRead = true;
+	}
+
+	std::size_t manifestMatchCount = 0;
+	std::vector<NativeStaticMeshExportPackageDirectoryManifestComparison>
+		manifestComparisons;
+	if (hasManifestRead && manifestRead.read()) {
+		for (const NativeStaticMeshExportPackageDirectoryAsset &packageAsset :
+				report.read.assets) {
+			const NativeStaticMeshExportManifestAssetRow *matchingManifestAsset =
+				nullptr;
+			for (const NativeStaticMeshExportManifestAssetRow &manifestAsset :
+					manifestRead.document.assets) {
+				if (manifestAsset.name == packageAsset.name) {
+					matchingManifestAsset = &manifestAsset;
+					break;
+				}
+			}
+			if (matchingManifestAsset == nullptr) {
+				manifestComparisons.push_back({
+					NativeStaticMeshExportPackageDirectoryManifestComparisonCode::MissingFromManifest,
+					packageAsset.name,
+					packageAsset.filename,
+					{},
+				});
+				continue;
+			}
+			if (matchingManifestAsset->filename != packageAsset.filename) {
+				manifestComparisons.push_back({
+					NativeStaticMeshExportPackageDirectoryManifestComparisonCode::FilenameMismatch,
+					packageAsset.name,
+					packageAsset.filename,
+					matchingManifestAsset->filename,
+				});
+				continue;
+			}
+			++manifestMatchCount;
+		}
+
+		for (const NativeStaticMeshExportManifestAssetRow &manifestAsset :
+				manifestRead.document.assets) {
+			bool hasPackageAsset = false;
+			for (const NativeStaticMeshExportPackageDirectoryAsset &packageAsset :
+					report.read.assets) {
+				if (packageAsset.name == manifestAsset.name) {
+					hasPackageAsset = true;
+					break;
+				}
+			}
+			if (!hasPackageAsset) {
+				manifestComparisons.push_back({
+					NativeStaticMeshExportPackageDirectoryManifestComparisonCode::MissingFromPackage,
+					manifestAsset.name,
+					{},
+					manifestAsset.filename,
+				});
+			}
+		}
 	}
 
 	struct PathFacts {
@@ -178,6 +264,11 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 			stream
 				<< " manifestRead=" << (manifestRead.read() ? "ok" : "invalid")
 				<< " manifestReadIssues=" << manifestRead.issues.size();
+			if (manifestRead.read()) {
+				stream
+					<< " manifestMatches=" << manifestMatchCount
+					<< " manifestMismatches=" << manifestComparisons.size();
+			}
 		}
 	}
 	stream << "\n";
@@ -217,6 +308,30 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 				<< " bytes=" << asset.byteCount
 				<< "\n";
 		}
+	}
+
+	for (const NativeStaticMeshExportPackageDirectoryManifestComparison &comparison :
+			manifestComparisons) {
+		stream
+			<< "manifestComparison"
+			<< " code=" << NativeStaticMeshExportPackageDirectoryManifestComparisonCodeText(
+				comparison.code);
+		if (comparison.code ==
+				NativeStaticMeshExportPackageDirectoryManifestComparisonCode::MissingFromPackage) {
+			stream
+				<< " manifestAsset=" << comparison.name
+				<< " manifestFilename=" << comparison.manifestFilename;
+		} else {
+			stream
+				<< " asset=" << comparison.name
+				<< " packageFilename=" << comparison.packageFilename;
+			if (comparison.code ==
+					NativeStaticMeshExportPackageDirectoryManifestComparisonCode::FilenameMismatch) {
+				stream
+					<< " manifestFilename=" << comparison.manifestFilename;
+			}
+		}
+		stream << "\n";
 	}
 
 	for (const NativeStaticMeshExportPackageDirectoryAsset &asset :
