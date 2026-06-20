@@ -401,6 +401,10 @@ Recently completed optimized stretches:
   `NpcActor`, `Player` order, records per-slot filename/status/fallback/issues/
   vertex/index counts, aggregates loaded/failed/missing counts, and maps report
   fallbacks to `Cube`, `Cube`, `ProceduralNpcMarker`, and `ProceduralBean`.
+  Native static model load status text helper extraction now centralizes
+  `NativeStaticModelLoadStatusText(...)` beside the load status enum, and static
+  model load report `status=...` rendering uses it while preserving report
+  output byte-for-byte.
   `NativeVulkanRenderer.cpp` was not touched. Native static model load report
   CLI dumping now adds `iggy_native_play --dump-static-model-load-report`; the
   app builds `BuildNativeStaticModelLoadReport(DefaultNativeStaticModelPolicy(),
@@ -1500,6 +1504,29 @@ texture/descriptor/sampler policy, normals/UVs/animation/skins/scene graph/
 transforms work, staging/device-local upload policy, Linux/dGPU policy, backend
 abstraction, CLI/debugger output change, or gameplay/input/scripted-control
 change.
+
+Native Static Model Load Status Text Helper Extraction is complete as a
+behavior-preserving load status text cleanup. The enum-owned inline helper
+`NativeStaticModelLoadStatusText(...)` now lives beside
+`NativeStaticModelLoadStatus` in `NativeStaticModelLoadReport.hpp`. Static model
+load report `status=...` rendering uses the central helper after removing the
+CLI-local status switch from `IggyNativePlay.cpp`. Stable status strings are
+`MissingPolicyRef`, `Loaded`, and `LoadFailed`, with fallback `Unknown`.
+`NativeStaticModelFallbackKindName(...)` remains local and unchanged for a
+possible later packet. Direct static model load report tests cover
+`MissingPolicyRef`, `Loaded`, `LoadFailed`, and out-of-range `Unknown` fallback.
+Source verification passed `native_static_model_load_report_tests`,
+`iggy_native_play`, CLI smoke for `--dump-static-model-load-report`, `rg` checks
+for the summary row and all four `status=Loaded` slot rows, and source
+`git diff --check`. Successful `--dump-static-model-load-report` output is
+preserved byte-for-byte for checked-in assets: summary row, fixed row order,
+slot names, filenames, statuses, fallbacks, counts, issue counts, and trailing
+newlines. This packet does not change static model policy defaults or lookup,
+static model load report output, row order, load status assignment, fallback
+behavior, CLI parser/help/dispatch/conflict/exit behavior, renderer/model-slot
+behavior, static mesh export/report/manifest/package/verification/package-
+directory behavior, CMake, fixtures, assets, package loading/discovery, write
+policy, schema, or glTF/glb/JSON parser work.
 
 Native Static Model Load Report CLI Dump is complete for no-Qt asset
 diagnostics: `iggy_native_play` accepts `--dump-static-model-load-report` through

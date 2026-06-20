@@ -504,6 +504,21 @@ descriptor/sampler policy, staging/device-local upload, Linux/dGPU policy,
 backend abstraction, CLI/debugger output, or gameplay/input/scripted-control
 behavior.
 
+Native static model load status text helper extraction is complete without
+changing visible load-report output or CLI behavior. The enum-owned
+`NativeStaticModelLoadStatusText(...)` helper now lives in
+`NativeStaticModelLoadReport.hpp` beside `NativeStaticModelLoadStatus`, and
+static model load report `status=...` rendering uses it. Stable status strings
+are `MissingPolicyRef`, `Loaded`, `LoadFailed`, and fallback `Unknown`. The
+fallback-kind text mapping remains local and unchanged. Successful
+`--dump-static-model-load-report` output remains byte-for-byte unchanged for the
+summary row, fixed row order, slot names, filenames, statuses, fallbacks, counts,
+issue counts, and trailing newlines. This does not change static model policy
+defaults or lookup, load status assignment, fallback behavior, CLI parser/help/
+dispatch/conflicts/exit behavior, renderer/model-slot behavior, static mesh
+export/report/manifest/package/verification/package-directory behavior, or parser
+scope.
+
 Native static model load report CLI dumping is complete as no-Qt app-shell asset
 diagnostics: `iggy_native_play --dump-static-model-load-report` builds the
 default policy report against `IGGY_NATIVE_PLAY_ASSET_DIR`, prints compact
