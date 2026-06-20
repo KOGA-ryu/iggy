@@ -244,45 +244,9 @@ CompareNativeStaticMeshExportPackageDirectoryManifestRows(
 	return result;
 }
 
-[[nodiscard]] inline NativeStaticMeshExportPackageDirectoryReport
-BuildNativeStaticMeshExportPackageDirectoryReport(
-	const std::filesystem::path &directory)
+[[nodiscard]] inline std::string BuildNativeStaticMeshExportPackageDirectoryReportText(
+	const NativeStaticMeshExportPackageDirectoryReport &report)
 {
-	NativeStaticMeshExportPackageDirectoryReport report;
-	report.read = ReadNativeStaticMeshExportPackageDirectory(directory);
-
-	if (report.read.read() && !report.read.manifestPath.empty()) {
-		report.manifestRead = ReadNativeStaticMeshExportManifestFile(
-			report.read.manifestPath);
-		report.manifestReadAttempted = true;
-	}
-
-	if (report.manifestReadAttempted && report.manifestRead.read()) {
-		report.manifestComparison = CompareNativeStaticMeshExportPackageDirectoryManifestRows(
-			report.read.assets,
-			report.manifestRead.document.assets);
-	}
-
-	if (!report.read.packageManifestPath.empty()) {
-		report.packageManifestFacts =
-			ReadNativeStaticMeshExportPackageDirectoryPathFacts(
-				report.read.packageManifestPath);
-		report.packageManifestFactsRecorded = true;
-	}
-	if (!report.read.manifestPath.empty()) {
-		report.manifestFacts =
-			ReadNativeStaticMeshExportPackageDirectoryPathFacts(
-				report.read.manifestPath);
-		report.manifestFactsRecorded = true;
-	}
-	for (const NativeStaticMeshExportPackageDirectoryAsset &asset :
-			report.read.assets) {
-		report.assetFacts.push_back({
-			asset,
-			ReadNativeStaticMeshExportPackageDirectoryPathFacts(asset.path),
-		});
-	}
-
 	std::ostringstream stream;
 	stream
 		<< "static-mesh-export-package-directory-report"
@@ -394,7 +358,49 @@ BuildNativeStaticMeshExportPackageDirectoryReport(
 			<< "\n";
 	}
 
-	report.text = stream.str();
+	return stream.str();
+}
+
+[[nodiscard]] inline NativeStaticMeshExportPackageDirectoryReport
+BuildNativeStaticMeshExportPackageDirectoryReport(
+	const std::filesystem::path &directory)
+{
+	NativeStaticMeshExportPackageDirectoryReport report;
+	report.read = ReadNativeStaticMeshExportPackageDirectory(directory);
+
+	if (report.read.read() && !report.read.manifestPath.empty()) {
+		report.manifestRead = ReadNativeStaticMeshExportManifestFile(
+			report.read.manifestPath);
+		report.manifestReadAttempted = true;
+	}
+
+	if (report.manifestReadAttempted && report.manifestRead.read()) {
+		report.manifestComparison = CompareNativeStaticMeshExportPackageDirectoryManifestRows(
+			report.read.assets,
+			report.manifestRead.document.assets);
+	}
+
+	if (!report.read.packageManifestPath.empty()) {
+		report.packageManifestFacts =
+			ReadNativeStaticMeshExportPackageDirectoryPathFacts(
+				report.read.packageManifestPath);
+		report.packageManifestFactsRecorded = true;
+	}
+	if (!report.read.manifestPath.empty()) {
+		report.manifestFacts =
+			ReadNativeStaticMeshExportPackageDirectoryPathFacts(
+				report.read.manifestPath);
+		report.manifestFactsRecorded = true;
+	}
+	for (const NativeStaticMeshExportPackageDirectoryAsset &asset :
+			report.read.assets) {
+		report.assetFacts.push_back({
+			asset,
+			ReadNativeStaticMeshExportPackageDirectoryPathFacts(asset.path),
+		});
+	}
+
+	report.text = BuildNativeStaticMeshExportPackageDirectoryReportText(report);
 	return report;
 }
 

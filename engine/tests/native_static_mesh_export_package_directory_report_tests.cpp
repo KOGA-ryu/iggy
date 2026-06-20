@@ -14,6 +14,7 @@
 namespace {
 
 using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReport;
+using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReportText;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
 using iggy::native_play::ExportNativeStaticMeshPolicyToDirectory;
 using iggy::native_play::NativeStaticMeshExportManifestFilename;
@@ -101,6 +102,13 @@ void ExpectFacts(
 	Expect(facts.byteCount == byteCount, message);
 }
 
+void ExpectTextRendererMatches(
+	const NativeStaticMeshExportPackageDirectoryReport &report,
+	const char *message)
+{
+	Expect(BuildNativeStaticMeshExportPackageDirectoryReportText(report) == report.text, message);
+}
+
 void TestBatchExportedDirectoryReportReads()
 {
 	ResetTempRoot();
@@ -108,6 +116,9 @@ void TestBatchExportedDirectoryReportReads()
 
 	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
 
+	ExpectTextRendererMatches(
+		report,
+		"successful package directory report text renderer should reproduce report text");
 	Expect(report.readOk(), "batch-exported package directory report should read");
 	Expect(
 		report.read.status == NativeStaticMeshExportPackageDirectoryReadStatus::Read,
@@ -345,6 +356,9 @@ void TestCombinedComparisonOrderingStillReportsRead()
 
 	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
 
+	ExpectTextRendererMatches(
+		report,
+		"combined comparison report text renderer should reproduce report text");
 	Expect(report.readOk(), "combined comparison mismatch should not fail package report");
 	Expect(
 		report.text.find("manifestRead=ok manifestReadIssues=0 manifestMatches=1 manifestMismatches=3 manifestComparisonIssues=3") !=
@@ -445,6 +459,9 @@ void TestMissingPackageSidecarReportIncludesIssueRow()
 
 	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
 
+	ExpectTextRendererMatches(
+		report,
+		"missing package sidecar report text renderer should reproduce report text");
 	Expect(!report.readOk(), "missing package sidecar report should fail");
 	Expect(
 		report.read.status == NativeStaticMeshExportPackageDirectoryReadStatus::PackageManifestReadFailed,
@@ -506,6 +523,9 @@ void TestMalformedPackageSidecarReportIncludesIssueRow()
 
 	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
 
+	ExpectTextRendererMatches(
+		report,
+		"malformed package sidecar report text renderer should reproduce report text");
 	Expect(!report.readOk(), "malformed package sidecar report should fail");
 	Expect(
 		report.read.status == NativeStaticMeshExportPackageDirectoryReadStatus::PackageManifestReadFailed,
@@ -559,6 +579,9 @@ void TestMissingNestedManifestStillReportsRead()
 
 	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
 
+	ExpectTextRendererMatches(
+		report,
+		"missing nested manifest report text renderer should reproduce report text");
 	Expect(report.readOk(), "missing nested mesh manifest should not fail package report");
 	Expect(
 		report.text.find("status=Read") != std::string::npos,
@@ -666,6 +689,9 @@ void TestMissingDeclaredAssetStillReportsRead()
 
 	const NativeStaticMeshExportPackageDirectoryReport report = BuildDefaultReport();
 
+	ExpectTextRendererMatches(
+		report,
+		"missing declared asset report text renderer should reproduce report text");
 	Expect(report.readOk(), "missing declared mesh asset should not fail package report");
 	Expect(
 		report.text.find("status=Read") != std::string::npos,
