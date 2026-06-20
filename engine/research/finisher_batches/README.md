@@ -144,3 +144,4 @@ Queue:
 87. `87_native_static_mesh_package_manifest_file_reader_status_sync` - complete. Sync planning/API docs after native static mesh package manifest file reader integration.
 88. `88_native_static_mesh_package_manifest_verification_reader_diagnostics_status_sync` - complete. Sync planning/API docs after native static mesh package manifest verification reader diagnostics integration.
 89. `89_native_static_mesh_verification_package_read_issue_rows_status_sync` - complete. Sync planning/API docs after native static mesh verification package read issue rows integration.
+90. `90_native_static_mesh_package_directory_reader_status_sync` - complete. Sync planning/API docs after native static mesh package directory reader integration.

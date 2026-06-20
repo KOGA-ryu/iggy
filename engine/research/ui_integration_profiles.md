@@ -665,6 +665,16 @@ semantics, source mutation, overwrite/create-directory policy, fixture rewrites,
 renderer behavior, JSON/glTF/glb parsing, `.igmesh` schema changes, or
 gameplay/scripted/final-state changes.
 
+Native static mesh package directory reading is complete as a separate
+header-only explicit-directory helper. `ReadNativeStaticMeshExportPackageDirectory(...)`
+reads only `static-mesh-export-package-manifest.txt` through the explicit-file
+reader, then projects the nested mesh manifest path and asset row paths in
+manifest row order. It does not compare generated default text, verify nested
+mesh manifests, parse mesh export manifests, load `.igmesh` assets, check
+geometry, check nested file existence, scan directories, reject extra files,
+reconstruct export policy/built-in ids, integrate CLI/export/verification/
+renderer/package loading, or change native app behavior.
+
 Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play
 --dump-static-mesh-export-verification-report --output-dir DIR` prints a

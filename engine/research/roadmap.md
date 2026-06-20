@@ -503,6 +503,10 @@ Recently completed optimized stretches:
   Native static mesh verification package read issue rows now preserve
   structured package manifest reader issues on verifier failures and print
   deterministic `packageManifestReadIssue ...` rows in the verification report.
+  Native static mesh package directory reading now adds a header-only explicit
+  directory reader that reads `static-mesh-export-package-manifest.txt` and
+  projects nested manifest and asset paths without checking file existence,
+  loading meshes, scanning directories, or integrating with CLI/verification.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1921,6 +1925,35 @@ exact deterministic text verification, policy/built-in id reconstruction from
 package rows, renderer behavior, runtime/product/scene/server APIs, gameplay,
 `.igmesh` schema, fixtures, dependencies, docs-in-source, or next research/
 scout implementation.
+
+Native Static Mesh Package Directory Reader is complete as a header-only,
+explicit-directory package read helper. `NativeStaticMeshExportPackageDirectoryReader.hpp`
+adds `NativeStaticMeshExportPackageDirectoryReadStatus`,
+`NativeStaticMeshExportPackageDirectoryAsset`,
+`NativeStaticMeshExportPackageDirectoryReadResult`, and
+`ReadNativeStaticMeshExportPackageDirectory(const std::filesystem::path &directory)`.
+The reader records the supplied directory, requires it to exist and be a
+directory, composes `directory / static-mesh-export-package-manifest.txt`, and
+delegates to `ReadNativeStaticMeshExportPackageManifestFile(...)`. On package
+manifest read failure it returns `PackageManifestReadFailed`, copies package
+manifest read issues, sets `issueCount`, and does not inspect the nested
+manifest or asset files. On success it copies the parsed package manifest
+document, projects `manifestPath = directory / document.manifestFilename`, and
+projects each parsed asset row to `{ name, filename, directory / filename }` in
+row order. `read()` returns true only for `Read`. Tests cover batch-exported
+temp directory reads, missing directory, file path as `DirectoryNotDirectory`,
+missing and malformed package sidecars as `PackageManifestReadFailed`, removed
+nested mesh manifest not failing, removed declared mesh asset not failing, and
+extra unrelated files being ignored. This does not compare package sidecar text
+to generated default text, verify nested mesh manifest text, parse mesh export
+manifests, load `.igmesh` assets, check geometry, check existence of nested
+manifest or asset files, reconstruct export policy or built-in ids from package
+rows, scan directories, reject extra files, integrate CLI/export/verification/
+renderer/package loading, mutate source, change export behavior, change
+overwrite/create-directory/temp replacement/arbitrary output path policy,
+change runtime/product/scene/server APIs, change gameplay, add glTF/JSON
+dependencies, change schema/fixtures/CMake/docs-in-source, or open the next
+source packet.
 
 Exit criteria:
 - Load a package or explicit scenario.

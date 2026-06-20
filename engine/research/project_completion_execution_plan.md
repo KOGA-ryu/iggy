@@ -1557,6 +1557,44 @@ Native static mesh verification package read issue rows complete:
   server APIs, gameplay, `.igmesh` schema, fixtures, dependencies,
   docs-in-source, or next research/scout source implementation.
 
+Native static mesh package directory reader complete:
+- Added header-only explicit package directory reader API:
+  `NativeStaticMeshExportPackageDirectoryReadStatus`,
+  `NativeStaticMeshExportPackageDirectoryAsset`,
+  `NativeStaticMeshExportPackageDirectoryReadResult`, and
+  `ReadNativeStaticMeshExportPackageDirectory(const std::filesystem::path &directory)`.
+- The reader records the supplied directory, requires it to exist and be a
+  directory, composes `directory / static-mesh-export-package-manifest.txt`, and
+  delegates to `ReadNativeStaticMeshExportPackageManifestFile(...)`.
+- On package manifest read failure, it returns `PackageManifestReadFailed`,
+  copies package manifest read issues, sets `issueCount`, and does not inspect
+  the nested manifest or asset files.
+- On success, it copies the parsed package manifest document, projects
+  `manifestPath = directory / document.manifestFilename`, and projects each
+  parsed asset row to `{ name, filename, directory / filename }` in row order.
+- `read()` returns true only for `Read`.
+- Batch-exported temp directory tests read successfully and return package
+  sidecar path, nested mesh manifest path, three parsed rows, and three
+  projected asset paths in order.
+- Missing directory returns `MissingDirectory` and creates nothing.
+- File path returns `DirectoryNotDirectory`.
+- Missing package sidecar returns `PackageManifestReadFailed` with
+  `FileOpenFailed` from the explicit file reader.
+- Malformed package sidecar returns `PackageManifestReadFailed` with the
+  underlying text-reader issue.
+- Removing the nested mesh manifest does not fail the reader.
+- Removing a declared mesh asset does not fail the reader.
+- Extra unrelated files are ignored.
+- This helper does not compare package sidecar text to generated default text,
+  verify nested mesh manifest text, parse mesh export manifests, load `.igmesh`
+  assets, check geometry, check existence of nested mesh manifest or asset
+  files, reconstruct export policy or built-in ids from package rows, scan
+  directories, reject extra files, integrate CLI/export/verification/renderer/
+  package loading, mutate source, change export behavior, change overwrite/
+  create-directory/temp replacement/arbitrary output path policy, change
+  runtime/product/scene/server APIs, change gameplay, add glTF/JSON dependency,
+  change schema/fixtures/CMake/docs-in-source, or open the next source packet.
+
 Native static mesh package manifest text reader complete:
 - Added a dependency-free, filesystem-free in-memory reader for the current
   generated package manifest text grammar.
@@ -2527,7 +2565,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 73. Native static mesh package manifest verification reader diagnostics are
     integrated.
 74. Native static mesh verification package read issue rows are integrated.
-75. Dispatch richer diagnostics display, overlays/labels, frame request/
+75. Native static mesh package directory reader is integrated.
+76. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under
