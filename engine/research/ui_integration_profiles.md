@@ -643,9 +643,10 @@ text, then loads only expected policy files and checks counts against the export
 report.
 `iggy_native_play --verify-static-mesh-export --output-dir DIR` exits before
 native app construction or SDL/Vulkan startup and prints
-`static-mesh-export-verify ... verified=3 manifest=ok` on success. Missing
-mesh sidecars fail with `MissingManifest`; missing or mismatched package
-sidecars fail with `MissingPackageManifest` or `PackageManifestMismatch`.
+`static-mesh-export-verify ... verified=3 manifest=ok packageManifest=ok` on
+success. Missing mesh sidecars fail with `MissingManifest`; missing or
+mismatched package sidecars fail with `MissingPackageManifest` or
+`PackageManifestMismatch`.
 Package sidecar verification happens after mesh manifest equality and before
 asset geometry checks. Extra unrelated files are ignored; the verifier remains
 read-only and explicit-directory-only and does not add package parser/reader
@@ -658,10 +659,12 @@ Native static mesh export verification report CLI is complete as a read-only
 report over the existing verifier: `iggy_native_play
 --dump-static-mesh-export-verification-report --output-dir DIR` prints a
 summary plus per-asset rows with actual/expected counts before native app
-construction or SDL/Vulkan startup. Failed verification prints the report before
-returning nonzero through the compact `iggy_native_play:` error style. Existing
-`--verify-static-mesh-export` output and behavior remain unchanged. This adds no
-writes, repair, scanning, package/catalog/parser/schema/material/texture
+construction or SDL/Vulkan startup. Summary rows include compact sidecar states
+as `manifest=... packageManifest=...`, using `not-checked` when the package
+manifest was not reached after a mesh manifest failure. Failed verification
+prints the report before returning nonzero through the compact
+`iggy_native_play:` error style. This adds no writes, repair, scanning,
+package/catalog/parser/schema/material/texture
 behavior, renderer behavior, native app CMake source registration, or gameplay/
 scripted/final-state changes.
 

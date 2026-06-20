@@ -479,11 +479,15 @@ Recently completed optimized stretches:
   `static-mesh-export-package-manifest.txt` alongside batch-exported meshes and
   `static-mesh-export-manifest.txt`, preflighting the package sidecar before
   asset writes while leaving single export, the no-write package-manifest dump,
-  and the no-write package-manifest dump unchanged.
+  unchanged.
   Native static mesh package sidecar verification now requires
   `static-mesh-export-package-manifest.txt` in export directories: verifier and
   verification-report paths check exact package-manifest text after mesh
   manifest equality and before asset geometry checks.
+  Native static mesh verification summary sidecar diagnostics now expose
+  manifest/package manifest paths and verified flags in the read-only
+  verification result; report summaries print `manifest=... packageManifest=...`
+  and `--verify-static-mesh-export` success prints `packageManifest=ok`.
   Next product runtime work is deciding whether frame request/play surface should own
   enrichment, whether richer overlays/labels or diagnostics should be surfaced,
   or whether explicit interaction intent should be synthesized, then interaction
@@ -1768,6 +1772,31 @@ behavior, `NativeVulkanRenderer.cpp`, `.igmesh` schema, glTF/glb/JSON
 dependencies, docs-in-source, native app CMake source registration,
 runtime/product/scene/server APIs, gameplay/scripted/final-state behavior, or
 next research/scout implementation.
+
+Native Static Mesh Verification Summary Sidecar Diagnostics is complete for the
+existing read-only verification result and report surfaces.
+`NativeStaticMeshExportDirectoryVerificationResult` now carries explicit sidecar
+diagnostics: `manifestPath`, `packageManifestPath`, `manifestVerified`, and
+`packageManifestVerified`. The verifier records the mesh manifest path before
+mesh manifest checks and the package manifest path before package sidecar
+checks. `manifestVerified` is set only after exact mesh manifest text match, and
+`packageManifestVerified` is set only after exact package manifest sidecar text
+match. Verification status ordering and failure behavior are unchanged. Report
+summary rows now include compact sidecar states:
+`manifest=... packageManifest=...`. `iggy_native_play
+--verify-static-mesh-export` success output now includes `packageManifest=ok`
+alongside existing `manifest=ok`, for example
+`static-mesh-export-verify output=/tmp/iggy-native-verification-diag-ok-85.6tfWQS verified=3 manifest=ok packageManifest=ok`.
+Successful report summaries include
+`static-mesh-export-verification-report status=Verified output=/tmp/iggy-native-verification-diag-ok-85.6tfWQS verified=3 issues=0 manifest=ok packageManifest=ok`.
+Missing package sidecar report summaries include
+`manifest=ok packageManifest=missing`, while missing mesh manifest summaries
+include `manifest=missing packageManifest=not-checked`. This docs packet does
+not change source, tests, CMake, assets, shaders, runtime, package manifest
+parser/reader semantics, discovery/scanning/catalog/registry behavior, export
+write behavior, CLI flags, single-export sidecars, renderer behavior, shader
+behavior, runtime/product/scene/server APIs, `.igmesh` schema, fixtures,
+docs-in-source, or next research/scout implementation.
 
 Exit criteria:
 - Load a package or explicit scenario.

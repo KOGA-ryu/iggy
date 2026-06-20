@@ -1456,6 +1456,35 @@ Native static mesh package sidecar verification complete:
   server APIs, gameplay/scripted/final-state behavior, or next research/scout
   source implementation.
 
+Native static mesh verification summary sidecar diagnostics complete:
+- Added explicit read-only sidecar diagnostics to
+  `NativeStaticMeshExportDirectoryVerificationResult`: `manifestPath`,
+  `packageManifestPath`, `manifestVerified`, and `packageManifestVerified`.
+- The verifier records the mesh manifest path before mesh manifest checks and
+  records the package manifest path before package sidecar checks.
+- `manifestVerified` is set only after exact mesh manifest text match.
+- `packageManifestVerified` is set only after exact package manifest sidecar
+  text match.
+- Verification status ordering and failure behavior are unchanged.
+- Verification report summary rows now include compact sidecar states:
+  `manifest=... packageManifest=...`.
+- `--verify-static-mesh-export` success output now includes
+  `packageManifest=ok` alongside existing `manifest=ok`.
+- Verify success output shape:
+  `static-mesh-export-verify output=/tmp/iggy-native-verification-diag-ok-85.6tfWQS verified=3 manifest=ok packageManifest=ok`.
+- Verification report success summary shape:
+  `static-mesh-export-verification-report status=Verified output=/tmp/iggy-native-verification-diag-ok-85.6tfWQS verified=3 issues=0 manifest=ok packageManifest=ok`.
+- Missing package sidecar report summary shape:
+  `static-mesh-export-verification-report status=MissingPackageManifest output=/tmp/iggy-native-verification-diag-missing-pkg-85.27rr0Z verified=0 issues=0 manifest=ok packageManifest=missing problem=/tmp/iggy-native-verification-diag-missing-pkg-85.27rr0Z/static-mesh-export-package-manifest.txt`.
+- Missing mesh manifest report summary shape:
+  `static-mesh-export-verification-report status=MissingManifest output=/tmp/iggy-native-verification-diag-missing-mesh-85.IQHjfa verified=0 issues=0 manifest=missing packageManifest=not-checked problem=/tmp/iggy-native-verification-diag-missing-mesh-85.IQHjfa/static-mesh-export-manifest.txt`.
+- This docs packet does not change source, tests, CMake, assets, shaders,
+  runtime, package manifest parser/reader semantics, discovery/scanning/catalog/
+  registry behavior, export write behavior, CLI flags, single-export sidecars,
+  renderer behavior, shader behavior, runtime/product/scene/server APIs,
+  `.igmesh` schema, fixtures, docs-in-source, or next research/scout source
+  implementation.
+
 Thin Qt product mouse primary-tile consumer complete:
 - `productViewport_` installs a viewport-only event filter in product play
   sessions.
@@ -2354,7 +2383,8 @@ git ls-files --others --exclude-standard '*Devilution*' '*devilution*' '*Devilut
 67. Native static mesh export package manifest text builder CLI is integrated.
 68. Native static mesh batch package manifest sidecar export is integrated.
 69. Native static mesh package sidecar verification is integrated.
-70. Dispatch richer diagnostics display, overlays/labels, frame request/
+70. Native static mesh verification summary sidecar diagnostics are integrated.
+71. Dispatch richer diagnostics display, overlays/labels, frame request/
     play-surface ownership, explicit interact target synthesis, reach-gated
     interaction execution, hover lifecycle, selected-target workflow,
     point-vs-tile policy, other model-slot file binding, glTF/glb parsing under
