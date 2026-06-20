@@ -503,6 +503,11 @@ Recently completed optimized stretches:
   Native static mesh verification package read issue rows now preserve
   structured package manifest reader issues on verifier failures and print
   deterministic `packageManifestReadIssue ...` rows in the verification report.
+  Native static mesh package manifest read issue text helper extraction now
+  centralizes `NativeStaticMeshExportPackageManifestReadIssueCodeText(...)` in
+  `NativeStaticMeshExportPackageManifest.hpp`; verification and package-directory
+  report package read issue rows use it while the nested mesh manifest issue
+  mapper remains separate for its different enum.
   Native static mesh export verification report text renderer extraction now
   moves existing verification report serialization into
   `BuildNativeStaticMeshExportDirectoryVerificationReportText(const NativeStaticMeshExportDirectoryVerificationReport &report)`;
@@ -2010,6 +2015,27 @@ exact deterministic text verification, policy/built-in id reconstruction from
 package rows, renderer behavior, runtime/product/scene/server APIs, gameplay,
 `.igmesh` schema, fixtures, dependencies, docs-in-source, or next research/
 scout implementation.
+
+Native Static Mesh Package Manifest Read Issue Text Helper Extraction is
+complete as a behavior-preserving mapping cleanup. The new central inline helper
+`NativeStaticMeshExportPackageManifestReadIssueCodeText(...)` lives in
+`NativeStaticMeshExportPackageManifest.hpp`. Verification report and package-
+directory report package manifest read issue rows now route through that helper
+instead of duplicated local switches. The nested mesh manifest issue-code mapper
+in `NativeStaticMeshExportPackageDirectoryReport.hpp` remains separate and
+unchanged because it maps the separate
+`NativeStaticMeshExportManifestReadIssueCode` enum. Direct package manifest tests
+cover every current package manifest read issue enum string plus the `Unknown`
+fallback. Source verification passed package manifest tests, verification report
+tests, package-directory report tests, `iggy_native_play`, valid export smoke
+with no package read issue rows in valid reports, and source `git diff --check`.
+This docs packet does not change report text, row order/counts, reader behavior,
+verifier behavior, package-directory read behavior, CLI behavior, exact sidecar
+matching, generated sidecar/export behavior, package acceptance semantics,
+package-directory reader/status behavior, verifier internals, package
+loading/discovery, `.igmesh` loading beyond existing verifier behavior,
+renderer/model-slot behavior, CMake, assets, fixtures, glTF/glb/JSON parser
+work, or next source packet scope.
 
 Native Static Mesh Export Verification Report Text Renderer Extraction is
 complete as a behavior-preserving serialization split. The new pure helper

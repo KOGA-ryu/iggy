@@ -665,6 +665,18 @@ semantics, source mutation, overwrite/create-directory policy, fixture rewrites,
 renderer behavior, JSON/glTF/glb parsing, `.igmesh` schema changes, or
 gameplay/scripted/final-state changes.
 
+Native static mesh package manifest read issue text helper extraction is
+complete without changing visible report text or CLI behavior. The central
+`NativeStaticMeshExportPackageManifestReadIssueCodeText(...)` helper now lives in
+`NativeStaticMeshExportPackageManifest.hpp`; verification report and package-
+directory report package manifest read issue rows route through it. The nested
+mesh manifest issue-code mapper remains separate because it maps
+`NativeStaticMeshExportManifestReadIssueCode`. This does not change row order,
+issue counts, reader/verifier/package-directory read behavior, exact sidecar
+matching, generated sidecar/export behavior, package acceptance, renderer/model-
+slot behavior, `.igmesh` loading beyond existing verifier behavior, parser
+scope, or gameplay semantics.
+
 Native static mesh package directory reading is complete as a separate
 header-only explicit-directory helper. `ReadNativeStaticMeshExportPackageDirectory(...)`
 reads only `static-mesh-export-package-manifest.txt` through the explicit-file

@@ -164,3 +164,4 @@ Queue:
 107. `107_native_static_mesh_export_verification_report_data_builder_extraction_status_sync` - complete. Sync planning/API docs after native static mesh export verification report data builder extraction.
 108. `108_native_static_mesh_verification_report_builder_parity_coverage_status_sync` - complete. Sync planning/API docs after native static mesh verification report builder parity coverage.
 109. `109_native_static_mesh_package_directory_report_builder_parity_coverage_status_sync` - complete. Sync planning/API docs after native static mesh package directory report builder parity coverage.
+110. `110_native_static_mesh_package_manifest_read_issue_text_helper_extraction_status_sync` - complete. Sync planning/API docs after native static mesh package manifest read issue text helper extraction.
