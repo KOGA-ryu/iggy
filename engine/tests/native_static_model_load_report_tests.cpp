@@ -12,6 +12,7 @@
 namespace {
 
 using iggy::native_play::BuildNativeStaticModelLoadReport;
+using iggy::native_play::BuildNativeStaticModelLoadReportText;
 using iggy::native_play::DefaultNativeStaticModelPolicy;
 using iggy::native_play::NativeStaticModelFallbackKind;
 using iggy::native_play::NativeStaticModelFallbackKindText;
@@ -222,6 +223,46 @@ void TestStaticModelFallbackKindText()
 		"static model fallback kind text should report unknown fallback");
 }
 
+void TestDefaultPolicyReportText()
+{
+	const NativeStaticModelLoadReport report =
+		BuildNativeStaticModelLoadReport(DefaultNativeStaticModelPolicy(), AssetRoot());
+
+	const std::string expected =
+		"static-model-load-report loaded=4 failed=0 missing=0\n"
+		"slot=Floor filename=floor.igmesh status=Loaded fallback=Cube vertices=4 indices=6 issues=0\n"
+		"slot=Wall filename=wall.igmesh status=Loaded fallback=Cube vertices=8 indices=36 issues=0\n"
+		"slot=NpcActor filename=npc.igmesh status=Loaded fallback=ProceduralNpcMarker vertices=7 indices=30 issues=0\n"
+		"slot=Player filename=player.igmesh status=Loaded fallback=ProceduralBean vertices=6 indices=24 issues=0\n";
+	Expect(
+		BuildNativeStaticModelLoadReportText(report) == expected,
+		"default static model load report text should match CLI contract");
+}
+
+void TestMissingPolicyRefReportText()
+{
+	const NativeStaticModelPolicy policy {
+		{
+			{ NativeStaticModelSlot::Floor, "floor.igmesh" },
+			{ NativeStaticModelSlot::Wall, "wall.igmesh" },
+			{ NativeStaticModelSlot::NpcActor, "npc.igmesh" },
+		},
+	};
+
+	const NativeStaticModelLoadReport report =
+		BuildNativeStaticModelLoadReport(policy, AssetRoot());
+
+	const std::string expected =
+		"static-model-load-report loaded=3 failed=0 missing=1\n"
+		"slot=Floor filename=floor.igmesh status=Loaded fallback=Cube vertices=4 indices=6 issues=0\n"
+		"slot=Wall filename=wall.igmesh status=Loaded fallback=Cube vertices=8 indices=36 issues=0\n"
+		"slot=NpcActor filename=npc.igmesh status=Loaded fallback=ProceduralNpcMarker vertices=7 indices=30 issues=0\n"
+		"slot=Player filename=<missing> status=MissingPolicyRef fallback=ProceduralBean vertices=0 indices=0 issues=0\n";
+	Expect(
+		BuildNativeStaticModelLoadReportText(report) == expected,
+		"missing policy ref report text should preserve missing filename and status formatting");
+}
+
 } // namespace
 
 int main()
@@ -232,6 +273,8 @@ int main()
 	TestReportDoesNotInferUnlistedExistingAssets();
 	TestStaticModelLoadStatusText();
 	TestStaticModelFallbackKindText();
+	TestDefaultPolicyReportText();
+	TestMissingPolicyRefReportText();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

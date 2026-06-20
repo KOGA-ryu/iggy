@@ -6,6 +6,7 @@
 #include <array>
 #include <cstddef>
 #include <filesystem>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -131,6 +132,30 @@ NativeStaticModelFallbackForSlot(NativeStaticModelSlot slot)
 		report.entries.push_back(entry);
 	}
 	return report;
+}
+
+[[nodiscard]] inline std::string BuildNativeStaticModelLoadReportText(
+	const NativeStaticModelLoadReport &report)
+{
+	std::ostringstream stream;
+	stream
+		<< "static-model-load-report"
+		<< " loaded=" << report.loadedCount
+		<< " failed=" << report.failedCount
+		<< " missing=" << report.missingCount
+		<< "\n";
+	for (const NativeStaticModelLoadEntry &entry : report.entries) {
+		stream
+			<< "slot=" << NativeStaticModelSlotText(entry.slot)
+			<< " filename=" << (entry.meshFilename.empty() ? "<missing>" : entry.meshFilename)
+			<< " status=" << NativeStaticModelLoadStatusText(entry.status)
+			<< " fallback=" << NativeStaticModelFallbackKindText(entry.fallback)
+			<< " vertices=" << entry.vertexCount
+			<< " indices=" << entry.indexCount
+			<< " issues=" << entry.issueCount
+			<< "\n";
+	}
+	return stream.str();
 }
 
 } // namespace iggy::native_play

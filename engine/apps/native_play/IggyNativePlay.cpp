@@ -39,6 +39,7 @@ using iggy::native_play::BuildNativeStaticMeshExportManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageManifestText;
 using iggy::native_play::BuildNativeStaticMeshExportPackageDirectoryReport;
 using iggy::native_play::BuildNativeStaticMeshExportReport;
+using iggy::native_play::BuildNativeStaticModelLoadReportText;
 using iggy::native_play::BuiltInNativeStaticMeshExportAsset;
 using iggy::native_play::DefaultNativeStaticMeshExportPolicy;
 using iggy::native_play::DefaultNativeStaticModelPolicy;
@@ -50,13 +51,8 @@ using iggy::native_play::LookAt;
 using iggy::native_play::Mat4;
 using iggy::native_play::Multiply;
 using iggy::native_play::NativeStaticMeshExportAssetRef;
-using iggy::native_play::NativeStaticModelFallbackKindText;
-using iggy::native_play::NativeStaticModelLoadEntry;
 using iggy::native_play::NativeStaticModelLoadReport;
-using iggy::native_play::NativeStaticModelLoadStatus;
-using iggy::native_play::NativeStaticModelLoadStatusText;
 using iggy::native_play::NativeStaticModelSlot;
-using iggy::native_play::NativeStaticModelSlotText;
 using iggy::native_play::NativeStaticMeshFileExportBatchEntry;
 using iggy::native_play::NativeStaticMeshFileExportBatchResult;
 using iggy::native_play::NativeStaticMeshFileExportResult;
@@ -480,23 +476,7 @@ void PrintUsage()
 
 void PrintNativeStaticModelLoadReport(const NativeStaticModelLoadReport &report)
 {
-	std::cout
-		<< "static-model-load-report"
-		<< " loaded=" << report.loadedCount
-		<< " failed=" << report.failedCount
-		<< " missing=" << report.missingCount
-		<< "\n";
-	for (const NativeStaticModelLoadEntry &entry : report.entries) {
-		std::cout
-			<< "slot=" << NativeStaticModelSlotText(entry.slot)
-			<< " filename=" << (entry.meshFilename.empty() ? "<missing>" : entry.meshFilename)
-			<< " status=" << NativeStaticModelLoadStatusText(entry.status)
-			<< " fallback=" << NativeStaticModelFallbackKindText(entry.fallback)
-			<< " vertices=" << entry.vertexCount
-			<< " indices=" << entry.indexCount
-			<< " issues=" << entry.issueCount
-			<< "\n";
-	}
+	std::cout << BuildNativeStaticModelLoadReportText(report);
 }
 
 void PrintNativeStaticMeshExportReport(const NativeStaticMeshExportReport &report)
