@@ -371,8 +371,12 @@ Recently completed optimized stretches:
   binding now adds a separate marker mesh for `NpcActor`, leaving floor and wall
   slots on the cube fallback. Native static mesh text loading now adds an
   app-local `.igmesh`-style text reader for position/color vertices and
-  `std::uint16_t` triangles, with focused parser/file tests. Native player mesh
-  asset binding now ships `apps/native_play/assets/player.igmesh`, loads it
+  `std::uint16_t` triangles, with focused parser/file tests. Native static mesh
+  asset loader issue text helper extraction now adds
+  `NativeStaticMeshAssetLoadIssueCodeText(...)` beside the loader issue enum
+  with stable loader issue strings and fallback `Unknown`; no CLI/app-shell/
+  report text consumes it yet. Native player mesh asset binding now ships
+  `apps/native_play/assets/player.igmesh`, loads it
   through that text loader, binds it to the `Player` slot when valid, and keeps
   the procedural bean as fallback. Native NPC mesh asset binding now ships
   `apps/native_play/assets/npc.igmesh`, loads it through the same text loader,
@@ -1455,6 +1459,26 @@ renderer slot binding to loaded files, CLI option, package discovery, glTF,
 asset registry/catalog, material/texture/descriptor/sampler policy, shader
 change, staging/device-local upload, runtime/product/scene API, app shell, or
 gameplay behavior change is included.
+Native Static Mesh Asset Loader Issue Text Helper Extraction is complete as an
+enum-owned loader issue text helper cleanup. `NativeStaticMeshAssetLoader.hpp`
+now exposes
+`NativeStaticMeshAssetLoadIssueCodeText(NativeStaticMeshAssetLoadIssueCode code)`
+beside the loader issue enum. The exact mappings are `FileOpenFailed`,
+`UnknownDirective`, `MalformedVertex`, `MalformedTriangle`, `IndexOutOfRange`,
+`ExtraToken`, `InvalidMesh`, and fallback `Unknown` for out-of-range values. No
+CLI/app-shell/report text consumes the helper yet; loader issue rendering and
+all existing output remain unchanged. Direct loader tests cover every current
+issue-code string and the out-of-range fallback. Source verification passed
+`native_static_mesh_asset_loader_tests`, `native_static_mesh_asset_writer_tests`,
+source `git diff --check`, and source `git diff --cached --check`. This packet
+does not change `IggyNativePlay.cpp`, `NativeStaticMeshAssetWriter.hpp`, export
+policy, package policy, CMake, docs/source split, renderer/model-slot behavior,
+`NativeVulkanRenderer.cpp`, package loading/semantic acceptance/discovery/
+catalog, export write policy, exact verifier behavior, generated sidecars,
+assets/fixtures, `.igmesh` schema, material/texture/normal/UV/animation
+expansion, glTF/glb/JSON parser/dependency work, loader parser behavior, issue
+generation order/counts, issue line/token data, `loaded()` semantics, file-open
+behavior, `.igmesh` text grammar, runtime behavior, or user-facing CLI output.
 Native Player Mesh Asset Binding is complete for no-Qt renderer prep:
 `engine/apps/native_play/assets/player.igmesh` adds the first checked-in
 minimal text mesh asset. `iggy_native_play` now receives an

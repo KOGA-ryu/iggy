@@ -409,6 +409,23 @@ registries/catalogs, materials/textures/descriptors/samplers, shader changes,
 staging/device-local upload, Linux/dGPU policy, backend abstraction, app-shell
 behavior, or gameplay/session/input behavior.
 
+Native static mesh asset loader issue text helper extraction is complete as an
+enum-owned loader issue string cleanup with no visible CLI/report text change.
+`NativeStaticMeshAssetLoadIssueCodeText(NativeStaticMeshAssetLoadIssueCode code)`
+now lives beside the loader issue enum in `NativeStaticMeshAssetLoader.hpp` and
+maps `FileOpenFailed`, `UnknownDirective`, `MalformedVertex`,
+`MalformedTriangle`, `IndexOutOfRange`, `ExtraToken`, `InvalidMesh`, and
+out-of-range fallback `Unknown`. No CLI/app-shell/report text consumes the
+helper yet; loader issue rendering and all existing output remain unchanged.
+Parser behavior, issue generation order/counts, issue line/token data,
+`loaded()` semantics, file-open behavior, `.igmesh` text grammar, runtime
+behavior, user-facing CLI output, renderer/model-slot behavior,
+`NativeVulkanRenderer.cpp`, package loading/semantic acceptance/discovery/
+catalog, export write policy, exact verifier behavior, generated sidecars,
+assets/fixtures, schema, material/texture/normal/UV/animation expansion,
+glTF/glb/JSON parser/dependency work, source/CMake files, and docs/source split
+remain unchanged.
+
 Native player mesh asset binding is complete as the first no-Qt loaded mesh
 slot binding: `engine/apps/native_play/assets/player.igmesh` is a checked-in
 minimal native text mesh asset, `iggy_native_play` receives
