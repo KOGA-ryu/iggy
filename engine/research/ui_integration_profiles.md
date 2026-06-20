@@ -570,6 +570,18 @@ rewrite fixtures, accept arbitrary output paths, add discovery/catalog/manifest
 policy, parse glTF/glb/JSON, expand `.igmesh`, change renderer behavior, or
 change gameplay/input/scripted/final-state semantics.
 
+Native static mesh file export status text helper extraction is complete without
+changing visible export output or CLI behavior. The central
+`NativeStaticMeshFileExportStatusText(...)` helper now lives in
+`NativeStaticMeshFileExport.hpp` beside `NativeStaticMeshFileExportStatus`.
+Single-export and batch-export compact CLI failure paths use it, preserving
+failure prefixes and status strings including `TargetAlreadyExists`,
+`InvalidPolicy`, and `WriteFailed`. This does not change single/batch success
+output, export status assignment, preflight/write order, issue counts, output
+path selection, sidecar writes, no-overwrite/no-create-directory behavior, CLI
+parser/dispatch/conflicts, verifier/package-directory/report/generated text
+behavior, renderer/model-slot behavior, or parser scope.
+
 Native static mesh built-in batch export CLI is complete as a constrained
 no-Qt app-shell batch export: `ExportNativeStaticMeshPolicyToDirectory(...)`
 preflights the output directory and all default target filenames before writing,

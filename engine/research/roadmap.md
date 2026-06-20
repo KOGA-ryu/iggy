@@ -431,6 +431,10 @@ Recently completed optimized stretches:
   `--output-dir DIR` for `--dump-static-mesh-asset NAME`, writing
   `DIR/defaultFilename` only when the directory already exists and the target
   does not; stdout dumping remains unchanged without `--output-dir`.
+  Native static mesh file export status text helper extraction now centralizes
+  `NativeStaticMeshFileExportStatusText(...)` beside
+  `NativeStaticMeshFileExportStatus`; single-export and batch-export compact CLI
+  failure paths use it while preserving status strings and failure prefixes.
   Native static mesh built-in batch export now adds
   `ExportNativeStaticMeshPolicyToDirectory(...)` and
   `iggy_native_play --export-static-mesh-assets --output-dir DIR`, preflighting
@@ -1601,6 +1605,28 @@ normals/UVs/skins/animation/transforms/scene graph/metadata fields, renderer
 behavior, `NativeVulkanRenderer.cpp`, public renderer API, runtime/product/
 scene/server/draw-list API change, or gameplay/input/scripted-control/
 final-state semantic change.
+
+Native Static Mesh File Export Status Text Helper Extraction is complete as a
+behavior-preserving status text cleanup. The central inline helper
+`NativeStaticMeshFileExportStatusText(...)` now lives beside
+`NativeStaticMeshFileExportStatus` in `NativeStaticMeshFileExport.hpp`. The
+CLI-local `NativeStaticMeshFileExportStatusName(...)` switch was removed, and
+the single-export and batch-export compact CLI failure paths now use the central
+helper. Stable strings are `Exported`, `InvalidPolicy`, `UnknownAsset`,
+`MissingOutputDirectory`, `OutputDirectoryNotDirectory`, `TargetAlreadyExists`,
+`WriterFailed`, `FileOpenFailed`, `WriteFailed`, and fallback `Unknown`. Direct
+file-export status tests cover every current status plus `Unknown`. Source
+verification passed `native_static_mesh_file_export_tests`, `iggy_native_play`,
+single-export collision smoke preserving
+`static mesh export failed: TargetAlreadyExists`, batch-export collision smoke
+preserving `static mesh batch export failed: TargetAlreadyExists`, and source
+`git diff --check`. This packet does not change single/batch success output,
+compact failure prefixes or status strings, export status assignment,
+preflight/write order, issue counts, output path selection, sidecar writes,
+no-overwrite/no-create-directory behavior, CLI parser/dispatch/conflicts,
+verifier/package-directory/report/generated text behavior, CMake, fixtures,
+assets, renderer/model-slot behavior, package loading/discovery, schema, or
+glTF/glb/JSON parser work.
 
 Native Static Mesh Built-In Batch Export CLI is complete as a constrained
 multi-file export path for the default built-in mesh policy:
