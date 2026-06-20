@@ -16,6 +16,22 @@ enum class NativeStaticMeshExportPackageDirectoryReadStatus {
 	PackageManifestReadFailed,
 };
 
+[[nodiscard]] inline const char *NativeStaticMeshExportPackageDirectoryReadStatusText(
+	NativeStaticMeshExportPackageDirectoryReadStatus status)
+{
+	switch (status) {
+	case NativeStaticMeshExportPackageDirectoryReadStatus::Read:
+		return "Read";
+	case NativeStaticMeshExportPackageDirectoryReadStatus::MissingDirectory:
+		return "MissingDirectory";
+	case NativeStaticMeshExportPackageDirectoryReadStatus::DirectoryNotDirectory:
+		return "DirectoryNotDirectory";
+	case NativeStaticMeshExportPackageDirectoryReadStatus::PackageManifestReadFailed:
+		return "PackageManifestReadFailed";
+	}
+	return "Unknown";
+}
+
 struct NativeStaticMeshExportPackageDirectoryAsset {
 	std::string name;
 	std::string filename;

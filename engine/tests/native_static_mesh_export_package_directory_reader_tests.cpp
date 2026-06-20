@@ -16,6 +16,7 @@ using iggy::native_play::ExportNativeStaticMeshPolicyToDirectory;
 using iggy::native_play::NativeStaticMeshExportManifestFilename;
 using iggy::native_play::NativeStaticMeshExportPackageDirectoryReadResult;
 using iggy::native_play::NativeStaticMeshExportPackageDirectoryReadStatus;
+using iggy::native_play::NativeStaticMeshExportPackageDirectoryReadStatusText;
 using iggy::native_play::NativeStaticMeshExportPackageManifestReadIssueCode;
 using iggy::native_play::NativeStaticMeshExportPackageManifestSidecarFilename;
 using iggy::native_play::NativeStaticMeshFileExportBatchResult;
@@ -258,6 +259,33 @@ void TestExtraUnrelatedFilesAreIgnored()
 	CleanupTempRoot();
 }
 
+void TestReadStatusText()
+{
+	struct Case {
+		NativeStaticMeshExportPackageDirectoryReadStatus status;
+		const char *text;
+	};
+
+	const Case cases[] = {
+		{ NativeStaticMeshExportPackageDirectoryReadStatus::Read, "Read" },
+		{ NativeStaticMeshExportPackageDirectoryReadStatus::MissingDirectory, "MissingDirectory" },
+		{ NativeStaticMeshExportPackageDirectoryReadStatus::DirectoryNotDirectory, "DirectoryNotDirectory" },
+		{ NativeStaticMeshExportPackageDirectoryReadStatus::PackageManifestReadFailed, "PackageManifestReadFailed" },
+	};
+
+	for (const Case &testCase : cases) {
+		Expect(
+			std::string(NativeStaticMeshExportPackageDirectoryReadStatusText(
+				testCase.status)) == testCase.text,
+			"package directory read status text should match stable spelling");
+	}
+	Expect(
+		std::string(NativeStaticMeshExportPackageDirectoryReadStatusText(
+			static_cast<NativeStaticMeshExportPackageDirectoryReadStatus>(999))) ==
+			"Unknown",
+		"package directory read status text should report unknown fallback");
+}
+
 } // namespace
 
 int main()
@@ -270,6 +298,7 @@ int main()
 	TestMissingNestedManifestDoesNotFailReader();
 	TestMissingDeclaredAssetDoesNotFailReader();
 	TestExtraUnrelatedFilesAreIgnored();
+	TestReadStatusText();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

@@ -60,22 +60,6 @@ struct NativeStaticMeshExportPackageDirectoryReport {
 	}
 };
 
-[[nodiscard]] inline const char *NativeStaticMeshExportPackageDirectoryReadStatusText(
-	NativeStaticMeshExportPackageDirectoryReadStatus status)
-{
-	switch (status) {
-	case NativeStaticMeshExportPackageDirectoryReadStatus::Read:
-		return "Read";
-	case NativeStaticMeshExportPackageDirectoryReadStatus::MissingDirectory:
-		return "MissingDirectory";
-	case NativeStaticMeshExportPackageDirectoryReadStatus::DirectoryNotDirectory:
-		return "DirectoryNotDirectory";
-	case NativeStaticMeshExportPackageDirectoryReadStatus::PackageManifestReadFailed:
-		return "PackageManifestReadFailed";
-	}
-	return "Unknown";
-}
-
 [[nodiscard]] inline const char *NativeStaticMeshExportPackageDirectoryManifestComparisonCodeText(
 	NativeStaticMeshExportPackageDirectoryManifestComparisonCode code)
 {
