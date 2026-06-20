@@ -19,42 +19,6 @@ struct NativeStaticMeshExportDirectoryVerificationReport {
 	}
 };
 
-[[nodiscard]] inline const char *NativeStaticMeshExportDirectoryVerificationStatusText(
-	NativeStaticMeshExportDirectoryVerificationStatus status)
-{
-	switch (status) {
-	case NativeStaticMeshExportDirectoryVerificationStatus::Verified:
-		return "Verified";
-	case NativeStaticMeshExportDirectoryVerificationStatus::InvalidPolicy:
-		return "InvalidPolicy";
-	case NativeStaticMeshExportDirectoryVerificationStatus::MissingOutputDirectory:
-		return "MissingOutputDirectory";
-	case NativeStaticMeshExportDirectoryVerificationStatus::OutputDirectoryNotDirectory:
-		return "OutputDirectoryNotDirectory";
-	case NativeStaticMeshExportDirectoryVerificationStatus::MissingManifest:
-		return "MissingManifest";
-	case NativeStaticMeshExportDirectoryVerificationStatus::ManifestMismatch:
-		return "ManifestMismatch";
-	case NativeStaticMeshExportDirectoryVerificationStatus::MissingAsset:
-		return "MissingAsset";
-	case NativeStaticMeshExportDirectoryVerificationStatus::AssetLoadFailed:
-		return "AssetLoadFailed";
-	case NativeStaticMeshExportDirectoryVerificationStatus::GeometryMismatch:
-		return "GeometryMismatch";
-	case NativeStaticMeshExportDirectoryVerificationStatus::ManifestBuildFailed:
-		return "ManifestBuildFailed";
-	case NativeStaticMeshExportDirectoryVerificationStatus::MissingPackageManifest:
-		return "MissingPackageManifest";
-	case NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestReadFailed:
-		return "PackageManifestReadFailed";
-	case NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestMismatch:
-		return "PackageManifestMismatch";
-	case NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestBuildFailed:
-		return "PackageManifestBuildFailed";
-	}
-	return "Unknown";
-}
-
 [[nodiscard]] inline const char *NativeStaticMeshExportDirectoryVerificationManifestState(
 	const NativeStaticMeshExportDirectoryVerificationResult &verification)
 {

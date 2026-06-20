@@ -18,6 +18,7 @@ using iggy::native_play::ExportNativeStaticMeshPolicyToDirectory;
 using iggy::native_play::NativeStaticMeshBuiltInExportId;
 using iggy::native_play::NativeStaticMeshExportDirectoryVerificationResult;
 using iggy::native_play::NativeStaticMeshExportDirectoryVerificationStatus;
+using iggy::native_play::NativeStaticMeshExportDirectoryVerificationStatusText;
 using iggy::native_play::NativeStaticMeshExportManifestFilename;
 using iggy::native_play::NativeStaticMeshExportPackageManifestSidecarFilename;
 using iggy::native_play::NativeStaticMeshExportPolicy;
@@ -383,6 +384,43 @@ void TestInvalidPolicyFailsWithoutFilesystemWrites()
 	CleanupTempRoot();
 }
 
+void TestVerificationStatusText()
+{
+	struct Case {
+		NativeStaticMeshExportDirectoryVerificationStatus status;
+		const char *text;
+	};
+
+	const Case cases[] = {
+		{ NativeStaticMeshExportDirectoryVerificationStatus::Verified, "Verified" },
+		{ NativeStaticMeshExportDirectoryVerificationStatus::InvalidPolicy, "InvalidPolicy" },
+		{ NativeStaticMeshExportDirectoryVerificationStatus::MissingOutputDirectory, "MissingOutputDirectory" },
+		{ NativeStaticMeshExportDirectoryVerificationStatus::OutputDirectoryNotDirectory, "OutputDirectoryNotDirectory" },
+		{ NativeStaticMeshExportDirectoryVerificationStatus::MissingManifest, "MissingManifest" },
+		{ NativeStaticMeshExportDirectoryVerificationStatus::ManifestMismatch, "ManifestMismatch" },
+		{ NativeStaticMeshExportDirectoryVerificationStatus::MissingAsset, "MissingAsset" },
+		{ NativeStaticMeshExportDirectoryVerificationStatus::AssetLoadFailed, "AssetLoadFailed" },
+		{ NativeStaticMeshExportDirectoryVerificationStatus::GeometryMismatch, "GeometryMismatch" },
+		{ NativeStaticMeshExportDirectoryVerificationStatus::ManifestBuildFailed, "ManifestBuildFailed" },
+		{ NativeStaticMeshExportDirectoryVerificationStatus::MissingPackageManifest, "MissingPackageManifest" },
+		{ NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestReadFailed, "PackageManifestReadFailed" },
+		{ NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestMismatch, "PackageManifestMismatch" },
+		{ NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestBuildFailed, "PackageManifestBuildFailed" },
+	};
+
+	for (const Case &testCase : cases) {
+		Expect(
+			std::string(NativeStaticMeshExportDirectoryVerificationStatusText(
+				testCase.status)) == testCase.text,
+			"verification status text should match stable spelling");
+	}
+	Expect(
+		std::string(NativeStaticMeshExportDirectoryVerificationStatusText(
+			static_cast<NativeStaticMeshExportDirectoryVerificationStatus>(999))) ==
+			"Unknown",
+		"verification status text should report unknown fallback");
+}
+
 } // namespace
 
 int main()
@@ -401,6 +439,7 @@ int main()
 	TestSingleExportDirectoryFails();
 	TestExtraUnrelatedFilesAreIgnored();
 	TestInvalidPolicyFailsWithoutFilesystemWrites();
+	TestVerificationStatusText();
 
 	if (Failures != 0)
 		return EXIT_FAILURE;

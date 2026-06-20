@@ -73,6 +73,7 @@ using iggy::native_play::NativeStaticMeshAssetWriteResult;
 using iggy::native_play::NativeStaticMeshExportDirectoryVerificationReport;
 using iggy::native_play::NativeStaticMeshExportDirectoryVerificationResult;
 using iggy::native_play::NativeStaticMeshExportDirectoryVerificationStatus;
+using iggy::native_play::NativeStaticMeshExportDirectoryVerificationStatusText;
 using iggy::native_play::DefaultNativeStaticMeshExportPackagePolicy;
 using iggy::native_play::NativeProductSession;
 using iggy::native_play::NativeProductSessionConfig;
@@ -738,42 +739,6 @@ void PrintNativeStaticMeshAssetBatchExport(const std::filesystem::path &director
 		<< "\n";
 }
 
-const char *NativeStaticMeshExportDirectoryVerificationStatusName(
-	NativeStaticMeshExportDirectoryVerificationStatus status)
-{
-	switch (status) {
-	case NativeStaticMeshExportDirectoryVerificationStatus::Verified:
-		return "Verified";
-	case NativeStaticMeshExportDirectoryVerificationStatus::InvalidPolicy:
-		return "InvalidPolicy";
-	case NativeStaticMeshExportDirectoryVerificationStatus::MissingOutputDirectory:
-		return "MissingOutputDirectory";
-	case NativeStaticMeshExportDirectoryVerificationStatus::OutputDirectoryNotDirectory:
-		return "OutputDirectoryNotDirectory";
-	case NativeStaticMeshExportDirectoryVerificationStatus::MissingManifest:
-		return "MissingManifest";
-	case NativeStaticMeshExportDirectoryVerificationStatus::ManifestMismatch:
-		return "ManifestMismatch";
-	case NativeStaticMeshExportDirectoryVerificationStatus::MissingAsset:
-		return "MissingAsset";
-	case NativeStaticMeshExportDirectoryVerificationStatus::AssetLoadFailed:
-		return "AssetLoadFailed";
-	case NativeStaticMeshExportDirectoryVerificationStatus::GeometryMismatch:
-		return "GeometryMismatch";
-	case NativeStaticMeshExportDirectoryVerificationStatus::ManifestBuildFailed:
-		return "ManifestBuildFailed";
-	case NativeStaticMeshExportDirectoryVerificationStatus::MissingPackageManifest:
-		return "MissingPackageManifest";
-	case NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestReadFailed:
-		return "PackageManifestReadFailed";
-	case NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestMismatch:
-		return "PackageManifestMismatch";
-	case NativeStaticMeshExportDirectoryVerificationStatus::PackageManifestBuildFailed:
-		return "PackageManifestBuildFailed";
-	}
-	return "Unknown";
-}
-
 void PrintNativeStaticMeshExportDirectoryVerification(
 	const std::filesystem::path &directory)
 {
@@ -787,7 +752,7 @@ void PrintNativeStaticMeshExportDirectoryVerification(
 			: result.problemPath;
 		throw std::runtime_error(
 			std::string { "static mesh export verification failed: " } +
-			NativeStaticMeshExportDirectoryVerificationStatusName(result.status) +
+			NativeStaticMeshExportDirectoryVerificationStatusText(result.status) +
 			" output=" + output.string() +
 			" issues=" + std::to_string(result.issueCount));
 	}
@@ -815,7 +780,7 @@ void PrintNativeStaticMeshExportDirectoryVerificationReport(
 			: report.verification.problemPath;
 		throw std::runtime_error(
 			std::string { "static mesh export verification report failed: " } +
-			NativeStaticMeshExportDirectoryVerificationStatusName(
+			NativeStaticMeshExportDirectoryVerificationStatusText(
 				report.verification.status) +
 			" output=" + output.string() +
 			" issues=" + std::to_string(report.verification.issueCount));
