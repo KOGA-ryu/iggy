@@ -6,6 +6,10 @@
 #include "render/vulkan/CommandRecording.hpp"
 #include "render/vulkan/FrameSync.hpp"
 #include "render/vulkan/InstanceDeviceSurface.hpp"
+#include "render/vulkan/BufferImageResources.hpp"
+#include "render/vulkan/FirstRoomPipeline.hpp"
+#include "render/vulkan/FrameCapture.hpp"
+#include "render/vulkan/PipelineLayout.hpp"
 #include "render/vulkan/Swapchain.hpp"
 
 namespace iggy3d::vulkan {
@@ -38,6 +42,10 @@ struct RenderLoopCreateInfo {
   Swapchain* swapchain = nullptr;
   FrameSync* frameSync = nullptr;
   CommandRecording* commandRecording = nullptr;
+  FirstRoomPipelineRecord* firstRoomPipeline = nullptr;
+  PipelineLayoutRecord* firstRoomLayout = nullptr;
+  BufferImageResources* firstRoomResources = nullptr;
+  FrameCapture* frameCapture = nullptr;
 };
 
 class RenderLoop {

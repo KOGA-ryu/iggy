@@ -1,5 +1,6 @@
 #include "render/vulkan/CommandRecording.hpp"
 
+#include "render/vulkan/FirstRoomPipeline.hpp"
 #include "render/vulkan/VulkanResult.hpp"
 
 namespace iggy3d::vulkan {
@@ -26,6 +27,9 @@ RenderReason reasonFor(std::string_view code) {
   }
   if (code == "command_record_failed") {
     return {code, "command record failed"};
+  }
+  if (code == "first_room_frame_recorded") {
+    return {code, "first room frame recorded"};
   }
   if (code == "dynamic_rendering_function_missing") {
     return {code, "dynamic rendering function missing"};
@@ -61,6 +65,25 @@ RenderReceipt CommandRecording::diagnostics(std::string_view result,
                      createInfo_.deviceFunctions.cmdBeginRendering != nullptr);
   appendReceiptField(receipt, "end_rendering_function_loaded",
                      createInfo_.deviceFunctions.cmdEndRendering != nullptr);
+  appendReceiptField(receipt, "result", result);
+  appendReceiptField(receipt, "reason_code", reasonCode);
+  return receipt;
+}
+
+RenderReceipt firstRoomReceipt(const CommandRecording& recording,
+                               std::string_view result,
+                               std::string_view reasonCode) {
+  (void)recording;
+  RenderReceipt receipt;
+  appendReceiptField(receipt, "receipt_version", "1");
+  appendReceiptField(receipt, "repo", "iggy3d");
+  appendReceiptField(receipt, "file_plan", "src/render/vulkan/CommandRecording.cpp");
+  appendReceiptField(receipt, "packet_order", "7");
+  appendReceiptField(receipt, "backend", "vulkan");
+  appendReceiptField(receipt, "record_mode", "first_room");
+  appendReceiptField(receipt, "pipeline_family", "first_room");
+  appendReceiptField(receipt, "pipeline_variant", kFirstRoomPipelineVariant);
+  appendReceiptField(receipt, "depth_enabled", true);
   appendReceiptField(receipt, "result", result);
   appendReceiptField(receipt, "reason_code", reasonCode);
   return receipt;
@@ -253,6 +276,220 @@ CommandRecordResult CommandRecording::recordEmptyFrame(const EmptyFrameRecordInf
   appendReceiptField(result.receipt, "frame_slot", static_cast<std::uint64_t>(info.frameSlot));
   appendReceiptField(result.receipt, "swapchain_image_index",
                      static_cast<std::uint64_t>(info.imageIndex));
+  return result;
+}
+
+CommandRecordResult CommandRecording::recordFirstRoomFrame(
+    const FirstRoomFrameRecordInfo& info) {
+  CommandRecordResult result;
+  if (!ready_ || info.commandBuffer == VK_NULL_HANDLE || info.swapchainImage == VK_NULL_HANDLE ||
+      info.swapchainImageView == VK_NULL_HANDLE || info.depthImage == VK_NULL_HANDLE ||
+      info.depthImageView == VK_NULL_HANDLE || info.pipeline == VK_NULL_HANDLE ||
+      info.pipelineLayout == VK_NULL_HANDLE || info.vertexBuffer == VK_NULL_HANDLE ||
+      info.indexBuffer == VK_NULL_HANDLE || info.indexCount == 0U || info.extent.width == 0U ||
+      info.extent.height == 0U) {
+    result.outcome = RenderOutcome::RendererNotReady;
+    result.reason = reasonFor("command_record_not_ready");
+    result.stage = "precheck";
+    result.receipt = firstRoomReceipt(*this, "fail", result.reason.code);
+    return result;
+  }
+
+  VkResult vkResult = vkResetCommandBuffer(info.commandBuffer, 0);
+  if (vkResult != VK_SUCCESS) {
+    result.outcome = mapVkResult(vkResult, VulkanCallContext::Unknown).outcome;
+    result.reason = reasonFor("command_reset_failed");
+    result.stage = "reset";
+    result.receipt = firstRoomReceipt(*this, "fail", result.reason.code);
+    return result;
+  }
+
+  VkCommandBufferBeginInfo beginInfo{};
+  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+  vkResult = vkBeginCommandBuffer(info.commandBuffer, &beginInfo);
+  if (vkResult != VK_SUCCESS) {
+    result.outcome = mapVkResult(vkResult, VulkanCallContext::Unknown).outcome;
+    result.reason = reasonFor("command_begin_failed");
+    result.stage = "begin";
+    result.receipt = firstRoomReceipt(*this, "fail", result.reason.code);
+    return result;
+  }
+
+  VkImageMemoryBarrier colorToAttachment{};
+  colorToAttachment.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  colorToAttachment.srcAccessMask = 0;
+  colorToAttachment.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+  colorToAttachment.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  colorToAttachment.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  colorToAttachment.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  colorToAttachment.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  colorToAttachment.image = info.swapchainImage;
+  colorToAttachment.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  colorToAttachment.subresourceRange.baseMipLevel = 0;
+  colorToAttachment.subresourceRange.levelCount = 1;
+  colorToAttachment.subresourceRange.baseArrayLayer = 0;
+  colorToAttachment.subresourceRange.layerCount = 1;
+
+  VkImageMemoryBarrier depthToAttachment{};
+  depthToAttachment.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  depthToAttachment.srcAccessMask = 0;
+  depthToAttachment.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+  depthToAttachment.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  depthToAttachment.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+  depthToAttachment.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  depthToAttachment.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  depthToAttachment.image = info.depthImage;
+  depthToAttachment.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+  depthToAttachment.subresourceRange.baseMipLevel = 0;
+  depthToAttachment.subresourceRange.levelCount = 1;
+  depthToAttachment.subresourceRange.baseArrayLayer = 0;
+  depthToAttachment.subresourceRange.layerCount = 1;
+
+  VkImageMemoryBarrier barriers[2]{colorToAttachment, depthToAttachment};
+  vkCmdPipelineBarrier(info.commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+                           VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+                       0, 0, nullptr, 0, nullptr, 2, barriers);
+
+  VkClearValue colorClear{};
+  colorClear.color.float32[0] = 0.035F;
+  colorClear.color.float32[1] = 0.055F;
+  colorClear.color.float32[2] = 0.080F;
+  colorClear.color.float32[3] = 1.0F;
+  VkClearValue depthClear{};
+  depthClear.depthStencil.depth = 1.0F;
+
+  VkRenderingAttachmentInfo colorAttachment{};
+  colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+  colorAttachment.imageView = info.swapchainImageView;
+  colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  colorAttachment.clearValue = colorClear;
+
+  VkRenderingAttachmentInfo depthAttachment{};
+  depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+  depthAttachment.imageView = info.depthImageView;
+  depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+  depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  depthAttachment.clearValue = depthClear;
+
+  VkRenderingInfo renderingInfo{};
+  renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+  renderingInfo.renderArea.offset = {0, 0};
+  renderingInfo.renderArea.extent = info.extent;
+  renderingInfo.layerCount = 1;
+  renderingInfo.colorAttachmentCount = 1;
+  renderingInfo.pColorAttachments = &colorAttachment;
+  renderingInfo.pDepthAttachment = &depthAttachment;
+
+  VkViewport viewport{};
+  viewport.x = 0.0F;
+  viewport.y = 0.0F;
+  viewport.width = static_cast<float>(info.extent.width);
+  viewport.height = static_cast<float>(info.extent.height);
+  viewport.minDepth = 0.0F;
+  viewport.maxDepth = 1.0F;
+  VkRect2D scissor{};
+  scissor.extent = info.extent;
+  vkCmdSetViewport(info.commandBuffer, 0, 1, &viewport);
+  vkCmdSetScissor(info.commandBuffer, 0, 1, &scissor);
+
+  createInfo_.deviceFunctions.cmdBeginRendering(info.commandBuffer, &renderingInfo);
+  vkCmdBindPipeline(info.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, info.pipeline);
+  VkDeviceSize vertexOffset = 0;
+  vkCmdBindVertexBuffers(info.commandBuffer, 0, 1, &info.vertexBuffer, &vertexOffset);
+  vkCmdBindIndexBuffer(info.commandBuffer, info.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+  vkCmdPushConstants(info.commandBuffer, info.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+                     sizeof(FirstRoomPushConstants), &info.pushConstants);
+  vkCmdDrawIndexed(info.commandBuffer, info.indexCount, 1, 0, 0, 0);
+  createInfo_.deviceFunctions.cmdEndRendering(info.commandBuffer);
+
+  if (info.captureEnabled && info.captureBuffer != VK_NULL_HANDLE &&
+      info.captureBufferSize >= static_cast<VkDeviceSize>(info.extent.width) *
+                                    info.extent.height * 4ULL) {
+    VkImageMemoryBarrier colorToTransfer{};
+    colorToTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    colorToTransfer.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    colorToTransfer.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    colorToTransfer.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    colorToTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    colorToTransfer.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    colorToTransfer.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    colorToTransfer.image = info.swapchainImage;
+    colorToTransfer.subresourceRange = colorToAttachment.subresourceRange;
+    vkCmdPipelineBarrier(info.commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1,
+                         &colorToTransfer);
+
+    VkBufferImageCopy copyRegion{};
+    copyRegion.bufferOffset = 0;
+    copyRegion.bufferRowLength = 0;
+    copyRegion.bufferImageHeight = 0;
+    copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copyRegion.imageSubresource.mipLevel = 0;
+    copyRegion.imageSubresource.baseArrayLayer = 0;
+    copyRegion.imageSubresource.layerCount = 1;
+    copyRegion.imageExtent = {info.extent.width, info.extent.height, 1U};
+    vkCmdCopyImageToBuffer(info.commandBuffer, info.swapchainImage,
+                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, info.captureBuffer, 1,
+                           &copyRegion);
+
+    VkImageMemoryBarrier transferToPresent{};
+    transferToPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    transferToPresent.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    transferToPresent.dstAccessMask = 0;
+    transferToPresent.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    transferToPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    transferToPresent.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    transferToPresent.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    transferToPresent.image = info.swapchainImage;
+    transferToPresent.subresourceRange = colorToAttachment.subresourceRange;
+    vkCmdPipelineBarrier(info.commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1,
+                         &transferToPresent);
+  } else {
+    VkImageMemoryBarrier colorToPresent{};
+    colorToPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    colorToPresent.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    colorToPresent.dstAccessMask = 0;
+    colorToPresent.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    colorToPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    colorToPresent.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    colorToPresent.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    colorToPresent.image = info.swapchainImage;
+    colorToPresent.subresourceRange = colorToAttachment.subresourceRange;
+    vkCmdPipelineBarrier(info.commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1,
+                         &colorToPresent);
+  }
+
+  vkResult = vkEndCommandBuffer(info.commandBuffer);
+  if (vkResult != VK_SUCCESS) {
+    result.outcome = mapVkResult(vkResult, VulkanCallContext::Unknown).outcome;
+    result.reason = reasonFor("command_end_failed");
+    result.stage = "end";
+    result.receipt = firstRoomReceipt(*this, "fail", result.reason.code);
+    return result;
+  }
+
+  result.outcome = RenderOutcome::Ok;
+  result.reason = reasonFor("first_room_frame_recorded");
+  result.recorded = true;
+  result.stage = "first_room";
+  result.receipt = firstRoomReceipt(*this, "pass", result.reason.code);
+  appendReceiptField(result.receipt, "dynamic_rendering_begin", true);
+  appendReceiptField(result.receipt, "dynamic_rendering_end", true);
+  appendReceiptField(result.receipt, "command_recorded", true);
+  appendReceiptField(result.receipt, "frame_slot", static_cast<std::uint64_t>(info.frameSlot));
+  appendReceiptField(result.receipt, "swapchain_image_index",
+                     static_cast<std::uint64_t>(info.imageIndex));
+  appendReceiptField(result.receipt, "draw_count", static_cast<std::uint64_t>(1));
+  appendReceiptField(result.receipt, "index_count", static_cast<std::uint64_t>(info.indexCount));
+  appendReceiptField(result.receipt, "capture_copy_recorded",
+                     info.captureEnabled && info.captureBuffer != VK_NULL_HANDLE);
   return result;
 }
 

@@ -14,6 +14,12 @@ RenderReason reasonFor(std::string_view code) {
   if (code == "empty_frame_presented") {
     return {code, "empty frame presented"};
   }
+  if (code == "packet7_first_room_visible") {
+    return {code, "packet 7 first room visible"};
+  }
+  if (code == "first_room_resources_missing") {
+    return {code, "first room resources missing"};
+  }
   if (code == "swapchain_suboptimal") {
     return {code, "swapchain suboptimal"};
   }
@@ -43,6 +49,34 @@ RenderReason reasonFor(std::string_view code) {
 
 std::string extentString(VkExtent2D extent) {
   return std::to_string(extent.width) + "x" + std::to_string(extent.height);
+}
+
+bool firstRoomBundleReady(const RenderLoopCreateInfo& createInfo) {
+  if (createInfo.swapchain == nullptr) {
+    return false;
+  }
+  const VkExtent2D swapchainExtent = createInfo.swapchain->info().extent;
+  return createInfo.firstRoomPipeline != nullptr &&
+         createInfo.firstRoomPipeline->pipeline != VK_NULL_HANDLE &&
+         createInfo.firstRoomLayout != nullptr &&
+         createInfo.firstRoomLayout->layout != VK_NULL_HANDLE &&
+         createInfo.firstRoomResources != nullptr && createInfo.firstRoomResources->ready() &&
+         createInfo.firstRoomResources->depth().extent.width == swapchainExtent.width &&
+         createInfo.firstRoomResources->depth().extent.height == swapchainExtent.height &&
+         createInfo.firstRoomResources->geometry().indexCount > 0U &&
+         createInfo.firstRoomResources->geometry().vertexBuffer.allocation.buffer != VK_NULL_HANDLE &&
+         createInfo.firstRoomResources->geometry().indexBuffer.allocation.buffer != VK_NULL_HANDLE &&
+         createInfo.firstRoomResources->depth().depthImage.allocation.image != VK_NULL_HANDLE &&
+         createInfo.firstRoomResources->depth().depthImage.imageView != VK_NULL_HANDLE;
+}
+
+FirstRoomPushConstants firstRoomClipFromModel() {
+  FirstRoomPushConstants constants;
+  constants.clipFromModel = {0.52F, 0.0F, 0.0F, 0.0F,
+                             0.0F, 0.0F, 0.0F, 0.0F,
+                             0.0F, 0.52F, 0.0F, 0.0F,
+                             0.0F, 0.0F, 0.5F, 1.0F};
+  return constants;
 }
 
 }  // namespace
@@ -75,6 +109,12 @@ RenderReceipt RenderLoop::makeReceipt(std::string_view result,
   appendReceiptField(receipt, "file_plan", "src/render/vulkan/RenderLoop.cpp");
   appendReceiptField(receipt, "packet_order", "5");
   appendReceiptField(receipt, "backend", "vulkan");
+  appendReceiptField(receipt, "rendering_path", firstRoomBundleReady(createInfo_)
+                                             ? "first_room"
+                                             : "clear_only_fallback");
+  appendReceiptField(receipt, "first_room_bundle_ready", firstRoomBundleReady(createInfo_));
+  appendReceiptField(receipt, "frame_capture_ready",
+                     createInfo_.frameCapture != nullptr && createInfo_.frameCapture->ready());
   appendReceiptField(receipt, "render_loop_ready", ready_);
   if (createInfo_.swapchain != nullptr) {
     const SwapchainInfo& swapchainInfo = createInfo_.swapchain->info();
@@ -227,17 +267,50 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
   }
 
   const SwapchainInfo& readySwapchain = createInfo_.swapchain->info();
-  EmptyFrameRecordInfo recordInfo;
-  recordInfo.commandBuffer =
+  VkCommandBuffer commandBuffer =
       createInfo_.commandRecording->commandBufferForFrameSlot(result.frameSlot);
-  recordInfo.swapchainImage = createInfo_.swapchain->imageAt(acquire.imageIndex);
-  recordInfo.swapchainImageView = createInfo_.swapchain->imageViewAt(acquire.imageIndex);
-  recordInfo.colorFormat = readySwapchain.colorFormat;
-  recordInfo.extent = readySwapchain.extent;
-  recordInfo.frameSlot = result.frameSlot;
-  recordInfo.imageIndex = acquire.imageIndex;
-  const CommandRecordResult recordResult =
-      createInfo_.commandRecording->recordEmptyFrame(recordInfo);
+  const bool drawFirstRoom = firstRoomBundleReady(createInfo_);
+  CommandRecordResult recordResult;
+  if (drawFirstRoom) {
+    FirstRoomFrameRecordInfo recordInfo;
+    recordInfo.commandBuffer = commandBuffer;
+    recordInfo.swapchainImage = createInfo_.swapchain->imageAt(acquire.imageIndex);
+    recordInfo.swapchainImageView = createInfo_.swapchain->imageViewAt(acquire.imageIndex);
+    recordInfo.colorFormat = readySwapchain.colorFormat;
+    recordInfo.depthImage =
+        createInfo_.firstRoomResources->depth().depthImage.allocation.image;
+    recordInfo.depthImageView = createInfo_.firstRoomResources->depth().depthImage.imageView;
+    recordInfo.depthFormat = createInfo_.firstRoomResources->depth().depthFormat;
+    recordInfo.extent = readySwapchain.extent;
+    recordInfo.frameSlot = result.frameSlot;
+    recordInfo.imageIndex = acquire.imageIndex;
+    recordInfo.pipeline = createInfo_.firstRoomPipeline->pipeline;
+    recordInfo.pipelineLayout = createInfo_.firstRoomLayout->layout;
+    recordInfo.vertexBuffer =
+        createInfo_.firstRoomResources->geometry().vertexBuffer.allocation.buffer;
+    recordInfo.indexBuffer =
+        createInfo_.firstRoomResources->geometry().indexBuffer.allocation.buffer;
+    recordInfo.indexCount = createInfo_.firstRoomResources->geometry().indexCount;
+    recordInfo.pushConstants = firstRoomClipFromModel();
+    recordInfo.captureEnabled =
+        readySwapchain.transferSourceSupported && createInfo_.frameCapture != nullptr &&
+        createInfo_.frameCapture->ready();
+    if (recordInfo.captureEnabled) {
+      recordInfo.captureBuffer = createInfo_.frameCapture->buffer();
+      recordInfo.captureBufferSize = createInfo_.frameCapture->bufferSizeBytes();
+    }
+    recordResult = createInfo_.commandRecording->recordFirstRoomFrame(recordInfo);
+  } else {
+    EmptyFrameRecordInfo recordInfo;
+    recordInfo.commandBuffer = commandBuffer;
+    recordInfo.swapchainImage = createInfo_.swapchain->imageAt(acquire.imageIndex);
+    recordInfo.swapchainImageView = createInfo_.swapchain->imageViewAt(acquire.imageIndex);
+    recordInfo.colorFormat = readySwapchain.colorFormat;
+    recordInfo.extent = readySwapchain.extent;
+    recordInfo.frameSlot = result.frameSlot;
+    recordInfo.imageIndex = acquire.imageIndex;
+    recordResult = createInfo_.commandRecording->recordEmptyFrame(recordInfo);
+  }
   if (!recordResult.recorded) {
     createInfo_.frameSync->markPresentedOrSkipped(false);
     createInfo_.frameSync->advanceFrameSlot();
@@ -258,7 +331,6 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     return result;
   }
 
-  VkCommandBuffer commandBuffer = recordInfo.commandBuffer;
   VkSemaphore waitSemaphore = submitPlan.waitSemaphore;
   VkSemaphore signalSemaphore = submitPlan.signalSemaphore;
   VkPipelineStageFlags waitStage = submitPlan.waitStageMask;
@@ -306,8 +378,10 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     result.status = presentResult.recreateRequested ? VulkanFrameStatus::PresentedSuboptimal
                                                     : VulkanFrameStatus::Presented;
     result.outcome = RenderOutcome::Ok;
-    result.reason = reasonFor(presentResult.recreateRequested ? "swapchain_suboptimal"
-                                                              : "empty_frame_presented");
+    result.reason = reasonFor(presentResult.recreateRequested
+                                  ? "swapchain_suboptimal"
+                                  : (drawFirstRoom ? "packet7_first_room_visible"
+                                                   : "empty_frame_presented"));
     result.receipt = makeReceipt("pass", result.reason.code);
   } else if (presentResult.recreateRequested) {
     result.status = VulkanFrameStatus::PresentRecreateRequested;
@@ -334,7 +408,19 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
                                                             : "presented")
                          : (presentResult.recreateRequested ? "recreate" : "fail"));
   appendReceiptField(result.receipt, "presented", presentResult.presented);
-  appendReceiptField(result.receipt, "draw_count", static_cast<std::uint64_t>(0));
+  appendReceiptField(result.receipt, "record_mode", drawFirstRoom ? "first_room" : "empty_frame");
+  appendReceiptField(result.receipt, "draw_count", static_cast<std::uint64_t>(drawFirstRoom ? 1 : 0));
+  appendReceiptField(result.receipt, "first_room_visible", drawFirstRoom && presentResult.presented);
+  appendReceiptField(result.receipt, "screenshot_capture",
+                     drawFirstRoom && readySwapchain.transferSourceSupported &&
+                             createInfo_.frameCapture != nullptr &&
+                             createInfo_.frameCapture->ready()
+                         ? "enabled"
+                         : "unavailable");
+  appendReceiptField(result.receipt, "room_proxy_visible",
+                     drawFirstRoom && presentResult.presented ? "true" : "unavailable");
+  appendReceiptField(result.receipt, "player_marker_visible", "unavailable");
+  appendReceiptField(result.receipt, "marker_count", static_cast<std::uint64_t>(0));
   return result;
 }
 

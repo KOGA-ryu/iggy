@@ -93,6 +93,7 @@ if(IGGY3D_ENABLE_VULKAN AND IGGY3D_HAS_VULKAN_TARGET)
       src/render/vulkan/VulkanMemoryAllocator.cpp
       src/render/vulkan/BufferImageResources.cpp
       src/render/vulkan/DescriptorSets.cpp
+      src/render/vulkan/FrameCapture.cpp
       src/render/vulkan/VulkanBackend.cpp
   )
   target_compile_definitions(iggy3d PUBLIC IGGY3D_ENABLE_VULKAN=1)
@@ -118,6 +119,8 @@ if(IGGY3D_ENABLE_VISUAL_DEMO)
   target_link_libraries(iggy3d_visual_demo PRIVATE iggy3d)
   iggy3d_apply_warnings(iggy3d_visual_demo)
 endif()
+
+include(cmake/iggy3d_install.cmake)
 
 if(IGGY3D_BUILD_TESTS)
   enable_testing()

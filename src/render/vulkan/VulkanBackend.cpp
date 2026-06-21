@@ -1,5 +1,9 @@
 #include "render/vulkan/VulkanBackend.hpp"
 
+#include "render/vulkan/VulkanResult.hpp"
+
+#include <filesystem>
+
 namespace iggy3d {
 namespace {
 
@@ -21,6 +25,12 @@ RenderReason backendReason(std::string_view code) {
   }
   if (code == "vulkan_smoke_pass") {
     return {code, "vulkan smoke pass"};
+  }
+  if (code == "packet7_first_room_visible") {
+    return {code, "packet 7 first room visible"};
+  }
+  if (code == "shader_artifact_missing") {
+    return {code, "shader artifact missing"};
   }
   return {"vulkan_surface_provider_missing", "vulkan surface provider missing"};
 }
@@ -73,7 +83,8 @@ RenderReceipt VulkanBackend::makeReceipt(std::string_view result,
   appendReceiptField(receipt, "packet_order", "5");
   appendReceiptField(receipt, "allowed_to_implement_code_now", "true");
   appendReceiptField(receipt, "backend", "vulkan");
-  appendReceiptField(receipt, "backend_phase", "swapchain_empty_frame");
+  appendReceiptField(receipt, "backend_phase", firstRoomReady_ ? "first_room_frame"
+                                                               : "swapchain_empty_frame");
   appendReceiptField(receipt, "initialized", bootstrap_.ready());
   appendReceiptField(receipt, "device_ready", bootstrap_.ready());
   appendReceiptField(receipt, "surface_ready", bootstrap_.handles().surface != VkSurfaceKHR{});
@@ -86,6 +97,18 @@ RenderReceipt VulkanBackend::makeReceipt(std::string_view result,
   appendReceiptField(receipt, "frame_slots", static_cast<std::uint64_t>(config_.maxFramesInFlight));
   appendReceiptField(receipt, "command_recording_ready", commandRecording_.ready());
   appendReceiptField(receipt, "render_loop_ready", renderLoop_.ready());
+  appendReceiptField(receipt, "pipeline_family", "first_room");
+  appendReceiptField(receipt, "pipeline_variant", vulkan::kFirstRoomPipelineVariant);
+  appendReceiptField(receipt, "first_room_bundle_ready", firstRoomReady_);
+  appendReceiptField(receipt, "pipeline_created", firstRoomPipeline_.pipeline != VkPipeline{});
+  appendReceiptField(receipt, "vertex_buffer_count",
+                     firstRoomResources_.ready() ? static_cast<std::uint64_t>(1)
+                                                 : static_cast<std::uint64_t>(0));
+  appendReceiptField(receipt, "index_buffer_count",
+                     firstRoomResources_.ready() ? static_cast<std::uint64_t>(1)
+                                                 : static_cast<std::uint64_t>(0));
+  appendReceiptField(receipt, "depth_enabled", firstRoomResources_.ready());
+  appendReceiptField(receipt, "screenshot_capture", frameCapture_.ready() ? "enabled" : "unavailable");
   appendReceiptField(receipt, "validation", "unavailable");
   appendReceiptField(receipt, "sync_validation", "unavailable");
   appendReceiptField(receipt, "function_loading_clean", bootstrap_.functions().clean);
@@ -94,6 +117,101 @@ RenderReceipt VulkanBackend::makeReceipt(std::string_view result,
   appendReceiptField(receipt, "result", result);
   appendReceiptField(receipt, "reason_code", reasonCode);
   return receipt;
+}
+
+void VulkanBackend::initializePacket7FirstRoomModules() {
+  destroyPacket7FirstRoomModules();
+  firstRoomReady_ = false;
+  if (config_.shaderRoot.empty()) {
+    diagnostics_ = makeReceipt("skip", "shader_artifact_missing");
+    return;
+  }
+
+  const std::filesystem::path vertexPath = config_.shaderRoot / "first_room.vert.spv";
+  const std::filesystem::path fragmentPath = config_.shaderRoot / "first_room.frag.spv";
+
+  vulkan::ShaderModuleCreateInfo vertexInfo;
+  vertexInfo.device = bootstrap_.handles().device;
+  vertexInfo.spirvPath = vertexPath;
+  vertexInfo.stage = vulkan::ShaderStage::Vertex;
+  vertexInfo.debugName = "first_room.vertex";
+  const vulkan::ShaderModuleResult vertexResult = vulkan::createShaderModule(vertexInfo);
+  diagnostics_ = vertexResult.receipt;
+  if (vertexResult.outcome != RenderOutcome::Ok) {
+    return;
+  }
+  firstRoomVertexShader_ = vertexResult.record;
+
+  vulkan::ShaderModuleCreateInfo fragmentInfo;
+  fragmentInfo.device = bootstrap_.handles().device;
+  fragmentInfo.spirvPath = fragmentPath;
+  fragmentInfo.stage = vulkan::ShaderStage::Fragment;
+  fragmentInfo.debugName = "first_room.fragment";
+  const vulkan::ShaderModuleResult fragmentResult = vulkan::createShaderModule(fragmentInfo);
+  diagnostics_ = fragmentResult.receipt;
+  if (fragmentResult.outcome != RenderOutcome::Ok) {
+    return;
+  }
+  firstRoomFragmentShader_ = fragmentResult.record;
+
+  vulkan::PipelineLayoutCreateInfo layoutInfo;
+  layoutInfo.device = bootstrap_.handles().device;
+  const vulkan::PipelineLayoutResult layoutResult =
+      vulkan::createFirstRoomPipelineLayout(layoutInfo);
+  diagnostics_ = layoutResult.receipt;
+  if (layoutResult.outcome != RenderOutcome::Ok) {
+    return;
+  }
+  firstRoomLayout_ = layoutResult.record;
+
+  vulkan::FirstRoomPipelineCreateInfo pipelineInfo;
+  pipelineInfo.device = bootstrap_.handles().device;
+  pipelineInfo.colorFormat = swapchain_.info().colorFormat;
+  pipelineInfo.depthFormat = VK_FORMAT_D32_SFLOAT;
+  pipelineInfo.vertexShader = firstRoomVertexShader_;
+  pipelineInfo.fragmentShader = firstRoomFragmentShader_;
+  pipelineInfo.layout = firstRoomLayout_;
+  const vulkan::FirstRoomPipelineResult pipelineResult =
+      vulkan::createFirstRoomPipeline(pipelineInfo);
+  diagnostics_ = pipelineResult.receipt;
+  if (pipelineResult.outcome != RenderOutcome::Ok) {
+    return;
+  }
+  firstRoomPipeline_ = pipelineResult.record;
+
+  vulkan::BufferImageResourcesCreateInfo resourcesInfo;
+  resourcesInfo.physicalDevice = bootstrap_.handles().physicalDevice;
+  resourcesInfo.device = bootstrap_.handles().device;
+  resourcesInfo.graphicsQueue = bootstrap_.handles().graphicsQueue;
+  resourcesInfo.graphicsQueueFamily = bootstrap_.queues().graphicsFamily;
+  resourcesInfo.extent = swapchain_.info().extent;
+  resourcesInfo.depthFormat = VK_FORMAT_D32_SFLOAT;
+  const vulkan::BufferImageResourcesResult resourcesResult =
+      firstRoomResources_.createFirstRoomResources(resourcesInfo);
+  diagnostics_ = resourcesResult.receipt;
+  if (resourcesResult.outcome != RenderOutcome::Ok) {
+    return;
+  }
+
+  if (swapchain_.info().transferSourceSupported) {
+    const RenderReceipt captureReceipt = frameCapture_.create(
+        {bootstrap_.handles().physicalDevice, bootstrap_.handles().device,
+         swapchain_.info().extent, swapchain_.info().colorFormat});
+    diagnostics_ = captureReceipt;
+  }
+
+  firstRoomReady_ = true;
+  diagnostics_ = makeReceipt("pass", "packet7_first_room_visible");
+}
+
+void VulkanBackend::destroyPacket7FirstRoomModules() {
+  firstRoomReady_ = false;
+  frameCapture_.destroy();
+  vulkan::destroyFirstRoomPipeline(bootstrap_.handles().device, firstRoomPipeline_);
+  vulkan::destroyPipelineLayout(bootstrap_.handles().device, firstRoomLayout_);
+  vulkan::destroyShaderModule(bootstrap_.handles().device, firstRoomFragmentShader_);
+  vulkan::destroyShaderModule(bootstrap_.handles().device, firstRoomVertexShader_);
+  firstRoomResources_.destroy();
 }
 
 void VulkanBackend::initializePacket5Modules(std::uint32_t drawableWidth,
@@ -136,11 +254,17 @@ void VulkanBackend::initializePacket5Modules(std::uint32_t drawableWidth,
     return;
   }
 
+  initializePacket7FirstRoomModules();
+
   vulkan::RenderLoopCreateInfo loopInfo;
   loopInfo.deviceSurface = &bootstrap_;
   loopInfo.swapchain = &swapchain_;
   loopInfo.frameSync = &frameSync_;
   loopInfo.commandRecording = &commandRecording_;
+  loopInfo.firstRoomPipeline = &firstRoomPipeline_;
+  loopInfo.firstRoomLayout = &firstRoomLayout_;
+  loopInfo.firstRoomResources = &firstRoomResources_;
+  loopInfo.frameCapture = &frameCapture_;
   const vulkan::VulkanFrameResult loopResult = renderLoop_.initialize(loopInfo);
   diagnostics_ = loopResult.receipt;
   lifecycleState_ = loopResult.outcome == RenderOutcome::Ok ? RendererLifecycleState::Ready
@@ -211,6 +335,19 @@ RenderSubmitResult VulkanBackend::resize(RenderViewport viewport) {
   }
   const vulkan::VulkanFrameResult resizeResult =
       renderLoop_.resize(viewport.width, viewport.height);
+  if (resizeResult.outcome == RenderOutcome::Ok && swapchain_.ready()) {
+    initializePacket7FirstRoomModules();
+    vulkan::RenderLoopCreateInfo loopInfo;
+    loopInfo.deviceSurface = &bootstrap_;
+    loopInfo.swapchain = &swapchain_;
+    loopInfo.frameSync = &frameSync_;
+    loopInfo.commandRecording = &commandRecording_;
+    loopInfo.firstRoomPipeline = &firstRoomPipeline_;
+    loopInfo.firstRoomLayout = &firstRoomLayout_;
+    loopInfo.firstRoomResources = &firstRoomResources_;
+    loopInfo.frameCapture = &frameCapture_;
+    renderLoop_.initialize(loopInfo);
+  }
   result.outcome = resizeResult.outcome;
   result.reason = resizeResult.reason;
   result.receipt = resizeResult.receipt;
@@ -222,10 +359,23 @@ RenderReceipt VulkanBackend::diagnostics() const {
   return diagnostics_;
 }
 
+bool VulkanBackend::frameCaptureReady() const {
+  return frameCapture_.ready();
+}
+
+vulkan::NormalizedCapture VulkanBackend::readLastFrameCapture() const {
+  return frameCapture_.readMappedRgba();
+}
+
 RenderOutcome VulkanBackend::waitIdle() {
 #if defined(IGGY3D_HAS_VULKAN)
   if (bootstrap_.handles().device != VK_NULL_HANDLE) {
-    vkDeviceWaitIdle(bootstrap_.handles().device);
+    const VkResult result = vkDeviceWaitIdle(bootstrap_.handles().device);
+    if (result != VK_SUCCESS) {
+      const vulkan::VulkanResultMapping mapped =
+          vulkan::mapVkResult(result, vulkan::VulkanCallContext::QueueSubmit);
+      return mapped.outcome;
+    }
   }
 #endif
   return RenderOutcome::Ok;
@@ -237,6 +387,7 @@ void VulkanBackend::shutdown() {
   }
   renderLoop_.shutdown();
   waitIdle();
+  destroyPacket7FirstRoomModules();
   commandRecording_.destroy();
   frameSync_.destroy();
   swapchain_.destroy();

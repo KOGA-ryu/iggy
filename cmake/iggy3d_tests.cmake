@@ -166,6 +166,19 @@ iggy3d_add_render_packet6_unit_test(render_shader_build_policy_tests
 iggy3d_add_render_packet6_unit_test(render_memory_budget_policy_tests
   tests/unit/render_memory_budget_policy_tests.cpp)
 
+add_executable(package_headless_smoke tests/smoke/package_headless_smoke.cpp)
+target_link_libraries(package_headless_smoke PRIVATE iggy3d)
+iggy3d_apply_warnings(package_headless_smoke)
+if(TARGET iggy3d_headless_demo)
+  target_compile_definitions(package_headless_smoke
+    PRIVATE
+      IGGY3D_HEADLESS_DEMO_PATH="$<TARGET_FILE:iggy3d_headless_demo>")
+endif()
+add_test(NAME package_headless_smoke COMMAND "$<TARGET_FILE:package_headless_smoke>")
+set_tests_properties(package_headless_smoke PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "smoke;package;headless;iggy3d")
+
 if(IGGY3D_ENABLE_VULKAN_SMOKE)
   add_executable(vulkan_platform_smoke tests/smoke/vulkan_platform_smoke.cpp)
   target_link_libraries(vulkan_platform_smoke PRIVATE iggy3d)
@@ -287,6 +300,118 @@ if(IGGY3D_ENABLE_VULKAN_SMOKE)
       WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
       SKIP_RETURN_CODE 77
       LABELS "smoke;vulkan;render;packet6;iggy3d")
+
+  add_executable(vulkan_first_room_smoke tests/smoke/vulkan_first_room_smoke.cpp)
+  target_link_libraries(vulkan_first_room_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(vulkan_first_room_smoke)
+
+  add_executable(vulkan_screenshot_smoke tests/smoke/vulkan_screenshot_smoke.cpp)
+  target_link_libraries(vulkan_screenshot_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(vulkan_screenshot_smoke)
+
+  add_executable(vulkan_frame_hash_smoke tests/smoke/vulkan_frame_hash_smoke.cpp)
+  target_link_libraries(vulkan_frame_hash_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(vulkan_frame_hash_smoke)
+
+  add_executable(vulkan_diagnostics_smoke tests/smoke/vulkan_diagnostics_smoke.cpp)
+  target_link_libraries(vulkan_diagnostics_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(vulkan_diagnostics_smoke)
+
+  add_executable(vulkan_device_lost_smoke tests/smoke/vulkan_device_lost_smoke.cpp)
+  target_link_libraries(vulkan_device_lost_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(vulkan_device_lost_smoke)
+
+  add_executable(vulkan_optional_unsupported_smoke
+    tests/smoke/vulkan_optional_unsupported_smoke.cpp)
+  target_link_libraries(vulkan_optional_unsupported_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(vulkan_optional_unsupported_smoke)
+
+  add_executable(vulkan_strict_unsupported_smoke
+    tests/smoke/vulkan_strict_unsupported_smoke.cpp)
+  target_link_libraries(vulkan_strict_unsupported_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(vulkan_strict_unsupported_smoke)
+
+  add_executable(package_visual_startup_smoke tests/smoke/package_visual_startup_smoke.cpp)
+  target_link_libraries(package_visual_startup_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(package_visual_startup_smoke)
+
+  add_executable(package_shader_lookup_smoke tests/smoke/package_shader_lookup_smoke.cpp)
+  target_link_libraries(package_shader_lookup_smoke PRIVATE iggy3d)
+  target_compile_definitions(package_shader_lookup_smoke
+    PRIVATE
+      IGGY3D_SHADER_BINARY_ROOT_VALUE="${IGGY3D_SHADER_BINARY_ROOT}")
+  iggy3d_apply_warnings(package_shader_lookup_smoke)
+
+  add_executable(package_vulkan_dependency_smoke
+    tests/smoke/package_vulkan_dependency_smoke.cpp)
+  target_link_libraries(package_vulkan_dependency_smoke PRIVATE iggy3d)
+  target_compile_definitions(package_vulkan_dependency_smoke
+    PRIVATE
+      IGGY3D_SHADER_BINARY_ROOT_VALUE="${IGGY3D_SHADER_BINARY_ROOT}")
+  iggy3d_apply_warnings(package_vulkan_dependency_smoke)
+
+  foreach(packet7_smoke vulkan_first_room_smoke vulkan_screenshot_smoke
+                         vulkan_frame_hash_smoke package_shader_lookup_smoke
+                         package_vulkan_dependency_smoke)
+    target_compile_definitions("${packet7_smoke}"
+      PRIVATE
+        IGGY3D_SHADER_SOURCE_ROOT_VALUE="${IGGY3D_SHADER_SOURCE_ROOT}"
+        IGGY3D_SHADER_BINARY_ROOT_VALUE="${IGGY3D_SHADER_BINARY_ROOT}"
+        IGGY3D_SHADER_TARGET_ENV_VALUE="${IGGY3D_SHADER_TARGET_ENV}")
+    if(IGGY3D_SHADER_COMPILER_AVAILABLE)
+      target_compile_definitions("${packet7_smoke}" PRIVATE IGGY3D_SHADER_COMPILER_AVAILABLE=1)
+    endif()
+    if(IGGY3D_ENABLE_VULKAN_SHADERS AND IGGY3D_SHADER_COMPILER_AVAILABLE)
+      add_dependencies("${packet7_smoke}" iggy3d_vulkan_shaders)
+    endif()
+  endforeach()
+
+  foreach(packet7_strict_smoke vulkan_first_room_smoke vulkan_screenshot_smoke
+                                vulkan_frame_hash_smoke)
+    if(IGGY3D_REQUIRE_VULKAN_SMOKE)
+      target_compile_definitions("${packet7_strict_smoke}"
+        PRIVATE IGGY3D_REQUIRE_VULKAN_SMOKE_ENABLED=1)
+    endif()
+  endforeach()
+
+  if(TARGET iggy3d_visual_demo)
+    target_compile_definitions(package_visual_startup_smoke
+      PRIVATE
+        IGGY3D_VISUAL_DEMO_PATH="$<TARGET_FILE:iggy3d_visual_demo>")
+  endif()
+
+  add_test(NAME vulkan_first_room_smoke COMMAND "$<TARGET_FILE:vulkan_first_room_smoke>")
+  add_test(NAME vulkan_screenshot_smoke COMMAND "$<TARGET_FILE:vulkan_screenshot_smoke>")
+  add_test(NAME vulkan_frame_hash_smoke COMMAND "$<TARGET_FILE:vulkan_frame_hash_smoke>")
+  add_test(NAME vulkan_diagnostics_smoke COMMAND "$<TARGET_FILE:vulkan_diagnostics_smoke>")
+  add_test(NAME vulkan_device_lost_smoke COMMAND "$<TARGET_FILE:vulkan_device_lost_smoke>")
+  add_test(NAME vulkan_optional_unsupported_smoke
+           COMMAND "$<TARGET_FILE:vulkan_optional_unsupported_smoke>")
+  add_test(NAME vulkan_strict_unsupported_smoke
+           COMMAND "$<TARGET_FILE:vulkan_strict_unsupported_smoke>")
+  add_test(NAME package_visual_startup_smoke
+           COMMAND "$<TARGET_FILE:package_visual_startup_smoke>")
+  add_test(NAME package_shader_lookup_smoke
+           COMMAND "$<TARGET_FILE:package_shader_lookup_smoke>")
+  add_test(NAME package_vulkan_dependency_smoke
+           COMMAND "$<TARGET_FILE:package_vulkan_dependency_smoke>")
+
+  set_tests_properties(vulkan_first_room_smoke vulkan_screenshot_smoke
+    vulkan_frame_hash_smoke vulkan_optional_unsupported_smoke package_visual_startup_smoke
+    package_shader_lookup_smoke package_vulkan_dependency_smoke
+    PROPERTIES
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+      SKIP_RETURN_CODE 77
+      LABELS "smoke;vulkan;render;packet7;iggy3d")
+  set_tests_properties(vulkan_diagnostics_smoke vulkan_device_lost_smoke
+    PROPERTIES
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+      LABELS "smoke;vulkan;render;packet7;iggy3d")
+  set_tests_properties(vulkan_strict_unsupported_smoke
+    PROPERTIES
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+      WILL_FAIL TRUE
+      LABELS "smoke;vulkan;render;packet7;iggy3d")
 endif()
 
 iggy3d_add_acceptance_test(complete_runtime_demo_tests tests/acceptance/complete_runtime_demo_tests.cpp)

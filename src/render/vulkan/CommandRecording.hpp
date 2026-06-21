@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "render/RenderDiagnostics.hpp"
+#include "render/vulkan/PipelineLayout.hpp"
 #include "render/vulkan/VulkanFunctions.hpp"
 #include "render/vulkan/VulkanTypes.hpp"
 
@@ -30,6 +31,28 @@ struct EmptyFrameRecordInfo {
   float clearA = 1.0F;
 };
 
+struct FirstRoomFrameRecordInfo {
+  VkCommandBuffer commandBuffer{};
+  VkImage swapchainImage{};
+  VkImageView swapchainImageView{};
+  VkFormat colorFormat{};
+  VkImage depthImage{};
+  VkImageView depthImageView{};
+  VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
+  VkExtent2D extent{};
+  std::uint32_t frameSlot = 0;
+  std::uint32_t imageIndex = 0;
+  VkPipeline pipeline{};
+  VkPipelineLayout pipelineLayout{};
+  VkBuffer vertexBuffer{};
+  VkBuffer indexBuffer{};
+  std::uint32_t indexCount = 0;
+  FirstRoomPushConstants pushConstants;
+  bool captureEnabled = false;
+  VkBuffer captureBuffer{};
+  VkDeviceSize captureBufferSize = 0;
+};
+
 struct CommandRecordResult {
   RenderOutcome outcome = RenderOutcome::RendererNotReady;
   RenderReason reason{"command_record_not_ready", "command recording not ready"};
@@ -51,6 +74,7 @@ public:
 
   VkCommandBuffer commandBufferForFrameSlot(std::uint32_t frameSlot) const;
   CommandRecordResult recordEmptyFrame(const EmptyFrameRecordInfo& info);
+  CommandRecordResult recordFirstRoomFrame(const FirstRoomFrameRecordInfo& info);
   bool ready() const;
   RenderReceipt diagnostics(std::string_view result, std::string_view reasonCode) const;
 

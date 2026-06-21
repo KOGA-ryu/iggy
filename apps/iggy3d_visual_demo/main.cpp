@@ -221,7 +221,11 @@ int main(int argc, const char* const* argv) {
   iggy3d::appendReceiptField(receipt, "shader_root_source", lookup.lookup.shaderRootSource);
   iggy3d::appendReceiptField(receipt, "diagnostics_dir_source", lookup.lookup.diagnosticsDirSource);
   iggy3d::appendReceiptField(receipt, "frames", static_cast<std::uint64_t>(parsed.options.frames));
-  iggy3d::appendReceiptField(receipt, "reason_code", "visual_demo_ok");
+  iggy3d::appendReceiptField(receipt, "frames_presented",
+                             static_cast<std::uint64_t>(parsed.options.frames));
+  if (!iggy3d::hasReceiptField(receipt, "reason_code")) {
+    iggy3d::appendReceiptField(receipt, "reason_code", "visual_demo_ok");
+  }
 
   if (parsed.options.printReceipt) {
     std::cout << iggy3d::formatRenderReceipt(receipt);

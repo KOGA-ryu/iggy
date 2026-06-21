@@ -40,6 +40,7 @@ struct SwapchainInfo {
   std::uint32_t imageCount = 0;
   std::uint32_t generation = 0;
   std::uint32_t recreateCount = 0;
+  bool transferSourceSupported = false;
   SwapchainState state = SwapchainState::Uninitialized;
 };
 

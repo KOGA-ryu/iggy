@@ -194,6 +194,7 @@ RenderReceipt Swapchain::makeReceipt(std::string_view result,
   appendReceiptField(receipt, "swapchain_present_mode", swapchainPresentModeName(info_.presentMode));
   appendReceiptField(receipt, "swapchain_extent", extentString(info_.extent));
   appendReceiptField(receipt, "swapchain_image_count", static_cast<std::uint64_t>(info_.imageCount));
+  appendReceiptField(receipt, "swapchain_transfer_src_supported", info_.transferSourceSupported);
   appendReceiptField(receipt, "swapchain_recreate_count",
                      static_cast<std::uint64_t>(info_.recreateCount));
   appendReceiptField(receipt, "result", result);
@@ -335,6 +336,12 @@ SwapchainOperationResult Swapchain::createInternal(std::uint32_t drawableWidth,
   swapchainInfo.imageExtent = extent;
   swapchainInfo.imageArrayLayers = 1;
   swapchainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  if ((capabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) != 0U) {
+    swapchainInfo.imageUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    info_.transferSourceSupported = true;
+  } else {
+    info_.transferSourceSupported = false;
+  }
   if (createInfo_.queues.graphicsFamily != createInfo_.queues.presentFamily) {
     swapchainInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
     swapchainInfo.queueFamilyIndexCount = 2;
