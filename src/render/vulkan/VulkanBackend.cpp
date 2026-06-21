@@ -7,8 +7,17 @@ RenderReason backendReason(std::string_view code) {
   if (code == "vulkan_backend_no_swapchain_yet") {
     return {code, "vulkan backend has no swapchain yet"};
   }
+  if (code == "render_loop_not_ready") {
+    return {code, "render loop not ready"};
+  }
+  if (code == "empty_frame_presented") {
+    return {code, "empty frame presented"};
+  }
   if (code == "vulkan_backend_shutdown") {
     return {code, "vulkan backend shutdown"};
+  }
+  if (code == "swapchain_not_drawable") {
+    return {code, "swapchain not drawable"};
   }
   if (code == "vulkan_smoke_pass") {
     return {code, "vulkan smoke pass"};
@@ -36,8 +45,11 @@ VulkanBackend::VulkanBackend(VulkanBackendCreateInfo createInfo)
   bootstrapInfo.validation = validationConfigFromRendererConfig(config_);
   bootstrapInfo.featureRequest.allowSoftwareDevice = config_.allowSoftwareVulkan;
   diagnostics_ = bootstrap_.initialize(bootstrapInfo);
-  lifecycleState_ = bootstrap_.ready() ? RendererLifecycleState::Ready
-                                       : RendererLifecycleState::NotInitialized;
+  if (bootstrap_.ready()) {
+    initializePacket5Modules(createInfo.drawableWidth, createInfo.drawableHeight);
+  } else {
+    lifecycleState_ = RendererLifecycleState::NotInitialized;
+  }
 }
 
 VulkanBackend::~VulkanBackend() {
@@ -58,13 +70,22 @@ RenderReceipt VulkanBackend::makeReceipt(std::string_view result,
   appendReceiptField(receipt, "receipt_version", "1");
   appendReceiptField(receipt, "repo", "iggy3d");
   appendReceiptField(receipt, "file_plan", "src/render/vulkan/VulkanBackend.cpp");
-  appendReceiptField(receipt, "packet_order", "4");
-  appendReceiptField(receipt, "allowed_to_implement_code_now", "false");
+  appendReceiptField(receipt, "packet_order", "5");
+  appendReceiptField(receipt, "allowed_to_implement_code_now", "true");
   appendReceiptField(receipt, "backend", "vulkan");
-  appendReceiptField(receipt, "backend_phase", "bootstrap");
+  appendReceiptField(receipt, "backend_phase", "swapchain_empty_frame");
   appendReceiptField(receipt, "initialized", bootstrap_.ready());
   appendReceiptField(receipt, "device_ready", bootstrap_.ready());
   appendReceiptField(receipt, "surface_ready", bootstrap_.handles().surface != VkSurfaceKHR{});
+  appendReceiptField(receipt, "swapchain_state", swapchainStateName(swapchain_.info().state));
+  appendReceiptField(receipt, "swapchain_generation",
+                     static_cast<std::uint64_t>(swapchain_.info().generation));
+  appendReceiptField(receipt, "swapchain_recreate_count",
+                     static_cast<std::uint64_t>(swapchain_.info().recreateCount));
+  appendReceiptField(receipt, "sync_policy", "binary_wsi");
+  appendReceiptField(receipt, "frame_slots", static_cast<std::uint64_t>(config_.maxFramesInFlight));
+  appendReceiptField(receipt, "command_recording_ready", commandRecording_.ready());
+  appendReceiptField(receipt, "render_loop_ready", renderLoop_.ready());
   appendReceiptField(receipt, "validation", "unavailable");
   appendReceiptField(receipt, "sync_validation", "unavailable");
   appendReceiptField(receipt, "function_loading_clean", bootstrap_.functions().clean);
@@ -73,6 +94,57 @@ RenderReceipt VulkanBackend::makeReceipt(std::string_view result,
   appendReceiptField(receipt, "result", result);
   appendReceiptField(receipt, "reason_code", reasonCode);
   return receipt;
+}
+
+void VulkanBackend::initializePacket5Modules(std::uint32_t drawableWidth,
+                                             std::uint32_t drawableHeight) {
+  vulkan::SwapchainCreateInfo swapchainInfo;
+  swapchainInfo.device = bootstrap_.handles().device;
+  swapchainInfo.physicalDevice = bootstrap_.handles().physicalDevice;
+  swapchainInfo.surface = bootstrap_.handles().surface;
+  swapchainInfo.queues = bootstrap_.queues();
+  swapchainInfo.functions = bootstrap_.functions();
+  swapchainInfo.drawableWidth = drawableWidth;
+  swapchainInfo.drawableHeight = drawableHeight;
+  swapchainInfo.config = config_;
+  const vulkan::SwapchainOperationResult swapchainResult = swapchain_.create(swapchainInfo);
+  diagnostics_ = swapchainResult.receipt;
+  if (swapchainResult.outcome != RenderOutcome::Ok) {
+    lifecycleState_ = RendererLifecycleState::NotInitialized;
+    return;
+  }
+
+  vulkan::FrameSyncCreateInfo syncInfo;
+  syncInfo.device = bootstrap_.handles().device;
+  syncInfo.frameSlotCount = config_.maxFramesInFlight;
+  const vulkan::FrameSyncOperationResult syncResult = frameSync_.create(syncInfo);
+  diagnostics_ = syncResult.receipt;
+  if (syncResult.outcome != RenderOutcome::Ok) {
+    lifecycleState_ = RendererLifecycleState::NotInitialized;
+    return;
+  }
+
+  vulkan::CommandRecordingCreateInfo commandInfo;
+  commandInfo.device = bootstrap_.handles().device;
+  commandInfo.deviceFunctions = bootstrap_.functions().device;
+  commandInfo.graphicsQueueFamily = bootstrap_.queues().graphicsFamily;
+  commandInfo.frameSlotCount = config_.maxFramesInFlight;
+  const vulkan::CommandRecordResult commandResult = commandRecording_.create(commandInfo);
+  diagnostics_ = commandResult.receipt;
+  if (commandResult.outcome != RenderOutcome::Ok) {
+    lifecycleState_ = RendererLifecycleState::NotInitialized;
+    return;
+  }
+
+  vulkan::RenderLoopCreateInfo loopInfo;
+  loopInfo.deviceSurface = &bootstrap_;
+  loopInfo.swapchain = &swapchain_;
+  loopInfo.frameSync = &frameSync_;
+  loopInfo.commandRecording = &commandRecording_;
+  const vulkan::VulkanFrameResult loopResult = renderLoop_.initialize(loopInfo);
+  diagnostics_ = loopResult.receipt;
+  lifecycleState_ = loopResult.outcome == RenderOutcome::Ok ? RendererLifecycleState::Ready
+                                                            : RendererLifecycleState::NotInitialized;
 }
 
 RenderSubmitResult VulkanBackend::submitFrame(const FrameInput& frame) {
@@ -85,9 +157,17 @@ RenderSubmitResult VulkanBackend::submitFrame(const FrameInput& frame) {
     diagnostics_ = result.receipt;
     return result;
   }
-  result.outcome = RenderOutcome::SkipFrame;
-  result.reason = backendReason("vulkan_backend_no_swapchain_yet");
-  result.receipt = makeReceipt("skip", result.reason.code);
+  if (lifecycleState_ != RendererLifecycleState::Ready || !renderLoop_.ready()) {
+    result.outcome = RenderOutcome::SkipFrame;
+    result.reason = backendReason("vulkan_backend_no_swapchain_yet");
+    result.receipt = makeReceipt("skip", result.reason.code);
+    diagnostics_ = result.receipt;
+    return result;
+  }
+  const vulkan::VulkanFrameResult frameResult = renderLoop_.renderFrame(frame);
+  result.outcome = frameResult.outcome;
+  result.reason = frameResult.reason;
+  result.receipt = frameResult.receipt;
   diagnostics_ = result.receipt;
   return result;
 }
@@ -95,9 +175,45 @@ RenderSubmitResult VulkanBackend::submitFrame(const FrameInput& frame) {
 RenderSubmitResult VulkanBackend::resize(RenderViewport viewport) {
   lastResize_ = viewport;
   RenderSubmitResult result;
-  result.outcome = RenderOutcome::SkipFrame;
-  result.reason = backendReason("vulkan_backend_no_swapchain_yet");
-  result.receipt = makeReceipt("skip", result.reason.code);
+  if (lifecycleState_ == RendererLifecycleState::Shutdown) {
+    result.outcome = RenderOutcome::RendererNotReady;
+    result.reason = backendReason("vulkan_backend_shutdown");
+    result.receipt = makeReceipt("fail", result.reason.code);
+    diagnostics_ = result.receipt;
+    return result;
+  }
+  if (!renderLoop_.ready() && swapchain_.info().state != vulkan::SwapchainState::NotDrawable) {
+    result.outcome = RenderOutcome::SkipFrame;
+    result.reason = backendReason("vulkan_backend_no_swapchain_yet");
+    result.receipt = makeReceipt("skip", result.reason.code);
+    diagnostics_ = result.receipt;
+    return result;
+  }
+  if (!renderLoop_.ready() && swapchain_.info().state == vulkan::SwapchainState::NotDrawable) {
+    if (viewport.width == 0U || viewport.height == 0U) {
+      result.outcome = RenderOutcome::SkipFrame;
+      result.reason = backendReason("swapchain_not_drawable");
+      result.receipt = makeReceipt("skip", result.reason.code);
+      diagnostics_ = result.receipt;
+      return result;
+    }
+    if (bootstrap_.ready() && lifecycleState_ != RendererLifecycleState::Ready) {
+      initializePacket5Modules(viewport.width, viewport.height);
+      result.outcome = lifecycleState_ == RendererLifecycleState::Ready
+                           ? RenderOutcome::Ok
+                           : RenderOutcome::RendererNotReady;
+      result.reason = lifecycleState_ == RendererLifecycleState::Ready
+                          ? backendReason("vulkan_smoke_pass")
+                          : backendReason("vulkan_backend_no_swapchain_yet");
+      result.receipt = diagnostics_;
+      return result;
+    }
+  }
+  const vulkan::VulkanFrameResult resizeResult =
+      renderLoop_.resize(viewport.width, viewport.height);
+  result.outcome = resizeResult.outcome;
+  result.reason = resizeResult.reason;
+  result.receipt = resizeResult.receipt;
   diagnostics_ = result.receipt;
   return result;
 }
@@ -119,6 +235,11 @@ void VulkanBackend::shutdown() {
   if (lifecycleState_ == RendererLifecycleState::Shutdown) {
     return;
   }
+  renderLoop_.shutdown();
+  waitIdle();
+  commandRecording_.destroy();
+  frameSync_.destroy();
+  swapchain_.destroy();
   bootstrap_.shutdown();
   lifecycleState_ = RendererLifecycleState::Shutdown;
   diagnostics_ = makeReceipt("pass", "vulkan_backend_shutdown");

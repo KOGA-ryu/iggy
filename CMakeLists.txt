@@ -82,6 +82,10 @@ if(IGGY3D_ENABLE_VULKAN AND IGGY3D_HAS_VULKAN_TARGET)
       src/render/vulkan/VulkanFeatureSupport.cpp
       src/render/vulkan/DebugValidation.cpp
       src/render/vulkan/InstanceDeviceSurface.cpp
+      src/render/vulkan/Swapchain.cpp
+      src/render/vulkan/FrameSync.cpp
+      src/render/vulkan/CommandRecording.cpp
+      src/render/vulkan/RenderLoop.cpp
       src/render/vulkan/VulkanBackend.cpp
   )
   target_compile_definitions(iggy3d PUBLIC IGGY3D_ENABLE_VULKAN=1)

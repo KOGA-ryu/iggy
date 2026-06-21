@@ -167,6 +167,39 @@ if(IGGY3D_ENABLE_VULKAN_SMOKE)
       WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
       SKIP_RETURN_CODE 77
       LABELS "smoke;vulkan;render;iggy3d")
+
+  add_executable(vulkan_swapchain_smoke tests/smoke/vulkan_swapchain_smoke.cpp)
+  target_link_libraries(vulkan_swapchain_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(vulkan_swapchain_smoke)
+
+  add_executable(vulkan_resize_minimize_smoke tests/smoke/vulkan_resize_minimize_smoke.cpp)
+  target_link_libraries(vulkan_resize_minimize_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(vulkan_resize_minimize_smoke)
+
+  add_executable(vulkan_empty_frame_smoke tests/smoke/vulkan_empty_frame_smoke.cpp)
+  target_link_libraries(vulkan_empty_frame_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(vulkan_empty_frame_smoke)
+
+  add_executable(vulkan_sync_smoke tests/smoke/vulkan_sync_smoke.cpp)
+  target_link_libraries(vulkan_sync_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(vulkan_sync_smoke)
+
+  if(IGGY3D_REQUIRE_VULKAN_SMOKE)
+    target_compile_definitions(vulkan_swapchain_smoke PRIVATE IGGY3D_REQUIRE_VULKAN_SMOKE_ENABLED=1)
+    target_compile_definitions(vulkan_resize_minimize_smoke PRIVATE IGGY3D_REQUIRE_VULKAN_SMOKE_ENABLED=1)
+    target_compile_definitions(vulkan_empty_frame_smoke PRIVATE IGGY3D_REQUIRE_VULKAN_SMOKE_ENABLED=1)
+    target_compile_definitions(vulkan_sync_smoke PRIVATE IGGY3D_REQUIRE_VULKAN_SMOKE_ENABLED=1)
+  endif()
+  add_test(NAME vulkan_swapchain_smoke COMMAND "$<TARGET_FILE:vulkan_swapchain_smoke>")
+  add_test(NAME vulkan_resize_minimize_smoke COMMAND "$<TARGET_FILE:vulkan_resize_minimize_smoke>")
+  add_test(NAME vulkan_empty_frame_smoke COMMAND "$<TARGET_FILE:vulkan_empty_frame_smoke>")
+  add_test(NAME vulkan_sync_smoke COMMAND "$<TARGET_FILE:vulkan_sync_smoke>")
+  set_tests_properties(vulkan_swapchain_smoke vulkan_resize_minimize_smoke
+    vulkan_empty_frame_smoke vulkan_sync_smoke
+    PROPERTIES
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+      SKIP_RETURN_CODE 77
+      LABELS "smoke;vulkan;render;iggy3d")
 endif()
 
 iggy3d_add_acceptance_test(complete_runtime_demo_tests tests/acceptance/complete_runtime_demo_tests.cpp)

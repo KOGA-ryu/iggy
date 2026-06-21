@@ -97,8 +97,15 @@ VulkanFunctionTables loadVulkanFunctions(VkInstance instance,
   }
 #endif
 
-  const bool instanceLoaded = tables.instance.destroySurfaceKHR != nullptr ||
-                              instance == VkInstance{};
+  const bool surfaceQueryFunctionsLoaded =
+      !config.swapchainEnabled ||
+      (tables.instance.getPhysicalDeviceSurfaceSupportKHR != nullptr &&
+       tables.instance.getPhysicalDeviceSurfaceCapabilitiesKHR != nullptr &&
+       tables.instance.getPhysicalDeviceSurfaceFormatsKHR != nullptr &&
+       tables.instance.getPhysicalDeviceSurfacePresentModesKHR != nullptr);
+  const bool instanceLoaded =
+      instance == VkInstance{} ||
+      (tables.instance.destroySurfaceKHR != nullptr && surfaceQueryFunctionsLoaded);
   const bool debugLoaded =
       !config.debugUtilsEnabled ||
       (tables.instance.createDebugUtilsMessengerEXT != nullptr &&
@@ -106,18 +113,34 @@ VulkanFunctionTables loadVulkanFunctions(VkInstance instance,
       !config.debugUtilsRequired;
   const bool swapchainLoaded =
       !config.swapchainEnabled ||
-      (tables.device.createSwapchainKHR != nullptr && tables.device.destroySwapchainKHR != nullptr);
+      (tables.device.createSwapchainKHR != nullptr &&
+       tables.device.destroySwapchainKHR != nullptr &&
+       tables.device.getSwapchainImagesKHR != nullptr &&
+       tables.device.acquireNextImageKHR != nullptr &&
+       tables.device.queuePresentKHR != nullptr);
   const bool dynamicLoaded =
       (!config.dynamicRenderingCore13 && !config.dynamicRenderingKhr) ||
       (tables.device.cmdBeginRendering != nullptr && tables.device.cmdEndRendering != nullptr);
   tables.clean = instanceLoaded && debugLoaded && swapchainLoaded && dynamicLoaded;
 
   appendReceiptField(tables.receipt, "instance_functions_loaded", instanceLoaded);
-  appendReceiptField(tables.receipt, "device_functions_loaded", device == VkDevice{} || dynamicLoaded);
+  appendReceiptField(tables.receipt, "device_functions_loaded",
+                     device == VkDevice{} || (dynamicLoaded && swapchainLoaded));
+  appendReceiptField(tables.receipt, "surface_query_functions_loaded",
+                     surfaceQueryFunctionsLoaded);
   appendReceiptField(tables.receipt, "debug_utils_functions_loaded",
                      config.debugUtilsEnabled ? (debugLoaded ? "true" : "false")
                                               : "not_requested");
   appendReceiptField(tables.receipt, "swapchain_functions_loaded", swapchainLoaded);
+  appendReceiptField(tables.receipt, "swapchain_image_query_function_loaded",
+                     !config.swapchainEnabled ||
+                         tables.device.getSwapchainImagesKHR != nullptr);
+  appendReceiptField(tables.receipt, "swapchain_acquire_function_loaded",
+                     !config.swapchainEnabled ||
+                         tables.device.acquireNextImageKHR != nullptr);
+  appendReceiptField(tables.receipt, "swapchain_present_function_loaded",
+                     !config.swapchainEnabled ||
+                         tables.device.queuePresentKHR != nullptr);
   appendReceiptField(tables.receipt, "dynamic_rendering_source",
                      config.dynamicRenderingCore13
                          ? "core_1_3"
