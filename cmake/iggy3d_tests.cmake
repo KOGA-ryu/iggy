@@ -94,6 +94,25 @@ iggy3d_add_unit_test(render_replay_invariance_tests tests/unit/render_replay_inv
 set_tests_properties(render_replay_invariance_tests PROPERTIES
   LABELS "unit;render;replay;invariance;iggy3d")
 
+iggy3d_add_unit_test(package_runtime_lookup_tests tests/unit/package_runtime_lookup_tests.cpp)
+set_tests_properties(package_runtime_lookup_tests PROPERTIES LABELS "unit;render;package;iggy3d")
+
+if(IGGY3D_ENABLE_VULKAN_SMOKE)
+  add_executable(vulkan_platform_smoke tests/smoke/vulkan_platform_smoke.cpp)
+  target_link_libraries(vulkan_platform_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(vulkan_platform_smoke)
+  if(IGGY3D_REQUIRE_VULKAN_SMOKE)
+    target_compile_definitions(vulkan_platform_smoke PRIVATE IGGY3D_REQUIRE_VULKAN_SMOKE_ENABLED=1)
+  endif()
+  add_test(NAME vulkan_platform_smoke_window
+           COMMAND "$<TARGET_FILE:vulkan_platform_smoke>" --mode window_only)
+  add_test(NAME vulkan_platform_smoke_extensions
+           COMMAND "$<TARGET_FILE:vulkan_platform_smoke>" --mode extension_query)
+  set_tests_properties(vulkan_platform_smoke_window vulkan_platform_smoke_extensions PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    LABELS "smoke;vulkan;render;iggy3d")
+endif()
+
 iggy3d_add_acceptance_test(complete_runtime_demo_tests tests/acceptance/complete_runtime_demo_tests.cpp)
 if(TARGET iggy3d_headless_demo)
   target_compile_definitions(complete_runtime_demo_tests

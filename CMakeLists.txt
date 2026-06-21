@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(cmake/iggy3d_options.cmake)
 include(cmake/iggy3d_warnings.cmake)
+include(cmake/iggy3d_vulkan_deps.cmake)
 
 add_library(iggy3d)
 target_sources(iggy3d
@@ -21,6 +22,8 @@ target_sources(iggy3d
     src/core/math/Mat4.cpp
     src/app/AppConfig.cpp
     src/app/CliParser.cpp
+    src/app/PackageRuntimeLookup.cpp
+    src/app/platform/ExecutablePath.cpp
     src/content/PackageLoader.cpp
     src/content/PackageValidator.cpp
     src/content/FixtureScenarioLoader.cpp
@@ -56,6 +59,18 @@ target_sources(iggy3d
 target_include_directories(iggy3d PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 iggy3d_apply_warnings(iggy3d)
 
+if(IGGY3D_HAS_SDL3_TARGET)
+  target_sources(iggy3d PRIVATE src/app/platform/SdlWindow.cpp)
+  target_link_libraries(iggy3d PUBLIC "${IGGY3D_SDL3_TARGET}")
+  target_compile_definitions(iggy3d PUBLIC IGGY3D_HAS_SDL3=1)
+endif()
+
+if(IGGY3D_HAS_SDL3_TARGET AND IGGY3D_HAS_VULKAN_TARGET)
+  target_sources(iggy3d PRIVATE src/app/platform/SdlVulkanSurface.cpp)
+  target_link_libraries(iggy3d PUBLIC "${IGGY3D_VULKAN_TARGET}")
+  target_compile_definitions(iggy3d PUBLIC IGGY3D_HAS_VULKAN=1)
+endif()
+
 if(IGGY3D_BUILD_TOOLS)
   add_executable(iggy3d_headless_demo apps/iggy3d_headless_demo/main.cpp)
   target_link_libraries(iggy3d_headless_demo PRIVATE iggy3d)
@@ -64,6 +79,12 @@ if(IGGY3D_BUILD_TOOLS)
   add_executable(iggy3d_replay_tool apps/iggy3d_replay_tool/main.cpp)
   target_link_libraries(iggy3d_replay_tool PRIVATE iggy3d)
   iggy3d_apply_warnings(iggy3d_replay_tool)
+endif()
+
+if(IGGY3D_ENABLE_VISUAL_DEMO)
+  add_executable(iggy3d_visual_demo apps/iggy3d_visual_demo/main.cpp)
+  target_link_libraries(iggy3d_visual_demo PRIVATE iggy3d)
+  iggy3d_apply_warnings(iggy3d_visual_demo)
 endif()
 
 if(IGGY3D_BUILD_TESTS)
