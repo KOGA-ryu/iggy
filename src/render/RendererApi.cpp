@@ -24,6 +24,9 @@ RenderReason rendererReason(std::string_view code) {
   if (code == "vulkan_not_built") {
     return {code, "vulkan backend not built"};
   }
+  if (code == "vulkan_surface_provider_missing") {
+    return {code, "vulkan surface provider missing"};
+  }
   if (code == "backend_submit_failed") {
     return {code, "backend submit failed"};
   }
@@ -217,8 +220,8 @@ RendererApi createRenderer(const RendererCreateInfo& createInfo) {
   }
 
   if (createInfo.backend == RendererBackendKind::Vulkan) {
-    return RendererApi{makeReceipt(RendererBackendKind::Vulkan, "vulkan_not_built", "unavailable",
-                                   "fail")};
+    return RendererApi{makeReceipt(RendererBackendKind::Vulkan, "vulkan_surface_provider_missing",
+                                   "unavailable", "fail")};
   }
 
   return RendererApi{std::make_unique<NullRenderer>()};

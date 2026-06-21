@@ -122,8 +122,8 @@ bool factoryNullBackendIsAvailableAndVulkanIsStillDiagnosed() {
                 "null backend ready") &&
          expect(!vulkanApi.hasBackend(), "vulkan backend absent") &&
          expect(iggy3d::hasReceiptField(vulkanApi.diagnostics(), "reason_code",
-                                        "vulkan_not_built"),
-                "vulkan not built");
+                                        "vulkan_surface_provider_missing"),
+                "vulkan surface provider missing");
 }
 
 bool invalidFrameAndShutdownAreDiagnosed() {

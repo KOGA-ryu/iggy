@@ -37,7 +37,7 @@ std::string platformName() {
 #endif
 }
 
-#if defined(IGGY3D_HAS_VULKAN)
+#if defined(IGGY3D_HAS_SDL3) && defined(IGGY3D_HAS_VULKAN)
 std::string joinNames(const std::vector<std::string>& names) {
   std::string joined;
   for (std::size_t i = 0; i < names.size(); ++i) {

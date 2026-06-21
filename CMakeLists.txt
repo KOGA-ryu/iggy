@@ -67,8 +67,26 @@ endif()
 
 if(IGGY3D_HAS_SDL3_TARGET AND IGGY3D_HAS_VULKAN_TARGET)
   target_sources(iggy3d PRIVATE src/app/platform/SdlVulkanSurface.cpp)
+endif()
+
+if(IGGY3D_HAS_VULKAN_TARGET AND (IGGY3D_ENABLE_VULKAN OR IGGY3D_ENABLE_VULKAN_SMOKE))
   target_link_libraries(iggy3d PUBLIC "${IGGY3D_VULKAN_TARGET}")
   target_compile_definitions(iggy3d PUBLIC IGGY3D_HAS_VULKAN=1)
+endif()
+
+if(IGGY3D_ENABLE_VULKAN AND IGGY3D_HAS_VULKAN_TARGET)
+  target_sources(iggy3d
+    PRIVATE
+      src/render/vulkan/VulkanResult.cpp
+      src/render/vulkan/VulkanFunctions.cpp
+      src/render/vulkan/VulkanFeatureSupport.cpp
+      src/render/vulkan/DebugValidation.cpp
+      src/render/vulkan/InstanceDeviceSurface.cpp
+      src/render/vulkan/VulkanBackend.cpp
+  )
+  target_compile_definitions(iggy3d PUBLIC IGGY3D_ENABLE_VULKAN=1)
+elseif(IGGY3D_HAS_VULKAN_TARGET)
+  target_compile_definitions(iggy3d PUBLIC IGGY3D_HAS_VULKAN_TARGET_AVAILABLE=1)
 endif()
 
 if(IGGY3D_BUILD_TOOLS)

@@ -97,6 +97,33 @@ set_tests_properties(render_replay_invariance_tests PROPERTIES
 iggy3d_add_unit_test(package_runtime_lookup_tests tests/unit/package_runtime_lookup_tests.cpp)
 set_tests_properties(package_runtime_lookup_tests PROPERTIES LABELS "unit;render;package;iggy3d")
 
+function(iggy3d_add_render_packet4_unit_test test_name source_file)
+  set(full_source "${CMAKE_CURRENT_SOURCE_DIR}/${source_file}")
+  if(NOT EXISTS "${full_source}")
+    message(FATAL_ERROR "missing iggy3d packet4 unit test source: ${source_file}")
+  endif()
+  if(IGGY3D_ENABLE_VULKAN AND IGGY3D_HAS_VULKAN_TARGET)
+    add_executable("${test_name}" "${source_file}")
+  else()
+    add_executable("${test_name}" "${source_file}"
+      src/render/vulkan/VulkanResult.cpp
+      src/render/vulkan/VulkanFeatureSupport.cpp)
+  endif()
+  target_link_libraries("${test_name}" PRIVATE iggy3d)
+  iggy3d_apply_warnings("${test_name}")
+  add_test(NAME "${test_name}" COMMAND "$<TARGET_FILE:${test_name}>")
+  set_tests_properties("${test_name}" PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    LABELS "unit;render;vulkan;iggy3d")
+endfunction()
+
+iggy3d_add_render_packet4_unit_test(render_result_mapping_tests
+  tests/unit/render_result_mapping_tests.cpp)
+iggy3d_add_render_packet4_unit_test(render_reason_code_tests
+  tests/unit/render_reason_code_tests.cpp)
+iggy3d_add_render_packet4_unit_test(render_unsupported_device_policy_tests
+  tests/unit/render_unsupported_device_policy_tests.cpp)
+
 if(IGGY3D_ENABLE_VULKAN_SMOKE)
   add_executable(vulkan_platform_smoke tests/smoke/vulkan_platform_smoke.cpp)
   target_link_libraries(vulkan_platform_smoke PRIVATE iggy3d)
@@ -110,7 +137,36 @@ if(IGGY3D_ENABLE_VULKAN_SMOKE)
            COMMAND "$<TARGET_FILE:vulkan_platform_smoke>" --mode extension_query)
   set_tests_properties(vulkan_platform_smoke_window vulkan_platform_smoke_extensions PROPERTIES
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    SKIP_RETURN_CODE 77
     LABELS "smoke;vulkan;render;iggy3d")
+
+  add_executable(vulkan_device_smoke tests/smoke/vulkan_device_smoke.cpp)
+  target_link_libraries(vulkan_device_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(vulkan_device_smoke)
+
+  add_executable(vulkan_feature_baseline_smoke tests/smoke/vulkan_feature_baseline_smoke.cpp)
+  target_link_libraries(vulkan_feature_baseline_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(vulkan_feature_baseline_smoke)
+
+  add_executable(vulkan_validation_smoke tests/smoke/vulkan_validation_smoke.cpp)
+  target_link_libraries(vulkan_validation_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(vulkan_validation_smoke)
+  if(IGGY3D_REQUIRE_VULKAN_SMOKE)
+    target_compile_definitions(vulkan_device_smoke PRIVATE IGGY3D_REQUIRE_VULKAN_SMOKE_ENABLED=1)
+    target_compile_definitions(vulkan_feature_baseline_smoke PRIVATE IGGY3D_REQUIRE_VULKAN_SMOKE_ENABLED=1)
+    target_compile_definitions(vulkan_validation_smoke PRIVATE IGGY3D_REQUIRE_VULKAN_SMOKE_ENABLED=1)
+  endif()
+  if(IGGY3D_REQUIRE_VALIDATION_LAYERS)
+    target_compile_definitions(vulkan_validation_smoke PRIVATE IGGY3D_REQUIRE_VALIDATION_LAYERS_ENABLED=1)
+  endif()
+  add_test(NAME vulkan_device_smoke COMMAND "$<TARGET_FILE:vulkan_device_smoke>")
+  add_test(NAME vulkan_feature_baseline_smoke COMMAND "$<TARGET_FILE:vulkan_feature_baseline_smoke>")
+  add_test(NAME vulkan_validation_smoke COMMAND "$<TARGET_FILE:vulkan_validation_smoke>")
+  set_tests_properties(vulkan_device_smoke vulkan_feature_baseline_smoke vulkan_validation_smoke
+    PROPERTIES
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+      SKIP_RETURN_CODE 77
+      LABELS "smoke;vulkan;render;iggy3d")
 endif()
 
 iggy3d_add_acceptance_test(complete_runtime_demo_tests tests/acceptance/complete_runtime_demo_tests.cpp)
