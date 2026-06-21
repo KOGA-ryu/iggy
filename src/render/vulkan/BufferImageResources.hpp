@@ -1,0 +1,95 @@
+#pragma once
+
+#include <cstdint>
+#include <vector>
+
+#include "render/RenderDiagnostics.hpp"
+#include "render/vulkan/FirstRoomPipeline.hpp"
+#include "render/vulkan/VulkanMemoryAllocator.hpp"
+#include "render/vulkan/VulkanTypes.hpp"
+
+#if defined(IGGY3D_HAS_VULKAN)
+#include <vulkan/vulkan.h>
+#else
+using VkImageView = void*;
+using VkQueue = void*;
+using VkCommandPool = void*;
+struct VkExtent2D {
+  std::uint32_t width{};
+  std::uint32_t height{};
+};
+#endif
+
+namespace iggy3d::vulkan {
+
+struct GpuBufferRecord {
+  VulkanBufferAllocation allocation;
+  std::string allocationName;
+};
+
+struct GpuImageRecord {
+  VulkanImageAllocation allocation;
+  VkImageView imageView{};
+  VkFormat format{};
+  VkExtent3D extent{};
+  std::string allocationName;
+};
+
+struct FirstRoomGeometryResources {
+  GpuBufferRecord vertexBuffer;
+  GpuBufferRecord indexBuffer;
+  std::uint32_t vertexCount = 0;
+  std::uint32_t indexCount = 0;
+  bool indexedDraw = false;
+};
+
+struct DepthResourceRecord {
+  GpuImageRecord depthImage;
+  VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
+  VkExtent2D extent{};
+};
+
+struct BufferImageResourcesCreateInfo {
+  VkPhysicalDevice physicalDevice{};
+  VkDevice device{};
+  VkQueue graphicsQueue{};
+  std::uint32_t graphicsQueueFamily = kInvalidVulkanQueueFamily;
+  VkExtent2D extent{};
+  VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
+};
+
+struct BufferImageResourcesResult {
+  RenderOutcome outcome = RenderOutcome::OutOfMemory;
+  RenderReason reason{"memory_allocation_failed", "memory allocation failed"};
+  RenderReceipt receipt;
+};
+
+class BufferImageResources {
+public:
+  BufferImageResources() = default;
+  ~BufferImageResources();
+
+  BufferImageResources(const BufferImageResources&) = delete;
+  BufferImageResources& operator=(const BufferImageResources&) = delete;
+
+  BufferImageResourcesResult createFirstRoomResources(
+      const BufferImageResourcesCreateInfo& createInfo);
+  RenderReceipt destroy();
+
+  const FirstRoomGeometryResources& geometry() const;
+  const DepthResourceRecord& depth() const;
+  const VulkanMemoryAllocator& allocator() const;
+  bool ready() const;
+
+private:
+  VulkanMemoryAllocator allocator_;
+  FirstRoomGeometryResources geometry_;
+  DepthResourceRecord depth_;
+  BufferImageResourcesCreateInfo createInfo_;
+  bool ready_ = false;
+};
+
+std::vector<FirstRoomVertex> firstRoomBootstrapVertices();
+std::vector<std::uint16_t> firstRoomBootstrapIndices();
+
+}  // namespace iggy3d::vulkan

@@ -222,4 +222,35 @@ std::vector<std::string_view> packet4VulkanSmokeReasonCodes() {
           "vulkan_smoke_validation_failed"};
 }
 
+std::vector<std::string_view> packet6VulkanReasonCodes() {
+  return {"shader_compiler_missing",
+          "shader_compile_failed",
+          "shader_artifact_missing",
+          "shader_read_failed",
+          "shader_spirv_empty",
+          "shader_spirv_alignment_invalid",
+          "shader_stage_mismatch",
+          "shader_entry_point_invalid",
+          "shader_module_create_failed",
+          "pipeline_layout_create_failed",
+          "pipeline_push_constant_mismatch",
+          "pipeline_create_failed",
+          "vertex_format_mismatch",
+          "memory_allocator_create_failed",
+          "memory_allocation_failed",
+          "memory_budget_unavailable",
+          "staging_upload_failed",
+          "vertex_buffer_create_failed",
+          "index_buffer_create_failed",
+          "depth_resource_create_failed",
+          "descriptor_layout_create_failed",
+          "descriptor_pool_create_failed",
+          "descriptor_update_failed",
+          "descriptor_reflection_unavailable",
+          "material_descriptor_deferred",
+          "packet6_resource_ready",
+          "packet6_smoke_skipped_shader_compiler_missing",
+          "packet6_smoke_strict_dependency_missing"};
+}
+
 }  // namespace iggy3d::vulkan

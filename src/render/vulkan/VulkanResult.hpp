@@ -64,5 +64,6 @@ const char* vulkanCallContextName(VulkanCallContext context);
 std::vector<std::string_view> packet4VulkanResultReasonCodes();
 std::vector<std::string_view> packet4VulkanStartupReasonCodes();
 std::vector<std::string_view> packet4VulkanSmokeReasonCodes();
+std::vector<std::string_view> packet6VulkanReasonCodes();
 
 }  // namespace iggy3d::vulkan

@@ -1,0 +1,201 @@
+#include "render/vulkan/FirstRoomPipeline.hpp"
+
+#include <cstddef>
+
+#if defined(IGGY3D_HAS_VULKAN)
+#include <vulkan/vulkan.h>
+#endif
+
+namespace iggy3d::vulkan {
+namespace {
+
+RenderReason reason(std::string_view code) {
+  if (code == "packet6_resource_ready") {
+    return {code, "packet 6 resource ready"};
+  }
+  if (code == "vertex_format_mismatch") {
+    return {code, "vertex format mismatch"};
+  }
+  return {"pipeline_create_failed", "pipeline create failed"};
+}
+
+RenderReceipt baseReceipt(std::string_view result, std::string_view reasonCode) {
+  RenderReceipt receipt;
+  appendReceiptField(receipt, "receipt_version", "1");
+  appendReceiptField(receipt, "repo", "iggy3d");
+  appendReceiptField(receipt, "file_plan", "src/render/vulkan/FirstRoomPipeline.cpp");
+  appendReceiptField(receipt, "packet_order", "6");
+  appendReceiptField(receipt, "backend", "vulkan");
+  appendReceiptField(receipt, "pipeline_family", "first_room");
+  appendReceiptField(receipt, "pipeline_variant", kFirstRoomPipelineVariant);
+  appendReceiptField(receipt, "pipeline_layout", "push_constants_only");
+  appendReceiptField(receipt, "descriptor_set_layout_count", static_cast<std::uint64_t>(0));
+  appendReceiptField(receipt, "push_constant_clip_from_model_size",
+                     static_cast<std::uint64_t>(kFirstRoomPushConstantSize));
+  appendReceiptField(receipt, "vertex_format", kFirstRoomVertexFormatName);
+  appendReceiptField(receipt, "rendering_path", "dynamic");
+  appendReceiptField(receipt, "depth_test", "enabled");
+  appendReceiptField(receipt, "cull_mode", "back");
+  appendReceiptField(receipt, "front_face", "counter_clockwise");
+  appendReceiptField(receipt, "pipeline_created", false);
+  appendReceiptField(receipt, "result", result);
+  appendReceiptField(receipt, "reason_code", reasonCode);
+  return receipt;
+}
+
+}  // namespace
+
+FirstRoomVertexFormat firstRoomVertexFormat() {
+  FirstRoomVertexFormat format;
+  format.binding.binding = 0U;
+  format.binding.stride = static_cast<std::uint32_t>(sizeof(FirstRoomVertex));
+  format.binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+  format.position.location = kFirstRoomPositionLocation;
+  format.position.binding = 0U;
+  format.position.format = VK_FORMAT_R32G32B32_SFLOAT;
+  format.position.offset = static_cast<std::uint32_t>(offsetof(FirstRoomVertex, position));
+  format.color.location = kFirstRoomColorLocation;
+  format.color.binding = 0U;
+  format.color.format = VK_FORMAT_R32G32B32_SFLOAT;
+  format.color.offset = static_cast<std::uint32_t>(offsetof(FirstRoomVertex, color));
+  return format;
+}
+
+bool firstRoomVertexFormatMatchesShader() {
+  const FirstRoomVertexFormat format = firstRoomVertexFormat();
+  return format.binding.stride == sizeof(FirstRoomVertex) &&
+         format.position.location == kFirstRoomPositionLocation &&
+         format.color.location == kFirstRoomColorLocation &&
+         format.position.offset == 0U &&
+         format.color.offset == sizeof(float) * 3U;
+}
+
+FirstRoomPipelineResult createFirstRoomPipeline(const FirstRoomPipelineCreateInfo& createInfo) {
+  FirstRoomPipelineResult result;
+  result.record.colorFormat = createInfo.colorFormat;
+  result.record.depthFormat = createInfo.depthFormat;
+  if (!firstRoomVertexFormatMatchesShader() ||
+      !firstRoomPipelineLayoutKeyValid(createInfo.layout.key)) {
+    result.reason = reason("vertex_format_mismatch");
+    result.receipt = baseReceipt("fail", result.reason.code);
+    return result;
+  }
+#if defined(IGGY3D_HAS_VULKAN)
+  if (createInfo.device == VK_NULL_HANDLE || createInfo.vertexShader.module == VK_NULL_HANDLE ||
+      createInfo.fragmentShader.module == VK_NULL_HANDLE ||
+      createInfo.layout.layout == VK_NULL_HANDLE) {
+    result.reason = reason("pipeline_create_failed");
+    result.receipt = baseReceipt("fail", result.reason.code);
+    return result;
+  }
+
+  const FirstRoomVertexFormat vertexFormat = firstRoomVertexFormat();
+  VkPipelineShaderStageCreateInfo stages[2]{};
+  stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+  stages[0].module = createInfo.vertexShader.module;
+  stages[0].pName = createInfo.vertexShader.entryPoint.c_str();
+  stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+  stages[1].module = createInfo.fragmentShader.module;
+  stages[1].pName = createInfo.fragmentShader.entryPoint.c_str();
+
+  VkPipelineVertexInputStateCreateInfo vertexInput{};
+  vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+  vertexInput.vertexBindingDescriptionCount = 1U;
+  vertexInput.pVertexBindingDescriptions = &vertexFormat.binding;
+  VkVertexInputAttributeDescription attributes[2]{vertexFormat.position, vertexFormat.color};
+  vertexInput.vertexAttributeDescriptionCount = 2U;
+  vertexInput.pVertexAttributeDescriptions = attributes;
+
+  VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+  inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+  inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+  VkPipelineViewportStateCreateInfo viewportState{};
+  viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+  viewportState.viewportCount = 1U;
+  viewportState.scissorCount = 1U;
+
+  VkPipelineRasterizationStateCreateInfo rasterization{};
+  rasterization.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+  rasterization.polygonMode = VK_POLYGON_MODE_FILL;
+  rasterization.cullMode = VK_CULL_MODE_BACK_BIT;
+  rasterization.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+  rasterization.lineWidth = 1.0F;
+
+  VkPipelineMultisampleStateCreateInfo multisample{};
+  multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+  multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+  VkPipelineDepthStencilStateCreateInfo depth{};
+  depth.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+  depth.depthTestEnable = VK_TRUE;
+  depth.depthWriteEnable = VK_TRUE;
+  depth.depthCompareOp = VK_COMPARE_OP_LESS;
+
+  VkPipelineColorBlendAttachmentState colorAttachment{};
+  colorAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                   VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+  VkPipelineColorBlendStateCreateInfo colorBlend{};
+  colorBlend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+  colorBlend.attachmentCount = 1U;
+  colorBlend.pAttachments = &colorAttachment;
+
+  VkDynamicState dynamicStates[2]{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+  VkPipelineDynamicStateCreateInfo dynamic{};
+  dynamic.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+  dynamic.dynamicStateCount = 2U;
+  dynamic.pDynamicStates = dynamicStates;
+
+  VkPipelineRenderingCreateInfo rendering{};
+  rendering.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+  rendering.colorAttachmentCount = 1U;
+  rendering.pColorAttachmentFormats = &createInfo.colorFormat;
+  rendering.depthAttachmentFormat = createInfo.depthFormat;
+
+  VkGraphicsPipelineCreateInfo pipelineInfo{};
+  pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+  pipelineInfo.pNext = &rendering;
+  pipelineInfo.stageCount = 2U;
+  pipelineInfo.pStages = stages;
+  pipelineInfo.pVertexInputState = &vertexInput;
+  pipelineInfo.pInputAssemblyState = &inputAssembly;
+  pipelineInfo.pViewportState = &viewportState;
+  pipelineInfo.pRasterizationState = &rasterization;
+  pipelineInfo.pMultisampleState = &multisample;
+  pipelineInfo.pDepthStencilState = &depth;
+  pipelineInfo.pColorBlendState = &colorBlend;
+  pipelineInfo.pDynamicState = &dynamic;
+  pipelineInfo.layout = createInfo.layout.layout;
+
+  VkPipeline pipeline = VK_NULL_HANDLE;
+  if (vkCreateGraphicsPipelines(createInfo.device, VK_NULL_HANDLE, 1U, &pipelineInfo, nullptr,
+                                &pipeline) != VK_SUCCESS) {
+    result.reason = reason("pipeline_create_failed");
+    result.receipt = baseReceipt("fail", result.reason.code);
+    return result;
+  }
+  result.record.pipeline = pipeline;
+#endif
+  result.outcome = RenderOutcome::Ok;
+  result.reason = reason("packet6_resource_ready");
+  result.receipt = baseReceipt("pass", result.reason.code);
+  appendReceiptField(result.receipt, "pipeline_created", true);
+  return result;
+}
+
+RenderReceipt destroyFirstRoomPipeline(VkDevice device, FirstRoomPipelineRecord& record) {
+  RenderReceipt receipt = baseReceipt("pass", "packet6_resource_ready");
+#if defined(IGGY3D_HAS_VULKAN)
+  if (device != VK_NULL_HANDLE && record.pipeline != VK_NULL_HANDLE) {
+    vkDestroyPipeline(device, record.pipeline, nullptr);
+  }
+#else
+  (void)device;
+#endif
+  record.pipeline = {};
+  return receipt;
+}
+
+}  // namespace iggy3d::vulkan

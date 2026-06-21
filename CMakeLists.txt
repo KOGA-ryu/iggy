@@ -9,6 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(cmake/iggy3d_options.cmake)
 include(cmake/iggy3d_warnings.cmake)
 include(cmake/iggy3d_vulkan_deps.cmake)
+include(cmake/iggy3d_shaders.cmake)
 
 add_library(iggy3d)
 target_sources(iggy3d
@@ -86,9 +87,18 @@ if(IGGY3D_ENABLE_VULKAN AND IGGY3D_HAS_VULKAN_TARGET)
       src/render/vulkan/FrameSync.cpp
       src/render/vulkan/CommandRecording.cpp
       src/render/vulkan/RenderLoop.cpp
+      src/render/vulkan/ShaderModule.cpp
+      src/render/vulkan/PipelineLayout.cpp
+      src/render/vulkan/FirstRoomPipeline.cpp
+      src/render/vulkan/VulkanMemoryAllocator.cpp
+      src/render/vulkan/BufferImageResources.cpp
+      src/render/vulkan/DescriptorSets.cpp
       src/render/vulkan/VulkanBackend.cpp
   )
   target_compile_definitions(iggy3d PUBLIC IGGY3D_ENABLE_VULKAN=1)
+  if(IGGY3D_ENABLE_VULKAN_SHADERS AND IGGY3D_SHADER_COMPILER_AVAILABLE)
+    add_dependencies(iggy3d iggy3d_vulkan_shaders)
+  endif()
 elseif(IGGY3D_HAS_VULKAN_TARGET)
   target_compile_definitions(iggy3d PUBLIC IGGY3D_HAS_VULKAN_TARGET_AVAILABLE=1)
 endif()

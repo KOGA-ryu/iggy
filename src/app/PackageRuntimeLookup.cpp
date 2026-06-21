@@ -148,8 +148,14 @@ std::vector<PathCandidate> shaderCandidates(const PackageLookupConfig& config,
   std::vector<PathCandidate> candidates;
   addCandidate(candidates, config.shaderRootOverride, "override");
   addCandidate(candidates, envPath("IGGY3D_SHADER_ROOT"), "environment");
+  if (config.packageMode == PackageMode::Headless && !config.requireShaderRoot &&
+      !config.requireGraphicsRuntime && config.shaderRootOverride.empty()) {
+    return candidates;
+  }
   addCandidate(candidates, lookup.executableDir / "shaders" / "vulkan", "executable_relative");
-  addCandidate(candidates, lookup.resourceRoot / "shaders" / "vulkan", "resource_root");
+  if (!lookup.resourceRoot.empty()) {
+    addCandidate(candidates, lookup.resourceRoot / "shaders" / "vulkan", "resource_root");
+  }
   if (config.packageMode == PackageMode::BuildTreeVisual) {
     addCandidate(candidates, lookup.executableDir / "generated" / "shaders" / "vulkan",
                  "build_tree");
