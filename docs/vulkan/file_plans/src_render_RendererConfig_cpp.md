@@ -1,0 +1,240 @@
+# src/render/RendererConfig.cpp
+
+Status: Draft file plan
+Allowed to implement code now: no
+
+## Exact File Path And Purpose
+
+Exact path: `src/render/RendererConfig.cpp`
+
+Purpose: Implement renderer config normalization and conflict checks before backend startup.
+
+## Build Position
+
+Packet order: 1 - Backend-neutral renderer boundary
+Owner module: `renderer config`
+File kind: `source`
+Current-build contract: this file plan is authoritative for later implementation packets, but it is not a signal to write renderer C++ before the headless runtime and projection gates are green.
+
+Source docs read for this plan:
+- `docs/vulkan/README.md`
+- `docs/vulkan/renderer_file_plan_order.md`
+- `docs/vulkan/vulkan_first_file_plans_index.md`
+- `docs/vulkan/renderer_packet_template.md`
+- `docs/vulkan/file_surface.md`
+- `docs/vulkan/boundaries.md`
+- `docs/vulkan/frame_input_contract.md`
+- `docs/vulkan/diagnostics_and_tests.md`
+- `docs/vulkan/vulkan_renderer_config.md`
+
+## Ownership
+
+This file owns:
+- Implement renderer config normalization and conflict checks before backend startup.
+- the public or private names listed in the file shape section;
+- diagnostics fields directly tied to its responsibility.
+
+This file must never own:
+- gameplay truth;
+- command legality;
+- save/load truth;
+- replay or deterministic state-hash truth;
+- content package validation truth;
+- renderer fallback without diagnostics;
+- legacy renderer linkage.
+
+Runtime firewall boundaries:
+- runtime, content, projection, and save code do not depend on this file unless it is a backend-neutral render contract explicitly consumed by an app layer;
+- this file cannot mutate runtime state directly;
+- renderer output cannot affect replay results.
+
+## Required Include Policy
+
+Allowed includes: standard library, core math/id value types, projection value types where the frame contract permits them, and `src/render/**` backend-neutral headers.
+
+Forbidden includes: Vulkan SDK headers, `Vk*` types, `VK_*` constants, SDL/window headers, runtime mutation internals, content validators, save/load internals, and old repo headers.
+
+Vulkan headers are forbidden in backend-neutral renderer, null renderer, and non-Vulkan unit test files.
+
+SDL/window headers are forbidden outside app/platform glue and Vulkan platform smoke tests.
+
+Include firewall rule:
+```text
+src/runtime/**, src/content/**, src/projection/**, and src/runtime/save/** must not include Vulkan headers, Vk types, VK constants, SDL headers, or window headers.
+```
+
+## Public API Or File Shape
+
+The file must expose or define:
+- `resolveRendererConfig`
+- `validateRendererConfig`
+- `rendererConfigReceiptFields`
+
+Naming rule: these names are the current-build contract for implementation planning. Renaming requires updating this file plan and the index in the same packet.
+
+## Data Ownership And Lifetime
+
+Backend-neutral values are owned by renderer API callers for the call duration unless copied into diagnostics. Runtime/projection data remains authoritative outside the renderer. Diagnostics receipts are renderer-owned output. No GPU, window, or Vulkan object lifetime exists in this file.
+
+## Semantics
+
+Normal path: expose or test the backend-neutral renderer contract. Skip/fail: invalid frame/config inputs fail locally; Vulkan availability is not evaluated by this file.
+
+Platform behavior:
+macOS/MoltenVK: report `platform=macos` and `platform_lane=moltenvk` when Vulkan is attempted; MoltenVK portability details are diagnostics, not cross-platform law.
+Linux: report `platform=linux` and `platform_lane=native_vulkan` for hardware/native validation; software Vulkan uses a separate lane.
+Windows: report `platform=windows` and `platform_lane=native_vulkan`; multi-config shader/package paths must include the active config where relevant.
+Software Vulkan: allowed for optional development evidence only; it cannot replace native macOS/Linux/Windows proof.
+Strict lane: required gates fail with `result=fail`.
+Optional lane: unsupported environment or missing optional Vulkan prerequisites may skip with `result=skip` before unsafe renderer work begins.
+
+## Diagnostics And Result Policy
+
+Stable reason names must use lowercase snake-case text. Receipts use deterministic key-value lines.
+
+Required receipt fields:
+```text
+receipt_version=1
+repo=iggy3d
+file_plan=src/render/RendererConfig.cpp
+packet_order=1
+allowed_to_implement_code_now=false
+backend=null|vulkan|unavailable
+frame_input_valid=true|false|unavailable
+runtime_hash_before=
+runtime_hash_after=
+replay_invariant=true|false|unavailable
+reason_code=
+```
+
+User-facing error message shape when this file contributes to visual startup failure:
+```text
+This machine cannot run the Vulkan visual renderer required by this build.
+Reason: <specific renderer or platform reason>.
+Action: run the headless runtime demo or use a machine/runtime that satisfies the Vulkan baseline.
+```
+
+## Fallback Policy
+
+Fallback policy: no Vulkan fallback is needed. Null renderer fallback is explicit only when selected by app config or test harness.
+
+Fallback receipt fields:
+```text
+fallback_used=true|false
+fallback_area=renderer_config
+fallback_reason=
+strict_vulkan=true|false
+result=pass|fail|skip
+reason_code=
+```
+
+## Compute Cost
+
+Initialization cost: constant CPU setup and no GPU work.
+Per-frame cost: linear in submitted frame items for validation/diagnostics; null renderer performs no draw work.
+Resize cost: backend-neutral state update only.
+GPU memory cost: none.
+
+## Tests And Verification
+
+Unit tests:
+- `tests/unit/render_config_tests.cpp`
+
+Smoke tests:
+- none for this file; covered by unit tests
+
+CTest labels:
+```text
+iggy3d;render
+```
+
+Expected pass behavior: required receipt fields are present and the file owns only the declared responsibility.
+Expected skip behavior: optional Vulkan lanes may skip only before required Vulkan work begins and must print `result=skip` plus `reason_code`.
+Expected fail behavior: strict lanes fail on missing required dependency, validation error, runtime mutation, or boundary leak.
+
+Firewall scan:
+```sh
+rg -n '#include[ <"]vulkan/|\bVk[A-Z][A-Za-z0-9_]*|\bVK_[A-Z0-9_]+' src/runtime src/content src/projection src/runtime/save
+```
+
+Expected firewall scan result:
+```text
+no matches
+```
+
+## Builder Traps
+
+- Do not import old repo headers or paths.
+- Do not make renderer output part of save or replay truth.
+- Do not let runtime/content/projection/save include Vulkan or SDL headers.
+- Do not add Vulkan or SDL includes to backend-neutral files.
+- Do not hide runtime mutation inside frame validation or diagnostics.
+
+## Completion Criteria
+
+- File `src/render/RendererConfig.cpp` has an implementation packet that follows this plan.
+- Include scan proves the declared boundary.
+- Tests listed in this plan are present or deliberately deferred by the same packet with reviewer approval.
+- Receipts use deterministic key-value text and stable reason codes.
+- Runtime hash/replay behavior is unchanged when runtime is involved.
+- No legacy repo path, legacy renderer linkage, or graphics dependency leak appears outside the approved surface.
+
+## Packet 1 Detailed Contract
+
+Source role: normalize renderer startup config and reject contradictory app requests before any backend creates resources.
+
+Required precedence model for Packet 1:
+```text
+compiled_defaults
+environment_variables
+cli_or_app_config_values
+test_harness_overrides
+```
+
+This source receives already-parsed values. It does not parse process arguments in Packet 1.
+
+Required validation rules:
+- `maxFramesInFlight` must be `1`, `2`, or `3`; current default is `2`.
+- `RendererMode::Null` with `rendererRequirement=Required` is invalid for visual proof.
+- `RendererMode::Vulkan` with Vulkan support disabled returns `outcome=unsupported`.
+- `ValidationMode::Required` with `RendererMode::Null` is invalid.
+- empty `shaderRoot` is valid for null renderer and invalid for strict Vulkan shader/pipeline packets once those packets land.
+- empty `diagnosticsDir` resolves to `build/artifacts/render_diagnostics` in build-tree tests when supplied by app harness; this file records, but does not create, the directory in Packet 1.
+
+Required reason codes:
+```text
+renderer_config_ok
+renderer_config_conflict
+renderer_config_backend_unavailable
+renderer_config_validation_without_vulkan
+renderer_config_frames_in_flight_invalid
+renderer_config_shader_root_missing
+renderer_config_diagnostics_dir_missing
+```
+
+Receipt fields:
+```text
+renderer_mode=null|vulkan|auto
+renderer_required=true|false
+validation_mode=off|optional|required
+sync_validation_mode=off|optional|required
+debug_labels_mode=off|optional|required
+present_mode_request=auto|fifo|mailbox|immediate
+shader_root=
+diagnostics_dir=
+strict_vulkan=true|false
+allow_software_vulkan=true|false
+max_frames_in_flight=
+```
+
+Packet 1 acceptance:
+```sh
+ctest --test-dir build --output-on-failure -R 'render_config|render_boundary'
+```
+
+Expected proof:
+```text
+conflicting config fails before backend construction
+null renderer config does not require graphics paths
+Vulkan request is diagnosed when Vulkan is not built
+```

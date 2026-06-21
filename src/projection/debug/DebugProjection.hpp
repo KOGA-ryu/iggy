@@ -1,0 +1,61 @@
+#pragma once
+
+#include <cstdint>
+#include <string>
+#include <vector>
+
+#include "core/ids/EntityId.hpp"
+#include "core/math/Aabb3.hpp"
+#include "core/math/Vec3.hpp"
+#include "runtime/command/Command.hpp"
+#include "runtime/replay/StateHash.hpp"
+#include "runtime/session/SessionState.hpp"
+
+namespace iggy3d {
+
+enum class DebugProjectionKind : std::uint8_t {
+  TargetCandidate,
+  ReachRadius,
+  CommandRejected,
+  ClockMode,
+  CameraMode,
+  ObjectiveState,
+  StateHash,
+  ReplayDivergence,
+};
+
+struct DebugProjectionConfig {
+  bool includeTargetCandidates = true;
+  bool includeReach = true;
+  bool includeCommandRejections = true;
+  bool includeSessionFacts = true;
+};
+
+struct DebugProjectionItem {
+  DebugProjectionKind kind = DebugProjectionKind::StateHash;
+  CommandTick sourceTick = kInvalidCommandTick;
+  CommandId commandId = kInvalidCommandId;
+  CommandSequence sequence = kInvalidCommandSequence;
+  PlayerSlotId playerSlot = kInvalidPlayerSlotId;
+  EntityId actor;
+  EntityId target;
+  CommandRejectionReason rejection = CommandRejectionReason::None;
+  bool hasWorldPoint = false;
+  Vec3 worldPoint;
+  bool hasBounds = false;
+  Aabb3 worldBounds;
+  float radiusMeters = 0.0F;
+  std::string objectiveId;
+  std::string labelCode;
+};
+
+struct DebugProjectionResult {
+  std::vector<DebugProjectionItem> items;
+  StateHashValue sourceStateHash = 0;
+  CommandTick sourceTick = kInvalidCommandTick;
+};
+
+DebugProjectionResult buildDebugProjection(const SessionState& state,
+                                           const DebugProjectionConfig& config = {});
+
+}  // namespace iggy3d

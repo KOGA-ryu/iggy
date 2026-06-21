@@ -1,0 +1,5 @@
+[package]
+id = "iggy3d.first_room"
+schema_version = 1
+required_runtime_schema = 1
+scenario = "scenario.iggy3d.toml"

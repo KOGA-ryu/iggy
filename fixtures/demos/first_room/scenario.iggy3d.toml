@@ -1,0 +1,63 @@
+[scenario]
+id = "first_room.runtime_loop"
+
+[defaults]
+fixed_tick_rate_hz = 20
+interaction_range_meters = 1.500
+movement_distance_meters = 3.000
+slow_time_scale = 0.250
+initial_clock = "Normal"
+default_realtime_camera = "ThirdPerson"
+default_tactical_camera = "TacticalOverhead"
+
+[[players]]
+slot = 0
+kind = "Local"
+actor = "player"
+
+[[entities]]
+stable_name = "player"
+kind = "Player"
+active = true
+persistent = true
+position = [0.000, 0.000, 0.000]
+bounds_min = [-0.250, 0.000, -0.250]
+bounds_max = [0.250, 1.800, 0.250]
+targetable = false
+target_actions = []
+
+[[entities]]
+stable_name = "gold_key"
+kind = "Pickup"
+active = true
+persistent = true
+position = [3.000, 0.000, 0.000]
+bounds_min = [-0.100, 0.000, -0.100]
+bounds_max = [0.100, 0.100, 0.100]
+targetable = true
+target_actions = ["Interact", "Inspect"]
+item_id = "gold_key"
+item_count = 1
+interaction = "Pickup"
+deactivate_on_success = true
+objective_ref = "collect_gold_key"
+
+[[entities]]
+stable_name = "tactical_marker_alpha"
+kind = "Marker"
+active = true
+persistent = true
+position = [2.000, 0.000, 1.000]
+bounds_min = [-0.100, 0.000, -0.100]
+bounds_max = [0.100, 0.100, 0.100]
+targetable = true
+target_actions = ["Move", "Inspect"]
+
+[[objectives]]
+id = "collect_gold_key"
+initial_status = "Active"
+condition = "InventoryContains"
+player_slot = 0
+item_id = "gold_key"
+item_count = 1
+complete_status = "Complete"
