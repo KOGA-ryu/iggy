@@ -40,6 +40,10 @@ iggy_add_test(runtime_gameplay_product_loop_tests tests/runtime_gameplay_product
 target_compile_definitions(runtime_gameplay_product_loop_tests PRIVATE
   IGGY_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/runtime/ascii_source_plan"
 )
+iggy_add_test(runtime_product_loop_acceptance_demo_tests tests/runtime_product_loop_acceptance_demo_tests.cpp)
+target_compile_definitions(runtime_product_loop_acceptance_demo_tests PRIVATE
+  IGGY_CONTENT_DEMO_DIR="${CMAKE_CURRENT_SOURCE_DIR}/content/demos/product_loop_demo"
+)
 iggy_add_test(runtime_gameplay_product_play_mode_tests tests/runtime_gameplay_product_play_mode_tests.cpp)
 target_compile_definitions(runtime_gameplay_product_play_mode_tests PRIVATE
   IGGY_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/runtime/ascii_source_plan"

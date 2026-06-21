@@ -82,9 +82,11 @@ using iggy::native_play::NativeStaticMeshExportDirectoryVerificationResult;
 using iggy::native_play::NativeStaticMeshExportDirectoryVerificationStatus;
 using iggy::native_play::NativeStaticMeshExportDirectoryVerificationStatusText;
 using iggy::native_play::DefaultNativeStaticMeshExportPackagePolicy;
+using iggy::native_play::NativeScriptedProductCommandType;
 using iggy::native_play::NativeProductSession;
 using iggy::native_play::NativeProductSessionConfig;
 using iggy::native_play::NativeSceneDrawItem;
+using iggy::native_play::NativeScriptedProductControl;
 using iggy::native_play::NativeVulkanFrameInput;
 using iggy::native_play::NativeVulkanRenderer;
 using iggy::native_play::ParseNativeScriptedProductControls;
@@ -121,6 +123,9 @@ struct LaunchOptions {
 	bool quitAfterScriptedControls = false;
 	bool debugScriptedControls = false;
 	bool dumpFinalState = false;
+	bool hasSaveDirectory = false;
+	std::filesystem::path saveDirectory;
+	std::string saveSlotName = "native-play";
 	std::vector<iggy::TileCoord> expectedPlayerTiles;
 };
 
@@ -224,6 +229,17 @@ std::vector<iggy::TileCoord> ParseExpectedTiles(const std::string &spec)
 	return tiles;
 }
 
+bool ScriptUsesSaveLoad(const std::vector<std::string> &specs)
+{
+	for (const NativeScriptedProductControl &control :
+			ParseNativeScriptedProductControls(specs)) {
+		if (control.type == NativeScriptedProductCommandType::Save ||
+				control.type == NativeScriptedProductCommandType::Load)
+			return true;
+	}
+	return false;
+}
+
 LaunchOptions ParseArgs(int argc, char **argv)
 {
 	LaunchOptions options;
@@ -310,6 +326,19 @@ LaunchOptions ParseArgs(int argc, char **argv)
 		}
 		if (arg == "--dump-final-state") {
 			options.dumpFinalState = true;
+			continue;
+		}
+		if (arg == "--save-dir") {
+			if (i + 1 >= argc)
+				throw std::runtime_error("--save-dir requires a directory");
+			options.hasSaveDirectory = true;
+			options.saveDirectory = argv[++i];
+			continue;
+		}
+		if (arg == "--save-slot") {
+			if (i + 1 >= argc)
+				throw std::runtime_error("--save-slot requires a name");
+			options.saveSlotName = argv[++i];
 			continue;
 		}
 		if (arg == "--expect-player-tiles") {
@@ -421,6 +450,12 @@ LaunchOptions ParseArgs(int argc, char **argv)
 		throw std::runtime_error("--output-dir requires --dump-static-mesh-asset, --export-static-mesh-assets, --verify-static-mesh-export, --dump-static-mesh-export-verification-report, or --dump-static-mesh-export-package-directory-report");
 	if (options.dumpFinalState && options.scriptedControls.empty())
 		throw std::runtime_error("--dump-final-state requires --scripted-controls");
+	if (options.saveSlotName.empty())
+		throw std::runtime_error("--save-slot requires a non-empty name");
+	if (!options.scriptedControls.empty() &&
+			ScriptUsesSaveLoad(options.scriptedControls) &&
+			!options.hasSaveDirectory)
+		throw std::runtime_error("scripted save/load requires --save-dir");
 	if (!options.expectedPlayerTiles.empty() && options.scriptedControls.empty())
 		throw std::runtime_error("--expect-player-tiles requires --scripted-controls");
 	if (!options.expectedPlayerTiles.empty()) {
@@ -468,12 +503,18 @@ void PrintUsage()
 		<< "Scripted control options:\n"
 		<< "  --scripted-controls LIST             Comma-separated controls such as\n"
 		<< "                                       east,east,south or right*3,wait.\n"
+		<< "                                       Session commands: pause, resume,\n"
+		<< "                                       reset, retry, save, load.\n"
 		<< "  --scripted-control-interval-ms N     Delay between scripted controls.\n"
 		<< "  --debug-scripted-controls            Print per-step frame diagnostics.\n"
 		<< "  --dump-final-state                   Print final player tile, next frame\n"
 		<< "                                       index, render command count, and\n"
 		<< "                                       active/held input counts after the\n"
 		<< "                                       scripted sequence completes.\n"
+		<< "  --save-dir DIR                       Base directory for scripted/manual\n"
+		<< "                                       save/load slots.\n"
+		<< "  --save-slot NAME                     Manual save slot name. Defaults to\n"
+		<< "                                       native-play.\n"
 		<< "  --expect-player-tiles 'x,y;x,y'      Fail unless scripted steps land on\n"
 		<< "                                       the expected player tiles.\n"
 		<< "  --quit-after-script                  Exit after the scripted sequence.\n";
@@ -631,6 +672,8 @@ public:
 			config.quitAfterScriptedControls = options_.quitAfterScriptedControls;
 			config.debugScriptedControls = options_.debugScriptedControls;
 			config.dumpFinalState = options_.dumpFinalState;
+			config.saveDirectory = options_.saveDirectory;
+			config.saveSlotName = options_.saveSlotName;
 			config.expectedPlayerTiles = options_.expectedPlayerTiles;
 			productSession_.emplace(std::move(config));
 		}
@@ -740,6 +783,25 @@ private:
 							event.key.keysym.sym == SDLK_ESCAPE)
 						running = false;
 					if (event.key.repeat == 0) {
+						if (event.type == SDL_KEYDOWN &&
+								productSession_.has_value()) {
+							if (event.key.keysym.sym == SDLK_p) {
+								productSession_->togglePaused();
+								continue;
+							}
+							if (event.key.keysym.sym == SDLK_r) {
+								productSession_->retry();
+								continue;
+							}
+							if (event.key.keysym.sym == SDLK_F5) {
+								productSession_->save();
+								continue;
+							}
+							if (event.key.keysym.sym == SDLK_F9) {
+								productSession_->load();
+								continue;
+							}
+						}
 						const std::optional<runtime::RuntimeGameplayProductInputControl2D>
 							control = MapSdlKeyToProductControl(event.key.keysym.sym);
 						if (control.has_value() && productSession_.has_value()) {

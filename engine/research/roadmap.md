@@ -8,6 +8,8 @@ For the detailed completion backlog, use
 `engine/research/project_completion_todo.md`.
 For phase order and dispatch gates, use
 `engine/research/project_completion_execution_plan.md`.
+For the current 3D product/platform direction, use
+`engine/research/3d_product_platform_roadmap.md`.
 
 ## Current Checkpoint
 
@@ -26,6 +28,10 @@ For phase order and dispatch gates, use
   UI preview consumer integration reported 343/343 tests.
 - Short-term implementation packets live in
   `engine/research/authoring_batches/`.
+- Product direction is now native 3D: stylized low-poly, multiple camera modes,
+  multi-platform targets, local/online multiplayer paths, and internal dev tools
+  first. Existing 2D/tile systems remain gameplay/data/debug scaffolding, not
+  the shipping renderer.
 
 Recently completed optimized stretches:
 - Facade/diagnostics/output contracts: `16`, `31`, `46`, `59`, `28`, `47`,

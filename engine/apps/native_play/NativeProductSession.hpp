@@ -13,13 +13,27 @@
 #include "runtime/RuntimeGameplayProductLoop.hpp"
 #include "runtime/RuntimeGameplayProductPlayMode.hpp"
 #include "runtime/RuntimeGameplayProductScenarioLoader.hpp"
+#include "runtime/RuntimeGameplaySaveSlotStore.hpp"
 #include "runtime/RuntimeGameplayState.hpp"
 #include "scene/camera/CameraState.hpp"
 #include "scene/level/TileCoord.hpp"
 
 namespace iggy::native_play {
 
+enum class NativeScriptedProductCommandType {
+	InputControl,
+	Pause,
+	Resume,
+	TogglePause,
+	Reset,
+	Retry,
+	Save,
+	Load,
+};
+
 struct NativeScriptedProductControl {
+	NativeScriptedProductCommandType type =
+		NativeScriptedProductCommandType::InputControl;
 	runtime::RuntimeGameplayProductInputControl2D control =
 		runtime::RuntimeGameplayProductInputControl2D::None;
 	std::string label;
@@ -39,6 +53,8 @@ struct NativeProductSessionConfig {
 	bool quitAfterScriptedControls = false;
 	bool debugScriptedControls = false;
 	bool dumpFinalState = false;
+	std::filesystem::path saveDirectory;
+	std::string saveSlotName = "native-play";
 	std::vector<TileCoord> expectedPlayerTiles;
 };
 
@@ -58,6 +74,12 @@ public:
 	[[nodiscard]] bool recordInput(
 		runtime::RuntimeGameplayProductInputControl2D control,
 		runtime::RuntimeGameplayProductInputEventKind kind);
+	void setPaused(bool paused);
+	void togglePaused();
+	void reset();
+	void retry();
+	void save();
+	void load();
 	[[nodiscard]] bool stepScriptedControlsIfDue();
 	void stepProductIfDue();
 	[[nodiscard]] std::optional<runtime::RuntimeGameplayProductFrameRequestResult>
@@ -71,6 +93,9 @@ private:
 		runtime::RuntimeGameplayProductInputControl2D control,
 		const runtime::RuntimeGameplayProductPlayModeState &playState) const;
 	void applyMovementGuard(const runtime::RuntimeGameplayProductPlayModeState &playState);
+	void clearTransientInput();
+	[[nodiscard]] runtime::RuntimeGameplaySaveSlotStoreConfig saveSlotConfig() const;
+	[[nodiscard]] runtime::RuntimeSaveSlotId saveSlot() const;
 	void traceScriptedProductControl(
 		std::size_t index,
 		const NativeScriptedProductControl &scripted,
@@ -81,6 +106,9 @@ private:
 		std::size_t index,
 		std::optional<TileCoord> actualTile) const;
 	void dumpFinalScriptedState() const;
+	void applyScriptedProductCommand(
+		std::size_t index,
+		const NativeScriptedProductControl &scripted);
 	void applyScriptedProductControl(
 		std::size_t index,
 		const NativeScriptedProductControl &scripted);

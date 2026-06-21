@@ -171,7 +171,7 @@ ParseNativeScriptedProductControls(const std::vector<std::string> &specs)
 			throw std::runtime_error(std::string(name) + " requires a positive integer");
 		return static_cast<std::size_t>(parsed);
 	};
-	const auto scriptedControlFromToken =
+	const auto inputControlFromToken =
 		[&lowercase, &trim](const std::string &token)
 		-> std::optional<runtime::RuntimeGameplayProductInputControl2D> {
 		using runtime::RuntimeGameplayProductInputControl2D;
@@ -194,6 +194,62 @@ ParseNativeScriptedProductControls(const std::vector<std::string> &specs)
 			return RuntimeGameplayProductInputControl2D::Cancel;
 		return std::nullopt;
 	};
+	const auto scriptedFromToken =
+		[&inputControlFromToken, &lowercase, &trim](
+			const std::string &token) -> std::optional<NativeScriptedProductControl> {
+		const std::string value = lowercase(trim(token));
+		if (const std::optional<runtime::RuntimeGameplayProductInputControl2D>
+				control = inputControlFromToken(value)) {
+			return NativeScriptedProductControl {
+				NativeScriptedProductCommandType::InputControl,
+				*control,
+				value,
+			};
+		}
+		if (value == "pause")
+			return NativeScriptedProductControl {
+				NativeScriptedProductCommandType::Pause,
+				runtime::RuntimeGameplayProductInputControl2D::None,
+				value,
+			};
+		if (value == "resume")
+			return NativeScriptedProductControl {
+				NativeScriptedProductCommandType::Resume,
+				runtime::RuntimeGameplayProductInputControl2D::None,
+				value,
+			};
+		if (value == "toggle-pause" || value == "toggle_pause")
+			return NativeScriptedProductControl {
+				NativeScriptedProductCommandType::TogglePause,
+				runtime::RuntimeGameplayProductInputControl2D::None,
+				value,
+			};
+		if (value == "reset")
+			return NativeScriptedProductControl {
+				NativeScriptedProductCommandType::Reset,
+				runtime::RuntimeGameplayProductInputControl2D::None,
+				value,
+			};
+		if (value == "retry")
+			return NativeScriptedProductControl {
+				NativeScriptedProductCommandType::Retry,
+				runtime::RuntimeGameplayProductInputControl2D::None,
+				value,
+			};
+		if (value == "save")
+			return NativeScriptedProductControl {
+				NativeScriptedProductCommandType::Save,
+				runtime::RuntimeGameplayProductInputControl2D::None,
+				value,
+			};
+		if (value == "load")
+			return NativeScriptedProductControl {
+				NativeScriptedProductCommandType::Load,
+				runtime::RuntimeGameplayProductInputControl2D::None,
+				value,
+			};
+		return std::nullopt;
+	};
 
 	std::vector<NativeScriptedProductControl> controls;
 	for (const std::string &spec : specs) {
@@ -213,12 +269,12 @@ ParseNativeScriptedProductControls(const std::vector<std::string> &specs)
 					: parsePositiveCount(
 						trim(rawToken.substr(repeatMarker + 1)),
 						"scripted control repeat");
-				const std::optional<runtime::RuntimeGameplayProductInputControl2D>
-					control = scriptedControlFromToken(controlToken);
-				if (!control.has_value())
+				const std::optional<NativeScriptedProductControl> scripted =
+					scriptedFromToken(controlToken);
+				if (!scripted.has_value())
 					throw std::runtime_error("unknown scripted control: " + controlToken);
 				for (std::size_t i = 0; i < repeatCount; ++i)
-					controls.push_back({ *control, lowercase(controlToken) });
+					controls.push_back(*scripted);
 			}
 			if (comma == std::string::npos)
 				break;
@@ -286,6 +342,8 @@ bool NativeProductSession::recordInput(
 {
 	if (!loaded())
 		return false;
+	if (!product_.play.state.hasInputFocus)
+		return false;
 
 	if (IsMovementControl(control)) {
 		const auto previousActive = activeMovementControls_;
@@ -317,6 +375,113 @@ bool NativeProductSession::recordInput(
 	inputAccumulator_ = record.state;
 	nextProductTick_ = std::chrono::steady_clock::now();
 	return true;
+}
+
+void NativeProductSession::clearTransientInput()
+{
+	inputAccumulator_ = {};
+	activeMovementControls_.clear();
+	nextProductTick_ = std::chrono::steady_clock::now();
+}
+
+runtime::RuntimeGameplaySaveSlotStoreConfig
+NativeProductSession::saveSlotConfig() const
+{
+	runtime::RuntimeGameplaySaveSlotStoreConfig config;
+	config.baseDirectory = config_.saveDirectory;
+	config.restore.session.buildConfig.buildRenderCache = false;
+	return config;
+}
+
+runtime::RuntimeSaveSlotId NativeProductSession::saveSlot() const
+{
+	return {
+		runtime::RuntimeSaveSlotKind::Manual,
+		config_.saveSlotName.empty() ? std::string { "native-play" } : config_.saveSlotName,
+	};
+}
+
+void NativeProductSession::setPaused(bool paused)
+{
+	if (!loaded())
+		return;
+	product_.play.state =
+		runtime::RuntimeGameplayProductPlayMode {}.withInputFocus(
+			product_.play.state,
+			!paused);
+	if (paused)
+		clearTransientInput();
+	std::cout << "product session: " << (paused ? "paused" : "resumed")
+		<< std::endl;
+}
+
+void NativeProductSession::togglePaused()
+{
+	if (!loaded())
+		return;
+	setPaused(product_.play.state.hasInputFocus);
+}
+
+void NativeProductSession::reset()
+{
+	if (!loaded())
+		return;
+	product_.loop = runtime::RuntimeGameplayProductLoop {}.build(product_.load);
+	product_.play = runtime::RuntimeGameplayProductPlayMode {}.build(product_.loop);
+	clearTransientInput();
+	hasLatestFrame_ = false;
+	hasPresentationCamera_ = false;
+	std::cout << "product session: reset" << std::endl;
+}
+
+void NativeProductSession::retry()
+{
+	reset();
+	std::cout << "product session: retry" << std::endl;
+}
+
+void NativeProductSession::save()
+{
+	if (!loaded())
+		return;
+	if (config_.saveDirectory.empty())
+		throw std::runtime_error("product save requires --save-dir");
+
+	std::error_code error;
+	std::filesystem::create_directories(config_.saveDirectory / "manual", error);
+	if (error)
+		throw std::runtime_error(
+			"product save directory unavailable: " +
+			(config_.saveDirectory / "manual").string());
+
+	const runtime::RuntimeGameplaySaveSlotSaveResult result =
+		runtime::RuntimeGameplaySaveSlotStore {}.saveState(
+			product_.play.state.loop.currentState,
+			saveSlotConfig(),
+			saveSlot());
+	if (result.status != runtime::RuntimeGameplaySaveSlotStatus::Saved)
+		throw std::runtime_error("product save failed");
+	std::cout << "product save: " << result.path.path << std::endl;
+}
+
+void NativeProductSession::load()
+{
+	if (!loaded())
+		return;
+	if (config_.saveDirectory.empty())
+		throw std::runtime_error("product load requires --save-dir");
+
+	const runtime::RuntimeGameplaySaveSlotLoadResult result =
+		runtime::RuntimeGameplaySaveSlotStore {}.load(
+			saveSlotConfig(),
+			saveSlot());
+	if (result.status != runtime::RuntimeGameplaySaveSlotStatus::Loaded)
+		throw std::runtime_error("product load failed");
+
+	product_.play.state.loop.currentState = result.state;
+	clearTransientInput();
+	hasLatestFrame_ = false;
+	std::cout << "product load: " << result.path.path << std::endl;
 }
 
 runtime::RuntimeGameplayProductPresentationCameraConfig
@@ -399,7 +564,68 @@ void NativeProductSession::dumpFinalScriptedState() const
 		<< " activeInputCount=" << activeMovementControls_.size()
 		<< " heldInputCount="
 		<< inputAccumulator_.heldControls.size()
+		<< " paused="
+		<< (loaded() && !product_.play.state.hasInputFocus ? "true" : "false")
+		<< " inventoryStacks="
+		<< (loaded()
+			? product_.play.state.loop.currentState.inventory.inventory.stacks.size()
+			: 0)
+		<< " interactionTargets="
+		<< (loaded()
+			? product_.play.state.loop.currentState.interaction.targets.targets().size()
+			: 0)
 		<< std::endl;
+}
+
+void NativeProductSession::applyScriptedProductCommand(
+	std::size_t index,
+	const NativeScriptedProductControl &scripted)
+{
+	const std::optional<TileCoord> beforeTile = currentPlayerTile();
+	switch (scripted.type) {
+	case NativeScriptedProductCommandType::Pause:
+		setPaused(true);
+		break;
+	case NativeScriptedProductCommandType::Resume:
+		setPaused(false);
+		break;
+	case NativeScriptedProductCommandType::TogglePause:
+		togglePaused();
+		break;
+	case NativeScriptedProductCommandType::Reset:
+		reset();
+		break;
+	case NativeScriptedProductCommandType::Retry:
+		retry();
+		break;
+	case NativeScriptedProductCommandType::Save:
+		save();
+		break;
+	case NativeScriptedProductCommandType::Load:
+		load();
+		break;
+	case NativeScriptedProductCommandType::InputControl:
+		break;
+	}
+
+	const std::optional<TileCoord> afterTile = currentPlayerTile();
+	if (config_.debugScriptedControls) {
+		std::cout
+			<< "scripted debug[" << index << "]"
+			<< " command=" << scripted.label
+			<< " before=" << (beforeTile.has_value() ? TileText(*beforeTile) : "none")
+			<< " after=" << (afterTile.has_value() ? TileText(*afterTile) : "none")
+			<< " nextFrameIndex=" << nextProductFrameIndex()
+			<< " paused="
+			<< (loaded() && !product_.play.state.hasInputFocus ? "true" : "false")
+			<< std::endl;
+	}
+	expectScriptedPlayerTile(index, afterTile);
+
+	std::cout << "scripted control: " << scripted.label;
+	if (afterTile.has_value())
+		std::cout << " playerTile=" << TileText(*afterTile);
+	std::cout << std::endl;
 }
 
 void NativeProductSession::applyScriptedProductControl(
@@ -409,6 +635,11 @@ void NativeProductSession::applyScriptedProductControl(
 	using runtime::RuntimeGameplayProductInputEventKind;
 	if (!loaded())
 		return;
+
+	if (scripted.type != NativeScriptedProductCommandType::InputControl) {
+		applyScriptedProductCommand(index, scripted);
+		return;
+	}
 
 	const std::optional<TileCoord> beforeTile = currentPlayerTile();
 	std::optional<runtime::RuntimeGameplayProductFrameRequestResult> result;

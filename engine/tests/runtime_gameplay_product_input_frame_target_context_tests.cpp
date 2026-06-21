@@ -194,7 +194,7 @@ void TestNoPrimaryTileReturnsNoEligibleAndPreservesFrame()
 {
 	const auto frame = Frame({
 		Event(iggy::runtime::RuntimeGameplayProductInputControl2D::MoveEast),
-		Event(iggy::runtime::RuntimeGameplayProductInputControl2D::Interact),
+		Event(iggy::runtime::RuntimeGameplayProductInputControl2D::Wait),
 	});
 
 	const auto result = Enrich(PlayState(Registry({})), frame);
@@ -209,6 +209,93 @@ void TestNoPrimaryTileReturnsNoEligibleAndPreservesFrame()
 		"frame without PrimaryTile should preserve events");
 	Expect(result.target.status == QueryStatus::NotLoaded,
 		"frame without PrimaryTile should not query interaction target");
+}
+
+void TestTargetlessInteractDiscoversNearestReachableTarget()
+{
+	iggy::PlayerInputBindingContext2D context = BaseContext();
+	context.hasSelectedTargetId = false;
+	context.selectedTargetId = {};
+	const iggy::InteractionTarget2D farther =
+		Target("target:farther", { 1.5F, 0.5F }, 1.5F);
+	const iggy::InteractionTarget2D nearer =
+		Target("target:nearer", { 0.5F, 0.5F }, 1.0F);
+	const auto frame = Frame({
+		Event(iggy::runtime::RuntimeGameplayProductInputControl2D::Interact),
+	}, context);
+
+	const auto result =
+		Enrich(PlayState(Registry({ farther, nearer })), frame);
+
+	Expect(result.status == FrameStatus::TargetProjected,
+		"targetless interact should project a reachable target");
+	Expect(!result.hasPrimaryTileEvent,
+		"targetless interact should not report a primary tile event");
+	Expect(result.hasActionTargetEvent,
+		"targetless interact should report an action target event");
+	Expect(result.actionTargetEventIndex == 0,
+		"targetless interact should report action event index");
+	Expect(result.actionTargetControl ==
+			iggy::runtime::RuntimeGameplayProductInputControl2D::Interact,
+		"targetless interact should report action control");
+	Expect(result.target.status == QueryStatus::TargetFound,
+		"targetless interact should preserve target query result");
+	Expect(result.target.hasReach && result.target.reachable,
+		"targetless interact should only project a reachable target");
+	Expect(result.target.targetId == nearer.id,
+		"targetless interact should choose the nearest reachable target");
+	Expect(result.frame.bindingContext.hasHoveredTargetId &&
+			result.frame.bindingContext.hoveredTargetId == nearer.id,
+		"targetless interact should set hovered fallback target");
+	ExpectEventsEqual(result.frame.events, frame.events,
+		"targetless interact should preserve event payloads");
+}
+
+void TestTargetlessInteractWithoutReachableTargetPreservesFrame()
+{
+	iggy::PlayerInputBindingContext2D context = BaseContext();
+	context.hasSelectedTargetId = false;
+	context.selectedTargetId = {};
+	const iggy::InteractionTarget2D far =
+		Target("target:far", { 10.5F, 10.5F }, 0.25F);
+	const auto frame = Frame({
+		Event(iggy::runtime::RuntimeGameplayProductInputControl2D::Interact),
+	}, context);
+
+	const auto result = Enrich(PlayState(Registry({ far })), frame);
+
+	Expect(result.status == FrameStatus::Unchanged,
+		"targetless interact without a reachable target should leave context unchanged");
+	Expect(result.hasActionTargetEvent,
+		"targetless interact miss should still report action target event");
+	Expect(result.target.status == QueryStatus::TargetNotFound,
+		"targetless interact miss should preserve target-not-found diagnostics");
+	ExpectContextEquals(result.frame.bindingContext, frame.bindingContext,
+		"targetless interact miss should preserve binding context");
+	ExpectEventsEqual(result.frame.events, frame.events,
+		"targetless interact miss should preserve events");
+}
+
+void TestExplicitTargetInteractIsNotRediscovered()
+{
+	auto interact =
+		Event(iggy::runtime::RuntimeGameplayProductInputControl2D::Interact);
+	interact.hasTargetId = true;
+	interact.targetId = Id("target:explicit");
+	const auto frame = Frame({ interact });
+	const iggy::InteractionTarget2D target =
+		Target("target:nearby", { 0.5F, 0.5F }, 1.0F);
+
+	const auto result = Enrich(PlayState(Registry({ target })), frame);
+
+	Expect(result.status == FrameStatus::NoEligiblePrimaryTile,
+		"explicit target interact should not run target discovery");
+	Expect(!result.hasActionTargetEvent,
+		"explicit target interact should not report targetless action event");
+	Expect(result.target.status == QueryStatus::NotLoaded,
+		"explicit target interact should not query target context");
+	ExpectEventsEqual(result.frame.events, frame.events,
+		"explicit target interact should preserve event payload");
 }
 
 void TestPrimaryTileMissingPayloadAndReleaseAreIneligible()
@@ -518,6 +605,9 @@ void TestEnrichedFrameAllowsTargetlessInteractToUseHoveredFallback()
 int main()
 {
 	TestNoPrimaryTileReturnsNoEligibleAndPreservesFrame();
+	TestTargetlessInteractDiscoversNearestReachableTarget();
+	TestTargetlessInteractWithoutReachableTargetPreservesFrame();
+	TestExplicitTargetInteractIsNotRediscovered();
 	TestPrimaryTileMissingPayloadAndReleaseAreIneligible();
 	TestPressedPrimaryTileOnTargetProjectsHoveredTarget();
 	TestPressedPrimaryTileMissPreservesContextWithDiagnostics();

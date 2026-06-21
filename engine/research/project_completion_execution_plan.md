@@ -6,6 +6,16 @@ engine tooling, runs in a product loop, renders through a UI shell, and supports
 the minimal save/load state needed for that slice. Editor-backed authoring comes
 after that.
 
+The current product direction is a native 3D stylized-low-poly platform with
+multiple camera modes, multi-platform targets, local/online multiplayer paths,
+and internal developer tools first. See
+`engine/research/3d_product_platform_roadmap.md`. The shippable tactical demo
+roadmap remains a useful first-slice execution plan inside that broader product
+direction; the builder-facing execution details are in
+`engine/research/shippable_tactical_demo_execution_spec.md`. Runtime ownership
+and the complete native 3D runtime build sequence are tracked in
+`engine/research/runtime_ownership_complete_build_roadmap.md`.
+
 ## Finish Line
 
 Primary target: playable scenario first, editor-backed game second.

@@ -1,0 +1,4 @@
+iggy_add_test(runtime3d_session_state_tests tests/runtime3d_session_state_tests.cpp)
+iggy_add_test(runtime3d_clock_tests tests/runtime3d_clock_tests.cpp)
+iggy_add_test(runtime3d_world_state_tests tests/runtime3d_world_state_tests.cpp)
+iggy_add_test(runtime3d_camera_mode_policy_tests tests/runtime3d_camera_mode_policy_tests.cpp)

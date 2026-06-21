@@ -2,6 +2,9 @@
 
 Purpose: current runtime sequencing reference for planner handoffs. This is not a promise to integrate every step immediately.
 
+For the runtime ownership charter and complete native 3D build roadmap, use
+`engine/research/runtime_ownership_complete_build_roadmap.md`.
+
 ## Current Layers
 
 Command data:

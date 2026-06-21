@@ -32,6 +32,10 @@ struct RuntimeGameplayProductInputFrameTargetContextResult {
 	bool hasPrimaryTileEvent = false;
 	std::size_t primaryTileEventIndex = 0;
 	TileCoord primaryTile;
+	bool hasActionTargetEvent = false;
+	std::size_t actionTargetEventIndex = 0;
+	RuntimeGameplayProductInputControl2D actionTargetControl =
+		RuntimeGameplayProductInputControl2D::None;
 	RuntimeGameplayProductInteractionTargetQueryResult target;
 	RuntimeGameplayProductInputTargetContextResult targetContext;
 };

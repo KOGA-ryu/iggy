@@ -1,0 +1,6 @@
+format_id = "iggy:authored-scenario-package"
+version = 1
+title = "Product Loop Demo"
+description = "Authored package proving package load, target discovery, pickup, save/load, and required-item interaction."
+authoring_version = "iggy:ascii-source-plan@1"
+main = "scenario.toml"
