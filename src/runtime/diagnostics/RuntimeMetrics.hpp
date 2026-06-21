@@ -16,6 +16,8 @@ struct RuntimeMetrics {
   std::uint64_t retryCommands = 0;
   std::uint64_t movementExecutions = 0;
   std::uint64_t interactionExecutions = 0;
+  std::uint64_t combatExecutions = 0;
+  std::uint64_t combatDefeats = 0;
   std::uint64_t acquiredItems = 0;
   std::uint64_t completedObjectives = 0;
   std::uint64_t clockTransitions = 0;

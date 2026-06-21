@@ -1,5 +1,6 @@
 #include "runtime/session/SessionTick.hpp"
 
+#include "runtime/combat/CombatSystem.hpp"
 #include "runtime/interaction/InteractionSystem.hpp"
 #include "runtime/movement/MovementSystem.hpp"
 #include "runtime/objective/ObjectiveSystem.hpp"
@@ -159,6 +160,31 @@ SessionTickResult runSessionTick(const SessionTickInput& input) {
         ++state.transient.metrics.completedObjectives;
         state.transient.events.push_back(
             makeEvent(RuntimeEventKind::ObjectiveCompleted, state.clock.tickIndex, intent));
+        ++result.eventsEmitted;
+      }
+      result.executedSequences.push_back(intent.command.sequence);
+      continue;
+    }
+
+    if (intent.effectiveKind == CommandKind::Attack) {
+      const CombatAttackResult attack =
+          applyAttack(state.combat,
+                      CombatAttackRequest{intent.command.actor, intent.command.payload.target.entity,
+                                          intent.command.payload.attackDamage,
+                                          intent.sourceCommandId});
+      if (attack.status != CombatStatus::Succeeded) {
+        result.status = SessionTickStatus::InvalidState;
+        return result;
+      }
+      ++result.combatExecuted;
+      ++state.transient.metrics.combatExecutions;
+      state.transient.events.push_back(
+          makeEvent(RuntimeEventKind::CombatAttacked, state.clock.tickIndex, intent));
+      ++result.eventsEmitted;
+      if (attack.targetDefeated) {
+        ++state.transient.metrics.combatDefeats;
+        state.transient.events.push_back(
+            makeEvent(RuntimeEventKind::CombatantDefeated, state.clock.tickIndex, intent));
         ++result.eventsEmitted;
       }
       result.executedSequences.push_back(intent.command.sequence);

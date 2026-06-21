@@ -39,6 +39,13 @@ struct RuntimeSummary {
   std::string commandsAccepted;
   std::string commandsRejected;
   std::string commandsRetry;
+  std::string commandsCombat;
+  std::string combatTrainingDummyHp;
+  std::string combatTrainingDummyDefeated;
+  std::string combatLastAttackCommandId;
+  std::string combatLastAttackSequence;
+  std::string combatLastAttackDamage;
+  std::string combatLastAttackTarget;
   std::string firstRejection;
   std::string retryOriginalRejectedCommandId;
   std::string retryCommandId;

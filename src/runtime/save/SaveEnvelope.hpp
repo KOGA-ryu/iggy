@@ -116,6 +116,7 @@ struct SaveCommandRecord {
   bool hasTargetPoint = false;
   Vec3 targetPoint;
   CommandId retrySourceCommandId = kInvalidCommandId;
+  std::int32_t attackDamage = 0;
   CommandTick issuedTick = kInvalidCommandTick;
   CommandTick scheduledTick = kInvalidCommandTick;
   CommandAdmissionStatus admission = CommandAdmissionStatus::Pending;

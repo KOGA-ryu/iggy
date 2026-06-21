@@ -21,6 +21,7 @@ struct CommandLogCounts {
   std::uint64_t retry = 0;
   std::uint64_t movement = 0;
   std::uint64_t interaction = 0;
+  std::uint64_t combat = 0;
   std::uint64_t control = 0;
 };
 

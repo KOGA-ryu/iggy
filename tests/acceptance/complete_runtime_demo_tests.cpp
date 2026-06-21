@@ -83,12 +83,15 @@ iggy3d::CommandRecord submittedControl(iggy3d::CommandKind kind) {
   return command;
 }
 
-iggy3d::CommandRecord submittedWait() {
+iggy3d::CommandRecord submittedAttack() {
   iggy3d::CommandRecord command;
   command.playerSlot = 0;
   command.actor = {1};
-  command.kind = iggy3d::CommandKind::Wait;
+  command.kind = iggy3d::CommandKind::Attack;
   command.source = iggy3d::CommandSource::LocalPlayer;
+  command.payload.target.hasEntity = true;
+  command.payload.target.entity = {4};
+  command.payload.attackDamage = 3;
   return command;
 }
 
@@ -216,9 +219,20 @@ ScriptResult runFullScript() {
        expect(resume.executedImmediately, "cmd_resume immediate") &&
        expect(session.state().clock.mode == iggy3d::ClockMode::Slow, "resume slow");
 
-  const iggy3d::SessionCommandResult wait = session.submitCommand(submittedWait());
-  ok = ok && expect(commandAccepted(wait, 9, 9), "cmd_wait accepted") &&
-       expect(runQueuedCommand(session), "cmd_wait run");
+  const iggy3d::SessionCommandResult attack = session.submitCommand(submittedAttack());
+  ok = ok && expect(commandAccepted(attack, 9, 9), "cmd_attack_dummy accepted") &&
+       expect(attack.command.payload.attackDamage == 3, "cmd_attack_dummy damage") &&
+       expect(runQueuedCommand(session), "cmd_attack_dummy run");
+  const iggy3d::EntityState* dummy = session.state().world.findByStableName("training_dummy");
+  bool dummyDefeated = false;
+  for (const iggy3d::CombatantState& combatant : session.state().combat.combatants) {
+    if (dummy != nullptr && combatant.entity == dummy->id && combatant.hitPoints == 0 &&
+        combatant.defeated) {
+      dummyDefeated = true;
+    }
+  }
+  ok = ok && expect(dummy != nullptr && dummy->active, "dummy remains active") &&
+       expect(dummyDefeated, "dummy defeated");
 
   const iggy3d::SessionCommandResult exit =
       session.submitCommand(submittedControl(iggy3d::CommandKind::ToggleTacticalMode));
@@ -238,6 +252,7 @@ ScriptResult runFullScript() {
        expect(counts.accepted == 9U, "accepted count") &&
        expect(counts.rejected == 1U, "rejected count") &&
        expect(counts.retry == 1U, "retry count") &&
+       expect(counts.combat == 1U, "combat count") &&
        expect(counts.control == 5U, "control count") &&
        expect(counts.movement == 2U, "movement count");
 
@@ -292,6 +307,13 @@ bool summaryMatchesFullScript() {
       "commands.accepted=9\n"
       "commands.rejected=1\n"
       "commands.retry=1\n"
+      "commands.combat=1\n"
+      "combat.training_dummy.hp=0\n"
+      "combat.training_dummy.defeated=true\n"
+      "combat.last_attack.command_id=9\n"
+      "combat.last_attack.sequence=9\n"
+      "combat.last_attack.damage=3\n"
+      "combat.last_attack.target=training_dummy\n"
       "first_rejection=OutOfRange\n"
       "retry.original_rejected_command_id=1\n"
       "retry.retry_command_id=3\n"

@@ -16,6 +16,9 @@ bool commandKindToTargetAction(CommandKind kind, TargetAction& action) {
     case CommandKind::Inspect:
       action = TargetAction::Inspect;
       return true;
+    case CommandKind::Attack:
+      action = TargetAction::Attack;
+      return true;
     case CommandKind::Move:
       action = TargetAction::Move;
       return true;

@@ -75,6 +75,8 @@ void addCommandRecord(StableHasher& hasher, const CommandRecord& record) {
   addEnum(hasher, "commandSource", record.source);
   addCommandTarget(hasher, record.payload.target);
   addU64(hasher, "retrySourceCommandId", record.payload.retrySourceCommandId);
+  addU64(hasher, "attackDamage", static_cast<std::uint64_t>(
+                                     static_cast<std::int64_t>(record.payload.attackDamage)));
   addU64(hasher, "userData0", record.payload.userData0);
   addU64(hasher, "userData1", record.payload.userData1);
   addU64(hasher, "issuedTick", record.issuedTick);

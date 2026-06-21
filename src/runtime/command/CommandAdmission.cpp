@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+#include "runtime/combat/CombatSystem.hpp"
+
 namespace iggy3d {
 
 namespace {
@@ -18,7 +20,12 @@ bool isRetryableSourceKind(CommandKind kind) {
 }
 
 bool requiresConfig(CommandKind kind) {
-  return kind == CommandKind::Move || kind == CommandKind::Interact || kind == CommandKind::Retry;
+  return kind == CommandKind::Move || kind == CommandKind::Interact ||
+         kind == CommandKind::Attack || kind == CommandKind::Retry;
+}
+
+bool requiresCombat(CommandKind kind) {
+  return kind == CommandKind::Attack;
 }
 
 CommandRejectionReason validateContext(
@@ -31,6 +38,9 @@ CommandRejectionReason validateContext(
     return CommandRejectionReason::InternalError;
   }
   if (requiresConfig(kind) && context.config == nullptr) {
+    return CommandRejectionReason::InternalError;
+  }
+  if (requiresCombat(kind) && context.combat == nullptr) {
     return CommandRejectionReason::InternalError;
   }
   return CommandRejectionReason::None;
@@ -158,7 +168,7 @@ CommandRejectionReason validateTargetPoint(const CommandRecord& command) {
 CommandRejectionReason validateReach(
     const CommandAdmissionContext& context,
     const CommandRecord& command) {
-  if (command.kind != CommandKind::Interact) {
+  if (command.kind != CommandKind::Interact && command.kind != CommandKind::Attack) {
     return CommandRejectionReason::None;
   }
   if (context.config == nullptr || !std::isfinite(context.config->interactionRangeMeters) ||
@@ -169,6 +179,28 @@ CommandRejectionReason validateReach(
       ReachQueryRequest{context.world, command.actor, command.payload.target.entity, false, {},
                         context.config->interactionRangeMeters, true});
   return rejectionReasonForReach(reach);
+}
+
+CommandRejectionReason rejectionReasonForCombat(CombatStatus status) {
+  switch (status) {
+    case CombatStatus::Succeeded:
+      return CommandRejectionReason::None;
+    case CombatStatus::InvalidCombatState:
+      return CommandRejectionReason::InternalError;
+    case CombatStatus::InvalidAttacker:
+      return CommandRejectionReason::InvalidActor;
+    case CombatStatus::InvalidTarget:
+      return CommandRejectionReason::InvalidTarget;
+    case CombatStatus::AttackerDefeated:
+      return CommandRejectionReason::AttackerDefeated;
+    case CombatStatus::TargetDefeated:
+      return CommandRejectionReason::TargetDefeated;
+    case CombatStatus::FriendlyFireBlocked:
+      return CommandRejectionReason::FriendlyFireBlocked;
+    case CombatStatus::InvalidDamage:
+      return CommandRejectionReason::InvalidDamage;
+  }
+  return CommandRejectionReason::InternalError;
 }
 
 CommandRejectionReason validateKindSpecific(
@@ -191,6 +223,16 @@ CommandRejectionReason validateKindSpecific(
     if (distance > context.config->movementDistanceMeters) {
       return CommandRejectionReason::MovementTooFar;
     }
+  }
+  if (command.kind == CommandKind::Attack) {
+    if (context.combat == nullptr) {
+      return CommandRejectionReason::InternalError;
+    }
+    const CombatAttackResult combat = previewAttack(
+        *context.combat,
+        CombatAttackRequest{command.actor, command.payload.target.entity,
+                            command.payload.attackDamage, command.commandId});
+    return rejectionReasonForCombat(combat.status);
   }
   if (command.kind == CommandKind::Reset) {
     return CommandRejectionReason::ResetUnavailable;

@@ -10,6 +10,7 @@
 #include "core/math/Transform3.hpp"
 #include "runtime/camera/CameraState.hpp"
 #include "runtime/clock/ClockState.hpp"
+#include "runtime/combat/CombatState.hpp"
 #include "runtime/player/PlayerSlot.hpp"
 #include "runtime/world/EntityState.hpp"
 
@@ -41,6 +42,8 @@ struct ScenarioEntitySeed {
   bool persistent = true;
   EntityTargeting targeting;
   InteractionDefinition interaction;
+  bool combatantEnabled = false;
+  CombatantState combatant;
 };
 
 enum class ObjectiveStatusSeed : std::uint8_t {

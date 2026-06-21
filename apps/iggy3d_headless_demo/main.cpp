@@ -63,12 +63,15 @@ iggy3d::CommandRecord submittedControl(iggy3d::CommandKind kind) {
   return command;
 }
 
-iggy3d::CommandRecord submittedWait() {
+iggy3d::CommandRecord submittedAttack() {
   iggy3d::CommandRecord command;
   command.playerSlot = 0;
   command.actor = {1};
-  command.kind = iggy3d::CommandKind::Wait;
+  command.kind = iggy3d::CommandKind::Attack;
   command.source = iggy3d::CommandSource::LocalPlayer;
+  command.payload.target.hasEntity = true;
+  command.payload.target.entity = {4};
+  command.payload.attackDamage = 3;
   return command;
 }
 
@@ -255,9 +258,21 @@ DemoRunResult runDemo(const iggy3d::AppConfig& config) {
     return fail("cmd_resume proof failed");
   }
 
-  const iggy3d::SessionCommandResult wait = session.submitCommand(submittedWait());
-  if (!commandAccepted(wait, 9, 9) || !runQueuedCommand(session)) {
-    return fail("cmd_wait proof failed");
+  const iggy3d::SessionCommandResult attack = session.submitCommand(submittedAttack());
+  if (!commandAccepted(attack, 9, 9) || attack.command.payload.attackDamage != 3 ||
+      !runQueuedCommand(session)) {
+    return fail("cmd_attack_dummy proof failed");
+  }
+  const iggy3d::EntityState* dummy = session.state().world.findByStableName("training_dummy");
+  bool dummyDefeated = false;
+  for (const iggy3d::CombatantState& combatant : session.state().combat.combatants) {
+    if (dummy != nullptr && combatant.entity == dummy->id && combatant.hitPoints == 0 &&
+        combatant.defeated) {
+      dummyDefeated = true;
+    }
+  }
+  if (dummy == nullptr || !dummy->active || !dummyDefeated) {
+    return fail("combat result proof failed");
   }
 
   const iggy3d::SessionCommandResult exitTactical =
@@ -301,7 +316,8 @@ DemoRunResult runDemo(const iggy3d::AppConfig& config) {
   if (player == nullptr || key == nullptr ||
       !iggy3d::nearlyEqual(player->transform.position, iggy3d::Vec3{2.0F, 0.0F, 1.0F}) ||
       key->active || counts.submitted != 10U || counts.accepted != 9U ||
-      counts.rejected != 1U || counts.retry != 1U || counts.control != 5U ||
+      counts.rejected != 1U || counts.retry != 1U || counts.combat != 1U ||
+      counts.control != 5U ||
       counts.movement != 2U || loaded.state().clock.mode != iggy3d::ClockMode::Normal ||
       loaded.state().camera.activeMode != iggy3d::CameraMode::ThirdPerson) {
     return fail("final durable proof failed");

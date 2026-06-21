@@ -22,6 +22,7 @@ enum class CommandKind : std::uint8_t {
   Move,
   Interact,
   Inspect,
+  Attack,
   Wait,
   ToggleTacticalMode,
   Pause,
@@ -62,6 +63,10 @@ enum class CommandRejectionReason : std::uint8_t {
   OutOfRange,
   InvalidTargetPoint,
   MovementTooFar,
+  InvalidDamage,
+  TargetDefeated,
+  AttackerDefeated,
+  FriendlyFireBlocked,
   SessionNotPlaying,
   SessionPaused,
   StepRequiresPaused,
@@ -85,6 +90,7 @@ struct CommandTarget {
 struct CommandPayload {
   CommandTarget target;
   CommandId retrySourceCommandId = kInvalidCommandId;
+  std::int32_t attackDamage = 0;
   std::uint64_t userData0 = 0;
   std::uint64_t userData1 = 0;
 };
@@ -115,12 +121,14 @@ inline bool isSessionControlCommand(CommandKind kind) {
 
 inline bool requiresActor(CommandKind kind) {
   return kind == CommandKind::Move || kind == CommandKind::Interact ||
-         kind == CommandKind::Inspect || kind == CommandKind::Wait ||
+         kind == CommandKind::Inspect || kind == CommandKind::Attack ||
+         kind == CommandKind::Wait ||
          kind == CommandKind::Retry;
 }
 
 inline bool requiresEntityTarget(CommandKind kind) {
-  return kind == CommandKind::Interact || kind == CommandKind::Inspect;
+  return kind == CommandKind::Interact || kind == CommandKind::Inspect ||
+         kind == CommandKind::Attack;
 }
 
 inline bool requiresPointTarget(CommandKind kind) {

@@ -76,6 +76,7 @@ SaveCommandRecord saveCommand(const CommandRecord& command) {
   record.hasTargetPoint = command.payload.target.hasPoint;
   record.targetPoint = command.payload.target.point;
   record.retrySourceCommandId = command.payload.retrySourceCommandId;
+  record.attackDamage = command.payload.attackDamage;
   record.issuedTick = command.issuedTick;
   record.scheduledTick = command.scheduledTick;
   record.admission = command.admission;
@@ -96,6 +97,7 @@ CommandRecord loadCommand(const SaveCommandRecord& record) {
   command.payload.target.hasPoint = record.hasTargetPoint;
   command.payload.target.point = record.targetPoint;
   command.payload.retrySourceCommandId = record.retrySourceCommandId;
+  command.payload.attackDamage = record.attackDamage;
   command.issuedTick = record.issuedTick;
   command.scheduledTick = record.scheduledTick;
   command.admission = record.admission;
@@ -249,6 +251,19 @@ bool referencesValid(const SessionState& state) {
     }
     for (const InventoryStack& stack : inventory.stacks) {
       if (stack.itemId.empty() || stack.count == 0U) {
+        return false;
+      }
+    }
+  }
+  for (std::size_t index = 0; index < state.combat.combatants.size(); ++index) {
+    const CombatantState& combatant = state.combat.combatants[index];
+    if (state.world.findById(combatant.entity) == nullptr || combatant.maxHitPoints <= 0 ||
+        combatant.hitPoints < 0 || combatant.hitPoints > combatant.maxHitPoints ||
+        combatant.defeated != (combatant.hitPoints == 0)) {
+      return false;
+    }
+    for (std::size_t prior = 0; prior < index; ++prior) {
+      if (state.combat.combatants[prior].entity == combatant.entity) {
         return false;
       }
     }

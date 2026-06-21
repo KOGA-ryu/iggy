@@ -42,6 +42,12 @@ set_tests_properties(camera_mode_policy_tests PROPERTIES LABELS "unit;runtime;ca
 iggy3d_add_unit_test(command_admission_tests tests/unit/command_admission_tests.cpp)
 set_tests_properties(command_admission_tests PROPERTIES LABELS "unit;runtime;command;iggy3d")
 
+iggy3d_add_unit_test(combat_system_tests tests/unit/combat_system_tests.cpp)
+set_tests_properties(combat_system_tests PROPERTIES LABELS "unit;runtime;combat;iggy3d")
+
+iggy3d_add_unit_test(combat_command_tests tests/unit/combat_command_tests.cpp)
+set_tests_properties(combat_command_tests PROPERTIES LABELS "unit;runtime;command;combat;iggy3d")
+
 iggy3d_add_unit_test(session_state_tests tests/unit/session_state_tests.cpp)
 set_tests_properties(session_state_tests PROPERTIES LABELS "unit;runtime;session;iggy3d")
 

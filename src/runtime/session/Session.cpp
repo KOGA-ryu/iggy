@@ -122,6 +122,32 @@ InventoryState createInventory(const FixtureScenarioSeed& seed) {
   return inventory;
 }
 
+bool createCombat(const FixtureScenarioSeed& seed, const WorldState& world, CombatState& combat) {
+  for (const ScenarioEntitySeed& entitySeed : seed.entities) {
+    if (!entitySeed.combatantEnabled) {
+      continue;
+    }
+    const EntityState* entity = world.findByStableName(entitySeed.stableName);
+    if (entity == nullptr) {
+      return false;
+    }
+    for (const CombatantState& existing : combat.combatants) {
+      if (existing.entity == entity->id) {
+        return false;
+      }
+    }
+    CombatantState combatant = entitySeed.combatant;
+    combatant.entity = entity->id;
+    combatant.defeated = combatant.hitPoints == 0;
+    if (combatant.maxHitPoints <= 0 || combatant.hitPoints <= 0 ||
+        combatant.hitPoints > combatant.maxHitPoints || combatant.defeated) {
+      return false;
+    }
+    combat.combatants.push_back(combatant);
+  }
+  return true;
+}
+
 ClockState createClock(const SessionCreateRequest& request) {
   ClockState clock;
   clock.mode = request.seed.initialClockMode;
@@ -200,7 +226,8 @@ bool commandLogValid(const CommandLog& log) {
 
 bool queuesForTickExecution(CommandKind kind) {
   return kind == CommandKind::Move || kind == CommandKind::Interact ||
-         kind == CommandKind::Inspect || kind == CommandKind::Wait ||
+         kind == CommandKind::Inspect || kind == CommandKind::Attack ||
+         kind == CommandKind::Wait ||
          kind == CommandKind::Retry;
 }
 
@@ -344,6 +371,9 @@ Result<Session> Session::create(const SessionCreateRequest& request) {
   if (!createPlayers(request.seed, state.world, state.players)) {
     return createFailure("session.player_seed_failed", "failed to seed players");
   }
+  if (!createCombat(request.seed, state.world, state.combat)) {
+    return createFailure("session.combat_seed_failed", "failed to seed combatants");
+  }
   if (state.objectives.objectives.empty()) {
     return createFailure("session.objective_seed_failed", "missing objectives");
   }
@@ -390,7 +420,7 @@ SessionCommandResult Session::submitCommand(const CommandRecord& command) {
     admission = rejectCommand(candidate, CommandRejectionReason::SessionNotPlaying);
   } else {
     CommandAdmissionContext context{&state_.world, &state_.players, &state_.clock,
-                                    &state_.commandLog, &state_.config};
+                                    &state_.commandLog, &state_.config, &state_.combat};
     admission = admitCommand(context, CommandAdmissionRequest{candidate});
   }
 

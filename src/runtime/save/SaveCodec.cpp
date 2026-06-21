@@ -211,6 +211,7 @@ std::string enumText(TargetAction value) {
   switch (value) {
     case TargetAction::Interact: return "Interact";
     case TargetAction::Inspect: return "Inspect";
+    case TargetAction::Attack: return "Attack";
     case TargetAction::Move: return "Move";
   }
   return "Interact";
@@ -289,6 +290,7 @@ std::string enumText(CommandKind value) {
     case CommandKind::Move: return "Move";
     case CommandKind::Interact: return "Interact";
     case CommandKind::Inspect: return "Inspect";
+    case CommandKind::Attack: return "Attack";
     case CommandKind::Wait: return "Wait";
     case CommandKind::ToggleTacticalMode: return "ToggleTacticalMode";
     case CommandKind::Pause: return "Pause";
@@ -341,6 +343,10 @@ std::string enumText(CommandRejectionReason value) {
     case CommandRejectionReason::OutOfRange: return "OutOfRange";
     case CommandRejectionReason::InvalidTargetPoint: return "InvalidTargetPoint";
     case CommandRejectionReason::MovementTooFar: return "MovementTooFar";
+    case CommandRejectionReason::InvalidDamage: return "InvalidDamage";
+    case CommandRejectionReason::TargetDefeated: return "TargetDefeated";
+    case CommandRejectionReason::AttackerDefeated: return "AttackerDefeated";
+    case CommandRejectionReason::FriendlyFireBlocked: return "FriendlyFireBlocked";
     case CommandRejectionReason::SessionNotPlaying: return "SessionNotPlaying";
     case CommandRejectionReason::SessionPaused: return "SessionPaused";
     case CommandRejectionReason::StepRequiresPaused: return "StepRequiresPaused";
@@ -417,6 +423,7 @@ template <>
 bool parseEnum(std::string_view value, TargetAction& out) {
   IGGY3D_ENUM_PARSE(TargetAction, Interact)
   IGGY3D_ENUM_PARSE(TargetAction, Inspect)
+  IGGY3D_ENUM_PARSE(TargetAction, Attack)
   IGGY3D_ENUM_PARSE(TargetAction, Move)
   return false;
 }
@@ -481,6 +488,7 @@ bool parseEnum(std::string_view value, CommandKind& out) {
   IGGY3D_ENUM_PARSE(CommandKind, Move)
   IGGY3D_ENUM_PARSE(CommandKind, Interact)
   IGGY3D_ENUM_PARSE(CommandKind, Inspect)
+  IGGY3D_ENUM_PARSE(CommandKind, Attack)
   IGGY3D_ENUM_PARSE(CommandKind, Wait)
   IGGY3D_ENUM_PARSE(CommandKind, ToggleTacticalMode)
   IGGY3D_ENUM_PARSE(CommandKind, Pause)
@@ -527,6 +535,10 @@ bool parseEnum(std::string_view value, CommandRejectionReason& out) {
   IGGY3D_ENUM_PARSE(CommandRejectionReason, OutOfRange)
   IGGY3D_ENUM_PARSE(CommandRejectionReason, InvalidTargetPoint)
   IGGY3D_ENUM_PARSE(CommandRejectionReason, MovementTooFar)
+  IGGY3D_ENUM_PARSE(CommandRejectionReason, InvalidDamage)
+  IGGY3D_ENUM_PARSE(CommandRejectionReason, TargetDefeated)
+  IGGY3D_ENUM_PARSE(CommandRejectionReason, AttackerDefeated)
+  IGGY3D_ENUM_PARSE(CommandRejectionReason, FriendlyFireBlocked)
   IGGY3D_ENUM_PARSE(CommandRejectionReason, SessionNotPlaying)
   IGGY3D_ENUM_PARSE(CommandRejectionReason, SessionPaused)
   IGGY3D_ENUM_PARSE(CommandRejectionReason, StepRequiresPaused)
@@ -701,6 +713,7 @@ private:
       lineBool(p + "hasTargetPoint", record.hasTargetPoint);
       line(p + "targetPoint", formatVec3(record.targetPoint));
       line(p + "retrySourceCommandId", unsignedText(record.retrySourceCommandId));
+      line(p + "attackDamage", std::to_string(record.attackDamage));
       line(p + "issuedTick", unsignedText(record.issuedTick));
       line(p + "scheduledTick", unsignedText(record.scheduledTick));
       lineEnum(p + "admission", record.admission);
@@ -833,6 +846,10 @@ private:
     return equals == std::string::npos ? lines_[lineIndex] : lines_[lineIndex].substr(0, equals);
   }
 
+  bool nextKeyIs(const std::string& expectedKey) const {
+    return index_ < lines_.size() && keyAt(index_) == expectedKey;
+  }
+
   bool nextValue(const std::string& expectedKey, std::string_view& value) {
     if (result_.status != SaveCodecStatus::Ok) {
       return false;
@@ -900,6 +917,13 @@ private:
       return false;
     }
     return true;
+  }
+
+  bool readOptionalI32(const std::string& key, std::int32_t& out) {
+    if (!nextKeyIs(key)) {
+      return true;
+    }
+    return readI32(key, out);
   }
 
   bool readFloat(const std::string& key, float& out) {
@@ -1076,6 +1100,7 @@ private:
       readBool(p + "hasTargetPoint", record.hasTargetPoint);
       readVec3(p + "targetPoint", record.targetPoint);
       readUnsigned(p + "retrySourceCommandId", record.retrySourceCommandId, SaveCodecStatus::InvalidId);
+      readOptionalI32(p + "attackDamage", record.attackDamage);
       readUnsigned(p + "issuedTick", record.issuedTick);
       readUnsigned(p + "scheduledTick", record.scheduledTick);
       readEnum(p + "admission", record.admission);

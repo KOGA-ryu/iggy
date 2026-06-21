@@ -23,6 +23,7 @@ enum class EntityKind : std::uint8_t {
 enum class TargetAction : std::uint8_t {
   Interact,
   Inspect,
+  Attack,
   Move,
 };
 

@@ -203,7 +203,7 @@ stable labels to the `Session`-assigned ids after submission:
 | `cmd_pause` | `Pause` | accepted | enters paused mode |
 | `cmd_step` | `StepTacticalTick` | accepted | advances exactly one tick while paused |
 | `cmd_resume` | `Resume` | accepted | returns to slow-time mode |
-| `cmd_wait` | `Wait` | accepted | accepted no-op for command/log proof |
+| `cmd_attack_dummy` | `Attack` | accepted | defeats `training_dummy` with deterministic damage `3` |
 | `cmd_exit_tactical` | `ToggleTacticalMode` | accepted | returns to normal realtime camera |
 
 Expected counts:
@@ -214,9 +214,9 @@ Expected counts:
 - retry commands: `1`;
 - movement commands accepted: `2`;
 - interaction commands executed: `1`;
+- combat commands submitted: `1`;
 - control commands accepted: `5` (`ToggleTacticalMode`, `Pause`,
-  `StepTacticalTick`, `Resume`, `ToggleTacticalMode`);
-- no-op wait commands accepted: `1`.
+  `StepTacticalTick`, `Resume`, `ToggleTacticalMode`).
 
 Save, load, reset proof, and replay proof are control/tool phases. They produce
 runtime events and diagnostics, but they are not counted in the ten gameplay
@@ -402,21 +402,23 @@ Expected:
 - camera remains `TacticalOverhead`;
 - previous realtime camera remains `ThirdPerson`.
 
-### Step 10: Wait No-Op
+### Step 10: Attack Training Dummy
 
 Command:
 
 ```text
-cmd_wait = Wait()
+cmd_attack_dummy = Attack(actor=player, target=training_dummy, damage=3)
 ```
 
 Expected:
 
 - command accepted;
 - command log count increases;
-- no gameplay state changes except deterministic tick/event/metric accounting;
+- combat state for `training_dummy` changes to `hitPoints=0` and
+  `defeated=true`;
+- `training_dummy` remains an active world entity;
 - state hash changes because command log records, next sequence, and epoch are
-  first-build hash inputs.
+  first-build hash inputs and combat state is save/hash truth.
 
 ### Step 11: Exit Tactical Slow Time
 
@@ -578,7 +580,7 @@ this order:
 scenario=iggy3d.first_room:first_room.runtime_loop
 lifecycle=Complete
 outcome=DemoComplete
-final_tick=<locked integer after implementation>
+final_tick=5
 player.position=(2.000,0.000,1.000)
 inventory.player0=gold_key:1
 gold_key.active=false
@@ -591,6 +593,13 @@ commands.submitted=10
 commands.accepted=9
 commands.rejected=1
 commands.retry=1
+commands.combat=1
+combat.training_dummy.hp=0
+combat.training_dummy.defeated=true
+combat.last_attack.command_id=9
+combat.last_attack.sequence=9
+combat.last_attack.damage=3
+combat.last_attack.target=training_dummy
 first_rejection=OutOfRange
 retry.original_rejected_command_id=1
 retry.retry_command_id=3
@@ -601,11 +610,10 @@ retry.executed.sequence=3
 save.roundtrip=pass
 reset.baseline=pass
 replay.hash=pass
-state_hash=<locked lowercase 16-hex value after first green implementation>
+state_hash=fee7c48fd11a6d79
 ```
 
-The final tick and hash values are locked fixture values to fill after the first
-green implementation of `SessionRunner` and `StateHash`. After that, tests
+The final tick and hash values are locked fixture values. Tests
 compare the expected summary byte-for-byte.
 
 ## Tool Responsibilities

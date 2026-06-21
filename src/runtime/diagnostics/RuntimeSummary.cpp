@@ -77,6 +77,10 @@ std::string rejectionText(CommandRejectionReason reason) {
     case CommandRejectionReason::TargetInactive: return "TargetInactive";
     case CommandRejectionReason::InvalidTargetPoint: return "InvalidTargetPoint";
     case CommandRejectionReason::MovementTooFar: return "MovementTooFar";
+    case CommandRejectionReason::InvalidDamage: return "InvalidDamage";
+    case CommandRejectionReason::TargetDefeated: return "TargetDefeated";
+    case CommandRejectionReason::AttackerDefeated: return "AttackerDefeated";
+    case CommandRejectionReason::FriendlyFireBlocked: return "FriendlyFireBlocked";
     case CommandRejectionReason::SessionPaused: return "SessionPaused";
     case CommandRejectionReason::RetrySourceMissing: return "RetrySourceMissing";
     case CommandRejectionReason::RetrySourceNotRejected: return "RetrySourceNotRejected";
@@ -150,6 +154,35 @@ const CommandRecord* firstAcceptedRetry(const CommandLog& log) {
   return nullptr;
 }
 
+const CommandRecord* lastAcceptedAttack(const CommandLog& log) {
+  for (auto it = log.records().rbegin(); it != log.records().rend(); ++it) {
+    if (it->kind == CommandKind::Attack &&
+        it->admission == CommandAdmissionStatus::Accepted) {
+      return &*it;
+    }
+  }
+  return nullptr;
+}
+
+const CombatantState* combatantForStableName(const SessionState& state,
+                                             const std::string& stableName) {
+  const EntityState* entity = state.world.findByStableName(stableName);
+  if (entity == nullptr) {
+    return nullptr;
+  }
+  for (const CombatantState& combatant : state.combat.combatants) {
+    if (combatant.entity == entity->id) {
+      return &combatant;
+    }
+  }
+  return nullptr;
+}
+
+std::string stableNameForEntity(const WorldState& world, EntityId entityId) {
+  const EntityState* entity = world.findById(entityId);
+  return entity == nullptr ? "missing" : entity->stableName;
+}
+
 std::string idText(std::uint64_t value) {
   return value == 0U ? "0" : std::to_string(value);
 }
@@ -169,7 +202,9 @@ RuntimeSummary buildRuntimeSummary(const RuntimeSummaryInput& input) {
   const CommandLogCounts counts = state.commandLog.counts();
   const CommandRecord* rejected = firstRejected(state.commandLog);
   const CommandRecord* retry = firstAcceptedRetry(state.commandLog);
+  const CommandRecord* attack = lastAcceptedAttack(state.commandLog);
   const EntityState* player = state.world.findByStableName("player");
+  const CombatantState* dummy = combatantForStableName(state, "training_dummy");
 
   summary.scenario = state.identity.packageId + ":" + state.identity.scenarioId;
   summary.lifecycle = lifecycleText(state.lifecycle);
@@ -187,6 +222,16 @@ RuntimeSummary buildRuntimeSummary(const RuntimeSummaryInput& input) {
   summary.commandsAccepted = std::to_string(counts.accepted);
   summary.commandsRejected = std::to_string(counts.rejected);
   summary.commandsRetry = std::to_string(counts.retry);
+  summary.commandsCombat = std::to_string(counts.combat);
+  summary.combatTrainingDummyHp = dummy == nullptr ? "missing" : std::to_string(dummy->hitPoints);
+  summary.combatTrainingDummyDefeated =
+      dummy == nullptr ? "missing" : boolText(dummy->defeated);
+  summary.combatLastAttackCommandId = attack == nullptr ? "0" : idText(attack->commandId);
+  summary.combatLastAttackSequence = attack == nullptr ? "0" : idText(attack->sequence);
+  summary.combatLastAttackDamage =
+      attack == nullptr ? "0" : std::to_string(attack->payload.attackDamage);
+  summary.combatLastAttackTarget =
+      attack == nullptr ? "missing" : stableNameForEntity(state.world, attack->payload.target.entity);
   summary.firstRejection = rejected == nullptr ? "None" : rejectionText(rejected->rejection);
   summary.retryOriginalRejectedCommandId =
       rejected == nullptr ? "0" : idText(rejected->commandId);
@@ -221,6 +266,13 @@ std::string formatRuntimeSummary(const RuntimeSummary& summary) {
   out << "commands.accepted=" << summary.commandsAccepted << '\n';
   out << "commands.rejected=" << summary.commandsRejected << '\n';
   out << "commands.retry=" << summary.commandsRetry << '\n';
+  out << "commands.combat=" << summary.commandsCombat << '\n';
+  out << "combat.training_dummy.hp=" << summary.combatTrainingDummyHp << '\n';
+  out << "combat.training_dummy.defeated=" << summary.combatTrainingDummyDefeated << '\n';
+  out << "combat.last_attack.command_id=" << summary.combatLastAttackCommandId << '\n';
+  out << "combat.last_attack.sequence=" << summary.combatLastAttackSequence << '\n';
+  out << "combat.last_attack.damage=" << summary.combatLastAttackDamage << '\n';
+  out << "combat.last_attack.target=" << summary.combatLastAttackTarget << '\n';
   out << "first_rejection=" << summary.firstRejection << '\n';
   out << "retry.original_rejected_command_id=" << summary.retryOriginalRejectedCommandId << '\n';
   out << "retry.retry_command_id=" << summary.retryCommandId << '\n';

@@ -2,6 +2,7 @@
 
 #include "config/RuntimeConfig.hpp"
 #include "runtime/clock/ClockState.hpp"
+#include "runtime/combat/CombatState.hpp"
 #include "runtime/command/Command.hpp"
 #include "runtime/player/PlayerRoster.hpp"
 #include "runtime/replay/CommandLog.hpp"
@@ -17,6 +18,7 @@ struct CommandAdmissionContext {
   const ClockState* clock = nullptr;
   const CommandLog* commandLog = nullptr;
   const RuntimeConfig* config = nullptr;
+  const CombatState* combat = nullptr;
 };
 
 struct CommandAdmissionRequest {

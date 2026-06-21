@@ -119,6 +119,7 @@ iggy3d::CommandRecord commandFromSave(const iggy3d::SaveCommandRecord& saved) {
   command.payload.target.hasPoint = saved.hasTargetPoint;
   command.payload.target.point = saved.targetPoint;
   command.payload.retrySourceCommandId = saved.retrySourceCommandId;
+  command.payload.attackDamage = saved.attackDamage;
   command.issuedTick = saved.issuedTick;
   command.scheduledTick = saved.scheduledTick;
   command.admission = saved.admission;

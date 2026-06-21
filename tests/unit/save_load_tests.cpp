@@ -15,6 +15,14 @@ bool expect(bool condition, std::string_view message) {
   return condition;
 }
 
+std::string eraseFirst(std::string text, std::string_view value) {
+  const std::size_t pos = text.find(value);
+  if (pos != std::string::npos) {
+    text.erase(pos, value.size());
+  }
+  return text;
+}
+
 iggy3d::Transform3 transformAt(float x, float y, float z) {
   iggy3d::Transform3 transform = iggy3d::identityTransform3();
   transform.position = {x, y, z};
@@ -29,6 +37,10 @@ iggy3d::ScenarioEntitySeed playerSeed() {
   seed.localBounds = iggy3d::makeAabb3({-0.25F, 0.0F, -0.25F}, {0.25F, 1.8F, 0.25F});
   seed.active = true;
   seed.persistent = true;
+  seed.combatantEnabled = true;
+  seed.combatant.factionId = 1;
+  seed.combatant.hitPoints = 10;
+  seed.combatant.maxHitPoints = 10;
   return seed;
 }
 
@@ -64,6 +76,23 @@ iggy3d::ScenarioEntitySeed markerSeed() {
   return seed;
 }
 
+iggy3d::ScenarioEntitySeed dummySeed() {
+  iggy3d::ScenarioEntitySeed seed;
+  seed.stableName = "training_dummy";
+  seed.kind = iggy3d::EntityKind::Npc;
+  seed.transform = transformAt(2.0F, 0.0F, 2.0F);
+  seed.localBounds = iggy3d::makeAabb3({-0.25F, 0.0F, -0.25F}, {0.25F, 1.2F, 0.25F});
+  seed.active = true;
+  seed.persistent = true;
+  seed.targeting.targetable = true;
+  seed.targeting.actions = {iggy3d::TargetAction::Attack, iggy3d::TargetAction::Inspect};
+  seed.combatantEnabled = true;
+  seed.combatant.factionId = 2;
+  seed.combatant.hitPoints = 3;
+  seed.combatant.maxHitPoints = 3;
+  return seed;
+}
+
 iggy3d::FixtureScenarioSeed firstRoomSeed() {
   iggy3d::FixtureScenarioSeed seed;
   seed.scenarioId = "first_room.runtime_loop";
@@ -72,7 +101,7 @@ iggy3d::FixtureScenarioSeed firstRoomSeed() {
   seed.defaultRealtimeCamera = iggy3d::CameraMode::ThirdPerson;
   seed.defaultTacticalCamera = iggy3d::CameraMode::TacticalOverhead;
   seed.players.push_back({0, iggy3d::PlayerSlotKind::Local, "player"});
-  seed.entities = {playerSeed(), goldKeySeed(), markerSeed()};
+  seed.entities = {playerSeed(), goldKeySeed(), markerSeed(), dummySeed()};
   iggy3d::ScenarioObjectiveSeed objective;
   objective.id = "collect_gold_key";
   objective.initialStatus = iggy3d::ObjectiveStatusSeed::Active;
@@ -121,6 +150,18 @@ iggy3d::CommandRecord submittedRetry(iggy3d::CommandId sourceCommandId) {
   command.kind = iggy3d::CommandKind::Retry;
   command.source = iggy3d::CommandSource::LocalPlayer;
   command.payload.retrySourceCommandId = sourceCommandId;
+  return command;
+}
+
+iggy3d::CommandRecord submittedAttack() {
+  iggy3d::CommandRecord command;
+  command.playerSlot = 0;
+  command.actor = {1};
+  command.kind = iggy3d::CommandKind::Attack;
+  command.source = iggy3d::CommandSource::LocalPlayer;
+  command.payload.target.hasEntity = true;
+  command.payload.target.entity = {4};
+  command.payload.attackDamage = 3;
   return command;
 }
 
@@ -248,6 +289,70 @@ bool malformedEncodedSaveFailsDecodeAndLeavesDestinationUnchanged() {
          expect(destination.stateHash() == before, "decode failure unchanged");
 }
 
+bool attackDamageAndCombatRoundTrip() {
+  iggy3d::Session session = makeSession();
+  (void)session.submitCommand(submittedMove({2.0F, 0.0F, 1.0F}));
+  (void)session.tick();
+  const iggy3d::SessionCommandResult attack = session.submitCommand(submittedAttack());
+  (void)session.tick();
+  const iggy3d::SaveStateResult saved = iggy3d::saveSessionStateEncoded(session.state());
+  bool ok = expect(attack.command.admission == iggy3d::CommandAdmissionStatus::Accepted,
+                   "attack accepted") &&
+            expect(saved.status == iggy3d::SaveLoadStatus::Ok, "attack save status") &&
+            expect(saved.envelope.commandLog.records.size() == 2U, "attack command count") &&
+            expect(saved.envelope.commandLog.records[1].attackDamage == 3,
+                   "attack damage envelope") &&
+            expect(saved.encodedSaveText.find("commandLog.record.1.attackDamage=3\n") !=
+                       std::string::npos,
+                   "attack damage encoded");
+  iggy3d::Session loaded = makeSession();
+  const iggy3d::LoadStateResult load =
+      iggy3d::loadEncodedSaveIntoSession(loaded, saved.encodedSaveText, compatibilityFor(saved.envelope));
+  ok = ok && expect(load.status == iggy3d::SaveLoadStatus::Ok, "attack load status") &&
+       expect(loaded.stateHash() == session.stateHash(), "attack loaded hash") &&
+       expect(loaded.state().combat.combatants[1].hitPoints == 0, "dummy hp loaded") &&
+       expect(loaded.state().combat.combatants[1].defeated, "dummy defeated loaded");
+
+  const std::string oldStyle = eraseFirst(saved.encodedSaveText,
+                                          "commandLog.record.0.attackDamage=0\n");
+  const iggy3d::SaveDecodeResult decoded = iggy3d::decodeSaveEnvelope(oldStyle);
+  ok = ok && expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                    "old non attack missing damage decodes") &&
+       expect(decoded.envelope.commandLog.records[0].attackDamage == 0,
+              "old non attack damage default");
+  return ok;
+}
+
+bool invalidCombatStateRejectedOnLoad() {
+  iggy3d::Session source = makeSession();
+  iggy3d::SaveStateResult saved = iggy3d::saveSessionState(source.state());
+  bool ok = true;
+
+  iggy3d::Session destination = makeSession();
+  iggy3d::SaveEnvelope bad = saved.envelope;
+  bad.combat.combatants[0].entity = {99};
+  iggy3d::LoadStateResult load =
+      iggy3d::loadEnvelopeIntoSession(destination, bad, compatibilityFor(saved.envelope));
+  ok = ok && expect(load.status == iggy3d::SaveLoadStatus::InvalidReference,
+                    "missing combat entity rejected");
+
+  destination = makeSession();
+  bad = saved.envelope;
+  bad.combat.combatants[1].entity = bad.combat.combatants[0].entity;
+  load = iggy3d::loadEnvelopeIntoSession(destination, bad, compatibilityFor(saved.envelope));
+  ok = ok && expect(load.status == iggy3d::SaveLoadStatus::InvalidReference,
+                    "duplicate combat entity rejected");
+
+  destination = makeSession();
+  bad = saved.envelope;
+  bad.combat.combatants[1].hitPoints = 0;
+  bad.combat.combatants[1].defeated = false;
+  load = iggy3d::loadEnvelopeIntoSession(destination, bad, compatibilityFor(saved.envelope));
+  ok = ok && expect(load.status == iggy3d::SaveLoadStatus::InvalidReference,
+                    "combat invariant rejected");
+  return ok;
+}
+
 }  // namespace
 
 int main() {
@@ -258,5 +363,7 @@ int main() {
   ok = invalidCursorIsRejected() && ok;
   ok = duplicateCommandIdIsRejectedByCommandLogRestore() && ok;
   ok = malformedEncodedSaveFailsDecodeAndLeavesDestinationUnchanged() && ok;
+  ok = attackDamageAndCombatRoundTrip() && ok;
+  ok = invalidCombatStateRejectedOnLoad() && ok;
   return ok ? 0 : 1;
 }

@@ -41,6 +41,10 @@ struct EntityFlags {
   bool interaction = false;
   bool deactivate = false;
   bool objectiveRef = false;
+  bool combatant = false;
+  bool factionId = false;
+  bool hitPoints = false;
+  bool maxHitPoints = false;
   std::uint32_t startLine = 0;
 };
 
@@ -151,6 +155,24 @@ bool parseU32(std::string_view value, std::uint32_t& out) {
   return true;
 }
 
+bool parseI32(std::string_view value, std::int32_t& out) {
+  value = trim(value);
+  if (value.empty()) {
+    return false;
+  }
+  std::int64_t parsed = 0;
+  const auto* begin = value.data();
+  const auto* end = value.data() + value.size();
+  const auto result = std::from_chars(begin, end, parsed);
+  if (result.ec != std::errc{} || result.ptr != end ||
+      parsed < std::numeric_limits<std::int32_t>::min() ||
+      parsed > std::numeric_limits<std::int32_t>::max()) {
+    return false;
+  }
+  out = static_cast<std::int32_t>(parsed);
+  return true;
+}
+
 bool parseFloat(std::string_view value, float& out) {
   const std::string text(trim(value));
   if (text.empty() || text.front() == '"') {
@@ -215,6 +237,8 @@ bool parseTargetActions(std::string_view value, std::vector<TargetAction>& out) 
       out.push_back(TargetAction::Inspect);
     } else if (token == "Move") {
       out.push_back(TargetAction::Move);
+    } else if (token == "Attack") {
+      out.push_back(TargetAction::Attack);
     } else {
       return false;
     }
@@ -335,7 +359,7 @@ ScenarioLoadResult validateRequired(Parser& parser) {
   }
   for (std::size_t index = 0; index < parser.entityFlags.size(); ++index) {
     const EntityFlags& flags = parser.entityFlags[index];
-    const ScenarioEntitySeed& entity = parser.result.seed.entities[index];
+    ScenarioEntitySeed& entity = parser.result.seed.entities[index];
     if (!flags.stableName || !flags.kind || !flags.active || !flags.persistent || !flags.position ||
         !flags.boundsMin || !flags.boundsMax || !flags.targetable || !flags.targetActions) {
       return fail(parser, ScenarioLoadStatus::MissingRequiredKey, "scenario.missing_required_key",
@@ -345,6 +369,21 @@ ScenarioLoadResult validateRequired(Parser& parser) {
         (!flags.itemId || !flags.itemCount || !flags.objectiveRef || !flags.deactivate)) {
       return fail(parser, ScenarioLoadStatus::MissingRequiredKey, "scenario.missing_required_key",
                   "missing pickup key", flags.startLine, 1);
+    }
+    if (entity.combatantEnabled) {
+      if (!flags.factionId || !flags.hitPoints || !flags.maxHitPoints) {
+        return fail(parser, ScenarioLoadStatus::MissingRequiredKey, "scenario.missing_required_key",
+                    "missing combatant key", flags.startLine, 1);
+      }
+      if (entity.combatant.maxHitPoints <= 0 || entity.combatant.hitPoints <= 0 ||
+          entity.combatant.hitPoints > entity.combatant.maxHitPoints) {
+        return fail(parser, ScenarioLoadStatus::InvalidNumber, "scenario.invalid_number",
+                    "invalid combatant hit points", flags.startLine, 1);
+      }
+      entity.combatant.defeated = false;
+    } else if (flags.factionId || flags.hitPoints || flags.maxHitPoints) {
+      return fail(parser, ScenarioLoadStatus::MissingRequiredKey, "scenario.missing_required_key",
+                  "combat fields require combatant true", flags.startLine, 1);
     }
   }
   for (const ObjectiveFlags& flags : parser.objectiveFlags) {
@@ -510,6 +549,16 @@ ScenarioLoadResult parseScenarioText(const std::string& scenarioText) {
         flags.targetable = parseBool(value, entity.targeting.targetable);
       } else if (key == "target_actions") {
         flags.targetActions = parseTargetActions(value, entity.targeting.actions);
+      } else if (key == "combatant") {
+        bool enabled = false;
+        flags.combatant = parseBool(value, enabled);
+        entity.combatantEnabled = enabled;
+      } else if (key == "faction_id") {
+        flags.factionId = parseU32(value, entity.combatant.factionId);
+      } else if (key == "hit_points") {
+        flags.hitPoints = parseI32(value, entity.combatant.hitPoints);
+      } else if (key == "max_hit_points") {
+        flags.maxHitPoints = parseI32(value, entity.combatant.maxHitPoints);
       } else if (key == "item_id") {
         flags.itemId = parseString(value, entity.interaction.itemId);
       } else if (key == "item_count") {
@@ -534,13 +583,18 @@ ScenarioLoadResult parseScenarioText(const std::string& scenarioText) {
                       (key == "bounds_max" && flags.boundsMax) ||
                       (key == "targetable" && flags.targetable) ||
                       (key == "target_actions" && flags.targetActions) ||
+                      (key == "combatant" && flags.combatant) ||
+                      (key == "faction_id" && flags.factionId) ||
+                      (key == "hit_points" && flags.hitPoints) ||
+                      (key == "max_hit_points" && flags.maxHitPoints) ||
                       (key == "item_id" && flags.itemId) || (key == "item_count" && flags.itemCount) ||
                       (key == "interaction" && flags.interaction) ||
                       (key == "deactivate_on_success" && flags.deactivate) ||
                       (key == "objective_ref" && flags.objectiveRef);
       if (!ok) {
         const bool numberKey = key == "position" || key == "bounds_min" || key == "bounds_max" ||
-                               key == "item_count";
+                               key == "item_count" || key == "faction_id" ||
+                               key == "hit_points" || key == "max_hit_points";
         return fail(parser, numberKey ? ScenarioLoadStatus::InvalidNumber
                                       : ScenarioLoadStatus::InvalidEnum,
                     numberKey ? "scenario.invalid_number" : "scenario.invalid_enum",

@@ -52,6 +52,10 @@ bounds_min = [-0.250, 0.000, -0.250]
 bounds_max = [0.250, 1.800, 0.250]
 targetable = false
 target_actions = []
+combatant = true
+faction_id = 1
+hit_points = 10
+max_hit_points = 10
 
 [[entities]]
 stable_name = "gold_key"
@@ -79,6 +83,21 @@ bounds_min = [-0.100, 0.000, -0.100]
 bounds_max = [0.100, 0.100, 0.100]
 targetable = true
 target_actions = ["Move", "Inspect"]
+
+[[entities]]
+stable_name = "training_dummy"
+kind = "Npc"
+active = true
+persistent = true
+position = [2.000, 0.000, 2.000]
+bounds_min = [-0.250, 0.000, -0.250]
+bounds_max = [0.250, 1.200, 0.250]
+targetable = true
+target_actions = ["Attack", "Inspect"]
+combatant = true
+faction_id = 2
+hit_points = 3
+max_hit_points = 3
 
 [[objectives]]
 id = "collect_gold_key"
@@ -117,7 +136,7 @@ bool parseValidPackageAndScenarioText() {
          expect(load.manifest.packageId == "iggy3d.first_room", "manifest id") &&
          expect(load.manifest.scenarioPath == "scenario.iggy3d.toml", "scenario path") &&
          expect(load.scenario.scenarioId == "first_room.runtime_loop", "scenario id") &&
-         expect(load.scenario.entities.size() == 3U, "entity count") &&
+         expect(load.scenario.entities.size() == 4U, "entity count") &&
          expect(load.scenario.objectives.size() == 1U, "objective count");
 }
 
@@ -137,10 +156,14 @@ bool scenarioSeedContainsEntities() {
   const iggy3d::ScenarioEntitySeed& player = seed.entities[0];
   const iggy3d::ScenarioEntitySeed& gold = seed.entities[1];
   const iggy3d::ScenarioEntitySeed& marker = seed.entities[2];
+  const iggy3d::ScenarioEntitySeed& dummy = seed.entities[3];
   return expect(player.stableName == "player" && player.kind == iggy3d::EntityKind::Player,
                 "player entity") &&
          expect(iggy3d::nearlyEqual(player.transform.position, iggy3d::Vec3{0.0F, 0.0F, 0.0F}),
                 "player position") &&
+         expect(player.combatantEnabled && player.combatant.factionId == 1U &&
+                    player.combatant.hitPoints == 10 && player.combatant.maxHitPoints == 10,
+                "player combatant") &&
          expect(gold.stableName == "gold_key" && gold.kind == iggy3d::EntityKind::Pickup,
                 "gold entity") &&
          expect(iggy3d::nearlyEqual(gold.transform.position, iggy3d::Vec3{3.0F, 0.0F, 0.0F}),
@@ -160,7 +183,15 @@ bool scenarioSeedContainsEntities() {
          expect(marker.stableName == "tactical_marker_alpha" &&
                     iggy3d::isTargetActionSupported(marker.targeting, iggy3d::TargetAction::Move) &&
                     marker.interaction.itemId.empty(),
-                "marker entity");
+                "marker entity") &&
+         expect(dummy.stableName == "training_dummy" &&
+                    dummy.kind == iggy3d::EntityKind::Npc &&
+                    iggy3d::isTargetActionSupported(dummy.targeting, iggy3d::TargetAction::Attack) &&
+                    iggy3d::isTargetActionSupported(dummy.targeting, iggy3d::TargetAction::Inspect),
+                "dummy attack target") &&
+         expect(dummy.combatantEnabled && dummy.combatant.factionId == 2U &&
+                    dummy.combatant.hitPoints == 3 && dummy.combatant.maxHitPoints == 3,
+                "dummy combatant");
 }
 
 bool validatorAcceptsAndRejects() {
@@ -269,6 +300,32 @@ bool loaderRejectsInvalidInputs() {
   result = iggy3d::parsePackageText(validPackage(), eraseFirst(validScenario(), "id = \"first_room.runtime_loop\"\n"),
                                     "fixtures/demos/first_room");
   ok = ok && expect(result.status == iggy3d::PackageLoadStatus::MissingScenarioId, "missing scenario id");
+  result = iggy3d::parsePackageText(validPackage(),
+                                    replaceFirst(validScenario(), "target_actions = [\"Attack\", \"Inspect\"]",
+                                                 "target_actions = [\"AttackOnly\"]"),
+                                    "fixtures/demos/first_room");
+  ok = ok && expect(result.status == iggy3d::PackageLoadStatus::InvalidEnum, "invalid attack action");
+  result = iggy3d::parsePackageText(validPackage(),
+                                    eraseFirst(validScenario(), "combatant = true\n"),
+                                    "fixtures/demos/first_room");
+  ok = ok && expect(result.status == iggy3d::PackageLoadStatus::MissingRequiredKey,
+                   "stray combat field");
+  result = iggy3d::parsePackageText(validPackage(),
+                                    replaceFirst(validScenario(), "hit_points = 3", "hit_points = -1"),
+                                    "fixtures/demos/first_room");
+  ok = ok && expect(result.status == iggy3d::PackageLoadStatus::InvalidNumber, "negative hp");
+  result = iggy3d::parsePackageText(validPackage(),
+                                    replaceFirst(validScenario(), "max_hit_points = 3", "max_hit_points = 0"),
+                                    "fixtures/demos/first_room");
+  ok = ok && expect(result.status == iggy3d::PackageLoadStatus::InvalidNumber, "zero max hp");
+  result = iggy3d::parsePackageText(validPackage(),
+                                    replaceFirst(validScenario(), "hit_points = 3", "hit_points = 4"),
+                                    "fixtures/demos/first_room");
+  ok = ok && expect(result.status == iggy3d::PackageLoadStatus::InvalidNumber, "hp over max");
+  result = iggy3d::parsePackageText(validPackage(),
+                                    replaceFirst(validScenario(), "hit_points = 3", "hit_points = 0"),
+                                    "fixtures/demos/first_room");
+  ok = ok && expect(result.status == iggy3d::PackageLoadStatus::InvalidNumber, "starting defeated");
   return ok;
 }
 

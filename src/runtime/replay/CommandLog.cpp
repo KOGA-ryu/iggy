@@ -66,6 +66,11 @@ CommandLogAppendStatus payloadFailureStatus(const std::vector<CommandRecord>& re
       (!record.payload.target.hasPoint || !isFinite(record.payload.target.point))) {
     return CommandLogAppendStatus::InvalidCommandPayload;
   }
+  if (record.kind == CommandKind::Attack &&
+      record.admission == CommandAdmissionStatus::Accepted &&
+      record.payload.attackDamage <= 0) {
+    return CommandLogAppendStatus::InvalidCommandPayload;
+  }
   return CommandLogAppendStatus::Ok;
 }
 
@@ -169,6 +174,9 @@ CommandLogRestoreResult CommandLog::restoreForLoad(std::vector<CommandRecord> re
     if (!isValidAdmissionInvariant(record)) {
       return restoreFailure(CommandLogRestoreStatus::InvalidAdmissionState, index, record);
     }
+    if (payloadFailureStatus(records, record) != CommandLogAppendStatus::Ok) {
+      return restoreFailure(CommandLogRestoreStatus::InvalidAdmissionState, index, record);
+    }
     if (!restoreRetrySourceValid(records, index)) {
       return restoreFailure(CommandLogRestoreStatus::InvalidRetrySource, index, record);
     }
@@ -243,6 +251,8 @@ CommandLogCounts CommandLog::counts() const {
       ++counts.movement;
     } else if (record.kind == CommandKind::Interact) {
       ++counts.interaction;
+    } else if (record.kind == CommandKind::Attack) {
+      ++counts.combat;
     } else if (record.kind == CommandKind::ToggleTacticalMode ||
                record.kind == CommandKind::Pause || record.kind == CommandKind::Resume ||
                record.kind == CommandKind::StepTacticalTick) {
