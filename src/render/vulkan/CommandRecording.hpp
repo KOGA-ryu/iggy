@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "render/RenderDiagnostics.hpp"
+#include "render/debug/DebugHudText.hpp"
 #include "render/vulkan/FirstRoomPipeline.hpp"
 #include "render/vulkan/PipelineLayout.hpp"
 #include "render/vulkan/VulkanFunctions.hpp"
@@ -55,6 +56,8 @@ struct FirstRoomFrameRecordInfo {
   bool captureEnabled = false;
   VkBuffer captureBuffer{};
   VkDeviceSize captureBufferSize = 0;
+  const DebugHudGlyphQuad* debugHudQuads = nullptr;
+  std::size_t debugHudQuadCount = 0;
 };
 
 struct ProxyPrimitiveFrameRecordInfo {
@@ -70,6 +73,8 @@ struct ProxyPrimitiveFrameRecordInfo {
   bool playerMarkerVisible = true;
   bool targetMarkerVisible = false;
   bool objectiveMarkerVisible = false;
+  const DebugHudGlyphQuad* debugHudQuads = nullptr;
+  std::size_t debugHudQuadCount = 0;
 };
 
 struct CommandRecordResult {

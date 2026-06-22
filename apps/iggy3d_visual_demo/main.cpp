@@ -160,6 +160,7 @@ struct PlayableReceiptFields {
   std::string dashCooldownState = "ready";
   std::string debugOverlayReason = "debug_overlay_disabled";
   std::string debugOverlaySurface = "closed";
+  bool debugTitleFallbackActive = false;
   std::string debugPlayerPhase = "grounded";
   std::string debugMovementPolicyBand = "not_attempted";
   std::string debugHitSurfaceId = "none";
@@ -1256,6 +1257,8 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
   iggy3d::appendReceiptField(receipt, "debug_overlay_visible",
                              fields.debugOverlayVisible);
   iggy3d::appendReceiptField(receipt, "debug_overlay_surface", fields.debugOverlaySurface);
+  iggy3d::appendReceiptField(receipt, "debug_title_fallback_active",
+                             fields.debugTitleFallbackActive);
   iggy3d::appendReceiptField(receipt, "debug_player_position_available",
                              fields.debugPlayerPositionAvailable);
   iggy3d::appendReceiptField(receipt, "debug_speed_available", fields.debugSpeedAvailable);
@@ -2203,14 +2206,20 @@ int main(int argc, const char* const* argv) {
       if (window.has_value()) {
         window->setTitle(debugOverlayWindowTitle(debugSnapshot));
         playableFields.debugOverlayVisible = debugOverlayOpen;
-        playableFields.debugOverlaySurface = debugOverlayOpen ? "window_title" : "closed";
+        playableFields.debugTitleFallbackActive = debugOverlayOpen;
+        playableFields.debugOverlaySurface =
+            debugOverlayOpen && rendererCreate.backend == iggy3d::RendererBackendKind::Vulkan
+                ? "vulkan_hud+window_title"
+                : (debugOverlayOpen ? "window_title" : "closed");
       } else {
         playableFields.debugOverlayVisible = false;
+        playableFields.debugTitleFallbackActive = false;
         playableFields.debugOverlaySurface =
             debugOverlayOpen ? "receipt_projection" : "closed";
       }
 #else
       playableFields.debugOverlayVisible = false;
+      playableFields.debugTitleFallbackActive = false;
       playableFields.debugOverlaySurface =
           debugOverlayOpen ? "receipt_projection" : "closed";
 #endif

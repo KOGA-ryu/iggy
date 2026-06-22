@@ -149,7 +149,14 @@ bool snapshotAppendsProjectionItem() {
          expect(item.hasWorldPoint && iggy3d::nearlyEqual(item.worldPoint, {1.0F, 0.0F, 2.0F}),
                 "debug world point") &&
          expect(item.hasScalar, "debug scalar") &&
-         expect(item.labelCode == "runtime.debug.overlay", "debug label");
+         expect(item.labelCode == "runtime.debug.overlay", "debug label") &&
+         expect(debug.runtimeDebugHudLines.size() >= 6U, "hud lines projected") &&
+         expect(debug.runtimeDebugHudLines[0].starts_with("POS "), "hud pos line") &&
+         expect(debug.runtimeDebugHudLines[1].starts_with("SPD "), "hud speed line") &&
+         expect(debug.runtimeDebugHudLines[2].starts_with("UP "), "hud up line") &&
+         expect(debug.runtimeDebugHudLines[3].starts_with("MOVE "), "hud move line") &&
+         expect(debug.runtimeDebugHudLines[4].starts_with("DIST "), "hud dist line") &&
+         expect(debug.runtimeDebugHudLines[5].starts_with("PHASE "), "hud phase line");
 }
 
 }  // namespace

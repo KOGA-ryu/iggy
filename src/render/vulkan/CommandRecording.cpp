@@ -69,6 +69,23 @@ VkClearAttachment colorClear(float r, float g, float b, float a) {
   return clear;
 }
 
+void recordHudGlyphQuads(VkCommandBuffer commandBuffer,
+                         const DebugHudGlyphQuad* quads,
+                         std::size_t quadCount) {
+  if (quads == nullptr || quadCount == 0U) {
+    return;
+  }
+  const VkClearAttachment hud = colorClear(0.78F, 0.95F, 0.82F, 1.0F);
+  for (std::size_t index = 0; index < quadCount; ++index) {
+    const DebugHudGlyphQuad& quad = quads[index];
+    if (quad.width == 0U || quad.height == 0U) {
+      continue;
+    }
+    const VkClearRect rect = clearRect(quad.x, quad.y, quad.width, quad.height);
+    vkCmdClearAttachments(commandBuffer, 1, &hud, 1, &rect);
+  }
+}
+
 }  // namespace
 
 CommandRecording::~CommandRecording() {
@@ -445,6 +462,7 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
     vkCmdDrawIndexed(info.commandBuffer, info.indexCount, 1, 0, 0, 0);
     indexedDrawCount = 1U;
   }
+  recordHudGlyphQuads(info.commandBuffer, info.debugHudQuads, info.debugHudQuadCount);
   createInfo_.deviceFunctions.cmdEndRendering(info.commandBuffer);
 
   if (info.captureEnabled && info.captureBuffer != VK_NULL_HANDLE &&
@@ -673,6 +691,7 @@ CommandRecordResult CommandRecording::recordProxyPrimitiveFrame(
     vkCmdClearAttachments(info.commandBuffer, 1, &objective, 1, &rect);
     ++drawCount;
   }
+  recordHudGlyphQuads(info.commandBuffer, info.debugHudQuads, info.debugHudQuadCount);
   createInfo_.deviceFunctions.cmdEndRendering(info.commandBuffer);
 
   VkImageMemoryBarrier toPresent{};

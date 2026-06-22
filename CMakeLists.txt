@@ -64,6 +64,7 @@ target_sources(iggy3d
     src/render/FrameInput.cpp
     src/render/RendererConfig.cpp
     src/render/RenderDiagnostics.cpp
+    src/render/debug/DebugHudText.cpp
     src/render/null/NullRenderer.cpp
 )
 target_include_directories(iggy3d PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")

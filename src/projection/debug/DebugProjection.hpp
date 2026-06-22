@@ -56,6 +56,7 @@ struct DebugProjectionItem {
 
 struct DebugProjectionResult {
   std::vector<DebugProjectionItem> items;
+  std::vector<std::string> runtimeDebugHudLines;
   StateHashValue sourceStateHash = 0;
   CommandTick sourceTick = kInvalidCommandTick;
 };

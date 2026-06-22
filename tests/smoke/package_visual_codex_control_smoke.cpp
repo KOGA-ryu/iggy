@@ -108,11 +108,11 @@ int main() {
   const bool dashControlWritten = writeControlFile(dashControl, "dash");
   const std::string jumpCommand =
       shellQuote(binary) + " --package " + shellQuote(fixture) +
-      " --renderer null --window --interactive --frames 3 --dev-menu --codex-control " +
+      " --renderer vulkan --window --interactive --frames 3 --dev-menu --codex-control " +
       shellQuote(jumpControl) + " --print-render-receipt > " + shellQuote(jumpOutput);
   const std::string dashCommand =
       shellQuote(binary) + " --package " + shellQuote(fixture) +
-      " --renderer null --window --interactive --frames 3 --dev-menu --codex-control " +
+      " --renderer vulkan --window --interactive --frames 3 --dev-menu --codex-control " +
       shellQuote(dashControl) + " --print-render-receipt > " + shellQuote(dashOutput);
 
   const int jumpExitCode =
@@ -132,7 +132,7 @@ int main() {
       (dashExitCode == 77 && dashReceiptValid && hasField(dashFields, "result", "skip"));
   const bool jumpPassed =
       jumpExitCode == 0 && jumpControlWritten && jumpReceiptValid &&
-      hasField(jumpFields, "result", "pass") && hasField(jumpFields, "backend", "null") &&
+      hasField(jumpFields, "result", "pass") && hasField(jumpFields, "backend", "vulkan") &&
       hasField(jumpFields, "input_backend", "scripted") &&
       hasField(jumpFields, "interactive_mode", "true") &&
       hasField(jumpFields, "dev_menu_enabled", "true") &&
@@ -156,7 +156,13 @@ int main() {
       hasField(jumpFields, "debug_overlay_open", "true") &&
       hasField(jumpFields, "debug_overlay_reason", "debug_overlay_ok") &&
       hasField(jumpFields, "debug_overlay_visible", "true") &&
-      hasField(jumpFields, "debug_overlay_surface", "window_title") &&
+      hasField(jumpFields, "debug_overlay_surface", "vulkan_hud+window_title") &&
+      hasField(jumpFields, "debug_title_fallback_active", "true") &&
+      hasField(jumpFields, "debug_hud_projected", "true") &&
+      numericFieldGreater(jumpFields, "debug_hud_line_count", 5.0F) &&
+      numericFieldGreater(jumpFields, "debug_hud_glyph_count", 0.0F) &&
+      hasField(jumpFields, "debug_hud_rendered", "true") &&
+      hasField(jumpFields, "debug_hud_record_mode", "glyph_quads") &&
       hasField(jumpFields, "debug_player_position_available", "true") &&
       hasField(jumpFields, "debug_speed_available", "true") &&
       hasField(jumpFields, "debug_player_phase", "airborne") &&
@@ -180,7 +186,13 @@ int main() {
       hasField(dashFields, "debug_overlay_open", "true") &&
       hasField(dashFields, "debug_overlay_reason", "debug_overlay_ok") &&
       hasField(dashFields, "debug_overlay_visible", "true") &&
-      hasField(dashFields, "debug_overlay_surface", "window_title") &&
+      hasField(dashFields, "debug_overlay_surface", "vulkan_hud+window_title") &&
+      hasField(dashFields, "debug_title_fallback_active", "true") &&
+      hasField(dashFields, "debug_hud_projected", "true") &&
+      numericFieldGreater(dashFields, "debug_hud_line_count", 5.0F) &&
+      numericFieldGreater(dashFields, "debug_hud_glyph_count", 0.0F) &&
+      hasField(dashFields, "debug_hud_rendered", "true") &&
+      hasField(dashFields, "debug_hud_record_mode", "glyph_quads") &&
       hasField(dashFields, "debug_player_position_available", "true") &&
       hasField(dashFields, "debug_speed_available", "true") &&
       hasField(dashFields, "debug_player_phase", "grounded") &&

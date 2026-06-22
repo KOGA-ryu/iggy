@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <string>
 
+#include "render/debug/DebugHudText.hpp"
 #include "render/vulkan/VulkanResult.hpp"
 
 namespace iggy3d::vulkan {
@@ -141,6 +142,15 @@ std::uint32_t proxyDrawCount(const ProxySceneFacts& facts) {
 
 bool packageRoomLoaded(const FrameInput& frame) {
   return frame.projections.scene != nullptr && frame.projections.scene->room.loaded;
+}
+
+DebugHudLayoutResult debugHudLayoutFor(const FrameInput& frame) {
+  if (frame.projections.debug == nullptr ||
+      frame.projections.debug->runtimeDebugHudLines.empty()) {
+    return {};
+  }
+  return layoutDebugHudText(frame.projections.debug->runtimeDebugHudLines,
+                            frame.viewport.width, frame.viewport.height);
 }
 
 }  // namespace
@@ -349,6 +359,7 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
   }
 
   const SwapchainInfo& readySwapchain = createInfo_.swapchain->info();
+  const DebugHudLayoutResult debugHud = debugHudLayoutFor(frame);
   VkCommandBuffer commandBuffer =
       createInfo_.commandRecording->commandBufferForFrameSlot(result.frameSlot);
   const bool drawProxyPrimitives =
@@ -388,6 +399,8 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
       recordInfo.captureBuffer = createInfo_.frameCapture->buffer();
       recordInfo.captureBufferSize = createInfo_.frameCapture->bufferSizeBytes();
     }
+    recordInfo.debugHudQuads = debugHud.quads.data();
+    recordInfo.debugHudQuadCount = debugHud.quads.size();
     recordResult = createInfo_.commandRecording->recordFirstRoomFrame(recordInfo);
   } else if (drawProxyPrimitives) {
     ProxyPrimitiveFrameRecordInfo recordInfo;
@@ -405,6 +418,8 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     recordInfo.playerMarkerVisible = true;
     recordInfo.targetMarkerVisible = proxyFacts.targetMarkerVisible;
     recordInfo.objectiveMarkerVisible = proxyFacts.objectiveMarkerVisible;
+    recordInfo.debugHudQuads = debugHud.quads.data();
+    recordInfo.debugHudQuadCount = debugHud.quads.size();
     recordResult = createInfo_.commandRecording->recordProxyPrimitiveFrame(recordInfo);
   } else if (drawFirstRoom) {
     FirstRoomFrameRecordInfo recordInfo;
@@ -434,6 +449,8 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
       recordInfo.captureBuffer = createInfo_.frameCapture->buffer();
       recordInfo.captureBufferSize = createInfo_.frameCapture->bufferSizeBytes();
     }
+    recordInfo.debugHudQuads = debugHud.quads.data();
+    recordInfo.debugHudQuadCount = debugHud.quads.size();
     recordResult = createInfo_.commandRecording->recordFirstRoomFrame(recordInfo);
   } else {
     EmptyFrameRecordInfo recordInfo;
@@ -628,6 +645,17 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
   appendReceiptField(result.receipt, "marker_count",
                      static_cast<std::uint64_t>(
                          drawPackageRoom || drawProxyPrimitives ? proxyFacts.markerCount : 0U));
+  appendReceiptField(result.receipt, "debug_hud_projected", debugHud.projected);
+  appendReceiptField(result.receipt, "debug_hud_line_count",
+                     static_cast<std::uint64_t>(debugHud.lineCount));
+  appendReceiptField(result.receipt, "debug_hud_glyph_count",
+                     static_cast<std::uint64_t>(debugHud.glyphCount));
+  appendReceiptField(result.receipt, "debug_hud_rendered",
+                     debugHud.projected && !debugHud.quads.empty() &&
+                         result.commandRecorded && presentResult.presented);
+  appendReceiptField(result.receipt, "debug_hud_record_mode",
+                     debugHud.projected && !debugHud.quads.empty() ? "glyph_quads"
+                                                                   : "unavailable");
   return result;
 }
 

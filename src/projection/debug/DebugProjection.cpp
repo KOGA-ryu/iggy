@@ -1,5 +1,8 @@
 #include "projection/debug/DebugProjection.hpp"
 
+#include <iomanip>
+#include <sstream>
+
 #include "runtime/world/EntityState.hpp"
 
 namespace iggy3d {
@@ -97,6 +100,44 @@ void appendSessionFacts(const SessionState& state, DebugProjectionResult& result
   result.items.push_back(std::move(hash));
 }
 
+std::string fixed3(float value) {
+  std::ostringstream out;
+  out << std::fixed << std::setprecision(3) << value;
+  return out.str();
+}
+
+std::string phaseName(const RuntimeDebugSnapshot& snapshot) {
+  switch (snapshot.motorPhase) {
+    case PlayerMotorPhase::Grounded:
+      return "grounded";
+    case PlayerMotorPhase::Airborne:
+      return "airborne";
+  }
+  return snapshot.grounded ? "grounded" : "airborne";
+}
+
+void appendRuntimeDebugHudLines(DebugProjectionResult& result,
+                                const RuntimeDebugSnapshot& snapshot) {
+  result.runtimeDebugHudLines.clear();
+  if (snapshot.status != RuntimeDebugSnapshotStatus::Ok ||
+      !snapshot.playerPositionAvailable) {
+    return;
+  }
+
+  result.runtimeDebugHudLines.push_back("POS " + fixed3(snapshot.position.x) + " " +
+                                        fixed3(snapshot.position.y) + " " +
+                                        fixed3(snapshot.position.z));
+  result.runtimeDebugHudLines.push_back("SPD " +
+                                        fixed3(snapshot.horizontalSpeedMetersPerSecond));
+  result.runtimeDebugHudLines.push_back("UP " +
+                                        fixed3(snapshot.verticalSpeedMetersPerSecond));
+  result.runtimeDebugHudLines.push_back("MOVE " +
+                                        fixed3(snapshot.movedThisFrameMeters));
+  result.runtimeDebugHudLines.push_back("DIST " +
+                                        fixed3(snapshot.distanceFromSpawnMeters));
+  result.runtimeDebugHudLines.push_back("PHASE " + phaseName(snapshot));
+}
+
 }  // namespace
 
 DebugProjectionResult buildDebugProjection(const SessionState& state,
@@ -139,6 +180,7 @@ void appendRuntimeDebugSnapshot(DebugProjectionResult& result,
   item.labelCode = "runtime.debug.overlay";
   item.valueCode = snapshot.grounded ? "phase.grounded" : "phase.airborne";
   result.items.push_back(std::move(item));
+  appendRuntimeDebugHudLines(result, snapshot);
 }
 
 }  // namespace iggy3d
