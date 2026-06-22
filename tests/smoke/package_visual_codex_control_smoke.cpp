@@ -121,6 +121,9 @@ int main() {
       hasField(fields, "player_motor_reason", "player_motor_ok") &&
       hasField(fields, "jump_input_observed", "true") &&
       hasField(fields, "jump_accepted", "true") &&
+      hasField(fields, "air_move_intent_observed", "true") &&
+      hasField(fields, "air_control_active", "true") &&
+      hasField(fields, "horizontal_velocity_state", "positive") &&
       hasField(fields, "kinematic_movement_attempted", "true") &&
       hasField(fields, "kinematic_movement_accepted", "true") &&
       hasField(fields, "movement_reason", "movement_ok");

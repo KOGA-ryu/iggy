@@ -129,6 +129,10 @@ struct PlayableReceiptFields {
   bool playerLanded = false;
   bool jumpInputObserved = false;
   bool jumpAccepted = false;
+  bool airMoveIntentObserved = false;
+  bool airControlActive = false;
+  bool airMovementClamped = false;
+  bool airMovementSlid = false;
   std::string stance = "standing";
   std::string eyeHeightMeters = "1.650";
   std::string actorHeightMeters = "1.800";
@@ -136,6 +140,7 @@ struct PlayableReceiptFields {
   std::string playerMotorPhase = "grounded";
   std::string playerMotorReason = "not_attempted";
   std::string verticalVelocityState = "zero";
+  std::string horizontalVelocityState = "zero";
   bool devMenuEnabled = false;
   bool devMenuOpen = false;
   bool devMenuToggleObserved = false;
@@ -316,7 +321,7 @@ void recordStance(PlayableReceiptFields& fields, bool crouched) {
   fields.movementSpeedMetersPerSecond = crouched ? "2.350" : "4.800";
 }
 
-std::string_view verticalVelocityState(float velocityMetersPerSecond) {
+std::string_view velocityState(float velocityMetersPerSecond) {
   if (velocityMetersPerSecond > 0.01F) {
     return "positive";
   }
@@ -888,10 +893,19 @@ void recordPlayerMotorResult(PlayableReceiptFields& fields,
   fields.jumpInputObserved = fields.jumpInputObserved || result.jumpRequested;
   fields.jumpAccepted = fields.jumpAccepted || result.jumpAccepted;
   fields.groundSnapApplied = fields.groundSnapApplied || result.groundSnapApplied;
+  fields.airMoveIntentObserved = fields.airMoveIntentObserved || result.airMoveIntent;
+  fields.airControlActive = fields.airControlActive || result.airControlActive;
+  fields.airMovementClamped = fields.airMovementClamped || result.airMovementClamped;
+  fields.airMovementSlid = fields.airMovementSlid || result.airMovementSlid;
   fields.playerMotorPhase = iggy3d::playerMotorPhaseName(result.phase);
   fields.playerMotorReason = result.reasonCode == nullptr ? "unavailable" : result.reasonCode;
   fields.verticalVelocityState =
-      std::string(verticalVelocityState(result.verticalVelocityMetersPerSecond));
+      std::string(velocityState(result.verticalVelocityMetersPerSecond));
+  fields.horizontalVelocityState =
+      std::string(velocityState(result.horizontalSpeedMetersPerSecond));
+  if (!result.hitSurfaceId.empty()) {
+    fields.hitSurfaceId = result.hitSurfaceId;
+  }
 }
 
 iggy3d::CommandRecord moveCommand(iggy3d::Vec3 point) {
@@ -1105,8 +1119,15 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
   iggy3d::appendReceiptField(receipt, "player_motor_phase", fields.playerMotorPhase);
   iggy3d::appendReceiptField(receipt, "player_motor_reason", fields.playerMotorReason);
   iggy3d::appendReceiptField(receipt, "vertical_velocity_state", fields.verticalVelocityState);
+  iggy3d::appendReceiptField(receipt, "horizontal_velocity_state",
+                             fields.horizontalVelocityState);
   iggy3d::appendReceiptField(receipt, "jump_input_observed", fields.jumpInputObserved);
   iggy3d::appendReceiptField(receipt, "jump_accepted", fields.jumpAccepted);
+  iggy3d::appendReceiptField(receipt, "air_move_intent_observed",
+                             fields.airMoveIntentObserved);
+  iggy3d::appendReceiptField(receipt, "air_control_active", fields.airControlActive);
+  iggy3d::appendReceiptField(receipt, "air_movement_clamped", fields.airMovementClamped);
+  iggy3d::appendReceiptField(receipt, "air_movement_slid", fields.airMovementSlid);
   iggy3d::appendReceiptField(receipt, "stance", fields.stance);
   iggy3d::appendReceiptField(receipt, "eye_height_meters", fields.eyeHeightMeters);
   iggy3d::appendReceiptField(receipt, "actor_height_meters", fields.actorHeightMeters);
@@ -1911,6 +1932,7 @@ int main(int argc, const char* const* argv) {
         iggy3d::SessionState& mutableState = session.mutableStateForOwnedSystems();
         iggy3d::PlayerMotorContext motorContext{&mutableState.world, &collisionSurfaces};
         iggy3d::PlayerMotorInput motorInput;
+        motorInput.moveIntent = movement;
         motorInput.jumpPressed = jumpRequested;
         motorInput.crouched = crouchHeld;
         motorInput.seconds = 1.0F / 60.0F;

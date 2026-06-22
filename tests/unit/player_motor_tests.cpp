@@ -1,5 +1,6 @@
 #include "runtime/player/PlayerMotor.hpp"
 
+#include <initializer_list>
 #include <iostream>
 #include <string_view>
 
@@ -49,10 +50,30 @@ iggy3d::RoomSpatialSurface floorSurface() {
   return surface;
 }
 
-iggy3d::SpatialSurfaceSet makeSurfaceSet() {
+iggy3d::RoomSpatialSurface wallSurface(std::string_view id = "wall") {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = std::string(id);
+  surface.sourceStaticMeshId = "synthetic_wall";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Box;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Blocker;
+  surface.pointsMeters = {
+      {-10.0F, 0.0F, -0.10F},
+      {10.0F, 0.0F, -0.10F},
+      {10.0F, 3.0F, 0.10F},
+      {-10.0F, 3.0F, 0.10F},
+  };
+  surface.normal = {0.0F, 0.0F, 1.0F};
+  surface.traversalTags = {"blocker"};
+  surface.collisionMask = {"actor"};
+  surface.blocksActor = true;
+  return surface;
+}
+
+iggy3d::SpatialSurfaceSet makeSurfaceSet(
+    std::initializer_list<iggy3d::RoomSpatialSurface> surfaces = {floorSurface()}) {
   iggy3d::RoomAsset room;
   room.id = "synthetic_room";
-  room.spatialSurfaces.push_back(floorSurface());
+  room.spatialSurfaces.assign(surfaces.begin(), surfaces.end());
   return iggy3d::buildSpatialSurfaceSet(room);
 }
 
@@ -99,6 +120,54 @@ bool doubleJumpRejectedWhileAirborne() {
          expect(second.phase == iggy3d::PlayerMotorPhase::Airborne, "still airborne");
 }
 
+bool airControlMovesHorizontallyWhileAirborne() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.0F});
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet();
+  iggy3d::PlayerMotorContext context{&world, &surfaces};
+  iggy3d::PlayerMotorState state = motorState();
+  iggy3d::PlayerMotorInput input;
+  input.moveIntent = {1.0F, 0.0F, 0.0F};
+  input.jumpPressed = true;
+  input.seconds = 0.10F;
+
+  const iggy3d::PlayerMotorResult jump = iggy3d::updatePlayerMotor(context, state, input);
+  const iggy3d::EntityState* player = world.findById({1});
+  return expect(iggy3d::playerMotorSucceeded(jump), "air control result ok") &&
+         expect(jump.jumpAccepted, "air control jump accepted") &&
+         expect(jump.airMoveIntent, "air intent observed") &&
+         expect(jump.airControlActive, "air control active") &&
+         expect(jump.horizontalSpeedMetersPerSecond > 0.0F, "horizontal speed positive") &&
+         expect(jump.horizontalVelocityMetersPerSecond.x > 0.0F,
+                "horizontal velocity positive x") &&
+         expect(player != nullptr && player->transform.position.x > 0.0F,
+                "player air strafed");
+}
+
+bool airControlClampsAgainstActorBlocker() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.50F});
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet({floorSurface(), wallSurface()});
+  iggy3d::PlayerMotorContext context{&world, &surfaces};
+  iggy3d::PlayerMotorState state = motorState();
+  iggy3d::PlayerMotorParams params;
+  params.airMaxSpeedMetersPerSecond = 8.0F;
+  params.airAccelerationMetersPerSecondSquared = 24.0F;
+  params.airLaunchSpeedMetersPerSecond = 8.0F;
+  iggy3d::PlayerMotorInput input;
+  input.moveIntent = {0.0F, 0.0F, -1.0F};
+  input.jumpPressed = true;
+  input.seconds = 0.20F;
+
+  const iggy3d::PlayerMotorResult jump = iggy3d::updatePlayerMotor(context, state, input, params);
+  const iggy3d::EntityState* player = world.findById({1});
+  return expect(iggy3d::playerMotorSucceeded(jump), "air wall result ok") &&
+         expect(jump.airMoveIntent, "air wall intent observed") &&
+         expect(jump.airControlActive, "air wall control active") &&
+         expect(jump.airMovementClamped, "air wall clamped") &&
+         expect(jump.hitSurfaceId == "wall", "air wall hit id") &&
+         expect(player != nullptr && player->transform.position.z > 0.10F,
+                "player stayed before wall");
+}
+
 bool gravityLandsAndRearmsJump() {
   iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.0F});
   const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet();
@@ -124,6 +193,8 @@ bool gravityLandsAndRearmsJump() {
   return expect(landed, "landed event") &&
          expect(last.phase == iggy3d::PlayerMotorPhase::Grounded, "landed grounded phase") &&
          expect(last.grounded, "landed grounded") && expect(state.jumpAvailable, "jump rearmed") &&
+         expect(iggy3d::nearlyEqual(state.horizontalVelocityMetersPerSecond, {0.0F, 0.0F, 0.0F}),
+                "landed horizontal velocity reset") &&
          expect(player != nullptr && iggy3d::nearlyEqual(player->transform.position,
                                                         {0.0F, 0.0F, 0.0F}),
                 "landed on floor");
@@ -166,6 +237,8 @@ bool missingAndInvalidInputsDoNotMutate() {
 
 int main() {
   const bool ok = jumpImpulseLeavesGround() && doubleJumpRejectedWhileAirborne() &&
+                  airControlMovesHorizontallyWhileAirborne() &&
+                  airControlClampsAgainstActorBlocker() &&
                   gravityLandsAndRearmsJump() && missingAndInvalidInputsDoNotMutate();
   return ok ? 0 : 1;
 }

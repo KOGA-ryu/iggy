@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 #include "core/ids/EntityId.hpp"
 #include "core/math/Vec3.hpp"
@@ -31,17 +32,25 @@ struct PlayerMotorParams {
   float landingSnapMeters = 0.30F;
   float footprintToleranceMeters = 0.30F;
   float terminalVelocityMetersPerSecond = -40.0F;
+  float airMaxSpeedMetersPerSecond = 3.20F;
+  float airAccelerationMetersPerSecondSquared = 9.50F;
+  float airDragPerSecond = 0.25F;
+  float airLaunchSpeedMetersPerSecond = 2.00F;
+  float airCollisionProbeHeightMeters = 0.90F;
+  float airCollisionSkinMeters = 0.03F;
 };
 
 struct PlayerMotorState {
   EntityId actor;
   PlayerMotorPhase phase = PlayerMotorPhase::Grounded;
+  Vec3 horizontalVelocityMetersPerSecond;
   float verticalVelocityMetersPerSecond = 0.0F;
   bool grounded = true;
   bool jumpAvailable = true;
 };
 
 struct PlayerMotorInput {
+  Vec3 moveIntent;
   bool jumpPressed = false;
   bool crouched = false;
   float seconds = 0.0F;
@@ -57,12 +66,21 @@ struct PlayerMotorResult {
   bool jumpAccepted = false;
   bool landed = false;
   bool groundSnapApplied = false;
+  bool airMoveIntent = false;
+  bool airControlActive = false;
+  bool airMovementClamped = false;
+  bool airMovementSlid = false;
   bool mutatedWorld = false;
+  Vec3 horizontalVelocityMetersPerSecond;
   float verticalVelocityMetersPerSecond = 0.0F;
+  float horizontalSpeedMetersPerSecond = 0.0F;
   float gravityMetersPerSecondSquared = 0.0F;
   float jumpImpulseMetersPerSecond = 0.0F;
+  float airMaxSpeedMetersPerSecond = 0.0F;
+  float airAccelerationMetersPerSecondSquared = 0.0F;
   Vec3 startPosition;
   Vec3 finalPosition;
+  std::string hitSurfaceId;
   const char* reasonCode = "player_motor_ok";
 };
 

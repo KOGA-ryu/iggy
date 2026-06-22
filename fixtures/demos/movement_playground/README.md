@@ -9,9 +9,9 @@ Launch:
 Controls:
 
 - WASD moves, mouse drag or right stick looks, Escape/Start quits;
-- Space jumps on keyboard when the dev menu is closed;
+- Space jumps on keyboard when the dev menu is closed; hold WASD during jump for limited air control;
 - hold C or Left Ctrl to crouch on keyboard;
-- South/Cross jumps on SDL gamepad when the dev menu is closed;
+- South/Cross jumps on SDL gamepad when the dev menu is closed; hold left stick during jump for limited air control;
 - hold left stick click to crouch on SDL gamepad;
 - F1 toggles the dev menu state; while open, 1-7 selects walk, crouch, jump,
   dash stub, vault stub, clamber stub, or wire-walk stub, and Space/Enter executes.
@@ -57,5 +57,5 @@ Purpose:
 Current runtime truth:
 
 - this fixture is a playable/renderable test arena;
-- first-person kinematic walking, hold-to-crouch stance, and runtime jump work against the shifted room surface set;
+- first-person kinematic walking, hold-to-crouch stance, runtime jump, and limited air control work against the shifted room surface set;
 - clamber, vault, dash, spell projectile, and wire-walk mechanics are authored as test zones, not implemented ability modes yet.
