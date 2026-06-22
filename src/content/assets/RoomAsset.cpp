@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <set>
 #include <sstream>
 
 namespace iggy3d {
@@ -17,6 +18,7 @@ enum class RoomTable {
   StaticMesh,
   Anchor,
   Opening,
+  SpatialSurface,
 };
 
 std::string_view trim(std::string_view value) {
@@ -77,7 +79,7 @@ bool parseFloat(std::string_view value, float& out) {
   return end != text.c_str() && *end == '\0' && std::isfinite(out);
 }
 
-bool parseVec3Feet(std::string_view value, Vec3& out) {
+bool parseVec3(std::string_view value, Vec3& out) {
   value = trim(value);
   if (value.size() < 5U || value.front() != '[' || value.back() != ']') {
     return false;
@@ -98,7 +100,16 @@ bool parseVec3Feet(std::string_view value, Vec3& out) {
   if (value.find(',') != std::string_view::npos) {
     return false;
   }
-  out = {parsed[0] * kFeetToMeters, parsed[1] * kFeetToMeters, parsed[2] * kFeetToMeters};
+  out = {parsed[0], parsed[1], parsed[2]};
+  return true;
+}
+
+bool parseVec3Feet(std::string_view value, Vec3& out) {
+  Vec3 feet;
+  if (!parseVec3(value, feet)) {
+    return false;
+  }
+  out = {feet.x * kFeetToMeters, feet.y * kFeetToMeters, feet.z * kFeetToMeters};
   return true;
 }
 
@@ -111,6 +122,174 @@ bool parseFeet(std::string_view value, float& outMeters) {
   return true;
 }
 
+bool parseBool(std::string_view value, bool& out) {
+  value = trim(value);
+  if (value == "true") {
+    out = true;
+    return true;
+  }
+  if (value == "false") {
+    out = false;
+    return true;
+  }
+  return false;
+}
+
+bool parseStringArray(std::string_view value, std::vector<std::string>& out) {
+  value = trim(value);
+  if (value.size() < 2U || value.front() != '[' || value.back() != ']') {
+    return false;
+  }
+  value.remove_prefix(1);
+  value.remove_suffix(1);
+  out.clear();
+  while (!trim(value).empty()) {
+    value = trim(value);
+    std::string item;
+    const std::size_t endQuote = value.find('"', 1U);
+    if (endQuote == std::string_view::npos ||
+        !parseString(value.substr(0, endQuote + 1U), item)) {
+      return false;
+    }
+    out.push_back(item);
+    value.remove_prefix(endQuote + 1U);
+    value = trim(value);
+    if (value.empty()) {
+      break;
+    }
+    if (value.front() != ',') {
+      return false;
+    }
+    value.remove_prefix(1);
+  }
+  return true;
+}
+
+bool parsePointsFeet(std::string_view value, std::vector<Vec3>& out) {
+  value = trim(value);
+  if (value.size() < 7U || value.front() != '[' || value.back() != ']') {
+    return false;
+  }
+  value.remove_prefix(1);
+  value.remove_suffix(1);
+  out.clear();
+  while (!trim(value).empty()) {
+    value = trim(value);
+    if (value.front() != '[') {
+      return false;
+    }
+    const std::size_t pointEnd = value.find(']');
+    if (pointEnd == std::string_view::npos) {
+      return false;
+    }
+    Vec3 point;
+    if (!parseVec3Feet(value.substr(0, pointEnd + 1U), point)) {
+      return false;
+    }
+    out.push_back(point);
+    value.remove_prefix(pointEnd + 1U);
+    value = trim(value);
+    if (value.empty()) {
+      break;
+    }
+    if (value.front() != ',') {
+      return false;
+    }
+    value.remove_prefix(1);
+  }
+  return out.size() == 3U || out.size() == 4U;
+}
+
+bool parseShape(std::string_view value, RoomSpatialSurfaceShape& out) {
+  std::string text;
+  if (!parseString(value, text)) {
+    return false;
+  }
+  if (text == "box") {
+    out = RoomSpatialSurfaceShape::Box;
+    return true;
+  }
+  if (text == "plane") {
+    out = RoomSpatialSurfaceShape::Plane;
+    return true;
+  }
+  if (text == "opening") {
+    out = RoomSpatialSurfaceShape::Opening;
+    return true;
+  }
+  return false;
+}
+
+bool parseRole(std::string_view value, RoomSpatialSurfaceRole& out) {
+  std::string text;
+  if (!parseString(value, text)) {
+    return false;
+  }
+  if (text == "walkable") {
+    out = RoomSpatialSurfaceRole::Walkable;
+    return true;
+  }
+  if (text == "blocker") {
+    out = RoomSpatialSurfaceRole::Blocker;
+    return true;
+  }
+  if (text == "projectile_blocker") {
+    out = RoomSpatialSurfaceRole::ProjectileBlocker;
+    return true;
+  }
+  if (text == "opening") {
+    out = RoomSpatialSurfaceRole::Opening;
+    return true;
+  }
+  return false;
+}
+
+bool containsString(const std::vector<std::string>& values, std::string_view expected) {
+  for (const std::string& value : values) {
+    if (value == expected) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool hasDuplicateStrings(const std::vector<std::string>& values) {
+  std::set<std::string> seen;
+  for (const std::string& value : values) {
+    if (!seen.insert(value).second) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool validTraversalTag(std::string_view tag) {
+  return tag == "walkable" || tag == "blocker" || tag == "projectile_blocker" ||
+         tag == "opening" || tag == "no_player" || tag == "debug_only";
+}
+
+bool validCollisionMask(std::string_view mask) {
+  return mask == "actor" || mask == "projectile" || mask == "sight";
+}
+
+bool hasStaticMesh(const RoomAsset& room, std::string_view id) {
+  for (const RoomStaticMeshAsset& mesh : room.staticMeshes) {
+    if (mesh.id == id) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool hasOpening(const RoomAsset& room, std::string_view id) {
+  for (const RoomOpeningAsset& opening : room.openings) {
+    if (opening.id == id) {
+      return true;
+    }
+  }
+  return false;
+}
+
 }  // namespace
 
 RoomAssetParseResult parseRoomAssetText(const std::string& text) {
@@ -119,6 +298,7 @@ RoomAssetParseResult parseRoomAssetText(const std::string& text) {
   RoomStaticMeshAsset* staticMesh = nullptr;
   RoomAnchorAsset* anchor = nullptr;
   RoomOpeningAsset* opening = nullptr;
+  RoomSpatialSurface* spatialSurface = nullptr;
 
   std::istringstream input(text);
   std::string rawLine;
@@ -132,6 +312,7 @@ RoomAssetParseResult parseRoomAssetText(const std::string& text) {
       staticMesh = nullptr;
       anchor = nullptr;
       opening = nullptr;
+      spatialSurface = nullptr;
       continue;
     }
     if (line == "[conversion]") {
@@ -139,6 +320,7 @@ RoomAssetParseResult parseRoomAssetText(const std::string& text) {
       staticMesh = nullptr;
       anchor = nullptr;
       opening = nullptr;
+      spatialSurface = nullptr;
       continue;
     }
     if (line == "[[static_meshes]]") {
@@ -147,6 +329,7 @@ RoomAssetParseResult parseRoomAssetText(const std::string& text) {
       staticMesh = &result.room.staticMeshes.back();
       anchor = nullptr;
       opening = nullptr;
+      spatialSurface = nullptr;
       continue;
     }
     if (line == "[[anchors]]") {
@@ -155,6 +338,7 @@ RoomAssetParseResult parseRoomAssetText(const std::string& text) {
       anchor = &result.room.anchors.back();
       staticMesh = nullptr;
       opening = nullptr;
+      spatialSurface = nullptr;
       continue;
     }
     if (line == "[[openings]]") {
@@ -163,6 +347,16 @@ RoomAssetParseResult parseRoomAssetText(const std::string& text) {
       opening = &result.room.openings.back();
       staticMesh = nullptr;
       anchor = nullptr;
+      spatialSurface = nullptr;
+      continue;
+    }
+    if (line == "[[spatial_surfaces]]") {
+      table = RoomTable::SpatialSurface;
+      result.room.spatialSurfaces.push_back({});
+      spatialSurface = &result.room.spatialSurfaces.back();
+      staticMesh = nullptr;
+      anchor = nullptr;
+      opening = nullptr;
       continue;
     }
     if (line.starts_with("[")) {
@@ -242,6 +436,37 @@ RoomAssetParseResult parseRoomAssetText(const std::string& text) {
         result.reason = "room_unsupported_key";
         return result;
       }
+    } else if (table == RoomTable::SpatialSurface && spatialSurface != nullptr) {
+      if (key == "id") {
+        ok = parseString(value, spatialSurface->id);
+      } else if (key == "source_static_mesh") {
+        ok = parseString(value, spatialSurface->sourceStaticMeshId);
+      } else if (key == "shape") {
+        ok = parseShape(value, spatialSurface->shape);
+      } else if (key == "role") {
+        ok = parseRole(value, spatialSurface->role);
+      } else if (key == "points_ft") {
+        ok = parsePointsFeet(value, spatialSurface->pointsMeters);
+        if (!ok) {
+          result.reason = "room_invalid_spatial_surface_point";
+          return result;
+        }
+      } else if (key == "normal") {
+        ok = parseVec3(value, spatialSurface->normal);
+      } else if (key == "traversal_tags") {
+        ok = parseStringArray(value, spatialSurface->traversalTags);
+      } else if (key == "collision_mask") {
+        ok = parseStringArray(value, spatialSurface->collisionMask);
+      } else if (key == "blocks_actor") {
+        ok = parseBool(value, spatialSurface->blocksActor);
+      } else if (key == "blocks_projectile") {
+        ok = parseBool(value, spatialSurface->blocksProjectile);
+      } else if (key == "opening_id") {
+        ok = parseString(value, spatialSurface->openingId);
+      } else {
+        result.reason = "room_unsupported_key";
+        return result;
+      }
     } else {
       result.reason = "room_key_outside_table";
       return result;
@@ -269,6 +494,88 @@ RoomAssetParseResult parseRoomAssetText(const std::string& text) {
   for (const RoomAnchorAsset& item : result.room.anchors) {
     if (item.id.empty() || item.kind.empty()) {
       result.reason = "room_invalid_anchor";
+      return result;
+    }
+  }
+  for (std::size_t index = 0; index < result.room.spatialSurfaces.size(); ++index) {
+    RoomSpatialSurface& surface = result.room.spatialSurfaces[index];
+    if (surface.id.empty()) {
+      result.reason = "room_invalid_spatial_surface";
+      return result;
+    }
+    for (std::size_t other = 0; other < index; ++other) {
+      if (result.room.spatialSurfaces[other].id == surface.id) {
+        result.reason = "room_duplicate_spatial_surface_id";
+        return result;
+      }
+    }
+    if (surface.sourceStaticMeshId.empty() ||
+        !hasStaticMesh(result.room, surface.sourceStaticMeshId)) {
+      result.reason = "room_unknown_spatial_surface_mesh";
+      return result;
+    }
+    if (surface.pointsMeters.size() != 3U && surface.pointsMeters.size() != 4U) {
+      result.reason = "room_invalid_spatial_surface_point";
+      return result;
+    }
+    for (Vec3 point : surface.pointsMeters) {
+      if (!isFinite(point)) {
+        result.reason = "room_invalid_spatial_surface_point";
+        return result;
+      }
+    }
+    const float normalLengthSquared = lengthSquared(surface.normal);
+    if (!isFinite(surface.normal) || normalLengthSquared <= 0.000001F) {
+      result.reason = "room_invalid_spatial_surface_normal";
+      return result;
+    }
+    const float normalLength = std::sqrt(normalLengthSquared);
+    surface.normal = surface.normal / normalLength;
+    if (hasDuplicateStrings(surface.traversalTags) || hasDuplicateStrings(surface.collisionMask)) {
+      result.reason = "room_unknown_traversal_tag";
+      return result;
+    }
+    for (const std::string& tag : surface.traversalTags) {
+      if (!validTraversalTag(tag)) {
+        result.reason = "room_unknown_traversal_tag";
+        return result;
+      }
+    }
+    for (const std::string& mask : surface.collisionMask) {
+      if (!validCollisionMask(mask)) {
+        result.reason = "room_unknown_traversal_tag";
+        return result;
+      }
+    }
+    if (surface.role == RoomSpatialSurfaceRole::Walkable &&
+        (!containsString(surface.traversalTags, "walkable") || surface.blocksActor ||
+         surface.normal.y <= 0.0F)) {
+      result.reason = "room_invalid_spatial_surface";
+      return result;
+    }
+    if (surface.role == RoomSpatialSurfaceRole::Blocker &&
+        (!containsString(surface.traversalTags, "blocker") || !surface.blocksActor)) {
+      result.reason = "room_invalid_spatial_surface";
+      return result;
+    }
+    if (surface.role == RoomSpatialSurfaceRole::ProjectileBlocker &&
+        (!containsString(surface.traversalTags, "projectile_blocker") ||
+         !surface.blocksProjectile)) {
+      result.reason = "room_invalid_spatial_surface";
+      return result;
+    }
+    if (surface.role == RoomSpatialSurfaceRole::Opening) {
+      if (!containsString(surface.traversalTags, "opening") || surface.blocksActor ||
+          surface.blocksProjectile) {
+        result.reason = "room_invalid_opening_surface";
+        return result;
+      }
+      if (surface.openingId.empty() || !hasOpening(result.room, surface.openingId)) {
+        result.reason = "room_unknown_spatial_surface_opening";
+        return result;
+      }
+    } else if (!surface.openingId.empty()) {
+      result.reason = "room_invalid_opening_surface";
       return result;
     }
   }

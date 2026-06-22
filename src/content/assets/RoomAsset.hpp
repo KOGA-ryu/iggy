@@ -32,6 +32,33 @@ struct RoomOpeningAsset {
   float widthMeters = 0.0F;
 };
 
+enum class RoomSpatialSurfaceShape : std::uint8_t {
+  Box,
+  Plane,
+  Opening,
+};
+
+enum class RoomSpatialSurfaceRole : std::uint8_t {
+  Walkable,
+  Blocker,
+  ProjectileBlocker,
+  Opening,
+};
+
+struct RoomSpatialSurface {
+  std::string id;
+  std::string sourceStaticMeshId;
+  RoomSpatialSurfaceShape shape = RoomSpatialSurfaceShape::Plane;
+  RoomSpatialSurfaceRole role = RoomSpatialSurfaceRole::Walkable;
+  std::vector<Vec3> pointsMeters;
+  Vec3 normal;
+  std::vector<std::string> traversalTags;
+  std::vector<std::string> collisionMask;
+  bool blocksActor = false;
+  bool blocksProjectile = false;
+  std::string openingId;
+};
+
 struct RoomAsset {
   std::string id;
   std::uint32_t version = 1;
@@ -42,6 +69,7 @@ struct RoomAsset {
   std::vector<RoomStaticMeshAsset> staticMeshes;
   std::vector<RoomAnchorAsset> anchors;
   std::vector<RoomOpeningAsset> openings;
+  std::vector<RoomSpatialSurface> spatialSurfaces;
 };
 
 struct RoomAssetParseResult {
