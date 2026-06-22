@@ -1,5 +1,6 @@
 #include "runtime/session/SessionRunner.hpp"
 
+#include "runtime/ability/AbilitySystem.hpp"
 #include "runtime/clock/Clock.hpp"
 
 namespace iggy3d {
@@ -23,8 +24,11 @@ bool completeOrFailed(const Session& session) {
          session.lifecycle() == SessionLifecycle::Failed;
 }
 
-bool pendingWork(const Session& session) {
-  return !session.state().transient.pendingExecutionSequences.empty();
+bool pendingWork(const Session& session, bool includeAbilityRuntime) {
+  return !session.state().transient.pendingExecutionSequences.empty() ||
+         (includeAbilityRuntime &&
+          (abilityRuntimeHasActiveProjectile(session.state().transient.abilityRuntime) ||
+           abilityStateHasPendingRecharge(session.state().abilities)));
 }
 
 }  // namespace
@@ -43,7 +47,8 @@ SessionRunnerRunResult runSession(SessionRunnerRunRequest request) {
   if (session.state().clock.mode == ClockMode::Paused) {
     return finish(SessionRunnerStatus::Idle, &session);
   }
-  if (request.stopWhenIdle && !pendingWork(session)) {
+  const bool includeAbilityRuntime = request.collisionSurfaces != nullptr;
+  if (request.stopWhenIdle && !pendingWork(session, includeAbilityRuntime)) {
     return finish(SessionRunnerStatus::Idle, &session);
   }
   if (request.maxTicks == 0U) {
@@ -63,14 +68,14 @@ SessionRunnerRunResult runSession(SessionRunnerRunRequest request) {
                                                  : SessionRunnerStatus::Advanced;
       break;
     }
-    if (request.stopWhenIdle && !pendingWork(session)) {
+    if (request.stopWhenIdle && !pendingWork(session, includeAbilityRuntime)) {
       result.status = result.ticksAdvanced == 0U ? SessionRunnerStatus::Idle
                                                  : SessionRunnerStatus::Advanced;
       break;
     }
 
     const CommandTick before = session.state().clock.tickIndex;
-    const StatusResult tick = session.tick();
+    const StatusResult tick = session.tick(request.collisionSurfaces);
     if (tick.status != ResultStatus::Ok) {
       result.status = SessionRunnerStatus::Failed;
       result.diagnostic = tick.error.code;
@@ -83,7 +88,7 @@ SessionRunnerRunResult runSession(SessionRunnerRunRequest request) {
   }
 
   if (result.ticksAttempted == request.maxTicks && request.maxTicks > 0U &&
-      (!request.stopWhenIdle || pendingWork(session)) &&
+      (!request.stopWhenIdle || pendingWork(session, includeAbilityRuntime)) &&
       (!request.stopWhenComplete || !completeOrFailed(session)) &&
       session.state().clock.mode != ClockMode::Paused) {
     result.status = SessionRunnerStatus::MaxTicksExceeded;

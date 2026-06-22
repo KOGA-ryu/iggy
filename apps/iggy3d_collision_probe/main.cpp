@@ -379,6 +379,12 @@ void printMovementResultFields(const iggy3d::MovementResult& result) {
   std::cout << "final_position_meters=" << formatVec3(result.finalPosition) << "\n";
   std::cout << "final_position_feet=" << formatVec3(result.finalPosition / kFeetToMeters) << "\n";
   std::cout << "movement_distance_meters=" << formatFloat(result.distanceMeters) << "\n";
+  std::cout << "movement_horizontal_distance_meters="
+            << formatFloat(result.horizontalDistanceMeters) << "\n";
+  std::cout << "movement_vertical_delta_meters=" << formatFloat(result.verticalDeltaMeters)
+            << "\n";
+  std::cout << "movement_grade_percent=" << formatFloat(result.gradePercent) << "\n";
+  std::cout << "slope_travel_direction=" << result.slopeTravelDirection << "\n";
 }
 
 void printProjectileResultFields(const iggy3d::ProjectileStepResult& result) {

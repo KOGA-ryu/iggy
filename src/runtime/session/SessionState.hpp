@@ -6,6 +6,7 @@
 
 #include "config/RuntimeConfig.hpp"
 #include "runtime/ai/AiState.hpp"
+#include "runtime/ability/AbilitySystem.hpp"
 #include "runtime/camera/CameraState.hpp"
 #include "runtime/clock/ClockState.hpp"
 #include "runtime/combat/CombatState.hpp"
@@ -55,6 +56,7 @@ struct BaselineSnapshot {
   PlayerRoster players;
   ClockState clock;
   CameraState camera;
+  AbilityState abilities;
   InventoryState inventory;
   CombatState combat;
   AiState ai;
@@ -63,6 +65,7 @@ struct BaselineSnapshot {
 };
 
 struct SessionTransientState {
+  AbilityRuntimeState abilityRuntime;
   std::vector<RuntimeEvent> events;
   RuntimeMetrics metrics;
   std::vector<CommandSequence> pendingExecutionSequences;
@@ -81,6 +84,7 @@ struct SessionState {
   PlayerRoster players;
   ClockState clock;
   CameraState camera;
+  AbilityState abilities;
   CommandLog commandLog;
   CommandId nextCommandId = 1;
 

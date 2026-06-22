@@ -136,6 +136,42 @@ void appendRuntimeDebugHudLines(DebugProjectionResult& result,
   result.runtimeDebugHudLines.push_back("DIST " +
                                         fixed3(snapshot.distanceFromSpawnMeters));
   result.runtimeDebugHudLines.push_back("PHASE " + phaseName(snapshot));
+  result.runtimeDebugHudLines.push_back("SLOPE " + snapshot.movementPolicyBand + " " +
+                                        fixed3(snapshot.slopeAngleDegrees) + " " +
+                                        fixed3(snapshot.slopeUpDot));
+  result.runtimeDebugHudLines.push_back("GRADE " + snapshot.slopeTravelDirection + " " +
+                                        fixed3(snapshot.movementGradePercent) + "% dy " +
+                                        fixed3(snapshot.movementVerticalDeltaMeters));
+  result.runtimeDebugHudLines.push_back("GROUND " +
+                                        std::string(snapshot.groundContact ? "contact" : "air") +
+                                        " " +
+                                        (snapshot.groundWalkable ? "walkable" : "blocked") +
+                                        " ny " + fixed3(snapshot.groundNormal.y));
+  if (snapshot.traversalPreviewAvailable) {
+    result.runtimeDebugHudLines.push_back("NEXT " + snapshot.traversalPreviewHudCode +
+                                          " " + snapshot.traversalPreviewMechanic +
+                                          " " + snapshot.traversalPreviewSlotId);
+    result.runtimeDebugHudLines.push_back(
+        "GATE " + snapshot.traversalPreviewStatus + " " +
+        snapshot.traversalPreviewSlotHeightBand + " h " +
+        fixed3(snapshot.traversalPreviewSlotLedgeHeightMeters) + " w " +
+        fixed3(snapshot.traversalPreviewSlotUsableWidthMeters) + " r " +
+        fixed3(snapshot.traversalPreviewSlotStartRangeMeters) + " dot " +
+        fixed3(snapshot.traversalPreviewSlotFacingDot));
+  }
+  if (snapshot.traversalDebugAvailable) {
+    result.runtimeDebugHudLines.push_back(
+        "TRAV " + snapshot.traversalIntentTrigger + " " +
+        snapshot.traversalIntentStatus + " " +
+        snapshot.traversalIntentSelectedMechanic + " " + snapshot.traversalMechanic +
+        " " + snapshot.traversalReason);
+    result.runtimeDebugHudLines.push_back(
+        "SLOT " + snapshot.traversalSlotId + " " + snapshot.traversalSlotHeightBand +
+        " h " + fixed3(snapshot.traversalSlotLedgeHeightMeters) + " w " +
+        fixed3(snapshot.traversalSlotUsableWidthMeters) + " r " +
+        fixed3(snapshot.traversalSlotStartRangeMeters) + " dot " +
+        fixed3(snapshot.traversalSlotFacingDot));
+  }
 }
 
 }  // namespace

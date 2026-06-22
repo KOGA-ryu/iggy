@@ -13,6 +13,10 @@ bool expect(bool condition, std::string_view message) {
   return condition;
 }
 
+bool approx(float lhs, float rhs, float epsilon = 0.001F) {
+  return lhs > rhs - epsilon && lhs < rhs + epsilon;
+}
+
 iggy3d::Transform3 transformAt(float x, float y, float z) {
   iggy3d::Transform3 transform = iggy3d::identityTransform3();
   transform.position = {x, y, z};
@@ -81,6 +85,35 @@ iggy3d::PlayerMotorState motorState() {
   iggy3d::PlayerMotorState state;
   state.actor = {1};
   return state;
+}
+
+bool groundedMotorReportsTerrainPolicy() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.0F});
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet();
+  iggy3d::PlayerMotorContext context{&world, &surfaces};
+  iggy3d::PlayerMotorState state = motorState();
+  iggy3d::PlayerMotorInput input;
+  input.seconds = 0.0F;
+
+  const iggy3d::PlayerMotorResult result = iggy3d::updatePlayerMotor(context, state, input);
+  return expect(iggy3d::playerMotorSucceeded(result), "terrain result ok") &&
+         expect(result.groundSampleValid, "terrain sample valid") &&
+         expect(result.groundContact, "terrain contact") &&
+         expect(result.groundWalkable, "terrain walkable") &&
+         expect(result.movementPolicyBand == "flat", "terrain flat band") &&
+         expect(result.groundSurfaceId == "floor", "terrain ground surface") &&
+         expect(result.hitSurfaceId.empty(), "terrain no hit surface") &&
+         expect(iggy3d::nearlyEqual(result.groundNormal, {0.0F, 1.0F, 0.0F}),
+                "terrain normal up") &&
+         expect(approx(result.groundDistanceMeters, 0.0F), "terrain distance zero") &&
+         expect(approx(result.slopeAngleDegrees, 0.0F), "terrain slope angle") &&
+         expect(approx(result.slopeUpDot, 1.0F), "terrain up dot") &&
+         expect(approx(result.speedMultiplier, 1.0F), "terrain speed multiplier") &&
+         expect(approx(result.staminaCostMultiplier, 1.0F),
+                "terrain stamina multiplier") &&
+         expect(approx(result.stepPenaltyMultiplier, 1.0F),
+                "terrain step multiplier") &&
+         expect(!result.carefulFooting, "terrain no careful footing");
 }
 
 bool jumpImpulseLeavesGround() {
@@ -304,7 +337,8 @@ bool missingAndInvalidInputsDoNotMutate() {
 }  // namespace
 
 int main() {
-  const bool ok = jumpImpulseLeavesGround() && doubleJumpRejectedWhileAirborne() &&
+  const bool ok = groundedMotorReportsTerrainPolicy() && jumpImpulseLeavesGround() &&
+                  doubleJumpRejectedWhileAirborne() &&
                   airControlMovesHorizontallyWhileAirborne() &&
                   airControlClampsAgainstActorBlocker() &&
                   dashMovesHorizontallyOnGround() &&

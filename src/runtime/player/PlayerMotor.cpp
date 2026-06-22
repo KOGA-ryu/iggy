@@ -1,6 +1,7 @@
 #include "runtime/player/PlayerMotor.hpp"
 
 #include "runtime/collision/CollisionQuery.hpp"
+#include "runtime/movement/MovementPolicy.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -24,6 +25,9 @@ bool validParams(const PlayerMotorParams& params) {
          params.landingSnapMeters >= 0.0F &&
          std::isfinite(params.footprintToleranceMeters) &&
          params.footprintToleranceMeters >= 0.0F &&
+         std::isfinite(params.maxWalkableSlopeDegrees) &&
+         params.maxWalkableSlopeDegrees >= 0.0F &&
+         params.maxWalkableSlopeDegrees <= 90.0F &&
          std::isfinite(params.terminalVelocityMetersPerSecond) &&
          params.terminalVelocityMetersPerSecond < 0.0F &&
          std::isfinite(params.airMaxSpeedMetersPerSecond) &&
@@ -74,6 +78,50 @@ PlayerMotorResult baseResult(const PlayerMotorState& state,
 bool closeToGround(const CollisionQueryResult& ground, Vec3 position, const PlayerMotorParams& params) {
   return ground.status == CollisionQueryStatus::Hit &&
          std::fabs(position.y - ground.heightMeters) <= params.groundProbeMeters;
+}
+
+void applyGroundSample(PlayerMotorResult& result,
+                       const CollisionQueryResult& ground,
+                       Vec3 position,
+                       const PlayerMotorParams& params) {
+  if (ground.status != CollisionQueryStatus::Hit) {
+    result.groundSampleValid = false;
+    result.groundContact = false;
+    result.groundWalkable = false;
+    result.groundDistanceMeters = 0.0F;
+    result.movementPolicyBand = "not_sampled";
+    return;
+  }
+
+  MovementParams slopeParams;
+  slopeParams.maxWalkableSlopeDegrees = params.maxWalkableSlopeDegrees;
+  const SlopeSample slope = sampleSlope(ground.normal, slopeParams);
+
+  result.groundSampleValid = true;
+  result.groundContact = result.grounded && closeToGround(ground, position, params);
+  result.groundDistanceMeters = position.y - ground.heightMeters;
+  result.groundSurfaceId = ground.surfaceId;
+  if (slope.valid) {
+    result.groundNormal = slope.normal;
+    result.slopeAngleDegrees = slope.angleDegrees;
+    result.slopeUpDot = slope.upDot;
+    result.groundWalkable = slope.walkable;
+    result.speedMultiplier = slope.speedMultiplier;
+    result.staminaCostMultiplier = slope.staminaCostMultiplier;
+    result.stepPenaltyMultiplier = slope.stepPenaltyMultiplier;
+    result.carefulFooting = slope.carefulFooting;
+    result.movementPolicyBand = std::string{slope.bandId};
+  } else {
+    result.groundNormal = ground.normal;
+    result.slopeAngleDegrees = 0.0F;
+    result.slopeUpDot = 0.0F;
+    result.groundWalkable = false;
+    result.speedMultiplier = 0.0F;
+    result.staminaCostMultiplier = 0.0F;
+    result.stepPenaltyMultiplier = 0.0F;
+    result.carefulFooting = false;
+    result.movementPolicyBand = "invalid";
+  }
 }
 
 Vec3 horizontal(Vec3 value) {
@@ -464,6 +512,9 @@ PlayerMotorResult updatePlayerMotor(PlayerMotorContext& context,
   result.dashCooldownRemainingSeconds = state.dashCooldownRemainingSeconds;
   result.startPosition = start;
   result.finalPosition = finalPosition;
+  const CollisionQueryResult resultGround =
+      sampleSurfaceHeight(*context.collisionSurfaces, finalPosition, params.footprintToleranceMeters);
+  applyGroundSample(result, resultGround, finalPosition, params);
   result.reasonCode = playerMotorStatusName(PlayerMotorStatus::Ok);
   return result;
 }

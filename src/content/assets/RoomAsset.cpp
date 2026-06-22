@@ -265,7 +265,8 @@ bool hasDuplicateStrings(const std::vector<std::string>& values) {
 
 bool validTraversalTag(std::string_view tag) {
   return tag == "walkable" || tag == "blocker" || tag == "projectile_blocker" ||
-         tag == "opening" || tag == "no_player" || tag == "debug_only";
+         tag == "opening" || tag == "clamber" || tag == "no_player" ||
+         tag == "debug_only";
 }
 
 bool validCollisionMask(std::string_view mask) {

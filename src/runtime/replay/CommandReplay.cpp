@@ -51,7 +51,7 @@ CommandRecord proposalFromSource(const CommandRecord& source) {
 bool queuedAcceptedKind(CommandKind kind) {
   return kind == CommandKind::Move || kind == CommandKind::Interact ||
          kind == CommandKind::Inspect || kind == CommandKind::Attack ||
-         kind == CommandKind::Wait ||
+         kind == CommandKind::CastAbility || kind == CommandKind::Wait ||
          kind == CommandKind::Retry;
 }
 

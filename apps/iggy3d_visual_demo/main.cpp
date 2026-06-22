@@ -17,7 +17,9 @@
 #include "runtime/command/Command.hpp"
 #include "runtime/debug/RuntimeDebugSnapshot.hpp"
 #include "runtime/movement/MovementSystem.hpp"
+#include "runtime/movement/MovementTraversal.hpp"
 #include "runtime/player/PlayerMotor.hpp"
+#include "runtime/save/SaveLoad.hpp"
 #include "runtime/session/Session.hpp"
 
 #include <algorithm>
@@ -30,12 +32,14 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <thread>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -115,10 +119,38 @@ struct PlayableReceiptFields {
   bool initialReachFailed = false;
   bool reachPassed = false;
   bool interactionExecuted = false;
+  bool retryExecuted = false;
   bool attackExecuted = false;
   bool objectiveComplete = false;
+  bool acceptanceDemoRequested = false;
+  bool acceptanceDemoComplete = false;
+  bool acceptancePreResetSavedState = false;
   bool resetExecuted = false;
+  bool resetBaselineRestored = false;
+  bool resetCommandLogCleared = false;
+  std::uint64_t resetNextCommandId = 0;
+  bool tacticalToggleExecuted = false;
+  bool tacticalModeActive = false;
+  bool pauseExecuted = false;
+  bool pauseTickFrozen = false;
+  bool stepExecuted = false;
+  bool stepAdvancedOnce = false;
+  bool resumeExecuted = false;
+  std::uint64_t pauseTickBefore = 0;
+  std::uint64_t pauseTickAfter = 0;
+  std::uint64_t stepTickBefore = 0;
+  std::uint64_t stepTickAfter = 0;
+  std::uint64_t resumeTickAfter = 0;
+  std::string runtimeClockMode = "normal";
   bool saveLoadReplayStable = true;
+  bool saveLoadRequested = false;
+  bool saveLoadRoundtripPassed = false;
+  bool saveLoadHashMatched = false;
+  bool saveLoadSessionReplaced = false;
+  std::uint64_t saveLoadSavedHash = 0;
+  std::uint64_t saveLoadLoadedHash = 0;
+  std::uint64_t saveLoadEncodedBytes = 0;
+  std::string saveLoadStatus = "not_requested";
   bool retryAvailable = true;
   bool kinematicControllerActive = false;
   bool kinematicMovementAttempted = false;
@@ -151,10 +183,30 @@ struct PlayableReceiptFields {
   bool spellProjectileVisible = false;
   bool abilityCastRequested = false;
   bool abilityCastAccepted = false;
+  std::uint64_t abilityCastRequestCount = 0;
+  std::uint64_t abilityCastAcceptCount = 0;
+  std::uint64_t abilityCastRejectCount = 0;
+  std::uint64_t abilitySlotBusyRejectCount = 0;
+  std::uint64_t abilityCooldownRejectCount = 0;
+  std::uint64_t abilityResourceRejectCount = 0;
+  bool abilitySlotBusyRejected = false;
+  bool abilityCooldownRejected = false;
+  bool abilityResourceRejected = false;
+  bool abilityRecastAccepted = false;
   bool abilityRuntimeOwnedProjectile = false;
   bool abilityHitEntity = false;
   bool abilityDamageApplied = false;
   bool abilityTargetDefeated = false;
+  bool trainingDummyCombatTracked = false;
+  bool trainingDummyDefeated = false;
+  std::uint64_t trainingDummyHitPoints = 0;
+  std::uint64_t abilityResourceRemaining = 0;
+  std::uint64_t abilityResourceCost = 0;
+  std::uint64_t abilityResourceMax = 0;
+  std::uint64_t abilityResourceNextRechargeTick = 0;
+  std::uint64_t abilityResourceRechargeRemainingTicks = 0;
+  std::uint64_t abilityCooldownReadyTick = 0;
+  std::uint64_t abilityCooldownRemainingTicks = 0;
   bool debugOverlayEnabled = false;
   bool debugOverlayOpen = false;
   bool debugOverlayToggleObserved = false;
@@ -174,6 +226,8 @@ struct PlayableReceiptFields {
   std::string abilityId = "none";
   std::string abilityCastStatus = "not_requested";
   std::string abilityCastReason = "not_requested";
+  std::string abilityResourceState = "full";
+  std::string abilityCooldownState = "ready";
   std::string abilityTickStatus = "no_active_projectile";
   std::string abilityTickReason = "not_requested";
   std::string abilityImpactKind = "none";
@@ -191,7 +245,25 @@ struct PlayableReceiptFields {
   bool debugTitleFallbackActive = false;
   std::string debugPlayerPhase = "grounded";
   std::string debugMovementPolicyBand = "not_attempted";
+  std::string debugGroundSurfaceId = "none";
   std::string debugHitSurfaceId = "none";
+  bool debugGroundSampleValid = false;
+  bool debugGroundContact = false;
+  bool debugGroundWalkable = false;
+  bool debugCarefulFooting = false;
+  std::string debugGroundDistanceMeters = "0.000";
+  std::string debugGroundNormalX = "0.000";
+  std::string debugGroundNormalY = "1.000";
+  std::string debugGroundNormalZ = "0.000";
+  std::string debugSlopeAngleDegrees = "0.000";
+  std::string debugSlopeUpDot = "1.000";
+  std::string debugSpeedMultiplier = "1.000";
+  std::string debugStaminaCostMultiplier = "1.000";
+  std::string debugStepPenaltyMultiplier = "1.000";
+  std::string debugMovementHorizontalDistanceMeters = "0.000";
+  std::string debugMovementVerticalDeltaMeters = "0.000";
+  std::string debugMovementGradePercent = "0.000";
+  std::string debugSlopeTravelDirection = "stationary";
   std::string debugMovedThisFrameMeters = "0.000";
   std::string debugHorizontalSpeedMetersPerSecond = "0.000";
   std::string debugVerticalSpeedMetersPerSecond = "0.000";
@@ -201,6 +273,42 @@ struct PlayableReceiptFields {
   std::string debugPositionZ = "0.000";
   std::string debugYawRadians = "0.000";
   std::string debugPitchRadians = "0.000";
+  bool debugTraversalPreviewAvailable = false;
+  bool debugTraversalPreviewReady = false;
+  bool debugTraversalPreviewCandidateAvailable = false;
+  std::string debugTraversalPreviewStatus = "traversal_preview_unavailable";
+  std::string debugTraversalPreviewHudCode = "NONE";
+  std::string debugTraversalPreviewMechanic = "none";
+  std::string debugTraversalPreviewSlotId = "none";
+  std::string debugTraversalPreviewSlotKind = "none";
+  std::string debugTraversalPreviewSlotHeightBand = "none";
+  std::string debugTraversalPreviewTargetId = "none";
+  std::string debugTraversalPreviewLandingSurfaceId = "none";
+  std::string debugTraversalPreviewSlotLedgeHeightMeters = "0.000";
+  std::string debugTraversalPreviewSlotUsableWidthMeters = "0.000";
+  std::string debugTraversalPreviewSlotStartRangeMeters = "0.000";
+  std::string debugTraversalPreviewSlotFacingDot = "0.000";
+  bool debugTraversalAvailable = false;
+  bool debugTraversalIntentRequested = false;
+  bool debugTraversalIntentConsumed = false;
+  bool debugTraversalIntentAccepted = false;
+  bool debugTraversalIntentFallbackJumpAllowed = false;
+  bool debugTraversalAttempted = false;
+  bool debugTraversalAccepted = false;
+  std::string debugTraversalIntentTrigger = "none";
+  std::string debugTraversalIntentStatus = "traversal_intent_no_intent";
+  std::string debugTraversalIntentSelectedMechanic = "none";
+  std::string debugTraversalMechanic = "none";
+  std::string debugTraversalReason = "not_attempted";
+  std::string debugTraversalSlotId = "none";
+  std::string debugTraversalSlotKind = "none";
+  std::string debugTraversalSlotHeightBand = "none";
+  std::string debugTraversalTargetId = "none";
+  std::string debugTraversalLandingSurfaceId = "none";
+  std::string debugTraversalSlotLedgeHeightMeters = "0.000";
+  std::string debugTraversalSlotUsableWidthMeters = "0.000";
+  std::string debugTraversalSlotStartRangeMeters = "0.000";
+  std::string debugTraversalSlotFacingDot = "0.000";
   bool devMenuEnabled = false;
   bool devMenuOpen = false;
   bool devMenuToggleObserved = false;
@@ -214,7 +322,66 @@ struct PlayableReceiptFields {
   std::string codexControlPath = "unavailable";
   std::string movementReason = "not_attempted";
   std::string movementPolicyBand = "not_attempted";
+  std::string movementDistanceMeters = "0.000";
+  std::string movementHorizontalDistanceMeters = "0.000";
+  std::string movementVerticalDeltaMeters = "0.000";
+  std::string movementGradePercent = "0.000";
+  std::string slopeTravelDirection = "stationary";
+  bool traversalAttempted = false;
+  bool traversalAccepted = false;
+  std::string traversalMechanic = "none";
+  std::string traversalReason = "not_attempted";
+  std::string traversalSlotId = "none";
+  std::string traversalSlotKind = "none";
+  std::string traversalSlotHeightBand = "none";
+  std::string traversalTargetId = "none";
+  std::string traversalLandingSurfaceId = "none";
+  std::string traversalSlotLedgeHeightMeters = "0.000";
+  std::string traversalSlotUsableWidthMeters = "0.000";
+  std::string traversalSlotStartRangeMeters = "0.000";
+  std::string traversalSlotFacingDot = "0.000";
+  std::string traversalDistanceMeters = "0.000";
+  std::string traversalHorizontalDistanceMeters = "0.000";
+  std::string traversalVerticalDeltaMeters = "0.000";
+  std::string traversalGradePercent = "0.000";
+  std::string traversalDirection = "stationary";
+  bool traversalIntentRequested = false;
+  bool traversalIntentConsumed = false;
+  bool traversalIntentAccepted = false;
+  bool traversalIntentFallbackJumpAllowed = false;
+  std::string traversalIntentTrigger = "none";
+  std::string traversalIntentStatus = "traversal_intent_no_intent";
+  std::string traversalIntentSelectedMechanic = "none";
+  std::string traversalStartX = "0.000";
+  std::string traversalStartY = "0.000";
+  std::string traversalStartZ = "0.000";
+  std::string traversalFinalX = "0.000";
+  std::string traversalFinalY = "0.000";
+  std::string traversalFinalZ = "0.000";
+  std::string movementStartX = "0.000";
+  std::string movementStartY = "0.000";
+  std::string movementStartZ = "0.000";
+  std::string movementDestinationX = "0.000";
+  std::string movementDestinationY = "0.000";
+  std::string movementDestinationZ = "0.000";
+  std::string movementFinalX = "0.000";
+  std::string movementFinalY = "0.000";
+  std::string movementFinalZ = "0.000";
+  std::string groundSurfaceId = "none";
   std::string hitSurfaceId = "none";
+  bool groundSampleValid = false;
+  bool groundContact = false;
+  bool groundWalkable = false;
+  bool carefulFooting = false;
+  std::string groundDistanceMeters = "0.000";
+  std::string groundNormalX = "0.000";
+  std::string groundNormalY = "1.000";
+  std::string groundNormalZ = "0.000";
+  std::string slopeAngleDegrees = "0.000";
+  std::string slopeUpDot = "1.000";
+  std::string speedMultiplier = "1.000";
+  std::string staminaCostMultiplier = "1.000";
+  std::string stepPenaltyMultiplier = "1.000";
   bool mouseLookAvailable = false;
   bool mouseLookUsed = false;
   bool gamepadAvailable = false;
@@ -260,6 +427,13 @@ struct CodexControlFrame {
   bool mechanicSet = false;
   DevMechanic mechanic = DevMechanic::Walk;
   bool executeMechanic = false;
+  std::vector<std::uint32_t> executeMechanicFrames;
+  std::vector<std::uint32_t> tacticalToggleFrames;
+  std::vector<std::uint32_t> pauseFrames;
+  std::vector<std::uint32_t> stepFrames;
+  std::vector<std::uint32_t> resumeFrames;
+  std::vector<std::uint32_t> saveLoadFrames;
+  std::vector<std::uint32_t> resetFrames;
   bool jump = false;
   bool dash = false;
   bool stanceSet = false;
@@ -267,8 +441,15 @@ struct CodexControlFrame {
   bool moveSet = false;
   float moveForward = 0.0F;
   float moveRight = 0.0F;
+  bool playerPositionSet = false;
+  iggy3d::Vec3 playerPositionMeters;
+  bool yawSet = false;
+  bool pitchSet = false;
+  float yaw = 0.0F;
+  float pitch = 0.0F;
   float yawDelta = 0.0F;
   float pitchDelta = 0.0F;
+  bool acceptanceDemo = false;
   bool interact = false;
   bool attack = false;
   bool reset = false;
@@ -288,11 +469,11 @@ std::string_view devMechanicName(DevMechanic mechanic) {
     case DevMechanic::Spell:
       return "spell";
     case DevMechanic::Vault:
-      return "vault_stub";
+      return "vault";
     case DevMechanic::Clamber:
-      return "clamber_stub";
+      return "clamber";
     case DevMechanic::WireWalk:
-      return "wire_walk_stub";
+      return "wire_walk";
   }
   return "walk";
 }
@@ -428,6 +609,8 @@ std::string debugOverlayWindowTitle(const iggy3d::RuntimeDebugSnapshot& snapshot
          " | up " + debugFloat(snapshot.verticalSpeedMetersPerSecond) + " m/s" +
          " | moved " + debugFloat(snapshot.movedThisFrameMeters) + " m" +
          " | dist " + debugFloat(snapshot.distanceFromSpawnMeters) + " m" +
+         " | slope " + debugFloat(snapshot.slopeAngleDegrees) + "deg " +
+         snapshot.movementPolicyBand +
          " | " + std::string(iggy3d::playerMotorPhaseName(snapshot.motorPhase));
 }
 
@@ -476,6 +659,76 @@ bool parseControlFloat(std::string_view value, float& out) {
   return end != text.c_str() && *end == '\0' && errno != ERANGE && std::isfinite(out);
 }
 
+bool parseControlVec3(std::string_view value, iggy3d::Vec3& out) {
+  value = trimControlText(value);
+  const std::size_t firstComma = value.find(',');
+  if (firstComma == std::string_view::npos) {
+    return false;
+  }
+  const std::size_t secondComma = value.find(',', firstComma + 1U);
+  if (secondComma == std::string_view::npos ||
+      value.find(',', secondComma + 1U) != std::string_view::npos) {
+    return false;
+  }
+
+  float x = 0.0F;
+  float y = 0.0F;
+  float z = 0.0F;
+  if (!parseControlFloat(value.substr(0, firstComma), x) ||
+      !parseControlFloat(value.substr(firstComma + 1U, secondComma - firstComma - 1U), y) ||
+      !parseControlFloat(value.substr(secondComma + 1U), z)) {
+    return false;
+  }
+  out = {x, y, z};
+  return iggy3d::isFinite(out);
+}
+
+iggy3d::Vec3 feetToMeters(iggy3d::Vec3 value) {
+  constexpr float kFeetToMeters = 0.3048F;
+  return value * kFeetToMeters;
+}
+
+bool parseControlFrameList(std::string_view value, std::vector<std::uint32_t>& out) {
+  out.clear();
+  value = trimControlText(value);
+  if (value.empty()) {
+    return false;
+  }
+
+  std::size_t cursor = 0;
+  while (cursor <= value.size()) {
+    const std::size_t comma = value.find(',', cursor);
+    const std::size_t end = comma == std::string_view::npos ? value.size() : comma;
+    const std::string_view token = trimControlText(value.substr(cursor, end - cursor));
+    if (token.empty()) {
+      return false;
+    }
+
+    std::uint64_t parsed = 0;
+    for (const char c : token) {
+      if (c < '0' || c > '9') {
+        return false;
+      }
+      parsed = parsed * 10U + static_cast<std::uint64_t>(c - '0');
+      if (parsed > std::numeric_limits<std::uint32_t>::max()) {
+        return false;
+      }
+    }
+    out.push_back(static_cast<std::uint32_t>(parsed));
+
+    if (comma == std::string_view::npos) {
+      break;
+    }
+    cursor = comma + 1U;
+  }
+
+  return !out.empty();
+}
+
+bool controlFrameListed(const std::vector<std::uint32_t>& frames, std::uint32_t frameIndex) {
+  return std::find(frames.begin(), frames.end(), frameIndex) != frames.end();
+}
+
 void setControlStatus(CodexControlFrame& frame, std::string status) {
   if (frame.status != "parse_error") {
     frame.status = std::move(status);
@@ -515,6 +768,8 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
 
     bool boolValue = false;
     float floatValue = 0.0F;
+    iggy3d::Vec3 vecValue;
+    std::vector<std::uint32_t> frameList;
     DevMechanic mechanic = DevMechanic::Walk;
     if (key == "dev_menu.open") {
       if (parseControlBool(value, boolValue)) {
@@ -546,6 +801,62 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
     } else if (key == "mechanic.execute") {
       if (parseControlBool(value, boolValue)) {
         frame.executeMechanic = frame.executeMechanic || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "mechanic.execute_frames") {
+      if (parseControlFrameList(value, frameList)) {
+        frame.executeMechanicFrames = std::move(frameList);
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "tactical_toggle_frames") {
+      if (parseControlFrameList(value, frameList)) {
+        frame.tacticalToggleFrames = std::move(frameList);
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "pause_frames") {
+      if (parseControlFrameList(value, frameList)) {
+        frame.pauseFrames = std::move(frameList);
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "step_frames") {
+      if (parseControlFrameList(value, frameList)) {
+        frame.stepFrames = std::move(frameList);
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "resume_frames") {
+      if (parseControlFrameList(value, frameList)) {
+        frame.resumeFrames = std::move(frameList);
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "save_load_frames") {
+      if (parseControlFrameList(value, frameList)) {
+        frame.saveLoadFrames = std::move(frameList);
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "acceptance_demo") {
+      if (parseControlBool(value, boolValue)) {
+        frame.acceptanceDemo = frame.acceptanceDemo || boolValue;
         frame.applied = true;
       } else {
         frame.parseError = true;
@@ -598,6 +909,42 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
         frame.parseError = true;
         frame.status = "parse_error";
       }
+    } else if (key == "player.position" || key == "player.position_meters") {
+      if (parseControlVec3(value, vecValue)) {
+        frame.playerPositionSet = true;
+        frame.playerPositionMeters = vecValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "player.position_ft") {
+      if (parseControlVec3(value, vecValue)) {
+        frame.playerPositionSet = true;
+        frame.playerPositionMeters = feetToMeters(vecValue);
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "look.yaw") {
+      if (parseControlFloat(value, floatValue)) {
+        frame.yaw = std::clamp(floatValue, -6.283185F, 6.283185F);
+        frame.yawSet = true;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "look.pitch") {
+      if (parseControlFloat(value, floatValue)) {
+        frame.pitch = std::clamp(floatValue, -0.8F, 0.8F);
+        frame.pitchSet = true;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
     } else if (key == "look.yaw_delta") {
       if (parseControlFloat(value, floatValue)) {
         frame.yawDelta += std::clamp(floatValue, -0.8F, 0.8F);
@@ -633,6 +980,14 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
     } else if (key == "reset") {
       if (parseControlBool(value, boolValue)) {
         frame.reset = frame.reset || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "reset_frames") {
+      if (parseControlFrameList(value, frameList)) {
+        frame.resetFrames = std::move(frameList);
         frame.applied = true;
       } else {
         frame.parseError = true;
@@ -989,6 +1344,30 @@ const iggy3d::EntityState* playerEntity(const iggy3d::Session& session) {
   return session.state().world.findByStableName("player");
 }
 
+void recordTrainingDummyCombat(PlayableReceiptFields& fields, const iggy3d::Session& session) {
+  const iggy3d::EntityState* dummy = session.state().world.findByStableName("training_dummy");
+  if (dummy == nullptr) {
+    fields.trainingDummyCombatTracked = false;
+    fields.trainingDummyHitPoints = 0;
+    fields.trainingDummyDefeated = false;
+    return;
+  }
+
+  for (const iggy3d::CombatantState& combatant : session.state().combat.combatants) {
+    if (combatant.entity == dummy->id) {
+      fields.trainingDummyCombatTracked = true;
+      fields.trainingDummyHitPoints =
+          static_cast<std::uint64_t>(std::max(combatant.hitPoints, 0));
+      fields.trainingDummyDefeated = combatant.defeated;
+      return;
+    }
+  }
+
+  fields.trainingDummyCombatTracked = false;
+  fields.trainingDummyHitPoints = 0;
+  fields.trainingDummyDefeated = false;
+}
+
 void recordKinematicMovementResult(PlayableReceiptFields& fields,
                                    const iggy3d::MovementResult& result) {
   fields.kinematicMovementAttempted = true;
@@ -999,7 +1378,79 @@ void recordKinematicMovementResult(PlayableReceiptFields& fields,
   fields.movementReason = result.reasonCode;
   fields.movementPolicyBand =
       result.movementPolicyBand.empty() ? "unavailable" : result.movementPolicyBand;
+  fields.movementDistanceMeters = debugFloat(result.distanceMeters);
+  fields.movementHorizontalDistanceMeters = debugFloat(result.horizontalDistanceMeters);
+  fields.movementVerticalDeltaMeters = debugFloat(result.verticalDeltaMeters);
+  fields.movementGradePercent = debugFloat(result.gradePercent);
+  fields.slopeTravelDirection = result.slopeTravelDirection;
+  fields.movementStartX = debugFloat(result.start.x);
+  fields.movementStartY = debugFloat(result.start.y);
+  fields.movementStartZ = debugFloat(result.start.z);
+  fields.movementDestinationX = debugFloat(result.destination.x);
+  fields.movementDestinationY = debugFloat(result.destination.y);
+  fields.movementDestinationZ = debugFloat(result.destination.z);
+  fields.movementFinalX = debugFloat(result.finalPosition.x);
+  fields.movementFinalY = debugFloat(result.finalPosition.y);
+  fields.movementFinalZ = debugFloat(result.finalPosition.z);
+  fields.groundSampleValid = !result.movementPolicyBand.empty();
+  fields.groundWalkable = result.slopeUpDot > 0.0F && result.speedMultiplier > 0.0F &&
+                          result.movementPolicyBand != "blocked";
+  fields.carefulFooting = result.carefulFooting;
+  fields.slopeAngleDegrees = debugFloat(result.slopeAngleDegrees);
+  fields.slopeUpDot = debugFloat(result.slopeUpDot);
+  fields.speedMultiplier = debugFloat(result.speedMultiplier);
+  fields.staminaCostMultiplier = debugFloat(result.staminaCostMultiplier);
+  fields.stepPenaltyMultiplier = debugFloat(result.stepPenaltyMultiplier);
   fields.hitSurfaceId = result.hitSurfaceId.empty() ? "none" : result.hitSurfaceId;
+}
+
+void recordTraversalResult(PlayableReceiptFields& fields,
+                           const iggy3d::TraversalResult& result) {
+  fields.traversalAttempted = true;
+  fields.traversalAccepted = iggy3d::traversalApplied(result);
+  fields.traversalMechanic = iggy3d::traversalMechanicName(result.mechanic);
+  fields.traversalReason = result.reasonCode == nullptr ? "unavailable" : result.reasonCode;
+  fields.traversalSlotId = result.slotId.empty() ? "none" : result.slotId;
+  fields.traversalSlotKind = result.slotKind.empty() ? "none" : result.slotKind;
+  fields.traversalSlotHeightBand =
+      result.slotHeightBand.empty() ? "none" : result.slotHeightBand;
+  fields.traversalTargetId = result.targetId.empty() ? "none" : result.targetId;
+  fields.traversalLandingSurfaceId =
+      result.landingSurfaceId.empty() ? "none" : result.landingSurfaceId;
+  fields.traversalSlotLedgeHeightMeters = debugFloat(result.slotLedgeHeightMeters);
+  fields.traversalSlotUsableWidthMeters = debugFloat(result.slotUsableWidthMeters);
+  fields.traversalSlotStartRangeMeters = debugFloat(result.slotStartRangeMeters);
+  fields.traversalSlotFacingDot = debugFloat(result.slotFacingDot);
+  fields.traversalDistanceMeters = debugFloat(result.travel.distanceMeters);
+  fields.traversalHorizontalDistanceMeters = debugFloat(result.travel.horizontalDistanceMeters);
+  fields.traversalVerticalDeltaMeters = debugFloat(result.travel.verticalDeltaMeters);
+  fields.traversalGradePercent = debugFloat(result.travel.gradePercent);
+  fields.traversalDirection = iggy3d::movementTravelDirectionName(result.travel.direction);
+  fields.traversalStartX = debugFloat(result.start.x);
+  fields.traversalStartY = debugFloat(result.start.y);
+  fields.traversalStartZ = debugFloat(result.start.z);
+  fields.traversalFinalX = debugFloat(result.finalPosition.x);
+  fields.traversalFinalY = debugFloat(result.finalPosition.y);
+  fields.traversalFinalZ = debugFloat(result.finalPosition.z);
+}
+
+void recordTraversalIntentResult(PlayableReceiptFields& fields,
+                                 const iggy3d::TraversalIntentResult& result) {
+  fields.traversalIntentRequested = result.requested;
+  fields.traversalIntentConsumed = result.consumedInput;
+  fields.traversalIntentAccepted = result.accepted;
+  fields.traversalIntentFallbackJumpAllowed = result.fallbackJumpAllowed;
+  fields.traversalIntentTrigger = iggy3d::traversalIntentTriggerName(result.trigger);
+  fields.traversalIntentStatus =
+      result.reasonCode == nullptr ? "unavailable" : result.reasonCode;
+  fields.traversalIntentSelectedMechanic =
+      result.traversalAttempted ? iggy3d::traversalMechanicName(result.selectedMechanic)
+                                : "none";
+  fields.jumpInputObserved =
+      fields.jumpInputObserved || result.trigger == iggy3d::TraversalIntentTrigger::Jump;
+  if (result.traversalAttempted) {
+    recordTraversalResult(fields, result.traversal);
+  }
 }
 
 void recordPlayerMotorResult(PlayableReceiptFields& fields,
@@ -1019,6 +1470,24 @@ void recordPlayerMotorResult(PlayableReceiptFields& fields,
   fields.dashActive = fields.dashActive || result.dashActive;
   fields.dashMovementClamped = fields.dashMovementClamped || result.dashMovementClamped;
   fields.dashMovementSlid = fields.dashMovementSlid || result.dashMovementSlid;
+  fields.groundSampleValid = result.groundSampleValid;
+  fields.groundContact = result.groundContact;
+  fields.groundWalkable = result.groundWalkable;
+  fields.carefulFooting = result.carefulFooting;
+  fields.groundDistanceMeters = debugFloat(result.groundDistanceMeters);
+  fields.groundNormalX = debugFloat(result.groundNormal.x);
+  fields.groundNormalY = debugFloat(result.groundNormal.y);
+  fields.groundNormalZ = debugFloat(result.groundNormal.z);
+  fields.slopeAngleDegrees = debugFloat(result.slopeAngleDegrees);
+  fields.slopeUpDot = debugFloat(result.slopeUpDot);
+  fields.speedMultiplier = debugFloat(result.speedMultiplier);
+  fields.staminaCostMultiplier = debugFloat(result.staminaCostMultiplier);
+  fields.stepPenaltyMultiplier = debugFloat(result.stepPenaltyMultiplier);
+  if (!result.movementPolicyBand.empty()) {
+    fields.movementPolicyBand = result.movementPolicyBand;
+  }
+  fields.groundSurfaceId =
+      result.groundSurfaceId.empty() ? "none" : result.groundSurfaceId;
   fields.playerMotorPhase = iggy3d::playerMotorPhaseName(result.phase);
   fields.playerMotorReason = result.reasonCode == nullptr ? "unavailable" : result.reasonCode;
   fields.verticalVelocityState =
@@ -1047,7 +1516,27 @@ void recordRuntimeDebugSnapshot(PlayableReceiptFields& fields,
   fields.debugPlayerPhase = iggy3d::playerMotorPhaseName(snapshot.motorPhase);
   fields.debugMovementPolicyBand =
       snapshot.movementPolicyBand.empty() ? "not_attempted" : snapshot.movementPolicyBand;
+  fields.debugGroundSurfaceId =
+      snapshot.groundSurfaceId.empty() ? "none" : snapshot.groundSurfaceId;
   fields.debugHitSurfaceId = snapshot.hitSurfaceId.empty() ? "none" : snapshot.hitSurfaceId;
+  fields.debugGroundSampleValid = snapshot.groundSampleValid;
+  fields.debugGroundContact = snapshot.groundContact;
+  fields.debugGroundWalkable = snapshot.groundWalkable;
+  fields.debugCarefulFooting = snapshot.carefulFooting;
+  fields.debugGroundDistanceMeters = debugFloat(snapshot.groundDistanceMeters);
+  fields.debugGroundNormalX = debugFloat(snapshot.groundNormal.x);
+  fields.debugGroundNormalY = debugFloat(snapshot.groundNormal.y);
+  fields.debugGroundNormalZ = debugFloat(snapshot.groundNormal.z);
+  fields.debugSlopeAngleDegrees = debugFloat(snapshot.slopeAngleDegrees);
+  fields.debugSlopeUpDot = debugFloat(snapshot.slopeUpDot);
+  fields.debugSpeedMultiplier = debugFloat(snapshot.speedMultiplier);
+  fields.debugStaminaCostMultiplier = debugFloat(snapshot.staminaCostMultiplier);
+  fields.debugStepPenaltyMultiplier = debugFloat(snapshot.stepPenaltyMultiplier);
+  fields.debugMovementHorizontalDistanceMeters =
+      debugFloat(snapshot.movementHorizontalDistanceMeters);
+  fields.debugMovementVerticalDeltaMeters = debugFloat(snapshot.movementVerticalDeltaMeters);
+  fields.debugMovementGradePercent = debugFloat(snapshot.movementGradePercent);
+  fields.debugSlopeTravelDirection = snapshot.slopeTravelDirection;
   fields.debugMovedThisFrameMeters = debugFloat(snapshot.movedThisFrameMeters);
   fields.debugHorizontalSpeedMetersPerSecond =
       debugFloat(snapshot.horizontalSpeedMetersPerSecond);
@@ -1059,6 +1548,53 @@ void recordRuntimeDebugSnapshot(PlayableReceiptFields& fields,
   fields.debugPositionZ = debugFloat(snapshot.position.z);
   fields.debugYawRadians = debugFloat(snapshot.yawRadians);
   fields.debugPitchRadians = debugFloat(snapshot.pitchRadians);
+  fields.debugTraversalPreviewAvailable = snapshot.traversalPreviewAvailable;
+  fields.debugTraversalPreviewReady = snapshot.traversalPreviewReady;
+  fields.debugTraversalPreviewCandidateAvailable =
+      snapshot.traversalPreviewCandidateAvailable;
+  fields.debugTraversalPreviewStatus = snapshot.traversalPreviewStatus;
+  fields.debugTraversalPreviewHudCode = snapshot.traversalPreviewHudCode;
+  fields.debugTraversalPreviewMechanic = snapshot.traversalPreviewMechanic;
+  fields.debugTraversalPreviewSlotId = snapshot.traversalPreviewSlotId;
+  fields.debugTraversalPreviewSlotKind = snapshot.traversalPreviewSlotKind;
+  fields.debugTraversalPreviewSlotHeightBand = snapshot.traversalPreviewSlotHeightBand;
+  fields.debugTraversalPreviewTargetId = snapshot.traversalPreviewTargetId;
+  fields.debugTraversalPreviewLandingSurfaceId =
+      snapshot.traversalPreviewLandingSurfaceId;
+  fields.debugTraversalPreviewSlotLedgeHeightMeters =
+      debugFloat(snapshot.traversalPreviewSlotLedgeHeightMeters);
+  fields.debugTraversalPreviewSlotUsableWidthMeters =
+      debugFloat(snapshot.traversalPreviewSlotUsableWidthMeters);
+  fields.debugTraversalPreviewSlotStartRangeMeters =
+      debugFloat(snapshot.traversalPreviewSlotStartRangeMeters);
+  fields.debugTraversalPreviewSlotFacingDot =
+      debugFloat(snapshot.traversalPreviewSlotFacingDot);
+  fields.debugTraversalAvailable = snapshot.traversalDebugAvailable;
+  fields.debugTraversalIntentRequested = snapshot.traversalIntentRequested;
+  fields.debugTraversalIntentConsumed = snapshot.traversalIntentConsumed;
+  fields.debugTraversalIntentAccepted = snapshot.traversalIntentAccepted;
+  fields.debugTraversalIntentFallbackJumpAllowed =
+      snapshot.traversalIntentFallbackJumpAllowed;
+  fields.debugTraversalAttempted = snapshot.traversalAttempted;
+  fields.debugTraversalAccepted = snapshot.traversalAccepted;
+  fields.debugTraversalIntentTrigger = snapshot.traversalIntentTrigger;
+  fields.debugTraversalIntentStatus = snapshot.traversalIntentStatus;
+  fields.debugTraversalIntentSelectedMechanic =
+      snapshot.traversalIntentSelectedMechanic;
+  fields.debugTraversalMechanic = snapshot.traversalMechanic;
+  fields.debugTraversalReason = snapshot.traversalReason;
+  fields.debugTraversalSlotId = snapshot.traversalSlotId;
+  fields.debugTraversalSlotKind = snapshot.traversalSlotKind;
+  fields.debugTraversalSlotHeightBand = snapshot.traversalSlotHeightBand;
+  fields.debugTraversalTargetId = snapshot.traversalTargetId;
+  fields.debugTraversalLandingSurfaceId = snapshot.traversalLandingSurfaceId;
+  fields.debugTraversalSlotLedgeHeightMeters =
+      debugFloat(snapshot.traversalSlotLedgeHeightMeters);
+  fields.debugTraversalSlotUsableWidthMeters =
+      debugFloat(snapshot.traversalSlotUsableWidthMeters);
+  fields.debugTraversalSlotStartRangeMeters =
+      debugFloat(snapshot.traversalSlotStartRangeMeters);
+  fields.debugTraversalSlotFacingDot = debugFloat(snapshot.traversalSlotFacingDot);
 }
 
 iggy3d::CommandRecord moveCommand(iggy3d::Vec3 point) {
@@ -1105,6 +1641,52 @@ iggy3d::CommandRecord attackCommand(iggy3d::EntityId target) {
   return command;
 }
 
+iggy3d::CommandRecord controlCommand(iggy3d::CommandKind kind) {
+  iggy3d::CommandRecord command;
+  command.playerSlot = 0;
+  command.kind = kind;
+  command.source = iggy3d::CommandSource::LocalPlayer;
+  return command;
+}
+
+std::string_view clockModeName(iggy3d::ClockMode mode) {
+  switch (mode) {
+    case iggy3d::ClockMode::Normal:
+      return "normal";
+    case iggy3d::ClockMode::Slow:
+      return "slow";
+    case iggy3d::ClockMode::Paused:
+      return "paused";
+  }
+  return "unknown";
+}
+
+std::string_view saveLoadStatusName(iggy3d::SaveLoadStatus status) {
+  switch (status) {
+    case iggy3d::SaveLoadStatus::Ok:
+      return "ok";
+    case iggy3d::SaveLoadStatus::InvalidSourceState:
+      return "invalid_source_state";
+    case iggy3d::SaveLoadStatus::EncodeFailed:
+      return "encode_failed";
+    case iggy3d::SaveLoadStatus::DecodeFailed:
+      return "decode_failed";
+    case iggy3d::SaveLoadStatus::CompatibilityFailed:
+      return "compatibility_failed";
+    case iggy3d::SaveLoadStatus::InvalidEnvelope:
+      return "invalid_envelope";
+    case iggy3d::SaveLoadStatus::InvalidReference:
+      return "invalid_reference";
+    case iggy3d::SaveLoadStatus::InvalidCommandLog:
+      return "invalid_command_log";
+    case iggy3d::SaveLoadStatus::HashMismatch:
+      return "hash_mismatch";
+    case iggy3d::SaveLoadStatus::ReplacementFailed:
+      return "replacement_failed";
+  }
+  return "unknown";
+}
+
 bool accepted(const iggy3d::SessionCommandResult& result) {
   return result.command.admission == iggy3d::CommandAdmissionStatus::Accepted;
 }
@@ -1119,6 +1701,115 @@ bool submitAndDrain(iggy3d::Session& session, const iggy3d::CommandRecord& comma
   }
   const iggy3d::StatusResult run = session.runUntilIdle(8);
   return run.status == iggy3d::ResultStatus::Ok;
+}
+
+void recordResetResult(PlayableReceiptFields& fields,
+                       const iggy3d::Session& session,
+                       const iggy3d::SessionResetResult& reset) {
+  fields.resetExecuted = reset.reset;
+  fields.resetBaselineRestored =
+      reset.reset && reset.baselineHash != 0U && reset.baselineHash == reset.currentHash &&
+      session.state().currentStateHash == reset.currentHash;
+  fields.resetCommandLogCleared =
+      reset.reset && session.state().commandLog.size() == 0U &&
+      session.state().commandLog.nextSequence() == 1U;
+  fields.resetNextCommandId = session.state().nextCommandId;
+}
+
+void recordControlCommandResult(PlayableReceiptFields& fields,
+                                iggy3d::CommandKind kind,
+                                const iggy3d::Session& session,
+                                const iggy3d::SessionCommandResult& result,
+                                std::uint64_t tickBefore) {
+  const bool ran = accepted(result) && result.executedImmediately;
+  const std::uint64_t tickAfter = session.state().clock.tickIndex;
+  switch (kind) {
+    case iggy3d::CommandKind::ToggleTacticalMode:
+      fields.tacticalToggleExecuted = fields.tacticalToggleExecuted || ran;
+      fields.tacticalModeActive =
+          fields.tacticalModeActive || session.state().clock.mode == iggy3d::ClockMode::Slow;
+      break;
+    case iggy3d::CommandKind::Pause:
+      fields.pauseExecuted = fields.pauseExecuted || ran;
+      fields.pauseTickBefore = tickBefore;
+      fields.pauseTickAfter = tickAfter;
+      fields.pauseTickFrozen =
+          fields.pauseTickFrozen || (ran && tickAfter == tickBefore &&
+                                     session.state().clock.mode == iggy3d::ClockMode::Paused);
+      break;
+    case iggy3d::CommandKind::StepTacticalTick:
+      fields.stepExecuted = fields.stepExecuted || ran;
+      fields.stepTickBefore = tickBefore;
+      fields.stepTickAfter = tickAfter;
+      fields.stepAdvancedOnce =
+          fields.stepAdvancedOnce || (ran && tickAfter == tickBefore + 1U &&
+                                      session.state().clock.mode == iggy3d::ClockMode::Paused);
+      break;
+    case iggy3d::CommandKind::Resume:
+      fields.resumeExecuted = fields.resumeExecuted || ran;
+      fields.resumeTickAfter = tickAfter;
+      fields.tacticalModeActive =
+          fields.tacticalModeActive || session.state().clock.mode == iggy3d::ClockMode::Slow;
+      break;
+    default:
+      break;
+  }
+}
+
+void submitAndRecordControlCommand(iggy3d::Session& session,
+                                   iggy3d::CommandKind kind,
+                                   PlayableReceiptFields& fields) {
+  const std::uint64_t tickBefore = session.state().clock.tickIndex;
+  const iggy3d::SessionCommandResult submitted = session.submitCommand(controlCommand(kind));
+  recordControlCommandResult(fields, kind, session, submitted, tickBefore);
+}
+
+bool runSaveLoadRoundtrip(iggy3d::Session& session,
+                          const iggy3d::SessionCreateRequest& create,
+                          PlayableReceiptFields& fields) {
+  fields.saveLoadRequested = true;
+  fields.saveLoadRoundtripPassed = false;
+  fields.saveLoadHashMatched = false;
+  fields.saveLoadSessionReplaced = false;
+
+  const iggy3d::StateHashValue sourceHash = session.stateHash();
+  const iggy3d::SaveStateResult saved = iggy3d::saveSessionStateEncoded(session.state());
+  fields.saveLoadSavedHash = saved.savedStateHash;
+  fields.saveLoadEncodedBytes = saved.encodedSaveText.size();
+  if (saved.status != iggy3d::SaveLoadStatus::Ok) {
+    fields.saveLoadStatus = std::string("save_") + std::string(saveLoadStatusName(saved.status));
+    return false;
+  }
+
+  iggy3d::Result<iggy3d::Session> fresh = iggy3d::Session::create(create);
+  if (fresh.status != iggy3d::ResultStatus::Ok) {
+    fields.saveLoadStatus = "session_create_failed";
+    return false;
+  }
+
+  iggy3d::Session loaded = std::move(fresh.value);
+  const iggy3d::SaveCompatibilityRequest compatibility{
+      saved.envelope, session.state().identity.packageId, session.state().identity.scenarioId};
+  const iggy3d::LoadStateResult load =
+      iggy3d::loadEncodedSaveIntoSession(loaded, saved.encodedSaveText, compatibility);
+  fields.saveLoadLoadedHash = load.loadedHash;
+  if (load.status != iggy3d::SaveLoadStatus::Ok) {
+    fields.saveLoadStatus = std::string("load_") + std::string(saveLoadStatusName(load.status));
+    return false;
+  }
+
+  fields.saveLoadHashMatched = load.loadedHash == sourceHash && loaded.stateHash() == sourceHash;
+  if (!fields.saveLoadHashMatched) {
+    fields.saveLoadStatus = "hash_mismatch";
+    return false;
+  }
+
+  session = std::move(loaded);
+  fields.saveLoadRoundtripPassed = true;
+  fields.saveLoadSessionReplaced = true;
+  fields.saveLoadReplayStable = true;
+  fields.saveLoadStatus = "ok";
+  return true;
 }
 
 bool objectiveComplete(const iggy3d::Session& session) {
@@ -1202,13 +1893,67 @@ iggy3d::Vec3 lookForwardVector(float yaw, float pitch) {
                       {0.0F, 0.0F, -1.0F});
 }
 
-void recordAbilityCast(PlayableReceiptFields& fields,
-                       const iggy3d::AbilityCastResult& cast) {
-  fields.abilityCastRequested = true;
-  fields.abilityCastAccepted = cast.accepted;
-  fields.abilityId = std::string(iggy3d::abilityIdName(cast.ability));
-  fields.abilityCastStatus = std::string(iggy3d::abilityCastStatusName(cast.status));
-  fields.abilityCastReason = cast.reasonCode;
+std::string abilityCommandReason(const iggy3d::SessionCommandResult& submitted) {
+  if (accepted(submitted)) {
+    return "ability_command_accepted";
+  }
+  switch (submitted.command.rejection) {
+    case iggy3d::CommandRejectionReason::AbilitySlotBusy:
+      return "ability_slot_busy";
+    case iggy3d::CommandRejectionReason::AbilityOnCooldown:
+      return "ability_on_cooldown";
+    case iggy3d::CommandRejectionReason::AbilityInsufficientResource:
+      return "ability_insufficient_resource";
+    case iggy3d::CommandRejectionReason::InvalidTargetPoint:
+      return "ability_invalid_direction";
+    case iggy3d::CommandRejectionReason::InvalidActor:
+      return "ability_invalid_caster";
+    default:
+      break;
+  }
+  return "ability_command_rejected";
+}
+
+void recordAbilityPolicy(PlayableReceiptFields& fields, const iggy3d::Session& session) {
+  const iggy3d::AbilityDefinition* definition =
+      iggy3d::findAbilityDefinition(iggy3d::AbilityId::ArcaneBolt);
+  if (definition == nullptr) {
+    fields.abilityCooldownState = "unavailable";
+    return;
+  }
+
+  const iggy3d::EntityState* player = playerEntity(session);
+  std::uint32_t resourceRemaining = definition->maxResource;
+  iggy3d::CommandTick nextRechargeTick = 0;
+  iggy3d::CommandTick readyTick = 0;
+  if (player != nullptr) {
+    for (const iggy3d::AbilityActorState& actor : session.state().abilities.actors) {
+      if (actor.actor == player->id) {
+        resourceRemaining = actor.arcaneFocus;
+        nextRechargeTick = actor.arcaneFocusNextRechargeTick;
+        readyTick = actor.arcaneBoltReadyTick;
+        break;
+      }
+    }
+  }
+
+  fields.abilityResourceCost = definition->resourceCost;
+  fields.abilityResourceMax = definition->maxResource;
+  fields.abilityResourceRemaining = resourceRemaining;
+  fields.abilityResourceNextRechargeTick = nextRechargeTick;
+  fields.abilityResourceRechargeRemainingTicks =
+      nextRechargeTick > session.state().clock.tickIndex
+          ? nextRechargeTick - session.state().clock.tickIndex
+          : 0;
+  fields.abilityResourceState =
+      resourceRemaining >= definition->maxResource
+          ? "full"
+          : (nextRechargeTick == 0U ? "depleted" : "recharging");
+  fields.abilityCooldownReadyTick = readyTick;
+  fields.abilityCooldownRemainingTicks =
+      readyTick > session.state().clock.tickIndex ? readyTick - session.state().clock.tickIndex : 0;
+  fields.abilityCooldownState =
+      fields.abilityCooldownRemainingTicks == 0U ? "ready" : "cooling_down";
 }
 
 void recordAbilityProjectile(PlayableReceiptFields& fields,
@@ -1235,51 +1980,115 @@ void recordAbilityProjectile(PlayableReceiptFields& fields,
   fields.abilityTargetDefeated = projectile.targetDefeated;
 }
 
-void spawnAbilityProjectile(iggy3d::AbilityRuntimeState& abilityRuntime,
-                            const iggy3d::Session& session,
-                            const iggy3d::SpatialSurfaceSet& collisionSurfaces,
-                            float yaw,
-                            float pitch,
-                            float eyeHeightMeters,
-                            PlayableReceiptFields& fields) {
+void submitAbilityCastCommand(iggy3d::Session& session,
+                              float yaw,
+                              float pitch,
+                              PlayableReceiptFields& fields) {
   fields.spellInputObserved = true;
   const iggy3d::Vec3 forward = lookForwardVector(yaw, pitch);
   const iggy3d::EntityState* player = playerEntity(session);
-  iggy3d::AbilityCastRequest request;
-  request.ability = iggy3d::AbilityId::ArcaneBolt;
-  request.caster = player == nullptr ? iggy3d::kInvalidEntityId : player->id;
-  request.direction = forward;
-  request.collisionSurfaces = &collisionSurfaces;
-  if (player != nullptr) {
-    request.originMeters =
-        player->transform.position + iggy3d::Vec3{0.0F, eyeHeightMeters, 0.0F};
+  iggy3d::CommandRecord command;
+  command.playerSlot = 0;
+  command.actor = player == nullptr ? iggy3d::kInvalidEntityId : player->id;
+  command.kind = iggy3d::CommandKind::CastAbility;
+  command.source = iggy3d::CommandSource::LocalPlayer;
+  command.payload.ability = iggy3d::CommandAbilityKind::ArcaneBolt;
+  command.payload.abilityDirection = forward;
+
+  const iggy3d::SessionCommandResult submitted = session.submitCommand(command);
+  const bool castAccepted = accepted(submitted);
+  fields.abilityCastRequested = true;
+  ++fields.abilityCastRequestCount;
+  fields.abilityCastAccepted = castAccepted;
+  fields.abilityId = "arcane_bolt";
+  fields.abilityCastStatus = castAccepted ? "accepted" : "rejected";
+  fields.abilityCastReason = abilityCommandReason(submitted);
+  if (castAccepted) {
+    if (fields.abilityCastAcceptCount > 0U) {
+      fields.abilityRecastAccepted = true;
+    }
+    ++fields.abilityCastAcceptCount;
+  } else {
+    ++fields.abilityCastRejectCount;
+    switch (submitted.command.rejection) {
+      case iggy3d::CommandRejectionReason::AbilitySlotBusy:
+        fields.abilitySlotBusyRejected = true;
+        ++fields.abilitySlotBusyRejectCount;
+        break;
+      case iggy3d::CommandRejectionReason::AbilityOnCooldown:
+        fields.abilityCooldownRejected = true;
+        ++fields.abilityCooldownRejectCount;
+        break;
+      case iggy3d::CommandRejectionReason::AbilityInsufficientResource:
+        fields.abilityResourceRejected = true;
+        ++fields.abilityResourceRejectCount;
+        break;
+      default:
+        break;
+    }
   }
-  const iggy3d::AbilityCastResult cast = iggy3d::castAbility(abilityRuntime, request);
-  recordAbilityCast(fields, cast);
-  recordAbilityProjectile(fields, abilityRuntime.arcaneBolt);
+  recordAbilityPolicy(fields, session);
+  recordAbilityProjectile(fields, session.state().transient.abilityRuntime.arcaneBolt);
 }
 
-void stepAbilityProjectiles(iggy3d::AbilityRuntimeState& abilityRuntime,
-                            iggy3d::Session& session,
-                            const iggy3d::SpatialSurfaceSet& collisionSurfaces,
-                            PlayableReceiptFields& fields) {
-  iggy3d::SessionState& mutableState = session.mutableStateForOwnedSystems();
-  iggy3d::AbilityTickRequest request;
-  request.collisionSurfaces = &collisionSurfaces;
-  request.world = &mutableState.world;
-  request.combat = &mutableState.combat;
-  request.deltaSeconds = 1.0F / 60.0F;
-  const iggy3d::AbilityTickResult tick = iggy3d::tickAbilityRuntime(abilityRuntime, request);
-  if (tick.status != iggy3d::AbilityTickStatus::NoActiveProjectile ||
-      !abilityRuntime.arcaneBolt.spawned) {
-    fields.abilityTickStatus = std::string(iggy3d::abilityTickStatusName(tick.status));
-    fields.abilityTickReason = tick.reasonCode;
+void submitAbilityCastAtEntity(iggy3d::Session& session,
+                               iggy3d::EntityId target,
+                               PlayableReceiptFields& fields) {
+  const iggy3d::EntityState* player = playerEntity(session);
+  const iggy3d::EntityState* targetEntity = session.state().world.findById(target);
+  const iggy3d::Vec3 origin =
+      player == nullptr ? iggy3d::Vec3{} : player->transform.position + iggy3d::Vec3{0.0F, 1.2F, 0.0F};
+  const iggy3d::Vec3 aim =
+      targetEntity == nullptr ? origin + iggy3d::Vec3{0.0F, 0.0F, -1.0F}
+                              : targetEntity->transform.position + iggy3d::Vec3{0.0F, 0.6F, 0.0F};
+
+  fields.spellInputObserved = true;
+  iggy3d::CommandRecord command;
+  command.playerSlot = 0;
+  command.actor = player == nullptr ? iggy3d::kInvalidEntityId : player->id;
+  command.kind = iggy3d::CommandKind::CastAbility;
+  command.source = iggy3d::CommandSource::LocalPlayer;
+  command.payload.ability = iggy3d::CommandAbilityKind::ArcaneBolt;
+  command.payload.abilityDirection = normalizedOr(aim - origin, {0.0F, 0.0F, -1.0F});
+
+  const iggy3d::SessionCommandResult submitted = session.submitCommand(command);
+  const bool castAccepted = accepted(submitted);
+  fields.abilityCastRequested = true;
+  ++fields.abilityCastRequestCount;
+  fields.abilityCastAccepted = castAccepted;
+  fields.abilityId = "arcane_bolt";
+  fields.abilityCastStatus = castAccepted ? "accepted" : "rejected";
+  fields.abilityCastReason = abilityCommandReason(submitted);
+  if (castAccepted) {
+    if (fields.abilityCastAcceptCount > 0U) {
+      fields.abilityRecastAccepted = true;
+    }
+    ++fields.abilityCastAcceptCount;
   } else {
-    fields.abilityTickStatus =
-        std::string(iggy3d::abilityTickStatusName(abilityRuntime.arcaneBolt.tickStatus));
-    fields.abilityTickReason = abilityRuntime.arcaneBolt.reasonCode;
+    ++fields.abilityCastRejectCount;
   }
-  recordAbilityProjectile(fields, abilityRuntime.arcaneBolt);
+  recordAbilityPolicy(fields, session);
+  recordAbilityProjectile(fields, session.state().transient.abilityRuntime.arcaneBolt);
+}
+
+void stepSessionAbilityProjectiles(iggy3d::Session& session,
+                                   const iggy3d::SpatialSurfaceSet& collisionSurfaces,
+                                   PlayableReceiptFields& fields) {
+  const bool hadAbilityWork =
+      iggy3d::abilityRuntimeHasActiveProjectile(session.state().transient.abilityRuntime) ||
+      !session.state().transient.pendingExecutionSequences.empty();
+  const iggy3d::StatusResult tick = session.tick(&collisionSurfaces);
+  const iggy3d::AbilityProjectileState& projectile =
+      session.state().transient.abilityRuntime.arcaneBolt;
+  if (tick.status != iggy3d::ResultStatus::Ok) {
+    fields.abilityTickStatus = "invalid_state";
+    fields.abilityTickReason = tick.error.code;
+  } else if (hadAbilityWork || projectile.spawned) {
+    fields.abilityTickStatus = std::string(iggy3d::abilityTickStatusName(projectile.tickStatus));
+    fields.abilityTickReason = projectile.reasonCode;
+  }
+  recordAbilityPolicy(fields, session);
+  recordAbilityProjectile(fields, projectile);
 }
 
 void attachAbilityProjectileProjection(const iggy3d::AbilityProjectileState& projectile,
@@ -1301,6 +2110,26 @@ void attachAbilityProjectileProjection(const iggy3d::AbilityProjectileState& pro
   item.hitSurfaceId = projectile.hitSurfaceId;
   scene.projectiles.push_back(std::move(item));
   scene.projectileCount = scene.projectiles.size();
+}
+
+std::optional<iggy3d::TraversalCandidatePreviewResult> buildTraversalCandidatePreview(
+    const iggy3d::Session& session,
+    iggy3d::EntityId actor,
+    float yaw,
+    const iggy3d::RoomAsset* activeRoom,
+    const iggy3d::SpatialSurfaceSet& collisionSurfaces,
+    const iggy3d::Vec3& roomWorldOffset) {
+  if (!iggy3d::isValid(actor)) {
+    return std::nullopt;
+  }
+
+  iggy3d::TraversalCandidatePreviewRequest previewRequest;
+  previewRequest.actor = actor;
+  previewRequest.forward = {std::sin(yaw), 0.0F, -std::cos(yaw)};
+  previewRequest.room = activeRoom;
+  previewRequest.collisionSurfaces = &collisionSurfaces;
+  previewRequest.roomWorldOffsetMeters = roomWorldOffset;
+  return iggy3d::previewTraversalCandidate(session.state().world, previewRequest);
 }
 
 bool runScriptedPlayableStep(iggy3d::Session& session,
@@ -1333,10 +2162,87 @@ bool runScriptedPlayableStep(iggy3d::Session& session,
   }
   if (frameIndex == 5U) {
     const iggy3d::SessionResetResult reset = session.resetToBaseline();
-    fields.resetExecuted = reset.reset;
+    recordResetResult(fields, session, reset);
     return fields.resetExecuted;
   }
   return true;
+}
+
+void runCodexAcceptanceDemoStep(iggy3d::Session& session,
+                                const iggy3d::SessionCreateRequest& create,
+                                const iggy3d::SpatialSurfaceSet& collisionSurfaces,
+                                std::uint32_t frameIndex,
+                                PlayableReceiptFields& fields) {
+  fields.acceptanceDemoRequested = true;
+  const iggy3d::EntityId key = entityIdByName(session, "gold_key");
+  const iggy3d::EntityId dummy = entityIdByName(session, "training_dummy");
+
+  if (frameIndex == 0U) {
+    const iggy3d::SessionCommandResult interact = session.submitCommand(interactCommand(key));
+    fields.targetDiscovered = interact.command.payload.target.hasEntity;
+    fields.initialReachFailed =
+        interact.command.rejection == iggy3d::CommandRejectionReason::OutOfRange;
+    return;
+  }
+  if (frameIndex == 1U) {
+    fields.reachPassed = submitAndDrain(session, moveCommand({0.0F, 0.0F, -2.0F}));
+    return;
+  }
+  if (frameIndex == 2U) {
+    fields.retryExecuted = submitAndDrain(session, retryCommand(1));
+    fields.interactionExecuted = fields.retryExecuted;
+    fields.objectiveComplete = objectiveComplete(session);
+    return;
+  }
+  if (frameIndex == 3U) {
+    submitAndRecordControlCommand(session, iggy3d::CommandKind::ToggleTacticalMode, fields);
+    return;
+  }
+  if (frameIndex == 4U) {
+    submitAndRecordControlCommand(session, iggy3d::CommandKind::Pause, fields);
+    return;
+  }
+  if (frameIndex == 5U) {
+    submitAndRecordControlCommand(session, iggy3d::CommandKind::StepTacticalTick, fields);
+    return;
+  }
+  if (frameIndex == 6U) {
+    submitAndRecordControlCommand(session, iggy3d::CommandKind::Resume, fields);
+    return;
+  }
+  if (frameIndex == 7U) {
+    submitAbilityCastAtEntity(session, dummy, fields);
+    return;
+  }
+  if (frameIndex == 60U) {
+    const bool loaded = runSaveLoadRoundtrip(session, create, fields);
+    recordTrainingDummyCombat(fields, session);
+    fields.acceptancePreResetSavedState =
+        loaded && fields.objectiveComplete && fields.abilityDamageApplied &&
+        fields.trainingDummyCombatTracked && fields.trainingDummyHitPoints == 3U;
+    return;
+  }
+  if (frameIndex == 70U) {
+    const iggy3d::SessionResetResult reset = session.resetToBaseline();
+    recordResetResult(fields, session, reset);
+    recordAbilityPolicy(fields, session);
+    recordAbilityProjectile(fields, session.state().transient.abilityRuntime.arcaneBolt);
+    recordTrainingDummyCombat(fields, session);
+    fields.acceptanceDemoComplete =
+        fields.targetDiscovered && fields.initialReachFailed && fields.reachPassed &&
+        fields.retryExecuted && fields.interactionExecuted && fields.objectiveComplete &&
+        fields.tacticalToggleExecuted && fields.pauseTickFrozen && fields.stepAdvancedOnce &&
+        fields.resumeExecuted && fields.abilityCastAccepted &&
+        fields.acceptancePreResetSavedState && fields.saveLoadRoundtripPassed &&
+        fields.saveLoadHashMatched && fields.resetBaselineRestored &&
+        fields.resetCommandLogCleared;
+    return;
+  }
+
+  if (iggy3d::abilityRuntimeHasActiveProjectile(session.state().transient.abilityRuntime) ||
+      frameIndex > 7U) {
+    stepSessionAbilityProjectiles(session, collisionSurfaces, fields);
+  }
 }
 
 void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
@@ -1355,11 +2261,47 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
                                                 : (fields.initialReachFailed ? "fail"
                                                                              : "not_attempted"));
   iggy3d::appendReceiptField(receipt, "interaction_executed", fields.interactionExecuted);
+  iggy3d::appendReceiptField(receipt, "retry_executed", fields.retryExecuted);
   iggy3d::appendReceiptField(receipt, "attack_executed", fields.attackExecuted);
   iggy3d::appendReceiptField(receipt, "objective_complete", fields.objectiveComplete);
+  iggy3d::appendReceiptField(receipt, "acceptance_demo_requested",
+                             fields.acceptanceDemoRequested);
+  iggy3d::appendReceiptField(receipt, "acceptance_demo_complete",
+                             fields.acceptanceDemoComplete);
+  iggy3d::appendReceiptField(receipt, "acceptance_pre_reset_saved_state",
+                             fields.acceptancePreResetSavedState);
   iggy3d::appendReceiptField(receipt, "retry_available", fields.retryAvailable);
   iggy3d::appendReceiptField(receipt, "reset_executed", fields.resetExecuted);
+  iggy3d::appendReceiptField(receipt, "reset_baseline_restored",
+                             fields.resetBaselineRestored);
+  iggy3d::appendReceiptField(receipt, "reset_command_log_cleared",
+                             fields.resetCommandLogCleared);
+  iggy3d::appendReceiptField(receipt, "reset_next_command_id", fields.resetNextCommandId);
+  iggy3d::appendReceiptField(receipt, "runtime_clock_mode", fields.runtimeClockMode);
+  iggy3d::appendReceiptField(receipt, "tactical_toggle_executed",
+                             fields.tacticalToggleExecuted);
+  iggy3d::appendReceiptField(receipt, "tactical_mode_active", fields.tacticalModeActive);
+  iggy3d::appendReceiptField(receipt, "pause_executed", fields.pauseExecuted);
+  iggy3d::appendReceiptField(receipt, "pause_tick_frozen", fields.pauseTickFrozen);
+  iggy3d::appendReceiptField(receipt, "pause_tick_before", fields.pauseTickBefore);
+  iggy3d::appendReceiptField(receipt, "pause_tick_after", fields.pauseTickAfter);
+  iggy3d::appendReceiptField(receipt, "step_executed", fields.stepExecuted);
+  iggy3d::appendReceiptField(receipt, "step_tick_advanced_once", fields.stepAdvancedOnce);
+  iggy3d::appendReceiptField(receipt, "step_tick_before", fields.stepTickBefore);
+  iggy3d::appendReceiptField(receipt, "step_tick_after", fields.stepTickAfter);
+  iggy3d::appendReceiptField(receipt, "resume_executed", fields.resumeExecuted);
+  iggy3d::appendReceiptField(receipt, "resume_tick_after", fields.resumeTickAfter);
   iggy3d::appendReceiptField(receipt, "save_load_replay_stable", fields.saveLoadReplayStable);
+  iggy3d::appendReceiptField(receipt, "save_load_requested", fields.saveLoadRequested);
+  iggy3d::appendReceiptField(receipt, "save_load_roundtrip_passed",
+                             fields.saveLoadRoundtripPassed);
+  iggy3d::appendReceiptField(receipt, "save_load_hash_matched", fields.saveLoadHashMatched);
+  iggy3d::appendReceiptField(receipt, "save_load_session_replaced",
+                             fields.saveLoadSessionReplaced);
+  iggy3d::appendReceiptField(receipt, "save_load_saved_hash", fields.saveLoadSavedHash);
+  iggy3d::appendReceiptField(receipt, "save_load_loaded_hash", fields.saveLoadLoadedHash);
+  iggy3d::appendReceiptField(receipt, "save_load_encoded_bytes", fields.saveLoadEncodedBytes);
+  iggy3d::appendReceiptField(receipt, "save_load_status", fields.saveLoadStatus);
   iggy3d::appendReceiptField(receipt, "tactical_view_available", false);
   iggy3d::appendReceiptField(receipt, "kinematic_controller_active", fields.kinematicControllerActive);
   iggy3d::appendReceiptField(receipt, "kinematic_movement_attempted", fields.kinematicMovementAttempted);
@@ -1368,6 +2310,93 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
                              fields.kinematicCommandLogIntegrated);
   iggy3d::appendReceiptField(receipt, "movement_reason", fields.movementReason);
   iggy3d::appendReceiptField(receipt, "movement_policy_band", fields.movementPolicyBand);
+  iggy3d::appendReceiptField(receipt, "movement_distance_meters",
+                             fields.movementDistanceMeters);
+  iggy3d::appendReceiptField(receipt, "movement_horizontal_distance_meters",
+                             fields.movementHorizontalDistanceMeters);
+  iggy3d::appendReceiptField(receipt, "movement_vertical_delta_meters",
+                             fields.movementVerticalDeltaMeters);
+  iggy3d::appendReceiptField(receipt, "movement_grade_percent",
+                             fields.movementGradePercent);
+  iggy3d::appendReceiptField(receipt, "slope_travel_direction",
+                             fields.slopeTravelDirection);
+  iggy3d::appendReceiptField(receipt, "traversal_attempted", fields.traversalAttempted);
+  iggy3d::appendReceiptField(receipt, "traversal_accepted", fields.traversalAccepted);
+  iggy3d::appendReceiptField(receipt, "traversal_mechanic", fields.traversalMechanic);
+  iggy3d::appendReceiptField(receipt, "traversal_reason", fields.traversalReason);
+  iggy3d::appendReceiptField(receipt, "traversal_slot_id", fields.traversalSlotId);
+  iggy3d::appendReceiptField(receipt, "traversal_slot_kind", fields.traversalSlotKind);
+  iggy3d::appendReceiptField(receipt, "traversal_slot_height_band",
+                             fields.traversalSlotHeightBand);
+  iggy3d::appendReceiptField(receipt, "traversal_target_id", fields.traversalTargetId);
+  iggy3d::appendReceiptField(receipt, "traversal_landing_surface_id",
+                             fields.traversalLandingSurfaceId);
+  iggy3d::appendReceiptField(receipt, "traversal_slot_ledge_height_meters",
+                             fields.traversalSlotLedgeHeightMeters);
+  iggy3d::appendReceiptField(receipt, "traversal_slot_usable_width_meters",
+                             fields.traversalSlotUsableWidthMeters);
+  iggy3d::appendReceiptField(receipt, "traversal_slot_start_range_meters",
+                             fields.traversalSlotStartRangeMeters);
+  iggy3d::appendReceiptField(receipt, "traversal_slot_facing_dot",
+                             fields.traversalSlotFacingDot);
+  iggy3d::appendReceiptField(receipt, "traversal_distance_meters",
+                             fields.traversalDistanceMeters);
+  iggy3d::appendReceiptField(receipt, "traversal_horizontal_distance_meters",
+                             fields.traversalHorizontalDistanceMeters);
+  iggy3d::appendReceiptField(receipt, "traversal_vertical_delta_meters",
+                             fields.traversalVerticalDeltaMeters);
+  iggy3d::appendReceiptField(receipt, "traversal_grade_percent",
+                             fields.traversalGradePercent);
+  iggy3d::appendReceiptField(receipt, "traversal_direction", fields.traversalDirection);
+  iggy3d::appendReceiptField(receipt, "traversal_intent_requested",
+                             fields.traversalIntentRequested);
+  iggy3d::appendReceiptField(receipt, "traversal_intent_consumed",
+                             fields.traversalIntentConsumed);
+  iggy3d::appendReceiptField(receipt, "traversal_intent_accepted",
+                             fields.traversalIntentAccepted);
+  iggy3d::appendReceiptField(receipt, "traversal_intent_fallback_jump_allowed",
+                             fields.traversalIntentFallbackJumpAllowed);
+  iggy3d::appendReceiptField(receipt, "traversal_intent_trigger",
+                             fields.traversalIntentTrigger);
+  iggy3d::appendReceiptField(receipt, "traversal_intent_status",
+                             fields.traversalIntentStatus);
+  iggy3d::appendReceiptField(receipt, "traversal_intent_selected_mechanic",
+                             fields.traversalIntentSelectedMechanic);
+  iggy3d::appendReceiptField(receipt, "traversal_start_x", fields.traversalStartX);
+  iggy3d::appendReceiptField(receipt, "traversal_start_y", fields.traversalStartY);
+  iggy3d::appendReceiptField(receipt, "traversal_start_z", fields.traversalStartZ);
+  iggy3d::appendReceiptField(receipt, "traversal_final_x", fields.traversalFinalX);
+  iggy3d::appendReceiptField(receipt, "traversal_final_y", fields.traversalFinalY);
+  iggy3d::appendReceiptField(receipt, "traversal_final_z", fields.traversalFinalZ);
+  iggy3d::appendReceiptField(receipt, "movement_start_x", fields.movementStartX);
+  iggy3d::appendReceiptField(receipt, "movement_start_y", fields.movementStartY);
+  iggy3d::appendReceiptField(receipt, "movement_start_z", fields.movementStartZ);
+  iggy3d::appendReceiptField(receipt, "movement_destination_x",
+                             fields.movementDestinationX);
+  iggy3d::appendReceiptField(receipt, "movement_destination_y",
+                             fields.movementDestinationY);
+  iggy3d::appendReceiptField(receipt, "movement_destination_z",
+                             fields.movementDestinationZ);
+  iggy3d::appendReceiptField(receipt, "movement_final_x", fields.movementFinalX);
+  iggy3d::appendReceiptField(receipt, "movement_final_y", fields.movementFinalY);
+  iggy3d::appendReceiptField(receipt, "movement_final_z", fields.movementFinalZ);
+  iggy3d::appendReceiptField(receipt, "ground_surface_id", fields.groundSurfaceId);
+  iggy3d::appendReceiptField(receipt, "ground_sample_valid", fields.groundSampleValid);
+  iggy3d::appendReceiptField(receipt, "ground_contact", fields.groundContact);
+  iggy3d::appendReceiptField(receipt, "ground_walkable", fields.groundWalkable);
+  iggy3d::appendReceiptField(receipt, "careful_footing", fields.carefulFooting);
+  iggy3d::appendReceiptField(receipt, "ground_distance_meters",
+                             fields.groundDistanceMeters);
+  iggy3d::appendReceiptField(receipt, "ground_normal_x", fields.groundNormalX);
+  iggy3d::appendReceiptField(receipt, "ground_normal_y", fields.groundNormalY);
+  iggy3d::appendReceiptField(receipt, "ground_normal_z", fields.groundNormalZ);
+  iggy3d::appendReceiptField(receipt, "slope_angle_degrees", fields.slopeAngleDegrees);
+  iggy3d::appendReceiptField(receipt, "slope_up_dot", fields.slopeUpDot);
+  iggy3d::appendReceiptField(receipt, "speed_multiplier", fields.speedMultiplier);
+  iggy3d::appendReceiptField(receipt, "stamina_cost_multiplier",
+                             fields.staminaCostMultiplier);
+  iggy3d::appendReceiptField(receipt, "step_penalty_multiplier",
+                             fields.stepPenaltyMultiplier);
   iggy3d::appendReceiptField(receipt, "movement_clamped", fields.movementClamped);
   iggy3d::appendReceiptField(receipt, "movement_slid", fields.movementSlid);
   iggy3d::appendReceiptField(receipt, "ground_snap_applied", fields.groundSnapApplied);
@@ -1422,6 +2451,42 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
   iggy3d::appendReceiptField(receipt, "ability_cast_accepted", fields.abilityCastAccepted);
   iggy3d::appendReceiptField(receipt, "ability_cast_status", fields.abilityCastStatus);
   iggy3d::appendReceiptField(receipt, "ability_cast_reason", fields.abilityCastReason);
+  iggy3d::appendReceiptField(receipt, "ability_cast_request_count",
+                             fields.abilityCastRequestCount);
+  iggy3d::appendReceiptField(receipt, "ability_cast_accept_count",
+                             fields.abilityCastAcceptCount);
+  iggy3d::appendReceiptField(receipt, "ability_cast_reject_count",
+                             fields.abilityCastRejectCount);
+  iggy3d::appendReceiptField(receipt, "ability_slot_busy_rejected",
+                             fields.abilitySlotBusyRejected);
+  iggy3d::appendReceiptField(receipt, "ability_slot_busy_reject_count",
+                             fields.abilitySlotBusyRejectCount);
+  iggy3d::appendReceiptField(receipt, "ability_cooldown_rejected",
+                             fields.abilityCooldownRejected);
+  iggy3d::appendReceiptField(receipt, "ability_cooldown_reject_count",
+                             fields.abilityCooldownRejectCount);
+  iggy3d::appendReceiptField(receipt, "ability_resource_rejected",
+                             fields.abilityResourceRejected);
+  iggy3d::appendReceiptField(receipt, "ability_resource_reject_count",
+                             fields.abilityResourceRejectCount);
+  iggy3d::appendReceiptField(receipt, "ability_recast_accepted",
+                             fields.abilityRecastAccepted);
+  iggy3d::appendReceiptField(receipt, "ability_resource_remaining",
+                             fields.abilityResourceRemaining);
+  iggy3d::appendReceiptField(receipt, "ability_resource_cost", fields.abilityResourceCost);
+  iggy3d::appendReceiptField(receipt, "ability_resource_max", fields.abilityResourceMax);
+  iggy3d::appendReceiptField(receipt, "ability_resource_state",
+                             fields.abilityResourceState);
+  iggy3d::appendReceiptField(receipt, "ability_resource_next_recharge_tick",
+                             fields.abilityResourceNextRechargeTick);
+  iggy3d::appendReceiptField(receipt, "ability_resource_recharge_remaining_ticks",
+                             fields.abilityResourceRechargeRemainingTicks);
+  iggy3d::appendReceiptField(receipt, "ability_cooldown_state",
+                             fields.abilityCooldownState);
+  iggy3d::appendReceiptField(receipt, "ability_cooldown_ready_tick",
+                             fields.abilityCooldownReadyTick);
+  iggy3d::appendReceiptField(receipt, "ability_cooldown_remaining_ticks",
+                             fields.abilityCooldownRemainingTicks);
   iggy3d::appendReceiptField(receipt, "ability_tick_status", fields.abilityTickStatus);
   iggy3d::appendReceiptField(receipt, "ability_tick_reason", fields.abilityTickReason);
   iggy3d::appendReceiptField(receipt, "ability_impact_kind", fields.abilityImpactKind);
@@ -1437,6 +2502,12 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
                              fields.abilityDamageAmount);
   iggy3d::appendReceiptField(receipt, "ability_target_defeated",
                              fields.abilityTargetDefeated);
+  iggy3d::appendReceiptField(receipt, "training_dummy_combat_tracked",
+                             fields.trainingDummyCombatTracked);
+  iggy3d::appendReceiptField(receipt, "training_dummy_hit_points",
+                             fields.trainingDummyHitPoints);
+  iggy3d::appendReceiptField(receipt, "training_dummy_defeated",
+                             fields.trainingDummyDefeated);
   iggy3d::appendReceiptField(receipt, "debug_overlay_enabled", fields.debugOverlayEnabled);
   iggy3d::appendReceiptField(receipt, "debug_overlay_open", fields.debugOverlayOpen);
   iggy3d::appendReceiptField(receipt, "debug_overlay_toggle_observed",
@@ -1455,7 +2526,42 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
   iggy3d::appendReceiptField(receipt, "debug_player_phase", fields.debugPlayerPhase);
   iggy3d::appendReceiptField(receipt, "debug_movement_policy_band",
                              fields.debugMovementPolicyBand);
+  iggy3d::appendReceiptField(receipt, "debug_ground_surface_id",
+                             fields.debugGroundSurfaceId);
   iggy3d::appendReceiptField(receipt, "debug_hit_surface_id", fields.debugHitSurfaceId);
+  iggy3d::appendReceiptField(receipt, "debug_ground_sample_valid",
+                             fields.debugGroundSampleValid);
+  iggy3d::appendReceiptField(receipt, "debug_ground_contact",
+                             fields.debugGroundContact);
+  iggy3d::appendReceiptField(receipt, "debug_ground_walkable",
+                             fields.debugGroundWalkable);
+  iggy3d::appendReceiptField(receipt, "debug_careful_footing",
+                             fields.debugCarefulFooting);
+  iggy3d::appendReceiptField(receipt, "debug_ground_distance_meters",
+                             fields.debugGroundDistanceMeters);
+  iggy3d::appendReceiptField(receipt, "debug_ground_normal_x",
+                             fields.debugGroundNormalX);
+  iggy3d::appendReceiptField(receipt, "debug_ground_normal_y",
+                             fields.debugGroundNormalY);
+  iggy3d::appendReceiptField(receipt, "debug_ground_normal_z",
+                             fields.debugGroundNormalZ);
+  iggy3d::appendReceiptField(receipt, "debug_slope_angle_degrees",
+                             fields.debugSlopeAngleDegrees);
+  iggy3d::appendReceiptField(receipt, "debug_slope_up_dot", fields.debugSlopeUpDot);
+  iggy3d::appendReceiptField(receipt, "debug_speed_multiplier",
+                             fields.debugSpeedMultiplier);
+  iggy3d::appendReceiptField(receipt, "debug_stamina_cost_multiplier",
+                             fields.debugStaminaCostMultiplier);
+  iggy3d::appendReceiptField(receipt, "debug_step_penalty_multiplier",
+                             fields.debugStepPenaltyMultiplier);
+  iggy3d::appendReceiptField(receipt, "debug_movement_horizontal_distance_meters",
+                             fields.debugMovementHorizontalDistanceMeters);
+  iggy3d::appendReceiptField(receipt, "debug_movement_vertical_delta_meters",
+                             fields.debugMovementVerticalDeltaMeters);
+  iggy3d::appendReceiptField(receipt, "debug_movement_grade_percent",
+                             fields.debugMovementGradePercent);
+  iggy3d::appendReceiptField(receipt, "debug_slope_travel_direction",
+                             fields.debugSlopeTravelDirection);
   iggy3d::appendReceiptField(receipt, "debug_moved_this_frame_meters",
                              fields.debugMovedThisFrameMeters);
   iggy3d::appendReceiptField(receipt, "debug_horizontal_speed_meters_per_second",
@@ -1469,6 +2575,78 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
   iggy3d::appendReceiptField(receipt, "debug_position_z", fields.debugPositionZ);
   iggy3d::appendReceiptField(receipt, "debug_yaw_radians", fields.debugYawRadians);
   iggy3d::appendReceiptField(receipt, "debug_pitch_radians", fields.debugPitchRadians);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_preview_available",
+                             fields.debugTraversalPreviewAvailable);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_preview_ready",
+                             fields.debugTraversalPreviewReady);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_preview_candidate_available",
+                             fields.debugTraversalPreviewCandidateAvailable);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_preview_status",
+                             fields.debugTraversalPreviewStatus);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_preview_hud_code",
+                             fields.debugTraversalPreviewHudCode);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_preview_mechanic",
+                             fields.debugTraversalPreviewMechanic);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_preview_slot_id",
+                             fields.debugTraversalPreviewSlotId);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_preview_slot_kind",
+                             fields.debugTraversalPreviewSlotKind);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_preview_slot_height_band",
+                             fields.debugTraversalPreviewSlotHeightBand);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_preview_target_id",
+                             fields.debugTraversalPreviewTargetId);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_preview_landing_surface_id",
+                             fields.debugTraversalPreviewLandingSurfaceId);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_preview_slot_ledge_height_meters",
+                             fields.debugTraversalPreviewSlotLedgeHeightMeters);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_preview_slot_usable_width_meters",
+                             fields.debugTraversalPreviewSlotUsableWidthMeters);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_preview_slot_start_range_meters",
+                             fields.debugTraversalPreviewSlotStartRangeMeters);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_preview_slot_facing_dot",
+                             fields.debugTraversalPreviewSlotFacingDot);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_available",
+                             fields.debugTraversalAvailable);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_intent_requested",
+                             fields.debugTraversalIntentRequested);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_intent_consumed",
+                             fields.debugTraversalIntentConsumed);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_intent_accepted",
+                             fields.debugTraversalIntentAccepted);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_intent_fallback_jump_allowed",
+                             fields.debugTraversalIntentFallbackJumpAllowed);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_attempted",
+                             fields.debugTraversalAttempted);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_accepted",
+                             fields.debugTraversalAccepted);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_intent_trigger",
+                             fields.debugTraversalIntentTrigger);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_intent_status",
+                             fields.debugTraversalIntentStatus);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_intent_selected_mechanic",
+                             fields.debugTraversalIntentSelectedMechanic);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_mechanic",
+                             fields.debugTraversalMechanic);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_reason",
+                             fields.debugTraversalReason);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_slot_id",
+                             fields.debugTraversalSlotId);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_slot_kind",
+                             fields.debugTraversalSlotKind);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_slot_height_band",
+                             fields.debugTraversalSlotHeightBand);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_target_id",
+                             fields.debugTraversalTargetId);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_landing_surface_id",
+                             fields.debugTraversalLandingSurfaceId);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_slot_ledge_height_meters",
+                             fields.debugTraversalSlotLedgeHeightMeters);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_slot_usable_width_meters",
+                             fields.debugTraversalSlotUsableWidthMeters);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_slot_start_range_meters",
+                             fields.debugTraversalSlotStartRangeMeters);
+  iggy3d::appendReceiptField(receipt, "debug_traversal_slot_facing_dot",
+                             fields.debugTraversalSlotFacingDot);
   iggy3d::appendReceiptField(receipt, "stance", fields.stance);
   iggy3d::appendReceiptField(receipt, "eye_height_meters", fields.eyeHeightMeters);
   iggy3d::appendReceiptField(receipt, "actor_height_meters", fields.actorHeightMeters);
@@ -1726,12 +2904,13 @@ int main(int argc, const char* const* argv) {
   if (package.status != iggy3d::PackageLoadStatus::Ok) {
     return printFailure("visual_demo_package_lookup_failed");
   }
+  const iggy3d::RoomAsset* activeRoom =
+      package.rooms.empty() ? nullptr : &package.rooms.front();
+  const iggy3d::Vec3 roomWorldOffset =
+      activeRoom == nullptr ? iggy3d::Vec3{} : negated(roomOriginOffsetFromPlayerSpawn(*activeRoom));
   const iggy3d::SpatialSurfaceSet collisionSurfaces =
-      package.rooms.empty()
-          ? iggy3d::SpatialSurfaceSet{}
-          : iggy3d::buildSpatialSurfaceSet(
-                package.rooms.front(),
-                negated(roomOriginOffsetFromPlayerSpawn(package.rooms.front())));
+      activeRoom == nullptr ? iggy3d::SpatialSurfaceSet{}
+                            : iggy3d::buildSpatialSurfaceSet(*activeRoom, roomWorldOffset);
 
   iggy3d::SessionCreateRequest create;
   create.packageId = package.manifest.packageId;
@@ -1899,6 +3078,7 @@ int main(int argc, const char* const* argv) {
   playableFields.saveLoadReplayStable = parsed.options.scriptedPlayableSmoke;
   if (playableFields.playable) {
     recordStance(playableFields, false);
+    recordTrainingDummyCombat(playableFields, session);
   }
   DevMenuState devMenu;
   devMenu.enabled = parsed.options.devMenu || parsed.options.codexControlPathSet;
@@ -1927,7 +3107,6 @@ int main(int argc, const char* const* argv) {
   }
   std::optional<iggy3d::MovementResult> lastMovementResult;
   std::optional<iggy3d::PlayerMotorResult> lastMotorResult;
-  iggy3d::AbilityRuntimeState abilityRuntime;
 #if defined(IGGY3D_HAS_SDL3)
   GamepadSession gamepad;
   if (playableFields.playable &&
@@ -1969,6 +3148,9 @@ int main(int argc, const char* const* argv) {
         break;
       }
     }
+    std::optional<iggy3d::TraversalResult> frameTraversalResult;
+    std::optional<iggy3d::TraversalIntentResult> frameTraversalIntentResult;
+    std::optional<iggy3d::TraversalCandidatePreviewResult> frameTraversalPreviewResult;
 #if defined(IGGY3D_HAS_SDL3)
     if (window.has_value()) {
       window->pollEvents();
@@ -2016,10 +3198,27 @@ int main(int argc, const char* const* argv) {
             playableFields.codexControlApplied || codexControl.applied;
         playableFields.codexControlStatus = codexControl.status;
       }
+      const bool codexExecuteThisFrame =
+          controlFrameListed(codexControl.executeMechanicFrames, frameIndex);
+      const bool codexTacticalToggleThisFrame =
+          controlFrameListed(codexControl.tacticalToggleFrames, frameIndex);
+      const bool codexPauseThisFrame = controlFrameListed(codexControl.pauseFrames, frameIndex);
+      const bool codexStepThisFrame = controlFrameListed(codexControl.stepFrames, frameIndex);
+      const bool codexResumeThisFrame =
+          controlFrameListed(codexControl.resumeFrames, frameIndex);
+      const bool codexSaveLoadThisFrame =
+          controlFrameListed(codexControl.saveLoadFrames, frameIndex);
+      const bool codexResetThisFrame = controlFrameListed(codexControl.resetFrames, frameIndex);
+      const bool codexAcceptanceDemo = codexControl.applied && codexControl.acceptanceDemo;
       iggy3d::Vec3 movement{};
       bool actionRequested = false;
       bool attackRequested = false;
       bool resetRequested = false;
+      bool tacticalToggleRequested = false;
+      bool pauseRequested = false;
+      bool stepRequested = false;
+      bool resumeRequested = false;
+      bool saveLoadRequested = false;
       bool jumpRequested = false;
       bool dashRequested = false;
       bool crouchHeld = parsed.options.scriptedCrouchInput;
@@ -2217,6 +3416,12 @@ int main(int argc, const char* const* argv) {
         if (codexControl.mechanicSet) {
           devMenu.selected = codexControl.mechanic;
         }
+        if (codexControl.yawSet) {
+          yaw = codexControl.yaw;
+        }
+        if (codexControl.pitchSet) {
+          pitch = codexControl.pitch;
+        }
         yaw += codexControl.yawDelta;
         pitch += codexControl.pitchDelta;
         if (codexControl.moveSet) {
@@ -2230,11 +3435,17 @@ int main(int argc, const char* const* argv) {
         }
         actionRequested = actionRequested || codexControl.interact;
         attackRequested = attackRequested || codexControl.attack;
-        resetRequested = resetRequested || codexControl.reset;
+        tacticalToggleRequested = tacticalToggleRequested || codexTacticalToggleThisFrame;
+        pauseRequested = pauseRequested || codexPauseThisFrame;
+        stepRequested = stepRequested || codexStepThisFrame;
+        resumeRequested = resumeRequested || codexResumeThisFrame;
+        saveLoadRequested = saveLoadRequested || codexSaveLoadThisFrame;
+        resetRequested = resetRequested || codexControl.reset || codexResetThisFrame;
         jumpRequested = jumpRequested || codexControl.jump;
         dashRequested = dashRequested || codexControl.dash;
         quitRequested = quitRequested || codexControl.quit;
-        devExecuteRequested = devExecuteRequested || codexControl.executeMechanic;
+        devExecuteRequested =
+            devExecuteRequested || codexControl.executeMechanic || codexExecuteThisFrame;
       }
       if (devMenu.enabled && pressedEdge(devToggleRequested, devMenuToggleDown)) {
         devMenu.open = !devMenu.open;
@@ -2251,7 +3462,8 @@ int main(int argc, const char* const* argv) {
       if (devMenu.enabled && devMenu.open && pressedEdge(devNextRequested, devMenuNextDown)) {
         devMenu.selected = nextDevMechanic(devMenu.selected);
       }
-      if (devMenu.enabled && pressedEdge(devExecuteRequested, devMenuExecuteDown)) {
+      const bool devExecutePressed = pressedEdge(devExecuteRequested, devMenuExecuteDown);
+      if (devMenu.enabled && (devExecutePressed || codexExecuteThisFrame)) {
         devMenu.executeRequested = true;
         devExecuteThisFrame = true;
       }
@@ -2291,7 +3503,14 @@ int main(int argc, const char* const* argv) {
                                   devMenu.selected == DevMechanic::Dash ||
                                   devMenu.selected == DevMechanic::Spell
                               ? "pending"
-                              : "stubbed"));
+                              : (devMenu.selected == DevMechanic::Vault ||
+                                         devMenu.selected == DevMechanic::Clamber ||
+                                         devMenu.selected == DevMechanic::WireWalk
+                                     ? (playableFields.traversalAttempted
+                                            ? (playableFields.traversalAccepted ? "applied"
+                                                                               : "blocked")
+                                            : "pending")
+                                     : "stubbed")));
       } else {
         playableFields.devMenuExecutionStatus = "not_requested";
       }
@@ -2301,14 +3520,119 @@ int main(int argc, const char* const* argv) {
       if (pitch < -0.8F) {
         pitch = -0.8F;
       }
+      if (tacticalToggleRequested) {
+        submitAndRecordControlCommand(session, iggy3d::CommandKind::ToggleTacticalMode,
+                                      playableFields);
+      }
+      if (pauseRequested) {
+        submitAndRecordControlCommand(session, iggy3d::CommandKind::Pause, playableFields);
+      }
+      if (stepRequested) {
+        submitAndRecordControlCommand(session, iggy3d::CommandKind::StepTacticalTick,
+                                      playableFields);
+      }
+      if (resumeRequested) {
+        submitAndRecordControlCommand(session, iggy3d::CommandKind::Resume, playableFields);
+      }
+      playableFields.runtimeClockMode = std::string(clockModeName(session.state().clock.mode));
       recordStance(playableFields, crouchHeld);
-      const float currentEyeHeightMeters =
-          crouchHeld ? kCrouchedEyeHeightMeters : kStandingEyeHeightMeters;
       const iggy3d::EntityState* player = playerEntity(session);
       if (player != nullptr &&
           (!iggy3d::isValid(playerMotor.actor) || playerMotor.actor != player->id)) {
         playerMotor = iggy3d::PlayerMotorState{};
         playerMotor.actor = player->id;
+      }
+      if (player != nullptr && codexControl.applied && codexControl.playerPositionSet) {
+        iggy3d::SessionState& mutableState = session.mutableStateForOwnedSystems();
+        if (const iggy3d::EntityState* mutablePlayer =
+                mutableState.world.findById(player->id)) {
+          iggy3d::Transform3 transform = mutablePlayer->transform;
+          transform.position = codexControl.playerPositionMeters;
+          if (mutableState.world.updateTransform(player->id, transform).status ==
+              iggy3d::WorldStatus::Ok) {
+            playerMotor = iggy3d::PlayerMotorState{};
+            playerMotor.actor = player->id;
+            debugPreviousPosition = codexControl.playerPositionMeters;
+            debugSpawnPosition = codexControl.playerPositionMeters;
+            player = mutableState.world.findById(player->id);
+          }
+        }
+      }
+      if (debugOverlayOpen && player != nullptr) {
+        frameTraversalPreviewResult =
+            buildTraversalCandidatePreview(session, player->id, yaw, activeRoom,
+                                           collisionSurfaces, roomWorldOffset);
+      }
+      if (player != nullptr && devMenu.enabled &&
+          (devMenu.selected == DevMechanic::Vault ||
+           devMenu.selected == DevMechanic::Clamber ||
+           devMenu.selected == DevMechanic::WireWalk) &&
+          devExecuteThisFrame) {
+        iggy3d::SessionState& mutableState = session.mutableStateForOwnedSystems();
+        iggy3d::TraversalRequest traversalRequest;
+        traversalRequest.actor = player->id;
+        switch (devMenu.selected) {
+          case DevMechanic::Clamber:
+            traversalRequest.mechanic = iggy3d::TraversalMechanic::Clamber;
+            break;
+          case DevMechanic::WireWalk:
+            traversalRequest.mechanic = iggy3d::TraversalMechanic::WireWalk;
+            break;
+          default:
+            traversalRequest.mechanic = iggy3d::TraversalMechanic::Vault;
+            break;
+        }
+        traversalRequest.forward = {std::sin(yaw), 0.0F, -std::cos(yaw)};
+        traversalRequest.room = activeRoom;
+        traversalRequest.collisionSurfaces = &collisionSurfaces;
+        traversalRequest.roomWorldOffsetMeters = roomWorldOffset;
+        const iggy3d::TraversalResult traversalResult =
+            iggy3d::executeTraversalMechanic(mutableState.world, traversalRequest);
+        frameTraversalResult = traversalResult;
+        recordTraversalResult(playableFields, traversalResult);
+        playableFields.devMenuExecutionStatus =
+            iggy3d::traversalApplied(traversalResult) ? "applied" : "blocked";
+        if (iggy3d::traversalApplied(traversalResult)) {
+          playerMotor = iggy3d::PlayerMotorState{};
+          playerMotor.actor = player->id;
+          movement = {};
+          lastMovementResult.reset();
+          lastMotorResult.reset();
+          player = mutableState.world.findById(player->id);
+        }
+      }
+      const bool devMenuOwnsInputThisFrame =
+          devMenu.enabled && devMenu.open && devMenu.executeRequested;
+      if (player != nullptr && (jumpRequested || actionRequested) &&
+          !devMenuOwnsInputThisFrame) {
+        iggy3d::SessionState& mutableState = session.mutableStateForOwnedSystems();
+        iggy3d::TraversalIntentRequest traversalIntent;
+        traversalIntent.actor = player->id;
+        traversalIntent.jumpPressed = jumpRequested;
+        traversalIntent.interactPressed = actionRequested;
+        traversalIntent.forward = {std::sin(yaw), 0.0F, -std::cos(yaw)};
+        traversalIntent.room = activeRoom;
+        traversalIntent.collisionSurfaces = &collisionSurfaces;
+        traversalIntent.roomWorldOffsetMeters = roomWorldOffset;
+        const iggy3d::TraversalIntentResult traversalIntentResult =
+            iggy3d::executeTraversalIntent(mutableState.world, traversalIntent);
+        frameTraversalIntentResult = traversalIntentResult;
+        if (traversalIntentResult.traversalAttempted) {
+          frameTraversalResult = traversalIntentResult.traversal;
+        }
+        recordTraversalIntentResult(playableFields, traversalIntentResult);
+        if (traversalIntentResult.consumedInput) {
+          jumpRequested = false;
+          actionRequested = false;
+        }
+        if (traversalIntentResult.accepted) {
+          playerMotor = iggy3d::PlayerMotorState{};
+          playerMotor.actor = player->id;
+          movement = {};
+          lastMovementResult.reset();
+          lastMotorResult.reset();
+          player = mutableState.world.findById(player->id);
+        }
       }
       if (player != nullptr && playerMotor.phase == iggy3d::PlayerMotorPhase::Grounded &&
           iggy3d::lengthSquared(movement) > 0.01F) {
@@ -2337,7 +3661,7 @@ int main(int argc, const char* const* argv) {
       }
       if (resetRequested) {
         const iggy3d::SessionResetResult reset = session.resetToBaseline();
-        playableFields.resetExecuted = reset.reset;
+        recordResetResult(playableFields, session, reset);
         if (reset.reset) {
           playerMotor = iggy3d::PlayerMotorState{};
           if (const iggy3d::EntityState* resetPlayer = playerEntity(session)) {
@@ -2347,8 +3671,10 @@ int main(int argc, const char* const* argv) {
           }
           lastMovementResult.reset();
           lastMotorResult.reset();
-          iggy3d::resetAbilityRuntime(abilityRuntime);
-          recordAbilityProjectile(playableFields, abilityRuntime.arcaneBolt);
+          recordAbilityPolicy(playableFields, session);
+          recordAbilityProjectile(playableFields,
+                                  session.state().transient.abilityRuntime.arcaneBolt);
+          recordTrainingDummyCombat(playableFields, session);
         }
       }
       if (iggy3d::isValid(playerMotor.actor)) {
@@ -2385,19 +3711,38 @@ int main(int argc, const char* const* argv) {
         }
       }
       if (spellFireRequested) {
-        spawnAbilityProjectile(abilityRuntime, session, collisionSurfaces, yaw, pitch,
-                               currentEyeHeightMeters, playableFields);
+        submitAbilityCastCommand(session, yaw, pitch, playableFields);
         if (devMenu.enabled && devMenu.selected == DevMechanic::Spell &&
             devMenu.executeRequested) {
           playableFields.devMenuExecutionStatus =
-              abilityRuntime.arcaneBolt.spawned ? "applied" : "blocked";
+              playableFields.abilityCastAccepted ? "applied" : "blocked";
         }
       }
-      stepAbilityProjectiles(abilityRuntime, session, collisionSurfaces, playableFields);
+      if (codexAcceptanceDemo) {
+        runCodexAcceptanceDemoStep(session, create, collisionSurfaces, frameIndex, playableFields);
+      } else {
+        stepSessionAbilityProjectiles(session, collisionSurfaces, playableFields);
+      }
+      if (!codexAcceptanceDemo && saveLoadRequested) {
+        const bool loaded = runSaveLoadRoundtrip(session, create, playableFields);
+        if (loaded) {
+          playerMotor = iggy3d::PlayerMotorState{};
+          if (const iggy3d::EntityState* loadedPlayer = playerEntity(session)) {
+            playerMotor.actor = loadedPlayer->id;
+            debugPreviousPosition = loadedPlayer->transform.position;
+          }
+          lastMovementResult.reset();
+          lastMotorResult.reset();
+          recordAbilityPolicy(playableFields, session);
+          recordAbilityProjectile(playableFields,
+                                  session.state().transient.abilityRuntime.arcaneBolt);
+          recordTrainingDummyCombat(playableFields, session);
+        }
+      }
       if (devMenu.enabled && devMenu.selected == DevMechanic::Spell &&
           devMenu.executeRequested) {
         playableFields.devMenuExecutionStatus =
-            abilityRuntime.arcaneBolt.spawned ? "applied" : "blocked";
+            session.state().transient.abilityRuntime.arcaneBolt.spawned ? "applied" : "blocked";
       }
       if (actionRequested || attackRequested) {
         const iggy3d::EntityId key = entityIdByName(session, "gold_key");
@@ -2417,6 +3762,8 @@ int main(int argc, const char* const* argv) {
         }
         playableFields.objectiveComplete = objectiveComplete(session);
       }
+      recordTrainingDummyCombat(playableFields, session);
+      playableFields.runtimeClockMode = std::string(clockModeName(session.state().clock.mode));
       if (quitRequested) {
         break;
       }
@@ -2424,10 +3771,16 @@ int main(int argc, const char* const* argv) {
 #endif
     iggy3d::SceneProjectionResult scene = iggy3d::buildSceneProjection(session.state());
     attachRoomProjection(package, scene);
-    attachAbilityProjectileProjection(abilityRuntime.arcaneBolt, scene);
+    attachAbilityProjectileProjection(session.state().transient.abilityRuntime.arcaneBolt, scene);
     iggy3d::DebugProjectionResult debug = iggy3d::buildDebugProjection(session.state());
     iggy3d::RuntimeDebugSnapshot debugSnapshot;
     if (playableFields.playable) {
+      if (!frameTraversalPreviewResult.has_value() && debugOverlayOpen &&
+          iggy3d::isValid(playerMotor.actor)) {
+        frameTraversalPreviewResult =
+            buildTraversalCandidatePreview(session, playerMotor.actor, yaw, activeRoom,
+                                           collisionSurfaces, roomWorldOffset);
+      }
       iggy3d::RuntimeDebugSnapshotRequest debugRequest;
       debugRequest.enabled = debugOverlayOpen;
       debugRequest.session = &session.state();
@@ -2443,6 +3796,12 @@ int main(int argc, const char* const* argv) {
       debugRequest.motorResult = lastMotorResult.has_value() ? &*lastMotorResult : nullptr;
       debugRequest.movementResult =
           lastMovementResult.has_value() ? &*lastMovementResult : nullptr;
+      debugRequest.traversalIntentResult =
+          frameTraversalIntentResult.has_value() ? &*frameTraversalIntentResult : nullptr;
+      debugRequest.traversalResult =
+          frameTraversalResult.has_value() ? &*frameTraversalResult : nullptr;
+      debugRequest.traversalPreviewResult =
+          frameTraversalPreviewResult.has_value() ? &*frameTraversalPreviewResult : nullptr;
       debugRequest.yawRadians = yaw;
       debugRequest.pitchRadians = pitch;
       debugSnapshot = iggy3d::buildRuntimeDebugSnapshot(debugRequest);

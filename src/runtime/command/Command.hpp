@@ -32,6 +32,12 @@ enum class CommandKind : std::uint8_t {
   Reset,
   Save,
   Load,
+  CastAbility,
+};
+
+enum class CommandAbilityKind : std::uint8_t {
+  None,
+  ArcaneBolt,
 };
 
 enum class CommandSource : std::uint8_t {
@@ -77,6 +83,9 @@ enum class CommandRejectionReason : std::uint8_t {
   SaveUnavailable,
   LoadUnavailable,
   IncompatibleSave,
+  AbilitySlotBusy,
+  AbilityOnCooldown,
+  AbilityInsufficientResource,
   InternalError,
 };
 
@@ -91,6 +100,8 @@ struct CommandPayload {
   CommandTarget target;
   CommandId retrySourceCommandId = kInvalidCommandId;
   std::int32_t attackDamage = 0;
+  CommandAbilityKind ability = CommandAbilityKind::None;
+  Vec3 abilityDirection;
   std::uint64_t userData0 = 0;
   std::uint64_t userData1 = 0;
 };
@@ -122,7 +133,7 @@ inline bool isSessionControlCommand(CommandKind kind) {
 inline bool requiresActor(CommandKind kind) {
   return kind == CommandKind::Move || kind == CommandKind::Interact ||
          kind == CommandKind::Inspect || kind == CommandKind::Attack ||
-         kind == CommandKind::Wait ||
+         kind == CommandKind::CastAbility || kind == CommandKind::Wait ||
          kind == CommandKind::Retry;
 }
 
@@ -133,6 +144,14 @@ inline bool requiresEntityTarget(CommandKind kind) {
 
 inline bool requiresPointTarget(CommandKind kind) {
   return kind == CommandKind::Move;
+}
+
+inline bool requiresAbilityPayload(CommandKind kind) {
+  return kind == CommandKind::CastAbility;
+}
+
+inline bool isValidCommandAbility(CommandAbilityKind ability) {
+  return ability == CommandAbilityKind::ArcaneBolt;
 }
 
 inline bool isAccepted(const CommandRecord& command) {

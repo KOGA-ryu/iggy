@@ -77,6 +77,8 @@ SaveCommandRecord saveCommand(const CommandRecord& command) {
   record.targetPoint = command.payload.target.point;
   record.retrySourceCommandId = command.payload.retrySourceCommandId;
   record.attackDamage = command.payload.attackDamage;
+  record.ability = command.payload.ability;
+  record.abilityDirection = command.payload.abilityDirection;
   record.issuedTick = command.issuedTick;
   record.scheduledTick = command.scheduledTick;
   record.admission = command.admission;
@@ -98,6 +100,8 @@ CommandRecord loadCommand(const SaveCommandRecord& record) {
   command.payload.target.point = record.targetPoint;
   command.payload.retrySourceCommandId = record.retrySourceCommandId;
   command.payload.attackDamage = record.attackDamage;
+  command.payload.ability = record.ability;
+  command.payload.abilityDirection = record.abilityDirection;
   command.issuedTick = record.issuedTick;
   command.scheduledTick = record.scheduledTick;
   command.admission = record.admission;
@@ -109,6 +113,11 @@ bool sourceStateValid(const SessionState& state) {
   if (state.identity.packageId.empty() || state.identity.scenarioId.empty() || state.world.empty() ||
       state.players.empty() || state.nextCommandId == kInvalidCommandId) {
     return false;
+  }
+  for (const AbilityActorState& ability : state.abilities.actors) {
+    if (!isValid(ability.actor) || state.world.findById(ability.actor) == nullptr) {
+      return false;
+    }
   }
   CommandLog restored;
   return restored.restoreForLoad(state.commandLog.records(), state.commandLog.nextSequence(),
@@ -128,6 +137,7 @@ CommandId maxCommandId(const SaveCommandLogSection& commandLog) {
 void clearLoadedTransient(SessionState& state) {
   state.clock.stepRequested = false;
   state.camera.inputClearRequested = false;
+  resetAbilityRuntime(state.transient.abilityRuntime);
   state.transient.events.clear();
   state.transient.metrics = {};
   state.transient.pendingExecutionSequences.clear();
@@ -144,6 +154,7 @@ BaselineSnapshot makeLoadedBaseline(const SessionState& state) {
   baseline.players = state.players;
   baseline.clock = state.clock;
   baseline.camera = state.camera;
+  baseline.abilities = state.abilities;
   baseline.inventory = state.inventory;
   baseline.combat = state.combat;
   baseline.ai = state.ai;
@@ -170,6 +181,10 @@ SaveEnvelope envelopeFromState(const SessionState& state) {
   envelope.session.nextCommandId = state.nextCommandId;
   envelope.session.sessionSeed = state.identity.sessionSeed;
   envelope.session.sessionSchemaVersion = state.identity.schemaVersion;
+  envelope.session.fixedTickRateHz = state.config.fixedTickRateHz;
+  envelope.session.interactionRangeMeters = state.config.interactionRangeMeters;
+  envelope.session.movementDistanceMeters = state.config.movementDistanceMeters;
+  envelope.session.slowTimeScale = state.config.slowTimeScale;
   envelope.session.packageId = state.identity.packageId;
   envelope.session.scenarioId = state.identity.scenarioId;
 
@@ -196,6 +211,12 @@ SaveEnvelope envelopeFromState(const SessionState& state) {
   envelope.camera.yawDegrees = state.camera.yawDegrees;
   envelope.camera.pitchDegrees = state.camera.pitchDegrees;
   envelope.camera.orbitDistance = state.camera.orbitDistance;
+
+  for (const AbilityActorState& actor : state.abilities.actors) {
+    envelope.abilities.actors.push_back(
+        {actor.actor, actor.arcaneFocus, actor.arcaneBoltReadyTick,
+         actor.arcaneFocusNextRechargeTick});
+  }
 
   envelope.commandLog.nextSequence = state.commandLog.nextSequence();
   envelope.commandLog.epoch = state.commandLog.epoch();
@@ -242,6 +263,11 @@ bool referencesValid(const SessionState& state) {
     }
     if (command.payload.target.hasEntity &&
         state.world.findById(command.payload.target.entity) == nullptr) {
+      return false;
+    }
+  }
+  for (const AbilityActorState& ability : state.abilities.actors) {
+    if (!isValid(ability.actor) || state.world.findById(ability.actor) == nullptr) {
       return false;
     }
   }
@@ -298,7 +324,13 @@ LoadStateResult buildCandidate(const SaveEnvelope& envelope,
   candidate.identity.schemaVersion = envelope.session.sessionSchemaVersion;
   candidate.lifecycle = envelope.session.lifecycle;
   candidate.outcome = envelope.session.outcome;
-  candidate.config = makeDefaultRuntimeConfig();
+  candidate.config.fixedTickRateHz = envelope.session.fixedTickRateHz;
+  candidate.config.interactionRangeMeters = envelope.session.interactionRangeMeters;
+  candidate.config.movementDistanceMeters = envelope.session.movementDistanceMeters;
+  candidate.config.slowTimeScale = envelope.session.slowTimeScale;
+  if (validateRuntimeConfig(candidate.config) != RuntimeConfigStatus::Ok) {
+    return loadFailure(SaveLoadStatus::InvalidEnvelope, previousHash, "invalid runtime config");
+  }
   candidate.nextCommandId = envelope.session.nextCommandId;
 
   for (const SaveEntityRecord& saved : envelope.world.entities) {
@@ -334,6 +366,12 @@ LoadStateResult buildCandidate(const SaveEnvelope& envelope,
   candidate.camera.pitchDegrees = envelope.camera.pitchDegrees;
   candidate.camera.orbitDistance = envelope.camera.orbitDistance;
   candidate.camera.inputClearRequested = false;
+
+  for (const SaveAbilityActorRecord& saved : envelope.abilities.actors) {
+    candidate.abilities.actors.push_back(
+        {saved.actor, saved.arcaneFocus, saved.arcaneBoltReadyTick,
+         saved.arcaneFocusNextRechargeTick});
+  }
 
   std::vector<CommandRecord> commands;
   for (const SaveCommandRecord& saved : envelope.commandLog.records) {

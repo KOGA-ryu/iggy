@@ -2,6 +2,7 @@
 
 #include <cmath>
 
+#include "runtime/movement/MovementTraversal.hpp"
 #include "runtime/world/EntityState.hpp"
 
 namespace iggy3d {
@@ -13,6 +14,14 @@ float vectorLength(Vec3 value) {
 
 Vec3 horizontal(Vec3 value) {
   return {value.x, 0.0F, value.z};
+}
+
+std::string noneIfEmpty(const std::string& value) {
+  return value.empty() ? "none" : value;
+}
+
+std::string unavailableIfNull(const char* value) {
+  return value == nullptr ? "unavailable" : value;
 }
 
 EntityId actorFromRequest(const RuntimeDebugSnapshotRequest& request) {
@@ -52,6 +61,23 @@ void copyMotorFacts(const RuntimeDebugSnapshotRequest& request, RuntimeDebugSnap
         request.motorResult->verticalVelocityMetersPerSecond;
     snapshot.dashCooldownRemainingSeconds =
         request.motorResult->dashCooldownRemainingSeconds;
+    snapshot.groundSampleValid = request.motorResult->groundSampleValid;
+    snapshot.groundContact = request.motorResult->groundContact;
+    snapshot.groundWalkable = request.motorResult->groundWalkable;
+    snapshot.carefulFooting = request.motorResult->carefulFooting;
+    snapshot.groundNormal = request.motorResult->groundNormal;
+    snapshot.groundDistanceMeters = request.motorResult->groundDistanceMeters;
+    snapshot.slopeAngleDegrees = request.motorResult->slopeAngleDegrees;
+    snapshot.slopeUpDot = request.motorResult->slopeUpDot;
+    snapshot.speedMultiplier = request.motorResult->speedMultiplier;
+    snapshot.staminaCostMultiplier = request.motorResult->staminaCostMultiplier;
+    snapshot.stepPenaltyMultiplier = request.motorResult->stepPenaltyMultiplier;
+    if (!request.motorResult->movementPolicyBand.empty()) {
+      snapshot.movementPolicyBand = request.motorResult->movementPolicyBand;
+    }
+    if (!request.motorResult->groundSurfaceId.empty()) {
+      snapshot.groundSurfaceId = request.motorResult->groundSurfaceId;
+    }
     if (!request.motorResult->hitSurfaceId.empty()) {
       snapshot.hitSurfaceId = request.motorResult->hitSurfaceId;
     }
@@ -63,9 +89,95 @@ void copyMovementFacts(const RuntimeDebugSnapshotRequest& request,
   if (request.movementResult == nullptr) {
     return;
   }
-  snapshot.movementPolicyBand = request.movementResult->movementPolicyBand;
+  if (!request.movementResult->movementPolicyBand.empty()) {
+    snapshot.movementPolicyBand = request.movementResult->movementPolicyBand;
+  }
+  snapshot.groundSampleValid =
+      snapshot.groundSampleValid || !request.movementResult->movementPolicyBand.empty();
+  snapshot.groundWalkable =
+      request.movementResult->slopeUpDot > 0.0F &&
+      request.movementResult->speedMultiplier > 0.0F &&
+      request.movementResult->movementPolicyBand != "blocked";
+  snapshot.carefulFooting = request.movementResult->carefulFooting;
+  snapshot.slopeAngleDegrees = request.movementResult->slopeAngleDegrees;
+  snapshot.slopeUpDot = request.movementResult->slopeUpDot;
+  snapshot.speedMultiplier = request.movementResult->speedMultiplier;
+  snapshot.staminaCostMultiplier = request.movementResult->staminaCostMultiplier;
+  snapshot.stepPenaltyMultiplier = request.movementResult->stepPenaltyMultiplier;
+  snapshot.movementHorizontalDistanceMeters =
+      request.movementResult->horizontalDistanceMeters;
+  snapshot.movementVerticalDeltaMeters = request.movementResult->verticalDeltaMeters;
+  snapshot.movementGradePercent = request.movementResult->gradePercent;
+  snapshot.slopeTravelDirection = request.movementResult->slopeTravelDirection;
   if (!request.movementResult->hitSurfaceId.empty()) {
     snapshot.hitSurfaceId = request.movementResult->hitSurfaceId;
+  }
+}
+
+void copyTraversalResultFacts(const TraversalResult& result,
+                              RuntimeDebugSnapshot& snapshot) {
+  snapshot.traversalDebugAvailable = true;
+  snapshot.traversalAttempted = true;
+  snapshot.traversalAccepted = traversalApplied(result);
+  snapshot.traversalMechanic = traversalMechanicName(result.mechanic);
+  snapshot.traversalReason = unavailableIfNull(result.reasonCode);
+  snapshot.traversalSlotId = noneIfEmpty(result.slotId);
+  snapshot.traversalSlotKind = noneIfEmpty(result.slotKind);
+  snapshot.traversalSlotHeightBand = noneIfEmpty(result.slotHeightBand);
+  snapshot.traversalTargetId = noneIfEmpty(result.targetId);
+  snapshot.traversalLandingSurfaceId = noneIfEmpty(result.landingSurfaceId);
+  snapshot.traversalSlotLedgeHeightMeters = result.slotLedgeHeightMeters;
+  snapshot.traversalSlotUsableWidthMeters = result.slotUsableWidthMeters;
+  snapshot.traversalSlotStartRangeMeters = result.slotStartRangeMeters;
+  snapshot.traversalSlotFacingDot = result.slotFacingDot;
+}
+
+void copyTraversalIntentFacts(const TraversalIntentResult& result,
+                              RuntimeDebugSnapshot& snapshot) {
+  snapshot.traversalDebugAvailable = result.requested || result.traversalAttempted;
+  snapshot.traversalIntentRequested = result.requested;
+  snapshot.traversalIntentConsumed = result.consumedInput;
+  snapshot.traversalIntentAccepted = result.accepted;
+  snapshot.traversalIntentFallbackJumpAllowed = result.fallbackJumpAllowed;
+  snapshot.traversalIntentTrigger = traversalIntentTriggerName(result.trigger);
+  snapshot.traversalIntentStatus = unavailableIfNull(result.reasonCode);
+  snapshot.traversalIntentSelectedMechanic =
+      result.traversalAttempted ? traversalMechanicName(result.selectedMechanic) : "none";
+  if (result.traversalAttempted) {
+    copyTraversalResultFacts(result.traversal, snapshot);
+  }
+}
+
+void copyTraversalPreviewFacts(const TraversalCandidatePreviewResult& result,
+                               RuntimeDebugSnapshot& snapshot) {
+  snapshot.traversalPreviewAvailable = true;
+  snapshot.traversalPreviewReady = result.ready;
+  snapshot.traversalPreviewCandidateAvailable = result.candidateAvailable;
+  snapshot.traversalPreviewStatus = unavailableIfNull(result.reasonCode);
+  snapshot.traversalPreviewHudCode = unavailableIfNull(result.hudCode);
+  snapshot.traversalPreviewMechanic = traversalMechanicName(result.selectedMechanic);
+  snapshot.traversalPreviewSlotId = noneIfEmpty(result.slotId);
+  snapshot.traversalPreviewSlotKind = noneIfEmpty(result.slotKind);
+  snapshot.traversalPreviewSlotHeightBand = noneIfEmpty(result.slotHeightBand);
+  snapshot.traversalPreviewTargetId = noneIfEmpty(result.targetId);
+  snapshot.traversalPreviewLandingSurfaceId = noneIfEmpty(result.landingSurfaceId);
+  snapshot.traversalPreviewSlotLedgeHeightMeters = result.slotLedgeHeightMeters;
+  snapshot.traversalPreviewSlotUsableWidthMeters = result.slotUsableWidthMeters;
+  snapshot.traversalPreviewSlotStartRangeMeters = result.slotStartRangeMeters;
+  snapshot.traversalPreviewSlotFacingDot = result.slotFacingDot;
+}
+
+void copyTraversalFacts(const RuntimeDebugSnapshotRequest& request,
+                        RuntimeDebugSnapshot& snapshot) {
+  if (request.traversalPreviewResult != nullptr) {
+    copyTraversalPreviewFacts(*request.traversalPreviewResult, snapshot);
+  }
+  if (request.traversalIntentResult != nullptr) {
+    copyTraversalIntentFacts(*request.traversalIntentResult, snapshot);
+    return;
+  }
+  if (request.traversalResult != nullptr) {
+    copyTraversalResultFacts(*request.traversalResult, snapshot);
   }
 }
 
@@ -155,6 +267,7 @@ RuntimeDebugSnapshot buildRuntimeDebugSnapshot(const RuntimeDebugSnapshotRequest
 
   copyMotorFacts(request, snapshot);
   copyMovementFacts(request, snapshot);
+  copyTraversalFacts(request, snapshot);
   return snapshot;
 }
 

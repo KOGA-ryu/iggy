@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "core/ids/EntityId.hpp"
 #include "core/math/Vec3.hpp"
@@ -28,6 +29,8 @@ enum class AbilityCastStatus : std::uint8_t {
   InvalidDirection,
   MissingCollisionSurfaces,
   ProjectileSlotBusy,
+  OnCooldown,
+  InsufficientResource,
 };
 
 enum class AbilityTickStatus : std::uint8_t {
@@ -67,8 +70,38 @@ struct AbilityProjectileState {
   bool targetDefeated = false;
 };
 
+struct AbilityActorState {
+  EntityId actor;
+  std::uint32_t arcaneFocus = 3;
+  CommandTick arcaneBoltReadyTick = 0;
+  CommandTick arcaneFocusNextRechargeTick = 0;
+};
+
+struct AbilityState {
+  std::vector<AbilityActorState> actors;
+};
+
 struct AbilityRuntimeState {
   AbilityProjectileState arcaneBolt;
+};
+
+struct AbilityDefinition {
+  AbilityId ability = AbilityId::None;
+  std::string_view abilityName = "none";
+  std::string_view projectileId = "none";
+  float muzzleOffsetMeters = 0.0F;
+  float projectileSpeedMetersPerSecond = 0.0F;
+  ProjectileMotionParams projectileMotion{};
+  std::int32_t damage = 0;
+  std::uint32_t resourceCost = 0;
+  std::uint32_t maxResource = 0;
+  CommandTick cooldownTicks = 0;
+  CommandTick resourceRechargeTicks = 0;
+};
+
+struct AbilityRechargeResult {
+  std::uint32_t actorsUpdated = 0;
+  std::uint32_t resourceRecovered = 0;
 };
 
 struct AbilityCastRequest {
@@ -78,6 +111,7 @@ struct AbilityCastRequest {
   Vec3 direction;
   const SpatialSurfaceSet* collisionSurfaces = nullptr;
   CommandId sourceCommandId = kInvalidCommandId;
+  CommandTick currentTick = 0;
 };
 
 struct AbilityCastResult {
@@ -85,6 +119,9 @@ struct AbilityCastResult {
   AbilityId ability = AbilityId::None;
   bool accepted = false;
   bool projectileSpawned = false;
+  std::uint32_t resourceRemaining = 0;
+  std::uint32_t resourceCost = 0;
+  CommandTick cooldownReadyTick = 0;
   std::string reasonCode = "ability_invalid";
 };
 
@@ -114,12 +151,20 @@ std::string_view abilityIdName(AbilityId ability);
 std::string_view abilityCastStatusName(AbilityCastStatus status);
 std::string_view abilityTickStatusName(AbilityTickStatus status);
 std::string_view abilityImpactKindName(AbilityImpactKind kind);
+const AbilityDefinition* findAbilityDefinition(AbilityId ability);
 
-AbilityCastResult castAbility(AbilityRuntimeState& state,
+AbilityCastResult inspectAbilityCast(const AbilityState& abilityState,
+                                      const AbilityRuntimeState& runtimeState,
+                                      const AbilityCastRequest& request);
+AbilityCastResult castAbility(AbilityState& abilityState,
+                              AbilityRuntimeState& runtimeState,
                               const AbilityCastRequest& request);
+AbilityRechargeResult tickAbilityState(AbilityState& abilityState, CommandTick currentTick);
 AbilityTickResult tickAbilityRuntime(AbilityRuntimeState& state,
                                      const AbilityTickRequest& request);
 void resetAbilityRuntime(AbilityRuntimeState& state);
 bool abilityProjectileVisible(const AbilityProjectileState& projectile);
+bool abilityRuntimeHasActiveProjectile(const AbilityRuntimeState& state);
+bool abilityStateHasPendingRecharge(const AbilityState& state);
 
 }  // namespace iggy3d

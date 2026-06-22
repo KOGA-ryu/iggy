@@ -31,6 +31,7 @@ struct PlayerMotorParams {
   float groundProbeMeters = 0.20F;
   float landingSnapMeters = 0.30F;
   float footprintToleranceMeters = 0.30F;
+  float maxWalkableSlopeDegrees = 40.0F;
   float terminalVelocityMetersPerSecond = -40.0F;
   float airMaxSpeedMetersPerSecond = 3.20F;
   float airAccelerationMetersPerSecondSquared = 9.50F;
@@ -84,10 +85,21 @@ struct PlayerMotorResult {
   bool airMovementSlid = false;
   bool dashMovementClamped = false;
   bool dashMovementSlid = false;
+  bool groundSampleValid = false;
+  bool groundContact = false;
+  bool groundWalkable = false;
+  bool carefulFooting = false;
   bool mutatedWorld = false;
+  Vec3 groundNormal = {0.0F, 1.0F, 0.0F};
   Vec3 horizontalVelocityMetersPerSecond;
   float verticalVelocityMetersPerSecond = 0.0F;
   float horizontalSpeedMetersPerSecond = 0.0F;
+  float groundDistanceMeters = 0.0F;
+  float slopeAngleDegrees = 0.0F;
+  float slopeUpDot = 1.0F;
+  float speedMultiplier = 1.0F;
+  float staminaCostMultiplier = 1.0F;
+  float stepPenaltyMultiplier = 1.0F;
   float dashRemainingSeconds = 0.0F;
   float dashCooldownRemainingSeconds = 0.0F;
   float gravityMetersPerSecondSquared = 0.0F;
@@ -99,6 +111,8 @@ struct PlayerMotorResult {
   float dashCooldownSeconds = 0.0F;
   Vec3 startPosition;
   Vec3 finalPosition;
+  std::string movementPolicyBand = "not_sampled";
+  std::string groundSurfaceId;
   std::string hitSurfaceId;
   const char* reasonCode = "player_motor_ok";
 };

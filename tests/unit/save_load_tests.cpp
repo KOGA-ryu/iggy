@@ -121,6 +121,14 @@ iggy3d::Session makeSession() {
   return iggy3d::Session::create(request).value;
 }
 
+iggy3d::Session makeSessionWithConfig(iggy3d::RuntimeConfig config) {
+  iggy3d::SessionCreateRequest request;
+  request.config = config;
+  request.seed = firstRoomSeed();
+  request.seed.config = config;
+  return iggy3d::Session::create(request).value;
+}
+
 iggy3d::CommandRecord submittedInteract() {
   iggy3d::CommandRecord command;
   command.playerSlot = 0;
@@ -237,6 +245,45 @@ bool encodedSaveRoundtripLoadsFreshSession() {
               "loaded objective") &&
        expect(loaded.state().outcome == iggy3d::SessionOutcome::DemoComplete, "loaded outcome");
   return ok;
+}
+
+bool encodedSaveRoundtripPreservesRuntimeConfig() {
+  iggy3d::RuntimeConfig config;
+  config.fixedTickRateHz = 60;
+  config.interactionRangeMeters = 2.250F;
+  config.movementDistanceMeters = 4.500F;
+  config.slowTimeScale = 0.500F;
+  iggy3d::Session session = makeSessionWithConfig(config);
+  (void)session.submitCommand(submittedMove({2.0F, 0.0F, 0.0F}));
+  (void)session.tick();
+
+  const iggy3d::SaveStateResult saved = iggy3d::saveSessionStateEncoded(session.state());
+  iggy3d::Session loaded = makeSession();
+  const iggy3d::LoadStateResult load =
+      iggy3d::loadEncodedSaveIntoSession(loaded, saved.encodedSaveText,
+                                         compatibilityFor(saved.envelope));
+
+  return expect(saved.status == iggy3d::SaveLoadStatus::Ok, "config save status") &&
+         expect(saved.envelope.session.fixedTickRateHz == 60U, "config tick saved") &&
+         expect(saved.envelope.session.interactionRangeMeters == 2.250F,
+                "config interaction saved") &&
+         expect(saved.envelope.session.movementDistanceMeters == 4.500F,
+                "config movement saved") &&
+         expect(saved.envelope.session.slowTimeScale == 0.500F, "config slow saved") &&
+         expect(saved.encodedSaveText.find("session.fixedTickRateHz=60\n") !=
+                    std::string::npos,
+                "config tick encoded") &&
+         expect(saved.encodedSaveText.find("session.slowTimeScale=0.500\n") !=
+                    std::string::npos,
+                "config slow encoded") &&
+         expect(load.status == iggy3d::SaveLoadStatus::Ok, "config load status") &&
+         expect(loaded.state().config.fixedTickRateHz == 60U, "config tick loaded") &&
+         expect(loaded.state().config.interactionRangeMeters == 2.250F,
+                "config interaction loaded") &&
+         expect(loaded.state().config.movementDistanceMeters == 4.500F,
+                "config movement loaded") &&
+         expect(loaded.state().config.slowTimeScale == 0.500F, "config slow loaded") &&
+         expect(loaded.stateHash() == session.stateHash(), "config loaded hash");
 }
 
 bool postLoadCommandIdDoesNotCollide() {
@@ -359,6 +406,7 @@ int main() {
   bool ok = true;
   ok = envelopeMappingPreservesDurableState() && ok;
   ok = encodedSaveRoundtripLoadsFreshSession() && ok;
+  ok = encodedSaveRoundtripPreservesRuntimeConfig() && ok;
   ok = postLoadCommandIdDoesNotCollide() && ok;
   ok = invalidCursorIsRejected() && ok;
   ok = duplicateCommandIdIsRejectedByCommandLogRestore() && ok;

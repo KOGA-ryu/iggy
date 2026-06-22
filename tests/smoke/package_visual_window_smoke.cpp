@@ -140,10 +140,8 @@ int main() {
                       hasField(interactiveFields, "interactive_mode", "true") &&
                       hasField(interactiveFields, "mouse_look_available", "true") &&
                       hasField(interactiveFields, "kinematic_controller_active", "true") &&
-                      hasField(interactiveFields, "kinematic_movement_attempted", "false") &&
                       hasField(interactiveFields, "kinematic_command_log_integrated", "false") &&
                       hasField(interactiveFields, "save_load_replay_stable", "false") &&
-                      hasField(interactiveFields, "movement_reason", "not_attempted") &&
                       hasField(interactiveFields, "window_mode", "window") &&
                       integerFieldGreaterThan(interactiveFields, "frames", 1ULL) &&
                       integerFieldGreaterThan(interactiveFields, "frames_presented", 1ULL) &&

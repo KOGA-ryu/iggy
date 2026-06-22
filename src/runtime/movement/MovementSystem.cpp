@@ -1,6 +1,7 @@
 #include "runtime/movement/MovementSystem.hpp"
 
 #include "runtime/collision/CollisionQuery.hpp"
+#include "runtime/movement/MovementKinematics.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -63,6 +64,16 @@ float vectorLength(Vec3 value) {
   return std::sqrt(lengthSquared(value));
 }
 
+void applyTravelFacts(MovementResult& result) {
+  const MovementTravelFacts facts =
+      computeMovementTravelFacts(result.start, result.finalPosition);
+  result.distanceMeters = facts.distanceMeters;
+  result.horizontalDistanceMeters = facts.horizontalDistanceMeters;
+  result.verticalDeltaMeters = facts.verticalDeltaMeters;
+  result.gradePercent = facts.gradePercent;
+  result.slopeTravelDirection = movementTravelDirectionName(facts.direction);
+}
+
 bool normalize(Vec3 value, Vec3& out) {
   if (!isFinite(value)) {
     return false;
@@ -117,6 +128,7 @@ MovementResult acceptedKinematicResult(const KinematicMovementRequest& request,
   result.kinematic = true;
   result.reasonCode = "movement_ok";
   applySlopeToResult(result, slope);
+  applyTravelFacts(result);
   return result;
 }
 
@@ -261,6 +273,7 @@ MovementResult executeMovement(MovementSystemContext& context, const MovementReq
   result.blocked = MovementBlockedReason::None;
   result.sourceCommandId = request.sourceCommandId;
   result.distanceMeters = distance;
+  applyTravelFacts(result);
   return result;
 }
 

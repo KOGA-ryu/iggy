@@ -85,6 +85,9 @@ std::string rejectionText(CommandRejectionReason reason) {
     case CommandRejectionReason::RetrySourceMissing: return "RetrySourceMissing";
     case CommandRejectionReason::RetrySourceNotRejected: return "RetrySourceNotRejected";
     case CommandRejectionReason::RetryUnsupportedKind: return "RetryUnsupportedKind";
+    case CommandRejectionReason::AbilitySlotBusy: return "AbilitySlotBusy";
+    case CommandRejectionReason::AbilityOnCooldown: return "AbilityOnCooldown";
+    case CommandRejectionReason::AbilityInsufficientResource: return "AbilityInsufficientResource";
     default: return "Other";
   }
 }

@@ -28,6 +28,10 @@ bool requiresCombat(CommandKind kind) {
   return kind == CommandKind::Attack;
 }
 
+bool hasNonZeroFiniteDirection(Vec3 direction) {
+  return isFinite(direction) && lengthSquared(direction) > 0.000001F;
+}
+
 CommandRejectionReason validateContext(
     const CommandAdmissionContext& context,
     CommandKind kind) {
@@ -65,6 +69,14 @@ CommandRejectionReason validateCommandShape(const CommandRecord& command) {
   }
   if (requiresPointTarget(command.kind)) {
     if (!command.payload.target.hasPoint) {
+      return CommandRejectionReason::InvalidTargetPoint;
+    }
+  }
+  if (requiresAbilityPayload(command.kind)) {
+    if (!isValidCommandAbility(command.payload.ability)) {
+      return CommandRejectionReason::InvalidCommand;
+    }
+    if (!hasNonZeroFiniteDirection(command.payload.abilityDirection)) {
       return CommandRejectionReason::InvalidTargetPoint;
     }
   }

@@ -20,6 +20,7 @@ struct SessionRunnerRunRequest {
   std::uint32_t maxTicks = 0;
   bool stopWhenIdle = true;
   bool stopWhenComplete = true;
+  const SpatialSurfaceSet* collisionSurfaces = nullptr;
 };
 
 struct SessionRunnerRunResult {

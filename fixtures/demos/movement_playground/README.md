@@ -19,7 +19,7 @@ Controls:
 - Right Trigger/R2 fires a spell projectile on SDL gamepad when the dev menu is closed;
 - hold left stick click to crouch on SDL gamepad;
 - F1 toggles the dev menu state; while open, 1-8 selects walk, crouch, jump,
-  dash, spell projectile, vault stub, clamber stub, or wire-walk stub, and Space/Enter executes.
+  dash, spell projectile, vault, clamber, or wire-walk, and Space/Enter executes.
 - On SDL gamepad, Start + North toggles the dev menu state, D-pad left/right cycles,
   and South executes while the menu is open.
 
@@ -44,8 +44,9 @@ EOF
 
 Supported control keys are `dev_menu.open`, `dev_menu.select`, `mechanic`,
 `mechanic.execute`, `debug_overlay.open`, `jump`, `dash`, `stance`,
-`move.forward`, `move.right`, `look.yaw_delta`, `look.pitch_delta`, `interact`,
-`attack`, `reset`, and `quit`.
+`move.forward`, `move.right`, `player.position`, `player.position_meters`,
+`player.position_ft`, `look.yaw_delta`, `look.pitch_delta`, `interact`, `attack`,
+`reset`, and `quit`.
 
 Purpose:
 
@@ -53,7 +54,8 @@ Purpose:
 - player spawn anchored to the original obstacle cluster, with expanded open floor around it;
 - coarse arena grid over the full floor, with denser local grid in the original obstacle section;
 - jump pads and a marked gap lane;
-- clamber block and stepped ledges;
+- moderate 20 degree slope probe lane for movement policy telemetry;
+- clamber wall lineup with low, mid, high, too-high, and narrow slot cases;
 - vault rail with posts;
 - dash lane with start/end strips;
 - elevated wire-walk rail with supports;
@@ -64,5 +66,15 @@ Purpose:
 Current runtime truth:
 
 - this fixture is a playable/renderable test arena;
-- first-person kinematic walking, hold-to-crouch stance, runtime jump, limited air control, runtime dash, debug telemetry, runtime-owned Arcane Bolt casting, deterministic projectile motion, attackable entity hurt-volume impacts, combat damage, and dev-menu spell projectile visuals work against authored room surfaces;
-- clamber, vault, and wire-walk mechanics are authored as test zones, not implemented ability modes yet.
+- first-person kinematic walking, hold-to-crouch stance, runtime jump, limited air control, runtime dash, flat/moderate slope telemetry, debug telemetry, runtime-owned Arcane Bolt casting, deterministic projectile motion, attackable entity hurt-volume impacts, combat damage, and dev-menu spell projectile visuals work against authored room surfaces;
+- slope telemetry reports runtime-owned `movement_horizontal_distance_meters`, `movement_vertical_delta_meters`, `movement_grade_percent`, and `slope_travel_direction` values; the debug overlay mirrors those facts with `debug_` receipt fields and a `GRADE` HUD line;
+- vault is a runtime traversal mechanic against the authored rail lane;
+- clamber is a runtime traversal mechanic against registered wall/ledge slots authored with
+  `clamber` traversal tags, measured wall height, usable width, range, facing, landing
+  ground, and clearance gates;
+- wire-walk is a runtime traversal mechanic against registered rail slots authored as
+  `wire` rails, using range, facing, rail-top centerline snap, and actor clearance gates;
+- jump/interact input resolves traversal intent before ordinary jump motor logic, so a
+  local clamber slot can consume jump while open-floor jump remains a motor fallback;
+- traversal preview reports the next ready or blocked traversal candidate without mutating
+  world state, including slot kind, height band, range, facing dot, and landing id.

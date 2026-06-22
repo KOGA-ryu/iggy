@@ -44,8 +44,11 @@ target_sources(iggy3d
     src/runtime/command/CommandAdmission.cpp
     src/runtime/replay/CommandLog.cpp
     src/runtime/session/Session.cpp
+    src/runtime/movement/MovementKinematics.cpp
     src/runtime/movement/MovementPolicy.cpp
     src/runtime/movement/MovementSystem.cpp
+    src/runtime/movement/MovementTraversalSlots.cpp
+    src/runtime/movement/MovementTraversal.cpp
     src/runtime/ability/AbilitySystem.cpp
     src/runtime/projectile/ProjectileSystem.cpp
     src/runtime/targeting/TargetQuery.cpp

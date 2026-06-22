@@ -2,6 +2,7 @@
 
 #include <utility>
 
+#include "runtime/ability/AbilitySystem.hpp"
 #include "runtime/camera/CameraModePolicy.hpp"
 #include "runtime/clock/Clock.hpp"
 #include "runtime/session/SessionRunner.hpp"
@@ -173,6 +174,7 @@ BaselineSnapshot buildBaseline(const SessionState& state) {
   baseline.players = state.players;
   baseline.clock = state.clock;
   baseline.camera = state.camera;
+  baseline.abilities = state.abilities;
   baseline.inventory = state.inventory;
   baseline.combat = state.combat;
   baseline.ai = state.ai;
@@ -182,6 +184,7 @@ BaselineSnapshot buildBaseline(const SessionState& state) {
 }
 
 void clearTransient(SessionState& state) {
+  resetAbilityRuntime(state.transient.abilityRuntime);
   state.transient.events.clear();
   state.transient.metrics = {};
   state.transient.pendingExecutionSequences.clear();
@@ -227,13 +230,8 @@ bool commandLogValid(const CommandLog& log) {
 bool queuesForTickExecution(CommandKind kind) {
   return kind == CommandKind::Move || kind == CommandKind::Interact ||
          kind == CommandKind::Inspect || kind == CommandKind::Attack ||
-         kind == CommandKind::Wait ||
+         kind == CommandKind::CastAbility || kind == CommandKind::Wait ||
          kind == CommandKind::Retry;
-}
-
-bool executesImmediately(CommandKind kind) {
-  return kind == CommandKind::ToggleTacticalMode || kind == CommandKind::Pause ||
-         kind == CommandKind::Resume || kind == CommandKind::StepTacticalTick;
 }
 
 bool sequencePending(const std::vector<CommandSequence>& pending, CommandSequence sequence) {
@@ -243,6 +241,90 @@ bool sequencePending(const std::vector<CommandSequence>& pending, CommandSequenc
     }
   }
   return false;
+}
+
+bool pendingAbilityCastCommand(const SessionState& state) {
+  for (const CommandRecord& record : state.commandLog.records()) {
+    if (record.kind == CommandKind::CastAbility &&
+        record.admission == CommandAdmissionStatus::Accepted &&
+        sequencePending(state.transient.pendingExecutionSequences, record.sequence)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+AbilityId abilityIdForCommand(CommandAbilityKind ability) {
+  switch (ability) {
+    case CommandAbilityKind::ArcaneBolt:
+      return AbilityId::ArcaneBolt;
+    case CommandAbilityKind::None:
+      break;
+  }
+  return AbilityId::None;
+}
+
+CommandRejectionReason rejectionForAbilityCastStatus(AbilityCastStatus status) {
+  switch (status) {
+    case AbilityCastStatus::Accepted:
+      return CommandRejectionReason::None;
+    case AbilityCastStatus::ProjectileSlotBusy:
+      return CommandRejectionReason::AbilitySlotBusy;
+    case AbilityCastStatus::OnCooldown:
+      return CommandRejectionReason::AbilityOnCooldown;
+    case AbilityCastStatus::InsufficientResource:
+      return CommandRejectionReason::AbilityInsufficientResource;
+    case AbilityCastStatus::InvalidAbility:
+    case AbilityCastStatus::InvalidCaster:
+    case AbilityCastStatus::InvalidOrigin:
+    case AbilityCastStatus::InvalidDirection:
+    case AbilityCastStatus::MissingCollisionSurfaces:
+      break;
+  }
+  return CommandRejectionReason::InvalidCommand;
+}
+
+AbilityCastRequest abilityCastRequestFromCommand(const SessionState& state,
+                                                 const CommandRecord& command,
+                                                 const SpatialSurfaceSet& surfaces) {
+  AbilityCastRequest request;
+  request.ability = abilityIdForCommand(command.payload.ability);
+  request.caster = command.actor;
+  const EntityState* actor = state.world.findById(command.actor);
+  request.originMeters = actor == nullptr
+                             ? Vec3{}
+                             : actor->transform.position + Vec3{0.0F, 1.65F, 0.0F};
+  request.direction = command.payload.abilityDirection;
+  request.collisionSurfaces = &surfaces;
+  request.sourceCommandId = command.commandId;
+  request.currentTick = state.clock.tickIndex;
+  return request;
+}
+
+CommandAdmissionResult applyAbilityRuntimeAdmission(const SessionState& state,
+                                                    const CommandAdmissionResult& admission) {
+  if (admission.command.kind != CommandKind::CastAbility ||
+      admission.command.admission != CommandAdmissionStatus::Accepted) {
+    return admission;
+  }
+  if (pendingAbilityCastCommand(state)) {
+    return rejectCommand(admission.command, CommandRejectionReason::AbilitySlotBusy);
+  }
+
+  const SpatialSurfaceSet emptySurfaces;
+  const AbilityCastRequest request =
+      abilityCastRequestFromCommand(state, admission.command, emptySurfaces);
+  const AbilityCastResult inspected =
+      inspectAbilityCast(state.abilities, state.transient.abilityRuntime, request);
+  if (inspected.accepted) {
+    return admission;
+  }
+  return rejectCommand(admission.command, rejectionForAbilityCastStatus(inspected.status));
+}
+
+bool executesImmediately(CommandKind kind) {
+  return kind == CommandKind::ToggleTacticalMode || kind == CommandKind::Pause ||
+         kind == CommandKind::Resume || kind == CommandKind::StepTacticalTick;
 }
 
 void removeExecutedSequences(std::vector<CommandSequence>& pending,
@@ -424,7 +506,8 @@ SessionCommandResult Session::submitCommand(const CommandRecord& command) {
   } else {
     CommandAdmissionContext context{&state_.world, &state_.players, &state_.clock,
                                     &state_.commandLog, &state_.config, &state_.combat};
-    admission = admitCommand(context, CommandAdmissionRequest{candidate});
+    admission = applyAbilityRuntimeAdmission(
+        state_, admitCommand(context, CommandAdmissionRequest{candidate}));
   }
 
   const CommandLogAppendResult append = state_.commandLog.append(admission.command);
@@ -447,9 +530,10 @@ SessionCommandResult Session::submitCommand(const CommandRecord& command) {
   return result;
 }
 
-StatusResult Session::tick() {
+StatusResult Session::tick(const SpatialSurfaceSet* collisionSurfaces) {
   std::vector<CommandRecord> commands = pendingAcceptedCommands(state_);
-  const SessionTickResult tick = runSessionTick(SessionTickInput{&state_, std::move(commands), false});
+  const SessionTickResult tick =
+      runSessionTick(SessionTickInput{&state_, std::move(commands), collisionSurfaces, false});
   removeExecutedSequences(state_.transient.pendingExecutionSequences, tick.executedSequences);
 
   markDirtyAndHash(state_);
@@ -466,7 +550,7 @@ StatusResult Session::tick() {
   return statusError("session.tick_invalid_state", "session tick found invalid runtime state");
 }
 
-StatusResult Session::stepOneTick() {
+StatusResult Session::stepOneTick(const SpatialSurfaceSet* collisionSurfaces) {
   if (state_.clock.mode != ClockMode::Paused || !state_.clock.stepRequested) {
     return statusError("session.step_requires_paused", "paused step was not requested");
   }
@@ -478,14 +562,16 @@ StatusResult Session::stepOneTick() {
   state_.clock = consumed.state;
 
   std::vector<CommandRecord> commands = pendingAcceptedCommands(state_);
-  if (commands.empty()) {
+  if (commands.empty() && !abilityRuntimeHasActiveProjectile(state_.transient.abilityRuntime) &&
+      !abilityStateHasPendingRecharge(state_.abilities)) {
     state_.clock = advanceTick(state_.clock);
     ++state_.transient.metrics.ticksRun;
     markDirtyAndHash(state_);
     return statusOk();
   }
 
-  const SessionTickResult tick = runSessionTick(SessionTickInput{&state_, std::move(commands), true});
+  const SessionTickResult tick =
+      runSessionTick(SessionTickInput{&state_, std::move(commands), collisionSurfaces, true});
   removeExecutedSequences(state_.transient.pendingExecutionSequences, tick.executedSequences);
   markDirtyAndHash(state_);
 
@@ -495,8 +581,10 @@ StatusResult Session::stepOneTick() {
   return statusError("session.step_invalid_state", "paused step found invalid runtime state");
 }
 
-StatusResult Session::runUntilIdle(std::uint32_t maxTicks) {
-  SessionRunnerRunResult run = runSession(SessionRunnerRunRequest{this, maxTicks, true, true});
+StatusResult Session::runUntilIdle(std::uint32_t maxTicks,
+                                   const SpatialSurfaceSet* collisionSurfaces) {
+  SessionRunnerRunResult run =
+      runSession(SessionRunnerRunRequest{this, maxTicks, true, true, collisionSurfaces});
   if (run.status == SessionRunnerStatus::Failed) {
     return statusError("session.runner_failed", run.diagnostic);
   }
@@ -513,6 +601,7 @@ SessionResetResult Session::resetToBaseline() {
   state_.players = state_.baseline.players;
   state_.clock = state_.baseline.clock;
   state_.camera = state_.baseline.camera;
+  state_.abilities = state_.baseline.abilities;
   state_.inventory = state_.baseline.inventory;
   state_.combat = state_.baseline.combat;
   state_.ai = state_.baseline.ai;
@@ -584,7 +673,8 @@ SessionFinalizationResult Session::finalizeDemoIfComplete() {
   }
   if (state_.outcome != SessionOutcome::DemoComplete || state_.clock.mode != ClockMode::Normal ||
       !isRealtimeCameraMode(state_.camera.activeMode) ||
-      !state_.transient.pendingExecutionSequences.empty()) {
+      !state_.transient.pendingExecutionSequences.empty() ||
+      abilityRuntimeHasActiveProjectile(state_.transient.abilityRuntime)) {
     result.status = SessionFinalizationStatus::NotReady;
     return result;
   }

@@ -224,9 +224,12 @@ bool movementPlaygroundPackageLoadsMovementSemantics() {
   bool ledge = false;
   bool rail = false;
   bool hazard = false;
+  bool slope = false;
   bool dash = false;
   bool spell = false;
   bool largeFloor = false;
+  bool moderateSlopeSurface = false;
+  bool clamberTaggedSurface = false;
   std::size_t gridMeshes = 0;
   std::size_t walkableSurfaces = 0;
   std::size_t blockerSurfaces = 0;
@@ -241,6 +244,7 @@ bool movementPlaygroundPackageLoadsMovementSemantics() {
     ledge = ledge || mesh.role == "ledge";
     rail = rail || mesh.role == "rail";
     hazard = hazard || mesh.role == "hazard";
+    slope = slope || mesh.role == "slope";
     dash = dash || mesh.role == "dash";
     spell = spell || mesh.role == "spell";
     gridMeshes += mesh.role == "grid" ? 1U : 0U;
@@ -250,12 +254,24 @@ bool movementPlaygroundPackageLoadsMovementSemantics() {
     blockerSurfaces += surface.role == iggy3d::RoomSpatialSurfaceRole::Blocker ? 1U : 0U;
     projectileBlockers +=
         surface.role == iggy3d::RoomSpatialSurfaceRole::ProjectileBlocker ? 1U : 0U;
+    moderateSlopeSurface =
+        moderateSlopeSurface ||
+        (surface.id == "moderate_slope_walkable" &&
+         surface.role == iggy3d::RoomSpatialSurfaceRole::Walkable &&
+         surface.normal.y > 0.93F && surface.normal.y < 0.95F &&
+         surface.normal.z < -0.33F && surface.normal.z > -0.35F);
+    for (const std::string& tag : surface.traversalTags) {
+      clamberTaggedSurface = clamberTaggedSurface || tag == "clamber";
+    }
   }
   return ok && expect(floor, "movement floor role") &&
          expect(largeFloor, "movement large floor") && expect(wall, "movement wall role") &&
          expect(grid && gridMeshes >= 65U, "movement grid role") &&
          expect(ledge, "movement ledge role") && expect(rail, "movement rail role") &&
-         expect(hazard, "movement hazard role") && expect(dash, "movement dash role") &&
+         expect(hazard, "movement hazard role") && expect(slope, "movement slope role") &&
+         expect(moderateSlopeSurface, "movement moderate slope surface") &&
+         expect(clamberTaggedSurface, "movement clamber traversal tag") &&
+         expect(dash, "movement dash role") &&
          expect(spell, "movement spell role") &&
          expect(walkableSurfaces >= 6U, "movement walkable surfaces") &&
          expect(blockerSurfaces >= 5U, "movement blocker surfaces") &&

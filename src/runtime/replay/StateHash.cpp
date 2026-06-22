@@ -77,6 +77,10 @@ void addCommandRecord(StableHasher& hasher, const CommandRecord& record) {
   addU64(hasher, "retrySourceCommandId", record.payload.retrySourceCommandId);
   addU64(hasher, "attackDamage", static_cast<std::uint64_t>(
                                      static_cast<std::int64_t>(record.payload.attackDamage)));
+  if (record.kind == CommandKind::CastAbility) {
+    addEnum(hasher, "ability", record.payload.ability);
+    addVec3Field(hasher, "abilityDirection", record.payload.abilityDirection);
+  }
   addU64(hasher, "userData0", record.payload.userData0);
   addU64(hasher, "userData1", record.payload.userData1);
   addU64(hasher, "issuedTick", record.issuedTick);
@@ -153,6 +157,15 @@ StateHashValue computeStateHash(const SessionState& state) {
   hasher.addFloatQuantized(state.camera.pitchDegrees);
   hasher.addString("camera.orbitDistance");
   hasher.addFloatQuantized(state.camera.orbitDistance);
+
+  addU64(hasher, "abilities.actor.count", state.abilities.actors.size());
+  for (const AbilityActorState& actor : state.abilities.actors) {
+    addU64(hasher, "abilities.actor", toUint64(actor.actor));
+    addU64(hasher, "abilities.arcaneFocus", actor.arcaneFocus);
+    addU64(hasher, "abilities.arcaneBoltReadyTick", actor.arcaneBoltReadyTick);
+    addU64(hasher, "abilities.arcaneFocusNextRechargeTick",
+           actor.arcaneFocusNextRechargeTick);
+  }
 
   addU64(hasher, "commandLog.count", state.commandLog.records().size());
   for (const CommandRecord& record : state.commandLog.records()) {

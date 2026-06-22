@@ -50,6 +50,9 @@ struct MovementResult {
   MovementBlockedReason blocked = MovementBlockedReason::None;
   CommandId sourceCommandId = kInvalidCommandId;
   float distanceMeters = 0.0F;
+  float horizontalDistanceMeters = 0.0F;
+  float verticalDeltaMeters = 0.0F;
+  float gradePercent = 0.0F;
   bool kinematic = false;
   bool movementClamped = false;
   bool movementSlid = false;
@@ -61,6 +64,7 @@ struct MovementResult {
   float staminaCostMultiplier = 1.0F;
   float stepPenaltyMultiplier = 1.0F;
   std::uint32_t collisionSweepCount = 0;
+  std::string slopeTravelDirection = "stationary";
   std::string movementPolicyBand;
   std::string hitSurfaceId;
   std::string reasonCode = "movement_ok";

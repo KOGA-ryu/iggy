@@ -35,6 +35,12 @@ size_ft = [4.0, 0.05, 4.0]
 material = "playground_hazard"
 
 [[primitive_meshes]]
+id = "slope_probe_marker"
+kind = "box"
+size_ft = [12.0, 0.12, 12.0]
+material = "playground_slope"
+
+[[primitive_meshes]]
 id = "spell_target"
 kind = "box"
 size_ft = [2.0, 2.0, 2.0]

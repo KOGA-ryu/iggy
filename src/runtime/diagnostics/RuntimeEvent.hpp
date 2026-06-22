@@ -16,6 +16,8 @@ enum class RuntimeEventKind : std::uint8_t {
   Interacted,
   CombatAttacked,
   CombatantDefeated,
+  AbilityCast,
+  AbilityImpacted,
   ItemAcquired,
   ObjectiveCompleted,
   ClockChanged,

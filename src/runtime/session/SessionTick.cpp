@@ -1,5 +1,6 @@
 #include "runtime/session/SessionTick.hpp"
 
+#include "runtime/ability/AbilitySystem.hpp"
 #include "runtime/combat/CombatSystem.hpp"
 #include "runtime/interaction/InteractionSystem.hpp"
 #include "runtime/movement/MovementSystem.hpp"
@@ -8,6 +9,9 @@
 namespace iggy3d {
 
 namespace {
+
+constexpr float kCommandAbilityEyeHeightMeters = 1.65F;
+constexpr float kFallbackCommandAbilityTickSeconds = 1.0F / 60.0F;
 
 bool isRetryableSourceKind(CommandKind kind) {
   return kind != CommandKind::None && kind != CommandKind::Retry && kind != CommandKind::Reset &&
@@ -70,6 +74,118 @@ RuntimeEvent makeEvent(RuntimeEventKind kind,
   return event;
 }
 
+RuntimeEvent makeAbilityRuntimeEvent(RuntimeEventKind kind,
+                                     CommandTick tick,
+                                     const AbilityProjectileState& projectile,
+                                     EntityId target) {
+  RuntimeEvent event;
+  event.kind = kind;
+  event.tick = tick;
+  event.commandId = projectile.sourceCommandId;
+  event.actor = projectile.caster;
+  event.target = target;
+  return event;
+}
+
+AbilityId abilityIdForCommand(CommandAbilityKind ability) {
+  switch (ability) {
+    case CommandAbilityKind::ArcaneBolt:
+      return AbilityId::ArcaneBolt;
+    case CommandAbilityKind::None:
+      break;
+  }
+  return AbilityId::None;
+}
+
+float commandAbilityTickSeconds(const ClockState& clock) {
+  if (clock.fixedTickRateHz == 0U) {
+    return kFallbackCommandAbilityTickSeconds;
+  }
+  return 1.0F / static_cast<float>(clock.fixedTickRateHz);
+}
+
+bool executeAbilityCast(SessionState& state,
+                        const EffectiveCommandIntent& intent,
+                        SessionTickResult& result) {
+  const EntityState* actor = state.world.findById(intent.command.actor);
+  if (actor == nullptr || !actor->active) {
+    return false;
+  }
+
+  AbilityCastRequest castRequest;
+  castRequest.ability = abilityIdForCommand(intent.command.payload.ability);
+  castRequest.caster = intent.command.actor;
+  castRequest.originMeters =
+      actor->transform.position + Vec3{0.0F, kCommandAbilityEyeHeightMeters, 0.0F};
+  castRequest.direction = intent.command.payload.abilityDirection;
+  SpatialSurfaceSet emptySurfaces;
+  castRequest.collisionSurfaces = &emptySurfaces;
+  castRequest.sourceCommandId = intent.sourceCommandId;
+  castRequest.currentTick = state.clock.tickIndex;
+
+  const AbilityCastResult cast =
+      castAbility(state.abilities, state.transient.abilityRuntime, castRequest);
+  if (!cast.accepted) {
+    return false;
+  }
+
+  ++state.transient.metrics.abilityCasts;
+  state.transient.events.push_back(
+      makeEvent(RuntimeEventKind::AbilityCast, state.clock.tickIndex, intent));
+  ++result.eventsEmitted;
+  result.executedSequences.push_back(intent.command.sequence);
+  return true;
+}
+
+bool tickActiveAbilityRuntime(SessionState& state,
+                              const SpatialSurfaceSet* collisionSurfaces,
+                              SessionTickResult& result) {
+  if (!abilityRuntimeHasActiveProjectile(state.transient.abilityRuntime)) {
+    return true;
+  }
+
+  SpatialSurfaceSet emptySurfaces;
+  const SpatialSurfaceSet* surfaces =
+      collisionSurfaces == nullptr ? &emptySurfaces : collisionSurfaces;
+  AbilityTickRequest tickRequest;
+  tickRequest.collisionSurfaces = surfaces;
+  tickRequest.world = &state.world;
+  tickRequest.combat = &state.combat;
+  tickRequest.deltaSeconds = commandAbilityTickSeconds(state.clock);
+  const AbilityTickResult tick = tickAbilityRuntime(state.transient.abilityRuntime, tickRequest);
+
+  if (tick.status == AbilityTickStatus::InvalidInput ||
+      tick.status == AbilityTickStatus::MissingCollisionSurfaces) {
+    return false;
+  }
+
+  if (tick.projectileImpact) {
+    ++state.transient.metrics.abilityImpacts;
+    state.transient.events.push_back(makeAbilityRuntimeEvent(
+        RuntimeEventKind::AbilityImpacted, state.clock.tickIndex,
+        state.transient.abilityRuntime.arcaneBolt, tick.hitEntityId));
+    ++result.eventsEmitted;
+  }
+
+  if (tick.damageApplied) {
+    ++result.combatExecuted;
+    ++state.transient.metrics.combatExecutions;
+    state.transient.events.push_back(makeAbilityRuntimeEvent(
+        RuntimeEventKind::CombatAttacked, state.clock.tickIndex,
+        state.transient.abilityRuntime.arcaneBolt, tick.hitEntityId));
+    ++result.eventsEmitted;
+  }
+  if (tick.targetDefeated) {
+    ++state.transient.metrics.combatDefeats;
+    state.transient.events.push_back(makeAbilityRuntimeEvent(
+        RuntimeEventKind::CombatantDefeated, state.clock.tickIndex,
+        state.transient.abilityRuntime.arcaneBolt, tick.hitEntityId));
+    ++result.eventsEmitted;
+  }
+
+  return true;
+}
+
 bool applyObjectiveOutcome(SessionState& state, SessionTickResult& result) {
   if (objectiveComplete(state.objectives, "collect_gold_key") &&
       state.outcome != SessionOutcome::DemoComplete) {
@@ -101,7 +217,9 @@ SessionTickResult runSessionTick(const SessionTickInput& input) {
     result.status = SessionTickStatus::BlockedByPausedClock;
     return result;
   }
-  if (input.acceptedCommands.empty()) {
+  if (input.acceptedCommands.empty() &&
+      !abilityRuntimeHasActiveProjectile(state.transient.abilityRuntime) &&
+      !abilityStateHasPendingRecharge(state.abilities)) {
     result.status = SessionTickStatus::NoWork;
     return result;
   }
@@ -191,6 +309,14 @@ SessionTickResult runSessionTick(const SessionTickInput& input) {
       continue;
     }
 
+    if (intent.effectiveKind == CommandKind::CastAbility) {
+      if (!executeAbilityCast(state, intent, result)) {
+        result.status = SessionTickStatus::InvalidState;
+        return result;
+      }
+      continue;
+    }
+
     if (intent.effectiveKind == CommandKind::Inspect || intent.effectiveKind == CommandKind::Wait) {
       result.executedSequences.push_back(intent.command.sequence);
       continue;
@@ -200,6 +326,12 @@ SessionTickResult runSessionTick(const SessionTickInput& input) {
     return result;
   }
 
+  if (!tickActiveAbilityRuntime(state, input.collisionSurfaces, result)) {
+    result.status = SessionTickStatus::InvalidState;
+    return result;
+  }
+
+  static_cast<void>(tickAbilityState(state.abilities, state.clock.tickIndex));
   (void)applyObjectiveOutcome(state, result);
   ++state.clock.tickIndex;
   ++state.transient.metrics.ticksRun;

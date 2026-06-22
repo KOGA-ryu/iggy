@@ -45,6 +45,10 @@ struct SaveSessionSection {
   CommandId nextCommandId = 1;
   std::uint64_t sessionSeed = 0;
   std::uint32_t sessionSchemaVersion = 1;
+  std::uint32_t fixedTickRateHz = 20;
+  float interactionRangeMeters = 1.500F;
+  float movementDistanceMeters = 3.000F;
+  float slowTimeScale = 0.250F;
   std::string packageId;
   std::string scenarioId;
 };
@@ -117,6 +121,8 @@ struct SaveCommandRecord {
   Vec3 targetPoint;
   CommandId retrySourceCommandId = kInvalidCommandId;
   std::int32_t attackDamage = 0;
+  CommandAbilityKind ability = CommandAbilityKind::None;
+  Vec3 abilityDirection;
   CommandTick issuedTick = kInvalidCommandTick;
   CommandTick scheduledTick = kInvalidCommandTick;
   CommandAdmissionStatus admission = CommandAdmissionStatus::Pending;
@@ -128,6 +134,17 @@ struct SaveCommandLogSection {
   CommandSequence nextSequence = 1;
   std::uint64_t epoch = 0;
   std::vector<SaveCommandRecord> records;
+};
+
+struct SaveAbilityActorRecord {
+  EntityId actor;
+  std::uint32_t arcaneFocus = 0;
+  CommandTick arcaneBoltReadyTick = 0;
+  CommandTick arcaneFocusNextRechargeTick = 0;
+};
+
+struct SaveAbilitySection {
+  std::vector<SaveAbilityActorRecord> actors;
 };
 
 struct SaveInventoryStackRecord {
@@ -187,6 +204,7 @@ struct SaveEnvelope {
   SavePlayerSection players;
   SaveClockSection clock;
   SaveCameraSection camera;
+  SaveAbilitySection abilities;
   SaveCommandLogSection commandLog;
   SaveInventorySection inventory;
   SaveCombatSection combat;

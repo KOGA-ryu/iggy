@@ -14,6 +14,7 @@
 
 namespace iggy3d {
 
+class SpatialSurfaceSet;
 struct SaveEnvelope;
 struct RuntimeEvent;
 
@@ -84,9 +85,10 @@ public:
 
   SessionCommandResult submitCommand(const CommandRecord& command);
 
-  StatusResult tick();
-  StatusResult stepOneTick();
-  StatusResult runUntilIdle(std::uint32_t maxTicks);
+  StatusResult tick(const SpatialSurfaceSet* collisionSurfaces = nullptr);
+  StatusResult stepOneTick(const SpatialSurfaceSet* collisionSurfaces = nullptr);
+  StatusResult runUntilIdle(std::uint32_t maxTicks,
+                            const SpatialSurfaceSet* collisionSurfaces = nullptr);
 
   SessionResetResult resetToBaseline();
   SessionLoadResult replaceStateFromLoad(SessionState loadedState);

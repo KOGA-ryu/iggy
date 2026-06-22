@@ -60,6 +60,16 @@ set_tests_properties(entity_hit_query_tests PROPERTIES LABELS "unit;runtime;coll
 iggy3d_add_unit_test(movement_policy_tests tests/unit/movement_policy_tests.cpp)
 set_tests_properties(movement_policy_tests PROPERTIES LABELS "unit;runtime;movement;policy;iggy3d")
 
+iggy3d_add_unit_test(movement_kinematics_tests tests/unit/movement_kinematics_tests.cpp)
+set_tests_properties(movement_kinematics_tests PROPERTIES LABELS "unit;runtime;movement;math;iggy3d")
+
+iggy3d_add_unit_test(movement_traversal_tests tests/unit/movement_traversal_tests.cpp)
+set_tests_properties(movement_traversal_tests PROPERTIES LABELS "unit;runtime;movement;traversal;iggy3d")
+
+iggy3d_add_unit_test(movement_traversal_slots_tests tests/unit/movement_traversal_slots_tests.cpp)
+set_tests_properties(movement_traversal_slots_tests PROPERTIES
+  LABELS "unit;runtime;movement;traversal;slots;iggy3d")
+
 iggy3d_add_unit_test(player_motor_tests tests/unit/player_motor_tests.cpp)
 set_tests_properties(player_motor_tests PROPERTIES LABELS "unit;runtime;player;movement;iggy3d")
 
@@ -80,6 +90,9 @@ set_tests_properties(projectile_system_tests PROPERTIES LABELS "unit;runtime;pro
 
 iggy3d_add_unit_test(ability_system_tests tests/unit/ability_system_tests.cpp)
 set_tests_properties(ability_system_tests PROPERTIES LABELS "unit;runtime;ability;iggy3d")
+
+iggy3d_add_unit_test(ability_command_tests tests/unit/ability_command_tests.cpp)
+set_tests_properties(ability_command_tests PROPERTIES LABELS "unit;runtime;ability;command;iggy3d")
 
 iggy3d_add_unit_test(target_reach_tests tests/unit/target_reach_tests.cpp)
 set_tests_properties(target_reach_tests PROPERTIES LABELS "unit;runtime;targeting;iggy3d")

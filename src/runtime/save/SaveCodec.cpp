@@ -291,6 +291,7 @@ std::string enumText(CommandKind value) {
     case CommandKind::Interact: return "Interact";
     case CommandKind::Inspect: return "Inspect";
     case CommandKind::Attack: return "Attack";
+    case CommandKind::CastAbility: return "CastAbility";
     case CommandKind::Wait: return "Wait";
     case CommandKind::ToggleTacticalMode: return "ToggleTacticalMode";
     case CommandKind::Pause: return "Pause";
@@ -300,6 +301,15 @@ std::string enumText(CommandKind value) {
     case CommandKind::Reset: return "Reset";
     case CommandKind::Save: return "Save";
     case CommandKind::Load: return "Load";
+  }
+  return "None";
+}
+
+template <>
+std::string enumText(CommandAbilityKind value) {
+  switch (value) {
+    case CommandAbilityKind::None: return "None";
+    case CommandAbilityKind::ArcaneBolt: return "ArcaneBolt";
   }
   return "None";
 }
@@ -357,6 +367,9 @@ std::string enumText(CommandRejectionReason value) {
     case CommandRejectionReason::SaveUnavailable: return "SaveUnavailable";
     case CommandRejectionReason::LoadUnavailable: return "LoadUnavailable";
     case CommandRejectionReason::IncompatibleSave: return "IncompatibleSave";
+    case CommandRejectionReason::AbilitySlotBusy: return "AbilitySlotBusy";
+    case CommandRejectionReason::AbilityOnCooldown: return "AbilityOnCooldown";
+    case CommandRejectionReason::AbilityInsufficientResource: return "AbilityInsufficientResource";
     case CommandRejectionReason::InternalError: return "InternalError";
   }
   return "None";
@@ -489,6 +502,7 @@ bool parseEnum(std::string_view value, CommandKind& out) {
   IGGY3D_ENUM_PARSE(CommandKind, Interact)
   IGGY3D_ENUM_PARSE(CommandKind, Inspect)
   IGGY3D_ENUM_PARSE(CommandKind, Attack)
+  IGGY3D_ENUM_PARSE(CommandKind, CastAbility)
   IGGY3D_ENUM_PARSE(CommandKind, Wait)
   IGGY3D_ENUM_PARSE(CommandKind, ToggleTacticalMode)
   IGGY3D_ENUM_PARSE(CommandKind, Pause)
@@ -498,6 +512,13 @@ bool parseEnum(std::string_view value, CommandKind& out) {
   IGGY3D_ENUM_PARSE(CommandKind, Reset)
   IGGY3D_ENUM_PARSE(CommandKind, Save)
   IGGY3D_ENUM_PARSE(CommandKind, Load)
+  return false;
+}
+
+template <>
+bool parseEnum(std::string_view value, CommandAbilityKind& out) {
+  IGGY3D_ENUM_PARSE(CommandAbilityKind, None)
+  IGGY3D_ENUM_PARSE(CommandAbilityKind, ArcaneBolt)
   return false;
 }
 
@@ -549,6 +570,9 @@ bool parseEnum(std::string_view value, CommandRejectionReason& out) {
   IGGY3D_ENUM_PARSE(CommandRejectionReason, SaveUnavailable)
   IGGY3D_ENUM_PARSE(CommandRejectionReason, LoadUnavailable)
   IGGY3D_ENUM_PARSE(CommandRejectionReason, IncompatibleSave)
+  IGGY3D_ENUM_PARSE(CommandRejectionReason, AbilitySlotBusy)
+  IGGY3D_ENUM_PARSE(CommandRejectionReason, AbilityOnCooldown)
+  IGGY3D_ENUM_PARSE(CommandRejectionReason, AbilityInsufficientResource)
   IGGY3D_ENUM_PARSE(CommandRejectionReason, InternalError)
   return false;
 }
@@ -583,6 +607,7 @@ public:
     writePlayers();
     writeClock();
     writeCamera();
+    writeAbilities();
     writeCommandLog();
     writeInventory();
     writeCombat();
@@ -627,6 +652,10 @@ private:
     line("session.nextCommandId", unsignedText(envelope_.session.nextCommandId));
     line("session.sessionSeed", unsignedText(envelope_.session.sessionSeed));
     line("session.sessionSchemaVersion", unsignedText(envelope_.session.sessionSchemaVersion));
+    line("session.fixedTickRateHz", unsignedText(envelope_.session.fixedTickRateHz));
+    line("session.interactionRangeMeters", formatFloat(envelope_.session.interactionRangeMeters));
+    line("session.movementDistanceMeters", formatFloat(envelope_.session.movementDistanceMeters));
+    line("session.slowTimeScale", formatFloat(envelope_.session.slowTimeScale));
     lineString("session.packageId", envelope_.session.packageId);
     lineString("session.scenarioId", envelope_.session.scenarioId);
   }
@@ -694,6 +723,19 @@ private:
     line("camera.orbitDistance", formatFloat(envelope_.camera.orbitDistance));
   }
 
+  void writeAbilities() {
+    line("abilities.actor.count", unsignedText(envelope_.abilities.actors.size()));
+    for (std::size_t index = 0; index < envelope_.abilities.actors.size(); ++index) {
+      const SaveAbilityActorRecord& actor = envelope_.abilities.actors[index];
+      const std::string p = "abilities.actor." + std::to_string(index) + ".";
+      line(p + "actor", unsignedText(toUint64(actor.actor)));
+      line(p + "arcaneFocus", unsignedText(actor.arcaneFocus));
+      line(p + "arcaneBoltReadyTick", unsignedText(actor.arcaneBoltReadyTick));
+      line(p + "arcaneFocusNextRechargeTick",
+           unsignedText(actor.arcaneFocusNextRechargeTick));
+    }
+  }
+
   void writeCommandLog() {
     lineEnum("commandLog.resetPolicy", envelope_.commandLog.resetPolicy);
     line("commandLog.nextSequence", unsignedText(envelope_.commandLog.nextSequence));
@@ -714,6 +756,8 @@ private:
       line(p + "targetPoint", formatVec3(record.targetPoint));
       line(p + "retrySourceCommandId", unsignedText(record.retrySourceCommandId));
       line(p + "attackDamage", std::to_string(record.attackDamage));
+      lineEnum(p + "ability", record.ability);
+      line(p + "abilityDirection", formatVec3(record.abilityDirection));
       line(p + "issuedTick", unsignedText(record.issuedTick));
       line(p + "scheduledTick", unsignedText(record.scheduledTick));
       lineEnum(p + "admission", record.admission);
@@ -807,6 +851,7 @@ public:
     readPlayers();
     readClock();
     readCamera();
+    readAbilities();
     readCommandLog();
     readInventory();
     readCombat();
@@ -1002,6 +1047,10 @@ private:
     readUnsigned("session.nextCommandId", envelope_.session.nextCommandId, SaveCodecStatus::InvalidId);
     readUnsigned("session.sessionSeed", envelope_.session.sessionSeed);
     readUnsigned("session.sessionSchemaVersion", envelope_.session.sessionSchemaVersion);
+    readUnsigned("session.fixedTickRateHz", envelope_.session.fixedTickRateHz);
+    readFloat("session.interactionRangeMeters", envelope_.session.interactionRangeMeters);
+    readFloat("session.movementDistanceMeters", envelope_.session.movementDistanceMeters);
+    readFloat("session.slowTimeScale", envelope_.session.slowTimeScale);
     readString("session.packageId", envelope_.session.packageId);
     readString("session.scenarioId", envelope_.session.scenarioId);
   }
@@ -1075,6 +1124,26 @@ private:
     readFloat("camera.orbitDistance", envelope_.camera.orbitDistance);
   }
 
+  void readAbilities() {
+    if (!nextKeyIs("abilities.actor.count")) {
+      return;
+    }
+    std::uint64_t count = 0;
+    readUnsigned("abilities.actor.count", count);
+    envelope_.abilities.actors.resize(static_cast<std::size_t>(count));
+    for (std::size_t index = 0; index < envelope_.abilities.actors.size(); ++index) {
+      SaveAbilityActorRecord& actor = envelope_.abilities.actors[index];
+      const std::string p = "abilities.actor." + std::to_string(index) + ".";
+      readEntityId(p + "actor", actor.actor);
+      readUnsigned(p + "arcaneFocus", actor.arcaneFocus);
+      readUnsigned(p + "arcaneBoltReadyTick", actor.arcaneBoltReadyTick);
+      if (nextKeyIs(p + "arcaneFocusNextRechargeTick")) {
+        readUnsigned(p + "arcaneFocusNextRechargeTick",
+                     actor.arcaneFocusNextRechargeTick);
+      }
+    }
+  }
+
   void readCommandLog() {
     readEnum("commandLog.resetPolicy", envelope_.commandLog.resetPolicy);
     if (envelope_.commandLog.resetPolicy != CommandLogResetPolicy::Clear) {
@@ -1101,6 +1170,10 @@ private:
       readVec3(p + "targetPoint", record.targetPoint);
       readUnsigned(p + "retrySourceCommandId", record.retrySourceCommandId, SaveCodecStatus::InvalidId);
       readOptionalI32(p + "attackDamage", record.attackDamage);
+      if (nextKeyIs(p + "ability")) {
+        readEnum(p + "ability", record.ability);
+        readVec3(p + "abilityDirection", record.abilityDirection);
+      }
       readUnsigned(p + "issuedTick", record.issuedTick);
       readUnsigned(p + "scheduledTick", record.scheduledTick);
       readEnum(p + "admission", record.admission);

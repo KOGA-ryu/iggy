@@ -757,6 +757,38 @@ size_ft = [6.0, 2.00, 2.0]
 material = "playground_ledge"
 
 [[static_meshes]]
+id = "clamber_mid_wall"
+mesh = "test_block"
+role = "ledge"
+position_ft = [12.0, 2.00, 32.0]
+size_ft = [6.0, 4.00, 2.0]
+material = "playground_ledge"
+
+[[static_meshes]]
+id = "clamber_high_wall"
+mesh = "test_block"
+role = "ledge"
+position_ft = [22.0, 2.75, 32.0]
+size_ft = [6.0, 5.50, 2.0]
+material = "playground_ledge"
+
+[[static_meshes]]
+id = "clamber_too_high_wall"
+mesh = "test_block"
+role = "ledge"
+position_ft = [32.0, 3.50, 32.0]
+size_ft = [6.0, 7.00, 2.0]
+material = "playground_ledge"
+
+[[static_meshes]]
+id = "clamber_narrow_wall"
+mesh = "test_block"
+role = "ledge"
+position_ft = [42.0, 1.00, 32.0]
+size_ft = [1.0, 2.00, 1.0]
+material = "playground_ledge"
+
+[[static_meshes]]
 id = "vault_rail"
 mesh = "rail"
 role = "rail"
@@ -884,6 +916,14 @@ position_ft = [36.0, 2.0, 26.0]
 size_ft = [1.0, 4.0, 12.0]
 material = "playground_wall"
 
+[[static_meshes]]
+id = "moderate_slope_probe"
+mesh = "slope_probe_marker"
+role = "slope"
+position_ft = [62.0, 2.28, 42.0]
+size_ft = [12.0, 0.12, 12.0]
+material = "playground_slope"
+
 [[spatial_surfaces]]
 id = "main_floor_walkable"
 source_static_mesh = "main_floor"
@@ -930,7 +970,59 @@ shape = "plane"
 role = "walkable"
 points_ft = [[9.0, 2.0, 23.0], [15.0, 2.0, 23.0], [15.0, 2.0, 25.0], [9.0, 2.0, 25.0]]
 normal = [0.0, 1.0, 0.0]
-traversal_tags = ["walkable"]
+traversal_tags = ["walkable", "clamber"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "clamber_mid_top_walkable"
+source_static_mesh = "clamber_mid_wall"
+shape = "plane"
+role = "walkable"
+points_ft = [[9.0, 4.0, 31.0], [15.0, 4.0, 31.0], [15.0, 4.0, 33.0], [9.0, 4.0, 33.0]]
+normal = [0.0, 1.0, 0.0]
+traversal_tags = ["walkable", "clamber"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "clamber_high_top_walkable"
+source_static_mesh = "clamber_high_wall"
+shape = "plane"
+role = "walkable"
+points_ft = [[19.0, 5.5, 31.0], [25.0, 5.5, 31.0], [25.0, 5.5, 33.0], [19.0, 5.5, 33.0]]
+normal = [0.0, 1.0, 0.0]
+traversal_tags = ["walkable", "clamber"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "clamber_too_high_top_walkable"
+source_static_mesh = "clamber_too_high_wall"
+shape = "plane"
+role = "walkable"
+points_ft = [[29.0, 7.0, 31.0], [35.0, 7.0, 31.0], [35.0, 7.0, 33.0], [29.0, 7.0, 33.0]]
+normal = [0.0, 1.0, 0.0]
+traversal_tags = ["walkable", "clamber"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "clamber_narrow_top_walkable"
+source_static_mesh = "clamber_narrow_wall"
+shape = "plane"
+role = "walkable"
+points_ft = [[41.5, 2.0, 31.5], [42.5, 2.0, 31.5], [42.5, 2.0, 32.5], [41.5, 2.0, 32.5]]
+normal = [0.0, 1.0, 0.0]
+traversal_tags = ["walkable", "clamber"]
 collision_mask = ["actor"]
 blocks_actor = false
 blocks_projectile = false
@@ -969,6 +1061,19 @@ shape = "plane"
 role = "walkable"
 points_ft = [[14.0, 1.5, 12.0], [18.0, 1.5, 12.0], [18.0, 1.5, 16.0], [14.0, 1.5, 16.0]]
 normal = [0.0, 1.0, 0.0]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "moderate_slope_walkable"
+source_static_mesh = "moderate_slope_probe"
+shape = "plane"
+role = "walkable"
+points_ft = [[56.0, 0.10, 36.0], [68.0, 0.10, 36.0], [68.0, 4.47, 48.0], [56.0, 4.47, 48.0]]
+normal = [0.0, 0.9396926, -0.3420201]
 traversal_tags = ["walkable"]
 collision_mask = ["actor"]
 blocks_actor = false
@@ -1034,7 +1139,59 @@ shape = "box"
 role = "blocker"
 points_ft = [[9.0, 0.0, 23.0], [15.0, 0.0, 23.0], [15.0, 2.0, 25.0], [9.0, 2.0, 25.0]]
 normal = [0.0, 0.0, -1.0]
-traversal_tags = ["blocker"]
+traversal_tags = ["blocker", "clamber"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "clamber_mid_wall_actor_blocker"
+source_static_mesh = "clamber_mid_wall"
+shape = "box"
+role = "blocker"
+points_ft = [[9.0, 0.0, 31.0], [15.0, 0.0, 31.0], [15.0, 4.0, 33.0], [9.0, 4.0, 33.0]]
+normal = [0.0, 0.0, -1.0]
+traversal_tags = ["blocker", "clamber"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "clamber_high_wall_actor_blocker"
+source_static_mesh = "clamber_high_wall"
+shape = "box"
+role = "blocker"
+points_ft = [[19.0, 0.0, 31.0], [25.0, 0.0, 31.0], [25.0, 5.5, 33.0], [19.0, 5.5, 33.0]]
+normal = [0.0, 0.0, -1.0]
+traversal_tags = ["blocker", "clamber"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "clamber_too_high_wall_actor_blocker"
+source_static_mesh = "clamber_too_high_wall"
+shape = "box"
+role = "blocker"
+points_ft = [[29.0, 0.0, 31.0], [35.0, 0.0, 31.0], [35.0, 7.0, 33.0], [29.0, 7.0, 33.0]]
+normal = [0.0, 0.0, -1.0]
+traversal_tags = ["blocker", "clamber"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "clamber_narrow_wall_actor_blocker"
+source_static_mesh = "clamber_narrow_wall"
+shape = "box"
+role = "blocker"
+points_ft = [[41.5, 0.0, 31.5], [42.5, 0.0, 31.5], [42.5, 2.0, 32.5], [41.5, 2.0, 32.5]]
+normal = [0.0, 0.0, -1.0]
+traversal_tags = ["blocker", "clamber"]
 collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
@@ -1107,3 +1264,8 @@ id = "spell_target_beta"
 kind = "npc"
 position_ft = [12.0, 0.0, 10.0]
 runtime_stable_name = "spell_target_beta"
+
+[[anchors]]
+id = "moderate_slope_probe"
+kind = "movement_probe"
+position_ft = [62.0, 2.28, 42.0]

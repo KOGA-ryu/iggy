@@ -253,6 +253,12 @@ bool kinematicFlatMovementSnapsAndMutatesOnce() {
          expect(result.kinematic, "kinematic flag") &&
          expect(result.movementPolicyBand == "flat", "flat band") &&
          expect(result.groundSnapApplied, "ground snap applied") &&
+         expect(result.slopeTravelDirection == "downhill", "flat snap direction") &&
+         expect(result.horizontalDistanceMeters > 0.99F &&
+                    result.horizontalDistanceMeters < 1.01F,
+                "flat horizontal distance") &&
+         expect(result.verticalDeltaMeters < -0.39F && result.verticalDeltaMeters > -0.41F,
+                "flat snap vertical delta") &&
          expect(iggy3d::nearlyEqual(result.finalPosition, {1.0F, 0.0F, 0.0F}), "flat final") &&
          expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
                                     {1.0F, 0.0F, 0.0F}),
@@ -325,8 +331,38 @@ bool kinematicModerateSlopeAppliesSpeedMultiplier() {
          expect(result.movementPolicyBand == "moderate", "moderate band") &&
          expect(result.carefulFooting, "careful footing") &&
          expect(result.speedMultiplier < 1.0F, "speed reduced") &&
+         expect(result.slopeTravelDirection == "contour", "moderate contour direction") &&
+         expect(result.horizontalDistanceMeters > 0.70F &&
+                    result.horizontalDistanceMeters < 0.80F,
+                "moderate horizontal distance") &&
          expect(result.finalPosition.x > 0.70F && result.finalPosition.x < 0.80F,
                 "moderate distance reduced");
+}
+
+bool kinematicModerateSlopeReportsDirectionalGrade() {
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet({slopeSurface("moderate_slope", 20.0F)});
+
+  iggy3d::WorldState uphillWorld = makeWorldAt({0.0F, 0.0F, 0.0F});
+  iggy3d::MovementSystemContext uphillContext{&uphillWorld, &config, &surfaces};
+  const iggy3d::MovementResult uphill =
+      iggy3d::executeKinematicMovement(uphillContext, kinematicRequest({0.0F, 0.0F, 1.0F}));
+
+  iggy3d::WorldState downhillWorld = makeWorldAt({0.0F, 0.0F, 0.0F});
+  iggy3d::MovementSystemContext downhillContext{&downhillWorld, &config, &surfaces};
+  const iggy3d::MovementResult downhill =
+      iggy3d::executeKinematicMovement(downhillContext, kinematicRequest({0.0F, 0.0F, -1.0F}));
+
+  return expect(uphill.blocked == iggy3d::MovementBlockedReason::None, "uphill ok") &&
+         expect(uphill.slopeTravelDirection == "uphill", "uphill direction") &&
+         expect(uphill.horizontalDistanceMeters > 0.60F, "uphill horizontal distance") &&
+         expect(uphill.verticalDeltaMeters > 0.20F, "uphill vertical delta") &&
+         expect(uphill.gradePercent > 30.0F, "uphill grade") &&
+         expect(downhill.blocked == iggy3d::MovementBlockedReason::None, "downhill ok") &&
+         expect(downhill.slopeTravelDirection == "downhill", "downhill direction") &&
+         expect(downhill.horizontalDistanceMeters > 0.60F, "downhill horizontal distance") &&
+         expect(downhill.verticalDeltaMeters < -0.20F, "downhill vertical delta") &&
+         expect(downhill.gradePercent < -30.0F, "downhill grade");
 }
 
 bool kinematicMissingSurfacesAndInvalidParamsDoNotMutate() {
@@ -370,6 +406,7 @@ int main() {
                   kinematicOpeningDoesNotBlockActor() &&
                   kinematicBlockedSlopeRejectsWithoutMutation() &&
                   kinematicModerateSlopeAppliesSpeedMultiplier() &&
+                  kinematicModerateSlopeReportsDirectionalGrade() &&
                   kinematicMissingSurfacesAndInvalidParamsDoNotMutate();
   return ok ? 0 : 1;
 }

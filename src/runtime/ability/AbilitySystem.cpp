@@ -10,14 +10,23 @@ namespace iggy3d {
 namespace {
 
 constexpr float kAbilityEpsilon = 0.0001F;
-constexpr float kArcaneBoltMuzzleOffsetMeters = 0.75F;
-constexpr float kArcaneBoltSpeedMetersPerSecond = 12.0F;
-constexpr std::int32_t kArcaneBoltDamage = 3;
-constexpr ProjectileMotionParams kArcaneBoltMotion{
-    1.50F,
-    3.0F,
-    45.0F,
-    0.07F,
+constexpr AbilityDefinition kArcaneBoltDefinition{
+    AbilityId::ArcaneBolt,
+    "arcane_bolt",
+    "arcane_bolt_projectile",
+    0.75F,
+    12.0F,
+    ProjectileMotionParams{
+        1.50F,
+        3.0F,
+        45.0F,
+        0.07F,
+    },
+    3,
+    1,
+    3,
+    8,
+    20,
 };
 
 float vectorLength(Vec3 value) {
@@ -30,10 +39,14 @@ Vec3 normalized(Vec3 value) {
 
 AbilityCastResult rejected(AbilityId ability,
                            AbilityCastStatus status,
-                           std::string reasonCode) {
+                           std::string reasonCode,
+                           const AbilityDefinition* definition = nullptr) {
   AbilityCastResult result;
   result.ability = ability;
   result.status = status;
+  if (definition != nullptr) {
+    result.resourceCost = definition->resourceCost;
+  }
   result.reasonCode = std::move(reasonCode);
   return result;
 }
@@ -79,6 +92,119 @@ AbilityProjectileState& projectileSlot(AbilityRuntimeState& state, AbilityId abi
   return state.arcaneBolt;
 }
 
+const AbilityProjectileState& projectileSlot(const AbilityRuntimeState& state, AbilityId ability) {
+  switch (ability) {
+    case AbilityId::ArcaneBolt:
+      return state.arcaneBolt;
+    case AbilityId::None:
+      break;
+  }
+  return state.arcaneBolt;
+}
+
+const AbilityActorState* findActorState(const AbilityState& state, EntityId actor) {
+  for (const AbilityActorState& candidate : state.actors) {
+    if (candidate.actor == actor) {
+      return &candidate;
+    }
+  }
+  return nullptr;
+}
+
+AbilityActorState defaultActorState(EntityId actor, const AbilityDefinition& definition) {
+  AbilityActorState state;
+  state.actor = actor;
+  state.arcaneFocus = definition.maxResource;
+  return state;
+}
+
+std::uint32_t rechargeActorResource(AbilityActorState& actor,
+                                    const AbilityDefinition& definition,
+                                    CommandTick currentTick) {
+  if (definition.resourceRechargeTicks == 0U) {
+    return 0;
+  }
+  if (actor.arcaneFocus >= definition.maxResource) {
+    actor.arcaneFocus = definition.maxResource;
+    actor.arcaneFocusNextRechargeTick = 0;
+    return 0;
+  }
+  if (actor.arcaneFocusNextRechargeTick == 0U) {
+    actor.arcaneFocusNextRechargeTick = currentTick + definition.resourceRechargeTicks;
+    return 0;
+  }
+
+  std::uint32_t recovered = 0;
+  while (actor.arcaneFocus < definition.maxResource &&
+         currentTick >= actor.arcaneFocusNextRechargeTick) {
+    ++actor.arcaneFocus;
+    ++recovered;
+    if (actor.arcaneFocus < definition.maxResource) {
+      actor.arcaneFocusNextRechargeTick += definition.resourceRechargeTicks;
+    } else {
+      actor.arcaneFocusNextRechargeTick = 0;
+    }
+  }
+  return recovered;
+}
+
+AbilityActorState rechargedActorState(AbilityActorState actor,
+                                      const AbilityDefinition& definition,
+                                      CommandTick currentTick) {
+  static_cast<void>(rechargeActorResource(actor, definition, currentTick));
+  return actor;
+}
+
+void scheduleResourceRechargeAfterSpend(AbilityActorState& actor,
+                                        const AbilityDefinition& definition,
+                                        CommandTick currentTick) {
+  if (definition.resourceRechargeTicks == 0U ||
+      actor.arcaneFocus >= definition.maxResource ||
+      actor.arcaneFocusNextRechargeTick != 0U) {
+    return;
+  }
+  actor.arcaneFocusNextRechargeTick = currentTick + definition.resourceRechargeTicks;
+}
+
+AbilityActorState actorStateForRead(const AbilityState& state,
+                                    EntityId actor,
+                                    const AbilityDefinition& definition) {
+  const AbilityActorState* existing = findActorState(state, actor);
+  return existing == nullptr ? defaultActorState(actor, definition) : *existing;
+}
+
+AbilityActorState& actorStateForWrite(AbilityState& state,
+                                      EntityId actor,
+                                      const AbilityDefinition& definition) {
+  for (AbilityActorState& candidate : state.actors) {
+    if (candidate.actor == actor) {
+      return candidate;
+    }
+  }
+  state.actors.push_back(defaultActorState(actor, definition));
+  return state.actors.back();
+}
+
+CommandTick cooldownReadyTick(const AbilityActorState& state, AbilityId ability) {
+  switch (ability) {
+    case AbilityId::ArcaneBolt:
+      return state.arcaneBoltReadyTick;
+    case AbilityId::None:
+      break;
+  }
+  return 0;
+}
+
+void setCooldownReadyTick(AbilityActorState& state, AbilityId ability, CommandTick readyTick) {
+  switch (ability) {
+    case AbilityId::ArcaneBolt:
+      state.arcaneBoltReadyTick = readyTick;
+      return;
+    case AbilityId::None:
+      break;
+  }
+}
+
 bool canQueryEntityHit(const AbilityTickRequest& request, const ProjectileStepResult& stepped) {
   return request.world != nullptr &&
          (stepped.status == ProjectileStepStatus::Advanced ||
@@ -112,7 +238,7 @@ void applyEntityImpact(AbilityProjectileState& projectile,
   }
   const CombatAttackResult attack =
       applyAttack(*request.combat,
-                  CombatAttackRequest{projectile.caster, hit.entity, kArcaneBoltDamage,
+                  CombatAttackRequest{projectile.caster, hit.entity, kArcaneBoltDefinition.damage,
                                       projectile.sourceCommandId});
   if (attack.status != CombatStatus::Succeeded) {
     return;
@@ -166,6 +292,10 @@ std::string_view abilityCastStatusName(AbilityCastStatus status) {
       return "missing_collision_surfaces";
     case AbilityCastStatus::ProjectileSlotBusy:
       return "projectile_slot_busy";
+    case AbilityCastStatus::OnCooldown:
+      return "on_cooldown";
+    case AbilityCastStatus::InsufficientResource:
+      return "insufficient_resource";
   }
   return "invalid_ability";
 }
@@ -202,9 +332,21 @@ std::string_view abilityImpactKindName(AbilityImpactKind kind) {
   return "none";
 }
 
-AbilityCastResult castAbility(AbilityRuntimeState& state,
-                              const AbilityCastRequest& request) {
-  if (request.ability != AbilityId::ArcaneBolt) {
+const AbilityDefinition* findAbilityDefinition(AbilityId ability) {
+  switch (ability) {
+    case AbilityId::ArcaneBolt:
+      return &kArcaneBoltDefinition;
+    case AbilityId::None:
+      break;
+  }
+  return nullptr;
+}
+
+AbilityCastResult inspectAbilityCast(const AbilityState& abilityState,
+                                     const AbilityRuntimeState& runtimeState,
+                                     const AbilityCastRequest& request) {
+  const AbilityDefinition* definition = findAbilityDefinition(request.ability);
+  if (definition == nullptr) {
     return rejected(request.ability, AbilityCastStatus::InvalidAbility,
                     "ability_invalid_ability");
   }
@@ -222,16 +364,71 @@ AbilityCastResult castAbility(AbilityRuntimeState& state,
   }
   if (request.collisionSurfaces == nullptr) {
     return rejected(request.ability, AbilityCastStatus::MissingCollisionSurfaces,
-                    "ability_missing_collision_surfaces");
+                    "ability_missing_collision_surfaces", definition);
   }
 
-  AbilityProjectileState& projectile = projectileSlot(state, request.ability);
+  const AbilityProjectileState& projectile = projectileSlot(runtimeState, request.ability);
   if (projectile.spawned && projectile.projectile.active) {
     return rejected(request.ability, AbilityCastStatus::ProjectileSlotBusy,
-                    "ability_projectile_slot_busy");
+                    "ability_projectile_slot_busy", definition);
   }
 
+  const AbilityActorState actorState =
+      rechargedActorState(actorStateForRead(abilityState, request.caster, *definition),
+                          *definition, request.currentTick);
+  const CommandTick readyTick = cooldownReadyTick(actorState, request.ability);
+  if (request.currentTick < readyTick) {
+    AbilityCastResult result =
+        rejected(request.ability, AbilityCastStatus::OnCooldown,
+                 "ability_on_cooldown", definition);
+    result.cooldownReadyTick = readyTick;
+    result.resourceRemaining = actorState.arcaneFocus;
+    return result;
+  }
+  if (actorState.arcaneFocus < definition->resourceCost) {
+    AbilityCastResult result =
+        rejected(request.ability, AbilityCastStatus::InsufficientResource,
+                 "ability_insufficient_resource", definition);
+    result.cooldownReadyTick = readyTick;
+    result.resourceRemaining = actorState.arcaneFocus;
+    return result;
+  }
+
+  AbilityCastResult result;
+  result.status = AbilityCastStatus::Accepted;
+  result.ability = request.ability;
+  result.accepted = true;
+  result.resourceRemaining = actorState.arcaneFocus;
+  result.resourceCost = definition->resourceCost;
+  result.cooldownReadyTick = readyTick;
+  result.reasonCode = "ability_cast_available";
+  return result;
+}
+
+AbilityCastResult castAbility(AbilityState& abilityState,
+                              AbilityRuntimeState& runtimeState,
+                              const AbilityCastRequest& request) {
+  AbilityCastResult available = inspectAbilityCast(abilityState, runtimeState, request);
+  if (!available.accepted) {
+    return available;
+  }
+
+  const AbilityDefinition* definition = findAbilityDefinition(request.ability);
+  if (definition == nullptr) {
+    return rejected(request.ability, AbilityCastStatus::InvalidAbility,
+                    "ability_invalid_ability");
+  }
+
+  AbilityActorState& actorState =
+      actorStateForWrite(abilityState, request.caster, *definition);
+  static_cast<void>(rechargeActorResource(actorState, *definition, request.currentTick));
+  actorState.arcaneFocus -= definition->resourceCost;
+  scheduleResourceRechargeAfterSpend(actorState, *definition, request.currentTick);
+  setCooldownReadyTick(actorState, request.ability,
+                       request.currentTick + definition->cooldownTicks);
+
   const Vec3 direction = normalized(request.direction);
+  AbilityProjectileState& projectile = projectileSlot(runtimeState, request.ability);
   projectile = AbilityProjectileState{};
   projectile.ability = request.ability;
   projectile.spawned = true;
@@ -240,12 +437,12 @@ AbilityCastResult castAbility(AbilityRuntimeState& state,
   projectile.sourceCommandId = request.sourceCommandId;
   projectile.projectile.active = true;
   projectile.projectile.positionMeters =
-      request.originMeters + direction * kArcaneBoltMuzzleOffsetMeters;
+      request.originMeters + direction * definition->muzzleOffsetMeters;
   projectile.projectile.velocityMetersPerSecond =
-      direction * kArcaneBoltSpeedMetersPerSecond;
+      direction * definition->projectileSpeedMetersPerSecond;
   projectile.previousPositionMeters = projectile.projectile.positionMeters;
   projectile.impactPointMeters = projectile.projectile.positionMeters;
-  projectile.projectileId = "arcane_bolt_projectile";
+  projectile.projectileId = std::string(definition->projectileId);
   projectile.hitSurfaceId = "none";
   projectile.hitStableName = "none";
   projectile.reasonCode = "ability_cast_accepted";
@@ -256,7 +453,23 @@ AbilityCastResult castAbility(AbilityRuntimeState& state,
   result.ability = request.ability;
   result.accepted = true;
   result.projectileSpawned = true;
+  result.resourceRemaining = actorState.arcaneFocus;
+  result.resourceCost = definition->resourceCost;
+  result.cooldownReadyTick = cooldownReadyTick(actorState, request.ability);
   result.reasonCode = "ability_cast_accepted";
+  return result;
+}
+
+AbilityRechargeResult tickAbilityState(AbilityState& abilityState, CommandTick currentTick) {
+  AbilityRechargeResult result;
+  for (AbilityActorState& actor : abilityState.actors) {
+    const std::uint32_t recovered =
+        rechargeActorResource(actor, kArcaneBoltDefinition, currentTick);
+    if (recovered > 0U) {
+      ++result.actorsUpdated;
+      result.resourceRecovered += recovered;
+    }
+  }
   return result;
 }
 
@@ -269,7 +482,7 @@ AbilityTickResult tickAbilityRuntime(AbilityRuntimeState& state,
 
   ProjectileStepRequest projectileRequest;
   projectileRequest.state = projectile.projectile;
-  projectileRequest.params = kArcaneBoltMotion;
+  projectileRequest.params = kArcaneBoltDefinition.projectileMotion;
   projectileRequest.collisionSurfaces = request.collisionSurfaces;
   projectileRequest.deltaSeconds = request.deltaSeconds;
 
@@ -285,7 +498,7 @@ AbilityTickResult tickAbilityRuntime(AbilityRuntimeState& state,
     hitRequest.startMeters = stepped.previousState.positionMeters;
     hitRequest.endMeters = stepped.state.positionMeters;
     hitRequest.ignoredEntity = projectile.caster;
-    hitRequest.radiusMeters = kArcaneBoltMotion.radiusMeters;
+    hitRequest.radiusMeters = kArcaneBoltDefinition.projectileMotion.radiusMeters;
     const EntityHitQueryResult hit = queryFirstEntityHit(hitRequest);
     if (hit.status == EntityHitStatus::Hit) {
       applyEntityImpact(projectile, request, stepped, hit);
@@ -313,6 +526,20 @@ void resetAbilityRuntime(AbilityRuntimeState& state) {
 
 bool abilityProjectileVisible(const AbilityProjectileState& projectile) {
   return projectile.spawned;
+}
+
+bool abilityRuntimeHasActiveProjectile(const AbilityRuntimeState& state) {
+  return state.arcaneBolt.spawned && state.arcaneBolt.projectile.active;
+}
+
+bool abilityStateHasPendingRecharge(const AbilityState& state) {
+  for (const AbilityActorState& actor : state.actors) {
+    if (actor.arcaneFocus < kArcaneBoltDefinition.maxResource &&
+        actor.arcaneFocusNextRechargeTick != 0U) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace iggy3d

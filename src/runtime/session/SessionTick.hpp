@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "runtime/command/Command.hpp"
+#include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/session/SessionState.hpp"
 
 namespace iggy3d {
@@ -26,6 +27,7 @@ enum class SessionTickStatus : std::uint8_t {
 struct SessionTickInput {
   SessionState* state = nullptr;
   std::vector<CommandRecord> acceptedCommands;
+  const SpatialSurfaceSet* collisionSurfaces = nullptr;
   bool forceStepWhilePaused = false;
 };
 
