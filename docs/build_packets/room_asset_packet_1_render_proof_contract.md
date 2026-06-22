@@ -1,13 +1,31 @@
 # Room Asset Packet 1 Render Proof Contract
 
-Status: docs-only decision/proof contract
+Status: resolved decision/proof contract
 Repo: `/Users/kogaryu/iggy3d`
 Packet source: `docs/build_packets/room_asset_packet_1_map_toml_to_3d_room.md`
+Resolved by: `e770a83 Add package room mesh rendering proof`
 
-This contract locks what Room Asset Packet 1 is allowed to claim in receipts and
-reports. It exists because the current package-room branch can load/project room
-asset facts while still recording visible proxy primitives. That is useful, but
-it is not the same proof as a true static room mesh draw.
+This contract locked what Room Asset Packet 1 was allowed to claim in receipts
+and reports while the package-room branch could still fall back to proxy
+primitive rendering. Current committed truth is Tier B: true static room mesh
+draw proof is green at `e770a83`.
+
+Verified Tier B receipt facts from the controller thread:
+
+```text
+rendering_path=package_room_meshes
+record_mode=room_mesh_draws
+room_static_mesh_count=11
+mesh_draw_count=11
+indexed_draw_count=11
+vertex_buffer_uploaded=true
+index_buffer_uploaded=true
+depth_enabled=true
+camera_projection=perspective
+projection_application=single
+result=pass
+reason_code=package_room_meshes_presented
+```
 
 ## Decision Summary
 
@@ -16,12 +34,13 @@ Room Asset Packet 1 has two acceptable proof tiers:
 - Tier A: package-room asset proxy proof.
 - Tier B: true static room mesh draw proof.
 
-Tier A is minimally acceptable for Packet 1 if Builder Dex cannot finish real
-static room vertex/index buffers in this packet. Tier A must be labeled
+Tier A was minimally acceptable before `e770a83` if Builder Dex could not finish
+real static room vertex/index buffers in Packet 1. Tier A had to be labeled
 honestly as proxy rendering informed by package room assets.
 
-Tier B is the stronger proof required before later packets can claim the runtime
-is drawing true package-driven static room meshes.
+Tier B is now the committed proof. Later packets may rely on package-driven room
+geometry being rendered through vertex/index buffers, while still treating
+content-owned collision/spatial surfaces as separate work.
 
 Forbidden wording:
 
@@ -149,7 +168,7 @@ Tier B green proof:
   marker, and dummy marker;
 - no runtime/save/replay state treats render receipt fields as truth.
 
-## Current Source Audit
+## Current Source Audit After `e770a83`
 
 Relevant current files:
 
@@ -174,48 +193,33 @@ Current implication:
   `spawn_room_corridor_stub`, static room mesh records, opening `out`, and
   runtime anchors for `gold_key`, `training_dummy`, and
   `tactical_marker_alpha`.
-- `RenderLoop.cpp` currently treats `scene.room.loaded` as package room loaded,
-  but the package-room branch calls `recordProxyPrimitiveFrame`.
-- `CommandRecording.cpp::recordProxyPrimitiveFrame` uses clear attachments and
-  screen/primitive rectangles. It does not bind room vertex/index buffers and
-  does not issue indexed room mesh draws.
-- Current receipt labels that say `package_room_meshes`, `mesh_draw_count`, or
-  `depth_enabled=true` for that proxy path are Tier B-style claims and must be
-  changed or justified by a true Tier B implementation before Packet 1 is called
-  true mesh draw proof.
+- `BufferImageResources.cpp::createRoomMeshResources` expands projected room
+  mesh items into room vertex/index buffers and indexed draw ranges.
+- `RenderLoop.cpp` creates room mesh resources when `scene.room.loaded` is true,
+  then records the package-room branch through `recordFirstRoomFrame`.
+- `CommandRecording.cpp::recordProxyPrimitiveFrame` still exists for fallback
+  proxy modes, but it is not the package-room mesh proof path.
+- Current receipt labels `package_room_meshes`, `room_mesh_draws`,
+  `mesh_draw_count`, `indexed_draw_count`, uploaded buffer booleans, depth,
+  perspective, and single projection are now valid Tier B claims for Packet 1.
 
 ## Builder Dex Feedback Block
 
-Builder Dex: Packet 1 proof-tier clarification. If your current package-room
-path still calls `recordProxyPrimitiveFrame` when `scene.room.loaded` is true,
-label the proof as Tier A. Use `rendering_path=package_room_asset_proxy`,
-`record_mode=draw_primitives`, `mesh_draw_count=0`,
-`indexed_draw_count=0`, `vertex_buffer_uploaded=false`,
-`index_buffer_uploaded=false`, and `depth_enabled=false`. You may still report
-`room_asset_loaded=true`, `room_asset_id=spawn_corridor`,
-`source_subset=spawn_room_corridor_stub`, and room mesh/material/anchor counts.
-Do not claim `package_room_meshes`, `true room mesh draw`, or positive mesh draw
-counts unless the package-room path binds room vertex/index buffers and issues
-indexed room draw calls. If you did implement the real mesh path, label it Tier
-B with `rendering_path=package_room_meshes`,
+Builder Dex: Packet 1 proof-tier clarification is resolved. The committed Packet
+1 state is Tier B. Preserve `rendering_path=package_room_meshes`,
 `record_mode=room_mesh_draws`, positive `mesh_draw_count` and
 `indexed_draw_count`, uploaded buffer booleans true, depth enabled true, and
-visible floor/wall/opening/prop/key/dummy fields true.
+visible floor/wall/opening/prop/key/dummy fields true. Future packets should not
+rebuild this proof unless they are explicitly repairing a regression.
 
 ## Recommended Packet 2 Adjustment
 
-If Tier A lands for Packet 1:
+Tier B landed for Packet 1.
 
-- Packet 2 should become true static room mesh draw proof before loader
-  hardening.
-- Reason: later collision, camera, Blender, and durability packets need a real
-  room draw path, not only package-informed proxy receipts.
-
-If Tier B lands for Packet 1:
-
-- Packet 2 remains loader hardening and validation gates.
-- Reason: true room drawing would already be proven, so the next risk is asset
-  schema correctness, cross-reference validation, and deterministic diagnostics.
+- Packet 2 should be loader hardening plus authored spatial surface contract.
+- Reason: true room drawing is proven, so the next risk is asset schema
+  correctness, cross-reference validation, deterministic diagnostics, and
+  content-owned spatial surfaces for later collision/movement/projectile work.
 
 ## No-Go Surfaces
 
@@ -231,7 +235,7 @@ If Tier B lands for Packet 1:
 
 ## Acceptance Summary
 
-Packet 1 can close at Tier A only if it honestly reports package-room asset
-proxy proof. Packet 1 can close at Tier B only if it proves real static room mesh
-draw commands. Any mixed state must be reported as not green until the receipt
-wording and command path agree.
+Packet 1 is closed at Tier B. Any future regression that routes
+`scene.room.loaded` back through proxy primitives must either fail the room mesh
+smoke test or explicitly downgrade the receipt; it must not silently keep Tier B
+receipt fields.

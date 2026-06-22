@@ -1,8 +1,9 @@
 # Real 3D Room Runtime Roadmap
 
-Status: planning roadmap after Room Asset Packet 1
+Status: planning roadmap after Room Asset Packet 1 Tier B completion
 Repo: `/Users/kogaryu/iggy3d`
 Branch context: `iggy3d-main`
+Current head accounted for: `e770a83 Add package room mesh rendering proof`
 
 This roadmap starts from the current Packet 1 tree. It is not an implementation
 packet. It maps the dependency ladder from the first package-driven static room
@@ -46,6 +47,14 @@ on:
   define packet-local parsed asset shapes with simple parse result structs.
 - `RoomAsset.cpp`, `MeshAsset.cpp`, and `MaterialAsset.cpp` parse a small TOML
   subset with no JSON and no external serialization dependency.
+- Tier B true static room mesh draw proof is green at `e770a83`. The verified
+  package visual receipt reports `rendering_path=package_room_meshes`,
+  `record_mode=room_mesh_draws`, `room_static_mesh_count=11`,
+  `mesh_draw_count=11`, `indexed_draw_count=11`,
+  `vertex_buffer_uploaded=true`, `index_buffer_uploaded=true`,
+  `depth_enabled=true`, `camera_projection=perspective`,
+  `projection_application=single`, `result=pass`, and
+  `reason_code=package_room_meshes_presented`.
 
 ### Runtime State
 
@@ -71,13 +80,14 @@ Projection has begun to separate runtime facts from render facts:
   item summaries.
 - `FrameInput` carries viewport, source tick/frame clock, camera matrices,
   scene/debug projections, and render camera mode.
-- Vulkan has a depth-tested hardcoded first-room path and a proxy primitive
-  path. Current `RenderLoop` chooses package-room rendering when
-  `scene.room.loaded`, but that path still records proxy primitives rather than
-  actual per-room mesh vertex/index draws.
+- Vulkan has a depth-tested hardcoded first-room path, a proxy primitive
+  fallback path, and a package-room mesh path. Current `RenderLoop` chooses
+  package-room rendering when `scene.room.loaded`, creates room mesh resources,
+  and records indexed room draws through `recordFirstRoomFrame`.
 - `recordFirstRoomFrame` uses depth, viewport/scissor, 0..1 Vulkan depth, and a
-  hardcoded `clipFromModel`; this is not yet the real package-room projection
-  path.
+  package-room branch using `FrameInput.camera.clipFromWorld` for the committed
+  room mesh path. The hardcoded bootstrap path remains separate fallback/proof
+  code.
 
 ### Current Gap
 
@@ -89,9 +99,10 @@ world path:
 - movement is not clamped by walls/openings;
 - reach ignores room surfaces and uses entity transform points only;
 - entity visuals are not bound to mesh/prototype assets;
-- package-room rendering still has proxy-style receipt/draw behavior;
-- first-person camera matrices exist, but room geometry is not yet fully driven
-  by one projection-to-draw pipeline.
+- package-room rendering is now a real indexed room mesh path, but content
+  surfaces/tags for movement, slope, and projectiles are not authored yet;
+- first-person camera matrices and package room meshes exist, but gameplay
+  systems do not yet consume authored spatial surfaces.
 
 ## Dependency Graph
 
@@ -143,20 +154,16 @@ Blender or TOML authoring source
 
 Current sequencing rule:
 
-- Do not build slopes, projectile simulation, or tactical preview until True
-  Static Room Mesh Draw Proof is green.
-- Static room mesh draw is the geometry/render prerequisite for spatial
-  gameplay. Packet 1 Tier A proves package-room asset proxy rendering only; it
-  does not prove authored room geometry exists as world-space draw/collision
-  input.
-- Loader hardening remains important, but a Tier A Packet 1 means the next
-  builder packet is true static room mesh draw proof before broadening into
-  collision, slope, projectile, or tactical work.
+- True Static Room Mesh Draw Proof is complete at `e770a83`.
+- The next builder packet is loader hardening plus authored spatial surface
+  contract.
+- Do not build movement clamping, slopes, projectile simulation, or tactical
+  preview until the spatial surface contract is green.
 
-### Packet 2: True Static Room Mesh Draw Proof
+### Packet 1 Complete: True Static Room Mesh Draw Proof
 
-Purpose: replace the package-room proxy path with actual static room vertex and
-index draws for the first package room.
+Purpose: completed proof that the first package room asset produces actual
+static room vertex and index draws.
 
 Likely files:
 
@@ -185,11 +192,14 @@ Compute/runtime costs:
 - frame draw cost scales with room draw item count and indexed draw count;
 - no per-frame TOML parsing.
 
-Dependencies:
+Completion evidence:
 
-- Packet 1 Tier A package asset refs and parsed room/mesh/material TOML;
-- `SceneRoomProjection` carrying room asset id, source subset, and counts;
-- current Vulkan frame path and camera matrices.
+- commit `e770a83 Add package room mesh rendering proof`;
+- full `ctest --test-dir build --output-on-failure` passed `40/40` before
+  commit;
+- package visual receipt reports `package_room_meshes`, `room_mesh_draws`,
+  positive mesh/indexed draw counts, uploaded buffers, depth, perspective, and
+  single projection.
 
 No-go surfaces:
 
@@ -243,6 +253,10 @@ Deferred:
 This lane starts only after True Static Room Mesh Draw Proof is green. Spatial
 gameplay must be built on authored world-space room geometry, not on proxy
 rectangles, screen-space overlays, or tactical abstractions.
+
+Packet 2 implements the first concrete piece of this lane by combining loader
+hardening with Spatial Packet A surface authoring. Later packets consume those
+content-owned surfaces through runtime query systems.
 
 ### Sequencing Rule
 
@@ -346,7 +360,7 @@ Likely files:
 
 Dependencies:
 
-- Packet 2 true static room mesh draw proof;
+- Packet 1 complete true static room mesh draw proof;
 - room asset parser path and package asset refs.
 
 Data ownership:
@@ -717,14 +731,18 @@ Deferred:
 - no multiplayer coupling until deterministic local spatial simulation is
   proven.
 
-### Packet 3: Room Asset Loader Hardening And Validation Gates
+### Packet 2: Room Asset Loader Hardening And Spatial Surface Contract
 
-Purpose: turn the Packet 1 parser path into a builder-safe content contract.
+Purpose: turn the Packet 1 parser path into a builder-safe content contract and
+add authored spatial surface semantics for later collision, movement, slope, and
+projectile packets.
 
 Likely files:
 
 - `src/content/assets/RoomAsset.hpp`
 - `src/content/assets/RoomAsset.cpp`
+- `src/content/assets/RoomSpatialSurface.hpp`
+- `src/content/assets/RoomSpatialSurface.cpp`
 - `src/content/assets/MeshAsset.hpp`
 - `src/content/assets/MeshAsset.cpp`
 - `src/content/assets/MaterialAsset.hpp`
@@ -734,12 +752,15 @@ Likely files:
 - `src/content/PackageValidator.hpp`
 - `src/content/PackageValidator.cpp`
 - `tests/unit/room_asset_loader_tests.cpp`
+- `tests/unit/room_spatial_surface_tests.cpp`
 - `tests/smoke/package_room_asset_smoke.cpp`
 
 Data ownership rules:
 
 - package manifest owns asset refs only;
 - asset loader owns parsed immutable asset records;
+- content owns authored spatial surfaces, traversal tags, collision masks,
+  projectile blocker roles, and opening/non-blocker surfaces;
 - package validator owns cross-asset references and duplicate id checks;
 - runtime `WorldState` does not own room mesh data;
 - renderer does not parse TOML.
@@ -748,11 +769,16 @@ Compute/runtime costs:
 
 - O(package text + asset text bytes) parsing;
 - O(asset count squared) duplicate id checks are acceptable for first fixtures;
+- O(spatial surface count squared) duplicate surface id checks keep diagnostics
+  deterministic;
+- O(surface count * referenced static mesh/opening count) cross-reference
+  validation is acceptable for the first room;
 - no runtime tick cost except using the loaded immutable registry.
 
 Dependencies:
 
 - Packet 1 asset TOML files and parsers;
+- completed Tier B package-room mesh draw proof at `e770a83`;
 - current package loader asset ref mechanism;
 - no Vulkan dependency in content headers.
 
@@ -762,29 +788,38 @@ No-go surfaces:
 - no glTF importer;
 - no old `/Users/kogaryu/iggy` runtime dependency;
 - no renderer-owned parse fallback;
-- no package-local absolute paths.
+- no package-local absolute paths;
+- no movement clamping, projectile simulation, or tactical camera in this
+  packet.
 
 Acceptance commands or receipt fields:
 
 - `room_asset_loader_tests` asserts room id, source subset, mesh/material counts,
   opening id `out`, anchors, and cross-reference validity.
 - `package_room_asset_smoke` asserts package asset ids and parse statuses.
+- spatial tests assert `spatial_surface_count`, `walkable_surface_count`,
+  `blocker_surface_count`, `projectile_blocker_surface_count`,
+  `opening_surface_count`, and valid normals.
 
 Green proof:
 
 - invalid asset path, duplicate asset id, duplicate room mesh id, missing mesh,
   missing material, invalid finite values, and missing anchors return exact
   statuses/diagnostics;
-- valid first-room package produces one immutable room asset registry.
+- valid first-room package produces one immutable room asset registry;
+- valid first-room spatial surfaces include walkable floor, blocker wall,
+  projectile blocker, and opening/non-blocker records;
+- duplicate surface id, zero normal, non-finite point, unknown traversal tag,
+  and invalid opening/blocker combination are rejected deterministically.
 
 Deferred:
 
-- collision use;
+- runtime collision query use;
 - entity mesh binding;
 - Blender export;
 - multi-room graph generation.
 
-### Packet 4: Entity Mesh And Prototype Binding
+### Packet 3: Entity Mesh And Prototype Binding
 
 Purpose: bind runtime entities to visual asset/prototype records without making
 room assets gameplay truth.
@@ -815,7 +850,7 @@ Compute/runtime costs:
 
 Dependencies:
 
-- Packet 3 asset registry;
+- Packet 2 asset registry;
 - existing `SceneItem::assetRef`;
 - current `EntityState::stableName`.
 
@@ -844,7 +879,7 @@ Deferred:
 - equipment visuals;
 - damage decals.
 
-### Packet 5: Room Collision Bounds And Movement Clamping
+### Packet 4: Room Collision Bounds And Movement Clamping
 
 Purpose: make static room geometry constrain player movement while keeping
 runtime state authoritative.
@@ -876,9 +911,9 @@ Compute/runtime costs:
 
 Dependencies:
 
-- Packet 3 validation;
+- Packet 2 validation;
 - current movement distance validation;
-- room opening semantics from Packet 1/3.
+- room opening semantics from Packet 1/2.
 
 No-go surfaces:
 
@@ -906,7 +941,7 @@ Deferred:
 - stair/height handling;
 - multi-floor navigation.
 
-### Packet 6: Reach And Target Integration With Room Anchors
+### Packet 5: Reach And Target Integration With Room Anchors
 
 Purpose: align interactable gameplay anchors with authored room positions and
 targetable surfaces.
@@ -937,9 +972,9 @@ Compute/runtime costs:
 
 Dependencies:
 
-- Packet 5 movement/collision boundary;
-- Packet 4 entity visual binding;
-- Packet 3 anchor validation.
+- Packet 4 movement/collision boundary;
+- Packet 3 entity visual binding;
+- Packet 2 anchor validation.
 
 No-go surfaces:
 
@@ -966,7 +1001,7 @@ Deferred:
 - occlusion;
 - line-of-sight combat.
 
-### Packet 7: Blender Authoring And Export Path
+### Packet 6: Blender Authoring And Export Path
 
 Purpose: introduce Blender as an authoring tool, not as a runtime dependency.
 
@@ -993,9 +1028,9 @@ Compute/runtime costs:
 
 Dependencies:
 
-- Packet 3 asset validation;
-- Packet 4 visual bindings;
-- Packet 5 collision metadata contract.
+- Packet 2 asset validation;
+- Packet 3 visual bindings;
+- Packet 4 collision metadata contract.
 
 No-go surfaces:
 
@@ -1022,7 +1057,7 @@ Deferred:
 - Blender-driven gameplay scripts;
 - procedural full-map generation.
 
-### Packet 8: Perspective Camera And First-Person Usability Proof
+### Packet 7: Perspective Camera And First-Person Usability Proof
 
 Purpose: make first-person view usable with real room geometry instead of
 screen-space or proxy room shapes.
@@ -1054,9 +1089,9 @@ Compute/runtime costs:
 
 Dependencies:
 
-- Packet 2 true room mesh draw items;
-- Packet 4 entity bindings;
-- Packet 5 collision for playable first-person movement.
+- Packet 1 complete true room mesh draw items;
+- Packet 3 entity bindings;
+- Packet 4 collision for playable first-person movement.
 
 No-go surfaces:
 
@@ -1086,7 +1121,7 @@ Deferred:
 - animation interpolation;
 - tactical camera.
 
-### Packet 9: Tactical Overhead Orthographic View Switch
+### Packet 8: Tactical Overhead Orthographic View Switch
 
 Purpose: add tactical view after the static room, first-person, and spatial
 runtime paths are real. This packet must not be scheduled before the Spatial
@@ -1117,7 +1152,7 @@ Compute/runtime costs:
 
 Dependencies:
 
-- Packet 8 perspective path;
+- Packet 7 perspective path;
 - existing clock slow/pause/resume/step policy;
 - asset-backed room draw list;
 - Spatial Packet C for movement/collision readouts at minimum;
@@ -1148,7 +1183,7 @@ Deferred:
 - fog of war;
 - strategy overlays.
 
-### Packet 10: Multi-Room Map Subset From Provingground TOML
+### Packet 9: Multi-Room Map Subset From Provingground TOML
 
 Purpose: expand from spawn room plus corridor stub to a small authored map subset.
 
@@ -1178,9 +1213,9 @@ Compute/runtime costs:
 
 Dependencies:
 
-- Packet 3 hardening;
-- Packet 5 collision;
-- Packet 8 camera.
+- Packet 2 hardening;
+- Packet 4 collision;
+- Packet 7 camera.
 
 No-go surfaces:
 
@@ -1206,7 +1241,7 @@ Deferred:
 - dynamic streaming;
 - navmesh.
 
-### Packet 11: Durability, Replay, And Render Receipts For Asset-Backed Rooms
+### Packet 10: Durability, Replay, And Render Receipts For Asset-Backed Rooms
 
 Purpose: prove asset-backed room rendering survives save/load/replay without
 turning receipts or room meshes into runtime truth.
@@ -1238,9 +1273,9 @@ Compute/runtime costs:
 
 Dependencies:
 
-- Packet 8 or 9 render receipt fields;
+- Packet 7 or 8 render receipt fields;
 - save/load cursor proof already in current docs;
-- stable asset package identity from Packet 3.
+- stable asset package identity from Packet 2.
 
 No-go surfaces:
 
@@ -1268,7 +1303,7 @@ Deferred:
 - network replication of asset payloads;
 - render capture as authoritative test oracle.
 
-### Packet 12+: Multiplayer-Safe Asset Ownership
+### Packet 11+: Multiplayer-Safe Asset Ownership
 
 Purpose: keep room assets deterministic when multiple local/remote players and
 authority boundaries arrive.
@@ -1297,7 +1332,7 @@ Compute/runtime costs:
 
 Dependencies:
 
-- Packet 11 durability/replay proof;
+- Packet 10 durability/replay proof;
 - exact package asset identity and hashes if introduced later.
 
 No-go surfaces:
@@ -1375,30 +1410,22 @@ consume exported data:
 
 ## Recommended Build Order Update
 
-Next packet: Packet 2, True Static Room Mesh Draw Proof.
+Next packet: Packet 2, Room Asset Loader Hardening And Spatial Surface Contract.
 
-Reason: Packet 1 is now honestly Tier A package-room asset proxy proof. Later
-loader hardening, collision, slope, projectile, Blender, tactical, durability,
-and multiplayer packets need real package-driven room geometry to avoid building
-contracts around proxy rectangles.
+Reason: Packet 1 Tier B is complete. The next risk is that room assets are
+renderable but not yet authored or validated as spatial gameplay surfaces.
+Movement, slopes, projectiles, Blender, tactical, durability, and multiplayer
+packets need content-owned walkable/blocker/projectile-blocker/opening records
+before runtime systems consume room geometry.
 
-After true mesh draw is green:
+After Packet 2 is green:
 
-- If the mesh path exposes enough authored surface data, run Spatial Surface
-  Authoring next so elevation, walkable/blocker tags, projectile blockers, and
-  traversal semantics become content truth.
-- If the mesh path already outputs usable surface primitives, run Collision
-  Query Core next so movement and projectile packets have deterministic runtime
-  queries.
-- Room Asset Loader Hardening And Validation Gates stays important and should
-  follow close behind, but it is no longer the immediate next packet while Tier A
-  remains the only room proof.
+- Run Collision Query Core if the authored spatial surfaces can be converted
+  directly into deterministic runtime query views.
+- Run Entity Mesh And Prototype Binding if visual object binding is the higher
+  risk for the next user-visible milestone.
+- Keep tactical preview deferred until spatial runtime facts are proven.
 
-Immediate feedback to Builder Dex for Packet 1: make sure the Packet 1 green
-receipt proves the package room asset path, not true mesh rendering. Current
-`RenderLoop` treats `scene.room.loaded` as package room loaded, but still routes
-that branch through `recordProxyPrimitiveFrame`. That is acceptable as Tier A
-only if the receipt explicitly names package asset id, mesh/material/anchor
-counts, and `rendering_path=package_room_asset_proxy`. If Packet 1 claims real
-static room vertex/index buffers, the draw path must prove per-room mesh buffer
-upload and indexed room draws instead.
+Immediate feedback to Builder Dex for Packet 2: do not rebuild the room mesh
+draw path. Preserve the current `package_room_meshes` receipt while adding exact
+spatial surface TOML, parser validation, and tests.
