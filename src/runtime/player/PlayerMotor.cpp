@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 
 namespace iggy3d {
 namespace {
@@ -35,7 +36,11 @@ bool validParams(const PlayerMotorParams& params) {
          std::isfinite(params.airCollisionProbeHeightMeters) &&
          params.airCollisionProbeHeightMeters > 0.0F &&
          std::isfinite(params.airCollisionSkinMeters) &&
-         params.airCollisionSkinMeters >= 0.0F;
+         params.airCollisionSkinMeters >= 0.0F &&
+         std::isfinite(params.dashSpeedMetersPerSecond) &&
+         params.dashSpeedMetersPerSecond >= 0.0F &&
+         std::isfinite(params.dashDurationSeconds) && params.dashDurationSeconds >= 0.0F &&
+         std::isfinite(params.dashCooldownSeconds) && params.dashCooldownSeconds >= 0.0F;
 }
 
 PlayerMotorResult baseResult(const PlayerMotorState& state,
@@ -51,10 +56,15 @@ PlayerMotorResult baseResult(const PlayerMotorState& state,
   result.horizontalVelocityMetersPerSecond = state.horizontalVelocityMetersPerSecond;
   result.verticalVelocityMetersPerSecond = state.verticalVelocityMetersPerSecond;
   result.horizontalSpeedMetersPerSecond = vectorLength(state.horizontalVelocityMetersPerSecond);
+  result.dashRemainingSeconds = state.dashRemainingSeconds;
+  result.dashCooldownRemainingSeconds = state.dashCooldownRemainingSeconds;
   result.gravityMetersPerSecondSquared = params.gravityMetersPerSecondSquared;
   result.jumpImpulseMetersPerSecond = params.jumpImpulseMetersPerSecond;
   result.airMaxSpeedMetersPerSecond = params.airMaxSpeedMetersPerSecond;
   result.airAccelerationMetersPerSecondSquared = params.airAccelerationMetersPerSecondSquared;
+  result.dashSpeedMetersPerSecond = params.dashSpeedMetersPerSecond;
+  result.dashDurationSeconds = params.dashDurationSeconds;
+  result.dashCooldownSeconds = params.dashCooldownSeconds;
   result.startPosition = start;
   result.finalPosition = start;
   result.reasonCode = playerMotorStatusName(status);
@@ -112,16 +122,22 @@ Vec3 withoutNormal(Vec3 value, Vec3 normal) {
   return adjusted;
 }
 
-void applyAirCollision(const SpatialSurfaceSet& surfaces,
-                       const PlayerMotorParams& params,
-                       Vec3 start,
-                       Vec3 horizontalDisplacement,
-                       Vec3& finalPosition,
-                       PlayerMotorState& state,
-                       PlayerMotorResult& result) {
+struct HorizontalCollisionResult {
+  bool clamped = false;
+  bool slid = false;
+  std::string hitSurfaceId;
+};
+
+HorizontalCollisionResult applyHorizontalCollision(const SpatialSurfaceSet& surfaces,
+                                                   const PlayerMotorParams& params,
+                                                   Vec3 start,
+                                                   Vec3 horizontalDisplacement,
+                                                   Vec3& finalPosition,
+                                                   Vec3& horizontalVelocity) {
+  HorizontalCollisionResult result;
   const float horizontalDistance = vectorLength(horizontalDisplacement);
   if (!std::isfinite(horizontalDistance) || horizontalDistance <= kPlayerMotorEpsilon) {
-    return;
+    return result;
   }
 
   Vec3 candidate = finalPosition;
@@ -130,10 +146,10 @@ void applyAirCollision(const SpatialSurfaceSet& surfaces,
   const CollisionQueryResult hit =
       querySegment(surfaces, sweepStart, sweepEnd, CollisionQueryKind::Actor);
   if (hit.status != CollisionQueryStatus::Hit) {
-    return;
+    return result;
   }
 
-  result.airMovementClamped = true;
+  result.clamped = true;
   result.hitSurfaceId = hit.surfaceId;
   const float skinTime =
       std::clamp(params.airCollisionSkinMeters / horizontalDistance, 0.0F, 1.0F);
@@ -147,7 +163,7 @@ void applyAirCollision(const SpatialSurfaceSet& surfaces,
   Vec3 remaining = horizontalDisplacement * (1.0F - safeTime);
   Vec3 slide = withoutNormal(remaining, hit.normal);
   if (isFinite(slide) && vectorLength(slide) > params.airCollisionSkinMeters) {
-    result.airMovementSlid = true;
+    result.slid = true;
     const Vec3 slideCandidate = candidate + slide;
     const CollisionQueryResult slideHit =
         querySegment(surfaces,
@@ -166,17 +182,16 @@ void applyAirCollision(const SpatialSurfaceSet& surfaces,
       if (result.hitSurfaceId.empty()) {
         result.hitSurfaceId = slideHit.surfaceId;
       }
-      state.horizontalVelocityMetersPerSecond =
-          withoutNormal(state.horizontalVelocityMetersPerSecond, slideHit.normal);
+      horizontalVelocity = withoutNormal(horizontalVelocity, slideHit.normal);
     } else {
       candidate = slideCandidate;
     }
   }
 
-  state.horizontalVelocityMetersPerSecond =
-      withoutNormal(state.horizontalVelocityMetersPerSecond, hit.normal);
+  horizontalVelocity = withoutNormal(horizontalVelocity, hit.normal);
   finalPosition.x = candidate.x;
   finalPosition.z = candidate.z;
+  return result;
 }
 
 }  // namespace
@@ -255,12 +270,19 @@ PlayerMotorResult updatePlayerMotor(PlayerMotorContext& context,
 
   PlayerMotorResult result = baseResult(state, start, PlayerMotorStatus::Ok, params);
   result.jumpRequested = input.jumpPressed;
+  result.dashRequested = input.dashPressed;
+  if (input.seconds > 0.0F && state.dashCooldownRemainingSeconds > 0.0F) {
+    state.dashCooldownRemainingSeconds =
+        std::max(0.0F, state.dashCooldownRemainingSeconds - input.seconds);
+  }
 
   if (nearGround && state.phase == PlayerMotorPhase::Grounded &&
       state.verticalVelocityMetersPerSecond <= 0.0F) {
     state.grounded = true;
     state.jumpAvailable = true;
-    state.horizontalVelocityMetersPerSecond = {};
+    if (state.dashRemainingSeconds <= 0.0F) {
+      state.horizontalVelocityMetersPerSecond = {};
+    }
     state.verticalVelocityMetersPerSecond = 0.0F;
     if (std::fabs(start.y - ground.heightMeters) <= params.landingSnapMeters &&
         !nearlyEqual(start, {start.x, ground.heightMeters, start.z})) {
@@ -294,8 +316,50 @@ PlayerMotorResult updatePlayerMotor(PlayerMotorContext& context,
     result.jumpAccepted = true;
   }
 
+  if (input.dashPressed) {
+    Vec3 dashDirection;
+    if (!normalizedHorizontal(input.moveIntent, dashDirection)) {
+      result.dashRejectedNoIntent = true;
+    } else if (state.dashRemainingSeconds > 0.0F ||
+               state.dashCooldownRemainingSeconds > 0.0F) {
+      result.dashRejectedCooldown = true;
+    } else {
+      state.dashDirection = dashDirection;
+      state.dashRemainingSeconds = params.dashDurationSeconds;
+      state.dashCooldownRemainingSeconds = params.dashCooldownSeconds;
+      state.horizontalVelocityMetersPerSecond =
+          state.dashDirection * params.dashSpeedMetersPerSecond;
+      result.dashAccepted = true;
+    }
+  }
+
   Vec3 finalPosition = start;
-  if (state.phase == PlayerMotorPhase::Airborne && input.seconds > 0.0F) {
+  bool transformUpdateNeeded = false;
+  if (state.dashRemainingSeconds > 0.0F && input.seconds > 0.0F &&
+      params.dashSpeedMetersPerSecond > 0.0F) {
+    result.dashActive = true;
+    const float dashSeconds = std::min(input.seconds, state.dashRemainingSeconds);
+    state.horizontalVelocityMetersPerSecond =
+        state.dashDirection * params.dashSpeedMetersPerSecond;
+    const Vec3 horizontalDisplacement =
+        state.horizontalVelocityMetersPerSecond * dashSeconds;
+    finalPosition.x = start.x + horizontalDisplacement.x;
+    finalPosition.z = start.z + horizontalDisplacement.z;
+    HorizontalCollisionResult dashCollision =
+        applyHorizontalCollision(*context.collisionSurfaces,
+                                 params,
+                                 start,
+                                 horizontalDisplacement,
+                                 finalPosition,
+                                 state.horizontalVelocityMetersPerSecond);
+    result.dashMovementClamped = dashCollision.clamped;
+    result.dashMovementSlid = dashCollision.slid;
+    if (!dashCollision.hitSurfaceId.empty()) {
+      result.hitSurfaceId = std::move(dashCollision.hitSurfaceId);
+    }
+    state.dashRemainingSeconds = std::max(0.0F, state.dashRemainingSeconds - dashSeconds);
+    transformUpdateNeeded = true;
+  } else if (state.phase == PlayerMotorPhase::Airborne && input.seconds > 0.0F) {
     Vec3 airIntentDirection;
     const bool hasAirIntent = normalizedHorizontal(input.moveIntent, airIntentDirection);
     result.airMoveIntent = hasAirIntent;
@@ -314,6 +378,25 @@ PlayerMotorResult updatePlayerMotor(PlayerMotorContext& context,
                               vectorLength(state.horizontalVelocityMetersPerSecond) >
                                   kPlayerMotorEpsilon;
 
+    const Vec3 horizontalDisplacement = state.horizontalVelocityMetersPerSecond * input.seconds;
+    finalPosition.x = start.x + horizontalDisplacement.x;
+    finalPosition.z = start.z + horizontalDisplacement.z;
+    HorizontalCollisionResult airCollision =
+        applyHorizontalCollision(*context.collisionSurfaces,
+                                 params,
+                                 start,
+                                 horizontalDisplacement,
+                                 finalPosition,
+                                 state.horizontalVelocityMetersPerSecond);
+    result.airMovementClamped = airCollision.clamped;
+    result.airMovementSlid = airCollision.slid;
+    if (!airCollision.hitSurfaceId.empty()) {
+      result.hitSurfaceId = std::move(airCollision.hitSurfaceId);
+    }
+    transformUpdateNeeded = true;
+  }
+
+  if (state.phase == PlayerMotorPhase::Airborne && input.seconds > 0.0F) {
     const float previousVelocity = state.verticalVelocityMetersPerSecond;
     const float nextVelocity =
         std::max(params.terminalVelocityMetersPerSecond,
@@ -321,16 +404,6 @@ PlayerMotorResult updatePlayerMotor(PlayerMotorContext& context,
     const float displacement = ((previousVelocity + nextVelocity) * 0.5F) * input.seconds;
     finalPosition.y = start.y + displacement;
     state.verticalVelocityMetersPerSecond = nextVelocity;
-    const Vec3 horizontalDisplacement = state.horizontalVelocityMetersPerSecond * input.seconds;
-    finalPosition.x = start.x + horizontalDisplacement.x;
-    finalPosition.z = start.z + horizontalDisplacement.z;
-    applyAirCollision(*context.collisionSurfaces,
-                      params,
-                      start,
-                      horizontalDisplacement,
-                      finalPosition,
-                      state,
-                      result);
 
     const CollisionQueryResult landingGround = sampleSurfaceHeight(
         *context.collisionSurfaces, finalPosition, params.footprintToleranceMeters);
@@ -346,7 +419,31 @@ PlayerMotorResult updatePlayerMotor(PlayerMotorContext& context,
       result.landed = true;
       result.groundSnapApplied = true;
     }
+    transformUpdateNeeded = true;
+  } else if (state.phase == PlayerMotorPhase::Grounded && transformUpdateNeeded) {
+    const CollisionQueryResult finalGround =
+        sampleSurfaceHeight(*context.collisionSurfaces, finalPosition, params.footprintToleranceMeters);
+    if (finalGround.status == CollisionQueryStatus::Hit &&
+        std::fabs(finalPosition.y - finalGround.heightMeters) <= params.landingSnapMeters) {
+      if (!nearlyEqual(finalPosition, {finalPosition.x, finalGround.heightMeters, finalPosition.z})) {
+        result.groundSnapApplied = true;
+      }
+      finalPosition.y = finalGround.heightMeters;
+      state.grounded = true;
+      state.jumpAvailable = true;
+    } else {
+      state.phase = PlayerMotorPhase::Airborne;
+      state.grounded = false;
+      state.jumpAvailable = false;
+    }
+  }
 
+  if (state.dashRemainingSeconds <= 0.0F && state.phase == PlayerMotorPhase::Grounded) {
+    state.horizontalVelocityMetersPerSecond = {};
+    state.dashDirection = {};
+  }
+
+  if (transformUpdateNeeded) {
     Transform3 nextTransform = actor->transform;
     nextTransform.position = finalPosition;
     const WorldMutationResult mutation = context.world->updateTransform(state.actor, nextTransform);
@@ -359,9 +456,12 @@ PlayerMotorResult updatePlayerMotor(PlayerMotorContext& context,
   result.actor = state.actor;
   result.phase = state.phase;
   result.grounded = state.grounded;
+  result.dashActive = result.dashActive || state.dashRemainingSeconds > 0.0F;
   result.horizontalVelocityMetersPerSecond = state.horizontalVelocityMetersPerSecond;
   result.verticalVelocityMetersPerSecond = state.verticalVelocityMetersPerSecond;
   result.horizontalSpeedMetersPerSecond = vectorLength(state.horizontalVelocityMetersPerSecond);
+  result.dashRemainingSeconds = state.dashRemainingSeconds;
+  result.dashCooldownRemainingSeconds = state.dashCooldownRemainingSeconds;
   result.startPosition = start;
   result.finalPosition = finalPosition;
   result.reasonCode = playerMotorStatusName(PlayerMotorStatus::Ok);

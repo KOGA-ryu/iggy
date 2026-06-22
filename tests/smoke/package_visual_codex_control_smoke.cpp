@@ -66,13 +66,13 @@ bool hasField(const std::map<std::string, std::string>& fields,
   return found != fields.end() && found->second == value;
 }
 
-bool writeControlFile(const std::filesystem::path& path) {
+bool writeControlFile(const std::filesystem::path& path, const std::string& mechanic) {
   std::ofstream output(path);
   if (!output) {
     return false;
   }
   output << "dev_menu.open=true\n";
-  output << "dev_menu.select=jump\n";
+  output << "dev_menu.select=" << mechanic << "\n";
   output << "mechanic.execute=true\n";
   output << "move.forward=1\n";
   output << "look.yaw_delta=0.100\n";
@@ -87,58 +87,97 @@ int main() {
   const std::filesystem::path binary{IGGY3D_VISUAL_DEMO_PATH};
   const std::filesystem::path fixture =
       std::filesystem::current_path() / "fixtures/demos/movement_playground/package.iggy3d.toml";
-  const std::filesystem::path control = "/tmp/iggy3d_codex_control.in";
-  const std::filesystem::path output = "/tmp/iggy3d_package_visual_codex_control.out";
-  const bool controlWritten = writeControlFile(control);
-  const std::string command =
+  const std::filesystem::path jumpControl = "/tmp/iggy3d_codex_jump_control.in";
+  const std::filesystem::path jumpOutput = "/tmp/iggy3d_package_visual_codex_jump_control.out";
+  const std::filesystem::path dashControl = "/tmp/iggy3d_codex_dash_control.in";
+  const std::filesystem::path dashOutput = "/tmp/iggy3d_package_visual_codex_dash_control.out";
+  const bool jumpControlWritten = writeControlFile(jumpControl, "jump");
+  const bool dashControlWritten = writeControlFile(dashControl, "dash");
+  const std::string jumpCommand =
       shellQuote(binary) + " --package " + shellQuote(fixture) +
       " --renderer null --window --interactive --frames 3 --dev-menu --codex-control " +
-      shellQuote(control) + " --print-render-receipt > " + shellQuote(output);
+      shellQuote(jumpControl) + " --print-render-receipt > " + shellQuote(jumpOutput);
+  const std::string dashCommand =
+      shellQuote(binary) + " --package " + shellQuote(fixture) +
+      " --renderer null --window --interactive --frames 3 --dev-menu --codex-control " +
+      shellQuote(dashControl) + " --print-render-receipt > " + shellQuote(dashOutput);
 
-  const int exitCode =
-      controlWritten && std::filesystem::exists(binary)
-          ? exitCodeFromSystem(std::system(command.c_str()))
+  const int jumpExitCode =
+      jumpControlWritten && std::filesystem::exists(binary)
+          ? exitCodeFromSystem(std::system(jumpCommand.c_str()))
           : 1;
-  std::map<std::string, std::string> fields;
-  const bool receiptValid = parseReceiptFile(output, fields);
-  const bool skipped = exitCode == 77 && receiptValid && hasField(fields, "result", "skip");
-  const bool passed =
-      exitCode == 0 && controlWritten && receiptValid && hasField(fields, "result", "pass") &&
-      hasField(fields, "backend", "null") && hasField(fields, "input_backend", "scripted") &&
-      hasField(fields, "interactive_mode", "true") &&
-      hasField(fields, "dev_menu_enabled", "true") &&
-      hasField(fields, "dev_menu_open", "true") &&
-      hasField(fields, "dev_menu_selected_mechanic", "jump") &&
-      hasField(fields, "dev_menu_execute_requested", "true") &&
-      hasField(fields, "dev_menu_execution_status", "applied") &&
-      hasField(fields, "codex_control_configured", "true") &&
-      hasField(fields, "codex_control_read", "true") &&
-      hasField(fields, "codex_control_applied", "true") &&
-      hasField(fields, "codex_control_status", "applied") &&
-      hasField(fields, "player_motor_active", "true") &&
-      hasField(fields, "player_grounded", "false") &&
-      hasField(fields, "player_motor_phase", "airborne") &&
-      hasField(fields, "player_motor_reason", "player_motor_ok") &&
-      hasField(fields, "jump_input_observed", "true") &&
-      hasField(fields, "jump_accepted", "true") &&
-      hasField(fields, "air_move_intent_observed", "true") &&
-      hasField(fields, "air_control_active", "true") &&
-      hasField(fields, "horizontal_velocity_state", "positive") &&
-      hasField(fields, "kinematic_movement_attempted", "true") &&
-      hasField(fields, "kinematic_movement_accepted", "true") &&
-      hasField(fields, "movement_reason", "movement_ok");
+  const int dashExitCode =
+      dashControlWritten && std::filesystem::exists(binary)
+          ? exitCodeFromSystem(std::system(dashCommand.c_str()))
+          : 1;
+  std::map<std::string, std::string> jumpFields;
+  std::map<std::string, std::string> dashFields;
+  const bool jumpReceiptValid = parseReceiptFile(jumpOutput, jumpFields);
+  const bool dashReceiptValid = parseReceiptFile(dashOutput, dashFields);
+  const bool skipped =
+      (jumpExitCode == 77 && jumpReceiptValid && hasField(jumpFields, "result", "skip")) ||
+      (dashExitCode == 77 && dashReceiptValid && hasField(dashFields, "result", "skip"));
+  const bool jumpPassed =
+      jumpExitCode == 0 && jumpControlWritten && jumpReceiptValid &&
+      hasField(jumpFields, "result", "pass") && hasField(jumpFields, "backend", "null") &&
+      hasField(jumpFields, "input_backend", "scripted") &&
+      hasField(jumpFields, "interactive_mode", "true") &&
+      hasField(jumpFields, "dev_menu_enabled", "true") &&
+      hasField(jumpFields, "dev_menu_open", "true") &&
+      hasField(jumpFields, "dev_menu_selected_mechanic", "jump") &&
+      hasField(jumpFields, "dev_menu_execute_requested", "true") &&
+      hasField(jumpFields, "dev_menu_execution_status", "applied") &&
+      hasField(jumpFields, "codex_control_configured", "true") &&
+      hasField(jumpFields, "codex_control_read", "true") &&
+      hasField(jumpFields, "codex_control_applied", "true") &&
+      hasField(jumpFields, "codex_control_status", "applied") &&
+      hasField(jumpFields, "player_motor_active", "true") &&
+      hasField(jumpFields, "player_grounded", "false") &&
+      hasField(jumpFields, "player_motor_phase", "airborne") &&
+      hasField(jumpFields, "player_motor_reason", "player_motor_ok") &&
+      hasField(jumpFields, "jump_input_observed", "true") &&
+      hasField(jumpFields, "jump_accepted", "true") &&
+      hasField(jumpFields, "air_move_intent_observed", "true") &&
+      hasField(jumpFields, "air_control_active", "true") &&
+      hasField(jumpFields, "horizontal_velocity_state", "positive") &&
+      hasField(jumpFields, "kinematic_movement_attempted", "true") &&
+      hasField(jumpFields, "kinematic_movement_accepted", "true") &&
+      hasField(jumpFields, "movement_reason", "movement_ok");
+  const bool dashPassed =
+      dashExitCode == 0 && dashControlWritten && dashReceiptValid &&
+      hasField(dashFields, "result", "pass") &&
+      hasField(dashFields, "dev_menu_selected_mechanic", "dash") &&
+      hasField(dashFields, "dev_menu_execute_requested", "true") &&
+      hasField(dashFields, "dev_menu_execution_status", "applied") &&
+      hasField(dashFields, "player_motor_active", "true") &&
+      hasField(dashFields, "dash_input_observed", "true") &&
+      hasField(dashFields, "dash_accepted", "true") &&
+      hasField(dashFields, "dash_active", "true") &&
+      hasField(dashFields, "dash_cooldown_state", "cooling") &&
+      hasField(dashFields, "horizontal_velocity_state", "positive");
+  const bool passed = jumpPassed && dashPassed;
 #else
-  const int exitCode = 77;
-  const bool controlWritten = false;
-  const bool receiptValid = false;
+  const int jumpExitCode = 77;
+  const int dashExitCode = 77;
+  const bool jumpControlWritten = false;
+  const bool dashControlWritten = false;
+  const bool jumpReceiptValid = false;
+  const bool dashReceiptValid = false;
   const bool skipped = true;
+  const bool jumpPassed = false;
+  const bool dashPassed = false;
   const bool passed = false;
 #endif
 
   std::cout << "smoke=package_visual_codex_control\n";
-  std::cout << "control_written=" << (controlWritten ? "true" : "false") << "\n";
-  std::cout << "receipt_valid=" << (receiptValid ? "true" : "false") << "\n";
-  std::cout << "actual_exit_code=" << exitCode << "\n";
+  std::cout << "jump_control_written=" << (jumpControlWritten ? "true" : "false") << "\n";
+  std::cout << "dash_control_written=" << (dashControlWritten ? "true" : "false") << "\n";
+  std::cout << "jump_receipt_valid=" << (jumpReceiptValid ? "true" : "false") << "\n";
+  std::cout << "dash_receipt_valid=" << (dashReceiptValid ? "true" : "false") << "\n";
+  std::cout << "jump_exit_code=" << jumpExitCode << "\n";
+  std::cout << "dash_exit_code=" << dashExitCode << "\n";
+  std::cout << "jump_result=" << (jumpPassed ? "pass" : "fail") << "\n";
+  std::cout << "dash_result=" << (dashPassed ? "pass" : "fail") << "\n";
   std::cout << "result=" << (passed ? "pass" : (skipped ? "skip" : "fail")) << "\n";
   std::cout << "reason_code="
             << (passed ? "package_visual_codex_control_pass"

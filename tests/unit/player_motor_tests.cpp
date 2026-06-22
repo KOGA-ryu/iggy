@@ -168,6 +168,74 @@ bool airControlClampsAgainstActorBlocker() {
                 "player stayed before wall");
 }
 
+bool dashMovesHorizontallyOnGround() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.0F});
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet();
+  iggy3d::PlayerMotorContext context{&world, &surfaces};
+  iggy3d::PlayerMotorState state = motorState();
+  iggy3d::PlayerMotorInput input;
+  input.moveIntent = {1.0F, 0.0F, 0.0F};
+  input.dashPressed = true;
+  input.seconds = 0.10F;
+
+  const iggy3d::PlayerMotorResult dash = iggy3d::updatePlayerMotor(context, state, input);
+  const iggy3d::EntityState* player = world.findById({1});
+  return expect(iggy3d::playerMotorSucceeded(dash), "dash result ok") &&
+         expect(dash.dashRequested, "dash requested") &&
+         expect(dash.dashAccepted, "dash accepted") &&
+         expect(dash.dashActive, "dash active") &&
+         expect(dash.phase == iggy3d::PlayerMotorPhase::Grounded, "dash remains grounded") &&
+         expect(dash.dashCooldownRemainingSeconds > 0.0F, "dash cooldown set") &&
+         expect(player != nullptr && player->transform.position.x > 0.50F,
+                "player dashed forward");
+}
+
+bool dashRequiresIntentAndRejectsCooldown() {
+  bool ok = true;
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.0F});
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet();
+  iggy3d::PlayerMotorContext context{&world, &surfaces};
+  iggy3d::PlayerMotorState state = motorState();
+  iggy3d::PlayerMotorInput input;
+  input.dashPressed = true;
+  input.seconds = 0.10F;
+
+  const iggy3d::PlayerMotorResult noIntent = iggy3d::updatePlayerMotor(context, state, input);
+  ok = ok && expect(iggy3d::playerMotorSucceeded(noIntent), "dash no intent result ok") &&
+       expect(noIntent.dashRejectedNoIntent, "dash rejected no intent") &&
+       expect(!noIntent.dashAccepted, "dash no intent not accepted");
+
+  input.moveIntent = {1.0F, 0.0F, 0.0F};
+  const iggy3d::PlayerMotorResult accepted = iggy3d::updatePlayerMotor(context, state, input);
+  const iggy3d::PlayerMotorResult rejected = iggy3d::updatePlayerMotor(context, state, input);
+  return ok && expect(accepted.dashAccepted, "dash first accepted") &&
+         expect(rejected.dashRejectedCooldown, "dash cooldown rejected") &&
+         expect(!rejected.dashAccepted, "dash cooldown not accepted");
+}
+
+bool dashClampsAgainstActorBlocker() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.50F});
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet({floorSurface(), wallSurface()});
+  iggy3d::PlayerMotorContext context{&world, &surfaces};
+  iggy3d::PlayerMotorState state = motorState();
+  iggy3d::PlayerMotorParams params;
+  params.dashSpeedMetersPerSecond = 12.0F;
+  params.dashDurationSeconds = 0.20F;
+  iggy3d::PlayerMotorInput input;
+  input.moveIntent = {0.0F, 0.0F, -1.0F};
+  input.dashPressed = true;
+  input.seconds = 0.20F;
+
+  const iggy3d::PlayerMotorResult dash = iggy3d::updatePlayerMotor(context, state, input, params);
+  const iggy3d::EntityState* player = world.findById({1});
+  return expect(iggy3d::playerMotorSucceeded(dash), "dash wall result ok") &&
+         expect(dash.dashAccepted, "dash wall accepted") &&
+         expect(dash.dashMovementClamped, "dash wall clamped") &&
+         expect(dash.hitSurfaceId == "wall", "dash wall hit id") &&
+         expect(player != nullptr && player->transform.position.z > 0.10F,
+                "dash player stayed before wall");
+}
+
 bool gravityLandsAndRearmsJump() {
   iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.0F});
   const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet();
@@ -239,6 +307,9 @@ int main() {
   const bool ok = jumpImpulseLeavesGround() && doubleJumpRejectedWhileAirborne() &&
                   airControlMovesHorizontallyWhileAirborne() &&
                   airControlClampsAgainstActorBlocker() &&
+                  dashMovesHorizontallyOnGround() &&
+                  dashRequiresIntentAndRejectsCooldown() &&
+                  dashClampsAgainstActorBlocker() &&
                   gravityLandsAndRearmsJump() && missingAndInvalidInputsDoNotMutate();
   return ok ? 0 : 1;
 }

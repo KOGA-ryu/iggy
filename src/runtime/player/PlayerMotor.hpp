@@ -38,13 +38,19 @@ struct PlayerMotorParams {
   float airLaunchSpeedMetersPerSecond = 2.00F;
   float airCollisionProbeHeightMeters = 0.90F;
   float airCollisionSkinMeters = 0.03F;
+  float dashSpeedMetersPerSecond = 9.50F;
+  float dashDurationSeconds = 0.18F;
+  float dashCooldownSeconds = 0.45F;
 };
 
 struct PlayerMotorState {
   EntityId actor;
   PlayerMotorPhase phase = PlayerMotorPhase::Grounded;
   Vec3 horizontalVelocityMetersPerSecond;
+  Vec3 dashDirection;
   float verticalVelocityMetersPerSecond = 0.0F;
+  float dashRemainingSeconds = 0.0F;
+  float dashCooldownRemainingSeconds = 0.0F;
   bool grounded = true;
   bool jumpAvailable = true;
 };
@@ -52,6 +58,7 @@ struct PlayerMotorState {
 struct PlayerMotorInput {
   Vec3 moveIntent;
   bool jumpPressed = false;
+  bool dashPressed = false;
   bool crouched = false;
   float seconds = 0.0F;
 };
@@ -64,20 +71,32 @@ struct PlayerMotorResult {
   bool wasGrounded = true;
   bool jumpRequested = false;
   bool jumpAccepted = false;
+  bool dashRequested = false;
+  bool dashAccepted = false;
+  bool dashActive = false;
+  bool dashRejectedNoIntent = false;
+  bool dashRejectedCooldown = false;
   bool landed = false;
   bool groundSnapApplied = false;
   bool airMoveIntent = false;
   bool airControlActive = false;
   bool airMovementClamped = false;
   bool airMovementSlid = false;
+  bool dashMovementClamped = false;
+  bool dashMovementSlid = false;
   bool mutatedWorld = false;
   Vec3 horizontalVelocityMetersPerSecond;
   float verticalVelocityMetersPerSecond = 0.0F;
   float horizontalSpeedMetersPerSecond = 0.0F;
+  float dashRemainingSeconds = 0.0F;
+  float dashCooldownRemainingSeconds = 0.0F;
   float gravityMetersPerSecondSquared = 0.0F;
   float jumpImpulseMetersPerSecond = 0.0F;
   float airMaxSpeedMetersPerSecond = 0.0F;
   float airAccelerationMetersPerSecondSquared = 0.0F;
+  float dashSpeedMetersPerSecond = 0.0F;
+  float dashDurationSeconds = 0.0F;
+  float dashCooldownSeconds = 0.0F;
   Vec3 startPosition;
   Vec3 finalPosition;
   std::string hitSurfaceId;

@@ -10,11 +10,13 @@ Controls:
 
 - WASD moves, mouse drag or right stick looks, Escape/Start quits;
 - Space jumps on keyboard when the dev menu is closed; hold WASD during jump for limited air control;
+- Shift dashes on keyboard when the dev menu is closed; hold WASD to choose dash direction;
 - hold C or Left Ctrl to crouch on keyboard;
 - South/Cross jumps on SDL gamepad when the dev menu is closed; hold left stick during jump for limited air control;
+- Right Shoulder/R1 dashes on SDL gamepad when the dev menu is closed; hold left stick to choose dash direction;
 - hold left stick click to crouch on SDL gamepad;
 - F1 toggles the dev menu state; while open, 1-7 selects walk, crouch, jump,
-  dash stub, vault stub, clamber stub, or wire-walk stub, and Space/Enter executes.
+  dash, vault stub, clamber stub, or wire-walk stub, and Space/Enter executes.
 - On SDL gamepad, Start + North toggles the dev menu state, D-pad left/right cycles,
   and South executes while the menu is open.
 
@@ -37,7 +39,7 @@ EOF
 ```
 
 Supported control keys are `dev_menu.open`, `dev_menu.select`, `mechanic`,
-`mechanic.execute`, `jump`, `stance`, `move.forward`, `move.right`, `look.yaw_delta`,
+`mechanic.execute`, `jump`, `dash`, `stance`, `move.forward`, `move.right`, `look.yaw_delta`,
 `look.pitch_delta`, `interact`, `attack`, `reset`, and `quit`.
 
 Purpose:
@@ -57,5 +59,5 @@ Purpose:
 Current runtime truth:
 
 - this fixture is a playable/renderable test arena;
-- first-person kinematic walking, hold-to-crouch stance, runtime jump, and limited air control work against the shifted room surface set;
-- clamber, vault, dash, spell projectile, and wire-walk mechanics are authored as test zones, not implemented ability modes yet.
+- first-person kinematic walking, hold-to-crouch stance, runtime jump, limited air control, and runtime dash work against the shifted room surface set;
+- clamber, vault, spell projectile, and wire-walk mechanics are authored as test zones, not implemented ability modes yet.
