@@ -779,7 +779,7 @@ void applyMouseLook(float& yaw, float& pitch, PlayableReceiptFields& fields) {
 
   constexpr float kMouseLookScale = 0.004F;
   yaw += dx * kMouseLookScale;
-  pitch += dy * kMouseLookScale;
+  pitch -= dy * kMouseLookScale;
   fields.mouseLookUsed = true;
 }
 #endif
@@ -791,7 +791,7 @@ iggy3d::Mat4 perspectiveMat4(float verticalFovRadians,
   const float f = 1.0F / std::tan(verticalFovRadians * 0.5F);
   iggy3d::Mat4 result{{{}}};
   result.m[0] = f / aspect;
-  result.m[5] = f;
+  result.m[5] = -f;
   result.m[10] = farPlane / (nearPlane - farPlane);
   result.m[11] = -(farPlane * nearPlane) / (farPlane - nearPlane);
   result.m[14] = -1.0F;
@@ -1170,10 +1170,10 @@ int main(int argc, const char* const* argv) {
             yaw += 0.035F;
           }
           if (up) {
-            pitch -= 0.020F;
+            pitch += 0.020F;
           }
           if (down) {
-            pitch += 0.020F;
+            pitch -= 0.020F;
           }
           const iggy3d::Vec3 forward{std::sin(yaw), 0.0F, -std::cos(yaw)};
           const iggy3d::Vec3 rightVec{std::cos(yaw), 0.0F, std::sin(yaw)};
@@ -1230,7 +1230,7 @@ int main(int argc, const char* const* argv) {
             playableFields.gamepadRightStickUsed || rightX != 0.0F || rightY != 0.0F;
         const float lookScale = slowLook ? 0.020F : 0.045F;
         yaw += rightX * lookScale;
-        pitch += rightY * lookScale;
+        pitch -= rightY * lookScale;
         const iggy3d::Vec3 forward{std::sin(yaw), 0.0F, -std::cos(yaw)};
         const iggy3d::Vec3 rightVec{std::cos(yaw), 0.0F, std::sin(yaw)};
         movement = movement + forward * (-leftY);
