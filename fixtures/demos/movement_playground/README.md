@@ -73,7 +73,9 @@ Current runtime truth:
   `clamber` traversal tags, measured wall height, usable width, range, facing, landing
   ground, and clearance gates;
 - wire-walk is a runtime traversal mechanic against registered rail slots authored as
-  `wire` rails, using range, facing, rail-top centerline snap, and actor clearance gates;
+  `wire` rails, using range, facing, rail-top centerline attach, actor clearance gates,
+  continuous rail-axis movement, endpoint clamps, and jump detach back to airborne motor
+  control;
 - jump/interact input resolves traversal intent before ordinary jump motor logic, so a
   local clamber slot can consume jump while open-floor jump remains a motor fallback;
 - traversal preview reports the next ready or blocked traversal candidate without mutating

@@ -112,6 +112,8 @@ std::string phaseName(const RuntimeDebugSnapshot& snapshot) {
       return "grounded";
     case PlayerMotorPhase::Airborne:
       return "airborne";
+    case PlayerMotorPhase::WireWalk:
+      return "wire_walk";
   }
   return snapshot.grounded ? "grounded" : "airborne";
 }

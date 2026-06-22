@@ -331,6 +331,19 @@ bool wireWalkAppliesToAuthoredRailSlot() {
                 "wire final y") &&
          expect(result.finalPosition.z > -1.01F && result.finalPosition.z < -0.99F,
                 "wire final z") &&
+         expect(iggy3d::nearlyEqual(result.railStartPosition,
+                                    {-5.0F, 1.05F, -1.0F}),
+                "wire rail start") &&
+         expect(iggy3d::nearlyEqual(result.railEndPosition,
+                                    {-1.0F, 1.05F, -1.0F}),
+                "wire rail end") &&
+         expect(iggy3d::nearlyEqual(result.railAxis, {1.0F, 0.0F, 0.0F}),
+                "wire rail axis") &&
+         expect(result.railCoordinateMeters > 1.99F &&
+                    result.railCoordinateMeters < 2.01F,
+                "wire rail coordinate") &&
+         expect(result.railLengthMeters > 3.99F && result.railLengthMeters < 4.01F,
+                "wire rail length") &&
          expect(result.travel.direction == iggy3d::MovementTravelDirection::Uphill,
                 "wire uphill travel") &&
          expect(player != nullptr && iggy3d::nearlyEqual(player->transform.position,

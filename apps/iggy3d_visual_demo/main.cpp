@@ -2132,6 +2132,24 @@ std::optional<iggy3d::TraversalCandidatePreviewResult> buildTraversalCandidatePr
   return iggy3d::previewTraversalCandidate(session.state().world, previewRequest);
 }
 
+void resetPlayerMotorAfterTraversal(iggy3d::PlayerMotorState& motor,
+                                    iggy3d::EntityId actor,
+                                    const iggy3d::TraversalResult& result) {
+  motor = iggy3d::PlayerMotorState{};
+  motor.actor = actor;
+  if (result.mechanic != iggy3d::TraversalMechanic::WireWalk) {
+    return;
+  }
+
+  motor.phase = iggy3d::PlayerMotorPhase::WireWalk;
+  motor.grounded = false;
+  motor.jumpAvailable = true;
+  motor.wireWalkRailStartMeters = result.railStartPosition;
+  motor.wireWalkRailEndMeters = result.railEndPosition;
+  motor.wireWalkAxis = result.railAxis;
+  motor.wireWalkCoordinateMeters = result.railCoordinateMeters;
+}
+
 bool runScriptedPlayableStep(iggy3d::Session& session,
                              std::uint32_t frameIndex,
                              PlayableReceiptFields& fields) {
@@ -3593,8 +3611,7 @@ int main(int argc, const char* const* argv) {
         playableFields.devMenuExecutionStatus =
             iggy3d::traversalApplied(traversalResult) ? "applied" : "blocked";
         if (iggy3d::traversalApplied(traversalResult)) {
-          playerMotor = iggy3d::PlayerMotorState{};
-          playerMotor.actor = player->id;
+          resetPlayerMotorAfterTraversal(playerMotor, player->id, traversalResult);
           movement = {};
           lastMovementResult.reset();
           lastMotorResult.reset();
@@ -3626,8 +3643,7 @@ int main(int argc, const char* const* argv) {
           actionRequested = false;
         }
         if (traversalIntentResult.accepted) {
-          playerMotor = iggy3d::PlayerMotorState{};
-          playerMotor.actor = player->id;
+          resetPlayerMotorAfterTraversal(playerMotor, player->id, traversalIntentResult.traversal);
           movement = {};
           lastMovementResult.reset();
           lastMotorResult.reset();

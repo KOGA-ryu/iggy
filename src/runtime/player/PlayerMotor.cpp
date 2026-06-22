@@ -44,7 +44,9 @@ bool validParams(const PlayerMotorParams& params) {
          std::isfinite(params.dashSpeedMetersPerSecond) &&
          params.dashSpeedMetersPerSecond >= 0.0F &&
          std::isfinite(params.dashDurationSeconds) && params.dashDurationSeconds >= 0.0F &&
-         std::isfinite(params.dashCooldownSeconds) && params.dashCooldownSeconds >= 0.0F;
+         std::isfinite(params.dashCooldownSeconds) && params.dashCooldownSeconds >= 0.0F &&
+         std::isfinite(params.wireWalkSpeedMetersPerSecond) &&
+         params.wireWalkSpeedMetersPerSecond >= 0.0F;
 }
 
 PlayerMotorResult baseResult(const PlayerMotorState& state,
@@ -69,6 +71,10 @@ PlayerMotorResult baseResult(const PlayerMotorState& state,
   result.dashSpeedMetersPerSecond = params.dashSpeedMetersPerSecond;
   result.dashDurationSeconds = params.dashDurationSeconds;
   result.dashCooldownSeconds = params.dashCooldownSeconds;
+  result.wireWalkSpeedMetersPerSecond = params.wireWalkSpeedMetersPerSecond;
+  result.wireWalkCoordinateMeters = state.wireWalkCoordinateMeters;
+  result.wireWalkRailLengthMeters =
+      vectorLength(state.wireWalkRailEndMeters - state.wireWalkRailStartMeters);
   result.startPosition = start;
   result.finalPosition = start;
   result.reasonCode = playerMotorStatusName(status);
@@ -274,6 +280,8 @@ const char* playerMotorPhaseName(PlayerMotorPhase phase) {
       return "grounded";
     case PlayerMotorPhase::Airborne:
       return "airborne";
+    case PlayerMotorPhase::WireWalk:
+      return "wire_walk";
   }
   return "grounded";
 }
@@ -350,7 +358,19 @@ PlayerMotorResult updatePlayerMotor(PlayerMotorContext& context,
     state.jumpAvailable = false;
   }
 
-  if (input.jumpPressed && state.grounded && state.jumpAvailable) {
+  if (input.jumpPressed && state.phase == PlayerMotorPhase::WireWalk) {
+    Vec3 launchDirection;
+    if (normalizedHorizontal(input.moveIntent, launchDirection)) {
+      const float launchSpeed =
+          std::min(params.airLaunchSpeedMetersPerSecond, params.airMaxSpeedMetersPerSecond);
+      state.horizontalVelocityMetersPerSecond = launchDirection * launchSpeed;
+    }
+    state.phase = PlayerMotorPhase::Airborne;
+    state.grounded = false;
+    state.jumpAvailable = false;
+    state.verticalVelocityMetersPerSecond = params.jumpImpulseMetersPerSecond;
+    result.jumpAccepted = true;
+  } else if (input.jumpPressed && state.grounded && state.jumpAvailable) {
     Vec3 launchDirection;
     if (normalizedHorizontal(input.moveIntent, launchDirection)) {
       const float launchSpeed =
@@ -383,7 +403,42 @@ PlayerMotorResult updatePlayerMotor(PlayerMotorContext& context,
 
   Vec3 finalPosition = start;
   bool transformUpdateNeeded = false;
-  if (state.dashRemainingSeconds > 0.0F && input.seconds > 0.0F &&
+  if (state.phase == PlayerMotorPhase::WireWalk && input.seconds > 0.0F) {
+    Vec3 railAxis;
+    Vec3 railDelta = state.wireWalkRailEndMeters - state.wireWalkRailStartMeters;
+    railDelta.y = 0.0F;
+    const float railLength = vectorLength(railDelta);
+    if (railLength <= kPlayerMotorEpsilon ||
+        !normalizedHorizontal(state.wireWalkAxis, railAxis)) {
+      state.phase = PlayerMotorPhase::Airborne;
+      state.grounded = false;
+      state.jumpAvailable = false;
+    } else {
+      Vec3 moveDirection;
+      const bool hasMoveIntent = normalizedHorizontal(input.moveIntent, moveDirection);
+      const float inputAlongRail = hasMoveIntent ? dot(moveDirection, railAxis) : 0.0F;
+      const float previousCoordinate = state.wireWalkCoordinateMeters;
+      state.wireWalkCoordinateMeters =
+          std::clamp(state.wireWalkCoordinateMeters +
+                         inputAlongRail * params.wireWalkSpeedMetersPerSecond * input.seconds,
+                     0.0F,
+                     railLength);
+      finalPosition = state.wireWalkRailStartMeters + railAxis * state.wireWalkCoordinateMeters;
+      finalPosition.y = state.wireWalkRailStartMeters.y;
+      state.horizontalVelocityMetersPerSecond =
+          railAxis * (inputAlongRail * params.wireWalkSpeedMetersPerSecond);
+      state.verticalVelocityMetersPerSecond = 0.0F;
+      state.grounded = false;
+      state.jumpAvailable = true;
+      result.wireWalkActive = true;
+      result.wireWalkMoved =
+          std::fabs(state.wireWalkCoordinateMeters - previousCoordinate) > kPlayerMotorEpsilon;
+      result.wireWalkEndpointReached =
+          state.wireWalkCoordinateMeters <= kPlayerMotorEpsilon ||
+          state.wireWalkCoordinateMeters >= railLength - kPlayerMotorEpsilon;
+      transformUpdateNeeded = true;
+    }
+  } else if (state.dashRemainingSeconds > 0.0F && input.seconds > 0.0F &&
       params.dashSpeedMetersPerSecond > 0.0F) {
     result.dashActive = true;
     const float dashSeconds = std::min(input.seconds, state.dashRemainingSeconds);
@@ -510,6 +565,9 @@ PlayerMotorResult updatePlayerMotor(PlayerMotorContext& context,
   result.horizontalSpeedMetersPerSecond = vectorLength(state.horizontalVelocityMetersPerSecond);
   result.dashRemainingSeconds = state.dashRemainingSeconds;
   result.dashCooldownRemainingSeconds = state.dashCooldownRemainingSeconds;
+  result.wireWalkCoordinateMeters = state.wireWalkCoordinateMeters;
+  result.wireWalkRailLengthMeters =
+      vectorLength(state.wireWalkRailEndMeters - state.wireWalkRailStartMeters);
   result.startPosition = start;
   result.finalPosition = finalPosition;
   const CollisionQueryResult resultGround =

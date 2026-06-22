@@ -413,7 +413,9 @@ int main() {
       hasField(wireFields, "traversal_start_z", "-9.296") &&
       hasField(wireFields, "traversal_final_y", "0.952") &&
       hasField(wireFields, "traversal_final_z", "-9.754") &&
-      hasField(wireFields, "debug_position_y", "0.950") &&
+      hasField(wireFields, "player_motor_phase", "wire_walk") &&
+      hasField(wireFields, "debug_player_phase", "wire_walk") &&
+      hasField(wireFields, "debug_position_y", "0.952") &&
       hasField(wireFields, "debug_position_z", "-9.754") &&
       hasField(wireFields, "debug_traversal_preview_available", "true") &&
       hasField(wireFields, "debug_traversal_preview_ready", "true") &&

@@ -306,6 +306,41 @@ Vec3 landingPositionOnWireSlot(const MovementTraversalSlot& slot, Vec3 start) {
   return landing;
 }
 
+Vec3 wireRailAxis(const MovementTraversalSlot& slot) {
+  const Vec3 size = slot.landingBounds.max - slot.landingBounds.min;
+  return size.x >= size.z ? Vec3{1.0F, 0.0F, 0.0F} : Vec3{0.0F, 0.0F, 1.0F};
+}
+
+Vec3 wireRailStart(const MovementTraversalSlot& slot) {
+  const Vec3 railCenter = center(slot.landingBounds);
+  if (wireRailAxis(slot).x != 0.0F) {
+    return {slot.landingBounds.min.x, slot.topHeightMeters, railCenter.z};
+  }
+  return {railCenter.x, slot.topHeightMeters, slot.landingBounds.min.z};
+}
+
+Vec3 wireRailEnd(const MovementTraversalSlot& slot) {
+  const Vec3 railCenter = center(slot.landingBounds);
+  if (wireRailAxis(slot).x != 0.0F) {
+    return {slot.landingBounds.max.x, slot.topHeightMeters, railCenter.z};
+  }
+  return {railCenter.x, slot.topHeightMeters, slot.landingBounds.max.z};
+}
+
+void applyWireRailFacts(TraversalResult& result,
+                        const MovementTraversalSlot& slot,
+                        Vec3 landing) {
+  result.railStartPosition = wireRailStart(slot);
+  result.railEndPosition = wireRailEnd(slot);
+  result.railAxis = wireRailAxis(slot);
+  result.railLengthMeters =
+      std::sqrt(lengthSquared(result.railEndPosition - result.railStartPosition));
+  result.railCoordinateMeters =
+      std::clamp(dot(landing - result.railStartPosition, result.railAxis),
+                 0.0F,
+                 result.railLengthMeters);
+}
+
 TraversalCandidatePreviewResult previewVault(
     const WorldState& world,
     const TraversalCandidatePreviewRequest& request,
@@ -802,6 +837,7 @@ TraversalResult executeWireWalk(WorldState& world,
   result.targetId = slot->sourceStaticMeshId;
   result.landingSurfaceId = slot->landingSurfaceId;
   result.finalPosition = landing;
+  applyWireRailFacts(result, *slot, landing);
   result.travel = computeMovementTravelFacts(result.start, result.finalPosition);
   return result;
 }

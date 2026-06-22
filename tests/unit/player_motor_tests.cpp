@@ -301,6 +301,82 @@ bool gravityLandsAndRearmsJump() {
                 "landed on floor");
 }
 
+iggy3d::PlayerMotorState wireWalkMotorState() {
+  iggy3d::PlayerMotorState state = motorState();
+  state.phase = iggy3d::PlayerMotorPhase::WireWalk;
+  state.grounded = false;
+  state.jumpAvailable = true;
+  state.wireWalkRailStartMeters = {-2.0F, 1.0F, -1.0F};
+  state.wireWalkRailEndMeters = {2.0F, 1.0F, -1.0F};
+  state.wireWalkAxis = {1.0F, 0.0F, 0.0F};
+  state.wireWalkCoordinateMeters = 2.0F;
+  return state;
+}
+
+bool wireWalkMovesAlongRailAndClampsAtEndpoint() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 1.0F, -1.0F});
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet();
+  iggy3d::PlayerMotorContext context{&world, &surfaces};
+  iggy3d::PlayerMotorState state = wireWalkMotorState();
+  iggy3d::PlayerMotorParams params;
+  params.wireWalkSpeedMetersPerSecond = 2.0F;
+  iggy3d::PlayerMotorInput input;
+  input.moveIntent = {1.0F, 0.0F, 0.0F};
+  input.seconds = 0.50F;
+
+  const iggy3d::PlayerMotorResult moved =
+      iggy3d::updatePlayerMotor(context, state, input, params);
+  const iggy3d::EntityState* afterMove = world.findById({1});
+  bool ok = expect(iggy3d::playerMotorSucceeded(moved), "wire move result ok") &&
+            expect(moved.phase == iggy3d::PlayerMotorPhase::WireWalk,
+                   "wire move phase") &&
+            expect(moved.wireWalkActive, "wire active") &&
+            expect(moved.wireWalkMoved, "wire moved") &&
+            expect(!moved.wireWalkEndpointReached, "wire not endpoint") &&
+            expect(approx(moved.wireWalkCoordinateMeters, 3.0F),
+                   "wire coordinate moved") &&
+            expect(afterMove != nullptr &&
+                       iggy3d::nearlyEqual(afterMove->transform.position,
+                                           {1.0F, 1.0F, -1.0F}),
+                   "wire moved along rail");
+
+  input.seconds = 4.0F;
+  const iggy3d::PlayerMotorResult clamped =
+      iggy3d::updatePlayerMotor(context, state, input, params);
+  const iggy3d::EntityState* afterClamp = world.findById({1});
+  return ok && expect(iggy3d::playerMotorSucceeded(clamped), "wire clamp result ok") &&
+         expect(clamped.wireWalkEndpointReached, "wire endpoint reached") &&
+         expect(approx(clamped.wireWalkCoordinateMeters, 4.0F),
+                "wire coordinate clamped") &&
+         expect(afterClamp != nullptr &&
+                    iggy3d::nearlyEqual(afterClamp->transform.position,
+                                        {2.0F, 1.0F, -1.0F}),
+                "wire clamped at rail end");
+}
+
+bool wireWalkJumpDetachesIntoAirbornePhase() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 1.0F, -1.0F});
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet();
+  iggy3d::PlayerMotorContext context{&world, &surfaces};
+  iggy3d::PlayerMotorState state = wireWalkMotorState();
+  iggy3d::PlayerMotorInput input;
+  input.jumpPressed = true;
+  input.moveIntent = {1.0F, 0.0F, 0.0F};
+  input.seconds = 0.10F;
+
+  const iggy3d::PlayerMotorResult result = iggy3d::updatePlayerMotor(context, state, input);
+  return expect(iggy3d::playerMotorSucceeded(result), "wire jump result ok") &&
+         expect(result.jumpRequested, "wire jump requested") &&
+         expect(result.jumpAccepted, "wire jump accepted") &&
+         expect(result.phase == iggy3d::PlayerMotorPhase::Airborne,
+                "wire jump airborne") &&
+         expect(!result.wireWalkActive, "wire inactive after jump") &&
+         expect(result.verticalVelocityMetersPerSecond > 0.0F,
+                "wire jump upward velocity") &&
+         expect(state.phase == iggy3d::PlayerMotorPhase::Airborne,
+                "wire state detached");
+}
+
 bool missingAndInvalidInputsDoNotMutate() {
   bool ok = true;
   iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.0F});
@@ -344,6 +420,9 @@ int main() {
                   dashMovesHorizontallyOnGround() &&
                   dashRequiresIntentAndRejectsCooldown() &&
                   dashClampsAgainstActorBlocker() &&
-                  gravityLandsAndRearmsJump() && missingAndInvalidInputsDoNotMutate();
+                  gravityLandsAndRearmsJump() &&
+                  wireWalkMovesAlongRailAndClampsAtEndpoint() &&
+                  wireWalkJumpDetachesIntoAirbornePhase() &&
+                  missingAndInvalidInputsDoNotMutate();
   return ok ? 0 : 1;
 }

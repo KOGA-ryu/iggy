@@ -98,10 +98,15 @@ struct TraversalResult {
   std::string slotHeightBand;
   std::string targetId;
   std::string landingSurfaceId;
+  Vec3 railStartPosition;
+  Vec3 railEndPosition;
+  Vec3 railAxis = {1.0F, 0.0F, 0.0F};
   float slotLedgeHeightMeters = 0.0F;
   float slotUsableWidthMeters = 0.0F;
   float slotStartRangeMeters = 0.0F;
   float slotFacingDot = 0.0F;
+  float railCoordinateMeters = 0.0F;
+  float railLengthMeters = 0.0F;
   const char* reasonCode = "traversal_invalid_input";
 };
 

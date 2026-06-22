@@ -23,6 +23,7 @@ enum class PlayerMotorStatus : std::uint8_t {
 enum class PlayerMotorPhase : std::uint8_t {
   Grounded,
   Airborne,
+  WireWalk,
 };
 
 struct PlayerMotorParams {
@@ -42,6 +43,7 @@ struct PlayerMotorParams {
   float dashSpeedMetersPerSecond = 9.50F;
   float dashDurationSeconds = 0.18F;
   float dashCooldownSeconds = 0.45F;
+  float wireWalkSpeedMetersPerSecond = 2.25F;
 };
 
 struct PlayerMotorState {
@@ -49,9 +51,13 @@ struct PlayerMotorState {
   PlayerMotorPhase phase = PlayerMotorPhase::Grounded;
   Vec3 horizontalVelocityMetersPerSecond;
   Vec3 dashDirection;
+  Vec3 wireWalkRailStartMeters;
+  Vec3 wireWalkRailEndMeters;
+  Vec3 wireWalkAxis = {1.0F, 0.0F, 0.0F};
   float verticalVelocityMetersPerSecond = 0.0F;
   float dashRemainingSeconds = 0.0F;
   float dashCooldownRemainingSeconds = 0.0F;
+  float wireWalkCoordinateMeters = 0.0F;
   bool grounded = true;
   bool jumpAvailable = true;
 };
@@ -85,6 +91,9 @@ struct PlayerMotorResult {
   bool airMovementSlid = false;
   bool dashMovementClamped = false;
   bool dashMovementSlid = false;
+  bool wireWalkActive = false;
+  bool wireWalkMoved = false;
+  bool wireWalkEndpointReached = false;
   bool groundSampleValid = false;
   bool groundContact = false;
   bool groundWalkable = false;
@@ -109,6 +118,9 @@ struct PlayerMotorResult {
   float dashSpeedMetersPerSecond = 0.0F;
   float dashDurationSeconds = 0.0F;
   float dashCooldownSeconds = 0.0F;
+  float wireWalkSpeedMetersPerSecond = 0.0F;
+  float wireWalkCoordinateMeters = 0.0F;
+  float wireWalkRailLengthMeters = 0.0F;
   Vec3 startPosition;
   Vec3 finalPosition;
   std::string movementPolicyBand = "not_sampled";
