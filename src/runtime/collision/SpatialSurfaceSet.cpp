@@ -42,7 +42,7 @@ bool contains(const std::vector<std::string>& values, std::string_view expected)
   return false;
 }
 
-bool buildBounds(std::span<const Vec3> points, Aabb3& out) {
+bool buildBounds(std::span<const Vec3> points, Vec3 worldOffsetMeters, Aabb3& out) {
   if (points.empty()) {
     return false;
   }
@@ -52,7 +52,8 @@ bool buildBounds(std::span<const Vec3> points, Aabb3& out) {
   Vec3 maxPoint{-std::numeric_limits<float>::max(),
                 -std::numeric_limits<float>::max(),
                 -std::numeric_limits<float>::max()};
-  for (const Vec3 point : points) {
+  for (const Vec3 rawPoint : points) {
+    const Vec3 point = rawPoint + worldOffsetMeters;
     if (!isFinite(point)) {
       return false;
     }
@@ -94,13 +95,18 @@ std::size_t SpatialSurfaceSet::size() const {
 }
 
 SpatialSurfaceSet buildSpatialSurfaceSet(const RoomAsset& room) {
+  return buildSpatialSurfaceSet(room, {});
+}
+
+SpatialSurfaceSet buildSpatialSurfaceSet(const RoomAsset& room, Vec3 worldOffsetMeters) {
   SpatialSurfaceSet set;
   set.surfaces_.reserve(room.spatialSurfaces.size());
   for (const RoomSpatialSurface& surface : room.spatialSurfaces) {
     Aabb3 bounds;
     Vec3 normal;
     if (surface.id.empty() || surface.pointsMeters.empty() ||
-        !buildBounds(surface.pointsMeters, bounds) || !normalized(surface.normal, normal)) {
+        !buildBounds(surface.pointsMeters, worldOffsetMeters, bounds) ||
+        !normalized(surface.normal, normal)) {
       continue;
     }
     CollisionSurfaceView view;
@@ -109,7 +115,7 @@ SpatialSurfaceSet buildSpatialSurfaceSet(const RoomAsset& room) {
     view.role = toCollisionRole(surface.role);
     view.bounds = bounds;
     view.normal = normal;
-    view.planePoint = surface.pointsMeters.front();
+    view.planePoint = surface.pointsMeters.front() + worldOffsetMeters;
     view.blocksActor = surface.blocksActor;
     view.blocksProjectile = surface.blocksProjectile;
     view.hasActorMask = contains(surface.collisionMask, "actor");

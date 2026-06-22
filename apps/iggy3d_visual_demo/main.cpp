@@ -12,7 +12,9 @@
 #include "projection/scene/SceneProjection.hpp"
 #include "render/FrameInput.hpp"
 #include "render/RendererApi.hpp"
+#include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/command/Command.hpp"
+#include "runtime/movement/MovementSystem.hpp"
 #include "runtime/session/Session.hpp"
 
 #include <algorithm>
@@ -51,6 +53,7 @@ struct VisualOptions {
   bool noWindowFlagSeen = false;
   bool interactive = false;
   bool scriptedPlayableSmoke = false;
+  bool scriptedKinematicInput = false;
   VisualInputBackend inputBackend = VisualInputBackend::Keyboard;
   std::uint32_t holdSeconds = 0U;
   std::uint32_t frames = 1U;
@@ -93,6 +96,16 @@ struct PlayableReceiptFields {
   bool resetExecuted = false;
   bool saveLoadReplayStable = true;
   bool retryAvailable = true;
+  bool kinematicControllerActive = false;
+  bool kinematicMovementAttempted = false;
+  bool kinematicMovementAccepted = false;
+  bool kinematicCommandLogIntegrated = false;
+  bool movementClamped = false;
+  bool movementSlid = false;
+  bool groundSnapApplied = false;
+  std::string movementReason = "not_attempted";
+  std::string movementPolicyBand = "not_attempted";
+  std::string hitSurfaceId = "none";
   bool mouseLookAvailable = false;
   bool mouseLookUsed = false;
   bool gamepadAvailable = false;
@@ -195,6 +208,10 @@ ParseResult parseOptions(int argc, const char* const* argv) {
       result.options.backend = iggy3d::RendererBackendKind::Vulkan;
       result.options.window = true;
       result.options.windowFlagSeen = true;
+    } else if (arg == "--scripted-kinematic-input") {
+      result.options.scriptedKinematicInput = true;
+      result.options.interactive = true;
+      result.options.inputBackend = VisualInputBackend::Scripted;
     } else if (arg == "--hold-seconds" && hasValue(i, argc)) {
       const std::string_view count{argv[++i]};
       std::uint32_t value = 0U;
@@ -431,6 +448,19 @@ const iggy3d::EntityState* playerEntity(const iggy3d::Session& session) {
   return session.state().world.findByStableName("player");
 }
 
+void recordKinematicMovementResult(PlayableReceiptFields& fields,
+                                   const iggy3d::MovementResult& result) {
+  fields.kinematicMovementAttempted = true;
+  fields.kinematicMovementAccepted = iggy3d::movementSucceeded(result);
+  fields.movementClamped = result.movementClamped;
+  fields.movementSlid = result.movementSlid;
+  fields.groundSnapApplied = result.groundSnapApplied;
+  fields.movementReason = result.reasonCode;
+  fields.movementPolicyBand =
+      result.movementPolicyBand.empty() ? "unavailable" : result.movementPolicyBand;
+  fields.hitSurfaceId = result.hitSurfaceId.empty() ? "none" : result.hitSurfaceId;
+}
+
 iggy3d::CommandRecord moveCommand(iggy3d::Vec3 point) {
   iggy3d::CommandRecord command;
   command.playerSlot = 0;
@@ -501,6 +531,19 @@ bool objectiveComplete(const iggy3d::Session& session) {
   return false;
 }
 
+iggy3d::Vec3 roomOriginOffsetFromPlayerSpawn(const iggy3d::RoomAsset& room) {
+  for (const iggy3d::RoomAnchorAsset& anchor : room.anchors) {
+    if (anchor.id == "player_spawn") {
+      return anchor.positionMeters;
+    }
+  }
+  return {};
+}
+
+iggy3d::Vec3 negated(iggy3d::Vec3 value) {
+  return {-value.x, -value.y, -value.z};
+}
+
 void attachRoomProjection(const iggy3d::PackageLoadResult& package,
                           iggy3d::SceneProjectionResult& scene) {
   if (package.rooms.empty()) {
@@ -517,11 +560,8 @@ void attachRoomProjection(const iggy3d::PackageLoadResult& package,
   scene.room.anchorCount = room.anchors.size();
   scene.room.meshes.clear();
   scene.room.meshes.reserve(room.staticMeshes.size());
-  iggy3d::Vec3 roomOriginOffset{};
+  const iggy3d::Vec3 roomOriginOffset = roomOriginOffsetFromPlayerSpawn(room);
   for (const iggy3d::RoomAnchorAsset& anchor : room.anchors) {
-    if (anchor.id == "player_spawn") {
-      roomOriginOffset = anchor.positionMeters;
-    }
     scene.room.keyAnchorVisible =
         scene.room.keyAnchorVisible || anchor.runtimeStableName == "gold_key";
     scene.room.dummyAnchorVisible =
@@ -613,6 +653,17 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
   iggy3d::appendReceiptField(receipt, "reset_executed", fields.resetExecuted);
   iggy3d::appendReceiptField(receipt, "save_load_replay_stable", fields.saveLoadReplayStable);
   iggy3d::appendReceiptField(receipt, "tactical_view_available", false);
+  iggy3d::appendReceiptField(receipt, "kinematic_controller_active", fields.kinematicControllerActive);
+  iggy3d::appendReceiptField(receipt, "kinematic_movement_attempted", fields.kinematicMovementAttempted);
+  iggy3d::appendReceiptField(receipt, "kinematic_movement_accepted", fields.kinematicMovementAccepted);
+  iggy3d::appendReceiptField(receipt, "kinematic_command_log_integrated",
+                             fields.kinematicCommandLogIntegrated);
+  iggy3d::appendReceiptField(receipt, "movement_reason", fields.movementReason);
+  iggy3d::appendReceiptField(receipt, "movement_policy_band", fields.movementPolicyBand);
+  iggy3d::appendReceiptField(receipt, "movement_clamped", fields.movementClamped);
+  iggy3d::appendReceiptField(receipt, "movement_slid", fields.movementSlid);
+  iggy3d::appendReceiptField(receipt, "ground_snap_applied", fields.groundSnapApplied);
+  iggy3d::appendReceiptField(receipt, "hit_surface_id", fields.hitSurfaceId);
   iggy3d::appendReceiptField(receipt, "mouse_look_available", fields.mouseLookAvailable);
   iggy3d::appendReceiptField(receipt, "mouse_look_used", fields.mouseLookUsed);
   iggy3d::appendReceiptField(receipt, "gamepad_available", fields.gamepadAvailable);
@@ -846,6 +897,12 @@ int main(int argc, const char* const* argv) {
   if (package.status != iggy3d::PackageLoadStatus::Ok) {
     return printFailure("visual_demo_package_lookup_failed");
   }
+  const iggy3d::SpatialSurfaceSet collisionSurfaces =
+      package.rooms.empty()
+          ? iggy3d::SpatialSurfaceSet{}
+          : iggy3d::buildSpatialSurfaceSet(
+                package.rooms.front(),
+                negated(roomOriginOffsetFromPlayerSpawn(package.rooms.front())));
 
   iggy3d::SessionCreateRequest create;
   create.config = package.scenario.config;
@@ -1009,6 +1066,9 @@ int main(int argc, const char* const* argv) {
   playableFields.playable = parsed.options.interactive || parsed.options.scriptedPlayableSmoke;
   playableFields.interactiveMode = parsed.options.interactive;
   playableFields.inputBackend = parsed.options.inputBackend;
+  playableFields.saveLoadReplayStable = parsed.options.scriptedPlayableSmoke;
+  playableFields.kinematicControllerActive =
+      playableFields.playable && !parsed.options.scriptedPlayableSmoke && !collisionSurfaces.empty();
 #if defined(IGGY3D_HAS_SDL3)
   GamepadSession gamepad;
   if (playableFields.playable &&
@@ -1088,7 +1148,9 @@ int main(int argc, const char* const* argv) {
       bool actionRequested = false;
       bool attackRequested = false;
       bool resetRequested = false;
-      if (playableFields.inputBackend == VisualInputBackend::Keyboard) {
+      if (parsed.options.scriptedKinematicInput) {
+        movement = {1.0F, 0.0F, 0.0F};
+      } else if (playableFields.inputBackend == VisualInputBackend::Keyboard) {
         int keyCount = 0;
         const bool* keys = SDL_GetKeyboardState(&keyCount);
         if (keys != nullptr) {
@@ -1193,9 +1255,20 @@ int main(int argc, const char* const* argv) {
         if (magnitudeSquared > 1.0F) {
           movement = movement / std::sqrt(magnitudeSquared);
         }
-        constexpr float kMovementStepMeters = 0.08F;
-        const iggy3d::Vec3 destination = player->transform.position + movement * kMovementStepMeters;
-        (void)submitAndDrain(session, moveCommand(destination));
+        iggy3d::SessionState& mutableState = session.mutableStateForOwnedSystems();
+        iggy3d::MovementSystemContext movementContext{
+            &mutableState.world, &mutableState.config, &collisionSurfaces};
+        iggy3d::KinematicMovementRequest movementRequest;
+        movementRequest.actor = player->id;
+        movementRequest.intent = movement;
+        movementRequest.mode = iggy3d::MovementMode::Walk;
+        movementRequest.params.maxSpeedMetersPerSecond = 4.8F;
+        movementRequest.params.groundSnapMeters = 0.75F;
+        movementRequest.seconds = 1.0F / 60.0F;
+        movementRequest.sourceCommandId = iggy3d::kInvalidCommandId;
+        const iggy3d::MovementResult movementResult =
+            iggy3d::executeKinematicMovement(movementContext, movementRequest);
+        recordKinematicMovementResult(playableFields, movementResult);
       }
       if (resetRequested) {
         const iggy3d::SessionResetResult reset = session.resetToBaseline();

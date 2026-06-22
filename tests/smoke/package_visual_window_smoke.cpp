@@ -93,6 +93,8 @@ int main() {
   const std::filesystem::path output = "/tmp/iggy3d_package_visual_window.out";
   const std::filesystem::path interactiveOutput =
       "/tmp/iggy3d_package_visual_window_interactive.out";
+  const std::filesystem::path kinematicOutput =
+      "/tmp/iggy3d_package_visual_window_kinematic.out";
   const std::string command = shellQuote(binary) + " --package " + shellQuote(fixture) +
                               " --renderer null --frames 1 --window --print-render-receipt > " +
                               shellQuote(output);
@@ -100,6 +102,11 @@ int main() {
       shellQuote(binary) + " --package " + shellQuote(fixture) +
       " --renderer null --window --interactive --hold-seconds 1 --print-render-receipt > " +
       shellQuote(interactiveOutput);
+  const std::string kinematicCommand =
+      shellQuote(binary) + " --package " + shellQuote(fixture) +
+      " --renderer null --window --interactive --scripted-kinematic-input --frames 3 "
+      "--print-render-receipt > " +
+      shellQuote(kinematicOutput);
 
   const int exitCode =
       std::filesystem::exists(binary) ? exitCodeFromSystem(std::system(command.c_str())) : 1;
@@ -109,6 +116,10 @@ int main() {
       std::filesystem::exists(binary) ? exitCodeFromSystem(std::system(interactiveCommand.c_str())) : 1;
   std::map<std::string, std::string> interactiveFields;
   const bool interactiveReceiptValid = parseReceiptFile(interactiveOutput, interactiveFields);
+  const int kinematicExitCode =
+      std::filesystem::exists(binary) ? exitCodeFromSystem(std::system(kinematicCommand.c_str())) : 1;
+  std::map<std::string, std::string> kinematicFields;
+  const bool kinematicReceiptValid = parseReceiptFile(kinematicOutput, kinematicFields);
   const bool skipped = exitCode == 77 && receiptValid && hasField(fields, "result", "skip") &&
                        hasField(fields, "reason_code", "sdl3_unavailable") &&
                        hasField(fields, "window_mode", "window") &&
@@ -128,14 +139,34 @@ int main() {
                       hasField(interactiveFields, "backend", "null") &&
                       hasField(interactiveFields, "interactive_mode", "true") &&
                       hasField(interactiveFields, "mouse_look_available", "true") &&
+                      hasField(interactiveFields, "kinematic_controller_active", "true") &&
+                      hasField(interactiveFields, "kinematic_movement_attempted", "false") &&
+                      hasField(interactiveFields, "kinematic_command_log_integrated", "false") &&
+                      hasField(interactiveFields, "save_load_replay_stable", "false") &&
+                      hasField(interactiveFields, "movement_reason", "not_attempted") &&
                       hasField(interactiveFields, "window_mode", "window") &&
                       integerFieldGreaterThan(interactiveFields, "frames", 1ULL) &&
-                      integerFieldGreaterThan(interactiveFields, "frames_presented", 1ULL);
+                      integerFieldGreaterThan(interactiveFields, "frames_presented", 1ULL) &&
+                      kinematicExitCode == 0 && kinematicReceiptValid &&
+                      hasField(kinematicFields, "result", "pass") &&
+                      hasField(kinematicFields, "backend", "null") &&
+                      hasField(kinematicFields, "input_backend", "scripted") &&
+                      hasField(kinematicFields, "kinematic_controller_active", "true") &&
+                      hasField(kinematicFields, "kinematic_movement_attempted", "true") &&
+                      hasField(kinematicFields, "kinematic_movement_accepted", "true") &&
+                      hasField(kinematicFields, "kinematic_command_log_integrated", "false") &&
+                      hasField(kinematicFields, "save_load_replay_stable", "false") &&
+                      hasField(kinematicFields, "movement_reason", "movement_ok") &&
+                      hasField(kinematicFields, "movement_policy_band", "flat") &&
+                      hasField(kinematicFields, "movement_clamped", "false") &&
+                      hasField(kinematicFields, "hit_surface_id", "none");
 #else
   const int exitCode = 77;
   const int interactiveExitCode = 77;
+  const int kinematicExitCode = 77;
   const bool receiptValid = false;
   const bool interactiveReceiptValid = false;
+  const bool kinematicReceiptValid = false;
   const bool skipped = true;
   const bool passed = false;
 #endif
@@ -144,8 +175,11 @@ int main() {
   std::cout << "receipt_valid=" << (receiptValid ? "true" : "false") << "\n";
   std::cout << "interactive_receipt_valid=" << (interactiveReceiptValid ? "true" : "false")
             << "\n";
+  std::cout << "kinematic_receipt_valid=" << (kinematicReceiptValid ? "true" : "false")
+            << "\n";
   std::cout << "actual_exit_code=" << exitCode << "\n";
   std::cout << "interactive_exit_code=" << interactiveExitCode << "\n";
+  std::cout << "kinematic_exit_code=" << kinematicExitCode << "\n";
   std::cout << "result=" << (passed ? "pass" : (skipped ? "skip" : "fail")) << "\n";
   std::cout << "reason_code="
             << (passed ? "packet_visual_window_pass"

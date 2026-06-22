@@ -124,6 +124,8 @@ int main() {
       hasField(fields, "interaction_executed", "true") &&
       hasField(fields, "attack_executed", "true") &&
       hasField(fields, "reset_executed", "true") &&
+      hasField(fields, "kinematic_controller_active", "false") &&
+      hasField(fields, "save_load_replay_stable", "true") &&
       hasField(fields, "result", "pass");
 #else
   const int exitCode = 77;

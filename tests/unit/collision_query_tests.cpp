@@ -68,6 +68,42 @@ bool firstRoomHeightAndNormalQueries() {
                 "floor normal world up");
 }
 
+bool offsetSurfaceSetAlignsPlayerSpawnToOrigin() {
+  const std::filesystem::path packagePath =
+      std::filesystem::current_path() / "fixtures/demos/first_room/package.iggy3d.toml";
+  const iggy3d::PackageLoadResult package =
+      iggy3d::loadPackage({packagePath.generic_string()});
+  if (package.status != iggy3d::PackageLoadStatus::Ok || package.rooms.empty()) {
+    return expect(false, "package loaded");
+  }
+
+  iggy3d::Vec3 playerSpawn;
+  bool foundPlayerSpawn = false;
+  for (const iggy3d::RoomAnchorAsset& anchor : package.rooms.front().anchors) {
+    if (anchor.id == "player_spawn") {
+      playerSpawn = anchor.positionMeters;
+      foundPlayerSpawn = true;
+      break;
+    }
+  }
+  const iggy3d::Vec3 worldOffset{-playerSpawn.x, -playerSpawn.y, -playerSpawn.z};
+  const iggy3d::SpatialSurfaceSet surfaces =
+      iggy3d::buildSpatialSurfaceSet(package.rooms.front(), worldOffset);
+  const iggy3d::CollisionQueryResult height =
+      iggy3d::sampleSurfaceHeight(surfaces, {0.0F, 2.0F, 0.0F});
+  const iggy3d::CollisionQueryResult centerStride =
+      iggy3d::querySegment(surfaces,
+                           {0.0F, 1.0F, 0.0F},
+                           {0.5F, 1.0F, 0.0F},
+                           iggy3d::CollisionQueryKind::Actor);
+  return expect(foundPlayerSpawn, "player spawn anchor") &&
+         expect(height.status == iggy3d::CollisionQueryStatus::Hit,
+                "offset height hits player origin") &&
+         expect(height.surfaceId == "spawn_floor_walkable", "offset floor id") &&
+         expect(centerStride.status == iggy3d::CollisionQueryStatus::NoHit,
+                "offset center stride is not wall blocked");
+}
+
 bool actorQueriesRespectWallOpeningAndProjectileOnlyBlocker() {
   const iggy3d::SpatialSurfaceSet surfaces = loadFirstRoomSurfaceSet();
   const iggy3d::CollisionQueryResult wallHit =
@@ -164,6 +200,7 @@ bool deterministicTieOrderingUsesStableId() {
 
 int main() {
   const bool ok = firstRoomHeightAndNormalQueries() &&
+                  offsetSurfaceSetAlignsPlayerSpawnToOrigin() &&
                   actorQueriesRespectWallOpeningAndProjectileOnlyBlocker() &&
                   projectileQueriesRespectProjectileBlockers() &&
                   overlapQueriesAreValueResults() &&
