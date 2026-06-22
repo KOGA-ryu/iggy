@@ -126,6 +126,10 @@ if(IGGY3D_BUILD_TOOLS)
   add_executable(iggy3d_replay_tool apps/iggy3d_replay_tool/main.cpp)
   target_link_libraries(iggy3d_replay_tool PRIVATE iggy3d)
   iggy3d_apply_warnings(iggy3d_replay_tool)
+
+  add_executable(iggy3d_collision_probe apps/iggy3d_collision_probe/main.cpp)
+  target_link_libraries(iggy3d_collision_probe PRIVATE iggy3d)
+  iggy3d_apply_warnings(iggy3d_collision_probe)
 endif()
 
 if(IGGY3D_BUILD_TOOLS OR IGGY3D_ENABLE_VISUAL_DEMO)

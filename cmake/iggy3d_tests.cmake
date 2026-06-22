@@ -244,6 +244,19 @@ set_tests_properties(package_headless_smoke PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "smoke;package;headless;iggy3d")
 
+if(TARGET iggy3d_collision_probe)
+  add_executable(collision_probe_smoke tests/smoke/collision_probe_smoke.cpp)
+  target_link_libraries(collision_probe_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(collision_probe_smoke)
+  target_compile_definitions(collision_probe_smoke
+    PRIVATE
+      IGGY3D_COLLISION_PROBE_PATH="$<TARGET_FILE:iggy3d_collision_probe>")
+  add_test(NAME collision_probe_smoke COMMAND "$<TARGET_FILE:collision_probe_smoke>")
+  set_tests_properties(collision_probe_smoke PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    LABELS "smoke;runtime;collision;package;iggy3d")
+endif()
+
 if(IGGY3D_ENABLE_VULKAN_SMOKE)
   function(iggy3d_add_vulkan_backend_smoke_sources target_name)
     if(NOT IGGY3D_BUILD_VULKAN_BACKEND)
