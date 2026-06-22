@@ -18,6 +18,7 @@ struct SaveEnvelope;
 struct RuntimeEvent;
 
 struct SessionCreateRequest {
+  std::string packageId = "iggy3d.first_room";
   RuntimeConfig config;
   FixtureScenarioSeed seed;
 };

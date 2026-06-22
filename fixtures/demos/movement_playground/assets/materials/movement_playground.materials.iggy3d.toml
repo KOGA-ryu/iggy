@@ -1,0 +1,34 @@
+[[materials]]
+id = "playground_floor"
+kind = "vertex_color"
+color = [0.30, 0.32, 0.34]
+
+[[materials]]
+id = "playground_wall"
+kind = "vertex_color"
+color = [0.42, 0.43, 0.46]
+
+[[materials]]
+id = "playground_grid"
+kind = "vertex_color"
+color = [0.78, 0.82, 0.86]
+
+[[materials]]
+id = "playground_ledge"
+kind = "vertex_color"
+color = [0.30, 0.52, 0.70]
+
+[[materials]]
+id = "playground_rail"
+kind = "vertex_color"
+color = [0.88, 0.74, 0.28]
+
+[[materials]]
+id = "playground_hazard"
+kind = "vertex_color"
+color = [0.72, 0.20, 0.18]
+
+[[materials]]
+id = "playground_spell"
+kind = "vertex_color"
+color = [0.34, 0.62, 0.88]

@@ -30,9 +30,9 @@ StatusResult statusOk() {
   return {ResultStatus::Ok, {}};
 }
 
-SessionIdentity createIdentity(const FixtureScenarioSeed& seed) {
+SessionIdentity createIdentity(std::string packageId, const FixtureScenarioSeed& seed) {
   SessionIdentity identity;
-  identity.packageId = "iggy3d.first_room";
+  identity.packageId = std::move(packageId);
   identity.scenarioId = seed.scenarioId;
   identity.sessionSeed = 0;
   identity.schemaVersion = 1;
@@ -347,7 +347,10 @@ Result<Session> Session::create(const SessionCreateRequest& request) {
   if (validateRuntimeConfig(request.config) != RuntimeConfigStatus::Ok) {
     return createFailure("session.invalid_config", "invalid runtime config");
   }
-  if (request.seed.scenarioId != "first_room.runtime_loop") {
+  if (request.packageId.empty()) {
+    return createFailure("session.invalid_package_id", "invalid package id");
+  }
+  if (request.seed.scenarioId.empty()) {
     return createFailure("session.invalid_scenario_id", "invalid scenario id");
   }
   if (request.seed.entities.empty()) {
@@ -355,7 +358,7 @@ Result<Session> Session::create(const SessionCreateRequest& request) {
   }
 
   SessionState state;
-  state.identity = createIdentity(request.seed);
+  state.identity = createIdentity(request.packageId, request.seed);
   state.config = request.config;
   state.lifecycle = SessionLifecycle::Playing;
   state.outcome = SessionOutcome::None;

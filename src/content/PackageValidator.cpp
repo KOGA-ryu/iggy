@@ -61,9 +61,6 @@ PackageValidationResult validatePackage(const PackageValidationRequest& request)
   if (request.manifest.packageId.empty()) {
     return fail(PackageValidationStatus::MissingPackageId, "package.missing_id", "missing package id");
   }
-  if (request.manifest.packageId != "iggy3d.first_room") {
-    return fail(PackageValidationStatus::WrongPackageId, "package.wrong_id", "wrong package id");
-  }
   if (request.manifest.schemaVersion != 1U || request.manifest.requiredRuntimeSchema != 1U) {
     return fail(PackageValidationStatus::UnsupportedSchemaVersion, "package.unsupported_schema",
                 "unsupported schema");
@@ -85,9 +82,6 @@ PackageValidationResult validatePackage(const PackageValidationRequest& request)
   if (request.scenario.scenarioId.empty()) {
     return fail(PackageValidationStatus::MissingScenarioId, "scenario.missing_id",
                 "missing scenario id");
-  }
-  if (request.scenario.scenarioId != "first_room.runtime_loop") {
-    return fail(PackageValidationStatus::WrongScenarioId, "scenario.wrong_id", "wrong scenario id");
   }
   for (std::size_t i = 0; i < request.scenario.entities.size(); ++i) {
     const ScenarioEntitySeed& entity = request.scenario.entities[i];

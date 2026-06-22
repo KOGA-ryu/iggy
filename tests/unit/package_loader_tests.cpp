@@ -206,10 +206,10 @@ bool validatorAcceptsAndRejects() {
        expect(!result.diagnostics.empty() && result.diagnostics[0].code == "package.missing_id",
               "missing package id code");
   request = {load.manifest, load.scenario};
-  request.scenario.scenarioId = "wrong";
+  request.scenario.scenarioId.clear();
   ok = ok && expect(iggy3d::validatePackage(request).status ==
-                        iggy3d::PackageValidationStatus::WrongScenarioId,
-                    "wrong scenario id");
+                        iggy3d::PackageValidationStatus::MissingScenarioId,
+                    "missing scenario id");
   request = {load.manifest, load.scenario};
   request.scenario.entities[2].stableName = "gold_key";
   result = iggy3d::validatePackage(request);

@@ -193,6 +193,7 @@ ReplayToolResult runReplayTool(const ReplayToolConfig& config) {
   }
 
   iggy3d::SessionCreateRequest create;
+  create.packageId = package.manifest.packageId;
   create.config = package.scenario.config;
   create.seed = package.scenario;
   const bool loadOk = loadProof(config, decoded.envelope, saveText, create);

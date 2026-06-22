@@ -197,9 +197,13 @@ bool creationFailures() {
   ok = ok && expect(iggy3d::Session::create(request).status == iggy3d::ResultStatus::Error,
                     "missing binding fails");
   request = makeCreateRequest();
-  request.seed.scenarioId = "wrong";
+  request.seed.scenarioId.clear();
   ok = ok && expect(iggy3d::Session::create(request).status == iggy3d::ResultStatus::Error,
-                    "invalid scenario fails");
+                    "empty scenario fails");
+  request = makeCreateRequest();
+  request.packageId.clear();
+  ok = ok && expect(iggy3d::Session::create(request).status == iggy3d::ResultStatus::Error,
+                    "empty package fails");
   return ok;
 }
 

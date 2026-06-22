@@ -1,0 +1,805 @@
+[room]
+id = "movement_playground"
+version = 1
+units = "ft"
+source = "iggy3d.hand_authored"
+source_file = "fixtures/demos/movement_playground/assets/rooms/movement_playground.room.iggy3d.toml"
+source_subset = "movement_playground_v1"
+
+[conversion]
+feet_to_meters = 0.3048
+world_axis_x = "east"
+world_axis_y = "up"
+world_axis_z = "south"
+
+[[static_meshes]]
+id = "main_floor"
+mesh = "floor_panel"
+role = "floor"
+position_ft = [24.0, 0.0, 24.0]
+size_ft = [48.0, 0.10, 48.0]
+material = "playground_floor"
+
+[[static_meshes]]
+id = "north_wall"
+mesh = "wall_panel"
+role = "wall"
+position_ft = [24.0, 4.0, 0.5]
+size_ft = [48.0, 8.0, 1.0]
+material = "playground_wall"
+
+[[static_meshes]]
+id = "south_wall"
+mesh = "wall_panel"
+role = "wall"
+position_ft = [24.0, 4.0, 47.5]
+size_ft = [48.0, 8.0, 1.0]
+material = "playground_wall"
+
+[[static_meshes]]
+id = "west_wall"
+mesh = "wall_panel"
+role = "wall"
+position_ft = [0.5, 4.0, 24.0]
+size_ft = [1.0, 8.0, 48.0]
+material = "playground_wall"
+
+[[static_meshes]]
+id = "east_wall"
+mesh = "wall_panel"
+role = "wall"
+position_ft = [47.5, 4.0, 24.0]
+size_ft = [1.0, 8.0, 48.0]
+material = "playground_wall"
+
+[[static_meshes]]
+id = "floor_grid_x_00"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [0.0, 0.08, 24.0]
+size_ft = [0.06, 0.04, 48.0]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_x_04"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [4.0, 0.08, 24.0]
+size_ft = [0.06, 0.04, 48.0]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_x_08"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [8.0, 0.08, 24.0]
+size_ft = [0.06, 0.04, 48.0]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_x_12"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [12.0, 0.08, 24.0]
+size_ft = [0.06, 0.04, 48.0]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_x_16"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [16.0, 0.08, 24.0]
+size_ft = [0.06, 0.04, 48.0]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_x_20"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [20.0, 0.08, 24.0]
+size_ft = [0.06, 0.04, 48.0]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_x_24"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [24.0, 0.08, 24.0]
+size_ft = [0.06, 0.04, 48.0]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_x_28"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [28.0, 0.08, 24.0]
+size_ft = [0.06, 0.04, 48.0]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_x_32"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [32.0, 0.08, 24.0]
+size_ft = [0.06, 0.04, 48.0]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_x_36"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [36.0, 0.08, 24.0]
+size_ft = [0.06, 0.04, 48.0]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_x_40"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [40.0, 0.08, 24.0]
+size_ft = [0.06, 0.04, 48.0]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_x_44"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [44.0, 0.08, 24.0]
+size_ft = [0.06, 0.04, 48.0]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_x_48"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [48.0, 0.08, 24.0]
+size_ft = [0.06, 0.04, 48.0]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_z_00"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [24.0, 0.09, 0.0]
+size_ft = [48.0, 0.04, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_z_04"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [24.0, 0.09, 4.0]
+size_ft = [48.0, 0.04, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_z_08"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [24.0, 0.09, 8.0]
+size_ft = [48.0, 0.04, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_z_12"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [24.0, 0.09, 12.0]
+size_ft = [48.0, 0.04, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_z_16"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [24.0, 0.09, 16.0]
+size_ft = [48.0, 0.04, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_z_20"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [24.0, 0.09, 20.0]
+size_ft = [48.0, 0.04, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_z_24"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [24.0, 0.09, 24.0]
+size_ft = [48.0, 0.04, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_z_28"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [24.0, 0.09, 28.0]
+size_ft = [48.0, 0.04, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_z_32"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [24.0, 0.09, 32.0]
+size_ft = [48.0, 0.04, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_z_36"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [24.0, 0.09, 36.0]
+size_ft = [48.0, 0.04, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_z_40"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [24.0, 0.09, 40.0]
+size_ft = [48.0, 0.04, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_z_44"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [24.0, 0.09, 44.0]
+size_ft = [48.0, 0.04, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "floor_grid_z_48"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [24.0, 0.09, 48.0]
+size_ft = [48.0, 0.04, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "north_wall_grid_y_02"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [24.0, 2.0, 1.04]
+size_ft = [48.0, 0.06, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "north_wall_grid_y_04"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [24.0, 4.0, 1.04]
+size_ft = [48.0, 0.06, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "north_wall_grid_y_06"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [24.0, 6.0, 1.04]
+size_ft = [48.0, 0.06, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "north_wall_grid_x_00"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [0.0, 4.0, 1.05]
+size_ft = [0.06, 8.0, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "north_wall_grid_x_08"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [8.0, 4.0, 1.05]
+size_ft = [0.06, 8.0, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "north_wall_grid_x_16"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [16.0, 4.0, 1.05]
+size_ft = [0.06, 8.0, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "north_wall_grid_x_24"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [24.0, 4.0, 1.05]
+size_ft = [0.06, 8.0, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "north_wall_grid_x_32"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [32.0, 4.0, 1.05]
+size_ft = [0.06, 8.0, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "north_wall_grid_x_40"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [40.0, 4.0, 1.05]
+size_ft = [0.06, 8.0, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "north_wall_grid_x_48"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [48.0, 4.0, 1.05]
+size_ft = [0.06, 8.0, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "west_wall_grid_y_02"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [1.04, 2.0, 24.0]
+size_ft = [0.06, 0.06, 48.0]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "west_wall_grid_y_04"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [1.04, 4.0, 24.0]
+size_ft = [0.06, 0.06, 48.0]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "west_wall_grid_y_06"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [1.04, 6.0, 24.0]
+size_ft = [0.06, 0.06, 48.0]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "west_wall_grid_z_00"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [1.05, 4.0, 0.0]
+size_ft = [0.06, 8.0, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "west_wall_grid_z_08"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [1.05, 4.0, 8.0]
+size_ft = [0.06, 8.0, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "west_wall_grid_z_16"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [1.05, 4.0, 16.0]
+size_ft = [0.06, 8.0, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "west_wall_grid_z_24"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [1.05, 4.0, 24.0]
+size_ft = [0.06, 8.0, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "west_wall_grid_z_32"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [1.05, 4.0, 32.0]
+size_ft = [0.06, 8.0, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "west_wall_grid_z_40"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [1.05, 4.0, 40.0]
+size_ft = [0.06, 8.0, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "west_wall_grid_z_48"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [1.05, 4.0, 48.0]
+size_ft = [0.06, 8.0, 0.06]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "jump_start_pad"
+mesh = "test_block"
+role = "ledge"
+position_ft = [16.0, 0.30, 34.0]
+size_ft = [6.0, 0.60, 6.0]
+material = "playground_ledge"
+
+[[static_meshes]]
+id = "jump_gap_marker"
+mesh = "hazard_marker"
+role = "hazard"
+position_ft = [24.0, 0.12, 34.0]
+size_ft = [4.0, 0.06, 6.0]
+material = "playground_hazard"
+
+[[static_meshes]]
+id = "jump_landing_pad"
+mesh = "test_block"
+role = "ledge"
+position_ft = [32.0, 0.60, 34.0]
+size_ft = [6.0, 1.20, 6.0]
+material = "playground_ledge"
+
+[[static_meshes]]
+id = "clamber_block"
+mesh = "test_block"
+role = "ledge"
+position_ft = [12.0, 1.00, 24.0]
+size_ft = [6.0, 2.00, 2.0]
+material = "playground_ledge"
+
+[[static_meshes]]
+id = "vault_rail"
+mesh = "rail"
+role = "rail"
+position_ft = [24.0, 1.20, 24.0]
+size_ft = [8.0, 0.30, 0.30]
+material = "playground_rail"
+
+[[static_meshes]]
+id = "vault_post_left"
+mesh = "rail"
+role = "rail"
+position_ft = [20.0, 0.70, 24.0]
+size_ft = [0.30, 1.40, 0.30]
+material = "playground_rail"
+
+[[static_meshes]]
+id = "vault_post_right"
+mesh = "rail"
+role = "rail"
+position_ft = [28.0, 0.70, 24.0]
+size_ft = [0.30, 1.40, 0.30]
+material = "playground_rail"
+
+[[static_meshes]]
+id = "dash_lane"
+mesh = "hazard_marker"
+role = "dash"
+position_ft = [34.0, 0.12, 18.0]
+size_ft = [12.0, 0.06, 3.0]
+material = "playground_hazard"
+
+[[static_meshes]]
+id = "dash_start_line"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [28.0, 0.16, 18.0]
+size_ft = [0.20, 0.08, 3.4]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "dash_end_line"
+mesh = "grid_strip"
+role = "grid"
+position_ft = [40.0, 0.16, 18.0]
+size_ft = [0.20, 0.08, 3.4]
+material = "playground_grid"
+
+[[static_meshes]]
+id = "wire_rail"
+mesh = "rail"
+role = "rail"
+position_ft = [24.0, 3.00, 10.0]
+size_ft = [20.0, 0.25, 0.25]
+material = "playground_rail"
+
+[[static_meshes]]
+id = "wire_support_left"
+mesh = "rail"
+role = "rail"
+position_ft = [14.0, 1.50, 10.0]
+size_ft = [0.40, 3.00, 0.40]
+material = "playground_rail"
+
+[[static_meshes]]
+id = "wire_support_right"
+mesh = "rail"
+role = "rail"
+position_ft = [34.0, 1.50, 10.0]
+size_ft = [0.40, 3.00, 0.40]
+material = "playground_rail"
+
+[[static_meshes]]
+id = "spell_target_left"
+mesh = "spell_target"
+role = "spell"
+position_ft = [12.0, 1.0, 10.0]
+size_ft = [2.0, 2.0, 2.0]
+material = "playground_spell"
+
+[[static_meshes]]
+id = "spell_target_mid"
+mesh = "spell_target"
+role = "spell"
+position_ft = [18.0, 1.0, 10.0]
+size_ft = [2.0, 2.0, 2.0]
+material = "playground_spell"
+
+[[static_meshes]]
+id = "spell_target_high"
+mesh = "spell_target"
+role = "spell"
+position_ft = [12.0, 2.0, 16.0]
+size_ft = [2.0, 4.0, 2.0]
+material = "playground_spell"
+
+[[static_meshes]]
+id = "tier_low"
+mesh = "test_block"
+role = "ledge"
+position_ft = [8.0, 0.25, 14.0]
+size_ft = [4.0, 0.50, 4.0]
+material = "playground_ledge"
+
+[[static_meshes]]
+id = "tier_mid"
+mesh = "test_block"
+role = "ledge"
+position_ft = [12.0, 0.50, 14.0]
+size_ft = [4.0, 1.00, 4.0]
+material = "playground_ledge"
+
+[[static_meshes]]
+id = "tier_high"
+mesh = "test_block"
+role = "ledge"
+position_ft = [16.0, 0.75, 14.0]
+size_ft = [4.0, 1.50, 4.0]
+material = "playground_ledge"
+
+[[static_meshes]]
+id = "wallrun_wall"
+mesh = "wall_panel"
+role = "wall"
+position_ft = [36.0, 2.0, 26.0]
+size_ft = [1.0, 4.0, 12.0]
+material = "playground_wall"
+
+[[spatial_surfaces]]
+id = "main_floor_walkable"
+source_static_mesh = "main_floor"
+shape = "plane"
+role = "walkable"
+points_ft = [[0.0, 0.05, 0.0], [48.0, 0.05, 0.0], [48.0, 0.05, 48.0], [0.0, 0.05, 48.0]]
+normal = [0.0, 1.0, 0.0]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "jump_start_walkable"
+source_static_mesh = "jump_start_pad"
+shape = "plane"
+role = "walkable"
+points_ft = [[13.0, 0.60, 31.0], [19.0, 0.60, 31.0], [19.0, 0.60, 37.0], [13.0, 0.60, 37.0]]
+normal = [0.0, 1.0, 0.0]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "jump_landing_walkable"
+source_static_mesh = "jump_landing_pad"
+shape = "plane"
+role = "walkable"
+points_ft = [[29.0, 1.20, 31.0], [35.0, 1.20, 31.0], [35.0, 1.20, 37.0], [29.0, 1.20, 37.0]]
+normal = [0.0, 1.0, 0.0]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "clamber_top_walkable"
+source_static_mesh = "clamber_block"
+shape = "plane"
+role = "walkable"
+points_ft = [[9.0, 2.0, 23.0], [15.0, 2.0, 23.0], [15.0, 2.0, 25.0], [9.0, 2.0, 25.0]]
+normal = [0.0, 1.0, 0.0]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "tier_low_walkable"
+source_static_mesh = "tier_low"
+shape = "plane"
+role = "walkable"
+points_ft = [[6.0, 0.50, 12.0], [10.0, 0.50, 12.0], [10.0, 0.50, 16.0], [6.0, 0.50, 16.0]]
+normal = [0.0, 1.0, 0.0]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "tier_mid_walkable"
+source_static_mesh = "tier_mid"
+shape = "plane"
+role = "walkable"
+points_ft = [[10.0, 1.0, 12.0], [14.0, 1.0, 12.0], [14.0, 1.0, 16.0], [10.0, 1.0, 16.0]]
+normal = [0.0, 1.0, 0.0]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "tier_high_walkable"
+source_static_mesh = "tier_high"
+shape = "plane"
+role = "walkable"
+points_ft = [[14.0, 1.5, 12.0], [18.0, 1.5, 12.0], [18.0, 1.5, 16.0], [14.0, 1.5, 16.0]]
+normal = [0.0, 1.0, 0.0]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "north_wall_actor_blocker"
+source_static_mesh = "north_wall"
+shape = "box"
+role = "blocker"
+points_ft = [[0.0, 0.0, 0.0], [48.0, 0.0, 0.0], [48.0, 8.0, 1.0], [0.0, 8.0, 1.0]]
+normal = [0.0, 0.0, 1.0]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "south_wall_actor_blocker"
+source_static_mesh = "south_wall"
+shape = "box"
+role = "blocker"
+points_ft = [[0.0, 0.0, 47.0], [48.0, 0.0, 47.0], [48.0, 8.0, 48.0], [0.0, 8.0, 48.0]]
+normal = [0.0, 0.0, -1.0]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "west_wall_actor_blocker"
+source_static_mesh = "west_wall"
+shape = "box"
+role = "blocker"
+points_ft = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 8.0, 48.0], [0.0, 8.0, 48.0]]
+normal = [1.0, 0.0, 0.0]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "east_wall_actor_blocker"
+source_static_mesh = "east_wall"
+shape = "box"
+role = "blocker"
+points_ft = [[47.0, 0.0, 0.0], [48.0, 0.0, 0.0], [48.0, 8.0, 48.0], [47.0, 8.0, 48.0]]
+normal = [-1.0, 0.0, 0.0]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "clamber_block_actor_blocker"
+source_static_mesh = "clamber_block"
+shape = "box"
+role = "blocker"
+points_ft = [[9.0, 0.0, 23.0], [15.0, 0.0, 23.0], [15.0, 2.0, 25.0], [9.0, 2.0, 25.0]]
+normal = [0.0, 0.0, -1.0]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wallrun_wall_actor_blocker"
+source_static_mesh = "wallrun_wall"
+shape = "box"
+role = "blocker"
+points_ft = [[35.5, 0.0, 20.0], [36.5, 0.0, 20.0], [36.5, 4.0, 32.0], [35.5, 4.0, 32.0]]
+normal = [-1.0, 0.0, 0.0]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "spell_target_left_projectile_blocker"
+source_static_mesh = "spell_target_left"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[11.0, 0.0, 9.0], [13.0, 0.0, 9.0], [13.0, 2.0, 11.0], [11.0, 2.0, 11.0]]
+normal = [0.0, 0.0, -1.0]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "spell_target_mid_projectile_blocker"
+source_static_mesh = "spell_target_mid"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[17.0, 0.0, 9.0], [19.0, 0.0, 9.0], [19.0, 2.0, 11.0], [17.0, 2.0, 11.0]]
+normal = [0.0, 0.0, -1.0]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[anchors]]
+id = "player_spawn"
+kind = "spawn"
+position_ft = [24.0, 0.0, 42.0]
+
+[[anchors]]
+id = "gold_key"
+kind = "pickup"
+position_ft = [24.0, 0.0, 32.0]
+runtime_stable_name = "gold_key"
+
+[[anchors]]
+id = "training_dummy"
+kind = "npc"
+position_ft = [34.0, 0.0, 16.0]
+runtime_stable_name = "training_dummy"
+
+[[anchors]]
+id = "tactical_marker_alpha"
+kind = "marker"
+position_ft = [14.0, 0.0, 22.0]
+runtime_stable_name = "tactical_marker_alpha"
+
+[[anchors]]
+id = "spell_target_beta"
+kind = "npc"
+position_ft = [12.0, 0.0, 10.0]
+runtime_stable_name = "spell_target_beta"

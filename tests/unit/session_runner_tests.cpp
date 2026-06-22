@@ -17,6 +17,7 @@ iggy3d::Session makeSession() {
   const iggy3d::PackageLoadResult package =
       iggy3d::loadPackage(iggy3d::PackageLoadRequest{"fixtures/demos/first_room/package.iggy3d.toml"});
   iggy3d::SessionCreateRequest create;
+  create.packageId = package.manifest.packageId;
   create.config = package.scenario.config;
   create.seed = package.scenario;
   return iggy3d::Session::create(create).value;

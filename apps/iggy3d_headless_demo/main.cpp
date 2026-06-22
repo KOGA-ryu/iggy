@@ -172,6 +172,7 @@ DemoRunResult runDemo(const iggy3d::AppConfig& config) {
   }
 
   iggy3d::SessionCreateRequest create;
+  create.packageId = package.manifest.packageId;
   create.config = package.scenario.config;
   create.seed = package.scenario;
   iggy3d::Result<iggy3d::Session> created = iggy3d::Session::create(create);

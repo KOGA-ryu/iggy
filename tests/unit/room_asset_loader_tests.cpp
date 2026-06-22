@@ -195,6 +195,68 @@ bool firstRoomPackageLoadsRoomAssets() {
          expect(openingSurfaces >= 1U, "opening surfaces");
 }
 
+bool movementPlaygroundPackageLoadsMovementSemantics() {
+  const std::filesystem::path packagePath =
+      std::filesystem::current_path() /
+      "fixtures/demos/movement_playground/package.iggy3d.toml";
+  const iggy3d::PackageLoadResult package =
+      iggy3d::loadPackage({packagePath.generic_string()});
+  bool ok = expect(package.status == iggy3d::PackageLoadStatus::Ok,
+                   "movement playground package load") &&
+            expect(package.manifest.assets.size() == 3U, "movement asset ref count") &&
+            expect(package.rooms.size() == 1U, "movement room count") &&
+            expect(!package.meshes.primitives.empty(), "movement mesh primitive count") &&
+            expect(!package.materials.materials.empty(), "movement material count");
+  if (!ok) {
+    return false;
+  }
+
+  const iggy3d::RoomAsset& room = package.rooms.front();
+  ok = ok && expect(room.id == "movement_playground", "movement room id") &&
+       expect(room.sourceSubset == "movement_playground_v1", "movement source subset") &&
+       expect(room.staticMeshes.size() >= 70U, "movement static mesh count") &&
+       expect(room.anchors.size() >= 5U, "movement anchors") &&
+       expect(room.spatialSurfaces.size() >= 10U, "movement spatial surfaces");
+
+  bool floor = false;
+  bool wall = false;
+  bool grid = false;
+  bool ledge = false;
+  bool rail = false;
+  bool hazard = false;
+  bool dash = false;
+  bool spell = false;
+  std::size_t gridMeshes = 0;
+  std::size_t walkableSurfaces = 0;
+  std::size_t blockerSurfaces = 0;
+  std::size_t projectileBlockers = 0;
+  for (const iggy3d::RoomStaticMeshAsset& mesh : room.staticMeshes) {
+    floor = floor || mesh.role == "floor";
+    wall = wall || mesh.role == "wall";
+    grid = grid || mesh.role == "grid";
+    ledge = ledge || mesh.role == "ledge";
+    rail = rail || mesh.role == "rail";
+    hazard = hazard || mesh.role == "hazard";
+    dash = dash || mesh.role == "dash";
+    spell = spell || mesh.role == "spell";
+    gridMeshes += mesh.role == "grid" ? 1U : 0U;
+  }
+  for (const iggy3d::RoomSpatialSurface& surface : room.spatialSurfaces) {
+    walkableSurfaces += surface.role == iggy3d::RoomSpatialSurfaceRole::Walkable ? 1U : 0U;
+    blockerSurfaces += surface.role == iggy3d::RoomSpatialSurfaceRole::Blocker ? 1U : 0U;
+    projectileBlockers +=
+        surface.role == iggy3d::RoomSpatialSurfaceRole::ProjectileBlocker ? 1U : 0U;
+  }
+  return ok && expect(floor, "movement floor role") && expect(wall, "movement wall role") &&
+         expect(grid && gridMeshes >= 35U, "movement grid role") &&
+         expect(ledge, "movement ledge role") && expect(rail, "movement rail role") &&
+         expect(hazard, "movement hazard role") && expect(dash, "movement dash role") &&
+         expect(spell, "movement spell role") &&
+         expect(walkableSurfaces >= 6U, "movement walkable surfaces") &&
+         expect(blockerSurfaces >= 5U, "movement blocker surfaces") &&
+         expect(projectileBlockers >= 2U, "movement projectile blockers");
+}
+
 bool invalidSpatialSurfaceCasesReject() {
   bool ok = true;
   ok = ok && parseFailsWith(walkableSurface("dupe") + walkableSurface("dupe"),
@@ -247,8 +309,8 @@ bool spatialSurfaceRolesRemainDistinct() {
 }  // namespace
 
 int main() {
-  return firstRoomPackageLoadsRoomAssets() && invalidSpatialSurfaceCasesReject() &&
-                 spatialSurfaceRolesRemainDistinct()
+  return firstRoomPackageLoadsRoomAssets() && movementPlaygroundPackageLoadsMovementSemantics() &&
+                 invalidSpatialSurfaceCasesReject() && spatialSurfaceRolesRemainDistinct()
              ? 0
              : 1;
 }

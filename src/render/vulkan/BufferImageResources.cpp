@@ -138,6 +138,21 @@ Vec3 colorForRoomRole(const std::string& role) {
   if (role == "prop") {
     return {0.45F, 0.28F, 0.12F};
   }
+  if (role == "grid") {
+    return {0.78F, 0.82F, 0.86F};
+  }
+  if (role == "ledge") {
+    return {0.30F, 0.52F, 0.70F};
+  }
+  if (role == "rail") {
+    return {0.88F, 0.74F, 0.28F};
+  }
+  if (role == "hazard" || role == "dash") {
+    return {0.72F, 0.20F, 0.18F};
+  }
+  if (role == "spell") {
+    return {0.34F, 0.62F, 0.88F};
+  }
   return {0.36F, 0.42F, 0.48F};
 }
 

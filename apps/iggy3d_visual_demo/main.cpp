@@ -905,6 +905,7 @@ int main(int argc, const char* const* argv) {
                 negated(roomOriginOffsetFromPlayerSpawn(package.rooms.front())));
 
   iggy3d::SessionCreateRequest create;
+  create.packageId = package.manifest.packageId;
   create.config = package.scenario.config;
   create.seed = package.scenario;
   iggy3d::Result<iggy3d::Session> sessionResult = iggy3d::Session::create(create);

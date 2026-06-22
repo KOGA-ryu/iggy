@@ -101,6 +101,7 @@ iggy3d::Result<iggy3d::Session> loadFirstRoomSession() {
     return {};
   }
   iggy3d::SessionCreateRequest request;
+  request.packageId = package.manifest.packageId;
   request.config = package.scenario.config;
   request.seed = package.scenario;
   return iggy3d::Session::create(request);

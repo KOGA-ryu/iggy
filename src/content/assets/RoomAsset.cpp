@@ -477,8 +477,7 @@ RoomAssetParseResult parseRoomAssetText(const std::string& text) {
     }
   }
 
-  if (result.room.id.empty() || result.room.sourceFile.empty() ||
-      result.room.sourceSubset != "spawn_room_corridor_stub" ||
+  if (result.room.id.empty() || result.room.sourceFile.empty() || result.room.sourceSubset.empty() ||
       result.room.staticMeshes.empty() || result.room.anchors.empty()) {
     result.reason = "room_missing_required";
     return result;
