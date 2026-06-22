@@ -35,6 +35,7 @@ struct MovementTraversalSlot {
   std::string slotId;
   MovementTraversalSlotKind kind = MovementTraversalSlotKind::Clamber;
   std::string sourceStaticMeshId;
+  std::string affordanceSourceId = "none";
   std::string frontSurfaceId;
   std::string topSurfaceId;
   std::string landingSurfaceId;
@@ -51,9 +52,22 @@ struct MovementTraversalSlot {
   float approachMaxDistanceMeters = 1.25F;
   float facingDotMin = 0.35F;
   float requiredClearanceHeightMeters = 1.80F;
+  bool authoredAffordance = false;
+};
+
+struct MovementTraversalAffordance {
+  MovementTraversalSlotKind kind = MovementTraversalSlotKind::Clamber;
+  std::string sourceStaticMeshId;
+  std::string sourceSurfaceId = "legacy_name_fallback";
+  bool authoredTag = false;
+};
+
+struct MovementTraversalAffordanceRegistry {
+  std::vector<MovementTraversalAffordance> affordances;
 };
 
 struct MovementTraversalSlotRegistry {
+  std::vector<MovementTraversalAffordance> affordances;
   std::vector<MovementTraversalSlot> slots;
 };
 
@@ -82,6 +96,8 @@ struct MovementTraversalSlotSelection {
   const char* reasonCode = "slot_invalid_input";
 };
 
+MovementTraversalAffordanceRegistry buildMovementTraversalAffordanceRegistry(
+    const RoomAsset& room);
 MovementTraversalSlotRegistry buildMovementTraversalSlotRegistry(const RoomAsset& room,
                                                                  Vec3 roomWorldOffsetMeters);
 MovementTraversalSlotSelection selectMovementTraversalSlot(

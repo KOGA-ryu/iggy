@@ -4,6 +4,7 @@
 #include <cmath>
 #include <span>
 #include <string_view>
+#include <utility>
 
 namespace iggy3d {
 namespace {
@@ -19,6 +20,82 @@ bool containsString(const std::vector<std::string>& values, std::string_view exp
     if (value == expected) {
       return true;
     }
+  }
+  return false;
+}
+
+bool kindForTraversalTag(std::string_view tag, MovementTraversalSlotKind& out) {
+  if (tag == "vault") {
+    out = MovementTraversalSlotKind::Vault;
+    return true;
+  }
+  if (tag == "clamber") {
+    out = MovementTraversalSlotKind::Clamber;
+    return true;
+  }
+  if (tag == "wire_walk") {
+    out = MovementTraversalSlotKind::WireWalk;
+    return true;
+  }
+  return false;
+}
+
+bool affordanceExists(const MovementTraversalAffordanceRegistry& registry,
+                      std::string_view meshId,
+                      MovementTraversalSlotKind kind) {
+  for (const MovementTraversalAffordance& affordance : registry.affordances) {
+    if (affordance.sourceStaticMeshId == meshId && affordance.kind == kind) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool meshHasAuthoredTraversalAffordance(
+    const MovementTraversalAffordanceRegistry& registry,
+    std::string_view meshId) {
+  for (const MovementTraversalAffordance& affordance : registry.affordances) {
+    if (affordance.sourceStaticMeshId == meshId && affordance.authoredTag) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void appendAffordance(MovementTraversalAffordanceRegistry& registry,
+                      MovementTraversalSlotKind kind,
+                      std::string_view meshId,
+                      std::string_view sourceSurfaceId,
+                      bool authoredTag) {
+  if (meshId.empty() || affordanceExists(registry, meshId, kind)) {
+    return;
+  }
+  MovementTraversalAffordance affordance;
+  affordance.kind = kind;
+  affordance.sourceStaticMeshId = std::string(meshId);
+  affordance.sourceSurfaceId =
+      sourceSurfaceId.empty() ? "legacy_name_fallback" : std::string(sourceSurfaceId);
+  affordance.authoredTag = authoredTag;
+  registry.affordances.push_back(std::move(affordance));
+}
+
+const RoomStaticMeshAsset* findMeshById(const RoomAsset& room, std::string_view meshId) {
+  for (const RoomStaticMeshAsset& mesh : room.staticMeshes) {
+    if (mesh.id == meshId) {
+      return &mesh;
+    }
+  }
+  return nullptr;
+}
+
+bool meshSupportsTraversalAffordance(const RoomStaticMeshAsset& mesh,
+                                     MovementTraversalSlotKind kind) {
+  switch (kind) {
+    case MovementTraversalSlotKind::Vault:
+    case MovementTraversalSlotKind::WireWalk:
+      return mesh.role == "rail";
+    case MovementTraversalSlotKind::Clamber:
+      return mesh.role == "ledge" || mesh.role == "wall";
   }
   return false;
 }
@@ -139,33 +216,9 @@ const RoomSpatialSurface* findActorBlockerForMesh(const RoomAsset& room,
   return fallback;
 }
 
-bool meshHasTraversalTag(const RoomAsset& room,
-                         std::string_view meshId,
-                         std::string_view tag) {
-  for (const RoomSpatialSurface& surface : room.spatialSurfaces) {
-    if (surface.sourceStaticMeshId == meshId && containsString(surface.traversalTags, tag)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool isClamberCandidate(const RoomAsset& room, const RoomStaticMeshAsset& mesh) {
-  if (mesh.role != "ledge" && mesh.role != "wall") {
-    return false;
-  }
-  return meshHasTraversalTag(room, mesh.id, "clamber") || hasText(mesh.id, "clamber");
-}
-
-bool isWireWalkCandidate(const RoomAsset& room, const RoomStaticMeshAsset& mesh) {
-  if (mesh.role != "rail") {
-    return false;
-  }
-  return meshHasTraversalTag(room, mesh.id, "wire_walk") || hasText(mesh.id, "wire");
-}
-
 void appendVaultSlot(MovementTraversalSlotRegistry& registry,
                      const RoomStaticMeshAsset& mesh,
+                     const MovementTraversalAffordance& affordance,
                      Vec3 offset) {
   const Aabb3 bounds = meshBounds(mesh, offset);
   if (!isValid(bounds)) {
@@ -175,6 +228,7 @@ void appendVaultSlot(MovementTraversalSlotRegistry& registry,
   slot.slotId = mesh.id;
   slot.kind = MovementTraversalSlotKind::Vault;
   slot.sourceStaticMeshId = mesh.id;
+  slot.affordanceSourceId = affordance.sourceSurfaceId;
   slot.targetBounds = bounds;
   slot.frontFaceBounds = bounds;
   slot.landingBounds = bounds;
@@ -185,11 +239,13 @@ void appendVaultSlot(MovementTraversalSlotRegistry& registry,
   slot.heightBand = "vault_low";
   slot.approachMaxDistanceMeters = 1.25F;
   slot.requiredClearanceHeightMeters = 1.20F;
+  slot.authoredAffordance = affordance.authoredTag;
   registry.slots.push_back(std::move(slot));
 }
 
 void appendWireWalkSlot(MovementTraversalSlotRegistry& registry,
                         const RoomStaticMeshAsset& mesh,
+                        const MovementTraversalAffordance& affordance,
                         Vec3 offset) {
   const Aabb3 bounds = meshBounds(mesh, offset);
   if (!isValid(bounds)) {
@@ -200,6 +256,7 @@ void appendWireWalkSlot(MovementTraversalSlotRegistry& registry,
   slot.slotId = mesh.id;
   slot.kind = MovementTraversalSlotKind::WireWalk;
   slot.sourceStaticMeshId = mesh.id;
+  slot.affordanceSourceId = affordance.sourceSurfaceId;
   slot.topSurfaceId = mesh.id;
   slot.landingSurfaceId = mesh.id;
   slot.targetBounds = bounds;
@@ -213,12 +270,14 @@ void appendWireWalkSlot(MovementTraversalSlotRegistry& registry,
   slot.heightBand = "wire_balance";
   slot.approachMaxDistanceMeters = 1.25F;
   slot.requiredClearanceHeightMeters = 1.80F;
+  slot.authoredAffordance = affordance.authoredTag;
   registry.slots.push_back(std::move(slot));
 }
 
 void appendClamberSlot(MovementTraversalSlotRegistry& registry,
                        const RoomAsset& room,
                        const RoomStaticMeshAsset& mesh,
+                       const MovementTraversalAffordance& affordance,
                        Vec3 offset) {
   const RoomSpatialSurface* top =
       findSurfaceForMesh(room, mesh.id, RoomSpatialSurfaceRole::Walkable, "clamber");
@@ -253,6 +312,7 @@ void appendClamberSlot(MovementTraversalSlotRegistry& registry,
   slot.slotId = mesh.id + ":" + top->id;
   slot.kind = MovementTraversalSlotKind::Clamber;
   slot.sourceStaticMeshId = mesh.id;
+  slot.affordanceSourceId = affordance.sourceSurfaceId;
   slot.frontSurfaceId = blocker->id;
   slot.topSurfaceId = top->id;
   slot.landingSurfaceId = top->id;
@@ -267,6 +327,7 @@ void appendClamberSlot(MovementTraversalSlotRegistry& registry,
   slot.heightBand = heightBandForLedge(slot.ledgeHeightMeters);
   slot.approachMaxDistanceMeters = 1.25F;
   slot.requiredClearanceHeightMeters = 1.80F;
+  slot.authoredAffordance = affordance.authoredTag;
   registry.slots.push_back(std::move(slot));
 }
 
@@ -276,19 +337,75 @@ bool kindMatches(MovementTraversalSlotKind candidate, MovementTraversalSlotKind 
 
 }  // namespace
 
+MovementTraversalAffordanceRegistry buildMovementTraversalAffordanceRegistry(
+    const RoomAsset& room) {
+  MovementTraversalAffordanceRegistry registry;
+  registry.affordances.reserve(room.spatialSurfaces.size());
+
+  for (const RoomSpatialSurface& surface : room.spatialSurfaces) {
+    for (const std::string& tag : surface.traversalTags) {
+      MovementTraversalSlotKind kind = MovementTraversalSlotKind::Clamber;
+      const RoomStaticMeshAsset* sourceMesh = findMeshById(room, surface.sourceStaticMeshId);
+      if (kindForTraversalTag(tag, kind) && sourceMesh != nullptr &&
+          meshSupportsTraversalAffordance(*sourceMesh, kind)) {
+        appendAffordance(registry, kind, surface.sourceStaticMeshId, surface.id, true);
+      }
+    }
+  }
+
+  for (const RoomStaticMeshAsset& mesh : room.staticMeshes) {
+    if (meshHasAuthoredTraversalAffordance(registry, mesh.id)) {
+      continue;
+    }
+    if (mesh.role == "rail" && hasText(mesh.id, "vault")) {
+      appendAffordance(registry,
+                       MovementTraversalSlotKind::Vault,
+                       mesh.id,
+                       "legacy_name_fallback",
+                       false);
+    }
+    if (mesh.role == "rail" && hasText(mesh.id, "wire")) {
+      appendAffordance(registry,
+                       MovementTraversalSlotKind::WireWalk,
+                       mesh.id,
+                       "legacy_name_fallback",
+                       false);
+    }
+    if ((mesh.role == "ledge" || mesh.role == "wall") && hasText(mesh.id, "clamber")) {
+      appendAffordance(registry,
+                       MovementTraversalSlotKind::Clamber,
+                       mesh.id,
+                       "legacy_name_fallback",
+                       false);
+    }
+  }
+
+  return registry;
+}
+
 MovementTraversalSlotRegistry buildMovementTraversalSlotRegistry(const RoomAsset& room,
                                                                  Vec3 roomWorldOffsetMeters) {
+  const MovementTraversalAffordanceRegistry affordanceRegistry =
+      buildMovementTraversalAffordanceRegistry(room);
+
   MovementTraversalSlotRegistry registry;
-  registry.slots.reserve(room.staticMeshes.size());
-  for (const RoomStaticMeshAsset& mesh : room.staticMeshes) {
-    if (mesh.role == "rail" && hasText(mesh.id, "vault")) {
-      appendVaultSlot(registry, mesh, roomWorldOffsetMeters);
+  registry.affordances = affordanceRegistry.affordances;
+  registry.slots.reserve(registry.affordances.size());
+  for (const MovementTraversalAffordance& affordance : registry.affordances) {
+    const RoomStaticMeshAsset* mesh = findMeshById(room, affordance.sourceStaticMeshId);
+    if (mesh == nullptr || !meshSupportsTraversalAffordance(*mesh, affordance.kind)) {
+      continue;
     }
-    if (isWireWalkCandidate(room, mesh)) {
-      appendWireWalkSlot(registry, mesh, roomWorldOffsetMeters);
-    }
-    if (isClamberCandidate(room, mesh)) {
-      appendClamberSlot(registry, room, mesh, roomWorldOffsetMeters);
+    switch (affordance.kind) {
+      case MovementTraversalSlotKind::Vault:
+        appendVaultSlot(registry, *mesh, affordance, roomWorldOffsetMeters);
+        break;
+      case MovementTraversalSlotKind::Clamber:
+        appendClamberSlot(registry, room, *mesh, affordance, roomWorldOffsetMeters);
+        break;
+      case MovementTraversalSlotKind::WireWalk:
+        appendWireWalkSlot(registry, *mesh, affordance, roomWorldOffsetMeters);
+        break;
     }
   }
   return registry;

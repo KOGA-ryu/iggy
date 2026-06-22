@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <string_view>
 
 #include "core/math/Aabb3.hpp"
 #include "runtime/collision/CollisionQuery.hpp"
@@ -12,7 +11,6 @@ namespace iggy3d {
 namespace {
 
 inline constexpr float kEpsilon = 0.0001F;
-inline constexpr float kFacingDotThreshold = 0.35F;
 inline constexpr float kActorTorsoProbeHeightMeters = 1.0F;
 
 TraversalResult makeResult(const TraversalRequest& request,
@@ -115,10 +113,6 @@ bool traversalStatusConsumesIntent(TraversalStatus status) {
          status == TraversalStatus::WorldMutationFailed;
 }
 
-bool hasText(std::string_view value, std::string_view expected) {
-  return value.find(expected) != std::string_view::npos;
-}
-
 bool normalizeHorizontal(Vec3 value, Vec3& out) {
   value.y = 0.0F;
   if (!isFinite(value)) {
@@ -130,18 +124,6 @@ bool normalizeHorizontal(Vec3 value, Vec3& out) {
   }
   out = value / std::sqrt(lengthSquaredValue);
   return isFinite(out);
-}
-
-Aabb3 meshBounds(const RoomStaticMeshAsset& mesh, Vec3 roomWorldOffsetMeters) {
-  const Vec3 centerMeters = mesh.positionMeters + roomWorldOffsetMeters;
-  return aabbFromCenterExtents(centerMeters, mesh.sizeMeters * 0.5F);
-}
-
-float horizontalDistanceToBounds(Vec3 point, const Aabb3& bounds) {
-  const Vec3 closest = closestPoint(bounds, {point.x, center(bounds).y, point.z});
-  const float x = closest.x - point.x;
-  const float z = closest.z - point.z;
-  return std::sqrt(x * x + z * z);
 }
 
 TraversalStatus statusForSlotSelection(MovementTraversalSlotSelectionStatus status) {
@@ -185,21 +167,40 @@ TraversalCandidatePreviewStatus previewStatusForSlotSelection(
   return TraversalCandidatePreviewStatus::InvalidInput;
 }
 
-float horizontalUsableWidth(const Aabb3& bounds) {
-  const Vec3 size = bounds.max - bounds.min;
-  return std::max(size.x, size.z);
+void applySlotFacts(TraversalResult& result,
+                    const MovementTraversalSlot& slot,
+                    float startRangeMeters,
+                    float facingDot,
+                    float ledgeHeightMeters) {
+  result.slotId = slot.slotId;
+  result.slotKind = movementTraversalSlotKindName(slot.kind);
+  result.slotHeightBand = slot.heightBand;
+  result.slotLedgeHeightMeters = ledgeHeightMeters;
+  result.slotUsableWidthMeters = slot.usableWidthMeters;
+  result.slotStartRangeMeters = startRangeMeters;
+  result.slotFacingDot = facingDot;
 }
 
 void applySlotFacts(TraversalResult& result,
                     const MovementTraversalSlot& slot,
                     const MovementTraversalSlotSelection& selection) {
-  result.slotId = slot.slotId;
-  result.slotKind = movementTraversalSlotKindName(slot.kind);
-  result.slotHeightBand = slot.heightBand;
-  result.slotLedgeHeightMeters = selection.ledgeHeightFromFeetMeters;
-  result.slotUsableWidthMeters = slot.usableWidthMeters;
-  result.slotStartRangeMeters = selection.startRangeMeters;
-  result.slotFacingDot = selection.facingDot;
+  applySlotFacts(result,
+                 slot,
+                 selection.startRangeMeters,
+                 selection.facingDot,
+                 selection.ledgeHeightFromFeetMeters);
+}
+
+void applyCandidateSlotFacts(TraversalResult& result,
+                             const MovementTraversalSlot& slot,
+                             const MovementTraversalSlotSelection& selection) {
+  const bool selected = selection.slotIndex == selection.candidateSlotIndex;
+  applySlotFacts(result,
+                 slot,
+                 selected ? selection.startRangeMeters : selection.candidateStartRangeMeters,
+                 selected ? selection.facingDot : selection.candidateFacingDot,
+                 selected ? selection.ledgeHeightFromFeetMeters
+                          : selection.candidateLedgeHeightFromFeetMeters);
 }
 
 void applySlotFacts(TraversalCandidatePreviewResult& result,
@@ -235,44 +236,6 @@ void applyCandidateSlotFacts(TraversalCandidatePreviewResult& result,
                  selected ? selection.facingDot : selection.candidateFacingDot,
                  selected ? selection.ledgeHeightFromFeetMeters
                           : selection.candidateLedgeHeightFromFeetMeters);
-}
-
-void applyVaultFacts(TraversalCandidatePreviewResult& result,
-                     const RoomStaticMeshAsset& target,
-                     const Aabb3& targetBounds,
-                     float startRangeMeters,
-                     float facingDot) {
-  result.candidateAvailable = true;
-  result.selectedMechanic = TraversalMechanic::Vault;
-  result.slotId = target.id;
-  result.slotKind = "vault";
-  result.slotHeightBand = "vault_low";
-  result.targetId = target.id;
-  result.slotLedgeHeightMeters = targetBounds.max.y - targetBounds.min.y;
-  result.slotUsableWidthMeters = horizontalUsableWidth(targetBounds);
-  result.slotStartRangeMeters = startRangeMeters;
-  result.slotFacingDot = facingDot;
-}
-
-const RoomStaticMeshAsset* findVaultTarget(const RoomAsset& room, Vec3 start, Vec3 offset) {
-  const RoomStaticMeshAsset* best = nullptr;
-  float bestDistance = 0.0F;
-  for (const RoomStaticMeshAsset& mesh : room.staticMeshes) {
-    if (mesh.role != "rail" || !hasText(mesh.id, "vault")) {
-      continue;
-    }
-    const Aabb3 bounds = meshBounds(mesh, offset);
-    if (!isValid(bounds)) {
-      continue;
-    }
-    const float distance = horizontalDistanceToBounds(start, bounds);
-    if (best == nullptr || distance < bestDistance ||
-        (std::fabs(distance - bestDistance) <= kEpsilon && mesh.id < best->id)) {
-      best = &mesh;
-      bestDistance = distance;
-    }
-  }
-  return best;
 }
 
 Vec3 landingPositionBeyondTarget(Vec3 start,
@@ -364,37 +327,35 @@ TraversalCandidatePreviewResult previewVault(
     return result;
   }
 
-  const RoomStaticMeshAsset* target =
-      findVaultTarget(*request.room, start, request.roomWorldOffsetMeters);
-  if (target == nullptr) {
-    result.status = TraversalCandidatePreviewStatus::NoCandidate;
+  const MovementTraversalSlotRegistry registry =
+      buildMovementTraversalSlotRegistry(*request.room, request.roomWorldOffsetMeters);
+  MovementTraversalSlotSelectionRequest selectionRequest;
+  selectionRequest.kind = MovementTraversalSlotKind::Vault;
+  selectionRequest.actorPosition = start;
+  selectionRequest.forward = forward;
+  selectionRequest.maxStartRangeMeters = request.maxStartRangeMeters;
+  selectionRequest.minLedgeHeightMeters = 0.0F;
+  selectionRequest.maxLedgeHeightMeters = 2.0F;
+  selectionRequest.minUsableWidthMeters = 0.0F;
+  const MovementTraversalSlotSelection selection =
+      selectMovementTraversalSlot(registry, selectionRequest);
+  const MovementTraversalSlot* slot = selectedTraversalSlot(registry, selection);
+  const MovementTraversalSlot* candidate = candidateTraversalSlot(registry, selection);
+  if (slot == nullptr) {
+    result.status = previewStatusForSlotSelection(selection.status);
     result.reasonCode = traversalCandidatePreviewStatusName(result.status);
     result.hudCode = traversalCandidatePreviewHudCode(result.status);
+    if (candidate != nullptr) {
+      applyCandidateSlotFacts(result, *candidate, selection);
+    }
     return result;
   }
 
-  const Aabb3 targetBounds = meshBounds(*target, request.roomWorldOffsetMeters);
-  const float startRange = horizontalDistanceToBounds(start, targetBounds);
-  Vec3 toTarget;
-  const float facingDot =
-      normalizeHorizontal(center(targetBounds) - start, toTarget) ? dot(forward, toTarget) : 0.0F;
-  applyVaultFacts(result, *target, targetBounds, startRange, facingDot);
-
-  if (!std::isfinite(startRange) || startRange > request.maxStartRangeMeters) {
-    result.status = TraversalCandidatePreviewStatus::OutOfRange;
-    result.reasonCode = traversalCandidatePreviewStatusName(result.status);
-    result.hudCode = traversalCandidatePreviewHudCode(result.status);
-    return result;
-  }
-  if (facingDot < kFacingDotThreshold) {
-    result.status = TraversalCandidatePreviewStatus::BadAngle;
-    result.reasonCode = traversalCandidatePreviewStatusName(result.status);
-    result.hudCode = traversalCandidatePreviewHudCode(result.status);
-    return result;
-  }
-
-  Vec3 landing =
-      landingPositionBeyondTarget(start, forward, targetBounds, request.landingClearanceMeters);
+  applyCandidateSlotFacts(result, *slot, selection);
+  Vec3 landing = landingPositionBeyondTarget(start,
+                                             forward,
+                                             slot->targetBounds,
+                                             request.landingClearanceMeters);
   const CollisionQueryResult ground =
       sampleSurfaceHeight(*request.collisionSurfaces, landing, request.landingGroundSnapMeters);
   if (ground.status != CollisionQueryStatus::Hit ||
@@ -641,36 +602,40 @@ TraversalResult executeVault(WorldState& world,
     return makeResult(request, TraversalStatus::MissingCollisionSurfaces, start);
   }
 
-  const RoomStaticMeshAsset* target =
-      findVaultTarget(*request.room, start, request.roomWorldOffsetMeters);
-  if (target == nullptr) {
-    return makeResult(request, TraversalStatus::TargetNotFound, start);
-  }
-
-  const Aabb3 targetBounds = meshBounds(*target, request.roomWorldOffsetMeters);
-  const float startRange = horizontalDistanceToBounds(start, targetBounds);
-  if (!std::isfinite(startRange) || startRange > request.maxStartRangeMeters) {
-    TraversalResult result = makeResult(request, TraversalStatus::OutOfRange, start);
-    result.targetId = target->id;
+  const MovementTraversalSlotRegistry registry =
+      buildMovementTraversalSlotRegistry(*request.room, request.roomWorldOffsetMeters);
+  MovementTraversalSlotSelectionRequest selectionRequest;
+  selectionRequest.kind = MovementTraversalSlotKind::Vault;
+  selectionRequest.actorPosition = start;
+  selectionRequest.forward = forward;
+  selectionRequest.maxStartRangeMeters = request.maxStartRangeMeters;
+  selectionRequest.minLedgeHeightMeters = 0.0F;
+  selectionRequest.maxLedgeHeightMeters = 2.0F;
+  selectionRequest.minUsableWidthMeters = 0.0F;
+  const MovementTraversalSlotSelection selection =
+      selectMovementTraversalSlot(registry, selectionRequest);
+  const MovementTraversalSlot* slot = selectedTraversalSlot(registry, selection);
+  const MovementTraversalSlot* candidate = candidateTraversalSlot(registry, selection);
+  if (slot == nullptr) {
+    TraversalResult result = makeResult(request, statusForSlotSelection(selection.status), start);
+    if (candidate != nullptr) {
+      applyCandidateSlotFacts(result, *candidate, selection);
+      result.targetId = candidate->sourceStaticMeshId;
+    }
     return result;
   }
 
-  Vec3 toTarget;
-  if (!normalizeHorizontal(center(targetBounds) - start, toTarget) ||
-      dot(forward, toTarget) < kFacingDotThreshold) {
-    TraversalResult result = makeResult(request, TraversalStatus::NotFacingTarget, start);
-    result.targetId = target->id;
-    return result;
-  }
-
-  Vec3 landing =
-      landingPositionBeyondTarget(start, forward, targetBounds, request.landingClearanceMeters);
+  Vec3 landing = landingPositionBeyondTarget(start,
+                                             forward,
+                                             slot->targetBounds,
+                                             request.landingClearanceMeters);
   const CollisionQueryResult ground =
       sampleSurfaceHeight(*request.collisionSurfaces, landing, request.landingGroundSnapMeters);
   if (ground.status != CollisionQueryStatus::Hit ||
       std::fabs(start.y - ground.heightMeters) > request.landingGroundSnapMeters) {
     TraversalResult result = makeResult(request, TraversalStatus::NoLandingGround, start);
-    result.targetId = target->id;
+    applySlotFacts(result, *slot, selection);
+    result.targetId = slot->sourceStaticMeshId;
     return result;
   }
   landing.y = ground.heightMeters;
@@ -683,7 +648,8 @@ TraversalResult executeVault(WorldState& world,
   if (blocker.status == CollisionQueryStatus::Hit &&
       blocker.role != CollisionSurfaceRole::Walkable) {
     TraversalResult result = makeResult(request, TraversalStatus::LandingBlocked, start);
-    result.targetId = target->id;
+    applySlotFacts(result, *slot, selection);
+    result.targetId = slot->sourceStaticMeshId;
     result.landingSurfaceId = blocker.surfaceId;
     return result;
   }
@@ -693,13 +659,15 @@ TraversalResult executeVault(WorldState& world,
   const WorldMutationResult mutation = world.updateTransform(request.actor, transform);
   if (mutation.status != WorldStatus::Ok) {
     TraversalResult result = makeResult(request, TraversalStatus::WorldMutationFailed, start);
-    result.targetId = target->id;
+    applySlotFacts(result, *slot, selection);
+    result.targetId = slot->sourceStaticMeshId;
     result.landingSurfaceId = ground.surfaceId;
     return result;
   }
 
   TraversalResult result = makeResult(request, TraversalStatus::Applied, start);
-  result.targetId = target->id;
+  applySlotFacts(result, *slot, selection);
+  result.targetId = slot->sourceStaticMeshId;
   result.landingSurfaceId = ground.surfaceId;
   result.finalPosition = landing;
   result.travel = computeMovementTravelFacts(result.start, result.finalPosition);

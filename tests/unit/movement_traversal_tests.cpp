@@ -1,6 +1,7 @@
 #include "runtime/movement/MovementTraversal.hpp"
 
 #include <iostream>
+#include <string>
 #include <string_view>
 
 namespace {
@@ -105,6 +106,17 @@ iggy3d::RoomSpatialSurface clamberLandingBlockerSurface() {
   return surface;
 }
 
+iggy3d::RoomSpatialSurface vaultAffordanceSurface(std::string_view sourceStaticMeshId) {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = "vault_affordance";
+  surface.sourceStaticMeshId = std::string(sourceStaticMeshId);
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Plane;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Walkable;
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.traversalTags = {"vault"};
+  return surface;
+}
+
 iggy3d::RoomAsset makeVaultRoom() {
   iggy3d::RoomAsset room;
   room.id = "vault_test";
@@ -143,6 +155,30 @@ iggy3d::RoomAsset makeVaultRoom() {
   room.spatialSurfaces.push_back(floorSurface());
   room.spatialSurfaces.push_back(clamberTopSurface());
   room.spatialSurfaces.push_back(clamberBlockerSurface());
+  return room;
+}
+
+iggy3d::RoomAsset makeExplicitVaultRoom() {
+  iggy3d::RoomAsset room;
+  room.id = "explicit_vault_test";
+  iggy3d::RoomStaticMeshAsset floor;
+  floor.id = "floor_mesh";
+  floor.meshId = "floor";
+  floor.role = "floor";
+  floor.positionMeters = {0.0F, 0.0F, 0.0F};
+  floor.sizeMeters = {20.0F, 0.1F, 20.0F};
+  room.staticMeshes.push_back(floor);
+
+  iggy3d::RoomStaticMeshAsset rail;
+  rail.id = "plain_rail";
+  rail.meshId = "rail";
+  rail.role = "rail";
+  rail.positionMeters = {0.0F, 0.35F, -1.0F};
+  rail.sizeMeters = {2.0F, 0.25F, 0.20F};
+  room.staticMeshes.push_back(rail);
+
+  room.spatialSurfaces.push_back(floorSurface());
+  room.spatialSurfaces.push_back(vaultAffordanceSurface("plain_rail"));
   return room;
 }
 
@@ -219,6 +255,22 @@ bool vaultRejectsOutOfRangeAndBadFacing() {
          expect(iggy3d::nearlyEqual(backwardsWorld.findById({1})->transform.position,
                                     {0.0F, 0.0F, 0.0F}),
                 "facing no mutation");
+}
+
+bool vaultUsesAuthoredAffordanceWithoutMagicName() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.0F});
+  const iggy3d::RoomAsset room = makeExplicitVaultRoom();
+  const iggy3d::SpatialSurfaceSet surfaces = iggy3d::buildSpatialSurfaceSet(room);
+  const iggy3d::TraversalResult result =
+      iggy3d::executeTraversalMechanic(world, vaultRequest(room, surfaces));
+
+  return expect(result.status == iggy3d::TraversalStatus::Applied,
+                "explicit vault applied") &&
+         expect(result.targetId == "plain_rail", "explicit vault target") &&
+         expect(result.slotKind == "vault", "explicit vault slot kind") &&
+         expect(result.slotStartRangeMeters > 0.89F && result.slotStartRangeMeters < 0.91F,
+                "explicit vault range") &&
+         expect(result.finalPosition.z < -1.90F, "explicit vault crossed rail");
 }
 
 bool clamberAppliesThroughMeasuredSlot() {
@@ -552,6 +604,7 @@ bool traversalPreviewReportsWireWalkCandidateWithoutMutation() {
 
 int main() {
   const bool ok = vaultAppliesAcrossAuthoredRail() && vaultRejectsOutOfRangeAndBadFacing() &&
+                  vaultUsesAuthoredAffordanceWithoutMagicName() &&
                   clamberAppliesThroughMeasuredSlot() &&
                   clamberRejectsHeightOutsideRegisteredBand() &&
                   clamberRejectsNarrowSlots() &&

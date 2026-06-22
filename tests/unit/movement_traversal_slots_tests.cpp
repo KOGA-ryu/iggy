@@ -1,7 +1,11 @@
 #include "runtime/movement/MovementTraversalSlots.hpp"
 
+#include <cstddef>
 #include <iostream>
+#include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace {
 
@@ -77,6 +81,46 @@ iggy3d::RoomAsset makeWireRoom() {
   return room;
 }
 
+iggy3d::RoomSpatialSurface traversalTagSurface(std::string_view id,
+                                               std::string_view sourceStaticMeshId,
+                                               std::vector<std::string> tags) {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = std::string(id);
+  surface.sourceStaticMeshId = std::string(sourceStaticMeshId);
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Plane;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = {
+      {-1.0F, 1.0F, -1.0F},
+      {1.0F, 1.0F, -1.0F},
+      {1.0F, 1.0F, 1.0F},
+      {-1.0F, 1.0F, 1.0F},
+  };
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.traversalTags = std::move(tags);
+  return surface;
+}
+
+iggy3d::RoomStaticMeshAsset railMesh(std::string_view id) {
+  iggy3d::RoomStaticMeshAsset rail;
+  rail.id = std::string(id);
+  rail.meshId = "rail";
+  rail.role = "rail";
+  rail.positionMeters = {0.0F, 1.0F, -1.0F};
+  rail.sizeMeters = {4.0F, 0.10F, 0.10F};
+  return rail;
+}
+
+std::size_t slotKindCount(const iggy3d::MovementTraversalSlotRegistry& registry,
+                          iggy3d::MovementTraversalSlotKind kind) {
+  std::size_t count = 0;
+  for (const iggy3d::MovementTraversalSlot& slot : registry.slots) {
+    if (slot.kind == kind) {
+      ++count;
+    }
+  }
+  return count;
+}
+
 bool registryBuildsMeasuredClamberSlot() {
   const iggy3d::RoomAsset room = makeRoom();
   const iggy3d::MovementTraversalSlotRegistry registry =
@@ -88,6 +132,8 @@ bool registryBuildsMeasuredClamberSlot() {
   return expect(slot.slotId == "tagged_wall:tagged_top", "slot id") &&
          expect(slot.kind == iggy3d::MovementTraversalSlotKind::Clamber, "slot kind") &&
          expect(slot.sourceStaticMeshId == "tagged_wall", "slot source") &&
+         expect(slot.authoredAffordance, "authored clamber affordance") &&
+         expect(slot.affordanceSourceId == "tagged_top", "clamber affordance source") &&
          expect(slot.frontSurfaceId == "tagged_blocker", "front surface") &&
          expect(slot.topSurfaceId == "tagged_top", "top surface") &&
          expect(slot.heightBand == "clamber_mid", "height band") &&
@@ -111,6 +157,9 @@ bool registryBuildsWireWalkSlot() {
          expect(slot.kind == iggy3d::MovementTraversalSlotKind::WireWalk,
                 "wire slot kind") &&
          expect(slot.sourceStaticMeshId == "wire_rail", "wire source") &&
+         expect(!slot.authoredAffordance, "wire legacy fallback") &&
+         expect(slot.affordanceSourceId == "legacy_name_fallback",
+                "wire fallback source") &&
          expect(slot.landingSurfaceId == "wire_rail", "wire landing") &&
          expect(slot.heightBand == "wire_balance", "wire band") &&
          expect(slot.topHeightMeters > 1.04F && slot.topHeightMeters < 1.06F,
@@ -119,6 +168,76 @@ bool registryBuildsWireWalkSlot() {
                 "wire thickness") &&
          expect(slot.usableWidthMeters > 3.99F && slot.usableWidthMeters < 4.01F,
                 "wire usable length");
+}
+
+bool authoredAffordanceTagsBuildSlotsWithoutMagicNames() {
+  iggy3d::RoomAsset room;
+  room.id = "explicit_wire_slot_test";
+  room.staticMeshes.push_back(railMesh("balance_rail"));
+  room.spatialSurfaces.push_back(
+      traversalTagSurface("balance_affordance", "balance_rail", {"wire_walk"}));
+
+  const iggy3d::MovementTraversalSlotRegistry registry =
+      iggy3d::buildMovementTraversalSlotRegistry(room, {});
+  if (!expect(registry.affordances.size() == 1U, "explicit affordance count") ||
+      !expect(registry.slots.size() == 1U, "explicit slot count")) {
+    return false;
+  }
+
+  const iggy3d::MovementTraversalAffordance& affordance = registry.affordances.front();
+  const iggy3d::MovementTraversalSlot& slot = registry.slots.front();
+  return expect(affordance.kind == iggy3d::MovementTraversalSlotKind::WireWalk,
+                "explicit affordance kind") &&
+         expect(affordance.sourceStaticMeshId == "balance_rail",
+                "explicit affordance mesh") &&
+         expect(affordance.sourceSurfaceId == "balance_affordance",
+                "explicit affordance surface") &&
+         expect(affordance.authoredTag, "explicit affordance tag") &&
+         expect(slot.kind == iggy3d::MovementTraversalSlotKind::WireWalk,
+                "explicit slot kind") &&
+         expect(slot.authoredAffordance, "explicit slot authored flag") &&
+         expect(slot.affordanceSourceId == "balance_affordance",
+                "explicit slot source");
+}
+
+bool authoredAffordanceSuppressesLegacyNameFallback() {
+  iggy3d::RoomAsset room;
+  room.id = "explicit_vault_slot_test";
+  room.staticMeshes.push_back(railMesh("wire_named_vault_rail"));
+  room.spatialSurfaces.push_back(
+      traversalTagSurface("vault_affordance", "wire_named_vault_rail", {"vault"}));
+
+  const iggy3d::MovementTraversalSlotRegistry registry =
+      iggy3d::buildMovementTraversalSlotRegistry(room, {});
+
+  return expect(registry.affordances.size() == 1U, "suppressed affordance count") &&
+         expect(slotKindCount(registry, iggy3d::MovementTraversalSlotKind::Vault) == 1U,
+                "explicit vault exists") &&
+         expect(slotKindCount(registry, iggy3d::MovementTraversalSlotKind::WireWalk) == 0U,
+                "wire fallback suppressed") &&
+         expect(registry.slots.front().authoredAffordance, "vault authored flag") &&
+         expect(registry.slots.front().affordanceSourceId == "vault_affordance",
+                "vault affordance source");
+}
+
+bool authoredAffordanceRequiresMatchingMeshRole() {
+  iggy3d::RoomAsset room;
+  room.id = "role_gated_affordance_test";
+  iggy3d::RoomStaticMeshAsset wall;
+  wall.id = "wire_named_wall";
+  wall.meshId = "block";
+  wall.role = "wall";
+  wall.positionMeters = {0.0F, 0.5F, -1.0F};
+  wall.sizeMeters = {2.0F, 1.0F, 1.0F};
+  room.staticMeshes.push_back(wall);
+  room.spatialSurfaces.push_back(
+      traversalTagSurface("bad_wire_affordance", "wire_named_wall", {"wire_walk"}));
+
+  const iggy3d::MovementTraversalSlotRegistry registry =
+      iggy3d::buildMovementTraversalSlotRegistry(room, {});
+
+  return expect(registry.affordances.empty(), "role rejected affordance") &&
+         expect(registry.slots.empty(), "role rejected slots");
 }
 
 bool selectorGatesByRangeFacingAndHeight() {
@@ -195,6 +314,9 @@ bool selectorGatesByRangeFacingAndHeight() {
 
 int main() {
   const bool ok = registryBuildsMeasuredClamberSlot() && registryBuildsWireWalkSlot() &&
+                  authoredAffordanceTagsBuildSlotsWithoutMagicNames() &&
+                  authoredAffordanceSuppressesLegacyNameFallback() &&
+                  authoredAffordanceRequiresMatchingMeshRole() &&
                   selectorGatesByRangeFacingAndHeight();
   return ok ? 0 : 1;
 }
