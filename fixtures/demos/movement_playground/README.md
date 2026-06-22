@@ -9,7 +9,7 @@ Launch:
 Controls:
 
 - WASD moves, mouse drag or right stick looks, Escape/Start quits;
-- F3 toggles the world debug overlay telemetry;
+- F3 toggles the world debug telemetry in the window title until text rendering exists;
 - Space jumps on keyboard when the dev menu is closed; hold WASD during jump for limited air control;
 - Shift dashes on keyboard when the dev menu is closed; hold WASD to choose dash direction;
 - hold C or Left Ctrl to crouch on keyboard;
@@ -62,5 +62,5 @@ Purpose:
 Current runtime truth:
 
 - this fixture is a playable/renderable test arena;
-- first-person kinematic walking, hold-to-crouch stance, runtime jump, limited air control, runtime dash, and debug overlay telemetry work against the shifted room surface set;
+- first-person kinematic walking, hold-to-crouch stance, runtime jump, limited air control, runtime dash, and debug telemetry work against the shifted room surface set;
 - clamber, vault, spell projectile, and wire-walk mechanics are authored as test zones, not implemented ability modes yet.

@@ -155,6 +155,8 @@ int main() {
       hasField(jumpFields, "horizontal_velocity_state", "positive") &&
       hasField(jumpFields, "debug_overlay_open", "true") &&
       hasField(jumpFields, "debug_overlay_reason", "debug_overlay_ok") &&
+      hasField(jumpFields, "debug_overlay_visible", "true") &&
+      hasField(jumpFields, "debug_overlay_surface", "window_title") &&
       hasField(jumpFields, "debug_player_position_available", "true") &&
       hasField(jumpFields, "debug_speed_available", "true") &&
       hasField(jumpFields, "debug_player_phase", "airborne") &&
@@ -177,6 +179,8 @@ int main() {
       hasField(dashFields, "horizontal_velocity_state", "positive") &&
       hasField(dashFields, "debug_overlay_open", "true") &&
       hasField(dashFields, "debug_overlay_reason", "debug_overlay_ok") &&
+      hasField(dashFields, "debug_overlay_visible", "true") &&
+      hasField(dashFields, "debug_overlay_surface", "window_title") &&
       hasField(dashFields, "debug_player_position_available", "true") &&
       hasField(dashFields, "debug_speed_available", "true") &&
       hasField(dashFields, "debug_player_phase", "grounded") &&

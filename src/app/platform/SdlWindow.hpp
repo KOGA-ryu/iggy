@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 struct SDL_Window;
 
@@ -47,6 +48,7 @@ public:
   bool isDrawable() const;
   SdlDrawableExtent drawableExtent() const;
   const SdlWindowEventState& eventState() const;
+  void setTitle(std::string_view title);
   void pollEvents();
 
   SDL_Window* nativeWindow() const;

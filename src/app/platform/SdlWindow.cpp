@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 
 #include <algorithm>
+#include <string>
 
 namespace iggy3d {
 namespace {
@@ -78,6 +79,14 @@ SdlDrawableExtent SdlWindow::drawableExtent() const {
 
 const SdlWindowEventState& SdlWindow::eventState() const {
   return eventState_;
+}
+
+void SdlWindow::setTitle(std::string_view title) {
+  if (window_ == nullptr) {
+    return;
+  }
+  const std::string ownedTitle(title);
+  (void)SDL_SetWindowTitle(window_, ownedTitle.c_str());
 }
 
 void SdlWindow::pollEvents() {

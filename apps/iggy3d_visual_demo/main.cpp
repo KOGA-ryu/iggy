@@ -38,6 +38,8 @@
 
 namespace {
 
+constexpr std::string_view kVisualDemoWindowTitle = "iggy3d visual demo";
+
 enum class VisualInputBackend : std::uint8_t {
   Keyboard,
   Gamepad,
@@ -143,6 +145,7 @@ struct PlayableReceiptFields {
   bool debugOverlayEnabled = false;
   bool debugOverlayOpen = false;
   bool debugOverlayToggleObserved = false;
+  bool debugOverlayVisible = false;
   bool debugPlayerPositionAvailable = false;
   bool debugSpeedAvailable = false;
   bool debugDistanceAvailable = false;
@@ -156,6 +159,7 @@ struct PlayableReceiptFields {
   std::string horizontalVelocityState = "zero";
   std::string dashCooldownState = "ready";
   std::string debugOverlayReason = "debug_overlay_disabled";
+  std::string debugOverlaySurface = "closed";
   std::string debugPlayerPhase = "grounded";
   std::string debugMovementPolicyBand = "not_attempted";
   std::string debugHitSurfaceId = "none";
@@ -368,6 +372,24 @@ std::string debugFloat(float value) {
   }
   (void)std::snprintf(buffer, sizeof(buffer), "%.3f", static_cast<double>(value));
   return buffer;
+}
+
+std::string debugOverlayWindowTitle(const iggy3d::RuntimeDebugSnapshot& snapshot) {
+  if (!snapshot.enabled) {
+    return std::string(kVisualDemoWindowTitle);
+  }
+  if (snapshot.status != iggy3d::RuntimeDebugSnapshotStatus::Ok) {
+    const std::string reason =
+        snapshot.reasonCode == nullptr ? "unavailable" : snapshot.reasonCode;
+    return "iggy3d | debug unavailable | " + reason;
+  }
+  return "iggy3d | pos " + debugFloat(snapshot.position.x) + ", " +
+         debugFloat(snapshot.position.y) + ", " + debugFloat(snapshot.position.z) +
+         " | speed " + debugFloat(snapshot.horizontalSpeedMetersPerSecond) + " m/s" +
+         " | up " + debugFloat(snapshot.verticalSpeedMetersPerSecond) + " m/s" +
+         " | moved " + debugFloat(snapshot.movedThisFrameMeters) + " m" +
+         " | dist " + debugFloat(snapshot.distanceFromSpawnMeters) + " m" +
+         " | " + std::string(iggy3d::playerMotorPhaseName(snapshot.motorPhase));
 }
 
 std::string_view trimControlText(std::string_view value) {
@@ -1231,6 +1253,9 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
   iggy3d::appendReceiptField(receipt, "debug_overlay_toggle_observed",
                              fields.debugOverlayToggleObserved);
   iggy3d::appendReceiptField(receipt, "debug_overlay_reason", fields.debugOverlayReason);
+  iggy3d::appendReceiptField(receipt, "debug_overlay_visible",
+                             fields.debugOverlayVisible);
+  iggy3d::appendReceiptField(receipt, "debug_overlay_surface", fields.debugOverlaySurface);
   iggy3d::appendReceiptField(receipt, "debug_player_position_available",
                              fields.debugPlayerPositionAvailable);
   iggy3d::appendReceiptField(receipt, "debug_speed_available", fields.debugSpeedAvailable);
@@ -1554,7 +1579,7 @@ int main(int argc, const char* const* argv) {
   if (parsed.options.window) {
     windowFields.sdlAvailable = true;
     iggy3d::SdlWindowCreateInfo windowCreate;
-    windowCreate.title = "iggy3d visual demo";
+    windowCreate.title = std::string(kVisualDemoWindowTitle);
     windowCreate.width = viewportWidth;
     windowCreate.height = viewportHeight;
     windowCreate.vulkan = rendererCreate.backend == iggy3d::RendererBackendKind::Vulkan;
@@ -2174,6 +2199,21 @@ int main(int argc, const char* const* argv) {
       debugSnapshot = iggy3d::buildRuntimeDebugSnapshot(debugRequest);
       recordRuntimeDebugSnapshot(playableFields, debugSnapshot);
       iggy3d::appendRuntimeDebugSnapshot(debug, debugSnapshot);
+#if defined(IGGY3D_HAS_SDL3)
+      if (window.has_value()) {
+        window->setTitle(debugOverlayWindowTitle(debugSnapshot));
+        playableFields.debugOverlayVisible = debugOverlayOpen;
+        playableFields.debugOverlaySurface = debugOverlayOpen ? "window_title" : "closed";
+      } else {
+        playableFields.debugOverlayVisible = false;
+        playableFields.debugOverlaySurface =
+            debugOverlayOpen ? "receipt_projection" : "closed";
+      }
+#else
+      playableFields.debugOverlayVisible = false;
+      playableFields.debugOverlaySurface =
+          debugOverlayOpen ? "receipt_projection" : "closed";
+#endif
       if (debugSnapshot.playerPositionAvailable) {
         debugPreviousPosition = debugSnapshot.position;
       }
