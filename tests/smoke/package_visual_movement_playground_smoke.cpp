@@ -93,7 +93,8 @@ int main() {
   const std::filesystem::path output = "/tmp/iggy3d_package_visual_movement_playground.out";
   const std::string command =
       shellQuote(binary) + " --package " + shellQuote(fixture) +
-      " --renderer vulkan --frames 3 --window --print-render-receipt > " +
+      " --renderer vulkan --frames 3 --window --interactive --scripted-kinematic-input "
+      "--scripted-crouch-input --print-render-receipt > " +
       shellQuote(output);
 
   const int exitCode =
@@ -108,12 +109,22 @@ int main() {
       hasField(fields, "room_asset_loaded", "true") &&
       hasField(fields, "room_asset_id", "movement_playground") &&
       hasField(fields, "source_subset", "movement_playground_v1") &&
-      integerFieldAtLeast(fields, "room_static_mesh_count", 70ULL) &&
+      integerFieldAtLeast(fields, "room_static_mesh_count", 100ULL) &&
       integerFieldAtLeast(fields, "room_anchor_count", 5ULL) &&
-      integerFieldAtLeast(fields, "mesh_draw_count", 70ULL) &&
-      integerFieldAtLeast(fields, "indexed_draw_count", 70ULL) &&
+      integerFieldAtLeast(fields, "mesh_draw_count", 100ULL) &&
+      integerFieldAtLeast(fields, "indexed_draw_count", 100ULL) &&
       hasField(fields, "vertex_buffer_uploaded", "true") &&
       hasField(fields, "index_buffer_uploaded", "true") &&
+      hasField(fields, "input_backend", "scripted") &&
+      hasField(fields, "kinematic_movement_attempted", "true") &&
+      hasField(fields, "kinematic_movement_accepted", "true") &&
+      hasField(fields, "crouch_available", "true") &&
+      hasField(fields, "crouch_active", "true") &&
+      hasField(fields, "crouch_input_observed", "true") &&
+      hasField(fields, "stance", "crouched") &&
+      hasField(fields, "eye_height_meters", "1.050") &&
+      hasField(fields, "actor_height_meters", "1.200") &&
+      hasField(fields, "movement_speed_meters_per_second", "2.350") &&
       hasField(fields, "floor_visible", "true") &&
       hasField(fields, "wall_visible", "true") &&
       hasField(fields, "first_room_visible", "true") &&

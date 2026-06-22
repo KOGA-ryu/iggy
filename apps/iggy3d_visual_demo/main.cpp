@@ -54,6 +54,7 @@ struct VisualOptions {
   bool interactive = false;
   bool scriptedPlayableSmoke = false;
   bool scriptedKinematicInput = false;
+  bool scriptedCrouchInput = false;
   VisualInputBackend inputBackend = VisualInputBackend::Keyboard;
   std::uint32_t holdSeconds = 0U;
   std::uint32_t frames = 1U;
@@ -103,6 +104,13 @@ struct PlayableReceiptFields {
   bool movementClamped = false;
   bool movementSlid = false;
   bool groundSnapApplied = false;
+  bool crouchAvailable = false;
+  bool crouchActive = false;
+  bool crouchInputObserved = false;
+  std::string stance = "standing";
+  std::string eyeHeightMeters = "1.650";
+  std::string actorHeightMeters = "1.800";
+  std::string movementSpeedMetersPerSecond = "4.800";
   std::string movementReason = "not_attempted";
   std::string movementPolicyBand = "not_attempted";
   std::string hitSurfaceId = "none";
@@ -128,6 +136,23 @@ std::string_view inputBackendName(VisualInputBackend backend) {
       return "scripted";
   }
   return "keyboard";
+}
+
+constexpr float kStandingEyeHeightMeters = 1.65F;
+constexpr float kCrouchedEyeHeightMeters = 1.05F;
+constexpr float kStandingActorHeightMeters = 1.80F;
+constexpr float kCrouchedActorHeightMeters = 1.20F;
+constexpr float kStandingSpeedMetersPerSecond = 4.80F;
+constexpr float kCrouchedSpeedMetersPerSecond = 2.35F;
+
+void recordStance(PlayableReceiptFields& fields, bool crouched) {
+  fields.crouchAvailable = true;
+  fields.crouchActive = crouched;
+  fields.crouchInputObserved = fields.crouchInputObserved || crouched;
+  fields.stance = crouched ? "crouched" : "standing";
+  fields.eyeHeightMeters = crouched ? "1.050" : "1.650";
+  fields.actorHeightMeters = crouched ? "1.200" : "1.800";
+  fields.movementSpeedMetersPerSecond = crouched ? "2.350" : "4.800";
 }
 
 bool hasValue(int index, int argc) {
@@ -210,6 +235,10 @@ ParseResult parseOptions(int argc, const char* const* argv) {
       result.options.windowFlagSeen = true;
     } else if (arg == "--scripted-kinematic-input") {
       result.options.scriptedKinematicInput = true;
+      result.options.interactive = true;
+      result.options.inputBackend = VisualInputBackend::Scripted;
+    } else if (arg == "--scripted-crouch-input") {
+      result.options.scriptedCrouchInput = true;
       result.options.interactive = true;
       result.options.inputBackend = VisualInputBackend::Scripted;
     } else if (arg == "--hold-seconds" && hasValue(i, argc)) {
@@ -663,6 +692,14 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
   iggy3d::appendReceiptField(receipt, "movement_clamped", fields.movementClamped);
   iggy3d::appendReceiptField(receipt, "movement_slid", fields.movementSlid);
   iggy3d::appendReceiptField(receipt, "ground_snap_applied", fields.groundSnapApplied);
+  iggy3d::appendReceiptField(receipt, "crouch_available", fields.crouchAvailable);
+  iggy3d::appendReceiptField(receipt, "crouch_active", fields.crouchActive);
+  iggy3d::appendReceiptField(receipt, "crouch_input_observed", fields.crouchInputObserved);
+  iggy3d::appendReceiptField(receipt, "stance", fields.stance);
+  iggy3d::appendReceiptField(receipt, "eye_height_meters", fields.eyeHeightMeters);
+  iggy3d::appendReceiptField(receipt, "actor_height_meters", fields.actorHeightMeters);
+  iggy3d::appendReceiptField(receipt, "movement_speed_meters_per_second",
+                             fields.movementSpeedMetersPerSecond);
   iggy3d::appendReceiptField(receipt, "hit_surface_id", fields.hitSurfaceId);
   iggy3d::appendReceiptField(receipt, "mouse_look_available", fields.mouseLookAvailable);
   iggy3d::appendReceiptField(receipt, "mouse_look_used", fields.mouseLookUsed);
@@ -827,7 +864,8 @@ iggy3d::FrameInput makeFrame(const iggy3d::SceneProjectionResult& scene,
                              std::uint32_t viewportHeight,
                              bool firstPerson,
                              float yaw,
-                             float pitch) {
+                             float pitch,
+                             float eyeHeightMeters) {
   iggy3d::FrameInput frame;
   frame.viewport = {viewportWidth, viewportHeight,
                     static_cast<float>(viewportWidth) / static_cast<float>(viewportHeight)};
@@ -835,11 +873,11 @@ iggy3d::FrameInput makeFrame(const iggy3d::SceneProjectionResult& scene,
                  frameIndex, 0.0F, 1.0F / 60.0F};
   frame.camera.mode =
       firstPerson ? iggy3d::RenderCameraMode::FirstPerson : iggy3d::RenderCameraMode::ThirdPerson;
-  iggy3d::Vec3 firstPersonEye{0.0F, 1.65F, 0.0F};
+  iggy3d::Vec3 firstPersonEye{0.0F, eyeHeightMeters, 0.0F};
   if (firstPerson) {
     for (const iggy3d::SceneItem& item : scene.items) {
       if (item.kind == iggy3d::SceneItemKind::Player || item.stableName == "player") {
-        firstPersonEye = item.transform.position + iggy3d::Vec3{0.0F, 1.65F, 0.0F};
+        firstPersonEye = item.transform.position + iggy3d::Vec3{0.0F, eyeHeightMeters, 0.0F};
         break;
       }
     }
@@ -1068,6 +1106,9 @@ int main(int argc, const char* const* argv) {
   playableFields.interactiveMode = parsed.options.interactive;
   playableFields.inputBackend = parsed.options.inputBackend;
   playableFields.saveLoadReplayStable = parsed.options.scriptedPlayableSmoke;
+  if (playableFields.playable) {
+    recordStance(playableFields, false);
+  }
   playableFields.kinematicControllerActive =
       playableFields.playable && !parsed.options.scriptedPlayableSmoke && !collisionSurfaces.empty();
 #if defined(IGGY3D_HAS_SDL3)
@@ -1149,6 +1190,7 @@ int main(int argc, const char* const* argv) {
       bool actionRequested = false;
       bool attackRequested = false;
       bool resetRequested = false;
+      bool crouchHeld = parsed.options.scriptedCrouchInput;
       if (parsed.options.scriptedKinematicInput) {
         movement = {1.0F, 0.0F, 0.0F};
       } else if (playableFields.inputBackend == VisualInputBackend::Keyboard) {
@@ -1163,6 +1205,8 @@ int main(int argc, const char* const* argv) {
           const bool right = SDL_SCANCODE_RIGHT < keyCount && keys[SDL_SCANCODE_RIGHT];
           const bool up = SDL_SCANCODE_UP < keyCount && keys[SDL_SCANCODE_UP];
           const bool down = SDL_SCANCODE_DOWN < keyCount && keys[SDL_SCANCODE_DOWN];
+          crouchHeld = crouchHeld || (SDL_SCANCODE_LCTRL < keyCount && keys[SDL_SCANCODE_LCTRL]) ||
+                       (SDL_SCANCODE_C < keyCount && keys[SDL_SCANCODE_C]);
           if (left) {
             yaw -= 0.035F;
           }
@@ -1197,6 +1241,7 @@ int main(int argc, const char* const* argv) {
         bool eastDown = false;
         bool startDown = false;
         bool r2Down = false;
+        bool crouchDown = false;
         if (gamepad.gamepad != nullptr) {
           leftX = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_LEFTX));
           leftY = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_LEFTY));
@@ -1207,6 +1252,7 @@ int main(int argc, const char* const* argv) {
           crossDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_SOUTH);
           eastDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_EAST);
           startDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_START);
+          crouchDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_LEFT_STICK);
           r2Down = r2 > 0.2F;
         } else {
           const int axisCount = SDL_GetNumJoystickAxes(gamepad.joystick);
@@ -1221,9 +1267,11 @@ int main(int argc, const char* const* argv) {
           eastDown = buttonCount > 1 && SDL_GetJoystickButton(gamepad.joystick, 1);
           startDown = buttonCount > 9 ? SDL_GetJoystickButton(gamepad.joystick, 9)
                                       : (buttonCount > 7 && SDL_GetJoystickButton(gamepad.joystick, 7));
+          crouchDown = buttonCount > 10 && SDL_GetJoystickButton(gamepad.joystick, 10);
           r2Down = r2 > 0.2F ||
                    (buttonCount > 7 && SDL_GetJoystickButton(gamepad.joystick, 7));
         }
+        crouchHeld = crouchHeld || crouchDown;
         playableFields.gamepadLeftStickUsed =
             playableFields.gamepadLeftStickUsed || leftX != 0.0F || leftY != 0.0F;
         playableFields.gamepadRightStickUsed =
@@ -1250,6 +1298,7 @@ int main(int argc, const char* const* argv) {
       if (pitch < -0.8F) {
         pitch = -0.8F;
       }
+      recordStance(playableFields, crouchHeld);
       const iggy3d::EntityState* player = playerEntity(session);
       if (player != nullptr && iggy3d::lengthSquared(movement) > 0.01F) {
         const float magnitudeSquared = iggy3d::lengthSquared(movement);
@@ -1263,7 +1312,10 @@ int main(int argc, const char* const* argv) {
         movementRequest.actor = player->id;
         movementRequest.intent = movement;
         movementRequest.mode = iggy3d::MovementMode::Walk;
-        movementRequest.params.maxSpeedMetersPerSecond = 4.8F;
+        movementRequest.params.maxSpeedMetersPerSecond =
+            crouchHeld ? kCrouchedSpeedMetersPerSecond : kStandingSpeedMetersPerSecond;
+        movementRequest.params.heightMeters =
+            crouchHeld ? kCrouchedActorHeightMeters : kStandingActorHeightMeters;
         movementRequest.params.groundSnapMeters = 0.75F;
         movementRequest.seconds = 1.0F / 60.0F;
         movementRequest.sourceCommandId = iggy3d::kInvalidCommandId;
@@ -1301,8 +1353,11 @@ int main(int argc, const char* const* argv) {
     iggy3d::SceneProjectionResult scene = iggy3d::buildSceneProjection(session.state());
     attachRoomProjection(package, scene);
     const iggy3d::DebugProjectionResult debug = iggy3d::buildDebugProjection(session.state());
+    const float eyeHeightMeters =
+        playableFields.crouchActive ? kCrouchedEyeHeightMeters : kStandingEyeHeightMeters;
     submit = renderer.submitFrame(makeFrame(scene, debug, frameIndex + 1U, viewportWidth,
-                                            viewportHeight, playableFields.playable, yaw, pitch));
+                                            viewportHeight, playableFields.playable, yaw, pitch,
+                                            eyeHeightMeters));
     if (submit.outcome != iggy3d::RenderOutcome::Ok) {
       iggy3d::RenderReceipt receipt = submit.receipt;
       appendReceiptFieldIfMissing(receipt, "receipt_version", "1");

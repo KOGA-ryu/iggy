@@ -6,10 +6,17 @@ Launch:
 ./build/iggy3d_visual_demo --renderer vulkan --window --interactive --input auto --package fixtures/demos/movement_playground/package.iggy3d.toml --print-render-receipt
 ```
 
+Controls:
+
+- WASD moves, mouse drag or right stick looks, Escape/Start quits;
+- hold C or Left Ctrl to crouch on keyboard;
+- hold left stick click to crouch on SDL gamepad.
+
 Purpose:
 
-- flat 48 ft by 48 ft authored room with grid strips on floor and walls;
-- player spawn near the south side, looking into the arena;
+- flat 96 ft by 96 ft authored room with grid strips on floor and walls;
+- player spawn anchored to the original obstacle cluster, with expanded open floor around it;
+- coarse arena grid over the full floor, with denser local grid in the original obstacle section;
 - jump pads and a marked gap lane;
 - clamber block and stepped ledges;
 - vault rail with posts;
@@ -22,5 +29,5 @@ Purpose:
 Current runtime truth:
 
 - this fixture is a playable/renderable test arena;
-- first-person kinematic walking works against the shifted room surface set;
+- first-person kinematic walking and hold-to-crouch stance work against the shifted room surface set;
 - jump, clamber, vault, dash, spell projectile, and wire-walk mechanics are authored as test zones, not implemented ability modes yet.

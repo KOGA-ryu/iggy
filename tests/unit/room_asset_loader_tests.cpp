@@ -226,12 +226,16 @@ bool movementPlaygroundPackageLoadsMovementSemantics() {
   bool hazard = false;
   bool dash = false;
   bool spell = false;
+  bool largeFloor = false;
   std::size_t gridMeshes = 0;
   std::size_t walkableSurfaces = 0;
   std::size_t blockerSurfaces = 0;
   std::size_t projectileBlockers = 0;
   for (const iggy3d::RoomStaticMeshAsset& mesh : room.staticMeshes) {
     floor = floor || mesh.role == "floor";
+    if (mesh.id == "main_floor") {
+      largeFloor = mesh.sizeMeters.x > 29.0F && mesh.sizeMeters.z > 29.0F;
+    }
     wall = wall || mesh.role == "wall";
     grid = grid || mesh.role == "grid";
     ledge = ledge || mesh.role == "ledge";
@@ -247,8 +251,9 @@ bool movementPlaygroundPackageLoadsMovementSemantics() {
     projectileBlockers +=
         surface.role == iggy3d::RoomSpatialSurfaceRole::ProjectileBlocker ? 1U : 0U;
   }
-  return ok && expect(floor, "movement floor role") && expect(wall, "movement wall role") &&
-         expect(grid && gridMeshes >= 35U, "movement grid role") &&
+  return ok && expect(floor, "movement floor role") &&
+         expect(largeFloor, "movement large floor") && expect(wall, "movement wall role") &&
+         expect(grid && gridMeshes >= 65U, "movement grid role") &&
          expect(ledge, "movement ledge role") && expect(rail, "movement rail role") &&
          expect(hazard, "movement hazard role") && expect(dash, "movement dash role") &&
          expect(spell, "movement spell role") &&
