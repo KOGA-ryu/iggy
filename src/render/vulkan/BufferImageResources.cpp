@@ -1,5 +1,9 @@
 #include "render/vulkan/BufferImageResources.hpp"
 
+#include <algorithm>
+#include <iterator>
+#include <limits>
+
 #if defined(IGGY3D_HAS_VULKAN)
 #include <vulkan/vulkan.h>
 #endif
@@ -81,7 +85,112 @@ bool copyBuffer(VkDevice device,
   vkDestroyCommandPool(device, pool, nullptr);
   return completed;
 }
+
+bool uploadBuffer(VulkanMemoryAllocator& allocator,
+                  VkDevice device,
+                  VkQueue queue,
+                  std::uint32_t queueFamily,
+                  std::string_view stagingName,
+                  std::string_view resourceName,
+                  VkDeviceSize byteCount,
+                  VkBufferUsageFlags usage,
+                  const void* bytes,
+                  GpuBufferRecord& out) {
+  VulkanAllocationResult staging =
+      allocator.createBuffer(stagingName, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                             bytes);
+  if (staging.outcome != RenderOutcome::Ok) {
+    return false;
+  }
+  VulkanAllocationResult destination =
+      allocator.createBuffer(resourceName, byteCount, usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  if (destination.outcome != RenderOutcome::Ok) {
+    allocator.destroyBuffer(staging.buffer);
+    return false;
+  }
+  const bool copied =
+      copyBuffer(device, queue, queueFamily, staging.buffer.buffer, destination.buffer.buffer,
+                 byteCount);
+  allocator.destroyBuffer(staging.buffer);
+  if (!copied) {
+    allocator.destroyBuffer(destination.buffer);
+    return false;
+  }
+  out.allocation = destination.buffer;
+  out.allocationName = std::string(resourceName);
+  return true;
+}
 #endif
+
+Vec3 colorForRoomRole(const std::string& role) {
+  if (role == "floor") {
+    return {0.30F, 0.32F, 0.34F};
+  }
+  if (role == "wall") {
+    return {0.42F, 0.43F, 0.46F};
+  }
+  if (role == "opening") {
+    return {0.56F, 0.56F, 0.60F};
+  }
+  if (role == "prop") {
+    return {0.45F, 0.28F, 0.12F};
+  }
+  return {0.36F, 0.42F, 0.48F};
+}
+
+void appendTriangle(std::vector<std::uint16_t>& indices,
+                    std::uint16_t a,
+                    std::uint16_t b,
+                    std::uint16_t c) {
+  indices.push_back(a);
+  indices.push_back(b);
+  indices.push_back(c);
+  indices.push_back(c);
+  indices.push_back(b);
+  indices.push_back(a);
+}
+
+void appendBox(std::vector<FirstRoomVertex>& vertices,
+               std::vector<std::uint16_t>& indices,
+               std::vector<IndexedDrawRange>& draws,
+               Vec3 center,
+               Vec3 size,
+               Vec3 color) {
+  const std::uint16_t base = static_cast<std::uint16_t>(vertices.size());
+  const float hx = std::max(size.x * 0.5F, 0.001F);
+  const float hy = std::max(size.y * 0.5F, 0.001F);
+  const float hz = std::max(size.z * 0.5F, 0.001F);
+  const FirstRoomVertex boxVertices[8] = {
+      {{center.x - hx, center.y - hy, center.z - hz}, {color.x, color.y, color.z}},
+      {{center.x + hx, center.y - hy, center.z - hz}, {color.x, color.y, color.z}},
+      {{center.x + hx, center.y + hy, center.z - hz}, {color.x, color.y, color.z}},
+      {{center.x - hx, center.y + hy, center.z - hz}, {color.x, color.y, color.z}},
+      {{center.x - hx, center.y - hy, center.z + hz}, {color.x, color.y, color.z}},
+      {{center.x + hx, center.y - hy, center.z + hz}, {color.x, color.y, color.z}},
+      {{center.x + hx, center.y + hy, center.z + hz}, {color.x, color.y, color.z}},
+      {{center.x - hx, center.y + hy, center.z + hz}, {color.x, color.y, color.z}},
+  };
+  vertices.insert(vertices.end(), std::begin(boxVertices), std::end(boxVertices));
+  IndexedDrawRange range;
+  range.firstIndex = static_cast<std::uint32_t>(indices.size());
+  appendTriangle(indices, base + 0U, base + 1U, base + 2U);
+  appendTriangle(indices, base + 0U, base + 2U, base + 3U);
+  appendTriangle(indices, base + 4U, base + 6U, base + 5U);
+  appendTriangle(indices, base + 4U, base + 7U, base + 6U);
+  appendTriangle(indices, base + 0U, base + 3U, base + 7U);
+  appendTriangle(indices, base + 0U, base + 7U, base + 4U);
+  appendTriangle(indices, base + 1U, base + 5U, base + 6U);
+  appendTriangle(indices, base + 1U, base + 6U, base + 2U);
+  appendTriangle(indices, base + 3U, base + 2U, base + 6U);
+  appendTriangle(indices, base + 3U, base + 6U, base + 7U);
+  appendTriangle(indices, base + 0U, base + 4U, base + 5U);
+  appendTriangle(indices, base + 0U, base + 5U, base + 1U);
+  range.indexCount = static_cast<std::uint32_t>(indices.size()) - range.firstIndex;
+  draws.push_back(range);
+}
 
 }  // namespace
 
@@ -129,44 +238,17 @@ BufferImageResourcesResult BufferImageResources::createFirstRoomResources(
       static_cast<VkDeviceSize>(vertices.size() * sizeof(FirstRoomVertex));
   const VkDeviceSize indexBytes = static_cast<VkDeviceSize>(indices.size() * sizeof(std::uint16_t));
 
-  auto uploadBuffer = [&](std::string_view resourceName,
-                          VkDeviceSize byteCount,
-                          VkBufferUsageFlags usage,
-                          const void* bytes,
-                          GpuBufferRecord& out) -> bool {
-    VulkanAllocationResult staging = allocator_.createBuffer(
-        "buffer.staging.upload.packet6", byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, bytes);
-    if (staging.outcome != RenderOutcome::Ok) {
-      return false;
-    }
-    VulkanAllocationResult destination =
-        allocator_.createBuffer(resourceName, byteCount, usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    if (destination.outcome != RenderOutcome::Ok) {
-      allocator_.destroyBuffer(staging.buffer);
-      return false;
-    }
-    const bool copied =
-        copyBuffer(createInfo.device, createInfo.graphicsQueue, createInfo.graphicsQueueFamily,
-                   staging.buffer.buffer, destination.buffer.buffer, byteCount);
-    allocator_.destroyBuffer(staging.buffer);
-    if (!copied) {
-      allocator_.destroyBuffer(destination.buffer);
-      return false;
-    }
-    out.allocation = destination.buffer;
-    out.allocationName = std::string(resourceName);
-    return true;
-  };
-
-  if (!uploadBuffer("buffer.first_room.vertices", vertexBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+  if (!uploadBuffer(allocator_, createInfo.device, createInfo.graphicsQueue,
+                    createInfo.graphicsQueueFamily, "buffer.staging.upload.packet6",
+                    "buffer.first_room.vertices", vertexBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                     vertices.data(), geometry_.vertexBuffer)) {
     result.reason = {"vertex_buffer_create_failed", "vertex buffer create failed"};
     result.receipt = baseReceipt("fail", result.reason.code);
     return result;
   }
-  if (!uploadBuffer("buffer.first_room.indices", indexBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+  if (!uploadBuffer(allocator_, createInfo.device, createInfo.graphicsQueue,
+                    createInfo.graphicsQueueFamily, "buffer.staging.upload.packet6",
+                    "buffer.first_room.indices", indexBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
                     indices.data(), geometry_.indexBuffer)) {
     result.reason = {"index_buffer_create_failed", "index buffer create failed"};
     result.receipt = baseReceipt("fail", result.reason.code);
@@ -174,6 +256,10 @@ BufferImageResourcesResult BufferImageResources::createFirstRoomResources(
   }
   geometry_.vertexCount = static_cast<std::uint32_t>(vertices.size());
   geometry_.indexCount = static_cast<std::uint32_t>(indices.size());
+  geometry_.indexedDraws = {{0U, geometry_.indexCount}};
+  geometry_.sourceRoomAssetId.clear();
+  geometry_.sourceRoomStaticMeshCount = 0;
+  geometry_.packageRoomGeometry = false;
   geometry_.indexedDraw = true;
 
   VkExtent3D depthExtent{createInfo.extent.width, createInfo.extent.height, 1U};
@@ -229,6 +315,104 @@ BufferImageResourcesResult BufferImageResources::createFirstRoomResources(
   return result;
 }
 
+BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
+    const SceneRoomProjection& room) {
+  BufferImageResourcesResult result;
+  result.receipt = baseReceipt("fail", "memory_allocation_failed");
+  if (!ready_ || !allocator_.ready() || room.meshes.empty() || depth_.extent.width == 0U ||
+      depth_.extent.height == 0U) {
+    result.reason = {"memory_allocator_create_failed", "memory allocator create failed"};
+    result.receipt = baseReceipt("fail", result.reason.code);
+    return result;
+  }
+  if (geometry_.packageRoomGeometry && geometry_.sourceRoomAssetId == room.assetId &&
+      geometry_.sourceRoomStaticMeshCount == room.meshes.size() && geometry_.indexCount > 0U &&
+      geometry_.vertexBuffer.allocation.buffer != VK_NULL_HANDLE &&
+      geometry_.indexBuffer.allocation.buffer != VK_NULL_HANDLE) {
+    result.outcome = RenderOutcome::Ok;
+    result.reason = {"packet6_resource_ready", "packet 6 resource ready"};
+    result.receipt = baseReceipt("pass", result.reason.code);
+    appendReceiptField(result.receipt, "vertex_buffer_count", static_cast<std::uint64_t>(1));
+    appendReceiptField(result.receipt, "index_buffer_count", static_cast<std::uint64_t>(1));
+    appendReceiptField(result.receipt, "room_asset_id", room.assetId);
+    appendReceiptField(result.receipt, "mesh_draw_count",
+                       static_cast<std::uint64_t>(geometry_.indexedDraws.size()));
+    return result;
+  }
+
+  std::vector<FirstRoomVertex> vertices;
+  std::vector<std::uint16_t> indices;
+  std::vector<IndexedDrawRange> draws;
+  vertices.reserve(room.meshes.size() * 8U);
+  indices.reserve(room.meshes.size() * 72U);
+  for (const SceneRoomMeshItem& mesh : room.meshes) {
+    if (vertices.size() + 8U >
+        static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max())) {
+      result.reason = {"vertex_buffer_create_failed", "vertex buffer create failed"};
+      result.receipt = baseReceipt("fail", result.reason.code);
+      return result;
+    }
+    appendBox(vertices, indices, draws, mesh.position, mesh.size, colorForRoomRole(mesh.role));
+  }
+  if (vertices.empty() || indices.empty() || draws.empty()) {
+    result.reason = {"vertex_buffer_create_failed", "vertex buffer create failed"};
+    result.receipt = baseReceipt("fail", result.reason.code);
+    return result;
+  }
+
+#if defined(IGGY3D_HAS_VULKAN)
+  FirstRoomGeometryResources replacement;
+  const VkDeviceSize vertexBytes =
+      static_cast<VkDeviceSize>(vertices.size() * sizeof(FirstRoomVertex));
+  const VkDeviceSize indexBytes = static_cast<VkDeviceSize>(indices.size() * sizeof(std::uint16_t));
+  if (!uploadBuffer(allocator_, createInfo_.device, createInfo_.graphicsQueue,
+                    createInfo_.graphicsQueueFamily, "buffer.staging.upload.room_mesh",
+                    "buffer.room_asset.vertices", vertexBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                    vertices.data(), replacement.vertexBuffer)) {
+    result.reason = {"vertex_buffer_create_failed", "vertex buffer create failed"};
+    result.receipt = baseReceipt("fail", result.reason.code);
+    return result;
+  }
+  if (!uploadBuffer(allocator_, createInfo_.device, createInfo_.graphicsQueue,
+                    createInfo_.graphicsQueueFamily, "buffer.staging.upload.room_mesh",
+                    "buffer.room_asset.indices", indexBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                    indices.data(), replacement.indexBuffer)) {
+    allocator_.destroyBuffer(replacement.vertexBuffer.allocation);
+    result.reason = {"index_buffer_create_failed", "index buffer create failed"};
+    result.receipt = baseReceipt("fail", result.reason.code);
+    return result;
+  }
+  replacement.vertexCount = static_cast<std::uint32_t>(vertices.size());
+  replacement.indexCount = static_cast<std::uint32_t>(indices.size());
+  replacement.indexedDraws = std::move(draws);
+  replacement.sourceRoomAssetId = room.assetId;
+  replacement.sourceRoomStaticMeshCount = room.meshes.size();
+  replacement.packageRoomGeometry = true;
+  replacement.indexedDraw = true;
+  destroyGeometryBuffers();
+  geometry_ = std::move(replacement);
+#else
+  (void)room;
+#endif
+
+  result.outcome = RenderOutcome::Ok;
+  result.reason = {"packet6_resource_ready", "packet 6 resource ready"};
+  result.receipt = baseReceipt("pass", result.reason.code);
+  appendReceiptField(result.receipt, "allocation_count",
+                     static_cast<std::uint64_t>(allocator_.allocations().size()));
+  appendReceiptField(result.receipt, "allocation_names",
+                     allocationNamesCsv(allocator_.allocations()));
+  appendReceiptField(result.receipt, "vertex_buffer_count", static_cast<std::uint64_t>(1));
+  appendReceiptField(result.receipt, "index_buffer_count", static_cast<std::uint64_t>(1));
+  appendReceiptField(result.receipt, "room_asset_id", room.assetId);
+  appendReceiptField(result.receipt, "room_static_mesh_count",
+                     static_cast<std::uint64_t>(room.meshes.size()));
+  appendReceiptField(result.receipt, "mesh_draw_count",
+                     static_cast<std::uint64_t>(geometry_.indexedDraws.size()));
+  appendReceiptField(result.receipt, "index_count", static_cast<std::uint64_t>(geometry_.indexCount));
+  return result;
+}
+
 RenderReceipt BufferImageResources::destroy() {
   RenderReceipt receipt = baseReceipt("pass", "packet6_resource_ready");
 #if defined(IGGY3D_HAS_VULKAN)
@@ -238,8 +422,7 @@ RenderReceipt BufferImageResources::destroy() {
 #endif
   depth_.depthImage.imageView = {};
   allocator_.destroyImage(depth_.depthImage.allocation);
-  allocator_.destroyBuffer(geometry_.indexBuffer.allocation);
-  allocator_.destroyBuffer(geometry_.vertexBuffer.allocation);
+  destroyGeometryBuffers();
   allocator_.destroy();
   geometry_ = {};
   depth_ = {};
@@ -262,6 +445,12 @@ const VulkanMemoryAllocator& BufferImageResources::allocator() const {
 
 bool BufferImageResources::ready() const {
   return ready_;
+}
+
+void BufferImageResources::destroyGeometryBuffers() {
+  allocator_.destroyBuffer(geometry_.indexBuffer.allocation);
+  allocator_.destroyBuffer(geometry_.vertexBuffer.allocation);
+  geometry_ = {};
 }
 
 }  // namespace iggy3d::vulkan

@@ -27,6 +27,9 @@ target_sources(iggy3d
     src/app/platform/ExecutablePath.cpp
     src/content/PackageLoader.cpp
     src/content/PackageValidator.cpp
+    src/content/assets/MaterialAsset.cpp
+    src/content/assets/MeshAsset.cpp
+    src/content/assets/RoomAsset.cpp
     src/content/FixtureScenarioLoader.cpp
     src/runtime/player/PlayerRoster.cpp
     src/runtime/world/WorldState.cpp
@@ -71,12 +74,18 @@ if(IGGY3D_HAS_SDL3_TARGET AND IGGY3D_HAS_VULKAN_TARGET)
   target_sources(iggy3d PRIVATE src/app/platform/SdlVulkanSurface.cpp)
 endif()
 
-if(IGGY3D_HAS_VULKAN_TARGET AND (IGGY3D_ENABLE_VULKAN OR IGGY3D_ENABLE_VULKAN_SMOKE))
+set(IGGY3D_BUILD_VULKAN_BACKEND OFF)
+if(IGGY3D_HAS_VULKAN_TARGET AND (IGGY3D_BUILD_TOOLS OR IGGY3D_ENABLE_VULKAN))
+  set(IGGY3D_BUILD_VULKAN_BACKEND ON)
+endif()
+
+if(IGGY3D_HAS_VULKAN_TARGET AND
+   (IGGY3D_BUILD_VULKAN_BACKEND OR IGGY3D_ENABLE_VULKAN_SMOKE))
   target_link_libraries(iggy3d PUBLIC "${IGGY3D_VULKAN_TARGET}")
   target_compile_definitions(iggy3d PUBLIC IGGY3D_HAS_VULKAN=1)
 endif()
 
-if(IGGY3D_ENABLE_VULKAN AND IGGY3D_HAS_VULKAN_TARGET)
+if(IGGY3D_BUILD_VULKAN_BACKEND)
   target_sources(iggy3d
     PRIVATE
       src/render/vulkan/VulkanResult.cpp
@@ -97,7 +106,9 @@ if(IGGY3D_ENABLE_VULKAN AND IGGY3D_HAS_VULKAN_TARGET)
       src/render/vulkan/FrameCapture.cpp
       src/render/vulkan/VulkanBackend.cpp
   )
-  target_compile_definitions(iggy3d PUBLIC IGGY3D_ENABLE_VULKAN=1)
+  if(IGGY3D_ENABLE_VULKAN)
+    target_compile_definitions(iggy3d PUBLIC IGGY3D_ENABLE_VULKAN=1)
+  endif()
   if(IGGY3D_ENABLE_VULKAN_SHADERS AND IGGY3D_SHADER_COMPILER_AVAILABLE)
     add_dependencies(iggy3d iggy3d_vulkan_shaders)
   endif()
@@ -115,9 +126,15 @@ if(IGGY3D_BUILD_TOOLS)
   iggy3d_apply_warnings(iggy3d_replay_tool)
 endif()
 
-if(IGGY3D_ENABLE_VISUAL_DEMO)
+if(IGGY3D_BUILD_TOOLS OR IGGY3D_ENABLE_VISUAL_DEMO)
   add_executable(iggy3d_visual_demo apps/iggy3d_visual_demo/main.cpp)
   target_link_libraries(iggy3d_visual_demo PRIVATE iggy3d)
+  target_compile_definitions(iggy3d_visual_demo
+    PRIVATE
+      IGGY3D_VULKAN_ICD_FOUND_VALUE=$<BOOL:${IGGY3D_VULKAN_ICD_FOUND}>)
+  if(IGGY3D_BUILD_VULKAN_BACKEND AND IGGY3D_HAS_SDL3_TARGET)
+    target_compile_definitions(iggy3d_visual_demo PRIVATE IGGY3D_APP_VULKAN_BACKEND=1)
+  endif()
   iggy3d_apply_warnings(iggy3d_visual_demo)
 endif()
 

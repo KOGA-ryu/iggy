@@ -4,6 +4,9 @@
 #include <string>
 #include <vector>
 
+#include "content/assets/MaterialAsset.hpp"
+#include "content/assets/MeshAsset.hpp"
+#include "content/assets/RoomAsset.hpp"
 #include "content/FixtureScenarioLoader.hpp"
 #include "content/PackageManifest.hpp"
 #include "core/diagnostics/Diagnostic.hpp"
@@ -33,6 +36,9 @@ struct PackageLoadResult {
   PackageLoadStatus status = PackageLoadStatus::Ok;
   PackageManifest manifest;
   FixtureScenarioSeed scenario;
+  std::vector<RoomAsset> rooms;
+  MeshAssetLibrary meshes;
+  MaterialAssetLibrary materials;
   std::vector<Diagnostic> diagnostics;
 };
 

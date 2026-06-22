@@ -182,7 +182,7 @@ no matches
 
 Source role: implement the no-op backend with deterministic diagnostics and lifecycle behavior.
 
-Factory ownership: Packet 2 owns the source-side wiring that maps `RendererBackendKind::Null` to `NullRenderer` through the public `createRenderer` entrypoint. Packet 1 `createRenderer` reports the null backend as missing until this file and its header are implemented.
+Factory ownership: Packet 2 historically owned the source-side wiring that maps `RendererBackendKind::Null` to `NullRenderer` through the public `createRenderer` entrypoint. Current source baseline has this wiring implemented; `createRenderer(RendererBackendKind::Null)` should continue constructing `NullRenderer`.
 
 Initialization:
 ```text

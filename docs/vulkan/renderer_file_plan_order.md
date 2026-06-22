@@ -16,6 +16,17 @@ Use:
 - [file_plans/PRIORITY.md](file_plans/PRIORITY.md) for packet order;
 - [file_plans/COMPLETE_RENDERER_SURFACE.md](file_plans/COMPLETE_RENDERER_SURFACE.md) for the full planned surface and naming reconciliations.
 
+If this broader ordering document conflicts with `docs/vulkan/file_plans/PRIORITY.md`, `PRIORITY.md` is authoritative.
+
+Current baseline note: this document preserves the historical packet ladder as provenance, but the current `iggy3d-main` source is already beyond the old boundary-only packets. The implemented baseline includes the backend-neutral renderer API, concrete `NullRenderer`, factory wiring for `RendererBackendKind::Null`, Vulkan-private implementation files, Vulkan smoke tests, first-room proof surfaces, and Runtime Packet 8 tactical combat runtime state. Do not use the historical Packet 1 wording to remove or defer current source files.
+
+Historical implementation order:
+
+1. Packet 1: backend-neutral `RendererApi`, `RenderBackend`, `FrameInput`, diagnostics/config, and injected test-backend boundary tests only.
+2. Packet 2: concrete `NullRenderer`, replay/hash invariance, and factory wiring for `RendererBackendKind::Null`.
+3. Packet 3: visual demo boot, package/runtime lookup, and SDL platform shell.
+4. Later packets: Vulkan bootstrap, swapchain, shaders, first-room drawing, screenshot/frame hash, and richer visual content.
+
 ## Hard Gate
 
 Do not create Vulkan implementation file plans until:
@@ -60,6 +71,23 @@ Every packet must include:
 
 Do not batch packets across ownership boundaries just because files are adjacent.
 
+## Current Builder Packet Readiness
+
+Next builder packet: `Renderer Current Baseline Reconciliation Packet`.
+
+This packet reconciles docs and tests around the source that exists now. It does not rewind the tree to the historical Packet 1 boundary.
+
+Current baseline includes:
+
+- backend-neutral `RendererApi`, `RenderBackend`, `FrameInput`, diagnostics, and config;
+- concrete `NullRenderer`;
+- factory wiring where `createRenderer(RendererBackendKind::Null)` constructs `NullRenderer`;
+- Vulkan-private implementation files and smokes under the approved Vulkan surfaces;
+- first-room proof and renderer diagnostics artifacts from later renderer packets;
+- Runtime Packet 8 tactical combat runtime truth.
+
+Still deferred: new visual app behavior, new SDL input behavior, new Vulkan backend features, shader pipeline changes, screenshot/frame-hash changes, package fixture changes, and Packet 8 combat visual mapping for `training_dummy` or defeated state.
+
 ## Packet 0: Renderer Planning Reconciliation
 
 Purpose: make sure the Vulkan docs and current repo state still match before file plans begin.
@@ -69,7 +97,7 @@ Plan docs/files:
 - `docs/vulkan/README.md`
 - `docs/vulkan/file_surface.md`
 - `docs/vulkan/renderer_file_plan_order.md`
-- `docs/file_plans/PRIORITY.md` or a renderer-specific addendum if chosen.
+- `docs/vulkan/file_plans/PRIORITY.md`.
 
 Read first:
 
@@ -85,10 +113,12 @@ Output:
 Exit criteria:
 
 - current runtime gate named;
-- first renderer packet still starts at boundary/null renderer;
+- first renderer packet starts at the backend-neutral boundary only;
 - no legacy path dependency.
 
 ## Packet 1: Backend-Neutral Renderer Boundary
+
+Historical status: implemented. Current source also includes later renderer packets; use this section as provenance for the backend-neutral API contract, not as an instruction to remove `NullRenderer` or Vulkan-private files.
 
 Purpose: introduce renderer API contracts without Vulkan, SDL, GPU, or window dependencies.
 
@@ -97,11 +127,17 @@ File plans:
 - `src/render/RendererApi.hpp`
 - `src/render/RendererApi.cpp`
 - `src/render/RenderBackend.hpp`
+- `src/render/FrameInput.hpp`
+- possible `src/render/FrameInput.cpp`
 - `src/render/RenderDiagnostics.hpp`
 - `src/render/RenderDiagnostics.cpp`
-- `src/render/null/NullRenderer.hpp`
-- `src/render/null/NullRenderer.cpp`
+- `src/render/RendererConfig.hpp`
+- `src/render/RendererConfig.cpp`
 - `tests/unit/render_boundary_tests.cpp`
+- `tests/unit/render_diagnostics_tests.cpp`
+- `tests/unit/render_config_tests.cpp`
+- `tests/unit/render_projection_input_tests.cpp`
+- `tests/unit/render_camera_frame_tests.cpp`
 
 Read first:
 
@@ -112,16 +148,24 @@ Read first:
 
 Must prove:
 
-- null renderer can consume a frame boundary without runtime mutation;
+- public renderer headers compile without Vulkan, SDL, display access, shader artifacts, or package lookup;
+- `RendererApi` can be exercised with an injected test backend;
+- current baseline `RendererBackendKind::Null` factory construction returns a real `NullRenderer`;
+- Vulkan requests remain diagnosed or feature-gated unless an app-owned surface/provider path is active;
 - renderer diagnostics exist as backend-neutral values;
 - no Vulkan/SDL leaks into public renderer API;
 - headless acceptance remains green.
 
-Blocked:
+Historically blocked in Packet 1, now implemented by later packets:
 
+- concrete `NullRenderer`;
 - Vulkan backend;
 - SDL window;
+- interactive input mapping;
 - shader compiler;
+- first-room drawing;
+- screenshot/frame hash;
+- Packet 8 combat visual mapping;
 - GPU tests.
 
 Exit criteria:
@@ -133,43 +177,49 @@ rg -n '#include[ <"](SDL3/|SDL\\.h|SDL_vulkan|vulkan/)|\\bVk[A-Z][A-Za-z0-9_]*|\
 
 Expected scan result: no matches.
 
-## Packet 2: FrameInput And Camera Render Contract
+## Packet 2: Null Renderer And Invariance
 
-Purpose: plan exact frame input validation and camera derivation support.
+Historical status: implemented. Current source expects this packet's factory wiring and invariance tests to remain green.
+
+Purpose: add the first concrete renderer backend without GPU, window, shader, or Vulkan dependencies.
 
 File plans:
 
-- `src/render/FrameInput.hpp`
-- possible `src/render/FrameInput.cpp`
-- possible camera derivation helper file if kept outside runtime;
-- `tests/unit/render_projection_input_tests.cpp`
-- `tests/unit/render_camera_frame_tests.cpp`
+- `src/render/null/NullRenderer.hpp`
+- `src/render/null/NullRenderer.cpp`
+- `tests/unit/render_null_renderer_tests.cpp`
 - `tests/unit/render_replay_invariance_tests.cpp`
 
 Read first:
 
+- [boundaries.md](boundaries.md)
 - [frame_input_contract.md](frame_input_contract.md)
-- [camera_render_contract.md](camera_render_contract.md)
-- [first_room_render_contract.md](first_room_render_contract.md)
-- local runtime camera/projection file plans.
+- [diagnostics_and_tests.md](diagnostics_and_tests.md)
+- [file_plans/src_render_null_NullRenderer_hpp.md](file_plans/src_render_null_NullRenderer_hpp.md)
+- [file_plans/src_render_null_NullRenderer_cpp.md](file_plans/src_render_null_NullRenderer_cpp.md)
 
 Must prove:
 
-- `FrameInput` can reference/copy projection and camera-derived data safely;
-- invalid camera/frame data is rejected;
-- null renderer consumption does not change replay hash;
-- camera aspect/near/far/matrix rules are explicit.
+- `NullRenderer` implements the backend-neutral `RenderBackend` contract;
+- null renderer can consume a valid `FrameInput`;
+- invalid frame input is diagnosed without runtime mutation;
+- factory wiring maps `RendererBackendKind::Null` to `NullRenderer`;
+- null renderer consumption does not change runtime summary, state hash, command results, or replay truth.
 
 Blocked:
 
 - Vulkan drawing;
 - SDL shell;
+- shader compiler;
+- first-room drawing;
+- screenshot/frame hash;
+- Packet 8 combat visual mapping;
 - GPU resource creation.
 
 Exit criteria:
 
 ```sh
-ctest --test-dir build --output-on-failure -R 'render_projection_input|render_camera|render_replay'
+ctest --test-dir build --output-on-failure -R 'render_null|render_replay|render_boundary'
 ```
 
 ## Packet 3: Visual App And SDL Platform Shell
@@ -196,9 +246,11 @@ Read first:
 Must prove:
 
 - SDL3 remains proposed shell or fallback is documented;
+- SDL3 source/system/vendored acquisition is decided or explicitly deferred for the platform/dependency packet;
 - headless builds still work with visual/Vulkan options off;
 - app/platform shell owns event polling;
 - runtime does not include SDL;
+- visual demo can boot in scripted/fixed-frame mode before interactive input mapping is accepted;
 - surface provider boundary is clear.
 
 Blocked:
@@ -206,6 +258,8 @@ Blocked:
 - swapchain;
 - command buffers;
 - first-room rendering.
+- screenshot/frame hash;
+- Packet 8 combat visual mapping.
 
 Exit criteria:
 

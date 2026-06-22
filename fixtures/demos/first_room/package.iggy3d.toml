@@ -3,3 +3,15 @@ id = "iggy3d.first_room"
 schema_version = 1
 required_runtime_schema = 1
 scenario = "scenario.iggy3d.toml"
+
+[[assets]]
+id = "room.spawn_corridor"
+path = "assets/rooms/spawn_corridor.room.iggy3d.toml"
+
+[[assets]]
+id = "mesh.room_primitives"
+path = "assets/meshes/room_primitives.meshes.iggy3d.toml"
+
+[[assets]]
+id = "material.room_basic"
+path = "assets/materials/room_basic.materials.iggy3d.toml"

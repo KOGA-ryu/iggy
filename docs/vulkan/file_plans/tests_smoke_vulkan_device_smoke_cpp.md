@@ -81,6 +81,11 @@ Normal path: expose or test the backend-neutral renderer contract. Skip/fail: in
 
 Platform behavior:
 macOS/MoltenVK: report `platform=macos` and `platform_lane=moltenvk` when Vulkan is attempted; MoltenVK portability details are diagnostics, not cross-platform law.
+
+The macOS dependency readiness probe precedes this device smoke. It reports
+system SDL3, Vulkan loader, SDK root, ICD path, MoltenVK, `glslc`, validation
+layers, sync validation, and portability enumeration without creating a
+swapchain or submitting a Vulkan frame.
 Linux: report `platform=linux` and `platform_lane=native_vulkan` for hardware/native validation; software Vulkan uses a separate lane.
 Windows: report `platform=windows` and `platform_lane=native_vulkan`; multi-config shader/package paths must include the active config where relevant.
 Software Vulkan: allowed for optional development evidence only; it cannot replace native macOS/Linux/Windows proof.

@@ -179,6 +179,7 @@ option(IGGY3D_REQUIRE_SYNC_VALIDATION "Require synchronization validation in str
 
 Target policy:
 - Headless runtime targets must configure and build with all Vulkan options off.
+- Packet 1 backend-neutral renderer targets must configure and build without SDL3, Vulkan, display access, shader compiler tools, or package-runtime lookup.
 - `iggy3d_render` may exist without Vulkan enabled when it contains only backend-neutral and null renderer code.
 - `iggy3d_visual_demo` links SDL3 only when `IGGY3D_ENABLE_VISUAL_DEMO=ON`.
 - Vulkan backend targets link Vulkan loader/headers only when `IGGY3D_ENABLE_VULKAN=ON`.
@@ -188,8 +189,20 @@ Dependency discovery:
 - Use `find_package(Vulkan)` only when Vulkan is enabled.
 - Use `find_package(SDL3 CONFIG)` when system SDL3 is requested.
 - Emit deterministic configure messages for found/missing Vulkan, SDL3, glslang, and shader toolchain inputs.
+- Emit deterministic configure messages and compile definitions for macOS readiness probes:
+  `IGGY3D_SDL3_SOURCE`, `IGGY3D_HAS_SDL3_TARGET`, `IGGY3D_VULKAN_LOADER`,
+  `IGGY3D_HAS_VULKAN_TARGET`, Vulkan SDK root/source, Vulkan ICD path/found,
+  and `glslc` path/found.
+- Probe SDK roots from `VULKAN_SDK`, `/Users/kogaryu/VulkanSDK`, CMake Vulkan
+  discovery, and known macOS SDK subdirectories; probe explicit
+  `VK_ICD_FILENAMES` files and ICD directories under the SDK,
+  `/usr/local/share/vulkan/icd.d`, `/opt/homebrew/share/vulkan/icd.d`,
+  `/usr/local/etc/vulkan/icd.d`, and `/opt/homebrew/etc/vulkan/icd.d`.
+- Do not require SDK, ICD, SDL3, Vulkan loader, MoltenVK, or shader compiler in
+  default/headless/no-window NullRenderer builds.
 - No configure-time network access.
 - No dependency on any legacy repository path.
+- SDL3 source/system/vendored acquisition is unresolved in this file plan. The first documented lane is system SDL3 through `IGGY3D_USE_SYSTEM_SDL3=ON`; any vendored or external SDL3 lane requires a later explicit platform/dependency packet update before strict visual boot depends on it.
 
 Configure messages:
 ```text
@@ -209,6 +222,7 @@ Platform behavior:
 
 Verification:
 - Configure-only tests prove headless builds do not require Vulkan or SDL3.
+- Packet 1 configure/build proof must not discover or require SDL3, Vulkan, glslangValidator, shader artifacts, or display access.
 - Visual-demo configure tests prove SDL3 discovery is isolated to visual targets.
 - Vulkan smoke configure tests prove missing Vulkan is a skip in non-strict smoke lanes and a configure/test fail in strict lanes according to build option.
 

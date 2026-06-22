@@ -63,7 +63,9 @@ public:
   bool ready() const;
 
 private:
-  RenderReceipt makeReceipt(std::string_view result, std::string_view reasonCode) const;
+  RenderReceipt makeReceipt(std::string_view result,
+                            std::string_view reasonCode,
+                            std::string_view renderingPath = {}) const;
 
   RenderLoopCreateInfo createInfo_;
   bool ready_ = false;

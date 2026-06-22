@@ -4,6 +4,8 @@ This document defines the exact CMake and glslang build pipeline for compiling `
 
 Shader compilation is build infrastructure for the renderer. Runtime, content, projection, save, replay, and gameplay code must not depend on shader compilers, generated SPIR-V paths, CMake shader targets, shader stage names, or Vulkan shader toolchain state.
 
+Packet 1 must not depend on this shader pipeline. The first Vulkan shader path remains GLSL plus `glslangValidator`; Slang remains a later secondary investigation unless a future packet explicitly re-scopes shader language policy.
+
 ## Purpose
 
 Define a reproducible first shader build path:

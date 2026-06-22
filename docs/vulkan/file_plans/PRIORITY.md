@@ -1,6 +1,6 @@
 # Vulkan File Plan Priority
 
-This file ranks Vulkan file-plan documents in build order. It is a planning order only; implementation remains gated by headless runtime and projection acceptance.
+This file ranks Vulkan file-plan documents in build order. It is a planning order and historical provenance record; implementation remains gated by headless runtime and projection acceptance.
 
 ## Priority Audit State
 
@@ -19,6 +19,8 @@ The first implementation packet after the Vulkan-lane gate is Packet 1, not the 
 Packet 4 work depends on the backend-neutral API, null renderer invariance, and platform shell contracts being reviewed first.
 
 `render_replay_invariance_tests.cpp` means renderer submission must not mutate runtime hash, state, command results, or replay truth. It does not mean the replay tool or `CommandReplay` must be complete before Packet 1 or Packet 2.
+
+Current baseline note: `iggy3d-main` is already beyond the old Packet 1 boundary-only stage. Current source includes the backend-neutral renderer API, concrete `NullRenderer`, factory wiring for `RendererBackendKind::Null`, Vulkan-private implementation files and smokes, first-room proof surfaces, and Runtime Packet 8 tactical combat runtime state. Builders reconciling current source must preserve that baseline instead of treating Packet 1/2/3 entries below as future work.
 
 Every per-file plan in this ladder must carry:
 

@@ -82,6 +82,11 @@ Normal path: create or use the Vulkan objects named by this file, emit receipt f
 
 Platform behavior:
 macOS/MoltenVK: report `platform=macos` and `platform_lane=moltenvk` when Vulkan is attempted; MoltenVK portability details are diagnostics, not cross-platform law.
+
+The macOS dependency readiness probe reports portability-enumeration
+availability and portability-subset exposure before this feature-support module
+is required to select a device. MoltenVK diagnostics must remain platform
+evidence and must not become global renderer authority.
 Linux: report `platform=linux` and `platform_lane=native_vulkan` for hardware/native validation; software Vulkan uses a separate lane.
 Windows: report `platform=windows` and `platform_lane=native_vulkan`; multi-config shader/package paths must include the active config where relevant.
 Software Vulkan: allowed for optional development evidence only; it cannot replace native macOS/Linux/Windows proof.

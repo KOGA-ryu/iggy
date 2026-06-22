@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "core/ids/EntityId.hpp"
 #include "core/math/Aabb3.hpp"
@@ -38,6 +39,31 @@ struct SceneItem {
   std::string objectiveId;
   InteractionKind interactionKind = InteractionKind::None;
   PlayerSlotId owningPlayerSlot = kInvalidPlayerSlotId;
+};
+
+struct SceneRoomMeshItem {
+  std::string id;
+  std::string role;
+  Vec3 position;
+  Vec3 size;
+};
+
+struct SceneRoomProjection {
+  bool loaded = false;
+  std::string assetId;
+  std::uint32_t version = 0;
+  std::string sourceToml;
+  std::string sourceSubset;
+  std::size_t staticMeshCount = 0;
+  std::size_t materialCount = 0;
+  std::size_t anchorCount = 0;
+  bool floorVisible = false;
+  bool wallVisible = false;
+  bool openingVisible = false;
+  bool propVisible = false;
+  bool keyAnchorVisible = false;
+  bool dummyAnchorVisible = false;
+  std::vector<SceneRoomMeshItem> meshes;
 };
 
 }  // namespace iggy3d

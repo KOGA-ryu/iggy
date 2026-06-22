@@ -1,0 +1,23 @@
+[[primitive_meshes]]
+id = "floor_rect"
+kind = "box"
+size_ft = [20.0, 0.10, 18.0]
+material = "floor_stone"
+
+[[primitive_meshes]]
+id = "wall_segment"
+kind = "box"
+size_ft = [1.0, 9.0, 1.0]
+material = "stone_wall"
+
+[[primitive_meshes]]
+id = "door_frame"
+kind = "box"
+size_ft = [1.0, 9.0, 1.0]
+material = "opening_trim"
+
+[[primitive_meshes]]
+id = "crate_box"
+kind = "box"
+size_ft = [2.0, 2.0, 2.0]
+material = "prop_wood"

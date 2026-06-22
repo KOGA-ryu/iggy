@@ -55,15 +55,21 @@ int main() {
   const std::filesystem::path fixture =
       std::filesystem::current_path() / "fixtures/demos/first_room/package.iggy3d.toml";
   const std::filesystem::path output = "/tmp/iggy3d_package_visual_startup.out";
+  const bool binaryExists = std::filesystem::exists(std::filesystem::path{IGGY3D_VISUAL_DEMO_PATH});
   const std::string command = shellQuote(std::filesystem::path{IGGY3D_VISUAL_DEMO_PATH}) +
-                              " --fixture " + shellQuote(fixture) +
+                              " --package " + shellQuote(fixture) +
                               " --renderer null --frames 1 --print-render-receipt "
                               "> " + shellQuote(output);
-  startupPassed = std::system(command.c_str()) == 0;
+  startupPassed = binaryExists && std::system(command.c_str()) == 0;
   std::map<std::string, std::string> fields;
   receiptValid = startupPassed && parseReceiptFile(output, fields) &&
-                 fields["result"] == "pass" && fields["backend"] == "null" &&
-                 fields["frames_presented"] == "1";
+                 fields["receipt_version"] == "1" && fields["repo"] == "iggy3d" &&
+                 fields["app"] == "iggy3d_visual_demo" && fields["result"] == "pass" &&
+                 fields["backend"] == "null" && fields["visual_demo"] == "bounded" &&
+                 fields["package_mode"] == "build_tree_visual" &&
+                 fields["frame_input_valid"] == "true" && fields["frames"] == "1" &&
+                 fields["frames_presented"] == "1" && fields["draw_count"] == "0" &&
+                 fields.count("reason_code") == 1U;
 #endif
   std::cout << "smoke=package_visual_startup\n";
   std::cout << "package_mode=build_tree_visual\n";

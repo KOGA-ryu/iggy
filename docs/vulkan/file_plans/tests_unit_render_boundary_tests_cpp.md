@@ -173,16 +173,16 @@ no matches
 - Runtime hash/replay behavior is unchanged when runtime is involved.
 - No legacy repo path, legacy renderer linkage, or graphics dependency leak appears outside the approved surface.
 
-## Packet 1 Detailed Contract
+## Current Baseline Detailed Contract
 
-Test role: prove the renderer boundary compiles and behaves without Vulkan, SDL, display access, shader artifacts, or package lookup.
+Test role: prove the renderer boundary compiles and behaves without Vulkan, SDL, display access, shader artifacts, or package lookup, while preserving the current source baseline where the Null factory path is already implemented.
 
 Required test groups:
 ```text
 public_headers_compile_without_graphics
 renderer_api_accepts_injected_test_backend
-renderer_api_rejects_missing_backend
-renderer_api_diagnoses_null_backend_before_packet_2
+renderer_api_accepts_factory_null_backend
+renderer_api_diagnoses_vulkan_without_surface_provider
 renderer_api_does_not_expose_graphics_types
 renderer_api_shutdown_is_idempotent
 renderer_api_submit_after_shutdown_is_diagnosed
@@ -191,7 +191,8 @@ renderer_api_submit_after_shutdown_is_diagnosed
 Required assertions:
 - including `render/RendererApi.hpp`, `render/RenderBackend.hpp`, `render/FrameInput.hpp`, `render/RenderDiagnostics.hpp`, and `render/RendererConfig.hpp` does not require Vulkan or SDL build definitions.
 - `RendererApi(std::unique_ptr<RenderBackend>)` can run through an injected test backend without including `src/render/null/**`.
-- Packet 1 `createRenderer(RendererBackendKind::Null)` does not construct `NullRenderer`; it reports deterministic missing backend diagnostics with `reason_code=renderer_missing_backend`.
+- current baseline `createRenderer(RendererBackendKind::Null)` constructs a concrete `NullRenderer`.
+- `createRenderer(RendererBackendKind::Vulkan)` remains diagnosed without an app-owned surface/provider unless current feature-gated source supplies one.
 - `submitFrame` with invalid frame returns `reason_code=frame_input_invalid`.
 - `shutdown` may be called twice.
 - no test reaches into runtime mutation internals.

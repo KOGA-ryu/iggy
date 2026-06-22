@@ -180,7 +180,7 @@ no matches
 
 Header role: declare the first concrete `RenderBackend` implementation. It proves backend polymorphism and frame consumption without requiring a window, GPU, shader root, package lookup, Vulkan loader, SDL runtime, or display.
 
-Factory ownership: Packet 2 owns making `RendererBackendKind::Null` construct this concrete backend through the public `createRenderer` entrypoint. Packet 1 must not include this header or construct this backend.
+Factory ownership: Packet 2 historically owned making `RendererBackendKind::Null` construct this concrete backend through the public `createRenderer` entrypoint. Current source baseline has that wiring implemented; do not remove this header or unwind the factory path during renderer reconciliation.
 
 Required namespace:
 ```cpp

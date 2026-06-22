@@ -527,6 +527,28 @@ Role:
 first local validation lane and Apple portability proof
 ```
 
+Current readiness probe:
+
+```text
+test=macos_vulkan_dependency_probe
+scope=dependency_diagnostics_only
+no_swapchain=true
+no_frame_submit=true
+no_screenshot_or_frame_hash=true
+```
+
+The probe reports system SDL3 discovery, Vulkan loader, SDK root, ICD path,
+MoltenVK availability, `glslc`, validation layers, sync validation,
+`VK_KHR_portability_enumeration`, and portability subset exposure. Optional lane
+missing dependencies return `77` with `result=skip`; strict lane missing
+dependencies fail nonzero and must not return `77`.
+
+Reference sources:
+
+- Khronos MoltenVK: https://github.com/KhronosGroup/MoltenVK/
+- LunarG macOS Vulkan SDK getting started: https://vulkan.lunarg.com/doc/sdk/latest/mac/getting_started.html
+- Vulkan portability enumeration: https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_portability_enumeration.html
+
 Labels:
 
 ```text

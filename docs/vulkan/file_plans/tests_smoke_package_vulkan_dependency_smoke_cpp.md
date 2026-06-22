@@ -173,6 +173,34 @@ linux: SDL3 runtime, system Vulkan loader, ICD/device visibility, X11 or Wayland
 windows: SDL3 runtime or DLL placement, Vulkan runtime loader, physical device visibility, Win32 WSI, shader root
 ```
 
+macOS readiness probe fields:
+```text
+platform=macos
+platform_lane=moltenvk
+sdl3_target_available=true|false
+sdl3_source=system|missing|disabled
+vulkan_loader_found=true|false
+vulkan_sdk_root=<absolute-path-or-empty>
+vulkan_sdk_source=environment|default_path|cmake_discovery|not_found
+vulkan_icd_path=<absolute-path-or-empty>
+vulkan_icd_found=true|false
+moltenvk_available=true|false|unavailable
+glslc_path=<absolute-path-or-empty>
+glslc_found=true|false
+validation_layer_found=true|false|unavailable
+sync_validation_available=true|false|unavailable
+portability_enumeration_available=true|false|unavailable
+portability_enumeration_required=true|false|unavailable
+portability_subset_exposed=true|false|unavailable
+strict_lane=true|false
+result=pass|skip|fail
+reason_code=<stable-lower-snake-case>
+```
+
+Optional dependency probes may exit `77` with `result=skip`. Strict probes fail
+nonzero and must not convert missing SDL3, Vulkan loader, MoltenVK/ICD, or
+required portability support into skip.
+
 Required receipt fields:
 ```text
 smoke=package_vulkan_dependency

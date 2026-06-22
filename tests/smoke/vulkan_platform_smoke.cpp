@@ -69,9 +69,9 @@ iggy3d::RenderReceipt baseReceipt(std::string_view mode,
   return receipt;
 }
 
-int printReceipt(const iggy3d::RenderReceipt& receipt, bool ok) {
+int printReceipt(const iggy3d::RenderReceipt& receipt, int exitCode) {
   std::cout << iggy3d::formatRenderReceipt(receipt);
-  return ok ? 0 : 1;
+  return exitCode;
 }
 
 }  // namespace
@@ -90,7 +90,7 @@ int main(int argc, const char* const* argv) {
 #if !defined(IGGY3D_HAS_SDL3)
   iggy3d::RenderReceipt receipt =
       baseReceipt(mode, strictSmoke() ? "fail" : "skip", "vulkan_platform_display_unavailable");
-  return printReceipt(receipt, !strictSmoke());
+  return printReceipt(receipt, strictSmoke() ? 1 : 77);
 #else
   iggy3d::SdlWindowCreateInfo create;
   create.title = "iggy3d platform smoke";
@@ -109,7 +109,7 @@ int main(int argc, const char* const* argv) {
     iggy3d::appendReceiptField(receipt, "drawable_width", static_cast<std::uint64_t>(0));
     iggy3d::appendReceiptField(receipt, "drawable_height", static_cast<std::uint64_t>(0));
     iggy3d::appendReceiptField(receipt, "required_instance_extensions", "");
-    return printReceipt(receipt, !strictSmoke());
+    return printReceipt(receipt, strictSmoke() ? 1 : 77);
   }
 
   iggy3d::RenderReceipt receipt = baseReceipt(mode, "pass", "vulkan_platform_ok");
@@ -133,7 +133,7 @@ int main(int argc, const char* const* argv) {
                       "vulkan_platform_extensions_unavailable");
       iggy3d::appendReceiptField(failure, "drawable", window.isDrawable());
       iggy3d::appendReceiptField(failure, "required_instance_extensions", "");
-      return printReceipt(failure, !strictSmoke());
+      return printReceipt(failure, strictSmoke() ? 1 : 77);
     }
     iggy3d::appendReceiptField(receipt, "required_instance_extensions",
                                joinNames(extensions.names));
@@ -143,12 +143,12 @@ int main(int argc, const char* const* argv) {
                     "vulkan_platform_extensions_unavailable");
     iggy3d::appendReceiptField(failure, "drawable", window.isDrawable());
     iggy3d::appendReceiptField(failure, "required_instance_extensions", "");
-    return printReceipt(failure, !strictSmoke());
+    return printReceipt(failure, strictSmoke() ? 1 : 77);
 #endif
   } else {
     iggy3d::appendReceiptField(receipt, "required_instance_extensions", "");
   }
 
-  return printReceipt(receipt, true);
+  return printReceipt(receipt, 0);
 #endif
 }

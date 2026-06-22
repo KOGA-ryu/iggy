@@ -45,6 +45,11 @@ struct FirstRoomVertex {
   float color[3]{};
 };
 
+struct IndexedDrawRange {
+  std::uint32_t firstIndex = 0;
+  std::uint32_t indexCount = 0;
+};
+
 constexpr std::uint32_t kFirstRoomPositionLocation = 0U;
 constexpr std::uint32_t kFirstRoomColorLocation = 1U;
 constexpr std::string_view kFirstRoomVertexFormatName = "FirstRoomVertex_Pos3_Color3";

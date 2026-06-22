@@ -2,6 +2,8 @@
 
 Vulkan is an implementation backend. It is not an engine authority.
 
+Current baseline note: `iggy3d-main` already contains backend-neutral render APIs, `src/render/null/**`, Vulkan-private files under `src/render/vulkan/**`, first-room renderer proof surfaces, and Runtime Packet 8 tactical combat runtime state. The boundary rule is not that these files are absent; it is that renderer code remains outside runtime authority and Vulkan/SDL types stay confined to approved renderer/app-platform/smoke surfaces.
+
 ## Hard Include Rule
 
 Vulkan headers, `Vk*` types, and `VK_*` constants are allowed only in:

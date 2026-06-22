@@ -7,13 +7,17 @@
 
 namespace {
 
-bool strictLane() {
+#if !defined(IGGY3D_SHADER_COMPILER_AVAILABLE)
 #if defined(IGGY3D_REQUIRE_VULKAN_SMOKE_ENABLED)
+bool strictLane() {
   return true;
-#else
-  return false;
-#endif
 }
+#else
+bool strictLane() {
+  return false;
+}
+#endif
+#endif
 
 iggy3d::RenderReceipt baseReceipt(std::string_view result, std::string_view reason) {
   iggy3d::RenderReceipt receipt;

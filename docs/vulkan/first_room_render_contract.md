@@ -46,6 +46,7 @@ Rules:
 
 - runtime loads and validates the fixture through public APIs;
 - runtime owns command legality, camera mode truth, save/load, replay, and state hash;
+- runtime owns combat hit points, defeated truth, combat events, and `training_dummy` acceptance state;
 - projection owns backend-neutral scene/debug output;
 - renderer consumes `FrameInput`;
 - renderer does not read fixture files directly;
@@ -103,6 +104,26 @@ fallback_reason=no_projected_room_geometry
 ```
 
 That fallback is temporary. It must not become content truth.
+
+## Packet 8 Combat Visual Mapping Gap
+
+Runtime Packet 8 adds `training_dummy` to the first-room acceptance state and proves combat through `CommandKind::Attack`, `TargetAction::Attack`, `CombatSystem`, combat events, combat save/load/replay/hash preservation, and final summary fields such as defeated combat state.
+
+This renderer document does not make `training_dummy` or defeated-state rendering a Packet 1 requirement. Packet 1 is the backend-neutral renderer boundary and must not add combat rendering, combat assets, combat projection semantics, or gameplay logic.
+
+Before a later visual packet requires combat display, the projection/visual contract must choose one explicit mapping:
+
+- project combatants through an existing kind such as `SceneItemKind::Interactable`;
+- project combat/debug state through `SceneItemKind::DebugOnly`;
+- add a new explicit projected kind for combatants or defeated combatants;
+- define another backend-neutral visual kind with the same ownership guarantees.
+
+Rules for that later decision:
+
+- renderer consumes projected combat state only;
+- runtime remains authority for hit points, defeated truth, combat events, save/load, replay, and deterministic hash;
+- renderer diagnostics may report visible combat proxies, but those diagnostics do not become gameplay truth;
+- missing combat visual mapping cannot block Packet 1, Packet 2, or Packet 3.
 
 ## First Material Policy
 
@@ -426,6 +447,7 @@ These belong in future file plans:
 - exact fallback colors;
 - exact first camera constants;
 - exact geometry source if room projection adds structural items;
+- exact Packet 8 combat visual mapping for `training_dummy` and defeated state;
 - exact screenshot policy;
 - exact frame hash policy;
 - exact draw ordering for debug/transparent overlays;

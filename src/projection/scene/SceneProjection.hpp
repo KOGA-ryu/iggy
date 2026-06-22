@@ -34,6 +34,7 @@ struct SceneProjectionResult {
   EntityId cameraTargetEntity;
   Vec3 cameraTargetPoint;
   bool cameraTargetHasPoint = false;
+  SceneRoomProjection room;
 };
 
 SceneProjectionResult buildSceneProjection(const SessionState& state,

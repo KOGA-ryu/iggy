@@ -9,6 +9,8 @@ Exact path: `apps/iggy3d_visual_demo/main.cpp`
 
 Purpose: Wire runtime, projection, platform shell, renderer config, and renderer backend into the first visual demo executable.
 
+Packet boundary note: this is Packet 3 work. Packet 1 must not create this app, SDL event handling, window code, interactive input mapping, combat visuals, shader loading, Vulkan backend startup, screenshot capture, or frame hashing.
+
 ## Build Position
 
 Packet order: 3 - Visual app and SDL platform shell
@@ -77,6 +79,8 @@ Naming rule: these names are the current-build contract for implementation plann
 ## Data Ownership And Lifetime
 
 App/platform code owns window and path lookup objects. The renderer owns GPU resources. Runtime owns gameplay state. Platform events may be translated into app-level requests, but they do not mutate runtime state directly. Diagnostics receipts are emitted by app or render diagnostics helpers.
+
+Runtime Packet 8 combat note: `training_dummy`, hit points, defeated truth, attack commands, combat events, and combat save/replay/hash behavior belong to runtime. This visual app may display combat state only after projection exposes backend-neutral scene or debug items for it; Packet 3 visual boot does not invent that mapping.
 
 ## Semantics
 
@@ -183,6 +187,8 @@ Current-build API and file shape:
   - `--diagnostics-dir <path>`
   - `--print-render-receipt`
 - The app may add demo-only camera seed values through `FrameInput`, but runtime camera truth remains in runtime-owned state.
+- The first visual boot may run scripted/fixed-frame only. Interactive SDL keyboard, mouse, or gamepad mapping is a separate Packet 3 acceptance choice, not part of Packet 1.
+- Packet 3 must not require Packet 8 combat visual mapping; if combat items are absent from projection, the app reports projected counts and continues according to the selected smoke lane.
 
 Startup sequence:
 1. Parse app flags into app-local settings.
@@ -233,6 +239,7 @@ Compute cost:
 - Startup may create one window, one renderer, and one runtime demo fixture.
 - Per-frame work is one projection read, one `FrameInput` build, one renderer submit, and one receipt counter update.
 - The app must not perform asset scanning, shader compilation, or package discovery per frame.
+- Scripted/fixed-frame boot does not require interactive input processing beyond quit/shutdown handling.
 
 Verification:
 - `package_visual_startup_smoke` proves startup, path resolution, bounded frame loop, receipt fields, and clean shutdown.
@@ -246,6 +253,8 @@ Verification:
 - Do not let runtime/content/projection/save include Vulkan or SDL headers.
 - Do not rely on current working directory for installed package lookup.
 - Do not let SDL event polling mutate runtime state directly.
+- Do not treat `training_dummy` or defeated combat state as visible unless projection provides a backend-neutral item for it.
+- Do not make interactive input mapping a hidden prerequisite for Packet 1.
 
 ## Completion Criteria
 

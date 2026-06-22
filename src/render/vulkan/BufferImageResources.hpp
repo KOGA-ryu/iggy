@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
+#include "projection/scene/SceneItem.hpp"
 #include "render/RenderDiagnostics.hpp"
 #include "render/vulkan/FirstRoomPipeline.hpp"
 #include "render/vulkan/VulkanMemoryAllocator.hpp"
@@ -40,6 +42,10 @@ struct FirstRoomGeometryResources {
   GpuBufferRecord indexBuffer;
   std::uint32_t vertexCount = 0;
   std::uint32_t indexCount = 0;
+  std::vector<IndexedDrawRange> indexedDraws;
+  std::string sourceRoomAssetId;
+  std::size_t sourceRoomStaticMeshCount = 0;
+  bool packageRoomGeometry = false;
   bool indexedDraw = false;
 };
 
@@ -74,6 +80,7 @@ public:
 
   BufferImageResourcesResult createFirstRoomResources(
       const BufferImageResourcesCreateInfo& createInfo);
+  BufferImageResourcesResult createRoomMeshResources(const SceneRoomProjection& room);
   RenderReceipt destroy();
 
   const FirstRoomGeometryResources& geometry() const;
@@ -82,6 +89,8 @@ public:
   bool ready() const;
 
 private:
+  void destroyGeometryBuffers();
+
   VulkanMemoryAllocator allocator_;
   FirstRoomGeometryResources geometry_;
   DepthResourceRecord depth_;

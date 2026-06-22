@@ -2,6 +2,8 @@
 
 This document defines the backend-neutral data the renderer may consume. It is the renderer/runtime treaty: runtime and projection decide what the frame means; the renderer decides how to draw it.
 
+Current baseline note: the source now includes the backend-neutral API, concrete `NullRenderer`, Vulkan-private renderer packets, first-room proof surfaces, and Runtime Packet 8 combat runtime state. `FrameInput` remains a backend-neutral presentation contract and must not read combat state directly; combat visuals such as `training_dummy` and defeated state require a later projection/render mapping.
+
 This is the first careful detail pass. It is detailed enough for a builder to create a file plan for `src/render/FrameInput.hpp`, but it still leaves implementation choices such as exact culling and material growth to later renderer phases.
 
 ## Local File Target
@@ -40,6 +42,7 @@ Forbidden producers:
 It must not:
 
 - own gameplay state;
+- own combat hit points, defeated state, combat events, or combat command outcomes;
 - own command legality;
 - own save/load state;
 - own replay state;
@@ -71,6 +74,13 @@ The contract must stay consistent with existing file plans:
 - `SceneProjectionResult`: stable item order and source tick/hash copied from `SessionState`.
 - `DebugProjectionResult`: stable debug item order and source tick/hash.
 - `CameraState`: semantic camera truth only; no GPU resources or raw input.
+
+Packet 8 note:
+
+- `training_dummy` and defeated combat state exist in runtime acceptance after Runtime Packet 8;
+- `FrameInput` may carry them only if projection emits backend-neutral scene or debug items for them;
+- Packet 1 must not add combat rendering fields, combat asset policy, or direct combat-state reads;
+- a later visual packet must decide whether combatants project as an existing `SceneItemKind`, a debug item, or a new explicit backend-neutral visual kind.
 
 ## Include Rules
 
@@ -322,6 +332,9 @@ Scene item fields the renderer may consume:
 Scene item fields the renderer may not invent:
 
 - gameplay reach;
+- combat hit points;
+- defeated truth;
+- attack legality;
 - objective completion;
 - inventory ownership;
 - command legality;
@@ -332,6 +345,7 @@ Needs later file-plan detail:
 
 - exact renderable item id alias;
 - mapping from `SceneItemKind` to fallback mesh/material;
+- Packet 8 `training_dummy` and defeated-state projection mapping;
 - draw ordering for opaque/debug/transparent phases;
 - culling owner and first culling policy;
 - asset reference format and missing-asset diagnostic.

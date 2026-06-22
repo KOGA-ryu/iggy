@@ -4,6 +4,8 @@ This document defines renderer receipts, smoke tests, skip behavior, strict vali
 
 The diagnostics contract is intentionally boring: machine-readable key-value lines, stable field names, and enough context to trust the renderer without reading a debugger transcript.
 
+Current baseline note: diagnostics now cover backend-neutral render API tests, concrete `NullRenderer` tests, Vulkan-private smokes, first-room proof surfaces, and runtime/replay invariance with Runtime Packet 8 combat state present. Renderer receipts remain diagnostics only; they are not save, replay, command, package, or gameplay truth.
+
 ## Goals
 
 Diagnostics and tests must prove:
@@ -522,6 +524,41 @@ ctest --test-dir build --output-on-failure -R 'render_replay|replay_state_hash'
 ### macOS/MoltenVK
 
 Role: first local validation lane.
+
+Current readiness probe: before any swapchain or first-room Vulkan rendering is
+attempted, `macos_vulkan_dependency_probe` records whether the host can support
+future macOS visual work. It is diagnostics only and must not create renderer
+runtime truth, save truth, replay truth, screenshots, frame hashes, or gameplay
+visual state.
+
+Required probe receipt fields:
+
+```text
+platform=macos
+platform_lane=moltenvk
+sdl3_target_available=true|false
+sdl3_source=system|missing|disabled
+vulkan_loader_found=true|false
+vulkan_sdk_root=<absolute-path-or-empty>
+vulkan_sdk_source=environment|default_path|cmake_discovery|not_found
+vulkan_icd_path=<absolute-path-or-empty>
+vulkan_icd_found=true|false
+moltenvk_available=true|false|unavailable
+glslc_path=<absolute-path-or-empty>
+glslc_found=true|false
+validation_layer_found=true|false|unavailable
+sync_validation_available=true|false|unavailable
+portability_enumeration_available=true|false|unavailable
+portability_enumeration_required=true|false|unavailable
+portability_subset_exposed=true|false|unavailable
+strict_lane=true|false
+result=pass|skip|fail
+reason_code=<stable-lower-snake-case>
+```
+
+Optional probes may exit `77` with a receipt. Strict probes must fail nonzero and
+must not return skip when required SDL3, Vulkan loader, MoltenVK/ICD, or
+portability-enumeration support is missing.
 
 Required proof:
 

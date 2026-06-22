@@ -4,6 +4,8 @@ This document defines the first visual app shell: window creation, event polling
 
 The proposed shell is SDL3. This is not accepted until Phase 2 platform smoke passes on the local macOS/MoltenVK lane and remains viable for Linux and Windows.
 
+Packet 1 does not include SDL, window creation, platform input, or Vulkan surface work. Those concerns begin at the visual app/platform shell packet after the backend-neutral renderer boundary and null renderer shape are usable.
+
 ## Decision Status
 
 Decision: window/surface library
@@ -338,6 +340,12 @@ First visual demo may use a very small input set:
 
 Debug overlay toggles must not affect replay hash.
 
+Packet split:
+
+- Packet 1 has no SDL, input, window, or event polling work;
+- Packet 3 visual boot may start in scripted/fixed-frame mode with only quit/shutdown handling if dependency or input mapping decisions are still open;
+- interactive keyboard, mouse, or gamepad mapping is a separate Packet 3 acceptance choice and must route through runtime commands or camera policy, never through renderer mutation.
+
 ## CLI Flags For Visual Demo
 
 Proposed first flags:
@@ -393,6 +401,25 @@ Preferred first acquisition policy:
 - find system SDL3 first when requested;
 - allow vendored or externally provided SDL3 later if packaging requires it;
 - do not vendor SDL3 in this docs pass.
+
+Current unresolved dependency decision:
+
+- SDL3 source/system/vendored acquisition is not settled here;
+- Packet 1 must compile without SDL3, Vulkan, display access, shader compiler tools, or package-runtime lookup;
+- the platform/dependency packet must either keep `IGGY3D_USE_SYSTEM_SDL3` as the first accepted lane or document a vendored/external SDL3 lane before strict visual boot depends on it.
+
+Current dependency probe lane:
+
+- default visual boot remains no-window `NullRenderer` and must not require SDL3, Vulkan, MoltenVK, display access, shader artifacts, or shader compiler tools;
+- `--window` uses SDL3 only when CMake finds a system SDL3 target and otherwise exits with receipt `result=skip` and `reason_code=sdl3_unavailable`;
+- macOS Vulkan readiness is probed through a diagnostics lane, not renderer work. The probe reports SDL3, Vulkan loader, SDK root, ICD path, MoltenVK, `glslc`, validation layers, sync validation, and portability-enumeration facts;
+- the macOS portability layer is named MoltenVK. Do not use alternate names in receipts or docs.
+
+Reference sources for the macOS probe:
+
+- Khronos MoltenVK: https://github.com/KhronosGroup/MoltenVK/
+- LunarG macOS Vulkan SDK getting started: https://vulkan.lunarg.com/doc/sdk/latest/mac/getting_started.html
+- Vulkan portability enumeration: https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_portability_enumeration.html
 
 Needs later file-plan detail:
 

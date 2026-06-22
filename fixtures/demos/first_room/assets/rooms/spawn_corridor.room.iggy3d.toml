@@ -1,0 +1,131 @@
+[room]
+id = "spawn_corridor"
+version = 1
+units = "ft"
+source = "edi.provingground"
+source_file = "/Users/kogaryu/edi/artifacts/provingground/provingground.map.toml"
+source_subset = "spawn_room_corridor_stub"
+
+[conversion]
+feet_to_meters = 0.3048
+world_axis_x = "east"
+world_axis_y = "up"
+world_axis_z = "south"
+
+[[static_meshes]]
+id = "spawn_floor"
+mesh = "floor_rect"
+role = "floor"
+position_ft = [10.0, 0.0, 9.0]
+size_ft = [20.0, 0.10, 18.0]
+material = "floor_stone"
+
+[[static_meshes]]
+id = "north_wall"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [10.0, 4.5, 0.5]
+size_ft = [20.0, 9.0, 1.0]
+material = "stone_wall"
+
+[[static_meshes]]
+id = "south_wall"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [10.0, 4.5, 17.5]
+size_ft = [20.0, 9.0, 1.0]
+material = "stone_wall"
+
+[[static_meshes]]
+id = "west_wall"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [0.5, 4.5, 9.0]
+size_ft = [1.0, 9.0, 18.0]
+material = "stone_wall"
+
+[[static_meshes]]
+id = "east_wall_north_jamb"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [19.5, 4.5, 2.0]
+size_ft = [1.0, 9.0, 4.0]
+material = "stone_wall"
+
+[[static_meshes]]
+id = "east_wall_south_jamb"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [19.5, 4.5, 15.0]
+size_ft = [1.0, 9.0, 6.0]
+material = "stone_wall"
+
+[[static_meshes]]
+id = "spawn_out_frame_top"
+mesh = "door_frame"
+role = "opening"
+position_ft = [19.5, 8.0, 9.0]
+size_ft = [1.0, 2.0, 10.0]
+material = "opening_trim"
+
+[[static_meshes]]
+id = "corridor_stub_floor"
+mesh = "floor_rect"
+role = "floor"
+position_ft = [25.0, 0.0, 9.0]
+size_ft = [10.0, 0.10, 10.0]
+material = "floor_stone"
+
+[[static_meshes]]
+id = "corridor_stub_north_wall"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [25.0, 4.5, 4.0]
+size_ft = [10.0, 9.0, 1.0]
+material = "stone_wall"
+
+[[static_meshes]]
+id = "corridor_stub_south_wall"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [25.0, 4.5, 14.0]
+size_ft = [10.0, 9.0, 1.0]
+material = "stone_wall"
+
+[[static_meshes]]
+id = "spawn_crate"
+mesh = "crate_box"
+role = "prop"
+position_ft = [4.0, 1.0, 16.0]
+size_ft = [2.0, 2.0, 2.0]
+material = "prop_wood"
+
+[[openings]]
+id = "out"
+edge = "E"
+kind = "door"
+offset_ft = 9.0
+width_ft = 10.0
+
+[[anchors]]
+id = "player_spawn"
+kind = "spawn"
+position_ft = [10.0, 0.0, 9.0]
+
+[[anchors]]
+id = "gold_key"
+kind = "pickup"
+position_ft = [12.0, 0.0, 9.0]
+runtime_stable_name = "gold_key"
+
+[[anchors]]
+id = "training_dummy"
+kind = "npc"
+position_ft = [15.0, 0.0, 9.0]
+runtime_stable_name = "training_dummy"
+
+[[anchors]]
+id = "tactical_marker_alpha"
+kind = "marker"
+position_ft = [12.0, 0.0, 12.0]
+runtime_stable_name = "tactical_marker_alpha"

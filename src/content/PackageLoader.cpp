@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <utility>
 
 namespace iggy3d {
 
@@ -112,6 +113,17 @@ PackageLoadResult fail(PackageLoadStatus status, std::string code, std::string m
   result.status = status;
   result.diagnostics.push_back(packageDiag(std::move(code), std::move(message), std::move(file), line, column));
   return result;
+}
+
+bool readTextFile(const std::filesystem::path& path, std::string& text) {
+  std::ifstream file(path);
+  if (!file) {
+    return false;
+  }
+  std::ostringstream buffer;
+  buffer << file.rdbuf();
+  text = buffer.str();
+  return true;
 }
 
 PackageLoadStatus mapScenarioStatus(ScenarioLoadStatus status) {
@@ -297,7 +309,47 @@ PackageLoadResult loadPackage(const PackageLoadRequest& request) {
   }
   std::ostringstream scenarioBuffer;
   scenarioBuffer << scenarioFile.rdbuf();
-  return parsePackageText(packageBuffer.str(), scenarioBuffer.str(), packageDirectory.generic_string());
+  PackageLoadResult result =
+      parsePackageText(packageBuffer.str(), scenarioBuffer.str(), packageDirectory.generic_string());
+  if (result.status != PackageLoadStatus::Ok) {
+    return result;
+  }
+  for (const PackageAssetRef& asset : result.manifest.assets) {
+    const std::filesystem::path assetPath = packageDirectory / asset.path;
+    std::string assetText;
+    if (!readTextFile(assetPath, assetText)) {
+      return fail(PackageLoadStatus::PackageReadFailed, "package.asset_read_failed",
+                  "asset read failed", assetPath.generic_string());
+    }
+    const std::string genericPath = assetPath.generic_string();
+    if (genericPath.find(".room.") != std::string::npos) {
+      RoomAssetParseResult parsed = parseRoomAssetText(assetText);
+      if (!parsed.ok) {
+        return fail(PackageLoadStatus::ParseError, parsed.reason, "room asset parse failed",
+                    assetPath.generic_string());
+      }
+      result.rooms.push_back(std::move(parsed.room));
+    } else if (genericPath.find(".meshes.") != std::string::npos) {
+      MeshAssetParseResult parsed = parseMeshAssetText(assetText);
+      if (!parsed.ok) {
+        return fail(PackageLoadStatus::ParseError, parsed.reason, "mesh asset parse failed",
+                    assetPath.generic_string());
+      }
+      result.meshes.primitives.insert(result.meshes.primitives.end(),
+                                      parsed.library.primitives.begin(),
+                                      parsed.library.primitives.end());
+    } else if (genericPath.find(".materials.") != std::string::npos) {
+      MaterialAssetParseResult parsed = parseMaterialAssetText(assetText);
+      if (!parsed.ok) {
+        return fail(PackageLoadStatus::ParseError, parsed.reason,
+                    "material asset parse failed", assetPath.generic_string());
+      }
+      result.materials.materials.insert(result.materials.materials.end(),
+                                       parsed.library.materials.begin(),
+                                       parsed.library.materials.end());
+    }
+  }
+  return result;
 }
 
 }  // namespace iggy3d

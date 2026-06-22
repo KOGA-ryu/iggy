@@ -9,6 +9,21 @@ This file is the Vulkan decision ledger for `iggy3d`. It records proposed defaul
 - Windows native Vulkan is a required shipping lane;
 - MoltenVK constraints may create platform notes, but they must not become engine authority.
 
+Current local dependency readiness note: the repo has a no-window `NullRenderer`
+visual boot path that is expected to pass without SDL3, Vulkan, MoltenVK,
+display access, shader artifacts, or shader compiler tools. A separate macOS
+dependency probe records whether the current host has system SDL3, a Vulkan
+loader, Vulkan SDK root, ICD path, MoltenVK evidence, `glslc`, validation
+layers, sync validation availability, and portability-enumeration support. The
+probe is diagnostics only; it does not implement swapchain, Vulkan rendering,
+first-room drawing, screenshot capture, frame hashing, or gameplay visuals.
+
+Reference sources:
+
+- Khronos MoltenVK: https://github.com/KhronosGroup/MoltenVK/
+- LunarG macOS Vulkan SDK getting started: https://vulkan.lunarg.com/doc/sdk/latest/mac/getting_started.html
+- Vulkan portability enumeration: https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_portability_enumeration.html
+
 ## Status Terms
 
 Use these exact status labels:

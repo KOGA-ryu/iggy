@@ -28,8 +28,9 @@ Use these sources before implementation:
 - Vulkan Specification WSI chapter for `VK_KHR_surface`, platform WSI extensions, `VkSurfaceKHR`, and presentation-support behavior.
 - SDL3 Vulkan docs for `SDL_Vulkan_GetInstanceExtensions` and `SDL_Vulkan_CreateSurface`.
 - GLFW Vulkan docs only if fallback is accepted.
-- MoltenVK Runtime User Guide for `VK_EXT_metal_surface`, Metal layer requirements, and portability enumeration/subset behavior.
-- LunarG macOS Vulkan SDK guide for Apple loader/runtime packaging expectations.
+- Khronos MoltenVK for `VK_EXT_metal_surface`, Metal layer requirements, and portability enumeration/subset behavior: https://github.com/KhronosGroup/MoltenVK/
+- LunarG macOS Vulkan SDK guide for Apple loader/runtime packaging expectations: https://vulkan.lunarg.com/doc/sdk/latest/mac/getting_started.html
+- Vulkan portability enumeration refpage for `VK_KHR_portability_enumeration`: https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_portability_enumeration.html
 - Vulkan Tutorial window surface chapter for first implementation order and present-queue reasoning.
 - How to Vulkan in 2026 as a secondary practical reference for SDL-based instance extension discovery, surface creation, and presentation-support checks across desktop lanes.
 
@@ -606,4 +607,4 @@ The next detailed pass should define:
 - exact strict smoke CTest labels per platform;
 - whether GLFW fallback is worth implementing immediately or only after SDL3 failure;
 - exact teardown owner for surface when renderer initialization fails halfway;
-- exact macOS behavior if current SDK uses KosmicKrisp instead of MoltenVK.
+- exact macOS behavior if a future SDK replaces or layers over MoltenVK.

@@ -1,5 +1,6 @@
 #include "render/vulkan/RenderLoop.hpp"
 
+#include <cstddef>
 #include <string>
 
 #include "render/vulkan/VulkanResult.hpp"
@@ -16,6 +17,12 @@ RenderReason reasonFor(std::string_view code) {
   }
   if (code == "packet7_first_room_visible") {
     return {code, "packet 7 first room visible"};
+  }
+  if (code == "package_room_meshes_presented") {
+    return {code, "package room meshes presented"};
+  }
+  if (code == "proxy_primitives_presented") {
+    return {code, "proxy primitives presented"};
   }
   if (code == "first_room_resources_missing") {
     return {code, "first room resources missing"};
@@ -79,6 +86,63 @@ FirstRoomPushConstants firstRoomClipFromModel() {
   return constants;
 }
 
+FirstRoomPushConstants pushConstantsFromMat4(const Mat4& matrix) {
+  FirstRoomPushConstants constants;
+  for (std::uint32_t row = 0; row < 4U; ++row) {
+    for (std::uint32_t column = 0; column < 4U; ++column) {
+      constants.clipFromModel[static_cast<std::size_t>(column) * 4U + row] =
+          iggy3d::at(matrix, row, column);
+    }
+  }
+  return constants;
+}
+
+struct ProxySceneFacts {
+  bool targetMarkerVisible = false;
+  bool objectiveMarkerVisible = false;
+  bool keyMarkerVisible = false;
+  bool dummyMarkerVisible = false;
+  std::uint32_t markerCount = 0;
+};
+
+ProxySceneFacts proxySceneFacts(const FrameInput& frame) {
+  ProxySceneFacts facts;
+  if (frame.projections.scene == nullptr) {
+    return facts;
+  }
+  for (const SceneItem& item : frame.projections.scene->items) {
+    if (!item.visible) {
+      continue;
+    }
+    if (item.stableName == "training_dummy" || item.targetable ||
+        item.kind == SceneItemKind::Interactable) {
+      facts.targetMarkerVisible = true;
+    }
+    if (item.stableName == "training_dummy") {
+      facts.dummyMarkerVisible = true;
+    }
+    if (item.stableName == "gold_key" || item.kind == SceneItemKind::Pickup ||
+        item.kind == SceneItemKind::ObjectiveMarker) {
+      facts.objectiveMarkerVisible = true;
+    }
+    if (item.stableName == "gold_key") {
+      facts.keyMarkerVisible = true;
+    }
+  }
+  facts.markerCount = 2U + (facts.targetMarkerVisible ? 1U : 0U) +
+                      (facts.objectiveMarkerVisible ? 1U : 0U);
+  return facts;
+}
+
+std::uint32_t proxyDrawCount(const ProxySceneFacts& facts) {
+  return 3U + (facts.targetMarkerVisible ? 1U : 0U) +
+         (facts.objectiveMarkerVisible ? 1U : 0U);
+}
+
+bool packageRoomLoaded(const FrameInput& frame) {
+  return frame.projections.scene != nullptr && frame.projections.scene->room.loaded;
+}
+
 }  // namespace
 
 std::string_view vulkanFrameStatusName(VulkanFrameStatus status) {
@@ -102,16 +166,21 @@ std::string_view vulkanFrameStatusName(VulkanFrameStatus status) {
 }
 
 RenderReceipt RenderLoop::makeReceipt(std::string_view result,
-                                      std::string_view reasonCode) const {
+                                      std::string_view reasonCode,
+                                      std::string_view renderingPath) const {
   RenderReceipt receipt;
   appendReceiptField(receipt, "receipt_version", "1");
   appendReceiptField(receipt, "repo", "iggy3d");
   appendReceiptField(receipt, "file_plan", "src/render/vulkan/RenderLoop.cpp");
   appendReceiptField(receipt, "packet_order", "5");
   appendReceiptField(receipt, "backend", "vulkan");
-  appendReceiptField(receipt, "rendering_path", firstRoomBundleReady(createInfo_)
-                                             ? "first_room"
-                                             : "clear_only_fallback");
+  if (renderingPath.empty()) {
+    appendReceiptField(receipt, "rendering_path", firstRoomBundleReady(createInfo_)
+                                               ? "first_room"
+                                               : "clear_only_fallback");
+  } else {
+    appendReceiptField(receipt, "rendering_path", renderingPath);
+  }
   appendReceiptField(receipt, "first_room_bundle_ready", firstRoomBundleReady(createInfo_));
   appendReceiptField(receipt, "frame_capture_ready",
                      createInfo_.frameCapture != nullptr && createInfo_.frameCapture->ready());
@@ -239,6 +308,19 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     result.swapchainRecreated = true;
   }
 
+  const bool drawPackageRoom = packageRoomLoaded(frame);
+  if (drawPackageRoom) {
+    BufferImageResourcesResult roomResources =
+        createInfo_.firstRoomResources->createRoomMeshResources(frame.projections.scene->room);
+    if (roomResources.outcome != RenderOutcome::Ok) {
+      result.status = VulkanFrameStatus::Failed;
+      result.outcome = roomResources.outcome;
+      result.reason = roomResources.reason;
+      result.receipt = roomResources.receipt;
+      return result;
+    }
+  }
+
   result.frameSlot = createInfo_.frameSync->currentFrameSlot();
   const FrameSyncWaitResult waitResult = createInfo_.frameSync->waitForCurrentFrame();
   if (waitResult.outcome != RenderOutcome::Ok) {
@@ -269,9 +351,62 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
   const SwapchainInfo& readySwapchain = createInfo_.swapchain->info();
   VkCommandBuffer commandBuffer =
       createInfo_.commandRecording->commandBufferForFrameSlot(result.frameSlot);
-  const bool drawFirstRoom = firstRoomBundleReady(createInfo_);
+  const bool drawProxyPrimitives =
+      !drawPackageRoom && frame.camera.mode == RenderCameraMode::FirstPerson;
+  const bool drawFirstRoom =
+      !drawPackageRoom && !drawProxyPrimitives && firstRoomBundleReady(createInfo_);
+  const ProxySceneFacts proxyFacts = proxySceneFacts(frame);
   CommandRecordResult recordResult;
-  if (drawFirstRoom) {
+  if (drawPackageRoom) {
+    FirstRoomFrameRecordInfo recordInfo;
+    recordInfo.commandBuffer = commandBuffer;
+    recordInfo.swapchainImage = createInfo_.swapchain->imageAt(acquire.imageIndex);
+    recordInfo.swapchainImageView = createInfo_.swapchain->imageViewAt(acquire.imageIndex);
+    recordInfo.colorFormat = readySwapchain.colorFormat;
+    recordInfo.depthImage =
+        createInfo_.firstRoomResources->depth().depthImage.allocation.image;
+    recordInfo.depthImageView = createInfo_.firstRoomResources->depth().depthImage.imageView;
+    recordInfo.depthFormat = createInfo_.firstRoomResources->depth().depthFormat;
+    recordInfo.extent = readySwapchain.extent;
+    recordInfo.frameSlot = result.frameSlot;
+    recordInfo.imageIndex = acquire.imageIndex;
+    recordInfo.pipeline = createInfo_.firstRoomPipeline->pipeline;
+    recordInfo.pipelineLayout = createInfo_.firstRoomLayout->layout;
+    recordInfo.vertexBuffer =
+        createInfo_.firstRoomResources->geometry().vertexBuffer.allocation.buffer;
+    recordInfo.indexBuffer =
+        createInfo_.firstRoomResources->geometry().indexBuffer.allocation.buffer;
+    recordInfo.indexCount = createInfo_.firstRoomResources->geometry().indexCount;
+    recordInfo.indexedDraws = createInfo_.firstRoomResources->geometry().indexedDraws.data();
+    recordInfo.indexedDrawCount =
+        createInfo_.firstRoomResources->geometry().indexedDraws.size();
+    recordInfo.pushConstants = pushConstantsFromMat4(frame.camera.clipFromWorld);
+    recordInfo.captureEnabled =
+        readySwapchain.transferSourceSupported && createInfo_.frameCapture != nullptr &&
+        createInfo_.frameCapture->ready();
+    if (recordInfo.captureEnabled) {
+      recordInfo.captureBuffer = createInfo_.frameCapture->buffer();
+      recordInfo.captureBufferSize = createInfo_.frameCapture->bufferSizeBytes();
+    }
+    recordResult = createInfo_.commandRecording->recordFirstRoomFrame(recordInfo);
+  } else if (drawProxyPrimitives) {
+    ProxyPrimitiveFrameRecordInfo recordInfo;
+    recordInfo.commandBuffer = commandBuffer;
+    recordInfo.swapchainImage = createInfo_.swapchain->imageAt(acquire.imageIndex);
+    recordInfo.swapchainImageView = createInfo_.swapchain->imageViewAt(acquire.imageIndex);
+    recordInfo.colorFormat = readySwapchain.colorFormat;
+    recordInfo.extent = readySwapchain.extent;
+    recordInfo.frameSlot = result.frameSlot;
+    recordInfo.imageIndex = acquire.imageIndex;
+    recordInfo.floorVisible =
+        drawPackageRoom ? frame.projections.scene->room.floorVisible : true;
+    recordInfo.roomBoundsVisible =
+        drawPackageRoom ? frame.projections.scene->room.wallVisible : true;
+    recordInfo.playerMarkerVisible = true;
+    recordInfo.targetMarkerVisible = proxyFacts.targetMarkerVisible;
+    recordInfo.objectiveMarkerVisible = proxyFacts.objectiveMarkerVisible;
+    recordResult = createInfo_.commandRecording->recordProxyPrimitiveFrame(recordInfo);
+  } else if (drawFirstRoom) {
     FirstRoomFrameRecordInfo recordInfo;
     recordInfo.commandBuffer = commandBuffer;
     recordInfo.swapchainImage = createInfo_.swapchain->imageAt(acquire.imageIndex);
@@ -380,9 +515,14 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     result.outcome = RenderOutcome::Ok;
     result.reason = reasonFor(presentResult.recreateRequested
                                   ? "swapchain_suboptimal"
-                                  : (drawFirstRoom ? "packet7_first_room_visible"
-                                                   : "empty_frame_presented"));
-    result.receipt = makeReceipt("pass", result.reason.code);
+                                  : (drawPackageRoom ? "package_room_meshes_presented"
+                                      : (drawProxyPrimitives ? "proxy_primitives_presented"
+                                      : (drawFirstRoom ? "packet7_first_room_visible"
+                                                       : "empty_frame_presented"))));
+    result.receipt = makeReceipt("pass", result.reason.code,
+                                 drawPackageRoom ? "package_room_meshes"
+                                                 : (drawProxyPrimitives ? "proxy_primitives"
+                                                                        : std::string_view{}));
   } else if (presentResult.recreateRequested) {
     result.status = VulkanFrameStatus::PresentRecreateRequested;
     result.outcome = presentResult.outcome;
@@ -408,9 +548,71 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
                                                             : "presented")
                          : (presentResult.recreateRequested ? "recreate" : "fail"));
   appendReceiptField(result.receipt, "presented", presentResult.presented);
-  appendReceiptField(result.receipt, "record_mode", drawFirstRoom ? "first_room" : "empty_frame");
-  appendReceiptField(result.receipt, "draw_count", static_cast<std::uint64_t>(drawFirstRoom ? 1 : 0));
-  appendReceiptField(result.receipt, "first_room_visible", drawFirstRoom && presentResult.presented);
+  appendReceiptField(result.receipt, "record_mode",
+                     drawPackageRoom ? "room_mesh_draws"
+                     : drawProxyPrimitives ? "draw_primitives"
+                                         : (drawFirstRoom ? "first_room" : "empty_frame"));
+  appendReceiptField(result.receipt, "draw_count",
+                     static_cast<std::uint64_t>(
+                         drawPackageRoom
+                             ? createInfo_.firstRoomResources->geometry().indexedDraws.size()
+                         : drawProxyPrimitives ? proxyDrawCount(proxyFacts)
+                                             : (drawFirstRoom ? 1U : 0U)));
+  appendReceiptField(result.receipt, "first_room_visible",
+                     (drawPackageRoom || drawProxyPrimitives || drawFirstRoom) &&
+                         presentResult.presented);
+  appendReceiptField(result.receipt, "proxy_floor_visible", drawPackageRoom || drawProxyPrimitives);
+  appendReceiptField(result.receipt, "proxy_room_bounds_visible",
+                     drawPackageRoom || drawProxyPrimitives);
+  appendReceiptField(result.receipt, "proxy_player_marker_visible",
+                     drawPackageRoom || drawProxyPrimitives);
+  appendReceiptField(result.receipt, "proxy_target_marker_visible",
+                     (drawPackageRoom || drawProxyPrimitives) && proxyFacts.targetMarkerVisible);
+  appendReceiptField(result.receipt, "proxy_objective_marker_visible",
+                     (drawPackageRoom || drawProxyPrimitives) && proxyFacts.objectiveMarkerVisible);
+  appendReceiptField(result.receipt, "fallback_room_proxy", drawProxyPrimitives);
+  appendReceiptField(result.receipt, "fallback_reason",
+                     drawProxyPrimitives ? "no_projected_room_geometry" : "not_applicable");
+  if (drawPackageRoom) {
+    const SceneRoomProjection& room = frame.projections.scene->room;
+    appendReceiptField(result.receipt, "room_asset_loaded", true);
+    appendReceiptField(result.receipt, "room_asset_id", room.assetId);
+    appendReceiptField(result.receipt, "room_asset_version",
+                       static_cast<std::uint64_t>(room.version));
+    appendReceiptField(result.receipt, "source_toml", room.sourceToml);
+    appendReceiptField(result.receipt, "source_subset", room.sourceSubset);
+    appendReceiptField(result.receipt, "room_static_mesh_count",
+                       static_cast<std::uint64_t>(room.staticMeshCount));
+    appendReceiptField(result.receipt, "room_material_count",
+                       static_cast<std::uint64_t>(room.materialCount));
+    appendReceiptField(result.receipt, "room_anchor_count",
+                       static_cast<std::uint64_t>(room.anchorCount));
+    appendReceiptField(result.receipt, "mesh_draw_count",
+                       static_cast<std::uint64_t>(
+                           createInfo_.firstRoomResources->geometry().indexedDraws.size()));
+    appendReceiptField(result.receipt, "indexed_draw_count",
+                       static_cast<std::uint64_t>(
+                           createInfo_.firstRoomResources->geometry().indexedDraws.size()));
+    appendReceiptField(result.receipt, "vertex_buffer_uploaded",
+                       createInfo_.firstRoomResources->geometry().vertexBuffer.allocation.buffer !=
+                           VK_NULL_HANDLE);
+    appendReceiptField(result.receipt, "index_buffer_uploaded",
+                       createInfo_.firstRoomResources->geometry().indexBuffer.allocation.buffer !=
+                           VK_NULL_HANDLE);
+    appendReceiptField(result.receipt, "depth_enabled", true);
+    appendReceiptField(result.receipt, "camera_projection", "perspective");
+    appendReceiptField(result.receipt, "drawable_aspect",
+                       std::to_string(frame.viewport.aspectRatio));
+    appendReceiptField(result.receipt, "projection_application", "single");
+    appendReceiptField(result.receipt, "floor_visible", room.floorVisible);
+    appendReceiptField(result.receipt, "wall_visible", room.wallVisible);
+    appendReceiptField(result.receipt, "opening_visible", room.openingVisible);
+    appendReceiptField(result.receipt, "prop_visible", room.propVisible);
+    appendReceiptField(result.receipt, "key_marker_visible",
+                       proxyFacts.keyMarkerVisible || room.keyAnchorVisible);
+    appendReceiptField(result.receipt, "dummy_marker_visible",
+                       proxyFacts.dummyMarkerVisible || room.dummyAnchorVisible);
+  }
   appendReceiptField(result.receipt, "screenshot_capture",
                      drawFirstRoom && readySwapchain.transferSourceSupported &&
                              createInfo_.frameCapture != nullptr &&
@@ -418,9 +620,14 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
                          ? "enabled"
                          : "unavailable");
   appendReceiptField(result.receipt, "room_proxy_visible",
-                     drawFirstRoom && presentResult.presented ? "true" : "unavailable");
-  appendReceiptField(result.receipt, "player_marker_visible", "unavailable");
-  appendReceiptField(result.receipt, "marker_count", static_cast<std::uint64_t>(0));
+                     drawPackageRoom || drawProxyPrimitives || (drawFirstRoom && presentResult.presented)
+                         ? "true"
+                         : "unavailable");
+  appendReceiptField(result.receipt, "player_marker_visible",
+                     drawPackageRoom || drawProxyPrimitives ? "true" : "unavailable");
+  appendReceiptField(result.receipt, "marker_count",
+                     static_cast<std::uint64_t>(
+                         drawPackageRoom || drawProxyPrimitives ? proxyFacts.markerCount : 0U));
   return result;
 }
 

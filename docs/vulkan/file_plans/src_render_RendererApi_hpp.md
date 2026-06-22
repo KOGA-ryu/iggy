@@ -120,7 +120,7 @@ Action: run the headless runtime demo or use a machine/runtime that satisfies th
 
 ## Fallback Policy
 
-Fallback policy: no Vulkan fallback is needed. Packet 1 may use an injected test backend supplied as `std::unique_ptr<RenderBackend>`. Concrete null renderer fallback begins in Packet 2.
+Fallback policy: no Vulkan fallback is needed. The historical Packet 1 path used an injected test backend supplied as `std::unique_ptr<RenderBackend>`. Current source also includes the Packet 2 `NullRenderer` fallback through `createRenderer(RendererBackendKind::Null)`.
 
 Fallback receipt fields:
 ```text
@@ -252,9 +252,9 @@ Result rules:
 - invalid `FrameInput` returns `outcome=invalid_frame_input` and `reason_code=frame_input_invalid`.
 - submitting after shutdown returns `outcome=renderer_not_ready` and `reason_code=renderer_shutdown`.
 - requesting `RendererBackendKind::Vulkan` while Vulkan support is not built returns `outcome=unsupported` and `reason_code=vulkan_not_built`.
-- Packet 1 supports `RendererApi(std::unique_ptr<RenderBackend>)` with an injected test backend.
-- requesting `RendererBackendKind::Null` in Packet 1 does not construct `NullRenderer`; `createRenderer` returns an empty API with deterministic diagnostics using `outcome=unsupported` and `reason_code=renderer_missing_backend`.
-- Packet 2 owns concrete `NullRenderer` construction for `RendererBackendKind::Null`.
+- `RendererApi(std::unique_ptr<RenderBackend>)` supports injected test backends.
+- current baseline `createRenderer(RendererBackendKind::Null)` constructs the concrete `NullRenderer`.
+- requesting `RendererBackendKind::Vulkan` without an app-owned surface/provider remains diagnosed or feature-gated by current source.
 
 Packet 1 acceptance:
 ```sh

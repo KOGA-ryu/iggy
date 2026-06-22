@@ -1,9 +1,11 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
 #include "render/RenderDiagnostics.hpp"
+#include "render/vulkan/FirstRoomPipeline.hpp"
 #include "render/vulkan/PipelineLayout.hpp"
 #include "render/vulkan/VulkanFunctions.hpp"
 #include "render/vulkan/VulkanTypes.hpp"
@@ -47,10 +49,27 @@ struct FirstRoomFrameRecordInfo {
   VkBuffer vertexBuffer{};
   VkBuffer indexBuffer{};
   std::uint32_t indexCount = 0;
+  const IndexedDrawRange* indexedDraws = nullptr;
+  std::size_t indexedDrawCount = 0;
   FirstRoomPushConstants pushConstants;
   bool captureEnabled = false;
   VkBuffer captureBuffer{};
   VkDeviceSize captureBufferSize = 0;
+};
+
+struct ProxyPrimitiveFrameRecordInfo {
+  VkCommandBuffer commandBuffer{};
+  VkImage swapchainImage{};
+  VkImageView swapchainImageView{};
+  VkFormat colorFormat{};
+  VkExtent2D extent{};
+  std::uint32_t frameSlot = 0;
+  std::uint32_t imageIndex = 0;
+  bool floorVisible = true;
+  bool roomBoundsVisible = true;
+  bool playerMarkerVisible = true;
+  bool targetMarkerVisible = false;
+  bool objectiveMarkerVisible = false;
 };
 
 struct CommandRecordResult {
@@ -75,6 +94,7 @@ public:
   VkCommandBuffer commandBufferForFrameSlot(std::uint32_t frameSlot) const;
   CommandRecordResult recordEmptyFrame(const EmptyFrameRecordInfo& info);
   CommandRecordResult recordFirstRoomFrame(const FirstRoomFrameRecordInfo& info);
+  CommandRecordResult recordProxyPrimitiveFrame(const ProxyPrimitiveFrameRecordInfo& info);
   bool ready() const;
   RenderReceipt diagnostics(std::string_view result, std::string_view reasonCode) const;
 

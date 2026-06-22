@@ -116,7 +116,7 @@ Action: run the headless runtime demo or use a machine/runtime that satisfies th
 
 ## Fallback Policy
 
-Fallback policy: no Vulkan fallback is needed. Packet 1 may use an injected test backend supplied as `std::unique_ptr<RenderBackend>`. Concrete null renderer fallback begins in Packet 2.
+Fallback policy: no Vulkan fallback is needed. The historical Packet 1 path used an injected test backend supplied as `std::unique_ptr<RenderBackend>`. Current source also includes the Packet 2 concrete `NullRenderer` fallback through the public factory.
 
 Fallback receipt fields:
 ```text
@@ -179,9 +179,9 @@ no matches
 - Runtime hash/replay behavior is unchanged when runtime is involved.
 - No legacy repo path, legacy renderer linkage, or graphics dependency leak appears outside the approved surface.
 
-## Packet 1 Detailed Contract
+## Current Baseline Detailed Contract
 
-Source role: implement the backend-neutral facade without pulling Vulkan or SDL into the public boundary. Packet 1 may construct a `RendererApi` around an injected `std::unique_ptr<RenderBackend>` supplied by tests. Packet 1 `createRenderer` does not construct concrete backends; concrete null backend wiring belongs to Packet 2, and Vulkan construction is a guarded branch that returns a diagnosed unsupported result until the Vulkan packet lands.
+Source role: implement the backend-neutral facade without pulling Vulkan or SDL into the public boundary. The current source may construct a `RendererApi` around an injected `std::unique_ptr<RenderBackend>` supplied by tests, and `createRenderer(RendererBackendKind::Null)` constructs the concrete `NullRenderer`. Vulkan construction remains diagnosed or feature-gated unless the current app/platform path can supply the required surface/provider.
 
 Required implementation functions:
 ```cpp
@@ -198,10 +198,9 @@ RendererApi createRenderer(const RendererCreateInfo& createInfo);
 
 Factory behavior:
 ```text
-backend=null in Packet 1 -> construct no backend; return empty RendererApi with diagnostics reason_code=renderer_missing_backend
-backend=null after Packet 2 -> construct NullRenderer through Packet 2 factory wiring
+backend=null in current baseline -> construct NullRenderer through factory wiring
 backend=vulkan and IGGY3D_ENABLE_VULKAN=OFF -> construct no backend and return unsupported receipt through diagnostics path
-backend=vulkan and IGGY3D_ENABLE_VULKAN=ON before Packet 4 -> fail compile is forbidden; branch must stay behind build option and planned include boundary
+backend=vulkan without an app-owned surface/provider -> construct no public backend and return diagnosed unsupported/missing-provider receipt
 ```
 
 Normal call flow:
@@ -226,8 +225,8 @@ backend_submit_failed
 
 Include detail:
 - May include `render/RendererApi.hpp`, `render/RenderBackend.hpp`, `render/RenderDiagnostics.hpp`, and `render/FrameInput.hpp`.
-- Must not include `render/null/NullRenderer.hpp` in Packet 1.
-- Must not include `render/vulkan/**` in Packet 1.
+- Current source may include `render/null/NullRenderer.hpp` in `RendererApi.cpp` for factory wiring.
+- Must not include `render/vulkan/**` in this backend-neutral facade.
 - Must not include SDL headers.
 
 Runtime invariance:
