@@ -93,6 +93,19 @@ bool writeControlFile(const std::filesystem::path& path, const std::string& mech
   return static_cast<bool>(output);
 }
 
+bool writeSpellHitControlFile(const std::filesystem::path& path) {
+  std::ofstream output(path);
+  if (!output) {
+    return false;
+  }
+  output << "dev_menu.open=true\n";
+  output << "dev_menu.select=spell\n";
+  output << "mechanic.execute=true\n";
+  output << "look.yaw_delta=0.359\n";
+  output << "look.pitch_delta=-0.105\n";
+  return static_cast<bool>(output);
+}
+
 }  // namespace
 
 int main() {
@@ -106,9 +119,13 @@ int main() {
   const std::filesystem::path dashOutput = "/tmp/iggy3d_package_visual_codex_dash_control.out";
   const std::filesystem::path spellControl = "/tmp/iggy3d_codex_spell_control.in";
   const std::filesystem::path spellOutput = "/tmp/iggy3d_package_visual_codex_spell_control.out";
+  const std::filesystem::path spellHitControl = "/tmp/iggy3d_codex_spell_hit_control.in";
+  const std::filesystem::path spellHitOutput =
+      "/tmp/iggy3d_package_visual_codex_spell_hit_control.out";
   const bool jumpControlWritten = writeControlFile(jumpControl, "jump");
   const bool dashControlWritten = writeControlFile(dashControl, "dash");
   const bool spellControlWritten = writeControlFile(spellControl, "spell");
+  const bool spellHitControlWritten = writeSpellHitControlFile(spellHitControl);
   const std::string jumpCommand =
       shellQuote(binary) + " --package " + shellQuote(fixture) +
       " --renderer vulkan --window --interactive --frames 3 --dev-menu --codex-control " +
@@ -121,6 +138,11 @@ int main() {
       shellQuote(binary) + " --package " + shellQuote(fixture) +
       " --renderer vulkan --window --interactive --frames 3 --dev-menu --codex-control " +
       shellQuote(spellControl) + " --print-render-receipt > " + shellQuote(spellOutput);
+  const std::string spellHitCommand =
+      shellQuote(binary) + " --package " + shellQuote(fixture) +
+      " --renderer null --interactive --frames 50 --dev-menu --codex-control " +
+      shellQuote(spellHitControl) + " --print-render-receipt > " +
+      shellQuote(spellHitOutput);
 
   const int jumpExitCode =
       jumpControlWritten && std::filesystem::exists(binary)
@@ -134,16 +156,24 @@ int main() {
       spellControlWritten && std::filesystem::exists(binary)
           ? exitCodeFromSystem(std::system(spellCommand.c_str()))
           : 1;
+  const int spellHitExitCode =
+      spellHitControlWritten && std::filesystem::exists(binary)
+          ? exitCodeFromSystem(std::system(spellHitCommand.c_str()))
+          : 1;
   std::map<std::string, std::string> jumpFields;
   std::map<std::string, std::string> dashFields;
   std::map<std::string, std::string> spellFields;
+  std::map<std::string, std::string> spellHitFields;
   const bool jumpReceiptValid = parseReceiptFile(jumpOutput, jumpFields);
   const bool dashReceiptValid = parseReceiptFile(dashOutput, dashFields);
   const bool spellReceiptValid = parseReceiptFile(spellOutput, spellFields);
+  const bool spellHitReceiptValid = parseReceiptFile(spellHitOutput, spellHitFields);
   const bool skipped =
       (jumpExitCode == 77 && jumpReceiptValid && hasField(jumpFields, "result", "skip")) ||
       (dashExitCode == 77 && dashReceiptValid && hasField(dashFields, "result", "skip")) ||
-      (spellExitCode == 77 && spellReceiptValid && hasField(spellFields, "result", "skip"));
+      (spellExitCode == 77 && spellReceiptValid && hasField(spellFields, "result", "skip")) ||
+      (spellHitExitCode == 77 && spellHitReceiptValid &&
+       hasField(spellHitFields, "result", "skip"));
   const bool jumpPassed =
       jumpExitCode == 0 && jumpControlWritten && jumpReceiptValid &&
       hasField(jumpFields, "result", "pass") && hasField(jumpFields, "backend", "vulkan") &&
@@ -240,21 +270,50 @@ int main() {
       numericFieldGreater(spellFields, "projectile_trail_rect_count", 0.0F) &&
       hasField(spellFields, "projectile_rendered", "true") &&
       hasField(spellFields, "projectile_record_mode", "overlay_rects");
-  const bool passed = jumpPassed && dashPassed && spellPassed;
+  const bool spellHitPassed =
+      spellHitExitCode == 0 && spellHitControlWritten && spellHitReceiptValid &&
+      hasField(spellHitFields, "result", "pass") &&
+      hasField(spellHitFields, "backend", "null") &&
+      hasField(spellHitFields, "input_backend", "scripted") &&
+      hasField(spellHitFields, "interactive_mode", "true") &&
+      hasField(spellHitFields, "dev_menu_selected_mechanic", "spell") &&
+      hasField(spellHitFields, "dev_menu_execute_requested", "true") &&
+      hasField(spellHitFields, "dev_menu_execution_status", "applied") &&
+      hasField(spellHitFields, "spell_input_observed", "true") &&
+      hasField(spellHitFields, "spell_projectile_spawned", "true") &&
+      hasField(spellHitFields, "spell_projectile_impact", "true") &&
+      hasField(spellHitFields, "spell_projectile_reason", "ability_entity_impact") &&
+      hasField(spellHitFields, "spell_projectile_hit_surface_id",
+               "entity:training_dummy") &&
+      hasField(spellHitFields, "ability_id", "arcane_bolt") &&
+      hasField(spellHitFields, "ability_cast_accepted", "true") &&
+      hasField(spellHitFields, "ability_tick_status", "impact") &&
+      hasField(spellHitFields, "ability_tick_reason", "ability_entity_impact") &&
+      hasField(spellHitFields, "ability_impact_kind", "entity") &&
+      hasField(spellHitFields, "ability_hit_entity", "true") &&
+      hasField(spellHitFields, "ability_hit_stable_name", "training_dummy") &&
+      hasField(spellHitFields, "ability_damage_applied", "true") &&
+      hasField(spellHitFields, "ability_damage_amount", "3") &&
+      hasField(spellHitFields, "ability_target_defeated", "false");
+  const bool passed = jumpPassed && dashPassed && spellPassed && spellHitPassed;
 #else
   const int jumpExitCode = 77;
   const int dashExitCode = 77;
   const int spellExitCode = 77;
+  const int spellHitExitCode = 77;
   const bool jumpControlWritten = false;
   const bool dashControlWritten = false;
   const bool spellControlWritten = false;
+  const bool spellHitControlWritten = false;
   const bool jumpReceiptValid = false;
   const bool dashReceiptValid = false;
   const bool spellReceiptValid = false;
+  const bool spellHitReceiptValid = false;
   const bool skipped = true;
   const bool jumpPassed = false;
   const bool dashPassed = false;
   const bool spellPassed = false;
+  const bool spellHitPassed = false;
   const bool passed = false;
 #endif
 
@@ -262,15 +321,21 @@ int main() {
   std::cout << "jump_control_written=" << (jumpControlWritten ? "true" : "false") << "\n";
   std::cout << "dash_control_written=" << (dashControlWritten ? "true" : "false") << "\n";
   std::cout << "spell_control_written=" << (spellControlWritten ? "true" : "false") << "\n";
+  std::cout << "spell_hit_control_written=" << (spellHitControlWritten ? "true" : "false")
+            << "\n";
   std::cout << "jump_receipt_valid=" << (jumpReceiptValid ? "true" : "false") << "\n";
   std::cout << "dash_receipt_valid=" << (dashReceiptValid ? "true" : "false") << "\n";
   std::cout << "spell_receipt_valid=" << (spellReceiptValid ? "true" : "false") << "\n";
+  std::cout << "spell_hit_receipt_valid=" << (spellHitReceiptValid ? "true" : "false")
+            << "\n";
   std::cout << "jump_exit_code=" << jumpExitCode << "\n";
   std::cout << "dash_exit_code=" << dashExitCode << "\n";
   std::cout << "spell_exit_code=" << spellExitCode << "\n";
+  std::cout << "spell_hit_exit_code=" << spellHitExitCode << "\n";
   std::cout << "jump_result=" << (jumpPassed ? "pass" : "fail") << "\n";
   std::cout << "dash_result=" << (dashPassed ? "pass" : "fail") << "\n";
   std::cout << "spell_result=" << (spellPassed ? "pass" : "fail") << "\n";
+  std::cout << "spell_hit_result=" << (spellHitPassed ? "pass" : "fail") << "\n";
   std::cout << "result=" << (passed ? "pass" : (skipped ? "skip" : "fail")) << "\n";
   std::cout << "reason_code="
             << (passed ? "package_visual_codex_control_pass"
