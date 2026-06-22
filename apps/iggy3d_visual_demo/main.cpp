@@ -54,6 +54,7 @@ struct VisualOptions {
   VisualInputBackend inputBackend = VisualInputBackend::Keyboard;
   std::uint32_t holdSeconds = 0U;
   std::uint32_t frames = 1U;
+  bool framesExplicit = false;
 };
 
 struct ParseResult {
@@ -186,9 +187,6 @@ ParseResult parseOptions(int argc, const char* const* argv) {
       result.options.noWindowFlagSeen = true;
     } else if (arg == "--interactive") {
       result.options.interactive = true;
-      if (result.options.frames == 1U) {
-        result.options.frames = 300U;
-      }
     } else if (arg == "--scripted-playable-smoke") {
       result.options.scriptedPlayableSmoke = true;
       result.options.inputBackend = VisualInputBackend::Scripted;
@@ -232,6 +230,7 @@ ParseResult parseOptions(int argc, const char* const* argv) {
         value = value * 10U + static_cast<std::uint32_t>(c - '0');
       }
       result.options.frames = value == 0U ? 1U : value;
+      result.options.framesExplicit = true;
     } else if (arg == "--shader-root" && hasValue(i, argc)) {
       result.options.shaderRoot = argv[++i];
     } else if (arg == "--diagnostics-dir" && hasValue(i, argc)) {
@@ -248,13 +247,15 @@ ParseResult parseOptions(int argc, const char* const* argv) {
       return result;
     }
   }
-  if (result.options.interactive && result.options.holdSeconds > 0U) {
-    const std::uint64_t holdFrames = static_cast<std::uint64_t>(result.options.holdSeconds) * 60ULL;
-    result.options.frames = static_cast<std::uint32_t>(
-        std::min<std::uint64_t>(std::max<std::uint64_t>(result.options.frames, holdFrames),
-                                60ULL * 60ULL * 6ULL));
-  }
   return result;
+}
+
+bool hasFrameLimit(const VisualOptions& options) {
+  return !options.interactive || options.scriptedPlayableSmoke || options.framesExplicit;
+}
+
+std::uint32_t receiptFrameCount(const VisualOptions& options, std::uint32_t framesPresented) {
+  return hasFrameLimit(options) ? options.frames : framesPresented;
 }
 
 iggy3d::RenderReceipt baseReceipt(std::string_view result, std::string_view reasonCode) {
@@ -969,17 +970,7 @@ int main(int argc, const char* const* argv) {
     }
     if (parsed.options.inputBackend == VisualInputBackend::Gamepad &&
         !playableFields.gamepadAvailable) {
-      iggy3d::RenderReceipt receipt = baseReceipt("skip", "gamepad_unavailable");
-      iggy3d::appendReceiptField(receipt, "visual_demo", "bounded");
-      appendWindowReceiptFields(receipt, windowFields);
-      appendVulkanBootFields(receipt, rendererCreate.backend, vulkanSurfaceCreated,
-                             vulkanSwapchainReady, rendererLifecycleForReceipt);
-      appendPlayableReceiptFields(receipt, playableFields);
-      closeGamepad(gamepad);
-      if (renderer.hasBackend()) {
-        renderer.shutdown();
-      }
-      return printReceiptAndReturn(std::move(receipt), 77);
+      playableFields.inputBackend = VisualInputBackend::Keyboard;
     }
   }
 #endif
@@ -990,7 +981,11 @@ int main(int argc, const char* const* argv) {
   float pitch = 0.0F;
   bool quitRequested = false;
   const auto interactiveStart = std::chrono::steady_clock::now();
-  for (std::uint32_t frameIndex = 0U; frameIndex < parsed.options.frames; ++frameIndex) {
+  std::uint32_t frameIndex = 0U;
+  while (true) {
+    if (hasFrameLimit(parsed.options) && frameIndex >= parsed.options.frames) {
+      break;
+    }
     if (playableFields.playable && parsed.options.holdSeconds > 0U) {
       const auto elapsed = std::chrono::steady_clock::now() - interactiveStart;
       if (elapsed >= std::chrono::seconds(parsed.options.holdSeconds)) {
@@ -998,7 +993,7 @@ int main(int argc, const char* const* argv) {
       }
     }
 #if defined(IGGY3D_HAS_SDL3)
-      if (window.has_value()) {
+    if (window.has_value()) {
       window->pollEvents();
       ++windowFields.eventPollCount;
       const iggy3d::SdlWindowEventState& eventState = window->eventState();
@@ -1161,7 +1156,9 @@ int main(int argc, const char* const* argv) {
       appendPlayableReceiptFields(receipt, playableFields);
       appendVulkanBootFields(receipt, rendererCreate.backend, vulkanSurfaceCreated,
                              vulkanSwapchainReady, renderer.lifecycleState());
-      appendReceiptFieldIfMissing(receipt, "frames", static_cast<std::uint64_t>(parsed.options.frames));
+      appendReceiptFieldIfMissing(receipt, "frames",
+                                  static_cast<std::uint64_t>(
+                                      receiptFrameCount(parsed.options, framesPresented)));
       appendReceiptFieldIfMissing(receipt, "frames_presented",
                                   static_cast<std::uint64_t>(framesPresented));
       appendReceiptFieldIfMissing(receipt, "result", "fail");
@@ -1169,6 +1166,7 @@ int main(int argc, const char* const* argv) {
       return printReceiptAndReturn(std::move(receipt), 1);
     }
     ++framesPresented;
+    ++frameIndex;
     if (playableFields.playable) {
       std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
@@ -1218,7 +1216,9 @@ int main(int argc, const char* const* argv) {
   iggy3d::appendReceiptField(receipt, "resource_root_source", lookup.lookup.resourceRootSource);
   iggy3d::appendReceiptField(receipt, "shader_root_source", lookup.lookup.shaderRootSource);
   iggy3d::appendReceiptField(receipt, "diagnostics_dir_source", lookup.lookup.diagnosticsDirSource);
-  iggy3d::appendReceiptField(receipt, "frames", static_cast<std::uint64_t>(parsed.options.frames));
+  iggy3d::appendReceiptField(receipt, "frames",
+                             static_cast<std::uint64_t>(
+                                 receiptFrameCount(parsed.options, framesPresented)));
   iggy3d::appendReceiptField(receipt, "frames_presented",
                              static_cast<std::uint64_t>(framesPresented));
   if (!iggy3d::hasReceiptField(receipt, "reason_code")) {
