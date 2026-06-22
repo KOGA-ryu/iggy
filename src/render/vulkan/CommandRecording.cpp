@@ -86,6 +86,25 @@ void recordHudGlyphQuads(VkCommandBuffer commandBuffer,
   }
 }
 
+void recordOverlayRects(VkCommandBuffer commandBuffer,
+                        const OverlayRect* rects,
+                        std::size_t rectCount) {
+  if (rects == nullptr || rectCount == 0U) {
+    return;
+  }
+  for (std::size_t index = 0; index < rectCount; ++index) {
+    const OverlayRect& overlay = rects[index];
+    if (overlay.width == 0U || overlay.height == 0U) {
+      continue;
+    }
+    const VkClearAttachment clear =
+        colorClear(overlay.r, overlay.g, overlay.b, overlay.a);
+    const VkClearRect rect =
+        clearRect(overlay.x, overlay.y, overlay.width, overlay.height);
+    vkCmdClearAttachments(commandBuffer, 1, &clear, 1, &rect);
+  }
+}
+
 }  // namespace
 
 CommandRecording::~CommandRecording() {
@@ -462,6 +481,8 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
     vkCmdDrawIndexed(info.commandBuffer, info.indexCount, 1, 0, 0, 0);
     indexedDrawCount = 1U;
   }
+  recordOverlayRects(info.commandBuffer, info.projectileOverlayRects,
+                     info.projectileOverlayRectCount);
   recordHudGlyphQuads(info.commandBuffer, info.debugHudQuads, info.debugHudQuadCount);
   createInfo_.deviceFunctions.cmdEndRendering(info.commandBuffer);
 
@@ -691,6 +712,8 @@ CommandRecordResult CommandRecording::recordProxyPrimitiveFrame(
     vkCmdClearAttachments(info.commandBuffer, 1, &objective, 1, &rect);
     ++drawCount;
   }
+  recordOverlayRects(info.commandBuffer, info.projectileOverlayRects,
+                     info.projectileOverlayRectCount);
   recordHudGlyphQuads(info.commandBuffer, info.debugHudQuads, info.debugHudQuadCount);
   createInfo_.deviceFunctions.cmdEndRendering(info.commandBuffer);
 
@@ -730,6 +753,8 @@ CommandRecordResult CommandRecording::recordProxyPrimitiveFrame(
   appendReceiptField(result.receipt, "swapchain_image_index",
                      static_cast<std::uint64_t>(info.imageIndex));
   appendReceiptField(result.receipt, "draw_count", static_cast<std::uint64_t>(drawCount));
+  appendReceiptField(result.receipt, "projectile_overlay_rect_count",
+                     static_cast<std::uint64_t>(info.projectileOverlayRectCount));
   return result;
 }
 

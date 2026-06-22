@@ -34,6 +34,17 @@ struct EmptyFrameRecordInfo {
   float clearA = 1.0F;
 };
 
+struct OverlayRect {
+  std::int32_t x = 0;
+  std::int32_t y = 0;
+  std::uint32_t width = 0;
+  std::uint32_t height = 0;
+  float r = 1.0F;
+  float g = 1.0F;
+  float b = 1.0F;
+  float a = 1.0F;
+};
+
 struct FirstRoomFrameRecordInfo {
   VkCommandBuffer commandBuffer{};
   VkImage swapchainImage{};
@@ -56,6 +67,8 @@ struct FirstRoomFrameRecordInfo {
   bool captureEnabled = false;
   VkBuffer captureBuffer{};
   VkDeviceSize captureBufferSize = 0;
+  const OverlayRect* projectileOverlayRects = nullptr;
+  std::size_t projectileOverlayRectCount = 0;
   const DebugHudGlyphQuad* debugHudQuads = nullptr;
   std::size_t debugHudQuadCount = 0;
 };
@@ -73,6 +86,8 @@ struct ProxyPrimitiveFrameRecordInfo {
   bool playerMarkerVisible = true;
   bool targetMarkerVisible = false;
   bool objectiveMarkerVisible = false;
+  const OverlayRect* projectileOverlayRects = nullptr;
+  std::size_t projectileOverlayRectCount = 0;
   const DebugHudGlyphQuad* debugHudQuads = nullptr;
   std::size_t debugHudQuadCount = 0;
 };

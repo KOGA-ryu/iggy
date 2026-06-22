@@ -66,4 +66,15 @@ struct SceneRoomProjection {
   std::vector<SceneRoomMeshItem> meshes;
 };
 
+struct SceneProjectileItem {
+  std::string id;
+  Vec3 positionMeters;
+  Vec3 previousPositionMeters;
+  Vec3 impactPointMeters;
+  Vec3 impactNormal;
+  bool active = false;
+  bool impact = false;
+  std::string hitSurfaceId;
+};
+
 }  // namespace iggy3d

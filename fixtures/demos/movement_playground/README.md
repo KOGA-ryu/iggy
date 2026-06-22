@@ -16,8 +16,8 @@ Controls:
 - South/Cross jumps on SDL gamepad when the dev menu is closed; hold left stick during jump for limited air control;
 - Right Shoulder/R1 dashes on SDL gamepad when the dev menu is closed; hold left stick to choose dash direction;
 - hold left stick click to crouch on SDL gamepad;
-- F1 toggles the dev menu state; while open, 1-7 selects walk, crouch, jump,
-  dash, vault stub, clamber stub, or wire-walk stub, and Space/Enter executes.
+- F1 toggles the dev menu state; while open, 1-8 selects walk, crouch, jump,
+  dash, spell projectile, vault stub, clamber stub, or wire-walk stub, and Space/Enter executes.
 - On SDL gamepad, Start + North toggles the dev menu state, D-pad left/right cycles,
   and South executes while the menu is open.
 
@@ -62,5 +62,5 @@ Purpose:
 Current runtime truth:
 
 - this fixture is a playable/renderable test arena;
-- first-person kinematic walking, hold-to-crouch stance, runtime jump, limited air control, runtime dash, debug telemetry, and deterministic projectile motion core work against authored room surfaces;
-- clamber, vault, spell firing visuals, and wire-walk mechanics are authored as test zones, not implemented ability modes yet.
+- first-person kinematic walking, hold-to-crouch stance, runtime jump, limited air control, runtime dash, debug telemetry, deterministic projectile motion, and dev-menu spell projectile visuals work against authored room surfaces;
+- clamber, vault, and wire-walk mechanics are authored as test zones, not implemented ability modes yet.

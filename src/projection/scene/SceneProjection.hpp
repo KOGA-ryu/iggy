@@ -35,6 +35,8 @@ struct SceneProjectionResult {
   Vec3 cameraTargetPoint;
   bool cameraTargetHasPoint = false;
   SceneRoomProjection room;
+  std::vector<SceneProjectileItem> projectiles;
+  std::size_t projectileCount = 0;
 };
 
 SceneProjectionResult buildSceneProjection(const SessionState& state,

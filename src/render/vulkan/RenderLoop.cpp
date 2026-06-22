@@ -1,7 +1,11 @@
 #include "render/vulkan/RenderLoop.hpp"
 
+#include <algorithm>
 #include <cstddef>
+#include <cstdint>
+#include <cmath>
 #include <string>
+#include <vector>
 
 #include "render/debug/DebugHudText.hpp"
 #include "render/vulkan/VulkanResult.hpp"
@@ -106,6 +110,20 @@ struct ProxySceneFacts {
   std::uint32_t markerCount = 0;
 };
 
+struct ScreenPoint {
+  std::int32_t x = 0;
+  std::int32_t y = 0;
+};
+
+struct ProjectileOverlayLayout {
+  std::vector<OverlayRect> rects;
+  std::uint32_t projectileCount = 0;
+  std::uint32_t markerCount = 0;
+  std::uint32_t trailRectCount = 0;
+  bool projected = false;
+  bool impactVisible = false;
+};
+
 ProxySceneFacts proxySceneFacts(const FrameInput& frame) {
   ProxySceneFacts facts;
   if (frame.projections.scene == nullptr) {
@@ -151,6 +169,94 @@ DebugHudLayoutResult debugHudLayoutFor(const FrameInput& frame) {
   }
   return layoutDebugHudText(frame.projections.debug->runtimeDebugHudLines,
                             frame.viewport.width, frame.viewport.height);
+}
+
+bool projectWorldToScreen(const FrameInput& frame, Vec3 world, ScreenPoint& out) {
+  if (frame.viewport.width == 0U || frame.viewport.height == 0U) {
+    return false;
+  }
+  const Vec3 ndc = transformPoint(frame.camera.clipFromWorld, world);
+  if (!isFinite(ndc) || ndc.z < -0.05F || ndc.z > 1.05F ||
+      ndc.x < -1.20F || ndc.x > 1.20F || ndc.y < -1.20F || ndc.y > 1.20F) {
+    return false;
+  }
+  const float screenX =
+      (ndc.x * 0.5F + 0.5F) * static_cast<float>(frame.viewport.width);
+  const float screenY =
+      (1.0F - (ndc.y * 0.5F + 0.5F)) * static_cast<float>(frame.viewport.height);
+  if (!std::isfinite(screenX) || !std::isfinite(screenY)) {
+    return false;
+  }
+  out.x = static_cast<std::int32_t>(std::lround(std::clamp(
+      screenX, 0.0F, static_cast<float>(frame.viewport.width - 1U))));
+  out.y = static_cast<std::int32_t>(std::lround(std::clamp(
+      screenY, 0.0F, static_cast<float>(frame.viewport.height - 1U))));
+  return true;
+}
+
+OverlayRect centeredOverlayRect(const FrameInput& frame,
+                                ScreenPoint point,
+                                std::uint32_t requestedSize,
+                                float r,
+                                float g,
+                                float b) {
+  OverlayRect rect;
+  if (frame.viewport.width == 0U || frame.viewport.height == 0U || requestedSize == 0U) {
+    return rect;
+  }
+  rect.width = std::min(requestedSize, frame.viewport.width);
+  rect.height = std::min(requestedSize, frame.viewport.height);
+  const std::int32_t maxX =
+      static_cast<std::int32_t>(frame.viewport.width - rect.width);
+  const std::int32_t maxY =
+      static_cast<std::int32_t>(frame.viewport.height - rect.height);
+  rect.x = std::clamp(point.x - static_cast<std::int32_t>(rect.width / 2U), 0, maxX);
+  rect.y = std::clamp(point.y - static_cast<std::int32_t>(rect.height / 2U), 0, maxY);
+  rect.r = r;
+  rect.g = g;
+  rect.b = b;
+  rect.a = 1.0F;
+  return rect;
+}
+
+ProjectileOverlayLayout projectileOverlayLayoutFor(const FrameInput& frame) {
+  ProjectileOverlayLayout layout;
+  if (frame.projections.scene == nullptr || frame.projections.scene->projectiles.empty()) {
+    return layout;
+  }
+  const std::uint32_t markerSize = frame.viewport.height > 900U ? 18U : 12U;
+  const std::uint32_t trailSize = frame.viewport.height > 900U ? 8U : 5U;
+  for (const SceneProjectileItem& projectile : frame.projections.scene->projectiles) {
+    ++layout.projectileCount;
+    const Vec3 current =
+        projectile.impact ? projectile.impactPointMeters : projectile.positionMeters;
+    ScreenPoint markerPoint;
+    if (projectWorldToScreen(frame, current, markerPoint)) {
+      layout.projected = true;
+      ++layout.markerCount;
+      layout.impactVisible = layout.impactVisible || projectile.impact;
+      layout.rects.push_back(centeredOverlayRect(
+          frame, markerPoint, markerSize, projectile.impact ? 1.0F : 0.30F,
+          projectile.impact ? 0.40F : 0.95F, projectile.impact ? 0.12F : 1.0F));
+    }
+
+    constexpr std::uint32_t kTrailSamples = 4U;
+    for (std::uint32_t sample = 1U; sample <= kTrailSamples; ++sample) {
+      const float t = static_cast<float>(sample) /
+                      static_cast<float>(kTrailSamples + 1U);
+      const Vec3 trailPoint =
+          projectile.previousPositionMeters +
+          (current - projectile.previousPositionMeters) * t;
+      ScreenPoint screenTrail;
+      if (projectWorldToScreen(frame, trailPoint, screenTrail)) {
+        layout.projected = true;
+        ++layout.trailRectCount;
+        layout.rects.push_back(centeredOverlayRect(frame, screenTrail, trailSize,
+                                                   0.55F, 0.72F, 1.0F));
+      }
+    }
+  }
+  return layout;
 }
 
 }  // namespace
@@ -360,6 +466,7 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
 
   const SwapchainInfo& readySwapchain = createInfo_.swapchain->info();
   const DebugHudLayoutResult debugHud = debugHudLayoutFor(frame);
+  const ProjectileOverlayLayout projectileOverlay = projectileOverlayLayoutFor(frame);
   VkCommandBuffer commandBuffer =
       createInfo_.commandRecording->commandBufferForFrameSlot(result.frameSlot);
   const bool drawProxyPrimitives =
@@ -399,6 +506,8 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
       recordInfo.captureBuffer = createInfo_.frameCapture->buffer();
       recordInfo.captureBufferSize = createInfo_.frameCapture->bufferSizeBytes();
     }
+    recordInfo.projectileOverlayRects = projectileOverlay.rects.data();
+    recordInfo.projectileOverlayRectCount = projectileOverlay.rects.size();
     recordInfo.debugHudQuads = debugHud.quads.data();
     recordInfo.debugHudQuadCount = debugHud.quads.size();
     recordResult = createInfo_.commandRecording->recordFirstRoomFrame(recordInfo);
@@ -418,6 +527,8 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     recordInfo.playerMarkerVisible = true;
     recordInfo.targetMarkerVisible = proxyFacts.targetMarkerVisible;
     recordInfo.objectiveMarkerVisible = proxyFacts.objectiveMarkerVisible;
+    recordInfo.projectileOverlayRects = projectileOverlay.rects.data();
+    recordInfo.projectileOverlayRectCount = projectileOverlay.rects.size();
     recordInfo.debugHudQuads = debugHud.quads.data();
     recordInfo.debugHudQuadCount = debugHud.quads.size();
     recordResult = createInfo_.commandRecording->recordProxyPrimitiveFrame(recordInfo);
@@ -449,6 +560,8 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
       recordInfo.captureBuffer = createInfo_.frameCapture->buffer();
       recordInfo.captureBufferSize = createInfo_.frameCapture->bufferSizeBytes();
     }
+    recordInfo.projectileOverlayRects = projectileOverlay.rects.data();
+    recordInfo.projectileOverlayRectCount = projectileOverlay.rects.size();
     recordInfo.debugHudQuads = debugHud.quads.data();
     recordInfo.debugHudQuadCount = debugHud.quads.size();
     recordResult = createInfo_.commandRecording->recordFirstRoomFrame(recordInfo);
@@ -656,6 +769,25 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
   appendReceiptField(result.receipt, "debug_hud_record_mode",
                      debugHud.projected && !debugHud.quads.empty() ? "glyph_quads"
                                                                    : "unavailable");
+  appendReceiptField(result.receipt, "projectile_visual_projected",
+                     projectileOverlay.projected);
+  appendReceiptField(result.receipt, "projectile_visual_count",
+                     static_cast<std::uint64_t>(projectileOverlay.projectileCount));
+  appendReceiptField(result.receipt, "projectile_marker_count",
+                     static_cast<std::uint64_t>(projectileOverlay.markerCount));
+  appendReceiptField(result.receipt, "projectile_trail_rect_count",
+                     static_cast<std::uint64_t>(projectileOverlay.trailRectCount));
+  appendReceiptField(result.receipt, "projectile_overlay_rect_count",
+                     static_cast<std::uint64_t>(projectileOverlay.rects.size()));
+  appendReceiptField(result.receipt, "projectile_impact_visible",
+                     projectileOverlay.impactVisible);
+  appendReceiptField(result.receipt, "projectile_rendered",
+                     projectileOverlay.projected && !projectileOverlay.rects.empty() &&
+                         result.commandRecorded && presentResult.presented);
+  appendReceiptField(result.receipt, "projectile_record_mode",
+                     projectileOverlay.projected && !projectileOverlay.rects.empty()
+                         ? "overlay_rects"
+                         : "unavailable");
   return result;
 }
 
