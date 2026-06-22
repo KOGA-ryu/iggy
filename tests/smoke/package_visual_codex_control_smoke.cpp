@@ -72,7 +72,7 @@ bool writeControlFile(const std::filesystem::path& path) {
     return false;
   }
   output << "dev_menu.open=true\n";
-  output << "dev_menu.select=crouch\n";
+  output << "dev_menu.select=jump\n";
   output << "mechanic.execute=true\n";
   output << "move.forward=1\n";
   output << "look.yaw_delta=0.100\n";
@@ -108,14 +108,19 @@ int main() {
       hasField(fields, "interactive_mode", "true") &&
       hasField(fields, "dev_menu_enabled", "true") &&
       hasField(fields, "dev_menu_open", "true") &&
-      hasField(fields, "dev_menu_selected_mechanic", "crouch") &&
+      hasField(fields, "dev_menu_selected_mechanic", "jump") &&
       hasField(fields, "dev_menu_execute_requested", "true") &&
       hasField(fields, "dev_menu_execution_status", "applied") &&
       hasField(fields, "codex_control_configured", "true") &&
       hasField(fields, "codex_control_read", "true") &&
       hasField(fields, "codex_control_applied", "true") &&
       hasField(fields, "codex_control_status", "applied") &&
-      hasField(fields, "crouch_active", "true") && hasField(fields, "stance", "crouched") &&
+      hasField(fields, "player_motor_active", "true") &&
+      hasField(fields, "player_grounded", "false") &&
+      hasField(fields, "player_motor_phase", "airborne") &&
+      hasField(fields, "player_motor_reason", "player_motor_ok") &&
+      hasField(fields, "jump_input_observed", "true") &&
+      hasField(fields, "jump_accepted", "true") &&
       hasField(fields, "kinematic_movement_attempted", "true") &&
       hasField(fields, "kinematic_movement_accepted", "true") &&
       hasField(fields, "movement_reason", "movement_ok");

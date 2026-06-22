@@ -32,6 +32,7 @@ target_sources(iggy3d
     src/content/assets/RoomAsset.cpp
     src/content/FixtureScenarioLoader.cpp
     src/runtime/player/PlayerRoster.cpp
+    src/runtime/player/PlayerMotor.cpp
     src/runtime/world/WorldState.cpp
     src/runtime/clock/Clock.cpp
     src/runtime/camera/CameraModePolicy.cpp

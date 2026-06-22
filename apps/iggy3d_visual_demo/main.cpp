@@ -15,6 +15,7 @@
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/command/Command.hpp"
 #include "runtime/movement/MovementSystem.hpp"
+#include "runtime/player/PlayerMotor.hpp"
 #include "runtime/session/Session.hpp"
 
 #include <algorithm>
@@ -123,10 +124,18 @@ struct PlayableReceiptFields {
   bool crouchAvailable = false;
   bool crouchActive = false;
   bool crouchInputObserved = false;
+  bool playerMotorActive = false;
+  bool playerGrounded = true;
+  bool playerLanded = false;
+  bool jumpInputObserved = false;
+  bool jumpAccepted = false;
   std::string stance = "standing";
   std::string eyeHeightMeters = "1.650";
   std::string actorHeightMeters = "1.800";
   std::string movementSpeedMetersPerSecond = "4.800";
+  std::string playerMotorPhase = "grounded";
+  std::string playerMotorReason = "not_attempted";
+  std::string verticalVelocityState = "zero";
   bool devMenuEnabled = false;
   bool devMenuOpen = false;
   bool devMenuToggleObserved = false;
@@ -184,6 +193,7 @@ struct CodexControlFrame {
   bool mechanicSet = false;
   DevMechanic mechanic = DevMechanic::Walk;
   bool executeMechanic = false;
+  bool jump = false;
   bool stanceSet = false;
   bool crouched = false;
   bool moveSet = false;
@@ -204,7 +214,7 @@ std::string_view devMechanicName(DevMechanic mechanic) {
     case DevMechanic::Crouch:
       return "crouch";
     case DevMechanic::Jump:
-      return "jump_stub";
+      return "jump";
     case DevMechanic::Dash:
       return "dash_stub";
     case DevMechanic::Vault:
@@ -304,6 +314,16 @@ void recordStance(PlayableReceiptFields& fields, bool crouched) {
   fields.eyeHeightMeters = crouched ? "1.050" : "1.650";
   fields.actorHeightMeters = crouched ? "1.200" : "1.800";
   fields.movementSpeedMetersPerSecond = crouched ? "2.350" : "4.800";
+}
+
+std::string_view verticalVelocityState(float velocityMetersPerSecond) {
+  if (velocityMetersPerSecond > 0.01F) {
+    return "positive";
+  }
+  if (velocityMetersPerSecond < -0.01F) {
+    return "negative";
+  }
+  return "zero";
 }
 
 std::string_view trimControlText(std::string_view value) {
@@ -412,6 +432,14 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
     } else if (key == "mechanic.execute") {
       if (parseControlBool(value, boolValue)) {
         frame.executeMechanic = frame.executeMechanic || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "jump") {
+      if (parseControlBool(value, boolValue)) {
+        frame.jump = frame.jump || boolValue;
         frame.applied = true;
       } else {
         frame.parseError = true;
@@ -852,6 +880,20 @@ void recordKinematicMovementResult(PlayableReceiptFields& fields,
   fields.hitSurfaceId = result.hitSurfaceId.empty() ? "none" : result.hitSurfaceId;
 }
 
+void recordPlayerMotorResult(PlayableReceiptFields& fields,
+                             const iggy3d::PlayerMotorResult& result) {
+  fields.playerMotorActive = true;
+  fields.playerGrounded = result.grounded;
+  fields.playerLanded = fields.playerLanded || result.landed;
+  fields.jumpInputObserved = fields.jumpInputObserved || result.jumpRequested;
+  fields.jumpAccepted = fields.jumpAccepted || result.jumpAccepted;
+  fields.groundSnapApplied = fields.groundSnapApplied || result.groundSnapApplied;
+  fields.playerMotorPhase = iggy3d::playerMotorPhaseName(result.phase);
+  fields.playerMotorReason = result.reasonCode == nullptr ? "unavailable" : result.reasonCode;
+  fields.verticalVelocityState =
+      std::string(verticalVelocityState(result.verticalVelocityMetersPerSecond));
+}
+
 iggy3d::CommandRecord moveCommand(iggy3d::Vec3 point) {
   iggy3d::CommandRecord command;
   command.playerSlot = 0;
@@ -1057,6 +1099,14 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
   iggy3d::appendReceiptField(receipt, "crouch_available", fields.crouchAvailable);
   iggy3d::appendReceiptField(receipt, "crouch_active", fields.crouchActive);
   iggy3d::appendReceiptField(receipt, "crouch_input_observed", fields.crouchInputObserved);
+  iggy3d::appendReceiptField(receipt, "player_motor_active", fields.playerMotorActive);
+  iggy3d::appendReceiptField(receipt, "player_grounded", fields.playerGrounded);
+  iggy3d::appendReceiptField(receipt, "player_landed", fields.playerLanded);
+  iggy3d::appendReceiptField(receipt, "player_motor_phase", fields.playerMotorPhase);
+  iggy3d::appendReceiptField(receipt, "player_motor_reason", fields.playerMotorReason);
+  iggy3d::appendReceiptField(receipt, "vertical_velocity_state", fields.verticalVelocityState);
+  iggy3d::appendReceiptField(receipt, "jump_input_observed", fields.jumpInputObserved);
+  iggy3d::appendReceiptField(receipt, "jump_accepted", fields.jumpAccepted);
   iggy3d::appendReceiptField(receipt, "stance", fields.stance);
   iggy3d::appendReceiptField(receipt, "eye_height_meters", fields.eyeHeightMeters);
   iggy3d::appendReceiptField(receipt, "actor_height_meters", fields.actorHeightMeters);
@@ -1501,6 +1551,10 @@ int main(int argc, const char* const* argv) {
       parsed.options.codexControlPathSet ? "not_read" : "disabled";
   playableFields.kinematicControllerActive =
       playableFields.playable && !parsed.options.scriptedPlayableSmoke && !collisionSurfaces.empty();
+  iggy3d::PlayerMotorState playerMotor;
+  if (const iggy3d::EntityState* player = playerEntity(session)) {
+    playerMotor.actor = player->id;
+  }
 #if defined(IGGY3D_HAS_SDL3)
   GamepadSession gamepad;
   if (playableFields.playable &&
@@ -1591,11 +1645,13 @@ int main(int argc, const char* const* argv) {
       bool actionRequested = false;
       bool attackRequested = false;
       bool resetRequested = false;
+      bool jumpRequested = false;
       bool crouchHeld = parsed.options.scriptedCrouchInput;
       bool devToggleRequested = false;
       bool devNextRequested = false;
       bool devPreviousRequested = false;
       bool devExecuteRequested = false;
+      bool devExecuteThisFrame = false;
       if (parsed.options.scriptedKinematicInput) {
         movement = {1.0F, 0.0F, 0.0F};
       } else if (playableFields.inputBackend == VisualInputBackend::Keyboard) {
@@ -1636,6 +1692,8 @@ int main(int argc, const char* const* argv) {
             if (SDL_SCANCODE_7 < keyCount && keys[SDL_SCANCODE_7]) {
               devMenu.selected = DevMechanic::WireWalk;
             }
+          } else {
+            jumpRequested = SDL_SCANCODE_SPACE < keyCount && keys[SDL_SCANCODE_SPACE];
           }
           crouchHeld = crouchHeld || (SDL_SCANCODE_LCTRL < keyCount && keys[SDL_SCANCODE_LCTRL]) ||
                        (SDL_SCANCODE_C < keyCount && keys[SDL_SCANCODE_C]);
@@ -1731,7 +1789,8 @@ int main(int argc, const char* const* argv) {
         const iggy3d::Vec3 rightVec{std::cos(yaw), 0.0F, std::sin(yaw)};
         movement = movement + forward * (-leftY);
         movement = movement + rightVec * leftX;
-        actionRequested = pressedEdge(crossDown, gamepad.crossDown);
+        const bool crossPressed = pressedEdge(crossDown, gamepad.crossDown);
+        jumpRequested = jumpRequested || crossPressed;
         attackRequested = pressedEdge(r2Down, gamepad.r2Down);
         if (attackRequested) {
           playableFields.gamepadActionButton = "r2";
@@ -1761,6 +1820,7 @@ int main(int argc, const char* const* argv) {
         actionRequested = actionRequested || codexControl.interact;
         attackRequested = attackRequested || codexControl.attack;
         resetRequested = resetRequested || codexControl.reset;
+        jumpRequested = jumpRequested || codexControl.jump;
         quitRequested = quitRequested || codexControl.quit;
         devExecuteRequested = devExecuteRequested || codexControl.executeMechanic;
       }
@@ -1777,6 +1837,10 @@ int main(int argc, const char* const* argv) {
       }
       if (devMenu.enabled && pressedEdge(devExecuteRequested, devMenuExecuteDown)) {
         devMenu.executeRequested = true;
+        devExecuteThisFrame = true;
+      }
+      if (devMenu.enabled && devMenu.selected == DevMechanic::Jump && devExecuteThisFrame) {
+        jumpRequested = true;
       }
       if (devMenu.enabled && devMenu.selected == DevMechanic::Crouch &&
           devMenu.executeRequested) {
@@ -1790,7 +1854,9 @@ int main(int argc, const char* const* argv) {
         playableFields.devMenuExecutionStatus =
             devMenu.selected == DevMechanic::Crouch
                 ? "applied"
-                : (devMenu.selected == DevMechanic::Walk ? "selected" : "stubbed");
+                : (devMenu.selected == DevMechanic::Walk
+                       ? "selected"
+                       : (devMenu.selected == DevMechanic::Jump ? "pending" : "stubbed"));
       } else {
         playableFields.devMenuExecutionStatus = "not_requested";
       }
@@ -1802,7 +1868,13 @@ int main(int argc, const char* const* argv) {
       }
       recordStance(playableFields, crouchHeld);
       const iggy3d::EntityState* player = playerEntity(session);
-      if (player != nullptr && iggy3d::lengthSquared(movement) > 0.01F) {
+      if (player != nullptr &&
+          (!iggy3d::isValid(playerMotor.actor) || playerMotor.actor != player->id)) {
+        playerMotor = iggy3d::PlayerMotorState{};
+        playerMotor.actor = player->id;
+      }
+      if (player != nullptr && playerMotor.phase == iggy3d::PlayerMotorPhase::Grounded &&
+          iggy3d::lengthSquared(movement) > 0.01F) {
         const float magnitudeSquared = iggy3d::lengthSquared(movement);
         if (magnitudeSquared > 1.0F) {
           movement = movement / std::sqrt(magnitudeSquared);
@@ -1828,6 +1900,35 @@ int main(int argc, const char* const* argv) {
       if (resetRequested) {
         const iggy3d::SessionResetResult reset = session.resetToBaseline();
         playableFields.resetExecuted = reset.reset;
+        if (reset.reset) {
+          playerMotor = iggy3d::PlayerMotorState{};
+          if (const iggy3d::EntityState* resetPlayer = playerEntity(session)) {
+            playerMotor.actor = resetPlayer->id;
+          }
+        }
+      }
+      if (iggy3d::isValid(playerMotor.actor)) {
+        iggy3d::SessionState& mutableState = session.mutableStateForOwnedSystems();
+        iggy3d::PlayerMotorContext motorContext{&mutableState.world, &collisionSurfaces};
+        iggy3d::PlayerMotorInput motorInput;
+        motorInput.jumpPressed = jumpRequested;
+        motorInput.crouched = crouchHeld;
+        motorInput.seconds = 1.0F / 60.0F;
+        const iggy3d::PlayerMotorResult motorResult =
+            iggy3d::updatePlayerMotor(motorContext, playerMotor, motorInput);
+        recordPlayerMotorResult(playableFields, motorResult);
+        if (devMenu.enabled && devMenu.selected == DevMechanic::Jump &&
+            devMenu.executeRequested) {
+          playableFields.devMenuExecutionStatus =
+              playableFields.jumpAccepted ? "applied" : "blocked";
+        }
+      } else if (jumpRequested) {
+        playableFields.jumpInputObserved = true;
+        playableFields.playerMotorReason = "invalid_actor";
+        if (devMenu.enabled && devMenu.selected == DevMechanic::Jump &&
+            devMenu.executeRequested) {
+          playableFields.devMenuExecutionStatus = "blocked";
+        }
       }
       if (actionRequested || attackRequested) {
         const iggy3d::EntityId key = entityIdByName(session, "gold_key");

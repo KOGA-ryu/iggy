@@ -9,9 +9,11 @@ Launch:
 Controls:
 
 - WASD moves, mouse drag or right stick looks, Escape/Start quits;
+- Space jumps on keyboard when the dev menu is closed;
 - hold C or Left Ctrl to crouch on keyboard;
-- hold left stick click to crouch on SDL gamepad.
-- F1 toggles the dev menu state; while open, 1-7 selects walk, crouch, jump stub,
+- South/Cross jumps on SDL gamepad when the dev menu is closed;
+- hold left stick click to crouch on SDL gamepad;
+- F1 toggles the dev menu state; while open, 1-7 selects walk, crouch, jump,
   dash stub, vault stub, clamber stub, or wire-walk stub, and Space/Enter executes.
 - On SDL gamepad, Start + North toggles the dev menu state, D-pad left/right cycles,
   and South executes while the menu is open.
@@ -21,7 +23,7 @@ Codex control:
 ```sh
 cat >/tmp/iggy3d.control <<'EOF'
 dev_menu.open=true
-dev_menu.select=crouch
+dev_menu.select=jump
 mechanic.execute=true
 move.forward=1
 look.yaw_delta=0.100
@@ -35,7 +37,7 @@ EOF
 ```
 
 Supported control keys are `dev_menu.open`, `dev_menu.select`, `mechanic`,
-`mechanic.execute`, `stance`, `move.forward`, `move.right`, `look.yaw_delta`,
+`mechanic.execute`, `jump`, `stance`, `move.forward`, `move.right`, `look.yaw_delta`,
 `look.pitch_delta`, `interact`, `attack`, `reset`, and `quit`.
 
 Purpose:
@@ -55,5 +57,5 @@ Purpose:
 Current runtime truth:
 
 - this fixture is a playable/renderable test arena;
-- first-person kinematic walking and hold-to-crouch stance work against the shifted room surface set;
-- jump, clamber, vault, dash, spell projectile, and wire-walk mechanics are authored as test zones, not implemented ability modes yet.
+- first-person kinematic walking, hold-to-crouch stance, and runtime jump work against the shifted room surface set;
+- clamber, vault, dash, spell projectile, and wire-walk mechanics are authored as test zones, not implemented ability modes yet.
