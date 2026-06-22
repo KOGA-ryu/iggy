@@ -93,6 +93,8 @@ struct PlayableReceiptFields {
   bool resetExecuted = false;
   bool saveLoadReplayStable = true;
   bool retryAvailable = true;
+  bool mouseLookAvailable = false;
+  bool mouseLookUsed = false;
   bool gamepadAvailable = false;
   bool gamepadLeftStickUsed = false;
   bool gamepadRightStickUsed = false;
@@ -611,6 +613,8 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
   iggy3d::appendReceiptField(receipt, "reset_executed", fields.resetExecuted);
   iggy3d::appendReceiptField(receipt, "save_load_replay_stable", fields.saveLoadReplayStable);
   iggy3d::appendReceiptField(receipt, "tactical_view_available", false);
+  iggy3d::appendReceiptField(receipt, "mouse_look_available", fields.mouseLookAvailable);
+  iggy3d::appendReceiptField(receipt, "mouse_look_used", fields.mouseLookUsed);
   iggy3d::appendReceiptField(receipt, "gamepad_available", fields.gamepadAvailable);
   iggy3d::appendReceiptField(receipt, "gamepad_name", fields.gamepadName);
   iggy3d::appendReceiptField(receipt, "gamepad_mapping", fields.gamepadMapping);
@@ -622,12 +626,20 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
 #if defined(IGGY3D_HAS_SDL3)
 struct GamepadSession {
   SDL_Gamepad* gamepad = nullptr;
+  SDL_Joystick* joystick = nullptr;
   bool subsystemInitialized = false;
   bool crossDown = false;
   bool eastDown = false;
   bool startDown = false;
   bool r2Down = false;
 };
+
+bool nameLooksLikeDualSense(std::string_view name) {
+  return name.find("DualSense") != std::string_view::npos ||
+         name.find("PS5") != std::string_view::npos ||
+         name.find("Sony") != std::string_view::npos ||
+         name.find("Wireless Controller") != std::string_view::npos;
+}
 
 GamepadSession openFirstGamepad(PlayableReceiptFields& fields) {
   GamepadSession session;
@@ -645,11 +657,25 @@ GamepadSession openFirstGamepad(PlayableReceiptFields& fields) {
     fields.gamepadAvailable = true;
     const char* name = SDL_GetGamepadName(session.gamepad);
     fields.gamepadName = name == nullptr ? "sdl_gamepad" : name;
-    fields.gamepadMapping = fields.gamepadName.find("DualSense") != std::string::npos ||
-                                    fields.gamepadName.find("PS5") != std::string::npos
-                                ? "dualsense_default"
-                                : "sdl_gamepad";
+    fields.gamepadMapping =
+        nameLooksLikeDualSense(fields.gamepadName) ? "dualsense_default" : "sdl_gamepad";
     fields.gamepadActionButton = "cross";
+  } else {
+    int joystickCount = 0;
+    SDL_JoystickID* joystickIds = SDL_GetJoysticks(&joystickCount);
+    if (joystickIds != nullptr && joystickCount > 0) {
+      session.joystick = SDL_OpenJoystick(joystickIds[0]);
+    }
+    SDL_free(joystickIds);
+    if (session.joystick != nullptr) {
+      fields.gamepadAvailable = true;
+      const char* name = SDL_GetJoystickName(session.joystick);
+      fields.gamepadName = name == nullptr ? "sdl_joystick" : name;
+      fields.gamepadMapping = nameLooksLikeDualSense(fields.gamepadName)
+                                  ? "dualsense_joystick_fallback"
+                                  : "sdl_joystick_fallback";
+      fields.gamepadActionButton = "button0";
+    }
   }
   return session;
 }
@@ -658,6 +684,10 @@ void closeGamepad(GamepadSession& session) {
   if (session.gamepad != nullptr) {
     SDL_CloseGamepad(session.gamepad);
     session.gamepad = nullptr;
+  }
+  if (session.joystick != nullptr) {
+    SDL_CloseJoystick(session.joystick);
+    session.joystick = nullptr;
   }
   if (session.subsystemInitialized) {
     SDL_QuitSubSystem(SDL_INIT_GAMEPAD);
@@ -678,6 +708,28 @@ bool pressedEdge(bool current, bool& previous) {
   const bool edge = current && !previous;
   previous = current;
   return edge;
+}
+
+void applyMouseLook(float& yaw, float& pitch, PlayableReceiptFields& fields) {
+  float mouseX = 0.0F;
+  float mouseY = 0.0F;
+  const SDL_MouseButtonFlags buttons = SDL_GetRelativeMouseState(&mouseX, &mouseY);
+  fields.mouseLookAvailable = true;
+  const bool dragging = (buttons & (SDL_BUTTON_LMASK | SDL_BUTTON_RMASK | SDL_BUTTON_MMASK)) != 0U;
+  if (!dragging || !std::isfinite(mouseX) || !std::isfinite(mouseY)) {
+    return;
+  }
+
+  const float dx = std::clamp(mouseX, -80.0F, 80.0F);
+  const float dy = std::clamp(mouseY, -80.0F, 80.0F);
+  if (dx == 0.0F && dy == 0.0F) {
+    return;
+  }
+
+  constexpr float kMouseLookScale = 0.004F;
+  yaw += dx * kMouseLookScale;
+  pitch -= dy * kMouseLookScale;
+  fields.mouseLookUsed = true;
 }
 #endif
 
@@ -1029,6 +1081,9 @@ int main(int argc, const char* const* argv) {
       if (gamepad.gamepad != nullptr) {
         SDL_UpdateGamepads();
       }
+      if (gamepad.joystick != nullptr) {
+        SDL_UpdateJoysticks();
+      }
       iggy3d::Vec3 movement{};
       bool actionRequested = false;
       bool attackRequested = false;
@@ -1068,17 +1123,48 @@ int main(int argc, const char* const* argv) {
           quitRequested = SDL_SCANCODE_ESCAPE < keyCount && keys[SDL_SCANCODE_ESCAPE];
         }
       } else if (playableFields.inputBackend == VisualInputBackend::Gamepad &&
-                 gamepad.gamepad != nullptr) {
-        const float leftX = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_LEFTX));
-        const float leftY = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_LEFTY));
-        const float rightX = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_RIGHTX));
-        const float rightY = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_RIGHTY));
-        const float r2 = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER));
+                 (gamepad.gamepad != nullptr || gamepad.joystick != nullptr)) {
+        float leftX = 0.0F;
+        float leftY = 0.0F;
+        float rightX = 0.0F;
+        float rightY = 0.0F;
+        float r2 = 0.0F;
+        bool slowLook = false;
+        bool crossDown = false;
+        bool eastDown = false;
+        bool startDown = false;
+        bool r2Down = false;
+        if (gamepad.gamepad != nullptr) {
+          leftX = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_LEFTX));
+          leftY = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_LEFTY));
+          rightX = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_RIGHTX));
+          rightY = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_RIGHTY));
+          r2 = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER));
+          slowLook = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER);
+          crossDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_SOUTH);
+          eastDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_EAST);
+          startDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_START);
+          r2Down = r2 > 0.2F;
+        } else {
+          const int axisCount = SDL_GetNumJoystickAxes(gamepad.joystick);
+          const int buttonCount = SDL_GetNumJoystickButtons(gamepad.joystick);
+          leftX = axisCount > 0 ? axisValue(SDL_GetJoystickAxis(gamepad.joystick, 0)) : 0.0F;
+          leftY = axisCount > 1 ? axisValue(SDL_GetJoystickAxis(gamepad.joystick, 1)) : 0.0F;
+          rightX = axisCount > 2 ? axisValue(SDL_GetJoystickAxis(gamepad.joystick, 2)) : 0.0F;
+          rightY = axisCount > 3 ? axisValue(SDL_GetJoystickAxis(gamepad.joystick, 3)) : 0.0F;
+          r2 = axisCount > 5 ? axisValue(SDL_GetJoystickAxis(gamepad.joystick, 5)) : 0.0F;
+          slowLook = buttonCount > 4 && SDL_GetJoystickButton(gamepad.joystick, 4);
+          crossDown = buttonCount > 0 && SDL_GetJoystickButton(gamepad.joystick, 0);
+          eastDown = buttonCount > 1 && SDL_GetJoystickButton(gamepad.joystick, 1);
+          startDown = buttonCount > 9 ? SDL_GetJoystickButton(gamepad.joystick, 9)
+                                      : (buttonCount > 7 && SDL_GetJoystickButton(gamepad.joystick, 7));
+          r2Down = r2 > 0.2F ||
+                   (buttonCount > 7 && SDL_GetJoystickButton(gamepad.joystick, 7));
+        }
         playableFields.gamepadLeftStickUsed =
             playableFields.gamepadLeftStickUsed || leftX != 0.0F || leftY != 0.0F;
         playableFields.gamepadRightStickUsed =
             playableFields.gamepadRightStickUsed || rightX != 0.0F || rightY != 0.0F;
-        const bool slowLook = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER);
         const float lookScale = slowLook ? 0.020F : 0.045F;
         yaw += rightX * lookScale;
         pitch -= rightY * lookScale;
@@ -1086,10 +1172,6 @@ int main(int argc, const char* const* argv) {
         const iggy3d::Vec3 rightVec{std::cos(yaw), 0.0F, std::sin(yaw)};
         movement = movement + forward * (-leftY);
         movement = movement + rightVec * leftX;
-        const bool crossDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_SOUTH);
-        const bool eastDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_EAST);
-        const bool startDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_START);
-        const bool r2Down = r2 > 0.2F;
         actionRequested = pressedEdge(crossDown, gamepad.crossDown);
         attackRequested = pressedEdge(r2Down, gamepad.r2Down);
         if (attackRequested) {
@@ -1098,6 +1180,7 @@ int main(int argc, const char* const* argv) {
         resetRequested = pressedEdge(eastDown, gamepad.eastDown);
         quitRequested = pressedEdge(startDown, gamepad.startDown);
       }
+      applyMouseLook(yaw, pitch, playableFields);
       if (pitch > 0.8F) {
         pitch = 0.8F;
       }

@@ -127,6 +127,7 @@ int main() {
                       hasField(interactiveFields, "result", "pass") &&
                       hasField(interactiveFields, "backend", "null") &&
                       hasField(interactiveFields, "interactive_mode", "true") &&
+                      hasField(interactiveFields, "mouse_look_available", "true") &&
                       hasField(interactiveFields, "window_mode", "window") &&
                       integerFieldGreaterThan(interactiveFields, "frames", 1ULL) &&
                       integerFieldGreaterThan(interactiveFields, "frames_presented", 1ULL);
