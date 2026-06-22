@@ -12,9 +12,11 @@ Controls:
 - F3 toggles the world debug telemetry in the window title until text rendering exists;
 - Space jumps on keyboard when the dev menu is closed; hold WASD during jump for limited air control;
 - Shift dashes on keyboard when the dev menu is closed; hold WASD to choose dash direction;
+- F fires a spell projectile on keyboard when the dev menu is closed;
 - hold C or Left Ctrl to crouch on keyboard;
 - South/Cross jumps on SDL gamepad when the dev menu is closed; hold left stick during jump for limited air control;
 - Right Shoulder/R1 dashes on SDL gamepad when the dev menu is closed; hold left stick to choose dash direction;
+- Right Trigger/R2 fires a spell projectile on SDL gamepad when the dev menu is closed;
 - hold left stick click to crouch on SDL gamepad;
 - F1 toggles the dev menu state; while open, 1-8 selects walk, crouch, jump,
   dash, spell projectile, vault stub, clamber stub, or wire-walk stub, and Space/Enter executes.

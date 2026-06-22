@@ -1925,6 +1925,7 @@ int main(int argc, const char* const* argv) {
   bool devMenuNextDown = false;
   bool devMenuPreviousDown = false;
   bool devMenuExecuteDown = false;
+  bool spellFireDown = false;
   bool debugOverlayToggleDown = false;
   const auto interactiveStart = std::chrono::steady_clock::now();
   std::uint32_t frameIndex = 0U;
@@ -2001,160 +2002,179 @@ int main(int argc, const char* const* argv) {
       bool debugOverlayToggleRequested = false;
       if (parsed.options.scriptedKinematicInput) {
         movement = {1.0F, 0.0F, 0.0F};
-      } else if (playableFields.inputBackend == VisualInputBackend::Keyboard) {
-        int keyCount = 0;
-        const bool* keys = SDL_GetKeyboardState(&keyCount);
-        if (keys != nullptr) {
-          const bool w = SDL_SCANCODE_W < keyCount && keys[SDL_SCANCODE_W];
-          const bool s = SDL_SCANCODE_S < keyCount && keys[SDL_SCANCODE_S];
-          const bool a = SDL_SCANCODE_A < keyCount && keys[SDL_SCANCODE_A];
-          const bool d = SDL_SCANCODE_D < keyCount && keys[SDL_SCANCODE_D];
-          const bool left = SDL_SCANCODE_LEFT < keyCount && keys[SDL_SCANCODE_LEFT];
-          const bool right = SDL_SCANCODE_RIGHT < keyCount && keys[SDL_SCANCODE_RIGHT];
-          const bool up = SDL_SCANCODE_UP < keyCount && keys[SDL_SCANCODE_UP];
-          const bool down = SDL_SCANCODE_DOWN < keyCount && keys[SDL_SCANCODE_DOWN];
-          devToggleRequested = SDL_SCANCODE_F1 < keyCount && keys[SDL_SCANCODE_F1];
-          debugOverlayToggleRequested =
-              SDL_SCANCODE_F3 < keyCount && keys[SDL_SCANCODE_F3];
-          if (devMenu.enabled && devMenu.open) {
-            devExecuteRequested =
-                (SDL_SCANCODE_SPACE < keyCount && keys[SDL_SCANCODE_SPACE]) ||
-                (SDL_SCANCODE_RETURN < keyCount && keys[SDL_SCANCODE_RETURN]);
-            if (SDL_SCANCODE_1 < keyCount && keys[SDL_SCANCODE_1]) {
-              devMenu.selected = DevMechanic::Walk;
+      } else {
+        const bool keyboardInputEnabled =
+            playableFields.inputBackend == VisualInputBackend::Keyboard ||
+            playableFields.inputBackend == VisualInputBackend::Gamepad ||
+            parsed.options.inputBackend == VisualInputBackend::Auto;
+        if (keyboardInputEnabled) {
+          int keyCount = 0;
+          const bool* keys = SDL_GetKeyboardState(&keyCount);
+          if (keys != nullptr) {
+            const bool w = SDL_SCANCODE_W < keyCount && keys[SDL_SCANCODE_W];
+            const bool s = SDL_SCANCODE_S < keyCount && keys[SDL_SCANCODE_S];
+            const bool a = SDL_SCANCODE_A < keyCount && keys[SDL_SCANCODE_A];
+            const bool d = SDL_SCANCODE_D < keyCount && keys[SDL_SCANCODE_D];
+            const bool left = SDL_SCANCODE_LEFT < keyCount && keys[SDL_SCANCODE_LEFT];
+            const bool right = SDL_SCANCODE_RIGHT < keyCount && keys[SDL_SCANCODE_RIGHT];
+            const bool up = SDL_SCANCODE_UP < keyCount && keys[SDL_SCANCODE_UP];
+            const bool down = SDL_SCANCODE_DOWN < keyCount && keys[SDL_SCANCODE_DOWN];
+            const bool fireSpell = SDL_SCANCODE_F < keyCount && keys[SDL_SCANCODE_F];
+            devToggleRequested = SDL_SCANCODE_F1 < keyCount && keys[SDL_SCANCODE_F1];
+            debugOverlayToggleRequested =
+                SDL_SCANCODE_F3 < keyCount && keys[SDL_SCANCODE_F3];
+            if (devMenu.enabled && devMenu.open) {
+              devExecuteRequested =
+                  (SDL_SCANCODE_SPACE < keyCount && keys[SDL_SCANCODE_SPACE]) ||
+                  (SDL_SCANCODE_RETURN < keyCount && keys[SDL_SCANCODE_RETURN]);
+              if (SDL_SCANCODE_1 < keyCount && keys[SDL_SCANCODE_1]) {
+                devMenu.selected = DevMechanic::Walk;
+              }
+              if (SDL_SCANCODE_2 < keyCount && keys[SDL_SCANCODE_2]) {
+                devMenu.selected = DevMechanic::Crouch;
+              }
+              if (SDL_SCANCODE_3 < keyCount && keys[SDL_SCANCODE_3]) {
+                devMenu.selected = DevMechanic::Jump;
+              }
+              if (SDL_SCANCODE_4 < keyCount && keys[SDL_SCANCODE_4]) {
+                devMenu.selected = DevMechanic::Dash;
+              }
+              if (SDL_SCANCODE_5 < keyCount && keys[SDL_SCANCODE_5]) {
+                devMenu.selected = DevMechanic::Spell;
+              }
+              if (SDL_SCANCODE_6 < keyCount && keys[SDL_SCANCODE_6]) {
+                devMenu.selected = DevMechanic::Vault;
+              }
+              if (SDL_SCANCODE_7 < keyCount && keys[SDL_SCANCODE_7]) {
+                devMenu.selected = DevMechanic::Clamber;
+              }
+              if (SDL_SCANCODE_8 < keyCount && keys[SDL_SCANCODE_8]) {
+                devMenu.selected = DevMechanic::WireWalk;
+              }
+            } else {
+              jumpRequested = SDL_SCANCODE_SPACE < keyCount && keys[SDL_SCANCODE_SPACE];
+              dashRequested =
+                  (SDL_SCANCODE_LSHIFT < keyCount && keys[SDL_SCANCODE_LSHIFT]) ||
+                  (SDL_SCANCODE_RSHIFT < keyCount && keys[SDL_SCANCODE_RSHIFT]);
             }
-            if (SDL_SCANCODE_2 < keyCount && keys[SDL_SCANCODE_2]) {
-              devMenu.selected = DevMechanic::Crouch;
+            if (devMenu.enabled && !devMenu.open && pressedEdge(fireSpell, spellFireDown)) {
+              spellFireRequested = true;
             }
-            if (SDL_SCANCODE_3 < keyCount && keys[SDL_SCANCODE_3]) {
-              devMenu.selected = DevMechanic::Jump;
+            crouchHeld =
+                crouchHeld || (SDL_SCANCODE_LCTRL < keyCount && keys[SDL_SCANCODE_LCTRL]) ||
+                (SDL_SCANCODE_C < keyCount && keys[SDL_SCANCODE_C]);
+            if (left) {
+              yaw -= 0.035F;
             }
-            if (SDL_SCANCODE_4 < keyCount && keys[SDL_SCANCODE_4]) {
-              devMenu.selected = DevMechanic::Dash;
+            if (right) {
+              yaw += 0.035F;
             }
-            if (SDL_SCANCODE_5 < keyCount && keys[SDL_SCANCODE_5]) {
-              devMenu.selected = DevMechanic::Spell;
+            if (up) {
+              pitch += 0.020F;
             }
-            if (SDL_SCANCODE_6 < keyCount && keys[SDL_SCANCODE_6]) {
-              devMenu.selected = DevMechanic::Vault;
+            if (down) {
+              pitch -= 0.020F;
             }
-            if (SDL_SCANCODE_7 < keyCount && keys[SDL_SCANCODE_7]) {
-              devMenu.selected = DevMechanic::Clamber;
-            }
-            if (SDL_SCANCODE_8 < keyCount && keys[SDL_SCANCODE_8]) {
-              devMenu.selected = DevMechanic::WireWalk;
-            }
+            const iggy3d::Vec3 forward{std::sin(yaw), 0.0F, -std::cos(yaw)};
+            const iggy3d::Vec3 rightVec{std::cos(yaw), 0.0F, std::sin(yaw)};
+            movement = movement + forward * (w ? 1.0F : 0.0F);
+            movement = movement - forward * (s ? 1.0F : 0.0F);
+            movement = movement - rightVec * (a ? 1.0F : 0.0F);
+            movement = movement + rightVec * (d ? 1.0F : 0.0F);
+            actionRequested = SDL_SCANCODE_E < keyCount && keys[SDL_SCANCODE_E];
+            resetRequested = SDL_SCANCODE_R < keyCount && keys[SDL_SCANCODE_R];
+            quitRequested = SDL_SCANCODE_ESCAPE < keyCount && keys[SDL_SCANCODE_ESCAPE];
+          }
+        }
+        if (playableFields.inputBackend == VisualInputBackend::Gamepad &&
+            (gamepad.gamepad != nullptr || gamepad.joystick != nullptr)) {
+          float leftX = 0.0F;
+          float leftY = 0.0F;
+          float rightX = 0.0F;
+          float rightY = 0.0F;
+          float r2 = 0.0F;
+          bool slowLook = false;
+          bool crossDown = false;
+          bool eastDown = false;
+          bool startDown = false;
+          bool r2Down = false;
+          bool r1Down = false;
+          bool crouchDown = false;
+          bool northDown = false;
+          bool dpadLeft = false;
+          bool dpadRight = false;
+          if (gamepad.gamepad != nullptr) {
+            leftX = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_LEFTX));
+            leftY = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_LEFTY));
+            rightX = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_RIGHTX));
+            rightY = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_RIGHTY));
+            r2 = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER));
+            slowLook = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER);
+            crossDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_SOUTH);
+            eastDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_EAST);
+            startDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_START);
+            r1Down = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER);
+            crouchDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_LEFT_STICK);
+            northDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_NORTH);
+            dpadLeft = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_DPAD_LEFT);
+            dpadRight = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_DPAD_RIGHT);
+            r2Down = r2 > 0.2F;
           } else {
-            jumpRequested = SDL_SCANCODE_SPACE < keyCount && keys[SDL_SCANCODE_SPACE];
-            dashRequested = (SDL_SCANCODE_LSHIFT < keyCount && keys[SDL_SCANCODE_LSHIFT]) ||
-                            (SDL_SCANCODE_RSHIFT < keyCount && keys[SDL_SCANCODE_RSHIFT]);
+            const int axisCount = SDL_GetNumJoystickAxes(gamepad.joystick);
+            const int buttonCount = SDL_GetNumJoystickButtons(gamepad.joystick);
+            leftX =
+                axisCount > 0 ? axisValue(SDL_GetJoystickAxis(gamepad.joystick, 0)) : 0.0F;
+            leftY =
+                axisCount > 1 ? axisValue(SDL_GetJoystickAxis(gamepad.joystick, 1)) : 0.0F;
+            rightX =
+                axisCount > 2 ? axisValue(SDL_GetJoystickAxis(gamepad.joystick, 2)) : 0.0F;
+            rightY =
+                axisCount > 3 ? axisValue(SDL_GetJoystickAxis(gamepad.joystick, 3)) : 0.0F;
+            r2 = axisCount > 5 ? axisValue(SDL_GetJoystickAxis(gamepad.joystick, 5)) : 0.0F;
+            slowLook = buttonCount > 4 && SDL_GetJoystickButton(gamepad.joystick, 4);
+            crossDown = buttonCount > 0 && SDL_GetJoystickButton(gamepad.joystick, 0);
+            eastDown = buttonCount > 1 && SDL_GetJoystickButton(gamepad.joystick, 1);
+            startDown =
+                buttonCount > 9
+                    ? SDL_GetJoystickButton(gamepad.joystick, 9)
+                    : (buttonCount > 7 && SDL_GetJoystickButton(gamepad.joystick, 7));
+            r1Down = buttonCount > 5 && SDL_GetJoystickButton(gamepad.joystick, 5);
+            crouchDown = buttonCount > 10 && SDL_GetJoystickButton(gamepad.joystick, 10);
+            r2Down =
+                r2 > 0.2F || (buttonCount > 7 && SDL_GetJoystickButton(gamepad.joystick, 7));
           }
-          crouchHeld = crouchHeld || (SDL_SCANCODE_LCTRL < keyCount && keys[SDL_SCANCODE_LCTRL]) ||
-                       (SDL_SCANCODE_C < keyCount && keys[SDL_SCANCODE_C]);
-          if (left) {
-            yaw -= 0.035F;
+          if (devMenu.enabled && startDown && northDown) {
+            devToggleRequested = true;
+            startDown = false;
           }
-          if (right) {
-            yaw += 0.035F;
+          if (devMenu.enabled && devMenu.open) {
+            devPreviousRequested = dpadLeft;
+            devNextRequested = dpadRight;
+            devExecuteRequested = crossDown;
+            crossDown = false;
           }
-          if (up) {
-            pitch += 0.020F;
-          }
-          if (down) {
-            pitch -= 0.020F;
-          }
+          crouchHeld = crouchHeld || crouchDown;
+          playableFields.gamepadLeftStickUsed =
+              playableFields.gamepadLeftStickUsed || leftX != 0.0F || leftY != 0.0F;
+          playableFields.gamepadRightStickUsed =
+              playableFields.gamepadRightStickUsed || rightX != 0.0F || rightY != 0.0F;
+          const float lookScale = slowLook ? 0.020F : 0.045F;
+          yaw += rightX * lookScale;
+          pitch -= rightY * lookScale;
           const iggy3d::Vec3 forward{std::sin(yaw), 0.0F, -std::cos(yaw)};
           const iggy3d::Vec3 rightVec{std::cos(yaw), 0.0F, std::sin(yaw)};
-          movement = movement + forward * (w ? 1.0F : 0.0F);
-          movement = movement - forward * (s ? 1.0F : 0.0F);
-          movement = movement - rightVec * (a ? 1.0F : 0.0F);
-          movement = movement + rightVec * (d ? 1.0F : 0.0F);
-          actionRequested = SDL_SCANCODE_E < keyCount && keys[SDL_SCANCODE_E];
-          resetRequested = SDL_SCANCODE_R < keyCount && keys[SDL_SCANCODE_R];
-          quitRequested = SDL_SCANCODE_ESCAPE < keyCount && keys[SDL_SCANCODE_ESCAPE];
+          movement = movement + forward * (-leftY);
+          movement = movement + rightVec * leftX;
+          const bool crossPressed = pressedEdge(crossDown, gamepad.crossDown);
+          jumpRequested = jumpRequested || crossPressed;
+          dashRequested = dashRequested || pressedEdge(r1Down, gamepad.r1Down);
+          attackRequested = pressedEdge(r2Down, gamepad.r2Down);
+          if (attackRequested) {
+            playableFields.gamepadActionButton = "r2";
+          }
+          resetRequested = pressedEdge(eastDown, gamepad.eastDown);
+          quitRequested = pressedEdge(startDown, gamepad.startDown);
         }
-      } else if (playableFields.inputBackend == VisualInputBackend::Gamepad &&
-                 (gamepad.gamepad != nullptr || gamepad.joystick != nullptr)) {
-        float leftX = 0.0F;
-        float leftY = 0.0F;
-        float rightX = 0.0F;
-        float rightY = 0.0F;
-        float r2 = 0.0F;
-        bool slowLook = false;
-        bool crossDown = false;
-        bool eastDown = false;
-        bool startDown = false;
-        bool r2Down = false;
-        bool r1Down = false;
-        bool crouchDown = false;
-        bool northDown = false;
-        bool dpadLeft = false;
-        bool dpadRight = false;
-        if (gamepad.gamepad != nullptr) {
-          leftX = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_LEFTX));
-          leftY = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_LEFTY));
-          rightX = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_RIGHTX));
-          rightY = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_RIGHTY));
-          r2 = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER));
-          slowLook = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER);
-          crossDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_SOUTH);
-          eastDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_EAST);
-          startDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_START);
-          r1Down = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER);
-          crouchDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_LEFT_STICK);
-          northDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_NORTH);
-          dpadLeft = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_DPAD_LEFT);
-          dpadRight = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_DPAD_RIGHT);
-          r2Down = r2 > 0.2F;
-        } else {
-          const int axisCount = SDL_GetNumJoystickAxes(gamepad.joystick);
-          const int buttonCount = SDL_GetNumJoystickButtons(gamepad.joystick);
-          leftX = axisCount > 0 ? axisValue(SDL_GetJoystickAxis(gamepad.joystick, 0)) : 0.0F;
-          leftY = axisCount > 1 ? axisValue(SDL_GetJoystickAxis(gamepad.joystick, 1)) : 0.0F;
-          rightX = axisCount > 2 ? axisValue(SDL_GetJoystickAxis(gamepad.joystick, 2)) : 0.0F;
-          rightY = axisCount > 3 ? axisValue(SDL_GetJoystickAxis(gamepad.joystick, 3)) : 0.0F;
-          r2 = axisCount > 5 ? axisValue(SDL_GetJoystickAxis(gamepad.joystick, 5)) : 0.0F;
-          slowLook = buttonCount > 4 && SDL_GetJoystickButton(gamepad.joystick, 4);
-          crossDown = buttonCount > 0 && SDL_GetJoystickButton(gamepad.joystick, 0);
-          eastDown = buttonCount > 1 && SDL_GetJoystickButton(gamepad.joystick, 1);
-          startDown = buttonCount > 9 ? SDL_GetJoystickButton(gamepad.joystick, 9)
-                                      : (buttonCount > 7 && SDL_GetJoystickButton(gamepad.joystick, 7));
-          r1Down = buttonCount > 5 && SDL_GetJoystickButton(gamepad.joystick, 5);
-          crouchDown = buttonCount > 10 && SDL_GetJoystickButton(gamepad.joystick, 10);
-          r2Down = r2 > 0.2F ||
-                   (buttonCount > 7 && SDL_GetJoystickButton(gamepad.joystick, 7));
-        }
-        if (devMenu.enabled && startDown && northDown) {
-          devToggleRequested = true;
-          startDown = false;
-        }
-        if (devMenu.enabled && devMenu.open) {
-          devPreviousRequested = dpadLeft;
-          devNextRequested = dpadRight;
-          devExecuteRequested = crossDown;
-          crossDown = false;
-        }
-        crouchHeld = crouchHeld || crouchDown;
-        playableFields.gamepadLeftStickUsed =
-            playableFields.gamepadLeftStickUsed || leftX != 0.0F || leftY != 0.0F;
-        playableFields.gamepadRightStickUsed =
-            playableFields.gamepadRightStickUsed || rightX != 0.0F || rightY != 0.0F;
-        const float lookScale = slowLook ? 0.020F : 0.045F;
-        yaw += rightX * lookScale;
-        pitch -= rightY * lookScale;
-        const iggy3d::Vec3 forward{std::sin(yaw), 0.0F, -std::cos(yaw)};
-        const iggy3d::Vec3 rightVec{std::cos(yaw), 0.0F, std::sin(yaw)};
-        movement = movement + forward * (-leftY);
-        movement = movement + rightVec * leftX;
-        const bool crossPressed = pressedEdge(crossDown, gamepad.crossDown);
-        jumpRequested = jumpRequested || crossPressed;
-        dashRequested = dashRequested || pressedEdge(r1Down, gamepad.r1Down);
-        attackRequested = pressedEdge(r2Down, gamepad.r2Down);
-        if (attackRequested) {
-          playableFields.gamepadActionButton = "r2";
-        }
-        resetRequested = pressedEdge(eastDown, gamepad.eastDown);
-        quitRequested = pressedEdge(startDown, gamepad.startDown);
       }
       applyMouseLook(yaw, pitch, playableFields);
       if (codexControl.applied) {
@@ -2216,6 +2236,10 @@ int main(int argc, const char* const* argv) {
         spellFireRequested = true;
       }
       if (devMenu.enabled && devMenu.selected == DevMechanic::Spell && attackRequested) {
+        spellFireRequested = true;
+        attackRequested = false;
+      }
+      if (devMenu.enabled && !devMenu.open && attackRequested) {
         spellFireRequested = true;
         attackRequested = false;
       }
