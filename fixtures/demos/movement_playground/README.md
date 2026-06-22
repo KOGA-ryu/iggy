@@ -64,5 +64,5 @@ Purpose:
 Current runtime truth:
 
 - this fixture is a playable/renderable test arena;
-- first-person kinematic walking, hold-to-crouch stance, runtime jump, limited air control, runtime dash, debug telemetry, deterministic projectile motion, and dev-menu spell projectile visuals work against authored room surfaces;
+- first-person kinematic walking, hold-to-crouch stance, runtime jump, limited air control, runtime dash, debug telemetry, runtime-owned Arcane Bolt casting, deterministic projectile motion, and dev-menu spell projectile visuals work against authored room surfaces;
 - clamber, vault, and wire-walk mechanics are authored as test zones, not implemented ability modes yet.

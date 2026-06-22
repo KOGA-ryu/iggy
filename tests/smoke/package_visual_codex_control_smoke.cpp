@@ -228,6 +228,11 @@ int main() {
       hasField(spellFields, "spell_input_observed", "true") &&
       hasField(spellFields, "spell_projectile_spawned", "true") &&
       hasField(spellFields, "spell_projectile_visible", "true") &&
+      hasField(spellFields, "ability_id", "arcane_bolt") &&
+      hasField(spellFields, "ability_cast_requested", "true") &&
+      hasField(spellFields, "ability_cast_accepted", "true") &&
+      hasField(spellFields, "ability_cast_status", "accepted") &&
+      hasField(spellFields, "ability_runtime_owned_projectile", "true") &&
       spellProjectileStillVisible &&
       hasField(spellFields, "projectile_visual_projected", "true") &&
       numericFieldGreater(spellFields, "projectile_visual_count", 0.0F) &&

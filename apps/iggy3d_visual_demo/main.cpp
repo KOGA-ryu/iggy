@@ -12,12 +12,12 @@
 #include "projection/scene/SceneProjection.hpp"
 #include "render/FrameInput.hpp"
 #include "render/RendererApi.hpp"
+#include "runtime/ability/AbilitySystem.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/command/Command.hpp"
 #include "runtime/debug/RuntimeDebugSnapshot.hpp"
 #include "runtime/movement/MovementSystem.hpp"
 #include "runtime/player/PlayerMotor.hpp"
-#include "runtime/projectile/ProjectileSystem.hpp"
 #include "runtime/session/Session.hpp"
 
 #include <algorithm>
@@ -149,6 +149,10 @@ struct PlayableReceiptFields {
   bool spellProjectileActive = false;
   bool spellProjectileImpact = false;
   bool spellProjectileVisible = false;
+  bool abilityCastRequested = false;
+  bool abilityCastAccepted = false;
+  bool abilityRuntimeOwnedProjectile = false;
+  bool abilityDamageApplied = false;
   bool debugOverlayEnabled = false;
   bool debugOverlayOpen = false;
   bool debugOverlayToggleObserved = false;
@@ -165,6 +169,11 @@ struct PlayableReceiptFields {
   std::string verticalVelocityState = "zero";
   std::string horizontalVelocityState = "zero";
   std::string dashCooldownState = "ready";
+  std::string abilityId = "none";
+  std::string abilityCastStatus = "not_requested";
+  std::string abilityCastReason = "not_requested";
+  std::string abilityTickStatus = "no_active_projectile";
+  std::string abilityTickReason = "not_requested";
   std::string spellProjectileStatus = "not_started";
   std::string spellProjectileReason = "not_requested";
   std::string spellProjectileHitSurfaceId = "none";
@@ -1180,18 +1189,6 @@ iggy3d::Vec3 normalizedOr(iggy3d::Vec3 value, iggy3d::Vec3 fallback) {
   return value / std::sqrt(magnitudeSquared);
 }
 
-struct VisualProjectileState {
-  bool spawned = false;
-  bool impact = false;
-  iggy3d::ProjectileState state;
-  iggy3d::Vec3 previousPositionMeters;
-  iggy3d::Vec3 impactPointMeters;
-  iggy3d::Vec3 impactNormal;
-  std::string hitSurfaceId = "none";
-  std::string reasonCode = "not_started";
-  std::string status = "not_started";
-};
-
 iggy3d::Vec3 lookForwardVector(float yaw, float pitch) {
   const float cosPitch = std::cos(pitch);
   return normalizedOr({std::sin(yaw) * cosPitch, std::sin(pitch),
@@ -1199,95 +1196,90 @@ iggy3d::Vec3 lookForwardVector(float yaw, float pitch) {
                       {0.0F, 0.0F, -1.0F});
 }
 
-void recordVisualProjectile(PlayableReceiptFields& fields,
-                            const VisualProjectileState& projectile) {
+void recordAbilityCast(PlayableReceiptFields& fields,
+                       const iggy3d::AbilityCastResult& cast) {
+  fields.abilityCastRequested = true;
+  fields.abilityCastAccepted = cast.accepted;
+  fields.abilityId = std::string(iggy3d::abilityIdName(cast.ability));
+  fields.abilityCastStatus = std::string(iggy3d::abilityCastStatusName(cast.status));
+  fields.abilityCastReason = cast.reasonCode;
+}
+
+void recordAbilityProjectile(PlayableReceiptFields& fields,
+                             const iggy3d::AbilityProjectileState& projectile) {
+  fields.abilityRuntimeOwnedProjectile = projectile.spawned;
   fields.spellProjectileSpawned = projectile.spawned;
-  fields.spellProjectileActive = projectile.spawned && projectile.state.active;
+  fields.spellProjectileActive = projectile.spawned && projectile.projectile.active;
   fields.spellProjectileImpact = projectile.impact;
-  fields.spellProjectileVisible = projectile.spawned;
-  fields.spellProjectileStatus = projectile.status;
+  fields.spellProjectileVisible = iggy3d::abilityProjectileVisible(projectile);
+  fields.spellProjectileStatus =
+      std::string(iggy3d::abilityTickStatusName(projectile.tickStatus));
   fields.spellProjectileReason = projectile.reasonCode;
   fields.spellProjectileHitSurfaceId = projectile.hitSurfaceId;
-  fields.spellProjectilePositionX = debugFloat(projectile.state.positionMeters.x);
-  fields.spellProjectilePositionY = debugFloat(projectile.state.positionMeters.y);
-  fields.spellProjectilePositionZ = debugFloat(projectile.state.positionMeters.z);
+  fields.spellProjectilePositionX = debugFloat(projectile.projectile.positionMeters.x);
+  fields.spellProjectilePositionY = debugFloat(projectile.projectile.positionMeters.y);
+  fields.spellProjectilePositionZ = debugFloat(projectile.projectile.positionMeters.z);
 }
 
-void spawnVisualProjectile(VisualProjectileState& projectile,
-                           const iggy3d::Session& session,
-                           float yaw,
-                           float pitch,
-                           float eyeHeightMeters,
-                           PlayableReceiptFields& fields) {
+void spawnAbilityProjectile(iggy3d::AbilityRuntimeState& abilityRuntime,
+                            const iggy3d::Session& session,
+                            const iggy3d::SpatialSurfaceSet& collisionSurfaces,
+                            float yaw,
+                            float pitch,
+                            float eyeHeightMeters,
+                            PlayableReceiptFields& fields) {
   fields.spellInputObserved = true;
-  const iggy3d::EntityState* player = playerEntity(session);
-  if (player == nullptr) {
-    projectile.spawned = false;
-    projectile.state.active = false;
-    projectile.status = "blocked";
-    projectile.reasonCode = "spell_projectile_missing_player";
-    recordVisualProjectile(fields, projectile);
-    return;
-  }
   const iggy3d::Vec3 forward = lookForwardVector(yaw, pitch);
-  const iggy3d::Vec3 eye =
-      player->transform.position + iggy3d::Vec3{0.0F, eyeHeightMeters, 0.0F};
-  projectile = VisualProjectileState{};
-  projectile.spawned = true;
-  projectile.state.active = true;
-  projectile.state.positionMeters = eye + forward * 0.75F;
-  projectile.state.velocityMetersPerSecond = forward * 12.0F;
-  projectile.previousPositionMeters = projectile.state.positionMeters;
-  projectile.reasonCode = "spell_projectile_spawned";
-  projectile.status = "spawned";
-  recordVisualProjectile(fields, projectile);
+  const iggy3d::EntityState* player = playerEntity(session);
+  iggy3d::AbilityCastRequest request;
+  request.ability = iggy3d::AbilityId::ArcaneBolt;
+  request.caster = player == nullptr ? iggy3d::kInvalidEntityId : player->id;
+  request.direction = forward;
+  request.collisionSurfaces = &collisionSurfaces;
+  if (player != nullptr) {
+    request.originMeters =
+        player->transform.position + iggy3d::Vec3{0.0F, eyeHeightMeters, 0.0F};
+  }
+  const iggy3d::AbilityCastResult cast = iggy3d::castAbility(abilityRuntime, request);
+  recordAbilityCast(fields, cast);
+  recordAbilityProjectile(fields, abilityRuntime.arcaneBolt);
 }
 
-void stepVisualProjectile(VisualProjectileState& projectile,
-                          const iggy3d::SpatialSurfaceSet& collisionSurfaces,
-                          PlayableReceiptFields& fields) {
-  if (!projectile.spawned || !projectile.state.active) {
-    recordVisualProjectile(fields, projectile);
-    return;
-  }
-  iggy3d::ProjectileStepRequest request;
-  request.state = projectile.state;
+void stepAbilityProjectiles(iggy3d::AbilityRuntimeState& abilityRuntime,
+                            const iggy3d::SpatialSurfaceSet& collisionSurfaces,
+                            PlayableReceiptFields& fields) {
+  iggy3d::AbilityTickRequest request;
   request.collisionSurfaces = &collisionSurfaces;
   request.deltaSeconds = 1.0F / 60.0F;
-  request.params.gravityMetersPerSecondSquared = 1.50F;
-  request.params.maxLifetimeSeconds = 3.0F;
-  request.params.maxDistanceMeters = 45.0F;
-  request.params.radiusMeters = 0.07F;
-  const iggy3d::ProjectileStepResult result = iggy3d::stepProjectile(request);
-  projectile.previousPositionMeters = result.previousState.positionMeters;
-  projectile.state = result.state;
-  projectile.reasonCode = result.reasonCode;
-  projectile.status = std::string(iggy3d::projectileStepStatusName(result.status));
-  if (result.impact) {
-    projectile.impact = true;
-    projectile.impactPointMeters = result.impactPointMeters;
-    projectile.impactNormal = result.impactNormal;
-    projectile.hitSurfaceId =
-        result.hitSurfaceId.empty() ? std::string("none") : result.hitSurfaceId;
+  const iggy3d::AbilityTickResult tick = iggy3d::tickAbilityRuntime(abilityRuntime, request);
+  if (tick.status != iggy3d::AbilityTickStatus::NoActiveProjectile ||
+      !abilityRuntime.arcaneBolt.spawned) {
+    fields.abilityTickStatus = std::string(iggy3d::abilityTickStatusName(tick.status));
+    fields.abilityTickReason = tick.reasonCode;
+  } else {
+    fields.abilityTickStatus =
+        std::string(iggy3d::abilityTickStatusName(abilityRuntime.arcaneBolt.tickStatus));
+    fields.abilityTickReason = abilityRuntime.arcaneBolt.reasonCode;
   }
-  recordVisualProjectile(fields, projectile);
+  fields.abilityDamageApplied = fields.abilityDamageApplied || tick.damageApplied;
+  recordAbilityProjectile(fields, abilityRuntime.arcaneBolt);
 }
 
-void attachProjectileProjection(const VisualProjectileState& projectile,
-                                iggy3d::SceneProjectionResult& scene) {
+void attachAbilityProjectileProjection(const iggy3d::AbilityProjectileState& projectile,
+                                       iggy3d::SceneProjectionResult& scene) {
   scene.projectiles.clear();
   scene.projectileCount = 0U;
   if (!projectile.spawned) {
     return;
   }
   iggy3d::SceneProjectileItem item;
-  item.id = "spell_projectile";
-  item.positionMeters = projectile.state.positionMeters;
+  item.id = projectile.projectileId;
+  item.positionMeters = projectile.projectile.positionMeters;
   item.previousPositionMeters = projectile.previousPositionMeters;
   item.impactPointMeters =
-      projectile.impact ? projectile.impactPointMeters : projectile.state.positionMeters;
+      projectile.impact ? projectile.impactPointMeters : projectile.projectile.positionMeters;
   item.impactNormal = projectile.impactNormal;
-  item.active = projectile.state.active;
+  item.active = projectile.projectile.active;
   item.impact = projectile.impact;
   item.hitSurfaceId = projectile.hitSurfaceId;
   scene.projectiles.push_back(std::move(item));
@@ -1407,6 +1399,18 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
                              fields.spellProjectilePositionY);
   iggy3d::appendReceiptField(receipt, "spell_projectile_position_z",
                              fields.spellProjectilePositionZ);
+  iggy3d::appendReceiptField(receipt, "ability_id", fields.abilityId);
+  iggy3d::appendReceiptField(receipt, "ability_cast_requested",
+                             fields.abilityCastRequested);
+  iggy3d::appendReceiptField(receipt, "ability_cast_accepted", fields.abilityCastAccepted);
+  iggy3d::appendReceiptField(receipt, "ability_cast_status", fields.abilityCastStatus);
+  iggy3d::appendReceiptField(receipt, "ability_cast_reason", fields.abilityCastReason);
+  iggy3d::appendReceiptField(receipt, "ability_tick_status", fields.abilityTickStatus);
+  iggy3d::appendReceiptField(receipt, "ability_tick_reason", fields.abilityTickReason);
+  iggy3d::appendReceiptField(receipt, "ability_runtime_owned_projectile",
+                             fields.abilityRuntimeOwnedProjectile);
+  iggy3d::appendReceiptField(receipt, "ability_damage_applied",
+                             fields.abilityDamageApplied);
   iggy3d::appendReceiptField(receipt, "debug_overlay_enabled", fields.debugOverlayEnabled);
   iggy3d::appendReceiptField(receipt, "debug_overlay_open", fields.debugOverlayOpen);
   iggy3d::appendReceiptField(receipt, "debug_overlay_toggle_observed",
@@ -1897,7 +1901,7 @@ int main(int argc, const char* const* argv) {
   }
   std::optional<iggy3d::MovementResult> lastMovementResult;
   std::optional<iggy3d::PlayerMotorResult> lastMotorResult;
-  VisualProjectileState visualProjectile;
+  iggy3d::AbilityRuntimeState abilityRuntime;
 #if defined(IGGY3D_HAS_SDL3)
   GamepadSession gamepad;
   if (playableFields.playable &&
@@ -2317,8 +2321,8 @@ int main(int argc, const char* const* argv) {
           }
           lastMovementResult.reset();
           lastMotorResult.reset();
-          visualProjectile = VisualProjectileState{};
-          recordVisualProjectile(playableFields, visualProjectile);
+          iggy3d::resetAbilityRuntime(abilityRuntime);
+          recordAbilityProjectile(playableFields, abilityRuntime.arcaneBolt);
         }
       }
       if (iggy3d::isValid(playerMotor.actor)) {
@@ -2355,19 +2359,19 @@ int main(int argc, const char* const* argv) {
         }
       }
       if (spellFireRequested) {
-        spawnVisualProjectile(visualProjectile, session, yaw, pitch,
-                              currentEyeHeightMeters, playableFields);
+        spawnAbilityProjectile(abilityRuntime, session, collisionSurfaces, yaw, pitch,
+                               currentEyeHeightMeters, playableFields);
         if (devMenu.enabled && devMenu.selected == DevMechanic::Spell &&
             devMenu.executeRequested) {
           playableFields.devMenuExecutionStatus =
-              visualProjectile.spawned ? "applied" : "blocked";
+              abilityRuntime.arcaneBolt.spawned ? "applied" : "blocked";
         }
       }
-      stepVisualProjectile(visualProjectile, collisionSurfaces, playableFields);
+      stepAbilityProjectiles(abilityRuntime, collisionSurfaces, playableFields);
       if (devMenu.enabled && devMenu.selected == DevMechanic::Spell &&
           devMenu.executeRequested) {
         playableFields.devMenuExecutionStatus =
-            visualProjectile.spawned ? "applied" : "blocked";
+            abilityRuntime.arcaneBolt.spawned ? "applied" : "blocked";
       }
       if (actionRequested || attackRequested) {
         const iggy3d::EntityId key = entityIdByName(session, "gold_key");
@@ -2394,7 +2398,7 @@ int main(int argc, const char* const* argv) {
 #endif
     iggy3d::SceneProjectionResult scene = iggy3d::buildSceneProjection(session.state());
     attachRoomProjection(package, scene);
-    attachProjectileProjection(visualProjectile, scene);
+    attachAbilityProjectileProjection(abilityRuntime.arcaneBolt, scene);
     iggy3d::DebugProjectionResult debug = iggy3d::buildDebugProjection(session.state());
     iggy3d::RuntimeDebugSnapshot debugSnapshot;
     if (playableFields.playable) {
