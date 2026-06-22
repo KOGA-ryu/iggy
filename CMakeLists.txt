@@ -27,6 +27,7 @@ target_sources(iggy3d
     src/app/platform/ExecutablePath.cpp
     src/content/PackageLoader.cpp
     src/content/PackageValidator.cpp
+    src/content/authoring/EditableRoomDocument.cpp
     src/content/assets/MaterialAsset.cpp
     src/content/assets/MeshAsset.cpp
     src/content/assets/RoomAsset.cpp

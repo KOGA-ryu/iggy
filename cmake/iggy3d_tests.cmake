@@ -33,6 +33,10 @@ set_tests_properties(package_loader_tests PROPERTIES LABELS "unit;content;iggy3d
 iggy3d_add_unit_test(room_asset_loader_tests tests/unit/room_asset_loader_tests.cpp)
 set_tests_properties(room_asset_loader_tests PROPERTIES LABELS "unit;content;room_asset;iggy3d")
 
+iggy3d_add_unit_test(editable_room_document_tests tests/unit/editable_room_document_tests.cpp)
+set_tests_properties(editable_room_document_tests PROPERTIES
+  LABELS "unit;content;authoring;room_edit;iggy3d")
+
 iggy3d_add_unit_test(world_state_tests tests/unit/world_state_tests.cpp)
 set_tests_properties(world_state_tests PROPERTIES LABELS "unit;runtime;world;iggy3d")
 
