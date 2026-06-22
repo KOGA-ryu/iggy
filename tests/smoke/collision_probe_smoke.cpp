@@ -87,11 +87,13 @@ int main() {
   const std::filesystem::path listOutput = "/tmp/iggy3d_collision_probe_list.out";
   const std::filesystem::path segmentOutput = "/tmp/iggy3d_collision_probe_segment.out";
   const std::filesystem::path moveOutput = "/tmp/iggy3d_collision_probe_move.out";
+  const std::filesystem::path projectileOutput = "/tmp/iggy3d_collision_probe_projectile.out";
 
   std::map<std::string, std::string> suite;
   std::map<std::string, std::string> list;
   std::map<std::string, std::string> segment;
   std::map<std::string, std::string> move;
+  std::map<std::string, std::string> projectile;
 
   const bool suitePassed =
       std::filesystem::exists(binary) &&
@@ -133,12 +135,25 @@ int main() {
       hasField(move, "movement_policy_band", "flat") &&
       hasField(move, "ground_snap_applied", "false");
 
-  const bool passed = suitePassed && listPassed && segmentPassed && movePassed;
+  const bool projectilePassed =
+      runProbe(binary,
+               "--package " + shellQuote(fixture) +
+                   " --query projectile --units feet --start 4,1,14 --intent 0,0,4 --seconds 1 --gravity 0",
+               projectileOutput, projectile) &&
+      hasField(projectile, "result", "pass") &&
+      hasField(projectile, "projectile_status", "impact") &&
+      hasField(projectile, "projectile_impact", "true") &&
+      hasField(projectile, "projectile_hit_surface_id",
+               "spawn_crate_projectile_blocker");
+
+  const bool passed = suitePassed && listPassed && segmentPassed && movePassed &&
+                      projectilePassed;
 #else
   const bool suitePassed = false;
   const bool listPassed = false;
   const bool segmentPassed = false;
   const bool movePassed = false;
+  const bool projectilePassed = false;
   const bool passed = false;
 #endif
 
@@ -147,6 +162,7 @@ int main() {
   std::cout << "list_passed=" << (listPassed ? "true" : "false") << "\n";
   std::cout << "segment_passed=" << (segmentPassed ? "true" : "false") << "\n";
   std::cout << "move_passed=" << (movePassed ? "true" : "false") << "\n";
+  std::cout << "projectile_passed=" << (projectilePassed ? "true" : "false") << "\n";
   std::cout << "result=" << (passed ? "pass" : "fail") << "\n";
   std::cout << "reason_code="
             << (passed ? "collision_probe_smoke_pass" : "collision_probe_smoke_failed")

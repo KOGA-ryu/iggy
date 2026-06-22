@@ -72,6 +72,9 @@ set_tests_properties(session_state_tests PROPERTIES LABELS "unit;runtime;session
 iggy3d_add_unit_test(movement_system_tests tests/unit/movement_system_tests.cpp)
 set_tests_properties(movement_system_tests PROPERTIES LABELS "unit;runtime;movement;iggy3d")
 
+iggy3d_add_unit_test(projectile_system_tests tests/unit/projectile_system_tests.cpp)
+set_tests_properties(projectile_system_tests PROPERTIES LABELS "unit;runtime;projectile;iggy3d")
+
 iggy3d_add_unit_test(target_reach_tests tests/unit/target_reach_tests.cpp)
 set_tests_properties(target_reach_tests PROPERTIES LABELS "unit;runtime;targeting;iggy3d")
 

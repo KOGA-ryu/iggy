@@ -62,5 +62,5 @@ Purpose:
 Current runtime truth:
 
 - this fixture is a playable/renderable test arena;
-- first-person kinematic walking, hold-to-crouch stance, runtime jump, limited air control, runtime dash, and debug telemetry work against the shifted room surface set;
-- clamber, vault, spell projectile, and wire-walk mechanics are authored as test zones, not implemented ability modes yet.
+- first-person kinematic walking, hold-to-crouch stance, runtime jump, limited air control, runtime dash, debug telemetry, and deterministic projectile motion core work against authored room surfaces;
+- clamber, vault, spell firing visuals, and wire-walk mechanics are authored as test zones, not implemented ability modes yet.

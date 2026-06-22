@@ -1,6 +1,7 @@
 #include "content/PackageLoader.hpp"
 #include "runtime/collision/CollisionQuery.hpp"
 #include "runtime/movement/MovementSystem.hpp"
+#include "runtime/projectile/ProjectileSystem.hpp"
 
 #include <cerrno>
 #include <cmath>
@@ -35,6 +36,7 @@ struct ProbeConfig {
   iggy3d::Vec3 max;
   float toleranceMeters = 0.001F;
   float seconds = 1.0F;
+  float projectileGravityMetersPerSecondSquared = 9.8F;
   bool hasPoint = false;
   bool hasStart = false;
   bool hasEnd = false;
@@ -137,7 +139,8 @@ std::string_view unitsName(InputUnits units) {
 
 bool isQueryName(std::string_view query) {
   return query == "suite" || query == "list" || query == "height" || query == "normal" ||
-         query == "segment" || query == "point" || query == "aabb" || query == "move";
+         query == "segment" || query == "point" || query == "aabb" || query == "move" ||
+         query == "projectile";
 }
 
 bool parseArgs(int argc, const char* const* argv, ProbeConfig& config, std::string& diagnostic) {
@@ -261,6 +264,17 @@ bool parseArgs(int argc, const char* const* argv, ProbeConfig& config, std::stri
         return false;
       }
       ++index;
+    } else if (arg == "--gravity") {
+      if (needsValue() || !parseFloat(argv[index + 1],
+                                      config.projectileGravityMetersPerSecondSquared) ||
+          config.projectileGravityMetersPerSecondSquared < 0.0F) {
+        diagnostic = "invalid gravity";
+        return false;
+      }
+      ++index;
+      if (config.units == InputUnits::Feet) {
+        config.projectileGravityMetersPerSecondSquared *= kFeetToMeters;
+      }
     } else {
       diagnostic = "unknown option";
       return false;
@@ -271,13 +285,15 @@ bool parseArgs(int argc, const char* const* argv, ProbeConfig& config, std::stri
 
 void printUsage() {
   std::cout << "app=iggy3d_collision_probe\n";
-  std::cout << "usage=iggy3d_collision_probe --query suite|list|height|normal|segment|point|aabb|move\n";
+  std::cout << "usage=iggy3d_collision_probe --query suite|list|height|normal|segment|point|aabb|move|projectile\n";
   std::cout << "usage_move=iggy3d_collision_probe --query move --start x,y,z --intent x,y,z --seconds n\n";
+  std::cout << "usage_projectile=iggy3d_collision_probe --query projectile --start x,y,z --intent vx,vy,vz --seconds n --gravity g\n";
   std::cout << "example_suite=./build/iggy3d_collision_probe --query suite\n";
   std::cout << "example_list=./build/iggy3d_collision_probe --list-surfaces\n";
   std::cout << "example_height=./build/iggy3d_collision_probe --query height --units feet --point 10,6.5,9\n";
   std::cout << "example_segment=./build/iggy3d_collision_probe --query segment --kind actor --start 3.048,1,2 --end 3.048,1,-1\n";
   std::cout << "example_move=./build/iggy3d_collision_probe --query move --units feet --start 10,0.05,9 --intent 0,0,-1 --seconds 0.5\n";
+  std::cout << "example_projectile=./build/iggy3d_collision_probe --query projectile --units feet --start 4,1,14 --intent 0,0,4 --seconds 1 --gravity 0\n";
 }
 
 LoadedSurfaces loadSurfaces(const ProbeConfig& config) {
@@ -363,6 +379,31 @@ void printMovementResultFields(const iggy3d::MovementResult& result) {
   std::cout << "final_position_meters=" << formatVec3(result.finalPosition) << "\n";
   std::cout << "final_position_feet=" << formatVec3(result.finalPosition / kFeetToMeters) << "\n";
   std::cout << "movement_distance_meters=" << formatFloat(result.distanceMeters) << "\n";
+}
+
+void printProjectileResultFields(const iggy3d::ProjectileStepResult& result) {
+  std::cout << "projectile_status=" << iggy3d::projectileStepStatusName(result.status) << "\n";
+  std::cout << "projectile_reason_code=" << result.reasonCode << "\n";
+  std::cout << "projectile_impact=" << boolText(result.impact) << "\n";
+  std::cout << "projectile_active=" << boolText(result.state.active) << "\n";
+  std::cout << "projectile_hit_surface_id=" << result.hitSurfaceId << "\n";
+  std::cout << "projectile_position_meters=" << formatVec3(result.state.positionMeters) << "\n";
+  std::cout << "projectile_position_feet="
+            << formatVec3(result.state.positionMeters / kFeetToMeters) << "\n";
+  std::cout << "projectile_velocity_meters_per_second="
+            << formatVec3(result.state.velocityMetersPerSecond) << "\n";
+  std::cout << "projectile_impact_point_meters=" << formatVec3(result.impactPointMeters)
+            << "\n";
+  std::cout << "projectile_impact_normal=" << formatVec3(result.impactNormal) << "\n";
+  std::cout << "projectile_time_of_impact=" << formatFloat(result.timeOfImpact) << "\n";
+  std::cout << "projectile_step_seconds=" << formatFloat(result.stepSeconds) << "\n";
+  std::cout << "projectile_step_distance_meters=" << formatFloat(result.stepDistanceMeters)
+            << "\n";
+  std::cout << "projectile_age_seconds=" << formatFloat(result.state.ageSeconds) << "\n";
+  std::cout << "projectile_distance_traveled_meters="
+            << formatFloat(result.state.distanceTraveledMeters) << "\n";
+  std::cout << "projectile_checked_surface_count=" << result.checkedSurfaceCount << "\n";
+  std::cout << "projectile_blocking_surface_count=" << result.blockingSurfaceCount << "\n";
 }
 
 void printSurfaceList(const ProbeConfig& config, const LoadedSurfaces& loaded) {
@@ -585,6 +626,32 @@ int runProbe(const ProbeConfig& config) {
     std::cout << "result=pass\n";
     std::cout << "reason_code=movement_probe_completed\n";
     return 0;
+  }
+
+  if (config.query == "projectile") {
+    printCommon(config, loaded);
+    if (!config.hasStart || !config.hasIntent) {
+      std::cout << "result=fail\n";
+      std::cout << "reason_code=missing_projectile_input\n";
+      return 2;
+    }
+    iggy3d::ProjectileStepRequest request;
+    request.collisionSurfaces = &loaded.surfaces;
+    request.deltaSeconds = config.seconds;
+    request.params.gravityMetersPerSecondSquared =
+        config.projectileGravityMetersPerSecondSquared;
+    request.state.positionMeters = config.start;
+    request.state.velocityMetersPerSecond = config.intent;
+    const iggy3d::ProjectileStepResult projectile = iggy3d::stepProjectile(request);
+    printProjectileResultFields(projectile);
+    const bool queryOk = projectile.status != iggy3d::ProjectileStepStatus::InvalidInput &&
+                         projectile.status !=
+                             iggy3d::ProjectileStepStatus::MissingCollisionSurfaces;
+    std::cout << "result=" << (queryOk ? "pass" : "fail") << "\n";
+    std::cout << "reason_code="
+              << (queryOk ? "projectile_probe_completed" : projectile.reasonCode)
+              << "\n";
+    return queryOk ? 0 : 2;
   }
 
   std::string diagnostic;
