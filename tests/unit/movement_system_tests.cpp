@@ -1,7 +1,9 @@
 #include "runtime/movement/MovementSystem.hpp"
 
 #include <iostream>
+#include <initializer_list>
 #include <limits>
+#include <string>
 #include <string_view>
 
 namespace {
@@ -32,6 +34,81 @@ iggy3d::WorldState makeWorldAt(iggy3d::Vec3 position, bool active = true) {
   return world;
 }
 
+iggy3d::RoomSpatialSurface floorSurface(std::string_view id = "floor",
+                                        iggy3d::Vec3 normal = {0.0F, 1.0F, 0.0F}) {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = std::string(id);
+  surface.sourceStaticMeshId = "synthetic_floor";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Plane;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = {
+      {-10.0F, 0.0F, -10.0F},
+      {10.0F, 0.0F, -10.0F},
+      {10.0F, 0.0F, 10.0F},
+      {-10.0F, 0.0F, 10.0F},
+  };
+  surface.normal = normal;
+  surface.traversalTags = {"walkable"};
+  surface.collisionMask = {"actor"};
+  return surface;
+}
+
+iggy3d::RoomSpatialSurface slopeSurface(std::string_view id, float degrees) {
+  const float radians = degrees * 3.14159265358979323846F / 180.0F;
+  const float slope = std::tan(radians);
+  iggy3d::RoomSpatialSurface surface = floorSurface(id, {0.0F, std::cos(radians), -std::sin(radians)});
+  surface.pointsMeters = {
+      {-10.0F, -10.0F * slope, -10.0F},
+      {10.0F, -10.0F * slope, -10.0F},
+      {10.0F, 10.0F * slope, 10.0F},
+      {-10.0F, 10.0F * slope, 10.0F},
+  };
+  return surface;
+}
+
+iggy3d::RoomSpatialSurface wallSurface(std::string_view id = "wall") {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = std::string(id);
+  surface.sourceStaticMeshId = "synthetic_wall";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Box;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Blocker;
+  surface.pointsMeters = {
+      {-10.0F, 0.0F, -0.10F},
+      {10.0F, 0.0F, -0.10F},
+      {10.0F, 3.0F, 0.10F},
+      {-10.0F, 3.0F, 0.10F},
+  };
+  surface.normal = {0.0F, 0.0F, 1.0F};
+  surface.traversalTags = {"blocker"};
+  surface.collisionMask = {"actor"};
+  surface.blocksActor = true;
+  return surface;
+}
+
+iggy3d::RoomSpatialSurface openingSurface() {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = "opening";
+  surface.sourceStaticMeshId = "synthetic_opening";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Opening;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Opening;
+  surface.pointsMeters = {
+      {0.0F, 0.0F, -1.0F},
+      {0.0F, 2.0F, -1.0F},
+      {0.0F, 2.0F, 1.0F},
+      {0.0F, 0.0F, 1.0F},
+  };
+  surface.normal = {1.0F, 0.0F, 0.0F};
+  surface.traversalTags = {"opening"};
+  return surface;
+}
+
+iggy3d::SpatialSurfaceSet makeSurfaceSet(std::initializer_list<iggy3d::RoomSpatialSurface> surfaces) {
+  iggy3d::RoomAsset room;
+  room.id = "synthetic_room";
+  room.spatialSurfaces.assign(surfaces.begin(), surfaces.end());
+  return iggy3d::buildSpatialSurfaceSet(room);
+}
+
 iggy3d::MovementRequest moveRequest(iggy3d::Vec3 destination,
                                     iggy3d::MovementMode mode = iggy3d::MovementMode::Walk) {
   iggy3d::MovementRequest request;
@@ -40,6 +117,18 @@ iggy3d::MovementRequest moveRequest(iggy3d::Vec3 destination,
   request.mode = mode;
   request.maxDistanceMeters = 3.0F;
   request.sourceCommandId = 7;
+  return request;
+}
+
+iggy3d::KinematicMovementRequest kinematicRequest(iggy3d::Vec3 intent, float seconds = 1.0F) {
+  iggy3d::KinematicMovementRequest request;
+  request.actor = {1};
+  request.intent = intent;
+  request.seconds = seconds;
+  request.params.maxSpeedMetersPerSecond = 1.0F;
+  request.params.groundSnapMeters = 0.75F;
+  request.params.skinMeters = 0.02F;
+  request.sourceCommandId = 11;
   return request;
 }
 
@@ -153,12 +242,134 @@ bool blockedCasesDoNotMutateWorld() {
   return ok;
 }
 
+bool kinematicFlatMovementSnapsAndMutatesOnce() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.40F, 0.0F});
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet({floorSurface()});
+  iggy3d::MovementSystemContext context{&world, &config, &surfaces};
+  const iggy3d::MovementResult result =
+      iggy3d::executeKinematicMovement(context, kinematicRequest({1.0F, 0.0F, 0.0F}));
+  return expect(result.blocked == iggy3d::MovementBlockedReason::None, "kinematic flat ok") &&
+         expect(result.kinematic, "kinematic flag") &&
+         expect(result.movementPolicyBand == "flat", "flat band") &&
+         expect(result.groundSnapApplied, "ground snap applied") &&
+         expect(iggy3d::nearlyEqual(result.finalPosition, {1.0F, 0.0F, 0.0F}), "flat final") &&
+         expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
+                                    {1.0F, 0.0F, 0.0F}),
+                "flat world moved");
+}
+
+bool kinematicWallClampPreventsCrossing() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 1.0F});
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet({floorSurface(), wallSurface()});
+  iggy3d::MovementSystemContext context{&world, &config, &surfaces};
+  auto request = kinematicRequest({0.0F, 0.0F, -1.0F}, 2.0F);
+  const iggy3d::MovementResult result = iggy3d::executeKinematicMovement(context, request);
+  return expect(result.blocked == iggy3d::MovementBlockedReason::None, "wall clamp ok") &&
+         expect(result.movementClamped, "movement clamped") &&
+         expect(result.hitSurfaceId == "wall", "wall hit id") &&
+         expect(result.collisionSweepCount >= 1U, "wall sweep count") &&
+         expect(result.finalPosition.z > 0.09F, "wall not crossed");
+}
+
+bool kinematicAngledWallMovementSlides() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 1.0F});
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet({floorSurface(), wallSurface()});
+  iggy3d::MovementSystemContext context{&world, &config, &surfaces};
+  const iggy3d::MovementResult result =
+      iggy3d::executeKinematicMovement(context, kinematicRequest({1.0F, 0.0F, -1.0F}, 2.0F));
+  return expect(result.blocked == iggy3d::MovementBlockedReason::None, "slide ok") &&
+         expect(result.movementClamped, "slide clamped") &&
+         expect(result.movementSlid, "movement slid") &&
+         expect(result.finalPosition.x > 0.5F, "slide x advanced") &&
+         expect(result.finalPosition.z > 0.09F, "slide wall not crossed");
+}
+
+bool kinematicOpeningDoesNotBlockActor() {
+  iggy3d::WorldState world = makeWorldAt({-1.0F, 0.0F, 0.0F});
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet({floorSurface(), openingSurface()});
+  iggy3d::MovementSystemContext context{&world, &config, &surfaces};
+  const iggy3d::MovementResult result =
+      iggy3d::executeKinematicMovement(context, kinematicRequest({1.0F, 0.0F, 0.0F}, 2.0F));
+  return expect(result.blocked == iggy3d::MovementBlockedReason::None, "opening pass ok") &&
+         expect(!result.movementClamped, "opening not clamped") &&
+         expect(result.finalPosition.x > 0.9F, "opening crossed");
+}
+
+bool kinematicBlockedSlopeRejectsWithoutMutation() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.0F});
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet({slopeSurface("blocked_slope", 45.0F)});
+  iggy3d::MovementSystemContext context{&world, &config, &surfaces};
+  const iggy3d::MovementResult result =
+      iggy3d::executeKinematicMovement(context, kinematicRequest({1.0F, 0.0F, 0.0F}));
+  return expect(result.blocked == iggy3d::MovementBlockedReason::SlopeRejected,
+                "blocked slope reason") &&
+         expect(result.movementPolicyBand == "blocked", "blocked slope band") &&
+         expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
+                                    {0.0F, 0.0F, 0.0F}),
+                "blocked slope no mutation");
+}
+
+bool kinematicModerateSlopeAppliesSpeedMultiplier() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.0F});
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet({slopeSurface("moderate_slope", 20.0F)});
+  iggy3d::MovementSystemContext context{&world, &config, &surfaces};
+  const iggy3d::MovementResult result =
+      iggy3d::executeKinematicMovement(context, kinematicRequest({1.0F, 0.0F, 0.0F}));
+  return expect(result.blocked == iggy3d::MovementBlockedReason::None, "moderate ok") &&
+         expect(result.movementPolicyBand == "moderate", "moderate band") &&
+         expect(result.carefulFooting, "careful footing") &&
+         expect(result.speedMultiplier < 1.0F, "speed reduced") &&
+         expect(result.finalPosition.x > 0.70F && result.finalPosition.x < 0.80F,
+                "moderate distance reduced");
+}
+
+bool kinematicMissingSurfacesAndInvalidParamsDoNotMutate() {
+  bool ok = true;
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  {
+    iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.0F});
+    iggy3d::MovementSystemContext context{&world, &config, nullptr};
+    const iggy3d::MovementResult result =
+        iggy3d::executeKinematicMovement(context, kinematicRequest({1.0F, 0.0F, 0.0F}));
+    ok = ok && expect(result.blocked == iggy3d::MovementBlockedReason::MissingCollisionSurfaces,
+                      "missing surfaces") &&
+         expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
+                                    {0.0F, 0.0F, 0.0F}),
+                "missing surfaces no mutation");
+  }
+  {
+    iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.0F});
+    const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet({floorSurface()});
+    iggy3d::MovementSystemContext context{&world, &config, &surfaces};
+    auto request = kinematicRequest({1.0F, 0.0F, 0.0F});
+    request.params.radiusMeters = -1.0F;
+    const iggy3d::MovementResult result = iggy3d::executeKinematicMovement(context, request);
+    ok = ok && expect(result.blocked == iggy3d::MovementBlockedReason::InvalidMovementParams,
+                      "invalid params") &&
+         expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
+                                    {0.0F, 0.0F, 0.0F}),
+                "invalid params no mutation");
+  }
+  return ok;
+}
+
 }  // namespace
 
 int main() {
   const bool ok = acceptedMoveToKeyUpdatesPlayerPosition() && tacticalMoveUsesSameMutationPath() &&
                   acceptedCommandConversionPreservesPayload() &&
                   missingPointConversionBlocksAsNonfiniteDestination() &&
-                  blockedCasesDoNotMutateWorld();
+                  blockedCasesDoNotMutateWorld() && kinematicFlatMovementSnapsAndMutatesOnce() &&
+                  kinematicWallClampPreventsCrossing() && kinematicAngledWallMovementSlides() &&
+                  kinematicOpeningDoesNotBlockActor() &&
+                  kinematicBlockedSlopeRejectsWithoutMutation() &&
+                  kinematicModerateSlopeAppliesSpeedMultiplier() &&
+                  kinematicMissingSurfacesAndInvalidParamsDoNotMutate();
   return ok ? 0 : 1;
 }

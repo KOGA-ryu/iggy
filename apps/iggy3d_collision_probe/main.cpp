@@ -1,5 +1,6 @@
 #include "content/PackageLoader.hpp"
 #include "runtime/collision/CollisionQuery.hpp"
+#include "runtime/movement/MovementSystem.hpp"
 
 #include <cerrno>
 #include <cmath>
@@ -29,12 +30,15 @@ struct ProbeConfig {
   iggy3d::Vec3 point;
   iggy3d::Vec3 start;
   iggy3d::Vec3 end;
+  iggy3d::Vec3 intent;
   iggy3d::Vec3 min;
   iggy3d::Vec3 max;
   float toleranceMeters = 0.001F;
+  float seconds = 1.0F;
   bool hasPoint = false;
   bool hasStart = false;
   bool hasEnd = false;
+  bool hasIntent = false;
   bool hasMin = false;
   bool hasMax = false;
   bool help = false;
@@ -133,7 +137,7 @@ std::string_view unitsName(InputUnits units) {
 
 bool isQueryName(std::string_view query) {
   return query == "suite" || query == "list" || query == "height" || query == "normal" ||
-         query == "segment" || query == "point" || query == "aabb";
+         query == "segment" || query == "point" || query == "aabb" || query == "move";
 }
 
 bool parseArgs(int argc, const char* const* argv, ProbeConfig& config, std::string& diagnostic) {
@@ -220,6 +224,13 @@ bool parseArgs(int argc, const char* const* argv, ProbeConfig& config, std::stri
       }
       ++index;
       config.hasEnd = true;
+    } else if (arg == "--intent") {
+      if (needsValue() || !parseVec3(argv[index + 1], config.units, config.intent)) {
+        diagnostic = "invalid intent";
+        return false;
+      }
+      ++index;
+      config.hasIntent = true;
     } else if (arg == "--min") {
       if (needsValue() || !parseVec3(argv[index + 1], config.units, config.min)) {
         diagnostic = "invalid min";
@@ -244,6 +255,12 @@ bool parseArgs(int argc, const char* const* argv, ProbeConfig& config, std::stri
       if (config.units == InputUnits::Feet) {
         config.toleranceMeters *= kFeetToMeters;
       }
+    } else if (arg == "--seconds") {
+      if (needsValue() || !parseFloat(argv[index + 1], config.seconds) || config.seconds < 0.0F) {
+        diagnostic = "invalid seconds";
+        return false;
+      }
+      ++index;
     } else {
       diagnostic = "unknown option";
       return false;
@@ -254,11 +271,13 @@ bool parseArgs(int argc, const char* const* argv, ProbeConfig& config, std::stri
 
 void printUsage() {
   std::cout << "app=iggy3d_collision_probe\n";
-  std::cout << "usage=iggy3d_collision_probe --query suite|list|height|normal|segment|point|aabb\n";
+  std::cout << "usage=iggy3d_collision_probe --query suite|list|height|normal|segment|point|aabb|move\n";
+  std::cout << "usage_move=iggy3d_collision_probe --query move --start x,y,z --intent x,y,z --seconds n\n";
   std::cout << "example_suite=./build/iggy3d_collision_probe --query suite\n";
   std::cout << "example_list=./build/iggy3d_collision_probe --list-surfaces\n";
   std::cout << "example_height=./build/iggy3d_collision_probe --query height --units feet --point 10,6.5,9\n";
   std::cout << "example_segment=./build/iggy3d_collision_probe --query segment --kind actor --start 3.048,1,2 --end 3.048,1,-1\n";
+  std::cout << "example_move=./build/iggy3d_collision_probe --query move --units feet --start 10,0.05,9 --intent 0,0,-1 --seconds 0.5\n";
 }
 
 LoadedSurfaces loadSurfaces(const ProbeConfig& config) {
@@ -304,6 +323,46 @@ void printResultFields(std::string_view prefix, const iggy3d::CollisionQueryResu
   std::cout << prefix << "height_feet=" << formatFloat(result.heightMeters / kFeetToMeters) << "\n";
   std::cout << prefix << "checked_surface_count=" << result.checkedSurfaceCount << "\n";
   std::cout << prefix << "blocking_surface_count=" << result.blockingSurfaceCount << "\n";
+}
+
+iggy3d::WorldState makeProbeWorldAt(iggy3d::Vec3 position) {
+  iggy3d::WorldState world;
+  iggy3d::EntityState player;
+  player.id = {1};
+  player.stableName = "probe_player";
+  player.kind = iggy3d::EntityKind::Player;
+  player.transform = iggy3d::identityTransform3();
+  player.transform.position = position;
+  player.localBounds = iggy3d::makeAabb3({-0.30F, 0.0F, -0.30F}, {0.30F, 1.80F, 0.30F});
+  player.active = true;
+  (void)world.seedEntity(player);
+  return world;
+}
+
+void printMovementResultFields(const iggy3d::MovementResult& result) {
+  std::cout << "movement_accepted=" << boolText(result.blocked == iggy3d::MovementBlockedReason::None)
+            << "\n";
+  std::cout << "movement_reason=" << iggy3d::movementBlockedReasonName(result.blocked) << "\n";
+  std::cout << "movement_reason_code=" << result.reasonCode << "\n";
+  std::cout << "movement_policy_band=" << result.movementPolicyBand << "\n";
+  std::cout << "movement_clamped=" << boolText(result.movementClamped) << "\n";
+  std::cout << "movement_slid=" << boolText(result.movementSlid) << "\n";
+  std::cout << "ground_snap_applied=" << boolText(result.groundSnapApplied) << "\n";
+  std::cout << "careful_footing=" << boolText(result.carefulFooting) << "\n";
+  std::cout << "slope_angle_degrees=" << formatFloat(result.slopeAngleDegrees) << "\n";
+  std::cout << "slope_up_dot=" << formatFloat(result.slopeUpDot) << "\n";
+  std::cout << "speed_multiplier=" << formatFloat(result.speedMultiplier) << "\n";
+  std::cout << "stamina_cost_multiplier=" << formatFloat(result.staminaCostMultiplier) << "\n";
+  std::cout << "step_penalty_multiplier=" << formatFloat(result.stepPenaltyMultiplier) << "\n";
+  std::cout << "collision_sweep_count=" << result.collisionSweepCount << "\n";
+  std::cout << "hit_surface_id=" << result.hitSurfaceId << "\n";
+  std::cout << "start_meters=" << formatVec3(result.start) << "\n";
+  std::cout << "start_feet=" << formatVec3(result.start / kFeetToMeters) << "\n";
+  std::cout << "destination_meters=" << formatVec3(result.destination) << "\n";
+  std::cout << "destination_feet=" << formatVec3(result.destination / kFeetToMeters) << "\n";
+  std::cout << "final_position_meters=" << formatVec3(result.finalPosition) << "\n";
+  std::cout << "final_position_feet=" << formatVec3(result.finalPosition / kFeetToMeters) << "\n";
+  std::cout << "movement_distance_meters=" << formatFloat(result.distanceMeters) << "\n";
 }
 
 void printSurfaceList(const ProbeConfig& config, const LoadedSurfaces& loaded) {
@@ -502,6 +561,30 @@ int runProbe(const ProbeConfig& config) {
                                                 : "collision_probe_suite_failed")
               << "\n";
     return suitePassed ? 0 : 1;
+  }
+
+  if (config.query == "move") {
+    printCommon(config, loaded);
+    if (!config.hasStart || !config.hasIntent) {
+      std::cout << "result=fail\n";
+      std::cout << "reason_code=missing_move_input\n";
+      return 2;
+    }
+    iggy3d::WorldState world = makeProbeWorldAt(config.start);
+    iggy3d::RuntimeConfig runtimeConfig = iggy3d::makeDefaultRuntimeConfig();
+    iggy3d::MovementSystemContext movementContext{&world, &runtimeConfig, &loaded.surfaces};
+    iggy3d::KinematicMovementRequest request;
+    request.actor = {1};
+    request.intent = config.intent;
+    request.seconds = config.seconds;
+    request.params.groundSnapMeters = 0.75F;
+    request.sourceCommandId = 1;
+    const iggy3d::MovementResult movement =
+        iggy3d::executeKinematicMovement(movementContext, request);
+    printMovementResultFields(movement);
+    std::cout << "result=pass\n";
+    std::cout << "reason_code=movement_probe_completed\n";
+    return 0;
   }
 
   std::string diagnostic;

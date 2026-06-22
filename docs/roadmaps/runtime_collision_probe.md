@@ -118,6 +118,29 @@ Actor segment into the projectile-only crate should not block:
   --end 4,1,18
 ```
 
+Kinematic move using hardcoded movement policy:
+
+```sh
+./build/iggy3d_collision_probe \
+  --package fixtures/demos/first_room/package.iggy3d.toml \
+  --query move \
+  --units feet \
+  --start 10,0.05,9 \
+  --intent 0,0,-1 \
+  --seconds 0.5
+```
+
+Key movement fields:
+
+```text
+movement_accepted=true|false
+movement_policy_band=flat|easy|moderate|steep|blocked
+movement_clamped=true|false
+movement_slid=true|false
+ground_snap_applied=true|false
+final_position_meters=<x,y,z>
+```
+
 ## Edge Cases To Play With
 
 - Move `--point` just outside floor bounds and watch height go from `hit` to
@@ -128,6 +151,12 @@ Actor segment into the projectile-only crate should not block:
 - Change segment start/end order to inspect time-of-impact and distance.
 - Use `--query aabb --kind actor --min ... --max ...` to check a candidate
   capsule-footprint box before the movement packet exists.
+- Use `--query move` with longer `--seconds` values to see wall clamping.
+- Change move intent from straight into a wall to diagonal into a wall to see
+  sliding.
+- Push a diagonal slide too far and it should return
+  `movement_reason=no_walkable_ground` instead of committing outside the current
+  floor footprint.
 
 ## Ownership
 

@@ -1,13 +1,19 @@
 #include "runtime/movement/MovementSystem.hpp"
 
+#include "runtime/collision/CollisionQuery.hpp"
+
+#include <algorithm>
 #include <cmath>
 #include <limits>
+#include <string>
+#include <utility>
 
 namespace iggy3d {
 
 namespace {
 
 inline constexpr float kFallbackMovementLimitMeters = 3.0F;
+inline constexpr float kMovementEpsilon = 0.0001F;
 
 float movementLimitMeters(const MovementRequest& request, const RuntimeConfig* config) {
   if (request.maxDistanceMeters > 0.0F) {
@@ -33,7 +39,106 @@ MovementResult blockedResult(const MovementRequest& request,
   result.blocked = reason;
   result.sourceCommandId = request.sourceCommandId;
   result.distanceMeters = distanceMeters;
+  result.reasonCode = movementBlockedReasonName(reason);
   return result;
+}
+
+MovementResult blockedKinematicResult(const KinematicMovementRequest& request,
+                                      Vec3 start,
+                                      MovementBlockedReason reason) {
+  MovementResult result;
+  result.actor = request.actor;
+  result.start = start;
+  result.destination = start;
+  result.finalPosition = start;
+  result.mode = request.mode;
+  result.blocked = reason;
+  result.sourceCommandId = request.sourceCommandId;
+  result.kinematic = true;
+  result.reasonCode = movementBlockedReasonName(reason);
+  return result;
+}
+
+float vectorLength(Vec3 value) {
+  return std::sqrt(lengthSquared(value));
+}
+
+bool normalize(Vec3 value, Vec3& out) {
+  if (!isFinite(value)) {
+    return false;
+  }
+  const float length = vectorLength(value);
+  if (!std::isfinite(length) || length <= kMovementEpsilon) {
+    return false;
+  }
+  out = value / length;
+  return isFinite(out);
+}
+
+Vec3 horizontalIntent(Vec3 intent) {
+  return {intent.x, 0.0F, intent.z};
+}
+
+bool validMovementParams(const MovementParams& params) {
+  return std::isfinite(params.maxSpeedMetersPerSecond) && params.maxSpeedMetersPerSecond >= 0.0F &&
+         std::isfinite(params.radiusMeters) && params.radiusMeters > 0.0F &&
+         std::isfinite(params.heightMeters) && params.heightMeters > params.radiusMeters * 2.0F &&
+         std::isfinite(params.maxWalkableSlopeDegrees) && params.maxWalkableSlopeDegrees >= 0.0F &&
+         params.maxWalkableSlopeDegrees <= 90.0F && std::isfinite(params.stepHeightMeters) &&
+         params.stepHeightMeters >= 0.0F && std::isfinite(params.groundSnapMeters) &&
+         params.groundSnapMeters >= 0.0F && std::isfinite(params.skinMeters) &&
+         params.skinMeters >= 0.0F;
+}
+
+void applySlopeToResult(MovementResult& result, const SlopeSample& slope) {
+  result.movementPolicyBand = std::string{slope.bandId};
+  result.slopeAngleDegrees = slope.angleDegrees;
+  result.slopeUpDot = slope.upDot;
+  result.speedMultiplier = slope.speedMultiplier;
+  result.staminaCostMultiplier = slope.staminaCostMultiplier;
+  result.stepPenaltyMultiplier = slope.stepPenaltyMultiplier;
+  result.carefulFooting = slope.carefulFooting;
+}
+
+MovementResult acceptedKinematicResult(const KinematicMovementRequest& request,
+                                       Vec3 start,
+                                       Vec3 destination,
+                                       Vec3 finalPosition,
+                                       const SlopeSample& slope) {
+  MovementResult result;
+  result.actor = request.actor;
+  result.start = start;
+  result.destination = destination;
+  result.finalPosition = finalPosition;
+  result.mode = request.mode;
+  result.blocked = MovementBlockedReason::None;
+  result.sourceCommandId = request.sourceCommandId;
+  result.distanceMeters = movementDistanceMeters(start, finalPosition);
+  result.kinematic = true;
+  result.reasonCode = "movement_ok";
+  applySlopeToResult(result, slope);
+  return result;
+}
+
+bool snapToGround(const SpatialSurfaceSet& surfaces,
+                  const MovementParams& params,
+                  Vec3 candidate,
+                  Vec3& snapped,
+                  SlopeSample& slope) {
+  const CollisionQueryResult ground =
+      sampleSurfaceHeight(surfaces, candidate, std::max(params.radiusMeters, 0.001F));
+  if (ground.status != CollisionQueryStatus::Hit) {
+    return false;
+  }
+  slope = sampleSlope(ground.normal, params);
+  if (!slope.walkable) {
+    return false;
+  }
+  if (std::fabs(candidate.y - ground.heightMeters) > params.groundSnapMeters) {
+    return false;
+  }
+  snapped = {candidate.x, ground.heightMeters, candidate.z};
+  return true;
 }
 
 }  // namespace
@@ -44,6 +149,40 @@ float movementDistanceMeters(const Vec3& start, const Vec3& destination) {
 
 float movementLimitMeters(const MovementRequest& request, const RuntimeConfig& config) {
   return movementLimitMeters(request, &config);
+}
+
+const char* movementBlockedReasonName(MovementBlockedReason reason) {
+  switch (reason) {
+    case MovementBlockedReason::None:
+      return "movement_ok";
+    case MovementBlockedReason::InvalidActor:
+      return "invalid_actor";
+    case MovementBlockedReason::ActorInactive:
+      return "actor_inactive";
+    case MovementBlockedReason::InvalidDestination:
+      return "invalid_destination";
+    case MovementBlockedReason::DestinationNotFinite:
+      return "destination_not_finite";
+    case MovementBlockedReason::MovementTooFar:
+      return "movement_too_far";
+    case MovementBlockedReason::BlockedByWorld:
+      return "blocked_by_world";
+    case MovementBlockedReason::MissingWorld:
+      return "missing_world";
+    case MovementBlockedReason::MissingCollisionSurfaces:
+      return "missing_collision_surfaces";
+    case MovementBlockedReason::InvalidMovementParams:
+      return "invalid_movement_params";
+    case MovementBlockedReason::NoWalkableGround:
+      return "no_walkable_ground";
+    case MovementBlockedReason::SlopeRejected:
+      return "slope_rejected";
+    case MovementBlockedReason::BlockedByCollision:
+      return "blocked_by_collision";
+    case MovementBlockedReason::InternalError:
+      return "internal_error";
+  }
+  return "internal_error";
 }
 
 MovementBlockedReason validateMovementRequest(
@@ -122,6 +261,172 @@ MovementResult executeMovement(MovementSystemContext& context, const MovementReq
   result.blocked = MovementBlockedReason::None;
   result.sourceCommandId = request.sourceCommandId;
   result.distanceMeters = distance;
+  return result;
+}
+
+MovementResult executeKinematicMovement(MovementSystemContext& context,
+                                        const KinematicMovementRequest& request) {
+  Vec3 start;
+  if (context.world == nullptr) {
+    return blockedKinematicResult(request, start, MovementBlockedReason::MissingWorld);
+  }
+  if (context.collisionSurfaces == nullptr) {
+    return blockedKinematicResult(request, start, MovementBlockedReason::MissingCollisionSurfaces);
+  }
+  if (!isValid(request.actor)) {
+    return blockedKinematicResult(request, start, MovementBlockedReason::InvalidActor);
+  }
+  if (!validMovementParams(request.params) || !std::isfinite(request.seconds) ||
+      request.seconds < 0.0F) {
+    return blockedKinematicResult(request, start, MovementBlockedReason::InvalidMovementParams);
+  }
+
+  const EntityState* actor = context.world->findById(request.actor);
+  if (actor == nullptr) {
+    return blockedKinematicResult(request, start, MovementBlockedReason::InvalidActor);
+  }
+  start = actor->transform.position;
+  if (!actor->active) {
+    return blockedKinematicResult(request, start, MovementBlockedReason::ActorInactive);
+  }
+  if (!isFinite(start) || !isFinite(request.intent)) {
+    return blockedKinematicResult(request, start, MovementBlockedReason::DestinationNotFinite);
+  }
+
+  const CollisionQueryResult currentGround =
+      sampleSurfaceHeight(*context.collisionSurfaces, start, request.params.radiusMeters);
+  if (currentGround.status != CollisionQueryStatus::Hit) {
+    return blockedKinematicResult(request, start, MovementBlockedReason::NoWalkableGround);
+  }
+  const SlopeSample currentSlope = sampleSlope(currentGround.normal, request.params);
+  if (!currentSlope.valid || !currentSlope.walkable) {
+    MovementResult blocked =
+        blockedKinematicResult(request, start, MovementBlockedReason::SlopeRejected);
+    applySlopeToResult(blocked, currentSlope);
+    return blocked;
+  }
+
+  Vec3 intentDirection;
+  if (!normalize(horizontalIntent(request.intent), intentDirection) ||
+      request.params.maxSpeedMetersPerSecond <= 0.0F || request.seconds <= 0.0F) {
+    MovementResult result = acceptedKinematicResult(request, start, start, start, currentSlope);
+    result.reasonCode = "movement_no_intent";
+    return result;
+  }
+
+  const float travelMeters =
+      request.params.maxSpeedMetersPerSecond * request.seconds * currentSlope.speedMultiplier;
+  if (!std::isfinite(travelMeters) || travelMeters < 0.0F) {
+    return blockedKinematicResult(request, start, MovementBlockedReason::InvalidMovementParams);
+  }
+  const Vec3 desired = intentDirection * travelMeters;
+  Vec3 projected = desired - currentSlope.normal * dot(desired, currentSlope.normal);
+  if (!isFinite(projected)) {
+    return blockedKinematicResult(request, start, MovementBlockedReason::InternalError);
+  }
+
+  const float projectedLength = vectorLength(projected);
+  if (!std::isfinite(projectedLength)) {
+    return blockedKinematicResult(request, start, MovementBlockedReason::InternalError);
+  }
+  if (projectedLength <= kMovementEpsilon) {
+    MovementResult result = acceptedKinematicResult(request, start, start, start, currentSlope);
+    result.reasonCode = "movement_projected_to_zero";
+    return result;
+  }
+
+  Vec3 candidate = start + projected;
+  CollisionQueryResult hit = querySegment(
+      *context.collisionSurfaces,
+      start + vec3UnitY() * (request.params.heightMeters * 0.5F),
+      candidate + vec3UnitY() * (request.params.heightMeters * 0.5F),
+      CollisionQueryKind::Actor);
+
+  bool clamped = false;
+  bool slid = false;
+  std::uint32_t sweepCount = 1U;
+  std::string hitSurfaceId;
+
+  if (hit.status == CollisionQueryStatus::Hit) {
+    clamped = true;
+    hitSurfaceId = hit.surfaceId;
+    const float skinTime = projectedLength > kMovementEpsilon
+                               ? std::clamp(request.params.skinMeters / projectedLength, 0.0F, 1.0F)
+                               : 0.0F;
+    const float safeTime = std::clamp(hit.timeOfImpact - skinTime, 0.0F, 1.0F);
+    candidate = start + projected * safeTime;
+
+    const Vec3 remaining = projected * (1.0F - safeTime);
+    Vec3 slide = remaining - hit.normal * dot(remaining, hit.normal);
+    if (isFinite(slide) && vectorLength(slide) > request.params.skinMeters) {
+      slid = true;
+      const Vec3 slideCandidate = candidate + slide;
+      const CollisionQueryResult slideHit = querySegment(
+          *context.collisionSurfaces,
+          candidate + vec3UnitY() * (request.params.heightMeters * 0.5F),
+          slideCandidate + vec3UnitY() * (request.params.heightMeters * 0.5F),
+          CollisionQueryKind::Actor);
+      ++sweepCount;
+      if (slideHit.status == CollisionQueryStatus::Hit) {
+        const float slideLength = vectorLength(slide);
+        const float slideSkinTime =
+            slideLength > kMovementEpsilon
+                ? std::clamp(request.params.skinMeters / slideLength, 0.0F, 1.0F)
+                : 0.0F;
+        const float slideSafeTime =
+            std::clamp(slideHit.timeOfImpact - slideSkinTime, 0.0F, 1.0F);
+        candidate = candidate + slide * slideSafeTime;
+        if (hitSurfaceId.empty()) {
+          hitSurfaceId = slideHit.surfaceId;
+        }
+      } else {
+        candidate = slideCandidate;
+      }
+    }
+  }
+
+  Vec3 snapped;
+  SlopeSample finalSlope;
+  if (!snapToGround(*context.collisionSurfaces, request.params, candidate, snapped, finalSlope)) {
+    MovementResult blocked =
+        blockedKinematicResult(request, start, MovementBlockedReason::NoWalkableGround);
+    blocked.destination = candidate;
+    applySlopeToResult(blocked, currentSlope);
+    blocked.collisionSweepCount = sweepCount;
+    blocked.movementClamped = clamped;
+    blocked.movementSlid = slid;
+    blocked.hitSurfaceId = std::move(hitSurfaceId);
+    return blocked;
+  }
+
+  if (clamped && movementDistanceMeters(start, snapped) <= kMovementEpsilon) {
+    MovementResult blocked =
+        blockedKinematicResult(request, start, MovementBlockedReason::BlockedByCollision);
+    blocked.destination = candidate;
+    applySlopeToResult(blocked, currentSlope);
+    blocked.collisionSweepCount = sweepCount;
+    blocked.movementClamped = true;
+    blocked.movementSlid = slid;
+    blocked.hitSurfaceId = std::move(hitSurfaceId);
+    return blocked;
+  }
+
+  Transform3 nextTransform = actor->transform;
+  nextTransform.position = snapped;
+  const WorldMutationResult mutation = context.world->updateTransform(request.actor, nextTransform);
+  if (mutation.status != WorldStatus::Ok) {
+    MovementResult blocked =
+        blockedKinematicResult(request, start, MovementBlockedReason::BlockedByWorld);
+    applySlopeToResult(blocked, finalSlope);
+    return blocked;
+  }
+
+  MovementResult result = acceptedKinematicResult(request, start, start + projected, snapped, finalSlope);
+  result.movementClamped = clamped;
+  result.movementSlid = slid;
+  result.groundSnapApplied = !nearlyEqual(candidate, snapped);
+  result.collisionSweepCount = sweepCount;
+  result.hitSurfaceId = std::move(hitSurfaceId);
   return result;
 }
 

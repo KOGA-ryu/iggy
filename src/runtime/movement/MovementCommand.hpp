@@ -1,10 +1,12 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 #include "core/ids/EntityId.hpp"
 #include "core/math/Vec3.hpp"
 #include "runtime/command/Command.hpp"
+#include "runtime/movement/MovementParams.hpp"
 
 namespace iggy3d {
 
@@ -23,6 +25,11 @@ enum class MovementBlockedReason : std::uint8_t {
   MovementTooFar,
   BlockedByWorld,
   MissingWorld,
+  MissingCollisionSurfaces,
+  InvalidMovementParams,
+  NoWalkableGround,
+  SlopeRejected,
+  BlockedByCollision,
   InternalError,
 };
 
@@ -43,6 +50,29 @@ struct MovementResult {
   MovementBlockedReason blocked = MovementBlockedReason::None;
   CommandId sourceCommandId = kInvalidCommandId;
   float distanceMeters = 0.0F;
+  bool kinematic = false;
+  bool movementClamped = false;
+  bool movementSlid = false;
+  bool groundSnapApplied = false;
+  bool carefulFooting = false;
+  float slopeAngleDegrees = 0.0F;
+  float slopeUpDot = 0.0F;
+  float speedMultiplier = 1.0F;
+  float staminaCostMultiplier = 1.0F;
+  float stepPenaltyMultiplier = 1.0F;
+  std::uint32_t collisionSweepCount = 0;
+  std::string movementPolicyBand;
+  std::string hitSurfaceId;
+  std::string reasonCode = "movement_ok";
+};
+
+struct KinematicMovementRequest {
+  EntityId actor;
+  Vec3 intent;
+  MovementMode mode = MovementMode::Walk;
+  MovementParams params;
+  float seconds = 0.0F;
+  CommandId sourceCommandId = kInvalidCommandId;
 };
 
 inline bool movementSucceeded(const MovementResult& result) {

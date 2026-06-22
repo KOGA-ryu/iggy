@@ -86,10 +86,12 @@ int main() {
   const std::filesystem::path suiteOutput = "/tmp/iggy3d_collision_probe_suite.out";
   const std::filesystem::path listOutput = "/tmp/iggy3d_collision_probe_list.out";
   const std::filesystem::path segmentOutput = "/tmp/iggy3d_collision_probe_segment.out";
+  const std::filesystem::path moveOutput = "/tmp/iggy3d_collision_probe_move.out";
 
   std::map<std::string, std::string> suite;
   std::map<std::string, std::string> list;
   std::map<std::string, std::string> segment;
+  std::map<std::string, std::string> move;
 
   const bool suitePassed =
       std::filesystem::exists(binary) &&
@@ -121,11 +123,22 @@ int main() {
       hasField(segment, "surface_id", "north_wall_actor_blocker") &&
       hasField(segment, "role", "blocker");
 
-  const bool passed = suitePassed && listPassed && segmentPassed;
+  const bool movePassed =
+      runProbe(binary,
+               "--package " + shellQuote(fixture) +
+                   " --query move --units feet --start 10,0.05,9 --intent 0,0,-1 --seconds 0.5",
+               moveOutput, move) &&
+      hasField(move, "result", "pass") &&
+      hasField(move, "movement_accepted", "true") &&
+      hasField(move, "movement_policy_band", "flat") &&
+      hasField(move, "ground_snap_applied", "false");
+
+  const bool passed = suitePassed && listPassed && segmentPassed && movePassed;
 #else
   const bool suitePassed = false;
   const bool listPassed = false;
   const bool segmentPassed = false;
+  const bool movePassed = false;
   const bool passed = false;
 #endif
 
@@ -133,6 +146,7 @@ int main() {
   std::cout << "suite_passed=" << (suitePassed ? "true" : "false") << "\n";
   std::cout << "list_passed=" << (listPassed ? "true" : "false") << "\n";
   std::cout << "segment_passed=" << (segmentPassed ? "true" : "false") << "\n";
+  std::cout << "move_passed=" << (movePassed ? "true" : "false") << "\n";
   std::cout << "result=" << (passed ? "pass" : "fail") << "\n";
   std::cout << "reason_code="
             << (passed ? "collision_probe_smoke_pass" : "collision_probe_smoke_failed")
