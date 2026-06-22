@@ -8,6 +8,7 @@
 #include "core/math/Aabb3.hpp"
 #include "core/math/Vec3.hpp"
 #include "runtime/command/Command.hpp"
+#include "runtime/debug/RuntimeDebugSnapshot.hpp"
 #include "runtime/replay/StateHash.hpp"
 #include "runtime/session/SessionState.hpp"
 
@@ -22,6 +23,7 @@ enum class DebugProjectionKind : std::uint8_t {
   ObjectiveState,
   StateHash,
   ReplayDivergence,
+  RuntimeTelemetry,
 };
 
 struct DebugProjectionConfig {
@@ -44,9 +46,12 @@ struct DebugProjectionItem {
   Vec3 worldPoint;
   bool hasBounds = false;
   Aabb3 worldBounds;
+  bool hasScalar = false;
   float radiusMeters = 0.0F;
+  float scalarValue = 0.0F;
   std::string objectiveId;
   std::string labelCode;
+  std::string valueCode;
 };
 
 struct DebugProjectionResult {
@@ -57,5 +62,7 @@ struct DebugProjectionResult {
 
 DebugProjectionResult buildDebugProjection(const SessionState& state,
                                            const DebugProjectionConfig& config = {});
+void appendRuntimeDebugSnapshot(DebugProjectionResult& result,
+                                const RuntimeDebugSnapshot& snapshot);
 
 }  // namespace iggy3d

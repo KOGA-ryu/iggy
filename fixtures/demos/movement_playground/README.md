@@ -9,6 +9,7 @@ Launch:
 Controls:
 
 - WASD moves, mouse drag or right stick looks, Escape/Start quits;
+- F3 toggles the world debug overlay telemetry;
 - Space jumps on keyboard when the dev menu is closed; hold WASD during jump for limited air control;
 - Shift dashes on keyboard when the dev menu is closed; hold WASD to choose dash direction;
 - hold C or Left Ctrl to crouch on keyboard;
@@ -25,6 +26,7 @@ Codex control:
 ```sh
 cat >/tmp/iggy3d.control <<'EOF'
 dev_menu.open=true
+debug_overlay.open=true
 dev_menu.select=jump
 mechanic.execute=true
 move.forward=1
@@ -39,8 +41,9 @@ EOF
 ```
 
 Supported control keys are `dev_menu.open`, `dev_menu.select`, `mechanic`,
-`mechanic.execute`, `jump`, `dash`, `stance`, `move.forward`, `move.right`, `look.yaw_delta`,
-`look.pitch_delta`, `interact`, `attack`, `reset`, and `quit`.
+`mechanic.execute`, `debug_overlay.open`, `jump`, `dash`, `stance`,
+`move.forward`, `move.right`, `look.yaw_delta`, `look.pitch_delta`, `interact`,
+`attack`, `reset`, and `quit`.
 
 Purpose:
 
@@ -59,5 +62,5 @@ Purpose:
 Current runtime truth:
 
 - this fixture is a playable/renderable test arena;
-- first-person kinematic walking, hold-to-crouch stance, runtime jump, limited air control, and runtime dash work against the shifted room surface set;
+- first-person kinematic walking, hold-to-crouch stance, runtime jump, limited air control, runtime dash, and debug overlay telemetry work against the shifted room surface set;
 - clamber, vault, spell projectile, and wire-walk mechanics are authored as test zones, not implemented ability modes yet.

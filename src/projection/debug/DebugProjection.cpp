@@ -121,4 +121,24 @@ DebugProjectionResult buildDebugProjection(const SessionState& state,
   return result;
 }
 
+void appendRuntimeDebugSnapshot(DebugProjectionResult& result,
+                                const RuntimeDebugSnapshot& snapshot) {
+  if (snapshot.status != RuntimeDebugSnapshotStatus::Ok ||
+      !snapshot.playerPositionAvailable) {
+    return;
+  }
+
+  DebugProjectionItem item;
+  item.kind = DebugProjectionKind::RuntimeTelemetry;
+  item.sourceTick = snapshot.sourceTick;
+  item.actor = snapshot.actor;
+  item.hasWorldPoint = true;
+  item.worldPoint = snapshot.position;
+  item.hasScalar = true;
+  item.scalarValue = snapshot.horizontalSpeedMetersPerSecond;
+  item.labelCode = "runtime.debug.overlay";
+  item.valueCode = snapshot.grounded ? "phase.grounded" : "phase.airborne";
+  result.items.push_back(std::move(item));
+}
+
 }  // namespace iggy3d

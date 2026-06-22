@@ -66,12 +66,25 @@ bool hasField(const std::map<std::string, std::string>& fields,
   return found != fields.end() && found->second == value;
 }
 
+bool numericFieldGreater(const std::map<std::string, std::string>& fields,
+                         const std::string& key,
+                         float minimum) {
+  const auto found = fields.find(key);
+  if (found == fields.end()) {
+    return false;
+  }
+  char* end = nullptr;
+  const float value = std::strtof(found->second.c_str(), &end);
+  return end != found->second.c_str() && *end == '\0' && value > minimum;
+}
+
 bool writeControlFile(const std::filesystem::path& path, const std::string& mechanic) {
   std::ofstream output(path);
   if (!output) {
     return false;
   }
   output << "dev_menu.open=true\n";
+  output << "debug_overlay.open=true\n";
   output << "dev_menu.select=" << mechanic << "\n";
   output << "mechanic.execute=true\n";
   output << "move.forward=1\n";
@@ -140,6 +153,13 @@ int main() {
       hasField(jumpFields, "air_move_intent_observed", "true") &&
       hasField(jumpFields, "air_control_active", "true") &&
       hasField(jumpFields, "horizontal_velocity_state", "positive") &&
+      hasField(jumpFields, "debug_overlay_open", "true") &&
+      hasField(jumpFields, "debug_overlay_reason", "debug_overlay_ok") &&
+      hasField(jumpFields, "debug_player_position_available", "true") &&
+      hasField(jumpFields, "debug_speed_available", "true") &&
+      hasField(jumpFields, "debug_player_phase", "airborne") &&
+      numericFieldGreater(jumpFields, "debug_horizontal_speed_meters_per_second", 0.0F) &&
+      numericFieldGreater(jumpFields, "debug_distance_from_spawn_meters", 0.0F) &&
       hasField(jumpFields, "kinematic_movement_attempted", "true") &&
       hasField(jumpFields, "kinematic_movement_accepted", "true") &&
       hasField(jumpFields, "movement_reason", "movement_ok");
@@ -154,7 +174,14 @@ int main() {
       hasField(dashFields, "dash_accepted", "true") &&
       hasField(dashFields, "dash_active", "true") &&
       hasField(dashFields, "dash_cooldown_state", "cooling") &&
-      hasField(dashFields, "horizontal_velocity_state", "positive");
+      hasField(dashFields, "horizontal_velocity_state", "positive") &&
+      hasField(dashFields, "debug_overlay_open", "true") &&
+      hasField(dashFields, "debug_overlay_reason", "debug_overlay_ok") &&
+      hasField(dashFields, "debug_player_position_available", "true") &&
+      hasField(dashFields, "debug_speed_available", "true") &&
+      hasField(dashFields, "debug_player_phase", "grounded") &&
+      numericFieldGreater(dashFields, "debug_horizontal_speed_meters_per_second", 0.0F) &&
+      numericFieldGreater(dashFields, "debug_distance_from_spawn_meters", 0.0F);
   const bool passed = jumpPassed && dashPassed;
 #else
   const int jumpExitCode = 77;

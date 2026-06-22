@@ -60,6 +60,9 @@ set_tests_properties(movement_policy_tests PROPERTIES LABELS "unit;runtime;movem
 iggy3d_add_unit_test(player_motor_tests tests/unit/player_motor_tests.cpp)
 set_tests_properties(player_motor_tests PROPERTIES LABELS "unit;runtime;player;movement;iggy3d")
 
+iggy3d_add_unit_test(runtime_debug_snapshot_tests tests/unit/runtime_debug_snapshot_tests.cpp)
+set_tests_properties(runtime_debug_snapshot_tests PROPERTIES LABELS "unit;runtime;debug;iggy3d")
+
 iggy3d_add_unit_test(session_state_tests tests/unit/session_state_tests.cpp)
 set_tests_properties(session_state_tests PROPERTIES LABELS "unit;runtime;session;iggy3d")
 

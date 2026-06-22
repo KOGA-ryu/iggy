@@ -14,6 +14,7 @@
 #include "render/RendererApi.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/command/Command.hpp"
+#include "runtime/debug/RuntimeDebugSnapshot.hpp"
 #include "runtime/movement/MovementSystem.hpp"
 #include "runtime/player/PlayerMotor.hpp"
 #include "runtime/session/Session.hpp"
@@ -22,6 +23,7 @@
 #include <cerrno>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <cstdint>
 #include <filesystem>
@@ -138,6 +140,12 @@ struct PlayableReceiptFields {
   bool dashActive = false;
   bool dashMovementClamped = false;
   bool dashMovementSlid = false;
+  bool debugOverlayEnabled = false;
+  bool debugOverlayOpen = false;
+  bool debugOverlayToggleObserved = false;
+  bool debugPlayerPositionAvailable = false;
+  bool debugSpeedAvailable = false;
+  bool debugDistanceAvailable = false;
   std::string stance = "standing";
   std::string eyeHeightMeters = "1.650";
   std::string actorHeightMeters = "1.800";
@@ -147,6 +155,19 @@ struct PlayableReceiptFields {
   std::string verticalVelocityState = "zero";
   std::string horizontalVelocityState = "zero";
   std::string dashCooldownState = "ready";
+  std::string debugOverlayReason = "debug_overlay_disabled";
+  std::string debugPlayerPhase = "grounded";
+  std::string debugMovementPolicyBand = "not_attempted";
+  std::string debugHitSurfaceId = "none";
+  std::string debugMovedThisFrameMeters = "0.000";
+  std::string debugHorizontalSpeedMetersPerSecond = "0.000";
+  std::string debugVerticalSpeedMetersPerSecond = "0.000";
+  std::string debugDistanceFromSpawnMeters = "0.000";
+  std::string debugPositionX = "0.000";
+  std::string debugPositionY = "0.000";
+  std::string debugPositionZ = "0.000";
+  std::string debugYawRadians = "0.000";
+  std::string debugPitchRadians = "0.000";
   bool devMenuEnabled = false;
   bool devMenuOpen = false;
   bool devMenuToggleObserved = false;
@@ -201,6 +222,8 @@ struct CodexControlFrame {
   std::uint64_t lineCount = 0;
   bool devMenuOpenSet = false;
   bool devMenuOpen = false;
+  bool debugOverlayOpenSet = false;
+  bool debugOverlayOpen = false;
   bool mechanicSet = false;
   DevMechanic mechanic = DevMechanic::Walk;
   bool executeMechanic = false;
@@ -338,6 +361,15 @@ std::string_view velocityState(float velocityMetersPerSecond) {
   return "zero";
 }
 
+std::string debugFloat(float value) {
+  char buffer[32];
+  if (!std::isfinite(value)) {
+    return "nan";
+  }
+  (void)std::snprintf(buffer, sizeof(buffer), "%.3f", static_cast<double>(value));
+  return buffer;
+}
+
 std::string_view trimControlText(std::string_view value) {
   while (!value.empty() &&
          (value.front() == ' ' || value.front() == '\t' || value.front() == '\r')) {
@@ -427,6 +459,15 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
       if (parseControlBool(value, boolValue)) {
         frame.devMenuOpenSet = true;
         frame.devMenuOpen = boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "debug_overlay.open" || key == "debug.open") {
+      if (parseControlBool(value, boolValue)) {
+        frame.debugOverlayOpenSet = true;
+        frame.debugOverlayOpen = boolValue;
         frame.applied = true;
       } else {
         frame.parseError = true;
@@ -930,6 +971,35 @@ void recordPlayerMotorResult(PlayableReceiptFields& fields,
   }
 }
 
+void recordRuntimeDebugSnapshot(PlayableReceiptFields& fields,
+                                const iggy3d::RuntimeDebugSnapshot& snapshot) {
+  fields.debugOverlayEnabled = true;
+  fields.debugOverlayOpen = snapshot.enabled;
+  fields.debugOverlayReason = snapshot.reasonCode == nullptr ? "unavailable" : snapshot.reasonCode;
+  fields.debugPlayerPositionAvailable = snapshot.playerPositionAvailable;
+  fields.debugSpeedAvailable = snapshot.speedAvailable;
+  fields.debugDistanceAvailable = snapshot.hasSpawnDistance;
+  if (snapshot.status != iggy3d::RuntimeDebugSnapshotStatus::Ok) {
+    return;
+  }
+
+  fields.debugPlayerPhase = iggy3d::playerMotorPhaseName(snapshot.motorPhase);
+  fields.debugMovementPolicyBand =
+      snapshot.movementPolicyBand.empty() ? "not_attempted" : snapshot.movementPolicyBand;
+  fields.debugHitSurfaceId = snapshot.hitSurfaceId.empty() ? "none" : snapshot.hitSurfaceId;
+  fields.debugMovedThisFrameMeters = debugFloat(snapshot.movedThisFrameMeters);
+  fields.debugHorizontalSpeedMetersPerSecond =
+      debugFloat(snapshot.horizontalSpeedMetersPerSecond);
+  fields.debugVerticalSpeedMetersPerSecond =
+      debugFloat(snapshot.verticalSpeedMetersPerSecond);
+  fields.debugDistanceFromSpawnMeters = debugFloat(snapshot.distanceFromSpawnMeters);
+  fields.debugPositionX = debugFloat(snapshot.position.x);
+  fields.debugPositionY = debugFloat(snapshot.position.y);
+  fields.debugPositionZ = debugFloat(snapshot.position.z);
+  fields.debugYawRadians = debugFloat(snapshot.yawRadians);
+  fields.debugPitchRadians = debugFloat(snapshot.pitchRadians);
+}
+
 iggy3d::CommandRecord moveCommand(iggy3d::Vec3 point) {
   iggy3d::CommandRecord command;
   command.playerSlot = 0;
@@ -1156,6 +1226,33 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
   iggy3d::appendReceiptField(receipt, "dash_cooldown_state", fields.dashCooldownState);
   iggy3d::appendReceiptField(receipt, "dash_movement_clamped", fields.dashMovementClamped);
   iggy3d::appendReceiptField(receipt, "dash_movement_slid", fields.dashMovementSlid);
+  iggy3d::appendReceiptField(receipt, "debug_overlay_enabled", fields.debugOverlayEnabled);
+  iggy3d::appendReceiptField(receipt, "debug_overlay_open", fields.debugOverlayOpen);
+  iggy3d::appendReceiptField(receipt, "debug_overlay_toggle_observed",
+                             fields.debugOverlayToggleObserved);
+  iggy3d::appendReceiptField(receipt, "debug_overlay_reason", fields.debugOverlayReason);
+  iggy3d::appendReceiptField(receipt, "debug_player_position_available",
+                             fields.debugPlayerPositionAvailable);
+  iggy3d::appendReceiptField(receipt, "debug_speed_available", fields.debugSpeedAvailable);
+  iggy3d::appendReceiptField(receipt, "debug_distance_available",
+                             fields.debugDistanceAvailable);
+  iggy3d::appendReceiptField(receipt, "debug_player_phase", fields.debugPlayerPhase);
+  iggy3d::appendReceiptField(receipt, "debug_movement_policy_band",
+                             fields.debugMovementPolicyBand);
+  iggy3d::appendReceiptField(receipt, "debug_hit_surface_id", fields.debugHitSurfaceId);
+  iggy3d::appendReceiptField(receipt, "debug_moved_this_frame_meters",
+                             fields.debugMovedThisFrameMeters);
+  iggy3d::appendReceiptField(receipt, "debug_horizontal_speed_meters_per_second",
+                             fields.debugHorizontalSpeedMetersPerSecond);
+  iggy3d::appendReceiptField(receipt, "debug_vertical_speed_meters_per_second",
+                             fields.debugVerticalSpeedMetersPerSecond);
+  iggy3d::appendReceiptField(receipt, "debug_distance_from_spawn_meters",
+                             fields.debugDistanceFromSpawnMeters);
+  iggy3d::appendReceiptField(receipt, "debug_position_x", fields.debugPositionX);
+  iggy3d::appendReceiptField(receipt, "debug_position_y", fields.debugPositionY);
+  iggy3d::appendReceiptField(receipt, "debug_position_z", fields.debugPositionZ);
+  iggy3d::appendReceiptField(receipt, "debug_yaw_radians", fields.debugYawRadians);
+  iggy3d::appendReceiptField(receipt, "debug_pitch_radians", fields.debugPitchRadians);
   iggy3d::appendReceiptField(receipt, "stance", fields.stance);
   iggy3d::appendReceiptField(receipt, "eye_height_meters", fields.eyeHeightMeters);
   iggy3d::appendReceiptField(receipt, "actor_height_meters", fields.actorHeightMeters);
@@ -1605,6 +1702,15 @@ int main(int argc, const char* const* argv) {
   if (const iggy3d::EntityState* player = playerEntity(session)) {
     playerMotor.actor = player->id;
   }
+  bool debugOverlayOpen = false;
+  std::optional<iggy3d::Vec3> debugPreviousPosition;
+  std::optional<iggy3d::Vec3> debugSpawnPosition;
+  if (const iggy3d::EntityState* player = playerEntity(session)) {
+    debugPreviousPosition = player->transform.position;
+    debugSpawnPosition = player->transform.position;
+  }
+  std::optional<iggy3d::MovementResult> lastMovementResult;
+  std::optional<iggy3d::PlayerMotorResult> lastMotorResult;
 #if defined(IGGY3D_HAS_SDL3)
   GamepadSession gamepad;
   if (playableFields.playable &&
@@ -1632,6 +1738,7 @@ int main(int argc, const char* const* argv) {
   bool devMenuNextDown = false;
   bool devMenuPreviousDown = false;
   bool devMenuExecuteDown = false;
+  bool debugOverlayToggleDown = false;
   const auto interactiveStart = std::chrono::steady_clock::now();
   std::uint32_t frameIndex = 0U;
   while (true) {
@@ -1703,6 +1810,7 @@ int main(int argc, const char* const* argv) {
       bool devPreviousRequested = false;
       bool devExecuteRequested = false;
       bool devExecuteThisFrame = false;
+      bool debugOverlayToggleRequested = false;
       if (parsed.options.scriptedKinematicInput) {
         movement = {1.0F, 0.0F, 0.0F};
       } else if (playableFields.inputBackend == VisualInputBackend::Keyboard) {
@@ -1718,6 +1826,8 @@ int main(int argc, const char* const* argv) {
           const bool up = SDL_SCANCODE_UP < keyCount && keys[SDL_SCANCODE_UP];
           const bool down = SDL_SCANCODE_DOWN < keyCount && keys[SDL_SCANCODE_DOWN];
           devToggleRequested = SDL_SCANCODE_F1 < keyCount && keys[SDL_SCANCODE_F1];
+          debugOverlayToggleRequested =
+              SDL_SCANCODE_F3 < keyCount && keys[SDL_SCANCODE_F3];
           if (devMenu.enabled && devMenu.open) {
             devExecuteRequested =
                 (SDL_SCANCODE_SPACE < keyCount && keys[SDL_SCANCODE_SPACE]) ||
@@ -1860,6 +1970,9 @@ int main(int argc, const char* const* argv) {
         if (codexControl.devMenuOpenSet) {
           devMenu.open = codexControl.devMenuOpen;
         }
+        if (codexControl.debugOverlayOpenSet) {
+          debugOverlayOpen = codexControl.debugOverlayOpen;
+        }
         if (codexControl.mechanicSet) {
           devMenu.selected = codexControl.mechanic;
         }
@@ -1885,6 +1998,10 @@ int main(int argc, const char* const* argv) {
       if (devMenu.enabled && pressedEdge(devToggleRequested, devMenuToggleDown)) {
         devMenu.open = !devMenu.open;
         playableFields.devMenuToggleObserved = true;
+      }
+      if (pressedEdge(debugOverlayToggleRequested, debugOverlayToggleDown)) {
+        debugOverlayOpen = !debugOverlayOpen;
+        playableFields.debugOverlayToggleObserved = true;
       }
       if (devMenu.enabled && devMenu.open &&
           pressedEdge(devPreviousRequested, devMenuPreviousDown)) {
@@ -1959,6 +2076,7 @@ int main(int argc, const char* const* argv) {
         movementRequest.sourceCommandId = iggy3d::kInvalidCommandId;
         const iggy3d::MovementResult movementResult =
             iggy3d::executeKinematicMovement(movementContext, movementRequest);
+        lastMovementResult = movementResult;
         recordKinematicMovementResult(playableFields, movementResult);
       }
       if (resetRequested) {
@@ -1968,7 +2086,11 @@ int main(int argc, const char* const* argv) {
           playerMotor = iggy3d::PlayerMotorState{};
           if (const iggy3d::EntityState* resetPlayer = playerEntity(session)) {
             playerMotor.actor = resetPlayer->id;
+            debugPreviousPosition = resetPlayer->transform.position;
+            debugSpawnPosition = resetPlayer->transform.position;
           }
+          lastMovementResult.reset();
+          lastMotorResult.reset();
         }
       }
       if (iggy3d::isValid(playerMotor.actor)) {
@@ -1982,6 +2104,7 @@ int main(int argc, const char* const* argv) {
         motorInput.seconds = 1.0F / 60.0F;
         const iggy3d::PlayerMotorResult motorResult =
             iggy3d::updatePlayerMotor(motorContext, playerMotor, motorInput);
+        lastMotorResult = motorResult;
         recordPlayerMotorResult(playableFields, motorResult);
         if (devMenu.enabled && devMenu.selected == DevMechanic::Jump &&
             devMenu.executeRequested) {
@@ -2028,7 +2151,33 @@ int main(int argc, const char* const* argv) {
 #endif
     iggy3d::SceneProjectionResult scene = iggy3d::buildSceneProjection(session.state());
     attachRoomProjection(package, scene);
-    const iggy3d::DebugProjectionResult debug = iggy3d::buildDebugProjection(session.state());
+    iggy3d::DebugProjectionResult debug = iggy3d::buildDebugProjection(session.state());
+    iggy3d::RuntimeDebugSnapshot debugSnapshot;
+    if (playableFields.playable) {
+      iggy3d::RuntimeDebugSnapshotRequest debugRequest;
+      debugRequest.enabled = debugOverlayOpen;
+      debugRequest.session = &session.state();
+      debugRequest.actor = playerMotor.actor;
+      debugRequest.hasPreviousPosition = debugPreviousPosition.has_value();
+      debugRequest.previousPosition =
+          debugPreviousPosition.has_value() ? *debugPreviousPosition : iggy3d::Vec3{};
+      debugRequest.hasSpawnPosition = debugSpawnPosition.has_value();
+      debugRequest.spawnPosition =
+          debugSpawnPosition.has_value() ? *debugSpawnPosition : iggy3d::Vec3{};
+      debugRequest.deltaSeconds = 1.0F / 60.0F;
+      debugRequest.motorState = &playerMotor;
+      debugRequest.motorResult = lastMotorResult.has_value() ? &*lastMotorResult : nullptr;
+      debugRequest.movementResult =
+          lastMovementResult.has_value() ? &*lastMovementResult : nullptr;
+      debugRequest.yawRadians = yaw;
+      debugRequest.pitchRadians = pitch;
+      debugSnapshot = iggy3d::buildRuntimeDebugSnapshot(debugRequest);
+      recordRuntimeDebugSnapshot(playableFields, debugSnapshot);
+      iggy3d::appendRuntimeDebugSnapshot(debug, debugSnapshot);
+      if (debugSnapshot.playerPositionAvailable) {
+        debugPreviousPosition = debugSnapshot.position;
+      }
+    }
     const float eyeHeightMeters =
         playableFields.crouchActive ? kCrouchedEyeHeightMeters : kStandingEyeHeightMeters;
     submit = renderer.submitFrame(makeFrame(scene, debug, frameIndex + 1U, viewportWidth,
