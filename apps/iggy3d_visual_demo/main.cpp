@@ -8,6 +8,7 @@
 #include "render/vulkan/VulkanBackend.hpp"
 #endif
 #include "content/PackageLoader.hpp"
+#include "content/authoring/EditableRoomDocument.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/FrameInput.hpp"
@@ -18,6 +19,7 @@
 #include "runtime/debug/RuntimeDebugSnapshot.hpp"
 #include "runtime/movement/MovementSystem.hpp"
 #include "runtime/movement/MovementTraversal.hpp"
+#include "runtime/movement/MovementTraversalSlots.hpp"
 #include "runtime/player/PlayerMotor.hpp"
 #include "runtime/save/SaveLoad.hpp"
 #include "runtime/session/Session.hpp"
@@ -315,6 +317,32 @@ struct PlayableReceiptFields {
   bool devMenuExecuteRequested = false;
   std::string devMenuSelectedMechanic = "walk";
   std::string devMenuExecutionStatus = "not_requested";
+  bool editorEnabled = false;
+  bool editorOpen = false;
+  bool editorToggleObserved = false;
+  std::string editorTool = "select";
+  std::string editorPreset = "solid_wall";
+  bool editorApplyRequested = false;
+  bool editorDeleteRequested = false;
+  bool editorUndoRequested = false;
+  bool editorRedoRequested = false;
+  std::string editorLastCommand = "none";
+  std::string editorLastStatus = "not_requested";
+  std::string editorSelectedId = "none";
+  std::string editorCursorX = "0.000";
+  std::string editorCursorY = "0.000";
+  std::string editorCursorZ = "0.000";
+  std::uint64_t editorFloorCount = 0;
+  std::uint64_t editorWallCount = 0;
+  std::uint64_t editorRuntimeStaticMeshCount = 0;
+  std::uint64_t editorRuntimeSurfaceCount = 0;
+  std::uint64_t editorRuntimeTraversalSlotCount = 0;
+  std::uint64_t editorApplyCount = 0;
+  std::uint64_t editorDeleteCount = 0;
+  std::uint64_t editorUndoCount = 0;
+  std::uint64_t editorRedoCount = 0;
+  bool editorBakeOk = true;
+  std::string editorBakeReason = "room_bake_ok";
   bool codexControlConfigured = false;
   bool codexControlRead = false;
   bool codexControlApplied = false;
@@ -413,6 +441,44 @@ struct DevMenuState {
   bool executeRequested = false;
 };
 
+enum class EditorTool : std::uint8_t {
+  Select,
+  PlaceFloor,
+  PlaceWall,
+  Semantics,
+  Delete,
+};
+
+enum class EditorPreset : std::uint8_t {
+  Floor,
+  SolidWall,
+  ClamberWall,
+  ProjectileWall,
+};
+
+struct EditorModeState {
+  bool enabled = false;
+  bool open = false;
+  EditorTool tool = EditorTool::Select;
+  EditorPreset preset = EditorPreset::SolidWall;
+  iggy3d::EditableRoomSession session;
+  std::string selectedId = "none";
+  iggy3d::Vec3 cursorWorldMeters;
+  std::string lastCommand = "none";
+  std::string lastStatus = "not_requested";
+  std::uint64_t nextFloorIndex = 1;
+  std::uint64_t nextWallIndex = 1;
+  std::uint64_t applyCount = 0;
+  std::uint64_t deleteCount = 0;
+  std::uint64_t undoCount = 0;
+  std::uint64_t redoCount = 0;
+  bool bakeOk = true;
+  std::string bakeReason = "room_bake_ok";
+  std::uint64_t runtimeStaticMeshCount = 0;
+  std::uint64_t runtimeSurfaceCount = 0;
+  std::uint64_t runtimeTraversalSlotCount = 0;
+};
+
 struct CodexControlFrame {
   bool configured = false;
   bool read = false;
@@ -424,6 +490,24 @@ struct CodexControlFrame {
   bool devMenuOpen = false;
   bool debugOverlayOpenSet = false;
   bool debugOverlayOpen = false;
+  bool editorOpenSet = false;
+  bool editorOpen = false;
+  bool editorToolSet = false;
+  EditorTool editorTool = EditorTool::Select;
+  bool editorPresetSet = false;
+  EditorPreset editorPreset = EditorPreset::SolidWall;
+  bool editorApply = false;
+  std::vector<std::uint32_t> editorApplyFrames;
+  bool editorDelete = false;
+  std::vector<std::uint32_t> editorDeleteFrames;
+  bool editorUndo = false;
+  std::vector<std::uint32_t> editorUndoFrames;
+  bool editorRedo = false;
+  std::vector<std::uint32_t> editorRedoFrames;
+  bool editorCursorSet = false;
+  iggy3d::Vec3 editorCursorMeters;
+  bool editorSelectSet = false;
+  std::string editorSelectId;
   bool mechanicSet = false;
   DevMechanic mechanic = DevMechanic::Walk;
   bool executeMechanic = false;
@@ -556,6 +640,126 @@ DevMechanic previousDevMechanic(DevMechanic mechanic) {
       return DevMechanic::Clamber;
   }
   return DevMechanic::Walk;
+}
+
+std::string_view editorToolName(EditorTool tool) {
+  switch (tool) {
+    case EditorTool::Select:
+      return "select";
+    case EditorTool::PlaceFloor:
+      return "place_floor";
+    case EditorTool::PlaceWall:
+      return "place_wall";
+    case EditorTool::Semantics:
+      return "semantics";
+    case EditorTool::Delete:
+      return "delete";
+  }
+  return "select";
+}
+
+bool parseEditorTool(std::string_view value, EditorTool& out) {
+  if (value == "select") {
+    out = EditorTool::Select;
+    return true;
+  }
+  if (value == "place_floor" || value == "floor") {
+    out = EditorTool::PlaceFloor;
+    return true;
+  }
+  if (value == "place_wall" || value == "wall") {
+    out = EditorTool::PlaceWall;
+    return true;
+  }
+  if (value == "semantics" || value == "meaning") {
+    out = EditorTool::Semantics;
+    return true;
+  }
+  if (value == "delete") {
+    out = EditorTool::Delete;
+    return true;
+  }
+  return false;
+}
+
+EditorTool nextEditorTool(EditorTool tool) {
+  switch (tool) {
+    case EditorTool::Select:
+      return EditorTool::PlaceFloor;
+    case EditorTool::PlaceFloor:
+      return EditorTool::PlaceWall;
+    case EditorTool::PlaceWall:
+      return EditorTool::Semantics;
+    case EditorTool::Semantics:
+      return EditorTool::Delete;
+    case EditorTool::Delete:
+      return EditorTool::Select;
+  }
+  return EditorTool::Select;
+}
+
+EditorTool previousEditorTool(EditorTool tool) {
+  switch (tool) {
+    case EditorTool::Select:
+      return EditorTool::Delete;
+    case EditorTool::PlaceFloor:
+      return EditorTool::Select;
+    case EditorTool::PlaceWall:
+      return EditorTool::PlaceFloor;
+    case EditorTool::Semantics:
+      return EditorTool::PlaceWall;
+    case EditorTool::Delete:
+      return EditorTool::Semantics;
+  }
+  return EditorTool::Select;
+}
+
+std::string_view editorPresetName(EditorPreset preset) {
+  switch (preset) {
+    case EditorPreset::Floor:
+      return "floor";
+    case EditorPreset::SolidWall:
+      return "solid_wall";
+    case EditorPreset::ClamberWall:
+      return "clamber_wall";
+    case EditorPreset::ProjectileWall:
+      return "projectile_wall";
+  }
+  return "solid_wall";
+}
+
+bool parseEditorPreset(std::string_view value, EditorPreset& out) {
+  if (value == "floor" || value == "walkable_floor") {
+    out = EditorPreset::Floor;
+    return true;
+  }
+  if (value == "solid_wall" || value == "wall") {
+    out = EditorPreset::SolidWall;
+    return true;
+  }
+  if (value == "clamber_wall" || value == "clamber") {
+    out = EditorPreset::ClamberWall;
+    return true;
+  }
+  if (value == "projectile_wall" || value == "projectile_blocker") {
+    out = EditorPreset::ProjectileWall;
+    return true;
+  }
+  return false;
+}
+
+EditorPreset nextEditorPreset(EditorPreset preset) {
+  switch (preset) {
+    case EditorPreset::Floor:
+      return EditorPreset::SolidWall;
+    case EditorPreset::SolidWall:
+      return EditorPreset::ClamberWall;
+    case EditorPreset::ClamberWall:
+      return EditorPreset::ProjectileWall;
+    case EditorPreset::ProjectileWall:
+      return EditorPreset::Floor;
+  }
+  return EditorPreset::SolidWall;
 }
 
 constexpr float kStandingEyeHeightMeters = 1.65F;
@@ -771,6 +975,9 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
     iggy3d::Vec3 vecValue;
     std::vector<std::uint32_t> frameList;
     DevMechanic mechanic = DevMechanic::Walk;
+    EditorTool editorTool = EditorTool::Select;
+    EditorPreset editorPreset = EditorPreset::SolidWall;
+    std::string editorSelectId;
     if (key == "dev_menu.open") {
       if (parseControlBool(value, boolValue)) {
         frame.devMenuOpenSet = true;
@@ -784,6 +991,116 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
       if (parseControlBool(value, boolValue)) {
         frame.debugOverlayOpenSet = true;
         frame.debugOverlayOpen = boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.open") {
+      if (parseControlBool(value, boolValue)) {
+        frame.editorOpenSet = true;
+        frame.editorOpen = boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.tool") {
+      if (parseEditorTool(value, editorTool)) {
+        frame.editorToolSet = true;
+        frame.editorTool = editorTool;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.preset") {
+      if (parseEditorPreset(value, editorPreset)) {
+        frame.editorPresetSet = true;
+        frame.editorPreset = editorPreset;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.apply") {
+      if (parseControlBool(value, boolValue)) {
+        frame.editorApply = frame.editorApply || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.apply_frames") {
+      if (parseControlFrameList(value, frameList)) {
+        frame.editorApplyFrames = std::move(frameList);
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.delete") {
+      if (parseControlBool(value, boolValue)) {
+        frame.editorDelete = frame.editorDelete || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.delete_frames") {
+      if (parseControlFrameList(value, frameList)) {
+        frame.editorDeleteFrames = std::move(frameList);
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.undo") {
+      if (parseControlBool(value, boolValue)) {
+        frame.editorUndo = frame.editorUndo || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.undo_frames") {
+      if (parseControlFrameList(value, frameList)) {
+        frame.editorUndoFrames = std::move(frameList);
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.redo") {
+      if (parseControlBool(value, boolValue)) {
+        frame.editorRedo = frame.editorRedo || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.redo_frames") {
+      if (parseControlFrameList(value, frameList)) {
+        frame.editorRedoFrames = std::move(frameList);
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.cursor") {
+      if (parseControlVec3(value, vecValue)) {
+        frame.editorCursorSet = true;
+        frame.editorCursorMeters = vecValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.select") {
+      editorSelectId = std::string(value);
+      if (!editorSelectId.empty()) {
+        frame.editorSelectSet = true;
+        frame.editorSelectId = editorSelectId;
         frame.applied = true;
       } else {
         frame.parseError = true;
@@ -1836,11 +2153,12 @@ iggy3d::Vec3 negated(iggy3d::Vec3 value) {
 }
 
 void attachRoomProjection(const iggy3d::PackageLoadResult& package,
+                          const iggy3d::RoomAsset* activeRoom,
                           iggy3d::SceneProjectionResult& scene) {
-  if (package.rooms.empty()) {
+  if (activeRoom == nullptr) {
     return;
   }
-  const iggy3d::RoomAsset& room = package.rooms.front();
+  const iggy3d::RoomAsset& room = *activeRoom;
   scene.room.loaded = true;
   scene.room.assetId = room.id;
   scene.room.version = room.version;
@@ -1870,6 +2188,320 @@ void attachRoomProjection(const iggy3d::PackageLoadResult& package,
     scene.room.propVisible = scene.room.propVisible || mesh.role == "prop";
     scene.room.meshes.push_back(std::move(item));
   }
+}
+
+float snapToEditorGrid(float value) {
+  constexpr float kGridStepsPerMeter = 2.0F;
+  return std::round(value * kGridStepsPerMeter) / kGridStepsPerMeter;
+}
+
+iggy3d::Vec3 snappedEditorCursor(iggy3d::Vec3 value) {
+  return {snapToEditorGrid(value.x), snapToEditorGrid(value.y), snapToEditorGrid(value.z)};
+}
+
+iggy3d::Vec3 defaultEditorCursorWorld(const iggy3d::Session& session, float yaw) {
+  const iggy3d::EntityState* player = playerEntity(session);
+  const iggy3d::Vec3 playerPosition = player == nullptr ? iggy3d::Vec3{} : player->transform.position;
+  const iggy3d::Vec3 forward{std::sin(yaw), 0.0F, -std::cos(yaw)};
+  iggy3d::Vec3 cursor = playerPosition + forward * 2.0F;
+  cursor.y = 0.0F;
+  return snappedEditorCursor(cursor);
+}
+
+iggy3d::Vec3 editorLocalFromWorld(iggy3d::Vec3 world, iggy3d::Vec3 roomWorldOffset) {
+  return world - roomWorldOffset;
+}
+
+iggy3d::EditableRoomSemantics floorSemanticsForPreset(EditorPreset preset) {
+  switch (preset) {
+    case EditorPreset::Floor:
+    case EditorPreset::SolidWall:
+    case EditorPreset::ClamberWall:
+    case EditorPreset::ProjectileWall:
+      return iggy3d::defaultFloorSemantics("debug_floor");
+  }
+  return iggy3d::defaultFloorSemantics("debug_floor");
+}
+
+iggy3d::EditableRoomSemantics wallSemanticsForPreset(EditorPreset preset) {
+  switch (preset) {
+    case EditorPreset::Floor:
+    case EditorPreset::SolidWall:
+      return iggy3d::defaultWallSemantics("debug_wall");
+    case EditorPreset::ClamberWall: {
+      iggy3d::EditableRoomSemantics semantics =
+          iggy3d::defaultWallSemantics("debug_wall");
+      semantics.traversalTags = {"clamber"};
+      return semantics;
+    }
+    case EditorPreset::ProjectileWall: {
+      iggy3d::EditableRoomSemantics semantics;
+      semantics.materialId = "debug_wall";
+      semantics.blocksProjectile = true;
+      return semantics;
+    }
+  }
+  return iggy3d::defaultWallSemantics("debug_wall");
+}
+
+std::string makeEditorFloorId(EditorModeState& editor) {
+  return "edit_floor_" + std::to_string(editor.nextFloorIndex++);
+}
+
+std::string makeEditorWallId(EditorModeState& editor) {
+  return "edit_wall_" + std::to_string(editor.nextWallIndex++);
+}
+
+iggy3d::EditableRoomFloor makeEditorFloor(EditorModeState& editor,
+                                          iggy3d::Vec3 roomLocalCursor) {
+  iggy3d::EditableRoomFloor floor;
+  floor.id = makeEditorFloorId(editor);
+  floor.centerMeters = {roomLocalCursor.x, roomLocalCursor.y - 0.05F, roomLocalCursor.z};
+  floor.sizeMeters = {2.0F, 0.10F, 2.0F};
+  floor.semantics = floorSemanticsForPreset(editor.preset);
+  return floor;
+}
+
+iggy3d::EditableRoomWall makeEditorWall(EditorModeState& editor,
+                                        iggy3d::Vec3 roomLocalCursor,
+                                        float yaw) {
+  const iggy3d::Vec3 right{std::cos(yaw), 0.0F, std::sin(yaw)};
+  const bool alongX = std::fabs(right.x) >= std::fabs(right.z);
+  iggy3d::EditableRoomWall wall;
+  wall.id = makeEditorWallId(editor);
+  wall.bottomY = roomLocalCursor.y;
+  wall.heightMeters = 1.5F;
+  wall.thicknessMeters = 0.20F;
+  if (alongX) {
+    wall.startMeters = {roomLocalCursor.x - 1.0F, roomLocalCursor.y, roomLocalCursor.z};
+    wall.endMeters = {roomLocalCursor.x + 1.0F, roomLocalCursor.y, roomLocalCursor.z};
+  } else {
+    wall.startMeters = {roomLocalCursor.x, roomLocalCursor.y, roomLocalCursor.z - 1.0F};
+    wall.endMeters = {roomLocalCursor.x, roomLocalCursor.y, roomLocalCursor.z + 1.0F};
+  }
+  wall.semantics = wallSemanticsForPreset(editor.preset);
+  return wall;
+}
+
+void selectNextEditorPrimitive(EditorModeState& editor) {
+  const iggy3d::EditableRoomDocument& document = editor.session.document();
+  std::vector<std::string> ids;
+  ids.reserve(document.floors.size() + document.walls.size());
+  for (const iggy3d::EditableRoomFloor& floor : document.floors) {
+    ids.push_back(floor.id);
+  }
+  for (const iggy3d::EditableRoomWall& wall : document.walls) {
+    ids.push_back(wall.id);
+  }
+  if (ids.empty()) {
+    editor.selectedId = "none";
+    editor.lastCommand = "select";
+    editor.lastStatus = "room_edit_missing_primitive";
+    return;
+  }
+  const auto found = std::find(ids.begin(), ids.end(), editor.selectedId);
+  if (found == ids.end() || ++std::vector<std::string>::const_iterator(found) == ids.end()) {
+    editor.selectedId = ids.front();
+  } else {
+    editor.selectedId = *found;
+  }
+  editor.lastCommand = "select";
+  editor.lastStatus = "room_edit_selected";
+}
+
+bool editorSelectionExists(const EditorModeState& editor) {
+  const iggy3d::EditableRoomDocument& document = editor.session.document();
+  return iggy3d::findEditableFloor(document, editor.selectedId) != nullptr ||
+         iggy3d::findEditableWall(document, editor.selectedId) != nullptr;
+}
+
+void recordEditorCommandResult(EditorModeState& editor,
+                               const char* commandName,
+                               const iggy3d::RoomEditResult& result) {
+  editor.lastCommand = commandName;
+  editor.lastStatus = result.reasonCode == nullptr ? "room_edit_unknown" : result.reasonCode;
+  if (!result.primitiveId.empty()) {
+    editor.selectedId = result.primitiveId;
+  }
+}
+
+void updateEditorReceiptFields(PlayableReceiptFields& fields,
+                               const EditorModeState& editor) {
+  fields.editorEnabled = editor.enabled;
+  fields.editorOpen = editor.open;
+  fields.editorTool = std::string(editorToolName(editor.tool));
+  fields.editorPreset = std::string(editorPresetName(editor.preset));
+  fields.editorLastCommand = editor.lastCommand;
+  fields.editorLastStatus = editor.lastStatus;
+  fields.editorSelectedId = editor.selectedId;
+  fields.editorCursorX = debugFloat(editor.cursorWorldMeters.x);
+  fields.editorCursorY = debugFloat(editor.cursorWorldMeters.y);
+  fields.editorCursorZ = debugFloat(editor.cursorWorldMeters.z);
+  fields.editorFloorCount = editor.session.document().floors.size();
+  fields.editorWallCount = editor.session.document().walls.size();
+  fields.editorRuntimeStaticMeshCount = editor.runtimeStaticMeshCount;
+  fields.editorRuntimeSurfaceCount = editor.runtimeSurfaceCount;
+  fields.editorRuntimeTraversalSlotCount = editor.runtimeTraversalSlotCount;
+  fields.editorApplyCount = editor.applyCount;
+  fields.editorDeleteCount = editor.deleteCount;
+  fields.editorUndoCount = editor.undoCount;
+  fields.editorRedoCount = editor.redoCount;
+  fields.editorBakeOk = editor.bakeOk;
+  fields.editorBakeReason = editor.bakeReason;
+}
+
+void rebuildEditorRuntimeRoom(const iggy3d::RoomAsset& baseRoom,
+                              EditorModeState& editor,
+                              iggy3d::RoomAsset& runtimeRoom,
+                              iggy3d::SpatialSurfaceSet& collisionSurfaces,
+                              iggy3d::Vec3 roomWorldOffset) {
+  runtimeRoom = baseRoom;
+  const iggy3d::RoomBakeResult bake =
+      iggy3d::bakeEditableRoomDocument(editor.session.document());
+  editor.bakeOk = bake.ok;
+  editor.bakeReason = bake.reasonCode == nullptr ? "room_bake_failed" : bake.reasonCode;
+  if (bake.ok) {
+    runtimeRoom.staticMeshes.insert(runtimeRoom.staticMeshes.end(),
+                                    bake.room.staticMeshes.begin(),
+                                    bake.room.staticMeshes.end());
+    runtimeRoom.spatialSurfaces.insert(runtimeRoom.spatialSurfaces.end(),
+                                       bake.room.spatialSurfaces.begin(),
+                                       bake.room.spatialSurfaces.end());
+  }
+  collisionSurfaces = iggy3d::buildSpatialSurfaceSet(runtimeRoom, roomWorldOffset);
+  editor.runtimeStaticMeshCount = runtimeRoom.staticMeshes.size();
+  editor.runtimeSurfaceCount = runtimeRoom.spatialSurfaces.size();
+  editor.runtimeTraversalSlotCount =
+      iggy3d::buildMovementTraversalSlotRegistry(runtimeRoom, roomWorldOffset).slots.size();
+}
+
+void executeEditorApply(EditorModeState& editor,
+                        const iggy3d::RoomAsset& baseRoom,
+                        iggy3d::RoomAsset& runtimeRoom,
+                        iggy3d::SpatialSurfaceSet& collisionSurfaces,
+                        iggy3d::Vec3 roomWorldOffset,
+                        float yaw) {
+  const iggy3d::Vec3 localCursor =
+      editorLocalFromWorld(editor.cursorWorldMeters, roomWorldOffset);
+  switch (editor.tool) {
+    case EditorTool::Select:
+      selectNextEditorPrimitive(editor);
+      break;
+    case EditorTool::PlaceFloor: {
+      iggy3d::RoomEditResult result =
+          editor.session.submit(iggy3d::addFloorCommand(makeEditorFloor(editor, localCursor)));
+      recordEditorCommandResult(editor, "add_floor", result);
+      if (result.status == iggy3d::RoomEditStatus::Applied) {
+        ++editor.applyCount;
+      }
+      break;
+    }
+    case EditorTool::PlaceWall: {
+      iggy3d::RoomEditResult result = editor.session.submit(
+          iggy3d::addWallCommand(makeEditorWall(editor, localCursor, yaw)));
+      recordEditorCommandResult(editor, "add_wall", result);
+      if (result.status == iggy3d::RoomEditStatus::Applied) {
+        ++editor.applyCount;
+      }
+      break;
+    }
+    case EditorTool::Semantics: {
+      const iggy3d::EditableRoomDocument& document = editor.session.document();
+      iggy3d::RoomEditResult result;
+      if (iggy3d::findEditableFloor(document, editor.selectedId) != nullptr) {
+        result = editor.session.submit(iggy3d::setFloorSemanticsCommand(
+            editor.selectedId, floorSemanticsForPreset(editor.preset)));
+        recordEditorCommandResult(editor, "set_floor_semantics", result);
+      } else {
+        result = editor.session.submit(iggy3d::setWallSemanticsCommand(
+            editor.selectedId, wallSemanticsForPreset(editor.preset)));
+        recordEditorCommandResult(editor, "set_wall_semantics", result);
+      }
+      if (result.status == iggy3d::RoomEditStatus::Applied) {
+        ++editor.applyCount;
+      }
+      break;
+    }
+    case EditorTool::Delete: {
+      iggy3d::RoomEditResult result;
+      const iggy3d::EditableRoomDocument& document = editor.session.document();
+      if (iggy3d::findEditableFloor(document, editor.selectedId) != nullptr) {
+        result = editor.session.submit(iggy3d::deleteFloorCommand(editor.selectedId));
+      } else {
+        result = editor.session.submit(iggy3d::deleteWallCommand(editor.selectedId));
+      }
+      recordEditorCommandResult(editor, "delete", result);
+      if (result.status == iggy3d::RoomEditStatus::Applied) {
+        ++editor.deleteCount;
+        editor.selectedId = "none";
+      }
+      break;
+    }
+  }
+  rebuildEditorRuntimeRoom(baseRoom, editor, runtimeRoom, collisionSurfaces, roomWorldOffset);
+}
+
+void executeEditorDelete(EditorModeState& editor,
+                         const iggy3d::RoomAsset& baseRoom,
+                         iggy3d::RoomAsset& runtimeRoom,
+                         iggy3d::SpatialSurfaceSet& collisionSurfaces,
+                         iggy3d::Vec3 roomWorldOffset) {
+  const EditorTool previousTool = editor.tool;
+  editor.tool = EditorTool::Delete;
+  executeEditorApply(editor, baseRoom, runtimeRoom, collisionSurfaces, roomWorldOffset, 0.0F);
+  editor.tool = previousTool;
+}
+
+void executeEditorUndo(EditorModeState& editor,
+                       const iggy3d::RoomAsset& baseRoom,
+                       iggy3d::RoomAsset& runtimeRoom,
+                       iggy3d::SpatialSurfaceSet& collisionSurfaces,
+                       iggy3d::Vec3 roomWorldOffset) {
+  const iggy3d::RoomEditResult result = editor.session.undo();
+  recordEditorCommandResult(editor, "undo", result);
+  if (result.status == iggy3d::RoomEditStatus::UndoApplied) {
+    ++editor.undoCount;
+    if (!editorSelectionExists(editor)) {
+      editor.selectedId = "none";
+    }
+  }
+  rebuildEditorRuntimeRoom(baseRoom, editor, runtimeRoom, collisionSurfaces, roomWorldOffset);
+}
+
+void executeEditorRedo(EditorModeState& editor,
+                       const iggy3d::RoomAsset& baseRoom,
+                       iggy3d::RoomAsset& runtimeRoom,
+                       iggy3d::SpatialSurfaceSet& collisionSurfaces,
+                       iggy3d::Vec3 roomWorldOffset) {
+  const iggy3d::RoomEditResult result = editor.session.redo();
+  recordEditorCommandResult(editor, "redo", result);
+  if (result.status == iggy3d::RoomEditStatus::RedoApplied) {
+    ++editor.redoCount;
+  }
+  rebuildEditorRuntimeRoom(baseRoom, editor, runtimeRoom, collisionSurfaces, roomWorldOffset);
+}
+
+void appendEditorDebugHudLines(iggy3d::DebugProjectionResult& debug,
+                               const EditorModeState& editor) {
+  if (!editor.enabled || !editor.open) {
+    return;
+  }
+  debug.runtimeDebugHudLines.push_back("EDIT " + std::string(editorToolName(editor.tool)) +
+                                       " " + std::string(editorPresetName(editor.preset)));
+  debug.runtimeDebugHudLines.push_back("CUR " + debugFloat(editor.cursorWorldMeters.x) + " " +
+                                       debugFloat(editor.cursorWorldMeters.y) + " " +
+                                       debugFloat(editor.cursorWorldMeters.z));
+  debug.runtimeDebugHudLines.push_back("SEL " + editor.selectedId);
+  debug.runtimeDebugHudLines.push_back("LAST " + editor.lastCommand + " " +
+                                       editor.lastStatus);
+  debug.runtimeDebugHudLines.push_back("ROOM floors=" +
+                                       std::to_string(editor.session.document().floors.size()) +
+                                       " walls=" +
+                                       std::to_string(editor.session.document().walls.size()) +
+                                       " surfaces=" +
+                                       std::to_string(editor.runtimeSurfaceCount) +
+                                       " slots=" +
+                                       std::to_string(editor.runtimeTraversalSlotCount));
 }
 
 iggy3d::Vec3 cross(iggy3d::Vec3 lhs, iggy3d::Vec3 rhs) {
@@ -2680,6 +3312,42 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
                              fields.devMenuExecuteRequested);
   iggy3d::appendReceiptField(receipt, "dev_menu_execution_status",
                              fields.devMenuExecutionStatus);
+  iggy3d::appendReceiptField(receipt, "editor_enabled", fields.editorEnabled);
+  iggy3d::appendReceiptField(receipt, "editor_open", fields.editorOpen);
+  iggy3d::appendReceiptField(receipt, "editor_toggle_observed",
+                             fields.editorToggleObserved);
+  iggy3d::appendReceiptField(receipt, "editor_tool", fields.editorTool);
+  iggy3d::appendReceiptField(receipt, "editor_preset", fields.editorPreset);
+  iggy3d::appendReceiptField(receipt, "editor_apply_requested",
+                             fields.editorApplyRequested);
+  iggy3d::appendReceiptField(receipt, "editor_delete_requested",
+                             fields.editorDeleteRequested);
+  iggy3d::appendReceiptField(receipt, "editor_undo_requested",
+                             fields.editorUndoRequested);
+  iggy3d::appendReceiptField(receipt, "editor_redo_requested",
+                             fields.editorRedoRequested);
+  iggy3d::appendReceiptField(receipt, "editor_last_command",
+                             fields.editorLastCommand);
+  iggy3d::appendReceiptField(receipt, "editor_last_status",
+                             fields.editorLastStatus);
+  iggy3d::appendReceiptField(receipt, "editor_selected_id", fields.editorSelectedId);
+  iggy3d::appendReceiptField(receipt, "editor_cursor_x", fields.editorCursorX);
+  iggy3d::appendReceiptField(receipt, "editor_cursor_y", fields.editorCursorY);
+  iggy3d::appendReceiptField(receipt, "editor_cursor_z", fields.editorCursorZ);
+  iggy3d::appendReceiptField(receipt, "editor_floor_count", fields.editorFloorCount);
+  iggy3d::appendReceiptField(receipt, "editor_wall_count", fields.editorWallCount);
+  iggy3d::appendReceiptField(receipt, "editor_runtime_static_mesh_count",
+                             fields.editorRuntimeStaticMeshCount);
+  iggy3d::appendReceiptField(receipt, "editor_runtime_surface_count",
+                             fields.editorRuntimeSurfaceCount);
+  iggy3d::appendReceiptField(receipt, "editor_runtime_traversal_slot_count",
+                             fields.editorRuntimeTraversalSlotCount);
+  iggy3d::appendReceiptField(receipt, "editor_apply_count", fields.editorApplyCount);
+  iggy3d::appendReceiptField(receipt, "editor_delete_count", fields.editorDeleteCount);
+  iggy3d::appendReceiptField(receipt, "editor_undo_count", fields.editorUndoCount);
+  iggy3d::appendReceiptField(receipt, "editor_redo_count", fields.editorRedoCount);
+  iggy3d::appendReceiptField(receipt, "editor_bake_ok", fields.editorBakeOk);
+  iggy3d::appendReceiptField(receipt, "editor_bake_reason", fields.editorBakeReason);
   iggy3d::appendReceiptField(receipt, "codex_control_configured",
                              fields.codexControlConfigured);
   iggy3d::appendReceiptField(receipt, "codex_control_read", fields.codexControlRead);
@@ -2922,11 +3590,14 @@ int main(int argc, const char* const* argv) {
   if (package.status != iggy3d::PackageLoadStatus::Ok) {
     return printFailure("visual_demo_package_lookup_failed");
   }
-  const iggy3d::RoomAsset* activeRoom =
-      package.rooms.empty() ? nullptr : &package.rooms.front();
+  const bool roomAvailable = !package.rooms.empty();
+  const iggy3d::RoomAsset baseRoom =
+      roomAvailable ? package.rooms.front() : iggy3d::RoomAsset{};
+  iggy3d::RoomAsset runtimeRoom = baseRoom;
+  const iggy3d::RoomAsset* activeRoom = roomAvailable ? &runtimeRoom : nullptr;
   const iggy3d::Vec3 roomWorldOffset =
       activeRoom == nullptr ? iggy3d::Vec3{} : negated(roomOriginOffsetFromPlayerSpawn(*activeRoom));
-  const iggy3d::SpatialSurfaceSet collisionSurfaces =
+  iggy3d::SpatialSurfaceSet collisionSurfaces =
       activeRoom == nullptr ? iggy3d::SpatialSurfaceSet{}
                             : iggy3d::buildSpatialSurfaceSet(*activeRoom, roomWorldOffset);
 
@@ -3101,9 +3772,16 @@ int main(int argc, const char* const* argv) {
   DevMenuState devMenu;
   devMenu.enabled = parsed.options.devMenu || parsed.options.codexControlPathSet;
   devMenu.open = parsed.options.devMenu;
+  EditorModeState editor;
+  editor.enabled = playableFields.playable && !parsed.options.scriptedPlayableSmoke;
+  editor.cursorWorldMeters = {};
+  if (editor.enabled && activeRoom != nullptr) {
+    rebuildEditorRuntimeRoom(baseRoom, editor, runtimeRoom, collisionSurfaces, roomWorldOffset);
+  }
   playableFields.devMenuEnabled = devMenu.enabled;
   playableFields.devMenuOpen = devMenu.open;
   playableFields.devMenuSelectedMechanic = std::string(devMechanicName(devMenu.selected));
+  updateEditorReceiptFields(playableFields, editor);
   playableFields.codexControlConfigured = parsed.options.codexControlPathSet;
   playableFields.codexControlPath =
       parsed.options.codexControlPathSet ? parsed.options.codexControlPath.string()
@@ -3152,6 +3830,14 @@ int main(int argc, const char* const* argv) {
   bool devMenuNextDown = false;
   bool devMenuPreviousDown = false;
   bool devMenuExecuteDown = false;
+  bool editorToggleDown = false;
+  bool editorNextDown = false;
+  bool editorPreviousDown = false;
+  bool editorPresetDown = false;
+  bool editorApplyDown = false;
+  bool editorDeleteDown = false;
+  bool editorUndoDown = false;
+  bool editorRedoDown = false;
   bool spellFireDown = false;
   bool debugOverlayToggleDown = false;
   const auto interactiveStart = std::chrono::steady_clock::now();
@@ -3228,6 +3914,14 @@ int main(int argc, const char* const* argv) {
           controlFrameListed(codexControl.saveLoadFrames, frameIndex);
       const bool codexResetThisFrame = controlFrameListed(codexControl.resetFrames, frameIndex);
       const bool codexAcceptanceDemo = codexControl.applied && codexControl.acceptanceDemo;
+      const bool codexEditorApplyThisFrame =
+          controlFrameListed(codexControl.editorApplyFrames, frameIndex);
+      const bool codexEditorDeleteThisFrame =
+          controlFrameListed(codexControl.editorDeleteFrames, frameIndex);
+      const bool codexEditorUndoThisFrame =
+          controlFrameListed(codexControl.editorUndoFrames, frameIndex);
+      const bool codexEditorRedoThisFrame =
+          controlFrameListed(codexControl.editorRedoFrames, frameIndex);
       iggy3d::Vec3 movement{};
       bool actionRequested = false;
       bool attackRequested = false;
@@ -3246,6 +3940,14 @@ int main(int argc, const char* const* argv) {
       bool devPreviousRequested = false;
       bool devExecuteRequested = false;
       bool devExecuteThisFrame = false;
+      bool editorToggleRequested = false;
+      bool editorNextRequested = false;
+      bool editorPreviousRequested = false;
+      bool editorPresetRequested = false;
+      bool editorApplyRequested = false;
+      bool editorDeleteRequested = false;
+      bool editorUndoRequested = false;
+      bool editorRedoRequested = false;
       bool debugOverlayToggleRequested = false;
       if (parsed.options.scriptedKinematicInput) {
         movement = {1.0F, 0.0F, 0.0F};
@@ -3268,9 +3970,37 @@ int main(int argc, const char* const* argv) {
             const bool down = SDL_SCANCODE_DOWN < keyCount && keys[SDL_SCANCODE_DOWN];
             const bool fireSpell = SDL_SCANCODE_F < keyCount && keys[SDL_SCANCODE_F];
             devToggleRequested = SDL_SCANCODE_F1 < keyCount && keys[SDL_SCANCODE_F1];
+            editorToggleRequested = SDL_SCANCODE_F2 < keyCount && keys[SDL_SCANCODE_F2];
             debugOverlayToggleRequested =
                 SDL_SCANCODE_F3 < keyCount && keys[SDL_SCANCODE_F3];
-            if (devMenu.enabled && devMenu.open) {
+            if (editor.enabled && editor.open) {
+              editorApplyRequested =
+                  (SDL_SCANCODE_SPACE < keyCount && keys[SDL_SCANCODE_SPACE]) ||
+                  (SDL_SCANCODE_RETURN < keyCount && keys[SDL_SCANCODE_RETURN]);
+              editorDeleteRequested =
+                  (SDL_SCANCODE_DELETE < keyCount && keys[SDL_SCANCODE_DELETE]) ||
+                  (SDL_SCANCODE_BACKSPACE < keyCount && keys[SDL_SCANCODE_BACKSPACE]);
+              editorPresetRequested = SDL_SCANCODE_TAB < keyCount && keys[SDL_SCANCODE_TAB];
+              editorUndoRequested = SDL_SCANCODE_Z < keyCount && keys[SDL_SCANCODE_Z];
+              editorRedoRequested = SDL_SCANCODE_Y < keyCount && keys[SDL_SCANCODE_Y];
+              editorPreviousRequested = SDL_SCANCODE_Q < keyCount && keys[SDL_SCANCODE_Q];
+              editorNextRequested = SDL_SCANCODE_E < keyCount && keys[SDL_SCANCODE_E];
+              if (SDL_SCANCODE_1 < keyCount && keys[SDL_SCANCODE_1]) {
+                editor.tool = EditorTool::Select;
+              }
+              if (SDL_SCANCODE_2 < keyCount && keys[SDL_SCANCODE_2]) {
+                editor.tool = EditorTool::PlaceFloor;
+              }
+              if (SDL_SCANCODE_3 < keyCount && keys[SDL_SCANCODE_3]) {
+                editor.tool = EditorTool::PlaceWall;
+              }
+              if (SDL_SCANCODE_4 < keyCount && keys[SDL_SCANCODE_4]) {
+                editor.tool = EditorTool::Semantics;
+              }
+              if (SDL_SCANCODE_5 < keyCount && keys[SDL_SCANCODE_5]) {
+                editor.tool = EditorTool::Delete;
+              }
+            } else if (devMenu.enabled && devMenu.open) {
               devExecuteRequested =
                   (SDL_SCANCODE_SPACE < keyCount && keys[SDL_SCANCODE_SPACE]) ||
                   (SDL_SCANCODE_RETURN < keyCount && keys[SDL_SCANCODE_RETURN]);
@@ -3390,11 +4120,25 @@ int main(int argc, const char* const* argv) {
             r2Down =
                 r2 > 0.2F || (buttonCount > 7 && SDL_GetJoystickButton(gamepad.joystick, 7));
           }
-          if (devMenu.enabled && startDown && northDown) {
+          if (editor.enabled && startDown && eastDown) {
+            editorToggleRequested = true;
+            eastDown = false;
+            startDown = false;
+          }
+          if (devMenu.enabled && !editor.open && startDown && northDown) {
             devToggleRequested = true;
             startDown = false;
           }
-          if (devMenu.enabled && devMenu.open) {
+          if (editor.enabled && editor.open) {
+            editorPreviousRequested = dpadLeft;
+            editorNextRequested = dpadRight;
+            editorPresetRequested = northDown;
+            editorApplyRequested = crossDown;
+            editorDeleteRequested = eastDown;
+            crossDown = false;
+            eastDown = false;
+            northDown = false;
+          } else if (devMenu.enabled && devMenu.open) {
             devPreviousRequested = dpadLeft;
             devNextRequested = dpadRight;
             devExecuteRequested = crossDown;
@@ -3431,6 +4175,26 @@ int main(int argc, const char* const* argv) {
         if (codexControl.debugOverlayOpenSet) {
           debugOverlayOpen = codexControl.debugOverlayOpen;
         }
+        if (editor.enabled) {
+          if (codexControl.editorOpenSet) {
+            editor.open = codexControl.editorOpen;
+            if (editor.open) {
+              devMenu.open = false;
+            }
+          }
+          if (codexControl.editorToolSet) {
+            editor.tool = codexControl.editorTool;
+          }
+          if (codexControl.editorPresetSet) {
+            editor.preset = codexControl.editorPreset;
+          }
+          if (codexControl.editorCursorSet) {
+            editor.cursorWorldMeters = snappedEditorCursor(codexControl.editorCursorMeters);
+          }
+          if (codexControl.editorSelectSet) {
+            editor.selectedId = codexControl.editorSelectId;
+          }
+        }
         if (codexControl.mechanicSet) {
           devMenu.selected = codexControl.mechanic;
         }
@@ -3464,9 +4228,23 @@ int main(int argc, const char* const* argv) {
         quitRequested = quitRequested || codexControl.quit;
         devExecuteRequested =
             devExecuteRequested || codexControl.executeMechanic || codexExecuteThisFrame;
+        editorApplyRequested = editorApplyRequested || codexControl.editorApply;
+        editorDeleteRequested = editorDeleteRequested || codexControl.editorDelete;
+        editorUndoRequested = editorUndoRequested || codexControl.editorUndo;
+        editorRedoRequested = editorRedoRequested || codexControl.editorRedo;
+      }
+      if (editor.enabled && pressedEdge(editorToggleRequested, editorToggleDown)) {
+        editor.open = !editor.open;
+        if (editor.open) {
+          devMenu.open = false;
+        }
+        playableFields.editorToggleObserved = true;
       }
       if (devMenu.enabled && pressedEdge(devToggleRequested, devMenuToggleDown)) {
         devMenu.open = !devMenu.open;
+        if (devMenu.open) {
+          editor.open = false;
+        }
         playableFields.devMenuToggleObserved = true;
       }
       if (pressedEdge(debugOverlayToggleRequested, debugOverlayToggleDown)) {
@@ -3480,6 +4258,54 @@ int main(int argc, const char* const* argv) {
       if (devMenu.enabled && devMenu.open && pressedEdge(devNextRequested, devMenuNextDown)) {
         devMenu.selected = nextDevMechanic(devMenu.selected);
       }
+      if (editor.enabled && editor.open && !codexControl.editorCursorSet) {
+        editor.cursorWorldMeters = defaultEditorCursorWorld(session, yaw);
+      }
+      if (editor.enabled && editor.open &&
+          pressedEdge(editorPreviousRequested, editorPreviousDown)) {
+        editor.tool = previousEditorTool(editor.tool);
+      }
+      if (editor.enabled && editor.open && pressedEdge(editorNextRequested, editorNextDown)) {
+        editor.tool = nextEditorTool(editor.tool);
+      }
+      if (editor.enabled && editor.open && pressedEdge(editorPresetRequested, editorPresetDown)) {
+        editor.preset = nextEditorPreset(editor.preset);
+      }
+      const bool editorApplyThisFrame =
+          pressedEdge(editorApplyRequested, editorApplyDown) || codexEditorApplyThisFrame;
+      const bool editorDeleteThisFrame =
+          pressedEdge(editorDeleteRequested, editorDeleteDown) || codexEditorDeleteThisFrame;
+      const bool editorUndoThisFrame =
+          pressedEdge(editorUndoRequested, editorUndoDown) || codexEditorUndoThisFrame;
+      const bool editorRedoThisFrame =
+          pressedEdge(editorRedoRequested, editorRedoDown) || codexEditorRedoThisFrame;
+      if (editor.enabled && editor.open) {
+        debugOverlayOpen = true;
+        if (editorApplyThisFrame) {
+          playableFields.editorApplyRequested = true;
+          executeEditorApply(editor, baseRoom, runtimeRoom, collisionSurfaces, roomWorldOffset,
+                             yaw);
+        }
+        if (editorDeleteThisFrame) {
+          playableFields.editorDeleteRequested = true;
+          executeEditorDelete(editor, baseRoom, runtimeRoom, collisionSurfaces, roomWorldOffset);
+        }
+        if (editorUndoThisFrame) {
+          playableFields.editorUndoRequested = true;
+          executeEditorUndo(editor, baseRoom, runtimeRoom, collisionSurfaces, roomWorldOffset);
+        }
+        if (editorRedoThisFrame) {
+          playableFields.editorRedoRequested = true;
+          executeEditorRedo(editor, baseRoom, runtimeRoom, collisionSurfaces, roomWorldOffset);
+        }
+        movement = {};
+        actionRequested = false;
+        attackRequested = false;
+        jumpRequested = false;
+        dashRequested = false;
+        spellFireRequested = false;
+      }
+      updateEditorReceiptFields(playableFields, editor);
       const bool devExecutePressed = pressedEdge(devExecuteRequested, devMenuExecuteDown);
       if (devMenu.enabled && (devExecutePressed || codexExecuteThisFrame)) {
         devMenu.executeRequested = true;
@@ -3786,7 +4612,7 @@ int main(int argc, const char* const* argv) {
     }
 #endif
     iggy3d::SceneProjectionResult scene = iggy3d::buildSceneProjection(session.state());
-    attachRoomProjection(package, scene);
+    attachRoomProjection(package, activeRoom, scene);
     attachAbilityProjectileProjection(session.state().transient.abilityRuntime.arcaneBolt, scene);
     iggy3d::DebugProjectionResult debug = iggy3d::buildDebugProjection(session.state());
     iggy3d::RuntimeDebugSnapshot debugSnapshot;
@@ -3823,6 +4649,7 @@ int main(int argc, const char* const* argv) {
       debugSnapshot = iggy3d::buildRuntimeDebugSnapshot(debugRequest);
       recordRuntimeDebugSnapshot(playableFields, debugSnapshot);
       iggy3d::appendRuntimeDebugSnapshot(debug, debugSnapshot);
+      appendEditorDebugHudLines(debug, editor);
 #if defined(IGGY3D_HAS_SDL3)
       if (window.has_value()) {
         window->setTitle(debugOverlayWindowTitle(debugSnapshot));
