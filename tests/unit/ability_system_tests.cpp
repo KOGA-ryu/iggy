@@ -1,11 +1,16 @@
 #include "content/PackageLoader.hpp"
+#include "content/assets/RoomAsset.hpp"
 #include "runtime/ability/AbilitySystem.hpp"
+#include "runtime/combat/CombatState.hpp"
+#include "runtime/world/WorldState.hpp"
 
 #include <cmath>
 #include <filesystem>
 #include <iostream>
 #include <limits>
+#include <string>
 #include <string_view>
+#include <utility>
 
 namespace {
 
@@ -42,6 +47,55 @@ iggy3d::AbilityCastRequest arcaneBoltRequest(const iggy3d::SpatialSurfaceSet& su
   request.collisionSurfaces = &surfaces;
   request.sourceCommandId = 42;
   return request;
+}
+
+iggy3d::EntityState combatEntity(iggy3d::EntityId id,
+                                 std::string_view stableName,
+                                 iggy3d::Vec3 position,
+                                 iggy3d::EntityKind kind = iggy3d::EntityKind::Npc,
+                                 bool attackable = true) {
+  iggy3d::EntityState entity;
+  entity.id = id;
+  entity.stableName = std::string(stableName);
+  entity.kind = kind;
+  entity.transform.position = position;
+  entity.localBounds = {{-0.25F, 0.0F, -0.25F}, {0.25F, 1.8F, 0.25F}};
+  entity.targeting.targetable = attackable;
+  if (attackable) {
+    entity.targeting.actions.push_back(iggy3d::TargetAction::Attack);
+  }
+  return entity;
+}
+
+iggy3d::WorldState worldWithCasterAndTarget(iggy3d::EntityId target,
+                                            std::string_view targetName,
+                                            iggy3d::Vec3 targetPosition) {
+  iggy3d::WorldState world;
+  static_cast<void>(world.seedEntity(
+      combatEntity({1}, "caster", {0.0F, 0.0F, 0.0F}, iggy3d::EntityKind::Player, false)));
+  static_cast<void>(world.seedEntity(combatEntity(target, targetName, targetPosition)));
+  return world;
+}
+
+iggy3d::CombatState combatWithCasterAndTarget(iggy3d::EntityId target,
+                                              std::int32_t targetHitPoints) {
+  iggy3d::CombatState combat;
+  combat.combatants.push_back({{1}, 1, 10, 10, false});
+  combat.combatants.push_back({target, 2, targetHitPoints, targetHitPoints, false});
+  return combat;
+}
+
+iggy3d::SpatialSurfaceSet projectileWallSurfaceSet() {
+  iggy3d::RoomSpatialSurface wall;
+  wall.id = "test_projectile_wall";
+  wall.shape = iggy3d::RoomSpatialSurfaceShape::Box;
+  wall.role = iggy3d::RoomSpatialSurfaceRole::ProjectileBlocker;
+  wall.pointsMeters = {{-1.0F, 0.0F, -2.60F}, {1.0F, 2.0F, -2.50F}};
+  wall.normal = {0.0F, 0.0F, 1.0F};
+  wall.blocksProjectile = true;
+  iggy3d::RoomAsset room;
+  room.spatialSurfaces.push_back(std::move(wall));
+  return iggy3d::buildSpatialSurfaceSet(room);
 }
 
 bool castAcceptedSpawnsRuntimeProjectile() {
@@ -109,6 +163,63 @@ bool tickAdvancesProjectileBallistically() {
                 "tick status name");
 }
 
+bool arcaneBoltEntityImpactAppliesCombatDamage() {
+  const iggy3d::SpatialSurfaceSet surfaces;
+  iggy3d::AbilityRuntimeState state;
+  const iggy3d::EntityId target{2};
+  const iggy3d::WorldState world =
+      worldWithCasterAndTarget(target, "target_dummy", {0.0F, 0.0F, -4.0F});
+  iggy3d::CombatState combat = combatWithCasterAndTarget(target, 6);
+  const iggy3d::AbilityCastResult cast =
+      iggy3d::castAbility(state, arcaneBoltRequest(surfaces));
+  iggy3d::AbilityTickRequest tick;
+  tick.collisionSurfaces = &surfaces;
+  tick.world = &world;
+  tick.combat = &combat;
+  tick.deltaSeconds = 0.5F;
+
+  const iggy3d::AbilityTickResult result = iggy3d::tickAbilityRuntime(state, tick);
+  return expect(cast.accepted, "entity cast accepted") &&
+         expect(result.status == iggy3d::AbilityTickStatus::Impact, "entity impact") &&
+         expect(result.impactKind == iggy3d::AbilityImpactKind::Entity,
+                "entity impact kind") &&
+         expect(result.hitEntity, "hit entity flag") &&
+         expect(result.hitEntityId == target, "hit entity id") &&
+         expect(result.hitStableName == "target_dummy", "hit stable name") &&
+         expect(result.damageApplied, "damage applied flag") &&
+         expect(result.damageAmount == 3, "damage amount") &&
+         expect(!result.targetDefeated, "target not defeated") &&
+         expect(combat.combatants[1].hitPoints == 3, "combat hp reduced") &&
+         expect(state.arcaneBolt.hitSurfaceId == "entity:target_dummy",
+                "entity hit surface label") &&
+         expect(state.arcaneBolt.reasonCode == "ability_entity_impact",
+                "entity impact reason") &&
+         expect(iggy3d::abilityImpactKindName(result.impactKind) == "entity",
+                "impact kind name");
+}
+
+bool arcaneBoltReportsDefeatedTarget() {
+  const iggy3d::SpatialSurfaceSet surfaces;
+  iggy3d::AbilityRuntimeState state;
+  const iggy3d::EntityId target{2};
+  const iggy3d::WorldState world =
+      worldWithCasterAndTarget(target, "fragile_dummy", {0.0F, 0.0F, -4.0F});
+  iggy3d::CombatState combat = combatWithCasterAndTarget(target, 3);
+  static_cast<void>(iggy3d::castAbility(state, arcaneBoltRequest(surfaces)));
+  iggy3d::AbilityTickRequest tick;
+  tick.collisionSurfaces = &surfaces;
+  tick.world = &world;
+  tick.combat = &combat;
+  tick.deltaSeconds = 0.5F;
+
+  const iggy3d::AbilityTickResult result = iggy3d::tickAbilityRuntime(state, tick);
+  return expect(result.damageApplied, "defeat damage applied") &&
+         expect(result.damageAmount == 3, "defeat damage amount") &&
+         expect(result.targetDefeated, "defeat reported") &&
+         expect(combat.combatants[1].hitPoints == 0, "combat hp zero") &&
+         expect(combat.combatants[1].defeated, "combat defeated flag");
+}
+
 bool projectileBlockerProducesAbilityImpactReceipt() {
   const iggy3d::SpatialSurfaceSet surfaces = loadFirstRoomSurfaceSet();
   iggy3d::AbilityRuntimeState state;
@@ -131,7 +242,34 @@ bool projectileBlockerProducesAbilityImpactReceipt() {
          expect(state.arcaneBolt.impact, "state impact") &&
          expect(state.arcaneBolt.hitSurfaceId == "spawn_crate_projectile_blocker",
                 "hit surface id") &&
+         expect(result.impactKind == iggy3d::AbilityImpactKind::Surface,
+                "surface impact kind") &&
          expect(state.arcaneBolt.reasonCode == "projectile_impact", "impact reason");
+}
+
+bool surfaceImpactBlocksEntityBehindWall() {
+  const iggy3d::SpatialSurfaceSet surfaces = projectileWallSurfaceSet();
+  iggy3d::AbilityRuntimeState state;
+  const iggy3d::EntityId target{2};
+  const iggy3d::WorldState world =
+      worldWithCasterAndTarget(target, "blocked_dummy", {0.0F, 0.0F, -4.0F});
+  iggy3d::CombatState combat = combatWithCasterAndTarget(target, 6);
+  static_cast<void>(iggy3d::castAbility(state, arcaneBoltRequest(surfaces)));
+  iggy3d::AbilityTickRequest tick;
+  tick.collisionSurfaces = &surfaces;
+  tick.world = &world;
+  tick.combat = &combat;
+  tick.deltaSeconds = 0.5F;
+
+  const iggy3d::AbilityTickResult result = iggy3d::tickAbilityRuntime(state, tick);
+  return expect(result.status == iggy3d::AbilityTickStatus::Impact, "wall impact") &&
+         expect(result.impactKind == iggy3d::AbilityImpactKind::Surface,
+                "wall impact kind") &&
+         expect(!result.hitEntity, "wall blocks entity hit") &&
+         expect(!result.damageApplied, "wall blocks damage") &&
+         expect(combat.combatants[1].hitPoints == 6, "wall leaves hp") &&
+         expect(state.arcaneBolt.hitSurfaceId == "test_projectile_wall",
+                "wall surface id");
 }
 
 bool resetClearsAbilityRuntime() {
@@ -189,7 +327,10 @@ int main() {
   const bool ok = castAcceptedSpawnsRuntimeProjectile() &&
                   activeProjectileSlotRejectsSecondCast() &&
                   tickAdvancesProjectileBallistically() &&
+                  arcaneBoltEntityImpactAppliesCombatDamage() &&
+                  arcaneBoltReportsDefeatedTarget() &&
                   projectileBlockerProducesAbilityImpactReceipt() &&
+                  surfaceImpactBlocksEntityBehindWall() &&
                   resetClearsAbilityRuntime() &&
                   invalidInputsAreDiagnosed();
   return ok ? 0 : 1;

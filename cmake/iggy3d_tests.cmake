@@ -54,6 +54,9 @@ set_tests_properties(combat_command_tests PROPERTIES LABELS "unit;runtime;comman
 iggy3d_add_unit_test(collision_query_tests tests/unit/collision_query_tests.cpp)
 set_tests_properties(collision_query_tests PROPERTIES LABELS "unit;runtime;collision;iggy3d")
 
+iggy3d_add_unit_test(entity_hit_query_tests tests/unit/entity_hit_query_tests.cpp)
+set_tests_properties(entity_hit_query_tests PROPERTIES LABELS "unit;runtime;collision;entity;iggy3d")
+
 iggy3d_add_unit_test(movement_policy_tests tests/unit/movement_policy_tests.cpp)
 set_tests_properties(movement_policy_tests PROPERTIES LABELS "unit;runtime;movement;policy;iggy3d")
 

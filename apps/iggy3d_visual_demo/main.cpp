@@ -152,7 +152,9 @@ struct PlayableReceiptFields {
   bool abilityCastRequested = false;
   bool abilityCastAccepted = false;
   bool abilityRuntimeOwnedProjectile = false;
+  bool abilityHitEntity = false;
   bool abilityDamageApplied = false;
+  bool abilityTargetDefeated = false;
   bool debugOverlayEnabled = false;
   bool debugOverlayOpen = false;
   bool debugOverlayToggleObserved = false;
@@ -174,6 +176,10 @@ struct PlayableReceiptFields {
   std::string abilityCastReason = "not_requested";
   std::string abilityTickStatus = "no_active_projectile";
   std::string abilityTickReason = "not_requested";
+  std::string abilityImpactKind = "none";
+  std::uint64_t abilityHitEntityId = 0;
+  std::string abilityHitStableName = "none";
+  std::uint64_t abilityDamageAmount = 0;
   std::string spellProjectileStatus = "not_started";
   std::string spellProjectileReason = "not_requested";
   std::string spellProjectileHitSurfaceId = "none";
@@ -1219,6 +1225,14 @@ void recordAbilityProjectile(PlayableReceiptFields& fields,
   fields.spellProjectilePositionX = debugFloat(projectile.projectile.positionMeters.x);
   fields.spellProjectilePositionY = debugFloat(projectile.projectile.positionMeters.y);
   fields.spellProjectilePositionZ = debugFloat(projectile.projectile.positionMeters.z);
+  fields.abilityImpactKind = std::string(iggy3d::abilityImpactKindName(projectile.impactKind));
+  fields.abilityHitEntity = iggy3d::isValid(projectile.hitEntity);
+  fields.abilityHitEntityId = iggy3d::toUint64(projectile.hitEntity);
+  fields.abilityHitStableName = projectile.hitStableName;
+  fields.abilityDamageApplied = projectile.damageApplied > 0;
+  fields.abilityDamageAmount =
+      static_cast<std::uint64_t>(std::max(projectile.damageApplied, 0));
+  fields.abilityTargetDefeated = projectile.targetDefeated;
 }
 
 void spawnAbilityProjectile(iggy3d::AbilityRuntimeState& abilityRuntime,
@@ -1246,10 +1260,14 @@ void spawnAbilityProjectile(iggy3d::AbilityRuntimeState& abilityRuntime,
 }
 
 void stepAbilityProjectiles(iggy3d::AbilityRuntimeState& abilityRuntime,
+                            iggy3d::Session& session,
                             const iggy3d::SpatialSurfaceSet& collisionSurfaces,
                             PlayableReceiptFields& fields) {
+  iggy3d::SessionState& mutableState = session.mutableStateForOwnedSystems();
   iggy3d::AbilityTickRequest request;
   request.collisionSurfaces = &collisionSurfaces;
+  request.world = &mutableState.world;
+  request.combat = &mutableState.combat;
   request.deltaSeconds = 1.0F / 60.0F;
   const iggy3d::AbilityTickResult tick = iggy3d::tickAbilityRuntime(abilityRuntime, request);
   if (tick.status != iggy3d::AbilityTickStatus::NoActiveProjectile ||
@@ -1261,7 +1279,6 @@ void stepAbilityProjectiles(iggy3d::AbilityRuntimeState& abilityRuntime,
         std::string(iggy3d::abilityTickStatusName(abilityRuntime.arcaneBolt.tickStatus));
     fields.abilityTickReason = abilityRuntime.arcaneBolt.reasonCode;
   }
-  fields.abilityDamageApplied = fields.abilityDamageApplied || tick.damageApplied;
   recordAbilityProjectile(fields, abilityRuntime.arcaneBolt);
 }
 
@@ -1407,10 +1424,19 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
   iggy3d::appendReceiptField(receipt, "ability_cast_reason", fields.abilityCastReason);
   iggy3d::appendReceiptField(receipt, "ability_tick_status", fields.abilityTickStatus);
   iggy3d::appendReceiptField(receipt, "ability_tick_reason", fields.abilityTickReason);
+  iggy3d::appendReceiptField(receipt, "ability_impact_kind", fields.abilityImpactKind);
   iggy3d::appendReceiptField(receipt, "ability_runtime_owned_projectile",
                              fields.abilityRuntimeOwnedProjectile);
+  iggy3d::appendReceiptField(receipt, "ability_hit_entity", fields.abilityHitEntity);
+  iggy3d::appendReceiptField(receipt, "ability_hit_entity_id", fields.abilityHitEntityId);
+  iggy3d::appendReceiptField(receipt, "ability_hit_stable_name",
+                             fields.abilityHitStableName);
   iggy3d::appendReceiptField(receipt, "ability_damage_applied",
                              fields.abilityDamageApplied);
+  iggy3d::appendReceiptField(receipt, "ability_damage_amount",
+                             fields.abilityDamageAmount);
+  iggy3d::appendReceiptField(receipt, "ability_target_defeated",
+                             fields.abilityTargetDefeated);
   iggy3d::appendReceiptField(receipt, "debug_overlay_enabled", fields.debugOverlayEnabled);
   iggy3d::appendReceiptField(receipt, "debug_overlay_open", fields.debugOverlayOpen);
   iggy3d::appendReceiptField(receipt, "debug_overlay_toggle_observed",
@@ -2367,7 +2393,7 @@ int main(int argc, const char* const* argv) {
               abilityRuntime.arcaneBolt.spawned ? "applied" : "blocked";
         }
       }
-      stepAbilityProjectiles(abilityRuntime, collisionSurfaces, playableFields);
+      stepAbilityProjectiles(abilityRuntime, session, collisionSurfaces, playableFields);
       if (devMenu.enabled && devMenu.selected == DevMechanic::Spell &&
           devMenu.executeRequested) {
         playableFields.devMenuExecutionStatus =

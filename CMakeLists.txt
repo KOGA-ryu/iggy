@@ -39,6 +39,7 @@ target_sources(iggy3d
     src/runtime/combat/CombatSystem.cpp
     src/runtime/collision/SpatialSurfaceSet.cpp
     src/runtime/collision/CollisionQuery.cpp
+    src/runtime/collision/EntityHitQuery.cpp
     src/runtime/debug/RuntimeDebugSnapshot.cpp
     src/runtime/command/CommandAdmission.cpp
     src/runtime/replay/CommandLog.cpp
