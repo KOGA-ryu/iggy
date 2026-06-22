@@ -18,10 +18,13 @@
 #include "runtime/session/Session.hpp"
 
 #include <algorithm>
+#include <cerrno>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <optional>
@@ -39,10 +42,21 @@ enum class VisualInputBackend : std::uint8_t {
   Scripted,
 };
 
+enum class DevMechanic : std::uint8_t {
+  Walk,
+  Crouch,
+  Jump,
+  Dash,
+  Vault,
+  Clamber,
+  WireWalk,
+};
+
 struct VisualOptions {
   std::filesystem::path fixturePath = "demos/first_room/package.iggy3d.toml";
   std::filesystem::path shaderRoot;
   std::filesystem::path diagnosticsDir;
+  std::filesystem::path codexControlPath;
   iggy3d::RendererBackendKind backend = iggy3d::RendererBackendKind::Null;
   bool autoBackend = false;
   bool requireRenderer = false;
@@ -55,6 +69,8 @@ struct VisualOptions {
   bool scriptedPlayableSmoke = false;
   bool scriptedKinematicInput = false;
   bool scriptedCrouchInput = false;
+  bool devMenu = false;
+  bool codexControlPathSet = false;
   VisualInputBackend inputBackend = VisualInputBackend::Keyboard;
   std::uint32_t holdSeconds = 0U;
   std::uint32_t frames = 1U;
@@ -111,6 +127,17 @@ struct PlayableReceiptFields {
   std::string eyeHeightMeters = "1.650";
   std::string actorHeightMeters = "1.800";
   std::string movementSpeedMetersPerSecond = "4.800";
+  bool devMenuEnabled = false;
+  bool devMenuOpen = false;
+  bool devMenuToggleObserved = false;
+  bool devMenuExecuteRequested = false;
+  std::string devMenuSelectedMechanic = "walk";
+  std::string devMenuExecutionStatus = "not_requested";
+  bool codexControlConfigured = false;
+  bool codexControlRead = false;
+  bool codexControlApplied = false;
+  std::string codexControlStatus = "disabled";
+  std::string codexControlPath = "unavailable";
   std::string movementReason = "not_attempted";
   std::string movementPolicyBand = "not_attempted";
   std::string hitSurfaceId = "none";
@@ -138,6 +165,130 @@ std::string_view inputBackendName(VisualInputBackend backend) {
   return "keyboard";
 }
 
+struct DevMenuState {
+  bool enabled = false;
+  bool open = false;
+  DevMechanic selected = DevMechanic::Walk;
+  bool executeRequested = false;
+};
+
+struct CodexControlFrame {
+  bool configured = false;
+  bool read = false;
+  bool applied = false;
+  bool parseError = false;
+  std::string status = "disabled";
+  std::uint64_t lineCount = 0;
+  bool devMenuOpenSet = false;
+  bool devMenuOpen = false;
+  bool mechanicSet = false;
+  DevMechanic mechanic = DevMechanic::Walk;
+  bool executeMechanic = false;
+  bool stanceSet = false;
+  bool crouched = false;
+  bool moveSet = false;
+  float moveForward = 0.0F;
+  float moveRight = 0.0F;
+  float yawDelta = 0.0F;
+  float pitchDelta = 0.0F;
+  bool interact = false;
+  bool attack = false;
+  bool reset = false;
+  bool quit = false;
+};
+
+std::string_view devMechanicName(DevMechanic mechanic) {
+  switch (mechanic) {
+    case DevMechanic::Walk:
+      return "walk";
+    case DevMechanic::Crouch:
+      return "crouch";
+    case DevMechanic::Jump:
+      return "jump_stub";
+    case DevMechanic::Dash:
+      return "dash_stub";
+    case DevMechanic::Vault:
+      return "vault_stub";
+    case DevMechanic::Clamber:
+      return "clamber_stub";
+    case DevMechanic::WireWalk:
+      return "wire_walk_stub";
+  }
+  return "walk";
+}
+
+bool parseDevMechanic(std::string_view value, DevMechanic& out) {
+  if (value == "walk") {
+    out = DevMechanic::Walk;
+    return true;
+  }
+  if (value == "crouch" || value == "crouched") {
+    out = DevMechanic::Crouch;
+    return true;
+  }
+  if (value == "jump" || value == "jump_stub") {
+    out = DevMechanic::Jump;
+    return true;
+  }
+  if (value == "dash" || value == "dash_stub") {
+    out = DevMechanic::Dash;
+    return true;
+  }
+  if (value == "vault" || value == "vault_stub") {
+    out = DevMechanic::Vault;
+    return true;
+  }
+  if (value == "clamber" || value == "clamber_stub") {
+    out = DevMechanic::Clamber;
+    return true;
+  }
+  if (value == "wire_walk" || value == "wire_walk_stub") {
+    out = DevMechanic::WireWalk;
+    return true;
+  }
+  return false;
+}
+
+DevMechanic nextDevMechanic(DevMechanic mechanic) {
+  switch (mechanic) {
+    case DevMechanic::Walk:
+      return DevMechanic::Crouch;
+    case DevMechanic::Crouch:
+      return DevMechanic::Jump;
+    case DevMechanic::Jump:
+      return DevMechanic::Dash;
+    case DevMechanic::Dash:
+      return DevMechanic::Vault;
+    case DevMechanic::Vault:
+      return DevMechanic::Clamber;
+    case DevMechanic::Clamber:
+      return DevMechanic::WireWalk;
+    case DevMechanic::WireWalk:
+      return DevMechanic::Walk;
+  }
+  return DevMechanic::Walk;
+}
+
+DevMechanic previousDevMechanic(DevMechanic mechanic) {
+  switch (mechanic) {
+    case DevMechanic::Walk:
+      return DevMechanic::WireWalk;
+    case DevMechanic::Crouch:
+      return DevMechanic::Walk;
+    case DevMechanic::Jump:
+      return DevMechanic::Crouch;
+    case DevMechanic::Dash:
+      return DevMechanic::Jump;
+    case DevMechanic::Vault:
+      return DevMechanic::Dash;
+    case DevMechanic::Clamber:
+      return DevMechanic::Vault;
+    case DevMechanic::WireWalk:
+      return DevMechanic::Clamber;
+  }
+  return DevMechanic::Walk;
+}
+
 constexpr float kStandingEyeHeightMeters = 1.65F;
 constexpr float kCrouchedEyeHeightMeters = 1.05F;
 constexpr float kStandingActorHeightMeters = 1.80F;
@@ -153,6 +304,208 @@ void recordStance(PlayableReceiptFields& fields, bool crouched) {
   fields.eyeHeightMeters = crouched ? "1.050" : "1.650";
   fields.actorHeightMeters = crouched ? "1.200" : "1.800";
   fields.movementSpeedMetersPerSecond = crouched ? "2.350" : "4.800";
+}
+
+std::string_view trimControlText(std::string_view value) {
+  while (!value.empty() &&
+         (value.front() == ' ' || value.front() == '\t' || value.front() == '\r')) {
+    value.remove_prefix(1);
+  }
+  while (!value.empty() &&
+         (value.back() == ' ' || value.back() == '\t' || value.back() == '\r')) {
+    value.remove_suffix(1);
+  }
+  return value;
+}
+
+std::string_view stripControlComment(std::string_view value) {
+  const std::size_t comment = value.find('#');
+  if (comment != std::string_view::npos) {
+    value = value.substr(0, comment);
+  }
+  return trimControlText(value);
+}
+
+bool parseControlBool(std::string_view value, bool& out) {
+  value = trimControlText(value);
+  if (value == "true" || value == "1" || value == "yes" || value == "on") {
+    out = true;
+    return true;
+  }
+  if (value == "false" || value == "0" || value == "no" || value == "off") {
+    out = false;
+    return true;
+  }
+  return false;
+}
+
+bool parseControlFloat(std::string_view value, float& out) {
+  value = trimControlText(value);
+  if (value.empty()) {
+    return false;
+  }
+  std::string text(value);
+  char* end = nullptr;
+  errno = 0;
+  out = std::strtof(text.c_str(), &end);
+  return end != text.c_str() && *end == '\0' && errno != ERANGE && std::isfinite(out);
+}
+
+void setControlStatus(CodexControlFrame& frame, std::string status) {
+  if (frame.status != "parse_error") {
+    frame.status = std::move(status);
+  }
+}
+
+CodexControlFrame readCodexControlFile(const VisualOptions& options) {
+  CodexControlFrame frame;
+  frame.configured = options.codexControlPathSet;
+  if (!options.codexControlPathSet) {
+    return frame;
+  }
+
+  std::ifstream input(options.codexControlPath);
+  if (!input) {
+    frame.status = "missing";
+    return frame;
+  }
+
+  frame.read = true;
+  frame.status = "read";
+  std::string line;
+  while (std::getline(input, line)) {
+    const std::string_view trimmed = stripControlComment(line);
+    if (trimmed.empty()) {
+      continue;
+    }
+    ++frame.lineCount;
+    const std::size_t equals = trimmed.find('=');
+    if (equals == std::string_view::npos || equals == 0U) {
+      frame.parseError = true;
+      frame.status = "parse_error";
+      continue;
+    }
+    const std::string_view key = trimControlText(trimmed.substr(0, equals));
+    const std::string_view value = trimControlText(trimmed.substr(equals + 1U));
+
+    bool boolValue = false;
+    float floatValue = 0.0F;
+    DevMechanic mechanic = DevMechanic::Walk;
+    if (key == "dev_menu.open") {
+      if (parseControlBool(value, boolValue)) {
+        frame.devMenuOpenSet = true;
+        frame.devMenuOpen = boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "dev_menu.select" || key == "mechanic") {
+      if (parseDevMechanic(value, mechanic)) {
+        frame.mechanicSet = true;
+        frame.mechanic = mechanic;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "mechanic.execute") {
+      if (parseControlBool(value, boolValue)) {
+        frame.executeMechanic = frame.executeMechanic || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "stance") {
+      if (value == "crouched" || value == "crouch") {
+        frame.stanceSet = true;
+        frame.crouched = true;
+        frame.applied = true;
+      } else if (value == "standing" || value == "stand") {
+        frame.stanceSet = true;
+        frame.crouched = false;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "move.forward") {
+      if (parseControlFloat(value, floatValue)) {
+        frame.moveForward = std::clamp(floatValue, -1.0F, 1.0F);
+        frame.moveSet = true;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "move.right") {
+      if (parseControlFloat(value, floatValue)) {
+        frame.moveRight = std::clamp(floatValue, -1.0F, 1.0F);
+        frame.moveSet = true;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "look.yaw_delta") {
+      if (parseControlFloat(value, floatValue)) {
+        frame.yawDelta += std::clamp(floatValue, -0.8F, 0.8F);
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "look.pitch_delta") {
+      if (parseControlFloat(value, floatValue)) {
+        frame.pitchDelta += std::clamp(floatValue, -0.8F, 0.8F);
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "interact") {
+      if (parseControlBool(value, boolValue)) {
+        frame.interact = frame.interact || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "attack") {
+      if (parseControlBool(value, boolValue)) {
+        frame.attack = frame.attack || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "reset") {
+      if (parseControlBool(value, boolValue)) {
+        frame.reset = frame.reset || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "quit") {
+      if (parseControlBool(value, boolValue)) {
+        frame.quit = frame.quit || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else {
+      frame.parseError = true;
+      frame.status = "parse_error";
+    }
+  }
+
+  if (frame.applied) {
+    setControlStatus(frame, "applied");
+  }
+  return frame;
 }
 
 bool hasValue(int index, int argc) {
@@ -239,6 +592,15 @@ ParseResult parseOptions(int argc, const char* const* argv) {
       result.options.inputBackend = VisualInputBackend::Scripted;
     } else if (arg == "--scripted-crouch-input") {
       result.options.scriptedCrouchInput = true;
+      result.options.interactive = true;
+      result.options.inputBackend = VisualInputBackend::Scripted;
+    } else if (arg == "--dev-menu") {
+      result.options.devMenu = true;
+      result.options.interactive = true;
+    } else if (arg == "--codex-control" && hasValue(i, argc)) {
+      result.options.codexControlPath = argv[++i];
+      result.options.codexControlPathSet = true;
+      result.options.devMenu = true;
       result.options.interactive = true;
       result.options.inputBackend = VisualInputBackend::Scripted;
     } else if (arg == "--hold-seconds" && hasValue(i, argc)) {
@@ -700,6 +1062,22 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
   iggy3d::appendReceiptField(receipt, "actor_height_meters", fields.actorHeightMeters);
   iggy3d::appendReceiptField(receipt, "movement_speed_meters_per_second",
                              fields.movementSpeedMetersPerSecond);
+  iggy3d::appendReceiptField(receipt, "dev_menu_enabled", fields.devMenuEnabled);
+  iggy3d::appendReceiptField(receipt, "dev_menu_open", fields.devMenuOpen);
+  iggy3d::appendReceiptField(receipt, "dev_menu_toggle_observed",
+                             fields.devMenuToggleObserved);
+  iggy3d::appendReceiptField(receipt, "dev_menu_selected_mechanic",
+                             fields.devMenuSelectedMechanic);
+  iggy3d::appendReceiptField(receipt, "dev_menu_execute_requested",
+                             fields.devMenuExecuteRequested);
+  iggy3d::appendReceiptField(receipt, "dev_menu_execution_status",
+                             fields.devMenuExecutionStatus);
+  iggy3d::appendReceiptField(receipt, "codex_control_configured",
+                             fields.codexControlConfigured);
+  iggy3d::appendReceiptField(receipt, "codex_control_read", fields.codexControlRead);
+  iggy3d::appendReceiptField(receipt, "codex_control_applied", fields.codexControlApplied);
+  iggy3d::appendReceiptField(receipt, "codex_control_status", fields.codexControlStatus);
+  iggy3d::appendReceiptField(receipt, "codex_control_path", fields.codexControlPath);
   iggy3d::appendReceiptField(receipt, "hit_surface_id", fields.hitSurfaceId);
   iggy3d::appendReceiptField(receipt, "mouse_look_available", fields.mouseLookAvailable);
   iggy3d::appendReceiptField(receipt, "mouse_look_used", fields.mouseLookUsed);
@@ -1109,6 +1487,18 @@ int main(int argc, const char* const* argv) {
   if (playableFields.playable) {
     recordStance(playableFields, false);
   }
+  DevMenuState devMenu;
+  devMenu.enabled = parsed.options.devMenu || parsed.options.codexControlPathSet;
+  devMenu.open = parsed.options.devMenu;
+  playableFields.devMenuEnabled = devMenu.enabled;
+  playableFields.devMenuOpen = devMenu.open;
+  playableFields.devMenuSelectedMechanic = std::string(devMechanicName(devMenu.selected));
+  playableFields.codexControlConfigured = parsed.options.codexControlPathSet;
+  playableFields.codexControlPath =
+      parsed.options.codexControlPathSet ? parsed.options.codexControlPath.string()
+                                         : "unavailable";
+  playableFields.codexControlStatus =
+      parsed.options.codexControlPathSet ? "not_read" : "disabled";
   playableFields.kinematicControllerActive =
       playableFields.playable && !parsed.options.scriptedPlayableSmoke && !collisionSurfaces.empty();
 #if defined(IGGY3D_HAS_SDL3)
@@ -1134,6 +1524,10 @@ int main(int argc, const char* const* argv) {
   float yaw = 0.0F;
   float pitch = 0.0F;
   bool quitRequested = false;
+  bool devMenuToggleDown = false;
+  bool devMenuNextDown = false;
+  bool devMenuPreviousDown = false;
+  bool devMenuExecuteDown = false;
   const auto interactiveStart = std::chrono::steady_clock::now();
   std::uint32_t frameIndex = 0U;
   while (true) {
@@ -1186,11 +1580,22 @@ int main(int argc, const char* const* argv) {
       if (gamepad.joystick != nullptr) {
         SDL_UpdateJoysticks();
       }
+      const CodexControlFrame codexControl = readCodexControlFile(parsed.options);
+      if (codexControl.configured) {
+        playableFields.codexControlRead = playableFields.codexControlRead || codexControl.read;
+        playableFields.codexControlApplied =
+            playableFields.codexControlApplied || codexControl.applied;
+        playableFields.codexControlStatus = codexControl.status;
+      }
       iggy3d::Vec3 movement{};
       bool actionRequested = false;
       bool attackRequested = false;
       bool resetRequested = false;
       bool crouchHeld = parsed.options.scriptedCrouchInput;
+      bool devToggleRequested = false;
+      bool devNextRequested = false;
+      bool devPreviousRequested = false;
+      bool devExecuteRequested = false;
       if (parsed.options.scriptedKinematicInput) {
         movement = {1.0F, 0.0F, 0.0F};
       } else if (playableFields.inputBackend == VisualInputBackend::Keyboard) {
@@ -1205,6 +1610,33 @@ int main(int argc, const char* const* argv) {
           const bool right = SDL_SCANCODE_RIGHT < keyCount && keys[SDL_SCANCODE_RIGHT];
           const bool up = SDL_SCANCODE_UP < keyCount && keys[SDL_SCANCODE_UP];
           const bool down = SDL_SCANCODE_DOWN < keyCount && keys[SDL_SCANCODE_DOWN];
+          devToggleRequested = SDL_SCANCODE_F1 < keyCount && keys[SDL_SCANCODE_F1];
+          if (devMenu.enabled && devMenu.open) {
+            devExecuteRequested =
+                (SDL_SCANCODE_SPACE < keyCount && keys[SDL_SCANCODE_SPACE]) ||
+                (SDL_SCANCODE_RETURN < keyCount && keys[SDL_SCANCODE_RETURN]);
+            if (SDL_SCANCODE_1 < keyCount && keys[SDL_SCANCODE_1]) {
+              devMenu.selected = DevMechanic::Walk;
+            }
+            if (SDL_SCANCODE_2 < keyCount && keys[SDL_SCANCODE_2]) {
+              devMenu.selected = DevMechanic::Crouch;
+            }
+            if (SDL_SCANCODE_3 < keyCount && keys[SDL_SCANCODE_3]) {
+              devMenu.selected = DevMechanic::Jump;
+            }
+            if (SDL_SCANCODE_4 < keyCount && keys[SDL_SCANCODE_4]) {
+              devMenu.selected = DevMechanic::Dash;
+            }
+            if (SDL_SCANCODE_5 < keyCount && keys[SDL_SCANCODE_5]) {
+              devMenu.selected = DevMechanic::Vault;
+            }
+            if (SDL_SCANCODE_6 < keyCount && keys[SDL_SCANCODE_6]) {
+              devMenu.selected = DevMechanic::Clamber;
+            }
+            if (SDL_SCANCODE_7 < keyCount && keys[SDL_SCANCODE_7]) {
+              devMenu.selected = DevMechanic::WireWalk;
+            }
+          }
           crouchHeld = crouchHeld || (SDL_SCANCODE_LCTRL < keyCount && keys[SDL_SCANCODE_LCTRL]) ||
                        (SDL_SCANCODE_C < keyCount && keys[SDL_SCANCODE_C]);
           if (left) {
@@ -1242,6 +1674,9 @@ int main(int argc, const char* const* argv) {
         bool startDown = false;
         bool r2Down = false;
         bool crouchDown = false;
+        bool northDown = false;
+        bool dpadLeft = false;
+        bool dpadRight = false;
         if (gamepad.gamepad != nullptr) {
           leftX = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_LEFTX));
           leftY = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_LEFTY));
@@ -1253,6 +1688,9 @@ int main(int argc, const char* const* argv) {
           eastDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_EAST);
           startDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_START);
           crouchDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_LEFT_STICK);
+          northDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_NORTH);
+          dpadLeft = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_DPAD_LEFT);
+          dpadRight = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_DPAD_RIGHT);
           r2Down = r2 > 0.2F;
         } else {
           const int axisCount = SDL_GetNumJoystickAxes(gamepad.joystick);
@@ -1270,6 +1708,16 @@ int main(int argc, const char* const* argv) {
           crouchDown = buttonCount > 10 && SDL_GetJoystickButton(gamepad.joystick, 10);
           r2Down = r2 > 0.2F ||
                    (buttonCount > 7 && SDL_GetJoystickButton(gamepad.joystick, 7));
+        }
+        if (devMenu.enabled && startDown && northDown) {
+          devToggleRequested = true;
+          startDown = false;
+        }
+        if (devMenu.enabled && devMenu.open) {
+          devPreviousRequested = dpadLeft;
+          devNextRequested = dpadRight;
+          devExecuteRequested = crossDown;
+          crossDown = false;
         }
         crouchHeld = crouchHeld || crouchDown;
         playableFields.gamepadLeftStickUsed =
@@ -1292,6 +1740,60 @@ int main(int argc, const char* const* argv) {
         quitRequested = pressedEdge(startDown, gamepad.startDown);
       }
       applyMouseLook(yaw, pitch, playableFields);
+      if (codexControl.applied) {
+        if (codexControl.devMenuOpenSet) {
+          devMenu.open = codexControl.devMenuOpen;
+        }
+        if (codexControl.mechanicSet) {
+          devMenu.selected = codexControl.mechanic;
+        }
+        yaw += codexControl.yawDelta;
+        pitch += codexControl.pitchDelta;
+        if (codexControl.moveSet) {
+          const iggy3d::Vec3 forward{std::sin(yaw), 0.0F, -std::cos(yaw)};
+          const iggy3d::Vec3 rightVec{std::cos(yaw), 0.0F, std::sin(yaw)};
+          movement = movement + forward * codexControl.moveForward;
+          movement = movement + rightVec * codexControl.moveRight;
+        }
+        if (codexControl.stanceSet) {
+          crouchHeld = codexControl.crouched;
+        }
+        actionRequested = actionRequested || codexControl.interact;
+        attackRequested = attackRequested || codexControl.attack;
+        resetRequested = resetRequested || codexControl.reset;
+        quitRequested = quitRequested || codexControl.quit;
+        devExecuteRequested = devExecuteRequested || codexControl.executeMechanic;
+      }
+      if (devMenu.enabled && pressedEdge(devToggleRequested, devMenuToggleDown)) {
+        devMenu.open = !devMenu.open;
+        playableFields.devMenuToggleObserved = true;
+      }
+      if (devMenu.enabled && devMenu.open &&
+          pressedEdge(devPreviousRequested, devMenuPreviousDown)) {
+        devMenu.selected = previousDevMechanic(devMenu.selected);
+      }
+      if (devMenu.enabled && devMenu.open && pressedEdge(devNextRequested, devMenuNextDown)) {
+        devMenu.selected = nextDevMechanic(devMenu.selected);
+      }
+      if (devMenu.enabled && pressedEdge(devExecuteRequested, devMenuExecuteDown)) {
+        devMenu.executeRequested = true;
+      }
+      if (devMenu.enabled && devMenu.selected == DevMechanic::Crouch &&
+          devMenu.executeRequested) {
+        crouchHeld = true;
+      }
+      playableFields.devMenuEnabled = devMenu.enabled;
+      playableFields.devMenuOpen = devMenu.open;
+      playableFields.devMenuSelectedMechanic = std::string(devMechanicName(devMenu.selected));
+      playableFields.devMenuExecuteRequested = devMenu.executeRequested;
+      if (devMenu.executeRequested) {
+        playableFields.devMenuExecutionStatus =
+            devMenu.selected == DevMechanic::Crouch
+                ? "applied"
+                : (devMenu.selected == DevMechanic::Walk ? "selected" : "stubbed");
+      } else {
+        playableFields.devMenuExecutionStatus = "not_requested";
+      }
       if (pitch > 0.8F) {
         pitch = 0.8F;
       }

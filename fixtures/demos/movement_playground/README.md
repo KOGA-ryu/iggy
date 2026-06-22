@@ -11,6 +11,32 @@ Controls:
 - WASD moves, mouse drag or right stick looks, Escape/Start quits;
 - hold C or Left Ctrl to crouch on keyboard;
 - hold left stick click to crouch on SDL gamepad.
+- F1 toggles the dev menu state; while open, 1-7 selects walk, crouch, jump stub,
+  dash stub, vault stub, clamber stub, or wire-walk stub, and Space/Enter executes.
+- On SDL gamepad, Start + North toggles the dev menu state, D-pad left/right cycles,
+  and South executes while the menu is open.
+
+Codex control:
+
+```sh
+cat >/tmp/iggy3d.control <<'EOF'
+dev_menu.open=true
+dev_menu.select=crouch
+mechanic.execute=true
+move.forward=1
+look.yaw_delta=0.100
+look.pitch_delta=0.050
+EOF
+
+./build/iggy3d_visual_demo --renderer vulkan --window --interactive --dev-menu \
+  --codex-control /tmp/iggy3d.control \
+  --package fixtures/demos/movement_playground/package.iggy3d.toml \
+  --print-render-receipt
+```
+
+Supported control keys are `dev_menu.open`, `dev_menu.select`, `mechanic`,
+`mechanic.execute`, `stance`, `move.forward`, `move.right`, `look.yaw_delta`,
+`look.pitch_delta`, `interact`, `attack`, `reset`, and `quit`.
 
 Purpose:
 

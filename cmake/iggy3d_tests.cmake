@@ -177,6 +177,20 @@ if(TARGET iggy3d_visual_demo)
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     SKIP_RETURN_CODE 77
     LABELS "smoke;visual;window;render;package;movement;iggy3d")
+
+  add_executable(package_visual_codex_control_smoke
+    tests/smoke/package_visual_codex_control_smoke.cpp)
+  target_link_libraries(package_visual_codex_control_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(package_visual_codex_control_smoke)
+  target_compile_definitions(package_visual_codex_control_smoke
+    PRIVATE
+      IGGY3D_VISUAL_DEMO_PATH="$<TARGET_FILE:iggy3d_visual_demo>")
+  add_test(NAME package_visual_codex_control_smoke
+           COMMAND "$<TARGET_FILE:package_visual_codex_control_smoke>")
+  set_tests_properties(package_visual_codex_control_smoke PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    SKIP_RETURN_CODE 77
+    LABELS "smoke;visual;window;render;package;dev_menu;codex_control;iggy3d")
 endif()
 
 function(iggy3d_add_render_packet4_unit_test test_name source_file)
