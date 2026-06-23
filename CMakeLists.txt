@@ -29,7 +29,6 @@ target_sources(iggy3d
     src/content/PackageLoader.cpp
     src/content/PackageValidator.cpp
     src/content/authoring/EditableRoomDocument.cpp
-    src/content/authoring/WorldSlotStore.cpp
     src/content/assets/MaterialAsset.cpp
     src/content/assets/MeshAsset.cpp
     src/content/assets/RoomAsset.cpp
@@ -65,6 +64,7 @@ target_sources(iggy3d
     src/runtime/replay/CommandReplay.cpp
     src/runtime/save/SaveCompatibility.cpp
     src/runtime/save/SaveCodec.cpp
+    src/runtime/save/SaveFileStore.cpp
     src/runtime/save/SaveLoad.cpp
     src/runtime/diagnostics/RuntimeSummary.cpp
     src/projection/scene/SceneProjection.cpp

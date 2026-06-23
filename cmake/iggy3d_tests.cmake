@@ -37,9 +37,9 @@ iggy3d_add_unit_test(editable_room_document_tests tests/unit/editable_room_docum
 set_tests_properties(editable_room_document_tests PROPERTIES
   LABELS "unit;content;authoring;room_edit;iggy3d")
 
-iggy3d_add_unit_test(world_slot_store_tests tests/unit/world_slot_store_tests.cpp)
-set_tests_properties(world_slot_store_tests PROPERTIES
-  LABELS "unit;content;authoring;world;iggy3d")
+iggy3d_add_unit_test(save_file_store_tests tests/unit/save_file_store_tests.cpp)
+set_tests_properties(save_file_store_tests PROPERTIES
+  LABELS "unit;runtime;save;files;iggy3d")
 
 iggy3d_add_unit_test(world_state_tests tests/unit/world_state_tests.cpp)
 set_tests_properties(world_state_tests PROPERTIES LABELS "unit;runtime;world;iggy3d")
@@ -278,7 +278,7 @@ if(TARGET iggy3d_visual_demo)
   set_tests_properties(package_visual_opening_menu_smoke PROPERTIES
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     SKIP_RETURN_CODE 77
-    LABELS "smoke;visual;render;package;opening_menu;world;codex_control;iggy3d")
+    LABELS "smoke;visual;render;package;opening_menu;save;codex_control;iggy3d")
 endif()
 
 function(iggy3d_add_render_packet4_unit_test test_name source_file)

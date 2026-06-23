@@ -96,13 +96,13 @@ bool writeControlFile(const std::filesystem::path& path,
 
 bool runVisualDemo(const std::filesystem::path& binary,
                    const std::filesystem::path& fixture,
-                   const std::filesystem::path& worldRoot,
+                   const std::filesystem::path& saveRoot,
                    const std::filesystem::path& control,
                    const std::filesystem::path& output) {
   const std::string command =
       shellQuote(binary) + " --package " + shellQuote(fixture) +
-      " --renderer null --interactive --frames 1 --opening-menu --world-root " +
-      shellQuote(worldRoot) + " --codex-control " + shellQuote(control) +
+      " --renderer null --interactive --frames 1 --opening-menu --save-root " +
+      shellQuote(saveRoot) + " --codex-control " + shellQuote(control) +
       " --print-render-receipt > " + shellQuote(output);
   return exitCodeFromSystem(std::system(command.c_str())) == 0;
 }
@@ -117,26 +117,29 @@ int main() {
 #endif
   bool hudPassed = false;
   bool createPassed = false;
+  bool loadPassed = false;
   bool deletePassed = false;
 #if defined(IGGY3D_VISUAL_DEMO_PATH)
   const std::filesystem::path binary{IGGY3D_VISUAL_DEMO_PATH};
   const std::filesystem::path fixture =
       std::filesystem::current_path() / "fixtures/demos/movement_playground/package.iggy3d.toml";
-  const std::filesystem::path worldRoot =
-      std::filesystem::temp_directory_path() / "iggy3d_opening_menu_worlds";
+  const std::filesystem::path saveRoot =
+      std::filesystem::temp_directory_path() / "iggy3d_opening_menu_saves";
   const std::filesystem::path hudControl = "/tmp/iggy3d_opening_menu_hud_control.in";
   const std::filesystem::path hudOutput = "/tmp/iggy3d_opening_menu_hud.out";
   const std::filesystem::path createControl = "/tmp/iggy3d_opening_menu_create_control.in";
   const std::filesystem::path createOutput = "/tmp/iggy3d_opening_menu_create.out";
+  const std::filesystem::path loadControl = "/tmp/iggy3d_opening_menu_load_control.in";
+  const std::filesystem::path loadOutput = "/tmp/iggy3d_opening_menu_load.out";
   const std::filesystem::path deleteControl = "/tmp/iggy3d_opening_menu_delete_control.in";
   const std::filesystem::path deleteOutput = "/tmp/iggy3d_opening_menu_delete.out";
   std::error_code error;
-  std::filesystem::remove_all(worldRoot, error);
+  std::filesystem::remove_all(saveRoot, error);
 
   std::map<std::string, std::string> fields;
   hudPassed = std::filesystem::exists(binary) &&
               writeControlFile(hudControl, "existing_saves", false) &&
-              runVisualDemo(binary, fixture, worldRoot, hudControl, hudOutput) &&
+              runVisualDemo(binary, fixture, saveRoot, hudControl, hudOutput) &&
               parseReceiptFile(hudOutput, fields) && hasField(fields, "result", "pass") &&
               hasField(fields, "backend", "null") &&
               hasField(fields, "opening_menu_enabled", "true") &&
@@ -144,37 +147,47 @@ int main() {
               hasField(fields, "opening_menu_hud_visible", "true") &&
               numericFieldAtLeast(fields, "opening_menu_hud_line_count", 8UL) &&
               hasField(fields, "opening_menu_selected_action", "existing_saves") &&
-              hasField(fields, "opening_menu_world_slot_count", "0") &&
-              hasField(fields, "opening_menu_selected_world_id", "none");
+              hasField(fields, "opening_menu_save_file_count", "0") &&
+              hasField(fields, "opening_menu_selected_save_id", "none");
 
   createPassed = writeControlFile(createControl, "new_world", true) &&
-                 runVisualDemo(binary, fixture, worldRoot, createControl, createOutput) &&
+                 runVisualDemo(binary, fixture, saveRoot, createControl, createOutput) &&
                  parseReceiptFile(createOutput, fields) &&
                  hasField(fields, "result", "pass") &&
                  hasField(fields, "opening_menu_open", "false") &&
                  hasField(fields, "opening_menu_last_action", "new_world") &&
-                 hasField(fields, "opening_menu_status", "world_slot_created") &&
-                 hasField(fields, "opening_menu_created_world", "true") &&
-                 hasField(fields, "opening_menu_world_slot_count", "1") &&
-                 hasField(fields, "opening_menu_selected_world_id", "world_001") &&
-                 std::filesystem::exists(worldRoot / "world_001.iggy3d.world.toml");
+                 hasField(fields, "opening_menu_status", "save_file_created") &&
+                 hasField(fields, "opening_menu_created_save", "true") &&
+                 hasField(fields, "opening_menu_save_file_count", "1") &&
+                 hasField(fields, "opening_menu_selected_save_id", "save_001") &&
+                 std::filesystem::exists(saveRoot / "save_001.iggy3d.save");
+
+  loadPassed = writeControlFile(loadControl, "existing_saves", true) &&
+               runVisualDemo(binary, fixture, saveRoot, loadControl, loadOutput) &&
+               parseReceiptFile(loadOutput, fields) &&
+               hasField(fields, "result", "pass") &&
+               hasField(fields, "opening_menu_last_action", "existing_saves") &&
+               hasField(fields, "opening_menu_status", "save_file_loaded") &&
+               hasField(fields, "opening_menu_loaded_save", "true") &&
+               hasField(fields, "opening_menu_selected_save_id", "save_001");
 
   deletePassed = writeControlFile(deleteControl, "delete_selected", true) &&
-                 runVisualDemo(binary, fixture, worldRoot, deleteControl, deleteOutput) &&
+                 runVisualDemo(binary, fixture, saveRoot, deleteControl, deleteOutput) &&
                  parseReceiptFile(deleteOutput, fields) &&
                  hasField(fields, "result", "pass") &&
                  hasField(fields, "opening_menu_last_action", "delete_selected") &&
-                 hasField(fields, "opening_menu_status", "world_slot_deleted") &&
-                 hasField(fields, "opening_menu_deleted_world", "true") &&
-                 hasField(fields, "opening_menu_world_slot_count", "0") &&
-                 !std::filesystem::exists(worldRoot / "world_001.iggy3d.world.toml");
+                 hasField(fields, "opening_menu_status", "save_file_deleted") &&
+                 hasField(fields, "opening_menu_deleted_save", "true") &&
+                 hasField(fields, "opening_menu_save_file_count", "0") &&
+                 !std::filesystem::exists(saveRoot / "save_001.iggy3d.save");
 #endif
 
-  const bool passed = hudPassed && createPassed && deletePassed;
+  const bool passed = hudPassed && createPassed && loadPassed && deletePassed;
   std::cout << "smoke=package_visual_opening_menu\n";
   std::cout << "backend=" << (visualBuilt ? "null" : "unavailable") << "\n";
   std::cout << "opening_menu_hud=" << (hudPassed ? "true" : "false") << "\n";
   std::cout << "opening_menu_create=" << (createPassed ? "true" : "false") << "\n";
+  std::cout << "opening_menu_load=" << (loadPassed ? "true" : "false") << "\n";
   std::cout << "opening_menu_delete=" << (deletePassed ? "true" : "false") << "\n";
   std::cout << "result=" << (passed ? "pass" : (visualBuilt ? "fail" : "skip")) << "\n";
   std::cout << "reason_code=" << (passed ? "visual_opening_menu_pass"

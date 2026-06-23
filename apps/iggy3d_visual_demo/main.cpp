@@ -10,7 +10,6 @@
 #endif
 #include "content/PackageLoader.hpp"
 #include "content/authoring/EditableRoomDocument.hpp"
-#include "content/authoring/WorldSlotStore.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/FrameInput.hpp"
@@ -25,6 +24,7 @@
 #include "runtime/movement/MovementTraversal.hpp"
 #include "runtime/movement/MovementTraversalSlots.hpp"
 #include "runtime/player/PlayerMotor.hpp"
+#include "runtime/save/SaveFileStore.hpp"
 #include "runtime/save/SaveLoad.hpp"
 #include "runtime/session/Session.hpp"
 
@@ -99,8 +99,8 @@ struct VisualOptions {
   bool openingMenuFlagSeen = false;
   bool noOpeningMenu = false;
   bool codexControlPathSet = false;
-  bool worldRootSet = false;
-  std::filesystem::path worldRoot;
+  bool saveRootSet = false;
+  std::filesystem::path saveRoot;
   VisualInputBackend inputBackend = VisualInputBackend::Keyboard;
   std::uint32_t holdSeconds = 0U;
   std::uint32_t frames = 1U;
@@ -343,11 +343,13 @@ struct PlayableReceiptFields {
   std::string openingMenuSelectedAction = "new_world";
   std::string openingMenuLastAction = "none";
   std::string openingMenuStatus = "not_requested";
-  std::string openingMenuRoot = "unavailable";
-  std::uint64_t openingMenuWorldSlotCount = 0;
-  std::string openingMenuSelectedWorldId = "none";
-  bool openingMenuCreatedWorld = false;
-  bool openingMenuDeletedWorld = false;
+  std::string openingMenuSaveRoot = "unavailable";
+  std::uint64_t openingMenuSaveFileCount = 0;
+  std::string openingMenuSelectedSaveId = "none";
+  bool openingMenuCreatedSave = false;
+  bool openingMenuSavedCurrent = false;
+  bool openingMenuLoadedSave = false;
+  bool openingMenuDeletedSave = false;
   bool editorEnabled = false;
   bool editorOpen = false;
   bool editorToggleObserved = false;
@@ -510,13 +512,14 @@ struct OpeningMenuState {
   OpeningMenuAction selected = OpeningMenuAction::NewWorld;
   OpeningMenuAction lastAction = OpeningMenuAction::NewWorld;
   std::filesystem::path root;
-  std::filesystem::path packagePath;
-  std::vector<iggy3d::WorldSlotRecord> slots;
-  std::size_t selectedSlotIndex = 0U;
+  std::vector<iggy3d::SaveFileRecord> saves;
+  std::size_t selectedSaveIndex = 0U;
   std::string status = "not_requested";
   bool actionExecuted = false;
-  bool createdWorld = false;
-  bool deletedWorld = false;
+  bool createdSave = false;
+  bool savedCurrent = false;
+  bool loadedSave = false;
+  bool deletedSave = false;
 };
 
 enum class EditorTool : std::uint8_t {
@@ -787,8 +790,7 @@ bool parseOpeningMenuAction(std::string_view value, OpeningMenuAction& out) {
     out = OpeningMenuAction::NewWorld;
     return true;
   }
-  if (value == "existing_saves" || value == "existing_worlds" ||
-      value == "load" || value == "loads") {
+  if (value == "existing_saves" || value == "load" || value == "loads") {
     out = OpeningMenuAction::ExistingWorlds;
     return true;
   }
@@ -839,21 +841,21 @@ OpeningMenuAction previousOpeningMenuAction(OpeningMenuAction action) {
   return OpeningMenuAction::NewWorld;
 }
 
-std::string selectedOpeningMenuSlotId(const OpeningMenuState& menu) {
-  if (menu.slots.empty() || menu.selectedSlotIndex >= menu.slots.size()) {
+std::string selectedOpeningMenuSaveId(const OpeningMenuState& menu) {
+  if (menu.saves.empty() || menu.selectedSaveIndex >= menu.saves.size()) {
     return "none";
   }
-  return menu.slots[menu.selectedSlotIndex].id;
+  return menu.saves[menu.selectedSaveIndex].id;
 }
 
-void refreshOpeningMenuSlots(OpeningMenuState& menu) {
-  menu.slots = iggy3d::listWorldSlots(menu.root);
-  if (menu.slots.empty()) {
-    menu.selectedSlotIndex = 0U;
+void refreshOpeningMenuSaves(OpeningMenuState& menu) {
+  menu.saves = iggy3d::listSaveFiles(menu.root);
+  if (menu.saves.empty()) {
+    menu.selectedSaveIndex = 0U;
     return;
   }
-  if (menu.selectedSlotIndex >= menu.slots.size()) {
-    menu.selectedSlotIndex = menu.slots.size() - 1U;
+  if (menu.selectedSaveIndex >= menu.saves.size()) {
+    menu.selectedSaveIndex = menu.saves.size() - 1U;
   }
 }
 
@@ -864,67 +866,104 @@ void recordOpeningMenuFields(PlayableReceiptFields& fields, const OpeningMenuSta
   fields.openingMenuLastAction =
       menu.actionExecuted ? std::string(openingMenuActionName(menu.lastAction)) : "none";
   fields.openingMenuStatus = menu.status;
-  fields.openingMenuRoot = menu.root.empty() ? "unavailable" : menu.root.string();
-  fields.openingMenuWorldSlotCount = static_cast<std::uint64_t>(menu.slots.size());
-  fields.openingMenuSelectedWorldId = selectedOpeningMenuSlotId(menu);
-  fields.openingMenuCreatedWorld = menu.createdWorld;
-  fields.openingMenuDeletedWorld = menu.deletedWorld;
+  fields.openingMenuSaveRoot = menu.root.empty() ? "unavailable" : menu.root.string();
+  fields.openingMenuSaveFileCount = static_cast<std::uint64_t>(menu.saves.size());
+  fields.openingMenuSelectedSaveId = selectedOpeningMenuSaveId(menu);
+  fields.openingMenuCreatedSave = menu.createdSave;
+  fields.openingMenuSavedCurrent = menu.savedCurrent;
+  fields.openingMenuLoadedSave = menu.loadedSave;
+  fields.openingMenuDeletedSave = menu.deletedSave;
 }
 
-void createOpeningMenuWorldSlot(OpeningMenuState& menu, std::string_view statusOnSuccess) {
-  iggy3d::WorldSlotCreateRequest request;
+void writeOpeningMenuSaveFile(OpeningMenuState& menu,
+                              const iggy3d::Session& session,
+                              std::string_view statusOnSuccess,
+                              bool overwriteSelected) {
+  iggy3d::SaveFileWriteRequest request;
   request.root = menu.root;
-  request.name =
-      menu.slots.empty() ? "New World" : "New World " + std::to_string(menu.slots.size() + 1U);
-  request.packagePath = menu.packagePath;
-  const iggy3d::WorldSlotCreateResult result = iggy3d::createWorldSlot(request);
+  request.state = &session.state();
+  if (overwriteSelected && !menu.saves.empty() && menu.selectedSaveIndex < menu.saves.size()) {
+    request.idHint = menu.saves[menu.selectedSaveIndex].id;
+  }
+  const iggy3d::SaveFileWriteResult result = iggy3d::writeSessionSaveFile(request);
   menu.status = result.ok ? std::string(statusOnSuccess) : result.reason;
-  menu.createdWorld = result.ok;
   if (!result.ok) {
     return;
   }
-  refreshOpeningMenuSlots(menu);
-  const auto found = std::find_if(menu.slots.begin(), menu.slots.end(),
-                                  [&result](const iggy3d::WorldSlotRecord& slot) {
-                                    return slot.id == result.slot.id;
+  refreshOpeningMenuSaves(menu);
+  const auto found = std::find_if(menu.saves.begin(), menu.saves.end(),
+                                  [&result](const iggy3d::SaveFileRecord& save) {
+                                    return save.id == result.record.id;
                                   });
-  if (found != menu.slots.end()) {
-    menu.selectedSlotIndex = static_cast<std::size_t>(found - menu.slots.begin());
+  if (found != menu.saves.end()) {
+    menu.selectedSaveIndex = static_cast<std::size_t>(found - menu.saves.begin());
   }
 }
 
-void executeOpeningMenuAction(OpeningMenuState& menu) {
+void loadOpeningMenuSelectedSave(OpeningMenuState& menu, iggy3d::Session& session) {
+  refreshOpeningMenuSaves(menu);
+  if (menu.saves.empty()) {
+    menu.status = "no_save_file_selected";
+    return;
+  }
+  const iggy3d::SaveFileReadResult read =
+      iggy3d::readSaveFile(menu.saves[menu.selectedSaveIndex].path);
+  if (!read.ok) {
+    menu.status = read.reason;
+    return;
+  }
+  const iggy3d::SaveDecodeResult decoded = iggy3d::decodeSaveEnvelope(read.encodedText);
+  if (decoded.status != iggy3d::SaveCodecStatus::Ok) {
+    menu.status = "save_file_decode_failed";
+    return;
+  }
+  const iggy3d::SaveCompatibilityRequest compatibility{
+      decoded.envelope, session.state().identity.packageId, session.state().identity.scenarioId};
+  const iggy3d::LoadStateResult load =
+      iggy3d::loadEnvelopeIntoSession(session, decoded.envelope, compatibility);
+  if (load.status != iggy3d::SaveLoadStatus::Ok) {
+    menu.status = "save_file_load_failed";
+    return;
+  }
+  menu.loadedSave = true;
+  menu.status = "save_file_loaded";
+  menu.open = false;
+}
+
+void executeOpeningMenuAction(OpeningMenuState& menu, iggy3d::Session& session) {
   if (!menu.enabled) {
     return;
   }
   menu.actionExecuted = true;
   menu.lastAction = menu.selected;
-  menu.createdWorld = false;
-  menu.deletedWorld = false;
+  menu.createdSave = false;
+  menu.savedCurrent = false;
+  menu.loadedSave = false;
+  menu.deletedSave = false;
   switch (menu.selected) {
     case OpeningMenuAction::NewWorld:
-      createOpeningMenuWorldSlot(menu, "world_slot_created");
-      if (menu.createdWorld) {
+      writeOpeningMenuSaveFile(menu, session, "save_file_created", false);
+      menu.createdSave = menu.status == "save_file_created";
+      if (menu.createdSave) {
         menu.open = false;
       }
       break;
     case OpeningMenuAction::ExistingWorlds:
-      refreshOpeningMenuSlots(menu);
-      menu.status = menu.slots.empty() ? "no_world_slots_found" : "world_slots_refreshed";
+      loadOpeningMenuSelectedSave(menu, session);
       break;
     case OpeningMenuAction::SaveCurrent:
-      createOpeningMenuWorldSlot(menu, "current_world_saved");
+      writeOpeningMenuSaveFile(menu, session, "current_save_written", true);
+      menu.savedCurrent = menu.status == "current_save_written";
       break;
     case OpeningMenuAction::DeleteSelected:
-      refreshOpeningMenuSlots(menu);
-      if (menu.slots.empty()) {
-        menu.status = "no_world_slot_selected";
+      refreshOpeningMenuSaves(menu);
+      if (menu.saves.empty()) {
+        menu.status = "no_save_file_selected";
         break;
       }
-      menu.deletedWorld =
-          iggy3d::deleteWorldSlotFile(menu.slots[menu.selectedSlotIndex].path);
-      menu.status = menu.deletedWorld ? "world_slot_deleted" : "world_slot_delete_failed";
-      refreshOpeningMenuSlots(menu);
+      menu.deletedSave = iggy3d::deleteSaveFile(menu.saves[menu.selectedSaveIndex].path);
+      menu.status = menu.deletedSave ? "save_file_deleted" : "save_file_delete_failed";
+      refreshOpeningMenuSaves(menu);
       break;
     case OpeningMenuAction::Continue:
       menu.status = "opening_menu_closed";
@@ -1803,9 +1842,9 @@ ParseResult parseOptions(int argc, const char* const* argv) {
         return result;
       }
       result.options.noOpeningMenu = true;
-    } else if (arg == "--world-root" && hasValue(i, argc)) {
-      result.options.worldRoot = argv[++i];
-      result.options.worldRootSet = true;
+    } else if (arg == "--save-root" && hasValue(i, argc)) {
+      result.options.saveRoot = argv[++i];
+      result.options.saveRootSet = true;
     } else if (arg == "--codex-control" && hasValue(i, argc)) {
       result.options.codexControlPath = argv[++i];
       result.options.codexControlPathSet = true;
@@ -3197,7 +3236,7 @@ void appendOpeningMenuDebugHudLines(iggy3d::DebugProjectionResult& debug,
   }
 
   const std::size_t initialLineCount = debug.runtimeDebugHudLines.size();
-  debug.runtimeDebugHudLines.push_back("IGGY3D WORLD MENU");
+  debug.runtimeDebugHudLines.push_back("IGGY3D SAVE MENU");
   const OpeningMenuAction actions[] = {
       OpeningMenuAction::NewWorld,
       OpeningMenuAction::ExistingWorlds,
@@ -3209,12 +3248,12 @@ void appendOpeningMenuDebugHudLines(iggy3d::DebugProjectionResult& debug,
     std::string line = menu.selected == action ? "> " : "  ";
     line += std::string(openingMenuActionLabel(action));
     if (action == OpeningMenuAction::ExistingWorlds) {
-      line += " (" + std::to_string(menu.slots.size()) + ")";
+      line += " (" + std::to_string(menu.saves.size()) + ")";
     }
     debug.runtimeDebugHudLines.push_back(std::move(line));
   }
-  debug.runtimeDebugHudLines.push_back("SLOT " + selectedOpeningMenuSlotId(menu));
-  debug.runtimeDebugHudLines.push_back("ROOT " +
+  debug.runtimeDebugHudLines.push_back("SAVE " + selectedOpeningMenuSaveId(menu));
+  debug.runtimeDebugHudLines.push_back("SAVE ROOT " +
                                        (menu.root.empty() ? std::string("unavailable")
                                                           : menu.root.string()));
   debug.runtimeDebugHudLines.push_back("STATUS " + menu.status);
@@ -4065,15 +4104,20 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
   iggy3d::appendReceiptField(receipt, "opening_menu_last_action",
                              fields.openingMenuLastAction);
   iggy3d::appendReceiptField(receipt, "opening_menu_status", fields.openingMenuStatus);
-  iggy3d::appendReceiptField(receipt, "opening_menu_root", fields.openingMenuRoot);
-  iggy3d::appendReceiptField(receipt, "opening_menu_world_slot_count",
-                             fields.openingMenuWorldSlotCount);
-  iggy3d::appendReceiptField(receipt, "opening_menu_selected_world_id",
-                             fields.openingMenuSelectedWorldId);
-  iggy3d::appendReceiptField(receipt, "opening_menu_created_world",
-                             fields.openingMenuCreatedWorld);
-  iggy3d::appendReceiptField(receipt, "opening_menu_deleted_world",
-                             fields.openingMenuDeletedWorld);
+  iggy3d::appendReceiptField(receipt, "opening_menu_save_root",
+                             fields.openingMenuSaveRoot);
+  iggy3d::appendReceiptField(receipt, "opening_menu_save_file_count",
+                             fields.openingMenuSaveFileCount);
+  iggy3d::appendReceiptField(receipt, "opening_menu_selected_save_id",
+                             fields.openingMenuSelectedSaveId);
+  iggy3d::appendReceiptField(receipt, "opening_menu_created_save",
+                             fields.openingMenuCreatedSave);
+  iggy3d::appendReceiptField(receipt, "opening_menu_saved_current",
+                             fields.openingMenuSavedCurrent);
+  iggy3d::appendReceiptField(receipt, "opening_menu_loaded_save",
+                             fields.openingMenuLoadedSave);
+  iggy3d::appendReceiptField(receipt, "opening_menu_deleted_save",
+                             fields.openingMenuDeletedSave);
   iggy3d::appendReceiptField(receipt, "editor_enabled", fields.editorEnabled);
   iggy3d::appendReceiptField(receipt, "editor_open", fields.editorOpen);
   iggy3d::appendReceiptField(receipt, "editor_toggle_observed",
@@ -4589,10 +4633,9 @@ int main(int argc, const char* const* argv) {
       !parsed.options.noOpeningMenu && (parsed.options.openingMenu || defaultOpeningMenu);
   openingMenu.open = openingMenu.enabled;
   openingMenu.root =
-      parsed.options.worldRootSet ? parsed.options.worldRoot : iggy3d::defaultWorldSlotRoot();
-  openingMenu.packagePath = fixturePath;
+      parsed.options.saveRootSet ? parsed.options.saveRoot : iggy3d::defaultSaveFileRoot();
   if (openingMenu.enabled) {
-    refreshOpeningMenuSlots(openingMenu);
+    refreshOpeningMenuSaves(openingMenu);
   }
   EditorModeState editor;
   editor.enabled = playableFields.playable && !parsed.options.scriptedPlayableSmoke;
@@ -5152,7 +5195,21 @@ int main(int argc, const char* const* argv) {
           openingMenu.enabled && openingMenu.open &&
           pressedEdge(openingMenuExecuteRequested, openingMenuExecuteDown);
       if (openingMenuExecutePressed) {
-        executeOpeningMenuAction(openingMenu);
+        executeOpeningMenuAction(openingMenu, session);
+        if (openingMenu.loadedSave) {
+          playerMotor = iggy3d::PlayerMotorState{};
+          if (const iggy3d::EntityState* loadedPlayer = playerEntity(session)) {
+            playerMotor.actor = loadedPlayer->id;
+            debugPreviousPosition = loadedPlayer->transform.position;
+            debugSpawnPosition = loadedPlayer->transform.position;
+          }
+          lastMovementResult.reset();
+          lastMotorResult.reset();
+          recordAbilityPolicy(playableFields, session);
+          recordAbilityProjectile(playableFields,
+                                  session.state().transient.abilityRuntime.arcaneBolt);
+          recordTrainingDummyCombat(playableFields, session);
+        }
       }
       if (openingMenuOwnedInputThisFrame) {
         movement = {};
