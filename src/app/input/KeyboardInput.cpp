@@ -56,6 +56,10 @@ void pollKeyboardGameplayActions(KeyboardInputState& state, ActionState& actions
   const bool backDown = keyDown(keys, SDL_SCANCODE_S);
   const bool leftDown = keyDown(keys, SDL_SCANCODE_A);
   const bool rightDown = keyDown(keys, SDL_SCANCODE_D);
+  const bool lookLeftDown = keyDown(keys, SDL_SCANCODE_LEFT);
+  const bool lookRightDown = keyDown(keys, SDL_SCANCODE_RIGHT);
+  const bool lookUpDown = keyDown(keys, SDL_SCANCODE_UP);
+  const bool lookDownDown = keyDown(keys, SDL_SCANCODE_DOWN);
   const bool interactDown = keyDown(keys, SDL_SCANCODE_E);
   const bool retryDown = keyDown(keys, SDL_SCANCODE_R);
 
@@ -70,6 +74,18 @@ void pollKeyboardGameplayActions(KeyboardInputState& state, ActionState& actions
   }
   if (rightDown) {
     recordAction(actions, InputAction::PlayerMoveX, true, false, false, 1.0F);
+  }
+  if (lookLeftDown) {
+    recordAction(actions, InputAction::PlayerLookX, true, false, false, -1.0F);
+  }
+  if (lookRightDown) {
+    recordAction(actions, InputAction::PlayerLookX, true, false, false, 1.0F);
+  }
+  if (lookUpDown) {
+    recordAction(actions, InputAction::PlayerLookY, true, false, false, 1.0F);
+  }
+  if (lookDownDown) {
+    recordAction(actions, InputAction::PlayerLookY, true, false, false, -1.0F);
   }
   if (interactDown && !state.interactWasDown) {
     recordAction(actions, InputAction::PlayerInteract, true, true, false, 1.0F);

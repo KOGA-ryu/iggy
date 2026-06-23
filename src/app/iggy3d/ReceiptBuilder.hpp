@@ -52,6 +52,13 @@ struct ProductAppWindowState {
   std::string gameplayCommandStatus = "not_requested";
   std::string gameplayReachGate = "not_attempted";
   std::string gameplayLastRejection = "none";
+  bool cameraControllerActive = false;
+  bool lookInputUsed = false;
+  std::string cameraInputSource = "none";
+  std::string cameraMode = "first_person";
+  std::string cameraController = "product_camera";
+  float cameraYawDegrees = 0.0F;
+  float cameraPitchDegrees = 0.0F;
   MenuOwner inputOwner = MenuOwner::None;
   InputAction lastInputAction = InputAction::None;
   bool lastInputAccepted = false;

@@ -9,8 +9,9 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/DefaultWorldTemplate.hpp"
-#include "app/iggy3d/ProductGameplayController.hpp"
+#include "app/iggy3d/ProductCameraController.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
+#include "app/iggy3d/ProductGameplayController.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
 #include "content/PackageLoader.hpp"
@@ -597,6 +598,7 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
                        entry.released, entry.value);
         }
       }
+      applyProductCameraActions(acceptedGameplayActions, window, "action_map");
       applyProductGameplayActions(*activeSession, acceptedGameplayActions, window,
                                   "action_map");
     }

@@ -1,8 +1,23 @@
 #include "app/iggy3d/ReceiptBuilder.hpp"
 
+#include <charconv>
+
 #include "app/frontend/FrontendReceipt.hpp"
 
 namespace iggy3d {
+namespace {
+
+std::string floatReceiptValue(float value) {
+  char buffer[32]{};
+  const auto [ptr, error] =
+      std::to_chars(buffer, buffer + sizeof(buffer), value, std::chars_format::fixed, 3);
+  if (error != std::errc{}) {
+    return "unavailable";
+  }
+  return std::string(buffer, static_cast<std::size_t>(ptr - buffer));
+}
+
+}  // namespace
 
 RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                                      const ProductWorldTemplate& world,
@@ -88,6 +103,16 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "gameplay_last_rejection", window.gameplayLastRejection);
   appendReceiptField(receipt, "interaction_executed", window.interactionExecuted);
   appendReceiptField(receipt, "attack_executed", window.attackExecuted);
+  appendReceiptField(receipt, "camera_controller", window.cameraController);
+  appendReceiptField(receipt, "camera_mode", window.cameraMode);
+  appendReceiptField(receipt, "camera_controller_active",
+                     window.cameraControllerActive);
+  appendReceiptField(receipt, "look_input_used", window.lookInputUsed);
+  appendReceiptField(receipt, "camera_input_source", window.cameraInputSource);
+  appendReceiptField(receipt, "camera_yaw_degrees",
+                     floatReceiptValue(window.cameraYawDegrees));
+  appendReceiptField(receipt, "camera_pitch_degrees",
+                     floatReceiptValue(window.cameraPitchDegrees));
   appendReceiptField(receipt, "input_owner", menuOwnerName(window.inputOwner));
   appendReceiptField(receipt, "input_action_last", inputActionName(window.lastInputAction));
   appendReceiptField(receipt, "input_action_accepted", window.lastInputAccepted);

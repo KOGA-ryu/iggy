@@ -28,6 +28,7 @@ target_sources(iggy3d
     src/app/iggy3d/DefaultWorldTemplate.cpp
     src/app/iggy3d/FrontendActionExecutor.cpp
     src/app/iggy3d/OpeningMenuView.cpp
+    src/app/iggy3d/ProductCameraController.cpp
     src/app/iggy3d/ProductGameplayController.cpp
     src/app/iggy3d/ProductAppOptions.cpp
     src/app/iggy3d/ReceiptBuilder.cpp
