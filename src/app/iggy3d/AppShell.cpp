@@ -496,6 +496,7 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
                                            FrontendState& frontend,
                                            std::optional<Session>& activeSession,
                                            ProductAppWindowState window,
+                                           const FrontendSettings& settings,
                                            const ProductSaveBridgeResult& saves) {
   window.requested = options.windowMode == ProductWindowMode::Window;
   window.inputOwner =
@@ -583,6 +584,7 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
       ActionState gameplayActions;
       pollKeyboardGameplayActions(keyboard, gameplayActions);
       pollGamepadGameplayActions(gamepad, gameplayActions);
+      pollMouseGameplayActions(mouse, gameplayActions);
 
       ActionState acceptedGameplayActions;
       InputRoutingContext routingContext;
@@ -598,7 +600,8 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
                        entry.released, entry.value);
         }
       }
-      applyProductCameraActions(acceptedGameplayActions, window.viewport, "action_map");
+      applyProductCameraActions(acceptedGameplayActions, window.viewport, settings,
+                                "action_map");
       applyProductGameplayActions(*activeSession, acceptedGameplayActions, window,
                                   "action_map");
     }
@@ -711,9 +714,14 @@ int runProductApp(int argc, char** argv) {
   }
   if (options.scriptedGameplaySmoke) {
     runScriptedProductGameplaySmoke(activeSession, window);
+    ActionState scriptedLook;
+    recordAction(scriptedLook, InputAction::PlayerLookX, true, false, false, 1.0F);
+    recordAction(scriptedLook, InputAction::PlayerLookY, true, false, false, 0.5F);
+    applyProductCameraActions(scriptedLook, window.viewport, settings, "scripted");
   }
 
-  window = runOpeningMenuWindow(options, world, frontend, activeSession, window, saves);
+  window =
+      runOpeningMenuWindow(options, world, frontend, activeSession, window, settings, saves);
   refreshGameplayProjectionMetrics(activeSession, window);
 
   if (options.printRenderReceipt) {

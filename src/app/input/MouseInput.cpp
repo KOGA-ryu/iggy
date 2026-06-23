@@ -1,5 +1,6 @@
 #include "app/input/MouseInput.hpp"
 
+#include "app/input/ActionState.hpp"
 #include "app/input/InputBindings.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)
@@ -23,6 +24,27 @@ MouseClick pollMouseClick(MouseInputState& state) {
 #else
   (void)state;
   return {};
+#endif
+}
+
+void pollMouseGameplayActions(MouseInputState& state, ActionState& actions) {
+#if defined(IGGY3D_HAS_SDL3)
+  (void)state;
+  float deltaX = 0.0F;
+  float deltaY = 0.0F;
+  SDL_GetRelativeMouseState(&deltaX, &deltaY);
+  constexpr float kMouseDeltaScale = 0.02F;
+  if (deltaX != 0.0F) {
+    recordAction(actions, actionForInput(NeutralInput::MouseDeltaX), true, false, false,
+                 deltaX * kMouseDeltaScale);
+  }
+  if (deltaY != 0.0F) {
+    recordAction(actions, actionForInput(NeutralInput::MouseDeltaY), true, false, false,
+                 deltaY * kMouseDeltaScale);
+  }
+#else
+  (void)state;
+  (void)actions;
 #endif
 }
 

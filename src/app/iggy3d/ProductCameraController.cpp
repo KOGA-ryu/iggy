@@ -32,6 +32,7 @@ float wrapYaw(float yaw) {
 
 void applyProductCameraActions(const ActionState& actions,
                                ProductViewportState& viewport,
+                               const FrontendSettings& settings,
                                std::string_view source) {
   const float lookX = actionAxisValue(actions, InputAction::PlayerLookX);
   const float lookY = actionAxisValue(actions, InputAction::PlayerLookY);
@@ -41,15 +42,18 @@ void applyProductCameraActions(const ActionState& actions,
 
   constexpr float kYawStepDegrees = 6.0F;
   constexpr float kPitchStepDegrees = 4.0F;
+  const float sensitivity = settings.lookSensitivity;
+  const float pitchDirection = settings.invertLook ? -1.0F : 1.0F;
   viewport.cameraControllerActive = true;
   viewport.lookInputUsed = true;
   viewport.cameraInputSource = std::string(source);
   viewport.cameraMode = "first_person";
   viewport.cameraController = "product_camera";
   viewport.cameraYawDegrees =
-      wrapYaw(viewport.cameraYawDegrees + lookX * kYawStepDegrees);
+      wrapYaw(viewport.cameraYawDegrees + lookX * sensitivity * kYawStepDegrees);
   viewport.cameraPitchDegrees =
-      clampPitch(viewport.cameraPitchDegrees + lookY * kPitchStepDegrees);
+      clampPitch(viewport.cameraPitchDegrees +
+                 lookY * pitchDirection * sensitivity * kPitchStepDegrees);
 }
 
 }  // namespace iggy3d

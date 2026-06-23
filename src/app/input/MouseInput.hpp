@@ -4,6 +4,8 @@
 
 namespace iggy3d {
 
+struct ActionState;
+
 struct MouseInputState {
   bool leftWasDown = false;
 };
@@ -15,6 +17,7 @@ struct MouseClick {
 };
 
 MouseClick pollMouseClick(MouseInputState& state);
+void pollMouseGameplayActions(MouseInputState& state, ActionState& actions);
 InputAction mouseClickAction(const MouseClick& click);
 
 }  // namespace iggy3d

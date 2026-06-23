@@ -54,8 +54,10 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      frontendWindowModeName(settings.windowMode));
   appendReceiptField(receipt, "settings_camera_mode",
                      frontendCameraModeName(settings.cameraMode));
-  appendReceiptField(receipt, "settings_look_sensitivity", "1.000");
-  appendReceiptField(receipt, "settings_controller_look_sensitivity", "1.000");
+  appendReceiptField(receipt, "settings_look_sensitivity",
+                     floatReceiptValue(settings.lookSensitivity));
+  appendReceiptField(receipt, "settings_controller_look_sensitivity",
+                     floatReceiptValue(settings.controllerLookSensitivity));
   appendReceiptField(receipt, "settings_invert_look", settings.invertLook);
   appendReceiptField(receipt, "settings_developer_tools_enabled",
                      settings.devToolsEnabled);

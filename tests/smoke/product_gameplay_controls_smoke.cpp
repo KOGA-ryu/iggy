@@ -120,6 +120,11 @@ int main() {
       hasField(fields, "target_discovered", "true") &&
       hasField(fields, "gameplay_reach_gate", "pass") &&
       hasField(fields, "attack_executed", "true") &&
+      hasField(fields, "look_input_used", "true") &&
+      hasField(fields, "camera_controller_active", "true") &&
+      hasField(fields, "camera_input_source", "scripted") &&
+      hasField(fields, "camera_yaw_degrees", "6.000") &&
+      hasField(fields, "camera_pitch_degrees", "2.000") &&
       hasField(fields, "renderer_mutated_runtime", "false") &&
       positiveIntegerField(fields, "scene_item_count") &&
       positiveIntegerField(fields, "debug_item_count") &&
