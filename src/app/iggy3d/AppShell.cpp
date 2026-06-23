@@ -12,6 +12,7 @@
 #include "app/iggy3d/ProductCameraController.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
+#include "app/iggy3d/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
@@ -650,6 +651,7 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
     const DebugProjectionResult* debugPtr = nullptr;
     const ProductPrimitiveDrawList* drawListPtr = nullptr;
     const ProductViewportFrame* framePtr = nullptr;
+    ProductGameplayFeedback feedback = buildProductGameplayFeedback(window);
     if (window.gameplayActive && activeSession.has_value()) {
       scene = buildSceneProjection(activeSession->state());
       debug = buildDebugProjection(activeSession->state());
@@ -663,13 +665,15 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
       framePtr = &frame;
       sceneItemCount = scene.items.size();
       window.runtimeStateHash = activeSession->stateHash();
+      feedback = buildProductGameplayFeedback(window);
     }
 
     if (window.drawable) {
       const OpeningMenuViewState view =
           drawOpeningMenuView(*renderer, options, world, frontend, settingsTab,
                               window.gameplayActive, window.runtimeStateHash, framePtr,
-                              sceneItemCount, debugPtr, window.viewport.cameraYawDegrees,
+                              &feedback, sceneItemCount, debugPtr,
+                              window.viewport.cameraYawDegrees,
                               window.viewport.cameraPitchDegrees, saves);
       applyGameplayProjectionMetrics(window, scenePtr, debugPtr, drawListPtr, framePtr,
                                      window.gameplayActive && scenePtr != nullptr);

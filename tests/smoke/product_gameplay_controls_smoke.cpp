@@ -136,6 +136,14 @@ int main() {
       hasField(fields, "product_view_yaw_applied", "true") &&
       hasField(fields, "product_view_pitch_applied", "true") &&
       hasField(fields, "product_view_player_anchor_found", "true") &&
+      hasField(fields, "product_feedback_visible", "true") &&
+      hasField(fields, "product_feedback_target_status", "discovered") &&
+      hasField(fields, "product_feedback_reach_status", "pass") &&
+      hasField(fields, "product_feedback_command_kind", "attack") &&
+      hasField(fields, "product_feedback_command_status", "accepted") &&
+      hasField(fields, "product_feedback_rejection_reason", "none") &&
+      hasField(fields, "product_feedback_attack_visible", "true") &&
+      hasField(fields, "product_feedback_interaction_visible", "false") &&
       hasField(fields, "renderer_mutated_runtime", "false") &&
       positiveIntegerField(fields, "scene_item_count") &&
       positiveIntegerField(fields, "debug_item_count") &&

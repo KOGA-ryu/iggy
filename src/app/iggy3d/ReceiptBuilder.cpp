@@ -3,6 +3,7 @@
 #include <charconv>
 
 #include "app/frontend/FrontendReceipt.hpp"
+#include "app/iggy3d/ProductGameplayFeedback.hpp"
 
 namespace iggy3d {
 namespace {
@@ -26,6 +27,7 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                                      const ProductAppWindowState& window,
                                      const ProductSaveBridgeResult& saves) {
   RenderReceipt receipt;
+  const ProductGameplayFeedback feedback = buildProductGameplayFeedback(window);
   appendReceiptField(receipt, "app", "iggy3d");
   appendReceiptField(receipt, "app_surface", "product");
   appendReceiptField(receipt, "opening_menu", frontend.screen == FrontendScreen::Starter);
@@ -140,6 +142,21 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.viewport.productViewPitchApplied);
   appendReceiptField(receipt, "product_view_player_anchor_found",
                      window.viewport.productViewPlayerAnchorFound);
+  appendReceiptField(receipt, "product_feedback_visible", feedback.visible);
+  appendReceiptField(receipt, "product_feedback_target_status",
+                     feedback.targetStatus);
+  appendReceiptField(receipt, "product_feedback_reach_status",
+                     feedback.reachStatus);
+  appendReceiptField(receipt, "product_feedback_command_kind",
+                     feedback.commandKind);
+  appendReceiptField(receipt, "product_feedback_command_status",
+                     feedback.commandStatus);
+  appendReceiptField(receipt, "product_feedback_rejection_reason",
+                     feedback.rejectionReason);
+  appendReceiptField(receipt, "product_feedback_attack_visible",
+                     feedback.combatFeedbackVisible);
+  appendReceiptField(receipt, "product_feedback_interaction_visible",
+                     feedback.interactionFeedbackVisible);
   appendReceiptField(receipt, "input_owner", menuOwnerName(window.inputOwner));
   appendReceiptField(receipt, "input_action_last", inputActionName(window.lastInputAction));
   appendReceiptField(receipt, "input_action_accepted", window.lastInputAccepted);
