@@ -31,7 +31,7 @@ float wrapYaw(float yaw) {
 }  // namespace
 
 void applyProductCameraActions(const ActionState& actions,
-                               ProductAppWindowState& window,
+                               ProductViewportState& viewport,
                                std::string_view source) {
   const float lookX = actionAxisValue(actions, InputAction::PlayerLookX);
   const float lookY = actionAxisValue(actions, InputAction::PlayerLookY);
@@ -41,14 +41,15 @@ void applyProductCameraActions(const ActionState& actions,
 
   constexpr float kYawStepDegrees = 6.0F;
   constexpr float kPitchStepDegrees = 4.0F;
-  window.cameraControllerActive = true;
-  window.lookInputUsed = true;
-  window.cameraInputSource = std::string(source);
-  window.cameraMode = "first_person";
-  window.cameraController = "product_camera";
-  window.cameraYawDegrees = wrapYaw(window.cameraYawDegrees + lookX * kYawStepDegrees);
-  window.cameraPitchDegrees =
-      clampPitch(window.cameraPitchDegrees + lookY * kPitchStepDegrees);
+  viewport.cameraControllerActive = true;
+  viewport.lookInputUsed = true;
+  viewport.cameraInputSource = std::string(source);
+  viewport.cameraMode = "first_person";
+  viewport.cameraController = "product_camera";
+  viewport.cameraYawDegrees =
+      wrapYaw(viewport.cameraYawDegrees + lookX * kYawStepDegrees);
+  viewport.cameraPitchDegrees =
+      clampPitch(viewport.cameraPitchDegrees + lookY * kPitchStepDegrees);
 }
 
 }  // namespace iggy3d

@@ -6,6 +6,7 @@
 #include "app/frontend/MenuInput.hpp"
 #include "app/iggy3d/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
+#include "app/iggy3d/ProductViewportState.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
 #include "render/RenderDiagnostics.hpp"
 
@@ -31,7 +32,7 @@ struct ProductAppWindowState {
   std::string launchStatus = "not_requested";
   std::string packageLoadStatus = "not_requested";
   std::uint64_t runtimeStateHash = 0;
-  bool gameplayViewVisible = false;
+  ProductViewportState viewport;
   std::uint64_t sceneItemCount = 0;
   std::uint64_t debugItemCount = 0;
   bool playerVisible = false;
@@ -52,14 +53,6 @@ struct ProductAppWindowState {
   std::string gameplayCommandStatus = "not_requested";
   std::string gameplayReachGate = "not_attempted";
   std::string gameplayLastRejection = "none";
-  bool cameraControllerActive = false;
-  bool lookInputUsed = false;
-  std::string cameraInputSource = "none";
-  std::string cameraMode = "first_person";
-  std::string cameraController = "product_camera";
-  float cameraYawDegrees = 0.0F;
-  float cameraPitchDegrees = 0.0F;
-  bool cameraHeadingVisible = false;
   MenuOwner inputOwner = MenuOwner::None;
   InputAction lastInputAction = InputAction::None;
   bool lastInputAccepted = false;

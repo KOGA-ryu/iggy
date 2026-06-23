@@ -82,7 +82,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "runtime_session_created", window.runtimeSessionCreated);
   appendReceiptField(receipt, "gameplay_active", window.gameplayActive);
   appendReceiptField(receipt, "runtime_state_hash", window.runtimeStateHash);
-  appendReceiptField(receipt, "gameplay_view_visible", window.gameplayViewVisible);
+  appendReceiptField(receipt, "gameplay_view_visible",
+                     window.viewport.gameplayViewVisible);
   appendReceiptField(receipt, "scene_item_count", window.sceneItemCount);
   appendReceiptField(receipt, "debug_item_count", window.debugItemCount);
   appendReceiptField(receipt, "player_visible", window.playerVisible);
@@ -103,18 +104,18 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "gameplay_last_rejection", window.gameplayLastRejection);
   appendReceiptField(receipt, "interaction_executed", window.interactionExecuted);
   appendReceiptField(receipt, "attack_executed", window.attackExecuted);
-  appendReceiptField(receipt, "camera_controller", window.cameraController);
-  appendReceiptField(receipt, "camera_mode", window.cameraMode);
+  appendReceiptField(receipt, "camera_controller", window.viewport.cameraController);
+  appendReceiptField(receipt, "camera_mode", window.viewport.cameraMode);
   appendReceiptField(receipt, "camera_controller_active",
-                     window.cameraControllerActive);
-  appendReceiptField(receipt, "look_input_used", window.lookInputUsed);
-  appendReceiptField(receipt, "camera_input_source", window.cameraInputSource);
+                     window.viewport.cameraControllerActive);
+  appendReceiptField(receipt, "look_input_used", window.viewport.lookInputUsed);
+  appendReceiptField(receipt, "camera_input_source", window.viewport.cameraInputSource);
   appendReceiptField(receipt, "camera_yaw_degrees",
-                     floatReceiptValue(window.cameraYawDegrees));
+                     floatReceiptValue(window.viewport.cameraYawDegrees));
   appendReceiptField(receipt, "camera_pitch_degrees",
-                     floatReceiptValue(window.cameraPitchDegrees));
+                     floatReceiptValue(window.viewport.cameraPitchDegrees));
   appendReceiptField(receipt, "camera_heading_visible",
-                     window.cameraHeadingVisible);
+                     window.viewport.cameraHeadingVisible);
   appendReceiptField(receipt, "input_owner", menuOwnerName(window.inputOwner));
   appendReceiptField(receipt, "input_action_last", inputActionName(window.lastInputAction));
   appendReceiptField(receipt, "input_action_accepted", window.lastInputAccepted);

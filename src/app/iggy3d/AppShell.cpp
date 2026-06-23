@@ -176,7 +176,7 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
                                     const DebugProjectionResult* debug,
                                     bool viewVisible) {
   if (!window.gameplayActive || scene == nullptr) {
-    window.gameplayViewVisible = false;
+    window.viewport.gameplayViewVisible = false;
     window.sceneItemCount = 0;
     window.debugItemCount = 0;
     window.playerVisible = false;
@@ -186,7 +186,7 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     return;
   }
 
-  window.gameplayViewVisible = viewVisible;
+  window.viewport.gameplayViewVisible = viewVisible;
   window.sceneItemCount = static_cast<std::uint64_t>(scene->items.size());
   window.debugItemCount =
       debug == nullptr ? 0U : static_cast<std::uint64_t>(debug->items.size());
@@ -207,7 +207,7 @@ void refreshGameplayProjectionMetrics(const std::optional<Session>& activeSessio
 
   const SceneProjectionResult scene = buildSceneProjection(activeSession->state());
   const DebugProjectionResult debug = buildDebugProjection(activeSession->state());
-  const bool viewWasVisible = window.gameplayViewVisible;
+  const bool viewWasVisible = window.viewport.gameplayViewVisible;
   window.runtimeStateHash = activeSession->stateHash();
   applyGameplayProjectionMetrics(window, &scene, &debug, viewWasVisible);
 }
@@ -598,7 +598,7 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
                        entry.released, entry.value);
         }
       }
-      applyProductCameraActions(acceptedGameplayActions, window, "action_map");
+      applyProductCameraActions(acceptedGameplayActions, window.viewport, "action_map");
       applyProductGameplayActions(*activeSession, acceptedGameplayActions, window,
                                   "action_map");
     }
@@ -619,12 +619,12 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
       const OpeningMenuViewState view =
           drawOpeningMenuView(*renderer, options, world, frontend, settingsTab,
                               window.gameplayActive, window.runtimeStateHash, scenePtr,
-                              debugPtr, window.cameraYawDegrees,
-                              window.cameraPitchDegrees, saves);
+                              debugPtr, window.viewport.cameraYawDegrees,
+                              window.viewport.cameraPitchDegrees, saves);
       applyGameplayProjectionMetrics(window, scenePtr, debugPtr,
                                      window.gameplayActive && scenePtr != nullptr);
-      window.cameraHeadingVisible =
-          window.cameraHeadingVisible || view.cameraHeadingDrawn;
+      window.viewport.cameraHeadingVisible =
+          window.viewport.cameraHeadingVisible || view.cameraHeadingDrawn;
       window.menuTextDrawn = window.menuTextDrawn || view.textDrawn;
       window.selectedRowDrawn = window.selectedRowDrawn || view.selectedRowDrawn;
       window.menuRowCount = view.rowCount;
