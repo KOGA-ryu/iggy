@@ -21,12 +21,19 @@ cmake --build build --target iggy3d_visual_demo -j 8
   --interactive \
   --dev-menu \
   --input auto \
+  --world-root "$HOME/.iggy3d/worlds" \
   --package fixtures/demos/movement_playground/package.iggy3d.toml \
   --print-render-receipt
 ```
 
 If Vulkan is not available on the machine, replace `--renderer vulkan` with
 `--renderer null` for receipt-only validation.
+
+Normal interactive window launches open the world menu first. Use W/S or Up/Down
+to move between `New World`, `Existing Saves`, `Save Current`, `Delete Selected`,
+and `Continue`; use Enter/Space or controller Cross to execute. World slots are
+plain `.iggy3d.world.toml` files under `--world-root` and point at the package
+used to launch the demo. Add `--no-opening-menu` to boot straight into the room.
 
 Start here:
 

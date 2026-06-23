@@ -10,6 +10,7 @@
 #endif
 #include "content/PackageLoader.hpp"
 #include "content/authoring/EditableRoomDocument.hpp"
+#include "content/authoring/WorldSlotStore.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/FrameInput.hpp"
@@ -68,6 +69,14 @@ enum class DevMechanic : std::uint8_t {
   WireWalk,
 };
 
+enum class OpeningMenuAction : std::uint8_t {
+  NewWorld,
+  ExistingWorlds,
+  SaveCurrent,
+  DeleteSelected,
+  Continue,
+};
+
 struct VisualOptions {
   std::filesystem::path fixturePath = "demos/first_room/package.iggy3d.toml";
   std::filesystem::path shaderRoot;
@@ -86,7 +95,12 @@ struct VisualOptions {
   bool scriptedKinematicInput = false;
   bool scriptedCrouchInput = false;
   bool devMenu = false;
+  bool openingMenu = false;
+  bool openingMenuFlagSeen = false;
+  bool noOpeningMenu = false;
   bool codexControlPathSet = false;
+  bool worldRootSet = false;
+  std::filesystem::path worldRoot;
   VisualInputBackend inputBackend = VisualInputBackend::Keyboard;
   std::uint32_t holdSeconds = 0U;
   std::uint32_t frames = 1U;
@@ -322,6 +336,18 @@ struct PlayableReceiptFields {
   std::uint64_t devMenuHudLineCount = 0;
   std::string devMenuSelectedMechanic = "walk";
   std::string devMenuExecutionStatus = "not_requested";
+  bool openingMenuEnabled = false;
+  bool openingMenuOpen = false;
+  bool openingMenuHudVisible = false;
+  std::uint64_t openingMenuHudLineCount = 0;
+  std::string openingMenuSelectedAction = "new_world";
+  std::string openingMenuLastAction = "none";
+  std::string openingMenuStatus = "not_requested";
+  std::string openingMenuRoot = "unavailable";
+  std::uint64_t openingMenuWorldSlotCount = 0;
+  std::string openingMenuSelectedWorldId = "none";
+  bool openingMenuCreatedWorld = false;
+  bool openingMenuDeletedWorld = false;
   bool editorEnabled = false;
   bool editorOpen = false;
   bool editorToggleObserved = false;
@@ -478,6 +504,21 @@ struct DevMenuState {
   bool executeRequested = false;
 };
 
+struct OpeningMenuState {
+  bool enabled = false;
+  bool open = false;
+  OpeningMenuAction selected = OpeningMenuAction::NewWorld;
+  OpeningMenuAction lastAction = OpeningMenuAction::NewWorld;
+  std::filesystem::path root;
+  std::filesystem::path packagePath;
+  std::vector<iggy3d::WorldSlotRecord> slots;
+  std::size_t selectedSlotIndex = 0U;
+  std::string status = "not_requested";
+  bool actionExecuted = false;
+  bool createdWorld = false;
+  bool deletedWorld = false;
+};
+
 enum class EditorTool : std::uint8_t {
   Select,
   PlaceFloor,
@@ -559,6 +600,13 @@ struct CodexControlFrame {
   iggy3d::Vec3 editorCursorMeters;
   bool editorSelectSet = false;
   std::string editorSelectId;
+  bool openingMenuOpenSet = false;
+  bool openingMenuOpen = false;
+  bool openingMenuSelectSet = false;
+  OpeningMenuAction openingMenuSelect = OpeningMenuAction::NewWorld;
+  bool openingMenuExecute = false;
+  bool openingMenuNext = false;
+  bool openingMenuPrevious = false;
   bool mechanicSet = false;
   DevMechanic mechanic = DevMechanic::Walk;
   bool executeMechanic = false;
@@ -700,6 +748,189 @@ DevMechanic previousDevMechanic(DevMechanic mechanic) {
       return DevMechanic::Clamber;
   }
   return DevMechanic::Walk;
+}
+
+std::string_view openingMenuActionName(OpeningMenuAction action) {
+  switch (action) {
+    case OpeningMenuAction::NewWorld:
+      return "new_world";
+    case OpeningMenuAction::ExistingWorlds:
+      return "existing_saves";
+    case OpeningMenuAction::SaveCurrent:
+      return "save_current";
+    case OpeningMenuAction::DeleteSelected:
+      return "delete_selected";
+    case OpeningMenuAction::Continue:
+      return "continue";
+  }
+  return "new_world";
+}
+
+std::string_view openingMenuActionLabel(OpeningMenuAction action) {
+  switch (action) {
+    case OpeningMenuAction::NewWorld:
+      return "NEW WORLD";
+    case OpeningMenuAction::ExistingWorlds:
+      return "EXISTING SAVES";
+    case OpeningMenuAction::SaveCurrent:
+      return "SAVE CURRENT";
+    case OpeningMenuAction::DeleteSelected:
+      return "DELETE SELECTED";
+    case OpeningMenuAction::Continue:
+      return "CONTINUE";
+  }
+  return "NEW WORLD";
+}
+
+bool parseOpeningMenuAction(std::string_view value, OpeningMenuAction& out) {
+  if (value == "new_world" || value == "new") {
+    out = OpeningMenuAction::NewWorld;
+    return true;
+  }
+  if (value == "existing_saves" || value == "existing_worlds" ||
+      value == "load" || value == "loads") {
+    out = OpeningMenuAction::ExistingWorlds;
+    return true;
+  }
+  if (value == "save_current" || value == "save") {
+    out = OpeningMenuAction::SaveCurrent;
+    return true;
+  }
+  if (value == "delete_selected" || value == "delete") {
+    out = OpeningMenuAction::DeleteSelected;
+    return true;
+  }
+  if (value == "continue" || value == "close" || value == "play") {
+    out = OpeningMenuAction::Continue;
+    return true;
+  }
+  return false;
+}
+
+OpeningMenuAction nextOpeningMenuAction(OpeningMenuAction action) {
+  switch (action) {
+    case OpeningMenuAction::NewWorld:
+      return OpeningMenuAction::ExistingWorlds;
+    case OpeningMenuAction::ExistingWorlds:
+      return OpeningMenuAction::SaveCurrent;
+    case OpeningMenuAction::SaveCurrent:
+      return OpeningMenuAction::DeleteSelected;
+    case OpeningMenuAction::DeleteSelected:
+      return OpeningMenuAction::Continue;
+    case OpeningMenuAction::Continue:
+      return OpeningMenuAction::NewWorld;
+  }
+  return OpeningMenuAction::NewWorld;
+}
+
+OpeningMenuAction previousOpeningMenuAction(OpeningMenuAction action) {
+  switch (action) {
+    case OpeningMenuAction::NewWorld:
+      return OpeningMenuAction::Continue;
+    case OpeningMenuAction::ExistingWorlds:
+      return OpeningMenuAction::NewWorld;
+    case OpeningMenuAction::SaveCurrent:
+      return OpeningMenuAction::ExistingWorlds;
+    case OpeningMenuAction::DeleteSelected:
+      return OpeningMenuAction::SaveCurrent;
+    case OpeningMenuAction::Continue:
+      return OpeningMenuAction::DeleteSelected;
+  }
+  return OpeningMenuAction::NewWorld;
+}
+
+std::string selectedOpeningMenuSlotId(const OpeningMenuState& menu) {
+  if (menu.slots.empty() || menu.selectedSlotIndex >= menu.slots.size()) {
+    return "none";
+  }
+  return menu.slots[menu.selectedSlotIndex].id;
+}
+
+void refreshOpeningMenuSlots(OpeningMenuState& menu) {
+  menu.slots = iggy3d::listWorldSlots(menu.root);
+  if (menu.slots.empty()) {
+    menu.selectedSlotIndex = 0U;
+    return;
+  }
+  if (menu.selectedSlotIndex >= menu.slots.size()) {
+    menu.selectedSlotIndex = menu.slots.size() - 1U;
+  }
+}
+
+void recordOpeningMenuFields(PlayableReceiptFields& fields, const OpeningMenuState& menu) {
+  fields.openingMenuEnabled = menu.enabled;
+  fields.openingMenuOpen = menu.open;
+  fields.openingMenuSelectedAction = std::string(openingMenuActionName(menu.selected));
+  fields.openingMenuLastAction =
+      menu.actionExecuted ? std::string(openingMenuActionName(menu.lastAction)) : "none";
+  fields.openingMenuStatus = menu.status;
+  fields.openingMenuRoot = menu.root.empty() ? "unavailable" : menu.root.string();
+  fields.openingMenuWorldSlotCount = static_cast<std::uint64_t>(menu.slots.size());
+  fields.openingMenuSelectedWorldId = selectedOpeningMenuSlotId(menu);
+  fields.openingMenuCreatedWorld = menu.createdWorld;
+  fields.openingMenuDeletedWorld = menu.deletedWorld;
+}
+
+void createOpeningMenuWorldSlot(OpeningMenuState& menu, std::string_view statusOnSuccess) {
+  iggy3d::WorldSlotCreateRequest request;
+  request.root = menu.root;
+  request.name =
+      menu.slots.empty() ? "New World" : "New World " + std::to_string(menu.slots.size() + 1U);
+  request.packagePath = menu.packagePath;
+  const iggy3d::WorldSlotCreateResult result = iggy3d::createWorldSlot(request);
+  menu.status = result.ok ? std::string(statusOnSuccess) : result.reason;
+  menu.createdWorld = result.ok;
+  if (!result.ok) {
+    return;
+  }
+  refreshOpeningMenuSlots(menu);
+  const auto found = std::find_if(menu.slots.begin(), menu.slots.end(),
+                                  [&result](const iggy3d::WorldSlotRecord& slot) {
+                                    return slot.id == result.slot.id;
+                                  });
+  if (found != menu.slots.end()) {
+    menu.selectedSlotIndex = static_cast<std::size_t>(found - menu.slots.begin());
+  }
+}
+
+void executeOpeningMenuAction(OpeningMenuState& menu) {
+  if (!menu.enabled) {
+    return;
+  }
+  menu.actionExecuted = true;
+  menu.lastAction = menu.selected;
+  menu.createdWorld = false;
+  menu.deletedWorld = false;
+  switch (menu.selected) {
+    case OpeningMenuAction::NewWorld:
+      createOpeningMenuWorldSlot(menu, "world_slot_created");
+      if (menu.createdWorld) {
+        menu.open = false;
+      }
+      break;
+    case OpeningMenuAction::ExistingWorlds:
+      refreshOpeningMenuSlots(menu);
+      menu.status = menu.slots.empty() ? "no_world_slots_found" : "world_slots_refreshed";
+      break;
+    case OpeningMenuAction::SaveCurrent:
+      createOpeningMenuWorldSlot(menu, "current_world_saved");
+      break;
+    case OpeningMenuAction::DeleteSelected:
+      refreshOpeningMenuSlots(menu);
+      if (menu.slots.empty()) {
+        menu.status = "no_world_slot_selected";
+        break;
+      }
+      menu.deletedWorld =
+          iggy3d::deleteWorldSlotFile(menu.slots[menu.selectedSlotIndex].path);
+      menu.status = menu.deletedWorld ? "world_slot_deleted" : "world_slot_delete_failed";
+      refreshOpeningMenuSlots(menu);
+      break;
+    case OpeningMenuAction::Continue:
+      menu.status = "opening_menu_closed";
+      menu.open = false;
+      break;
+  }
 }
 
 std::string_view editorToolName(EditorTool tool) {
@@ -1041,6 +1272,7 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
     iggy3d::Vec3 vecValue;
     std::vector<std::uint32_t> frameList;
     DevMechanic mechanic = DevMechanic::Walk;
+    OpeningMenuAction openingMenuAction = OpeningMenuAction::NewWorld;
     EditorTool editorTool = EditorTool::Select;
     EditorPreset editorPreset = EditorPreset::SolidWall;
     std::string editorSelectId;
@@ -1167,6 +1399,48 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
       if (!editorSelectId.empty()) {
         frame.editorSelectSet = true;
         frame.editorSelectId = editorSelectId;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "opening_menu.open") {
+      if (parseControlBool(value, boolValue)) {
+        frame.openingMenuOpenSet = true;
+        frame.openingMenuOpen = boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "opening_menu.select") {
+      if (parseOpeningMenuAction(value, openingMenuAction)) {
+        frame.openingMenuSelectSet = true;
+        frame.openingMenuSelect = openingMenuAction;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "opening_menu.execute") {
+      if (parseControlBool(value, boolValue)) {
+        frame.openingMenuExecute = frame.openingMenuExecute || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "opening_menu.next") {
+      if (parseControlBool(value, boolValue)) {
+        frame.openingMenuNext = frame.openingMenuNext || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "opening_menu.previous") {
+      if (parseControlBool(value, boolValue)) {
+        frame.openingMenuPrevious = frame.openingMenuPrevious || boolValue;
         frame.applied = true;
       } else {
         frame.parseError = true;
@@ -1513,6 +1787,25 @@ ParseResult parseOptions(int argc, const char* const* argv) {
     } else if (arg == "--dev-menu") {
       result.options.devMenu = true;
       result.options.interactive = true;
+    } else if (arg == "--opening-menu") {
+      if (result.options.noOpeningMenu) {
+        result.ok = false;
+        result.reason = "visual_demo_config_invalid";
+        return result;
+      }
+      result.options.openingMenu = true;
+      result.options.openingMenuFlagSeen = true;
+      result.options.interactive = true;
+    } else if (arg == "--no-opening-menu") {
+      if (result.options.openingMenuFlagSeen) {
+        result.ok = false;
+        result.reason = "visual_demo_config_invalid";
+        return result;
+      }
+      result.options.noOpeningMenu = true;
+    } else if (arg == "--world-root" && hasValue(i, argc)) {
+      result.options.worldRoot = argv[++i];
+      result.options.worldRootSet = true;
     } else if (arg == "--codex-control" && hasValue(i, argc)) {
       result.options.codexControlPath = argv[++i];
       result.options.codexControlPathSet = true;
@@ -2894,6 +3187,42 @@ void appendEditorDebugHudLines(iggy3d::DebugProjectionResult& debug,
                                        std::to_string(editor.runtimeTraversalSlotCount));
 }
 
+void appendOpeningMenuDebugHudLines(iggy3d::DebugProjectionResult& debug,
+                                    const OpeningMenuState& menu,
+                                    PlayableReceiptFields& fields) {
+  fields.openingMenuHudVisible = false;
+  fields.openingMenuHudLineCount = 0;
+  if (!menu.enabled || !menu.open) {
+    return;
+  }
+
+  const std::size_t initialLineCount = debug.runtimeDebugHudLines.size();
+  debug.runtimeDebugHudLines.push_back("IGGY3D WORLD MENU");
+  const OpeningMenuAction actions[] = {
+      OpeningMenuAction::NewWorld,
+      OpeningMenuAction::ExistingWorlds,
+      OpeningMenuAction::SaveCurrent,
+      OpeningMenuAction::DeleteSelected,
+      OpeningMenuAction::Continue,
+  };
+  for (const OpeningMenuAction action : actions) {
+    std::string line = menu.selected == action ? "> " : "  ";
+    line += std::string(openingMenuActionLabel(action));
+    if (action == OpeningMenuAction::ExistingWorlds) {
+      line += " (" + std::to_string(menu.slots.size()) + ")";
+    }
+    debug.runtimeDebugHudLines.push_back(std::move(line));
+  }
+  debug.runtimeDebugHudLines.push_back("SLOT " + selectedOpeningMenuSlotId(menu));
+  debug.runtimeDebugHudLines.push_back("ROOT " +
+                                       (menu.root.empty() ? std::string("unavailable")
+                                                          : menu.root.string()));
+  debug.runtimeDebugHudLines.push_back("STATUS " + menu.status);
+  fields.openingMenuHudVisible = true;
+  fields.openingMenuHudLineCount =
+      static_cast<std::uint64_t>(debug.runtimeDebugHudLines.size() - initialLineCount);
+}
+
 void appendDevMenuDebugHudLines(iggy3d::DebugProjectionResult& debug,
                                 const DevMenuState& devMenu,
                                 PlayableReceiptFields& fields) {
@@ -3724,6 +4053,27 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
                              fields.devMenuHudLineCount);
   iggy3d::appendReceiptField(receipt, "dev_menu_execution_status",
                              fields.devMenuExecutionStatus);
+  iggy3d::appendReceiptField(receipt, "opening_menu_enabled",
+                             fields.openingMenuEnabled);
+  iggy3d::appendReceiptField(receipt, "opening_menu_open", fields.openingMenuOpen);
+  iggy3d::appendReceiptField(receipt, "opening_menu_hud_visible",
+                             fields.openingMenuHudVisible);
+  iggy3d::appendReceiptField(receipt, "opening_menu_hud_line_count",
+                             fields.openingMenuHudLineCount);
+  iggy3d::appendReceiptField(receipt, "opening_menu_selected_action",
+                             fields.openingMenuSelectedAction);
+  iggy3d::appendReceiptField(receipt, "opening_menu_last_action",
+                             fields.openingMenuLastAction);
+  iggy3d::appendReceiptField(receipt, "opening_menu_status", fields.openingMenuStatus);
+  iggy3d::appendReceiptField(receipt, "opening_menu_root", fields.openingMenuRoot);
+  iggy3d::appendReceiptField(receipt, "opening_menu_world_slot_count",
+                             fields.openingMenuWorldSlotCount);
+  iggy3d::appendReceiptField(receipt, "opening_menu_selected_world_id",
+                             fields.openingMenuSelectedWorldId);
+  iggy3d::appendReceiptField(receipt, "opening_menu_created_world",
+                             fields.openingMenuCreatedWorld);
+  iggy3d::appendReceiptField(receipt, "opening_menu_deleted_world",
+                             fields.openingMenuDeletedWorld);
   iggy3d::appendReceiptField(receipt, "editor_enabled", fields.editorEnabled);
   iggy3d::appendReceiptField(receipt, "editor_open", fields.editorOpen);
   iggy3d::appendReceiptField(receipt, "editor_toggle_observed",
@@ -4228,6 +4578,22 @@ int main(int argc, const char* const* argv) {
   DevMenuState devMenu;
   devMenu.enabled = parsed.options.devMenu || parsed.options.codexControlPathSet;
   devMenu.open = parsed.options.devMenu;
+  OpeningMenuState openingMenu;
+  const bool defaultOpeningMenu =
+      playableFields.playable && parsed.options.window && parsed.options.interactive &&
+      !parsed.options.framesExplicit && !parsed.options.scriptedPlayableSmoke &&
+      !parsed.options.scriptedKinematicInput && !parsed.options.scriptedCrouchInput &&
+      !parsed.options.codexControlPathSet && !parsed.options.noOpeningMenu;
+  openingMenu.enabled =
+      playableFields.playable && !parsed.options.scriptedPlayableSmoke &&
+      !parsed.options.noOpeningMenu && (parsed.options.openingMenu || defaultOpeningMenu);
+  openingMenu.open = openingMenu.enabled;
+  openingMenu.root =
+      parsed.options.worldRootSet ? parsed.options.worldRoot : iggy3d::defaultWorldSlotRoot();
+  openingMenu.packagePath = fixturePath;
+  if (openingMenu.enabled) {
+    refreshOpeningMenuSlots(openingMenu);
+  }
   EditorModeState editor;
   editor.enabled = playableFields.playable && !parsed.options.scriptedPlayableSmoke;
   editor.cursorWorldMeters = {};
@@ -4237,6 +4603,7 @@ int main(int argc, const char* const* argv) {
   playableFields.devMenuEnabled = devMenu.enabled;
   playableFields.devMenuOpen = devMenu.open;
   playableFields.devMenuSelectedMechanic = std::string(devMechanicName(devMenu.selected));
+  recordOpeningMenuFields(playableFields, openingMenu);
   updateEditorReceiptFields(playableFields, editor);
   playableFields.codexControlConfigured = parsed.options.codexControlPathSet;
   playableFields.codexControlPath =
@@ -4287,6 +4654,9 @@ int main(int argc, const char* const* argv) {
   bool devMenuNextDown = false;
   bool devMenuPreviousDown = false;
   bool devMenuExecuteDown = false;
+  bool openingMenuNextDown = false;
+  bool openingMenuPreviousDown = false;
+  bool openingMenuExecuteDown = false;
   bool editorToggleDown = false;
   bool editorNextDown = false;
   bool editorPreviousDown = false;
@@ -4405,6 +4775,9 @@ int main(int argc, const char* const* argv) {
       bool editorDeleteRequested = false;
       bool editorUndoRequested = false;
       bool editorRedoRequested = false;
+      bool openingMenuNextRequested = false;
+      bool openingMenuPreviousRequested = false;
+      bool openingMenuExecuteRequested = false;
       bool debugOverlayToggleRequested = false;
       if (parsed.options.scriptedKinematicInput) {
         movement = {1.0F, 0.0F, 0.0F};
@@ -4425,99 +4798,103 @@ int main(int argc, const char* const* argv) {
             const bool right = SDL_SCANCODE_RIGHT < keyCount && keys[SDL_SCANCODE_RIGHT];
             const bool up = SDL_SCANCODE_UP < keyCount && keys[SDL_SCANCODE_UP];
             const bool down = SDL_SCANCODE_DOWN < keyCount && keys[SDL_SCANCODE_DOWN];
+            const bool space = SDL_SCANCODE_SPACE < keyCount && keys[SDL_SCANCODE_SPACE];
+            const bool enter = SDL_SCANCODE_RETURN < keyCount && keys[SDL_SCANCODE_RETURN];
             const bool fireSpell = SDL_SCANCODE_F < keyCount && keys[SDL_SCANCODE_F];
-            devToggleRequested = SDL_SCANCODE_F1 < keyCount && keys[SDL_SCANCODE_F1];
-            editorToggleRequested = SDL_SCANCODE_F2 < keyCount && keys[SDL_SCANCODE_F2];
-            debugOverlayToggleRequested =
-                SDL_SCANCODE_F3 < keyCount && keys[SDL_SCANCODE_F3];
-            if (editor.enabled && editor.open) {
-              editorApplyRequested =
-                  (SDL_SCANCODE_SPACE < keyCount && keys[SDL_SCANCODE_SPACE]) ||
-                  (SDL_SCANCODE_RETURN < keyCount && keys[SDL_SCANCODE_RETURN]);
-              editorDeleteRequested =
-                  (SDL_SCANCODE_DELETE < keyCount && keys[SDL_SCANCODE_DELETE]) ||
-                  (SDL_SCANCODE_BACKSPACE < keyCount && keys[SDL_SCANCODE_BACKSPACE]);
-              editorPresetRequested = SDL_SCANCODE_TAB < keyCount && keys[SDL_SCANCODE_TAB];
-              editorUndoRequested = SDL_SCANCODE_Z < keyCount && keys[SDL_SCANCODE_Z];
-              editorRedoRequested = SDL_SCANCODE_Y < keyCount && keys[SDL_SCANCODE_Y];
-              editorPreviousRequested = SDL_SCANCODE_Q < keyCount && keys[SDL_SCANCODE_Q];
-              editorNextRequested = SDL_SCANCODE_E < keyCount && keys[SDL_SCANCODE_E];
-              if (SDL_SCANCODE_1 < keyCount && keys[SDL_SCANCODE_1]) {
-                editor.tool = EditorTool::Select;
-              }
-              if (SDL_SCANCODE_2 < keyCount && keys[SDL_SCANCODE_2]) {
-                editor.tool = EditorTool::PlaceFloor;
-              }
-              if (SDL_SCANCODE_3 < keyCount && keys[SDL_SCANCODE_3]) {
-                editor.tool = EditorTool::PlaceWall;
-              }
-              if (SDL_SCANCODE_4 < keyCount && keys[SDL_SCANCODE_4]) {
-                editor.tool = EditorTool::Semantics;
-              }
-              if (SDL_SCANCODE_5 < keyCount && keys[SDL_SCANCODE_5]) {
-                editor.tool = EditorTool::Delete;
-              }
-            } else if (devMenu.enabled && devMenu.open) {
-              devExecuteRequested =
-                  (SDL_SCANCODE_SPACE < keyCount && keys[SDL_SCANCODE_SPACE]) ||
-                  (SDL_SCANCODE_RETURN < keyCount && keys[SDL_SCANCODE_RETURN]);
-              if (SDL_SCANCODE_1 < keyCount && keys[SDL_SCANCODE_1]) {
-                devMenu.selected = DevMechanic::Walk;
-              }
-              if (SDL_SCANCODE_2 < keyCount && keys[SDL_SCANCODE_2]) {
-                devMenu.selected = DevMechanic::Crouch;
-              }
-              if (SDL_SCANCODE_3 < keyCount && keys[SDL_SCANCODE_3]) {
-                devMenu.selected = DevMechanic::Jump;
-              }
-              if (SDL_SCANCODE_4 < keyCount && keys[SDL_SCANCODE_4]) {
-                devMenu.selected = DevMechanic::Dash;
-              }
-              if (SDL_SCANCODE_5 < keyCount && keys[SDL_SCANCODE_5]) {
-                devMenu.selected = DevMechanic::Spell;
-              }
-              if (SDL_SCANCODE_6 < keyCount && keys[SDL_SCANCODE_6]) {
-                devMenu.selected = DevMechanic::Vault;
-              }
-              if (SDL_SCANCODE_7 < keyCount && keys[SDL_SCANCODE_7]) {
-                devMenu.selected = DevMechanic::Clamber;
-              }
-              if (SDL_SCANCODE_8 < keyCount && keys[SDL_SCANCODE_8]) {
-                devMenu.selected = DevMechanic::WireWalk;
-              }
+            if (openingMenu.enabled && openingMenu.open) {
+              openingMenuPreviousRequested = up || w;
+              openingMenuNextRequested = down || s;
+              openingMenuExecuteRequested = space || enter;
             } else {
-              jumpRequested = SDL_SCANCODE_SPACE < keyCount && keys[SDL_SCANCODE_SPACE];
-              dashRequested =
-                  (SDL_SCANCODE_LSHIFT < keyCount && keys[SDL_SCANCODE_LSHIFT]) ||
-                  (SDL_SCANCODE_RSHIFT < keyCount && keys[SDL_SCANCODE_RSHIFT]);
+              devToggleRequested = SDL_SCANCODE_F1 < keyCount && keys[SDL_SCANCODE_F1];
+              editorToggleRequested = SDL_SCANCODE_F2 < keyCount && keys[SDL_SCANCODE_F2];
+              debugOverlayToggleRequested =
+                  SDL_SCANCODE_F3 < keyCount && keys[SDL_SCANCODE_F3];
+              if (editor.enabled && editor.open) {
+                editorApplyRequested = space || enter;
+                editorDeleteRequested =
+                    (SDL_SCANCODE_DELETE < keyCount && keys[SDL_SCANCODE_DELETE]) ||
+                    (SDL_SCANCODE_BACKSPACE < keyCount && keys[SDL_SCANCODE_BACKSPACE]);
+                editorPresetRequested = SDL_SCANCODE_TAB < keyCount && keys[SDL_SCANCODE_TAB];
+                editorUndoRequested = SDL_SCANCODE_Z < keyCount && keys[SDL_SCANCODE_Z];
+                editorRedoRequested = SDL_SCANCODE_Y < keyCount && keys[SDL_SCANCODE_Y];
+                editorPreviousRequested = SDL_SCANCODE_Q < keyCount && keys[SDL_SCANCODE_Q];
+                editorNextRequested = SDL_SCANCODE_E < keyCount && keys[SDL_SCANCODE_E];
+                if (SDL_SCANCODE_1 < keyCount && keys[SDL_SCANCODE_1]) {
+                  editor.tool = EditorTool::Select;
+                }
+                if (SDL_SCANCODE_2 < keyCount && keys[SDL_SCANCODE_2]) {
+                  editor.tool = EditorTool::PlaceFloor;
+                }
+                if (SDL_SCANCODE_3 < keyCount && keys[SDL_SCANCODE_3]) {
+                  editor.tool = EditorTool::PlaceWall;
+                }
+                if (SDL_SCANCODE_4 < keyCount && keys[SDL_SCANCODE_4]) {
+                  editor.tool = EditorTool::Semantics;
+                }
+                if (SDL_SCANCODE_5 < keyCount && keys[SDL_SCANCODE_5]) {
+                  editor.tool = EditorTool::Delete;
+                }
+              } else if (devMenu.enabled && devMenu.open) {
+                devExecuteRequested = space || enter;
+                if (SDL_SCANCODE_1 < keyCount && keys[SDL_SCANCODE_1]) {
+                  devMenu.selected = DevMechanic::Walk;
+                }
+                if (SDL_SCANCODE_2 < keyCount && keys[SDL_SCANCODE_2]) {
+                  devMenu.selected = DevMechanic::Crouch;
+                }
+                if (SDL_SCANCODE_3 < keyCount && keys[SDL_SCANCODE_3]) {
+                  devMenu.selected = DevMechanic::Jump;
+                }
+                if (SDL_SCANCODE_4 < keyCount && keys[SDL_SCANCODE_4]) {
+                  devMenu.selected = DevMechanic::Dash;
+                }
+                if (SDL_SCANCODE_5 < keyCount && keys[SDL_SCANCODE_5]) {
+                  devMenu.selected = DevMechanic::Spell;
+                }
+                if (SDL_SCANCODE_6 < keyCount && keys[SDL_SCANCODE_6]) {
+                  devMenu.selected = DevMechanic::Vault;
+                }
+                if (SDL_SCANCODE_7 < keyCount && keys[SDL_SCANCODE_7]) {
+                  devMenu.selected = DevMechanic::Clamber;
+                }
+                if (SDL_SCANCODE_8 < keyCount && keys[SDL_SCANCODE_8]) {
+                  devMenu.selected = DevMechanic::WireWalk;
+                }
+              } else {
+                jumpRequested = space;
+                dashRequested =
+                    (SDL_SCANCODE_LSHIFT < keyCount && keys[SDL_SCANCODE_LSHIFT]) ||
+                    (SDL_SCANCODE_RSHIFT < keyCount && keys[SDL_SCANCODE_RSHIFT]);
+              }
+              if (devMenu.enabled && !devMenu.open && pressedEdge(fireSpell, spellFireDown)) {
+                spellFireRequested = true;
+              }
+              crouchHeld =
+                  crouchHeld || (SDL_SCANCODE_LCTRL < keyCount && keys[SDL_SCANCODE_LCTRL]) ||
+                  (SDL_SCANCODE_C < keyCount && keys[SDL_SCANCODE_C]);
+              if (left) {
+                yaw -= 0.035F;
+              }
+              if (right) {
+                yaw += 0.035F;
+              }
+              if (up) {
+                pitch += 0.020F;
+              }
+              if (down) {
+                pitch -= 0.020F;
+              }
+              const iggy3d::Vec3 forward{std::sin(yaw), 0.0F, -std::cos(yaw)};
+              const iggy3d::Vec3 rightVec{std::cos(yaw), 0.0F, std::sin(yaw)};
+              movement = movement + forward * (w ? 1.0F : 0.0F);
+              movement = movement - forward * (s ? 1.0F : 0.0F);
+              movement = movement - rightVec * (a ? 1.0F : 0.0F);
+              movement = movement + rightVec * (d ? 1.0F : 0.0F);
+              actionRequested = SDL_SCANCODE_E < keyCount && keys[SDL_SCANCODE_E];
+              resetRequested = SDL_SCANCODE_R < keyCount && keys[SDL_SCANCODE_R];
+              quitRequested = SDL_SCANCODE_ESCAPE < keyCount && keys[SDL_SCANCODE_ESCAPE];
             }
-            if (devMenu.enabled && !devMenu.open && pressedEdge(fireSpell, spellFireDown)) {
-              spellFireRequested = true;
-            }
-            crouchHeld =
-                crouchHeld || (SDL_SCANCODE_LCTRL < keyCount && keys[SDL_SCANCODE_LCTRL]) ||
-                (SDL_SCANCODE_C < keyCount && keys[SDL_SCANCODE_C]);
-            if (left) {
-              yaw -= 0.035F;
-            }
-            if (right) {
-              yaw += 0.035F;
-            }
-            if (up) {
-              pitch += 0.020F;
-            }
-            if (down) {
-              pitch -= 0.020F;
-            }
-            const iggy3d::Vec3 forward{std::sin(yaw), 0.0F, -std::cos(yaw)};
-            const iggy3d::Vec3 rightVec{std::cos(yaw), 0.0F, std::sin(yaw)};
-            movement = movement + forward * (w ? 1.0F : 0.0F);
-            movement = movement - forward * (s ? 1.0F : 0.0F);
-            movement = movement - rightVec * (a ? 1.0F : 0.0F);
-            movement = movement + rightVec * (d ? 1.0F : 0.0F);
-            actionRequested = SDL_SCANCODE_E < keyCount && keys[SDL_SCANCODE_E];
-            resetRequested = SDL_SCANCODE_R < keyCount && keys[SDL_SCANCODE_R];
-            quitRequested = SDL_SCANCODE_ESCAPE < keyCount && keys[SDL_SCANCODE_ESCAPE];
           }
         }
         if (playableFields.inputBackend == VisualInputBackend::Gamepad &&
@@ -4538,6 +4915,8 @@ int main(int argc, const char* const* argv) {
           bool northDown = false;
           bool dpadLeft = false;
           bool dpadRight = false;
+          bool dpadUp = false;
+          bool dpadDown = false;
           if (gamepad.gamepad != nullptr) {
             leftX = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_LEFTX));
             leftY = axisValue(SDL_GetGamepadAxis(gamepad.gamepad, SDL_GAMEPAD_AXIS_LEFTY));
@@ -4554,6 +4933,8 @@ int main(int argc, const char* const* argv) {
             northDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_NORTH);
             dpadLeft = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_DPAD_LEFT);
             dpadRight = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_DPAD_RIGHT);
+            dpadUp = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_DPAD_UP);
+            dpadDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_DPAD_DOWN);
             r2Down = r2 > 0.2F;
           } else {
             const int axisCount = SDL_GetNumJoystickAxes(gamepad.joystick);
@@ -4581,8 +4962,9 @@ int main(int argc, const char* const* argv) {
                 r2 > 0.2F || (buttonCount > 7 && SDL_GetJoystickButton(gamepad.joystick, 7));
           }
           iggy3d::GamepadSystemControlContext systemContext;
-          systemContext.devMenuEnabled = devMenu.enabled;
-          systemContext.editorEnabled = editor.enabled;
+          const bool openingMenuOwnsGamepad = openingMenu.enabled && openingMenu.open;
+          systemContext.devMenuEnabled = devMenu.enabled && !openingMenuOwnsGamepad;
+          systemContext.editorEnabled = editor.enabled && !openingMenuOwnsGamepad;
           systemContext.editorOpen = editor.open;
           iggy3d::GamepadSystemControlSample systemSample;
           systemSample.optionsDown = optionsDown;
@@ -4612,7 +4994,16 @@ int main(int argc, const char* const* argv) {
           if (systemControls.consumeEast) {
             eastDown = false;
           }
-          if (editor.enabled && editor.open) {
+          if (openingMenuOwnsGamepad) {
+            openingMenuPreviousRequested = dpadUp;
+            openingMenuNextRequested = dpadDown;
+            openingMenuExecuteRequested = crossDown;
+            crossDown = false;
+            eastDown = false;
+            northDown = false;
+            r1Down = false;
+            r2Down = false;
+          } else if (editor.enabled && editor.open) {
             editorPreviousRequested = dpadLeft;
             editorNextRequested = dpadRight;
             editorPresetRequested = northDown;
@@ -4627,30 +5018,53 @@ int main(int argc, const char* const* argv) {
             devExecuteRequested = crossDown;
             crossDown = false;
           }
-          crouchHeld = crouchHeld || crouchDown;
-          playableFields.gamepadLeftStickUsed =
-              playableFields.gamepadLeftStickUsed || leftX != 0.0F || leftY != 0.0F;
-          playableFields.gamepadRightStickUsed =
-              playableFields.gamepadRightStickUsed || rightX != 0.0F || rightY != 0.0F;
-          const float lookScale = slowLook ? 0.020F : 0.045F;
-          yaw += rightX * lookScale;
-          pitch -= rightY * lookScale;
-          const iggy3d::Vec3 forward{std::sin(yaw), 0.0F, -std::cos(yaw)};
-          const iggy3d::Vec3 rightVec{std::cos(yaw), 0.0F, std::sin(yaw)};
-          movement = movement + forward * (-leftY);
-          movement = movement + rightVec * leftX;
-          const bool crossPressed = pressedEdge(crossDown, gamepad.crossDown);
-          jumpRequested = jumpRequested || crossPressed;
-          dashRequested = dashRequested || pressedEdge(r1Down, gamepad.r1Down);
-          attackRequested = pressedEdge(r2Down, gamepad.r2Down);
-          if (attackRequested) {
-            playableFields.gamepadActionButton = "r2";
+          if (!openingMenuOwnsGamepad) {
+            crouchHeld = crouchHeld || crouchDown;
+            playableFields.gamepadLeftStickUsed =
+                playableFields.gamepadLeftStickUsed || leftX != 0.0F || leftY != 0.0F;
+            playableFields.gamepadRightStickUsed =
+                playableFields.gamepadRightStickUsed || rightX != 0.0F || rightY != 0.0F;
+            const float lookScale = slowLook ? 0.020F : 0.045F;
+            yaw += rightX * lookScale;
+            pitch -= rightY * lookScale;
+            const iggy3d::Vec3 forward{std::sin(yaw), 0.0F, -std::cos(yaw)};
+            const iggy3d::Vec3 rightVec{std::cos(yaw), 0.0F, std::sin(yaw)};
+            movement = movement + forward * (-leftY);
+            movement = movement + rightVec * leftX;
+            const bool crossPressed = pressedEdge(crossDown, gamepad.crossDown);
+            jumpRequested = jumpRequested || crossPressed;
+            dashRequested = dashRequested || pressedEdge(r1Down, gamepad.r1Down);
+            attackRequested = pressedEdge(r2Down, gamepad.r2Down);
+            if (attackRequested) {
+              playableFields.gamepadActionButton = "r2";
+            }
+            resetRequested = pressedEdge(eastDown, gamepad.eastDown);
           }
-          resetRequested = pressedEdge(eastDown, gamepad.eastDown);
         }
       }
-      applyMouseLook(yaw, pitch, playableFields);
+      if (!(openingMenu.enabled && openingMenu.open)) {
+        applyMouseLook(yaw, pitch, playableFields);
+      }
       if (codexControl.applied) {
+        if (codexControl.openingMenuOpenSet && openingMenu.enabled) {
+          openingMenu.open = codexControl.openingMenuOpen;
+          if (openingMenu.open) {
+            devMenu.open = false;
+            editor.open = false;
+          }
+        }
+        if (codexControl.openingMenuSelectSet && openingMenu.enabled) {
+          openingMenu.selected = codexControl.openingMenuSelect;
+        }
+        if (codexControl.openingMenuPrevious) {
+          openingMenuPreviousRequested = true;
+        }
+        if (codexControl.openingMenuNext) {
+          openingMenuNextRequested = true;
+        }
+        if (codexControl.openingMenuExecute) {
+          openingMenuExecuteRequested = true;
+        }
         if (codexControl.devMenuOpenSet) {
           devMenu.open = codexControl.devMenuOpen;
         }
@@ -4721,6 +5135,43 @@ int main(int argc, const char* const* argv) {
         editorUndoRequested = editorUndoRequested || codexControl.editorUndo;
         editorRedoRequested = editorRedoRequested || codexControl.editorRedo;
       }
+      if (openingMenu.enabled && openingMenu.open) {
+        devMenu.open = false;
+        editor.open = false;
+      }
+      const bool openingMenuOwnedInputThisFrame = openingMenu.enabled && openingMenu.open;
+      if (openingMenu.enabled && openingMenu.open &&
+          pressedEdge(openingMenuPreviousRequested, openingMenuPreviousDown)) {
+        openingMenu.selected = previousOpeningMenuAction(openingMenu.selected);
+      }
+      if (openingMenu.enabled && openingMenu.open &&
+          pressedEdge(openingMenuNextRequested, openingMenuNextDown)) {
+        openingMenu.selected = nextOpeningMenuAction(openingMenu.selected);
+      }
+      const bool openingMenuExecutePressed =
+          openingMenu.enabled && openingMenu.open &&
+          pressedEdge(openingMenuExecuteRequested, openingMenuExecuteDown);
+      if (openingMenuExecutePressed) {
+        executeOpeningMenuAction(openingMenu);
+      }
+      if (openingMenuOwnedInputThisFrame) {
+        movement = {};
+        actionRequested = false;
+        attackRequested = false;
+        resetRequested = false;
+        tacticalToggleRequested = false;
+        pauseRequested = false;
+        stepRequested = false;
+        resumeRequested = false;
+        saveLoadRequested = false;
+        jumpRequested = false;
+        dashRequested = false;
+        spellFireRequested = false;
+        devToggleRequested = false;
+        editorToggleRequested = false;
+        debugOverlayToggleRequested = false;
+      }
+      recordOpeningMenuFields(playableFields, openingMenu);
       if (editor.enabled && pressedEdge(editorToggleRequested, editorToggleDown)) {
         editor.open = !editor.open;
         if (editor.open) {
@@ -5140,8 +5591,14 @@ int main(int argc, const char* const* argv) {
       debugSnapshot = iggy3d::buildRuntimeDebugSnapshot(debugRequest);
       recordRuntimeDebugSnapshot(playableFields, debugSnapshot);
       iggy3d::appendRuntimeDebugSnapshot(debug, debugSnapshot);
-      appendEditorDebugHudLines(debug, editor);
-      appendDevMenuDebugHudLines(debug, devMenu, playableFields);
+      appendOpeningMenuDebugHudLines(debug, openingMenu, playableFields);
+      if (!openingMenu.enabled || !openingMenu.open) {
+        appendEditorDebugHudLines(debug, editor);
+        appendDevMenuDebugHudLines(debug, devMenu, playableFields);
+      } else {
+        playableFields.devMenuHudVisible = false;
+        playableFields.devMenuHudLineCount = 0;
+      }
 #if defined(IGGY3D_HAS_SDL3)
       if (window.has_value()) {
         window->setTitle(debugOverlayWindowTitle(debugSnapshot));

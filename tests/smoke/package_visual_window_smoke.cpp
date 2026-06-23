@@ -100,7 +100,8 @@ int main() {
                               shellQuote(output);
   const std::string interactiveCommand =
       shellQuote(binary) + " --package " + shellQuote(fixture) +
-      " --renderer null --window --interactive --hold-seconds 1 --print-render-receipt > " +
+      " --renderer null --window --interactive --no-opening-menu --hold-seconds 1 "
+      "--print-render-receipt > " +
       shellQuote(interactiveOutput);
   const std::string kinematicCommand =
       shellQuote(binary) + " --package " + shellQuote(fixture) +
