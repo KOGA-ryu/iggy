@@ -8,7 +8,7 @@ Launch:
 
 Controls:
 
-- WASD moves, mouse drag or right stick looks, Escape/Start quits;
+- WASD moves, mouse drag or right stick looks, Escape quits on keyboard;
 - F3 toggles the world debug telemetry in the window title until text rendering exists;
 - Space jumps on keyboard when the dev menu is closed; hold WASD during jump for limited air control;
 - Shift dashes on keyboard when the dev menu is closed; hold WASD to choose dash direction;
@@ -21,8 +21,10 @@ Controls:
 - Launch with `--dev-menu`; F1 toggles the dev menu state. While open, a small
   HUD appears and 1-8 selects walk, crouch, jump,
   dash, spell projectile, vault, clamber, or wire-walk, and Space/Enter executes.
-- On SDL gamepad, Start + North toggles the dev menu state, D-pad left/right cycles,
-  and South executes while the menu is open.
+- On SDL gamepad, Options toggles the dev menu state, D-pad left/right cycles,
+  and South/Cross executes while the menu is open.
+- On PS5/DualSense, Create + Options quits the app.
+- On SDL gamepad, Create + East toggles editor mode.
 
 Codex control:
 

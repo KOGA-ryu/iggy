@@ -24,6 +24,7 @@ target_sources(iggy3d
     src/app/AppConfig.cpp
     src/app/CliParser.cpp
     src/app/PackageRuntimeLookup.cpp
+    src/app/input/GamepadSystemControls.cpp
     src/app/platform/ExecutablePath.cpp
     src/content/PackageLoader.cpp
     src/content/PackageValidator.cpp

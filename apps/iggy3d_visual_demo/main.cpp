@@ -1,4 +1,5 @@
 #include "app/PackageRuntimeLookup.hpp"
+#include "app/input/GamepadSystemControls.hpp"
 #if defined(IGGY3D_HAS_SDL3)
 #include <SDL3/SDL.h>
 #include "app/platform/SdlWindow.hpp"
@@ -2906,7 +2907,7 @@ void appendDevMenuDebugHudLines(iggy3d::DebugProjectionResult& debug,
                                        std::string(devMechanicName(devMenu.selected)));
   debug.runtimeDebugHudLines.push_back("1 WALK 2 CROUCH 3 JUMP 4 DASH");
   debug.runtimeDebugHudLines.push_back("5 SPELL 6 VAULT 7 CLAMBER 8 WIRE");
-  debug.runtimeDebugHudLines.push_back("SPACE EXEC F1 CLOSE");
+  debug.runtimeDebugHudLines.push_back("SPACE/CROSS EXEC F1/OPTIONS CLOSE");
   fields.devMenuHudVisible = true;
   fields.devMenuHudLineCount = 4;
 }
@@ -3827,9 +3828,9 @@ struct GamepadSession {
   bool subsystemInitialized = false;
   bool crossDown = false;
   bool eastDown = false;
-  bool startDown = false;
   bool r2Down = false;
   bool r1Down = false;
+  iggy3d::GamepadSystemControlState systemControls;
 };
 
 bool nameLooksLikeDualSense(std::string_view name) {
@@ -4529,7 +4530,8 @@ int main(int argc, const char* const* argv) {
           bool slowLook = false;
           bool crossDown = false;
           bool eastDown = false;
-          bool startDown = false;
+          bool optionsDown = false;
+          bool createDown = false;
           bool r2Down = false;
           bool r1Down = false;
           bool crouchDown = false;
@@ -4545,7 +4547,8 @@ int main(int argc, const char* const* argv) {
             slowLook = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER);
             crossDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_SOUTH);
             eastDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_EAST);
-            startDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_START);
+            optionsDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_START);
+            createDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_BACK);
             r1Down = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER);
             crouchDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_LEFT_STICK);
             northDown = SDL_GetGamepadButton(gamepad.gamepad, SDL_GAMEPAD_BUTTON_NORTH);
@@ -4567,7 +4570,8 @@ int main(int argc, const char* const* argv) {
             slowLook = buttonCount > 4 && SDL_GetJoystickButton(gamepad.joystick, 4);
             crossDown = buttonCount > 0 && SDL_GetJoystickButton(gamepad.joystick, 0);
             eastDown = buttonCount > 1 && SDL_GetJoystickButton(gamepad.joystick, 1);
-            startDown =
+            createDown = buttonCount > 8 && SDL_GetJoystickButton(gamepad.joystick, 8);
+            optionsDown =
                 buttonCount > 9
                     ? SDL_GetJoystickButton(gamepad.joystick, 9)
                     : (buttonCount > 7 && SDL_GetJoystickButton(gamepad.joystick, 7));
@@ -4576,14 +4580,37 @@ int main(int argc, const char* const* argv) {
             r2Down =
                 r2 > 0.2F || (buttonCount > 7 && SDL_GetJoystickButton(gamepad.joystick, 7));
           }
-          if (editor.enabled && startDown && eastDown) {
-            editorToggleRequested = true;
-            eastDown = false;
-            startDown = false;
+          iggy3d::GamepadSystemControlContext systemContext;
+          systemContext.devMenuEnabled = devMenu.enabled;
+          systemContext.editorEnabled = editor.enabled;
+          systemContext.editorOpen = editor.open;
+          iggy3d::GamepadSystemControlSample systemSample;
+          systemSample.optionsDown = optionsDown;
+          systemSample.createDown = createDown;
+          systemSample.eastDown = eastDown;
+          const iggy3d::GamepadSystemControlResult systemControls =
+              iggy3d::mapGamepadSystemControls(systemContext, systemSample,
+                                                gamepad.systemControls);
+          if (systemControls.actionButton != "unavailable") {
+            playableFields.gamepadActionButton = std::string(systemControls.actionButton);
           }
-          if (devMenu.enabled && !editor.open && startDown && northDown) {
+          if (systemControls.quitRequested) {
+            quitRequested = true;
+          }
+          if (systemControls.editorToggleRequested) {
+            editorToggleRequested = true;
+          }
+          if (systemControls.devToggleRequested) {
             devToggleRequested = true;
-            startDown = false;
+          }
+          if (systemControls.consumeOptions) {
+            optionsDown = false;
+          }
+          if (systemControls.consumeCreate) {
+            createDown = false;
+          }
+          if (systemControls.consumeEast) {
+            eastDown = false;
           }
           if (editor.enabled && editor.open) {
             editorPreviousRequested = dpadLeft;
@@ -4620,7 +4647,6 @@ int main(int argc, const char* const* argv) {
             playableFields.gamepadActionButton = "r2";
           }
           resetRequested = pressedEdge(eastDown, gamepad.eastDown);
-          quitRequested = pressedEdge(startDown, gamepad.startDown);
         }
       }
       applyMouseLook(yaw, pitch, playableFields);
