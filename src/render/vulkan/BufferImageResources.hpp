@@ -45,6 +45,7 @@ struct FirstRoomGeometryResources {
   std::vector<IndexedDrawRange> indexedDraws;
   std::string sourceRoomAssetId;
   std::size_t sourceRoomStaticMeshCount = 0;
+  std::uint64_t sourceRoomGeometrySignature = 0;
   bool packageRoomGeometry = false;
   bool indexedDraw = false;
 };

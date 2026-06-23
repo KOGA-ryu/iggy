@@ -88,6 +88,37 @@ bool writeDeleteControlFile(const std::filesystem::path& path) {
   return static_cast<bool>(output);
 }
 
+bool writeProbeControlFile(const std::filesystem::path& path) {
+  std::ofstream output(path);
+  if (!output) {
+    return false;
+  }
+  output << "editor.open=true\n";
+  output << "debug_overlay.open=true\n";
+  output << "editor.tool=place_wall\n";
+  output << "editor.preset=clamber_wall\n";
+  output << "editor.apply_frames=0\n";
+  output << "look.yaw=0\n";
+  output << "look.pitch=-0.5\n";
+  return static_cast<bool>(output);
+}
+
+bool writeProbeDeleteControlFile(const std::filesystem::path& path) {
+  std::ofstream output(path);
+  if (!output) {
+    return false;
+  }
+  output << "editor.open=true\n";
+  output << "debug_overlay.open=true\n";
+  output << "editor.tool=place_wall\n";
+  output << "editor.preset=clamber_wall\n";
+  output << "editor.apply_frames=0\n";
+  output << "editor.delete_frames=1\n";
+  output << "look.yaw=0\n";
+  output << "look.pitch=-0.5\n";
+  return static_cast<bool>(output);
+}
+
 bool runVisualDemo(const std::filesystem::path& binary,
                    const std::filesystem::path& fixture,
                    const std::filesystem::path& control,
@@ -111,6 +142,8 @@ int main() {
 #endif
   bool addPassed = false;
   bool deletePassed = false;
+  bool probePassed = false;
+  bool probeDeletePassed = false;
 #if defined(IGGY3D_VISUAL_DEMO_PATH)
   const std::filesystem::path binary{IGGY3D_VISUAL_DEMO_PATH};
   const std::filesystem::path fixture =
@@ -119,6 +152,12 @@ int main() {
   const std::filesystem::path addOutput = "/tmp/iggy3d_visual_editor_add_control.out";
   const std::filesystem::path deleteControl = "/tmp/iggy3d_visual_editor_delete_control.in";
   const std::filesystem::path deleteOutput = "/tmp/iggy3d_visual_editor_delete_control.out";
+  const std::filesystem::path probeControl = "/tmp/iggy3d_visual_editor_probe_control.in";
+  const std::filesystem::path probeOutput = "/tmp/iggy3d_visual_editor_probe_control.out";
+  const std::filesystem::path probeDeleteControl =
+      "/tmp/iggy3d_visual_editor_probe_delete_control.in";
+  const std::filesystem::path probeDeleteOutput =
+      "/tmp/iggy3d_visual_editor_probe_delete_control.out";
 
   std::map<std::string, std::string> fields;
   addPassed = std::filesystem::exists(binary) && writeAddControlFile(addControl) &&
@@ -133,6 +172,11 @@ int main() {
               hasField(fields, "editor_last_command", "add_wall") &&
               hasField(fields, "editor_last_status", "room_edit_applied") &&
               hasField(fields, "editor_selected_id", "edit_wall_1") &&
+              hasField(fields, "editor_probe_available", "true") &&
+              hasField(fields, "editor_placement_valid", "true") &&
+              hasField(fields, "editor_probe_status", "manual_cursor") &&
+              hasField(fields, "editor_ghost_visible", "true") &&
+              hasField(fields, "editor_ghost_role", "editor_ghost_valid") &&
               hasField(fields, "editor_wall_count", "1") &&
               hasField(fields, "editor_bake_ok", "true") &&
               hasField(fields, "debug_traversal_preview_candidate_available", "true") &&
@@ -151,16 +195,62 @@ int main() {
                  hasField(fields, "editor_last_command", "delete") &&
                  hasField(fields, "editor_last_status", "room_edit_applied") &&
                  hasField(fields, "editor_selected_id", "none") &&
+                 hasField(fields, "editor_probe_available", "true") &&
+                 hasField(fields, "editor_placement_valid", "true") &&
+                 hasField(fields, "editor_ghost_visible", "true") &&
                  hasField(fields, "editor_wall_count", "0") &&
                  hasField(fields, "editor_apply_count", "1") &&
                  hasField(fields, "editor_delete_count", "1") &&
                  hasField(fields, "editor_bake_ok", "true");
+
+  fields.clear();
+  probePassed = std::filesystem::exists(binary) && writeProbeControlFile(probeControl) &&
+                runVisualDemo(binary, fixture, probeControl, probeOutput, 2U) &&
+                parseReceiptFile(probeOutput, fields) && hasField(fields, "result", "pass") &&
+                hasField(fields, "editor_enabled", "true") &&
+                hasField(fields, "editor_open", "true") &&
+                hasField(fields, "editor_apply_requested", "true") &&
+                hasField(fields, "editor_last_command", "add_wall") &&
+                hasField(fields, "editor_last_status", "room_edit_applied") &&
+                hasField(fields, "editor_selected_id", "edit_wall_1") &&
+                hasField(fields, "editor_probe_available", "true") &&
+                hasField(fields, "editor_probe_hit", "true") &&
+                hasField(fields, "editor_placement_valid", "true") &&
+                hasField(fields, "editor_probe_status", "collision_hit") &&
+                hasField(fields, "editor_ghost_visible", "true") &&
+                hasField(fields, "editor_ghost_role", "editor_ghost_valid") &&
+                hasField(fields, "editor_wall_count", "1") &&
+                numericFieldGreater(fields, "editor_probe_distance_meters", 0.0F) &&
+                numericFieldGreater(fields, "editor_runtime_surface_count", 0.0F);
+
+  fields.clear();
+  probeDeletePassed =
+      std::filesystem::exists(binary) && writeProbeDeleteControlFile(probeDeleteControl) &&
+      runVisualDemo(binary, fixture, probeDeleteControl, probeDeleteOutput, 3U) &&
+      parseReceiptFile(probeDeleteOutput, fields) && hasField(fields, "result", "pass") &&
+      hasField(fields, "editor_enabled", "true") &&
+      hasField(fields, "editor_open", "true") &&
+      hasField(fields, "editor_apply_requested", "true") &&
+      hasField(fields, "editor_delete_requested", "true") &&
+      hasField(fields, "editor_last_command", "delete") &&
+      hasField(fields, "editor_last_status", "room_edit_applied") &&
+      hasField(fields, "editor_selected_id", "none") &&
+      hasField(fields, "editor_selection_source", "reticle") &&
+      hasField(fields, "editor_probe_available", "true") &&
+      hasField(fields, "editor_probe_hit", "true") &&
+      hasField(fields, "editor_placement_valid", "true") &&
+      hasField(fields, "editor_wall_count", "0") &&
+      hasField(fields, "editor_apply_count", "1") &&
+      hasField(fields, "editor_delete_count", "1");
 #endif
-  const bool passed = addPassed && deletePassed;
+  const bool passed = addPassed && deletePassed && probePassed && probeDeletePassed;
   std::cout << "smoke=package_visual_editor_control\n";
   std::cout << "backend=" << (visualBuilt ? "null" : "unavailable") << "\n";
   std::cout << "editor_add_wall_passed=" << (addPassed ? "true" : "false") << "\n";
   std::cout << "editor_delete_wall_passed=" << (deletePassed ? "true" : "false") << "\n";
+  std::cout << "editor_probe_wall_passed=" << (probePassed ? "true" : "false") << "\n";
+  std::cout << "editor_probe_delete_passed="
+            << (probeDeletePassed ? "true" : "false") << "\n";
   std::cout << "result=" << (passed ? "pass" : (visualBuilt ? "fail" : "skip")) << "\n";
   std::cout << "reason_code=" << (passed ? "visual_editor_control_pass"
                                           : (visualBuilt ? "visual_editor_control_failed"

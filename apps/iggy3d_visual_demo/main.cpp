@@ -14,6 +14,7 @@
 #include "render/FrameInput.hpp"
 #include "render/RendererApi.hpp"
 #include "runtime/ability/AbilitySystem.hpp"
+#include "runtime/collision/CollisionQuery.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/command/Command.hpp"
 #include "runtime/debug/RuntimeDebugSnapshot.hpp"
@@ -332,6 +333,28 @@ struct PlayableReceiptFields {
   std::string editorCursorX = "0.000";
   std::string editorCursorY = "0.000";
   std::string editorCursorZ = "0.000";
+  bool editorProbeAvailable = false;
+  bool editorProbeHit = false;
+  bool editorPlacementValid = false;
+  std::string editorProbeStatus = "editor_probe_disabled";
+  std::string editorProbeSurfaceId = "none";
+  std::string editorProbeSurfaceRole = "none";
+  std::string editorProbeDistanceMeters = "0.000";
+  std::string editorProbeX = "0.000";
+  std::string editorProbeY = "0.000";
+  std::string editorProbeZ = "0.000";
+  std::string editorProbeNormalX = "0.000";
+  std::string editorProbeNormalY = "1.000";
+  std::string editorProbeNormalZ = "0.000";
+  bool editorGhostVisible = false;
+  std::string editorGhostRole = "none";
+  std::string editorGhostX = "0.000";
+  std::string editorGhostY = "0.000";
+  std::string editorGhostZ = "0.000";
+  std::string editorGhostSizeX = "0.000";
+  std::string editorGhostSizeY = "0.000";
+  std::string editorGhostSizeZ = "0.000";
+  std::string editorSelectionSource = "none";
   std::uint64_t editorFloorCount = 0;
   std::uint64_t editorWallCount = 0;
   std::uint64_t editorRuntimeStaticMeshCount = 0;
@@ -464,6 +487,20 @@ struct EditorModeState {
   iggy3d::EditableRoomSession session;
   std::string selectedId = "none";
   iggy3d::Vec3 cursorWorldMeters;
+  bool probeAvailable = false;
+  bool probeHit = false;
+  bool placementValid = false;
+  std::string probeStatus = "editor_probe_disabled";
+  std::string probeSurfaceId = "none";
+  std::string probeSurfaceRole = "none";
+  float probeDistanceMeters = 0.0F;
+  iggy3d::Vec3 probePointMeters;
+  iggy3d::Vec3 probeNormal = {0.0F, 1.0F, 0.0F};
+  bool ghostVisible = false;
+  std::string ghostRole = "none";
+  iggy3d::Vec3 ghostPositionMeters;
+  iggy3d::Vec3 ghostSizeMeters;
+  std::string selectionSource = "none";
   std::string lastCommand = "none";
   std::string lastStatus = "not_requested";
   std::uint64_t nextFloorIndex = 1;
@@ -2190,6 +2227,19 @@ void attachRoomProjection(const iggy3d::PackageLoadResult& package,
   }
 }
 
+void attachEditorGhostProjection(const EditorModeState& editor,
+                                 iggy3d::SceneProjectionResult& scene) {
+  if (!editor.enabled || !editor.open || !editor.ghostVisible || !scene.room.loaded) {
+    return;
+  }
+  iggy3d::SceneRoomMeshItem ghost;
+  ghost.id = "editor_ghost";
+  ghost.role = editor.ghostRole;
+  ghost.position = editor.ghostPositionMeters;
+  ghost.size = editor.ghostSizeMeters;
+  scene.room.meshes.push_back(std::move(ghost));
+}
+
 float snapToEditorGrid(float value) {
   constexpr float kGridStepsPerMeter = 2.0F;
   return std::round(value * kGridStepsPerMeter) / kGridStepsPerMeter;
@@ -2208,8 +2258,189 @@ iggy3d::Vec3 defaultEditorCursorWorld(const iggy3d::Session& session, float yaw)
   return snappedEditorCursor(cursor);
 }
 
+iggy3d::Vec3 editorCameraEyeWorld(const iggy3d::Session& session, bool crouched) {
+  const iggy3d::EntityState* player = playerEntity(session);
+  const iggy3d::Vec3 playerPosition =
+      player == nullptr ? iggy3d::Vec3{} : player->transform.position;
+  return playerPosition +
+         iggy3d::Vec3{0.0F, crouched ? kCrouchedEyeHeightMeters : kStandingEyeHeightMeters, 0.0F};
+}
+
 iggy3d::Vec3 editorLocalFromWorld(iggy3d::Vec3 world, iggy3d::Vec3 roomWorldOffset) {
   return world - roomWorldOffset;
+}
+
+std::string editorPrimitiveIdForSurface(const EditorModeState& editor,
+                                        const std::string& surfaceId) {
+  std::string best = "none";
+  const auto choose = [&](const std::string& candidate) {
+    if (surfaceId == candidate ||
+        (surfaceId.size() > candidate.size() && surfaceId.starts_with(candidate) &&
+         surfaceId[candidate.size()] == '_')) {
+      if (best == "none" || candidate.size() > best.size()) {
+        best = candidate;
+      }
+    }
+  };
+  for (const iggy3d::EditableRoomFloor& floor : editor.session.document().floors) {
+    choose(floor.id);
+  }
+  for (const iggy3d::EditableRoomWall& wall : editor.session.document().walls) {
+    choose(wall.id);
+  }
+  return best;
+}
+
+bool selectEditorPrimitiveUnderProbe(EditorModeState& editor) {
+  if (!editor.probeHit) {
+    editor.selectionSource = "none";
+    return false;
+  }
+  const std::string primitiveId = editorPrimitiveIdForSurface(editor, editor.probeSurfaceId);
+  if (primitiveId == "none") {
+    editor.selectionSource = "probe_miss";
+    return false;
+  }
+  editor.selectedId = primitiveId;
+  editor.selectionSource = "reticle";
+  editor.lastCommand = "select";
+  editor.lastStatus = "room_edit_selected";
+  return true;
+}
+
+iggy3d::Vec3 placementCursorFromProbe(const iggy3d::CollisionQueryResult& hit,
+                                      const iggy3d::SpatialSurfaceSet& collisionSurfaces) {
+  iggy3d::Vec3 cursor = hit.pointMeters;
+  if (hit.role != iggy3d::CollisionSurfaceRole::Walkable || hit.normal.y < 0.5F) {
+    (void)collisionSurfaces;
+    cursor.y = 0.0F;
+  }
+  return snappedEditorCursor(cursor);
+}
+
+void clearEditorProbe(EditorModeState& editor, std::string status) {
+  editor.probeAvailable = false;
+  editor.probeHit = false;
+  editor.placementValid = false;
+  editor.probeStatus = std::move(status);
+  editor.probeSurfaceId = "none";
+  editor.probeSurfaceRole = "none";
+  editor.probeDistanceMeters = 0.0F;
+  editor.probePointMeters = {};
+  editor.probeNormal = {0.0F, 1.0F, 0.0F};
+  editor.ghostVisible = false;
+  editor.ghostRole = "none";
+  editor.ghostPositionMeters = {};
+  editor.ghostSizeMeters = {};
+}
+
+bool editorToolUsesPlacement(EditorTool tool) {
+  return tool == EditorTool::PlaceFloor || tool == EditorTool::PlaceWall;
+}
+
+bool editorToolUsesSelection(EditorTool tool) {
+  return tool == EditorTool::Select || tool == EditorTool::Semantics || tool == EditorTool::Delete;
+}
+
+std::string editorGhostRoleFor(const EditorModeState& editor) {
+  if (!editor.placementValid) {
+    return "editor_ghost_invalid";
+  }
+  if (editorToolUsesSelection(editor.tool)) {
+    return "editor_ghost_select";
+  }
+  return "editor_ghost_valid";
+}
+
+void updateEditorGhost(EditorModeState& editor, float yaw) {
+  editor.ghostVisible = editor.open && (editor.placementValid || editor.probeAvailable);
+  if (!editor.ghostVisible) {
+    editor.ghostRole = "none";
+    editor.ghostPositionMeters = {};
+    editor.ghostSizeMeters = {};
+    return;
+  }
+
+  editor.ghostRole = editorGhostRoleFor(editor);
+  if (editor.tool == EditorTool::PlaceFloor) {
+    editor.ghostPositionMeters =
+        iggy3d::Vec3{editor.cursorWorldMeters.x, editor.cursorWorldMeters.y - 0.05F,
+                     editor.cursorWorldMeters.z};
+    editor.ghostSizeMeters = {2.0F, 0.10F, 2.0F};
+    return;
+  }
+  if (editor.tool == EditorTool::PlaceWall) {
+    const bool alongX = std::fabs(std::cos(yaw)) >= std::fabs(std::sin(yaw));
+    editor.ghostPositionMeters =
+        iggy3d::Vec3{editor.cursorWorldMeters.x, editor.cursorWorldMeters.y + 0.75F,
+                     editor.cursorWorldMeters.z};
+    editor.ghostSizeMeters = alongX ? iggy3d::Vec3{2.0F, 1.5F, 0.20F}
+                                    : iggy3d::Vec3{0.20F, 1.5F, 2.0F};
+    return;
+  }
+  editor.ghostPositionMeters = editor.probeHit ? editor.probePointMeters : editor.cursorWorldMeters;
+  editor.ghostSizeMeters = {0.35F, 0.35F, 0.35F};
+}
+
+void updateEditorProbe(EditorModeState& editor,
+                       const iggy3d::Session& session,
+                       const iggy3d::SpatialSurfaceSet& collisionSurfaces,
+                       float yaw,
+                       float pitch,
+                       bool crouched,
+                       bool manualCursor) {
+  if (!editor.enabled || !editor.open) {
+    clearEditorProbe(editor, "editor_probe_disabled");
+    return;
+  }
+  if (manualCursor) {
+    editor.cursorWorldMeters = snappedEditorCursor(editor.cursorWorldMeters);
+    editor.probeAvailable = true;
+    editor.probeHit = false;
+    editor.placementValid = true;
+    editor.probeStatus = "manual_cursor";
+    editor.probeSurfaceId = "none";
+    editor.probeSurfaceRole = "manual";
+    editor.probeDistanceMeters = 0.0F;
+    editor.probePointMeters = editor.cursorWorldMeters;
+    editor.probeNormal = {0.0F, 1.0F, 0.0F};
+    updateEditorGhost(editor, yaw);
+    return;
+  }
+  if (collisionSurfaces.empty()) {
+    editor.cursorWorldMeters = defaultEditorCursorWorld(session, yaw);
+    clearEditorProbe(editor, "editor_probe_empty_surface_set");
+    updateEditorGhost(editor, yaw);
+    return;
+  }
+  const iggy3d::Vec3 eye = editorCameraEyeWorld(session, crouched);
+  const float cosPitch = std::cos(pitch);
+  const iggy3d::Vec3 forward{std::sin(yaw) * cosPitch, std::sin(pitch),
+                             -std::cos(yaw) * cosPitch};
+  const iggy3d::Vec3 rayEnd = eye + forward * 24.0F;
+  const iggy3d::CollisionQueryResult hit =
+      iggy3d::querySegment(collisionSurfaces, eye, rayEnd, iggy3d::CollisionQueryKind::All);
+  editor.probeAvailable = true;
+  editor.probeHit = hit.status == iggy3d::CollisionQueryStatus::Hit;
+  editor.probeStatus = hit.reasonCode;
+  if (editor.probeHit) {
+    editor.probeSurfaceId = hit.surfaceId.empty() ? "none" : hit.surfaceId;
+    editor.probeSurfaceRole = std::string(iggy3d::collisionSurfaceRoleName(hit.role));
+    editor.probeDistanceMeters = hit.distanceMeters;
+    editor.probePointMeters = hit.pointMeters;
+    editor.probeNormal = hit.normal;
+    editor.cursorWorldMeters = placementCursorFromProbe(hit, collisionSurfaces);
+    editor.placementValid = editorToolUsesPlacement(editor.tool) || editorToolUsesSelection(editor.tool);
+  } else {
+    editor.probeSurfaceId = "none";
+    editor.probeSurfaceRole = "none";
+    editor.probeDistanceMeters = 0.0F;
+    editor.probePointMeters = {};
+    editor.probeNormal = {0.0F, 1.0F, 0.0F};
+    editor.cursorWorldMeters = defaultEditorCursorWorld(session, yaw);
+    editor.placementValid = false;
+  }
+  updateEditorGhost(editor, yaw);
 }
 
 iggy3d::EditableRoomSemantics floorSemanticsForPreset(EditorPreset preset) {
@@ -2337,6 +2568,28 @@ void updateEditorReceiptFields(PlayableReceiptFields& fields,
   fields.editorCursorX = debugFloat(editor.cursorWorldMeters.x);
   fields.editorCursorY = debugFloat(editor.cursorWorldMeters.y);
   fields.editorCursorZ = debugFloat(editor.cursorWorldMeters.z);
+  fields.editorProbeAvailable = editor.probeAvailable;
+  fields.editorProbeHit = editor.probeHit;
+  fields.editorPlacementValid = editor.placementValid;
+  fields.editorProbeStatus = editor.probeStatus;
+  fields.editorProbeSurfaceId = editor.probeSurfaceId;
+  fields.editorProbeSurfaceRole = editor.probeSurfaceRole;
+  fields.editorProbeDistanceMeters = debugFloat(editor.probeDistanceMeters);
+  fields.editorProbeX = debugFloat(editor.probePointMeters.x);
+  fields.editorProbeY = debugFloat(editor.probePointMeters.y);
+  fields.editorProbeZ = debugFloat(editor.probePointMeters.z);
+  fields.editorProbeNormalX = debugFloat(editor.probeNormal.x);
+  fields.editorProbeNormalY = debugFloat(editor.probeNormal.y);
+  fields.editorProbeNormalZ = debugFloat(editor.probeNormal.z);
+  fields.editorGhostVisible = editor.ghostVisible;
+  fields.editorGhostRole = editor.ghostRole;
+  fields.editorGhostX = debugFloat(editor.ghostPositionMeters.x);
+  fields.editorGhostY = debugFloat(editor.ghostPositionMeters.y);
+  fields.editorGhostZ = debugFloat(editor.ghostPositionMeters.z);
+  fields.editorGhostSizeX = debugFloat(editor.ghostSizeMeters.x);
+  fields.editorGhostSizeY = debugFloat(editor.ghostSizeMeters.y);
+  fields.editorGhostSizeZ = debugFloat(editor.ghostSizeMeters.z);
+  fields.editorSelectionSource = editor.selectionSource;
   fields.editorFloorCount = editor.session.document().floors.size();
   fields.editorWallCount = editor.session.document().walls.size();
   fields.editorRuntimeStaticMeshCount = editor.runtimeStaticMeshCount;
@@ -2385,9 +2638,19 @@ void executeEditorApply(EditorModeState& editor,
       editorLocalFromWorld(editor.cursorWorldMeters, roomWorldOffset);
   switch (editor.tool) {
     case EditorTool::Select:
-      selectNextEditorPrimitive(editor);
+      if (!selectEditorPrimitiveUnderProbe(editor)) {
+        selectNextEditorPrimitive(editor);
+        if (editor.selectedId != "none") {
+          editor.selectionSource = "cycle";
+        }
+      }
       break;
     case EditorTool::PlaceFloor: {
+      if (!editor.placementValid) {
+        editor.lastCommand = "add_floor";
+        editor.lastStatus = "room_edit_placement_invalid";
+        break;
+      }
       iggy3d::RoomEditResult result =
           editor.session.submit(iggy3d::addFloorCommand(makeEditorFloor(editor, localCursor)));
       recordEditorCommandResult(editor, "add_floor", result);
@@ -2397,6 +2660,11 @@ void executeEditorApply(EditorModeState& editor,
       break;
     }
     case EditorTool::PlaceWall: {
+      if (!editor.placementValid) {
+        editor.lastCommand = "add_wall";
+        editor.lastStatus = "room_edit_placement_invalid";
+        break;
+      }
       iggy3d::RoomEditResult result = editor.session.submit(
           iggy3d::addWallCommand(makeEditorWall(editor, localCursor, yaw)));
       recordEditorCommandResult(editor, "add_wall", result);
@@ -2406,6 +2674,7 @@ void executeEditorApply(EditorModeState& editor,
       break;
     }
     case EditorTool::Semantics: {
+      selectEditorPrimitiveUnderProbe(editor);
       const iggy3d::EditableRoomDocument& document = editor.session.document();
       iggy3d::RoomEditResult result;
       if (iggy3d::findEditableFloor(document, editor.selectedId) != nullptr) {
@@ -2423,6 +2692,7 @@ void executeEditorApply(EditorModeState& editor,
       break;
     }
     case EditorTool::Delete: {
+      selectEditorPrimitiveUnderProbe(editor);
       iggy3d::RoomEditResult result;
       const iggy3d::EditableRoomDocument& document = editor.session.document();
       if (iggy3d::findEditableFloor(document, editor.selectedId) != nullptr) {
@@ -2491,6 +2761,11 @@ void appendEditorDebugHudLines(iggy3d::DebugProjectionResult& debug,
   debug.runtimeDebugHudLines.push_back("CUR " + debugFloat(editor.cursorWorldMeters.x) + " " +
                                        debugFloat(editor.cursorWorldMeters.y) + " " +
                                        debugFloat(editor.cursorWorldMeters.z));
+  debug.runtimeDebugHudLines.push_back("PROBE " + editor.probeStatus + " " +
+                                       editor.probeSurfaceId + " " +
+                                       editor.probeSurfaceRole);
+  debug.runtimeDebugHudLines.push_back("GHOST " + editor.ghostRole + " valid=" +
+                                       std::string(editor.placementValid ? "true" : "false"));
   debug.runtimeDebugHudLines.push_back("SEL " + editor.selectedId);
   debug.runtimeDebugHudLines.push_back("LAST " + editor.lastCommand + " " +
                                        editor.lastStatus);
@@ -3334,6 +3609,37 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
   iggy3d::appendReceiptField(receipt, "editor_cursor_x", fields.editorCursorX);
   iggy3d::appendReceiptField(receipt, "editor_cursor_y", fields.editorCursorY);
   iggy3d::appendReceiptField(receipt, "editor_cursor_z", fields.editorCursorZ);
+  iggy3d::appendReceiptField(receipt, "editor_probe_available",
+                             fields.editorProbeAvailable);
+  iggy3d::appendReceiptField(receipt, "editor_probe_hit", fields.editorProbeHit);
+  iggy3d::appendReceiptField(receipt, "editor_placement_valid",
+                             fields.editorPlacementValid);
+  iggy3d::appendReceiptField(receipt, "editor_probe_status", fields.editorProbeStatus);
+  iggy3d::appendReceiptField(receipt, "editor_probe_surface_id",
+                             fields.editorProbeSurfaceId);
+  iggy3d::appendReceiptField(receipt, "editor_probe_surface_role",
+                             fields.editorProbeSurfaceRole);
+  iggy3d::appendReceiptField(receipt, "editor_probe_distance_meters",
+                             fields.editorProbeDistanceMeters);
+  iggy3d::appendReceiptField(receipt, "editor_probe_x", fields.editorProbeX);
+  iggy3d::appendReceiptField(receipt, "editor_probe_y", fields.editorProbeY);
+  iggy3d::appendReceiptField(receipt, "editor_probe_z", fields.editorProbeZ);
+  iggy3d::appendReceiptField(receipt, "editor_probe_normal_x",
+                             fields.editorProbeNormalX);
+  iggy3d::appendReceiptField(receipt, "editor_probe_normal_y",
+                             fields.editorProbeNormalY);
+  iggy3d::appendReceiptField(receipt, "editor_probe_normal_z",
+                             fields.editorProbeNormalZ);
+  iggy3d::appendReceiptField(receipt, "editor_ghost_visible", fields.editorGhostVisible);
+  iggy3d::appendReceiptField(receipt, "editor_ghost_role", fields.editorGhostRole);
+  iggy3d::appendReceiptField(receipt, "editor_ghost_x", fields.editorGhostX);
+  iggy3d::appendReceiptField(receipt, "editor_ghost_y", fields.editorGhostY);
+  iggy3d::appendReceiptField(receipt, "editor_ghost_z", fields.editorGhostZ);
+  iggy3d::appendReceiptField(receipt, "editor_ghost_size_x", fields.editorGhostSizeX);
+  iggy3d::appendReceiptField(receipt, "editor_ghost_size_y", fields.editorGhostSizeY);
+  iggy3d::appendReceiptField(receipt, "editor_ghost_size_z", fields.editorGhostSizeZ);
+  iggy3d::appendReceiptField(receipt, "editor_selection_source",
+                             fields.editorSelectionSource);
   iggy3d::appendReceiptField(receipt, "editor_floor_count", fields.editorFloorCount);
   iggy3d::appendReceiptField(receipt, "editor_wall_count", fields.editorWallCount);
   iggy3d::appendReceiptField(receipt, "editor_runtime_static_mesh_count",
@@ -4258,9 +4564,6 @@ int main(int argc, const char* const* argv) {
       if (devMenu.enabled && devMenu.open && pressedEdge(devNextRequested, devMenuNextDown)) {
         devMenu.selected = nextDevMechanic(devMenu.selected);
       }
-      if (editor.enabled && editor.open && !codexControl.editorCursorSet) {
-        editor.cursorWorldMeters = defaultEditorCursorWorld(session, yaw);
-      }
       if (editor.enabled && editor.open &&
           pressedEdge(editorPreviousRequested, editorPreviousDown)) {
         editor.tool = previousEditorTool(editor.tool);
@@ -4271,6 +4574,8 @@ int main(int argc, const char* const* argv) {
       if (editor.enabled && editor.open && pressedEdge(editorPresetRequested, editorPresetDown)) {
         editor.preset = nextEditorPreset(editor.preset);
       }
+      updateEditorProbe(editor, session, collisionSurfaces, yaw, pitch, crouchHeld,
+                        codexControl.editorCursorSet);
       const bool editorApplyThisFrame =
           pressedEdge(editorApplyRequested, editorApplyDown) || codexEditorApplyThisFrame;
       const bool editorDeleteThisFrame =
@@ -4298,6 +4603,8 @@ int main(int argc, const char* const* argv) {
           playableFields.editorRedoRequested = true;
           executeEditorRedo(editor, baseRoom, runtimeRoom, collisionSurfaces, roomWorldOffset);
         }
+        updateEditorProbe(editor, session, collisionSurfaces, yaw, pitch, crouchHeld,
+                          codexControl.editorCursorSet);
         movement = {};
         actionRequested = false;
         attackRequested = false;
@@ -4613,6 +4920,7 @@ int main(int argc, const char* const* argv) {
 #endif
     iggy3d::SceneProjectionResult scene = iggy3d::buildSceneProjection(session.state());
     attachRoomProjection(package, activeRoom, scene);
+    attachEditorGhostProjection(editor, scene);
     attachAbilityProjectileProjection(session.state().transient.abilityRuntime.arcaneBolt, scene);
     iggy3d::DebugProjectionResult debug = iggy3d::buildDebugProjection(session.state());
     iggy3d::RuntimeDebugSnapshot debugSnapshot;

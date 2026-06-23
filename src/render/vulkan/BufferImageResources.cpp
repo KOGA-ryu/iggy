@@ -1,6 +1,7 @@
 #include "render/vulkan/BufferImageResources.hpp"
 
 #include <algorithm>
+#include <cstring>
 #include <iterator>
 #include <limits>
 
@@ -126,6 +127,15 @@ bool uploadBuffer(VulkanMemoryAllocator& allocator,
 #endif
 
 Vec3 colorForRoomRole(const std::string& role) {
+  if (role == "editor_ghost_valid") {
+    return {0.20F, 0.82F, 0.48F};
+  }
+  if (role == "editor_ghost_invalid") {
+    return {0.92F, 0.24F, 0.20F};
+  }
+  if (role == "editor_ghost_select") {
+    return {0.95F, 0.86F, 0.28F};
+  }
   if (role == "floor") {
     return {0.30F, 0.32F, 0.34F};
   }
@@ -154,6 +164,43 @@ Vec3 colorForRoomRole(const std::string& role) {
     return {0.34F, 0.62F, 0.88F};
   }
   return {0.36F, 0.42F, 0.48F};
+}
+
+void hashByte(std::uint64_t& hash, std::uint8_t value) {
+  hash ^= value;
+  hash *= 1099511628211ULL;
+}
+
+void hashString(std::uint64_t& hash, const std::string& value) {
+  for (const char character : value) {
+    hashByte(hash, static_cast<std::uint8_t>(character));
+  }
+  hashByte(hash, 0U);
+}
+
+void hashFloat(std::uint64_t& hash, float value) {
+  std::uint32_t bits = 0U;
+  static_assert(sizeof(bits) == sizeof(value));
+  std::memcpy(&bits, &value, sizeof(bits));
+  for (std::uint32_t shift = 0U; shift < 32U; shift += 8U) {
+    hashByte(hash, static_cast<std::uint8_t>((bits >> shift) & 0xFFU));
+  }
+}
+
+std::uint64_t roomGeometrySignature(const SceneRoomProjection& room) {
+  std::uint64_t hash = 1469598103934665603ULL;
+  hashString(hash, room.assetId);
+  for (const SceneRoomMeshItem& mesh : room.meshes) {
+    hashString(hash, mesh.id);
+    hashString(hash, mesh.role);
+    hashFloat(hash, mesh.position.x);
+    hashFloat(hash, mesh.position.y);
+    hashFloat(hash, mesh.position.z);
+    hashFloat(hash, mesh.size.x);
+    hashFloat(hash, mesh.size.y);
+    hashFloat(hash, mesh.size.z);
+  }
+  return hash;
 }
 
 void appendTriangle(std::vector<std::uint16_t>& indices,
@@ -274,6 +321,7 @@ BufferImageResourcesResult BufferImageResources::createFirstRoomResources(
   geometry_.indexedDraws = {{0U, geometry_.indexCount}};
   geometry_.sourceRoomAssetId.clear();
   geometry_.sourceRoomStaticMeshCount = 0;
+  geometry_.sourceRoomGeometrySignature = 0;
   geometry_.packageRoomGeometry = false;
   geometry_.indexedDraw = true;
 
@@ -340,8 +388,10 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
     result.receipt = baseReceipt("fail", result.reason.code);
     return result;
   }
+  const std::uint64_t geometrySignature = roomGeometrySignature(room);
   if (geometry_.packageRoomGeometry && geometry_.sourceRoomAssetId == room.assetId &&
-      geometry_.sourceRoomStaticMeshCount == room.meshes.size() && geometry_.indexCount > 0U &&
+      geometry_.sourceRoomStaticMeshCount == room.meshes.size() &&
+      geometry_.sourceRoomGeometrySignature == geometrySignature && geometry_.indexCount > 0U &&
       geometry_.vertexBuffer.allocation.buffer != VK_NULL_HANDLE &&
       geometry_.indexBuffer.allocation.buffer != VK_NULL_HANDLE) {
     result.outcome = RenderOutcome::Ok;
@@ -402,6 +452,7 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
   replacement.indexedDraws = std::move(draws);
   replacement.sourceRoomAssetId = room.assetId;
   replacement.sourceRoomStaticMeshCount = room.meshes.size();
+  replacement.sourceRoomGeometrySignature = geometrySignature;
   replacement.packageRoomGeometry = true;
   replacement.indexedDraw = true;
   destroyGeometryBuffers();
