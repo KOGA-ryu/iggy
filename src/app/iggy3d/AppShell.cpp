@@ -13,6 +13,7 @@
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/ProductMenuTransitions.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
@@ -167,8 +168,7 @@ void launchProductNewWorld(const ProductAppOptions& options,
                            ProductAppWindowState& window) {
   window.launchAction = "create_and_enter";
   if (createProductSession(options, activeSession, window)) {
-    enterFrontendGameplay(frontend, FrontendAction::CreateAndEnter);
-    frontend.status = "gameplay_active";
+    enterProductGameplayTransition(frontend, window, FrontendAction::CreateAndEnter);
   } else {
     frontend.status = "opening_menu_new_world_failed";
   }
@@ -326,6 +326,28 @@ FrontendAction nextPauseSelection(FrontendAction current, InputAction action) {
   return actions[index];
 }
 
+MenuOwner productInputOwnerFor(const FrontendState& frontend,
+                               const ProductAppWindowState& window) {
+  if (frontend.screen == FrontendScreen::Starter) {
+    return MenuOwner::Starter;
+  }
+  if (frontend.screen == FrontendScreen::Pause) {
+    return MenuOwner::Pause;
+  }
+  if (frontend.screen == FrontendScreen::Settings ||
+      frontend.childScreen == FrontendScreen::Settings) {
+    return MenuOwner::Settings;
+  }
+  if (frontend.screen == FrontendScreen::DevOverlay ||
+      frontend.childScreen == FrontendScreen::StarterDevTools) {
+    return MenuOwner::DevTools;
+  }
+  if (frontend.screen == FrontendScreen::Gameplay && window.gameplayActive) {
+    return MenuOwner::Gameplay;
+  }
+  return MenuOwner::None;
+}
+
 void applyOpeningMenuAction(FrontendState& frontend,
                             const ProductSaveBridgeResult& saves,
                             const ProductAppOptions& options,
@@ -336,12 +358,21 @@ void applyOpeningMenuAction(FrontendState& frontend,
                             bool& closeRequested) {
   if (action == InputAction::SystemPause) {
     if (frontend.screen == FrontendScreen::Gameplay && window.gameplayActive) {
-      openFrontendPause(frontend, FrontendAction::Resume);
+      openProductPauseTransition(frontend, window, FrontendAction::Resume);
       frontend.status = "pause_opened_from_gameplay";
       return;
     }
     if (frontend.screen == FrontendScreen::Pause) {
-      closeFrontendOverlayToGameplay(frontend);
+      closeProductOverlayToGameplayTransition(frontend, window);
+      return;
+    }
+    if (frontend.screen == FrontendScreen::DevOverlay) {
+      closeProductOverlayToGameplayTransition(frontend, window);
+      return;
+    }
+    if (frontend.screen == FrontendScreen::Settings &&
+        frontend.childScreen == FrontendScreen::Pause) {
+      openProductPauseTransition(frontend, window, FrontendAction::Settings);
       return;
     }
     frontend.status = "opening_menu_pause_back_requested";
@@ -356,37 +387,27 @@ void applyOpeningMenuAction(FrontendState& frontend,
       return;
     }
     if (action == InputAction::MenuBack) {
-      closeFrontendOverlayToGameplay(frontend);
+      closeProductOverlayToGameplayTransition(frontend, window);
       return;
     }
     if (action != InputAction::MenuConfirm) {
       return;
     }
     if (frontend.selectedAction == FrontendAction::Resume) {
-      closeFrontendOverlayToGameplay(frontend);
+      closeProductOverlayToGameplayTransition(frontend, window);
       return;
     }
     if (frontend.selectedAction == FrontendAction::Settings) {
-      frontend.screen = FrontendScreen::Settings;
-      frontend.childScreen = FrontendScreen::Pause;
-      settingsTab = FrontendSettingsTab::Input;
-      frontend.status = "pause_settings_selected";
+      openProductPauseSettingsTransition(frontend, window, settingsTab);
       return;
     }
     if (frontend.selectedAction == FrontendAction::DevTools) {
-      openFrontendDevOverlay(frontend, FrontendDevToolsCategory::Session);
-      frontend.status = "pause_dev_tools_selected";
+      openProductPauseDevToolsTransition(frontend, window,
+                                         FrontendDevToolsCategory::Session);
       return;
     }
     if (frontend.selectedAction == FrontendAction::ReturnToTitle) {
-      window.gameplayActive = false;
-      window.runtimeSessionCreated = false;
-      frontend.screen = FrontendScreen::Starter;
-      frontend.childScreen = FrontendScreen::Gameplay;
-      frontend.selectedAction = FrontendAction::NewWorld;
-      frontend.returnToTitleRequested = true;
-      frontend.inputOwned = true;
-      frontend.status = "returned_to_title";
+      returnProductToTitleTransition(frontend, window);
       activeSession.reset();
       return;
     }
@@ -397,6 +418,22 @@ void applyOpeningMenuAction(FrontendState& frontend,
     }
     frontend.status = "pause_action_selected";
     return;
+  }
+
+  if (frontend.screen == FrontendScreen::DevOverlay) {
+    if (action == InputAction::MenuUp || action == InputAction::MenuDown) {
+      frontend.devToolsCategory = nextDevToolsSelection(frontend.devToolsCategory, action);
+      frontend.status = "dev_overlay_selection_changed";
+      return;
+    }
+    if (action == InputAction::MenuBack) {
+      closeProductOverlayToGameplayTransition(frontend, window);
+      return;
+    }
+    if (action == InputAction::MenuConfirm) {
+      frontend.status = "dev_overlay_category_selected";
+      return;
+    }
   }
 
   if (frontend.childScreen == FrontendScreen::StarterDevTools) {
@@ -426,7 +463,7 @@ void applyOpeningMenuAction(FrontendState& frontend,
     if (action == InputAction::MenuBack) {
       if (frontend.screen == FrontendScreen::Settings &&
           frontend.childScreen == FrontendScreen::Pause) {
-        openFrontendPause(frontend, FrontendAction::Settings);
+        openProductPauseTransition(frontend, window, FrontendAction::Settings);
       } else {
         frontend.childScreen = FrontendScreen::Gameplay;
       }
@@ -535,9 +572,8 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
                                            const FrontendSettings& settings,
                                            const ProductSaveBridgeResult& saves) {
   window.requested = options.windowMode == ProductWindowMode::Window;
-  window.inputOwner =
-      frontend.screen == FrontendScreen::Starter ? MenuOwner::Starter : MenuOwner::None;
-  window.gameplayInputSuppressed = frontend.screen == FrontendScreen::Starter;
+  window.inputOwner = productInputOwnerFor(frontend, window);
+  window.gameplayInputSuppressed = frontendBlocksGameplayInput(frontend);
   if (!window.requested) {
     return window;
   }
@@ -754,12 +790,7 @@ int runProductApp(int argc, char** argv) {
   ProductAppWindowState window;
 
   FrontendState frontend;
-  completeFrontendBoot(frontend, true, true);
-  frontend.screen = FrontendScreen::Starter;
-  frontend.selectedAction = saves.slots.compatibleCount > 0 ? FrontendAction::Continue
-                                                            : FrontendAction::NewWorld;
-  frontend.status = "opening_menu_ready";
-  frontend.inputOwned = true;
+  initializeProductStarterTransition(frontend, window, saves.slots.compatibleCount > 0);
 
   if (options.autoNewWorld) {
     launchProductNewWorld(options, frontend, activeSession, window);

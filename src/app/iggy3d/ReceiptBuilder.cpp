@@ -108,6 +108,16 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "gameplay_last_rejection", window.gameplayLastRejection);
   appendReceiptField(receipt, "interaction_executed", window.interactionExecuted);
   appendReceiptField(receipt, "attack_executed", window.attackExecuted);
+  appendReceiptField(receipt, "product_transition_last_action",
+                     window.productTransitionLastAction);
+  appendReceiptField(receipt, "product_transition_status",
+                     window.productTransitionStatus);
+  appendReceiptField(receipt, "product_transition_returned_to_gameplay",
+                     window.productTransitionReturnedToGameplay);
+  appendReceiptField(receipt, "product_transition_returned_to_title",
+                     window.productTransitionReturnedToTitle);
+  appendReceiptField(receipt, "product_transition_session_preserved",
+                     window.productTransitionSessionPreserved);
   appendReceiptField(receipt, "camera_controller", window.viewport.cameraController);
   appendReceiptField(receipt, "camera_mode", window.viewport.cameraMode);
   appendReceiptField(receipt, "camera_controller_active",

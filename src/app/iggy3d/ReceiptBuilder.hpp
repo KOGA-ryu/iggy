@@ -48,6 +48,11 @@ struct ProductAppWindowState {
   bool targetDiscovered = false;
   bool interactionExecuted = false;
   bool attackExecuted = false;
+  std::string productTransitionLastAction = "none";
+  std::string productTransitionStatus = "not_requested";
+  bool productTransitionReturnedToGameplay = false;
+  bool productTransitionReturnedToTitle = false;
+  bool productTransitionSessionPreserved = false;
   std::string gameplayInputSource = "none";
   std::string gameplayCommandKind = "none";
   std::string gameplayCommandStatus = "not_requested";

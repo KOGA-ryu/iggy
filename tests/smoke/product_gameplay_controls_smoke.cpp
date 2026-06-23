@@ -144,6 +144,10 @@ int main() {
       hasField(fields, "product_feedback_rejection_reason", "none") &&
       hasField(fields, "product_feedback_attack_visible", "true") &&
       hasField(fields, "product_feedback_interaction_visible", "false") &&
+      hasField(fields, "product_transition_last_action", "launch_gameplay") &&
+      hasField(fields, "product_transition_status", "gameplay_active") &&
+      hasField(fields, "product_transition_returned_to_gameplay", "true") &&
+      hasField(fields, "product_transition_session_preserved", "true") &&
       hasField(fields, "renderer_mutated_runtime", "false") &&
       positiveIntegerField(fields, "scene_item_count") &&
       positiveIntegerField(fields, "debug_item_count") &&

@@ -71,6 +71,10 @@ iggy3d_add_unit_test(product_gameplay_feedback_tests tests/unit/product_gameplay
 set_tests_properties(product_gameplay_feedback_tests PROPERTIES
   LABELS "unit;app;product;feedback;iggy3d")
 
+iggy3d_add_unit_test(product_menu_transitions_tests tests/unit/product_menu_transitions_tests.cpp)
+set_tests_properties(product_menu_transitions_tests PROPERTIES
+  LABELS "unit;app;product;frontend;transitions;iggy3d")
+
 iggy3d_add_unit_test(save_slot_model_tests tests/unit/save_slot_model_tests.cpp)
 set_tests_properties(save_slot_model_tests PROPERTIES LABELS "unit;app;frontend;save;iggy3d")
 
@@ -411,6 +415,21 @@ if(TARGET iggy3d_visual_demo)
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     SKIP_RETURN_CODE 77
     LABELS "smoke;product;gameplay;controls;frontend;no_window;iggy3d")
+
+  add_executable(product_menu_transition_smoke
+    tests/smoke/product_menu_transition_smoke.cpp)
+  target_link_libraries(product_menu_transition_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(product_menu_transition_smoke)
+  target_compile_definitions(product_menu_transition_smoke
+    PRIVATE
+      IGGY3D_PRODUCT_APP_PATH="$<TARGET_FILE:iggy3d_app>")
+  add_dependencies(product_menu_transition_smoke iggy3d_app)
+  add_test(NAME product_menu_transition_smoke
+           COMMAND "$<TARGET_FILE:product_menu_transition_smoke>")
+  set_tests_properties(product_menu_transition_smoke PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    SKIP_RETURN_CODE 77
+    LABELS "smoke;product;frontend;transitions;no_window;iggy3d")
 endif()
 
 function(iggy3d_add_render_packet4_unit_test test_name source_file)
