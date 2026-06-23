@@ -9,6 +9,7 @@
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
+#include "app/input/ActionState.hpp"
 #include "app/input/InputRouter.hpp"
 #include "app/input/GamepadInput.hpp"
 #include "app/input/KeyboardInput.hpp"
@@ -230,12 +231,15 @@ void applyOpeningMenuAction(FrontendState& frontend,
 void routeOpeningMenuInput(FrontendState& frontend,
                            const ProductSaveBridgeResult& saves,
                            FrontendSettingsTab& settingsTab,
+                           ActionState& actionState,
                            InputAction inputAction,
                            ProductAppWindowState& window,
                            bool& closeRequested) {
   if (inputAction == InputAction::None) {
     return;
   }
+
+  recordAction(actionState, inputAction, true, true, false, 1.0F);
 
   InputRoutingContext routingContext;
   routingContext.owners.starter = frontend.screen == FrontendScreen::Starter;
@@ -300,17 +304,19 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
   bool closeRequested = false;
   FrontendSettingsTab settingsTab = FrontendSettingsTab::Input;
   while (sdlWindow.isOpen()) {
+    ActionState actionState;
     sdlWindow.pollEvents();
     ++window.eventPollCount;
     window.drawable = sdlWindow.isDrawable();
 
-    routeOpeningMenuInput(frontend, saves, settingsTab, pollKeyboardMenuAction(keyboard), window,
-                          closeRequested);
+    routeOpeningMenuInput(frontend, saves, settingsTab, actionState,
+                          pollKeyboardMenuAction(keyboard), window, closeRequested);
 
     const InputAction gamepadAction = pollGamepadMenuAction(gamepad);
     if (gamepadAction != InputAction::None) {
       window.gamepadMenuSelectUsed = true;
-      routeOpeningMenuInput(frontend, saves, settingsTab, gamepadAction, window, closeRequested);
+      routeOpeningMenuInput(frontend, saves, settingsTab, actionState, gamepadAction, window,
+                            closeRequested);
     }
 
     const MouseClick click = pollMouseClick(mouse);
@@ -320,7 +326,7 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
         window.mouseMenuSelectUsed = true;
         if (hit.area == OpeningMenuHitArea::StarterAction) {
         frontend.selectedAction = hit.action;
-          routeOpeningMenuInput(frontend, saves, settingsTab, mouseClickAction(click),
+          routeOpeningMenuInput(frontend, saves, settingsTab, actionState, mouseClickAction(click),
                                 window, closeRequested);
         } else if (hit.area == OpeningMenuHitArea::DevToolsCategory) {
           frontend.devToolsCategory = hit.devToolsCategory;
