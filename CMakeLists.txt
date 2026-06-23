@@ -24,6 +24,12 @@ target_sources(iggy3d
     src/app/AppConfig.cpp
     src/app/CliParser.cpp
     src/app/PackageRuntimeLookup.cpp
+    src/app/frontend/FrontendState.cpp
+    src/app/frontend/StarterScreen.cpp
+    src/app/frontend/SaveSlotModel.cpp
+    src/app/frontend/SettingsMenu.cpp
+    src/app/frontend/DevToolsMenu.cpp
+    src/app/frontend/FrontendReceipt.cpp
     src/app/input/GamepadSystemControls.cpp
     src/app/platform/ExecutablePath.cpp
     src/content/PackageLoader.cpp

@@ -77,6 +77,49 @@ struct SaveWorldSection {
   std::vector<SaveEntityRecord> entities;
 };
 
+struct SaveAuthoredRoomSemanticsRecord {
+  std::string materialId;
+  std::vector<std::string> traversalTags;
+  std::vector<std::string> gameplayTags;
+  bool walkable = false;
+  bool blocksActor = false;
+  bool blocksProjectile = false;
+};
+
+struct SaveAuthoredRoomFloorRecord {
+  std::string id;
+  std::int32_t storyIndex = 0;
+  Vec3 centerMeters;
+  Vec3 sizeMeters = {1.0F, 0.10F, 1.0F};
+  SaveAuthoredRoomSemanticsRecord semantics;
+  bool locked = false;
+  bool hidden = false;
+};
+
+struct SaveAuthoredRoomWallRecord {
+  std::string id;
+  std::int32_t storyIndex = 0;
+  Vec3 startMeters;
+  Vec3 endMeters;
+  float bottomY = 0.0F;
+  float heightMeters = 2.0F;
+  float thicknessMeters = 0.20F;
+  SaveAuthoredRoomSemanticsRecord semantics;
+  bool locked = false;
+  bool hidden = false;
+};
+
+struct SaveAuthoredRoomSection {
+  bool present = false;
+  std::string id = "editable_room";
+  std::uint32_t version = 1;
+  std::string source = "iggy3d.editor";
+  std::string sourceFile = "editable_room";
+  std::string sourceSubset = "authoring";
+  std::vector<SaveAuthoredRoomFloorRecord> floors;
+  std::vector<SaveAuthoredRoomWallRecord> walls;
+};
+
 struct SavePlayerSlotRecord {
   PlayerSlotId slotId = kInvalidPlayerSlotId;
   PlayerSlotKind kind = PlayerSlotKind::Unknown;
@@ -201,6 +244,7 @@ struct SaveEnvelope {
   SaveEnvelopeMetadata metadata;
   SaveSessionSection session;
   SaveWorldSection world;
+  SaveAuthoredRoomSection authoredRoom;
   SavePlayerSection players;
   SaveClockSection clock;
   SaveCameraSection camera;

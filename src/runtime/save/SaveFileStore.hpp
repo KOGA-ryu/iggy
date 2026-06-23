@@ -26,6 +26,7 @@ struct SaveFileWriteRequest {
   std::filesystem::path root;
   std::string idHint;
   const SessionState* state = nullptr;
+  const SaveAuthoredRoomSection* authoredRoom = nullptr;
 };
 
 struct SaveFileWriteResult {

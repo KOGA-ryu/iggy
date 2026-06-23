@@ -286,6 +286,57 @@ bool encodedSaveRoundtripPreservesRuntimeConfig() {
          expect(loaded.stateHash() == session.stateHash(), "config loaded hash");
 }
 
+bool authoredRoomSectionRoundTripsThroughSaveCodec() {
+  iggy3d::Session session = makeSession();
+  iggy3d::SaveStateResult saved = iggy3d::saveSessionState(session.state());
+  saved.envelope.authoredRoom.present = true;
+  saved.envelope.authoredRoom.id = "movement_test_room";
+  saved.envelope.authoredRoom.sourceFile = "save_file";
+  iggy3d::SaveAuthoredRoomFloorRecord floor;
+  floor.id = "edit_floor_7";
+  floor.storyIndex = 1;
+  floor.centerMeters = {2.0F, 0.0F, 3.0F};
+  floor.sizeMeters = {4.0F, 0.1F, 5.0F};
+  floor.semantics.materialId = "debug_floor";
+  floor.semantics.walkable = true;
+  floor.semantics.traversalTags = {"walkable"};
+  saved.envelope.authoredRoom.floors.push_back(floor);
+  iggy3d::SaveAuthoredRoomWallRecord wall;
+  wall.id = "edit_wall_3";
+  wall.startMeters = {-1.0F, 0.0F, 1.0F};
+  wall.endMeters = {1.0F, 0.0F, 1.0F};
+  wall.heightMeters = 1.5F;
+  wall.thicknessMeters = 0.2F;
+  wall.semantics.materialId = "debug_wall";
+  wall.semantics.blocksActor = true;
+  wall.semantics.blocksProjectile = true;
+  wall.semantics.traversalTags = {"clamber"};
+  wall.semantics.gameplayTags = {"training"};
+  saved.envelope.authoredRoom.walls.push_back(wall);
+
+  const iggy3d::SaveEncodeResult encoded = iggy3d::encodeSaveEnvelope(saved.envelope);
+  const iggy3d::SaveDecodeResult decoded = iggy3d::decodeSaveEnvelope(encoded.encodedText);
+  const iggy3d::SaveStateResult oldStyle = iggy3d::saveSessionStateEncoded(session.state());
+  const iggy3d::SaveDecodeResult oldDecoded =
+      iggy3d::decodeSaveEnvelope(oldStyle.encodedSaveText);
+
+  return expect(encoded.status == iggy3d::SaveCodecStatus::Ok, "authored encode status") &&
+         expect(encoded.encodedText.find("authoredRoom.present=true\n") != std::string::npos,
+                "authored present encoded") &&
+         expect(encoded.encodedText.find("authoredRoom.floor.0.id=edit_floor_7\n") !=
+                    std::string::npos,
+                "authored floor encoded") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok, "authored decode status") &&
+         expect(decoded.envelope.authoredRoom.present, "authored present decoded") &&
+         expect(decoded.envelope.authoredRoom.floors.size() == 1U, "authored floor count") &&
+         expect(decoded.envelope.authoredRoom.floors[0].semantics.walkable,
+                "authored floor semantics") &&
+         expect(decoded.envelope.authoredRoom.walls.size() == 1U, "authored wall count") &&
+         expect(decoded.envelope.authoredRoom.walls[0].semantics.traversalTags[0] == "clamber",
+                "authored wall traversal tag") &&
+         expect(!oldDecoded.envelope.authoredRoom.present, "old saves omit authored room");
+}
+
 bool postLoadCommandIdDoesNotCollide() {
   iggy3d::Session source = completedCurrentLoopSession();
   const iggy3d::SaveStateResult saved = iggy3d::saveSessionStateEncoded(source.state());
@@ -407,6 +458,7 @@ int main() {
   ok = envelopeMappingPreservesDurableState() && ok;
   ok = encodedSaveRoundtripLoadsFreshSession() && ok;
   ok = encodedSaveRoundtripPreservesRuntimeConfig() && ok;
+  ok = authoredRoomSectionRoundTripsThroughSaveCodec() && ok;
   ok = postLoadCommandIdDoesNotCollide() && ok;
   ok = invalidCursorIsRejected() && ok;
   ok = duplicateCommandIdIsRejectedByCommandLogRestore() && ok;

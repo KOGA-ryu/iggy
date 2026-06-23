@@ -604,6 +604,7 @@ public:
     writeMetadata();
     writeSession();
     writeWorld();
+    writeAuthoredRoom();
     writePlayers();
     writeClock();
     writeCamera();
@@ -688,6 +689,61 @@ private:
       lineString(p + "interactionObjectiveId", entity.interactionObjectiveId);
       lineBool(p + "interactionRepeatable", entity.interactionRepeatable);
       lineBool(p + "interactionDeactivateTargetOnSuccess", entity.interactionDeactivateTargetOnSuccess);
+    }
+  }
+
+  void writeAuthoredRoomSemantics(const std::string& p,
+                                  const SaveAuthoredRoomSemanticsRecord& semantics) {
+    lineString(p + "materialId", semantics.materialId);
+    line(p + "traversalTag.count", unsignedText(semantics.traversalTags.size()));
+    for (std::size_t index = 0; index < semantics.traversalTags.size(); ++index) {
+      lineString(p + "traversalTag." + std::to_string(index), semantics.traversalTags[index]);
+    }
+    line(p + "gameplayTag.count", unsignedText(semantics.gameplayTags.size()));
+    for (std::size_t index = 0; index < semantics.gameplayTags.size(); ++index) {
+      lineString(p + "gameplayTag." + std::to_string(index), semantics.gameplayTags[index]);
+    }
+    lineBool(p + "walkable", semantics.walkable);
+    lineBool(p + "blocksActor", semantics.blocksActor);
+    lineBool(p + "blocksProjectile", semantics.blocksProjectile);
+  }
+
+  void writeAuthoredRoom() {
+    if (!envelope_.authoredRoom.present) {
+      return;
+    }
+    lineBool("authoredRoom.present", true);
+    lineString("authoredRoom.id", envelope_.authoredRoom.id);
+    line("authoredRoom.version", unsignedText(envelope_.authoredRoom.version));
+    lineString("authoredRoom.source", envelope_.authoredRoom.source);
+    lineString("authoredRoom.sourceFile", envelope_.authoredRoom.sourceFile);
+    lineString("authoredRoom.sourceSubset", envelope_.authoredRoom.sourceSubset);
+    line("authoredRoom.floor.count", unsignedText(envelope_.authoredRoom.floors.size()));
+    for (std::size_t index = 0; index < envelope_.authoredRoom.floors.size(); ++index) {
+      const SaveAuthoredRoomFloorRecord& floor = envelope_.authoredRoom.floors[index];
+      const std::string p = "authoredRoom.floor." + std::to_string(index) + ".";
+      lineString(p + "id", floor.id);
+      line(p + "storyIndex", std::to_string(floor.storyIndex));
+      line(p + "centerMeters", formatVec3(floor.centerMeters));
+      line(p + "sizeMeters", formatVec3(floor.sizeMeters));
+      writeAuthoredRoomSemantics(p + "semantics.", floor.semantics);
+      lineBool(p + "locked", floor.locked);
+      lineBool(p + "hidden", floor.hidden);
+    }
+    line("authoredRoom.wall.count", unsignedText(envelope_.authoredRoom.walls.size()));
+    for (std::size_t index = 0; index < envelope_.authoredRoom.walls.size(); ++index) {
+      const SaveAuthoredRoomWallRecord& wall = envelope_.authoredRoom.walls[index];
+      const std::string p = "authoredRoom.wall." + std::to_string(index) + ".";
+      lineString(p + "id", wall.id);
+      line(p + "storyIndex", std::to_string(wall.storyIndex));
+      line(p + "startMeters", formatVec3(wall.startMeters));
+      line(p + "endMeters", formatVec3(wall.endMeters));
+      line(p + "bottomY", formatFloat(wall.bottomY));
+      line(p + "heightMeters", formatFloat(wall.heightMeters));
+      line(p + "thicknessMeters", formatFloat(wall.thicknessMeters));
+      writeAuthoredRoomSemantics(p + "semantics.", wall.semantics);
+      lineBool(p + "locked", wall.locked);
+      lineBool(p + "hidden", wall.hidden);
     }
   }
 
@@ -848,6 +904,7 @@ public:
     readMetadata();
     readSession();
     readWorld();
+    readAuthoredRoom();
     readPlayers();
     readClock();
     readCamera();
@@ -1087,6 +1144,74 @@ private:
       readString(p + "interactionObjectiveId", entity.interactionObjectiveId);
       readBool(p + "interactionRepeatable", entity.interactionRepeatable);
       readBool(p + "interactionDeactivateTargetOnSuccess", entity.interactionDeactivateTargetOnSuccess);
+    }
+  }
+
+  void readStringVector(const std::string& countKey,
+                        const std::string& itemPrefix,
+                        std::vector<std::string>& out) {
+    std::uint64_t count = 0;
+    readUnsigned(countKey, count);
+    out.resize(static_cast<std::size_t>(count));
+    for (std::size_t index = 0; index < out.size(); ++index) {
+      readString(itemPrefix + std::to_string(index), out[index]);
+    }
+  }
+
+  void readAuthoredRoomSemantics(const std::string& p,
+                                 SaveAuthoredRoomSemanticsRecord& semantics) {
+    readString(p + "materialId", semantics.materialId);
+    readStringVector(p + "traversalTag.count", p + "traversalTag.",
+                     semantics.traversalTags);
+    readStringVector(p + "gameplayTag.count", p + "gameplayTag.", semantics.gameplayTags);
+    readBool(p + "walkable", semantics.walkable);
+    readBool(p + "blocksActor", semantics.blocksActor);
+    readBool(p + "blocksProjectile", semantics.blocksProjectile);
+  }
+
+  void readAuthoredRoom() {
+    if (!nextKeyIs("authoredRoom.present")) {
+      return;
+    }
+    readBool("authoredRoom.present", envelope_.authoredRoom.present);
+    if (!envelope_.authoredRoom.present) {
+      return;
+    }
+    readString("authoredRoom.id", envelope_.authoredRoom.id);
+    readUnsigned("authoredRoom.version", envelope_.authoredRoom.version);
+    readString("authoredRoom.source", envelope_.authoredRoom.source);
+    readString("authoredRoom.sourceFile", envelope_.authoredRoom.sourceFile);
+    readString("authoredRoom.sourceSubset", envelope_.authoredRoom.sourceSubset);
+    std::uint64_t floorCount = 0;
+    readUnsigned("authoredRoom.floor.count", floorCount);
+    envelope_.authoredRoom.floors.resize(static_cast<std::size_t>(floorCount));
+    for (std::size_t index = 0; index < envelope_.authoredRoom.floors.size(); ++index) {
+      SaveAuthoredRoomFloorRecord& floor = envelope_.authoredRoom.floors[index];
+      const std::string p = "authoredRoom.floor." + std::to_string(index) + ".";
+      readString(p + "id", floor.id);
+      readI32(p + "storyIndex", floor.storyIndex);
+      readVec3(p + "centerMeters", floor.centerMeters);
+      readVec3(p + "sizeMeters", floor.sizeMeters);
+      readAuthoredRoomSemantics(p + "semantics.", floor.semantics);
+      readBool(p + "locked", floor.locked);
+      readBool(p + "hidden", floor.hidden);
+    }
+    std::uint64_t wallCount = 0;
+    readUnsigned("authoredRoom.wall.count", wallCount);
+    envelope_.authoredRoom.walls.resize(static_cast<std::size_t>(wallCount));
+    for (std::size_t index = 0; index < envelope_.authoredRoom.walls.size(); ++index) {
+      SaveAuthoredRoomWallRecord& wall = envelope_.authoredRoom.walls[index];
+      const std::string p = "authoredRoom.wall." + std::to_string(index) + ".";
+      readString(p + "id", wall.id);
+      readI32(p + "storyIndex", wall.storyIndex);
+      readVec3(p + "startMeters", wall.startMeters);
+      readVec3(p + "endMeters", wall.endMeters);
+      readFloat(p + "bottomY", wall.bottomY);
+      readFloat(p + "heightMeters", wall.heightMeters);
+      readFloat(p + "thicknessMeters", wall.thicknessMeters);
+      readAuthoredRoomSemantics(p + "semantics.", wall.semantics);
+      readBool(p + "locked", wall.locked);
+      readBool(p + "hidden", wall.hidden);
     }
   }
 

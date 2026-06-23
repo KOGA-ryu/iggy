@@ -89,10 +89,52 @@ bool idHintOverwritesExistingSave() {
          expect(listed.size() == 1U, "overwrite keeps one save");
 }
 
+bool authoredRoomSectionIsWrittenToSaveFile() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  iggy3d::SaveAuthoredRoomSection authoredRoom;
+  authoredRoom.present = true;
+  authoredRoom.id = "editor_saved_room";
+  iggy3d::SaveAuthoredRoomFloorRecord floor;
+  floor.id = "edit_floor_1";
+  floor.centerMeters = {1.0F, 0.0F, 1.0F};
+  floor.sizeMeters = {2.0F, 0.1F, 2.0F};
+  floor.semantics.materialId = "debug_floor";
+  floor.semantics.walkable = true;
+  authoredRoom.floors.push_back(floor);
+  iggy3d::SaveAuthoredRoomWallRecord wall;
+  wall.id = "edit_wall_1";
+  wall.startMeters = {0.0F, 0.0F, 0.0F};
+  wall.endMeters = {2.0F, 0.0F, 0.0F};
+  wall.semantics.materialId = "debug_wall";
+  wall.semantics.blocksActor = true;
+  wall.semantics.blocksProjectile = true;
+  authoredRoom.walls.push_back(wall);
+
+  iggy3d::SaveFileWriteRequest request;
+  request.root = root;
+  request.state = &session.state();
+  request.authoredRoom = &authoredRoom;
+  const iggy3d::SaveFileWriteResult written = iggy3d::writeSessionSaveFile(request);
+  const iggy3d::SaveFileReadResult read =
+      written.ok ? iggy3d::readSaveFile(written.record.path) : iggy3d::SaveFileReadResult{};
+  const iggy3d::SaveDecodeResult decoded =
+      read.ok ? iggy3d::decodeSaveEnvelope(read.encodedText) : iggy3d::SaveDecodeResult{};
+
+  return expect(written.ok, "authored save file written") &&
+         expect(read.ok, "authored save file read") &&
+         expect(read.encodedText.find("authoredRoom.present=true\n") != std::string::npos,
+                "authored room encoded") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok, "authored save decoded") &&
+         expect(decoded.envelope.authoredRoom.present, "authored room present") &&
+         expect(decoded.envelope.authoredRoom.floors.size() == 1U, "authored floor saved") &&
+         expect(decoded.envelope.authoredRoom.walls.size() == 1U, "authored wall saved");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = writeListReadAndDeleteRoundTrips() && missingStateIsRejected() &&
-                  idHintOverwritesExistingSave();
+                  idHintOverwritesExistingSave() && authoredRoomSectionIsWrittenToSaveFile();
   return ok ? 0 : 1;
 }

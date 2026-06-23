@@ -41,6 +41,15 @@ iggy3d_add_unit_test(save_file_store_tests tests/unit/save_file_store_tests.cpp)
 set_tests_properties(save_file_store_tests PROPERTIES
   LABELS "unit;runtime;save;files;iggy3d")
 
+iggy3d_add_unit_test(frontend_state_tests tests/unit/frontend_state_tests.cpp)
+set_tests_properties(frontend_state_tests PROPERTIES LABELS "unit;app;frontend;iggy3d")
+
+iggy3d_add_unit_test(starter_screen_tests tests/unit/starter_screen_tests.cpp)
+set_tests_properties(starter_screen_tests PROPERTIES LABELS "unit;app;frontend;starter;iggy3d")
+
+iggy3d_add_unit_test(save_slot_model_tests tests/unit/save_slot_model_tests.cpp)
+set_tests_properties(save_slot_model_tests PROPERTIES LABELS "unit;app;frontend;save;iggy3d")
+
 iggy3d_add_unit_test(world_state_tests tests/unit/world_state_tests.cpp)
 set_tests_properties(world_state_tests PROPERTIES LABELS "unit;runtime;world;iggy3d")
 
@@ -279,6 +288,20 @@ if(TARGET iggy3d_visual_demo)
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     SKIP_RETURN_CODE 77
     LABELS "smoke;visual;render;package;opening_menu;save;codex_control;iggy3d")
+
+  add_executable(package_visual_starter_screen_smoke
+    tests/smoke/package_visual_starter_screen_smoke.cpp)
+  target_link_libraries(package_visual_starter_screen_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(package_visual_starter_screen_smoke)
+  target_compile_definitions(package_visual_starter_screen_smoke
+    PRIVATE
+      IGGY3D_VISUAL_DEMO_PATH="$<TARGET_FILE:iggy3d_visual_demo>")
+  add_test(NAME package_visual_starter_screen_smoke
+           COMMAND "$<TARGET_FILE:package_visual_starter_screen_smoke>")
+  set_tests_properties(package_visual_starter_screen_smoke PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    SKIP_RETURN_CODE 77
+    LABELS "smoke;visual;render;package;starter;frontend;save;codex_control;iggy3d")
 endif()
 
 function(iggy3d_add_render_packet4_unit_test test_name source_file)

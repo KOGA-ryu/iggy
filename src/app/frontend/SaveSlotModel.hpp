@@ -1,0 +1,50 @@
+#pragma once
+
+#include <cstdint>
+#include <filesystem>
+#include <string>
+#include <vector>
+
+#include "runtime/save/SaveFileStore.hpp"
+
+namespace iggy3d {
+
+enum class SaveSlotCompatibility {
+  Compatible,
+  IncompatiblePackage,
+  IncompatibleScenario,
+  DecodeFailed,
+  LoadFailed,
+  Unknown,
+};
+
+struct SaveSlotPreview {
+  std::string id;
+  std::filesystem::path path;
+  std::string packageId = "none";
+  std::string scenarioId = "none";
+  std::uint64_t currentTick = 0;
+  std::string savedStateHashHex = "none";
+  std::uint64_t authoredFloorCount = 0;
+  std::uint64_t authoredWallCount = 0;
+  SaveSlotCompatibility compatibility = SaveSlotCompatibility::Unknown;
+  bool enabled = false;
+  bool corrupt = false;
+  std::string reason = "unknown";
+};
+
+struct SaveSlotList {
+  std::vector<SaveSlotPreview> slots;
+  std::uint64_t compatibleCount = 0;
+  std::uint64_t corruptCount = 0;
+};
+
+std::string_view saveSlotCompatibilityName(SaveSlotCompatibility compatibility);
+SaveSlotPreview previewFromSaveFileRecord(const SaveFileRecord& record,
+                                          std::string_view expectedPackageId,
+                                          std::string_view expectedScenarioId);
+SaveSlotList buildSaveSlotList(const std::filesystem::path& root,
+                               std::string_view expectedPackageId,
+                               std::string_view expectedScenarioId);
+
+}  // namespace iggy3d

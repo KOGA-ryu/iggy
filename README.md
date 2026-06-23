@@ -30,10 +30,11 @@ If Vulkan is not available on the machine, replace `--renderer vulkan` with
 `--renderer null` for receipt-only validation.
 
 Normal interactive window launches open the save menu first. Use W/S or Up/Down
-to move between `New World`, `Existing Saves`, `Save Current`, `Delete Selected`,
-and `Continue`; use Enter/Space or controller Cross to execute. Save files are
-plain `.iggy3d.save` files under `--save-root` and contain the runtime save
-envelope for the session. Add `--no-opening-menu` to boot straight into the room.
+to move between `New World`, `Existing Saves`, `Save Current`, `Save And Exit`,
+`Delete Selected`, `Continue`, and `Exit`; use Enter/Space or controller Cross to
+execute. Save files are plain `.iggy3d.save` files under `--save-root` and contain
+the runtime save envelope plus any authored room floors/walls from the in-game
+editor. Add `--no-opening-menu` to boot straight into the room.
 
 Start here:
 

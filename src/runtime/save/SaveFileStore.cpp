@@ -109,13 +109,25 @@ SaveFileWriteResult writeSessionSaveFile(const SaveFileWriteRequest& request) {
     return result;
   }
 
-  const SaveStateResult saved = saveSessionStateEncoded(*request.state);
+  SaveStateResult saved = saveSessionState(*request.state);
   result.saveStatus = saved.status;
-  result.codecStatus = saved.codecStatus;
   if (saved.status != SaveLoadStatus::Ok) {
     result.reason = "save_encode_failed";
     return result;
   }
+  if (request.authoredRoom != nullptr) {
+    saved.envelope.authoredRoom = *request.authoredRoom;
+  }
+  const SaveEncodeResult encoded = encodeSaveEnvelope(saved.envelope);
+  saved.codecStatus = encoded.status;
+  result.codecStatus = encoded.status;
+  if (encoded.status != SaveCodecStatus::Ok) {
+    result.saveStatus = SaveLoadStatus::EncodeFailed;
+    result.reason = "save_encode_failed";
+    return result;
+  }
+  saved.encodedSaveText = encoded.encodedText;
+  saved.savedStateHash = encoded.savedStateHash;
 
   std::error_code error;
   std::filesystem::create_directories(request.root, error);
