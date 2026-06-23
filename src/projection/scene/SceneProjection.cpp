@@ -1,5 +1,7 @@
 #include "projection/scene/SceneProjection.hpp"
 
+#include "render/mesh/BeanMesh.hpp"
+
 namespace iggy3d {
 namespace {
 
@@ -26,6 +28,9 @@ SceneItemKind kindFor(const EntityState& entity) {
   if (entity.kind == EntityKind::Player) {
     return SceneItemKind::Player;
   }
+  if (entity.kind == EntityKind::Npc) {
+    return SceneItemKind::Npc;
+  }
   if (entity.kind == EntityKind::Pickup) {
     return SceneItemKind::Pickup;
   }
@@ -51,10 +56,22 @@ bool shouldIncludeItem(SceneItemKind kind, const SceneProjectionConfig& config) 
   return true;
 }
 
+std::string modelRefFor(SceneItemKind kind) {
+  if (kind == SceneItemKind::Player) {
+    return std::string(beanModelId(BeanModelKind::Player));
+  }
+  if (kind == SceneItemKind::Npc) {
+    return std::string(beanModelId(BeanModelKind::Npc));
+  }
+  return {};
+}
+
 void countItem(const SceneItem& item, SceneProjectionResult& result) {
   switch (item.kind) {
     case SceneItemKind::Player:
       ++result.playerCount;
+      break;
+    case SceneItemKind::Npc:
       break;
     case SceneItemKind::Pickup:
       ++result.pickupCount;
@@ -88,6 +105,7 @@ SceneItem projectEntity(const SessionState& state, const EntityState& entity) {
   item.interactable = hasInteraction(entity);
   item.tactical = item.kind == SceneItemKind::TacticalMarker;
   item.assetRef = entity.stableName;
+  item.modelRef = modelRefFor(item.kind);
   item.itemId = entity.interaction.itemId;
   item.objectiveId = entity.interaction.objectiveId;
   item.interactionKind = entity.interaction.kind;

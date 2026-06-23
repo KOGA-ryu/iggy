@@ -13,6 +13,7 @@
 #include "projection/scene/SceneProjection.hpp"
 #include "render/FrameInput.hpp"
 #include "render/RendererApi.hpp"
+#include "render/mesh/BeanMesh.hpp"
 #include "runtime/ability/AbilitySystem.hpp"
 #include "runtime/collision/CollisionQuery.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
@@ -371,6 +372,16 @@ struct PlayableReceiptFields {
   bool codexControlApplied = false;
   std::string codexControlStatus = "disabled";
   std::string codexControlPath = "unavailable";
+  bool beanPlayerModelReady = false;
+  bool beanNpcModelReady = false;
+  bool beanCodexProbeModelReady = false;
+  bool beanPlayerVisible = false;
+  bool beanNpcVisible = false;
+  bool beanCodexProbeVisible = false;
+  std::uint64_t beanModelCount = 0;
+  std::string beanCodexProbeX = "0.000";
+  std::string beanCodexProbeY = "0.000";
+  std::string beanCodexProbeZ = "0.000";
   std::string movementReason = "not_attempted";
   std::string movementPolicyBand = "not_attempted";
   std::string movementDistanceMeters = "0.000";
@@ -564,6 +575,10 @@ struct CodexControlFrame {
   float moveRight = 0.0F;
   bool playerPositionSet = false;
   iggy3d::Vec3 playerPositionMeters;
+  bool codexProbeVisibleSet = false;
+  bool codexProbeVisible = false;
+  bool codexProbePositionSet = false;
+  iggy3d::Vec3 codexProbePositionMeters;
   bool yawSet = false;
   bool pitchSet = false;
   float yaw = 0.0F;
@@ -575,6 +590,11 @@ struct CodexControlFrame {
   bool attack = false;
   bool reset = false;
   bool quit = false;
+};
+
+struct CodexProbeState {
+  bool visible = false;
+  iggy3d::Vec3 positionMeters{1.25F, 0.0F, -2.25F};
 };
 
 std::string_view devMechanicName(DevMechanic mechanic) {
@@ -805,6 +825,12 @@ constexpr float kStandingActorHeightMeters = 1.80F;
 constexpr float kCrouchedActorHeightMeters = 1.20F;
 constexpr float kStandingSpeedMetersPerSecond = 4.80F;
 constexpr float kCrouchedSpeedMetersPerSecond = 2.35F;
+
+std::string formatDecimal3(float value) {
+  char buffer[32]{};
+  std::snprintf(buffer, sizeof(buffer), "%.3f", value);
+  return buffer;
+}
 
 void recordStance(PlayableReceiptFields& fields, bool crouched) {
   fields.crouchAvailable = true;
@@ -1276,6 +1302,34 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
       if (parseControlVec3(value, vecValue)) {
         frame.playerPositionSet = true;
         frame.playerPositionMeters = feetToMeters(vecValue);
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "codex_probe.visible" || key == "probe.visible") {
+      if (parseControlBool(value, boolValue)) {
+        frame.codexProbeVisibleSet = true;
+        frame.codexProbeVisible = boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "codex_probe.position" || key == "codex_probe.position_meters" ||
+               key == "probe.position") {
+      if (parseControlVec3(value, vecValue)) {
+        frame.codexProbePositionSet = true;
+        frame.codexProbePositionMeters = vecValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "codex_probe.position_ft") {
+      if (parseControlVec3(value, vecValue)) {
+        frame.codexProbePositionSet = true;
+        frame.codexProbePositionMeters = feetToMeters(vecValue);
         frame.applied = true;
       } else {
         frame.parseError = true;
@@ -2225,6 +2279,64 @@ void attachRoomProjection(const iggy3d::PackageLoadResult& package,
     scene.room.propVisible = scene.room.propVisible || mesh.role == "prop";
     scene.room.meshes.push_back(std::move(item));
   }
+}
+
+iggy3d::Vec3 beanCenterForFootPosition(iggy3d::Vec3 footPosition,
+                                       iggy3d::BeanModelKind kind) {
+  const iggy3d::Vec3 size = iggy3d::defaultBeanModelSize(kind);
+  return {footPosition.x, footPosition.y + size.y * 0.5F, footPosition.z};
+}
+
+void appendBeanMeshItem(iggy3d::SceneProjectionResult& scene,
+                        std::string id,
+                        iggy3d::BeanModelKind kind,
+                        iggy3d::Vec3 footPosition) {
+  iggy3d::SceneRoomMeshItem item;
+  item.id = std::move(id);
+  item.role = std::string(iggy3d::beanModelId(kind));
+  item.position = beanCenterForFootPosition(footPosition, kind);
+  item.size = iggy3d::defaultBeanModelSize(kind);
+  scene.room.meshes.push_back(std::move(item));
+}
+
+void attachBeanModelProjection(const CodexProbeState& codexProbe,
+                               iggy3d::SceneProjectionResult& scene,
+                               PlayableReceiptFields& fields) {
+  fields.beanPlayerModelReady = false;
+  fields.beanNpcModelReady = false;
+  fields.beanCodexProbeModelReady = codexProbe.visible;
+  fields.beanPlayerVisible = false;
+  fields.beanNpcVisible = false;
+  fields.beanCodexProbeVisible = false;
+  fields.beanModelCount = 0;
+  for (const iggy3d::SceneItem& item : scene.items) {
+    if (!item.visible) {
+      continue;
+    }
+    iggy3d::BeanModelKind kind = iggy3d::BeanModelKind::Player;
+    if (!iggy3d::parseBeanModelId(item.modelRef, kind)) {
+      continue;
+    }
+    appendBeanMeshItem(scene, "bean_" + item.stableName, kind, item.transform.position);
+    ++fields.beanModelCount;
+    if (kind == iggy3d::BeanModelKind::Player) {
+      fields.beanPlayerModelReady = true;
+      fields.beanPlayerVisible = true;
+    } else if (kind == iggy3d::BeanModelKind::Npc) {
+      fields.beanNpcModelReady = true;
+      fields.beanNpcVisible = true;
+    }
+  }
+  if (codexProbe.visible) {
+    appendBeanMeshItem(scene, "bean_codex_probe", iggy3d::BeanModelKind::CodexProbe,
+                       codexProbe.positionMeters);
+    ++fields.beanModelCount;
+    fields.beanCodexProbeModelReady = true;
+    fields.beanCodexProbeVisible = true;
+  }
+  fields.beanCodexProbeX = formatDecimal3(codexProbe.positionMeters.x);
+  fields.beanCodexProbeY = formatDecimal3(codexProbe.positionMeters.y);
+  fields.beanCodexProbeZ = formatDecimal3(codexProbe.positionMeters.z);
 }
 
 void attachEditorGhostProjection(const EditorModeState& editor,
@@ -3660,6 +3772,19 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
   iggy3d::appendReceiptField(receipt, "codex_control_applied", fields.codexControlApplied);
   iggy3d::appendReceiptField(receipt, "codex_control_status", fields.codexControlStatus);
   iggy3d::appendReceiptField(receipt, "codex_control_path", fields.codexControlPath);
+  iggy3d::appendReceiptField(receipt, "bean_player_model_ready",
+                             fields.beanPlayerModelReady);
+  iggy3d::appendReceiptField(receipt, "bean_npc_model_ready", fields.beanNpcModelReady);
+  iggy3d::appendReceiptField(receipt, "bean_codex_probe_model_ready",
+                             fields.beanCodexProbeModelReady);
+  iggy3d::appendReceiptField(receipt, "bean_player_visible", fields.beanPlayerVisible);
+  iggy3d::appendReceiptField(receipt, "bean_npc_visible", fields.beanNpcVisible);
+  iggy3d::appendReceiptField(receipt, "bean_codex_probe_visible",
+                             fields.beanCodexProbeVisible);
+  iggy3d::appendReceiptField(receipt, "bean_model_count", fields.beanModelCount);
+  iggy3d::appendReceiptField(receipt, "bean_codex_probe_x", fields.beanCodexProbeX);
+  iggy3d::appendReceiptField(receipt, "bean_codex_probe_y", fields.beanCodexProbeY);
+  iggy3d::appendReceiptField(receipt, "bean_codex_probe_z", fields.beanCodexProbeZ);
   iggy3d::appendReceiptField(receipt, "hit_surface_id", fields.hitSurfaceId);
   iggy3d::appendReceiptField(receipt, "mouse_look_available", fields.mouseLookAvailable);
   iggy3d::appendReceiptField(receipt, "mouse_look_used", fields.mouseLookUsed);
@@ -4107,6 +4232,7 @@ int main(int argc, const char* const* argv) {
     debugPreviousPosition = player->transform.position;
     debugSpawnPosition = player->transform.position;
   }
+  CodexProbeState codexProbe;
   std::optional<iggy3d::MovementResult> lastMovementResult;
   std::optional<iggy3d::PlayerMotorResult> lastMotorResult;
 #if defined(IGGY3D_HAS_SDL3)
@@ -4521,6 +4647,12 @@ int main(int argc, const char* const* argv) {
         if (codexControl.stanceSet) {
           crouchHeld = codexControl.crouched;
         }
+        if (codexControl.codexProbeVisibleSet) {
+          codexProbe.visible = codexControl.codexProbeVisible;
+        }
+        if (codexControl.codexProbePositionSet) {
+          codexProbe.positionMeters = codexControl.codexProbePositionMeters;
+        }
         actionRequested = actionRequested || codexControl.interact;
         attackRequested = attackRequested || codexControl.attack;
         tacticalToggleRequested = tacticalToggleRequested || codexTacticalToggleThisFrame;
@@ -4920,6 +5052,7 @@ int main(int argc, const char* const* argv) {
 #endif
     iggy3d::SceneProjectionResult scene = iggy3d::buildSceneProjection(session.state());
     attachRoomProjection(package, activeRoom, scene);
+    attachBeanModelProjection(codexProbe, scene, playableFields);
     attachEditorGhostProjection(editor, scene);
     attachAbilityProjectileProjection(session.state().transient.abilityRuntime.arcaneBolt, scene);
     iggy3d::DebugProjectionResult debug = iggy3d::buildDebugProjection(session.state());

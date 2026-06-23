@@ -1,5 +1,7 @@
 #include "render/vulkan/BufferImageResources.hpp"
 
+#include "render/mesh/BeanMesh.hpp"
+
 #include <algorithm>
 #include <cstring>
 #include <iterator>
@@ -163,6 +165,15 @@ Vec3 colorForRoomRole(const std::string& role) {
   if (role == "spell") {
     return {0.34F, 0.62F, 0.88F};
   }
+  if (role == "bean_player") {
+    return {0.22F, 0.56F, 0.92F};
+  }
+  if (role == "bean_npc") {
+    return {0.84F, 0.68F, 0.24F};
+  }
+  if (role == "bean_codex_probe") {
+    return {0.72F, 0.38F, 0.92F};
+  }
   return {0.36F, 0.42F, 0.48F};
 }
 
@@ -252,6 +263,42 @@ void appendBox(std::vector<FirstRoomVertex>& vertices,
   appendTriangle(indices, base + 0U, base + 5U, base + 1U);
   range.indexCount = static_cast<std::uint32_t>(indices.size()) - range.firstIndex;
   draws.push_back(range);
+}
+
+bool appendBean(std::vector<FirstRoomVertex>& vertices,
+                std::vector<std::uint16_t>& indices,
+                std::vector<IndexedDrawRange>& draws,
+                Vec3 center,
+                Vec3 size,
+                Vec3 color,
+                BeanModelKind kind) {
+  const BeanMesh bean = buildBeanMesh(kind);
+  if (bean.vertices.empty() || bean.indices.empty() ||
+      vertices.size() + bean.vertices.size() >
+          static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max())) {
+    return false;
+  }
+  const std::uint16_t base = static_cast<std::uint16_t>(vertices.size());
+  const float sx = std::max(size.x, 0.001F);
+  const float sy = std::max(size.y, 0.001F);
+  const float sz = std::max(size.z, 0.001F);
+  for (const BeanMeshVertex& vertex : bean.vertices) {
+    const Vec3 world{
+        center.x + vertex.position.x * sx,
+        center.y + vertex.position.y * sy,
+        center.z + vertex.position.z * sz,
+    };
+    vertices.push_back({{world.x, world.y, world.z}, {color.x, color.y, color.z}});
+  }
+
+  IndexedDrawRange range;
+  range.firstIndex = static_cast<std::uint32_t>(indices.size());
+  for (const std::uint16_t index : bean.indices) {
+    indices.push_back(static_cast<std::uint16_t>(base + index));
+  }
+  range.indexCount = static_cast<std::uint32_t>(indices.size()) - range.firstIndex;
+  draws.push_back(range);
+  return true;
 }
 
 }  // namespace
@@ -411,13 +458,23 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
   vertices.reserve(room.meshes.size() * 8U);
   indices.reserve(room.meshes.size() * 72U);
   for (const SceneRoomMeshItem& mesh : room.meshes) {
-    if (vertices.size() + 8U >
-        static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max())) {
-      result.reason = {"vertex_buffer_create_failed", "vertex buffer create failed"};
-      result.receipt = baseReceipt("fail", result.reason.code);
-      return result;
+    BeanModelKind beanKind = BeanModelKind::Player;
+    if (parseBeanModelId(mesh.role, beanKind)) {
+      if (!appendBean(vertices, indices, draws, mesh.position, mesh.size,
+                      colorForRoomRole(mesh.role), beanKind)) {
+        result.reason = {"vertex_buffer_create_failed", "vertex buffer create failed"};
+        result.receipt = baseReceipt("fail", result.reason.code);
+        return result;
+      }
+    } else {
+      if (vertices.size() + 8U >
+          static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max())) {
+        result.reason = {"vertex_buffer_create_failed", "vertex buffer create failed"};
+        result.receipt = baseReceipt("fail", result.reason.code);
+        return result;
+      }
+      appendBox(vertices, indices, draws, mesh.position, mesh.size, colorForRoomRole(mesh.role));
     }
-    appendBox(vertices, indices, draws, mesh.position, mesh.size, colorForRoomRole(mesh.role));
   }
   if (vertices.empty() || indices.empty() || draws.empty()) {
     result.reason = {"vertex_buffer_create_failed", "vertex buffer create failed"};

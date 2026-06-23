@@ -15,6 +15,7 @@ namespace iggy3d {
 
 enum class SceneItemKind : std::uint8_t {
   Player,
+  Npc,
   Pickup,
   Interactable,
   ObjectiveMarker,
@@ -35,6 +36,7 @@ struct SceneItem {
   bool interactable = false;
   bool tactical = false;
   std::string assetRef;
+  std::string modelRef;
   std::string itemId;
   std::string objectiveId;
   InteractionKind interactionKind = InteractionKind::None;

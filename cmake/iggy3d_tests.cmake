@@ -83,6 +83,9 @@ set_tests_properties(runtime_debug_snapshot_tests PROPERTIES LABELS "unit;runtim
 iggy3d_add_unit_test(debug_hud_text_tests tests/unit/debug_hud_text_tests.cpp)
 set_tests_properties(debug_hud_text_tests PROPERTIES LABELS "unit;render;debug;hud;iggy3d")
 
+iggy3d_add_unit_test(bean_mesh_tests tests/unit/bean_mesh_tests.cpp)
+set_tests_properties(bean_mesh_tests PROPERTIES LABELS "unit;render;mesh;bean;iggy3d")
+
 iggy3d_add_unit_test(session_state_tests tests/unit/session_state_tests.cpp)
 set_tests_properties(session_state_tests PROPERTIES LABELS "unit;runtime;session;iggy3d")
 
@@ -226,6 +229,20 @@ if(TARGET iggy3d_visual_demo)
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     SKIP_RETURN_CODE 77
     LABELS "smoke;visual;window;render;package;dev_menu;codex_control;iggy3d")
+
+  add_executable(package_visual_bean_models_smoke
+    tests/smoke/package_visual_bean_models_smoke.cpp)
+  target_link_libraries(package_visual_bean_models_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(package_visual_bean_models_smoke)
+  target_compile_definitions(package_visual_bean_models_smoke
+    PRIVATE
+      IGGY3D_VISUAL_DEMO_PATH="$<TARGET_FILE:iggy3d_visual_demo>")
+  add_test(NAME package_visual_bean_models_smoke
+           COMMAND "$<TARGET_FILE:package_visual_bean_models_smoke>")
+  set_tests_properties(package_visual_bean_models_smoke PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    SKIP_RETURN_CODE 77
+    LABELS "smoke;visual;render;package;bean;codex_control;iggy3d")
 
   add_executable(package_visual_editor_control_smoke
     tests/smoke/package_visual_editor_control_smoke.cpp)

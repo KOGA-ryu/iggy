@@ -150,11 +150,17 @@ bool firstRoomProjectionContainsInitialItems() {
   const iggy3d::SceneItem* player = findSceneItem(projection, "player");
   const iggy3d::SceneItem* key = findSceneItem(projection, "gold_key");
   const iggy3d::SceneItem* marker = findSceneItem(projection, "tactical_marker_alpha");
+  const iggy3d::SceneItem* dummy = findSceneItem(projection, "training_dummy");
 
-  return expect(projection.items.size() == 3U, "initial projection item count") &&
+  return expect(projection.items.size() == 4U, "initial projection item count") &&
          expect(player != nullptr && player->kind == iggy3d::SceneItemKind::Player,
                 "player projected") &&
          expect(player != nullptr && player->owningPlayerSlot == 0U, "player owning slot") &&
+         expect(player != nullptr && player->modelRef == "bean_player",
+                "player bean model ref") &&
+         expect(dummy != nullptr && dummy->kind == iggy3d::SceneItemKind::Npc,
+                "npc projected") &&
+         expect(dummy != nullptr && dummy->modelRef == "bean_npc", "npc bean model ref") &&
          expect(key != nullptr && key->kind == iggy3d::SceneItemKind::Pickup, "key projected") &&
          expect(key != nullptr && key->active && key->visible && key->interactable,
                 "key active interactable") &&
