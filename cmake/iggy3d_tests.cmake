@@ -434,6 +434,21 @@ if(TARGET iggy3d_visual_demo)
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     SKIP_RETURN_CODE 77
     LABELS "smoke;product;frontend;transitions;no_window;iggy3d")
+
+  add_executable(product_menu_usefulness_smoke
+    tests/smoke/product_menu_usefulness_smoke.cpp)
+  target_link_libraries(product_menu_usefulness_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(product_menu_usefulness_smoke)
+  target_compile_definitions(product_menu_usefulness_smoke
+    PRIVATE
+      IGGY3D_PRODUCT_APP_PATH="$<TARGET_FILE:iggy3d_app>")
+  add_dependencies(product_menu_usefulness_smoke iggy3d_app)
+  add_test(NAME product_menu_usefulness_smoke
+           COMMAND "$<TARGET_FILE:product_menu_usefulness_smoke>")
+  set_tests_properties(product_menu_usefulness_smoke PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    SKIP_RETURN_CODE 77
+    LABELS "smoke;product;frontend;menu;usefulness;no_window;iggy3d")
 endif()
 
 function(iggy3d_add_render_packet4_unit_test test_name source_file)

@@ -265,10 +265,9 @@ void refreshGameplayProjectionMetrics(const std::optional<Session>& activeSessio
   const ProductGameplayFeedback feedback = buildProductGameplayFeedback(window);
   const ProductRenderBridgeFrame bridge =
       buildProductRenderBridgeFrame(&drawList, &frame, &feedback);
-  const bool viewWasVisible = window.viewport.gameplayViewVisible;
   window.runtimeStateHash = activeSession->stateHash();
   applyGameplayProjectionMetrics(window, &scene, &debug, &drawList, &frame, &bridge,
-                                 viewWasVisible);
+                                 true);
 }
 
 FrontendAction nextStarterSelection(FrontendAction current, InputAction action) {
