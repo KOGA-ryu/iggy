@@ -162,6 +162,14 @@ bool packageRoomLoaded(const FrameInput& frame) {
   return frame.projections.scene != nullptr && frame.projections.scene->room.loaded;
 }
 
+bool sceneHasRenderableContent(const FrameInput& frame) {
+  if (frame.projections.scene == nullptr) {
+    return false;
+  }
+  return frame.projections.scene->room.loaded || !frame.projections.scene->items.empty() ||
+         !frame.projections.scene->projectiles.empty();
+}
+
 DebugHudLayoutResult debugHudLayoutFor(const FrameInput& frame) {
   if (frame.projections.debug == nullptr ||
       frame.projections.debug->runtimeDebugHudLines.empty()) {
@@ -469,10 +477,12 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
   const ProjectileOverlayLayout projectileOverlay = projectileOverlayLayoutFor(frame);
   VkCommandBuffer commandBuffer =
       createInfo_.commandRecording->commandBufferForFrameSlot(result.frameSlot);
+  const bool drawSceneContent = sceneHasRenderableContent(frame);
   const bool drawProxyPrimitives =
-      !drawPackageRoom && frame.camera.mode == RenderCameraMode::FirstPerson;
+      drawSceneContent && !drawPackageRoom && frame.camera.mode == RenderCameraMode::FirstPerson;
   const bool drawFirstRoom =
-      !drawPackageRoom && !drawProxyPrimitives && firstRoomBundleReady(createInfo_);
+      drawSceneContent && !drawPackageRoom && !drawProxyPrimitives &&
+      firstRoomBundleReady(createInfo_);
   const ProxySceneFacts proxyFacts = proxySceneFacts(frame);
   CommandRecordResult recordResult;
   if (drawPackageRoom) {
@@ -574,6 +584,8 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     recordInfo.extent = readySwapchain.extent;
     recordInfo.frameSlot = result.frameSlot;
     recordInfo.imageIndex = acquire.imageIndex;
+    recordInfo.debugHudQuads = debugHud.quads.data();
+    recordInfo.debugHudQuadCount = debugHud.quads.size();
     recordResult = createInfo_.commandRecording->recordEmptyFrame(recordInfo);
   }
   if (!recordResult.recorded) {

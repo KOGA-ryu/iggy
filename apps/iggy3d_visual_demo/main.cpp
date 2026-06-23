@@ -363,6 +363,7 @@ struct PlayableReceiptFields {
   bool openingMenuDeletedSave = false;
   bool openingMenuExitRequested = false;
   iggy3d::FrontendReceiptFields frontend;
+  bool starterWorldSuppressed = false;
   bool editorEnabled = false;
   bool editorOpen = false;
   bool editorToggleObserved = false;
@@ -4290,6 +4291,8 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
   iggy3d::appendReceiptField(receipt, "interactive_mode", fields.interactiveMode);
   iggy3d::appendReceiptField(receipt, "input_backend", inputBackendName(fields.inputBackend));
   iggy3d::appendFrontendReceiptFields(receipt, fields.frontend);
+  iggy3d::appendReceiptField(receipt, "starter_world_suppressed",
+                             fields.starterWorldSuppressed);
   iggy3d::appendReceiptField(receipt, "target_discovered", fields.targetDiscovered);
   iggy3d::appendReceiptField(receipt, "initial_reach_gate",
                              fields.initialReachFailed ? "fail" : "not_attempted");
@@ -6302,11 +6305,26 @@ int main(int argc, const char* const* argv) {
       }
     }
 #endif
+    const bool starterOwnsFrame = openingMenu.enabled && openingMenu.open;
     iggy3d::SceneProjectionResult scene = iggy3d::buildSceneProjection(session.state());
-    attachRoomProjection(package, activeRoom, scene);
-    attachBeanModelProjection(codexProbe, scene, playableFields);
-    attachEditorGhostProjection(editor, scene);
-    attachAbilityProjectileProjection(session.state().transient.abilityRuntime.arcaneBolt, scene);
+    if (starterOwnsFrame) {
+      scene.items.clear();
+      scene.playerCount = 0;
+      scene.pickupCount = 0;
+      scene.interactableCount = 0;
+      scene.markerCount = 0;
+      scene.debugOnlyCount = 0;
+      scene.room = {};
+      scene.projectiles.clear();
+      scene.projectileCount = 0;
+    } else {
+      attachRoomProjection(package, activeRoom, scene);
+      attachBeanModelProjection(codexProbe, scene, playableFields);
+      attachEditorGhostProjection(editor, scene);
+      attachAbilityProjectileProjection(session.state().transient.abilityRuntime.arcaneBolt,
+                                        scene);
+    }
+    playableFields.starterWorldSuppressed = starterOwnsFrame;
     iggy3d::DebugProjectionResult debug = iggy3d::buildDebugProjection(session.state());
     iggy3d::RuntimeDebugSnapshot debugSnapshot;
     if (playableFields.playable) {

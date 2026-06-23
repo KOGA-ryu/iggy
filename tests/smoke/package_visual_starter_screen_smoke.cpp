@@ -150,6 +150,8 @@ int main() {
       hasField(fields, "starter_action_list_visible", "true") &&
       hasField(fields, "starter_detail_panel_visible", "true") &&
       hasField(fields, "starter_status_strip_visible", "true") &&
+      hasField(fields, "starter_world_suppressed", "true") &&
+      hasField(fields, "draw_count", "0") &&
       hasField(fields, "save_count", "0") && hasField(fields, "compatible_save_count", "0");
 
   continueBlocked =
@@ -195,6 +197,7 @@ int main() {
       hasField(fields, "frontend_selected_action", "create_and_enter") &&
       hasField(fields, "frontend_status", "frontend_launch_new_world") &&
       hasField(fields, "frontend_launch_requested", "true") &&
+      hasField(fields, "starter_world_suppressed", "false") &&
       hasField(fields, "opening_menu_created_save", "true") &&
       hasField(fields, "save_count", "1") &&
       std::filesystem::exists(saveRoot / "save_001.iggy3d.save");

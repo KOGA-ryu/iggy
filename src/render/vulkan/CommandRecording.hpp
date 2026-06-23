@@ -32,6 +32,8 @@ struct EmptyFrameRecordInfo {
   float clearG = 0.055F;
   float clearB = 0.080F;
   float clearA = 1.0F;
+  const DebugHudGlyphQuad* debugHudQuads = nullptr;
+  std::size_t debugHudQuadCount = 0;
 };
 
 struct OverlayRect {

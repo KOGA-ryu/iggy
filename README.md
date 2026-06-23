@@ -19,7 +19,7 @@ cmake --build build --target iggy3d_visual_demo -j 8
   --renderer vulkan \
   --window \
   --interactive \
-  --dev-menu \
+  --opening-menu \
   --input auto \
   --save-root "$HOME/.iggy3d/saves" \
   --package fixtures/demos/movement_playground/package.iggy3d.toml \
@@ -29,12 +29,13 @@ cmake --build build --target iggy3d_visual_demo -j 8
 If Vulkan is not available on the machine, replace `--renderer vulkan` with
 `--renderer null` for receipt-only validation.
 
-Normal interactive window launches open the save menu first. Use W/S or Up/Down
-to move between `New World`, `Existing Saves`, `Save Current`, `Save And Exit`,
-`Delete Selected`, `Continue`, and `Exit`; use Enter/Space or controller Cross to
-execute. Save files are plain `.iggy3d.save` files under `--save-root` and contain
-the runtime save envelope plus any authored room floors/walls from the in-game
-editor. Add `--no-opening-menu` to boot straight into the room.
+Normal interactive window launches open the starter menu first and suppress the
+demo world until a save is created or loaded. Use W/S or Up/Down to move between
+`Continue`, `New World`, `Load Save`, `Settings`, `Dev Tools`, and `Exit`; use
+Enter/Space or controller Cross to execute. Save files are plain `.iggy3d.save`
+files under `--save-root` and contain the runtime save envelope plus any authored
+room floors/walls from the in-game editor. Add `--no-opening-menu` to boot
+straight into the room.
 
 Start here:
 

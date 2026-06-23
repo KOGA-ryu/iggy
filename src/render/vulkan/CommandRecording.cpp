@@ -302,6 +302,7 @@ CommandRecordResult CommandRecording::recordEmptyFrame(const EmptyFrameRecordInf
   vkCmdSetViewport(info.commandBuffer, 0, 1, &viewport);
   vkCmdSetScissor(info.commandBuffer, 0, 1, &scissor);
   createInfo_.deviceFunctions.cmdBeginRendering(info.commandBuffer, &renderingInfo);
+  recordHudGlyphQuads(info.commandBuffer, info.debugHudQuads, info.debugHudQuadCount);
   createInfo_.deviceFunctions.cmdEndRendering(info.commandBuffer);
 
   VkImageMemoryBarrier toPresent{};
@@ -338,6 +339,8 @@ CommandRecordResult CommandRecording::recordEmptyFrame(const EmptyFrameRecordInf
   appendReceiptField(result.receipt, "frame_slot", static_cast<std::uint64_t>(info.frameSlot));
   appendReceiptField(result.receipt, "swapchain_image_index",
                      static_cast<std::uint64_t>(info.imageIndex));
+  appendReceiptField(result.receipt, "debug_hud_quad_count",
+                     static_cast<std::uint64_t>(info.debugHudQuadCount));
   return result;
 }
 
