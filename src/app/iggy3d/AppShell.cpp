@@ -13,6 +13,7 @@
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
+#include "app/iggy3d/ProductViewportFraming.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
 #include "content/PackageLoader.hpp"
@@ -176,6 +177,7 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
                                     const SceneProjectionResult* scene,
                                     const DebugProjectionResult* debug,
                                     const ProductPrimitiveDrawList* drawList,
+                                    const ProductViewportFrame* frame,
                                     bool viewVisible) {
   if (!window.gameplayActive || scene == nullptr) {
     window.viewport.gameplayViewVisible = false;
@@ -186,6 +188,10 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productDrawTargetIndicatorVisible = false;
     window.viewport.productDrawItemCount = 0;
     window.viewport.productDrawDebugMarkerCount = 0;
+    window.viewport.productViewProjection = "primitive_first_person";
+    window.viewport.productViewYawApplied = false;
+    window.viewport.productViewPitchApplied = false;
+    window.viewport.productViewPlayerAnchorFound = false;
     window.sceneItemCount = 0;
     window.debugItemCount = 0;
     window.playerVisible = false;
@@ -215,21 +221,30 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productDrawItemCount = drawList->itemCount;
     window.viewport.productDrawDebugMarkerCount = drawList->debugMarkerCount;
   }
+  if (frame != nullptr) {
+    window.viewport.productViewProjection = frame->projectionMode;
+    window.viewport.productViewYawApplied = frame->yawApplied;
+    window.viewport.productViewPitchApplied = frame->pitchApplied;
+    window.viewport.productViewPlayerAnchorFound = frame->playerAnchorFound;
+  }
 }
 
 void refreshGameplayProjectionMetrics(const std::optional<Session>& activeSession,
                                       ProductAppWindowState& window) {
   if (!window.gameplayActive || !activeSession.has_value()) {
-    applyGameplayProjectionMetrics(window, nullptr, nullptr, nullptr, false);
+    applyGameplayProjectionMetrics(window, nullptr, nullptr, nullptr, nullptr, false);
     return;
   }
 
   const SceneProjectionResult scene = buildSceneProjection(activeSession->state());
   const DebugProjectionResult debug = buildDebugProjection(activeSession->state());
   const ProductPrimitiveDrawList drawList = buildProductPrimitiveDrawList(&scene, &debug);
+  const ProductViewportFrame frame = buildProductViewportFrame(
+      drawList, ProductViewportFrameConfig{window.viewport.cameraYawDegrees,
+                                           window.viewport.cameraPitchDegrees});
   const bool viewWasVisible = window.viewport.gameplayViewVisible;
   window.runtimeStateHash = activeSession->stateHash();
-  applyGameplayProjectionMetrics(window, &scene, &debug, &drawList, viewWasVisible);
+  applyGameplayProjectionMetrics(window, &scene, &debug, &drawList, &frame, viewWasVisible);
 }
 
 FrontendAction nextStarterSelection(FrontendAction current, InputAction action) {
@@ -629,17 +644,23 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
     SceneProjectionResult scene;
     DebugProjectionResult debug;
     ProductPrimitiveDrawList drawList;
+    ProductViewportFrame frame;
     std::size_t sceneItemCount = 0;
     const SceneProjectionResult* scenePtr = nullptr;
     const DebugProjectionResult* debugPtr = nullptr;
     const ProductPrimitiveDrawList* drawListPtr = nullptr;
+    const ProductViewportFrame* framePtr = nullptr;
     if (window.gameplayActive && activeSession.has_value()) {
       scene = buildSceneProjection(activeSession->state());
       debug = buildDebugProjection(activeSession->state());
       drawList = buildProductPrimitiveDrawList(&scene, &debug);
+      frame = buildProductViewportFrame(
+          drawList, ProductViewportFrameConfig{window.viewport.cameraYawDegrees,
+                                               window.viewport.cameraPitchDegrees});
       scenePtr = &scene;
       debugPtr = &debug;
       drawListPtr = &drawList;
+      framePtr = &frame;
       sceneItemCount = scene.items.size();
       window.runtimeStateHash = activeSession->stateHash();
     }
@@ -647,10 +668,10 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
     if (window.drawable) {
       const OpeningMenuViewState view =
           drawOpeningMenuView(*renderer, options, world, frontend, settingsTab,
-                              window.gameplayActive, window.runtimeStateHash, drawListPtr,
+                              window.gameplayActive, window.runtimeStateHash, framePtr,
                               sceneItemCount, debugPtr, window.viewport.cameraYawDegrees,
                               window.viewport.cameraPitchDegrees, saves);
-      applyGameplayProjectionMetrics(window, scenePtr, debugPtr, drawListPtr,
+      applyGameplayProjectionMetrics(window, scenePtr, debugPtr, drawListPtr, framePtr,
                                      window.gameplayActive && scenePtr != nullptr);
       window.viewport.cameraHeadingVisible =
           window.viewport.cameraHeadingVisible || view.cameraHeadingDrawn;
@@ -658,7 +679,8 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
       window.selectedRowDrawn = window.selectedRowDrawn || view.selectedRowDrawn;
       window.menuRowCount = view.rowCount;
     } else {
-      applyGameplayProjectionMetrics(window, scenePtr, debugPtr, drawListPtr, false);
+      applyGameplayProjectionMetrics(window, scenePtr, debugPtr, drawListPtr, framePtr,
+                                     false);
     }
     ++window.framesPresented;
 

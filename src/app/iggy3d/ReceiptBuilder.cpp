@@ -132,6 +132,14 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.viewport.productDrawTargetIndicatorVisible);
   appendReceiptField(receipt, "product_draw_debug_marker_count",
                      window.viewport.productDrawDebugMarkerCount);
+  appendReceiptField(receipt, "product_view_projection",
+                     window.viewport.productViewProjection);
+  appendReceiptField(receipt, "product_view_yaw_applied",
+                     window.viewport.productViewYawApplied);
+  appendReceiptField(receipt, "product_view_pitch_applied",
+                     window.viewport.productViewPitchApplied);
+  appendReceiptField(receipt, "product_view_player_anchor_found",
+                     window.viewport.productViewPlayerAnchorFound);
   appendReceiptField(receipt, "input_owner", menuOwnerName(window.inputOwner));
   appendReceiptField(receipt, "input_action_last", inputActionName(window.lastInputAction));
   appendReceiptField(receipt, "input_action_accepted", window.lastInputAccepted);

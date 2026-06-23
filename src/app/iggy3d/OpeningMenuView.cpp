@@ -15,6 +15,7 @@
 #include "app/frontend/SettingsMenu.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
+#include "app/iggy3d/ProductViewportFraming.hpp"
 
 namespace iggy3d {
 namespace {
@@ -139,26 +140,19 @@ void drawText(SDL_Renderer& renderer, std::string_view text, float x, float y, f
   }
 }
 
-float screenX(float worldX) {
-  return 640.0F + worldX * 92.0F;
-}
-
-float screenY(float worldZ) {
-  return 394.0F - worldZ * 92.0F;
-}
-
 void drawMarker(SDL_Renderer& renderer,
-                const ProductPrimitiveDrawItem& item) {
+                const ProductViewportFramedItem& framed) {
+  const ProductPrimitiveDrawItem& item = framed.item;
   setColor(renderer, item.color.r, item.color.g, item.color.b);
-  const float x = screenX(item.worldPosition.x);
-  const float y = screenY(item.worldPosition.z);
+  const float x = framed.screenX;
+  const float y = framed.screenY;
   const float size = item.markerSize;
   fillRect(renderer, x - size * 0.5F, y - size * 0.5F, size, size);
 }
 
-void drawFocusIndicator(SDL_Renderer& renderer, const ProductPrimitiveDrawItem& item) {
-  const float x = screenX(item.worldPosition.x);
-  const float y = screenY(item.worldPosition.z);
+void drawFocusIndicator(SDL_Renderer& renderer, const ProductViewportFramedItem& framed) {
+  const float x = framed.screenX;
+  const float y = framed.screenY;
   setColor(renderer, 226, 230, 211);
   fillRect(renderer, x - 18.0F, y - 2.0F, 36.0F, 4.0F);
   fillRect(renderer, x - 2.0F, y - 18.0F, 4.0F, 36.0F);
@@ -185,14 +179,15 @@ std::string roundedDegrees(float value) {
   return std::to_string(static_cast<int>(std::lround(value)));
 }
 
-void drawPrimitiveItem(SDL_Renderer& renderer, const ProductPrimitiveDrawItem& item) {
+void drawPrimitiveItem(SDL_Renderer& renderer, const ProductViewportFramedItem& framed) {
+  const ProductPrimitiveDrawItem& item = framed.item;
   if (!item.visible) {
     return;
   }
 
   switch (item.kind) {
     case ProductPrimitiveDrawKind::PlayerFocusIndicator:
-      drawFocusIndicator(renderer, item);
+      drawFocusIndicator(renderer, framed);
       return;
     case ProductPrimitiveDrawKind::PlayerMarker:
     case ProductPrimitiveDrawKind::NpcMarker:
@@ -201,7 +196,7 @@ void drawPrimitiveItem(SDL_Renderer& renderer, const ProductPrimitiveDrawItem& i
     case ProductPrimitiveDrawKind::ObjectiveMarker:
     case ProductPrimitiveDrawKind::TacticalMarker:
     case ProductPrimitiveDrawKind::DebugMarker:
-      drawMarker(renderer, item);
+      drawMarker(renderer, framed);
       return;
   }
 }
@@ -336,7 +331,7 @@ void drawSettingsPanel(SDL_Renderer& renderer, FrontendSettingsTab selected) {
 
 bool drawGameplayPanel(SDL_Renderer& renderer,
                        std::uint64_t runtimeStateHash,
-                       const ProductPrimitiveDrawList* drawList,
+                       const ProductViewportFrame* frame,
                        std::size_t sceneItemCount,
                        const DebugProjectionResult* debug,
                        float cameraYawDegrees,
@@ -344,12 +339,12 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
   setColor(renderer, 10, 16, 18);
   SDL_RenderClear(&renderer);
 
-  if (drawList == nullptr || drawList->gridVisible) {
+  if (frame == nullptr || frame->gridVisible) {
     drawGrid(renderer);
   }
 
-  if (drawList != nullptr) {
-    for (const ProductPrimitiveDrawItem& item : drawList->items) {
+  if (frame != nullptr) {
+    for (const ProductViewportFramedItem& item : frame->framedItems) {
       drawPrimitiveItem(renderer, item);
     }
   }
@@ -368,7 +363,7 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
   drawText(renderer, "RUNTIME OWNS GAME STATE", 88.0F, 630.0F, 2.0F);
   drawText(renderer, "STATE HASH", 480.0F, 630.0F, 2.0F);
   drawText(renderer, std::to_string(runtimeStateHash), 640.0F, 630.0F, 2.0F);
-  if (drawList != nullptr) {
+  if (frame != nullptr) {
     drawText(renderer, "SCENE ITEMS", 88.0F, 668.0F, 2.0F);
     drawText(renderer, std::to_string(sceneItemCount), 274.0F, 668.0F, 2.0F);
     drawText(renderer, "DEBUG ITEMS", 384.0F, 668.0F, 2.0F);
@@ -441,7 +436,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          FrontendSettingsTab selectedSettingsTab,
                                          bool gameplayActive,
                                          std::uint64_t runtimeStateHash,
-                                         const ProductPrimitiveDrawList* drawList,
+                                         const ProductViewportFrame* frame,
                                          std::size_t sceneItemCount,
                                          const DebugProjectionResult* debug,
                                          float cameraYawDegrees,
@@ -452,7 +447,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
 
   if (gameplayActive || frontend.screen == FrontendScreen::Gameplay) {
     state.cameraHeadingDrawn =
-        drawGameplayPanel(renderer, runtimeStateHash, drawList, sceneItemCount, debug,
+        drawGameplayPanel(renderer, runtimeStateHash, frame, sceneItemCount, debug,
                           cameraYawDegrees, cameraPitchDegrees);
     SDL_RenderPresent(&renderer);
     state.textDrawn = true;

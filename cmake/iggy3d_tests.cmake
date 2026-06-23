@@ -63,6 +63,10 @@ iggy3d_add_unit_test(product_primitive_draw_list_tests tests/unit/product_primit
 set_tests_properties(product_primitive_draw_list_tests PROPERTIES
   LABELS "unit;app;product;draw_list;iggy3d")
 
+iggy3d_add_unit_test(product_viewport_framing_tests tests/unit/product_viewport_framing_tests.cpp)
+set_tests_properties(product_viewport_framing_tests PROPERTIES
+  LABELS "unit;app;product;viewport;iggy3d")
+
 iggy3d_add_unit_test(save_slot_model_tests tests/unit/save_slot_model_tests.cpp)
 set_tests_properties(save_slot_model_tests PROPERTIES LABELS "unit;app;frontend;save;iggy3d")
 

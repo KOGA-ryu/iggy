@@ -1,10 +1,13 @@
 #pragma once
 
+#include <cstddef>
+
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
+#include "app/iggy3d/ProductViewportFraming.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)
@@ -49,7 +52,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          FrontendSettingsTab selectedSettingsTab,
                                          bool gameplayActive,
                                          std::uint64_t runtimeStateHash,
-                                         const ProductPrimitiveDrawList* drawList,
+                                         const ProductViewportFrame* frame,
                                          std::size_t sceneItemCount,
                                          const DebugProjectionResult* debug,
                                          float cameraYawDegrees,

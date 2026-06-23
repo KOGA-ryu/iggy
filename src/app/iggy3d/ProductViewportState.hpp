@@ -22,6 +22,10 @@ struct ProductViewportState {
   bool productDrawTargetIndicatorVisible = false;
   std::uint64_t productDrawItemCount = 0;
   std::uint64_t productDrawDebugMarkerCount = 0;
+  std::string productViewProjection = "primitive_first_person";
+  bool productViewYawApplied = false;
+  bool productViewPitchApplied = false;
+  bool productViewPlayerAnchorFound = false;
 };
 
 }  // namespace iggy3d

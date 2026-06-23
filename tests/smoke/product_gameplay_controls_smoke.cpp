@@ -132,6 +132,10 @@ int main() {
       hasField(fields, "product_draw_target_indicator_visible", "true") &&
       positiveIntegerField(fields, "product_draw_item_count") &&
       hasField(fields, "product_draw_debug_marker_count", "0") &&
+      hasField(fields, "product_view_projection", "primitive_first_person") &&
+      hasField(fields, "product_view_yaw_applied", "true") &&
+      hasField(fields, "product_view_pitch_applied", "true") &&
+      hasField(fields, "product_view_player_anchor_found", "true") &&
       hasField(fields, "renderer_mutated_runtime", "false") &&
       positiveIntegerField(fields, "scene_item_count") &&
       positiveIntegerField(fields, "debug_item_count") &&
