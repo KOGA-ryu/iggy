@@ -78,6 +78,8 @@ std::string_view frontendDevToolsCategoryName(FrontendDevToolsCategory category)
       return "none";
     case FrontendDevToolsCategory::Session:
       return "session";
+    case FrontendDevToolsCategory::Input:
+      return "input";
     case FrontendDevToolsCategory::Player:
       return "player";
     case FrontendDevToolsCategory::Movement:
@@ -103,6 +105,7 @@ const std::vector<FrontendAction>& starterActionOrder() {
       FrontendAction::Continue,
       FrontendAction::NewWorld,
       FrontendAction::LoadSave,
+      FrontendAction::Delete,
       FrontendAction::Settings,
       FrontendAction::DevTools,
       FrontendAction::Exit,
@@ -127,6 +130,7 @@ const std::vector<FrontendAction>& pauseActionOrder() {
 const std::vector<FrontendDevToolsCategory>& devToolsCategoryOrder() {
   static const std::vector<FrontendDevToolsCategory> categories = {
       FrontendDevToolsCategory::Session,
+      FrontendDevToolsCategory::Input,
       FrontendDevToolsCategory::Player,
       FrontendDevToolsCategory::Movement,
       FrontendDevToolsCategory::WorldEditor,

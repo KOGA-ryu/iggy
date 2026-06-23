@@ -2,6 +2,7 @@
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/movement/MovementTraversalSlots.hpp"
 
+#include <cmath>
 #include <iostream>
 #include <string_view>
 
@@ -12,6 +13,10 @@ bool expect(bool condition, std::string_view message) {
     std::cerr << message << '\n';
   }
   return condition;
+}
+
+bool nearly(float actual, float expected) {
+  return std::fabs(actual - expected) <= 0.001F;
 }
 
 iggy3d::EditableRoomFloor floorPrimitive() {
@@ -225,6 +230,151 @@ bool lockedHiddenAndProjectileSemanticsAreStable() {
          expect(projectileOnly, "projectile-only blocker baked");
 }
 
+bool floorMoveResizeUndoRedoAndValidation() {
+  iggy3d::EditableRoomSession session;
+  (void)session.submit(iggy3d::addFloorCommand(floorPrimitive()));
+
+  const iggy3d::RoomEditResult move =
+      session.submit(iggy3d::moveFloorCommand("floor_1", {1.0F, 0.0F, -0.5F}));
+  const iggy3d::EditableRoomFloor* movedFloor =
+      iggy3d::findEditableFloor(session.document(), "floor_1");
+  const bool movedFloorOk = movedFloor != nullptr &&
+                            nearly(movedFloor->centerMeters.x, 1.0F) &&
+                            nearly(movedFloor->centerMeters.y, -0.05F) &&
+                            nearly(movedFloor->centerMeters.z, -0.5F);
+  const iggy3d::RoomEditResult resize =
+      session.submit(iggy3d::resizeFloorCommand("floor_1", {4.0F, 0.0F, 3.0F}));
+  const iggy3d::EditableRoomFloor* resizedFloor =
+      iggy3d::findEditableFloor(session.document(), "floor_1");
+  const bool resizedFloorOk = resizedFloor != nullptr &&
+                              nearly(resizedFloor->sizeMeters.x, 4.0F) &&
+                              nearly(resizedFloor->sizeMeters.y, 0.10F) &&
+                              nearly(resizedFloor->sizeMeters.z, 3.0F);
+  const iggy3d::RoomEditResult undoResize = session.undo();
+  const iggy3d::EditableRoomFloor* undoFloor =
+      iggy3d::findEditableFloor(session.document(), "floor_1");
+  const bool undoFloorOk = undoFloor != nullptr && nearly(undoFloor->sizeMeters.x, 6.0F);
+  const iggy3d::RoomEditResult redoResize = session.redo();
+  const iggy3d::EditableRoomFloor* redoFloor =
+      iggy3d::findEditableFloor(session.document(), "floor_1");
+  const bool redoFloorOk = redoFloor != nullptr && nearly(redoFloor->sizeMeters.x, 4.0F);
+  const iggy3d::RoomEditResult badResize =
+      session.submit(iggy3d::resizeFloorCommand("floor_1", {0.0F, 0.0F, 3.0F}));
+  const iggy3d::RoomEditResult badMove =
+      session.submit(iggy3d::moveFloorCommand("floor_1", {0.0F, 0.5F, 0.0F}));
+
+  return expect(move.status == iggy3d::RoomEditStatus::Applied, "floor move applied") &&
+         expect(movedFloorOk, "floor moved on xz only") &&
+         expect(resize.status == iggy3d::RoomEditStatus::Applied, "floor resize applied") &&
+         expect(resizedFloorOk, "floor resized xz only") &&
+         expect(undoResize.status == iggy3d::RoomEditStatus::UndoApplied,
+                "floor resize undo") &&
+         expect(undoFloorOk, "floor undo restored size") &&
+         expect(redoResize.status == iggy3d::RoomEditStatus::RedoApplied,
+                "floor resize redo") &&
+         expect(redoFloorOk, "floor redo restored size") &&
+         expect(badResize.status == iggy3d::RoomEditStatus::InvalidGeometry,
+                "bad floor resize rejected") &&
+         expect(badMove.status == iggy3d::RoomEditStatus::InvalidGeometry,
+                "floor y move rejected");
+}
+
+bool wallTransformCommandsAreUndoableAndValidated() {
+  iggy3d::EditableRoomSession session;
+  iggy3d::EditableRoomWall wall = wallPrimitive();
+  wall.semantics.traversalTags = {"clamber"};
+  (void)session.submit(iggy3d::addWallCommand(wall));
+
+  const iggy3d::RoomEditResult move =
+      session.submit(iggy3d::moveWallCommand("wall_1", {1.0F, 0.0F, 0.5F}));
+  const iggy3d::EditableRoomWall* movedWall =
+      iggy3d::findEditableWall(session.document(), "wall_1");
+  const bool movedWallOk = movedWall != nullptr &&
+                           nearly(movedWall->startMeters.x, 0.0F) &&
+                           nearly(movedWall->endMeters.x, 2.0F) &&
+                           nearly(movedWall->startMeters.z, -0.5F);
+  const iggy3d::RoomEditResult stretch =
+      session.submit(iggy3d::stretchWallEndCommand("wall_1", {3.0F, 0.0F, -0.5F}));
+  const iggy3d::EditableRoomWall* stretchedWall =
+      iggy3d::findEditableWall(session.document(), "wall_1");
+  const bool stretchedWallOk = stretchedWall != nullptr &&
+                               nearly(stretchedWall->endMeters.x, 3.0F);
+  const iggy3d::RoomEditResult rotate =
+      session.submit(iggy3d::rotateWall90Command("wall_1", true));
+  const iggy3d::EditableRoomWall* rotatedWall =
+      iggy3d::findEditableWall(session.document(), "wall_1");
+  const bool rotatedWallOk = rotatedWall != nullptr &&
+                             nearly(rotatedWall->startMeters.x,
+                                    rotatedWall->endMeters.x) &&
+                             !nearly(rotatedWall->startMeters.z,
+                                     rotatedWall->endMeters.z);
+  const iggy3d::RoomEditResult height =
+      session.submit(iggy3d::setWallHeightCommand("wall_1", 2.5F));
+  const iggy3d::RoomEditResult thickness =
+      session.submit(iggy3d::setWallThicknessCommand("wall_1", 0.35F));
+  const iggy3d::EditableRoomWall* sizedWall =
+      iggy3d::findEditableWall(session.document(), "wall_1");
+  const bool sizedWallOk = sizedWall != nullptr && nearly(sizedWall->heightMeters, 2.5F) &&
+                           nearly(sizedWall->thicknessMeters, 0.35F) &&
+                           sizedWall->semantics.traversalTags.size() == 1U;
+  const iggy3d::RoomEditResult badStretch =
+      session.submit(iggy3d::stretchWallStartCommand("wall_1", {0.0F, 0.0F, 0.25F}));
+  const iggy3d::RoomEditResult badHeight =
+      session.submit(iggy3d::setWallHeightCommand("wall_1", 0.0F));
+  const iggy3d::RoomEditResult badMove =
+      session.submit(iggy3d::moveWallCommand("wall_1", {0.0F, 0.25F, 0.0F}));
+  const iggy3d::RoomBakeResult bake = iggy3d::bakeEditableRoomDocument(session.document());
+  const iggy3d::MovementTraversalSlotRegistry slots =
+      iggy3d::buildMovementTraversalSlotRegistry(bake.room, {});
+
+  return expect(move.status == iggy3d::RoomEditStatus::Applied, "wall move applied") &&
+         expect(movedWallOk, "wall translated") &&
+         expect(stretch.status == iggy3d::RoomEditStatus::Applied,
+                "wall stretch applied") &&
+         expect(stretchedWallOk, "wall end stretched along axis") &&
+         expect(rotate.status == iggy3d::RoomEditStatus::Applied, "wall rotate applied") &&
+         expect(rotatedWallOk, "wall rotated to other axis") &&
+         expect(height.status == iggy3d::RoomEditStatus::Applied, "wall height applied") &&
+         expect(thickness.status == iggy3d::RoomEditStatus::Applied,
+                "wall thickness applied") &&
+         expect(sizedWallOk, "wall dimensions changed without semantics loss") &&
+         expect(badStretch.status == iggy3d::RoomEditStatus::InvalidGeometry,
+                "diagonal stretch rejected") &&
+         expect(badHeight.status == iggy3d::RoomEditStatus::InvalidGeometry,
+                "bad height rejected") &&
+         expect(badMove.status == iggy3d::RoomEditStatus::InvalidGeometry,
+                "wall y move rejected") &&
+         expect(bake.ok, "bake after transforms ok") &&
+         expect(!slots.slots.empty(), "clamber slot preserved after transforms");
+}
+
+bool lockedTransformsRejectedAndHiddenTransformsAllowed() {
+  iggy3d::EditableRoomSession session;
+  iggy3d::EditableRoomFloor floor = floorPrimitive();
+  floor.id = "locked_floor";
+  floor.locked = true;
+  (void)session.submit(iggy3d::addFloorCommand(floor));
+  const iggy3d::RoomEditResult lockedMove =
+      session.submit(iggy3d::moveFloorCommand("locked_floor", {1.0F, 0.0F, 0.0F}));
+
+  iggy3d::EditableRoomWall wall = wallPrimitive();
+  wall.id = "hidden_wall";
+  wall.hidden = true;
+  (void)session.submit(iggy3d::addWallCommand(wall));
+  const iggy3d::RoomEditResult hiddenMove =
+      session.submit(iggy3d::moveWallCommand("hidden_wall", {1.0F, 0.0F, 0.0F}));
+  const iggy3d::EditableRoomWall* movedHidden =
+      iggy3d::findEditableWall(session.document(), "hidden_wall");
+
+  return expect(lockedMove.status == iggy3d::RoomEditStatus::LockedPrimitive,
+                "locked transform rejected") &&
+         expect(hiddenMove.status == iggy3d::RoomEditStatus::Applied,
+                "hidden primitive remains editable") &&
+         expect(movedHidden != nullptr && movedHidden->hidden &&
+                    nearly(movedHidden->startMeters.x, 0.0F),
+                "hidden move preserved hidden flag");
+}
+
 }  // namespace
 
 int main() {
@@ -232,6 +382,9 @@ int main() {
                   semanticsBakeIntoRuntimeSurfaces() &&
                   validationRejectsAmbiguousWallGeometryAndBadTags() &&
                   nextEditableCountersIgnoreNonMatchingIds() &&
-                  lockedHiddenAndProjectileSemanticsAreStable();
+                  lockedHiddenAndProjectileSemanticsAreStable() &&
+                  floorMoveResizeUndoRedoAndValidation() &&
+                  wallTransformCommandsAreUndoableAndValidated() &&
+                  lockedTransformsRejectedAndHiddenTransformsAllowed();
   return ok ? 0 : 1;
 }

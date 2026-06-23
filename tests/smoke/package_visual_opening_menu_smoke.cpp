@@ -85,7 +85,8 @@ bool numericFieldAtLeast(const std::map<std::string, std::string>& fields,
 
 bool writeControlFile(const std::filesystem::path& path,
                       std::string_view selectedAction,
-                      bool execute) {
+                      bool execute,
+                      bool deleteConfirm = false) {
   std::ofstream output(path);
   if (!output) {
     return false;
@@ -94,6 +95,9 @@ bool writeControlFile(const std::filesystem::path& path,
   output << "opening_menu.select=" << selectedAction << "\n";
   if (execute) {
     output << "opening_menu.execute=true\n";
+  }
+  if (deleteConfirm) {
+    output << "opening_menu.delete_confirm=true\n";
   }
   return static_cast<bool>(output);
 }
@@ -245,7 +249,7 @@ int main() {
                hasField(fields, "opening_menu_loaded_save", "true") &&
                hasField(fields, "opening_menu_selected_save_id", "save_001");
 
-  deletePassed = writeControlFile(deleteControl, "delete_selected", true) &&
+  deletePassed = writeControlFile(deleteControl, "delete_selected", true, true) &&
                  runVisualDemo(binary, fixture, saveRoot, deleteControl, deleteOutput) &&
                  parseReceiptFile(deleteOutput, fields) &&
                  hasField(fields, "result", "pass") &&

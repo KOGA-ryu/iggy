@@ -112,6 +112,43 @@ std::string_view defaultSettingsRowName(FrontendSettingsTab tab) {
   return "none";
 }
 
+SettingsRowModel defaultSettingsRowModel(FrontendSettingsTab tab,
+                                         const FrontendSettings& settings) {
+  SettingsRowModel model;
+  model.row = defaultSettingsRowName(tab);
+  model.persistence = "runtime_only";
+  switch (tab) {
+    case FrontendSettingsTab::Audio:
+      model.enabled = settings.audioAvailable;
+      model.disabledReason = model.enabled ? "none" : "audio_unavailable";
+      break;
+    case FrontendSettingsTab::VideoDisplay:
+      model.enabled = true;
+      model.disabledReason = "none";
+      model.persistence = "runtime_only";
+      break;
+    case FrontendSettingsTab::Gameplay:
+      model.enabled = false;
+      model.disabledReason = "read_only_v1";
+      model.persistence = "runtime_only";
+      break;
+    case FrontendSettingsTab::None:
+      model.enabled = false;
+      model.disabledReason = "not_settings_row";
+      model.persistence = "deferred";
+      break;
+    case FrontendSettingsTab::Input:
+    case FrontendSettingsTab::Controls:
+    case FrontendSettingsTab::Camera:
+    case FrontendSettingsTab::Accessibility:
+    case FrontendSettingsTab::Developer:
+      model.enabled = true;
+      model.disabledReason = "none";
+      break;
+  }
+  return model;
+}
+
 FrontendSettings defaultFrontendSettings() {
   return {};
 }

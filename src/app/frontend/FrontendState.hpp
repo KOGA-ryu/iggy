@@ -44,6 +44,7 @@ enum class FrontendAction : std::uint8_t {
 enum class FrontendDevToolsCategory : std::uint8_t {
   None,
   Session,
+  Input,
   Player,
   Movement,
   WorldEditor,

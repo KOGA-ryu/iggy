@@ -16,13 +16,14 @@ bool expect(bool condition, std::string_view message) {
 
 bool starterActionOrderIsExact() {
   const std::vector<iggy3d::FrontendAction>& actions = iggy3d::starterActionOrder();
-  return expect(actions.size() == 6U, "starter action count") &&
+  return expect(actions.size() == 7U, "starter action count") &&
          expect(actions[0] == iggy3d::FrontendAction::Continue, "continue first") &&
          expect(actions[1] == iggy3d::FrontendAction::NewWorld, "new world second") &&
          expect(actions[2] == iggy3d::FrontendAction::LoadSave, "load save third") &&
-         expect(actions[3] == iggy3d::FrontendAction::Settings, "settings fourth") &&
-         expect(actions[4] == iggy3d::FrontendAction::DevTools, "dev tools fifth") &&
-         expect(actions[5] == iggy3d::FrontendAction::Exit, "exit sixth");
+         expect(actions[3] == iggy3d::FrontendAction::Delete, "delete fourth") &&
+         expect(actions[4] == iggy3d::FrontendAction::Settings, "settings fifth") &&
+         expect(actions[5] == iggy3d::FrontendAction::DevTools, "dev tools sixth") &&
+         expect(actions[6] == iggy3d::FrontendAction::Exit, "exit seventh");
 }
 
 bool pauseActionOrderIsExact() {
@@ -48,28 +49,35 @@ bool continueDisablesWithoutSave() {
   return expect(!empty.continueEnabled, "empty continue disabled") &&
          expect(empty.disabled == iggy3d::FrontendAction::Continue,
                 "disabled action continue") &&
+         expect(!empty.selectedEnabled, "selected continue disabled") &&
+         expect(empty.selectedDisabledReason == "no_compatible_save",
+                "continue disabled reason") &&
+         expect(empty.selectedCommand == "starter_continue",
+                "continue command") &&
          expect(withSave.continueEnabled, "continue enabled with save") &&
          expect(withSave.disabled == iggy3d::FrontendAction::None,
-                "no disabled action with save");
+                "no disabled action with save") &&
+         expect(withSave.selectedEnabled, "continue selected enabled");
 }
 
 bool devToolsTabOrderIsExact() {
   const std::vector<iggy3d::FrontendDevToolsCategory>& tabs =
       iggy3d::devToolsCategoryOrder();
-  return expect(tabs.size() == 9U, "dev tabs count") &&
+  return expect(tabs.size() == 10U, "dev tabs count") &&
          expect(tabs[0] == iggy3d::FrontendDevToolsCategory::Session, "session first") &&
-         expect(tabs[1] == iggy3d::FrontendDevToolsCategory::Player, "player second") &&
-         expect(tabs[2] == iggy3d::FrontendDevToolsCategory::Movement, "movement third") &&
-         expect(tabs[3] == iggy3d::FrontendDevToolsCategory::WorldEditor,
-                "world editor fourth") &&
-         expect(tabs[4] == iggy3d::FrontendDevToolsCategory::Collision,
-                "collision fifth") &&
-         expect(tabs[5] == iggy3d::FrontendDevToolsCategory::Spells, "spells sixth") &&
-         expect(tabs[6] == iggy3d::FrontendDevToolsCategory::Camera, "camera seventh") &&
-         expect(tabs[7] == iggy3d::FrontendDevToolsCategory::Renderer,
-                "renderer eighth") &&
-         expect(tabs[8] == iggy3d::FrontendDevToolsCategory::Performance,
-                "performance ninth");
+         expect(tabs[1] == iggy3d::FrontendDevToolsCategory::Input, "input second") &&
+         expect(tabs[2] == iggy3d::FrontendDevToolsCategory::Player, "player third") &&
+         expect(tabs[3] == iggy3d::FrontendDevToolsCategory::Movement, "movement fourth") &&
+         expect(tabs[4] == iggy3d::FrontendDevToolsCategory::WorldEditor,
+                "world editor fifth") &&
+         expect(tabs[5] == iggy3d::FrontendDevToolsCategory::Collision,
+                "collision sixth") &&
+         expect(tabs[6] == iggy3d::FrontendDevToolsCategory::Spells, "spells seventh") &&
+         expect(tabs[7] == iggy3d::FrontendDevToolsCategory::Camera, "camera eighth") &&
+         expect(tabs[8] == iggy3d::FrontendDevToolsCategory::Renderer,
+                "renderer ninth") &&
+         expect(tabs[9] == iggy3d::FrontendDevToolsCategory::Performance,
+                "performance tenth");
 }
 
 bool settingsDraftIsFrontendOnly() {

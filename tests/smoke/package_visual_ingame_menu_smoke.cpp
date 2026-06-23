@@ -116,6 +116,7 @@ int main() {
 #endif
 
   bool pauseBlocks = false;
+  bool pauseNavigation = false;
   bool pauseSettings = false;
   bool settingsRestore = false;
   bool devTools = false;
@@ -140,10 +141,21 @@ int main() {
       hasField(fields, "frontend_screen", "pause") &&
       hasField(fields, "menu_owner", "pause") &&
       hasField(fields, "pause_menu_open", "true") &&
+      hasField(fields, "pause_menu_visible", "true") &&
+      hasField(fields, "pause_menu_hud_line_count", "11") &&
       hasField(fields, "frontend_input_owned", "true") &&
       hasField(fields, "gameplay_input_suppressed", "true") &&
       hasField(fields, "gamepad_options_opens", "pause") &&
       hasField(fields, "gamepad_create_options_quit", "true");
+
+  pauseNavigation =
+      runCase(binary, fixture, saveRoot, "ingame_pause_navigation",
+              "pause.open=true\npause.next=true\npause.execute=true\n", fields) &&
+      hasField(fields, "frontend_screen", "pause") &&
+      hasField(fields, "pause_selected_action", "save") &&
+      hasField(fields, "pause_action_executed", "true") &&
+      hasField(fields, "opening_menu_saved_current", "true") &&
+      hasField(fields, "gameplay_input_suppressed", "true");
 
   pauseSettings =
       runCase(binary, fixture, saveRoot, "ingame_pause_settings",
@@ -210,12 +222,13 @@ int main() {
       hasField(fields, "opening_menu_exit_requested", "true");
 #endif
 
-  const bool passed = pauseBlocks && pauseSettings && settingsRestore && devTools &&
-                      returnToTitle && pauseSave && pauseSaveExit;
+  const bool passed = pauseBlocks && pauseNavigation && pauseSettings && settingsRestore &&
+                      devTools && returnToTitle && pauseSave && pauseSaveExit;
   std::cout << "smoke=package_visual_ingame_menu\n";
   std::cout << "backend=" << (visualBuilt ? "null" : "unavailable") << "\n";
   std::cout << "window_launch_count=0\n";
   std::cout << "pause_blocks_gameplay=" << (pauseBlocks ? "true" : "false") << "\n";
+  std::cout << "pause_navigation=" << (pauseNavigation ? "true" : "false") << "\n";
   std::cout << "pause_settings=" << (pauseSettings ? "true" : "false") << "\n";
   std::cout << "settings_restore_defaults=" << (settingsRestore ? "true" : "false")
             << "\n";

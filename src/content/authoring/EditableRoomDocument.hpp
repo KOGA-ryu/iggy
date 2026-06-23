@@ -56,9 +56,16 @@ enum class RoomEditCommandKind : std::uint8_t {
   AddFloor,
   DeleteFloor,
   SetFloorSemantics,
+  MoveFloor,
+  ResizeFloor,
   AddWall,
   DeleteWall,
   SetWallSemantics,
+  MoveWall,
+  StretchWall,
+  RotateWall90,
+  SetWallHeight,
+  SetWallThickness,
 };
 
 struct RoomEditCommand {
@@ -67,6 +74,14 @@ struct RoomEditCommand {
   EditableRoomWall wall;
   std::string targetId;
   EditableRoomSemantics semantics;
+  Vec3 deltaMeters;
+  Vec3 positionMeters;
+  Vec3 sizeMeters;
+  Vec3 startMeters;
+  Vec3 endMeters;
+  float scalarMeters = 0.0F;
+  bool useStart = false;
+  bool rotateLeft = false;
 };
 
 enum class RoomEditStatus : std::uint8_t {
@@ -78,6 +93,7 @@ enum class RoomEditStatus : std::uint8_t {
   MissingPrimitive,
   LockedPrimitive,
   InvalidPrimitive,
+  InvalidGeometry,
   InvalidSemantics,
   NothingToUndo,
   NothingToRedo,
@@ -102,9 +118,18 @@ EditableRoomSemantics defaultWallSemantics(std::string materialId = "debug_wall"
 RoomEditCommand addFloorCommand(EditableRoomFloor floor);
 RoomEditCommand deleteFloorCommand(std::string id);
 RoomEditCommand setFloorSemanticsCommand(std::string id, EditableRoomSemantics semantics);
+RoomEditCommand moveFloorCommand(std::string id, Vec3 deltaMeters);
+RoomEditCommand setFloorPositionCommand(std::string id, Vec3 positionMeters);
+RoomEditCommand resizeFloorCommand(std::string id, Vec3 sizeMeters);
 RoomEditCommand addWallCommand(EditableRoomWall wall);
 RoomEditCommand deleteWallCommand(std::string id);
 RoomEditCommand setWallSemanticsCommand(std::string id, EditableRoomSemantics semantics);
+RoomEditCommand moveWallCommand(std::string id, Vec3 deltaMeters);
+RoomEditCommand stretchWallStartCommand(std::string id, Vec3 startMeters);
+RoomEditCommand stretchWallEndCommand(std::string id, Vec3 endMeters);
+RoomEditCommand rotateWall90Command(std::string id, bool left);
+RoomEditCommand setWallHeightCommand(std::string id, float heightMeters);
+RoomEditCommand setWallThicknessCommand(std::string id, float thicknessMeters);
 
 const EditableRoomFloor* findEditableFloor(const EditableRoomDocument& document,
                                            const std::string& id);

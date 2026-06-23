@@ -24,13 +24,33 @@ target_sources(iggy3d
     src/app/AppConfig.cpp
     src/app/CliParser.cpp
     src/app/PackageRuntimeLookup.cpp
+    src/app/iggy3d/AppShell.cpp
+    src/app/iggy3d/DefaultWorldTemplate.cpp
+    src/app/iggy3d/FrontendActionExecutor.cpp
+    src/app/iggy3d/OpeningMenuView.cpp
+    src/app/iggy3d/ProductAppOptions.cpp
+    src/app/iggy3d/ReceiptBuilder.cpp
+    src/app/iggy3d/SaveBridge.cpp
     src/app/frontend/FrontendState.cpp
+    src/app/frontend/MenuInput.cpp
+    src/app/frontend/ConfirmDialog.cpp
+    src/app/frontend/PauseMenu.cpp
+    src/app/frontend/SaveBrowser.cpp
     src/app/frontend/StarterScreen.cpp
     src/app/frontend/SaveSlotModel.cpp
     src/app/frontend/SettingsMenu.cpp
     src/app/frontend/DevToolsMenu.cpp
     src/app/frontend/FrontendReceipt.cpp
+    src/app/input/AutomationInput.cpp
+    src/app/input/GamepadInput.cpp
+    src/app/input/ActionState.cpp
     src/app/input/GamepadSystemControls.cpp
+    src/app/input/InputAction.cpp
+    src/app/input/InputBindings.cpp
+    src/app/input/InputDeviceEvent.cpp
+    src/app/input/InputRouter.cpp
+    src/app/input/KeyboardInput.cpp
+    src/app/input/MouseInput.cpp
     src/app/platform/ExecutablePath.cpp
     src/content/PackageLoader.cpp
     src/content/PackageValidator.cpp
@@ -137,6 +157,11 @@ if(IGGY3D_BUILD_VULKAN_BACKEND)
 elseif(IGGY3D_HAS_VULKAN_TARGET)
   target_compile_definitions(iggy3d PUBLIC IGGY3D_HAS_VULKAN_TARGET_AVAILABLE=1)
 endif()
+
+add_executable(iggy3d_app apps/iggy3d/main.cpp)
+target_link_libraries(iggy3d_app PRIVATE iggy3d)
+set_target_properties(iggy3d_app PROPERTIES OUTPUT_NAME iggy3d)
+iggy3d_apply_warnings(iggy3d_app)
 
 if(IGGY3D_BUILD_TOOLS)
   add_executable(iggy3d_headless_demo apps/iggy3d_headless_demo/main.cpp)

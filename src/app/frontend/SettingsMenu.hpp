@@ -61,6 +61,13 @@ struct FrontendSettings {
   bool rendererChangePending = false;
 };
 
+struct SettingsRowModel {
+  std::string_view row = "none";
+  bool enabled = true;
+  std::string_view disabledReason = "none";
+  std::string_view persistence = "runtime_only";
+};
+
 std::string_view frontendInputBackendName(FrontendInputBackend backend);
 std::string_view frontendSettingsTabName(FrontendSettingsTab tab);
 std::string_view frontendCameraModeName(FrontendCameraMode mode);
@@ -68,6 +75,8 @@ std::string_view frontendRendererChoiceName(FrontendRendererChoice renderer);
 std::string_view frontendWindowModeName(FrontendWindowMode mode);
 const std::vector<FrontendSettingsTab>& settingsTabOrder();
 std::string_view defaultSettingsRowName(FrontendSettingsTab tab);
+SettingsRowModel defaultSettingsRowModel(FrontendSettingsTab tab,
+                                         const FrontendSettings& settings);
 FrontendSettings defaultFrontendSettings();
 void restoreFrontendSettingsDefaults(FrontendSettings& settings);
 void applyFrontendSettingsDraft(FrontendSettings& current,

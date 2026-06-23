@@ -127,6 +127,27 @@ bool validateWall(const EditableRoomWall& wall) {
          validateSemantics(wall.semantics);
 }
 
+bool nearlyZero(float value) {
+  return std::fabs(value) <= kEpsilon;
+}
+
+bool validHorizontalDelta(Vec3 delta) {
+  return isFinite(delta) && nearlyZero(delta.y);
+}
+
+bool pointOnExistingWallAxis(const EditableRoomWall& wall, Vec3 point, bool replacingStart) {
+  if (!isFinite(point)) {
+    return false;
+  }
+  const Vec3 fixed = replacingStart ? wall.endMeters : wall.startMeters;
+  const float dx = std::fabs(wall.endMeters.x - wall.startMeters.x);
+  const float dz = std::fabs(wall.endMeters.z - wall.startMeters.z);
+  if (dx >= dz) {
+    return nearlyZero(point.z - fixed.z) && nearlyZero(point.y - fixed.y);
+  }
+  return nearlyZero(point.x - fixed.x) && nearlyZero(point.y - fixed.y);
+}
+
 Aabb3 floorBounds(const EditableRoomFloor& floor) {
   return aabbFromCenterExtents(floor.centerMeters, floor.sizeMeters * 0.5F);
 }
@@ -328,6 +349,31 @@ RoomEditCommand setFloorSemanticsCommand(std::string id, EditableRoomSemantics s
   return command;
 }
 
+RoomEditCommand moveFloorCommand(std::string id, Vec3 deltaMeters) {
+  RoomEditCommand command;
+  command.kind = RoomEditCommandKind::MoveFloor;
+  command.targetId = std::move(id);
+  command.deltaMeters = deltaMeters;
+  return command;
+}
+
+RoomEditCommand setFloorPositionCommand(std::string id, Vec3 positionMeters) {
+  RoomEditCommand command;
+  command.kind = RoomEditCommandKind::MoveFloor;
+  command.targetId = std::move(id);
+  command.positionMeters = positionMeters;
+  command.useStart = true;
+  return command;
+}
+
+RoomEditCommand resizeFloorCommand(std::string id, Vec3 sizeMeters) {
+  RoomEditCommand command;
+  command.kind = RoomEditCommandKind::ResizeFloor;
+  command.targetId = std::move(id);
+  command.sizeMeters = sizeMeters;
+  return command;
+}
+
 RoomEditCommand addWallCommand(EditableRoomWall wall) {
   RoomEditCommand command;
   command.kind = RoomEditCommandKind::AddWall;
@@ -347,6 +393,56 @@ RoomEditCommand setWallSemanticsCommand(std::string id, EditableRoomSemantics se
   command.kind = RoomEditCommandKind::SetWallSemantics;
   command.targetId = std::move(id);
   command.semantics = std::move(semantics);
+  return command;
+}
+
+RoomEditCommand moveWallCommand(std::string id, Vec3 deltaMeters) {
+  RoomEditCommand command;
+  command.kind = RoomEditCommandKind::MoveWall;
+  command.targetId = std::move(id);
+  command.deltaMeters = deltaMeters;
+  return command;
+}
+
+RoomEditCommand stretchWallStartCommand(std::string id, Vec3 startMeters) {
+  RoomEditCommand command;
+  command.kind = RoomEditCommandKind::StretchWall;
+  command.targetId = std::move(id);
+  command.startMeters = startMeters;
+  command.useStart = true;
+  return command;
+}
+
+RoomEditCommand stretchWallEndCommand(std::string id, Vec3 endMeters) {
+  RoomEditCommand command;
+  command.kind = RoomEditCommandKind::StretchWall;
+  command.targetId = std::move(id);
+  command.endMeters = endMeters;
+  command.useStart = false;
+  return command;
+}
+
+RoomEditCommand rotateWall90Command(std::string id, bool left) {
+  RoomEditCommand command;
+  command.kind = RoomEditCommandKind::RotateWall90;
+  command.targetId = std::move(id);
+  command.rotateLeft = left;
+  return command;
+}
+
+RoomEditCommand setWallHeightCommand(std::string id, float heightMeters) {
+  RoomEditCommand command;
+  command.kind = RoomEditCommandKind::SetWallHeight;
+  command.targetId = std::move(id);
+  command.scalarMeters = heightMeters;
+  return command;
+}
+
+RoomEditCommand setWallThicknessCommand(std::string id, float thicknessMeters) {
+  RoomEditCommand command;
+  command.kind = RoomEditCommandKind::SetWallThickness;
+  command.targetId = std::move(id);
+  command.scalarMeters = thicknessMeters;
   return command;
 }
 
@@ -476,6 +572,60 @@ RoomEditResult applyRoomEditCommand(EditableRoomDocument& document,
       return result;
     }
 
+    case RoomEditCommandKind::MoveFloor: {
+      EditableRoomFloor* floor = findEditableFloorMutable(document, command.targetId);
+      if (floor == nullptr) {
+        return makeEditResult(RoomEditStatus::MissingPrimitive, command.targetId);
+      }
+      if (floor->locked) {
+        return makeEditResult(RoomEditStatus::LockedPrimitive, command.targetId);
+      }
+      EditableRoomFloor next = *floor;
+      if (command.useStart) {
+        if (!isFinite(command.positionMeters)) {
+          return makeEditResult(RoomEditStatus::InvalidGeometry, command.targetId);
+        }
+        next.centerMeters.x = command.positionMeters.x;
+        next.centerMeters.z = command.positionMeters.z;
+      } else {
+        if (!validHorizontalDelta(command.deltaMeters)) {
+          return makeEditResult(RoomEditStatus::InvalidGeometry, command.targetId);
+        }
+        next.centerMeters.x += command.deltaMeters.x;
+        next.centerMeters.z += command.deltaMeters.z;
+      }
+      if (!validateFloor(next)) {
+        return makeEditResult(RoomEditStatus::InvalidGeometry, command.targetId);
+      }
+      *floor = next;
+      RoomEditResult result = makeEditResult(RoomEditStatus::Applied, command.targetId);
+      result.affectedRuntimeIds = runtimeIdsForEditableFloor(*floor);
+      return result;
+    }
+
+    case RoomEditCommandKind::ResizeFloor: {
+      EditableRoomFloor* floor = findEditableFloorMutable(document, command.targetId);
+      if (floor == nullptr) {
+        return makeEditResult(RoomEditStatus::MissingPrimitive, command.targetId);
+      }
+      if (floor->locked) {
+        return makeEditResult(RoomEditStatus::LockedPrimitive, command.targetId);
+      }
+      EditableRoomFloor next = *floor;
+      if (!std::isfinite(command.sizeMeters.x) || !std::isfinite(command.sizeMeters.z)) {
+        return makeEditResult(RoomEditStatus::InvalidGeometry, command.targetId);
+      }
+      next.sizeMeters.x = command.sizeMeters.x;
+      next.sizeMeters.z = command.sizeMeters.z;
+      if (!validateFloor(next)) {
+        return makeEditResult(RoomEditStatus::InvalidGeometry, command.targetId);
+      }
+      *floor = next;
+      RoomEditResult result = makeEditResult(RoomEditStatus::Applied, command.targetId);
+      result.affectedRuntimeIds = runtimeIdsForEditableFloor(*floor);
+      return result;
+    }
+
     case RoomEditCommandKind::AddWall:
       if (!validateWall(command.wall)) {
         return makeEditResult(RoomEditStatus::InvalidPrimitive, command.wall.id);
@@ -513,6 +663,109 @@ RoomEditResult applyRoomEditCommand(EditableRoomDocument& document,
         return makeEditResult(RoomEditStatus::InvalidSemantics, command.targetId);
       }
       wall->semantics = command.semantics;
+      RoomEditResult result = makeEditResult(RoomEditStatus::Applied, command.targetId);
+      result.affectedRuntimeIds = runtimeIdsForEditableWall(*wall);
+      return result;
+    }
+
+    case RoomEditCommandKind::MoveWall: {
+      EditableRoomWall* wall = findEditableWallMutable(document, command.targetId);
+      if (wall == nullptr) {
+        return makeEditResult(RoomEditStatus::MissingPrimitive, command.targetId);
+      }
+      if (wall->locked) {
+        return makeEditResult(RoomEditStatus::LockedPrimitive, command.targetId);
+      }
+      if (!validHorizontalDelta(command.deltaMeters)) {
+        return makeEditResult(RoomEditStatus::InvalidGeometry, command.targetId);
+      }
+      EditableRoomWall next = *wall;
+      next.startMeters.x += command.deltaMeters.x;
+      next.startMeters.z += command.deltaMeters.z;
+      next.endMeters.x += command.deltaMeters.x;
+      next.endMeters.z += command.deltaMeters.z;
+      if (!validateWall(next)) {
+        return makeEditResult(RoomEditStatus::InvalidGeometry, command.targetId);
+      }
+      *wall = next;
+      RoomEditResult result = makeEditResult(RoomEditStatus::Applied, command.targetId);
+      result.affectedRuntimeIds = runtimeIdsForEditableWall(*wall);
+      return result;
+    }
+
+    case RoomEditCommandKind::StretchWall: {
+      EditableRoomWall* wall = findEditableWallMutable(document, command.targetId);
+      if (wall == nullptr) {
+        return makeEditResult(RoomEditStatus::MissingPrimitive, command.targetId);
+      }
+      if (wall->locked) {
+        return makeEditResult(RoomEditStatus::LockedPrimitive, command.targetId);
+      }
+      const Vec3 newPoint = command.useStart ? command.startMeters : command.endMeters;
+      if (!pointOnExistingWallAxis(*wall, newPoint, command.useStart)) {
+        return makeEditResult(RoomEditStatus::InvalidGeometry, command.targetId);
+      }
+      EditableRoomWall next = *wall;
+      if (command.useStart) {
+        next.startMeters = newPoint;
+      } else {
+        next.endMeters = newPoint;
+      }
+      if (!validateWall(next)) {
+        return makeEditResult(RoomEditStatus::InvalidGeometry, command.targetId);
+      }
+      *wall = next;
+      RoomEditResult result = makeEditResult(RoomEditStatus::Applied, command.targetId);
+      result.affectedRuntimeIds = runtimeIdsForEditableWall(*wall);
+      return result;
+    }
+
+    case RoomEditCommandKind::RotateWall90: {
+      EditableRoomWall* wall = findEditableWallMutable(document, command.targetId);
+      if (wall == nullptr) {
+        return makeEditResult(RoomEditStatus::MissingPrimitive, command.targetId);
+      }
+      if (wall->locked) {
+        return makeEditResult(RoomEditStatus::LockedPrimitive, command.targetId);
+      }
+      const Vec3 centerPoint = (wall->startMeters + wall->endMeters) * 0.5F;
+      const Vec3 half = (wall->endMeters - wall->startMeters) * 0.5F;
+      const Vec3 rotatedHalf = command.rotateLeft ? Vec3{-half.z, half.y, half.x}
+                                                  : Vec3{half.z, half.y, -half.x};
+      EditableRoomWall next = *wall;
+      next.startMeters = centerPoint - rotatedHalf;
+      next.endMeters = centerPoint + rotatedHalf;
+      if (!validateWall(next)) {
+        return makeEditResult(RoomEditStatus::InvalidGeometry, command.targetId);
+      }
+      *wall = next;
+      RoomEditResult result = makeEditResult(RoomEditStatus::Applied, command.targetId);
+      result.affectedRuntimeIds = runtimeIdsForEditableWall(*wall);
+      return result;
+    }
+
+    case RoomEditCommandKind::SetWallHeight:
+    case RoomEditCommandKind::SetWallThickness: {
+      EditableRoomWall* wall = findEditableWallMutable(document, command.targetId);
+      if (wall == nullptr) {
+        return makeEditResult(RoomEditStatus::MissingPrimitive, command.targetId);
+      }
+      if (wall->locked) {
+        return makeEditResult(RoomEditStatus::LockedPrimitive, command.targetId);
+      }
+      if (!std::isfinite(command.scalarMeters) || command.scalarMeters <= kEpsilon) {
+        return makeEditResult(RoomEditStatus::InvalidGeometry, command.targetId);
+      }
+      EditableRoomWall next = *wall;
+      if (command.kind == RoomEditCommandKind::SetWallHeight) {
+        next.heightMeters = command.scalarMeters;
+      } else {
+        next.thicknessMeters = command.scalarMeters;
+      }
+      if (!validateWall(next)) {
+        return makeEditResult(RoomEditStatus::InvalidGeometry, command.targetId);
+      }
+      *wall = next;
       RoomEditResult result = makeEditResult(RoomEditStatus::Applied, command.targetId);
       result.affectedRuntimeIds = runtimeIdsForEditableWall(*wall);
       return result;
@@ -572,6 +825,8 @@ const char* roomEditStatusName(RoomEditStatus status) {
       return "room_edit_locked_primitive";
     case RoomEditStatus::InvalidPrimitive:
       return "room_edit_invalid_primitive";
+    case RoomEditStatus::InvalidGeometry:
+      return "room_edit_invalid_geometry";
     case RoomEditStatus::InvalidSemantics:
       return "room_edit_invalid_semantics";
     case RoomEditStatus::NothingToUndo:
@@ -590,12 +845,26 @@ const char* roomEditCommandKindName(RoomEditCommandKind kind) {
       return "delete_floor";
     case RoomEditCommandKind::SetFloorSemantics:
       return "set_floor_semantics";
+    case RoomEditCommandKind::MoveFloor:
+      return "move_floor";
+    case RoomEditCommandKind::ResizeFloor:
+      return "resize_floor";
     case RoomEditCommandKind::AddWall:
       return "add_wall";
     case RoomEditCommandKind::DeleteWall:
       return "delete_wall";
     case RoomEditCommandKind::SetWallSemantics:
       return "set_wall_semantics";
+    case RoomEditCommandKind::MoveWall:
+      return "move_wall";
+    case RoomEditCommandKind::StretchWall:
+      return "stretch_wall";
+    case RoomEditCommandKind::RotateWall90:
+      return "rotate_wall_90";
+    case RoomEditCommandKind::SetWallHeight:
+      return "set_wall_height";
+    case RoomEditCommandKind::SetWallThickness:
+      return "set_wall_thickness";
   }
   return "add_floor";
 }

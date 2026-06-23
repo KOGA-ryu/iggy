@@ -2,6 +2,8 @@
 #include "app/frontend/DevToolsMenu.hpp"
 #include "app/frontend/FrontendReceipt.hpp"
 #include "app/frontend/FrontendState.hpp"
+#include "app/frontend/MenuInput.hpp"
+#include "app/frontend/PauseMenu.hpp"
 #include "app/frontend/SaveSlotModel.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/frontend/StarterScreen.hpp"
@@ -429,6 +431,26 @@ struct PlayableReceiptFields {
   std::string editorLoadStatus = "not_requested";
   bool editorRoundtripCollisionSurfacesRestored = false;
   bool editorRoundtripTraversalSlotsRestored = false;
+  std::string editorSelectedType = "none";
+  std::string editorSelectedCenterX = "0.000";
+  std::string editorSelectedCenterY = "0.000";
+  std::string editorSelectedCenterZ = "0.000";
+  std::string editorSelectedSizeX = "0.000";
+  std::string editorSelectedSizeY = "0.000";
+  std::string editorSelectedSizeZ = "0.000";
+  std::string editorSelectedWallStartX = "0.000";
+  std::string editorSelectedWallStartY = "0.000";
+  std::string editorSelectedWallStartZ = "0.000";
+  std::string editorSelectedWallEndX = "0.000";
+  std::string editorSelectedWallEndY = "0.000";
+  std::string editorSelectedWallEndZ = "0.000";
+  std::string editorSelectedWallHeight = "0.000";
+  std::string editorSelectedWallThickness = "0.000";
+  std::string editorLastTransformCommand = "none";
+  std::string editorLastTransformStatus = "not_requested";
+  std::uint64_t editorTransformCount = 0;
+  bool pauseMenuVisible = false;
+  std::uint64_t pauseMenuHudLineCount = 0;
   bool codexControlConfigured = false;
   bool codexControlRead = false;
   bool codexControlApplied = false;
@@ -554,6 +576,7 @@ struct OpeningMenuState {
   bool loadedSave = false;
   bool deletedSave = false;
   bool exitRequested = false;
+  bool deleteConfirmationArmed = false;
   std::optional<iggy3d::SaveAuthoredRoomSection> loadedAuthoredRoom;
 };
 
@@ -622,6 +645,9 @@ struct EditorModeState {
   std::string loadStatus = "not_requested";
   bool roundtripCollisionSurfacesRestored = false;
   bool roundtripTraversalSlotsRestored = false;
+  std::string lastTransformCommand = "none";
+  std::string lastTransformStatus = "not_requested";
+  std::uint64_t transformCount = 0;
 };
 
 struct CodexControlFrame {
@@ -654,18 +680,42 @@ struct CodexControlFrame {
   bool editorSelectSet = false;
   std::string editorSelectId;
   bool editorAddBasicRoom = false;
+  std::vector<std::uint32_t> editorTransformFrames;
+  bool editorMoveSelectedSet = false;
+  iggy3d::Vec3 editorMoveSelectedDelta;
+  bool editorSetSelectedPositionSet = false;
+  iggy3d::Vec3 editorSelectedPositionMeters;
+  bool editorResizeFloorSet = false;
+  iggy3d::Vec3 editorResizeFloorSizeMeters;
+  bool editorResizeFloorDeltaSet = false;
+  iggy3d::Vec3 editorResizeFloorDeltaMeters;
+  bool editorMoveWallSet = false;
+  iggy3d::Vec3 editorMoveWallDelta;
+  bool editorStretchWallStartSet = false;
+  iggy3d::Vec3 editorStretchWallStartMeters;
+  bool editorStretchWallEndSet = false;
+  iggy3d::Vec3 editorStretchWallEndMeters;
+  bool editorRotateWall90Set = false;
+  bool editorRotateWall90Left = false;
+  bool editorSetWallHeightSet = false;
+  float editorWallHeightMeters = 0.0F;
+  bool editorSetWallThicknessSet = false;
+  float editorWallThicknessMeters = 0.0F;
   bool saveCurrent = false;
   bool openingMenuOpenSet = false;
   bool openingMenuOpen = false;
   bool openingMenuSelectSet = false;
   OpeningMenuAction openingMenuSelect = OpeningMenuAction::NewWorld;
   bool openingMenuExecute = false;
+  bool openingMenuDeleteConfirm = false;
   bool openingMenuNext = false;
   bool openingMenuPrevious = false;
   bool pauseOpenSet = false;
   bool pauseOpen = false;
   bool pauseSelectSet = false;
   iggy3d::FrontendAction pauseSelect = iggy3d::FrontendAction::Resume;
+  bool pauseNext = false;
+  bool pausePrevious = false;
   bool pauseExecute = false;
   bool devToolsOpenSet = false;
   bool devToolsOpen = false;
@@ -1009,6 +1059,8 @@ bool parseFrontendDevToolsCategory(std::string_view value,
     out = iggy3d::FrontendDevToolsCategory::Session;
   } else if (value == "player") {
     out = iggy3d::FrontendDevToolsCategory::Player;
+  } else if (value == "input") {
+    out = iggy3d::FrontendDevToolsCategory::Input;
   } else if (value == "movement") {
     out = iggy3d::FrontendDevToolsCategory::Movement;
   } else if (value == "world_editor") {
@@ -1101,6 +1153,24 @@ OpeningMenuAction previousOpeningMenuAction(OpeningMenuAction action) {
       return OpeningMenuAction::Continue;
   }
   return OpeningMenuAction::Continue;
+}
+
+iggy3d::FrontendAction nextPauseMenuAction(iggy3d::FrontendAction action) {
+  const std::vector<iggy3d::FrontendAction>& actions = iggy3d::pauseActionOrder();
+  const auto found = std::find(actions.begin(), actions.end(), action);
+  if (found == actions.end() || std::next(found) == actions.end()) {
+    return actions.empty() ? iggy3d::FrontendAction::Resume : actions.front();
+  }
+  return *std::next(found);
+}
+
+iggy3d::FrontendAction previousPauseMenuAction(iggy3d::FrontendAction action) {
+  const std::vector<iggy3d::FrontendAction>& actions = iggy3d::pauseActionOrder();
+  const auto found = std::find(actions.begin(), actions.end(), action);
+  if (found == actions.end() || found == actions.begin()) {
+    return actions.empty() ? iggy3d::FrontendAction::Resume : actions.back();
+  }
+  return *std::prev(found);
 }
 
 std::string selectedOpeningMenuSaveId(const OpeningMenuState& menu) {
@@ -1329,21 +1399,38 @@ void recordFrontendFields(PlayableReceiptFields& fields,
       iggy3d::frontendInputBackendName(settings.inputBackend));
   fields.frontend.settingsLookSensitivity = receiptFloat(settings.lookSensitivity);
   fields.frontend.settingsInvertLook = settings.invertLook;
-  fields.frontend.menuOwner =
-      menu.enabled && menu.open
-          ? "starter"
-          : (pauseMenuOpen ? "pause"
-                           : (settingsOpen ? "settings"
-                                           : (devOverlayOpen ? "dev_overlay" : "none")));
+  const iggy3d::SaveSlotList& slots = menu.saveSlots;
+  const iggy3d::MenuOwner owner = iggy3d::chooseMenuOwner(
+      iggy3d::MenuOwnerState{menu.enabled && menu.open, pauseMenuOpen, settingsOpen,
+                             devOverlayOpen, false, true});
+  fields.frontend.menuOwner = std::string(iggy3d::menuOwnerName(owner));
   fields.frontend.gameplayInputSuppressed = gameplayInputSuppressed;
   fields.frontend.pauseSelectedAction = pauseSelected;
+  const iggy3d::PauseMenuModel pauseModel =
+      iggy3d::buildPauseMenuModel(
+          iggy3d::PauseMenuContext{pauseMenuOpen, true, !menu.root.empty(),
+                                   slots.compatibleCount, settings.devToolsEnabled},
+          pauseSelected);
+  fields.frontend.pauseSelectedEnabled = pauseModel.selectedEnabled;
+  fields.frontend.pauseSelectedDisabledReason =
+      std::string(pauseModel.selectedDisabledReason);
+  fields.frontend.pauseActionCommand = std::string(pauseModel.selectedCommand);
   fields.frontend.pauseActionExecuted = pauseActionExecuted;
+  fields.frontend.pauseActionStatus =
+      pauseActionExecuted ? std::string(menu.status) : "not_requested";
   fields.frontend.pauseParentScreen = pauseMenuOpen ? "gameplay" : "none";
+  fields.frontend.pauseRowCount = static_cast<std::uint64_t>(pauseModel.rows.size());
+  fields.frontend.pauseEnabledRowCount = pauseModel.enabledRowCount;
   fields.frontend.settingsOpen = settingsOpen;
   fields.frontend.settingsParent = std::string(settingsParent);
   fields.frontend.settingsTab = settingsOpen ? settingsTab : iggy3d::FrontendSettingsTab::None;
-  fields.frontend.settingsSelectedRow =
-      std::string(iggy3d::defaultSettingsRowName(fields.frontend.settingsTab));
+  const iggy3d::SettingsRowModel settingsRow =
+      iggy3d::defaultSettingsRowModel(fields.frontend.settingsTab, settings);
+  fields.frontend.settingsSelectedRow = std::string(settingsRow.row);
+  fields.frontend.settingsSelectedEnabled = settingsRow.enabled;
+  fields.frontend.settingsSelectedDisabledReason =
+      std::string(settingsRow.disabledReason);
+  fields.frontend.settingsPersistence = std::string(settingsRow.persistence);
   fields.frontend.settingsApplyRequested = settingsApplyRequested;
   fields.frontend.settingsRestoreDefaultsRequested = settingsRestoreDefaultsRequested;
   fields.frontend.settingsBackRequested = settingsBackRequested;
@@ -1360,6 +1447,15 @@ void recordFrontendFields(PlayableReceiptFields& fields,
   fields.frontend.devToolsParent = std::string(devToolsParent);
   fields.frontend.devToolsInputBlocking = devOverlayOpen;
   fields.frontend.devToolsReadoutVisible = devOverlayOpen;
+  const iggy3d::DevToolsMenuModel devToolsModel =
+      iggy3d::buildDevToolsMenuModel(devToolsCategory);
+  fields.frontend.devToolsSelectedAction = std::string(devToolsModel.selectedAction);
+  fields.frontend.devToolsSelectedEnabled = devToolsModel.selectedEnabled;
+  fields.frontend.devToolsSelectedDisabledReason =
+      std::string(devToolsModel.selectedDisabledReason);
+  fields.frontend.devToolsCommandStatus = devOverlayOpen ? "read_only" : "not_open";
+  fields.frontend.devToolsRuntimeReadoutCount =
+      devOverlayOpen ? devToolsModel.runtimeReadoutCount : 0U;
   fields.frontend.gamepadOptionsOpens = "pause";
   fields.frontend.gamepadCreateOptionsQuit = true;
   fields.frontend.windowLaunchCount = 0;
@@ -1367,8 +1463,14 @@ void recordFrontendFields(PlayableReceiptFields& fields,
   fields.frontend.starterActionListVisible = menu.enabled && menu.open;
   fields.frontend.starterDetailPanelVisible = menu.enabled && menu.open;
   fields.frontend.starterStatusStripVisible = menu.enabled && menu.open;
-
-  const iggy3d::SaveSlotList& slots = menu.saveSlots;
+  const iggy3d::StarterScreenModel starterModel =
+      iggy3d::buildStarterScreenModel(slots.compatibleCount,
+                                      fields.frontend.selectedAction);
+  fields.frontend.starterRowCount =
+      menu.enabled && menu.open ? static_cast<std::uint64_t>(starterModel.actions.size()) : 0U;
+  fields.frontend.starterSelectedEnabled = starterModel.selectedEnabled;
+  fields.frontend.starterSelectedDisabledReason =
+      std::string(starterModel.selectedDisabledReason);
   fields.frontend.saveCount = static_cast<std::uint64_t>(slots.slots.size());
   fields.frontend.compatibleSaveCount = slots.compatibleCount;
   fields.frontend.corruptSaveCount = slots.corruptCount;
@@ -1465,7 +1567,8 @@ void loadOpeningMenuSelectedSave(OpeningMenuState& menu, iggy3d::Session& sessio
 
 void executeOpeningMenuAction(OpeningMenuState& menu,
                               iggy3d::Session& session,
-                              EditorModeState* editor) {
+                              EditorModeState* editor,
+                              bool deleteConfirmed) {
   if (!menu.enabled) {
     return;
   }
@@ -1511,10 +1614,18 @@ void executeOpeningMenuAction(OpeningMenuState& menu,
       refreshOpeningMenuSaves(menu, session);
       if (menu.saves.empty()) {
         menu.status = "no_save_file_selected";
+        menu.deleteConfirmationArmed = false;
+        break;
+      }
+      if (!deleteConfirmed && !menu.deleteConfirmationArmed) {
+        menu.status = "delete_confirm_required";
+        menu.deleteConfirmationArmed = true;
+        menu.deletedSave = false;
         break;
       }
       menu.deletedSave = iggy3d::deleteSaveFile(menu.saves[menu.selectedSaveIndex].path);
       menu.status = menu.deletedSave ? "save_file_deleted" : "save_file_delete_failed";
+      menu.deleteConfirmationArmed = false;
       refreshOpeningMenuSaves(menu, session);
       break;
     case OpeningMenuAction::Continue:
@@ -1784,6 +1895,37 @@ bool parseControlVec3(std::string_view value, iggy3d::Vec3& out) {
   return iggy3d::isFinite(out);
 }
 
+bool parseControlVec2AsXZ(std::string_view value, iggy3d::Vec3& out) {
+  value = trimControlText(value);
+  const std::size_t comma = value.find(',');
+  if (comma == std::string_view::npos ||
+      value.find(',', comma + 1U) != std::string_view::npos) {
+    return false;
+  }
+
+  float x = 0.0F;
+  float z = 0.0F;
+  if (!parseControlFloat(value.substr(0, comma), x) ||
+      !parseControlFloat(value.substr(comma + 1U), z)) {
+    return false;
+  }
+  out = {x, 0.0F, z};
+  return iggy3d::isFinite(out);
+}
+
+bool parseRotateDirection(std::string_view value, bool& left) {
+  value = trimControlText(value);
+  if (value == "left" || value == "ccw" || value == "counter_clockwise") {
+    left = true;
+    return true;
+  }
+  if (value == "right" || value == "cw" || value == "clockwise") {
+    left = false;
+    return true;
+  }
+  return false;
+}
+
 iggy3d::Vec3 feetToMeters(iggy3d::Vec3 value) {
   constexpr float kFeetToMeters = 0.3048F;
   return value * kFeetToMeters;
@@ -1880,6 +2022,7 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
     EditorTool editorTool = EditorTool::Select;
     EditorPreset editorPreset = EditorPreset::SolidWall;
     std::string editorSelectId;
+    bool rotateLeft = false;
     if (key == "dev_menu.open") {
       if (parseControlBool(value, boolValue)) {
         frame.devMenuOpenSet = true;
@@ -2016,6 +2159,104 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
         frame.parseError = true;
         frame.status = "parse_error";
       }
+    } else if (key == "editor.transform_frames") {
+      if (parseControlFrameList(value, frameList)) {
+        frame.editorTransformFrames = std::move(frameList);
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.move_selected") {
+      if (parseControlVec3(value, vecValue)) {
+        frame.editorMoveSelectedSet = true;
+        frame.editorMoveSelectedDelta = vecValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.set_selected_position") {
+      if (parseControlVec3(value, vecValue)) {
+        frame.editorSetSelectedPositionSet = true;
+        frame.editorSelectedPositionMeters = vecValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.resize_floor") {
+      if (parseControlVec2AsXZ(value, vecValue)) {
+        frame.editorResizeFloorSet = true;
+        frame.editorResizeFloorSizeMeters = vecValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.resize_floor_delta") {
+      if (parseControlVec2AsXZ(value, vecValue)) {
+        frame.editorResizeFloorDeltaSet = true;
+        frame.editorResizeFloorDeltaMeters = vecValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.move_wall") {
+      if (parseControlVec3(value, vecValue)) {
+        frame.editorMoveWallSet = true;
+        frame.editorMoveWallDelta = vecValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.stretch_wall_start") {
+      if (parseControlVec3(value, vecValue)) {
+        frame.editorStretchWallStartSet = true;
+        frame.editorStretchWallStartMeters = vecValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.stretch_wall_end") {
+      if (parseControlVec3(value, vecValue)) {
+        frame.editorStretchWallEndSet = true;
+        frame.editorStretchWallEndMeters = vecValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.rotate_wall_90") {
+      if (parseRotateDirection(value, rotateLeft)) {
+        frame.editorRotateWall90Set = true;
+        frame.editorRotateWall90Left = rotateLeft;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.set_wall_height") {
+      if (parseControlFloat(value, floatValue)) {
+        frame.editorSetWallHeightSet = true;
+        frame.editorWallHeightMeters = floatValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.set_wall_thickness") {
+      if (parseControlFloat(value, floatValue)) {
+        frame.editorSetWallThicknessSet = true;
+        frame.editorWallThicknessMeters = floatValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
     } else if (key == "save.current") {
       if (parseControlBool(value, boolValue)) {
         frame.saveCurrent = frame.saveCurrent || boolValue;
@@ -2050,6 +2291,14 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
         frame.parseError = true;
         frame.status = "parse_error";
       }
+    } else if (key == "opening_menu.delete_confirm") {
+      if (parseControlBool(value, boolValue)) {
+        frame.openingMenuDeleteConfirm = frame.openingMenuDeleteConfirm || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
     } else if (key == "opening_menu.next") {
       if (parseControlBool(value, boolValue)) {
         frame.openingMenuNext = frame.openingMenuNext || boolValue;
@@ -2066,12 +2315,78 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
         frame.parseError = true;
         frame.status = "parse_error";
       }
+    } else if (key == "menu.owner") {
+      if (value == "starter") {
+        frame.openingMenuOpenSet = true;
+        frame.openingMenuOpen = true;
+        frame.pauseOpenSet = true;
+        frame.pauseOpen = false;
+        frame.devToolsOpenSet = true;
+        frame.devToolsOpen = false;
+        frame.applied = true;
+      } else if (value == "pause") {
+        frame.openingMenuOpenSet = true;
+        frame.openingMenuOpen = false;
+        frame.pauseOpenSet = true;
+        frame.pauseOpen = true;
+        frame.devToolsOpenSet = true;
+        frame.devToolsOpen = false;
+        frame.applied = true;
+      } else if (value == "settings") {
+        frame.openingMenuOpenSet = true;
+        frame.openingMenuOpen = false;
+        frame.pauseOpenSet = true;
+        frame.pauseOpen = false;
+        frame.devToolsOpenSet = true;
+        frame.devToolsOpen = false;
+        frame.settingsTabSet = true;
+        frame.settingsTab = iggy3d::FrontendSettingsTab::Input;
+        frame.applied = true;
+      } else if (value == "dev_tools") {
+        frame.openingMenuOpenSet = true;
+        frame.openingMenuOpen = false;
+        frame.pauseOpenSet = true;
+        frame.pauseOpen = false;
+        frame.devToolsOpenSet = true;
+        frame.devToolsOpen = true;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "menu.input") {
+      if (value == "up") {
+        frame.openingMenuPrevious = true;
+        frame.pausePrevious = true;
+        frame.applied = true;
+      } else if (value == "down") {
+        frame.openingMenuNext = true;
+        frame.pauseNext = true;
+        frame.applied = true;
+      } else if (value == "confirm") {
+        frame.openingMenuExecute = true;
+        frame.pauseExecute = true;
+        frame.applied = true;
+      } else if (value == "back") {
+        frame.pauseOpenSet = true;
+        frame.pauseOpen = false;
+        frame.applied = true;
+      } else if (value == "left" || value == "right" || value == "next_tab" ||
+                 value == "previous_tab" || value == "none") {
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
     } else if (key == "frontend.select" || key == "frontend.child_action") {
       if (parseFrontendAction(value, frontendAction)) {
         frame.openingMenuSelectSet = true;
         frame.openingMenuSelect = openingMenuFromFrontendAction(frontendAction);
         frame.pauseSelectSet = true;
         frame.pauseSelect = frontendAction;
+        if (key == "frontend.child_action" && value == "delete_confirm") {
+          frame.openingMenuDeleteConfirm = true;
+        }
         frame.applied = true;
       } else {
         frame.parseError = true;
@@ -2089,6 +2404,7 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
     } else if (key == "frontend.next") {
       if (parseControlBool(value, boolValue)) {
         frame.openingMenuNext = frame.openingMenuNext || boolValue;
+        frame.pauseNext = frame.pauseNext || boolValue;
         frame.applied = true;
       } else {
         frame.parseError = true;
@@ -2097,6 +2413,7 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
     } else if (key == "frontend.previous") {
       if (parseControlBool(value, boolValue)) {
         frame.openingMenuPrevious = frame.openingMenuPrevious || boolValue;
+        frame.pausePrevious = frame.pausePrevious || boolValue;
         frame.applied = true;
       } else {
         frame.parseError = true;
@@ -2165,6 +2482,22 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
     } else if (key == "pause.execute") {
       if (parseControlBool(value, boolValue)) {
         frame.pauseExecute = frame.pauseExecute || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "pause.next") {
+      if (parseControlBool(value, boolValue)) {
+        frame.pauseNext = frame.pauseNext || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "pause.previous") {
+      if (parseControlBool(value, boolValue)) {
+        frame.pausePrevious = frame.pausePrevious || boolValue;
         frame.applied = true;
       } else {
         frame.parseError = true;
@@ -3756,6 +4089,18 @@ void recordEditorCommandResult(EditorModeState& editor,
   }
 }
 
+void recordEditorTransformResult(EditorModeState& editor,
+                                 const char* commandName,
+                                 const iggy3d::RoomEditResult& result) {
+  recordEditorCommandResult(editor, commandName, result);
+  editor.lastTransformCommand = commandName;
+  editor.lastTransformStatus =
+      result.reasonCode == nullptr ? "room_edit_unknown" : result.reasonCode;
+  if (result.status == iggy3d::RoomEditStatus::Applied) {
+    ++editor.transformCount;
+  }
+}
+
 void updateEditorReceiptFields(PlayableReceiptFields& fields,
                                const EditorModeState& editor) {
   fields.editorEnabled = editor.enabled;
@@ -3820,6 +4165,38 @@ void updateEditorReceiptFields(PlayableReceiptFields& fields,
       editor.roundtripCollisionSurfacesRestored;
   fields.editorRoundtripTraversalSlotsRestored =
       editor.roundtripTraversalSlotsRestored;
+  fields.editorLastTransformCommand = editor.lastTransformCommand;
+  fields.editorLastTransformStatus = editor.lastTransformStatus;
+  fields.editorTransformCount = editor.transformCount;
+
+  const iggy3d::EditableRoomDocument& document = editor.session.document();
+  if (const iggy3d::EditableRoomFloor* floor =
+          iggy3d::findEditableFloor(document, editor.selectedId)) {
+    fields.editorSelectedType = "floor";
+    fields.editorSelectedCenterX = debugFloat(floor->centerMeters.x);
+    fields.editorSelectedCenterY = debugFloat(floor->centerMeters.y);
+    fields.editorSelectedCenterZ = debugFloat(floor->centerMeters.z);
+    fields.editorSelectedSizeX = debugFloat(floor->sizeMeters.x);
+    fields.editorSelectedSizeY = debugFloat(floor->sizeMeters.y);
+    fields.editorSelectedSizeZ = debugFloat(floor->sizeMeters.z);
+  } else if (const iggy3d::EditableRoomWall* wall =
+                 iggy3d::findEditableWall(document, editor.selectedId)) {
+    const iggy3d::Vec3 centerPoint = (wall->startMeters + wall->endMeters) * 0.5F;
+    fields.editorSelectedType = "wall";
+    fields.editorSelectedCenterX = debugFloat(centerPoint.x);
+    fields.editorSelectedCenterY = debugFloat(centerPoint.y);
+    fields.editorSelectedCenterZ = debugFloat(centerPoint.z);
+    fields.editorSelectedWallStartX = debugFloat(wall->startMeters.x);
+    fields.editorSelectedWallStartY = debugFloat(wall->startMeters.y);
+    fields.editorSelectedWallStartZ = debugFloat(wall->startMeters.z);
+    fields.editorSelectedWallEndX = debugFloat(wall->endMeters.x);
+    fields.editorSelectedWallEndY = debugFloat(wall->endMeters.y);
+    fields.editorSelectedWallEndZ = debugFloat(wall->endMeters.z);
+    fields.editorSelectedWallHeight = debugFloat(wall->heightMeters);
+    fields.editorSelectedWallThickness = debugFloat(wall->thicknessMeters);
+  } else {
+    fields.editorSelectedType = "none";
+  }
 }
 
 void rebuildEditorRuntimeRoom(const iggy3d::RoomAsset& baseRoom,
@@ -3986,6 +4363,8 @@ void executeEditorAddBasicRoom(EditorModeState& editor,
                                iggy3d::RoomAsset& runtimeRoom,
                                iggy3d::SpatialSurfaceSet& collisionSurfaces,
                                iggy3d::Vec3 roomWorldOffset) {
+  const std::string requestedSelection = editor.selectedId;
+
   iggy3d::EditableRoomFloor floor;
   floor.id = makeEditorFloorId(editor);
   floor.centerMeters = {0.0F, -0.05F, -1.0F};
@@ -4015,8 +4394,15 @@ void executeEditorAddBasicRoom(EditorModeState& editor,
     recordEditorCommandResult(editor, "add_wall", wallResult);
     if (wallResult.status == iggy3d::RoomEditStatus::Applied) {
       ++editor.applyCount;
-      editor.selectedId = wallId;
-      editor.selectionSource = "scripted";
+      const bool requestedNewFloor = requestedSelection == floor.id;
+      const bool requestedNewWall = requestedSelection == wallId;
+      if (requestedNewFloor || requestedNewWall) {
+        editor.selectedId = requestedSelection;
+        editor.selectionSource = "scripted";
+      } else if (editor.selectedId == "none" || !editorSelectionExists(editor)) {
+        editor.selectedId = wallId;
+        editor.selectionSource = "scripted";
+      }
       editor.lastCommand = "add_basic_room";
       editor.lastStatus = "room_edit_applied";
     }
@@ -4024,6 +4410,139 @@ void executeEditorAddBasicRoom(EditorModeState& editor,
 
   rebuildEditorRuntimeRoom(baseRoom, editor, runtimeRoom, collisionSurfaces,
                            roomWorldOffset);
+}
+
+bool codexEditorTransformConfigured(const CodexControlFrame& control) {
+  return control.editorMoveSelectedSet || control.editorSetSelectedPositionSet ||
+         control.editorResizeFloorSet || control.editorResizeFloorDeltaSet ||
+         control.editorMoveWallSet || control.editorStretchWallStartSet ||
+         control.editorStretchWallEndSet || control.editorRotateWall90Set ||
+         control.editorSetWallHeightSet || control.editorSetWallThicknessSet;
+}
+
+void executeEditorTransform(EditorModeState& editor,
+                            const CodexControlFrame& control,
+                            const iggy3d::RoomAsset& baseRoom,
+                            iggy3d::RoomAsset& runtimeRoom,
+                            iggy3d::SpatialSurfaceSet& collisionSurfaces,
+                            iggy3d::Vec3 roomWorldOffset) {
+  const iggy3d::EditableRoomDocument& initialDocument = editor.session.document();
+  const bool selectedFloor =
+      iggy3d::findEditableFloor(initialDocument, editor.selectedId) != nullptr;
+  const bool selectedWall =
+      iggy3d::findEditableWall(initialDocument, editor.selectedId) != nullptr;
+  if (!selectedFloor && !selectedWall) {
+    iggy3d::RoomEditResult result;
+    result.status = iggy3d::RoomEditStatus::InvalidCommand;
+    result.reasonCode = "room_edit_invalid_selection";
+    result.primitiveId = editor.selectedId;
+    recordEditorTransformResult(editor, "transform_selected", result);
+    return;
+  }
+
+  bool anyApplied = false;
+  const auto submitTransform = [&](const char* name, const iggy3d::RoomEditCommand& command) {
+    const iggy3d::RoomEditResult result = editor.session.submit(command);
+    recordEditorTransformResult(editor, name, result);
+    anyApplied = anyApplied || result.status == iggy3d::RoomEditStatus::Applied;
+  };
+
+  if (control.editorMoveSelectedSet) {
+    if (selectedFloor) {
+      submitTransform("move_floor",
+                      iggy3d::moveFloorCommand(editor.selectedId,
+                                               control.editorMoveSelectedDelta));
+    } else {
+      submitTransform("move_wall",
+                      iggy3d::moveWallCommand(editor.selectedId,
+                                              control.editorMoveSelectedDelta));
+    }
+  }
+  if (control.editorSetSelectedPositionSet) {
+    const iggy3d::Vec3 localPosition =
+        editorLocalFromWorld(control.editorSelectedPositionMeters, roomWorldOffset);
+    if (selectedFloor) {
+      submitTransform("set_floor_position",
+                      iggy3d::setFloorPositionCommand(editor.selectedId, localPosition));
+    } else {
+      const iggy3d::EditableRoomWall* wall =
+          iggy3d::findEditableWall(editor.session.document(), editor.selectedId);
+      if (wall == nullptr) {
+        iggy3d::RoomEditResult result;
+        result.status = iggy3d::RoomEditStatus::MissingPrimitive;
+        result.reasonCode = iggy3d::roomEditStatusName(result.status);
+        result.primitiveId = editor.selectedId;
+        recordEditorTransformResult(editor, "set_wall_position", result);
+      } else {
+        const iggy3d::Vec3 centerPoint = (wall->startMeters + wall->endMeters) * 0.5F;
+        submitTransform("set_wall_position",
+                        iggy3d::moveWallCommand(editor.selectedId,
+                                                localPosition - centerPoint));
+      }
+    }
+  }
+  if (control.editorResizeFloorDeltaSet || control.editorResizeFloorSet) {
+    const iggy3d::EditableRoomFloor* floor =
+        iggy3d::findEditableFloor(editor.session.document(), editor.selectedId);
+    if (floor == nullptr) {
+      iggy3d::RoomEditResult result;
+      result.status = iggy3d::RoomEditStatus::InvalidCommand;
+      result.reasonCode = "room_edit_invalid_selection";
+      result.primitiveId = editor.selectedId;
+      recordEditorTransformResult(editor, "resize_floor", result);
+    } else {
+      iggy3d::Vec3 size = floor->sizeMeters;
+      if (control.editorResizeFloorDeltaSet) {
+        size.x += control.editorResizeFloorDeltaMeters.x;
+        size.z += control.editorResizeFloorDeltaMeters.z;
+      }
+      if (control.editorResizeFloorSet) {
+        size.x = control.editorResizeFloorSizeMeters.x;
+        size.z = control.editorResizeFloorSizeMeters.z;
+      }
+      submitTransform("resize_floor",
+                      iggy3d::resizeFloorCommand(editor.selectedId, size));
+    }
+  }
+  if (control.editorMoveWallSet) {
+    submitTransform("move_wall",
+                    iggy3d::moveWallCommand(editor.selectedId,
+                                            control.editorMoveWallDelta));
+  }
+  if (control.editorStretchWallStartSet) {
+    submitTransform("stretch_wall_start",
+                    iggy3d::stretchWallStartCommand(
+                        editor.selectedId,
+                        editorLocalFromWorld(control.editorStretchWallStartMeters,
+                                             roomWorldOffset)));
+  }
+  if (control.editorStretchWallEndSet) {
+    submitTransform("stretch_wall_end",
+                    iggy3d::stretchWallEndCommand(
+                        editor.selectedId,
+                        editorLocalFromWorld(control.editorStretchWallEndMeters,
+                                             roomWorldOffset)));
+  }
+  if (control.editorRotateWall90Set) {
+    submitTransform("rotate_wall_90",
+                    iggy3d::rotateWall90Command(editor.selectedId,
+                                                control.editorRotateWall90Left));
+  }
+  if (control.editorSetWallHeightSet) {
+    submitTransform("set_wall_height",
+                    iggy3d::setWallHeightCommand(editor.selectedId,
+                                                 control.editorWallHeightMeters));
+  }
+  if (control.editorSetWallThicknessSet) {
+    submitTransform("set_wall_thickness",
+                    iggy3d::setWallThicknessCommand(editor.selectedId,
+                                                    control.editorWallThicknessMeters));
+  }
+
+  if (anyApplied) {
+    rebuildEditorRuntimeRoom(baseRoom, editor, runtimeRoom, collisionSurfaces,
+                             roomWorldOffset);
+  }
 }
 
 void executeEditorUndo(EditorModeState& editor,
@@ -4120,6 +4639,31 @@ void appendOpeningMenuDebugHudLines(iggy3d::DebugProjectionResult& debug,
   debug.runtimeDebugHudLines.push_back("STATUS " + menu.status);
   fields.openingMenuHudVisible = true;
   fields.openingMenuHudLineCount =
+      static_cast<std::uint64_t>(debug.runtimeDebugHudLines.size() - initialLineCount);
+}
+
+void appendPauseMenuDebugHudLines(iggy3d::DebugProjectionResult& debug,
+                                  bool pauseMenuOpen,
+                                  iggy3d::FrontendAction selected,
+                                  const OpeningMenuState& menu,
+                                  PlayableReceiptFields& fields) {
+  fields.pauseMenuVisible = false;
+  fields.pauseMenuHudLineCount = 0;
+  if (!pauseMenuOpen) {
+    return;
+  }
+
+  const std::size_t initialLineCount = debug.runtimeDebugHudLines.size();
+  debug.runtimeDebugHudLines.push_back("PAUSE");
+  for (const iggy3d::FrontendAction action : iggy3d::pauseActionOrder()) {
+    std::string line = selected == action ? "> " : "  ";
+    line += std::string(iggy3d::frontendActionName(action));
+    debug.runtimeDebugHudLines.push_back(std::move(line));
+  }
+  debug.runtimeDebugHudLines.push_back("STATUS " + menu.status);
+  debug.runtimeDebugHudLines.push_back("OPTIONS/CIRCLE/BACK RESUME");
+  fields.pauseMenuVisible = true;
+  fields.pauseMenuHudLineCount =
       static_cast<std::uint64_t>(debug.runtimeDebugHudLines.size() - initialLineCount);
 }
 
@@ -5083,6 +5627,42 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
                              fields.editorRoundtripCollisionSurfacesRestored);
   iggy3d::appendReceiptField(receipt, "editor_roundtrip_traversal_slots_restored",
                              fields.editorRoundtripTraversalSlotsRestored);
+  iggy3d::appendReceiptField(receipt, "editor_selected_type", fields.editorSelectedType);
+  iggy3d::appendReceiptField(receipt, "editor_selected_center_x",
+                             fields.editorSelectedCenterX);
+  iggy3d::appendReceiptField(receipt, "editor_selected_center_y",
+                             fields.editorSelectedCenterY);
+  iggy3d::appendReceiptField(receipt, "editor_selected_center_z",
+                             fields.editorSelectedCenterZ);
+  iggy3d::appendReceiptField(receipt, "editor_selected_size_x", fields.editorSelectedSizeX);
+  iggy3d::appendReceiptField(receipt, "editor_selected_size_y", fields.editorSelectedSizeY);
+  iggy3d::appendReceiptField(receipt, "editor_selected_size_z", fields.editorSelectedSizeZ);
+  iggy3d::appendReceiptField(receipt, "editor_selected_wall_start_x",
+                             fields.editorSelectedWallStartX);
+  iggy3d::appendReceiptField(receipt, "editor_selected_wall_start_y",
+                             fields.editorSelectedWallStartY);
+  iggy3d::appendReceiptField(receipt, "editor_selected_wall_start_z",
+                             fields.editorSelectedWallStartZ);
+  iggy3d::appendReceiptField(receipt, "editor_selected_wall_end_x",
+                             fields.editorSelectedWallEndX);
+  iggy3d::appendReceiptField(receipt, "editor_selected_wall_end_y",
+                             fields.editorSelectedWallEndY);
+  iggy3d::appendReceiptField(receipt, "editor_selected_wall_end_z",
+                             fields.editorSelectedWallEndZ);
+  iggy3d::appendReceiptField(receipt, "editor_selected_wall_height",
+                             fields.editorSelectedWallHeight);
+  iggy3d::appendReceiptField(receipt, "editor_selected_wall_thickness",
+                             fields.editorSelectedWallThickness);
+  iggy3d::appendReceiptField(receipt, "editor_last_transform_command",
+                             fields.editorLastTransformCommand);
+  iggy3d::appendReceiptField(receipt, "editor_last_transform_status",
+                             fields.editorLastTransformStatus);
+  iggy3d::appendReceiptField(receipt, "editor_transform_count",
+                             fields.editorTransformCount);
+  iggy3d::appendReceiptField(receipt, "pause_menu_visible",
+                             fields.pauseMenuVisible);
+  iggy3d::appendReceiptField(receipt, "pause_menu_hud_line_count",
+                             fields.pauseMenuHudLineCount);
   iggy3d::appendReceiptField(receipt, "codex_control_configured",
                              fields.codexControlConfigured);
   iggy3d::appendReceiptField(receipt, "codex_control_read", fields.codexControlRead);
@@ -5633,6 +6213,9 @@ int main(int argc, const char* const* argv) {
   bool openingMenuNextDown = false;
   bool openingMenuPreviousDown = false;
   bool openingMenuExecuteDown = false;
+  bool pauseMenuNextDown = false;
+  bool pauseMenuPreviousDown = false;
+  bool pauseMenuExecuteDown = false;
   bool editorToggleDown = false;
   bool editorNextDown = false;
   bool editorPreviousDown = false;
@@ -5725,6 +6308,13 @@ int main(int argc, const char* const* argv) {
           controlFrameListed(codexControl.editorUndoFrames, frameIndex);
       const bool codexEditorRedoThisFrame =
           controlFrameListed(codexControl.editorRedoFrames, frameIndex);
+      const bool codexEditorTransformThisFrame =
+          controlFrameListed(codexControl.editorTransformFrames, frameIndex);
+      const bool codexEditorTransformHasKeys =
+          codexEditorTransformConfigured(codexControl);
+      if (codexEditorTransformHasKeys && codexControl.editorTransformFrames.empty()) {
+        playableFields.codexControlStatus = "editor_transform_missing_frame";
+      }
       iggy3d::Vec3 movement{};
       bool actionRequested = false;
       bool attackRequested = false;
@@ -5754,6 +6344,9 @@ int main(int argc, const char* const* argv) {
       bool openingMenuNextRequested = false;
       bool openingMenuPreviousRequested = false;
       bool openingMenuExecuteRequested = false;
+      bool pauseMenuNextRequested = false;
+      bool pauseMenuPreviousRequested = false;
+      bool pauseMenuExecuteRequested = false;
       bool debugOverlayToggleRequested = false;
       if (parsed.options.scriptedKinematicInput) {
         movement = {1.0F, 0.0F, 0.0F};
@@ -5781,6 +6374,10 @@ int main(int argc, const char* const* argv) {
               openingMenuPreviousRequested = up || w;
               openingMenuNextRequested = down || s;
               openingMenuExecuteRequested = space || enter;
+            } else if (pauseMenuOpen) {
+              pauseMenuPreviousRequested = up || w;
+              pauseMenuNextRequested = down || s;
+              pauseMenuExecuteRequested = space || enter;
             } else {
               devToggleRequested = SDL_SCANCODE_F1 < keyCount && keys[SDL_SCANCODE_F1];
               editorToggleRequested = SDL_SCANCODE_F2 < keyCount && keys[SDL_SCANCODE_F2];
@@ -5948,6 +6545,7 @@ int main(int argc, const char* const* argv) {
           systemContext.editorEnabled = editor.enabled && !openingMenuOwnsGamepad;
           systemContext.editorOpen = editor.open;
           systemContext.menuOwnsInput = frontendOwnsGamepad;
+          const bool pauseWasOpenBeforeSystemControls = pauseMenuOpen;
           iggy3d::GamepadSystemControlSample systemSample;
           systemSample.optionsDown = optionsDown;
           systemSample.createDown = createDown;
@@ -5974,6 +6572,12 @@ int main(int argc, const char* const* argv) {
               editor.open = false;
             }
           }
+          if (systemControls.consumeOptions && pauseWasOpenBeforeSystemControls &&
+              pauseMenuOpen &&
+              systemControls.actionButton == "options") {
+            pauseMenuOpen = false;
+            openingMenu.status = "pause_resume";
+          }
           if (systemControls.devToggleRequested) {
             devToggleRequested = true;
           }
@@ -5995,7 +6599,20 @@ int main(int argc, const char* const* argv) {
             northDown = false;
             r1Down = false;
             r2Down = false;
-          } else if (pauseMenuOpen || settingsOpen || devOverlayOpen) {
+          } else if (pauseMenuOpen) {
+            pauseMenuPreviousRequested = dpadUp || leftY < -0.55F;
+            pauseMenuNextRequested = dpadDown || leftY > 0.55F;
+            pauseMenuExecuteRequested = crossDown;
+            if (eastDown) {
+              pauseMenuOpen = false;
+              openingMenu.status = "pause_resume";
+            }
+            crossDown = false;
+            eastDown = false;
+            northDown = false;
+            r1Down = false;
+            r2Down = false;
+          } else if (settingsOpen || devOverlayOpen) {
             crossDown = false;
             eastDown = false;
             northDown = false;
@@ -6052,6 +6669,9 @@ int main(int argc, const char* const* argv) {
           }
         }
         if (codexControl.openingMenuSelectSet && openingMenu.enabled) {
+          if (openingMenu.selected != codexControl.openingMenuSelect) {
+            openingMenu.deleteConfirmationArmed = false;
+          }
           openingMenu.selected = codexControl.openingMenuSelect;
         }
         if (codexControl.openingMenuPrevious) {
@@ -6075,6 +6695,15 @@ int main(int argc, const char* const* argv) {
         }
         if (codexControl.pauseSelectSet) {
           pauseMenuSelected = codexControl.pauseSelect;
+        }
+        if (codexControl.pausePrevious) {
+          pauseMenuPreviousRequested = true;
+        }
+        if (codexControl.pauseNext) {
+          pauseMenuNextRequested = true;
+        }
+        if (codexControl.pauseExecute) {
+          pauseMenuExecuteRequested = true;
         }
         if (codexControl.devToolsOpenSet) {
           devOverlayOpen = codexControl.devToolsOpen;
@@ -6205,11 +6834,6 @@ int main(int argc, const char* const* argv) {
         editorDeleteRequested = editorDeleteRequested || codexControl.editorDelete;
         editorUndoRequested = editorUndoRequested || codexControl.editorUndo;
         editorRedoRequested = editorRedoRequested || codexControl.editorRedo;
-        if (codexControl.saveCurrent) {
-          writeOpeningMenuSaveFile(openingMenu, session, &editor,
-                                   "authored_room_saved", false);
-          updateEditorReceiptFields(playableFields, editor);
-        }
       }
       if (openingMenu.enabled && openingMenu.open) {
         devMenu.open = false;
@@ -6224,16 +6848,19 @@ int main(int argc, const char* const* argv) {
       if (openingMenu.enabled && openingMenu.open &&
           pressedEdge(openingMenuPreviousRequested, openingMenuPreviousDown)) {
         openingMenu.selected = previousOpeningMenuAction(openingMenu.selected);
+        openingMenu.deleteConfirmationArmed = false;
       }
       if (openingMenu.enabled && openingMenu.open &&
           pressedEdge(openingMenuNextRequested, openingMenuNextDown)) {
         openingMenu.selected = nextOpeningMenuAction(openingMenu.selected);
+        openingMenu.deleteConfirmationArmed = false;
       }
       const bool openingMenuExecutePressed =
           openingMenu.enabled && openingMenu.open &&
           pressedEdge(openingMenuExecuteRequested, openingMenuExecuteDown);
       if (openingMenuExecutePressed) {
-        executeOpeningMenuAction(openingMenu, session, &editor);
+        executeOpeningMenuAction(
+            openingMenu, session, &editor, codexControl.openingMenuDeleteConfirm);
         if (openingMenu.loadedSave) {
           playerMotor = iggy3d::PlayerMotorState{};
           if (const iggy3d::EntityState* loadedPlayer = playerEntity(session)) {
@@ -6255,7 +6882,15 @@ int main(int argc, const char* const* argv) {
         }
         quitRequested = quitRequested || openingMenu.exitRequested;
       }
-      if (pauseMenuOpen && codexControl.pauseExecute) {
+      if (pauseMenuOpen && pressedEdge(pauseMenuPreviousRequested, pauseMenuPreviousDown)) {
+        pauseMenuSelected = previousPauseMenuAction(pauseMenuSelected);
+      }
+      if (pauseMenuOpen && pressedEdge(pauseMenuNextRequested, pauseMenuNextDown)) {
+        pauseMenuSelected = nextPauseMenuAction(pauseMenuSelected);
+      }
+      const bool pauseMenuExecutePressed =
+          pauseMenuOpen && pressedEdge(pauseMenuExecuteRequested, pauseMenuExecuteDown);
+      if (pauseMenuExecutePressed) {
         pauseActionExecuted = true;
         if (pauseMenuSelected == iggy3d::FrontendAction::Save ||
             pauseMenuSelected == iggy3d::FrontendAction::SaveAndExit) {
@@ -6379,6 +7014,10 @@ int main(int argc, const char* const* argv) {
           executeEditorApply(editor, baseRoom, runtimeRoom, collisionSurfaces, roomWorldOffset,
                              yaw);
         }
+        if (codexEditorTransformHasKeys && codexEditorTransformThisFrame) {
+          executeEditorTransform(editor, codexControl, baseRoom, runtimeRoom,
+                                 collisionSurfaces, roomWorldOffset);
+        }
         if (editorDeleteThisFrame) {
           playableFields.editorDeleteRequested = true;
           executeEditorDelete(editor, baseRoom, runtimeRoom, collisionSurfaces, roomWorldOffset);
@@ -6399,6 +7038,10 @@ int main(int argc, const char* const* argv) {
         jumpRequested = false;
         dashRequested = false;
         spellFireRequested = false;
+      }
+      if (codexControl.applied && codexControl.saveCurrent) {
+        writeOpeningMenuSaveFile(openingMenu, session, &editor,
+                                 "authored_room_saved", false);
       }
       updateEditorReceiptFields(playableFields, editor);
       const bool devExecutePressed = pressedEdge(devExecuteRequested, devMenuExecuteDown);
@@ -6763,9 +7406,13 @@ int main(int argc, const char* const* argv) {
       iggy3d::appendRuntimeDebugSnapshot(debug, debugSnapshot);
       appendOpeningMenuDebugHudLines(debug, openingMenu, playableFields);
       if (!openingMenu.enabled || !openingMenu.open) {
+        appendPauseMenuDebugHudLines(debug, pauseMenuOpen, pauseMenuSelected,
+                                     openingMenu, playableFields);
         appendEditorDebugHudLines(debug, editor);
         appendDevMenuDebugHudLines(debug, devMenu, playableFields);
       } else {
+        playableFields.pauseMenuVisible = false;
+        playableFields.pauseMenuHudLineCount = 0;
         playableFields.devMenuHudVisible = false;
         playableFields.devMenuHudLineCount = 0;
       }

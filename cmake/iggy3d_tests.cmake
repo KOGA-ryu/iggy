@@ -44,11 +44,20 @@ set_tests_properties(save_file_store_tests PROPERTIES
 iggy3d_add_unit_test(frontend_state_tests tests/unit/frontend_state_tests.cpp)
 set_tests_properties(frontend_state_tests PROPERTIES LABELS "unit;app;frontend;iggy3d")
 
+iggy3d_add_unit_test(menu_input_tests tests/unit/menu_input_tests.cpp)
+set_tests_properties(menu_input_tests PROPERTIES LABELS "unit;app;frontend;menu_input;iggy3d")
+
+iggy3d_add_unit_test(pause_menu_tests tests/unit/pause_menu_tests.cpp)
+set_tests_properties(pause_menu_tests PROPERTIES LABELS "unit;app;frontend;pause_menu;iggy3d")
+
 iggy3d_add_unit_test(starter_screen_tests tests/unit/starter_screen_tests.cpp)
 set_tests_properties(starter_screen_tests PROPERTIES LABELS "unit;app;frontend;starter;iggy3d")
 
 iggy3d_add_unit_test(settings_menu_tests tests/unit/settings_menu_tests.cpp)
 set_tests_properties(settings_menu_tests PROPERTIES LABELS "unit;app;frontend;settings;iggy3d")
+
+iggy3d_add_unit_test(dev_tools_menu_tests tests/unit/dev_tools_menu_tests.cpp)
+set_tests_properties(dev_tools_menu_tests PROPERTIES LABELS "unit;app;frontend;dev_tools;iggy3d")
 
 iggy3d_add_unit_test(save_slot_model_tests tests/unit/save_slot_model_tests.cpp)
 set_tests_properties(save_slot_model_tests PROPERTIES LABELS "unit;app;frontend;save;iggy3d")
@@ -177,6 +186,7 @@ if(TARGET iggy3d_visual_demo)
   target_compile_definitions(package_visual_startup_smoke
     PRIVATE
       IGGY3D_VISUAL_DEMO_PATH="$<TARGET_FILE:iggy3d_visual_demo>")
+  add_dependencies(package_visual_startup_smoke iggy3d_visual_demo)
   add_test(NAME package_visual_startup_smoke COMMAND "$<TARGET_FILE:package_visual_startup_smoke>")
   set_tests_properties(package_visual_startup_smoke PROPERTIES
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -188,6 +198,7 @@ if(TARGET iggy3d_visual_demo)
   target_compile_definitions(package_visual_window_smoke
     PRIVATE
       IGGY3D_VISUAL_DEMO_PATH="$<TARGET_FILE:iggy3d_visual_demo>")
+  add_dependencies(package_visual_window_smoke iggy3d_visual_demo)
   add_test(NAME package_visual_window_smoke COMMAND "$<TARGET_FILE:package_visual_window_smoke>")
   set_tests_properties(package_visual_window_smoke PROPERTIES
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -201,6 +212,7 @@ if(TARGET iggy3d_visual_demo)
   target_compile_definitions(package_visual_playable_proxy_smoke
     PRIVATE
       IGGY3D_VISUAL_DEMO_PATH="$<TARGET_FILE:iggy3d_visual_demo>")
+  add_dependencies(package_visual_playable_proxy_smoke iggy3d_visual_demo)
   add_test(NAME package_visual_playable_proxy_smoke
            COMMAND "$<TARGET_FILE:package_visual_playable_proxy_smoke>")
   set_tests_properties(package_visual_playable_proxy_smoke PROPERTIES
@@ -215,6 +227,7 @@ if(TARGET iggy3d_visual_demo)
   target_compile_definitions(package_visual_room_asset_smoke
     PRIVATE
       IGGY3D_VISUAL_DEMO_PATH="$<TARGET_FILE:iggy3d_visual_demo>")
+  add_dependencies(package_visual_room_asset_smoke iggy3d_visual_demo)
   add_test(NAME package_visual_room_asset_smoke
            COMMAND "$<TARGET_FILE:package_visual_room_asset_smoke>")
   set_tests_properties(package_visual_room_asset_smoke PROPERTIES
@@ -229,6 +242,7 @@ if(TARGET iggy3d_visual_demo)
   target_compile_definitions(package_visual_movement_playground_smoke
     PRIVATE
       IGGY3D_VISUAL_DEMO_PATH="$<TARGET_FILE:iggy3d_visual_demo>")
+  add_dependencies(package_visual_movement_playground_smoke iggy3d_visual_demo)
   add_test(NAME package_visual_movement_playground_smoke
            COMMAND "$<TARGET_FILE:package_visual_movement_playground_smoke>")
   set_tests_properties(package_visual_movement_playground_smoke PROPERTIES
@@ -243,6 +257,7 @@ if(TARGET iggy3d_visual_demo)
   target_compile_definitions(package_visual_codex_control_smoke
     PRIVATE
       IGGY3D_VISUAL_DEMO_PATH="$<TARGET_FILE:iggy3d_visual_demo>")
+  add_dependencies(package_visual_codex_control_smoke iggy3d_visual_demo)
   add_test(NAME package_visual_codex_control_smoke
            COMMAND "$<TARGET_FILE:package_visual_codex_control_smoke>")
   set_tests_properties(package_visual_codex_control_smoke PROPERTIES
@@ -257,6 +272,7 @@ if(TARGET iggy3d_visual_demo)
   target_compile_definitions(package_visual_bean_models_smoke
     PRIVATE
       IGGY3D_VISUAL_DEMO_PATH="$<TARGET_FILE:iggy3d_visual_demo>")
+  add_dependencies(package_visual_bean_models_smoke iggy3d_visual_demo)
   add_test(NAME package_visual_bean_models_smoke
            COMMAND "$<TARGET_FILE:package_visual_bean_models_smoke>")
   set_tests_properties(package_visual_bean_models_smoke PROPERTIES
@@ -271,6 +287,7 @@ if(TARGET iggy3d_visual_demo)
   target_compile_definitions(package_visual_editor_control_smoke
     PRIVATE
       IGGY3D_VISUAL_DEMO_PATH="$<TARGET_FILE:iggy3d_visual_demo>")
+  add_dependencies(package_visual_editor_control_smoke iggy3d_visual_demo)
   add_test(NAME package_visual_editor_control_smoke
            COMMAND "$<TARGET_FILE:package_visual_editor_control_smoke>")
   set_tests_properties(package_visual_editor_control_smoke PROPERTIES
@@ -285,12 +302,28 @@ if(TARGET iggy3d_visual_demo)
   target_compile_definitions(package_visual_editor_save_load_smoke
     PRIVATE
       IGGY3D_VISUAL_DEMO_PATH="$<TARGET_FILE:iggy3d_visual_demo>")
+  add_dependencies(package_visual_editor_save_load_smoke iggy3d_visual_demo)
   add_test(NAME package_visual_editor_save_load_smoke
            COMMAND "$<TARGET_FILE:package_visual_editor_save_load_smoke>")
   set_tests_properties(package_visual_editor_save_load_smoke PROPERTIES
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     SKIP_RETURN_CODE 77
     LABELS "smoke;visual;editor;authoring;save;no_window;iggy3d")
+
+  add_executable(package_visual_editor_manipulation_smoke
+    tests/smoke/package_visual_editor_manipulation_smoke.cpp)
+  target_link_libraries(package_visual_editor_manipulation_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(package_visual_editor_manipulation_smoke)
+  target_compile_definitions(package_visual_editor_manipulation_smoke
+    PRIVATE
+      IGGY3D_VISUAL_DEMO_PATH="$<TARGET_FILE:iggy3d_visual_demo>")
+  add_dependencies(package_visual_editor_manipulation_smoke iggy3d_visual_demo)
+  add_test(NAME package_visual_editor_manipulation_smoke
+           COMMAND "$<TARGET_FILE:package_visual_editor_manipulation_smoke>")
+  set_tests_properties(package_visual_editor_manipulation_smoke PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    SKIP_RETURN_CODE 77
+    LABELS "smoke;visual;editor;authoring;manipulation;save;no_window;iggy3d")
 
   add_executable(package_visual_opening_menu_smoke
     tests/smoke/package_visual_opening_menu_smoke.cpp)
@@ -299,6 +332,7 @@ if(TARGET iggy3d_visual_demo)
   target_compile_definitions(package_visual_opening_menu_smoke
     PRIVATE
       IGGY3D_VISUAL_DEMO_PATH="$<TARGET_FILE:iggy3d_visual_demo>")
+  add_dependencies(package_visual_opening_menu_smoke iggy3d_visual_demo)
   add_test(NAME package_visual_opening_menu_smoke
            COMMAND "$<TARGET_FILE:package_visual_opening_menu_smoke>")
   set_tests_properties(package_visual_opening_menu_smoke PROPERTIES
@@ -313,6 +347,7 @@ if(TARGET iggy3d_visual_demo)
   target_compile_definitions(package_visual_starter_screen_smoke
     PRIVATE
       IGGY3D_VISUAL_DEMO_PATH="$<TARGET_FILE:iggy3d_visual_demo>")
+  add_dependencies(package_visual_starter_screen_smoke iggy3d_visual_demo)
   add_test(NAME package_visual_starter_screen_smoke
            COMMAND "$<TARGET_FILE:package_visual_starter_screen_smoke>")
   set_tests_properties(package_visual_starter_screen_smoke PROPERTIES
@@ -327,12 +362,28 @@ if(TARGET iggy3d_visual_demo)
   target_compile_definitions(package_visual_ingame_menu_smoke
     PRIVATE
       IGGY3D_VISUAL_DEMO_PATH="$<TARGET_FILE:iggy3d_visual_demo>")
+  add_dependencies(package_visual_ingame_menu_smoke iggy3d_visual_demo)
   add_test(NAME package_visual_ingame_menu_smoke
            COMMAND "$<TARGET_FILE:package_visual_ingame_menu_smoke>")
   set_tests_properties(package_visual_ingame_menu_smoke PROPERTIES
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     SKIP_RETURN_CODE 77
     LABELS "smoke;visual;frontend;menu;no_window;iggy3d")
+
+  add_executable(package_visual_menu_usefulness_smoke
+    tests/smoke/package_visual_menu_usefulness_smoke.cpp)
+  target_link_libraries(package_visual_menu_usefulness_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(package_visual_menu_usefulness_smoke)
+  target_compile_definitions(package_visual_menu_usefulness_smoke
+    PRIVATE
+      IGGY3D_VISUAL_DEMO_PATH="$<TARGET_FILE:iggy3d_visual_demo>")
+  add_dependencies(package_visual_menu_usefulness_smoke iggy3d_visual_demo)
+  add_test(NAME package_visual_menu_usefulness_smoke
+           COMMAND "$<TARGET_FILE:package_visual_menu_usefulness_smoke>")
+  set_tests_properties(package_visual_menu_usefulness_smoke PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    SKIP_RETURN_CODE 77
+    LABELS "smoke;visual;frontend;menu;usefulness;no_window;iggy3d")
 endif()
 
 function(iggy3d_add_render_packet4_unit_test test_name source_file)

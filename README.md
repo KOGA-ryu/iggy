@@ -37,21 +37,25 @@ files under `--save-root` and contain the runtime save envelope plus any authore
 room floors/walls from the in-game editor. Add `--no-opening-menu` to boot
 straight into the room.
 
-In gameplay, Esc opens the Pause Menu: `Resume`, `Save`, `Save And Exit`,
-`Load Save`, `Settings`, `Dev Tools`, `Return To Title`, and `Exit Game`.
-F1 opens the in-game Dev Tools overlay from gameplay. On a PS5/DualSense or SDL
-gamepad, Options opens the Pause Menu; Dev Tools are reached through Pause Menu
-for now, and Create+Options remains the hard-quit chord. Settings are
-app/frontend-owned in this packet and are not persisted to a settings file.
+In gameplay, Esc opens the visible Pause Menu HUD: `Resume`, `Save`,
+`Save And Exit`, `Load Save`, `Settings`, `Dev Tools`, `Return To Title`, and
+`Exit Game`. F1 opens the in-game Dev Tools overlay from gameplay. On a
+PS5/DualSense or SDL gamepad, Options opens the Pause Menu; pressing Options
+again resumes from Pause, Dev Tools are reached through Pause Menu for now, and
+Create+Options remains the hard-quit chord. Settings are app/frontend-owned in
+this packet and are not persisted to a settings file.
 
 In-game room editing is available from the current dev/editor controls. F2
 opens the editor; use tools for select, floor placement, wall placement,
 semantics, and delete. Authored floors and walls keep stable ids such as
-`edit_floor_1` and `edit_wall_1`, can be selected/deleted/undone/redone, and
-are saved into `.iggy3d.save` through the existing Save / Save And Exit flow.
+`edit_floor_1` and `edit_wall_1`, can be selected, moved, resized, stretched,
+rotated, height/thickness adjusted, deleted, undone, and redone. These edits are
+saved into `.iggy3d.save` through the existing Save / Save And Exit flow.
 Loading a save restores the authored room into the editor, resets selection,
 continues id counters from the highest loaded suffix, and rebuilds the runtime
 room/collision/traversal surfaces from the saved authored-room section.
+Codex-control editor transform keys are frame-gated with
+`editor.transform_frames` so scripted no-window runs do not mutate repeatedly.
 
 For automated verification, prefer no-window/null-renderer receipt smokes and
 frontend unit tests. Windowed Vulkan launches are for manual visual inspection,

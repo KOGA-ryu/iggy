@@ -92,10 +92,30 @@ bool restoreAndApplyStayFrontendOnly() {
   return ok;
 }
 
+bool settingsRowsHaveUsefulState() {
+  const iggy3d::FrontendSettings settings = iggy3d::defaultFrontendSettings();
+  const iggy3d::SettingsRowModel audio =
+      iggy3d::defaultSettingsRowModel(iggy3d::FrontendSettingsTab::Audio, settings);
+  const iggy3d::SettingsRowModel input =
+      iggy3d::defaultSettingsRowModel(iggy3d::FrontendSettingsTab::Input, settings);
+  const iggy3d::SettingsRowModel gameplay =
+      iggy3d::defaultSettingsRowModel(iggy3d::FrontendSettingsTab::Gameplay, settings);
+  return expect(input.row == "input_backend", "input row") &&
+         expect(input.enabled, "input enabled") &&
+         expect(input.persistence == "runtime_only", "input runtime only") &&
+         expect(!audio.enabled, "audio disabled without audio system") &&
+         expect(audio.disabledReason == "audio_unavailable",
+                "audio disabled reason") &&
+         expect(!gameplay.enabled, "gameplay read only") &&
+         expect(gameplay.disabledReason == "read_only_v1",
+                "gameplay read only reason");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = settingsTabOrderIsExact() && settingsNamesAreStable() &&
-                  defaultsArePacketDefaults() && restoreAndApplyStayFrontendOnly();
+                  defaultsArePacketDefaults() && restoreAndApplyStayFrontendOnly() &&
+                  settingsRowsHaveUsefulState();
   return ok ? 0 : 1;
 }
