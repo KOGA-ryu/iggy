@@ -136,6 +136,13 @@ int main() {
       hasField(fields, "product_view_yaw_applied", "true") &&
       hasField(fields, "product_view_pitch_applied", "true") &&
       hasField(fields, "product_view_player_anchor_found", "true") &&
+      hasField(fields, "product_render_bridge_ready", "true") &&
+      hasField(fields, "product_view_frame_ready", "true") &&
+      positiveIntegerField(fields, "product_view_frame_item_count") &&
+      positiveIntegerField(fields, "product_view_frame_on_screen_item_count") &&
+      positiveIntegerField(fields, "product_view_frame_target_item_count") &&
+      hasField(fields, "product_feedback_bridge_ready", "true") &&
+      positiveIntegerField(fields, "product_feedback_bridge_line_count") &&
       hasField(fields, "product_feedback_visible", "true") &&
       hasField(fields, "product_feedback_target_status", "discovered") &&
       hasField(fields, "product_feedback_reach_status", "pass") &&

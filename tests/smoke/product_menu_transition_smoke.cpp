@@ -141,7 +141,11 @@ int main() {
       hasField(starterFields, "input_owner", "starter") &&
       hasField(starterFields, "gameplay_input_suppressed", "true") &&
       hasField(starterFields, "product_transition_last_action", "startup") &&
-      hasField(starterFields, "product_transition_status", "starter_ready");
+      hasField(starterFields, "product_transition_status", "starter_ready") &&
+      hasField(starterFields, "product_render_bridge_ready", "false") &&
+      hasField(starterFields, "product_view_frame_ready", "false") &&
+      hasField(starterFields, "product_view_frame_item_count", "0") &&
+      hasField(starterFields, "product_feedback_bridge_ready", "false");
 
   const bool gameplayPassed =
       gameplayExitCode == 0 && gameplayReceiptValid &&
@@ -156,7 +160,14 @@ int main() {
       hasField(gameplayFields, "product_transition_session_preserved", "true") &&
       hasField(gameplayFields, "product_draw_grid_visible", "true") &&
       hasField(gameplayFields, "product_view_projection", "primitive_first_person") &&
-      positiveIntegerField(gameplayFields, "product_draw_item_count");
+      positiveIntegerField(gameplayFields, "product_draw_item_count") &&
+      hasField(gameplayFields, "product_render_bridge_ready", "true") &&
+      hasField(gameplayFields, "product_view_frame_ready", "true") &&
+      positiveIntegerField(gameplayFields, "product_view_frame_item_count") &&
+      positiveIntegerField(gameplayFields, "product_view_frame_on_screen_item_count") &&
+      positiveIntegerField(gameplayFields, "product_view_frame_target_item_count") &&
+      hasField(gameplayFields, "product_feedback_bridge_ready", "true") &&
+      positiveIntegerField(gameplayFields, "product_feedback_bridge_line_count");
 
   const bool passed = starterPassed && gameplayPassed;
 

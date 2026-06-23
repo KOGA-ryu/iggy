@@ -15,6 +15,7 @@
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductMenuTransitions.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
+#include "app/iggy3d/ProductRenderBridge.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
@@ -179,6 +180,7 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
                                     const DebugProjectionResult* debug,
                                     const ProductPrimitiveDrawList* drawList,
                                     const ProductViewportFrame* frame,
+                                    const ProductRenderBridgeFrame* bridge,
                                     bool viewVisible) {
   if (!window.gameplayActive || scene == nullptr) {
     window.viewport.gameplayViewVisible = false;
@@ -193,6 +195,13 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productViewYawApplied = false;
     window.viewport.productViewPitchApplied = false;
     window.viewport.productViewPlayerAnchorFound = false;
+    window.viewport.productRenderBridgeReady = false;
+    window.viewport.productViewFrameReady = false;
+    window.viewport.productViewFrameItemCount = 0;
+    window.viewport.productViewFrameOnScreenItemCount = 0;
+    window.viewport.productViewFrameTargetItemCount = 0;
+    window.viewport.productFeedbackBridgeReady = false;
+    window.viewport.productFeedbackBridgeLineCount = 0;
     window.sceneItemCount = 0;
     window.debugItemCount = 0;
     window.playerVisible = false;
@@ -228,12 +237,22 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productViewPitchApplied = frame->pitchApplied;
     window.viewport.productViewPlayerAnchorFound = frame->playerAnchorFound;
   }
+  if (bridge != nullptr) {
+    window.viewport.productRenderBridgeReady = bridge->ready;
+    window.viewport.productViewFrameReady = bridge->viewFrameReady;
+    window.viewport.productViewFrameItemCount = bridge->frameItemCount;
+    window.viewport.productViewFrameOnScreenItemCount = bridge->onScreenItemCount;
+    window.viewport.productViewFrameTargetItemCount = bridge->targetItemCount;
+    window.viewport.productFeedbackBridgeReady = bridge->feedbackReady;
+    window.viewport.productFeedbackBridgeLineCount = bridge->feedbackLineCount;
+  }
 }
 
 void refreshGameplayProjectionMetrics(const std::optional<Session>& activeSession,
                                       ProductAppWindowState& window) {
   if (!window.gameplayActive || !activeSession.has_value()) {
-    applyGameplayProjectionMetrics(window, nullptr, nullptr, nullptr, nullptr, false);
+    applyGameplayProjectionMetrics(window, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                   false);
     return;
   }
 
@@ -243,9 +262,13 @@ void refreshGameplayProjectionMetrics(const std::optional<Session>& activeSessio
   const ProductViewportFrame frame = buildProductViewportFrame(
       drawList, ProductViewportFrameConfig{window.viewport.cameraYawDegrees,
                                            window.viewport.cameraPitchDegrees});
+  const ProductGameplayFeedback feedback = buildProductGameplayFeedback(window);
+  const ProductRenderBridgeFrame bridge =
+      buildProductRenderBridgeFrame(&drawList, &frame, &feedback);
   const bool viewWasVisible = window.viewport.gameplayViewVisible;
   window.runtimeStateHash = activeSession->stateHash();
-  applyGameplayProjectionMetrics(window, &scene, &debug, &drawList, &frame, viewWasVisible);
+  applyGameplayProjectionMetrics(window, &scene, &debug, &drawList, &frame, &bridge,
+                                 viewWasVisible);
 }
 
 FrontendAction nextStarterSelection(FrontendAction current, InputAction action) {
@@ -687,7 +710,9 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
     const DebugProjectionResult* debugPtr = nullptr;
     const ProductPrimitiveDrawList* drawListPtr = nullptr;
     const ProductViewportFrame* framePtr = nullptr;
+    const ProductRenderBridgeFrame* bridgePtr = nullptr;
     ProductGameplayFeedback feedback = buildProductGameplayFeedback(window);
+    ProductRenderBridgeFrame bridge;
     if (window.gameplayActive && activeSession.has_value()) {
       scene = buildSceneProjection(activeSession->state());
       debug = buildDebugProjection(activeSession->state());
@@ -702,6 +727,8 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
       sceneItemCount = scene.items.size();
       window.runtimeStateHash = activeSession->stateHash();
       feedback = buildProductGameplayFeedback(window);
+      bridge = buildProductRenderBridgeFrame(&drawList, &frame, &feedback);
+      bridgePtr = &bridge;
     }
 
     if (window.drawable) {
@@ -712,6 +739,7 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
                               window.viewport.cameraYawDegrees,
                               window.viewport.cameraPitchDegrees, saves);
       applyGameplayProjectionMetrics(window, scenePtr, debugPtr, drawListPtr, framePtr,
+                                     bridgePtr,
                                      window.gameplayActive && scenePtr != nullptr);
       window.viewport.cameraHeadingVisible =
           window.viewport.cameraHeadingVisible || view.cameraHeadingDrawn;
@@ -720,7 +748,7 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
       window.menuRowCount = view.rowCount;
     } else {
       applyGameplayProjectionMetrics(window, scenePtr, debugPtr, drawListPtr, framePtr,
-                                     false);
+                                     bridgePtr, false);
     }
     ++window.framesPresented;
 

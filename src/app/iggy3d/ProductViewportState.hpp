@@ -26,6 +26,13 @@ struct ProductViewportState {
   bool productViewYawApplied = false;
   bool productViewPitchApplied = false;
   bool productViewPlayerAnchorFound = false;
+  bool productRenderBridgeReady = false;
+  bool productViewFrameReady = false;
+  std::uint64_t productViewFrameItemCount = 0;
+  std::uint64_t productViewFrameOnScreenItemCount = 0;
+  std::uint64_t productViewFrameTargetItemCount = 0;
+  bool productFeedbackBridgeReady = false;
+  std::uint64_t productFeedbackBridgeLineCount = 0;
 };
 
 }  // namespace iggy3d

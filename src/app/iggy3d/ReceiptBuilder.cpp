@@ -152,6 +152,20 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.viewport.productViewPitchApplied);
   appendReceiptField(receipt, "product_view_player_anchor_found",
                      window.viewport.productViewPlayerAnchorFound);
+  appendReceiptField(receipt, "product_render_bridge_ready",
+                     window.viewport.productRenderBridgeReady);
+  appendReceiptField(receipt, "product_view_frame_ready",
+                     window.viewport.productViewFrameReady);
+  appendReceiptField(receipt, "product_view_frame_item_count",
+                     window.viewport.productViewFrameItemCount);
+  appendReceiptField(receipt, "product_view_frame_on_screen_item_count",
+                     window.viewport.productViewFrameOnScreenItemCount);
+  appendReceiptField(receipt, "product_view_frame_target_item_count",
+                     window.viewport.productViewFrameTargetItemCount);
+  appendReceiptField(receipt, "product_feedback_bridge_ready",
+                     window.viewport.productFeedbackBridgeReady);
+  appendReceiptField(receipt, "product_feedback_bridge_line_count",
+                     window.viewport.productFeedbackBridgeLineCount);
   appendReceiptField(receipt, "product_feedback_visible", feedback.visible);
   appendReceiptField(receipt, "product_feedback_target_status",
                      feedback.targetStatus);
