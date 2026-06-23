@@ -136,6 +136,33 @@ Examples:
 | `apps/tools` | CLI, file paths, process orchestration, output | app-local config and process output | gameplay rules, direct runtime state writes |
 | `tests` | assertions and fixtures used by tests | test-local state | production runtime behavior |
 
+### Product View v1 App Ownership
+
+Product view data is app-owned derived output, documented in
+`docs/product_view_v1.md`.
+
+The product view owns:
+
+- `ProductPrimitiveDrawList`: primitive product draw intent derived from
+  scene/debug projection;
+- `ProductViewportFrame`: deterministic primitive-first-person framing derived
+  from draw list and app viewport state;
+- `ProductGameplayFeedback`: compact action feedback derived from
+  `ProductAppWindowState`;
+- `ProductRenderBridgeFrame`: renderer-safe product handoff summary derived from
+  draw list, viewport frame, and feedback.
+
+The product view must not own:
+
+- gameplay legality;
+- runtime entity mutation;
+- save/load/replay/hash truth;
+- renderer handles or GPU resources;
+- Vulkan backend lifecycle.
+
+Renderer backends may later consume product bridge data, but that data remains
+derived proof. Renderer output must never mutate runtime truth.
+
 ## State Field Ownership
 
 ### `SessionState`

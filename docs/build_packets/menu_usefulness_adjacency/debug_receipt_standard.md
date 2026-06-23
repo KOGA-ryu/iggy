@@ -9,7 +9,8 @@ Standardize receipt/debug naming, owner/status/count fields, reason codes, and w
 - `/Users/kogaryu/iggy3d/src/app/frontend/FrontendReceipt.*`
 - `/Users/kogaryu/iggy3d/src/render/RenderDiagnostics.*`
 - `/Users/kogaryu/iggy3d/src/projection/debug/*`
-- `/Users/kogaryu/iggy3d/apps/iggy3d_visual_demo/main.cpp`
+- `/Users/kogaryu/iggy3d/apps/iggy3d/main.cpp`
+- `/Users/kogaryu/iggy3d/src/app/iggy3d/*`
 - `/Users/kogaryu/iggy3d/tests/unit/render_diagnostics_tests.cpp`
 - `/Users/kogaryu/iggy3d/tests/unit/frontend_receipt_tests.cpp`
 - `/Users/kogaryu/iggy3d/tests/smoke/package_visual_menu_usefulness_smoke.cpp`
@@ -37,7 +38,7 @@ Standardize receipt/debug naming, owner/status/count fields, reason codes, and w
 Common:
 
 ```text
-app=iggy3d_visual_demo
+app=<app-name>
 result=pass|fail|skip
 reason_code=<lower-snake-case>
 window_launch_count=<integer>
@@ -82,6 +83,50 @@ traversal_attempted=true|false
 traversal_reason=<reason>
 projectile_travel_status=<status|none>
 ```
+
+Product View v1:
+
+```text
+gameplay_view_visible=true|false
+camera_mode=first_person
+camera_yaw_degrees=<fixed-3-float>
+camera_pitch_degrees=<fixed-3-float>
+product_draw_item_count=<integer>
+product_draw_grid_visible=true|false
+product_draw_player_visible=true|false
+product_draw_room_visible=true|false
+product_draw_objective_visible=true|false
+product_draw_target_indicator_visible=true|false
+product_draw_debug_marker_count=<integer>
+product_view_projection=primitive_first_person
+product_view_yaw_applied=true|false
+product_view_pitch_applied=true|false
+product_view_player_anchor_found=true|false
+product_feedback_visible=true|false
+product_feedback_target_status=<status>
+product_feedback_reach_status=<status>
+product_feedback_command_kind=<kind>
+product_feedback_command_status=<status>
+product_feedback_rejection_reason=<reason|none>
+product_feedback_attack_visible=true|false
+product_feedback_interaction_visible=true|false
+product_transition_last_action=<action>
+product_transition_status=<status>
+product_transition_returned_to_gameplay=true|false
+product_transition_returned_to_title=true|false
+product_transition_session_preserved=true|false
+product_render_bridge_ready=true|false
+product_view_frame_ready=true|false
+product_view_frame_item_count=<integer>
+product_view_frame_on_screen_item_count=<integer>
+product_view_frame_target_item_count=<integer>
+product_feedback_bridge_ready=true|false
+product_feedback_bridge_line_count=<integer>
+```
+
+`docs/product_view_v1.md` is the source-truth explainer for these fields.
+Starter/no-world receipts must not report stale product view frame or bridge
+readiness.
 
 ## Reason Code Rules
 

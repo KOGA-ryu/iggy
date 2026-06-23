@@ -2,9 +2,9 @@
 
 Standalone 3D runtime/gameplay repo for the `iggy3d` build.
 
-Current status: playable runtime demo in progress. The movement playground is
+Current status: product gameplay view in progress. The movement playground is
 the current first-person test arena for movement, traversal, spells, debug
-telemetry, room editing, and procedural bean model proxies.
+telemetry, room editing, and procedural bean model placeholders.
 
 Startup script:
 
@@ -13,29 +13,26 @@ Startup script:
 set -eu
 
 cd ~/iggy3d
-cmake --build build --target iggy3d_visual_demo -j 8
+cmake --build build --target iggy3d_app -j 8
 
-./build/iggy3d_visual_demo \
-  --renderer vulkan \
+./build/iggy3d \
   --window \
-  --interactive \
-  --opening-menu \
   --input auto \
   --save-root "$HOME/.iggy3d/saves" \
-  --package fixtures/demos/movement_playground/package.iggy3d.toml \
   --print-render-receipt
 ```
 
-If Vulkan is not available on the machine, replace `--renderer vulkan` with
-`--renderer null` for receipt-only validation.
+Use `--no-window --print-render-receipt` for routine receipt-only validation.
+Windowed launches are for manual inspection only.
 
 Normal interactive window launches open the starter menu first and suppress the
 demo world until a save is created or loaded. Use W/S or Up/Down to move between
 `Continue`, `New World`, `Load Save`, `Settings`, `Dev Tools`, and `Exit`; use
 Enter/Space or controller Cross to execute. Save files are plain `.iggy3d.save`
 files under `--save-root` and contain the runtime save envelope plus any authored
-room floors/walls from the in-game editor. Add `--no-opening-menu` to boot
-straight into the room.
+room floors/walls from the in-game editor. Use `--auto-new-world` only for
+explicit scripted or developer launch paths that should enter gameplay without
+manual starter-menu selection.
 
 In gameplay, Esc opens the visible Pause Menu HUD: `Resume`, `Save`,
 `Save And Exit`, `Load Save`, `Settings`, `Dev Tools`, `Return To Title`, and
@@ -61,10 +58,19 @@ For automated verification, prefer no-window/null-renderer receipt smokes and
 frontend unit tests. Windowed Vulkan launches are for manual visual inspection,
 not routine packet iteration.
 
+Product View v1 source truth:
+
+- `docs/product_view_v1.md`
+- runtime/session remains gameplay truth;
+- product draw/framing/feedback/bridge data is derived view proof;
+- `ProductRenderBridgeFrame` is a product-owned renderer-safe handoff summary
+  and is not consumed by Vulkan yet.
+
 Start here:
 
 - `docs/architecture.md`
 - `docs/ownership.md`
+- `docs/product_view_v1.md`
 - `docs/acceptance_demo.md`
 - `docs/roadmap.md`
 - `docs/file_plans/INDEX.md`

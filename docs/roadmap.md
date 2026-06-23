@@ -209,3 +209,24 @@ Renderer work has two gates:
 `CommandReplay` is not a prerequisite for Vulkan Packet 1, Packet 2, or Packet 3. Renderer replay-invariance tests mean renderer submission must not mutate runtime hash, runtime state, command results, or replay truth. They do not require the replay tool to exist before backend-neutral renderer work starts.
 
 Runtime must expose projection data that a future renderer can consume without owning gameplay state. First visual integration should consume `SceneProjection`, `DebugProjection`, and `CameraState` only. Vulkan backend/bootstrap starts later and follows the Vulkan file-plan packet ladder after the Packet 1, Packet 2, and Packet 3 contracts are reviewed.
+
+## Product View v1 Current State
+
+The active product gameplay surface is documented in `docs/product_view_v1.md`.
+It supersedes older product-facing "proxy view" wording for the SDL product app
+surface.
+
+Current product view ownership:
+
+- runtime/session remains gameplay truth;
+- scene/debug projection is derived proof;
+- `ProductPrimitiveDrawList` is product view draw intent;
+- `ProductViewportFrame` is deterministic primitive-first-person framing;
+- `ProductGameplayFeedback` is compact HUD/action feedback;
+- `ProductRenderBridgeFrame` is renderer-safe derived handoff data.
+
+Deferred renderer work:
+
+- `ProductRenderBridgeFrame` is not consumed by Vulkan yet;
+- primitive-first-person framing is not true perspective rendering;
+- first real room/object rendering remains a later renderer/asset packet.
