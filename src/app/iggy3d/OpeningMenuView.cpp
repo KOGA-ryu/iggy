@@ -365,7 +365,7 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
   setColor(renderer, 226, 230, 211);
   drawText(renderer, "IGGY3D GAMEPLAY", 84.0F, 42.0F, 5.0F);
   setColor(renderer, 126, 201, 176);
-  drawText(renderer, "FIRST PERSON PROXY VIEW", 88.0F, 104.0F, 3.0F);
+  drawText(renderer, "FIRST PERSON GAMEPLAY VIEW", 88.0F, 104.0F, 3.0F);
   drawCameraHeading(renderer, cameraYawDegrees);
   setColor(renderer, 166, 184, 177);
   drawText(renderer, "CAMERA FIRST PERSON", 870.0F, 286.0F, 2.0F);
