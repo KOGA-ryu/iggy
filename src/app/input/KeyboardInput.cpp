@@ -1,5 +1,6 @@
 #include "app/input/KeyboardInput.hpp"
 
+#include "app/input/ActionState.hpp"
 #include "app/input/InputBindings.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)
@@ -45,6 +46,43 @@ InputAction pollKeyboardMenuAction(KeyboardInputState& state) {
 #else
   (void)state;
   return InputAction::None;
+#endif
+}
+
+void pollKeyboardGameplayActions(KeyboardInputState& state, ActionState& actions) {
+#if defined(IGGY3D_HAS_SDL3)
+  const bool* keys = SDL_GetKeyboardState(nullptr);
+  const bool forwardDown = keyDown(keys, SDL_SCANCODE_W);
+  const bool backDown = keyDown(keys, SDL_SCANCODE_S);
+  const bool leftDown = keyDown(keys, SDL_SCANCODE_A);
+  const bool rightDown = keyDown(keys, SDL_SCANCODE_D);
+  const bool interactDown = keyDown(keys, SDL_SCANCODE_E);
+  const bool retryDown = keyDown(keys, SDL_SCANCODE_R);
+
+  if (forwardDown) {
+    recordAction(actions, InputAction::PlayerMoveY, true, false, false, 1.0F);
+  }
+  if (backDown) {
+    recordAction(actions, InputAction::PlayerMoveY, true, false, false, -1.0F);
+  }
+  if (leftDown) {
+    recordAction(actions, InputAction::PlayerMoveX, true, false, false, -1.0F);
+  }
+  if (rightDown) {
+    recordAction(actions, InputAction::PlayerMoveX, true, false, false, 1.0F);
+  }
+  if (interactDown && !state.interactWasDown) {
+    recordAction(actions, InputAction::PlayerInteract, true, true, false, 1.0F);
+  }
+  if (retryDown && !state.retryWasDown) {
+    recordAction(actions, InputAction::PlayerRetryOrReset, true, true, false, 1.0F);
+  }
+
+  state.interactWasDown = interactDown;
+  state.retryWasDown = retryDown;
+#else
+  (void)state;
+  (void)actions;
 #endif
 }
 

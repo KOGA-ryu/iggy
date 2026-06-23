@@ -6,6 +6,8 @@
 
 namespace iggy3d {
 
+struct ActionState;
+
 struct GamepadMenuState {
   bool initialized = false;
   bool gamepadAvailable = false;
@@ -14,6 +16,8 @@ struct GamepadMenuState {
   bool confirmWasDown = false;
   bool backWasDown = false;
   bool optionsWasDown = false;
+  bool gameplayInteractWasDown = false;
+  bool rightTriggerWasDown = false;
   std::string gamepadName = "unavailable";
   void* nativeGamepad = nullptr;
 };
@@ -21,5 +25,6 @@ struct GamepadMenuState {
 void initializeGamepadMenuState(GamepadMenuState& state);
 void shutdownGamepadMenuState(GamepadMenuState& state);
 InputAction pollGamepadMenuAction(GamepadMenuState& state);
+void pollGamepadGameplayActions(GamepadMenuState& state, ActionState& actions);
 
 }  // namespace iggy3d

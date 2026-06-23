@@ -109,6 +109,12 @@ ProductAppOptionsParseResult parseProductAppOptions(int argc, char** argv) {
       result.options.autoNewWorld = true;
       continue;
     }
+    if (arg == "--scripted-gameplay-smoke") {
+      result.options.scriptedGameplaySmoke = true;
+      result.options.autoNewWorld = true;
+      result.options.inputBackend = ProductInputBackend::Auto;
+      continue;
+    }
     if (arg == "--frames") {
       if (needsValue(i, argc)) {
         result.status = ProductAppOptionStatus::MissingOptionValue;
@@ -232,6 +238,7 @@ std::string productAppHelpText() {
          "  --frames <count>\n"
          "  --hold-seconds <count>\n"
          "  --auto-new-world\n"
+         "  --scripted-gameplay-smoke\n"
          "  --print-render-receipt\n"
          "  --dev-package-override <package.iggy3d.toml>\n"
          "  --dev-scenario <id>\n"

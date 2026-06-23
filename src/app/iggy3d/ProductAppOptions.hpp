@@ -43,6 +43,7 @@ struct ProductAppOptions {
   std::uint32_t frames = 0;
   std::uint32_t holdSeconds = 0;
   bool autoNewWorld = false;
+  bool scriptedGameplaySmoke = false;
   bool printRenderReceipt = false;
   bool help = false;
 };

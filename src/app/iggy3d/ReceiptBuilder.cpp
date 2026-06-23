@@ -20,6 +20,10 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      frontendActionName(frontend.selectedAction));
   appendReceiptField(receipt, "frontend_status", frontend.status);
   appendReceiptField(receipt, "frontend_launch_requested", frontend.launchRequested);
+  appendReceiptField(receipt, "frontend_return_to_title_requested",
+                     frontend.returnToTitleRequested);
+  appendReceiptField(receipt, "pause_menu_open", frontend.pauseMenuOpen);
+  appendReceiptField(receipt, "dev_tools_open", frontend.devToolsOpen);
   appendReceiptField(receipt, "starter_world_suppressed", !window.gameplayActive);
   appendReceiptField(receipt, "auto_new_world", options.autoNewWorld);
   appendReceiptField(receipt, "renderer_request", productRendererRequestName(options.renderer));
@@ -70,6 +74,20 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "room_visible", window.roomVisible);
   appendReceiptField(receipt, "objective_visible", window.objectiveVisible);
   appendReceiptField(receipt, "renderer_mutated_runtime", window.rendererMutatedRuntime);
+  appendReceiptField(receipt, "scripted_gameplay_smoke", window.scriptedGameplaySmoke);
+  appendReceiptField(receipt, "gameplay_input_used", window.gameplayInputUsed);
+  appendReceiptField(receipt, "gameplay_input_source", window.gameplayInputSource);
+  appendReceiptField(receipt, "gameplay_command_submitted", window.gameplayCommandSubmitted);
+  appendReceiptField(receipt, "gameplay_command_kind", window.gameplayCommandKind);
+  appendReceiptField(receipt, "gameplay_command_status", window.gameplayCommandStatus);
+  appendReceiptField(receipt, "gameplay_command_accepted", window.gameplayCommandAccepted);
+  appendReceiptField(receipt, "gameplay_tick_advanced", window.gameplayTickAdvanced);
+  appendReceiptField(receipt, "player_position_changed", window.playerPositionChanged);
+  appendReceiptField(receipt, "target_discovered", window.targetDiscovered);
+  appendReceiptField(receipt, "gameplay_reach_gate", window.gameplayReachGate);
+  appendReceiptField(receipt, "gameplay_last_rejection", window.gameplayLastRejection);
+  appendReceiptField(receipt, "interaction_executed", window.interactionExecuted);
+  appendReceiptField(receipt, "attack_executed", window.attackExecuted);
   appendReceiptField(receipt, "input_owner", menuOwnerName(window.inputOwner));
   appendReceiptField(receipt, "input_action_last", inputActionName(window.lastInputAction));
   appendReceiptField(receipt, "input_action_accepted", window.lastInputAccepted);

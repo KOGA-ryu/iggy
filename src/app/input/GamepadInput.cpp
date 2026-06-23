@@ -1,5 +1,6 @@
 #include "app/input/GamepadInput.hpp"
 
+#include "app/input/ActionState.hpp"
 #include "app/input/InputBindings.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)
@@ -18,6 +19,29 @@ SDL_Gamepad* nativeGamepad(GamepadMenuState& state) {
 bool gamepadButtonDown(GamepadMenuState& state, SDL_GamepadButton button) {
   SDL_Gamepad* gamepad = nativeGamepad(state);
   return gamepad != nullptr && SDL_GetGamepadButton(gamepad, button);
+}
+
+float normalizedAxis(GamepadMenuState& state, SDL_GamepadAxis axis) {
+  SDL_Gamepad* gamepad = nativeGamepad(state);
+  if (gamepad == nullptr) {
+    return 0.0F;
+  }
+  constexpr float kScale = 32767.0F;
+  float value = static_cast<float>(SDL_GetGamepadAxis(gamepad, axis)) / kScale;
+  if (value > -0.18F && value < 0.18F) {
+    return 0.0F;
+  }
+  if (value < -1.0F) {
+    return -1.0F;
+  }
+  if (value > 1.0F) {
+    return 1.0F;
+  }
+  return value;
+}
+
+bool triggerDown(GamepadMenuState& state, SDL_GamepadAxis axis) {
+  return normalizedAxis(state, axis) > 0.55F;
 }
 #endif
 
@@ -98,6 +122,46 @@ InputAction pollGamepadMenuAction(GamepadMenuState& state) {
 #else
   (void)state;
   return InputAction::None;
+#endif
+}
+
+void pollGamepadGameplayActions(GamepadMenuState& state, ActionState& actions) {
+#if defined(IGGY3D_HAS_SDL3)
+  if (!state.gamepadAvailable) {
+    return;
+  }
+
+  const float moveX = normalizedAxis(state, SDL_GAMEPAD_AXIS_LEFTX);
+  const float moveY = -normalizedAxis(state, SDL_GAMEPAD_AXIS_LEFTY);
+  const float lookX = normalizedAxis(state, SDL_GAMEPAD_AXIS_RIGHTX);
+  const float lookY = -normalizedAxis(state, SDL_GAMEPAD_AXIS_RIGHTY);
+  const bool interactDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_SOUTH);
+  const bool attackDown = triggerDown(state, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER);
+
+  if (moveX != 0.0F) {
+    recordAction(actions, InputAction::PlayerMoveX, true, false, false, moveX);
+  }
+  if (moveY != 0.0F) {
+    recordAction(actions, InputAction::PlayerMoveY, true, false, false, moveY);
+  }
+  if (lookX != 0.0F) {
+    recordAction(actions, InputAction::PlayerLookX, true, false, false, lookX);
+  }
+  if (lookY != 0.0F) {
+    recordAction(actions, InputAction::PlayerLookY, true, false, false, lookY);
+  }
+  if (interactDown && !state.gameplayInteractWasDown) {
+    recordAction(actions, InputAction::PlayerInteract, true, true, false, 1.0F);
+  }
+  if (attackDown && !state.rightTriggerWasDown) {
+    recordAction(actions, InputAction::PlayerAttack, true, true, false, 1.0F);
+  }
+
+  state.gameplayInteractWasDown = interactDown;
+  state.rightTriggerWasDown = attackDown;
+#else
+  (void)state;
+  (void)actions;
 #endif
 }
 
