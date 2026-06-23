@@ -11,7 +11,8 @@ Hard rules:
 - No repeated window-launch verification. Prefer unit, headless, replay, null renderer, and receipt smokes.
 - Keep `window_launch_count=0` for automated packet verification unless a packet explicitly requires manual visible proof.
 - Preserve runtime truth, save truth, frontend state, editor authoring truth, renderer output, and debug receipts as separate ownership layers.
-- Do not keep adding product behavior directly to `apps/iggy3d_visual_demo/main.cpp`.
+- Do not keep adding product behavior to compatibility/test shell paths.
+  Current product work belongs under `apps/iggy3d` and `src/app/iggy3d`.
 
 ## Current Snapshot
 
@@ -19,16 +20,18 @@ The repo currently has a working standalone `iggy3d` runtime with:
 
 - deterministic runtime/session/save/replay base;
 - first-room headless acceptance proof;
-- Vulkan/null renderer boundary and visual demo app;
+- Vulkan/null renderer boundary and compatibility visual shell;
 - movement playground, first-person controls, controller support, dev HUD/menu surfaces;
 - starter/pause/settings/dev/menu usefulness work;
 - in-game editable room authoring with save/load/manipulation smokes;
-- product app boot/menu scaffold work in progress;
+- product app boot/menu scaffold and Product View v1 gameplay surface;
 - build packets for menu usefulness, adjacent menu planning, product boot, room assets, Vulkan, and visual demo decomposition.
 
 Primary current risk:
 
-- `apps/iggy3d_visual_demo/main.cpp` is over 7k LOC and still owns too many responsibilities.
+- Historical visual-shell code still owns compatibility/test responsibilities, but
+  current product behavior should continue moving through `apps/iggy3d` and
+  `src/app/iggy3d`.
 - Several packets are dirty in the worktree at once. Before large new implementation, stabilize and commit coherent slices.
 
 ## Implementation Order
@@ -59,9 +62,10 @@ ctest --test-dir build --output-on-failure -R 'editable_room|visual_editor|menu_
 git diff --check
 ```
 
-### 1. Visual Demo Decomposition
+### 1. Product App / Visual Shell Boundary
 
-Goal: split `apps/iggy3d_visual_demo/main.cpp` into behavior-preserving modules before adding more gameplay/editor/menu work.
+Goal: keep product behavior in the current `iggy3d` app surface while preserving
+`iggy3d_visual_demo` as a compatibility/test shell until tests and docs migrate.
 
 Reference packet:
 
@@ -69,23 +73,18 @@ Reference packet:
 
 Todos:
 
-- [ ] Extract `VisualDemoOptions` for CLI/options parsing.
-- [ ] Rename Codex-branded control surfaces to neutral automation naming.
-- [ ] Keep no-window scripted control capability.
-- [ ] Extract `AutomationControl` from the current control-file parser.
-- [ ] Extract `ReceiptBuilder` for app-specific receipt fields.
-- [ ] Extract `DebugHudController` for app debug HUD line assembly.
-- [ ] Extract `FrontendController` for starter/pause/settings/dev transitions.
-- [ ] Extract `EditorController` for editor state, cursor/probe/ghost, and authored-room command calls.
-- [ ] Extract `SaveBridge` for visual-demo save/load orchestration.
-- [ ] Extract `InputRouter` for keyboard/gamepad/mouse/automation normalization.
-- [ ] Reduce `apps/iggy3d_visual_demo/main.cpp` to a thin entrypoint.
+- [ ] Keep `./build/iggy3d` as the product launch command.
+- [ ] Keep no-window scripted control capability on the product app path.
+- [ ] Classify remaining `iggy3d_visual_demo` references as compatibility/test shell or migrate them.
+- [ ] Do not add new product gameplay/menu/editor behavior to visual-shell-only docs.
+- [ ] Leave package visual smoke naming alone until an approved source/test migration.
 
 Acceptance:
 
-- Same no-window receipts before and after extraction, except explicitly renamed automation fields.
+- Product docs show `./build/iggy3d` first.
+- Compatibility/test shell docs explicitly say `Compatibility/Test Shell`.
 - No gameplay, renderer, save format, or editor behavior changes.
-- `package_visual_*` smokes rebuild the current `iggy3d_visual_demo` binary before running.
+- `package_visual_*` smokes may continue rebuilding `iggy3d_visual_demo` until a source/test migration packet replaces them.
 
 ### 2. Product App Boot Contract
 
@@ -100,18 +99,19 @@ Todos:
 - [ ] Add or finish `apps/iggy3d/main.cpp` as the product entrypoint.
 - [ ] Add or finish `src/app/iggy3d/AppShell.*`.
 - [ ] Add product default world/template lookup.
-- [ ] Make `./build/iggy3d` boot to the starter menu.
+- [x] Make `./build/iggy3d` boot to the starter menu.
 - [ ] Do not load gameplay behind the starter menu.
 - [ ] Keep `--package` as dev-only or deprecated compatibility.
 - [ ] Add product app receipts for starter menu, settings, input backend, renderer mode, save root, and launch state.
-- [ ] Update README launch command to product app first.
-- [ ] Keep `iggy3d_visual_demo` as a dev/test shell until fully replaced.
+- [x] Update README launch command to product app first.
+- [ ] Keep `iggy3d_visual_demo` as a compatibility/test shell until fully replaced.
 
 Acceptance:
 
 ```sh
-cmake --build build --target iggy3d_app
-./build/iggy3d --renderer null --no-window --print-render-receipt
+cmake --build build --target iggy3d_app -j 8
+./build/iggy3d --no-window --print-render-receipt
+./build/iggy3d --no-window --scripted-gameplay-smoke --print-render-receipt
 ```
 
 Expected receipt fields:
@@ -527,7 +527,8 @@ Recommended next packet order:
 
 ## What Not To Do Next
 
-- Do not add another large feature directly into `apps/iggy3d_visual_demo/main.cpp`.
+- Do not add another large feature to compatibility/test shell paths when it
+  belongs in the product app.
 - Do not replace the save format while editor/world creation is still moving.
 - Do not start full physics integration before the character controller/query seam is defined.
 - Do not start Blender import before native room/object semantics are stable.

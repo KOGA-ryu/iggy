@@ -420,7 +420,29 @@ Targeted tests:
 ctest --test-dir build --output-on-failure -R 'room_asset|package_visual|vulkan_first_room|render|projection'
 ```
 
-Visual launch:
+Product app root launch:
+
+```sh
+cmake --build build --target iggy3d_app -j 8
+./build/iggy3d --window --input auto --save-root "$HOME/.iggy3d/saves" --print-render-receipt
+```
+
+No-window product receipt:
+
+```sh
+./build/iggy3d --no-window --print-render-receipt
+```
+
+Product scripted gameplay receipt:
+
+```sh
+./build/iggy3d --no-window --scripted-gameplay-smoke --print-render-receipt
+```
+
+Compatibility/Test Shell:
+
+Use the visual shell only for package-room renderer behavior that has not been
+migrated to the product app yet.
 
 ```sh
 ./build/iggy3d_visual_demo \
@@ -431,7 +453,7 @@ Visual launch:
   --print-render-receipt
 ```
 
-Manual inspect command:
+Compatibility/Test Shell manual inspect command:
 
 ```sh
 ./build/iggy3d_visual_demo \

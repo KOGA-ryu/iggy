@@ -16,7 +16,8 @@ Plan the next gameplay foundation after menus: movement/physics playground harde
 - `/Users/kogaryu/iggy3d/src/content/assets/RoomAsset.*`
 - `/Users/kogaryu/iggy3d/src/content/authoring/EditableRoomDocument.*` only for authored tags/surfaces if needed
 - `/Users/kogaryu/iggy3d/src/projection/debug/*`
-- `/Users/kogaryu/iggy3d/apps/iggy3d_visual_demo/main.cpp`
+- `/Users/kogaryu/iggy3d/apps/iggy3d/main.cpp`
+- `/Users/kogaryu/iggy3d/src/app/iggy3d/**`
 - `/Users/kogaryu/iggy3d/tests/unit/movement_*_tests.cpp`
 - `/Users/kogaryu/iggy3d/tests/smoke/package_visual_movement_playground_smoke.cpp`
 - `/Users/kogaryu/iggy3d/tests/smoke/package_visual_codex_control_smoke.cpp`

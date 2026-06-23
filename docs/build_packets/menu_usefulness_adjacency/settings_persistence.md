@@ -9,7 +9,8 @@ Define which settings remain runtime-only and which can persist to disk after Me
 - `/Users/kogaryu/iggy3d/src/app/frontend/SettingsMenu.hpp`
 - `/Users/kogaryu/iggy3d/src/app/frontend/SettingsMenu.cpp`
 - `/Users/kogaryu/iggy3d/src/app/frontend/FrontendReceipt.*`
-- `/Users/kogaryu/iggy3d/apps/iggy3d_visual_demo/main.cpp`
+- `/Users/kogaryu/iggy3d/apps/iggy3d/main.cpp`
+- `/Users/kogaryu/iggy3d/src/app/iggy3d/**`
 - `/Users/kogaryu/iggy3d/src/app/AppConfig.*` if current app config is the right seam
 - `/Users/kogaryu/iggy3d/tests/unit/settings_menu_tests.cpp`
 - `/Users/kogaryu/iggy3d/tests/unit/settings_store_tests.cpp`

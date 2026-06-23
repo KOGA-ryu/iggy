@@ -31,7 +31,8 @@ Hard rules across every packet:
 
 Likely source files across this bundle:
 
-- `/Users/kogaryu/iggy3d/apps/iggy3d_visual_demo/main.cpp`
+- `/Users/kogaryu/iggy3d/apps/iggy3d/main.cpp`
+- `/Users/kogaryu/iggy3d/src/app/iggy3d/**`
 - `/Users/kogaryu/iggy3d/src/app/frontend/*`
 - `/Users/kogaryu/iggy3d/src/app/input/GamepadSystemControls.*`
 - `/Users/kogaryu/iggy3d/src/runtime/save/SaveFileStore.*`

@@ -7,7 +7,8 @@ Define practical, durable editor behavior for selection, transforms, grid snap, 
 ## Likely Source Files Later
 
 - `/Users/kogaryu/iggy3d/src/content/authoring/EditableRoomDocument.*`
-- `/Users/kogaryu/iggy3d/apps/iggy3d_visual_demo/main.cpp`
+- `/Users/kogaryu/iggy3d/apps/iggy3d/main.cpp`
+- `/Users/kogaryu/iggy3d/src/app/iggy3d/**`
 - `/Users/kogaryu/iggy3d/src/app/frontend/DevToolsMenu.*`
 - `/Users/kogaryu/iggy3d/src/app/frontend/FrontendReceipt.*`
 - `/Users/kogaryu/iggy3d/tests/unit/editable_room_document_tests.cpp`

@@ -16,6 +16,26 @@ Package room mesh drawing is already green at `e770a83` and must remain green.
 The known proof command is:
 
 ```sh
+cmake --build build --target iggy3d_app -j 8
+./build/iggy3d --window --input auto --save-root "$HOME/.iggy3d/saves" --print-render-receipt
+```
+
+No-window product receipt proof:
+
+```sh
+./build/iggy3d --no-window --print-render-receipt
+```
+
+Product scripted gameplay receipt:
+
+```sh
+./build/iggy3d --no-window --scripted-gameplay-smoke --print-render-receipt
+```
+
+Compatibility/Test Shell command for package-room renderer behavior not yet
+migrated to the product app:
+
+```sh
 ./build/iggy3d_visual_demo --renderer vulkan --window --frames 3 --package fixtures/demos/first_room/package.iggy3d.toml --print-render-receipt
 ```
 

@@ -10,7 +10,8 @@ Define stable action names, ownership stack, keyboard/PS5/controller/Codex mappi
 - `/Users/kogaryu/iggy3d/src/app/frontend/MenuInput.cpp`
 - `/Users/kogaryu/iggy3d/src/app/input/GamepadSystemControls.hpp`
 - `/Users/kogaryu/iggy3d/src/app/input/GamepadSystemControls.cpp`
-- `/Users/kogaryu/iggy3d/apps/iggy3d_visual_demo/main.cpp`
+- `/Users/kogaryu/iggy3d/apps/iggy3d/main.cpp`
+- `/Users/kogaryu/iggy3d/src/app/iggy3d/**`
 - `/Users/kogaryu/iggy3d/tests/unit/menu_input_tests.cpp`
 - `/Users/kogaryu/iggy3d/tests/unit/gamepad_system_controls_tests.cpp`
 - `/Users/kogaryu/iggy3d/tests/smoke/package_visual_menu_usefulness_smoke.cpp`

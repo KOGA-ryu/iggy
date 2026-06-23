@@ -31,7 +31,8 @@ Current frontend/application surfaces already exist:
   - Already emits frontend screen/action/status, selected save metadata, starter visibility, pause/settings/dev flags, gamepad system control fields, and `window_launch_count`.
 - `/Users/kogaryu/iggy3d/src/app/input/GamepadSystemControls.hpp/.cpp`
   - Existing PS5/DualSense system mapping seam: Options toggles pause, Create+Options hard quit, Create+East/Circle toggles editor, direct dev overlay requires explicit opt-in.
-- `/Users/kogaryu/iggy3d/apps/iggy3d_visual_demo/main.cpp`
+- `/Users/kogaryu/iggy3d/apps/iggy3d/main.cpp`
+- `/Users/kogaryu/iggy3d/src/app/iggy3d/**`
   - Integrates opening/starter, pause, settings, dev overlay, editor, save file store, Codex control parser, null renderer receipt smokes, and gameplay suppression while menus own input.
 - Existing tests include frontend unit tests, gamepad system control tests, starter/save/settings tests, no-window opening/starter/in-game menu smokes.
 
@@ -48,7 +49,8 @@ Current gaps this packet must close:
 
 Builder may edit these files:
 
-- `/Users/kogaryu/iggy3d/apps/iggy3d_visual_demo/main.cpp`
+- `/Users/kogaryu/iggy3d/apps/iggy3d/main.cpp`
+- `/Users/kogaryu/iggy3d/src/app/iggy3d/**`
   - Route shared menu input actions, execute menu commands, update receipts, keep no-window smokes deterministic.
 - `/Users/kogaryu/iggy3d/src/app/frontend/FrontendState.hpp`
 - `/Users/kogaryu/iggy3d/src/app/frontend/FrontendState.cpp`
@@ -457,7 +459,14 @@ Unit tests:
 Smoke tests:
 
 - Extend `package_visual_ingame_menu_smoke.cpp` or add `package_visual_menu_usefulness_smoke.cpp`.
-- Run visual demo with `--renderer null --interactive --frames 1 --no-opening-menu --codex-control ... --print-render-receipt`.
+- Prefer product app no-window receipts:
+  `./build/iggy3d --no-window --print-render-receipt` and
+  `./build/iggy3d --no-window --scripted-gameplay-smoke --print-render-receipt`.
+- Compatibility/Test Shell package visual smokes may still run this until the
+  source/test migration replaces those smoke names and flags:
+  ```sh
+  ./build/iggy3d_visual_demo --renderer null --interactive --frames 1 --no-opening-menu --codex-control ... --print-render-receipt
+  ```
 - Cases:
   - Pause blocks movement/attack/look input and reports row metadata.
   - Pause Save writes current save.

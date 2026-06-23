@@ -10,7 +10,8 @@ Define useful New World, Continue, Existing Saves, Delete, Settings, Dev Tools, 
 - `/Users/kogaryu/iggy3d/src/app/frontend/SaveSlotModel.*`
 - `/Users/kogaryu/iggy3d/src/app/frontend/FrontendReceipt.*`
 - `/Users/kogaryu/iggy3d/src/runtime/save/SaveFileStore.*`
-- `/Users/kogaryu/iggy3d/apps/iggy3d_visual_demo/main.cpp`
+- `/Users/kogaryu/iggy3d/apps/iggy3d/main.cpp`
+- `/Users/kogaryu/iggy3d/src/app/iggy3d/**`
 - `/Users/kogaryu/iggy3d/tests/unit/starter_screen_tests.cpp`
 - `/Users/kogaryu/iggy3d/tests/unit/save_slot_model_tests.cpp`
 - `/Users/kogaryu/iggy3d/tests/smoke/package_visual_starter_screen_smoke.cpp`

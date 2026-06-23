@@ -1,6 +1,29 @@
 # Movement Playground
 
-Launch:
+Product app launch:
+
+```sh
+cmake --build build --target iggy3d_app -j 8
+./build/iggy3d --window --input auto --save-root "$HOME/.iggy3d/saves" --print-render-receipt
+```
+
+No-window product receipt proof:
+
+```sh
+./build/iggy3d --no-window --print-render-receipt
+```
+
+Product scripted gameplay receipt:
+
+```sh
+./build/iggy3d --no-window --scripted-gameplay-smoke --print-render-receipt
+```
+
+Compatibility/Test Shell:
+
+Use this only for old package visual shell mechanics that the product app has
+not absorbed yet, including the visual dev menu and the existing control-file
+example below.
 
 ```sh
 ./build/iggy3d_visual_demo --renderer vulkan --window --interactive --dev-menu --input auto --package fixtures/demos/movement_playground/package.iggy3d.toml --print-render-receipt
@@ -26,7 +49,11 @@ Controls:
 - On PS5/DualSense, Create + Options quits the app.
 - On SDL gamepad, Create + East toggles editor mode.
 
-Codex control:
+Compatibility/Test Shell control file:
+
+The product app has neutral automation/script-control support, but this README
+keeps the old visual shell `--codex-control` example until the equivalent
+movement-playground product command is verified and documented.
 
 ```sh
 cat >/tmp/iggy3d.control <<'EOF'

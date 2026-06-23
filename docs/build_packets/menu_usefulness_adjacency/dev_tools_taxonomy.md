@@ -9,7 +9,8 @@ Define exact dev tools categories, readouts, and allowed commands so Dev Tools b
 - `/Users/kogaryu/iggy3d/src/app/frontend/DevToolsMenu.*`
 - `/Users/kogaryu/iggy3d/src/app/frontend/FrontendReceipt.*`
 - `/Users/kogaryu/iggy3d/src/projection/debug/*`
-- `/Users/kogaryu/iggy3d/apps/iggy3d_visual_demo/main.cpp`
+- `/Users/kogaryu/iggy3d/apps/iggy3d/main.cpp`
+- `/Users/kogaryu/iggy3d/src/app/iggy3d/**`
 - `/Users/kogaryu/iggy3d/tests/unit/dev_tools_menu_tests.cpp`
 - `/Users/kogaryu/iggy3d/tests/smoke/package_visual_menu_usefulness_smoke.cpp`
 
