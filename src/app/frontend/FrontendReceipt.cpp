@@ -65,6 +65,42 @@ void appendFrontendReceiptFields(RenderReceipt& receipt,
                      fields.starterDetailPanelVisible);
   appendReceiptField(receipt, "starter_status_strip_visible",
                      fields.starterStatusStripVisible);
+  appendReceiptField(receipt, "menu_owner", fields.menuOwner);
+  appendReceiptField(receipt, "gameplay_input_suppressed",
+                     fields.gameplayInputSuppressed);
+  appendReceiptField(receipt, "pause_selected_action",
+                     frontendActionName(fields.pauseSelectedAction));
+  appendReceiptField(receipt, "pause_action_executed", fields.pauseActionExecuted);
+  appendReceiptField(receipt, "pause_parent_screen", fields.pauseParentScreen);
+  appendReceiptField(receipt, "settings_open", fields.settingsOpen);
+  appendReceiptField(receipt, "settings_parent", fields.settingsParent);
+  appendReceiptField(receipt, "settings_tab", frontendSettingsTabName(fields.settingsTab));
+  appendReceiptField(receipt, "settings_selected_row", fields.settingsSelectedRow);
+  appendReceiptField(receipt, "settings_apply_requested",
+                     fields.settingsApplyRequested);
+  appendReceiptField(receipt, "settings_restore_defaults_requested",
+                     fields.settingsRestoreDefaultsRequested);
+  appendReceiptField(receipt, "settings_back_requested", fields.settingsBackRequested);
+  appendReceiptField(receipt, "settings_renderer", fields.settingsRenderer);
+  appendReceiptField(receipt, "settings_window_mode", fields.settingsWindowMode);
+  appendReceiptField(receipt, "settings_controller_look_sensitivity",
+                     fields.settingsControllerLookSensitivity);
+  appendReceiptField(receipt, "settings_audio_available", fields.settingsAudioAvailable);
+  appendReceiptField(receipt, "settings_accessibility_high_contrast",
+                     fields.settingsAccessibilityHighContrast);
+  appendReceiptField(receipt, "settings_accessibility_reduced_motion",
+                     fields.settingsAccessibilityReducedMotion);
+  appendReceiptField(receipt, "settings_developer_tools_enabled",
+                     fields.settingsDeveloperToolsEnabled);
+  appendReceiptField(receipt, "dev_tools_parent", fields.devToolsParent);
+  appendReceiptField(receipt, "dev_tools_input_blocking",
+                     fields.devToolsInputBlocking);
+  appendReceiptField(receipt, "dev_tools_readout_visible",
+                     fields.devToolsReadoutVisible);
+  appendReceiptField(receipt, "gamepad_options_opens", fields.gamepadOptionsOpens);
+  appendReceiptField(receipt, "gamepad_create_options_quit",
+                     fields.gamepadCreateOptionsQuit);
+  appendReceiptField(receipt, "window_launch_count", fields.windowLaunchCount);
 }
 
 }  // namespace iggy3d

@@ -6,8 +6,11 @@ namespace iggy3d {
 
 struct GamepadSystemControlContext {
   bool devMenuEnabled = false;
+  bool pauseMenuEnabled = false;
+  bool devOverlayDirectEnabled = false;
   bool editorEnabled = false;
   bool editorOpen = false;
+  bool menuOwnsInput = false;
 };
 
 struct GamepadSystemControlSample {
@@ -23,6 +26,7 @@ struct GamepadSystemControlState {
 
 struct GamepadSystemControlResult {
   bool devToggleRequested = false;
+  bool pauseToggleRequested = false;
   bool editorToggleRequested = false;
   bool quitRequested = false;
   bool consumeOptions = false;

@@ -77,11 +77,24 @@ bool settingsDraftIsFrontendOnly() {
   settings.inputBackend = iggy3d::FrontendInputBackend::Gamepad;
   settings.lookSensitivity = 1.75F;
   settings.invertLook = true;
+  settings.controllerLookSensitivity = 0.5F;
   iggy3d::restoreFrontendSettingsDefaults(settings);
   return expect(settings.inputBackend == iggy3d::FrontendInputBackend::Keyboard,
                 "settings restore input") &&
          expect(settings.lookSensitivity == 1.0F, "settings restore sensitivity") &&
-         expect(!settings.invertLook, "settings restore invert");
+         expect(!settings.invertLook, "settings restore invert") &&
+         expect(settings.controllerLookSensitivity == 1.0F,
+                "settings restore controller sensitivity");
+}
+
+bool starterAndPauseShareSettingsTabs() {
+  const std::vector<iggy3d::FrontendSettingsTab>& tabs = iggy3d::settingsTabOrder();
+  return expect(tabs.size() == 8U, "shared settings tab count") &&
+         expect(tabs[0] == iggy3d::FrontendSettingsTab::Input, "shared input tab") &&
+         expect(tabs[4] == iggy3d::FrontendSettingsTab::VideoDisplay,
+                "shared video display tab") &&
+         expect(tabs[7] == iggy3d::FrontendSettingsTab::Developer,
+                "shared developer tab");
 }
 
 }  // namespace
@@ -89,6 +102,6 @@ bool settingsDraftIsFrontendOnly() {
 int main() {
   const bool ok = starterActionOrderIsExact() && pauseActionOrderIsExact() &&
                   continueDisablesWithoutSave() && devToolsTabOrderIsExact() &&
-                  settingsDraftIsFrontendOnly();
+                  settingsDraftIsFrontendOnly() && starterAndPauseShareSettingsTabs();
   return ok ? 0 : 1;
 }

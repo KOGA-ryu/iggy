@@ -37,6 +37,17 @@ files under `--save-root` and contain the runtime save envelope plus any authore
 room floors/walls from the in-game editor. Add `--no-opening-menu` to boot
 straight into the room.
 
+In gameplay, Esc opens the Pause Menu: `Resume`, `Save`, `Save And Exit`,
+`Load Save`, `Settings`, `Dev Tools`, `Return To Title`, and `Exit Game`.
+F1 opens the in-game Dev Tools overlay from gameplay. On a PS5/DualSense or SDL
+gamepad, Options opens the Pause Menu; Dev Tools are reached through Pause Menu
+for now, and Create+Options remains the hard-quit chord. Settings are
+app/frontend-owned in this packet and are not persisted to a settings file.
+
+For automated verification, prefer no-window/null-renderer receipt smokes and
+frontend unit tests. Windowed Vulkan launches are for manual visual inspection,
+not routine packet iteration.
+
 Start here:
 
 - `docs/architecture.md`

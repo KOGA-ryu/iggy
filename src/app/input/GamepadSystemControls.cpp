@@ -22,8 +22,17 @@ GamepadSystemControlResult mapGamepadSystemControls(
     result.consumeCreate = true;
     result.consumeEast = true;
     result.actionButton = "create+east";
-  } else if (context.devMenuEnabled && !context.editorOpen && optionsPressed) {
+  } else if (context.pauseMenuEnabled && !context.editorOpen && !context.menuOwnsInput &&
+             optionsPressed) {
+    result.pauseToggleRequested = true;
+    result.consumeOptions = true;
+    result.actionButton = "options";
+  } else if (context.devMenuEnabled && context.devOverlayDirectEnabled &&
+             !context.editorOpen && !context.menuOwnsInput && optionsPressed) {
     result.devToggleRequested = true;
+    result.consumeOptions = true;
+    result.actionButton = "options";
+  } else if (optionsPressed && context.menuOwnsInput) {
     result.consumeOptions = true;
     result.actionButton = "options";
   }

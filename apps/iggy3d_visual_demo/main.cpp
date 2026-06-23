@@ -638,6 +638,11 @@ struct CodexControlFrame {
   bool devToolsCategorySet = false;
   iggy3d::FrontendDevToolsCategory devToolsCategory =
       iggy3d::FrontendDevToolsCategory::Session;
+  bool settingsTabSet = false;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::Input;
+  bool settingsApply = false;
+  bool settingsRestoreDefaults = false;
+  bool settingsBack = false;
   bool settingsInputBackendSet = false;
   VisualInputBackend settingsInputBackend = VisualInputBackend::Keyboard;
   bool mechanicSet = false;
@@ -990,6 +995,36 @@ bool parseFrontendDevToolsCategory(std::string_view value,
   return true;
 }
 
+bool parseFrontendSettingsTab(std::string_view value,
+                              iggy3d::FrontendSettingsTab& out) {
+  if (value == "input") {
+    out = iggy3d::FrontendSettingsTab::Input;
+  } else if (value == "controls") {
+    out = iggy3d::FrontendSettingsTab::Controls;
+  } else if (value == "camera") {
+    out = iggy3d::FrontendSettingsTab::Camera;
+  } else if (value == "gameplay") {
+    out = iggy3d::FrontendSettingsTab::Gameplay;
+  } else if (value == "video_display") {
+    out = iggy3d::FrontendSettingsTab::VideoDisplay;
+  } else if (value == "audio") {
+    out = iggy3d::FrontendSettingsTab::Audio;
+  } else if (value == "accessibility") {
+    out = iggy3d::FrontendSettingsTab::Accessibility;
+  } else if (value == "developer") {
+    out = iggy3d::FrontendSettingsTab::Developer;
+  } else {
+    return false;
+  }
+  return true;
+}
+
+std::string receiptFloat(float value) {
+  char buffer[32] = {};
+  std::snprintf(buffer, sizeof(buffer), "%.3f", static_cast<double>(value));
+  return buffer;
+}
+
 OpeningMenuAction nextOpeningMenuAction(OpeningMenuAction action) {
   switch (action) {
     case OpeningMenuAction::Continue:
@@ -1181,8 +1216,18 @@ void recordFrontendFields(PlayableReceiptFields& fields,
                           const OpeningMenuState& menu,
                           bool pauseMenuOpen,
                           iggy3d::FrontendAction pauseSelected,
+                          bool pauseActionExecuted,
                           bool devOverlayOpen,
                           iggy3d::FrontendDevToolsCategory devToolsCategory,
+                          std::string_view devToolsParent,
+                          bool settingsOpen,
+                          std::string_view settingsParent,
+                          iggy3d::FrontendSettingsTab settingsTab,
+                          const iggy3d::FrontendSettings& settings,
+                          bool settingsApplyRequested,
+                          bool settingsRestoreDefaultsRequested,
+                          bool settingsBackRequested,
+                          bool gameplayInputSuppressed,
                           bool returnToTitleRequested,
                           const iggy3d::Session& session) {
   iggy3d::FrontendState state;
@@ -1213,8 +1258,25 @@ void recordFrontendFields(PlayableReceiptFields& fields,
   if (pauseMenuOpen) {
     iggy3d::openFrontendPause(state, pauseSelected);
   }
+  if (settingsOpen) {
+    state.screen = iggy3d::FrontendScreen::Settings;
+    state.childScreen = iggy3d::FrontendScreen::Settings;
+    state.selectedAction = iggy3d::FrontendAction::Settings;
+    state.pauseMenuOpen = false;
+    state.devToolsOpen = false;
+    state.inputOwned = true;
+    state.status = settingsApplyRequested
+                       ? "settings_applied"
+                       : (settingsRestoreDefaultsRequested
+                              ? "settings_defaults_restored"
+                              : (settingsBackRequested ? "settings_back"
+                                                       : "settings_menu_ready"));
+  }
   if (devOverlayOpen) {
     iggy3d::openFrontendDevOverlay(state, devToolsCategory);
+    if (devToolsParent == "pause") {
+      state.status = "dev_overlay_from_pause";
+    }
   }
   state.returnToTitleRequested = returnToTitleRequested;
   if (returnToTitleRequested) {
@@ -1229,9 +1291,44 @@ void recordFrontendFields(PlayableReceiptFields& fields,
   fields.frontend.selectedScenarioId = session.state().identity.scenarioId.empty()
                                            ? "none"
                                            : session.state().identity.scenarioId;
-  fields.frontend.settingsInputBackend = std::string(inputBackendName(fields.inputBackend));
-  fields.frontend.settingsLookSensitivity = "1.000";
-  fields.frontend.settingsInvertLook = false;
+  fields.frontend.settingsInputBackend = std::string(
+      iggy3d::frontendInputBackendName(settings.inputBackend));
+  fields.frontend.settingsLookSensitivity = receiptFloat(settings.lookSensitivity);
+  fields.frontend.settingsInvertLook = settings.invertLook;
+  fields.frontend.menuOwner =
+      menu.enabled && menu.open
+          ? "starter"
+          : (pauseMenuOpen ? "pause"
+                           : (settingsOpen ? "settings"
+                                           : (devOverlayOpen ? "dev_overlay" : "none")));
+  fields.frontend.gameplayInputSuppressed = gameplayInputSuppressed;
+  fields.frontend.pauseSelectedAction = pauseSelected;
+  fields.frontend.pauseActionExecuted = pauseActionExecuted;
+  fields.frontend.pauseParentScreen = pauseMenuOpen ? "gameplay" : "none";
+  fields.frontend.settingsOpen = settingsOpen;
+  fields.frontend.settingsParent = std::string(settingsParent);
+  fields.frontend.settingsTab = settingsOpen ? settingsTab : iggy3d::FrontendSettingsTab::None;
+  fields.frontend.settingsSelectedRow =
+      std::string(iggy3d::defaultSettingsRowName(fields.frontend.settingsTab));
+  fields.frontend.settingsApplyRequested = settingsApplyRequested;
+  fields.frontend.settingsRestoreDefaultsRequested = settingsRestoreDefaultsRequested;
+  fields.frontend.settingsBackRequested = settingsBackRequested;
+  fields.frontend.settingsRenderer =
+      std::string(iggy3d::frontendRendererChoiceName(settings.renderer));
+  fields.frontend.settingsWindowMode =
+      std::string(iggy3d::frontendWindowModeName(settings.windowMode));
+  fields.frontend.settingsControllerLookSensitivity =
+      receiptFloat(settings.controllerLookSensitivity);
+  fields.frontend.settingsAudioAvailable = settings.audioAvailable;
+  fields.frontend.settingsAccessibilityHighContrast = settings.highContrast;
+  fields.frontend.settingsAccessibilityReducedMotion = settings.reducedMotion;
+  fields.frontend.settingsDeveloperToolsEnabled = settings.devToolsEnabled;
+  fields.frontend.devToolsParent = std::string(devToolsParent);
+  fields.frontend.devToolsInputBlocking = devOverlayOpen;
+  fields.frontend.devToolsReadoutVisible = devOverlayOpen;
+  fields.frontend.gamepadOptionsOpens = "pause";
+  fields.frontend.gamepadCreateOptionsQuit = true;
+  fields.frontend.windowLaunchCount = 0;
   fields.frontend.starterHeaderVisible = menu.enabled && menu.open;
   fields.frontend.starterActionListVisible = menu.enabled && menu.open;
   fields.frontend.starterDetailPanelVisible = menu.enabled && menu.open;
@@ -1735,6 +1832,7 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
     iggy3d::FrontendAction frontendAction = iggy3d::FrontendAction::None;
     iggy3d::FrontendDevToolsCategory frontendCategory =
         iggy3d::FrontendDevToolsCategory::Session;
+    iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::Input;
     EditorTool editorTool = EditorTool::Select;
     EditorPreset editorPreset = EditorPreset::SolidWall;
     std::string editorSelectId;
@@ -1970,6 +2068,14 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
         frame.pauseOpenSet = true;
         frame.pauseOpen = true;
         frame.applied = true;
+      } else if (value == "settings") {
+        frame.pauseOpenSet = true;
+        frame.pauseOpen = false;
+        frame.devToolsOpenSet = true;
+        frame.devToolsOpen = false;
+        frame.settingsTabSet = true;
+        frame.settingsTab = iggy3d::FrontendSettingsTab::Input;
+        frame.applied = true;
       } else if (value == "dev_overlay") {
         frame.devToolsOpenSet = true;
         frame.devToolsOpen = true;
@@ -2034,6 +2140,39 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
       } else if (value == "auto") {
         frame.settingsInputBackendSet = true;
         frame.settingsInputBackend = VisualInputBackend::Auto;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "settings.tab") {
+      if (parseFrontendSettingsTab(value, settingsTab)) {
+        frame.settingsTabSet = true;
+        frame.settingsTab = settingsTab;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "settings.apply") {
+      if (parseControlBool(value, boolValue)) {
+        frame.settingsApply = frame.settingsApply || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "settings.restore_defaults") {
+      if (parseControlBool(value, boolValue)) {
+        frame.settingsRestoreDefaults = frame.settingsRestoreDefaults || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "settings.back") {
+      if (parseControlBool(value, boolValue)) {
+        frame.settingsBack = frame.settingsBack || boolValue;
         frame.applied = true;
       } else {
         frame.parseError = true;
@@ -5257,9 +5396,32 @@ int main(int argc, const char* const* argv) {
   }
   bool pauseMenuOpen = false;
   iggy3d::FrontendAction pauseMenuSelected = iggy3d::FrontendAction::Resume;
+  bool pauseActionExecuted = false;
   bool devOverlayOpen = false;
   iggy3d::FrontendDevToolsCategory devToolsCategory =
       iggy3d::FrontendDevToolsCategory::Session;
+  std::string devToolsParent = "none";
+  bool settingsOpen = false;
+  std::string settingsParent = "none";
+  iggy3d::FrontendSettings frontendSettings = iggy3d::defaultFrontendSettings();
+  frontendSettings.inputBackend =
+      parsed.options.inputBackend == VisualInputBackend::Gamepad
+          ? iggy3d::FrontendInputBackend::Gamepad
+          : (parsed.options.inputBackend == VisualInputBackend::Auto
+                 ? iggy3d::FrontendInputBackend::Auto
+                 : iggy3d::FrontendInputBackend::Keyboard);
+  frontendSettings.renderer =
+      rendererCreate.backend == iggy3d::RendererBackendKind::Vulkan
+          ? iggy3d::FrontendRendererChoice::Vulkan
+          : iggy3d::FrontendRendererChoice::Null;
+  frontendSettings.windowMode = parsed.options.window ? iggy3d::FrontendWindowMode::Window
+                                                      : iggy3d::FrontendWindowMode::NoWindow;
+  iggy3d::FrontendSettings settingsDraft = frontendSettings;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::Input;
+  bool settingsApplyRequested = false;
+  bool settingsRestoreDefaultsRequested = false;
+  bool settingsBackRequested = false;
+  bool gameplayInputSuppressed = false;
   bool frontendReturnToTitleRequested = false;
   EditorModeState editor;
   editor.enabled = playableFields.playable && !parsed.options.scriptedPlayableSmoke;
@@ -5272,8 +5434,11 @@ int main(int argc, const char* const* argv) {
   playableFields.devMenuSelectedMechanic = std::string(devMechanicName(devMenu.selected));
   recordOpeningMenuFields(playableFields, openingMenu);
   recordFrontendFields(playableFields, openingMenu, pauseMenuOpen, pauseMenuSelected,
-                       devOverlayOpen, devToolsCategory, frontendReturnToTitleRequested,
-                       session);
+                       pauseActionExecuted, devOverlayOpen, devToolsCategory,
+                       devToolsParent, settingsOpen, settingsParent, settingsTab,
+                       frontendSettings, settingsApplyRequested,
+                       settingsRestoreDefaultsRequested, settingsBackRequested,
+                       gameplayInputSuppressed, frontendReturnToTitleRequested, session);
   updateEditorReceiptFields(playableFields, editor);
   playableFields.codexControlConfigured = parsed.options.codexControlPathSet;
   playableFields.codexControlPath =
@@ -5633,9 +5798,15 @@ int main(int argc, const char* const* argv) {
           }
           iggy3d::GamepadSystemControlContext systemContext;
           const bool openingMenuOwnsGamepad = openingMenu.enabled && openingMenu.open;
+          const bool frontendOwnsGamepad =
+              openingMenuOwnsGamepad || pauseMenuOpen || settingsOpen || devOverlayOpen;
+          systemContext.pauseMenuEnabled =
+              !openingMenuOwnsGamepad && !settingsOpen && !devOverlayOpen;
           systemContext.devMenuEnabled = devMenu.enabled && !openingMenuOwnsGamepad;
+          systemContext.devOverlayDirectEnabled = false;
           systemContext.editorEnabled = editor.enabled && !openingMenuOwnsGamepad;
           systemContext.editorOpen = editor.open;
+          systemContext.menuOwnsInput = frontendOwnsGamepad;
           iggy3d::GamepadSystemControlSample systemSample;
           systemSample.optionsDown = optionsDown;
           systemSample.createDown = createDown;
@@ -5651,6 +5822,16 @@ int main(int argc, const char* const* argv) {
           }
           if (systemControls.editorToggleRequested) {
             editorToggleRequested = true;
+          }
+          if (systemControls.pauseToggleRequested) {
+            pauseMenuOpen = !pauseMenuOpen;
+            if (pauseMenuOpen) {
+              openingMenu.open = false;
+              devOverlayOpen = false;
+              settingsOpen = false;
+              devMenu.open = false;
+              editor.open = false;
+            }
           }
           if (systemControls.devToggleRequested) {
             devToggleRequested = true;
@@ -5673,6 +5854,12 @@ int main(int argc, const char* const* argv) {
             northDown = false;
             r1Down = false;
             r2Down = false;
+          } else if (pauseMenuOpen || settingsOpen || devOverlayOpen) {
+            crossDown = false;
+            eastDown = false;
+            northDown = false;
+            r1Down = false;
+            r2Down = false;
           } else if (editor.enabled && editor.open) {
             editorPreviousRequested = dpadLeft;
             editorNextRequested = dpadRight;
@@ -5688,7 +5875,7 @@ int main(int argc, const char* const* argv) {
             devExecuteRequested = crossDown;
             crossDown = false;
           }
-          if (!openingMenuOwnsGamepad) {
+          if (!frontendOwnsGamepad) {
             crouchHeld = crouchHeld || crouchDown;
             playableFields.gamepadLeftStickUsed =
                 playableFields.gamepadLeftStickUsed || leftX != 0.0F || leftY != 0.0F;
@@ -5741,6 +5928,8 @@ int main(int argc, const char* const* argv) {
             openingMenu.open = false;
             devMenu.open = false;
             editor.open = false;
+            settingsOpen = false;
+            devOverlayOpen = false;
           }
         }
         if (codexControl.pauseSelectSet) {
@@ -5749,10 +5938,14 @@ int main(int argc, const char* const* argv) {
         if (codexControl.devToolsOpenSet) {
           devOverlayOpen = codexControl.devToolsOpen;
           if (devOverlayOpen) {
+            devToolsParent = pauseMenuOpen ? "pause" : "gameplay";
             pauseMenuOpen = false;
             openingMenu.open = false;
+            settingsOpen = false;
             devMenu.open = false;
             editor.open = false;
+          } else {
+            devToolsParent = "none";
           }
         }
         if (codexControl.devToolsCategorySet) {
@@ -5760,6 +5953,43 @@ int main(int argc, const char* const* argv) {
         }
         if (codexControl.settingsInputBackendSet) {
           playableFields.inputBackend = codexControl.settingsInputBackend;
+          settingsDraft.inputBackend =
+              codexControl.settingsInputBackend == VisualInputBackend::Gamepad
+                  ? iggy3d::FrontendInputBackend::Gamepad
+                  : (codexControl.settingsInputBackend == VisualInputBackend::Auto
+                         ? iggy3d::FrontendInputBackend::Auto
+                         : iggy3d::FrontendInputBackend::Keyboard);
+        }
+        if (codexControl.settingsTabSet) {
+          settingsTab = codexControl.settingsTab;
+        }
+        if (codexControl.settingsApply) {
+          iggy3d::applyFrontendSettingsDraft(frontendSettings, settingsDraft);
+          playableFields.inputBackend =
+              frontendSettings.inputBackend == iggy3d::FrontendInputBackend::Gamepad
+                  ? VisualInputBackend::Gamepad
+                  : (frontendSettings.inputBackend == iggy3d::FrontendInputBackend::Auto
+                         ? VisualInputBackend::Auto
+                         : VisualInputBackend::Keyboard);
+          settingsApplyRequested = true;
+          openingMenu.status = "settings_applied";
+        }
+        if (codexControl.settingsRestoreDefaults) {
+          iggy3d::restoreFrontendSettingsDefaults(frontendSettings);
+          settingsDraft = frontendSettings;
+          playableFields.inputBackend = VisualInputBackend::Keyboard;
+          settingsRestoreDefaultsRequested = true;
+          openingMenu.status = "settings_defaults_restored";
+        }
+        if (codexControl.settingsBack) {
+          settingsBackRequested = true;
+          settingsOpen = false;
+          if (settingsParent == "pause") {
+            pauseMenuOpen = true;
+          } else if (settingsParent == "starter") {
+            openingMenu.open = true;
+          }
+          openingMenu.status = "settings_back";
         }
         if (codexControl.devMenuOpenSet) {
           devMenu.open = codexControl.devMenuOpen;
@@ -5835,10 +6065,12 @@ int main(int argc, const char* const* argv) {
         devMenu.open = false;
         editor.open = false;
         pauseMenuOpen = false;
+        settingsOpen = false;
         devOverlayOpen = false;
       }
       const bool openingMenuOwnedInputThisFrame = openingMenu.enabled && openingMenu.open;
-      const bool frontendOverlayOwnedInputThisFrame = pauseMenuOpen || devOverlayOpen;
+      const bool frontendOverlayOwnedInputThisFrame =
+          pauseMenuOpen || settingsOpen || devOverlayOpen;
       if (openingMenu.enabled && openingMenu.open &&
           pressedEdge(openingMenuPreviousRequested, openingMenuPreviousDown)) {
         openingMenu.selected = previousOpeningMenuAction(openingMenu.selected);
@@ -5874,6 +6106,7 @@ int main(int argc, const char* const* argv) {
         quitRequested = quitRequested || openingMenu.exitRequested;
       }
       if (pauseMenuOpen && codexControl.pauseExecute) {
+        pauseActionExecuted = true;
         if (pauseMenuSelected == iggy3d::FrontendAction::Save ||
             pauseMenuSelected == iggy3d::FrontendAction::SaveAndExit) {
           writeOpeningMenuSaveFile(openingMenu, session, &editor,
@@ -5891,6 +6124,12 @@ int main(int argc, const char* const* argv) {
           }
         } else if (pauseMenuSelected == iggy3d::FrontendAction::Resume) {
           pauseMenuOpen = false;
+          openingMenu.status = "pause_resume";
+        } else if (pauseMenuSelected == iggy3d::FrontendAction::Settings) {
+          settingsOpen = true;
+          settingsParent = "pause";
+          pauseMenuOpen = false;
+          openingMenu.status = "settings_menu_ready";
         } else if (pauseMenuSelected == iggy3d::FrontendAction::ReturnToTitle) {
           frontendReturnToTitleRequested = true;
           openingMenu.enabled = true;
@@ -5900,12 +6139,18 @@ int main(int argc, const char* const* argv) {
           pauseMenuOpen = false;
         } else if (pauseMenuSelected == iggy3d::FrontendAction::ExitGame) {
           quitRequested = true;
+          openingMenu.status = "frontend_exit_requested";
         } else if (pauseMenuSelected == iggy3d::FrontendAction::DevTools) {
           devOverlayOpen = true;
+          devToolsParent = "pause";
           pauseMenuOpen = false;
+          openingMenu.status = "dev_overlay_from_pause";
         }
       }
-      if (openingMenuOwnedInputThisFrame || frontendOverlayOwnedInputThisFrame) {
+      const bool frontendOwnsInputThisFrame =
+          openingMenuOwnedInputThisFrame || frontendOverlayOwnedInputThisFrame;
+      gameplayInputSuppressed = frontendOwnsInputThisFrame;
+      if (frontendOwnsInputThisFrame) {
         movement = {};
         actionRequested = false;
         attackRequested = false;
@@ -5924,8 +6169,11 @@ int main(int argc, const char* const* argv) {
       }
       recordOpeningMenuFields(playableFields, openingMenu);
       recordFrontendFields(playableFields, openingMenu, pauseMenuOpen, pauseMenuSelected,
-                           devOverlayOpen, devToolsCategory, frontendReturnToTitleRequested,
-                           session);
+                           pauseActionExecuted, devOverlayOpen, devToolsCategory,
+                           devToolsParent, settingsOpen, settingsParent, settingsTab,
+                           frontendSettings, settingsApplyRequested,
+                           settingsRestoreDefaultsRequested, settingsBackRequested,
+                           gameplayInputSuppressed, frontendReturnToTitleRequested, session);
       if (editor.enabled && pressedEdge(editorToggleRequested, editorToggleDown)) {
         editor.open = !editor.open;
         if (editor.open) {
@@ -5934,8 +6182,11 @@ int main(int argc, const char* const* argv) {
         playableFields.editorToggleObserved = true;
       }
       if (devMenu.enabled && pressedEdge(devToggleRequested, devMenuToggleDown)) {
-        devMenu.open = !devMenu.open;
-        if (devMenu.open) {
+        devOverlayOpen = !devOverlayOpen;
+        devToolsParent = devOverlayOpen ? "gameplay" : "none";
+        if (devOverlayOpen) {
+          pauseMenuOpen = false;
+          settingsOpen = false;
           editor.open = false;
         }
         playableFields.devMenuToggleObserved = true;

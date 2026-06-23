@@ -5,6 +5,7 @@
 #include <string>
 
 #include "app/frontend/FrontendState.hpp"
+#include "app/frontend/SettingsMenu.hpp"
 #include "render/RenderDiagnostics.hpp"
 
 namespace iggy3d {
@@ -42,6 +43,31 @@ struct FrontendReceiptFields {
   bool starterActionListVisible = false;
   bool starterDetailPanelVisible = false;
   bool starterStatusStripVisible = false;
+  std::string menuOwner = "none";
+  bool gameplayInputSuppressed = false;
+  FrontendAction pauseSelectedAction = FrontendAction::None;
+  bool pauseActionExecuted = false;
+  std::string pauseParentScreen = "none";
+  bool settingsOpen = false;
+  std::string settingsParent = "none";
+  FrontendSettingsTab settingsTab = FrontendSettingsTab::None;
+  std::string settingsSelectedRow = "none";
+  bool settingsApplyRequested = false;
+  bool settingsRestoreDefaultsRequested = false;
+  bool settingsBackRequested = false;
+  std::string settingsRenderer = "unavailable";
+  std::string settingsWindowMode = "unavailable";
+  std::string settingsControllerLookSensitivity = "1.000";
+  bool settingsAudioAvailable = false;
+  bool settingsAccessibilityHighContrast = false;
+  bool settingsAccessibilityReducedMotion = false;
+  bool settingsDeveloperToolsEnabled = false;
+  std::string devToolsParent = "none";
+  bool devToolsInputBlocking = false;
+  bool devToolsReadoutVisible = false;
+  std::string gamepadOptionsOpens = "pause";
+  bool gamepadCreateOptionsQuit = true;
+  std::uint64_t windowLaunchCount = 0;
 };
 
 FrontendReceiptFields receiptFieldsFromFrontendState(const FrontendState& state);
