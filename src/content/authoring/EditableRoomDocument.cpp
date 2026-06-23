@@ -392,6 +392,45 @@ std::vector<std::string> runtimeIdsForEditableWall(const EditableRoomWall& wall)
   return ids;
 }
 
+std::uint64_t nextEditableIndexForPrefix(const EditableRoomDocument& document,
+                                         std::string_view prefix,
+                                         bool floors) {
+  std::uint64_t maxSuffix = 0;
+  const auto scanId = [&](std::string_view id) {
+    if (!id.starts_with(prefix) || id.size() == prefix.size()) {
+      return;
+    }
+    std::uint64_t suffix = 0;
+    for (std::size_t index = prefix.size(); index < id.size(); ++index) {
+      const char c = id[index];
+      if (c < '0' || c > '9') {
+        return;
+      }
+      suffix = suffix * 10U + static_cast<std::uint64_t>(c - '0');
+    }
+    maxSuffix = std::max(maxSuffix, suffix);
+  };
+
+  if (floors) {
+    for (const EditableRoomFloor& floor : document.floors) {
+      scanId(floor.id);
+    }
+  } else {
+    for (const EditableRoomWall& wall : document.walls) {
+      scanId(wall.id);
+    }
+  }
+  return maxSuffix + 1U;
+}
+
+std::uint64_t nextEditableFloorIndex(const EditableRoomDocument& document) {
+  return nextEditableIndexForPrefix(document, "edit_floor_", true);
+}
+
+std::uint64_t nextEditableWallIndex(const EditableRoomDocument& document) {
+  return nextEditableIndexForPrefix(document, "edit_wall_", false);
+}
+
 RoomEditResult applyRoomEditCommand(EditableRoomDocument& document,
                                     const RoomEditCommand& command) {
   switch (command.kind) {

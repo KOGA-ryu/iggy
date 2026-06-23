@@ -163,11 +163,75 @@ bool validationRejectsAmbiguousWallGeometryAndBadTags() {
          expect(session.document().walls.empty(), "no bad wall mutation");
 }
 
+bool nextEditableCountersIgnoreNonMatchingIds() {
+  iggy3d::EditableRoomDocument document;
+  iggy3d::EditableRoomFloor floor = floorPrimitive();
+  floor.id = "edit_floor_7";
+  document.floors.push_back(floor);
+  floor.id = "floor_misc_99";
+  document.floors.push_back(floor);
+  floor.id = "edit_floor_bad";
+  document.floors.push_back(floor);
+
+  iggy3d::EditableRoomWall wall = wallPrimitive();
+  wall.id = "edit_wall_12";
+  document.walls.push_back(wall);
+  wall.id = "wall_misc_99";
+  document.walls.push_back(wall);
+  wall.id = "edit_wall_bad";
+  document.walls.push_back(wall);
+
+  return expect(iggy3d::nextEditableFloorIndex(document) == 8U,
+                "floor counter from numeric suffix") &&
+         expect(iggy3d::nextEditableWallIndex(document) == 13U,
+                "wall counter from numeric suffix");
+}
+
+bool lockedHiddenAndProjectileSemanticsAreStable() {
+  iggy3d::EditableRoomSession session;
+  iggy3d::EditableRoomFloor floor = floorPrimitive();
+  floor.id = "hidden_floor";
+  floor.hidden = true;
+  floor.locked = true;
+  const iggy3d::RoomEditResult addFloor =
+      session.submit(iggy3d::addFloorCommand(floor));
+  const iggy3d::RoomEditResult lockedDelete =
+      session.submit(iggy3d::deleteFloorCommand("hidden_floor"));
+
+  iggy3d::EditableRoomWall wall = wallPrimitive();
+  wall.id = "projectile_wall";
+  wall.semantics.materialId = "debug_wall";
+  wall.semantics.blocksActor = false;
+  wall.semantics.blocksProjectile = true;
+  const iggy3d::RoomEditResult addWall =
+      session.submit(iggy3d::addWallCommand(wall));
+  const iggy3d::RoomBakeResult bake = iggy3d::bakeEditableRoomDocument(session.document());
+
+  bool projectileOnly = false;
+  for (const iggy3d::RoomSpatialSurface& surface : bake.room.spatialSurfaces) {
+    if (surface.id == "projectile_wall_projectile_blocker") {
+      projectileOnly = surface.blocksProjectile && !surface.blocksActor &&
+                       surface.role == iggy3d::RoomSpatialSurfaceRole::ProjectileBlocker;
+    }
+  }
+
+  return expect(addFloor.status == iggy3d::RoomEditStatus::Applied,
+                "locked floor added") &&
+         expect(lockedDelete.status == iggy3d::RoomEditStatus::LockedPrimitive,
+                "locked floor delete rejected") &&
+         expect(addWall.status == iggy3d::RoomEditStatus::Applied,
+                "projectile wall added") &&
+         expect(bake.ok, "hidden/projectile bake ok") &&
+         expect(projectileOnly, "projectile-only blocker baked");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = sessionAddsDeletesAndRestoresPrimitives() &&
                   semanticsBakeIntoRuntimeSurfaces() &&
-                  validationRejectsAmbiguousWallGeometryAndBadTags();
+                  validationRejectsAmbiguousWallGeometryAndBadTags() &&
+                  nextEditableCountersIgnoreNonMatchingIds() &&
+                  lockedHiddenAndProjectileSemanticsAreStable();
   return ok ? 0 : 1;
 }

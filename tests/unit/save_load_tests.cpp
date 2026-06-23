@@ -300,11 +300,16 @@ bool authoredRoomSectionRoundTripsThroughSaveCodec() {
   floor.semantics.materialId = "debug_floor";
   floor.semantics.walkable = true;
   floor.semantics.traversalTags = {"walkable"};
+  floor.semantics.gameplayTags = {"safe_zone"};
+  floor.locked = true;
+  floor.hidden = true;
   saved.envelope.authoredRoom.floors.push_back(floor);
   iggy3d::SaveAuthoredRoomWallRecord wall;
   wall.id = "edit_wall_3";
+  wall.storyIndex = 2;
   wall.startMeters = {-1.0F, 0.0F, 1.0F};
   wall.endMeters = {1.0F, 0.0F, 1.0F};
+  wall.bottomY = 0.25F;
   wall.heightMeters = 1.5F;
   wall.thicknessMeters = 0.2F;
   wall.semantics.materialId = "debug_wall";
@@ -312,6 +317,8 @@ bool authoredRoomSectionRoundTripsThroughSaveCodec() {
   wall.semantics.blocksProjectile = true;
   wall.semantics.traversalTags = {"clamber"};
   wall.semantics.gameplayTags = {"training"};
+  wall.locked = true;
+  wall.hidden = true;
   saved.envelope.authoredRoom.walls.push_back(wall);
 
   const iggy3d::SaveEncodeResult encoded = iggy3d::encodeSaveEnvelope(saved.envelope);
@@ -329,11 +336,53 @@ bool authoredRoomSectionRoundTripsThroughSaveCodec() {
          expect(decoded.status == iggy3d::SaveCodecStatus::Ok, "authored decode status") &&
          expect(decoded.envelope.authoredRoom.present, "authored present decoded") &&
          expect(decoded.envelope.authoredRoom.floors.size() == 1U, "authored floor count") &&
+         expect(decoded.envelope.authoredRoom.floors[0].id == "edit_floor_7",
+                "authored floor id") &&
+         expect(decoded.envelope.authoredRoom.floors[0].storyIndex == 1,
+                "authored floor story") &&
+         expect(decoded.envelope.authoredRoom.floors[0].centerMeters.x == 2.0F,
+                "authored floor center") &&
+         expect(decoded.envelope.authoredRoom.floors[0].sizeMeters.z == 5.0F,
+                "authored floor size") &&
+         expect(decoded.envelope.authoredRoom.floors[0].semantics.materialId ==
+                    "debug_floor",
+                "authored floor material") &&
          expect(decoded.envelope.authoredRoom.floors[0].semantics.walkable,
-                "authored floor semantics") &&
+                "authored floor walkable") &&
+         expect(decoded.envelope.authoredRoom.floors[0].semantics.traversalTags[0] ==
+                    "walkable",
+                "authored floor traversal") &&
+         expect(decoded.envelope.authoredRoom.floors[0].semantics.gameplayTags[0] ==
+                    "safe_zone",
+                "authored floor gameplay tag") &&
+         expect(decoded.envelope.authoredRoom.floors[0].locked, "authored floor locked") &&
+         expect(decoded.envelope.authoredRoom.floors[0].hidden, "authored floor hidden") &&
          expect(decoded.envelope.authoredRoom.walls.size() == 1U, "authored wall count") &&
+         expect(decoded.envelope.authoredRoom.walls[0].id == "edit_wall_3",
+                "authored wall id") &&
+         expect(decoded.envelope.authoredRoom.walls[0].storyIndex == 2,
+                "authored wall story") &&
+         expect(decoded.envelope.authoredRoom.walls[0].startMeters.x == -1.0F,
+                "authored wall start") &&
+         expect(decoded.envelope.authoredRoom.walls[0].endMeters.x == 1.0F,
+                "authored wall end") &&
+         expect(decoded.envelope.authoredRoom.walls[0].bottomY == 0.25F,
+                "authored wall bottom") &&
+         expect(decoded.envelope.authoredRoom.walls[0].heightMeters == 1.5F,
+                "authored wall height") &&
+         expect(decoded.envelope.authoredRoom.walls[0].thicknessMeters == 0.2F,
+                "authored wall thickness") &&
+         expect(decoded.envelope.authoredRoom.walls[0].semantics.blocksActor,
+                "authored wall actor blocker") &&
+         expect(decoded.envelope.authoredRoom.walls[0].semantics.blocksProjectile,
+                "authored wall projectile blocker") &&
          expect(decoded.envelope.authoredRoom.walls[0].semantics.traversalTags[0] == "clamber",
                 "authored wall traversal tag") &&
+         expect(decoded.envelope.authoredRoom.walls[0].semantics.gameplayTags[0] ==
+                    "training",
+                "authored wall gameplay tag") &&
+         expect(decoded.envelope.authoredRoom.walls[0].locked, "authored wall locked") &&
+         expect(decoded.envelope.authoredRoom.walls[0].hidden, "authored wall hidden") &&
          expect(!oldDecoded.envelope.authoredRoom.present, "old saves omit authored room");
 }
 

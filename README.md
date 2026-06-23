@@ -44,6 +44,15 @@ gamepad, Options opens the Pause Menu; Dev Tools are reached through Pause Menu
 for now, and Create+Options remains the hard-quit chord. Settings are
 app/frontend-owned in this packet and are not persisted to a settings file.
 
+In-game room editing is available from the current dev/editor controls. F2
+opens the editor; use tools for select, floor placement, wall placement,
+semantics, and delete. Authored floors and walls keep stable ids such as
+`edit_floor_1` and `edit_wall_1`, can be selected/deleted/undone/redone, and
+are saved into `.iggy3d.save` through the existing Save / Save And Exit flow.
+Loading a save restores the authored room into the editor, resets selection,
+continues id counters from the highest loaded suffix, and rebuilds the runtime
+room/collision/traversal surfaces from the saved authored-room section.
+
 For automated verification, prefer no-window/null-renderer receipt smokes and
 frontend unit tests. Windowed Vulkan launches are for manual visual inspection,
 not routine packet iteration.

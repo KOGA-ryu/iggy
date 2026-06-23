@@ -412,6 +412,23 @@ struct PlayableReceiptFields {
   std::uint64_t editorRedoCount = 0;
   bool editorBakeOk = true;
   std::string editorBakeReason = "room_bake_ok";
+  bool editorRuntimeRoomRebuilt = false;
+  bool editorAuthoredRoomSaved = false;
+  bool editorAuthoredRoomLoaded = false;
+  std::uint64_t editorSaveFloorCount = 0;
+  std::uint64_t editorSaveWallCount = 0;
+  std::uint64_t editorLoadedFloorCount = 0;
+  std::uint64_t editorLoadedWallCount = 0;
+  std::uint64_t editorNextFloorIndex = 1;
+  std::uint64_t editorNextWallIndex = 1;
+  bool editorSelectionResetAfterLoad = false;
+  bool editorSelectionResetAfterDelete = false;
+  std::string editorSaveId = "none";
+  std::string editorSavePath = "none";
+  std::string editorSaveStatus = "not_requested";
+  std::string editorLoadStatus = "not_requested";
+  bool editorRoundtripCollisionSurfacesRestored = false;
+  bool editorRoundtripTraversalSlotsRestored = false;
   bool codexControlConfigured = false;
   bool codexControlRead = false;
   bool codexControlApplied = false;
@@ -590,6 +607,21 @@ struct EditorModeState {
   std::uint64_t runtimeStaticMeshCount = 0;
   std::uint64_t runtimeSurfaceCount = 0;
   std::uint64_t runtimeTraversalSlotCount = 0;
+  bool runtimeRoomRebuilt = false;
+  bool authoredRoomSaved = false;
+  bool authoredRoomLoaded = false;
+  std::uint64_t saveFloorCount = 0;
+  std::uint64_t saveWallCount = 0;
+  std::uint64_t loadedFloorCount = 0;
+  std::uint64_t loadedWallCount = 0;
+  bool selectionResetAfterLoad = false;
+  bool selectionResetAfterDelete = false;
+  std::string saveId = "none";
+  std::string savePath = "none";
+  std::string saveStatus = "not_requested";
+  std::string loadStatus = "not_requested";
+  bool roundtripCollisionSurfacesRestored = false;
+  bool roundtripTraversalSlotsRestored = false;
 };
 
 struct CodexControlFrame {
@@ -621,6 +653,8 @@ struct CodexControlFrame {
   iggy3d::Vec3 editorCursorMeters;
   bool editorSelectSet = false;
   std::string editorSelectId;
+  bool editorAddBasicRoom = false;
+  bool saveCurrent = false;
   bool openingMenuOpenSet = false;
   bool openingMenuOpen = false;
   bool openingMenuSelectSet = false;
@@ -1359,7 +1393,7 @@ void recordFrontendFields(PlayableReceiptFields& fields,
 
 void writeOpeningMenuSaveFile(OpeningMenuState& menu,
                               const iggy3d::Session& session,
-                              const EditorModeState* editor,
+                              EditorModeState* editor,
                               std::string_view statusOnSuccess,
                               bool overwriteSelected) {
   iggy3d::SaveFileWriteRequest request;
@@ -1369,12 +1403,22 @@ void writeOpeningMenuSaveFile(OpeningMenuState& menu,
   if (editor != nullptr && editor->enabled) {
     authoredRoom = saveAuthoredRoomFromEditor(editor->session.document());
     request.authoredRoom = &authoredRoom;
+    editor->saveFloorCount = authoredRoom.floors.size();
+    editor->saveWallCount = authoredRoom.walls.size();
   }
   if (overwriteSelected && !menu.saves.empty() && menu.selectedSaveIndex < menu.saves.size()) {
     request.idHint = menu.saves[menu.selectedSaveIndex].id;
   }
   const iggy3d::SaveFileWriteResult result = iggy3d::writeSessionSaveFile(request);
   menu.status = result.ok ? std::string(statusOnSuccess) : result.reason;
+  if (editor != nullptr && editor->enabled) {
+    editor->saveStatus = result.ok ? "authored_room_saved" : result.reason;
+    editor->authoredRoomSaved = result.ok;
+    if (result.ok) {
+      editor->saveId = result.record.id.empty() ? "none" : result.record.id;
+      editor->savePath = result.record.path.empty() ? "none" : result.record.path.string();
+    }
+  }
   if (!result.ok) {
     return;
   }
@@ -1421,7 +1465,7 @@ void loadOpeningMenuSelectedSave(OpeningMenuState& menu, iggy3d::Session& sessio
 
 void executeOpeningMenuAction(OpeningMenuState& menu,
                               iggy3d::Session& session,
-                              const EditorModeState* editor) {
+                              EditorModeState* editor) {
   if (!menu.enabled) {
     return;
   }
@@ -1959,6 +2003,22 @@ CodexControlFrame readCodexControlFile(const VisualOptions& options) {
       if (!editorSelectId.empty()) {
         frame.editorSelectSet = true;
         frame.editorSelectId = editorSelectId;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "editor.add_basic_room") {
+      if (parseControlBool(value, boolValue)) {
+        frame.editorAddBasicRoom = frame.editorAddBasicRoom || boolValue;
+        frame.applied = true;
+      } else {
+        frame.parseError = true;
+        frame.status = "parse_error";
+      }
+    } else if (key == "save.current") {
+      if (parseControlBool(value, boolValue)) {
+        frame.saveCurrent = frame.saveCurrent || boolValue;
         frame.applied = true;
       } else {
         frame.parseError = true;
@@ -3741,6 +3801,25 @@ void updateEditorReceiptFields(PlayableReceiptFields& fields,
   fields.editorRedoCount = editor.redoCount;
   fields.editorBakeOk = editor.bakeOk;
   fields.editorBakeReason = editor.bakeReason;
+  fields.editorRuntimeRoomRebuilt = editor.runtimeRoomRebuilt;
+  fields.editorAuthoredRoomSaved = editor.authoredRoomSaved;
+  fields.editorAuthoredRoomLoaded = editor.authoredRoomLoaded;
+  fields.editorSaveFloorCount = editor.saveFloorCount;
+  fields.editorSaveWallCount = editor.saveWallCount;
+  fields.editorLoadedFloorCount = editor.loadedFloorCount;
+  fields.editorLoadedWallCount = editor.loadedWallCount;
+  fields.editorNextFloorIndex = editor.nextFloorIndex;
+  fields.editorNextWallIndex = editor.nextWallIndex;
+  fields.editorSelectionResetAfterLoad = editor.selectionResetAfterLoad;
+  fields.editorSelectionResetAfterDelete = editor.selectionResetAfterDelete;
+  fields.editorSaveId = editor.saveId;
+  fields.editorSavePath = editor.savePath;
+  fields.editorSaveStatus = editor.saveStatus;
+  fields.editorLoadStatus = editor.loadStatus;
+  fields.editorRoundtripCollisionSurfacesRestored =
+      editor.roundtripCollisionSurfacesRestored;
+  fields.editorRoundtripTraversalSlotsRestored =
+      editor.roundtripTraversalSlotsRestored;
 }
 
 void rebuildEditorRuntimeRoom(const iggy3d::RoomAsset& baseRoom,
@@ -3753,6 +3832,15 @@ void rebuildEditorRuntimeRoom(const iggy3d::RoomAsset& baseRoom,
       iggy3d::bakeEditableRoomDocument(editor.session.document());
   editor.bakeOk = bake.ok;
   editor.bakeReason = bake.reasonCode == nullptr ? "room_bake_failed" : bake.reasonCode;
+  editor.runtimeRoomRebuilt = bake.ok;
+  const std::uint64_t authoredSurfaceCount =
+      bake.ok ? static_cast<std::uint64_t>(bake.room.spatialSurfaces.size()) : 0U;
+  const std::uint64_t authoredTraversalSlotCount =
+      bake.ok
+          ? static_cast<std::uint64_t>(
+                iggy3d::buildMovementTraversalSlotRegistry(bake.room, roomWorldOffset)
+                    .slots.size())
+          : 0U;
   if (bake.ok) {
     runtimeRoom.staticMeshes.insert(runtimeRoom.staticMeshes.end(),
                                     bake.room.staticMeshes.begin(),
@@ -3766,36 +3854,10 @@ void rebuildEditorRuntimeRoom(const iggy3d::RoomAsset& baseRoom,
   editor.runtimeSurfaceCount = runtimeRoom.spatialSurfaces.size();
   editor.runtimeTraversalSlotCount =
       iggy3d::buildMovementTraversalSlotRegistry(runtimeRoom, roomWorldOffset).slots.size();
-}
-
-std::uint64_t nextEditableIndexForPrefix(const iggy3d::EditableRoomDocument& document,
-                                         std::string_view prefix,
-                                         bool floors) {
-  std::uint64_t maxSuffix = 0;
-  const auto scanId = [&](std::string_view id) {
-    if (!id.starts_with(prefix) || id.size() == prefix.size()) {
-      return;
-    }
-    std::uint64_t suffix = 0;
-    for (std::size_t index = prefix.size(); index < id.size(); ++index) {
-      const char c = id[index];
-      if (c < '0' || c > '9') {
-        return;
-      }
-      suffix = suffix * 10U + static_cast<std::uint64_t>(c - '0');
-    }
-    maxSuffix = std::max(maxSuffix, suffix);
-  };
-  if (floors) {
-    for (const iggy3d::EditableRoomFloor& floor : document.floors) {
-      scanId(floor.id);
-    }
-  } else {
-    for (const iggy3d::EditableRoomWall& wall : document.walls) {
-      scanId(wall.id);
-    }
-  }
-  return maxSuffix + 1U;
+  editor.roundtripCollisionSurfacesRestored =
+      editor.authoredRoomLoaded && authoredSurfaceCount > 0U;
+  editor.roundtripTraversalSlotsRestored =
+      editor.authoredRoomLoaded && authoredTraversalSlotCount > 0U;
 }
 
 void applyLoadedAuthoredRoom(EditorModeState& editor,
@@ -3810,10 +3872,13 @@ void applyLoadedAuthoredRoom(EditorModeState& editor,
   editor.selectionSource = "load";
   editor.lastCommand = "load_room";
   editor.lastStatus = authoredRoom.present ? "authored_room_loaded" : "authored_room_absent";
-  editor.nextFloorIndex = nextEditableIndexForPrefix(editor.session.document(),
-                                                     "edit_floor_", true);
-  editor.nextWallIndex = nextEditableIndexForPrefix(editor.session.document(), "edit_wall_",
-                                                    false);
+  editor.authoredRoomLoaded = authoredRoom.present;
+  editor.loadedFloorCount = editor.session.document().floors.size();
+  editor.loadedWallCount = editor.session.document().walls.size();
+  editor.selectionResetAfterLoad = true;
+  editor.loadStatus = editor.lastStatus;
+  editor.nextFloorIndex = iggy3d::nextEditableFloorIndex(editor.session.document());
+  editor.nextWallIndex = iggy3d::nextEditableWallIndex(editor.session.document());
   editor.applyCount = 0;
   editor.deleteCount = 0;
   editor.undoCount = 0;
@@ -3897,6 +3962,7 @@ void executeEditorApply(EditorModeState& editor,
       if (result.status == iggy3d::RoomEditStatus::Applied) {
         ++editor.deleteCount;
         editor.selectedId = "none";
+        editor.selectionResetAfterDelete = true;
       }
       break;
     }
@@ -3913,6 +3979,51 @@ void executeEditorDelete(EditorModeState& editor,
   editor.tool = EditorTool::Delete;
   executeEditorApply(editor, baseRoom, runtimeRoom, collisionSurfaces, roomWorldOffset, 0.0F);
   editor.tool = previousTool;
+}
+
+void executeEditorAddBasicRoom(EditorModeState& editor,
+                               const iggy3d::RoomAsset& baseRoom,
+                               iggy3d::RoomAsset& runtimeRoom,
+                               iggy3d::SpatialSurfaceSet& collisionSurfaces,
+                               iggy3d::Vec3 roomWorldOffset) {
+  iggy3d::EditableRoomFloor floor;
+  floor.id = makeEditorFloorId(editor);
+  floor.centerMeters = {0.0F, -0.05F, -1.0F};
+  floor.sizeMeters = {2.0F, 0.10F, 2.0F};
+  floor.semantics = floorSemanticsForPreset(EditorPreset::Floor);
+
+  const iggy3d::RoomEditResult floorResult =
+      editor.session.submit(iggy3d::addFloorCommand(floor));
+  recordEditorCommandResult(editor, "add_floor", floorResult);
+  if (floorResult.status == iggy3d::RoomEditStatus::Applied) {
+    ++editor.applyCount;
+  }
+
+  if (floorResult.status == iggy3d::RoomEditStatus::Applied) {
+    iggy3d::EditableRoomWall wall;
+    wall.id = makeEditorWallId(editor);
+    wall.startMeters = {-1.0F, 0.0F, -2.0F};
+    wall.endMeters = {1.0F, 0.0F, -2.0F};
+    wall.bottomY = 0.0F;
+    wall.heightMeters = 1.5F;
+    wall.thicknessMeters = 0.20F;
+    wall.semantics = wallSemanticsForPreset(EditorPreset::ClamberWall);
+
+    const std::string wallId = wall.id;
+    const iggy3d::RoomEditResult wallResult =
+        editor.session.submit(iggy3d::addWallCommand(wall));
+    recordEditorCommandResult(editor, "add_wall", wallResult);
+    if (wallResult.status == iggy3d::RoomEditStatus::Applied) {
+      ++editor.applyCount;
+      editor.selectedId = wallId;
+      editor.selectionSource = "scripted";
+      editor.lastCommand = "add_basic_room";
+      editor.lastStatus = "room_edit_applied";
+    }
+  }
+
+  rebuildEditorRuntimeRoom(baseRoom, editor, runtimeRoom, collisionSurfaces,
+                           roomWorldOffset);
 }
 
 void executeEditorUndo(EditorModeState& editor,
@@ -4942,6 +5053,36 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
   iggy3d::appendReceiptField(receipt, "editor_redo_count", fields.editorRedoCount);
   iggy3d::appendReceiptField(receipt, "editor_bake_ok", fields.editorBakeOk);
   iggy3d::appendReceiptField(receipt, "editor_bake_reason", fields.editorBakeReason);
+  iggy3d::appendReceiptField(receipt, "editor_runtime_room_rebuilt",
+                             fields.editorRuntimeRoomRebuilt);
+  iggy3d::appendReceiptField(receipt, "editor_authored_room_saved",
+                             fields.editorAuthoredRoomSaved);
+  iggy3d::appendReceiptField(receipt, "editor_authored_room_loaded",
+                             fields.editorAuthoredRoomLoaded);
+  iggy3d::appendReceiptField(receipt, "editor_save_floor_count",
+                             fields.editorSaveFloorCount);
+  iggy3d::appendReceiptField(receipt, "editor_save_wall_count",
+                             fields.editorSaveWallCount);
+  iggy3d::appendReceiptField(receipt, "editor_loaded_floor_count",
+                             fields.editorLoadedFloorCount);
+  iggy3d::appendReceiptField(receipt, "editor_loaded_wall_count",
+                             fields.editorLoadedWallCount);
+  iggy3d::appendReceiptField(receipt, "editor_next_floor_index",
+                             fields.editorNextFloorIndex);
+  iggy3d::appendReceiptField(receipt, "editor_next_wall_index",
+                             fields.editorNextWallIndex);
+  iggy3d::appendReceiptField(receipt, "editor_selection_reset_after_load",
+                             fields.editorSelectionResetAfterLoad);
+  iggy3d::appendReceiptField(receipt, "editor_selection_reset_after_delete",
+                             fields.editorSelectionResetAfterDelete);
+  iggy3d::appendReceiptField(receipt, "editor_save_id", fields.editorSaveId);
+  iggy3d::appendReceiptField(receipt, "editor_save_path", fields.editorSavePath);
+  iggy3d::appendReceiptField(receipt, "editor_save_status", fields.editorSaveStatus);
+  iggy3d::appendReceiptField(receipt, "editor_load_status", fields.editorLoadStatus);
+  iggy3d::appendReceiptField(receipt, "editor_roundtrip_collision_surfaces_restored",
+                             fields.editorRoundtripCollisionSurfacesRestored);
+  iggy3d::appendReceiptField(receipt, "editor_roundtrip_traversal_slots_restored",
+                             fields.editorRoundtripTraversalSlotsRestored);
   iggy3d::appendReceiptField(receipt, "codex_control_configured",
                              fields.codexControlConfigured);
   iggy3d::appendReceiptField(receipt, "codex_control_read", fields.codexControlRead);
@@ -6016,6 +6157,10 @@ int main(int argc, const char* const* argv) {
           if (codexControl.editorSelectSet) {
             editor.selectedId = codexControl.editorSelectId;
           }
+          if (codexControl.editorAddBasicRoom) {
+            executeEditorAddBasicRoom(editor, baseRoom, runtimeRoom, collisionSurfaces,
+                                      roomWorldOffset);
+          }
         }
         if (codexControl.mechanicSet) {
           devMenu.selected = codexControl.mechanic;
@@ -6060,6 +6205,11 @@ int main(int argc, const char* const* argv) {
         editorDeleteRequested = editorDeleteRequested || codexControl.editorDelete;
         editorUndoRequested = editorUndoRequested || codexControl.editorUndo;
         editorRedoRequested = editorRedoRequested || codexControl.editorRedo;
+        if (codexControl.saveCurrent) {
+          writeOpeningMenuSaveFile(openingMenu, session, &editor,
+                                   "authored_room_saved", false);
+          updateEditorReceiptFields(playableFields, editor);
+        }
       }
       if (openingMenu.enabled && openingMenu.open) {
         devMenu.open = false;

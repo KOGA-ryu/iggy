@@ -101,6 +101,9 @@ bool authoredRoomSectionIsWrittenToSaveFile() {
   floor.sizeMeters = {2.0F, 0.1F, 2.0F};
   floor.semantics.materialId = "debug_floor";
   floor.semantics.walkable = true;
+  floor.semantics.traversalTags = {"walkable"};
+  floor.locked = true;
+  floor.hidden = true;
   authoredRoom.floors.push_back(floor);
   iggy3d::SaveAuthoredRoomWallRecord wall;
   wall.id = "edit_wall_1";
@@ -109,6 +112,9 @@ bool authoredRoomSectionIsWrittenToSaveFile() {
   wall.semantics.materialId = "debug_wall";
   wall.semantics.blocksActor = true;
   wall.semantics.blocksProjectile = true;
+  wall.semantics.traversalTags = {"clamber"};
+  wall.locked = true;
+  wall.hidden = true;
   authoredRoom.walls.push_back(wall);
 
   iggy3d::SaveFileWriteRequest request;
@@ -128,7 +134,17 @@ bool authoredRoomSectionIsWrittenToSaveFile() {
          expect(decoded.status == iggy3d::SaveCodecStatus::Ok, "authored save decoded") &&
          expect(decoded.envelope.authoredRoom.present, "authored room present") &&
          expect(decoded.envelope.authoredRoom.floors.size() == 1U, "authored floor saved") &&
-         expect(decoded.envelope.authoredRoom.walls.size() == 1U, "authored wall saved");
+         expect(decoded.envelope.authoredRoom.floors[0].locked, "authored floor locked") &&
+         expect(decoded.envelope.authoredRoom.floors[0].hidden, "authored floor hidden") &&
+         expect(decoded.envelope.authoredRoom.floors[0].semantics.traversalTags[0] ==
+                    "walkable",
+                "authored floor traversal saved") &&
+         expect(decoded.envelope.authoredRoom.walls.size() == 1U, "authored wall saved") &&
+         expect(decoded.envelope.authoredRoom.walls[0].locked, "authored wall locked") &&
+         expect(decoded.envelope.authoredRoom.walls[0].hidden, "authored wall hidden") &&
+         expect(decoded.envelope.authoredRoom.walls[0].semantics.traversalTags[0] ==
+                    "clamber",
+                "authored wall traversal saved");
 }
 
 }  // namespace

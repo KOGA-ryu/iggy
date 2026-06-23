@@ -113,6 +113,8 @@ const EditableRoomWall* findEditableWall(const EditableRoomDocument& document,
 
 std::vector<std::string> runtimeIdsForEditableFloor(const EditableRoomFloor& floor);
 std::vector<std::string> runtimeIdsForEditableWall(const EditableRoomWall& wall);
+std::uint64_t nextEditableFloorIndex(const EditableRoomDocument& document);
+std::uint64_t nextEditableWallIndex(const EditableRoomDocument& document);
 
 RoomEditResult applyRoomEditCommand(EditableRoomDocument& document,
                                     const RoomEditCommand& command);

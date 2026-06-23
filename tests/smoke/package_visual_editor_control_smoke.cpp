@@ -178,6 +178,7 @@ int main() {
               hasField(fields, "editor_ghost_visible", "true") &&
               hasField(fields, "editor_ghost_role", "editor_ghost_valid") &&
               hasField(fields, "editor_wall_count", "1") &&
+              hasField(fields, "editor_runtime_room_rebuilt", "true") &&
               hasField(fields, "editor_bake_ok", "true") &&
               hasField(fields, "debug_traversal_preview_candidate_available", "true") &&
               hasField(fields, "debug_traversal_preview_target_id", "edit_wall_1") &&
@@ -195,12 +196,14 @@ int main() {
                  hasField(fields, "editor_last_command", "delete") &&
                  hasField(fields, "editor_last_status", "room_edit_applied") &&
                  hasField(fields, "editor_selected_id", "none") &&
+                 hasField(fields, "editor_selection_reset_after_delete", "true") &&
                  hasField(fields, "editor_probe_available", "true") &&
                  hasField(fields, "editor_placement_valid", "true") &&
                  hasField(fields, "editor_ghost_visible", "true") &&
                  hasField(fields, "editor_wall_count", "0") &&
                  hasField(fields, "editor_apply_count", "1") &&
                  hasField(fields, "editor_delete_count", "1") &&
+                 hasField(fields, "editor_runtime_room_rebuilt", "true") &&
                  hasField(fields, "editor_bake_ok", "true");
 
   fields.clear();
@@ -220,6 +223,7 @@ int main() {
                 hasField(fields, "editor_ghost_visible", "true") &&
                 hasField(fields, "editor_ghost_role", "editor_ghost_valid") &&
                 hasField(fields, "editor_wall_count", "1") &&
+                hasField(fields, "editor_runtime_room_rebuilt", "true") &&
                 numericFieldGreater(fields, "editor_probe_distance_meters", 0.0F) &&
                 numericFieldGreater(fields, "editor_runtime_surface_count", 0.0F);
 
@@ -235,13 +239,15 @@ int main() {
       hasField(fields, "editor_last_command", "delete") &&
       hasField(fields, "editor_last_status", "room_edit_applied") &&
       hasField(fields, "editor_selected_id", "none") &&
+      hasField(fields, "editor_selection_reset_after_delete", "true") &&
       hasField(fields, "editor_selection_source", "reticle") &&
       hasField(fields, "editor_probe_available", "true") &&
       hasField(fields, "editor_probe_hit", "true") &&
       hasField(fields, "editor_placement_valid", "true") &&
       hasField(fields, "editor_wall_count", "0") &&
       hasField(fields, "editor_apply_count", "1") &&
-      hasField(fields, "editor_delete_count", "1");
+      hasField(fields, "editor_delete_count", "1") &&
+      hasField(fields, "editor_runtime_room_rebuilt", "true");
 #endif
   const bool passed = addPassed && deletePassed && probePassed && probeDeletePassed;
   std::cout << "smoke=package_visual_editor_control\n";

@@ -278,6 +278,20 @@ if(TARGET iggy3d_visual_demo)
     SKIP_RETURN_CODE 77
     LABELS "smoke;visual;render;package;editor;codex_control;iggy3d")
 
+  add_executable(package_visual_editor_save_load_smoke
+    tests/smoke/package_visual_editor_save_load_smoke.cpp)
+  target_link_libraries(package_visual_editor_save_load_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(package_visual_editor_save_load_smoke)
+  target_compile_definitions(package_visual_editor_save_load_smoke
+    PRIVATE
+      IGGY3D_VISUAL_DEMO_PATH="$<TARGET_FILE:iggy3d_visual_demo>")
+  add_test(NAME package_visual_editor_save_load_smoke
+           COMMAND "$<TARGET_FILE:package_visual_editor_save_load_smoke>")
+  set_tests_properties(package_visual_editor_save_load_smoke PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    SKIP_RETURN_CODE 77
+    LABELS "smoke;visual;editor;authoring;save;no_window;iggy3d")
+
   add_executable(package_visual_opening_menu_smoke
     tests/smoke/package_visual_opening_menu_smoke.cpp)
   target_link_libraries(package_visual_opening_menu_smoke PRIVATE iggy3d)
