@@ -20,7 +20,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      frontendActionName(frontend.selectedAction));
   appendReceiptField(receipt, "frontend_status", frontend.status);
   appendReceiptField(receipt, "frontend_launch_requested", frontend.launchRequested);
-  appendReceiptField(receipt, "starter_world_suppressed", true);
+  appendReceiptField(receipt, "starter_world_suppressed", !window.gameplayActive);
+  appendReceiptField(receipt, "auto_new_world", options.autoNewWorld);
   appendReceiptField(receipt, "renderer_request", productRendererRequestName(options.renderer));
   appendReceiptField(receipt, "window_mode", productWindowModeName(options.windowMode));
   appendReceiptField(receipt, "input_backend", productInputBackendName(options.inputBackend));
@@ -43,7 +44,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "window_shell", window.sdlAvailable ? "sdl3" : "unavailable");
   appendReceiptField(receipt, "window_created", window.created);
   appendReceiptField(receipt, "window_drawable", window.drawable);
-  appendReceiptField(receipt, "window_title", "iggy3d - Opening Menu");
+  appendReceiptField(receipt, "window_title",
+                     window.gameplayActive ? "iggy3d - Gameplay" : "iggy3d - Opening Menu");
   appendReceiptField(receipt, "opening_menu_visible", window.openingMenuVisible);
   appendReceiptField(receipt, "menu_text_drawn", window.menuTextDrawn);
   appendReceiptField(receipt, "menu_selected_row_drawn", window.selectedRowDrawn);
@@ -55,6 +57,19 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "gamepad_menu_select_used", window.gamepadMenuSelectUsed);
   appendReceiptField(receipt, "dev_tools_category",
                      frontendDevToolsCategoryName(frontend.devToolsCategory));
+  appendReceiptField(receipt, "launch_action", window.launchAction);
+  appendReceiptField(receipt, "launch_status", window.launchStatus);
+  appendReceiptField(receipt, "package_load_status", window.packageLoadStatus);
+  appendReceiptField(receipt, "runtime_session_created", window.runtimeSessionCreated);
+  appendReceiptField(receipt, "gameplay_active", window.gameplayActive);
+  appendReceiptField(receipt, "runtime_state_hash", window.runtimeStateHash);
+  appendReceiptField(receipt, "gameplay_view_visible", window.gameplayViewVisible);
+  appendReceiptField(receipt, "scene_item_count", window.sceneItemCount);
+  appendReceiptField(receipt, "debug_item_count", window.debugItemCount);
+  appendReceiptField(receipt, "player_visible", window.playerVisible);
+  appendReceiptField(receipt, "room_visible", window.roomVisible);
+  appendReceiptField(receipt, "objective_visible", window.objectiveVisible);
+  appendReceiptField(receipt, "renderer_mutated_runtime", window.rendererMutatedRuntime);
   appendReceiptField(receipt, "input_owner", menuOwnerName(window.inputOwner));
   appendReceiptField(receipt, "input_action_last", inputActionName(window.lastInputAction));
   appendReceiptField(receipt, "input_action_accepted", window.lastInputAccepted);
@@ -75,7 +90,9 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   const bool windowFailed = window.requested && !window.created;
   appendReceiptField(receipt, "result", windowFailed ? "skip" : "pass");
   appendReceiptField(receipt, "reason_code",
-                     windowFailed ? "sdl3_unavailable" : "opening_menu_ready");
+                     windowFailed ? "sdl3_unavailable"
+                                  : (window.gameplayActive ? "product_gameplay_ready"
+                                                           : "opening_menu_ready"));
   return receipt;
 }
 

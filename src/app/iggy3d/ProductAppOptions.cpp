@@ -105,6 +105,10 @@ ProductAppOptionsParseResult parseProductAppOptions(int argc, char** argv) {
       result.options.printRenderReceipt = true;
       continue;
     }
+    if (arg == "--auto-new-world") {
+      result.options.autoNewWorld = true;
+      continue;
+    }
     if (arg == "--frames") {
       if (needsValue(i, argc)) {
         result.status = ProductAppOptionStatus::MissingOptionValue;
@@ -227,6 +231,7 @@ std::string productAppHelpText() {
          "  --save-root <path>\n"
          "  --frames <count>\n"
          "  --hold-seconds <count>\n"
+         "  --auto-new-world\n"
          "  --print-render-receipt\n"
          "  --dev-package-override <package.iggy3d.toml>\n"
          "  --dev-scenario <id>\n"

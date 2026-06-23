@@ -42,6 +42,7 @@ struct ProductAppOptions {
   std::string devScenario = "default";
   std::uint32_t frames = 0;
   std::uint32_t holdSeconds = 0;
+  bool autoNewWorld = false;
   bool printRenderReceipt = false;
   bool help = false;
 };

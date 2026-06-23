@@ -12,6 +12,9 @@ struct SDL_Renderer;
 
 namespace iggy3d {
 
+struct DebugProjectionResult;
+struct SceneProjectionResult;
+
 struct OpeningMenuViewState {
   bool textDrawn = false;
   bool selectedRowDrawn = false;
@@ -43,6 +46,10 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const ProductWorldTemplate& world,
                                          const FrontendState& frontend,
                                          FrontendSettingsTab selectedSettingsTab,
+                                         bool gameplayActive,
+                                         std::uint64_t runtimeStateHash,
+                                         const SceneProjectionResult* scene,
+                                         const DebugProjectionResult* debug,
                                          const ProductSaveBridgeResult& saves);
 #endif
 

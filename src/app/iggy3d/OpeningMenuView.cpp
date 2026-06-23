@@ -12,6 +12,8 @@
 #include "app/frontend/DevToolsMenu.hpp"
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
+#include "projection/debug/DebugProjection.hpp"
+#include "projection/scene/SceneProjection.hpp"
 
 namespace iggy3d {
 namespace {
@@ -136,6 +138,77 @@ void drawText(SDL_Renderer& renderer, std::string_view text, float x, float y, f
   }
 }
 
+float screenX(float worldX) {
+  return 640.0F + worldX * 92.0F;
+}
+
+float screenY(float worldZ) {
+  return 394.0F - worldZ * 92.0F;
+}
+
+void drawMarker(SDL_Renderer& renderer,
+                const SceneItem& item,
+                std::uint8_t r,
+                std::uint8_t g,
+                std::uint8_t b,
+                float size) {
+  setColor(renderer, r, g, b);
+  const float x = screenX(item.transform.position.x);
+  const float y = screenY(item.transform.position.z);
+  fillRect(renderer, x - size * 0.5F, y - size * 0.5F, size, size);
+}
+
+void drawTargetRing(SDL_Renderer& renderer, const SceneItem& item) {
+  const float x = screenX(item.transform.position.x);
+  const float y = screenY(item.transform.position.z);
+  setColor(renderer, 226, 230, 211);
+  fillRect(renderer, x - 18.0F, y - 2.0F, 36.0F, 4.0F);
+  fillRect(renderer, x - 2.0F, y - 18.0F, 4.0F, 36.0F);
+}
+
+void drawSceneItem(SDL_Renderer& renderer, const SceneItem& item) {
+  if (!item.visible) {
+    return;
+  }
+
+  switch (item.kind) {
+    case SceneItemKind::Player:
+      drawMarker(renderer, item, 80, 170, 236, 26.0F);
+      drawTargetRing(renderer, item);
+      return;
+    case SceneItemKind::Npc:
+      drawMarker(renderer, item, 210, 78, 76, 28.0F);
+      return;
+    case SceneItemKind::Pickup:
+      drawMarker(renderer, item, 229, 196, 72, 20.0F);
+      return;
+    case SceneItemKind::Interactable:
+      drawMarker(renderer, item, 198, 142, 222, 22.0F);
+      return;
+    case SceneItemKind::ObjectiveMarker:
+    case SceneItemKind::TacticalMarker:
+      drawMarker(renderer, item, 126, 201, 176, 18.0F);
+      return;
+    case SceneItemKind::DebugOnly:
+      drawMarker(renderer, item, 112, 118, 120, 14.0F);
+      return;
+  }
+}
+
+void drawGrid(SDL_Renderer& renderer) {
+  setColor(renderer, 18, 28, 29);
+  fillRect(renderer, 80.0F, 130.0F, 1120.0F, 480.0F);
+  setColor(renderer, 32, 48, 48);
+  for (int i = 0; i <= 14; ++i) {
+    const float x = 80.0F + static_cast<float>(i) * 80.0F;
+    fillRect(renderer, x, 130.0F, 2.0F, 480.0F);
+  }
+  for (int i = 0; i <= 6; ++i) {
+    const float y = 130.0F + static_cast<float>(i) * 80.0F;
+    fillRect(renderer, 80.0F, y, 1120.0F, 2.0F);
+  }
+}
+
 void drawMenuRow(SDL_Renderer& renderer,
                  std::string_view label,
                  bool selected,
@@ -250,6 +323,38 @@ void drawSettingsPanel(SDL_Renderer& renderer, FrontendSettingsTab selected) {
   drawText(renderer, "APPLY RESTORE BACK", 850.0F, 394.0F, 2.0F);
 }
 
+void drawGameplayPanel(SDL_Renderer& renderer,
+                       std::uint64_t runtimeStateHash,
+                       const SceneProjectionResult* scene,
+                       const DebugProjectionResult* debug) {
+  setColor(renderer, 10, 16, 18);
+  SDL_RenderClear(&renderer);
+
+  drawGrid(renderer);
+
+  if (scene != nullptr) {
+    for (const SceneItem& item : scene->items) {
+      drawSceneItem(renderer, item);
+    }
+  }
+
+  setColor(renderer, 226, 230, 211);
+  drawText(renderer, "IGGY3D GAMEPLAY", 84.0F, 42.0F, 5.0F);
+  setColor(renderer, 126, 201, 176);
+  drawText(renderer, "FIRST PERSON PROXY VIEW", 88.0F, 104.0F, 3.0F);
+  setColor(renderer, 166, 184, 177);
+  drawText(renderer, "RUNTIME OWNS GAME STATE", 88.0F, 630.0F, 2.0F);
+  drawText(renderer, "STATE HASH", 480.0F, 630.0F, 2.0F);
+  drawText(renderer, std::to_string(runtimeStateHash), 640.0F, 630.0F, 2.0F);
+  if (scene != nullptr) {
+    drawText(renderer, "SCENE ITEMS", 88.0F, 668.0F, 2.0F);
+    drawText(renderer, std::to_string(scene->items.size()), 274.0F, 668.0F, 2.0F);
+    drawText(renderer, "DEBUG ITEMS", 384.0F, 668.0F, 2.0F);
+    const std::size_t debugCount = debug == nullptr ? 0U : debug->items.size();
+    drawText(renderer, std::to_string(debugCount), 570.0F, 668.0F, 2.0F);
+  }
+}
+
 }  // namespace
 
 OpeningMenuHitTestResult openingMenuActionAt(const FrontendState& frontend, float x, float y) {
@@ -311,9 +416,20 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const ProductWorldTemplate& world,
                                          const FrontendState& frontend,
                                          FrontendSettingsTab selectedSettingsTab,
+                                         bool gameplayActive,
+                                         std::uint64_t runtimeStateHash,
+                                         const SceneProjectionResult* scene,
+                                         const DebugProjectionResult* debug,
                                          const ProductSaveBridgeResult& saves) {
   OpeningMenuViewState state;
   SDL_SetRenderDrawBlendMode(&renderer, SDL_BLENDMODE_BLEND);
+
+  if (gameplayActive || frontend.screen == FrontendScreen::Gameplay) {
+    drawGameplayPanel(renderer, runtimeStateHash, scene, debug);
+    SDL_RenderPresent(&renderer);
+    state.textDrawn = true;
+    return state;
+  }
 
   setColor(renderer, 12, 15, 18);
   SDL_RenderClear(&renderer);

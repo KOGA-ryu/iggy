@@ -1,20 +1,27 @@
 #include "app/iggy3d/AppShell.hpp"
 
-#include <iostream>
 #include <array>
+#include <filesystem>
+#include <iostream>
+#include <optional>
 
+#include "app/PackageRuntimeLookup.hpp"
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
+#include "content/PackageLoader.hpp"
 #include "app/input/ActionState.hpp"
 #include "app/input/InputRouter.hpp"
 #include "app/input/GamepadInput.hpp"
 #include "app/input/KeyboardInput.hpp"
 #include "app/input/MouseInput.hpp"
+#include "projection/debug/DebugProjection.hpp"
+#include "projection/scene/SceneProjection.hpp"
 #include "render/RenderDiagnostics.hpp"
+#include "runtime/session/Session.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)
 #include <chrono>
@@ -71,6 +78,136 @@ FrontendSettings productFrontendSettingsFromOptions(const ProductAppOptions& opt
   settings.devToolsEnabled = true;
   settings.debugOverlayEnabled = true;
   return settings;
+}
+
+std::string packageLoadStatusName(PackageLoadStatus status) {
+  switch (status) {
+    case PackageLoadStatus::Ok:
+      return "ok";
+    case PackageLoadStatus::MissingPackageFile:
+      return "missing_package_file";
+    case PackageLoadStatus::PackageReadFailed:
+      return "package_read_failed";
+    case PackageLoadStatus::ScenarioReadFailed:
+      return "scenario_read_failed";
+    case PackageLoadStatus::ParseError:
+      return "parse_error";
+    case PackageLoadStatus::UnsupportedKey:
+      return "unsupported_key";
+    case PackageLoadStatus::MissingRequiredKey:
+      return "missing_required_key";
+    case PackageLoadStatus::MissingScenarioId:
+      return "missing_scenario_id";
+    case PackageLoadStatus::InvalidNumber:
+      return "invalid_number";
+    case PackageLoadStatus::InvalidEnum:
+      return "invalid_enum";
+    case PackageLoadStatus::InvalidPath:
+      return "invalid_path";
+  }
+  return "unknown";
+}
+
+std::filesystem::path defaultProductPackagePath(const ProductAppOptions& options) {
+  if (!options.devPackageOverride.empty()) {
+    return options.devPackageOverride;
+  }
+
+  PackageLookupConfig lookupConfig;
+  lookupConfig.packageMode = PackageMode::BuildTreeVisual;
+  lookupConfig.requireGraphicsRuntime = false;
+  lookupConfig.requireShaderRoot = false;
+  const PackageLookupResult lookup = resolvePackageRuntimeLookup(lookupConfig);
+  if (lookup.outcome == RenderOutcome::Ok && !lookup.lookup.resourceRoot.empty()) {
+    return lookup.lookup.resourceRoot / "demos" / "first_room" / "package.iggy3d.toml";
+  }
+
+  return std::filesystem::path{"fixtures"} / "demos" / "first_room" / "package.iggy3d.toml";
+}
+
+bool createProductSession(const ProductAppOptions& options,
+                          std::optional<Session>& activeSession,
+                          ProductAppWindowState& window) {
+  const std::filesystem::path packagePath = defaultProductPackagePath(options);
+  const PackageLoadResult package = loadPackage({packagePath.generic_string()});
+  window.packageLoadStatus = packageLoadStatusName(package.status);
+  if (package.status != PackageLoadStatus::Ok) {
+    window.launchStatus = "package_load_failed";
+    return false;
+  }
+
+  SessionCreateRequest create;
+  create.packageId = package.manifest.packageId;
+  create.seed = package.scenario;
+  create.config = package.scenario.config;
+
+  Result<Session> session = Session::create(create);
+  if (session.status != ResultStatus::Ok) {
+    window.launchStatus = session.error.code.empty() ? "session_create_failed"
+                                                     : session.error.code;
+    return false;
+  }
+
+  activeSession = std::move(session.value);
+  window.runtimeSessionCreated = true;
+  window.gameplayActive = true;
+  window.runtimeStateHash = activeSession->stateHash();
+  window.launchStatus = "runtime_session_created";
+  return true;
+}
+
+void launchProductNewWorld(const ProductAppOptions& options,
+                           FrontendState& frontend,
+                           std::optional<Session>& activeSession,
+                           ProductAppWindowState& window) {
+  window.launchAction = "create_and_enter";
+  if (createProductSession(options, activeSession, window)) {
+    enterFrontendGameplay(frontend, FrontendAction::CreateAndEnter);
+    frontend.status = "gameplay_active";
+  } else {
+    frontend.status = "opening_menu_new_world_failed";
+  }
+}
+
+void applyGameplayProjectionMetrics(ProductAppWindowState& window,
+                                    const SceneProjectionResult* scene,
+                                    const DebugProjectionResult* debug,
+                                    bool viewVisible) {
+  if (!window.gameplayActive || scene == nullptr) {
+    window.gameplayViewVisible = false;
+    window.sceneItemCount = 0;
+    window.debugItemCount = 0;
+    window.playerVisible = false;
+    window.roomVisible = false;
+    window.objectiveVisible = false;
+    window.rendererMutatedRuntime = false;
+    return;
+  }
+
+  window.gameplayViewVisible = viewVisible;
+  window.sceneItemCount = static_cast<std::uint64_t>(scene->items.size());
+  window.debugItemCount =
+      debug == nullptr ? 0U : static_cast<std::uint64_t>(debug->items.size());
+  window.playerVisible = scene->playerCount > 0;
+  window.roomVisible = true;
+  window.objectiveVisible =
+      scene->pickupCount > 0 || scene->interactableCount > 0 || scene->markerCount > 0 ||
+      scene->room.loaded;
+  window.rendererMutatedRuntime = false;
+}
+
+void refreshGameplayProjectionMetrics(const std::optional<Session>& activeSession,
+                                      ProductAppWindowState& window) {
+  if (!window.gameplayActive || !activeSession.has_value()) {
+    applyGameplayProjectionMetrics(window, nullptr, nullptr, false);
+    return;
+  }
+
+  const SceneProjectionResult scene = buildSceneProjection(activeSession->state());
+  const DebugProjectionResult debug = buildDebugProjection(activeSession->state());
+  const bool viewWasVisible = window.gameplayViewVisible;
+  window.runtimeStateHash = activeSession->stateHash();
+  applyGameplayProjectionMetrics(window, &scene, &debug, viewWasVisible);
 }
 
 FrontendAction nextStarterSelection(FrontendAction current, InputAction action) {
@@ -136,7 +273,10 @@ FrontendSettingsTab nextSettingsSelection(FrontendSettingsTab current, InputActi
 
 void applyOpeningMenuAction(FrontendState& frontend,
                             const ProductSaveBridgeResult& saves,
+                            const ProductAppOptions& options,
                             FrontendSettingsTab& settingsTab,
+                            std::optional<Session>& activeSession,
+                            ProductAppWindowState& window,
                             InputAction action,
                             bool& closeRequested) {
   if (action == InputAction::SystemPause) {
@@ -204,7 +344,7 @@ void applyOpeningMenuAction(FrontendState& frontend,
     return;
   }
   if (frontend.selectedAction == FrontendAction::NewWorld) {
-    frontend.status = "opening_menu_new_world_selected";
+    launchProductNewWorld(options, frontend, activeSession, window);
     return;
   }
   if (frontend.selectedAction == FrontendAction::LoadSave) {
@@ -230,7 +370,9 @@ void applyOpeningMenuAction(FrontendState& frontend,
 
 void routeOpeningMenuInput(FrontendState& frontend,
                            const ProductSaveBridgeResult& saves,
+                           const ProductAppOptions& options,
                            FrontendSettingsTab& settingsTab,
+                           std::optional<Session>& activeSession,
                            ActionState& actionState,
                            InputAction inputAction,
                            ProductAppWindowState& window,
@@ -249,15 +391,17 @@ void routeOpeningMenuInput(FrontendState& frontend,
   window.lastInputAccepted = routed.accepted;
   window.gameplayInputSuppressed = routed.gameplaySuppressed;
   if (routed.accepted) {
-    applyOpeningMenuAction(frontend, saves, settingsTab, routed.action, closeRequested);
+    applyOpeningMenuAction(frontend, saves, options, settingsTab, activeSession, window,
+                           routed.action, closeRequested);
   }
 }
 
 ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
                                            const ProductWorldTemplate& world,
                                            FrontendState& frontend,
+                                           std::optional<Session>& activeSession,
+                                           ProductAppWindowState window,
                                            const ProductSaveBridgeResult& saves) {
-  ProductAppWindowState window;
   window.requested = options.windowMode == ProductWindowMode::Window;
   window.inputOwner =
       frontend.screen == FrontendScreen::Starter ? MenuOwner::Starter : MenuOwner::None;
@@ -292,7 +436,7 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
     return window;
   }
 
-  sdlWindow.setTitle("iggy3d - Opening Menu");
+  sdlWindow.setTitle(window.gameplayActive ? "iggy3d - Gameplay" : "iggy3d - Opening Menu");
   const auto start = std::chrono::steady_clock::now();
   KeyboardInputState keyboard;
   MouseInputState mouse;
@@ -308,15 +452,16 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
     sdlWindow.pollEvents();
     ++window.eventPollCount;
     window.drawable = sdlWindow.isDrawable();
+    sdlWindow.setTitle(window.gameplayActive ? "iggy3d - Gameplay" : "iggy3d - Opening Menu");
 
-    routeOpeningMenuInput(frontend, saves, settingsTab, actionState,
+    routeOpeningMenuInput(frontend, saves, options, settingsTab, activeSession, actionState,
                           pollKeyboardMenuAction(keyboard), window, closeRequested);
 
     const InputAction gamepadAction = pollGamepadMenuAction(gamepad);
     if (gamepadAction != InputAction::None) {
       window.gamepadMenuSelectUsed = true;
-      routeOpeningMenuInput(frontend, saves, settingsTab, actionState, gamepadAction, window,
-                            closeRequested);
+      routeOpeningMenuInput(frontend, saves, options, settingsTab, activeSession, actionState,
+                            gamepadAction, window, closeRequested);
     }
 
     const MouseClick click = pollMouseClick(mouse);
@@ -325,9 +470,9 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
       if (hit.hit) {
         window.mouseMenuSelectUsed = true;
         if (hit.area == OpeningMenuHitArea::StarterAction) {
-        frontend.selectedAction = hit.action;
-          routeOpeningMenuInput(frontend, saves, settingsTab, actionState, mouseClickAction(click),
-                                window, closeRequested);
+          frontend.selectedAction = hit.action;
+          routeOpeningMenuInput(frontend, saves, options, settingsTab, activeSession, actionState,
+                                mouseClickAction(click), window, closeRequested);
         } else if (hit.area == OpeningMenuHitArea::DevToolsCategory) {
           frontend.devToolsCategory = hit.devToolsCategory;
           frontend.status = "dev_tools_category_selected";
@@ -338,12 +483,30 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
       }
     }
 
+    SceneProjectionResult scene;
+    DebugProjectionResult debug;
+    const SceneProjectionResult* scenePtr = nullptr;
+    const DebugProjectionResult* debugPtr = nullptr;
+    if (window.gameplayActive && activeSession.has_value()) {
+      scene = buildSceneProjection(activeSession->state());
+      debug = buildDebugProjection(activeSession->state());
+      scenePtr = &scene;
+      debugPtr = &debug;
+      window.runtimeStateHash = activeSession->stateHash();
+    }
+
     if (window.drawable) {
       const OpeningMenuViewState view =
-          drawOpeningMenuView(*renderer, options, world, frontend, settingsTab, saves);
+          drawOpeningMenuView(*renderer, options, world, frontend, settingsTab,
+                              window.gameplayActive, window.runtimeStateHash, scenePtr,
+                              debugPtr, saves);
+      applyGameplayProjectionMetrics(window, scenePtr, debugPtr,
+                                     window.gameplayActive && scenePtr != nullptr);
       window.menuTextDrawn = window.menuTextDrawn || view.textDrawn;
       window.selectedRowDrawn = window.selectedRowDrawn || view.selectedRowDrawn;
       window.menuRowCount = view.rowCount;
+    } else {
+      applyGameplayProjectionMetrics(window, scenePtr, debugPtr, false);
     }
     ++window.framesPresented;
 
@@ -409,6 +572,8 @@ int runProductApp(int argc, char** argv) {
   const ProductSaveBridgeResult saves =
       scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
   const FrontendSettings settings = productFrontendSettingsFromOptions(options);
+  std::optional<Session> activeSession;
+  ProductAppWindowState window;
 
   FrontendState frontend;
   completeFrontendBoot(frontend, true, true);
@@ -418,7 +583,12 @@ int runProductApp(int argc, char** argv) {
   frontend.status = "opening_menu_ready";
   frontend.inputOwned = true;
 
-  const ProductAppWindowState window = runOpeningMenuWindow(options, world, frontend, saves);
+  if (options.autoNewWorld) {
+    launchProductNewWorld(options, frontend, activeSession, window);
+  }
+
+  window = runOpeningMenuWindow(options, world, frontend, activeSession, window, saves);
+  refreshGameplayProjectionMetrics(activeSession, window);
 
   if (options.printRenderReceipt) {
     std::cout << formatRenderReceipt(
