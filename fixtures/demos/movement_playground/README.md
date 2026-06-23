@@ -45,8 +45,9 @@ EOF
 Supported control keys are `dev_menu.open`, `dev_menu.select`, `mechanic`,
 `mechanic.execute`, `debug_overlay.open`, `jump`, `dash`, `stance`,
 `move.forward`, `move.right`, `player.position`, `player.position_meters`,
-`player.position_ft`, `look.yaw_delta`, `look.pitch_delta`, `interact`, `attack`,
-`reset`, and `quit`.
+`player.position_ft`, `codex_probe.visible`, `codex_probe.position`,
+`codex_probe.position_meters`, `codex_probe.position_ft`, `look.yaw_delta`,
+`look.pitch_delta`, `interact`, `attack`, `reset`, and `quit`.
 
 Purpose:
 

@@ -2,9 +2,30 @@
 
 Standalone 3D runtime/gameplay repo for the `iggy3d` build.
 
-Current status: construction contract instantiated. Runtime implementation files
-are intentionally not filled in yet; builders should work from the file plans in
-`docs/file_plans/`.
+Current status: playable runtime demo in progress. The movement playground is
+the current first-person test arena for movement, traversal, spells, debug
+telemetry, room editing, and procedural bean model proxies.
+
+Startup script:
+
+```sh
+#!/usr/bin/env sh
+set -eu
+
+cd ~/iggy3d
+cmake --build build --target iggy3d_visual_demo -j 8
+
+./build/iggy3d_visual_demo \
+  --renderer vulkan \
+  --window \
+  --interactive \
+  --input auto \
+  --package fixtures/demos/movement_playground/package.iggy3d.toml \
+  --print-render-receipt
+```
+
+If Vulkan is not available on the machine, replace `--renderer vulkan` with
+`--renderer null` for receipt-only validation.
 
 Start here:
 
