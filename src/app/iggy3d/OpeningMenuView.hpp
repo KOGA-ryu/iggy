@@ -3,6 +3,7 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/DefaultWorldTemplate.hpp"
+#include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
 
@@ -13,7 +14,6 @@ struct SDL_Renderer;
 namespace iggy3d {
 
 struct DebugProjectionResult;
-struct SceneProjectionResult;
 
 struct OpeningMenuViewState {
   bool textDrawn = false;
@@ -49,7 +49,8 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          FrontendSettingsTab selectedSettingsTab,
                                          bool gameplayActive,
                                          std::uint64_t runtimeStateHash,
-                                         const SceneProjectionResult* scene,
+                                         const ProductPrimitiveDrawList* drawList,
+                                         std::size_t sceneItemCount,
                                          const DebugProjectionResult* debug,
                                          float cameraYawDegrees,
                                          float cameraPitchDegrees,

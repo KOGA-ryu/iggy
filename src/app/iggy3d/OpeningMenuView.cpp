@@ -14,7 +14,7 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "projection/debug/DebugProjection.hpp"
-#include "projection/scene/SceneProjection.hpp"
+#include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 
 namespace iggy3d {
 namespace {
@@ -148,20 +148,17 @@ float screenY(float worldZ) {
 }
 
 void drawMarker(SDL_Renderer& renderer,
-                const SceneItem& item,
-                std::uint8_t r,
-                std::uint8_t g,
-                std::uint8_t b,
-                float size) {
-  setColor(renderer, r, g, b);
-  const float x = screenX(item.transform.position.x);
-  const float y = screenY(item.transform.position.z);
+                const ProductPrimitiveDrawItem& item) {
+  setColor(renderer, item.color.r, item.color.g, item.color.b);
+  const float x = screenX(item.worldPosition.x);
+  const float y = screenY(item.worldPosition.z);
+  const float size = item.markerSize;
   fillRect(renderer, x - size * 0.5F, y - size * 0.5F, size, size);
 }
 
-void drawTargetRing(SDL_Renderer& renderer, const SceneItem& item) {
-  const float x = screenX(item.transform.position.x);
-  const float y = screenY(item.transform.position.z);
+void drawFocusIndicator(SDL_Renderer& renderer, const ProductPrimitiveDrawItem& item) {
+  const float x = screenX(item.worldPosition.x);
+  const float y = screenY(item.worldPosition.z);
   setColor(renderer, 226, 230, 211);
   fillRect(renderer, x - 18.0F, y - 2.0F, 36.0F, 4.0F);
   fillRect(renderer, x - 2.0F, y - 18.0F, 4.0F, 36.0F);
@@ -188,31 +185,23 @@ std::string roundedDegrees(float value) {
   return std::to_string(static_cast<int>(std::lround(value)));
 }
 
-void drawSceneItem(SDL_Renderer& renderer, const SceneItem& item) {
+void drawPrimitiveItem(SDL_Renderer& renderer, const ProductPrimitiveDrawItem& item) {
   if (!item.visible) {
     return;
   }
 
   switch (item.kind) {
-    case SceneItemKind::Player:
-      drawMarker(renderer, item, 80, 170, 236, 26.0F);
-      drawTargetRing(renderer, item);
+    case ProductPrimitiveDrawKind::PlayerFocusIndicator:
+      drawFocusIndicator(renderer, item);
       return;
-    case SceneItemKind::Npc:
-      drawMarker(renderer, item, 210, 78, 76, 28.0F);
-      return;
-    case SceneItemKind::Pickup:
-      drawMarker(renderer, item, 229, 196, 72, 20.0F);
-      return;
-    case SceneItemKind::Interactable:
-      drawMarker(renderer, item, 198, 142, 222, 22.0F);
-      return;
-    case SceneItemKind::ObjectiveMarker:
-    case SceneItemKind::TacticalMarker:
-      drawMarker(renderer, item, 126, 201, 176, 18.0F);
-      return;
-    case SceneItemKind::DebugOnly:
-      drawMarker(renderer, item, 112, 118, 120, 14.0F);
+    case ProductPrimitiveDrawKind::PlayerMarker:
+    case ProductPrimitiveDrawKind::NpcMarker:
+    case ProductPrimitiveDrawKind::PickupMarker:
+    case ProductPrimitiveDrawKind::InteractableMarker:
+    case ProductPrimitiveDrawKind::ObjectiveMarker:
+    case ProductPrimitiveDrawKind::TacticalMarker:
+    case ProductPrimitiveDrawKind::DebugMarker:
+      drawMarker(renderer, item);
       return;
   }
 }
@@ -347,18 +336,21 @@ void drawSettingsPanel(SDL_Renderer& renderer, FrontendSettingsTab selected) {
 
 bool drawGameplayPanel(SDL_Renderer& renderer,
                        std::uint64_t runtimeStateHash,
-                       const SceneProjectionResult* scene,
+                       const ProductPrimitiveDrawList* drawList,
+                       std::size_t sceneItemCount,
                        const DebugProjectionResult* debug,
                        float cameraYawDegrees,
                        float cameraPitchDegrees) {
   setColor(renderer, 10, 16, 18);
   SDL_RenderClear(&renderer);
 
-  drawGrid(renderer);
+  if (drawList == nullptr || drawList->gridVisible) {
+    drawGrid(renderer);
+  }
 
-  if (scene != nullptr) {
-    for (const SceneItem& item : scene->items) {
-      drawSceneItem(renderer, item);
+  if (drawList != nullptr) {
+    for (const ProductPrimitiveDrawItem& item : drawList->items) {
+      drawPrimitiveItem(renderer, item);
     }
   }
 
@@ -376,9 +368,9 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
   drawText(renderer, "RUNTIME OWNS GAME STATE", 88.0F, 630.0F, 2.0F);
   drawText(renderer, "STATE HASH", 480.0F, 630.0F, 2.0F);
   drawText(renderer, std::to_string(runtimeStateHash), 640.0F, 630.0F, 2.0F);
-  if (scene != nullptr) {
+  if (drawList != nullptr) {
     drawText(renderer, "SCENE ITEMS", 88.0F, 668.0F, 2.0F);
-    drawText(renderer, std::to_string(scene->items.size()), 274.0F, 668.0F, 2.0F);
+    drawText(renderer, std::to_string(sceneItemCount), 274.0F, 668.0F, 2.0F);
     drawText(renderer, "DEBUG ITEMS", 384.0F, 668.0F, 2.0F);
     const std::size_t debugCount = debug == nullptr ? 0U : debug->items.size();
     drawText(renderer, std::to_string(debugCount), 570.0F, 668.0F, 2.0F);
@@ -449,7 +441,8 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          FrontendSettingsTab selectedSettingsTab,
                                          bool gameplayActive,
                                          std::uint64_t runtimeStateHash,
-                                         const SceneProjectionResult* scene,
+                                         const ProductPrimitiveDrawList* drawList,
+                                         std::size_t sceneItemCount,
                                          const DebugProjectionResult* debug,
                                          float cameraYawDegrees,
                                          float cameraPitchDegrees,
@@ -459,7 +452,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
 
   if (gameplayActive || frontend.screen == FrontendScreen::Gameplay) {
     state.cameraHeadingDrawn =
-        drawGameplayPanel(renderer, runtimeStateHash, scene, debug,
+        drawGameplayPanel(renderer, runtimeStateHash, drawList, sceneItemCount, debug,
                           cameraYawDegrees, cameraPitchDegrees);
     SDL_RenderPresent(&renderer);
     state.textDrawn = true;

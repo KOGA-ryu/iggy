@@ -118,6 +118,20 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      floatReceiptValue(window.viewport.cameraPitchDegrees));
   appendReceiptField(receipt, "camera_heading_visible",
                      window.viewport.cameraHeadingVisible);
+  appendReceiptField(receipt, "product_draw_item_count",
+                     window.viewport.productDrawItemCount);
+  appendReceiptField(receipt, "product_draw_grid_visible",
+                     window.viewport.productDrawGridVisible);
+  appendReceiptField(receipt, "product_draw_player_visible",
+                     window.viewport.productDrawPlayerVisible);
+  appendReceiptField(receipt, "product_draw_room_visible",
+                     window.viewport.productDrawRoomVisible);
+  appendReceiptField(receipt, "product_draw_objective_visible",
+                     window.viewport.productDrawObjectiveVisible);
+  appendReceiptField(receipt, "product_draw_target_indicator_visible",
+                     window.viewport.productDrawTargetIndicatorVisible);
+  appendReceiptField(receipt, "product_draw_debug_marker_count",
+                     window.viewport.productDrawDebugMarkerCount);
   appendReceiptField(receipt, "input_owner", menuOwnerName(window.inputOwner));
   appendReceiptField(receipt, "input_action_last", inputActionName(window.lastInputAction));
   appendReceiptField(receipt, "input_action_accepted", window.lastInputAccepted);

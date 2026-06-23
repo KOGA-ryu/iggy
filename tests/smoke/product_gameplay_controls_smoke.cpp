@@ -125,6 +125,13 @@ int main() {
       hasField(fields, "camera_input_source", "scripted") &&
       hasField(fields, "camera_yaw_degrees", "6.000") &&
       hasField(fields, "camera_pitch_degrees", "2.000") &&
+      hasField(fields, "product_draw_grid_visible", "true") &&
+      hasField(fields, "product_draw_player_visible", "true") &&
+      hasField(fields, "product_draw_room_visible", "true") &&
+      hasField(fields, "product_draw_objective_visible", "true") &&
+      hasField(fields, "product_draw_target_indicator_visible", "true") &&
+      positiveIntegerField(fields, "product_draw_item_count") &&
+      hasField(fields, "product_draw_debug_marker_count", "0") &&
       hasField(fields, "renderer_mutated_runtime", "false") &&
       positiveIntegerField(fields, "scene_item_count") &&
       positiveIntegerField(fields, "debug_item_count") &&
