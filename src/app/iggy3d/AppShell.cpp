@@ -1,7 +1,6 @@
 #include "app/iggy3d/AppShell.hpp"
 
 #include <array>
-#include <cmath>
 #include <filesystem>
 #include <iostream>
 #include <optional>
@@ -10,6 +9,7 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/DefaultWorldTemplate.hpp"
+#include "app/iggy3d/ProductGameplayController.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
@@ -23,9 +23,6 @@
 #include "projection/scene/SceneProjection.hpp"
 #include "render/RenderDiagnostics.hpp"
 #include "runtime/session/Session.hpp"
-#include "runtime/targeting/ReachQuery.hpp"
-#include "runtime/targeting/TargetQuery.hpp"
-#include "runtime/world/WorldState.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)
 #include <chrono>
@@ -112,61 +109,6 @@ std::string packageLoadStatusName(PackageLoadStatus status) {
   return "unknown";
 }
 
-std::string commandKindName(CommandKind kind) {
-  switch (kind) {
-    case CommandKind::Move:
-      return "move";
-    case CommandKind::Interact:
-      return "interact";
-    case CommandKind::Attack:
-      return "attack";
-    case CommandKind::Retry:
-      return "retry";
-    case CommandKind::Reset:
-      return "reset";
-    case CommandKind::None:
-      return "none";
-    default:
-      break;
-  }
-  return "other";
-}
-
-std::string commandRejectionReasonName(CommandRejectionReason reason) {
-  switch (reason) {
-    case CommandRejectionReason::None:
-      return "none";
-    case CommandRejectionReason::InvalidTarget:
-      return "invalid_target";
-    case CommandRejectionReason::OutOfRange:
-      return "out_of_range";
-    case CommandRejectionReason::TargetNotReachable:
-      return "target_not_reachable";
-    case CommandRejectionReason::InvalidDamage:
-      return "invalid_damage";
-    case CommandRejectionReason::TargetDefeated:
-      return "target_defeated";
-    case CommandRejectionReason::FriendlyFireBlocked:
-      return "friendly_fire_blocked";
-    case CommandRejectionReason::InvalidActor:
-      return "invalid_actor";
-    default:
-      break;
-  }
-  return "rejected";
-}
-
-std::string reachGateName(CommandRejectionReason reason) {
-  if (reason == CommandRejectionReason::None) {
-    return "pass";
-  }
-  if (reason == CommandRejectionReason::OutOfRange ||
-      reason == CommandRejectionReason::TargetNotReachable) {
-    return "fail";
-  }
-  return "not_attempted";
-}
-
 std::filesystem::path defaultProductPackagePath(const ProductAppOptions& options) {
   if (!options.devPackageOverride.empty()) {
     return options.devPackageOverride;
@@ -226,174 +168,6 @@ void launchProductNewWorld(const ProductAppOptions& options,
   } else {
     frontend.status = "opening_menu_new_world_failed";
   }
-}
-
-EntityId productPlayerActor(const Session& session) {
-  return session.state().players.actorForSlot(0);
-}
-
-const EntityState* productPlayerEntity(const Session& session) {
-  const EntityId actor = productPlayerActor(session);
-  return session.state().world.findById(actor);
-}
-
-TargetQueryResult queryProductGameplayTarget(const Session& session, CommandKind kind) {
-  const EntityId actor = productPlayerActor(session);
-  return queryTarget(TargetQueryRequest{&session.state().world, actor, false, {},
-                                        kind, 0.0F, false, true});
-}
-
-void submitProductGameplayCommand(Session& session,
-                                  ProductAppWindowState& window,
-                                  CommandRecord command) {
-  const EntityState* beforePlayer = productPlayerEntity(session);
-  const Vec3 before = beforePlayer == nullptr ? Vec3{} : beforePlayer->transform.position;
-  window.gameplayInputUsed = true;
-  window.gameplayCommandSubmitted = true;
-  window.gameplayCommandKind = commandKindName(command.kind);
-
-  const SessionCommandResult submitted = session.submitCommand(command);
-  window.gameplayCommandAccepted =
-      submitted.command.admission == CommandAdmissionStatus::Accepted;
-  window.gameplayLastRejection = commandRejectionReasonName(submitted.command.rejection);
-  window.gameplayReachGate = reachGateName(submitted.command.rejection);
-  window.gameplayCommandStatus =
-      window.gameplayCommandAccepted ? "accepted" : "rejected";
-
-  if (window.gameplayCommandAccepted) {
-    const StatusResult tick = session.tick();
-    window.gameplayTickAdvanced = tick.status == ResultStatus::Ok;
-  }
-
-  const EntityState* afterPlayer = productPlayerEntity(session);
-  if (afterPlayer != nullptr && beforePlayer != nullptr) {
-    window.playerPositionChanged =
-        window.playerPositionChanged ||
-        !nearlyEqual(before, afterPlayer->transform.position);
-  }
-  window.runtimeStateHash = session.stateHash();
-}
-
-void submitProductMove(Session& session,
-                       ProductAppWindowState& window,
-                       float moveX,
-                       float moveY,
-                       const char* source) {
-  const EntityState* actor = productPlayerEntity(session);
-  if (actor == nullptr) {
-    window.gameplayCommandStatus = "missing_player";
-    return;
-  }
-  if (moveX == 0.0F && moveY == 0.0F) {
-    return;
-  }
-  const float magnitude = std::sqrt(moveX * moveX + moveY * moveY);
-  const float scale = magnitude > 1.0F ? 1.0F / magnitude : 1.0F;
-  constexpr float kStepMeters = 1.0F;
-  Vec3 destination = actor->transform.position;
-  destination.x += moveX * scale * kStepMeters;
-  destination.z += moveY * scale * kStepMeters;
-
-  CommandRecord command;
-  command.playerSlot = 0;
-  command.actor = actor->id;
-  command.kind = CommandKind::Move;
-  command.source = CommandSource::LocalPlayer;
-  command.payload.target.hasPoint = true;
-  command.payload.target.point = destination;
-  window.gameplayInputSource = source;
-  submitProductGameplayCommand(session, window, command);
-}
-
-void submitProductTargetCommand(Session& session,
-                                ProductAppWindowState& window,
-                                CommandKind kind,
-                                const char* source) {
-  const EntityId actor = productPlayerActor(session);
-  const TargetQueryResult target = queryProductGameplayTarget(session, kind);
-  window.targetDiscovered = target.status == TargetQueryStatus::Found;
-  if (!window.targetDiscovered) {
-    window.gameplayInputUsed = true;
-    window.gameplayInputSource = source;
-    window.gameplayCommandKind = commandKindName(kind);
-    window.gameplayCommandStatus = "no_target";
-    window.gameplayReachGate = "not_attempted";
-    return;
-  }
-
-  const ReachQueryResult reach =
-      queryReach(ReachQueryRequest{&session.state().world, actor, target.target, false, {},
-                                   session.state().config.interactionRangeMeters, true});
-  const CommandRejectionReason reachReason = rejectionReasonForReach(reach);
-  window.gameplayReachGate = reachGateName(reachReason);
-
-  CommandRecord command;
-  command.playerSlot = 0;
-  command.actor = actor;
-  command.kind = kind;
-  command.source = CommandSource::LocalPlayer;
-  command.payload.target.hasEntity = true;
-  command.payload.target.entity = target.target;
-  if (kind == CommandKind::Attack) {
-    command.payload.attackDamage = 3;
-  }
-  window.gameplayInputSource = source;
-  submitProductGameplayCommand(session, window, command);
-  if (kind == CommandKind::Interact && window.gameplayCommandAccepted) {
-    window.interactionExecuted = true;
-  }
-  if (kind == CommandKind::Attack && window.gameplayCommandAccepted) {
-    window.attackExecuted = true;
-  }
-}
-
-void applyProductGameplayActions(Session& session,
-                                 const ActionState& actions,
-                                 ProductAppWindowState& window,
-                                 const char* source) {
-  const float moveX = actionAxisValue(actions, InputAction::PlayerMoveX);
-  const float moveY = actionAxisValue(actions, InputAction::PlayerMoveY);
-  if (moveX != 0.0F || moveY != 0.0F) {
-    submitProductMove(session, window, moveX, moveY, source);
-  }
-  if (actionWasPressed(actions, InputAction::PlayerInteract)) {
-    submitProductTargetCommand(session, window, CommandKind::Interact, source);
-  }
-  if (actionWasPressed(actions, InputAction::PlayerAttack)) {
-    submitProductTargetCommand(session, window, CommandKind::Attack, source);
-  }
-  if (actionWasPressed(actions, InputAction::PlayerRetryOrReset)) {
-    const SessionResetResult reset = session.resetToBaseline();
-    window.gameplayInputUsed = true;
-    window.gameplayInputSource = source;
-    window.gameplayCommandKind = "reset";
-    window.gameplayCommandSubmitted = true;
-    window.gameplayCommandAccepted = reset.reset;
-    window.gameplayCommandStatus = reset.reset ? "accepted" : "rejected";
-    window.runtimeStateHash = session.stateHash();
-  }
-}
-
-void runScriptedProductGameplaySmoke(std::optional<Session>& activeSession,
-                                     ProductAppWindowState& window) {
-  if (!activeSession.has_value()) {
-    window.gameplayCommandStatus = "missing_session";
-    return;
-  }
-
-  window.scriptedGameplaySmoke = true;
-  ActionState actions;
-  recordAction(actions, InputAction::PlayerMoveX, true, false, false, 1.0F);
-  applyProductGameplayActions(*activeSession, actions, window, "scripted");
-  clearActionState(actions);
-  recordAction(actions, InputAction::PlayerMoveX, true, false, false, 1.0F);
-  applyProductGameplayActions(*activeSession, actions, window, "scripted");
-  clearActionState(actions);
-  recordAction(actions, InputAction::PlayerMoveY, true, false, false, 1.0F);
-  applyProductGameplayActions(*activeSession, actions, window, "scripted");
-  clearActionState(actions);
-  recordAction(actions, InputAction::PlayerAttack, true, true, false, 1.0F);
-  applyProductGameplayActions(*activeSession, actions, window, "scripted");
 }
 
 void applyGameplayProjectionMetrics(ProductAppWindowState& window,
