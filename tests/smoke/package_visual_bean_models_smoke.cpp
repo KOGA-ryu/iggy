@@ -116,6 +116,10 @@ int main() {
                hasField(fields, "result", "pass") &&
                hasField(fields, "backend", "null") &&
                hasField(fields, "codex_control_applied", "true") &&
+               hasField(fields, "dev_menu_enabled", "true") &&
+               hasField(fields, "dev_menu_open", "true") &&
+               hasField(fields, "dev_menu_hud_visible", "true") &&
+               numericFieldAtLeast(fields, "dev_menu_hud_line_count", 4UL) &&
                hasField(fields, "bean_player_model_ready", "true") &&
                hasField(fields, "bean_npc_model_ready", "true") &&
                hasField(fields, "bean_codex_probe_model_ready", "true") &&

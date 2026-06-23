@@ -3,7 +3,7 @@
 Launch:
 
 ```sh
-./build/iggy3d_visual_demo --renderer vulkan --window --interactive --input auto --package fixtures/demos/movement_playground/package.iggy3d.toml --print-render-receipt
+./build/iggy3d_visual_demo --renderer vulkan --window --interactive --dev-menu --input auto --package fixtures/demos/movement_playground/package.iggy3d.toml --print-render-receipt
 ```
 
 Controls:
@@ -18,7 +18,8 @@ Controls:
 - Right Shoulder/R1 dashes on SDL gamepad when the dev menu is closed; hold left stick to choose dash direction;
 - Right Trigger/R2 fires a spell projectile on SDL gamepad when the dev menu is closed;
 - hold left stick click to crouch on SDL gamepad;
-- F1 toggles the dev menu state; while open, 1-8 selects walk, crouch, jump,
+- Launch with `--dev-menu`; F1 toggles the dev menu state. While open, a small
+  HUD appears and 1-8 selects walk, crouch, jump,
   dash, spell projectile, vault, clamber, or wire-walk, and Space/Enter executes.
 - On SDL gamepad, Start + North toggles the dev menu state, D-pad left/right cycles,
   and South executes while the menu is open.

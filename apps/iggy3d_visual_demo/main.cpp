@@ -317,6 +317,8 @@ struct PlayableReceiptFields {
   bool devMenuOpen = false;
   bool devMenuToggleObserved = false;
   bool devMenuExecuteRequested = false;
+  bool devMenuHudVisible = false;
+  std::uint64_t devMenuHudLineCount = 0;
   std::string devMenuSelectedMechanic = "walk";
   std::string devMenuExecutionStatus = "not_requested";
   bool editorEnabled = false;
@@ -2891,6 +2893,24 @@ void appendEditorDebugHudLines(iggy3d::DebugProjectionResult& debug,
                                        std::to_string(editor.runtimeTraversalSlotCount));
 }
 
+void appendDevMenuDebugHudLines(iggy3d::DebugProjectionResult& debug,
+                                const DevMenuState& devMenu,
+                                PlayableReceiptFields& fields) {
+  fields.devMenuHudVisible = false;
+  fields.devMenuHudLineCount = 0;
+  if (!devMenu.enabled || !devMenu.open) {
+    return;
+  }
+
+  debug.runtimeDebugHudLines.push_back("DEV MENU " +
+                                       std::string(devMechanicName(devMenu.selected)));
+  debug.runtimeDebugHudLines.push_back("1 WALK 2 CROUCH 3 JUMP 4 DASH");
+  debug.runtimeDebugHudLines.push_back("5 SPELL 6 VAULT 7 CLAMBER 8 WIRE");
+  debug.runtimeDebugHudLines.push_back("SPACE EXEC F1 CLOSE");
+  fields.devMenuHudVisible = true;
+  fields.devMenuHudLineCount = 4;
+}
+
 iggy3d::Vec3 cross(iggy3d::Vec3 lhs, iggy3d::Vec3 rhs) {
   return {lhs.y * rhs.z - lhs.z * rhs.y,
           lhs.z * rhs.x - lhs.x * rhs.z,
@@ -3697,6 +3717,10 @@ void appendPlayableReceiptFields(iggy3d::RenderReceipt& receipt,
                              fields.devMenuSelectedMechanic);
   iggy3d::appendReceiptField(receipt, "dev_menu_execute_requested",
                              fields.devMenuExecuteRequested);
+  iggy3d::appendReceiptField(receipt, "dev_menu_hud_visible",
+                             fields.devMenuHudVisible);
+  iggy3d::appendReceiptField(receipt, "dev_menu_hud_line_count",
+                             fields.devMenuHudLineCount);
   iggy3d::appendReceiptField(receipt, "dev_menu_execution_status",
                              fields.devMenuExecutionStatus);
   iggy3d::appendReceiptField(receipt, "editor_enabled", fields.editorEnabled);
@@ -5091,6 +5115,7 @@ int main(int argc, const char* const* argv) {
       recordRuntimeDebugSnapshot(playableFields, debugSnapshot);
       iggy3d::appendRuntimeDebugSnapshot(debug, debugSnapshot);
       appendEditorDebugHudLines(debug, editor);
+      appendDevMenuDebugHudLines(debug, devMenu, playableFields);
 #if defined(IGGY3D_HAS_SDL3)
       if (window.has_value()) {
         window->setTitle(debugOverlayWindowTitle(debugSnapshot));

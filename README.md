@@ -19,6 +19,7 @@ cmake --build build --target iggy3d_visual_demo -j 8
   --renderer vulkan \
   --window \
   --interactive \
+  --dev-menu \
   --input auto \
   --package fixtures/demos/movement_playground/package.iggy3d.toml \
   --print-render-receipt
