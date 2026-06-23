@@ -619,9 +619,12 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
       const OpeningMenuViewState view =
           drawOpeningMenuView(*renderer, options, world, frontend, settingsTab,
                               window.gameplayActive, window.runtimeStateHash, scenePtr,
-                              debugPtr, saves);
+                              debugPtr, window.cameraYawDegrees,
+                              window.cameraPitchDegrees, saves);
       applyGameplayProjectionMetrics(window, scenePtr, debugPtr,
                                      window.gameplayActive && scenePtr != nullptr);
+      window.cameraHeadingVisible =
+          window.cameraHeadingVisible || view.cameraHeadingDrawn;
       window.menuTextDrawn = window.menuTextDrawn || view.textDrawn;
       window.selectedRowDrawn = window.selectedRowDrawn || view.selectedRowDrawn;
       window.menuRowCount = view.rowCount;

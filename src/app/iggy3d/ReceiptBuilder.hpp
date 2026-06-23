@@ -59,6 +59,7 @@ struct ProductAppWindowState {
   std::string cameraController = "product_camera";
   float cameraYawDegrees = 0.0F;
   float cameraPitchDegrees = 0.0F;
+  bool cameraHeadingVisible = false;
   MenuOwner inputOwner = MenuOwner::None;
   InputAction lastInputAction = InputAction::None;
   bool lastInputAccepted = false;

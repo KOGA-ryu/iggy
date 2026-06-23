@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cctype>
+#include <cmath>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -166,6 +167,27 @@ void drawTargetRing(SDL_Renderer& renderer, const SceneItem& item) {
   fillRect(renderer, x - 2.0F, y - 18.0F, 4.0F, 36.0F);
 }
 
+void drawCameraHeading(SDL_Renderer& renderer, float yawDegrees) {
+  constexpr float kPi = 3.14159265358979323846F;
+  const float radians = yawDegrees * kPi / 180.0F;
+  const float originX = 1040.0F;
+  const float originY = 188.0F;
+  const float endX = originX + std::sin(radians) * 58.0F;
+  const float endY = originY - std::cos(radians) * 58.0F;
+
+  setColor(renderer, 42, 52, 56);
+  fillRect(renderer, originX - 44.0F, originY - 44.0F, 88.0F, 88.0F);
+  setColor(renderer, 80, 170, 236);
+  SDL_RenderLine(&renderer, originX, originY, endX, endY);
+  fillRect(renderer, endX - 4.0F, endY - 4.0F, 8.0F, 8.0F);
+  setColor(renderer, 226, 230, 211);
+  fillRect(renderer, originX - 3.0F, originY - 3.0F, 6.0F, 6.0F);
+}
+
+std::string roundedDegrees(float value) {
+  return std::to_string(static_cast<int>(std::lround(value)));
+}
+
 void drawSceneItem(SDL_Renderer& renderer, const SceneItem& item) {
   if (!item.visible) {
     return;
@@ -323,10 +345,12 @@ void drawSettingsPanel(SDL_Renderer& renderer, FrontendSettingsTab selected) {
   drawText(renderer, "APPLY RESTORE BACK", 850.0F, 394.0F, 2.0F);
 }
 
-void drawGameplayPanel(SDL_Renderer& renderer,
+bool drawGameplayPanel(SDL_Renderer& renderer,
                        std::uint64_t runtimeStateHash,
                        const SceneProjectionResult* scene,
-                       const DebugProjectionResult* debug) {
+                       const DebugProjectionResult* debug,
+                       float cameraYawDegrees,
+                       float cameraPitchDegrees) {
   setColor(renderer, 10, 16, 18);
   SDL_RenderClear(&renderer);
 
@@ -342,7 +366,13 @@ void drawGameplayPanel(SDL_Renderer& renderer,
   drawText(renderer, "IGGY3D GAMEPLAY", 84.0F, 42.0F, 5.0F);
   setColor(renderer, 126, 201, 176);
   drawText(renderer, "FIRST PERSON PROXY VIEW", 88.0F, 104.0F, 3.0F);
+  drawCameraHeading(renderer, cameraYawDegrees);
   setColor(renderer, 166, 184, 177);
+  drawText(renderer, "CAMERA FIRST PERSON", 870.0F, 286.0F, 2.0F);
+  drawText(renderer, "YAW", 870.0F, 324.0F, 2.0F);
+  drawText(renderer, roundedDegrees(cameraYawDegrees), 938.0F, 324.0F, 2.0F);
+  drawText(renderer, "PITCH", 870.0F, 356.0F, 2.0F);
+  drawText(renderer, roundedDegrees(cameraPitchDegrees), 974.0F, 356.0F, 2.0F);
   drawText(renderer, "RUNTIME OWNS GAME STATE", 88.0F, 630.0F, 2.0F);
   drawText(renderer, "STATE HASH", 480.0F, 630.0F, 2.0F);
   drawText(renderer, std::to_string(runtimeStateHash), 640.0F, 630.0F, 2.0F);
@@ -353,6 +383,7 @@ void drawGameplayPanel(SDL_Renderer& renderer,
     const std::size_t debugCount = debug == nullptr ? 0U : debug->items.size();
     drawText(renderer, std::to_string(debugCount), 570.0F, 668.0F, 2.0F);
   }
+  return true;
 }
 
 }  // namespace
@@ -420,12 +451,16 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          std::uint64_t runtimeStateHash,
                                          const SceneProjectionResult* scene,
                                          const DebugProjectionResult* debug,
+                                         float cameraYawDegrees,
+                                         float cameraPitchDegrees,
                                          const ProductSaveBridgeResult& saves) {
   OpeningMenuViewState state;
   SDL_SetRenderDrawBlendMode(&renderer, SDL_BLENDMODE_BLEND);
 
   if (gameplayActive || frontend.screen == FrontendScreen::Gameplay) {
-    drawGameplayPanel(renderer, runtimeStateHash, scene, debug);
+    state.cameraHeadingDrawn =
+        drawGameplayPanel(renderer, runtimeStateHash, scene, debug,
+                          cameraYawDegrees, cameraPitchDegrees);
     SDL_RenderPresent(&renderer);
     state.textDrawn = true;
     return state;

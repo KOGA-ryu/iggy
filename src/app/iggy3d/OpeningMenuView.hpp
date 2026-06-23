@@ -18,6 +18,7 @@ struct SceneProjectionResult;
 struct OpeningMenuViewState {
   bool textDrawn = false;
   bool selectedRowDrawn = false;
+  bool cameraHeadingDrawn = false;
   unsigned int rowCount = 0;
 };
 
@@ -50,6 +51,8 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          std::uint64_t runtimeStateHash,
                                          const SceneProjectionResult* scene,
                                          const DebugProjectionResult* debug,
+                                         float cameraYawDegrees,
+                                         float cameraPitchDegrees,
                                          const ProductSaveBridgeResult& saves);
 #endif
 

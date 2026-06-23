@@ -113,6 +113,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      floatReceiptValue(window.cameraYawDegrees));
   appendReceiptField(receipt, "camera_pitch_degrees",
                      floatReceiptValue(window.cameraPitchDegrees));
+  appendReceiptField(receipt, "camera_heading_visible",
+                     window.cameraHeadingVisible);
   appendReceiptField(receipt, "input_owner", menuOwnerName(window.inputOwner));
   appendReceiptField(receipt, "input_action_last", inputActionName(window.lastInputAction));
   appendReceiptField(receipt, "input_action_accepted", window.lastInputAccepted);
