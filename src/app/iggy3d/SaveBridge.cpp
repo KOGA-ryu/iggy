@@ -11,6 +11,17 @@ ProductSaveBridgeResult scanProductSaves(const std::filesystem::path& saveRoot,
   return result;
 }
 
+ProductSaveBridgeResult scanDeletedProductSaves(
+    const std::filesystem::path& saveRoot,
+    std::string_view packageId,
+    std::string_view scenarioId) {
+  ProductSaveBridgeResult result;
+  result.saveRoot = saveRoot / "deleted";
+  result.slots = buildSaveSlotList(result.saveRoot, packageId, scenarioId);
+  result.status = "deleted_save_bridge_ready";
+  return result;
+}
+
 ProductSaveWriteResult writeProductSessionSaveDurably(
     const ProductSaveWriteRequest& request) {
   ProductSaveWriteResult result;

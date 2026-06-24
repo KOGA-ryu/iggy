@@ -112,6 +112,10 @@ struct ProductSaveRecoverResult {
 ProductSaveBridgeResult scanProductSaves(const std::filesystem::path& saveRoot,
                                          std::string_view packageId,
                                          std::string_view scenarioId);
+ProductSaveBridgeResult scanDeletedProductSaves(
+    const std::filesystem::path& saveRoot,
+    std::string_view packageId,
+    std::string_view scenarioId);
 ProductSaveWriteResult writeProductSessionSaveDurably(
     const ProductSaveWriteRequest& request);
 ProductSaveLoadResult loadProductSessionSave(

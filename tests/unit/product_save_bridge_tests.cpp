@@ -504,6 +504,86 @@ bool productRecoverRejectsExistingActiveTarget() {
                 "product recover collision deleted preserved");
 }
 
+bool productDeletedScanShowsSoftDeletedSaveThenClearsOnRecover() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  const iggy3d::ProductSaveWriteResult written =
+      iggy3d::writeProductSessionSaveDurably(
+          productSaveRequest(root, session, "attempt_001", "save_001"));
+  const iggy3d::ProductSaveSoftDeleteResult deleted =
+      iggy3d::softDeleteProductSave({root, "save_001"});
+  const iggy3d::ProductSaveBridgeResult activeAfterDelete =
+      iggy3d::scanProductSaves(root, "iggy3d.movement_playground",
+                               "movement_playground.runtime_loop");
+  const iggy3d::ProductSaveBridgeResult deletedAfterDelete =
+      iggy3d::scanDeletedProductSaves(root, "iggy3d.movement_playground",
+                                      "movement_playground.runtime_loop");
+  const iggy3d::ProductSaveRecoverResult recovered =
+      iggy3d::recoverProductSave({root, "save_001"});
+  const iggy3d::ProductSaveBridgeResult activeAfterRecover =
+      iggy3d::scanProductSaves(root, "iggy3d.movement_playground",
+                               "movement_playground.runtime_loop");
+  const iggy3d::ProductSaveBridgeResult deletedAfterRecover =
+      iggy3d::scanDeletedProductSaves(root, "iggy3d.movement_playground",
+                                      "movement_playground.runtime_loop");
+  return expect(written.ok, "product deleted scan setup write ok") &&
+         expect(deleted.ok, "product deleted scan setup delete ok") &&
+         expect(activeAfterDelete.status == "save_bridge_ready",
+                "product deleted scan active status") &&
+         expect(activeAfterDelete.slots.slots.empty(),
+                "product deleted scan active empty") &&
+         expect(deletedAfterDelete.status == "deleted_save_bridge_ready",
+                "product deleted scan status") &&
+         expect(deletedAfterDelete.saveRoot == root / "deleted",
+                "product deleted scan root") &&
+         expect(deletedAfterDelete.slots.slots.size() == 1U,
+                "product deleted scan one slot") &&
+         expect(deletedAfterDelete.slots.compatibleCount == 1U,
+                "product deleted scan compatible") &&
+         expect(deletedAfterDelete.slots.slots.front().id == "save_001",
+                "product deleted scan id") &&
+         expect(deletedAfterDelete.slots.slots.front().enabled,
+                "product deleted scan enabled") &&
+         expect(recovered.ok, "product deleted scan recover ok") &&
+         expect(deletedAfterRecover.slots.slots.empty(),
+                "product deleted scan empty after recover") &&
+         expect(activeAfterRecover.slots.slots.size() == 1U,
+                "product active scan restored") &&
+         expect(activeAfterRecover.slots.slots.front().id == "save_001",
+                "product active scan restored id");
+}
+
+bool productDeletedScanUsesMovedSnapshotSidecar() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  const iggy3d::ProductSaveWriteResult written =
+      iggy3d::writeProductSessionSaveDurably(
+          productSaveRequest(root, session, "attempt_001", "save_001"));
+  {
+    std::ofstream snapshot(root / "save_001.snapshot.png");
+    snapshot << "snapshot bytes";
+  }
+  const iggy3d::ProductSaveSoftDeleteResult deleted =
+      iggy3d::softDeleteProductSave({root, "save_001"});
+  const iggy3d::ProductSaveBridgeResult deletedScan =
+      iggy3d::scanDeletedProductSaves(root, "iggy3d.movement_playground",
+                                      "movement_playground.runtime_loop");
+  return expect(written.ok, "product deleted snapshot setup write ok") &&
+         expect(deleted.ok, "product deleted snapshot soft delete ok") &&
+         expect(deleted.snapshotMoved, "product deleted snapshot moved") &&
+         expect(deletedScan.slots.slots.size() == 1U,
+                "product deleted snapshot scanned") &&
+         expect(deletedScan.slots.slots.front().snapshotPath ==
+                    root / "deleted" / "save_001.snapshot.png",
+                "product deleted snapshot path") &&
+         expect(deletedScan.slots.slots.front().snapshotAvailable,
+                "product deleted snapshot available") &&
+         expect(!deletedScan.slots.slots.front().snapshotFallback,
+                "product deleted snapshot no fallback") &&
+         expect(deletedScan.slots.slots.front().snapshotStatus == "available",
+                "product deleted snapshot status");
+}
+
 bool productLoadSaveLoadsCompatibleSession() {
   const std::filesystem::path root = testRoot();
   iggy3d::Session savedSession = makeChangedFixtureSession();
@@ -718,6 +798,8 @@ int main() {
                   productRecoverRejectsInvalidId() &&
                   productRecoverForwardsMissingSource() &&
                   productRecoverRejectsExistingActiveTarget() &&
+                  productDeletedScanShowsSoftDeletedSaveThenClearsOnRecover() &&
+                  productDeletedScanUsesMovedSnapshotSidecar() &&
                   productLoadSaveLoadsCompatibleSession() &&
                   productLoadSaveRejectsMissingSessionBeforeIo() &&
                   productLoadSaveRejectsMissingPathBeforeIo() &&
