@@ -213,6 +213,10 @@ int main() {
       hasField(fields, "product_save_status", "product_save_written") &&
       hasField(fields, "product_save_reason_code", "product_save_written") &&
       hasField(fields, "product_save_durable_reason", "durable_save_file_written") &&
+      hasField(fields, "product_save_source", "initial_world") &&
+      hasField(fields, "product_save_save_id", "save_001") &&
+      hasField(fields, "product_save_session_saved", "true") &&
+      hasField(fields, "active_product_save_id", "save_001") &&
       std::filesystem::exists(newWorldSaveRoot / "save_001.iggy3d.save") &&
       hasField(fields, "product_transition_last_action", "launch_gameplay") &&
       hasField(fields, "product_transition_status", "gameplay_active");
@@ -243,6 +247,7 @@ int main() {
       positiveIntegerField(fields, "product_save_load_loaded_hash") &&
       hasField(fields, "world_creation_status", "not_requested") &&
       hasField(fields, "product_save_status", "not_requested") &&
+      hasField(fields, "active_product_save_id", "save_001") &&
       hasField(fields, "product_transition_last_action", "launch_gameplay") &&
       hasField(fields, "product_transition_status", "gameplay_active");
 
@@ -272,8 +277,60 @@ int main() {
       positiveIntegerField(fields, "product_save_load_loaded_hash") &&
       hasField(fields, "world_creation_status", "not_requested") &&
       hasField(fields, "product_save_status", "not_requested") &&
+      hasField(fields, "active_product_save_id", "save_001") &&
       hasField(fields, "product_transition_last_action", "launch_gameplay") &&
       hasField(fields, "product_transition_status", "gameplay_active");
+
+  fields.clear();
+  const std::filesystem::path pauseSaveActionRoot = cleanSaveRoot("pause_save");
+  const bool pauseSave =
+      appAvailable &&
+      runProductCase(binary,
+                     "pause_save",
+                     "system.pause=true\npause.select=save\npause.execute=true\n",
+                     std::string{"--auto-new-world --save-root "} +
+                         shellQuote(pauseSaveActionRoot),
+                     fields,
+                     exitCode) &&
+      exitCode == 0 && productReceipt(fields) && automationApplied(fields) &&
+      hasField(fields, "frontend_screen", "pause") &&
+      hasField(fields, "frontend_selected_action", "save") &&
+      hasField(fields, "gameplay_active", "true") &&
+      hasField(fields, "pause_menu_open", "true") &&
+      hasField(fields, "input_owner", "pause") &&
+      hasField(fields, "product_save_status", "product_save_written") &&
+      hasField(fields, "product_save_reason_code", "product_save_written") &&
+      hasField(fields, "product_save_durable_reason", "durable_save_file_written") &&
+      hasField(fields, "product_save_source", "pause_save") &&
+      hasField(fields, "product_save_save_id", "save_001") &&
+      hasField(fields, "product_save_session_saved", "true") &&
+      hasField(fields, "active_product_save_id", "save_001") &&
+      std::filesystem::exists(pauseSaveActionRoot / "save_001.iggy3d.save");
+
+  fields.clear();
+  const std::filesystem::path saveAndExitRoot = cleanSaveRoot("pause_save_and_exit");
+  const bool pauseSaveAndExit =
+      appAvailable &&
+      runProductCase(binary,
+                     "pause_save_and_exit",
+                     "system.pause=true\npause.select=save_and_exit\npause.execute=true\n",
+                     std::string{"--auto-new-world --save-root "} +
+                         shellQuote(saveAndExitRoot),
+                     fields,
+                     exitCode) &&
+      exitCode == 0 && productReceipt(fields) && automationApplied(fields) &&
+      hasField(fields, "frontend_screen", "starter") &&
+      hasField(fields, "gameplay_active", "false") &&
+      hasField(fields, "input_owner", "starter") &&
+      hasField(fields, "product_save_status", "product_save_written") &&
+      hasField(fields, "product_save_reason_code", "product_save_written") &&
+      hasField(fields, "product_save_durable_reason", "durable_save_file_written") &&
+      hasField(fields, "product_save_source", "pause_save_and_exit") &&
+      hasField(fields, "product_save_save_id", "save_001") &&
+      hasField(fields, "product_save_session_saved", "true") &&
+      hasField(fields, "active_product_save_id", "save_001") &&
+      hasField(fields, "product_transition_returned_to_title", "true") &&
+      std::filesystem::exists(saveAndExitRoot / "save_001.iggy3d.save");
 
   fields.clear();
   const std::filesystem::path pauseSaveRoot = cleanSaveRoot("pause_from_gameplay");
@@ -332,8 +389,8 @@ int main() {
       hasField(fields, "automation_control_scope", "frontend_menu");
 
   const bool passed = starterSettings && starterDevTools && newWorld && continueLoad &&
-                      loadSaveSelector && pauseFromGameplay && returnToTitle &&
-                      invalidValue;
+                      loadSaveSelector && pauseSave && pauseSaveAndExit &&
+                      pauseFromGameplay && returnToTitle && invalidValue;
   std::cout << "smoke=product_automation_menu\n";
   std::cout << "starter_settings=" << (starterSettings ? "true" : "false") << "\n";
   std::cout << "starter_dev_tools=" << (starterDevTools ? "true" : "false") << "\n";
@@ -341,6 +398,9 @@ int main() {
   std::cout << "continue_load=" << (continueLoad ? "true" : "false") << "\n";
   std::cout << "load_save_selector="
             << (loadSaveSelector ? "true" : "false") << "\n";
+  std::cout << "pause_save=" << (pauseSave ? "true" : "false") << "\n";
+  std::cout << "pause_save_and_exit="
+            << (pauseSaveAndExit ? "true" : "false") << "\n";
   std::cout << "pause_from_gameplay=" << (pauseFromGameplay ? "true" : "false")
             << "\n";
   std::cout << "return_to_title=" << (returnToTitle ? "true" : "false") << "\n";

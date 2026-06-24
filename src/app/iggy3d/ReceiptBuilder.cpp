@@ -100,6 +100,11 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.productSaveReasonCode);
   appendReceiptField(receipt, "product_save_durable_reason",
                      window.productSaveDurableReason);
+  appendReceiptField(receipt, "product_save_source", window.productSaveSource);
+  appendReceiptField(receipt, "product_save_save_id", window.productSaveSaveId);
+  appendReceiptField(receipt, "product_save_session_saved",
+                     window.productSaveSessionSaved);
+  appendReceiptField(receipt, "active_product_save_id", window.activeProductSaveId);
   appendReceiptField(receipt, "product_save_load_status",
                      window.productSaveLoadStatus);
   appendReceiptField(receipt, "product_save_load_reason_code",

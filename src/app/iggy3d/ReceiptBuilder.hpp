@@ -41,6 +41,10 @@ struct ProductAppWindowState {
   std::string productSaveStatus = "not_requested";
   std::string productSaveReasonCode = "not_requested";
   std::string productSaveDurableReason = "not_requested";
+  std::string productSaveSource = "none";
+  std::string productSaveSaveId = "none";
+  bool productSaveSessionSaved = false;
+  std::string activeProductSaveId = "none";
   std::string productSaveLoadStatus = "not_requested";
   std::string productSaveLoadReasonCode = "not_requested";
   std::string productSaveLoadSaveId = "none";

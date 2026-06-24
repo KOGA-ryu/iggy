@@ -234,6 +234,13 @@ void recordProductWorldInitialSaveResult(
   window.productSaveStatus = initialSave.saveWrite.status;
   window.productSaveReasonCode = initialSave.saveWrite.reasonCode;
   window.productSaveDurableReason = initialSave.saveWrite.durableReason;
+  window.productSaveSource = "initial_world";
+  window.productSaveSaveId =
+      initialSave.saveWrite.record.id.empty() ? "none" : initialSave.saveWrite.record.id;
+  window.productSaveSessionSaved = initialSave.saveWrite.ok;
+  if (initialSave.saveWrite.ok && !initialSave.saveWrite.record.id.empty()) {
+    window.activeProductSaveId = initialSave.saveWrite.record.id;
+  }
 }
 
 const SaveSlotPreview* newestCompatibleSaveSlot(const SaveSlotList& slots) {
@@ -253,6 +260,9 @@ void recordProductSaveLoadResult(const ProductSaveLoadResult& loaded,
   window.productSaveLoadPreviousHash = loaded.previousHash;
   window.productSaveLoadLoadedHash = loaded.loadedHash;
   window.productSaveLoadSessionLoaded = loaded.sessionLoaded;
+  if (loaded.ok && !loaded.record.id.empty()) {
+    window.activeProductSaveId = loaded.record.id;
+  }
 }
 
 void clearProductGameplayLaunchState(std::optional<Session>& activeSession,
@@ -261,6 +271,46 @@ void clearProductGameplayLaunchState(std::optional<Session>& activeSession,
   window.runtimeSessionCreated = false;
   window.runtimeStateHash = 0;
   activeSession.reset();
+}
+
+void recordProductSaveWriteResult(std::string_view source,
+                                  const ProductSaveWriteResult& written,
+                                  ProductAppWindowState& window) {
+  window.productSaveStatus = written.status;
+  window.productSaveReasonCode = written.reasonCode;
+  window.productSaveDurableReason = written.durableReason;
+  window.productSaveSource = std::string(source);
+  window.productSaveSaveId =
+      written.record.id.empty() ? "none" : written.record.id;
+  window.productSaveSessionSaved = written.ok;
+  if (written.ok && !written.record.id.empty()) {
+    window.activeProductSaveId = written.record.id;
+  }
+}
+
+ProductSaveWriteResult writeProductCurrentSessionSave(
+    const ProductAppOptions& options,
+    const std::optional<Session>& activeSession,
+    std::string_view source,
+    ProductAppWindowState& window) {
+  if (!activeSession.has_value()) {
+    ProductSaveWriteResult missing;
+    missing.status = "product_save_session_missing";
+    missing.reasonCode = "product_save_session_missing";
+    missing.durableReason = "not_requested";
+    recordProductSaveWriteResult(source, missing, window);
+    return missing;
+  }
+
+  ProductSaveWriteRequest request;
+  request.saveRoot = options.saveRoot;
+  request.saveIdHint = window.activeProductSaveId == "none" ? std::string{}
+                                                            : window.activeProductSaveId;
+  request.attemptToken = "attempt_002";
+  request.state = &activeSession->state();
+  const ProductSaveWriteResult written = writeProductSessionSaveDurably(request);
+  recordProductSaveWriteResult(source, written, window);
+  return written;
 }
 
 void recordProductSaveLoadSelection(std::string_view source,
@@ -651,6 +701,26 @@ void applyOpeningMenuAction(FrontendState& frontend,
     if (frontend.selectedAction == FrontendAction::DevTools) {
       openProductPauseDevToolsTransition(frontend, window,
                                          FrontendDevToolsCategory::Session);
+      return;
+    }
+    if (frontend.selectedAction == FrontendAction::Save) {
+      const ProductSaveWriteResult written =
+          writeProductCurrentSessionSave(options, activeSession, "pause_save", window);
+      frontend.status = written.ok ? "pause_save_written" : "pause_save_failed";
+      window.launchStatus = written.ok ? "pause_save_written" : written.reasonCode;
+      return;
+    }
+    if (frontend.selectedAction == FrontendAction::SaveAndExit) {
+      const ProductSaveWriteResult written = writeProductCurrentSessionSave(
+          options, activeSession, "pause_save_and_exit", window);
+      frontend.status = written.ok ? "pause_save_and_exit_written"
+                                   : "pause_save_and_exit_failed";
+      window.launchStatus =
+          written.ok ? "pause_save_and_exit_written" : written.reasonCode;
+      if (written.ok) {
+        returnProductToTitleTransition(frontend, window);
+        activeSession.reset();
+      }
       return;
     }
     if (frontend.selectedAction == FrontendAction::ReturnToTitle) {
