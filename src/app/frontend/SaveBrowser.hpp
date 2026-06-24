@@ -5,6 +5,7 @@
 #include <string_view>
 #include <vector>
 
+#include "app/frontend/FrontendRoute.hpp"
 #include "app/frontend/SaveSlotModel.hpp"
 #include "app/frontend/VerticalFadedSelector.hpp"
 
@@ -28,5 +29,9 @@ struct SaveBrowserModel {
 
 SaveBrowserModel buildSaveBrowserModel(const SaveSlotList& slots,
                                        std::string_view selectedSaveId);
+
+FrontendRouteResult routeSaveBrowserAction(const SaveBrowserModel& model,
+                                           MenuOwner parentOwner,
+                                           FrontendAction action);
 
 }  // namespace iggy3d

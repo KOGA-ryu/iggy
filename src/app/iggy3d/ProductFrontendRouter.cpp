@@ -2,6 +2,7 @@
 
 #include "app/frontend/DevToolsMenu.hpp"
 #include "app/frontend/PauseMenu.hpp"
+#include "app/frontend/SaveBrowser.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/frontend/StarterScreen.hpp"
 
@@ -74,6 +75,39 @@ ProductFrontendOwnerDecision starterChildDecision(FrontendScreen childScreen) {
   }
   return ownerDecision(MenuOwner::Starter,
                        ProductFrontendSurface::Starter,
+                       MenuOwner::None,
+                       true);
+}
+
+ProductFrontendOwnerDecision pauseChildDecision(FrontendScreen childScreen) {
+  switch (childScreen) {
+    case FrontendScreen::LoadSave:
+      return ownerDecision(MenuOwner::Pause,
+                           ProductFrontendSurface::SaveSelector,
+                           MenuOwner::Pause,
+                           true);
+    case FrontendScreen::DeleteConfirm:
+      return ownerDecision(MenuOwner::Pause,
+                           ProductFrontendSurface::ConfirmDialog,
+                           MenuOwner::Pause,
+                           true);
+    case FrontendScreen::Gameplay:
+      return ownerDecision(MenuOwner::Pause,
+                           ProductFrontendSurface::Pause,
+                           MenuOwner::None,
+                           true);
+    case FrontendScreen::BootStatus:
+    case FrontendScreen::Starter:
+    case FrontendScreen::NewWorld:
+    case FrontendScreen::Settings:
+    case FrontendScreen::StarterDevTools:
+    case FrontendScreen::Pause:
+    case FrontendScreen::DevOverlay:
+    case FrontendScreen::ExitConfirm:
+      break;
+  }
+  return ownerDecision(MenuOwner::Pause,
+                       ProductFrontendSurface::Pause,
                        MenuOwner::None,
                        true);
 }
@@ -153,10 +187,7 @@ ProductFrontendOwnerDecision chooseProductFrontendOwner(
   }
 
   if (frontend.screen == FrontendScreen::Pause) {
-    return ownerDecision(MenuOwner::Pause,
-                         ProductFrontendSurface::Pause,
-                         MenuOwner::None,
-                         true);
+    return pauseChildDecision(frontend.childScreen);
   }
 
   if (frontend.screen == FrontendScreen::DevOverlay) {
@@ -201,6 +232,22 @@ ProductFrontendRouteFrame routeProductFrontendAction(
     }
     frame.route = routeStarterAction(*context.starterModel, action);
     frame.routeModelName = "starter";
+    frame.routed = true;
+    return frame;
+  }
+
+  if (frame.owner.activeSurface == ProductFrontendSurface::SaveSelector) {
+    if (context.saveBrowserModel == nullptr) {
+      frame.route =
+          unavailableRoute(context, frame.owner, action, "save_browser_model_unavailable");
+      frame.route.gameplayInputSuppressed = true;
+      frame.routeModelAvailable = false;
+      frame.routeModelName = "save_browser";
+      return frame;
+    }
+    frame.route =
+        routeSaveBrowserAction(*context.saveBrowserModel, frame.owner.parentOwner, action);
+    frame.routeModelName = "save_browser";
     frame.routed = true;
     return frame;
   }

@@ -13,6 +13,7 @@ struct StarterScreenModel;
 struct SettingsRouteContext;
 struct PauseMenuModel;
 struct DevToolsMenuModel;
+struct SaveBrowserModel;
 
 enum class ProductFrontendSurface : std::uint8_t {
   None,
@@ -36,6 +37,7 @@ struct ProductFrontendRouteContext {
   const SettingsRouteContext* settingsContext = nullptr;
   const PauseMenuModel* pauseModel = nullptr;
   const DevToolsMenuModel* devToolsModel = nullptr;
+  const SaveBrowserModel* saveBrowserModel = nullptr;
 };
 
 struct ProductFrontendOwnerDecision {

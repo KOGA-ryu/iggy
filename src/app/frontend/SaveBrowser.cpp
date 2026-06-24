@@ -33,6 +33,73 @@ void copySelectedPresentation(SaveBrowserModel& model, const SaveSlotPreview& sl
   model.selectedSnapshotStatus = slot.snapshotStatus;
 }
 
+bool validSaveBrowserParent(MenuOwner parentOwner) {
+  return parentOwner == MenuOwner::Starter || parentOwner == MenuOwner::Pause;
+}
+
+FrontendScreen saveBrowserParentScreen(MenuOwner parentOwner) {
+  return parentOwner == MenuOwner::Pause ? FrontendScreen::Pause
+                                         : FrontendScreen::Starter;
+}
+
+const SaveSlotPreview* selectedSaveSlot(const SaveBrowserModel& model) {
+  for (const SaveSlotPreview& slot : model.slots.slots) {
+    if (slot.id == model.selectedSaveId) {
+      return &slot;
+    }
+  }
+  return nullptr;
+}
+
+std::string_view loadDisabledReason(const SaveBrowserModel& model) {
+  const SaveSlotPreview* slot = selectedSaveSlot(model);
+  if (slot != nullptr && !slot->enabled) {
+    return slot->reason;
+  }
+  return model.status;
+}
+
+std::string_view deleteDisabledReason(const SaveBrowserModel& model) {
+  if (model.status == "save_browser_selection_ready" ||
+      model.status == "save_browser_selection_disabled") {
+    return "save_browser_delete_unavailable";
+  }
+  return model.status;
+}
+
+FrontendRouteResult ignoredSaveBrowserRoute(MenuOwner parentOwner,
+                                            FrontendAction action,
+                                            std::string_view status) {
+  const bool validParent = validSaveBrowserParent(parentOwner);
+  FrontendRouteResult result = makeIgnoredFrontendRouteResult(
+      validParent ? parentOwner : MenuOwner::None,
+      validParent ? saveBrowserParentScreen(parentOwner) : FrontendScreen::BootStatus,
+      validParent ? FrontendScreen::LoadSave : FrontendScreen::Gameplay,
+      action);
+  result.gameplayInputSuppressed = true;
+  result.status = status;
+  result.receiptReason = status;
+  return result;
+}
+
+FrontendRouteResult acceptedSaveBrowserRoute(MenuOwner owner,
+                                             FrontendScreen nextScreen,
+                                             FrontendScreen nextChildScreen,
+                                             FrontendTransitionRequest transition,
+                                             bool gameplayInputSuppressed,
+                                             std::string_view status,
+                                             FrontendAction action) {
+  return makeAcceptedFrontendRouteResult(owner,
+                                         nextScreen,
+                                         nextChildScreen,
+                                         transition,
+                                         false,
+                                         gameplayInputSuppressed,
+                                         status,
+                                         status,
+                                         action);
+}
+
 }  // namespace
 
 SaveBrowserModel buildSaveBrowserModel(const SaveSlotList& slots,
@@ -72,6 +139,67 @@ SaveBrowserModel buildSaveBrowserModel(const SaveSlotList& slots,
   model.status = model.slots.slots.empty() ? "save_browser_empty"
                                            : "save_browser_selection_missing";
   return model;
+}
+
+FrontendRouteResult routeSaveBrowserAction(const SaveBrowserModel& model,
+                                           MenuOwner parentOwner,
+                                           FrontendAction action) {
+  if (!validSaveBrowserParent(parentOwner)) {
+    return ignoredSaveBrowserRoute(parentOwner, action, "save_browser_invalid_parent");
+  }
+
+  switch (action) {
+    case FrontendAction::Back:
+      return acceptedSaveBrowserRoute(parentOwner,
+                                      saveBrowserParentScreen(parentOwner),
+                                      FrontendScreen::Gameplay,
+                                      FrontendTransitionRequest::None,
+                                      true,
+                                      parentOwner == MenuOwner::Pause
+                                          ? "save_browser_closed_to_pause"
+                                          : "save_browser_closed_to_starter",
+                                      action);
+    case FrontendAction::Load:
+      if (!model.loadEnabled) {
+        return ignoredSaveBrowserRoute(parentOwner, action, loadDisabledReason(model));
+      }
+      return acceptedSaveBrowserRoute(MenuOwner::Gameplay,
+                                      FrontendScreen::Gameplay,
+                                      FrontendScreen::Gameplay,
+                                      FrontendTransitionRequest::LaunchGameplay,
+                                      false,
+                                      "save_browser_load_requested",
+                                      action);
+    case FrontendAction::Delete:
+      if (!model.deleteEnabled) {
+        return ignoredSaveBrowserRoute(parentOwner, action, deleteDisabledReason(model));
+      }
+      return acceptedSaveBrowserRoute(parentOwner,
+                                      saveBrowserParentScreen(parentOwner),
+                                      FrontendScreen::DeleteConfirm,
+                                      FrontendTransitionRequest::None,
+                                      true,
+                                      "save_browser_delete_confirm_requested",
+                                      action);
+    case FrontendAction::None:
+    case FrontendAction::Continue:
+    case FrontendAction::NewWorld:
+    case FrontendAction::LoadSave:
+    case FrontendAction::Settings:
+    case FrontendAction::DevTools:
+    case FrontendAction::Exit:
+    case FrontendAction::CreateAndEnter:
+    case FrontendAction::Apply:
+    case FrontendAction::RestoreDefaults:
+    case FrontendAction::Resume:
+    case FrontendAction::Save:
+    case FrontendAction::SaveAndExit:
+    case FrontendAction::ReturnToTitle:
+    case FrontendAction::ExitGame:
+      return ignoredSaveBrowserRoute(parentOwner, action, "not_save_browser_action");
+  }
+
+  return ignoredSaveBrowserRoute(parentOwner, action, "not_save_browser_action");
 }
 
 }  // namespace iggy3d

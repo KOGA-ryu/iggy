@@ -2,10 +2,12 @@
 
 #include "app/frontend/DevToolsMenu.hpp"
 #include "app/frontend/PauseMenu.hpp"
+#include "app/frontend/SaveBrowser.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/frontend/StarterScreen.hpp"
 
 #include <iostream>
+#include <string>
 #include <string_view>
 
 namespace {
@@ -77,6 +79,32 @@ iggy3d::ProductFrontendRouteContext devToolsContextFor(
     const iggy3d::DevToolsMenuModel& model) {
   iggy3d::ProductFrontendRouteContext context = contextFor(screen, child);
   context.devToolsModel = &model;
+  return context;
+}
+
+iggy3d::SaveSlotPreview routerCompatibleSlot(std::string_view id) {
+  iggy3d::SaveSlotPreview slot;
+  slot.id = std::string(id);
+  slot.enabled = true;
+  slot.reason = "compatible";
+  slot.displayTitle = "Title " + slot.id;
+  slot.timestampLabel = "file_time_100";
+  return slot;
+}
+
+iggy3d::SaveBrowserModel compatibleSaveBrowserModel() {
+  iggy3d::SaveSlotList slots;
+  slots.slots.push_back(routerCompatibleSlot("save_001"));
+  slots.compatibleCount = 1U;
+  return iggy3d::buildSaveBrowserModel(slots, "save_001");
+}
+
+iggy3d::ProductFrontendRouteContext saveBrowserContextFor(
+    iggy3d::FrontendScreen screen,
+    iggy3d::FrontendScreen child,
+    const iggy3d::SaveBrowserModel& model) {
+  iggy3d::ProductFrontendRouteContext context = contextFor(screen, child);
+  context.saveBrowserModel = &model;
   return context;
 }
 
@@ -184,6 +212,12 @@ bool pauseSettingsAndOverlaysOwnInput() {
   const auto pause = iggy3d::chooseProductFrontendOwner(
       contextFor(iggy3d::FrontendScreen::Pause,
                  iggy3d::FrontendScreen::Gameplay));
+  const auto pauseLoadSave = iggy3d::chooseProductFrontendOwner(
+      contextFor(iggy3d::FrontendScreen::Pause,
+                 iggy3d::FrontendScreen::LoadSave));
+  const auto pauseDeleteConfirm = iggy3d::chooseProductFrontendOwner(
+      contextFor(iggy3d::FrontendScreen::Pause,
+                 iggy3d::FrontendScreen::DeleteConfirm));
   const auto dev = iggy3d::chooseProductFrontendOwner(
       contextFor(iggy3d::FrontendScreen::DevOverlay,
                  iggy3d::FrontendScreen::Gameplay));
@@ -200,6 +234,18 @@ bool pauseSettingsAndOverlaysOwnInput() {
          expect(pause.inputOwner == iggy3d::MenuOwner::Pause, "pause owner") &&
          expect(pause.activeSurface == iggy3d::ProductFrontendSurface::Pause,
                 "pause surface") &&
+         expect(pauseLoadSave.inputOwner == iggy3d::MenuOwner::Pause,
+                "pause load save owner") &&
+         expect(pauseLoadSave.activeSurface ==
+                    iggy3d::ProductFrontendSurface::SaveSelector,
+                "pause load save surface") &&
+         expect(pauseLoadSave.parentOwner == iggy3d::MenuOwner::Pause,
+                "pause load save parent") &&
+         expect(pauseDeleteConfirm.activeSurface ==
+                    iggy3d::ProductFrontendSurface::ConfirmDialog,
+                "pause delete confirm surface") &&
+         expect(pauseDeleteConfirm.parentOwner == iggy3d::MenuOwner::Pause,
+                "pause delete confirm parent") &&
          expect(dev.inputOwner == iggy3d::MenuOwner::DevTools,
                 "dev overlay owner") &&
          expect(dev.activeSurface == iggy3d::ProductFrontendSurface::DevTools,
@@ -684,6 +730,105 @@ bool devToolsApplySummaryIsReceiptReady() {
                 "dev tools summary reason");
 }
 
+bool saveBrowserRoutesFromStarterAndPause() {
+  const auto model = compatibleSaveBrowserModel();
+  const auto starterContext = saveBrowserContextFor(
+      iggy3d::FrontendScreen::Starter,
+      iggy3d::FrontendScreen::LoadSave,
+      model);
+  const auto pauseContext = saveBrowserContextFor(
+      iggy3d::FrontendScreen::Pause,
+      iggy3d::FrontendScreen::LoadSave,
+      model);
+
+  const auto starterBack = iggy3d::routeProductFrontendAction(
+      starterContext,
+      iggy3d::FrontendAction::Back);
+  const auto pauseBack = iggy3d::routeProductFrontendAction(
+      pauseContext,
+      iggy3d::FrontendAction::Back);
+
+  return expect(starterBack.routed, "starter save browser back routed") &&
+         expect(starterBack.route.accepted,
+                "starter save browser back accepted") &&
+         expect(starterBack.route.status == "save_browser_closed_to_starter",
+                "starter save browser back status") &&
+         expect(starterBack.route.nextScreen == iggy3d::FrontendScreen::Starter,
+                "starter save browser back screen") &&
+         expect(pauseBack.routed, "pause save browser back routed") &&
+         expect(pauseBack.route.accepted,
+                "pause save browser back accepted") &&
+         expect(pauseBack.route.status == "save_browser_closed_to_pause",
+                "pause save browser back status") &&
+         expect(pauseBack.route.nextScreen == iggy3d::FrontendScreen::Pause,
+                "pause save browser back screen");
+}
+
+bool saveBrowserLoadAndDeleteSummaryAreReceiptReady() {
+  const auto model = compatibleSaveBrowserModel();
+  const auto context = saveBrowserContextFor(iggy3d::FrontendScreen::Starter,
+                                             iggy3d::FrontendScreen::LoadSave,
+                                             model);
+  const auto load = iggy3d::routeProductFrontendAction(
+      context,
+      iggy3d::FrontendAction::Load);
+  const auto loadSummary = iggy3d::summarizeProductFrontendRoute(
+      context,
+      load,
+      iggy3d::FrontendAction::Load);
+  const auto deleteRoute = iggy3d::routeProductFrontendAction(
+      context,
+      iggy3d::FrontendAction::Delete);
+
+  return expect(load.routed, "save browser load routed") &&
+         expect(load.route.accepted, "save browser load accepted") &&
+         expect(load.route.requestedTransition ==
+                    iggy3d::FrontendTransitionRequest::LaunchGameplay,
+                "save browser load transition") &&
+         expect(load.route.status == "save_browser_load_requested",
+                "save browser load status") &&
+         expect(loadSummary.activeSurface == "save_selector",
+                "save browser load summary surface") &&
+         expect(loadSummary.routeModelName == "save_browser",
+                "save browser load summary model") &&
+         expect(loadSummary.transition == "launch_gameplay",
+                "save browser load summary transition") &&
+         expect(loadSummary.status == "save_browser_load_requested",
+                "save browser load summary status") &&
+         expect(deleteRoute.routed, "save browser delete routed") &&
+         expect(deleteRoute.route.accepted, "save browser delete accepted") &&
+         expect(deleteRoute.route.nextScreen == iggy3d::FrontendScreen::Starter,
+                "save browser delete screen") &&
+         expect(deleteRoute.route.nextChildScreen ==
+                    iggy3d::FrontendScreen::DeleteConfirm,
+                "save browser delete child") &&
+         expect(deleteRoute.route.status ==
+                    "save_browser_delete_confirm_requested",
+                "save browser delete status");
+}
+
+bool missingSaveBrowserModelIsUnavailable() {
+  const auto context = contextFor(iggy3d::FrontendScreen::Starter,
+                                 iggy3d::FrontendScreen::LoadSave);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      context,
+      iggy3d::FrontendAction::Load);
+  const auto summary = iggy3d::summarizeProductFrontendRoute(
+      context,
+      frame,
+      iggy3d::FrontendAction::Load);
+
+  return expect(!frame.routed, "missing save browser not routed") &&
+         expect(!frame.route.accepted,
+                "missing save browser not accepted") &&
+         expect(frame.route.status == "save_browser_model_unavailable",
+                "missing save browser status") &&
+         expect(!summary.routeModelAvailable,
+                "missing save browser summary model unavailable") &&
+         expect(summary.routeModelName == "save_browser",
+                "missing save browser summary model name");
+}
+
 bool gameplayRemainsDeferred() {
   auto gameplay = contextFor(iggy3d::FrontendScreen::Gameplay,
                              iggy3d::FrontendScreen::Gameplay);
@@ -900,7 +1045,11 @@ int main() {
                   pauseSettingsRouteSummaryIsReceiptReady() &&
                   devToolsRoutesFromStarterAndGameplay() &&
                   missingDevToolsModelIsUnavailable() &&
-                  devToolsApplySummaryIsReceiptReady() && gameplayRemainsDeferred() &&
+                  devToolsApplySummaryIsReceiptReady() &&
+                  saveBrowserRoutesFromStarterAndPause() &&
+                  saveBrowserLoadAndDeleteSummaryAreReceiptReady() &&
+                  missingSaveBrowserModelIsUnavailable() &&
+                  gameplayRemainsDeferred() &&
                   starterNewWorldSummaryIsReceiptReady() &&
                   compatibleContinueSummaryShowsLaunch() &&
                   settingsApplySummaryIsReceiptReady() &&
