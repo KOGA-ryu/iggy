@@ -1,5 +1,6 @@
 #include "app/iggy3d/ProductFrontendRouter.hpp"
 
+#include "app/frontend/PauseMenu.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/frontend/StarterScreen.hpp"
 
@@ -51,6 +52,21 @@ iggy3d::ProductFrontendRouteContext settingsContextFor(
     const iggy3d::SettingsRouteContext& settings) {
   iggy3d::ProductFrontendRouteContext context = contextFor(screen, child);
   context.settingsContext = &settings;
+  return context;
+}
+
+iggy3d::PauseMenuModel buildOpenPauseModel(std::uint64_t compatibleSaveCount = 1U) {
+  return iggy3d::buildPauseMenuModel(
+      iggy3d::PauseMenuContext{true, true, true, compatibleSaveCount, true},
+      iggy3d::FrontendAction::Resume);
+}
+
+iggy3d::ProductFrontendRouteContext pauseContextFor(
+    const iggy3d::PauseMenuModel& model) {
+  iggy3d::ProductFrontendRouteContext context =
+      contextFor(iggy3d::FrontendScreen::Pause,
+                 iggy3d::FrontendScreen::Gameplay);
+  context.pauseModel = &model;
   return context;
 }
 
@@ -487,16 +503,98 @@ bool settingsInvalidParentDelegatesReason() {
                 "invalid settings parent status");
 }
 
-bool pauseDevAndGameplayRemainDeferred() {
+bool pauseRouteDelegatesResume() {
+  const auto model = buildOpenPauseModel();
+  const auto context = pauseContextFor(model);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      context,
+      iggy3d::FrontendAction::Resume);
+  const auto summary = iggy3d::summarizeProductFrontendRoute(
+      context,
+      frame,
+      iggy3d::FrontendAction::Resume);
+
+  return expect(frame.routed, "pause resume routed") &&
+         expect(frame.route.accepted, "pause resume accepted") &&
+         expect(frame.route.inputOwner == iggy3d::MenuOwner::Gameplay,
+                "pause resume owner") &&
+         expect(frame.route.nextScreen == iggy3d::FrontendScreen::Gameplay,
+                "pause resume screen") &&
+         expect(!frame.route.gameplayInputSuppressed,
+                "pause resume unsuppressed") &&
+         expect(frame.route.status == "pause_resume_requested",
+                "pause resume status") &&
+         expect(summary.routeModelAvailable, "pause resume model available") &&
+         expect(summary.routeModelName == "pause",
+                "pause resume summary model");
+}
+
+bool missingPauseModelIsUnavailable() {
+  const auto context = contextFor(iggy3d::FrontendScreen::Pause,
+                                 iggy3d::FrontendScreen::Gameplay);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      context,
+      iggy3d::FrontendAction::Resume);
+  const auto summary = iggy3d::summarizeProductFrontendRoute(
+      context,
+      frame,
+      iggy3d::FrontendAction::Resume);
+
+  return expect(!frame.routed, "missing pause not routed") &&
+         expect(!frame.route.accepted, "missing pause not accepted") &&
+         expect(frame.route.status == "pause_model_unavailable",
+                "missing pause status") &&
+         expect(!summary.routeModelAvailable,
+                "missing pause summary model unavailable") &&
+         expect(summary.routeModelName == "pause",
+                "missing pause summary model name");
+}
+
+bool disabledPauseLoadSaveDelegatesReason() {
+  const auto model = buildOpenPauseModel(0U);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      pauseContextFor(model),
+      iggy3d::FrontendAction::LoadSave);
+
+  return expect(frame.routed, "disabled pause load routed") &&
+         expect(!frame.route.accepted, "disabled pause load not accepted") &&
+         expect(frame.route.status == "no_compatible_save",
+                "disabled pause load status");
+}
+
+bool pauseSettingsRouteSummaryIsReceiptReady() {
+  const auto model = buildOpenPauseModel();
+  const auto context = pauseContextFor(model);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      context,
+      iggy3d::FrontendAction::Settings);
+  const auto summary = iggy3d::summarizeProductFrontendRoute(
+      context,
+      frame,
+      iggy3d::FrontendAction::Settings);
+
+  return expect(frame.routed, "pause settings routed") &&
+         expect(frame.route.accepted, "pause settings accepted") &&
+         expect(frame.route.inputOwner == iggy3d::MenuOwner::Settings,
+                "pause settings owner") &&
+         expect(frame.route.nextScreen == iggy3d::FrontendScreen::Settings,
+                "pause settings screen") &&
+         expect(frame.route.nextChildScreen == iggy3d::FrontendScreen::Pause,
+                "pause settings child") &&
+         expect(summary.activeSurface == "pause",
+                "pause settings summary surface") &&
+         expect(summary.status == "pause_settings_opened",
+                "pause settings summary status") &&
+         expect(summary.reason == "pause_settings_opened",
+                "pause settings summary reason");
+}
+
+bool devAndGameplayRemainDeferred() {
   auto gameplay = contextFor(iggy3d::FrontendScreen::Gameplay,
                              iggy3d::FrontendScreen::Gameplay);
   gameplay.gameplayActive = true;
   gameplay.hasActiveSession = true;
 
-  const auto pause = iggy3d::routeProductFrontendAction(
-      contextFor(iggy3d::FrontendScreen::Pause,
-                 iggy3d::FrontendScreen::Gameplay),
-      iggy3d::FrontendAction::Resume);
   const auto dev = iggy3d::routeProductFrontendAction(
       contextFor(iggy3d::FrontendScreen::DevOverlay,
                  iggy3d::FrontendScreen::Gameplay),
@@ -505,10 +603,7 @@ bool pauseDevAndGameplayRemainDeferred() {
       gameplay,
       iggy3d::FrontendAction::Apply);
 
-  return expect(!pause.routed, "pause deferred") &&
-         expect(pause.route.status == "product_frontend_route_unavailable",
-                "pause deferred status") &&
-         expect(!dev.routed, "dev deferred") &&
+  return expect(!dev.routed, "dev deferred") &&
          expect(dev.route.status == "product_frontend_route_unavailable",
                 "dev deferred status") &&
          expect(!game.routed, "gameplay deferred") &&
@@ -667,27 +762,27 @@ bool missingSettingsContextSummaryIsHonest() {
                 "summary missing settings reason");
 }
 
-bool deferredPauseSummaryDoesNotClaimMissingModel() {
-  const auto context = contextFor(iggy3d::FrontendScreen::Pause,
+bool deferredDevSummaryDoesNotClaimMissingModel() {
+  const auto context = contextFor(iggy3d::FrontendScreen::DevOverlay,
                                  iggy3d::FrontendScreen::Gameplay);
   const auto frame = iggy3d::routeProductFrontendAction(
       context,
-      iggy3d::FrontendAction::Resume);
+      iggy3d::FrontendAction::Apply);
   const auto summary = iggy3d::summarizeProductFrontendRoute(
       context,
       frame,
-      iggy3d::FrontendAction::Resume);
+      iggy3d::FrontendAction::Apply);
 
-  return expect(!summary.routed, "summary pause not routed") &&
-         expect(!summary.accepted, "summary pause not accepted") &&
+  return expect(!summary.routed, "summary dev not routed") &&
+         expect(!summary.accepted, "summary dev not accepted") &&
          expect(summary.routeModelAvailable,
-                "summary pause route model available") &&
-         expect(summary.routeModelName == "pause",
-                "summary pause route model name") &&
+                "summary dev route model available") &&
+         expect(summary.routeModelName == "dev_tools",
+                "summary dev route model name") &&
          expect(summary.status == "product_frontend_route_unavailable",
-                "summary pause status") &&
+                "summary dev status") &&
          expect(summary.reason == "product_frontend_route_unavailable",
-                "summary pause reason");
+                "summary dev reason");
 }
 
 }  // namespace
@@ -710,12 +805,15 @@ int main() {
                   settingsCleanApplyReportsNoChanges() &&
                   missingSettingsContextIsUnavailable() &&
                   settingsInvalidParentDelegatesReason() &&
-                  pauseDevAndGameplayRemainDeferred() &&
+                  pauseRouteDelegatesResume() && missingPauseModelIsUnavailable() &&
+                  disabledPauseLoadSaveDelegatesReason() &&
+                  pauseSettingsRouteSummaryIsReceiptReady() &&
+                  devAndGameplayRemainDeferred() &&
                   starterNewWorldSummaryIsReceiptReady() &&
                   compatibleContinueSummaryShowsLaunch() &&
                   settingsApplySummaryIsReceiptReady() &&
                   missingStarterModelSummaryIsHonest() &&
                   missingSettingsContextSummaryIsHonest() &&
-                  deferredPauseSummaryDoesNotClaimMissingModel();
+                  deferredDevSummaryDoesNotClaimMissingModel();
   return ok ? 0 : 1;
 }

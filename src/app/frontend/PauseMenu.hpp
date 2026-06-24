@@ -4,6 +4,7 @@
 #include <string_view>
 #include <vector>
 
+#include "app/frontend/FrontendRoute.hpp"
 #include "app/frontend/FrontendState.hpp"
 
 namespace iggy3d {
@@ -34,6 +35,8 @@ struct PauseMenuModel {
 
 PauseMenuModel buildPauseMenuModel(const PauseMenuContext& context,
                                    FrontendAction selected);
+FrontendRouteResult routePauseAction(const PauseMenuModel& model,
+                                     FrontendAction action);
 std::string_view pauseCommandName(FrontendAction action);
 
 }  // namespace iggy3d

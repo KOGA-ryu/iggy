@@ -1,5 +1,6 @@
 #include "app/iggy3d/ProductFrontendRouter.hpp"
 
+#include "app/frontend/PauseMenu.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/frontend/StarterScreen.hpp"
 
@@ -235,6 +236,22 @@ ProductFrontendRouteFrame routeProductFrontendAction(
       frame.route = routeSettingsAction(*context.settingsContext, action);
     }
     frame.routeModelName = "settings";
+    frame.routed = true;
+    return frame;
+  }
+
+  if (frame.owner.activeSurface == ProductFrontendSurface::Pause &&
+      frame.owner.inputOwner == MenuOwner::Pause) {
+    if (context.pauseModel == nullptr) {
+      frame.route =
+          unavailableRoute(context, frame.owner, action, "pause_model_unavailable");
+      frame.route.gameplayInputSuppressed = true;
+      frame.routeModelAvailable = false;
+      frame.routeModelName = "pause";
+      return frame;
+    }
+    frame.route = routePauseAction(*context.pauseModel, action);
+    frame.routeModelName = "pause";
     frame.routed = true;
     return frame;
   }

@@ -55,6 +55,48 @@ MenuRowModel makePauseRow(FrontendAction action, const PauseMenuContext& context
   return row;
 }
 
+const MenuRowModel* findPauseRow(const PauseMenuModel& model,
+                                 FrontendAction action) {
+  for (const MenuRowModel& row : model.rows) {
+    if (row.action == action) {
+      return &row;
+    }
+  }
+  return nullptr;
+}
+
+FrontendRouteResult ignoredPauseRoute(FrontendAction action,
+                                      std::string_view status) {
+  FrontendRouteResult result = makeIgnoredFrontendRouteResult(
+      MenuOwner::Pause,
+      FrontendScreen::Pause,
+      FrontendScreen::Gameplay,
+      action);
+  result.gameplayInputSuppressed = true;
+  result.status = status;
+  result.receiptReason = status;
+  return result;
+}
+
+FrontendRouteResult acceptedPauseRoute(MenuOwner owner,
+                                       FrontendScreen nextScreen,
+                                       FrontendScreen nextChildScreen,
+                                       FrontendTransitionRequest transition,
+                                       bool closeRequested,
+                                       bool gameplayInputSuppressed,
+                                       std::string_view status,
+                                       FrontendAction action) {
+  return makeAcceptedFrontendRouteResult(owner,
+                                         nextScreen,
+                                         nextChildScreen,
+                                         transition,
+                                         closeRequested,
+                                         gameplayInputSuppressed,
+                                         status,
+                                         status,
+                                         action);
+}
+
 }  // namespace
 
 std::string_view pauseCommandName(FrontendAction action) {
@@ -97,6 +139,105 @@ PauseMenuModel buildPauseMenuModel(const PauseMenuContext& context,
     model.rows.push_back(row);
   }
   return model;
+}
+
+FrontendRouteResult routePauseAction(const PauseMenuModel& model,
+                                     FrontendAction action) {
+  const MenuRowModel* row = findPauseRow(model, action);
+  if (row == nullptr) {
+    return ignoredPauseRoute(action, "not_pause_action");
+  }
+  if (!row->enabled) {
+    return ignoredPauseRoute(action, row->disabledReason);
+  }
+
+  switch (action) {
+    case FrontendAction::Resume:
+      return acceptedPauseRoute(MenuOwner::Gameplay,
+                                FrontendScreen::Gameplay,
+                                FrontendScreen::Gameplay,
+                                FrontendTransitionRequest::None,
+                                false,
+                                false,
+                                "pause_resume_requested",
+                                action);
+    case FrontendAction::Save:
+      return acceptedPauseRoute(MenuOwner::Pause,
+                                FrontendScreen::Pause,
+                                FrontendScreen::Gameplay,
+                                FrontendTransitionRequest::Save,
+                                false,
+                                true,
+                                "pause_save_requested",
+                                action);
+    case FrontendAction::SaveAndExit:
+      return acceptedPauseRoute(MenuOwner::Pause,
+                                FrontendScreen::Pause,
+                                FrontendScreen::Gameplay,
+                                FrontendTransitionRequest::SaveAndExit,
+                                false,
+                                true,
+                                "pause_save_and_exit_requested",
+                                action);
+    case FrontendAction::LoadSave:
+      return acceptedPauseRoute(MenuOwner::Pause,
+                                FrontendScreen::Pause,
+                                FrontendScreen::LoadSave,
+                                FrontendTransitionRequest::None,
+                                false,
+                                true,
+                                "pause_load_save_opened",
+                                action);
+    case FrontendAction::Settings:
+      return acceptedPauseRoute(MenuOwner::Settings,
+                                FrontendScreen::Settings,
+                                FrontendScreen::Pause,
+                                FrontendTransitionRequest::None,
+                                false,
+                                true,
+                                "pause_settings_opened",
+                                action);
+    case FrontendAction::DevTools:
+      return acceptedPauseRoute(MenuOwner::DevTools,
+                                FrontendScreen::DevOverlay,
+                                FrontendScreen::Gameplay,
+                                FrontendTransitionRequest::None,
+                                false,
+                                true,
+                                "pause_dev_tools_opened",
+                                action);
+    case FrontendAction::ReturnToTitle:
+      return acceptedPauseRoute(MenuOwner::Starter,
+                                FrontendScreen::Starter,
+                                FrontendScreen::Gameplay,
+                                FrontendTransitionRequest::ReturnToTitle,
+                                false,
+                                true,
+                                "pause_return_to_title_requested",
+                                action);
+    case FrontendAction::ExitGame:
+      return acceptedPauseRoute(MenuOwner::Pause,
+                                FrontendScreen::Pause,
+                                FrontendScreen::Gameplay,
+                                FrontendTransitionRequest::Exit,
+                                true,
+                                true,
+                                "pause_exit_game_requested",
+                                action);
+    case FrontendAction::None:
+    case FrontendAction::Continue:
+    case FrontendAction::NewWorld:
+    case FrontendAction::Exit:
+    case FrontendAction::CreateAndEnter:
+    case FrontendAction::Load:
+    case FrontendAction::Delete:
+    case FrontendAction::Back:
+    case FrontendAction::Apply:
+    case FrontendAction::RestoreDefaults:
+      break;
+  }
+
+  return ignoredPauseRoute(action, "not_pause_action");
 }
 
 }  // namespace iggy3d
