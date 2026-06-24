@@ -99,6 +99,15 @@ bool runProductCase(const std::filesystem::path& binary,
   return parseReceiptFile(output, fields);
 }
 
+std::filesystem::path cleanSaveRoot(std::string_view name) {
+  const std::filesystem::path root =
+      std::filesystem::temp_directory_path() /
+      ("iggy3d_product_automation_" + std::string(name) + "_saves");
+  std::filesystem::remove_all(root);
+  std::filesystem::create_directories(root);
+  return root;
+}
+
 bool productReceipt(const std::map<std::string, std::string>& fields) {
   return hasField(fields, "app", "iggy3d") &&
          !hasField(fields, "app", "iggy3d_visual_demo") &&
@@ -162,12 +171,13 @@ int main() {
       hasField(fields, "gameplay_input_suppressed", "true");
 
   fields.clear();
+  const std::filesystem::path newWorldSaveRoot = cleanSaveRoot("new_world");
   const bool newWorld =
       appAvailable &&
       runProductCase(binary,
                      "new_world",
                      "frontend.select=new_world\nfrontend.execute=true\n",
-                     "",
+                     std::string{"--save-root "} + shellQuote(newWorldSaveRoot),
                      fields,
                      exitCode) &&
       exitCode == 0 && productReceipt(fields) && automationApplied(fields) &&
@@ -175,20 +185,37 @@ int main() {
       hasField(fields, "frontend_selected_action", "create_and_enter") &&
       hasField(fields, "frontend_launch_requested", "true") &&
       hasField(fields, "gameplay_active", "true") &&
+      hasField(fields, "world_creation_status",
+               "world_creation_initial_save_written") &&
+      hasField(fields, "world_creation_reason_code",
+               "world_creation_initial_save_written") &&
+      hasField(fields, "world_creation_world_id", "world_0001") &&
+      hasField(fields, "world_creation_initial_save_requested", "true") &&
+      hasField(fields, "world_creation_initial_save_written", "true") &&
+      hasField(fields, "world_creation_initial_save_id", "save_001") &&
+      hasField(fields, "world_creation_route_after_create", "gameplay") &&
+      hasField(fields, "product_save_status", "product_save_written") &&
+      hasField(fields, "product_save_reason_code", "product_save_written") &&
+      hasField(fields, "product_save_durable_reason", "durable_save_file_written") &&
+      std::filesystem::exists(newWorldSaveRoot / "save_001.iggy3d.save") &&
       hasField(fields, "product_transition_last_action", "launch_gameplay") &&
       hasField(fields, "product_transition_status", "gameplay_active");
 
   fields.clear();
+  const std::filesystem::path pauseSaveRoot = cleanSaveRoot("pause_from_gameplay");
   const bool pauseFromGameplay =
       appAvailable &&
       runProductCase(binary,
                      "pause_from_gameplay",
                      "system.pause=true\n",
-                     "--auto-new-world",
+                     std::string{"--auto-new-world --save-root "} +
+                         shellQuote(pauseSaveRoot),
                      fields,
                      exitCode) &&
       exitCode == 0 && productReceipt(fields) && automationApplied(fields) &&
       hasField(fields, "frontend_screen", "pause") &&
+      hasField(fields, "world_creation_initial_save_written", "true") &&
+      std::filesystem::exists(pauseSaveRoot / "save_001.iggy3d.save") &&
       hasField(fields, "pause_menu_open", "true") &&
       hasField(fields, "input_owner", "pause") &&
       hasField(fields, "input_action_last", "system.pause") &&
@@ -196,17 +223,21 @@ int main() {
       hasField(fields, "gameplay_input_suppressed", "true");
 
   fields.clear();
+  const std::filesystem::path returnSaveRoot = cleanSaveRoot("return_to_title");
   const bool returnToTitle =
       appAvailable &&
       runProductCase(binary,
                      "return_to_title",
                      "system.pause=true\npause.select=return_to_title\n"
                      "pause.execute=true\n",
-                     "--auto-new-world",
+                     std::string{"--auto-new-world --save-root "} +
+                         shellQuote(returnSaveRoot),
                      fields,
                      exitCode) &&
       exitCode == 0 && productReceipt(fields) && automationApplied(fields) &&
       hasField(fields, "frontend_screen", "starter") &&
+      hasField(fields, "world_creation_initial_save_written", "true") &&
+      std::filesystem::exists(returnSaveRoot / "save_001.iggy3d.save") &&
       hasField(fields, "frontend_return_to_title_requested", "true") &&
       hasField(fields, "product_transition_returned_to_title", "true") &&
       hasField(fields, "gameplay_active", "false");

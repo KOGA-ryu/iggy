@@ -94,9 +94,14 @@ int main() {
 #endif
 
   const std::filesystem::path output = "/tmp/iggy3d_product_gameplay_controls.out";
+  const std::filesystem::path saveRoot =
+      "/tmp/iggy3d_product_gameplay_controls_saves";
+  std::filesystem::remove_all(saveRoot);
+  std::filesystem::create_directories(saveRoot);
   const std::string command =
       shellQuote(binary) +
-      " --no-window --scripted-gameplay-smoke --print-render-receipt > " +
+      " --no-window --scripted-gameplay-smoke --save-root " +
+      shellQuote(saveRoot) + " --print-render-receipt > " +
       shellQuote(output);
   const int exitCode =
       appBuilt && std::filesystem::exists(binary)
@@ -109,6 +114,20 @@ int main() {
       exitCode == 0 && receiptValid && hasField(fields, "app", "iggy3d") &&
       hasField(fields, "frontend_screen", "gameplay") &&
       hasField(fields, "scripted_gameplay_smoke", "true") &&
+      hasField(fields, "world_creation_status",
+               "world_creation_initial_save_written") &&
+      hasField(fields, "world_creation_reason_code",
+               "world_creation_initial_save_written") &&
+      hasField(fields, "world_creation_world_id", "world_0001") &&
+      hasField(fields, "world_creation_initial_save_requested", "true") &&
+      hasField(fields, "world_creation_initial_save_written", "true") &&
+      hasField(fields, "world_creation_initial_save_id", "save_001") &&
+      hasField(fields, "world_creation_route_after_create", "gameplay") &&
+      hasField(fields, "product_save_status", "product_save_written") &&
+      hasField(fields, "product_save_reason_code", "product_save_written") &&
+      hasField(fields, "product_save_durable_reason",
+               "durable_save_file_written") &&
+      std::filesystem::exists(saveRoot / "save_001.iggy3d.save") &&
       hasField(fields, "gameplay_input_source", "scripted") &&
       hasField(fields, "gameplay_input_used", "true") &&
       hasField(fields, "gameplay_command_submitted", "true") &&

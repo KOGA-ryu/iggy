@@ -31,6 +31,16 @@ struct ProductAppWindowState {
   std::string launchAction = "none";
   std::string launchStatus = "not_requested";
   std::string packageLoadStatus = "not_requested";
+  std::string worldCreationStatus = "not_requested";
+  std::string worldCreationReasonCode = "not_requested";
+  std::string worldCreationWorldId = "none";
+  bool worldCreationInitialSaveRequested = false;
+  bool worldCreationInitialSaveWritten = false;
+  std::string worldCreationInitialSaveId = "none";
+  std::string worldCreationRouteAfterCreate = "world_setup";
+  std::string productSaveStatus = "not_requested";
+  std::string productSaveReasonCode = "not_requested";
+  std::string productSaveDurableReason = "not_requested";
   std::uint64_t runtimeStateHash = 0;
   ProductViewportState viewport;
   std::uint64_t sceneItemCount = 0;

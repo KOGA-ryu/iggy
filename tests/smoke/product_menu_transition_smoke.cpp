@@ -131,6 +131,17 @@ int main() {
                         gameplayFields,
                         gameplayExitCode);
 
+  int savedStarterExitCode = 77;
+  std::map<std::string, std::string> savedStarterFields;
+  const bool savedStarterReceiptValid =
+      appBuilt && std::filesystem::exists(binary) &&
+      runReceiptCommand(binary,
+                        "/tmp/iggy3d_product_menu_transition_saved_starter.out",
+                        std::string{"--no-window --save-root "} + shellQuote(saveRoot) +
+                            " --print-render-receipt",
+                        savedStarterFields,
+                        savedStarterExitCode);
+
   const bool starterPassed =
       starterExitCode == 0 && starterReceiptValid &&
       hasField(starterFields, "app", "iggy3d") &&
@@ -140,6 +151,11 @@ int main() {
       hasField(starterFields, "gameplay_view_visible", "false") &&
       hasField(starterFields, "input_owner", "starter") &&
       hasField(starterFields, "gameplay_input_suppressed", "true") &&
+      hasField(starterFields, "world_creation_status", "not_requested") &&
+      hasField(starterFields, "world_creation_initial_save_requested", "false") &&
+      hasField(starterFields, "world_creation_initial_save_written", "false") &&
+      hasField(starterFields, "world_creation_initial_save_id", "none") &&
+      hasField(starterFields, "product_save_status", "not_requested") &&
       hasField(starterFields, "product_transition_last_action", "startup") &&
       hasField(starterFields, "product_transition_status", "starter_ready") &&
       hasField(starterFields, "product_render_bridge_ready", "false") &&
@@ -154,6 +170,20 @@ int main() {
       hasField(gameplayFields, "gameplay_active", "true") &&
       hasField(gameplayFields, "input_owner", "gameplay") &&
       hasField(gameplayFields, "gameplay_input_suppressed", "false") &&
+      hasField(gameplayFields, "world_creation_status",
+               "world_creation_initial_save_written") &&
+      hasField(gameplayFields, "world_creation_reason_code",
+               "world_creation_initial_save_written") &&
+      hasField(gameplayFields, "world_creation_world_id", "world_0001") &&
+      hasField(gameplayFields, "world_creation_initial_save_requested", "true") &&
+      hasField(gameplayFields, "world_creation_initial_save_written", "true") &&
+      hasField(gameplayFields, "world_creation_initial_save_id", "save_001") &&
+      hasField(gameplayFields, "world_creation_route_after_create", "gameplay") &&
+      hasField(gameplayFields, "product_save_status", "product_save_written") &&
+      hasField(gameplayFields, "product_save_reason_code", "product_save_written") &&
+      hasField(gameplayFields, "product_save_durable_reason",
+               "durable_save_file_written") &&
+      std::filesystem::exists(saveRoot / "save_001.iggy3d.save") &&
       hasField(gameplayFields, "product_transition_last_action", "launch_gameplay") &&
       hasField(gameplayFields, "product_transition_status", "gameplay_active") &&
       hasField(gameplayFields, "product_transition_returned_to_gameplay", "true") &&
@@ -169,15 +199,30 @@ int main() {
       hasField(gameplayFields, "product_feedback_bridge_ready", "true") &&
       positiveIntegerField(gameplayFields, "product_feedback_bridge_line_count");
 
-  const bool passed = starterPassed && gameplayPassed;
+  const bool savedStarterPassed =
+      savedStarterExitCode == 0 && savedStarterReceiptValid &&
+      hasField(savedStarterFields, "frontend_screen", "starter") &&
+      hasField(savedStarterFields, "save_count", "1") &&
+      hasField(savedStarterFields, "compatible_save_count", "1") &&
+      hasField(savedStarterFields, "world_creation_status", "not_requested") &&
+      hasField(savedStarterFields, "product_save_status", "not_requested");
+
+  const bool passed = starterPassed && gameplayPassed && savedStarterPassed;
 
   std::cout << "smoke=product_menu_transition\n";
   std::cout << "starter_receipt_valid="
             << (starterReceiptValid ? "true" : "false") << "\n";
   std::cout << "gameplay_receipt_valid="
             << (gameplayReceiptValid ? "true" : "false") << "\n";
+  std::cout << "saved_starter_receipt_valid="
+            << (savedStarterReceiptValid ? "true" : "false") << "\n";
   std::cout << "starter_exit_code=" << starterExitCode << "\n";
   std::cout << "gameplay_exit_code=" << gameplayExitCode << "\n";
+  std::cout << "saved_starter_exit_code=" << savedStarterExitCode << "\n";
+  std::cout << "starter_passed=" << (starterPassed ? "true" : "false") << "\n";
+  std::cout << "gameplay_passed=" << (gameplayPassed ? "true" : "false") << "\n";
+  std::cout << "saved_starter_passed="
+            << (savedStarterPassed ? "true" : "false") << "\n";
   std::cout << "window_launch_count=0\n";
   std::cout << "result=" << (passed ? "pass" : (appBuilt ? "fail" : "skip")) << "\n";
   std::cout << "reason_code="

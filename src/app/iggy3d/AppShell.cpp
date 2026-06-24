@@ -21,6 +21,7 @@
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductRenderBridge.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
+#include "app/iggy3d/ProductWorldCreation.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
 #include "content/PackageLoader.hpp"
@@ -136,6 +137,21 @@ std::filesystem::path defaultProductPackagePath(const ProductAppOptions& options
   return std::filesystem::path{"fixtures"} / "demos" / "first_room" / "package.iggy3d.toml";
 }
 
+ProductWorldTemplate productWorldTemplateFromOptions(const ProductAppOptions& options) {
+  ProductWorldTemplate world =
+      options.devPackageOverride.empty()
+          ? defaultProductWorldTemplate()
+          : devOverrideProductWorldTemplate(options.devPackageOverride.generic_string(),
+                                            options.devScenario);
+  const PackageLoadResult package =
+      loadPackage({defaultProductPackagePath(options).generic_string()});
+  if (package.status == PackageLoadStatus::Ok) {
+    world.packageId = package.manifest.packageId;
+    world.scenarioId = package.scenario.scenarioId;
+  }
+  return world;
+}
+
 bool createProductSession(const ProductAppOptions& options,
                           std::optional<Session>& activeSession,
                           ProductAppWindowState& window) {
@@ -167,16 +183,101 @@ bool createProductSession(const ProductAppOptions& options,
   return true;
 }
 
+ProductWorldCreationResult prepareDefaultProductWorldCreation(
+    const ProductAppOptions& options,
+    const ProductWorldTemplate& world,
+    ProductAppWindowState& window) {
+  const WorldSetupDraft draft = makeDefaultWorldSetupDraft();
+  const WorldSetupRouteResult setup =
+      routeWorldSetupAction(draft, FrontendAction::CreateAndEnter);
+  if (!setup.accepted || !setup.createRequested) {
+    window.worldCreationStatus = std::string(setup.status);
+    window.worldCreationReasonCode = std::string(setup.reasonCode);
+    return {};
+  }
+
+  ProductWorldCreationResult creation = prepareProductWorldCreation(
+      makeProductWorldCreationInput(setup.createRequest,
+                                    world,
+                                    options.saveRoot,
+                                    "product_new_world_request_001",
+                                    "world_0001"));
+  window.worldCreationStatus = std::string(creation.status);
+  window.worldCreationReasonCode = std::string(creation.reasonCode);
+  window.worldCreationWorldId =
+      creation.request.worldId.empty() ? "none" : creation.request.worldId;
+  window.worldCreationInitialSaveRequested = creation.initialSavePlan.requested;
+  window.worldCreationInitialSaveWritten = creation.initialSaveWritten;
+  window.worldCreationInitialSaveId =
+      creation.initialSavePlan.saveId.empty() ? "none" : creation.initialSavePlan.saveId;
+  window.worldCreationRouteAfterCreate = std::string(creation.routeAfterCreate);
+  return creation;
+}
+
+void recordProductWorldInitialSaveResult(
+    const ProductWorldInitialSaveResult& initialSave,
+    ProductAppWindowState& window) {
+  window.worldCreationStatus = initialSave.status;
+  window.worldCreationReasonCode = initialSave.reasonCode;
+  window.worldCreationWorldId = initialSave.creation.request.worldId.empty()
+                                    ? "none"
+                                    : initialSave.creation.request.worldId;
+  window.worldCreationInitialSaveRequested =
+      initialSave.creation.initialSavePlan.requested;
+  window.worldCreationInitialSaveWritten = initialSave.creation.initialSaveWritten;
+  window.worldCreationInitialSaveId =
+      initialSave.creation.initialSavePlan.saveId.empty()
+          ? "none"
+          : initialSave.creation.initialSavePlan.saveId;
+  window.worldCreationRouteAfterCreate =
+      std::string(initialSave.creation.routeAfterCreate);
+  window.productSaveStatus = initialSave.saveWrite.status;
+  window.productSaveReasonCode = initialSave.saveWrite.reasonCode;
+  window.productSaveDurableReason = initialSave.saveWrite.durableReason;
+}
+
 void launchProductNewWorld(const ProductAppOptions& options,
                            FrontendState& frontend,
                            std::optional<Session>& activeSession,
                            ProductAppWindowState& window) {
   window.launchAction = "create_and_enter";
-  if (createProductSession(options, activeSession, window)) {
-    enterProductGameplayTransition(frontend, window, FrontendAction::CreateAndEnter);
-  } else {
+  const ProductWorldTemplate world = productWorldTemplateFromOptions(options);
+  if (!createProductSession(options, activeSession, window)) {
     frontend.status = "opening_menu_new_world_failed";
+    return;
   }
+
+  ProductWorldCreationResult creation =
+      prepareDefaultProductWorldCreation(options, world, window);
+  if (!creation.accepted) {
+    window.launchStatus = std::string(creation.reasonCode);
+    window.gameplayActive = false;
+    window.runtimeSessionCreated = false;
+    window.runtimeStateHash = 0;
+    activeSession.reset();
+    frontend.status = "opening_menu_new_world_failed";
+    return;
+  }
+
+  ProductWorldInitialSaveRequest initialSaveRequest;
+  initialSaveRequest.creation = creation;
+  initialSaveRequest.state = &activeSession->state();
+  initialSaveRequest.attemptToken = "attempt_001";
+  const ProductWorldInitialSaveResult initialSave =
+      writeProductWorldInitialSaveDurably(initialSaveRequest);
+  recordProductWorldInitialSaveResult(initialSave, window);
+  if (!initialSave.ok) {
+    window.launchStatus = initialSave.reasonCode;
+    window.gameplayActive = false;
+    window.runtimeSessionCreated = false;
+    window.runtimeStateHash = 0;
+    activeSession.reset();
+    frontend.status = "opening_menu_new_world_failed";
+    return;
+  }
+
+  window.launchStatus = initialSave.status;
+  enterProductGameplayTransition(frontend, window, FrontendAction::CreateAndEnter);
 }
 
 void applyGameplayProjectionMetrics(ProductAppWindowState& window,
@@ -1290,11 +1391,7 @@ int runProductApp(int argc, char** argv) {
   }
 
   const ProductAppOptions& options = parsed.options;
-  const ProductWorldTemplate world =
-      options.devPackageOverride.empty()
-          ? defaultProductWorldTemplate()
-          : devOverrideProductWorldTemplate(options.devPackageOverride.generic_string(),
-                                            options.devScenario);
+  const ProductWorldTemplate world = productWorldTemplateFromOptions(options);
   const ProductSaveBridgeResult saves =
       scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
   const FrontendSettings settings = productFrontendSettingsFromOptions(options);
