@@ -3,6 +3,8 @@
 #include <vector>
 #include <string_view>
 
+#include "app/frontend/FrontendRoute.hpp"
+
 namespace iggy3d {
 
 enum class FrontendInputBackend {
@@ -68,15 +70,27 @@ struct SettingsRowModel {
   std::string_view persistence = "runtime_only";
 };
 
+struct SettingsRouteContext {
+  MenuOwner parentOwner = MenuOwner::Starter;
+  FrontendSettingsTab selectedTab = FrontendSettingsTab::Input;
+  SettingsRowModel selectedRow;
+  bool dirty = false;
+};
+
 std::string_view frontendInputBackendName(FrontendInputBackend backend);
 std::string_view frontendSettingsTabName(FrontendSettingsTab tab);
 std::string_view frontendCameraModeName(FrontendCameraMode mode);
 std::string_view frontendRendererChoiceName(FrontendRendererChoice renderer);
 std::string_view frontendWindowModeName(FrontendWindowMode mode);
 const std::vector<FrontendSettingsTab>& settingsTabOrder();
+FrontendSettingsTab nextSettingsTab(FrontendSettingsTab current);
+FrontendSettingsTab previousSettingsTab(FrontendSettingsTab current);
 std::string_view defaultSettingsRowName(FrontendSettingsTab tab);
 SettingsRowModel defaultSettingsRowModel(FrontendSettingsTab tab,
                                          const FrontendSettings& settings);
+FrontendRouteResult routeSettingsAction(const SettingsRouteContext& context,
+                                        FrontendAction action);
+FrontendRouteResult routeSettingsBackToParent(MenuOwner parentOwner);
 FrontendSettings defaultFrontendSettings();
 void restoreFrontendSettingsDefaults(FrontendSettings& settings);
 void applyFrontendSettingsDraft(FrontendSettings& current,

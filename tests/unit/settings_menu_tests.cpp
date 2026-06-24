@@ -111,11 +111,166 @@ bool settingsRowsHaveUsefulState() {
                 "gameplay read only reason");
 }
 
+bool settingsTabNavigationClamps() {
+  return expect(iggy3d::previousSettingsTab(iggy3d::FrontendSettingsTab::Input) ==
+                    iggy3d::FrontendSettingsTab::Input,
+                "previous input clamps") &&
+         expect(iggy3d::nextSettingsTab(iggy3d::FrontendSettingsTab::Input) ==
+                    iggy3d::FrontendSettingsTab::Controls,
+                "next input controls") &&
+         expect(iggy3d::previousSettingsTab(iggy3d::FrontendSettingsTab::Controls) ==
+                    iggy3d::FrontendSettingsTab::Input,
+                "previous controls input") &&
+         expect(iggy3d::nextSettingsTab(iggy3d::FrontendSettingsTab::Developer) ==
+                    iggy3d::FrontendSettingsTab::Developer,
+                "next developer clamps") &&
+         expect(iggy3d::nextSettingsTab(iggy3d::FrontendSettingsTab::None) ==
+                    iggy3d::FrontendSettingsTab::Input,
+                "next none maps input") &&
+         expect(iggy3d::previousSettingsTab(iggy3d::FrontendSettingsTab::None) ==
+                    iggy3d::FrontendSettingsTab::Input,
+                "previous none maps input");
+}
+
+bool settingsApplyRoutesArePure() {
+  iggy3d::FrontendSettings settings = iggy3d::defaultFrontendSettings();
+  iggy3d::SettingsRouteContext context;
+  context.parentOwner = iggy3d::MenuOwner::Starter;
+  context.selectedTab = iggy3d::FrontendSettingsTab::Input;
+  context.selectedRow =
+      iggy3d::defaultSettingsRowModel(iggy3d::FrontendSettingsTab::Input, settings);
+  context.dirty = true;
+  settings.inputBackend = iggy3d::FrontendInputBackend::Keyboard;
+
+  const auto applied =
+      iggy3d::routeSettingsAction(context, iggy3d::FrontendAction::Apply);
+  bool ok = expect(applied.accepted, "dirty apply accepted") &&
+            expect(applied.inputOwner == iggy3d::MenuOwner::Settings,
+                   "dirty apply owner") &&
+            expect(applied.nextScreen == iggy3d::FrontendScreen::Settings,
+                   "dirty apply stays settings") &&
+            expect(applied.nextChildScreen == iggy3d::FrontendScreen::Starter,
+                   "dirty apply starter parent") &&
+            expect(applied.requestedTransition ==
+                       iggy3d::FrontendTransitionRequest::None,
+                   "dirty apply no transition") &&
+            expect(!applied.closeRequested, "dirty apply no close") &&
+            expect(applied.gameplayInputSuppressed, "dirty apply suppresses gameplay") &&
+            expect(applied.status == "settings_apply_requested",
+                   "dirty apply status") &&
+            expect(applied.selectedAction == iggy3d::FrontendAction::Apply,
+                   "dirty apply action") &&
+            expect(settings.inputBackend == iggy3d::FrontendInputBackend::Keyboard,
+                   "dirty apply helper does not mutate settings");
+
+  context.dirty = false;
+  const auto clean =
+      iggy3d::routeSettingsAction(context, iggy3d::FrontendAction::Apply);
+  ok = expect(!clean.accepted, "clean apply ignored") &&
+       expect(clean.status == "settings_no_changes", "clean apply status") &&
+       expect(clean.requestedTransition == iggy3d::FrontendTransitionRequest::None,
+              "clean apply transition") && ok;
+
+  context.selectedTab = iggy3d::FrontendSettingsTab::Audio;
+  context.selectedRow =
+      iggy3d::defaultSettingsRowModel(iggy3d::FrontendSettingsTab::Audio, settings);
+  context.dirty = true;
+  const auto disabled =
+      iggy3d::routeSettingsAction(context, iggy3d::FrontendAction::Apply);
+  ok = expect(!disabled.accepted, "disabled apply ignored") &&
+       expect(disabled.status == "audio_unavailable", "disabled apply status") &&
+       expect(disabled.receiptReason == "audio_unavailable",
+              "disabled apply reason") && ok;
+
+  return ok;
+}
+
+bool settingsRestoreAndBackRoutesArePure() {
+  const iggy3d::FrontendSettings settings = iggy3d::defaultFrontendSettings();
+  iggy3d::SettingsRouteContext context;
+  context.parentOwner = iggy3d::MenuOwner::Pause;
+  context.selectedTab = iggy3d::FrontendSettingsTab::Controls;
+  context.selectedRow =
+      iggy3d::defaultSettingsRowModel(iggy3d::FrontendSettingsTab::Controls, settings);
+  context.dirty = false;
+
+  const auto restored =
+      iggy3d::routeSettingsAction(context, iggy3d::FrontendAction::RestoreDefaults);
+  bool ok = expect(restored.accepted, "restore accepted") &&
+            expect(restored.nextScreen == iggy3d::FrontendScreen::Settings,
+                   "restore stays settings") &&
+            expect(restored.nextChildScreen == iggy3d::FrontendScreen::Pause,
+                   "restore pause parent") &&
+            expect(restored.status == "settings_restore_defaults_requested",
+                   "restore status") &&
+            expect(restored.selectedAction == iggy3d::FrontendAction::RestoreDefaults,
+                   "restore action");
+
+  const auto backPause =
+      iggy3d::routeSettingsAction(context, iggy3d::FrontendAction::Back);
+  ok = expect(backPause.accepted, "back pause accepted") &&
+       expect(backPause.inputOwner == iggy3d::MenuOwner::Settings,
+              "back pause settings owner") &&
+       expect(backPause.nextScreen == iggy3d::FrontendScreen::Pause,
+              "back pause next screen") &&
+       expect(backPause.nextChildScreen == iggy3d::FrontendScreen::Gameplay,
+              "back pause child sentinel") &&
+       expect(backPause.gameplayInputSuppressed, "back pause suppresses gameplay") &&
+       expect(backPause.status == "settings_back_requested", "back pause status") &&
+       expect(backPause.selectedAction == iggy3d::FrontendAction::Back,
+              "back pause action") && ok;
+
+  const auto backStarter = iggy3d::routeSettingsBackToParent(iggy3d::MenuOwner::Starter);
+  ok = expect(backStarter.accepted, "back starter accepted") &&
+       expect(backStarter.nextScreen == iggy3d::FrontendScreen::Starter,
+              "back starter screen") &&
+       expect(backStarter.nextChildScreen == iggy3d::FrontendScreen::Gameplay,
+              "back starter child sentinel") &&
+       expect(backStarter.gameplayInputSuppressed,
+              "back starter suppresses gameplay") && ok;
+
+  return ok;
+}
+
+bool invalidAndUnsupportedSettingsRoutesAreIgnored() {
+  const iggy3d::FrontendSettings settings = iggy3d::defaultFrontendSettings();
+  iggy3d::SettingsRouteContext context;
+  context.parentOwner = iggy3d::MenuOwner::Gameplay;
+  context.selectedRow =
+      iggy3d::defaultSettingsRowModel(iggy3d::FrontendSettingsTab::Input, settings);
+  context.dirty = true;
+
+  const auto invalid =
+      iggy3d::routeSettingsAction(context, iggy3d::FrontendAction::Apply);
+  bool ok = expect(!invalid.accepted, "invalid parent ignored") &&
+            expect(invalid.inputOwner == iggy3d::MenuOwner::Settings,
+                   "invalid parent owner") &&
+            expect(invalid.status == "settings_invalid_parent",
+                   "invalid parent status") &&
+            expect(invalid.gameplayInputSuppressed,
+                   "invalid parent suppresses gameplay");
+
+  context.parentOwner = iggy3d::MenuOwner::Starter;
+  const auto unsupported =
+      iggy3d::routeSettingsAction(context, iggy3d::FrontendAction::Save);
+  ok = expect(!unsupported.accepted, "unsupported ignored") &&
+       expect(unsupported.status == "not_settings_action", "unsupported status") &&
+       expect(unsupported.receiptReason == "not_settings_action",
+              "unsupported reason") &&
+       expect(unsupported.gameplayInputSuppressed,
+              "unsupported suppresses gameplay") && ok;
+
+  return ok;
+}
+
 }  // namespace
 
 int main() {
   const bool ok = settingsTabOrderIsExact() && settingsNamesAreStable() &&
                   defaultsArePacketDefaults() && restoreAndApplyStayFrontendOnly() &&
-                  settingsRowsHaveUsefulState();
+                  settingsRowsHaveUsefulState() && settingsTabNavigationClamps() &&
+                  settingsApplyRoutesArePure() &&
+                  settingsRestoreAndBackRoutesArePure() &&
+                  invalidAndUnsupportedSettingsRoutesAreIgnored();
   return ok ? 0 : 1;
 }

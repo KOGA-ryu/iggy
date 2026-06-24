@@ -1,6 +1,69 @@
 #include "app/frontend/SettingsMenu.hpp"
 
+#include <algorithm>
+
 namespace iggy3d {
+namespace {
+
+FrontendScreen parentScreenForSettings(MenuOwner parentOwner) {
+  if (parentOwner == MenuOwner::Pause) {
+    return FrontendScreen::Pause;
+  }
+  return FrontendScreen::Starter;
+}
+
+FrontendScreen settingsChildForParent(MenuOwner parentOwner) {
+  if (parentOwner == MenuOwner::Pause) {
+    return FrontendScreen::Pause;
+  }
+  return FrontendScreen::Starter;
+}
+
+bool validSettingsParent(MenuOwner parentOwner) {
+  return parentOwner == MenuOwner::Starter || parentOwner == MenuOwner::Pause;
+}
+
+FrontendRouteResult invalidSettingsParentRoute(FrontendAction action) {
+  FrontendRouteResult result = makeIgnoredFrontendRouteResult(
+      MenuOwner::Settings,
+      FrontendScreen::Settings,
+      FrontendScreen::Gameplay,
+      action);
+  result.gameplayInputSuppressed = true;
+  result.status = "settings_invalid_parent";
+  result.receiptReason = "settings_invalid_parent";
+  return result;
+}
+
+FrontendRouteResult ignoredSettingsRoute(const SettingsRouteContext& context,
+                                         FrontendAction action,
+                                         std::string_view status) {
+  FrontendRouteResult result = makeIgnoredFrontendRouteResult(
+      MenuOwner::Settings,
+      FrontendScreen::Settings,
+      settingsChildForParent(context.parentOwner),
+      action);
+  result.gameplayInputSuppressed = true;
+  result.status = status;
+  result.receiptReason = status;
+  return result;
+}
+
+FrontendRouteResult acceptedSettingsStayRoute(const SettingsRouteContext& context,
+                                              FrontendAction action,
+                                              std::string_view status) {
+  return makeAcceptedFrontendRouteResult(MenuOwner::Settings,
+                                         FrontendScreen::Settings,
+                                         settingsChildForParent(context.parentOwner),
+                                         FrontendTransitionRequest::None,
+                                         false,
+                                         true,
+                                         status,
+                                         status,
+                                         action);
+}
+
+}  // namespace
 
 std::string_view frontendInputBackendName(FrontendInputBackend backend) {
   switch (backend) {
@@ -88,6 +151,25 @@ const std::vector<FrontendSettingsTab>& settingsTabOrder() {
   return tabs;
 }
 
+FrontendSettingsTab nextSettingsTab(FrontendSettingsTab current) {
+  const auto& tabs = settingsTabOrder();
+  const auto currentIt = std::find(tabs.begin(), tabs.end(), current);
+  if (currentIt == tabs.end()) {
+    return FrontendSettingsTab::Input;
+  }
+  const auto nextIt = currentIt + 1;
+  return nextIt == tabs.end() ? tabs.back() : *nextIt;
+}
+
+FrontendSettingsTab previousSettingsTab(FrontendSettingsTab current) {
+  const auto& tabs = settingsTabOrder();
+  const auto currentIt = std::find(tabs.begin(), tabs.end(), current);
+  if (currentIt == tabs.end() || currentIt == tabs.begin()) {
+    return FrontendSettingsTab::Input;
+  }
+  return *(currentIt - 1);
+}
+
 std::string_view defaultSettingsRowName(FrontendSettingsTab tab) {
   switch (tab) {
     case FrontendSettingsTab::Input:
@@ -147,6 +229,62 @@ SettingsRowModel defaultSettingsRowModel(FrontendSettingsTab tab,
       break;
   }
   return model;
+}
+
+FrontendRouteResult routeSettingsBackToParent(MenuOwner parentOwner) {
+  if (!validSettingsParent(parentOwner)) {
+    return invalidSettingsParentRoute(FrontendAction::Back);
+  }
+  return makeAcceptedFrontendRouteResult(MenuOwner::Settings,
+                                         parentScreenForSettings(parentOwner),
+                                         FrontendScreen::Gameplay,
+                                         FrontendTransitionRequest::None,
+                                         false,
+                                         true,
+                                         "settings_back_requested",
+                                         "settings_back_requested",
+                                         FrontendAction::Back);
+}
+
+FrontendRouteResult routeSettingsAction(const SettingsRouteContext& context,
+                                        FrontendAction action) {
+  if (!validSettingsParent(context.parentOwner)) {
+    return invalidSettingsParentRoute(action);
+  }
+
+  switch (action) {
+    case FrontendAction::Apply:
+      if (!context.selectedRow.enabled) {
+        return ignoredSettingsRoute(context, action, context.selectedRow.disabledReason);
+      }
+      if (!context.dirty) {
+        return ignoredSettingsRoute(context, action, "settings_no_changes");
+      }
+      return acceptedSettingsStayRoute(context, action, "settings_apply_requested");
+    case FrontendAction::RestoreDefaults:
+      return acceptedSettingsStayRoute(context, action,
+                                       "settings_restore_defaults_requested");
+    case FrontendAction::Back:
+      return routeSettingsBackToParent(context.parentOwner);
+    case FrontendAction::None:
+    case FrontendAction::Continue:
+    case FrontendAction::NewWorld:
+    case FrontendAction::LoadSave:
+    case FrontendAction::Settings:
+    case FrontendAction::DevTools:
+    case FrontendAction::Exit:
+    case FrontendAction::CreateAndEnter:
+    case FrontendAction::Load:
+    case FrontendAction::Delete:
+    case FrontendAction::Resume:
+    case FrontendAction::Save:
+    case FrontendAction::SaveAndExit:
+    case FrontendAction::ReturnToTitle:
+    case FrontendAction::ExitGame:
+      break;
+  }
+
+  return ignoredSettingsRoute(context, action, "not_settings_action");
 }
 
 FrontendSettings defaultFrontendSettings() {
