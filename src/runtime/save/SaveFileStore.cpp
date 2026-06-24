@@ -92,6 +92,17 @@ std::filesystem::path saveSnapshotPathForId(const std::filesystem::path& root,
   return root / (std::string(id) + ".snapshot.png");
 }
 
+std::filesystem::path deletedSaveFilePathForId(const std::filesystem::path& root,
+                                               std::string_view id) {
+  return root / "deleted" / (std::string(id) + std::string(kSaveFileExtension));
+}
+
+std::filesystem::path deletedSaveSnapshotPathForId(
+    const std::filesystem::path& root,
+    std::string_view id) {
+  return root / "deleted" / (std::string(id) + ".snapshot.png");
+}
+
 SaveFileDurableWritePlan planDurableSaveFileWrite(
     const std::filesystem::path& root,
     std::string_view id,
@@ -259,6 +270,44 @@ SaveFileFinalCommitResult commitDurableSaveTempFile(
   result.packageId = decoded.envelope.metadata.packageId;
   result.scenarioId = decoded.envelope.metadata.scenarioId;
   return result;
+}
+
+SaveFileSoftDeletePlan planSoftDeleteSaveFile(const std::filesystem::path& root,
+                                              std::string_view id) {
+  SaveFileSoftDeletePlan plan;
+  if (!isValidSaveFileId(id)) {
+    plan.reason = "soft_delete_invalid_id";
+    return plan;
+  }
+
+  plan.ok = true;
+  plan.reason = "soft_delete_plan_ready";
+  plan.paths.root = root;
+  plan.paths.id = std::string(id);
+  plan.paths.activeSavePath = saveFilePathForId(root, id);
+  plan.paths.activeSnapshotPath = saveSnapshotPathForId(root, id);
+  plan.paths.deletedSavePath = deletedSaveFilePathForId(root, id);
+  plan.paths.deletedSnapshotPath = deletedSaveSnapshotPathForId(root, id);
+  return plan;
+}
+
+SaveFileRecoverPlan planRecoverDeletedSaveFile(const std::filesystem::path& root,
+                                               std::string_view id) {
+  SaveFileRecoverPlan plan;
+  if (!isValidSaveFileId(id)) {
+    plan.reason = "recover_save_invalid_id";
+    return plan;
+  }
+
+  plan.ok = true;
+  plan.reason = "recover_save_plan_ready";
+  plan.paths.root = root;
+  plan.paths.id = std::string(id);
+  plan.paths.activeSavePath = saveFilePathForId(root, id);
+  plan.paths.activeSnapshotPath = saveSnapshotPathForId(root, id);
+  plan.paths.deletedSavePath = deletedSaveFilePathForId(root, id);
+  plan.paths.deletedSnapshotPath = deletedSaveSnapshotPathForId(root, id);
+  return plan;
 }
 
 std::vector<SaveFileRecord> listSaveFiles(const std::filesystem::path& root) {

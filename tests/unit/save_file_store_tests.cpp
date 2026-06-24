@@ -68,10 +68,88 @@ bool saveFilePathHelpersAreDeterministic() {
       iggy3d::saveFilePathForId(root, "save_001");
   const std::filesystem::path snapshotPath =
       iggy3d::saveSnapshotPathForId(root, "save_001");
+  const std::filesystem::path deletedSavePath =
+      iggy3d::deletedSaveFilePathForId(root, "save_001");
+  const std::filesystem::path deletedSnapshotPath =
+      iggy3d::deletedSaveSnapshotPathForId(root, "save_001");
   return expect(finalPath == root / "save_001.iggy3d.save",
                 "final save path") &&
          expect(snapshotPath == root / "save_001.snapshot.png",
-                "snapshot path");
+                "snapshot path") &&
+         expect(deletedSavePath == root / "deleted" / "save_001.iggy3d.save",
+                "deleted save path") &&
+         expect(deletedSnapshotPath == root / "deleted" / "save_001.snapshot.png",
+                "deleted snapshot path");
+}
+
+bool softDeleteAndRecoverPlansAreDeterministic() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::SaveFileSoftDeletePlan softDelete =
+      iggy3d::planSoftDeleteSaveFile(root, "save_001");
+  const iggy3d::SaveFileRecoverPlan recover =
+      iggy3d::planRecoverDeletedSaveFile(root, "save_001");
+  return expect(softDelete.ok, "soft delete plan ok") &&
+         expect(softDelete.reason == "soft_delete_plan_ready",
+                "soft delete plan reason") &&
+         expect(softDelete.paths.root == root, "soft delete root") &&
+         expect(softDelete.paths.id == "save_001", "soft delete id") &&
+         expect(softDelete.paths.activeSavePath ==
+                    root / "save_001.iggy3d.save",
+                "soft delete active save") &&
+         expect(softDelete.paths.activeSnapshotPath ==
+                    root / "save_001.snapshot.png",
+                "soft delete active snapshot") &&
+         expect(softDelete.paths.deletedSavePath ==
+                    root / "deleted" / "save_001.iggy3d.save",
+                "soft delete deleted save") &&
+         expect(softDelete.paths.deletedSnapshotPath ==
+                    root / "deleted" / "save_001.snapshot.png",
+                "soft delete deleted snapshot") &&
+         expect(recover.ok, "recover plan ok") &&
+         expect(recover.reason == "recover_save_plan_ready",
+                "recover plan reason") &&
+         expect(recover.paths.activeSavePath == softDelete.paths.activeSavePath,
+                "recover active save") &&
+         expect(recover.paths.activeSnapshotPath ==
+                    softDelete.paths.activeSnapshotPath,
+                "recover active snapshot") &&
+         expect(recover.paths.deletedSavePath == softDelete.paths.deletedSavePath,
+                "recover deleted save") &&
+         expect(recover.paths.deletedSnapshotPath ==
+                    softDelete.paths.deletedSnapshotPath,
+                "recover deleted snapshot");
+}
+
+bool softDeleteAndRecoverPlansRejectInvalidIds() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::SaveFileSoftDeletePlan softDelete =
+      iggy3d::planSoftDeleteSaveFile(root, "save/001");
+  const iggy3d::SaveFileRecoverPlan recover =
+      iggy3d::planRecoverDeletedSaveFile(root, "save 001");
+  return expect(!softDelete.ok, "soft delete invalid id rejected") &&
+         expect(softDelete.reason == "soft_delete_invalid_id",
+                "soft delete invalid reason") &&
+         expect(softDelete.paths.activeSavePath.empty(),
+                "soft delete invalid no active path") &&
+         expect(!recover.ok, "recover invalid id rejected") &&
+         expect(recover.reason == "recover_save_invalid_id",
+                "recover invalid reason") &&
+         expect(recover.paths.deletedSavePath.empty(),
+                "recover invalid no deleted path");
+}
+
+bool deletedSaveDirectoryIsNotListed() {
+  const std::filesystem::path root = testRoot();
+  const std::filesystem::path deletedDir = root / "deleted";
+  std::filesystem::create_directories(deletedDir);
+  {
+    std::ofstream deleted(deletedDir / "save_001.iggy3d.save");
+    deleted << "not a listed active save";
+  }
+  const std::vector<iggy3d::SaveFileRecord> listed = iggy3d::listSaveFiles(root);
+  return expect(std::filesystem::exists(deletedDir / "save_001.iggy3d.save"),
+                "deleted save exists") &&
+         expect(listed.empty(), "deleted save not listed");
 }
 
 bool durableWritePlanBuildsSameDirectoryPaths() {
@@ -698,6 +776,9 @@ bool authoredRoomSectionIsWrittenToSaveFile() {
 int main() {
   const bool ok = saveFileIdValidationMatchesStorePolicy() &&
                   saveFilePathHelpersAreDeterministic() &&
+                  softDeleteAndRecoverPlansAreDeterministic() &&
+                  softDeleteAndRecoverPlansRejectInvalidIds() &&
+                  deletedSaveDirectoryIsNotListed() &&
                   durableWritePlanBuildsSameDirectoryPaths() &&
                   durableWritePlanRejectsInvalidInputs() &&
                   durableTempPathIsNotListedAsSave() &&

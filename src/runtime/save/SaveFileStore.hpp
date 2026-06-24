@@ -140,6 +140,27 @@ struct SaveFileFinalCommitResult {
   bool finalValidated = false;
 };
 
+struct SaveFileSoftDeletePaths {
+  std::filesystem::path root;
+  std::string id;
+  std::filesystem::path activeSavePath;
+  std::filesystem::path activeSnapshotPath;
+  std::filesystem::path deletedSavePath;
+  std::filesystem::path deletedSnapshotPath;
+};
+
+struct SaveFileSoftDeletePlan {
+  bool ok = false;
+  std::string reason = "not_requested";
+  SaveFileSoftDeletePaths paths;
+};
+
+struct SaveFileRecoverPlan {
+  bool ok = false;
+  std::string reason = "not_requested";
+  SaveFileSoftDeletePaths paths;
+};
+
 bool isValidSaveFileId(std::string_view id);
 std::filesystem::path saveFilePathForId(const std::filesystem::path& root,
                                         std::string_view id);
@@ -148,6 +169,11 @@ std::filesystem::path saveFileTempPathForId(const std::filesystem::path& root,
                                             std::string_view attemptToken);
 std::filesystem::path saveSnapshotPathForId(const std::filesystem::path& root,
                                             std::string_view id);
+std::filesystem::path deletedSaveFilePathForId(const std::filesystem::path& root,
+                                               std::string_view id);
+std::filesystem::path deletedSaveSnapshotPathForId(
+    const std::filesystem::path& root,
+    std::string_view id);
 SaveFileDurableWritePlan planDurableSaveFileWrite(
     const std::filesystem::path& root,
     std::string_view id,
@@ -158,6 +184,10 @@ SaveFileTempValidationResult validateDurableSaveTempFile(
     const SaveFileTempWriteResult& tempWrite);
 SaveFileFinalCommitResult commitDurableSaveTempFile(
     const SaveFileTempValidationResult& validation);
+SaveFileSoftDeletePlan planSoftDeleteSaveFile(const std::filesystem::path& root,
+                                              std::string_view id);
+SaveFileRecoverPlan planRecoverDeletedSaveFile(const std::filesystem::path& root,
+                                               std::string_view id);
 
 std::vector<SaveFileRecord> listSaveFiles(const std::filesystem::path& root);
 SaveFileWriteResult writeSessionSaveFile(const SaveFileWriteRequest& request);
