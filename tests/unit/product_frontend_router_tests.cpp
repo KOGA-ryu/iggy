@@ -1,5 +1,6 @@
 #include "app/iggy3d/ProductFrontendRouter.hpp"
 
+#include "app/frontend/SettingsMenu.hpp"
 #include "app/frontend/StarterScreen.hpp"
 
 #include <iostream>
@@ -28,6 +29,28 @@ iggy3d::ProductFrontendRouteContext starterContextFor(
   iggy3d::ProductFrontendRouteContext context =
       contextFor(iggy3d::FrontendScreen::Starter, child);
   context.starterModel = &model;
+  return context;
+}
+
+iggy3d::SettingsRouteContext settingsRouteContextFor(
+    iggy3d::MenuOwner parentOwner,
+    iggy3d::FrontendSettingsTab selectedTab,
+    bool dirty) {
+  const auto settings = iggy3d::defaultFrontendSettings();
+  iggy3d::SettingsRouteContext context;
+  context.parentOwner = parentOwner;
+  context.selectedTab = selectedTab;
+  context.selectedRow = iggy3d::defaultSettingsRowModel(selectedTab, settings);
+  context.dirty = dirty;
+  return context;
+}
+
+iggy3d::ProductFrontendRouteContext settingsContextFor(
+    iggy3d::FrontendScreen screen,
+    iggy3d::FrontendScreen child,
+    const iggy3d::SettingsRouteContext& settings) {
+  iggy3d::ProductFrontendRouteContext context = contextFor(screen, child);
+  context.settingsContext = &settings;
   return context;
 }
 
@@ -324,22 +347,173 @@ bool starterChildNonBackIsUnavailable() {
                 "child non-back status");
 }
 
-bool settingsDelegationIsDeferred() {
+bool starterSettingsApplyDelegatesToSettingsHelper() {
+  const auto settings = settingsRouteContextFor(
+      iggy3d::MenuOwner::Starter,
+      iggy3d::FrontendSettingsTab::Input,
+      true);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      settingsContextFor(iggy3d::FrontendScreen::Starter,
+                         iggy3d::FrontendScreen::Settings,
+                         settings),
+      iggy3d::FrontendAction::Apply);
+
+  return expect(frame.routed, "starter settings apply routed") &&
+         expect(frame.route.accepted, "starter settings apply accepted") &&
+         expect(frame.owner.inputOwner == iggy3d::MenuOwner::Settings,
+                "settings owner preserved") &&
+         expect(frame.owner.activeSurface == iggy3d::ProductFrontendSurface::Settings,
+                "settings surface preserved") &&
+         expect(frame.route.nextScreen == iggy3d::FrontendScreen::Settings,
+                "starter settings apply stays settings") &&
+         expect(frame.route.nextChildScreen == iggy3d::FrontendScreen::Starter,
+                "starter settings apply child") &&
+         expect(frame.route.status == "settings_apply_requested",
+                "starter settings apply status") &&
+         expect(frame.route.gameplayInputSuppressed,
+                "starter settings apply suppresses gameplay");
+}
+
+bool starterSettingsBackReturnsToStarter() {
+  const auto settings = settingsRouteContextFor(
+      iggy3d::MenuOwner::Starter,
+      iggy3d::FrontendSettingsTab::Input,
+      false);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      settingsContextFor(iggy3d::FrontendScreen::Starter,
+                         iggy3d::FrontendScreen::Settings,
+                         settings),
+      iggy3d::FrontendAction::Back);
+
+  return expect(frame.routed, "starter settings back routed") &&
+         expect(frame.route.accepted, "starter settings back accepted") &&
+         expect(frame.route.nextScreen == iggy3d::FrontendScreen::Starter,
+                "starter settings back screen") &&
+         expect(frame.route.nextChildScreen == iggy3d::FrontendScreen::Gameplay,
+                "starter settings back child") &&
+         expect(frame.route.status == "settings_back_requested",
+                "starter settings back status");
+}
+
+bool pauseSettingsBackReturnsToPause() {
+  const auto settings = settingsRouteContextFor(
+      iggy3d::MenuOwner::Pause,
+      iggy3d::FrontendSettingsTab::Input,
+      false);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      settingsContextFor(iggy3d::FrontendScreen::Settings,
+                         iggy3d::FrontendScreen::Pause,
+                         settings),
+      iggy3d::FrontendAction::Back);
+
+  return expect(frame.routed, "pause settings back routed") &&
+         expect(frame.route.accepted, "pause settings back accepted") &&
+         expect(frame.owner.parentOwner == iggy3d::MenuOwner::Pause,
+                "pause settings owner parent") &&
+         expect(frame.route.nextScreen == iggy3d::FrontendScreen::Pause,
+                "pause settings back screen") &&
+         expect(frame.route.nextChildScreen == iggy3d::FrontendScreen::Gameplay,
+                "pause settings back child") &&
+         expect(frame.route.status == "settings_back_requested",
+                "pause settings back status");
+}
+
+bool settingsDisabledRowDelegatesReason() {
+  const auto settings = settingsRouteContextFor(
+      iggy3d::MenuOwner::Starter,
+      iggy3d::FrontendSettingsTab::Audio,
+      true);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      settingsContextFor(iggy3d::FrontendScreen::Starter,
+                         iggy3d::FrontendScreen::Settings,
+                         settings),
+      iggy3d::FrontendAction::Apply);
+
+  return expect(frame.routed, "disabled row routed") &&
+         expect(!frame.route.accepted, "disabled row not accepted") &&
+         expect(frame.route.status == "audio_unavailable",
+                "disabled row reason") &&
+         expect(frame.route.receiptReason == "audio_unavailable",
+                "disabled row receipt reason");
+}
+
+bool settingsCleanApplyReportsNoChanges() {
+  const auto settings = settingsRouteContextFor(
+      iggy3d::MenuOwner::Starter,
+      iggy3d::FrontendSettingsTab::Input,
+      false);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      settingsContextFor(iggy3d::FrontendScreen::Starter,
+                         iggy3d::FrontendScreen::Settings,
+                         settings),
+      iggy3d::FrontendAction::Apply);
+
+  return expect(frame.routed, "clean apply routed") &&
+         expect(!frame.route.accepted, "clean apply not accepted") &&
+         expect(frame.route.status == "settings_no_changes",
+                "clean apply status");
+}
+
+bool missingSettingsContextIsUnavailable() {
   const auto frame = iggy3d::routeProductFrontendAction(
       contextFor(iggy3d::FrontendScreen::Starter,
                  iggy3d::FrontendScreen::Settings),
       iggy3d::FrontendAction::Apply);
 
-  return expect(!frame.routed, "settings not routed") &&
-         expect(!frame.route.accepted, "settings not accepted") &&
-         expect(frame.owner.inputOwner == iggy3d::MenuOwner::Settings,
-                "settings owner preserved") &&
-         expect(frame.owner.activeSurface == iggy3d::ProductFrontendSurface::Settings,
-                "settings surface preserved") &&
-         expect(frame.route.status == "product_frontend_route_unavailable",
-                "settings deferred status") &&
+  return expect(!frame.routed, "missing settings not routed") &&
+         expect(!frame.route.accepted, "missing settings not accepted") &&
+         expect(frame.route.status == "settings_model_unavailable",
+                "missing settings status") &&
+         expect(frame.route.receiptReason == "settings_model_unavailable",
+                "missing settings receipt") &&
          expect(frame.route.gameplayInputSuppressed,
-                "settings suppresses gameplay");
+                "missing settings suppresses gameplay");
+}
+
+bool settingsInvalidParentDelegatesReason() {
+  const auto settings = settingsRouteContextFor(
+      iggy3d::MenuOwner::None,
+      iggy3d::FrontendSettingsTab::Input,
+      true);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      settingsContextFor(iggy3d::FrontendScreen::Starter,
+                         iggy3d::FrontendScreen::Settings,
+                         settings),
+      iggy3d::FrontendAction::Apply);
+
+  return expect(frame.routed, "invalid settings parent routed") &&
+         expect(!frame.route.accepted, "invalid settings parent not accepted") &&
+         expect(frame.route.status == "settings_invalid_parent",
+                "invalid settings parent status");
+}
+
+bool pauseDevAndGameplayRemainDeferred() {
+  auto gameplay = contextFor(iggy3d::FrontendScreen::Gameplay,
+                             iggy3d::FrontendScreen::Gameplay);
+  gameplay.gameplayActive = true;
+  gameplay.hasActiveSession = true;
+
+  const auto pause = iggy3d::routeProductFrontendAction(
+      contextFor(iggy3d::FrontendScreen::Pause,
+                 iggy3d::FrontendScreen::Gameplay),
+      iggy3d::FrontendAction::Resume);
+  const auto dev = iggy3d::routeProductFrontendAction(
+      contextFor(iggy3d::FrontendScreen::DevOverlay,
+                 iggy3d::FrontendScreen::Gameplay),
+      iggy3d::FrontendAction::Apply);
+  const auto game = iggy3d::routeProductFrontendAction(
+      gameplay,
+      iggy3d::FrontendAction::Apply);
+
+  return expect(!pause.routed, "pause deferred") &&
+         expect(pause.route.status == "product_frontend_route_unavailable",
+                "pause deferred status") &&
+         expect(!dev.routed, "dev deferred") &&
+         expect(dev.route.status == "product_frontend_route_unavailable",
+                "dev deferred status") &&
+         expect(!game.routed, "gameplay deferred") &&
+         expect(game.route.status == "product_frontend_route_unavailable",
+                "gameplay deferred status");
 }
 
 }  // namespace
@@ -354,6 +528,14 @@ int main() {
                   starterRootDelegatesSettingsAndDevTools() &&
                   missingStarterModelIsUnavailable() &&
                   starterChildBackDelegatesToStarterHelper() &&
-                  starterChildNonBackIsUnavailable() && settingsDelegationIsDeferred();
+                  starterChildNonBackIsUnavailable() &&
+                  starterSettingsApplyDelegatesToSettingsHelper() &&
+                  starterSettingsBackReturnsToStarter() &&
+                  pauseSettingsBackReturnsToPause() &&
+                  settingsDisabledRowDelegatesReason() &&
+                  settingsCleanApplyReportsNoChanges() &&
+                  missingSettingsContextIsUnavailable() &&
+                  settingsInvalidParentDelegatesReason() &&
+                  pauseDevAndGameplayRemainDeferred();
   return ok ? 0 : 1;
 }

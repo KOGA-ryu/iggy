@@ -10,6 +10,7 @@
 namespace iggy3d {
 
 struct StarterScreenModel;
+struct SettingsRouteContext;
 
 enum class ProductFrontendSurface : std::uint8_t {
   None,
@@ -30,6 +31,7 @@ struct ProductFrontendRouteContext {
   bool gameplayActive = false;
   bool hasActiveSession = false;
   const StarterScreenModel* starterModel = nullptr;
+  const SettingsRouteContext* settingsContext = nullptr;
 };
 
 struct ProductFrontendOwnerDecision {

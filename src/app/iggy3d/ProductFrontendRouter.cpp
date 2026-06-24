@@ -1,5 +1,6 @@
 #include "app/iggy3d/ProductFrontendRouter.hpp"
 
+#include "app/frontend/SettingsMenu.hpp"
 #include "app/frontend/StarterScreen.hpp"
 
 namespace iggy3d {
@@ -210,6 +211,23 @@ ProductFrontendRouteFrame routeProductFrontendAction(
                                    frame.owner,
                                    action,
                                    "product_frontend_child_route_unavailable");
+    return frame;
+  }
+
+  if (frame.owner.activeSurface == ProductFrontendSurface::Settings &&
+      frame.owner.inputOwner == MenuOwner::Settings) {
+    if (context.settingsContext == nullptr) {
+      frame.route =
+          unavailableRoute(context, frame.owner, action, "settings_model_unavailable");
+      frame.route.gameplayInputSuppressed = true;
+      return frame;
+    }
+    if (action == FrontendAction::Back) {
+      frame.route = routeSettingsBackToParent(context.settingsContext->parentOwner);
+    } else {
+      frame.route = routeSettingsAction(*context.settingsContext, action);
+    }
+    frame.routed = true;
     return frame;
   }
 
