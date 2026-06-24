@@ -45,6 +45,7 @@ Each plan document must define:
 - Dev tools contract
 - Vertical faded selector contract
 - Save snapshot contract
+- Save load UX contract
 - Selection and cursor contract
 - In-game pause menu contract
 - Product frontend router contract
@@ -69,6 +70,10 @@ Each plan document must define:
 - `save_snapshot_contract_v1.md`
   - save sidecar snapshot ownership, pause-save capture rules, selector
     fallback behavior, and no-window proof fields;
+- `save_load_ux_contract_v0_1.md`
+  - runtime save baseline, product save identity, world grouping, Continue
+    policy, atomic write requirements, soft delete/recovery, load failure,
+    autosave rules, and key-value receipt fields;
 - `selection_cursor_contract_v1.md`
   - crosshair versus mouse cursor selection authority, cursor state ownership,
     hit-test routing, and dev tools inspector wiring.
