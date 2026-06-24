@@ -47,8 +47,12 @@ Current capabilities:
 - encoded runtime save envelope;
 - runtime save/load round trip into `Session`;
 - compatibility checks for package, scenario, schema, and runtime version;
-- save file list/read/write/delete;
+- save file list/read/write/delete primitives;
+- durable save path planning, temp write/readback, temp decode validation, final
+  commit/final validation, and an explicit durable session-save writer;
+- soft-delete and recovery path/result/execute helpers;
 - authored room section persistence;
+- product save bridge scan/write/load/soft-delete/recover adapters;
 - frontend save slot previews;
 - frontend save browser model;
 - sidecar snapshot path detection;
@@ -57,15 +61,12 @@ Current capabilities:
 
 Current limitations to solve:
 
-- save writes use direct final-path output, not temp/validate/atomic rename;
-- delete is hard `filesystem::remove`, not soft delete;
 - save listing scans a flat folder, not world groups;
 - save index/catalog cache does not exist;
 - product `world_id` and user-facing `save_id` identity are not modeled yet;
 - manual/autosave/quicksave save types are not modeled yet;
 - `user_title` and generated `auto_title` are not modeled yet;
 - UTC timestamps are not stored as product save metadata yet;
-- Continue newest-valid-save policy is not modeled yet;
 - snapshot capture does not exist yet, only sidecar presentation detection.
 
 ## Source-Fit Notes For Builders
@@ -77,15 +78,16 @@ helpers alone.
 - `SaveEnvelopeMetadata` currently stores schema/runtime/package/scenario/tool
   and saved hash fields. Product identity fields such as `world_id`, `save_id`,
   `save_type`, `user_title`, `auto_title`, and UTC timestamps do not exist yet.
-- `writeSessionSaveFile` currently encodes the save and writes it directly to
-  the final `*.iggy3d.save` path with an output file stream. It does not write a
-  temp file, decode/validate the temp file, or atomically rename into place.
-- `deleteSaveFile(path)` currently calls `std::filesystem::remove`. It is a hard
-  delete primitive. Starter Delete Save must not call it as the primary product
-  action; product delete starts as soft delete/recover, with hard delete reserved
-  for an explicit permanent-delete route.
-- `scanProductSaves` currently delegates to `buildSaveSlotList`; there is no
-  product catalog/index cache and no save mutation policy in `SaveBridge` yet.
+- `writeSessionSaveFile` remains the legacy direct final-path writer. Product
+  save commands use the newer durable writer path through `SaveBridge`, which
+  performs temp write/readback, decode validation, same-directory rename, and
+  final read/decode validation.
+- `deleteSaveFile(path)` still calls `std::filesystem::remove`. It is a hard
+  delete primitive only. Product Delete Save does not call it; product delete is
+  recoverable soft delete through `softDeleteProductSave`.
+- `scanProductSaves` delegates to `buildSaveSlotList` for active saves.
+  `scanDeletedProductSaves` delegates to the same presentation rules against
+  `save_root/deleted`. There is no product catalog/index cache yet.
 - `SaveSlotModel` already keeps corrupt rows visible and disabled, and already
   derives snapshot sidecar status from `<save_id>.snapshot.png`. That snapshot
   state is presentation-only and must not decide whether a save can load.
@@ -95,6 +97,77 @@ helpers alone.
 - Current filename-derived ids are compatibility preview ids only. Product
   `save_id` and `world_id` must become explicit durable identity before menus
   depend on them for Continue, delete, recovery, or world grouping.
+
+## Current Implemented Product Behavior
+
+This section records the product app behavior implemented as of the current
+save-browser slices. Future builders should use this section as the current
+contract before widening UI or storage scope.
+
+### Active And Deleted Browsing
+
+- Active save browsing scans the active save root only.
+- Deleted save browsing scans `save_root/deleted` only.
+- Active and deleted scans are separate. Deleted saves are not active saves and
+  must not contribute to active `save_count` or active load selection.
+- Both active and deleted scans use `SaveSlotModel`/`buildSaveSlotList`
+  presentation and compatibility rules.
+- Snapshot sidecars are presentation files. A missing, empty, or moved snapshot
+  sidecar must not make an otherwise loadable save unloadable and must not block
+  recovery.
+
+### Implemented Commands
+
+- New World creates a runtime session, writes an initial durable manual save,
+  and enters gameplay only after that initial save succeeds.
+- Continue loads the newest compatible active save according to current active
+  save ordering. It does not create a fresh gameplay session as a substitute for
+  loading.
+- Load Save opens active save selection and loads the selected enabled row.
+- Disabled, corrupt, incompatible, or missing selected rows reject load, keep
+  gameplay inactive, and report the row/domain reason in receipts.
+- Pause Save writes the current active save id durably when one is tracked; if
+  no active id is tracked, it uses the durable writer generation policy.
+- Save And Exit writes durably first and returns to title only after save
+  success. A save failure keeps gameplay/pause state available instead of
+  exiting.
+- Delete Save opens confirmation and then performs recoverable soft delete.
+  Product Delete Save is not hard delete.
+- Recover restores a deleted save and, when present, the deleted snapshot
+  sidecar back to the active save root.
+
+### Current Selector And Automation Limits
+
+- Active save row selection is currently AppShell-local. It is not yet fully
+  migrated to the reusable `SaveBrowser`/`VerticalFadedSelector` model.
+- Deleted save browsing and recovery are automation/no-window proof paths only.
+  A polished visual recovery UI has not been built yet.
+- Product automation keys such as `save.delete`, `save.show_deleted`,
+  `save.deleted_select`, and `save.recover` are proof controls for product
+  no-window smokes. They are not final user-facing control names.
+- Product automation receipts distinguish control-file load from command
+  success: a valid file can report `automation_control_loaded=true` while a
+  domain command failure reports `automation_control_status=command_failed` and
+  `automation_control_last_result=failed`.
+
+### Receipt Proof Surfaces
+
+Current product receipts use deterministic key-value fields including:
+
+```text
+product_save_*
+product_save_load_*
+selected_save_*
+save_delete_*
+deleted_save_*
+save_recover_*
+automation_control_loaded
+automation_control_status
+automation_control_last_result
+```
+
+These fields are proof surfaces. They must stay truthful about whether a save
+was written, loaded, soft-deleted, recovered, or merely selected.
 
 ## User Decisions
 
@@ -468,9 +541,10 @@ reason_code=snapshot_failed
 
 ## Write Safety
 
-Current `writeSessionSaveFile` writes directly to the final save path. The
-product save path must upgrade to a durable sequence before overwrite,
-autosave, or product save UI depends on it.
+`writeSessionSaveFile` remains a direct runtime primitive for compatibility.
+Product save commands must use the durable sequence exposed through the product
+save bridge before overwrite, autosave, or product save UI depends on the
+result.
 
 Required product write sequence:
 
@@ -560,6 +634,19 @@ active world -> deleted worlds
 Deleting a world soft-deletes all child saves and snapshots.
 
 Recovery restores the save or world group to active browsing.
+
+Current product Save Browser behavior:
+
+- active saves live under the active save root;
+- soft-deleted saves live under `save_root/deleted`;
+- soft delete moves the save file and optional snapshot sidecar with no
+  overwrite;
+- recovery moves the save file and optional snapshot sidecar back with no
+  overwrite;
+- collision or missing-source failures leave both sides unchanged and report a
+  stable reason;
+- deleted-save browsing/recovery are currently no-window automation proof paths,
+  not a polished visual UI.
 
 Permanent delete is available only from deleted-save or deleted-world surfaces.
 
@@ -924,12 +1011,17 @@ New unit tests should cover:
 - product save title display rule;
 - generated auto title;
 - UTC timestamp parse/display summary;
-- Continue chooses newest valid non-deleted loadable save;
-- corrupt saves are visible but not loadable;
+- Continue chooses newest valid non-deleted loadable save; implemented today
+  through active scan ordering and product smoke proof;
+- corrupt saves are visible but not loadable; implemented today for active save
+  rows;
 - index missing triggers scan/rebuild summary;
 - snapshot failure does not fail save;
 - soft delete removes from active selector and appears in deleted selector;
-- recovery returns a save to active selector;
+  implemented today through product bridge unit proof and product no-window
+  smokes;
+- recovery returns a save to active selector; implemented today through product
+  bridge unit proof and product no-window smokes;
 - permanent delete is separate from soft delete;
 - failed overwrite preserves previous valid save;
 - temp write failure does not update selector as successful.
@@ -943,6 +1035,7 @@ No-window smokes should prove:
 - autosave emits receipt at safe point;
 - soft delete emits receipt;
 - recovery emits receipt;
+- recovery emits snapshot sidecar proof when a deleted snapshot sidecar exists;
 - corrupt/missing save remains visible and disabled.
 
 Window proof is not required by default. Snapshot image capture requires a
@@ -954,7 +1047,8 @@ The contract is ready for implementation slicing when:
 
 - save truth, index cache, snapshots, selector, and router ownership are
   distinct;
-- current direct write and hard delete limitations are named;
+- runtime direct-write and hard-delete primitives are distinct from current
+  product durable write and soft-delete/recover behavior;
 - v0.1 defaults are explicit;
 - receipt fields are deterministic key-value text;
 - no runtime save schema changes are required for the first frontend slices;
@@ -962,7 +1056,7 @@ The contract is ready for implementation slicing when:
 
 ## First Implementation Order
 
-Safe order:
+Historical safe order:
 
 1. product save identity and summary structs;
 2. title/timestamp/load-state mapping from existing save records;
@@ -977,7 +1071,25 @@ Safe order:
 11. no-window receipts;
 12. visual snapshot capture packet.
 
-Do not implement all of this in one build slice.
+Several product durable-write, load, soft-delete, recovery, and no-window
+receipt slices have now landed. Remaining future work should continue from the
+explicit deferred list above instead of repeating the completed storage and
+proof steps. Do not implement all remaining work in one build slice.
+
+## Explicit Deferred Work
+
+Deferred product save-browser work:
+
+- real snapshot capture from the gameplay camera;
+- visual deleted-save/recovery UI;
+- full `SaveBrowser`/`VerticalFadedSelector` integration for active and deleted
+  save selection;
+- save catalog/index, if still wanted;
+- explicit save metadata schema for `world_id`, durable `save_id`,
+  `user_title`, `auto_title`, timestamps, and save type;
+- permanent delete or empty-trash flow, if later requested;
+- autosave/quicksave policy and UI;
+- polished user-facing control names for deleted-save recovery.
 
 ## Stop Rules
 
