@@ -535,8 +535,10 @@ int main() {
                "product_save_recover_id_missing") &&
       hasField(fields, "save_recover_executed", "false") &&
       hasField(fields, "save_recover_save_id", "none") &&
-      hasField(fields, "automation_control_loaded", "false") &&
+      hasField(fields, "automation_control_loaded", "true") &&
+      hasField(fields, "automation_control_status", "command_failed") &&
       hasField(fields, "automation_control_last_key", "save.recover") &&
+      hasField(fields, "automation_control_last_result", "failed") &&
       std::filesystem::exists(recoverEmptyRoot / "save_001.iggy3d.save") &&
       !std::filesystem::exists(recoverEmptyRoot / "deleted" /
                                "save_001.iggy3d.save");
@@ -597,8 +599,10 @@ int main() {
                "recover_save_target_exists") &&
       hasField(fields, "save_recover_executed", "false") &&
       hasField(fields, "save_recover_save_id", "save_001") &&
-      hasField(fields, "automation_control_loaded", "false") &&
+      hasField(fields, "automation_control_loaded", "true") &&
+      hasField(fields, "automation_control_status", "command_failed") &&
       hasField(fields, "automation_control_last_key", "save.recover") &&
+      hasField(fields, "automation_control_last_result", "failed") &&
       std::filesystem::exists(recoverCollisionRoot / "save_001.iggy3d.save") &&
       std::filesystem::exists(recoverCollisionRoot / "deleted" /
                               "save_001.iggy3d.save");

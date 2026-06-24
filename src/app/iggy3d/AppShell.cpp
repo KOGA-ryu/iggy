@@ -1415,6 +1415,10 @@ void markAutomationApplied(ProductAppWindowState& window,
   }
 }
 
+bool automationFailurePreservesLoaded(std::string_view status) {
+  return status == "applied" || status == "loaded";
+}
+
 bool routeAutomationInput(FrontendState& frontend,
                           const ProductSaveBridgeResult& saves,
                           const ProductAppOptions& options,
@@ -1784,7 +1788,11 @@ void applyProductAutomationControl(const ProductAppOptions& options,
       }
       window.automationControlLastOwner = productInputOwnerFor(frontend, window);
       window.automationControlLastResult = "failed";
-      window.automationControlLoaded = false;
+      if (automationFailurePreservesLoaded(window.automationControlStatus)) {
+        window.automationControlStatus = "command_failed";
+      } else {
+        window.automationControlLoaded = false;
+      }
       return;
     }
   }
