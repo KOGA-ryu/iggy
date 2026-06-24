@@ -71,6 +71,25 @@ struct ProductSaveLoadResult {
   SessionLoadStatus sessionLoadStatus = SessionLoadStatus::Ok;
 };
 
+struct ProductSaveSoftDeleteRequest {
+  std::filesystem::path saveRoot;
+  std::string saveId;
+};
+
+struct ProductSaveSoftDeleteResult {
+  bool ok = false;
+  std::string status = "not_requested";
+  std::string reasonCode = "not_requested";
+  std::string softDeleteReason = "not_requested";
+  SaveFileSoftDeletePaths paths;
+  std::string saveId = "none";
+  bool saveMoved = false;
+  bool snapshotMoved = false;
+  bool snapshotMissing = false;
+  bool targetExisted = false;
+  bool snapshotTargetExisted = false;
+};
+
 ProductSaveBridgeResult scanProductSaves(const std::filesystem::path& saveRoot,
                                          std::string_view packageId,
                                          std::string_view scenarioId);
@@ -78,5 +97,7 @@ ProductSaveWriteResult writeProductSessionSaveDurably(
     const ProductSaveWriteRequest& request);
 ProductSaveLoadResult loadProductSessionSave(
     const ProductSaveLoadRequest& request);
+ProductSaveSoftDeleteResult softDeleteProductSave(
+    const ProductSaveSoftDeleteRequest& request);
 
 }  // namespace iggy3d

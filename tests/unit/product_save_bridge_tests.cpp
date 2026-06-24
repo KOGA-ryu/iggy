@@ -224,6 +224,138 @@ bool productDurableSavePersistsAuthoredRoom() {
                 "product authored scan floor count");
 }
 
+bool productSoftDeleteMovesSaveAndRemovesFromScan() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  const iggy3d::ProductSaveWriteResult written =
+      iggy3d::writeProductSessionSaveDurably(
+          productSaveRequest(root, session, "attempt_001", "save_001"));
+  const iggy3d::ProductSaveSoftDeleteResult deleted =
+      iggy3d::softDeleteProductSave({root, "save_001"});
+  const iggy3d::ProductSaveBridgeResult scanned = iggy3d::scanProductSaves(
+      root, "iggy3d.movement_playground", "movement_playground.runtime_loop");
+  return expect(written.ok, "product soft delete setup write ok") &&
+         expect(deleted.ok, "product soft delete ok") &&
+         expect(deleted.status == "product_save_soft_deleted",
+                "product soft delete status") &&
+         expect(deleted.reasonCode == "product_save_soft_deleted",
+                "product soft delete reason") &&
+         expect(deleted.softDeleteReason == "soft_delete_moved",
+                "product soft delete runtime reason") &&
+         expect(deleted.saveId == "save_001", "product soft delete id") &&
+         expect(deleted.saveMoved, "product soft delete save moved") &&
+         expect(deleted.snapshotMissing, "product soft delete snapshot missing") &&
+         expect(!deleted.snapshotMoved, "product soft delete snapshot not moved") &&
+         expect(!std::filesystem::exists(deleted.paths.activeSavePath),
+                "product soft delete active gone") &&
+         expect(std::filesystem::exists(deleted.paths.deletedSavePath),
+                "product soft delete deleted exists") &&
+         expect(scanned.slots.slots.empty(), "product soft delete not scanned");
+}
+
+bool productSoftDeleteMovesSnapshotSidecarWhenPresent() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  const iggy3d::ProductSaveWriteResult written =
+      iggy3d::writeProductSessionSaveDurably(
+          productSaveRequest(root, session, "attempt_001", "save_001"));
+  {
+    std::ofstream snapshot(root / "save_001.snapshot.png");
+    snapshot << "snapshot bytes";
+  }
+  const iggy3d::ProductSaveSoftDeleteResult deleted =
+      iggy3d::softDeleteProductSave({root, "save_001"});
+  return expect(written.ok, "product soft delete snapshot setup write ok") &&
+         expect(deleted.ok, "product soft delete snapshot ok") &&
+         expect(deleted.snapshotMoved, "product soft delete snapshot moved") &&
+         expect(!deleted.snapshotMissing,
+                "product soft delete snapshot not missing") &&
+         expect(!std::filesystem::exists(deleted.paths.activeSnapshotPath),
+                "product soft delete active snapshot gone") &&
+         expect(std::filesystem::exists(deleted.paths.deletedSnapshotPath),
+                "product soft delete deleted snapshot exists");
+}
+
+bool productSoftDeleteRejectsMissingIdBeforeIo() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::ProductSaveSoftDeleteResult deleted =
+      iggy3d::softDeleteProductSave({root, ""});
+  return expect(!deleted.ok, "product soft delete missing id rejected") &&
+         expect(deleted.status == "product_save_delete_id_missing",
+                "product soft delete missing id status") &&
+         expect(deleted.reasonCode == "product_save_delete_id_missing",
+                "product soft delete missing id reason") &&
+         expect(deleted.softDeleteReason == "not_requested",
+                "product soft delete missing id no runtime") &&
+         expect(deleted.saveId == "none", "product soft delete missing id none") &&
+         expect(!deleted.saveMoved, "product soft delete missing id not moved") &&
+         expect(iggy3d::scanProductSaves(root, "", "").slots.slots.empty(),
+                "product soft delete missing id no scan");
+}
+
+bool productSoftDeleteRejectsInvalidId() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::ProductSaveSoftDeleteResult deleted =
+      iggy3d::softDeleteProductSave({root, "save/001"});
+  return expect(!deleted.ok, "product soft delete invalid id rejected") &&
+         expect(deleted.status == "soft_delete_invalid_id",
+                "product soft delete invalid id status") &&
+         expect(deleted.reasonCode == "soft_delete_invalid_id",
+                "product soft delete invalid id reason") &&
+         expect(deleted.softDeleteReason == "soft_delete_invalid_id",
+                "product soft delete invalid runtime") &&
+         expect(deleted.saveId == "save/001", "product soft delete invalid id proof") &&
+         expect(deleted.paths.activeSavePath.empty(),
+                "product soft delete invalid no active path");
+}
+
+bool productSoftDeleteForwardsMissingSource() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::ProductSaveSoftDeleteResult deleted =
+      iggy3d::softDeleteProductSave({root, "save_001"});
+  return expect(!deleted.ok, "product soft delete missing source rejected") &&
+         expect(deleted.status == "soft_delete_source_missing",
+                "product soft delete missing source status") &&
+         expect(deleted.reasonCode == "soft_delete_source_missing",
+                "product soft delete missing source reason") &&
+         expect(deleted.softDeleteReason == "soft_delete_source_missing",
+                "product soft delete missing source runtime") &&
+         expect(!deleted.saveMoved, "product soft delete missing source not moved") &&
+         expect(!std::filesystem::exists(deleted.paths.deletedSavePath),
+                "product soft delete missing source no deleted file");
+}
+
+bool productSoftDeleteRejectsExistingDeletedTarget() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  const iggy3d::ProductSaveWriteResult written =
+      iggy3d::writeProductSessionSaveDurably(
+          productSaveRequest(root, session, "attempt_001", "save_001"));
+  const iggy3d::SaveFileSoftDeletePlan plan =
+      iggy3d::planSoftDeleteSaveFile(root, "save_001");
+  std::filesystem::create_directories(plan.paths.deletedSavePath.parent_path());
+  {
+    std::ofstream existing(plan.paths.deletedSavePath);
+    existing << "existing deleted target";
+  }
+  const iggy3d::ProductSaveSoftDeleteResult deleted =
+      iggy3d::softDeleteProductSave({root, "save_001"});
+  return expect(written.ok, "product soft delete collision setup write ok") &&
+         expect(!deleted.ok, "product soft delete collision rejected") &&
+         expect(deleted.status == "soft_delete_target_exists",
+                "product soft delete collision status") &&
+         expect(deleted.reasonCode == "soft_delete_target_exists",
+                "product soft delete collision reason") &&
+         expect(deleted.softDeleteReason == "soft_delete_target_exists",
+                "product soft delete collision runtime") &&
+         expect(deleted.targetExisted, "product soft delete collision flag") &&
+         expect(!deleted.saveMoved, "product soft delete collision not moved") &&
+         expect(std::filesystem::exists(plan.paths.activeSavePath),
+                "product soft delete collision active preserved") &&
+         expect(std::filesystem::exists(plan.paths.deletedSavePath),
+                "product soft delete collision deleted preserved");
+}
+
 bool productLoadSaveLoadsCompatibleSession() {
   const std::filesystem::path root = testRoot();
   iggy3d::Session savedSession = makeChangedFixtureSession();
@@ -426,6 +558,12 @@ int main() {
                   productDurableSaveRejectsMissingState() &&
                   productDurableSaveRejectsInvalidAttemptToken() &&
                   productDurableSavePersistsAuthoredRoom() &&
+                  productSoftDeleteMovesSaveAndRemovesFromScan() &&
+                  productSoftDeleteMovesSnapshotSidecarWhenPresent() &&
+                  productSoftDeleteRejectsMissingIdBeforeIo() &&
+                  productSoftDeleteRejectsInvalidId() &&
+                  productSoftDeleteForwardsMissingSource() &&
+                  productSoftDeleteRejectsExistingDeletedTarget() &&
                   productLoadSaveLoadsCompatibleSession() &&
                   productLoadSaveRejectsMissingSessionBeforeIo() &&
                   productLoadSaveRejectsMissingPathBeforeIo() &&

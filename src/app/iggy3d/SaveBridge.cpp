@@ -117,4 +117,44 @@ ProductSaveLoadResult loadProductSessionSave(
   return result;
 }
 
+ProductSaveSoftDeleteResult softDeleteProductSave(
+    const ProductSaveSoftDeleteRequest& request) {
+  ProductSaveSoftDeleteResult result;
+  if (request.saveId.empty()) {
+    result.status = "product_save_delete_id_missing";
+    result.reasonCode = "product_save_delete_id_missing";
+    return result;
+  }
+  result.saveId = request.saveId;
+
+  const SaveFileSoftDeletePlan plan =
+      planSoftDeleteSaveFile(request.saveRoot, request.saveId);
+  result.paths = plan.paths;
+  if (!plan.ok) {
+    result.status = plan.reason;
+    result.reasonCode = plan.reason;
+    result.softDeleteReason = plan.reason;
+    return result;
+  }
+
+  const SaveFileSoftDeleteResult deleted = softDeleteSaveFile(plan);
+  result.paths = deleted.paths;
+  result.softDeleteReason = deleted.reason;
+  result.saveMoved = deleted.saveMoved;
+  result.snapshotMoved = deleted.snapshotMoved;
+  result.snapshotMissing = deleted.snapshotMissing;
+  result.targetExisted = deleted.targetExisted;
+  result.snapshotTargetExisted = deleted.snapshotTargetExisted;
+  if (!deleted.ok) {
+    result.status = deleted.reason;
+    result.reasonCode = deleted.reason;
+    return result;
+  }
+
+  result.ok = true;
+  result.status = "product_save_soft_deleted";
+  result.reasonCode = "product_save_soft_deleted";
+  return result;
+}
+
 }  // namespace iggy3d
