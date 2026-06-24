@@ -1,0 +1,185 @@
+#include "app/iggy3d/AsciiRoomGrid.hpp"
+
+#include <array>
+#include <utility>
+
+namespace iggy3d {
+namespace {
+
+constexpr std::array<AsciiRoomGlyphInfo, 13> kGlyphs{{
+    {'#', AsciiRoomCellKind::Wall, false, true, true, ""},
+    {'.', AsciiRoomCellKind::Floor, true, false, false, ""},
+    {' ', AsciiRoomCellKind::Floor, true, false, false, ""},
+    {'+', AsciiRoomCellKind::Door, true, false, false, "door"},
+    {'s', AsciiRoomCellKind::SecretDoor, true, false, false, "secret_door"},
+    {'P', AsciiRoomCellKind::PlayerSpawn, true, false, false, "player_spawn"},
+    {'N', AsciiRoomCellKind::NpcSpawn, true, false, false, "npc_spawn"},
+    {'M', AsciiRoomCellKind::MonsterSpawn, true, false, false, "monster_spawn"},
+    {'$', AsciiRoomCellKind::Treasure, true, false, false, "treasure"},
+    {'K', AsciiRoomCellKind::Key, true, false, false, "key"},
+    {'T', AsciiRoomCellKind::Trap, true, false, false, "trap"},
+    {'E', AsciiRoomCellKind::Exit, true, false, false, "exit"},
+    {'?', AsciiRoomCellKind::Inspect, true, false, false, "inspect"},
+}};
+
+AsciiRoomDiagnostic diagnostic(std::string reason,
+                               std::string message,
+                               std::size_t row = 0,
+                               std::size_t column = 0,
+                               char glyph = '\0') {
+  AsciiRoomDiagnostic out;
+  out.severity = "error";
+  out.reasonCode = std::move(reason);
+  out.row = row;
+  out.column = column;
+  out.glyph = glyph;
+  out.message = std::move(message);
+  return out;
+}
+
+AsciiRoomGridBuildResult rejected(const AsciiRoomSource& source,
+                                  std::string reason,
+                                  std::string message) {
+  AsciiRoomGridBuildResult result;
+  result.status = reason;
+  result.reasonCode = reason;
+  if (!source.diagnostics.empty()) {
+    result.diagnostics = source.diagnostics;
+  } else {
+    result.diagnostics.push_back(diagnostic(reason, message));
+  }
+  return result;
+}
+
+}  // namespace
+
+std::string_view asciiRoomCellKindName(AsciiRoomCellKind kind) {
+  switch (kind) {
+    case AsciiRoomCellKind::Floor: return "floor";
+    case AsciiRoomCellKind::Wall: return "wall";
+    case AsciiRoomCellKind::Door: return "door";
+    case AsciiRoomCellKind::SecretDoor: return "secret_door";
+    case AsciiRoomCellKind::PlayerSpawn: return "player_spawn";
+    case AsciiRoomCellKind::NpcSpawn: return "npc_spawn";
+    case AsciiRoomCellKind::MonsterSpawn: return "monster_spawn";
+    case AsciiRoomCellKind::Treasure: return "treasure";
+    case AsciiRoomCellKind::Key: return "key";
+    case AsciiRoomCellKind::Trap: return "trap";
+    case AsciiRoomCellKind::Exit: return "exit";
+    case AsciiRoomCellKind::Inspect: return "inspect";
+  }
+  return "floor";
+}
+
+std::optional<AsciiRoomGlyphInfo> asciiRoomGlyphInfo(char glyph) {
+  for (const AsciiRoomGlyphInfo& info : kGlyphs) {
+    if (info.glyph == glyph) {
+      return info;
+    }
+  }
+  return std::nullopt;
+}
+
+AsciiRoomGridBuildResult buildAsciiRoomGrid(const AsciiRoomSource& source) {
+  if (source.status != "ascii_room_ok") {
+    return rejected(source, source.reasonCode, "source parse failed");
+  }
+
+  AsciiRoomGridBuildResult result;
+  result.grid.width = source.width;
+  result.grid.height = source.height;
+  result.grid.cells.reserve(source.width * source.height);
+
+  bool hasWalkable = false;
+  for (std::size_t row = 0; row < source.rows.size(); ++row) {
+    for (std::size_t column = 0; column < source.rows[row].size(); ++column) {
+      const char glyph = source.rows[row][column];
+      const std::optional<AsciiRoomGlyphInfo> info = asciiRoomGlyphInfo(glyph);
+      if (!info.has_value()) {
+        result.status = "ascii_room_unknown_glyph";
+        result.reasonCode = result.status;
+        result.diagnostics.push_back(diagnostic(result.status,
+                                                "unknown ASCII room glyph",
+                                                row,
+                                                column,
+                                                glyph));
+        return result;
+      }
+
+      AsciiRoomCell cell;
+      cell.row = row;
+      cell.column = column;
+      cell.glyph = glyph;
+      cell.kind = info->kind;
+      cell.walkable = info->walkable;
+      cell.blocksActor = info->blocksActor;
+      cell.blocksProjectile = info->blocksProjectile;
+      cell.markerTag = std::string(info->markerTag);
+      cell.sourceOffset = asciiRoomSourceOffset(source, row, column);
+      hasWalkable = hasWalkable || cell.walkable;
+      if (cell.kind == AsciiRoomCellKind::PlayerSpawn) {
+        ++result.grid.playerSpawnCount;
+      }
+      if (!cell.markerTag.empty()) {
+        ++result.grid.markerCount;
+      }
+      if (cell.kind == AsciiRoomCellKind::Wall) {
+        ++result.grid.wallCount;
+      } else if (cell.walkable) {
+        ++result.grid.floorCount;
+      }
+      result.grid.cells.push_back(std::move(cell));
+    }
+  }
+
+  if (!hasWalkable) {
+    result.status = "ascii_room_no_floor";
+    result.reasonCode = result.status;
+    result.diagnostics.push_back(diagnostic(result.status, "room has no walkable floor cells"));
+    return result;
+  }
+  if (result.grid.playerSpawnCount == 0) {
+    result.status = "ascii_room_missing_player_spawn";
+    result.reasonCode = result.status;
+    result.diagnostics.push_back(diagnostic(result.status, "room requires one player spawn"));
+    return result;
+  }
+  if (result.grid.playerSpawnCount > 1) {
+    result.status = "ascii_room_multiple_player_spawns";
+    result.reasonCode = result.status;
+    result.diagnostics.push_back(diagnostic(result.status, "room has multiple player spawns"));
+    return result;
+  }
+
+  result.ok = true;
+  result.status = "ascii_room_ok";
+  result.reasonCode = "ascii_room_ok";
+  return result;
+}
+
+const AsciiRoomCell* asciiRoomCellAt(const AsciiRoomGrid& grid,
+                                     std::size_t row,
+                                     std::size_t column) {
+  if (row >= grid.height || column >= grid.width) {
+    return nullptr;
+  }
+  const std::size_t index = row * grid.width + column;
+  return index < grid.cells.size() ? &grid.cells[index] : nullptr;
+}
+
+AsciiRoomWorldPosition asciiRoomCellCenter(std::size_t row,
+                                           std::size_t column,
+                                           std::size_t width,
+                                           std::size_t height,
+                                           double tileSize,
+                                           double elevation) {
+  AsciiRoomWorldPosition out;
+  out.x = (static_cast<double>(column) -
+           (static_cast<double>(width) - 1.0) / 2.0) * tileSize;
+  out.y = elevation;
+  out.z = (static_cast<double>(row) -
+           (static_cast<double>(height) - 1.0) / 2.0) * tileSize;
+  return out;
+}
+
+}  // namespace iggy3d

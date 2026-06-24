@@ -25,6 +25,8 @@ target_sources(iggy3d
     src/app/CliParser.cpp
     src/app/PackageRuntimeLookup.cpp
     src/app/iggy3d/AppShell.cpp
+    src/app/iggy3d/AsciiRoomGrid.cpp
+    src/app/iggy3d/AsciiRoomSource.cpp
     src/app/iggy3d/DefaultWorldTemplate.cpp
     src/app/iggy3d/FrontendActionExecutor.cpp
     src/app/iggy3d/OpeningMenuView.cpp
