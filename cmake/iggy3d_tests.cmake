@@ -94,6 +94,10 @@ iggy3d_add_unit_test(product_world_creation_tests tests/unit/product_world_creat
 set_tests_properties(product_world_creation_tests PROPERTIES
   LABELS "unit;app;product;world_creation;iggy3d")
 
+iggy3d_add_unit_test(product_save_bridge_tests tests/unit/product_save_bridge_tests.cpp)
+set_tests_properties(product_save_bridge_tests PROPERTIES
+  LABELS "unit;app;product;save;bridge;iggy3d")
+
 iggy3d_add_unit_test(save_slot_model_tests tests/unit/save_slot_model_tests.cpp)
 set_tests_properties(save_slot_model_tests PROPERTIES LABELS "unit;app;frontend;save;iggy3d")
 
