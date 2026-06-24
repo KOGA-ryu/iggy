@@ -37,6 +37,7 @@ target_sources(iggy3d
     src/app/iggy3d/ProductPrimitiveDrawList.cpp
     src/app/iggy3d/ProductRenderBridge.cpp
     src/app/iggy3d/ProductViewportFraming.cpp
+    src/app/iggy3d/ProductWorldCreation.cpp
     src/app/iggy3d/ReceiptBuilder.cpp
     src/app/iggy3d/SaveBridge.cpp
     src/app/frontend/FrontendState.cpp
