@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "runtime/save/SaveCodec.hpp"
@@ -45,6 +46,34 @@ struct SaveFileReadResult {
   SaveFileRecord record;
   SaveCodecStatus codecStatus = SaveCodecStatus::Ok;
 };
+
+struct SaveFileDurableWritePaths {
+  std::filesystem::path root;
+  std::string id;
+  std::string attemptToken;
+  std::filesystem::path finalPath;
+  std::filesystem::path tempPath;
+  std::filesystem::path snapshotPath;
+};
+
+struct SaveFileDurableWritePlan {
+  bool ok = false;
+  std::string reason = "not_requested";
+  SaveFileDurableWritePaths paths;
+};
+
+bool isValidSaveFileId(std::string_view id);
+std::filesystem::path saveFilePathForId(const std::filesystem::path& root,
+                                        std::string_view id);
+std::filesystem::path saveFileTempPathForId(const std::filesystem::path& root,
+                                            std::string_view id,
+                                            std::string_view attemptToken);
+std::filesystem::path saveSnapshotPathForId(const std::filesystem::path& root,
+                                            std::string_view id);
+SaveFileDurableWritePlan planDurableSaveFileWrite(
+    const std::filesystem::path& root,
+    std::string_view id,
+    std::string_view attemptToken);
 
 std::vector<SaveFileRecord> listSaveFiles(const std::filesystem::path& root);
 SaveFileWriteResult writeSessionSaveFile(const SaveFileWriteRequest& request);

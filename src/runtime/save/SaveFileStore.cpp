@@ -27,20 +27,6 @@ std::string idFromPath(const std::filesystem::path& path) {
   return filename.empty() ? "save" : filename;
 }
 
-bool validSaveId(std::string_view id) {
-  if (id.empty()) {
-    return false;
-  }
-  for (const char c : id) {
-    const bool valid = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-                       (c >= '0' && c <= '9') || c == '_' || c == '-';
-    if (!valid) {
-      return false;
-    }
-  }
-  return true;
-}
-
 std::string makeSaveId(std::size_t index) {
   std::ostringstream output;
   output << "save_";
@@ -48,10 +34,6 @@ std::string makeSaveId(std::size_t index) {
   output.fill('0');
   output << index;
   return output.str();
-}
-
-std::filesystem::path savePathFor(const std::filesystem::path& root, std::string_view id) {
-  return root / (std::string(id) + std::string(kSaveFileExtension));
 }
 
 SaveFileRecord recordFromEnvelope(const std::filesystem::path& path,
@@ -78,6 +60,62 @@ std::string readWholeFile(const std::filesystem::path& path) {
 }
 
 }  // namespace
+
+bool isValidSaveFileId(std::string_view id) {
+  if (id.empty()) {
+    return false;
+  }
+  for (const char c : id) {
+    const bool valid = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                       (c >= '0' && c <= '9') || c == '_' || c == '-';
+    if (!valid) {
+      return false;
+    }
+  }
+  return true;
+}
+
+std::filesystem::path saveFilePathForId(const std::filesystem::path& root,
+                                        std::string_view id) {
+  return root / (std::string(id) + std::string(kSaveFileExtension));
+}
+
+std::filesystem::path saveFileTempPathForId(const std::filesystem::path& root,
+                                            std::string_view id,
+                                            std::string_view attemptToken) {
+  return root / (std::string(id) + std::string(kSaveFileExtension) + ".tmp_" +
+                 std::string(attemptToken));
+}
+
+std::filesystem::path saveSnapshotPathForId(const std::filesystem::path& root,
+                                            std::string_view id) {
+  return root / (std::string(id) + ".snapshot.png");
+}
+
+SaveFileDurableWritePlan planDurableSaveFileWrite(
+    const std::filesystem::path& root,
+    std::string_view id,
+    std::string_view attemptToken) {
+  SaveFileDurableWritePlan plan;
+  if (!isValidSaveFileId(id)) {
+    plan.reason = "durable_save_invalid_id";
+    return plan;
+  }
+  if (!isValidSaveFileId(attemptToken)) {
+    plan.reason = "durable_save_invalid_attempt_token";
+    return plan;
+  }
+
+  plan.ok = true;
+  plan.reason = "durable_save_plan_ready";
+  plan.paths.root = root;
+  plan.paths.id = std::string(id);
+  plan.paths.attemptToken = std::string(attemptToken);
+  plan.paths.finalPath = saveFilePathForId(root, id);
+  plan.paths.tempPath = saveFileTempPathForId(root, id, attemptToken);
+  plan.paths.snapshotPath = saveSnapshotPathForId(root, id);
+  return plan;
+}
 
 std::vector<SaveFileRecord> listSaveFiles(const std::filesystem::path& root) {
   std::vector<SaveFileRecord> records;
@@ -136,16 +174,16 @@ SaveFileWriteResult writeSessionSaveFile(const SaveFileWriteRequest& request) {
     return result;
   }
 
-  std::string id = validSaveId(request.idHint)
+  std::string id = isValidSaveFileId(request.idHint)
                        ? request.idHint
                        : makeSaveId(listSaveFiles(request.root).size() + 1U);
-  std::filesystem::path path = savePathFor(request.root, id);
-  if (!validSaveId(request.idHint)) {
+  std::filesystem::path path = saveFilePathForId(request.root, id);
+  if (!isValidSaveFileId(request.idHint)) {
     std::size_t index = listSaveFiles(request.root).size() + 1U;
     while (std::filesystem::exists(path, error)) {
       ++index;
       id = makeSaveId(index);
-      path = savePathFor(request.root, id);
+      path = saveFilePathForId(request.root, id);
     }
   }
 

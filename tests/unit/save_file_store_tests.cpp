@@ -3,6 +3,7 @@
 #include "runtime/session/Session.hpp"
 
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <string_view>
 
@@ -32,6 +33,94 @@ iggy3d::Session makeFixtureSession() {
   request.config = package.scenario.config;
   request.seed = package.scenario;
   return iggy3d::Session::create(request).value;
+}
+
+bool saveFileIdValidationMatchesStorePolicy() {
+  return expect(iggy3d::isValidSaveFileId("save_001"), "save_001 valid") &&
+         expect(iggy3d::isValidSaveFileId("save-001"), "save-001 valid") &&
+         expect(iggy3d::isValidSaveFileId("manual_save_01"),
+                "manual_save_01 valid") &&
+         expect(!iggy3d::isValidSaveFileId(""), "empty invalid") &&
+         expect(!iggy3d::isValidSaveFileId(" "), "whitespace invalid") &&
+         expect(!iggy3d::isValidSaveFileId("save/001"), "slash invalid") &&
+         expect(!iggy3d::isValidSaveFileId("save\\001"), "backslash invalid") &&
+         expect(!iggy3d::isValidSaveFileId("."), "dot invalid") &&
+         expect(!iggy3d::isValidSaveFileId(".."), "dotdot invalid") &&
+         expect(!iggy3d::isValidSaveFileId("save 001"), "space invalid") &&
+         expect(!iggy3d::isValidSaveFileId("save:001"), "punctuation invalid");
+}
+
+bool saveFilePathHelpersAreDeterministic() {
+  const std::filesystem::path root = testRoot();
+  const std::filesystem::path finalPath =
+      iggy3d::saveFilePathForId(root, "save_001");
+  const std::filesystem::path snapshotPath =
+      iggy3d::saveSnapshotPathForId(root, "save_001");
+  return expect(finalPath == root / "save_001.iggy3d.save",
+                "final save path") &&
+         expect(snapshotPath == root / "save_001.snapshot.png",
+                "snapshot path");
+}
+
+bool durableWritePlanBuildsSameDirectoryPaths() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::SaveFileDurableWritePlan plan =
+      iggy3d::planDurableSaveFileWrite(root, "save_001", "attempt_001");
+  const std::string tempFilename = plan.paths.tempPath.filename().string();
+  return expect(plan.ok, "durable plan ok") &&
+         expect(plan.reason == "durable_save_plan_ready",
+                "durable plan reason") &&
+         expect(plan.paths.root == root, "plan root") &&
+         expect(plan.paths.id == "save_001", "plan id") &&
+         expect(plan.paths.attemptToken == "attempt_001", "plan attempt") &&
+         expect(plan.paths.finalPath == root / "save_001.iggy3d.save",
+                "plan final") &&
+         expect(plan.paths.tempPath ==
+                    root / "save_001.iggy3d.save.tmp_attempt_001",
+                "plan temp") &&
+         expect(plan.paths.snapshotPath == root / "save_001.snapshot.png",
+                "plan snapshot") &&
+         expect(plan.paths.tempPath.parent_path() ==
+                    plan.paths.finalPath.parent_path(),
+                "temp same directory") &&
+         expect(plan.paths.tempPath != plan.paths.finalPath,
+                "temp not final") &&
+         expect(!tempFilename.ends_with(".iggy3d.save"),
+                "temp not normal save extension");
+}
+
+bool durableWritePlanRejectsInvalidInputs() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::SaveFileDurableWritePlan invalidId =
+      iggy3d::planDurableSaveFileWrite(root, "save/001", "attempt_001");
+  const iggy3d::SaveFileDurableWritePlan invalidAttempt =
+      iggy3d::planDurableSaveFileWrite(root, "save_001", "attempt 001");
+  const iggy3d::SaveFileDurableWritePlan emptyAttempt =
+      iggy3d::planDurableSaveFileWrite(root, "save_001", "");
+  return expect(!invalidId.ok, "invalid id rejected") &&
+         expect(invalidId.reason == "durable_save_invalid_id",
+                "invalid id reason") &&
+         expect(invalidId.paths.finalPath.empty(), "invalid id no final") &&
+         expect(!invalidAttempt.ok, "invalid attempt rejected") &&
+         expect(invalidAttempt.reason == "durable_save_invalid_attempt_token",
+                "invalid attempt reason") &&
+         expect(!emptyAttempt.ok, "empty attempt rejected") &&
+         expect(emptyAttempt.reason == "durable_save_invalid_attempt_token",
+                "empty attempt reason");
+}
+
+bool durableTempPathIsNotListedAsSave() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::SaveFileDurableWritePlan plan =
+      iggy3d::planDurableSaveFileWrite(root, "save_001", "attempt_001");
+  {
+    std::ofstream temp(plan.paths.tempPath);
+    temp << "not a final save";
+  }
+  const std::vector<iggy3d::SaveFileRecord> listed = iggy3d::listSaveFiles(root);
+  return expect(plan.ok, "temp list plan ok") &&
+         expect(std::filesystem::exists(plan.paths.tempPath), "temp exists") &&
+         expect(listed.empty(), "temp not listed");
 }
 
 bool writeListReadAndDeleteRoundTrips() {
@@ -150,7 +239,12 @@ bool authoredRoomSectionIsWrittenToSaveFile() {
 }  // namespace
 
 int main() {
-  const bool ok = writeListReadAndDeleteRoundTrips() && missingStateIsRejected() &&
+  const bool ok = saveFileIdValidationMatchesStorePolicy() &&
+                  saveFilePathHelpersAreDeterministic() &&
+                  durableWritePlanBuildsSameDirectoryPaths() &&
+                  durableWritePlanRejectsInvalidInputs() &&
+                  durableTempPathIsNotListedAsSave() &&
+                  writeListReadAndDeleteRoundTrips() && missingStateIsRejected() &&
                   idHintOverwritesExistingSave() && authoredRoomSectionIsWrittenToSaveFile();
   return ok ? 0 : 1;
 }
