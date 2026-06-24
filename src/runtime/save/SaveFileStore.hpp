@@ -161,6 +161,28 @@ struct SaveFileRecoverPlan {
   SaveFileSoftDeletePaths paths;
 };
 
+struct SaveFileSoftDeleteResult {
+  bool ok = false;
+  std::string reason = "not_requested";
+  SaveFileSoftDeletePaths paths;
+  bool saveMoved = false;
+  bool snapshotMoved = false;
+  bool snapshotMissing = false;
+  bool targetExisted = false;
+  bool snapshotTargetExisted = false;
+};
+
+struct SaveFileRecoverResult {
+  bool ok = false;
+  std::string reason = "not_requested";
+  SaveFileSoftDeletePaths paths;
+  bool saveRecovered = false;
+  bool snapshotRecovered = false;
+  bool snapshotMissing = false;
+  bool targetExisted = false;
+  bool snapshotTargetExisted = false;
+};
+
 bool isValidSaveFileId(std::string_view id);
 std::filesystem::path saveFilePathForId(const std::filesystem::path& root,
                                         std::string_view id);
@@ -188,6 +210,8 @@ SaveFileSoftDeletePlan planSoftDeleteSaveFile(const std::filesystem::path& root,
                                               std::string_view id);
 SaveFileRecoverPlan planRecoverDeletedSaveFile(const std::filesystem::path& root,
                                                std::string_view id);
+SaveFileSoftDeleteResult softDeleteSaveFile(const SaveFileSoftDeletePlan& plan);
+SaveFileRecoverResult recoverDeletedSaveFile(const SaveFileRecoverPlan& plan);
 
 std::vector<SaveFileRecord> listSaveFiles(const std::filesystem::path& root);
 SaveFileWriteResult writeSessionSaveFile(const SaveFileWriteRequest& request);

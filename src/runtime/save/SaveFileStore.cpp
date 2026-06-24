@@ -310,6 +310,124 @@ SaveFileRecoverPlan planRecoverDeletedSaveFile(const std::filesystem::path& root
   return plan;
 }
 
+SaveFileSoftDeleteResult softDeleteSaveFile(const SaveFileSoftDeletePlan& plan) {
+  SaveFileSoftDeleteResult result;
+  result.paths = plan.paths;
+  if (!plan.ok) {
+    result.reason = plan.reason;
+    return result;
+  }
+
+  std::error_code error;
+  if (!std::filesystem::exists(plan.paths.activeSavePath, error)) {
+    result.reason = "soft_delete_source_missing";
+    return result;
+  }
+  if (std::filesystem::exists(plan.paths.deletedSavePath, error)) {
+    result.targetExisted = true;
+    result.reason = "soft_delete_target_exists";
+    return result;
+  }
+
+  const bool snapshotPresent =
+      std::filesystem::exists(plan.paths.activeSnapshotPath, error);
+  if (snapshotPresent &&
+      std::filesystem::exists(plan.paths.deletedSnapshotPath, error)) {
+    result.snapshotTargetExisted = true;
+    result.reason = "soft_delete_snapshot_target_exists";
+    return result;
+  }
+
+  std::filesystem::create_directories(plan.paths.deletedSavePath.parent_path(), error);
+  if (error) {
+    result.reason = "soft_delete_deleted_dir_create_failed";
+    return result;
+  }
+
+  std::filesystem::rename(plan.paths.activeSavePath, plan.paths.deletedSavePath, error);
+  if (error) {
+    result.reason = "soft_delete_move_failed";
+    return result;
+  }
+  result.saveMoved = true;
+
+  if (snapshotPresent) {
+    std::filesystem::rename(plan.paths.activeSnapshotPath,
+                            plan.paths.deletedSnapshotPath,
+                            error);
+    if (error) {
+      result.reason = "soft_delete_snapshot_move_failed";
+      return result;
+    }
+    result.snapshotMoved = true;
+  } else {
+    result.snapshotMissing = true;
+  }
+
+  result.ok = true;
+  result.reason = "soft_delete_moved";
+  return result;
+}
+
+SaveFileRecoverResult recoverDeletedSaveFile(const SaveFileRecoverPlan& plan) {
+  SaveFileRecoverResult result;
+  result.paths = plan.paths;
+  if (!plan.ok) {
+    result.reason = plan.reason;
+    return result;
+  }
+
+  std::error_code error;
+  if (!std::filesystem::exists(plan.paths.deletedSavePath, error)) {
+    result.reason = "recover_save_source_missing";
+    return result;
+  }
+  if (std::filesystem::exists(plan.paths.activeSavePath, error)) {
+    result.targetExisted = true;
+    result.reason = "recover_save_target_exists";
+    return result;
+  }
+
+  const bool snapshotPresent =
+      std::filesystem::exists(plan.paths.deletedSnapshotPath, error);
+  if (snapshotPresent &&
+      std::filesystem::exists(plan.paths.activeSnapshotPath, error)) {
+    result.snapshotTargetExisted = true;
+    result.reason = "recover_save_snapshot_target_exists";
+    return result;
+  }
+
+  std::filesystem::create_directories(plan.paths.activeSavePath.parent_path(), error);
+  if (error) {
+    result.reason = "recover_save_root_create_failed";
+    return result;
+  }
+
+  std::filesystem::rename(plan.paths.deletedSavePath, plan.paths.activeSavePath, error);
+  if (error) {
+    result.reason = "recover_save_move_failed";
+    return result;
+  }
+  result.saveRecovered = true;
+
+  if (snapshotPresent) {
+    std::filesystem::rename(plan.paths.deletedSnapshotPath,
+                            plan.paths.activeSnapshotPath,
+                            error);
+    if (error) {
+      result.reason = "recover_save_snapshot_move_failed";
+      return result;
+    }
+    result.snapshotRecovered = true;
+  } else {
+    result.snapshotMissing = true;
+  }
+
+  result.ok = true;
+  result.reason = "recover_save_moved";
+  return result;
+}
+
 std::vector<SaveFileRecord> listSaveFiles(const std::filesystem::path& root) {
   std::vector<SaveFileRecord> records;
   std::error_code error;

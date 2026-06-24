@@ -152,6 +152,187 @@ bool deletedSaveDirectoryIsNotListed() {
          expect(listed.empty(), "deleted save not listed");
 }
 
+iggy3d::SaveFileWriteResult writeFixtureSaveFile(const std::filesystem::path& root,
+                                                 std::string_view id) {
+  iggy3d::Session session = makeFixtureSession();
+  iggy3d::SaveFileWriteRequest request;
+  request.root = root;
+  request.idHint = std::string(id);
+  request.state = &session.state();
+  return iggy3d::writeSessionSaveFile(request);
+}
+
+bool softDeleteMovesSaveAndUnlistsItWhenSnapshotMissing() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::SaveFileWriteResult written = writeFixtureSaveFile(root, "save_001");
+  const iggy3d::SaveFileSoftDeletePlan plan =
+      iggy3d::planSoftDeleteSaveFile(root, "save_001");
+  const iggy3d::SaveFileSoftDeleteResult result =
+      iggy3d::softDeleteSaveFile(plan);
+  const std::vector<iggy3d::SaveFileRecord> listed = iggy3d::listSaveFiles(root);
+  return expect(written.ok, "soft delete setup write ok") &&
+         expect(result.ok, "soft delete ok") &&
+         expect(result.reason == "soft_delete_moved", "soft delete moved reason") &&
+         expect(result.saveMoved, "soft delete save moved") &&
+         expect(result.snapshotMissing, "soft delete snapshot missing") &&
+         expect(!result.snapshotMoved, "soft delete snapshot not moved") &&
+         expect(!std::filesystem::exists(plan.paths.activeSavePath),
+                "soft delete active gone") &&
+         expect(std::filesystem::exists(plan.paths.deletedSavePath),
+                "soft delete deleted exists") &&
+         expect(listed.empty(), "soft delete unlisted");
+}
+
+bool softDeleteMovesSnapshotSidecarWhenPresent() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::SaveFileWriteResult written = writeFixtureSaveFile(root, "save_001");
+  const iggy3d::SaveFileSoftDeletePlan plan =
+      iggy3d::planSoftDeleteSaveFile(root, "save_001");
+  {
+    std::ofstream snapshot(plan.paths.activeSnapshotPath);
+    snapshot << "snapshot bytes";
+  }
+  const iggy3d::SaveFileSoftDeleteResult result =
+      iggy3d::softDeleteSaveFile(plan);
+  return expect(written.ok, "soft delete snapshot setup write ok") &&
+         expect(result.ok, "soft delete snapshot ok") &&
+         expect(result.snapshotMoved, "soft delete snapshot moved") &&
+         expect(!result.snapshotMissing, "soft delete snapshot not missing") &&
+         expect(!std::filesystem::exists(plan.paths.activeSnapshotPath),
+                "soft delete active snapshot gone") &&
+         expect(std::filesystem::exists(plan.paths.deletedSnapshotPath),
+                "soft delete deleted snapshot exists");
+}
+
+bool softDeleteRejectsMissingActiveSave() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::SaveFileSoftDeletePlan plan =
+      iggy3d::planSoftDeleteSaveFile(root, "save_001");
+  const iggy3d::SaveFileSoftDeleteResult result =
+      iggy3d::softDeleteSaveFile(plan);
+  return expect(!result.ok, "soft delete missing rejected") &&
+         expect(result.reason == "soft_delete_source_missing",
+                "soft delete missing reason") &&
+         expect(!result.saveMoved, "soft delete missing not moved") &&
+         expect(!std::filesystem::exists(plan.paths.deletedSavePath),
+                "soft delete missing no deleted file");
+}
+
+bool softDeleteRejectsExistingDeletedTarget() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::SaveFileWriteResult written = writeFixtureSaveFile(root, "save_001");
+  const iggy3d::SaveFileSoftDeletePlan plan =
+      iggy3d::planSoftDeleteSaveFile(root, "save_001");
+  std::filesystem::create_directories(plan.paths.deletedSavePath.parent_path());
+  {
+    std::ofstream deleted(plan.paths.deletedSavePath);
+    deleted << "existing deleted target";
+  }
+  const iggy3d::SaveFileSoftDeleteResult result =
+      iggy3d::softDeleteSaveFile(plan);
+  return expect(written.ok, "soft delete collision setup write ok") &&
+         expect(!result.ok, "soft delete target collision rejected") &&
+         expect(result.reason == "soft_delete_target_exists",
+                "soft delete target collision reason") &&
+         expect(result.targetExisted, "soft delete target existed flag") &&
+         expect(!result.saveMoved, "soft delete collision not moved") &&
+         expect(std::filesystem::exists(plan.paths.activeSavePath),
+                "soft delete collision active preserved") &&
+         expect(std::filesystem::exists(plan.paths.deletedSavePath),
+                "soft delete collision deleted preserved");
+}
+
+bool recoverMovesDeletedSaveBackAndListsItWhenSnapshotMissing() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::SaveFileWriteResult written = writeFixtureSaveFile(root, "save_001");
+  const iggy3d::SaveFileSoftDeletePlan softPlan =
+      iggy3d::planSoftDeleteSaveFile(root, "save_001");
+  const iggy3d::SaveFileSoftDeleteResult softDeleted =
+      iggy3d::softDeleteSaveFile(softPlan);
+  const iggy3d::SaveFileRecoverPlan recoverPlan =
+      iggy3d::planRecoverDeletedSaveFile(root, "save_001");
+  const iggy3d::SaveFileRecoverResult recovered =
+      iggy3d::recoverDeletedSaveFile(recoverPlan);
+  const std::vector<iggy3d::SaveFileRecord> listed = iggy3d::listSaveFiles(root);
+  return expect(written.ok, "recover setup write ok") &&
+         expect(softDeleted.ok, "recover setup soft delete ok") &&
+         expect(recovered.ok, "recover ok") &&
+         expect(recovered.reason == "recover_save_moved",
+                "recover moved reason") &&
+         expect(recovered.saveRecovered, "recover save recovered") &&
+         expect(recovered.snapshotMissing, "recover snapshot missing") &&
+         expect(!std::filesystem::exists(recoverPlan.paths.deletedSavePath),
+                "recover deleted gone") &&
+         expect(std::filesystem::exists(recoverPlan.paths.activeSavePath),
+                "recover active exists") &&
+         expect(listed.size() == 1U, "recover listed") &&
+         expect(listed.front().id == "save_001", "recover listed id");
+}
+
+bool recoverMovesSnapshotSidecarWhenPresent() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::SaveFileWriteResult written = writeFixtureSaveFile(root, "save_001");
+  const iggy3d::SaveFileSoftDeletePlan softPlan =
+      iggy3d::planSoftDeleteSaveFile(root, "save_001");
+  {
+    std::ofstream snapshot(softPlan.paths.activeSnapshotPath);
+    snapshot << "snapshot bytes";
+  }
+  const iggy3d::SaveFileSoftDeleteResult softDeleted =
+      iggy3d::softDeleteSaveFile(softPlan);
+  const iggy3d::SaveFileRecoverPlan recoverPlan =
+      iggy3d::planRecoverDeletedSaveFile(root, "save_001");
+  const iggy3d::SaveFileRecoverResult recovered =
+      iggy3d::recoverDeletedSaveFile(recoverPlan);
+  return expect(written.ok, "recover snapshot setup write ok") &&
+         expect(softDeleted.ok, "recover snapshot setup soft delete ok") &&
+         expect(recovered.ok, "recover snapshot ok") &&
+         expect(recovered.snapshotRecovered, "recover snapshot moved") &&
+         expect(!recovered.snapshotMissing, "recover snapshot not missing") &&
+         expect(!std::filesystem::exists(recoverPlan.paths.deletedSnapshotPath),
+                "recover deleted snapshot gone") &&
+         expect(std::filesystem::exists(recoverPlan.paths.activeSnapshotPath),
+                "recover active snapshot exists");
+}
+
+bool recoverRejectsMissingDeletedSave() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::SaveFileRecoverPlan plan =
+      iggy3d::planRecoverDeletedSaveFile(root, "save_001");
+  const iggy3d::SaveFileRecoverResult result =
+      iggy3d::recoverDeletedSaveFile(plan);
+  return expect(!result.ok, "recover missing rejected") &&
+         expect(result.reason == "recover_save_source_missing",
+                "recover missing reason") &&
+         expect(!result.saveRecovered, "recover missing not recovered") &&
+         expect(!std::filesystem::exists(plan.paths.activeSavePath),
+                "recover missing no active file");
+}
+
+bool recoverRejectsExistingActiveTarget() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::SaveFileWriteResult written = writeFixtureSaveFile(root, "save_001");
+  const iggy3d::SaveFileRecoverPlan plan =
+      iggy3d::planRecoverDeletedSaveFile(root, "save_001");
+  std::filesystem::create_directories(plan.paths.deletedSavePath.parent_path());
+  {
+    std::ofstream deleted(plan.paths.deletedSavePath);
+    deleted << "existing deleted source";
+  }
+  const iggy3d::SaveFileRecoverResult result =
+      iggy3d::recoverDeletedSaveFile(plan);
+  return expect(written.ok, "recover collision setup write ok") &&
+         expect(!result.ok, "recover target collision rejected") &&
+         expect(result.reason == "recover_save_target_exists",
+                "recover target collision reason") &&
+         expect(result.targetExisted, "recover target existed flag") &&
+         expect(!result.saveRecovered, "recover collision not moved") &&
+         expect(std::filesystem::exists(plan.paths.activeSavePath),
+                "recover collision active preserved") &&
+         expect(std::filesystem::exists(plan.paths.deletedSavePath),
+                "recover collision deleted preserved");
+}
+
 bool durableWritePlanBuildsSameDirectoryPaths() {
   const std::filesystem::path root = testRoot();
   const iggy3d::SaveFileDurableWritePlan plan =
@@ -779,6 +960,14 @@ int main() {
                   softDeleteAndRecoverPlansAreDeterministic() &&
                   softDeleteAndRecoverPlansRejectInvalidIds() &&
                   deletedSaveDirectoryIsNotListed() &&
+                  softDeleteMovesSaveAndUnlistsItWhenSnapshotMissing() &&
+                  softDeleteMovesSnapshotSidecarWhenPresent() &&
+                  softDeleteRejectsMissingActiveSave() &&
+                  softDeleteRejectsExistingDeletedTarget() &&
+                  recoverMovesDeletedSaveBackAndListsItWhenSnapshotMissing() &&
+                  recoverMovesSnapshotSidecarWhenPresent() &&
+                  recoverRejectsMissingDeletedSave() &&
+                  recoverRejectsExistingActiveTarget() &&
                   durableWritePlanBuildsSameDirectoryPaths() &&
                   durableWritePlanRejectsInvalidInputs() &&
                   durableTempPathIsNotListedAsSave() &&
