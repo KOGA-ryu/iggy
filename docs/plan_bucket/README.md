@@ -46,6 +46,7 @@ Each plan document must define:
 - Vertical faded selector contract
 - Save snapshot contract
 - Save load UX contract
+- World creation UX contract
 - Selection and cursor contract
 - In-game pause menu contract
 - Product frontend router contract
@@ -74,6 +75,10 @@ Each plan document must define:
   - runtime save baseline, product save identity, world grouping, Continue
     policy, atomic write requirements, soft delete/recovery, load failure,
     autosave rules, and key-value receipt fields;
+- `world_creation_ux_contract_v0_1.md`
+  - current New World launch baseline, world setup draft fields, initial save
+    gate, world identity, product orchestration ownership, route semantics,
+    receipts, and model-only first implementation slice;
 - `selection_cursor_contract_v1.md`
   - crosshair versus mouse cursor selection authority, cursor state ownership,
     hit-test routing, and dev tools inspector wiring.
