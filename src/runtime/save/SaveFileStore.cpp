@@ -211,6 +211,56 @@ SaveFileTempValidationResult validateDurableSaveTempFile(
   return result;
 }
 
+SaveFileFinalCommitResult commitDurableSaveTempFile(
+    const SaveFileTempValidationResult& validation) {
+  SaveFileFinalCommitResult result;
+  result.paths = validation.paths;
+  if (!validation.ok) {
+    result.reason = validation.reason;
+    return result;
+  }
+  result.tempValidated = true;
+
+  std::error_code error;
+  result.previousExisted = std::filesystem::exists(result.paths.finalPath, error);
+  result.previousPreserved = !result.previousExisted;
+  std::filesystem::rename(result.paths.tempPath, result.paths.finalPath, error);
+  if (error) {
+    std::error_code existsError;
+    result.previousPreserved =
+        !result.previousExisted ||
+        std::filesystem::exists(result.paths.finalPath, existsError);
+    result.reason = "durable_save_atomic_rename_failed";
+    return result;
+  }
+  result.committed = true;
+
+  const std::string encodedText = readWholeFile(result.paths.finalPath);
+  if (encodedText.empty()) {
+    result.reason = "durable_save_final_read_failed";
+    return result;
+  }
+  result.finalRead = true;
+  result.encodedBytes = static_cast<std::uint64_t>(encodedText.size());
+
+  const SaveDecodeResult decoded = decodeSaveEnvelope(encodedText);
+  result.codecStatus = decoded.status;
+  if (decoded.status != SaveCodecStatus::Ok) {
+    result.reason = "durable_save_final_decode_failed";
+    return result;
+  }
+
+  result.finalDecoded = true;
+  result.finalValidated = true;
+  result.ok = true;
+  result.reason = "durable_save_final_validated";
+  result.savedStateHash = decoded.envelope.metadata.savedStateHash;
+  result.savedStateHashHex = decoded.envelope.metadata.savedStateHashHex;
+  result.packageId = decoded.envelope.metadata.packageId;
+  result.scenarioId = decoded.envelope.metadata.scenarioId;
+  return result;
+}
+
 std::vector<SaveFileRecord> listSaveFiles(const std::filesystem::path& root) {
   std::vector<SaveFileRecord> records;
   std::error_code error;

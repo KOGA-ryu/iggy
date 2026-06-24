@@ -95,6 +95,25 @@ struct SaveFileTempValidationResult {
   bool tempValidated = false;
 };
 
+struct SaveFileFinalCommitResult {
+  bool ok = false;
+  std::string reason = "not_requested";
+  SaveFileDurableWritePaths paths;
+  SaveCodecStatus codecStatus = SaveCodecStatus::Ok;
+  std::uint64_t encodedBytes = 0;
+  std::uint64_t savedStateHash = 0;
+  std::string savedStateHashHex;
+  std::string packageId;
+  std::string scenarioId;
+  bool previousExisted = false;
+  bool previousPreserved = true;
+  bool tempValidated = false;
+  bool committed = false;
+  bool finalRead = false;
+  bool finalDecoded = false;
+  bool finalValidated = false;
+};
+
 bool isValidSaveFileId(std::string_view id);
 std::filesystem::path saveFilePathForId(const std::filesystem::path& root,
                                         std::string_view id);
@@ -111,6 +130,8 @@ SaveFileTempWriteResult writeDurableSaveTempFile(
     const SaveFileTempWriteRequest& request);
 SaveFileTempValidationResult validateDurableSaveTempFile(
     const SaveFileTempWriteResult& tempWrite);
+SaveFileFinalCommitResult commitDurableSaveTempFile(
+    const SaveFileTempValidationResult& validation);
 
 std::vector<SaveFileRecord> listSaveFiles(const std::filesystem::path& root);
 SaveFileWriteResult writeSessionSaveFile(const SaveFileWriteRequest& request);

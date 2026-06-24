@@ -35,6 +35,18 @@ iggy3d::Session makeFixtureSession() {
   return iggy3d::Session::create(request).value;
 }
 
+iggy3d::SaveFileTempValidationResult writeAndValidateTempSave(
+    const std::filesystem::path& root,
+    std::string_view saveId,
+    std::string_view attempt,
+    std::string_view encodedText) {
+  const iggy3d::SaveFileDurableWritePlan plan =
+      iggy3d::planDurableSaveFileWrite(root, saveId, attempt);
+  const iggy3d::SaveFileTempWriteResult written =
+      iggy3d::writeDurableSaveTempFile({plan, std::string(encodedText)});
+  return iggy3d::validateDurableSaveTempFile(written);
+}
+
 bool saveFileIdValidationMatchesStorePolicy() {
   return expect(iggy3d::isValidSaveFileId("save_001"), "save_001 valid") &&
          expect(iggy3d::isValidSaveFileId("save-001"), "save-001 valid") &&
@@ -280,6 +292,108 @@ bool durableTempValidationForwardsFailedWriteReason() {
                 "failed write validation not validated");
 }
 
+bool durableFinalCommitValidatesNewSave() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  const iggy3d::SaveStateResult saved =
+      iggy3d::saveSessionStateEncoded(session.state());
+  const iggy3d::SaveFileTempValidationResult validation =
+      writeAndValidateTempSave(root, "save_001", "attempt_001",
+                               saved.encodedSaveText);
+  const iggy3d::SaveFileFinalCommitResult committed =
+      iggy3d::commitDurableSaveTempFile(validation);
+  const std::vector<iggy3d::SaveFileRecord> listed = iggy3d::listSaveFiles(root);
+  return expect(validation.ok, "new commit validation ok") &&
+         expect(committed.ok, "new commit ok") &&
+         expect(committed.reason == "durable_save_final_validated",
+                "new commit reason") &&
+         expect(!committed.previousExisted, "new commit no previous") &&
+         expect(committed.previousPreserved, "new commit previous preserved") &&
+         expect(committed.tempValidated, "new commit temp validated") &&
+         expect(committed.committed, "new commit renamed") &&
+         expect(committed.finalRead, "new commit final read") &&
+         expect(committed.finalDecoded, "new commit final decoded") &&
+         expect(committed.finalValidated, "new commit final validated") &&
+         expect(committed.packageId == "iggy3d.movement_playground",
+                "new commit package") &&
+         expect(committed.scenarioId == "movement_playground.runtime_loop",
+                "new commit scenario") &&
+         expect(committed.savedStateHash == saved.savedStateHash,
+                "new commit hash") &&
+         expect(!committed.savedStateHashHex.empty(), "new commit hash hex") &&
+         expect(committed.encodedBytes == saved.encodedSaveText.size(),
+                "new commit encoded bytes") &&
+         expect(std::filesystem::exists(validation.paths.finalPath),
+                "new commit final exists") &&
+         expect(!std::filesystem::exists(validation.paths.tempPath),
+                "new commit temp consumed") &&
+         expect(listed.size() == 1U, "new commit listed") &&
+         expect(listed.front().savedStateHash == saved.savedStateHash,
+                "new commit listed hash");
+}
+
+bool durableFinalCommitForwardsInvalidValidationReason() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::SaveFileTempValidationResult validation;
+  validation.reason = "durable_save_temp_decode_failed";
+  validation.paths = iggy3d::planDurableSaveFileWrite(root, "save_001",
+                                                      "attempt_001")
+                         .paths;
+  const iggy3d::SaveFileFinalCommitResult committed =
+      iggy3d::commitDurableSaveTempFile(validation);
+  return expect(!committed.ok, "invalid validation commit rejected") &&
+         expect(committed.reason == "durable_save_temp_decode_failed",
+                "invalid validation reason forwarded") &&
+         expect(!committed.tempValidated, "invalid validation not validated") &&
+         expect(!committed.committed, "invalid validation not committed") &&
+         expect(!std::filesystem::exists(validation.paths.finalPath),
+                "invalid validation no final");
+}
+
+bool durableFinalCommitReplacesExistingFinalOnThisHost() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session firstSession = makeFixtureSession();
+  const iggy3d::SaveStateResult firstSaved =
+      iggy3d::saveSessionStateEncoded(firstSession.state());
+  const iggy3d::SaveFileTempValidationResult firstValidation =
+      writeAndValidateTempSave(root, "save_001", "attempt_001",
+                               firstSaved.encodedSaveText);
+  const iggy3d::SaveFileFinalCommitResult firstCommit =
+      iggy3d::commitDurableSaveTempFile(firstValidation);
+
+  iggy3d::Session secondSession = makeFixtureSession();
+  secondSession.mutableStateForOwnedSystems().clock.tickIndex = 1;
+  const iggy3d::SaveStateResult secondSaved =
+      iggy3d::saveSessionStateEncoded(secondSession.state());
+  const iggy3d::SaveFileTempValidationResult secondValidation =
+      writeAndValidateTempSave(root, "save_001", "attempt_002",
+                               secondSaved.encodedSaveText);
+  const iggy3d::SaveFileFinalCommitResult secondCommit =
+      iggy3d::commitDurableSaveTempFile(secondValidation);
+  const std::vector<iggy3d::SaveFileRecord> listed = iggy3d::listSaveFiles(root);
+  return expect(firstCommit.ok, "overwrite first commit ok") &&
+         expect(secondSaved.savedStateHash != firstSaved.savedStateHash,
+                "overwrite second hash differs") &&
+         expect(secondValidation.ok, "overwrite second validation ok") &&
+         expect(secondCommit.ok, "overwrite second commit ok") &&
+         expect(secondCommit.reason == "durable_save_final_validated",
+                "overwrite commit reason") &&
+         expect(secondCommit.previousExisted, "overwrite previous existed") &&
+         expect(!secondCommit.previousPreserved,
+                "overwrite previous not preserved after success") &&
+         expect(secondCommit.committed, "overwrite committed") &&
+         expect(secondCommit.finalValidated, "overwrite final validated") &&
+         expect(secondCommit.savedStateHash == secondSaved.savedStateHash,
+                "overwrite final hash") &&
+         expect(std::filesystem::exists(secondValidation.paths.finalPath),
+                "overwrite final exists") &&
+         expect(!std::filesystem::exists(secondValidation.paths.tempPath),
+                "overwrite temp consumed") &&
+         expect(listed.size() == 1U, "overwrite one listed") &&
+         expect(listed.front().savedStateHash == secondSaved.savedStateHash,
+                "overwrite listed second hash");
+}
+
 bool writeListReadAndDeleteRoundTrips() {
   const std::filesystem::path root = testRoot();
   iggy3d::Session session = makeFixtureSession();
@@ -408,6 +522,9 @@ int main() {
                   durableTempValidationRejectsCorruptTempPayload() &&
                   durableTempValidationRejectsMissingTempFile() &&
                   durableTempValidationForwardsFailedWriteReason() &&
+                  durableFinalCommitValidatesNewSave() &&
+                  durableFinalCommitForwardsInvalidValidationReason() &&
+                  durableFinalCommitReplacesExistingFinalOnThisHost() &&
                   writeListReadAndDeleteRoundTrips() && missingStateIsRejected() &&
                   idHintOverwritesExistingSave() && authoredRoomSectionIsWrittenToSaveFile();
   return ok ? 0 : 1;
