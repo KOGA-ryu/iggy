@@ -37,10 +37,12 @@ struct ProductWorldCreationRequest {
 
 struct ProductInitialSavePlan {
   bool requested = false;
-  std::string saveType = "manual";
+  std::string saveType = "initial";
   bool userTitlePresent = false;
-  std::string autoTitle;
+  std::string worldTitle;
   std::string worldId;
+  std::string createdAtUtc;
+  std::string savedAtUtc;
   bool written = false;
   std::string saveId;
 };

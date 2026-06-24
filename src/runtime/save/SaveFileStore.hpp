@@ -62,12 +62,23 @@ struct SaveFileDurableWritePlan {
   SaveFileDurableWritePaths paths;
 };
 
+struct SaveFileProductMetadata {
+  std::string saveId;
+  std::string worldId;
+  std::string worldTitle;
+  std::string saveTitle;
+  std::string saveType;
+  std::string createdAtUtc;
+  std::string savedAtUtc;
+};
+
 struct SaveFileDurableWriteRequest {
   std::filesystem::path root;
   std::string idHint;
   std::string attemptToken;
   const SessionState* state = nullptr;
   const SaveAuthoredRoomSection* authoredRoom = nullptr;
+  SaveFileProductMetadata productMetadata;
 };
 
 struct SaveFileDurableWriteResult {

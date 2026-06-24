@@ -660,11 +660,20 @@ bool durableSessionWriteCreatesNewSave() {
   request.root = root;
   request.attemptToken = "attempt_001";
   request.state = &session.state();
+  request.productMetadata.worldId = "world_0001";
+  request.productMetadata.worldTitle = "Training World";
+  request.productMetadata.saveTitle = "Manual Save";
+  request.productMetadata.saveType = "manual";
+  request.productMetadata.createdAtUtc = "2026-06-24T00:00:00Z";
+  request.productMetadata.savedAtUtc = "2026-06-24T01:02:03Z";
   const iggy3d::SaveFileDurableWriteResult written =
       iggy3d::writeSessionSaveFileDurably(request);
   const iggy3d::SaveFileReadResult read =
       written.ok ? iggy3d::readSaveFile(written.record.path)
                  : iggy3d::SaveFileReadResult{};
+  const iggy3d::SaveDecodeResult decoded =
+      read.ok ? iggy3d::decodeSaveEnvelope(read.encodedText)
+              : iggy3d::SaveDecodeResult{};
   const std::vector<iggy3d::SaveFileRecord> listed = iggy3d::listSaveFiles(root);
   return expect(written.ok, "durable write ok") &&
          expect(written.reason == "durable_save_file_written",
@@ -690,6 +699,24 @@ bool durableSessionWriteCreatesNewSave() {
          expect(!std::filesystem::exists(written.paths.tempPath),
                 "durable write temp consumed") &&
          expect(read.ok, "durable write final reads") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                "durable write final decodes") &&
+         expect(decoded.envelope.metadata.saveId == "save_001",
+                "durable write metadata save id") &&
+         expect(decoded.envelope.metadata.saveId == written.record.id,
+                "durable write metadata id matches record") &&
+         expect(decoded.envelope.metadata.worldId == "world_0001",
+                "durable write metadata world id") &&
+         expect(decoded.envelope.metadata.worldTitle == "Training World",
+                "durable write metadata world title") &&
+         expect(decoded.envelope.metadata.saveTitle == "Manual Save",
+                "durable write metadata save title") &&
+         expect(decoded.envelope.metadata.saveType == "manual",
+                "durable write metadata save type") &&
+         expect(decoded.envelope.metadata.createdAtUtc == "2026-06-24T00:00:00Z",
+                "durable write metadata created utc") &&
+         expect(decoded.envelope.metadata.savedAtUtc == "2026-06-24T01:02:03Z",
+                "durable write metadata saved utc") &&
          expect(listed.size() == 1U, "durable write one listed") &&
          expect(listed.front().savedStateHash == session.stateHash(),
                 "durable write listed hash");

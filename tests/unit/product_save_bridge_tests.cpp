@@ -66,8 +66,11 @@ iggy3d::ProductSaveWriteRequest productSaveRequest(
   request.attemptToken = std::string(attemptToken);
   request.state = &session.state();
   request.worldId = "world_0001";
+  request.worldTitle = "Training World";
+  request.saveTitle = "Manual Save";
   request.saveType = "manual";
-  request.autoTitle = "New World - Beginning";
+  request.createdAtUtc = "2026-06-24T00:00:00Z";
+  request.savedAtUtc = "2026-06-24T01:02:03Z";
   return request;
 }
 
@@ -90,6 +93,12 @@ bool productDurableSaveWritesFinalAndScans() {
   const iggy3d::ProductSaveWriteResult written =
       iggy3d::writeProductSessionSaveDurably(
           productSaveRequest(root, session, "attempt_001"));
+  const iggy3d::SaveFileReadResult read =
+      written.ok ? iggy3d::readSaveFile(written.record.path)
+                 : iggy3d::SaveFileReadResult{};
+  const iggy3d::SaveDecodeResult decoded =
+      read.ok ? iggy3d::decodeSaveEnvelope(read.encodedText)
+              : iggy3d::SaveDecodeResult{};
   const iggy3d::ProductSaveBridgeResult scanned = iggy3d::scanProductSaves(
       root, "iggy3d.movement_playground", "movement_playground.runtime_loop");
 
@@ -112,9 +121,34 @@ bool productDurableSaveWritesFinalAndScans() {
          expect(written.previousPreserved, "product previous preserved") &&
          expect(written.encodedBytes > 0U, "product encoded bytes") &&
          expect(written.worldId == "world_0001", "product world proof") &&
+         expect(written.worldTitle == "Training World",
+                "product world title proof") &&
+         expect(written.saveTitle == "Manual Save",
+                "product save title proof") &&
          expect(written.saveType == "manual", "product save type proof") &&
-         expect(written.autoTitle == "New World - Beginning",
-                "product title proof") &&
+         expect(written.createdAtUtc == "2026-06-24T00:00:00Z",
+                "product created utc proof") &&
+         expect(written.savedAtUtc == "2026-06-24T01:02:03Z",
+                "product saved utc proof") &&
+         expect(read.ok, "product final read") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                "product final decoded") &&
+         expect(decoded.envelope.metadata.saveId == "save_001",
+                "product metadata save id") &&
+         expect(decoded.envelope.metadata.saveId == written.record.id,
+                "product metadata id matches record") &&
+         expect(decoded.envelope.metadata.worldId == "world_0001",
+                "product metadata world id") &&
+         expect(decoded.envelope.metadata.worldTitle == "Training World",
+                "product metadata world title") &&
+         expect(decoded.envelope.metadata.saveTitle == "Manual Save",
+                "product metadata save title") &&
+         expect(decoded.envelope.metadata.saveType == "manual",
+                "product metadata save type") &&
+         expect(decoded.envelope.metadata.createdAtUtc == "2026-06-24T00:00:00Z",
+                "product metadata created utc") &&
+         expect(decoded.envelope.metadata.savedAtUtc == "2026-06-24T01:02:03Z",
+                "product metadata saved utc") &&
          expect(std::filesystem::exists(written.paths.finalPath),
                 "product final exists") &&
          expect(!std::filesystem::exists(written.paths.tempPath),

@@ -23,8 +23,11 @@ struct ProductSaveWriteRequest {
   const SessionState* state = nullptr;
   const SaveAuthoredRoomSection* authoredRoom = nullptr;
   std::string worldId;
+  std::string worldTitle;
+  std::string saveTitle;
   std::string saveType;
-  std::string autoTitle;
+  std::string createdAtUtc;
+  std::string savedAtUtc;
 };
 
 struct ProductSaveWriteResult {
@@ -43,8 +46,11 @@ struct ProductSaveWriteResult {
   bool previousExisted = false;
   bool previousPreserved = true;
   std::string worldId;
+  std::string worldTitle;
+  std::string saveTitle;
   std::string saveType;
-  std::string autoTitle;
+  std::string createdAtUtc;
+  std::string savedAtUtc;
 };
 
 struct ProductSaveLoadRequest {

@@ -27,8 +27,11 @@ ProductSaveWriteResult writeProductSessionSaveDurably(
   ProductSaveWriteResult result;
   result.durableWriteRequested = true;
   result.worldId = request.worldId;
+  result.worldTitle = request.worldTitle;
+  result.saveTitle = request.saveTitle;
   result.saveType = request.saveType;
-  result.autoTitle = request.autoTitle;
+  result.createdAtUtc = request.createdAtUtc;
+  result.savedAtUtc = request.savedAtUtc;
 
   SaveFileDurableWriteRequest durableRequest;
   durableRequest.root = request.saveRoot;
@@ -36,6 +39,12 @@ ProductSaveWriteResult writeProductSessionSaveDurably(
   durableRequest.attemptToken = request.attemptToken;
   durableRequest.state = request.state;
   durableRequest.authoredRoom = request.authoredRoom;
+  durableRequest.productMetadata.worldId = request.worldId;
+  durableRequest.productMetadata.worldTitle = request.worldTitle;
+  durableRequest.productMetadata.saveTitle = request.saveTitle;
+  durableRequest.productMetadata.saveType = request.saveType;
+  durableRequest.productMetadata.createdAtUtc = request.createdAtUtc;
+  durableRequest.productMetadata.savedAtUtc = request.savedAtUtc;
 
   const SaveFileDurableWriteResult durable =
       writeSessionSaveFileDurably(durableRequest);

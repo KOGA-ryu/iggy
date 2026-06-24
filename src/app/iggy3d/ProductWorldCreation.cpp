@@ -47,13 +47,16 @@ ProductWorldInitialSaveResult initialSaveRejected(
 }
 
 ProductInitialSavePlan makeInitialSavePlan(std::string_view worldId,
-                                           std::string_view worldName) {
+                                           std::string_view worldTitle,
+                                           std::string_view requestedAtUtc) {
   ProductInitialSavePlan plan;
   plan.requested = true;
-  plan.saveType = "manual";
+  plan.saveType = "initial";
   plan.userTitlePresent = false;
-  plan.autoTitle = std::string(worldName) + " - Beginning";
+  plan.worldTitle = std::string(worldTitle);
   plan.worldId = std::string(worldId);
+  plan.createdAtUtc = std::string(requestedAtUtc);
+  plan.savedAtUtc = std::string(requestedAtUtc);
   plan.written = false;
   return plan;
 }
@@ -120,8 +123,8 @@ ProductWorldCreationResult prepareProductWorldCreation(
   result.request.templateSource = input.worldTemplate.source;
   result.request.saveRoot = input.saveRoot;
   result.request.requestedAtUtc = std::string(trimAsciiWhitespace(input.requestedAtUtc));
-  result.initialSavePlan =
-      makeInitialSavePlan(result.request.worldId, result.request.worldName);
+  result.initialSavePlan = makeInitialSavePlan(
+      result.request.worldId, result.request.worldName, result.request.requestedAtUtc);
   result.sessionCreated = false;
   result.initialSaveWritten = false;
   result.routeAfterCreate = "world_setup";
@@ -148,8 +151,11 @@ ProductWorldInitialSaveResult writeProductWorldInitialSaveDurably(
   saveRequest.state = request.state;
   saveRequest.authoredRoom = request.authoredRoom;
   saveRequest.worldId = request.creation.request.worldId;
+  saveRequest.worldTitle = request.creation.initialSavePlan.worldTitle;
+  saveRequest.saveTitle = "";
   saveRequest.saveType = request.creation.initialSavePlan.saveType;
-  saveRequest.autoTitle = request.creation.initialSavePlan.autoTitle;
+  saveRequest.createdAtUtc = request.creation.initialSavePlan.createdAtUtc;
+  saveRequest.savedAtUtc = request.creation.initialSavePlan.savedAtUtc;
 
   ProductWorldInitialSaveResult result;
   result.creation = request.creation;

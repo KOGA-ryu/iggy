@@ -535,18 +535,6 @@ SaveFileDurableWriteResult writeSessionSaveFileDurably(
     saved.envelope.authoredRoom = *request.authoredRoom;
   }
 
-  const SaveEncodeResult encoded = encodeSaveEnvelope(saved.envelope);
-  saved.codecStatus = encoded.status;
-  result.codecStatus = encoded.status;
-  if (encoded.status != SaveCodecStatus::Ok) {
-    result.saveStatus = SaveLoadStatus::EncodeFailed;
-    result.reason = "save_encode_failed";
-    return result;
-  }
-  saved.encodedSaveText = encoded.encodedText;
-  saved.savedStateHash = encoded.savedStateHash;
-  result.encoded = true;
-
   std::error_code error;
   std::string id = isValidSaveFileId(request.idHint)
                        ? request.idHint
@@ -560,6 +548,26 @@ SaveFileDurableWriteResult writeSessionSaveFileDurably(
       path = saveFilePathForId(request.root, id);
     }
   }
+
+  saved.envelope.metadata.saveId = id;
+  saved.envelope.metadata.worldId = request.productMetadata.worldId;
+  saved.envelope.metadata.worldTitle = request.productMetadata.worldTitle;
+  saved.envelope.metadata.saveTitle = request.productMetadata.saveTitle;
+  saved.envelope.metadata.saveType = request.productMetadata.saveType;
+  saved.envelope.metadata.createdAtUtc = request.productMetadata.createdAtUtc;
+  saved.envelope.metadata.savedAtUtc = request.productMetadata.savedAtUtc;
+
+  const SaveEncodeResult encoded = encodeSaveEnvelope(saved.envelope);
+  saved.codecStatus = encoded.status;
+  result.codecStatus = encoded.status;
+  if (encoded.status != SaveCodecStatus::Ok) {
+    result.saveStatus = SaveLoadStatus::EncodeFailed;
+    result.reason = "save_encode_failed";
+    return result;
+  }
+  saved.encodedSaveText = encoded.encodedText;
+  saved.savedStateHash = encoded.savedStateHash;
+  result.encoded = true;
 
   const SaveFileDurableWritePlan plan =
       planDurableSaveFileWrite(request.root, id, request.attemptToken);

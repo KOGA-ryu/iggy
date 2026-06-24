@@ -106,12 +106,16 @@ bool validDefaultRequestPreparesWorldCreation() {
          expect(result.request.requestedAtUtc == "2026-06-23T12:00:00Z",
                 "timestamp") &&
          expect(result.initialSavePlan.requested, "initial save requested") &&
-         expect(result.initialSavePlan.saveType == "manual",
+         expect(result.initialSavePlan.saveType == "initial",
                 "initial save type") &&
          expect(!result.initialSavePlan.userTitlePresent,
                 "user title absent") &&
-         expect(result.initialSavePlan.autoTitle == "New World - Beginning",
-                "auto title") &&
+         expect(result.initialSavePlan.worldTitle == "New World",
+                "initial save world title") &&
+         expect(result.initialSavePlan.createdAtUtc == "2026-06-23T12:00:00Z",
+                "initial save created utc") &&
+         expect(result.initialSavePlan.savedAtUtc == "2026-06-23T12:00:00Z",
+                "initial save saved utc") &&
          expect(result.initialSavePlan.worldId == "world_0001",
                 "initial save world id") &&
          expect(!result.initialSavePlan.written, "initial save not written") &&
@@ -251,6 +255,12 @@ bool validCreationWritesInitialSaveDurably() {
   request.attemptToken = "attempt_001";
   const iggy3d::ProductWorldInitialSaveResult result =
       iggy3d::writeProductWorldInitialSaveDurably(request);
+  const iggy3d::SaveFileReadResult read =
+      result.saveWrite.ok ? iggy3d::readSaveFile(result.saveWrite.record.path)
+                          : iggy3d::SaveFileReadResult{};
+  const iggy3d::SaveDecodeResult decoded =
+      read.ok ? iggy3d::decodeSaveEnvelope(read.encodedText)
+              : iggy3d::SaveDecodeResult{};
   const iggy3d::ProductSaveBridgeResult scanned = iggy3d::scanProductSaves(
       root, creation.request.packageId, creation.request.scenarioId);
 
@@ -276,10 +286,33 @@ bool validCreationWritesInitialSaveDurably() {
                 "initial save durable reason") &&
          expect(result.saveWrite.worldId == "world_0001",
                 "initial save world proof") &&
-         expect(result.saveWrite.saveType == "manual",
+         expect(result.saveWrite.worldTitle == "New World",
+                "initial save world title proof") &&
+         expect(result.saveWrite.saveTitle.empty(),
+                "initial save save title empty") &&
+         expect(result.saveWrite.saveType == "initial",
                 "initial save type proof") &&
-         expect(result.saveWrite.autoTitle == "New World - Beginning",
-                "initial save title proof") &&
+         expect(result.saveWrite.createdAtUtc == "2026-06-23T12:00:00Z",
+                "initial save created utc proof") &&
+         expect(result.saveWrite.savedAtUtc == "2026-06-23T12:00:00Z",
+                "initial save saved utc proof") &&
+         expect(read.ok, "initial save final read") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                "initial save final decoded") &&
+         expect(decoded.envelope.metadata.saveId == "save_001",
+                "initial save metadata save id") &&
+         expect(decoded.envelope.metadata.worldId == "world_0001",
+                "initial save metadata world id") &&
+         expect(decoded.envelope.metadata.worldTitle == "New World",
+                "initial save metadata world title") &&
+         expect(decoded.envelope.metadata.saveTitle.empty(),
+                "initial save metadata save title empty") &&
+         expect(decoded.envelope.metadata.saveType == "initial",
+                "initial save metadata save type") &&
+         expect(decoded.envelope.metadata.createdAtUtc == "2026-06-23T12:00:00Z",
+                "initial save metadata created utc") &&
+         expect(decoded.envelope.metadata.savedAtUtc == "2026-06-23T12:00:00Z",
+                "initial save metadata saved utc") &&
          expect(result.saveWrite.finalValidated,
                 "initial save final validated") &&
          expect(std::filesystem::exists(result.saveWrite.paths.finalPath),
