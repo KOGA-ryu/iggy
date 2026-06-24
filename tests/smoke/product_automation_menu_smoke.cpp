@@ -494,6 +494,75 @@ int main() {
                                "save_001.iggy3d.save");
 
   fields.clear();
+  const std::filesystem::path recoverSnapshotRoot =
+      cleanSaveRoot("recover_snapshot_sidecar");
+  const bool recoverSnapshotSetupSave =
+      appAvailable &&
+      runProductCase(binary,
+                     "recover_snapshot_setup",
+                     "frontend.select=new_world\nfrontend.execute=true\n",
+                     std::string{"--save-root "} + shellQuote(recoverSnapshotRoot),
+                     fields,
+                     exitCode) &&
+      exitCode == 0 && productReceipt(fields) && automationApplied(fields) &&
+      std::filesystem::exists(recoverSnapshotRoot / "save_001.iggy3d.save");
+  const bool recoverSnapshotSidecarReady =
+      recoverSnapshotSetupSave &&
+      writeControlFile(recoverSnapshotRoot / "save_001.snapshot.png",
+                       "snapshot sidecar bytes\n");
+
+  fields.clear();
+  const bool recoverSnapshotSoftDelete =
+      appAvailable && recoverSnapshotSidecarReady &&
+      runProductCase(binary,
+                     "recover_snapshot_soft_delete",
+                     "frontend.select=load_save\nfrontend.execute=true\n"
+                     "save.select=save_001\nsave.delete=true\nmenu.confirm=true\n",
+                     std::string{"--save-root "} + shellQuote(recoverSnapshotRoot),
+                     fields,
+                     exitCode) &&
+      exitCode == 0 && productReceipt(fields) && automationApplied(fields) &&
+      hasField(fields, "save_delete_status", "product_save_soft_deleted") &&
+      hasField(fields, "save_delete_executed", "true") &&
+      !std::filesystem::exists(recoverSnapshotRoot / "save_001.iggy3d.save") &&
+      !std::filesystem::exists(recoverSnapshotRoot / "save_001.snapshot.png") &&
+      std::filesystem::exists(recoverSnapshotRoot / "deleted" /
+                              "save_001.iggy3d.save") &&
+      std::filesystem::exists(recoverSnapshotRoot / "deleted" /
+                              "save_001.snapshot.png");
+
+  fields.clear();
+  const bool loadSaveRecoverSnapshotSidecar =
+      appAvailable && recoverSnapshotSoftDelete &&
+      runProductCase(binary,
+                     "load_save_recover_snapshot_sidecar",
+                     "frontend.select=load_save\nfrontend.execute=true\n"
+                     "save.show_deleted=true\nsave.deleted_select=save_001\n"
+                     "save.recover=true\n",
+                     std::string{"--save-root "} + shellQuote(recoverSnapshotRoot),
+                     fields,
+                     exitCode) &&
+      exitCode == 0 && productReceipt(fields) && automationApplied(fields) &&
+      hasField(fields, "frontend_screen", "starter") &&
+      hasField(fields, "frontend_child_screen", "load_save") &&
+      hasField(fields, "gameplay_active", "false") &&
+      hasField(fields, "selected_save_id", "save_001") &&
+      hasField(fields, "selected_save_enabled", "true") &&
+      hasField(fields, "selected_save_status", "selected") &&
+      hasField(fields, "save_recover_status", "product_save_recovered") &&
+      hasField(fields, "save_recover_reason_code", "product_save_recovered") &&
+      hasField(fields, "save_recover_executed", "true") &&
+      hasField(fields, "save_recover_save_id", "save_001") &&
+      hasField(fields, "save_recover_snapshot_recovered", "true") &&
+      hasField(fields, "save_recover_snapshot_missing", "false") &&
+      std::filesystem::exists(recoverSnapshotRoot / "save_001.iggy3d.save") &&
+      std::filesystem::exists(recoverSnapshotRoot / "save_001.snapshot.png") &&
+      !std::filesystem::exists(recoverSnapshotRoot / "deleted" /
+                               "save_001.iggy3d.save") &&
+      !std::filesystem::exists(recoverSnapshotRoot / "deleted" /
+                               "save_001.snapshot.png");
+
+  fields.clear();
   const std::filesystem::path recoverEmptyRoot =
       cleanSaveRoot("recover_empty_deleted");
   const bool recoverEmptySetup =
@@ -719,6 +788,7 @@ int main() {
                       loadSaveSelectorCorruptRejected && loadSaveDeleteConfirmOpen &&
                       loadSaveDeleteCancel && loadSaveDeleteConfirmSoftDeleted &&
                       loadSaveRecoverSoftDeleted &&
+                      loadSaveRecoverSnapshotSidecar &&
                       loadSaveRecoverMissingSelection &&
                       loadSaveRecoverTargetCollision &&
                       pauseSave && pauseSaveAndExit && pauseFromGameplay &&
@@ -742,6 +812,8 @@ int main() {
             << (loadSaveDeleteConfirmSoftDeleted ? "true" : "false") << "\n";
   std::cout << "load_save_recover_soft_deleted="
             << (loadSaveRecoverSoftDeleted ? "true" : "false") << "\n";
+  std::cout << "load_save_recover_snapshot_sidecar="
+            << (loadSaveRecoverSnapshotSidecar ? "true" : "false") << "\n";
   std::cout << "load_save_recover_missing_selection="
             << (loadSaveRecoverMissingSelection ? "true" : "false") << "\n";
   std::cout << "load_save_recover_target_collision="
