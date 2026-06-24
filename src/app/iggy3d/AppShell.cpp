@@ -322,6 +322,91 @@ void recordProductSaveLoadSelection(std::string_view source,
   window.productSaveLoadSelectedEnabled = slot != nullptr && slot->enabled;
 }
 
+const SaveSlotPreview* saveSlotById(const SaveSlotList& slots,
+                                    std::string_view selectedId) {
+  for (const SaveSlotPreview& slot : slots.slots) {
+    if (slot.id == selectedId) {
+      return &slot;
+    }
+  }
+  return nullptr;
+}
+
+const SaveSlotPreview* firstSelectableSaveSlot(const SaveSlotList& slots) {
+  for (const SaveSlotPreview& slot : slots.slots) {
+    if (slot.enabled) {
+      return &slot;
+    }
+  }
+  return slots.slots.empty() ? nullptr : &slots.slots.front();
+}
+
+void recordSelectedProductSaveSlot(const SaveSlotList& slots,
+                                   const SaveSlotPreview* slot,
+                                   ProductAppWindowState& window) {
+  if (slots.slots.empty()) {
+    window.selectedProductSaveId = "none";
+    window.selectedProductSaveEnabled = false;
+    window.selectedProductSaveStatus = "empty";
+    return;
+  }
+  if (slot == nullptr) {
+    window.selectedProductSaveId = "none";
+    window.selectedProductSaveEnabled = false;
+    window.selectedProductSaveStatus = "missing";
+    return;
+  }
+  window.selectedProductSaveId = slot->id.empty() ? "none" : slot->id;
+  window.selectedProductSaveEnabled = slot->enabled;
+  window.selectedProductSaveStatus = slot->enabled ? "selected" : "disabled";
+}
+
+const SaveSlotPreview* initializeSelectedProductSaveSlot(
+    const SaveSlotList& slots,
+    ProductAppWindowState& window) {
+  const SaveSlotPreview* current =
+      window.selectedProductSaveId == "none"
+          ? nullptr
+          : saveSlotById(slots, window.selectedProductSaveId);
+  const SaveSlotPreview* selected =
+      current == nullptr ? firstSelectableSaveSlot(slots) : current;
+  recordSelectedProductSaveSlot(slots, selected, window);
+  return selected;
+}
+
+const SaveSlotPreview* moveSelectedProductSaveSlot(const SaveSlotList& slots,
+                                                   InputAction action,
+                                                   ProductAppWindowState& window) {
+  if (slots.slots.empty()) {
+    recordSelectedProductSaveSlot(slots, nullptr, window);
+    return nullptr;
+  }
+
+  std::size_t index = 0;
+  for (std::size_t i = 0; i < slots.slots.size(); ++i) {
+    if (slots.slots[i].id == window.selectedProductSaveId) {
+      index = i;
+      break;
+    }
+  }
+  if (action == InputAction::MenuUp && index > 0U) {
+    --index;
+  } else if (action == InputAction::MenuDown && index + 1U < slots.slots.size()) {
+    ++index;
+  }
+  const SaveSlotPreview* selected = &slots.slots[index];
+  recordSelectedProductSaveSlot(slots, selected, window);
+  return selected;
+}
+
+bool selectProductSaveSlotById(const SaveSlotList& slots,
+                               std::string_view selectedId,
+                               ProductAppWindowState& window) {
+  const SaveSlotPreview* slot = saveSlotById(slots, selectedId);
+  recordSelectedProductSaveSlot(slots, slot, window);
+  return slot != nullptr;
+}
+
 void launchProductNewWorld(const ProductAppOptions& options,
                            FrontendState& frontend,
                            std::optional<Session>& activeSession,
@@ -440,9 +525,11 @@ void launchProductLoadSaveSelection(const ProductAppOptions& options,
                                     std::optional<Session>& activeSession,
                                     ProductAppWindowState& window) {
   frontend.selectedAction = FrontendAction::Load;
+  const SaveSlotPreview* selected =
+      initializeSelectedProductSaveSlot(saves.slots, window);
   launchProductSaveSlot(options,
                         world,
-                        newestCompatibleSaveSlot(saves.slots),
+                        selected,
                         FrontendAction::Load,
                         "load_save_selector",
                         frontend,
@@ -800,7 +887,8 @@ void applyOpeningMenuAction(FrontendState& frontend,
       return;
     }
     if (action == InputAction::MenuUp || action == InputAction::MenuDown) {
-      frontend.status = "load_save_selection_unchanged";
+      moveSelectedProductSaveSlot(saves.slots, action, window);
+      frontend.status = "load_save_selection_changed";
       return;
     }
     if (action == InputAction::MenuConfirm) {
@@ -848,6 +936,7 @@ void applyOpeningMenuAction(FrontendState& frontend,
   }
   if (frontend.selectedAction == FrontendAction::LoadSave) {
     frontend.childScreen = FrontendScreen::LoadSave;
+    initializeSelectedProductSaveSlot(saves.slots, window);
     frontend.status = "opening_menu_load_save_selected";
     return;
   }
@@ -1222,6 +1311,22 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     markAutomationApplied(window, command, frontendActionName(action),
                           productInputOwnerFor(frontend, window), "applied");
     return true;
+  }
+
+  if (key == "save.select" || key == "frontend.save_select") {
+    if (frontend.childScreen != FrontendScreen::LoadSave) {
+      window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(window, command, "save.select",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    const bool selected = selectProductSaveSlotById(saves.slots, value, window);
+    markAutomationApplied(window,
+                          command,
+                          window.selectedProductSaveId,
+                          productInputOwnerFor(frontend, window),
+                          selected ? "applied" : "ignored");
+    return selected;
   }
 
   if (key == "settings.tab") {

@@ -117,6 +117,11 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.productSaveLoadSelectedId);
   appendReceiptField(receipt, "product_save_load_selected_enabled",
                      window.productSaveLoadSelectedEnabled);
+  appendReceiptField(receipt, "selected_save_id", window.selectedProductSaveId);
+  appendReceiptField(receipt, "selected_save_enabled",
+                     window.selectedProductSaveEnabled);
+  appendReceiptField(receipt, "selected_save_status",
+                     window.selectedProductSaveStatus);
   appendReceiptField(receipt, "product_save_load_previous_hash",
                      window.productSaveLoadPreviousHash);
   appendReceiptField(receipt, "product_save_load_loaded_hash",

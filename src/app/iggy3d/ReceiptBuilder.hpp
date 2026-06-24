@@ -51,6 +51,9 @@ struct ProductAppWindowState {
   std::string productSaveLoadSource = "none";
   std::string productSaveLoadSelectedId = "none";
   bool productSaveLoadSelectedEnabled = false;
+  std::string selectedProductSaveId = "none";
+  bool selectedProductSaveEnabled = false;
+  std::string selectedProductSaveStatus = "none";
   std::uint64_t productSaveLoadPreviousHash = 0;
   std::uint64_t productSaveLoadLoadedHash = 0;
   bool productSaveLoadSessionLoaded = false;
