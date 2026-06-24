@@ -133,6 +133,47 @@ FrontendRouteResult unavailableRoute(const ProductFrontendRouteContext& context,
   return route;
 }
 
+FrontendRouteResult adaptWorldSetupRoute(const WorldSetupRouteResult& worldRoute) {
+  FrontendRouteResult route = makeIgnoredFrontendRouteResult(
+      MenuOwner::Starter,
+      FrontendScreen::Starter,
+      FrontendScreen::NewWorld,
+      worldRoute.selectedAction);
+  route.gameplayInputSuppressed = true;
+  route.status = worldRoute.status;
+  route.receiptReason = worldRoute.reasonCode;
+
+  if (!worldRoute.accepted) {
+    return route;
+  }
+
+  if (worldRoute.selectedAction == FrontendAction::Back) {
+    return makeAcceptedFrontendRouteResult(MenuOwner::Starter,
+                                           FrontendScreen::Starter,
+                                           FrontendScreen::Gameplay,
+                                           FrontendTransitionRequest::None,
+                                           false,
+                                           true,
+                                           worldRoute.status,
+                                           worldRoute.reasonCode,
+                                           worldRoute.selectedAction);
+  }
+
+  if (worldRoute.selectedAction == FrontendAction::CreateAndEnter) {
+    return makeAcceptedFrontendRouteResult(MenuOwner::Starter,
+                                           FrontendScreen::Starter,
+                                           FrontendScreen::NewWorld,
+                                           FrontendTransitionRequest::None,
+                                           false,
+                                           true,
+                                           worldRoute.status,
+                                           worldRoute.reasonCode,
+                                           worldRoute.selectedAction);
+  }
+
+  return route;
+}
+
 }  // namespace
 
 std::string_view productFrontendSurfaceName(ProductFrontendSurface surface) {
@@ -248,6 +289,23 @@ ProductFrontendRouteFrame routeProductFrontendAction(
     frame.route =
         routeSaveBrowserAction(*context.saveBrowserModel, frame.owner.parentOwner, action);
     frame.routeModelName = "save_browser";
+    frame.routed = true;
+    return frame;
+  }
+
+  if (frame.owner.activeSurface == ProductFrontendSurface::WorldSetup) {
+    if (context.worldSetupDraft == nullptr) {
+      frame.route =
+          unavailableRoute(context, frame.owner, action, "world_setup_model_unavailable");
+      frame.route.gameplayInputSuppressed = true;
+      frame.routeModelAvailable = false;
+      frame.routeModelName = "world_setup";
+      return frame;
+    }
+    frame.worldSetupRoute = routeWorldSetupAction(*context.worldSetupDraft, action);
+    frame.hasWorldSetupRoute = true;
+    frame.route = adaptWorldSetupRoute(frame.worldSetupRoute);
+    frame.routeModelName = "world_setup";
     frame.routed = true;
     return frame;
   }

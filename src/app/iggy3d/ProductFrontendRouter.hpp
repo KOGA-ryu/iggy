@@ -6,6 +6,7 @@
 #include "app/frontend/FrontendRoute.hpp"
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/MenuInput.hpp"
+#include "app/frontend/WorldSetupModel.hpp"
 
 namespace iggy3d {
 
@@ -38,6 +39,7 @@ struct ProductFrontendRouteContext {
   const PauseMenuModel* pauseModel = nullptr;
   const DevToolsMenuModel* devToolsModel = nullptr;
   const SaveBrowserModel* saveBrowserModel = nullptr;
+  const WorldSetupDraft* worldSetupDraft = nullptr;
 };
 
 struct ProductFrontendOwnerDecision {
@@ -56,6 +58,8 @@ struct ProductFrontendRouteFrame {
   bool routed = false;
   bool routeModelAvailable = true;
   std::string_view routeModelName = "none";
+  bool hasWorldSetupRoute = false;
+  WorldSetupRouteResult worldSetupRoute;
 };
 
 struct ProductFrontendRouteSummary {

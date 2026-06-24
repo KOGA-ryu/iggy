@@ -108,6 +108,15 @@ iggy3d::ProductFrontendRouteContext saveBrowserContextFor(
   return context;
 }
 
+iggy3d::ProductFrontendRouteContext worldSetupContextFor(
+    const iggy3d::WorldSetupDraft& draft) {
+  iggy3d::ProductFrontendRouteContext context =
+      contextFor(iggy3d::FrontendScreen::Starter,
+                 iggy3d::FrontendScreen::NewWorld);
+  context.worldSetupDraft = &draft;
+  return context;
+}
+
 bool surfaceNamesAreStable() {
   return expect(iggy3d::productFrontendSurfaceName(
                     iggy3d::ProductFrontendSurface::BootStatus) == "boot_status",
@@ -391,7 +400,7 @@ bool missingStarterModelIsUnavailable() {
 bool starterChildBackDelegatesToStarterHelper() {
   const auto frame = iggy3d::routeProductFrontendAction(
       contextFor(iggy3d::FrontendScreen::Starter,
-                 iggy3d::FrontendScreen::NewWorld),
+                 iggy3d::FrontendScreen::DeleteConfirm),
       iggy3d::FrontendAction::Back);
 
   return expect(frame.routed, "child back routed") &&
@@ -407,7 +416,7 @@ bool starterChildBackDelegatesToStarterHelper() {
 bool starterChildNonBackIsUnavailable() {
   const auto frame = iggy3d::routeProductFrontendAction(
       contextFor(iggy3d::FrontendScreen::Starter,
-                 iggy3d::FrontendScreen::NewWorld),
+                 iggy3d::FrontendScreen::DeleteConfirm),
       iggy3d::FrontendAction::CreateAndEnter);
 
   return expect(!frame.routed, "child non-back not routed") &&
@@ -417,6 +426,142 @@ bool starterChildNonBackIsUnavailable() {
                 "child non-back no transition") &&
          expect(frame.route.status == "product_frontend_child_route_unavailable",
                 "child non-back status");
+}
+
+bool worldSetupBackDelegatesThroughDraft() {
+  const auto draft = iggy3d::makeDefaultWorldSetupDraft("seed_1");
+  const auto context = worldSetupContextFor(draft);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      context,
+      iggy3d::FrontendAction::Back);
+
+  return expect(frame.routed, "world setup back routed") &&
+         expect(frame.hasWorldSetupRoute, "world setup route present") &&
+         expect(frame.worldSetupRoute.draftDiscarded,
+                "world setup draft discarded") &&
+         expect(frame.route.accepted, "world setup back accepted") &&
+         expect(frame.route.inputOwner == iggy3d::MenuOwner::Starter,
+                "world setup back owner") &&
+         expect(frame.route.nextScreen == iggy3d::FrontendScreen::Starter,
+                "world setup back screen") &&
+         expect(frame.route.nextChildScreen == iggy3d::FrontendScreen::Gameplay,
+                "world setup back child") &&
+         expect(frame.route.requestedTransition ==
+                    iggy3d::FrontendTransitionRequest::None,
+                "world setup back transition") &&
+         expect(frame.route.gameplayInputSuppressed,
+                "world setup back suppresses") &&
+         expect(frame.route.status == "world_setup_back",
+                "world setup back status") &&
+         expect(frame.route.receiptReason == "world_setup_back",
+                "world setup back reason") &&
+         expect(frame.routeModelName == "world_setup",
+                "world setup back model name");
+}
+
+bool worldSetupValidCreateCarriesRequestWithoutTransition() {
+  auto draft = iggy3d::makeDefaultWorldSetupDraft("seed_42");
+  draft.worldName = "  Router World  ";
+  const auto context = worldSetupContextFor(draft);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      context,
+      iggy3d::FrontendAction::CreateAndEnter);
+  const auto summary = iggy3d::summarizeProductFrontendRoute(
+      context,
+      frame,
+      iggy3d::FrontendAction::CreateAndEnter);
+
+  return expect(frame.routed, "world setup create routed") &&
+         expect(frame.hasWorldSetupRoute, "world setup create result present") &&
+         expect(frame.worldSetupRoute.createRequested,
+                "world setup create requested") &&
+         expect(frame.worldSetupRoute.createRequest.worldName == "Router World",
+                "world setup create world name") &&
+         expect(frame.worldSetupRoute.createRequest.seedText == "seed_42",
+                "world setup create seed") &&
+         expect(frame.worldSetupRoute.createRequest.resolvedSeed ==
+                    iggy3d::resolveWorldSetupSeed("seed_42"),
+                "world setup create resolved seed") &&
+         expect(frame.route.accepted, "world setup create accepted") &&
+         expect(frame.route.inputOwner == iggy3d::MenuOwner::Starter,
+                "world setup create owner") &&
+         expect(frame.route.nextScreen == iggy3d::FrontendScreen::Starter,
+                "world setup create screen") &&
+         expect(frame.route.nextChildScreen == iggy3d::FrontendScreen::NewWorld,
+                "world setup create child") &&
+         expect(frame.route.requestedTransition ==
+                    iggy3d::FrontendTransitionRequest::None,
+                "world setup create no transition") &&
+         expect(frame.route.gameplayInputSuppressed,
+                "world setup create suppresses") &&
+         expect(frame.route.status == "world_setup_create_requested",
+                "world setup create status") &&
+         expect(summary.activeSurface == "world_setup",
+                "world setup create summary surface") &&
+         expect(summary.routeModelName == "world_setup",
+                "world setup create summary model") &&
+         expect(summary.transition == "none",
+                "world setup create summary transition") &&
+         expect(summary.reason == "world_setup_create_requested",
+                "world setup create summary reason");
+}
+
+bool worldSetupInvalidCreateAndUnsupportedStayOnDraft() {
+  auto draft = iggy3d::makeDefaultWorldSetupDraft("seed_1");
+  draft.worldName = " ";
+  const auto context = worldSetupContextFor(draft);
+  const auto invalid = iggy3d::routeProductFrontendAction(
+      context,
+      iggy3d::FrontendAction::CreateAndEnter);
+  const auto unsupported = iggy3d::routeProductFrontendAction(
+      context,
+      iggy3d::FrontendAction::Apply);
+
+  return expect(invalid.routed, "world setup invalid routed") &&
+         expect(invalid.hasWorldSetupRoute, "world setup invalid result present") &&
+         expect(!invalid.route.accepted, "world setup invalid rejected") &&
+         expect(!invalid.worldSetupRoute.createRequested,
+                "world setup invalid no create request") &&
+         expect(invalid.route.nextScreen == iggy3d::FrontendScreen::Starter,
+                "world setup invalid screen") &&
+         expect(invalid.route.nextChildScreen == iggy3d::FrontendScreen::NewWorld,
+                "world setup invalid child") &&
+         expect(invalid.route.status == "world_setup_invalid",
+                "world setup invalid status") &&
+         expect(invalid.route.receiptReason == "invalid_world_name",
+                "world setup invalid reason") &&
+         expect(unsupported.routed, "world setup unsupported routed") &&
+         expect(!unsupported.route.accepted, "world setup unsupported rejected") &&
+         expect(unsupported.route.status == "not_world_setup_action",
+                "world setup unsupported status") &&
+         expect(unsupported.route.receiptReason == "not_world_setup_action",
+                "world setup unsupported reason") &&
+         expect(unsupported.route.nextChildScreen == iggy3d::FrontendScreen::NewWorld,
+                "world setup unsupported child");
+}
+
+bool missingWorldSetupDraftIsUnavailable() {
+  const auto context = contextFor(iggy3d::FrontendScreen::Starter,
+                                 iggy3d::FrontendScreen::NewWorld);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      context,
+      iggy3d::FrontendAction::CreateAndEnter);
+  const auto summary = iggy3d::summarizeProductFrontendRoute(
+      context,
+      frame,
+      iggy3d::FrontendAction::CreateAndEnter);
+
+  return expect(!frame.routed, "missing world setup not routed") &&
+         expect(!frame.hasWorldSetupRoute, "missing world setup no model result") &&
+         expect(!frame.route.accepted, "missing world setup not accepted") &&
+         expect(frame.route.status == "world_setup_model_unavailable",
+                "missing world setup status") &&
+         expect(frame.route.receiptReason == "world_setup_model_unavailable",
+                "missing world setup reason") &&
+         expect(!summary.routeModelAvailable,
+                "missing world setup summary model unavailable") &&
+         expect(summary.routeModelName == "world_setup",
+                "missing world setup summary model name");
 }
 
 bool starterSettingsApplyDelegatesToSettingsHelper() {
@@ -1033,6 +1178,10 @@ int main() {
                   missingStarterModelIsUnavailable() &&
                   starterChildBackDelegatesToStarterHelper() &&
                   starterChildNonBackIsUnavailable() &&
+                  worldSetupBackDelegatesThroughDraft() &&
+                  worldSetupValidCreateCarriesRequestWithoutTransition() &&
+                  worldSetupInvalidCreateAndUnsupportedStayOnDraft() &&
+                  missingWorldSetupDraftIsUnavailable() &&
                   starterSettingsApplyDelegatesToSettingsHelper() &&
                   starterSettingsBackReturnsToStarter() &&
                   pauseSettingsBackReturnsToPause() &&
