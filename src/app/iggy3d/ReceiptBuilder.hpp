@@ -62,6 +62,17 @@ struct ProductAppWindowState {
   InputAction lastInputAction = InputAction::None;
   bool lastInputAccepted = false;
   bool gameplayInputSuppressed = false;
+  bool automationControlRequested = false;
+  bool automationControlLoaded = false;
+  std::string automationControlPath;
+  std::string automationControlStatus = "not_requested";
+  std::string automationControlScope = "none";
+  std::uint64_t automationControlLineCount = 0;
+  std::uint64_t automationControlAppliedCount = 0;
+  std::string automationControlLastKey = "none";
+  std::string automationControlLastAction = "none";
+  MenuOwner automationControlLastOwner = MenuOwner::None;
+  std::string automationControlLastResult = "none";
   std::uint64_t framesPresented = 0;
   std::uint64_t eventPollCount = 0;
   std::uint64_t menuRowCount = 0;

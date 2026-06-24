@@ -2,8 +2,12 @@
 
 #include <array>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
 
 #include "app/PackageRuntimeLookup.hpp"
 #include "app/frontend/FrontendState.hpp"
@@ -350,12 +354,6 @@ FrontendAction nextPauseSelection(FrontendAction current, InputAction action) {
 
 MenuOwner productInputOwnerFor(const FrontendState& frontend,
                                const ProductAppWindowState& window) {
-  if (frontend.screen == FrontendScreen::Starter) {
-    return MenuOwner::Starter;
-  }
-  if (frontend.screen == FrontendScreen::Pause) {
-    return MenuOwner::Pause;
-  }
   if (frontend.screen == FrontendScreen::Settings ||
       frontend.childScreen == FrontendScreen::Settings) {
     return MenuOwner::Settings;
@@ -363,6 +361,12 @@ MenuOwner productInputOwnerFor(const FrontendState& frontend,
   if (frontend.screen == FrontendScreen::DevOverlay ||
       frontend.childScreen == FrontendScreen::StarterDevTools) {
     return MenuOwner::DevTools;
+  }
+  if (frontend.screen == FrontendScreen::Starter) {
+    return MenuOwner::Starter;
+  }
+  if (frontend.screen == FrontendScreen::Pause) {
+    return MenuOwner::Pause;
   }
   if (frontend.screen == FrontendScreen::Gameplay && window.gameplayActive) {
     return MenuOwner::Gameplay;
@@ -584,6 +588,487 @@ void routeOpeningMenuInput(FrontendState& frontend,
     applyOpeningMenuAction(frontend, saves, options, settingsTab, activeSession, window,
                            routed.action, closeRequested);
   }
+}
+
+struct ProductAutomationCommand {
+  std::string key;
+  std::string value;
+};
+
+bool parseAutomationBool(std::string_view value, bool& out) {
+  if (value == "true" || value == "1" || value == "yes") {
+    out = true;
+    return true;
+  }
+  if (value == "false" || value == "0" || value == "no") {
+    out = false;
+    return true;
+  }
+  return false;
+}
+
+bool parseAutomationInputAction(std::string_view value, InputAction& out) {
+  if (value == "up") {
+    out = InputAction::MenuUp;
+  } else if (value == "down") {
+    out = InputAction::MenuDown;
+  } else if (value == "left") {
+    out = InputAction::MenuLeft;
+  } else if (value == "right") {
+    out = InputAction::MenuRight;
+  } else if (value == "confirm") {
+    out = InputAction::MenuConfirm;
+  } else if (value == "back") {
+    out = InputAction::MenuBack;
+  } else if (value == "next_tab") {
+    out = InputAction::MenuNextTab;
+  } else if (value == "previous_tab") {
+    out = InputAction::MenuPreviousTab;
+  } else if (value == "none") {
+    out = InputAction::None;
+  } else {
+    return false;
+  }
+  return true;
+}
+
+bool parseAutomationFrontendAction(std::string_view value, FrontendAction& out) {
+  if (value == "continue") {
+    out = FrontendAction::Continue;
+  } else if (value == "new_world") {
+    out = FrontendAction::NewWorld;
+  } else if (value == "load_save") {
+    out = FrontendAction::LoadSave;
+  } else if (value == "settings") {
+    out = FrontendAction::Settings;
+  } else if (value == "dev_tools") {
+    out = FrontendAction::DevTools;
+  } else if (value == "exit") {
+    out = FrontendAction::Exit;
+  } else if (value == "resume") {
+    out = FrontendAction::Resume;
+  } else if (value == "save") {
+    out = FrontendAction::Save;
+  } else if (value == "save_and_exit") {
+    out = FrontendAction::SaveAndExit;
+  } else if (value == "return_to_title") {
+    out = FrontendAction::ReturnToTitle;
+  } else if (value == "exit_game") {
+    out = FrontendAction::ExitGame;
+  } else {
+    return false;
+  }
+  return true;
+}
+
+bool parseAutomationSettingsTab(std::string_view value, FrontendSettingsTab& out) {
+  if (value == "input") {
+    out = FrontendSettingsTab::Input;
+  } else if (value == "controls") {
+    out = FrontendSettingsTab::Controls;
+  } else if (value == "camera") {
+    out = FrontendSettingsTab::Camera;
+  } else if (value == "gameplay") {
+    out = FrontendSettingsTab::Gameplay;
+  } else if (value == "video_display") {
+    out = FrontendSettingsTab::VideoDisplay;
+  } else if (value == "audio") {
+    out = FrontendSettingsTab::Audio;
+  } else if (value == "accessibility") {
+    out = FrontendSettingsTab::Accessibility;
+  } else if (value == "developer") {
+    out = FrontendSettingsTab::Developer;
+  } else {
+    return false;
+  }
+  return true;
+}
+
+bool parseAutomationDevToolsCategory(std::string_view value,
+                                     FrontendDevToolsCategory& out) {
+  if (value == "session") {
+    out = FrontendDevToolsCategory::Session;
+  } else if (value == "input") {
+    out = FrontendDevToolsCategory::Input;
+  } else if (value == "player") {
+    out = FrontendDevToolsCategory::Player;
+  } else if (value == "movement") {
+    out = FrontendDevToolsCategory::Movement;
+  } else if (value == "world_editor") {
+    out = FrontendDevToolsCategory::WorldEditor;
+  } else if (value == "collision") {
+    out = FrontendDevToolsCategory::Collision;
+  } else if (value == "spells") {
+    out = FrontendDevToolsCategory::Spells;
+  } else if (value == "camera") {
+    out = FrontendDevToolsCategory::Camera;
+  } else if (value == "renderer") {
+    out = FrontendDevToolsCategory::Renderer;
+  } else if (value == "performance") {
+    out = FrontendDevToolsCategory::Performance;
+  } else {
+    return false;
+  }
+  return true;
+}
+
+bool parseAutomationOwner(std::string_view value, MenuOwner& out) {
+  if (value == "starter") {
+    out = MenuOwner::Starter;
+  } else if (value == "pause") {
+    out = MenuOwner::Pause;
+  } else if (value == "settings") {
+    out = MenuOwner::Settings;
+  } else if (value == "dev_tools") {
+    out = MenuOwner::DevTools;
+  } else {
+    return false;
+  }
+  return true;
+}
+
+bool hasAutomationKey(const std::vector<ProductAutomationCommand>& commands,
+                      const std::string& key) {
+  for (const ProductAutomationCommand& command : commands) {
+    if (command.key == key) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool readProductAutomationCommands(const std::filesystem::path& path,
+                                   ProductAppWindowState& window,
+                                   std::vector<ProductAutomationCommand>& commands) {
+  window.automationControlRequested = !path.empty();
+  window.automationControlPath = path.empty() ? "" : path.generic_string();
+  if (path.empty()) {
+    return false;
+  }
+  window.automationControlScope = "frontend_menu";
+  std::ifstream input(path);
+  if (!input) {
+    window.automationControlStatus = "read_failed";
+    window.automationControlLastResult = "failed";
+    return false;
+  }
+
+  std::string line;
+  while (std::getline(input, line)) {
+    if (line.empty()) {
+      continue;
+    }
+    ++window.automationControlLineCount;
+    const std::size_t equals = line.find('=');
+    if (equals == std::string::npos || equals == 0U) {
+      window.automationControlStatus = "parse_error";
+      window.automationControlLastKey = "none";
+      window.automationControlLastResult = "failed";
+      return false;
+    }
+    ProductAutomationCommand command{line.substr(0, equals), line.substr(equals + 1U)};
+    if (hasAutomationKey(commands, command.key)) {
+      window.automationControlStatus = "duplicate_key";
+      window.automationControlLastKey = command.key;
+      window.automationControlLastResult = "failed";
+      return false;
+    }
+    commands.push_back(std::move(command));
+  }
+  window.automationControlLoaded = true;
+  window.automationControlStatus = "loaded";
+  return true;
+}
+
+void markAutomationApplied(ProductAppWindowState& window,
+                           const ProductAutomationCommand& command,
+                           std::string_view action,
+                           MenuOwner owner,
+                           std::string_view result) {
+  window.automationControlLastKey = command.key;
+  window.automationControlLastAction = std::string(action);
+  window.automationControlLastOwner = owner;
+  window.automationControlLastResult = std::string(result);
+  if (result == "applied") {
+    ++window.automationControlAppliedCount;
+    window.automationControlStatus = "applied";
+  }
+}
+
+bool routeAutomationInput(FrontendState& frontend,
+                          const ProductSaveBridgeResult& saves,
+                          const ProductAppOptions& options,
+                          FrontendSettingsTab& settingsTab,
+                          std::optional<Session>& activeSession,
+                          ProductAppWindowState& window,
+                          InputAction action,
+                          bool& closeRequested) {
+  ActionState actionState;
+  routeOpeningMenuInput(frontend, saves, options, settingsTab, activeSession,
+                        actionState, action, window, closeRequested);
+  window.automationControlLastOwner = productInputOwnerFor(frontend, window);
+  return window.lastInputAccepted || action == InputAction::None;
+}
+
+bool applyProductAutomationCommand(const ProductAutomationCommand& command,
+                                   FrontendState& frontend,
+                                   const ProductSaveBridgeResult& saves,
+                                   const ProductAppOptions& options,
+                                   FrontendSettingsTab& settingsTab,
+                                   std::optional<Session>& activeSession,
+                                   ProductAppWindowState& window,
+                                   bool& closeRequested) {
+  const std::string_view key{command.key};
+  const std::string_view value{command.value};
+  bool boolValue = false;
+  InputAction inputAction = InputAction::None;
+
+  if (key == "automation.owner") {
+    MenuOwner expectedOwner = MenuOwner::None;
+    if (!parseAutomationOwner(value, expectedOwner)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    const MenuOwner currentOwner = productInputOwnerFor(frontend, window);
+    if (currentOwner != expectedOwner) {
+      window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(window, command, menuOwnerName(expectedOwner), currentOwner,
+                            "failed");
+      return false;
+    }
+    markAutomationApplied(window, command, menuOwnerName(expectedOwner), currentOwner,
+                          "applied");
+    return true;
+  }
+
+  if (key == "menu.input") {
+    if (!parseAutomationInputAction(value, inputAction)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
+                                            activeSession, window, inputAction,
+                                            closeRequested);
+    markAutomationApplied(window, command, inputActionName(inputAction),
+                          window.automationControlLastOwner,
+                          routed ? "applied" : "ignored");
+    return routed;
+  }
+
+  const bool menuBoolKey =
+      key == "menu.up" || key == "menu.down" || key == "menu.left" ||
+      key == "menu.right" || key == "menu.confirm" || key == "menu.back" ||
+      key == "menu.next_tab" || key == "menu.previous_tab";
+  if (menuBoolKey) {
+    if (!parseAutomationBool(value, boolValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    if (!boolValue) {
+      markAutomationApplied(window, command, "none", productInputOwnerFor(frontend, window),
+                            "ignored");
+      return true;
+    }
+    if (key == "menu.up") {
+      inputAction = InputAction::MenuUp;
+    } else if (key == "menu.down") {
+      inputAction = InputAction::MenuDown;
+    } else if (key == "menu.left") {
+      inputAction = InputAction::MenuLeft;
+    } else if (key == "menu.right") {
+      inputAction = InputAction::MenuRight;
+    } else if (key == "menu.confirm") {
+      inputAction = InputAction::MenuConfirm;
+    } else if (key == "menu.back") {
+      inputAction = InputAction::MenuBack;
+    } else if (key == "menu.next_tab") {
+      inputAction = InputAction::MenuNextTab;
+    } else {
+      inputAction = InputAction::MenuPreviousTab;
+    }
+    const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
+                                            activeSession, window, inputAction,
+                                            closeRequested);
+    markAutomationApplied(window, command, inputActionName(inputAction),
+                          window.automationControlLastOwner,
+                          routed ? "applied" : "ignored");
+    return routed;
+  }
+
+  if (key == "frontend.select" || key == "pause.select") {
+    FrontendAction action = FrontendAction::None;
+    if (!parseAutomationFrontendAction(value, action)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    frontend.selectedAction = action;
+    markAutomationApplied(window, command, frontendActionName(action),
+                          productInputOwnerFor(frontend, window), "applied");
+    return true;
+  }
+
+  if (key == "settings.tab") {
+    if (!parseAutomationSettingsTab(value, settingsTab)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    window.selectedSettingsTab = settingsTab;
+    markAutomationApplied(window, command, frontendSettingsTabName(settingsTab),
+                          productInputOwnerFor(frontend, window), "applied");
+    return true;
+  }
+
+  if (key == "dev_tools.category") {
+    FrontendDevToolsCategory category = FrontendDevToolsCategory::None;
+    if (!parseAutomationDevToolsCategory(value, category)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    frontend.devToolsCategory = category;
+    markAutomationApplied(window, command, frontendDevToolsCategoryName(category),
+                          productInputOwnerFor(frontend, window), "applied");
+    return true;
+  }
+
+  if (key == "frontend.execute" || key == "pause.execute" ||
+      key == "dev_tools.execute") {
+    if (!parseAutomationBool(value, boolValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    if (!boolValue) {
+      markAutomationApplied(window, command, "none", productInputOwnerFor(frontend, window),
+                            "ignored");
+      return true;
+    }
+    const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
+                                            activeSession, window,
+                                            InputAction::MenuConfirm, closeRequested);
+    markAutomationApplied(window, command, inputActionName(InputAction::MenuConfirm),
+                          window.automationControlLastOwner,
+                          routed ? "applied" : "ignored");
+    return routed;
+  }
+
+  if (key == "settings.apply" || key == "settings.restore_defaults") {
+    if (!parseAutomationBool(value, boolValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    if (boolValue) {
+      frontend.status = key == "settings.apply" ? "settings_applied"
+                                                : "settings_defaults_restored";
+    }
+    markAutomationApplied(window, command, key == "settings.apply" ? "settings.apply"
+                                                                   : "settings.restore_defaults",
+                          productInputOwnerFor(frontend, window),
+                          boolValue ? "applied" : "ignored");
+    return true;
+  }
+
+  if (key == "settings.back" || key == "system.back") {
+    if (!parseAutomationBool(value, boolValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    if (!boolValue) {
+      markAutomationApplied(window, command, "none", productInputOwnerFor(frontend, window),
+                            "ignored");
+      return true;
+    }
+    const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
+                                            activeSession, window,
+                                            InputAction::MenuBack, closeRequested);
+    markAutomationApplied(window, command, inputActionName(InputAction::MenuBack),
+                          window.automationControlLastOwner,
+                          routed ? "applied" : "ignored");
+    return routed;
+  }
+
+  if (key == "frontend.return_to_title") {
+    if (!parseAutomationBool(value, boolValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    if (boolValue) {
+      returnProductToTitleTransition(frontend, window);
+      activeSession.reset();
+    }
+    markAutomationApplied(window, command, "frontend.return_to_title",
+                          productInputOwnerFor(frontend, window),
+                          boolValue ? "applied" : "ignored");
+    return true;
+  }
+
+  if (key == "system.pause") {
+    if (!parseAutomationBool(value, boolValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    if (!boolValue) {
+      markAutomationApplied(window, command, "none", productInputOwnerFor(frontend, window),
+                            "ignored");
+      return true;
+    }
+    const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
+                                            activeSession, window,
+                                            InputAction::SystemPause, closeRequested);
+    markAutomationApplied(window, command, inputActionName(InputAction::SystemPause),
+                          window.automationControlLastOwner,
+                          routed ? "applied" : "ignored");
+    return routed;
+  }
+
+  if (key == "system.quit") {
+    if (!parseAutomationBool(value, boolValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    if (boolValue) {
+      closeRequested = true;
+    }
+    markAutomationApplied(window, command, "system.quit",
+                          productInputOwnerFor(frontend, window),
+                          boolValue ? "applied" : "ignored");
+    return true;
+  }
+
+  window.automationControlStatus = "unknown_key";
+  return false;
+}
+
+void applyProductAutomationControl(const ProductAppOptions& options,
+                                   FrontendState& frontend,
+                                   const ProductSaveBridgeResult& saves,
+                                   FrontendSettingsTab& settingsTab,
+                                   std::optional<Session>& activeSession,
+                                   ProductAppWindowState& window,
+                                   bool& closeRequested) {
+  std::vector<ProductAutomationCommand> commands;
+  if (!readProductAutomationCommands(options.automationControlPath, window, commands)) {
+    return;
+  }
+  for (const ProductAutomationCommand& command : commands) {
+    if (!applyProductAutomationCommand(command, frontend, saves, options, settingsTab,
+                                       activeSession, window, closeRequested)) {
+      if (window.automationControlLastKey == "none") {
+        window.automationControlLastKey = command.key;
+      }
+      if (window.automationControlLastAction == "none") {
+        window.automationControlLastAction = command.value.empty() ? "none" : command.value;
+      }
+      window.automationControlLastOwner = productInputOwnerFor(frontend, window);
+      window.automationControlLastResult = "failed";
+      window.automationControlLoaded = false;
+      return;
+    }
+  }
+  if (window.automationControlStatus == "loaded" && commands.empty()) {
+    window.automationControlLastResult = "none";
+  }
+  window.selectedSettingsTab = settingsTab;
+  window.inputOwner = productInputOwnerFor(frontend, window);
+  window.gameplayInputSuppressed = frontendBlocksGameplayInput(frontend);
 }
 
 ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
@@ -828,6 +1313,14 @@ int runProductApp(int argc, char** argv) {
     recordAction(scriptedLook, InputAction::PlayerLookX, true, false, false, 1.0F);
     recordAction(scriptedLook, InputAction::PlayerLookY, true, false, false, 0.5F);
     applyProductCameraActions(scriptedLook, window.viewport, settings, "scripted");
+  }
+
+  FrontendSettingsTab automationSettingsTab = FrontendSettingsTab::None;
+  bool automationCloseRequested = false;
+  applyProductAutomationControl(options, frontend, saves, automationSettingsTab,
+                                activeSession, window, automationCloseRequested);
+  if (automationCloseRequested) {
+    window.status = "automation_close_requested";
   }
 
   window =

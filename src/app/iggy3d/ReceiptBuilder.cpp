@@ -185,6 +185,26 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "input_action_last", inputActionName(window.lastInputAction));
   appendReceiptField(receipt, "input_action_accepted", window.lastInputAccepted);
   appendReceiptField(receipt, "gameplay_input_suppressed", window.gameplayInputSuppressed);
+  appendReceiptField(receipt, "automation_control_requested",
+                     window.automationControlRequested);
+  appendReceiptField(receipt, "automation_control_loaded",
+                     window.automationControlLoaded);
+  appendReceiptField(receipt, "automation_control_path", window.automationControlPath);
+  appendReceiptField(receipt, "automation_control_status",
+                     window.automationControlStatus);
+  appendReceiptField(receipt, "automation_control_scope", window.automationControlScope);
+  appendReceiptField(receipt, "automation_control_line_count",
+                     window.automationControlLineCount);
+  appendReceiptField(receipt, "automation_control_applied_count",
+                     window.automationControlAppliedCount);
+  appendReceiptField(receipt, "automation_control_last_key",
+                     window.automationControlLastKey);
+  appendReceiptField(receipt, "automation_control_last_action",
+                     window.automationControlLastAction);
+  appendReceiptField(receipt, "automation_control_last_owner",
+                     menuOwnerName(window.automationControlLastOwner));
+  appendReceiptField(receipt, "automation_control_last_result",
+                     window.automationControlLastResult);
   appendReceiptField(receipt, "event_poll_count", window.eventPollCount);
   appendReceiptField(receipt, "frames", static_cast<std::uint64_t>(options.frames));
   appendReceiptField(receipt, "frames_presented", window.framesPresented);
