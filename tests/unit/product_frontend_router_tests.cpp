@@ -516,6 +516,180 @@ bool pauseDevAndGameplayRemainDeferred() {
                 "gameplay deferred status");
 }
 
+bool starterNewWorldSummaryIsReceiptReady() {
+  const auto model =
+      iggy3d::buildStarterScreenModel(0U, iggy3d::FrontendAction::NewWorld);
+  const auto context =
+      starterContextFor(iggy3d::FrontendScreen::Gameplay, model);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      context,
+      iggy3d::FrontendAction::NewWorld);
+  const auto summary = iggy3d::summarizeProductFrontendRoute(
+      context,
+      frame,
+      iggy3d::FrontendAction::NewWorld);
+
+  return expect(summary.routed, "summary new world routed") &&
+         expect(summary.accepted, "summary new world accepted") &&
+         expect(summary.inputOwner == "starter", "summary new world owner") &&
+         expect(summary.activeSurface == "starter",
+                "summary new world active surface") &&
+         expect(summary.parentOwner == "none", "summary new world parent") &&
+         expect(summary.inputAction == "new_world",
+                "summary new world input action") &&
+         expect(summary.screenBefore == "starter",
+                "summary new world screen before") &&
+         expect(summary.childBefore == "gameplay",
+                "summary new world child before") &&
+         expect(summary.screenAfter == "starter",
+                "summary new world screen after") &&
+         expect(summary.childAfter == "new_world",
+                "summary new world child after") &&
+         expect(summary.transition == "none", "summary new world transition") &&
+         expect(!summary.closeRequested, "summary new world close") &&
+         expect(summary.gameplayInputSuppressed,
+                "summary new world suppression") &&
+         expect(summary.ownerModelAvailable, "summary new world owner model") &&
+         expect(summary.ownerModelName == "starter",
+                "summary new world owner model name") &&
+         expect(summary.routeModelAvailable, "summary new world route model") &&
+         expect(summary.routeModelName == "starter",
+                "summary new world route model name") &&
+         expect(summary.status == "starter_new_world_opened",
+                "summary new world status") &&
+         expect(summary.reason == "starter_new_world_opened",
+                "summary new world reason");
+}
+
+bool compatibleContinueSummaryShowsLaunch() {
+  const auto model =
+      iggy3d::buildStarterScreenModel(1U, iggy3d::FrontendAction::Continue);
+  const auto context =
+      starterContextFor(iggy3d::FrontendScreen::Gameplay, model);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      context,
+      iggy3d::FrontendAction::Continue);
+  const auto summary = iggy3d::summarizeProductFrontendRoute(
+      context,
+      frame,
+      iggy3d::FrontendAction::Continue);
+
+  return expect(summary.routed, "summary continue routed") &&
+         expect(summary.accepted, "summary continue accepted") &&
+         expect(summary.inputOwner == "gameplay", "summary continue owner") &&
+         expect(summary.activeSurface == "starter",
+                "summary continue active surface") &&
+         expect(summary.transition == "launch_gameplay",
+                "summary continue transition") &&
+         expect(!summary.gameplayInputSuppressed,
+                "summary continue not suppressed") &&
+         expect(summary.status == "starter_launch_continue",
+                "summary continue status") &&
+         expect(summary.reason == "starter_launch_continue",
+                "summary continue reason");
+}
+
+bool settingsApplySummaryIsReceiptReady() {
+  const auto settings = settingsRouteContextFor(
+      iggy3d::MenuOwner::Starter,
+      iggy3d::FrontendSettingsTab::Input,
+      true);
+  const auto context = settingsContextFor(iggy3d::FrontendScreen::Starter,
+                                          iggy3d::FrontendScreen::Settings,
+                                          settings);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      context,
+      iggy3d::FrontendAction::Apply);
+  const auto summary = iggy3d::summarizeProductFrontendRoute(
+      context,
+      frame,
+      iggy3d::FrontendAction::Apply);
+
+  return expect(summary.routed, "summary settings routed") &&
+         expect(summary.accepted, "summary settings accepted") &&
+         expect(summary.inputOwner == "settings", "summary settings owner") &&
+         expect(summary.activeSurface == "settings",
+                "summary settings active surface") &&
+         expect(summary.parentOwner == "starter", "summary settings parent") &&
+         expect(summary.inputAction == "apply", "summary settings action") &&
+         expect(summary.status == "settings_apply_requested",
+                "summary settings status") &&
+         expect(summary.reason == "settings_apply_requested",
+                "summary settings reason") &&
+         expect(summary.routeModelAvailable, "summary settings route model") &&
+         expect(summary.routeModelName == "settings",
+                "summary settings route model name");
+}
+
+bool missingStarterModelSummaryIsHonest() {
+  const auto context = contextFor(iggy3d::FrontendScreen::Starter,
+                                 iggy3d::FrontendScreen::Gameplay);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      context,
+      iggy3d::FrontendAction::NewWorld);
+  const auto summary = iggy3d::summarizeProductFrontendRoute(
+      context,
+      frame,
+      iggy3d::FrontendAction::NewWorld);
+
+  return expect(!summary.routed, "summary missing starter not routed") &&
+         expect(!summary.accepted, "summary missing starter not accepted") &&
+         expect(!summary.routeModelAvailable,
+                "summary missing starter route model unavailable") &&
+         expect(summary.routeModelName == "starter",
+                "summary missing starter route model name") &&
+         expect(summary.status == "starter_model_unavailable",
+                "summary missing starter status") &&
+         expect(summary.reason == "starter_model_unavailable",
+                "summary missing starter reason");
+}
+
+bool missingSettingsContextSummaryIsHonest() {
+  const auto context = contextFor(iggy3d::FrontendScreen::Starter,
+                                 iggy3d::FrontendScreen::Settings);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      context,
+      iggy3d::FrontendAction::Apply);
+  const auto summary = iggy3d::summarizeProductFrontendRoute(
+      context,
+      frame,
+      iggy3d::FrontendAction::Apply);
+
+  return expect(!summary.routed, "summary missing settings not routed") &&
+         expect(!summary.accepted, "summary missing settings not accepted") &&
+         expect(!summary.routeModelAvailable,
+                "summary missing settings route model unavailable") &&
+         expect(summary.routeModelName == "settings",
+                "summary missing settings route model name") &&
+         expect(summary.status == "settings_model_unavailable",
+                "summary missing settings status") &&
+         expect(summary.reason == "settings_model_unavailable",
+                "summary missing settings reason");
+}
+
+bool deferredPauseSummaryDoesNotClaimMissingModel() {
+  const auto context = contextFor(iggy3d::FrontendScreen::Pause,
+                                 iggy3d::FrontendScreen::Gameplay);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      context,
+      iggy3d::FrontendAction::Resume);
+  const auto summary = iggy3d::summarizeProductFrontendRoute(
+      context,
+      frame,
+      iggy3d::FrontendAction::Resume);
+
+  return expect(!summary.routed, "summary pause not routed") &&
+         expect(!summary.accepted, "summary pause not accepted") &&
+         expect(summary.routeModelAvailable,
+                "summary pause route model available") &&
+         expect(summary.routeModelName == "pause",
+                "summary pause route model name") &&
+         expect(summary.status == "product_frontend_route_unavailable",
+                "summary pause status") &&
+         expect(summary.reason == "product_frontend_route_unavailable",
+                "summary pause reason");
+}
+
 }  // namespace
 
 int main() {
@@ -536,6 +710,12 @@ int main() {
                   settingsCleanApplyReportsNoChanges() &&
                   missingSettingsContextIsUnavailable() &&
                   settingsInvalidParentDelegatesReason() &&
-                  pauseDevAndGameplayRemainDeferred();
+                  pauseDevAndGameplayRemainDeferred() &&
+                  starterNewWorldSummaryIsReceiptReady() &&
+                  compatibleContinueSummaryShowsLaunch() &&
+                  settingsApplySummaryIsReceiptReady() &&
+                  missingStarterModelSummaryIsHonest() &&
+                  missingSettingsContextSummaryIsHonest() &&
+                  deferredPauseSummaryDoesNotClaimMissingModel();
   return ok ? 0 : 1;
 }

@@ -48,6 +48,30 @@ struct ProductFrontendRouteFrame {
   ProductFrontendOwnerDecision owner;
   FrontendRouteResult route;
   bool routed = false;
+  bool routeModelAvailable = true;
+  std::string_view routeModelName = "none";
+};
+
+struct ProductFrontendRouteSummary {
+  bool routed = false;
+  bool accepted = false;
+  std::string_view inputOwner = "none";
+  std::string_view activeSurface = "none";
+  std::string_view parentOwner = "none";
+  std::string_view inputAction = "none";
+  std::string_view screenBefore = "boot";
+  std::string_view childBefore = "gameplay";
+  std::string_view screenAfter = "boot";
+  std::string_view childAfter = "gameplay";
+  std::string_view transition = "none";
+  bool closeRequested = false;
+  bool gameplayInputSuppressed = false;
+  bool ownerModelAvailable = true;
+  std::string_view ownerModelName = "none";
+  bool routeModelAvailable = true;
+  std::string_view routeModelName = "none";
+  std::string_view status = "frontend_route_ignored";
+  std::string_view reason = "frontend_route_ignored";
 };
 
 std::string_view productFrontendSurfaceName(ProductFrontendSurface surface);
@@ -58,5 +82,10 @@ ProductFrontendOwnerDecision chooseProductFrontendOwner(
 ProductFrontendRouteFrame routeProductFrontendAction(
     const ProductFrontendRouteContext& context,
     FrontendAction action);
+
+ProductFrontendRouteSummary summarizeProductFrontendRoute(
+    const ProductFrontendRouteContext& context,
+    const ProductFrontendRouteFrame& frame,
+    FrontendAction inputAction);
 
 }  // namespace iggy3d

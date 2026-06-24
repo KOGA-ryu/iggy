@@ -193,9 +193,12 @@ ProductFrontendRouteFrame routeProductFrontendAction(
       frame.route =
           unavailableRoute(context, frame.owner, action, "starter_model_unavailable");
       frame.route.gameplayInputSuppressed = true;
+      frame.routeModelAvailable = false;
+      frame.routeModelName = "starter";
       return frame;
     }
     frame.route = routeStarterAction(*context.starterModel, action);
+    frame.routeModelName = "starter";
     frame.routed = true;
     return frame;
   }
@@ -204,6 +207,7 @@ ProductFrontendRouteFrame routeProductFrontendAction(
       isStarterChildSurface(frame.owner.activeSurface)) {
     if (action == FrontendAction::Back) {
       frame.route = routeStarterBackFromChild(context.frontend.childScreen);
+      frame.routeModelName = "starter";
       frame.routed = true;
       return frame;
     }
@@ -211,6 +215,7 @@ ProductFrontendRouteFrame routeProductFrontendAction(
                                    frame.owner,
                                    action,
                                    "product_frontend_child_route_unavailable");
+    frame.routeModelName = productFrontendSurfaceName(frame.owner.activeSurface);
     return frame;
   }
 
@@ -220,6 +225,8 @@ ProductFrontendRouteFrame routeProductFrontendAction(
       frame.route =
           unavailableRoute(context, frame.owner, action, "settings_model_unavailable");
       frame.route.gameplayInputSuppressed = true;
+      frame.routeModelAvailable = false;
+      frame.routeModelName = "settings";
       return frame;
     }
     if (action == FrontendAction::Back) {
@@ -227,6 +234,7 @@ ProductFrontendRouteFrame routeProductFrontendAction(
     } else {
       frame.route = routeSettingsAction(*context.settingsContext, action);
     }
+    frame.routeModelName = "settings";
     frame.routed = true;
     return frame;
   }
@@ -235,7 +243,35 @@ ProductFrontendRouteFrame routeProductFrontendAction(
                                  frame.owner,
                                  action,
                                  "product_frontend_route_unavailable");
+  frame.routeModelName = productFrontendSurfaceName(frame.owner.activeSurface);
   return frame;
+}
+
+ProductFrontendRouteSummary summarizeProductFrontendRoute(
+    const ProductFrontendRouteContext& context,
+    const ProductFrontendRouteFrame& frame,
+    FrontendAction inputAction) {
+  ProductFrontendRouteSummary summary;
+  summary.routed = frame.routed;
+  summary.accepted = frame.route.accepted;
+  summary.inputOwner = menuOwnerName(frame.route.inputOwner);
+  summary.activeSurface = productFrontendSurfaceName(frame.owner.activeSurface);
+  summary.parentOwner = menuOwnerName(frame.owner.parentOwner);
+  summary.inputAction = frontendActionName(inputAction);
+  summary.screenBefore = frontendScreenName(context.frontend.screen);
+  summary.childBefore = frontendScreenName(context.frontend.childScreen);
+  summary.screenAfter = frontendScreenName(frame.route.nextScreen);
+  summary.childAfter = frontendScreenName(frame.route.nextChildScreen);
+  summary.transition = frontendTransitionRequestName(frame.route.requestedTransition);
+  summary.closeRequested = frame.route.closeRequested;
+  summary.gameplayInputSuppressed = frame.route.gameplayInputSuppressed;
+  summary.ownerModelAvailable = frame.owner.modelAvailable;
+  summary.ownerModelName = frame.owner.modelName;
+  summary.routeModelAvailable = frame.routeModelAvailable;
+  summary.routeModelName = frame.routeModelName;
+  summary.status = frame.route.status;
+  summary.reason = frame.route.receiptReason;
+  return summary;
 }
 
 }  // namespace iggy3d
