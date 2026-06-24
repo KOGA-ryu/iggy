@@ -356,6 +356,154 @@ bool productSoftDeleteRejectsExistingDeletedTarget() {
                 "product soft delete collision deleted preserved");
 }
 
+bool productRecoverRestoresSoftDeletedSaveAndScans() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  const iggy3d::ProductSaveWriteResult written =
+      iggy3d::writeProductSessionSaveDurably(
+          productSaveRequest(root, session, "attempt_001", "save_001"));
+  const iggy3d::ProductSaveSoftDeleteResult deleted =
+      iggy3d::softDeleteProductSave({root, "save_001"});
+  const iggy3d::ProductSaveRecoverResult recovered =
+      iggy3d::recoverProductSave({root, "save_001"});
+  const iggy3d::ProductSaveBridgeResult scanned = iggy3d::scanProductSaves(
+      root, "iggy3d.movement_playground", "movement_playground.runtime_loop");
+  return expect(written.ok, "product recover setup write ok") &&
+         expect(deleted.ok, "product recover setup soft delete ok") &&
+         expect(recovered.ok, "product recover ok") &&
+         expect(recovered.status == "product_save_recovered",
+                "product recover status") &&
+         expect(recovered.reasonCode == "product_save_recovered",
+                "product recover reason") &&
+         expect(recovered.recoverReason == "recover_save_moved",
+                "product recover runtime reason") &&
+         expect(recovered.saveId == "save_001", "product recover id") &&
+         expect(recovered.saveRecovered, "product recover save recovered") &&
+         expect(recovered.snapshotMissing, "product recover snapshot missing") &&
+         expect(!recovered.snapshotRecovered,
+                "product recover snapshot not recovered") &&
+         expect(std::filesystem::exists(recovered.paths.activeSavePath),
+                "product recover active exists") &&
+         expect(!std::filesystem::exists(recovered.paths.deletedSavePath),
+                "product recover deleted gone") &&
+         expect(scanned.slots.slots.size() == 1U, "product recover scanned") &&
+         expect(scanned.slots.compatibleCount == 1U,
+                "product recover compatible") &&
+         expect(scanned.slots.slots.front().id == "save_001",
+                "product recover scan id");
+}
+
+bool productRecoverMovesSnapshotSidecarWhenPresent() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  const iggy3d::ProductSaveWriteResult written =
+      iggy3d::writeProductSessionSaveDurably(
+          productSaveRequest(root, session, "attempt_001", "save_001"));
+  {
+    std::ofstream snapshot(root / "save_001.snapshot.png");
+    snapshot << "snapshot bytes";
+  }
+  const iggy3d::ProductSaveSoftDeleteResult deleted =
+      iggy3d::softDeleteProductSave({root, "save_001"});
+  const iggy3d::ProductSaveRecoverResult recovered =
+      iggy3d::recoverProductSave({root, "save_001"});
+  return expect(written.ok, "product recover snapshot setup write ok") &&
+         expect(deleted.ok, "product recover snapshot setup delete ok") &&
+         expect(recovered.ok, "product recover snapshot ok") &&
+         expect(recovered.snapshotRecovered,
+                "product recover snapshot recovered") &&
+         expect(!recovered.snapshotMissing,
+                "product recover snapshot not missing") &&
+         expect(std::filesystem::exists(recovered.paths.activeSnapshotPath),
+                "product recover active snapshot exists") &&
+         expect(!std::filesystem::exists(recovered.paths.deletedSnapshotPath),
+                "product recover deleted snapshot gone");
+}
+
+bool productRecoverRejectsMissingIdBeforeIo() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::ProductSaveRecoverResult recovered =
+      iggy3d::recoverProductSave({root, ""});
+  return expect(!recovered.ok, "product recover missing id rejected") &&
+         expect(recovered.status == "product_save_recover_id_missing",
+                "product recover missing id status") &&
+         expect(recovered.reasonCode == "product_save_recover_id_missing",
+                "product recover missing id reason") &&
+         expect(recovered.recoverReason == "not_requested",
+                "product recover missing id no runtime") &&
+         expect(recovered.saveId == "none", "product recover missing id none") &&
+         expect(!recovered.saveRecovered,
+                "product recover missing id not recovered") &&
+         expect(iggy3d::scanProductSaves(root, "", "").slots.slots.empty(),
+                "product recover missing id no scan");
+}
+
+bool productRecoverRejectsInvalidId() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::ProductSaveRecoverResult recovered =
+      iggy3d::recoverProductSave({root, "save/001"});
+  return expect(!recovered.ok, "product recover invalid id rejected") &&
+         expect(recovered.status == "recover_save_invalid_id",
+                "product recover invalid id status") &&
+         expect(recovered.reasonCode == "recover_save_invalid_id",
+                "product recover invalid id reason") &&
+         expect(recovered.recoverReason == "recover_save_invalid_id",
+                "product recover invalid runtime") &&
+         expect(recovered.saveId == "save/001",
+                "product recover invalid id proof") &&
+         expect(recovered.paths.activeSavePath.empty(),
+                "product recover invalid no active path");
+}
+
+bool productRecoverForwardsMissingSource() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::ProductSaveRecoverResult recovered =
+      iggy3d::recoverProductSave({root, "save_001"});
+  return expect(!recovered.ok, "product recover missing source rejected") &&
+         expect(recovered.status == "recover_save_source_missing",
+                "product recover missing source status") &&
+         expect(recovered.reasonCode == "recover_save_source_missing",
+                "product recover missing source reason") &&
+         expect(recovered.recoverReason == "recover_save_source_missing",
+                "product recover missing source runtime") &&
+         expect(!recovered.saveRecovered,
+                "product recover missing source not recovered") &&
+         expect(!std::filesystem::exists(recovered.paths.activeSavePath),
+                "product recover missing source no active file");
+}
+
+bool productRecoverRejectsExistingActiveTarget() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  const iggy3d::ProductSaveWriteResult written =
+      iggy3d::writeProductSessionSaveDurably(
+          productSaveRequest(root, session, "attempt_001", "save_001"));
+  const iggy3d::SaveFileRecoverPlan plan =
+      iggy3d::planRecoverDeletedSaveFile(root, "save_001");
+  std::filesystem::create_directories(plan.paths.deletedSavePath.parent_path());
+  {
+    std::ofstream deleted(plan.paths.deletedSavePath);
+    deleted << "deleted target";
+  }
+  const iggy3d::ProductSaveRecoverResult recovered =
+      iggy3d::recoverProductSave({root, "save_001"});
+  return expect(written.ok, "product recover collision setup write ok") &&
+         expect(!recovered.ok, "product recover collision rejected") &&
+         expect(recovered.status == "recover_save_target_exists",
+                "product recover collision status") &&
+         expect(recovered.reasonCode == "recover_save_target_exists",
+                "product recover collision reason") &&
+         expect(recovered.recoverReason == "recover_save_target_exists",
+                "product recover collision runtime") &&
+         expect(recovered.targetExisted, "product recover collision flag") &&
+         expect(!recovered.saveRecovered,
+                "product recover collision not recovered") &&
+         expect(std::filesystem::exists(plan.paths.activeSavePath),
+                "product recover collision active preserved") &&
+         expect(std::filesystem::exists(plan.paths.deletedSavePath),
+                "product recover collision deleted preserved");
+}
+
 bool productLoadSaveLoadsCompatibleSession() {
   const std::filesystem::path root = testRoot();
   iggy3d::Session savedSession = makeChangedFixtureSession();
@@ -564,6 +712,12 @@ int main() {
                   productSoftDeleteRejectsInvalidId() &&
                   productSoftDeleteForwardsMissingSource() &&
                   productSoftDeleteRejectsExistingDeletedTarget() &&
+                  productRecoverRestoresSoftDeletedSaveAndScans() &&
+                  productRecoverMovesSnapshotSidecarWhenPresent() &&
+                  productRecoverRejectsMissingIdBeforeIo() &&
+                  productRecoverRejectsInvalidId() &&
+                  productRecoverForwardsMissingSource() &&
+                  productRecoverRejectsExistingActiveTarget() &&
                   productLoadSaveLoadsCompatibleSession() &&
                   productLoadSaveRejectsMissingSessionBeforeIo() &&
                   productLoadSaveRejectsMissingPathBeforeIo() &&
