@@ -73,7 +73,64 @@ bool compatibleSavePreviewIncludesMetadata() {
          expect(slots.slots.front().savedStateHashHex == written.record.savedStateHashHex,
                 "hash hex") &&
          expect(slots.slots.front().authoredFloorCount == 1U, "authored floor count") &&
-         expect(slots.slots.front().authoredWallCount == 1U, "authored wall count");
+         expect(slots.slots.front().authoredWallCount == 1U, "authored wall count") &&
+         expect(slots.slots.front().displayTitle == "save_010", "display title") &&
+         expect(!slots.slots.front().timestampLabel.empty(), "timestamp label") &&
+         expect(slots.slots.front().snapshotPath.filename() == "save_010.snapshot.png",
+                "snapshot sidecar name") &&
+         expect(!slots.slots.front().snapshotAvailable, "missing snapshot unavailable") &&
+         expect(slots.slots.front().snapshotFallback, "missing snapshot fallback") &&
+         expect(slots.slots.front().snapshotStatus == "missing",
+                "missing snapshot status");
+}
+
+bool sidecarSnapshotUpdatesPresentationOnly() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  iggy3d::SaveFileWriteRequest request;
+  request.root = root;
+  request.idHint = "save_011";
+  request.state = &session.state();
+  const iggy3d::SaveFileWriteResult written = iggy3d::writeSessionSaveFile(request);
+  {
+    std::ofstream output(root / "save_011.snapshot.png");
+    output << "not a real png but enough for presentation sidecar\n";
+  }
+  const iggy3d::SaveSlotList slots = iggy3d::buildSaveSlotList(
+      root, "iggy3d.movement_playground", "movement_playground.runtime_loop");
+
+  return expect(written.ok, "snapshot save written") &&
+         expect(slots.slots.size() == 1U, "snapshot one slot") &&
+         expect(slots.slots.front().enabled, "snapshot slot enabled") &&
+         expect(slots.slots.front().snapshotPath.filename() == "save_011.snapshot.png",
+                "snapshot filename") &&
+         expect(slots.slots.front().snapshotAvailable, "snapshot available") &&
+         expect(!slots.slots.front().snapshotFallback, "snapshot no fallback") &&
+         expect(slots.slots.front().snapshotStatus == "available",
+                "snapshot available status");
+}
+
+bool emptySidecarFallsBackWithoutDisablingSave() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  iggy3d::SaveFileWriteRequest request;
+  request.root = root;
+  request.idHint = "save_012";
+  request.state = &session.state();
+  const iggy3d::SaveFileWriteResult written = iggy3d::writeSessionSaveFile(request);
+  {
+    std::ofstream output(root / "save_012.snapshot.png");
+  }
+  const iggy3d::SaveSlotList slots = iggy3d::buildSaveSlotList(
+      root, "iggy3d.movement_playground", "movement_playground.runtime_loop");
+
+  return expect(written.ok, "empty snapshot save written") &&
+         expect(slots.slots.size() == 1U, "empty snapshot one slot") &&
+         expect(slots.slots.front().enabled, "empty snapshot save enabled") &&
+         expect(!slots.slots.front().snapshotAvailable, "empty snapshot unavailable") &&
+         expect(slots.slots.front().snapshotFallback, "empty snapshot fallback") &&
+         expect(slots.slots.front().snapshotStatus == "empty",
+                "empty snapshot status");
 }
 
 bool corruptSaveIsVisibleDisabledRow() {
@@ -81,6 +138,10 @@ bool corruptSaveIsVisibleDisabledRow() {
   {
     std::ofstream output(root / "save_999.iggy3d.save");
     output << "not an iggy3d save\n";
+  }
+  {
+    std::ofstream output(root / "save_999.snapshot.png");
+    output << "sidecar remains presentation-only\n";
   }
   const iggy3d::SaveSlotList slots = iggy3d::buildSaveSlotList(
       root, "iggy3d.movement_playground", "movement_playground.runtime_loop");
@@ -90,7 +151,14 @@ bool corruptSaveIsVisibleDisabledRow() {
          expect(slots.slots.front().id == "save_999", "corrupt id") &&
          expect(!slots.slots.front().enabled, "corrupt disabled") &&
          expect(slots.slots.front().compatibility == iggy3d::SaveSlotCompatibility::DecodeFailed,
-                "decode failed compatibility");
+                "decode failed compatibility") &&
+         expect(slots.slots.front().displayTitle == "save_999", "corrupt title") &&
+         expect(slots.slots.front().snapshotPath.filename() == "save_999.snapshot.png",
+                "corrupt snapshot path") &&
+         expect(slots.slots.front().snapshotAvailable, "corrupt snapshot still visible") &&
+         expect(!slots.slots.front().snapshotFallback, "corrupt snapshot no fallback") &&
+         expect(slots.slots.front().snapshotStatus == "available",
+                "corrupt snapshot available");
 }
 
 bool deterministicOrdering() {
@@ -117,6 +185,8 @@ bool deterministicOrdering() {
 
 int main() {
   const bool ok = compatibleSavePreviewIncludesMetadata() &&
+                  sidecarSnapshotUpdatesPresentationOnly() &&
+                  emptySidecarFallsBackWithoutDisablingSave() &&
                   corruptSaveIsVisibleDisabledRow() && deterministicOrdering();
   return ok ? 0 : 1;
 }

@@ -3,14 +3,24 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "app/frontend/SaveSlotModel.hpp"
+#include "app/frontend/VerticalFadedSelector.hpp"
 
 namespace iggy3d {
 
 struct SaveBrowserModel {
   SaveSlotList slots;
+  std::vector<VerticalSelectorItem> selectorItems;
+  VerticalSelectorState selectorState;
+  VerticalSelectorResult selectorResult;
   std::string selectedSaveId = "none";
+  std::string selectedTitle = "none";
+  std::string selectedTimestamp = "none";
+  bool selectedSnapshotAvailable = false;
+  bool selectedSnapshotFallback = true;
+  std::string selectedSnapshotStatus = "missing";
   bool loadEnabled = false;
   bool deleteEnabled = false;
   std::string_view status = "save_browser_ready";

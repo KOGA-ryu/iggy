@@ -89,6 +89,9 @@ set_tests_properties(product_menu_transitions_tests PROPERTIES
 iggy3d_add_unit_test(save_slot_model_tests tests/unit/save_slot_model_tests.cpp)
 set_tests_properties(save_slot_model_tests PROPERTIES LABELS "unit;app;frontend;save;iggy3d")
 
+iggy3d_add_unit_test(save_browser_tests tests/unit/save_browser_tests.cpp)
+set_tests_properties(save_browser_tests PROPERTIES LABELS "unit;app;frontend;save;iggy3d")
+
 iggy3d_add_unit_test(world_state_tests tests/unit/world_state_tests.cpp)
 set_tests_properties(world_state_tests PROPERTIES LABELS "unit;runtime;world;iggy3d")
 

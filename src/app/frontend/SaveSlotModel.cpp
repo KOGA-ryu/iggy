@@ -3,6 +3,7 @@
 #include "runtime/save/SaveCodec.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <fstream>
 #include <iterator>
 
@@ -24,6 +25,66 @@ std::string idFromPath(const std::filesystem::path& path) {
     filename.erase(filename.size() - kSaveFileExtension.size());
   }
   return filename.empty() ? "save" : filename;
+}
+
+std::filesystem::path snapshotSidecarPath(const std::filesystem::path& path) {
+  std::string filename = path.filename().string();
+  if (filename.size() > kSaveFileExtension.size() &&
+      filename.ends_with(kSaveFileExtension)) {
+    filename.erase(filename.size() - kSaveFileExtension.size());
+  }
+  filename += ".snapshot.png";
+  return path.parent_path() / filename;
+}
+
+std::string timestampLabelForPath(const std::filesystem::path& path) {
+  std::error_code error;
+  const auto writeTime = std::filesystem::last_write_time(path, error);
+  if (error) {
+    return "unknown";
+  }
+  const auto seconds =
+      std::chrono::duration_cast<std::chrono::seconds>(writeTime.time_since_epoch())
+          .count();
+  return "file_time_" + std::to_string(seconds);
+}
+
+void populatePresentationFields(SaveSlotPreview& preview) {
+  if (preview.displayTitle.empty()) {
+    preview.displayTitle = preview.id.empty() ? "save" : preview.id;
+  }
+  if (preview.timestampLabel.empty() || preview.timestampLabel == "unknown") {
+    preview.timestampLabel = timestampLabelForPath(preview.path);
+    if (preview.timestampLabel.empty()) {
+      preview.timestampLabel = "unknown";
+    }
+  }
+  preview.snapshotPath = snapshotSidecarPath(preview.path);
+  preview.snapshotAvailable = false;
+  preview.snapshotFallback = true;
+  preview.snapshotStatus = "missing";
+
+  std::error_code error;
+  if (!std::filesystem::exists(preview.snapshotPath, error)) {
+    preview.snapshotStatus = error ? "unavailable" : "missing";
+    return;
+  }
+  if (!std::filesystem::is_regular_file(preview.snapshotPath, error)) {
+    preview.snapshotStatus = "unavailable";
+    return;
+  }
+  const auto size = std::filesystem::file_size(preview.snapshotPath, error);
+  if (error) {
+    preview.snapshotStatus = "unavailable";
+    return;
+  }
+  if (size == 0U) {
+    preview.snapshotStatus = "empty";
+    return;
+  }
+  preview.snapshotAvailable = true;
+  preview.snapshotFallback = false;
+  preview.snapshotStatus = "available";
 }
 
 std::string readWholeFile(const std::filesystem::path& path) {
@@ -84,6 +145,7 @@ SaveSlotPreview previewFromSaveFileRecord(const SaveFileRecord& record,
                        expectedScenarioId);
   preview.enabled = preview.compatibility == SaveSlotCompatibility::Compatible;
   preview.reason = std::string(saveSlotCompatibilityName(preview.compatibility));
+  populatePresentationFields(preview);
   return preview;
 }
 
@@ -116,6 +178,7 @@ SaveSlotList buildSaveSlotList(const std::filesystem::path& root,
       preview.compatibility = SaveSlotCompatibility::DecodeFailed;
       preview.corrupt = true;
       preview.reason = "save_file_read_failed";
+      populatePresentationFields(preview);
       ++list.corruptCount;
       list.slots.push_back(std::move(preview));
       continue;
@@ -125,6 +188,7 @@ SaveSlotList buildSaveSlotList(const std::filesystem::path& root,
       preview.compatibility = SaveSlotCompatibility::DecodeFailed;
       preview.corrupt = true;
       preview.reason = "save_file_decode_failed";
+      populatePresentationFields(preview);
       ++list.corruptCount;
       list.slots.push_back(std::move(preview));
       continue;

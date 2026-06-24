@@ -31,6 +31,12 @@ struct SaveSlotPreview {
   bool enabled = false;
   bool corrupt = false;
   std::string reason = "unknown";
+  std::string displayTitle;
+  std::string timestampLabel = "unknown";
+  std::filesystem::path snapshotPath;
+  bool snapshotAvailable = false;
+  bool snapshotFallback = true;
+  std::string snapshotStatus = "missing";
 };
 
 struct SaveSlotList {
