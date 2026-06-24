@@ -1,4 +1,6 @@
 #include "app/iggy3d/ProductWorldCreation.hpp"
+#include "content/PackageLoader.hpp"
+#include "runtime/session/Session.hpp"
 
 #include <filesystem>
 #include <iostream>
@@ -26,13 +28,44 @@ iggy3d::ProductWorldCreationInput inputFor(
     iggy3d::WorldSetupCreateRequest setupRequest,
     iggy3d::ProductWorldTemplate worldTemplate,
     std::string_view worldId = "world_0001",
-    std::string_view requestedAtUtc = "2026-06-23T12:00:00Z") {
+    std::string_view requestedAtUtc = "2026-06-23T12:00:00Z",
+    std::filesystem::path saveRoot =
+        std::filesystem::path("/tmp/iggy3d_product_world_creation_tests")) {
   return iggy3d::makeProductWorldCreationInput(
       setupRequest,
       worldTemplate,
-      std::filesystem::path("/tmp/iggy3d_product_world_creation_tests"),
+      std::move(saveRoot),
       std::string(requestedAtUtc),
       std::string(worldId));
+}
+
+std::filesystem::path testRoot() {
+  const std::filesystem::path root =
+      std::filesystem::temp_directory_path() / "iggy3d_product_world_creation_tests";
+  std::error_code error;
+  std::filesystem::remove_all(root, error);
+  std::filesystem::create_directories(root, error);
+  return root;
+}
+
+iggy3d::Session makeFixtureSession() {
+  const iggy3d::PackageLoadResult package =
+      iggy3d::loadPackage({"fixtures/demos/movement_playground/package.iggy3d.toml"});
+  iggy3d::SessionCreateRequest request;
+  request.packageId = package.manifest.packageId;
+  request.config = package.scenario.config;
+  request.seed = package.scenario;
+  return iggy3d::Session::create(request).value;
+}
+
+iggy3d::ProductWorldTemplate movementPlaygroundTemplate() {
+  iggy3d::ProductWorldTemplate worldTemplate =
+      iggy3d::defaultProductWorldTemplate();
+  worldTemplate.packageId = "iggy3d.movement_playground";
+  worldTemplate.scenarioId = "movement_playground.runtime_loop";
+  worldTemplate.displayName = "Movement Playground";
+  worldTemplate.source = "unit_fixture_override";
+  return worldTemplate;
 }
 
 bool validDefaultRequestPreparesWorldCreation() {
@@ -204,6 +237,139 @@ bool pathSafeWorldIdsAreAllowed() {
          expect(alpha.accepted, "alpha id accepted");
 }
 
+bool validCreationWritesInitialSaveDurably() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  const iggy3d::ProductWorldCreationResult creation =
+      iggy3d::prepareProductWorldCreation(inputFor(
+          defaultSetupRequest(), movementPlaygroundTemplate(), "world_0001",
+          "2026-06-23T12:00:00Z", root));
+
+  iggy3d::ProductWorldInitialSaveRequest request;
+  request.creation = creation;
+  request.state = &session.state();
+  request.attemptToken = "attempt_001";
+  const iggy3d::ProductWorldInitialSaveResult result =
+      iggy3d::writeProductWorldInitialSaveDurably(request);
+  const iggy3d::ProductSaveBridgeResult scanned = iggy3d::scanProductSaves(
+      root, creation.request.packageId, creation.request.scenarioId);
+
+  return expect(result.ok, "initial save ok") &&
+         expect(result.status == "world_creation_initial_save_written",
+                "initial save status") &&
+         expect(result.reasonCode == "world_creation_initial_save_written",
+                "initial save reason") &&
+         expect(result.creation.accepted, "initial save accepted") &&
+         expect(result.creation.sessionCreated, "initial save session supplied") &&
+         expect(result.creation.initialSaveWritten,
+                "initial save written flag") &&
+         expect(result.creation.initialSavePlan.written,
+                "initial save plan written") &&
+         expect(result.creation.initialSavePlan.saveId == "save_001",
+                "initial save id") &&
+         expect(result.creation.routeAfterCreate == "gameplay",
+                "initial save route gameplay") &&
+         expect(result.saveWrite.ok, "initial save bridge ok") &&
+         expect(result.saveWrite.status == "product_save_written",
+                "initial save bridge status") &&
+         expect(result.saveWrite.durableReason == "durable_save_file_written",
+                "initial save durable reason") &&
+         expect(result.saveWrite.worldId == "world_0001",
+                "initial save world proof") &&
+         expect(result.saveWrite.saveType == "manual",
+                "initial save type proof") &&
+         expect(result.saveWrite.autoTitle == "New World - Beginning",
+                "initial save title proof") &&
+         expect(result.saveWrite.finalValidated,
+                "initial save final validated") &&
+         expect(std::filesystem::exists(result.saveWrite.paths.finalPath),
+                "initial save final exists") &&
+         expect(!std::filesystem::exists(result.saveWrite.paths.tempPath),
+                "initial save temp consumed") &&
+         expect(scanned.slots.slots.size() == 1U, "initial save scan slot") &&
+         expect(scanned.slots.compatibleCount == 1U,
+                "initial save scan compatible") &&
+         expect(scanned.slots.slots.front().id == "save_001",
+                "initial save scan id");
+}
+
+bool unpreparedCreationDoesNotWriteInitialSave() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  iggy3d::ProductWorldInitialSaveRequest request;
+  request.creation = iggy3d::ProductWorldCreationResult{};
+  request.state = &session.state();
+  request.attemptToken = "attempt_001";
+  const iggy3d::ProductWorldInitialSaveResult result =
+      iggy3d::writeProductWorldInitialSaveDurably(request);
+  return expect(!result.ok, "unprepared initial save rejected") &&
+         expect(result.status == "world_creation_not_ready",
+                "unprepared status") &&
+         expect(result.reasonCode == "world_creation_not_ready",
+                "unprepared reason") &&
+         expect(!result.saveWrite.durableWriteRequested,
+                "unprepared no bridge write") &&
+         expect(iggy3d::scanProductSaves(root, "", "").slots.slots.empty(),
+                "unprepared no saves");
+}
+
+bool missingSessionDoesNotWriteInitialSave() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::ProductWorldCreationResult creation =
+      iggy3d::prepareProductWorldCreation(inputFor(
+          defaultSetupRequest(), movementPlaygroundTemplate(), "world_0001",
+          "2026-06-23T12:00:00Z", root));
+  iggy3d::ProductWorldInitialSaveRequest request;
+  request.creation = creation;
+  request.attemptToken = "attempt_001";
+  const iggy3d::ProductWorldInitialSaveResult result =
+      iggy3d::writeProductWorldInitialSaveDurably(request);
+  return expect(!result.ok, "missing session rejected") &&
+         expect(result.status == "world_creation_session_missing",
+                "missing session status") &&
+         expect(result.reasonCode == "world_creation_session_missing",
+                "missing session reason") &&
+         expect(!result.saveWrite.durableWriteRequested,
+                "missing session no bridge write") &&
+         expect(result.creation.routeAfterCreate == "world_setup",
+                "missing session stays setup") &&
+         expect(iggy3d::scanProductSaves(root, "", "").slots.slots.empty(),
+                "missing session no saves");
+}
+
+bool invalidAttemptTokenPreservesDurableReason() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  const iggy3d::ProductWorldCreationResult creation =
+      iggy3d::prepareProductWorldCreation(inputFor(
+          defaultSetupRequest(), movementPlaygroundTemplate(), "world_0001",
+          "2026-06-23T12:00:00Z", root));
+  iggy3d::ProductWorldInitialSaveRequest request;
+  request.creation = creation;
+  request.state = &session.state();
+  request.attemptToken = "attempt 001";
+  const iggy3d::ProductWorldInitialSaveResult result =
+      iggy3d::writeProductWorldInitialSaveDurably(request);
+  return expect(!result.ok, "invalid attempt rejected") &&
+         expect(result.status == "durable_save_invalid_attempt_token",
+                "invalid attempt status") &&
+         expect(result.reasonCode == "durable_save_invalid_attempt_token",
+                "invalid attempt reason") &&
+         expect(result.saveWrite.durableWriteRequested,
+                "invalid attempt bridge requested") &&
+         expect(result.saveWrite.durableReason ==
+                    "durable_save_invalid_attempt_token",
+                "invalid attempt durable reason") &&
+         expect(!result.creation.initialSaveWritten,
+                "invalid attempt not written") &&
+         expect(!result.creation.initialSavePlan.written,
+                "invalid attempt plan not written") &&
+         expect(result.creation.routeAfterCreate == "world_setup",
+                "invalid attempt stays setup") &&
+         expect(iggy3d::scanProductSaves(root, "", "").slots.slots.empty(),
+                "invalid attempt no saves");
+}
+
 }  // namespace
 
 int main() {
@@ -211,6 +377,10 @@ int main() {
                   devOverrideTemplateFactsArePreservedWithoutIo() &&
                   notRequestedIsRejected() && invalidWorldIdsAreRejected() &&
                   missingTemplateAndTimestampFieldsReject() &&
-                  pathSafeWorldIdsAreAllowed();
+                  pathSafeWorldIdsAreAllowed() &&
+                  validCreationWritesInitialSaveDurably() &&
+                  unpreparedCreationDoesNotWriteInitialSave() &&
+                  missingSessionDoesNotWriteInitialSave() &&
+                  invalidAttemptTokenPreservesDurableReason();
   return ok ? 0 : 1;
 }

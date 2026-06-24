@@ -7,6 +7,7 @@
 
 #include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/DefaultWorldTemplate.hpp"
+#include "app/iggy3d/SaveBridge.hpp"
 
 namespace iggy3d {
 
@@ -55,6 +56,21 @@ struct ProductWorldCreationResult {
   std::string_view routeAfterCreate = "world_setup";
 };
 
+struct ProductWorldInitialSaveRequest {
+  ProductWorldCreationResult creation;
+  const SessionState* state = nullptr;
+  const SaveAuthoredRoomSection* authoredRoom = nullptr;
+  std::string attemptToken;
+};
+
+struct ProductWorldInitialSaveResult {
+  bool ok = false;
+  std::string status = "not_requested";
+  std::string reasonCode = "not_requested";
+  ProductWorldCreationResult creation;
+  ProductSaveWriteResult saveWrite;
+};
+
 ProductWorldCreationInput makeProductWorldCreationInput(
     const WorldSetupCreateRequest& setupRequest,
     const ProductWorldTemplate& worldTemplate,
@@ -64,5 +80,7 @@ ProductWorldCreationInput makeProductWorldCreationInput(
 
 ProductWorldCreationResult prepareProductWorldCreation(
     const ProductWorldCreationInput& input);
+ProductWorldInitialSaveResult writeProductWorldInitialSaveDurably(
+    const ProductWorldInitialSaveRequest& request);
 
 }  // namespace iggy3d

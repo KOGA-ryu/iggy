@@ -35,6 +35,17 @@ ProductWorldCreationResult rejected(std::string_view reason) {
   return result;
 }
 
+ProductWorldInitialSaveResult initialSaveRejected(
+    const ProductWorldInitialSaveRequest& request,
+    std::string reason) {
+  ProductWorldInitialSaveResult result;
+  result.status = reason;
+  result.reasonCode = std::move(reason);
+  result.creation = request.creation;
+  result.creation.routeAfterCreate = "world_setup";
+  return result;
+}
+
 ProductInitialSavePlan makeInitialSavePlan(std::string_view worldId,
                                            std::string_view worldName) {
   ProductInitialSavePlan plan;
@@ -114,6 +125,55 @@ ProductWorldCreationResult prepareProductWorldCreation(
   result.sessionCreated = false;
   result.initialSaveWritten = false;
   result.routeAfterCreate = "world_setup";
+  return result;
+}
+
+ProductWorldInitialSaveResult writeProductWorldInitialSaveDurably(
+    const ProductWorldInitialSaveRequest& request) {
+  if (!request.creation.accepted) {
+    return initialSaveRejected(request, "world_creation_not_ready");
+  }
+  if (!request.creation.initialSavePlan.requested) {
+    return initialSaveRejected(request,
+                               "world_creation_initial_save_not_requested");
+  }
+  if (request.state == nullptr) {
+    return initialSaveRejected(request, "world_creation_session_missing");
+  }
+
+  ProductSaveWriteRequest saveRequest;
+  saveRequest.saveRoot = request.creation.request.saveRoot;
+  saveRequest.saveIdHint = request.creation.initialSavePlan.saveId;
+  saveRequest.attemptToken = request.attemptToken;
+  saveRequest.state = request.state;
+  saveRequest.authoredRoom = request.authoredRoom;
+  saveRequest.worldId = request.creation.request.worldId;
+  saveRequest.saveType = request.creation.initialSavePlan.saveType;
+  saveRequest.autoTitle = request.creation.initialSavePlan.autoTitle;
+
+  ProductWorldInitialSaveResult result;
+  result.creation = request.creation;
+  result.saveWrite = writeProductSessionSaveDurably(saveRequest);
+  if (!result.saveWrite.ok) {
+    result.status = result.saveWrite.reasonCode;
+    result.reasonCode = result.saveWrite.reasonCode;
+    result.creation.routeAfterCreate = "world_setup";
+    result.creation.initialSaveWritten = false;
+    result.creation.initialSavePlan.written = false;
+    return result;
+  }
+
+  result.ok = true;
+  result.status = "world_creation_initial_save_written";
+  result.reasonCode = "world_creation_initial_save_written";
+  result.creation.status = "world_creation_initial_save_written";
+  result.creation.reasonCode = "world_creation_initial_save_written";
+  result.creation.accepted = true;
+  result.creation.sessionCreated = true;
+  result.creation.initialSaveWritten = true;
+  result.creation.initialSavePlan.written = true;
+  result.creation.initialSavePlan.saveId = result.saveWrite.record.id;
+  result.creation.routeAfterCreate = "gameplay";
   return result;
 }
 
