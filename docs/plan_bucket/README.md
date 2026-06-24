@@ -79,6 +79,10 @@ Each plan document must define:
   - current New World launch baseline, world setup draft fields, initial save
     gate, world identity, product orchestration ownership, route semantics,
     receipts, and model-only first implementation slice;
+- `product_frontend_router_contract_v0_1.md`
+  - existing route/helper baseline, table-driven/pure routing methods, owner
+    priority, parent return rules, transition vocabulary, receipt proof, and
+    owner-decision-only first implementation slice;
 - `selection_cursor_contract_v1.md`
   - crosshair versus mouse cursor selection authority, cursor state ownership,
     hit-test routing, and dev tools inspector wiring.
