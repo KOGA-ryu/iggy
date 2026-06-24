@@ -1,6 +1,59 @@
 #include "app/frontend/DevToolsMenu.hpp"
 
 namespace iggy3d {
+namespace {
+
+bool validDevToolsParent(MenuOwner parentOwner) {
+  return parentOwner == MenuOwner::Starter || parentOwner == MenuOwner::Gameplay ||
+         parentOwner == MenuOwner::Pause;
+}
+
+FrontendScreen devToolsStayScreen(MenuOwner parentOwner) {
+  if (parentOwner == MenuOwner::Starter) {
+    return FrontendScreen::Starter;
+  }
+  return FrontendScreen::DevOverlay;
+}
+
+FrontendScreen devToolsStayChild(MenuOwner parentOwner) {
+  if (parentOwner == MenuOwner::Starter) {
+    return FrontendScreen::StarterDevTools;
+  }
+  return FrontendScreen::Gameplay;
+}
+
+FrontendRouteResult ignoredDevToolsRoute(MenuOwner parentOwner,
+                                         FrontendAction action,
+                                         std::string_view status) {
+  FrontendRouteResult result = makeIgnoredFrontendRouteResult(
+      MenuOwner::DevTools,
+      devToolsStayScreen(parentOwner),
+      devToolsStayChild(parentOwner),
+      action);
+  result.gameplayInputSuppressed = true;
+  result.status = status;
+  result.receiptReason = status;
+  return result;
+}
+
+FrontendRouteResult acceptedDevToolsRoute(MenuOwner owner,
+                                          FrontendScreen nextScreen,
+                                          FrontendScreen nextChildScreen,
+                                          bool gameplayInputSuppressed,
+                                          std::string_view status,
+                                          FrontendAction action) {
+  return makeAcceptedFrontendRouteResult(owner,
+                                         nextScreen,
+                                         nextChildScreen,
+                                         FrontendTransitionRequest::None,
+                                         false,
+                                         gameplayInputSuppressed,
+                                         status,
+                                         status,
+                                         action);
+}
+
+}  // namespace
 
 DevToolsMenuModel buildDevToolsMenuModel(FrontendDevToolsCategory selected) {
   DevToolsMenuModel model;
@@ -13,6 +66,60 @@ DevToolsMenuModel buildDevToolsMenuModel(FrontendDevToolsCategory selected) {
   model.selectedAction = "none";
   model.runtimeReadoutCount = devToolsReadoutCount(model.selected);
   return model;
+}
+
+FrontendRouteResult routeDevToolsAction(const DevToolsMenuModel& model,
+                                        MenuOwner parentOwner,
+                                        FrontendAction action) {
+  if (action != FrontendAction::Back && action != FrontendAction::Apply) {
+    return ignoredDevToolsRoute(parentOwner, action, "not_dev_tools_action");
+  }
+
+  if (action == FrontendAction::Back) {
+    switch (parentOwner) {
+      case MenuOwner::Starter:
+        return acceptedDevToolsRoute(MenuOwner::Starter,
+                                     FrontendScreen::Starter,
+                                     FrontendScreen::Gameplay,
+                                     true,
+                                     "dev_tools_closed_to_starter",
+                                     action);
+      case MenuOwner::Gameplay:
+        return acceptedDevToolsRoute(MenuOwner::Gameplay,
+                                     FrontendScreen::Gameplay,
+                                     FrontendScreen::Gameplay,
+                                     false,
+                                     "dev_tools_closed_to_gameplay",
+                                     action);
+      case MenuOwner::Pause:
+        return acceptedDevToolsRoute(MenuOwner::Pause,
+                                     FrontendScreen::Pause,
+                                     FrontendScreen::Gameplay,
+                                     true,
+                                     "dev_tools_closed_to_pause",
+                                     action);
+      case MenuOwner::None:
+      case MenuOwner::Settings:
+      case MenuOwner::DevTools:
+      case MenuOwner::Editor:
+        break;
+    }
+    return ignoredDevToolsRoute(parentOwner, action, "dev_tools_invalid_parent");
+  }
+
+  if (!validDevToolsParent(parentOwner)) {
+    return ignoredDevToolsRoute(parentOwner, action, "dev_tools_invalid_parent");
+  }
+  if (!model.selectedEnabled) {
+    return ignoredDevToolsRoute(parentOwner, action, model.selectedDisabledReason);
+  }
+
+  return acceptedDevToolsRoute(MenuOwner::DevTools,
+                               devToolsStayScreen(parentOwner),
+                               devToolsStayChild(parentOwner),
+                               true,
+                               "dev_tools_category_selected",
+                               action);
 }
 
 std::string_view devToolsCategoryLabel(FrontendDevToolsCategory category) {

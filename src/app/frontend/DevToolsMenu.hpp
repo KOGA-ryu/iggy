@@ -4,6 +4,7 @@
 #include <string_view>
 #include <vector>
 
+#include "app/frontend/FrontendRoute.hpp"
 #include "app/frontend/FrontendState.hpp"
 
 namespace iggy3d {
@@ -18,6 +19,9 @@ struct DevToolsMenuModel {
 };
 
 DevToolsMenuModel buildDevToolsMenuModel(FrontendDevToolsCategory selected);
+FrontendRouteResult routeDevToolsAction(const DevToolsMenuModel& model,
+                                        MenuOwner parentOwner,
+                                        FrontendAction action);
 std::string_view devToolsCategoryLabel(FrontendDevToolsCategory category);
 std::uint64_t devToolsReadoutCount(FrontendDevToolsCategory category);
 

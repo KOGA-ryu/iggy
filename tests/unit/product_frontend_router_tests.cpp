@@ -1,5 +1,6 @@
 #include "app/iggy3d/ProductFrontendRouter.hpp"
 
+#include "app/frontend/DevToolsMenu.hpp"
 #include "app/frontend/PauseMenu.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/frontend/StarterScreen.hpp"
@@ -67,6 +68,15 @@ iggy3d::ProductFrontendRouteContext pauseContextFor(
       contextFor(iggy3d::FrontendScreen::Pause,
                  iggy3d::FrontendScreen::Gameplay);
   context.pauseModel = &model;
+  return context;
+}
+
+iggy3d::ProductFrontendRouteContext devToolsContextFor(
+    iggy3d::FrontendScreen screen,
+    iggy3d::FrontendScreen child,
+    const iggy3d::DevToolsMenuModel& model) {
+  iggy3d::ProductFrontendRouteContext context = contextFor(screen, child);
+  context.devToolsModel = &model;
   return context;
 }
 
@@ -589,24 +599,102 @@ bool pauseSettingsRouteSummaryIsReceiptReady() {
                 "pause settings summary reason");
 }
 
-bool devAndGameplayRemainDeferred() {
+bool devToolsRoutesFromStarterAndGameplay() {
+  const auto model =
+      iggy3d::buildDevToolsMenuModel(iggy3d::FrontendDevToolsCategory::Session);
+  const auto starterContext = devToolsContextFor(
+      iggy3d::FrontendScreen::Starter,
+      iggy3d::FrontendScreen::StarterDevTools,
+      model);
+  const auto gameplayContext = devToolsContextFor(
+      iggy3d::FrontendScreen::DevOverlay,
+      iggy3d::FrontendScreen::Gameplay,
+      model);
+
+  const auto starter = iggy3d::routeProductFrontendAction(
+      starterContext,
+      iggy3d::FrontendAction::Back);
+  const auto gameplay = iggy3d::routeProductFrontendAction(
+      gameplayContext,
+      iggy3d::FrontendAction::Back);
+
+  return expect(starter.routed, "starter dev tools routed") &&
+         expect(starter.route.accepted, "starter dev tools accepted") &&
+         expect(starter.route.inputOwner == iggy3d::MenuOwner::Starter,
+                "starter dev tools owner") &&
+         expect(starter.route.status == "dev_tools_closed_to_starter",
+                "starter dev tools status") &&
+         expect(gameplay.routed, "gameplay dev tools routed") &&
+         expect(gameplay.route.accepted, "gameplay dev tools accepted") &&
+         expect(gameplay.route.inputOwner == iggy3d::MenuOwner::Gameplay,
+                "gameplay dev tools owner") &&
+         expect(!gameplay.route.gameplayInputSuppressed,
+                "gameplay dev tools unsuppressed") &&
+         expect(gameplay.route.status == "dev_tools_closed_to_gameplay",
+                "gameplay dev tools status");
+}
+
+bool missingDevToolsModelIsUnavailable() {
+  const auto context = contextFor(iggy3d::FrontendScreen::DevOverlay,
+                                 iggy3d::FrontendScreen::Gameplay);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      context,
+      iggy3d::FrontendAction::Back);
+  const auto summary = iggy3d::summarizeProductFrontendRoute(
+      context,
+      frame,
+      iggy3d::FrontendAction::Back);
+
+  return expect(!frame.routed, "missing dev tools not routed") &&
+         expect(!frame.route.accepted, "missing dev tools not accepted") &&
+         expect(frame.route.status == "dev_tools_model_unavailable",
+                "missing dev tools status") &&
+         expect(!summary.routeModelAvailable,
+                "missing dev tools summary model unavailable") &&
+         expect(summary.routeModelName == "dev_tools",
+                "missing dev tools summary model name");
+}
+
+bool devToolsApplySummaryIsReceiptReady() {
+  const auto model =
+      iggy3d::buildDevToolsMenuModel(iggy3d::FrontendDevToolsCategory::Renderer);
+  const auto context = devToolsContextFor(
+      iggy3d::FrontendScreen::DevOverlay,
+      iggy3d::FrontendScreen::Gameplay,
+      model);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      context,
+      iggy3d::FrontendAction::Apply);
+  const auto summary = iggy3d::summarizeProductFrontendRoute(
+      context,
+      frame,
+      iggy3d::FrontendAction::Apply);
+
+  return expect(frame.routed, "dev tools apply routed") &&
+         expect(frame.route.accepted, "dev tools apply accepted") &&
+         expect(frame.route.status == "dev_tools_category_selected",
+                "dev tools apply status") &&
+         expect(summary.activeSurface == "dev_tools",
+                "dev tools summary surface") &&
+         expect(summary.routeModelAvailable,
+                "dev tools summary model available") &&
+         expect(summary.routeModelName == "dev_tools",
+                "dev tools summary model name") &&
+         expect(summary.reason == "dev_tools_category_selected",
+                "dev tools summary reason");
+}
+
+bool gameplayRemainsDeferred() {
   auto gameplay = contextFor(iggy3d::FrontendScreen::Gameplay,
                              iggy3d::FrontendScreen::Gameplay);
   gameplay.gameplayActive = true;
   gameplay.hasActiveSession = true;
 
-  const auto dev = iggy3d::routeProductFrontendAction(
-      contextFor(iggy3d::FrontendScreen::DevOverlay,
-                 iggy3d::FrontendScreen::Gameplay),
-      iggy3d::FrontendAction::Apply);
   const auto game = iggy3d::routeProductFrontendAction(
       gameplay,
       iggy3d::FrontendAction::Apply);
 
-  return expect(!dev.routed, "dev deferred") &&
-         expect(dev.route.status == "product_frontend_route_unavailable",
-                "dev deferred status") &&
-         expect(!game.routed, "gameplay deferred") &&
+  return expect(!game.routed, "gameplay deferred") &&
          expect(game.route.status == "product_frontend_route_unavailable",
                 "gameplay deferred status");
 }
@@ -762,9 +850,11 @@ bool missingSettingsContextSummaryIsHonest() {
                 "summary missing settings reason");
 }
 
-bool deferredDevSummaryDoesNotClaimMissingModel() {
-  const auto context = contextFor(iggy3d::FrontendScreen::DevOverlay,
-                                 iggy3d::FrontendScreen::Gameplay);
+bool deferredGameplaySummaryDoesNotClaimMissingModel() {
+  auto context = contextFor(iggy3d::FrontendScreen::Gameplay,
+                            iggy3d::FrontendScreen::Gameplay);
+  context.gameplayActive = true;
+  context.hasActiveSession = true;
   const auto frame = iggy3d::routeProductFrontendAction(
       context,
       iggy3d::FrontendAction::Apply);
@@ -773,16 +863,16 @@ bool deferredDevSummaryDoesNotClaimMissingModel() {
       frame,
       iggy3d::FrontendAction::Apply);
 
-  return expect(!summary.routed, "summary dev not routed") &&
-         expect(!summary.accepted, "summary dev not accepted") &&
+  return expect(!summary.routed, "summary gameplay not routed") &&
+         expect(!summary.accepted, "summary gameplay not accepted") &&
          expect(summary.routeModelAvailable,
-                "summary dev route model available") &&
-         expect(summary.routeModelName == "dev_tools",
-                "summary dev route model name") &&
+                "summary gameplay route model available") &&
+         expect(summary.routeModelName == "gameplay",
+                "summary gameplay route model name") &&
          expect(summary.status == "product_frontend_route_unavailable",
-                "summary dev status") &&
+                "summary gameplay status") &&
          expect(summary.reason == "product_frontend_route_unavailable",
-                "summary dev reason");
+                "summary gameplay reason");
 }
 
 }  // namespace
@@ -808,12 +898,14 @@ int main() {
                   pauseRouteDelegatesResume() && missingPauseModelIsUnavailable() &&
                   disabledPauseLoadSaveDelegatesReason() &&
                   pauseSettingsRouteSummaryIsReceiptReady() &&
-                  devAndGameplayRemainDeferred() &&
+                  devToolsRoutesFromStarterAndGameplay() &&
+                  missingDevToolsModelIsUnavailable() &&
+                  devToolsApplySummaryIsReceiptReady() && gameplayRemainsDeferred() &&
                   starterNewWorldSummaryIsReceiptReady() &&
                   compatibleContinueSummaryShowsLaunch() &&
                   settingsApplySummaryIsReceiptReady() &&
                   missingStarterModelSummaryIsHonest() &&
                   missingSettingsContextSummaryIsHonest() &&
-                  deferredDevSummaryDoesNotClaimMissingModel();
+                  deferredGameplaySummaryDoesNotClaimMissingModel();
   return ok ? 0 : 1;
 }

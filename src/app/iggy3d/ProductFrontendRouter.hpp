@@ -12,6 +12,7 @@ namespace iggy3d {
 struct StarterScreenModel;
 struct SettingsRouteContext;
 struct PauseMenuModel;
+struct DevToolsMenuModel;
 
 enum class ProductFrontendSurface : std::uint8_t {
   None,
@@ -34,6 +35,7 @@ struct ProductFrontendRouteContext {
   const StarterScreenModel* starterModel = nullptr;
   const SettingsRouteContext* settingsContext = nullptr;
   const PauseMenuModel* pauseModel = nullptr;
+  const DevToolsMenuModel* devToolsModel = nullptr;
 };
 
 struct ProductFrontendOwnerDecision {

@@ -1,5 +1,6 @@
 #include "app/iggy3d/ProductFrontendRouter.hpp"
 
+#include "app/frontend/DevToolsMenu.hpp"
 #include "app/frontend/PauseMenu.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/frontend/StarterScreen.hpp"
@@ -252,6 +253,23 @@ ProductFrontendRouteFrame routeProductFrontendAction(
     }
     frame.route = routePauseAction(*context.pauseModel, action);
     frame.routeModelName = "pause";
+    frame.routed = true;
+    return frame;
+  }
+
+  if (frame.owner.activeSurface == ProductFrontendSurface::DevTools &&
+      frame.owner.inputOwner == MenuOwner::DevTools) {
+    if (context.devToolsModel == nullptr) {
+      frame.route =
+          unavailableRoute(context, frame.owner, action, "dev_tools_model_unavailable");
+      frame.route.gameplayInputSuppressed = true;
+      frame.routeModelAvailable = false;
+      frame.routeModelName = "dev_tools";
+      return frame;
+    }
+    frame.route =
+        routeDevToolsAction(*context.devToolsModel, frame.owner.parentOwner, action);
+    frame.routeModelName = "dev_tools";
     frame.routed = true;
     return frame;
   }
