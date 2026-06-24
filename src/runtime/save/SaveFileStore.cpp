@@ -117,6 +117,66 @@ SaveFileDurableWritePlan planDurableSaveFileWrite(
   return plan;
 }
 
+SaveFileTempWriteResult writeDurableSaveTempFile(
+    const SaveFileTempWriteRequest& request) {
+  SaveFileTempWriteResult result;
+  result.paths = request.plan.paths;
+  if (!request.plan.ok) {
+    result.reason = request.plan.reason;
+    return result;
+  }
+  if (request.encodedText.empty()) {
+    result.reason = "durable_save_empty_payload";
+    return result;
+  }
+
+  std::error_code error;
+  std::filesystem::create_directories(result.paths.root, error);
+  if (error) {
+    result.reason = "durable_save_root_create_failed";
+    return result;
+  }
+  result.rootCreated = true;
+
+  std::ofstream output(result.paths.tempPath);
+  if (!output) {
+    result.reason = "durable_save_temp_write_failed";
+    return result;
+  }
+  output << request.encodedText;
+  if (!output) {
+    result.reason = "durable_save_temp_write_failed";
+    return result;
+  }
+  result.encodedBytes =
+      static_cast<std::uint64_t>(request.encodedText.size());
+  result.tempWritten = true;
+
+  output.close();
+  if (!output) {
+    result.reason = "durable_save_temp_write_failed";
+    return result;
+  }
+  result.tempClosed = true;
+
+  result.readBackText = readWholeFile(result.paths.tempPath);
+  if (result.readBackText.empty()) {
+    result.reason = "durable_save_temp_read_failed";
+    return result;
+  }
+  result.readBackBytes =
+      static_cast<std::uint64_t>(result.readBackText.size());
+  result.tempReadBack = true;
+  if (result.readBackText != request.encodedText) {
+    result.reason = "durable_save_temp_mismatch";
+    return result;
+  }
+
+  result.ok = true;
+  result.reason = "durable_save_temp_written";
+  return result;
+}
+
 std::vector<SaveFileRecord> listSaveFiles(const std::filesystem::path& root) {
   std::vector<SaveFileRecord> records;
   std::error_code error;

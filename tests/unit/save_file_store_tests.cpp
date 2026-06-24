@@ -123,6 +123,66 @@ bool durableTempPathIsNotListedAsSave() {
          expect(listed.empty(), "temp not listed");
 }
 
+bool durableTempWriteReadsBackFromDisk() {
+  const std::filesystem::path root = testRoot();
+  const std::string encodedText = "iggy3d.save_envelope.v1\nmetadata.id=unit\n";
+  const iggy3d::SaveFileDurableWritePlan plan =
+      iggy3d::planDurableSaveFileWrite(root, "save_001", "attempt_001");
+  const iggy3d::SaveFileTempWriteResult result =
+      iggy3d::writeDurableSaveTempFile({plan, encodedText});
+  const std::vector<iggy3d::SaveFileRecord> listed = iggy3d::listSaveFiles(root);
+  return expect(result.ok, "temp write ok") &&
+         expect(result.reason == "durable_save_temp_written",
+                "temp write reason") &&
+         expect(result.paths.tempPath == plan.paths.tempPath, "temp path") &&
+         expect(result.paths.finalPath == plan.paths.finalPath, "final path") &&
+         expect(result.encodedBytes == encodedText.size(), "encoded bytes") &&
+         expect(result.readBackBytes == encodedText.size(), "readback bytes") &&
+         expect(result.rootCreated, "root created") &&
+         expect(result.tempWritten, "temp written") &&
+         expect(result.tempClosed, "temp closed") &&
+         expect(result.tempReadBack, "temp readback") &&
+         expect(result.readBackText == encodedText, "readback matches") &&
+         expect(std::filesystem::exists(plan.paths.tempPath), "temp exists") &&
+         expect(!std::filesystem::exists(plan.paths.finalPath),
+                "final not written") &&
+         expect(listed.empty(), "temp write not listed");
+}
+
+bool durableTempWriteRejectsInvalidPlan() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::SaveFileDurableWritePlan plan =
+      iggy3d::planDurableSaveFileWrite(root, "save/001", "attempt_001");
+  const iggy3d::SaveFileTempWriteResult result =
+      iggy3d::writeDurableSaveTempFile({plan, "payload"});
+  return expect(!result.ok, "invalid plan temp write rejected") &&
+         expect(result.reason == "durable_save_invalid_id",
+                "invalid plan forwarded reason") &&
+         expect(!result.tempWritten, "invalid plan not written") &&
+         expect(!result.tempClosed, "invalid plan not closed") &&
+         expect(!result.tempReadBack, "invalid plan not readback") &&
+         expect(result.paths.tempPath.empty() ||
+                    !std::filesystem::exists(result.paths.tempPath),
+                "invalid plan no temp file");
+}
+
+bool durableTempWriteRejectsEmptyPayload() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::SaveFileDurableWritePlan plan =
+      iggy3d::planDurableSaveFileWrite(root, "save_001", "attempt_001");
+  const iggy3d::SaveFileTempWriteResult result =
+      iggy3d::writeDurableSaveTempFile({plan, ""});
+  return expect(!result.ok, "empty payload rejected") &&
+         expect(result.reason == "durable_save_empty_payload",
+                "empty payload reason") &&
+         expect(!result.rootCreated, "empty payload no root create") &&
+         expect(!result.tempWritten, "empty payload not written") &&
+         expect(!result.tempClosed, "empty payload not closed") &&
+         expect(!result.tempReadBack, "empty payload not readback") &&
+         expect(!std::filesystem::exists(plan.paths.tempPath),
+                "empty payload no temp file");
+}
+
 bool writeListReadAndDeleteRoundTrips() {
   const std::filesystem::path root = testRoot();
   iggy3d::Session session = makeFixtureSession();
@@ -244,6 +304,9 @@ int main() {
                   durableWritePlanBuildsSameDirectoryPaths() &&
                   durableWritePlanRejectsInvalidInputs() &&
                   durableTempPathIsNotListedAsSave() &&
+                  durableTempWriteReadsBackFromDisk() &&
+                  durableTempWriteRejectsInvalidPlan() &&
+                  durableTempWriteRejectsEmptyPayload() &&
                   writeListReadAndDeleteRoundTrips() && missingStateIsRejected() &&
                   idHintOverwritesExistingSave() && authoredRoomSectionIsWrittenToSaveFile();
   return ok ? 0 : 1;

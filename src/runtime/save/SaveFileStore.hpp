@@ -62,6 +62,24 @@ struct SaveFileDurableWritePlan {
   SaveFileDurableWritePaths paths;
 };
 
+struct SaveFileTempWriteRequest {
+  SaveFileDurableWritePlan plan;
+  std::string encodedText;
+};
+
+struct SaveFileTempWriteResult {
+  bool ok = false;
+  std::string reason = "not_requested";
+  SaveFileDurableWritePaths paths;
+  std::uint64_t encodedBytes = 0;
+  std::uint64_t readBackBytes = 0;
+  bool rootCreated = false;
+  bool tempWritten = false;
+  bool tempClosed = false;
+  bool tempReadBack = false;
+  std::string readBackText;
+};
+
 bool isValidSaveFileId(std::string_view id);
 std::filesystem::path saveFilePathForId(const std::filesystem::path& root,
                                         std::string_view id);
@@ -74,6 +92,8 @@ SaveFileDurableWritePlan planDurableSaveFileWrite(
     const std::filesystem::path& root,
     std::string_view id,
     std::string_view attemptToken);
+SaveFileTempWriteResult writeDurableSaveTempFile(
+    const SaveFileTempWriteRequest& request);
 
 std::vector<SaveFileRecord> listSaveFiles(const std::filesystem::path& root);
 SaveFileWriteResult writeSessionSaveFile(const SaveFileWriteRequest& request);
