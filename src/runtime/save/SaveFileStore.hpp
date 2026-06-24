@@ -62,6 +62,32 @@ struct SaveFileDurableWritePlan {
   SaveFileDurableWritePaths paths;
 };
 
+struct SaveFileDurableWriteRequest {
+  std::filesystem::path root;
+  std::string idHint;
+  std::string attemptToken;
+  const SessionState* state = nullptr;
+  const SaveAuthoredRoomSection* authoredRoom = nullptr;
+};
+
+struct SaveFileDurableWriteResult {
+  bool ok = false;
+  std::string reason = "not_requested";
+  SaveFileRecord record;
+  SaveFileDurableWritePaths paths;
+  SaveLoadStatus saveStatus = SaveLoadStatus::InvalidSourceState;
+  SaveCodecStatus codecStatus = SaveCodecStatus::Ok;
+  std::uint64_t encodedBytes = 0;
+  bool envelopeBuilt = false;
+  bool encoded = false;
+  bool tempWritten = false;
+  bool tempValidated = false;
+  bool committed = false;
+  bool finalValidated = false;
+  bool previousExisted = false;
+  bool previousPreserved = true;
+};
+
 struct SaveFileTempWriteRequest {
   SaveFileDurableWritePlan plan;
   std::string encodedText;
@@ -135,6 +161,8 @@ SaveFileFinalCommitResult commitDurableSaveTempFile(
 
 std::vector<SaveFileRecord> listSaveFiles(const std::filesystem::path& root);
 SaveFileWriteResult writeSessionSaveFile(const SaveFileWriteRequest& request);
+SaveFileDurableWriteResult writeSessionSaveFileDurably(
+    const SaveFileDurableWriteRequest& request);
 SaveFileReadResult readSaveFile(const std::filesystem::path& path);
 bool deleteSaveFile(const std::filesystem::path& path);
 std::filesystem::path defaultSaveFileRoot();

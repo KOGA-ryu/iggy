@@ -394,6 +394,192 @@ bool durableFinalCommitReplacesExistingFinalOnThisHost() {
                 "overwrite listed second hash");
 }
 
+bool durableSessionWriteCreatesNewSave() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  iggy3d::SaveFileDurableWriteRequest request;
+  request.root = root;
+  request.attemptToken = "attempt_001";
+  request.state = &session.state();
+  const iggy3d::SaveFileDurableWriteResult written =
+      iggy3d::writeSessionSaveFileDurably(request);
+  const iggy3d::SaveFileReadResult read =
+      written.ok ? iggy3d::readSaveFile(written.record.path)
+                 : iggy3d::SaveFileReadResult{};
+  const std::vector<iggy3d::SaveFileRecord> listed = iggy3d::listSaveFiles(root);
+  return expect(written.ok, "durable write ok") &&
+         expect(written.reason == "durable_save_file_written",
+                "durable write reason") &&
+         expect(written.record.id == "save_001", "durable write generated id") &&
+         expect(written.record.packageId == "iggy3d.movement_playground",
+                "durable write package") &&
+         expect(written.record.scenarioId == "movement_playground.runtime_loop",
+                "durable write scenario") &&
+         expect(written.record.savedStateHash == session.stateHash(),
+                "durable write hash") &&
+         expect(written.envelopeBuilt, "durable write envelope built") &&
+         expect(written.encoded, "durable write encoded") &&
+         expect(written.tempWritten, "durable write temp written") &&
+         expect(written.tempValidated, "durable write temp validated") &&
+         expect(written.committed, "durable write committed") &&
+         expect(written.finalValidated, "durable write final validated") &&
+         expect(!written.previousExisted, "durable write no previous") &&
+         expect(written.previousPreserved, "durable write previous preserved") &&
+         expect(written.encodedBytes > 0U, "durable write encoded bytes") &&
+         expect(std::filesystem::exists(written.paths.finalPath),
+                "durable write final exists") &&
+         expect(!std::filesystem::exists(written.paths.tempPath),
+                "durable write temp consumed") &&
+         expect(read.ok, "durable write final reads") &&
+         expect(listed.size() == 1U, "durable write one listed") &&
+         expect(listed.front().savedStateHash == session.stateHash(),
+                "durable write listed hash");
+}
+
+bool durableSessionWriteHonorsValidIdHint() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  iggy3d::SaveFileDurableWriteRequest request;
+  request.root = root;
+  request.idHint = "manual_save_01";
+  request.attemptToken = "attempt_001";
+  request.state = &session.state();
+  const iggy3d::SaveFileDurableWriteResult written =
+      iggy3d::writeSessionSaveFileDurably(request);
+  return expect(written.ok, "durable id hint ok") &&
+         expect(written.record.id == "manual_save_01", "durable id hint id") &&
+         expect(written.paths.finalPath == root / "manual_save_01.iggy3d.save",
+                "durable id hint final path") &&
+         expect(std::filesystem::exists(written.paths.finalPath),
+                "durable id hint final exists");
+}
+
+bool durableSessionWriteOverwritesSameId() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session firstSession = makeFixtureSession();
+  iggy3d::SaveFileDurableWriteRequest first;
+  first.root = root;
+  first.idHint = "save_001";
+  first.attemptToken = "attempt_001";
+  first.state = &firstSession.state();
+  const iggy3d::SaveFileDurableWriteResult firstWrite =
+      iggy3d::writeSessionSaveFileDurably(first);
+
+  iggy3d::Session secondSession = makeFixtureSession();
+  secondSession.mutableStateForOwnedSystems().clock.tickIndex = 1;
+  const iggy3d::SaveStateResult secondSaved =
+      iggy3d::saveSessionStateEncoded(secondSession.state());
+  iggy3d::SaveFileDurableWriteRequest second;
+  second.root = root;
+  second.idHint = "save_001";
+  second.attemptToken = "attempt_002";
+  second.state = &secondSession.state();
+  const iggy3d::SaveFileDurableWriteResult secondWrite =
+      iggy3d::writeSessionSaveFileDurably(second);
+  const std::vector<iggy3d::SaveFileRecord> listed = iggy3d::listSaveFiles(root);
+  return expect(firstWrite.ok, "durable overwrite first ok") &&
+         expect(secondWrite.ok, "durable overwrite second ok") &&
+         expect(secondWrite.previousExisted, "durable overwrite previous existed") &&
+         expect(!secondWrite.previousPreserved,
+                "durable overwrite previous replaced") &&
+         expect(secondWrite.record.id == "save_001", "durable overwrite id") &&
+         expect(secondWrite.record.savedStateHash == secondSaved.savedStateHash,
+                "durable overwrite record hash") &&
+         expect(secondWrite.record.savedStateHash != firstWrite.record.savedStateHash,
+                "durable overwrite hash changed") &&
+         expect(listed.size() == 1U, "durable overwrite one listed") &&
+         expect(listed.front().savedStateHash == secondSaved.savedStateHash,
+                "durable overwrite listed second hash");
+}
+
+bool durableSessionWriteRejectsMissingState() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::SaveFileDurableWriteRequest request;
+  request.root = root;
+  request.attemptToken = "attempt_001";
+  const iggy3d::SaveFileDurableWriteResult written =
+      iggy3d::writeSessionSaveFileDurably(request);
+  return expect(!written.ok, "durable missing state rejected") &&
+         expect(written.reason == "save_state_missing",
+                "durable missing state reason") &&
+         expect(!written.envelopeBuilt, "durable missing state no envelope") &&
+         expect(!written.encoded, "durable missing state not encoded") &&
+         expect(!written.tempWritten, "durable missing state no temp") &&
+         expect(!written.committed, "durable missing state not committed") &&
+         expect(iggy3d::listSaveFiles(root).empty(),
+                "durable missing state no saves");
+}
+
+bool durableSessionWriteRejectsInvalidAttemptToken() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  iggy3d::SaveFileDurableWriteRequest request;
+  request.root = root;
+  request.attemptToken = "attempt 001";
+  request.state = &session.state();
+  const iggy3d::SaveFileDurableWriteResult written =
+      iggy3d::writeSessionSaveFileDurably(request);
+  return expect(!written.ok, "durable invalid attempt rejected") &&
+         expect(written.reason == "durable_save_invalid_attempt_token",
+                "durable invalid attempt reason") &&
+         expect(written.envelopeBuilt, "durable invalid attempt envelope built") &&
+         expect(written.encoded, "durable invalid attempt encoded") &&
+         expect(!written.tempWritten, "durable invalid attempt no temp") &&
+         expect(!written.committed, "durable invalid attempt not committed") &&
+         expect(written.paths.finalPath.empty(), "durable invalid attempt no final path") &&
+         expect(iggy3d::listSaveFiles(root).empty(),
+                "durable invalid attempt no saves");
+}
+
+bool durableSessionWritePersistsAuthoredRoomSection() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  iggy3d::SaveAuthoredRoomSection authoredRoom;
+  authoredRoom.present = true;
+  authoredRoom.id = "durable_editor_room";
+  iggy3d::SaveAuthoredRoomFloorRecord floor;
+  floor.id = "edit_floor_1";
+  floor.centerMeters = {1.0F, 0.0F, 1.0F};
+  floor.sizeMeters = {2.0F, 0.1F, 2.0F};
+  floor.semantics.materialId = "debug_floor";
+  floor.semantics.walkable = true;
+  floor.semantics.traversalTags = {"walkable"};
+  floor.locked = true;
+  floor.hidden = true;
+  authoredRoom.floors.push_back(floor);
+
+  iggy3d::SaveFileDurableWriteRequest request;
+  request.root = root;
+  request.attemptToken = "attempt_001";
+  request.state = &session.state();
+  request.authoredRoom = &authoredRoom;
+  const iggy3d::SaveFileDurableWriteResult written =
+      iggy3d::writeSessionSaveFileDurably(request);
+  const iggy3d::SaveFileReadResult read =
+      written.ok ? iggy3d::readSaveFile(written.record.path)
+                 : iggy3d::SaveFileReadResult{};
+  const iggy3d::SaveDecodeResult decoded =
+      read.ok ? iggy3d::decodeSaveEnvelope(read.encodedText)
+              : iggy3d::SaveDecodeResult{};
+  return expect(written.ok, "durable authored write ok") &&
+         expect(read.ok, "durable authored read ok") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                "durable authored decoded") &&
+         expect(decoded.envelope.authoredRoom.present,
+                "durable authored present") &&
+         expect(decoded.envelope.authoredRoom.id == "durable_editor_room",
+                "durable authored id") &&
+         expect(decoded.envelope.authoredRoom.floors.size() == 1U,
+                "durable authored floor") &&
+         expect(decoded.envelope.authoredRoom.floors[0].locked,
+                "durable authored floor locked") &&
+         expect(decoded.envelope.authoredRoom.floors[0].hidden,
+                "durable authored floor hidden") &&
+         expect(decoded.envelope.authoredRoom.floors[0].semantics.traversalTags[0] ==
+                    "walkable",
+                "durable authored floor traversal");
+}
+
 bool writeListReadAndDeleteRoundTrips() {
   const std::filesystem::path root = testRoot();
   iggy3d::Session session = makeFixtureSession();
@@ -525,6 +711,12 @@ int main() {
                   durableFinalCommitValidatesNewSave() &&
                   durableFinalCommitForwardsInvalidValidationReason() &&
                   durableFinalCommitReplacesExistingFinalOnThisHost() &&
+                  durableSessionWriteCreatesNewSave() &&
+                  durableSessionWriteHonorsValidIdHint() &&
+                  durableSessionWriteOverwritesSameId() &&
+                  durableSessionWriteRejectsMissingState() &&
+                  durableSessionWriteRejectsInvalidAttemptToken() &&
+                  durableSessionWritePersistsAuthoredRoomSection() &&
                   writeListReadAndDeleteRoundTrips() && missingStateIsRejected() &&
                   idHintOverwritesExistingSave() && authoredRoomSectionIsWrittenToSaveFile();
   return ok ? 0 : 1;

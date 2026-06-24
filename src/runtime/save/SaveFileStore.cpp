@@ -349,6 +349,99 @@ SaveFileWriteResult writeSessionSaveFile(const SaveFileWriteRequest& request) {
   return result;
 }
 
+SaveFileDurableWriteResult writeSessionSaveFileDurably(
+    const SaveFileDurableWriteRequest& request) {
+  SaveFileDurableWriteResult result;
+  if (request.state == nullptr) {
+    result.reason = "save_state_missing";
+    return result;
+  }
+
+  SaveStateResult saved = saveSessionState(*request.state);
+  result.saveStatus = saved.status;
+  if (saved.status != SaveLoadStatus::Ok) {
+    result.reason = "save_encode_failed";
+    return result;
+  }
+  result.envelopeBuilt = true;
+  if (request.authoredRoom != nullptr) {
+    saved.envelope.authoredRoom = *request.authoredRoom;
+  }
+
+  const SaveEncodeResult encoded = encodeSaveEnvelope(saved.envelope);
+  saved.codecStatus = encoded.status;
+  result.codecStatus = encoded.status;
+  if (encoded.status != SaveCodecStatus::Ok) {
+    result.saveStatus = SaveLoadStatus::EncodeFailed;
+    result.reason = "save_encode_failed";
+    return result;
+  }
+  saved.encodedSaveText = encoded.encodedText;
+  saved.savedStateHash = encoded.savedStateHash;
+  result.encoded = true;
+
+  std::error_code error;
+  std::string id = isValidSaveFileId(request.idHint)
+                       ? request.idHint
+                       : makeSaveId(listSaveFiles(request.root).size() + 1U);
+  std::filesystem::path path = saveFilePathForId(request.root, id);
+  if (!isValidSaveFileId(request.idHint)) {
+    std::size_t index = listSaveFiles(request.root).size() + 1U;
+    while (std::filesystem::exists(path, error)) {
+      ++index;
+      id = makeSaveId(index);
+      path = saveFilePathForId(request.root, id);
+    }
+  }
+
+  const SaveFileDurableWritePlan plan =
+      planDurableSaveFileWrite(request.root, id, request.attemptToken);
+  result.paths = plan.paths;
+  if (!plan.ok) {
+    result.reason = plan.reason;
+    return result;
+  }
+
+  const SaveFileTempWriteResult tempWrite =
+      writeDurableSaveTempFile({plan, saved.encodedSaveText});
+  result.paths = tempWrite.paths;
+  result.tempWritten = tempWrite.tempWritten;
+  result.encodedBytes = tempWrite.encodedBytes;
+  if (!tempWrite.ok) {
+    result.reason = tempWrite.reason;
+    return result;
+  }
+
+  const SaveFileTempValidationResult tempValidation =
+      validateDurableSaveTempFile(tempWrite);
+  result.tempValidated = tempValidation.tempValidated;
+  result.codecStatus = tempValidation.codecStatus;
+  result.encodedBytes = tempValidation.encodedBytes;
+  if (!tempValidation.ok) {
+    result.reason = tempValidation.reason;
+    return result;
+  }
+
+  const SaveFileFinalCommitResult finalCommit =
+      commitDurableSaveTempFile(tempValidation);
+  result.paths = finalCommit.paths;
+  result.codecStatus = finalCommit.codecStatus;
+  result.encodedBytes = finalCommit.encodedBytes;
+  result.previousExisted = finalCommit.previousExisted;
+  result.previousPreserved = finalCommit.previousPreserved;
+  result.committed = finalCommit.committed;
+  result.finalValidated = finalCommit.finalValidated;
+  if (!finalCommit.ok) {
+    result.reason = finalCommit.reason;
+    return result;
+  }
+
+  result.ok = true;
+  result.reason = "durable_save_file_written";
+  result.record = recordFromEnvelope(finalCommit.paths.finalPath, saved.envelope);
+  return result;
+}
+
 SaveFileReadResult readSaveFile(const std::filesystem::path& path) {
   SaveFileReadResult result;
   result.encodedText = readWholeFile(path);
