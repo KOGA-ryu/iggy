@@ -6,7 +6,7 @@
 
 #include "app/frontend/SaveSlotModel.hpp"
 #include "runtime/save/SaveFileStore.hpp"
-#include "runtime/session/SessionState.hpp"
+#include "runtime/session/Session.hpp"
 
 namespace iggy3d {
 
@@ -47,10 +47,36 @@ struct ProductSaveWriteResult {
   std::string autoTitle;
 };
 
+struct ProductSaveLoadRequest {
+  std::filesystem::path path;
+  Session* session = nullptr;
+  std::string expectedPackageId;
+  std::string expectedScenarioId;
+};
+
+struct ProductSaveLoadResult {
+  bool ok = false;
+  std::string status = "not_requested";
+  std::string reasonCode = "not_requested";
+  SaveFileRecord record;
+  std::uint64_t previousHash = 0;
+  std::uint64_t loadedHash = 0;
+  bool fileRead = false;
+  bool decoded = false;
+  bool compatibilityChecked = false;
+  bool sessionLoaded = false;
+  SaveCodecStatus codecStatus = SaveCodecStatus::Ok;
+  SaveLoadStatus loadStatus = SaveLoadStatus::InvalidEnvelope;
+  SaveCompatibilityStatus compatibilityStatus = SaveCompatibilityStatus::Compatible;
+  SessionLoadStatus sessionLoadStatus = SessionLoadStatus::Ok;
+};
+
 ProductSaveBridgeResult scanProductSaves(const std::filesystem::path& saveRoot,
                                          std::string_view packageId,
                                          std::string_view scenarioId);
 ProductSaveWriteResult writeProductSessionSaveDurably(
     const ProductSaveWriteRequest& request);
+ProductSaveLoadResult loadProductSessionSave(
+    const ProductSaveLoadRequest& request);
 
 }  // namespace iggy3d

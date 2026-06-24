@@ -4,7 +4,9 @@
 #include "runtime/session/Session.hpp"
 
 #include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <string>
 #include <string_view>
 
 namespace {
@@ -33,6 +35,24 @@ iggy3d::Session makeFixtureSession() {
   request.config = package.scenario.config;
   request.seed = package.scenario;
   return iggy3d::Session::create(request).value;
+}
+
+iggy3d::CommandRecord submittedMove(iggy3d::Vec3 point) {
+  iggy3d::CommandRecord command;
+  command.playerSlot = 0;
+  command.actor = {1};
+  command.kind = iggy3d::CommandKind::Move;
+  command.source = iggy3d::CommandSource::LocalPlayer;
+  command.payload.target.hasPoint = true;
+  command.payload.target.point = point;
+  return command;
+}
+
+iggy3d::Session makeChangedFixtureSession() {
+  iggy3d::Session session = makeFixtureSession();
+  (void)session.submitCommand(submittedMove({2.0F, 0.0F, 1.0F}));
+  (void)session.tick();
+  return session;
 }
 
 iggy3d::ProductSaveWriteRequest productSaveRequest(
@@ -204,6 +224,200 @@ bool productDurableSavePersistsAuthoredRoom() {
                 "product authored scan floor count");
 }
 
+bool productLoadSaveLoadsCompatibleSession() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session savedSession = makeChangedFixtureSession();
+  const iggy3d::ProductSaveWriteResult written =
+      iggy3d::writeProductSessionSaveDurably(
+          productSaveRequest(root, savedSession, "attempt_001", "save_001"));
+  iggy3d::Session destination = makeFixtureSession();
+  const std::uint64_t previousHash = destination.stateHash();
+
+  iggy3d::ProductSaveLoadRequest request;
+  request.path = written.record.path;
+  request.session = &destination;
+  request.expectedPackageId = "iggy3d.movement_playground";
+  request.expectedScenarioId = "movement_playground.runtime_loop";
+  const iggy3d::ProductSaveLoadResult loaded =
+      iggy3d::loadProductSessionSave(request);
+
+  return expect(written.ok, "product load setup write ok") &&
+         expect(loaded.ok, "product load ok") &&
+         expect(loaded.status == "product_save_loaded", "product load status") &&
+         expect(loaded.reasonCode == "product_save_loaded",
+                "product load reason") &&
+         expect(loaded.fileRead, "product load file read") &&
+         expect(loaded.decoded, "product load decoded") &&
+         expect(loaded.compatibilityChecked, "product load compatibility") &&
+         expect(loaded.sessionLoaded, "product load session loaded") &&
+         expect(loaded.record.id == "save_001", "product load record id") &&
+         expect(loaded.record.path == written.record.path,
+                "product load record path") &&
+         expect(loaded.previousHash == previousHash,
+                "product load previous hash") &&
+         expect(loaded.loadedHash == written.record.savedStateHash,
+                "product load loaded hash") &&
+         expect(destination.stateHash() == written.record.savedStateHash,
+                "product load destination hash") &&
+         expect(destination.stateHash() != previousHash,
+                "product load mutated destination") &&
+         expect(loaded.codecStatus == iggy3d::SaveCodecStatus::Ok,
+                "product load codec ok") &&
+         expect(loaded.loadStatus == iggy3d::SaveLoadStatus::Ok,
+                "product load status ok") &&
+         expect(loaded.compatibilityStatus ==
+                    iggy3d::SaveCompatibilityStatus::Compatible,
+                "product load compatible") &&
+         expect(loaded.sessionLoadStatus == iggy3d::SessionLoadStatus::Ok,
+                "product load session status");
+}
+
+bool productLoadSaveRejectsMissingSessionBeforeIo() {
+  iggy3d::ProductSaveLoadRequest request;
+  request.path = "/tmp/iggy3d_product_save_bridge_tests_missing_session.iggy3d.save";
+  const iggy3d::ProductSaveLoadResult loaded =
+      iggy3d::loadProductSessionSave(request);
+  return expect(!loaded.ok, "product load missing session rejected") &&
+         expect(loaded.status == "product_save_load_session_missing",
+                "product load missing session status") &&
+         expect(loaded.reasonCode == "product_save_load_session_missing",
+                "product load missing session reason") &&
+         expect(!loaded.fileRead, "product load missing session no read") &&
+         expect(!loaded.sessionLoaded,
+                "product load missing session not loaded");
+}
+
+bool productLoadSaveRejectsMissingPathBeforeIo() {
+  iggy3d::Session session = makeFixtureSession();
+  const std::uint64_t previousHash = session.stateHash();
+  iggy3d::ProductSaveLoadRequest request;
+  request.session = &session;
+  const iggy3d::ProductSaveLoadResult loaded =
+      iggy3d::loadProductSessionSave(request);
+  return expect(!loaded.ok, "product load missing path rejected") &&
+         expect(loaded.status == "product_save_load_path_missing",
+                "product load missing path status") &&
+         expect(loaded.reasonCode == "product_save_load_path_missing",
+                "product load missing path reason") &&
+         expect(!loaded.fileRead, "product load missing path no read") &&
+         expect(session.stateHash() == previousHash,
+                "product load missing path no mutation");
+}
+
+bool productLoadSaveMissingFilePreservesSession() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  const std::uint64_t previousHash = session.stateHash();
+  iggy3d::ProductSaveLoadRequest request;
+  request.path = root / "missing.iggy3d.save";
+  request.session = &session;
+  request.expectedPackageId = "iggy3d.movement_playground";
+  request.expectedScenarioId = "movement_playground.runtime_loop";
+  const iggy3d::ProductSaveLoadResult loaded =
+      iggy3d::loadProductSessionSave(request);
+  return expect(!loaded.ok, "product load missing file rejected") &&
+         expect(loaded.status == "save_file_read_failed",
+                "product load missing file status") &&
+         expect(loaded.reasonCode == "save_file_read_failed",
+                "product load missing file reason") &&
+         expect(!loaded.fileRead, "product load missing file no read") &&
+         expect(!loaded.sessionLoaded,
+                "product load missing file not loaded") &&
+         expect(session.stateHash() == previousHash,
+                "product load missing file no mutation");
+}
+
+bool productLoadSaveRejectsIncompatiblePackage() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session savedSession = makeChangedFixtureSession();
+  const iggy3d::ProductSaveWriteResult written =
+      iggy3d::writeProductSessionSaveDurably(
+          productSaveRequest(root, savedSession, "attempt_001", "save_001"));
+  iggy3d::Session destination = makeFixtureSession();
+  const std::uint64_t previousHash = destination.stateHash();
+
+  iggy3d::ProductSaveLoadRequest request;
+  request.path = written.record.path;
+  request.session = &destination;
+  request.expectedPackageId = "wrong.package";
+  request.expectedScenarioId = "movement_playground.runtime_loop";
+  const iggy3d::ProductSaveLoadResult loaded =
+      iggy3d::loadProductSessionSave(request);
+
+  return expect(written.ok, "product incompatible setup write ok") &&
+         expect(!loaded.ok, "product incompatible rejected") &&
+         expect(loaded.status == "product_save_load_compatibility_failed",
+                "product incompatible status") &&
+         expect(loaded.reasonCode == "product_save_load_compatibility_failed",
+                "product incompatible reason") &&
+         expect(loaded.fileRead, "product incompatible read") &&
+         expect(loaded.decoded, "product incompatible decoded") &&
+         expect(loaded.compatibilityChecked,
+                "product incompatible compatibility checked") &&
+         expect(loaded.compatibilityStatus ==
+                    iggy3d::SaveCompatibilityStatus::PackageMismatch,
+                "product incompatible package status") &&
+         expect(!loaded.sessionLoaded, "product incompatible not loaded") &&
+         expect(destination.stateHash() == previousHash,
+                "product incompatible no mutation");
+}
+
+bool productLoadSaveRejectsIncompatibleScenario() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session savedSession = makeChangedFixtureSession();
+  const iggy3d::ProductSaveWriteResult written =
+      iggy3d::writeProductSessionSaveDurably(
+          productSaveRequest(root, savedSession, "attempt_001", "save_001"));
+  iggy3d::Session destination = makeFixtureSession();
+  const std::uint64_t previousHash = destination.stateHash();
+
+  iggy3d::ProductSaveLoadRequest request;
+  request.path = written.record.path;
+  request.session = &destination;
+  request.expectedPackageId = "iggy3d.movement_playground";
+  request.expectedScenarioId = "wrong.scenario";
+  const iggy3d::ProductSaveLoadResult loaded =
+      iggy3d::loadProductSessionSave(request);
+
+  return expect(written.ok, "product scenario setup write ok") &&
+         expect(!loaded.ok, "product scenario rejected") &&
+         expect(loaded.status == "product_save_load_compatibility_failed",
+                "product scenario status") &&
+         expect(loaded.compatibilityStatus ==
+                    iggy3d::SaveCompatibilityStatus::ScenarioMismatch,
+                "product scenario status enum") &&
+         expect(!loaded.sessionLoaded, "product scenario not loaded") &&
+         expect(destination.stateHash() == previousHash,
+                "product scenario no mutation");
+}
+
+bool productLoadSaveRejectsCorruptFile() {
+  const std::filesystem::path root = testRoot();
+  const std::filesystem::path path = root / "corrupt.iggy3d.save";
+  {
+    std::ofstream output(path);
+    output << "not an iggy3d save\n";
+  }
+  iggy3d::Session session = makeFixtureSession();
+  const std::uint64_t previousHash = session.stateHash();
+  iggy3d::ProductSaveLoadRequest request;
+  request.path = path;
+  request.session = &session;
+  request.expectedPackageId = "iggy3d.movement_playground";
+  request.expectedScenarioId = "movement_playground.runtime_loop";
+  const iggy3d::ProductSaveLoadResult loaded =
+      iggy3d::loadProductSessionSave(request);
+  return expect(!loaded.ok, "product corrupt rejected") &&
+         expect(loaded.status == "save_file_decode_failed",
+                "product corrupt status") &&
+         expect(loaded.reasonCode == "save_file_decode_failed",
+                "product corrupt reason") &&
+         expect(!loaded.fileRead, "product corrupt file not accepted") &&
+         expect(!loaded.sessionLoaded, "product corrupt not loaded") &&
+         expect(session.stateHash() == previousHash,
+                "product corrupt no mutation");
+}
+
 }  // namespace
 
 int main() {
@@ -211,6 +425,13 @@ int main() {
                   productDurableSaveHonorsValidIdHint() &&
                   productDurableSaveRejectsMissingState() &&
                   productDurableSaveRejectsInvalidAttemptToken() &&
-                  productDurableSavePersistsAuthoredRoom();
+                  productDurableSavePersistsAuthoredRoom() &&
+                  productLoadSaveLoadsCompatibleSession() &&
+                  productLoadSaveRejectsMissingSessionBeforeIo() &&
+                  productLoadSaveRejectsMissingPathBeforeIo() &&
+                  productLoadSaveMissingFilePreservesSession() &&
+                  productLoadSaveRejectsIncompatiblePackage() &&
+                  productLoadSaveRejectsIncompatibleScenario() &&
+                  productLoadSaveRejectsCorruptFile();
   return ok ? 0 : 1;
 }
