@@ -167,6 +167,23 @@ int main() {
                         continueFields,
                         continueExitCode);
 
+  const std::filesystem::path loadSaveControl =
+      "/tmp/iggy3d_product_menu_transition_load_save.in";
+  const bool loadSaveControlWritten = writeControlFile(
+      loadSaveControl,
+      "frontend.select=load_save\nfrontend.execute=true\nmenu.confirm=true\n");
+  int loadSaveExitCode = 77;
+  std::map<std::string, std::string> loadSaveFields;
+  const bool loadSaveReceiptValid =
+      loadSaveControlWritten && appBuilt && std::filesystem::exists(binary) &&
+      runReceiptCommand(binary,
+                        "/tmp/iggy3d_product_menu_transition_load_save.out",
+                        std::string{"--no-window --save-root "} + shellQuote(saveRoot) +
+                            " --automation-control " + shellQuote(loadSaveControl) +
+                            " --print-render-receipt",
+                        loadSaveFields,
+                        loadSaveExitCode);
+
   const bool starterPassed =
       starterExitCode == 0 && starterReceiptValid &&
       hasField(starterFields, "app", "iggy3d") &&
@@ -182,6 +199,9 @@ int main() {
       hasField(starterFields, "world_creation_initial_save_id", "none") &&
       hasField(starterFields, "product_save_status", "not_requested") &&
       hasField(starterFields, "product_save_load_status", "not_requested") &&
+      hasField(starterFields, "product_save_load_source", "none") &&
+      hasField(starterFields, "product_save_load_selected_id", "none") &&
+      hasField(starterFields, "product_save_load_selected_enabled", "false") &&
       hasField(starterFields, "product_save_load_session_loaded", "false") &&
       hasField(starterFields, "product_transition_last_action", "startup") &&
       hasField(starterFields, "product_transition_status", "starter_ready") &&
@@ -211,6 +231,9 @@ int main() {
       hasField(gameplayFields, "product_save_durable_reason",
                "durable_save_file_written") &&
       hasField(gameplayFields, "product_save_load_status", "not_requested") &&
+      hasField(gameplayFields, "product_save_load_source", "none") &&
+      hasField(gameplayFields, "product_save_load_selected_id", "none") &&
+      hasField(gameplayFields, "product_save_load_selected_enabled", "false") &&
       hasField(gameplayFields, "product_save_load_session_loaded", "false") &&
       std::filesystem::exists(saveRoot / "save_001.iggy3d.save") &&
       hasField(gameplayFields, "product_transition_last_action", "launch_gameplay") &&
@@ -236,6 +259,9 @@ int main() {
       hasField(savedStarterFields, "world_creation_status", "not_requested") &&
       hasField(savedStarterFields, "product_save_status", "not_requested") &&
       hasField(savedStarterFields, "product_save_load_status", "not_requested") &&
+      hasField(savedStarterFields, "product_save_load_source", "none") &&
+      hasField(savedStarterFields, "product_save_load_selected_id", "none") &&
+      hasField(savedStarterFields, "product_save_load_selected_enabled", "false") &&
       hasField(savedStarterFields, "product_save_load_session_loaded", "false") &&
       hasField(savedStarterFields, "gameplay_active", "false");
 
@@ -251,6 +277,9 @@ int main() {
       hasField(continueFields, "product_save_load_status", "product_save_loaded") &&
       hasField(continueFields, "product_save_load_reason_code", "product_save_loaded") &&
       hasField(continueFields, "product_save_load_save_id", "save_001") &&
+      hasField(continueFields, "product_save_load_source", "continue") &&
+      hasField(continueFields, "product_save_load_selected_id", "save_001") &&
+      hasField(continueFields, "product_save_load_selected_enabled", "true") &&
       hasField(continueFields, "product_save_load_session_loaded", "true") &&
       positiveIntegerField(continueFields, "product_save_load_loaded_hash") &&
       hasField(continueFields, "world_creation_status", "not_requested") &&
@@ -261,8 +290,34 @@ int main() {
       hasField(continueFields, "product_view_frame_ready", "true") &&
       positiveIntegerField(continueFields, "product_draw_item_count");
 
+  const bool loadSavePassed =
+      loadSaveExitCode == 0 && loadSaveReceiptValid &&
+      hasField(loadSaveFields, "frontend_screen", "gameplay") &&
+      hasField(loadSaveFields, "frontend_selected_action", "load") &&
+      hasField(loadSaveFields, "frontend_launch_requested", "true") &&
+      hasField(loadSaveFields, "save_count", "1") &&
+      hasField(loadSaveFields, "compatible_save_count", "1") &&
+      hasField(loadSaveFields, "gameplay_active", "true") &&
+      hasField(loadSaveFields, "input_owner", "gameplay") &&
+      hasField(loadSaveFields, "product_save_load_status", "product_save_loaded") &&
+      hasField(loadSaveFields, "product_save_load_reason_code", "product_save_loaded") &&
+      hasField(loadSaveFields, "product_save_load_save_id", "save_001") &&
+      hasField(loadSaveFields, "product_save_load_source", "load_save_selector") &&
+      hasField(loadSaveFields, "product_save_load_selected_id", "save_001") &&
+      hasField(loadSaveFields, "product_save_load_selected_enabled", "true") &&
+      hasField(loadSaveFields, "product_save_load_session_loaded", "true") &&
+      positiveIntegerField(loadSaveFields, "product_save_load_loaded_hash") &&
+      hasField(loadSaveFields, "world_creation_status", "not_requested") &&
+      hasField(loadSaveFields, "product_save_status", "not_requested") &&
+      hasField(loadSaveFields, "product_transition_last_action", "launch_gameplay") &&
+      hasField(loadSaveFields, "product_transition_status", "gameplay_active") &&
+      hasField(loadSaveFields, "product_render_bridge_ready", "true") &&
+      hasField(loadSaveFields, "product_view_frame_ready", "true") &&
+      positiveIntegerField(loadSaveFields, "product_draw_item_count");
+
   const bool passed =
-      starterPassed && gameplayPassed && savedStarterPassed && continuePassed;
+      starterPassed && gameplayPassed && savedStarterPassed && continuePassed &&
+      loadSavePassed;
 
   std::cout << "smoke=product_menu_transition\n";
   std::cout << "starter_receipt_valid="
@@ -273,15 +328,19 @@ int main() {
             << (savedStarterReceiptValid ? "true" : "false") << "\n";
   std::cout << "continue_receipt_valid="
             << (continueReceiptValid ? "true" : "false") << "\n";
+  std::cout << "load_save_receipt_valid="
+            << (loadSaveReceiptValid ? "true" : "false") << "\n";
   std::cout << "starter_exit_code=" << starterExitCode << "\n";
   std::cout << "gameplay_exit_code=" << gameplayExitCode << "\n";
   std::cout << "saved_starter_exit_code=" << savedStarterExitCode << "\n";
   std::cout << "continue_exit_code=" << continueExitCode << "\n";
+  std::cout << "load_save_exit_code=" << loadSaveExitCode << "\n";
   std::cout << "starter_passed=" << (starterPassed ? "true" : "false") << "\n";
   std::cout << "gameplay_passed=" << (gameplayPassed ? "true" : "false") << "\n";
   std::cout << "saved_starter_passed="
             << (savedStarterPassed ? "true" : "false") << "\n";
   std::cout << "continue_passed=" << (continuePassed ? "true" : "false") << "\n";
+  std::cout << "load_save_passed=" << (loadSavePassed ? "true" : "false") << "\n";
   std::cout << "window_launch_count=0\n";
   std::cout << "result=" << (passed ? "pass" : (appBuilt ? "fail" : "skip")) << "\n";
   std::cout << "reason_code="

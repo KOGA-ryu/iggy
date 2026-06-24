@@ -44,6 +44,9 @@ struct ProductAppWindowState {
   std::string productSaveLoadStatus = "not_requested";
   std::string productSaveLoadReasonCode = "not_requested";
   std::string productSaveLoadSaveId = "none";
+  std::string productSaveLoadSource = "none";
+  std::string productSaveLoadSelectedId = "none";
+  bool productSaveLoadSelectedEnabled = false;
   std::uint64_t productSaveLoadPreviousHash = 0;
   std::uint64_t productSaveLoadLoadedHash = 0;
   bool productSaveLoadSessionLoaded = false;

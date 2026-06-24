@@ -263,6 +263,15 @@ void clearProductGameplayLaunchState(std::optional<Session>& activeSession,
   activeSession.reset();
 }
 
+void recordProductSaveLoadSelection(std::string_view source,
+                                    const SaveSlotPreview* slot,
+                                    ProductAppWindowState& window) {
+  window.productSaveLoadSource = std::string(source);
+  window.productSaveLoadSelectedId =
+      slot == nullptr || slot->id.empty() ? "none" : slot->id;
+  window.productSaveLoadSelectedEnabled = slot != nullptr && slot->enabled;
+}
+
 void launchProductNewWorld(const ProductAppOptions& options,
                            FrontendState& frontend,
                            std::optional<Session>& activeSession,
@@ -301,22 +310,39 @@ void launchProductNewWorld(const ProductAppOptions& options,
   enterProductGameplayTransition(frontend, window, FrontendAction::CreateAndEnter);
 }
 
-void launchProductContinueSave(const ProductAppOptions& options,
-                               const ProductWorldTemplate& world,
-                               const ProductSaveBridgeResult& saves,
-                               FrontendState& frontend,
-                               std::optional<Session>& activeSession,
-                               ProductAppWindowState& window) {
-  window.launchAction = "continue";
-  const SaveSlotPreview* slot = newestCompatibleSaveSlot(saves.slots);
+void launchProductSaveSlot(const ProductAppOptions& options,
+                           const ProductWorldTemplate& world,
+                           const SaveSlotPreview* slot,
+                           FrontendAction launchAction,
+                           std::string_view source,
+                           FrontendState& frontend,
+                           std::optional<Session>& activeSession,
+                           ProductAppWindowState& window) {
+  window.launchAction = std::string(frontendActionName(launchAction));
+  recordProductSaveLoadSelection(source, slot, window);
   if (slot == nullptr) {
     window.launchStatus = "no_compatible_save";
-    frontend.status = "opening_menu_action_disabled";
+    window.productSaveLoadStatus = "no_compatible_save";
+    window.productSaveLoadReasonCode = "no_compatible_save";
+    frontend.status = source == "load_save_selector"
+                          ? "load_save_action_disabled"
+                          : "opening_menu_action_disabled";
+    return;
+  }
+  if (!slot->enabled || slot->compatibility != SaveSlotCompatibility::Compatible) {
+    const std::string reason = slot->reason.empty() ? "save_slot_disabled"
+                                                    : slot->reason;
+    window.launchStatus = reason;
+    window.productSaveLoadStatus = reason;
+    window.productSaveLoadReasonCode = reason;
+    frontend.status = "load_save_action_disabled";
     return;
   }
 
   if (!createProductSession(options, activeSession, window)) {
-    frontend.status = "opening_menu_continue_failed";
+    frontend.status = source == "load_save_selector"
+                          ? "load_save_launch_failed"
+                          : "opening_menu_continue_failed";
     return;
   }
 
@@ -330,13 +356,48 @@ void launchProductContinueSave(const ProductAppOptions& options,
   if (!loaded.ok) {
     window.launchStatus = loaded.reasonCode;
     clearProductGameplayLaunchState(activeSession, window);
-    frontend.status = "opening_menu_continue_failed";
+    frontend.status = source == "load_save_selector"
+                          ? "load_save_launch_failed"
+                          : "opening_menu_continue_failed";
     return;
   }
 
   window.launchStatus = loaded.status;
   window.runtimeStateHash = activeSession->stateHash();
-  enterProductGameplayTransition(frontend, window, FrontendAction::Continue);
+  enterProductGameplayTransition(frontend, window, launchAction);
+}
+
+void launchProductContinueSave(const ProductAppOptions& options,
+                               const ProductWorldTemplate& world,
+                               const ProductSaveBridgeResult& saves,
+                               FrontendState& frontend,
+                               std::optional<Session>& activeSession,
+                               ProductAppWindowState& window) {
+  launchProductSaveSlot(options,
+                        world,
+                        newestCompatibleSaveSlot(saves.slots),
+                        FrontendAction::Continue,
+                        "continue",
+                        frontend,
+                        activeSession,
+                        window);
+}
+
+void launchProductLoadSaveSelection(const ProductAppOptions& options,
+                                    const ProductWorldTemplate& world,
+                                    const ProductSaveBridgeResult& saves,
+                                    FrontendState& frontend,
+                                    std::optional<Session>& activeSession,
+                                    ProductAppWindowState& window) {
+  frontend.selectedAction = FrontendAction::Load;
+  launchProductSaveSlot(options,
+                        world,
+                        newestCompatibleSaveSlot(saves.slots),
+                        FrontendAction::Load,
+                        "load_save_selector",
+                        frontend,
+                        activeSession,
+                        window);
 }
 
 void applyGameplayProjectionMetrics(ProductAppWindowState& window,
@@ -658,6 +719,27 @@ void applyOpeningMenuAction(FrontendState& frontend,
     }
     if (action == InputAction::MenuConfirm) {
       frontend.status = "settings_tab_selected";
+      return;
+    }
+  }
+
+  if (frontend.childScreen == FrontendScreen::LoadSave) {
+    if (action == InputAction::MenuBack) {
+      frontend.childScreen = FrontendScreen::Gameplay;
+      frontend.status = "load_save_closed";
+      return;
+    }
+    if (action == InputAction::MenuUp || action == InputAction::MenuDown) {
+      frontend.status = "load_save_selection_unchanged";
+      return;
+    }
+    if (action == InputAction::MenuConfirm) {
+      launchProductLoadSaveSelection(options,
+                                     productWorldTemplateFromOptions(options),
+                                     saves,
+                                     frontend,
+                                     activeSession,
+                                     window);
       return;
     }
   }
