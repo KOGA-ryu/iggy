@@ -86,6 +86,16 @@ The starter menu can open:
 Child panels own input above starter rows. Gameplay input remains suppressed
 while the starter or any starter child panel is active.
 
+Parent-return rules:
+
+- save browser returns to starter;
+- delete-save browser returns to starter;
+- delete confirmation returns to delete-save browser on cancel and starter
+  after confirmed delete;
+- world-creation setup returns to starter on back;
+- settings returns to starter;
+- dev tools returns to starter.
+
 ## Data Ownership
 
 Starter menu owns presentation state:
@@ -109,6 +119,16 @@ Save summaries shown by the starter menu must contain:
 The snapshot image is display data for save selection. The save system owns how
 it is stored and loaded; the starter menu owns presenting it and routing
 selection/deletion intent.
+
+Snapshot generation and fallback behavior are defined in:
+
+```text
+docs/plan_bucket/save_snapshot_contract_v1.md
+```
+
+Starter must treat missing or corrupt snapshots as presentation fallback only.
+The save remains selectable, deletable, and loadable when the save metadata is
+otherwise compatible.
 
 Runtime session creation is owned by product transitions/session creation, not
 the starter menu model.
@@ -171,6 +191,9 @@ Starter receipts should prove:
 - `starter_selected_row`;
 - `starter_disabled_row`;
 - `starter_disabled_reason`;
+- `save_browser_snapshot_available`;
+- `save_browser_snapshot_fallback`;
+- `save_browser_selected_timestamp`;
 
 New fields should be added only if they prove durable behavior and are not
 duplicates of existing frontend fields.

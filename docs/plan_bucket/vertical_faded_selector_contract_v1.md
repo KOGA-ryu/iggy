@@ -35,6 +35,19 @@ out smoothly.
 The fade is a viewport mask, not data deletion. Scrolling never removes items
 from the selector model.
 
+V1 defaults:
+
+```text
+visible_entry_count=5
+focused_entry=center
+top_fade_zone=20_percent
+bottom_fade_zone=20_percent
+wraparound=false
+scroll_behavior=clamp
+snap_to_entries=true
+held_input_repeat=after_delay
+```
+
 ## Save File Entry Content
 
 Each save entry must display:
@@ -111,7 +124,9 @@ Mouse/touchpad mapping:
 
 - wheel or trackpad vertical scroll changes selected index;
 - click focused or visible entry selects/activates according to parent screen
-  policy.
+  policy;
+- hover highlights only when stable hit regions exist;
+- click outside selector rows is ignored for V1.
 
 ## Scrolling Behavior
 

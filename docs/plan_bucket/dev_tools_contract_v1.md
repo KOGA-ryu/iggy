@@ -104,6 +104,16 @@ be giant windows unless the user explicitly opens a deep investigation view.
 
 Appears only when something is selected.
 
+Selection source is shared with gameplay/editor/menu selection and is defined
+in:
+
+```text
+docs/plan_bucket/selection_cursor_contract_v1.md
+```
+
+The inspector must read the current `ProductSelectionSummary` or equivalent
+selection state. It must not run a separate private pick path.
+
 V1 fields:
 
 ```text
@@ -352,6 +362,14 @@ When Dev Tools is enabled:
 Controller equivalents can be added later. They must not conflict with gameplay
 actions unless dev tools owns input.
 
+Mouse/cursor behavior:
+
+- dev tools uses the frontend cursor layer;
+- click selects or activates only stable dev hit regions;
+- wheel scrolls the active dev list/log when focused;
+- click outside stable hit regions is ignored for V1;
+- gameplay input remains suppressed when dev tools owns input.
+
 ## Receipt Fields
 
 Recommended proof fields:
@@ -367,6 +385,7 @@ dev_bottom_right_visible=true|false
 dev_world_space_debug_visible=true|false
 dev_side_inspector_visible=true|false
 dev_selected_entity_id=<id-or-none>
+dev_selection_source=crosshair|mouse_cursor|menu_focus|none
 dev_log_count=<integer>
 dev_active_layer=performance|physics|ai|rendering|input|world|automation|none
 ```

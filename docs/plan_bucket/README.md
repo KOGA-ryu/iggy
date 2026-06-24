@@ -44,6 +44,8 @@ Each plan document must define:
 - Settings screen contract
 - Dev tools contract
 - Vertical faded selector contract
+- Save snapshot contract
+- Selection and cursor contract
 - In-game pause menu contract
 - Product frontend router contract
 - Product automation cleanup contract
@@ -63,7 +65,13 @@ Each plan document must define:
   - runtime overlay layers, dev toggle, read-only/debug command boundaries, and
     receipt proof;
 - `vertical_faded_selector_contract_v1.md`
-  - reusable selector model for save files, chapters, and world presets.
+  - reusable selector model for save files, chapters, and world presets;
+- `save_snapshot_contract_v1.md`
+  - save sidecar snapshot ownership, pause-save capture rules, selector
+    fallback behavior, and no-window proof fields;
+- `selection_cursor_contract_v1.md`
+  - crosshair versus mouse cursor selection authority, cursor state ownership,
+    hit-test routing, and dev tools inspector wiring.
 
 ## Long-Term Codebase Fit
 
@@ -78,3 +86,11 @@ The intended direction is:
 - receipt files report deterministic proof;
 - `AppShell.cpp` composes lifecycle, input collection, routing, drawing, and
   receipts without owning per-menu behavior.
+
+Save snapshots and selection/cursor state follow the same rule:
+
+- save files remain gameplay truth, while snapshot images are sidecar
+  presentation data;
+- active camera or frontend mode decides selection source;
+- frontend cursor rendering is overlay state, not gameplay logic;
+- dev tools inspect shared selection summaries, not private per-tool picks.

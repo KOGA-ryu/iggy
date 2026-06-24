@@ -20,6 +20,12 @@ Pause settings return to the pause menu.
 
 Settings must always suppress gameplay input while open.
 
+Settings is a child surface. Parent-return rules are fixed:
+
+- starter settings returns to starter;
+- pause settings returns to pause;
+- selector/dialog children opened inside settings return to settings.
+
 ## Top-Level Tab Order
 
 The settings screen uses this tab order:
@@ -238,6 +244,13 @@ Settings navigation belongs in the product frontend router:
 
 `AppShell.cpp` should call the router and should not own settings routing
 branches.
+
+Mouse input must use semantic route actions:
+
+- click a stable row hit region -> focus or confirm that row;
+- wheel scrolls the active settings list;
+- click outside stable hit regions is ignored for V1;
+- hover only changes focus when the view model exposes stable hit regions.
 
 ## Receipt Fields
 

@@ -26,12 +26,18 @@ src/app/frontend/DevToolsOverlayModel.hpp
 src/app/frontend/DevToolsOverlayModel.cpp
 src/app/frontend/StarterMenuModel.hpp
 src/app/frontend/StarterMenuModel.cpp
+src/app/frontend/CursorState.hpp
+src/app/frontend/CursorState.cpp
 src/app/iggy3d/ProductFrontendRouter.hpp
 src/app/iggy3d/ProductFrontendRouter.cpp
 src/app/iggy3d/ProductFrontendViewModel.hpp
 src/app/iggy3d/ProductFrontendViewModel.cpp
 src/app/iggy3d/ProductFrontendReceipt.hpp
 src/app/iggy3d/ProductFrontendReceipt.cpp
+src/app/iggy3d/ProductSelectionController.hpp
+src/app/iggy3d/ProductSelectionController.cpp
+src/app/iggy3d/ProductSaveSnapshot.hpp
+src/app/iggy3d/ProductSaveSnapshot.cpp
 ```
 
 Existing files should remain the long-term owners where they already match the
@@ -71,6 +77,8 @@ It must not:
 - mutate settings drafts directly;
 - run selector navigation logic;
 - own dev tools category behavior;
+- own cursor hit testing or crosshair raycast policy;
+- own save snapshot path/capture policy;
 - duplicate keyboard, mouse, controller, and automation behavior paths.
 
 ## Ownership Map
@@ -83,6 +91,9 @@ It must not:
 | Selector state | `VerticalFadedSelector.*` | item summaries | selected index/id, scroll status, confirm/back result |
 | Settings draft | `SettingsScreenModel.*` or `SettingsMenu.*` | active settings, device capabilities | draft settings, dirty state, apply/restore result |
 | Dev tools overlay | `DevToolsOverlayModel.*` or `DevToolsMenu.*` | runtime/debug/frontend/input summaries | selected category, read-only rows, requested debug toggles |
+| Cursor state | `CursorState.*` | mouse pointer frame, active surface | cursor visibility, position, mode, icon intent |
+| Product selection | `ProductSelectionController.*` | active camera/mode, cursor state, hit summaries | selected object summary, source, hit status |
+| Save snapshot | `ProductSaveSnapshot.*` / product save bridge | active camera mode, save path, capture result | sidecar path, snapshot status, selector summary fields |
 | Transitions | `ProductMenuTransitions.*` | route result, session presence | enter gameplay, return title, open/close overlay |
 | Receipts | `ReceiptBuilder.*` plus optional `ProductFrontendReceipt.*` | route result, models, app state | deterministic key-value proof |
 | Views | `OpeningMenuView.*` or future frontend view files | view model only | drawing commands, no gameplay mutation |
@@ -125,6 +136,7 @@ input_owner=<owner>
 next_screen=<screen>
 next_child_screen=<screen-or-none>
 requested_transition=<none|launch_gameplay|return_to_title|save|save_and_exit|exit>
+close_requested=true|false
 status=<stable-status>
 gameplay_input_suppressed=true|false
 receipt_reason=<stable-reason>
@@ -199,9 +211,60 @@ Mouse input must also become semantic actions:
 - click focused row -> `menu.confirm`;
 - wheel up/down -> `menu.up` / `menu.down` or selector scroll actions;
 - hover may set focus only if the active view supports stable hit regions.
+- click outside stable hit regions is ignored for V1.
 
 Automation must use the same semantic action names. Do not add a second
 automation-only behavior path.
+
+## Parent Return Defaults
+
+Default back/close behavior:
+
+- starter child panels return to starter;
+- pause child panels return to pause;
+- selector child panels return to their owning parent;
+- settings opened from starter returns to starter;
+- settings opened from pause returns to pause;
+- dev tools opened from starter returns to starter dev tools parent state;
+- dev tools opened from pause/gameplay returns to the owning gameplay/pause
+  state.
+
+The route result must report both the next surface and the next child surface
+so receipts can prove the parent relationship.
+
+## Selection And Cursor Integration
+
+Selection policy is defined in:
+
+```text
+docs/plan_bucket/selection_cursor_contract_v1.md
+```
+
+Summary rules:
+
+- first-person gameplay uses center crosshair selection through camera raycast;
+- tactical/editor/menu/dev tools use a rendered mouse cursor and hit testing;
+- active camera/mode decides authoritative selection source;
+- dev tools top-right inspector reads the shared selection summary;
+- cursor rendering is a frontend overlay concern, not gameplay logic.
+
+Selection/cursor must be fed by semantic actions and pointer frames. Do not add
+menu-specific mouse branches in `AppShell.cpp`.
+
+## Save Snapshot Integration
+
+Save snapshot policy is defined in:
+
+```text
+docs/plan_bucket/save_snapshot_contract_v1.md
+```
+
+Summary rules:
+
+- saves may have a sidecar snapshot image next to the save file;
+- pause saves capture the gameplay/tactical camera behind the pause UI;
+- missing/corrupt snapshots do not block load;
+- selectors display title, snapshot or fallback, and date/time.
 
 ## Data Ownership
 
@@ -255,6 +318,9 @@ selector_visible=true|false
 settings_open=true|false
 dev_tools_enabled=true|false
 dev_overlay_visible=true|false
+selection_source=crosshair|mouse_cursor|menu_focus|none
+cursor_visible=true|false
+save_snapshot_status=written|missing|corrupt|unavailable|skipped
 window_launch_count=0
 ```
 
@@ -288,10 +354,12 @@ Safe migration order:
 2. Move starter row table into a model.
 3. Move settings tab/row table into a model.
 4. Move dev tools category rows into a model.
-5. Add `ProductFrontendRouter` and route only one surface at a time.
-6. Replace old `AppShell.cpp` branches with router calls after tests prove parity.
-7. Add receipts from route result fields.
-8. Remove stale branch code only when no tests depend on it.
+5. Add selector model and selector result semantics.
+6. Add selection/cursor model and save snapshot summary model.
+7. Add `ProductFrontendRouter` and route only one surface at a time.
+8. Replace old `AppShell.cpp` branches with router calls after tests prove parity.
+9. Add receipts from route result fields.
+10. Remove stale branch code only when no tests depend on it.
 
 Each phase should preserve existing no-window receipt behavior unless the packet
 explicitly changes a field.
