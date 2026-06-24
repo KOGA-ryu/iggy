@@ -65,8 +65,9 @@ Current limitations to solve:
 - save index/catalog cache does not exist;
 - product `world_id` and user-facing `save_id` identity are not modeled yet;
 - manual/autosave/quicksave save types are not modeled yet;
-- `user_title` and generated `auto_title` are not modeled yet;
+- `worldTitle` and optional `saveTitle` are not persisted yet;
 - UTC timestamps are not stored as product save metadata yet;
+- product save catalog policy is not modeled yet;
 - snapshot capture does not exist yet, only sidecar presentation detection.
 
 ## Source-Fit Notes For Builders
@@ -77,7 +78,7 @@ helpers alone.
 
 - `SaveEnvelopeMetadata` currently stores schema/runtime/package/scenario/tool
   and saved hash fields. Product identity fields such as `world_id`, `save_id`,
-  `save_type`, `user_title`, `auto_title`, and UTC timestamps do not exist yet.
+  `worldTitle`, `saveTitle`, `save_type`, and UTC timestamps do not exist yet.
 - `writeSessionSaveFile` remains the legacy direct final-path writer. Product
   save commands use the newer durable writer path through `SaveBridge`, which
   performs temp write/readback, decode validation, same-directory rename, and
@@ -97,6 +98,8 @@ helpers alone.
 - Current filename-derived ids are compatibility preview ids only. Product
   `save_id` and `world_id` must become explicit durable identity before menus
   depend on them for Continue, delete, recovery, or world grouping.
+- Product catalog policy is defined in
+  `docs/plan_bucket/product_save_catalog_contract_v0_1.md`.
 
 ## Current Implemented Product Behavior
 
@@ -173,10 +176,13 @@ was written, loaded, soft-deleted, recovered, or merely selected.
 
 Save identity:
 
-- each save has optional `user_title`;
-- each save has generated `auto_title`;
-- display `user_title` first when present;
-- display `auto_title` as fallback or subtitle.
+- world creation asks for a user-entered world title or chapter name;
+- code stores the canonical field as `worldTitle`;
+- v0.1 does not create a separate `chapterTitle`;
+- each save has optional `saveTitle`;
+- display `saveTitle` first when present;
+- display `worldTitle` as the default title;
+- the initial save default title is exactly `worldTitle`.
 
 Snapshot:
 
@@ -189,7 +195,7 @@ World creation:
 
 - new world creates an initial save immediately;
 - no orphan worlds;
-- first world setup fields are world name, seed, difficulty, starting scenario.
+- first world setup fields are world title, seed, difficulty, starting scenario.
 
 Delete:
 
@@ -198,7 +204,16 @@ Delete:
 
 Continue:
 
-- Continue loads newest valid non-deleted loadable save.
+- Continue loads newest valid non-deleted loadable save;
+- newest means greatest persisted `savedAtUtc`;
+- ties use highest lexicographic `saveId`.
+
+Catalog:
+
+- the v0.1 catalog is an in-memory rebuildable product model;
+- it is rebuilt from `.iggy3d.save` files and snapshot sidecars;
+- it is not a new on-disk cache;
+- it must not introduce JSON.
 
 ## Save Truth Model
 
@@ -229,15 +244,14 @@ Every product save should expose:
 save_id
 world_id
 save_type
-user_title
-auto_title
+save_title
+world_title
 created_at_utc
-updated_at_utc
+saved_at_utc
 timezone_at_save
 game_version
 schema_version
 minimum_supported_schema
-world_name
 world_seed
 difficulty
 scenario
@@ -259,10 +273,9 @@ Minimum v0.1 product summary:
 save_id
 world_id
 save_type
-user_title
-auto_title
-updated_at_utc
-world_name
+save_title
+world_title
+saved_at_utc
 world_seed
 schema_version
 snapshot_path
@@ -274,28 +287,27 @@ deleted_state
 Display rule:
 
 ```text
-if user_title exists:
-  title=user_title
-  subtitle=auto_title
+if save_title exists:
+  title=save_title
+  subtitle=world_title
 else:
-  title=auto_title
+  title=world_title
   subtitle=none
 ```
 
 Initial new-world save title:
 
 ```text
-auto_title={WorldName} - Beginning
+title=<worldTitle>
 ```
 
 Later manual save title:
 
 ```text
-auto_title={WorldName} - Day {WorldDay} - {LocationOrState}
+title=<saveTitle-or-worldTitle>
 ```
 
-Rename Save edits only `user_title`. It must not rewrite generated
-`auto_title`.
+Rename Save edits only `saveTitle`. It must not rewrite `worldTitle`.
 
 ## Save Types
 
@@ -310,6 +322,7 @@ quicksave
 V0.1 exposed types:
 
 ```text
+initial
 manual
 autosave
 ```
@@ -323,6 +336,7 @@ quicksave
 Caps:
 
 ```text
+initial saves per world = 1
 manual saves = unlimited
 autosaves per world = 3
 quicksaves per world = 1 later
@@ -335,18 +349,15 @@ world group.
 
 ## World Grouping
 
-Frontend save browsing groups saves by world:
+Frontend save browsing uses one list for v0.1:
 
 ```text
-World
-  Manual Saves
-  Autosaves
-  Quicksaves
+Load Save
+  save rows sorted by catalog policy
 ```
 
-The first product implementation may still store files in a simple folder, but
-the model must expose world grouping semantics so the future storage layout can
-change without rewriting UI rules.
+Rows must carry `world_id` and `worldTitle` so the future UI can group by world
+without changing save identity.
 
 Recommended future storage shape:
 
@@ -364,7 +375,7 @@ Recommended future storage shape:
 
 The exact folder layout may be implemented in a later storage packet. The v0.1
 contract requires the model to distinguish active saves from deleted saves and
-world group ownership.
+carry world ownership, but not to render grouped world sections yet.
 
 ## New World Flow
 
@@ -383,7 +394,7 @@ Main Menu
 V0.1 world setup fields:
 
 ```text
-World Name
+World Title
 Seed
 Difficulty
 Starting Scenario
@@ -394,7 +405,7 @@ Back
 Defaults:
 
 ```text
-world_name=New World
+world_title=New World
 seed=generated_editable
 difficulty=standard
 starting_scenario=training_ground
@@ -432,7 +443,7 @@ exists.
 Continue selection rule:
 
 ```text
-newest updated_at_utc among valid non-deleted loadable saves
+newest savedAtUtc among valid non-deleted loadable saves
 ```
 
 Do not prioritize manual/autosave/quicksave ahead of recency for v0.1.
@@ -440,8 +451,7 @@ Do not prioritize manual/autosave/quicksave ahead of recency for v0.1.
 If two saves have the same timestamp, use deterministic tie-break:
 
 ```text
-world_id ascending
-save_id ascending
+saveId descending
 ```
 
 Continue must not choose:
@@ -895,11 +905,11 @@ Save created:
 receipt_type=save_created
 save_id=<id>
 world_id=<id>
-save_type=manual|autosave|quicksave
+save_type=initial|manual|autosave|quicksave
 save_title=<title>
-save_auto_title=<title>
-save_user_title_present=true|false
-save_updated_at_utc=<iso8601-or-none>
+world_title=<title>
+save_title_present=true|false
+save_saved_at_utc=<iso8601-or-none>
 save_success=true|false
 reason_code=<reason>
 ```
@@ -934,7 +944,7 @@ World created:
 ```text
 receipt_type=world_created
 world_id=<id>
-world_name=<name>
+world_title=<title>
 seed=<seed>
 difficulty=<difficulty>
 scenario=<scenario>
@@ -1065,7 +1075,7 @@ Historical safe order:
 5. initial save request model, no AppShell migration yet;
 6. safe write helper with temp/validate/atomic rename;
 7. soft delete/recover helper;
-8. save catalog/index cache, rebuildable from files;
+8. in-memory save catalog model, rebuildable from files;
 9. autosave policy model;
 10. route integration through product frontend router;
 11. no-window receipts;
@@ -1084,9 +1094,9 @@ Deferred product save-browser work:
 - visual deleted-save/recovery UI;
 - full `SaveBrowser`/`VerticalFadedSelector` integration for active and deleted
   save selection;
-- save catalog/index, if still wanted;
+- product save catalog model and explicit Continue policy;
 - explicit save metadata schema for `world_id`, durable `save_id`,
-  `user_title`, `auto_title`, timestamps, and save type;
+  `worldTitle`, optional `saveTitle`, timestamps, and save type;
 - permanent delete or empty-trash flow, if later requested;
 - autosave/quicksave policy and UI;
 - polished user-facing control names for deleted-save recovery.

@@ -60,7 +60,7 @@ Current limitations:
 - no editable world setup draft exists;
 - no persisted `world_id` exists;
 - no product world metadata record exists;
-- no explicit world name validation exists;
+- no persisted `worldTitle` metadata exists yet;
 - no seed editing model exists;
 - no difficulty model exists;
 - no starting scenario choice model exists;
@@ -79,7 +79,7 @@ existing direct-launch helpers.
 - `ProductWorldTemplate` is a package/scenario/template descriptor. It is not a
   world setup draft, not a product world record, and not durable world metadata.
 - `drawNewWorldPanel` currently displays template package/scenario/save-count
-  facts. It does not render editable world name, seed, difficulty, starting
+  facts. It does not render editable world title, seed, difficulty, starting
   scenario, validation, or save-gate state.
 - `applyOpeningMenuAction` currently handles selected `NewWorld` by calling
   `launchProductNewWorld` directly. That path creates a runtime session and
@@ -96,6 +96,10 @@ existing direct-launch helpers.
 - Product automation currently drives frontend/menu semantics. Slice 1 must not
   add an automation-only create path or expand automation beyond model-level
   tests.
+- Current source has legacy title field names in `WorldSetupDraft` and
+  `ProductWorldCreationRequest`. Future product save catalog work must either
+  migrate those fields to `worldTitle` or map them at the boundary. Product
+  semantics should use `worldTitle`.
 
 ## Relationship To Save Load Contract
 
@@ -103,6 +107,7 @@ This contract depends on:
 
 ```text
 docs/plan_bucket/save_load_ux_contract_v0_1.md
+docs/plan_bucket/product_save_catalog_contract_v0_1.md
 ```
 
 Save/load locked the rule:
@@ -123,7 +128,7 @@ A world is a user-facing lineage:
 
 ```text
 world_id
-world_name
+world_title
 world_seed
 difficulty
 starting_scenario
@@ -156,7 +161,7 @@ World Setup
 V0.1 world setup fields:
 
 ```text
-World Name
+World Title
 Seed
 Difficulty
 Starting Scenario
@@ -167,7 +172,7 @@ Back
 Default draft:
 
 ```text
-world_name=New World
+world_title=New World
 seed=generated_editable
 difficulty=standard
 starting_scenario=training_ground
@@ -201,7 +206,7 @@ Proposed draft structure:
 
 ```text
 WorldSetupDraft
-  world_name
+  world_title
   seed_text
   resolved_seed
   seed_generated
@@ -224,7 +229,7 @@ Draft must be deterministic for tests.
 
 ## Field Semantics
 
-World Name:
+World Title:
 
 - visible display name;
 - default `New World`;
@@ -232,7 +237,7 @@ World Name:
 - empty after trim is invalid;
 - max display length should be finite and tested;
 - v0.1 recommended max length: 64 characters;
-- user-visible invalid reason: `invalid_world_name`.
+- user-visible invalid reason: `invalid_world_title`.
 
 Seed:
 
@@ -281,7 +286,7 @@ Proposed request shape:
 
 ```text
 ProductWorldCreationRequest
-  world_name
+  world_title
   world_seed
   difficulty
   starting_scenario
@@ -309,7 +314,7 @@ ProductWorldCreationResult
   status
   reason_code
   world_id
-  world_name
+  world_title
   world_seed
   difficulty
   starting_scenario
@@ -346,9 +351,9 @@ route_after_create=gameplay
 Initial save:
 
 ```text
-save_type=manual
-user_title_present=false
-auto_title={WorldName} - Beginning
+save_type=initial
+save_title_present=false
+default_title=<worldTitle>
 world_id=<created world id>
 ```
 
@@ -546,7 +551,7 @@ Reason codes:
 
 ```text
 ok
-invalid_world_name
+invalid_world_title
 invalid_seed
 unsupported_difficulty
 unsupported_scenario
@@ -570,7 +575,7 @@ world_setup_open=true|false
 world_setup_selected_field=<field-or-none>
 world_setup_valid=true|false
 world_setup_reason_code=<reason>
-world_setup_draft_name=<name>
+world_setup_draft_title=<title>
 world_setup_seed_text=<text>
 world_setup_seed_generated=true|false
 world_setup_difficulty=<difficulty>
@@ -585,7 +590,7 @@ world_create_accepted=true|false
 world_create_status=<status>
 world_create_reason_code=<reason>
 world_id=<id-or-none>
-world_name=<name-or-none>
+world_title=<title-or-none>
 world_seed=<seed-or-none>
 world_difficulty=<difficulty-or-none>
 world_scenario=<scenario-or-none>
@@ -597,9 +602,9 @@ Initial save:
 initial_save_requested=true|false
 initial_save_written=true|false
 initial_save_id=<id-or-none>
-initial_save_type=manual
-initial_save_auto_title=<title-or-none>
-initial_save_user_title_present=true|false
+initial_save_type=initial
+initial_save_default_title=<worldTitle-or-none>
+initial_save_title_present=true|false
 ```
 
 Routing:
@@ -616,7 +621,7 @@ Unit tests for `WorldSetupModel` should prove:
 
 - default draft values;
 - generated seed state;
-- world name validation;
+- world title validation;
 - seed validation;
 - difficulty validation;
 - starting scenario validation;
@@ -632,7 +637,7 @@ Unit tests for `ProductWorldCreation` should prove later:
 - session creation failure blocks gameplay;
 - initial save failure blocks gameplay;
 - initial save success returns gameplay route;
-- initial save title is `{WorldName} - Beginning`;
+- initial save default title is exactly `worldTitle`;
 - product result includes world id and initial save id.
 
 No-window smokes should prove later:
@@ -748,7 +753,7 @@ Deferred product flavor decisions:
 - final difficulty list;
 - final starting scenario list;
 - exact generated seed display format;
-- whether world name can be renamed after creation;
+- whether world title can be renamed after creation;
 - whether later world creation has an Advanced page;
 - whether later character/profile setup belongs before or after world creation.
 

@@ -46,6 +46,7 @@ Each plan document must define:
 - Vertical faded selector contract
 - Save snapshot contract
 - Save load UX contract
+- Product save catalog contract
 - Runtime save durability contract
 - World creation UX contract
 - Selection and cursor contract
@@ -76,6 +77,10 @@ Each plan document must define:
   - runtime save baseline, product save identity, world grouping, Continue
     policy, atomic write requirements, soft delete/recovery, load failure,
     autosave rules, and key-value receipt fields;
+- `product_save_catalog_contract_v0_1.md`
+  - rebuildable in-memory save catalog, `worldTitle` title policy, newest
+    compatible Continue selection, active/deleted row semantics, coding methods,
+    compute costs, receipts, and builder slices;
 - `runtime_save_durability_contract_v0_1.md`
   - current direct-write/hard-delete baseline, durable write sequence,
     same-directory temp path policy, result structs, soft delete boundary,
