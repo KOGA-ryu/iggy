@@ -341,6 +341,12 @@ const SaveSlotPreview* firstSelectableSaveSlot(const SaveSlotList& slots) {
   return slots.slots.empty() ? nullptr : &slots.slots.front();
 }
 
+ProductSaveBridgeResult scanDeletedProductSavesForOptions(
+    const ProductAppOptions& options) {
+  const ProductWorldTemplate world = productWorldTemplateFromOptions(options);
+  return scanDeletedProductSaves(options.saveRoot, world.packageId, world.scenarioId);
+}
+
 void recordSelectedProductSaveSlot(const SaveSlotList& slots,
                                    const SaveSlotPreview* slot,
                                    ProductAppWindowState& window) {
@@ -405,6 +411,118 @@ bool selectProductSaveSlotById(const SaveSlotList& slots,
   const SaveSlotPreview* slot = saveSlotById(slots, selectedId);
   recordSelectedProductSaveSlot(slots, slot, window);
   return slot != nullptr;
+}
+
+void recordDeletedProductSaveSlots(const ProductSaveBridgeResult& deletedSaves,
+                                   ProductAppWindowState& window) {
+  window.deletedSaveCount =
+      static_cast<std::uint64_t>(deletedSaves.slots.slots.size());
+  window.deletedCompatibleSaveCount = deletedSaves.slots.compatibleCount;
+}
+
+void recordSelectedDeletedProductSaveSlot(const SaveSlotList& slots,
+                                          const SaveSlotPreview* slot,
+                                          ProductAppWindowState& window) {
+  if (slots.slots.empty()) {
+    window.deletedSelectedSaveId = "none";
+    window.deletedSelectedSaveEnabled = false;
+    window.deletedSelectedSaveStatus = "empty";
+    return;
+  }
+  if (slot == nullptr) {
+    window.deletedSelectedSaveId = "none";
+    window.deletedSelectedSaveEnabled = false;
+    window.deletedSelectedSaveStatus = "missing";
+    return;
+  }
+  window.deletedSelectedSaveId = slot->id.empty() ? "none" : slot->id;
+  window.deletedSelectedSaveEnabled = slot->enabled;
+  window.deletedSelectedSaveStatus = slot->enabled ? "selected" : "disabled";
+}
+
+const SaveSlotPreview* initializeSelectedDeletedProductSaveSlot(
+    const SaveSlotList& slots,
+    ProductAppWindowState& window) {
+  const SaveSlotPreview* current =
+      window.deletedSelectedSaveId == "none"
+          ? nullptr
+          : saveSlotById(slots, window.deletedSelectedSaveId);
+  const SaveSlotPreview* selected =
+      current == nullptr ? firstSelectableSaveSlot(slots) : current;
+  recordSelectedDeletedProductSaveSlot(slots, selected, window);
+  return selected;
+}
+
+bool selectDeletedProductSaveSlotById(const SaveSlotList& slots,
+                                      std::string_view selectedId,
+                                      ProductAppWindowState& window) {
+  const SaveSlotPreview* slot = saveSlotById(slots, selectedId);
+  recordSelectedDeletedProductSaveSlot(slots, slot, window);
+  return slot != nullptr;
+}
+
+void openDeletedProductSaveBrowser(const ProductAppOptions& options,
+                                   ProductAppWindowState& window,
+                                   FrontendState& frontend) {
+  const ProductSaveBridgeResult deletedSaves =
+      scanDeletedProductSavesForOptions(options);
+  recordDeletedProductSaveSlots(deletedSaves, window);
+  window.deletedSaveBrowserOpen = true;
+  initializeSelectedDeletedProductSaveSlot(deletedSaves.slots, window);
+  frontend.childScreen = FrontendScreen::LoadSave;
+  frontend.status = "deleted_save_browser_open";
+}
+
+void executeProductSaveRecover(const ProductAppOptions& options,
+                               ProductAppWindowState& window,
+                               FrontendState& frontend) {
+  const ProductSaveBridgeResult deletedBefore =
+      scanDeletedProductSavesForOptions(options);
+  recordDeletedProductSaveSlots(deletedBefore, window);
+  const SaveSlotPreview* selected =
+      window.deletedSelectedSaveId == "none"
+          ? initializeSelectedDeletedProductSaveSlot(deletedBefore.slots, window)
+          : saveSlotById(deletedBefore.slots, window.deletedSelectedSaveId);
+  recordSelectedDeletedProductSaveSlot(deletedBefore.slots, selected, window);
+
+  const std::string recoverId =
+      selected == nullptr || selected->id.empty() ? "none" : selected->id;
+  window.saveRecoverSaveId = recoverId;
+  window.saveRecoverSnapshotRecovered = false;
+  window.saveRecoverSnapshotMissing = false;
+  if (recoverId == "none") {
+    window.saveRecoverStatus = "product_save_recover_id_missing";
+    window.saveRecoverReasonCode = "product_save_recover_id_missing";
+    window.saveRecoverExecuted = false;
+    frontend.childScreen = FrontendScreen::LoadSave;
+    frontend.status = "save_recover_failed";
+    return;
+  }
+
+  const ProductSaveRecoverResult recovered =
+      recoverProductSave({options.saveRoot, recoverId});
+  window.saveRecoverStatus = recovered.status;
+  window.saveRecoverReasonCode = recovered.reasonCode;
+  window.saveRecoverExecuted = recovered.ok;
+  window.saveRecoverSaveId = recovered.saveId.empty() ? "none" : recovered.saveId;
+  window.saveRecoverSnapshotRecovered = recovered.snapshotRecovered;
+  window.saveRecoverSnapshotMissing = recovered.snapshotMissing;
+
+  const ProductSaveBridgeResult deletedAfter =
+      scanDeletedProductSavesForOptions(options);
+  recordDeletedProductSaveSlots(deletedAfter, window);
+  if (recovered.ok) {
+    window.deletedSaveBrowserOpen = false;
+    recordSelectedDeletedProductSaveSlot(deletedAfter.slots, nullptr, window);
+    const ProductWorldTemplate world = productWorldTemplateFromOptions(options);
+    const ProductSaveBridgeResult activeAfter =
+        scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
+    selectProductSaveSlotById(activeAfter.slots, recovered.saveId, window);
+  }
+
+  frontend.childScreen = FrontendScreen::LoadSave;
+  frontend.selectedAction = FrontendAction::LoadSave;
+  frontend.status = recovered.ok ? "save_recover_recovered" : "save_recover_failed";
 }
 
 void openProductSaveDeleteConfirmation(const SaveSlotList& slots,
@@ -1447,6 +1565,73 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return true;
   }
 
+  if (key == "save.show_deleted" || key == "frontend.show_deleted_saves") {
+    if (!parseAutomationBool(value, boolValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    if (!boolValue) {
+      markAutomationApplied(window, command, "save.show_deleted",
+                            productInputOwnerFor(frontend, window), "ignored");
+      return true;
+    }
+    if (frontend.childScreen != FrontendScreen::LoadSave) {
+      window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(window, command, "save.show_deleted",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    openDeletedProductSaveBrowser(options, window, frontend);
+    markAutomationApplied(window, command, "save.show_deleted",
+                          productInputOwnerFor(frontend, window), "applied");
+    return true;
+  }
+
+  if (key == "save.deleted_select" || key == "frontend.deleted_save_select") {
+    if (frontend.childScreen != FrontendScreen::LoadSave ||
+        !window.deletedSaveBrowserOpen) {
+      window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(window, command, "save.deleted_select",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    const ProductSaveBridgeResult deletedSaves =
+        scanDeletedProductSavesForOptions(options);
+    recordDeletedProductSaveSlots(deletedSaves, window);
+    const bool selected =
+        selectDeletedProductSaveSlotById(deletedSaves.slots, value, window);
+    markAutomationApplied(window,
+                          command,
+                          window.deletedSelectedSaveId,
+                          productInputOwnerFor(frontend, window),
+                          selected ? "applied" : "ignored");
+    return selected;
+  }
+
+  if (key == "save.recover" || key == "frontend.save_recover") {
+    if (!parseAutomationBool(value, boolValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    if (!boolValue) {
+      markAutomationApplied(window, command, "save.recover",
+                            productInputOwnerFor(frontend, window), "ignored");
+      return true;
+    }
+    if (frontend.childScreen != FrontendScreen::LoadSave ||
+        !window.deletedSaveBrowserOpen) {
+      window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(window, command, "save.recover",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    executeProductSaveRecover(options, window, frontend);
+    markAutomationApplied(window, command, "save.recover",
+                          productInputOwnerFor(frontend, window),
+                          window.saveRecoverExecuted ? "applied" : "failed");
+    return window.saveRecoverExecuted;
+  }
+
   if (key == "settings.tab") {
     if (!parseAutomationSettingsTab(value, settingsTab)) {
       window.automationControlStatus = "invalid_value";
@@ -1831,7 +2016,7 @@ int runProductApp(int argc, char** argv) {
 
   const ProductAppOptions& options = parsed.options;
   const ProductWorldTemplate world = productWorldTemplateFromOptions(options);
-  const ProductSaveBridgeResult saves =
+  ProductSaveBridgeResult saves =
       scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
   const FrontendSettings settings = productFrontendSettingsFromOptions(options);
   std::optional<Session> activeSession;
@@ -1855,6 +2040,7 @@ int runProductApp(int argc, char** argv) {
   bool automationCloseRequested = false;
   applyProductAutomationControl(options, frontend, saves, automationSettingsTab,
                                 activeSession, window, automationCloseRequested);
+  saves = scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
   if (automationCloseRequested) {
     window.status = "automation_close_requested";
   }

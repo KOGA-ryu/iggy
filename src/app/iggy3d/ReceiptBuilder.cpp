@@ -135,6 +135,27 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "save_delete_recoverable",
                      window.saveDeleteRecoverable);
   appendReceiptField(receipt, "save_delete_executed", window.saveDeleteExecuted);
+  appendReceiptField(receipt, "deleted_save_browser_open",
+                     window.deletedSaveBrowserOpen);
+  appendReceiptField(receipt, "deleted_save_count", window.deletedSaveCount);
+  appendReceiptField(receipt, "deleted_compatible_save_count",
+                     window.deletedCompatibleSaveCount);
+  appendReceiptField(receipt, "deleted_selected_save_id",
+                     window.deletedSelectedSaveId);
+  appendReceiptField(receipt, "deleted_selected_save_enabled",
+                     window.deletedSelectedSaveEnabled);
+  appendReceiptField(receipt, "deleted_selected_save_status",
+                     window.deletedSelectedSaveStatus);
+  appendReceiptField(receipt, "save_recover_status", window.saveRecoverStatus);
+  appendReceiptField(receipt, "save_recover_reason_code",
+                     window.saveRecoverReasonCode);
+  appendReceiptField(receipt, "save_recover_executed",
+                     window.saveRecoverExecuted);
+  appendReceiptField(receipt, "save_recover_save_id", window.saveRecoverSaveId);
+  appendReceiptField(receipt, "save_recover_snapshot_recovered",
+                     window.saveRecoverSnapshotRecovered);
+  appendReceiptField(receipt, "save_recover_snapshot_missing",
+                     window.saveRecoverSnapshotMissing);
   appendReceiptField(receipt, "product_save_load_previous_hash",
                      window.productSaveLoadPreviousHash);
   appendReceiptField(receipt, "product_save_load_loaded_hash",

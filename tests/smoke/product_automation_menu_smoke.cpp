@@ -442,6 +442,57 @@ int main() {
       std::filesystem::exists(newWorldSaveRoot / "deleted" /
                               "save_001.iggy3d.save");
 
+  const std::filesystem::path recoverSaveRoot =
+      cleanSaveRoot("recover_soft_deleted");
+  std::error_code recoverSetupError;
+  std::filesystem::create_directories(recoverSaveRoot / "deleted",
+                                      recoverSetupError);
+  recoverSetupError.clear();
+  const bool recoverSetup =
+      loadSaveDeleteConfirmSoftDeleted &&
+      std::filesystem::copy_file(
+          newWorldSaveRoot / "deleted" / "save_001.iggy3d.save",
+          recoverSaveRoot / "deleted" / "save_001.iggy3d.save",
+          std::filesystem::copy_options::overwrite_existing,
+          recoverSetupError) &&
+      !recoverSetupError;
+
+  fields.clear();
+  const bool loadSaveRecoverSoftDeleted =
+      appAvailable && recoverSetup &&
+      runProductCase(binary,
+                     "load_save_recover_soft_deleted",
+                     "frontend.select=load_save\nfrontend.execute=true\n"
+                     "save.show_deleted=true\nsave.deleted_select=save_001\n"
+                     "save.recover=true\n",
+                     std::string{"--save-root "} + shellQuote(recoverSaveRoot),
+                     fields,
+                     exitCode) &&
+      exitCode == 0 && productReceipt(fields) && automationApplied(fields) &&
+      hasField(fields, "frontend_screen", "starter") &&
+      hasField(fields, "frontend_child_screen", "load_save") &&
+      hasField(fields, "frontend_selected_action", "load_save") &&
+      hasField(fields, "gameplay_active", "false") &&
+      hasField(fields, "save_count", "1") &&
+      hasField(fields, "compatible_save_count", "1") &&
+      hasField(fields, "selected_save_id", "save_001") &&
+      hasField(fields, "selected_save_enabled", "true") &&
+      hasField(fields, "selected_save_status", "selected") &&
+      hasField(fields, "deleted_save_browser_open", "false") &&
+      hasField(fields, "deleted_save_count", "0") &&
+      hasField(fields, "deleted_compatible_save_count", "0") &&
+      hasField(fields, "deleted_selected_save_id", "none") &&
+      hasField(fields, "deleted_selected_save_enabled", "false") &&
+      hasField(fields, "deleted_selected_save_status", "empty") &&
+      hasField(fields, "save_recover_status", "product_save_recovered") &&
+      hasField(fields, "save_recover_reason_code", "product_save_recovered") &&
+      hasField(fields, "save_recover_executed", "true") &&
+      hasField(fields, "save_recover_save_id", "save_001") &&
+      hasField(fields, "save_recover_snapshot_missing", "true") &&
+      std::filesystem::exists(recoverSaveRoot / "save_001.iggy3d.save") &&
+      !std::filesystem::exists(recoverSaveRoot / "deleted" /
+                               "save_001.iggy3d.save");
+
   fields.clear();
   const std::filesystem::path pauseSaveActionRoot = cleanSaveRoot("pause_save");
   const bool pauseSave =
@@ -553,6 +604,7 @@ int main() {
                       loadSaveSelector && loadSaveSelectorSelected &&
                       loadSaveSelectorCorruptRejected && loadSaveDeleteConfirmOpen &&
                       loadSaveDeleteCancel && loadSaveDeleteConfirmSoftDeleted &&
+                      loadSaveRecoverSoftDeleted &&
                       pauseSave && pauseSaveAndExit && pauseFromGameplay &&
                       returnToTitle && invalidValue;
   std::cout << "smoke=product_automation_menu\n";
@@ -572,6 +624,8 @@ int main() {
             << (loadSaveDeleteCancel ? "true" : "false") << "\n";
   std::cout << "load_save_delete_confirm_soft_deleted="
             << (loadSaveDeleteConfirmSoftDeleted ? "true" : "false") << "\n";
+  std::cout << "load_save_recover_soft_deleted="
+            << (loadSaveRecoverSoftDeleted ? "true" : "false") << "\n";
   std::cout << "pause_save=" << (pauseSave ? "true" : "false") << "\n";
   std::cout << "pause_save_and_exit="
             << (pauseSaveAndExit ? "true" : "false") << "\n";
