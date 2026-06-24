@@ -1,5 +1,7 @@
 #include "app/iggy3d/ProductFrontendRouter.hpp"
 
+#include "app/frontend/StarterScreen.hpp"
+
 namespace iggy3d {
 namespace {
 
@@ -71,6 +73,27 @@ ProductFrontendOwnerDecision starterChildDecision(FrontendScreen childScreen) {
                        ProductFrontendSurface::Starter,
                        MenuOwner::None,
                        true);
+}
+
+bool isStarterChildSurface(ProductFrontendSurface surface) {
+  return surface == ProductFrontendSurface::WorldSetup ||
+         surface == ProductFrontendSurface::SaveSelector ||
+         surface == ProductFrontendSurface::ConfirmDialog;
+}
+
+FrontendRouteResult unavailableRoute(const ProductFrontendRouteContext& context,
+                                     const ProductFrontendOwnerDecision& owner,
+                                     FrontendAction action,
+                                     std::string_view status) {
+  FrontendRouteResult route = makeIgnoredFrontendRouteResult(
+      owner.inputOwner,
+      context.frontend.screen,
+      context.frontend.childScreen,
+      action);
+  route.gameplayInputSuppressed = owner.gameplayInputSuppressed;
+  route.status = status;
+  route.receiptReason = status;
+  return route;
 }
 
 }  // namespace
@@ -155,6 +178,46 @@ ProductFrontendOwnerDecision chooseProductFrontendOwner(
   decision.modelAvailable = false;
   decision.status = "product_frontend_surface_unavailable";
   return decision;
+}
+
+ProductFrontendRouteFrame routeProductFrontendAction(
+    const ProductFrontendRouteContext& context,
+    FrontendAction action) {
+  ProductFrontendRouteFrame frame;
+  frame.owner = chooseProductFrontendOwner(context);
+
+  if (frame.owner.activeSurface == ProductFrontendSurface::Starter &&
+      frame.owner.inputOwner == MenuOwner::Starter) {
+    if (context.starterModel == nullptr) {
+      frame.route =
+          unavailableRoute(context, frame.owner, action, "starter_model_unavailable");
+      frame.route.gameplayInputSuppressed = true;
+      return frame;
+    }
+    frame.route = routeStarterAction(*context.starterModel, action);
+    frame.routed = true;
+    return frame;
+  }
+
+  if (context.frontend.screen == FrontendScreen::Starter &&
+      isStarterChildSurface(frame.owner.activeSurface)) {
+    if (action == FrontendAction::Back) {
+      frame.route = routeStarterBackFromChild(context.frontend.childScreen);
+      frame.routed = true;
+      return frame;
+    }
+    frame.route = unavailableRoute(context,
+                                   frame.owner,
+                                   action,
+                                   "product_frontend_child_route_unavailable");
+    return frame;
+  }
+
+  frame.route = unavailableRoute(context,
+                                 frame.owner,
+                                 action,
+                                 "product_frontend_route_unavailable");
+  return frame;
 }
 
 }  // namespace iggy3d

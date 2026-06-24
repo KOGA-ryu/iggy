@@ -1,5 +1,7 @@
 #include "app/iggy3d/ProductFrontendRouter.hpp"
 
+#include "app/frontend/StarterScreen.hpp"
+
 #include <iostream>
 #include <string_view>
 
@@ -17,6 +19,15 @@ iggy3d::ProductFrontendRouteContext contextFor(iggy3d::FrontendScreen screen,
   iggy3d::ProductFrontendRouteContext context;
   context.frontend.screen = screen;
   context.frontend.childScreen = child;
+  return context;
+}
+
+iggy3d::ProductFrontendRouteContext starterContextFor(
+    iggy3d::FrontendScreen child,
+    const iggy3d::StarterScreenModel& model) {
+  iggy3d::ProductFrontendRouteContext context =
+      contextFor(iggy3d::FrontendScreen::Starter, child);
+  context.starterModel = &model;
   return context;
 }
 
@@ -181,12 +192,168 @@ bool gameplayRequiresActiveSession() {
                 "missing session status");
 }
 
+bool starterRootDelegatesNewWorld() {
+  const auto model =
+      iggy3d::buildStarterScreenModel(0U, iggy3d::FrontendAction::NewWorld);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      starterContextFor(iggy3d::FrontendScreen::Gameplay, model),
+      iggy3d::FrontendAction::NewWorld);
+
+  return expect(frame.routed, "new world routed") &&
+         expect(frame.owner.activeSurface == iggy3d::ProductFrontendSurface::Starter,
+                "new world owner surface") &&
+         expect(frame.route.accepted, "new world accepted") &&
+         expect(frame.route.nextScreen == iggy3d::FrontendScreen::Starter,
+                "new world next screen") &&
+         expect(frame.route.nextChildScreen == iggy3d::FrontendScreen::NewWorld,
+                "new world child") &&
+         expect(frame.route.status == "starter_new_world_opened",
+                "new world status");
+}
+
+bool starterRootContinueDelegatesLaunchWhenCompatible() {
+  const auto model =
+      iggy3d::buildStarterScreenModel(1U, iggy3d::FrontendAction::Continue);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      starterContextFor(iggy3d::FrontendScreen::Gameplay, model),
+      iggy3d::FrontendAction::Continue);
+
+  return expect(frame.routed, "continue routed") &&
+         expect(frame.route.accepted, "continue accepted") &&
+         expect(frame.route.requestedTransition ==
+                    iggy3d::FrontendTransitionRequest::LaunchGameplay,
+                "continue launch transition") &&
+         expect(frame.route.inputOwner == iggy3d::MenuOwner::Gameplay,
+                "continue route owner gameplay") &&
+         expect(!frame.route.gameplayInputSuppressed,
+                "continue gameplay unsuppressed") &&
+         expect(frame.route.status == "starter_launch_continue",
+                "continue status");
+}
+
+bool starterRootContinueReportsDisabledWithoutCompatibleSave() {
+  const auto model =
+      iggy3d::buildStarterScreenModel(0U, iggy3d::FrontendAction::Continue);
+  const auto frame = iggy3d::routeProductFrontendAction(
+      starterContextFor(iggy3d::FrontendScreen::Gameplay, model),
+      iggy3d::FrontendAction::Continue);
+
+  return expect(frame.routed, "disabled continue routed") &&
+         expect(!frame.route.accepted, "disabled continue not accepted") &&
+         expect(frame.route.requestedTransition ==
+                    iggy3d::FrontendTransitionRequest::None,
+                "disabled continue no transition") &&
+         expect(frame.route.status == "no_compatible_save",
+                "disabled continue reason");
+}
+
+bool starterRootDelegatesSettingsAndDevTools() {
+  const auto settingsModel =
+      iggy3d::buildStarterScreenModel(0U, iggy3d::FrontendAction::Settings);
+  const auto settings = iggy3d::routeProductFrontendAction(
+      starterContextFor(iggy3d::FrontendScreen::Gameplay, settingsModel),
+      iggy3d::FrontendAction::Settings);
+
+  const auto devModel =
+      iggy3d::buildStarterScreenModel(0U, iggy3d::FrontendAction::DevTools);
+  const auto devTools = iggy3d::routeProductFrontendAction(
+      starterContextFor(iggy3d::FrontendScreen::Gameplay, devModel),
+      iggy3d::FrontendAction::DevTools);
+
+  return expect(settings.routed, "settings routed") &&
+         expect(settings.route.accepted, "settings accepted") &&
+         expect(settings.route.nextChildScreen == iggy3d::FrontendScreen::Settings,
+                "settings child") &&
+         expect(settings.route.status == "starter_settings_opened",
+                "settings status") &&
+         expect(devTools.routed, "dev tools routed") &&
+         expect(devTools.route.accepted, "dev tools accepted") &&
+         expect(devTools.route.nextChildScreen ==
+                    iggy3d::FrontendScreen::StarterDevTools,
+                "dev tools child") &&
+         expect(devTools.route.status == "starter_dev_tools_opened",
+                "dev tools status");
+}
+
+bool missingStarterModelIsUnavailable() {
+  const auto frame = iggy3d::routeProductFrontendAction(
+      contextFor(iggy3d::FrontendScreen::Starter,
+                 iggy3d::FrontendScreen::Gameplay),
+      iggy3d::FrontendAction::NewWorld);
+
+  return expect(!frame.routed, "missing model not routed") &&
+         expect(!frame.route.accepted, "missing model not accepted") &&
+         expect(frame.owner.activeSurface == iggy3d::ProductFrontendSurface::Starter,
+                "missing model owner surface") &&
+         expect(frame.route.status == "starter_model_unavailable",
+                "missing model status") &&
+         expect(frame.route.receiptReason == "starter_model_unavailable",
+                "missing model receipt") &&
+         expect(frame.route.gameplayInputSuppressed,
+                "missing model suppresses gameplay");
+}
+
+bool starterChildBackDelegatesToStarterHelper() {
+  const auto frame = iggy3d::routeProductFrontendAction(
+      contextFor(iggy3d::FrontendScreen::Starter,
+                 iggy3d::FrontendScreen::NewWorld),
+      iggy3d::FrontendAction::Back);
+
+  return expect(frame.routed, "child back routed") &&
+         expect(frame.route.accepted, "child back accepted") &&
+         expect(frame.route.nextScreen == iggy3d::FrontendScreen::Starter,
+                "child back screen") &&
+         expect(frame.route.nextChildScreen == iggy3d::FrontendScreen::Gameplay,
+                "child back closed child") &&
+         expect(frame.route.status == "starter_child_returned",
+                "child back status");
+}
+
+bool starterChildNonBackIsUnavailable() {
+  const auto frame = iggy3d::routeProductFrontendAction(
+      contextFor(iggy3d::FrontendScreen::Starter,
+                 iggy3d::FrontendScreen::NewWorld),
+      iggy3d::FrontendAction::CreateAndEnter);
+
+  return expect(!frame.routed, "child non-back not routed") &&
+         expect(!frame.route.accepted, "child non-back not accepted") &&
+         expect(frame.route.requestedTransition ==
+                    iggy3d::FrontendTransitionRequest::None,
+                "child non-back no transition") &&
+         expect(frame.route.status == "product_frontend_child_route_unavailable",
+                "child non-back status");
+}
+
+bool settingsDelegationIsDeferred() {
+  const auto frame = iggy3d::routeProductFrontendAction(
+      contextFor(iggy3d::FrontendScreen::Starter,
+                 iggy3d::FrontendScreen::Settings),
+      iggy3d::FrontendAction::Apply);
+
+  return expect(!frame.routed, "settings not routed") &&
+         expect(!frame.route.accepted, "settings not accepted") &&
+         expect(frame.owner.inputOwner == iggy3d::MenuOwner::Settings,
+                "settings owner preserved") &&
+         expect(frame.owner.activeSurface == iggy3d::ProductFrontendSurface::Settings,
+                "settings surface preserved") &&
+         expect(frame.route.status == "product_frontend_route_unavailable",
+                "settings deferred status") &&
+         expect(frame.route.gameplayInputSuppressed,
+                "settings suppresses gameplay");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = surfaceNamesAreStable() && bootStatusSuppressesWithoutOwner() &&
                   starterRootOwnsInput() && starterChildrenWinBeforeStarter() &&
                   pauseSettingsAndOverlaysOwnInput() &&
-                  gameplayRequiresActiveSession();
+                  gameplayRequiresActiveSession() && starterRootDelegatesNewWorld() &&
+                  starterRootContinueDelegatesLaunchWhenCompatible() &&
+                  starterRootContinueReportsDisabledWithoutCompatibleSave() &&
+                  starterRootDelegatesSettingsAndDevTools() &&
+                  missingStarterModelIsUnavailable() &&
+                  starterChildBackDelegatesToStarterHelper() &&
+                  starterChildNonBackIsUnavailable() && settingsDelegationIsDeferred();
   return ok ? 0 : 1;
 }
