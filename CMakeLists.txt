@@ -39,11 +39,13 @@ target_sources(iggy3d
     src/app/iggy3d/ReceiptBuilder.cpp
     src/app/iggy3d/SaveBridge.cpp
     src/app/frontend/FrontendState.cpp
+    src/app/frontend/FrontendRoute.cpp
     src/app/frontend/MenuInput.cpp
     src/app/frontend/ConfirmDialog.cpp
     src/app/frontend/PauseMenu.cpp
     src/app/frontend/SaveBrowser.cpp
     src/app/frontend/StarterScreen.cpp
+    src/app/frontend/VerticalFadedSelector.cpp
     src/app/frontend/SaveSlotModel.cpp
     src/app/frontend/SettingsMenu.cpp
     src/app/frontend/DevToolsMenu.cpp

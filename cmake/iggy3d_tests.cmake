@@ -44,6 +44,9 @@ set_tests_properties(save_file_store_tests PROPERTIES
 iggy3d_add_unit_test(frontend_state_tests tests/unit/frontend_state_tests.cpp)
 set_tests_properties(frontend_state_tests PROPERTIES LABELS "unit;app;frontend;iggy3d")
 
+iggy3d_add_unit_test(frontend_route_tests tests/unit/frontend_route_tests.cpp)
+set_tests_properties(frontend_route_tests PROPERTIES LABELS "unit;app;frontend;route;iggy3d")
+
 iggy3d_add_unit_test(menu_input_tests tests/unit/menu_input_tests.cpp)
 set_tests_properties(menu_input_tests PROPERTIES LABELS "unit;app;frontend;menu_input;iggy3d")
 
@@ -52,6 +55,10 @@ set_tests_properties(pause_menu_tests PROPERTIES LABELS "unit;app;frontend;pause
 
 iggy3d_add_unit_test(starter_screen_tests tests/unit/starter_screen_tests.cpp)
 set_tests_properties(starter_screen_tests PROPERTIES LABELS "unit;app;frontend;starter;iggy3d")
+
+iggy3d_add_unit_test(vertical_faded_selector_tests tests/unit/vertical_faded_selector_tests.cpp)
+set_tests_properties(vertical_faded_selector_tests PROPERTIES
+  LABELS "unit;app;frontend;selector;iggy3d")
 
 iggy3d_add_unit_test(settings_menu_tests tests/unit/settings_menu_tests.cpp)
 set_tests_properties(settings_menu_tests PROPERTIES LABELS "unit;app;frontend;settings;iggy3d")
