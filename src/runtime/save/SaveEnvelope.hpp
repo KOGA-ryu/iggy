@@ -34,6 +34,13 @@ struct SaveEnvelopeMetadata {
   std::string packageId;
   std::string scenarioId;
   std::string createdByToolId;
+  std::string saveId;
+  std::string worldId;
+  std::string worldTitle;
+  std::string saveTitle;
+  std::string saveType;
+  std::string createdAtUtc;
+  std::string savedAtUtc;
   std::uint64_t savedStateHash = 0;
   std::string savedStateHashHex;
 };

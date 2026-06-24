@@ -642,6 +642,13 @@ private:
     lineString("metadata.packageId", envelope_.metadata.packageId);
     lineString("metadata.scenarioId", envelope_.metadata.scenarioId);
     lineString("metadata.createdByToolId", envelope_.metadata.createdByToolId);
+    lineString("metadata.saveId", envelope_.metadata.saveId);
+    lineString("metadata.worldId", envelope_.metadata.worldId);
+    lineString("metadata.worldTitle", envelope_.metadata.worldTitle);
+    lineString("metadata.saveTitle", envelope_.metadata.saveTitle);
+    lineString("metadata.saveType", envelope_.metadata.saveType);
+    lineString("metadata.createdAtUtc", envelope_.metadata.createdAtUtc);
+    lineString("metadata.savedAtUtc", envelope_.metadata.savedAtUtc);
     line("metadata.savedStateHash", unsignedText(envelope_.metadata.savedStateHash));
     lineString("metadata.savedStateHashHex", envelope_.metadata.savedStateHashHex);
   }
@@ -996,6 +1003,13 @@ private:
     return true;
   }
 
+  bool readOptionalString(const std::string& key, std::string& out) {
+    if (!nextKeyIs(key)) {
+      return true;
+    }
+    return readString(key, out);
+  }
+
   template <typename T>
   bool readUnsigned(const std::string& key, T& out, SaveCodecStatus status = SaveCodecStatus::InvalidNumber) {
     std::string_view value;
@@ -1093,6 +1107,13 @@ private:
     readString("metadata.packageId", envelope_.metadata.packageId);
     readString("metadata.scenarioId", envelope_.metadata.scenarioId);
     readString("metadata.createdByToolId", envelope_.metadata.createdByToolId);
+    readOptionalString("metadata.saveId", envelope_.metadata.saveId);
+    readOptionalString("metadata.worldId", envelope_.metadata.worldId);
+    readOptionalString("metadata.worldTitle", envelope_.metadata.worldTitle);
+    readOptionalString("metadata.saveTitle", envelope_.metadata.saveTitle);
+    readOptionalString("metadata.saveType", envelope_.metadata.saveType);
+    readOptionalString("metadata.createdAtUtc", envelope_.metadata.createdAtUtc);
+    readOptionalString("metadata.savedAtUtc", envelope_.metadata.savedAtUtc);
     readUnsigned("metadata.savedStateHash", envelope_.metadata.savedStateHash);
     readString("metadata.savedStateHashHex", envelope_.metadata.savedStateHashHex);
   }

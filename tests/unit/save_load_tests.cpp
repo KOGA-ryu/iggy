@@ -23,6 +23,17 @@ std::string eraseFirst(std::string text, std::string_view value) {
   return text;
 }
 
+std::string eraseLineStartingWith(std::string text, std::string_view prefix) {
+  const std::size_t pos = text.find(prefix);
+  if (pos == std::string::npos) {
+    return text;
+  }
+  const std::size_t end = text.find('\n', pos);
+  const std::size_t count = end == std::string::npos ? text.size() - pos : end - pos + 1U;
+  text.erase(pos, count);
+  return text;
+}
+
 iggy3d::Transform3 transformAt(float x, float y, float z) {
   iggy3d::Transform3 transform = iggy3d::identityTransform3();
   transform.position = {x, y, z};
@@ -245,6 +256,84 @@ bool encodedSaveRoundtripLoadsFreshSession() {
               "loaded objective") &&
        expect(loaded.state().outcome == iggy3d::SessionOutcome::DemoComplete, "loaded outcome");
   return ok;
+}
+
+
+bool productMetadataRoundTripsThroughSaveCodec() {
+  iggy3d::Session session = makeSession();
+  iggy3d::SaveStateResult saved = iggy3d::saveSessionState(session.state());
+  saved.envelope.metadata.saveId = "save_001";
+  saved.envelope.metadata.worldId = "world_0001";
+  saved.envelope.metadata.worldTitle = "World 100% = ready\nLine 2";
+  saved.envelope.metadata.saveTitle = "Manual Save = 1%";
+  saved.envelope.metadata.saveType = "manual";
+  saved.envelope.metadata.createdAtUtc = "2026-06-24T00:00:00Z";
+  saved.envelope.metadata.savedAtUtc = "2026-06-24T01:02:03Z";
+
+  const iggy3d::SaveEncodeResult encoded = iggy3d::encodeSaveEnvelope(saved.envelope);
+  const iggy3d::SaveDecodeResult decoded = iggy3d::decodeSaveEnvelope(encoded.encodedText);
+
+  return expect(encoded.status == iggy3d::SaveCodecStatus::Ok, "product metadata encode status") &&
+         expect(encoded.encodedText.find("metadata.saveId=") != std::string::npos,
+                "save id key encoded") &&
+         expect(encoded.encodedText.find("metadata.worldId=") != std::string::npos,
+                "world id key encoded") &&
+         expect(encoded.encodedText.find("metadata.worldTitle=") != std::string::npos,
+                "world title key encoded") &&
+         expect(encoded.encodedText.find("metadata.saveTitle=") != std::string::npos,
+                "save title key encoded") &&
+         expect(encoded.encodedText.find("metadata.saveType=") != std::string::npos,
+                "save type key encoded") &&
+         expect(encoded.encodedText.find("metadata.createdAtUtc=") != std::string::npos,
+                "created utc key encoded") &&
+         expect(encoded.encodedText.find("metadata.savedAtUtc=") != std::string::npos,
+                "saved utc key encoded") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok, "product metadata decode status") &&
+         expect(decoded.envelope.metadata.saveId == "save_001", "save id round trip") &&
+         expect(decoded.envelope.metadata.worldId == "world_0001", "world id round trip") &&
+         expect(decoded.envelope.metadata.worldTitle == "World 100% = ready\nLine 2",
+                "world title escaped round trip") &&
+         expect(decoded.envelope.metadata.saveTitle == "Manual Save = 1%",
+                "save title escaped round trip") &&
+         expect(decoded.envelope.metadata.saveType == "manual", "save type round trip") &&
+         expect(decoded.envelope.metadata.createdAtUtc == "2026-06-24T00:00:00Z",
+                "created utc round trip") &&
+         expect(decoded.envelope.metadata.savedAtUtc == "2026-06-24T01:02:03Z",
+                "saved utc round trip");
+}
+
+bool oldSaveWithoutProductMetadataStillDecodes() {
+  iggy3d::Session session = makeSession();
+  iggy3d::SaveStateResult saved = iggy3d::saveSessionState(session.state());
+  saved.envelope.metadata.saveId = "save_001";
+  saved.envelope.metadata.worldId = "world_0001";
+  saved.envelope.metadata.worldTitle = "World Title";
+  saved.envelope.metadata.saveTitle = "Save Title";
+  saved.envelope.metadata.saveType = "manual";
+  saved.envelope.metadata.createdAtUtc = "2026-06-24T00:00:00Z";
+  saved.envelope.metadata.savedAtUtc = "2026-06-24T01:02:03Z";
+
+  const iggy3d::SaveEncodeResult encoded = iggy3d::encodeSaveEnvelope(saved.envelope);
+  std::string oldStyle = encoded.encodedText;
+  oldStyle = eraseLineStartingWith(oldStyle, "metadata.saveId=");
+  oldStyle = eraseLineStartingWith(oldStyle, "metadata.worldId=");
+  oldStyle = eraseLineStartingWith(oldStyle, "metadata.worldTitle=");
+  oldStyle = eraseLineStartingWith(oldStyle, "metadata.saveTitle=");
+  oldStyle = eraseLineStartingWith(oldStyle, "metadata.saveType=");
+  oldStyle = eraseLineStartingWith(oldStyle, "metadata.createdAtUtc=");
+  oldStyle = eraseLineStartingWith(oldStyle, "metadata.savedAtUtc=");
+
+  const iggy3d::SaveDecodeResult decoded = iggy3d::decodeSaveEnvelope(oldStyle);
+  return expect(encoded.status == iggy3d::SaveCodecStatus::Ok, "old metadata encode status") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                "old save without product metadata decodes") &&
+         expect(decoded.envelope.metadata.saveId.empty(), "old save id defaults empty") &&
+         expect(decoded.envelope.metadata.worldId.empty(), "old world id defaults empty") &&
+         expect(decoded.envelope.metadata.worldTitle.empty(), "old world title defaults empty") &&
+         expect(decoded.envelope.metadata.saveTitle.empty(), "old save title defaults empty") &&
+         expect(decoded.envelope.metadata.saveType.empty(), "old save type defaults empty") &&
+         expect(decoded.envelope.metadata.createdAtUtc.empty(), "old created utc defaults empty") &&
+         expect(decoded.envelope.metadata.savedAtUtc.empty(), "old saved utc defaults empty");
 }
 
 bool encodedSaveRoundtripPreservesRuntimeConfig() {
@@ -506,6 +595,8 @@ int main() {
   bool ok = true;
   ok = envelopeMappingPreservesDurableState() && ok;
   ok = encodedSaveRoundtripLoadsFreshSession() && ok;
+  ok = productMetadataRoundTripsThroughSaveCodec() && ok;
+  ok = oldSaveWithoutProductMetadataStillDecodes() && ok;
   ok = encodedSaveRoundtripPreservesRuntimeConfig() && ok;
   ok = authoredRoomSectionRoundTripsThroughSaveCodec() && ok;
   ok = postLoadCommandIdDoesNotCollide() && ok;
