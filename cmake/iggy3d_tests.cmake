@@ -82,6 +82,10 @@ iggy3d_add_unit_test(product_gameplay_feedback_tests tests/unit/product_gameplay
 set_tests_properties(product_gameplay_feedback_tests PROPERTIES
   LABELS "unit;app;product;feedback;iggy3d")
 
+iggy3d_add_unit_test(product_frontend_router_tests tests/unit/product_frontend_router_tests.cpp)
+set_tests_properties(product_frontend_router_tests PROPERTIES
+  LABELS "unit;app;product;frontend;router;iggy3d")
+
 iggy3d_add_unit_test(product_menu_transitions_tests tests/unit/product_menu_transitions_tests.cpp)
 set_tests_properties(product_menu_transitions_tests PROPERTIES
   LABELS "unit;app;product;frontend;transitions;iggy3d")
