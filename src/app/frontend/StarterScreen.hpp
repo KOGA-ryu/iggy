@@ -4,6 +4,7 @@
 #include <string_view>
 #include <vector>
 
+#include "app/frontend/FrontendRoute.hpp"
 #include "app/frontend/FrontendState.hpp"
 
 namespace iggy3d {
@@ -25,6 +26,9 @@ struct StarterScreenModel {
 
 StarterScreenModel buildStarterScreenModel(std::uint64_t compatibleSaveCount,
                                            FrontendAction selected);
+FrontendRouteResult routeStarterAction(const StarterScreenModel& model,
+                                       FrontendAction action);
+FrontendRouteResult routeStarterBackFromChild(FrontendScreen childScreen);
 FrontendScreen starterChildScreenForAction(FrontendAction action);
 std::string_view starterActionLabel(FrontendAction action);
 std::string_view starterActionCommand(FrontendAction action);

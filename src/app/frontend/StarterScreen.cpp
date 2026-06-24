@@ -1,6 +1,23 @@
 #include "app/frontend/StarterScreen.hpp"
 
 namespace iggy3d {
+namespace {
+
+FrontendRouteResult acceptedStarterChildRoute(FrontendScreen childScreen,
+                                              std::string_view status,
+                                              FrontendAction action) {
+  return makeAcceptedFrontendRouteResult(MenuOwner::Starter,
+                                         FrontendScreen::Starter,
+                                         childScreen,
+                                         FrontendTransitionRequest::None,
+                                         false,
+                                         true,
+                                         status,
+                                         status,
+                                         action);
+}
+
+}  // namespace
 
 StarterScreenModel buildStarterScreenModel(std::uint64_t compatibleSaveCount,
                                            FrontendAction selected) {
@@ -18,6 +35,98 @@ StarterScreenModel buildStarterScreenModel(std::uint64_t compatibleSaveCount,
       starterActionDisabledReason(model.selected, compatibleSaveCount);
   model.selectedCommand = starterActionCommand(model.selected);
   return model;
+}
+
+FrontendRouteResult routeStarterAction(const StarterScreenModel& model,
+                                       FrontendAction action) {
+  if (!starterActionEnabled(action, model.compatibleSaveCount)) {
+    FrontendRouteResult result = makeIgnoredFrontendRouteResult(
+        MenuOwner::Starter,
+        FrontendScreen::Starter,
+        FrontendScreen::Gameplay,
+        action);
+    result.status = starterActionDisabledReason(action, model.compatibleSaveCount);
+    result.receiptReason = result.status;
+    return result;
+  }
+
+  switch (action) {
+    case FrontendAction::Continue:
+      return makeAcceptedFrontendRouteResult(MenuOwner::Gameplay,
+                                             FrontendScreen::Gameplay,
+                                             FrontendScreen::Gameplay,
+                                             FrontendTransitionRequest::LaunchGameplay,
+                                             false,
+                                             false,
+                                             "starter_launch_continue",
+                                             "starter_launch_continue",
+                                             action);
+    case FrontendAction::NewWorld:
+      return acceptedStarterChildRoute(FrontendScreen::NewWorld,
+                                       "starter_new_world_opened",
+                                       action);
+    case FrontendAction::LoadSave:
+      return acceptedStarterChildRoute(FrontendScreen::LoadSave,
+                                       "starter_load_save_opened",
+                                       action);
+    case FrontendAction::Delete:
+      return acceptedStarterChildRoute(FrontendScreen::DeleteConfirm,
+                                       "starter_delete_confirm_opened",
+                                       action);
+    case FrontendAction::Settings:
+      return acceptedStarterChildRoute(FrontendScreen::Settings,
+                                       "starter_settings_opened",
+                                       action);
+    case FrontendAction::DevTools:
+      return acceptedStarterChildRoute(FrontendScreen::StarterDevTools,
+                                       "starter_dev_tools_opened",
+                                       action);
+    case FrontendAction::Exit:
+      return makeAcceptedFrontendRouteResult(MenuOwner::Starter,
+                                             FrontendScreen::Starter,
+                                             FrontendScreen::ExitConfirm,
+                                             FrontendTransitionRequest::Exit,
+                                             true,
+                                             true,
+                                             "starter_exit_requested",
+                                             "starter_exit_requested",
+                                             action);
+    case FrontendAction::None:
+    case FrontendAction::CreateAndEnter:
+    case FrontendAction::Load:
+    case FrontendAction::Back:
+    case FrontendAction::Apply:
+    case FrontendAction::RestoreDefaults:
+    case FrontendAction::Resume:
+    case FrontendAction::Save:
+    case FrontendAction::SaveAndExit:
+    case FrontendAction::ReturnToTitle:
+    case FrontendAction::ExitGame:
+      break;
+  }
+
+  FrontendRouteResult result = makeIgnoredFrontendRouteResult(
+      MenuOwner::Starter,
+      FrontendScreen::Starter,
+      FrontendScreen::Gameplay,
+      action);
+  result.status = "not_starter_action";
+  result.receiptReason = "not_starter_action";
+  return result;
+}
+
+FrontendRouteResult routeStarterBackFromChild(FrontendScreen childScreen) {
+  return makeAcceptedFrontendRouteResult(MenuOwner::Starter,
+                                         FrontendScreen::Starter,
+                                         FrontendScreen::Gameplay,
+                                         FrontendTransitionRequest::None,
+                                         false,
+                                         true,
+                                         "starter_child_returned",
+                                         "starter_child_returned",
+                                         childScreen == FrontendScreen::Gameplay
+                                             ? FrontendAction::None
+                                             : FrontendAction::Back);
 }
 
 FrontendScreen starterChildScreenForAction(FrontendAction action) {
