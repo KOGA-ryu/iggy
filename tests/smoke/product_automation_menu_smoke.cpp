@@ -359,6 +359,75 @@ int main() {
       hasField(fields, "product_save_status", "not_requested");
 
   fields.clear();
+  const bool loadSaveDeleteConfirmOpen =
+      appAvailable &&
+      runProductCase(binary,
+                     "load_save_delete_confirm_open",
+                     "frontend.select=load_save\nfrontend.execute=true\n"
+                     "save.select=save_001\nsave.delete=true\n",
+                     std::string{"--save-root "} + shellQuote(newWorldSaveRoot),
+                     fields,
+                     exitCode) &&
+      exitCode == 0 && productReceipt(fields) && automationApplied(fields) &&
+      hasField(fields, "frontend_screen", "starter") &&
+      hasField(fields, "frontend_child_screen", "delete_confirm") &&
+      hasField(fields, "frontend_selected_action", "delete") &&
+      hasField(fields, "gameplay_active", "false") &&
+      hasField(fields, "selected_save_id", "save_001") &&
+      hasField(fields, "selected_save_enabled", "true") &&
+      hasField(fields, "selected_save_status", "selected") &&
+      hasField(fields, "save_delete_confirmation_open", "true") &&
+      hasField(fields, "save_delete_candidate_id", "save_001") &&
+      hasField(fields, "save_delete_candidate_enabled", "true") &&
+      hasField(fields, "save_delete_status", "confirm_open") &&
+      hasField(fields, "save_delete_executed", "false") &&
+      std::filesystem::exists(newWorldSaveRoot / "save_001.iggy3d.save");
+
+  fields.clear();
+  const bool loadSaveDeleteCancel =
+      appAvailable &&
+      runProductCase(binary,
+                     "load_save_delete_cancel",
+                     "frontend.select=load_save\nfrontend.execute=true\n"
+                     "save.select=save_001\nsave.delete=true\nmenu.back=true\n",
+                     std::string{"--save-root "} + shellQuote(newWorldSaveRoot),
+                     fields,
+                     exitCode) &&
+      exitCode == 0 && productReceipt(fields) && automationApplied(fields) &&
+      hasField(fields, "frontend_screen", "starter") &&
+      hasField(fields, "frontend_child_screen", "load_save") &&
+      hasField(fields, "frontend_selected_action", "delete") &&
+      hasField(fields, "gameplay_active", "false") &&
+      hasField(fields, "selected_save_id", "save_001") &&
+      hasField(fields, "save_delete_confirmation_open", "false") &&
+      hasField(fields, "save_delete_candidate_id", "save_001") &&
+      hasField(fields, "save_delete_status", "cancelled") &&
+      hasField(fields, "save_delete_executed", "false") &&
+      std::filesystem::exists(newWorldSaveRoot / "save_001.iggy3d.save");
+
+  fields.clear();
+  const bool loadSaveDeleteConfirmDeferred =
+      appAvailable &&
+      runProductCase(binary,
+                     "load_save_delete_confirm_deferred",
+                     "frontend.select=load_save\nfrontend.execute=true\n"
+                     "save.select=save_001\nsave.delete=true\nmenu.confirm=true\n",
+                     std::string{"--save-root "} + shellQuote(newWorldSaveRoot),
+                     fields,
+                     exitCode) &&
+      exitCode == 0 && productReceipt(fields) && automationApplied(fields) &&
+      hasField(fields, "frontend_screen", "starter") &&
+      hasField(fields, "frontend_child_screen", "load_save") &&
+      hasField(fields, "frontend_selected_action", "delete") &&
+      hasField(fields, "gameplay_active", "false") &&
+      hasField(fields, "selected_save_id", "save_001") &&
+      hasField(fields, "save_delete_confirmation_open", "false") &&
+      hasField(fields, "save_delete_candidate_id", "save_001") &&
+      hasField(fields, "save_delete_status", "not_executed") &&
+      hasField(fields, "save_delete_executed", "false") &&
+      std::filesystem::exists(newWorldSaveRoot / "save_001.iggy3d.save");
+
+  fields.clear();
   const std::filesystem::path pauseSaveActionRoot = cleanSaveRoot("pause_save");
   const bool pauseSave =
       appAvailable &&
@@ -467,9 +536,10 @@ int main() {
 
   const bool passed = starterSettings && starterDevTools && newWorld && continueLoad &&
                       loadSaveSelector && loadSaveSelectorSelected &&
-                      loadSaveSelectorCorruptRejected && pauseSave &&
-                      pauseSaveAndExit && pauseFromGameplay && returnToTitle &&
-                      invalidValue;
+                      loadSaveSelectorCorruptRejected && loadSaveDeleteConfirmOpen &&
+                      loadSaveDeleteCancel && loadSaveDeleteConfirmDeferred &&
+                      pauseSave && pauseSaveAndExit && pauseFromGameplay &&
+                      returnToTitle && invalidValue;
   std::cout << "smoke=product_automation_menu\n";
   std::cout << "starter_settings=" << (starterSettings ? "true" : "false") << "\n";
   std::cout << "starter_dev_tools=" << (starterDevTools ? "true" : "false") << "\n";
@@ -481,6 +551,12 @@ int main() {
             << (loadSaveSelectorSelected ? "true" : "false") << "\n";
   std::cout << "load_save_selector_corrupt_rejected="
             << (loadSaveSelectorCorruptRejected ? "true" : "false") << "\n";
+  std::cout << "load_save_delete_confirm_open="
+            << (loadSaveDeleteConfirmOpen ? "true" : "false") << "\n";
+  std::cout << "load_save_delete_cancel="
+            << (loadSaveDeleteCancel ? "true" : "false") << "\n";
+  std::cout << "load_save_delete_confirm_deferred="
+            << (loadSaveDeleteConfirmDeferred ? "true" : "false") << "\n";
   std::cout << "pause_save=" << (pauseSave ? "true" : "false") << "\n";
   std::cout << "pause_save_and_exit="
             << (pauseSaveAndExit ? "true" : "false") << "\n";

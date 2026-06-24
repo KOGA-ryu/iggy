@@ -54,6 +54,11 @@ struct ProductAppWindowState {
   std::string selectedProductSaveId = "none";
   bool selectedProductSaveEnabled = false;
   std::string selectedProductSaveStatus = "none";
+  bool saveDeleteConfirmationOpen = false;
+  std::string saveDeleteCandidateId = "none";
+  bool saveDeleteCandidateEnabled = false;
+  std::string saveDeleteStatus = "not_requested";
+  bool saveDeleteExecuted = false;
   std::uint64_t productSaveLoadPreviousHash = 0;
   std::uint64_t productSaveLoadLoadedHash = 0;
   bool productSaveLoadSessionLoaded = false;

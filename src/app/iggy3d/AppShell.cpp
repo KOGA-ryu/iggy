@@ -407,6 +407,56 @@ bool selectProductSaveSlotById(const SaveSlotList& slots,
   return slot != nullptr;
 }
 
+void openProductSaveDeleteConfirmation(const SaveSlotList& slots,
+                                       ProductAppWindowState& window,
+                                       FrontendState& frontend) {
+  const SaveSlotPreview* slot =
+      window.selectedProductSaveId == "none"
+          ? nullptr
+          : saveSlotById(slots, window.selectedProductSaveId);
+  if (slot == nullptr) {
+    recordSelectedProductSaveSlot(slots, nullptr, window);
+    window.saveDeleteConfirmationOpen = false;
+    window.saveDeleteCandidateId = "none";
+    window.saveDeleteCandidateEnabled = false;
+    window.saveDeleteStatus =
+        slots.slots.empty() ? "save_delete_unavailable" : "save_delete_missing";
+    window.saveDeleteExecuted = false;
+    frontend.status = window.saveDeleteStatus;
+    return;
+  }
+
+  recordSelectedProductSaveSlot(slots, slot, window);
+  window.saveDeleteConfirmationOpen = true;
+  window.saveDeleteCandidateId = slot->id.empty() ? "none" : slot->id;
+  window.saveDeleteCandidateEnabled = slot->enabled;
+  window.saveDeleteStatus = "confirm_open";
+  window.saveDeleteExecuted = false;
+  frontend.childScreen = FrontendScreen::DeleteConfirm;
+  frontend.selectedAction = FrontendAction::Delete;
+  frontend.status = "save_delete_confirm_open";
+}
+
+void cancelProductSaveDeleteConfirmation(ProductAppWindowState& window,
+                                         FrontendState& frontend) {
+  window.saveDeleteConfirmationOpen = false;
+  window.saveDeleteStatus = "cancelled";
+  window.saveDeleteExecuted = false;
+  frontend.childScreen = FrontendScreen::LoadSave;
+  frontend.selectedAction = FrontendAction::Delete;
+  frontend.status = "save_delete_cancelled";
+}
+
+void deferProductSaveDeleteExecution(ProductAppWindowState& window,
+                                     FrontendState& frontend) {
+  window.saveDeleteConfirmationOpen = false;
+  window.saveDeleteStatus = "not_executed";
+  window.saveDeleteExecuted = false;
+  frontend.childScreen = FrontendScreen::LoadSave;
+  frontend.selectedAction = FrontendAction::Delete;
+  frontend.status = "save_delete_not_executed";
+}
+
 void launchProductNewWorld(const ProductAppOptions& options,
                            FrontendState& frontend,
                            std::optional<Session>& activeSession,
@@ -880,6 +930,18 @@ void applyOpeningMenuAction(FrontendState& frontend,
     }
   }
 
+  if (frontend.childScreen == FrontendScreen::DeleteConfirm &&
+      window.saveDeleteConfirmationOpen) {
+    if (action == InputAction::MenuBack) {
+      cancelProductSaveDeleteConfirmation(window, frontend);
+      return;
+    }
+    if (action == InputAction::MenuConfirm) {
+      deferProductSaveDeleteExecution(window, frontend);
+      return;
+    }
+  }
+
   if (frontend.childScreen == FrontendScreen::LoadSave) {
     if (action == InputAction::MenuBack) {
       frontend.childScreen = FrontendScreen::Gameplay;
@@ -892,12 +954,16 @@ void applyOpeningMenuAction(FrontendState& frontend,
       return;
     }
     if (action == InputAction::MenuConfirm) {
-      launchProductLoadSaveSelection(options,
-                                     productWorldTemplateFromOptions(options),
-                                     saves,
-                                     frontend,
-                                     activeSession,
-                                     window);
+      if (frontend.selectedAction == FrontendAction::Delete) {
+        openProductSaveDeleteConfirmation(saves.slots, window, frontend);
+      } else {
+        launchProductLoadSaveSelection(options,
+                                       productWorldTemplateFromOptions(options),
+                                       saves,
+                                       frontend,
+                                       activeSession,
+                                       window);
+      }
       return;
     }
   }
@@ -1327,6 +1393,28 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                           productInputOwnerFor(frontend, window),
                           selected ? "applied" : "ignored");
     return selected;
+  }
+
+  if (key == "save.delete" || key == "frontend.save_delete") {
+    if (!parseAutomationBool(value, boolValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    if (!boolValue) {
+      markAutomationApplied(window, command, "save.delete",
+                            productInputOwnerFor(frontend, window), "ignored");
+      return true;
+    }
+    if (frontend.childScreen != FrontendScreen::LoadSave) {
+      window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(window, command, "save.delete",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    openProductSaveDeleteConfirmation(saves.slots, window, frontend);
+    markAutomationApplied(window, command, "save.delete",
+                          productInputOwnerFor(frontend, window), "applied");
+    return true;
   }
 
   if (key == "settings.tab") {
