@@ -177,6 +177,40 @@ SaveFileTempWriteResult writeDurableSaveTempFile(
   return result;
 }
 
+SaveFileTempValidationResult validateDurableSaveTempFile(
+    const SaveFileTempWriteResult& tempWrite) {
+  SaveFileTempValidationResult result;
+  result.paths = tempWrite.paths;
+  if (!tempWrite.ok) {
+    result.reason = tempWrite.reason;
+    return result;
+  }
+
+  const std::string encodedText = readWholeFile(tempWrite.paths.tempPath);
+  if (encodedText.empty()) {
+    result.reason = "durable_save_temp_read_failed";
+    return result;
+  }
+  result.tempRead = true;
+  result.encodedBytes = static_cast<std::uint64_t>(encodedText.size());
+
+  const SaveDecodeResult decoded = decodeSaveEnvelope(encodedText);
+  result.codecStatus = decoded.status;
+  if (decoded.status != SaveCodecStatus::Ok) {
+    result.reason = "durable_save_temp_decode_failed";
+    return result;
+  }
+  result.tempDecoded = true;
+  result.tempValidated = true;
+  result.ok = true;
+  result.reason = "durable_save_temp_validated";
+  result.savedStateHash = decoded.envelope.metadata.savedStateHash;
+  result.savedStateHashHex = decoded.envelope.metadata.savedStateHashHex;
+  result.packageId = decoded.envelope.metadata.packageId;
+  result.scenarioId = decoded.envelope.metadata.scenarioId;
+  return result;
+}
+
 std::vector<SaveFileRecord> listSaveFiles(const std::filesystem::path& root) {
   std::vector<SaveFileRecord> records;
   std::error_code error;

@@ -183,6 +183,103 @@ bool durableTempWriteRejectsEmptyPayload() {
                 "empty payload no temp file");
 }
 
+bool durableTempValidationDecodesSaveFromDisk() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  const iggy3d::SaveStateResult saved =
+      iggy3d::saveSessionStateEncoded(session.state());
+  const iggy3d::SaveFileDurableWritePlan plan =
+      iggy3d::planDurableSaveFileWrite(root, "save_001", "attempt_001");
+  const iggy3d::SaveFileTempWriteResult written =
+      iggy3d::writeDurableSaveTempFile({plan, saved.encodedSaveText});
+  const iggy3d::SaveFileTempValidationResult validated =
+      iggy3d::validateDurableSaveTempFile(written);
+  const std::vector<iggy3d::SaveFileRecord> listed = iggy3d::listSaveFiles(root);
+  return expect(saved.status == iggy3d::SaveLoadStatus::Ok,
+                "fixture save encoded") &&
+         expect(written.ok, "validation temp write ok") &&
+         expect(validated.ok, "temp validation ok") &&
+         expect(validated.reason == "durable_save_temp_validated",
+                "temp validation reason") &&
+         expect(validated.paths.tempPath == plan.paths.tempPath,
+                "validation temp path") &&
+         expect(validated.packageId == "iggy3d.movement_playground",
+                "validation package") &&
+         expect(validated.scenarioId == "movement_playground.runtime_loop",
+                "validation scenario") &&
+         expect(validated.savedStateHash == saved.savedStateHash,
+                "validation hash") &&
+         expect(!validated.savedStateHashHex.empty(), "validation hash hex") &&
+         expect(validated.encodedBytes == saved.encodedSaveText.size(),
+                "validation encoded bytes") &&
+         expect(validated.tempRead, "validation temp read") &&
+         expect(validated.tempDecoded, "validation temp decoded") &&
+         expect(validated.tempValidated, "validation temp validated") &&
+         expect(validated.codecStatus == iggy3d::SaveCodecStatus::Ok,
+                "validation codec ok") &&
+         expect(!std::filesystem::exists(plan.paths.finalPath),
+                "validation final not written") &&
+         expect(listed.empty(), "validation temp not listed");
+}
+
+bool durableTempValidationRejectsCorruptTempPayload() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::SaveFileDurableWritePlan plan =
+      iggy3d::planDurableSaveFileWrite(root, "save_001", "attempt_001");
+  const iggy3d::SaveFileTempWriteResult written =
+      iggy3d::writeDurableSaveTempFile({plan, "not a save envelope\n"});
+  const iggy3d::SaveFileTempValidationResult validated =
+      iggy3d::validateDurableSaveTempFile(written);
+  return expect(written.ok, "corrupt temp write ok") &&
+         expect(!validated.ok, "corrupt validation rejected") &&
+         expect(validated.reason == "durable_save_temp_decode_failed",
+                "corrupt validation reason") &&
+         expect(validated.tempRead, "corrupt validation read") &&
+         expect(!validated.tempDecoded, "corrupt validation not decoded") &&
+         expect(!validated.tempValidated, "corrupt validation not validated") &&
+         expect(validated.codecStatus != iggy3d::SaveCodecStatus::Ok,
+                "corrupt codec status") &&
+         expect(!std::filesystem::exists(plan.paths.finalPath),
+                "corrupt final not written");
+}
+
+bool durableTempValidationRejectsMissingTempFile() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::SaveFileDurableWritePlan plan =
+      iggy3d::planDurableSaveFileWrite(root, "save_001", "attempt_001");
+  const iggy3d::SaveFileTempWriteResult written =
+      iggy3d::writeDurableSaveTempFile({plan, "not a save envelope\n"});
+  std::error_code error;
+  std::filesystem::remove(plan.paths.tempPath, error);
+  const iggy3d::SaveFileTempValidationResult validated =
+      iggy3d::validateDurableSaveTempFile(written);
+  return expect(written.ok, "missing temp write ok") &&
+         expect(!validated.ok, "missing temp validation rejected") &&
+         expect(validated.reason == "durable_save_temp_read_failed",
+                "missing temp reason") &&
+         expect(!validated.tempRead, "missing temp not read") &&
+         expect(!validated.tempDecoded, "missing temp not decoded") &&
+         expect(!validated.tempValidated, "missing temp not validated");
+}
+
+bool durableTempValidationForwardsFailedWriteReason() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::SaveFileDurableWritePlan plan =
+      iggy3d::planDurableSaveFileWrite(root, "save_001", "attempt 001");
+  const iggy3d::SaveFileTempWriteResult written =
+      iggy3d::writeDurableSaveTempFile({plan, "payload"});
+  const iggy3d::SaveFileTempValidationResult validated =
+      iggy3d::validateDurableSaveTempFile(written);
+  return expect(!written.ok, "failed write setup") &&
+         expect(!validated.ok, "failed write validation rejected") &&
+         expect(validated.reason == "durable_save_invalid_attempt_token",
+                "failed write validation forwarded reason") &&
+         expect(!validated.tempRead, "failed write validation not read") &&
+         expect(!validated.tempDecoded, "failed write validation not decoded") &&
+         expect(!validated.tempValidated,
+                "failed write validation not validated");
+}
+
 bool writeListReadAndDeleteRoundTrips() {
   const std::filesystem::path root = testRoot();
   iggy3d::Session session = makeFixtureSession();
@@ -307,6 +404,10 @@ int main() {
                   durableTempWriteReadsBackFromDisk() &&
                   durableTempWriteRejectsInvalidPlan() &&
                   durableTempWriteRejectsEmptyPayload() &&
+                  durableTempValidationDecodesSaveFromDisk() &&
+                  durableTempValidationRejectsCorruptTempPayload() &&
+                  durableTempValidationRejectsMissingTempFile() &&
+                  durableTempValidationForwardsFailedWriteReason() &&
                   writeListReadAndDeleteRoundTrips() && missingStateIsRejected() &&
                   idHintOverwritesExistingSave() && authoredRoomSectionIsWrittenToSaveFile();
   return ok ? 0 : 1;

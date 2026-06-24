@@ -80,6 +80,21 @@ struct SaveFileTempWriteResult {
   std::string readBackText;
 };
 
+struct SaveFileTempValidationResult {
+  bool ok = false;
+  std::string reason = "not_requested";
+  SaveFileDurableWritePaths paths;
+  SaveCodecStatus codecStatus = SaveCodecStatus::Ok;
+  std::uint64_t encodedBytes = 0;
+  std::uint64_t savedStateHash = 0;
+  std::string savedStateHashHex;
+  std::string packageId;
+  std::string scenarioId;
+  bool tempRead = false;
+  bool tempDecoded = false;
+  bool tempValidated = false;
+};
+
 bool isValidSaveFileId(std::string_view id);
 std::filesystem::path saveFilePathForId(const std::filesystem::path& root,
                                         std::string_view id);
@@ -94,6 +109,8 @@ SaveFileDurableWritePlan planDurableSaveFileWrite(
     std::string_view attemptToken);
 SaveFileTempWriteResult writeDurableSaveTempFile(
     const SaveFileTempWriteRequest& request);
+SaveFileTempValidationResult validateDurableSaveTempFile(
+    const SaveFileTempWriteResult& tempWrite);
 
 std::vector<SaveFileRecord> listSaveFiles(const std::filesystem::path& root);
 SaveFileWriteResult writeSessionSaveFile(const SaveFileWriteRequest& request);
