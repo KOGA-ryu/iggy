@@ -41,6 +41,12 @@ struct ProductAppWindowState {
   std::string productSaveStatus = "not_requested";
   std::string productSaveReasonCode = "not_requested";
   std::string productSaveDurableReason = "not_requested";
+  std::string productSaveLoadStatus = "not_requested";
+  std::string productSaveLoadReasonCode = "not_requested";
+  std::string productSaveLoadSaveId = "none";
+  std::uint64_t productSaveLoadPreviousHash = 0;
+  std::uint64_t productSaveLoadLoadedHash = 0;
+  bool productSaveLoadSessionLoaded = false;
   std::uint64_t runtimeStateHash = 0;
   ProductViewportState viewport;
   std::uint64_t sceneItemCount = 0;

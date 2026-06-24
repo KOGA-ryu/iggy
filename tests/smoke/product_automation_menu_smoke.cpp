@@ -76,6 +76,22 @@ bool hasField(const std::map<std::string, std::string>& fields,
   return found != fields.end() && found->second == value;
 }
 
+bool positiveIntegerField(const std::map<std::string, std::string>& fields,
+                          std::string_view key) {
+  const auto found = fields.find(std::string(key));
+  if (found == fields.end() || found->second.empty()) {
+    return false;
+  }
+  unsigned long long value = 0ULL;
+  for (const char character : found->second) {
+    if (character < '0' || character > '9') {
+      return false;
+    }
+    value = value * 10ULL + static_cast<unsigned long long>(character - '0');
+  }
+  return value > 0ULL;
+}
+
 bool runProductCase(const std::filesystem::path& binary,
                     std::string_view name,
                     std::string_view controlText,
@@ -202,6 +218,32 @@ int main() {
       hasField(fields, "product_transition_status", "gameplay_active");
 
   fields.clear();
+  const bool continueLoad =
+      appAvailable &&
+      runProductCase(binary,
+                     "continue_load",
+                     "frontend.select=continue\nfrontend.execute=true\n",
+                     std::string{"--save-root "} + shellQuote(newWorldSaveRoot),
+                     fields,
+                     exitCode) &&
+      exitCode == 0 && productReceipt(fields) && automationApplied(fields) &&
+      hasField(fields, "frontend_screen", "gameplay") &&
+      hasField(fields, "frontend_selected_action", "continue") &&
+      hasField(fields, "frontend_launch_requested", "true") &&
+      hasField(fields, "save_count", "1") &&
+      hasField(fields, "compatible_save_count", "1") &&
+      hasField(fields, "gameplay_active", "true") &&
+      hasField(fields, "product_save_load_status", "product_save_loaded") &&
+      hasField(fields, "product_save_load_reason_code", "product_save_loaded") &&
+      hasField(fields, "product_save_load_save_id", "save_001") &&
+      hasField(fields, "product_save_load_session_loaded", "true") &&
+      positiveIntegerField(fields, "product_save_load_loaded_hash") &&
+      hasField(fields, "world_creation_status", "not_requested") &&
+      hasField(fields, "product_save_status", "not_requested") &&
+      hasField(fields, "product_transition_last_action", "launch_gameplay") &&
+      hasField(fields, "product_transition_status", "gameplay_active");
+
+  fields.clear();
   const std::filesystem::path pauseSaveRoot = cleanSaveRoot("pause_from_gameplay");
   const bool pauseFromGameplay =
       appAvailable &&
@@ -257,12 +299,13 @@ int main() {
       hasField(fields, "automation_control_status", "invalid_value") &&
       hasField(fields, "automation_control_scope", "frontend_menu");
 
-  const bool passed = starterSettings && starterDevTools && newWorld &&
+  const bool passed = starterSettings && starterDevTools && newWorld && continueLoad &&
                       pauseFromGameplay && returnToTitle && invalidValue;
   std::cout << "smoke=product_automation_menu\n";
   std::cout << "starter_settings=" << (starterSettings ? "true" : "false") << "\n";
   std::cout << "starter_dev_tools=" << (starterDevTools ? "true" : "false") << "\n";
   std::cout << "new_world=" << (newWorld ? "true" : "false") << "\n";
+  std::cout << "continue_load=" << (continueLoad ? "true" : "false") << "\n";
   std::cout << "pause_from_gameplay=" << (pauseFromGameplay ? "true" : "false")
             << "\n";
   std::cout << "return_to_title=" << (returnToTitle ? "true" : "false") << "\n";

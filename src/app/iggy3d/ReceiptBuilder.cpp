@@ -100,6 +100,18 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.productSaveReasonCode);
   appendReceiptField(receipt, "product_save_durable_reason",
                      window.productSaveDurableReason);
+  appendReceiptField(receipt, "product_save_load_status",
+                     window.productSaveLoadStatus);
+  appendReceiptField(receipt, "product_save_load_reason_code",
+                     window.productSaveLoadReasonCode);
+  appendReceiptField(receipt, "product_save_load_save_id",
+                     window.productSaveLoadSaveId);
+  appendReceiptField(receipt, "product_save_load_previous_hash",
+                     window.productSaveLoadPreviousHash);
+  appendReceiptField(receipt, "product_save_load_loaded_hash",
+                     window.productSaveLoadLoadedHash);
+  appendReceiptField(receipt, "product_save_load_session_loaded",
+                     window.productSaveLoadSessionLoaded);
   appendReceiptField(receipt, "runtime_session_created", window.runtimeSessionCreated);
   appendReceiptField(receipt, "gameplay_active", window.gameplayActive);
   appendReceiptField(receipt, "runtime_state_hash", window.runtimeStateHash);

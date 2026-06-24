@@ -236,6 +236,33 @@ void recordProductWorldInitialSaveResult(
   window.productSaveDurableReason = initialSave.saveWrite.durableReason;
 }
 
+const SaveSlotPreview* newestCompatibleSaveSlot(const SaveSlotList& slots) {
+  for (auto it = slots.slots.rbegin(); it != slots.slots.rend(); ++it) {
+    if (it->enabled && it->compatibility == SaveSlotCompatibility::Compatible) {
+      return &*it;
+    }
+  }
+  return nullptr;
+}
+
+void recordProductSaveLoadResult(const ProductSaveLoadResult& loaded,
+                                 ProductAppWindowState& window) {
+  window.productSaveLoadStatus = loaded.status;
+  window.productSaveLoadReasonCode = loaded.reasonCode;
+  window.productSaveLoadSaveId = loaded.record.id.empty() ? "none" : loaded.record.id;
+  window.productSaveLoadPreviousHash = loaded.previousHash;
+  window.productSaveLoadLoadedHash = loaded.loadedHash;
+  window.productSaveLoadSessionLoaded = loaded.sessionLoaded;
+}
+
+void clearProductGameplayLaunchState(std::optional<Session>& activeSession,
+                                     ProductAppWindowState& window) {
+  window.gameplayActive = false;
+  window.runtimeSessionCreated = false;
+  window.runtimeStateHash = 0;
+  activeSession.reset();
+}
+
 void launchProductNewWorld(const ProductAppOptions& options,
                            FrontendState& frontend,
                            std::optional<Session>& activeSession,
@@ -251,10 +278,7 @@ void launchProductNewWorld(const ProductAppOptions& options,
       prepareDefaultProductWorldCreation(options, world, window);
   if (!creation.accepted) {
     window.launchStatus = std::string(creation.reasonCode);
-    window.gameplayActive = false;
-    window.runtimeSessionCreated = false;
-    window.runtimeStateHash = 0;
-    activeSession.reset();
+    clearProductGameplayLaunchState(activeSession, window);
     frontend.status = "opening_menu_new_world_failed";
     return;
   }
@@ -268,16 +292,51 @@ void launchProductNewWorld(const ProductAppOptions& options,
   recordProductWorldInitialSaveResult(initialSave, window);
   if (!initialSave.ok) {
     window.launchStatus = initialSave.reasonCode;
-    window.gameplayActive = false;
-    window.runtimeSessionCreated = false;
-    window.runtimeStateHash = 0;
-    activeSession.reset();
+    clearProductGameplayLaunchState(activeSession, window);
     frontend.status = "opening_menu_new_world_failed";
     return;
   }
 
   window.launchStatus = initialSave.status;
   enterProductGameplayTransition(frontend, window, FrontendAction::CreateAndEnter);
+}
+
+void launchProductContinueSave(const ProductAppOptions& options,
+                               const ProductWorldTemplate& world,
+                               const ProductSaveBridgeResult& saves,
+                               FrontendState& frontend,
+                               std::optional<Session>& activeSession,
+                               ProductAppWindowState& window) {
+  window.launchAction = "continue";
+  const SaveSlotPreview* slot = newestCompatibleSaveSlot(saves.slots);
+  if (slot == nullptr) {
+    window.launchStatus = "no_compatible_save";
+    frontend.status = "opening_menu_action_disabled";
+    return;
+  }
+
+  if (!createProductSession(options, activeSession, window)) {
+    frontend.status = "opening_menu_continue_failed";
+    return;
+  }
+
+  ProductSaveLoadRequest loadRequest;
+  loadRequest.path = slot->path;
+  loadRequest.session = &*activeSession;
+  loadRequest.expectedPackageId = world.packageId;
+  loadRequest.expectedScenarioId = world.scenarioId;
+  const ProductSaveLoadResult loaded = loadProductSessionSave(loadRequest);
+  recordProductSaveLoadResult(loaded, window);
+  if (!loaded.ok) {
+    window.launchStatus = loaded.reasonCode;
+    clearProductGameplayLaunchState(activeSession, window);
+    frontend.status = "opening_menu_continue_failed";
+    return;
+  }
+
+  window.launchStatus = loaded.status;
+  window.runtimeStateHash = activeSession->stateHash();
+  enterProductGameplayTransition(frontend, window, FrontendAction::Continue);
 }
 
 void applyGameplayProjectionMetrics(ProductAppWindowState& window,
@@ -617,8 +676,13 @@ void applyOpeningMenuAction(FrontendState& frontend,
     return;
   }
 
-  if (frontend.selectedAction == FrontendAction::Continue && saves.slots.compatibleCount == 0) {
-    frontend.status = "opening_menu_action_disabled";
+  if (frontend.selectedAction == FrontendAction::Continue) {
+    if (saves.slots.compatibleCount == 0) {
+      frontend.status = "opening_menu_action_disabled";
+      return;
+    }
+    launchProductContinueSave(options, productWorldTemplateFromOptions(options), saves,
+                              frontend, activeSession, window);
     return;
   }
   if (frontend.selectedAction == FrontendAction::Exit) {
