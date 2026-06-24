@@ -323,6 +323,41 @@ int main() {
       hasField(fields, "product_transition_last_action", "launch_gameplay") &&
       hasField(fields, "product_transition_status", "gameplay_active");
 
+  const bool corruptSaveReady =
+      writeControlFile(newWorldSaveRoot / "corrupt.iggy3d.save",
+                       "not_an_iggy3d_save_envelope\n");
+
+  fields.clear();
+  const bool loadSaveSelectorCorruptRejected =
+      appAvailable && corruptSaveReady &&
+      runProductCase(binary,
+                     "load_save_selector_corrupt_rejected",
+                     "frontend.select=load_save\nfrontend.execute=true\n"
+                     "save.select=corrupt\nmenu.confirm=true\n",
+                     std::string{"--save-root "} + shellQuote(newWorldSaveRoot),
+                     fields,
+                     exitCode) &&
+      exitCode == 0 && productReceipt(fields) && automationApplied(fields) &&
+      hasField(fields, "frontend_screen", "starter") &&
+      hasField(fields, "frontend_child_screen", "load_save") &&
+      hasField(fields, "frontend_selected_action", "load") &&
+      hasField(fields, "frontend_launch_requested", "false") &&
+      hasField(fields, "save_count", "3") &&
+      hasField(fields, "compatible_save_count", "2") &&
+      hasField(fields, "gameplay_active", "false") &&
+      hasField(fields, "selected_save_id", "corrupt") &&
+      hasField(fields, "selected_save_enabled", "false") &&
+      hasField(fields, "selected_save_status", "disabled") &&
+      hasField(fields, "product_save_load_status", "save_file_decode_failed") &&
+      hasField(fields, "product_save_load_reason_code", "save_file_decode_failed") &&
+      hasField(fields, "product_save_load_source", "load_save_selector") &&
+      hasField(fields, "product_save_load_selected_id", "corrupt") &&
+      hasField(fields, "product_save_load_selected_enabled", "false") &&
+      hasField(fields, "product_save_load_session_loaded", "false") &&
+      hasField(fields, "product_save_load_loaded_hash", "0") &&
+      hasField(fields, "world_creation_status", "not_requested") &&
+      hasField(fields, "product_save_status", "not_requested");
+
   fields.clear();
   const std::filesystem::path pauseSaveActionRoot = cleanSaveRoot("pause_save");
   const bool pauseSave =
@@ -431,7 +466,8 @@ int main() {
       hasField(fields, "automation_control_scope", "frontend_menu");
 
   const bool passed = starterSettings && starterDevTools && newWorld && continueLoad &&
-                      loadSaveSelector && loadSaveSelectorSelected && pauseSave &&
+                      loadSaveSelector && loadSaveSelectorSelected &&
+                      loadSaveSelectorCorruptRejected && pauseSave &&
                       pauseSaveAndExit && pauseFromGameplay && returnToTitle &&
                       invalidValue;
   std::cout << "smoke=product_automation_menu\n";
@@ -443,6 +479,8 @@ int main() {
             << (loadSaveSelector ? "true" : "false") << "\n";
   std::cout << "load_save_selector_selected="
             << (loadSaveSelectorSelected ? "true" : "false") << "\n";
+  std::cout << "load_save_selector_corrupt_rejected="
+            << (loadSaveSelectorCorruptRejected ? "true" : "false") << "\n";
   std::cout << "pause_save=" << (pauseSave ? "true" : "false") << "\n";
   std::cout << "pause_save_and_exit="
             << (pauseSaveAndExit ? "true" : "false") << "\n";
