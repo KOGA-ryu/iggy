@@ -47,6 +47,7 @@ target_sources(iggy3d
     src/app/frontend/SaveBrowser.cpp
     src/app/frontend/StarterScreen.cpp
     src/app/frontend/VerticalFadedSelector.cpp
+    src/app/frontend/WorldSetupModel.cpp
     src/app/frontend/SaveSlotModel.cpp
     src/app/frontend/SettingsMenu.cpp
     src/app/frontend/DevToolsMenu.cpp
