@@ -421,6 +421,9 @@ void openProductSaveDeleteConfirmation(const SaveSlotList& slots,
     window.saveDeleteCandidateEnabled = false;
     window.saveDeleteStatus =
         slots.slots.empty() ? "save_delete_unavailable" : "save_delete_missing";
+    window.saveDeleteReasonCode = window.saveDeleteStatus;
+    window.saveDeleteType = "soft";
+    window.saveDeleteRecoverable = false;
     window.saveDeleteExecuted = false;
     frontend.status = window.saveDeleteStatus;
     return;
@@ -431,6 +434,9 @@ void openProductSaveDeleteConfirmation(const SaveSlotList& slots,
   window.saveDeleteCandidateId = slot->id.empty() ? "none" : slot->id;
   window.saveDeleteCandidateEnabled = slot->enabled;
   window.saveDeleteStatus = "confirm_open";
+  window.saveDeleteReasonCode = "confirm_open";
+  window.saveDeleteType = "soft";
+  window.saveDeleteRecoverable = false;
   window.saveDeleteExecuted = false;
   frontend.childScreen = FrontendScreen::DeleteConfirm;
   frontend.selectedAction = FrontendAction::Delete;
@@ -441,20 +447,44 @@ void cancelProductSaveDeleteConfirmation(ProductAppWindowState& window,
                                          FrontendState& frontend) {
   window.saveDeleteConfirmationOpen = false;
   window.saveDeleteStatus = "cancelled";
+  window.saveDeleteReasonCode = "cancelled";
+  window.saveDeleteType = "soft";
+  window.saveDeleteRecoverable = false;
   window.saveDeleteExecuted = false;
   frontend.childScreen = FrontendScreen::LoadSave;
   frontend.selectedAction = FrontendAction::Delete;
   frontend.status = "save_delete_cancelled";
 }
 
-void deferProductSaveDeleteExecution(ProductAppWindowState& window,
-                                     FrontendState& frontend) {
+void executeProductSaveSoftDelete(const ProductAppOptions& options,
+                                  ProductAppWindowState& window,
+                                  FrontendState& frontend) {
   window.saveDeleteConfirmationOpen = false;
-  window.saveDeleteStatus = "not_executed";
-  window.saveDeleteExecuted = false;
+  window.saveDeleteType = "soft";
+  window.saveDeleteRecoverable = false;
+  if (window.saveDeleteCandidateId == "none" || window.saveDeleteCandidateId.empty()) {
+    window.saveDeleteStatus = "product_save_delete_id_missing";
+    window.saveDeleteReasonCode = "product_save_delete_id_missing";
+    window.saveDeleteExecuted = false;
+    frontend.childScreen = FrontendScreen::LoadSave;
+    frontend.selectedAction = FrontendAction::Delete;
+    frontend.status = "save_delete_failed";
+    return;
+  }
+
+  const ProductSaveSoftDeleteResult deleted =
+      softDeleteProductSave({options.saveRoot, window.saveDeleteCandidateId});
+  window.saveDeleteStatus = deleted.status;
+  window.saveDeleteReasonCode = deleted.reasonCode;
+  window.saveDeleteExecuted = deleted.ok;
+  window.saveDeleteRecoverable = deleted.ok;
+  if (deleted.ok) {
+    window.selectedProductSaveEnabled = false;
+    window.selectedProductSaveStatus = "missing";
+  }
   frontend.childScreen = FrontendScreen::LoadSave;
   frontend.selectedAction = FrontendAction::Delete;
-  frontend.status = "save_delete_not_executed";
+  frontend.status = deleted.ok ? "save_delete_soft_deleted" : "save_delete_failed";
 }
 
 void launchProductNewWorld(const ProductAppOptions& options,
@@ -937,7 +967,7 @@ void applyOpeningMenuAction(FrontendState& frontend,
       return;
     }
     if (action == InputAction::MenuConfirm) {
-      deferProductSaveDeleteExecution(window, frontend);
+      executeProductSaveSoftDelete(options, window, frontend);
       return;
     }
   }

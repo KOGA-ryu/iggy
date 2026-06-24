@@ -129,6 +129,11 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "save_delete_candidate_enabled",
                      window.saveDeleteCandidateEnabled);
   appendReceiptField(receipt, "save_delete_status", window.saveDeleteStatus);
+  appendReceiptField(receipt, "save_delete_reason_code",
+                     window.saveDeleteReasonCode);
+  appendReceiptField(receipt, "save_delete_type", window.saveDeleteType);
+  appendReceiptField(receipt, "save_delete_recoverable",
+                     window.saveDeleteRecoverable);
   appendReceiptField(receipt, "save_delete_executed", window.saveDeleteExecuted);
   appendReceiptField(receipt, "product_save_load_previous_hash",
                      window.productSaveLoadPreviousHash);

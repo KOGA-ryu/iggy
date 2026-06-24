@@ -380,6 +380,9 @@ int main() {
       hasField(fields, "save_delete_candidate_id", "save_001") &&
       hasField(fields, "save_delete_candidate_enabled", "true") &&
       hasField(fields, "save_delete_status", "confirm_open") &&
+      hasField(fields, "save_delete_reason_code", "confirm_open") &&
+      hasField(fields, "save_delete_type", "soft") &&
+      hasField(fields, "save_delete_recoverable", "false") &&
       hasField(fields, "save_delete_executed", "false") &&
       std::filesystem::exists(newWorldSaveRoot / "save_001.iggy3d.save");
 
@@ -402,14 +405,19 @@ int main() {
       hasField(fields, "save_delete_confirmation_open", "false") &&
       hasField(fields, "save_delete_candidate_id", "save_001") &&
       hasField(fields, "save_delete_status", "cancelled") &&
+      hasField(fields, "save_delete_reason_code", "cancelled") &&
+      hasField(fields, "save_delete_type", "soft") &&
+      hasField(fields, "save_delete_recoverable", "false") &&
       hasField(fields, "save_delete_executed", "false") &&
-      std::filesystem::exists(newWorldSaveRoot / "save_001.iggy3d.save");
+      std::filesystem::exists(newWorldSaveRoot / "save_001.iggy3d.save") &&
+      !std::filesystem::exists(newWorldSaveRoot / "deleted" /
+                               "save_001.iggy3d.save");
 
   fields.clear();
-  const bool loadSaveDeleteConfirmDeferred =
+  const bool loadSaveDeleteConfirmSoftDeleted =
       appAvailable &&
       runProductCase(binary,
-                     "load_save_delete_confirm_deferred",
+                     "load_save_delete_confirm_soft_deleted",
                      "frontend.select=load_save\nfrontend.execute=true\n"
                      "save.select=save_001\nsave.delete=true\nmenu.confirm=true\n",
                      std::string{"--save-root "} + shellQuote(newWorldSaveRoot),
@@ -421,11 +429,18 @@ int main() {
       hasField(fields, "frontend_selected_action", "delete") &&
       hasField(fields, "gameplay_active", "false") &&
       hasField(fields, "selected_save_id", "save_001") &&
+      hasField(fields, "selected_save_enabled", "false") &&
+      hasField(fields, "selected_save_status", "missing") &&
       hasField(fields, "save_delete_confirmation_open", "false") &&
       hasField(fields, "save_delete_candidate_id", "save_001") &&
-      hasField(fields, "save_delete_status", "not_executed") &&
-      hasField(fields, "save_delete_executed", "false") &&
-      std::filesystem::exists(newWorldSaveRoot / "save_001.iggy3d.save");
+      hasField(fields, "save_delete_status", "product_save_soft_deleted") &&
+      hasField(fields, "save_delete_reason_code", "product_save_soft_deleted") &&
+      hasField(fields, "save_delete_type", "soft") &&
+      hasField(fields, "save_delete_recoverable", "true") &&
+      hasField(fields, "save_delete_executed", "true") &&
+      !std::filesystem::exists(newWorldSaveRoot / "save_001.iggy3d.save") &&
+      std::filesystem::exists(newWorldSaveRoot / "deleted" /
+                              "save_001.iggy3d.save");
 
   fields.clear();
   const std::filesystem::path pauseSaveActionRoot = cleanSaveRoot("pause_save");
@@ -537,7 +552,7 @@ int main() {
   const bool passed = starterSettings && starterDevTools && newWorld && continueLoad &&
                       loadSaveSelector && loadSaveSelectorSelected &&
                       loadSaveSelectorCorruptRejected && loadSaveDeleteConfirmOpen &&
-                      loadSaveDeleteCancel && loadSaveDeleteConfirmDeferred &&
+                      loadSaveDeleteCancel && loadSaveDeleteConfirmSoftDeleted &&
                       pauseSave && pauseSaveAndExit && pauseFromGameplay &&
                       returnToTitle && invalidValue;
   std::cout << "smoke=product_automation_menu\n";
@@ -555,8 +570,8 @@ int main() {
             << (loadSaveDeleteConfirmOpen ? "true" : "false") << "\n";
   std::cout << "load_save_delete_cancel="
             << (loadSaveDeleteCancel ? "true" : "false") << "\n";
-  std::cout << "load_save_delete_confirm_deferred="
-            << (loadSaveDeleteConfirmDeferred ? "true" : "false") << "\n";
+  std::cout << "load_save_delete_confirm_soft_deleted="
+            << (loadSaveDeleteConfirmSoftDeleted ? "true" : "false") << "\n";
   std::cout << "pause_save=" << (pauseSave ? "true" : "false") << "\n";
   std::cout << "pause_save_and_exit="
             << (pauseSaveAndExit ? "true" : "false") << "\n";

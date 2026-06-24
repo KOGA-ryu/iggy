@@ -58,6 +58,9 @@ struct ProductAppWindowState {
   std::string saveDeleteCandidateId = "none";
   bool saveDeleteCandidateEnabled = false;
   std::string saveDeleteStatus = "not_requested";
+  std::string saveDeleteReasonCode = "not_requested";
+  std::string saveDeleteType = "none";
+  bool saveDeleteRecoverable = false;
   bool saveDeleteExecuted = false;
   std::uint64_t productSaveLoadPreviousHash = 0;
   std::uint64_t productSaveLoadLoadedHash = 0;
