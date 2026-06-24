@@ -494,6 +494,116 @@ int main() {
                                "save_001.iggy3d.save");
 
   fields.clear();
+  const std::filesystem::path recoverEmptyRoot =
+      cleanSaveRoot("recover_empty_deleted");
+  const bool recoverEmptySetup =
+      appAvailable &&
+      runProductCase(binary,
+                     "recover_empty_setup",
+                     "frontend.select=new_world\nfrontend.execute=true\n",
+                     std::string{"--save-root "} + shellQuote(recoverEmptyRoot),
+                     fields,
+                     exitCode) &&
+      exitCode == 0 && productReceipt(fields) && automationApplied(fields) &&
+      std::filesystem::exists(recoverEmptyRoot / "save_001.iggy3d.save");
+
+  fields.clear();
+  const bool loadSaveRecoverMissingSelection =
+      appAvailable && recoverEmptySetup &&
+      runProductCase(binary,
+                     "load_save_recover_missing_selection",
+                     "frontend.select=load_save\nfrontend.execute=true\n"
+                     "save.show_deleted=true\nsave.recover=true\n",
+                     std::string{"--save-root "} + shellQuote(recoverEmptyRoot),
+                     fields,
+                     exitCode) &&
+      exitCode == 0 && productReceipt(fields) &&
+      hasField(fields, "frontend_screen", "starter") &&
+      hasField(fields, "frontend_child_screen", "load_save") &&
+      hasField(fields, "gameplay_active", "false") &&
+      hasField(fields, "save_count", "1") &&
+      hasField(fields, "compatible_save_count", "1") &&
+      hasField(fields, "deleted_save_browser_open", "true") &&
+      hasField(fields, "deleted_save_count", "0") &&
+      hasField(fields, "deleted_compatible_save_count", "0") &&
+      hasField(fields, "deleted_selected_save_id", "none") &&
+      hasField(fields, "deleted_selected_save_enabled", "false") &&
+      hasField(fields, "deleted_selected_save_status", "empty") &&
+      hasField(fields, "save_recover_status",
+               "product_save_recover_id_missing") &&
+      hasField(fields, "save_recover_reason_code",
+               "product_save_recover_id_missing") &&
+      hasField(fields, "save_recover_executed", "false") &&
+      hasField(fields, "save_recover_save_id", "none") &&
+      hasField(fields, "automation_control_loaded", "false") &&
+      hasField(fields, "automation_control_last_key", "save.recover") &&
+      std::filesystem::exists(recoverEmptyRoot / "save_001.iggy3d.save") &&
+      !std::filesystem::exists(recoverEmptyRoot / "deleted" /
+                               "save_001.iggy3d.save");
+
+  fields.clear();
+  const std::filesystem::path recoverCollisionRoot =
+      cleanSaveRoot("recover_target_collision");
+  const bool recoverCollisionSetupSave =
+      appAvailable &&
+      runProductCase(binary,
+                     "recover_collision_setup",
+                     "frontend.select=new_world\nfrontend.execute=true\n",
+                     std::string{"--save-root "} +
+                         shellQuote(recoverCollisionRoot),
+                     fields,
+                     exitCode) &&
+      exitCode == 0 && productReceipt(fields) && automationApplied(fields) &&
+      std::filesystem::exists(recoverCollisionRoot / "save_001.iggy3d.save");
+  std::error_code recoverCollisionError;
+  std::filesystem::create_directories(recoverCollisionRoot / "deleted",
+                                      recoverCollisionError);
+  recoverCollisionError.clear();
+  const bool recoverCollisionSetup =
+      recoverCollisionSetupSave &&
+      std::filesystem::copy_file(
+          recoverCollisionRoot / "save_001.iggy3d.save",
+          recoverCollisionRoot / "deleted" / "save_001.iggy3d.save",
+          std::filesystem::copy_options::overwrite_existing,
+          recoverCollisionError) &&
+      !recoverCollisionError;
+
+  fields.clear();
+  const bool loadSaveRecoverTargetCollision =
+      appAvailable && recoverCollisionSetup &&
+      runProductCase(binary,
+                     "load_save_recover_target_collision",
+                     "frontend.select=load_save\nfrontend.execute=true\n"
+                     "save.show_deleted=true\nsave.deleted_select=save_001\n"
+                     "save.recover=true\n",
+                     std::string{"--save-root "} +
+                         shellQuote(recoverCollisionRoot),
+                     fields,
+                     exitCode) &&
+      exitCode == 0 && productReceipt(fields) &&
+      hasField(fields, "frontend_screen", "starter") &&
+      hasField(fields, "frontend_child_screen", "load_save") &&
+      hasField(fields, "gameplay_active", "false") &&
+      hasField(fields, "save_count", "1") &&
+      hasField(fields, "compatible_save_count", "1") &&
+      hasField(fields, "deleted_save_browser_open", "true") &&
+      hasField(fields, "deleted_save_count", "1") &&
+      hasField(fields, "deleted_compatible_save_count", "1") &&
+      hasField(fields, "deleted_selected_save_id", "save_001") &&
+      hasField(fields, "deleted_selected_save_enabled", "true") &&
+      hasField(fields, "deleted_selected_save_status", "selected") &&
+      hasField(fields, "save_recover_status", "recover_save_target_exists") &&
+      hasField(fields, "save_recover_reason_code",
+               "recover_save_target_exists") &&
+      hasField(fields, "save_recover_executed", "false") &&
+      hasField(fields, "save_recover_save_id", "save_001") &&
+      hasField(fields, "automation_control_loaded", "false") &&
+      hasField(fields, "automation_control_last_key", "save.recover") &&
+      std::filesystem::exists(recoverCollisionRoot / "save_001.iggy3d.save") &&
+      std::filesystem::exists(recoverCollisionRoot / "deleted" /
+                              "save_001.iggy3d.save");
+
+  fields.clear();
   const std::filesystem::path pauseSaveActionRoot = cleanSaveRoot("pause_save");
   const bool pauseSave =
       appAvailable &&
@@ -605,6 +715,8 @@ int main() {
                       loadSaveSelectorCorruptRejected && loadSaveDeleteConfirmOpen &&
                       loadSaveDeleteCancel && loadSaveDeleteConfirmSoftDeleted &&
                       loadSaveRecoverSoftDeleted &&
+                      loadSaveRecoverMissingSelection &&
+                      loadSaveRecoverTargetCollision &&
                       pauseSave && pauseSaveAndExit && pauseFromGameplay &&
                       returnToTitle && invalidValue;
   std::cout << "smoke=product_automation_menu\n";
@@ -626,6 +738,10 @@ int main() {
             << (loadSaveDeleteConfirmSoftDeleted ? "true" : "false") << "\n";
   std::cout << "load_save_recover_soft_deleted="
             << (loadSaveRecoverSoftDeleted ? "true" : "false") << "\n";
+  std::cout << "load_save_recover_missing_selection="
+            << (loadSaveRecoverMissingSelection ? "true" : "false") << "\n";
+  std::cout << "load_save_recover_target_collision="
+            << (loadSaveRecoverTargetCollision ? "true" : "false") << "\n";
   std::cout << "pause_save=" << (pauseSave ? "true" : "false") << "\n";
   std::cout << "pause_save_and_exit="
             << (pauseSaveAndExit ? "true" : "false") << "\n";
