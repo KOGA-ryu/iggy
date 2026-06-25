@@ -49,6 +49,14 @@ std::string generatedScenarioText() {
          "default_tactical_camera = \"TacticalOverhead\"\n";
 }
 
+std::string generatedPassiveNpcScenarioText() {
+  return generatedScenarioText() +
+         "\n"
+         "[[ai_actors]]\n"
+         "actor = \"marker_npc_spawn_r1_c2\"\n"
+         "behavior_profile_id = \"passive\"\n";
+}
+
 std::string generatedMeshText() {
   return "[[primitive_meshes]]\n"
          "id = \"floor_rect\"\n"
@@ -102,6 +110,7 @@ std::string npcCombatTapeText() {
 
 bool makeGeneratedAsciiPackage(const std::filesystem::path& root,
                                std::string_view sourceText,
+                               std::string_view scenarioText,
                                std::string_view tapeText,
                                std::filesystem::path& packagePath,
                                std::filesystem::path& tapePath) {
@@ -126,7 +135,7 @@ bool makeGeneratedAsciiPackage(const std::filesystem::path& root,
   tapePath = root / "ascii_gameplay_loop.iggy3d.tape";
   return iggy3d::smoke::writeTextFile(packagePath, generatedPackageText()) &&
          iggy3d::smoke::writeTextFile(root / "scenario.iggy3d.toml",
-                                      generatedScenarioText()) &&
+                                      std::string(scenarioText)) &&
          iggy3d::smoke::writeTextFile(
              root / "assets" / "rooms" / "ascii_gameplay_loop.room.iggy3d.toml",
              authored.assetText.text) &&
@@ -138,6 +147,19 @@ bool makeGeneratedAsciiPackage(const std::filesystem::path& root,
              root / "assets" / "materials" / "ascii_room.materials.iggy3d.toml",
              generatedMaterialText()) &&
          iggy3d::smoke::writeTextFile(tapePath, tapeText);
+}
+
+bool makeGeneratedAsciiPackage(const std::filesystem::path& root,
+                               std::string_view sourceText,
+                               std::string_view tapeText,
+                               std::filesystem::path& packagePath,
+                               std::filesystem::path& tapePath) {
+  return makeGeneratedAsciiPackage(root,
+                                   sourceText,
+                                   generatedScenarioText(),
+                                   tapeText,
+                                   packagePath,
+                                   tapePath);
 }
 
 }  // namespace
@@ -157,12 +179,18 @@ int main() {
       std::filesystem::temp_directory_path() /
       ("iggy3d_product_gameplay_tape_" +
        iggy3d::smoke::uniqueCaseToken("npc_package"));
+  const std::filesystem::path passiveNpcRoot =
+      std::filesystem::temp_directory_path() /
+      ("iggy3d_product_gameplay_tape_" +
+       iggy3d::smoke::uniqueCaseToken("passive_npc_package"));
   const std::filesystem::path saveRoot =
       iggy3d::smoke::cleanSaveRoot("gameplay_tape");
   const std::filesystem::path wallSaveRoot =
       iggy3d::smoke::cleanSaveRoot("gameplay_tape_wall_collision");
   const std::filesystem::path npcSaveRoot =
       iggy3d::smoke::cleanSaveRoot("gameplay_tape_npc_combat");
+  const std::filesystem::path passiveNpcSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("gameplay_tape_passive_npc");
 
   std::filesystem::path packagePath;
   std::filesystem::path tapePath;
@@ -170,6 +198,8 @@ int main() {
   std::filesystem::path wallTapePath;
   std::filesystem::path npcPackagePath;
   std::filesystem::path npcTapePath;
+  std::filesystem::path passiveNpcPackagePath;
+  std::filesystem::path passiveNpcTapePath;
   const bool packageGenerated =
       makeGeneratedAsciiPackage(root,
                                 "#######\n"
@@ -194,6 +224,15 @@ int main() {
                                 npcCombatTapeText(),
                                 npcPackagePath,
                                 npcTapePath);
+  const bool passiveNpcPackageGenerated =
+      makeGeneratedAsciiPackage(passiveNpcRoot,
+                                "######\n"
+                                "#PN$E#\n"
+                                "######\n",
+                                generatedPassiveNpcScenarioText(),
+                                npcCombatTapeText(),
+                                passiveNpcPackagePath,
+                                passiveNpcTapePath);
 
   int exitCode = 77;
   iggy3d::smoke::ReceiptFields fields;
@@ -238,6 +277,21 @@ int main() {
               iggy3d::smoke::saveRootArg(npcSaveRoot),
           npcFields,
           npcExitCode);
+
+  int passiveNpcExitCode = 77;
+  iggy3d::smoke::ReceiptFields passiveNpcFields;
+  const bool passiveNpcReceiptValid =
+      appAvailable && passiveNpcPackageGenerated &&
+      iggy3d::smoke::runProductReceiptCase(
+          binary,
+          "product_gameplay_tape_passive_npc",
+          std::string{"--package "} +
+              iggy3d::smoke::shellQuote(passiveNpcPackagePath) +
+              " --auto-new-world --gameplay-tape " +
+              iggy3d::smoke::shellQuote(passiveNpcTapePath) + " " +
+              iggy3d::smoke::saveRootArg(passiveNpcSaveRoot),
+          passiveNpcFields,
+          passiveNpcExitCode);
 
   const bool passed =
       exitCode == 0 && receiptValid && iggy3d::smoke::productReceipt(fields) &&
@@ -430,21 +484,96 @@ int main() {
                               "session_outcome",
                               "None");
 
+  const bool passiveNpcPassed =
+      passiveNpcExitCode == 0 && passiveNpcReceiptValid &&
+      iggy3d::smoke::productReceipt(passiveNpcFields) &&
+      iggy3d::smoke::hasField(passiveNpcFields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(passiveNpcFields, "window_created", "false") &&
+      iggy3d::smoke::hasField(passiveNpcFields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(passiveNpcFields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "selected_package_id",
+                              "iggy3d.ascii_gameplay_loop") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "selected_scenario_id",
+                              "ascii_gameplay_loop.runtime_loop") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "active_room_loaded",
+                              "true") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "active_room_source",
+                              "package_room") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "gameplay_tape_status",
+                              "gameplay_tape_completed") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "gameplay_tape_step_count",
+                              "1") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "gameplay_tape_executed_step_count",
+                              "1") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "gameplay_tape_last_action",
+                              "wait") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "gameplay_tape_ai_command_logged",
+                              "true") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "gameplay_tape_ai_attack_logged",
+                              "false") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "gameplay_tape_ai_wait_logged",
+                              "true") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "gameplay_tape_ai_player_damaged",
+                              "false") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "gameplay_tape_ai_player_hp_before",
+                              "10") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "gameplay_tape_ai_player_hp_after",
+                              "10") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "gameplay_tape_ai_actor_id",
+                              "2") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "gameplay_tape_ai_target_id",
+                              "1") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "gameplay_tape_ai_behavior",
+                              "alert") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "gameplay_tape_ai_intent",
+                              "wait") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "gameplay_tape_loop_complete",
+                              "false") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "session_outcome",
+                              "None");
+
   const bool ok = expect(appAvailable, "app binary exists") &&
                   expect(packageGenerated, "generated ascii package") &&
                   expect(wallPackageGenerated, "generated wall ascii package") &&
                   expect(npcPackageGenerated, "generated npc ascii package") &&
+                  expect(passiveNpcPackageGenerated,
+                         "generated passive npc ascii package") &&
                   expect(receiptValid, "receipt valid") &&
                   expect(passed, "product gameplay tape pass") &&
                   expect(wallReceiptValid, "wall receipt valid") &&
                   expect(wallPassed, "product package wall collision pass") &&
                   expect(npcReceiptValid, "npc receipt valid") &&
-                  expect(npcPassed, "product package npc combat pass");
+                  expect(npcPassed, "product package npc combat pass") &&
+                  expect(passiveNpcReceiptValid, "passive npc receipt valid") &&
+                  expect(passiveNpcPassed,
+                         "product package passive npc profile pass");
   std::cout << "smoke=product_gameplay_tape\n";
   std::cout << "package_generated=" << (packageGenerated ? "true" : "false") << "\n";
   std::cout << "receipt_valid=" << (receiptValid ? "true" : "false") << "\n";
   std::cout << "wall_receipt_valid=" << (wallReceiptValid ? "true" : "false") << "\n";
   std::cout << "npc_receipt_valid=" << (npcReceiptValid ? "true" : "false") << "\n";
+  std::cout << "passive_npc_receipt_valid="
+            << (passiveNpcReceiptValid ? "true" : "false") << "\n";
   std::cout << "window_launch_count=0\n";
   std::cout << "result=" << (ok ? "pass" : (appAvailable ? "fail" : "skip")) << "\n";
   std::cout << "reason_code="
