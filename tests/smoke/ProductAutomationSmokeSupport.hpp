@@ -144,6 +144,26 @@ inline bool runProductCase(const std::filesystem::path& binary,
   return parseReceiptFile(output, fields);
 }
 
+inline bool runProductReceiptCase(const std::filesystem::path& binary,
+                                  std::string_view name,
+                                  std::string_view extraArgs,
+                                  ReceiptFields& fields,
+                                  int& exitCode) {
+  const std::string token = uniqueCaseToken(name);
+  const std::filesystem::path output =
+      std::filesystem::temp_directory_path() /
+      ("iggy3d_product_receipt_" + token + ".out");
+
+  std::string command = shellQuote(binary) + " --no-window";
+  if (!extraArgs.empty()) {
+    command += " ";
+    command += extraArgs;
+  }
+  command += " --print-render-receipt > " + shellQuote(output);
+  exitCode = exitCodeFromSystem(std::system(command.c_str()));
+  return parseReceiptFile(output, fields);
+}
+
 inline std::filesystem::path cleanSaveRoot(std::string_view name) {
   const std::filesystem::path root =
       std::filesystem::temp_directory_path() /

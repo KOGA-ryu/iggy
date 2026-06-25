@@ -1,13 +1,8 @@
-#include <cstdlib>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <string>
+#include "ProductAutomationSmokeSupport.hpp"
 
-#if defined(__unix__) || defined(__APPLE__)
-#include <sys/wait.h>
-#endif
+#include <filesystem>
+#include <iostream>
+#include <string>
 
 namespace {
 
@@ -18,243 +13,210 @@ bool expect(bool condition, const std::string& message) {
   return condition;
 }
 
-std::string shellQuote(const std::filesystem::path& path) {
-  std::string value = path.string();
-  std::string quoted = "'";
-  for (const char character : value) {
-    if (character == '\'') {
-      quoted += "'\\''";
-    } else {
-      quoted.push_back(character);
-    }
-  }
-  quoted += "'";
-  return quoted;
+bool asciiPackageSelectionFields(const iggy3d::smoke::ReceiptFields& fields) {
+  return iggy3d::smoke::hasField(fields,
+                                 "selected_package_id",
+                                 "iggy3d.ascii_training_room") &&
+         iggy3d::smoke::hasField(fields,
+                                 "selected_scenario_id",
+                                 "ascii_training_room.runtime_loop");
 }
 
-int exitCodeFromSystem(int status) {
-  if (status == -1) {
-    return 1;
-  }
-#if defined(__unix__) || defined(__APPLE__)
-  if (WIFEXITED(status)) {
-    return WEXITSTATUS(status);
-  }
-  return 1;
-#else
-  return status;
-#endif
-}
-
-bool parseReceiptFile(const std::filesystem::path& path,
-                      std::map<std::string, std::string>& fields) {
-  fields.clear();
-  std::ifstream input(path);
-  if (!input) {
-    return false;
-  }
-  std::string line;
-  while (std::getline(input, line)) {
-    const std::size_t equals = line.find('=');
-    if (equals == std::string::npos || equals == 0U) {
-      return false;
-    }
-    if (!fields.emplace(line.substr(0, equals), line.substr(equals + 1U)).second) {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool writeControlFile(const std::filesystem::path& path, const std::string& content) {
-  std::ofstream output(path);
-  if (!output) {
-    return false;
-  }
-  output << content;
-  return static_cast<bool>(output);
-}
-
-bool hasField(const std::map<std::string, std::string>& fields,
-              const std::string& key,
-              const std::string& value) {
-  const auto found = fields.find(key);
-  return found != fields.end() && found->second == value;
-}
-
-bool runReceiptCommand(const std::filesystem::path& binary,
-                       const std::filesystem::path& output,
-                       const std::string& arguments,
-                       std::map<std::string, std::string>& fields,
-                       int& exitCode) {
-  const std::string command =
-      shellQuote(binary) + " " + arguments + " > " + shellQuote(output);
-  exitCode = exitCodeFromSystem(std::system(command.c_str()));
-  return parseReceiptFile(output, fields);
-}
-
-bool asciiPackageSelectionFields(const std::map<std::string, std::string>& fields) {
-  return hasField(fields, "selected_package_id", "iggy3d.ascii_training_room") &&
-         hasField(fields, "selected_scenario_id", "ascii_training_room.runtime_loop");
-}
-
-bool asciiPackageLoadedFields(const std::map<std::string, std::string>& fields) {
-  return hasField(fields, "package_load_status", "ok") &&
+bool asciiPackageLoadedFields(const iggy3d::smoke::ReceiptFields& fields) {
+  return iggy3d::smoke::hasField(fields, "package_load_status", "ok") &&
          asciiPackageSelectionFields(fields);
 }
 
 }  // namespace
 
 int main() {
-#if defined(IGGY3D_PRODUCT_APP_PATH)
-  constexpr bool appBuilt = true;
-  const std::filesystem::path binary{IGGY3D_PRODUCT_APP_PATH};
-#else
-  constexpr bool appBuilt = false;
-  const std::filesystem::path binary;
-#endif
+  const std::filesystem::path binary = iggy3d::smoke::productAppBinary();
+  const bool appAvailable = iggy3d::smoke::productAppAvailable(binary);
 
   const std::filesystem::path packagePath =
       "fixtures/demos/ascii_training_room/package.iggy3d.toml";
+  const bool packageAvailable = std::filesystem::exists(packagePath);
   const std::filesystem::path saveRoot =
-      "/tmp/iggy3d_product_ascii_package_saves";
+      iggy3d::smoke::cleanSaveRoot("ascii_package");
   const std::filesystem::path scriptedSaveRoot =
-      "/tmp/iggy3d_product_ascii_package_scripted_saves";
-  std::filesystem::remove_all(saveRoot);
-  std::filesystem::remove_all(scriptedSaveRoot);
-  std::filesystem::create_directories(saveRoot);
-  std::filesystem::create_directories(scriptedSaveRoot);
+      iggy3d::smoke::cleanSaveRoot("ascii_package_scripted");
 
-  const std::string packageArg = " --package " + shellQuote(packagePath);
-  const std::string saveRootArg = " --save-root " + shellQuote(saveRoot);
-  const std::string scriptedSaveRootArg =
-      " --save-root " + shellQuote(scriptedSaveRoot);
+  const std::string packageArg =
+      std::string{"--package "} + iggy3d::smoke::shellQuote(packagePath);
 
   int newWorldExitCode = 77;
-  std::map<std::string, std::string> newWorldFields;
+  iggy3d::smoke::ReceiptFields newWorldFields;
   const bool newWorldReceiptValid =
-      appBuilt && std::filesystem::exists(binary) &&
-      runReceiptCommand(binary,
-                        "/tmp/iggy3d_product_ascii_package_new_world.out",
-                        std::string{"--no-window"} + packageArg +
-                            " --auto-new-world" + saveRootArg +
-                            " --print-render-receipt",
-                        newWorldFields,
-                        newWorldExitCode);
+      appAvailable && packageAvailable &&
+      iggy3d::smoke::runProductReceiptCase(
+          binary,
+          "ascii_package_new_world",
+          packageArg + " --auto-new-world " + iggy3d::smoke::saveRootArg(saveRoot),
+          newWorldFields,
+          newWorldExitCode);
 
   int starterExitCode = 77;
-  std::map<std::string, std::string> starterFields;
+  iggy3d::smoke::ReceiptFields starterFields;
   const bool starterReceiptValid =
-      appBuilt && std::filesystem::exists(binary) &&
-      runReceiptCommand(binary,
-                        "/tmp/iggy3d_product_ascii_package_starter.out",
-                        std::string{"--no-window"} + packageArg + saveRootArg +
-                            " --print-render-receipt",
-                        starterFields,
-                        starterExitCode);
+      appAvailable && packageAvailable &&
+      iggy3d::smoke::runProductReceiptCase(
+          binary,
+          "ascii_package_starter",
+          packageArg + " " + iggy3d::smoke::saveRootArg(saveRoot),
+          starterFields,
+          starterExitCode);
 
-  const std::filesystem::path continueControl =
-      "/tmp/iggy3d_product_ascii_package_continue.in";
-  const bool continueControlWritten =
-      writeControlFile(continueControl, "frontend.select=continue\nfrontend.execute=true\n");
   int continueExitCode = 77;
-  std::map<std::string, std::string> continueFields;
+  iggy3d::smoke::ReceiptFields continueFields;
   const bool continueReceiptValid =
-      continueControlWritten && appBuilt && std::filesystem::exists(binary) &&
-      runReceiptCommand(binary,
-                        "/tmp/iggy3d_product_ascii_package_continue.out",
-                        std::string{"--no-window"} + packageArg + saveRootArg +
-                            " --automation-control " + shellQuote(continueControl) +
-                            " --print-render-receipt",
-                        continueFields,
-                        continueExitCode);
+      appAvailable && packageAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_package_continue",
+          "frontend.select=continue\nfrontend.execute=true\n",
+          packageArg + " " + iggy3d::smoke::saveRootArg(saveRoot),
+          continueFields,
+          continueExitCode);
 
   int scriptedExitCode = 77;
-  std::map<std::string, std::string> scriptedFields;
+  iggy3d::smoke::ReceiptFields scriptedFields;
   const bool scriptedReceiptValid =
-      appBuilt && std::filesystem::exists(binary) &&
-      runReceiptCommand(binary,
-                        "/tmp/iggy3d_product_ascii_package_scripted.out",
-                        std::string{"--no-window"} + packageArg +
-                            " --scripted-gameplay-smoke" + scriptedSaveRootArg +
-                            " --print-render-receipt",
-                        scriptedFields,
-                        scriptedExitCode);
+      appAvailable && packageAvailable &&
+      iggy3d::smoke::runProductReceiptCase(
+          binary,
+          "ascii_package_scripted",
+          packageArg + " --scripted-gameplay-smoke " +
+              iggy3d::smoke::saveRootArg(scriptedSaveRoot),
+          scriptedFields,
+          scriptedExitCode);
 
   const std::filesystem::path saveFile = saveRoot / "save_001.iggy3d.save";
   const bool newWorldPassed =
       newWorldExitCode == 0 && newWorldReceiptValid &&
-      hasField(newWorldFields, "app", "iggy3d") &&
-      hasField(newWorldFields, "result", "pass") &&
-      hasField(newWorldFields, "window_mode", "no_window") &&
-      hasField(newWorldFields, "window_created", "false") &&
+      iggy3d::smoke::productReceipt(newWorldFields) &&
+      iggy3d::smoke::hasField(newWorldFields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(newWorldFields, "window_created", "false") &&
       asciiPackageLoadedFields(newWorldFields) &&
-      hasField(newWorldFields, "frontend_screen", "gameplay") &&
-      hasField(newWorldFields, "runtime_session_created", "true") &&
-      hasField(newWorldFields, "gameplay_active", "true") &&
-      hasField(newWorldFields, "world_creation_status",
-               "world_creation_initial_save_written") &&
-      hasField(newWorldFields, "world_creation_initial_save_written", "true") &&
-      hasField(newWorldFields, "product_save_status", "product_save_written") &&
-      hasField(newWorldFields, "active_product_save_id", "save_001") &&
+      iggy3d::smoke::hasField(newWorldFields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(newWorldFields, "runtime_session_created", "true") &&
+      iggy3d::smoke::hasField(newWorldFields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(newWorldFields,
+                              "world_creation_status",
+                              "world_creation_initial_save_written") &&
+      iggy3d::smoke::hasField(newWorldFields,
+                              "world_creation_initial_save_written",
+                              "true") &&
+      iggy3d::smoke::hasField(newWorldFields,
+                              "product_save_status",
+                              "product_save_written") &&
+      iggy3d::smoke::hasField(newWorldFields,
+                              "active_product_save_id",
+                              "save_001") &&
       std::filesystem::exists(saveFile);
 
   const bool starterPassed =
       starterExitCode == 0 && starterReceiptValid &&
-      hasField(starterFields, "frontend_screen", "starter") &&
-      hasField(starterFields, "save_count", "1") &&
-      hasField(starterFields, "compatible_save_count", "1") &&
+      iggy3d::smoke::productReceipt(starterFields) &&
+      iggy3d::smoke::hasField(starterFields, "frontend_screen", "starter") &&
+      iggy3d::smoke::hasField(starterFields, "save_count", "1") &&
+      iggy3d::smoke::hasField(starterFields, "compatible_save_count", "1") &&
       asciiPackageSelectionFields(starterFields);
 
   const bool continuePassed =
       continueExitCode == 0 && continueReceiptValid &&
-      hasField(continueFields, "frontend_screen", "gameplay") &&
-      hasField(continueFields, "gameplay_active", "true") &&
-      hasField(continueFields, "product_save_load_status", "product_save_loaded") &&
-      hasField(continueFields, "product_save_load_source", "continue") &&
-      hasField(continueFields, "product_save_load_session_loaded", "true") &&
-      hasField(continueFields, "active_product_save_id", "save_001") &&
+      iggy3d::smoke::productReceipt(continueFields) &&
+      iggy3d::smoke::automationApplied(continueFields) &&
+      iggy3d::smoke::hasField(continueFields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(continueFields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(continueFields,
+                              "product_save_load_status",
+                              "product_save_loaded") &&
+      iggy3d::smoke::hasField(continueFields,
+                              "product_save_load_source",
+                              "continue") &&
+      iggy3d::smoke::hasField(continueFields,
+                              "product_save_load_session_loaded",
+                              "true") &&
+      iggy3d::smoke::hasField(continueFields,
+                              "active_product_save_id",
+                              "save_001") &&
       asciiPackageLoadedFields(continueFields);
 
   const bool scriptedPassed =
       scriptedExitCode == 0 && scriptedReceiptValid &&
-      hasField(scriptedFields, "app", "iggy3d") &&
-      hasField(scriptedFields, "result", "pass") &&
-      hasField(scriptedFields, "window_mode", "no_window") &&
-      hasField(scriptedFields, "window_created", "false") &&
+      iggy3d::smoke::productReceipt(scriptedFields) &&
+      iggy3d::smoke::hasField(scriptedFields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(scriptedFields, "window_created", "false") &&
       asciiPackageLoadedFields(scriptedFields) &&
-      hasField(scriptedFields, "frontend_screen", "gameplay") &&
-      hasField(scriptedFields, "runtime_session_created", "true") &&
-      hasField(scriptedFields, "gameplay_active", "true") &&
-      hasField(scriptedFields, "scripted_gameplay_smoke", "true") &&
-      hasField(scriptedFields, "scene_item_count", "5") &&
-      hasField(scriptedFields, "player_visible", "true") &&
-      hasField(scriptedFields, "objective_visible", "true") &&
-      hasField(scriptedFields, "product_draw_item_count", "6") &&
-      hasField(scriptedFields, "product_render_bridge_ready", "true") &&
-      hasField(scriptedFields, "target_discovered", "true") &&
-      hasField(scriptedFields, "gameplay_command_kind", "attack") &&
-      hasField(scriptedFields, "gameplay_command_status", "accepted") &&
-      hasField(scriptedFields, "gameplay_command_accepted", "true") &&
-      hasField(scriptedFields, "gameplay_reach_gate", "pass") &&
-      hasField(scriptedFields, "gameplay_last_rejection", "none") &&
-      hasField(scriptedFields, "attack_executed", "true") &&
-      hasField(scriptedFields, "product_feedback_visible", "true") &&
-      hasField(scriptedFields, "product_feedback_command_kind", "attack") &&
-      hasField(scriptedFields, "product_feedback_command_status", "accepted") &&
-      hasField(scriptedFields, "product_feedback_rejection_reason", "none") &&
-      hasField(scriptedFields, "product_feedback_attack_visible", "true");
+      iggy3d::smoke::hasField(scriptedFields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(scriptedFields, "runtime_session_created", "true") &&
+      iggy3d::smoke::hasField(scriptedFields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "scripted_gameplay_smoke",
+                              "true") &&
+      iggy3d::smoke::hasField(scriptedFields, "scene_item_count", "5") &&
+      iggy3d::smoke::hasField(scriptedFields, "player_visible", "true") &&
+      iggy3d::smoke::hasField(scriptedFields, "objective_visible", "true") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "product_draw_item_count",
+                              "6") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "product_render_bridge_ready",
+                              "true") &&
+      iggy3d::smoke::hasField(scriptedFields, "target_discovered", "true") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "gameplay_command_kind",
+                              "attack") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "gameplay_command_status",
+                              "accepted") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "gameplay_command_accepted",
+                              "true") &&
+      iggy3d::smoke::hasField(scriptedFields, "gameplay_reach_gate", "pass") &&
+      iggy3d::smoke::hasField(scriptedFields, "gameplay_last_rejection", "none") &&
+      iggy3d::smoke::hasField(scriptedFields, "attack_executed", "true") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "product_feedback_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "product_feedback_command_kind",
+                              "attack") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "product_feedback_command_status",
+                              "accepted") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "product_feedback_rejection_reason",
+                              "none") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "product_feedback_attack_visible",
+                              "true");
 
-  const bool ok = expect(appBuilt, "app target available") &&
-                  expect(std::filesystem::exists(binary), "app binary exists") &&
-                  expect(newWorldReceiptValid, "new world receipt valid and unique") &&
+  const bool ok = expect(appAvailable, "app binary exists") &&
+                  expect(packageAvailable, "ascii package exists") &&
+                  expect(newWorldReceiptValid, "new world receipt valid") &&
                   expect(newWorldPassed, "new world ascii package pass") &&
-                  expect(starterReceiptValid, "starter receipt valid and unique") &&
+                  expect(starterReceiptValid, "starter receipt valid") &&
                   expect(starterPassed, "starter scan ascii package pass") &&
-                  expect(continueControlWritten, "continue control written") &&
-                  expect(continueReceiptValid, "continue receipt valid and unique") &&
+                  expect(continueReceiptValid, "continue receipt valid") &&
                   expect(continuePassed, "continue ascii package pass") &&
-                  expect(scriptedReceiptValid, "scripted receipt valid and unique") &&
+                  expect(scriptedReceiptValid, "scripted receipt valid") &&
                   expect(scriptedPassed, "scripted ascii package pass");
-  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
+
+  std::cout << "smoke=product_ascii_package\n";
+  std::cout << "new_world=" << (newWorldPassed ? "true" : "false") << "\n";
+  std::cout << "starter=" << (starterPassed ? "true" : "false") << "\n";
+  std::cout << "continue_load=" << (continuePassed ? "true" : "false") << "\n";
+  std::cout << "scripted_attack=" << (scriptedPassed ? "true" : "false") << "\n";
+  std::cout << "window_launch_count=0\n";
+  std::cout << "result=" << (ok ? "pass" : (appAvailable ? "fail" : "skip")) << "\n";
+  std::cout << "reason_code="
+            << (ok ? "product_ascii_package_pass"
+                   : (appAvailable ? "product_ascii_package_failed"
+                                   : "product_app_unavailable"))
+            << "\n";
+  if (ok) {
+    return 0;
+  }
+  return appAvailable ? 1 : 77;
 }
