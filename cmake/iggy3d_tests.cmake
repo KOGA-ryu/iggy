@@ -139,6 +139,10 @@ iggy3d_add_unit_test(product_ascii_room_authoring_tests tests/unit/product_ascii
 set_tests_properties(product_ascii_room_authoring_tests PROPERTIES
   LABELS "unit;app;product;ascii_room;authoring;iggy3d")
 
+iggy3d_add_unit_test(product_ascii_room_editing_tests tests/unit/product_ascii_room_editing_tests.cpp)
+set_tests_properties(product_ascii_room_editing_tests PROPERTIES
+  LABELS "unit;app;product;ascii_room;authoring;editable_room;controller;iggy3d")
+
 iggy3d_add_unit_test(product_ascii_room_activation_tests tests/unit/product_ascii_room_activation_tests.cpp)
 set_tests_properties(product_ascii_room_activation_tests PROPERTIES
   LABELS "unit;app;product;ascii_room;activation;iggy3d")
