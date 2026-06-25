@@ -1,0 +1,243 @@
+#include "app/iggy3d/AsciiRoomToRoomAsset.hpp"
+
+#include <algorithm>
+#include <cmath>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace iggy3d {
+namespace {
+
+float segmentLength(const Vec3& start, const Vec3& end) {
+  const float dx = end.x - start.x;
+  const float dy = end.y - start.y;
+  const float dz = end.z - start.z;
+  return std::sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+Vec3 midpoint(const SaveAuthoredRoomWallRecord& wall) {
+  return {(wall.startMeters.x + wall.endMeters.x) / 2.0F,
+          wall.bottomY + wall.heightMeters / 2.0F,
+          (wall.startMeters.z + wall.endMeters.z) / 2.0F};
+}
+
+std::vector<Vec3> floorTopFacePoints(const SaveAuthoredRoomFloorRecord& floor) {
+  const float halfX = floor.sizeMeters.x / 2.0F;
+  const float halfZ = floor.sizeMeters.z / 2.0F;
+  const float topY = floor.centerMeters.y + floor.sizeMeters.y / 2.0F;
+  return {{floor.centerMeters.x - halfX, topY, floor.centerMeters.z - halfZ},
+          {floor.centerMeters.x + halfX, topY, floor.centerMeters.z - halfZ},
+          {floor.centerMeters.x + halfX, topY, floor.centerMeters.z + halfZ},
+          {floor.centerMeters.x - halfX, topY, floor.centerMeters.z + halfZ}};
+}
+
+std::vector<Vec3> wallBoxPoints(const SaveAuthoredRoomWallRecord& wall) {
+  const float minX = std::min(wall.startMeters.x, wall.endMeters.x);
+  const float maxX = std::max(wall.startMeters.x, wall.endMeters.x);
+  const float centerZ = (wall.startMeters.z + wall.endMeters.z) / 2.0F;
+  const float halfThickness = wall.thicknessMeters / 2.0F;
+  const float minZ = centerZ - halfThickness;
+  const float maxZ = centerZ + halfThickness;
+  const float minY = wall.bottomY;
+  const float maxY = wall.bottomY + wall.heightMeters;
+  return {{minX, minY, minZ}, {maxX, minY, minZ}, {maxX, minY, maxZ},
+          {minX, minY, maxZ}, {minX, maxY, minZ}, {maxX, maxY, minZ},
+          {maxX, maxY, maxZ}, {minX, maxY, maxZ}};
+}
+
+std::vector<std::string> actorBlockerTraversalTags(
+    const SaveAuthoredRoomWallRecord& wall) {
+  std::vector<std::string> tags{"blocker"};
+  for (const std::string& tag : wall.semantics.traversalTags) {
+    if (std::find(tags.begin(), tags.end(), tag) == tags.end()) {
+      tags.push_back(tag);
+    }
+  }
+  return tags;
+}
+
+RoomStaticMeshAsset floorMesh(const SaveAuthoredRoomFloorRecord& floor,
+                              const AsciiRoomToRoomAssetConfig& config) {
+  RoomStaticMeshAsset mesh;
+  mesh.id = floor.id;
+  mesh.meshId = config.floorMeshId;
+  mesh.materialId = floor.semantics.materialId;
+  mesh.role = config.floorRole;
+  mesh.positionMeters = floor.centerMeters;
+  mesh.sizeMeters = floor.sizeMeters;
+  return mesh;
+}
+
+RoomStaticMeshAsset wallMesh(const SaveAuthoredRoomWallRecord& wall,
+                             const AsciiRoomToRoomAssetConfig& config) {
+  RoomStaticMeshAsset mesh;
+  mesh.id = wall.id;
+  mesh.meshId = config.wallMeshId;
+  mesh.materialId = wall.semantics.materialId;
+  mesh.role = config.wallRole;
+  mesh.positionMeters = midpoint(wall);
+  mesh.sizeMeters = {segmentLength(wall.startMeters, wall.endMeters),
+                     wall.heightMeters,
+                     wall.thicknessMeters};
+  return mesh;
+}
+
+RoomSpatialSurface walkableSurface(const SaveAuthoredRoomFloorRecord& floor) {
+  RoomSpatialSurface surface;
+  surface.id = floor.id + "_walkable";
+  surface.sourceStaticMeshId = floor.id;
+  surface.shape = RoomSpatialSurfaceShape::Plane;
+  surface.role = RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = floorTopFacePoints(floor);
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.traversalTags = floor.semantics.traversalTags;
+  surface.collisionMask = {"actor"};
+  surface.blocksActor = false;
+  surface.blocksProjectile = false;
+  return surface;
+}
+
+RoomSpatialSurface actorBlockerSurface(const SaveAuthoredRoomWallRecord& wall) {
+  RoomSpatialSurface surface;
+  surface.id = wall.id + "_actor_blocker";
+  surface.sourceStaticMeshId = wall.id;
+  surface.shape = RoomSpatialSurfaceShape::Box;
+  surface.role = RoomSpatialSurfaceRole::Blocker;
+  surface.pointsMeters = wallBoxPoints(wall);
+  surface.normal = {0.0F, 0.0F, 1.0F};
+  surface.traversalTags = actorBlockerTraversalTags(wall);
+  surface.collisionMask = {"actor"};
+  surface.blocksActor = true;
+  surface.blocksProjectile = false;
+  return surface;
+}
+
+RoomSpatialSurface projectileBlockerSurface(const SaveAuthoredRoomWallRecord& wall) {
+  RoomSpatialSurface surface;
+  surface.id = wall.id + "_projectile_blocker";
+  surface.sourceStaticMeshId = wall.id;
+  surface.shape = RoomSpatialSurfaceShape::Box;
+  surface.role = RoomSpatialSurfaceRole::ProjectileBlocker;
+  surface.pointsMeters = wallBoxPoints(wall);
+  surface.normal = {0.0F, 0.0F, 1.0F};
+  surface.traversalTags = {"projectile_blocker"};
+  surface.collisionMask = {"projectile"};
+  surface.blocksActor = false;
+  surface.blocksProjectile = true;
+  return surface;
+}
+
+std::string anchorKindForMarkerTag(std::string_view tag) {
+  if (tag == "player_spawn") {
+    return "spawn";
+  }
+  if (tag == "npc_spawn" || tag == "monster_spawn") {
+    return "npc";
+  }
+  if (tag == "treasure" || tag == "key") {
+    return "pickup";
+  }
+  if (tag == "trap") {
+    return "trap";
+  }
+  if (tag == "exit") {
+    return "exit";
+  }
+  if (tag == "door") {
+    return "door";
+  }
+  if (tag == "secret_door") {
+    return "secret_door";
+  }
+  return "marker";
+}
+
+RoomAnchorAsset anchorFromMarker(const AsciiRoomMarker& marker) {
+  RoomAnchorAsset anchor;
+  anchor.id = marker.id;
+  anchor.kind = anchorKindForMarkerTag(marker.tag);
+  anchor.runtimeStableName = marker.id;
+  anchor.positionMeters = {static_cast<float>(marker.worldPosition.x),
+                           static_cast<float>(marker.worldPosition.y),
+                           static_cast<float>(marker.worldPosition.z)};
+  return anchor;
+}
+
+bool floorIsWalkable(const SaveAuthoredRoomFloorRecord& floor) {
+  return floor.semantics.walkable;
+}
+
+bool wallBlocksActor(const SaveAuthoredRoomWallRecord& wall) {
+  return wall.semantics.blocksActor;
+}
+
+bool wallBlocksProjectile(const SaveAuthoredRoomWallRecord& wall) {
+  return wall.semantics.blocksProjectile;
+}
+
+}  // namespace
+
+AsciiRoomToRoomAssetResult buildRoomAssetFromAsciiRoom(
+    const AsciiRoomAuthoredRoomResult& authored,
+    const AsciiRoomToRoomAssetConfig& config) {
+  AsciiRoomToRoomAssetResult result;
+  if (!authored.ok) {
+    result.status = authored.status;
+    result.reasonCode = authored.reasonCode;
+    result.diagnostics = authored.diagnostics;
+    return result;
+  }
+  if (!authored.authoredRoom.present) {
+    result.status = "ascii_room_asset_missing_authored_room";
+    result.reasonCode = result.status;
+    return result;
+  }
+
+  result.room.id = config.roomId.empty() ? authored.authoredRoom.id : config.roomId;
+  result.room.version = 1;
+  result.room.units = config.units;
+  result.room.source = config.source;
+  if (!config.sourceName.empty()) {
+    result.room.sourceFile = config.sourceName;
+  } else if (!authored.authoredRoom.sourceFile.empty()) {
+    result.room.sourceFile = authored.authoredRoom.sourceFile;
+  } else {
+    result.room.sourceFile = "ascii_room";
+  }
+  result.room.sourceSubset = config.sourceSubset;
+
+  for (const SaveAuthoredRoomFloorRecord& floor : authored.authoredRoom.floors) {
+    result.room.staticMeshes.push_back(floorMesh(floor, config));
+    if (floorIsWalkable(floor)) {
+      result.room.spatialSurfaces.push_back(walkableSurface(floor));
+      ++result.walkableSurfaceCount;
+    }
+  }
+
+  for (const SaveAuthoredRoomWallRecord& wall : authored.authoredRoom.walls) {
+    result.room.staticMeshes.push_back(wallMesh(wall, config));
+    if (wallBlocksActor(wall)) {
+      result.room.spatialSurfaces.push_back(actorBlockerSurface(wall));
+      ++result.actorBlockerSurfaceCount;
+    }
+    if (wallBlocksProjectile(wall)) {
+      result.room.spatialSurfaces.push_back(projectileBlockerSurface(wall));
+      ++result.projectileBlockerSurfaceCount;
+    }
+  }
+
+  for (const AsciiRoomMarker& marker : authored.markers) {
+    result.room.anchors.push_back(anchorFromMarker(marker));
+  }
+
+  result.staticMeshCount = result.room.staticMeshes.size();
+  result.anchorCount = result.room.anchors.size();
+  result.spatialSurfaceCount = result.room.spatialSurfaces.size();
+  result.ok = true;
+  result.status = "ascii_room_ok";
+  result.reasonCode = "ascii_room_ok";
+  return result;
+}
+
+}  // namespace iggy3d

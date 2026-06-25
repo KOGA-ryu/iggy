@@ -28,6 +28,7 @@ target_sources(iggy3d
     src/app/iggy3d/AsciiRoomGrid.cpp
     src/app/iggy3d/AsciiRoomSource.cpp
     src/app/iggy3d/AsciiRoomToAuthoredRoom.cpp
+    src/app/iggy3d/AsciiRoomToRoomAsset.cpp
     src/app/iggy3d/DefaultWorldTemplate.cpp
     src/app/iggy3d/FrontendActionExecutor.cpp
     src/app/iggy3d/OpeningMenuView.cpp
