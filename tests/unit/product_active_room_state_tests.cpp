@@ -238,11 +238,15 @@ bool buildsLoadedStateFromEditableRoomSnapshot() {
                 "editable source name") &&
          expect(active.sourceSubset == "ascii_room_authoring",
                 "editable source subset") &&
-         expect(!active.hasAuthoredRoom, "editable authored save absent") &&
-         expect(active.authoredFloorCount == 0U,
+         expect(active.hasAuthoredRoom, "editable authored save present") &&
+         expect(active.authoredFloorCount == 2U,
                 "editable authored floor count") &&
-         expect(active.authoredWallCount == 0U,
+         expect(active.authoredWallCount == 9U,
                 "editable authored wall count") &&
+         expect(active.authoredMarkerCount == 0U,
+                "editable authored marker count") &&
+         expect(active.authoredRoom.id == "active_editable_room",
+                "editable authored room id") &&
          expect(active.staticMeshCount == 11U,
                 "editable static mesh count") &&
          expect(active.anchorCount == 0U, "editable anchor count") &&

@@ -5,6 +5,7 @@
 #include <string_view>
 
 #include "app/iggy3d/AsciiRoomToRoomAsset.hpp"
+#include "app/iggy3d/EditableRoomToAuthoredRoom.hpp"
 #include "app/iggy3d/ProductAsciiRoomAuthoring.hpp"
 #include "app/iggy3d/ProductRoomAuthoringController.hpp"
 
@@ -188,6 +189,11 @@ ProductActiveRoomState buildProductActiveRoomFromRoomAuthoringSnapshot(
   state.status = "active_room_loaded";
   state.reasonCode = "active_room_loaded";
   state.room = snapshot.room;
+  const EditableRoomToAuthoredRoomResult authored =
+      buildAuthoredRoomFromEditableRoomDocument(snapshot.document);
+  if (authored.ok) {
+    state.authoredRoom = authored.authoredRoom;
+  }
   if (!state.room.id.empty()) {
     state.roomId = state.room.id;
   }

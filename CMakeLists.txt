@@ -32,6 +32,7 @@ target_sources(iggy3d
     src/app/iggy3d/AsciiRoomToEditableRoom.cpp
     src/app/iggy3d/AsciiRoomToRoomAsset.cpp
     src/app/iggy3d/DefaultWorldTemplate.cpp
+    src/app/iggy3d/EditableRoomToAuthoredRoom.cpp
     src/app/iggy3d/FrontendActionExecutor.cpp
     src/app/iggy3d/OpeningMenuView.cpp
     src/app/iggy3d/ProductActiveRoomCollision.cpp
