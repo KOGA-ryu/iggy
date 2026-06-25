@@ -84,9 +84,9 @@ Each plan document must define:
     compatible Continue selection, active/deleted row semantics, coding methods,
     compute costs, receipts, and builder slices;
 - `ascii_room_authoring_contract_v0_1.md`
-  - ASCII source truth, glyph vocabulary, semantic grid ownership, row/column
-    to X/Z coordinate math, geometry generation algorithms, proof fields,
-    compute costs, and parser-first builder slices;
+  - ASCII map-authoring truth only, glyph vocabulary, semantic grid ownership,
+    row/column to X/Z coordinate math, geometry generation algorithms, proof
+    fields, compute costs, and parser-first builder slices;
 - `runtime_save_durability_contract_v0_1.md`
   - current direct-write/hard-delete baseline, durable write sequence,
     same-directory temp path policy, result structs, soft delete boundary,

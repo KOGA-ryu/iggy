@@ -289,6 +289,9 @@ training_ground
 
 ASCII Room Source:
 
+- ASCII is for map making only. It may be used as optional world-setup
+  authoring input, but it is not gameplay truth, AI truth, control input, or a
+  runtime behavior format;
 - optional v0.1 authoring input;
 - disabled by default;
 - when enabled, raw ASCII source text is preserved as authoring input and is not
@@ -299,7 +302,8 @@ ASCII Room Source:
 - empty enabled room id reports `invalid_ascii_room_id`;
 - empty enabled source name reports `invalid_ascii_room_source_name`;
 - successful Create compiles the ASCII source into authored room data before
-  runtime session creation;
+  runtime session creation; after that point gameplay consumes generated
+  authored room/package/save/session data;
 - the initial save writes the generated authored-room section so the save owns
   durable room truth.
 

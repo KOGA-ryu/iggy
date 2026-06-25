@@ -5,8 +5,9 @@
 Define the durable first NPC behavior system for Iggy3D.
 
 The goal is not to make a clever AI layer first. The goal is to add a
-deterministic runtime-owned behavior loop that can be tested from ASCII rooms
-without launching a window.
+deterministic runtime-owned behavior loop that can be tested from generated
+room/session data without launching a window. ASCII may author the map used by a
+test fixture, but ASCII is map making only and is not behavior truth.
 
 Target v0.1 behavior:
 
@@ -192,7 +193,7 @@ Useful existing facts:
 - NPC chase must use `Move` command semantics or a later approved movement
   request seam, not raw position writes.
 
-Existing ASCII/package NPC creation:
+Existing map-authored/package NPC creation:
 
 ```text
 src/app/iggy3d/AsciiRoomGrid.hpp
@@ -203,8 +204,8 @@ src/app/iggy3d/ProductPackageSessionSeed.cpp
 
 Useful existing facts:
 
-- ASCII `N` creates an NPC spawn;
-- ASCII `M` creates a monster spawn;
+- map-authoring glyph `N` compiles into an NPC spawn;
+- map-authoring glyph `M` compiles into a monster spawn;
 - NPCs become `EntityKind::Npc`;
 - NPCs are targetable for `TargetAction::Attack` and `TargetAction::Inspect`;
 - NPC combatants currently use faction `2`, HP `3`, and max HP `3`;
@@ -225,7 +226,7 @@ tests/smoke/product_gameplay_tape_smoke.cpp
 Current tape proof can:
 
 - parse `attack <stable_name>`;
-- run an attack against an ASCII NPC;
+- run an attack against a generated NPC entity;
 - prove NPC targetable and defeated through product receipts;
 - run with `window_launch_count=0`.
 
@@ -780,7 +781,9 @@ Save/load tests cover:
 - cooldown and target fields roundtrip;
 - reset returns AI to baseline.
 
-Product no-window proof uses gameplay tape waits to drive autonomous NPC ticks:
+Product no-window proof uses gameplay tape waits to drive autonomous NPC ticks
+against a generated room. The example source below is map-authoring input only;
+the runtime test operates on the compiled room/session data.
 
 ```text
 ASCII:
@@ -925,7 +928,7 @@ Accepted baseline:
 - pure perception and decision tests pass;
 - behavior commands use `CommandSource::Ai`;
 - AI commands enter normal session command admission/log/tick execution;
-- NPC can attack the player in a no-window ASCII smoke;
+- NPC can attack the player in a no-window generated-room smoke;
 - defeated NPC emits no further commands;
 - save/load/hash cover new durable AI fields;
 - product gameplay tape receipts prove behavior without launching a window;
@@ -966,7 +969,7 @@ Later contracts should cover:
 
 - behavior config source/profile model;
 - line-of-sight and perception through spatial surfaces;
-- simple patrol or guard anchors from ASCII/package markers;
+- simple patrol or guard anchors from map-authored/package markers;
 - AI debug overlay, world-space draw, and receipt summaries beyond tape proof;
 - pathfinding and navigation surfaces;
 - replay/multiplayer authority policy once networking begins;

@@ -9,6 +9,11 @@ it into Iggy3D-owned semantic room data that can later become a playable 3D
 room with walls, floors, doors, NPCs, treasure, traps, exits, and other tagged
 markers.
 
+Hard rule: ASCII is for map making only. ASCII is not a gameplay mechanic, AI
+mechanic, runtime control language, or behavior truth. Gameplay systems consume
+the generated authored room, package, save, and session data produced from the
+map source.
+
 This is not renderer work first. This is authoring and geometry compilation
 first. The renderer should consume generated room data later.
 
@@ -56,10 +61,10 @@ ASCII preview is proof.
 Blender script is execution.
 ```
 
-Iggy3D should apply the same discipline:
+Iggy3D should apply the same discipline, with ASCII limited to map authoring:
 
 ```text
-ASCII room source is truth.
+ASCII room source is map-authoring truth only.
 Semantic grid is validated meaning.
 Generated authored room is Iggy3D game data.
 ASCII/primitive proof is inspection output.
@@ -68,9 +73,10 @@ Renderer execution is downstream.
 
 ## Source Truth And Proof Tiers
 
-The ASCII source is authoring truth for this pipeline. Generated files and
-rendered views are derived proof until a later editor makes changes and writes a
-new source document.
+The ASCII source is map-authoring truth for this pipeline only. Generated files
+and rendered views are derived proof until a later editor makes changes and
+writes a new source document. Runtime/gameplay truth begins after compilation
+into authored room/package/save/session data.
 
 Tiers:
 
@@ -91,7 +97,8 @@ Rules:
 - renderer output must not become source truth;
 - generated geometry must carry source references for debugging;
 - no JSON;
-- no AppShell compilation.
+- no AppShell compilation;
+- no runtime system may branch on raw ASCII text or glyphs.
 
 ## Source File Extension
 
@@ -589,8 +596,8 @@ Current full-loop proof:
 - `product_ascii_gameplay_loop_smoke` runs no-window and no-AppShell;
 - source path is ASCII text to authored room to room asset to product package
   session seed to runtime session;
-- proven loop is key pickup, secret door open, treasure pickup, exit objective,
-  and final `Victory`;
+- proven loop uses generated runtime room/session data for key pickup, secret
+  door open, treasure pickup, exit objective, and final `Victory`;
 - the smoke also proves the exit rejects with `required_item_missing` before
   treasure is collected.
 
@@ -600,8 +607,8 @@ Current product-app tape proof:
 - supported v0.1 commands are `move <stable_name>`, `interact <stable_name>`,
   `wait`, `expect_reject <reason> interact <stable_name>`, and
   `expect_blocked <movement_reason> move <stable_name>`;
-- tape target ownership is stable runtime entity name, usually the deterministic
-  ASCII marker id;
+- tape target ownership is stable runtime entity name, often derived from the
+  map-authoring marker id after compilation;
 - unexpected failure stops the tape immediately;
 - expected rejection steps are recorded and do not tick the runtime;
 - expected movement-block steps must execute the command, tick runtime movement,
@@ -631,7 +638,7 @@ Current active-room runtime proof:
 - product save load also rehydrates saved marker records into anchors, door
   panels, and runtime-owned door blocker surfaces;
 - product no-window smokes prove positive traversal through an opened secret
-  door, negative collision against a package-loaded wall, and ASCII-created
+  door, negative collision against a package-loaded wall, and map-authored
   world load rehydration.
 
 Current World Setup binding:
@@ -656,8 +663,9 @@ Current saved-room persistence:
   source line/column;
 - load-time rehydration restores floor/wall collision plus marker-derived
   anchors, door panels, and door blocker surfaces;
-- game-specific NPC AI, treasure inventory behavior, and objective binding are
-  still runtime/session systems layered on top of these saved marker records.
+- game-specific NPC AI, treasure inventory behavior, and objective binding
+  remain runtime/session systems layered on top of generated saved marker
+  records, never raw ASCII.
 
 ## Validation Rules
 
