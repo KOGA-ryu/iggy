@@ -101,6 +101,38 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.worldCreationInitialSaveTitle);
   appendReceiptField(receipt, "world_creation_route_after_create",
                      window.worldCreationRouteAfterCreate);
+  appendReceiptField(receipt, "ascii_room_preview_status",
+                     window.asciiRoomPreviewStatus);
+  appendReceiptField(receipt, "ascii_room_preview_reason_code",
+                     window.asciiRoomPreviewReasonCode);
+  appendReceiptField(receipt, "ascii_room_preview_failed_stage",
+                     window.asciiRoomPreviewFailedStage);
+  appendReceiptField(receipt, "ascii_room_preview_room_id",
+                     window.asciiRoomPreviewRoomId);
+  appendReceiptField(receipt, "ascii_room_preview_source_name",
+                     window.asciiRoomPreviewSourceName);
+  appendReceiptField(receipt, "ascii_room_preview_ready",
+                     window.asciiRoomPreviewReady);
+  appendReceiptField(receipt, "ascii_room_preview_width",
+                     window.asciiRoomPreviewWidth);
+  appendReceiptField(receipt, "ascii_room_preview_height",
+                     window.asciiRoomPreviewHeight);
+  appendReceiptField(receipt, "ascii_room_preview_floor_count",
+                     window.asciiRoomPreviewFloorCount);
+  appendReceiptField(receipt, "ascii_room_preview_wall_count",
+                     window.asciiRoomPreviewWallCount);
+  appendReceiptField(receipt, "ascii_room_preview_marker_count",
+                     window.asciiRoomPreviewMarkerCount);
+  appendReceiptField(receipt, "ascii_room_preview_static_mesh_count",
+                     window.asciiRoomPreviewStaticMeshCount);
+  appendReceiptField(receipt, "ascii_room_preview_anchor_count",
+                     window.asciiRoomPreviewAnchorCount);
+  appendReceiptField(receipt, "ascii_room_preview_spatial_surface_count",
+                     window.asciiRoomPreviewSpatialSurfaceCount);
+  appendReceiptField(receipt, "ascii_room_preview_asset_text_written",
+                     window.asciiRoomPreviewAssetTextWritten);
+  appendReceiptField(receipt, "ascii_room_preview_asset_text_bytes",
+                     window.asciiRoomPreviewAssetTextBytes);
   appendReceiptField(receipt, "product_save_status", window.productSaveStatus);
   appendReceiptField(receipt, "product_save_reason_code",
                      window.productSaveReasonCode);

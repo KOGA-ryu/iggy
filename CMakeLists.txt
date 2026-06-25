@@ -35,6 +35,7 @@ target_sources(iggy3d
     src/app/iggy3d/OpeningMenuView.cpp
     src/app/iggy3d/ProductCameraController.cpp
     src/app/iggy3d/ProductAsciiRoomAuthoring.cpp
+    src/app/iggy3d/ProductAsciiRoomPreview.cpp
     src/app/iggy3d/ProductGameplayController.cpp
     src/app/iggy3d/ProductGameplayFeedback.cpp
     src/app/iggy3d/ProductFrontendRouter.cpp

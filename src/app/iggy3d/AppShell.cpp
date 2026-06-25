@@ -14,6 +14,7 @@
 #include "app/iggy3d/ProductAppOperations.hpp"
 #include "app/iggy3d/ProductCameraController.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
+#include "app/iggy3d/ProductAsciiRoomPreview.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductMenuTransitions.hpp"
@@ -949,6 +950,58 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                           window.automationControlLastOwner,
                           routed ? "applied" : "failed");
     return routed;
+  }
+
+  if (key == "ascii_room.text" || key == "frontend.ascii_room_text") {
+    window.asciiRoomDraftText = decodeProductAsciiRoomAutomationText(value);
+    window.asciiRoomPreviewStatus = "ascii_room_text_updated";
+    window.asciiRoomPreviewReasonCode = "ascii_room_text_updated";
+    window.asciiRoomPreviewFailedStage = "not_started";
+    window.asciiRoomPreviewReady = false;
+    markAutomationApplied(window, command, "ascii_room.text",
+                          productInputOwnerFor(frontend, window), "applied");
+    return true;
+  }
+
+  if (key == "ascii_room.room_id" || key == "frontend.ascii_room_id") {
+    if (value.empty()) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    window.asciiRoomDraftRoomId = std::string(value);
+    markAutomationApplied(window, command, "ascii_room.room_id",
+                          productInputOwnerFor(frontend, window), "applied");
+    return true;
+  }
+
+  if (key == "ascii_room.source_name" ||
+      key == "frontend.ascii_room_source_name") {
+    if (value.empty()) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    window.asciiRoomDraftSourceName = std::string(value);
+    markAutomationApplied(window, command, "ascii_room.source_name",
+                          productInputOwnerFor(frontend, window), "applied");
+    return true;
+  }
+
+  if (key == "ascii_room.build" || key == "frontend.ascii_room_build") {
+    if (!parseAutomationBool(value, boolValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    if (!boolValue) {
+      markAutomationApplied(window, command, "ascii_room.build",
+                            productInputOwnerFor(frontend, window), "ignored");
+      return true;
+    }
+
+    const bool previewBuilt = buildProductAsciiRoomPreview(window);
+    markAutomationApplied(window, command, "ascii_room.build",
+                          productInputOwnerFor(frontend, window),
+                          previewBuilt ? "applied" : "failed");
+    return previewBuilt;
   }
 
   if (key == "save.select" || key == "frontend.save_select") {
