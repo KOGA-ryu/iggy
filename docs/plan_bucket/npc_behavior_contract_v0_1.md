@@ -213,6 +213,18 @@ ASCII boundary for diagnostics:
 - ASCII glyphs and layout symbols do not assign behavior or profile ids;
 - scenario/package metadata owns AI actor profile binding.
 
+## NPC Behavior v0.4 Guard/Patrol Planning Boundary
+
+Guard/home anchors and later patrol routes are specified in
+`docs/plan_bucket/npc_guard_patrol_contract_v0_1.md`. The selected first source
+slice is durable AI guard/home state, followed by scenario marker-anchor
+metadata and then runtime return/leash decisions.
+
+The v0.4 source truth remains the same ownership stack: runtime AI state and
+commands are behavior truth, scenario/package metadata owns authored guard
+assignments by stable entity name, product HUD/receipts are proof only, and
+ASCII remains map-making only.
+
 ## Historical Source Baseline
 
 Existing runtime AI state:
@@ -1235,14 +1247,13 @@ Later contracts should cover:
 
 - authored custom profile catalogs beyond built-ins;
 - profile catalog loading and content-side validation against authored catalogs;
+- guard/home anchors and patrol routes according to
+  `npc_guard_patrol_contract_v0_1.md`;
 - world-space NPC debug draw, filtering, richer inspector panels, or profiling
   integrations beyond the current product HUD/receipt proof;
-- simple patrol or guard anchors from map-authored/package markers;
 - line-of-sight and perception through spatial surfaces;
 - pathfinding and navigation surfaces;
 - replay/multiplayer authority policy once networking begins;
-- patrol route authoring;
-- guard posts;
 - alert propagation;
 - sound/noise perception;
 - cover seeking;

@@ -50,6 +50,7 @@ Each plan document must define:
 - ASCII room authoring contract
 - Runtime save durability contract
 - NPC behavior contract (v0.3 debug diagnostic baseline)
+- NPC guard and patrol contract
 - World creation UX contract
 - Selection and cursor contract
 - In-game pause menu contract
@@ -99,6 +100,11 @@ Each plan document must define:
     bindings, package validation, product no-window tape proof, NPC debug HUD
     receipt fields, ghost-profile fail-closed diagnostic proof, runtime edge
     proofs, and deferred next NPC work;
+- `npc_guard_patrol_contract_v0_1.md`
+  - NPC Behavior v0.4 guard/home anchor contract, stable-name marker metadata
+    shape, runtime leash/return semantics, durable AI guard state requirements,
+    debug proof expectations, non-goals, and source-slice ladder before patrol
+    routes or pathfinding;
 - `world_creation_ux_contract_v0_1.md`
   - current New World launch baseline, world setup draft fields, initial save
     gate, world identity, product orchestration ownership, route semantics,
