@@ -535,20 +535,41 @@ if(TARGET iggy3d_visual_demo)
     SKIP_RETURN_CODE 77
     LABELS "smoke;product;frontend;menu;usefulness;no_window;iggy3d")
 
-  add_executable(product_automation_menu_smoke
-    tests/smoke/product_automation_menu_smoke.cpp)
-  target_link_libraries(product_automation_menu_smoke PRIVATE iggy3d)
-  iggy3d_apply_warnings(product_automation_menu_smoke)
-  target_compile_definitions(product_automation_menu_smoke
-    PRIVATE
-      IGGY3D_PRODUCT_APP_PATH="$<TARGET_FILE:iggy3d_app>")
-  add_dependencies(product_automation_menu_smoke iggy3d_app)
-  add_test(NAME product_automation_menu_smoke
-           COMMAND "$<TARGET_FILE:product_automation_menu_smoke>")
-  set_tests_properties(product_automation_menu_smoke PROPERTIES
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    SKIP_RETURN_CODE 77
-    LABELS "smoke;product;frontend;menu;automation;no_window;iggy3d")
+  function(iggy3d_add_product_app_automation_smoke test_name source_file extra_labels)
+    add_executable("${test_name}" "${source_file}")
+    target_link_libraries("${test_name}" PRIVATE iggy3d)
+    iggy3d_apply_warnings("${test_name}")
+    target_compile_definitions("${test_name}"
+      PRIVATE
+        IGGY3D_PRODUCT_APP_PATH="$<TARGET_FILE:iggy3d_app>")
+    add_dependencies("${test_name}" iggy3d_app)
+    add_test(NAME "${test_name}" COMMAND "$<TARGET_FILE:${test_name}>")
+    set_tests_properties("${test_name}" PROPERTIES
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+      SKIP_RETURN_CODE 77
+      LABELS "smoke;product;frontend;automation;no_window;iggy3d;${extra_labels}")
+  endfunction()
+
+  iggy3d_add_product_app_automation_smoke(
+    product_automation_menu_smoke
+    tests/smoke/product_automation_menu_smoke.cpp
+    "menu")
+  iggy3d_add_product_app_automation_smoke(
+    product_world_setup_smoke
+    tests/smoke/product_world_setup_smoke.cpp
+    "world_setup;save")
+  iggy3d_add_product_app_automation_smoke(
+    product_save_load_smoke
+    tests/smoke/product_save_load_smoke.cpp
+    "save;load")
+  iggy3d_add_product_app_automation_smoke(
+    product_save_delete_recover_smoke
+    tests/smoke/product_save_delete_recover_smoke.cpp
+    "save;delete;recover")
+  iggy3d_add_product_app_automation_smoke(
+    product_pause_save_smoke
+    tests/smoke/product_pause_save_smoke.cpp
+    "pause;save")
 endif()
 
 function(iggy3d_add_render_packet4_unit_test test_name source_file)
