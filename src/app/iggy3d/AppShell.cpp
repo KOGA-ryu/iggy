@@ -1,6 +1,8 @@
 #include "app/iggy3d/AppShell.hpp"
 
 #include <array>
+#include <charconv>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -608,6 +610,16 @@ bool parseAutomationBool(std::string_view value, bool& out) {
   return false;
 }
 
+bool parseAutomationFloat(std::string_view value, float& out) {
+  if (value.empty()) {
+    return false;
+  }
+  const auto [ptr, error] =
+      std::from_chars(value.data(), value.data() + value.size(), out);
+  return error == std::errc{} && ptr == value.data() + value.size() &&
+         std::isfinite(out);
+}
+
 bool parseAutomationInputAction(std::string_view value, InputAction& out) {
   if (value == "up") {
     out = InputAction::MenuUp;
@@ -814,6 +826,38 @@ bool routeAutomationInput(FrontendState& frontend,
                         worldSetupDraft, actionState, action, window, closeRequested);
   window.automationControlLastOwner = productInputOwnerFor(frontend, window);
   return window.lastInputAccepted || action == InputAction::None;
+}
+
+bool applyAutomationGameplayAxis(InputAction action,
+                                 float value,
+                                 FrontendState& frontend,
+                                 std::optional<Session>& activeSession,
+                                 ProductAppWindowState& window) {
+  if (frontend.screen != FrontendScreen::Gameplay || !window.gameplayActive ||
+      !activeSession.has_value()) {
+    window.automationControlStatus = "owner_unavailable";
+    return false;
+  }
+
+  ActionState actions;
+  recordAction(actions, action, true, false, false, value);
+
+  InputRoutingContext routingContext;
+  routingContext.owners.gameplay = true;
+  const InputRoutingResult routed = routeInputAction(routingContext, action);
+  window.inputOwner = routed.owner;
+  window.lastInputAction = routed.action;
+  window.lastInputAccepted = routed.accepted;
+  window.gameplayInputSuppressed = routed.gameplaySuppressed;
+  if (!routed.accepted) {
+    return false;
+  }
+
+  applyProductGameplayActions(
+      *activeSession, actions, window, "automation",
+      productActiveRoomCollisionSurfaces(window.activeRoomCollision));
+  return window.gameplayCommandSubmitted && window.gameplayCommandAccepted &&
+         window.gameplayTickAdvanced;
 }
 
 bool applyProductAutomationCommand(const ProductAutomationCommand& command,
@@ -1027,6 +1071,27 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                           productInputOwnerFor(frontend, window),
                           activated.ok ? "applied" : "failed");
     return activated.ok;
+  }
+
+  if (key == "game.move_x" || key == "game.move_y" ||
+      key == "frontend.game_move_x" || key == "frontend.game_move_y") {
+    float axisValue = 0.0F;
+    if (!parseAutomationFloat(value, axisValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    const InputAction action =
+        key == "game.move_x" || key == "frontend.game_move_x"
+            ? InputAction::PlayerMoveX
+            : InputAction::PlayerMoveY;
+    const bool moved = applyAutomationGameplayAxis(action, axisValue, frontend,
+                                                   activeSession, window);
+    markAutomationApplied(window,
+                          command,
+                          inputActionName(action),
+                          productInputOwnerFor(frontend, window),
+                          moved ? "applied" : "failed");
+    return moved;
   }
 
   if (key == "save.select" || key == "frontend.save_select") {

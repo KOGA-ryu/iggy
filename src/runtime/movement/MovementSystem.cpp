@@ -44,6 +44,18 @@ MovementResult blockedResult(const MovementRequest& request,
   return result;
 }
 
+MovementResult blockedCollisionAwareResult(const MovementRequest& request,
+                                           Vec3 start,
+                                           MovementBlockedReason reason,
+                                           float distanceMeters,
+                                           std::string hitSurfaceId = {}) {
+  MovementResult result = blockedResult(request, start, reason, distanceMeters);
+  result.hitSurfaceId = std::move(hitSurfaceId);
+  result.collisionSweepCount = 1U;
+  result.movementClamped = reason == MovementBlockedReason::BlockedByCollision;
+  return result;
+}
+
 MovementResult blockedKinematicResult(const KinematicMovementRequest& request,
                                       Vec3 start,
                                       MovementBlockedReason reason) {
@@ -255,6 +267,65 @@ MovementResult executeMovement(MovementSystemContext& context, const MovementReq
   }
   if (distance > limit) {
     return blockedResult(request, start, MovementBlockedReason::MovementTooFar, distance);
+  }
+
+  if (context.collisionSurfaces != nullptr) {
+    MovementParams params;
+    const CollisionQueryResult hit =
+        querySegment(*context.collisionSurfaces,
+                     start + vec3UnitY() * (params.heightMeters * 0.5F),
+                     request.destination + vec3UnitY() * (params.heightMeters * 0.5F),
+                     CollisionQueryKind::Actor);
+    if (hit.status == CollisionQueryStatus::Hit) {
+      return blockedCollisionAwareResult(request,
+                                         start,
+                                         MovementBlockedReason::BlockedByCollision,
+                                         distance,
+                                         hit.surfaceId);
+    }
+
+    Vec3 snapped;
+    SlopeSample slope;
+    if (!snapToGround(*context.collisionSurfaces, params, request.destination, snapped, slope)) {
+      const CollisionQueryResult ground =
+          sampleSurfaceHeight(*context.collisionSurfaces,
+                              request.destination,
+                              std::max(params.radiusMeters, 0.001F));
+      if (ground.status != CollisionQueryStatus::Hit) {
+        return blockedCollisionAwareResult(request,
+                                           start,
+                                           MovementBlockedReason::NoWalkableGround,
+                                           distance);
+      }
+      MovementResult blocked = blockedCollisionAwareResult(
+          request, start, MovementBlockedReason::SlopeRejected, distance);
+      applySlopeToResult(blocked, sampleSlope(ground.normal, params));
+      return blocked;
+    }
+
+    Transform3 nextTransform = actor->transform;
+    nextTransform.position = snapped;
+    const WorldMutationResult mutation =
+        context.world->updateTransform(request.actor, nextTransform);
+    if (mutation.status != WorldStatus::Ok) {
+      return blockedResult(request, start, MovementBlockedReason::BlockedByWorld, distance);
+    }
+
+    MovementResult result;
+    result.actor = request.actor;
+    result.start = start;
+    result.destination = request.destination;
+    result.finalPosition = snapped;
+    result.mode = request.mode;
+    result.blocked = MovementBlockedReason::None;
+    result.sourceCommandId = request.sourceCommandId;
+    result.distanceMeters = distance;
+    result.groundSnapApplied = !nearlyEqual(request.destination, snapped);
+    result.collisionSweepCount = 1U;
+    result.reasonCode = "movement_ok";
+    applySlopeToResult(result, slope);
+    applyTravelFacts(result);
+    return result;
   }
 
   Transform3 nextTransform = actor->transform;

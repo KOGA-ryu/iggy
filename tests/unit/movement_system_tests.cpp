@@ -395,6 +395,47 @@ bool kinematicMissingSurfacesAndInvalidParamsDoNotMutate() {
   return ok;
 }
 
+bool acceptedMoveWithCollisionSnapsToWalkableGround() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.30F, 0.0F});
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet({floorSurface()});
+  iggy3d::MovementSystemContext context{&world, &config, &surfaces};
+
+  const iggy3d::MovementResult result =
+      iggy3d::executeMovement(context, moveRequest({1.0F, 0.30F, 0.0F}));
+
+  return expect(result.blocked == iggy3d::MovementBlockedReason::None,
+                "collision move accepted") &&
+         expect(result.groundSnapApplied, "collision move ground snapped") &&
+         expect(result.collisionSweepCount == 1U, "collision move swept") &&
+         expect(result.movementPolicyBand == "flat", "collision move slope band") &&
+         expect(iggy3d::nearlyEqual(result.finalPosition, {1.0F, 0.0F, 0.0F}),
+                "collision move final") &&
+         expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
+                                    {1.0F, 0.0F, 0.0F}),
+                "collision move mutated world");
+}
+
+bool acceptedMoveWithCollisionBlocksWallWithoutMutation() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 1.0F});
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  const iggy3d::SpatialSurfaceSet surfaces =
+      makeSurfaceSet({floorSurface(), wallSurface()});
+  iggy3d::MovementSystemContext context{&world, &config, &surfaces};
+
+  const iggy3d::MovementResult result =
+      iggy3d::executeMovement(context, moveRequest({0.0F, 0.0F, -1.0F}));
+
+  return expect(result.blocked == iggy3d::MovementBlockedReason::BlockedByCollision,
+                "collision wall blocked") &&
+         expect(result.hitSurfaceId == "wall", "collision wall id") &&
+         expect(result.movementClamped, "collision wall clamp flag") &&
+         expect(result.collisionSweepCount == 1U, "collision wall sweep") &&
+         expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
+                                    {0.0F, 0.0F, 1.0F}),
+                "collision wall no mutation");
+}
+
 }  // namespace
 
 int main() {
@@ -407,6 +448,8 @@ int main() {
                   kinematicBlockedSlopeRejectsWithoutMutation() &&
                   kinematicModerateSlopeAppliesSpeedMultiplier() &&
                   kinematicModerateSlopeReportsDirectionalGrade() &&
-                  kinematicMissingSurfacesAndInvalidParamsDoNotMutate();
+                  kinematicMissingSurfacesAndInvalidParamsDoNotMutate() &&
+                  acceptedMoveWithCollisionSnapsToWalkableGround() &&
+                  acceptedMoveWithCollisionBlocksWallWithoutMutation();
   return ok ? 0 : 1;
 }

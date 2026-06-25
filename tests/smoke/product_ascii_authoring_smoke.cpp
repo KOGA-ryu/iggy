@@ -277,6 +277,109 @@ bool invalidAsciiActivation(const iggy3d::smoke::ReceiptFields& fields) {
          iggy3d::smoke::hasField(fields, "runtime_session_created", "false");
 }
 
+bool activatedAsciiRoomOpenMove(const iggy3d::smoke::ReceiptFields& fields) {
+  return iggy3d::smoke::automationApplied(fields) &&
+         iggy3d::smoke::hasField(fields,
+                                 "automation_control_last_key",
+                                 "game.move_x") &&
+         iggy3d::smoke::hasField(fields,
+                                 "automation_control_last_action",
+                                 "game.move_x") &&
+         iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+         iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_collision_ready",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_collision_surfaces_used",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_collision_surface_count",
+                                 "55") &&
+         iggy3d::smoke::hasField(fields,
+                                 "input_action_last",
+                                 "game.move_x") &&
+         iggy3d::smoke::hasField(fields,
+                                 "input_action_accepted",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_kind",
+                                 "move") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_accepted",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_tick_advanced",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_tick_reason_code",
+                                 "ok") &&
+         iggy3d::smoke::hasField(fields,
+                                 "player_position_changed",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_attempted",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_blocked",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_status",
+                                 "moved");
+}
+
+bool activatedAsciiRoomWallMoveBlocked(
+    const iggy3d::smoke::ReceiptFields& fields) {
+  return iggy3d::smoke::automationApplied(fields) &&
+         iggy3d::smoke::hasField(fields,
+                                 "automation_control_last_key",
+                                 "game.move_y") &&
+         iggy3d::smoke::hasField(fields,
+                                 "automation_control_last_action",
+                                 "game.move_y") &&
+         iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+         iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_collision_ready",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_collision_surfaces_used",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_collision_surface_count",
+                                 "55") &&
+         iggy3d::smoke::hasField(fields,
+                                 "input_action_last",
+                                 "game.move_y") &&
+         iggy3d::smoke::hasField(fields,
+                                 "input_action_accepted",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_kind",
+                                 "move") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_accepted",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_tick_advanced",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_tick_reason_code",
+                                 "ok") &&
+         iggy3d::smoke::hasField(fields,
+                                 "player_position_changed",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_attempted",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_blocked",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_status",
+                                 "blocked");
+}
+
 }  // namespace
 
 int main() {
@@ -343,6 +446,38 @@ int main() {
           invalidActivateFields,
           invalidActivateExitCode);
 
+  int openMoveExitCode = 77;
+  iggy3d::smoke::ReceiptFields openMoveFields;
+  const bool openMoveReceipt =
+      appAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_authoring_open_move",
+          "ascii_room.room_id=automation_open_move_room\n"
+          "ascii_room.source_name=automation/open_move_room.iggyroom.txt\n"
+          "ascii_room.text=#######\\n#P..N.#\\n#.+.$.#\\n#..E..#\\n#######\\n\n"
+          "ascii_room.activate=true\n"
+          "game.move_x=1\n",
+          "",
+          openMoveFields,
+          openMoveExitCode);
+
+  int wallMoveExitCode = 77;
+  iggy3d::smoke::ReceiptFields wallMoveFields;
+  const bool wallMoveReceipt =
+      appAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_authoring_wall_move",
+          "ascii_room.room_id=automation_wall_move_room\n"
+          "ascii_room.source_name=automation/wall_move_room.iggyroom.txt\n"
+          "ascii_room.text=#######\\n#P..N.#\\n#.+.$.#\\n#..E..#\\n#######\\n\n"
+          "ascii_room.activate=true\n"
+          "game.move_y=-1\n",
+          "",
+          wallMoveFields,
+          wallMoveExitCode);
+
   const bool validPassed =
       validExitCode == 0 && validReceipt &&
       iggy3d::smoke::productReceipt(validFields) &&
@@ -359,6 +494,14 @@ int main() {
       invalidActivateExitCode == 0 && invalidActivateReceipt &&
       iggy3d::smoke::productReceipt(invalidActivateFields) &&
       invalidAsciiActivation(invalidActivateFields);
+  const bool openMovePassed =
+      openMoveExitCode == 0 && openMoveReceipt &&
+      iggy3d::smoke::productReceipt(openMoveFields) &&
+      activatedAsciiRoomOpenMove(openMoveFields);
+  const bool wallMovePassed =
+      wallMoveExitCode == 0 && wallMoveReceipt &&
+      iggy3d::smoke::productReceipt(wallMoveFields) &&
+      activatedAsciiRoomWallMoveBlocked(wallMoveFields);
 
   const bool ok = expect(appAvailable, "app binary exists") &&
                   expect(validReceipt, "valid receipt parsed") &&
@@ -370,7 +513,11 @@ int main() {
                   expect(invalidActivateReceipt,
                          "invalid activation receipt parsed") &&
                   expect(invalidActivatePassed,
-                         "invalid ascii activation rejected");
+                         "invalid ascii activation rejected") &&
+                  expect(openMoveReceipt, "open move receipt parsed") &&
+                  expect(openMovePassed, "open move accepted") &&
+                  expect(wallMoveReceipt, "wall move receipt parsed") &&
+                  expect(wallMovePassed, "wall move blocked");
 
   std::cout << "smoke=product_ascii_authoring\n";
   std::cout << "valid_preview=" << (validPassed ? "true" : "false") << "\n";
@@ -380,6 +527,10 @@ int main() {
             << "\n";
   std::cout << "invalid_activation_rejected="
             << (invalidActivatePassed ? "true" : "false") << "\n";
+  std::cout << "open_move_accepted=" << (openMovePassed ? "true" : "false")
+            << "\n";
+  std::cout << "wall_move_blocked=" << (wallMovePassed ? "true" : "false")
+            << "\n";
   std::cout << "window_launch_count=0\n";
   std::cout << "result="
             << (ok ? "pass" : (appAvailable ? "fail" : "skip")) << "\n";

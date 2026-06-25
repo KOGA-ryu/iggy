@@ -5,6 +5,7 @@
 #include <string_view>
 
 #include "app/input/ActionState.hpp"
+#include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/command/Command.hpp"
 #include "runtime/session/Session.hpp"
 #include "runtime/targeting/ReachQuery.hpp"
@@ -93,6 +94,16 @@ void submitProductGameplayCommand(Session& session,
   window.gameplayInputUsed = true;
   window.gameplayCommandSubmitted = true;
   window.gameplayCommandKind = commandKindName(command.kind);
+  if (command.kind == CommandKind::Move) {
+    window.gameplayMovementAttempted = true;
+    window.gameplayMovementBlocked = false;
+    window.gameplayMovementStatus = "submitted";
+  }
+  window.gameplayCollisionSurfacesUsed = collisionSurfaces != nullptr;
+  window.gameplayCollisionSurfaceCount =
+      collisionSurfaces == nullptr
+          ? 0U
+          : static_cast<std::uint64_t>(collisionSurfaces->size());
 
   const SessionCommandResult submitted = session.submitCommand(command);
   window.gameplayCommandAccepted =
@@ -104,13 +115,27 @@ void submitProductGameplayCommand(Session& session,
   if (window.gameplayCommandAccepted) {
     const StatusResult tick = session.tick(collisionSurfaces);
     window.gameplayTickAdvanced = tick.status == ResultStatus::Ok;
+    window.gameplayTickReasonCode =
+        tick.status == ResultStatus::Ok
+            ? "ok"
+            : (tick.error.code.empty() ? "tick_failed" : tick.error.code);
   }
 
   const EntityState* afterPlayer = productPlayerEntity(session);
+  bool movedThisCommand = false;
   if (afterPlayer != nullptr && beforePlayer != nullptr) {
-    window.playerPositionChanged =
-        window.playerPositionChanged ||
-        !nearlyEqual(before, afterPlayer->transform.position);
+    movedThisCommand = !nearlyEqual(before, afterPlayer->transform.position);
+    window.playerPositionChanged = window.playerPositionChanged || movedThisCommand;
+  }
+  if (command.kind == CommandKind::Move && window.gameplayCommandAccepted) {
+    if (!window.gameplayTickAdvanced) {
+      window.gameplayMovementStatus = "tick_failed";
+    } else if (movedThisCommand) {
+      window.gameplayMovementStatus = "moved";
+    } else {
+      window.gameplayMovementBlocked = true;
+      window.gameplayMovementStatus = "blocked";
+    }
   }
   window.runtimeStateHash = session.stateHash();
 }

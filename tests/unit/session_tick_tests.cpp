@@ -1,5 +1,6 @@
 #include "runtime/session/Session.hpp"
 
+#include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/inventory/InventorySystem.hpp"
 #include "runtime/objective/ObjectiveSystem.hpp"
 
@@ -124,6 +125,48 @@ iggy3d::CommandRecord submittedRetry(iggy3d::CommandId sourceCommandId) {
   return command;
 }
 
+iggy3d::RoomSpatialSurface tickFloorSurface() {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = "tick_floor";
+  surface.sourceStaticMeshId = "tick_floor";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Plane;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = {
+      {-10.0F, 0.0F, -10.0F},
+      {10.0F, 0.0F, -10.0F},
+      {10.0F, 0.0F, 10.0F},
+      {-10.0F, 0.0F, 10.0F},
+  };
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.collisionMask = {"actor"};
+  return surface;
+}
+
+iggy3d::RoomSpatialSurface tickWallSurface() {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = "tick_wall";
+  surface.sourceStaticMeshId = "tick_wall";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Box;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Blocker;
+  surface.pointsMeters = {
+      {-10.0F, 0.0F, -1.10F},
+      {10.0F, 0.0F, -1.10F},
+      {10.0F, 3.0F, -0.90F},
+      {-10.0F, 3.0F, -0.90F},
+  };
+  surface.normal = {0.0F, 0.0F, 1.0F};
+  surface.collisionMask = {"actor"};
+  surface.blocksActor = true;
+  return surface;
+}
+
+iggy3d::SpatialSurfaceSet tickCollisionSurfaces() {
+  iggy3d::RoomAsset room;
+  room.id = "tick_collision_room";
+  room.spatialSurfaces = {tickFloorSurface(), tickWallSurface()};
+  return iggy3d::buildSpatialSurfaceSet(room);
+}
+
 std::uint32_t goldKeyCount(const iggy3d::InventoryState& inventory) {
   const iggy3d::PlayerInventory* player = iggy3d::findInventory(inventory, 0);
   if (player == nullptr) {
@@ -182,9 +225,43 @@ bool tickMovesThenRetryPicksUpKeyExactlyOnce() {
   return ok;
 }
 
+bool collisionBlockedMoveConsumesPendingCommandWithoutMutation() {
+  iggy3d::Session session = makeSession();
+  const iggy3d::SpatialSurfaceSet surfaces = tickCollisionSurfaces();
+
+  const iggy3d::SessionCommandResult move =
+      session.submitCommand(submittedMove({0.0F, 0.0F, -2.0F}));
+  bool ok = expect(move.command.admission == iggy3d::CommandAdmissionStatus::Accepted,
+                   "collision move accepted") &&
+            expect(session.state().transient.pendingExecutionSequences.size() == 1U,
+                   "collision move queued");
+
+  ok = ok && expect(session.tick(&surfaces).status == iggy3d::ResultStatus::Ok,
+                    "collision blocked tick ok") &&
+       expect(session.state().transient.pendingExecutionSequences.empty(),
+              "collision blocked queue consumed") &&
+       expect(iggy3d::nearlyEqual(session.state().world.findById({1})->transform.position,
+                                  {0.0F, 0.0F, 0.0F}),
+              "collision blocked no mutation") &&
+       expect(session.state().clock.tickIndex == 1U,
+              "collision blocked tick advanced");
+
+  const iggy3d::SessionCommandResult openMove =
+      session.submitCommand(submittedMove({1.0F, 0.0F, 0.0F}));
+  ok = ok && expect(openMove.command.admission == iggy3d::CommandAdmissionStatus::Accepted,
+                    "open move accepted after collision block") &&
+       expect(session.tick(&surfaces).status == iggy3d::ResultStatus::Ok,
+              "open move tick ok after collision block") &&
+       expect(iggy3d::nearlyEqual(session.state().world.findById({1})->transform.position,
+                                  {1.0F, 0.0F, 0.0F}),
+              "open move mutates after collision block");
+  return ok;
+}
+
 }  // namespace
 
 int main() {
-  const bool ok = tickMovesThenRetryPicksUpKeyExactlyOnce();
+  const bool ok = tickMovesThenRetryPicksUpKeyExactlyOnce() &&
+                  collisionBlockedMoveConsumesPendingCommandWithoutMutation();
   return ok ? 0 : 1;
 }

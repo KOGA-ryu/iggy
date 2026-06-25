@@ -131,6 +131,12 @@ struct ProductAppWindowState {
   bool gameplayCommandAccepted = false;
   bool gameplayTickAdvanced = false;
   bool playerPositionChanged = false;
+  bool gameplayMovementAttempted = false;
+  bool gameplayMovementBlocked = false;
+  std::string gameplayMovementStatus = "not_requested";
+  bool gameplayCollisionSurfacesUsed = false;
+  std::uint64_t gameplayCollisionSurfaceCount = 0;
+  std::string gameplayTickReasonCode = "not_requested";
   bool targetDiscovered = false;
   bool interactionExecuted = false;
   bool attackExecuted = false;

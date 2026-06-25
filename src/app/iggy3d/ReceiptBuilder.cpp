@@ -293,7 +293,19 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "gameplay_command_status", window.gameplayCommandStatus);
   appendReceiptField(receipt, "gameplay_command_accepted", window.gameplayCommandAccepted);
   appendReceiptField(receipt, "gameplay_tick_advanced", window.gameplayTickAdvanced);
+  appendReceiptField(receipt, "gameplay_tick_reason_code",
+                     window.gameplayTickReasonCode);
   appendReceiptField(receipt, "player_position_changed", window.playerPositionChanged);
+  appendReceiptField(receipt, "gameplay_movement_attempted",
+                     window.gameplayMovementAttempted);
+  appendReceiptField(receipt, "gameplay_movement_blocked",
+                     window.gameplayMovementBlocked);
+  appendReceiptField(receipt, "gameplay_movement_status",
+                     window.gameplayMovementStatus);
+  appendReceiptField(receipt, "gameplay_collision_surfaces_used",
+                     window.gameplayCollisionSurfacesUsed);
+  appendReceiptField(receipt, "gameplay_collision_surface_count",
+                     window.gameplayCollisionSurfaceCount);
   appendReceiptField(receipt, "target_discovered", window.targetDiscovered);
   appendReceiptField(receipt, "gameplay_reach_gate", window.gameplayReachGate);
   appendReceiptField(receipt, "gameplay_last_rejection", window.gameplayLastRejection);

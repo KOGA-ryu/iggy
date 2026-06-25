@@ -196,6 +196,12 @@ bool applyObjectiveOutcome(SessionState& state, SessionTickResult& result) {
   return false;
 }
 
+bool movementBlockConsumesTick(MovementBlockedReason reason) {
+  return reason == MovementBlockedReason::BlockedByCollision ||
+         reason == MovementBlockedReason::NoWalkableGround ||
+         reason == MovementBlockedReason::SlopeRejected;
+}
+
 }  // namespace
 
 SessionTickResult runSessionTick(const SessionTickInput& input) {
@@ -244,6 +250,10 @@ SessionTickResult runSessionTick(const SessionTickInput& input) {
           movementRequestFromAcceptedCommand(intent.command, mode, state.config);
       const MovementResult movement = executeMovement(movementContext, request);
       if (movement.blocked != MovementBlockedReason::None) {
+        if (movementBlockConsumesTick(movement.blocked)) {
+          result.executedSequences.push_back(intent.command.sequence);
+          continue;
+        }
         result.status = SessionTickStatus::InvalidState;
         return result;
       }
