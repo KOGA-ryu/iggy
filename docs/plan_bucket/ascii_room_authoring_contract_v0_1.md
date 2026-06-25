@@ -24,7 +24,9 @@ ASCII room source
 -> renderer/backend consumption later
 ```
 
-This is a plan only. It does not authorize source edits.
+This contract started as a plan-only document. The current repo now implements
+the parser/model/compiler path and the first product runtime binding described
+below.
 
 ## Scout Inputs
 
@@ -497,8 +499,11 @@ Rules:
 - closed door collision is represented by the active runtime owner;
 - opening a door deactivates the runtime door entity and product active-room
   collision filters out the owned blocker surface;
+- `+` opens without an item requirement;
+- `s` requires the first `K` key pickup when the room contains a key, and
+  rejects interaction with `required_item_missing` until the player has it;
 - `+` and `s` do not cut authored wall openings in v0.1;
-- v0.1 should not infer hinges or locked state.
+- v0.1 does not infer hinges or animated door hardware.
 
 Door validation:
 
@@ -557,14 +562,22 @@ Required deterministic marker id format:
 marker_<tag>_r<row>_c<column>
 ```
 
-Entity behavior is deferred:
+Current implemented runtime marker binding:
+
+- `K` and `$` become pickup entities with item ids matching their marker ids;
+- every pickup gets a `collect_<marker id>` inventory objective;
+- `s` doors require the first `K` item when one exists;
+- `E` becomes an objective-trigger marker with `CompleteObjective`;
+- `E` requires the first `$` treasure item when one exists;
+- required-item failures reject command admission before tick execution;
+- required-item facts are saved, loaded, hashed, and replay-visible.
+
+Deferred entity behavior:
 
 - NPC AI;
-- combatant setup;
-- treasure inventory payloads;
-- key/door linking;
 - trap effects;
-- objective completion.
+- monster-specific behavior beyond neutral marker binding;
+- authored hinge, animation, and door hardware metadata.
 
 The compile result should preserve enough tags for a later gameplay binding
 slice to turn markers into actual runtime entities.

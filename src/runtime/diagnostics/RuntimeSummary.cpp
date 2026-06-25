@@ -81,6 +81,7 @@ std::string rejectionText(CommandRejectionReason reason) {
     case CommandRejectionReason::TargetDefeated: return "TargetDefeated";
     case CommandRejectionReason::AttackerDefeated: return "AttackerDefeated";
     case CommandRejectionReason::FriendlyFireBlocked: return "FriendlyFireBlocked";
+    case CommandRejectionReason::RequiredItemMissing: return "RequiredItemMissing";
     case CommandRejectionReason::SessionPaused: return "SessionPaused";
     case CommandRejectionReason::RetrySourceMissing: return "RetrySourceMissing";
     case CommandRejectionReason::RetrySourceNotRejected: return "RetrySourceNotRejected";

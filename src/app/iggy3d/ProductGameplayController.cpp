@@ -101,6 +101,8 @@ std::string commandRejectionReasonName(CommandRejectionReason reason) {
       return "friendly_fire_blocked";
     case CommandRejectionReason::InvalidActor:
       return "invalid_actor";
+    case CommandRejectionReason::RequiredItemMissing:
+      return "required_item_missing";
     default:
       break;
   }

@@ -75,6 +75,8 @@ struct SaveEntityRecord {
   std::string interactionItemId;
   std::uint32_t interactionItemCount = 0;
   std::string interactionObjectiveId;
+  std::string interactionRequiredItemId;
+  std::uint32_t interactionRequiredItemCount = 0;
   bool interactionRepeatable = false;
   bool interactionDeactivateTargetOnSuccess = false;
 };

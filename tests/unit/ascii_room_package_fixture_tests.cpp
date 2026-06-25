@@ -125,7 +125,7 @@ bool asciiTrainingRoomPackageLoadsFixtureRoom() {
          expect(anchorHasKind(room, "marker_player_spawn_r1_c1", "spawn"),
                 "player spawn anchor") &&
          expect(anchorHasKind(room, "marker_npc_spawn_r1_c4", "npc"), "npc anchor") &&
-         expect(anchorHasKind(room, "marker_treasure_r2_c4", "pickup"),
+         expect(anchorHasKind(room, "marker_treasure_r2_c4", "treasure"),
                 "treasure anchor") &&
          expect(anchorHasKind(room, "marker_door_r2_c2", "door"), "door anchor") &&
          expect(anchorHasKind(room, "marker_exit_r3_c3", "exit"), "exit anchor");

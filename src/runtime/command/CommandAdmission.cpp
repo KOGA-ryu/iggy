@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include "runtime/combat/CombatSystem.hpp"
+#include "runtime/inventory/InventorySystem.hpp"
 
 namespace iggy3d {
 
@@ -193,6 +194,34 @@ CommandRejectionReason validateReach(
   return rejectionReasonForReach(reach);
 }
 
+CommandRejectionReason validateRequiredItem(
+    const CommandAdmissionContext& context,
+    const CommandRecord& command) {
+  if (command.kind != CommandKind::Interact) {
+    return CommandRejectionReason::None;
+  }
+  const EntityState* target = context.world->findById(command.payload.target.entity);
+  if (target == nullptr) {
+    return CommandRejectionReason::InvalidTarget;
+  }
+  const InteractionDefinition& interaction = target->interaction;
+  if (interaction.requiredItemId.empty() && interaction.requiredItemCount == 0U) {
+    return CommandRejectionReason::None;
+  }
+  if (interaction.requiredItemId.empty() || interaction.requiredItemCount == 0U) {
+    return CommandRejectionReason::InternalError;
+  }
+  if (context.inventory == nullptr) {
+    return CommandRejectionReason::InternalError;
+  }
+  return hasItem(*context.inventory,
+                 command.playerSlot,
+                 interaction.requiredItemId,
+                 interaction.requiredItemCount)
+             ? CommandRejectionReason::None
+             : CommandRejectionReason::RequiredItemMissing;
+}
+
 CommandRejectionReason rejectionReasonForCombat(CombatStatus status) {
   switch (status) {
     case CombatStatus::Succeeded:
@@ -291,6 +320,10 @@ CommandRejectionReason validateExecutableIntent(
   if (auto reason = validateReach(context, command); reason != CommandRejectionReason::None) {
     return reason;
   }
+  if (auto reason = validateRequiredItem(context, command);
+      reason != CommandRejectionReason::None) {
+    return reason;
+  }
   return validateKindSpecific(context, command);
 }
 
@@ -380,6 +413,10 @@ CommandAdmissionResult admitCommand(
     return rejectCommand(command, reason);
   }
   if (auto reason = validateReach(context, command); reason != CommandRejectionReason::None) {
+    return rejectCommand(command, reason);
+  }
+  if (auto reason = validateRequiredItem(context, command);
+      reason != CommandRejectionReason::None) {
     return rejectCommand(command, reason);
   }
   if (auto reason = validateKindSpecific(context, command);

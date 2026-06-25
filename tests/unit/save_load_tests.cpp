@@ -104,6 +104,26 @@ iggy3d::ScenarioEntitySeed dummySeed() {
   return seed;
 }
 
+iggy3d::ScenarioEntitySeed lockedDoorSeed() {
+  iggy3d::ScenarioEntitySeed seed;
+  seed.stableName = "secret_door";
+  seed.kind = iggy3d::EntityKind::Door;
+  seed.transform = transformAt(1.0F, 0.0F, 3.0F);
+  seed.localBounds = iggy3d::makeAabb3({-0.25F, 0.0F, -0.25F},
+                                       {0.25F, 1.8F, 0.25F});
+  seed.active = true;
+  seed.persistent = true;
+  seed.targeting.targetable = true;
+  seed.targeting.actions = {iggy3d::TargetAction::Interact,
+                            iggy3d::TargetAction::Inspect};
+  seed.interaction.kind = iggy3d::InteractionKind::OpenDoor;
+  seed.interaction.primaryEffect = iggy3d::InteractionEffectKind::EmitEventOnly;
+  seed.interaction.requiredItemId = "gold_key";
+  seed.interaction.requiredItemCount = 1;
+  seed.interaction.deactivateTargetOnSuccess = true;
+  return seed;
+}
+
 iggy3d::FixtureScenarioSeed firstRoomSeed() {
   iggy3d::FixtureScenarioSeed seed;
   seed.scenarioId = "first_room.runtime_loop";
@@ -137,6 +157,14 @@ iggy3d::Session makeSessionWithConfig(iggy3d::RuntimeConfig config) {
   request.config = config;
   request.seed = firstRoomSeed();
   request.seed.config = config;
+  return iggy3d::Session::create(request).value;
+}
+
+iggy3d::Session makeSessionWithRequiredItemDoor() {
+  iggy3d::SessionCreateRequest request;
+  request.config = iggy3d::makeDefaultRuntimeConfig();
+  request.seed = firstRoomSeed();
+  request.seed.entities.push_back(lockedDoorSeed());
   return iggy3d::Session::create(request).value;
 }
 
@@ -258,6 +286,54 @@ bool encodedSaveRoundtripLoadsFreshSession() {
   return ok;
 }
 
+bool interactionRequiredItemFactsRoundTripThroughSaveCodec() {
+  iggy3d::Session session = makeSessionWithRequiredItemDoor();
+  const iggy3d::SaveStateResult saved = iggy3d::saveSessionStateEncoded(session.state());
+  bool ok = expect(saved.status == iggy3d::SaveLoadStatus::Ok,
+                   "required item save status") &&
+            expect(saved.envelope.world.entities.size() == 5U,
+                   "required item world size");
+
+  const iggy3d::SaveEntityRecord& record = saved.envelope.world.entities.back();
+  ok = ok && expect(record.stableName == "secret_door", "required door record") &&
+       expect(record.interactionRequiredItemId == "gold_key",
+              "required item id envelope") &&
+       expect(record.interactionRequiredItemCount == 1U,
+              "required item count envelope") &&
+       expect(saved.encodedSaveText.find(
+                  "world.entity.4.interactionRequiredItemId=gold_key\n") !=
+                  std::string::npos,
+              "required item id encoded") &&
+       expect(saved.encodedSaveText.find(
+                  "world.entity.4.interactionRequiredItemCount=1\n") !=
+                  std::string::npos,
+              "required item count encoded");
+
+  iggy3d::Session loaded = makeSessionWithRequiredItemDoor();
+  const iggy3d::LoadStateResult load =
+      iggy3d::loadEncodedSaveIntoSession(loaded, saved.encodedSaveText,
+                                         compatibilityFor(saved.envelope));
+  const iggy3d::EntityState* loadedDoor =
+      loaded.state().world.findByStableName("secret_door");
+  ok = ok && expect(load.status == iggy3d::SaveLoadStatus::Ok,
+                    "required item load status") &&
+       expect(loadedDoor != nullptr, "loaded required door present") &&
+       expect(loadedDoor != nullptr &&
+                  loadedDoor->interaction.requiredItemId == "gold_key" &&
+                  loadedDoor->interaction.requiredItemCount == 1U,
+              "required item facts loaded");
+
+  std::string oldStyle = saved.encodedSaveText;
+  oldStyle = eraseLineStartingWith(oldStyle, "world.entity.4.interactionRequiredItemId=");
+  oldStyle = eraseLineStartingWith(oldStyle, "world.entity.4.interactionRequiredItemCount=");
+  const iggy3d::SaveDecodeResult decoded = iggy3d::decodeSaveEnvelope(oldStyle);
+  return ok && expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                      "old save without required item facts decodes") &&
+         expect(decoded.envelope.world.entities.back().interactionRequiredItemId.empty(),
+                "old save required item id defaults empty") &&
+         expect(decoded.envelope.world.entities.back().interactionRequiredItemCount == 0U,
+                "old save required item count defaults zero");
+}
 
 bool productMetadataRoundTripsThroughSaveCodec() {
   iggy3d::Session session = makeSession();
@@ -595,6 +671,7 @@ int main() {
   bool ok = true;
   ok = envelopeMappingPreservesDurableState() && ok;
   ok = encodedSaveRoundtripLoadsFreshSession() && ok;
+  ok = interactionRequiredItemFactsRoundTripThroughSaveCodec() && ok;
   ok = productMetadataRoundTripsThroughSaveCodec() && ok;
   ok = oldSaveWithoutProductMetadataStillDecodes() && ok;
   ok = encodedSaveRoundtripPreservesRuntimeConfig() && ok;

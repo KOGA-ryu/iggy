@@ -4,6 +4,7 @@
 #include "runtime/clock/ClockState.hpp"
 #include "runtime/combat/CombatState.hpp"
 #include "runtime/command/Command.hpp"
+#include "runtime/inventory/InventoryState.hpp"
 #include "runtime/player/PlayerRoster.hpp"
 #include "runtime/replay/CommandLog.hpp"
 #include "runtime/targeting/ReachQuery.hpp"
@@ -19,6 +20,7 @@ struct CommandAdmissionContext {
   const CommandLog* commandLog = nullptr;
   const RuntimeConfig* config = nullptr;
   const CombatState* combat = nullptr;
+  const InventoryState* inventory = nullptr;
 };
 
 struct CommandAdmissionRequest {

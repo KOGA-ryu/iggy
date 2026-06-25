@@ -83,6 +83,7 @@ enum class CommandRejectionReason : std::uint8_t {
   SaveUnavailable,
   LoadUnavailable,
   IncompatibleSave,
+  RequiredItemMissing,
   AbilitySlotBusy,
   AbilityOnCooldown,
   AbilityInsufficientResource,

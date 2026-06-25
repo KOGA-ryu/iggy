@@ -28,6 +28,8 @@ struct InteractionDefinition {
   std::string itemId;
   std::uint32_t itemCount = 0;
   std::string objectiveId;
+  std::string requiredItemId;
+  std::uint32_t requiredItemCount = 0;
   bool repeatable = false;
   bool deactivateTargetOnSuccess = false;
 };

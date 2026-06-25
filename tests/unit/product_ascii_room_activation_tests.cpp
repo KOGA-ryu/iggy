@@ -72,7 +72,7 @@ bool activatesSessionFromAsciiRoom() {
          expect(result.pickupCount == 1U, "pickup count") &&
          expect(result.doorCount == 1U, "door count") &&
          expect(result.markerEntityCount == 1U, "marker entity count") &&
-         expect(result.objectiveCount == 1U, "objective count") &&
+         expect(result.objectiveCount == 2U, "objective count") &&
          expect(result.wallCount == 20U, "wall count") &&
          expect(result.markerCount == 5U, "marker count") &&
          expect(session.has_value(), "session present") &&

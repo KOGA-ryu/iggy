@@ -1,4 +1,5 @@
 #include "runtime/command/CommandAdmission.hpp"
+#include "runtime/inventory/InventorySystem.hpp"
 
 #include <iostream>
 #include <limits>
@@ -40,6 +41,7 @@ struct AdmissionFixture {
   iggy3d::ClockState clock;
   iggy3d::CommandLog commandLog;
   iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  iggy3d::InventoryState inventory;
 };
 
 iggy3d::EntityState makePlayer() {
@@ -71,17 +73,33 @@ iggy3d::EntityState makeMarker() {
   return entity;
 }
 
+iggy3d::EntityState makeLockedSecretDoor() {
+  iggy3d::EntityState entity =
+      makeEntity({4}, "secret_door", iggy3d::EntityKind::Door, {2.5F, 0.0F, 0.0F});
+  entity.targeting.targetable = true;
+  entity.targeting.actions = {iggy3d::TargetAction::Interact,
+                              iggy3d::TargetAction::Inspect};
+  entity.interaction.kind = iggy3d::InteractionKind::OpenDoor;
+  entity.interaction.primaryEffect = iggy3d::InteractionEffectKind::EmitEventOnly;
+  entity.interaction.requiredItemId = "gold_key";
+  entity.interaction.requiredItemCount = 1;
+  entity.interaction.deactivateTargetOnSuccess = true;
+  return entity;
+}
+
 AdmissionFixture makeFirstRoomAdmissionFixture() {
   AdmissionFixture fixture;
   (void)fixture.world.seedEntity(makePlayer());
   (void)fixture.world.seedEntity(makeGoldKey());
   (void)fixture.world.seedEntity(makeMarker());
+  (void)fixture.world.seedEntity(makeLockedSecretDoor());
   iggy3d::PlayerSlot slot;
   slot.id = 0;
   slot.kind = iggy3d::PlayerSlotKind::Local;
   slot.actor = {1};
   slot.stableName = "player0";
   (void)fixture.players.addSlot(slot);
+  fixture.inventory.players.push_back({0, {}});
   return fixture;
 }
 
@@ -117,7 +135,8 @@ iggy3d::CommandRecord retryCommand(iggy3d::CommandId sourceId, iggy3d::CommandId
 
 iggy3d::CommandAdmissionResult admit(AdmissionFixture& fixture, iggy3d::CommandRecord command) {
   return iggy3d::admitCommand(
-      {&fixture.world, &fixture.players, &fixture.clock, &fixture.commandLog, &fixture.config},
+      {&fixture.world, &fixture.players, &fixture.clock, &fixture.commandLog, &fixture.config,
+       nullptr, &fixture.inventory},
       {command});
 }
 
@@ -257,6 +276,35 @@ bool targetReachAndPointRules() {
                       "interact after move");
 }
 
+bool requiredItemGateRunsAfterReachAndUsesInventory() {
+  AdmissionFixture fixture = makeFirstRoomAdmissionFixture();
+  iggy3d::CommandRecord lockedDoor = interactCommand();
+  lockedDoor.payload.target.entity = {4};
+  bool ok = expect(admit(fixture, lockedDoor).firstFailure ==
+                       iggy3d::CommandRejectionReason::OutOfRange,
+                   "locked door still obeys reach first");
+
+  (void)fixture.world.updateTransform({1}, transformAt(2.0F, 0.0F, 0.0F));
+  ok = ok && expect(admit(fixture, lockedDoor).firstFailure ==
+                        iggy3d::CommandRejectionReason::RequiredItemMissing,
+                    "locked door missing key rejected");
+
+  const iggy3d::InventoryOperationResult added =
+      iggy3d::addItem(fixture.inventory, {0, "gold_key", 1});
+  ok = ok && expect(added.status == iggy3d::InventoryStatus::Ok,
+                    "key added to inventory");
+  ok = ok && expect(admit(fixture, lockedDoor).command.admission ==
+                        iggy3d::CommandAdmissionStatus::Accepted,
+                    "locked door accepted with key");
+
+  const iggy3d::CommandAdmissionResult missingInventory = iggy3d::admitCommand(
+      {&fixture.world, &fixture.players, &fixture.clock, &fixture.commandLog, &fixture.config},
+      {lockedDoor});
+  return ok && expect(missingInventory.firstFailure ==
+                          iggy3d::CommandRejectionReason::InternalError,
+                      "required item without inventory is internal error");
+}
+
 bool retryUsesCommandIdAndCurrentState() {
   AdmissionFixture fixture = makeFirstRoomAdmissionFixture();
   const iggy3d::CommandAdmissionResult outOfRange = admit(fixture, interactCommand(10));
@@ -320,7 +368,9 @@ bool admissionDoesNotMutateState() {
 int main() {
   const bool ok = acceptRejectHelpersSetInvariantFields() && missingContextRejectsInternalError() &&
                   shapePlayerActorOrderIsDeterministic() && clockRulesAreExplicit() &&
-                  targetReachAndPointRules() && retryUsesCommandIdAndCurrentState() &&
+                  targetReachAndPointRules() &&
+                  requiredItemGateRunsAfterReachAndUsesInventory() &&
+                  retryUsesCommandIdAndCurrentState() &&
                   admissionDoesNotMutateState();
   return ok ? 0 : 1;
 }

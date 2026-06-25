@@ -63,6 +63,35 @@ iggy3d::EntityState makeDoor() {
   return entity;
 }
 
+iggy3d::EntityState makeLockedDoor() {
+  iggy3d::EntityState entity = makeDoor();
+  entity.id = {4};
+  entity.stableName = "secret_door";
+  entity.interaction.requiredItemId = "gold_key";
+  entity.interaction.requiredItemCount = 1;
+  return entity;
+}
+
+iggy3d::EntityState makeExitObjectiveTrigger() {
+  iggy3d::EntityState entity;
+  entity.id = {5};
+  entity.stableName = "exit_marker";
+  entity.kind = iggy3d::EntityKind::Marker;
+  entity.transform = transformAt(4.0F, 0.0F, 1.0F);
+  entity.localBounds = iggy3d::makeAabb3({-0.1F, 0.0F, -0.1F},
+                                         {0.1F, 0.1F, 0.1F});
+  entity.targeting.targetable = true;
+  entity.targeting.actions = {iggy3d::TargetAction::Interact,
+                              iggy3d::TargetAction::Move,
+                              iggy3d::TargetAction::Inspect};
+  entity.interaction.kind = iggy3d::InteractionKind::ObjectiveTrigger;
+  entity.interaction.primaryEffect = iggy3d::InteractionEffectKind::CompleteObjective;
+  entity.interaction.objectiveId = "exit_marker";
+  entity.interaction.requiredItemId = "gold_key";
+  entity.interaction.requiredItemCount = 1;
+  return entity;
+}
+
 iggy3d::WorldState makeWorld() {
   iggy3d::WorldState world;
   (void)world.seedEntity(makePlayer());
@@ -109,6 +138,13 @@ iggy3d::CommandRecord acceptedInteract(iggy3d::CommandId id = 8) {
 iggy3d::CommandRecord acceptedDoorInteract(iggy3d::CommandId id = 9) {
   iggy3d::CommandRecord command = acceptedInteract(id);
   command.payload.target.entity = {3};
+  return command;
+}
+
+iggy3d::CommandRecord acceptedTargetInteract(iggy3d::EntityId target,
+                                             iggy3d::CommandId id = 10) {
+  iggy3d::CommandRecord command = acceptedInteract(id);
+  command.payload.target.entity = target;
   return command;
 }
 
@@ -175,6 +211,66 @@ bool openDoorEmitsOnlyAndDoesNotMutateState() {
                 "door objective unchanged");
 }
 
+bool requiredItemGateControlsDoorMutation() {
+  iggy3d::WorldState world = makeWorld();
+  (void)world.seedEntity(makeLockedDoor());
+  iggy3d::InventoryState inventory = makeInventory();
+  iggy3d::ObjectiveState objectives = makeObjectives();
+  iggy3d::InteractionSystemContext context{&world, &inventory, &objectives};
+
+  const iggy3d::InteractionResult missing =
+      iggy3d::executeInteraction(context, {acceptedTargetInteract({4}), 10, 1});
+  bool ok = expect(missing.status == iggy3d::InteractionStatus::RequiredItemMissing,
+                   "locked door requires key") &&
+            expect(missing.requiredItemId == "gold_key" &&
+                       missing.requiredItemCount == 1U,
+                   "locked door required item facts") &&
+            expect(world.findById({4})->active,
+                   "locked door stays active without key") &&
+            expect(!missing.targetDeactivated, "locked door not deactivated");
+
+  const iggy3d::InventoryOperationResult added =
+      iggy3d::addItem(inventory, {0, "gold_key", 1});
+  const iggy3d::InteractionResult opened =
+      iggy3d::executeInteraction(context, {acceptedTargetInteract({4}, 11), 11, 1});
+  return ok && expect(added.status == iggy3d::InventoryStatus::Ok, "key added") &&
+         expect(opened.status == iggy3d::InteractionStatus::Succeeded,
+                "locked door opens with key") &&
+         expect(opened.targetDeactivated, "locked door deactivated after success") &&
+         expect(!world.findById({4})->active, "locked door opened inactive");
+}
+
+bool requiredItemGateControlsObjectiveTrigger() {
+  iggy3d::WorldState world = makeWorld();
+  (void)world.seedEntity(makeExitObjectiveTrigger());
+  iggy3d::InventoryState inventory = makeInventory();
+  iggy3d::ObjectiveState objectives = makeObjectives();
+  iggy3d::ObjectiveRecord exitObjective;
+  exitObjective.objectiveId = "exit_marker";
+  exitObjective.status = iggy3d::ObjectiveStatus::Active;
+  exitObjective.condition.kind = iggy3d::ObjectiveConditionKind::None;
+  objectives.objectives.push_back(exitObjective);
+  iggy3d::InteractionSystemContext context{&world, &inventory, &objectives};
+
+  const iggy3d::InteractionResult missing =
+      iggy3d::executeInteraction(context, {acceptedTargetInteract({5}), 12, 1});
+  bool ok = expect(missing.status == iggy3d::InteractionStatus::RequiredItemMissing,
+                   "exit requires treasure/key item") &&
+            expect(!iggy3d::objectiveComplete(objectives, "exit_marker"),
+                   "exit objective unchanged without item");
+
+  const iggy3d::InventoryOperationResult added =
+      iggy3d::addItem(inventory, {0, "gold_key", 1});
+  const iggy3d::InteractionResult completed =
+      iggy3d::executeInteraction(context, {acceptedTargetInteract({5}, 13), 13, 1});
+  return ok && expect(added.status == iggy3d::InventoryStatus::Ok, "key added for exit") &&
+         expect(completed.status == iggy3d::InteractionStatus::Succeeded,
+                "exit succeeds with required item") &&
+         expect(completed.objectiveMutated, "exit objective mutated") &&
+         expect(iggy3d::objectiveComplete(objectives, "exit_marker"),
+                "exit objective complete");
+}
+
 bool rawRetryIsInvalidCommand() {
   iggy3d::WorldState world = makeWorld();
   iggy3d::InventoryState inventory = makeInventory();
@@ -210,6 +306,8 @@ int main() {
   const bool ok = pickupAddsItemDeactivatesTargetAndCompletesObjective() &&
                   nullContextsReturnStructuredStatus() &&
                   openDoorEmitsOnlyAndDoesNotMutateState() &&
+                  requiredItemGateControlsDoorMutation() &&
+                  requiredItemGateControlsObjectiveTrigger() &&
                   rawRetryIsInvalidCommand() &&
                   inventoryFailureDoesNotDeactivateTarget();
   return ok ? 0 : 1;

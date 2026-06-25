@@ -54,6 +54,8 @@ void addInteraction(StableHasher& hasher, const InteractionDefinition& interacti
   addStringField(hasher, "interactionItemId", interaction.itemId);
   addU64(hasher, "interactionItemCount", interaction.itemCount);
   addStringField(hasher, "interactionObjectiveId", interaction.objectiveId);
+  addStringField(hasher, "interactionRequiredItemId", interaction.requiredItemId);
+  addU64(hasher, "interactionRequiredItemCount", interaction.requiredItemCount);
   addBoolField(hasher, "interactionRepeatable", interaction.repeatable);
   addBoolField(hasher, "interactionDeactivateTargetOnSuccess",
                interaction.deactivateTargetOnSuccess);

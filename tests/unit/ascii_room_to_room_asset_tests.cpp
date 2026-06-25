@@ -168,7 +168,7 @@ bool anchorsUseExpectedMarkerKinds() {
          expect(door != nullptr, "door anchor") &&
          expect(door->kind == "door", "door kind") &&
          expect(treasure != nullptr, "treasure anchor") &&
-         expect(treasure->kind == "pickup", "treasure kind") &&
+         expect(treasure->kind == "treasure", "treasure kind") &&
          expect(exit != nullptr, "exit anchor") &&
          expect(exit->kind == "exit", "exit kind");
 }

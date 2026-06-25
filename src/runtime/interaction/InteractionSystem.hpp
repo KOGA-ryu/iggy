@@ -20,6 +20,7 @@ enum class InteractionStatus : std::uint8_t {
   InvalidActor,
   InvalidTarget,
   TargetInactive,
+  RequiredItemMissing,
   UnsupportedInteraction,
   InventoryFailed,
   ObjectiveFailed,
@@ -47,6 +48,8 @@ struct InteractionResult {
   std::string itemId;
   std::uint32_t itemCount = 0;
   std::string objectiveId;
+  std::string requiredItemId;
+  std::uint32_t requiredItemCount = 0;
   bool deactivateTargetOnSuccess = false;
   bool inventoryMutated = false;
   bool targetDeactivated = false;

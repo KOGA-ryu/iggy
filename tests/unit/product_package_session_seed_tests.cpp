@@ -43,6 +43,16 @@ const iggy3d::RoomAnchorAsset* findAnchor(const iggy3d::RoomAsset& room,
   return nullptr;
 }
 
+iggy3d::RoomAnchorAsset anchor(std::string_view id,
+                               std::string_view kind,
+                               iggy3d::Vec3 position) {
+  iggy3d::RoomAnchorAsset anchor;
+  anchor.id = std::string(id);
+  anchor.kind = std::string(kind);
+  anchor.positionMeters = position;
+  return anchor;
+}
+
 bool authoredFirstRoomScenarioIsPreserved() {
   const iggy3d::PackageLoadResult package =
       loadPackageFixture("fixtures/demos/first_room/package.iggy3d.toml");
@@ -105,7 +115,7 @@ bool asciiPackageSynthesizesSeedAndCreatesSession() {
          expect(result.pickupCount == 1U, "pickup count") &&
          expect(result.doorCount == 1U, "door count") &&
          expect(result.markerEntityCount == 1U, "marker entity count") &&
-         expect(result.objectiveCount == 1U, "objective count") &&
+         expect(result.objectiveCount == 2U, "objective count") &&
          expect(result.seed.scenarioId == "ascii_training_room.runtime_loop",
                 "scenario id") &&
          expect(result.seed.players.size() == 1U &&
@@ -143,7 +153,7 @@ bool asciiPackageSynthesizesSeedAndCreatesSession() {
                     pickup->interaction.itemId == pickup->stableName &&
                     pickup->interaction.objectiveId == "collect_marker_treasure_r2_c4",
                 "pickup interaction") &&
-         expect(result.seed.objectives.size() == 1U &&
+         expect(result.seed.objectives.size() == 2U &&
                     result.seed.objectives[0].id == "collect_marker_treasure_r2_c4" &&
                     result.seed.objectives[0].itemId == pickup->interaction.itemId &&
                     result.seed.objectives[0].itemCount == 1U,
@@ -156,7 +166,16 @@ bool asciiPackageSynthesizesSeedAndCreatesSession() {
                 "door entity") &&
          expect(exit != nullptr && exit->kind == iggy3d::EntityKind::Marker &&
                     iggy3d::isTargetActionSupported(exit->targeting,
-                                                    iggy3d::TargetAction::Move),
+                                                    iggy3d::TargetAction::Interact) &&
+                    iggy3d::isTargetActionSupported(exit->targeting,
+                                                    iggy3d::TargetAction::Move) &&
+                    exit->interaction.kind == iggy3d::InteractionKind::ObjectiveTrigger &&
+                    exit->interaction.primaryEffect ==
+                        iggy3d::InteractionEffectKind::CompleteObjective &&
+                    exit->interaction.objectiveId == "exit_marker_exit_r3_c3" &&
+                    exit->interaction.requiredItemId == pickup->interaction.itemId &&
+                    exit->interaction.requiredItemCount == 1U &&
+                    result.seed.objectives[1].id == "exit_marker_exit_r3_c3",
                 "exit marker") &&
          expect(session.status == iggy3d::ResultStatus::Ok, "session create ok") &&
          expect(session.value.state().world.size() == 5U, "session world count") &&
@@ -201,11 +220,66 @@ bool missingRoomAndSpawnRejectDeterministically() {
                 "not loaded reason");
 }
 
+bool asciiSemanticAnchorsGateSecretDoorAndExit() {
+  iggy3d::PackageLoadResult package;
+  package.status = iggy3d::PackageLoadStatus::Ok;
+  package.manifest.packageId = "iggy3d.semantic_room";
+  package.scenario.scenarioId = "semantic_room";
+  iggy3d::RoomAsset room;
+  room.id = "semantic_room";
+  room.anchors = {
+      anchor("marker_player_spawn_r1_c1", "spawn", {1.0F, 0.0F, 1.0F}),
+      anchor("marker_key_r1_c2", "key", {2.0F, 0.0F, 1.0F}),
+      anchor("marker_secret_door_r1_c3", "secret_door", {3.0F, 0.0F, 1.0F}),
+      anchor("marker_treasure_r1_c4", "treasure", {4.0F, 0.0F, 1.0F}),
+      anchor("marker_exit_r1_c5", "exit", {5.0F, 0.0F, 1.0F}),
+  };
+  package.rooms.push_back(room);
+
+  const iggy3d::ProductPackageSessionSeedResult result =
+      iggy3d::buildProductPackageSessionSeed(package);
+  const iggy3d::ScenarioEntitySeed* key =
+      findEntity(result.seed, "marker_key_r1_c2");
+  const iggy3d::ScenarioEntitySeed* secretDoor =
+      findEntity(result.seed, "marker_secret_door_r1_c3");
+  const iggy3d::ScenarioEntitySeed* treasure =
+      findEntity(result.seed, "marker_treasure_r1_c4");
+  const iggy3d::ScenarioEntitySeed* exit =
+      findEntity(result.seed, "marker_exit_r1_c5");
+
+  return expect(result.ok, "semantic seed ok") &&
+         expect(result.pickupCount == 2U, "key and treasure are pickups") &&
+         expect(result.doorCount == 1U, "secret door count") &&
+         expect(result.markerEntityCount == 1U, "exit marker count") &&
+         expect(result.objectiveCount == 3U, "key treasure exit objectives") &&
+         expect(key != nullptr && key->kind == iggy3d::EntityKind::Pickup &&
+                    key->interaction.itemId == "marker_key_r1_c2",
+                "key pickup item") &&
+         expect(treasure != nullptr && treasure->kind == iggy3d::EntityKind::Pickup &&
+                    treasure->interaction.itemId == "marker_treasure_r1_c4",
+                "treasure pickup item") &&
+         expect(secretDoor != nullptr && secretDoor->kind == iggy3d::EntityKind::Door &&
+                    secretDoor->interaction.requiredItemId ==
+                        key->interaction.itemId &&
+                    secretDoor->interaction.requiredItemCount == 1U,
+                "secret door requires key") &&
+         expect(exit != nullptr && exit->kind == iggy3d::EntityKind::Marker &&
+                    exit->interaction.kind == iggy3d::InteractionKind::ObjectiveTrigger &&
+                    exit->interaction.primaryEffect ==
+                        iggy3d::InteractionEffectKind::CompleteObjective &&
+                    exit->interaction.requiredItemId ==
+                        treasure->interaction.itemId &&
+                    exit->interaction.requiredItemCount == 1U &&
+                    exit->interaction.objectiveId == "exit_marker_exit_r1_c5",
+                "exit requires treasure");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = authoredFirstRoomScenarioIsPreserved() &&
                   asciiPackageSynthesizesSeedAndCreatesSession() &&
-                  missingRoomAndSpawnRejectDeterministically();
+                  missingRoomAndSpawnRejectDeterministically() &&
+                  asciiSemanticAnchorsGateSecretDoorAndExit();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

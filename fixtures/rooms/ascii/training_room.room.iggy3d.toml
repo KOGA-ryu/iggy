@@ -1101,7 +1101,7 @@ runtime_stable_name = "marker_door_r2_c2"
 
 [[anchors]]
 id = "marker_treasure_r2_c4"
-kind = "pickup"
+kind = "treasure"
 position_ft = [3.280840, 0.164042, 0.000000]
 runtime_stable_name = "marker_treasure_r2_c4"
 

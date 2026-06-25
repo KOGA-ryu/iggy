@@ -37,6 +37,8 @@ SaveEntityRecord saveEntity(const EntityState& entity) {
   record.interactionItemId = entity.interaction.itemId;
   record.interactionItemCount = entity.interaction.itemCount;
   record.interactionObjectiveId = entity.interaction.objectiveId;
+  record.interactionRequiredItemId = entity.interaction.requiredItemId;
+  record.interactionRequiredItemCount = entity.interaction.requiredItemCount;
   record.interactionRepeatable = entity.interaction.repeatable;
   record.interactionDeactivateTargetOnSuccess = entity.interaction.deactivateTargetOnSuccess;
   return record;
@@ -58,6 +60,8 @@ EntityState loadEntity(const SaveEntityRecord& record) {
   entity.interaction.itemId = record.interactionItemId;
   entity.interaction.itemCount = record.interactionItemCount;
   entity.interaction.objectiveId = record.interactionObjectiveId;
+  entity.interaction.requiredItemId = record.interactionRequiredItemId;
+  entity.interaction.requiredItemCount = record.interactionRequiredItemCount;
   entity.interaction.repeatable = record.interactionRepeatable;
   entity.interaction.deactivateTargetOnSuccess = record.interactionDeactivateTargetOnSuccess;
   return entity;

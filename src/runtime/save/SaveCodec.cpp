@@ -367,6 +367,7 @@ std::string enumText(CommandRejectionReason value) {
     case CommandRejectionReason::SaveUnavailable: return "SaveUnavailable";
     case CommandRejectionReason::LoadUnavailable: return "LoadUnavailable";
     case CommandRejectionReason::IncompatibleSave: return "IncompatibleSave";
+    case CommandRejectionReason::RequiredItemMissing: return "RequiredItemMissing";
     case CommandRejectionReason::AbilitySlotBusy: return "AbilitySlotBusy";
     case CommandRejectionReason::AbilityOnCooldown: return "AbilityOnCooldown";
     case CommandRejectionReason::AbilityInsufficientResource: return "AbilityInsufficientResource";
@@ -570,6 +571,7 @@ bool parseEnum(std::string_view value, CommandRejectionReason& out) {
   IGGY3D_ENUM_PARSE(CommandRejectionReason, SaveUnavailable)
   IGGY3D_ENUM_PARSE(CommandRejectionReason, LoadUnavailable)
   IGGY3D_ENUM_PARSE(CommandRejectionReason, IncompatibleSave)
+  IGGY3D_ENUM_PARSE(CommandRejectionReason, RequiredItemMissing)
   IGGY3D_ENUM_PARSE(CommandRejectionReason, AbilitySlotBusy)
   IGGY3D_ENUM_PARSE(CommandRejectionReason, AbilityOnCooldown)
   IGGY3D_ENUM_PARSE(CommandRejectionReason, AbilityInsufficientResource)
@@ -694,6 +696,8 @@ private:
       lineString(p + "interactionItemId", entity.interactionItemId);
       line(p + "interactionItemCount", unsignedText(entity.interactionItemCount));
       lineString(p + "interactionObjectiveId", entity.interactionObjectiveId);
+      lineString(p + "interactionRequiredItemId", entity.interactionRequiredItemId);
+      line(p + "interactionRequiredItemCount", unsignedText(entity.interactionRequiredItemCount));
       lineBool(p + "interactionRepeatable", entity.interactionRepeatable);
       lineBool(p + "interactionDeactivateTargetOnSuccess", entity.interactionDeactivateTargetOnSuccess);
     }
@@ -1163,6 +1167,10 @@ private:
       readString(p + "interactionItemId", entity.interactionItemId);
       readUnsigned(p + "interactionItemCount", entity.interactionItemCount);
       readString(p + "interactionObjectiveId", entity.interactionObjectiveId);
+      if (nextKeyIs(p + "interactionRequiredItemId")) {
+        readString(p + "interactionRequiredItemId", entity.interactionRequiredItemId);
+        readUnsigned(p + "interactionRequiredItemCount", entity.interactionRequiredItemCount);
+      }
       readBool(p + "interactionRepeatable", entity.interactionRepeatable);
       readBool(p + "interactionDeactivateTargetOnSuccess", entity.interactionDeactivateTargetOnSuccess);
     }

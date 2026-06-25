@@ -29,6 +29,8 @@ void copyInteractionFacts(InteractionResult& result, const InteractionDefinition
   result.itemId = interaction.itemId;
   result.itemCount = interaction.itemCount;
   result.objectiveId = interaction.objectiveId;
+  result.requiredItemId = interaction.requiredItemId;
+  result.requiredItemCount = interaction.requiredItemCount;
   result.deactivateTargetOnSuccess = interaction.deactivateTargetOnSuccess;
 }
 
@@ -43,6 +45,48 @@ bool emitOnlyShapeValid(const InteractionDefinition& interaction) {
          (interaction.kind == InteractionKind::OpenDoor ||
           interaction.kind == InteractionKind::Activate ||
           interaction.kind == InteractionKind::ObjectiveTrigger);
+}
+
+bool completeObjectiveShapeValid(const InteractionDefinition& interaction) {
+  return interaction.kind == InteractionKind::ObjectiveTrigger &&
+         interaction.primaryEffect == InteractionEffectKind::CompleteObjective &&
+         !interaction.objectiveId.empty();
+}
+
+bool completeObjective(ObjectiveState& objectives, const std::string& objectiveId) {
+  for (ObjectiveRecord& objective : objectives.objectives) {
+    if (objective.objectiveId != objectiveId) {
+      continue;
+    }
+    if (objective.status == ObjectiveStatus::Complete) {
+      return false;
+    }
+    if (objective.status != ObjectiveStatus::Active) {
+      return false;
+    }
+    objective.status = ObjectiveStatus::Complete;
+    return true;
+  }
+  return false;
+}
+
+bool requiredItemShapeValid(const InteractionDefinition& interaction) {
+  return interaction.requiredItemId.empty() == (interaction.requiredItemCount == 0U);
+}
+
+bool requiredItemSatisfied(const InventoryState& inventory,
+                           PlayerSlotId playerSlot,
+                           const InteractionDefinition& interaction) {
+  if (interaction.requiredItemId.empty() && interaction.requiredItemCount == 0U) {
+    return true;
+  }
+  if (!requiredItemShapeValid(interaction)) {
+    return false;
+  }
+  return hasItem(inventory,
+                 playerSlot,
+                 interaction.requiredItemId,
+                 interaction.requiredItemCount);
 }
 
 }  // namespace
@@ -82,6 +126,11 @@ InteractionResult executeInteraction(
   const InteractionDefinition interaction = target->interaction;
   copyInteractionFacts(result, interaction);
 
+  if (!requiredItemSatisfied(*context.inventory, request.command.playerSlot, interaction)) {
+    result.status = InteractionStatus::RequiredItemMissing;
+    return result;
+  }
+
   if (interaction.kind == InteractionKind::Inspect) {
     result.status = InteractionStatus::Succeeded;
     return result;
@@ -97,6 +146,21 @@ InteractionResult executeInteraction(
       result.targetDeactivated = true;
     }
     result.status = InteractionStatus::Succeeded;
+    return result;
+  }
+  if (completeObjectiveShapeValid(interaction)) {
+    result.objectiveMutated = completeObjective(*context.objectives, interaction.objectiveId);
+    if (interaction.deactivateTargetOnSuccess) {
+      const WorldMutationResult deactivated =
+          context.world->setActive(request.command.payload.target.entity, false);
+      if (deactivated.status != WorldStatus::Ok) {
+        result.status = InteractionStatus::InvalidWorld;
+        return result;
+      }
+      result.targetDeactivated = true;
+    }
+    result.status = result.objectiveMutated ? InteractionStatus::Succeeded
+                                            : InteractionStatus::ObjectiveFailed;
     return result;
   }
   if (!pickupShapeValid(interaction)) {

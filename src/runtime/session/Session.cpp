@@ -507,7 +507,8 @@ SessionCommandResult Session::submitCommand(const CommandRecord& command) {
     admission = rejectCommand(candidate, CommandRejectionReason::SessionNotPlaying);
   } else {
     CommandAdmissionContext context{&state_.world, &state_.players, &state_.clock,
-                                    &state_.commandLog, &state_.config, &state_.combat};
+                                    &state_.commandLog, &state_.config, &state_.combat,
+                                    &state_.inventory};
     admission = applyAbilityRuntimeAdmission(
         state_, admitCommand(context, CommandAdmissionRequest{candidate}));
   }

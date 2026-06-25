@@ -74,6 +74,10 @@ ScenarioEntitySeed npcFromAnchor(const RoomAnchorAsset& anchor) {
   return seed;
 }
 
+std::string objectiveIdFor(std::string_view prefix, std::string_view stableName) {
+  return std::string(prefix) + "_" + std::string(stableName);
+}
+
 ScenarioEntitySeed pickupFromAnchor(const RoomAnchorAsset& anchor) {
   ScenarioEntitySeed seed = baseEntity(anchor.id,
                                        EntityKind::Pickup,
@@ -90,7 +94,8 @@ ScenarioEntitySeed pickupFromAnchor(const RoomAnchorAsset& anchor) {
   return seed;
 }
 
-ScenarioEntitySeed doorFromAnchor(const RoomAnchorAsset& anchor) {
+ScenarioEntitySeed doorFromAnchor(const RoomAnchorAsset& anchor,
+                                  std::string_view requiredItemId) {
   ScenarioEntitySeed seed = baseEntity(anchor.id,
                                        EntityKind::Door,
                                        anchor.positionMeters,
@@ -100,7 +105,31 @@ ScenarioEntitySeed doorFromAnchor(const RoomAnchorAsset& anchor) {
   seed.targeting.actions = {TargetAction::Interact, TargetAction::Inspect};
   seed.interaction.kind = InteractionKind::OpenDoor;
   seed.interaction.primaryEffect = InteractionEffectKind::EmitEventOnly;
+  if (anchor.kind == "secret_door" && !requiredItemId.empty()) {
+    seed.interaction.requiredItemId = std::string(requiredItemId);
+    seed.interaction.requiredItemCount = 1;
+  }
   seed.interaction.deactivateTargetOnSuccess = true;
+  return seed;
+}
+
+ScenarioEntitySeed exitFromAnchor(const RoomAnchorAsset& anchor,
+                                  std::string_view requiredItemId) {
+  ScenarioEntitySeed seed = baseEntity(anchor.id,
+                                       EntityKind::Marker,
+                                       anchor.positionMeters,
+                                       makeAabb3({-0.10F, 0.0F, -0.10F},
+                                                 {0.10F, 0.10F, 0.10F}));
+  seed.targeting.targetable = true;
+  seed.targeting.actions = {TargetAction::Interact, TargetAction::Move,
+                            TargetAction::Inspect};
+  seed.interaction.kind = InteractionKind::ObjectiveTrigger;
+  seed.interaction.primaryEffect = InteractionEffectKind::CompleteObjective;
+  seed.interaction.objectiveId = objectiveIdFor("exit", anchor.id);
+  if (!requiredItemId.empty()) {
+    seed.interaction.requiredItemId = std::string(requiredItemId);
+    seed.interaction.requiredItemCount = 1;
+  }
   return seed;
 }
 
@@ -120,30 +149,46 @@ bool isSpawn(const RoomAnchorAsset& anchor) {
   return anchor.kind == "spawn";
 }
 
-ScenarioEntitySeed entityFromAnchor(const RoomAnchorAsset& anchor) {
+ScenarioEntitySeed entityFromAnchor(const RoomAnchorAsset& anchor,
+                                    std::string_view firstKeyItemId,
+                                    std::string_view firstTreasureItemId) {
   if (anchor.kind == "npc") {
     return npcFromAnchor(anchor);
   }
-  if (anchor.kind == "pickup") {
+  if (anchor.kind == "pickup" || anchor.kind == "key" || anchor.kind == "treasure") {
     return pickupFromAnchor(anchor);
   }
   if (anchor.kind == "door" || anchor.kind == "secret_door") {
-    return doorFromAnchor(anchor);
+    return doorFromAnchor(anchor, firstKeyItemId);
   }
   if (anchor.kind == "exit") {
-    return markerFromAnchor(anchor, {TargetAction::Move, TargetAction::Inspect});
+    return exitFromAnchor(anchor, firstTreasureItemId);
   }
   return markerFromAnchor(anchor, {TargetAction::Inspect});
 }
 
-ScenarioObjectiveSeed objectiveForPickup(const ScenarioEntitySeed& pickup) {
+ScenarioObjectiveSeed inventoryObjective(std::string id, const ScenarioEntitySeed& pickup) {
   ScenarioObjectiveSeed objective;
-  objective.id = "collect_" + pickup.stableName;
+  objective.id = std::move(id);
   objective.initialStatus = ObjectiveStatusSeed::Active;
   objective.condition = "InventoryContains";
   objective.playerSlot = 0;
   objective.itemId = pickup.interaction.itemId;
   objective.itemCount = 1;
+  objective.completeStatus = ObjectiveStatusSeed::Complete;
+  return objective;
+}
+
+ScenarioObjectiveSeed objectiveForPickup(const ScenarioEntitySeed& pickup) {
+  return inventoryObjective(objectiveIdFor("collect", pickup.stableName), pickup);
+}
+
+ScenarioObjectiveSeed objectiveForExit(const ScenarioEntitySeed& exit) {
+  ScenarioObjectiveSeed objective;
+  objective.id = exit.interaction.objectiveId;
+  objective.initialStatus = ObjectiveStatusSeed::Active;
+  objective.condition = "None";
+  objective.playerSlot = 0;
   objective.completeStatus = ObjectiveStatusSeed::Complete;
   return objective;
 }
@@ -222,27 +267,32 @@ ProductPackageSessionSeedResult buildProductPackageSessionSeed(
   result.seed.players.push_back({0, PlayerSlotKind::Local, "player"});
   result.seed.entities.push_back(playerFromAnchor(*spawn));
 
-  std::string firstPickupStableName;
+  std::string firstKeyItemId;
+  std::string firstTreasureItemId;
+  for (const RoomAnchorAsset& anchor : room.anchors) {
+    if (firstKeyItemId.empty() && anchor.kind == "key") {
+      firstKeyItemId = anchor.id;
+    }
+    if (firstTreasureItemId.empty() && anchor.kind == "treasure") {
+      firstTreasureItemId = anchor.id;
+    }
+  }
+
   for (const RoomAnchorAsset& anchor : room.anchors) {
     if (isSpawn(anchor)) {
       continue;
     }
-    result.seed.entities.push_back(entityFromAnchor(anchor));
-    if (firstPickupStableName.empty() && result.seed.entities.back().kind == EntityKind::Pickup) {
-      firstPickupStableName = result.seed.entities.back().stableName;
-    }
+    result.seed.entities.push_back(
+        entityFromAnchor(anchor, firstKeyItemId, firstTreasureItemId));
   }
-  if (!firstPickupStableName.empty()) {
-    for (const ScenarioEntitySeed& entity : result.seed.entities) {
-      if (entity.stableName == firstPickupStableName) {
-        result.seed.objectives.push_back(objectiveForPickup(entity));
-        break;
-      }
-    }
-    for (ScenarioEntitySeed& entity : result.seed.entities) {
-      if (entity.stableName == firstPickupStableName && !result.seed.objectives.empty()) {
-        entity.interaction.objectiveId = result.seed.objectives.front().id;
-      }
+
+  for (ScenarioEntitySeed& entity : result.seed.entities) {
+    if (entity.kind == EntityKind::Pickup) {
+      entity.interaction.objectiveId = objectiveIdFor("collect", entity.stableName);
+      result.seed.objectives.push_back(objectiveForPickup(entity));
+    } else if (entity.kind == EntityKind::Marker &&
+               entity.interaction.kind == InteractionKind::ObjectiveTrigger) {
+      result.seed.objectives.push_back(objectiveForExit(entity));
     }
   }
 

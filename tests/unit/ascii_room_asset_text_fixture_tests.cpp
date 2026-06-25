@@ -110,7 +110,7 @@ bool checkedInTextMatchesGeneratedExporterOutput() {
                 "player spawn anchor") &&
          expect(anchorHasKind(parsed.room, "marker_npc_spawn_r1_c4", "npc"),
                 "npc anchor") &&
-         expect(anchorHasKind(parsed.room, "marker_treasure_r2_c4", "pickup"),
+         expect(anchorHasKind(parsed.room, "marker_treasure_r2_c4", "treasure"),
                 "treasure anchor") &&
          expect(anchorHasKind(parsed.room, "marker_door_r2_c2", "door"),
                 "door anchor") &&

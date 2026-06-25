@@ -203,8 +203,11 @@ std::string anchorKindForMarkerTag(std::string_view tag) {
   if (tag == "npc_spawn" || tag == "monster_spawn") {
     return "npc";
   }
-  if (tag == "treasure" || tag == "key") {
-    return "pickup";
+  if (tag == "treasure") {
+    return "treasure";
+  }
+  if (tag == "key") {
+    return "key";
   }
   if (tag == "trap") {
     return "trap";
