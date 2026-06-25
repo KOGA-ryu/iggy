@@ -61,6 +61,9 @@ session_state_tests
 npc_behavior_system_tests
 command_admission_tests
 session_tick_tests
+npc_behavior_debug_snapshot_tests
+projection_tests
+product_npc_behavior_debug_hud_tests
 product_gameplay_tape_runner_tests
 product_gameplay_tape_smoke
 product_ascii_gameplay_loop_smoke
@@ -138,6 +141,77 @@ Product no-window proof:
 - the passive proof uses a `wait` tape step, logs AI Wait, logs no AI Attack,
   leaves player HP unchanged, reports behavior `alert`, intent `wait`, and
   keeps `window_created=false`.
+
+## NPC Behavior v0.3 Debug Diagnostic Baseline
+
+NPC Behavior v0.3 now has a runtime-to-product diagnostic ladder for NPC
+behavior visibility. It is debug/proof data only. It does not create AI truth,
+change session behavior, or make renderer display state authoritative.
+
+Runtime debug ownership:
+
+- `NpcBehaviorDebugSnapshot.hpp/.cpp` exists as a pure read-only
+  `runtime/ai` diagnostic model;
+- it reads `WorldState`, `AiState`, `CombatState`, and a supplied
+  `NpcBehaviorProfileCatalog`;
+- it does not mutate world, combat, AI state, command log, session, profile
+  resolution, perception, decision, or command behavior;
+- snapshot rows include world NPCs even when no AI actor state exists yet;
+- missing or non-NPC AI actor state remains visible as diagnostic rows;
+- rows expose profile resolution status, target facts, cooldown, next decision
+  tick, behavior, and intent.
+
+Projection ownership:
+
+- `DebugProjectionKind::NpcBehavior` exists;
+- `DebugProjectionResult::npcBehaviorDebugHudLines` is separate from
+  `runtimeDebugHudLines`;
+- `appendNpcBehaviorDebugSnapshot(...)` converts a supplied snapshot into
+  projection items and compact ASCII HUD lines;
+- non-Ok snapshots append no NPC behavior projection items or NPC HUD lines;
+- projection output is derived debug data, not behavior truth.
+
+Product HUD and receipt ownership:
+
+- `ProductNpcBehaviorDebugHud` consumes only `DebugProjectionResult`;
+- visibility requires gameplay active, dev tools enabled, debug overlay enabled,
+  debug projection present, and NPC HUD lines present;
+- `AppShell` builds the runtime snapshot/projection read-only and copies only
+  summary proof fields into `ProductAppWindowState`;
+- `OpeningMenuView` can draw compact NPC HUD text, but renderer/display output
+  is not behavior truth;
+- full NPC HUD line text stays in the product HUD model and is not stored on
+  window state or emitted as receipt fields.
+
+Stable product receipt fields:
+
+```text
+npc_behavior_debug_hud_visible
+npc_behavior_debug_hud_line_count
+npc_behavior_debug_hud_dev_tools_enabled
+npc_behavior_debug_hud_debug_overlay_enabled
+npc_behavior_debug_hud_debug_available
+npc_behavior_debug_hud_status
+npc_behavior_debug_hud_reason_code
+npc_behavior_debug_hud_has_unresolved_profile
+```
+
+Product no-window diagnostic proof now covers:
+
+- hostile/default NPC profile still attacks and damages through the product
+  gameplay tape path;
+- passive scenario-profile NPC uses a `wait` step, logs AI Wait, does not
+  attack, does not damage, and reports the NPC debug HUD ready;
+- `ghost_profile` is accepted as syntactically valid content, fails closed
+  during live AI profile resolution, logs no AI command, does not damage the
+  player, and reports `npc_behavior_debug_hud_has_unresolved_profile=true`;
+- all product proof stays no-window.
+
+ASCII boundary for diagnostics:
+
+- ASCII may author map or room fixtures used by tests;
+- ASCII glyphs and layout symbols do not assign behavior or profile ids;
+- scenario/package metadata owns AI actor profile binding.
 
 ## Historical Source Baseline
 
@@ -1044,6 +1118,47 @@ v0.2 Slice 5E completed: product scenario NPC profile tape proof.
 tests/smoke/product_gameplay_tape_smoke.cpp
 ```
 
+v0.3 Slice 1 completed: pure NPC behavior debug snapshot model.
+
+```text
+src/runtime/ai/NpcBehaviorDebugSnapshot.hpp
+src/runtime/ai/NpcBehaviorDebugSnapshot.cpp
+tests/unit/npc_behavior_debug_snapshot_tests.cpp
+```
+
+v0.3 Slice 2 completed: NPC debug projection lines.
+
+```text
+src/projection/debug/DebugProjection.hpp
+src/projection/debug/DebugProjection.cpp
+tests/unit/projection_tests.cpp
+```
+
+v0.3 Slice 3 completed: product NPC debug HUD model.
+
+```text
+src/app/iggy3d/ProductNpcBehaviorDebugHud.hpp
+src/app/iggy3d/ProductNpcBehaviorDebugHud.cpp
+tests/unit/product_npc_behavior_debug_hud_tests.cpp
+```
+
+v0.3 Slice 4 completed: product NPC debug HUD wiring and receipt proof.
+
+```text
+src/app/iggy3d/AppShell.cpp
+src/app/iggy3d/OpeningMenuView.hpp
+src/app/iggy3d/OpeningMenuView.cpp
+src/app/iggy3d/ReceiptBuilder.hpp
+src/app/iggy3d/ReceiptBuilder.cpp
+tests/smoke/product_gameplay_tape_smoke.cpp
+```
+
+v0.3 Slice 5 completed: unresolved profile product diagnostic proof.
+
+```text
+tests/smoke/product_gameplay_tape_smoke.cpp
+```
+
 ## No-Go Files
 
 Do not implement NPC behavior in:
@@ -1088,8 +1203,12 @@ Latest focused verification style:
 ```text
 cmake --build build --target iggy3d_app
 cmake --build build --target npc_behavior_system_tests
+cmake --build build --target npc_behavior_debug_snapshot_tests
+cmake --build build --target projection_tests
+cmake --build build --target product_npc_behavior_debug_hud_tests
+cmake --build build --target product_gameplay_tape_smoke
 ctest --test-dir build --output-on-failure -R '^npc_behavior_system_tests$'
-ctest --test-dir build --output-on-failure -R '^(session_tick|save_load|product_gameplay_tape)_'
+ctest --test-dir build --output-on-failure -R '^(npc_behavior_debug_snapshot_tests|projection_tests|product_npc_behavior_debug_hud_tests|product_gameplay_tape_smoke)$'
 git diff --check
 ```
 
@@ -1115,7 +1234,9 @@ Stop and return to planning if the builder needs:
 Later contracts should cover:
 
 - authored custom profile catalogs beyond built-ins;
-- profile diagnostics, receipts, and debug overlay;
+- profile catalog loading and content-side validation against authored catalogs;
+- world-space NPC debug draw, filtering, richer inspector panels, or profiling
+  integrations beyond the current product HUD/receipt proof;
 - simple patrol or guard anchors from map-authored/package markers;
 - line-of-sight and perception through spatial surfaces;
 - pathfinding and navigation surfaces;
@@ -1126,5 +1247,6 @@ Later contracts should cover:
 - sound/noise perception;
 - cover seeking;
 - ranged attacks and spell casting;
-- faction reputation;
+- faction and disposition tables;
+- tactical group behavior;
 - tactical slow-time decision cadence;
