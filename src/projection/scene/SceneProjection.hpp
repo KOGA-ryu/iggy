@@ -13,6 +13,8 @@
 
 namespace iggy3d {
 
+struct RoomAsset;
+
 struct SceneProjectionConfig {
   bool includeInactive = false;
   bool includeObjectiveMarkers = true;
@@ -40,6 +42,9 @@ struct SceneProjectionResult {
 };
 
 SceneProjectionResult buildSceneProjection(const SessionState& state,
+                                           const SceneProjectionConfig& config = {});
+SceneProjectionResult buildSceneProjection(const SessionState& state,
+                                           const RoomAsset* room,
                                            const SceneProjectionConfig& config = {});
 
 }  // namespace iggy3d

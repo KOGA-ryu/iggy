@@ -2,6 +2,7 @@
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductActiveRoomState.hpp"
 #include "app/iggy3d/ProductPackageSessionSeed.hpp"
+#include "projection/scene/SceneProjection.hpp"
 #include "runtime/combat/CombatState.hpp"
 #include "runtime/inventory/InventorySystem.hpp"
 #include "runtime/objective/ObjectiveSystem.hpp"
@@ -242,6 +243,8 @@ bool runAsciiGameplayLoop() {
   iggy3d::Session session = std::move(created.value);
   const iggy3d::ProductActiveRoomState activeRoom =
       iggy3d::buildProductActiveRoomFromAsciiAuthoring(request, authored);
+  const iggy3d::SceneProjectionResult roomProjection =
+      iggy3d::buildSceneProjection(session.state(), &activeRoom.room);
   const iggy3d::EntityState* key = findEntity(session, "marker_key_r1_c2");
   const iggy3d::EntityState* secretDoor =
       findEntity(session, "marker_secret_door_r1_c3");
@@ -252,6 +255,13 @@ bool runAsciiGameplayLoop() {
             expect(secretDoor != nullptr, "secret door exists") &&
             expect(treasure != nullptr, "treasure exists") &&
             expect(exit != nullptr, "exit exists") &&
+            expect(activeRoom.loaded, "active room loaded") &&
+            expect(roomProjection.room.loaded, "ascii room projected") &&
+            expect(roomProjection.room.floorVisible, "ascii floors projected") &&
+            expect(roomProjection.room.wallVisible, "ascii walls projected") &&
+            expect(roomProjection.room.meshes.size() ==
+                       activeRoom.authoredFloorCount + activeRoom.authoredWallCount,
+                   "ascii floor wall mesh projection count") &&
             expect(seed.pickupCount == 2U, "key and treasure pickups") &&
             expect(seed.doorCount == 1U, "secret door count") &&
             expect(seed.markerEntityCount == 1U, "exit marker count") &&

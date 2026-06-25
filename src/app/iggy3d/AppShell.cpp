@@ -335,7 +335,10 @@ void refreshGameplayProjectionMetrics(const std::optional<Session>& activeSessio
     return;
   }
 
-  const SceneProjectionResult scene = buildSceneProjection(activeSession->state());
+  const RoomAsset* activeRoom =
+      window.activeRoom.loaded ? &window.activeRoom.room : nullptr;
+  const SceneProjectionResult scene =
+      buildSceneProjection(activeSession->state(), activeRoom);
   const DebugProjectionResult debug =
       buildProductDebugProjectionWithNpcBehavior(activeSession->state());
   copyNpcBehaviorDebugHud(window,
@@ -343,8 +346,6 @@ void refreshGameplayProjectionMetrics(const std::optional<Session>& activeSessio
                                                           window.gameplayActive,
                                                           developerToolsEnabled,
                                                           debugOverlayEnabled));
-  const RoomAsset* activeRoom =
-      window.activeRoom.loaded ? &window.activeRoom.room : nullptr;
   const ProductPrimitiveDrawList drawList =
       buildProductPrimitiveDrawList(&scene, &debug, activeRoom,
                                     &window.activeRoomCollision);
@@ -1800,10 +1801,10 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
     copyNpcBehaviorDebugHud(window, npcBehaviorHud);
     ProductRenderBridgeFrame bridge;
     if (window.gameplayActive && activeSession.has_value()) {
-      scene = buildSceneProjection(activeSession->state());
-      debug = buildProductDebugProjectionWithNpcBehavior(activeSession->state());
       const RoomAsset* activeRoom =
           window.activeRoom.loaded ? &window.activeRoom.room : nullptr;
+      scene = buildSceneProjection(activeSession->state(), activeRoom);
+      debug = buildProductDebugProjectionWithNpcBehavior(activeSession->state());
       drawList = buildProductPrimitiveDrawList(&scene, &debug, activeRoom,
                                                &window.activeRoomCollision);
       frame = buildProductViewportFrame(

@@ -1,5 +1,10 @@
 #include "projection/scene/SceneProjection.hpp"
 
+#include <set>
+#include <string_view>
+#include <utility>
+
+#include "content/assets/RoomAsset.hpp"
 #include "render/mesh/BeanMesh.hpp"
 
 namespace iggy3d {
@@ -113,9 +118,68 @@ SceneItem projectEntity(const SessionState& state, const EntityState& entity) {
   return item;
 }
 
+bool isProjectedRoomMeshRole(std::string_view role) {
+  return role == "floor" || role == "wall";
+}
+
+void attachRoomProjection(const RoomAsset* room, SceneProjectionResult& result) {
+  if (room == nullptr) {
+    return;
+  }
+
+  SceneRoomProjection projected;
+  projected.assetId = room->id;
+  projected.version = room->version;
+  projected.sourceToml = room->sourceFile.empty() ? room->source : room->sourceFile;
+  projected.sourceSubset = room->sourceSubset;
+  projected.staticMeshCount = room->staticMeshes.size();
+  projected.anchorCount = room->anchors.size();
+
+  std::set<std::string> materialIds;
+  projected.meshes.reserve(room->staticMeshes.size());
+  for (const RoomStaticMeshAsset& mesh : room->staticMeshes) {
+    if (!isProjectedRoomMeshRole(mesh.role)) {
+      continue;
+    }
+
+    SceneRoomMeshItem item;
+    item.id = mesh.id;
+    item.role = mesh.role;
+    item.position = mesh.positionMeters;
+    item.size = mesh.sizeMeters;
+    projected.floorVisible = projected.floorVisible || mesh.role == "floor";
+    projected.wallVisible = projected.wallVisible || mesh.role == "wall";
+    if (!mesh.materialId.empty()) {
+      materialIds.insert(mesh.materialId);
+    }
+    projected.meshes.push_back(std::move(item));
+  }
+
+  if (projected.meshes.empty()) {
+    return;
+  }
+
+  for (const RoomAnchorAsset& anchor : room->anchors) {
+    projected.keyAnchorVisible =
+        projected.keyAnchorVisible || anchor.runtimeStableName == "gold_key";
+    projected.dummyAnchorVisible =
+        projected.dummyAnchorVisible || anchor.runtimeStableName == "training_dummy";
+  }
+
+  projected.materialCount = materialIds.size();
+  projected.loaded = true;
+  result.room = std::move(projected);
+}
+
 }  // namespace
 
 SceneProjectionResult buildSceneProjection(const SessionState& state,
+                                           const SceneProjectionConfig& config) {
+  return buildSceneProjection(state, nullptr, config);
+}
+
+SceneProjectionResult buildSceneProjection(const SessionState& state,
+                                           const RoomAsset* room,
                                            const SceneProjectionConfig& config) {
   SceneProjectionResult result;
   result.sourceStateHash = state.currentStateHash;
@@ -140,6 +204,7 @@ SceneProjectionResult buildSceneProjection(const SessionState& state,
     result.items.push_back(std::move(item));
   }
 
+  attachRoomProjection(room, result);
   return result;
 }
 

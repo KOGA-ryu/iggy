@@ -1,4 +1,5 @@
 #include "content/PackageLoader.hpp"
+#include "content/assets/RoomAsset.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "runtime/ai/NpcBehaviorDebugSnapshot.hpp"
 #include "projection/scene/SceneProjection.hpp"
@@ -33,6 +34,52 @@ iggy3d::SessionCreateRequest createRequestFromPackage() {
 
 iggy3d::Session makeSession() {
   return iggy3d::Session::create(createRequestFromPackage()).value;
+}
+
+iggy3d::RoomAsset floorWallProjectionRoom() {
+  iggy3d::RoomAsset room;
+  room.id = "ascii_floor_wall_room";
+  room.version = 7;
+  room.sourceFile = "inline_ascii_room";
+  room.sourceSubset = "floor_wall_slice";
+
+  iggy3d::RoomStaticMeshAsset floor;
+  floor.id = "floor_r1_c1";
+  floor.role = "floor";
+  floor.materialId = "debug_floor";
+  floor.positionMeters = {1.0F, 0.0F, 2.0F};
+  floor.sizeMeters = {1.0F, 0.1F, 1.0F};
+  room.staticMeshes.push_back(floor);
+
+  iggy3d::RoomStaticMeshAsset wall;
+  wall.id = "wall_r0_c1";
+  wall.role = "wall";
+  wall.materialId = "debug_wall";
+  wall.positionMeters = {1.0F, 0.5F, 0.0F};
+  wall.sizeMeters = {1.0F, 1.0F, 0.1F};
+  room.staticMeshes.push_back(wall);
+
+  iggy3d::RoomStaticMeshAsset door;
+  door.id = "door_panel";
+  door.role = "opening";
+  door.materialId = "debug_door";
+  door.positionMeters = {2.0F, 0.5F, 0.0F};
+  door.sizeMeters = {1.0F, 1.0F, 0.1F};
+  room.staticMeshes.push_back(door);
+
+  iggy3d::RoomAnchorAsset key;
+  key.id = "marker_key";
+  key.runtimeStableName = "gold_key";
+  key.positionMeters = {2.0F, 0.0F, 2.0F};
+  room.anchors.push_back(key);
+
+  iggy3d::RoomAnchorAsset dummy;
+  dummy.id = "marker_dummy";
+  dummy.runtimeStableName = "training_dummy";
+  dummy.positionMeters = {3.0F, 0.0F, 2.0F};
+  room.anchors.push_back(dummy);
+
+  return room;
 }
 
 iggy3d::CommandRecord submittedInteract() {
@@ -288,6 +335,59 @@ bool firstRoomProjectionContainsInitialItems() {
          expect(projection.cameraMode == iggy3d::CameraMode::ThirdPerson, "projection camera");
 }
 
+bool activeRoomProjectionCarriesFloorAndWallMeshes() {
+  const iggy3d::Session session = makeSession();
+  const iggy3d::RoomAsset room = floorWallProjectionRoom();
+  const iggy3d::SceneProjectionResult projection =
+      iggy3d::buildSceneProjection(session.state(), &room);
+
+  const iggy3d::SceneRoomMeshItem* floor = nullptr;
+  const iggy3d::SceneRoomMeshItem* wall = nullptr;
+  const iggy3d::SceneRoomMeshItem* opening = nullptr;
+  for (const iggy3d::SceneRoomMeshItem& mesh : projection.room.meshes) {
+    if (mesh.id == "floor_r1_c1") {
+      floor = &mesh;
+    }
+    if (mesh.id == "wall_r0_c1") {
+      wall = &mesh;
+    }
+    if (mesh.id == "door_panel") {
+      opening = &mesh;
+    }
+  }
+
+  return expect(projection.room.loaded, "room projection loaded") &&
+         expect(projection.room.assetId == "ascii_floor_wall_room", "room asset id") &&
+         expect(projection.room.version == 7U, "room version") &&
+         expect(projection.room.sourceToml == "inline_ascii_room", "room source") &&
+         expect(projection.room.sourceSubset == "floor_wall_slice", "room subset") &&
+         expect(projection.room.staticMeshCount == 3U, "source mesh count") &&
+         expect(projection.room.materialCount == 2U, "projected material count") &&
+         expect(projection.room.anchorCount == 2U, "anchor count") &&
+         expect(projection.room.meshes.size() == 2U, "floor wall mesh count") &&
+         expect(projection.room.floorVisible, "floor visible") &&
+         expect(projection.room.wallVisible, "wall visible") &&
+         expect(!projection.room.openingVisible, "opening deferred") &&
+         expect(!projection.room.propVisible, "prop deferred") &&
+         expect(projection.room.keyAnchorVisible, "key anchor visible") &&
+         expect(projection.room.dummyAnchorVisible, "dummy anchor visible") &&
+         expect(floor != nullptr && floor->role == "floor", "floor projected") &&
+         expect(floor != nullptr &&
+                    iggy3d::nearlyEqual(floor->position, iggy3d::Vec3{1.0F, 0.0F, 2.0F}),
+                "floor position") &&
+         expect(floor != nullptr &&
+                    iggy3d::nearlyEqual(floor->size, iggy3d::Vec3{1.0F, 0.1F, 1.0F}),
+                "floor size") &&
+         expect(wall != nullptr && wall->role == "wall", "wall projected") &&
+         expect(wall != nullptr &&
+                    iggy3d::nearlyEqual(wall->position, iggy3d::Vec3{1.0F, 0.5F, 0.0F}),
+                "wall position") &&
+         expect(wall != nullptr &&
+                    iggy3d::nearlyEqual(wall->size, iggy3d::Vec3{1.0F, 1.0F, 0.1F}),
+                "wall size") &&
+         expect(opening == nullptr, "opening not projected yet");
+}
+
 bool inactivePickupFilteringWorks() {
   const iggy3d::Session session = makePickedUpSession();
   const iggy3d::SceneProjectionResult activeOnly = iggy3d::buildSceneProjection(session.state());
@@ -470,6 +570,7 @@ bool saveLoadProjectionIsEquivalent() {
 int main() {
   bool ok = true;
   ok = firstRoomProjectionContainsInitialItems() && ok;
+  ok = activeRoomProjectionCarriesFloorAndWallMeshes() && ok;
   ok = inactivePickupFilteringWorks() && ok;
   ok = projectionDoesNotMutateRuntimeTruth() && ok;
   ok = debugProjectionIncludesProofFacts() && ok;
