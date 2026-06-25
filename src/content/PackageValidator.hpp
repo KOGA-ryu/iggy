@@ -28,6 +28,17 @@ enum class PackageValidationStatus : std::uint8_t {
   NonNpcAiActor,
   DuplicateAiActorBinding,
   InvalidAiActorProfileId,
+  MissingGuardActor,
+  GuardActorNotFound,
+  NonNpcGuardActor,
+  DuplicateGuardActor,
+  MissingGuardAnchor,
+  GuardAnchorNotFound,
+  NonMarkerGuardAnchor,
+  InvalidGuardLeashRadius,
+  InvalidGuardReturnRadius,
+  InvalidGuardHomeTolerance,
+  GuardReturnExceedsLeash,
   OldIggyDependency,
 };
 

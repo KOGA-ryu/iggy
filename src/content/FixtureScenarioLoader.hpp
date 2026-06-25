@@ -67,6 +67,14 @@ struct ScenarioAiActorSeed {
   std::string behaviorProfileId = "default";
 };
 
+struct ScenarioAiGuardAnchorSeed {
+  std::string actorStableName;
+  std::string anchorStableName;
+  float leashRadiusMeters = 0.0F;
+  float returnRadiusMeters = 0.0F;
+  float homeToleranceMeters = 0.0F;
+};
+
 struct FixtureScenarioSeed {
   std::string scenarioId;
   RuntimeConfig config;
@@ -77,6 +85,7 @@ struct FixtureScenarioSeed {
   std::vector<ScenarioEntitySeed> entities;
   std::vector<ScenarioObjectiveSeed> objectives;
   std::vector<ScenarioAiActorSeed> aiActors;
+  std::vector<ScenarioAiGuardAnchorSeed> aiGuardAnchors;
 };
 
 struct ScenarioLoadResult {

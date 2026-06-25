@@ -120,6 +120,26 @@ std::string scenarioWithAiActor(std::string_view actor, std::string_view profile
   return scenario;
 }
 
+std::string scenarioWithGuardAnchor(std::string_view actor = "training_dummy",
+                                    std::string_view anchor = "tactical_marker_alpha",
+                                    std::string_view leash = "6.0",
+                                    std::string_view returnRadius = "1.0",
+                                    std::string_view tolerance = "0.25") {
+  std::string scenario = validScenario();
+  scenario += "\n[[ai_guard_anchors]]\nactor = \"";
+  scenario += actor;
+  scenario += "\"\nanchor = \"";
+  scenario += anchor;
+  scenario += "\"\nleash_radius_meters = ";
+  scenario += leash;
+  scenario += "\nreturn_radius_meters = ";
+  scenario += returnRadius;
+  scenario += "\nhome_tolerance_meters = ";
+  scenario += tolerance;
+  scenario += "\n";
+  return scenario;
+}
+
 std::string replaceFirst(std::string text, std::string_view from, std::string_view to) {
   const std::size_t pos = text.find(from);
   if (pos != std::string::npos) {
@@ -261,6 +281,255 @@ bool scenarioAiActorRejectsInvalidInputs() {
   ok = ok && expect(result.status == iggy3d::PackageLoadStatus::ParseError,
                     "invalid ai actor string rejects");
   return ok;
+}
+
+
+bool scenarioSeedContainsAiGuardAnchors() {
+  const iggy3d::ScenarioLoadResult result =
+      iggy3d::parseScenarioText(scenarioWithGuardAnchor());
+  const iggy3d::ScenarioLoadResult glyphLike =
+      iggy3d::parseScenarioText(scenarioWithGuardAnchor("N", "G"));
+
+  return expect(result.status == iggy3d::ScenarioLoadStatus::Ok,
+                "guard anchor parses") &&
+         expect(result.seed.aiGuardAnchors.size() == 1U,
+                "guard anchor count") &&
+         expect(result.seed.aiGuardAnchors[0].actorStableName == "training_dummy",
+                "guard actor stable name") &&
+         expect(result.seed.aiGuardAnchors[0].anchorStableName == "tactical_marker_alpha",
+                "guard anchor stable name") &&
+         expect(result.seed.aiGuardAnchors[0].leashRadiusMeters == 6.0F,
+                "guard leash parsed") &&
+         expect(result.seed.aiGuardAnchors[0].returnRadiusMeters == 1.0F,
+                "guard return parsed") &&
+         expect(result.seed.aiGuardAnchors[0].homeToleranceMeters == 0.25F,
+                "guard tolerance parsed") &&
+         expect(glyphLike.status == iggy3d::ScenarioLoadStatus::Ok,
+                "glyph-like guard names parse") &&
+         expect(glyphLike.seed.aiGuardAnchors.size() == 1U,
+                "glyph-like guard count") &&
+         expect(glyphLike.seed.aiGuardAnchors[0].actorStableName == "N" &&
+                    glyphLike.seed.aiGuardAnchors[0].anchorStableName == "G",
+                "glyph-like guard strings preserved");
+}
+
+bool scenarioAiGuardAnchorRejectsInvalidInputs() {
+  const std::string valid = scenarioWithGuardAnchor();
+  bool ok = true;
+  auto result = iggy3d::parseScenarioText(
+      eraseFirst(valid, "actor = \"training_dummy\"\n"));
+  ok = ok && expect(result.status == iggy3d::ScenarioLoadStatus::MissingRequiredKey,
+                    "missing guard actor rejects");
+  result = iggy3d::parseScenarioText(
+      eraseFirst(valid, "anchor = \"tactical_marker_alpha\"\n"));
+  ok = ok && expect(result.status == iggy3d::ScenarioLoadStatus::MissingRequiredKey,
+                    "missing guard anchor rejects");
+  result = iggy3d::parseScenarioText(
+      eraseFirst(valid, "leash_radius_meters = 6.0\n"));
+  ok = ok && expect(result.status == iggy3d::ScenarioLoadStatus::MissingRequiredKey,
+                    "missing guard leash rejects");
+  result = iggy3d::parseScenarioText(
+      eraseFirst(valid, "return_radius_meters = 1.0\n"));
+  ok = ok && expect(result.status == iggy3d::ScenarioLoadStatus::MissingRequiredKey,
+                    "missing guard return rejects");
+  result = iggy3d::parseScenarioText(
+      eraseFirst(valid, "home_tolerance_meters = 0.25\n"));
+  ok = ok && expect(result.status == iggy3d::ScenarioLoadStatus::MissingRequiredKey,
+                    "missing guard tolerance rejects");
+
+  result = iggy3d::parseScenarioText(
+      replaceFirst(valid, "actor = \"training_dummy\"", "actor = training_dummy"));
+  ok = ok && expect(result.status == iggy3d::ScenarioLoadStatus::ParseError,
+                    "invalid guard actor string rejects");
+  result = iggy3d::parseScenarioText(
+      replaceFirst(valid, "anchor = \"tactical_marker_alpha\"", "anchor = tactical_marker_alpha"));
+  ok = ok && expect(result.status == iggy3d::ScenarioLoadStatus::ParseError,
+                    "invalid guard anchor string rejects");
+
+  result = iggy3d::parseScenarioText(
+      replaceFirst(valid, "leash_radius_meters = 6.0", "leash_radius_meters = far"));
+  ok = ok && expect(result.status == iggy3d::ScenarioLoadStatus::InvalidNumber,
+                    "invalid guard leash number rejects");
+  result = iggy3d::parseScenarioText(
+      replaceFirst(valid, "return_radius_meters = 1.0", "return_radius_meters = near"));
+  ok = ok && expect(result.status == iggy3d::ScenarioLoadStatus::InvalidNumber,
+                    "invalid guard return number rejects");
+  result = iggy3d::parseScenarioText(
+      replaceFirst(valid, "home_tolerance_meters = 0.25", "home_tolerance_meters = maybe"));
+  ok = ok && expect(result.status == iggy3d::ScenarioLoadStatus::InvalidNumber,
+                    "invalid guard tolerance number rejects");
+
+  std::string unsupported = valid;
+  unsupported += "extra = true\n";
+  result = iggy3d::parseScenarioText(unsupported);
+  return ok && expect(result.status == iggy3d::ScenarioLoadStatus::UnsupportedKey,
+                      "unsupported guard key rejects");
+}
+
+bool expectGuardValidation(iggy3d::PackageValidationRequest request,
+                           iggy3d::PackageValidationStatus status,
+                           std::string_view code,
+                           std::string_view message) {
+  const iggy3d::PackageValidationResult result = iggy3d::validatePackage(request);
+  return expect(result.status == status, message) &&
+         expect(!result.diagnostics.empty() && result.diagnostics[0].code == code,
+                "guard validation diagnostic code");
+}
+
+bool validatorAcceptsAndRejectsAiGuardAnchors() {
+  const iggy3d::PackageLoadResult load = validLoad();
+  iggy3d::PackageValidationRequest request{load.manifest, load.scenario};
+  request.scenario.aiGuardAnchors.push_back(
+      {"training_dummy", "tactical_marker_alpha", 6.0F, 1.0F, 0.25F});
+  bool ok = expect(iggy3d::validatePackage(request).status ==
+                       iggy3d::PackageValidationStatus::Ok,
+                   "valid guard anchor accepted");
+
+  request = {load.manifest, load.scenario};
+  request.scenario.aiGuardAnchors.push_back({"N", "G", 6.0F, 1.0F, 0.25F});
+  ok = ok && expectGuardValidation(request,
+                                    iggy3d::PackageValidationStatus::GuardActorNotFound,
+                                    "scenario.guard_actor_not_found",
+                                    "glyph-like guard actor rejected");
+
+  request = {load.manifest, load.scenario};
+  request.scenario.aiGuardAnchors.push_back(
+      {"", "tactical_marker_alpha", 6.0F, 1.0F, 0.25F});
+  ok = ok && expectGuardValidation(request,
+                                    iggy3d::PackageValidationStatus::MissingGuardActor,
+                                    "scenario.missing_guard_actor",
+                                    "empty guard actor rejected");
+
+  request = {load.manifest, load.scenario};
+  request.scenario.aiGuardAnchors.push_back(
+      {"missing_dummy", "tactical_marker_alpha", 6.0F, 1.0F, 0.25F});
+  ok = ok && expectGuardValidation(request,
+                                    iggy3d::PackageValidationStatus::GuardActorNotFound,
+                                    "scenario.guard_actor_not_found",
+                                    "missing guard actor rejected");
+
+  request = {load.manifest, load.scenario};
+  request.scenario.aiGuardAnchors.push_back(
+      {"player", "tactical_marker_alpha", 6.0F, 1.0F, 0.25F});
+  ok = ok && expectGuardValidation(request,
+                                    iggy3d::PackageValidationStatus::NonNpcGuardActor,
+                                    "scenario.non_npc_guard_actor",
+                                    "non npc guard actor rejected");
+
+  request = {load.manifest, load.scenario};
+  request.scenario.aiGuardAnchors.push_back(
+      {"training_dummy", "tactical_marker_alpha", 6.0F, 1.0F, 0.25F});
+  request.scenario.aiGuardAnchors.push_back(
+      {"training_dummy", "tactical_marker_alpha", 5.0F, 1.0F, 0.25F});
+  ok = ok && expectGuardValidation(request,
+                                    iggy3d::PackageValidationStatus::DuplicateGuardActor,
+                                    "scenario.duplicate_guard_actor",
+                                    "duplicate guard actor rejected");
+
+  request = {load.manifest, load.scenario};
+  request.scenario.aiGuardAnchors.push_back({"training_dummy", "", 6.0F, 1.0F, 0.25F});
+  ok = ok && expectGuardValidation(request,
+                                    iggy3d::PackageValidationStatus::MissingGuardAnchor,
+                                    "scenario.missing_guard_anchor",
+                                    "empty guard anchor rejected");
+
+  request = {load.manifest, load.scenario};
+  request.scenario.aiGuardAnchors.push_back(
+      {"training_dummy", "missing_marker", 6.0F, 1.0F, 0.25F});
+  ok = ok && expectGuardValidation(request,
+                                    iggy3d::PackageValidationStatus::GuardAnchorNotFound,
+                                    "scenario.guard_anchor_not_found",
+                                    "missing guard anchor rejected");
+
+  request = {load.manifest, load.scenario};
+  request.scenario.aiGuardAnchors.push_back({"training_dummy", "gold_key", 6.0F, 1.0F, 0.25F});
+  ok = ok && expectGuardValidation(request,
+                                    iggy3d::PackageValidationStatus::NonMarkerGuardAnchor,
+                                    "scenario.non_marker_guard_anchor",
+                                    "non marker pickup guard anchor rejected");
+
+  request = {load.manifest, load.scenario};
+  request.scenario.aiGuardAnchors.push_back(
+      {"training_dummy", "training_dummy", 6.0F, 1.0F, 0.25F});
+  ok = ok && expectGuardValidation(request,
+                                    iggy3d::PackageValidationStatus::NonMarkerGuardAnchor,
+                                    "scenario.non_marker_guard_anchor",
+                                    "non marker npc guard anchor rejected");
+
+  request = {load.manifest, load.scenario};
+  request.scenario.aiGuardAnchors.push_back(
+      {"training_dummy", "tactical_marker_alpha", 0.0F, 1.0F, 0.25F});
+  ok = ok && expectGuardValidation(request,
+                                    iggy3d::PackageValidationStatus::InvalidGuardLeashRadius,
+                                    "scenario.invalid_guard_leash_radius",
+                                    "zero guard leash rejected");
+
+  request = {load.manifest, load.scenario};
+  request.scenario.aiGuardAnchors.push_back(
+      {"training_dummy", "tactical_marker_alpha", -1.0F, 1.0F, 0.25F});
+  ok = ok && expectGuardValidation(request,
+                                    iggy3d::PackageValidationStatus::InvalidGuardLeashRadius,
+                                    "scenario.invalid_guard_leash_radius",
+                                    "negative guard leash rejected");
+
+  request = {load.manifest, load.scenario};
+  request.scenario.aiGuardAnchors.push_back(
+      {"training_dummy", "tactical_marker_alpha",
+       std::numeric_limits<float>::infinity(), 1.0F, 0.25F});
+  ok = ok && expectGuardValidation(request,
+                                    iggy3d::PackageValidationStatus::InvalidGuardLeashRadius,
+                                    "scenario.invalid_guard_leash_radius",
+                                    "nonfinite guard leash rejected");
+
+  request = {load.manifest, load.scenario};
+  request.scenario.aiGuardAnchors.push_back(
+      {"training_dummy", "tactical_marker_alpha", 6.0F, 0.0F, 0.25F});
+  ok = ok && expectGuardValidation(request,
+                                    iggy3d::PackageValidationStatus::InvalidGuardReturnRadius,
+                                    "scenario.invalid_guard_return_radius",
+                                    "zero guard return rejected");
+
+  request = {load.manifest, load.scenario};
+  request.scenario.aiGuardAnchors.push_back(
+      {"training_dummy", "tactical_marker_alpha", 6.0F, -1.0F, 0.25F});
+  ok = ok && expectGuardValidation(request,
+                                    iggy3d::PackageValidationStatus::InvalidGuardReturnRadius,
+                                    "scenario.invalid_guard_return_radius",
+                                    "negative guard return rejected");
+
+  request = {load.manifest, load.scenario};
+  request.scenario.aiGuardAnchors.push_back(
+      {"training_dummy", "tactical_marker_alpha", 6.0F,
+       std::numeric_limits<float>::infinity(), 0.25F});
+  ok = ok && expectGuardValidation(request,
+                                    iggy3d::PackageValidationStatus::InvalidGuardReturnRadius,
+                                    "scenario.invalid_guard_return_radius",
+                                    "nonfinite guard return rejected");
+
+  request = {load.manifest, load.scenario};
+  request.scenario.aiGuardAnchors.push_back(
+      {"training_dummy", "tactical_marker_alpha", 6.0F, 1.0F, -0.25F});
+  ok = ok && expectGuardValidation(request,
+                                    iggy3d::PackageValidationStatus::InvalidGuardHomeTolerance,
+                                    "scenario.invalid_guard_home_tolerance",
+                                    "negative guard tolerance rejected");
+
+  request = {load.manifest, load.scenario};
+  request.scenario.aiGuardAnchors.push_back(
+      {"training_dummy", "tactical_marker_alpha", 6.0F, 1.0F,
+       std::numeric_limits<float>::infinity()});
+  ok = ok && expectGuardValidation(request,
+                                    iggy3d::PackageValidationStatus::InvalidGuardHomeTolerance,
+                                    "scenario.invalid_guard_home_tolerance",
+                                    "nonfinite guard tolerance rejected");
+
+  request = {load.manifest, load.scenario};
+  request.scenario.aiGuardAnchors.push_back(
+      {"training_dummy", "tactical_marker_alpha", 1.0F, 2.0F, 0.25F});
+  return ok && expectGuardValidation(request,
+                                      iggy3d::PackageValidationStatus::GuardReturnExceedsLeash,
+                                      "scenario.guard_return_exceeds_leash",
+                                      "guard return exceeds leash rejected");
 }
 
 bool validatorAcceptsAndRejects() {
@@ -462,7 +731,9 @@ bool loadPackageSmoke() {
 int main() {
   const bool ok = parseValidPackageAndScenarioText() && scenarioSeedContainsDefaults() &&
                   scenarioSeedContainsEntities() && scenarioSeedContainsAiActors() &&
-                  scenarioAiActorRejectsInvalidInputs() && validatorAcceptsAndRejects() &&
-                  loaderRejectsInvalidInputs() && loadPackageSmoke();
+                  scenarioAiActorRejectsInvalidInputs() && scenarioSeedContainsAiGuardAnchors() &&
+                  scenarioAiGuardAnchorRejectsInvalidInputs() && validatorAcceptsAndRejects() &&
+                  validatorAcceptsAndRejectsAiGuardAnchors() && loaderRejectsInvalidInputs() &&
+                  loadPackageSmoke();
   return ok ? 0 : 1;
 }

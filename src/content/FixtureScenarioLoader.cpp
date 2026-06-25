@@ -21,6 +21,7 @@ enum class Table {
   Entity,
   Objective,
   AiActor,
+  AiGuardAnchor,
 };
 
 struct Line {
@@ -74,6 +75,15 @@ struct AiActorFlags {
   std::uint32_t startLine = 0;
 };
 
+struct AiGuardAnchorFlags {
+  bool actor = false;
+  bool anchor = false;
+  bool leashRadius = false;
+  bool returnRadius = false;
+  bool homeTolerance = false;
+  std::uint32_t startLine = 0;
+};
+
 struct Parser {
   ScenarioLoadResult result;
   Table table = Table::None;
@@ -89,6 +99,7 @@ struct Parser {
   std::vector<EntityFlags> entityFlags;
   std::vector<ObjectiveFlags> objectiveFlags;
   std::vector<AiActorFlags> aiActorFlags;
+  std::vector<AiGuardAnchorFlags> aiGuardAnchorFlags;
 };
 
 std::string_view trim(std::string_view value) {
@@ -408,6 +419,13 @@ ScenarioLoadResult validateRequired(Parser& parser) {
                   "missing ai actor key", flags.startLine, 1);
     }
   }
+  for (const AiGuardAnchorFlags& flags : parser.aiGuardAnchorFlags) {
+    if (!flags.actor || !flags.anchor || !flags.leashRadius || !flags.returnRadius ||
+        !flags.homeTolerance) {
+      return fail(parser, ScenarioLoadStatus::MissingRequiredKey, "scenario.missing_required_key",
+                  "missing ai guard anchor key", flags.startLine, 1);
+    }
+  }
   return parser.result;
 }
 
@@ -454,6 +472,12 @@ ScenarioLoadResult parseScenarioText(const std::string& scenarioText) {
       parser.table = Table::AiActor;
       parser.result.seed.aiActors.push_back({});
       parser.aiActorFlags.push_back(AiActorFlags{.startLine = lineNumber});
+      continue;
+    }
+    if (line == "[[ai_guard_anchors]]") {
+      parser.table = Table::AiGuardAnchor;
+      parser.result.seed.aiGuardAnchors.push_back({});
+      parser.aiGuardAnchorFlags.push_back(AiGuardAnchorFlags{.startLine = lineNumber});
       continue;
     }
     if (line.starts_with("[")) {
@@ -676,6 +700,44 @@ ScenarioLoadResult parseScenarioText(const std::string& scenarioText) {
       } else {
         return fail(parser, ScenarioLoadStatus::UnsupportedKey, "scenario.unsupported_key",
                     "unsupported ai actor key", lineNumber, column);
+      }
+    } else if (parser.table == Table::AiGuardAnchor &&
+               !parser.result.seed.aiGuardAnchors.empty()) {
+      ScenarioAiGuardAnchorSeed& guard = parser.result.seed.aiGuardAnchors.back();
+      AiGuardAnchorFlags& flags = parser.aiGuardAnchorFlags.back();
+      if (key == "actor") {
+        flags.actor = parseString(value, guard.actorStableName);
+        if (!flags.actor) {
+          return fail(parser, ScenarioLoadStatus::ParseError, "scenario.parse_error",
+                      "invalid ai guard actor stable name", lineNumber, column);
+        }
+      } else if (key == "anchor") {
+        flags.anchor = parseString(value, guard.anchorStableName);
+        if (!flags.anchor) {
+          return fail(parser, ScenarioLoadStatus::ParseError, "scenario.parse_error",
+                      "invalid ai guard anchor stable name", lineNumber, column);
+        }
+      } else if (key == "leash_radius_meters") {
+        flags.leashRadius = parseFloat(value, guard.leashRadiusMeters);
+        if (!flags.leashRadius) {
+          return fail(parser, ScenarioLoadStatus::InvalidNumber, "scenario.invalid_number",
+                      "invalid ai guard leash radius", lineNumber, column);
+        }
+      } else if (key == "return_radius_meters") {
+        flags.returnRadius = parseFloat(value, guard.returnRadiusMeters);
+        if (!flags.returnRadius) {
+          return fail(parser, ScenarioLoadStatus::InvalidNumber, "scenario.invalid_number",
+                      "invalid ai guard return radius", lineNumber, column);
+        }
+      } else if (key == "home_tolerance_meters") {
+        flags.homeTolerance = parseFloat(value, guard.homeToleranceMeters);
+        if (!flags.homeTolerance) {
+          return fail(parser, ScenarioLoadStatus::InvalidNumber, "scenario.invalid_number",
+                      "invalid ai guard home tolerance", lineNumber, column);
+        }
+      } else {
+        return fail(parser, ScenarioLoadStatus::UnsupportedKey, "scenario.unsupported_key",
+                    "unsupported ai guard anchor key", lineNumber, column);
       }
     } else {
       return fail(parser, ScenarioLoadStatus::ParseError, "scenario.parse_error",

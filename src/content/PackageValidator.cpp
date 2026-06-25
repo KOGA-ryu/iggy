@@ -2,6 +2,7 @@
 
 #include "runtime/ai/NpcBehaviorProfile.hpp"
 #include <algorithm>
+#include <cmath>
 
 namespace iggy3d {
 
@@ -91,6 +92,67 @@ PackageValidationResult validateAiActors(const FixtureScenarioSeed& scenario) {
   }
   return {};
 }
+PackageValidationResult validateAiGuardAnchors(const FixtureScenarioSeed& scenario) {
+  std::vector<std::string_view> actorNames;
+  actorNames.reserve(scenario.aiGuardAnchors.size());
+  for (std::size_t i = 0; i < scenario.aiGuardAnchors.size(); ++i) {
+    const ScenarioAiGuardAnchorSeed& guard = scenario.aiGuardAnchors[i];
+    const std::uint32_t line = static_cast<std::uint32_t>(i + 1U);
+    if (guard.actorStableName.empty()) {
+      return fail(PackageValidationStatus::MissingGuardActor,
+                  "scenario.missing_guard_actor", "missing guard actor", line, 1);
+    }
+    const ScenarioEntitySeed* actor = findEntity(scenario, guard.actorStableName);
+    if (actor == nullptr) {
+      return fail(PackageValidationStatus::GuardActorNotFound,
+                  "scenario.guard_actor_not_found",
+                  "guard actor not found " + guard.actorStableName, line, 1);
+    }
+    if (actor->kind != EntityKind::Npc) {
+      return fail(PackageValidationStatus::NonNpcGuardActor,
+                  "scenario.non_npc_guard_actor", "guard actor must reference an npc", line, 1);
+    }
+    if (std::find(actorNames.begin(), actorNames.end(), guard.actorStableName) !=
+        actorNames.end()) {
+      return fail(PackageValidationStatus::DuplicateGuardActor,
+                  "scenario.duplicate_guard_actor",
+                  "duplicate guard actor " + guard.actorStableName, line, 1);
+    }
+    if (guard.anchorStableName.empty()) {
+      return fail(PackageValidationStatus::MissingGuardAnchor,
+                  "scenario.missing_guard_anchor", "missing guard anchor", line, 1);
+    }
+    const ScenarioEntitySeed* anchor = findEntity(scenario, guard.anchorStableName);
+    if (anchor == nullptr) {
+      return fail(PackageValidationStatus::GuardAnchorNotFound,
+                  "scenario.guard_anchor_not_found",
+                  "guard anchor not found " + guard.anchorStableName, line, 1);
+    }
+    if (anchor->kind != EntityKind::Marker) {
+      return fail(PackageValidationStatus::NonMarkerGuardAnchor,
+                  "scenario.non_marker_guard_anchor",
+                  "guard anchor must reference a marker", line, 1);
+    }
+    if (!std::isfinite(guard.leashRadiusMeters) || guard.leashRadiusMeters <= 0.0F) {
+      return fail(PackageValidationStatus::InvalidGuardLeashRadius,
+                  "scenario.invalid_guard_leash_radius", "invalid guard leash radius", line, 1);
+    }
+    if (!std::isfinite(guard.returnRadiusMeters) || guard.returnRadiusMeters <= 0.0F) {
+      return fail(PackageValidationStatus::InvalidGuardReturnRadius,
+                  "scenario.invalid_guard_return_radius", "invalid guard return radius", line, 1);
+    }
+    if (!std::isfinite(guard.homeToleranceMeters) || guard.homeToleranceMeters < 0.0F) {
+      return fail(PackageValidationStatus::InvalidGuardHomeTolerance,
+                  "scenario.invalid_guard_home_tolerance", "invalid guard home tolerance", line, 1);
+    }
+    if (guard.returnRadiusMeters > guard.leashRadiusMeters) {
+      return fail(PackageValidationStatus::GuardReturnExceedsLeash,
+                  "scenario.guard_return_exceeds_leash", "guard return exceeds leash", line, 1);
+    }
+    actorNames.push_back(guard.actorStableName);
+  }
+  return {};
+}
 
 }  // namespace
 
@@ -162,6 +224,10 @@ PackageValidationResult validatePackage(const PackageValidationRequest& request)
   PackageValidationResult aiActorValidation = validateAiActors(request.scenario);
   if (aiActorValidation.status != PackageValidationStatus::Ok) {
     return aiActorValidation;
+  }
+  PackageValidationResult guardAnchorValidation = validateAiGuardAnchors(request.scenario);
+  if (guardAnchorValidation.status != PackageValidationStatus::Ok) {
+    return guardAnchorValidation;
   }
   const ScenarioEntitySeed* goldKey = findEntity(request.scenario, "gold_key");
   if (goldKey == nullptr || goldKey->kind != EntityKind::Pickup ||
