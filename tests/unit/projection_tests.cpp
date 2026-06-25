@@ -1,5 +1,6 @@
 #include "content/PackageLoader.hpp"
 #include "projection/debug/DebugProjection.hpp"
+#include "runtime/ai/NpcBehaviorDebugSnapshot.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "runtime/objective/ObjectiveSystem.hpp"
 #include "runtime/save/SaveLoad.hpp"
@@ -7,7 +8,9 @@
 #include "runtime/session/SessionRunner.hpp"
 
 #include <iostream>
+#include <string>
 #include <string_view>
+#include <vector>
 
 namespace {
 
@@ -144,6 +147,118 @@ bool hasOutOfRangeRejection(const iggy3d::DebugProjectionResult& projection) {
   return false;
 }
 
+const iggy3d::DebugProjectionItem* findNpcProjectionItem(
+    const iggy3d::DebugProjectionResult& projection,
+    iggy3d::EntityId actor) {
+  for (const iggy3d::DebugProjectionItem& item : projection.items) {
+    if (item.kind == iggy3d::DebugProjectionKind::NpcBehavior &&
+        item.actor == actor) {
+      return &item;
+    }
+  }
+  return nullptr;
+}
+
+iggy3d::RuntimeDebugSnapshot okRuntimeDebugSnapshot() {
+  iggy3d::RuntimeDebugSnapshot snapshot;
+  snapshot.status = iggy3d::RuntimeDebugSnapshotStatus::Ok;
+  snapshot.sourceTick = 3;
+  snapshot.actor = {1};
+  snapshot.playerPositionAvailable = true;
+  snapshot.position = {1.0F, 0.0F, 2.0F};
+  snapshot.grounded = true;
+  snapshot.groundContact = true;
+  snapshot.groundWalkable = true;
+  snapshot.movementPolicyBand = "walkable";
+  snapshot.slopeTravelDirection = "flat";
+  snapshot.groundNormal = iggy3d::vec3UnitY();
+  return snapshot;
+}
+
+iggy3d::NpcBehaviorDebugActorRow npcRow(iggy3d::EntityId actor,
+                                        std::string_view stableName,
+                                        std::string_view profileId,
+                                        bool profileResolved,
+                                        std::string_view profileStatus,
+                                        iggy3d::NpcEngagementPolicy policy,
+                                        iggy3d::AiBehaviorKind behavior,
+                                        iggy3d::AiIntentKind intent) {
+  iggy3d::NpcBehaviorDebugActorRow row;
+  row.actor = actor;
+  row.stableName = std::string(stableName);
+  row.active = true;
+  row.isNpc = true;
+  row.hasAiState = true;
+  row.hasCombatant = true;
+  row.behaviorProfileId = std::string(profileId);
+  row.profileResolved = profileResolved;
+  row.profileStatus = std::string(profileStatus);
+  row.engagementPolicy = policy;
+  row.behavior = behavior;
+  row.lastIntent = intent;
+  return row;
+}
+
+iggy3d::NpcBehaviorDebugSnapshot npcDebugSnapshot() {
+  iggy3d::NpcBehaviorDebugSnapshot snapshot;
+  snapshot.status = iggy3d::NpcBehaviorDebugSnapshotStatus::Ok;
+  snapshot.reasonCode = "npc_behavior_debug_ok";
+  snapshot.sourceTick = 11;
+  snapshot.npcWorldCount = 3;
+  snapshot.aiActorCount = 3;
+  snapshot.resolvedProfileCount = 2;
+  snapshot.failedProfileCount = 1;
+  snapshot.hostileCount = 1;
+  snapshot.passiveCount = 1;
+  snapshot.attackingCount = 1;
+  snapshot.waitingCount = 1;
+
+  iggy3d::NpcBehaviorDebugActorRow hostile =
+      npcRow({2},
+             "training_dummy",
+             "default",
+             true,
+             "profile_resolved",
+             iggy3d::NpcEngagementPolicy::Hostile,
+             iggy3d::AiBehaviorKind::Attacking,
+             iggy3d::AiIntentKind::AttackTarget);
+  hostile.target = {1};
+  hostile.targetStableName = "player";
+  hostile.targetResolved = true;
+  hostile.targetActive = true;
+  hostile.targetDistanceMeters = 1.25F;
+  hostile.cooldownTicksRemaining = 2;
+  snapshot.actors.push_back(hostile);
+
+  iggy3d::NpcBehaviorDebugActorRow passive =
+      npcRow({3},
+             "observer",
+             "passive",
+             true,
+             "profile_resolved",
+             iggy3d::NpcEngagementPolicy::Passive,
+             iggy3d::AiBehaviorKind::Alert,
+             iggy3d::AiIntentKind::Wait);
+  passive.target = {1};
+  passive.targetStableName = "player";
+  passive.targetResolved = true;
+  passive.targetActive = true;
+  passive.targetDistanceMeters = 2.5F;
+  snapshot.actors.push_back(passive);
+
+  iggy3d::NpcBehaviorDebugActorRow ghost =
+      npcRow({4},
+             "ghost",
+             "ghost_profile",
+             false,
+             "profile_missing",
+             iggy3d::NpcEngagementPolicy::Hostile,
+             iggy3d::AiBehaviorKind::Idle,
+             iggy3d::AiIntentKind::None);
+  snapshot.actors.push_back(ghost);
+  return snapshot;
+}
+
 bool firstRoomProjectionContainsInitialItems() {
   const iggy3d::Session session = makeSession();
   const iggy3d::SceneProjectionResult projection = iggy3d::buildSceneProjection(session.state());
@@ -241,6 +356,77 @@ bool debugProjectionIncludesProofFacts() {
          expect(debug.sourceStateHash == session.state().currentStateHash, "debug source hash");
 }
 
+bool npcDebugProjectionAppendsItemsAndHudLines() {
+  iggy3d::DebugProjectionResult debug;
+  iggy3d::appendNpcBehaviorDebugSnapshot(debug, npcDebugSnapshot());
+
+  const iggy3d::DebugProjectionItem* hostile = findNpcProjectionItem(debug, {2});
+  const iggy3d::DebugProjectionItem* passive = findNpcProjectionItem(debug, {3});
+  const iggy3d::DebugProjectionItem* ghost = findNpcProjectionItem(debug, {4});
+
+  return expect(debug.items.size() == 3U, "npc projection item count") &&
+         expect(hostile != nullptr, "hostile item projected") &&
+         expect(hostile != nullptr && hostile->sourceTick == 11, "hostile source tick") &&
+         expect(hostile != nullptr && hostile->actor == iggy3d::EntityId{2},
+                "hostile actor") &&
+         expect(hostile != nullptr && hostile->target == iggy3d::EntityId{1},
+                "hostile target") &&
+         expect(hostile != nullptr && hostile->hasScalar, "hostile scalar") &&
+         expect(hostile != nullptr && hostile->scalarValue == 1.25F,
+                "hostile distance scalar") &&
+         expect(hostile != nullptr && hostile->labelCode == "npc.behavior",
+                "hostile label") &&
+         expect(hostile != nullptr &&
+                    hostile->valueCode == "default:attacking:attack_target:profile_resolved",
+                "hostile value") &&
+         expect(passive != nullptr &&
+                    passive->valueCode == "passive:alert:wait:profile_resolved",
+                "passive value") &&
+         expect(ghost != nullptr && !ghost->hasScalar, "ghost no scalar") &&
+         expect(ghost != nullptr &&
+                    ghost->valueCode == "ghost_profile:idle:none:profile_missing",
+                "ghost value") &&
+         expect(debug.npcBehaviorDebugHudLines.size() == 4U, "npc hud line count") &&
+         expect(debug.npcBehaviorDebugHudLines[0] ==
+                    "NPCS world=3 ai=3 resolved=2 failed=1 hostile=1 passive=1",
+                "npc hud summary") &&
+         expect(debug.npcBehaviorDebugHudLines[1] ==
+                    "NPC 2 training_dummy default attacking/attack_target tgt=player cd=2",
+                "hostile hud row") &&
+         expect(debug.npcBehaviorDebugHudLines[2] ==
+                    "NPC 3 observer passive alert/wait tgt=player cd=0",
+                "passive hud row") &&
+         expect(debug.npcBehaviorDebugHudLines[3] ==
+                    "NPC 4 ghost ghost_profile idle/none tgt=none cd=0 "
+                    "unresolved=profile_missing",
+                "ghost hud row");
+}
+
+bool npcDebugProjectionIgnoresDisabledSnapshots() {
+  iggy3d::DebugProjectionResult debug;
+  iggy3d::NpcBehaviorDebugSnapshot snapshot;
+  snapshot.status = iggy3d::NpcBehaviorDebugSnapshotStatus::Disabled;
+  snapshot.reasonCode = "npc_behavior_debug_disabled";
+  iggy3d::appendNpcBehaviorDebugSnapshot(debug, snapshot);
+
+  return expect(debug.items.empty(), "disabled npc projection items empty") &&
+         expect(debug.npcBehaviorDebugHudLines.empty(),
+                "disabled npc projection hud empty");
+}
+
+bool npcDebugProjectionPreservesRuntimeHudLines() {
+  iggy3d::DebugProjectionResult debug;
+  iggy3d::appendRuntimeDebugSnapshot(debug, okRuntimeDebugSnapshot());
+  const std::vector<std::string> runtimeLinesBefore = debug.runtimeDebugHudLines;
+
+  iggy3d::appendNpcBehaviorDebugSnapshot(debug, npcDebugSnapshot());
+
+  return expect(!runtimeLinesBefore.empty(), "runtime hud lines present") &&
+         expect(debug.runtimeDebugHudLines == runtimeLinesBefore,
+                "runtime hud lines unchanged") &&
+         expect(!debug.npcBehaviorDebugHudLines.empty(), "npc hud lines present");
+}
+
 bool saveLoadProjectionIsEquivalent() {
   const iggy3d::SessionCreateRequest create = createRequestFromPackage();
   const iggy3d::Session session = makeCompletedSession();
@@ -287,6 +473,9 @@ int main() {
   ok = inactivePickupFilteringWorks() && ok;
   ok = projectionDoesNotMutateRuntimeTruth() && ok;
   ok = debugProjectionIncludesProofFacts() && ok;
+  ok = npcDebugProjectionAppendsItemsAndHudLines() && ok;
+  ok = npcDebugProjectionIgnoresDisabledSnapshots() && ok;
+  ok = npcDebugProjectionPreservesRuntimeHudLines() && ok;
   ok = saveLoadProjectionIsEquivalent() && ok;
   return ok ? 0 : 1;
 }

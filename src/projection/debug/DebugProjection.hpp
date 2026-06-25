@@ -14,6 +14,8 @@
 
 namespace iggy3d {
 
+struct NpcBehaviorDebugSnapshot;
+
 enum class DebugProjectionKind : std::uint8_t {
   TargetCandidate,
   ReachRadius,
@@ -24,6 +26,7 @@ enum class DebugProjectionKind : std::uint8_t {
   StateHash,
   ReplayDivergence,
   RuntimeTelemetry,
+  NpcBehavior,
 };
 
 struct DebugProjectionConfig {
@@ -57,6 +60,7 @@ struct DebugProjectionItem {
 struct DebugProjectionResult {
   std::vector<DebugProjectionItem> items;
   std::vector<std::string> runtimeDebugHudLines;
+  std::vector<std::string> npcBehaviorDebugHudLines;
   StateHashValue sourceStateHash = 0;
   CommandTick sourceTick = kInvalidCommandTick;
 };
@@ -65,5 +69,7 @@ DebugProjectionResult buildDebugProjection(const SessionState& state,
                                            const DebugProjectionConfig& config = {});
 void appendRuntimeDebugSnapshot(DebugProjectionResult& result,
                                 const RuntimeDebugSnapshot& snapshot);
+void appendNpcBehaviorDebugSnapshot(DebugProjectionResult& result,
+                                    const NpcBehaviorDebugSnapshot& snapshot);
 
 }  // namespace iggy3d

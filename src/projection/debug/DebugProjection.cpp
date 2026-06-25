@@ -1,8 +1,10 @@
 #include "projection/debug/DebugProjection.hpp"
 
 #include <iomanip>
+#include <string>
 #include <sstream>
 
+#include "runtime/ai/NpcBehaviorDebugSnapshot.hpp"
 #include "runtime/world/EntityState.hpp"
 
 namespace iggy3d {
@@ -118,6 +120,50 @@ std::string phaseName(const RuntimeDebugSnapshot& snapshot) {
   return snapshot.grounded ? "grounded" : "airborne";
 }
 
+std::string entityIdCode(EntityId id) {
+  if (!isValid(id)) {
+    return "none";
+  }
+  return std::to_string(toUint64(id));
+}
+
+std::string npcBehaviorValueCode(const NpcBehaviorDebugActorRow& row) {
+  return row.behaviorProfileId + ":" + std::string(aiBehaviorKindName(row.behavior)) +
+         ":" + std::string(aiIntentKindName(row.lastIntent)) + ":" +
+         row.profileStatus;
+}
+
+void appendNpcBehaviorHudLines(DebugProjectionResult& result,
+                               const NpcBehaviorDebugSnapshot& snapshot) {
+  result.npcBehaviorDebugHudLines.push_back(
+      "NPCS world=" + std::to_string(snapshot.npcWorldCount) + " ai=" +
+      std::to_string(snapshot.aiActorCount) + " resolved=" +
+      std::to_string(snapshot.resolvedProfileCount) + " failed=" +
+      std::to_string(snapshot.failedProfileCount) + " hostile=" +
+      std::to_string(snapshot.hostileCount) + " passive=" +
+      std::to_string(snapshot.passiveCount));
+
+  constexpr std::size_t kMaxNpcHudActorRows = 8;
+  std::size_t emittedRows = 0;
+  for (const NpcBehaviorDebugActorRow& row : snapshot.actors) {
+    if (emittedRows >= kMaxNpcHudActorRows) {
+      break;
+    }
+
+    std::string line = "NPC " + entityIdCode(row.actor) + " " + row.stableName +
+                       " " + row.behaviorProfileId + " " +
+                       std::string(aiBehaviorKindName(row.behavior)) + "/" +
+                       std::string(aiIntentKindName(row.lastIntent)) + " tgt=" +
+                       row.targetStableName + " cd=" +
+                       std::to_string(row.cooldownTicksRemaining);
+    if (!row.profileResolved) {
+      line += " unresolved=" + row.profileStatus;
+    }
+    result.npcBehaviorDebugHudLines.push_back(std::move(line));
+    ++emittedRows;
+  }
+}
+
 void appendRuntimeDebugHudLines(DebugProjectionResult& result,
                                 const RuntimeDebugSnapshot& snapshot) {
   result.runtimeDebugHudLines.clear();
@@ -219,6 +265,30 @@ void appendRuntimeDebugSnapshot(DebugProjectionResult& result,
   item.valueCode = snapshot.grounded ? "phase.grounded" : "phase.airborne";
   result.items.push_back(std::move(item));
   appendRuntimeDebugHudLines(result, snapshot);
+}
+
+void appendNpcBehaviorDebugSnapshot(DebugProjectionResult& result,
+                                    const NpcBehaviorDebugSnapshot& snapshot) {
+  if (snapshot.status != NpcBehaviorDebugSnapshotStatus::Ok) {
+    return;
+  }
+
+  for (const NpcBehaviorDebugActorRow& row : snapshot.actors) {
+    DebugProjectionItem item;
+    item.kind = DebugProjectionKind::NpcBehavior;
+    item.sourceTick = snapshot.sourceTick;
+    item.actor = row.actor;
+    item.target = row.target;
+    item.hasScalar = row.targetResolved;
+    if (row.targetResolved) {
+      item.scalarValue = row.targetDistanceMeters;
+    }
+    item.labelCode = "npc.behavior";
+    item.valueCode = npcBehaviorValueCode(row);
+    result.items.push_back(std::move(item));
+  }
+
+  appendNpcBehaviorHudLines(result, snapshot);
 }
 
 }  // namespace iggy3d
