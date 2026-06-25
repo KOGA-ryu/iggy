@@ -46,6 +46,38 @@ std::size_t countRoomMeshesWithRole(const iggy3d::RoomAsset& room,
   return count;
 }
 
+std::size_t countProjectedMeshesWithRole(const iggy3d::SceneRoomProjection& room,
+                                         std::string_view role) {
+  std::size_t count = 0;
+  for (const iggy3d::SceneRoomMeshItem& mesh : room.meshes) {
+    if (mesh.role == role) {
+      ++count;
+    }
+  }
+  return count;
+}
+
+iggy3d::EditableRoomFloor extraFloorPrimitive() {
+  iggy3d::EditableRoomFloor floor;
+  floor.id = "edit_floor_1";
+  floor.centerMeters = {2.0F, -0.05F, 0.0F};
+  floor.sizeMeters = {1.0F, 0.10F, 1.0F};
+  floor.semantics = iggy3d::defaultFloorSemantics("debug_floor");
+  return floor;
+}
+
+iggy3d::EditableRoomWall extraWallPrimitive() {
+  iggy3d::EditableRoomWall wall;
+  wall.id = "edit_wall_1";
+  wall.startMeters = {2.0F, 0.0F, -0.5F};
+  wall.endMeters = {3.0F, 0.0F, -0.5F};
+  wall.bottomY = 0.0F;
+  wall.heightMeters = 2.50F;
+  wall.thicknessMeters = 1.0F;
+  wall.semantics = iggy3d::defaultWallSemantics("debug_wall");
+  return wall;
+}
+
 bool asciiGridBuildsEditableFloorsAndWalls() {
   const iggy3d::AsciiRoomGrid grid = buildGrid(
       "###\n"
@@ -149,6 +181,84 @@ bool bakedEditableRoomProjectsFloorAndWallMeshes() {
                 "projection source mesh count");
 }
 
+bool editCommandsChangeBakedProjectionCounts() {
+  const iggy3d::AsciiRoomGrid grid = buildGrid(
+      "###\n"
+      "#P#\n"
+      "###\n");
+  const iggy3d::AsciiRoomToEditableRoomResult result =
+      iggy3d::buildEditableRoomFromAsciiRoom(grid, compileConfig());
+  iggy3d::EditableRoomSession session(result.document);
+
+  const iggy3d::RoomBakeResult initialBake =
+      iggy3d::bakeEditableRoomDocument(session.document());
+  iggy3d::SessionState state;
+  const iggy3d::SceneProjectionResult initialProjection =
+      iggy3d::buildSceneProjection(state, &initialBake.room);
+
+  const iggy3d::RoomEditResult addFloor =
+      session.submit(iggy3d::addFloorCommand(extraFloorPrimitive()));
+  const iggy3d::RoomEditResult addWall =
+      session.submit(iggy3d::addWallCommand(extraWallPrimitive()));
+  const iggy3d::RoomBakeResult addedBake =
+      iggy3d::bakeEditableRoomDocument(session.document());
+  const iggy3d::SceneProjectionResult addedProjection =
+      iggy3d::buildSceneProjection(state, &addedBake.room);
+
+  const iggy3d::RoomEditResult deleteFloor =
+      session.submit(iggy3d::deleteFloorCommand("edit_floor_1"));
+  const iggy3d::RoomEditResult deleteWall =
+      session.submit(iggy3d::deleteWallCommand("edit_wall_1"));
+  const iggy3d::RoomBakeResult deletedBake =
+      iggy3d::bakeEditableRoomDocument(session.document());
+  const iggy3d::SceneProjectionResult deletedProjection =
+      iggy3d::buildSceneProjection(state, &deletedBake.room);
+
+  return expect(result.ok, "editable result ok before edits") &&
+         expect(initialBake.ok, "initial bake ok") &&
+         expect(initialProjection.room.loaded, "initial projection loaded") &&
+         expect(addFloor.status == iggy3d::RoomEditStatus::Applied,
+                "add floor command applied") &&
+         expect(addWall.status == iggy3d::RoomEditStatus::Applied,
+                "add wall command applied") &&
+         expect(addedBake.ok, "added bake ok") &&
+         expect(addedProjection.room.loaded, "added projection loaded") &&
+         expect(countRoomMeshesWithRole(addedBake.room, "floor") ==
+                    countRoomMeshesWithRole(initialBake.room, "floor") + 1U,
+                "baked floor count increased") &&
+         expect(countRoomMeshesWithRole(addedBake.room, "wall") ==
+                    countRoomMeshesWithRole(initialBake.room, "wall") + 1U,
+                "baked wall count increased") &&
+         expect(countProjectedMeshesWithRole(addedProjection.room, "floor") ==
+                    countProjectedMeshesWithRole(initialProjection.room, "floor") + 1U,
+                "projected floor count increased") &&
+         expect(countProjectedMeshesWithRole(addedProjection.room, "wall") ==
+                    countProjectedMeshesWithRole(initialProjection.room, "wall") + 1U,
+                "projected wall count increased") &&
+         expect(deleteFloor.status == iggy3d::RoomEditStatus::Applied,
+                "delete floor command applied") &&
+         expect(deleteFloor.affectedRuntimeIds.size() == 2U,
+                "delete floor affected mesh and walkable") &&
+         expect(deleteWall.status == iggy3d::RoomEditStatus::Applied,
+                "delete wall command applied") &&
+         expect(deleteWall.affectedRuntimeIds.size() == 3U,
+                "delete wall affected mesh and blockers") &&
+         expect(deletedBake.ok, "deleted bake ok") &&
+         expect(deletedProjection.room.loaded, "deleted projection loaded") &&
+         expect(countRoomMeshesWithRole(deletedBake.room, "floor") ==
+                    countRoomMeshesWithRole(initialBake.room, "floor"),
+                "baked floor count restored") &&
+         expect(countRoomMeshesWithRole(deletedBake.room, "wall") ==
+                    countRoomMeshesWithRole(initialBake.room, "wall"),
+                "baked wall count restored") &&
+         expect(countProjectedMeshesWithRole(deletedProjection.room, "floor") ==
+                    countProjectedMeshesWithRole(initialProjection.room, "floor"),
+                "projected floor count restored") &&
+         expect(countProjectedMeshesWithRole(deletedProjection.room, "wall") ==
+                    countProjectedMeshesWithRole(initialProjection.room, "wall"),
+                "projected wall count restored");
+}
+
 bool invalidGridForwardsAuthoredRoomFailure() {
   const iggy3d::AsciiRoomGrid emptyGrid;
   const iggy3d::AsciiRoomToEditableRoomResult result =
@@ -168,6 +278,7 @@ int main() {
   ok = asciiGridBuildsEditableFloorsAndWalls() && ok;
   ok = editableDocumentBakesBackToRoomAsset() && ok;
   ok = bakedEditableRoomProjectsFloorAndWallMeshes() && ok;
+  ok = editCommandsChangeBakedProjectionCounts() && ok;
   ok = invalidGridForwardsAuthoredRoomFailure() && ok;
   return ok ? 0 : 1;
 }
