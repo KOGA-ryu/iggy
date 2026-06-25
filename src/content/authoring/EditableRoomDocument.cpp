@@ -43,9 +43,11 @@ bool hasDuplicateStrings(const std::vector<std::string>& values) {
 }
 
 bool validSemanticTag(std::string_view tag) {
-  return tag == "walkable" || tag == "blocker" || tag == "projectile_blocker" ||
-         tag == "opening" || tag == "clamber" || tag == "vault" ||
-         tag == "wire_walk" || tag == "no_player" || tag == "debug_only";
+  return tag == "walkable" || tag == "blocker" ||
+         tag == "projectile_blocker" || tag == "opening" ||
+         tag == "clamber" || tag == "clamber_candidate" ||
+         tag == "vault" || tag == "wire_walk" || tag == "no_player" ||
+         tag == "debug_only";
 }
 
 bool validateSemantics(const EditableRoomSemantics& semantics) {
