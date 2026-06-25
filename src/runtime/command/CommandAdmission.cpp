@@ -33,6 +33,14 @@ bool hasNonZeroFiniteDirection(Vec3 direction) {
   return isFinite(direction) && lengthSquared(direction) > 0.000001F;
 }
 
+bool isAiCommand(const CommandRecord& command) {
+  return command.source == CommandSource::Ai;
+}
+
+bool commandSkipsPlayerSlotBinding(const CommandRecord& command) {
+  return requiresActor(command.kind) && isAiCommand(command);
+}
+
 CommandRejectionReason validateContext(
     const CommandAdmissionContext& context,
     CommandKind kind) {
@@ -87,6 +95,9 @@ CommandRejectionReason validateCommandShape(const CommandRecord& command) {
 CommandRejectionReason validatePlayerSlot(
     const PlayerRoster& players,
     const CommandRecord& command) {
+  if (commandSkipsPlayerSlotBinding(command)) {
+    return CommandRejectionReason::None;
+  }
   if (!isValidPlayerSlotId(command.playerSlot)) {
     return CommandRejectionReason::InvalidPlayerSlot;
   }
@@ -111,7 +122,8 @@ CommandRejectionReason validateActorBinding(
   if (actor == nullptr || !actor->active) {
     return CommandRejectionReason::InvalidActor;
   }
-  if (!players.slotControlsActor(command.playerSlot, command.actor)) {
+  if (!commandSkipsPlayerSlotBinding(command) &&
+      !players.slotControlsActor(command.playerSlot, command.actor)) {
     return CommandRejectionReason::ActorNotControlledBySlot;
   }
   return CommandRejectionReason::None;

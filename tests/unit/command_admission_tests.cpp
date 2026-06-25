@@ -41,13 +41,15 @@ struct AdmissionFixture {
   iggy3d::ClockState clock;
   iggy3d::CommandLog commandLog;
   iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  iggy3d::CombatState combat;
   iggy3d::InventoryState inventory;
 };
 
 iggy3d::EntityState makePlayer() {
   iggy3d::EntityState entity =
       makeEntity({1}, "player", iggy3d::EntityKind::Player, {0.0F, 0.0F, 0.0F});
-  entity.targeting.targetable = false;
+  entity.targeting.targetable = true;
+  entity.targeting.actions = {iggy3d::TargetAction::Attack, iggy3d::TargetAction::Inspect};
   return entity;
 }
 
@@ -87,18 +89,29 @@ iggy3d::EntityState makeLockedSecretDoor() {
   return entity;
 }
 
+iggy3d::EntityState makeTrainingNpc() {
+  iggy3d::EntityState entity =
+      makeEntity({5}, "training_npc", iggy3d::EntityKind::Npc, {1.0F, 0.0F, 0.0F});
+  entity.targeting.targetable = true;
+  entity.targeting.actions = {iggy3d::TargetAction::Attack, iggy3d::TargetAction::Inspect};
+  return entity;
+}
+
 AdmissionFixture makeFirstRoomAdmissionFixture() {
   AdmissionFixture fixture;
   (void)fixture.world.seedEntity(makePlayer());
   (void)fixture.world.seedEntity(makeGoldKey());
   (void)fixture.world.seedEntity(makeMarker());
   (void)fixture.world.seedEntity(makeLockedSecretDoor());
+  (void)fixture.world.seedEntity(makeTrainingNpc());
   iggy3d::PlayerSlot slot;
   slot.id = 0;
   slot.kind = iggy3d::PlayerSlotKind::Local;
   slot.actor = {1};
   slot.stableName = "player0";
   (void)fixture.players.addSlot(slot);
+  fixture.combat.combatants.push_back({{1}, 1, 10, 10, false});
+  fixture.combat.combatants.push_back({{5}, 2, 3, 3, false});
   fixture.inventory.players.push_back({0, {}});
   return fixture;
 }
@@ -127,6 +140,37 @@ iggy3d::CommandRecord moveCommand(iggy3d::Vec3 point, iggy3d::CommandId id = 1) 
   return command;
 }
 
+iggy3d::CommandRecord attackCommand(iggy3d::CommandId id = 1) {
+  iggy3d::CommandRecord command = makeCommand(iggy3d::CommandKind::Attack, id);
+  command.payload.target.hasEntity = true;
+  command.payload.target.entity = {5};
+  command.payload.attackDamage = 3;
+  return command;
+}
+
+iggy3d::CommandRecord aiAttackCommand(iggy3d::CommandId id = 1) {
+  iggy3d::CommandRecord command;
+  command.commandId = id;
+  command.actor = {5};
+  command.kind = iggy3d::CommandKind::Attack;
+  command.source = iggy3d::CommandSource::Ai;
+  command.payload.target.hasEntity = true;
+  command.payload.target.entity = {1};
+  command.payload.attackDamage = 1;
+  return command;
+}
+
+iggy3d::CommandRecord aiMoveCommand(iggy3d::Vec3 point, iggy3d::CommandId id = 1) {
+  iggy3d::CommandRecord command;
+  command.commandId = id;
+  command.actor = {5};
+  command.kind = iggy3d::CommandKind::Move;
+  command.source = iggy3d::CommandSource::Ai;
+  command.payload.target.hasPoint = true;
+  command.payload.target.point = point;
+  return command;
+}
+
 iggy3d::CommandRecord retryCommand(iggy3d::CommandId sourceId, iggy3d::CommandId id = 2) {
   iggy3d::CommandRecord command = makeCommand(iggy3d::CommandKind::Retry, id);
   command.payload.retrySourceCommandId = sourceId;
@@ -136,7 +180,7 @@ iggy3d::CommandRecord retryCommand(iggy3d::CommandId sourceId, iggy3d::CommandId
 iggy3d::CommandAdmissionResult admit(AdmissionFixture& fixture, iggy3d::CommandRecord command) {
   return iggy3d::admitCommand(
       {&fixture.world, &fixture.players, &fixture.clock, &fixture.commandLog, &fixture.config,
-       nullptr, &fixture.inventory},
+       &fixture.combat, &fixture.inventory},
       {command});
 }
 
@@ -276,6 +320,79 @@ bool targetReachAndPointRules() {
                       "interact after move");
 }
 
+bool aiCommandsDoNotRequirePlayerSlotBinding() {
+  AdmissionFixture fixture = makeFirstRoomAdmissionFixture();
+  const iggy3d::CommandAdmissionResult attack = admit(fixture, aiAttackCommand(40));
+  const iggy3d::CommandAdmissionResult move =
+      admit(fixture, aiMoveCommand({1.5F, 0.0F, 0.0F}, 41));
+  return expect(attack.command.admission == iggy3d::CommandAdmissionStatus::Accepted,
+                "ai attack accepted") &&
+         expect(attack.command.playerSlot == iggy3d::kInvalidPlayerSlotId,
+                "ai attack keeps invalid slot") &&
+         expect(attack.command.source == iggy3d::CommandSource::Ai,
+                "ai attack source") &&
+         expect(move.command.admission == iggy3d::CommandAdmissionStatus::Accepted,
+                "ai move accepted") &&
+         expect(move.command.playerSlot == iggy3d::kInvalidPlayerSlotId,
+                "ai move keeps invalid slot") &&
+         expect(move.command.source == iggy3d::CommandSource::Ai, "ai move source");
+}
+
+bool localPlayerSlotPolicyIsUnchanged() {
+  AdmissionFixture fixture = makeFirstRoomAdmissionFixture();
+  iggy3d::CommandRecord badSlot = attackCommand();
+  badSlot.playerSlot = iggy3d::kInvalidPlayerSlotId;
+  bool ok = expect(admit(fixture, badSlot).firstFailure ==
+                       iggy3d::CommandRejectionReason::InvalidPlayerSlot,
+                   "local invalid slot rejected");
+
+  iggy3d::CommandRecord mismatch = moveCommand({1.0F, 0.0F, 0.0F});
+  iggy3d::PlayerSlot slot;
+  slot.id = 1;
+  slot.kind = iggy3d::PlayerSlotKind::Local;
+  slot.actor = {2};
+  slot.stableName = "player1";
+  (void)fixture.players.addSlot(slot);
+  mismatch.playerSlot = 1;
+  return ok && expect(admit(fixture, mismatch).firstFailure ==
+                          iggy3d::CommandRejectionReason::ActorNotControlledBySlot,
+                      "local actor binding rejected");
+}
+
+bool aiCommandsStillUseNormalValidationGates() {
+  AdmissionFixture fixture = makeFirstRoomAdmissionFixture();
+  (void)fixture.world.setActive({5}, false);
+  bool ok = expect(admit(fixture, aiAttackCommand(42)).firstFailure ==
+                       iggy3d::CommandRejectionReason::InvalidActor,
+                   "ai inactive actor rejected");
+  (void)fixture.world.setActive({5}, true);
+
+  iggy3d::CommandRecord missingTarget = aiAttackCommand(43);
+  missingTarget.payload.target.entity = {99};
+  ok = ok && expect(admit(fixture, missingTarget).firstFailure ==
+                        iggy3d::CommandRejectionReason::InvalidTarget,
+                    "ai invalid target rejected");
+
+  iggy3d::CommandRecord badDamage = aiAttackCommand(44);
+  badDamage.payload.attackDamage = 0;
+  ok = ok && expect(admit(fixture, badDamage).firstFailure ==
+                        iggy3d::CommandRejectionReason::InvalidDamage,
+                    "ai invalid damage rejected");
+
+  AdmissionFixture friendly = makeFirstRoomAdmissionFixture();
+  friendly.combat.combatants[1].factionId = 1;
+  ok = ok && expect(admit(friendly, aiAttackCommand(45)).firstFailure ==
+                        iggy3d::CommandRejectionReason::FriendlyFireBlocked,
+                    "ai friendly fire rejected");
+
+  AdmissionFixture defeated = makeFirstRoomAdmissionFixture();
+  defeated.combat.combatants[1].hitPoints = 0;
+  defeated.combat.combatants[1].defeated = true;
+  return ok && expect(admit(defeated, aiAttackCommand(46)).firstFailure ==
+                          iggy3d::CommandRejectionReason::AttackerDefeated,
+                      "ai defeated attacker rejected");
+}
+
 bool requiredItemGateRunsAfterReachAndUsesInventory() {
   AdmissionFixture fixture = makeFirstRoomAdmissionFixture();
   iggy3d::CommandRecord lockedDoor = interactCommand();
@@ -369,6 +486,9 @@ int main() {
   const bool ok = acceptRejectHelpersSetInvariantFields() && missingContextRejectsInternalError() &&
                   shapePlayerActorOrderIsDeterministic() && clockRulesAreExplicit() &&
                   targetReachAndPointRules() &&
+                  aiCommandsDoNotRequirePlayerSlotBinding() &&
+                  localPlayerSlotPolicyIsUnchanged() &&
+                  aiCommandsStillUseNormalValidationGates() &&
                   requiredItemGateRunsAfterReachAndUsesInventory() &&
                   retryUsesCommandIdAndCurrentState() &&
                   admissionDoesNotMutateState();
