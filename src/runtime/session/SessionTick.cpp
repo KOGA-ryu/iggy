@@ -214,6 +214,8 @@ SessionTickResult runSessionTick(const SessionTickInput& input) {
   result.tickBefore = state.clock.tickIndex;
   result.tickAfter = state.clock.tickIndex;
   result.outcome = state.outcome;
+  state.transient.lastMovementResultAvailable = false;
+  state.transient.lastMovementResult = {};
 
   if (state.lifecycle != SessionLifecycle::Playing) {
     result.status = SessionTickStatus::SessionNotPlayable;
@@ -249,6 +251,8 @@ SessionTickResult runSessionTick(const SessionTickInput& input) {
       const MovementRequest request =
           movementRequestFromAcceptedCommand(intent.command, mode, state.config);
       const MovementResult movement = executeMovement(movementContext, request);
+      state.transient.lastMovementResultAvailable = true;
+      state.transient.lastMovementResult = movement;
       if (movement.blocked != MovementBlockedReason::None) {
         if (movementBlockConsumesTick(movement.blocked)) {
           result.executedSequences.push_back(intent.command.sequence);

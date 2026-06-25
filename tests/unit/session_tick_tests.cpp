@@ -243,6 +243,15 @@ bool collisionBlockedMoveConsumesPendingCommandWithoutMutation() {
        expect(iggy3d::nearlyEqual(session.state().world.findById({1})->transform.position,
                                   {0.0F, 0.0F, 0.0F}),
               "collision blocked no mutation") &&
+       expect(session.state().transient.lastMovementResultAvailable,
+              "collision movement result available") &&
+       expect(session.state().transient.lastMovementResult.blocked ==
+                  iggy3d::MovementBlockedReason::BlockedByCollision,
+              "collision movement blocked reason") &&
+       expect(session.state().transient.lastMovementResult.hitSurfaceId == "tick_wall",
+              "collision movement hit surface id") &&
+       expect(session.state().transient.lastMovementResult.movementClamped,
+              "collision movement clamp flag") &&
        expect(session.state().clock.tickIndex == 1U,
               "collision blocked tick advanced");
 
@@ -254,7 +263,16 @@ bool collisionBlockedMoveConsumesPendingCommandWithoutMutation() {
               "open move tick ok after collision block") &&
        expect(iggy3d::nearlyEqual(session.state().world.findById({1})->transform.position,
                                   {1.0F, 0.0F, 0.0F}),
-              "open move mutates after collision block");
+              "open move mutates after collision block") &&
+       expect(session.state().transient.lastMovementResultAvailable,
+              "open movement result available") &&
+       expect(session.state().transient.lastMovementResult.blocked ==
+                  iggy3d::MovementBlockedReason::None,
+              "open movement ok reason") &&
+       expect(session.state().transient.lastMovementResult.hitSurfaceId.empty(),
+              "open movement no hit surface") &&
+       expect(session.state().transient.lastMovementResult.movementPolicyBand == "flat",
+              "open movement flat slope band");
   return ok;
 }
 

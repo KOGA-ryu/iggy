@@ -302,6 +302,48 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.gameplayMovementBlocked);
   appendReceiptField(receipt, "gameplay_movement_status",
                      window.gameplayMovementStatus);
+  appendReceiptField(receipt, "gameplay_movement_debug_available",
+                     window.gameplayMovementDebugAvailable);
+  appendReceiptField(receipt, "gameplay_movement_reason_code",
+                     window.gameplayMovementReasonCode);
+  appendReceiptField(receipt, "gameplay_movement_blocked_reason",
+                     window.gameplayMovementBlockedReason);
+  appendReceiptField(receipt, "gameplay_movement_hit_surface_id",
+                     window.gameplayMovementHitSurfaceId);
+  appendReceiptField(receipt, "gameplay_movement_ground_snap_applied",
+                     window.gameplayMovementGroundSnapApplied);
+  appendReceiptField(receipt, "gameplay_movement_clamped",
+                     window.gameplayMovementClamped);
+  appendReceiptField(receipt, "gameplay_movement_slid",
+                     window.gameplayMovementSlid);
+  appendReceiptField(receipt, "gameplay_movement_collision_sweep_count",
+                     window.gameplayMovementCollisionSweepCount);
+  appendReceiptField(receipt, "gameplay_movement_policy_band",
+                     window.gameplayMovementPolicyBand);
+  appendReceiptField(receipt, "gameplay_movement_slope_travel_direction",
+                     window.gameplayMovementSlopeTravelDirection);
+  appendReceiptField(receipt, "gameplay_movement_slope_angle_degrees",
+                     floatReceiptValue(window.gameplayMovementSlopeAngleDegrees));
+  appendReceiptField(receipt, "gameplay_movement_speed_multiplier",
+                     floatReceiptValue(window.gameplayMovementSpeedMultiplier));
+  appendReceiptField(receipt, "gameplay_movement_start_x",
+                     floatReceiptValue(window.gameplayMovementStartX));
+  appendReceiptField(receipt, "gameplay_movement_start_y",
+                     floatReceiptValue(window.gameplayMovementStartY));
+  appendReceiptField(receipt, "gameplay_movement_start_z",
+                     floatReceiptValue(window.gameplayMovementStartZ));
+  appendReceiptField(receipt, "gameplay_movement_final_x",
+                     floatReceiptValue(window.gameplayMovementFinalX));
+  appendReceiptField(receipt, "gameplay_movement_final_y",
+                     floatReceiptValue(window.gameplayMovementFinalY));
+  appendReceiptField(receipt, "gameplay_movement_final_z",
+                     floatReceiptValue(window.gameplayMovementFinalZ));
+  appendReceiptField(receipt, "gameplay_movement_horizontal_distance_meters",
+                     floatReceiptValue(window.gameplayMovementHorizontalDistanceMeters));
+  appendReceiptField(receipt, "gameplay_movement_vertical_delta_meters",
+                     floatReceiptValue(window.gameplayMovementVerticalDeltaMeters));
+  appendReceiptField(receipt, "gameplay_movement_grade_percent",
+                     floatReceiptValue(window.gameplayMovementGradePercent));
   appendReceiptField(receipt, "gameplay_collision_surfaces_used",
                      window.gameplayCollisionSurfacesUsed);
   appendReceiptField(receipt, "gameplay_collision_surface_count",

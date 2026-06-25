@@ -7,6 +7,7 @@
 #include "app/input/ActionState.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/command/Command.hpp"
+#include "runtime/movement/MovementSystem.hpp"
 #include "runtime/session/Session.hpp"
 #include "runtime/targeting/ReachQuery.hpp"
 #include "runtime/targeting/TargetQuery.hpp"
@@ -85,6 +86,65 @@ TargetQueryResult queryProductGameplayTarget(const Session& session, CommandKind
                                         kind, 0.0F, false, true});
 }
 
+void clearProductMovementDebug(ProductAppWindowState& window) {
+  window.gameplayMovementDebugAvailable = false;
+  window.gameplayMovementReasonCode = "not_requested";
+  window.gameplayMovementBlockedReason = "none";
+  window.gameplayMovementHitSurfaceId = "none";
+  window.gameplayMovementGroundSnapApplied = false;
+  window.gameplayMovementClamped = false;
+  window.gameplayMovementSlid = false;
+  window.gameplayMovementCollisionSweepCount = 0;
+  window.gameplayMovementPolicyBand = "none";
+  window.gameplayMovementSlopeTravelDirection = "stationary";
+  window.gameplayMovementSlopeAngleDegrees = 0.0F;
+  window.gameplayMovementSpeedMultiplier = 1.0F;
+  window.gameplayMovementStartX = 0.0F;
+  window.gameplayMovementStartY = 0.0F;
+  window.gameplayMovementStartZ = 0.0F;
+  window.gameplayMovementFinalX = 0.0F;
+  window.gameplayMovementFinalY = 0.0F;
+  window.gameplayMovementFinalZ = 0.0F;
+  window.gameplayMovementHorizontalDistanceMeters = 0.0F;
+  window.gameplayMovementVerticalDeltaMeters = 0.0F;
+  window.gameplayMovementGradePercent = 0.0F;
+}
+
+void recordProductMovementDebug(const Session& session, ProductAppWindowState& window) {
+  const SessionTransientState& transient = session.state().transient;
+  if (!transient.lastMovementResultAvailable) {
+    clearProductMovementDebug(window);
+    return;
+  }
+
+  const MovementResult& movement = transient.lastMovementResult;
+  window.gameplayMovementDebugAvailable = true;
+  window.gameplayMovementReasonCode =
+      movement.reasonCode.empty() ? movementBlockedReasonName(movement.blocked)
+                                  : movement.reasonCode;
+  window.gameplayMovementBlockedReason = movementBlockedReasonName(movement.blocked);
+  window.gameplayMovementHitSurfaceId =
+      movement.hitSurfaceId.empty() ? "none" : movement.hitSurfaceId;
+  window.gameplayMovementGroundSnapApplied = movement.groundSnapApplied;
+  window.gameplayMovementClamped = movement.movementClamped;
+  window.gameplayMovementSlid = movement.movementSlid;
+  window.gameplayMovementCollisionSweepCount = movement.collisionSweepCount;
+  window.gameplayMovementPolicyBand =
+      movement.movementPolicyBand.empty() ? "none" : movement.movementPolicyBand;
+  window.gameplayMovementSlopeTravelDirection = movement.slopeTravelDirection;
+  window.gameplayMovementSlopeAngleDegrees = movement.slopeAngleDegrees;
+  window.gameplayMovementSpeedMultiplier = movement.speedMultiplier;
+  window.gameplayMovementStartX = movement.start.x;
+  window.gameplayMovementStartY = movement.start.y;
+  window.gameplayMovementStartZ = movement.start.z;
+  window.gameplayMovementFinalX = movement.finalPosition.x;
+  window.gameplayMovementFinalY = movement.finalPosition.y;
+  window.gameplayMovementFinalZ = movement.finalPosition.z;
+  window.gameplayMovementHorizontalDistanceMeters = movement.horizontalDistanceMeters;
+  window.gameplayMovementVerticalDeltaMeters = movement.verticalDeltaMeters;
+  window.gameplayMovementGradePercent = movement.gradePercent;
+}
+
 void submitProductGameplayCommand(Session& session,
                                   ProductAppWindowState& window,
                                   CommandRecord command,
@@ -98,6 +158,7 @@ void submitProductGameplayCommand(Session& session,
     window.gameplayMovementAttempted = true;
     window.gameplayMovementBlocked = false;
     window.gameplayMovementStatus = "submitted";
+    clearProductMovementDebug(window);
   }
   window.gameplayCollisionSurfacesUsed = collisionSurfaces != nullptr;
   window.gameplayCollisionSurfaceCount =
@@ -119,6 +180,9 @@ void submitProductGameplayCommand(Session& session,
         tick.status == ResultStatus::Ok
             ? "ok"
             : (tick.error.code.empty() ? "tick_failed" : tick.error.code);
+    if (command.kind == CommandKind::Move) {
+      recordProductMovementDebug(session, window);
+    }
   }
 
   const EntityState* afterPlayer = productPlayerEntity(session);
@@ -128,8 +192,14 @@ void submitProductGameplayCommand(Session& session,
     window.playerPositionChanged = window.playerPositionChanged || movedThisCommand;
   }
   if (command.kind == CommandKind::Move && window.gameplayCommandAccepted) {
+    const bool runtimeMovementBlocked =
+        window.gameplayMovementDebugAvailable &&
+        window.gameplayMovementBlockedReason != "movement_ok";
     if (!window.gameplayTickAdvanced) {
       window.gameplayMovementStatus = "tick_failed";
+    } else if (runtimeMovementBlocked) {
+      window.gameplayMovementBlocked = true;
+      window.gameplayMovementStatus = "blocked";
     } else if (movedThisCommand) {
       window.gameplayMovementStatus = "moved";
     } else {

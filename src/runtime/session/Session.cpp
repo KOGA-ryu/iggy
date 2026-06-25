@@ -188,6 +188,8 @@ void clearTransient(SessionState& state) {
   state.transient.events.clear();
   state.transient.metrics = {};
   state.transient.pendingExecutionSequences.clear();
+  state.transient.lastMovementResultAvailable = false;
+  state.transient.lastMovementResult = {};
   state.transient.cameraInputClearRequested = false;
   state.transient.summaryDirty = true;
   state.transient.stateHashDirty = false;

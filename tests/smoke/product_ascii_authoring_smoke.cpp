@@ -325,7 +325,34 @@ bool activatedAsciiRoomOpenMove(const iggy3d::smoke::ReceiptFields& fields) {
                                  "false") &&
          iggy3d::smoke::hasField(fields,
                                  "gameplay_movement_status",
-                                 "moved");
+                                 "moved") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_debug_available",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_reason_code",
+                                 "movement_ok") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_blocked_reason",
+                                 "movement_ok") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_hit_surface_id",
+                                 "none") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_ground_snap_applied",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_clamped",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_collision_sweep_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_policy_band",
+                                 "flat") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_speed_multiplier",
+                                 "1.000");
 }
 
 bool activatedAsciiRoomWallMoveBlocked(
@@ -377,7 +404,31 @@ bool activatedAsciiRoomWallMoveBlocked(
                                  "true") &&
          iggy3d::smoke::hasField(fields,
                                  "gameplay_movement_status",
-                                 "blocked");
+                                 "blocked") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_debug_available",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_reason_code",
+                                 "blocked_by_collision") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_blocked_reason",
+                                 "blocked_by_collision") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_hit_surface_id",
+                                 "wall_r0_c1_actor_blocker") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_ground_snap_applied",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_clamped",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_collision_sweep_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_policy_band",
+                                 "none");
 }
 
 }  // namespace

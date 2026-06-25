@@ -14,6 +14,7 @@
 #include "runtime/diagnostics/RuntimeEvent.hpp"
 #include "runtime/diagnostics/RuntimeMetrics.hpp"
 #include "runtime/inventory/InventoryState.hpp"
+#include "runtime/movement/MovementCommand.hpp"
 #include "runtime/objective/ObjectiveState.hpp"
 #include "runtime/player/PlayerRoster.hpp"
 #include "runtime/replay/CommandLog.hpp"
@@ -69,6 +70,8 @@ struct SessionTransientState {
   std::vector<RuntimeEvent> events;
   RuntimeMetrics metrics;
   std::vector<CommandSequence> pendingExecutionSequences;
+  bool lastMovementResultAvailable = false;
+  MovementResult lastMovementResult;
   bool cameraInputClearRequested = false;
   bool summaryDirty = true;
   bool stateHashDirty = true;
