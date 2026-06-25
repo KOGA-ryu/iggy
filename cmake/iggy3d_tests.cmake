@@ -207,6 +207,10 @@ iggy3d_add_unit_test(npc_behavior_system_tests tests/unit/npc_behavior_system_te
 set_tests_properties(npc_behavior_system_tests PROPERTIES
   LABELS "unit;runtime;ai;npc_behavior;iggy3d")
 
+iggy3d_add_unit_test(npc_behavior_profile_tests tests/unit/npc_behavior_profile_tests.cpp)
+set_tests_properties(npc_behavior_profile_tests PROPERTIES
+  LABELS "unit;runtime;ai;npc_behavior;profile;iggy3d")
+
 iggy3d_add_unit_test(combat_system_tests tests/unit/combat_system_tests.cpp)
 set_tests_properties(combat_system_tests PROPERTIES LABELS "unit;runtime;combat;iggy3d")
 

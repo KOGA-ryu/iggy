@@ -75,8 +75,21 @@ std::string_view npcPerceptionStatusName(NpcPerceptionStatus status) {
   return "invalid_perception";
 }
 
+std::string_view npcEngagementPolicyName(NpcEngagementPolicy policy) {
+  switch (policy) {
+    case NpcEngagementPolicy::Hostile:
+      return "hostile";
+    case NpcEngagementPolicy::Passive:
+      return "passive";
+  }
+  return "invalid_policy";
+}
+
 bool isValidNpcBehaviorConfig(const NpcBehaviorConfig& config) {
-  return std::isfinite(config.perceptionRadiusMeters) &&
+  const bool validPolicy = config.engagementPolicy == NpcEngagementPolicy::Hostile ||
+                           config.engagementPolicy == NpcEngagementPolicy::Passive;
+  return validPolicy &&
+         std::isfinite(config.perceptionRadiusMeters) &&
          config.perceptionRadiusMeters > 0.0F &&
          std::isfinite(config.chaseStopDistanceMeters) &&
          config.chaseStopDistanceMeters > 0.0F &&
@@ -226,6 +239,12 @@ NpcBehaviorDecision chooseNpcBehaviorIntent(
   decision.target = request.perception.target;
   decision.nextDecisionTick =
       request.currentTick + request.config.decisionIntervalTicks;
+  if (request.config.engagementPolicy == NpcEngagementPolicy::Passive) {
+    decision.status = NpcBehaviorDecisionStatus::Decided;
+    decision.behavior = AiBehaviorKind::Alert;
+    decision.intent = AiIntentKind::Wait;
+    return decision;
+  }
   if (!request.perception.targetInAttackRange) {
     decision.status = NpcBehaviorDecisionStatus::Decided;
     decision.behavior = AiBehaviorKind::Chasing;

@@ -13,7 +13,15 @@ namespace iggy3d {
 struct CombatState;
 class WorldState;
 
+enum class NpcEngagementPolicy : std::uint8_t {
+  Hostile,
+  Passive,
+};
+
+std::string_view npcEngagementPolicyName(NpcEngagementPolicy policy);
+
 struct NpcBehaviorConfig {
+  NpcEngagementPolicy engagementPolicy = NpcEngagementPolicy::Hostile;
   float perceptionRadiusMeters = 6.0F;
   float chaseStopDistanceMeters = 1.25F;
   float attackRangeMeters = 1.5F;

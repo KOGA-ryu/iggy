@@ -94,7 +94,14 @@ iggy3d::NpcPerceptionResult perceptionFor(const iggy3d::WorldState& world,
 
 bool configValidationRejectsBadValues() {
   iggy3d::NpcBehaviorConfig config;
-  bool ok = expect(iggy3d::isValidNpcBehaviorConfig(config), "default config valid");
+  bool ok = expect(iggy3d::isValidNpcBehaviorConfig(config), "default config valid") &&
+            expect(config.engagementPolicy == iggy3d::NpcEngagementPolicy::Hostile,
+                   "default engagement hostile");
+
+  config.engagementPolicy = static_cast<iggy3d::NpcEngagementPolicy>(255);
+  ok = ok && expect(!iggy3d::isValidNpcBehaviorConfig(config),
+                    "invalid engagement policy rejected");
+  config = {};
 
   config.perceptionRadiusMeters = 0.0F;
   ok = ok && expect(!iggy3d::isValidNpcBehaviorConfig(config),
@@ -283,8 +290,53 @@ bool cooldownDisabledAndNoTargetPoliciesAreDeterministic() {
          expect(!iggy3d::isValid(decision.target), "no target clears target");
 }
 
+bool passivePolicyWaitsWithoutChasingOrAttacking() {
+  iggy3d::NpcBehaviorConfig config;
+  config.engagementPolicy = iggy3d::NpcEngagementPolicy::Passive;
+
+  const iggy3d::WorldState closeWorld = worldWithNpcAndPlayer(1.0F);
+  const iggy3d::CombatState readyCombat = combat();
+  const iggy3d::NpcPerceptionResult closePerception =
+      perceptionFor(closeWorld, readyCombat, config);
+  iggy3d::AiActorState state = actorState();
+  iggy3d::NpcBehaviorDecision decision =
+      iggy3d::chooseNpcBehaviorIntent({&state, closePerception, config, 7});
+  bool ok = expect(decision.status == iggy3d::NpcBehaviorDecisionStatus::Decided,
+                   "passive close decided") &&
+            expect(decision.behavior == iggy3d::AiBehaviorKind::Alert,
+                   "passive close alert") &&
+            expect(decision.intent == iggy3d::AiIntentKind::Wait,
+                   "passive close wait") &&
+            expect(decision.target == iggy3d::EntityId{2}, "passive close target") &&
+            expect(decision.nextDecisionTick == 8U,
+                   "passive close next decision tick");
+
+  const iggy3d::WorldState chaseWorld = worldWithNpcAndPlayer(4.0F);
+  const iggy3d::NpcPerceptionResult chasePerception =
+      perceptionFor(chaseWorld, readyCombat, config);
+  state = actorState();
+  decision = iggy3d::chooseNpcBehaviorIntent({&state, chasePerception, config, 9});
+  return ok &&
+         expect(decision.status == iggy3d::NpcBehaviorDecisionStatus::Decided,
+                "passive far decided") &&
+         expect(decision.behavior == iggy3d::AiBehaviorKind::Alert,
+                "passive far alert") &&
+         expect(decision.intent == iggy3d::AiIntentKind::Wait,
+                "passive far wait") &&
+         expect(decision.intent != iggy3d::AiIntentKind::MoveTowardTarget,
+                "passive never chases") &&
+         expect(decision.intent != iggy3d::AiIntentKind::AttackTarget,
+                "passive never attacks");
+}
+
 bool stableStatusNamesAreLowerSnake() {
-  return expect(iggy3d::npcPerceptionStatusName(
+  return expect(iggy3d::npcEngagementPolicyName(
+                    iggy3d::NpcEngagementPolicy::Hostile) == "hostile",
+                "engagement hostile lower snake") &&
+         expect(iggy3d::npcEngagementPolicyName(
+                    iggy3d::NpcEngagementPolicy::Passive) == "passive",
+                "engagement passive lower snake") &&
+         expect(iggy3d::npcPerceptionStatusName(
                     iggy3d::NpcPerceptionStatus::TargetOutOfRange) ==
                     "target_out_of_range",
                 "perception lower snake") &&
@@ -307,6 +359,7 @@ int main() {
                   chaseDecisionAndCommandAreDeterministic() &&
                   attackDecisionAndCommandAreDeterministic() &&
                   cooldownDisabledAndNoTargetPoliciesAreDeterministic() &&
+                  passivePolicyWaitsWithoutChasingOrAttacking() &&
                   stableStatusNamesAreLowerSnake();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
