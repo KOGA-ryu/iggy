@@ -24,6 +24,10 @@ enum class PackageValidationStatus : std::uint8_t {
   InvalidBounds,
   MissingGoldKeyInteraction,
   InvalidObjectiveCondition,
+  MissingAiActorEntity,
+  NonNpcAiActor,
+  DuplicateAiActorBinding,
+  InvalidAiActorProfileId,
   OldIggyDependency,
 };
 

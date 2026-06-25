@@ -1,5 +1,6 @@
 #include "content/PackageValidator.hpp"
 
+#include "runtime/ai/NpcBehaviorProfile.hpp"
 #include <algorithm>
 
 namespace iggy3d {
@@ -53,6 +54,42 @@ const ScenarioObjectiveSeed* findObjective(const FixtureScenarioSeed& seed, std:
 
 bool hasAction(const ScenarioEntitySeed& entity, TargetAction action) {
   return isTargetActionSupported(entity.targeting, action);
+}
+
+PackageValidationResult validateAiActors(const FixtureScenarioSeed& scenario) {
+  std::vector<std::string_view> actorNames;
+  actorNames.reserve(scenario.aiActors.size());
+  for (std::size_t i = 0; i < scenario.aiActors.size(); ++i) {
+    const ScenarioAiActorSeed& aiActor = scenario.aiActors[i];
+    const std::uint32_t line = static_cast<std::uint32_t>(i + 1U);
+    if (aiActor.actorStableName.empty()) {
+      return fail(PackageValidationStatus::MissingAiActorEntity,
+                  "scenario.missing_ai_actor_entity", "missing ai actor entity", line, 1);
+    }
+    const ScenarioEntitySeed* entity = findEntity(scenario, aiActor.actorStableName);
+    if (entity == nullptr) {
+      return fail(PackageValidationStatus::MissingAiActorEntity,
+                  "scenario.missing_ai_actor_entity",
+                  "missing ai actor entity " + aiActor.actorStableName, line, 1);
+    }
+    if (entity->kind != EntityKind::Npc) {
+      return fail(PackageValidationStatus::NonNpcAiActor,
+                  "scenario.non_npc_ai_actor", "ai actor must reference an npc", line, 1);
+    }
+    if (std::find(actorNames.begin(), actorNames.end(), aiActor.actorStableName) !=
+        actorNames.end()) {
+      return fail(PackageValidationStatus::DuplicateAiActorBinding,
+                  "scenario.duplicate_ai_actor", "duplicate ai actor " + aiActor.actorStableName,
+                  line, 1);
+    }
+    if (!isValidNpcBehaviorProfileId(aiActor.behaviorProfileId)) {
+      return fail(PackageValidationStatus::InvalidAiActorProfileId,
+                  "scenario.invalid_ai_actor_profile_id", "invalid ai actor profile id",
+                  line, 1);
+    }
+    actorNames.push_back(aiActor.actorStableName);
+  }
+  return {};
 }
 
 }  // namespace
@@ -121,6 +158,10 @@ PackageValidationResult validatePackage(const PackageValidationRequest& request)
     if (!isValid(entity.localBounds)) {
       return fail(PackageValidationStatus::InvalidBounds, "scenario.invalid_bounds", "invalid bounds");
     }
+  }
+  PackageValidationResult aiActorValidation = validateAiActors(request.scenario);
+  if (aiActorValidation.status != PackageValidationStatus::Ok) {
+    return aiActorValidation;
   }
   const ScenarioEntitySeed* goldKey = findEntity(request.scenario, "gold_key");
   if (goldKey == nullptr || goldKey->kind != EntityKind::Pickup ||

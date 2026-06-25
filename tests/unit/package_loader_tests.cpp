@@ -308,6 +308,59 @@ bool validatorAcceptsAndRejects() {
                         iggy3d::PackageValidationStatus::InvalidBounds,
                     "invalid bounds");
   request = {load.manifest, load.scenario};
+  request.scenario.aiActors.push_back({"training_dummy", "passive"});
+  result = iggy3d::validatePackage(request);
+  ok = ok && expect(result.status == iggy3d::PackageValidationStatus::Ok,
+                    "valid ai actor accepted");
+  request = {load.manifest, load.scenario};
+  request.scenario.aiActors.push_back({"training_dummy", "ghost_profile"});
+  result = iggy3d::validatePackage(request);
+  ok = ok && expect(result.status == iggy3d::PackageValidationStatus::Ok,
+                    "unknown ai profile accepted");
+  request = {load.manifest, load.scenario};
+  request.scenario.aiActors.push_back({"", "passive"});
+  result = iggy3d::validatePackage(request);
+  ok = ok && expect(result.status == iggy3d::PackageValidationStatus::MissingAiActorEntity,
+                    "missing ai actor entity") &&
+       expect(!result.diagnostics.empty() &&
+                  result.diagnostics[0].code == "scenario.missing_ai_actor_entity",
+              "missing ai actor code");
+  request = {load.manifest, load.scenario};
+  request.scenario.aiActors.push_back({"missing_dummy", "passive"});
+  result = iggy3d::validatePackage(request);
+  ok = ok && expect(result.status == iggy3d::PackageValidationStatus::MissingAiActorEntity,
+                    "unknown ai actor entity") &&
+       expect(!result.diagnostics.empty() &&
+                  result.diagnostics[0].code == "scenario.missing_ai_actor_entity",
+              "unknown ai actor code");
+  request = {load.manifest, load.scenario};
+  request.scenario.aiActors.push_back({"player", "passive"});
+  result = iggy3d::validatePackage(request);
+  ok = ok && expect(result.status == iggy3d::PackageValidationStatus::NonNpcAiActor,
+                    "non npc ai actor") &&
+       expect(!result.diagnostics.empty() &&
+                  result.diagnostics[0].code == "scenario.non_npc_ai_actor",
+              "non npc ai actor code");
+  request = {load.manifest, load.scenario};
+  request.scenario.aiActors.push_back({"training_dummy", "passive"});
+  request.scenario.aiActors.push_back({"training_dummy", "default"});
+  result = iggy3d::validatePackage(request);
+  ok = ok && expect(result.status ==
+                        iggy3d::PackageValidationStatus::DuplicateAiActorBinding,
+                    "duplicate ai actor") &&
+       expect(!result.diagnostics.empty() &&
+                  result.diagnostics[0].code == "scenario.duplicate_ai_actor",
+              "duplicate ai actor code");
+  request = {load.manifest, load.scenario};
+  request.scenario.aiActors.push_back({"training_dummy", "Bad-Id"});
+  result = iggy3d::validatePackage(request);
+  ok = ok && expect(result.status ==
+                        iggy3d::PackageValidationStatus::InvalidAiActorProfileId,
+                    "invalid ai actor profile") &&
+       expect(!result.diagnostics.empty() &&
+                  result.diagnostics[0].code == "scenario.invalid_ai_actor_profile_id",
+              "invalid ai actor profile code");
+  request = {load.manifest, load.scenario};
   request.scenario.entities[1].interaction.objectiveId.clear();
   ok = ok && expect(iggy3d::validatePackage(request).status ==
                         iggy3d::PackageValidationStatus::MissingGoldKeyInteraction,
