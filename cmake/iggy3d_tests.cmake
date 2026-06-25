@@ -120,6 +120,11 @@ iggy3d_add_unit_test(product_package_session_seed_tests tests/unit/product_packa
 set_tests_properties(product_package_session_seed_tests PROPERTIES
   LABELS "unit;app;product;package;session_seed;iggy3d")
 
+iggy3d_add_unit_test(product_npc_profile_assignment_tests
+  tests/unit/product_npc_profile_assignment_tests.cpp)
+set_tests_properties(product_npc_profile_assignment_tests PROPERTIES
+  LABELS "unit;app;product;npc;profile;assignment;iggy3d")
+
 iggy3d_add_unit_test(product_saved_room_marker_binding_tests
   tests/unit/product_saved_room_marker_binding_tests.cpp)
 set_tests_properties(product_saved_room_marker_binding_tests PROPERTIES
