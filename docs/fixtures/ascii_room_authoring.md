@@ -66,6 +66,12 @@ The authored-room compile emits `SaveAuthoredRoomSection` floor/wall geometry an
 - Empty-entity package scenarios can now synthesize a product runtime session seed from loaded room anchors, preserving authored scenarios when entities are already present. The ASCII training room package is proven in no-window Product App flow: New World writes a durable initial save, starter scan sees it, and Continue loads it.
 - This is still not renderer/Vulkan room drawing, package visual migration, or runtime entity authoring UI.
 
+## Product Gameplay Command Proof
+
+- Test: `product_ascii_package_smoke`
+- The ASCII training room package now has no-window Product App scripted gameplay proof. The scripted path discovers the room-authored NPC attack target, approaches by product movement commands until the reach gate passes, submits attack through command admission, and receipts accepted attack feedback.
+- This is primitive product view and receipt proof only. It is still not Vulkan room rendering, package visual migration, or runtime entity authoring UI.
+
 ## Deferred Work
 
 - Runtime package bridge

@@ -69,6 +69,12 @@ std::string reachGateName(CommandRejectionReason reason) {
   return "not_attempted";
 }
 
+float horizontalDistanceMeters(Vec3 lhs, Vec3 rhs) {
+  const float dx = rhs.x - lhs.x;
+  const float dz = rhs.z - lhs.z;
+  return std::sqrt(dx * dx + dz * dz);
+}
+
 EntityId productPlayerActor(const Session& session) {
   return session.state().players.actorForSlot(0);
 }
@@ -187,6 +193,54 @@ void submitProductTargetCommand(Session& session,
   }
 }
 
+void approachProductGameplayTarget(Session& session, ProductAppWindowState& window) {
+  constexpr int kMaxApproachSteps = 32;
+  for (int step = 0; step < kMaxApproachSteps; ++step) {
+    const EntityId actor = productPlayerActor(session);
+    const TargetQueryResult target = queryProductGameplayTarget(session, CommandKind::Attack);
+    if (target.status != TargetQueryStatus::Found) {
+      return;
+    }
+
+    const ReachQueryResult reach =
+        queryReach(ReachQueryRequest{&session.state().world, actor, target.target, false, {},
+                                     session.state().config.interactionRangeMeters, true});
+    const CommandRejectionReason reachReason = rejectionReasonForReach(reach);
+    if (reachReason == CommandRejectionReason::None) {
+      window.targetDiscovered = true;
+      window.gameplayReachGate = "pass";
+      return;
+    }
+    if (reach.status != ReachQueryStatus::OutOfRange) {
+      return;
+    }
+
+    const float horizontalDistance =
+        horizontalDistanceMeters(reach.actorPoint, reach.targetPoint);
+    if (horizontalDistance <= 0.0001F) {
+      return;
+    }
+
+    ActionState actions;
+    recordAction(actions,
+                 InputAction::PlayerMoveX,
+                 true,
+                 false,
+                 false,
+                 (reach.targetPoint.x - reach.actorPoint.x) / horizontalDistance);
+    recordAction(actions,
+                 InputAction::PlayerMoveY,
+                 true,
+                 false,
+                 false,
+                 (reach.targetPoint.z - reach.actorPoint.z) / horizontalDistance);
+    applyProductGameplayActions(session, actions, window, "scripted");
+    if (!window.gameplayCommandAccepted) {
+      return;
+    }
+  }
+}
+
 }  // namespace
 
 void applyProductGameplayActions(Session& session,
@@ -224,16 +278,12 @@ void runScriptedProductGameplaySmoke(std::optional<Session>& activeSession,
   }
 
   window.scriptedGameplaySmoke = true;
+  if (queryProductGameplayTarget(*activeSession, CommandKind::Attack).status ==
+      TargetQueryStatus::Found) {
+    approachProductGameplayTarget(*activeSession, window);
+  }
+
   ActionState actions;
-  recordAction(actions, InputAction::PlayerMoveX, true, false, false, 1.0F);
-  applyProductGameplayActions(*activeSession, actions, window, "scripted");
-  clearActionState(actions);
-  recordAction(actions, InputAction::PlayerMoveX, true, false, false, 1.0F);
-  applyProductGameplayActions(*activeSession, actions, window, "scripted");
-  clearActionState(actions);
-  recordAction(actions, InputAction::PlayerMoveY, true, false, false, 1.0F);
-  applyProductGameplayActions(*activeSession, actions, window, "scripted");
-  clearActionState(actions);
   recordAction(actions, InputAction::PlayerAttack, true, true, false, 1.0F);
   applyProductGameplayActions(*activeSession, actions, window, "scripted");
 }

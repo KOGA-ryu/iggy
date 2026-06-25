@@ -118,11 +118,17 @@ int main() {
       "fixtures/demos/ascii_training_room/package.iggy3d.toml";
   const std::filesystem::path saveRoot =
       "/tmp/iggy3d_product_ascii_package_saves";
+  const std::filesystem::path scriptedSaveRoot =
+      "/tmp/iggy3d_product_ascii_package_scripted_saves";
   std::filesystem::remove_all(saveRoot);
+  std::filesystem::remove_all(scriptedSaveRoot);
   std::filesystem::create_directories(saveRoot);
+  std::filesystem::create_directories(scriptedSaveRoot);
 
   const std::string packageArg = " --package " + shellQuote(packagePath);
   const std::string saveRootArg = " --save-root " + shellQuote(saveRoot);
+  const std::string scriptedSaveRootArg =
+      " --save-root " + shellQuote(scriptedSaveRoot);
 
   int newWorldExitCode = 77;
   std::map<std::string, std::string> newWorldFields;
@@ -163,6 +169,18 @@ int main() {
                         continueFields,
                         continueExitCode);
 
+  int scriptedExitCode = 77;
+  std::map<std::string, std::string> scriptedFields;
+  const bool scriptedReceiptValid =
+      appBuilt && std::filesystem::exists(binary) &&
+      runReceiptCommand(binary,
+                        "/tmp/iggy3d_product_ascii_package_scripted.out",
+                        std::string{"--no-window"} + packageArg +
+                            " --scripted-gameplay-smoke" + scriptedSaveRootArg +
+                            " --print-render-receipt",
+                        scriptedFields,
+                        scriptedExitCode);
+
   const std::filesystem::path saveFile = saveRoot / "save_001.iggy3d.save";
   const bool newWorldPassed =
       newWorldExitCode == 0 && newWorldReceiptValid &&
@@ -198,6 +216,35 @@ int main() {
       hasField(continueFields, "active_product_save_id", "save_001") &&
       asciiPackageLoadedFields(continueFields);
 
+  const bool scriptedPassed =
+      scriptedExitCode == 0 && scriptedReceiptValid &&
+      hasField(scriptedFields, "app", "iggy3d") &&
+      hasField(scriptedFields, "result", "pass") &&
+      hasField(scriptedFields, "window_mode", "no_window") &&
+      hasField(scriptedFields, "window_created", "false") &&
+      asciiPackageLoadedFields(scriptedFields) &&
+      hasField(scriptedFields, "frontend_screen", "gameplay") &&
+      hasField(scriptedFields, "runtime_session_created", "true") &&
+      hasField(scriptedFields, "gameplay_active", "true") &&
+      hasField(scriptedFields, "scripted_gameplay_smoke", "true") &&
+      hasField(scriptedFields, "scene_item_count", "5") &&
+      hasField(scriptedFields, "player_visible", "true") &&
+      hasField(scriptedFields, "objective_visible", "true") &&
+      hasField(scriptedFields, "product_draw_item_count", "6") &&
+      hasField(scriptedFields, "product_render_bridge_ready", "true") &&
+      hasField(scriptedFields, "target_discovered", "true") &&
+      hasField(scriptedFields, "gameplay_command_kind", "attack") &&
+      hasField(scriptedFields, "gameplay_command_status", "accepted") &&
+      hasField(scriptedFields, "gameplay_command_accepted", "true") &&
+      hasField(scriptedFields, "gameplay_reach_gate", "pass") &&
+      hasField(scriptedFields, "gameplay_last_rejection", "none") &&
+      hasField(scriptedFields, "attack_executed", "true") &&
+      hasField(scriptedFields, "product_feedback_visible", "true") &&
+      hasField(scriptedFields, "product_feedback_command_kind", "attack") &&
+      hasField(scriptedFields, "product_feedback_command_status", "accepted") &&
+      hasField(scriptedFields, "product_feedback_rejection_reason", "none") &&
+      hasField(scriptedFields, "product_feedback_attack_visible", "true");
+
   const bool ok = expect(appBuilt, "app target available") &&
                   expect(std::filesystem::exists(binary), "app binary exists") &&
                   expect(newWorldReceiptValid, "new world receipt valid and unique") &&
@@ -206,6 +253,8 @@ int main() {
                   expect(starterPassed, "starter scan ascii package pass") &&
                   expect(continueControlWritten, "continue control written") &&
                   expect(continueReceiptValid, "continue receipt valid and unique") &&
-                  expect(continuePassed, "continue ascii package pass");
+                  expect(continuePassed, "continue ascii package pass") &&
+                  expect(scriptedReceiptValid, "scripted receipt valid and unique") &&
+                  expect(scriptedPassed, "scripted ascii package pass");
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
