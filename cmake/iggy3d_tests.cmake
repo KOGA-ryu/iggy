@@ -102,6 +102,10 @@ iggy3d_add_unit_test(product_save_catalog_tests tests/unit/product_save_catalog_
 set_tests_properties(product_save_catalog_tests PROPERTIES
   LABELS "unit;app;product;save;catalog;iggy3d")
 
+iggy3d_add_unit_test(product_package_session_seed_tests tests/unit/product_package_session_seed_tests.cpp)
+set_tests_properties(product_package_session_seed_tests PROPERTIES
+  LABELS "unit;app;product;package;session_seed;iggy3d")
+
 iggy3d_add_unit_test(ascii_room_source_tests tests/unit/ascii_room_source_tests.cpp)
 set_tests_properties(ascii_room_source_tests PROPERTIES
   LABELS "unit;app;product;ascii_room;source;iggy3d")
@@ -500,6 +504,21 @@ if(TARGET iggy3d_visual_demo)
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     SKIP_RETURN_CODE 77
     LABELS "smoke;product;frontend;transitions;no_window;iggy3d")
+
+  add_executable(product_ascii_package_smoke
+    tests/smoke/product_ascii_package_smoke.cpp)
+  target_link_libraries(product_ascii_package_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(product_ascii_package_smoke)
+  target_compile_definitions(product_ascii_package_smoke
+    PRIVATE
+      IGGY3D_PRODUCT_APP_PATH="$<TARGET_FILE:iggy3d_app>")
+  add_dependencies(product_ascii_package_smoke iggy3d_app)
+  add_test(NAME product_ascii_package_smoke
+           COMMAND "$<TARGET_FILE:product_ascii_package_smoke>")
+  set_tests_properties(product_ascii_package_smoke PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    SKIP_RETURN_CODE 77
+    LABELS "smoke;product;ascii_room;package;no_window;iggy3d")
 
   add_executable(product_menu_usefulness_smoke
     tests/smoke/product_menu_usefulness_smoke.cpp)

@@ -18,6 +18,7 @@
 #include "app/iggy3d/ProductGameplayController.hpp"
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductMenuTransitions.hpp"
+#include "app/iggy3d/ProductPackageSessionSeed.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductRenderBridge.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
@@ -163,10 +164,17 @@ bool createProductSession(const ProductAppOptions& options,
     return false;
   }
 
+  const ProductPackageSessionSeedResult seed =
+      buildProductPackageSessionSeed(package);
+  if (!seed.ok) {
+    window.launchStatus = seed.reasonCode;
+    return false;
+  }
+
   SessionCreateRequest create;
   create.packageId = package.manifest.packageId;
-  create.seed = package.scenario;
-  create.config = package.scenario.config;
+  create.seed = seed.seed;
+  create.config = seed.seed.config;
 
   Result<Session> session = Session::create(create);
   if (session.status != ResultStatus::Ok) {

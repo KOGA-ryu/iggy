@@ -58,6 +58,14 @@ The authored-room compile emits `SaveAuthoredRoomSection` floor/wall geometry an
 - The test loads `fixtures/demos/ascii_training_room/package.iggy3d.toml`, builds a `SpatialSurfaceSet`, and proves the ASCII package room contributes walkable floor surfaces, actor blocker wall surfaces, projectile blocker wall surfaces, and spawn-offset sampling through existing runtime collision queries.
 - This is runtime collision proof only; it does not wire Product App, AppShell, runtime entity spawning, renderer display, saves, or gameplay launch.
 
+
+## Product No-Window Session Proof
+
+- Adapter: `buildProductPackageSessionSeed(...)`
+- Tests: `product_package_session_seed_tests` and `product_ascii_package_smoke`
+- Empty-entity package scenarios can now synthesize a product runtime session seed from loaded room anchors, preserving authored scenarios when entities are already present. The ASCII training room package is proven in no-window Product App flow: New World writes a durable initial save, starter scan sees it, and Continue loads it.
+- This is still not renderer/Vulkan room drawing, package visual migration, or runtime entity authoring UI.
+
 ## Deferred Work
 
 - Runtime package bridge
