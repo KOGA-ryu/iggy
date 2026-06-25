@@ -93,8 +93,51 @@ Current profile baseline:
 - `passive` actors may perceive the player and enter `Alert` / `Wait`, but do
   not chase or attack.
 
-Profile resolution is intentionally not authored from map source in this
-baseline. Package/scenario profile assignment is deferred.
+Scenario text now supports authored AI actor profile bindings:
+
+```toml
+[[ai_actors]]
+actor = "training_dummy"
+behavior_profile_id = "passive"
+```
+
+Scenario AI actor binding ownership:
+
+- `[[ai_actors]]` is content/scenario metadata;
+- `actor` is a stable scenario entity name;
+- `behavior_profile_id` is syntax-validated, but it does not need to exist in
+  the built-in catalog;
+- unknown valid ids such as `ghost_profile` are preserved by content loading
+  and fail closed during live `Session::tick()` profile resolution;
+- ASCII glyphs and layout symbols do not assign behavior. ASCII remains
+  map-making only.
+
+Package validation now catches invalid authored AI actor rows before runtime
+session creation:
+
+- missing or empty `actor` rejects;
+- actor stable name not found in scenario entities rejects;
+- non-NPC actor binding rejects;
+- duplicate actor binding rejects;
+- invalid profile id syntax rejects;
+- syntactically valid unknown ids such as `ghost_profile` remain valid content.
+
+Product package seed behavior:
+
+- an explicit `ProductNpcProfileAssignmentTable*` overrides scenario metadata;
+- scenario `aiActors` are the default assignment source for synthesized
+  room-anchor NPCs;
+- authored scenario entity paths preserve `scenario.aiActors` for
+  `Session::create`.
+
+Product no-window proof:
+
+- `product_gameplay_tape_smoke` keeps the hostile/default NPC proof;
+- `product_gameplay_tape_smoke` also proves a passive scenario-profile NPC
+  through the product app package/tape path;
+- the passive proof uses a `wait` tape step, logs AI Wait, logs no AI Attack,
+  leaves player HP unchanged, reports behavior `alert`, intent `wait`, and
+  keeps `window_created=false`.
 
 ## Historical Source Baseline
 
@@ -958,6 +1001,49 @@ src/runtime/session/Session.cpp
 tests/unit/session_tick_tests.cpp
 ```
 
+v0.2 Slice 5A completed: product NPC profile assignment model.
+
+```text
+src/app/iggy3d/ProductNpcProfileAssignment.hpp
+src/app/iggy3d/ProductNpcProfileAssignment.cpp
+tests/unit/product_npc_profile_assignment_tests.cpp
+```
+
+v0.2 Slice 5B completed: package session seed application.
+
+```text
+src/content/FixtureScenarioLoader.hpp
+src/runtime/session/Session.cpp
+src/app/iggy3d/ProductPackageSessionSeed.hpp
+src/app/iggy3d/ProductPackageSessionSeed.cpp
+tests/unit/product_package_session_seed_tests.cpp
+tests/unit/session_tick_tests.cpp
+```
+
+v0.2 Slice 5C completed: scenario AI actor authoring source.
+
+```text
+src/content/FixtureScenarioLoader.hpp
+src/content/FixtureScenarioLoader.cpp
+src/app/iggy3d/ProductPackageSessionSeed.cpp
+tests/unit/package_loader_tests.cpp
+tests/unit/product_package_session_seed_tests.cpp
+```
+
+v0.2 Slice 5D completed: package AI actor validation.
+
+```text
+src/content/PackageValidator.hpp
+src/content/PackageValidator.cpp
+tests/unit/package_loader_tests.cpp
+```
+
+v0.2 Slice 5E completed: product scenario NPC profile tape proof.
+
+```text
+tests/smoke/product_gameplay_tape_smoke.cpp
+```
+
 ## No-Go Files
 
 Do not implement NPC behavior in:
@@ -1017,8 +1103,7 @@ Stop and return to planning if the builder needs:
 - line-of-sight;
 - patrol routes;
 - multiple player target policy;
-- editor-authored AI profiles;
-- scenario-authored config schema;
+- authored custom profile catalogs beyond built-ins;
 - multiplayer authority rules;
 - renderer debug draw;
 - a broad `Session.cpp` rewrite;
@@ -1029,8 +1114,7 @@ Stop and return to planning if the builder needs:
 
 Later contracts should cover:
 
-- authored/scenario profile source model;
-- profile assignment from package or authoring data;
+- authored custom profile catalogs beyond built-ins;
 - profile diagnostics, receipts, and debug overlay;
 - simple patrol or guard anchors from map-authored/package markers;
 - line-of-sight and perception through spatial surfaces;

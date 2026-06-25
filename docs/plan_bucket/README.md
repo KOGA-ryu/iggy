@@ -95,8 +95,9 @@ Each plan document must define:
   - completed runtime-owned NPC behavior v0.1 baseline plus v0.2 profile
     baseline, durable AI state and actor profile ids, hostile/passive
     engagement policy, built-in profile resolution, session tick profile
-    application, no-window proof receipts, runtime edge proofs, and deferred
-    next NPC work;
+    application, scenario-authored NPC profile bindings, package validation,
+    product no-window tape proof, runtime edge proofs, and deferred next NPC
+    work;
 - `world_creation_ux_contract_v0_1.md`
   - current New World launch baseline, world setup draft fields, initial save
     gate, world identity, product orchestration ownership, route semantics,
