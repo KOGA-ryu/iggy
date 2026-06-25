@@ -7,9 +7,9 @@
 
 #include "app/iggy3d/ProductActiveRoomState.hpp"
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/ProductAsciiRoomPackage.hpp"
 #include "app/iggy3d/ProductAsciiRoomPreview.hpp"
 #include "app/iggy3d/ProductPackageSessionSeed.hpp"
-#include "content/PackageLoader.hpp"
 
 namespace iggy3d {
 namespace {
@@ -18,13 +18,6 @@ constexpr std::string_view kAsciiRoomPackageId = "iggy3d.ascii_room_authoring";
 
 std::uint64_t sizeReceiptValue(std::size_t value) {
   return static_cast<std::uint64_t>(value);
-}
-
-std::string scenarioIdForRoom(std::string_view roomId) {
-  if (roomId.empty()) {
-    return "ascii_room_preview.runtime_loop";
-  }
-  return std::string(roomId) + ".runtime_loop";
 }
 
 void recordActivationResult(const ProductAsciiRoomActivationResult& result,
@@ -68,7 +61,7 @@ ProductAsciiRoomActivationResult activateProductAsciiRoomPreview(
   ProductAsciiRoomActivationResult result;
   result.roomId = window.asciiRoomDraftRoomId.empty() ? "none" : window.asciiRoomDraftRoomId;
   result.packageId = std::string(kAsciiRoomPackageId);
-  result.scenarioId = scenarioIdForRoom(window.asciiRoomDraftRoomId);
+  result.scenarioId = productAsciiRoomScenarioIdForRoom(window.asciiRoomDraftRoomId);
 
   const ProductAsciiRoomAuthoringRequest request =
       productAsciiRoomAuthoringRequestFromDraft(window);
@@ -85,11 +78,10 @@ ProductAsciiRoomActivationResult activateProductAsciiRoomPreview(
     return result;
   }
 
-  PackageLoadResult package;
-  package.status = PackageLoadStatus::Ok;
-  package.manifest.packageId = result.packageId;
-  package.scenario.scenarioId = result.scenarioId;
-  package.rooms.push_back(window.activeRoom.room);
+  const PackageLoadResult package =
+      makeProductAsciiRoomPackage(window.activeRoom.room,
+                                  result.packageId,
+                                  result.scenarioId);
 
   const ProductPackageSessionSeedResult seed =
       buildProductPackageSessionSeed(package);

@@ -401,6 +401,17 @@ MenuOwner productInputOwnerFor(const FrontendState& frontend,
   return MenuOwner::None;
 }
 
+void recordWorldSetupDraftState(const WorldSetupDraft& draft,
+                                ProductAppWindowState& window) {
+  window.worldSetupTitle = draft.worldName;
+  window.worldSetupAsciiRoomEnabled = draft.asciiRoomEnabled;
+  window.worldSetupAsciiRoomTextPresent = !draft.asciiRoomText.empty();
+  window.worldSetupAsciiRoomId =
+      draft.asciiRoomId.empty() ? "none" : draft.asciiRoomId;
+  window.worldSetupAsciiRoomSourceName =
+      draft.asciiRoomSourceName.empty() ? "none" : draft.asciiRoomSourceName;
+}
+
 void applyOpeningMenuAction(FrontendState& frontend,
                             const ProductSaveBridgeResult& saves,
                             const ProductAppOptions& options,
@@ -563,7 +574,7 @@ void applyOpeningMenuAction(FrontendState& frontend,
   }
 
   if (frontend.childScreen == FrontendScreen::NewWorld) {
-    window.worldSetupTitle = worldSetupDraft.worldName;
+    recordWorldSetupDraftState(worldSetupDraft, window);
     if (action == InputAction::MenuBack) {
       frontend.childScreen = FrontendScreen::Gameplay;
       frontend.selectedAction = FrontendAction::NewWorld;
@@ -637,7 +648,7 @@ void applyOpeningMenuAction(FrontendState& frontend,
     frontend.childScreen = FrontendScreen::NewWorld;
     frontend.selectedAction = FrontendAction::CreateAndEnter;
     frontend.status = "opening_menu_new_world_selected";
-    window.worldSetupTitle = worldSetupDraft.worldName;
+    recordWorldSetupDraftState(worldSetupDraft, window);
     window.worldSetupStatus = "world_setup_open";
     return;
   }
@@ -1108,9 +1119,63 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       return false;
     }
     worldSetupDraft.worldName = std::string(value);
-    window.worldSetupTitle = worldSetupDraft.worldName;
+    recordWorldSetupDraftState(worldSetupDraft, window);
     window.worldSetupStatus = "world_setup_title_updated";
     markAutomationApplied(window, command, "world.title",
+                          productInputOwnerFor(frontend, window), "applied");
+    return true;
+  }
+
+  if (key == "world.ascii_room_text" ||
+      key == "world_setup.ascii_room_text") {
+    if (frontend.childScreen != FrontendScreen::NewWorld) {
+      window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(window, command, "world.ascii_room_text",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    worldSetupDraft.asciiRoomEnabled = true;
+    worldSetupDraft.asciiRoomText =
+        decodeProductAsciiRoomAutomationText(value);
+    recordWorldSetupDraftState(worldSetupDraft, window);
+    window.worldSetupStatus = "world_setup_ascii_room_text_updated";
+    markAutomationApplied(window, command, "world.ascii_room_text",
+                          productInputOwnerFor(frontend, window), "applied");
+    return true;
+  }
+
+  if (key == "world.ascii_room_id" ||
+      key == "world_setup.ascii_room_id") {
+    if (frontend.childScreen != FrontendScreen::NewWorld || value.empty()) {
+      window.automationControlStatus =
+          value.empty() ? "invalid_value" : "owner_unavailable";
+      markAutomationApplied(window, command, "world.ascii_room_id",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    worldSetupDraft.asciiRoomEnabled = true;
+    worldSetupDraft.asciiRoomId = std::string(value);
+    recordWorldSetupDraftState(worldSetupDraft, window);
+    window.worldSetupStatus = "world_setup_ascii_room_id_updated";
+    markAutomationApplied(window, command, "world.ascii_room_id",
+                          productInputOwnerFor(frontend, window), "applied");
+    return true;
+  }
+
+  if (key == "world.ascii_room_source_name" ||
+      key == "world_setup.ascii_room_source_name") {
+    if (frontend.childScreen != FrontendScreen::NewWorld || value.empty()) {
+      window.automationControlStatus =
+          value.empty() ? "invalid_value" : "owner_unavailable";
+      markAutomationApplied(window, command, "world.ascii_room_source_name",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    worldSetupDraft.asciiRoomEnabled = true;
+    worldSetupDraft.asciiRoomSourceName = std::string(value);
+    recordWorldSetupDraftState(worldSetupDraft, window);
+    window.worldSetupStatus = "world_setup_ascii_room_source_name_updated";
+    markAutomationApplied(window, command, "world.ascii_room_source_name",
                           productInputOwnerFor(frontend, window), "applied");
     return true;
   }
@@ -1776,7 +1841,7 @@ int runProductApp(int argc, char** argv) {
   std::optional<Session> activeSession;
   WorldSetupDraft worldSetupDraft = makeDefaultWorldSetupDraft();
   ProductAppWindowState window;
-  window.worldSetupTitle = worldSetupDraft.worldName;
+  recordWorldSetupDraftState(worldSetupDraft, window);
 
   FrontendState frontend;
   initializeProductStarterTransition(frontend, window, saves.slots.compatibleCount > 0);

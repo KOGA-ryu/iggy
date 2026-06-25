@@ -24,6 +24,22 @@ iggy3d::WorldSetupCreateRequest defaultSetupRequest() {
       .createRequest;
 }
 
+iggy3d::WorldSetupCreateRequest asciiSetupRequest() {
+  auto draft = iggy3d::makeDefaultWorldSetupDraft("seed_ascii");
+  draft.worldName = "  ASCII Chapter  ";
+  draft.asciiRoomEnabled = true;
+  draft.asciiRoomText =
+      "#####\n"
+      "#P$E#\n"
+      "#####\n";
+  draft.asciiRoomId = "ascii_chapter_room";
+  draft.asciiRoomSourceName = "worlds/ascii_chapter.iggyroom.txt";
+  return iggy3d::routeWorldSetupAction(
+             draft,
+             iggy3d::FrontendAction::CreateAndEnter)
+      .createRequest;
+}
+
 iggy3d::ProductWorldCreationInput inputFor(
     iggy3d::WorldSetupCreateRequest setupRequest,
     iggy3d::ProductWorldTemplate worldTemplate,
@@ -145,6 +161,26 @@ bool devOverrideTemplateFactsArePreservedWithoutIo() {
                 "dev source") &&
          expect(result.request.templateDisplayName == "Dev Override World",
                 "dev display");
+}
+
+bool asciiRoomSelectionFactsArePreservedWithoutIo() {
+  const iggy3d::ProductWorldCreationResult result =
+      iggy3d::prepareProductWorldCreation(inputFor(
+          asciiSetupRequest(), iggy3d::defaultProductWorldTemplate(),
+          "world_ascii_01"));
+
+  return expect(result.accepted, "ascii accepted") &&
+         expect(result.request.worldName == "ASCII Chapter",
+                "ascii world title") &&
+         expect(result.request.asciiRoomRequested,
+                "ascii room requested") &&
+         expect(result.request.asciiRoomId == "ascii_chapter_room",
+                "ascii room id") &&
+         expect(result.request.asciiRoomSourceName ==
+                    "worlds/ascii_chapter.iggyroom.txt",
+                "ascii room source") &&
+         expect(result.initialSavePlan.worldTitle == "ASCII Chapter",
+                "ascii initial save title");
 }
 
 bool notRequestedIsRejected() {
@@ -408,6 +444,7 @@ bool invalidAttemptTokenPreservesDurableReason() {
 int main() {
   const bool ok = validDefaultRequestPreparesWorldCreation() &&
                   devOverrideTemplateFactsArePreservedWithoutIo() &&
+                  asciiRoomSelectionFactsArePreservedWithoutIo() &&
                   notRequestedIsRejected() && invalidWorldIdsAreRejected() &&
                   missingTemplateAndTimestampFieldsReject() &&
                   pathSafeWorldIdsAreAllowed() &&

@@ -14,6 +14,7 @@ enum class WorldSetupField : std::uint8_t {
   Seed,
   Difficulty,
   StartingScenario,
+  AsciiRoom,
   Create,
   Back,
 };
@@ -33,6 +34,10 @@ struct WorldSetupDraft {
   bool seedGenerated = true;
   WorldSetupDifficulty difficulty = WorldSetupDifficulty::Standard;
   WorldSetupScenario startingScenario = WorldSetupScenario::TrainingGround;
+  bool asciiRoomEnabled = false;
+  std::string asciiRoomText;
+  std::string asciiRoomId = "world_setup_room";
+  std::string asciiRoomSourceName = "world_setup_ascii_room.iggyroom.txt";
   WorldSetupField selectedField = WorldSetupField::WorldName;
 };
 
@@ -49,6 +54,10 @@ struct WorldSetupCreateRequest {
   std::uint64_t resolvedSeed = 0;
   WorldSetupDifficulty difficulty = WorldSetupDifficulty::Standard;
   WorldSetupScenario startingScenario = WorldSetupScenario::TrainingGround;
+  bool asciiRoomRequested = false;
+  std::string asciiRoomText;
+  std::string asciiRoomId;
+  std::string asciiRoomSourceName;
 };
 
 struct WorldSetupRouteResult {

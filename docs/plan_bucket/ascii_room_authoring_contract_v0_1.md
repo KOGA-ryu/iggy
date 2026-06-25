@@ -124,6 +124,7 @@ Existing Iggy3D targets this work must inspect and compile into later:
 src/runtime/save/SaveEnvelope.hpp
 src/runtime/save/SaveFileStore.hpp
 src/app/iggy3d/ProductWorldCreation.*
+src/app/iggy3d/ProductAsciiRoomPackage.*
 src/app/iggy3d/SaveBridge.*
 src/app/iggy3d/ProductSaveCatalog.*
 src/app/frontend/SaveBrowser.*
@@ -628,6 +629,20 @@ Current active-room runtime proof:
 - product no-window smokes prove both positive traversal through an opened
   secret door and negative collision against a package-loaded wall.
 
+Current World Setup binding:
+
+- `WorldSetupDraft` can carry optional ASCII room source text, room id, and
+  source name;
+- raw ASCII source text remains authoring input and is not printed in receipts;
+- successful product New World creation compiles the draft ASCII source into a
+  `RoomAsset` and authored room section before creating the runtime session;
+- `ProductAsciiRoomPackage` builds the transient in-memory package used only to
+  start the product session from the generated room;
+- the initial durable save writes the generated authored-room section, so save
+  data owns durable room truth after creation;
+- product no-window world setup proof covers ASCII-backed creation, active-room
+  collision readiness, and authored-room save persistence.
+
 ## Validation Rules
 
 Hard errors for v0.1:
@@ -760,6 +775,13 @@ ascii_room_authored_wall_count
 ascii_room_spawn_count
 ascii_room_treasure_count
 ascii_room_npc_count
+world_setup_ascii_room_enabled
+world_setup_ascii_room_text_present
+world_setup_ascii_room_id
+world_setup_ascii_room_source_name
+world_creation_ascii_room_requested
+world_creation_ascii_room_id
+world_creation_ascii_room_source_name
 ```
 
 Proof text:

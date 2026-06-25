@@ -2,8 +2,7 @@
 
 ## Objective
 
-Define product world creation before implementation expands the current
-`New World` launch stub.
+Define product world creation as the durable product path behind `New World`.
 
 World creation must create a playable saved world lineage. It is not just a
 shortcut into a demo session.
@@ -20,7 +19,9 @@ Starter
   -> Enter gameplay
 ```
 
-This is a plan only. It does not authorize source edits.
+This contract started as a plan-only document. The current repo now implements
+the save-gated New World path, durable initial save write, and optional
+ASCII-room-backed world creation described below.
 
 ## Current Baseline
 
@@ -40,35 +41,41 @@ src/app/iggy3d/FrontendActionExecutor.hpp
 src/app/iggy3d/FrontendActionExecutor.cpp
 ```
 
-Current capabilities:
+Current implemented capabilities:
 
 - `FrontendScreen::NewWorld` exists;
 - `FrontendAction::NewWorld` exists;
 - `FrontendAction::CreateAndEnter` exists;
 - starter routing can open the `NewWorld` child screen;
+- `WorldSetupModel` owns a deterministic draft, validation, and create/back
+  result;
+- `ProductWorldCreation` builds product creation and initial-save request
+  values from a validated draft;
+- `launchProductNewWorld` creates a runtime session and enters gameplay only
+  after the durable initial save succeeds;
+- optional ASCII room source can be supplied on the world setup draft and
+  compiled into authored room data before the runtime session is created;
+- ASCII-backed New World initial saves persist the generated authored-room
+  section;
 - `ProductWorldTemplate` exposes package id, scenario id, display name,
   source, authored floor count, and authored wall count;
 - `drawNewWorldPanel` draws a basic new-world panel;
-- `launchProductNewWorld` creates a runtime session and enters gameplay;
 - `--auto-new-world` can skip starter and launch directly;
 - product receipts already report world/template facts through existing
   product receipt paths.
 
 Current limitations:
 
-- no `WorldSetupModel` exists;
-- no editable world setup draft exists;
 - no persisted `world_id` exists;
 - no product world metadata record exists;
 - no persisted `worldTitle` metadata exists yet;
 - no seed editing model exists;
 - no difficulty model exists;
 - no starting scenario choice model exists;
-- no initial save is written before gameplay;
-- no world creation failure route exists for initial save failure;
-- `launchProductNewWorld` currently creates a session directly;
-- current world creation is coupled to `AppShell.cpp` behavior branches;
-- current flow can enter gameplay without creating a saved world lineage.
+- ASCII-backed save load rehydrates save/runtime state, but active-room
+  collision rehydration from a loaded authored room remains future work;
+- current world creation still has AppShell composition code that should shrink
+  as UI models become real widgets.
 
 ## Source-Fit Notes For Builders
 
@@ -79,23 +86,21 @@ existing direct-launch helpers.
 - `ProductWorldTemplate` is a package/scenario/template descriptor. It is not a
   world setup draft, not a product world record, and not durable world metadata.
 - `drawNewWorldPanel` currently displays template package/scenario/save-count
-  facts. It does not render editable world title, seed, difficulty, starting
-  scenario, validation, or save-gate state.
-- `applyOpeningMenuAction` currently handles selected `NewWorld` by calling
-  `launchProductNewWorld` directly. That path creates a runtime session and
-  enters gameplay when session creation succeeds.
-- `launchProductNewWorld` currently does not allocate `world_id`, does not write
-  product world metadata, and does not request an initial manual save before
-  gameplay.
+  facts. It does not yet render full editable world title, seed, difficulty,
+  starting scenario, validation, ASCII source, or save-gate state.
+- `applyOpeningMenuAction` still composes selected `NewWorld` through
+  `launchProductNewWorld`, but that path now prepares product world creation,
+  creates a runtime session, writes the durable initial manual save, and enters
+  gameplay only after the save succeeds.
+- `launchProductNewWorld` currently does not allocate durable `world_id` or
+  write product world metadata beyond the save envelope/authored-room section.
 - `FrontendActionExecutor` currently treats `CreateAndEnter` as a generic launch
   request. Future product behavior must narrow that meaning to "create a saved
   world, then enter gameplay after the initial save succeeds."
-- `--auto-new-world` currently skips the starter screen into the same direct
-  session-launch path. It must not become the source of product world creation
-  truth; it can later drive the same validated world creation route for tests.
-- Product automation currently drives frontend/menu semantics. Slice 1 must not
-  add an automation-only create path or expand automation beyond model-level
-  tests.
+- `--auto-new-world` skips the starter screen into the same save-gated creation
+  route. It must not become a separate source of product world creation truth.
+- Product automation drives frontend/menu semantics and a small set of world
+  setup draft fields. It must not become a parallel world creation path.
 - Current source has legacy title field names in `WorldSetupDraft` and
   `ProductWorldCreationRequest`. Future product save catalog work must either
   migrate those fields to `worldTitle` or map them at the boundary. Product
@@ -165,6 +170,7 @@ World Title
 Seed
 Difficulty
 Starting Scenario
+ASCII Room Source
 Create
 Back
 ```
@@ -176,6 +182,9 @@ world_title=New World
 seed=generated_editable
 difficulty=standard
 starting_scenario=training_ground
+ascii_room_enabled=false
+ascii_room_id=world_setup_room
+ascii_room_source_name=world_setup_ascii_room.iggyroom.txt
 ```
 
 Back behavior:
@@ -212,6 +221,10 @@ WorldSetupDraft
   seed_generated
   difficulty
   starting_scenario
+  ascii_room_enabled
+  ascii_room_text
+  ascii_room_id
+  ascii_room_source_name
   selected_field
   valid
   reason_code
@@ -270,6 +283,22 @@ training_ground
 - the scenario maps to package/scenario data through product world creation,
   not through the frontend draft itself.
 
+ASCII Room Source:
+
+- optional v0.1 authoring input;
+- disabled by default;
+- when enabled, raw ASCII source text is preserved as authoring input and is not
+  printed in receipts;
+- `ascii_room_id` is trimmed and must be non-empty;
+- `ascii_room_source_name` is trimmed and must be non-empty;
+- empty enabled source text reports `invalid_ascii_room_text`;
+- empty enabled room id reports `invalid_ascii_room_id`;
+- empty enabled source name reports `invalid_ascii_room_source_name`;
+- successful Create compiles the ASCII source into authored room data before
+  runtime session creation;
+- the initial save writes the generated authored-room section so the save owns
+  durable room truth.
+
 Create:
 
 - enabled only when the draft validates;
@@ -290,6 +319,9 @@ ProductWorldCreationRequest
   world_seed
   difficulty
   starting_scenario
+  ascii_room_requested
+  ascii_room_id
+  ascii_room_source_name
   package_id
   scenario_id
   save_root
@@ -355,6 +387,7 @@ save_type=initial
 save_title_present=false
 default_title=<worldTitle>
 world_id=<created world id>
+authored_room.present=true when ASCII room source was used
 ```
 
 Initial save must be written before gameplay.
@@ -401,6 +434,7 @@ many saves.
 | --- | --- | --- |
 | `WorldSetupModel.*` | draft fields, validation, field navigation, create/back result | session creation, save writes |
 | `ProductWorldCreation.*` | orchestration request/result, world id allocation, initial save request | menu row drawing |
+| `ProductAsciiRoomPackage.*` | transient in-memory package for ASCII-authored room sessions | save catalog policy |
 | `ProductWorldTemplate.*` | default package/scenario/display source | user draft state |
 | `Session` / runtime | gameplay state after creation | starter UI draft |
 | `ProductSaveBridge.*` | initial save write request/result | field validation UI |
@@ -418,6 +452,8 @@ src/app/frontend/WorldSetupModel.hpp
 src/app/frontend/WorldSetupModel.cpp
 src/app/iggy3d/ProductWorldCreation.hpp
 src/app/iggy3d/ProductWorldCreation.cpp
+src/app/iggy3d/ProductAsciiRoomPackage.hpp
+src/app/iggy3d/ProductAsciiRoomPackage.cpp
 ```
 
 Likely existing files to use or extend later:
@@ -553,6 +589,9 @@ Reason codes:
 ok
 invalid_world_title
 invalid_seed
+invalid_ascii_room_text
+invalid_ascii_room_id
+invalid_ascii_room_source_name
 unsupported_difficulty
 unsupported_scenario
 session_create_failed
@@ -580,6 +619,10 @@ world_setup_seed_text=<text>
 world_setup_seed_generated=true|false
 world_setup_difficulty=<difficulty>
 world_setup_starting_scenario=<scenario>
+world_setup_ascii_room_enabled=true|false
+world_setup_ascii_room_text_present=true|false
+world_setup_ascii_room_id=<id>
+world_setup_ascii_room_source_name=<source-name>
 ```
 
 Create request:
@@ -594,6 +637,9 @@ world_title=<title-or-none>
 world_seed=<seed-or-none>
 world_difficulty=<difficulty-or-none>
 world_scenario=<scenario-or-none>
+world_creation_ascii_room_requested=true|false
+world_creation_ascii_room_id=<id-or-none>
+world_creation_ascii_room_source_name=<source-name-or-none>
 ```
 
 Initial save:
@@ -629,6 +675,9 @@ Unit tests for `WorldSetupModel` should prove:
 - invalid Create returns rejected result;
 - valid Create returns creation request;
 - route/status/reason fields are deterministic.
+- optional ASCII room fields default disabled;
+- invalid enabled ASCII fields reject with stable reasons;
+- valid ASCII room create request carries source text, room id, and source name.
 
 Unit tests for `ProductWorldCreation` should prove later:
 
@@ -639,12 +688,15 @@ Unit tests for `ProductWorldCreation` should prove later:
 - initial save success returns gameplay route;
 - initial save default title is exactly `worldTitle`;
 - product result includes world id and initial save id.
+- ASCII room selection facts are preserved without filesystem IO.
 
 No-window smokes should prove later:
 
 - starter New World opens world setup;
 - default setup can create a saved world;
 - initial save appears in save browser;
+- ASCII setup can create a saved world whose initial save contains an authored
+  room section;
 - failed initial save keeps the app out of gameplay;
 - receipts prove `gameplay_entered_after_initial_save=true` only on success.
 

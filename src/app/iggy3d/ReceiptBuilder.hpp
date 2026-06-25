@@ -35,10 +35,17 @@ struct ProductAppWindowState {
   std::string packageLoadStatus = "not_requested";
   std::string worldSetupTitle = "New World";
   std::string worldSetupStatus = "not_requested";
+  bool worldSetupAsciiRoomEnabled = false;
+  bool worldSetupAsciiRoomTextPresent = false;
+  std::string worldSetupAsciiRoomId = "world_setup_room";
+  std::string worldSetupAsciiRoomSourceName = "world_setup_ascii_room.iggyroom.txt";
   std::string worldCreationStatus = "not_requested";
   std::string worldCreationReasonCode = "not_requested";
   std::string worldCreationWorldId = "none";
   std::string worldCreationWorldTitle = "none";
+  bool worldCreationAsciiRoomRequested = false;
+  std::string worldCreationAsciiRoomId = "none";
+  std::string worldCreationAsciiRoomSourceName = "none";
   bool worldCreationInitialSaveRequested = false;
   bool worldCreationInitialSaveWritten = false;
   std::string worldCreationInitialSaveId = "none";

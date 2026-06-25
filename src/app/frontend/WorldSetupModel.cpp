@@ -55,6 +55,11 @@ WorldSetupCreateRequest createRequestFromDraft(const WorldSetupDraft& draft) {
   request.resolvedSeed = resolveWorldSetupSeed(request.seedText);
   request.difficulty = draft.difficulty;
   request.startingScenario = draft.startingScenario;
+  request.asciiRoomRequested = draft.asciiRoomEnabled;
+  request.asciiRoomText = draft.asciiRoomText;
+  request.asciiRoomId = std::string(trimAsciiWhitespace(draft.asciiRoomId));
+  request.asciiRoomSourceName =
+      std::string(trimAsciiWhitespace(draft.asciiRoomSourceName));
   return request;
 }
 
@@ -72,6 +77,8 @@ std::string_view worldSetupFieldName(WorldSetupField field) {
       return "difficulty";
     case WorldSetupField::StartingScenario:
       return "starting_scenario";
+    case WorldSetupField::AsciiRoom:
+      return "ascii_room";
     case WorldSetupField::Create:
       return "create";
     case WorldSetupField::Back:
@@ -137,6 +144,24 @@ WorldSetupValidation validateWorldSetupDraft(const WorldSetupDraft& draft) {
     return WorldSetupValidation{false,
                                 "unsupported_scenario",
                                 WorldSetupField::StartingScenario};
+  }
+
+  if (draft.asciiRoomEnabled) {
+    if (trimAsciiWhitespace(draft.asciiRoomText).empty()) {
+      return WorldSetupValidation{false,
+                                  "invalid_ascii_room_text",
+                                  WorldSetupField::AsciiRoom};
+    }
+    if (trimAsciiWhitespace(draft.asciiRoomId).empty()) {
+      return WorldSetupValidation{false,
+                                  "invalid_ascii_room_id",
+                                  WorldSetupField::AsciiRoom};
+    }
+    if (trimAsciiWhitespace(draft.asciiRoomSourceName).empty()) {
+      return WorldSetupValidation{false,
+                                  "invalid_ascii_room_source_name",
+                                  WorldSetupField::AsciiRoom};
+    }
   }
 
   return WorldSetupValidation{true, "ok", WorldSetupField::None};

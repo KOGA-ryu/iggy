@@ -1,7 +1,24 @@
 #include "ProductAutomationSmokeSupport.hpp"
 
 #include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <iterator>
+#include <string>
+
+namespace {
+
+bool fileContains(const std::filesystem::path& path, std::string_view needle) {
+  std::ifstream input(path);
+  if (!input) {
+    return false;
+  }
+  const std::string text((std::istreambuf_iterator<char>(input)),
+                         std::istreambuf_iterator<char>());
+  return text.find(needle) != std::string::npos;
+}
+
+}  // namespace
 
 int main() {
   const std::filesystem::path binary = iggy3d::smoke::productAppBinary();
@@ -65,17 +82,94 @@ int main() {
       iggy3d::smoke::hasField(fields, "product_transition_status",
                               "gameplay_active");
 
+  fields.clear();
+  const std::filesystem::path asciiSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("world_setup_ascii_room");
+  const bool asciiWorld =
+      appAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "new_world_ascii_room",
+          "frontend.select=new_world\nfrontend.execute=true\n"
+          "world.title=ASCII Chapter\n"
+          "world.ascii_room_id=ascii_chapter_room\n"
+          "world.ascii_room_source_name=worlds/ascii_chapter.iggyroom.txt\n"
+          "world.ascii_room_text=#######\\n#P..N.#\\n#.+.$.#\\n#..E..#\\n#######\\n\n"
+          "world.create=true\n",
+          iggy3d::smoke::saveRootArg(asciiSaveRoot),
+          fields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::automationApplied(fields) &&
+      iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "world_setup_title", "ASCII Chapter") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_ascii_room_enabled",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_ascii_room_text_present",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_ascii_room_id",
+                              "ascii_chapter_room") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_ascii_room_source_name",
+                              "worlds/ascii_chapter.iggyroom.txt") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_creation_ascii_room_requested",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_creation_ascii_room_id",
+                              "ascii_chapter_room") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_creation_ascii_room_source_name",
+                              "worlds/ascii_chapter.iggyroom.txt") &&
+      iggy3d::smoke::hasField(fields, "world_creation_world_title",
+                              "ASCII Chapter") &&
+      iggy3d::smoke::hasField(fields, "world_creation_status",
+                              "world_creation_initial_save_written") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_creation_initial_save_title",
+                              "ASCII Chapter") &&
+      iggy3d::smoke::hasField(fields, "product_save_status",
+                              "product_save_written") &&
+      iggy3d::smoke::hasField(fields, "product_save_source", "initial_world") &&
+      iggy3d::smoke::hasField(fields, "product_save_save_id", "save_001") &&
+      std::filesystem::exists(asciiSaveRoot / "save_001.iggy3d.save") &&
+      fileContains(asciiSaveRoot / "save_001.iggy3d.save",
+                   "authoredRoom.present=true\n") &&
+      fileContains(asciiSaveRoot / "save_001.iggy3d.save",
+                   "authoredRoom.id=ascii_chapter_room\n") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_status",
+                              "product_ascii_room_ready") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_room_id",
+                              "ascii_chapter_room") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_source_name",
+                              "worlds/ascii_chapter.iggyroom.txt") &&
+      iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
+      iggy3d::smoke::hasField(fields, "active_room_source", "ascii_room") &&
+      iggy3d::smoke::hasField(fields, "active_room_id", "ascii_chapter_room") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_ready",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_transition_status",
+                              "gameplay_active");
+
   std::cout << "smoke=product_world_setup\n";
   std::cout << "new_world=" << (newWorld ? "true" : "false") << "\n";
+  std::cout << "ascii_world=" << (asciiWorld ? "true" : "false") << "\n";
   std::cout << "window_launch_count=0\n";
   std::cout << "result="
-            << (newWorld ? "pass" : (appAvailable ? "fail" : "skip")) << "\n";
+            << (newWorld && asciiWorld ? "pass" : (appAvailable ? "fail" : "skip")) << "\n";
   std::cout << "reason_code="
-            << (newWorld ? "product_world_setup_pass"
-                         : (appAvailable ? "product_world_setup_failed"
-                                         : "product_app_unavailable"))
+            << (newWorld && asciiWorld
+                    ? "product_world_setup_pass"
+                    : (appAvailable ? "product_world_setup_failed"
+                                    : "product_app_unavailable"))
             << "\n";
-  if (newWorld) {
+  if (newWorld && asciiWorld) {
     return 0;
   }
   return appAvailable ? 1 : 77;

@@ -26,6 +26,9 @@ bool defaultDraftAndNamesAreStable() {
          expect(iggy3d::worldSetupFieldName(iggy3d::WorldSetupField::Create) ==
                     "create",
                 "create field") &&
+         expect(iggy3d::worldSetupFieldName(iggy3d::WorldSetupField::AsciiRoom) ==
+                    "ascii_room",
+                "ascii room field") &&
          expect(iggy3d::worldSetupDifficultyName(
                     iggy3d::WorldSetupDifficulty::Standard) == "standard",
                 "standard difficulty") &&
@@ -43,6 +46,13 @@ bool defaultDraftAndNamesAreStable() {
          expect(draft.startingScenario ==
                     iggy3d::WorldSetupScenario::TrainingGround,
                 "default scenario") &&
+         expect(!draft.asciiRoomEnabled, "default ascii room disabled") &&
+         expect(draft.asciiRoomText.empty(), "default ascii room text empty") &&
+         expect(draft.asciiRoomId == "world_setup_room",
+                "default ascii room id") &&
+         expect(draft.asciiRoomSourceName ==
+                    "world_setup_ascii_room.iggyroom.txt",
+                "default ascii room source name") &&
          expect(draft.selectedField == iggy3d::WorldSetupField::WorldName,
                 "default selected field");
 }
@@ -118,6 +128,46 @@ bool validationRejectsInvalidSeedAndUnsupportedEnums() {
                 "scenario field");
 }
 
+bool validationRejectsInvalidAsciiRoomDraft() {
+  iggy3d::WorldSetupDraft missingText = iggy3d::makeDefaultWorldSetupDraft();
+  missingText.asciiRoomEnabled = true;
+  missingText.asciiRoomText = "   ";
+  const iggy3d::WorldSetupValidation textValidation =
+      iggy3d::validateWorldSetupDraft(missingText);
+
+  iggy3d::WorldSetupDraft missingId = iggy3d::makeDefaultWorldSetupDraft();
+  missingId.asciiRoomEnabled = true;
+  missingId.asciiRoomText = "###\n#P#\n###\n";
+  missingId.asciiRoomId = " ";
+  const iggy3d::WorldSetupValidation idValidation =
+      iggy3d::validateWorldSetupDraft(missingId);
+
+  iggy3d::WorldSetupDraft missingSource =
+      iggy3d::makeDefaultWorldSetupDraft();
+  missingSource.asciiRoomEnabled = true;
+  missingSource.asciiRoomText = "###\n#P#\n###\n";
+  missingSource.asciiRoomSourceName = "\t";
+  const iggy3d::WorldSetupValidation sourceValidation =
+      iggy3d::validateWorldSetupDraft(missingSource);
+
+  return expect(!textValidation.valid, "empty ascii text invalid") &&
+         expect(textValidation.reasonCode == "invalid_ascii_room_text",
+                "empty ascii text reason") &&
+         expect(textValidation.field == iggy3d::WorldSetupField::AsciiRoom,
+                "empty ascii text field") &&
+         expect(!idValidation.valid, "empty ascii id invalid") &&
+         expect(idValidation.reasonCode == "invalid_ascii_room_id",
+                "empty ascii id reason") &&
+         expect(idValidation.field == iggy3d::WorldSetupField::AsciiRoom,
+                "empty ascii id field") &&
+         expect(!sourceValidation.valid, "empty ascii source invalid") &&
+         expect(sourceValidation.reasonCode ==
+                    "invalid_ascii_room_source_name",
+                "empty ascii source reason") &&
+         expect(sourceValidation.field == iggy3d::WorldSetupField::AsciiRoom,
+                "empty ascii source field");
+}
+
 bool backRouteDiscardsDraftOnly() {
   const iggy3d::WorldSetupDraft draft = iggy3d::makeDefaultWorldSetupDraft();
   const iggy3d::WorldSetupRouteResult route =
@@ -135,6 +185,10 @@ bool backRouteDiscardsDraftOnly() {
 bool validCreateReturnsRequest() {
   iggy3d::WorldSetupDraft draft = iggy3d::makeDefaultWorldSetupDraft("seed_42");
   draft.worldName = "  My World  ";
+  draft.asciiRoomEnabled = true;
+  draft.asciiRoomText = "###\n#P#\n###\n";
+  draft.asciiRoomId = "  my_world_room  ";
+  draft.asciiRoomSourceName = "  worlds/my_world.iggyroom.txt  ";
   const iggy3d::WorldSetupRouteResult route =
       iggy3d::routeWorldSetupAction(draft,
                                     iggy3d::FrontendAction::CreateAndEnter);
@@ -159,7 +213,16 @@ bool validCreateReturnsRequest() {
                 "create difficulty") &&
          expect(route.createRequest.startingScenario ==
                     iggy3d::WorldSetupScenario::TrainingGround,
-                "create scenario");
+                "create scenario") &&
+         expect(route.createRequest.asciiRoomRequested,
+                "create ascii room requested") &&
+         expect(route.createRequest.asciiRoomText == "###\n#P#\n###\n",
+                "create ascii room text") &&
+         expect(route.createRequest.asciiRoomId == "my_world_room",
+                "create ascii room id") &&
+         expect(route.createRequest.asciiRoomSourceName ==
+                    "worlds/my_world.iggyroom.txt",
+                "create ascii room source name");
 }
 
 bool invalidCreateAndUnsupportedActionAreRejected() {
@@ -195,6 +258,7 @@ int main() {
                   validationAcceptsDefaultDraft() &&
                   validationRejectsInvalidWorldNames() &&
                   validationRejectsInvalidSeedAndUnsupportedEnums() &&
+                  validationRejectsInvalidAsciiRoomDraft() &&
                   backRouteDiscardsDraftOnly() && validCreateReturnsRequest() &&
                   invalidCreateAndUnsupportedActionAreRejected();
   return ok ? 0 : 1;

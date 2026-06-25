@@ -31,6 +31,9 @@ struct ProductWorldCreationRequest {
   std::string scenarioId;
   std::string templateDisplayName;
   std::string templateSource;
+  bool asciiRoomRequested = false;
+  std::string asciiRoomId;
+  std::string asciiRoomSourceName;
   std::filesystem::path saveRoot;
   std::string requestedAtUtc;
 };

@@ -89,12 +89,33 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "package_load_status", window.packageLoadStatus);
   appendReceiptField(receipt, "world_setup_title", window.worldSetupTitle);
   appendReceiptField(receipt, "world_setup_status", window.worldSetupStatus);
+  appendReceiptField(receipt,
+                     "world_setup_ascii_room_enabled",
+                     window.worldSetupAsciiRoomEnabled);
+  appendReceiptField(receipt,
+                     "world_setup_ascii_room_text_present",
+                     window.worldSetupAsciiRoomTextPresent);
+  appendReceiptField(receipt,
+                     "world_setup_ascii_room_id",
+                     window.worldSetupAsciiRoomId);
+  appendReceiptField(receipt,
+                     "world_setup_ascii_room_source_name",
+                     window.worldSetupAsciiRoomSourceName);
   appendReceiptField(receipt, "world_creation_status", window.worldCreationStatus);
   appendReceiptField(receipt, "world_creation_reason_code",
                      window.worldCreationReasonCode);
   appendReceiptField(receipt, "world_creation_world_id", window.worldCreationWorldId);
   appendReceiptField(receipt, "world_creation_world_title",
                      window.worldCreationWorldTitle);
+  appendReceiptField(receipt,
+                     "world_creation_ascii_room_requested",
+                     window.worldCreationAsciiRoomRequested);
+  appendReceiptField(receipt,
+                     "world_creation_ascii_room_id",
+                     window.worldCreationAsciiRoomId);
+  appendReceiptField(receipt,
+                     "world_creation_ascii_room_source_name",
+                     window.worldCreationAsciiRoomSourceName);
   appendReceiptField(receipt, "world_creation_initial_save_requested",
                      window.worldCreationInitialSaveRequested);
   appendReceiptField(receipt, "world_creation_initial_save_written",

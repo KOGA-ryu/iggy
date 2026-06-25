@@ -7,6 +7,9 @@
 #include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductActiveRoomState.hpp"
+#include "app/iggy3d/ProductAsciiRoomAuthoring.hpp"
+#include "app/iggy3d/ProductAsciiRoomPackage.hpp"
+#include "app/iggy3d/ProductAsciiRoomPreview.hpp"
 #include "app/iggy3d/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/ProductMenuTransitions.hpp"
 #include "app/iggy3d/ProductPackageSessionSeed.hpp"
@@ -65,11 +68,19 @@ std::filesystem::path defaultProductPackagePath(const ProductAppOptions& options
          "package.iggy3d.toml";
 }
 
-bool createProductSession(const ProductAppOptions& options,
-                          std::optional<Session>& activeSession,
-                          ProductAppWindowState& window) {
-  const std::filesystem::path packagePath = defaultProductPackagePath(options);
-  const PackageLoadResult package = loadPackage({packagePath.generic_string()});
+ProductAsciiRoomAuthoringRequest productAsciiRoomAuthoringRequestFromWorldSetup(
+    const WorldSetupDraft& draft) {
+  ProductAsciiRoomAuthoringRequest request;
+  request.sourceText = draft.asciiRoomText;
+  request.roomId = draft.asciiRoomId;
+  request.sourceName = draft.asciiRoomSourceName;
+  request.centerOnOrigin = false;
+  return request;
+}
+
+bool createProductSessionFromPackage(const PackageLoadResult& package,
+                                     std::optional<Session>& activeSession,
+                                     ProductAppWindowState& window) {
   window.packageLoadStatus = packageLoadStatusName(package.status);
   if (package.status != PackageLoadStatus::Ok) {
     window.launchStatus = "package_load_failed";
@@ -111,12 +122,26 @@ bool createProductSession(const ProductAppOptions& options,
   return true;
 }
 
+bool createProductSession(const ProductAppOptions& options,
+                          std::optional<Session>& activeSession,
+                          ProductAppWindowState& window) {
+  const std::filesystem::path packagePath = defaultProductPackagePath(options);
+  const PackageLoadResult package = loadPackage({packagePath.generic_string()});
+  return createProductSessionFromPackage(package, activeSession, window);
+}
+
 ProductWorldCreationResult prepareProductWorldCreationFromDraft(
     const ProductAppOptions& options,
     const ProductWorldTemplate& world,
     const WorldSetupDraft& draft,
     ProductAppWindowState& window) {
   window.worldSetupTitle = draft.worldName;
+  window.worldSetupAsciiRoomEnabled = draft.asciiRoomEnabled;
+  window.worldSetupAsciiRoomTextPresent = !draft.asciiRoomText.empty();
+  window.worldSetupAsciiRoomId =
+      draft.asciiRoomId.empty() ? "none" : draft.asciiRoomId;
+  window.worldSetupAsciiRoomSourceName =
+      draft.asciiRoomSourceName.empty() ? "none" : draft.asciiRoomSourceName;
   const WorldSetupRouteResult setup =
       routeWorldSetupAction(draft, FrontendAction::CreateAndEnter);
   if (!setup.accepted || !setup.createRequested) {
@@ -142,6 +167,13 @@ ProductWorldCreationResult prepareProductWorldCreationFromDraft(
       creation.initialSavePlan.worldTitle.empty()
           ? "none"
           : creation.initialSavePlan.worldTitle;
+  window.worldCreationAsciiRoomRequested = creation.request.asciiRoomRequested;
+  window.worldCreationAsciiRoomId =
+      creation.request.asciiRoomId.empty() ? "none" : creation.request.asciiRoomId;
+  window.worldCreationAsciiRoomSourceName =
+      creation.request.asciiRoomSourceName.empty()
+          ? "none"
+          : creation.request.asciiRoomSourceName;
   window.worldCreationInitialSaveRequested = creation.initialSavePlan.requested;
   window.worldCreationInitialSaveWritten = creation.initialSaveWritten;
   window.worldCreationInitialSaveId =
@@ -167,6 +199,16 @@ void recordProductWorldInitialSaveResult(
       initialSave.creation.initialSavePlan.worldTitle.empty()
           ? "none"
           : initialSave.creation.initialSavePlan.worldTitle;
+  window.worldCreationAsciiRoomRequested =
+      initialSave.creation.request.asciiRoomRequested;
+  window.worldCreationAsciiRoomId =
+      initialSave.creation.request.asciiRoomId.empty()
+          ? "none"
+          : initialSave.creation.request.asciiRoomId;
+  window.worldCreationAsciiRoomSourceName =
+      initialSave.creation.request.asciiRoomSourceName.empty()
+          ? "none"
+          : initialSave.creation.request.asciiRoomSourceName;
   window.worldCreationInitialSaveRequested =
       initialSave.creation.initialSavePlan.requested;
   window.worldCreationInitialSaveWritten =
@@ -361,6 +403,9 @@ ProductSaveWriteResult writeProductCurrentSessionSave(
                            : window.activeProductSaveId;
   request.attemptToken = "attempt_002";
   request.state = &activeSession->state();
+  if (window.activeRoom.hasAuthoredRoom) {
+    request.authoredRoom = &window.activeRoom.authoredRoom;
+  }
   const ProductSaveWriteResult written = writeProductSessionSaveDurably(request);
   recordProductSaveWriteResult(source, written, window);
   return written;
@@ -585,16 +630,43 @@ void launchProductNewWorld(const ProductAppOptions& options,
                            ProductAppWindowState& window) {
   window.launchAction = "create_and_enter";
   const ProductWorldTemplate world = productWorldTemplateFromOptions(options);
-  if (!createProductSession(options, activeSession, window)) {
-    frontend.status = "opening_menu_new_world_failed";
-    return;
-  }
-
   ProductWorldCreationResult creation =
       prepareProductWorldCreationFromDraft(options, world, worldSetupDraft, window);
   if (!creation.accepted) {
     window.launchStatus = std::string(creation.reasonCode);
-    clearProductGameplayLaunchState(activeSession, window);
+    frontend.status = "opening_menu_new_world_failed";
+    return;
+  }
+
+  ProductAsciiRoomAuthoringRequest asciiRequest;
+  ProductAsciiRoomAuthoringResult asciiRoom;
+  const SaveAuthoredRoomSection* initialSaveAuthoredRoom = nullptr;
+  if (worldSetupDraft.asciiRoomEnabled) {
+    asciiRequest = productAsciiRoomAuthoringRequestFromWorldSetup(worldSetupDraft);
+    asciiRoom = buildProductAsciiRoomAuthoring(asciiRequest);
+    recordProductAsciiRoomPreview(asciiRequest.sourceName,
+                                  asciiRequest.roomId,
+                                  asciiRoom,
+                                  window);
+    if (!asciiRoom.ok) {
+      window.launchStatus = asciiRoom.reasonCode;
+      frontend.status = "opening_menu_new_world_failed";
+      return;
+    }
+
+    const PackageLoadResult asciiPackage =
+        makeProductAsciiRoomPackage(asciiRoom.roomAsset.room,
+                                    world.packageId,
+                                    world.scenarioId);
+    if (!createProductSessionFromPackage(asciiPackage, activeSession, window)) {
+      frontend.status = "opening_menu_new_world_failed";
+      return;
+    }
+    window.activeRoom = buildProductActiveRoomFromAsciiAuthoring(asciiRequest, asciiRoom);
+    window.activeRoomCollision =
+        buildProductActiveRoomCollision(window.activeRoom, activeSession->state());
+    initialSaveAuthoredRoom = &asciiRoom.authoredRoom.authoredRoom;
+  } else if (!createProductSession(options, activeSession, window)) {
     frontend.status = "opening_menu_new_world_failed";
     return;
   }
@@ -602,6 +674,7 @@ void launchProductNewWorld(const ProductAppOptions& options,
   ProductWorldInitialSaveRequest initialSaveRequest;
   initialSaveRequest.creation = creation;
   initialSaveRequest.state = &activeSession->state();
+  initialSaveRequest.authoredRoom = initialSaveAuthoredRoom;
   initialSaveRequest.attemptToken = "attempt_001";
   const ProductWorldInitialSaveResult initialSave =
       writeProductWorldInitialSaveDurably(initialSaveRequest);

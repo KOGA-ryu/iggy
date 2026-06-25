@@ -121,6 +121,9 @@ ProductWorldCreationResult prepareProductWorldCreation(
   result.request.scenarioId = input.worldTemplate.scenarioId;
   result.request.templateDisplayName = input.worldTemplate.displayName;
   result.request.templateSource = input.worldTemplate.source;
+  result.request.asciiRoomRequested = input.setupRequest.asciiRoomRequested;
+  result.request.asciiRoomId = input.setupRequest.asciiRoomId;
+  result.request.asciiRoomSourceName = input.setupRequest.asciiRoomSourceName;
   result.request.saveRoot = input.saveRoot;
   result.request.requestedAtUtc = std::string(trimAsciiWhitespace(input.requestedAtUtc));
   result.initialSavePlan = makeInitialSavePlan(
