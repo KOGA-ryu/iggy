@@ -51,7 +51,8 @@ ScenarioEntitySeed playerFromAnchor(const RoomAnchorAsset& anchor) {
                                        anchor.positionMeters,
                                        makeAabb3({-0.25F, 0.0F, -0.25F},
                                                  {0.25F, 1.8F, 0.25F}));
-  seed.targeting.targetable = false;
+  seed.targeting.targetable = true;
+  seed.targeting.actions = {TargetAction::Attack, TargetAction::Inspect};
   seed.combatantEnabled = true;
   seed.combatant.factionId = 1;
   seed.combatant.hitPoints = 10;

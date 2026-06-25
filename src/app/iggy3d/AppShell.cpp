@@ -240,6 +240,16 @@ void recordProductGameplayTapeRun(const ProductGameplayTapeRunResult& run,
   window.gameplayTapeNpcDefeated = run.npcDefeated;
   window.gameplayTapeExitObjectiveComplete = run.exitObjectiveComplete;
   window.gameplayTapeLoopComplete = run.loopComplete;
+  window.gameplayTapeAiCommandLogged = run.aiCommandLogged;
+  window.gameplayTapeAiAttackLogged = run.aiAttackLogged;
+  window.gameplayTapeAiWaitLogged = run.aiWaitLogged;
+  window.gameplayTapeAiPlayerDamaged = run.aiPlayerDamaged;
+  window.gameplayTapeAiPlayerHpBefore = run.aiPlayerHpBefore;
+  window.gameplayTapeAiPlayerHpAfter = run.aiPlayerHpAfter;
+  window.gameplayTapeAiActorId = run.aiActorId;
+  window.gameplayTapeAiTargetId = run.aiTargetId;
+  window.gameplayTapeAiBehavior = run.aiBehavior;
+  window.gameplayTapeAiIntent = run.aiIntent;
   window.sessionOutcome = run.sessionOutcome;
   window.runtimeStateHash = run.runtimeStateHash;
   if (!run.ok) {

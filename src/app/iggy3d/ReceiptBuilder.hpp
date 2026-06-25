@@ -238,6 +238,16 @@ struct ProductAppWindowState {
   bool gameplayTapeNpcDefeated = false;
   bool gameplayTapeExitObjectiveComplete = false;
   bool gameplayTapeLoopComplete = false;
+  bool gameplayTapeAiCommandLogged = false;
+  bool gameplayTapeAiAttackLogged = false;
+  bool gameplayTapeAiWaitLogged = false;
+  bool gameplayTapeAiPlayerDamaged = false;
+  std::int32_t gameplayTapeAiPlayerHpBefore = 0;
+  std::int32_t gameplayTapeAiPlayerHpAfter = 0;
+  std::string gameplayTapeAiActorId = "none";
+  std::string gameplayTapeAiTargetId = "none";
+  std::string gameplayTapeAiBehavior = "none";
+  std::string gameplayTapeAiIntent = "none";
   bool interactionExecuted = false;
   bool attackExecuted = false;
   std::string productTransitionLastAction = "none";

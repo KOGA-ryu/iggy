@@ -45,6 +45,16 @@ struct ProductGameplayTapeRunResult {
   bool npcDefeated = false;
   bool exitObjectiveComplete = false;
   bool loopComplete = false;
+  bool aiCommandLogged = false;
+  bool aiAttackLogged = false;
+  bool aiWaitLogged = false;
+  bool aiPlayerDamaged = false;
+  std::int32_t aiPlayerHpBefore = 0;
+  std::int32_t aiPlayerHpAfter = 0;
+  std::string aiActorId = "none";
+  std::string aiTargetId = "none";
+  std::string aiBehavior = "none";
+  std::string aiIntent = "none";
   std::string sessionOutcome = "None";
   std::uint64_t runtimeStateHash = 0;
 };

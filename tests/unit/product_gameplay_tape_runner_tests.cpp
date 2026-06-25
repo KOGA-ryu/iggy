@@ -186,7 +186,7 @@ bool tapeAcceptsExpectedMovementBlock() {
                 "expected movement block no mutation");
 }
 
-bool tapeDefeatsNpc() {
+bool tapeWaitLetsNpcAttackPlayer() {
   const iggy3d::ProductAsciiRoomAuthoringResult room = makeNpcRoom();
   if (!expect(room.ok, "npc room authored")) {
     return false;
@@ -194,7 +194,7 @@ bool tapeDefeatsNpc() {
   std::optional<iggy3d::Session> session =
       makeSessionFromRoom(room.roomAsset.room);
   const iggy3d::ProductGameplayTapeParseResult parsed =
-      iggy3d::parseProductGameplayTape("attack marker_npc_spawn_r1_c2\n");
+      iggy3d::parseProductGameplayTape("wait\n");
   if (!expect(session.has_value(), "npc session exists") ||
       !expect(parsed.ok, "npc tape parsed")) {
     return false;
@@ -206,10 +206,20 @@ bool tapeDefeatsNpc() {
          expect(run.status == "gameplay_tape_completed", "npc run status") &&
          expect(run.stepCount == 1U, "npc step count") &&
          expect(run.executedStepCount == 1U, "npc executed count") &&
-         expect(run.lastAction == "attack", "npc last action") &&
-         expect(run.lastTarget == "marker_npc_spawn_r1_c2", "npc last target") &&
+         expect(run.lastAction == "wait", "npc last action") &&
+         expect(run.lastTarget == "none", "npc last target") &&
          expect(run.npcTargetable, "npc targetable") &&
-         expect(run.npcDefeated, "npc defeated") &&
+         expect(!run.npcDefeated, "npc not defeated") &&
+         expect(run.aiCommandLogged, "ai command logged") &&
+         expect(run.aiAttackLogged, "ai attack logged") &&
+         expect(!run.aiWaitLogged, "ai wait not logged") &&
+         expect(run.aiPlayerDamaged, "ai damages player") &&
+         expect(run.aiPlayerHpBefore == 10, "ai hp before") &&
+         expect(run.aiPlayerHpAfter == 9, "ai hp after") &&
+         expect(run.aiActorId == "2", "ai actor id") &&
+         expect(run.aiTargetId == "1", "ai target id") &&
+         expect(run.aiBehavior == "attacking", "ai behavior") &&
+         expect(run.aiIntent == "attack_target", "ai intent") &&
          expect(run.sessionOutcome == "None", "npc no session outcome") &&
          expect(session->state().clock.tickIndex == 1U, "npc one accepted tick");
 }
@@ -260,7 +270,7 @@ bool tapeReportsMissingTarget() {
 int main() {
   const bool ok = tapeCompletesAsciiLoop() &&
                   tapeAcceptsExpectedMovementBlock() &&
-                  tapeDefeatsNpc() &&
+                  tapeWaitLetsNpcAttackPlayer() &&
                   tapeStopsOnUnexpectedRejection() &&
                   tapeReportsMissingTarget();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

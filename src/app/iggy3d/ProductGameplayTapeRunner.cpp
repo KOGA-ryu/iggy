@@ -6,6 +6,7 @@
 
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductActiveRoomState.hpp"
+#include "runtime/ai/AiState.hpp"
 #include "runtime/inventory/InventorySystem.hpp"
 #include "runtime/objective/ObjectiveSystem.hpp"
 #include "runtime/session/Session.hpp"
@@ -112,6 +113,69 @@ bool anyNpcDefeated(const SessionState& state) {
     }
   }
   return false;
+}
+
+const CombatantState* findCombatant(const CombatState& combat, EntityId entity) {
+  for (const CombatantState& combatant : combat.combatants) {
+    if (combatant.entity == entity) {
+      return &combatant;
+    }
+  }
+  return nullptr;
+}
+
+std::string entityIdReceiptValue(EntityId entity) {
+  return isValid(entity) ? std::to_string(toUint64(entity)) : "none";
+}
+
+std::int32_t playerHitPoints(const SessionState& state) {
+  const EntityId player = state.players.actorForSlot(0);
+  const CombatantState* combatant = findCombatant(state.combat, player);
+  return combatant == nullptr ? 0 : combatant->hitPoints;
+}
+
+void fillAiTapeFacts(const SessionState& before,
+                     const SessionState& after,
+                     ProductGameplayTapeRunResult& result) {
+  const EntityId player = after.players.actorForSlot(0);
+  result.aiPlayerHpBefore = playerHitPoints(before);
+  result.aiPlayerHpAfter = playerHitPoints(after);
+  result.aiPlayerDamaged = result.aiPlayerHpAfter < result.aiPlayerHpBefore;
+
+  CommandSequence latestAiSequence = kInvalidCommandSequence;
+  for (const CommandRecord& record : after.commandLog.records()) {
+    if (record.source != CommandSource::Ai) {
+      continue;
+    }
+    result.aiCommandLogged = true;
+    if (record.kind == CommandKind::Attack) {
+      result.aiAttackLogged = true;
+    }
+    if (record.kind == CommandKind::Wait) {
+      result.aiWaitLogged = true;
+    }
+    if (record.sequence >= latestAiSequence) {
+      latestAiSequence = record.sequence;
+      result.aiActorId = entityIdReceiptValue(record.actor);
+      if (record.payload.target.hasEntity) {
+        result.aiTargetId = entityIdReceiptValue(record.payload.target.entity);
+      } else if (record.kind == CommandKind::Attack && isValid(player)) {
+        result.aiTargetId = entityIdReceiptValue(player);
+      }
+    }
+  }
+
+  for (const AiActorState& actor : after.ai.actors) {
+    if (result.aiActorId != entityIdReceiptValue(actor.actor)) {
+      continue;
+    }
+    result.aiBehavior = std::string(aiBehaviorKindName(actor.behavior));
+    result.aiIntent = std::string(aiIntentKindName(actor.lastIntent));
+    if (result.aiTargetId == "none") {
+      result.aiTargetId = entityIdReceiptValue(actor.target);
+    }
+    break;
+  }
 }
 
 void fillLoopFacts(const Session& session, ProductGameplayTapeRunResult& result) {
@@ -231,6 +295,7 @@ ProductGameplayTapeRunResult runProductGameplayTape(
                 nullptr);
   }
 
+  const SessionState stateBeforeRun = request.session->state();
   for (std::size_t index = 0; index < request.tape->steps.size(); ++index) {
     const ProductGameplayTapeStep& step = request.tape->steps[index];
     const std::uint64_t stepIndex = static_cast<std::uint64_t>(index + 1U);
@@ -315,6 +380,7 @@ ProductGameplayTapeRunResult runProductGameplayTape(
   }
 
   fillLoopFacts(*request.session, result);
+  fillAiTapeFacts(stateBeforeRun, request.session->state(), result);
   result.ok = true;
   result.status = "gameplay_tape_completed";
   result.reasonCode = "gameplay_tape_completed";

@@ -97,7 +97,7 @@ std::string wallCollisionTapeText() {
 }
 
 std::string npcCombatTapeText() {
-  return "attack marker_npc_spawn_r1_c2\n";
+  return "wait\n";
 }
 
 bool makeGeneratedAsciiPackage(const std::filesystem::path& root,
@@ -383,16 +383,46 @@ int main() {
                               "1") &&
       iggy3d::smoke::hasField(npcFields,
                               "gameplay_tape_last_action",
-                              "attack") &&
+                              "wait") &&
       iggy3d::smoke::hasField(npcFields,
                               "gameplay_tape_last_target",
-                              "marker_npc_spawn_r1_c2") &&
+                              "none") &&
       iggy3d::smoke::hasField(npcFields,
                               "gameplay_tape_npc_targetable",
                               "true") &&
       iggy3d::smoke::hasField(npcFields,
                               "gameplay_tape_npc_defeated",
+                              "false") &&
+      iggy3d::smoke::hasField(npcFields,
+                              "gameplay_tape_ai_command_logged",
                               "true") &&
+      iggy3d::smoke::hasField(npcFields,
+                              "gameplay_tape_ai_attack_logged",
+                              "true") &&
+      iggy3d::smoke::hasField(npcFields,
+                              "gameplay_tape_ai_wait_logged",
+                              "false") &&
+      iggy3d::smoke::hasField(npcFields,
+                              "gameplay_tape_ai_player_damaged",
+                              "true") &&
+      iggy3d::smoke::hasField(npcFields,
+                              "gameplay_tape_ai_player_hp_before",
+                              "10") &&
+      iggy3d::smoke::hasField(npcFields,
+                              "gameplay_tape_ai_player_hp_after",
+                              "9") &&
+      iggy3d::smoke::hasField(npcFields,
+                              "gameplay_tape_ai_actor_id",
+                              "2") &&
+      iggy3d::smoke::hasField(npcFields,
+                              "gameplay_tape_ai_target_id",
+                              "1") &&
+      iggy3d::smoke::hasField(npcFields,
+                              "gameplay_tape_ai_behavior",
+                              "attacking") &&
+      iggy3d::smoke::hasField(npcFields,
+                              "gameplay_tape_ai_intent",
+                              "attack_target") &&
       iggy3d::smoke::hasField(npcFields,
                               "gameplay_tape_loop_complete",
                               "false") &&

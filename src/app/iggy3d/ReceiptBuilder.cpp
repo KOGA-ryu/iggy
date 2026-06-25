@@ -547,6 +547,26 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.gameplayTapeExitObjectiveComplete);
   appendReceiptField(receipt, "gameplay_tape_loop_complete",
                      window.gameplayTapeLoopComplete);
+  appendReceiptField(receipt, "gameplay_tape_ai_command_logged",
+                     window.gameplayTapeAiCommandLogged);
+  appendReceiptField(receipt, "gameplay_tape_ai_attack_logged",
+                     window.gameplayTapeAiAttackLogged);
+  appendReceiptField(receipt, "gameplay_tape_ai_wait_logged",
+                     window.gameplayTapeAiWaitLogged);
+  appendReceiptField(receipt, "gameplay_tape_ai_player_damaged",
+                     window.gameplayTapeAiPlayerDamaged);
+  appendReceiptField(receipt, "gameplay_tape_ai_player_hp_before",
+                     static_cast<std::uint64_t>(window.gameplayTapeAiPlayerHpBefore));
+  appendReceiptField(receipt, "gameplay_tape_ai_player_hp_after",
+                     static_cast<std::uint64_t>(window.gameplayTapeAiPlayerHpAfter));
+  appendReceiptField(receipt, "gameplay_tape_ai_actor_id",
+                     window.gameplayTapeAiActorId);
+  appendReceiptField(receipt, "gameplay_tape_ai_target_id",
+                     window.gameplayTapeAiTargetId);
+  appendReceiptField(receipt, "gameplay_tape_ai_behavior",
+                     window.gameplayTapeAiBehavior);
+  appendReceiptField(receipt, "gameplay_tape_ai_intent",
+                     window.gameplayTapeAiIntent);
   appendReceiptField(receipt, "gameplay_reach_gate", window.gameplayReachGate);
   appendReceiptField(receipt, "gameplay_last_rejection", window.gameplayLastRejection);
   appendReceiptField(receipt, "interaction_executed", window.interactionExecuted);

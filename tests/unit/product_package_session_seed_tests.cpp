@@ -125,11 +125,16 @@ bool asciiPackageSynthesizesSeedAndCreatesSession() {
                 "player slot") &&
          expect(spawn != nullptr && player != nullptr, "spawn and player") &&
          expect(player->kind == iggy3d::EntityKind::Player, "player kind") &&
-         expect(!player->targeting.targetable && player->combatantEnabled &&
+         expect(player->targeting.targetable &&
+                    iggy3d::isTargetActionSupported(player->targeting,
+                                                    iggy3d::TargetAction::Attack) &&
+                    iggy3d::isTargetActionSupported(player->targeting,
+                                                    iggy3d::TargetAction::Inspect) &&
+                    player->combatantEnabled &&
                     player->combatant.factionId == 1U &&
                     player->combatant.hitPoints == 10 &&
                     player->combatant.maxHitPoints == 10,
-                "player combatant") &&
+                "player combat target") &&
          expect(near(player->transform.position.x, spawn->positionMeters.x) &&
                     near(player->transform.position.y, spawn->positionMeters.y) &&
                     near(player->transform.position.z, spawn->positionMeters.z),
