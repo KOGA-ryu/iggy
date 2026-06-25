@@ -41,6 +41,8 @@ struct ProductGameplayTapeRunResult {
   bool keyCollected = false;
   bool secretDoorOpened = false;
   bool treasureCollected = false;
+  bool npcTargetable = false;
+  bool npcDefeated = false;
   bool exitObjectiveComplete = false;
   bool loopComplete = false;
   std::string sessionOutcome = "None";

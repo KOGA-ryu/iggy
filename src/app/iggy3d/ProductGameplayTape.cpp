@@ -55,6 +55,10 @@ bool parseAction(std::string_view value, ProductGameplayTapeAction& action) {
     action = ProductGameplayTapeAction::Interact;
     return true;
   }
+  if (value == "attack") {
+    action = ProductGameplayTapeAction::Attack;
+    return true;
+  }
   if (value == "wait") {
     action = ProductGameplayTapeAction::Wait;
     return true;
@@ -312,6 +316,8 @@ std::string_view productGameplayTapeActionName(ProductGameplayTapeAction action)
       return "move";
     case ProductGameplayTapeAction::Interact:
       return "interact";
+    case ProductGameplayTapeAction::Attack:
+      return "attack";
     case ProductGameplayTapeAction::Wait:
       return "wait";
   }

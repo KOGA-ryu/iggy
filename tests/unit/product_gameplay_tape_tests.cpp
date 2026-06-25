@@ -57,6 +57,22 @@ bool parsesExpectedMovementBlock() {
                 "expected block reason");
 }
 
+bool parsesAttackStep() {
+  const iggy3d::ProductGameplayTapeParseResult parsed =
+      iggy3d::parseProductGameplayTape("attack marker_npc_spawn_r1_c2\n");
+  return expect(parsed.ok, "attack parsed") &&
+         expect(parsed.tape.steps.size() == 1U, "attack step count") &&
+         expect(parsed.tape.steps[0].action ==
+                    iggy3d::ProductGameplayTapeAction::Attack,
+                "attack action") &&
+         expect(parsed.tape.steps[0].targetStableName ==
+                    "marker_npc_spawn_r1_c2",
+                "attack target") &&
+         expect(iggy3d::productGameplayTapeActionName(
+                    parsed.tape.steps[0].action) == "attack",
+                "attack action name");
+}
+
 bool parsesRuntimeMovementBlockNames() {
   const iggy3d::ProductGameplayTapeParseResult parsed =
       iggy3d::parseProductGameplayTape(
@@ -128,6 +144,7 @@ bool rejectsEmptyTape() {
 int main() {
   const bool ok = parsesOrderedTapeWithExpectedRejection() &&
                   parsesExpectedMovementBlock() &&
+                  parsesAttackStep() &&
                   parsesRuntimeMovementBlockNames() &&
                   rejectsUnknownAction() &&
                   rejectsUnknownRejectionReason() &&

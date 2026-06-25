@@ -36,6 +36,14 @@ CommandRecord makeTapeCommand(const Session& session,
         command.payload.target.entity = target->id;
       }
       break;
+    case ProductGameplayTapeAction::Attack:
+      command.kind = CommandKind::Attack;
+      if (target != nullptr) {
+        command.payload.target.hasEntity = true;
+        command.payload.target.entity = target->id;
+      }
+      command.payload.attackDamage = 3;
+      break;
     case ProductGameplayTapeAction::Wait:
       command.kind = CommandKind::Wait;
       break;
@@ -82,12 +90,38 @@ bool anySecretDoorOpened(const WorldState& world) {
   return false;
 }
 
+bool anyNpcTargetable(const WorldState& world) {
+  for (const EntityState& entity : world.entities()) {
+    if (entity.kind == EntityKind::Npc && entity.active &&
+        isTargetActionSupported(entity.targeting, TargetAction::Attack)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool anyNpcDefeated(const SessionState& state) {
+  for (const EntityState& entity : state.world.entities()) {
+    if (entity.kind != EntityKind::Npc) {
+      continue;
+    }
+    for (const CombatantState& combatant : state.combat.combatants) {
+      if (combatant.entity == entity.id && combatant.defeated) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void fillLoopFacts(const Session& session, ProductGameplayTapeRunResult& result) {
   result.keyCollected =
       inventoryHasSemanticItem(session.state().inventory, 0, "key");
   result.secretDoorOpened = anySecretDoorOpened(session.state().world);
   result.treasureCollected =
       inventoryHasSemanticItem(session.state().inventory, 0, "treasure");
+  result.npcTargetable = anyNpcTargetable(session.state().world);
+  result.npcDefeated = anyNpcDefeated(session.state());
   result.exitObjectiveComplete = anyExitObjectiveComplete(session.state().objectives);
   result.sessionOutcome =
       std::string(productGameplayTapeSessionOutcomeName(session.state().outcome));

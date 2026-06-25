@@ -96,6 +96,10 @@ std::string wallCollisionTapeText() {
   return "expect_blocked blocked_by_collision move marker_key_r1_c3\n";
 }
 
+std::string npcCombatTapeText() {
+  return "attack marker_npc_spawn_r1_c2\n";
+}
+
 bool makeGeneratedAsciiPackage(const std::filesystem::path& root,
                                std::string_view sourceText,
                                std::string_view tapeText,
@@ -149,15 +153,23 @@ int main() {
       std::filesystem::temp_directory_path() /
       ("iggy3d_product_gameplay_tape_" +
        iggy3d::smoke::uniqueCaseToken("wall_package"));
+  const std::filesystem::path npcRoot =
+      std::filesystem::temp_directory_path() /
+      ("iggy3d_product_gameplay_tape_" +
+       iggy3d::smoke::uniqueCaseToken("npc_package"));
   const std::filesystem::path saveRoot =
       iggy3d::smoke::cleanSaveRoot("gameplay_tape");
   const std::filesystem::path wallSaveRoot =
       iggy3d::smoke::cleanSaveRoot("gameplay_tape_wall_collision");
+  const std::filesystem::path npcSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("gameplay_tape_npc_combat");
 
   std::filesystem::path packagePath;
   std::filesystem::path tapePath;
   std::filesystem::path wallPackagePath;
   std::filesystem::path wallTapePath;
+  std::filesystem::path npcPackagePath;
+  std::filesystem::path npcTapePath;
   const bool packageGenerated =
       makeGeneratedAsciiPackage(root,
                                 "#######\n"
@@ -174,6 +186,14 @@ int main() {
                                 wallCollisionTapeText(),
                                 wallPackagePath,
                                 wallTapePath);
+  const bool npcPackageGenerated =
+      makeGeneratedAsciiPackage(npcRoot,
+                                "######\n"
+                                "#PN$E#\n"
+                                "######\n",
+                                npcCombatTapeText(),
+                                npcPackagePath,
+                                npcTapePath);
 
   int exitCode = 77;
   iggy3d::smoke::ReceiptFields fields;
@@ -203,6 +223,21 @@ int main() {
               iggy3d::smoke::saveRootArg(wallSaveRoot),
           wallFields,
           wallExitCode);
+
+  int npcExitCode = 77;
+  iggy3d::smoke::ReceiptFields npcFields;
+  const bool npcReceiptValid =
+      appAvailable && npcPackageGenerated &&
+      iggy3d::smoke::runProductReceiptCase(
+          binary,
+          "product_gameplay_tape_npc_combat",
+          std::string{"--package "} +
+              iggy3d::smoke::shellQuote(npcPackagePath) +
+              " --auto-new-world --gameplay-tape " +
+              iggy3d::smoke::shellQuote(npcTapePath) + " " +
+              iggy3d::smoke::saveRootArg(npcSaveRoot),
+          npcFields,
+          npcExitCode);
 
   const bool passed =
       exitCode == 0 && receiptValid && iggy3d::smoke::productReceipt(fields) &&
@@ -328,17 +363,58 @@ int main() {
                               "session_outcome",
                               "None");
 
+  const bool npcPassed =
+      npcExitCode == 0 && npcReceiptValid &&
+      iggy3d::smoke::productReceipt(npcFields) &&
+      iggy3d::smoke::hasField(npcFields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(npcFields, "window_created", "false") &&
+      iggy3d::smoke::hasField(npcFields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(npcFields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(npcFields, "active_room_loaded", "true") &&
+      iggy3d::smoke::hasField(npcFields, "active_room_source", "package_room") &&
+      iggy3d::smoke::hasField(npcFields,
+                              "gameplay_tape_status",
+                              "gameplay_tape_completed") &&
+      iggy3d::smoke::hasField(npcFields,
+                              "gameplay_tape_step_count",
+                              "1") &&
+      iggy3d::smoke::hasField(npcFields,
+                              "gameplay_tape_executed_step_count",
+                              "1") &&
+      iggy3d::smoke::hasField(npcFields,
+                              "gameplay_tape_last_action",
+                              "attack") &&
+      iggy3d::smoke::hasField(npcFields,
+                              "gameplay_tape_last_target",
+                              "marker_npc_spawn_r1_c2") &&
+      iggy3d::smoke::hasField(npcFields,
+                              "gameplay_tape_npc_targetable",
+                              "true") &&
+      iggy3d::smoke::hasField(npcFields,
+                              "gameplay_tape_npc_defeated",
+                              "true") &&
+      iggy3d::smoke::hasField(npcFields,
+                              "gameplay_tape_loop_complete",
+                              "false") &&
+      iggy3d::smoke::hasField(npcFields,
+                              "session_outcome",
+                              "None");
+
   const bool ok = expect(appAvailable, "app binary exists") &&
                   expect(packageGenerated, "generated ascii package") &&
                   expect(wallPackageGenerated, "generated wall ascii package") &&
+                  expect(npcPackageGenerated, "generated npc ascii package") &&
                   expect(receiptValid, "receipt valid") &&
                   expect(passed, "product gameplay tape pass") &&
                   expect(wallReceiptValid, "wall receipt valid") &&
-                  expect(wallPassed, "product package wall collision pass");
+                  expect(wallPassed, "product package wall collision pass") &&
+                  expect(npcReceiptValid, "npc receipt valid") &&
+                  expect(npcPassed, "product package npc combat pass");
   std::cout << "smoke=product_gameplay_tape\n";
   std::cout << "package_generated=" << (packageGenerated ? "true" : "false") << "\n";
   std::cout << "receipt_valid=" << (receiptValid ? "true" : "false") << "\n";
   std::cout << "wall_receipt_valid=" << (wallReceiptValid ? "true" : "false") << "\n";
+  std::cout << "npc_receipt_valid=" << (npcReceiptValid ? "true" : "false") << "\n";
   std::cout << "window_launch_count=0\n";
   std::cout << "result=" << (ok ? "pass" : (appAvailable ? "fail" : "skip")) << "\n";
   std::cout << "reason_code="

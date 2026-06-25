@@ -13,6 +13,7 @@ namespace iggy3d {
 enum class ProductGameplayTapeAction : std::uint8_t {
   Move,
   Interact,
+  Attack,
   Wait,
 };
 

@@ -234,6 +234,8 @@ struct ProductAppWindowState {
   bool gameplayTapeKeyCollected = false;
   bool gameplayTapeSecretDoorOpened = false;
   bool gameplayTapeTreasureCollected = false;
+  bool gameplayTapeNpcTargetable = false;
+  bool gameplayTapeNpcDefeated = false;
   bool gameplayTapeExitObjectiveComplete = false;
   bool gameplayTapeLoopComplete = false;
   bool interactionExecuted = false;

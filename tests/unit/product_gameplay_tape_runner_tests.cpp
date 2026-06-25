@@ -91,6 +91,19 @@ iggy3d::ProductAsciiRoomAuthoringResult makeBlockedWallRoom() {
   return iggy3d::buildProductAsciiRoomAuthoring(request);
 }
 
+iggy3d::ProductAsciiRoomAuthoringResult makeNpcRoom() {
+  iggy3d::ProductAsciiRoomAuthoringRequest request;
+  request.sourceName = "unit/ascii_npc_combat.iggyroom.txt";
+  request.roomId = "ascii_npc_combat";
+  request.centerOnOrigin = false;
+  request.emitAssetText = false;
+  request.sourceText =
+      "######\n"
+      "#PN$E#\n"
+      "######\n";
+  return iggy3d::buildProductAsciiRoomAuthoring(request);
+}
+
 std::optional<iggy3d::Session> makeSessionFromRoom(const iggy3d::RoomAsset& room) {
   const iggy3d::ProductPackageSessionSeedResult seed =
       iggy3d::buildProductPackageSessionSeed(makePackage(room));
@@ -173,6 +186,34 @@ bool tapeAcceptsExpectedMovementBlock() {
                 "expected movement block no mutation");
 }
 
+bool tapeDefeatsNpc() {
+  const iggy3d::ProductAsciiRoomAuthoringResult room = makeNpcRoom();
+  if (!expect(room.ok, "npc room authored")) {
+    return false;
+  }
+  std::optional<iggy3d::Session> session =
+      makeSessionFromRoom(room.roomAsset.room);
+  const iggy3d::ProductGameplayTapeParseResult parsed =
+      iggy3d::parseProductGameplayTape("attack marker_npc_spawn_r1_c2\n");
+  if (!expect(session.has_value(), "npc session exists") ||
+      !expect(parsed.ok, "npc tape parsed")) {
+    return false;
+  }
+
+  const iggy3d::ProductGameplayTapeRunResult run =
+      iggy3d::runProductGameplayTape({&*session, &parsed.tape});
+  return expect(run.ok, "npc tape run ok") &&
+         expect(run.status == "gameplay_tape_completed", "npc run status") &&
+         expect(run.stepCount == 1U, "npc step count") &&
+         expect(run.executedStepCount == 1U, "npc executed count") &&
+         expect(run.lastAction == "attack", "npc last action") &&
+         expect(run.lastTarget == "marker_npc_spawn_r1_c2", "npc last target") &&
+         expect(run.npcTargetable, "npc targetable") &&
+         expect(run.npcDefeated, "npc defeated") &&
+         expect(run.sessionOutcome == "None", "npc no session outcome") &&
+         expect(session->state().clock.tickIndex == 1U, "npc one accepted tick");
+}
+
 bool tapeStopsOnUnexpectedRejection() {
   std::optional<iggy3d::Session> session = makeLoopSession();
   const iggy3d::ProductGameplayTapeParseResult parsed =
@@ -219,6 +260,7 @@ bool tapeReportsMissingTarget() {
 int main() {
   const bool ok = tapeCompletesAsciiLoop() &&
                   tapeAcceptsExpectedMovementBlock() &&
+                  tapeDefeatsNpc() &&
                   tapeStopsOnUnexpectedRejection() &&
                   tapeReportsMissingTarget();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

@@ -236,6 +236,8 @@ void recordProductGameplayTapeRun(const ProductGameplayTapeRunResult& run,
   window.gameplayTapeKeyCollected = run.keyCollected;
   window.gameplayTapeSecretDoorOpened = run.secretDoorOpened;
   window.gameplayTapeTreasureCollected = run.treasureCollected;
+  window.gameplayTapeNpcTargetable = run.npcTargetable;
+  window.gameplayTapeNpcDefeated = run.npcDefeated;
   window.gameplayTapeExitObjectiveComplete = run.exitObjectiveComplete;
   window.gameplayTapeLoopComplete = run.loopComplete;
   window.sessionOutcome = run.sessionOutcome;

@@ -539,6 +539,10 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.gameplayTapeSecretDoorOpened);
   appendReceiptField(receipt, "gameplay_tape_treasure_collected",
                      window.gameplayTapeTreasureCollected);
+  appendReceiptField(receipt, "gameplay_tape_npc_targetable",
+                     window.gameplayTapeNpcTargetable);
+  appendReceiptField(receipt, "gameplay_tape_npc_defeated",
+                     window.gameplayTapeNpcDefeated);
   appendReceiptField(receipt, "gameplay_tape_exit_objective_complete",
                      window.gameplayTapeExitObjectiveComplete);
   appendReceiptField(receipt, "gameplay_tape_loop_complete",
