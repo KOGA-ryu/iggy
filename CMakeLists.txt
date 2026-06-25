@@ -39,6 +39,7 @@ target_sources(iggy3d
     src/app/iggy3d/ProductFrontendRouter.cpp
     src/app/iggy3d/ProductMenuTransitions.cpp
     src/app/iggy3d/ProductPackageSessionSeed.cpp
+    src/app/iggy3d/ProductAppOperations.cpp
     src/app/iggy3d/ProductAppOptions.cpp
     src/app/iggy3d/ProductPrimitiveDrawList.cpp
     src/app/iggy3d/ProductRenderBridge.cpp
