@@ -818,6 +818,27 @@ bool activatedAsciiRoomAttackNpc(const iggy3d::smoke::ReceiptFields& fields) {
                                  "target_discovered",
                                  "true") &&
          iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_status",
+                                 "found") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_action",
+                                 "attack") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_entity_id",
+                                 "2") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_stable_name",
+                                 "marker_npc_spawn_r1_c2") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_kind",
+                                 "npc") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_distance_meters",
+                                 "1.000") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_supports_command",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
                                  "gameplay_reach_gate",
                                  "pass") &&
          iggy3d::smoke::hasField(fields,
@@ -895,6 +916,27 @@ bool activatedAsciiRoomInteractKey(const iggy3d::smoke::ReceiptFields& fields) {
                                  "target_discovered",
                                  "true") &&
          iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_status",
+                                 "found") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_action",
+                                 "interact") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_entity_id",
+                                 "2") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_stable_name",
+                                 "marker_key_r1_c2") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_kind",
+                                 "pickup") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_distance_meters",
+                                 "1.000") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_supports_command",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
                                  "gameplay_reach_gate",
                                  "pass") &&
          iggy3d::smoke::hasField(fields,
@@ -929,6 +971,102 @@ bool activatedAsciiRoomInteractKey(const iggy3d::smoke::ReceiptFields& fields) {
          iggy3d::smoke::hasField(fields,
                                  "product_feedback_command_status",
                                  "accepted");
+}
+
+bool activatedAsciiRoomAttackOutOfRange(
+    const iggy3d::smoke::ReceiptFields& fields) {
+  return iggy3d::smoke::automationCommandFailed(fields, "game.attack") &&
+         iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+         iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_kind",
+                                 "attack") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_status",
+                                 "rejected") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_accepted",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "target_discovered",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_status",
+                                 "found") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_action",
+                                 "attack") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_entity_id",
+                                 "2") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_stable_name",
+                                 "marker_npc_spawn_r1_c5") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_kind",
+                                 "npc") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_distance_meters",
+                                 "4.000") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_supports_command",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_reach_gate",
+                                 "fail") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_last_rejection",
+                                 "out_of_range") &&
+         iggy3d::smoke::hasField(fields, "attack_executed", "false") &&
+         iggy3d::smoke::hasField(fields, "interaction_executed", "false");
+}
+
+bool activatedAsciiRoomAttackNoTarget(
+    const iggy3d::smoke::ReceiptFields& fields) {
+  return iggy3d::smoke::automationCommandFailed(fields, "game.attack") &&
+         iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+         iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_kind",
+                                 "attack") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_status",
+                                 "no_target") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_accepted",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "target_discovered",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_status",
+                                 "not_found") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_action",
+                                 "attack") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_entity_id",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_stable_name",
+                                 "none") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_kind",
+                                 "none") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_distance_meters",
+                                 "0.000") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_supports_command",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_reach_gate",
+                                 "not_attempted") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_last_rejection",
+                                 "none") &&
+         iggy3d::smoke::hasField(fields, "attack_executed", "false") &&
+         iggy3d::smoke::hasField(fields, "interaction_executed", "false");
 }
 
 }  // namespace
@@ -1108,6 +1246,38 @@ int main() {
           interactFields,
           interactExitCode);
 
+  int attackOutOfRangeExitCode = 77;
+  iggy3d::smoke::ReceiptFields attackOutOfRangeFields;
+  const bool attackOutOfRangeReceipt =
+      appAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_authoring_attack_out_of_range",
+          "ascii_room.room_id=automation_far_attack_room\n"
+          "ascii_room.source_name=automation/far_attack_room.iggyroom.txt\n"
+          "ascii_room.text=########\\n#P...N$#\\n########\\n\n"
+          "ascii_room.activate=true\n"
+          "game.attack=true\n",
+          "",
+          attackOutOfRangeFields,
+          attackOutOfRangeExitCode);
+
+  int attackNoTargetExitCode = 77;
+  iggy3d::smoke::ReceiptFields attackNoTargetFields;
+  const bool attackNoTargetReceipt =
+      appAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_authoring_attack_no_target",
+          "ascii_room.room_id=automation_no_attack_room\n"
+          "ascii_room.source_name=automation/no_attack_room.iggyroom.txt\n"
+          "ascii_room.text=#####\\n#PK.#\\n#####\\n\n"
+          "ascii_room.activate=true\n"
+          "game.attack=true\n",
+          "",
+          attackNoTargetFields,
+          attackNoTargetExitCode);
+
   const bool validPassed =
       validExitCode == 0 && validReceipt &&
       iggy3d::smoke::productReceipt(validFields) &&
@@ -1152,6 +1322,14 @@ int main() {
       interactExitCode == 0 && interactReceipt &&
       iggy3d::smoke::productReceipt(interactFields) &&
       activatedAsciiRoomInteractKey(interactFields);
+  const bool attackOutOfRangePassed =
+      attackOutOfRangeExitCode == 0 && attackOutOfRangeReceipt &&
+      iggy3d::smoke::productReceipt(attackOutOfRangeFields) &&
+      activatedAsciiRoomAttackOutOfRange(attackOutOfRangeFields);
+  const bool attackNoTargetPassed =
+      attackNoTargetExitCode == 0 && attackNoTargetReceipt &&
+      iggy3d::smoke::productReceipt(attackNoTargetFields) &&
+      activatedAsciiRoomAttackNoTarget(attackNoTargetFields);
 
   const bool ok = expect(appAvailable, "app binary exists") &&
                   expect(validReceipt, "valid receipt parsed") &&
@@ -1178,7 +1356,14 @@ int main() {
                   expect(attackReceipt, "attack receipt parsed") &&
                   expect(attackPassed, "attack npc accepted") &&
                   expect(interactReceipt, "interact receipt parsed") &&
-                  expect(interactPassed, "interact key accepted");
+                  expect(interactPassed, "interact key accepted") &&
+                  expect(attackOutOfRangeReceipt,
+                         "attack out of range receipt parsed") &&
+                  expect(attackOutOfRangePassed,
+                         "attack out of range rejected") &&
+                  expect(attackNoTargetReceipt,
+                         "attack no target receipt parsed") &&
+                  expect(attackNoTargetPassed, "attack no target rejected");
 
   std::cout << "smoke=product_ascii_authoring\n";
   std::cout << "valid_preview=" << (validPassed ? "true" : "false") << "\n";
@@ -1191,6 +1376,10 @@ int main() {
   std::cout << "attack_npc=" << (attackPassed ? "true" : "false") << "\n";
   std::cout << "interact_key=" << (interactPassed ? "true" : "false")
             << "\n";
+  std::cout << "attack_out_of_range="
+            << (attackOutOfRangePassed ? "true" : "false") << "\n";
+  std::cout << "attack_no_target="
+            << (attackNoTargetPassed ? "true" : "false") << "\n";
   std::cout << "invalid_activation_rejected="
             << (invalidActivatePassed ? "true" : "false") << "\n";
   std::cout << "open_move_accepted=" << (openMovePassed ? "true" : "false")

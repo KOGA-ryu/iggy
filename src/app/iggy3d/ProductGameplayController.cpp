@@ -36,6 +36,40 @@ std::string commandKindName(CommandKind kind) {
   return "other";
 }
 
+std::string targetQueryStatusName(TargetQueryStatus status) {
+  switch (status) {
+    case TargetQueryStatus::Found:
+      return "found";
+    case TargetQueryStatus::NotFound:
+      return "not_found";
+    case TargetQueryStatus::InvalidWorld:
+      return "invalid_world";
+    case TargetQueryStatus::InvalidActor:
+      return "invalid_actor";
+    case TargetQueryStatus::InvalidOrigin:
+      return "invalid_origin";
+  }
+  return "unknown";
+}
+
+std::string entityKindName(EntityKind kind) {
+  switch (kind) {
+    case EntityKind::Player:
+      return "player";
+    case EntityKind::Pickup:
+      return "pickup";
+    case EntityKind::Door:
+      return "door";
+    case EntityKind::Marker:
+      return "marker";
+    case EntityKind::Npc:
+      return "npc";
+    case EntityKind::Unknown:
+      break;
+  }
+  return "unknown";
+}
+
 std::string commandRejectionReasonName(CommandRejectionReason reason) {
   switch (reason) {
     case CommandRejectionReason::None:
@@ -108,6 +142,47 @@ void clearProductMovementDebug(ProductAppWindowState& window) {
   window.gameplayMovementHorizontalDistanceMeters = 0.0F;
   window.gameplayMovementVerticalDeltaMeters = 0.0F;
   window.gameplayMovementGradePercent = 0.0F;
+}
+
+void clearProductTargetProof(ProductAppWindowState& window) {
+  window.targetDiscovered = false;
+  window.gameplayTargetStatus = "not_requested";
+  window.gameplayTargetAction = "none";
+  window.gameplayTargetEntityId = 0;
+  window.gameplayTargetStableName = "none";
+  window.gameplayTargetKind = "none";
+  window.gameplayTargetDistanceMeters = 0.0F;
+  window.gameplayTargetSupportsCommand = false;
+}
+
+void recordProductTargetProof(const Session& session,
+                              ProductAppWindowState& window,
+                              CommandKind kind,
+                              const TargetQueryResult& target) {
+  window.targetDiscovered = target.status == TargetQueryStatus::Found;
+  window.gameplayTargetStatus = targetQueryStatusName(target.status);
+  window.gameplayTargetAction = commandKindName(kind);
+  window.gameplayTargetEntityId = toUint64(target.target);
+  window.gameplayTargetStableName = "none";
+  window.gameplayTargetKind = "none";
+  window.gameplayTargetDistanceMeters = target.distanceMeters;
+  window.gameplayTargetSupportsCommand = target.targetSupportsCommand;
+
+  if (!window.targetDiscovered) {
+    window.gameplayTargetEntityId = 0;
+    window.gameplayTargetDistanceMeters = 0.0F;
+    window.gameplayTargetSupportsCommand = false;
+    return;
+  }
+
+  const EntityState* entity = session.state().world.findById(target.target);
+  if (entity == nullptr) {
+    window.gameplayTargetStatus = "found_missing_entity";
+    return;
+  }
+  window.gameplayTargetStableName =
+      entity->stableName.empty() ? "none" : entity->stableName;
+  window.gameplayTargetKind = entityKindName(entity->kind);
 }
 
 void recordProductMovementDebug(const Session& session, ProductAppWindowState& window) {
@@ -216,6 +291,7 @@ void submitProductMove(Session& session,
                        float moveY,
                        std::string_view source,
                        const SpatialSurfaceSet* collisionSurfaces) {
+  clearProductTargetProof(window);
   const EntityState* actor = productPlayerEntity(session);
   if (actor == nullptr) {
     window.gameplayCommandStatus = "missing_player";
@@ -249,7 +325,7 @@ void submitProductTargetCommand(Session& session,
                                 const SpatialSurfaceSet* collisionSurfaces) {
   const EntityId actor = productPlayerActor(session);
   const TargetQueryResult target = queryProductGameplayTarget(session, kind);
-  window.targetDiscovered = target.status == TargetQueryStatus::Found;
+  recordProductTargetProof(session, window, kind, target);
   if (!window.targetDiscovered) {
     window.gameplayInputUsed = true;
     window.gameplayInputSource = std::string(source);
@@ -307,6 +383,7 @@ void applyProductGameplayActions(Session& session,
   }
   if (actionWasPressed(actions, InputAction::PlayerRetryOrReset)) {
     const SessionResetResult reset = session.resetToBaseline();
+    clearProductTargetProof(window);
     window.gameplayInputUsed = true;
     window.gameplayInputSource = std::string(source);
     window.gameplayCommandKind = "reset";

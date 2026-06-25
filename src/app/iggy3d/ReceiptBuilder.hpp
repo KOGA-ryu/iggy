@@ -166,6 +166,13 @@ struct ProductAppWindowState {
   std::uint64_t gameplayCollisionSurfaceCount = 0;
   std::string gameplayTickReasonCode = "not_requested";
   bool targetDiscovered = false;
+  std::string gameplayTargetStatus = "not_requested";
+  std::string gameplayTargetAction = "none";
+  std::uint64_t gameplayTargetEntityId = 0;
+  std::string gameplayTargetStableName = "none";
+  std::string gameplayTargetKind = "none";
+  float gameplayTargetDistanceMeters = 0.0F;
+  bool gameplayTargetSupportsCommand = false;
   bool interactionExecuted = false;
   bool attackExecuted = false;
   std::string productTransitionLastAction = "none";
