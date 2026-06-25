@@ -25,6 +25,7 @@
 #include "app/iggy3d/ProductGameplayTapeRunner.hpp"
 #include "app/iggy3d/ProductMenuTransitions.hpp"
 #include "app/iggy3d/ProductMovementDebugHud.hpp"
+#include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductRenderBridge.hpp"
 #include "app/iggy3d/ProductScriptedGameplayDriver.hpp"
@@ -39,6 +40,8 @@
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/RenderDiagnostics.hpp"
+#include "runtime/ai/NpcBehaviorDebugSnapshot.hpp"
+#include "runtime/ai/NpcBehaviorProfile.hpp"
 #include "runtime/session/Session.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)
@@ -96,6 +99,38 @@ FrontendSettings productFrontendSettingsFromOptions(const ProductAppOptions& opt
   settings.devToolsEnabled = true;
   settings.debugOverlayEnabled = true;
   return settings;
+}
+
+DebugProjectionResult buildProductDebugProjectionWithNpcBehavior(
+    const SessionState& state) {
+  DebugProjectionResult debug = buildDebugProjection(state);
+  const NpcBehaviorProfileCatalog catalog =
+      makeBuiltInNpcBehaviorProfileCatalog();
+  const NpcBehaviorDebugSnapshot snapshot = buildNpcBehaviorDebugSnapshot(
+      {true, &state.world, &state.ai, &state.combat, &catalog,
+       state.clock.tickIndex, 128});
+  appendNpcBehaviorDebugSnapshot(debug, snapshot);
+  return debug;
+}
+
+bool npcBehaviorHudHasUnresolvedProfile(const ProductNpcBehaviorDebugHud& hud) {
+  for (const ProductNpcBehaviorDebugHudLine& line : hud.lines) {
+    if (line.text.find("unresolved=") != std::string::npos) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void copyNpcBehaviorDebugHud(ProductAppWindowState& window,
+                             const ProductNpcBehaviorDebugHud& hud) {
+  window.npcBehaviorDebugHudVisible = hud.visible;
+  window.npcBehaviorDebugHudDebugAvailable = hud.debugAvailable;
+  window.npcBehaviorDebugHudLineCount = static_cast<std::uint64_t>(hud.lineCount);
+  window.npcBehaviorDebugHudStatus = hud.status;
+  window.npcBehaviorDebugHudReasonCode = hud.reasonCode;
+  window.npcBehaviorDebugHudHasUnresolvedProfile =
+      npcBehaviorHudHasUnresolvedProfile(hud);
 }
 
 void applyGameplayProjectionMetrics(ProductAppWindowState& window,
@@ -285,16 +320,29 @@ void runProductGameplayTapeFromOptions(const ProductAppOptions& options,
 }
 
 void refreshGameplayProjectionMetrics(const std::optional<Session>& activeSession,
-                                      ProductAppWindowState& window) {
+                                      ProductAppWindowState& window,
+                                      bool developerToolsEnabled,
+                                      bool debugOverlayEnabled) {
   if (!window.gameplayActive || !activeSession.has_value()) {
     window.sessionOutcome = "None";
+    copyNpcBehaviorDebugHud(window,
+                            buildProductNpcBehaviorDebugHud(nullptr,
+                                                            window.gameplayActive,
+                                                            developerToolsEnabled,
+                                                            debugOverlayEnabled));
     applyGameplayProjectionMetrics(window, nullptr, nullptr, nullptr, nullptr, nullptr,
                                    false);
     return;
   }
 
   const SceneProjectionResult scene = buildSceneProjection(activeSession->state());
-  const DebugProjectionResult debug = buildDebugProjection(activeSession->state());
+  const DebugProjectionResult debug =
+      buildProductDebugProjectionWithNpcBehavior(activeSession->state());
+  copyNpcBehaviorDebugHud(window,
+                          buildProductNpcBehaviorDebugHud(&debug,
+                                                          window.gameplayActive,
+                                                          developerToolsEnabled,
+                                                          debugOverlayEnabled));
   const RoomAsset* activeRoom =
       window.activeRoom.loaded ? &window.activeRoom.room : nullptr;
   const ProductPrimitiveDrawList drawList =
@@ -1746,10 +1794,14 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
     ProductGameplayFeedback feedback = buildProductGameplayFeedback(window);
     ProductMovementDebugHud movementHud = buildProductMovementDebugHud(
         window, settings.devToolsEnabled, settings.debugOverlayEnabled);
+    ProductNpcBehaviorDebugHud npcBehaviorHud = buildProductNpcBehaviorDebugHud(
+        nullptr, window.gameplayActive, settings.devToolsEnabled,
+        settings.debugOverlayEnabled);
+    copyNpcBehaviorDebugHud(window, npcBehaviorHud);
     ProductRenderBridgeFrame bridge;
     if (window.gameplayActive && activeSession.has_value()) {
       scene = buildSceneProjection(activeSession->state());
-      debug = buildDebugProjection(activeSession->state());
+      debug = buildProductDebugProjectionWithNpcBehavior(activeSession->state());
       const RoomAsset* activeRoom =
           window.activeRoom.loaded ? &window.activeRoom.room : nullptr;
       drawList = buildProductPrimitiveDrawList(&scene, &debug, activeRoom,
@@ -1766,6 +1818,11 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
       feedback = buildProductGameplayFeedback(window);
       movementHud = buildProductMovementDebugHud(window, settings.devToolsEnabled,
                                                  settings.debugOverlayEnabled);
+      npcBehaviorHud = buildProductNpcBehaviorDebugHud(&debug,
+                                                       window.gameplayActive,
+                                                       settings.devToolsEnabled,
+                                                       settings.debugOverlayEnabled);
+      copyNpcBehaviorDebugHud(window, npcBehaviorHud);
       bridge = buildProductRenderBridgeFrame(&drawList, &frame, &feedback);
       bridgePtr = &bridge;
     }
@@ -1774,7 +1831,8 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
       const OpeningMenuViewState view =
           drawOpeningMenuView(*renderer, options, world, frontend, settingsTab,
                               window.gameplayActive, window.runtimeStateHash, framePtr,
-                              &feedback, &movementHud, sceneItemCount, debugPtr,
+                              &feedback, &movementHud, &npcBehaviorHud,
+                              sceneItemCount, debugPtr,
                               window.viewport.cameraYawDegrees,
                               window.viewport.cameraPitchDegrees, saves);
       applyGameplayProjectionMetrics(window, scenePtr, debugPtr, drawListPtr, framePtr,
@@ -1885,7 +1943,8 @@ int runProductApp(int argc, char** argv) {
   window =
       runOpeningMenuWindow(options, world, frontend, activeSession, worldSetupDraft,
                            window, settings, saves);
-  refreshGameplayProjectionMetrics(activeSession, window);
+  refreshGameplayProjectionMetrics(activeSession, window, settings.devToolsEnabled,
+                                   settings.debugOverlayEnabled);
 
   if (options.printRenderReceipt) {
     std::cout << formatRenderReceipt(

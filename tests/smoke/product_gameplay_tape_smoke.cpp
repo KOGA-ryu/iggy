@@ -546,6 +546,30 @@ int main() {
                               "gameplay_tape_ai_intent",
                               "wait") &&
       iggy3d::smoke::hasField(passiveNpcFields,
+                              "npc_behavior_debug_hud_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "npc_behavior_debug_hud_line_count",
+                              "2") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "npc_behavior_debug_hud_dev_tools_enabled",
+                              "true") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "npc_behavior_debug_hud_debug_overlay_enabled",
+                              "true") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "npc_behavior_debug_hud_debug_available",
+                              "true") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "npc_behavior_debug_hud_status",
+                              "npc_debug_ready") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "npc_behavior_debug_hud_reason_code",
+                              "npc_debug_ready") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
+                              "npc_behavior_debug_hud_has_unresolved_profile",
+                              "false") &&
+      iggy3d::smoke::hasField(passiveNpcFields,
                               "gameplay_tape_loop_complete",
                               "false") &&
       iggy3d::smoke::hasField(passiveNpcFields,

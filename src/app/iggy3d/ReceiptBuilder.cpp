@@ -5,6 +5,7 @@
 #include "app/frontend/FrontendReceipt.hpp"
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductMovementDebugHud.hpp"
+#include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
 
 namespace iggy3d {
 namespace {
@@ -32,6 +33,15 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   const ProductMovementDebugHud movementHud =
       buildProductMovementDebugHud(window, settings.devToolsEnabled,
                                    settings.debugOverlayEnabled);
+  const ProductNpcBehaviorDebugHud npcBehaviorHud{
+      window.npcBehaviorDebugHudVisible,
+      settings.devToolsEnabled,
+      settings.debugOverlayEnabled,
+      window.npcBehaviorDebugHudDebugAvailable,
+      static_cast<std::size_t>(window.npcBehaviorDebugHudLineCount),
+      window.npcBehaviorDebugHudStatus,
+      window.npcBehaviorDebugHudReasonCode,
+      {}};
   appendReceiptField(receipt, "app", "iggy3d");
   appendReceiptField(receipt, "app_surface", "product");
   appendReceiptField(receipt, "opening_menu", frontend.screen == FrontendScreen::Starter);
@@ -465,6 +475,30 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      movementHud.policyBand);
   appendReceiptField(receipt, "movement_debug_hud_speed_multiplier",
                      floatReceiptValue(movementHud.speedMultiplier));
+  appendReceiptField(receipt,
+                     "npc_behavior_debug_hud_visible",
+                     npcBehaviorHud.visible);
+  appendReceiptField(receipt,
+                     "npc_behavior_debug_hud_line_count",
+                     static_cast<std::uint64_t>(npcBehaviorHud.lineCount));
+  appendReceiptField(receipt,
+                     "npc_behavior_debug_hud_dev_tools_enabled",
+                     npcBehaviorHud.developerToolsEnabled);
+  appendReceiptField(receipt,
+                     "npc_behavior_debug_hud_debug_overlay_enabled",
+                     npcBehaviorHud.debugOverlayEnabled);
+  appendReceiptField(receipt,
+                     "npc_behavior_debug_hud_debug_available",
+                     npcBehaviorHud.debugAvailable);
+  appendReceiptField(receipt,
+                     "npc_behavior_debug_hud_status",
+                     npcBehaviorHud.status);
+  appendReceiptField(receipt,
+                     "npc_behavior_debug_hud_reason_code",
+                     npcBehaviorHud.reasonCode);
+  appendReceiptField(receipt,
+                     "npc_behavior_debug_hud_has_unresolved_profile",
+                     window.npcBehaviorDebugHudHasUnresolvedProfile);
   appendReceiptField(receipt, "gameplay_collision_surfaces_used",
                      window.gameplayCollisionSurfacesUsed);
   appendReceiptField(receipt, "gameplay_collision_surface_count",

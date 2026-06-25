@@ -7,6 +7,7 @@
 #include "app/iggy3d/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductMovementDebugHud.hpp"
+#include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
@@ -57,6 +58,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const ProductViewportFrame* frame,
                                          const ProductGameplayFeedback* feedback,
                                          const ProductMovementDebugHud* movementHud,
+                                         const ProductNpcBehaviorDebugHud* npcHud,
                                          std::size_t sceneItemCount,
                                          const DebugProjectionResult* debug,
                                          float cameraYawDegrees,

@@ -159,6 +159,12 @@ struct ProductAppWindowState {
   ProductViewportState viewport;
   std::uint64_t sceneItemCount = 0;
   std::uint64_t debugItemCount = 0;
+  bool npcBehaviorDebugHudVisible = false;
+  bool npcBehaviorDebugHudDebugAvailable = false;
+  std::uint64_t npcBehaviorDebugHudLineCount = 0;
+  std::string npcBehaviorDebugHudStatus = "not_requested";
+  std::string npcBehaviorDebugHudReasonCode = "not_requested";
+  bool npcBehaviorDebugHudHasUnresolvedProfile = false;
   bool playerVisible = false;
   bool roomVisible = false;
   bool objectiveVisible = false;
