@@ -423,6 +423,15 @@ const iggy3d::AiActorState* findAiActor(const iggy3d::AiState& ai,
   return nullptr;
 }
 
+void seedNpcAiProfile(iggy3d::Session& session, std::string_view profileId) {
+  iggy3d::AiActorState actor;
+  actor.actor = {2};
+  actor.behaviorProfileId = std::string(profileId);
+  auto& actors = session.mutableStateForOwnedSystems().ai.actors;
+  actors.clear();
+  actors.push_back(actor);
+}
+
 const iggy3d::CommandRecord* lastCommandWithSource(const iggy3d::CommandLog& log,
                                                    iggy3d::CommandSource source) {
   const iggy3d::CommandRecord* result = nullptr;
@@ -709,6 +718,157 @@ bool npcAiChaseMovesThroughNormalCommandExecution() {
   return ok;
 }
 
+bool passiveNpcInAttackRangeWaitsWithoutDamage() {
+  iggy3d::Session session = makeNpcCombatSession();
+  seedNpcAiProfile(session, "passive");
+
+  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok,
+                   "passive attack range tick ok");
+  const iggy3d::CommandRecord* command =
+      lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
+  const iggy3d::CombatantState* playerCombatant =
+      findCombatant(session.state().combat, {1});
+  const iggy3d::AiActorState* aiActor = findAiActor(session.state().ai, {2});
+
+  ok = ok && expect(command != nullptr && command->kind == iggy3d::CommandKind::Wait,
+                    "passive attack range wait logged") &&
+       expect(command != nullptr &&
+                  command->admission == iggy3d::CommandAdmissionStatus::Accepted,
+              "passive attack range wait accepted") &&
+       expect(playerCombatant != nullptr && playerCombatant->hitPoints == 10,
+              "passive attack range no damage") &&
+       expect(aiActor != nullptr && aiActor->behaviorProfileId == "passive",
+              "passive attack range profile retained") &&
+       expect(aiActor != nullptr && aiActor->behavior == iggy3d::AiBehaviorKind::Alert,
+              "passive attack range alert") &&
+       expect(aiActor != nullptr && aiActor->lastIntent == iggy3d::AiIntentKind::Wait,
+              "passive attack range wait intent") &&
+       expect(aiActor != nullptr && aiActor->target == iggy3d::EntityId{1},
+              "passive attack range target player");
+  return ok;
+}
+
+bool passiveNpcOutsideAttackRangeWaitsWithoutChasing() {
+  iggy3d::Session session = makeNpcCombatSession(4.0F);
+  seedNpcAiProfile(session, "passive");
+
+  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok,
+                   "passive chase range tick ok");
+  const iggy3d::CommandRecord* command =
+      lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
+  const iggy3d::EntityState* npc = session.state().world.findById({2});
+  const iggy3d::CombatantState* playerCombatant =
+      findCombatant(session.state().combat, {1});
+  const iggy3d::AiActorState* aiActor = findAiActor(session.state().ai, {2});
+
+  ok = ok && expect(command != nullptr && command->kind == iggy3d::CommandKind::Wait,
+                    "passive chase range wait logged") &&
+       expect(command != nullptr &&
+                  command->admission == iggy3d::CommandAdmissionStatus::Accepted,
+              "passive chase range wait accepted") &&
+       expect(npc != nullptr &&
+                  iggy3d::nearlyEqual(npc->transform.position, {4.0F, 0.0F, 0.0F}),
+              "passive chase range no movement") &&
+       expect(playerCombatant != nullptr && playerCombatant->hitPoints == 10,
+              "passive chase range no damage") &&
+       expect(aiActor != nullptr && aiActor->behavior == iggy3d::AiBehaviorKind::Alert,
+              "passive chase range alert") &&
+       expect(aiActor != nullptr && aiActor->lastIntent == iggy3d::AiIntentKind::Wait,
+              "passive chase range wait intent") &&
+       expect(aiActor != nullptr && aiActor->target == iggy3d::EntityId{1},
+              "passive chase range target player");
+  return ok;
+}
+
+bool unknownProfileSkipsNpcCommandAndStateMutation() {
+  iggy3d::Session session = makeNpcCombatSession();
+  seedNpcAiProfile(session, "ghost_profile");
+
+  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok,
+                   "unknown profile tick ok");
+  const iggy3d::CommandRecord* command =
+      lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
+  const iggy3d::CombatantState* playerCombatant =
+      findCombatant(session.state().combat, {1});
+  const iggy3d::EntityState* npc = session.state().world.findById({2});
+  const iggy3d::AiActorState* aiActor = findAiActor(session.state().ai, {2});
+
+  ok = ok && expect(command == nullptr, "unknown profile no ai command") &&
+       expect(playerCombatant != nullptr && playerCombatant->hitPoints == 10,
+              "unknown profile no damage") &&
+       expect(npc != nullptr &&
+                  iggy3d::nearlyEqual(npc->transform.position, {1.0F, 0.0F, 0.0F}),
+              "unknown profile no movement") &&
+       expect(aiActor != nullptr && aiActor->behaviorProfileId == "ghost_profile",
+              "unknown profile id retained") &&
+       expect(aiActor != nullptr && aiActor->behavior == iggy3d::AiBehaviorKind::Idle,
+              "unknown profile behavior unchanged") &&
+       expect(aiActor != nullptr && aiActor->lastIntent == iggy3d::AiIntentKind::None,
+              "unknown profile intent unchanged") &&
+       expect(aiActor != nullptr && !iggy3d::isValid(aiActor->target),
+              "unknown profile target unchanged");
+  return ok;
+}
+
+bool invalidProfileSkipsNpcCommandAndStateMutation() {
+  iggy3d::Session session = makeNpcCombatSession(4.0F);
+  seedNpcAiProfile(session, "Bad-Id");
+
+  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok,
+                   "invalid profile tick ok");
+  const iggy3d::CommandRecord* command =
+      lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
+  const iggy3d::CombatantState* playerCombatant =
+      findCombatant(session.state().combat, {1});
+  const iggy3d::EntityState* npc = session.state().world.findById({2});
+  const iggy3d::AiActorState* aiActor = findAiActor(session.state().ai, {2});
+
+  ok = ok && expect(command == nullptr, "invalid profile no ai command") &&
+       expect(playerCombatant != nullptr && playerCombatant->hitPoints == 10,
+              "invalid profile no damage") &&
+       expect(npc != nullptr &&
+                  iggy3d::nearlyEqual(npc->transform.position, {4.0F, 0.0F, 0.0F}),
+              "invalid profile no movement") &&
+       expect(aiActor != nullptr && aiActor->behaviorProfileId == "Bad-Id",
+              "invalid profile id retained") &&
+       expect(aiActor != nullptr && aiActor->behavior == iggy3d::AiBehaviorKind::Idle,
+              "invalid profile behavior unchanged") &&
+       expect(aiActor != nullptr && aiActor->lastIntent == iggy3d::AiIntentKind::None,
+              "invalid profile intent unchanged") &&
+       expect(aiActor != nullptr && !iggy3d::isValid(aiActor->target),
+              "invalid profile target unchanged");
+  return ok;
+}
+
+bool autoRegisteredNpcUsesDefaultProfileAndAttacks() {
+  iggy3d::Session session = makeNpcCombatSession();
+
+  bool ok = expect(session.state().ai.actors.empty(), "auto default starts without ai actor") &&
+            expect(session.tick().status == iggy3d::ResultStatus::Ok,
+                   "auto default tick ok");
+  const iggy3d::CommandRecord* command =
+      lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
+  const iggy3d::CombatantState* playerCombatant =
+      findCombatant(session.state().combat, {1});
+  const iggy3d::AiActorState* aiActor = findAiActor(session.state().ai, {2});
+
+  ok = ok && expect(command != nullptr && command->kind == iggy3d::CommandKind::Attack,
+                    "auto default attack logged") &&
+       expect(command != nullptr &&
+                  command->admission == iggy3d::CommandAdmissionStatus::Accepted,
+              "auto default attack accepted") &&
+       expect(playerCombatant != nullptr && playerCombatant->hitPoints == 9,
+              "auto default damages player") &&
+       expect(aiActor != nullptr && aiActor->behaviorProfileId == "default",
+              "auto default profile id") &&
+       expect(aiActor != nullptr && aiActor->behavior == iggy3d::AiBehaviorKind::Attacking,
+              "auto default behavior attacking") &&
+       expect(aiActor != nullptr &&
+                  aiActor->lastIntent == iggy3d::AiIntentKind::AttackTarget,
+              "auto default attack intent");
+  return ok;
+}
+
 bool rejectedAiAttackRemainsVisibleInCommandLog() {
   iggy3d::Session session = makeNpcCombatSession(1.0F, false);
 
@@ -808,6 +968,11 @@ int main() {
                   npcAiTickEnqueuesAttackThroughAdmissionAndCombat() &&
                   npcAiCooldownTickWaitsWithoutSecondAttack() &&
                   npcAiChaseMovesThroughNormalCommandExecution() &&
+                  passiveNpcInAttackRangeWaitsWithoutDamage() &&
+                  passiveNpcOutsideAttackRangeWaitsWithoutChasing() &&
+                  unknownProfileSkipsNpcCommandAndStateMutation() &&
+                  invalidProfileSkipsNpcCommandAndStateMutation() &&
+                  autoRegisteredNpcUsesDefaultProfileAndAttacks() &&
                   rejectedAiAttackRemainsVisibleInCommandLog() &&
                   defeatedPlayerIsNotAttackedAgain() &&
                   defeatedNpcDoesNotEnqueueAttackOrMove() &&

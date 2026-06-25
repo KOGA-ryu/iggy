@@ -4,6 +4,7 @@
 #include <utility>
 
 #include "runtime/ability/AbilitySystem.hpp"
+#include "runtime/ai/NpcBehaviorProfile.hpp"
 #include "runtime/ai/NpcBehaviorSystem.hpp"
 #include "runtime/camera/CameraModePolicy.hpp"
 #include "runtime/clock/Clock.hpp"
@@ -515,7 +516,7 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state) {
   ensureAiActorsForActiveNpcs(state);
   const PlayerSlot* playerZero = state.players.findSlot(0);
   const EntityId target = playerZero == nullptr ? EntityId{} : playerZero->actor;
-  NpcBehaviorConfig config;
+  const NpcBehaviorProfileCatalog profileCatalog = makeBuiltInNpcBehaviorProfileCatalog();
 
   std::vector<std::size_t> actorIndexes;
   actorIndexes.reserve(state.ai.actors.size());
@@ -531,6 +532,12 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state) {
 
   for (std::size_t index : actorIndexes) {
     AiActorState& actorState = state.ai.actors[index];
+    const NpcBehaviorProfileResolveResult resolvedProfile =
+        resolveNpcBehaviorProfile({&profileCatalog, actorState.behaviorProfileId});
+    if (!resolvedProfile.ok) {
+      continue;
+    }
+    const NpcBehaviorConfig config = resolvedProfile.config;
     const NpcPerceptionResult perception =
         queryNpcPerception(NpcPerceptionRequest{&state.world, &state.combat,
                                                 actorState.actor, target, config});
