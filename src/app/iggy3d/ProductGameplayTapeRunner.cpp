@@ -3,6 +3,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductActiveRoomState.hpp"
@@ -136,6 +137,7 @@ std::int32_t playerHitPoints(const SessionState& state) {
 
 void fillAiTapeFacts(const SessionState& before,
                      const SessionState& after,
+                     std::size_t commandLogRecordBoundary,
                      ProductGameplayTapeRunResult& result) {
   const EntityId player = after.players.actorForSlot(0);
   result.aiPlayerHpBefore = playerHitPoints(before);
@@ -143,7 +145,9 @@ void fillAiTapeFacts(const SessionState& before,
   result.aiPlayerDamaged = result.aiPlayerHpAfter < result.aiPlayerHpBefore;
 
   CommandSequence latestAiSequence = kInvalidCommandSequence;
-  for (const CommandRecord& record : after.commandLog.records()) {
+  const std::vector<CommandRecord>& records = after.commandLog.records();
+  for (std::size_t index = commandLogRecordBoundary; index < records.size(); ++index) {
+    const CommandRecord& record = records[index];
     if (record.source != CommandSource::Ai) {
       continue;
     }
@@ -296,6 +300,8 @@ ProductGameplayTapeRunResult runProductGameplayTape(
   }
 
   const SessionState stateBeforeRun = request.session->state();
+  const std::size_t commandLogRecordBoundary =
+      request.session->state().commandLog.records().size();
   for (std::size_t index = 0; index < request.tape->steps.size(); ++index) {
     const ProductGameplayTapeStep& step = request.tape->steps[index];
     const std::uint64_t stepIndex = static_cast<std::uint64_t>(index + 1U);
@@ -380,7 +386,7 @@ ProductGameplayTapeRunResult runProductGameplayTape(
   }
 
   fillLoopFacts(*request.session, result);
-  fillAiTapeFacts(stateBeforeRun, request.session->state(), result);
+  fillAiTapeFacts(stateBeforeRun, request.session->state(), commandLogRecordBoundary, result);
   result.ok = true;
   result.status = "gameplay_tape_completed";
   result.reasonCode = "gameplay_tape_completed";

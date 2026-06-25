@@ -224,6 +224,50 @@ bool tapeWaitLetsNpcAttackPlayer() {
          expect(session->state().clock.tickIndex == 1U, "npc one accepted tick");
 }
 
+iggy3d::CommandRecord oldAiAttackCommand() {
+  iggy3d::CommandRecord command;
+  command.commandId = 99;
+  command.actor = {99};
+  command.kind = iggy3d::CommandKind::Attack;
+  command.source = iggy3d::CommandSource::Ai;
+  command.admission = iggy3d::CommandAdmissionStatus::Accepted;
+  command.payload.target.hasEntity = true;
+  command.payload.target.entity = {1};
+  command.payload.attackDamage = 1;
+  return command;
+}
+
+bool staleAiCommandsBeforeTapeDoNotSetAiReceiptFields() {
+  std::optional<iggy3d::Session> session = makeLoopSession();
+  const iggy3d::ProductGameplayTapeParseResult parsed =
+      iggy3d::parseProductGameplayTape("move marker_key_r1_c2\n");
+  if (!expect(session.has_value(), "stale ai session exists") ||
+      !expect(parsed.ok, "stale ai tape parsed")) {
+    return false;
+  }
+
+  const iggy3d::CommandLogAppendResult appended =
+      session->mutableStateForOwnedSystems().commandLog.append(oldAiAttackCommand());
+  if (!expect(appended.status == iggy3d::CommandLogAppendStatus::Ok,
+              "old ai command appended")) {
+    return false;
+  }
+
+  const iggy3d::ProductGameplayTapeRunResult run =
+      iggy3d::runProductGameplayTape({&*session, &parsed.tape});
+  return expect(run.ok, "stale ai tape run ok") &&
+         expect(run.status == "gameplay_tape_completed", "stale ai run status") &&
+         expect(run.executedStepCount == 1U, "stale ai move executed") &&
+         expect(!run.aiCommandLogged, "stale ai ignored command logged") &&
+         expect(!run.aiAttackLogged, "stale ai ignored attack logged") &&
+         expect(!run.aiWaitLogged, "stale ai ignored wait logged") &&
+         expect(!run.aiPlayerDamaged, "stale ai no player damage") &&
+         expect(run.aiActorId == "none", "stale ai actor none") &&
+         expect(run.aiTargetId == "none", "stale ai target none") &&
+         expect(run.aiBehavior == "none", "stale ai behavior none") &&
+         expect(run.aiIntent == "none", "stale ai intent none");
+}
+
 bool tapeStopsOnUnexpectedRejection() {
   std::optional<iggy3d::Session> session = makeLoopSession();
   const iggy3d::ProductGameplayTapeParseResult parsed =
@@ -271,6 +315,7 @@ int main() {
   const bool ok = tapeCompletesAsciiLoop() &&
                   tapeAcceptsExpectedMovementBlock() &&
                   tapeWaitLetsNpcAttackPlayer() &&
+                  staleAiCommandsBeforeTapeDoNotSetAiReceiptFields() &&
                   tapeStopsOnUnexpectedRejection() &&
                   tapeReportsMissingTarget();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
