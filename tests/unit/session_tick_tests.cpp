@@ -260,6 +260,14 @@ iggy3d::FixtureScenarioSeed makeNpcCombatSeed(float npcX = 1.0F,
   return seed;
 }
 
+iggy3d::FixtureScenarioSeed makeNpcGuardSeed(float npcX = 1.0F,
+                                             bool playerAttackTargetable = true) {
+  iggy3d::FixtureScenarioSeed seed =
+      makeNpcCombatSeed(npcX, playerAttackTargetable);
+  seed.entities.push_back(markerSeed());
+  return seed;
+}
+
 iggy3d::Session makeSession() {
   iggy3d::SessionCreateRequest request;
   request.config = iggy3d::makeDefaultRuntimeConfig();
@@ -788,6 +796,149 @@ bool sessionCreateRejectsInvalidAiActorSeeds() {
                 "duplicate ai actor error");
 }
 
+bool sessionCreateSeedsGuardAnchorIntoStateAndBaseline() {
+  iggy3d::SessionCreateRequest request;
+  request.config = iggy3d::makeDefaultRuntimeConfig();
+  request.seed = makeNpcGuardSeed();
+  request.seed.aiActors.push_back({"training_npc", "passive"});
+  request.seed.aiGuardAnchors.push_back(
+      {"training_npc", "tactical_marker_alpha", 6.0F, 1.0F, 0.25F});
+  const iggy3d::Result<iggy3d::Session> created =
+      iggy3d::Session::create(request);
+  if (!expect(created.status == iggy3d::ResultStatus::Ok,
+              "guard seed create ok")) {
+    return false;
+  }
+
+  const iggy3d::AiActorState* aiActor = findAiActor(created.value.state().ai, {2});
+  const iggy3d::AiActorState* baselineAiActor =
+      findAiActor(created.value.state().baseline.ai, {2});
+  const iggy3d::EntityState* marker =
+      created.value.state().world.findByStableName("tactical_marker_alpha");
+
+  return expect(aiActor != nullptr, "guard seeded ai actor exists") &&
+         expect(aiActor != nullptr && aiActor->behaviorProfileId == "passive",
+                "guard seeded profile preserved") &&
+         expect(aiActor != nullptr && aiActor->hasHomePosition,
+                "guard seeded home enabled") &&
+         expect(aiActor != nullptr && marker != nullptr &&
+                    iggy3d::nearlyEqual(aiActor->homePosition,
+                                        marker->transform.position),
+                "guard seeded home position") &&
+         expect(aiActor != nullptr && aiActor->homeStableName == "tactical_marker_alpha",
+                "guard seeded home stable name") &&
+         expect(aiActor != nullptr && aiActor->leashRadiusMeters == 6.0F,
+                "guard seeded leash") &&
+         expect(aiActor != nullptr && aiActor->returnRadiusMeters == 1.0F,
+                "guard seeded return radius") &&
+         expect(aiActor != nullptr && aiActor->homeToleranceMeters == 0.25F,
+                "guard seeded tolerance") &&
+         expect(baselineAiActor != nullptr && baselineAiActor->hasHomePosition,
+                "guard baseline home enabled") &&
+         expect(baselineAiActor != nullptr &&
+                    baselineAiActor->homeStableName == "tactical_marker_alpha",
+                "guard baseline home stable name");
+}
+
+bool sessionCreateSeedsGuardAnchorWithoutProfileSeed() {
+  iggy3d::SessionCreateRequest request;
+  request.config = iggy3d::makeDefaultRuntimeConfig();
+  request.seed = makeNpcGuardSeed();
+  request.seed.aiGuardAnchors.push_back(
+      {"training_npc", "tactical_marker_alpha", 6.0F, 1.0F, 0.25F});
+  const iggy3d::Result<iggy3d::Session> created =
+      iggy3d::Session::create(request);
+  if (!expect(created.status == iggy3d::ResultStatus::Ok,
+              "guard only seed create ok")) {
+    return false;
+  }
+
+  const iggy3d::AiActorState* aiActor = findAiActor(created.value.state().ai, {2});
+  return expect(aiActor != nullptr, "guard only ai actor exists") &&
+         expect(aiActor != nullptr && aiActor->behaviorProfileId == "default",
+                "guard only default profile") &&
+         expect(aiActor != nullptr && aiActor->hasHomePosition,
+                "guard only home enabled");
+}
+
+bool sessionCreateRejectsInvalidGuardAnchorSeeds() {
+  iggy3d::SessionCreateRequest missingActor;
+  missingActor.config = iggy3d::makeDefaultRuntimeConfig();
+  missingActor.seed = makeNpcGuardSeed();
+  missingActor.seed.aiGuardAnchors.push_back(
+      {"missing_npc", "tactical_marker_alpha", 6.0F, 1.0F, 0.25F});
+  const iggy3d::Result<iggy3d::Session> missingActorResult =
+      iggy3d::Session::create(missingActor);
+
+  iggy3d::SessionCreateRequest nonNpcActor;
+  nonNpcActor.config = iggy3d::makeDefaultRuntimeConfig();
+  nonNpcActor.seed = makeNpcGuardSeed();
+  nonNpcActor.seed.aiGuardAnchors.push_back(
+      {"player", "tactical_marker_alpha", 6.0F, 1.0F, 0.25F});
+  const iggy3d::Result<iggy3d::Session> nonNpcActorResult =
+      iggy3d::Session::create(nonNpcActor);
+
+  iggy3d::SessionCreateRequest duplicateActor;
+  duplicateActor.config = iggy3d::makeDefaultRuntimeConfig();
+  duplicateActor.seed = makeNpcGuardSeed();
+  duplicateActor.seed.aiGuardAnchors.push_back(
+      {"training_npc", "tactical_marker_alpha", 6.0F, 1.0F, 0.25F});
+  duplicateActor.seed.aiGuardAnchors.push_back(
+      {"training_npc", "tactical_marker_alpha", 6.0F, 1.0F, 0.25F});
+  const iggy3d::Result<iggy3d::Session> duplicateActorResult =
+      iggy3d::Session::create(duplicateActor);
+
+  iggy3d::SessionCreateRequest missingAnchor;
+  missingAnchor.config = iggy3d::makeDefaultRuntimeConfig();
+  missingAnchor.seed = makeNpcGuardSeed();
+  missingAnchor.seed.aiGuardAnchors.push_back(
+      {"training_npc", "missing_marker", 6.0F, 1.0F, 0.25F});
+  const iggy3d::Result<iggy3d::Session> missingAnchorResult =
+      iggy3d::Session::create(missingAnchor);
+
+  iggy3d::SessionCreateRequest nonMarkerAnchor;
+  nonMarkerAnchor.config = iggy3d::makeDefaultRuntimeConfig();
+  nonMarkerAnchor.seed = makeNpcGuardSeed();
+  nonMarkerAnchor.seed.aiGuardAnchors.push_back(
+      {"training_npc", "player", 6.0F, 1.0F, 0.25F});
+  const iggy3d::Result<iggy3d::Session> nonMarkerAnchorResult =
+      iggy3d::Session::create(nonMarkerAnchor);
+
+  iggy3d::SessionCreateRequest invalidDistances;
+  invalidDistances.config = iggy3d::makeDefaultRuntimeConfig();
+  invalidDistances.seed = makeNpcGuardSeed();
+  invalidDistances.seed.aiGuardAnchors.push_back(
+      {"training_npc", "tactical_marker_alpha", 1.0F, 2.0F, 0.25F});
+  const iggy3d::Result<iggy3d::Session> invalidDistancesResult =
+      iggy3d::Session::create(invalidDistances);
+
+  return expect(missingActorResult.status == iggy3d::ResultStatus::Error,
+                "missing guard actor rejects") &&
+         expect(missingActorResult.error.code == "session.guard_seed_missing_actor",
+                "missing guard actor error") &&
+         expect(nonNpcActorResult.status == iggy3d::ResultStatus::Error,
+                "non npc guard actor rejects") &&
+         expect(nonNpcActorResult.error.code == "session.guard_seed_non_npc_actor",
+                "non npc guard actor error") &&
+         expect(duplicateActorResult.status == iggy3d::ResultStatus::Error,
+                "duplicate guard actor rejects") &&
+         expect(duplicateActorResult.error.code == "session.guard_seed_duplicate_actor",
+                "duplicate guard actor error") &&
+         expect(missingAnchorResult.status == iggy3d::ResultStatus::Error,
+                "missing guard anchor rejects") &&
+         expect(missingAnchorResult.error.code == "session.guard_seed_missing_anchor",
+                "missing guard anchor error") &&
+         expect(nonMarkerAnchorResult.status == iggy3d::ResultStatus::Error,
+                "non marker guard anchor rejects") &&
+         expect(nonMarkerAnchorResult.error.code == "session.guard_seed_non_marker_anchor",
+                "non marker guard anchor error") &&
+         expect(invalidDistancesResult.status == iggy3d::ResultStatus::Error,
+                "invalid guard distances rejects") &&
+         expect(invalidDistancesResult.error.code ==
+                    "session.guard_seed_invalid_distances",
+                "invalid guard distances error");
+}
+
 bool passiveProfileSeededBySessionCreateWaitsWithoutDamage() {
   iggy3d::Result<iggy3d::Session> created =
       createNpcCombatSessionWithAiSeed("training_npc", "passive");
@@ -1102,6 +1253,9 @@ int main() {
                   npcAiChaseMovesThroughNormalCommandExecution() &&
                   sessionCreateSeedsAiActorProfileIntoStateAndBaseline() &&
                   sessionCreateRejectsInvalidAiActorSeeds() &&
+                  sessionCreateSeedsGuardAnchorIntoStateAndBaseline() &&
+                  sessionCreateSeedsGuardAnchorWithoutProfileSeed() &&
+                  sessionCreateRejectsInvalidGuardAnchorSeeds() &&
                   passiveProfileSeededBySessionCreateWaitsWithoutDamage() &&
                   unknownProfileSeededBySessionCreateFailsClosed() &&
                   passiveNpcInAttackRangeWaitsWithoutDamage() &&

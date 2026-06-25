@@ -1,6 +1,7 @@
 #include "runtime/session/Session.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 #include <vector>
 
@@ -178,6 +179,66 @@ StatusResult createAiActors(const FixtureScenarioSeed& seed,
     actorState.behaviorProfileId = aiSeed.behaviorProfileId;
     ai.actors.push_back(std::move(actorState));
     seededActors.push_back(actor->id);
+  }
+
+  std::vector<EntityId> guardSeededActors;
+  for (const ScenarioAiGuardAnchorSeed& guardSeed : seed.aiGuardAnchors) {
+    const EntityState* actor = world.findByStableName(guardSeed.actorStableName);
+    if (actor == nullptr) {
+      return statusError("session.guard_seed_missing_actor",
+                         "failed to resolve guard actor stable name");
+    }
+    if (actor->kind != EntityKind::Npc) {
+      return statusError("session.guard_seed_non_npc_actor",
+                         "guard actor seed must reference an npc");
+    }
+    if (std::find(guardSeededActors.begin(), guardSeededActors.end(), actor->id) !=
+        guardSeededActors.end()) {
+      return statusError("session.guard_seed_duplicate_actor",
+                         "duplicate guard actor seed");
+    }
+
+    const EntityState* anchor = world.findByStableName(guardSeed.anchorStableName);
+    if (anchor == nullptr) {
+      return statusError("session.guard_seed_missing_anchor",
+                         "failed to resolve guard anchor stable name");
+    }
+    if (anchor->kind != EntityKind::Marker) {
+      return statusError("session.guard_seed_non_marker_anchor",
+                         "guard anchor seed must reference a marker");
+    }
+    if (!std::isfinite(guardSeed.leashRadiusMeters) ||
+        !std::isfinite(guardSeed.returnRadiusMeters) ||
+        !std::isfinite(guardSeed.homeToleranceMeters) ||
+        guardSeed.leashRadiusMeters <= 0.0F ||
+        guardSeed.returnRadiusMeters <= 0.0F ||
+        guardSeed.homeToleranceMeters < 0.0F ||
+        guardSeed.returnRadiusMeters > guardSeed.leashRadiusMeters) {
+      return statusError("session.guard_seed_invalid_distances",
+                         "invalid guard anchor distances");
+    }
+
+    AiActorState* actorState = nullptr;
+    for (AiActorState& existing : ai.actors) {
+      if (existing.actor == actor->id) {
+        actorState = &existing;
+        break;
+      }
+    }
+    if (actorState == nullptr) {
+      AiActorState inserted;
+      inserted.actor = actor->id;
+      ai.actors.push_back(std::move(inserted));
+      actorState = &ai.actors.back();
+    }
+
+    actorState->hasHomePosition = true;
+    actorState->homePosition = anchor->transform.position;
+    actorState->homeStableName = guardSeed.anchorStableName;
+    actorState->leashRadiusMeters = guardSeed.leashRadiusMeters;
+    actorState->returnRadiusMeters = guardSeed.returnRadiusMeters;
+    actorState->homeToleranceMeters = guardSeed.homeToleranceMeters;
+    guardSeededActors.push_back(actor->id);
   }
   return statusOk();
 }

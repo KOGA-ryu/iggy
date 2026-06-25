@@ -44,6 +44,17 @@ const iggy3d::ScenarioAiActorSeed* findAiActorSeed(
   return nullptr;
 }
 
+const iggy3d::ScenarioAiGuardAnchorSeed* findAiGuardAnchorSeed(
+    const iggy3d::FixtureScenarioSeed& seed,
+    std::string_view actorStableName) {
+  for (const iggy3d::ScenarioAiGuardAnchorSeed& guard : seed.aiGuardAnchors) {
+    if (guard.actorStableName == actorStableName) {
+      return &guard;
+    }
+  }
+  return nullptr;
+}
+
 const iggy3d::AiActorState* findAiActorState(const iggy3d::AiState& ai,
                                              iggy3d::EntityId actor) {
   for (const iggy3d::AiActorState& actorState : ai.actors) {
@@ -52,6 +63,30 @@ const iggy3d::AiActorState* findAiActorState(const iggy3d::AiState& ai,
     }
   }
   return nullptr;
+}
+
+bool expectGuardHome(const iggy3d::AiActorState* aiActor,
+                     const iggy3d::EntityState* anchor,
+                     std::string_view anchorStableName,
+                     float leashRadius,
+                     float returnRadius,
+                     float tolerance,
+                     std::string_view message) {
+  return expect(aiActor != nullptr, message) &&
+         expect(aiActor != nullptr && aiActor->hasHomePosition,
+                "ai guard home configured") &&
+         expect(aiActor != nullptr && anchor != nullptr &&
+                    iggy3d::nearlyEqual(aiActor->homePosition,
+                                        anchor->transform.position),
+                "ai guard home position") &&
+         expect(aiActor != nullptr && aiActor->homeStableName == anchorStableName,
+                "ai guard home stable name") &&
+         expect(aiActor != nullptr && near(aiActor->leashRadiusMeters, leashRadius),
+                "ai guard leash") &&
+         expect(aiActor != nullptr && near(aiActor->returnRadiusMeters, returnRadius),
+                "ai guard return radius") &&
+         expect(aiActor != nullptr && near(aiActor->homeToleranceMeters, tolerance),
+                "ai guard tolerance");
 }
 
 const iggy3d::RoomAnchorAsset* findAnchor(const iggy3d::RoomAsset& room,
@@ -454,6 +489,196 @@ bool authoredScenarioAiActorsPreserveAndMapThroughSessionCreate() {
                 "authored ai session profile mapped");
 }
 
+bool authoredScenarioGuardAnchorsPreserveAndMapThroughSessionCreate() {
+  iggy3d::PackageLoadResult package =
+      loadPackageFixture("fixtures/demos/first_room/package.iggy3d.toml");
+  package.scenario.aiGuardAnchors.push_back(
+      {"training_dummy", "tactical_marker_alpha", 6.0F, 1.0F, 0.25F});
+
+  const iggy3d::ProductPackageSessionSeedResult result =
+      iggy3d::buildProductPackageSessionSeed(package);
+  const iggy3d::ScenarioAiGuardAnchorSeed* guardSeed =
+      findAiGuardAnchorSeed(result.seed, "training_dummy");
+
+  iggy3d::SessionCreateRequest create;
+  create.packageId = package.manifest.packageId;
+  create.seed = result.seed;
+  create.config = result.seed.config;
+  const iggy3d::Result<iggy3d::Session> session = iggy3d::Session::create(create);
+  const iggy3d::EntityState* npc =
+      session.status == iggy3d::ResultStatus::Ok
+          ? session.value.state().world.findByStableName("training_dummy")
+          : nullptr;
+  const iggy3d::EntityState* anchor =
+      session.status == iggy3d::ResultStatus::Ok
+          ? session.value.state().world.findByStableName("tactical_marker_alpha")
+          : nullptr;
+  const iggy3d::AiActorState* aiActor =
+      npc == nullptr ? nullptr : findAiActorState(session.value.state().ai, npc->id);
+  const iggy3d::AiActorState* baselineAiActor =
+      npc == nullptr ? nullptr : findAiActorState(session.value.state().baseline.ai, npc->id);
+
+  return expect(result.ok, "authored guard seed ok") &&
+         expect(!result.synthesizedFromRoomAnchors, "authored guard not synthesized") &&
+         expect(result.seed.aiGuardAnchors.size() == 1U,
+                "authored guard seed preserved") &&
+         expect(guardSeed != nullptr &&
+                    guardSeed->actorStableName == "training_dummy" &&
+                    guardSeed->anchorStableName == "tactical_marker_alpha" &&
+                    near(guardSeed->leashRadiusMeters, 6.0F) &&
+                    near(guardSeed->returnRadiusMeters, 1.0F) &&
+                    near(guardSeed->homeToleranceMeters, 0.25F),
+                "authored guard values") &&
+         expect(session.status == iggy3d::ResultStatus::Ok,
+                "authored guard session create ok") &&
+         expect(aiActor != nullptr && aiActor->behaviorProfileId == "default",
+                "authored guard default profile") &&
+         expectGuardHome(aiActor, anchor, "tactical_marker_alpha", 6.0F, 1.0F,
+                         0.25F, "authored guard ai actor") &&
+         expectGuardHome(baselineAiActor, anchor, "tactical_marker_alpha", 6.0F,
+                         1.0F, 0.25F, "authored guard baseline ai actor");
+}
+
+bool synthesizedScenarioGuardAnchorsMapThroughSessionCreate() {
+  iggy3d::PackageLoadResult package =
+      loadPackageFixture("fixtures/demos/ascii_training_room/package.iggy3d.toml");
+  package.scenario.aiGuardAnchors.push_back(
+      {"marker_npc_spawn_r1_c4", "marker_exit_r3_c3", 5.0F, 1.25F, 0.5F});
+
+  const iggy3d::ProductPackageSessionSeedResult result =
+      iggy3d::buildProductPackageSessionSeed(package);
+
+  iggy3d::SessionCreateRequest create;
+  create.packageId = package.manifest.packageId;
+  create.seed = result.seed;
+  create.config = result.seed.config;
+  const iggy3d::Result<iggy3d::Session> session = iggy3d::Session::create(create);
+  const iggy3d::EntityState* npc =
+      session.status == iggy3d::ResultStatus::Ok
+          ? session.value.state().world.findByStableName("marker_npc_spawn_r1_c4")
+          : nullptr;
+  const iggy3d::EntityState* anchor =
+      session.status == iggy3d::ResultStatus::Ok
+          ? session.value.state().world.findByStableName("marker_exit_r3_c3")
+          : nullptr;
+  const iggy3d::AiActorState* aiActor =
+      npc == nullptr ? nullptr : findAiActorState(session.value.state().ai, npc->id);
+
+  return expect(result.ok, "synthesized guard seed ok") &&
+         expect(result.synthesizedFromRoomAnchors, "synthesized guard room") &&
+         expect(result.seed.aiGuardAnchors.size() == 1U,
+                "synthesized guard seed preserved") &&
+         expect(session.status == iggy3d::ResultStatus::Ok,
+                "synthesized guard session create ok") &&
+         expect(aiActor != nullptr && aiActor->behaviorProfileId == "default",
+                "synthesized guard default profile") &&
+         expectGuardHome(aiActor, anchor, "marker_exit_r3_c3", 5.0F, 1.25F,
+                         0.5F, "synthesized guard ai actor");
+}
+
+bool scenarioProfileAndGuardMergeIntoOneAiActor() {
+  iggy3d::PackageLoadResult package =
+      loadPackageFixture("fixtures/demos/ascii_training_room/package.iggy3d.toml");
+  package.scenario.aiActors.push_back({"marker_npc_spawn_r1_c4", "passive"});
+  package.scenario.aiGuardAnchors.push_back(
+      {"marker_npc_spawn_r1_c4", "marker_exit_r3_c3", 6.0F, 1.0F, 0.25F});
+
+  const iggy3d::ProductPackageSessionSeedResult result =
+      iggy3d::buildProductPackageSessionSeed(package);
+  iggy3d::SessionCreateRequest create;
+  create.packageId = package.manifest.packageId;
+  create.seed = result.seed;
+  create.config = result.seed.config;
+  const iggy3d::Result<iggy3d::Session> session = iggy3d::Session::create(create);
+  const iggy3d::EntityState* npc =
+      session.status == iggy3d::ResultStatus::Ok
+          ? session.value.state().world.findByStableName("marker_npc_spawn_r1_c4")
+          : nullptr;
+  const iggy3d::EntityState* anchor =
+      session.status == iggy3d::ResultStatus::Ok
+          ? session.value.state().world.findByStableName("marker_exit_r3_c3")
+          : nullptr;
+  const iggy3d::AiActorState* aiActor =
+      npc == nullptr ? nullptr : findAiActorState(session.value.state().ai, npc->id);
+
+  return expect(result.ok, "profile guard merge seed ok") &&
+         expect(result.seed.aiActors.size() == 1U, "profile guard ai seed count") &&
+         expect(result.seed.aiGuardAnchors.size() == 1U,
+                "profile guard seed count") &&
+         expect(session.status == iggy3d::ResultStatus::Ok,
+                "profile guard session create ok") &&
+         expect(session.value.state().ai.actors.size() == 1U,
+                "profile guard one runtime ai actor") &&
+         expect(aiActor != nullptr && aiActor->behaviorProfileId == "passive",
+                "profile guard preserves profile") &&
+         expectGuardHome(aiActor, anchor, "marker_exit_r3_c3", 6.0F, 1.0F,
+                         0.25F, "profile guard home");
+}
+
+bool explicitProfileOverrideDoesNotEraseGuardMetadata() {
+  iggy3d::PackageLoadResult package =
+      loadPackageFixture("fixtures/demos/ascii_training_room/package.iggy3d.toml");
+  package.scenario.aiActors.push_back({"marker_npc_spawn_r1_c4", "passive"});
+  package.scenario.aiGuardAnchors.push_back(
+      {"marker_npc_spawn_r1_c4", "marker_exit_r3_c3", 6.0F, 1.0F, 0.25F});
+  iggy3d::ProductNpcProfileAssignmentTable explicitAssignments;
+  explicitAssignments.assignments.push_back({"marker_npc_spawn_r1_c4", "ghost_profile"});
+
+  const iggy3d::ProductPackageSessionSeedResult result =
+      iggy3d::buildProductPackageSessionSeed(package, &explicitAssignments);
+  iggy3d::SessionCreateRequest create;
+  create.packageId = package.manifest.packageId;
+  create.seed = result.seed;
+  create.config = result.seed.config;
+  const iggy3d::Result<iggy3d::Session> session = iggy3d::Session::create(create);
+  const iggy3d::EntityState* npc =
+      session.status == iggy3d::ResultStatus::Ok
+          ? session.value.state().world.findByStableName("marker_npc_spawn_r1_c4")
+          : nullptr;
+  const iggy3d::EntityState* anchor =
+      session.status == iggy3d::ResultStatus::Ok
+          ? session.value.state().world.findByStableName("marker_exit_r3_c3")
+          : nullptr;
+  const iggy3d::AiActorState* aiActor =
+      npc == nullptr ? nullptr : findAiActorState(session.value.state().ai, npc->id);
+
+  return expect(result.ok, "explicit profile guard seed ok") &&
+         expect(session.status == iggy3d::ResultStatus::Ok,
+                "explicit profile guard session create ok") &&
+         expect(aiActor != nullptr && aiActor->behaviorProfileId == "ghost_profile",
+                "explicit profile override preserved") &&
+         expectGuardHome(aiActor, anchor, "marker_exit_r3_c3", 6.0F, 1.0F,
+                         0.25F, "explicit profile guard home");
+}
+
+bool glyphLikeGuardNamesHaveNoAsciiMeaning() {
+  iggy3d::PackageLoadResult package =
+      loadPackageFixture("fixtures/demos/ascii_training_room/package.iggy3d.toml");
+  package.scenario.aiGuardAnchors.push_back({"N", "G", 6.0F, 1.0F, 0.25F});
+
+  const iggy3d::ProductPackageSessionSeedResult result =
+      iggy3d::buildProductPackageSessionSeed(package);
+  const iggy3d::ScenarioEntitySeed* generatedNpc =
+      findEntity(result.seed, "marker_npc_spawn_r1_c4");
+  const iggy3d::ScenarioAiGuardAnchorSeed* glyphGuard =
+      findAiGuardAnchorSeed(result.seed, "N");
+
+  iggy3d::SessionCreateRequest create;
+  create.packageId = package.manifest.packageId;
+  create.seed = result.seed;
+  create.config = result.seed.config;
+  const iggy3d::Result<iggy3d::Session> session = iggy3d::Session::create(create);
+
+  return expect(result.ok, "glyph guard seed construction ok") &&
+         expect(generatedNpc != nullptr, "glyph guard generated npc exists") &&
+         expect(glyphGuard != nullptr && glyphGuard->anchorStableName == "G",
+                "glyph guard preserved as stable-name strings") &&
+         expect(session.status == iggy3d::ResultStatus::Error,
+                "glyph guard session create rejects") &&
+         expect(session.error.code == "session.guard_seed_missing_actor",
+                "glyph guard missing actor error");
+}
+
 }  // namespace
 
 int main() {
@@ -468,6 +693,11 @@ int main() {
                   scenarioAiActorsApplyToSynthesizedRoomNpc() &&
                   scenarioAiActorGlyphLikeNameDoesNotMatchSynthesizedNpc() &&
                   explicitNpcAssignmentOverridesScenarioAiActors() &&
-                  authoredScenarioAiActorsPreserveAndMapThroughSessionCreate();
+                  authoredScenarioAiActorsPreserveAndMapThroughSessionCreate() &&
+                  authoredScenarioGuardAnchorsPreserveAndMapThroughSessionCreate() &&
+                  synthesizedScenarioGuardAnchorsMapThroughSessionCreate() &&
+                  scenarioProfileAndGuardMergeIntoOneAiActor() &&
+                  explicitProfileOverrideDoesNotEraseGuardMetadata() &&
+                  glyphLikeGuardNamesHaveNoAsciiMeaning();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
