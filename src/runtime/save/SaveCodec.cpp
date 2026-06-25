@@ -756,6 +756,19 @@ private:
       lineBool(p + "locked", wall.locked);
       lineBool(p + "hidden", wall.hidden);
     }
+    line("authoredRoom.marker.count", unsignedText(envelope_.authoredRoom.markers.size()));
+    for (std::size_t index = 0; index < envelope_.authoredRoom.markers.size(); ++index) {
+      const SaveAuthoredRoomMarkerRecord& marker = envelope_.authoredRoom.markers[index];
+      const std::string p = "authoredRoom.marker." + std::to_string(index) + ".";
+      lineString(p + "id", marker.id);
+      lineString(p + "tag", marker.tag);
+      lineString(p + "glyph", marker.glyph);
+      line(p + "row", unsignedText(marker.row));
+      line(p + "column", unsignedText(marker.column));
+      line(p + "positionMeters", formatVec3(marker.positionMeters));
+      line(p + "sourceLine", unsignedText(marker.sourceLine));
+      line(p + "sourceColumn", unsignedText(marker.sourceColumn));
+    }
   }
 
   void writePlayers() {
@@ -1241,6 +1254,24 @@ private:
       readAuthoredRoomSemantics(p + "semantics.", wall.semantics);
       readBool(p + "locked", wall.locked);
       readBool(p + "hidden", wall.hidden);
+    }
+    if (!nextKeyIs("authoredRoom.marker.count")) {
+      return;
+    }
+    std::uint64_t markerCount = 0;
+    readUnsigned("authoredRoom.marker.count", markerCount);
+    envelope_.authoredRoom.markers.resize(static_cast<std::size_t>(markerCount));
+    for (std::size_t index = 0; index < envelope_.authoredRoom.markers.size(); ++index) {
+      SaveAuthoredRoomMarkerRecord& marker = envelope_.authoredRoom.markers[index];
+      const std::string p = "authoredRoom.marker." + std::to_string(index) + ".";
+      readString(p + "id", marker.id);
+      readString(p + "tag", marker.tag);
+      readString(p + "glyph", marker.glyph);
+      readUnsigned(p + "row", marker.row);
+      readUnsigned(p + "column", marker.column);
+      readVec3(p + "positionMeters", marker.positionMeters);
+      readUnsigned(p + "sourceLine", marker.sourceLine);
+      readUnsigned(p + "sourceColumn", marker.sourceColumn);
     }
   }
 

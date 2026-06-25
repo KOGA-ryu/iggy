@@ -141,6 +141,10 @@ int main() {
                    "authoredRoom.present=true\n") &&
       fileContains(asciiSaveRoot / "save_001.iggy3d.save",
                    "authoredRoom.id=ascii_chapter_room\n") &&
+      fileContains(asciiSaveRoot / "save_001.iggy3d.save",
+                   "authoredRoom.marker.count=5\n") &&
+      fileContains(asciiSaveRoot / "save_001.iggy3d.save",
+                   "authoredRoom.marker.0.id=marker_player_spawn_r1_c1\n") &&
       iggy3d::smoke::hasField(fields, "ascii_room_preview_status",
                               "product_ascii_room_ready") &&
       iggy3d::smoke::hasField(fields, "ascii_room_preview_room_id",
@@ -187,6 +191,9 @@ int main() {
       iggy3d::smoke::hasField(fields,
                               "product_save_load_authored_wall_count",
                               "20") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_save_load_authored_marker_count",
+                              "5") &&
       iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
       iggy3d::smoke::hasField(fields,
                               "active_room_source",
@@ -203,6 +210,10 @@ int main() {
                               "active_room_authored_wall_count",
                               "20") &&
       iggy3d::smoke::hasField(fields,
+                              "active_room_authored_marker_count",
+                              "5") &&
+      iggy3d::smoke::hasField(fields, "active_room_anchor_count", "5") &&
+      iggy3d::smoke::hasField(fields,
                               "active_room_collision_ready",
                               "true") &&
       iggy3d::smoke::hasField(fields,
@@ -210,7 +221,10 @@ int main() {
                               "15") &&
       iggy3d::smoke::hasField(fields,
                               "active_room_collision_actor_blocker_count",
-                              "20") &&
+                              "21") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_door_blocker_count",
+                              "1") &&
       iggy3d::smoke::hasField(fields,
                               "product_transition_status",
                               "gameplay_active");

@@ -109,6 +109,7 @@ struct ProductAppWindowState {
   std::string productSaveLoadAuthoredRoomId = "none";
   std::uint64_t productSaveLoadAuthoredFloorCount = 0;
   std::uint64_t productSaveLoadAuthoredWallCount = 0;
+  std::uint64_t productSaveLoadAuthoredMarkerCount = 0;
   std::string selectedProductSaveId = "none";
   bool selectedProductSaveEnabled = false;
   std::string selectedProductSaveStatus = "none";

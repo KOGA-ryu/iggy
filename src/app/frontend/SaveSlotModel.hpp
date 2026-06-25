@@ -27,6 +27,7 @@ struct SaveSlotPreview {
   std::string savedStateHashHex = "none";
   std::uint64_t authoredFloorCount = 0;
   std::uint64_t authoredWallCount = 0;
+  std::uint64_t authoredMarkerCount = 0;
   SaveSlotCompatibility compatibility = SaveSlotCompatibility::Unknown;
   bool enabled = false;
   bool corrupt = false;

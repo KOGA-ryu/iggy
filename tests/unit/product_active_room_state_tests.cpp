@@ -51,6 +51,7 @@ bool buildsLoadedStateFromAsciiAuthoring() {
                 "authored room id") &&
          expect(active.authoredFloorCount == 15U, "authored floor count") &&
          expect(active.authoredWallCount == 20U, "authored wall count") &&
+         expect(active.authoredMarkerCount == 5U, "authored marker count") &&
          expect(active.staticMeshCount == 36U, "static mesh count") &&
          expect(active.anchorCount == 5U, "anchor count") &&
          expect(active.openingCount == 0U, "opening count") &&
@@ -87,6 +88,7 @@ bool recordsAuthoringFailureWithoutRoomOwnership() {
          expect(active.sourceName == "unit/missing_spawn.iggyroom.txt",
                 "source name") &&
          expect(!active.hasAuthoredRoom, "no authored room") &&
+         expect(active.authoredMarkerCount == 0U, "no authored markers") &&
          expect(active.staticMeshCount == 0U, "no meshes") &&
          expect(active.spatialSurfaceCount == 0U, "no surfaces");
 }
@@ -119,6 +121,8 @@ bool buildsLoadedStateFromPackageRoom() {
          expect(!active.hasAuthoredRoom, "package authored room absent") &&
          expect(active.authoredFloorCount == 0U, "package authored floor count") &&
          expect(active.authoredWallCount == 0U, "package authored wall count") &&
+         expect(active.authoredMarkerCount == 0U,
+                "package authored marker count") &&
          expect(active.staticMeshCount == 36U, "package static mesh count") &&
          expect(active.anchorCount == 5U, "package anchor count") &&
          expect(active.spatialSurfaceCount == 56U, "package surface count") &&
@@ -155,17 +159,21 @@ bool buildsLoadedStateFromSavedAuthoredRoom() {
                 "saved authored floor count") &&
          expect(active.authoredWallCount == 20U,
                 "saved authored wall count") &&
-         expect(active.staticMeshCount == 35U, "saved static mesh count") &&
-         expect(active.anchorCount == 0U, "saved anchor count") &&
-         expect(active.spatialSurfaceCount == 55U, "saved surface count") &&
+         expect(active.authoredMarkerCount == 5U,
+                "saved authored marker count") &&
+         expect(active.staticMeshCount == 36U, "saved static mesh count") &&
+         expect(active.anchorCount == 5U, "saved anchor count") &&
+         expect(active.spatialSurfaceCount == 56U, "saved surface count") &&
          expect(active.walkableSurfaceCount == 15U, "saved walkable count") &&
-         expect(active.actorBlockerSurfaceCount == 20U,
+         expect(active.actorBlockerSurfaceCount == 21U,
                 "saved actor blocker count") &&
-         expect(active.projectileBlockerSurfaceCount == 20U,
+         expect(active.projectileBlockerSurfaceCount == 21U,
                 "saved projectile blocker count") &&
-         expect(active.room.staticMeshes.size() == 35U,
+         expect(active.room.staticMeshes.size() == 36U,
                 "saved room meshes owned") &&
-         expect(active.room.spatialSurfaces.size() == 55U,
+         expect(active.room.anchors.size() == 5U,
+                "saved room anchors owned") &&
+         expect(active.room.spatialSurfaces.size() == 56U,
                 "saved room surfaces owned");
 }
 

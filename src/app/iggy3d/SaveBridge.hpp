@@ -80,6 +80,7 @@ struct ProductSaveLoadResult {
   std::string authoredRoomId = "none";
   std::uint64_t authoredFloorCount = 0;
   std::uint64_t authoredWallCount = 0;
+  std::uint64_t authoredMarkerCount = 0;
   SaveAuthoredRoomSection authoredRoom;
 };
 

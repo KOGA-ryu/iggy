@@ -485,6 +485,16 @@ bool authoredRoomSectionRoundTripsThroughSaveCodec() {
   wall.locked = true;
   wall.hidden = true;
   saved.envelope.authoredRoom.walls.push_back(wall);
+  iggy3d::SaveAuthoredRoomMarkerRecord marker;
+  marker.id = "marker_treasure_r2_c4";
+  marker.tag = "treasure";
+  marker.glyph = "$";
+  marker.row = 2;
+  marker.column = 4;
+  marker.positionMeters = {4.0F, 0.05F, 2.0F};
+  marker.sourceLine = 3;
+  marker.sourceColumn = 5;
+  saved.envelope.authoredRoom.markers.push_back(marker);
 
   const iggy3d::SaveEncodeResult encoded = iggy3d::encodeSaveEnvelope(saved.envelope);
   const iggy3d::SaveDecodeResult decoded = iggy3d::decodeSaveEnvelope(encoded.encodedText);
@@ -498,6 +508,10 @@ bool authoredRoomSectionRoundTripsThroughSaveCodec() {
          expect(encoded.encodedText.find("authoredRoom.floor.0.id=edit_floor_7\n") !=
                     std::string::npos,
                 "authored floor encoded") &&
+         expect(encoded.encodedText.find(
+                    "authoredRoom.marker.0.id=marker_treasure_r2_c4\n") !=
+                    std::string::npos,
+                "authored marker encoded") &&
          expect(decoded.status == iggy3d::SaveCodecStatus::Ok, "authored decode status") &&
          expect(decoded.envelope.authoredRoom.present, "authored present decoded") &&
          expect(decoded.envelope.authoredRoom.floors.size() == 1U, "authored floor count") &&
@@ -548,6 +562,25 @@ bool authoredRoomSectionRoundTripsThroughSaveCodec() {
                 "authored wall gameplay tag") &&
          expect(decoded.envelope.authoredRoom.walls[0].locked, "authored wall locked") &&
          expect(decoded.envelope.authoredRoom.walls[0].hidden, "authored wall hidden") &&
+         expect(decoded.envelope.authoredRoom.markers.size() == 1U,
+                "authored marker count") &&
+         expect(decoded.envelope.authoredRoom.markers[0].id ==
+                    "marker_treasure_r2_c4",
+                "authored marker id") &&
+         expect(decoded.envelope.authoredRoom.markers[0].tag == "treasure",
+                "authored marker tag") &&
+         expect(decoded.envelope.authoredRoom.markers[0].glyph == "$",
+                "authored marker glyph") &&
+         expect(decoded.envelope.authoredRoom.markers[0].row == 2U,
+                "authored marker row") &&
+         expect(decoded.envelope.authoredRoom.markers[0].column == 4U,
+                "authored marker column") &&
+         expect(decoded.envelope.authoredRoom.markers[0].positionMeters.x == 4.0F,
+                "authored marker x") &&
+         expect(decoded.envelope.authoredRoom.markers[0].sourceLine == 3U,
+                "authored marker source line") &&
+         expect(decoded.envelope.authoredRoom.markers[0].sourceColumn == 5U,
+                "authored marker source column") &&
          expect(!oldDecoded.envelope.authoredRoom.present, "old saves omit authored room");
 }
 

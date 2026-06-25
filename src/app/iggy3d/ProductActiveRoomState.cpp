@@ -48,6 +48,7 @@ void fillAuthoredCounts(ProductActiveRoomState& state) {
   state.hasAuthoredRoom = state.authoredRoom.present;
   state.authoredFloorCount = sizeReceiptValue(state.authoredRoom.floors.size());
   state.authoredWallCount = sizeReceiptValue(state.authoredRoom.walls.size());
+  state.authoredMarkerCount = sizeReceiptValue(state.authoredRoom.markers.size());
 }
 
 std::string fallbackString(std::string_view value, std::string fallback) {

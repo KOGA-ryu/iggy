@@ -74,9 +74,10 @@ Current limitations:
 - no seed editing model exists;
 - no difficulty model exists;
 - no starting scenario choice model exists;
-- saved authored-room rehydration currently restores durable floors/walls; ASCII
-  marker sidecars such as doors, treasure, NPC anchors, and exits require a
-  later save-format extension before they can be reconstructed from save alone;
+- saved authored-room rehydration now restores durable floors, walls, markers,
+  anchors, door panels, and door blocker surfaces; game-specific NPC AI,
+  treasure inventory behavior, and objective binding remain separate runtime
+  gameplay work;
 - current world creation still has AppShell composition code that should shrink
   as UI models become real widgets.
 
@@ -671,7 +672,9 @@ product_save_load_authored_room_present=true|false
 product_save_load_authored_room_id=<id-or-none>
 product_save_load_authored_floor_count=<count>
 product_save_load_authored_wall_count=<count>
+product_save_load_authored_marker_count=<count>
 active_room_source=saved_authored_room when loaded from save-authored geometry
+active_room_authored_marker_count=<count>
 ```
 
 Routing:

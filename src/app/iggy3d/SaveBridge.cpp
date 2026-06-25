@@ -108,6 +108,8 @@ ProductSaveLoadResult loadProductSessionSave(
         static_cast<std::uint64_t>(result.authoredRoom.floors.size());
     result.authoredWallCount =
         static_cast<std::uint64_t>(result.authoredRoom.walls.size());
+    result.authoredMarkerCount =
+        static_cast<std::uint64_t>(result.authoredRoom.markers.size());
   }
 
   SaveEnvelope compatibilityEnvelope;

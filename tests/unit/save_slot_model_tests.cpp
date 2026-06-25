@@ -45,6 +45,11 @@ iggy3d::SaveAuthoredRoomSection authoredRoomFixture() {
   iggy3d::SaveAuthoredRoomWallRecord wall;
   wall.id = "wall_preview";
   authoredRoom.walls.push_back(wall);
+  iggy3d::SaveAuthoredRoomMarkerRecord marker;
+  marker.id = "marker_preview";
+  marker.tag = "treasure";
+  marker.glyph = "$";
+  authoredRoom.markers.push_back(marker);
   return authoredRoom;
 }
 
@@ -74,6 +79,8 @@ bool compatibleSavePreviewIncludesMetadata() {
                 "hash hex") &&
          expect(slots.slots.front().authoredFloorCount == 1U, "authored floor count") &&
          expect(slots.slots.front().authoredWallCount == 1U, "authored wall count") &&
+         expect(slots.slots.front().authoredMarkerCount == 1U,
+                "authored marker count") &&
          expect(slots.slots.front().displayTitle == "save_010", "display title") &&
          expect(!slots.slots.front().timestampLabel.empty(), "timestamp label") &&
          expect(slots.slots.front().snapshotPath.filename() == "save_010.snapshot.png",

@@ -258,6 +258,7 @@ void recordProductSaveLoadResult(const ProductSaveLoadResult& loaded,
   window.productSaveLoadAuthoredRoomId = loaded.authoredRoomId;
   window.productSaveLoadAuthoredFloorCount = loaded.authoredFloorCount;
   window.productSaveLoadAuthoredWallCount = loaded.authoredWallCount;
+  window.productSaveLoadAuthoredMarkerCount = loaded.authoredMarkerCount;
   if (loaded.ok && !loaded.record.id.empty()) {
     window.activeProductSaveId = loaded.record.id;
   }

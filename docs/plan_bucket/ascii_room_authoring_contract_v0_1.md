@@ -628,6 +628,8 @@ Current active-room runtime proof:
 - the room asset loader accepts legacy 4-point boxes and full 8-point boxes;
 - product save load rehydrates saved authored-room floors and walls back into
   active room/collision state with `active_room_source=saved_authored_room`;
+- product save load also rehydrates saved marker records into anchors, door
+  panels, and runtime-owned door blocker surfaces;
 - product no-window smokes prove positive traversal through an opened secret
   door, negative collision against a package-loaded wall, and ASCII-created
   world load rehydration.
@@ -647,13 +649,15 @@ Current World Setup binding:
   collision readiness, authored-room save persistence, and Continue loading
   that save back into active-room collision.
 
-Current saved-room limitation:
+Current saved-room persistence:
 
-- the save-authored room section stores durable floors and walls;
-- ASCII marker sidecars are not yet part of the save format;
-- load-time rehydration therefore restores floor/wall collision but does not
-  recreate marker-derived door panels, anchors, treasure, NPC markers, or exits
-  from the saved authored room alone.
+- the save-authored room section stores durable floors, walls, and markers;
+- marker records store id, tag, glyph, grid row/column, world position, and
+  source line/column;
+- load-time rehydration restores floor/wall collision plus marker-derived
+  anchors, door panels, and door blocker surfaces;
+- game-specific NPC AI, treasure inventory behavior, and objective binding are
+  still runtime/session systems layered on top of these saved marker records.
 
 ## Validation Rules
 
@@ -735,10 +739,10 @@ marker_<tag>_r<row>_c<column>
 Slice 2 authored-room boundary:
 
 - floors and walls compile into `SaveAuthoredRoomSection`;
-- markers remain `AsciiRoomMarker` records in the compile result;
+- markers remain `AsciiRoomMarker` records in the compile result and are also
+  written into `SaveAuthoredRoomSection`;
 - no marker should become a runtime entity in Slice 2;
-- no marker should be written into `SaveAuthoredRoomSection` unless that type is
-  explicitly expanded in a later approved packet.
+- runtime entity binding remains a separate product gameplay slice.
 
 Generated semantics:
 
@@ -798,7 +802,9 @@ product_save_load_authored_room_present
 product_save_load_authored_room_id
 product_save_load_authored_floor_count
 product_save_load_authored_wall_count
+product_save_load_authored_marker_count
 active_room_source=saved_authored_room
+active_room_authored_marker_count
 ```
 
 Proof text:

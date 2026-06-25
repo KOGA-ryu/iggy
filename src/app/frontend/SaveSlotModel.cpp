@@ -207,6 +207,8 @@ SaveSlotList buildSaveSlotList(const std::filesystem::path& root,
         static_cast<std::uint64_t>(decoded.envelope.authoredRoom.floors.size());
     preview.authoredWallCount =
         static_cast<std::uint64_t>(decoded.envelope.authoredRoom.walls.size());
+    preview.authoredMarkerCount =
+        static_cast<std::uint64_t>(decoded.envelope.authoredRoom.markers.size());
     if (preview.enabled) {
       ++list.compatibleCount;
     }

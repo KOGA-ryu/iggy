@@ -70,6 +70,8 @@ bool canonicalMapCompilesToExpectedCountsAndSourceFields() {
                 "room source subset") &&
          expect(result.authoredRoom.floors.size() == 15U, "floor count") &&
          expect(result.authoredRoom.walls.size() == 20U, "wall count") &&
+         expect(result.authoredRoom.markers.size() == 5U,
+                "authored marker count") &&
          expect(result.markers.size() == 5U, "marker count") &&
          expect(result.floorCount == 15U, "result floor count") &&
          expect(result.wallCount == 20U, "result wall count") &&
@@ -177,8 +179,16 @@ bool markerRecordsAreDeterministicSidecars() {
                 "door marker position") &&
          expect(treasure != nullptr, "treasure marker exists") &&
          expect(treasure->id == "marker_treasure_r2_c4", "treasure marker id") &&
-         expect(result.authoredRoom.floors.size() == 15U, "markers sidecar floors only") &&
-         expect(result.authoredRoom.walls.size() == 20U, "markers sidecar walls only");
+         expect(result.authoredRoom.markers.size() == 5U,
+                "markers saved to authored room") &&
+         expect(result.authoredRoom.markers[0].id == "marker_player_spawn_r1_c1",
+                "saved marker id") &&
+         expect(result.authoredRoom.markers[0].glyph == "P",
+                "saved marker glyph") &&
+         expect(result.authoredRoom.markers[0].row == 1U,
+                "saved marker row") &&
+         expect(result.authoredRoom.markers[0].sourceLine == 2U,
+                "saved marker source line");
 }
 
 bool doorAndSecretDoorGenerateFloorAndMarkerOnly() {

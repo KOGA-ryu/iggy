@@ -247,6 +247,36 @@ bool wallBlocksProjectile(const SaveAuthoredRoomWallRecord& wall) {
   return wall.semantics.blocksProjectile;
 }
 
+AsciiRoomMarker markerFromSavedRecord(
+    const SaveAuthoredRoomMarkerRecord& record) {
+  AsciiRoomMarker marker;
+  marker.id = record.id;
+  marker.tag = record.tag;
+  marker.glyph = record.glyph.empty() ? '\0' : record.glyph.front();
+  marker.row = record.row;
+  marker.column = record.column;
+  marker.worldPosition = {record.positionMeters.x,
+                          record.positionMeters.y,
+                          record.positionMeters.z};
+  marker.sourceLine = record.sourceLine;
+  marker.sourceColumn = record.sourceColumn;
+  return marker;
+}
+
+std::vector<AsciiRoomMarker> markersForRoomAsset(
+    const AsciiRoomAuthoredRoomResult& authored) {
+  if (!authored.markers.empty()) {
+    return authored.markers;
+  }
+
+  std::vector<AsciiRoomMarker> markers;
+  markers.reserve(authored.authoredRoom.markers.size());
+  for (const SaveAuthoredRoomMarkerRecord& marker : authored.authoredRoom.markers) {
+    markers.push_back(markerFromSavedRecord(marker));
+  }
+  return markers;
+}
+
 }  // namespace
 
 AsciiRoomToRoomAssetResult buildRoomAssetFromAsciiRoom(
@@ -299,7 +329,8 @@ AsciiRoomToRoomAssetResult buildRoomAssetFromAsciiRoom(
     }
   }
 
-  for (const AsciiRoomMarker& marker : authored.markers) {
+  const std::vector<AsciiRoomMarker> markers = markersForRoomAsset(authored);
+  for (const AsciiRoomMarker& marker : markers) {
     if (markerIsDoor(marker)) {
       result.room.staticMeshes.push_back(doorMesh(marker, config));
       result.room.spatialSurfaces.push_back(
@@ -309,7 +340,7 @@ AsciiRoomToRoomAssetResult buildRoomAssetFromAsciiRoom(
     }
   }
 
-  for (const AsciiRoomMarker& marker : authored.markers) {
+  for (const AsciiRoomMarker& marker : markers) {
     result.room.anchors.push_back(anchorFromMarker(marker));
   }
 

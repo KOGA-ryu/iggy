@@ -84,6 +84,16 @@ iggy3d::SaveAuthoredRoomSection authoredRoomFixture() {
   floor.hidden = true;
   floor.semantics.traversalTags = {"walkable"};
   authoredRoom.floors.push_back(floor);
+  iggy3d::SaveAuthoredRoomMarkerRecord marker;
+  marker.id = "marker_product_bridge_treasure";
+  marker.tag = "treasure";
+  marker.glyph = "$";
+  marker.row = 2;
+  marker.column = 3;
+  marker.positionMeters = {2.0F, 0.05F, 3.0F};
+  marker.sourceLine = 3;
+  marker.sourceColumn = 4;
+  authoredRoom.markers.push_back(marker);
   return authoredRoom;
 }
 
@@ -253,9 +263,15 @@ bool productDurableSavePersistsAuthoredRoom() {
          expect(decoded.envelope.authoredRoom.floors[0].semantics.traversalTags[0] ==
                     "walkable",
                 "product authored traversal") &&
+         expect(decoded.envelope.authoredRoom.markers.size() == 1U,
+                "product authored marker") &&
+         expect(decoded.envelope.authoredRoom.markers[0].tag == "treasure",
+                "product authored marker tag") &&
          expect(scanned.slots.slots.size() == 1U, "product authored scan slot") &&
          expect(scanned.slots.slots.front().authoredFloorCount == 1U,
-                "product authored scan floor count");
+                "product authored scan floor count") &&
+         expect(scanned.slots.slots.front().authoredMarkerCount == 1U,
+                "product authored scan marker count");
 }
 
 bool productSoftDeleteMovesSaveAndRemovesFromScan() {
@@ -695,10 +711,14 @@ bool productLoadSaveExposesAuthoredRoomSection() {
                 "product authored load floor count") &&
          expect(loaded.authoredWallCount == 0U,
                 "product authored load wall count") &&
+         expect(loaded.authoredMarkerCount == 1U,
+                "product authored load marker count") &&
          expect(loaded.authoredRoom.present,
                 "product authored load copied room present") &&
          expect(loaded.authoredRoom.floors.size() == 1U,
                 "product authored load copied floor") &&
+         expect(loaded.authoredRoom.markers.size() == 1U,
+                "product authored load copied marker") &&
          expect(loaded.sessionLoaded,
                 "product authored load session loaded");
 }

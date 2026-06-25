@@ -118,6 +118,17 @@ struct SaveAuthoredRoomWallRecord {
   bool hidden = false;
 };
 
+struct SaveAuthoredRoomMarkerRecord {
+  std::string id;
+  std::string tag;
+  std::string glyph;
+  std::uint32_t row = 0;
+  std::uint32_t column = 0;
+  Vec3 positionMeters;
+  std::uint32_t sourceLine = 1;
+  std::uint32_t sourceColumn = 1;
+};
+
 struct SaveAuthoredRoomSection {
   bool present = false;
   std::string id = "editable_room";
@@ -127,6 +138,7 @@ struct SaveAuthoredRoomSection {
   std::string sourceSubset = "authoring";
   std::vector<SaveAuthoredRoomFloorRecord> floors;
   std::vector<SaveAuthoredRoomWallRecord> walls;
+  std::vector<SaveAuthoredRoomMarkerRecord> markers;
 };
 
 struct SavePlayerSlotRecord {

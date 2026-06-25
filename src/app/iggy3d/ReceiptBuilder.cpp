@@ -214,6 +214,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.activeRoom.authoredFloorCount);
   appendReceiptField(receipt, "active_room_authored_wall_count",
                      window.activeRoom.authoredWallCount);
+  appendReceiptField(receipt, "active_room_authored_marker_count",
+                     window.activeRoom.authoredMarkerCount);
   appendReceiptField(receipt, "active_room_static_mesh_count",
                      window.activeRoom.staticMeshCount);
   appendReceiptField(receipt, "active_room_anchor_count",
@@ -288,6 +290,9 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt,
                      "product_save_load_authored_wall_count",
                      window.productSaveLoadAuthoredWallCount);
+  appendReceiptField(receipt,
+                     "product_save_load_authored_marker_count",
+                     window.productSaveLoadAuthoredMarkerCount);
   appendReceiptField(receipt, "selected_save_id", window.selectedProductSaveId);
   appendReceiptField(receipt, "selected_save_enabled",
                      window.selectedProductSaveEnabled);

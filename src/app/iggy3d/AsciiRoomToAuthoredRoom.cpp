@@ -1,5 +1,6 @@
 #include "app/iggy3d/AsciiRoomToAuthoredRoom.hpp"
 
+#include <cstdint>
 #include <cmath>
 #include <string>
 #include <string_view>
@@ -248,6 +249,18 @@ AsciiRoomAuthoredRoomResult compileAsciiRoomToAuthoredRoom(
           cellPosition(cell, grid, config, cell.elevationMeters + config.markerYMeters);
       marker.sourceLine = cell.row + 1U;
       marker.sourceColumn = cell.column + 1U;
+      SaveAuthoredRoomMarkerRecord savedMarker;
+      savedMarker.id = marker.id;
+      savedMarker.tag = marker.tag;
+      savedMarker.glyph = std::string(1, marker.glyph);
+      savedMarker.row = static_cast<std::uint32_t>(marker.row);
+      savedMarker.column = static_cast<std::uint32_t>(marker.column);
+      savedMarker.positionMeters = {static_cast<float>(marker.worldPosition.x),
+                                    static_cast<float>(marker.worldPosition.y),
+                                    static_cast<float>(marker.worldPosition.z)};
+      savedMarker.sourceLine = static_cast<std::uint32_t>(marker.sourceLine);
+      savedMarker.sourceColumn = static_cast<std::uint32_t>(marker.sourceColumn);
+      result.authoredRoom.markers.push_back(std::move(savedMarker));
       result.markers.push_back(std::move(marker));
     }
   }
