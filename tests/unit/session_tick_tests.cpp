@@ -282,6 +282,18 @@ iggy3d::Session makeNpcCombatSession(float npcX = 1.0F,
   return iggy3d::Session::create(request).value;
 }
 
+iggy3d::Result<iggy3d::Session> createNpcCombatSessionWithAiSeed(
+    std::string_view actorStableName,
+    std::string_view behaviorProfileId,
+    float npcX = 1.0F) {
+  iggy3d::SessionCreateRequest request;
+  request.config = iggy3d::makeDefaultRuntimeConfig();
+  request.seed = makeNpcCombatSeed(npcX);
+  request.seed.aiActors.push_back(
+      {std::string(actorStableName), std::string(behaviorProfileId)});
+  return iggy3d::Session::create(request);
+}
+
 iggy3d::CommandRecord submittedInteract() {
   iggy3d::CommandRecord command;
   command.playerSlot = 0;
@@ -718,6 +730,126 @@ bool npcAiChaseMovesThroughNormalCommandExecution() {
   return ok;
 }
 
+bool sessionCreateSeedsAiActorProfileIntoStateAndBaseline() {
+  const iggy3d::Result<iggy3d::Session> created =
+      createNpcCombatSessionWithAiSeed("training_npc", "passive");
+  if (!expect(created.status == iggy3d::ResultStatus::Ok, "ai seed create ok")) {
+    return false;
+  }
+
+  const iggy3d::AiActorState* aiActor = findAiActor(created.value.state().ai, {2});
+  const iggy3d::AiActorState* baselineAiActor =
+      findAiActor(created.value.state().baseline.ai, {2});
+
+  return expect(aiActor != nullptr, "seeded ai actor exists") &&
+         expect(aiActor != nullptr && aiActor->behaviorProfileId == "passive",
+                "seeded ai actor profile") &&
+         expect(aiActor != nullptr && aiActor->behavior == iggy3d::AiBehaviorKind::Idle,
+                "seeded ai actor default behavior") &&
+         expect(baselineAiActor != nullptr, "baseline ai actor exists") &&
+         expect(baselineAiActor != nullptr && baselineAiActor->behaviorProfileId == "passive",
+                "baseline ai actor profile");
+}
+
+bool sessionCreateRejectsInvalidAiActorSeeds() {
+  iggy3d::SessionCreateRequest missingActor;
+  missingActor.config = iggy3d::makeDefaultRuntimeConfig();
+  missingActor.seed = makeNpcCombatSeed();
+  missingActor.seed.aiActors.push_back({"missing_npc", "passive"});
+  const iggy3d::Result<iggy3d::Session> missingResult =
+      iggy3d::Session::create(missingActor);
+
+  iggy3d::SessionCreateRequest nonNpc;
+  nonNpc.config = iggy3d::makeDefaultRuntimeConfig();
+  nonNpc.seed = makeNpcCombatSeed();
+  nonNpc.seed.aiActors.push_back({"player", "passive"});
+  const iggy3d::Result<iggy3d::Session> nonNpcResult =
+      iggy3d::Session::create(nonNpc);
+
+  iggy3d::SessionCreateRequest duplicate;
+  duplicate.config = iggy3d::makeDefaultRuntimeConfig();
+  duplicate.seed = makeNpcCombatSeed();
+  duplicate.seed.aiActors.push_back({"training_npc", "passive"});
+  duplicate.seed.aiActors.push_back({"training_npc", "default"});
+  const iggy3d::Result<iggy3d::Session> duplicateResult =
+      iggy3d::Session::create(duplicate);
+
+  return expect(missingResult.status == iggy3d::ResultStatus::Error,
+                "missing ai actor rejects") &&
+         expect(missingResult.error.code == "session.ai_seed_missing_actor",
+                "missing ai actor error") &&
+         expect(nonNpcResult.status == iggy3d::ResultStatus::Error,
+                "non npc ai actor rejects") &&
+         expect(nonNpcResult.error.code == "session.ai_seed_non_npc_actor",
+                "non npc ai actor error") &&
+         expect(duplicateResult.status == iggy3d::ResultStatus::Error,
+                "duplicate ai actor rejects") &&
+         expect(duplicateResult.error.code == "session.ai_seed_duplicate_actor",
+                "duplicate ai actor error");
+}
+
+bool passiveProfileSeededBySessionCreateWaitsWithoutDamage() {
+  iggy3d::Result<iggy3d::Session> created =
+      createNpcCombatSessionWithAiSeed("training_npc", "passive");
+  if (!expect(created.status == iggy3d::ResultStatus::Ok,
+              "seeded passive create ok")) {
+    return false;
+  }
+  iggy3d::Session& session = created.value;
+
+  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok,
+                   "seeded passive tick ok");
+  const iggy3d::CommandRecord* command =
+      lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
+  const iggy3d::CombatantState* playerCombatant =
+      findCombatant(session.state().combat, {1});
+  const iggy3d::AiActorState* aiActor = findAiActor(session.state().ai, {2});
+
+  ok = ok && expect(command != nullptr && command->kind == iggy3d::CommandKind::Wait,
+                    "seeded passive wait logged") &&
+       expect(command != nullptr &&
+                  command->admission == iggy3d::CommandAdmissionStatus::Accepted,
+              "seeded passive wait accepted") &&
+       expect(playerCombatant != nullptr && playerCombatant->hitPoints == 10,
+              "seeded passive no damage") &&
+       expect(aiActor != nullptr && aiActor->behaviorProfileId == "passive",
+              "seeded passive profile retained") &&
+       expect(aiActor != nullptr && aiActor->behavior == iggy3d::AiBehaviorKind::Alert,
+              "seeded passive alert") &&
+       expect(aiActor != nullptr && aiActor->lastIntent == iggy3d::AiIntentKind::Wait,
+              "seeded passive wait intent");
+  return ok;
+}
+
+bool unknownProfileSeededBySessionCreateFailsClosed() {
+  iggy3d::Result<iggy3d::Session> created =
+      createNpcCombatSessionWithAiSeed("training_npc", "ghost_profile");
+  if (!expect(created.status == iggy3d::ResultStatus::Ok,
+              "seeded unknown create ok")) {
+    return false;
+  }
+  iggy3d::Session& session = created.value;
+
+  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok,
+                   "seeded unknown tick ok");
+  const iggy3d::CommandRecord* command =
+      lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
+  const iggy3d::CombatantState* playerCombatant =
+      findCombatant(session.state().combat, {1});
+  const iggy3d::AiActorState* aiActor = findAiActor(session.state().ai, {2});
+
+  ok = ok && expect(command == nullptr, "seeded unknown no ai command") &&
+       expect(playerCombatant != nullptr && playerCombatant->hitPoints == 10,
+              "seeded unknown no damage") &&
+       expect(aiActor != nullptr && aiActor->behaviorProfileId == "ghost_profile",
+              "seeded unknown profile retained") &&
+       expect(aiActor != nullptr && aiActor->behavior == iggy3d::AiBehaviorKind::Idle,
+              "seeded unknown behavior unchanged") &&
+       expect(aiActor != nullptr && aiActor->lastIntent == iggy3d::AiIntentKind::None,
+              "seeded unknown intent unchanged");
+  return ok;
+}
+
 bool passiveNpcInAttackRangeWaitsWithoutDamage() {
   iggy3d::Session session = makeNpcCombatSession();
   seedNpcAiProfile(session, "passive");
@@ -968,6 +1100,10 @@ int main() {
                   npcAiTickEnqueuesAttackThroughAdmissionAndCombat() &&
                   npcAiCooldownTickWaitsWithoutSecondAttack() &&
                   npcAiChaseMovesThroughNormalCommandExecution() &&
+                  sessionCreateSeedsAiActorProfileIntoStateAndBaseline() &&
+                  sessionCreateRejectsInvalidAiActorSeeds() &&
+                  passiveProfileSeededBySessionCreateWaitsWithoutDamage() &&
+                  unknownProfileSeededBySessionCreateFailsClosed() &&
                   passiveNpcInAttackRangeWaitsWithoutDamage() &&
                   passiveNpcOutsideAttackRangeWaitsWithoutChasing() &&
                   unknownProfileSkipsNpcCommandAndStateMutation() &&

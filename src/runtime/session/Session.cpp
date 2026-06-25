@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <utility>
+#include <vector>
 
 #include "runtime/ability/AbilitySystem.hpp"
 #include "runtime/ai/NpcBehaviorProfile.hpp"
@@ -150,6 +151,35 @@ bool createCombat(const FixtureScenarioSeed& seed, const WorldState& world, Comb
     combat.combatants.push_back(combatant);
   }
   return true;
+}
+
+StatusResult createAiActors(const FixtureScenarioSeed& seed,
+                            const WorldState& world,
+                            AiState& ai) {
+  std::vector<EntityId> seededActors;
+  for (const ScenarioAiActorSeed& aiSeed : seed.aiActors) {
+    const EntityState* actor = world.findByStableName(aiSeed.actorStableName);
+    if (actor == nullptr) {
+      return statusError("session.ai_seed_missing_actor",
+                         "failed to resolve ai actor stable name");
+    }
+    if (actor->kind != EntityKind::Npc) {
+      return statusError("session.ai_seed_non_npc_actor",
+                         "ai actor seed must reference an npc");
+    }
+    if (std::find(seededActors.begin(), seededActors.end(), actor->id) !=
+        seededActors.end()) {
+      return statusError("session.ai_seed_duplicate_actor",
+                         "duplicate ai actor seed");
+    }
+
+    AiActorState actorState;
+    actorState.actor = actor->id;
+    actorState.behaviorProfileId = aiSeed.behaviorProfileId;
+    ai.actors.push_back(std::move(actorState));
+    seededActors.push_back(actor->id);
+  }
+  return statusOk();
 }
 
 ClockState createClock(const SessionCreateRequest& request) {
@@ -596,6 +626,10 @@ Result<Session> Session::create(const SessionCreateRequest& request) {
   }
   if (!createCombat(request.seed, state.world, state.combat)) {
     return createFailure("session.combat_seed_failed", "failed to seed combatants");
+  }
+  const StatusResult aiSeed = createAiActors(request.seed, state.world, state.ai);
+  if (aiSeed.status != ResultStatus::Ok) {
+    return createFailure(aiSeed.error.code, aiSeed.error.message);
   }
   if (state.objectives.objectives.empty()) {
     return createFailure("session.objective_seed_failed", "missing objectives");

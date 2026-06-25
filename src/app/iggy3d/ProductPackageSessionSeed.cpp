@@ -1,8 +1,10 @@
 #include "app/iggy3d/ProductPackageSessionSeed.hpp"
 
+#include "app/iggy3d/ProductNpcProfileAssignment.hpp"
 #include <initializer_list>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "core/math/Aabb3.hpp"
 #include "core/math/Transform3.hpp"
@@ -222,10 +224,43 @@ void fillCounts(ProductPackageSessionSeedResult& result) {
   }
 }
 
+ProductPackageSessionSeedResult assignmentFailure(const PackageLoadResult& package) {
+  return fail("product_package_seed_npc_profile_assignment_invalid", package);
+}
+
+bool assignNpcBehaviorProfiles(FixtureScenarioSeed& seed,
+                               const ProductNpcProfileAssignmentTable* assignments) {
+  seed.aiActors.clear();
+  if (assignments != nullptr) {
+    const ProductNpcProfileAssignmentValidationResult validation =
+        validateProductNpcProfileAssignments(*assignments);
+    if (!validation.ok) {
+      return false;
+    }
+  }
+
+  for (const ScenarioEntitySeed& entity : seed.entities) {
+    if (entity.kind != EntityKind::Npc) {
+      continue;
+    }
+    const ProductNpcProfileResolveResult resolved =
+        resolveProductNpcProfileAssignment({assignments, entity.stableName});
+    if (!resolved.ok) {
+      return false;
+    }
+    ScenarioAiActorSeed aiActor;
+    aiActor.actorStableName = entity.stableName;
+    aiActor.behaviorProfileId = resolved.behaviorProfileId;
+    seed.aiActors.push_back(std::move(aiActor));
+  }
+  return true;
+}
+
 }  // namespace
 
 ProductPackageSessionSeedResult buildProductPackageSessionSeed(
-    const PackageLoadResult& package) {
+    const PackageLoadResult& package,
+    const ProductNpcProfileAssignmentTable* npcProfileAssignments) {
   if (package.status != PackageLoadStatus::Ok) {
     return fail("product_package_seed_package_not_loaded", package);
   }
@@ -235,6 +270,10 @@ ProductPackageSessionSeedResult buildProductPackageSessionSeed(
   result.seed = package.scenario;
 
   if (!package.scenario.entities.empty()) {
+    if (npcProfileAssignments != nullptr &&
+        !assignNpcBehaviorProfiles(result.seed, npcProfileAssignments)) {
+      return assignmentFailure(package);
+    }
     result.ok = true;
     result.status = "product_package_seed_ready";
     result.reasonCode = result.status;
@@ -297,12 +336,21 @@ ProductPackageSessionSeedResult buildProductPackageSessionSeed(
     }
   }
 
+  if (!assignNpcBehaviorProfiles(result.seed, npcProfileAssignments)) {
+    return assignmentFailure(package);
+  }
+
   result.ok = true;
   result.status = "product_package_seed_ready";
   result.reasonCode = result.status;
   result.synthesizedFromRoomAnchors = true;
   fillCounts(result);
   return result;
+}
+
+ProductPackageSessionSeedResult buildProductPackageSessionSeed(
+    const PackageLoadResult& package) {
+  return buildProductPackageSessionSeed(package, nullptr);
 }
 
 }  // namespace iggy3d

@@ -62,6 +62,11 @@ struct ScenarioObjectiveSeed {
   ObjectiveStatusSeed completeStatus = ObjectiveStatusSeed::Complete;
 };
 
+struct ScenarioAiActorSeed {
+  std::string actorStableName;
+  std::string behaviorProfileId = "default";
+};
+
 struct FixtureScenarioSeed {
   std::string scenarioId;
   RuntimeConfig config;
@@ -71,6 +76,7 @@ struct FixtureScenarioSeed {
   std::vector<ScenarioPlayerSeed> players;
   std::vector<ScenarioEntitySeed> entities;
   std::vector<ScenarioObjectiveSeed> objectives;
+  std::vector<ScenarioAiActorSeed> aiActors;
 };
 
 struct ScenarioLoadResult {

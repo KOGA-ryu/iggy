@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <string>
 
+#include "app/iggy3d/ProductNpcProfileAssignment.hpp"
 #include "content/FixtureScenarioLoader.hpp"
 #include "content/PackageLoader.hpp"
 
@@ -26,6 +27,9 @@ struct ProductPackageSessionSeedResult {
   std::size_t objectiveCount = 0;
 };
 
+ProductPackageSessionSeedResult buildProductPackageSessionSeed(
+    const PackageLoadResult& package,
+    const ProductNpcProfileAssignmentTable* npcProfileAssignments);
 ProductPackageSessionSeedResult buildProductPackageSessionSeed(
     const PackageLoadResult& package);
 
