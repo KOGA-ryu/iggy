@@ -73,10 +73,10 @@ bool packageBuildsExpectedRuntimeSurfaces() {
   }
   const iggy3d::SpatialSurfaceSet surfaces =
       iggy3d::buildSpatialSurfaceSet(package.rooms.front());
-  return expect(surfaces.size() == 55U, "surface set size") &&
+  return expect(surfaces.size() == 56U, "surface set size") &&
          expect(countViewsWithRole(surfaces, iggy3d::CollisionSurfaceRole::Walkable) == 15U,
                 "walkable view count") &&
-         expect(countViewsWithRole(surfaces, iggy3d::CollisionSurfaceRole::Blocker) == 20U,
+         expect(countViewsWithRole(surfaces, iggy3d::CollisionSurfaceRole::Blocker) == 21U,
                 "blocker view count") &&
          expect(countViewsWithRole(surfaces,
                                    iggy3d::CollisionSurfaceRole::ProjectileBlocker) == 20U,

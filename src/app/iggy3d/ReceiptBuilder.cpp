@@ -225,6 +225,14 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.activeRoomCollision.actorBlockerSurfaceCount);
   appendReceiptField(receipt, "active_room_collision_projectile_blocker_count",
                      window.activeRoomCollision.projectileBlockerSurfaceCount);
+  appendReceiptField(receipt, "active_room_collision_runtime_owned_surface_count",
+                     window.activeRoomCollision.runtimeOwnedSurfaceCount);
+  appendReceiptField(receipt, "active_room_collision_runtime_filtered_surface_count",
+                     window.activeRoomCollision.runtimeFilteredSurfaceCount);
+  appendReceiptField(receipt, "active_room_collision_door_blocker_count",
+                     window.activeRoomCollision.doorBlockerSurfaceCount);
+  appendReceiptField(receipt, "active_room_collision_active_door_blocker_count",
+                     window.activeRoomCollision.activeDoorBlockerSurfaceCount);
   appendReceiptField(receipt, "product_save_status", window.productSaveStatus);
   appendReceiptField(receipt, "product_save_reason_code",
                      window.productSaveReasonCode);

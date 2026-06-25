@@ -464,6 +464,8 @@ RoomAssetParseResult parseRoomAssetText(const std::string& text) {
         ok = parseBool(value, spatialSurface->blocksProjectile);
       } else if (key == "opening_id") {
         ok = parseString(value, spatialSurface->openingId);
+      } else if (key == "runtime_owner_stable_name") {
+        ok = parseString(value, spatialSurface->runtimeOwnerStableName);
       } else {
         result.reason = "room_unsupported_key";
         return result;

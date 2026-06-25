@@ -87,6 +87,15 @@ InteractionResult executeInteraction(
     return result;
   }
   if (emitOnlyShapeValid(interaction)) {
+    if (interaction.deactivateTargetOnSuccess) {
+      const WorldMutationResult deactivated =
+          context.world->setActive(request.command.payload.target.entity, false);
+      if (deactivated.status != WorldStatus::Ok) {
+        result.status = InteractionStatus::InvalidWorld;
+        return result;
+      }
+      result.targetDeactivated = true;
+    }
     result.status = InteractionStatus::Succeeded;
     return result;
   }

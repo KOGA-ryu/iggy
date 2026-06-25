@@ -5,6 +5,7 @@
 #include <string_view>
 
 #include "app/input/ActionState.hpp"
+#include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/command/Command.hpp"
 #include "runtime/inventory/InventorySystem.hpp"
@@ -469,6 +470,10 @@ void submitProductTargetCommand(Session& session,
   if (kind == CommandKind::Interact && window.gameplayCommandAccepted &&
       window.gameplayTickAdvanced) {
     window.interactionExecuted = true;
+    if (window.activeRoom.loaded) {
+      window.activeRoomCollision =
+          buildProductActiveRoomCollision(window.activeRoom, session.state());
+    }
   }
   if (kind == CommandKind::Attack && window.gameplayCommandAccepted &&
       window.gameplayTickAdvanced) {

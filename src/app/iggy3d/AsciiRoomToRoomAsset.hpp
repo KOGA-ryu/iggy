@@ -17,8 +17,12 @@ struct AsciiRoomToRoomAssetConfig {
   std::string sourceSubset = "ascii_room_authoring";
   std::string floorMeshId = "floor_rect";
   std::string wallMeshId = "wall_segment";
+  std::string doorMeshId = "door_panel";
   std::string floorRole = "floor";
   std::string wallRole = "wall";
+  std::string doorRole = "door";
+  float tileSizeMeters = 1.0F;
+  float wallHeightMeters = 2.5F;
 };
 
 struct AsciiRoomToRoomAssetResult {

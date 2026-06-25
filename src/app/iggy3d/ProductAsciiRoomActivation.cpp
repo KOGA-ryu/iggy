@@ -122,6 +122,8 @@ ProductAsciiRoomActivationResult activateProductAsciiRoomPreview(
   }
 
   activeSession = std::move(session.value);
+  window.activeRoomCollision =
+      buildProductActiveRoomCollision(window.activeRoom, activeSession->state());
   result.ok = true;
   result.status = "ascii_room_activated";
   result.reasonCode = "ascii_room_activated";

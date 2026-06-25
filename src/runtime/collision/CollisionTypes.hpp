@@ -50,6 +50,7 @@ struct CollisionSurfaceView {
   bool hasActorMask = false;
   bool hasProjectileMask = false;
   bool opening = false;
+  std::string runtimeOwnerStableName;
 };
 
 struct CollisionQueryResult {

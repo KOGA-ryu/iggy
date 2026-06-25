@@ -61,13 +61,13 @@ bool validAsciiPreview(const iggy3d::smoke::ReceiptFields& fields) {
                                  "0") &&
          iggy3d::smoke::hasField(fields,
                                  "ascii_room_preview_static_mesh_count",
-                                 "35") &&
+                                 "36") &&
          iggy3d::smoke::hasField(fields,
                                  "ascii_room_preview_anchor_count",
                                  "5") &&
          iggy3d::smoke::hasField(fields,
                                  "ascii_room_preview_spatial_surface_count",
-                                 "55") &&
+                                 "56") &&
          iggy3d::smoke::hasField(fields,
                                  "ascii_room_preview_asset_text_written",
                                  "true") &&
@@ -270,20 +270,20 @@ bool activatedAsciiRoom(const iggy3d::smoke::ReceiptFields& fields) {
                                  "20") &&
          iggy3d::smoke::hasField(fields,
                                  "active_room_static_mesh_count",
-                                 "35") &&
+                                 "36") &&
          iggy3d::smoke::hasField(fields, "active_room_anchor_count", "5") &&
          iggy3d::smoke::hasField(fields,
                                  "active_room_spatial_surface_count",
-                                 "55") &&
+                                 "56") &&
          iggy3d::smoke::hasField(fields,
                                  "active_room_walkable_surface_count",
                                  "15") &&
          iggy3d::smoke::hasField(fields,
                                  "active_room_actor_blocker_count",
-                                 "20") &&
+                                 "21") &&
          iggy3d::smoke::hasField(fields,
                                  "active_room_projectile_blocker_count",
-                                 "20") &&
+                                 "21") &&
          iggy3d::smoke::hasField(fields,
                                  "active_room_collision_ready",
                                  "true") &&
@@ -298,19 +298,27 @@ bool activatedAsciiRoom(const iggy3d::smoke::ReceiptFields& fields) {
                                  "automation_activation_room") &&
          iggy3d::smoke::hasField(fields,
                                  "active_room_collision_spatial_surface_count",
-                                 "55") &&
+                                 "56") &&
          iggy3d::smoke::hasField(fields,
                                  "active_room_collision_query_surface_count",
-                                 "55") &&
+                                 "56") &&
          iggy3d::smoke::hasField(fields,
                                  "active_room_collision_walkable_surface_count",
                                  "15") &&
          iggy3d::smoke::hasField(fields,
                                  "active_room_collision_actor_blocker_count",
-                                 "20") &&
+                                 "21") &&
          iggy3d::smoke::hasField(fields,
                                  "active_room_collision_projectile_blocker_count",
-                                 "20") &&
+                                 "21") &&
+         iggy3d::smoke::hasField(
+             fields, "active_room_collision_runtime_owned_surface_count", "1") &&
+         iggy3d::smoke::hasField(
+             fields, "active_room_collision_runtime_filtered_surface_count", "0") &&
+         iggy3d::smoke::hasField(
+             fields, "active_room_collision_door_blocker_count", "1") &&
+         iggy3d::smoke::hasField(
+             fields, "active_room_collision_active_door_blocker_count", "1") &&
          iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
          iggy3d::smoke::hasField(fields, "runtime_session_created", "true") &&
          iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
@@ -393,7 +401,7 @@ bool activatedAsciiRoomOpenMove(const iggy3d::smoke::ReceiptFields& fields) {
                                  "true") &&
          iggy3d::smoke::hasField(fields,
                                  "gameplay_collision_surface_count",
-                                 "55") &&
+                                 "56") &&
          iggy3d::smoke::hasField(fields,
                                  "input_action_last",
                                  "game.move_x") &&
@@ -496,7 +504,7 @@ bool activatedAsciiRoomWallMoveBlocked(
                                  "true") &&
          iggy3d::smoke::hasField(fields,
                                  "gameplay_collision_surface_count",
-                                 "55") &&
+                                 "56") &&
          iggy3d::smoke::hasField(fields,
                                  "input_action_last",
                                  "game.move_y") &&
@@ -1103,7 +1111,7 @@ bool activatedAsciiRoomInteractDoor(
                                  "succeeded") &&
          iggy3d::smoke::hasField(fields,
                                  "gameplay_outcome_target_active_after",
-                                 "true") &&
+                                 "false") &&
          iggy3d::smoke::hasField(fields,
                                  "gameplay_outcome_inventory_changed",
                                  "false") &&
@@ -1128,6 +1136,14 @@ bool activatedAsciiRoomInteractDoor(
          iggy3d::smoke::hasField(fields,
                                  "gameplay_tick_reason_code",
                                  "ok") &&
+         iggy3d::smoke::hasField(
+             fields, "active_room_collision_runtime_owned_surface_count", "1") &&
+         iggy3d::smoke::hasField(
+             fields, "active_room_collision_runtime_filtered_surface_count", "1") &&
+         iggy3d::smoke::hasField(
+             fields, "active_room_collision_door_blocker_count", "1") &&
+         iggy3d::smoke::hasField(
+             fields, "active_room_collision_active_door_blocker_count", "0") &&
          iggy3d::smoke::hasField(fields, "interaction_executed", "true") &&
          iggy3d::smoke::hasField(fields, "attack_executed", "false");
 }

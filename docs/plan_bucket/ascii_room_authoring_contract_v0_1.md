@@ -230,8 +230,8 @@ Initial behavior:
 | `#` | wall | false | true | false |
 | `.` | floor | true | false | false |
 | space | floor | true | false | false |
-| `+` | door | true | false by default | true |
-| `s` | secret door | true | false by default | true |
+| `+` | door | true | closed blocker surface | true |
+| `s` | secret door | true | closed blocker surface | true |
 | `P` | player spawn on floor | true | false | true |
 | `N` | NPC spawn on floor | true | false | true |
 | `M` | monster spawn on floor | true | false | true |
@@ -458,8 +458,10 @@ Slice 2 simple geometry:
 - every walkable cell emits one floor tile;
 - every wall cell emits one wall block;
 - every marker cell emits a marker/spawn record at tile center;
-- doors emit floor plus door marker;
-- secret doors emit floor plus secret-door marker.
+- doors emit floor plus door marker plus a runtime-owned closed-door blocker
+  surface;
+- secret doors emit floor plus secret-door marker plus a runtime-owned
+  closed-door blocker surface.
 
 Slice 3 wall-run optimization:
 
@@ -479,16 +481,24 @@ Why simple first:
 
 ## Door And Opening Semantics
 
-Door glyphs are not walls in v0.1. They are walkable marker cells.
+Door glyphs are not walls in v0.1. They are walkable marker cells with a
+separate runtime-owned blocker surface.
 
 Rules:
 
-- `+` compiles as floor plus marker tag `door`;
-- `s` compiles as floor plus marker tag `secret_door`;
-- `+` and `s` do not cut wall openings in v0.1;
-- a later slice may convert door markers between adjacent walls into openings
-  or interactable door entities;
-- v0.1 should not infer hinges, locked state, or open/closed state.
+- `+` compiles as floor plus marker tag `door` plus a `door_panel` mesh and
+  `door_blocker` spatial surface;
+- `s` compiles as floor plus marker tag `secret_door` plus a `door_panel` mesh
+  and `door_blocker` spatial surface;
+- the blocker surface uses `runtime_owner_stable_name` equal to the door marker
+  id, for example `marker_door_r2_c2`;
+- generated product door entities use `OpenDoor + EmitEventOnly +
+  deactivateTargetOnSuccess`;
+- closed door collision is represented by the active runtime owner;
+- opening a door deactivates the runtime door entity and product active-room
+  collision filters out the owned blocker surface;
+- `+` and `s` do not cut authored wall openings in v0.1;
+- v0.1 should not infer hinges or locked state.
 
 Door validation:
 
@@ -945,6 +955,7 @@ Deferred decisions:
 - whether permissive unknown glyphs are useful for rough sketch mode;
 - final tile size for production rooms;
 - whether row-positive south should later flip to world `-Z`;
-- whether doors become openings, interactable entities, or both;
+- whether doors later become authored openings, animated meshes, locked doors,
+  interactable entities, or a combination;
 - how ASCII room fixtures attach to world creation UI;
 - how EDI/gameguy exports should target this semantic grid later.

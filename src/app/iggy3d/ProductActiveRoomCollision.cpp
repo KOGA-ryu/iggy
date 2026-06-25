@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "runtime/collision/CollisionTypes.hpp"
+#include "runtime/world/EntityState.hpp"
 
 namespace iggy3d {
 namespace {
@@ -40,10 +41,50 @@ void fillQueryCounts(ProductActiveRoomCollisionState& collision) {
   }
 }
 
-}  // namespace
+bool surfaceBlocksDoor(const RoomSpatialSurface& surface,
+                       const EntityState* owner) {
+  return owner != nullptr && owner->kind == EntityKind::Door &&
+         (surface.blocksActor || surface.blocksProjectile ||
+          surface.role == RoomSpatialSurfaceRole::Blocker ||
+          surface.role == RoomSpatialSurfaceRole::ProjectileBlocker);
+}
 
-ProductActiveRoomCollisionState buildProductActiveRoomCollision(
-    const ProductActiveRoomState& activeRoom) {
+RoomAsset roomWithRuntimeFilteredSurfaces(
+    const ProductActiveRoomState& activeRoom,
+    const SessionState* runtimeState,
+    ProductActiveRoomCollisionState& collision) {
+  RoomAsset room = activeRoom.room;
+  room.spatialSurfaces.clear();
+  room.spatialSurfaces.reserve(activeRoom.room.spatialSurfaces.size());
+
+  for (const RoomSpatialSurface& surface : activeRoom.room.spatialSurfaces) {
+    const EntityState* owner = nullptr;
+    if (!surface.runtimeOwnerStableName.empty()) {
+      ++collision.runtimeOwnedSurfaceCount;
+      if (runtimeState != nullptr) {
+        owner = runtimeState->world.findByStableName(surface.runtimeOwnerStableName);
+      }
+    }
+
+    const bool doorBlocker = surfaceBlocksDoor(surface, owner);
+    if (doorBlocker) {
+      ++collision.doorBlockerSurfaceCount;
+    }
+    if (owner != nullptr && !owner->active) {
+      ++collision.runtimeFilteredSurfaceCount;
+      continue;
+    }
+    if (doorBlocker) {
+      ++collision.activeDoorBlockerSurfaceCount;
+    }
+    room.spatialSurfaces.push_back(surface);
+  }
+  return room;
+}
+
+ProductActiveRoomCollisionState buildProductActiveRoomCollisionImpl(
+    const ProductActiveRoomState& activeRoom,
+    const SessionState* runtimeState) {
   ProductActiveRoomCollisionState collision;
   copyActiveRoomCounts(activeRoom, collision);
   if (!activeRoom.loaded) {
@@ -54,7 +95,9 @@ ProductActiveRoomCollisionState buildProductActiveRoomCollision(
     return collision;
   }
 
-  collision.surfaces = buildSpatialSurfaceSet(activeRoom.room);
+  const RoomAsset filteredRoom =
+      roomWithRuntimeFilteredSurfaces(activeRoom, runtimeState, collision);
+  collision.surfaces = buildSpatialSurfaceSet(filteredRoom);
   fillQueryCounts(collision);
   if (collision.surfaces.empty()) {
     collision.ready = false;
@@ -67,6 +110,19 @@ ProductActiveRoomCollisionState buildProductActiveRoomCollision(
   collision.status = "active_room_collision_ready";
   collision.reasonCode = "active_room_collision_ready";
   return collision;
+}
+
+}  // namespace
+
+ProductActiveRoomCollisionState buildProductActiveRoomCollision(
+    const ProductActiveRoomState& activeRoom) {
+  return buildProductActiveRoomCollisionImpl(activeRoom, nullptr);
+}
+
+ProductActiveRoomCollisionState buildProductActiveRoomCollision(
+    const ProductActiveRoomState& activeRoom,
+    const SessionState& runtimeState) {
+  return buildProductActiveRoomCollisionImpl(activeRoom, &runtimeState);
 }
 
 const SpatialSurfaceSet* productActiveRoomCollisionSurfaces(

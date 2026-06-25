@@ -83,6 +83,26 @@ RoomStaticMeshAsset wallMesh(const SaveAuthoredRoomWallRecord& wall,
   return mesh;
 }
 
+bool markerIsDoor(const AsciiRoomMarker& marker) {
+  return marker.tag == "door" || marker.tag == "secret_door";
+}
+
+RoomStaticMeshAsset doorMesh(const AsciiRoomMarker& marker,
+                             const AsciiRoomToRoomAssetConfig& config) {
+  RoomStaticMeshAsset mesh;
+  mesh.id = marker.id + "_panel";
+  mesh.meshId = config.doorMeshId;
+  mesh.materialId = "debug_door";
+  mesh.role = config.doorRole;
+  mesh.positionMeters = {static_cast<float>(marker.worldPosition.x),
+                         config.wallHeightMeters / 2.0F,
+                         static_cast<float>(marker.worldPosition.z)};
+  mesh.sizeMeters = {config.tileSizeMeters,
+                     config.wallHeightMeters,
+                     config.tileSizeMeters};
+  return mesh;
+}
+
 const AsciiRoomTerrainSurface* terrainForFloor(
     const AsciiRoomAuthoredRoomResult& authored,
     std::string_view floorId) {
@@ -139,6 +159,40 @@ RoomSpatialSurface projectileBlockerSurface(const SaveAuthoredRoomWallRecord& wa
   surface.collisionMask = {"projectile"};
   surface.blocksActor = false;
   surface.blocksProjectile = true;
+  return surface;
+}
+
+std::vector<Vec3> doorBoxPoints(const AsciiRoomMarker& marker,
+                                const AsciiRoomToRoomAssetConfig& config) {
+  const float centerX = static_cast<float>(marker.worldPosition.x);
+  const float centerZ = static_cast<float>(marker.worldPosition.z);
+  const float halfTile = config.tileSizeMeters / 2.0F;
+  const float minX = centerX - halfTile;
+  const float maxX = centerX + halfTile;
+  const float minZ = centerZ - halfTile;
+  const float maxZ = centerZ + halfTile;
+  const float minY = 0.0F;
+  const float maxY = config.wallHeightMeters;
+  return {{minX, minY, minZ}, {maxX, minY, minZ}, {maxX, minY, maxZ},
+          {minX, minY, maxZ}, {minX, maxY, minZ}, {maxX, maxY, minZ},
+          {maxX, maxY, maxZ}, {minX, maxY, maxZ}};
+}
+
+RoomSpatialSurface doorBlockerSurface(
+    const AsciiRoomMarker& marker,
+    const AsciiRoomToRoomAssetConfig& config) {
+  RoomSpatialSurface surface;
+  surface.id = marker.id + "_door_blocker";
+  surface.sourceStaticMeshId = marker.id + "_panel";
+  surface.shape = RoomSpatialSurfaceShape::Box;
+  surface.role = RoomSpatialSurfaceRole::Blocker;
+  surface.pointsMeters = doorBoxPoints(marker, config);
+  surface.normal = {0.0F, 0.0F, 1.0F};
+  surface.traversalTags = {"blocker"};
+  surface.collisionMask = {"actor", "projectile"};
+  surface.blocksActor = true;
+  surface.blocksProjectile = true;
+  surface.runtimeOwnerStableName = marker.id;
   return surface;
 }
 
@@ -238,6 +292,16 @@ AsciiRoomToRoomAssetResult buildRoomAssetFromAsciiRoom(
     }
     if (wallBlocksProjectile(wall)) {
       result.room.spatialSurfaces.push_back(projectileBlockerSurface(wall));
+      ++result.projectileBlockerSurfaceCount;
+    }
+  }
+
+  for (const AsciiRoomMarker& marker : authored.markers) {
+    if (markerIsDoor(marker)) {
+      result.room.staticMeshes.push_back(doorMesh(marker, config));
+      result.room.spatialSurfaces.push_back(
+          doorBlockerSurface(marker, config));
+      ++result.actorBlockerSurfaceCount;
       ++result.projectileBlockerSurfaceCount;
     }
   }

@@ -71,6 +71,16 @@ const iggy3d::RoomAnchorAsset* findAnchor(const iggy3d::RoomAsset& room,
   return nullptr;
 }
 
+const iggy3d::RoomSpatialSurface* findSurface(const iggy3d::RoomAsset& room,
+                                              std::string_view id) {
+  for (const auto& surface : room.spatialSurfaces) {
+    if (surface.id == id) {
+      return &surface;
+    }
+  }
+  return nullptr;
+}
+
 std::size_t countSurfacesWithRole(const iggy3d::RoomAsset& room,
                                   iggy3d::RoomSpatialSurfaceRole role) {
   std::size_t count = 0;
@@ -101,6 +111,10 @@ bool fixtureExportsAndParsesBack() {
   const iggy3d::RoomStaticMeshAsset* parsedFloor = findMesh(parsed.room, "floor_r1_c1");
   const iggy3d::RoomStaticMeshAsset* originalWall = findMesh(original, "wall_r0_c0");
   const iggy3d::RoomStaticMeshAsset* parsedWall = findMesh(parsed.room, "wall_r0_c0");
+  const iggy3d::RoomSpatialSurface* originalDoor =
+      findSurface(original, "marker_door_r2_c2_door_blocker");
+  const iggy3d::RoomSpatialSurface* parsedDoor =
+      findSurface(parsed.room, "marker_door_r2_c2_door_blocker");
   const iggy3d::RoomAnchorAsset* originalAnchor =
       findAnchor(original, "marker_player_spawn_r1_c1");
   const iggy3d::RoomAnchorAsset* parsedAnchor =
@@ -116,17 +130,17 @@ bool fixtureExportsAndParsesBack() {
          expect(contains(written.text, "[[anchors]]"), "contains anchors") &&
          expect(!contains(written.text, "[[openings]]"), "no openings emitted") &&
          expect(!written.text.empty() && written.text.back() == '\n', "text ends newline") &&
-         expect(written.staticMeshCount == 35U, "written mesh count") &&
+         expect(written.staticMeshCount == 36U, "written mesh count") &&
          expect(written.anchorCount == 5U, "written anchor count") &&
-         expect(written.spatialSurfaceCount == 55U, "written surface count") &&
+         expect(written.spatialSurfaceCount == 56U, "written surface count") &&
          expect(parsed.ok, parsed.reason) &&
          expect(parsed.room.id == original.id, "parsed room id") &&
          expect(parsed.room.source == original.source, "parsed source") &&
          expect(parsed.room.sourceFile == original.sourceFile, "parsed source file") &&
          expect(parsed.room.sourceSubset == original.sourceSubset, "parsed subset") &&
-         expect(parsed.room.staticMeshes.size() == 35U, "parsed mesh count") &&
+         expect(parsed.room.staticMeshes.size() == 36U, "parsed mesh count") &&
          expect(parsed.room.anchors.size() == 5U, "parsed anchor count") &&
-         expect(parsed.room.spatialSurfaces.size() == 55U, "parsed surface count") &&
+         expect(parsed.room.spatialSurfaces.size() == 56U, "parsed surface count") &&
          expect(originalFloor != nullptr && parsedFloor != nullptr, "floor exists") &&
          expect(vecNear(parsedFloor->positionMeters, originalFloor->positionMeters),
                 "floor position roundtrip") &&
@@ -140,11 +154,15 @@ bool fixtureExportsAndParsesBack() {
          expect(originalAnchor != nullptr && parsedAnchor != nullptr, "anchor exists") &&
          expect(vecNear(parsedAnchor->positionMeters, originalAnchor->positionMeters),
                 "anchor position roundtrip") &&
+         expect(originalDoor != nullptr && parsedDoor != nullptr, "door surface exists") &&
+         expect(parsedDoor->runtimeOwnerStableName ==
+                    originalDoor->runtimeOwnerStableName,
+                "door owner roundtrip") &&
          expect(countSurfacesWithRole(parsed.room, iggy3d::RoomSpatialSurfaceRole::Walkable) ==
                     15U,
                 "walkable parsed count") &&
          expect(countSurfacesWithRole(parsed.room, iggy3d::RoomSpatialSurfaceRole::Blocker) ==
-                    20U,
+                    21U,
                 "blocker parsed count") &&
          expect(countSurfacesWithRole(
                     parsed.room, iggy3d::RoomSpatialSurfaceRole::ProjectileBlocker) == 20U,

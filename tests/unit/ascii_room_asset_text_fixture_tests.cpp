@@ -93,14 +93,14 @@ bool checkedInTextMatchesGeneratedExporterOutput() {
          expect(parsed.room.source == "iggy3d.ascii_room", "parsed room source") &&
          expect(parsed.room.sourceFile == kAsciiFixturePath, "parsed source file") &&
          expect(parsed.room.sourceSubset == "ascii_room_authoring", "parsed source subset") &&
-         expect(parsed.room.staticMeshes.size() == 35U, "parsed mesh count") &&
+         expect(parsed.room.staticMeshes.size() == 36U, "parsed mesh count") &&
          expect(parsed.room.anchors.size() == 5U, "parsed anchor count") &&
-         expect(parsed.room.spatialSurfaces.size() == 55U, "parsed surface count") &&
+         expect(parsed.room.spatialSurfaces.size() == 56U, "parsed surface count") &&
          expect(countSurfacesWithRole(parsed.room,
                                       iggy3d::RoomSpatialSurfaceRole::Walkable) == 15U,
                 "walkable surface count") &&
          expect(countSurfacesWithRole(parsed.room,
-                                      iggy3d::RoomSpatialSurfaceRole::Blocker) == 20U,
+                                      iggy3d::RoomSpatialSurfaceRole::Blocker) == 21U,
                 "blocker surface count") &&
          expect(countSurfacesWithRole(
                     parsed.room,

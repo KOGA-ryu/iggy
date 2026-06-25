@@ -100,6 +100,7 @@ ScenarioEntitySeed doorFromAnchor(const RoomAnchorAsset& anchor) {
   seed.targeting.actions = {TargetAction::Interact, TargetAction::Inspect};
   seed.interaction.kind = InteractionKind::OpenDoor;
   seed.interaction.primaryEffect = InteractionEffectKind::EmitEventOnly;
+  seed.interaction.deactivateTargetOnSuccess = true;
   return seed;
 }
 

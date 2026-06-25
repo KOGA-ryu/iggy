@@ -102,15 +102,15 @@ bool activatesSessionFromAsciiRoom() {
          expect(window.activeRoom.source == "ascii_room", "active room source") &&
          expect(window.activeRoom.roomId == "activation_training_room",
                 "active room id") &&
-         expect(window.activeRoom.staticMeshCount == 35U,
+         expect(window.activeRoom.staticMeshCount == 36U,
                 "active room meshes") &&
-         expect(window.activeRoom.spatialSurfaceCount == 55U,
+         expect(window.activeRoom.spatialSurfaceCount == 56U,
                 "active room surfaces") &&
          expect(window.activeRoom.walkableSurfaceCount == 15U,
                 "walkable surfaces") &&
-         expect(window.activeRoom.actorBlockerSurfaceCount == 20U,
+         expect(window.activeRoom.actorBlockerSurfaceCount == 21U,
                 "actor blockers") &&
-         expect(window.activeRoom.projectileBlockerSurfaceCount == 20U,
+         expect(window.activeRoom.projectileBlockerSurfaceCount == 21U,
                 "projectile blockers") &&
          expect(window.activeRoomCollision.ready,
                 "active room collision ready") &&
@@ -123,16 +123,24 @@ bool activatesSessionFromAsciiRoom() {
          expect(window.activeRoomCollision.roomId ==
                     "activation_training_room",
                 "active room collision id") &&
-         expect(window.activeRoomCollision.spatialSurfaceCount == 55U,
+         expect(window.activeRoomCollision.spatialSurfaceCount == 56U,
                 "active room collision source count") &&
-         expect(window.activeRoomCollision.querySurfaceCount == 55U,
+         expect(window.activeRoomCollision.querySurfaceCount == 56U,
                 "active room collision query count") &&
          expect(window.activeRoomCollision.walkableSurfaceCount == 15U,
                 "active room collision walkable count") &&
-         expect(window.activeRoomCollision.actorBlockerSurfaceCount == 20U,
+         expect(window.activeRoomCollision.actorBlockerSurfaceCount == 21U,
                 "active room collision actor blocker count") &&
-         expect(window.activeRoomCollision.projectileBlockerSurfaceCount == 20U,
+         expect(window.activeRoomCollision.projectileBlockerSurfaceCount == 21U,
                 "active room collision projectile blocker count") &&
+         expect(window.activeRoomCollision.runtimeOwnedSurfaceCount == 1U,
+                "active room collision runtime owned count") &&
+         expect(window.activeRoomCollision.runtimeFilteredSurfaceCount == 0U,
+                "active room collision runtime filtered count") &&
+         expect(window.activeRoomCollision.doorBlockerSurfaceCount == 1U,
+                "active room collision door blocker count") &&
+         expect(window.activeRoomCollision.activeDoorBlockerSurfaceCount == 1U,
+                "active room collision active door blocker count") &&
          expect(player != nullptr && player->kind == iggy3d::SceneItemKind::Player,
                 "player projected") &&
          expect(npc != nullptr && npc->kind == iggy3d::SceneItemKind::Npc,

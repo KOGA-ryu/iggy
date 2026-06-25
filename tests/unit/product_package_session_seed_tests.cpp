@@ -151,7 +151,8 @@ bool asciiPackageSynthesizesSeedAndCreatesSession() {
          expect(door != nullptr && door->kind == iggy3d::EntityKind::Door &&
                     door->interaction.kind == iggy3d::InteractionKind::OpenDoor &&
                     door->interaction.primaryEffect ==
-                        iggy3d::InteractionEffectKind::EmitEventOnly,
+                        iggy3d::InteractionEffectKind::EmitEventOnly &&
+                    door->interaction.deactivateTargetOnSuccess,
                 "door entity") &&
          expect(exit != nullptr && exit->kind == iggy3d::EntityKind::Marker &&
                     iggy3d::isTargetActionSupported(exit->targeting,

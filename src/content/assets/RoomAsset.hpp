@@ -57,6 +57,7 @@ struct RoomSpatialSurface {
   bool blocksActor = false;
   bool blocksProjectile = false;
   std::string openingId;
+  std::string runtimeOwnerStableName;
 };
 
 struct RoomAsset {

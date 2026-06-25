@@ -40,7 +40,8 @@ bool roomHasUnsafeStrings(const RoomAsset& room) {
   for (const RoomSpatialSurface& surface : room.spatialSurfaces) {
     if (hasUnsafeStringCharacter(surface.id) ||
         hasUnsafeStringCharacter(surface.sourceStaticMeshId) ||
-        hasUnsafeStringCharacter(surface.openingId)) {
+        hasUnsafeStringCharacter(surface.openingId) ||
+        hasUnsafeStringCharacter(surface.runtimeOwnerStableName)) {
       return true;
     }
     for (const std::string& tag : surface.traversalTags) {
@@ -240,6 +241,8 @@ void writeSpatialSurface(std::ostream& out,
   out << "\nblocks_actor = " << (surface.blocksActor ? "true" : "false") << "\n";
   out << "blocks_projectile = " << (surface.blocksProjectile ? "true" : "false") << "\n";
   out << "opening_id = " << quote(surface.openingId) << "\n";
+  out << "runtime_owner_stable_name = "
+      << quote(surface.runtimeOwnerStableName) << "\n";
 }
 
 void writeAnchor(std::ostream& out,

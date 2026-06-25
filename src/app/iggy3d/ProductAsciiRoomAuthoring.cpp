@@ -37,6 +37,8 @@ AsciiRoomToRoomAssetConfig roomAssetConfigFor(
   config.sourceName = resolvedSourceName(request);
   config.sourceSubset =
       request.sourceSubset.empty() ? "ascii_room_authoring" : request.sourceSubset;
+  config.tileSizeMeters = request.tileSizeMeters;
+  config.wallHeightMeters = request.wallHeightMeters;
   return config;
 }
 

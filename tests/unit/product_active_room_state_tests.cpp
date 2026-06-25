@@ -51,17 +51,17 @@ bool buildsLoadedStateFromAsciiAuthoring() {
                 "authored room id") &&
          expect(active.authoredFloorCount == 15U, "authored floor count") &&
          expect(active.authoredWallCount == 20U, "authored wall count") &&
-         expect(active.staticMeshCount == 35U, "static mesh count") &&
+         expect(active.staticMeshCount == 36U, "static mesh count") &&
          expect(active.anchorCount == 5U, "anchor count") &&
          expect(active.openingCount == 0U, "opening count") &&
-         expect(active.spatialSurfaceCount == 55U, "surface count") &&
+         expect(active.spatialSurfaceCount == 56U, "surface count") &&
          expect(active.walkableSurfaceCount == 15U, "walkable count") &&
-         expect(active.actorBlockerSurfaceCount == 20U,
+         expect(active.actorBlockerSurfaceCount == 21U,
                 "actor blocker count") &&
-         expect(active.projectileBlockerSurfaceCount == 20U,
+         expect(active.projectileBlockerSurfaceCount == 21U,
                 "projectile blocker count") &&
-         expect(active.room.staticMeshes.size() == 35U, "room meshes owned") &&
-         expect(active.room.spatialSurfaces.size() == 55U,
+         expect(active.room.staticMeshes.size() == 36U, "room meshes owned") &&
+         expect(active.room.spatialSurfaces.size() == 56U,
                 "room surfaces owned");
 }
 

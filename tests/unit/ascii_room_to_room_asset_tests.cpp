@@ -129,21 +129,21 @@ bool roomHeaderAndCountsMatchFixture() {
          expect(room.source == "iggy3d.ascii_room", "room source") &&
          expect(room.sourceFile == kFixturePath, "room source file") &&
          expect(room.sourceSubset == "ascii_room_authoring", "room source subset") &&
-         expect(room.staticMeshes.size() == 35U, "static mesh count") &&
-         expect(result.staticMeshCount == 35U, "result mesh count") &&
+         expect(room.staticMeshes.size() == 36U, "static mesh count") &&
+         expect(result.staticMeshCount == 36U, "result mesh count") &&
          expect(room.anchors.size() == 5U, "anchor count") &&
          expect(result.anchorCount == 5U, "result anchor count") &&
-         expect(room.spatialSurfaces.size() == 55U, "spatial surface count") &&
-         expect(result.spatialSurfaceCount == 55U, "result surface count") &&
+         expect(room.spatialSurfaces.size() == 56U, "spatial surface count") &&
+         expect(result.spatialSurfaceCount == 56U, "result surface count") &&
          expect(result.walkableSurfaceCount == 15U, "walkable surface count") &&
-         expect(result.actorBlockerSurfaceCount == 20U, "actor blocker count") &&
-         expect(result.projectileBlockerSurfaceCount == 20U,
+         expect(result.actorBlockerSurfaceCount == 21U, "actor blocker count") &&
+         expect(result.projectileBlockerSurfaceCount == 21U,
                 "projectile blocker count") &&
          expect(countSurfacesWithRole(room, iggy3d::RoomSpatialSurfaceRole::Walkable) ==
                     15U,
                 "walkable role count") &&
          expect(countSurfacesWithRole(room, iggy3d::RoomSpatialSurfaceRole::Blocker) ==
-                    20U,
+                    21U,
                 "blocker role count") &&
          expect(countSurfacesWithRole(
                     room, iggy3d::RoomSpatialSurfaceRole::ProjectileBlocker) == 20U,
@@ -171,6 +171,29 @@ bool anchorsUseExpectedMarkerKinds() {
          expect(treasure->kind == "pickup", "treasure kind") &&
          expect(exit != nullptr, "exit anchor") &&
          expect(exit->kind == "exit", "exit kind");
+}
+
+bool doorMeshAndBlockerUseRuntimeOwner() {
+  const auto result = buildFixtureRoomAsset();
+  const auto* mesh = findMesh(result.room, "marker_door_r2_c2_panel");
+  const auto* surface =
+      findSurface(result.room, "marker_door_r2_c2_door_blocker");
+  return expect(mesh != nullptr, "door mesh exists") &&
+         expect(mesh->meshId == "door_panel", "door mesh id") &&
+         expect(mesh->role == "door", "door role") &&
+         expect(surface != nullptr, "door blocker exists") &&
+         expect(surface->sourceStaticMeshId == "marker_door_r2_c2_panel",
+                "door blocker source mesh") &&
+         expect(surface->shape == iggy3d::RoomSpatialSurfaceShape::Box,
+                "door blocker shape") &&
+         expect(surface->role == iggy3d::RoomSpatialSurfaceRole::Blocker,
+                "door blocker role") &&
+         expect(surface->runtimeOwnerStableName == "marker_door_r2_c2",
+                "door blocker owner") &&
+         expect(surface->blocksActor, "door blocks actor") &&
+         expect(surface->blocksProjectile, "door blocks projectile") &&
+         expect(hasTag(surface->traversalTags, "blocker"),
+                "door blocker tag");
 }
 
 bool representativeFloorMeshAndSurfaceMatch() {
@@ -344,6 +367,7 @@ int main() {
   bool ok = true;
   ok = roomHeaderAndCountsMatchFixture() && ok;
   ok = anchorsUseExpectedMarkerKinds() && ok;
+  ok = doorMeshAndBlockerUseRuntimeOwner() && ok;
   ok = representativeFloorMeshAndSurfaceMatch() && ok;
   ok = representativeWallMeshAndSurfacesMatch() && ok;
   ok = terrainSurfacesPreserveHeightAndSlope() && ok;

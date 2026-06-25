@@ -109,14 +109,14 @@ bool asciiTrainingRoomPackageLoadsFixtureRoom() {
          expect(room.sourceFile == "fixtures/rooms/ascii/training_room.iggyroom.txt",
                 "room source file") &&
          expect(room.sourceSubset == "ascii_room_authoring", "room source subset") &&
-         expect(room.staticMeshes.size() == 35U, "room static mesh count") &&
+         expect(room.staticMeshes.size() == 36U, "room static mesh count") &&
          expect(room.anchors.size() == 5U, "room anchor count") &&
-         expect(room.spatialSurfaces.size() == 55U, "room spatial surface count") &&
+         expect(room.spatialSurfaces.size() == 56U, "room spatial surface count") &&
          expect(countSurfacesWithRole(room,
                                       iggy3d::RoomSpatialSurfaceRole::Walkable) == 15U,
                 "walkable surface count") &&
          expect(countSurfacesWithRole(room,
-                                      iggy3d::RoomSpatialSurfaceRole::Blocker) == 20U,
+                                      iggy3d::RoomSpatialSurfaceRole::Blocker) == 21U,
                 "blocker surface count") &&
          expect(countSurfacesWithRole(
                     room,

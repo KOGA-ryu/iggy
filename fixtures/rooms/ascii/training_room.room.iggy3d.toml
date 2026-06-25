@@ -289,6 +289,14 @@ position_ft = [9.842520, 4.101050, 6.561680]
 size_ft = [3.280840, 8.202100, 3.280840]
 material = "debug_wall"
 
+[[static_meshes]]
+id = "marker_door_r2_c2_panel"
+mesh = "door_panel"
+role = "door"
+position_ft = [-3.280840, 4.101050, 0.000000]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_door"
+
 [[spatial_surfaces]]
 id = "floor_r1_c1_walkable"
 source_static_mesh = "floor_r1_c1"
@@ -301,6 +309,7 @@ collision_mask = ["actor"]
 blocks_actor = false
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "floor_r1_c2_walkable"
@@ -314,6 +323,7 @@ collision_mask = ["actor"]
 blocks_actor = false
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "floor_r1_c3_walkable"
@@ -327,6 +337,7 @@ collision_mask = ["actor"]
 blocks_actor = false
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "floor_r1_c4_walkable"
@@ -340,6 +351,7 @@ collision_mask = ["actor"]
 blocks_actor = false
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "floor_r1_c5_walkable"
@@ -353,6 +365,7 @@ collision_mask = ["actor"]
 blocks_actor = false
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "floor_r2_c1_walkable"
@@ -366,6 +379,7 @@ collision_mask = ["actor"]
 blocks_actor = false
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "floor_r2_c2_walkable"
@@ -379,6 +393,7 @@ collision_mask = ["actor"]
 blocks_actor = false
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "floor_r2_c3_walkable"
@@ -392,6 +407,7 @@ collision_mask = ["actor"]
 blocks_actor = false
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "floor_r2_c4_walkable"
@@ -405,6 +421,7 @@ collision_mask = ["actor"]
 blocks_actor = false
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "floor_r2_c5_walkable"
@@ -418,6 +435,7 @@ collision_mask = ["actor"]
 blocks_actor = false
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "floor_r3_c1_walkable"
@@ -431,6 +449,7 @@ collision_mask = ["actor"]
 blocks_actor = false
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "floor_r3_c2_walkable"
@@ -444,6 +463,7 @@ collision_mask = ["actor"]
 blocks_actor = false
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "floor_r3_c3_walkable"
@@ -457,6 +477,7 @@ collision_mask = ["actor"]
 blocks_actor = false
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "floor_r3_c4_walkable"
@@ -470,6 +491,7 @@ collision_mask = ["actor"]
 blocks_actor = false
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "floor_r3_c5_walkable"
@@ -483,6 +505,7 @@ collision_mask = ["actor"]
 blocks_actor = false
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r0_c0_actor_blocker"
@@ -496,6 +519,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r0_c0_projectile_blocker"
@@ -509,6 +533,7 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r0_c1_actor_blocker"
@@ -522,6 +547,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r0_c1_projectile_blocker"
@@ -535,6 +561,7 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r0_c2_actor_blocker"
@@ -548,6 +575,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r0_c2_projectile_blocker"
@@ -561,6 +589,7 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r0_c3_actor_blocker"
@@ -574,6 +603,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r0_c3_projectile_blocker"
@@ -587,6 +617,7 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r0_c4_actor_blocker"
@@ -600,6 +631,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r0_c4_projectile_blocker"
@@ -613,6 +645,7 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r0_c5_actor_blocker"
@@ -626,6 +659,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r0_c5_projectile_blocker"
@@ -639,6 +673,7 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r0_c6_actor_blocker"
@@ -652,6 +687,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r0_c6_projectile_blocker"
@@ -665,6 +701,7 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r1_c0_actor_blocker"
@@ -678,6 +715,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r1_c0_projectile_blocker"
@@ -691,6 +729,7 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r1_c6_actor_blocker"
@@ -704,6 +743,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r1_c6_projectile_blocker"
@@ -717,6 +757,7 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r2_c0_actor_blocker"
@@ -730,6 +771,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r2_c0_projectile_blocker"
@@ -743,6 +785,7 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r2_c6_actor_blocker"
@@ -756,6 +799,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r2_c6_projectile_blocker"
@@ -769,6 +813,7 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r3_c0_actor_blocker"
@@ -782,6 +827,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r3_c0_projectile_blocker"
@@ -795,6 +841,7 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r3_c6_actor_blocker"
@@ -808,6 +855,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r3_c6_projectile_blocker"
@@ -821,6 +869,7 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r4_c0_actor_blocker"
@@ -834,6 +883,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r4_c0_projectile_blocker"
@@ -847,6 +897,7 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r4_c1_actor_blocker"
@@ -860,6 +911,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r4_c1_projectile_blocker"
@@ -873,6 +925,7 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r4_c2_actor_blocker"
@@ -886,6 +939,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r4_c2_projectile_blocker"
@@ -899,6 +953,7 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r4_c3_actor_blocker"
@@ -912,6 +967,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r4_c3_projectile_blocker"
@@ -925,6 +981,7 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r4_c4_actor_blocker"
@@ -938,6 +995,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r4_c4_projectile_blocker"
@@ -951,6 +1009,7 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r4_c5_actor_blocker"
@@ -964,6 +1023,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r4_c5_projectile_blocker"
@@ -977,6 +1037,7 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r4_c6_actor_blocker"
@@ -990,6 +1051,7 @@ collision_mask = ["actor"]
 blocks_actor = true
 blocks_projectile = false
 opening_id = ""
+runtime_owner_stable_name = ""
 
 [[spatial_surfaces]]
 id = "wall_r4_c6_projectile_blocker"
@@ -1003,6 +1065,21 @@ collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
+runtime_owner_stable_name = ""
+
+[[spatial_surfaces]]
+id = "marker_door_r2_c2_door_blocker"
+source_static_mesh = "marker_door_r2_c2_panel"
+shape = "box"
+role = "blocker"
+points_ft = [[-4.921260, 0.000000, -1.640420], [-1.640420, 0.000000, -1.640420], [-1.640420, 0.000000, 1.640420], [-4.921260, 0.000000, 1.640420]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor", "projectile"]
+blocks_actor = true
+blocks_projectile = true
+opening_id = ""
+runtime_owner_stable_name = "marker_door_r2_c2"
 
 [[anchors]]
 id = "marker_player_spawn_r1_c1"

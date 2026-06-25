@@ -53,9 +53,9 @@ bool buildsProductOwnedAuthoringResult() {
          expect(result.elevatedFloorCount == 0U, "flat elevated count") &&
          expect(result.rampCount == 0U, "flat ramp count") &&
          expect(result.blockedSlopeCount == 0U, "flat blocked slope count") &&
-         expect(result.staticMeshCount == 35U, "static mesh count") &&
+         expect(result.staticMeshCount == 36U, "static mesh count") &&
          expect(result.anchorCount == 5U, "anchor count") &&
-         expect(result.spatialSurfaceCount == 55U, "spatial surface count") &&
+         expect(result.spatialSurfaceCount == 56U, "spatial surface count") &&
          expect(result.authoredRoom.authoredRoom.id == "training_room_product",
                 "authored room id") &&
          expect(result.roomAsset.room.id == "training_room_product",
@@ -65,9 +65,9 @@ bool buildsProductOwnedAuthoringResult() {
                 "room source file") &&
          expect(parsed.ok, "asset text parses") &&
          expect(parsed.room.id == "training_room_product", "parsed room id") &&
-         expect(parsed.room.staticMeshes.size() == 35U, "parsed mesh count") &&
+         expect(parsed.room.staticMeshes.size() == 36U, "parsed mesh count") &&
          expect(parsed.room.anchors.size() == 5U, "parsed anchor count") &&
-         expect(parsed.room.spatialSurfaces.size() == 55U,
+         expect(parsed.room.spatialSurfaces.size() == 56U,
                 "parsed spatial surface count");
 }
 
@@ -137,9 +137,9 @@ bool forwardsAssetTextFailureAfterRoomBuild() {
          expect(result.reasonCode == "ascii_room_asset_text_invalid_conversion",
                 "reason") &&
          expect(result.roomAsset.ok, "room asset was built") &&
-         expect(result.staticMeshCount == 35U, "mesh count preserved") &&
+         expect(result.staticMeshCount == 36U, "mesh count preserved") &&
          expect(result.anchorCount == 5U, "anchor count preserved") &&
-         expect(result.spatialSurfaceCount == 55U, "surface count preserved") &&
+         expect(result.spatialSurfaceCount == 56U, "surface count preserved") &&
          expect(!result.assetText.ok, "asset text rejected");
 }
 

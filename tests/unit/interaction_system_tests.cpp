@@ -59,6 +59,7 @@ iggy3d::EntityState makeDoor() {
                               iggy3d::TargetAction::Inspect};
   entity.interaction.kind = iggy3d::InteractionKind::OpenDoor;
   entity.interaction.primaryEffect = iggy3d::InteractionEffectKind::EmitEventOnly;
+  entity.interaction.deactivateTargetOnSuccess = true;
   return entity;
 }
 
@@ -166,9 +167,9 @@ bool openDoorEmitsOnlyAndDoesNotMutateState() {
                 "door emit-only effect") &&
          expect(result.itemId.empty() && result.itemCount == 0U, "door no item") &&
          expect(!result.inventoryMutated, "door no inventory mutation") &&
-         expect(!result.targetDeactivated, "door target remains active") &&
+         expect(result.targetDeactivated, "door target opens") &&
          expect(!result.objectiveMutated, "door no objective mutation") &&
-         expect(world.findById({3})->active, "door still active") &&
+         expect(!world.findById({3})->active, "door opened inactive") &&
          expect(inventory.players[0].stacks.empty(), "door inventory unchanged") &&
          expect(!iggy3d::objectiveComplete(objectives, "collect_gold_key"),
                 "door objective unchanged");
