@@ -5,6 +5,7 @@
 #include <string>
 #include <utility>
 
+#include "app/iggy3d/ProductActiveRoomState.hpp"
 #include "app/iggy3d/ProductAsciiRoomPreview.hpp"
 #include "app/iggy3d/ProductPackageSessionSeed.hpp"
 #include "content/PackageLoader.hpp"
@@ -63,8 +64,12 @@ ProductAsciiRoomActivationResult activateProductAsciiRoomPreview(
   result.packageId = std::string(kAsciiRoomPackageId);
   result.scenarioId = scenarioIdForRoom(window.asciiRoomDraftRoomId);
 
+  const ProductAsciiRoomAuthoringRequest request =
+      productAsciiRoomAuthoringRequestFromDraft(window);
   const ProductAsciiRoomAuthoringResult preview =
-      buildProductAsciiRoomPreviewResult(window);
+      buildProductAsciiRoomAuthoring(request);
+  recordProductAsciiRoomPreview(request.sourceName, request.roomId, preview, window);
+  window.activeRoom = buildProductActiveRoomFromAsciiAuthoring(request, preview);
   result.wallCount = preview.wallCount;
   result.markerCount = preview.markerCount;
   if (!preview.ok) {
@@ -77,7 +82,7 @@ ProductAsciiRoomActivationResult activateProductAsciiRoomPreview(
   package.status = PackageLoadStatus::Ok;
   package.manifest.packageId = result.packageId;
   package.scenario.scenarioId = result.scenarioId;
-  package.rooms.push_back(preview.roomAsset.room);
+  package.rooms.push_back(window.activeRoom.room);
 
   const ProductPackageSessionSeedResult seed =
       buildProductPackageSessionSeed(package);

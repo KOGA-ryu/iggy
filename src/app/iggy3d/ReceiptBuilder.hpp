@@ -5,6 +5,7 @@
 #include "app/input/InputAction.hpp"
 #include "app/frontend/MenuInput.hpp"
 #include "app/iggy3d/DefaultWorldTemplate.hpp"
+#include "app/iggy3d/ProductActiveRoomState.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ProductViewportState.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
@@ -74,6 +75,7 @@ struct ProductAppWindowState {
   std::uint64_t asciiRoomActivationWallCount = 0;
   std::uint64_t asciiRoomActivationMarkerCount = 0;
   std::uint64_t asciiRoomActivationRuntimeHash = 0;
+  ProductActiveRoomState activeRoom;
   std::string productSaveStatus = "not_requested";
   std::string productSaveReasonCode = "not_requested";
   std::string productSaveDurableReason = "not_requested";

@@ -159,6 +159,36 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.asciiRoomActivationMarkerCount);
   appendReceiptField(receipt, "ascii_room_activation_runtime_hash",
                      window.asciiRoomActivationRuntimeHash);
+  appendReceiptField(receipt, "active_room_loaded", window.activeRoom.loaded);
+  appendReceiptField(receipt, "active_room_status", window.activeRoom.status);
+  appendReceiptField(receipt, "active_room_reason_code",
+                     window.activeRoom.reasonCode);
+  appendReceiptField(receipt, "active_room_source", window.activeRoom.source);
+  appendReceiptField(receipt, "active_room_id", window.activeRoom.roomId);
+  appendReceiptField(receipt, "active_room_source_name",
+                     window.activeRoom.sourceName);
+  appendReceiptField(receipt, "active_room_source_subset",
+                     window.activeRoom.sourceSubset);
+  appendReceiptField(receipt, "active_room_has_authored_room",
+                     window.activeRoom.hasAuthoredRoom);
+  appendReceiptField(receipt, "active_room_authored_floor_count",
+                     window.activeRoom.authoredFloorCount);
+  appendReceiptField(receipt, "active_room_authored_wall_count",
+                     window.activeRoom.authoredWallCount);
+  appendReceiptField(receipt, "active_room_static_mesh_count",
+                     window.activeRoom.staticMeshCount);
+  appendReceiptField(receipt, "active_room_anchor_count",
+                     window.activeRoom.anchorCount);
+  appendReceiptField(receipt, "active_room_opening_count",
+                     window.activeRoom.openingCount);
+  appendReceiptField(receipt, "active_room_spatial_surface_count",
+                     window.activeRoom.spatialSurfaceCount);
+  appendReceiptField(receipt, "active_room_walkable_surface_count",
+                     window.activeRoom.walkableSurfaceCount);
+  appendReceiptField(receipt, "active_room_actor_blocker_count",
+                     window.activeRoom.actorBlockerSurfaceCount);
+  appendReceiptField(receipt, "active_room_projectile_blocker_count",
+                     window.activeRoom.projectileBlockerSurfaceCount);
   appendReceiptField(receipt, "product_save_status", window.productSaveStatus);
   appendReceiptField(receipt, "product_save_reason_code",
                      window.productSaveReasonCode);

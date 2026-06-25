@@ -84,6 +84,22 @@ bool activatesSessionFromAsciiRoom() {
          expect(window.runtimeStateHash == session->stateHash(), "window hash") &&
          expect(window.asciiRoomActivationRuntimeHash == session->stateHash(),
                 "activation hash") &&
+         expect(window.activeRoom.loaded, "active room loaded") &&
+         expect(window.activeRoom.status == "active_room_loaded",
+                "active room status") &&
+         expect(window.activeRoom.source == "ascii_room", "active room source") &&
+         expect(window.activeRoom.roomId == "activation_training_room",
+                "active room id") &&
+         expect(window.activeRoom.staticMeshCount == 35U,
+                "active room meshes") &&
+         expect(window.activeRoom.spatialSurfaceCount == 55U,
+                "active room surfaces") &&
+         expect(window.activeRoom.walkableSurfaceCount == 15U,
+                "walkable surfaces") &&
+         expect(window.activeRoom.actorBlockerSurfaceCount == 20U,
+                "actor blockers") &&
+         expect(window.activeRoom.projectileBlockerSurfaceCount == 20U,
+                "projectile blockers") &&
          expect(player != nullptr && player->kind == iggy3d::SceneItemKind::Player,
                 "player projected") &&
          expect(npc != nullptr && npc->kind == iggy3d::SceneItemKind::Npc,
@@ -120,6 +136,9 @@ bool rejectsInvalidAsciiWithoutSession() {
          expect(window.asciiRoomActivationStatus ==
                     "ascii_room_missing_player_spawn",
                 "window activation status") &&
+         expect(!window.activeRoom.loaded, "active room not loaded") &&
+         expect(window.activeRoom.status == "ascii_room_missing_player_spawn",
+                "active room failure status") &&
          expect(window.asciiRoomActivationSessionCreated == false,
                 "window no activation session");
 }

@@ -64,6 +64,8 @@ bool validAsciiPreview(const iggy3d::smoke::ReceiptFields& fields) {
                                  "true") &&
          iggy3d::smoke::positiveIntegerField(
              fields, "ascii_room_preview_asset_text_bytes") &&
+         iggy3d::smoke::hasField(fields, "active_room_loaded", "false") &&
+         iggy3d::smoke::hasField(fields, "active_room_status", "not_loaded") &&
          iggy3d::smoke::hasField(fields, "gameplay_active", "false") &&
          iggy3d::smoke::hasField(fields, "runtime_session_created", "false");
 }
@@ -96,6 +98,8 @@ bool invalidAsciiPreview(const iggy3d::smoke::ReceiptFields& fields) {
          iggy3d::smoke::hasField(fields,
                                  "ascii_room_preview_asset_text_bytes",
                                  "0") &&
+         iggy3d::smoke::hasField(fields, "active_room_loaded", "false") &&
+         iggy3d::smoke::hasField(fields, "active_room_status", "not_loaded") &&
          iggy3d::smoke::hasField(fields, "gameplay_active", "false") &&
          iggy3d::smoke::hasField(fields, "runtime_session_created", "false");
 }
@@ -149,6 +153,42 @@ bool activatedAsciiRoom(const iggy3d::smoke::ReceiptFields& fields) {
                                  "5") &&
          iggy3d::smoke::positiveIntegerField(
              fields, "ascii_room_activation_runtime_hash") &&
+         iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_status",
+                                 "active_room_loaded") &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_reason_code",
+                                 "active_room_loaded") &&
+         iggy3d::smoke::hasField(fields, "active_room_source", "ascii_room") &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_id",
+                                 "automation_activation_room") &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_has_authored_room",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_authored_floor_count",
+                                 "15") &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_authored_wall_count",
+                                 "20") &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_static_mesh_count",
+                                 "35") &&
+         iggy3d::smoke::hasField(fields, "active_room_anchor_count", "5") &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_spatial_surface_count",
+                                 "55") &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_walkable_surface_count",
+                                 "15") &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_actor_blocker_count",
+                                 "20") &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_projectile_blocker_count",
+                                 "20") &&
          iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
          iggy3d::smoke::hasField(fields, "runtime_session_created", "true") &&
          iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
@@ -174,6 +214,10 @@ bool invalidAsciiActivation(const iggy3d::smoke::ReceiptFields& fields) {
          iggy3d::smoke::hasField(fields,
                                  "ascii_room_activation_player_spawned",
                                  "false") &&
+         iggy3d::smoke::hasField(fields, "active_room_loaded", "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_status",
+                                 "ascii_room_missing_player_spawn") &&
          iggy3d::smoke::hasField(fields, "frontend_screen", "starter") &&
          iggy3d::smoke::hasField(fields, "gameplay_active", "false") &&
          iggy3d::smoke::hasField(fields, "runtime_session_created", "false");
