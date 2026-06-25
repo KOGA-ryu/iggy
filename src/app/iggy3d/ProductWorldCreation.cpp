@@ -152,7 +152,7 @@ ProductWorldInitialSaveResult writeProductWorldInitialSaveDurably(
   saveRequest.authoredRoom = request.authoredRoom;
   saveRequest.worldId = request.creation.request.worldId;
   saveRequest.worldTitle = request.creation.initialSavePlan.worldTitle;
-  saveRequest.saveTitle = "";
+  saveRequest.saveTitle = request.creation.initialSavePlan.worldTitle;
   saveRequest.saveType = request.creation.initialSavePlan.saveType;
   saveRequest.createdAtUtc = request.creation.initialSavePlan.createdAtUtc;
   saveRequest.savedAtUtc = request.creation.initialSavePlan.savedAtUtc;

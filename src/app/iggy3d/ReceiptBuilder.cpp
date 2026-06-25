@@ -83,16 +83,22 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "launch_action", window.launchAction);
   appendReceiptField(receipt, "launch_status", window.launchStatus);
   appendReceiptField(receipt, "package_load_status", window.packageLoadStatus);
+  appendReceiptField(receipt, "world_setup_title", window.worldSetupTitle);
+  appendReceiptField(receipt, "world_setup_status", window.worldSetupStatus);
   appendReceiptField(receipt, "world_creation_status", window.worldCreationStatus);
   appendReceiptField(receipt, "world_creation_reason_code",
                      window.worldCreationReasonCode);
   appendReceiptField(receipt, "world_creation_world_id", window.worldCreationWorldId);
+  appendReceiptField(receipt, "world_creation_world_title",
+                     window.worldCreationWorldTitle);
   appendReceiptField(receipt, "world_creation_initial_save_requested",
                      window.worldCreationInitialSaveRequested);
   appendReceiptField(receipt, "world_creation_initial_save_written",
                      window.worldCreationInitialSaveWritten);
   appendReceiptField(receipt, "world_creation_initial_save_id",
                      window.worldCreationInitialSaveId);
+  appendReceiptField(receipt, "world_creation_initial_save_title",
+                     window.worldCreationInitialSaveTitle);
   appendReceiptField(receipt, "world_creation_route_after_create",
                      window.worldCreationRouteAfterCreate);
   appendReceiptField(receipt, "product_save_status", window.productSaveStatus);

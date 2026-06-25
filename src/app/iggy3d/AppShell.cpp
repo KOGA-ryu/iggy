@@ -192,18 +192,22 @@ bool createProductSession(const ProductAppOptions& options,
   return true;
 }
 
-ProductWorldCreationResult prepareDefaultProductWorldCreation(
+ProductWorldCreationResult prepareProductWorldCreationFromDraft(
     const ProductAppOptions& options,
     const ProductWorldTemplate& world,
+    const WorldSetupDraft& draft,
     ProductAppWindowState& window) {
-  const WorldSetupDraft draft = makeDefaultWorldSetupDraft();
+  window.worldSetupTitle = draft.worldName;
   const WorldSetupRouteResult setup =
       routeWorldSetupAction(draft, FrontendAction::CreateAndEnter);
   if (!setup.accepted || !setup.createRequested) {
+    window.worldSetupStatus = std::string(setup.reasonCode);
     window.worldCreationStatus = std::string(setup.status);
     window.worldCreationReasonCode = std::string(setup.reasonCode);
     return {};
   }
+  window.worldSetupTitle = setup.createRequest.worldName;
+  window.worldSetupStatus = std::string(setup.status);
 
   ProductWorldCreationResult creation = prepareProductWorldCreation(
       makeProductWorldCreationInput(setup.createRequest,
@@ -215,10 +219,18 @@ ProductWorldCreationResult prepareDefaultProductWorldCreation(
   window.worldCreationReasonCode = std::string(creation.reasonCode);
   window.worldCreationWorldId =
       creation.request.worldId.empty() ? "none" : creation.request.worldId;
+  window.worldCreationWorldTitle =
+      creation.initialSavePlan.worldTitle.empty()
+          ? "none"
+          : creation.initialSavePlan.worldTitle;
   window.worldCreationInitialSaveRequested = creation.initialSavePlan.requested;
   window.worldCreationInitialSaveWritten = creation.initialSaveWritten;
   window.worldCreationInitialSaveId =
       creation.initialSavePlan.saveId.empty() ? "none" : creation.initialSavePlan.saveId;
+  window.worldCreationInitialSaveTitle =
+      creation.initialSavePlan.worldTitle.empty()
+          ? "none"
+          : creation.initialSavePlan.worldTitle;
   window.worldCreationRouteAfterCreate = std::string(creation.routeAfterCreate);
   return creation;
 }
@@ -231,6 +243,10 @@ void recordProductWorldInitialSaveResult(
   window.worldCreationWorldId = initialSave.creation.request.worldId.empty()
                                     ? "none"
                                     : initialSave.creation.request.worldId;
+  window.worldCreationWorldTitle =
+      initialSave.creation.initialSavePlan.worldTitle.empty()
+          ? "none"
+          : initialSave.creation.initialSavePlan.worldTitle;
   window.worldCreationInitialSaveRequested =
       initialSave.creation.initialSavePlan.requested;
   window.worldCreationInitialSaveWritten = initialSave.creation.initialSaveWritten;
@@ -238,6 +254,10 @@ void recordProductWorldInitialSaveResult(
       initialSave.creation.initialSavePlan.saveId.empty()
           ? "none"
           : initialSave.creation.initialSavePlan.saveId;
+  window.worldCreationInitialSaveTitle =
+      initialSave.creation.initialSavePlan.worldTitle.empty()
+          ? "none"
+          : initialSave.creation.initialSavePlan.worldTitle;
   window.worldCreationRouteAfterCreate =
       std::string(initialSave.creation.routeAfterCreate);
   window.productSaveStatus = initialSave.saveWrite.status;
@@ -615,6 +635,7 @@ void executeProductSaveSoftDelete(const ProductAppOptions& options,
 }
 
 void launchProductNewWorld(const ProductAppOptions& options,
+                           const WorldSetupDraft& worldSetupDraft,
                            FrontendState& frontend,
                            std::optional<Session>& activeSession,
                            ProductAppWindowState& window) {
@@ -626,7 +647,7 @@ void launchProductNewWorld(const ProductAppOptions& options,
   }
 
   ProductWorldCreationResult creation =
-      prepareDefaultProductWorldCreation(options, world, window);
+      prepareProductWorldCreationFromDraft(options, world, worldSetupDraft, window);
   if (!creation.accepted) {
     window.launchStatus = std::string(creation.reasonCode);
     clearProductGameplayLaunchState(activeSession, window);
@@ -944,6 +965,7 @@ void applyOpeningMenuAction(FrontendState& frontend,
                             const ProductAppOptions& options,
                             FrontendSettingsTab& settingsTab,
                             std::optional<Session>& activeSession,
+                            WorldSetupDraft& worldSetupDraft,
                             ProductAppWindowState& window,
                             InputAction action,
                             bool& closeRequested) {
@@ -1099,6 +1121,23 @@ void applyOpeningMenuAction(FrontendState& frontend,
     }
   }
 
+  if (frontend.childScreen == FrontendScreen::NewWorld) {
+    window.worldSetupTitle = worldSetupDraft.worldName;
+    if (action == InputAction::MenuBack) {
+      frontend.childScreen = FrontendScreen::Gameplay;
+      frontend.selectedAction = FrontendAction::NewWorld;
+      frontend.status = "new_world_closed";
+      window.worldSetupStatus = "world_setup_back";
+      return;
+    }
+    if (action == InputAction::MenuConfirm) {
+      launchProductNewWorld(options, worldSetupDraft, frontend, activeSession, window);
+      return;
+    }
+    frontend.status = "new_world_input_ignored";
+    return;
+  }
+
   if (frontend.childScreen == FrontendScreen::LoadSave) {
     if (action == InputAction::MenuBack) {
       frontend.childScreen = FrontendScreen::Gameplay;
@@ -1154,7 +1193,11 @@ void applyOpeningMenuAction(FrontendState& frontend,
     return;
   }
   if (frontend.selectedAction == FrontendAction::NewWorld) {
-    launchProductNewWorld(options, frontend, activeSession, window);
+    frontend.childScreen = FrontendScreen::NewWorld;
+    frontend.selectedAction = FrontendAction::CreateAndEnter;
+    frontend.status = "opening_menu_new_world_selected";
+    window.worldSetupTitle = worldSetupDraft.worldName;
+    window.worldSetupStatus = "world_setup_open";
     return;
   }
   if (frontend.selectedAction == FrontendAction::LoadSave) {
@@ -1184,6 +1227,7 @@ void routeOpeningMenuInput(FrontendState& frontend,
                            const ProductAppOptions& options,
                            FrontendSettingsTab& settingsTab,
                            std::optional<Session>& activeSession,
+                           WorldSetupDraft& worldSetupDraft,
                            ActionState& actionState,
                            InputAction inputAction,
                            ProductAppWindowState& window,
@@ -1214,8 +1258,8 @@ void routeOpeningMenuInput(FrontendState& frontend,
   window.lastInputAccepted = routed.accepted;
   window.gameplayInputSuppressed = routed.gameplaySuppressed;
   if (routed.accepted) {
-    applyOpeningMenuAction(frontend, saves, options, settingsTab, activeSession, window,
-                           routed.action, closeRequested);
+    applyOpeningMenuAction(frontend, saves, options, settingsTab, activeSession,
+                           worldSetupDraft, window, routed.action, closeRequested);
   }
 }
 
@@ -1433,12 +1477,13 @@ bool routeAutomationInput(FrontendState& frontend,
                           const ProductAppOptions& options,
                           FrontendSettingsTab& settingsTab,
                           std::optional<Session>& activeSession,
+                          WorldSetupDraft& worldSetupDraft,
                           ProductAppWindowState& window,
                           InputAction action,
                           bool& closeRequested) {
   ActionState actionState;
   routeOpeningMenuInput(frontend, saves, options, settingsTab, activeSession,
-                        actionState, action, window, closeRequested);
+                        worldSetupDraft, actionState, action, window, closeRequested);
   window.automationControlLastOwner = productInputOwnerFor(frontend, window);
   return window.lastInputAccepted || action == InputAction::None;
 }
@@ -1449,6 +1494,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                                    const ProductAppOptions& options,
                                    FrontendSettingsTab& settingsTab,
                                    std::optional<Session>& activeSession,
+                                   WorldSetupDraft& worldSetupDraft,
                                    ProductAppWindowState& window,
                                    bool& closeRequested) {
   const std::string_view key{command.key};
@@ -1480,8 +1526,8 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       return false;
     }
     const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
-                                            activeSession, window, inputAction,
-                                            closeRequested);
+                                            activeSession, worldSetupDraft, window,
+                                            inputAction, closeRequested);
     markAutomationApplied(window, command, inputActionName(inputAction),
                           window.automationControlLastOwner,
                           routed ? "applied" : "ignored");
@@ -1520,8 +1566,8 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       inputAction = InputAction::MenuPreviousTab;
     }
     const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
-                                            activeSession, window, inputAction,
-                                            closeRequested);
+                                            activeSession, worldSetupDraft, window,
+                                            inputAction, closeRequested);
     markAutomationApplied(window, command, inputActionName(inputAction),
                           window.automationControlLastOwner,
                           routed ? "applied" : "ignored");
@@ -1538,6 +1584,46 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     markAutomationApplied(window, command, frontendActionName(action),
                           productInputOwnerFor(frontend, window), "applied");
     return true;
+  }
+
+  if (key == "world.title" || key == "world_setup.title") {
+    if (frontend.childScreen != FrontendScreen::NewWorld) {
+      window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(window, command, "world.title",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    worldSetupDraft.worldName = std::string(value);
+    window.worldSetupTitle = worldSetupDraft.worldName;
+    window.worldSetupStatus = "world_setup_title_updated";
+    markAutomationApplied(window, command, "world.title",
+                          productInputOwnerFor(frontend, window), "applied");
+    return true;
+  }
+
+  if (key == "world.create" || key == "world_setup.create") {
+    if (!parseAutomationBool(value, boolValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    if (!boolValue) {
+      markAutomationApplied(window, command, "world.create",
+                            productInputOwnerFor(frontend, window), "ignored");
+      return true;
+    }
+    if (frontend.childScreen != FrontendScreen::NewWorld) {
+      window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(window, command, "world.create",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
+                                            activeSession, worldSetupDraft, window,
+                                            InputAction::MenuConfirm, closeRequested);
+    markAutomationApplied(window, command, inputActionName(InputAction::MenuConfirm),
+                          window.automationControlLastOwner,
+                          routed ? "applied" : "failed");
+    return routed;
   }
 
   if (key == "save.select" || key == "frontend.save_select") {
@@ -1680,7 +1766,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       return true;
     }
     const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
-                                            activeSession, window,
+                                            activeSession, worldSetupDraft, window,
                                             InputAction::MenuConfirm, closeRequested);
     markAutomationApplied(window, command, inputActionName(InputAction::MenuConfirm),
                           window.automationControlLastOwner,
@@ -1715,7 +1801,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       return true;
     }
     const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
-                                            activeSession, window,
+                                            activeSession, worldSetupDraft, window,
                                             InputAction::MenuBack, closeRequested);
     markAutomationApplied(window, command, inputActionName(InputAction::MenuBack),
                           window.automationControlLastOwner,
@@ -1749,7 +1835,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       return true;
     }
     const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
-                                            activeSession, window,
+                                            activeSession, worldSetupDraft, window,
                                             InputAction::SystemPause, closeRequested);
     markAutomationApplied(window, command, inputActionName(InputAction::SystemPause),
                           window.automationControlLastOwner,
@@ -1780,6 +1866,7 @@ void applyProductAutomationControl(const ProductAppOptions& options,
                                    const ProductSaveBridgeResult& saves,
                                    FrontendSettingsTab& settingsTab,
                                    std::optional<Session>& activeSession,
+                                   WorldSetupDraft& worldSetupDraft,
                                    ProductAppWindowState& window,
                                    bool& closeRequested) {
   std::vector<ProductAutomationCommand> commands;
@@ -1788,7 +1875,8 @@ void applyProductAutomationControl(const ProductAppOptions& options,
   }
   for (const ProductAutomationCommand& command : commands) {
     if (!applyProductAutomationCommand(command, frontend, saves, options, settingsTab,
-                                       activeSession, window, closeRequested)) {
+                                       activeSession, worldSetupDraft, window,
+                                       closeRequested)) {
       if (window.automationControlLastKey == "none") {
         window.automationControlLastKey = command.key;
       }
@@ -1817,6 +1905,7 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
                                            const ProductWorldTemplate& world,
                                            FrontendState& frontend,
                                            std::optional<Session>& activeSession,
+                                           WorldSetupDraft& worldSetupDraft,
                                            ProductAppWindowState window,
                                            const FrontendSettings& settings,
                                            const ProductSaveBridgeResult& saves) {
@@ -1871,14 +1960,16 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
     window.drawable = sdlWindow.isDrawable();
     sdlWindow.setTitle(window.gameplayActive ? "iggy3d - Gameplay" : "iggy3d - Opening Menu");
 
-    routeOpeningMenuInput(frontend, saves, options, settingsTab, activeSession, actionState,
-                          pollKeyboardMenuAction(keyboard), window, closeRequested);
+    routeOpeningMenuInput(frontend, saves, options, settingsTab, activeSession,
+                          worldSetupDraft, actionState, pollKeyboardMenuAction(keyboard),
+                          window, closeRequested);
 
     const InputAction gamepadAction = pollGamepadMenuAction(gamepad);
     if (gamepadAction != InputAction::None) {
       window.gamepadMenuSelectUsed = true;
-      routeOpeningMenuInput(frontend, saves, options, settingsTab, activeSession, actionState,
-                            gamepadAction, window, closeRequested);
+      routeOpeningMenuInput(frontend, saves, options, settingsTab, activeSession,
+                            worldSetupDraft, actionState, gamepadAction, window,
+                            closeRequested);
     }
 
     const MouseClick click = pollMouseClick(mouse);
@@ -1888,8 +1979,9 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
         window.mouseMenuSelectUsed = true;
         if (hit.area == OpeningMenuHitArea::StarterAction) {
           frontend.selectedAction = hit.action;
-          routeOpeningMenuInput(frontend, saves, options, settingsTab, activeSession, actionState,
-                                mouseClickAction(click), window, closeRequested);
+          routeOpeningMenuInput(frontend, saves, options, settingsTab, activeSession,
+                                worldSetupDraft, actionState, mouseClickAction(click),
+                                window, closeRequested);
         } else if (hit.area == OpeningMenuHitArea::DevToolsCategory) {
           frontend.devToolsCategory = hit.devToolsCategory;
           frontend.status = "dev_tools_category_selected";
@@ -2003,6 +2095,7 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
 #else
   (void)world;
   (void)frontend;
+  (void)worldSetupDraft;
   (void)saves;
   window.sdlAvailable = false;
   window.created = false;
@@ -2037,13 +2130,15 @@ int runProductApp(int argc, char** argv) {
       scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
   const FrontendSettings settings = productFrontendSettingsFromOptions(options);
   std::optional<Session> activeSession;
+  WorldSetupDraft worldSetupDraft = makeDefaultWorldSetupDraft();
   ProductAppWindowState window;
+  window.worldSetupTitle = worldSetupDraft.worldName;
 
   FrontendState frontend;
   initializeProductStarterTransition(frontend, window, saves.slots.compatibleCount > 0);
 
   if (options.autoNewWorld) {
-    launchProductNewWorld(options, frontend, activeSession, window);
+    launchProductNewWorld(options, worldSetupDraft, frontend, activeSession, window);
   }
   if (options.scriptedGameplaySmoke) {
     runScriptedProductGameplaySmoke(activeSession, window);
@@ -2056,14 +2151,16 @@ int runProductApp(int argc, char** argv) {
   FrontendSettingsTab automationSettingsTab = FrontendSettingsTab::None;
   bool automationCloseRequested = false;
   applyProductAutomationControl(options, frontend, saves, automationSettingsTab,
-                                activeSession, window, automationCloseRequested);
+                                activeSession, worldSetupDraft, window,
+                                automationCloseRequested);
   saves = scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
   if (automationCloseRequested) {
     window.status = "automation_close_requested";
   }
 
   window =
-      runOpeningMenuWindow(options, world, frontend, activeSession, window, settings, saves);
+      runOpeningMenuWindow(options, world, frontend, activeSession, worldSetupDraft,
+                           window, settings, saves);
   refreshGameplayProjectionMetrics(activeSession, window);
 
   if (options.printRenderReceipt) {

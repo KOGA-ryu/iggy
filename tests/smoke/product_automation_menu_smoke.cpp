@@ -193,7 +193,8 @@ int main() {
       appAvailable &&
       runProductCase(binary,
                      "new_world",
-                     "frontend.select=new_world\nfrontend.execute=true\n",
+                     "frontend.select=new_world\nfrontend.execute=true\n"
+                     "world.title=Chapter One\nworld.create=true\n",
                      std::string{"--save-root "} + shellQuote(newWorldSaveRoot),
                      fields,
                      exitCode) &&
@@ -202,14 +203,18 @@ int main() {
       hasField(fields, "frontend_selected_action", "create_and_enter") &&
       hasField(fields, "frontend_launch_requested", "true") &&
       hasField(fields, "gameplay_active", "true") &&
+      hasField(fields, "world_setup_title", "Chapter One") &&
+      hasField(fields, "world_setup_status", "world_setup_create_requested") &&
       hasField(fields, "world_creation_status",
                "world_creation_initial_save_written") &&
       hasField(fields, "world_creation_reason_code",
                "world_creation_initial_save_written") &&
       hasField(fields, "world_creation_world_id", "world_0001") &&
+      hasField(fields, "world_creation_world_title", "Chapter One") &&
       hasField(fields, "world_creation_initial_save_requested", "true") &&
       hasField(fields, "world_creation_initial_save_written", "true") &&
       hasField(fields, "world_creation_initial_save_id", "save_001") &&
+      hasField(fields, "world_creation_initial_save_title", "Chapter One") &&
       hasField(fields, "world_creation_route_after_create", "gameplay") &&
       hasField(fields, "product_save_status", "product_save_written") &&
       hasField(fields, "product_save_reason_code", "product_save_written") &&
@@ -500,7 +505,8 @@ int main() {
       appAvailable &&
       runProductCase(binary,
                      "recover_snapshot_setup",
-                     "frontend.select=new_world\nfrontend.execute=true\n",
+                     "frontend.select=new_world\nfrontend.execute=true\n"
+                     "world.create=true\n",
                      std::string{"--save-root "} + shellQuote(recoverSnapshotRoot),
                      fields,
                      exitCode) &&
@@ -569,7 +575,8 @@ int main() {
       appAvailable &&
       runProductCase(binary,
                      "recover_empty_setup",
-                     "frontend.select=new_world\nfrontend.execute=true\n",
+                     "frontend.select=new_world\nfrontend.execute=true\n"
+                     "world.create=true\n",
                      std::string{"--save-root "} + shellQuote(recoverEmptyRoot),
                      fields,
                      exitCode) &&
@@ -619,7 +626,8 @@ int main() {
       appAvailable &&
       runProductCase(binary,
                      "recover_collision_setup",
-                     "frontend.select=new_world\nfrontend.execute=true\n",
+                     "frontend.select=new_world\nfrontend.execute=true\n"
+                     "world.create=true\n",
                      std::string{"--save-root "} +
                          shellQuote(recoverCollisionRoot),
                      fields,

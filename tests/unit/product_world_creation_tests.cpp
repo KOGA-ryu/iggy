@@ -288,8 +288,8 @@ bool validCreationWritesInitialSaveDurably() {
                 "initial save world proof") &&
          expect(result.saveWrite.worldTitle == "New World",
                 "initial save world title proof") &&
-         expect(result.saveWrite.saveTitle.empty(),
-                "initial save save title empty") &&
+         expect(result.saveWrite.saveTitle == "New World",
+                "initial save save title proof") &&
          expect(result.saveWrite.saveType == "initial",
                 "initial save type proof") &&
          expect(result.saveWrite.createdAtUtc == "2026-06-23T12:00:00Z",
@@ -305,8 +305,8 @@ bool validCreationWritesInitialSaveDurably() {
                 "initial save metadata world id") &&
          expect(decoded.envelope.metadata.worldTitle == "New World",
                 "initial save metadata world title") &&
-         expect(decoded.envelope.metadata.saveTitle.empty(),
-                "initial save metadata save title empty") &&
+         expect(decoded.envelope.metadata.saveTitle == "New World",
+                "initial save metadata save title") &&
          expect(decoded.envelope.metadata.saveType == "initial",
                 "initial save metadata save type") &&
          expect(decoded.envelope.metadata.createdAtUtc == "2026-06-23T12:00:00Z",

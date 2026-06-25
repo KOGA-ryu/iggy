@@ -31,12 +31,16 @@ struct ProductAppWindowState {
   std::string launchAction = "none";
   std::string launchStatus = "not_requested";
   std::string packageLoadStatus = "not_requested";
+  std::string worldSetupTitle = "New World";
+  std::string worldSetupStatus = "not_requested";
   std::string worldCreationStatus = "not_requested";
   std::string worldCreationReasonCode = "not_requested";
   std::string worldCreationWorldId = "none";
+  std::string worldCreationWorldTitle = "none";
   bool worldCreationInitialSaveRequested = false;
   bool worldCreationInitialSaveWritten = false;
   std::string worldCreationInitialSaveId = "none";
+  std::string worldCreationInitialSaveTitle = "none";
   std::string worldCreationRouteAfterCreate = "world_setup";
   std::string productSaveStatus = "not_requested";
   std::string productSaveReasonCode = "not_requested";
