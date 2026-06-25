@@ -246,6 +246,7 @@ SaveEnvelope envelopeFromState(const SessionState& state) {
     record.nextDecisionTick = actor.nextDecisionTick;
     record.deterministicPolicy = actor.deterministicPolicy;
     record.enabled = actor.enabled;
+    record.behaviorProfileId = actor.behaviorProfileId;
     record.target = actor.target;
     record.behavior = actor.behavior;
     record.lastIntent = actor.lastIntent;
@@ -413,6 +414,8 @@ LoadStateResult buildCandidate(const SaveEnvelope& envelope,
     actor.nextDecisionTick = saved.nextDecisionTick;
     actor.deterministicPolicy = saved.deterministicPolicy;
     actor.enabled = saved.enabled;
+    actor.behaviorProfileId =
+        saved.behaviorProfileId.empty() ? "default" : saved.behaviorProfileId;
     actor.target = saved.target;
     actor.behavior = saved.behavior;
     actor.lastIntent = saved.lastIntent;

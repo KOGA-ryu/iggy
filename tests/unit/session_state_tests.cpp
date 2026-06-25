@@ -257,6 +257,12 @@ bool resetBaseline() {
   state.transient.events.push_back(acceptedEvent);
   state.transient.metrics.ticksRun = 10;
   state.transient.pendingExecutionSequences.push_back(1);
+  iggy3d::AiActorState baselineAi;
+  baselineAi.actor = {3};
+  baselineAi.behaviorProfileId = "passive";
+  session.mutableStateForOwnedSystems().baseline.ai.actors.push_back(baselineAi);
+  state.ai.actors.push_back(baselineAi);
+  state.ai.actors[0].behaviorProfileId = "melee_training";
   state.currentStateHash = iggy3d::computeStateHash(state);
 
   const iggy3d::SessionResetResult reset = session.resetToBaseline();
@@ -275,6 +281,9 @@ bool resetBaseline() {
                 "reset objective") &&
          expect(resetState.clock.mode == iggy3d::ClockMode::Normal, "reset clock") &&
          expect(resetState.camera.activeMode == iggy3d::CameraMode::ThirdPerson, "reset camera") &&
+         expect(resetState.ai.actors.size() == 1U &&
+                    resetState.ai.actors[0].behaviorProfileId == "passive",
+                "reset ai profile baseline") &&
          expect(resetState.commandLog.empty() && resetState.commandLog.nextSequence() == 1U,
                 "reset command log") &&
          expect(resetState.nextCommandId == 1U, "reset command id") &&

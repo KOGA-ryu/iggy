@@ -942,6 +942,7 @@ private:
       line(p + "nextDecisionTick", unsignedText(actor.nextDecisionTick));
       line(p + "deterministicPolicy", unsignedText(actor.deterministicPolicy));
       lineBool(p + "enabled", actor.enabled);
+      lineString(p + "behavior_profile_id", actor.behaviorProfileId);
       line(p + "target", unsignedText(toUint64(actor.target)));
       lineEnum(p + "behavior", actor.behavior);
       lineEnum(p + "lastIntent", actor.lastIntent);
@@ -1475,6 +1476,12 @@ private:
       readUnsigned(p + "nextDecisionTick", actor.nextDecisionTick);
       readUnsigned(p + "deterministicPolicy", actor.deterministicPolicy);
       readBool(p + "enabled", actor.enabled);
+      if (nextKeyIs(p + "behavior_profile_id")) {
+        readString(p + "behavior_profile_id", actor.behaviorProfileId);
+      }
+      if (actor.behaviorProfileId.empty()) {
+        actor.behaviorProfileId = "default";
+      }
       if (nextKeyIs(p + "target")) {
         readEntityId(p + "target", actor.target);
       }

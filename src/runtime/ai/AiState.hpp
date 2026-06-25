@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -61,6 +62,7 @@ struct AiActorState {
   std::uint64_t nextDecisionTick = 0;
   std::uint32_t deterministicPolicy = 0;
   bool enabled = true;
+  std::string behaviorProfileId = "default";
   EntityId target;
   AiBehaviorKind behavior = AiBehaviorKind::Idle;
   AiIntentKind lastIntent = AiIntentKind::None;

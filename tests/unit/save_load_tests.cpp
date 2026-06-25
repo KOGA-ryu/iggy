@@ -169,6 +169,7 @@ iggy3d::AiActorState authoredAiActorState() {
   actor.nextDecisionTick = 17;
   actor.deterministicPolicy = 3;
   actor.enabled = false;
+  actor.behaviorProfileId = "passive";
   actor.target = {1};
   actor.behavior = iggy3d::AiBehaviorKind::Chasing;
   actor.lastIntent = iggy3d::AiIntentKind::MoveTowardTarget;
@@ -268,9 +269,12 @@ bool envelopeMappingPreservesDurableState() {
   const iggy3d::SaveStateResult saved = iggy3d::saveSessionState(session.state());
   const iggy3d::SaveEnvelope& envelope = saved.envelope;
   return expect(saved.status == iggy3d::SaveLoadStatus::Ok, "save status") &&
-         expect(envelope.session.nextCommandId == 4U, "next command id saved") &&
-         expect(envelope.commandLog.records.size() == 3U, "command records saved") &&
-         expect(envelope.commandLog.nextSequence == 4U, "next sequence saved") &&
+         expect(envelope.session.nextCommandId == session.state().nextCommandId,
+                "next command id saved") &&
+         expect(envelope.commandLog.records.size() == session.state().commandLog.records().size(),
+                "command records saved") &&
+         expect(envelope.commandLog.nextSequence == session.state().commandLog.nextSequence(),
+                "next sequence saved") &&
          expect(envelope.commandLog.epoch == session.state().commandLog.epoch(), "epoch saved") &&
          expect(envelope.world.entities[1].stableName == "gold_key", "key order saved") &&
          expect(!envelope.world.entities[1].active, "key inactive saved") &&
@@ -616,12 +620,16 @@ bool postLoadCommandIdDoesNotCollide() {
       iggy3d::loadEncodedSaveIntoSession(loaded, saved.encodedSaveText, compatibilityFor(saved.envelope));
   bool ok = expect(load.status == iggy3d::SaveLoadStatus::Ok, "load before post command");
 
+  const iggy3d::CommandId expectedCommandId = loaded.state().nextCommandId;
+  const iggy3d::CommandSequence expectedSequence =
+      loaded.state().commandLog.nextSequence();
   const iggy3d::SessionCommandResult move =
       loaded.submitCommand(submittedMove({2.0F, 0.0F, 1.0F}));
   ok = ok && expect(move.appendStatus == iggy3d::CommandLogAppendStatus::Ok, "post append ok") &&
-       expect(move.command.commandId == 4U, "post command id") &&
-       expect(move.command.sequence == 4U, "post sequence") &&
-       expect(loaded.state().nextCommandId == 5U, "post cursor advanced");
+       expect(move.command.commandId == expectedCommandId, "post command id") &&
+       expect(move.command.sequence == expectedSequence, "post sequence") &&
+       expect(loaded.state().nextCommandId == expectedCommandId + 1U,
+              "post cursor advanced");
   return ok;
 }
 
@@ -665,13 +673,23 @@ bool attackDamageAndCombatRoundTrip() {
   const iggy3d::SessionCommandResult attack = session.submitCommand(submittedAttack());
   (void)session.tick();
   const iggy3d::SaveStateResult saved = iggy3d::saveSessionStateEncoded(session.state());
+  const iggy3d::SaveCommandRecord* savedAttack = nullptr;
+  for (const iggy3d::SaveCommandRecord& record : saved.envelope.commandLog.records) {
+    if (record.commandId == attack.command.commandId) {
+      savedAttack = &record;
+      break;
+    }
+  }
+
   bool ok = expect(attack.command.admission == iggy3d::CommandAdmissionStatus::Accepted,
                    "attack accepted") &&
             expect(saved.status == iggy3d::SaveLoadStatus::Ok, "attack save status") &&
-            expect(saved.envelope.commandLog.records.size() == 2U, "attack command count") &&
-            expect(saved.envelope.commandLog.records[1].attackDamage == 3,
+            expect(savedAttack != nullptr &&
+                       savedAttack->kind == iggy3d::CommandKind::Attack,
+                   "attack command saved") &&
+            expect(savedAttack != nullptr && savedAttack->attackDamage == 3,
                    "attack damage envelope") &&
-            expect(saved.encodedSaveText.find("commandLog.record.1.attackDamage=3\n") !=
+            expect(saved.encodedSaveText.find("attackDamage=3\n") !=
                        std::string::npos,
                    "attack damage encoded");
   iggy3d::Session loaded = makeSession();
@@ -697,6 +715,8 @@ bool defaultAiActorStateHasPassiveDefaults() {
   return expect(!iggy3d::isValid(actor.target), "default ai target invalid") &&
          expect(actor.behavior == iggy3d::AiBehaviorKind::Idle,
                 "default ai behavior idle") &&
+         expect(actor.behaviorProfileId == "default",
+                "default ai behavior profile default") &&
          expect(actor.lastIntent == iggy3d::AiIntentKind::None,
                 "default ai last intent none") &&
          expect(actor.cooldownTicksRemaining == 0U, "default ai cooldown zero") &&
@@ -720,6 +740,7 @@ bool aiStateRoundTripsThroughSaveLoadAndCodec() {
        expect(record.nextDecisionTick == 17U, "ai next decision envelope") &&
        expect(record.deterministicPolicy == 3U, "ai policy envelope") &&
        expect(!record.enabled, "ai enabled envelope") &&
+       expect(record.behaviorProfileId == "passive", "ai profile envelope") &&
        expect(record.target == iggy3d::EntityId{1}, "ai target envelope") &&
        expect(record.behavior == iggy3d::AiBehaviorKind::Chasing,
               "ai behavior envelope") &&
@@ -736,6 +757,9 @@ bool aiStateRoundTripsThroughSaveLoadAndCodec() {
                   "ai.actor.0.lastIntent=move_toward_target\n") !=
                   std::string::npos,
               "ai intent encoded") &&
+       expect(saved.encodedSaveText.find("ai.actor.0.behavior_profile_id=passive\n") !=
+                  std::string::npos,
+              "ai profile encoded") &&
        expect(saved.encodedSaveText.find(
                   "ai.actor.0.cooldownTicksRemaining=5\n") !=
                   std::string::npos,
@@ -757,6 +781,8 @@ bool aiStateRoundTripsThroughSaveLoadAndCodec() {
        expect(loadedActor != nullptr && loadedActor->deterministicPolicy == 3U,
               "ai policy loaded") &&
        expect(loadedActor != nullptr && !loadedActor->enabled, "ai enabled loaded") &&
+       expect(loadedActor != nullptr && loadedActor->behaviorProfileId == "passive",
+              "ai profile loaded") &&
        expect(loadedActor != nullptr && loadedActor->target == iggy3d::EntityId{1},
               "ai target loaded") &&
        expect(loadedActor != nullptr &&
@@ -770,7 +796,39 @@ bool aiStateRoundTripsThroughSaveLoadAndCodec() {
        expect(loaded.stateHash() == iggy3d::computeStateHash(sourceState),
               "ai loaded hash");
 
+  iggy3d::SessionState oldProfileState = source.state();
+  iggy3d::AiActorState oldProfileActor = authoredAiActorState();
+  oldProfileActor.behaviorProfileId = "default";
+  oldProfileState.ai.actors.push_back(oldProfileActor);
+  const iggy3d::SaveStateResult oldProfileSaved =
+      iggy3d::saveSessionStateEncoded(oldProfileState);
+  std::string oldProfileStyle = oldProfileSaved.encodedSaveText;
+  oldProfileStyle =
+      eraseLineStartingWith(oldProfileStyle, "ai.actor.0.behavior_profile_id=");
+  const iggy3d::SaveDecodeResult oldProfileDecoded =
+      iggy3d::decodeSaveEnvelope(oldProfileStyle);
+  iggy3d::Session oldProfileLoaded = makeSession();
+  const iggy3d::LoadStateResult oldProfileLoad =
+      iggy3d::loadEncodedSaveIntoSession(
+          oldProfileLoaded, oldProfileStyle, compatibilityFor(oldProfileDecoded.envelope));
+  const iggy3d::AiActorState* oldProfileLoadedActor =
+      oldProfileLoaded.state().ai.actors.empty()
+          ? nullptr
+          : &oldProfileLoaded.state().ai.actors.front();
+  ok = ok && expect(oldProfileDecoded.status == iggy3d::SaveCodecStatus::Ok,
+                    "old profile ai save decodes") &&
+       expect(!oldProfileDecoded.envelope.ai.actors.empty() &&
+                  oldProfileDecoded.envelope.ai.actors.front().behaviorProfileId ==
+                      "default",
+              "old profile decode default") &&
+       expect(oldProfileLoad.status == iggy3d::SaveLoadStatus::Ok,
+              "old profile ai save loads") &&
+       expect(oldProfileLoadedActor != nullptr &&
+                  oldProfileLoadedActor->behaviorProfileId == "default",
+              "old profile loaded default");
+
   std::string oldStyle = saved.encodedSaveText;
+  oldStyle = eraseLineStartingWith(oldStyle, "ai.actor.0.behavior_profile_id=");
   oldStyle = eraseLineStartingWith(oldStyle, "ai.actor.0.target=");
   oldStyle = eraseLineStartingWith(oldStyle, "ai.actor.0.behavior=");
   oldStyle = eraseLineStartingWith(oldStyle, "ai.actor.0.lastIntent=");
@@ -780,6 +838,8 @@ bool aiStateRoundTripsThroughSaveLoadAndCodec() {
       oldDecoded.envelope.ai.actors.empty() ? nullptr : &oldDecoded.envelope.ai.actors.front();
   ok = ok && expect(oldDecoded.status == iggy3d::SaveCodecStatus::Ok,
                     "old ai save decodes") &&
+       expect(oldActor != nullptr && oldActor->behaviorProfileId == "default",
+              "old ai profile default") &&
        expect(oldActor != nullptr && !iggy3d::isValid(oldActor->target),
               "old ai target default") &&
        expect(oldActor != nullptr &&
@@ -817,6 +877,11 @@ bool aiStateChangesParticipateInHash() {
   changed.ai.actors[0].lastIntent = iggy3d::AiIntentKind::AttackTarget;
   ok = ok && expect(iggy3d::computeStateHash(changed) != base,
                     "ai intent changes hash");
+
+  changed = state;
+  changed.ai.actors[0].behaviorProfileId = "melee_training";
+  ok = ok && expect(iggy3d::computeStateHash(changed) != base,
+                    "ai profile changes hash");
 
   changed = state;
   changed.ai.actors[0].target = {2};

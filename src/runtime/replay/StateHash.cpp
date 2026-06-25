@@ -201,6 +201,7 @@ StateHashValue computeStateHash(const SessionState& state) {
     addU64(hasher, "ai.nextDecisionTick", actor.nextDecisionTick);
     addU64(hasher, "ai.deterministicPolicy", actor.deterministicPolicy);
     addBoolField(hasher, "ai.enabled", actor.enabled);
+    addStringField(hasher, "ai.behaviorProfileId", actor.behaviorProfileId);
     addU64(hasher, "ai.target", toUint64(actor.target));
     addEnum(hasher, "ai.behavior", actor.behavior);
     addEnum(hasher, "ai.lastIntent", actor.lastIntent);
