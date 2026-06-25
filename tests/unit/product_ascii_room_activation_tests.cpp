@@ -68,6 +68,10 @@ bool activatesSessionFromAsciiRoom() {
          expect(result.playerSpawned, "player spawned") &&
          expect(result.playerCount == 1U, "player count") &&
          expect(result.entityCount == 5U, "entity count") &&
+         expect(result.npcCount == 1U, "npc count") &&
+         expect(result.pickupCount == 1U, "pickup count") &&
+         expect(result.doorCount == 1U, "door count") &&
+         expect(result.markerEntityCount == 1U, "marker entity count") &&
          expect(result.objectiveCount == 1U, "objective count") &&
          expect(result.wallCount == 20U, "wall count") &&
          expect(result.markerCount == 5U, "marker count") &&
@@ -84,6 +88,14 @@ bool activatesSessionFromAsciiRoom() {
          expect(window.runtimeStateHash == session->stateHash(), "window hash") &&
          expect(window.asciiRoomActivationRuntimeHash == session->stateHash(),
                 "activation hash") &&
+         expect(window.asciiRoomActivationNpcCount == 1U,
+                "window activation npc count") &&
+         expect(window.asciiRoomActivationPickupCount == 1U,
+                "window activation pickup count") &&
+         expect(window.asciiRoomActivationDoorCount == 1U,
+                "window activation door count") &&
+         expect(window.asciiRoomActivationMarkerEntityCount == 1U,
+                "window activation marker entity count") &&
          expect(window.activeRoom.loaded, "active room loaded") &&
          expect(window.activeRoom.status == "active_room_loaded",
                 "active room status") &&

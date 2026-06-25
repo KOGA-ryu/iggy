@@ -226,6 +226,18 @@ bool activatedAsciiRoom(const iggy3d::smoke::ReceiptFields& fields) {
                                  "ascii_room_activation_entity_count",
                                  "5") &&
          iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_npc_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_pickup_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_door_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_marker_entity_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
                                  "ascii_room_activation_objective_count",
                                  "1") &&
          iggy3d::smoke::hasField(fields,
@@ -765,6 +777,160 @@ bool activatedAsciiRoomSteepMoveRejected(
                                  "0.000");
 }
 
+bool activatedAsciiRoomAttackNpc(const iggy3d::smoke::ReceiptFields& fields) {
+  return iggy3d::smoke::automationApplied(fields) &&
+         iggy3d::smoke::hasField(fields,
+                                 "automation_control_last_key",
+                                 "game.attack") &&
+         iggy3d::smoke::hasField(fields,
+                                 "automation_control_last_action",
+                                 "game.attack") &&
+         iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+         iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_player_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_entity_count",
+                                 "3") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_npc_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_pickup_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_door_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_marker_entity_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_objective_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "input_action_last",
+                                 "game.attack") &&
+         iggy3d::smoke::hasField(fields,
+                                 "input_action_accepted",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "target_discovered",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_reach_gate",
+                                 "pass") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_last_rejection",
+                                 "none") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_kind",
+                                 "attack") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_status",
+                                 "accepted") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_accepted",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_tick_advanced",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_tick_reason_code",
+                                 "ok") &&
+         iggy3d::smoke::hasField(fields, "attack_executed", "true") &&
+         iggy3d::smoke::hasField(fields, "interaction_executed", "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_feedback_target_status",
+                                 "discovered") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_feedback_reach_status",
+                                 "pass") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_feedback_command_kind",
+                                 "attack") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_feedback_command_status",
+                                 "accepted");
+}
+
+bool activatedAsciiRoomInteractKey(const iggy3d::smoke::ReceiptFields& fields) {
+  return iggy3d::smoke::automationApplied(fields) &&
+         iggy3d::smoke::hasField(fields,
+                                 "automation_control_last_key",
+                                 "game.interact") &&
+         iggy3d::smoke::hasField(fields,
+                                 "automation_control_last_action",
+                                 "game.interact") &&
+         iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+         iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_player_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_entity_count",
+                                 "2") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_npc_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_pickup_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_door_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_marker_entity_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_objective_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "input_action_last",
+                                 "game.interact") &&
+         iggy3d::smoke::hasField(fields,
+                                 "input_action_accepted",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "target_discovered",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_reach_gate",
+                                 "pass") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_last_rejection",
+                                 "none") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_kind",
+                                 "interact") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_status",
+                                 "accepted") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_accepted",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_tick_advanced",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_tick_reason_code",
+                                 "ok") &&
+         iggy3d::smoke::hasField(fields, "interaction_executed", "true") &&
+         iggy3d::smoke::hasField(fields, "attack_executed", "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_feedback_target_status",
+                                 "discovered") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_feedback_reach_status",
+                                 "pass") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_feedback_command_kind",
+                                 "interact") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_feedback_command_status",
+                                 "accepted");
+}
+
 }  // namespace
 
 int main() {
@@ -910,6 +1076,38 @@ int main() {
           steepMoveFields,
           steepMoveExitCode);
 
+  int attackExitCode = 77;
+  iggy3d::smoke::ReceiptFields attackFields;
+  const bool attackReceipt =
+      appAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_authoring_attack_npc",
+          "ascii_room.room_id=automation_attack_room\n"
+          "ascii_room.source_name=automation/attack_room.iggyroom.txt\n"
+          "ascii_room.text=######\\n#PNK.#\\n######\\n\n"
+          "ascii_room.activate=true\n"
+          "game.attack=true\n",
+          "",
+          attackFields,
+          attackExitCode);
+
+  int interactExitCode = 77;
+  iggy3d::smoke::ReceiptFields interactFields;
+  const bool interactReceipt =
+      appAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_authoring_interact_key",
+          "ascii_room.room_id=automation_interact_key_room\n"
+          "ascii_room.source_name=automation/interact_key_room.iggyroom.txt\n"
+          "ascii_room.text=#####\\n#PK.#\\n#####\\n\n"
+          "ascii_room.activate=true\n"
+          "game.interact=true\n",
+          "",
+          interactFields,
+          interactExitCode);
+
   const bool validPassed =
       validExitCode == 0 && validReceipt &&
       iggy3d::smoke::productReceipt(validFields) &&
@@ -946,6 +1144,14 @@ int main() {
       steepMoveExitCode == 0 && steepMoveReceipt &&
       iggy3d::smoke::productReceipt(steepMoveFields) &&
       activatedAsciiRoomSteepMoveRejected(steepMoveFields);
+  const bool attackPassed =
+      attackExitCode == 0 && attackReceipt &&
+      iggy3d::smoke::productReceipt(attackFields) &&
+      activatedAsciiRoomAttackNpc(attackFields);
+  const bool interactPassed =
+      interactExitCode == 0 && interactReceipt &&
+      iggy3d::smoke::productReceipt(interactFields) &&
+      activatedAsciiRoomInteractKey(interactFields);
 
   const bool ok = expect(appAvailable, "app binary exists") &&
                   expect(validReceipt, "valid receipt parsed") &&
@@ -968,7 +1174,11 @@ int main() {
                   expect(rampMoveReceipt, "ramp move receipt parsed") &&
                   expect(rampMovePassed, "ramp move accepted") &&
                   expect(steepMoveReceipt, "steep move receipt parsed") &&
-                  expect(steepMovePassed, "steep move rejected");
+                  expect(steepMovePassed, "steep move rejected") &&
+                  expect(attackReceipt, "attack receipt parsed") &&
+                  expect(attackPassed, "attack npc accepted") &&
+                  expect(interactReceipt, "interact receipt parsed") &&
+                  expect(interactPassed, "interact key accepted");
 
   std::cout << "smoke=product_ascii_authoring\n";
   std::cout << "valid_preview=" << (validPassed ? "true" : "false") << "\n";
@@ -977,6 +1187,9 @@ int main() {
   std::cout << "terrain_preview=" << (terrainPreviewPassed ? "true" : "false")
             << "\n";
   std::cout << "activated_gameplay=" << (activatePassed ? "true" : "false")
+            << "\n";
+  std::cout << "attack_npc=" << (attackPassed ? "true" : "false") << "\n";
+  std::cout << "interact_key=" << (interactPassed ? "true" : "false")
             << "\n";
   std::cout << "invalid_activation_rejected="
             << (invalidActivatePassed ? "true" : "false") << "\n";

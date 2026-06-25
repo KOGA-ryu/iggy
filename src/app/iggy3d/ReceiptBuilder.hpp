@@ -75,6 +75,10 @@ struct ProductAppWindowState {
   bool asciiRoomActivationPlayerSpawned = false;
   std::uint64_t asciiRoomActivationPlayerCount = 0;
   std::uint64_t asciiRoomActivationEntityCount = 0;
+  std::uint64_t asciiRoomActivationNpcCount = 0;
+  std::uint64_t asciiRoomActivationPickupCount = 0;
+  std::uint64_t asciiRoomActivationDoorCount = 0;
+  std::uint64_t asciiRoomActivationMarkerEntityCount = 0;
   std::uint64_t asciiRoomActivationObjectiveCount = 0;
   std::uint64_t asciiRoomActivationWallCount = 0;
   std::uint64_t asciiRoomActivationMarkerCount = 0;

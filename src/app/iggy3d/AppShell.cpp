@@ -878,6 +878,37 @@ bool applyAutomationGameplayAxis(InputAction action,
          window.gameplayTickAdvanced;
 }
 
+bool applyAutomationGameplayButton(InputAction action,
+                                   FrontendState& frontend,
+                                   std::optional<Session>& activeSession,
+                                   ProductAppWindowState& window) {
+  if (frontend.screen != FrontendScreen::Gameplay || !window.gameplayActive ||
+      !activeSession.has_value()) {
+    window.automationControlStatus = "owner_unavailable";
+    return false;
+  }
+
+  ActionState actions;
+  recordAction(actions, action, true, true, false, 1.0F);
+
+  InputRoutingContext routingContext;
+  routingContext.owners.gameplay = true;
+  const InputRoutingResult routed = routeInputAction(routingContext, action);
+  window.inputOwner = routed.owner;
+  window.lastInputAction = routed.action;
+  window.lastInputAccepted = routed.accepted;
+  window.gameplayInputSuppressed = routed.gameplaySuppressed;
+  if (!routed.accepted) {
+    return false;
+  }
+
+  applyProductGameplayActions(
+      *activeSession, actions, window, "automation",
+      productActiveRoomCollisionSurfaces(window.activeRoomCollision));
+  return window.gameplayCommandSubmitted && window.gameplayCommandAccepted &&
+         window.gameplayTickAdvanced;
+}
+
 bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                                    FrontendState& frontend,
                                    const ProductSaveBridgeResult& saves,
@@ -1110,6 +1141,31 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                           productInputOwnerFor(frontend, window),
                           moved ? "applied" : "failed");
     return moved;
+  }
+
+  if (key == "game.attack" || key == "frontend.game_attack" ||
+      key == "game.interact" || key == "frontend.game_interact") {
+    if (!parseAutomationBool(value, boolValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    const InputAction action =
+        key == "game.attack" || key == "frontend.game_attack"
+            ? InputAction::PlayerAttack
+            : InputAction::PlayerInteract;
+    if (!boolValue) {
+      markAutomationApplied(window, command, inputActionName(action),
+                            productInputOwnerFor(frontend, window), "ignored");
+      return true;
+    }
+    const bool executed =
+        applyAutomationGameplayButton(action, frontend, activeSession, window);
+    markAutomationApplied(window,
+                          command,
+                          inputActionName(action),
+                          productInputOwnerFor(frontend, window),
+                          executed ? "applied" : "failed");
+    return executed;
   }
 
   if (key == "save.select" || key == "frontend.save_select") {

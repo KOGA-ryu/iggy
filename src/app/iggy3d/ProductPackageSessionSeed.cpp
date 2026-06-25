@@ -151,6 +151,28 @@ void fillCounts(ProductPackageSessionSeedResult& result) {
   result.playerCount = result.seed.players.size();
   result.entityCount = result.seed.entities.size();
   result.objectiveCount = result.seed.objectives.size();
+  result.npcCount = 0;
+  result.pickupCount = 0;
+  result.doorCount = 0;
+  result.markerEntityCount = 0;
+  for (const ScenarioEntitySeed& entity : result.seed.entities) {
+    switch (entity.kind) {
+      case EntityKind::Npc:
+        ++result.npcCount;
+        break;
+      case EntityKind::Pickup:
+        ++result.pickupCount;
+        break;
+      case EntityKind::Door:
+        ++result.doorCount;
+        break;
+      case EntityKind::Marker:
+        ++result.markerEntityCount;
+        break;
+      default:
+        break;
+    }
+  }
 }
 
 }  // namespace

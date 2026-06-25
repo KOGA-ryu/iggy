@@ -38,6 +38,11 @@ void recordActivationResult(const ProductAsciiRoomActivationResult& result,
   window.asciiRoomActivationPlayerSpawned = result.playerSpawned;
   window.asciiRoomActivationPlayerCount = sizeReceiptValue(result.playerCount);
   window.asciiRoomActivationEntityCount = sizeReceiptValue(result.entityCount);
+  window.asciiRoomActivationNpcCount = sizeReceiptValue(result.npcCount);
+  window.asciiRoomActivationPickupCount = sizeReceiptValue(result.pickupCount);
+  window.asciiRoomActivationDoorCount = sizeReceiptValue(result.doorCount);
+  window.asciiRoomActivationMarkerEntityCount =
+      sizeReceiptValue(result.markerEntityCount);
   window.asciiRoomActivationObjectiveCount =
       sizeReceiptValue(result.objectiveCount);
   window.asciiRoomActivationWallCount = sizeReceiptValue(result.wallCount);
@@ -90,6 +95,10 @@ ProductAsciiRoomActivationResult activateProductAsciiRoomPreview(
       buildProductPackageSessionSeed(package);
   result.playerCount = seed.playerCount;
   result.entityCount = seed.entityCount;
+  result.npcCount = seed.npcCount;
+  result.pickupCount = seed.pickupCount;
+  result.doorCount = seed.doorCount;
+  result.markerEntityCount = seed.markerEntityCount;
   result.objectiveCount = seed.objectiveCount;
   result.playerSpawned = seed.playerCount > 0;
   if (!seed.ok) {

@@ -161,6 +161,14 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.asciiRoomActivationPlayerCount);
   appendReceiptField(receipt, "ascii_room_activation_entity_count",
                      window.asciiRoomActivationEntityCount);
+  appendReceiptField(receipt, "ascii_room_activation_npc_count",
+                     window.asciiRoomActivationNpcCount);
+  appendReceiptField(receipt, "ascii_room_activation_pickup_count",
+                     window.asciiRoomActivationPickupCount);
+  appendReceiptField(receipt, "ascii_room_activation_door_count",
+                     window.asciiRoomActivationDoorCount);
+  appendReceiptField(receipt, "ascii_room_activation_marker_entity_count",
+                     window.asciiRoomActivationMarkerEntityCount);
   appendReceiptField(receipt, "ascii_room_activation_objective_count",
                      window.asciiRoomActivationObjectiveCount);
   appendReceiptField(receipt, "ascii_room_activation_wall_count",

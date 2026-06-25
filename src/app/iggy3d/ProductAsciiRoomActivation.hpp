@@ -21,6 +21,10 @@ struct ProductAsciiRoomActivationResult {
   bool playerSpawned = false;
   std::size_t playerCount = 0;
   std::size_t entityCount = 0;
+  std::size_t npcCount = 0;
+  std::size_t pickupCount = 0;
+  std::size_t doorCount = 0;
+  std::size_t markerEntityCount = 0;
   std::size_t objectiveCount = 0;
   std::size_t wallCount = 0;
   std::size_t markerCount = 0;

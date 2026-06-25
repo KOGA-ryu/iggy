@@ -101,6 +101,10 @@ bool asciiPackageSynthesizesSeedAndCreatesSession() {
          expect(result.anchorCount == 5U, "anchor count") &&
          expect(result.playerCount == 1U, "player count") &&
          expect(result.entityCount == 5U, "entity count") &&
+         expect(result.npcCount == 1U, "npc count") &&
+         expect(result.pickupCount == 1U, "pickup count") &&
+         expect(result.doorCount == 1U, "door count") &&
+         expect(result.markerEntityCount == 1U, "marker entity count") &&
          expect(result.objectiveCount == 1U, "objective count") &&
          expect(result.seed.scenarioId == "ascii_training_room.runtime_loop",
                 "scenario id") &&

@@ -19,6 +19,10 @@ struct ProductPackageSessionSeedResult {
   std::size_t anchorCount = 0;
   std::size_t playerCount = 0;
   std::size_t entityCount = 0;
+  std::size_t npcCount = 0;
+  std::size_t pickupCount = 0;
+  std::size_t doorCount = 0;
+  std::size_t markerEntityCount = 0;
   std::size_t objectiveCount = 0;
 };
 
