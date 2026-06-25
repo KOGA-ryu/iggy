@@ -317,7 +317,7 @@ but renderer output is never behavior truth.
 
 Extend `AiActorState` rather than creating a disconnected NPC store.
 
-Proposed v0.1 durable shape:
+Implemented v0.1 durable shape:
 
 ```cpp
 enum class AiBehaviorKind : std::uint8_t {
@@ -415,7 +415,7 @@ Rules:
 
 V0.1 should keep config local and explicit. Do not hide values in AppShell.
 
-Proposed runtime defaults:
+Current runtime defaults:
 
 ```cpp
 struct NpcBehaviorConfig {
@@ -967,7 +967,7 @@ Later contracts should cover:
 - behavior config source/profile model;
 - line-of-sight and perception through spatial surfaces;
 - simple patrol or guard anchors from ASCII/package markers;
-- AI debug overlay and receipt summaries beyond tape proof;
+- AI debug overlay, world-space draw, and receipt summaries beyond tape proof;
 - pathfinding and navigation surfaces;
 - replay/multiplayer authority policy once networking begins;
 - patrol route authoring;
@@ -978,4 +978,3 @@ Later contracts should cover:
 - ranged attacks and spell casting;
 - faction reputation;
 - tactical slow-time decision cadence;
-- AI debug overlay and world-space draw.
