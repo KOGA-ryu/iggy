@@ -51,6 +51,13 @@ The authored-room compile emits `SaveAuthoredRoomSection` floor/wall geometry an
 - The package-local room asset at `fixtures/demos/ascii_training_room/assets/rooms/training_room.room.iggy3d.toml` is byte-for-byte equal to the shared ASCII-generated room asset fixture.
 - `ascii_room_package_fixture_tests` proves the checked-in room text loads through `loadPackage(...)` with minimal mesh/material libraries. This is package-loader proof only; it does not wire Product App, AppShell, runtime entity spawning, or renderer display.
 
+
+## Runtime Collision Proof
+
+- Test: `ascii_room_runtime_collision_tests`
+- The test loads `fixtures/demos/ascii_training_room/package.iggy3d.toml`, builds a `SpatialSurfaceSet`, and proves the ASCII package room contributes walkable floor surfaces, actor blocker wall surfaces, projectile blocker wall surfaces, and spawn-offset sampling through existing runtime collision queries.
+- This is runtime collision proof only; it does not wire Product App, AppShell, runtime entity spawning, renderer display, saves, or gameplay launch.
+
 ## Deferred Work
 
 - Runtime package bridge

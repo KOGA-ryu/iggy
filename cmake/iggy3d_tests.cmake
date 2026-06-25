@@ -134,6 +134,10 @@ iggy3d_add_unit_test(ascii_room_package_fixture_tests tests/unit/ascii_room_pack
 set_tests_properties(ascii_room_package_fixture_tests PROPERTIES
   LABELS "unit;app;product;ascii_room;package;fixture;iggy3d")
 
+iggy3d_add_unit_test(ascii_room_runtime_collision_tests tests/unit/ascii_room_runtime_collision_tests.cpp)
+set_tests_properties(ascii_room_runtime_collision_tests PROPERTIES
+  LABELS "unit;app;product;ascii_room;runtime;collision;iggy3d")
+
 iggy3d_add_unit_test(save_slot_model_tests tests/unit/save_slot_model_tests.cpp)
 set_tests_properties(save_slot_model_tests PROPERTIES LABELS "unit;app;frontend;save;iggy3d")
 
