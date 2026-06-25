@@ -1,6 +1,5 @@
 #pragma once
 
-#include <optional>
 #include <string_view>
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
@@ -14,8 +13,5 @@ void applyProductGameplayActions(Session& session,
                                  const ActionState& actions,
                                  ProductAppWindowState& window,
                                  std::string_view source);
-
-void runScriptedProductGameplaySmoke(std::optional<Session>& activeSession,
-                                     ProductAppWindowState& window);
 
 }  // namespace iggy3d

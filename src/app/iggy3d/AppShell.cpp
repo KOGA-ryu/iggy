@@ -21,6 +21,7 @@
 #include "app/iggy3d/ProductPackageSessionSeed.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductRenderBridge.hpp"
+#include "app/iggy3d/ProductScriptedGameplayDriver.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
 #include "app/iggy3d/ProductWorldCreation.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"

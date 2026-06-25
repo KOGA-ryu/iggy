@@ -42,6 +42,7 @@ target_sources(iggy3d
     src/app/iggy3d/ProductAppOptions.cpp
     src/app/iggy3d/ProductPrimitiveDrawList.cpp
     src/app/iggy3d/ProductRenderBridge.cpp
+    src/app/iggy3d/ProductScriptedGameplayDriver.cpp
     src/app/iggy3d/ProductSaveCatalog.cpp
     src/app/iggy3d/ProductViewportFraming.cpp
     src/app/iggy3d/ProductWorldCreation.cpp
