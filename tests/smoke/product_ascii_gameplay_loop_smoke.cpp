@@ -1,5 +1,8 @@
 #include "app/iggy3d/ProductAsciiRoomAuthoring.hpp"
+#include "app/iggy3d/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/ProductActiveRoomState.hpp"
 #include "app/iggy3d/ProductPackageSessionSeed.hpp"
+#include "runtime/combat/CombatState.hpp"
 #include "runtime/inventory/InventorySystem.hpp"
 #include "runtime/objective/ObjectiveSystem.hpp"
 #include "runtime/session/Session.hpp"
@@ -8,6 +11,7 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace {
 
@@ -45,6 +49,18 @@ iggy3d::CommandRecord moveTo(iggy3d::Vec3 position) {
   return command;
 }
 
+iggy3d::CommandRecord attack(iggy3d::EntityId target, std::int32_t damage) {
+  iggy3d::CommandRecord command;
+  command.playerSlot = 0;
+  command.actor = {1};
+  command.kind = iggy3d::CommandKind::Attack;
+  command.source = iggy3d::CommandSource::LocalPlayer;
+  command.payload.target.hasEntity = true;
+  command.payload.target.entity = target;
+  command.payload.attackDamage = damage;
+  return command;
+}
+
 std::uint32_t itemCount(const iggy3d::Session& session, std::string_view itemId) {
   const iggy3d::PlayerInventory* inventory =
       iggy3d::findInventory(session.state().inventory, 0);
@@ -57,6 +73,16 @@ std::uint32_t itemCount(const iggy3d::Session& session, std::string_view itemId)
     }
   }
   return 0;
+}
+
+const iggy3d::CombatantState* combatantFor(const iggy3d::Session& session,
+                                           iggy3d::EntityId entity) {
+  for (const iggy3d::CombatantState& combatant : session.state().combat.combatants) {
+    if (combatant.entity == entity) {
+      return &combatant;
+    }
+  }
+  return nullptr;
 }
 
 const char* outcomeName(iggy3d::SessionOutcome outcome) {
@@ -73,6 +99,15 @@ const char* outcomeName(iggy3d::SessionOutcome outcome) {
       return "Failed";
   }
   return "None";
+}
+
+iggy3d::Result<iggy3d::Session> createSessionFromSeed(
+    const iggy3d::FixtureScenarioSeed& seed) {
+  iggy3d::SessionCreateRequest create;
+  create.packageId = "iggy3d.ascii_gameplay_loop";
+  create.config = seed.config;
+  create.seed = seed;
+  return iggy3d::Session::create(create);
 }
 
 bool submitAcceptedAndTick(iggy3d::Session& session,
@@ -99,6 +134,83 @@ iggy3d::PackageLoadResult makePackageFromAscii(const iggy3d::RoomAsset& room) {
   return package;
 }
 
+bool runNpcCombatLoop() {
+  iggy3d::ProductAsciiRoomAuthoringRequest request;
+  request.sourceName = "smoke/ascii_npc_combat.iggyroom.txt";
+  request.roomId = "ascii_npc_combat";
+  request.centerOnOrigin = false;
+  request.emitAssetText = false;
+  request.sourceText =
+      "######\n"
+      "#PN$E#\n"
+      "######\n";
+
+  const iggy3d::ProductAsciiRoomAuthoringResult authored =
+      iggy3d::buildProductAsciiRoomAuthoring(request);
+  if (!expect(authored.ok, "npc ascii authoring ok")) {
+    return false;
+  }
+
+  const iggy3d::ProductPackageSessionSeedResult seed =
+      iggy3d::buildProductPackageSessionSeed(makePackageFromAscii(authored.roomAsset.room));
+  if (!expect(seed.ok, "npc package seed ok")) {
+    return false;
+  }
+  iggy3d::Result<iggy3d::Session> created = createSessionFromSeed(seed.seed);
+  if (!expect(created.status == iggy3d::ResultStatus::Ok,
+              "npc session create ok")) {
+    return false;
+  }
+
+  iggy3d::Session session = std::move(created.value);
+  const iggy3d::EntityState* npc = findEntity(session, "marker_npc_spawn_r1_c2");
+  bool ok = expect(npc != nullptr, "npc exists") &&
+            expect(seed.npcCount == 1U, "npc count") &&
+            expect(seed.entityCount == 4U, "npc room entity count") &&
+            expect(npc != nullptr && npc->kind == iggy3d::EntityKind::Npc,
+                   "npc kind") &&
+            expect(npc != nullptr &&
+                       iggy3d::isTargetActionSupported(npc->targeting,
+                                                       iggy3d::TargetAction::Attack),
+                   "npc attack targetable");
+  if (!ok || npc == nullptr) {
+    return false;
+  }
+
+  const iggy3d::CombatantState* before = combatantFor(session, npc->id);
+  ok = ok && expect(before != nullptr, "npc combatant") &&
+       expect(before != nullptr && before->hitPoints == 3, "npc hp before");
+
+  ok = ok && submitAcceptedAndTick(session, attack(npc->id, 1), "npc attack one");
+  const iggy3d::CombatantState* wounded = combatantFor(session, npc->id);
+  ok = ok && expect(wounded != nullptr && wounded->hitPoints == 2,
+                    "npc hp after wound") &&
+       expect(wounded != nullptr && !wounded->defeated, "npc not defeated");
+
+  ok = ok && submitAcceptedAndTick(session, attack(npc->id, 2), "npc attack defeat");
+  const iggy3d::CombatantState* defeated = combatantFor(session, npc->id);
+  ok = ok && expect(defeated != nullptr && defeated->hitPoints == 0,
+                    "npc hp zero") &&
+       expect(defeated != nullptr && defeated->defeated, "npc defeated") &&
+       expect(npc->active, "npc entity remains active after combat");
+
+  std::cout << "npc_room_ready=" << (authored.ok ? "true" : "false") << "\n";
+  std::cout << "npc_targetable="
+            << (npc != nullptr && npc->targeting.targetable ? "true" : "false")
+            << "\n";
+  std::cout << "npc_attackable="
+            << (npc != nullptr &&
+                        iggy3d::isTargetActionSupported(npc->targeting,
+                                                        iggy3d::TargetAction::Attack)
+                    ? "true"
+                    : "false")
+            << "\n";
+  std::cout << "npc_defeated="
+            << (defeated != nullptr && defeated->defeated ? "true" : "false")
+            << "\n";
+  return ok;
+}
+
 bool runAsciiGameplayLoop() {
   iggy3d::ProductAsciiRoomAuthoringRequest request;
   request.sourceName = "smoke/ascii_gameplay_loop.iggyroom.txt";
@@ -122,16 +234,14 @@ bool runAsciiGameplayLoop() {
     return false;
   }
 
-  iggy3d::SessionCreateRequest create;
-  create.packageId = "iggy3d.ascii_gameplay_loop";
-  create.config = seed.seed.config;
-  create.seed = seed.seed;
-  iggy3d::Result<iggy3d::Session> created = iggy3d::Session::create(create);
+  iggy3d::Result<iggy3d::Session> created = createSessionFromSeed(seed.seed);
   if (!expect(created.status == iggy3d::ResultStatus::Ok, "session create ok")) {
     return false;
   }
 
   iggy3d::Session session = std::move(created.value);
+  const iggy3d::ProductActiveRoomState activeRoom =
+      iggy3d::buildProductActiveRoomFromAsciiAuthoring(request, authored);
   const iggy3d::EntityState* key = findEntity(session, "marker_key_r1_c2");
   const iggy3d::EntityState* secretDoor =
       findEntity(session, "marker_secret_door_r1_c3");
@@ -161,9 +271,25 @@ bool runAsciiGameplayLoop() {
   ok = ok && submitAcceptedAndTick(session,
                                    moveTo(key->transform.position),
                                    "move to key cell");
+  const iggy3d::ProductActiveRoomCollisionState closedDoorCollision =
+      iggy3d::buildProductActiveRoomCollision(activeRoom, session.state());
   ok = ok && submitAcceptedAndTick(session, interact(secretDoor->id), "open secret door") &&
        expect(!session.state().world.findById(secretDoor->id)->active,
               "secret door opened");
+  const iggy3d::ProductActiveRoomCollisionState openDoorCollision =
+      iggy3d::buildProductActiveRoomCollision(activeRoom, session.state());
+  ok = ok && expect(closedDoorCollision.ready, "closed door collision ready") &&
+       expect(closedDoorCollision.doorBlockerSurfaceCount == 1U,
+              "closed door blocker counted") &&
+       expect(closedDoorCollision.activeDoorBlockerSurfaceCount == 1U,
+              "closed active door blocker counted") &&
+       expect(openDoorCollision.ready, "open door collision ready") &&
+       expect(openDoorCollision.doorBlockerSurfaceCount == 1U,
+              "open door blocker counted") &&
+       expect(openDoorCollision.activeDoorBlockerSurfaceCount == 0U,
+              "open active door blocker filtered") &&
+       expect(openDoorCollision.runtimeFilteredSurfaceCount == 1U,
+              "open door surface filtered");
 
   ok = ok && submitAcceptedAndTick(session,
                                    moveTo(treasure->transform.position),
@@ -197,6 +323,8 @@ bool runAsciiGameplayLoop() {
               "session victory") &&
        expect(session.state().lifecycle == iggy3d::SessionLifecycle::Playing,
               "session still playable after outcome proof");
+  const bool npcLoop = runNpcCombatLoop();
+  ok = ok && npcLoop;
 
   std::cout << "smoke=product_ascii_gameplay_loop\n";
   std::cout << "ascii_room_ready=" << (authored.ok ? "true" : "false") << "\n";
@@ -206,6 +334,9 @@ bool runAsciiGameplayLoop() {
             << (itemCount(session, "marker_key_r1_c2") == 1U ? "true" : "false") << "\n";
   std::cout << "secret_door_opened="
             << (!session.state().world.findById(secretDoor->id)->active ? "true" : "false")
+            << "\n";
+  std::cout << "secret_door_collision_filtered="
+            << (openDoorCollision.activeDoorBlockerSurfaceCount == 0U ? "true" : "false")
             << "\n";
   std::cout << "treasure_collected="
             << (itemCount(session, "marker_treasure_r1_c4") == 1U ? "true" : "false")
