@@ -112,6 +112,12 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productDrawTargetIndicatorVisible = false;
     window.viewport.productDrawItemCount = 0;
     window.viewport.productDrawDebugMarkerCount = 0;
+    window.viewport.productDrawRoomGeometryCount = 0;
+    window.viewport.productDrawFloorTileCount = 0;
+    window.viewport.productDrawElevatedFloorTileCount = 0;
+    window.viewport.productDrawRampTileCount = 0;
+    window.viewport.productDrawBlockedSlopeTileCount = 0;
+    window.viewport.productDrawWallTileCount = 0;
     window.viewport.productViewProjection = "primitive_first_person";
     window.viewport.productViewYawApplied = false;
     window.viewport.productViewPitchApplied = false;
@@ -151,6 +157,14 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
         drawList->playerFocusIndicatorVisible;
     window.viewport.productDrawItemCount = drawList->itemCount;
     window.viewport.productDrawDebugMarkerCount = drawList->debugMarkerCount;
+    window.viewport.productDrawRoomGeometryCount = drawList->roomGeometryCount;
+    window.viewport.productDrawFloorTileCount = drawList->floorTileCount;
+    window.viewport.productDrawElevatedFloorTileCount =
+        drawList->elevatedFloorTileCount;
+    window.viewport.productDrawRampTileCount = drawList->rampTileCount;
+    window.viewport.productDrawBlockedSlopeTileCount =
+        drawList->blockedSlopeTileCount;
+    window.viewport.productDrawWallTileCount = drawList->wallTileCount;
   }
   if (frame != nullptr) {
     window.viewport.productViewProjection = frame->projectionMode;
@@ -179,7 +193,10 @@ void refreshGameplayProjectionMetrics(const std::optional<Session>& activeSessio
 
   const SceneProjectionResult scene = buildSceneProjection(activeSession->state());
   const DebugProjectionResult debug = buildDebugProjection(activeSession->state());
-  const ProductPrimitiveDrawList drawList = buildProductPrimitiveDrawList(&scene, &debug);
+  const RoomAsset* activeRoom =
+      window.activeRoom.loaded ? &window.activeRoom.room : nullptr;
+  const ProductPrimitiveDrawList drawList =
+      buildProductPrimitiveDrawList(&scene, &debug, activeRoom);
   const ProductViewportFrame frame = buildProductViewportFrame(
       drawList, ProductViewportFrameConfig{window.viewport.cameraYawDegrees,
                                            window.viewport.cameraPitchDegrees});
@@ -1507,7 +1524,9 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
     if (window.gameplayActive && activeSession.has_value()) {
       scene = buildSceneProjection(activeSession->state());
       debug = buildDebugProjection(activeSession->state());
-      drawList = buildProductPrimitiveDrawList(&scene, &debug);
+      const RoomAsset* activeRoom =
+          window.activeRoom.loaded ? &window.activeRoom.room : nullptr;
+      drawList = buildProductPrimitiveDrawList(&scene, &debug, activeRoom);
       frame = buildProductViewportFrame(
           drawList, ProductViewportFrameConfig{window.viewport.cameraYawDegrees,
                                                window.viewport.cameraPitchDegrees});

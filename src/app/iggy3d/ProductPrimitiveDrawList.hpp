@@ -7,6 +7,7 @@
 #include "core/ids/EntityId.hpp"
 #include "core/math/Aabb3.hpp"
 #include "core/math/Vec3.hpp"
+#include "content/assets/RoomAsset.hpp"
 
 namespace iggy3d {
 
@@ -22,6 +23,11 @@ enum class ProductPrimitiveDrawKind : std::uint8_t {
   TacticalMarker,
   DebugMarker,
   PlayerFocusIndicator,
+  FloorTile,
+  ElevatedFloorTile,
+  RampTile,
+  BlockedSlopeTile,
+  WallTile,
 };
 
 struct ProductPrimitiveColor {
@@ -56,10 +62,17 @@ struct ProductPrimitiveDrawList {
   std::uint64_t targetMarkerCount = 0;
   std::uint64_t objectiveMarkerCount = 0;
   std::uint64_t debugMarkerCount = 0;
+  std::uint64_t roomGeometryCount = 0;
+  std::uint64_t floorTileCount = 0;
+  std::uint64_t elevatedFloorTileCount = 0;
+  std::uint64_t rampTileCount = 0;
+  std::uint64_t blockedSlopeTileCount = 0;
+  std::uint64_t wallTileCount = 0;
 };
 
 ProductPrimitiveDrawList buildProductPrimitiveDrawList(
     const SceneProjectionResult* scene,
-    const DebugProjectionResult* debug);
+    const DebugProjectionResult* debug,
+    const RoomAsset* activeRoom = nullptr);
 
 }  // namespace iggy3d

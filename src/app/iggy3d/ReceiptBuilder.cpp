@@ -418,6 +418,18 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.viewport.productDrawTargetIndicatorVisible);
   appendReceiptField(receipt, "product_draw_debug_marker_count",
                      window.viewport.productDrawDebugMarkerCount);
+  appendReceiptField(receipt, "product_draw_room_geometry_count",
+                     window.viewport.productDrawRoomGeometryCount);
+  appendReceiptField(receipt, "product_draw_floor_tile_count",
+                     window.viewport.productDrawFloorTileCount);
+  appendReceiptField(receipt, "product_draw_elevated_floor_tile_count",
+                     window.viewport.productDrawElevatedFloorTileCount);
+  appendReceiptField(receipt, "product_draw_ramp_tile_count",
+                     window.viewport.productDrawRampTileCount);
+  appendReceiptField(receipt, "product_draw_blocked_slope_tile_count",
+                     window.viewport.productDrawBlockedSlopeTileCount);
+  appendReceiptField(receipt, "product_draw_wall_tile_count",
+                     window.viewport.productDrawWallTileCount);
   appendReceiptField(receipt, "product_view_projection",
                      window.viewport.productViewProjection);
   appendReceiptField(receipt, "product_view_yaw_applied",

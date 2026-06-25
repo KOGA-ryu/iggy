@@ -306,6 +306,27 @@ bool activatedAsciiRoom(const iggy3d::smoke::ReceiptFields& fields) {
          iggy3d::smoke::hasField(fields, "player_visible", "true") &&
          iggy3d::smoke::hasField(fields, "room_visible", "true") &&
          iggy3d::smoke::hasField(fields, "objective_visible", "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_item_count",
+                                 "41") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_room_geometry_count",
+                                 "35") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_floor_tile_count",
+                                 "15") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_elevated_floor_tile_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_ramp_tile_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_blocked_slope_tile_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_wall_tile_count",
+                                 "20") &&
          iggy3d::smoke::positiveIntegerField(fields, "runtime_state_hash");
 }
 
@@ -559,6 +580,24 @@ bool activatedAsciiRoomRampMoveAccepted(
                                  "gameplay_collision_surface_count",
                                  "37") &&
          iggy3d::smoke::hasField(fields,
+                                 "product_draw_room_geometry_count",
+                                 "21") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_floor_tile_count",
+                                 "4") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_elevated_floor_tile_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_ramp_tile_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_blocked_slope_tile_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_wall_tile_count",
+                                 "16") &&
+         iggy3d::smoke::hasField(fields,
                                  "input_action_accepted",
                                  "true") &&
          iggy3d::smoke::hasField(fields,
@@ -637,6 +676,24 @@ bool activatedAsciiRoomSteepMoveRejected(
          iggy3d::smoke::hasField(fields,
                                  "active_room_collision_spatial_surface_count",
                                  "37") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_room_geometry_count",
+                                 "21") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_floor_tile_count",
+                                 "4") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_elevated_floor_tile_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_ramp_tile_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_blocked_slope_tile_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_wall_tile_count",
+                                 "16") &&
          iggy3d::smoke::hasField(fields,
                                  "input_action_accepted",
                                  "true") &&

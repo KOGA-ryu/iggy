@@ -160,6 +160,56 @@ void drawFocusIndicator(SDL_Renderer& renderer, const ProductViewportFramedItem&
   fillRect(renderer, x - 2.0F, y - 18.0F, 4.0F, 36.0F);
 }
 
+void drawRoomTile(SDL_Renderer& renderer, const ProductViewportFramedItem& framed) {
+  const ProductPrimitiveDrawItem& item = framed.item;
+  const float x = framed.screenX;
+  const float y = framed.screenY;
+  const float size = item.markerSize;
+  const float half = size * 0.5F;
+
+  setColor(renderer, item.color.r, item.color.g, item.color.b);
+  fillRect(renderer, x - half, y - half, size, size);
+
+  switch (item.kind) {
+    case ProductPrimitiveDrawKind::ElevatedFloorTile:
+      setColor(renderer, 137, 168, 143);
+      fillRect(renderer, x - half + 8.0F, y - half + 8.0F, size - 16.0F,
+               size - 16.0F);
+      return;
+    case ProductPrimitiveDrawKind::RampTile:
+      setColor(renderer, 183, 213, 210);
+      SDL_RenderLine(&renderer, x - half + 8.0F, y + half - 8.0F,
+                     x + half - 8.0F, y - half + 8.0F);
+      SDL_RenderLine(&renderer, x - half + 16.0F, y + half - 8.0F,
+                     x + half - 8.0F, y - half + 16.0F);
+      return;
+    case ProductPrimitiveDrawKind::BlockedSlopeTile:
+      setColor(renderer, 246, 184, 130);
+      SDL_RenderLine(&renderer, x - half + 8.0F, y - half + 8.0F,
+                     x + half - 8.0F, y + half - 8.0F);
+      SDL_RenderLine(&renderer, x + half - 8.0F, y - half + 8.0F,
+                     x - half + 8.0F, y + half - 8.0F);
+      return;
+    case ProductPrimitiveDrawKind::WallTile:
+      setColor(renderer, 116, 128, 132);
+      fillRect(renderer, x - half, y - half, size, 5.0F);
+      fillRect(renderer, x - half, y + half - 5.0F, size, 5.0F);
+      fillRect(renderer, x - half, y - half, 5.0F, size);
+      fillRect(renderer, x + half - 5.0F, y - half, 5.0F, size);
+      return;
+    case ProductPrimitiveDrawKind::FloorTile:
+    case ProductPrimitiveDrawKind::PlayerMarker:
+    case ProductPrimitiveDrawKind::NpcMarker:
+    case ProductPrimitiveDrawKind::PickupMarker:
+    case ProductPrimitiveDrawKind::InteractableMarker:
+    case ProductPrimitiveDrawKind::ObjectiveMarker:
+    case ProductPrimitiveDrawKind::TacticalMarker:
+    case ProductPrimitiveDrawKind::DebugMarker:
+    case ProductPrimitiveDrawKind::PlayerFocusIndicator:
+      break;
+  }
+}
+
 void drawCameraHeading(SDL_Renderer& renderer, float yawDegrees) {
   constexpr float kPi = 3.14159265358979323846F;
   const float radians = yawDegrees * kPi / 180.0F;
@@ -255,6 +305,13 @@ void drawPrimitiveItem(SDL_Renderer& renderer, const ProductViewportFramedItem& 
   switch (item.kind) {
     case ProductPrimitiveDrawKind::PlayerFocusIndicator:
       drawFocusIndicator(renderer, framed);
+      return;
+    case ProductPrimitiveDrawKind::FloorTile:
+    case ProductPrimitiveDrawKind::ElevatedFloorTile:
+    case ProductPrimitiveDrawKind::RampTile:
+    case ProductPrimitiveDrawKind::BlockedSlopeTile:
+    case ProductPrimitiveDrawKind::WallTile:
+      drawRoomTile(renderer, framed);
       return;
     case ProductPrimitiveDrawKind::PlayerMarker:
     case ProductPrimitiveDrawKind::NpcMarker:
