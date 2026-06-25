@@ -43,9 +43,17 @@ bool referencesEarlierRejected(const std::vector<CommandRecord>& records, Comman
   return false;
 }
 
+bool isAiInvalidPlayerSlotCommandKind(CommandKind kind) {
+  return kind == CommandKind::Move || kind == CommandKind::Attack || kind == CommandKind::Wait;
+}
+
+bool commandAllowsInvalidPlayerSlot(const CommandRecord& record) {
+  return record.source == CommandSource::Ai && isAiInvalidPlayerSlotCommandKind(record.kind);
+}
+
 CommandLogAppendStatus payloadFailureStatus(const std::vector<CommandRecord>& records,
                                             const CommandRecord& record) {
-  if (!isValidPlayerSlotId(record.playerSlot)) {
+  if (!isValidPlayerSlotId(record.playerSlot) && !commandAllowsInvalidPlayerSlot(record)) {
     return CommandLogAppendStatus::InvalidPlayerSlot;
   }
   if (!isValidKind(record.kind)) {

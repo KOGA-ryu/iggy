@@ -34,6 +34,17 @@ iggy3d::ScenarioEntitySeed playerSeed() {
   return seed;
 }
 
+iggy3d::ScenarioEntitySeed combatPlayerSeed() {
+  iggy3d::ScenarioEntitySeed seed = playerSeed();
+  seed.targeting.targetable = true;
+  seed.targeting.actions = {iggy3d::TargetAction::Attack, iggy3d::TargetAction::Inspect};
+  seed.combatantEnabled = true;
+  seed.combatant.factionId = 1;
+  seed.combatant.hitPoints = 10;
+  seed.combatant.maxHitPoints = 10;
+  return seed;
+}
+
 iggy3d::ScenarioEntitySeed goldKeySeed() {
   iggy3d::ScenarioEntitySeed seed;
   seed.stableName = "gold_key";
@@ -63,6 +74,23 @@ iggy3d::ScenarioEntitySeed markerSeed() {
   seed.persistent = true;
   seed.targeting.targetable = true;
   seed.targeting.actions = {iggy3d::TargetAction::Move, iggy3d::TargetAction::Inspect};
+  return seed;
+}
+
+iggy3d::ScenarioEntitySeed trainingNpcSeed() {
+  iggy3d::ScenarioEntitySeed seed;
+  seed.stableName = "training_npc";
+  seed.kind = iggy3d::EntityKind::Npc;
+  seed.transform = transformAt(1.0F, 0.0F, 0.0F);
+  seed.localBounds = iggy3d::makeAabb3({-0.25F, 0.0F, -0.25F}, {0.25F, 1.2F, 0.25F});
+  seed.active = true;
+  seed.persistent = true;
+  seed.targeting.targetable = true;
+  seed.targeting.actions = {iggy3d::TargetAction::Attack, iggy3d::TargetAction::Inspect};
+  seed.combatantEnabled = true;
+  seed.combatant.factionId = 2;
+  seed.combatant.hitPoints = 3;
+  seed.combatant.maxHitPoints = 3;
   return seed;
 }
 
@@ -203,6 +231,19 @@ iggy3d::FixtureScenarioSeed makeExitLoopSeed() {
   return seed;
 }
 
+iggy3d::FixtureScenarioSeed makeNpcCombatSeed() {
+  iggy3d::FixtureScenarioSeed seed;
+  seed.scenarioId = "npc_behavior.runtime_loop";
+  seed.config = iggy3d::makeDefaultRuntimeConfig();
+  seed.initialClockMode = iggy3d::ClockMode::Normal;
+  seed.defaultRealtimeCamera = iggy3d::CameraMode::ThirdPerson;
+  seed.defaultTacticalCamera = iggy3d::CameraMode::TacticalOverhead;
+  seed.players.push_back({0, iggy3d::PlayerSlotKind::Local, "player"});
+  seed.entities = {combatPlayerSeed(), trainingNpcSeed()};
+  seed.objectives.push_back(collectObjective("collect_unreachable", "unreachable"));
+  return seed;
+}
+
 iggy3d::Session makeSession() {
   iggy3d::SessionCreateRequest request;
   request.config = iggy3d::makeDefaultRuntimeConfig();
@@ -214,6 +255,13 @@ iggy3d::Session makeExitLoopSession() {
   iggy3d::SessionCreateRequest request;
   request.config = iggy3d::makeDefaultRuntimeConfig();
   request.seed = makeExitLoopSeed();
+  return iggy3d::Session::create(request).value;
+}
+
+iggy3d::Session makeNpcCombatSession() {
+  iggy3d::SessionCreateRequest request;
+  request.config = iggy3d::makeDefaultRuntimeConfig();
+  request.seed = makeNpcCombatSeed();
   return iggy3d::Session::create(request).value;
 }
 
@@ -326,6 +374,47 @@ std::uint32_t itemCount(const iggy3d::InventoryState& inventory, std::string_vie
 
 std::uint32_t goldKeyCount(const iggy3d::InventoryState& inventory) {
   return itemCount(inventory, "gold_key");
+}
+
+const iggy3d::CombatantState* findCombatant(const iggy3d::CombatState& combat,
+                                            iggy3d::EntityId entity) {
+  for (const iggy3d::CombatantState& combatant : combat.combatants) {
+    if (combatant.entity == entity) {
+      return &combatant;
+    }
+  }
+  return nullptr;
+}
+
+iggy3d::CombatantState* findMutableCombatant(iggy3d::CombatState& combat,
+                                             iggy3d::EntityId entity) {
+  for (iggy3d::CombatantState& combatant : combat.combatants) {
+    if (combatant.entity == entity) {
+      return &combatant;
+    }
+  }
+  return nullptr;
+}
+
+const iggy3d::AiActorState* findAiActor(const iggy3d::AiState& ai,
+                                        iggy3d::EntityId actor) {
+  for (const iggy3d::AiActorState& actorState : ai.actors) {
+    if (actorState.actor == actor) {
+      return &actorState;
+    }
+  }
+  return nullptr;
+}
+
+const iggy3d::CommandRecord* lastCommandWithSource(const iggy3d::CommandLog& log,
+                                                   iggy3d::CommandSource source) {
+  const iggy3d::CommandRecord* result = nullptr;
+  for (const iggy3d::CommandRecord& record : log.records()) {
+    if (record.source == source) {
+      result = &record;
+    }
+  }
+  return result;
 }
 
 bool tickMovesThenRetryPicksUpKeyExactlyOnce() {
@@ -507,11 +596,115 @@ bool collisionBlockedMoveConsumesPendingCommandWithoutMutation() {
   return ok;
 }
 
+bool npcAiTickEnqueuesAttackThroughAdmissionAndCombat() {
+  iggy3d::Session session = makeNpcCombatSession();
+
+  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok, "npc attack tick ok");
+  const iggy3d::CombatantState* playerCombatant =
+      findCombatant(session.state().combat, {1});
+  const iggy3d::CommandRecord* command =
+      lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
+  const iggy3d::AiActorState* aiActor = findAiActor(session.state().ai, {2});
+
+  ok = ok && expect(playerCombatant != nullptr && playerCombatant->hitPoints == 9,
+                    "npc attack damages player") &&
+       expect(command != nullptr && command->kind == iggy3d::CommandKind::Attack,
+              "ai attack logged") &&
+       expect(command != nullptr &&
+                  command->admission == iggy3d::CommandAdmissionStatus::Accepted,
+              "ai attack accepted") &&
+       expect(command != nullptr && command->playerSlot == iggy3d::kInvalidPlayerSlotId,
+              "ai attack keeps invalid player slot") &&
+       expect(command != nullptr && command->actor == iggy3d::EntityId{2},
+              "ai attack actor") &&
+       expect(command != nullptr && command->payload.target.entity == iggy3d::EntityId{1},
+              "ai attack target") &&
+       expect(aiActor != nullptr &&
+                  aiActor->behavior == iggy3d::AiBehaviorKind::Attacking,
+              "ai behavior attacking") &&
+       expect(aiActor != nullptr &&
+                  aiActor->lastIntent == iggy3d::AiIntentKind::AttackTarget,
+              "ai intent attack") &&
+       expect(aiActor != nullptr && aiActor->target == iggy3d::EntityId{1},
+              "ai target player") &&
+       expect(aiActor != nullptr && aiActor->cooldownTicksRemaining == 2U,
+              "ai attack cooldown set");
+  return ok;
+}
+
+bool npcAiCooldownTickWaitsWithoutSecondAttack() {
+  iggy3d::Session session = makeNpcCombatSession();
+  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok, "first npc tick ok") &&
+            expect(session.tick().status == iggy3d::ResultStatus::Ok, "second npc tick ok");
+
+  const iggy3d::CombatantState* playerCombatant =
+      findCombatant(session.state().combat, {1});
+  const iggy3d::CommandRecord* command =
+      lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
+  const iggy3d::AiActorState* aiActor = findAiActor(session.state().ai, {2});
+
+  ok = ok && expect(playerCombatant != nullptr && playerCombatant->hitPoints == 9,
+                    "cooldown avoids second attack") &&
+       expect(command != nullptr && command->kind == iggy3d::CommandKind::Wait,
+              "cooldown emits ai wait") &&
+       expect(command != nullptr &&
+                  command->admission == iggy3d::CommandAdmissionStatus::Accepted,
+              "ai wait accepted") &&
+       expect(aiActor != nullptr && aiActor->behavior == iggy3d::AiBehaviorKind::Alert,
+              "cooldown behavior alert") &&
+       expect(aiActor != nullptr && aiActor->lastIntent == iggy3d::AiIntentKind::Wait,
+              "cooldown intent wait") &&
+       expect(aiActor != nullptr && aiActor->cooldownTicksRemaining == 1U,
+              "cooldown decremented");
+  return ok;
+}
+
+bool defeatedNpcDoesNotEnqueueAttackOrMove() {
+  iggy3d::Session session = makeNpcCombatSession();
+  iggy3d::CombatantState* npcCombatant =
+      findMutableCombatant(session.mutableStateForOwnedSystems().combat, {2});
+  if (npcCombatant == nullptr) {
+    return expect(false, "missing npc combatant");
+  }
+  npcCombatant->hitPoints = 0;
+  npcCombatant->defeated = true;
+
+  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok, "defeated npc tick ok");
+  const iggy3d::CommandRecord* command =
+      lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
+  const iggy3d::AiActorState* aiActor = findAiActor(session.state().ai, {2});
+
+  ok = ok && expect(command == nullptr, "defeated npc does not command") &&
+       expect(aiActor != nullptr && aiActor->behavior == iggy3d::AiBehaviorKind::Defeated,
+              "defeated npc behavior") &&
+       expect(aiActor != nullptr && aiActor->lastIntent == iggy3d::AiIntentKind::None,
+              "defeated npc intent none");
+  return ok;
+}
+
+bool pausedNormalTickDoesNotRunNpcAi() {
+  iggy3d::Session session = makeNpcCombatSession();
+  session.mutableStateForOwnedSystems().clock.mode = iggy3d::ClockMode::Paused;
+
+  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Error,
+                   "paused tick rejected");
+  const iggy3d::CommandRecord* command =
+      lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
+  const iggy3d::AiActorState* aiActor = findAiActor(session.state().ai, {2});
+  ok = ok && expect(command == nullptr, "paused tick no ai command") &&
+       expect(aiActor == nullptr, "paused tick does not auto-register ai");
+  return ok;
+}
+
 }  // namespace
 
 int main() {
   const bool ok = tickMovesThenRetryPicksUpKeyExactlyOnce() &&
                   exitObjectiveCompletionSetsVictoryAfterRequiredItems() &&
-                  collisionBlockedMoveConsumesPendingCommandWithoutMutation();
+                  collisionBlockedMoveConsumesPendingCommandWithoutMutation() &&
+                  npcAiTickEnqueuesAttackThroughAdmissionAndCombat() &&
+                  npcAiCooldownTickWaitsWithoutSecondAttack() &&
+                  defeatedNpcDoesNotEnqueueAttackOrMove() &&
+                  pausedNormalTickDoesNotRunNpcAi();
   return ok ? 0 : 1;
 }

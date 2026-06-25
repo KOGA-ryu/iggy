@@ -111,6 +111,33 @@ iggy3d::CommandRecord acceptedWait(iggy3d::CommandId commandId) {
   return command;
 }
 
+iggy3d::CommandRecord acceptedAiWait(iggy3d::CommandId commandId) {
+  iggy3d::CommandRecord command;
+  command.commandId = commandId;
+  command.actor = {2};
+  command.kind = iggy3d::CommandKind::Wait;
+  command.source = iggy3d::CommandSource::Ai;
+  command.admission = iggy3d::CommandAdmissionStatus::Accepted;
+  return command;
+}
+
+iggy3d::CommandRecord acceptedAiMove(iggy3d::CommandId commandId) {
+  iggy3d::CommandRecord command = acceptedAiWait(commandId);
+  command.kind = iggy3d::CommandKind::Move;
+  command.payload.target.hasPoint = true;
+  command.payload.target.point = {1.0F, 0.0F, 0.0F};
+  return command;
+}
+
+iggy3d::CommandRecord acceptedAiAttack(iggy3d::CommandId commandId) {
+  iggy3d::CommandRecord command = acceptedAiWait(commandId);
+  command.kind = iggy3d::CommandKind::Attack;
+  command.payload.target.hasEntity = true;
+  command.payload.target.entity = {1};
+  command.payload.attackDamage = 1;
+  return command;
+}
+
 iggy3d::CommandRecord submittedInteract() {
   iggy3d::CommandRecord command;
   command.playerSlot = 0;
@@ -345,12 +372,54 @@ bool stateHashExclusionsAndCommandLogPolicy() {
   return ok;
 }
 
+bool commandLogAllowsAiInvalidPlayerSlotOnlyForOwnedCommands() {
+  iggy3d::CommandLog log;
+  const iggy3d::CommandLogAppendResult attack = log.append(acceptedAiAttack(1));
+  bool ok = expect(attack.status == iggy3d::CommandLogAppendStatus::Ok,
+                   "ai attack invalid slot append") &&
+            expect(attack.record.playerSlot == iggy3d::kInvalidPlayerSlotId,
+                   "ai attack preserves invalid slot");
+
+  const iggy3d::CommandLogAppendResult move = log.append(acceptedAiMove(2));
+  ok = ok && expect(move.status == iggy3d::CommandLogAppendStatus::Ok,
+                    "ai move invalid slot append");
+
+  const iggy3d::CommandLogAppendResult wait = log.append(acceptedAiWait(3));
+  ok = ok && expect(wait.status == iggy3d::CommandLogAppendStatus::Ok,
+                    "ai wait invalid slot append");
+
+  iggy3d::CommandRecord localWait = acceptedWait(4);
+  localWait.playerSlot = iggy3d::kInvalidPlayerSlotId;
+  const iggy3d::CommandLogAppendResult local = log.append(localWait);
+  ok = ok && expect(local.status == iggy3d::CommandLogAppendStatus::InvalidPlayerSlot,
+                    "local invalid slot still rejected");
+
+  iggy3d::CommandRecord restoredAi = acceptedAiAttack(5);
+  restoredAi.sequence = 1;
+  iggy3d::CommandLog restoredLog;
+  const iggy3d::CommandLogRestoreResult restored =
+      restoredLog.restoreForLoad({restoredAi}, 2, 0);
+  ok = ok && expect(restored.status == iggy3d::CommandLogRestoreStatus::Restored,
+                    "restore ai invalid slot");
+
+  iggy3d::CommandRecord restoredLocal = acceptedWait(6);
+  restoredLocal.playerSlot = iggy3d::kInvalidPlayerSlotId;
+  restoredLocal.sequence = 1;
+  iggy3d::CommandLog rejectedRestoreLog;
+  const iggy3d::CommandLogRestoreResult rejected =
+      rejectedRestoreLog.restoreForLoad({restoredLocal}, 2, 0);
+  ok = ok && expect(rejected.status == iggy3d::CommandLogRestoreStatus::InvalidAdmissionState,
+                    "restore local invalid slot rejected");
+  return ok;
+}
+
 }  // namespace
 
 int main() {
   const bool ok = defaultState() && createFirstRoomSession() && creationFailures() &&
                   ownershipShape() && resetBaseline() && submitCommandLogsAndQueuesWithoutExecuting() &&
                   loadReplacement() &&
-                  stateHashExclusionsAndCommandLogPolicy();
+                  stateHashExclusionsAndCommandLogPolicy() &&
+                  commandLogAllowsAiInvalidPlayerSlotOnlyForOwnedCommands();
   return ok ? 0 : 1;
 }

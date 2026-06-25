@@ -1,8 +1,10 @@
 #include "runtime/session/Session.hpp"
 
+#include <algorithm>
 #include <utility>
 
 #include "runtime/ability/AbilitySystem.hpp"
+#include "runtime/ai/NpcBehaviorSystem.hpp"
 #include "runtime/camera/CameraModePolicy.hpp"
 #include "runtime/clock/Clock.hpp"
 #include "runtime/session/SessionRunner.hpp"
@@ -421,6 +423,133 @@ bool applyControlCommand(Session& session, SessionState& state, CommandKind kind
   return false;
 }
 
+SessionCommandResult appendCommandThroughAdmission(Session& session,
+                                                   SessionState& state,
+                                                   const CommandRecord& command) {
+  CommandRecord candidate = command;
+  candidate.commandId = state.nextCommandId;
+  candidate.sequence = kInvalidCommandSequence;
+  candidate.issuedTick = state.clock.tickIndex;
+  candidate.scheduledTick = state.clock.tickIndex;
+
+  CommandAdmissionResult admission;
+  if (state.lifecycle != SessionLifecycle::Playing) {
+    admission = rejectCommand(candidate, CommandRejectionReason::SessionNotPlaying);
+  } else {
+    CommandAdmissionContext context{&state.world, &state.players, &state.clock,
+                                    &state.commandLog, &state.config, &state.combat,
+                                    &state.inventory};
+    admission = applyAbilityRuntimeAdmission(
+        state, admitCommand(context, CommandAdmissionRequest{candidate}));
+  }
+
+  const CommandLogAppendResult append = state.commandLog.append(admission.command);
+  SessionCommandResult result;
+  result.command = append.status == CommandLogAppendStatus::Ok ? append.record : admission.command;
+  result.admission = admission;
+  result.appendStatus = append.status;
+  result.appendedToLog = append.status == CommandLogAppendStatus::Ok;
+  if (append.status == CommandLogAppendStatus::Ok) {
+    state.nextCommandId = candidate.commandId + 1U;
+    if (append.record.admission == CommandAdmissionStatus::Accepted) {
+      if (executesImmediately(append.record.kind)) {
+        result.executedImmediately = applyControlCommand(session, state, append.record.kind);
+      } else if (queuesForTickExecution(append.record.kind)) {
+        state.transient.pendingExecutionSequences.push_back(append.record.sequence);
+      }
+    }
+    markDirtyAndHash(state);
+  }
+  return result;
+}
+
+bool isActiveNpc(const EntityState& entity) {
+  return entity.active && entity.kind == EntityKind::Npc;
+}
+
+AiActorState* findAiActorState(AiState& ai, EntityId actor) {
+  for (AiActorState& actorState : ai.actors) {
+    if (actorState.actor == actor) {
+      return &actorState;
+    }
+  }
+  return nullptr;
+}
+
+void ensureAiActorsForActiveNpcs(SessionState& state) {
+  std::vector<EntityId> activeNpcs;
+  for (const EntityState& entity : state.world.entities()) {
+    if (isActiveNpc(entity)) {
+      activeNpcs.push_back(entity.id);
+    }
+  }
+  std::sort(activeNpcs.begin(), activeNpcs.end());
+  for (EntityId actor : activeNpcs) {
+    if (findAiActorState(state.ai, actor) == nullptr) {
+      AiActorState actorState;
+      actorState.actor = actor;
+      state.ai.actors.push_back(actorState);
+    }
+  }
+}
+
+bool shouldBuildCommandForDecision(const NpcBehaviorDecision& decision) {
+  return decision.status == NpcBehaviorDecisionStatus::Decided ||
+         decision.status == NpcBehaviorDecisionStatus::OnCooldown;
+}
+
+void applyNpcBehaviorDecision(AiActorState& actorState,
+                              const NpcBehaviorDecision& decision) {
+  actorState.behavior = decision.behavior;
+  actorState.lastIntent = decision.intent;
+  actorState.target = decision.target;
+  actorState.nextDecisionTick = decision.nextDecisionTick;
+  actorState.cooldownTicksRemaining = decision.cooldownTicksRemaining;
+}
+
+void enqueueNpcBehaviorCommands(Session& session, SessionState& state) {
+  if (state.lifecycle != SessionLifecycle::Playing || state.clock.mode == ClockMode::Paused) {
+    return;
+  }
+
+  ensureAiActorsForActiveNpcs(state);
+  const PlayerSlot* playerZero = state.players.findSlot(0);
+  const EntityId target = playerZero == nullptr ? EntityId{} : playerZero->actor;
+  NpcBehaviorConfig config;
+
+  std::vector<std::size_t> actorIndexes;
+  actorIndexes.reserve(state.ai.actors.size());
+  for (std::size_t index = 0; index < state.ai.actors.size(); ++index) {
+    const EntityState* actor = state.world.findById(state.ai.actors[index].actor);
+    if (actor != nullptr && actor->kind == EntityKind::Npc) {
+      actorIndexes.push_back(index);
+    }
+  }
+  std::sort(actorIndexes.begin(), actorIndexes.end(), [&](std::size_t lhs, std::size_t rhs) {
+    return state.ai.actors[lhs].actor < state.ai.actors[rhs].actor;
+  });
+
+  for (std::size_t index : actorIndexes) {
+    AiActorState& actorState = state.ai.actors[index];
+    const NpcPerceptionResult perception =
+        queryNpcPerception(NpcPerceptionRequest{&state.world, &state.combat,
+                                                actorState.actor, target, config});
+    const NpcBehaviorDecision decision =
+        chooseNpcBehaviorIntent(NpcBehaviorDecisionRequest{&actorState, perception, config,
+                                                           state.clock.tickIndex});
+    applyNpcBehaviorDecision(actorState, decision);
+    if (!shouldBuildCommandForDecision(decision)) {
+      continue;
+    }
+
+    const NpcBehaviorCommandResult command =
+        buildNpcBehaviorCommand(NpcBehaviorCommandRequest{decision, perception, config});
+    if (command.hasCommand) {
+      (void)appendCommandThroughAdmission(session, state, command.command);
+    }
+  }
+}
+
 }  // namespace
 
 Session::Session() = default;
@@ -496,44 +625,11 @@ std::uint64_t Session::stateHash() const {
 }
 
 SessionCommandResult Session::submitCommand(const CommandRecord& command) {
-  CommandRecord candidate = command;
-  candidate.commandId = state_.nextCommandId;
-  candidate.sequence = kInvalidCommandSequence;
-  candidate.issuedTick = state_.clock.tickIndex;
-  candidate.scheduledTick = state_.clock.tickIndex;
-
-  CommandAdmissionResult admission;
-  if (state_.lifecycle != SessionLifecycle::Playing) {
-    admission = rejectCommand(candidate, CommandRejectionReason::SessionNotPlaying);
-  } else {
-    CommandAdmissionContext context{&state_.world, &state_.players, &state_.clock,
-                                    &state_.commandLog, &state_.config, &state_.combat,
-                                    &state_.inventory};
-    admission = applyAbilityRuntimeAdmission(
-        state_, admitCommand(context, CommandAdmissionRequest{candidate}));
-  }
-
-  const CommandLogAppendResult append = state_.commandLog.append(admission.command);
-  SessionCommandResult result;
-  result.command = append.status == CommandLogAppendStatus::Ok ? append.record : admission.command;
-  result.admission = admission;
-  result.appendStatus = append.status;
-  result.appendedToLog = append.status == CommandLogAppendStatus::Ok;
-  if (append.status == CommandLogAppendStatus::Ok) {
-    state_.nextCommandId = candidate.commandId + 1U;
-    if (append.record.admission == CommandAdmissionStatus::Accepted) {
-      if (executesImmediately(append.record.kind)) {
-        result.executedImmediately = applyControlCommand(*this, state_, append.record.kind);
-      } else if (queuesForTickExecution(append.record.kind)) {
-        state_.transient.pendingExecutionSequences.push_back(append.record.sequence);
-      }
-    }
-    markDirtyAndHash(state_);
-  }
-  return result;
+  return appendCommandThroughAdmission(*this, state_, command);
 }
 
 StatusResult Session::tick(const SpatialSurfaceSet* collisionSurfaces) {
+  enqueueNpcBehaviorCommands(*this, state_);
   std::vector<CommandRecord> commands = pendingAcceptedCommands(state_);
   const SessionTickResult tick =
       runSessionTick(SessionTickInput{&state_, std::move(commands), collisionSurfaces, false});
