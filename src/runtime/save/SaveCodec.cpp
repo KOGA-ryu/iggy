@@ -255,6 +255,16 @@ std::string enumText(PlayerSlotKind value) {
 }
 
 template <>
+std::string enumText(AiBehaviorKind value) {
+  return std::string(aiBehaviorKindName(value));
+}
+
+template <>
+std::string enumText(AiIntentKind value) {
+  return std::string(aiIntentKindName(value));
+}
+
+template <>
 std::string enumText(ClockMode value) {
   switch (value) {
     case ClockMode::Normal: return "Normal";
@@ -470,6 +480,56 @@ bool parseEnum(std::string_view value, PlayerSlotKind& out) {
   IGGY3D_ENUM_PARSE(PlayerSlotKind, Remote)
   IGGY3D_ENUM_PARSE(PlayerSlotKind, Ai)
   IGGY3D_ENUM_PARSE(PlayerSlotKind, Observer)
+  return false;
+}
+
+template <>
+bool parseEnum(std::string_view value, AiBehaviorKind& out) {
+  if (value == "none") {
+    out = AiBehaviorKind::None;
+    return true;
+  }
+  if (value == "idle") {
+    out = AiBehaviorKind::Idle;
+    return true;
+  }
+  if (value == "alert") {
+    out = AiBehaviorKind::Alert;
+    return true;
+  }
+  if (value == "chasing") {
+    out = AiBehaviorKind::Chasing;
+    return true;
+  }
+  if (value == "attacking") {
+    out = AiBehaviorKind::Attacking;
+    return true;
+  }
+  if (value == "defeated") {
+    out = AiBehaviorKind::Defeated;
+    return true;
+  }
+  return false;
+}
+
+template <>
+bool parseEnum(std::string_view value, AiIntentKind& out) {
+  if (value == "none") {
+    out = AiIntentKind::None;
+    return true;
+  }
+  if (value == "wait") {
+    out = AiIntentKind::Wait;
+    return true;
+  }
+  if (value == "move_toward_target") {
+    out = AiIntentKind::MoveTowardTarget;
+    return true;
+  }
+  if (value == "attack_target") {
+    out = AiIntentKind::AttackTarget;
+    return true;
+  }
   return false;
 }
 
@@ -882,6 +942,10 @@ private:
       line(p + "nextDecisionTick", unsignedText(actor.nextDecisionTick));
       line(p + "deterministicPolicy", unsignedText(actor.deterministicPolicy));
       lineBool(p + "enabled", actor.enabled);
+      line(p + "target", unsignedText(toUint64(actor.target)));
+      lineEnum(p + "behavior", actor.behavior);
+      lineEnum(p + "lastIntent", actor.lastIntent);
+      line(p + "cooldownTicksRemaining", unsignedText(actor.cooldownTicksRemaining));
     }
   }
 
@@ -1411,6 +1475,18 @@ private:
       readUnsigned(p + "nextDecisionTick", actor.nextDecisionTick);
       readUnsigned(p + "deterministicPolicy", actor.deterministicPolicy);
       readBool(p + "enabled", actor.enabled);
+      if (nextKeyIs(p + "target")) {
+        readEntityId(p + "target", actor.target);
+      }
+      if (nextKeyIs(p + "behavior")) {
+        readEnum(p + "behavior", actor.behavior);
+      }
+      if (nextKeyIs(p + "lastIntent")) {
+        readEnum(p + "lastIntent", actor.lastIntent);
+      }
+      if (nextKeyIs(p + "cooldownTicksRemaining")) {
+        readUnsigned(p + "cooldownTicksRemaining", actor.cooldownTicksRemaining);
+      }
     }
   }
 

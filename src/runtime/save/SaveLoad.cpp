@@ -241,8 +241,16 @@ SaveEnvelope envelopeFromState(const SessionState& state) {
                                           combatant.maxHitPoints, combatant.defeated});
   }
   for (const AiActorState& actor : state.ai.actors) {
-    envelope.ai.actors.push_back(
-        {actor.actor, actor.nextDecisionTick, actor.deterministicPolicy, actor.enabled});
+    SaveAiActorRecord record;
+    record.actor = actor.actor;
+    record.nextDecisionTick = actor.nextDecisionTick;
+    record.deterministicPolicy = actor.deterministicPolicy;
+    record.enabled = actor.enabled;
+    record.target = actor.target;
+    record.behavior = actor.behavior;
+    record.lastIntent = actor.lastIntent;
+    record.cooldownTicksRemaining = actor.cooldownTicksRemaining;
+    envelope.ai.actors.push_back(record);
   }
   for (const ObjectiveRecord& objective : state.objectives.objectives) {
     envelope.objectives.objectives.push_back({objective.objectiveId, objective.status,
@@ -400,8 +408,16 @@ LoadStateResult buildCandidate(const SaveEnvelope& envelope,
         {saved.entity, saved.factionId, saved.hitPoints, saved.maxHitPoints, saved.defeated});
   }
   for (const SaveAiActorRecord& saved : envelope.ai.actors) {
-    candidate.ai.actors.push_back(
-        {saved.actor, saved.nextDecisionTick, saved.deterministicPolicy, saved.enabled});
+    AiActorState actor;
+    actor.actor = saved.actor;
+    actor.nextDecisionTick = saved.nextDecisionTick;
+    actor.deterministicPolicy = saved.deterministicPolicy;
+    actor.enabled = saved.enabled;
+    actor.target = saved.target;
+    actor.behavior = saved.behavior;
+    actor.lastIntent = saved.lastIntent;
+    actor.cooldownTicksRemaining = saved.cooldownTicksRemaining;
+    candidate.ai.actors.push_back(actor);
   }
   for (const SaveObjectiveRecord& saved : envelope.objectives.objectives) {
     ObjectiveRecord objective;

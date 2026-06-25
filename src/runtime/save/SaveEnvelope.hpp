@@ -242,6 +242,10 @@ struct SaveAiActorRecord {
   std::uint64_t nextDecisionTick = 0;
   std::uint32_t deterministicPolicy = 0;
   bool enabled = true;
+  EntityId target;
+  AiBehaviorKind behavior = AiBehaviorKind::Idle;
+  AiIntentKind lastIntent = AiIntentKind::None;
+  std::uint32_t cooldownTicksRemaining = 0;
 };
 
 struct SaveAiSection {

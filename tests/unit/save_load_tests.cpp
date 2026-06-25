@@ -1,5 +1,6 @@
 #include "runtime/inventory/InventorySystem.hpp"
 #include "runtime/objective/ObjectiveSystem.hpp"
+#include "runtime/replay/StateHash.hpp"
 #include "runtime/save/SaveLoad.hpp"
 #include "runtime/session/Session.hpp"
 
@@ -31,6 +32,16 @@ std::string eraseLineStartingWith(std::string text, std::string_view prefix) {
   const std::size_t end = text.find('\n', pos);
   const std::size_t count = end == std::string::npos ? text.size() - pos : end - pos + 1U;
   text.erase(pos, count);
+  return text;
+}
+
+std::string replaceFirst(std::string text,
+                         std::string_view value,
+                         std::string_view replacement) {
+  const std::size_t pos = text.find(value);
+  if (pos != std::string::npos) {
+    text.replace(pos, value.size(), replacement);
+  }
   return text;
 }
 
@@ -150,6 +161,19 @@ iggy3d::Session makeSession() {
   request.config = iggy3d::makeDefaultRuntimeConfig();
   request.seed = firstRoomSeed();
   return iggy3d::Session::create(request).value;
+}
+
+iggy3d::AiActorState authoredAiActorState() {
+  iggy3d::AiActorState actor;
+  actor.actor = {4};
+  actor.nextDecisionTick = 17;
+  actor.deterministicPolicy = 3;
+  actor.enabled = false;
+  actor.target = {1};
+  actor.behavior = iggy3d::AiBehaviorKind::Chasing;
+  actor.lastIntent = iggy3d::AiIntentKind::MoveTowardTarget;
+  actor.cooldownTicksRemaining = 5;
+  return actor;
 }
 
 iggy3d::Session makeSessionWithConfig(iggy3d::RuntimeConfig config) {
@@ -668,6 +692,143 @@ bool attackDamageAndCombatRoundTrip() {
   return ok;
 }
 
+bool defaultAiActorStateHasPassiveDefaults() {
+  const iggy3d::AiActorState actor;
+  return expect(!iggy3d::isValid(actor.target), "default ai target invalid") &&
+         expect(actor.behavior == iggy3d::AiBehaviorKind::Idle,
+                "default ai behavior idle") &&
+         expect(actor.lastIntent == iggy3d::AiIntentKind::None,
+                "default ai last intent none") &&
+         expect(actor.cooldownTicksRemaining == 0U, "default ai cooldown zero") &&
+         expect(actor.enabled, "default ai enabled");
+}
+
+bool aiStateRoundTripsThroughSaveLoadAndCodec() {
+  iggy3d::Session source = makeSession();
+  iggy3d::SessionState sourceState = source.state();
+  sourceState.ai.actors.push_back(authoredAiActorState());
+
+  const iggy3d::SaveStateResult saved =
+      iggy3d::saveSessionStateEncoded(sourceState);
+  bool ok = expect(saved.status == iggy3d::SaveLoadStatus::Ok,
+                   "ai save status") &&
+            expect(saved.envelope.ai.actors.size() == 1U,
+                   "ai envelope count");
+
+  const iggy3d::SaveAiActorRecord& record = saved.envelope.ai.actors.front();
+  ok = ok && expect(record.actor == iggy3d::EntityId{4}, "ai actor envelope") &&
+       expect(record.nextDecisionTick == 17U, "ai next decision envelope") &&
+       expect(record.deterministicPolicy == 3U, "ai policy envelope") &&
+       expect(!record.enabled, "ai enabled envelope") &&
+       expect(record.target == iggy3d::EntityId{1}, "ai target envelope") &&
+       expect(record.behavior == iggy3d::AiBehaviorKind::Chasing,
+              "ai behavior envelope") &&
+       expect(record.lastIntent == iggy3d::AiIntentKind::MoveTowardTarget,
+              "ai intent envelope") &&
+       expect(record.cooldownTicksRemaining == 5U, "ai cooldown envelope") &&
+       expect(saved.encodedSaveText.find("ai.actor.0.target=1\n") !=
+                  std::string::npos,
+              "ai target encoded") &&
+       expect(saved.encodedSaveText.find("ai.actor.0.behavior=chasing\n") !=
+                  std::string::npos,
+              "ai behavior encoded") &&
+       expect(saved.encodedSaveText.find(
+                  "ai.actor.0.lastIntent=move_toward_target\n") !=
+                  std::string::npos,
+              "ai intent encoded") &&
+       expect(saved.encodedSaveText.find(
+                  "ai.actor.0.cooldownTicksRemaining=5\n") !=
+                  std::string::npos,
+              "ai cooldown encoded");
+
+  iggy3d::Session loaded = makeSession();
+  const iggy3d::LoadStateResult load =
+      iggy3d::loadEncodedSaveIntoSession(loaded, saved.encodedSaveText,
+                                         compatibilityFor(saved.envelope));
+  const iggy3d::AiActorState* loadedActor =
+      loaded.state().ai.actors.empty() ? nullptr : &loaded.state().ai.actors.front();
+  ok = ok && expect(load.status == iggy3d::SaveLoadStatus::Ok,
+                    "ai load status") &&
+       expect(loaded.state().ai.actors.size() == 1U, "ai loaded count") &&
+       expect(loadedActor != nullptr && loadedActor->actor == iggy3d::EntityId{4},
+              "ai actor loaded") &&
+       expect(loadedActor != nullptr && loadedActor->nextDecisionTick == 17U,
+              "ai next decision loaded") &&
+       expect(loadedActor != nullptr && loadedActor->deterministicPolicy == 3U,
+              "ai policy loaded") &&
+       expect(loadedActor != nullptr && !loadedActor->enabled, "ai enabled loaded") &&
+       expect(loadedActor != nullptr && loadedActor->target == iggy3d::EntityId{1},
+              "ai target loaded") &&
+       expect(loadedActor != nullptr &&
+                  loadedActor->behavior == iggy3d::AiBehaviorKind::Chasing,
+              "ai behavior loaded") &&
+       expect(loadedActor != nullptr &&
+                  loadedActor->lastIntent == iggy3d::AiIntentKind::MoveTowardTarget,
+              "ai intent loaded") &&
+       expect(loadedActor != nullptr && loadedActor->cooldownTicksRemaining == 5U,
+              "ai cooldown loaded") &&
+       expect(loaded.stateHash() == iggy3d::computeStateHash(sourceState),
+              "ai loaded hash");
+
+  std::string oldStyle = saved.encodedSaveText;
+  oldStyle = eraseLineStartingWith(oldStyle, "ai.actor.0.target=");
+  oldStyle = eraseLineStartingWith(oldStyle, "ai.actor.0.behavior=");
+  oldStyle = eraseLineStartingWith(oldStyle, "ai.actor.0.lastIntent=");
+  oldStyle = eraseLineStartingWith(oldStyle, "ai.actor.0.cooldownTicksRemaining=");
+  const iggy3d::SaveDecodeResult oldDecoded = iggy3d::decodeSaveEnvelope(oldStyle);
+  const iggy3d::SaveAiActorRecord* oldActor =
+      oldDecoded.envelope.ai.actors.empty() ? nullptr : &oldDecoded.envelope.ai.actors.front();
+  ok = ok && expect(oldDecoded.status == iggy3d::SaveCodecStatus::Ok,
+                    "old ai save decodes") &&
+       expect(oldActor != nullptr && !iggy3d::isValid(oldActor->target),
+              "old ai target default") &&
+       expect(oldActor != nullptr &&
+                  oldActor->behavior == iggy3d::AiBehaviorKind::Idle,
+              "old ai behavior default") &&
+       expect(oldActor != nullptr &&
+                  oldActor->lastIntent == iggy3d::AiIntentKind::None,
+              "old ai intent default") &&
+       expect(oldActor != nullptr && oldActor->cooldownTicksRemaining == 0U,
+              "old ai cooldown default");
+
+  const std::string badBehavior = replaceFirst(saved.encodedSaveText,
+                                               "ai.actor.0.behavior=chasing\n",
+                                               "ai.actor.0.behavior=confused\n");
+  const iggy3d::SaveDecodeResult badDecoded =
+      iggy3d::decodeSaveEnvelope(badBehavior);
+  return ok && expect(badDecoded.status == iggy3d::SaveCodecStatus::InvalidEnum,
+                      "invalid ai enum rejected") &&
+         expect(badDecoded.diagnosticKey == "ai.actor.0.behavior",
+                "invalid ai enum key");
+}
+
+bool aiStateChangesParticipateInHash() {
+  iggy3d::Session source = makeSession();
+  iggy3d::SessionState state = source.state();
+  state.ai.actors.push_back(authoredAiActorState());
+  const iggy3d::StateHashValue base = iggy3d::computeStateHash(state);
+
+  iggy3d::SessionState changed = state;
+  changed.ai.actors[0].behavior = iggy3d::AiBehaviorKind::Alert;
+  bool ok = expect(iggy3d::computeStateHash(changed) != base,
+                   "ai behavior changes hash");
+
+  changed = state;
+  changed.ai.actors[0].lastIntent = iggy3d::AiIntentKind::AttackTarget;
+  ok = ok && expect(iggy3d::computeStateHash(changed) != base,
+                    "ai intent changes hash");
+
+  changed = state;
+  changed.ai.actors[0].target = {2};
+  ok = ok && expect(iggy3d::computeStateHash(changed) != base,
+                    "ai target changes hash");
+
+  changed = state;
+  changed.ai.actors[0].cooldownTicksRemaining = 6;
+  return ok && expect(iggy3d::computeStateHash(changed) != base,
+                      "ai cooldown changes hash");
+}
+
 bool invalidCombatStateRejectedOnLoad() {
   iggy3d::Session source = makeSession();
   iggy3d::SaveStateResult saved = iggy3d::saveSessionState(source.state());
@@ -714,6 +875,9 @@ int main() {
   ok = duplicateCommandIdIsRejectedByCommandLogRestore() && ok;
   ok = malformedEncodedSaveFailsDecodeAndLeavesDestinationUnchanged() && ok;
   ok = attackDamageAndCombatRoundTrip() && ok;
+  ok = defaultAiActorStateHasPassiveDefaults() && ok;
+  ok = aiStateRoundTripsThroughSaveLoadAndCodec() && ok;
+  ok = aiStateChangesParticipateInHash() && ok;
   ok = invalidCombatStateRejectedOnLoad() && ok;
   return ok ? 0 : 1;
 }
