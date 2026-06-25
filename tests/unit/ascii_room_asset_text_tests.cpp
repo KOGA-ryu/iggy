@@ -115,6 +115,10 @@ bool fixtureExportsAndParsesBack() {
       findSurface(original, "marker_door_r2_c2_door_blocker");
   const iggy3d::RoomSpatialSurface* parsedDoor =
       findSurface(parsed.room, "marker_door_r2_c2_door_blocker");
+  const iggy3d::RoomSpatialSurface* originalWallSurface =
+      findSurface(original, "wall_r0_c0_actor_blocker");
+  const iggy3d::RoomSpatialSurface* parsedWallSurface =
+      findSurface(parsed.room, "wall_r0_c0_actor_blocker");
   const iggy3d::RoomAnchorAsset* originalAnchor =
       findAnchor(original, "marker_player_spawn_r1_c1");
   const iggy3d::RoomAnchorAsset* parsedAnchor =
@@ -158,6 +162,15 @@ bool fixtureExportsAndParsesBack() {
          expect(parsedDoor->runtimeOwnerStableName ==
                     originalDoor->runtimeOwnerStableName,
                 "door owner roundtrip") &&
+         expect(originalWallSurface != nullptr && parsedWallSurface != nullptr,
+                "wall surface exists") &&
+         expect(originalWallSurface->pointsMeters.size() == 8U,
+                "original wall surface is box") &&
+         expect(parsedWallSurface->pointsMeters.size() == 8U,
+                "parsed wall surface keeps box points") &&
+         expect(vecNear(parsedWallSurface->pointsMeters[4],
+                        originalWallSurface->pointsMeters[4]),
+                "wall surface top point roundtrip") &&
          expect(countSurfacesWithRole(parsed.room, iggy3d::RoomSpatialSurfaceRole::Walkable) ==
                     15U,
                 "walkable parsed count") &&

@@ -91,10 +91,49 @@ bool recordsAuthoringFailureWithoutRoomOwnership() {
          expect(active.spatialSurfaceCount == 0U, "no surfaces");
 }
 
+bool buildsLoadedStateFromPackageRoom() {
+  const iggy3d::ProductAsciiRoomAuthoringRequest request = trainingRequest();
+  const iggy3d::ProductAsciiRoomAuthoringResult authoring =
+      iggy3d::buildProductAsciiRoomAuthoring(request);
+  if (!expect(authoring.ok, "package authoring ok")) {
+    return false;
+  }
+
+  iggy3d::RoomAsset room = authoring.roomAsset.room;
+  room.sourceFile = "assets/rooms/active_room_training.room.iggy3d.toml";
+  room.sourceSubset = "ascii_training_room";
+  const iggy3d::ProductActiveRoomState active =
+      iggy3d::buildProductActiveRoomFromPackageRoom(
+          room, "iggy3d.ascii_training_room", "ascii_training_room.runtime_loop");
+
+  return expect(active.loaded, "package active room loaded") &&
+         expect(active.status == "active_room_loaded", "package status") &&
+         expect(active.reasonCode == "active_room_loaded", "package reason") &&
+         expect(active.source == "package_room", "package source") &&
+         expect(active.roomId == "active_room_training", "package room id") &&
+         expect(active.sourceName ==
+                    "assets/rooms/active_room_training.room.iggy3d.toml",
+                "package source name") &&
+         expect(active.sourceSubset == "ascii_training_room",
+                "package source subset") &&
+         expect(!active.hasAuthoredRoom, "package authored room absent") &&
+         expect(active.authoredFloorCount == 0U, "package authored floor count") &&
+         expect(active.authoredWallCount == 0U, "package authored wall count") &&
+         expect(active.staticMeshCount == 36U, "package static mesh count") &&
+         expect(active.anchorCount == 5U, "package anchor count") &&
+         expect(active.spatialSurfaceCount == 56U, "package surface count") &&
+         expect(active.walkableSurfaceCount == 15U, "package walkable count") &&
+         expect(active.actorBlockerSurfaceCount == 21U,
+                "package actor blocker count") &&
+         expect(active.projectileBlockerSurfaceCount == 21U,
+                "package projectile blocker count");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = buildsLoadedStateFromAsciiAuthoring() &&
-                  recordsAuthoringFailureWithoutRoomOwnership();
+                  recordsAuthoringFailureWithoutRoomOwnership() &&
+                  buildsLoadedStateFromPackageRoom();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

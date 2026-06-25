@@ -5,6 +5,8 @@
 
 #include "app/PackageRuntimeLookup.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
+#include "app/iggy3d/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/ProductActiveRoomState.hpp"
 #include "app/iggy3d/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/ProductMenuTransitions.hpp"
 #include "app/iggy3d/ProductPackageSessionSeed.hpp"
@@ -93,7 +95,15 @@ bool createProductSession(const ProductAppOptions& options,
     return false;
   }
 
+  window.activeRoom = {};
+  window.activeRoomCollision = {};
   activeSession = std::move(session.value);
+  if (!package.rooms.empty()) {
+    window.activeRoom = buildProductActiveRoomFromPackageRoom(
+        package.rooms.front(), package.manifest.packageId, package.scenario.scenarioId);
+    window.activeRoomCollision =
+        buildProductActiveRoomCollision(window.activeRoom, activeSession->state());
+  }
   window.runtimeSessionCreated = true;
   window.gameplayActive = true;
   window.runtimeStateHash = activeSession->stateHash();
@@ -212,6 +222,8 @@ void clearProductGameplayLaunchState(std::optional<Session>& activeSession,
   window.gameplayActive = false;
   window.runtimeSessionCreated = false;
   window.runtimeStateHash = 0;
+  window.activeRoom = {};
+  window.activeRoomCollision = {};
   activeSession.reset();
 }
 
@@ -657,6 +669,10 @@ void launchProductSaveSlot(const ProductAppOptions& options,
     return;
   }
 
+  if (window.activeRoom.loaded) {
+    window.activeRoomCollision =
+        buildProductActiveRoomCollision(window.activeRoom, activeSession->state());
+  }
   window.launchStatus = loaded.status;
   window.runtimeStateHash = activeSession->stateHash();
   enterProductGameplayTransition(frontend, window, launchAction);

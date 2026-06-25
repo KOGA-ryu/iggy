@@ -159,7 +159,7 @@ int main() {
       iggy3d::smoke::hasField(scriptedFields, "objective_visible", "true") &&
       iggy3d::smoke::hasField(scriptedFields,
                               "product_draw_item_count",
-                              "6") &&
+                              "41") &&
       iggy3d::smoke::hasField(scriptedFields,
                               "product_render_bridge_ready",
                               "true") &&

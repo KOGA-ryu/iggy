@@ -437,6 +437,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.gameplayTapeExecutedStepCount);
   appendReceiptField(receipt, "gameplay_tape_expected_rejected_step_count",
                      window.gameplayTapeExpectedRejectedStepCount);
+  appendReceiptField(receipt, "gameplay_tape_expected_blocked_step_count",
+                     window.gameplayTapeExpectedBlockedStepCount);
   appendReceiptField(receipt, "gameplay_tape_failed_step",
                      window.gameplayTapeFailedStep);
   appendReceiptField(receipt, "gameplay_tape_failed_source_line",
@@ -447,10 +449,14 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.gameplayTapeFailedTarget);
   appendReceiptField(receipt, "gameplay_tape_failed_rejection",
                      window.gameplayTapeFailedRejection);
+  appendReceiptField(receipt, "gameplay_tape_failed_movement_block",
+                     window.gameplayTapeFailedMovementBlock);
   appendReceiptField(receipt, "gameplay_tape_last_action",
                      window.gameplayTapeLastAction);
   appendReceiptField(receipt, "gameplay_tape_last_target",
                      window.gameplayTapeLastTarget);
+  appendReceiptField(receipt, "gameplay_tape_last_movement_block",
+                     window.gameplayTapeLastMovementBlock);
   appendReceiptField(receipt, "gameplay_tape_key_collected",
                      window.gameplayTapeKeyCollected);
   appendReceiptField(receipt, "gameplay_tape_secret_door_opened",

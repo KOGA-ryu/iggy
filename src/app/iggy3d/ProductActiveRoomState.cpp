@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 #include "app/iggy3d/ProductAsciiRoomAuthoring.hpp"
 
@@ -48,6 +49,10 @@ void fillAuthoredCounts(ProductActiveRoomState& state) {
   state.authoredWallCount = sizeReceiptValue(state.authoredRoom.walls.size());
 }
 
+std::string fallbackString(std::string_view value, std::string fallback) {
+  return value.empty() ? std::move(fallback) : std::string(value);
+}
+
 }  // namespace
 
 ProductActiveRoomState buildProductActiveRoomFromAsciiAuthoring(
@@ -83,6 +88,26 @@ ProductActiveRoomState buildProductActiveRoomFromAsciiAuthoring(
   if (!state.room.sourceSubset.empty()) {
     state.sourceSubset = state.room.sourceSubset;
   }
+  fillRoomCounts(state);
+  fillAuthoredCounts(state);
+  return state;
+}
+
+ProductActiveRoomState buildProductActiveRoomFromPackageRoom(
+    const RoomAsset& room,
+    std::string_view packageId,
+    std::string_view scenarioId) {
+  ProductActiveRoomState state;
+  state.loaded = true;
+  state.status = "active_room_loaded";
+  state.reasonCode = "active_room_loaded";
+  state.source = "package_room";
+  state.roomId = fallbackString(room.id, "package_room");
+  state.sourceName =
+      room.sourceFile.empty() ? fallbackString(packageId, "package") : room.sourceFile;
+  state.sourceSubset =
+      room.sourceSubset.empty() ? fallbackString(scenarioId, "scenario") : room.sourceSubset;
+  state.room = room;
   fillRoomCounts(state);
   fillAuthoredCounts(state);
   return state;

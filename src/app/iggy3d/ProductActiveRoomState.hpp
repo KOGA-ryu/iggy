@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 #include "content/assets/RoomAsset.hpp"
 #include "runtime/save/SaveEnvelope.hpp"
@@ -36,5 +37,10 @@ struct ProductActiveRoomState {
 ProductActiveRoomState buildProductActiveRoomFromAsciiAuthoring(
     const ProductAsciiRoomAuthoringRequest& request,
     const ProductAsciiRoomAuthoringResult& authoring);
+
+ProductActiveRoomState buildProductActiveRoomFromPackageRoom(
+    const RoomAsset& room,
+    std::string_view packageId,
+    std::string_view scenarioId);
 
 }  // namespace iggy3d

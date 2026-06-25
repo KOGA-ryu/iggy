@@ -223,13 +223,16 @@ void recordProductGameplayTapeRun(const ProductGameplayTapeRunResult& run,
   window.gameplayTapeStepCount = run.stepCount;
   window.gameplayTapeExecutedStepCount = run.executedStepCount;
   window.gameplayTapeExpectedRejectedStepCount = run.expectedRejectedStepCount;
+  window.gameplayTapeExpectedBlockedStepCount = run.expectedBlockedStepCount;
   window.gameplayTapeFailedStep = failedTapeStepReceiptValue(run.failedStepIndex);
   window.gameplayTapeFailedSourceLine = run.failedSourceLine;
   window.gameplayTapeFailedAction = run.failedAction;
   window.gameplayTapeFailedTarget = run.failedTarget;
   window.gameplayTapeFailedRejection = run.failedRejection;
+  window.gameplayTapeFailedMovementBlock = run.failedMovementBlock;
   window.gameplayTapeLastAction = run.lastAction;
   window.gameplayTapeLastTarget = run.lastTarget;
+  window.gameplayTapeLastMovementBlock = run.lastMovementBlock;
   window.gameplayTapeKeyCollected = run.keyCollected;
   window.gameplayTapeSecretDoorOpened = run.secretDoorOpened;
   window.gameplayTapeTreasureCollected = run.treasureCollected;
@@ -263,7 +266,9 @@ void runProductGameplayTapeFromOptions(const ProductAppOptions& options,
       ProductGameplayTapeRunRequest{activeSession.has_value() ? &*activeSession : nullptr,
                                     &parsed.tape,
                                     productActiveRoomCollisionSurfaces(
-                                        window.activeRoomCollision)});
+                                        window.activeRoomCollision),
+                                    &window.activeRoom,
+                                    &window.activeRoomCollision});
   recordProductGameplayTapeRun(run, window);
 }
 

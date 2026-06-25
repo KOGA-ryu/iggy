@@ -190,13 +190,16 @@ struct ProductAppWindowState {
   std::uint64_t gameplayTapeStepCount = 0;
   std::uint64_t gameplayTapeExecutedStepCount = 0;
   std::uint64_t gameplayTapeExpectedRejectedStepCount = 0;
+  std::uint64_t gameplayTapeExpectedBlockedStepCount = 0;
   std::string gameplayTapeFailedStep = "none";
   std::uint64_t gameplayTapeFailedSourceLine = 0;
   std::string gameplayTapeFailedAction = "none";
   std::string gameplayTapeFailedTarget = "none";
   std::string gameplayTapeFailedRejection = "none";
+  std::string gameplayTapeFailedMovementBlock = "none";
   std::string gameplayTapeLastAction = "none";
   std::string gameplayTapeLastTarget = "none";
+  std::string gameplayTapeLastMovementBlock = "none";
   bool gameplayTapeKeyCollected = false;
   bool gameplayTapeSecretDoorOpened = false;
   bool gameplayTapeTreasureCollected = false;

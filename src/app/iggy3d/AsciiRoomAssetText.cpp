@@ -173,6 +173,9 @@ void writeStringArray(std::ostream& out, const std::vector<std::string>& values)
 }
 
 std::vector<Vec3> pointsForExport(const RoomSpatialSurface& surface) {
+  if (surface.shape == RoomSpatialSurfaceShape::Box) {
+    return surface.pointsMeters;
+  }
   if (surface.pointsMeters.size() <= 4U) {
     return surface.pointsMeters;
   }

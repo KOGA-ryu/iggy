@@ -90,6 +90,66 @@ bool parseRejection(std::string_view value, CommandRejectionReason& reason) {
   return false;
 }
 
+bool parseMovementBlock(std::string_view value, MovementBlockedReason& reason) {
+  if (value == "none" || value == "movement_ok") {
+    reason = MovementBlockedReason::None;
+    return true;
+  }
+  if (value == "invalid_actor") {
+    reason = MovementBlockedReason::InvalidActor;
+    return true;
+  }
+  if (value == "actor_inactive") {
+    reason = MovementBlockedReason::ActorInactive;
+    return true;
+  }
+  if (value == "invalid_destination") {
+    reason = MovementBlockedReason::InvalidDestination;
+    return true;
+  }
+  if (value == "destination_not_finite") {
+    reason = MovementBlockedReason::DestinationNotFinite;
+    return true;
+  }
+  if (value == "movement_too_far") {
+    reason = MovementBlockedReason::MovementTooFar;
+    return true;
+  }
+  if (value == "blocked_by_world") {
+    reason = MovementBlockedReason::BlockedByWorld;
+    return true;
+  }
+  if (value == "missing_world") {
+    reason = MovementBlockedReason::MissingWorld;
+    return true;
+  }
+  if (value == "missing_collision_surfaces") {
+    reason = MovementBlockedReason::MissingCollisionSurfaces;
+    return true;
+  }
+  if (value == "invalid_movement_params") {
+    reason = MovementBlockedReason::InvalidMovementParams;
+    return true;
+  }
+  if (value == "no_walkable_ground") {
+    reason = MovementBlockedReason::NoWalkableGround;
+    return true;
+  }
+  if (value == "slope_rejected") {
+    reason = MovementBlockedReason::SlopeRejected;
+    return true;
+  }
+  if (value == "blocked_by_collision") {
+    reason = MovementBlockedReason::BlockedByCollision;
+    return true;
+  }
+  if (value == "internal_error") {
+    reason = MovementBlockedReason::InternalError;
+    return true;
+  }
+  return false;
+}
+
 ProductGameplayTapeParseResult failed(ProductGameplayTapeParseResult result,
                                       std::string status,
                                       std::uint64_t line,
@@ -194,6 +254,56 @@ ProductGameplayTapeParseResult parseExpectedRejectionStep(
   return result;
 }
 
+ProductGameplayTapeParseResult parseExpectedMovementBlockStep(
+    ProductGameplayTapeParseResult result,
+    const std::vector<std::string_view>& words,
+    std::uint64_t line) {
+  if (words.size() < 4U) {
+    return failed(std::move(result),
+                  "gameplay_tape_missing_expected_block_fields",
+                  line,
+                  std::string(words.front()));
+  }
+  if (words.size() > 4U) {
+    return failed(std::move(result),
+                  "gameplay_tape_unexpected_token",
+                  line,
+                  std::string(words[4]));
+  }
+
+  MovementBlockedReason expected = MovementBlockedReason::None;
+  if (!parseMovementBlock(words[1], expected) ||
+      expected == MovementBlockedReason::None) {
+    return failed(std::move(result),
+                  "gameplay_tape_unknown_movement_block_reason",
+                  line,
+                  std::string(words[1]));
+  }
+
+  ProductGameplayTapeAction action = ProductGameplayTapeAction::Wait;
+  if (!parseAction(words[2], action)) {
+    return failed(std::move(result),
+                  "gameplay_tape_unknown_action",
+                  line,
+                  std::string(words[2]));
+  }
+  if (action != ProductGameplayTapeAction::Move) {
+    return failed(std::move(result),
+                  "gameplay_tape_expected_block_requires_move",
+                  line,
+                  std::string(words[2]));
+  }
+
+  ProductGameplayTapeStep step;
+  step.action = action;
+  step.targetStableName = std::string(words[3]);
+  step.expectMovementBlock = true;
+  step.expectedMovementBlock = expected;
+  step.sourceLine = line;
+  result.tape.steps.push_back(std::move(step));
+  return result;
+}
+
 }  // namespace
 
 std::string_view productGameplayTapeActionName(ProductGameplayTapeAction action) {
@@ -228,6 +338,40 @@ std::string_view productGameplayTapeRejectionName(CommandRejectionReason reason)
   return "rejected";
 }
 
+std::string_view productGameplayTapeMovementBlockName(MovementBlockedReason reason) {
+  switch (reason) {
+    case MovementBlockedReason::None:
+      return "movement_ok";
+    case MovementBlockedReason::InvalidActor:
+      return "invalid_actor";
+    case MovementBlockedReason::ActorInactive:
+      return "actor_inactive";
+    case MovementBlockedReason::InvalidDestination:
+      return "invalid_destination";
+    case MovementBlockedReason::DestinationNotFinite:
+      return "destination_not_finite";
+    case MovementBlockedReason::MovementTooFar:
+      return "movement_too_far";
+    case MovementBlockedReason::BlockedByWorld:
+      return "blocked_by_world";
+    case MovementBlockedReason::MissingWorld:
+      return "missing_world";
+    case MovementBlockedReason::MissingCollisionSurfaces:
+      return "missing_collision_surfaces";
+    case MovementBlockedReason::InvalidMovementParams:
+      return "invalid_movement_params";
+    case MovementBlockedReason::NoWalkableGround:
+      return "no_walkable_ground";
+    case MovementBlockedReason::SlopeRejected:
+      return "slope_rejected";
+    case MovementBlockedReason::BlockedByCollision:
+      return "blocked_by_collision";
+    case MovementBlockedReason::InternalError:
+      return "internal_error";
+  }
+  return "internal_error";
+}
+
 ProductGameplayTapeParseResult parseProductGameplayTape(std::string_view text) {
   ProductGameplayTapeParseResult result;
   std::istringstream input{std::string(text)};
@@ -246,6 +390,10 @@ ProductGameplayTapeParseResult parseProductGameplayTape(std::string_view text) {
     if (words[0] == "expect_reject") {
       result =
           parseExpectedRejectionStep(std::move(result), words, result.lineCount);
+    } else if (words[0] == "expect_blocked") {
+      result = parseExpectedMovementBlockStep(std::move(result),
+                                              words,
+                                              result.lineCount);
     } else {
       result = parseNormalStep(std::move(result), words, result.lineCount);
     }

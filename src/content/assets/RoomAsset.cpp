@@ -197,7 +197,7 @@ bool parsePointsFeet(std::string_view value, std::vector<Vec3>& out) {
     }
     value.remove_prefix(1);
   }
-  return out.size() == 3U || out.size() == 4U;
+  return out.size() == 3U || out.size() == 4U || out.size() == 8U;
 }
 
 bool parseShape(std::string_view value, RoomSpatialSurfaceShape& out) {
@@ -242,6 +242,13 @@ bool parseRole(std::string_view value, RoomSpatialSurfaceRole& out) {
     return true;
   }
   return false;
+}
+
+bool validSpatialSurfacePointCount(RoomSpatialSurfaceShape shape, std::size_t pointCount) {
+  if (shape == RoomSpatialSurfaceShape::Box) {
+    return pointCount == 4U || pointCount == 8U;
+  }
+  return pointCount == 3U || pointCount == 4U;
 }
 
 bool containsString(const std::vector<std::string>& values, std::string_view expected) {
@@ -516,7 +523,7 @@ RoomAssetParseResult parseRoomAssetText(const std::string& text) {
       result.reason = "room_unknown_spatial_surface_mesh";
       return result;
     }
-    if (surface.pointsMeters.size() != 3U && surface.pointsMeters.size() != 4U) {
+    if (!validSpatialSurfacePointCount(surface.shape, surface.pointsMeters.size())) {
       result.reason = "room_invalid_spatial_surface_point";
       return result;
     }

@@ -40,6 +40,33 @@ bool parsesOrderedTapeWithExpectedRejection() {
                 "wait action");
 }
 
+bool parsesExpectedMovementBlock() {
+  const iggy3d::ProductGameplayTapeParseResult parsed =
+      iggy3d::parseProductGameplayTape(
+          "expect_blocked blocked_by_collision move marker_key_r1_c3\n");
+  return expect(parsed.ok, "expected block parsed") &&
+         expect(parsed.tape.steps.size() == 1U, "expected block step count") &&
+         expect(parsed.tape.steps[0].action == iggy3d::ProductGameplayTapeAction::Move,
+                "expected block action") &&
+         expect(parsed.tape.steps[0].targetStableName == "marker_key_r1_c3",
+                "expected block target") &&
+         expect(parsed.tape.steps[0].expectMovementBlock,
+                "expected block flag") &&
+         expect(parsed.tape.steps[0].expectedMovementBlock ==
+                    iggy3d::MovementBlockedReason::BlockedByCollision,
+                "expected block reason");
+}
+
+bool parsesRuntimeMovementBlockNames() {
+  const iggy3d::ProductGameplayTapeParseResult parsed =
+      iggy3d::parseProductGameplayTape(
+          "expect_blocked invalid_destination move marker_key_r1_c3\n");
+  return expect(parsed.ok, "runtime block parsed") &&
+         expect(parsed.tape.steps[0].expectedMovementBlock ==
+                    iggy3d::MovementBlockedReason::InvalidDestination,
+                "runtime block reason");
+}
+
 bool rejectsUnknownAction() {
   const iggy3d::ProductGameplayTapeParseResult parsed =
       iggy3d::parseProductGameplayTape("teleport marker_exit_r1_c5\n");
@@ -60,6 +87,16 @@ bool rejectsUnknownRejectionReason() {
          expect(parsed.failedToken == "banana", "unknown rejection token");
 }
 
+bool rejectsUnknownMovementBlockReason() {
+  const iggy3d::ProductGameplayTapeParseResult parsed =
+      iggy3d::parseProductGameplayTape(
+          "expect_blocked banana move marker_exit_r1_c5\n");
+  return expect(!parsed.ok, "unknown movement block rejected") &&
+         expect(parsed.reasonCode == "gameplay_tape_unknown_movement_block_reason",
+                "unknown movement block reason") &&
+         expect(parsed.failedToken == "banana", "unknown movement block token");
+}
+
 bool rejectsExpectedMoveRejection() {
   const iggy3d::ProductGameplayTapeParseResult parsed =
       iggy3d::parseProductGameplayTape(
@@ -68,6 +105,15 @@ bool rejectsExpectedMoveRejection() {
          expect(parsed.reasonCode ==
                     "gameplay_tape_expected_reject_requires_interact",
                 "expected move reason");
+}
+
+bool rejectsExpectedBlockForNonMove() {
+  const iggy3d::ProductGameplayTapeParseResult parsed =
+      iggy3d::parseProductGameplayTape(
+          "expect_blocked blocked_by_collision interact marker_exit_r1_c5\n");
+  return expect(!parsed.ok, "expected block interact rejected") &&
+         expect(parsed.reasonCode == "gameplay_tape_expected_block_requires_move",
+                "expected block interact reason");
 }
 
 bool rejectsEmptyTape() {
@@ -81,9 +127,13 @@ bool rejectsEmptyTape() {
 
 int main() {
   const bool ok = parsesOrderedTapeWithExpectedRejection() &&
+                  parsesExpectedMovementBlock() &&
+                  parsesRuntimeMovementBlockNames() &&
                   rejectsUnknownAction() &&
                   rejectsUnknownRejectionReason() &&
+                  rejectsUnknownMovementBlockReason() &&
                   rejectsExpectedMoveRejection() &&
+                  rejectsExpectedBlockForNonMove() &&
                   rejectsEmptyTape();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

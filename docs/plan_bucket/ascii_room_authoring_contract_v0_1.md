@@ -597,17 +597,36 @@ Current product-app tape proof:
 
 - `--gameplay-tape <path>` accepts a plain ordered line tape, not JSON;
 - supported v0.1 commands are `move <stable_name>`, `interact <stable_name>`,
-  `wait`, and `expect_reject <reason> interact <stable_name>`;
+  `wait`, `expect_reject <reason> interact <stable_name>`, and
+  `expect_blocked <movement_reason> move <stable_name>`;
 - tape target ownership is stable runtime entity name, usually the deterministic
   ASCII marker id;
 - unexpected failure stops the tape immediately;
 - expected rejection steps are recorded and do not tick the runtime;
+- expected movement-block steps must execute the command, tick runtime movement,
+  and then match `SessionState::transient.lastMovementResult`;
 - `product_gameplay_tape_smoke` generates an ASCII package, launches
   `./build/iggy3d --no-window --auto-new-world --gameplay-tape`, and proves the
   same key, secret door, treasure, exit, `Victory` loop through the product app;
 - receipt proof fields are prefixed with `gameplay_tape_` and include loaded
-  state, step counts, expected rejection count, failed step, final action/target,
+  state, step counts, expected rejection count, expected blocked count, failed
+  step, failed movement block, final action/target, last movement block,
   key/door/treasure/exit booleans, and loop completion.
+
+Current active-room runtime proof:
+
+- package-backed ASCII rooms now become `ProductActiveRoomState` with
+  `active_room_source=package_room`;
+- product runtime session creation builds `ProductActiveRoomCollisionState` from
+  the package room and active `SessionState`;
+- the gameplay tape runner uses active-room collision surfaces when present;
+- active-room collision refreshes after each tape tick so runtime-owned blockers
+  such as opened doors are filtered before the next movement command;
+- exported room text preserves full 8-point `box` spatial surfaces so package
+  collision has the same height as the in-memory generated room;
+- the room asset loader accepts legacy 4-point boxes and full 8-point boxes;
+- product no-window smokes prove both positive traversal through an opened
+  secret door and negative collision against a package-loaded wall.
 
 ## Validation Rules
 

@@ -92,7 +92,13 @@ std::string gameplayTapeText() {
          "interact marker_exit_r1_c5\n";
 }
 
+std::string wallCollisionTapeText() {
+  return "expect_blocked blocked_by_collision move marker_key_r1_c3\n";
+}
+
 bool makeGeneratedAsciiPackage(const std::filesystem::path& root,
+                               std::string_view sourceText,
+                               std::string_view tapeText,
                                std::filesystem::path& packagePath,
                                std::filesystem::path& tapePath) {
   std::filesystem::create_directories(root / "assets" / "rooms");
@@ -104,10 +110,7 @@ bool makeGeneratedAsciiPackage(const std::filesystem::path& root,
   request.roomId = "ascii_gameplay_loop";
   request.centerOnOrigin = false;
   request.emitAssetText = true;
-  request.sourceText =
-      "#######\n"
-      "#PKs$E#\n"
-      "#######\n";
+  request.sourceText = std::string(sourceText);
 
   const iggy3d::ProductAsciiRoomAuthoringResult authored =
       iggy3d::buildProductAsciiRoomAuthoring(request);
@@ -130,7 +133,7 @@ bool makeGeneratedAsciiPackage(const std::filesystem::path& root,
          iggy3d::smoke::writeTextFile(
              root / "assets" / "materials" / "ascii_room.materials.iggy3d.toml",
              generatedMaterialText()) &&
-         iggy3d::smoke::writeTextFile(tapePath, gameplayTapeText());
+         iggy3d::smoke::writeTextFile(tapePath, tapeText);
 }
 
 }  // namespace
@@ -142,13 +145,35 @@ int main() {
       std::filesystem::temp_directory_path() /
       ("iggy3d_product_gameplay_tape_" +
        iggy3d::smoke::uniqueCaseToken("package"));
+  const std::filesystem::path wallRoot =
+      std::filesystem::temp_directory_path() /
+      ("iggy3d_product_gameplay_tape_" +
+       iggy3d::smoke::uniqueCaseToken("wall_package"));
   const std::filesystem::path saveRoot =
       iggy3d::smoke::cleanSaveRoot("gameplay_tape");
+  const std::filesystem::path wallSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("gameplay_tape_wall_collision");
 
   std::filesystem::path packagePath;
   std::filesystem::path tapePath;
+  std::filesystem::path wallPackagePath;
+  std::filesystem::path wallTapePath;
   const bool packageGenerated =
-      makeGeneratedAsciiPackage(root, packagePath, tapePath);
+      makeGeneratedAsciiPackage(root,
+                                "#######\n"
+                                "#PKs$E#\n"
+                                "#######\n",
+                                gameplayTapeText(),
+                                packagePath,
+                                tapePath);
+  const bool wallPackageGenerated =
+      makeGeneratedAsciiPackage(wallRoot,
+                                "#####\n"
+                                "#P#K#\n"
+                                "#####\n",
+                                wallCollisionTapeText(),
+                                wallPackagePath,
+                                wallTapePath);
 
   int exitCode = 77;
   iggy3d::smoke::ReceiptFields fields;
@@ -164,6 +189,21 @@ int main() {
           fields,
           exitCode);
 
+  int wallExitCode = 77;
+  iggy3d::smoke::ReceiptFields wallFields;
+  const bool wallReceiptValid =
+      appAvailable && wallPackageGenerated &&
+      iggy3d::smoke::runProductReceiptCase(
+          binary,
+          "product_gameplay_tape_wall_collision",
+          std::string{"--package "} +
+              iggy3d::smoke::shellQuote(wallPackagePath) +
+              " --auto-new-world --gameplay-tape " +
+              iggy3d::smoke::shellQuote(wallTapePath) + " " +
+              iggy3d::smoke::saveRootArg(wallSaveRoot),
+          wallFields,
+          wallExitCode);
+
   const bool passed =
       exitCode == 0 && receiptValid && iggy3d::smoke::productReceipt(fields) &&
       iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
@@ -176,6 +216,33 @@ int main() {
       iggy3d::smoke::hasField(fields,
                               "selected_scenario_id",
                               "ascii_gameplay_loop.runtime_loop") &&
+      iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
+      iggy3d::smoke::hasField(fields, "active_room_source", "package_room") &&
+      iggy3d::smoke::hasField(fields, "active_room_id", "ascii_gameplay_loop") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_spatial_surface_count",
+                              "38") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_walkable_surface_count",
+                              "5") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_actor_blocker_count",
+                              "17") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_ready",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_query_surface_count",
+                              "37") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_runtime_owned_surface_count",
+                              "1") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_runtime_filtered_surface_count",
+                              "1") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_active_door_blocker_count",
+                              "0") &&
       iggy3d::smoke::hasField(fields, "gameplay_tape_requested", "true") &&
       iggy3d::smoke::hasField(fields, "gameplay_tape_loaded", "true") &&
       iggy3d::smoke::hasField(fields,
@@ -212,14 +279,66 @@ int main() {
       iggy3d::smoke::hasField(fields, "gameplay_tape_loop_complete", "true") &&
       iggy3d::smoke::hasField(fields, "session_outcome", "Victory");
 
+  const bool wallPassed =
+      wallExitCode == 0 && wallReceiptValid &&
+      iggy3d::smoke::productReceipt(wallFields) &&
+      iggy3d::smoke::hasField(wallFields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(wallFields, "window_created", "false") &&
+      iggy3d::smoke::hasField(wallFields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(wallFields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(wallFields, "active_room_loaded", "true") &&
+      iggy3d::smoke::hasField(wallFields, "active_room_source", "package_room") &&
+      iggy3d::smoke::hasField(wallFields,
+                              "active_room_collision_ready",
+                              "true") &&
+      iggy3d::smoke::hasField(wallFields,
+                              "active_room_collision_query_surface_count",
+                              "28") &&
+      iggy3d::smoke::hasField(wallFields,
+                              "active_room_collision_active_door_blocker_count",
+                              "0") &&
+      iggy3d::smoke::hasField(wallFields,
+                              "gameplay_tape_status",
+                              "gameplay_tape_completed") &&
+      iggy3d::smoke::hasField(wallFields,
+                              "gameplay_tape_step_count",
+                              "1") &&
+      iggy3d::smoke::hasField(wallFields,
+                              "gameplay_tape_executed_step_count",
+                              "0") &&
+      iggy3d::smoke::hasField(wallFields,
+                              "gameplay_tape_expected_blocked_step_count",
+                              "1") &&
+      iggy3d::smoke::hasField(wallFields,
+                              "gameplay_tape_last_action",
+                              "move") &&
+      iggy3d::smoke::hasField(wallFields,
+                              "gameplay_tape_last_target",
+                              "marker_key_r1_c3") &&
+      iggy3d::smoke::hasField(wallFields,
+                              "gameplay_tape_last_movement_block",
+                              "blocked_by_collision") &&
+      iggy3d::smoke::hasField(wallFields,
+                              "gameplay_tape_failed_step",
+                              "none") &&
+      iggy3d::smoke::hasField(wallFields,
+                              "gameplay_tape_loop_complete",
+                              "false") &&
+      iggy3d::smoke::hasField(wallFields,
+                              "session_outcome",
+                              "None");
+
   const bool ok = expect(appAvailable, "app binary exists") &&
                   expect(packageGenerated, "generated ascii package") &&
+                  expect(wallPackageGenerated, "generated wall ascii package") &&
                   expect(receiptValid, "receipt valid") &&
-                  expect(passed, "product gameplay tape pass");
-
+                  expect(passed, "product gameplay tape pass") &&
+                  expect(wallReceiptValid, "wall receipt valid") &&
+                  expect(wallPassed, "product package wall collision pass");
   std::cout << "smoke=product_gameplay_tape\n";
   std::cout << "package_generated=" << (packageGenerated ? "true" : "false") << "\n";
   std::cout << "receipt_valid=" << (receiptValid ? "true" : "false") << "\n";
+  std::cout << "wall_receipt_valid=" << (wallReceiptValid ? "true" : "false") << "\n";
   std::cout << "window_launch_count=0\n";
   std::cout << "result=" << (ok ? "pass" : (appAvailable ? "fail" : "skip")) << "\n";
   std::cout << "reason_code="

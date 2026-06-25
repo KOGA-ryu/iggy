@@ -4,6 +4,8 @@
 #include <string_view>
 #include <utility>
 
+#include "app/iggy3d/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/ProductActiveRoomState.hpp"
 #include "runtime/inventory/InventorySystem.hpp"
 #include "runtime/objective/ObjectiveSystem.hpp"
 #include "runtime/session/Session.hpp"
@@ -95,13 +97,36 @@ void fillLoopFacts(const Session& session, ProductGameplayTapeRunResult& result)
   result.runtimeStateHash = session.stateHash();
 }
 
+const SpatialSurfaceSet* currentCollisionSurfaces(
+    const ProductGameplayTapeRunRequest& request) {
+  if (request.activeRoomCollision != nullptr) {
+    const SpatialSurfaceSet* activeSurfaces =
+        productActiveRoomCollisionSurfaces(*request.activeRoomCollision);
+    if (activeSurfaces != nullptr) {
+      return activeSurfaces;
+    }
+  }
+  return request.collisionSurfaces;
+}
+
+void refreshActiveRoomCollision(const ProductGameplayTapeRunRequest& request) {
+  if (request.session == nullptr || request.activeRoom == nullptr ||
+      request.activeRoomCollision == nullptr || !request.activeRoom->loaded) {
+    return;
+  }
+  *request.activeRoomCollision =
+      buildProductActiveRoomCollision(*request.activeRoom, request.session->state());
+}
+
 ProductGameplayTapeRunResult fail(ProductGameplayTapeRunResult result,
                                   const Session* session,
                                   std::string status,
                                   std::uint64_t stepIndex,
                                   const ProductGameplayTapeStep* step,
                                   CommandRejectionReason rejection =
-                                      CommandRejectionReason::None) {
+                                      CommandRejectionReason::None,
+                                  MovementBlockedReason movementBlock =
+                                      MovementBlockedReason::None) {
   result.ok = false;
   result.status = std::move(status);
   result.reasonCode = result.status;
@@ -115,10 +140,19 @@ ProductGameplayTapeRunResult fail(ProductGameplayTapeRunResult result,
                                                        : step->targetStableName;
   result.failedRejection =
       std::string(productGameplayTapeRejectionName(rejection));
+  result.failedMovementBlock =
+      std::string(productGameplayTapeMovementBlockName(movementBlock));
   if (session != nullptr) {
     fillLoopFacts(*session, result);
   }
   return result;
+}
+
+MovementBlockedReason lastMovementBlock(const Session& session) {
+  if (!session.state().transient.lastMovementResultAvailable) {
+    return MovementBlockedReason::None;
+  }
+  return session.state().transient.lastMovementResult.blocked;
 }
 
 }  // namespace
@@ -206,7 +240,7 @@ ProductGameplayTapeRunResult runProductGameplayTape(
                   submitted.command.rejection);
     }
 
-    const StatusResult tick = request.session->tick(request.collisionSurfaces);
+    const StatusResult tick = request.session->tick(currentCollisionSurfaces(request));
     if (tick.status != ResultStatus::Ok) {
       return fail(std::move(result),
                   request.session,
@@ -214,6 +248,34 @@ ProductGameplayTapeRunResult runProductGameplayTape(
                                           : tick.error.code,
                   stepIndex,
                   &step);
+    }
+    refreshActiveRoomCollision(request);
+    if (step.action == ProductGameplayTapeAction::Move) {
+      const MovementBlockedReason movementBlock = lastMovementBlock(*request.session);
+      result.lastMovementBlock =
+          std::string(productGameplayTapeMovementBlockName(movementBlock));
+      if (step.expectMovementBlock) {
+        if (movementBlock == step.expectedMovementBlock) {
+          ++result.expectedBlockedStepCount;
+          continue;
+        }
+        return fail(std::move(result),
+                    request.session,
+                    "gameplay_tape_expected_movement_block_mismatch",
+                    stepIndex,
+                    &step,
+                    CommandRejectionReason::None,
+                    movementBlock);
+      }
+      if (movementBlock != MovementBlockedReason::None) {
+        return fail(std::move(result),
+                    request.session,
+                    "gameplay_tape_movement_blocked",
+                    stepIndex,
+                    &step,
+                    CommandRejectionReason::None,
+                    movementBlock);
+      }
     }
     ++result.executedStepCount;
   }
@@ -227,6 +289,7 @@ ProductGameplayTapeRunResult runProductGameplayTape(
   result.failedAction = "none";
   result.failedTarget = "none";
   result.failedRejection = "none";
+  result.failedMovementBlock = "none";
   return result;
 }
 
