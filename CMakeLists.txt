@@ -95,6 +95,7 @@ target_sources(iggy3d
     src/runtime/world/WorldState.cpp
     src/runtime/clock/Clock.cpp
     src/runtime/camera/CameraModePolicy.cpp
+    src/runtime/ai/NpcBehaviorSystem.cpp
     src/runtime/combat/CombatSystem.cpp
     src/runtime/collision/SpatialSurfaceSet.cpp
     src/runtime/collision/CollisionQuery.cpp

@@ -203,6 +203,10 @@ set_tests_properties(gamepad_system_controls_tests PROPERTIES
 iggy3d_add_unit_test(command_admission_tests tests/unit/command_admission_tests.cpp)
 set_tests_properties(command_admission_tests PROPERTIES LABELS "unit;runtime;command;iggy3d")
 
+iggy3d_add_unit_test(npc_behavior_system_tests tests/unit/npc_behavior_system_tests.cpp)
+set_tests_properties(npc_behavior_system_tests PROPERTIES
+  LABELS "unit;runtime;ai;npc_behavior;iggy3d")
+
 iggy3d_add_unit_test(combat_system_tests tests/unit/combat_system_tests.cpp)
 set_tests_properties(combat_system_tests PROPERTIES LABELS "unit;runtime;combat;iggy3d")
 
