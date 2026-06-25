@@ -1,5 +1,6 @@
 #include "content/FixtureScenarioLoader.hpp"
 
+#include "runtime/ai/NpcBehaviorProfile.hpp"
 #include <algorithm>
 #include <cerrno>
 #include <charconv>
@@ -19,6 +20,7 @@ enum class Table {
   Player,
   Entity,
   Objective,
+  AiActor,
 };
 
 struct Line {
@@ -66,6 +68,12 @@ struct ObjectiveFlags {
   std::uint32_t startLine = 0;
 };
 
+struct AiActorFlags {
+  bool actor = false;
+  bool behaviorProfileId = false;
+  std::uint32_t startLine = 0;
+};
+
 struct Parser {
   ScenarioLoadResult result;
   Table table = Table::None;
@@ -80,6 +88,7 @@ struct Parser {
   std::vector<PlayerFlags> playerFlags;
   std::vector<EntityFlags> entityFlags;
   std::vector<ObjectiveFlags> objectiveFlags;
+  std::vector<AiActorFlags> aiActorFlags;
 };
 
 std::string_view trim(std::string_view value) {
@@ -393,6 +402,12 @@ ScenarioLoadResult validateRequired(Parser& parser) {
                   "missing objective key", flags.startLine, 1);
     }
   }
+  for (const AiActorFlags& flags : parser.aiActorFlags) {
+    if (!flags.actor || !flags.behaviorProfileId) {
+      return fail(parser, ScenarioLoadStatus::MissingRequiredKey, "scenario.missing_required_key",
+                  "missing ai actor key", flags.startLine, 1);
+    }
+  }
   return parser.result;
 }
 
@@ -433,6 +448,12 @@ ScenarioLoadResult parseScenarioText(const std::string& scenarioText) {
       parser.table = Table::Objective;
       parser.result.seed.objectives.push_back({});
       parser.objectiveFlags.push_back(ObjectiveFlags{.startLine = lineNumber});
+      continue;
+    }
+    if (line == "[[ai_actors]]") {
+      parser.table = Table::AiActor;
+      parser.result.seed.aiActors.push_back({});
+      parser.aiActorFlags.push_back(AiActorFlags{.startLine = lineNumber});
       continue;
     }
     if (line.starts_with("[")) {
@@ -632,6 +653,29 @@ ScenarioLoadResult parseScenarioText(const std::string& scenarioText) {
                                       : ScenarioLoadStatus::InvalidEnum,
                     numberKey ? "scenario.invalid_number" : "scenario.invalid_enum",
                     "invalid objective value", lineNumber, column);
+      }
+    } else if (parser.table == Table::AiActor && !parser.result.seed.aiActors.empty()) {
+      ScenarioAiActorSeed& aiActor = parser.result.seed.aiActors.back();
+      AiActorFlags& flags = parser.aiActorFlags.back();
+      if (key == "actor") {
+        flags.actor = parseString(value, aiActor.actorStableName);
+        if (!flags.actor) {
+          return fail(parser, ScenarioLoadStatus::ParseError, "scenario.parse_error",
+                      "invalid ai actor stable name", lineNumber, column);
+        }
+      } else if (key == "behavior_profile_id") {
+        flags.behaviorProfileId = parseString(value, aiActor.behaviorProfileId);
+        if (!flags.behaviorProfileId) {
+          return fail(parser, ScenarioLoadStatus::ParseError, "scenario.parse_error",
+                      "invalid ai actor profile id", lineNumber, column);
+        }
+        if (!isValidNpcBehaviorProfileId(aiActor.behaviorProfileId)) {
+          return fail(parser, ScenarioLoadStatus::InvalidEnum, "scenario.invalid_enum",
+                      "invalid ai actor profile id", lineNumber, column);
+        }
+      } else {
+        return fail(parser, ScenarioLoadStatus::UnsupportedKey, "scenario.unsupported_key",
+                    "unsupported ai actor key", lineNumber, column);
       }
     } else {
       return fail(parser, ScenarioLoadStatus::ParseError, "scenario.parse_error",

@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "core/math/Aabb3.hpp"
 #include "core/math/Transform3.hpp"
@@ -228,6 +229,21 @@ ProductPackageSessionSeedResult assignmentFailure(const PackageLoadResult& packa
   return fail("product_package_seed_npc_profile_assignment_invalid", package);
 }
 
+ProductNpcProfileAssignmentTable assignmentTableFromAiActors(
+    const std::vector<ScenarioAiActorSeed>& aiActors) {
+  ProductNpcProfileAssignmentTable table;
+  table.assignments.reserve(aiActors.size());
+  for (const ScenarioAiActorSeed& aiActor : aiActors) {
+    table.assignments.push_back({aiActor.actorStableName, aiActor.behaviorProfileId});
+  }
+  return table;
+}
+
+bool validateScenarioAiActors(const std::vector<ScenarioAiActorSeed>& aiActors) {
+  const ProductNpcProfileAssignmentTable table = assignmentTableFromAiActors(aiActors);
+  return validateProductNpcProfileAssignments(table).ok;
+}
+
 bool assignNpcBehaviorProfiles(FixtureScenarioSeed& seed,
                                const ProductNpcProfileAssignmentTable* assignments) {
   seed.aiActors.clear();
@@ -270,8 +286,12 @@ ProductPackageSessionSeedResult buildProductPackageSessionSeed(
   result.seed = package.scenario;
 
   if (!package.scenario.entities.empty()) {
-    if (npcProfileAssignments != nullptr &&
-        !assignNpcBehaviorProfiles(result.seed, npcProfileAssignments)) {
+    if (npcProfileAssignments != nullptr) {
+      if (!assignNpcBehaviorProfiles(result.seed, npcProfileAssignments)) {
+        return assignmentFailure(package);
+      }
+    } else if (!result.seed.aiActors.empty() &&
+               !validateScenarioAiActors(result.seed.aiActors)) {
       return assignmentFailure(package);
     }
     result.ok = true;
@@ -301,9 +321,17 @@ ProductPackageSessionSeedResult buildProductPackageSessionSeed(
     return fail("product_package_seed_missing_spawn_anchor", package);
   }
 
+  const ProductNpcProfileAssignmentTable authoredAssignments =
+      assignmentTableFromAiActors(package.scenario.aiActors);
+  const ProductNpcProfileAssignmentTable* resolvedAssignments = npcProfileAssignments;
+  if (resolvedAssignments == nullptr && !authoredAssignments.assignments.empty()) {
+    resolvedAssignments = &authoredAssignments;
+  }
+
   result.seed.players.clear();
   result.seed.entities.clear();
   result.seed.objectives.clear();
+  result.seed.aiActors.clear();
   result.seed.players.push_back({0, PlayerSlotKind::Local, "player"});
   result.seed.entities.push_back(playerFromAnchor(*spawn));
 
@@ -336,7 +364,7 @@ ProductPackageSessionSeedResult buildProductPackageSessionSeed(
     }
   }
 
-  if (!assignNpcBehaviorProfiles(result.seed, npcProfileAssignments)) {
+  if (!assignNpcBehaviorProfiles(result.seed, resolvedAssignments)) {
     return assignmentFailure(package);
   }
 

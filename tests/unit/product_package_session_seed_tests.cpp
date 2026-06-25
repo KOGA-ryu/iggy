@@ -44,6 +44,16 @@ const iggy3d::ScenarioAiActorSeed* findAiActorSeed(
   return nullptr;
 }
 
+const iggy3d::AiActorState* findAiActorState(const iggy3d::AiState& ai,
+                                             iggy3d::EntityId actor) {
+  for (const iggy3d::AiActorState& actorState : ai.actors) {
+    if (actorState.actor == actor) {
+      return &actorState;
+    }
+  }
+  return nullptr;
+}
+
 const iggy3d::RoomAnchorAsset* findAnchor(const iggy3d::RoomAsset& room,
                                           std::string_view id) {
   for (const iggy3d::RoomAnchorAsset& anchor : room.anchors) {
@@ -362,6 +372,88 @@ bool glyphLikeNpcProfileAssignmentHasNoAsciiMeaning() {
                 "glyph-like assignment does not match npc stable name");
 }
 
+bool scenarioAiActorsApplyToSynthesizedRoomNpc() {
+  iggy3d::PackageLoadResult package =
+      loadPackageFixture("fixtures/demos/ascii_training_room/package.iggy3d.toml");
+  package.scenario.aiActors.push_back({"marker_npc_spawn_r1_c4", "passive"});
+
+  const iggy3d::ProductPackageSessionSeedResult result =
+      iggy3d::buildProductPackageSessionSeed(package);
+  const iggy3d::ScenarioAiActorSeed* npcAiSeed =
+      findAiActorSeed(result.seed, "marker_npc_spawn_r1_c4");
+
+  return expect(result.ok, "scenario ai synthesized seed ok") &&
+         expect(result.seed.aiActors.size() == 1U,
+                "scenario ai synthesized seed count") &&
+         expect(npcAiSeed != nullptr && npcAiSeed->behaviorProfileId == "passive",
+                "scenario ai synthesized passive profile");
+}
+
+bool scenarioAiActorGlyphLikeNameDoesNotMatchSynthesizedNpc() {
+  iggy3d::PackageLoadResult package =
+      loadPackageFixture("fixtures/demos/ascii_training_room/package.iggy3d.toml");
+  package.scenario.aiActors.push_back({"N", "passive"});
+
+  const iggy3d::ProductPackageSessionSeedResult result =
+      iggy3d::buildProductPackageSessionSeed(package);
+  const iggy3d::ScenarioAiActorSeed* npcAiSeed =
+      findAiActorSeed(result.seed, "marker_npc_spawn_r1_c4");
+
+  return expect(result.ok, "scenario glyph-like seed ok") &&
+         expect(npcAiSeed != nullptr && npcAiSeed->behaviorProfileId == "default",
+                "scenario glyph-like name has no ascii meaning");
+}
+
+bool explicitNpcAssignmentOverridesScenarioAiActors() {
+  iggy3d::PackageLoadResult package =
+      loadPackageFixture("fixtures/demos/ascii_training_room/package.iggy3d.toml");
+  package.scenario.aiActors.push_back({"marker_npc_spawn_r1_c4", "passive"});
+  iggy3d::ProductNpcProfileAssignmentTable explicitAssignments;
+  explicitAssignments.assignments.push_back({"marker_npc_spawn_r1_c4", "ghost_profile"});
+
+  const iggy3d::ProductPackageSessionSeedResult result =
+      iggy3d::buildProductPackageSessionSeed(package, &explicitAssignments);
+  const iggy3d::ScenarioAiActorSeed* npcAiSeed =
+      findAiActorSeed(result.seed, "marker_npc_spawn_r1_c4");
+
+  return expect(result.ok, "explicit override seed ok") &&
+         expect(npcAiSeed != nullptr && npcAiSeed->behaviorProfileId == "ghost_profile",
+                "explicit assignment overrides scenario metadata");
+}
+
+bool authoredScenarioAiActorsPreserveAndMapThroughSessionCreate() {
+  iggy3d::PackageLoadResult package =
+      loadPackageFixture("fixtures/demos/first_room/package.iggy3d.toml");
+  package.scenario.aiActors.push_back({"training_dummy", "passive"});
+
+  const iggy3d::ProductPackageSessionSeedResult result =
+      iggy3d::buildProductPackageSessionSeed(package);
+  iggy3d::SessionCreateRequest create;
+  create.packageId = package.manifest.packageId;
+  create.seed = result.seed;
+  create.config = result.seed.config;
+  const iggy3d::Result<iggy3d::Session> session = iggy3d::Session::create(create);
+  const iggy3d::EntityState* npc =
+      session.status == iggy3d::ResultStatus::Ok
+          ? session.value.state().world.findByStableName("training_dummy")
+          : nullptr;
+  const iggy3d::AiActorState* aiActor =
+      npc == nullptr ? nullptr : findAiActorState(session.value.state().ai, npc->id);
+
+  return expect(result.ok, "authored ai seed ok") &&
+         expect(!result.synthesizedFromRoomAnchors, "authored scenario not synthesized") &&
+         expect(result.seed.aiActors.size() == 1U,
+                "authored scenario ai actor preserved") &&
+         expect(result.seed.aiActors[0].actorStableName == "training_dummy" &&
+                    result.seed.aiActors[0].behaviorProfileId == "passive",
+                "authored scenario ai actor values") &&
+         expect(session.status == iggy3d::ResultStatus::Ok,
+                "authored ai session create ok") &&
+         expect(npc != nullptr, "authored ai npc resolved") &&
+         expect(aiActor != nullptr && aiActor->behaviorProfileId == "passive",
+                "authored ai session profile mapped");
+}
+
 }  // namespace
 
 int main() {
@@ -372,6 +464,10 @@ int main() {
                   npcProfileAssignmentAppliesToSynthesizedNpcStableName() &&
                   validUnknownNpcProfileAssignmentIsPreserved() &&
                   invalidNpcProfileAssignmentRejectsSeedConstruction() &&
-                  glyphLikeNpcProfileAssignmentHasNoAsciiMeaning();
+                  glyphLikeNpcProfileAssignmentHasNoAsciiMeaning() &&
+                  scenarioAiActorsApplyToSynthesizedRoomNpc() &&
+                  scenarioAiActorGlyphLikeNameDoesNotMatchSynthesizedNpc() &&
+                  explicitNpcAssignmentOverridesScenarioAiActors() &&
+                  authoredScenarioAiActorsPreserveAndMapThroughSessionCreate();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

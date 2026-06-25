@@ -110,6 +110,16 @@ complete_status = "Complete"
 )";
 }
 
+std::string scenarioWithAiActor(std::string_view actor, std::string_view profileId) {
+  std::string scenario = validScenario();
+  scenario += "\n[[ai_actors]]\nactor = \"";
+  scenario += actor;
+  scenario += "\"\nbehavior_profile_id = \"";
+  scenario += profileId;
+  scenario += "\"\n";
+  return scenario;
+}
+
 std::string replaceFirst(std::string text, std::string_view from, std::string_view to) {
   const std::size_t pos = text.find(from);
   if (pos != std::string::npos) {
@@ -192,6 +202,65 @@ bool scenarioSeedContainsEntities() {
          expect(dummy.combatantEnabled && dummy.combatant.factionId == 2U &&
                     dummy.combatant.hitPoints == 3 && dummy.combatant.maxHitPoints == 3,
                 "dummy combatant");
+}
+
+bool scenarioSeedContainsAiActors() {
+  const iggy3d::PackageLoadResult passive = iggy3d::parsePackageText(
+      validPackage(), scenarioWithAiActor("training_dummy", "passive"),
+      "fixtures/demos/first_room");
+  const iggy3d::PackageLoadResult unknown = iggy3d::parsePackageText(
+      validPackage(), scenarioWithAiActor("training_dummy", "ghost_profile"),
+      "fixtures/demos/first_room");
+
+  return expect(passive.status == iggy3d::PackageLoadStatus::Ok,
+                "passive ai actor parses") &&
+         expect(passive.scenario.aiActors.size() == 1U,
+                "passive ai actor count") &&
+         expect(passive.scenario.aiActors[0].actorStableName == "training_dummy",
+                "passive ai actor stable name") &&
+         expect(passive.scenario.aiActors[0].behaviorProfileId == "passive",
+                "passive ai actor profile") &&
+         expect(unknown.status == iggy3d::PackageLoadStatus::Ok,
+                "unknown ai actor parses") &&
+         expect(unknown.scenario.aiActors.size() == 1U,
+                "unknown ai actor count") &&
+         expect(unknown.scenario.aiActors[0].behaviorProfileId == "ghost_profile",
+                "unknown ai actor profile preserved");
+}
+
+bool scenarioAiActorRejectsInvalidInputs() {
+  std::string missingActor = validScenario();
+  missingActor += "\n[[ai_actors]]\nbehavior_profile_id = \"passive\"\n";
+  std::string missingProfile = validScenario();
+  missingProfile += "\n[[ai_actors]]\nactor = \"training_dummy\"\n";
+  std::string invalidProfile = scenarioWithAiActor("training_dummy", "Bad-Id");
+  std::string unsupported = scenarioWithAiActor("training_dummy", "passive");
+  unsupported += "extra = \"ignored\"\n";
+
+  iggy3d::PackageLoadResult result =
+      iggy3d::parsePackageText(validPackage(), missingActor, "fixtures/demos/first_room");
+  bool ok = expect(result.status == iggy3d::PackageLoadStatus::MissingRequiredKey,
+                   "missing ai actor actor rejects");
+  result = iggy3d::parsePackageText(validPackage(), missingProfile,
+                                    "fixtures/demos/first_room");
+  ok = ok && expect(result.status == iggy3d::PackageLoadStatus::MissingRequiredKey,
+                    "missing ai actor profile rejects");
+  result = iggy3d::parsePackageText(validPackage(), invalidProfile,
+                                    "fixtures/demos/first_room");
+  ok = ok && expect(result.status == iggy3d::PackageLoadStatus::InvalidEnum,
+                    "invalid ai actor profile rejects");
+  result = iggy3d::parsePackageText(validPackage(), unsupported,
+                                    "fixtures/demos/first_room");
+  ok = ok && expect(result.status == iggy3d::PackageLoadStatus::UnsupportedKey,
+                    "unsupported ai actor key rejects");
+  result = iggy3d::parsePackageText(
+      validPackage(),
+      replaceFirst(scenarioWithAiActor("training_dummy", "passive"),
+                   "actor = \"training_dummy\"", "actor = training_dummy"),
+      "fixtures/demos/first_room");
+  ok = ok && expect(result.status == iggy3d::PackageLoadStatus::ParseError,
+                    "invalid ai actor string rejects");
+  return ok;
 }
 
 bool validatorAcceptsAndRejects() {
@@ -339,7 +408,8 @@ bool loadPackageSmoke() {
 
 int main() {
   const bool ok = parseValidPackageAndScenarioText() && scenarioSeedContainsDefaults() &&
-                  scenarioSeedContainsEntities() && validatorAcceptsAndRejects() &&
+                  scenarioSeedContainsEntities() && scenarioSeedContainsAiActors() &&
+                  scenarioAiActorRejectsInvalidInputs() && validatorAcceptsAndRejects() &&
                   loaderRejectsInvalidInputs() && loadPackageSmoke();
   return ok ? 0 : 1;
 }
