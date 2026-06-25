@@ -14,6 +14,7 @@
 #include "app/iggy3d/ProductAppOperations.hpp"
 #include "app/iggy3d/ProductCameraController.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
+#include "app/iggy3d/ProductAsciiRoomActivation.hpp"
 #include "app/iggy3d/ProductAsciiRoomPreview.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
@@ -1002,6 +1003,29 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                           productInputOwnerFor(frontend, window),
                           previewBuilt ? "applied" : "failed");
     return previewBuilt;
+  }
+
+  if (key == "ascii_room.activate" || key == "frontend.ascii_room_activate") {
+    if (!parseAutomationBool(value, boolValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    if (!boolValue) {
+      markAutomationApplied(window, command, "ascii_room.activate",
+                            productInputOwnerFor(frontend, window), "ignored");
+      return true;
+    }
+
+    const ProductAsciiRoomActivationResult activated =
+        activateProductAsciiRoomPreview(activeSession, window);
+    if (activated.ok) {
+      enterProductGameplayTransition(frontend, window,
+                                     FrontendAction::CreateAndEnter);
+    }
+    markAutomationApplied(window, command, "ascii_room.activate",
+                          productInputOwnerFor(frontend, window),
+                          activated.ok ? "applied" : "failed");
+    return activated.ok;
   }
 
   if (key == "save.select" || key == "frontend.save_select") {

@@ -133,6 +133,32 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.asciiRoomPreviewAssetTextWritten);
   appendReceiptField(receipt, "ascii_room_preview_asset_text_bytes",
                      window.asciiRoomPreviewAssetTextBytes);
+  appendReceiptField(receipt, "ascii_room_activation_status",
+                     window.asciiRoomActivationStatus);
+  appendReceiptField(receipt, "ascii_room_activation_reason_code",
+                     window.asciiRoomActivationReasonCode);
+  appendReceiptField(receipt, "ascii_room_activation_room_id",
+                     window.asciiRoomActivationRoomId);
+  appendReceiptField(receipt, "ascii_room_activation_package_id",
+                     window.asciiRoomActivationPackageId);
+  appendReceiptField(receipt, "ascii_room_activation_scenario_id",
+                     window.asciiRoomActivationScenarioId);
+  appendReceiptField(receipt, "ascii_room_activation_session_created",
+                     window.asciiRoomActivationSessionCreated);
+  appendReceiptField(receipt, "ascii_room_activation_player_spawned",
+                     window.asciiRoomActivationPlayerSpawned);
+  appendReceiptField(receipt, "ascii_room_activation_player_count",
+                     window.asciiRoomActivationPlayerCount);
+  appendReceiptField(receipt, "ascii_room_activation_entity_count",
+                     window.asciiRoomActivationEntityCount);
+  appendReceiptField(receipt, "ascii_room_activation_objective_count",
+                     window.asciiRoomActivationObjectiveCount);
+  appendReceiptField(receipt, "ascii_room_activation_wall_count",
+                     window.asciiRoomActivationWallCount);
+  appendReceiptField(receipt, "ascii_room_activation_marker_count",
+                     window.asciiRoomActivationMarkerCount);
+  appendReceiptField(receipt, "ascii_room_activation_runtime_hash",
+                     window.asciiRoomActivationRuntimeHash);
   appendReceiptField(receipt, "product_save_status", window.productSaveStatus);
   appendReceiptField(receipt, "product_save_reason_code",
                      window.productSaveReasonCode);

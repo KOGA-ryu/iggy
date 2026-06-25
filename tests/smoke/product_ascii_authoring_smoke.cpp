@@ -100,6 +100,85 @@ bool invalidAsciiPreview(const iggy3d::smoke::ReceiptFields& fields) {
          iggy3d::smoke::hasField(fields, "runtime_session_created", "false");
 }
 
+bool activatedAsciiRoom(const iggy3d::smoke::ReceiptFields& fields) {
+  return iggy3d::smoke::automationApplied(fields) &&
+         iggy3d::smoke::hasField(fields,
+                                 "automation_control_last_key",
+                                 "ascii_room.activate") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_status",
+                                 "product_ascii_room_ready") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_ready",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_status",
+                                 "ascii_room_activated") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_reason_code",
+                                 "ascii_room_activated") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_room_id",
+                                 "automation_activation_room") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_package_id",
+                                 "iggy3d.ascii_room_authoring") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_scenario_id",
+                                 "automation_activation_room.runtime_loop") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_session_created",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_player_spawned",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_player_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_entity_count",
+                                 "5") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_objective_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_wall_count",
+                                 "20") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_marker_count",
+                                 "5") &&
+         iggy3d::smoke::positiveIntegerField(
+             fields, "ascii_room_activation_runtime_hash") &&
+         iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+         iggy3d::smoke::hasField(fields, "runtime_session_created", "true") &&
+         iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+         iggy3d::smoke::hasField(fields, "scene_item_count", "5") &&
+         iggy3d::smoke::hasField(fields, "player_visible", "true") &&
+         iggy3d::smoke::hasField(fields, "room_visible", "true") &&
+         iggy3d::smoke::hasField(fields, "objective_visible", "true") &&
+         iggy3d::smoke::positiveIntegerField(fields, "runtime_state_hash");
+}
+
+bool invalidAsciiActivation(const iggy3d::smoke::ReceiptFields& fields) {
+  return iggy3d::smoke::automationCommandFailed(fields,
+                                                "ascii_room.activate") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_status",
+                                 "ascii_room_missing_player_spawn") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_reason_code",
+                                 "ascii_room_missing_player_spawn") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_session_created",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_player_spawned",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields, "frontend_screen", "starter") &&
+         iggy3d::smoke::hasField(fields, "gameplay_active", "false") &&
+         iggy3d::smoke::hasField(fields, "runtime_session_created", "false");
+}
+
 }  // namespace
 
 int main() {
@@ -136,6 +215,36 @@ int main() {
           invalidFields,
           invalidExitCode);
 
+  int activateExitCode = 77;
+  iggy3d::smoke::ReceiptFields activateFields;
+  const bool activateReceipt =
+      appAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_authoring_activate",
+          "ascii_room.room_id=automation_activation_room\n"
+          "ascii_room.source_name=automation/activation_room.iggyroom.txt\n"
+          "ascii_room.text=#######\\n#P..N.#\\n#.+.$.#\\n#..E..#\\n#######\\n\n"
+          "ascii_room.activate=true\n",
+          "",
+          activateFields,
+          activateExitCode);
+
+  int invalidActivateExitCode = 77;
+  iggy3d::smoke::ReceiptFields invalidActivateFields;
+  const bool invalidActivateReceipt =
+      appAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_authoring_invalid_activate",
+          "ascii_room.room_id=missing_spawn_activation_room\n"
+          "ascii_room.source_name=automation/missing_spawn_activation.iggyroom.txt\n"
+          "ascii_room.text=...\\n...\\n\n"
+          "ascii_room.activate=true\n",
+          "",
+          invalidActivateFields,
+          invalidActivateExitCode);
+
   const bool validPassed =
       validExitCode == 0 && validReceipt &&
       iggy3d::smoke::productReceipt(validFields) &&
@@ -144,17 +253,35 @@ int main() {
       invalidExitCode == 0 && invalidReceipt &&
       iggy3d::smoke::productReceipt(invalidFields) &&
       invalidAsciiPreview(invalidFields);
+  const bool activatePassed =
+      activateExitCode == 0 && activateReceipt &&
+      iggy3d::smoke::productReceipt(activateFields) &&
+      activatedAsciiRoom(activateFields);
+  const bool invalidActivatePassed =
+      invalidActivateExitCode == 0 && invalidActivateReceipt &&
+      iggy3d::smoke::productReceipt(invalidActivateFields) &&
+      invalidAsciiActivation(invalidActivateFields);
 
   const bool ok = expect(appAvailable, "app binary exists") &&
                   expect(validReceipt, "valid receipt parsed") &&
                   expect(validPassed, "valid ascii room preview") &&
                   expect(invalidReceipt, "invalid receipt parsed") &&
-                  expect(invalidPassed, "invalid ascii room rejected");
+                  expect(invalidPassed, "invalid ascii room rejected") &&
+                  expect(activateReceipt, "activation receipt parsed") &&
+                  expect(activatePassed, "valid ascii room activated") &&
+                  expect(invalidActivateReceipt,
+                         "invalid activation receipt parsed") &&
+                  expect(invalidActivatePassed,
+                         "invalid ascii activation rejected");
 
   std::cout << "smoke=product_ascii_authoring\n";
   std::cout << "valid_preview=" << (validPassed ? "true" : "false") << "\n";
   std::cout << "invalid_preview_rejected="
             << (invalidPassed ? "true" : "false") << "\n";
+  std::cout << "activated_gameplay=" << (activatePassed ? "true" : "false")
+            << "\n";
+  std::cout << "invalid_activation_rejected="
+            << (invalidActivatePassed ? "true" : "false") << "\n";
   std::cout << "window_launch_count=0\n";
   std::cout << "result="
             << (ok ? "pass" : (appAvailable ? "fail" : "skip")) << "\n";
