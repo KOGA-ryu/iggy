@@ -5,6 +5,7 @@
 #include "runtime/objective/ObjectiveSystem.hpp"
 
 #include <iostream>
+#include <string>
 #include <string_view>
 
 namespace {
@@ -65,6 +66,104 @@ iggy3d::ScenarioEntitySeed markerSeed() {
   return seed;
 }
 
+iggy3d::ScenarioEntitySeed loopKeySeed() {
+  iggy3d::ScenarioEntitySeed seed;
+  seed.stableName = "marker_key_r1_c1";
+  seed.kind = iggy3d::EntityKind::Pickup;
+  seed.transform = transformAt(1.0F, 0.0F, 0.0F);
+  seed.localBounds = iggy3d::makeAabb3({-0.1F, 0.0F, -0.1F}, {0.1F, 0.1F, 0.1F});
+  seed.active = true;
+  seed.persistent = true;
+  seed.targeting.targetable = true;
+  seed.targeting.actions = {iggy3d::TargetAction::Interact, iggy3d::TargetAction::Inspect};
+  seed.interaction.kind = iggy3d::InteractionKind::Pickup;
+  seed.interaction.primaryEffect = iggy3d::InteractionEffectKind::AddItemToInventory;
+  seed.interaction.itemId = "marker_key_r1_c1";
+  seed.interaction.itemCount = 1;
+  seed.interaction.objectiveId = "collect_marker_key_r1_c1";
+  seed.interaction.deactivateTargetOnSuccess = true;
+  return seed;
+}
+
+iggy3d::ScenarioEntitySeed loopSecretDoorSeed() {
+  iggy3d::ScenarioEntitySeed seed;
+  seed.stableName = "marker_secret_door_r1_c2";
+  seed.kind = iggy3d::EntityKind::Door;
+  seed.transform = transformAt(2.0F, 0.0F, 0.0F);
+  seed.localBounds = iggy3d::makeAabb3({-0.25F, 0.0F, -0.25F}, {0.25F, 1.8F, 0.25F});
+  seed.active = true;
+  seed.persistent = true;
+  seed.targeting.targetable = true;
+  seed.targeting.actions = {iggy3d::TargetAction::Interact, iggy3d::TargetAction::Inspect};
+  seed.interaction.kind = iggy3d::InteractionKind::OpenDoor;
+  seed.interaction.primaryEffect = iggy3d::InteractionEffectKind::EmitEventOnly;
+  seed.interaction.requiredItemId = "marker_key_r1_c1";
+  seed.interaction.requiredItemCount = 1;
+  seed.interaction.deactivateTargetOnSuccess = true;
+  return seed;
+}
+
+iggy3d::ScenarioEntitySeed loopTreasureSeed() {
+  iggy3d::ScenarioEntitySeed seed;
+  seed.stableName = "marker_treasure_r1_c3";
+  seed.kind = iggy3d::EntityKind::Pickup;
+  seed.transform = transformAt(3.0F, 0.0F, 0.0F);
+  seed.localBounds = iggy3d::makeAabb3({-0.1F, 0.0F, -0.1F}, {0.1F, 0.1F, 0.1F});
+  seed.active = true;
+  seed.persistent = true;
+  seed.targeting.targetable = true;
+  seed.targeting.actions = {iggy3d::TargetAction::Interact, iggy3d::TargetAction::Inspect};
+  seed.interaction.kind = iggy3d::InteractionKind::Pickup;
+  seed.interaction.primaryEffect = iggy3d::InteractionEffectKind::AddItemToInventory;
+  seed.interaction.itemId = "marker_treasure_r1_c3";
+  seed.interaction.itemCount = 1;
+  seed.interaction.objectiveId = "collect_marker_treasure_r1_c3";
+  seed.interaction.deactivateTargetOnSuccess = true;
+  return seed;
+}
+
+iggy3d::ScenarioEntitySeed loopExitSeed() {
+  iggy3d::ScenarioEntitySeed seed;
+  seed.stableName = "marker_exit_r1_c4";
+  seed.kind = iggy3d::EntityKind::Marker;
+  seed.transform = transformAt(4.0F, 0.0F, 0.0F);
+  seed.localBounds = iggy3d::makeAabb3({-0.1F, 0.0F, -0.1F}, {0.1F, 0.1F, 0.1F});
+  seed.active = true;
+  seed.persistent = true;
+  seed.targeting.targetable = true;
+  seed.targeting.actions = {iggy3d::TargetAction::Interact, iggy3d::TargetAction::Move,
+                            iggy3d::TargetAction::Inspect};
+  seed.interaction.kind = iggy3d::InteractionKind::ObjectiveTrigger;
+  seed.interaction.primaryEffect = iggy3d::InteractionEffectKind::CompleteObjective;
+  seed.interaction.objectiveId = "exit_marker_exit_r1_c4";
+  seed.interaction.requiredItemId = "marker_treasure_r1_c3";
+  seed.interaction.requiredItemCount = 1;
+  return seed;
+}
+
+iggy3d::ScenarioObjectiveSeed collectObjective(std::string_view id,
+                                               std::string_view itemId) {
+  iggy3d::ScenarioObjectiveSeed objective;
+  objective.id = std::string(id);
+  objective.initialStatus = iggy3d::ObjectiveStatusSeed::Active;
+  objective.condition = "InventoryContains";
+  objective.playerSlot = 0;
+  objective.itemId = std::string(itemId);
+  objective.itemCount = 1;
+  objective.completeStatus = iggy3d::ObjectiveStatusSeed::Complete;
+  return objective;
+}
+
+iggy3d::ScenarioObjectiveSeed exitObjective() {
+  iggy3d::ScenarioObjectiveSeed objective;
+  objective.id = "exit_marker_exit_r1_c4";
+  objective.initialStatus = iggy3d::ObjectiveStatusSeed::Active;
+  objective.condition = "None";
+  objective.playerSlot = 0;
+  objective.completeStatus = iggy3d::ObjectiveStatusSeed::Complete;
+  return objective;
+}
+
 iggy3d::FixtureScenarioSeed makeFirstRoomSeed() {
   iggy3d::FixtureScenarioSeed seed;
   seed.scenarioId = "first_room.runtime_loop";
@@ -86,10 +185,35 @@ iggy3d::FixtureScenarioSeed makeFirstRoomSeed() {
   return seed;
 }
 
+iggy3d::FixtureScenarioSeed makeExitLoopSeed() {
+  iggy3d::FixtureScenarioSeed seed;
+  seed.scenarioId = "ascii_exit_loop.runtime_loop";
+  seed.config = iggy3d::makeDefaultRuntimeConfig();
+  seed.initialClockMode = iggy3d::ClockMode::Normal;
+  seed.defaultRealtimeCamera = iggy3d::CameraMode::FirstPerson;
+  seed.defaultTacticalCamera = iggy3d::CameraMode::TacticalOverhead;
+  seed.players.push_back({0, iggy3d::PlayerSlotKind::Local, "player"});
+  seed.entities = {playerSeed(), loopKeySeed(), loopSecretDoorSeed(), loopTreasureSeed(),
+                   loopExitSeed()};
+  seed.objectives = {
+      collectObjective("collect_marker_key_r1_c1", "marker_key_r1_c1"),
+      collectObjective("collect_marker_treasure_r1_c3", "marker_treasure_r1_c3"),
+      exitObjective(),
+  };
+  return seed;
+}
+
 iggy3d::Session makeSession() {
   iggy3d::SessionCreateRequest request;
   request.config = iggy3d::makeDefaultRuntimeConfig();
   request.seed = makeFirstRoomSeed();
+  return iggy3d::Session::create(request).value;
+}
+
+iggy3d::Session makeExitLoopSession() {
+  iggy3d::SessionCreateRequest request;
+  request.config = iggy3d::makeDefaultRuntimeConfig();
+  request.seed = makeExitLoopSeed();
   return iggy3d::Session::create(request).value;
 }
 
@@ -104,6 +228,17 @@ iggy3d::CommandRecord submittedInteract() {
   return command;
 }
 
+iggy3d::CommandRecord submittedInteractTarget(iggy3d::EntityId target) {
+  iggy3d::CommandRecord command;
+  command.playerSlot = 0;
+  command.actor = {1};
+  command.kind = iggy3d::CommandKind::Interact;
+  command.source = iggy3d::CommandSource::LocalPlayer;
+  command.payload.target.hasEntity = true;
+  command.payload.target.entity = target;
+  return command;
+}
+
 iggy3d::CommandRecord submittedMove(iggy3d::Vec3 point) {
   iggy3d::CommandRecord command;
   command.playerSlot = 0;
@@ -112,6 +247,15 @@ iggy3d::CommandRecord submittedMove(iggy3d::Vec3 point) {
   command.source = iggy3d::CommandSource::LocalPlayer;
   command.payload.target.hasPoint = true;
   command.payload.target.point = point;
+  return command;
+}
+
+iggy3d::CommandRecord submittedWait() {
+  iggy3d::CommandRecord command;
+  command.playerSlot = 0;
+  command.actor = {1};
+  command.kind = iggy3d::CommandKind::Wait;
+  command.source = iggy3d::CommandSource::LocalPlayer;
   return command;
 }
 
@@ -167,17 +311,21 @@ iggy3d::SpatialSurfaceSet tickCollisionSurfaces() {
   return iggy3d::buildSpatialSurfaceSet(room);
 }
 
-std::uint32_t goldKeyCount(const iggy3d::InventoryState& inventory) {
+std::uint32_t itemCount(const iggy3d::InventoryState& inventory, std::string_view itemId) {
   const iggy3d::PlayerInventory* player = iggy3d::findInventory(inventory, 0);
   if (player == nullptr) {
     return 0;
   }
   for (const iggy3d::InventoryStack& stack : player->stacks) {
-    if (stack.itemId == "gold_key") {
+    if (stack.itemId == itemId) {
       return stack.count;
     }
   }
   return 0;
+}
+
+std::uint32_t goldKeyCount(const iggy3d::InventoryState& inventory) {
+  return itemCount(inventory, "gold_key");
 }
 
 bool tickMovesThenRetryPicksUpKeyExactlyOnce() {
@@ -222,6 +370,89 @@ bool tickMovesThenRetryPicksUpKeyExactlyOnce() {
   ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok, "idle tick ok") &&
        expect(goldKeyCount(session.state().inventory) == 1U, "idle no duplicate key") &&
        expect(session.state().transient.pendingExecutionSequences.empty(), "idle queue empty");
+  return ok;
+}
+
+bool exitObjectiveCompletionSetsVictoryAfterRequiredItems() {
+  iggy3d::Session session = makeExitLoopSession();
+
+  const iggy3d::SessionCommandResult pickupKey =
+      session.submitCommand(submittedInteractTarget({2}));
+  bool ok = expect(pickupKey.command.admission == iggy3d::CommandAdmissionStatus::Accepted,
+                   "key pickup accepted") &&
+            expect(session.tick().status == iggy3d::ResultStatus::Ok, "key tick ok") &&
+            expect(itemCount(session.state().inventory, "marker_key_r1_c1") == 1U,
+                   "key acquired") &&
+            expect(iggy3d::objectiveComplete(session.state().objectives,
+                                             "collect_marker_key_r1_c1"),
+                   "key objective complete") &&
+            expect(session.state().outcome == iggy3d::SessionOutcome::None,
+                   "key does not finish loop");
+
+  const iggy3d::SessionCommandResult moveToDoor =
+      session.submitCommand(submittedMove({1.0F, 0.0F, 0.0F}));
+  ok = ok && expect(moveToDoor.command.admission == iggy3d::CommandAdmissionStatus::Accepted,
+                    "move to door accepted") &&
+       expect(session.tick().status == iggy3d::ResultStatus::Ok, "move to door tick ok");
+
+  const iggy3d::SessionCommandResult openSecretDoor =
+      session.submitCommand(submittedInteractTarget({3}));
+  ok = ok && expect(openSecretDoor.command.admission == iggy3d::CommandAdmissionStatus::Accepted,
+                    "secret door accepted with key") &&
+       expect(session.tick().status == iggy3d::ResultStatus::Ok, "secret door tick ok") &&
+       expect(!session.state().world.findById({3})->active, "secret door inactive");
+
+  const iggy3d::SessionCommandResult moveToTreasure =
+      session.submitCommand(submittedMove({3.0F, 0.0F, 0.0F}));
+  ok = ok && expect(moveToTreasure.command.admission == iggy3d::CommandAdmissionStatus::Accepted,
+                    "move to treasure accepted") &&
+       expect(session.tick().status == iggy3d::ResultStatus::Ok, "move to treasure tick ok");
+
+  const iggy3d::SessionCommandResult rejectedExit =
+      session.submitCommand(submittedInteractTarget({5}));
+  ok = ok &&
+       expect(rejectedExit.command.admission == iggy3d::CommandAdmissionStatus::Rejected,
+              "exit rejected before treasure") &&
+       expect(rejectedExit.command.rejection == iggy3d::CommandRejectionReason::RequiredItemMissing,
+              "exit missing treasure reason") &&
+       expect(!iggy3d::objectiveComplete(session.state().objectives,
+                                         "exit_marker_exit_r1_c4"),
+              "exit objective still active") &&
+       expect(session.state().outcome == iggy3d::SessionOutcome::None,
+              "rejected exit no outcome");
+
+  const iggy3d::SessionCommandResult pickupTreasure =
+      session.submitCommand(submittedInteractTarget({4}));
+  ok = ok && expect(pickupTreasure.command.admission == iggy3d::CommandAdmissionStatus::Accepted,
+                    "treasure pickup accepted") &&
+       expect(session.tick().status == iggy3d::ResultStatus::Ok, "treasure tick ok") &&
+       expect(itemCount(session.state().inventory, "marker_treasure_r1_c3") == 1U,
+              "treasure acquired") &&
+       expect(iggy3d::objectiveComplete(session.state().objectives,
+                                        "collect_marker_treasure_r1_c3"),
+              "treasure objective complete") &&
+       expect(session.state().outcome == iggy3d::SessionOutcome::None,
+              "treasure alone does not finish loop");
+
+  const iggy3d::SessionCommandResult finishExit =
+      session.submitCommand(submittedInteractTarget({5}));
+  ok = ok && expect(finishExit.command.admission == iggy3d::CommandAdmissionStatus::Accepted,
+                    "exit accepted after treasure") &&
+       expect(session.tick().status == iggy3d::ResultStatus::Ok, "exit tick ok") &&
+       expect(iggy3d::objectiveComplete(session.state().objectives,
+                                        "exit_marker_exit_r1_c4"),
+              "exit objective complete") &&
+       expect(session.state().outcome == iggy3d::SessionOutcome::Victory,
+              "exit objective sets victory") &&
+       expect(session.state().lifecycle == iggy3d::SessionLifecycle::Playing,
+              "victory keeps lifecycle playing");
+
+  const iggy3d::SessionCommandResult wait = session.submitCommand(submittedWait());
+  ok = ok && expect(wait.command.admission == iggy3d::CommandAdmissionStatus::Accepted,
+                    "post victory wait accepted") &&
+       expect(session.tick().status == iggy3d::ResultStatus::Ok, "post victory wait tick ok") &&
+       expect(session.state().outcome == iggy3d::SessionOutcome::Victory,
+              "victory not downgraded");
   return ok;
 }
 
@@ -280,6 +511,7 @@ bool collisionBlockedMoveConsumesPendingCommandWithoutMutation() {
 
 int main() {
   const bool ok = tickMovesThenRetryPicksUpKeyExactlyOnce() &&
+                  exitObjectiveCompletionSetsVictoryAfterRequiredItems() &&
                   collisionBlockedMoveConsumesPendingCommandWithoutMutation();
   return ok ? 0 : 1;
 }

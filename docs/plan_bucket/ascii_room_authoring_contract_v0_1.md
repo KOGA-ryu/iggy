@@ -569,6 +569,7 @@ Current implemented runtime marker binding:
 - `s` doors require the first `K` item when one exists;
 - `E` becomes an objective-trigger marker with `CompleteObjective`;
 - `E` requires the first `$` treasure item when one exists;
+- completing an `E` exit objective sets runtime `SessionOutcome::Victory`;
 - required-item failures reject command admission before tick execution;
 - required-item facts are saved, loaded, hashed, and replay-visible.
 
@@ -581,6 +582,16 @@ Deferred entity behavior:
 
 The compile result should preserve enough tags for a later gameplay binding
 slice to turn markers into actual runtime entities.
+
+Current full-loop proof:
+
+- `product_ascii_gameplay_loop_smoke` runs no-window and no-AppShell;
+- source path is ASCII text to authored room to room asset to product package
+  session seed to runtime session;
+- proven loop is key pickup, secret door open, treasure pickup, exit objective,
+  and final `Victory`;
+- the smoke also proves the exit rejects with `required_item_missing` before
+  treasure is collected.
 
 ## Validation Rules
 

@@ -6,6 +6,8 @@
 #include "runtime/movement/MovementSystem.hpp"
 #include "runtime/objective/ObjectiveSystem.hpp"
 
+#include <string>
+
 namespace iggy3d {
 
 namespace {
@@ -187,6 +189,17 @@ bool tickActiveAbilityRuntime(SessionState& state,
 }
 
 bool applyObjectiveOutcome(SessionState& state, SessionTickResult& result) {
+  for (const ObjectiveRecord& objective : state.objectives.objectives) {
+    if (objective.status == ObjectiveStatus::Complete &&
+        objective.objectiveId.rfind("exit_", 0) == 0) {
+      if (state.outcome != SessionOutcome::Victory) {
+        state.outcome = SessionOutcome::Victory;
+        result.lifecycleChanged = true;
+        return true;
+      }
+      return false;
+    }
+  }
   if (objectiveComplete(state.objectives, "collect_gold_key") &&
       state.outcome != SessionOutcome::DemoComplete) {
     state.outcome = SessionOutcome::DemoComplete;
