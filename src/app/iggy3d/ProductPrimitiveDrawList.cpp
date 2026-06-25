@@ -2,8 +2,11 @@
 
 #include <algorithm>
 #include <limits>
+#include <string>
 #include <string_view>
+#include <vector>
 
+#include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneItem.hpp"
 #include "projection/scene/SceneProjection.hpp"
@@ -74,6 +77,7 @@ ProductPrimitiveColor colorForRoomKind(ProductPrimitiveDrawKind kind) {
     case ProductPrimitiveDrawKind::TacticalMarker:
     case ProductPrimitiveDrawKind::DebugMarker:
     case ProductPrimitiveDrawKind::PlayerFocusIndicator:
+    case ProductPrimitiveDrawKind::DoorMarker:
       break;
   }
   return {112, 118, 120};
@@ -106,6 +110,25 @@ ProductPrimitiveDrawItem itemFromWallMesh(const RoomStaticMeshAsset& mesh) {
   return item;
 }
 
+ProductPrimitiveDrawItem itemFromDoorMesh(const RoomStaticMeshAsset& mesh,
+                                          std::string_view ownerStableName,
+                                          bool open) {
+  ProductPrimitiveDrawItem item;
+  item.kind = ProductPrimitiveDrawKind::DoorMarker;
+  item.stableName = std::string(ownerStableName);
+  item.worldPosition = mesh.positionMeters;
+  item.worldBounds = aabbFromCenterExtents(mesh.positionMeters, mesh.sizeMeters * 0.5F);
+  item.visible = true;
+  item.targetable = !open;
+  item.interactable = !open;
+  item.doorOpen = open;
+  item.doorClosed = !open;
+  item.color = open ? ProductPrimitiveColor{126, 201, 176}
+                    : ProductPrimitiveColor{220, 178, 86};
+  item.markerSize = open ? 18.0F : 24.0F;
+  return item;
+}
+
 ProductPrimitiveDrawItem itemFromSceneItem(const SceneItem& item) {
   ProductPrimitiveDrawItem draw;
   draw.entityId = item.entityId;
@@ -134,6 +157,14 @@ ProductPrimitiveDrawItem itemFromSceneItem(const SceneItem& item) {
       draw.markerSize = 20.0F;
       return draw;
     case SceneItemKind::Interactable:
+      if (item.entityKind == EntityKind::Door) {
+        draw.kind = ProductPrimitiveDrawKind::DoorMarker;
+        draw.color = {220, 178, 86};
+        draw.markerSize = 24.0F;
+        draw.doorOpen = false;
+        draw.doorClosed = true;
+        return draw;
+      }
       draw.kind = ProductPrimitiveDrawKind::InteractableMarker;
       draw.color = {198, 142, 222};
       draw.markerSize = 22.0F;
@@ -178,6 +209,21 @@ void updateCounts(ProductPrimitiveDrawList& list, const ProductPrimitiveDrawItem
     case ProductPrimitiveDrawKind::TacticalMarker:
       ++list.targetMarkerCount;
       break;
+    case ProductPrimitiveDrawKind::DoorMarker:
+      ++list.doorMarkerCount;
+      list.doorVisible = true;
+      if (item.doorOpen) {
+        ++list.openDoorMarkerCount;
+        list.openDoorVisible = true;
+      }
+      if (item.doorClosed) {
+        ++list.closedDoorMarkerCount;
+        list.closedDoorVisible = true;
+      }
+      if (item.targetable || item.interactable) {
+        ++list.targetMarkerCount;
+      }
+      break;
     case ProductPrimitiveDrawKind::ObjectiveMarker:
       ++list.objectiveMarkerCount;
       list.objectiveVisible = true;
@@ -216,6 +262,77 @@ void updateCounts(ProductPrimitiveDrawList& list, const ProductPrimitiveDrawItem
   }
 }
 
+const RoomStaticMeshAsset* findStaticMesh(const RoomAsset& room, std::string_view id) {
+  for (const RoomStaticMeshAsset& mesh : room.staticMeshes) {
+    if (mesh.id == id) {
+      return &mesh;
+    }
+  }
+  return nullptr;
+}
+
+bool isDoorBlockerSurface(const RoomAsset& room, const RoomSpatialSurface& surface) {
+  if (surface.runtimeOwnerStableName.empty() || surface.sourceStaticMeshId.empty()) {
+    return false;
+  }
+  const RoomStaticMeshAsset* mesh = findStaticMesh(room, surface.sourceStaticMeshId);
+  if (mesh == nullptr || mesh->role != "door") {
+    return false;
+  }
+  return surface.blocksActor || surface.blocksProjectile ||
+         surface.role == RoomSpatialSurfaceRole::Blocker ||
+         surface.role == RoomSpatialSurfaceRole::ProjectileBlocker;
+}
+
+bool collisionIncludesRuntimeOwner(const ProductActiveRoomCollisionState& collision,
+                                   std::string_view ownerStableName) {
+  if (!collision.ready) {
+    return true;
+  }
+  for (const CollisionSurfaceView& surface : collision.surfaces.surfaces()) {
+    if (surface.runtimeOwnerStableName == ownerStableName) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool containsOwner(const std::vector<std::string>& owners, std::string_view owner) {
+  for (const std::string& seen : owners) {
+    if (seen == owner) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void appendOpenDoorMarkers(const RoomAsset* room,
+                           const ProductActiveRoomCollisionState* collision,
+                           ProductPrimitiveDrawList& list) {
+  if (room == nullptr || collision == nullptr || !collision->ready) {
+    return;
+  }
+
+  std::vector<std::string> appendedOwners;
+  for (const RoomSpatialSurface& surface : room->spatialSurfaces) {
+    if (!isDoorBlockerSurface(*room, surface) ||
+        containsOwner(appendedOwners, surface.runtimeOwnerStableName) ||
+        collisionIncludesRuntimeOwner(*collision, surface.runtimeOwnerStableName)) {
+      continue;
+    }
+    const RoomStaticMeshAsset* mesh = findStaticMesh(*room, surface.sourceStaticMeshId);
+    if (mesh == nullptr) {
+      continue;
+    }
+
+    ProductPrimitiveDrawItem item =
+        itemFromDoorMesh(*mesh, surface.runtimeOwnerStableName, true);
+    list.items.push_back(item);
+    updateCounts(list, item);
+    appendedOwners.push_back(surface.runtimeOwnerStableName);
+  }
+}
+
 void appendRoomGeometry(const RoomAsset* room, ProductPrimitiveDrawList& list) {
   if (room == nullptr) {
     return;
@@ -246,11 +363,13 @@ void appendRoomGeometry(const RoomAsset* room, ProductPrimitiveDrawList& list) {
 ProductPrimitiveDrawList buildProductPrimitiveDrawList(
     const SceneProjectionResult* scene,
     const DebugProjectionResult* debug,
-    const RoomAsset* activeRoom) {
+    const RoomAsset* activeRoom,
+    const ProductActiveRoomCollisionState* activeRoomCollision) {
   (void)debug;
   ProductPrimitiveDrawList list;
   list.gridVisible = scene != nullptr || activeRoom != nullptr;
   appendRoomGeometry(activeRoom, list);
+  appendOpenDoorMarkers(activeRoom, activeRoomCollision, list);
   if (scene == nullptr) {
     return list;
   }

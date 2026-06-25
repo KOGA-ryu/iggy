@@ -160,6 +160,26 @@ void drawFocusIndicator(SDL_Renderer& renderer, const ProductViewportFramedItem&
   fillRect(renderer, x - 2.0F, y - 18.0F, 4.0F, 36.0F);
 }
 
+void drawDoorMarker(SDL_Renderer& renderer, const ProductViewportFramedItem& framed) {
+  const ProductPrimitiveDrawItem& item = framed.item;
+  const float x = framed.screenX;
+  const float y = framed.screenY;
+  const float size = item.markerSize;
+  const float half = size * 0.5F;
+
+  setColor(renderer, item.color.r, item.color.g, item.color.b);
+  if (item.doorOpen) {
+    fillRect(renderer, x - half, y - 3.0F, size, 6.0F);
+    fillRect(renderer, x + half - 4.0F, y - half, 4.0F, size);
+    return;
+  }
+
+  fillRect(renderer, x - half, y - half, size, size);
+  setColor(renderer, 94, 74, 54);
+  fillRect(renderer, x - 2.0F, y - half + 4.0F, 4.0F, size - 8.0F);
+  fillRect(renderer, x + half - 7.0F, y - 2.0F, 4.0F, 4.0F);
+}
+
 void drawRoomTile(SDL_Renderer& renderer, const ProductViewportFramedItem& framed) {
   const ProductPrimitiveDrawItem& item = framed.item;
   const float x = framed.screenX;
@@ -206,6 +226,7 @@ void drawRoomTile(SDL_Renderer& renderer, const ProductViewportFramedItem& frame
     case ProductPrimitiveDrawKind::TacticalMarker:
     case ProductPrimitiveDrawKind::DebugMarker:
     case ProductPrimitiveDrawKind::PlayerFocusIndicator:
+    case ProductPrimitiveDrawKind::DoorMarker:
       break;
   }
 }
@@ -305,6 +326,9 @@ void drawPrimitiveItem(SDL_Renderer& renderer, const ProductViewportFramedItem& 
   switch (item.kind) {
     case ProductPrimitiveDrawKind::PlayerFocusIndicator:
       drawFocusIndicator(renderer, framed);
+      return;
+    case ProductPrimitiveDrawKind::DoorMarker:
+      drawDoorMarker(renderer, framed);
       return;
     case ProductPrimitiveDrawKind::FloorTile:
     case ProductPrimitiveDrawKind::ElevatedFloorTile:

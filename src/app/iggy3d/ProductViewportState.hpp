@@ -20,8 +20,14 @@ struct ProductViewportState {
   bool productDrawRoomVisible = false;
   bool productDrawObjectiveVisible = false;
   bool productDrawTargetIndicatorVisible = false;
+  bool productDrawDoorVisible = false;
+  bool productDrawOpenDoorVisible = false;
+  bool productDrawClosedDoorVisible = false;
   std::uint64_t productDrawItemCount = 0;
   std::uint64_t productDrawDebugMarkerCount = 0;
+  std::uint64_t productDrawDoorCount = 0;
+  std::uint64_t productDrawOpenDoorCount = 0;
+  std::uint64_t productDrawClosedDoorCount = 0;
   std::uint64_t productDrawRoomGeometryCount = 0;
   std::uint64_t productDrawFloorTileCount = 0;
   std::uint64_t productDrawElevatedFloorTileCount = 0;

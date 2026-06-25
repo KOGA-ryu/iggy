@@ -459,8 +459,20 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.viewport.productDrawObjectiveVisible);
   appendReceiptField(receipt, "product_draw_target_indicator_visible",
                      window.viewport.productDrawTargetIndicatorVisible);
+  appendReceiptField(receipt, "product_draw_door_visible",
+                     window.viewport.productDrawDoorVisible);
+  appendReceiptField(receipt, "product_draw_open_door_visible",
+                     window.viewport.productDrawOpenDoorVisible);
+  appendReceiptField(receipt, "product_draw_closed_door_visible",
+                     window.viewport.productDrawClosedDoorVisible);
   appendReceiptField(receipt, "product_draw_debug_marker_count",
                      window.viewport.productDrawDebugMarkerCount);
+  appendReceiptField(receipt, "product_draw_door_count",
+                     window.viewport.productDrawDoorCount);
+  appendReceiptField(receipt, "product_draw_open_door_count",
+                     window.viewport.productDrawOpenDoorCount);
+  appendReceiptField(receipt, "product_draw_closed_door_count",
+                     window.viewport.productDrawClosedDoorCount);
   appendReceiptField(receipt, "product_draw_room_geometry_count",
                      window.viewport.productDrawRoomGeometryCount);
   appendReceiptField(receipt, "product_draw_floor_tile_count",

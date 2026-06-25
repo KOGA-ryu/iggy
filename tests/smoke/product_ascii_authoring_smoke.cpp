@@ -330,6 +330,24 @@ bool activatedAsciiRoom(const iggy3d::smoke::ReceiptFields& fields) {
                                  "product_draw_item_count",
                                  "41") &&
          iggy3d::smoke::hasField(fields,
+                                 "product_draw_door_visible",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_open_door_visible",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_closed_door_visible",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_door_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_open_door_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_closed_door_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
                                  "product_draw_room_geometry_count",
                                  "35") &&
          iggy3d::smoke::hasField(fields,
@@ -1144,6 +1162,24 @@ bool activatedAsciiRoomInteractDoor(
              fields, "active_room_collision_door_blocker_count", "1") &&
          iggy3d::smoke::hasField(
              fields, "active_room_collision_active_door_blocker_count", "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_door_visible",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_open_door_visible",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_closed_door_visible",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_door_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_open_door_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_draw_closed_door_count",
+                                 "0") &&
          iggy3d::smoke::hasField(fields, "interaction_executed", "true") &&
          iggy3d::smoke::hasField(fields, "attack_executed", "false");
 }

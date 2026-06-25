@@ -12,6 +12,7 @@
 namespace iggy3d {
 
 struct DebugProjectionResult;
+struct ProductActiveRoomCollisionState;
 struct SceneProjectionResult;
 
 enum class ProductPrimitiveDrawKind : std::uint8_t {
@@ -23,6 +24,7 @@ enum class ProductPrimitiveDrawKind : std::uint8_t {
   TacticalMarker,
   DebugMarker,
   PlayerFocusIndicator,
+  DoorMarker,
   FloorTile,
   ElevatedFloorTile,
   RampTile,
@@ -46,6 +48,8 @@ struct ProductPrimitiveDrawItem {
   bool targetable = false;
   bool interactable = false;
   bool tactical = false;
+  bool doorOpen = false;
+  bool doorClosed = false;
   ProductPrimitiveColor color;
   float markerSize = 14.0F;
 };
@@ -57,11 +61,17 @@ struct ProductPrimitiveDrawList {
   bool playerVisible = false;
   bool objectiveVisible = false;
   bool playerFocusIndicatorVisible = false;
+  bool doorVisible = false;
+  bool openDoorVisible = false;
+  bool closedDoorVisible = false;
   std::uint64_t itemCount = 0;
   std::uint64_t playerCount = 0;
   std::uint64_t targetMarkerCount = 0;
   std::uint64_t objectiveMarkerCount = 0;
   std::uint64_t debugMarkerCount = 0;
+  std::uint64_t doorMarkerCount = 0;
+  std::uint64_t openDoorMarkerCount = 0;
+  std::uint64_t closedDoorMarkerCount = 0;
   std::uint64_t roomGeometryCount = 0;
   std::uint64_t floorTileCount = 0;
   std::uint64_t elevatedFloorTileCount = 0;
@@ -73,6 +83,7 @@ struct ProductPrimitiveDrawList {
 ProductPrimitiveDrawList buildProductPrimitiveDrawList(
     const SceneProjectionResult* scene,
     const DebugProjectionResult* debug,
-    const RoomAsset* activeRoom = nullptr);
+    const RoomAsset* activeRoom = nullptr,
+    const ProductActiveRoomCollisionState* activeRoomCollision = nullptr);
 
 }  // namespace iggy3d

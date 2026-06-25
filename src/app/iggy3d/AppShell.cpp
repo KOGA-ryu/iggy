@@ -110,8 +110,14 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productDrawRoomVisible = false;
     window.viewport.productDrawObjectiveVisible = false;
     window.viewport.productDrawTargetIndicatorVisible = false;
+    window.viewport.productDrawDoorVisible = false;
+    window.viewport.productDrawOpenDoorVisible = false;
+    window.viewport.productDrawClosedDoorVisible = false;
     window.viewport.productDrawItemCount = 0;
     window.viewport.productDrawDebugMarkerCount = 0;
+    window.viewport.productDrawDoorCount = 0;
+    window.viewport.productDrawOpenDoorCount = 0;
+    window.viewport.productDrawClosedDoorCount = 0;
     window.viewport.productDrawRoomGeometryCount = 0;
     window.viewport.productDrawFloorTileCount = 0;
     window.viewport.productDrawElevatedFloorTileCount = 0;
@@ -157,6 +163,12 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
         drawList->playerFocusIndicatorVisible;
     window.viewport.productDrawItemCount = drawList->itemCount;
     window.viewport.productDrawDebugMarkerCount = drawList->debugMarkerCount;
+    window.viewport.productDrawDoorVisible = drawList->doorVisible;
+    window.viewport.productDrawOpenDoorVisible = drawList->openDoorVisible;
+    window.viewport.productDrawClosedDoorVisible = drawList->closedDoorVisible;
+    window.viewport.productDrawDoorCount = drawList->doorMarkerCount;
+    window.viewport.productDrawOpenDoorCount = drawList->openDoorMarkerCount;
+    window.viewport.productDrawClosedDoorCount = drawList->closedDoorMarkerCount;
     window.viewport.productDrawRoomGeometryCount = drawList->roomGeometryCount;
     window.viewport.productDrawFloorTileCount = drawList->floorTileCount;
     window.viewport.productDrawElevatedFloorTileCount =
@@ -196,7 +208,8 @@ void refreshGameplayProjectionMetrics(const std::optional<Session>& activeSessio
   const RoomAsset* activeRoom =
       window.activeRoom.loaded ? &window.activeRoom.room : nullptr;
   const ProductPrimitiveDrawList drawList =
-      buildProductPrimitiveDrawList(&scene, &debug, activeRoom);
+      buildProductPrimitiveDrawList(&scene, &debug, activeRoom,
+                                    &window.activeRoomCollision);
   const ProductViewportFrame frame = buildProductViewportFrame(
       drawList, ProductViewportFrameConfig{window.viewport.cameraYawDegrees,
                                            window.viewport.cameraPitchDegrees});
@@ -1582,7 +1595,8 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
       debug = buildDebugProjection(activeSession->state());
       const RoomAsset* activeRoom =
           window.activeRoom.loaded ? &window.activeRoom.room : nullptr;
-      drawList = buildProductPrimitiveDrawList(&scene, &debug, activeRoom);
+      drawList = buildProductPrimitiveDrawList(&scene, &debug, activeRoom,
+                                               &window.activeRoomCollision);
       frame = buildProductViewportFrame(
           drawList, ProductViewportFrameConfig{window.viewport.cameraYawDegrees,
                                                window.viewport.cameraPitchDegrees});

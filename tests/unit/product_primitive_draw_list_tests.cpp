@@ -5,8 +5,10 @@
 #include <utility>
 #include <vector>
 
+#include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneProjection.hpp"
+#include "runtime/collision/SpatialSurfaceSet.hpp"
 
 namespace {
 
@@ -57,6 +59,38 @@ iggy3d::RoomStaticMeshAsset wallMesh(const char* id, float x) {
   mesh.positionMeters = {x, 1.25F, 0.0F};
   mesh.sizeMeters = {1.0F, 2.5F, 1.0F};
   return mesh;
+}
+
+iggy3d::RoomStaticMeshAsset doorMesh(const char* id, float x) {
+  iggy3d::RoomStaticMeshAsset mesh;
+  mesh.id = id;
+  mesh.meshId = "door_panel";
+  mesh.materialId = "debug_door";
+  mesh.role = "door";
+  mesh.positionMeters = {x, 1.0F, 0.0F};
+  mesh.sizeMeters = {0.2F, 2.0F, 1.0F};
+  return mesh;
+}
+
+iggy3d::RoomSpatialSurface doorBlocker(const char* id,
+                                       const char* meshId,
+                                       const char* ownerStableName,
+                                       float x) {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = id;
+  surface.sourceStaticMeshId = meshId;
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Box;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Blocker;
+  surface.pointsMeters = {{x - 0.1F, 0.0F, -0.5F},
+                          {x + 0.1F, 0.0F, -0.5F},
+                          {x + 0.1F, 2.0F, 0.5F},
+                          {x - 0.1F, 2.0F, 0.5F}};
+  surface.normal = {0.0F, 0.0F, 1.0F};
+  surface.collisionMask = {"actor", "projectile"};
+  surface.blocksActor = true;
+  surface.blocksProjectile = true;
+  surface.runtimeOwnerStableName = ownerStableName;
+  return surface;
 }
 
 }  // namespace
@@ -159,6 +193,69 @@ int main() {
                "wall kind");
   ok &= expect(roomList.items[2].color.g > roomList.items[0].color.g,
                "ramp receives distinct color");
+
+  iggy3d::SceneProjectionResult doorScene;
+  doorScene.items.push_back(
+      sceneItem(iggy3d::SceneItemKind::Interactable, 7, "marker_door_r1_c2"));
+  doorScene.items.back().entityKind = iggy3d::EntityKind::Door;
+  doorScene.items.back().targetable = true;
+  doorScene.items.back().interactable = true;
+  const iggy3d::ProductPrimitiveDrawList closedDoorSceneList =
+      iggy3d::buildProductPrimitiveDrawList(&doorScene, nullptr);
+  ok &= expect(closedDoorSceneList.doorVisible, "closed scene door visible");
+  ok &= expect(closedDoorSceneList.closedDoorVisible, "closed scene door marked closed");
+  ok &= expect(!closedDoorSceneList.openDoorVisible,
+               "closed scene door not marked open");
+  ok &= expect(closedDoorSceneList.doorMarkerCount == 1U,
+               "closed scene door count");
+  ok &= expect(closedDoorSceneList.closedDoorMarkerCount == 1U,
+               "closed scene door closed count");
+  ok &= expect(closedDoorSceneList.openDoorMarkerCount == 0U,
+               "closed scene door open count");
+  ok &= expect(closedDoorSceneList.targetMarkerCount == 1U,
+               "closed scene door remains target marker");
+  ok &= expect(closedDoorSceneList.items[0].kind ==
+                   iggy3d::ProductPrimitiveDrawKind::DoorMarker,
+               "door entity maps to door marker");
+  ok &= expect(closedDoorSceneList.items[0].doorClosed,
+               "door entity item is closed");
+
+  iggy3d::RoomAsset doorRoom;
+  doorRoom.staticMeshes.push_back(doorMesh("marker_door_r1_c2_panel", 5.0F));
+  doorRoom.spatialSurfaces.push_back(doorBlocker("marker_door_r1_c2_door_blocker",
+                                                 "marker_door_r1_c2_panel",
+                                                 "marker_door_r1_c2",
+                                                 5.0F));
+
+  iggy3d::ProductActiveRoomCollisionState closedCollision;
+  closedCollision.ready = true;
+  closedCollision.surfaces = iggy3d::buildSpatialSurfaceSet(doorRoom);
+  const iggy3d::ProductPrimitiveDrawList closedDoorRoomList =
+      iggy3d::buildProductPrimitiveDrawList(nullptr, nullptr, &doorRoom,
+                                            &closedCollision);
+  ok &= expect(closedDoorRoomList.doorMarkerCount == 0U,
+               "closed room door is not duplicated without scene entity");
+
+  iggy3d::ProductActiveRoomCollisionState openCollision;
+  openCollision.ready = true;
+  const iggy3d::ProductPrimitiveDrawList openDoorRoomList =
+      iggy3d::buildProductPrimitiveDrawList(nullptr, nullptr, &doorRoom,
+                                            &openCollision);
+  ok &= expect(openDoorRoomList.doorVisible, "open room door visible");
+  ok &= expect(openDoorRoomList.openDoorVisible, "open room door marked open");
+  ok &= expect(!openDoorRoomList.closedDoorVisible,
+               "open room door not marked closed");
+  ok &= expect(openDoorRoomList.doorMarkerCount == 1U,
+               "open room door count");
+  ok &= expect(openDoorRoomList.openDoorMarkerCount == 1U,
+               "open room door open count");
+  ok &= expect(openDoorRoomList.closedDoorMarkerCount == 0U,
+               "open room door closed count");
+  ok &= expect(openDoorRoomList.items[0].kind ==
+                   iggy3d::ProductPrimitiveDrawKind::DoorMarker,
+               "open room door maps to door marker");
+  ok &= expect(openDoorRoomList.items[0].doorOpen,
+               "open room door item is open");
 
   if (!ok) {
     return 1;
