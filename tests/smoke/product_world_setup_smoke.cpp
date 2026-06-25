@@ -194,6 +194,47 @@ int main() {
       iggy3d::smoke::hasField(fields,
                               "product_save_load_authored_marker_count",
                               "5") &&
+      iggy3d::smoke::hasField(fields, "saved_marker_bind_status",
+                              "saved_marker_bind_noop") &&
+      iggy3d::smoke::hasField(fields, "saved_marker_bind_reason_code",
+                              "saved_marker_bind_noop") &&
+      iggy3d::smoke::hasField(fields, "saved_marker_bind_requested",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "saved_marker_bind_session_replaced",
+                              "false") &&
+      iggy3d::smoke::hasField(fields, "saved_marker_bind_room_id",
+                              "ascii_chapter_room") &&
+      iggy3d::smoke::hasField(fields, "saved_marker_bind_marker_count",
+                              "5") &&
+      iggy3d::smoke::hasField(fields, "saved_marker_bind_seed_entity_count",
+                              "5") &&
+      iggy3d::smoke::hasField(fields,
+                              "saved_marker_bind_added_entity_count",
+                              "0") &&
+      iggy3d::smoke::hasField(fields,
+                              "saved_marker_bind_existing_entity_count",
+                              "5") &&
+      iggy3d::smoke::hasField(fields,
+                              "saved_marker_bind_added_objective_count",
+                              "0") &&
+      iggy3d::smoke::hasField(fields,
+                              "saved_marker_bind_existing_objective_count",
+                              "2") &&
+      iggy3d::smoke::hasField(fields,
+                              "saved_marker_bind_added_combatant_count",
+                              "0") &&
+      iggy3d::smoke::hasField(fields,
+                              "saved_marker_bind_existing_combatant_count",
+                              "2") &&
+      iggy3d::smoke::hasField(fields, "saved_marker_bind_pickup_count",
+                              "1") &&
+      iggy3d::smoke::hasField(fields, "saved_marker_bind_door_count",
+                              "1") &&
+      iggy3d::smoke::hasField(fields,
+                              "saved_marker_bind_marker_entity_count",
+                              "1") &&
+      iggy3d::smoke::hasField(fields, "saved_marker_bind_npc_count",
+                              "1") &&
       iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
       iggy3d::smoke::hasField(fields,
                               "active_room_source",

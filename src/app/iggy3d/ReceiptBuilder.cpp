@@ -293,6 +293,44 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt,
                      "product_save_load_authored_marker_count",
                      window.productSaveLoadAuthoredMarkerCount);
+  appendReceiptField(receipt, "saved_marker_bind_status",
+                     window.savedMarkerBindStatus);
+  appendReceiptField(receipt, "saved_marker_bind_reason_code",
+                     window.savedMarkerBindReasonCode);
+  appendReceiptField(receipt, "saved_marker_bind_requested",
+                     window.savedMarkerBindRequested);
+  appendReceiptField(receipt, "saved_marker_bind_session_replaced",
+                     window.savedMarkerBindSessionReplaced);
+  appendReceiptField(receipt, "saved_marker_bind_room_id",
+                     window.savedMarkerBindRoomId);
+  appendReceiptField(receipt, "saved_marker_bind_marker_count",
+                     window.savedMarkerBindMarkerCount);
+  appendReceiptField(receipt, "saved_marker_bind_seed_entity_count",
+                     window.savedMarkerBindSeedEntityCount);
+  appendReceiptField(receipt, "saved_marker_bind_added_entity_count",
+                     window.savedMarkerBindAddedEntityCount);
+  appendReceiptField(receipt, "saved_marker_bind_existing_entity_count",
+                     window.savedMarkerBindExistingEntityCount);
+  appendReceiptField(receipt, "saved_marker_bind_added_objective_count",
+                     window.savedMarkerBindAddedObjectiveCount);
+  appendReceiptField(receipt, "saved_marker_bind_existing_objective_count",
+                     window.savedMarkerBindExistingObjectiveCount);
+  appendReceiptField(receipt, "saved_marker_bind_added_combatant_count",
+                     window.savedMarkerBindAddedCombatantCount);
+  appendReceiptField(receipt, "saved_marker_bind_existing_combatant_count",
+                     window.savedMarkerBindExistingCombatantCount);
+  appendReceiptField(receipt, "saved_marker_bind_pickup_count",
+                     window.savedMarkerBindPickupCount);
+  appendReceiptField(receipt, "saved_marker_bind_door_count",
+                     window.savedMarkerBindDoorCount);
+  appendReceiptField(receipt, "saved_marker_bind_marker_entity_count",
+                     window.savedMarkerBindMarkerEntityCount);
+  appendReceiptField(receipt, "saved_marker_bind_npc_count",
+                     window.savedMarkerBindNpcCount);
+  appendReceiptField(receipt, "saved_marker_bind_previous_hash",
+                     window.savedMarkerBindPreviousHash);
+  appendReceiptField(receipt, "saved_marker_bind_bound_hash",
+                     window.savedMarkerBindBoundHash);
   appendReceiptField(receipt, "selected_save_id", window.selectedProductSaveId);
   appendReceiptField(receipt, "selected_save_enabled",
                      window.selectedProductSaveEnabled);

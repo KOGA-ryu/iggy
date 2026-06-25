@@ -13,6 +13,7 @@
 #include "app/iggy3d/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/ProductMenuTransitions.hpp"
 #include "app/iggy3d/ProductPackageSessionSeed.hpp"
+#include "app/iggy3d/ProductSavedRoomMarkerBinding.hpp"
 #include "app/iggy3d/ProductWorldCreation.hpp"
 #include "content/PackageLoader.hpp"
 #include "render/RenderDiagnostics.hpp"
@@ -262,6 +263,30 @@ void recordProductSaveLoadResult(const ProductSaveLoadResult& loaded,
   if (loaded.ok && !loaded.record.id.empty()) {
     window.activeProductSaveId = loaded.record.id;
   }
+}
+
+void recordSavedRoomMarkerBindingResult(
+    const ProductSavedRoomMarkerBindingResult& bound,
+    ProductAppWindowState& window) {
+  window.savedMarkerBindStatus = bound.status;
+  window.savedMarkerBindReasonCode = bound.reasonCode;
+  window.savedMarkerBindRequested = bound.requested;
+  window.savedMarkerBindSessionReplaced = bound.sessionReplaced;
+  window.savedMarkerBindRoomId = bound.roomId.empty() ? "none" : bound.roomId;
+  window.savedMarkerBindMarkerCount = bound.markerCount;
+  window.savedMarkerBindSeedEntityCount = bound.seedEntityCount;
+  window.savedMarkerBindAddedEntityCount = bound.addedEntityCount;
+  window.savedMarkerBindExistingEntityCount = bound.existingEntityCount;
+  window.savedMarkerBindAddedObjectiveCount = bound.addedObjectiveCount;
+  window.savedMarkerBindExistingObjectiveCount = bound.existingObjectiveCount;
+  window.savedMarkerBindAddedCombatantCount = bound.addedCombatantCount;
+  window.savedMarkerBindExistingCombatantCount = bound.existingCombatantCount;
+  window.savedMarkerBindPickupCount = bound.pickupCount;
+  window.savedMarkerBindDoorCount = bound.doorCount;
+  window.savedMarkerBindMarkerEntityCount = bound.markerEntityCount;
+  window.savedMarkerBindNpcCount = bound.npcCount;
+  window.savedMarkerBindPreviousHash = bound.previousHash;
+  window.savedMarkerBindBoundHash = bound.boundHash;
 }
 
 void clearProductGameplayLaunchState(std::optional<Session>& activeSession,
@@ -750,6 +775,17 @@ void launchProductSaveSlot(const ProductAppOptions& options,
   if (loaded.authoredRoomPresent) {
     window.activeRoom =
         buildProductActiveRoomFromSavedAuthoredRoom(loaded.authoredRoom);
+    const ProductSavedRoomMarkerBindingResult bound =
+        bindSavedRoomMarkersToSession(window.activeRoom, *activeSession);
+    recordSavedRoomMarkerBindingResult(bound, window);
+    if (!bound.ok) {
+      window.launchStatus = bound.reasonCode;
+      clearProductGameplayLaunchState(activeSession, window);
+      frontend.status = source == "load_save_selector"
+                            ? "load_save_launch_failed"
+                            : "opening_menu_continue_failed";
+      return;
+    }
   }
   if (window.activeRoom.loaded) {
     window.activeRoomCollision =
