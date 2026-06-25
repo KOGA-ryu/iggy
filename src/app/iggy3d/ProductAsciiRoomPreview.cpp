@@ -62,6 +62,11 @@ void recordProductAsciiRoomPreview(std::string_view sourceName,
   window.asciiRoomPreviewFloorCount = sizeReceiptValue(result.floorCount);
   window.asciiRoomPreviewWallCount = sizeReceiptValue(result.wallCount);
   window.asciiRoomPreviewMarkerCount = sizeReceiptValue(result.markerCount);
+  window.asciiRoomPreviewElevatedFloorCount =
+      sizeReceiptValue(result.elevatedFloorCount);
+  window.asciiRoomPreviewRampCount = sizeReceiptValue(result.rampCount);
+  window.asciiRoomPreviewBlockedSlopeCount =
+      sizeReceiptValue(result.blockedSlopeCount);
   window.asciiRoomPreviewStaticMeshCount =
       sizeReceiptValue(result.staticMeshCount);
   window.asciiRoomPreviewAnchorCount = sizeReceiptValue(result.anchorCount);

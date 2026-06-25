@@ -45,6 +45,17 @@ const iggy3d::AsciiRoomMarker* findMarker(
   return nullptr;
 }
 
+const iggy3d::AsciiRoomTerrainSurface* findTerrainSurface(
+    const iggy3d::AsciiRoomAuthoredRoomResult& result,
+    std::string_view floorId) {
+  for (const auto& terrain : result.terrainSurfaces) {
+    if (terrain.floorId == floorId) {
+      return &terrain;
+    }
+  }
+  return nullptr;
+}
+
 bool canonicalMapCompilesToExpectedCountsAndSourceFields() {
   const auto result = compileCanonical();
   return expect(result.ok, "canonical compile ok") &&
@@ -184,6 +195,52 @@ bool doorAndSecretDoorGenerateFloorAndMarkerOnly() {
          expect(findMarker(result, "secret_door") != nullptr, "secret door marker");
 }
 
+bool terrainGlyphsCompileToSurfaceFacts() {
+  const auto source =
+      iggy3d::parseAsciiRoomSource("######\n#P1>!#\n######\n");
+  const auto grid = iggy3d::buildAsciiRoomGrid(source);
+  const auto result = iggy3d::compileAsciiRoomToAuthoredRoom(grid.grid);
+  const iggy3d::AsciiRoomTerrainSurface* elevated =
+      findTerrainSurface(result, "floor_r1_c2");
+  const iggy3d::AsciiRoomTerrainSurface* ramp =
+      findTerrainSurface(result, "floor_r1_c3");
+  const iggy3d::AsciiRoomTerrainSurface* blocked =
+      findTerrainSurface(result, "floor_r1_c4");
+  return expect(result.ok, "terrain compile ok") &&
+         expect(result.authoredRoom.floors.size() == 4U,
+                "terrain floor count") &&
+         expect(result.terrainSurfaces.size() == 4U,
+                "terrain surface sidecars") &&
+         expect(result.elevatedFloorCount == 1U, "elevated count") &&
+         expect(result.rampCount == 1U, "ramp count") &&
+         expect(result.blockedSlopeCount == 1U, "blocked slope count") &&
+         expect(result.authoredRoom.floors[1].id == "floor_r1_c2",
+                "elevated floor id") &&
+         expect(near(result.authoredRoom.floors[1].centerMeters.y, 0.45),
+                "elevated floor center y") &&
+         expect(elevated != nullptr, "elevated surface sidecar") &&
+         expect(elevated->topFacePoints.size() == 4U,
+                "elevated sidecar point count") &&
+         expect(near(elevated->topFacePoints[0].y, 0.5),
+                "elevated sidecar height") &&
+         expect(ramp != nullptr, "ramp surface sidecar") &&
+         expect(ramp->ramp, "ramp sidecar flag") &&
+         expect(!ramp->blockedSlope, "ramp not blocked") &&
+         expect(near(ramp->topFacePoints[0].y, 0.0),
+                "ramp sidecar low point") &&
+         expect(near(ramp->topFacePoints[1].y, 0.5),
+                "ramp sidecar high point") &&
+         expect(near(ramp->normal.x, -0.4472136) &&
+                    near(ramp->normal.y, 0.8944272),
+                "ramp sidecar normal") &&
+         expect(blocked != nullptr, "blocked surface sidecar") &&
+         expect(blocked->blockedSlope, "blocked sidecar flag") &&
+         expect(near(blocked->topFacePoints[1].y, 1.0),
+                "blocked sidecar high point") &&
+         expect(near(blocked->normal.y, 0.7071068),
+                "blocked sidecar normal");
+}
+
 bool invalidGridRejectsDeterministically() {
   const iggy3d::AsciiRoomGrid empty;
   const auto result = iggy3d::compileAsciiRoomToAuthoredRoom(empty);
@@ -206,6 +263,7 @@ int main() {
   ok = customConfigChangesGeneratedDimensionsAndPositions() && ok;
   ok = markerRecordsAreDeterministicSidecars() && ok;
   ok = doorAndSecretDoorGenerateFloorAndMarkerOnly() && ok;
+  ok = terrainGlyphsCompileToSurfaceFacts() && ok;
   ok = invalidGridRejectsDeterministically() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

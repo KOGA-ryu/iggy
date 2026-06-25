@@ -50,6 +50,9 @@ bool buildsProductOwnedAuthoringResult() {
          expect(result.floorCount == 15U, "floor count") &&
          expect(result.wallCount == 20U, "wall count") &&
          expect(result.markerCount == 5U, "marker count") &&
+         expect(result.elevatedFloorCount == 0U, "flat elevated count") &&
+         expect(result.rampCount == 0U, "flat ramp count") &&
+         expect(result.blockedSlopeCount == 0U, "flat blocked slope count") &&
          expect(result.staticMeshCount == 35U, "static mesh count") &&
          expect(result.anchorCount == 5U, "anchor count") &&
          expect(result.spatialSurfaceCount == 55U, "spatial surface count") &&
@@ -66,6 +69,36 @@ bool buildsProductOwnedAuthoringResult() {
          expect(parsed.room.anchors.size() == 5U, "parsed anchor count") &&
          expect(parsed.room.spatialSurfaces.size() == 55U,
                 "parsed spatial surface count");
+}
+
+bool carriesTerrainCountsToProductResult() {
+  iggy3d::ProductAsciiRoomAuthoringRequest request;
+  request.sourceText =
+      "######\n"
+      "#P1>!#\n"
+      "######\n";
+  request.sourceName = "inline/terrain_room.iggyroom.txt";
+  request.roomId = "terrain_room_product";
+
+  const iggy3d::ProductAsciiRoomAuthoringResult result =
+      iggy3d::buildProductAsciiRoomAuthoring(request);
+  const iggy3d::RoomAssetParseResult parsed =
+      iggy3d::parseRoomAssetText(result.assetText.text);
+
+  return expect(result.ok, "terrain product result ok") &&
+         expect(result.floorCount == 4U, "terrain floor count") &&
+         expect(result.wallCount == 14U, "terrain wall count") &&
+         expect(result.markerCount == 1U, "terrain marker count") &&
+         expect(result.elevatedFloorCount == 1U, "terrain elevated count") &&
+         expect(result.rampCount == 1U, "terrain ramp count") &&
+         expect(result.blockedSlopeCount == 1U, "terrain blocked count") &&
+         expect(result.staticMeshCount == 18U, "terrain static mesh count") &&
+         expect(result.anchorCount == 1U, "terrain anchor count") &&
+         expect(result.spatialSurfaceCount == 32U,
+                "terrain spatial surface count") &&
+         expect(parsed.ok, "terrain asset text parses") &&
+         expect(parsed.room.spatialSurfaces.size() == 32U,
+                "terrain parsed spatial surfaces");
 }
 
 bool forwardsGridValidationFailure() {
@@ -129,6 +162,7 @@ bool supportsSkippingAssetTextForLiveEditing() {
 
 int main() {
   const bool ok = buildsProductOwnedAuthoringResult() &&
+                  carriesTerrainCountsToProductResult() &&
                   forwardsGridValidationFailure() &&
                   forwardsAssetTextFailureAfterRoomBuild() &&
                   supportsSkippingAssetTextForLiveEditing();

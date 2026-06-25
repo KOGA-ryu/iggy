@@ -1,5 +1,6 @@
 #include "app/iggy3d/AsciiRoomToAuthoredRoom.hpp"
 
+#include <cmath>
 #include <string>
 #include <string_view>
 
@@ -31,11 +32,36 @@ AsciiRoomWorldPosition cellPosition(const AsciiRoomCell& cell,
           static_cast<double>(cell.row) * config.tileSizeMeters};
 }
 
-SaveAuthoredRoomSemanticsRecord floorSemantics() {
+void appendUnique(std::vector<std::string>& tags, std::string value) {
+  for (const std::string& tag : tags) {
+    if (tag == value) {
+      return;
+    }
+  }
+  tags.push_back(std::move(value));
+}
+
+SaveAuthoredRoomSemanticsRecord floorSemantics(const AsciiRoomCell& cell) {
   SaveAuthoredRoomSemanticsRecord semantics;
   semantics.materialId = "debug_floor";
   semantics.traversalTags = {"walkable"};
   semantics.gameplayTags = {"floor"};
+  if (cell.terrainKind == AsciiRoomTerrainKind::BlockedSteepEast) {
+    appendUnique(semantics.traversalTags, "blocked_slope");
+    appendUnique(semantics.gameplayTags, "blocked_slope");
+  } else if (asciiRoomTerrainIsRamp(cell.terrainKind)) {
+    appendUnique(semantics.traversalTags, "ramp");
+    appendUnique(semantics.gameplayTags, "ramp");
+  } else if (cell.elevationMeters > 0.0F) {
+    appendUnique(semantics.traversalTags, "elevated_floor");
+    appendUnique(semantics.gameplayTags, "elevated_floor");
+  }
+  if (cell.terrainKind != AsciiRoomTerrainKind::Flat ||
+      cell.elevationMeters > 0.0F) {
+    const std::string terrainTag =
+        std::string{"terrain_"} + std::string(asciiRoomTerrainKindName(cell.terrainKind));
+    appendUnique(semantics.traversalTags, terrainTag);
+  }
   semantics.walkable = true;
   semantics.blocksActor = false;
   semantics.blocksProjectile = false;
@@ -56,6 +82,90 @@ SaveAuthoredRoomSemanticsRecord wallSemantics() {
 std::string cellId(std::string_view prefix, const AsciiRoomCell& cell) {
   return std::string(prefix) + "_r" + std::to_string(cell.row) + "_c" +
          std::to_string(cell.column);
+}
+
+std::vector<Vec3> terrainTopFacePoints(const AsciiRoomCell& cell,
+                                       const AsciiRoomGrid& grid,
+                                       const AsciiRoomCompileConfig& config) {
+  const AsciiRoomWorldPosition center = cellPosition(cell, grid, config, 0.0F);
+  const float centerX = static_cast<float>(center.x);
+  const float centerZ = static_cast<float>(center.z);
+  const float halfTile = config.tileSizeMeters / 2.0F;
+  const float lowY = cell.elevationMeters - cell.riseMeters / 2.0F;
+  const float highY = cell.elevationMeters + cell.riseMeters / 2.0F;
+  const float flatY = cell.elevationMeters;
+
+  float northwestY = flatY;
+  float northeastY = flatY;
+  float southeastY = flatY;
+  float southwestY = flatY;
+  switch (cell.terrainKind) {
+    case AsciiRoomTerrainKind::RampNorth:
+      northwestY = highY;
+      northeastY = highY;
+      southeastY = lowY;
+      southwestY = lowY;
+      break;
+    case AsciiRoomTerrainKind::RampSouth:
+      northwestY = lowY;
+      northeastY = lowY;
+      southeastY = highY;
+      southwestY = highY;
+      break;
+    case AsciiRoomTerrainKind::RampWest:
+      northwestY = highY;
+      northeastY = lowY;
+      southeastY = lowY;
+      southwestY = highY;
+      break;
+    case AsciiRoomTerrainKind::RampEast:
+    case AsciiRoomTerrainKind::BlockedSteepEast:
+      northwestY = lowY;
+      northeastY = highY;
+      southeastY = highY;
+      southwestY = lowY;
+      break;
+    case AsciiRoomTerrainKind::Flat:
+      break;
+  }
+
+  return {{centerX - halfTile, northwestY, centerZ - halfTile},
+          {centerX + halfTile, northeastY, centerZ - halfTile},
+          {centerX + halfTile, southeastY, centerZ + halfTile},
+          {centerX - halfTile, southwestY, centerZ + halfTile}};
+}
+
+Vec3 terrainNormal(const AsciiRoomCell& cell, const AsciiRoomCompileConfig& config) {
+  if (config.tileSizeMeters <= 0.0F || cell.riseMeters <= 0.0F) {
+    return {0.0F, 1.0F, 0.0F};
+  }
+
+  const float grade = cell.riseMeters / config.tileSizeMeters;
+  Vec3 normal{0.0F, 1.0F, 0.0F};
+  switch (cell.terrainKind) {
+    case AsciiRoomTerrainKind::RampNorth:
+      normal = {0.0F, 1.0F, grade};
+      break;
+    case AsciiRoomTerrainKind::RampSouth:
+      normal = {0.0F, 1.0F, -grade};
+      break;
+    case AsciiRoomTerrainKind::RampWest:
+      normal = {grade, 1.0F, 0.0F};
+      break;
+    case AsciiRoomTerrainKind::RampEast:
+    case AsciiRoomTerrainKind::BlockedSteepEast:
+      normal = {-grade, 1.0F, 0.0F};
+      break;
+    case AsciiRoomTerrainKind::Flat:
+      break;
+  }
+
+  const float length =
+      std::sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+  if (!std::isfinite(length) || length <= 0.000001F) {
+    return {0.0F, 1.0F, 0.0F};
+  }
+  return normal / length;
 }
 
 }  // namespace
@@ -79,21 +189,32 @@ AsciiRoomAuthoredRoomResult compileAsciiRoomToAuthoredRoom(
   result.authoredRoom.sourceSubset = "ascii_room_authoring";
 
   for (const AsciiRoomCell& cell : grid.cells) {
-    const AsciiRoomWorldPosition center = cellPosition(cell, grid, config, 0.0F);
+    const AsciiRoomWorldPosition center =
+        cellPosition(cell, grid, config, cell.elevationMeters);
     if (cell.walkable) {
       SaveAuthoredRoomFloorRecord floor;
       floor.id = cellId("floor", cell);
       floor.storyIndex = config.storyIndex;
       floor.centerMeters = {static_cast<float>(center.x),
-                            -config.floorThicknessMeters / 2.0F,
+                            cell.elevationMeters - config.floorThicknessMeters / 2.0F,
                             static_cast<float>(center.z)};
       floor.sizeMeters = {config.tileSizeMeters,
                           config.floorThicknessMeters,
                           config.tileSizeMeters};
-      floor.semantics = floorSemantics();
+      floor.semantics = floorSemantics(cell);
       floor.locked = false;
       floor.hidden = false;
+      const std::string floorId = floor.id;
       result.authoredRoom.floors.push_back(std::move(floor));
+
+      AsciiRoomTerrainSurface terrain;
+      terrain.floorId = floorId;
+      terrain.kind = cell.terrainKind;
+      terrain.topFacePoints = terrainTopFacePoints(cell, grid, config);
+      terrain.normal = terrainNormal(cell, config);
+      terrain.ramp = asciiRoomTerrainIsRamp(cell.terrainKind);
+      terrain.blockedSlope = cell.terrainKind == AsciiRoomTerrainKind::BlockedSteepEast;
+      result.terrainSurfaces.push_back(std::move(terrain));
     }
 
     if (cell.kind == AsciiRoomCellKind::Wall) {
@@ -123,7 +244,8 @@ AsciiRoomAuthoredRoomResult compileAsciiRoomToAuthoredRoom(
       marker.glyph = cell.glyph;
       marker.row = cell.row;
       marker.column = cell.column;
-      marker.worldPosition = cellPosition(cell, grid, config, config.markerYMeters);
+      marker.worldPosition =
+          cellPosition(cell, grid, config, cell.elevationMeters + config.markerYMeters);
       marker.sourceLine = cell.row + 1U;
       marker.sourceColumn = cell.column + 1U;
       result.markers.push_back(std::move(marker));
@@ -133,6 +255,9 @@ AsciiRoomAuthoredRoomResult compileAsciiRoomToAuthoredRoom(
   result.floorCount = result.authoredRoom.floors.size();
   result.wallCount = result.authoredRoom.walls.size();
   result.markerCount = result.markers.size();
+  result.elevatedFloorCount = grid.elevatedFloorCount;
+  result.rampCount = grid.rampCount;
+  result.blockedSlopeCount = grid.blockedSlopeCount;
   result.ok = true;
   result.status = "ascii_room_ok";
   result.reasonCode = "ascii_room_ok";

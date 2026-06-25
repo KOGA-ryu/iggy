@@ -58,6 +58,9 @@ struct ProductAppWindowState {
   std::uint64_t asciiRoomPreviewFloorCount = 0;
   std::uint64_t asciiRoomPreviewWallCount = 0;
   std::uint64_t asciiRoomPreviewMarkerCount = 0;
+  std::uint64_t asciiRoomPreviewElevatedFloorCount = 0;
+  std::uint64_t asciiRoomPreviewRampCount = 0;
+  std::uint64_t asciiRoomPreviewBlockedSlopeCount = 0;
   std::uint64_t asciiRoomPreviewStaticMeshCount = 0;
   std::uint64_t asciiRoomPreviewAnchorCount = 0;
   std::uint64_t asciiRoomPreviewSpatialSurfaceCount = 0;

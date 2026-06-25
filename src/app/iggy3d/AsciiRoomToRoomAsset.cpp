@@ -83,14 +83,28 @@ RoomStaticMeshAsset wallMesh(const SaveAuthoredRoomWallRecord& wall,
   return mesh;
 }
 
-RoomSpatialSurface walkableSurface(const SaveAuthoredRoomFloorRecord& floor) {
+const AsciiRoomTerrainSurface* terrainForFloor(
+    const AsciiRoomAuthoredRoomResult& authored,
+    std::string_view floorId) {
+  for (const AsciiRoomTerrainSurface& terrain : authored.terrainSurfaces) {
+    if (terrain.floorId == floorId) {
+      return &terrain;
+    }
+  }
+  return nullptr;
+}
+
+RoomSpatialSurface walkableSurface(const SaveAuthoredRoomFloorRecord& floor,
+                                   const AsciiRoomTerrainSurface* terrain) {
   RoomSpatialSurface surface;
   surface.id = floor.id + "_walkable";
   surface.sourceStaticMeshId = floor.id;
   surface.shape = RoomSpatialSurfaceShape::Plane;
   surface.role = RoomSpatialSurfaceRole::Walkable;
-  surface.pointsMeters = floorTopFacePoints(floor);
-  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.pointsMeters =
+      terrain != nullptr && !terrain->topFacePoints.empty() ? terrain->topFacePoints
+                                                            : floorTopFacePoints(floor);
+  surface.normal = terrain != nullptr ? terrain->normal : Vec3{0.0F, 1.0F, 0.0F};
   surface.traversalTags = floor.semantics.traversalTags;
   surface.collisionMask = {"actor"};
   surface.blocksActor = false;
@@ -210,7 +224,8 @@ AsciiRoomToRoomAssetResult buildRoomAssetFromAsciiRoom(
   for (const SaveAuthoredRoomFloorRecord& floor : authored.authoredRoom.floors) {
     result.room.staticMeshes.push_back(floorMesh(floor, config));
     if (floorIsWalkable(floor)) {
-      result.room.spatialSurfaces.push_back(walkableSurface(floor));
+      result.room.spatialSurfaces.push_back(
+          walkableSurface(floor, terrainForFloor(authored, floor.id)));
       ++result.walkableSurfaceCount;
     }
   }

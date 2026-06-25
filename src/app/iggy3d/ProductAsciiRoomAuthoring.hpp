@@ -43,6 +43,9 @@ struct ProductAsciiRoomAuthoringResult {
   std::size_t floorCount = 0;
   std::size_t wallCount = 0;
   std::size_t markerCount = 0;
+  std::size_t elevatedFloorCount = 0;
+  std::size_t rampCount = 0;
+  std::size_t blockedSlopeCount = 0;
   std::size_t staticMeshCount = 0;
   std::size_t anchorCount = 0;
   std::size_t spatialSurfaceCount = 0;

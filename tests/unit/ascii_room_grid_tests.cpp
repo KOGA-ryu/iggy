@@ -50,11 +50,31 @@ bool glyphMappingsMatchContract() {
     bool blocksActor;
     bool blocksProjectile;
     std::string_view markerTag;
+    iggy3d::AsciiRoomTerrainKind terrainKind = iggy3d::AsciiRoomTerrainKind::Flat;
+    float elevationMeters = 0.0F;
+    float riseMeters = 0.0F;
   };
   const Expected expected[] = {
       {'#', iggy3d::AsciiRoomCellKind::Wall, false, true, true, ""},
       {'.', iggy3d::AsciiRoomCellKind::Floor, true, false, false, ""},
       {' ', iggy3d::AsciiRoomCellKind::Floor, true, false, false, ""},
+      {'0', iggy3d::AsciiRoomCellKind::Floor, true, false, false, ""},
+      {'1', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.5F, 0.0F},
+      {'2', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
+       iggy3d::AsciiRoomTerrainKind::Flat, 1.0F, 0.0F},
+      {'3', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
+       iggy3d::AsciiRoomTerrainKind::Flat, 1.5F, 0.0F},
+      {'^', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
+       iggy3d::AsciiRoomTerrainKind::RampNorth, 0.25F, 0.5F},
+      {'v', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
+       iggy3d::AsciiRoomTerrainKind::RampSouth, 0.25F, 0.5F},
+      {'<', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
+       iggy3d::AsciiRoomTerrainKind::RampWest, 0.25F, 0.5F},
+      {'>', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
+       iggy3d::AsciiRoomTerrainKind::RampEast, 0.25F, 0.5F},
+      {'!', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
+       iggy3d::AsciiRoomTerrainKind::BlockedSteepEast, 0.5F, 1.0F},
       {'+', iggy3d::AsciiRoomCellKind::Door, true, false, false, "door"},
       {'s', iggy3d::AsciiRoomCellKind::SecretDoor, true, false, false, "secret_door"},
       {'P', iggy3d::AsciiRoomCellKind::PlayerSpawn, true, false, false, "player_spawn"},
@@ -80,8 +100,48 @@ bool glyphMappingsMatchContract() {
     ok = expect(info->blocksProjectile == item.blocksProjectile,
                 "glyph blocks projectile") && ok;
     ok = expect(info->markerTag == item.markerTag, "glyph marker tag") && ok;
+    ok = expect(info->terrainKind == item.terrainKind, "glyph terrain kind") && ok;
+    ok = expect(info->elevationMeters == item.elevationMeters,
+                "glyph elevation") && ok;
+    ok = expect(info->riseMeters == item.riseMeters, "glyph rise") && ok;
   }
   return ok;
+}
+
+bool terrainGlyphFacts() {
+  const auto source = iggy3d::parseAsciiRoomSource("########\n#P1>!^v#\n########\n");
+  const auto result = iggy3d::buildAsciiRoomGrid(source);
+  const iggy3d::AsciiRoomCell* elevated = iggy3d::asciiRoomCellAt(result.grid, 1, 2);
+  const iggy3d::AsciiRoomCell* rampEast = iggy3d::asciiRoomCellAt(result.grid, 1, 3);
+  const iggy3d::AsciiRoomCell* blocked = iggy3d::asciiRoomCellAt(result.grid, 1, 4);
+  const iggy3d::AsciiRoomCell* rampNorth = iggy3d::asciiRoomCellAt(result.grid, 1, 5);
+  const iggy3d::AsciiRoomCell* rampSouth = iggy3d::asciiRoomCellAt(result.grid, 1, 6);
+  return expect(result.ok, "terrain glyph map ok") &&
+         expect(result.grid.floorCount == 6U, "terrain floor count") &&
+         expect(result.grid.elevatedFloorCount == 1U,
+                "terrain elevated floor count") &&
+         expect(result.grid.rampCount == 3U, "terrain ramp count") &&
+         expect(result.grid.blockedSlopeCount == 1U,
+                "terrain blocked slope count") &&
+         expect(elevated != nullptr, "elevated cell exists") &&
+         expect(elevated->terrainKind == iggy3d::AsciiRoomTerrainKind::Flat,
+                "elevated terrain flat") &&
+         expect(elevated->elevationMeters == 0.5F, "elevated height") &&
+         expect(rampEast != nullptr, "ramp east cell exists") &&
+         expect(rampEast->terrainKind == iggy3d::AsciiRoomTerrainKind::RampEast,
+                "ramp east kind") &&
+         expect(rampEast->riseMeters == 0.5F, "ramp east rise") &&
+         expect(blocked != nullptr, "blocked cell exists") &&
+         expect(blocked->terrainKind == iggy3d::AsciiRoomTerrainKind::BlockedSteepEast,
+                "blocked kind") &&
+         expect(blocked->riseMeters == 1.0F, "blocked rise") &&
+         expect(rampNorth != nullptr && rampSouth != nullptr,
+                "north south ramps exist") &&
+         expect(iggy3d::asciiRoomTerrainKindName(rampNorth->terrainKind) ==
+                    "ramp_north",
+                "terrain name north") &&
+         expect(iggy3d::asciiRoomTerrainIsRamp(rampSouth->terrainKind),
+                "terrain ramp helper");
 }
 
 bool missingPlayerSpawnFails() {
@@ -144,6 +204,7 @@ int main() {
   bool ok = true;
   ok = canonicalMapFacts() && ok;
   ok = glyphMappingsMatchContract() && ok;
+  ok = terrainGlyphFacts() && ok;
   ok = missingPlayerSpawnFails() && ok;
   ok = multiplePlayerSpawnsFail() && ok;
   ok = exactlyOnePlayerSpawnSucceeds() && ok;

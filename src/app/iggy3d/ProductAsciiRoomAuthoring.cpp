@@ -51,6 +51,9 @@ void copyCounts(ProductAsciiRoomAuthoringResult& result) {
   result.floorCount = result.authoredRoom.floorCount;
   result.wallCount = result.authoredRoom.wallCount;
   result.markerCount = result.authoredRoom.markerCount;
+  result.elevatedFloorCount = result.authoredRoom.elevatedFloorCount;
+  result.rampCount = result.authoredRoom.rampCount;
+  result.blockedSlopeCount = result.authoredRoom.blockedSlopeCount;
   result.staticMeshCount = result.roomAsset.staticMeshCount;
   result.anchorCount = result.roomAsset.anchorCount;
   result.spatialSurfaceCount = result.roomAsset.spatialSurfaceCount;

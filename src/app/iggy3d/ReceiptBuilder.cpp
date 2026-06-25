@@ -127,6 +127,12 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.asciiRoomPreviewWallCount);
   appendReceiptField(receipt, "ascii_room_preview_marker_count",
                      window.asciiRoomPreviewMarkerCount);
+  appendReceiptField(receipt, "ascii_room_preview_elevated_floor_count",
+                     window.asciiRoomPreviewElevatedFloorCount);
+  appendReceiptField(receipt, "ascii_room_preview_ramp_count",
+                     window.asciiRoomPreviewRampCount);
+  appendReceiptField(receipt, "ascii_room_preview_blocked_slope_count",
+                     window.asciiRoomPreviewBlockedSlopeCount);
   appendReceiptField(receipt, "ascii_room_preview_static_mesh_count",
                      window.asciiRoomPreviewStaticMeshCount);
   appendReceiptField(receipt, "ascii_room_preview_anchor_count",

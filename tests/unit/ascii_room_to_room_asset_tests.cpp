@@ -51,6 +51,22 @@ iggy3d::AsciiRoomToRoomAssetResult buildFixtureRoomAsset() {
   return iggy3d::buildRoomAssetFromAsciiRoom(compileFixture(), config);
 }
 
+iggy3d::AsciiRoomToRoomAssetResult buildInlineRoomAsset(std::string_view text) {
+  const iggy3d::AsciiRoomSource source =
+      iggy3d::parseAsciiRoomSource(std::string(text), "inline_terrain_room");
+  const iggy3d::AsciiRoomGridBuildResult grid =
+      iggy3d::buildAsciiRoomGrid(source);
+  iggy3d::AsciiRoomCompileConfig compileConfig;
+  compileConfig.roomId = "inline_terrain_room";
+  compileConfig.sourceName = "inline_terrain_room";
+  const iggy3d::AsciiRoomAuthoredRoomResult authored =
+      iggy3d::compileAsciiRoomToAuthoredRoom(grid.grid, compileConfig);
+  iggy3d::AsciiRoomToRoomAssetConfig assetConfig;
+  assetConfig.roomId = "inline_terrain_room";
+  assetConfig.sourceName = "inline_terrain_room";
+  return iggy3d::buildRoomAssetFromAsciiRoom(authored, assetConfig);
+}
+
 const iggy3d::RoomStaticMeshAsset* findMesh(const iggy3d::RoomAsset& room,
                                             std::string_view id) {
   for (const auto& mesh : room.staticMeshes) {
@@ -245,6 +261,53 @@ bool representativeWallMeshAndSurfacesMatch() {
          expect(projectile->blocksProjectile, "projectile blocks projectile");
 }
 
+bool terrainSurfacesPreserveHeightAndSlope() {
+  const auto result = buildInlineRoomAsset("######\n#P1>!#\n######\n");
+  const auto* elevatedMesh = findMesh(result.room, "floor_r1_c2");
+  const auto* elevatedSurface = findSurface(result.room, "floor_r1_c2_walkable");
+  const auto* rampSurface = findSurface(result.room, "floor_r1_c3_walkable");
+  const auto* blockedSurface = findSurface(result.room, "floor_r1_c4_walkable");
+  return expect(result.ok, "terrain room asset ok") &&
+         expect(elevatedMesh != nullptr, "elevated mesh exists") &&
+         expect(near(elevatedMesh->positionMeters.y, 0.45F),
+                "elevated mesh y") &&
+         expect(elevatedSurface != nullptr, "elevated surface exists") &&
+         expect(elevatedSurface->pointsMeters.size() == 4U,
+                "elevated point count") &&
+         expect(near(elevatedSurface->pointsMeters[0].y, 0.5F),
+                "elevated top point") &&
+         expect(near(elevatedSurface->normal.x, 0.0F) &&
+                    near(elevatedSurface->normal.y, 1.0F) &&
+                    near(elevatedSurface->normal.z, 0.0F),
+                "elevated normal") &&
+         expect(hasTag(elevatedSurface->traversalTags, "elevated_floor"),
+                "elevated traversal tag") &&
+         expect(rampSurface != nullptr, "ramp surface exists") &&
+         expect(near(rampSurface->pointsMeters[0].y, 0.0F),
+                "ramp low west point") &&
+         expect(near(rampSurface->pointsMeters[1].y, 0.5F),
+                "ramp high east point") &&
+         expect(near(rampSurface->normal.x, -0.4472136F),
+                "ramp normal x") &&
+         expect(near(rampSurface->normal.y, 0.8944272F),
+                "ramp normal y") &&
+         expect(near(rampSurface->normal.z, 0.0F), "ramp normal z") &&
+         expect(hasTag(rampSurface->traversalTags, "ramp"), "ramp tag") &&
+         expect(hasTag(rampSurface->traversalTags, "terrain_ramp_east"),
+                "ramp terrain tag") &&
+         expect(blockedSurface != nullptr, "blocked slope surface exists") &&
+         expect(near(blockedSurface->pointsMeters[0].y, 0.0F),
+                "blocked low west point") &&
+         expect(near(blockedSurface->pointsMeters[1].y, 1.0F),
+                "blocked high east point") &&
+         expect(near(blockedSurface->normal.x, -0.7071068F),
+                "blocked normal x") &&
+         expect(near(blockedSurface->normal.y, 0.7071068F),
+                "blocked normal y") &&
+         expect(hasTag(blockedSurface->traversalTags, "blocked_slope"),
+                "blocked slope tag");
+}
+
 bool invalidAuthoredResultRejectsWithoutPartialRoom() {
   iggy3d::AsciiRoomAuthoredRoomResult invalid;
   invalid.ok = false;
@@ -283,6 +346,7 @@ int main() {
   ok = anchorsUseExpectedMarkerKinds() && ok;
   ok = representativeFloorMeshAndSurfaceMatch() && ok;
   ok = representativeWallMeshAndSurfacesMatch() && ok;
+  ok = terrainSurfacesPreserveHeightAndSlope() && ok;
   ok = invalidAuthoredResultRejectsWithoutPartialRoom() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

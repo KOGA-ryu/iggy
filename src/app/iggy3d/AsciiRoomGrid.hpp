@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -25,6 +26,15 @@ enum class AsciiRoomCellKind {
   Inspect,
 };
 
+enum class AsciiRoomTerrainKind : std::uint8_t {
+  Flat,
+  RampNorth,
+  RampSouth,
+  RampWest,
+  RampEast,
+  BlockedSteepEast,
+};
+
 struct AsciiRoomGlyphInfo {
   char glyph = '\0';
   AsciiRoomCellKind kind = AsciiRoomCellKind::Floor;
@@ -32,6 +42,9 @@ struct AsciiRoomGlyphInfo {
   bool blocksActor = false;
   bool blocksProjectile = false;
   std::string_view markerTag;
+  AsciiRoomTerrainKind terrainKind = AsciiRoomTerrainKind::Flat;
+  float elevationMeters = 0.0F;
+  float riseMeters = 0.0F;
 };
 
 struct AsciiRoomCell {
@@ -43,6 +56,9 @@ struct AsciiRoomCell {
   bool blocksActor = false;
   bool blocksProjectile = false;
   std::string markerTag;
+  AsciiRoomTerrainKind terrainKind = AsciiRoomTerrainKind::Flat;
+  float elevationMeters = 0.0F;
+  float riseMeters = 0.0F;
   std::size_t sourceOffset = 0;
 };
 
@@ -54,6 +70,9 @@ struct AsciiRoomGrid {
   std::size_t markerCount = 0;
   std::size_t floorCount = 0;
   std::size_t wallCount = 0;
+  std::size_t elevatedFloorCount = 0;
+  std::size_t rampCount = 0;
+  std::size_t blockedSlopeCount = 0;
 };
 
 struct AsciiRoomGridBuildResult {
@@ -71,6 +90,8 @@ struct AsciiRoomWorldPosition {
 };
 
 std::string_view asciiRoomCellKindName(AsciiRoomCellKind kind);
+std::string_view asciiRoomTerrainKindName(AsciiRoomTerrainKind kind);
+bool asciiRoomTerrainIsRamp(AsciiRoomTerrainKind kind);
 std::optional<AsciiRoomGlyphInfo> asciiRoomGlyphInfo(char glyph);
 AsciiRoomGridBuildResult buildAsciiRoomGrid(const AsciiRoomSource& source);
 const AsciiRoomCell* asciiRoomCellAt(const AsciiRoomGrid& grid,

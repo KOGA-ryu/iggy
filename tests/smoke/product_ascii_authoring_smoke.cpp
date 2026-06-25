@@ -51,6 +51,15 @@ bool validAsciiPreview(const iggy3d::smoke::ReceiptFields& fields) {
                                  "ascii_room_preview_marker_count",
                                  "5") &&
          iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_elevated_floor_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_ramp_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_blocked_slope_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
                                  "ascii_room_preview_static_mesh_count",
                                  "35") &&
          iggy3d::smoke::hasField(fields,
@@ -102,6 +111,15 @@ bool invalidAsciiPreview(const iggy3d::smoke::ReceiptFields& fields) {
          iggy3d::smoke::hasField(fields, "ascii_room_preview_width", "3") &&
          iggy3d::smoke::hasField(fields, "ascii_room_preview_height", "2") &&
          iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_elevated_floor_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_ramp_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_blocked_slope_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
                                  "ascii_room_preview_asset_text_written",
                                  "false") &&
          iggy3d::smoke::hasField(fields,
@@ -120,6 +138,53 @@ bool invalidAsciiPreview(const iggy3d::smoke::ReceiptFields& fields) {
                                  "not_loaded") &&
          iggy3d::smoke::hasField(fields, "gameplay_active", "false") &&
          iggy3d::smoke::hasField(fields, "runtime_session_created", "false");
+}
+
+bool terrainAsciiPreview(const iggy3d::smoke::ReceiptFields& fields) {
+  return iggy3d::smoke::automationApplied(fields) &&
+         iggy3d::smoke::hasField(fields,
+                                 "automation_control_last_key",
+                                 "ascii_room.build") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_status",
+                                 "product_ascii_room_ready") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_reason_code",
+                                 "product_ascii_room_ready") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_ready",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields, "ascii_room_preview_width", "7") &&
+         iggy3d::smoke::hasField(fields, "ascii_room_preview_height", "4") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_floor_count",
+                                 "10") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_wall_count",
+                                 "18") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_marker_count",
+                                 "4") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_elevated_floor_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_ramp_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_blocked_slope_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_static_mesh_count",
+                                 "28") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_anchor_count",
+                                 "4") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_preview_spatial_surface_count",
+                                 "46") &&
+         iggy3d::smoke::hasField(fields, "active_room_loaded", "false") &&
+         iggy3d::smoke::hasField(fields, "gameplay_active", "false");
 }
 
 bool activatedAsciiRoom(const iggy3d::smoke::ReceiptFields& fields) {
@@ -476,6 +541,173 @@ bool activatedAsciiRoomWallMoveBlocked(
                                  "none");
 }
 
+bool activatedAsciiRoomRampMoveAccepted(
+    const iggy3d::smoke::ReceiptFields& fields) {
+  return iggy3d::smoke::automationApplied(fields) &&
+         iggy3d::smoke::hasField(fields,
+                                 "automation_control_last_key",
+                                 "game.move_x") &&
+         iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+         iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_collision_ready",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_collision_spatial_surface_count",
+                                 "37") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_collision_surface_count",
+                                 "37") &&
+         iggy3d::smoke::hasField(fields,
+                                 "input_action_accepted",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_kind",
+                                 "move") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_accepted",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_tick_advanced",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "player_position_changed",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_blocked",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_status",
+                                 "moved") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_debug_available",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_reason_code",
+                                 "movement_ok") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_blocked_reason",
+                                 "movement_ok") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_ground_snap_applied",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_policy_band",
+                                 "moderate") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_slope_travel_direction",
+                                 "uphill") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_slope_angle_degrees",
+                                 "26.565") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_speed_multiplier",
+                                 "0.750") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_final_y",
+                                 "0.250") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_visible",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_status",
+                                 "moved") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_blocked",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_policy_band",
+                                 "moderate") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_speed_multiplier",
+                                 "0.750");
+}
+
+bool activatedAsciiRoomSteepMoveRejected(
+    const iggy3d::smoke::ReceiptFields& fields) {
+  return iggy3d::smoke::automationApplied(fields) &&
+         iggy3d::smoke::hasField(fields,
+                                 "automation_control_last_key",
+                                 "game.move_x") &&
+         iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+         iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_collision_ready",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_collision_spatial_surface_count",
+                                 "37") &&
+         iggy3d::smoke::hasField(fields,
+                                 "input_action_accepted",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_kind",
+                                 "move") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_accepted",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_tick_advanced",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "player_position_changed",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_blocked",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_status",
+                                 "blocked") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_debug_available",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_reason_code",
+                                 "slope_rejected") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_blocked_reason",
+                                 "slope_rejected") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_hit_surface_id",
+                                 "none") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_ground_snap_applied",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_clamped",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_collision_sweep_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_policy_band",
+                                 "blocked") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_slope_angle_degrees",
+                                 "45.000") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_movement_speed_multiplier",
+                                 "0.000") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_visible",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_status",
+                                 "blocked") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_blocked",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_reason_code",
+                                 "slope_rejected") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_policy_band",
+                                 "blocked") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_speed_multiplier",
+                                 "0.000");
+}
+
 }  // namespace
 
 int main() {
@@ -511,6 +743,21 @@ int main() {
           "",
           invalidFields,
           invalidExitCode);
+
+  int terrainPreviewExitCode = 77;
+  iggy3d::smoke::ReceiptFields terrainPreviewFields;
+  const bool terrainPreviewReceipt =
+      appAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_authoring_terrain_preview",
+          "ascii_room.room_id=automation_terrain_preview_room\n"
+          "ascii_room.source_name=automation/terrain_preview_room.iggyroom.txt\n"
+          "ascii_room.text=#######\\n#P1>!N#\\n#..$E.#\\n#######\\n\n"
+          "ascii_room.build=true\n",
+          "",
+          terrainPreviewFields,
+          terrainPreviewExitCode);
 
   int activateExitCode = 77;
   iggy3d::smoke::ReceiptFields activateFields;
@@ -574,6 +821,38 @@ int main() {
           wallMoveFields,
           wallMoveExitCode);
 
+  int rampMoveExitCode = 77;
+  iggy3d::smoke::ReceiptFields rampMoveFields;
+  const bool rampMoveReceipt =
+      appAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_authoring_ramp_move",
+          "ascii_room.room_id=automation_ramp_move_room\n"
+          "ascii_room.source_name=automation/ramp_move_room.iggyroom.txt\n"
+          "ascii_room.text=#######\\n#P>..$#\\n#######\\n\n"
+          "ascii_room.activate=true\n"
+          "game.move_x=1\n",
+          "",
+          rampMoveFields,
+          rampMoveExitCode);
+
+  int steepMoveExitCode = 77;
+  iggy3d::smoke::ReceiptFields steepMoveFields;
+  const bool steepMoveReceipt =
+      appAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_authoring_steep_move",
+          "ascii_room.room_id=automation_steep_move_room\n"
+          "ascii_room.source_name=automation/steep_move_room.iggyroom.txt\n"
+          "ascii_room.text=#######\\n#P!..$#\\n#######\\n\n"
+          "ascii_room.activate=true\n"
+          "game.move_x=1\n",
+          "",
+          steepMoveFields,
+          steepMoveExitCode);
+
   const bool validPassed =
       validExitCode == 0 && validReceipt &&
       iggy3d::smoke::productReceipt(validFields) &&
@@ -582,6 +861,10 @@ int main() {
       invalidExitCode == 0 && invalidReceipt &&
       iggy3d::smoke::productReceipt(invalidFields) &&
       invalidAsciiPreview(invalidFields);
+  const bool terrainPreviewPassed =
+      terrainPreviewExitCode == 0 && terrainPreviewReceipt &&
+      iggy3d::smoke::productReceipt(terrainPreviewFields) &&
+      terrainAsciiPreview(terrainPreviewFields);
   const bool activatePassed =
       activateExitCode == 0 && activateReceipt &&
       iggy3d::smoke::productReceipt(activateFields) &&
@@ -598,12 +881,23 @@ int main() {
       wallMoveExitCode == 0 && wallMoveReceipt &&
       iggy3d::smoke::productReceipt(wallMoveFields) &&
       activatedAsciiRoomWallMoveBlocked(wallMoveFields);
+  const bool rampMovePassed =
+      rampMoveExitCode == 0 && rampMoveReceipt &&
+      iggy3d::smoke::productReceipt(rampMoveFields) &&
+      activatedAsciiRoomRampMoveAccepted(rampMoveFields);
+  const bool steepMovePassed =
+      steepMoveExitCode == 0 && steepMoveReceipt &&
+      iggy3d::smoke::productReceipt(steepMoveFields) &&
+      activatedAsciiRoomSteepMoveRejected(steepMoveFields);
 
   const bool ok = expect(appAvailable, "app binary exists") &&
                   expect(validReceipt, "valid receipt parsed") &&
                   expect(validPassed, "valid ascii room preview") &&
                   expect(invalidReceipt, "invalid receipt parsed") &&
                   expect(invalidPassed, "invalid ascii room rejected") &&
+                  expect(terrainPreviewReceipt,
+                         "terrain preview receipt parsed") &&
+                  expect(terrainPreviewPassed, "terrain preview ready") &&
                   expect(activateReceipt, "activation receipt parsed") &&
                   expect(activatePassed, "valid ascii room activated") &&
                   expect(invalidActivateReceipt,
@@ -613,12 +907,18 @@ int main() {
                   expect(openMoveReceipt, "open move receipt parsed") &&
                   expect(openMovePassed, "open move accepted") &&
                   expect(wallMoveReceipt, "wall move receipt parsed") &&
-                  expect(wallMovePassed, "wall move blocked");
+                  expect(wallMovePassed, "wall move blocked") &&
+                  expect(rampMoveReceipt, "ramp move receipt parsed") &&
+                  expect(rampMovePassed, "ramp move accepted") &&
+                  expect(steepMoveReceipt, "steep move receipt parsed") &&
+                  expect(steepMovePassed, "steep move rejected");
 
   std::cout << "smoke=product_ascii_authoring\n";
   std::cout << "valid_preview=" << (validPassed ? "true" : "false") << "\n";
   std::cout << "invalid_preview_rejected="
             << (invalidPassed ? "true" : "false") << "\n";
+  std::cout << "terrain_preview=" << (terrainPreviewPassed ? "true" : "false")
+            << "\n";
   std::cout << "activated_gameplay=" << (activatePassed ? "true" : "false")
             << "\n";
   std::cout << "invalid_activation_rejected="
@@ -626,6 +926,10 @@ int main() {
   std::cout << "open_move_accepted=" << (openMovePassed ? "true" : "false")
             << "\n";
   std::cout << "wall_move_blocked=" << (wallMovePassed ? "true" : "false")
+            << "\n";
+  std::cout << "ramp_move_accepted=" << (rampMovePassed ? "true" : "false")
+            << "\n";
+  std::cout << "steep_move_rejected=" << (steepMovePassed ? "true" : "false")
             << "\n";
   std::cout << "window_launch_count=0\n";
   std::cout << "result="

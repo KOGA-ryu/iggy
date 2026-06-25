@@ -6,10 +6,34 @@
 namespace iggy3d {
 namespace {
 
-constexpr std::array<AsciiRoomGlyphInfo, 13> kGlyphs{{
+constexpr float kElevationStepMeters = 0.5F;
+
+constexpr std::array<AsciiRoomGlyphInfo, 22> kGlyphs{{
     {'#', AsciiRoomCellKind::Wall, false, true, true, ""},
     {'.', AsciiRoomCellKind::Floor, true, false, false, ""},
     {' ', AsciiRoomCellKind::Floor, true, false, false, ""},
+    {'0', AsciiRoomCellKind::Floor, true, false, false, "",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F},
+    {'1', AsciiRoomCellKind::Floor, true, false, false, "",
+     AsciiRoomTerrainKind::Flat, kElevationStepMeters, 0.0F},
+    {'2', AsciiRoomCellKind::Floor, true, false, false, "",
+     AsciiRoomTerrainKind::Flat, kElevationStepMeters * 2.0F, 0.0F},
+    {'3', AsciiRoomCellKind::Floor, true, false, false, "",
+     AsciiRoomTerrainKind::Flat, kElevationStepMeters * 3.0F, 0.0F},
+    {'^', AsciiRoomCellKind::Floor, true, false, false, "",
+     AsciiRoomTerrainKind::RampNorth, kElevationStepMeters / 2.0F,
+     kElevationStepMeters},
+    {'v', AsciiRoomCellKind::Floor, true, false, false, "",
+     AsciiRoomTerrainKind::RampSouth, kElevationStepMeters / 2.0F,
+     kElevationStepMeters},
+    {'<', AsciiRoomCellKind::Floor, true, false, false, "",
+     AsciiRoomTerrainKind::RampWest, kElevationStepMeters / 2.0F,
+     kElevationStepMeters},
+    {'>', AsciiRoomCellKind::Floor, true, false, false, "",
+     AsciiRoomTerrainKind::RampEast, kElevationStepMeters / 2.0F,
+     kElevationStepMeters},
+    {'!', AsciiRoomCellKind::Floor, true, false, false, "",
+     AsciiRoomTerrainKind::BlockedSteepEast, kElevationStepMeters, 1.0F},
     {'+', AsciiRoomCellKind::Door, true, false, false, "door"},
     {'s', AsciiRoomCellKind::SecretDoor, true, false, false, "secret_door"},
     {'P', AsciiRoomCellKind::PlayerSpawn, true, false, false, "player_spawn"},
@@ -71,6 +95,25 @@ std::string_view asciiRoomCellKindName(AsciiRoomCellKind kind) {
   return "floor";
 }
 
+std::string_view asciiRoomTerrainKindName(AsciiRoomTerrainKind kind) {
+  switch (kind) {
+    case AsciiRoomTerrainKind::Flat: return "flat";
+    case AsciiRoomTerrainKind::RampNorth: return "ramp_north";
+    case AsciiRoomTerrainKind::RampSouth: return "ramp_south";
+    case AsciiRoomTerrainKind::RampWest: return "ramp_west";
+    case AsciiRoomTerrainKind::RampEast: return "ramp_east";
+    case AsciiRoomTerrainKind::BlockedSteepEast: return "blocked_steep_east";
+  }
+  return "flat";
+}
+
+bool asciiRoomTerrainIsRamp(AsciiRoomTerrainKind kind) {
+  return kind == AsciiRoomTerrainKind::RampNorth ||
+         kind == AsciiRoomTerrainKind::RampSouth ||
+         kind == AsciiRoomTerrainKind::RampWest ||
+         kind == AsciiRoomTerrainKind::RampEast;
+}
+
 std::optional<AsciiRoomGlyphInfo> asciiRoomGlyphInfo(char glyph) {
   for (const AsciiRoomGlyphInfo& info : kGlyphs) {
     if (info.glyph == glyph) {
@@ -115,6 +158,9 @@ AsciiRoomGridBuildResult buildAsciiRoomGrid(const AsciiRoomSource& source) {
       cell.blocksActor = info->blocksActor;
       cell.blocksProjectile = info->blocksProjectile;
       cell.markerTag = std::string(info->markerTag);
+      cell.terrainKind = info->terrainKind;
+      cell.elevationMeters = info->elevationMeters;
+      cell.riseMeters = info->riseMeters;
       cell.sourceOffset = asciiRoomSourceOffset(source, row, column);
       hasWalkable = hasWalkable || cell.walkable;
       if (cell.kind == AsciiRoomCellKind::PlayerSpawn) {
@@ -127,6 +173,13 @@ AsciiRoomGridBuildResult buildAsciiRoomGrid(const AsciiRoomSource& source) {
         ++result.grid.wallCount;
       } else if (cell.walkable) {
         ++result.grid.floorCount;
+        if (cell.terrainKind == AsciiRoomTerrainKind::BlockedSteepEast) {
+          ++result.grid.blockedSlopeCount;
+        } else if (asciiRoomTerrainIsRamp(cell.terrainKind)) {
+          ++result.grid.rampCount;
+        } else if (cell.elevationMeters > 0.0F) {
+          ++result.grid.elevatedFloorCount;
+        }
       }
       result.grid.cells.push_back(std::move(cell));
     }
