@@ -24,7 +24,48 @@ This contract exists to prevent a temporary NPC hack from becoming permanent
 engine structure. NPC behavior must be a runtime system, not an AppShell branch,
 renderer trick, or product automation special case.
 
-## Current Baseline
+## Current Implemented Baseline
+
+NPC Behavior v0.1 is now implemented as a runtime-owned baseline.
+
+Current implemented truth:
+
+- typed AI behavior and intent vocabulary exists in `AiState.hpp`;
+- durable AI state includes target, behavior, last intent, decision tick,
+  deterministic policy, cooldown, and enabled flag;
+- save/load/hash covers the durable AI target, behavior, last intent, and
+  cooldown fields;
+- pure `NpcBehaviorSystem` owns perception, decision, and command building;
+- `CommandAdmission` accepts `CommandSource::Ai` commands without a player
+  slot while preserving normal actor, target, combat, movement, reach, and
+  lifecycle checks;
+- `CommandLog` accepts and restores AI `Move`, `Attack`, and `Wait` records
+  with invalid/default player slots through the same narrow AI policy;
+- `Session::tick()` enqueues NPC behavior commands before normal pending
+  command execution and then applies accepted commands through existing
+  movement/combat tick systems;
+- product gameplay tape receipts prove current-run AI command logging, AI
+  attack logging, wait logging, player damage, AI actor/target ids, behavior,
+  and intent;
+- synthesized product-package players are attack/inspect targetable for NPC
+  proof while remaining separate from NPC command ownership;
+- runtime edge tests cover chase movement through normal `Move`, rejected AI
+  command-log visibility, and defeated-player no-attack behavior.
+
+Latest focused proof targets:
+
+```text
+save_load_tests
+session_state_tests
+npc_behavior_system_tests
+command_admission_tests
+session_tick_tests
+product_gameplay_tape_runner_tests
+product_gameplay_tape_smoke
+product_ascii_gameplay_loop_smoke
+```
+
+## Historical Source Baseline
 
 Existing runtime AI state:
 
@@ -47,8 +88,8 @@ struct AiState {
 };
 ```
 
-This is enough to prove that AI already belongs to runtime session state. It is
-not enough to express actual NPC behavior yet.
+This was the pre-v0.1 baseline. It proved that AI already belonged to runtime
+session state, but did not yet express actual NPC behavior.
 
 Existing session ownership:
 
@@ -78,9 +119,9 @@ src/runtime/save/SaveLoad.hpp
 src/runtime/save/SaveLoad.cpp
 ```
 
-`SaveLoad.cpp` already writes and reads `AiActorState` records. Any added
-durable AI fields must be added to the save envelope, codec, load validation,
-and load replacement path in the same slice.
+`SaveLoad.cpp` already wrote and read `AiActorState` records before v0.1. The
+v0.1 durable fields have since been added to the save envelope, codec, load
+validation, load replacement path, and state hash.
 
 Existing state hash support:
 
@@ -88,8 +129,8 @@ Existing state hash support:
 src/runtime/replay/StateHash.cpp
 ```
 
-AI state already participates in state hashing. Any new durable AI field must
-participate in state hash immediately.
+AI state already participated in state hashing before v0.1. The v0.1 durable
+fields now participate in state hash immediately.
 
 Existing command and tick pipeline:
 
@@ -398,7 +439,7 @@ Rules:
 
 ## Runtime Function Layout
 
-New files:
+Implemented files:
 
 ```text
 src/runtime/ai/NpcBehaviorSystem.hpp
@@ -406,13 +447,13 @@ src/runtime/ai/NpcBehaviorSystem.cpp
 tests/unit/npc_behavior_system_tests.cpp
 ```
 
-Existing file to extend:
+Extended AI state file:
 
 ```text
 src/runtime/ai/AiState.hpp
 ```
 
-Later save/hash files:
+Implemented save/hash coverage files:
 
 ```text
 src/runtime/save/SaveEnvelope.hpp
@@ -422,9 +463,10 @@ src/runtime/replay/StateHash.cpp
 tests/unit/save_load_tests.cpp
 ```
 
-Only edit those later files in the same slice that adds durable AI fields.
+These files were updated in the same implementation ladder as the durable AI
+fields.
 
-Preferred public functions:
+Implemented public functions:
 
 ```cpp
 NpcPerceptionResult queryNpcPerception(const NpcPerceptionRequest& request);
@@ -627,7 +669,7 @@ Rules:
 
 ## Session Integration
 
-Preferred v0.1 integration:
+Implemented v0.1 integration:
 
 ```text
 Session::tick
@@ -637,39 +679,26 @@ Session::tick
 -> runSessionTick executes the accepted pending commands
 ```
 
-Important: direct recursive use of `Session::submitCommand` inside
-`Session::tick` may require a small internal helper to avoid re-entry problems.
-The builder must inspect `Session.cpp` before choosing the exact implementation.
-
-Allowed implementation options:
-
-Option A, preferred if clean:
-
-- add a private/internal helper in `Session.cpp` that admits and appends a
-  command without applying control commands;
-- AI tick uses that helper to enqueue `CommandSource::Ai` commands before
-  `pendingAcceptedCommands(state_)` is collected.
-
-Option B, acceptable if A becomes too broad:
-
-- keep `NpcBehaviorSystem` pure in the first source slice;
-- add a later `Session::enqueueAiCommandsForTick` slice with focused tests.
+The landed implementation uses runtime-owned session helpers to enqueue
+`CommandSource::Ai` records before `pendingAcceptedCommands(state_)` is
+collected. AI commands are admitted and appended to `CommandLog`; accepted
+commands are then executed by the existing tick path.
 
 No AppShell integration is allowed for behavior truth.
 
 ## Save, Load, Reset, And Hash
 
-Current `AiActorState` is already saved, loaded, baselined, reset, and hashed.
+Current `AiActorState` is saved, loaded, baselined, reset, and hashed.
 
-When adding durable fields:
+The v0.1 durable fields are covered in:
 
-- update `SaveEnvelope.hpp`;
-- update `SaveCodec.cpp` encode/decode;
-- update `SaveLoad.cpp` save/load;
-- update load validation if invalid enum/cooldown/target combinations exist;
-- update `StateHash.cpp`;
-- update baseline/reset tests;
-- update save/load roundtrip tests.
+- `SaveEnvelope.hpp`;
+- `SaveCodec.cpp` encode/decode;
+- `SaveLoad.cpp` save/load;
+- load validation for enum text;
+- `StateHash.cpp`;
+- baseline/reset tests;
+- save/load roundtrip tests.
 
 Do not save derived perception facts:
 
@@ -693,26 +722,19 @@ Save durable state only:
 
 Product receipts are proof only.
 
-Potential product fields:
+Implemented product gameplay tape proof fields:
 
 ```text
-npc_behavior_enabled=true|false
-npc_behavior_actor_count=<u64>
-npc_behavior_tick_count=<u64>
-npc_behavior_command_count=<u64>
-npc_behavior_accepted_command_count=<u64>
-npc_behavior_rejected_command_count=<u64>
-npc_behavior_last_actor=<entity-id-or-none>
-npc_behavior_last_actor_stable_name=<stable-name-or-none>
-npc_behavior_last_state=<idle|alert|chasing|attacking|defeated|none>
-npc_behavior_last_intent=<wait|move_toward_target|attack_target|none>
-npc_behavior_last_target=<entity-id-or-none>
-npc_behavior_last_target_stable_name=<stable-name-or-none>
-npc_behavior_last_status=<status>
-npc_behavior_attack_executed=true|false
-npc_behavior_move_executed=true|false
-npc_behavior_player_damaged=true|false
-npc_behavior_npc_defeated=true|false
+gameplay_tape_ai_command_logged=true|false
+gameplay_tape_ai_attack_logged=true|false
+gameplay_tape_ai_wait_logged=true|false
+gameplay_tape_ai_player_damaged=true|false
+gameplay_tape_ai_player_hp_before=<int>
+gameplay_tape_ai_player_hp_after=<int>
+gameplay_tape_ai_actor_id=<id-or-none>
+gameplay_tape_ai_target_id=<id-or-none>
+gameplay_tape_ai_behavior=<idle|alert|chasing|attacking|defeated|none>
+gameplay_tape_ai_intent=<wait|move_toward_target|attack_target|none>
 ```
 
 Receipt rules:
@@ -720,12 +742,14 @@ Receipt rules:
 - receipts must not drive behavior;
 - receipts must be deterministic key-value lines;
 - receipts must not use JSON;
-- product app may summarize runtime AI facts after a tick;
-- no-window smoke should prove receipt values.
+- product app summarizes runtime AI facts after a tape run;
+- no-window smoke proves receipt values;
+- current-run receipt semantics must ignore AI command-log records that existed
+  before the tape run.
 
-## Test Plan
+## Implemented Proof Plan
 
-Unit tests for `NpcBehaviorSystem`:
+Unit tests for `NpcBehaviorSystem` cover:
 
 - disabled AI emits no command;
 - inactive NPC emits no command;
@@ -739,7 +763,7 @@ Unit tests for `NpcBehaviorSystem`:
 - chase destination is finite and respects step/stop distances;
 - decision order is deterministic by actor id.
 
-Runtime/session tests:
+Runtime/session tests cover:
 
 - AI attack command uses `CommandSource::Ai`;
 - AI command is admitted through normal command admission;
@@ -749,14 +773,14 @@ Runtime/session tests:
 - AI rejected command is visible in command log;
 - state hash changes when durable AI state changes.
 
-Save/load tests:
+Save/load tests cover:
 
 - AI behavior fields roundtrip;
 - invalid AI enum fails decode/load;
 - cooldown and target fields roundtrip;
 - reset returns AI to baseline.
 
-Product no-window smoke:
+Product no-window proof uses gameplay tape waits to drive autonomous NPC ticks:
 
 ```text
 ASCII:
@@ -768,12 +792,12 @@ Tape:
 wait
 ```
 
-Expected proof:
+Implemented proof:
 
 - app stays no-window;
 - world enters gameplay;
-- NPC behavior enabled;
-- NPC perceives player;
+- NPC behavior is enabled by runtime state;
+- NPC perceives player by distance;
 - NPC attacks or chases according to configured distance;
 - command source is AI;
 - player HP changes if attack is in range;
@@ -800,25 +824,31 @@ Cost rules:
 - if combatant lookup becomes repeated, add a local per-tick lookup helper, not
   a global cache.
 
-## Owned Files By Slice
+## Completed Implementation Slices
 
-Slice 1: contract and current-source alignment.
+Slice 1 completed: contract and current-source alignment.
 
 ```text
 docs/plan_bucket/npc_behavior_contract_v0_1.md
 docs/plan_bucket/README.md
 ```
 
-Slice 2: AI state vocabulary only.
+Slice 2 completed: durable AI state vocabulary, persistence, and hash
+coverage.
 
 ```text
 src/runtime/ai/AiState.hpp
+src/runtime/save/SaveEnvelope.hpp
+src/runtime/save/SaveCodec.cpp
+src/runtime/save/SaveLoad.cpp
+src/runtime/replay/StateHash.cpp
+tests/unit/save_load_tests.cpp
 tests/unit/session_state_tests.cpp
 ```
 
-No session behavior change yet.
+No session behavior changed in that slice.
 
-Slice 3: pure NPC behavior system.
+Slice 3 completed: pure NPC behavior system.
 
 ```text
 src/runtime/ai/NpcBehaviorSystem.hpp
@@ -828,32 +858,26 @@ CMakeLists.txt
 cmake/iggy3d_tests.cmake
 ```
 
-No session integration yet.
+No session integration changed in that slice.
 
-Slice 4: save/load/hash for durable AI fields.
+Slice 4 completed: AI command admission policy.
 
 ```text
-src/runtime/save/SaveEnvelope.hpp
-src/runtime/save/SaveCodec.cpp
-src/runtime/save/SaveLoad.cpp
-src/runtime/replay/StateHash.cpp
-tests/unit/save_load_tests.cpp
+src/runtime/command/CommandAdmission.cpp
+tests/unit/command_admission_tests.cpp
+```
+
+Slice 5 completed: session enqueue/integration and command-log AI slot
+invariant.
+
+```text
+src/runtime/session/Session.cpp
+src/runtime/replay/CommandLog.cpp
+tests/unit/session_tick_tests.cpp
 tests/unit/session_state_tests.cpp
 ```
 
-Slice 5: session enqueue/integration.
-
-```text
-src/runtime/session/Session.hpp
-src/runtime/session/Session.cpp
-src/runtime/session/SessionTick.hpp
-src/runtime/session/SessionTick.cpp
-tests/unit/session_tick_tests.cpp
-tests/unit/session_runner_tests.cpp
-tests/unit/combat_command_tests.cpp
-```
-
-Slice 6: product proof receipts.
+Slice 6 completed: product proof receipts and current-run honesty repair.
 
 ```text
 src/app/iggy3d/ReceiptBuilder.hpp
@@ -863,7 +887,11 @@ src/app/iggy3d/ProductGameplayTapeRunner.cpp
 tests/smoke/product_gameplay_tape_smoke.cpp
 ```
 
-Only add product receipts after runtime behavior exists.
+Slice 7 completed: runtime edge proofs.
+
+```text
+tests/unit/session_tick_tests.cpp
+```
 
 ## No-Go Files
 
@@ -889,7 +917,9 @@ documentation.
 
 ## Acceptance Gate
 
-The complete v0.1 batch is accepted when:
+The complete v0.1 batch is satisfied.
+
+Accepted baseline:
 
 - NPC behavior state is typed and durable;
 - pure perception and decision tests pass;
@@ -898,11 +928,11 @@ The complete v0.1 batch is accepted when:
 - NPC can attack the player in a no-window ASCII smoke;
 - defeated NPC emits no further commands;
 - save/load/hash cover new durable AI fields;
-- receipts prove behavior without launching a window;
+- product gameplay tape receipts prove behavior without launching a window;
 - no AI logic exists in AppShell;
 - no renderer files are touched.
 
-Required verification style:
+Latest focused verification style:
 
 ```text
 cmake --build build --target iggy3d_app
@@ -930,41 +960,22 @@ Stop and return to planning if the builder needs:
 - AppShell-owned AI behavior;
 - direct HP/position mutation outside existing systems.
 
-## Deferred Work
+## Next NPC Behavior Work
 
 Later contracts should cover:
 
+- behavior config source/profile model;
+- line-of-sight and perception through spatial surfaces;
+- simple patrol or guard anchors from ASCII/package markers;
+- AI debug overlay and receipt summaries beyond tape proof;
+- pathfinding and navigation surfaces;
+- replay/multiplayer authority policy once networking begins;
 - patrol route authoring;
 - guard posts;
 - alert propagation;
 - sound/noise perception;
-- line-of-sight through collision surfaces;
 - cover seeking;
 - ranged attacks and spell casting;
 - faction reputation;
 - tactical slow-time decision cadence;
-- multiplayer server authority;
 - AI debug overlay and world-space draw.
-
-## First Builder Order
-
-First implementation slice after this contract:
-
-```text
-NPC Behavior v0.1 / Slice 2 - AI State Vocabulary
-```
-
-Scope:
-
-- extend `AiState.hpp` with typed behavior and intent enums;
-- add durable fields with conservative defaults;
-- update only tests needed to prove default construction remains stable;
-- do not wire behavior into session tick;
-- do not change save/load/hash in this slice unless the added fields break
-  existing serialization tests, in which case stop and split the save/hash slice.
-
-Rationale:
-
-The state vocabulary is the smallest durable seam. Once it is stable, the pure
-behavior system can be built against typed data instead of temporary strings or
-product receipt fields.

@@ -49,7 +49,7 @@ Each plan document must define:
 - Product save catalog contract
 - ASCII room authoring contract
 - Runtime save durability contract
-- NPC behavior contract
+- NPC behavior contract (v0.1 completed baseline)
 - World creation UX contract
 - Selection and cursor contract
 - In-game pause menu contract
@@ -92,10 +92,10 @@ Each plan document must define:
     same-directory temp path policy, result structs, soft delete boundary,
     receipt fields, and path/result-only first implementation slice;
 - `npc_behavior_contract_v0_1.md`
-  - existing AI/session/combat/targeting baseline, runtime-owned NPC behavior
-    state, perception and decision semantics, command-pipeline integration,
-    save/load/hash requirements, no-window proof receipts, compute costs, and
-    builder slices;
+  - completed runtime-owned NPC behavior v0.1 baseline, durable AI state,
+    perception/decision/command building, AI command admission/log policy,
+    session tick enqueue integration, save/load/hash coverage, no-window
+    product proof receipts, runtime edge proofs, and deferred next NPC work;
 - `world_creation_ux_contract_v0_1.md`
   - current New World launch baseline, world setup draft fields, initial save
     gate, world identity, product orchestration ownership, route semantics,
