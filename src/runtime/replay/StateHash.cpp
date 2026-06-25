@@ -37,6 +37,11 @@ void addVec3Field(StableHasher& hasher, std::string_view tag, Vec3 value) {
   addVec3Quantized(hasher, value);
 }
 
+void addFloatField(StableHasher& hasher, std::string_view tag, float value) {
+  hasher.addString(tag);
+  hasher.addFloatQuantized(value);
+}
+
 void addTransform(StableHasher& hasher, const Transform3& transform) {
   addVec3Field(hasher, "position", transform.position);
   addVec3Field(hasher, "rotationEulerRadians", transform.rotationEulerRadians);
@@ -206,6 +211,12 @@ StateHashValue computeStateHash(const SessionState& state) {
     addEnum(hasher, "ai.behavior", actor.behavior);
     addEnum(hasher, "ai.lastIntent", actor.lastIntent);
     addU64(hasher, "ai.cooldownTicksRemaining", actor.cooldownTicksRemaining);
+    addBoolField(hasher, "ai.hasHomePosition", actor.hasHomePosition);
+    addVec3Field(hasher, "ai.homePosition", actor.homePosition);
+    addStringField(hasher, "ai.homeStableName", actor.homeStableName);
+    addFloatField(hasher, "ai.leashRadiusMeters", actor.leashRadiusMeters);
+    addFloatField(hasher, "ai.returnRadiusMeters", actor.returnRadiusMeters);
+    addFloatField(hasher, "ai.homeToleranceMeters", actor.homeToleranceMeters);
   }
 
   addU64(hasher, "objectives.count", state.objectives.objectives.size());

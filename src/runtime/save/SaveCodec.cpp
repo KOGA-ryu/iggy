@@ -509,6 +509,10 @@ bool parseEnum(std::string_view value, AiBehaviorKind& out) {
     out = AiBehaviorKind::Defeated;
     return true;
   }
+  if (value == "returning") {
+    out = AiBehaviorKind::Returning;
+    return true;
+  }
   return false;
 }
 
@@ -528,6 +532,10 @@ bool parseEnum(std::string_view value, AiIntentKind& out) {
   }
   if (value == "attack_target") {
     out = AiIntentKind::AttackTarget;
+    return true;
+  }
+  if (value == "return_to_anchor") {
+    out = AiIntentKind::ReturnToAnchor;
     return true;
   }
   return false;
@@ -947,6 +955,12 @@ private:
       lineEnum(p + "behavior", actor.behavior);
       lineEnum(p + "lastIntent", actor.lastIntent);
       line(p + "cooldownTicksRemaining", unsignedText(actor.cooldownTicksRemaining));
+      lineBool(p + "hasHomePosition", actor.hasHomePosition);
+      line(p + "homePosition", formatVec3(actor.homePosition));
+      lineString(p + "homeStableName", actor.homeStableName);
+      line(p + "leashRadiusMeters", formatFloat(actor.leashRadiusMeters));
+      line(p + "returnRadiusMeters", formatFloat(actor.returnRadiusMeters));
+      line(p + "homeToleranceMeters", formatFloat(actor.homeToleranceMeters));
     }
   }
 
@@ -1493,6 +1507,24 @@ private:
       }
       if (nextKeyIs(p + "cooldownTicksRemaining")) {
         readUnsigned(p + "cooldownTicksRemaining", actor.cooldownTicksRemaining);
+      }
+      if (nextKeyIs(p + "hasHomePosition")) {
+        readBool(p + "hasHomePosition", actor.hasHomePosition);
+      }
+      if (nextKeyIs(p + "homePosition")) {
+        readVec3(p + "homePosition", actor.homePosition);
+      }
+      if (nextKeyIs(p + "homeStableName")) {
+        readString(p + "homeStableName", actor.homeStableName);
+      }
+      if (nextKeyIs(p + "leashRadiusMeters")) {
+        readFloat(p + "leashRadiusMeters", actor.leashRadiusMeters);
+      }
+      if (nextKeyIs(p + "returnRadiusMeters")) {
+        readFloat(p + "returnRadiusMeters", actor.returnRadiusMeters);
+      }
+      if (nextKeyIs(p + "homeToleranceMeters")) {
+        readFloat(p + "homeToleranceMeters", actor.homeToleranceMeters);
       }
     }
   }

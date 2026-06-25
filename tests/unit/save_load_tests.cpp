@@ -171,9 +171,15 @@ iggy3d::AiActorState authoredAiActorState() {
   actor.enabled = false;
   actor.behaviorProfileId = "passive";
   actor.target = {1};
-  actor.behavior = iggy3d::AiBehaviorKind::Chasing;
-  actor.lastIntent = iggy3d::AiIntentKind::MoveTowardTarget;
+  actor.behavior = iggy3d::AiBehaviorKind::Returning;
+  actor.lastIntent = iggy3d::AiIntentKind::ReturnToAnchor;
   actor.cooldownTicksRemaining = 5;
+  actor.hasHomePosition = true;
+  actor.homePosition = {2.0F, 0.0F, 4.0F};
+  actor.homeStableName = "guard_post_alpha";
+  actor.leashRadiusMeters = 6.0F;
+  actor.returnRadiusMeters = 1.0F;
+  actor.homeToleranceMeters = 0.25F;
   return actor;
 }
 
@@ -720,6 +726,13 @@ bool defaultAiActorStateHasPassiveDefaults() {
          expect(actor.lastIntent == iggy3d::AiIntentKind::None,
                 "default ai last intent none") &&
          expect(actor.cooldownTicksRemaining == 0U, "default ai cooldown zero") &&
+         expect(!actor.hasHomePosition, "default ai no home") &&
+         expect(iggy3d::nearlyEqual(actor.homePosition, iggy3d::Vec3{}),
+                "default ai home position zero") &&
+         expect(actor.homeStableName.empty(), "default ai home stable name empty") &&
+         expect(actor.leashRadiusMeters == 0.0F, "default ai leash zero") &&
+         expect(actor.returnRadiusMeters == 0.0F, "default ai return zero") &&
+         expect(actor.homeToleranceMeters == 0.0F, "default ai tolerance zero") &&
          expect(actor.enabled, "default ai enabled");
 }
 
@@ -742,19 +755,26 @@ bool aiStateRoundTripsThroughSaveLoadAndCodec() {
        expect(!record.enabled, "ai enabled envelope") &&
        expect(record.behaviorProfileId == "passive", "ai profile envelope") &&
        expect(record.target == iggy3d::EntityId{1}, "ai target envelope") &&
-       expect(record.behavior == iggy3d::AiBehaviorKind::Chasing,
+       expect(record.behavior == iggy3d::AiBehaviorKind::Returning,
               "ai behavior envelope") &&
-       expect(record.lastIntent == iggy3d::AiIntentKind::MoveTowardTarget,
+       expect(record.lastIntent == iggy3d::AiIntentKind::ReturnToAnchor,
               "ai intent envelope") &&
        expect(record.cooldownTicksRemaining == 5U, "ai cooldown envelope") &&
+       expect(record.hasHomePosition, "ai has home envelope") &&
+       expect(iggy3d::nearlyEqual(record.homePosition, iggy3d::Vec3{2.0F, 0.0F, 4.0F}),
+              "ai home position envelope") &&
+       expect(record.homeStableName == "guard_post_alpha", "ai home name envelope") &&
+       expect(record.leashRadiusMeters == 6.0F, "ai leash envelope") &&
+       expect(record.returnRadiusMeters == 1.0F, "ai return envelope") &&
+       expect(record.homeToleranceMeters == 0.25F, "ai tolerance envelope") &&
        expect(saved.encodedSaveText.find("ai.actor.0.target=1\n") !=
                   std::string::npos,
               "ai target encoded") &&
-       expect(saved.encodedSaveText.find("ai.actor.0.behavior=chasing\n") !=
+       expect(saved.encodedSaveText.find("ai.actor.0.behavior=returning\n") !=
                   std::string::npos,
               "ai behavior encoded") &&
        expect(saved.encodedSaveText.find(
-                  "ai.actor.0.lastIntent=move_toward_target\n") !=
+                  "ai.actor.0.lastIntent=return_to_anchor\n") !=
                   std::string::npos,
               "ai intent encoded") &&
        expect(saved.encodedSaveText.find("ai.actor.0.behavior_profile_id=passive\n") !=
@@ -763,7 +783,25 @@ bool aiStateRoundTripsThroughSaveLoadAndCodec() {
        expect(saved.encodedSaveText.find(
                   "ai.actor.0.cooldownTicksRemaining=5\n") !=
                   std::string::npos,
-              "ai cooldown encoded");
+              "ai cooldown encoded") &&
+       expect(saved.encodedSaveText.find("ai.actor.0.hasHomePosition=true\n") !=
+                  std::string::npos,
+              "ai has home encoded") &&
+       expect(saved.encodedSaveText.find("ai.actor.0.homePosition=2.000,0.000,4.000\n") !=
+                  std::string::npos,
+              "ai home position encoded") &&
+       expect(saved.encodedSaveText.find("ai.actor.0.homeStableName=guard_post_alpha\n") !=
+                  std::string::npos,
+              "ai home name encoded") &&
+       expect(saved.encodedSaveText.find("ai.actor.0.leashRadiusMeters=6.000\n") !=
+                  std::string::npos,
+              "ai leash encoded") &&
+       expect(saved.encodedSaveText.find("ai.actor.0.returnRadiusMeters=1.000\n") !=
+                  std::string::npos,
+              "ai return encoded") &&
+       expect(saved.encodedSaveText.find("ai.actor.0.homeToleranceMeters=0.250\n") !=
+                  std::string::npos,
+              "ai tolerance encoded");
 
   iggy3d::Session loaded = makeSession();
   const iggy3d::LoadStateResult load =
@@ -786,13 +824,26 @@ bool aiStateRoundTripsThroughSaveLoadAndCodec() {
        expect(loadedActor != nullptr && loadedActor->target == iggy3d::EntityId{1},
               "ai target loaded") &&
        expect(loadedActor != nullptr &&
-                  loadedActor->behavior == iggy3d::AiBehaviorKind::Chasing,
+                  loadedActor->behavior == iggy3d::AiBehaviorKind::Returning,
               "ai behavior loaded") &&
        expect(loadedActor != nullptr &&
-                  loadedActor->lastIntent == iggy3d::AiIntentKind::MoveTowardTarget,
+                  loadedActor->lastIntent == iggy3d::AiIntentKind::ReturnToAnchor,
               "ai intent loaded") &&
        expect(loadedActor != nullptr && loadedActor->cooldownTicksRemaining == 5U,
               "ai cooldown loaded") &&
+       expect(loadedActor != nullptr && loadedActor->hasHomePosition,
+              "ai has home loaded") &&
+       expect(loadedActor != nullptr &&
+                  iggy3d::nearlyEqual(loadedActor->homePosition, iggy3d::Vec3{2.0F, 0.0F, 4.0F}),
+              "ai home position loaded") &&
+       expect(loadedActor != nullptr && loadedActor->homeStableName == "guard_post_alpha",
+              "ai home name loaded") &&
+       expect(loadedActor != nullptr && loadedActor->leashRadiusMeters == 6.0F,
+              "ai leash loaded") &&
+       expect(loadedActor != nullptr && loadedActor->returnRadiusMeters == 1.0F,
+              "ai return loaded") &&
+       expect(loadedActor != nullptr && loadedActor->homeToleranceMeters == 0.25F,
+              "ai tolerance loaded") &&
        expect(loaded.stateHash() == iggy3d::computeStateHash(sourceState),
               "ai loaded hash");
 
@@ -827,12 +878,61 @@ bool aiStateRoundTripsThroughSaveLoadAndCodec() {
                   oldProfileLoadedActor->behaviorProfileId == "default",
               "old profile loaded default");
 
+  iggy3d::SessionState oldGuardState = source.state();
+  iggy3d::AiActorState oldGuardActor = authoredAiActorState();
+  oldGuardActor.hasHomePosition = false;
+  oldGuardActor.homePosition = {};
+  oldGuardActor.homeStableName.clear();
+  oldGuardActor.leashRadiusMeters = 0.0F;
+  oldGuardActor.returnRadiusMeters = 0.0F;
+  oldGuardActor.homeToleranceMeters = 0.0F;
+  oldGuardState.ai.actors.push_back(oldGuardActor);
+  const iggy3d::SaveStateResult oldGuardSaved =
+      iggy3d::saveSessionStateEncoded(oldGuardState);
+  std::string oldGuardStyle = oldGuardSaved.encodedSaveText;
+  oldGuardStyle = eraseLineStartingWith(oldGuardStyle, "ai.actor.0.hasHomePosition=");
+  oldGuardStyle = eraseLineStartingWith(oldGuardStyle, "ai.actor.0.homePosition=");
+  oldGuardStyle = eraseLineStartingWith(oldGuardStyle, "ai.actor.0.homeStableName=");
+  oldGuardStyle = eraseLineStartingWith(oldGuardStyle, "ai.actor.0.leashRadiusMeters=");
+  oldGuardStyle = eraseLineStartingWith(oldGuardStyle, "ai.actor.0.returnRadiusMeters=");
+  oldGuardStyle = eraseLineStartingWith(oldGuardStyle, "ai.actor.0.homeToleranceMeters=");
+  const iggy3d::SaveDecodeResult oldGuardDecoded =
+      iggy3d::decodeSaveEnvelope(oldGuardStyle);
+  iggy3d::Session oldGuardLoaded = makeSession();
+  const iggy3d::LoadStateResult oldGuardLoad =
+      iggy3d::loadEncodedSaveIntoSession(
+          oldGuardLoaded, oldGuardStyle, compatibilityFor(oldGuardDecoded.envelope));
+  const iggy3d::AiActorState* oldGuardLoadedActor =
+      oldGuardLoaded.state().ai.actors.empty()
+          ? nullptr
+          : &oldGuardLoaded.state().ai.actors.front();
+  ok = ok && expect(oldGuardDecoded.status == iggy3d::SaveCodecStatus::Ok,
+                    "old guard ai save decodes") &&
+       expect(!oldGuardDecoded.envelope.ai.actors.empty() &&
+                  !oldGuardDecoded.envelope.ai.actors.front().hasHomePosition,
+              "old guard decode has home default") &&
+       expect(!oldGuardDecoded.envelope.ai.actors.empty() &&
+                  oldGuardDecoded.envelope.ai.actors.front().homeStableName.empty(),
+              "old guard decode home name default") &&
+       expect(oldGuardLoad.status == iggy3d::SaveLoadStatus::Ok,
+              "old guard ai save loads") &&
+       expect(oldGuardLoadedActor != nullptr && !oldGuardLoadedActor->hasHomePosition,
+              "old guard loaded has home default") &&
+       expect(oldGuardLoadedActor != nullptr && oldGuardLoadedActor->homeStableName.empty(),
+              "old guard loaded home name default");
+
   std::string oldStyle = saved.encodedSaveText;
   oldStyle = eraseLineStartingWith(oldStyle, "ai.actor.0.behavior_profile_id=");
   oldStyle = eraseLineStartingWith(oldStyle, "ai.actor.0.target=");
   oldStyle = eraseLineStartingWith(oldStyle, "ai.actor.0.behavior=");
   oldStyle = eraseLineStartingWith(oldStyle, "ai.actor.0.lastIntent=");
   oldStyle = eraseLineStartingWith(oldStyle, "ai.actor.0.cooldownTicksRemaining=");
+  oldStyle = eraseLineStartingWith(oldStyle, "ai.actor.0.hasHomePosition=");
+  oldStyle = eraseLineStartingWith(oldStyle, "ai.actor.0.homePosition=");
+  oldStyle = eraseLineStartingWith(oldStyle, "ai.actor.0.homeStableName=");
+  oldStyle = eraseLineStartingWith(oldStyle, "ai.actor.0.leashRadiusMeters=");
+  oldStyle = eraseLineStartingWith(oldStyle, "ai.actor.0.returnRadiusMeters=");
+  oldStyle = eraseLineStartingWith(oldStyle, "ai.actor.0.homeToleranceMeters=");
   const iggy3d::SaveDecodeResult oldDecoded = iggy3d::decodeSaveEnvelope(oldStyle);
   const iggy3d::SaveAiActorRecord* oldActor =
       oldDecoded.envelope.ai.actors.empty() ? nullptr : &oldDecoded.envelope.ai.actors.front();
@@ -849,17 +949,39 @@ bool aiStateRoundTripsThroughSaveLoadAndCodec() {
                   oldActor->lastIntent == iggy3d::AiIntentKind::None,
               "old ai intent default") &&
        expect(oldActor != nullptr && oldActor->cooldownTicksRemaining == 0U,
-              "old ai cooldown default");
+              "old ai cooldown default") &&
+       expect(oldActor != nullptr && !oldActor->hasHomePosition,
+              "old ai has home default") &&
+       expect(oldActor != nullptr &&
+                  iggy3d::nearlyEqual(oldActor->homePosition, iggy3d::Vec3{}),
+              "old ai home position default") &&
+       expect(oldActor != nullptr && oldActor->homeStableName.empty(),
+              "old ai home name default") &&
+       expect(oldActor != nullptr && oldActor->leashRadiusMeters == 0.0F,
+              "old ai leash default") &&
+       expect(oldActor != nullptr && oldActor->returnRadiusMeters == 0.0F,
+              "old ai return default") &&
+       expect(oldActor != nullptr && oldActor->homeToleranceMeters == 0.0F,
+              "old ai tolerance default");
 
   const std::string badBehavior = replaceFirst(saved.encodedSaveText,
-                                               "ai.actor.0.behavior=chasing\n",
+                                               "ai.actor.0.behavior=returning\n",
                                                "ai.actor.0.behavior=confused\n");
   const iggy3d::SaveDecodeResult badDecoded =
       iggy3d::decodeSaveEnvelope(badBehavior);
+  const std::string badIntent = replaceFirst(saved.encodedSaveText,
+                                             "ai.actor.0.lastIntent=return_to_anchor\n",
+                                             "ai.actor.0.lastIntent=wander_home\n");
+  const iggy3d::SaveDecodeResult badIntentDecoded =
+      iggy3d::decodeSaveEnvelope(badIntent);
   return ok && expect(badDecoded.status == iggy3d::SaveCodecStatus::InvalidEnum,
                       "invalid ai enum rejected") &&
          expect(badDecoded.diagnosticKey == "ai.actor.0.behavior",
-                "invalid ai enum key");
+                "invalid ai enum key") &&
+         expect(badIntentDecoded.status == iggy3d::SaveCodecStatus::InvalidEnum,
+                "invalid ai intent enum rejected") &&
+         expect(badIntentDecoded.diagnosticKey == "ai.actor.0.lastIntent",
+                "invalid ai intent enum key");
 }
 
 bool aiStateChangesParticipateInHash() {
@@ -890,8 +1012,38 @@ bool aiStateChangesParticipateInHash() {
 
   changed = state;
   changed.ai.actors[0].cooldownTicksRemaining = 6;
+  ok = ok && expect(iggy3d::computeStateHash(changed) != base,
+                    "ai cooldown changes hash");
+
+  changed = state;
+  changed.ai.actors[0].hasHomePosition = false;
+  ok = ok && expect(iggy3d::computeStateHash(changed) != base,
+                    "ai has home changes hash");
+
+  changed = state;
+  changed.ai.actors[0].homePosition.x = 3.0F;
+  ok = ok && expect(iggy3d::computeStateHash(changed) != base,
+                    "ai home position changes hash");
+
+  changed = state;
+  changed.ai.actors[0].homeStableName = "guard_post_beta";
+  ok = ok && expect(iggy3d::computeStateHash(changed) != base,
+                    "ai home name changes hash");
+
+  changed = state;
+  changed.ai.actors[0].leashRadiusMeters = 7.0F;
+  ok = ok && expect(iggy3d::computeStateHash(changed) != base,
+                    "ai leash changes hash");
+
+  changed = state;
+  changed.ai.actors[0].returnRadiusMeters = 1.5F;
+  ok = ok && expect(iggy3d::computeStateHash(changed) != base,
+                    "ai return radius changes hash");
+
+  changed = state;
+  changed.ai.actors[0].homeToleranceMeters = 0.5F;
   return ok && expect(iggy3d::computeStateHash(changed) != base,
-                      "ai cooldown changes hash");
+                      "ai home tolerance changes hash");
 }
 
 bool invalidCombatStateRejectedOnLoad() {

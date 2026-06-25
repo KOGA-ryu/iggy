@@ -260,9 +260,21 @@ bool resetBaseline() {
   iggy3d::AiActorState baselineAi;
   baselineAi.actor = {3};
   baselineAi.behaviorProfileId = "passive";
+  baselineAi.hasHomePosition = true;
+  baselineAi.homePosition = {2.0F, 0.0F, 4.0F};
+  baselineAi.homeStableName = "guard_post_alpha";
+  baselineAi.leashRadiusMeters = 6.0F;
+  baselineAi.returnRadiusMeters = 1.0F;
+  baselineAi.homeToleranceMeters = 0.25F;
   session.mutableStateForOwnedSystems().baseline.ai.actors.push_back(baselineAi);
   state.ai.actors.push_back(baselineAi);
   state.ai.actors[0].behaviorProfileId = "melee_training";
+  state.ai.actors[0].hasHomePosition = false;
+  state.ai.actors[0].homePosition = {9.0F, 0.0F, 9.0F};
+  state.ai.actors[0].homeStableName = "guard_post_beta";
+  state.ai.actors[0].leashRadiusMeters = 9.0F;
+  state.ai.actors[0].returnRadiusMeters = 2.0F;
+  state.ai.actors[0].homeToleranceMeters = 0.5F;
   state.currentStateHash = iggy3d::computeStateHash(state);
 
   const iggy3d::SessionResetResult reset = session.resetToBaseline();
@@ -284,6 +296,25 @@ bool resetBaseline() {
          expect(resetState.ai.actors.size() == 1U &&
                     resetState.ai.actors[0].behaviorProfileId == "passive",
                 "reset ai profile baseline") &&
+         expect(resetState.ai.actors.size() == 1U &&
+                    resetState.ai.actors[0].hasHomePosition,
+                "reset ai has home baseline") &&
+         expect(resetState.ai.actors.size() == 1U &&
+                    iggy3d::nearlyEqual(resetState.ai.actors[0].homePosition,
+                                        iggy3d::Vec3{2.0F, 0.0F, 4.0F}),
+                "reset ai home position baseline") &&
+         expect(resetState.ai.actors.size() == 1U &&
+                    resetState.ai.actors[0].homeStableName == "guard_post_alpha",
+                "reset ai home name baseline") &&
+         expect(resetState.ai.actors.size() == 1U &&
+                    resetState.ai.actors[0].leashRadiusMeters == 6.0F,
+                "reset ai leash baseline") &&
+         expect(resetState.ai.actors.size() == 1U &&
+                    resetState.ai.actors[0].returnRadiusMeters == 1.0F,
+                "reset ai return radius baseline") &&
+         expect(resetState.ai.actors.size() == 1U &&
+                    resetState.ai.actors[0].homeToleranceMeters == 0.25F,
+                "reset ai home tolerance baseline") &&
          expect(resetState.commandLog.empty() && resetState.commandLog.nextSequence() == 1U,
                 "reset command log") &&
          expect(resetState.nextCommandId == 1U, "reset command id") &&

@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "core/ids/EntityId.hpp"
+#include "core/math/Vec3.hpp"
 
 namespace iggy3d {
 
@@ -16,6 +17,7 @@ enum class AiBehaviorKind : std::uint8_t {
   Chasing,
   Attacking,
   Defeated,
+  Returning,
 };
 
 enum class AiIntentKind : std::uint8_t {
@@ -23,6 +25,7 @@ enum class AiIntentKind : std::uint8_t {
   Wait,
   MoveTowardTarget,
   AttackTarget,
+  ReturnToAnchor,
 };
 
 inline std::string_view aiBehaviorKindName(AiBehaviorKind kind) {
@@ -39,6 +42,8 @@ inline std::string_view aiBehaviorKindName(AiBehaviorKind kind) {
       return "attacking";
     case AiBehaviorKind::Defeated:
       return "defeated";
+    case AiBehaviorKind::Returning:
+      return "returning";
   }
   return "none";
 }
@@ -53,6 +58,8 @@ inline std::string_view aiIntentKindName(AiIntentKind kind) {
       return "move_toward_target";
     case AiIntentKind::AttackTarget:
       return "attack_target";
+    case AiIntentKind::ReturnToAnchor:
+      return "return_to_anchor";
   }
   return "none";
 }
@@ -67,6 +74,12 @@ struct AiActorState {
   AiBehaviorKind behavior = AiBehaviorKind::Idle;
   AiIntentKind lastIntent = AiIntentKind::None;
   std::uint32_t cooldownTicksRemaining = 0;
+  bool hasHomePosition = false;
+  Vec3 homePosition;
+  std::string homeStableName;
+  float leashRadiusMeters = 0.0F;
+  float returnRadiusMeters = 0.0F;
+  float homeToleranceMeters = 0.0F;
 };
 
 struct AiState {

@@ -251,6 +251,12 @@ SaveEnvelope envelopeFromState(const SessionState& state) {
     record.behavior = actor.behavior;
     record.lastIntent = actor.lastIntent;
     record.cooldownTicksRemaining = actor.cooldownTicksRemaining;
+    record.hasHomePosition = actor.hasHomePosition;
+    record.homePosition = actor.homePosition;
+    record.homeStableName = actor.homeStableName;
+    record.leashRadiusMeters = actor.leashRadiusMeters;
+    record.returnRadiusMeters = actor.returnRadiusMeters;
+    record.homeToleranceMeters = actor.homeToleranceMeters;
     envelope.ai.actors.push_back(record);
   }
   for (const ObjectiveRecord& objective : state.objectives.objectives) {
@@ -420,6 +426,12 @@ LoadStateResult buildCandidate(const SaveEnvelope& envelope,
     actor.behavior = saved.behavior;
     actor.lastIntent = saved.lastIntent;
     actor.cooldownTicksRemaining = saved.cooldownTicksRemaining;
+    actor.hasHomePosition = saved.hasHomePosition;
+    actor.homePosition = saved.homePosition;
+    actor.homeStableName = saved.homeStableName;
+    actor.leashRadiusMeters = saved.leashRadiusMeters;
+    actor.returnRadiusMeters = saved.returnRadiusMeters;
+    actor.homeToleranceMeters = saved.homeToleranceMeters;
     candidate.ai.actors.push_back(actor);
   }
   for (const SaveObjectiveRecord& saved : envelope.objectives.objectives) {

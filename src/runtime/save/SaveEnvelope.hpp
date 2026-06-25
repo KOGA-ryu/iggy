@@ -247,6 +247,12 @@ struct SaveAiActorRecord {
   AiBehaviorKind behavior = AiBehaviorKind::Idle;
   AiIntentKind lastIntent = AiIntentKind::None;
   std::uint32_t cooldownTicksRemaining = 0;
+  bool hasHomePosition = false;
+  Vec3 homePosition;
+  std::string homeStableName;
+  float leashRadiusMeters = 0.0F;
+  float returnRadiusMeters = 0.0F;
+  float homeToleranceMeters = 0.0F;
 };
 
 struct SaveAiSection {
