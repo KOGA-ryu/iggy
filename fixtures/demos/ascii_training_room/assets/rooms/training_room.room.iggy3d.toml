@@ -1,0 +1,1035 @@
+[room]
+id = "training_room_ascii"
+version = 1
+units = "m"
+source = "iggy3d.ascii_room"
+source_file = "fixtures/rooms/ascii/training_room.iggyroom.txt"
+source_subset = "ascii_room_authoring"
+
+[conversion]
+feet_to_meters = 0.304800
+
+[[static_meshes]]
+id = "floor_r1_c1"
+mesh = "floor_rect"
+role = "floor"
+position_ft = [-6.561680, -0.164042, -3.280840]
+size_ft = [3.280840, 0.328084, 3.280840]
+material = "debug_floor"
+
+[[static_meshes]]
+id = "floor_r1_c2"
+mesh = "floor_rect"
+role = "floor"
+position_ft = [-3.280840, -0.164042, -3.280840]
+size_ft = [3.280840, 0.328084, 3.280840]
+material = "debug_floor"
+
+[[static_meshes]]
+id = "floor_r1_c3"
+mesh = "floor_rect"
+role = "floor"
+position_ft = [0.000000, -0.164042, -3.280840]
+size_ft = [3.280840, 0.328084, 3.280840]
+material = "debug_floor"
+
+[[static_meshes]]
+id = "floor_r1_c4"
+mesh = "floor_rect"
+role = "floor"
+position_ft = [3.280840, -0.164042, -3.280840]
+size_ft = [3.280840, 0.328084, 3.280840]
+material = "debug_floor"
+
+[[static_meshes]]
+id = "floor_r1_c5"
+mesh = "floor_rect"
+role = "floor"
+position_ft = [6.561680, -0.164042, -3.280840]
+size_ft = [3.280840, 0.328084, 3.280840]
+material = "debug_floor"
+
+[[static_meshes]]
+id = "floor_r2_c1"
+mesh = "floor_rect"
+role = "floor"
+position_ft = [-6.561680, -0.164042, 0.000000]
+size_ft = [3.280840, 0.328084, 3.280840]
+material = "debug_floor"
+
+[[static_meshes]]
+id = "floor_r2_c2"
+mesh = "floor_rect"
+role = "floor"
+position_ft = [-3.280840, -0.164042, 0.000000]
+size_ft = [3.280840, 0.328084, 3.280840]
+material = "debug_floor"
+
+[[static_meshes]]
+id = "floor_r2_c3"
+mesh = "floor_rect"
+role = "floor"
+position_ft = [0.000000, -0.164042, 0.000000]
+size_ft = [3.280840, 0.328084, 3.280840]
+material = "debug_floor"
+
+[[static_meshes]]
+id = "floor_r2_c4"
+mesh = "floor_rect"
+role = "floor"
+position_ft = [3.280840, -0.164042, 0.000000]
+size_ft = [3.280840, 0.328084, 3.280840]
+material = "debug_floor"
+
+[[static_meshes]]
+id = "floor_r2_c5"
+mesh = "floor_rect"
+role = "floor"
+position_ft = [6.561680, -0.164042, 0.000000]
+size_ft = [3.280840, 0.328084, 3.280840]
+material = "debug_floor"
+
+[[static_meshes]]
+id = "floor_r3_c1"
+mesh = "floor_rect"
+role = "floor"
+position_ft = [-6.561680, -0.164042, 3.280840]
+size_ft = [3.280840, 0.328084, 3.280840]
+material = "debug_floor"
+
+[[static_meshes]]
+id = "floor_r3_c2"
+mesh = "floor_rect"
+role = "floor"
+position_ft = [-3.280840, -0.164042, 3.280840]
+size_ft = [3.280840, 0.328084, 3.280840]
+material = "debug_floor"
+
+[[static_meshes]]
+id = "floor_r3_c3"
+mesh = "floor_rect"
+role = "floor"
+position_ft = [0.000000, -0.164042, 3.280840]
+size_ft = [3.280840, 0.328084, 3.280840]
+material = "debug_floor"
+
+[[static_meshes]]
+id = "floor_r3_c4"
+mesh = "floor_rect"
+role = "floor"
+position_ft = [3.280840, -0.164042, 3.280840]
+size_ft = [3.280840, 0.328084, 3.280840]
+material = "debug_floor"
+
+[[static_meshes]]
+id = "floor_r3_c5"
+mesh = "floor_rect"
+role = "floor"
+position_ft = [6.561680, -0.164042, 3.280840]
+size_ft = [3.280840, 0.328084, 3.280840]
+material = "debug_floor"
+
+[[static_meshes]]
+id = "wall_r0_c0"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [-9.842520, 4.101050, -6.561680]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[static_meshes]]
+id = "wall_r0_c1"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [-6.561680, 4.101050, -6.561680]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[static_meshes]]
+id = "wall_r0_c2"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [-3.280840, 4.101050, -6.561680]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[static_meshes]]
+id = "wall_r0_c3"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [0.000000, 4.101050, -6.561680]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[static_meshes]]
+id = "wall_r0_c4"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [3.280840, 4.101050, -6.561680]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[static_meshes]]
+id = "wall_r0_c5"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [6.561680, 4.101050, -6.561680]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[static_meshes]]
+id = "wall_r0_c6"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [9.842520, 4.101050, -6.561680]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[static_meshes]]
+id = "wall_r1_c0"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [-9.842520, 4.101050, -3.280840]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[static_meshes]]
+id = "wall_r1_c6"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [9.842520, 4.101050, -3.280840]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[static_meshes]]
+id = "wall_r2_c0"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [-9.842520, 4.101050, 0.000000]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[static_meshes]]
+id = "wall_r2_c6"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [9.842520, 4.101050, 0.000000]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[static_meshes]]
+id = "wall_r3_c0"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [-9.842520, 4.101050, 3.280840]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[static_meshes]]
+id = "wall_r3_c6"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [9.842520, 4.101050, 3.280840]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[static_meshes]]
+id = "wall_r4_c0"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [-9.842520, 4.101050, 6.561680]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[static_meshes]]
+id = "wall_r4_c1"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [-6.561680, 4.101050, 6.561680]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[static_meshes]]
+id = "wall_r4_c2"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [-3.280840, 4.101050, 6.561680]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[static_meshes]]
+id = "wall_r4_c3"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [0.000000, 4.101050, 6.561680]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[static_meshes]]
+id = "wall_r4_c4"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [3.280840, 4.101050, 6.561680]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[static_meshes]]
+id = "wall_r4_c5"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [6.561680, 4.101050, 6.561680]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[static_meshes]]
+id = "wall_r4_c6"
+mesh = "wall_segment"
+role = "wall"
+position_ft = [9.842520, 4.101050, 6.561680]
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
+
+[[spatial_surfaces]]
+id = "floor_r1_c1_walkable"
+source_static_mesh = "floor_r1_c1"
+shape = "plane"
+role = "walkable"
+points_ft = [[-8.202100, 0.000000, -4.921260], [-4.921260, 0.000000, -4.921260], [-4.921260, 0.000000, -1.640420], [-8.202100, 0.000000, -1.640420]]
+normal = [0.000000, 1.000000, 0.000000]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "floor_r1_c2_walkable"
+source_static_mesh = "floor_r1_c2"
+shape = "plane"
+role = "walkable"
+points_ft = [[-4.921260, 0.000000, -4.921260], [-1.640420, 0.000000, -4.921260], [-1.640420, 0.000000, -1.640420], [-4.921260, 0.000000, -1.640420]]
+normal = [0.000000, 1.000000, 0.000000]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "floor_r1_c3_walkable"
+source_static_mesh = "floor_r1_c3"
+shape = "plane"
+role = "walkable"
+points_ft = [[-1.640420, 0.000000, -4.921260], [1.640420, 0.000000, -4.921260], [1.640420, 0.000000, -1.640420], [-1.640420, 0.000000, -1.640420]]
+normal = [0.000000, 1.000000, 0.000000]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "floor_r1_c4_walkable"
+source_static_mesh = "floor_r1_c4"
+shape = "plane"
+role = "walkable"
+points_ft = [[1.640420, 0.000000, -4.921260], [4.921260, 0.000000, -4.921260], [4.921260, 0.000000, -1.640420], [1.640420, 0.000000, -1.640420]]
+normal = [0.000000, 1.000000, 0.000000]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "floor_r1_c5_walkable"
+source_static_mesh = "floor_r1_c5"
+shape = "plane"
+role = "walkable"
+points_ft = [[4.921260, 0.000000, -4.921260], [8.202100, 0.000000, -4.921260], [8.202100, 0.000000, -1.640420], [4.921260, 0.000000, -1.640420]]
+normal = [0.000000, 1.000000, 0.000000]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "floor_r2_c1_walkable"
+source_static_mesh = "floor_r2_c1"
+shape = "plane"
+role = "walkable"
+points_ft = [[-8.202100, 0.000000, -1.640420], [-4.921260, 0.000000, -1.640420], [-4.921260, 0.000000, 1.640420], [-8.202100, 0.000000, 1.640420]]
+normal = [0.000000, 1.000000, 0.000000]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "floor_r2_c2_walkable"
+source_static_mesh = "floor_r2_c2"
+shape = "plane"
+role = "walkable"
+points_ft = [[-4.921260, 0.000000, -1.640420], [-1.640420, 0.000000, -1.640420], [-1.640420, 0.000000, 1.640420], [-4.921260, 0.000000, 1.640420]]
+normal = [0.000000, 1.000000, 0.000000]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "floor_r2_c3_walkable"
+source_static_mesh = "floor_r2_c3"
+shape = "plane"
+role = "walkable"
+points_ft = [[-1.640420, 0.000000, -1.640420], [1.640420, 0.000000, -1.640420], [1.640420, 0.000000, 1.640420], [-1.640420, 0.000000, 1.640420]]
+normal = [0.000000, 1.000000, 0.000000]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "floor_r2_c4_walkable"
+source_static_mesh = "floor_r2_c4"
+shape = "plane"
+role = "walkable"
+points_ft = [[1.640420, 0.000000, -1.640420], [4.921260, 0.000000, -1.640420], [4.921260, 0.000000, 1.640420], [1.640420, 0.000000, 1.640420]]
+normal = [0.000000, 1.000000, 0.000000]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "floor_r2_c5_walkable"
+source_static_mesh = "floor_r2_c5"
+shape = "plane"
+role = "walkable"
+points_ft = [[4.921260, 0.000000, -1.640420], [8.202100, 0.000000, -1.640420], [8.202100, 0.000000, 1.640420], [4.921260, 0.000000, 1.640420]]
+normal = [0.000000, 1.000000, 0.000000]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "floor_r3_c1_walkable"
+source_static_mesh = "floor_r3_c1"
+shape = "plane"
+role = "walkable"
+points_ft = [[-8.202100, 0.000000, 1.640420], [-4.921260, 0.000000, 1.640420], [-4.921260, 0.000000, 4.921260], [-8.202100, 0.000000, 4.921260]]
+normal = [0.000000, 1.000000, 0.000000]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "floor_r3_c2_walkable"
+source_static_mesh = "floor_r3_c2"
+shape = "plane"
+role = "walkable"
+points_ft = [[-4.921260, 0.000000, 1.640420], [-1.640420, 0.000000, 1.640420], [-1.640420, 0.000000, 4.921260], [-4.921260, 0.000000, 4.921260]]
+normal = [0.000000, 1.000000, 0.000000]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "floor_r3_c3_walkable"
+source_static_mesh = "floor_r3_c3"
+shape = "plane"
+role = "walkable"
+points_ft = [[-1.640420, 0.000000, 1.640420], [1.640420, 0.000000, 1.640420], [1.640420, 0.000000, 4.921260], [-1.640420, 0.000000, 4.921260]]
+normal = [0.000000, 1.000000, 0.000000]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "floor_r3_c4_walkable"
+source_static_mesh = "floor_r3_c4"
+shape = "plane"
+role = "walkable"
+points_ft = [[1.640420, 0.000000, 1.640420], [4.921260, 0.000000, 1.640420], [4.921260, 0.000000, 4.921260], [1.640420, 0.000000, 4.921260]]
+normal = [0.000000, 1.000000, 0.000000]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "floor_r3_c5_walkable"
+source_static_mesh = "floor_r3_c5"
+shape = "plane"
+role = "walkable"
+points_ft = [[4.921260, 0.000000, 1.640420], [8.202100, 0.000000, 1.640420], [8.202100, 0.000000, 4.921260], [4.921260, 0.000000, 4.921260]]
+normal = [0.000000, 1.000000, 0.000000]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r0_c0_actor_blocker"
+source_static_mesh = "wall_r0_c0"
+shape = "box"
+role = "blocker"
+points_ft = [[-11.482940, 0.000000, -8.202100], [-8.202100, 0.000000, -8.202100], [-8.202100, 0.000000, -4.921260], [-11.482940, 0.000000, -4.921260]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r0_c0_projectile_blocker"
+source_static_mesh = "wall_r0_c0"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[-11.482940, 0.000000, -8.202100], [-8.202100, 0.000000, -8.202100], [-8.202100, 0.000000, -4.921260], [-11.482940, 0.000000, -4.921260]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r0_c1_actor_blocker"
+source_static_mesh = "wall_r0_c1"
+shape = "box"
+role = "blocker"
+points_ft = [[-8.202100, 0.000000, -8.202100], [-4.921260, 0.000000, -8.202100], [-4.921260, 0.000000, -4.921260], [-8.202100, 0.000000, -4.921260]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r0_c1_projectile_blocker"
+source_static_mesh = "wall_r0_c1"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[-8.202100, 0.000000, -8.202100], [-4.921260, 0.000000, -8.202100], [-4.921260, 0.000000, -4.921260], [-8.202100, 0.000000, -4.921260]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r0_c2_actor_blocker"
+source_static_mesh = "wall_r0_c2"
+shape = "box"
+role = "blocker"
+points_ft = [[-4.921260, 0.000000, -8.202100], [-1.640420, 0.000000, -8.202100], [-1.640420, 0.000000, -4.921260], [-4.921260, 0.000000, -4.921260]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r0_c2_projectile_blocker"
+source_static_mesh = "wall_r0_c2"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[-4.921260, 0.000000, -8.202100], [-1.640420, 0.000000, -8.202100], [-1.640420, 0.000000, -4.921260], [-4.921260, 0.000000, -4.921260]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r0_c3_actor_blocker"
+source_static_mesh = "wall_r0_c3"
+shape = "box"
+role = "blocker"
+points_ft = [[-1.640420, 0.000000, -8.202100], [1.640420, 0.000000, -8.202100], [1.640420, 0.000000, -4.921260], [-1.640420, 0.000000, -4.921260]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r0_c3_projectile_blocker"
+source_static_mesh = "wall_r0_c3"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[-1.640420, 0.000000, -8.202100], [1.640420, 0.000000, -8.202100], [1.640420, 0.000000, -4.921260], [-1.640420, 0.000000, -4.921260]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r0_c4_actor_blocker"
+source_static_mesh = "wall_r0_c4"
+shape = "box"
+role = "blocker"
+points_ft = [[1.640420, 0.000000, -8.202100], [4.921260, 0.000000, -8.202100], [4.921260, 0.000000, -4.921260], [1.640420, 0.000000, -4.921260]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r0_c4_projectile_blocker"
+source_static_mesh = "wall_r0_c4"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[1.640420, 0.000000, -8.202100], [4.921260, 0.000000, -8.202100], [4.921260, 0.000000, -4.921260], [1.640420, 0.000000, -4.921260]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r0_c5_actor_blocker"
+source_static_mesh = "wall_r0_c5"
+shape = "box"
+role = "blocker"
+points_ft = [[4.921260, 0.000000, -8.202100], [8.202100, 0.000000, -8.202100], [8.202100, 0.000000, -4.921260], [4.921260, 0.000000, -4.921260]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r0_c5_projectile_blocker"
+source_static_mesh = "wall_r0_c5"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[4.921260, 0.000000, -8.202100], [8.202100, 0.000000, -8.202100], [8.202100, 0.000000, -4.921260], [4.921260, 0.000000, -4.921260]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r0_c6_actor_blocker"
+source_static_mesh = "wall_r0_c6"
+shape = "box"
+role = "blocker"
+points_ft = [[8.202100, 0.000000, -8.202100], [11.482940, 0.000000, -8.202100], [11.482940, 0.000000, -4.921260], [8.202100, 0.000000, -4.921260]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r0_c6_projectile_blocker"
+source_static_mesh = "wall_r0_c6"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[8.202100, 0.000000, -8.202100], [11.482940, 0.000000, -8.202100], [11.482940, 0.000000, -4.921260], [8.202100, 0.000000, -4.921260]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r1_c0_actor_blocker"
+source_static_mesh = "wall_r1_c0"
+shape = "box"
+role = "blocker"
+points_ft = [[-11.482940, 0.000000, -4.921260], [-8.202100, 0.000000, -4.921260], [-8.202100, 0.000000, -1.640420], [-11.482940, 0.000000, -1.640420]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r1_c0_projectile_blocker"
+source_static_mesh = "wall_r1_c0"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[-11.482940, 0.000000, -4.921260], [-8.202100, 0.000000, -4.921260], [-8.202100, 0.000000, -1.640420], [-11.482940, 0.000000, -1.640420]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r1_c6_actor_blocker"
+source_static_mesh = "wall_r1_c6"
+shape = "box"
+role = "blocker"
+points_ft = [[8.202100, 0.000000, -4.921260], [11.482940, 0.000000, -4.921260], [11.482940, 0.000000, -1.640420], [8.202100, 0.000000, -1.640420]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r1_c6_projectile_blocker"
+source_static_mesh = "wall_r1_c6"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[8.202100, 0.000000, -4.921260], [11.482940, 0.000000, -4.921260], [11.482940, 0.000000, -1.640420], [8.202100, 0.000000, -1.640420]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r2_c0_actor_blocker"
+source_static_mesh = "wall_r2_c0"
+shape = "box"
+role = "blocker"
+points_ft = [[-11.482940, 0.000000, -1.640420], [-8.202100, 0.000000, -1.640420], [-8.202100, 0.000000, 1.640420], [-11.482940, 0.000000, 1.640420]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r2_c0_projectile_blocker"
+source_static_mesh = "wall_r2_c0"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[-11.482940, 0.000000, -1.640420], [-8.202100, 0.000000, -1.640420], [-8.202100, 0.000000, 1.640420], [-11.482940, 0.000000, 1.640420]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r2_c6_actor_blocker"
+source_static_mesh = "wall_r2_c6"
+shape = "box"
+role = "blocker"
+points_ft = [[8.202100, 0.000000, -1.640420], [11.482940, 0.000000, -1.640420], [11.482940, 0.000000, 1.640420], [8.202100, 0.000000, 1.640420]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r2_c6_projectile_blocker"
+source_static_mesh = "wall_r2_c6"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[8.202100, 0.000000, -1.640420], [11.482940, 0.000000, -1.640420], [11.482940, 0.000000, 1.640420], [8.202100, 0.000000, 1.640420]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r3_c0_actor_blocker"
+source_static_mesh = "wall_r3_c0"
+shape = "box"
+role = "blocker"
+points_ft = [[-11.482940, 0.000000, 1.640420], [-8.202100, 0.000000, 1.640420], [-8.202100, 0.000000, 4.921260], [-11.482940, 0.000000, 4.921260]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r3_c0_projectile_blocker"
+source_static_mesh = "wall_r3_c0"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[-11.482940, 0.000000, 1.640420], [-8.202100, 0.000000, 1.640420], [-8.202100, 0.000000, 4.921260], [-11.482940, 0.000000, 4.921260]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r3_c6_actor_blocker"
+source_static_mesh = "wall_r3_c6"
+shape = "box"
+role = "blocker"
+points_ft = [[8.202100, 0.000000, 1.640420], [11.482940, 0.000000, 1.640420], [11.482940, 0.000000, 4.921260], [8.202100, 0.000000, 4.921260]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r3_c6_projectile_blocker"
+source_static_mesh = "wall_r3_c6"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[8.202100, 0.000000, 1.640420], [11.482940, 0.000000, 1.640420], [11.482940, 0.000000, 4.921260], [8.202100, 0.000000, 4.921260]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r4_c0_actor_blocker"
+source_static_mesh = "wall_r4_c0"
+shape = "box"
+role = "blocker"
+points_ft = [[-11.482940, 0.000000, 4.921260], [-8.202100, 0.000000, 4.921260], [-8.202100, 0.000000, 8.202100], [-11.482940, 0.000000, 8.202100]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r4_c0_projectile_blocker"
+source_static_mesh = "wall_r4_c0"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[-11.482940, 0.000000, 4.921260], [-8.202100, 0.000000, 4.921260], [-8.202100, 0.000000, 8.202100], [-11.482940, 0.000000, 8.202100]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r4_c1_actor_blocker"
+source_static_mesh = "wall_r4_c1"
+shape = "box"
+role = "blocker"
+points_ft = [[-8.202100, 0.000000, 4.921260], [-4.921260, 0.000000, 4.921260], [-4.921260, 0.000000, 8.202100], [-8.202100, 0.000000, 8.202100]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r4_c1_projectile_blocker"
+source_static_mesh = "wall_r4_c1"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[-8.202100, 0.000000, 4.921260], [-4.921260, 0.000000, 4.921260], [-4.921260, 0.000000, 8.202100], [-8.202100, 0.000000, 8.202100]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r4_c2_actor_blocker"
+source_static_mesh = "wall_r4_c2"
+shape = "box"
+role = "blocker"
+points_ft = [[-4.921260, 0.000000, 4.921260], [-1.640420, 0.000000, 4.921260], [-1.640420, 0.000000, 8.202100], [-4.921260, 0.000000, 8.202100]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r4_c2_projectile_blocker"
+source_static_mesh = "wall_r4_c2"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[-4.921260, 0.000000, 4.921260], [-1.640420, 0.000000, 4.921260], [-1.640420, 0.000000, 8.202100], [-4.921260, 0.000000, 8.202100]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r4_c3_actor_blocker"
+source_static_mesh = "wall_r4_c3"
+shape = "box"
+role = "blocker"
+points_ft = [[-1.640420, 0.000000, 4.921260], [1.640420, 0.000000, 4.921260], [1.640420, 0.000000, 8.202100], [-1.640420, 0.000000, 8.202100]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r4_c3_projectile_blocker"
+source_static_mesh = "wall_r4_c3"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[-1.640420, 0.000000, 4.921260], [1.640420, 0.000000, 4.921260], [1.640420, 0.000000, 8.202100], [-1.640420, 0.000000, 8.202100]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r4_c4_actor_blocker"
+source_static_mesh = "wall_r4_c4"
+shape = "box"
+role = "blocker"
+points_ft = [[1.640420, 0.000000, 4.921260], [4.921260, 0.000000, 4.921260], [4.921260, 0.000000, 8.202100], [1.640420, 0.000000, 8.202100]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r4_c4_projectile_blocker"
+source_static_mesh = "wall_r4_c4"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[1.640420, 0.000000, 4.921260], [4.921260, 0.000000, 4.921260], [4.921260, 0.000000, 8.202100], [1.640420, 0.000000, 8.202100]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r4_c5_actor_blocker"
+source_static_mesh = "wall_r4_c5"
+shape = "box"
+role = "blocker"
+points_ft = [[4.921260, 0.000000, 4.921260], [8.202100, 0.000000, 4.921260], [8.202100, 0.000000, 8.202100], [4.921260, 0.000000, 8.202100]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r4_c5_projectile_blocker"
+source_static_mesh = "wall_r4_c5"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[4.921260, 0.000000, 4.921260], [8.202100, 0.000000, 4.921260], [8.202100, 0.000000, 8.202100], [4.921260, 0.000000, 8.202100]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r4_c6_actor_blocker"
+source_static_mesh = "wall_r4_c6"
+shape = "box"
+role = "blocker"
+points_ft = [[8.202100, 0.000000, 4.921260], [11.482940, 0.000000, 4.921260], [11.482940, 0.000000, 8.202100], [8.202100, 0.000000, 8.202100]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wall_r4_c6_projectile_blocker"
+source_static_mesh = "wall_r4_c6"
+shape = "box"
+role = "projectile_blocker"
+points_ft = [[8.202100, 0.000000, 4.921260], [11.482940, 0.000000, 4.921260], [11.482940, 0.000000, 8.202100], [8.202100, 0.000000, 8.202100]]
+normal = [0.000000, 0.000000, 1.000000]
+traversal_tags = ["projectile_blocker"]
+collision_mask = ["projectile"]
+blocks_actor = false
+blocks_projectile = true
+opening_id = ""
+
+[[anchors]]
+id = "marker_player_spawn_r1_c1"
+kind = "spawn"
+position_ft = [-6.561680, 0.164042, -3.280840]
+runtime_stable_name = "marker_player_spawn_r1_c1"
+
+[[anchors]]
+id = "marker_npc_spawn_r1_c4"
+kind = "npc"
+position_ft = [3.280840, 0.164042, -3.280840]
+runtime_stable_name = "marker_npc_spawn_r1_c4"
+
+[[anchors]]
+id = "marker_door_r2_c2"
+kind = "door"
+position_ft = [-3.280840, 0.164042, 0.000000]
+runtime_stable_name = "marker_door_r2_c2"
+
+[[anchors]]
+id = "marker_treasure_r2_c4"
+kind = "pickup"
+position_ft = [3.280840, 0.164042, 0.000000]
+runtime_stable_name = "marker_treasure_r2_c4"
+
+[[anchors]]
+id = "marker_exit_r3_c3"
+kind = "exit"
+position_ft = [0.000000, 0.164042, 3.280840]
+runtime_stable_name = "marker_exit_r3_c3"

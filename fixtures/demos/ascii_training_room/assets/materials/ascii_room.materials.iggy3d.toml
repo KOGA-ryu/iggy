@@ -1,0 +1,9 @@
+[[materials]]
+id = "debug_floor"
+kind = "vertex_color"
+color = [0.30, 0.32, 0.34]
+
+[[materials]]
+id = "debug_wall"
+kind = "vertex_color"
+color = [0.42, 0.43, 0.46]

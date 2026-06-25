@@ -44,6 +44,13 @@ The authored-room compile emits `SaveAuthoredRoomSection` floor/wall geometry an
 - The room asset text fixture is generated from `training_room.iggyroom.txt` through the current parser, semantic grid, authored-room compiler, RoomAsset bridge, and `writeAsciiRoomAssetText(...)`.
 - `ascii_room_asset_text_fixture_tests` verifies exact byte-for-byte exporter parity and parses the checked-in text through `parseRoomAssetText(...)`.
 
+
+## Package Loader Fixture
+
+- Fixture package: `fixtures/demos/ascii_training_room/package.iggy3d.toml`
+- The package-local room asset at `fixtures/demos/ascii_training_room/assets/rooms/training_room.room.iggy3d.toml` is byte-for-byte equal to the shared ASCII-generated room asset fixture.
+- `ascii_room_package_fixture_tests` proves the checked-in room text loads through `loadPackage(...)` with minimal mesh/material libraries. This is package-loader proof only; it does not wire Product App, AppShell, runtime entity spawning, or renderer display.
+
 ## Deferred Work
 
 - Runtime package bridge

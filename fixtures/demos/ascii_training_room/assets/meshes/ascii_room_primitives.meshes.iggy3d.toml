@@ -1,0 +1,11 @@
+[[primitive_meshes]]
+id = "floor_rect"
+kind = "box"
+size_ft = [3.280840, 0.328084, 3.280840]
+material = "debug_floor"
+
+[[primitive_meshes]]
+id = "wall_segment"
+kind = "box"
+size_ft = [3.280840, 8.202100, 3.280840]
+material = "debug_wall"
