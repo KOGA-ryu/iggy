@@ -4,6 +4,7 @@
 
 #include "app/frontend/FrontendReceipt.hpp"
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/ProductMovementDebugHud.hpp"
 
 namespace iggy3d {
 namespace {
@@ -28,6 +29,9 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                                      const ProductSaveBridgeResult& saves) {
   RenderReceipt receipt;
   const ProductGameplayFeedback feedback = buildProductGameplayFeedback(window);
+  const ProductMovementDebugHud movementHud =
+      buildProductMovementDebugHud(window, settings.devToolsEnabled,
+                                   settings.debugOverlayEnabled);
   appendReceiptField(receipt, "app", "iggy3d");
   appendReceiptField(receipt, "app_surface", "product");
   appendReceiptField(receipt, "opening_menu", frontend.screen == FrontendScreen::Starter);
@@ -344,6 +348,25 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      floatReceiptValue(window.gameplayMovementVerticalDeltaMeters));
   appendReceiptField(receipt, "gameplay_movement_grade_percent",
                      floatReceiptValue(window.gameplayMovementGradePercent));
+  appendReceiptField(receipt, "movement_debug_hud_visible", movementHud.visible);
+  appendReceiptField(receipt, "movement_debug_hud_line_count",
+                     static_cast<std::uint64_t>(movementHud.lines.size()));
+  appendReceiptField(receipt, "movement_debug_hud_dev_tools_enabled",
+                     movementHud.developerToolsEnabled);
+  appendReceiptField(receipt, "movement_debug_hud_debug_overlay_enabled",
+                     movementHud.debugOverlayEnabled);
+  appendReceiptField(receipt, "movement_debug_hud_debug_available",
+                     movementHud.debugAvailable);
+  appendReceiptField(receipt, "movement_debug_hud_status", movementHud.status);
+  appendReceiptField(receipt, "movement_debug_hud_blocked", movementHud.blocked);
+  appendReceiptField(receipt, "movement_debug_hud_reason_code",
+                     movementHud.reasonCode);
+  appendReceiptField(receipt, "movement_debug_hud_hit_surface_id",
+                     movementHud.hitSurfaceId);
+  appendReceiptField(receipt, "movement_debug_hud_policy_band",
+                     movementHud.policyBand);
+  appendReceiptField(receipt, "movement_debug_hud_speed_multiplier",
+                     floatReceiptValue(movementHud.speedMultiplier));
   appendReceiptField(receipt, "gameplay_collision_surfaces_used",
                      window.gameplayCollisionSurfacesUsed);
   appendReceiptField(receipt, "gameplay_collision_surface_count",

@@ -15,6 +15,7 @@
 #include "app/frontend/SettingsMenu.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/ProductMovementDebugHud.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
 
@@ -217,6 +218,30 @@ void drawGameplayFeedback(SDL_Renderer& renderer,
   }
 }
 
+void drawMovementDebugHud(SDL_Renderer& renderer,
+                          const ProductMovementDebugHud* hud) {
+  if (hud == nullptr || !hud->visible) {
+    return;
+  }
+
+  setColor(renderer, 14, 21, 23);
+  fillRect(renderer, 92.0F, 146.0F, 500.0F, 190.0F);
+  setColor(renderer, 126, 201, 176);
+  drawText(renderer, "MOVEMENT DEBUG", 108.0F, 164.0F, 2.0F);
+
+  float y = 198.0F;
+  for (const ProductMovementDebugHudLine& line : hud->lines) {
+    if (!line.visible) {
+      continue;
+    }
+    setColor(renderer, 166, 184, 177);
+    drawText(renderer, line.label, 108.0F, y, 2.0F);
+    setFeedbackToneColor(renderer, line.tone);
+    drawText(renderer, line.value, 226.0F, y, 2.0F);
+    y += 22.0F;
+  }
+}
+
 std::string roundedDegrees(float value) {
   return std::to_string(static_cast<int>(std::lround(value)));
 }
@@ -375,6 +400,7 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
                        std::uint64_t runtimeStateHash,
                        const ProductViewportFrame* frame,
                        const ProductGameplayFeedback* feedback,
+                       const ProductMovementDebugHud* movementHud,
                        std::size_t sceneItemCount,
                        const DebugProjectionResult* debug,
                        float cameraYawDegrees,
@@ -403,6 +429,7 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
   drawText(renderer, roundedDegrees(cameraYawDegrees), 938.0F, 324.0F, 2.0F);
   drawText(renderer, "PITCH", 870.0F, 356.0F, 2.0F);
   drawText(renderer, roundedDegrees(cameraPitchDegrees), 974.0F, 356.0F, 2.0F);
+  drawMovementDebugHud(renderer, movementHud);
   drawGameplayFeedback(renderer, feedback);
   drawText(renderer, "RUNTIME OWNS GAME STATE", 88.0F, 630.0F, 2.0F);
   drawText(renderer, "STATE HASH", 480.0F, 630.0F, 2.0F);
@@ -482,6 +509,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          std::uint64_t runtimeStateHash,
                                          const ProductViewportFrame* frame,
                                          const ProductGameplayFeedback* feedback,
+                                         const ProductMovementDebugHud* movementHud,
                                          std::size_t sceneItemCount,
                                          const DebugProjectionResult* debug,
                                          float cameraYawDegrees,
@@ -492,8 +520,9 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
 
   if (gameplayActive || frontend.screen == FrontendScreen::Gameplay) {
     state.cameraHeadingDrawn =
-        drawGameplayPanel(renderer, runtimeStateHash, frame, feedback, sceneItemCount, debug,
-                          cameraYawDegrees, cameraPitchDegrees);
+        drawGameplayPanel(renderer, runtimeStateHash, frame, feedback, movementHud,
+                          sceneItemCount, debug, cameraYawDegrees,
+                          cameraPitchDegrees);
     SDL_RenderPresent(&renderer);
     state.textDrawn = true;
     return state;

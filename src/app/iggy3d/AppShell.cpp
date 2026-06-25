@@ -22,6 +22,7 @@
 #include "app/iggy3d/ProductGameplayController.hpp"
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductMenuTransitions.hpp"
+#include "app/iggy3d/ProductMovementDebugHud.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductRenderBridge.hpp"
 #include "app/iggy3d/ProductScriptedGameplayDriver.hpp"
@@ -1500,6 +1501,8 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
     const ProductViewportFrame* framePtr = nullptr;
     const ProductRenderBridgeFrame* bridgePtr = nullptr;
     ProductGameplayFeedback feedback = buildProductGameplayFeedback(window);
+    ProductMovementDebugHud movementHud = buildProductMovementDebugHud(
+        window, settings.devToolsEnabled, settings.debugOverlayEnabled);
     ProductRenderBridgeFrame bridge;
     if (window.gameplayActive && activeSession.has_value()) {
       scene = buildSceneProjection(activeSession->state());
@@ -1515,6 +1518,8 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
       sceneItemCount = scene.items.size();
       window.runtimeStateHash = activeSession->stateHash();
       feedback = buildProductGameplayFeedback(window);
+      movementHud = buildProductMovementDebugHud(window, settings.devToolsEnabled,
+                                                 settings.debugOverlayEnabled);
       bridge = buildProductRenderBridgeFrame(&drawList, &frame, &feedback);
       bridgePtr = &bridge;
     }
@@ -1523,7 +1528,7 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
       const OpeningMenuViewState view =
           drawOpeningMenuView(*renderer, options, world, frontend, settingsTab,
                               window.gameplayActive, window.runtimeStateHash, framePtr,
-                              &feedback, sceneItemCount, debugPtr,
+                              &feedback, &movementHud, sceneItemCount, debugPtr,
                               window.viewport.cameraYawDegrees,
                               window.viewport.cameraPitchDegrees, saves);
       applyGameplayProjectionMetrics(window, scenePtr, debugPtr, drawListPtr, framePtr,

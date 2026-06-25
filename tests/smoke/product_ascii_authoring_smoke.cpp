@@ -352,6 +352,30 @@ bool activatedAsciiRoomOpenMove(const iggy3d::smoke::ReceiptFields& fields) {
                                  "flat") &&
          iggy3d::smoke::hasField(fields,
                                  "gameplay_movement_speed_multiplier",
+                                 "1.000") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_visible",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_line_count",
+                                 "7") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_status",
+                                 "moved") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_blocked",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_reason_code",
+                                 "movement_ok") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_hit_surface_id",
+                                 "none") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_policy_band",
+                                 "flat") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_speed_multiplier",
                                  "1.000");
 }
 
@@ -428,6 +452,27 @@ bool activatedAsciiRoomWallMoveBlocked(
                                  "1") &&
          iggy3d::smoke::hasField(fields,
                                  "gameplay_movement_policy_band",
+                                 "none") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_visible",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_line_count",
+                                 "7") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_status",
+                                 "blocked") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_blocked",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_reason_code",
+                                 "blocked_by_collision") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_hit_surface_id",
+                                 "wall_r0_c1_actor_blocker") &&
+         iggy3d::smoke::hasField(fields,
+                                 "movement_debug_hud_policy_band",
                                  "none");
 }
 
