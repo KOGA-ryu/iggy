@@ -45,6 +45,93 @@ bool perceptionReadyForCommand(const NpcPerceptionResult& perception) {
          isValid(perception.actor) && isValid(perception.target);
 }
 
+bool perceptionHasActorPosition(const NpcPerceptionResult& perception) {
+  return isValid(perception.actor) && isFinite(perception.actorPosition);
+}
+
+bool validGuardState(const AiActorState& actorState) {
+  if (!actorState.hasHomePosition) {
+    return true;
+  }
+  return isFinite(actorState.homePosition) &&
+         std::isfinite(actorState.leashRadiusMeters) &&
+         std::isfinite(actorState.returnRadiusMeters) &&
+         std::isfinite(actorState.homeToleranceMeters) &&
+         actorState.leashRadiusMeters > 0.0F &&
+         actorState.returnRadiusMeters > 0.0F &&
+         actorState.homeToleranceMeters >= 0.0F &&
+         actorState.returnRadiusMeters <= actorState.leashRadiusMeters;
+}
+
+float guardReturnStopDistance(const AiActorState& actorState) {
+  return std::max(actorState.returnRadiusMeters, actorState.homeToleranceMeters);
+}
+
+bool actorIsHome(const AiActorState& actorState, const NpcPerceptionResult& perception) {
+  return horizontalDistanceMeters(perception.actorPosition, actorState.homePosition) <=
+         guardReturnStopDistance(actorState);
+}
+
+bool actorOutsideLeash(const AiActorState& actorState,
+                       const NpcPerceptionResult& perception) {
+  return horizontalDistanceMeters(perception.actorPosition, actorState.homePosition) >
+         actorState.leashRadiusMeters + actorState.homeToleranceMeters;
+}
+
+bool targetOutsideLeash(const AiActorState& actorState,
+                        const NpcPerceptionResult& perception) {
+  return horizontalDistanceMeters(perception.targetPosition, actorState.homePosition) >
+         actorState.leashRadiusMeters;
+}
+
+bool buildHorizontalMoveDestination(Vec3 start,
+                                    Vec3 target,
+                                    float stepMeters,
+                                    float stopDistanceMeters,
+                                    Vec3& out) {
+  const float dx = target.x - start.x;
+  const float dz = target.z - start.z;
+  const float distance = std::sqrt(dx * dx + dz * dz);
+  if (!std::isfinite(distance) || distance <= 0.0001F) {
+    return false;
+  }
+  const float moveDistance =
+      std::min(stepMeters, std::max(0.0F, distance - stopDistanceMeters));
+  if (moveDistance <= 0.0F) {
+    return false;
+  }
+  out = start;
+  out.x += (dx / distance) * moveDistance;
+  out.z += (dz / distance) * moveDistance;
+  return isFinite(out);
+}
+
+bool chaseDestinationWouldExceedLeash(const AiActorState& actorState,
+                                      const NpcPerceptionResult& perception,
+                                      const NpcBehaviorConfig& config) {
+  Vec3 destination;
+  if (!buildHorizontalMoveDestination(perception.actorPosition,
+                                      perception.targetPosition,
+                                      config.chaseStepMeters,
+                                      config.chaseStopDistanceMeters,
+                                      destination)) {
+    return false;
+  }
+  return horizontalDistanceMeters(destination, actorState.homePosition) >
+         actorState.leashRadiusMeters;
+}
+
+void setReturnDecision(NpcBehaviorDecisionRequest request,
+                       NpcBehaviorDecision& decision) {
+  decision.status = NpcBehaviorDecisionStatus::Decided;
+  decision.behavior = AiBehaviorKind::Returning;
+  decision.intent = AiIntentKind::ReturnToAnchor;
+  decision.homePosition = request.actorState->homePosition;
+  decision.returnStopDistanceMeters = guardReturnStopDistance(*request.actorState);
+  decision.nextDecisionTick =
+      request.currentTick + request.config.decisionIntervalTicks;
+}
+
 }  // namespace
 
 std::string_view npcPerceptionStatusName(NpcPerceptionStatus status) {
@@ -188,6 +275,8 @@ std::string_view npcBehaviorDecisionStatusName(NpcBehaviorDecisionStatus status)
       return "on_cooldown";
     case NpcBehaviorDecisionStatus::InvalidConfig:
       return "invalid_config";
+    case NpcBehaviorDecisionStatus::InvalidGuard:
+      return "invalid_guard";
     case NpcBehaviorDecisionStatus::InvalidPerception:
       return "invalid_perception";
   }
@@ -226,6 +315,19 @@ NpcBehaviorDecision chooseNpcBehaviorIntent(
         request.currentTick + request.config.decisionIntervalTicks;
     return decision;
   }
+  if (!validGuardState(*request.actorState)) {
+    decision.status = NpcBehaviorDecisionStatus::InvalidGuard;
+    decision.behavior = AiBehaviorKind::Idle;
+    decision.intent = AiIntentKind::None;
+    decision.nextDecisionTick =
+        request.currentTick + request.config.decisionIntervalTicks;
+    return decision;
+  }
+  if (request.actorState->hasHomePosition && perceptionHasActorPosition(request.perception) &&
+      actorOutsideLeash(*request.actorState, request.perception)) {
+    setReturnDecision(request, decision);
+    return decision;
+  }
   if (request.perception.status != NpcPerceptionStatus::Ready) {
     decision.status = NpcBehaviorDecisionStatus::NoTarget;
     decision.behavior = AiBehaviorKind::Idle;
@@ -239,6 +341,18 @@ NpcBehaviorDecision chooseNpcBehaviorIntent(
   decision.target = request.perception.target;
   decision.nextDecisionTick =
       request.currentTick + request.config.decisionIntervalTicks;
+  if (request.actorState->hasHomePosition) {
+    if (targetOutsideLeash(*request.actorState, request.perception)) {
+      if (actorIsHome(*request.actorState, request.perception)) {
+        decision.status = NpcBehaviorDecisionStatus::Decided;
+        decision.behavior = AiBehaviorKind::Alert;
+        decision.intent = AiIntentKind::Wait;
+        return decision;
+      }
+      setReturnDecision(request, decision);
+      return decision;
+    }
+  }
   if (request.config.engagementPolicy == NpcEngagementPolicy::Passive) {
     decision.status = NpcBehaviorDecisionStatus::Decided;
     decision.behavior = AiBehaviorKind::Alert;
@@ -246,6 +360,13 @@ NpcBehaviorDecision chooseNpcBehaviorIntent(
     return decision;
   }
   if (!request.perception.targetInAttackRange) {
+    if (request.actorState->hasHomePosition &&
+        chaseDestinationWouldExceedLeash(*request.actorState,
+                                         request.perception,
+                                         request.config)) {
+      setReturnDecision(request, decision);
+      return decision;
+    }
     decision.status = NpcBehaviorDecisionStatus::Decided;
     decision.behavior = AiBehaviorKind::Chasing;
     decision.intent = AiIntentKind::MoveTowardTarget;
@@ -322,6 +443,32 @@ NpcBehaviorCommandResult buildNpcBehaviorCommand(
     command.payload.target.hasEntity = true;
     command.payload.target.entity = request.decision.target;
     command.payload.attackDamage = request.config.attackDamage;
+    result.status = NpcBehaviorCommandStatus::Built;
+    result.hasCommand = true;
+    result.command = command;
+    return result;
+  }
+  if (request.decision.intent == AiIntentKind::ReturnToAnchor) {
+    if (!perceptionHasActorPosition(request.perception) ||
+        !isFinite(request.decision.homePosition) ||
+        !std::isfinite(request.decision.returnStopDistanceMeters) ||
+        request.decision.returnStopDistanceMeters < 0.0F) {
+      result.status = NpcBehaviorCommandStatus::InvalidDestination;
+      return result;
+    }
+    Vec3 destination;
+    if (!buildHorizontalMoveDestination(request.perception.actorPosition,
+                                        request.decision.homePosition,
+                                        request.config.chaseStepMeters,
+                                        request.decision.returnStopDistanceMeters,
+                                        destination)) {
+      result.status = NpcBehaviorCommandStatus::NoCommand;
+      return result;
+    }
+
+    command.kind = CommandKind::Move;
+    command.payload.target.hasPoint = true;
+    command.payload.target.point = destination;
     result.status = NpcBehaviorCommandStatus::Built;
     result.hasCommand = true;
     result.command = command;

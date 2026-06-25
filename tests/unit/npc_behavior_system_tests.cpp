@@ -71,6 +71,26 @@ iggy3d::WorldState worldWithNpcAndPlayer(float targetX = 3.0F,
   return world;
 }
 
+iggy3d::WorldState worldWithNpcAtAndPlayer(float actorX,
+                                           float targetX,
+                                           bool actorActive = true,
+                                           bool targetActive = true) {
+  iggy3d::WorldState world;
+  (void)world.seedEntity(entity({1},
+                                "npc",
+                                iggy3d::EntityKind::Npc,
+                                actorX,
+                                0.0F,
+                                actorActive));
+  (void)world.seedEntity(entity({2},
+                                "player",
+                                iggy3d::EntityKind::Player,
+                                targetX,
+                                0.0F,
+                                targetActive));
+  return world;
+}
+
 iggy3d::CombatState combat(bool actorDefeated = false, bool targetDefeated = false) {
   iggy3d::CombatState combat;
   combat.combatants.push_back({{1}, 2, actorDefeated ? 0 : 3, 3, actorDefeated});
@@ -83,6 +103,20 @@ iggy3d::AiActorState actorState() {
   state.actor = {1};
   state.target = {2};
   state.enabled = true;
+  return state;
+}
+
+iggy3d::AiActorState guardedActorState(iggy3d::Vec3 homePosition = {0.0F, 0.0F, 0.0F},
+                                       float leashRadiusMeters = 6.0F,
+                                       float returnRadiusMeters = 1.0F,
+                                       float homeToleranceMeters = 0.25F) {
+  iggy3d::AiActorState state = actorState();
+  state.hasHomePosition = true;
+  state.homePosition = homePosition;
+  state.homeStableName = "guard_post_alpha";
+  state.leashRadiusMeters = leashRadiusMeters;
+  state.returnRadiusMeters = returnRadiusMeters;
+  state.homeToleranceMeters = homeToleranceMeters;
   return state;
 }
 
@@ -329,6 +363,209 @@ bool passivePolicyWaitsWithoutChasingOrAttacking() {
                 "passive never attacks");
 }
 
+bool guardedHostileInsideLeashCanAttack() {
+  const iggy3d::WorldState world = worldWithNpcAndPlayer(1.0F);
+  const iggy3d::CombatState readyCombat = combat();
+  const iggy3d::NpcBehaviorConfig config;
+  const iggy3d::NpcPerceptionResult perception = perceptionFor(world, readyCombat);
+  const iggy3d::AiActorState state = guardedActorState();
+  const iggy3d::NpcBehaviorDecision decision =
+      iggy3d::chooseNpcBehaviorIntent({&state, perception, config, 20});
+  const iggy3d::NpcBehaviorCommandResult command =
+      iggy3d::buildNpcBehaviorCommand({decision, perception, config});
+
+  return expect(decision.status == iggy3d::NpcBehaviorDecisionStatus::Decided,
+                "guard attack decided") &&
+         expect(decision.behavior == iggy3d::AiBehaviorKind::Attacking,
+                "guard attack behavior") &&
+         expect(decision.intent == iggy3d::AiIntentKind::AttackTarget,
+                "guard attack intent") &&
+         expect(command.status == iggy3d::NpcBehaviorCommandStatus::Built &&
+                    command.hasCommand &&
+                    command.command.kind == iggy3d::CommandKind::Attack,
+                "guard attack command");
+}
+
+bool guardedHostileChasesInsideLeash() {
+  const iggy3d::WorldState world = worldWithNpcAndPlayer(4.0F);
+  const iggy3d::CombatState readyCombat = combat();
+  const iggy3d::NpcBehaviorConfig config;
+  const iggy3d::NpcPerceptionResult perception = perceptionFor(world, readyCombat);
+  const iggy3d::AiActorState state = guardedActorState();
+  const iggy3d::NpcBehaviorDecision decision =
+      iggy3d::chooseNpcBehaviorIntent({&state, perception, config, 21});
+  const iggy3d::NpcBehaviorCommandResult command =
+      iggy3d::buildNpcBehaviorCommand({decision, perception, config});
+
+  return expect(decision.status == iggy3d::NpcBehaviorDecisionStatus::Decided,
+                "guard chase decided") &&
+         expect(decision.behavior == iggy3d::AiBehaviorKind::Chasing,
+                "guard chase behavior") &&
+         expect(decision.intent == iggy3d::AiIntentKind::MoveTowardTarget,
+                "guard chase intent") &&
+         expect(command.status == iggy3d::NpcBehaviorCommandStatus::Built &&
+                    command.hasCommand &&
+                    command.command.kind == iggy3d::CommandKind::Move,
+                "guard chase command") &&
+         expect(near(command.command.payload.target.point.x, 1.0F),
+                "guard chase step");
+}
+
+bool guardedActorOutsideLeashReturnsHome() {
+  const iggy3d::WorldState world = worldWithNpcAtAndPlayer(8.0F, 8.5F);
+  const iggy3d::CombatState readyCombat = combat();
+  const iggy3d::NpcBehaviorConfig config;
+  const iggy3d::NpcPerceptionResult perception = perceptionFor(world, readyCombat);
+  const iggy3d::AiActorState state = guardedActorState();
+  const iggy3d::NpcBehaviorDecision decision =
+      iggy3d::chooseNpcBehaviorIntent({&state, perception, config, 22});
+  const iggy3d::NpcBehaviorCommandResult command =
+      iggy3d::buildNpcBehaviorCommand({decision, perception, config});
+
+  return expect(decision.status == iggy3d::NpcBehaviorDecisionStatus::Decided,
+                "guard outside decided") &&
+         expect(decision.behavior == iggy3d::AiBehaviorKind::Returning,
+                "guard outside returning") &&
+         expect(decision.intent == iggy3d::AiIntentKind::ReturnToAnchor,
+                "guard outside return intent") &&
+         expect(iggy3d::nearlyEqual(decision.homePosition, {0.0F, 0.0F, 0.0F}),
+                "guard outside home copied") &&
+         expect(near(decision.returnStopDistanceMeters, 1.0F),
+                "guard outside stop distance") &&
+         expect(command.status == iggy3d::NpcBehaviorCommandStatus::Built &&
+                    command.hasCommand &&
+                    command.command.kind == iggy3d::CommandKind::Move,
+                "guard outside move command") &&
+         expect(near(command.command.payload.target.point.x, 7.0F),
+                "guard outside return step");
+}
+
+bool guardedTargetOutsideLeashPoliciesAreDeterministic() {
+  const iggy3d::CombatState readyCombat = combat();
+  const iggy3d::NpcBehaviorConfig config;
+
+  const iggy3d::WorldState awayWorld = worldWithNpcAtAndPlayer(2.0F, 4.0F);
+  const iggy3d::NpcPerceptionResult awayPerception =
+      perceptionFor(awayWorld, readyCombat);
+  iggy3d::AiActorState state =
+      guardedActorState({0.0F, 0.0F, 0.0F}, 3.0F, 1.0F, 0.25F);
+  iggy3d::NpcBehaviorDecision decision =
+      iggy3d::chooseNpcBehaviorIntent({&state, awayPerception, config, 23});
+  bool ok = expect(decision.behavior == iggy3d::AiBehaviorKind::Returning,
+                   "target outside away returns") &&
+            expect(decision.intent == iggy3d::AiIntentKind::ReturnToAnchor,
+                   "target outside away return intent");
+
+  const iggy3d::WorldState homeWorld = worldWithNpcAtAndPlayer(0.5F, 4.0F);
+  const iggy3d::NpcPerceptionResult homePerception =
+      perceptionFor(homeWorld, readyCombat);
+  state = guardedActorState({0.0F, 0.0F, 0.0F}, 3.0F, 1.0F, 0.25F);
+  decision = iggy3d::chooseNpcBehaviorIntent({&state, homePerception, config, 24});
+  const iggy3d::NpcBehaviorCommandResult command =
+      iggy3d::buildNpcBehaviorCommand({decision, homePerception, config});
+  return ok && expect(decision.behavior == iggy3d::AiBehaviorKind::Alert,
+                      "target outside home alert") &&
+         expect(decision.intent == iggy3d::AiIntentKind::Wait,
+                "target outside home wait") &&
+         expect(command.status == iggy3d::NpcBehaviorCommandStatus::Built &&
+                    command.hasCommand &&
+                    command.command.kind == iggy3d::CommandKind::Wait,
+                "target outside home wait command");
+}
+
+bool guardedChaseDestinationBeyondLeashReturns() {
+  iggy3d::NpcBehaviorConfig config;
+  config.attackRangeMeters = 0.05F;
+  config.chaseStopDistanceMeters = 0.01F;
+  config.chaseStepMeters = 0.1F;
+
+  const iggy3d::WorldState world = worldWithNpcAtAndPlayer(3.2F, 3.0F);
+  const iggy3d::CombatState readyCombat = combat();
+  const iggy3d::NpcPerceptionResult perception = perceptionFor(world, readyCombat, config);
+  const iggy3d::AiActorState state =
+      guardedActorState({0.0F, 0.0F, 0.0F}, 3.0F, 1.0F, 0.5F);
+  const iggy3d::NpcBehaviorDecision decision =
+      iggy3d::chooseNpcBehaviorIntent({&state, perception, config, 25});
+
+  return expect(perception.status == iggy3d::NpcPerceptionStatus::Ready,
+                "leash edge perception ready") &&
+         expect(decision.behavior == iggy3d::AiBehaviorKind::Returning,
+                "leash edge returning") &&
+         expect(decision.intent == iggy3d::AiIntentKind::ReturnToAnchor,
+                "leash edge return intent");
+}
+
+bool guardedReturnCompletionWaitsWithoutMove() {
+  const iggy3d::WorldState world = worldWithNpcAtAndPlayer(0.5F, 4.0F);
+  const iggy3d::CombatState readyCombat = combat();
+  const iggy3d::NpcBehaviorConfig config;
+  const iggy3d::NpcPerceptionResult perception = perceptionFor(world, readyCombat);
+  const iggy3d::AiActorState state =
+      guardedActorState({0.0F, 0.0F, 0.0F}, 3.0F, 1.0F, 0.25F);
+  const iggy3d::NpcBehaviorDecision decision =
+      iggy3d::chooseNpcBehaviorIntent({&state, perception, config, 26});
+  const iggy3d::NpcBehaviorCommandResult command =
+      iggy3d::buildNpcBehaviorCommand({decision, perception, config});
+
+  return expect(decision.behavior == iggy3d::AiBehaviorKind::Alert,
+                "return completion alert") &&
+         expect(decision.intent == iggy3d::AiIntentKind::Wait,
+                "return completion wait") &&
+         expect(command.status == iggy3d::NpcBehaviorCommandStatus::Built &&
+                    command.hasCommand &&
+                    command.command.kind == iggy3d::CommandKind::Wait,
+                "return completion no move");
+}
+
+bool guardedPassivePolicyReturnsOnlyWhenOutsideHomeArea() {
+  iggy3d::NpcBehaviorConfig config;
+  config.engagementPolicy = iggy3d::NpcEngagementPolicy::Passive;
+  const iggy3d::CombatState readyCombat = combat();
+
+  const iggy3d::WorldState insideWorld = worldWithNpcAndPlayer(4.0F);
+  const iggy3d::NpcPerceptionResult insidePerception =
+      perceptionFor(insideWorld, readyCombat, config);
+  iggy3d::AiActorState state = guardedActorState();
+  iggy3d::NpcBehaviorDecision decision =
+      iggy3d::chooseNpcBehaviorIntent({&state, insidePerception, config, 27});
+  bool ok = expect(decision.behavior == iggy3d::AiBehaviorKind::Alert,
+                   "guard passive inside alert") &&
+            expect(decision.intent == iggy3d::AiIntentKind::Wait,
+                   "guard passive inside wait");
+
+  const iggy3d::WorldState outsideWorld = worldWithNpcAtAndPlayer(8.0F, 8.5F);
+  const iggy3d::NpcPerceptionResult outsidePerception =
+      perceptionFor(outsideWorld, readyCombat, config);
+  state = guardedActorState();
+  decision = iggy3d::chooseNpcBehaviorIntent({&state, outsidePerception, config, 28});
+  return ok && expect(decision.behavior == iggy3d::AiBehaviorKind::Returning,
+                      "guard passive outside returning") &&
+         expect(decision.intent == iggy3d::AiIntentKind::ReturnToAnchor,
+                "guard passive outside return intent");
+}
+
+bool invalidGuardStateFailsClosed() {
+  const iggy3d::WorldState world = worldWithNpcAndPlayer(1.0F);
+  const iggy3d::CombatState readyCombat = combat();
+  const iggy3d::NpcBehaviorConfig config;
+  const iggy3d::NpcPerceptionResult perception = perceptionFor(world, readyCombat);
+  iggy3d::AiActorState state = guardedActorState();
+  state.returnRadiusMeters = 7.0F;
+
+  const iggy3d::NpcBehaviorDecision decision =
+      iggy3d::chooseNpcBehaviorIntent({&state, perception, config, 29});
+  const iggy3d::NpcBehaviorCommandResult command =
+      iggy3d::buildNpcBehaviorCommand({decision, perception, config});
+
+  return expect(decision.status == iggy3d::NpcBehaviorDecisionStatus::InvalidGuard,
+                "invalid guard status") &&
+         expect(decision.intent == iggy3d::AiIntentKind::None,
+                "invalid guard no intent") &&
+         expect(command.status == iggy3d::NpcBehaviorCommandStatus::NoCommand &&
+                    !command.hasCommand,
+                "invalid guard no command");
+}
+
 bool stableStatusNamesAreLowerSnake() {
   return expect(iggy3d::npcEngagementPolicyName(
                     iggy3d::NpcEngagementPolicy::Hostile) == "hostile",
@@ -340,6 +577,10 @@ bool stableStatusNamesAreLowerSnake() {
                     iggy3d::NpcPerceptionStatus::TargetOutOfRange) ==
                     "target_out_of_range",
                 "perception lower snake") &&
+         expect(iggy3d::npcBehaviorDecisionStatusName(
+                    iggy3d::NpcBehaviorDecisionStatus::InvalidGuard) ==
+                    "invalid_guard",
+                "decision invalid guard lower snake") &&
          expect(iggy3d::npcBehaviorDecisionStatusName(
                     iggy3d::NpcBehaviorDecisionStatus::WaitingForDecisionTick) ==
                     "waiting_for_decision_tick",
@@ -360,6 +601,14 @@ int main() {
                   attackDecisionAndCommandAreDeterministic() &&
                   cooldownDisabledAndNoTargetPoliciesAreDeterministic() &&
                   passivePolicyWaitsWithoutChasingOrAttacking() &&
+                  guardedHostileInsideLeashCanAttack() &&
+                  guardedHostileChasesInsideLeash() &&
+                  guardedActorOutsideLeashReturnsHome() &&
+                  guardedTargetOutsideLeashPoliciesAreDeterministic() &&
+                  guardedChaseDestinationBeyondLeashReturns() &&
+                  guardedReturnCompletionWaitsWithoutMove() &&
+                  guardedPassivePolicyReturnsOnlyWhenOutsideHomeArea() &&
+                  invalidGuardStateFailsClosed() &&
                   stableStatusNamesAreLowerSnake();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

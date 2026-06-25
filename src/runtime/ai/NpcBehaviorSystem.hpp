@@ -81,6 +81,7 @@ enum class NpcBehaviorDecisionStatus : std::uint8_t {
   NoTarget,
   OnCooldown,
   InvalidConfig,
+  InvalidGuard,
   InvalidPerception,
 };
 
@@ -99,6 +100,8 @@ struct NpcBehaviorDecision {
   AiBehaviorKind behavior = AiBehaviorKind::Idle;
   AiIntentKind intent = AiIntentKind::None;
   EntityId target;
+  Vec3 homePosition;
+  float returnStopDistanceMeters = 0.0F;
   std::uint64_t nextDecisionTick = 0;
   std::uint32_t cooldownTicksRemaining = 0;
 };
