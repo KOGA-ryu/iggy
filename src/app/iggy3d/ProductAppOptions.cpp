@@ -170,6 +170,15 @@ ProductAppOptionsParseResult parseProductAppOptions(int argc, char** argv) {
       result.options.automationControlPath = argv[++i];
       continue;
     }
+    if (arg == "--gameplay-tape") {
+      if (needsValue(i, argc)) {
+        result.status = ProductAppOptionStatus::MissingOptionValue;
+        result.option = std::string(arg);
+        return result;
+      }
+      result.options.gameplayTapePath = argv[++i];
+      continue;
+    }
 
     result.status = ProductAppOptionStatus::UnknownOption;
     result.option = std::string(arg);
@@ -242,7 +251,8 @@ std::string productAppHelpText() {
          "  --print-render-receipt\n"
          "  --dev-package-override <package.iggy3d.toml>\n"
          "  --dev-scenario <id>\n"
-         "  --automation-control <path>\n";
+         "  --automation-control <path>\n"
+         "  --gameplay-tape <path>\n";
 }
 
 }  // namespace iggy3d

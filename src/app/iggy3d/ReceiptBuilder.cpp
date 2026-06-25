@@ -421,6 +421,46 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.gameplayOutcomeObjectiveChanged);
   appendReceiptField(receipt, "gameplay_outcome_event_count",
                      window.gameplayOutcomeEventCount);
+  appendReceiptField(receipt, "session_outcome", window.sessionOutcome);
+  appendReceiptField(receipt, "gameplay_tape_requested",
+                     window.gameplayTapeRequested);
+  appendReceiptField(receipt, "gameplay_tape_loaded", window.gameplayTapeLoaded);
+  appendReceiptField(receipt, "gameplay_tape_path", window.gameplayTapePath);
+  appendReceiptField(receipt, "gameplay_tape_status", window.gameplayTapeStatus);
+  appendReceiptField(receipt, "gameplay_tape_reason_code",
+                     window.gameplayTapeReasonCode);
+  appendReceiptField(receipt, "gameplay_tape_line_count",
+                     window.gameplayTapeLineCount);
+  appendReceiptField(receipt, "gameplay_tape_step_count",
+                     window.gameplayTapeStepCount);
+  appendReceiptField(receipt, "gameplay_tape_executed_step_count",
+                     window.gameplayTapeExecutedStepCount);
+  appendReceiptField(receipt, "gameplay_tape_expected_rejected_step_count",
+                     window.gameplayTapeExpectedRejectedStepCount);
+  appendReceiptField(receipt, "gameplay_tape_failed_step",
+                     window.gameplayTapeFailedStep);
+  appendReceiptField(receipt, "gameplay_tape_failed_source_line",
+                     window.gameplayTapeFailedSourceLine);
+  appendReceiptField(receipt, "gameplay_tape_failed_action",
+                     window.gameplayTapeFailedAction);
+  appendReceiptField(receipt, "gameplay_tape_failed_target",
+                     window.gameplayTapeFailedTarget);
+  appendReceiptField(receipt, "gameplay_tape_failed_rejection",
+                     window.gameplayTapeFailedRejection);
+  appendReceiptField(receipt, "gameplay_tape_last_action",
+                     window.gameplayTapeLastAction);
+  appendReceiptField(receipt, "gameplay_tape_last_target",
+                     window.gameplayTapeLastTarget);
+  appendReceiptField(receipt, "gameplay_tape_key_collected",
+                     window.gameplayTapeKeyCollected);
+  appendReceiptField(receipt, "gameplay_tape_secret_door_opened",
+                     window.gameplayTapeSecretDoorOpened);
+  appendReceiptField(receipt, "gameplay_tape_treasure_collected",
+                     window.gameplayTapeTreasureCollected);
+  appendReceiptField(receipt, "gameplay_tape_exit_objective_complete",
+                     window.gameplayTapeExitObjectiveComplete);
+  appendReceiptField(receipt, "gameplay_tape_loop_complete",
+                     window.gameplayTapeLoopComplete);
   appendReceiptField(receipt, "gameplay_reach_gate", window.gameplayReachGate);
   appendReceiptField(receipt, "gameplay_last_rejection", window.gameplayLastRejection);
   appendReceiptField(receipt, "interaction_executed", window.interactionExecuted);

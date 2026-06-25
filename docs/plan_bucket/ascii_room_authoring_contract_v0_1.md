@@ -593,6 +593,22 @@ Current full-loop proof:
 - the smoke also proves the exit rejects with `required_item_missing` before
   treasure is collected.
 
+Current product-app tape proof:
+
+- `--gameplay-tape <path>` accepts a plain ordered line tape, not JSON;
+- supported v0.1 commands are `move <stable_name>`, `interact <stable_name>`,
+  `wait`, and `expect_reject <reason> interact <stable_name>`;
+- tape target ownership is stable runtime entity name, usually the deterministic
+  ASCII marker id;
+- unexpected failure stops the tape immediately;
+- expected rejection steps are recorded and do not tick the runtime;
+- `product_gameplay_tape_smoke` generates an ASCII package, launches
+  `./build/iggy3d --no-window --auto-new-world --gameplay-tape`, and proves the
+  same key, secret door, treasure, exit, `Victory` loop through the product app;
+- receipt proof fields are prefixed with `gameplay_tape_` and include loaded
+  state, step counts, expected rejection count, failed step, final action/target,
+  key/door/treasure/exit booleans, and loop completion.
+
 ## Validation Rules
 
 Hard errors for v0.1:

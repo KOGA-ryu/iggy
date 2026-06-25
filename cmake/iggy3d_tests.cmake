@@ -82,6 +82,15 @@ iggy3d_add_unit_test(product_gameplay_feedback_tests tests/unit/product_gameplay
 set_tests_properties(product_gameplay_feedback_tests PROPERTIES
   LABELS "unit;app;product;feedback;iggy3d")
 
+iggy3d_add_unit_test(product_gameplay_tape_tests tests/unit/product_gameplay_tape_tests.cpp)
+set_tests_properties(product_gameplay_tape_tests PROPERTIES
+  LABELS "unit;app;product;gameplay;tape;iggy3d")
+
+iggy3d_add_unit_test(product_gameplay_tape_runner_tests
+  tests/unit/product_gameplay_tape_runner_tests.cpp)
+set_tests_properties(product_gameplay_tape_runner_tests PROPERTIES
+  LABELS "unit;app;product;gameplay;tape;runtime;iggy3d")
+
 iggy3d_add_unit_test(product_movement_debug_hud_tests
   tests/unit/product_movement_debug_hud_tests.cpp)
 set_tests_properties(product_movement_debug_hud_tests PROPERTIES
@@ -616,6 +625,21 @@ if(TARGET iggy3d_visual_demo)
     product_pause_save_smoke
     tests/smoke/product_pause_save_smoke.cpp
     "pause;save")
+
+  add_executable(product_gameplay_tape_smoke
+    tests/smoke/product_gameplay_tape_smoke.cpp)
+  target_link_libraries(product_gameplay_tape_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(product_gameplay_tape_smoke)
+  target_compile_definitions(product_gameplay_tape_smoke
+    PRIVATE
+      IGGY3D_PRODUCT_APP_PATH="$<TARGET_FILE:iggy3d_app>")
+  add_dependencies(product_gameplay_tape_smoke iggy3d_app)
+  add_test(NAME product_gameplay_tape_smoke
+           COMMAND "$<TARGET_FILE:product_gameplay_tape_smoke>")
+  set_tests_properties(product_gameplay_tape_smoke PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    SKIP_RETURN_CODE 77
+    LABELS "smoke;product;gameplay;tape;ascii_room;no_window;iggy3d")
 endif()
 
 function(iggy3d_add_render_packet4_unit_test test_name source_file)

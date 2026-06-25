@@ -42,6 +42,8 @@ target_sources(iggy3d
     src/app/iggy3d/ProductGameplayController.cpp
     src/app/iggy3d/ProductGameplayFeedback.cpp
     src/app/iggy3d/ProductFrontendRouter.cpp
+    src/app/iggy3d/ProductGameplayTape.cpp
+    src/app/iggy3d/ProductGameplayTapeRunner.cpp
     src/app/iggy3d/ProductMenuTransitions.cpp
     src/app/iggy3d/ProductMovementDebugHud.cpp
     src/app/iggy3d/ProductPackageSessionSeed.cpp

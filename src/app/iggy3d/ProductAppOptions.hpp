@@ -39,6 +39,7 @@ struct ProductAppOptions {
   std::filesystem::path saveRoot;
   std::filesystem::path devPackageOverride;
   std::filesystem::path automationControlPath;
+  std::filesystem::path gameplayTapePath;
   std::string devScenario = "default";
   std::uint32_t frames = 0;
   std::uint32_t holdSeconds = 0;

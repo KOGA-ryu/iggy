@@ -21,6 +21,8 @@
 #include "app/iggy3d/ProductAsciiRoomPreview.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/ProductGameplayTape.hpp"
+#include "app/iggy3d/ProductGameplayTapeRunner.hpp"
 #include "app/iggy3d/ProductMenuTransitions.hpp"
 #include "app/iggy3d/ProductMovementDebugHud.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
@@ -195,9 +197,80 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
   }
 }
 
+std::string failedTapeStepReceiptValue(std::uint64_t stepIndex) {
+  return stepIndex == 0U ? "none" : std::to_string(stepIndex);
+}
+
+void recordProductGameplayTapeParse(const ProductGameplayTapeParseResult& parsed,
+                                    ProductAppWindowState& window) {
+  window.gameplayTapeLoaded = parsed.ok;
+  window.gameplayTapeStatus = parsed.status;
+  window.gameplayTapeReasonCode = parsed.reasonCode;
+  window.gameplayTapeLineCount = parsed.lineCount;
+  window.gameplayTapeStepCount =
+      static_cast<std::uint64_t>(parsed.tape.steps.size());
+  window.gameplayTapeFailedStep = failedTapeStepReceiptValue(parsed.failedLine);
+  window.gameplayTapeFailedSourceLine = parsed.failedLine;
+  window.gameplayTapeFailedAction = "none";
+  window.gameplayTapeFailedTarget = parsed.failedToken;
+  window.gameplayTapeFailedRejection = "none";
+}
+
+void recordProductGameplayTapeRun(const ProductGameplayTapeRunResult& run,
+                                  ProductAppWindowState& window) {
+  window.gameplayTapeStatus = run.status;
+  window.gameplayTapeReasonCode = run.reasonCode;
+  window.gameplayTapeStepCount = run.stepCount;
+  window.gameplayTapeExecutedStepCount = run.executedStepCount;
+  window.gameplayTapeExpectedRejectedStepCount = run.expectedRejectedStepCount;
+  window.gameplayTapeFailedStep = failedTapeStepReceiptValue(run.failedStepIndex);
+  window.gameplayTapeFailedSourceLine = run.failedSourceLine;
+  window.gameplayTapeFailedAction = run.failedAction;
+  window.gameplayTapeFailedTarget = run.failedTarget;
+  window.gameplayTapeFailedRejection = run.failedRejection;
+  window.gameplayTapeLastAction = run.lastAction;
+  window.gameplayTapeLastTarget = run.lastTarget;
+  window.gameplayTapeKeyCollected = run.keyCollected;
+  window.gameplayTapeSecretDoorOpened = run.secretDoorOpened;
+  window.gameplayTapeTreasureCollected = run.treasureCollected;
+  window.gameplayTapeExitObjectiveComplete = run.exitObjectiveComplete;
+  window.gameplayTapeLoopComplete = run.loopComplete;
+  window.sessionOutcome = run.sessionOutcome;
+  window.runtimeStateHash = run.runtimeStateHash;
+  if (!run.ok) {
+    window.status = "gameplay_tape_failed";
+  }
+}
+
+void runProductGameplayTapeFromOptions(const ProductAppOptions& options,
+                                       std::optional<Session>& activeSession,
+                                       ProductAppWindowState& window) {
+  if (options.gameplayTapePath.empty()) {
+    return;
+  }
+
+  window.gameplayTapeRequested = true;
+  window.gameplayTapePath = options.gameplayTapePath.generic_string();
+  const ProductGameplayTapeParseResult parsed =
+      loadProductGameplayTapeFile(options.gameplayTapePath);
+  recordProductGameplayTapeParse(parsed, window);
+  if (!parsed.ok) {
+    window.status = "gameplay_tape_parse_failed";
+    return;
+  }
+
+  const ProductGameplayTapeRunResult run = runProductGameplayTape(
+      ProductGameplayTapeRunRequest{activeSession.has_value() ? &*activeSession : nullptr,
+                                    &parsed.tape,
+                                    productActiveRoomCollisionSurfaces(
+                                        window.activeRoomCollision)});
+  recordProductGameplayTapeRun(run, window);
+}
+
 void refreshGameplayProjectionMetrics(const std::optional<Session>& activeSession,
                                       ProductAppWindowState& window) {
   if (!window.gameplayActive || !activeSession.has_value()) {
+    window.sessionOutcome = "None";
     applyGameplayProjectionMetrics(window, nullptr, nullptr, nullptr, nullptr, nullptr,
                                    false);
     return;
@@ -217,6 +290,8 @@ void refreshGameplayProjectionMetrics(const std::optional<Session>& activeSessio
   const ProductRenderBridgeFrame bridge =
       buildProductRenderBridgeFrame(&drawList, &frame, &feedback);
   window.runtimeStateHash = activeSession->stateHash();
+  window.sessionOutcome =
+      std::string(productGameplayTapeSessionOutcomeName(activeSession->state().outcome));
   applyGameplayProjectionMetrics(window, &scene, &debug, &drawList, &frame, &bridge,
                                  true);
 }
@@ -1717,6 +1792,9 @@ int runProductApp(int argc, char** argv) {
   applyProductAutomationControl(options, frontend, saves, automationSettingsTab,
                                 activeSession, worldSetupDraft, window,
                                 automationCloseRequested);
+  if (!automationCloseRequested) {
+    runProductGameplayTapeFromOptions(options, activeSession, window);
+  }
   saves = scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
   if (automationCloseRequested) {
     window.status = "automation_close_requested";
