@@ -839,6 +839,27 @@ bool activatedAsciiRoomAttackNpc(const iggy3d::smoke::ReceiptFields& fields) {
                                  "gameplay_target_supports_command",
                                  "true") &&
          iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_status",
+                                 "not_requested") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_target_active_after",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_inventory_changed",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_item_id",
+                                 "none") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_item_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_objective_changed",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_event_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
                                  "gameplay_reach_gate",
                                  "pass") &&
          iggy3d::smoke::hasField(fields,
@@ -937,6 +958,27 @@ bool activatedAsciiRoomInteractKey(const iggy3d::smoke::ReceiptFields& fields) {
                                  "gameplay_target_supports_command",
                                  "true") &&
          iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_status",
+                                 "succeeded") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_target_active_after",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_inventory_changed",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_item_id",
+                                 "marker_key_r1_c2") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_item_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_objective_changed",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_event_count",
+                                 "3") &&
+         iggy3d::smoke::hasField(fields,
                                  "gameplay_reach_gate",
                                  "pass") &&
          iggy3d::smoke::hasField(fields,
@@ -971,6 +1013,123 @@ bool activatedAsciiRoomInteractKey(const iggy3d::smoke::ReceiptFields& fields) {
          iggy3d::smoke::hasField(fields,
                                  "product_feedback_command_status",
                                  "accepted");
+}
+
+bool activatedAsciiRoomInteractTreasure(
+    const iggy3d::smoke::ReceiptFields& fields) {
+  return iggy3d::smoke::automationApplied(fields) &&
+         iggy3d::smoke::hasField(fields,
+                                 "automation_control_last_key",
+                                 "game.interact") &&
+         iggy3d::smoke::hasField(fields,
+                                 "automation_control_last_action",
+                                 "game.interact") &&
+         iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+         iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_status",
+                                 "found") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_action",
+                                 "interact") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_stable_name",
+                                 "marker_treasure_r1_c2") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_kind",
+                                 "pickup") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_status",
+                                 "succeeded") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_target_active_after",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_inventory_changed",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_item_id",
+                                 "marker_treasure_r1_c2") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_item_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_objective_changed",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_event_count",
+                                 "3") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_reach_gate",
+                                 "pass") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_status",
+                                 "accepted") &&
+         iggy3d::smoke::hasField(fields, "interaction_executed", "true") &&
+         iggy3d::smoke::hasField(fields, "attack_executed", "false");
+}
+
+bool activatedAsciiRoomInteractDoor(
+    const iggy3d::smoke::ReceiptFields& fields) {
+  return iggy3d::smoke::automationApplied(fields) &&
+         iggy3d::smoke::hasField(fields,
+                                 "automation_control_last_key",
+                                 "game.interact") &&
+         iggy3d::smoke::hasField(fields,
+                                 "automation_control_last_action",
+                                 "game.interact") &&
+         iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+         iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_door_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "ascii_room_activation_pickup_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_status",
+                                 "found") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_action",
+                                 "interact") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_stable_name",
+                                 "marker_door_r1_c2") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_target_kind",
+                                 "door") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_status",
+                                 "succeeded") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_target_active_after",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_inventory_changed",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_item_id",
+                                 "none") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_item_count",
+                                 "0") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_objective_changed",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_outcome_event_count",
+                                 "1") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_reach_gate",
+                                 "pass") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_command_status",
+                                 "accepted") &&
+         iggy3d::smoke::hasField(fields,
+                                 "gameplay_tick_reason_code",
+                                 "ok") &&
+         iggy3d::smoke::hasField(fields, "interaction_executed", "true") &&
+         iggy3d::smoke::hasField(fields, "attack_executed", "false");
 }
 
 bool activatedAsciiRoomAttackOutOfRange(
@@ -1246,6 +1405,38 @@ int main() {
           interactFields,
           interactExitCode);
 
+  int treasureExitCode = 77;
+  iggy3d::smoke::ReceiptFields treasureFields;
+  const bool treasureReceipt =
+      appAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_authoring_interact_treasure",
+          "ascii_room.room_id=automation_interact_treasure_room\n"
+          "ascii_room.source_name=automation/interact_treasure_room.iggyroom.txt\n"
+          "ascii_room.text=#####\\n#P$.#\\n#####\\n\n"
+          "ascii_room.activate=true\n"
+          "game.interact=true\n",
+          "",
+          treasureFields,
+          treasureExitCode);
+
+  int doorExitCode = 77;
+  iggy3d::smoke::ReceiptFields doorFields;
+  const bool doorReceipt =
+      appAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_authoring_interact_door",
+          "ascii_room.room_id=automation_interact_door_room\n"
+          "ascii_room.source_name=automation/interact_door_room.iggyroom.txt\n"
+          "ascii_room.text=######\\n#P+K.#\\n######\\n\n"
+          "ascii_room.activate=true\n"
+          "game.interact=true\n",
+          "",
+          doorFields,
+          doorExitCode);
+
   int attackOutOfRangeExitCode = 77;
   iggy3d::smoke::ReceiptFields attackOutOfRangeFields;
   const bool attackOutOfRangeReceipt =
@@ -1322,6 +1513,14 @@ int main() {
       interactExitCode == 0 && interactReceipt &&
       iggy3d::smoke::productReceipt(interactFields) &&
       activatedAsciiRoomInteractKey(interactFields);
+  const bool treasurePassed =
+      treasureExitCode == 0 && treasureReceipt &&
+      iggy3d::smoke::productReceipt(treasureFields) &&
+      activatedAsciiRoomInteractTreasure(treasureFields);
+  const bool doorPassed =
+      doorExitCode == 0 && doorReceipt &&
+      iggy3d::smoke::productReceipt(doorFields) &&
+      activatedAsciiRoomInteractDoor(doorFields);
   const bool attackOutOfRangePassed =
       attackOutOfRangeExitCode == 0 && attackOutOfRangeReceipt &&
       iggy3d::smoke::productReceipt(attackOutOfRangeFields) &&
@@ -1357,6 +1556,10 @@ int main() {
                   expect(attackPassed, "attack npc accepted") &&
                   expect(interactReceipt, "interact receipt parsed") &&
                   expect(interactPassed, "interact key accepted") &&
+                  expect(treasureReceipt, "treasure receipt parsed") &&
+                  expect(treasurePassed, "interact treasure accepted") &&
+                  expect(doorReceipt, "door receipt parsed") &&
+                  expect(doorPassed, "interact door accepted") &&
                   expect(attackOutOfRangeReceipt,
                          "attack out of range receipt parsed") &&
                   expect(attackOutOfRangePassed,
@@ -1376,6 +1579,9 @@ int main() {
   std::cout << "attack_npc=" << (attackPassed ? "true" : "false") << "\n";
   std::cout << "interact_key=" << (interactPassed ? "true" : "false")
             << "\n";
+  std::cout << "interact_treasure="
+            << (treasurePassed ? "true" : "false") << "\n";
+  std::cout << "interact_door=" << (doorPassed ? "true" : "false") << "\n";
   std::cout << "attack_out_of_range="
             << (attackOutOfRangePassed ? "true" : "false") << "\n";
   std::cout << "attack_no_target="

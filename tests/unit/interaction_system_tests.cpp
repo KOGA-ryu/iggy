@@ -46,10 +46,27 @@ iggy3d::EntityState makeGoldKey() {
   return entity;
 }
 
+iggy3d::EntityState makeDoor() {
+  iggy3d::EntityState entity;
+  entity.id = {3};
+  entity.stableName = "wooden_door";
+  entity.kind = iggy3d::EntityKind::Door;
+  entity.transform = transformAt(3.0F, 0.0F, 1.0F);
+  entity.localBounds = iggy3d::makeAabb3({-0.25F, 0.0F, -0.25F},
+                                         {0.25F, 1.8F, 0.25F});
+  entity.targeting.targetable = true;
+  entity.targeting.actions = {iggy3d::TargetAction::Interact,
+                              iggy3d::TargetAction::Inspect};
+  entity.interaction.kind = iggy3d::InteractionKind::OpenDoor;
+  entity.interaction.primaryEffect = iggy3d::InteractionEffectKind::EmitEventOnly;
+  return entity;
+}
+
 iggy3d::WorldState makeWorld() {
   iggy3d::WorldState world;
   (void)world.seedEntity(makePlayer());
   (void)world.seedEntity(makeGoldKey());
+  (void)world.seedEntity(makeDoor());
   return world;
 }
 
@@ -85,6 +102,12 @@ iggy3d::CommandRecord acceptedInteract(iggy3d::CommandId id = 8) {
   command.payload.target.hasEntity = true;
   command.payload.target.entity = {2};
   command.admission = iggy3d::CommandAdmissionStatus::Accepted;
+  return command;
+}
+
+iggy3d::CommandRecord acceptedDoorInteract(iggy3d::CommandId id = 9) {
+  iggy3d::CommandRecord command = acceptedInteract(id);
+  command.payload.target.entity = {3};
   return command;
 }
 
@@ -128,6 +151,29 @@ bool nullContextsReturnStructuredStatus() {
                 "missing objectives");
 }
 
+bool openDoorEmitsOnlyAndDoesNotMutateState() {
+  iggy3d::WorldState world = makeWorld();
+  iggy3d::InventoryState inventory = makeInventory();
+  iggy3d::ObjectiveState objectives = makeObjectives();
+  iggy3d::InteractionSystemContext context{&world, &inventory, &objectives};
+  const iggy3d::InteractionResult result =
+      iggy3d::executeInteraction(context, {acceptedDoorInteract(), 9, 1});
+  return expect(result.status == iggy3d::InteractionStatus::Succeeded,
+                "door succeeded") &&
+         expect(result.kind == iggy3d::InteractionKind::OpenDoor,
+                "door interaction kind") &&
+         expect(result.primaryEffect == iggy3d::InteractionEffectKind::EmitEventOnly,
+                "door emit-only effect") &&
+         expect(result.itemId.empty() && result.itemCount == 0U, "door no item") &&
+         expect(!result.inventoryMutated, "door no inventory mutation") &&
+         expect(!result.targetDeactivated, "door target remains active") &&
+         expect(!result.objectiveMutated, "door no objective mutation") &&
+         expect(world.findById({3})->active, "door still active") &&
+         expect(inventory.players[0].stacks.empty(), "door inventory unchanged") &&
+         expect(!iggy3d::objectiveComplete(objectives, "collect_gold_key"),
+                "door objective unchanged");
+}
+
 bool rawRetryIsInvalidCommand() {
   iggy3d::WorldState world = makeWorld();
   iggy3d::InventoryState inventory = makeInventory();
@@ -161,7 +207,9 @@ bool inventoryFailureDoesNotDeactivateTarget() {
 
 int main() {
   const bool ok = pickupAddsItemDeactivatesTargetAndCompletesObjective() &&
-                  nullContextsReturnStructuredStatus() && rawRetryIsInvalidCommand() &&
+                  nullContextsReturnStructuredStatus() &&
+                  openDoorEmitsOnlyAndDoesNotMutateState() &&
+                  rawRetryIsInvalidCommand() &&
                   inventoryFailureDoesNotDeactivateTarget();
   return ok ? 0 : 1;
 }

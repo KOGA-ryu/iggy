@@ -173,6 +173,13 @@ struct ProductAppWindowState {
   std::string gameplayTargetKind = "none";
   float gameplayTargetDistanceMeters = 0.0F;
   bool gameplayTargetSupportsCommand = false;
+  std::string gameplayOutcomeStatus = "not_requested";
+  bool gameplayOutcomeTargetActiveAfter = false;
+  bool gameplayOutcomeInventoryChanged = false;
+  std::string gameplayOutcomeItemId = "none";
+  std::uint64_t gameplayOutcomeItemCount = 0;
+  bool gameplayOutcomeObjectiveChanged = false;
+  std::uint64_t gameplayOutcomeEventCount = 0;
   bool interactionExecuted = false;
   bool attackExecuted = false;
   std::string productTransitionLastAction = "none";

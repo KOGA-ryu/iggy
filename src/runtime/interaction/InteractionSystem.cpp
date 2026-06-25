@@ -38,6 +38,13 @@ bool pickupShapeValid(const InteractionDefinition& interaction) {
          !interaction.itemId.empty() && interaction.itemCount > 0U;
 }
 
+bool emitOnlyShapeValid(const InteractionDefinition& interaction) {
+  return interaction.primaryEffect == InteractionEffectKind::EmitEventOnly &&
+         (interaction.kind == InteractionKind::OpenDoor ||
+          interaction.kind == InteractionKind::Activate ||
+          interaction.kind == InteractionKind::ObjectiveTrigger);
+}
+
 }  // namespace
 
 InteractionResult executeInteraction(
@@ -76,6 +83,10 @@ InteractionResult executeInteraction(
   copyInteractionFacts(result, interaction);
 
   if (interaction.kind == InteractionKind::Inspect) {
+    result.status = InteractionStatus::Succeeded;
+    return result;
+  }
+  if (emitOnlyShapeValid(interaction)) {
     result.status = InteractionStatus::Succeeded;
     return result;
   }

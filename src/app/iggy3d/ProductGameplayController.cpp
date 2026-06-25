@@ -7,7 +7,9 @@
 #include "app/input/ActionState.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/command/Command.hpp"
+#include "runtime/inventory/InventorySystem.hpp"
 #include "runtime/movement/MovementSystem.hpp"
+#include "runtime/objective/ObjectiveSystem.hpp"
 #include "runtime/session/Session.hpp"
 #include "runtime/targeting/ReachQuery.hpp"
 #include "runtime/targeting/TargetQuery.hpp"
@@ -15,6 +17,16 @@
 
 namespace iggy3d {
 namespace {
+
+struct ProductInteractionOutcomeSnapshot {
+  EntityId target;
+  PlayerSlotId playerSlot = kInvalidPlayerSlotId;
+  std::string itemId;
+  std::string objectiveId;
+  std::uint32_t itemCountBefore = 0;
+  bool objectiveCompleteBefore = false;
+  std::size_t eventCountBefore = 0;
+};
 
 std::string commandKindName(CommandKind kind) {
   switch (kind) {
@@ -155,6 +167,93 @@ void clearProductTargetProof(ProductAppWindowState& window) {
   window.gameplayTargetSupportsCommand = false;
 }
 
+void clearProductOutcomeProof(ProductAppWindowState& window) {
+  window.gameplayOutcomeStatus = "not_requested";
+  window.gameplayOutcomeTargetActiveAfter = false;
+  window.gameplayOutcomeInventoryChanged = false;
+  window.gameplayOutcomeItemId = "none";
+  window.gameplayOutcomeItemCount = 0;
+  window.gameplayOutcomeObjectiveChanged = false;
+  window.gameplayOutcomeEventCount = 0;
+}
+
+std::uint32_t inventoryItemCount(const InventoryState& inventory,
+                                 PlayerSlotId playerSlot,
+                                 const std::string& itemId) {
+  if (itemId.empty()) {
+    return 0;
+  }
+  const PlayerInventory* playerInventory = findInventory(inventory, playerSlot);
+  if (playerInventory == nullptr) {
+    return 0;
+  }
+  for (const InventoryStack& stack : playerInventory->stacks) {
+    if (stack.itemId == itemId) {
+      return stack.count;
+    }
+  }
+  return 0;
+}
+
+ProductInteractionOutcomeSnapshot makeProductInteractionOutcomeSnapshot(
+    const Session& session,
+    PlayerSlotId playerSlot,
+    EntityId target) {
+  ProductInteractionOutcomeSnapshot snapshot;
+  snapshot.target = target;
+  snapshot.playerSlot = playerSlot;
+  snapshot.eventCountBefore = session.state().transient.events.size();
+  const EntityState* entity = session.state().world.findById(target);
+  if (entity == nullptr) {
+    return snapshot;
+  }
+  snapshot.itemId = entity->interaction.itemId;
+  snapshot.objectiveId = entity->interaction.objectiveId;
+  snapshot.itemCountBefore =
+      inventoryItemCount(session.state().inventory, playerSlot, snapshot.itemId);
+  snapshot.objectiveCompleteBefore =
+      !snapshot.objectiveId.empty() &&
+      objectiveComplete(session.state().objectives, snapshot.objectiveId);
+  return snapshot;
+}
+
+void recordProductInteractionOutcomeProof(
+    const Session& session,
+    ProductAppWindowState& window,
+    const ProductInteractionOutcomeSnapshot& before) {
+  const EntityState* target = session.state().world.findById(before.target);
+  window.gameplayOutcomeTargetActiveAfter =
+      target != nullptr && target->active;
+  window.gameplayOutcomeItemId = before.itemId.empty() ? "none" : before.itemId;
+  const std::uint32_t itemCountAfter =
+      inventoryItemCount(session.state().inventory,
+                         before.playerSlot,
+                         before.itemId);
+  window.gameplayOutcomeItemCount = itemCountAfter;
+  window.gameplayOutcomeInventoryChanged =
+      itemCountAfter != before.itemCountBefore;
+  const bool objectiveCompleteAfter =
+      !before.objectiveId.empty() &&
+      objectiveComplete(session.state().objectives, before.objectiveId);
+  window.gameplayOutcomeObjectiveChanged =
+      objectiveCompleteAfter != before.objectiveCompleteBefore;
+  const std::size_t eventCountAfter = session.state().transient.events.size();
+  window.gameplayOutcomeEventCount =
+      eventCountAfter >= before.eventCountBefore
+          ? static_cast<std::uint64_t>(eventCountAfter - before.eventCountBefore)
+          : 0U;
+
+  if (!window.gameplayCommandAccepted) {
+    window.gameplayOutcomeStatus = "rejected";
+    return;
+  }
+  if (!window.gameplayTickAdvanced) {
+    window.gameplayOutcomeStatus = "tick_failed";
+    return;
+  }
+  window.gameplayOutcomeStatus = "succeeded";
+}
+
 void recordProductTargetProof(const Session& session,
                               ProductAppWindowState& window,
                               CommandKind kind,
@@ -292,6 +391,7 @@ void submitProductMove(Session& session,
                        std::string_view source,
                        const SpatialSurfaceSet* collisionSurfaces) {
   clearProductTargetProof(window);
+  clearProductOutcomeProof(window);
   const EntityState* actor = productPlayerEntity(session);
   if (actor == nullptr) {
     window.gameplayCommandStatus = "missing_player";
@@ -323,6 +423,7 @@ void submitProductTargetCommand(Session& session,
                                 CommandKind kind,
                                 std::string_view source,
                                 const SpatialSurfaceSet* collisionSurfaces) {
+  clearProductOutcomeProof(window);
   const EntityId actor = productPlayerActor(session);
   const TargetQueryResult target = queryProductGameplayTarget(session, kind);
   recordProductTargetProof(session, window, kind, target);
@@ -332,6 +433,9 @@ void submitProductTargetCommand(Session& session,
     window.gameplayCommandKind = commandKindName(kind);
     window.gameplayCommandStatus = "no_target";
     window.gameplayReachGate = "not_attempted";
+    if (kind == CommandKind::Interact) {
+      window.gameplayOutcomeStatus = "no_target";
+    }
     return;
   }
 
@@ -351,12 +455,23 @@ void submitProductTargetCommand(Session& session,
   if (kind == CommandKind::Attack) {
     command.payload.attackDamage = 3;
   }
+  const ProductInteractionOutcomeSnapshot outcomeBefore =
+      kind == CommandKind::Interact
+          ? makeProductInteractionOutcomeSnapshot(session,
+                                                  command.playerSlot,
+                                                  target.target)
+          : ProductInteractionOutcomeSnapshot{};
   window.gameplayInputSource = std::string(source);
   submitProductGameplayCommand(session, window, command, collisionSurfaces);
-  if (kind == CommandKind::Interact && window.gameplayCommandAccepted) {
+  if (kind == CommandKind::Interact) {
+    recordProductInteractionOutcomeProof(session, window, outcomeBefore);
+  }
+  if (kind == CommandKind::Interact && window.gameplayCommandAccepted &&
+      window.gameplayTickAdvanced) {
     window.interactionExecuted = true;
   }
-  if (kind == CommandKind::Attack && window.gameplayCommandAccepted) {
+  if (kind == CommandKind::Attack && window.gameplayCommandAccepted &&
+      window.gameplayTickAdvanced) {
     window.attackExecuted = true;
   }
 }
@@ -384,6 +499,7 @@ void applyProductGameplayActions(Session& session,
   if (actionWasPressed(actions, InputAction::PlayerRetryOrReset)) {
     const SessionResetResult reset = session.resetToBaseline();
     clearProductTargetProof(window);
+    clearProductOutcomeProof(window);
     window.gameplayInputUsed = true;
     window.gameplayInputSource = std::string(source);
     window.gameplayCommandKind = "reset";

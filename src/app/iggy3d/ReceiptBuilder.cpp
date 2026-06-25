@@ -399,6 +399,20 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      floatReceiptValue(window.gameplayTargetDistanceMeters));
   appendReceiptField(receipt, "gameplay_target_supports_command",
                      window.gameplayTargetSupportsCommand);
+  appendReceiptField(receipt, "gameplay_outcome_status",
+                     window.gameplayOutcomeStatus);
+  appendReceiptField(receipt, "gameplay_outcome_target_active_after",
+                     window.gameplayOutcomeTargetActiveAfter);
+  appendReceiptField(receipt, "gameplay_outcome_inventory_changed",
+                     window.gameplayOutcomeInventoryChanged);
+  appendReceiptField(receipt, "gameplay_outcome_item_id",
+                     window.gameplayOutcomeItemId);
+  appendReceiptField(receipt, "gameplay_outcome_item_count",
+                     window.gameplayOutcomeItemCount);
+  appendReceiptField(receipt, "gameplay_outcome_objective_changed",
+                     window.gameplayOutcomeObjectiveChanged);
+  appendReceiptField(receipt, "gameplay_outcome_event_count",
+                     window.gameplayOutcomeEventCount);
   appendReceiptField(receipt, "gameplay_reach_gate", window.gameplayReachGate);
   appendReceiptField(receipt, "gameplay_last_rejection", window.gameplayLastRejection);
   appendReceiptField(receipt, "interaction_executed", window.interactionExecuted);
