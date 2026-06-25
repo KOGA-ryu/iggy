@@ -66,6 +66,36 @@ product_gameplay_tape_smoke
 product_ascii_gameplay_loop_smoke
 ```
 
+## NPC Behavior v0.2 Profile Baseline
+
+NPC Behavior v0.2 now has a runtime-owned behavior profile seam. Profiles are
+runtime AI configuration, not map source, ASCII source, product automation, or
+renderer state.
+
+Current profile baseline:
+
+- `NpcEngagementPolicy::Hostile` and `NpcEngagementPolicy::Passive` exist;
+- `NpcBehaviorProfile`, `NpcBehaviorProfileCatalog`, and profile resolution
+  result/request types exist;
+- built-in profiles are `default`, `melee_training`, and `passive`;
+- `default` and `melee_training` resolve to hostile v0.1 numeric defaults;
+- `passive` resolves to valid numeric defaults plus `Passive` engagement
+  policy;
+- `AiActorState::behaviorProfileId` defaults to `default` and is durable;
+- save text writes the actor profile key as
+  `ai.actor.<index>.behavior_profile_id`;
+- old saves missing the actor profile key decode and load as `default`;
+- state hash includes `behaviorProfileId`;
+- `Session::tick()` resolves each AI actor profile through the built-in catalog
+  before perception, decision, and command building;
+- missing, invalid, or empty profile ids fail closed during live ticks: no
+  command is generated and AI state is not mutated for that actor;
+- `passive` actors may perceive the player and enter `Alert` / `Wait`, but do
+  not chase or attack.
+
+Profile resolution is intentionally not authored from map source in this
+baseline. Package/scenario profile assignment is deferred.
+
 ## Historical Source Baseline
 
 Existing runtime AI state:
@@ -896,6 +926,38 @@ Slice 7 completed: runtime edge proofs.
 tests/unit/session_tick_tests.cpp
 ```
 
+v0.2 Slice 1 completed: engagement policy and profile model.
+
+```text
+src/runtime/ai/NpcBehaviorSystem.hpp
+src/runtime/ai/NpcBehaviorSystem.cpp
+src/runtime/ai/NpcBehaviorProfile.hpp
+src/runtime/ai/NpcBehaviorProfile.cpp
+tests/unit/npc_behavior_profile_tests.cpp
+tests/unit/npc_behavior_system_tests.cpp
+CMakeLists.txt
+cmake/iggy3d_tests.cmake
+```
+
+v0.2 Slice 2 completed: durable actor profile binding.
+
+```text
+src/runtime/ai/AiState.hpp
+src/runtime/save/SaveEnvelope.hpp
+src/runtime/save/SaveCodec.cpp
+src/runtime/save/SaveLoad.cpp
+src/runtime/replay/StateHash.cpp
+tests/unit/save_load_tests.cpp
+tests/unit/session_state_tests.cpp
+```
+
+v0.2 Slice 3 completed: live session profile resolution.
+
+```text
+src/runtime/session/Session.cpp
+tests/unit/session_tick_tests.cpp
+```
+
 ## No-Go Files
 
 Do not implement NPC behavior in:
@@ -967,10 +1029,11 @@ Stop and return to planning if the builder needs:
 
 Later contracts should cover:
 
-- behavior config source/profile model;
-- line-of-sight and perception through spatial surfaces;
+- authored/scenario profile source model;
+- profile assignment from package or authoring data;
+- profile diagnostics, receipts, and debug overlay;
 - simple patrol or guard anchors from map-authored/package markers;
-- AI debug overlay, world-space draw, and receipt summaries beyond tape proof;
+- line-of-sight and perception through spatial surfaces;
 - pathfinding and navigation surfaces;
 - replay/multiplayer authority policy once networking begins;
 - patrol route authoring;
