@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 
+#include "app/iggy3d/AsciiRoomToRoomAsset.hpp"
 #include "app/iggy3d/ProductAsciiRoomAuthoring.hpp"
 
 namespace iggy3d {
@@ -110,6 +111,56 @@ ProductActiveRoomState buildProductActiveRoomFromPackageRoom(
   state.room = room;
   fillRoomCounts(state);
   fillAuthoredCounts(state);
+  return state;
+}
+
+ProductActiveRoomState buildProductActiveRoomFromSavedAuthoredRoom(
+    const SaveAuthoredRoomSection& authoredRoom) {
+  ProductActiveRoomState state;
+  state.source = "saved_authored_room";
+  state.roomId = fallbackString(authoredRoom.id, "saved_authored_room");
+  state.sourceName =
+      fallbackString(authoredRoom.sourceFile, "saved_authored_room");
+  state.sourceSubset =
+      fallbackString(authoredRoom.sourceSubset, "save_authored_room");
+  state.authoredRoom = authoredRoom;
+  fillAuthoredCounts(state);
+
+  if (!authoredRoom.present) {
+    state.loaded = false;
+    state.status = "saved_authored_room_missing";
+    state.reasonCode = "saved_authored_room_missing";
+    return state;
+  }
+
+  AsciiRoomAuthoredRoomResult authored;
+  authored.ok = true;
+  authored.status = "ascii_room_ok";
+  authored.reasonCode = "ascii_room_ok";
+  authored.authoredRoom = authoredRoom;
+  authored.floorCount = authoredRoom.floors.size();
+  authored.wallCount = authoredRoom.walls.size();
+
+  AsciiRoomToRoomAssetConfig config;
+  config.roomId = state.roomId;
+  config.sourceName = state.sourceName;
+  config.source =
+      fallbackString(authoredRoom.source, "iggy3d.saved_authored_room");
+  config.sourceSubset = state.sourceSubset;
+  const AsciiRoomToRoomAssetResult roomAsset =
+      buildRoomAssetFromAsciiRoom(authored, config);
+  if (!roomAsset.ok) {
+    state.loaded = false;
+    state.status = roomAsset.status;
+    state.reasonCode = roomAsset.reasonCode;
+    return state;
+  }
+
+  state.loaded = true;
+  state.status = "active_room_loaded";
+  state.reasonCode = "active_room_loaded";
+  state.room = roomAsset.room;
+  fillRoomCounts(state);
   return state;
 }
 

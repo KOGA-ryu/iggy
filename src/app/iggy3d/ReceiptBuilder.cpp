@@ -276,6 +276,18 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.productSaveLoadSelectedId);
   appendReceiptField(receipt, "product_save_load_selected_enabled",
                      window.productSaveLoadSelectedEnabled);
+  appendReceiptField(receipt,
+                     "product_save_load_authored_room_present",
+                     window.productSaveLoadAuthoredRoomPresent);
+  appendReceiptField(receipt,
+                     "product_save_load_authored_room_id",
+                     window.productSaveLoadAuthoredRoomId);
+  appendReceiptField(receipt,
+                     "product_save_load_authored_floor_count",
+                     window.productSaveLoadAuthoredFloorCount);
+  appendReceiptField(receipt,
+                     "product_save_load_authored_wall_count",
+                     window.productSaveLoadAuthoredWallCount);
   appendReceiptField(receipt, "selected_save_id", window.selectedProductSaveId);
   appendReceiptField(receipt, "selected_save_enabled",
                      window.selectedProductSaveEnabled);

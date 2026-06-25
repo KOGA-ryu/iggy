@@ -666,6 +666,43 @@ bool productLoadSaveLoadsCompatibleSession() {
                 "product load session status");
 }
 
+bool productLoadSaveExposesAuthoredRoomSection() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session savedSession = makeChangedFixtureSession();
+  iggy3d::SaveAuthoredRoomSection authoredRoom = authoredRoomFixture();
+  iggy3d::ProductSaveWriteRequest writeRequest =
+      productSaveRequest(root, savedSession, "attempt_001", "save_001");
+  writeRequest.authoredRoom = &authoredRoom;
+  const iggy3d::ProductSaveWriteResult written =
+      iggy3d::writeProductSessionSaveDurably(writeRequest);
+  iggy3d::Session destination = makeFixtureSession();
+
+  iggy3d::ProductSaveLoadRequest request;
+  request.path = written.record.path;
+  request.session = &destination;
+  request.expectedPackageId = "iggy3d.movement_playground";
+  request.expectedScenarioId = "movement_playground.runtime_loop";
+  const iggy3d::ProductSaveLoadResult loaded =
+      iggy3d::loadProductSessionSave(request);
+
+  return expect(written.ok, "product authored load setup write ok") &&
+         expect(loaded.ok, "product authored load ok") &&
+         expect(loaded.authoredRoomPresent,
+                "product authored load room present") &&
+         expect(loaded.authoredRoomId == "product_bridge_room",
+                "product authored load room id") &&
+         expect(loaded.authoredFloorCount == 1U,
+                "product authored load floor count") &&
+         expect(loaded.authoredWallCount == 0U,
+                "product authored load wall count") &&
+         expect(loaded.authoredRoom.present,
+                "product authored load copied room present") &&
+         expect(loaded.authoredRoom.floors.size() == 1U,
+                "product authored load copied floor") &&
+         expect(loaded.sessionLoaded,
+                "product authored load session loaded");
+}
+
 bool productLoadSaveRejectsMissingSessionBeforeIo() {
   iggy3d::ProductSaveLoadRequest request;
   request.path = "/tmp/iggy3d_product_save_bridge_tests_missing_session.iggy3d.save";
@@ -835,6 +872,7 @@ int main() {
                   productDeletedScanShowsSoftDeletedSaveThenClearsOnRecover() &&
                   productDeletedScanUsesMovedSnapshotSidecar() &&
                   productLoadSaveLoadsCompatibleSession() &&
+                  productLoadSaveExposesAuthoredRoomSection() &&
                   productLoadSaveRejectsMissingSessionBeforeIo() &&
                   productLoadSaveRejectsMissingPathBeforeIo() &&
                   productLoadSaveMissingFilePreservesSession() &&

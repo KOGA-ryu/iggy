@@ -626,8 +626,11 @@ Current active-room runtime proof:
 - exported room text preserves full 8-point `box` spatial surfaces so package
   collision has the same height as the in-memory generated room;
 - the room asset loader accepts legacy 4-point boxes and full 8-point boxes;
-- product no-window smokes prove both positive traversal through an opened
-  secret door and negative collision against a package-loaded wall.
+- product save load rehydrates saved authored-room floors and walls back into
+  active room/collision state with `active_room_source=saved_authored_room`;
+- product no-window smokes prove positive traversal through an opened secret
+  door, negative collision against a package-loaded wall, and ASCII-created
+  world load rehydration.
 
 Current World Setup binding:
 
@@ -641,7 +644,16 @@ Current World Setup binding:
 - the initial durable save writes the generated authored-room section, so save
   data owns durable room truth after creation;
 - product no-window world setup proof covers ASCII-backed creation, active-room
-  collision readiness, and authored-room save persistence.
+  collision readiness, authored-room save persistence, and Continue loading
+  that save back into active-room collision.
+
+Current saved-room limitation:
+
+- the save-authored room section stores durable floors and walls;
+- ASCII marker sidecars are not yet part of the save format;
+- load-time rehydration therefore restores floor/wall collision but does not
+  recreate marker-derived door panels, anchors, treasure, NPC markers, or exits
+  from the saved authored room alone.
 
 ## Validation Rules
 
@@ -782,6 +794,11 @@ world_setup_ascii_room_source_name
 world_creation_ascii_room_requested
 world_creation_ascii_room_id
 world_creation_ascii_room_source_name
+product_save_load_authored_room_present
+product_save_load_authored_room_id
+product_save_load_authored_floor_count
+product_save_load_authored_wall_count
+active_room_source=saved_authored_room
 ```
 
 Proof text:

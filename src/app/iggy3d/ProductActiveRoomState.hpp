@@ -43,4 +43,7 @@ ProductActiveRoomState buildProductActiveRoomFromPackageRoom(
     std::string_view packageId,
     std::string_view scenarioId);
 
+ProductActiveRoomState buildProductActiveRoomFromSavedAuthoredRoom(
+    const SaveAuthoredRoomSection& authoredRoom);
+
 }  // namespace iggy3d

@@ -57,6 +57,8 @@ Current implemented capabilities:
   compiled into authored room data before the runtime session is created;
 - ASCII-backed New World initial saves persist the generated authored-room
   section;
+- Continue/Load Save rehydrates saved authored-room floors and walls back into
+  `ProductActiveRoomState` and active-room collision;
 - `ProductWorldTemplate` exposes package id, scenario id, display name,
   source, authored floor count, and authored wall count;
 - `drawNewWorldPanel` draws a basic new-world panel;
@@ -72,8 +74,9 @@ Current limitations:
 - no seed editing model exists;
 - no difficulty model exists;
 - no starting scenario choice model exists;
-- ASCII-backed save load rehydrates save/runtime state, but active-room
-  collision rehydration from a loaded authored room remains future work;
+- saved authored-room rehydration currently restores durable floors/walls; ASCII
+  marker sidecars such as doors, treasure, NPC anchors, and exits require a
+  later save-format extension before they can be reconstructed from save alone;
 - current world creation still has AppShell composition code that should shrink
   as UI models become real widgets.
 
@@ -404,6 +407,16 @@ If initial save fails:
 The first implementation may model this without full product save metadata, but
 the route/result semantics must already reflect the hard gate.
 
+On load:
+
+- product save load decodes the save envelope and exposes the authored-room
+  section in `ProductSaveLoadResult`;
+- if the load succeeds and authored room data is present, AppShell replaces the
+  package/default active room with `saved_authored_room`;
+- collision is rebuilt from the loaded session state and durable authored-room
+  floors/walls;
+- absent authored-room data leaves the package/default active room in place.
+
 ## World Id Semantics
 
 `world_id` must be stable, deterministic enough for tests, and safe for file
@@ -435,6 +448,7 @@ many saves.
 | `WorldSetupModel.*` | draft fields, validation, field navigation, create/back result | session creation, save writes |
 | `ProductWorldCreation.*` | orchestration request/result, world id allocation, initial save request | menu row drawing |
 | `ProductAsciiRoomPackage.*` | transient in-memory package for ASCII-authored room sessions | save catalog policy |
+| `ProductActiveRoomState.*` | active-room summary and saved authored-room reconstruction | save-file scanning |
 | `ProductWorldTemplate.*` | default package/scenario/display source | user draft state |
 | `Session` / runtime | gameplay state after creation | starter UI draft |
 | `ProductSaveBridge.*` | initial save write request/result | field validation UI |
@@ -454,6 +468,8 @@ src/app/iggy3d/ProductWorldCreation.hpp
 src/app/iggy3d/ProductWorldCreation.cpp
 src/app/iggy3d/ProductAsciiRoomPackage.hpp
 src/app/iggy3d/ProductAsciiRoomPackage.cpp
+src/app/iggy3d/ProductActiveRoomState.hpp
+src/app/iggy3d/ProductActiveRoomState.cpp
 ```
 
 Likely existing files to use or extend later:
@@ -651,6 +667,11 @@ initial_save_id=<id-or-none>
 initial_save_type=initial
 initial_save_default_title=<worldTitle-or-none>
 initial_save_title_present=true|false
+product_save_load_authored_room_present=true|false
+product_save_load_authored_room_id=<id-or-none>
+product_save_load_authored_floor_count=<count>
+product_save_load_authored_wall_count=<count>
+active_room_source=saved_authored_room when loaded from save-authored geometry
 ```
 
 Routing:
@@ -690,13 +711,15 @@ Unit tests for `ProductWorldCreation` should prove later:
 - product result includes world id and initial save id.
 - ASCII room selection facts are preserved without filesystem IO.
 
-No-window smokes should prove later:
+Current and future no-window smokes should prove:
 
 - starter New World opens world setup;
 - default setup can create a saved world;
 - initial save appears in save browser;
 - ASCII setup can create a saved world whose initial save contains an authored
   room section;
+- Continue can load that save and rebuild active-room collision from the saved
+  authored-room floors/walls;
 - failed initial save keeps the app out of gameplay;
 - receipts prove `gameplay_entered_after_initial_save=true` only on success.
 

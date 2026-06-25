@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <string_view>
@@ -75,6 +76,11 @@ struct ProductSaveLoadResult {
   SaveLoadStatus loadStatus = SaveLoadStatus::InvalidEnvelope;
   SaveCompatibilityStatus compatibilityStatus = SaveCompatibilityStatus::Compatible;
   SessionLoadStatus sessionLoadStatus = SessionLoadStatus::Ok;
+  bool authoredRoomPresent = false;
+  std::string authoredRoomId = "none";
+  std::uint64_t authoredFloorCount = 0;
+  std::uint64_t authoredWallCount = 0;
+  SaveAuthoredRoomSection authoredRoom;
 };
 
 struct ProductSaveSoftDeleteRequest {

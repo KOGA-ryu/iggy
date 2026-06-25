@@ -157,19 +157,80 @@ int main() {
                               "product_transition_status",
                               "gameplay_active");
 
+  fields.clear();
+  const bool loadAsciiWorld =
+      asciiWorld && appAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "continue_ascii_room",
+          "frontend.select=continue\nfrontend.execute=true\n",
+          iggy3d::smoke::saveRootArg(asciiSaveRoot),
+          fields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::automationApplied(fields) &&
+      iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "product_save_load_status",
+                              "product_save_loaded") &&
+      iggy3d::smoke::hasField(fields, "product_save_load_source",
+                              "continue") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_save_load_authored_room_present",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_save_load_authored_room_id",
+                              "ascii_chapter_room") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_save_load_authored_floor_count",
+                              "15") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_save_load_authored_wall_count",
+                              "20") &&
+      iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_source",
+                              "saved_authored_room") &&
+      iggy3d::smoke::hasField(fields, "active_room_id",
+                              "ascii_chapter_room") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_has_authored_room",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_authored_floor_count",
+                              "15") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_authored_wall_count",
+                              "20") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_ready",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_walkable_surface_count",
+                              "15") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_actor_blocker_count",
+                              "20") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_transition_status",
+                              "gameplay_active");
+
   std::cout << "smoke=product_world_setup\n";
   std::cout << "new_world=" << (newWorld ? "true" : "false") << "\n";
   std::cout << "ascii_world=" << (asciiWorld ? "true" : "false") << "\n";
+  std::cout << "load_ascii_world=" << (loadAsciiWorld ? "true" : "false") << "\n";
   std::cout << "window_launch_count=0\n";
   std::cout << "result="
-            << (newWorld && asciiWorld ? "pass" : (appAvailable ? "fail" : "skip")) << "\n";
+            << (newWorld && asciiWorld && loadAsciiWorld
+                    ? "pass"
+                    : (appAvailable ? "fail" : "skip")) << "\n";
   std::cout << "reason_code="
-            << (newWorld && asciiWorld
+            << (newWorld && asciiWorld && loadAsciiWorld
                     ? "product_world_setup_pass"
                     : (appAvailable ? "product_world_setup_failed"
                                     : "product_app_unavailable"))
             << "\n";
-  if (newWorld && asciiWorld) {
+  if (newWorld && asciiWorld && loadAsciiWorld) {
     return 0;
   }
   return appAvailable ? 1 : 77;

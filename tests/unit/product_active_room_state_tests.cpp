@@ -129,11 +129,52 @@ bool buildsLoadedStateFromPackageRoom() {
                 "package projectile blocker count");
 }
 
+bool buildsLoadedStateFromSavedAuthoredRoom() {
+  const iggy3d::ProductAsciiRoomAuthoringRequest request = trainingRequest();
+  const iggy3d::ProductAsciiRoomAuthoringResult authoring =
+      iggy3d::buildProductAsciiRoomAuthoring(request);
+  if (!expect(authoring.ok, "saved authoring ok")) {
+    return false;
+  }
+
+  const iggy3d::ProductActiveRoomState active =
+      iggy3d::buildProductActiveRoomFromSavedAuthoredRoom(
+          authoring.authoredRoom.authoredRoom);
+
+  return expect(active.loaded, "saved active room loaded") &&
+         expect(active.status == "active_room_loaded", "saved status") &&
+         expect(active.reasonCode == "active_room_loaded", "saved reason") &&
+         expect(active.source == "saved_authored_room", "saved source") &&
+         expect(active.roomId == "active_room_training", "saved room id") &&
+         expect(active.sourceName == "unit/active_room_training.iggyroom.txt",
+                "saved source name") &&
+         expect(active.sourceSubset == "ascii_room_authoring",
+                "saved source subset") &&
+         expect(active.hasAuthoredRoom, "saved authored room present") &&
+         expect(active.authoredFloorCount == 15U,
+                "saved authored floor count") &&
+         expect(active.authoredWallCount == 20U,
+                "saved authored wall count") &&
+         expect(active.staticMeshCount == 35U, "saved static mesh count") &&
+         expect(active.anchorCount == 0U, "saved anchor count") &&
+         expect(active.spatialSurfaceCount == 55U, "saved surface count") &&
+         expect(active.walkableSurfaceCount == 15U, "saved walkable count") &&
+         expect(active.actorBlockerSurfaceCount == 20U,
+                "saved actor blocker count") &&
+         expect(active.projectileBlockerSurfaceCount == 20U,
+                "saved projectile blocker count") &&
+         expect(active.room.staticMeshes.size() == 35U,
+                "saved room meshes owned") &&
+         expect(active.room.spatialSurfaces.size() == 55U,
+                "saved room surfaces owned");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = buildsLoadedStateFromAsciiAuthoring() &&
                   recordsAuthoringFailureWithoutRoomOwnership() &&
-                  buildsLoadedStateFromPackageRoom();
+                  buildsLoadedStateFromPackageRoom() &&
+                  buildsLoadedStateFromSavedAuthoredRoom();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

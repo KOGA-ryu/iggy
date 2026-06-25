@@ -254,6 +254,10 @@ void recordProductSaveLoadResult(const ProductSaveLoadResult& loaded,
   window.productSaveLoadPreviousHash = loaded.previousHash;
   window.productSaveLoadLoadedHash = loaded.loadedHash;
   window.productSaveLoadSessionLoaded = loaded.sessionLoaded;
+  window.productSaveLoadAuthoredRoomPresent = loaded.authoredRoomPresent;
+  window.productSaveLoadAuthoredRoomId = loaded.authoredRoomId;
+  window.productSaveLoadAuthoredFloorCount = loaded.authoredFloorCount;
+  window.productSaveLoadAuthoredWallCount = loaded.authoredWallCount;
   if (loaded.ok && !loaded.record.id.empty()) {
     window.activeProductSaveId = loaded.record.id;
   }
@@ -742,6 +746,10 @@ void launchProductSaveSlot(const ProductAppOptions& options,
     return;
   }
 
+  if (loaded.authoredRoomPresent) {
+    window.activeRoom =
+        buildProductActiveRoomFromSavedAuthoredRoom(loaded.authoredRoom);
+  }
   if (window.activeRoom.loaded) {
     window.activeRoomCollision =
         buildProductActiveRoomCollision(window.activeRoom, activeSession->state());

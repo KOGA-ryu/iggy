@@ -96,6 +96,19 @@ ProductSaveLoadResult loadProductSessionSave(
   result.fileRead = true;
   result.decoded = true;
   result.record = read.record;
+  const SaveDecodeResult decoded = decodeSaveEnvelope(read.encodedText);
+  result.codecStatus = decoded.status;
+  if (decoded.status == SaveCodecStatus::Ok &&
+      decoded.envelope.authoredRoom.present) {
+    result.authoredRoomPresent = true;
+    result.authoredRoom = decoded.envelope.authoredRoom;
+    result.authoredRoomId =
+        result.authoredRoom.id.empty() ? "none" : result.authoredRoom.id;
+    result.authoredFloorCount =
+        static_cast<std::uint64_t>(result.authoredRoom.floors.size());
+    result.authoredWallCount =
+        static_cast<std::uint64_t>(result.authoredRoom.walls.size());
+  }
 
   SaveEnvelope compatibilityEnvelope;
   const SaveCompatibilityRequest compatibilityRequest{
