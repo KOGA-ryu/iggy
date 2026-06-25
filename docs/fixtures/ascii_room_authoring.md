@@ -37,6 +37,13 @@ ASCII source -> parser -> semantic grid -> authored-room compile
 
 The authored-room compile emits `SaveAuthoredRoomSection` floor/wall geometry and keeps spawn/object/door semantics as sidecar marker records.
 
+
+## Room Asset Text Fixture
+
+- Fixture: `fixtures/rooms/ascii/training_room.room.iggy3d.toml`
+- The room asset text fixture is generated from `training_room.iggyroom.txt` through the current parser, semantic grid, authored-room compiler, RoomAsset bridge, and `writeAsciiRoomAssetText(...)`.
+- `ascii_room_asset_text_fixture_tests` verifies exact byte-for-byte exporter parity and parses the checked-in text through `parseRoomAssetText(...)`.
+
 ## Deferred Work
 
 - Runtime package bridge
