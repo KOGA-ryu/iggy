@@ -1,8 +1,10 @@
 #include "app/iggy3d/ProductActiveRoomState.hpp"
 #include "app/iggy3d/ProductAsciiRoomAuthoring.hpp"
+#include "app/iggy3d/ProductAsciiRoomEditing.hpp"
 
 #include <cstdlib>
 #include <iostream>
+#include <string>
 #include <string_view>
 
 namespace {
@@ -27,6 +29,39 @@ iggy3d::ProductAsciiRoomAuthoringRequest trainingRequest() {
   request.roomId = "active_room_training";
   request.sourceName = "unit/active_room_training.iggyroom.txt";
   return request;
+}
+
+iggy3d::ProductAsciiRoomAuthoringRequest smallEditingRequest() {
+  iggy3d::ProductAsciiRoomAuthoringRequest request;
+  request.sourceText =
+      "###\n"
+      "#P#\n"
+      "###\n";
+  request.roomId = "active_editable_room";
+  request.sourceName = "unit/active_editable_room.iggyroom.txt";
+  request.emitAssetText = false;
+  return request;
+}
+
+iggy3d::EditableRoomFloor extraFloorPrimitive() {
+  iggy3d::EditableRoomFloor floor;
+  floor.id = "active_edit_floor_1";
+  floor.centerMeters = {2.0F, -0.05F, 0.0F};
+  floor.sizeMeters = {1.0F, 0.10F, 1.0F};
+  floor.semantics = iggy3d::defaultFloorSemantics("debug_floor");
+  return floor;
+}
+
+iggy3d::EditableRoomWall extraWallPrimitive() {
+  iggy3d::EditableRoomWall wall;
+  wall.id = "active_edit_wall_1";
+  wall.startMeters = {2.0F, 0.0F, -0.5F};
+  wall.endMeters = {3.0F, 0.0F, -0.5F};
+  wall.bottomY = 0.0F;
+  wall.heightMeters = 2.50F;
+  wall.thicknessMeters = 1.0F;
+  wall.semantics = iggy3d::defaultWallSemantics("debug_wall");
+  return wall;
 }
 
 bool buildsLoadedStateFromAsciiAuthoring() {
@@ -177,12 +212,77 @@ bool buildsLoadedStateFromSavedAuthoredRoom() {
                 "saved room surfaces owned");
 }
 
+bool buildsLoadedStateFromEditableRoomSnapshot() {
+  iggy3d::ProductAsciiRoomEditingResult editing =
+      iggy3d::buildProductAsciiRoomEditing(smallEditingRequest());
+  const iggy3d::ProductRoomAuthoringCommandResult addFloor =
+      editing.controller.submit(iggy3d::ProductRoomAuthoringInputSource::Ai,
+                                iggy3d::addFloorCommand(extraFloorPrimitive()));
+  const iggy3d::ProductRoomAuthoringCommandResult addWall =
+      editing.controller.submit(iggy3d::ProductRoomAuthoringInputSource::Mouse,
+                                iggy3d::addWallCommand(extraWallPrimitive()));
+  const iggy3d::ProductActiveRoomState active =
+      iggy3d::buildProductActiveRoomFromRoomAuthoringSnapshot(
+          editing.controller.snapshot());
+
+  return expect(editing.ok, "editing result ok") &&
+         expect(addFloor.accepted, "editable add floor accepted") &&
+         expect(addWall.accepted, "editable add wall accepted") &&
+         expect(active.loaded, "editable active room loaded") &&
+         expect(active.status == "active_room_loaded", "editable status") &&
+         expect(active.reasonCode == "active_room_loaded",
+                "editable reason") &&
+         expect(active.source == "editable_room", "editable source") &&
+         expect(active.roomId == "active_editable_room", "editable room id") &&
+         expect(active.sourceName == "unit/active_editable_room.iggyroom.txt",
+                "editable source name") &&
+         expect(active.sourceSubset == "ascii_room_authoring",
+                "editable source subset") &&
+         expect(!active.hasAuthoredRoom, "editable authored save absent") &&
+         expect(active.authoredFloorCount == 0U,
+                "editable authored floor count") &&
+         expect(active.authoredWallCount == 0U,
+                "editable authored wall count") &&
+         expect(active.staticMeshCount == 11U,
+                "editable static mesh count") &&
+         expect(active.anchorCount == 0U, "editable anchor count") &&
+         expect(active.openingCount == 0U, "editable opening count") &&
+         expect(active.spatialSurfaceCount == 20U,
+                "editable surface count") &&
+         expect(active.walkableSurfaceCount == 2U,
+                "editable walkable count") &&
+         expect(active.actorBlockerSurfaceCount == 9U,
+                "editable actor blocker count") &&
+         expect(active.projectileBlockerSurfaceCount == 9U,
+                "editable projectile blocker count") &&
+         expect(active.room.staticMeshes.size() == 11U,
+                "editable room meshes owned") &&
+         expect(active.room.spatialSurfaces.size() == 20U,
+                "editable room surfaces owned");
+}
+
+bool rejectsUnreadyEditableRoomSnapshot() {
+  const iggy3d::ProductRoomAuthoringSnapshot snapshot;
+  const iggy3d::ProductActiveRoomState active =
+      iggy3d::buildProductActiveRoomFromRoomAuthoringSnapshot(snapshot);
+
+  return expect(!active.loaded, "unready editable room not loaded") &&
+         expect(active.status == "not_requested", "unready status") &&
+         expect(active.reasonCode == "not_requested", "unready reason") &&
+         expect(active.source == "editable_room", "unready source") &&
+         expect(active.roomId == "editable_room", "unready room id") &&
+         expect(active.staticMeshCount == 0U, "unready mesh count") &&
+         expect(active.spatialSurfaceCount == 0U, "unready surface count");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = buildsLoadedStateFromAsciiAuthoring() &&
                   recordsAuthoringFailureWithoutRoomOwnership() &&
                   buildsLoadedStateFromPackageRoom() &&
-                  buildsLoadedStateFromSavedAuthoredRoom();
+                  buildsLoadedStateFromSavedAuthoredRoom() &&
+                  buildsLoadedStateFromEditableRoomSnapshot() &&
+                  rejectsUnreadyEditableRoomSnapshot();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

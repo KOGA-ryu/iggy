@@ -11,6 +11,7 @@ namespace iggy3d {
 
 struct ProductAsciiRoomAuthoringRequest;
 struct ProductAsciiRoomAuthoringResult;
+struct ProductRoomAuthoringSnapshot;
 
 struct ProductActiveRoomState {
   bool loaded = false;
@@ -46,5 +47,8 @@ ProductActiveRoomState buildProductActiveRoomFromPackageRoom(
 
 ProductActiveRoomState buildProductActiveRoomFromSavedAuthoredRoom(
     const SaveAuthoredRoomSection& authoredRoom);
+
+ProductActiveRoomState buildProductActiveRoomFromRoomAuthoringSnapshot(
+    const ProductRoomAuthoringSnapshot& snapshot);
 
 }  // namespace iggy3d

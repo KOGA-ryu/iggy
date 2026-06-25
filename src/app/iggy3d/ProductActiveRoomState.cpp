@@ -6,6 +6,7 @@
 
 #include "app/iggy3d/AsciiRoomToRoomAsset.hpp"
 #include "app/iggy3d/ProductAsciiRoomAuthoring.hpp"
+#include "app/iggy3d/ProductRoomAuthoringController.hpp"
 
 namespace iggy3d {
 namespace {
@@ -162,6 +163,42 @@ ProductActiveRoomState buildProductActiveRoomFromSavedAuthoredRoom(
   state.reasonCode = "active_room_loaded";
   state.room = roomAsset.room;
   fillRoomCounts(state);
+  return state;
+}
+
+ProductActiveRoomState buildProductActiveRoomFromRoomAuthoringSnapshot(
+    const ProductRoomAuthoringSnapshot& snapshot) {
+  ProductActiveRoomState state;
+  state.source = "editable_room";
+  state.roomId = fallbackString(snapshot.document.id, "editable_room");
+  state.sourceName =
+      fallbackString(snapshot.document.sourceFile, "editable_room");
+  state.sourceSubset =
+      fallbackString(snapshot.document.sourceSubset, "editable_room_authoring");
+  state.status = snapshot.status.empty() ? "not_ready" : snapshot.status;
+  state.reasonCode =
+      snapshot.reasonCode.empty() ? "not_ready" : snapshot.reasonCode;
+
+  if (!snapshot.ready) {
+    state.loaded = false;
+    return state;
+  }
+
+  state.loaded = true;
+  state.status = "active_room_loaded";
+  state.reasonCode = "active_room_loaded";
+  state.room = snapshot.room;
+  if (!state.room.id.empty()) {
+    state.roomId = state.room.id;
+  }
+  if (!state.room.sourceFile.empty()) {
+    state.sourceName = state.room.sourceFile;
+  }
+  if (!state.room.sourceSubset.empty()) {
+    state.sourceSubset = state.room.sourceSubset;
+  }
+  fillRoomCounts(state);
+  fillAuthoredCounts(state);
   return state;
 }
 
