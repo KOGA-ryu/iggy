@@ -14,6 +14,7 @@
 #include "app/iggy3d/ProductAppOperations.hpp"
 #include "app/iggy3d/ProductCameraController.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
+#include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductAsciiRoomActivation.hpp"
 #include "app/iggy3d/ProductAsciiRoomPreview.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
@@ -1417,8 +1418,10 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
       }
       applyProductCameraActions(acceptedGameplayActions, window.viewport, settings,
                                 "action_map");
+      const SpatialSurfaceSet* collisionSurfaces =
+          productActiveRoomCollisionSurfaces(window.activeRoomCollision);
       applyProductGameplayActions(*activeSession, acceptedGameplayActions, window,
-                                  "action_map");
+                                  "action_map", collisionSurfaces);
     }
 
     SceneProjectionResult scene;

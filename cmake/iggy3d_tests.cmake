@@ -118,6 +118,10 @@ iggy3d_add_unit_test(product_active_room_state_tests tests/unit/product_active_r
 set_tests_properties(product_active_room_state_tests PROPERTIES
   LABELS "unit;app;product;active_room;ascii_room;iggy3d")
 
+iggy3d_add_unit_test(product_active_room_collision_tests tests/unit/product_active_room_collision_tests.cpp)
+set_tests_properties(product_active_room_collision_tests PROPERTIES
+  LABELS "unit;app;product;active_room;collision;ascii_room;iggy3d")
+
 iggy3d_add_unit_test(ascii_room_source_tests tests/unit/ascii_room_source_tests.cpp)
 set_tests_properties(ascii_room_source_tests PROPERTIES
   LABELS "unit;app;product;ascii_room;source;iggy3d")

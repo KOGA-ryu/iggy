@@ -2,6 +2,7 @@
 
 #include <cmath>
 
+#include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
 #include "app/input/ActionState.hpp"
 #include "runtime/command/Command.hpp"
@@ -69,7 +70,9 @@ void approachProductGameplayTarget(Session& session, ProductAppWindowState& wind
                  false,
                  false,
                  (reach.targetPoint.z - reach.actorPoint.z) / horizontalDistance);
-    applyProductGameplayActions(session, actions, window, "scripted");
+    applyProductGameplayActions(
+        session, actions, window, "scripted",
+        productActiveRoomCollisionSurfaces(window.activeRoomCollision));
     if (!window.gameplayCommandAccepted) {
       return;
     }
@@ -93,7 +96,9 @@ void runScriptedProductGameplaySmoke(std::optional<Session>& activeSession,
 
   ActionState actions;
   recordAction(actions, InputAction::PlayerAttack, true, true, false, 1.0F);
-  applyProductGameplayActions(*activeSession, actions, window, "scripted");
+  applyProductGameplayActions(
+      *activeSession, actions, window, "scripted",
+      productActiveRoomCollisionSurfaces(window.activeRoomCollision));
 }
 
 }  // namespace iggy3d

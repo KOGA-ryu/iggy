@@ -100,6 +100,27 @@ bool activatesSessionFromAsciiRoom() {
                 "actor blockers") &&
          expect(window.activeRoom.projectileBlockerSurfaceCount == 20U,
                 "projectile blockers") &&
+         expect(window.activeRoomCollision.ready,
+                "active room collision ready") &&
+         expect(window.activeRoomCollision.status ==
+                    "active_room_collision_ready",
+                "active room collision status") &&
+         expect(window.activeRoomCollision.reasonCode ==
+                    "active_room_collision_ready",
+                "active room collision reason") &&
+         expect(window.activeRoomCollision.roomId ==
+                    "activation_training_room",
+                "active room collision id") &&
+         expect(window.activeRoomCollision.spatialSurfaceCount == 55U,
+                "active room collision source count") &&
+         expect(window.activeRoomCollision.querySurfaceCount == 55U,
+                "active room collision query count") &&
+         expect(window.activeRoomCollision.walkableSurfaceCount == 15U,
+                "active room collision walkable count") &&
+         expect(window.activeRoomCollision.actorBlockerSurfaceCount == 20U,
+                "active room collision actor blocker count") &&
+         expect(window.activeRoomCollision.projectileBlockerSurfaceCount == 20U,
+                "active room collision projectile blocker count") &&
          expect(player != nullptr && player->kind == iggy3d::SceneItemKind::Player,
                 "player projected") &&
          expect(npc != nullptr && npc->kind == iggy3d::SceneItemKind::Npc,
@@ -139,6 +160,14 @@ bool rejectsInvalidAsciiWithoutSession() {
          expect(!window.activeRoom.loaded, "active room not loaded") &&
          expect(window.activeRoom.status == "ascii_room_missing_player_spawn",
                 "active room failure status") &&
+         expect(!window.activeRoomCollision.ready,
+                "active room collision not ready") &&
+         expect(window.activeRoomCollision.status ==
+                    "active_room_collision_unavailable",
+                "active room collision failure status") &&
+         expect(window.activeRoomCollision.reasonCode ==
+                    "ascii_room_missing_player_spawn",
+                "active room collision failure reason") &&
          expect(window.asciiRoomActivationSessionCreated == false,
                 "window no activation session");
 }

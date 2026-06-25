@@ -86,7 +86,8 @@ TargetQueryResult queryProductGameplayTarget(const Session& session, CommandKind
 
 void submitProductGameplayCommand(Session& session,
                                   ProductAppWindowState& window,
-                                  CommandRecord command) {
+                                  CommandRecord command,
+                                  const SpatialSurfaceSet* collisionSurfaces) {
   const EntityState* beforePlayer = productPlayerEntity(session);
   const Vec3 before = beforePlayer == nullptr ? Vec3{} : beforePlayer->transform.position;
   window.gameplayInputUsed = true;
@@ -101,7 +102,7 @@ void submitProductGameplayCommand(Session& session,
   window.gameplayCommandStatus = window.gameplayCommandAccepted ? "accepted" : "rejected";
 
   if (window.gameplayCommandAccepted) {
-    const StatusResult tick = session.tick();
+    const StatusResult tick = session.tick(collisionSurfaces);
     window.gameplayTickAdvanced = tick.status == ResultStatus::Ok;
   }
 
@@ -118,7 +119,8 @@ void submitProductMove(Session& session,
                        ProductAppWindowState& window,
                        float moveX,
                        float moveY,
-                       std::string_view source) {
+                       std::string_view source,
+                       const SpatialSurfaceSet* collisionSurfaces) {
   const EntityState* actor = productPlayerEntity(session);
   if (actor == nullptr) {
     window.gameplayCommandStatus = "missing_player";
@@ -142,13 +144,14 @@ void submitProductMove(Session& session,
   command.payload.target.hasPoint = true;
   command.payload.target.point = destination;
   window.gameplayInputSource = std::string(source);
-  submitProductGameplayCommand(session, window, command);
+  submitProductGameplayCommand(session, window, command, collisionSurfaces);
 }
 
 void submitProductTargetCommand(Session& session,
                                 ProductAppWindowState& window,
                                 CommandKind kind,
-                                std::string_view source) {
+                                std::string_view source,
+                                const SpatialSurfaceSet* collisionSurfaces) {
   const EntityId actor = productPlayerActor(session);
   const TargetQueryResult target = queryProductGameplayTarget(session, kind);
   window.targetDiscovered = target.status == TargetQueryStatus::Found;
@@ -178,7 +181,7 @@ void submitProductTargetCommand(Session& session,
     command.payload.attackDamage = 3;
   }
   window.gameplayInputSource = std::string(source);
-  submitProductGameplayCommand(session, window, command);
+  submitProductGameplayCommand(session, window, command, collisionSurfaces);
   if (kind == CommandKind::Interact && window.gameplayCommandAccepted) {
     window.interactionExecuted = true;
   }
@@ -192,17 +195,20 @@ void submitProductTargetCommand(Session& session,
 void applyProductGameplayActions(Session& session,
                                  const ActionState& actions,
                                  ProductAppWindowState& window,
-                                 std::string_view source) {
+                                 std::string_view source,
+                                 const SpatialSurfaceSet* collisionSurfaces) {
   const float moveX = actionAxisValue(actions, InputAction::PlayerMoveX);
   const float moveY = actionAxisValue(actions, InputAction::PlayerMoveY);
   if (moveX != 0.0F || moveY != 0.0F) {
-    submitProductMove(session, window, moveX, moveY, source);
+    submitProductMove(session, window, moveX, moveY, source, collisionSurfaces);
   }
   if (actionWasPressed(actions, InputAction::PlayerInteract)) {
-    submitProductTargetCommand(session, window, CommandKind::Interact, source);
+    submitProductTargetCommand(session, window, CommandKind::Interact, source,
+                               collisionSurfaces);
   }
   if (actionWasPressed(actions, InputAction::PlayerAttack)) {
-    submitProductTargetCommand(session, window, CommandKind::Attack, source);
+    submitProductTargetCommand(session, window, CommandKind::Attack, source,
+                               collisionSurfaces);
   }
   if (actionWasPressed(actions, InputAction::PlayerRetryOrReset)) {
     const SessionResetResult reset = session.resetToBaseline();

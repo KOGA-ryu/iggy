@@ -33,6 +33,7 @@ target_sources(iggy3d
     src/app/iggy3d/DefaultWorldTemplate.cpp
     src/app/iggy3d/FrontendActionExecutor.cpp
     src/app/iggy3d/OpeningMenuView.cpp
+    src/app/iggy3d/ProductActiveRoomCollision.cpp
     src/app/iggy3d/ProductActiveRoomState.cpp
     src/app/iggy3d/ProductCameraController.cpp
     src/app/iggy3d/ProductAsciiRoomActivation.cpp

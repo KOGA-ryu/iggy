@@ -189,6 +189,24 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.activeRoom.actorBlockerSurfaceCount);
   appendReceiptField(receipt, "active_room_projectile_blocker_count",
                      window.activeRoom.projectileBlockerSurfaceCount);
+  appendReceiptField(receipt, "active_room_collision_ready",
+                     window.activeRoomCollision.ready);
+  appendReceiptField(receipt, "active_room_collision_status",
+                     window.activeRoomCollision.status);
+  appendReceiptField(receipt, "active_room_collision_reason_code",
+                     window.activeRoomCollision.reasonCode);
+  appendReceiptField(receipt, "active_room_collision_room_id",
+                     window.activeRoomCollision.roomId);
+  appendReceiptField(receipt, "active_room_collision_spatial_surface_count",
+                     window.activeRoomCollision.spatialSurfaceCount);
+  appendReceiptField(receipt, "active_room_collision_query_surface_count",
+                     window.activeRoomCollision.querySurfaceCount);
+  appendReceiptField(receipt, "active_room_collision_walkable_surface_count",
+                     window.activeRoomCollision.walkableSurfaceCount);
+  appendReceiptField(receipt, "active_room_collision_actor_blocker_count",
+                     window.activeRoomCollision.actorBlockerSurfaceCount);
+  appendReceiptField(receipt, "active_room_collision_projectile_blocker_count",
+                     window.activeRoomCollision.projectileBlockerSurfaceCount);
   appendReceiptField(receipt, "product_save_status", window.productSaveStatus);
   appendReceiptField(receipt, "product_save_reason_code",
                      window.productSaveReasonCode);

@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "app/iggy3d/ProductActiveRoomState.hpp"
+#include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductAsciiRoomPreview.hpp"
 #include "app/iggy3d/ProductPackageSessionSeed.hpp"
 #include "content/PackageLoader.hpp"
@@ -70,6 +71,7 @@ ProductAsciiRoomActivationResult activateProductAsciiRoomPreview(
       buildProductAsciiRoomAuthoring(request);
   recordProductAsciiRoomPreview(request.sourceName, request.roomId, preview, window);
   window.activeRoom = buildProductActiveRoomFromAsciiAuthoring(request, preview);
+  window.activeRoomCollision = buildProductActiveRoomCollision(window.activeRoom);
   result.wallCount = preview.wallCount;
   result.markerCount = preview.markerCount;
   if (!preview.ok) {
