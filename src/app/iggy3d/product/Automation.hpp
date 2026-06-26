@@ -117,6 +117,13 @@ struct ProductMenuInputAutomationResult {
   InputAction inputAction = InputAction::None;
 };
 
+enum class FrontendAction : std::uint8_t;
+
+struct ProductFrontendSelectAutomationResult {
+  bool valid = false;
+  FrontendAction action;
+};
+
 std::string_view productAutomationCommandCategoryName(
     ProductAutomationCommandCategory category);
 
@@ -147,6 +154,9 @@ ProductMenuShortcutAutomationResult resolveProductMenuShortcutAutomation(
     std::string_view value);
 
 ProductMenuInputAutomationResult resolveProductMenuInputAutomation(
+    std::string_view value);
+
+ProductFrontendSelectAutomationResult resolveProductFrontendSelectAutomation(
     std::string_view value);
 
 struct ProductRoomEditorCursorResult;

@@ -4,6 +4,7 @@
 #include <array>
 #include <iterator>
 
+#include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/ProductRoomAuthoringController.hpp"
 #include "app/iggy3d/ProductRoomEditorActionController.hpp"
 #include "app/iggy3d/ProductRoomEditorCursor.hpp"
@@ -416,6 +417,56 @@ ProductMenuInputAutomationResult resolveProductMenuInputAutomation(
   ProductMenuInputAutomationResult result;
   result.valid = rowIndex != rows.size();
   result.inputAction = lookup[selectedIndex].action;
+  return result;
+}
+
+ProductFrontendSelectAutomationResult resolveProductFrontendSelectAutomation(
+    std::string_view value) {
+  struct FrontendSelectRow {
+    std::string_view name;
+    FrontendAction action;
+  };
+  static constexpr std::array rows{
+      FrontendSelectRow{"continue", FrontendAction::Continue},
+      FrontendSelectRow{"new_world", FrontendAction::NewWorld},
+      FrontendSelectRow{"load_save", FrontendAction::LoadSave},
+      FrontendSelectRow{"settings", FrontendAction::Settings},
+      FrontendSelectRow{"dev_tools", FrontendAction::DevTools},
+      FrontendSelectRow{"exit", FrontendAction::Exit},
+      FrontendSelectRow{"resume", FrontendAction::Resume},
+      FrontendSelectRow{"edit_room", FrontendAction::EditRoom},
+      FrontendSelectRow{"save", FrontendAction::Save},
+      FrontendSelectRow{"save_and_exit", FrontendAction::SaveAndExit},
+      FrontendSelectRow{"return_to_title", FrontendAction::ReturnToTitle},
+      FrontendSelectRow{"exit_game", FrontendAction::ExitGame},
+  };
+  static constexpr std::array lookup{
+      FrontendSelectRow{"continue", FrontendAction::Continue},
+      FrontendSelectRow{"new_world", FrontendAction::NewWorld},
+      FrontendSelectRow{"load_save", FrontendAction::LoadSave},
+      FrontendSelectRow{"settings", FrontendAction::Settings},
+      FrontendSelectRow{"dev_tools", FrontendAction::DevTools},
+      FrontendSelectRow{"exit", FrontendAction::Exit},
+      FrontendSelectRow{"resume", FrontendAction::Resume},
+      FrontendSelectRow{"edit_room", FrontendAction::EditRoom},
+      FrontendSelectRow{"save", FrontendAction::Save},
+      FrontendSelectRow{"save_and_exit", FrontendAction::SaveAndExit},
+      FrontendSelectRow{"return_to_title", FrontendAction::ReturnToTitle},
+      FrontendSelectRow{"exit_game", FrontendAction::ExitGame},
+      FrontendSelectRow{"unknown", FrontendAction::None},
+  };
+  const auto row = std::find_if(
+      rows.begin(), rows.end(), [value](const FrontendSelectRow& candidate) {
+        return candidate.name == value;
+      });
+  const std::size_t rowIndex =
+      static_cast<std::size_t>(std::distance(rows.begin(), row));
+  const std::size_t selectedIndex =
+      std::min(rowIndex, lookup.size() - 1U);
+
+  ProductFrontendSelectAutomationResult result;
+  result.valid = rowIndex != rows.size();
+  result.action = lookup[selectedIndex].action;
   return result;
 }
 

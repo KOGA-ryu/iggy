@@ -1386,26 +1386,6 @@ bool parseProductRoomEditorInputAction(std::string_view value,
   return true;
 }
 
-bool parseAutomationFrontendAction(std::string_view value, FrontendAction& out) {
-  static constexpr std::array rows{
-      AutomationParserRow<FrontendAction>{"continue", FrontendAction::Continue},
-      AutomationParserRow<FrontendAction>{"new_world", FrontendAction::NewWorld},
-      AutomationParserRow<FrontendAction>{"load_save", FrontendAction::LoadSave},
-      AutomationParserRow<FrontendAction>{"settings", FrontendAction::Settings},
-      AutomationParserRow<FrontendAction>{"dev_tools", FrontendAction::DevTools},
-      AutomationParserRow<FrontendAction>{"exit", FrontendAction::Exit},
-      AutomationParserRow<FrontendAction>{"resume", FrontendAction::Resume},
-      AutomationParserRow<FrontendAction>{"edit_room", FrontendAction::EditRoom},
-      AutomationParserRow<FrontendAction>{"save", FrontendAction::Save},
-      AutomationParserRow<FrontendAction>{"save_and_exit",
-                                          FrontendAction::SaveAndExit},
-      AutomationParserRow<FrontendAction>{"return_to_title",
-                                          FrontendAction::ReturnToTitle},
-      AutomationParserRow<FrontendAction>{"exit_game", FrontendAction::ExitGame},
-  };
-  return parseAutomationTableValue(value, rows, out);
-}
-
 bool parseAutomationSettingsTab(std::string_view value,
                                 FrontendSettingsTab& out) {
   static constexpr std::array rows{
@@ -1793,13 +1773,14 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (key == "frontend.select" || key == "pause.select") {
-    FrontendAction action = FrontendAction::None;
-    if (!parseAutomationFrontendAction(value, action)) {
+    const ProductFrontendSelectAutomationResult select =
+        resolveProductFrontendSelectAutomation(value);
+    if (!select.valid) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
-    frontend.selectedAction = action;
-    markAutomationApplied(window, command, frontendActionName(action),
+    frontend.selectedAction = select.action;
+    markAutomationApplied(window, command, frontendActionName(select.action),
                           productInputOwnerFor(frontend, window), "applied");
     return true;
   }

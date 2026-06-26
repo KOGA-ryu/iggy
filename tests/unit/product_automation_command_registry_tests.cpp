@@ -1,3 +1,4 @@
+#include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/product/Automation.hpp"
 
 #include <iostream>
@@ -131,6 +132,20 @@ int main() {
   const iggy3d::ProductMenuInputAutomationResult menuInvalid =
       iggy3d::resolveProductMenuInputAutomation("teleport");
   expect(!menuInvalid.valid, "menu input teleport is invalid");
+
+  const iggy3d::ProductFrontendSelectAutomationResult selectSettings =
+      iggy3d::resolveProductFrontendSelectAutomation("settings");
+  expect(selectSettings.valid, "frontend select settings is valid");
+  expect(selectSettings.action == iggy3d::FrontendAction::Settings,
+         "frontend select settings resolves to settings");
+
+  const iggy3d::ProductFrontendSelectAutomationResult selectPauseAlias =
+      iggy3d::resolveProductFrontendSelectAutomation("pause.select");
+  expect(!selectPauseAlias.valid, "frontend select alias is not resolved by parser");
+
+  const iggy3d::ProductFrontendSelectAutomationResult selectInvalid =
+      iggy3d::resolveProductFrontendSelectAutomation("teleport");
+  expect(!selectInvalid.valid, "frontend select teleport is invalid");
 
   const iggy3d::ProductAutomationCommandDispatchResult placeDispatch =
       iggy3d::resolveProductAutomationCommandDispatch(
