@@ -56,6 +56,10 @@ Each plan document must define:
 - In-game pause menu contract
 - Product frontend router contract
 - Product automation cleanup contract
+- Data-oriented product spine refactor contract
+- AppShell shell refactor audit
+- Product module consolidation audit
+- Map generation slices with DoD
 
 ## Implementation Strategy Index
 
@@ -113,6 +117,29 @@ Each plan document must define:
   - existing route/helper baseline, table-driven/pure routing methods, owner
     priority, parent return rules, transition vocabulary, receipt proof, and
     owner-decision-only first implementation slice;
+- `data_oriented_product_spine_refactor_contract_v0_1.md`
+  - full product-spine refactor map for stopping AppShell branch growth:
+    branch-gate governance, automation registry/controller migration, receipt
+    descriptors, starter/world setup ownership, room editor command ownership,
+    save/load ownership, render geometry bake passes, input binding tables,
+    branch-debt reporting, stop rules, and review gates;
+- `appshell_shell_refactor_audit_v0_1.md`
+  - existing owner-file audit for turning `AppShell.cpp` into a lifecycle
+    switchboard, missing flow/controller files, aggressive extraction order,
+    exact AppShell corridors to remove, DoD gates, branch-gate expectations,
+    and review questions for each refactor slice;
+- `product_module_consolidation_audit_v0_1.md`
+  - product file-count and one-shot module consolidation plan, including the
+    `tools/audit_product_module_shape.py` audit workflow, target durable domain
+    modules, no-new-one-shot rule, aggressive consolidation slice order, and
+    acceptance gates for shrinking `AppShell.cpp` without spreading policy into
+    another pile of feature files;
+- `map_generation_slices_dod_v0_1.md`
+  - floor-and-wall-first map generation slice ladder with Definition of Done
+    gates, data-oriented design requirements, generated-map request/result
+    ownership, generated room to authored-room/room-asset geometry proof,
+    New World integration preconditions, edit/save/exit/Continue proof, and
+    performance harness expectations;
 - `selection_cursor_contract_v1.md`
   - crosshair versus mouse cursor selection authority, cursor state ownership,
     hit-test routing, and dev tools inspector wiring.

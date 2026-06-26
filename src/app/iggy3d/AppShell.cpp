@@ -2537,17 +2537,22 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return result.accepted;
   }
 
-  if (key == "game.move_x" || key == "game.move_y" ||
-      key == "frontend.game_move_x" || key == "frontend.game_move_y") {
+  static constexpr std::array gameplayAxisRows{
+      std::pair{std::string_view{"game.move_x"}, InputAction::PlayerMoveX},
+      std::pair{std::string_view{"game.move_y"}, InputAction::PlayerMoveY},
+  };
+  const auto gameplayAxis = std::find_if(
+      gameplayAxisRows.begin(), gameplayAxisRows.end(),
+      [canonicalKey](const auto& row) {
+        return row.first == canonicalKey;
+      });
+  if (gameplayAxis != gameplayAxisRows.end()) {
     float axisValue = 0.0F;
     if (!parseAutomationFloat(value, axisValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
-    const InputAction action =
-        key == "game.move_x" || key == "frontend.game_move_x"
-            ? InputAction::PlayerMoveX
-            : InputAction::PlayerMoveY;
+    const InputAction action = gameplayAxis->second;
     const bool moved = applyAutomationGameplayAxis(action, axisValue, frontend,
                                                    activeSession, window);
     markAutomationApplied(window,
@@ -2558,16 +2563,21 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return moved;
   }
 
-  if (key == "game.attack" || key == "frontend.game_attack" ||
-      key == "game.interact" || key == "frontend.game_interact") {
+  static constexpr std::array gameplayButtonRows{
+      std::pair{std::string_view{"game.attack"}, InputAction::PlayerAttack},
+      std::pair{std::string_view{"game.interact"}, InputAction::PlayerInteract},
+  };
+  const auto gameplayButton = std::find_if(
+      gameplayButtonRows.begin(), gameplayButtonRows.end(),
+      [canonicalKey](const auto& row) {
+        return row.first == canonicalKey;
+      });
+  if (gameplayButton != gameplayButtonRows.end()) {
     if (!parseAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
-    const InputAction action =
-        key == "game.attack" || key == "frontend.game_attack"
-            ? InputAction::PlayerAttack
-            : InputAction::PlayerInteract;
+    const InputAction action = gameplayButton->second;
     if (!boolValue) {
       markAutomationApplied(window, command, inputActionName(action),
                             productInputOwnerFor(frontend, window), "ignored");

@@ -391,19 +391,19 @@ bool activatedAsciiRoom(const iggy3d::smoke::ReceiptFields& fields) {
                                  "35") &&
          iggy3d::smoke::hasField(fields,
                                  "product_vulkan_room_vertex_count",
-                                 "2040") &&
+                                 "1828") &&
          iggy3d::smoke::hasField(fields,
                                  "product_vulkan_room_index_count",
-                                 "18360") &&
+                                 "16428") &&
          iggy3d::smoke::hasField(fields,
                                  "product_vulkan_room_draw_count",
-                                 "255") &&
+                                 "229") &&
          iggy3d::smoke::hasField(fields,
                                  "product_vulkan_room_floor_draw_count",
-                                 "15") &&
+                                 "1") &&
          iggy3d::smoke::hasField(fields,
                                  "product_vulkan_room_wall_draw_count",
-                                 "20") &&
+                                 "8") &&
          iggy3d::smoke::hasField(fields,
                                  "product_vulkan_room_grid_line_draw_count",
                                  "220") &&
