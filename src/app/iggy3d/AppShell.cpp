@@ -1,5 +1,6 @@
 #include "app/iggy3d/AppShell.hpp"
 
+#include <algorithm>
 #include <array>
 #include <charconv>
 #include <cmath>
@@ -1305,184 +1306,188 @@ bool parseAutomationWallCommand(std::string_view value,
   return true;
 }
 
-bool parseAutomationInputAction(std::string_view value, InputAction& out) {
-  if (value == "up") {
-    out = InputAction::MenuUp;
-  } else if (value == "down") {
-    out = InputAction::MenuDown;
-  } else if (value == "left") {
-    out = InputAction::MenuLeft;
-  } else if (value == "right") {
-    out = InputAction::MenuRight;
-  } else if (value == "confirm") {
-    out = InputAction::MenuConfirm;
-  } else if (value == "back") {
-    out = InputAction::MenuBack;
-  } else if (value == "next_tab") {
-    out = InputAction::MenuNextTab;
-  } else if (value == "previous_tab") {
-    out = InputAction::MenuPreviousTab;
-  } else if (value == "none") {
-    out = InputAction::None;
-  } else {
+template <typename Value>
+struct AutomationParserRow {
+  std::string_view name;
+  Value value;
+};
+
+struct RoomEditorInputActionRow {
+  std::string_view name;
+  InputAction action;
+  float value;
+};
+
+template <typename Value, std::size_t Count>
+bool parseAutomationTableValue(
+    std::string_view value,
+    const std::array<AutomationParserRow<Value>, Count>& rows,
+    Value& out) {
+  const auto row = std::find_if(
+      rows.begin(), rows.end(),
+      [value](const AutomationParserRow<Value>& candidate) {
+        return candidate.name == value;
+      });
+  if (row == rows.end()) {
     return false;
   }
+  out = row->value;
   return true;
+}
+
+bool parseAutomationInputAction(std::string_view value, InputAction& out) {
+  static constexpr std::array rows{
+      AutomationParserRow<InputAction>{"up", InputAction::MenuUp},
+      AutomationParserRow<InputAction>{"down", InputAction::MenuDown},
+      AutomationParserRow<InputAction>{"left", InputAction::MenuLeft},
+      AutomationParserRow<InputAction>{"right", InputAction::MenuRight},
+      AutomationParserRow<InputAction>{"confirm", InputAction::MenuConfirm},
+      AutomationParserRow<InputAction>{"back", InputAction::MenuBack},
+      AutomationParserRow<InputAction>{"next_tab", InputAction::MenuNextTab},
+      AutomationParserRow<InputAction>{"previous_tab",
+                                       InputAction::MenuPreviousTab},
+      AutomationParserRow<InputAction>{"none", InputAction::None},
+  };
+  return parseAutomationTableValue(value, rows, out);
 }
 
 bool parseProductRoomEditorDirection(std::string_view value,
                                      ProductRoomEditorDirection& out) {
-  if (value == "up") {
-    out = ProductRoomEditorDirection::Up;
-  } else if (value == "down") {
-    out = ProductRoomEditorDirection::Down;
-  } else if (value == "left") {
-    out = ProductRoomEditorDirection::Left;
-  } else if (value == "right") {
-    out = ProductRoomEditorDirection::Right;
-  } else {
-    return false;
-  }
-  return true;
+  static constexpr std::array rows{
+      AutomationParserRow<ProductRoomEditorDirection>{
+          "up", ProductRoomEditorDirection::Up},
+      AutomationParserRow<ProductRoomEditorDirection>{
+          "down", ProductRoomEditorDirection::Down},
+      AutomationParserRow<ProductRoomEditorDirection>{
+          "left", ProductRoomEditorDirection::Left},
+      AutomationParserRow<ProductRoomEditorDirection>{
+          "right", ProductRoomEditorDirection::Right},
+  };
+  return parseAutomationTableValue(value, rows, out);
 }
 
 bool parseProductRoomEditorTool(std::string_view value,
                                 ProductRoomEditorTool& out) {
-  if (value == "floor") {
-    out = ProductRoomEditorTool::Floor;
-  } else if (value == "wall") {
-    out = ProductRoomEditorTool::Wall;
-  } else {
-    return false;
-  }
-  return true;
+  static constexpr std::array rows{
+      AutomationParserRow<ProductRoomEditorTool>{
+          "floor", ProductRoomEditorTool::Floor},
+      AutomationParserRow<ProductRoomEditorTool>{
+          "wall", ProductRoomEditorTool::Wall},
+  };
+  return parseAutomationTableValue(value, rows, out);
 }
 
 bool parseProductRoomEditorInputAction(std::string_view value,
                                        InputAction& out,
                                        float& actionValue) {
+  static constexpr std::array rows{
+      RoomEditorInputActionRow{"editor.nudge_x_pos",
+                               InputAction::EditorNudgeX, 1.0F},
+      RoomEditorInputActionRow{"editor.nudge_x_neg",
+                               InputAction::EditorNudgeX, -1.0F},
+      RoomEditorInputActionRow{"editor.nudge_z_pos",
+                               InputAction::EditorNudgeZ, 1.0F},
+      RoomEditorInputActionRow{"editor.nudge_z_neg",
+                               InputAction::EditorNudgeZ, -1.0F},
+      RoomEditorInputActionRow{"editor.next_tool",
+                               InputAction::EditorNextTool, 1.0F},
+      RoomEditorInputActionRow{"editor.previous_tool",
+                               InputAction::EditorPreviousTool, 1.0F},
+      RoomEditorInputActionRow{"editor.place", InputAction::EditorPlace, 1.0F},
+      RoomEditorInputActionRow{"editor.apply", InputAction::EditorApply, 1.0F},
+  };
   actionValue = 1.0F;
-  if (value == "editor.nudge_x_pos") {
-    out = InputAction::EditorNudgeX;
-    actionValue = 1.0F;
-  } else if (value == "editor.nudge_x_neg") {
-    out = InputAction::EditorNudgeX;
-    actionValue = -1.0F;
-  } else if (value == "editor.nudge_z_pos") {
-    out = InputAction::EditorNudgeZ;
-    actionValue = 1.0F;
-  } else if (value == "editor.nudge_z_neg") {
-    out = InputAction::EditorNudgeZ;
-    actionValue = -1.0F;
-  } else if (value == "editor.next_tool") {
-    out = InputAction::EditorNextTool;
-  } else if (value == "editor.previous_tool") {
-    out = InputAction::EditorPreviousTool;
-  } else if (value == "editor.place") {
-    out = InputAction::EditorPlace;
-  } else if (value == "editor.apply") {
-    out = InputAction::EditorApply;
-  } else {
+  const auto row = std::find_if(
+      rows.begin(), rows.end(),
+      [value](const RoomEditorInputActionRow& candidate) {
+        return candidate.name == value;
+      });
+  if (row == rows.end()) {
     return false;
   }
+  out = row->action;
+  actionValue = row->value;
   return true;
 }
 
 bool parseAutomationFrontendAction(std::string_view value, FrontendAction& out) {
-  if (value == "continue") {
-    out = FrontendAction::Continue;
-  } else if (value == "new_world") {
-    out = FrontendAction::NewWorld;
-  } else if (value == "load_save") {
-    out = FrontendAction::LoadSave;
-  } else if (value == "settings") {
-    out = FrontendAction::Settings;
-  } else if (value == "dev_tools") {
-    out = FrontendAction::DevTools;
-  } else if (value == "exit") {
-    out = FrontendAction::Exit;
-  } else if (value == "resume") {
-    out = FrontendAction::Resume;
-  } else if (value == "edit_room") {
-    out = FrontendAction::EditRoom;
-  } else if (value == "save") {
-    out = FrontendAction::Save;
-  } else if (value == "save_and_exit") {
-    out = FrontendAction::SaveAndExit;
-  } else if (value == "return_to_title") {
-    out = FrontendAction::ReturnToTitle;
-  } else if (value == "exit_game") {
-    out = FrontendAction::ExitGame;
-  } else {
-    return false;
-  }
-  return true;
+  static constexpr std::array rows{
+      AutomationParserRow<FrontendAction>{"continue", FrontendAction::Continue},
+      AutomationParserRow<FrontendAction>{"new_world", FrontendAction::NewWorld},
+      AutomationParserRow<FrontendAction>{"load_save", FrontendAction::LoadSave},
+      AutomationParserRow<FrontendAction>{"settings", FrontendAction::Settings},
+      AutomationParserRow<FrontendAction>{"dev_tools", FrontendAction::DevTools},
+      AutomationParserRow<FrontendAction>{"exit", FrontendAction::Exit},
+      AutomationParserRow<FrontendAction>{"resume", FrontendAction::Resume},
+      AutomationParserRow<FrontendAction>{"edit_room", FrontendAction::EditRoom},
+      AutomationParserRow<FrontendAction>{"save", FrontendAction::Save},
+      AutomationParserRow<FrontendAction>{"save_and_exit",
+                                          FrontendAction::SaveAndExit},
+      AutomationParserRow<FrontendAction>{"return_to_title",
+                                          FrontendAction::ReturnToTitle},
+      AutomationParserRow<FrontendAction>{"exit_game", FrontendAction::ExitGame},
+  };
+  return parseAutomationTableValue(value, rows, out);
 }
 
-bool parseAutomationSettingsTab(std::string_view value, FrontendSettingsTab& out) {
-  if (value == "input") {
-    out = FrontendSettingsTab::Input;
-  } else if (value == "controls") {
-    out = FrontendSettingsTab::Controls;
-  } else if (value == "camera") {
-    out = FrontendSettingsTab::Camera;
-  } else if (value == "gameplay") {
-    out = FrontendSettingsTab::Gameplay;
-  } else if (value == "video_display") {
-    out = FrontendSettingsTab::VideoDisplay;
-  } else if (value == "audio") {
-    out = FrontendSettingsTab::Audio;
-  } else if (value == "accessibility") {
-    out = FrontendSettingsTab::Accessibility;
-  } else if (value == "developer") {
-    out = FrontendSettingsTab::Developer;
-  } else {
-    return false;
-  }
-  return true;
+bool parseAutomationSettingsTab(std::string_view value,
+                                FrontendSettingsTab& out) {
+  static constexpr std::array rows{
+      AutomationParserRow<FrontendSettingsTab>{"input",
+                                               FrontendSettingsTab::Input},
+      AutomationParserRow<FrontendSettingsTab>{"controls",
+                                               FrontendSettingsTab::Controls},
+      AutomationParserRow<FrontendSettingsTab>{"camera",
+                                               FrontendSettingsTab::Camera},
+      AutomationParserRow<FrontendSettingsTab>{"gameplay",
+                                               FrontendSettingsTab::Gameplay},
+      AutomationParserRow<FrontendSettingsTab>{
+          "video_display", FrontendSettingsTab::VideoDisplay},
+      AutomationParserRow<FrontendSettingsTab>{"audio",
+                                               FrontendSettingsTab::Audio},
+      AutomationParserRow<FrontendSettingsTab>{
+          "accessibility", FrontendSettingsTab::Accessibility},
+      AutomationParserRow<FrontendSettingsTab>{"developer",
+                                               FrontendSettingsTab::Developer},
+  };
+  return parseAutomationTableValue(value, rows, out);
 }
 
 bool parseAutomationDevToolsCategory(std::string_view value,
                                      FrontendDevToolsCategory& out) {
-  if (value == "session") {
-    out = FrontendDevToolsCategory::Session;
-  } else if (value == "input") {
-    out = FrontendDevToolsCategory::Input;
-  } else if (value == "player") {
-    out = FrontendDevToolsCategory::Player;
-  } else if (value == "movement") {
-    out = FrontendDevToolsCategory::Movement;
-  } else if (value == "world_editor") {
-    out = FrontendDevToolsCategory::WorldEditor;
-  } else if (value == "collision") {
-    out = FrontendDevToolsCategory::Collision;
-  } else if (value == "spells") {
-    out = FrontendDevToolsCategory::Spells;
-  } else if (value == "camera") {
-    out = FrontendDevToolsCategory::Camera;
-  } else if (value == "renderer") {
-    out = FrontendDevToolsCategory::Renderer;
-  } else if (value == "performance") {
-    out = FrontendDevToolsCategory::Performance;
-  } else {
-    return false;
-  }
-  return true;
+  static constexpr std::array rows{
+      AutomationParserRow<FrontendDevToolsCategory>{
+          "session", FrontendDevToolsCategory::Session},
+      AutomationParserRow<FrontendDevToolsCategory>{
+          "input", FrontendDevToolsCategory::Input},
+      AutomationParserRow<FrontendDevToolsCategory>{
+          "player", FrontendDevToolsCategory::Player},
+      AutomationParserRow<FrontendDevToolsCategory>{
+          "movement", FrontendDevToolsCategory::Movement},
+      AutomationParserRow<FrontendDevToolsCategory>{
+          "world_editor", FrontendDevToolsCategory::WorldEditor},
+      AutomationParserRow<FrontendDevToolsCategory>{
+          "collision", FrontendDevToolsCategory::Collision},
+      AutomationParserRow<FrontendDevToolsCategory>{
+          "spells", FrontendDevToolsCategory::Spells},
+      AutomationParserRow<FrontendDevToolsCategory>{
+          "camera", FrontendDevToolsCategory::Camera},
+      AutomationParserRow<FrontendDevToolsCategory>{
+          "renderer", FrontendDevToolsCategory::Renderer},
+      AutomationParserRow<FrontendDevToolsCategory>{
+          "performance", FrontendDevToolsCategory::Performance},
+  };
+  return parseAutomationTableValue(value, rows, out);
 }
 
 bool parseAutomationOwner(std::string_view value, MenuOwner& out) {
-  if (value == "starter") {
-    out = MenuOwner::Starter;
-  } else if (value == "pause") {
-    out = MenuOwner::Pause;
-  } else if (value == "settings") {
-    out = MenuOwner::Settings;
-  } else if (value == "dev_tools") {
-    out = MenuOwner::DevTools;
-  } else {
-    return false;
-  }
-  return true;
+  static constexpr std::array rows{
+      AutomationParserRow<MenuOwner>{"starter", MenuOwner::Starter},
+      AutomationParserRow<MenuOwner>{"pause", MenuOwner::Pause},
+      AutomationParserRow<MenuOwner>{"settings", MenuOwner::Settings},
+      AutomationParserRow<MenuOwner>{"dev_tools", MenuOwner::DevTools},
+  };
+  return parseAutomationTableValue(value, rows, out);
 }
 
 bool hasAutomationKey(const std::vector<ProductAutomationCommand>& commands,
