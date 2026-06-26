@@ -12,6 +12,14 @@
 namespace iggy3d {
 namespace {
 
+using DevToolsBackHandler = void (*)(FrontendState&, ProductAppWindowState&);
+
+struct DevToolsMenuActionConfig {
+  std::string_view selectionChangedStatus;
+  std::string_view confirmStatus;
+  DevToolsBackHandler backHandler = nullptr;
+};
+
 FrontendAction nextPauseSelection(FrontendAction current, InputAction action) {
   const auto& actions = pauseActionOrder();
   std::size_t index = 0;
@@ -30,6 +38,63 @@ FrontendAction nextPauseSelection(FrontendAction current, InputAction action) {
     index = (index + 1) % actions.size();
   }
   return actions[index];
+}
+
+FrontendDevToolsCategory nextDevToolsSelection(FrontendDevToolsCategory current,
+                                               InputAction action) {
+  const auto& categories = devToolsCategoryOrder();
+  std::size_t index = 0;
+  // branch-gate: BG-1018
+  for (std::size_t i = 0; i < categories.size(); ++i) {
+    // branch-gate: BG-1018
+    if (categories[i] == current) {
+      index = i;
+      break;
+    }
+  }
+  // branch-gate: BG-1018
+  if (action == InputAction::MenuUp) {
+    index = index == 0 ? categories.size() - 1 : index - 1;  // branch-gate: BG-1018
+  } else if (action == InputAction::MenuDown) {  // branch-gate: BG-1018
+    index = (index + 1) % categories.size();
+  }
+  return categories[index];
+}
+
+void closeDevOverlayToGameplay(FrontendState& frontend,
+                               ProductAppWindowState& window) {
+  closeProductOverlayToGameplayTransition(frontend, window);
+}
+
+void closeStarterDevTools(FrontendState& frontend, ProductAppWindowState&) {
+  frontend.childScreen = FrontendScreen::Gameplay;
+  frontend.devToolsOpen = false;
+  frontend.status = "dev_tools_closed";
+}
+
+ProductMenuActionResult applyDevToolsMenuAction(
+    InputAction action,
+    ProductDevToolsMenuActionContext& context,
+    const DevToolsMenuActionConfig& config) {
+  FrontendState& frontend = context.frontend;
+  // branch-gate: BG-1018
+  if (action == InputAction::MenuUp || action == InputAction::MenuDown) {
+    frontend.devToolsCategory =
+        nextDevToolsSelection(frontend.devToolsCategory, action);
+    frontend.status = config.selectionChangedStatus;
+    return {true, true};
+  }
+  // branch-gate: BG-1018
+  if (action == InputAction::MenuBack) {
+    config.backHandler(frontend, context.window);
+    return {true, true};
+  }
+  // branch-gate: BG-1018
+  if (action == InputAction::MenuConfirm) {
+    frontend.status = config.confirmStatus;
+    return {true, true};
+  }
+  return {true, false};
 }
 
 ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& context) {
@@ -116,6 +181,28 @@ ProductMenuActionResult applyProductPauseMenuAction(
     return {true, false};
   }
   return handlePauseConfirm(context);
+}
+
+ProductMenuActionResult applyProductDevOverlayMenuAction(
+    InputAction action,
+    ProductDevToolsMenuActionContext& context) {
+  static constexpr DevToolsMenuActionConfig config{
+      "dev_overlay_selection_changed",
+      "dev_overlay_category_selected",
+      closeDevOverlayToGameplay,
+  };
+  return applyDevToolsMenuAction(action, context, config);
+}
+
+ProductMenuActionResult applyProductStarterDevToolsMenuAction(
+    InputAction action,
+    ProductDevToolsMenuActionContext& context) {
+  static constexpr DevToolsMenuActionConfig config{
+      "dev_tools_selection_changed",
+      "dev_tools_category_selected",
+      closeStarterDevTools,
+  };
+  return applyDevToolsMenuAction(action, context, config);
 }
 
 }  // namespace iggy3d

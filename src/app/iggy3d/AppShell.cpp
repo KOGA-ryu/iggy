@@ -658,24 +658,6 @@ FrontendAction nextStarterSelection(FrontendAction current, InputAction action) 
   return actions[index];
 }
 
-FrontendDevToolsCategory nextDevToolsSelection(FrontendDevToolsCategory current,
-                                               InputAction action) {
-  const auto& categories = devToolsCategoryOrder();
-  std::size_t index = 0;
-  for (std::size_t i = 0; i < categories.size(); ++i) {
-    if (categories[i] == current) {
-      index = i;
-      break;
-    }
-  }
-  if (action == InputAction::MenuUp) {
-    index = index == 0 ? categories.size() - 1 : index - 1;
-  } else if (action == InputAction::MenuDown) {
-    index = (index + 1) % categories.size();
-  }
-  return categories[index];
-}
-
 FrontendSettingsTab nextSettingsSelection(FrontendSettingsTab current, InputAction action) {
   const auto& tabs = settingsTabOrder();
   std::size_t index = 0;
@@ -758,37 +740,15 @@ void applyOpeningMenuAction(FrontendState& frontend,
   }
 
   if (frontend.screen == FrontendScreen::DevOverlay) {
-    if (action == InputAction::MenuUp || action == InputAction::MenuDown) {
-      frontend.devToolsCategory = nextDevToolsSelection(frontend.devToolsCategory, action);
-      frontend.status = "dev_overlay_selection_changed";
-      return;
-    }
-    if (action == InputAction::MenuBack) {
-      closeProductOverlayToGameplayTransition(frontend, window);
-      return;
-    }
-    if (action == InputAction::MenuConfirm) {
-      frontend.status = "dev_overlay_category_selected";
-      return;
-    }
+    ProductDevToolsMenuActionContext devToolsContext{frontend, window};
+    (void)applyProductDevOverlayMenuAction(action, devToolsContext);
+    return;
   }
 
   if (frontend.childScreen == FrontendScreen::StarterDevTools) {
-    if (action == InputAction::MenuUp || action == InputAction::MenuDown) {
-      frontend.devToolsCategory = nextDevToolsSelection(frontend.devToolsCategory, action);
-      frontend.status = "dev_tools_selection_changed";
-      return;
-    }
-    if (action == InputAction::MenuBack) {
-      frontend.childScreen = FrontendScreen::Gameplay;
-      frontend.devToolsOpen = false;
-      frontend.status = "dev_tools_closed";
-      return;
-    }
-    if (action == InputAction::MenuConfirm) {
-      frontend.status = "dev_tools_category_selected";
-      return;
-    }
+    ProductDevToolsMenuActionContext devToolsContext{frontend, window};
+    (void)applyProductStarterDevToolsMenuAction(action, devToolsContext);
+    return;
   }
 
   if (frontend.childScreen == FrontendScreen::Settings) {
