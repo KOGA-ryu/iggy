@@ -95,6 +95,10 @@ bool asciiFloorsAndWallsBuildVulkanRoomGeometry() {
   constexpr std::size_t kFloorCount = 1U;
   constexpr std::size_t kWallCount = 8U;
   constexpr std::size_t kMeshCount = kFloorCount + kWallCount;
+  constexpr std::size_t kFloorGridLineCount = kFloorCount * 4U;
+  constexpr std::size_t kWallGridLineCount = kWallCount * 8U;
+  constexpr std::size_t kGridLineCount = kFloorGridLineCount + kWallGridLineCount;
+  constexpr std::size_t kDrawCount = kMeshCount + kGridLineCount;
   constexpr std::size_t kBoxVertexCount = 8U;
   constexpr std::size_t kBoxIndexCount = 72U;
 
@@ -119,16 +123,27 @@ bool asciiFloorsAndWallsBuildVulkanRoomGeometry() {
   ok = expect(geometry.sourceRoomStaticMeshCount == kMeshCount,
               "geometry source mesh count") &&
        ok;
+  ok = expect(geometry.roomFloorDrawCount == kFloorCount,
+              "geometry floor draw count") &&
+       ok;
+  ok = expect(geometry.roomWallDrawCount == kWallCount,
+              "geometry wall draw count") &&
+       ok;
+  ok = expect(geometry.roomGridLineDrawCount == kGridLineCount,
+              "geometry grid line draw count") &&
+       ok;
+  ok = expect(geometry.roomGridVisible, "geometry grid visible") && ok;
+  ok = expect(!geometry.roomGridTruncated, "geometry grid not truncated") && ok;
   ok = expect(geometry.sourceRoomGeometrySignature != 0U,
               "geometry signature present") &&
        ok;
-  ok = expect(geometry.vertices.size() == kMeshCount * kBoxVertexCount,
+  ok = expect(geometry.vertices.size() == kDrawCount * kBoxVertexCount,
               "geometry vertex count") &&
        ok;
-  ok = expect(geometry.indices.size() == kMeshCount * kBoxIndexCount,
+  ok = expect(geometry.indices.size() == kDrawCount * kBoxIndexCount,
               "geometry index count") &&
        ok;
-  ok = expect(geometry.indexedDraws.size() == kMeshCount,
+  ok = expect(geometry.indexedDraws.size() == kDrawCount,
               "geometry draw count") &&
        ok;
   for (std::size_t i = 0; i < geometry.indexedDraws.size(); ++i) {
@@ -146,6 +161,10 @@ bool asciiFloorsAndWallsBuildVulkanRoomGeometry() {
   ok = expect(countVerticesWithColor(geometry.vertices, 0.42F, 0.43F, 0.46F) ==
                   kWallCount * kBoxVertexCount,
               "wall vertex color count") &&
+       ok;
+  ok = expect(countVerticesWithColor(geometry.vertices, 0.78F, 0.82F, 0.86F) ==
+                  kGridLineCount * kBoxVertexCount,
+              "grid vertex color count") &&
        ok;
   return ok;
 }

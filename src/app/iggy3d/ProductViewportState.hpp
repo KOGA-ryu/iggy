@@ -51,10 +51,15 @@ struct ProductViewportState {
   std::string productVulkanRoomAssetId = "none";
   bool productVulkanRoomFloorVisible = false;
   bool productVulkanRoomWallVisible = false;
+  bool productVulkanRoomGridVisible = false;
   std::uint64_t productVulkanRoomSourceMeshCount = 0;
   std::uint64_t productVulkanRoomVertexCount = 0;
   std::uint64_t productVulkanRoomIndexCount = 0;
   std::uint64_t productVulkanRoomDrawCount = 0;
+  std::uint64_t productVulkanRoomFloorDrawCount = 0;
+  std::uint64_t productVulkanRoomWallDrawCount = 0;
+  std::uint64_t productVulkanRoomGridLineDrawCount = 0;
+  bool productVulkanRoomGridTruncated = false;
   std::uint64_t productVulkanRoomGeometrySignature = 0;
 };
 

@@ -384,17 +384,32 @@ bool activatedAsciiRoom(const iggy3d::smoke::ReceiptFields& fields) {
                                  "product_vulkan_room_wall_visible",
                                  "true") &&
          iggy3d::smoke::hasField(fields,
+                                 "product_vulkan_room_grid_visible",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
                                  "product_vulkan_room_source_mesh_count",
                                  "35") &&
          iggy3d::smoke::hasField(fields,
                                  "product_vulkan_room_vertex_count",
-                                 "280") &&
+                                 "2040") &&
          iggy3d::smoke::hasField(fields,
                                  "product_vulkan_room_index_count",
-                                 "2520") &&
+                                 "18360") &&
          iggy3d::smoke::hasField(fields,
                                  "product_vulkan_room_draw_count",
-                                 "35") &&
+                                 "255") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_vulkan_room_floor_draw_count",
+                                 "15") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_vulkan_room_wall_draw_count",
+                                 "20") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_vulkan_room_grid_line_draw_count",
+                                 "220") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_vulkan_room_grid_truncated",
+                                 "false") &&
          iggy3d::smoke::positiveIntegerField(
              fields, "product_vulkan_room_geometry_signature") &&
          iggy3d::smoke::positiveIntegerField(fields, "runtime_state_hash");

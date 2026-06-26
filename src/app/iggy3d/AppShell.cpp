@@ -151,10 +151,15 @@ void clearProductVulkanRoomMeshProof(ProductViewportState& viewport) {
   viewport.productVulkanRoomAssetId = "none";
   viewport.productVulkanRoomFloorVisible = false;
   viewport.productVulkanRoomWallVisible = false;
+  viewport.productVulkanRoomGridVisible = false;
   viewport.productVulkanRoomSourceMeshCount = 0;
   viewport.productVulkanRoomVertexCount = 0;
   viewport.productVulkanRoomIndexCount = 0;
   viewport.productVulkanRoomDrawCount = 0;
+  viewport.productVulkanRoomFloorDrawCount = 0;
+  viewport.productVulkanRoomWallDrawCount = 0;
+  viewport.productVulkanRoomGridLineDrawCount = 0;
+  viewport.productVulkanRoomGridTruncated = false;
   viewport.productVulkanRoomGeometrySignature = 0;
 }
 
@@ -174,6 +179,7 @@ void applyProductVulkanRoomMeshProof(ProductViewportState& viewport,
       geometry.sourceRoomAssetId.empty() ? "none" : geometry.sourceRoomAssetId;
   viewport.productVulkanRoomFloorVisible = room.floorVisible;
   viewport.productVulkanRoomWallVisible = room.wallVisible;
+  viewport.productVulkanRoomGridVisible = geometry.roomGridVisible;
   viewport.productVulkanRoomSourceMeshCount =
       static_cast<std::uint64_t>(geometry.sourceRoomStaticMeshCount);
   viewport.productVulkanRoomVertexCount =
@@ -182,6 +188,13 @@ void applyProductVulkanRoomMeshProof(ProductViewportState& viewport,
       static_cast<std::uint64_t>(geometry.indices.size());
   viewport.productVulkanRoomDrawCount =
       static_cast<std::uint64_t>(geometry.indexedDraws.size());
+  viewport.productVulkanRoomFloorDrawCount =
+      static_cast<std::uint64_t>(geometry.roomFloorDrawCount);
+  viewport.productVulkanRoomWallDrawCount =
+      static_cast<std::uint64_t>(geometry.roomWallDrawCount);
+  viewport.productVulkanRoomGridLineDrawCount =
+      static_cast<std::uint64_t>(geometry.roomGridLineDrawCount);
+  viewport.productVulkanRoomGridTruncated = geometry.roomGridTruncated;
   viewport.productVulkanRoomGeometrySignature =
       geometry.sourceRoomGeometrySignature;
 }

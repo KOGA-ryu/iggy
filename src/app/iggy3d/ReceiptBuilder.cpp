@@ -743,6 +743,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.viewport.productVulkanRoomFloorVisible);
   appendReceiptField(receipt, "product_vulkan_room_wall_visible",
                      window.viewport.productVulkanRoomWallVisible);
+  appendReceiptField(receipt, "product_vulkan_room_grid_visible",
+                     window.viewport.productVulkanRoomGridVisible);
   appendReceiptField(receipt, "product_vulkan_room_source_mesh_count",
                      window.viewport.productVulkanRoomSourceMeshCount);
   appendReceiptField(receipt, "product_vulkan_room_vertex_count",
@@ -751,6 +753,14 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.viewport.productVulkanRoomIndexCount);
   appendReceiptField(receipt, "product_vulkan_room_draw_count",
                      window.viewport.productVulkanRoomDrawCount);
+  appendReceiptField(receipt, "product_vulkan_room_floor_draw_count",
+                     window.viewport.productVulkanRoomFloorDrawCount);
+  appendReceiptField(receipt, "product_vulkan_room_wall_draw_count",
+                     window.viewport.productVulkanRoomWallDrawCount);
+  appendReceiptField(receipt, "product_vulkan_room_grid_line_draw_count",
+                     window.viewport.productVulkanRoomGridLineDrawCount);
+  appendReceiptField(receipt, "product_vulkan_room_grid_truncated",
+                     window.viewport.productVulkanRoomGridTruncated);
   appendReceiptField(receipt, "product_vulkan_room_geometry_signature",
                      window.viewport.productVulkanRoomGeometrySignature);
   appendReceiptField(receipt, "product_feedback_visible", feedback.visible);

@@ -265,6 +265,95 @@ void appendBox(std::vector<FirstRoomVertex>& vertices,
   draws.push_back(range);
 }
 
+bool canAppendBox(const std::vector<FirstRoomVertex>& vertices) {
+  return vertices.size() + 8U <=
+         static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max());
+}
+
+bool appendBoxIfFits(std::vector<FirstRoomVertex>& vertices,
+                     std::vector<std::uint16_t>& indices,
+                     std::vector<IndexedDrawRange>& draws,
+                     Vec3 center,
+                     Vec3 size,
+                     Vec3 color) {
+  if (!canAppendBox(vertices)) {
+    return false;
+  }
+  appendBox(vertices, indices, draws, center, size, color);
+  return true;
+}
+
+bool appendFloorGrid(std::vector<FirstRoomVertex>& vertices,
+                     std::vector<std::uint16_t>& indices,
+                     std::vector<IndexedDrawRange>& draws,
+                     Vec3 center,
+                     Vec3 size,
+                     std::size_t& lineCount) {
+  constexpr float kGridThickness = 0.035F;
+  constexpr float kGridHeight = 0.012F;
+  constexpr float kGridLift = 0.008F;
+  const float halfX = std::max(size.x * 0.5F, 0.001F);
+  const float halfZ = std::max(size.z * 0.5F, 0.001F);
+  const float y = center.y + std::max(size.y * 0.5F, 0.001F) + kGridLift;
+  const Vec3 color = colorForRoomRole("grid");
+  const Vec3 xLineSize{halfX * 2.0F + kGridThickness, kGridHeight, kGridThickness};
+  const Vec3 zLineSize{kGridThickness, kGridHeight, halfZ * 2.0F + kGridThickness};
+  const Vec3 lineCenters[4] = {
+      {center.x, y, center.z - halfZ},
+      {center.x, y, center.z + halfZ},
+      {center.x - halfX, y, center.z},
+      {center.x + halfX, y, center.z},
+  };
+  const Vec3 lineSizes[4] = {xLineSize, xLineSize, zLineSize, zLineSize};
+  for (std::size_t i = 0; i < 4U; ++i) {
+    if (!appendBoxIfFits(vertices, indices, draws, lineCenters[i], lineSizes[i], color)) {
+      return false;
+    }
+    ++lineCount;
+  }
+  return true;
+}
+
+bool appendWallGrid(std::vector<FirstRoomVertex>& vertices,
+                    std::vector<std::uint16_t>& indices,
+                    std::vector<IndexedDrawRange>& draws,
+                    Vec3 center,
+                    Vec3 size,
+                    std::size_t& lineCount) {
+  constexpr float kGridThickness = 0.035F;
+  constexpr float kGridLift = 0.010F;
+  const float halfX = std::max(size.x * 0.5F, 0.001F);
+  const float halfY = std::max(size.y * 0.5F, 0.001F);
+  const float halfZ = std::max(size.z * 0.5F, 0.001F);
+  const Vec3 color = colorForRoomRole("grid");
+  const float topY = center.y + halfY + kGridLift;
+  const Vec3 topXLineSize{halfX * 2.0F + kGridThickness, kGridThickness,
+                          kGridThickness};
+  const Vec3 topZLineSize{kGridThickness, kGridThickness,
+                          halfZ * 2.0F + kGridThickness};
+  const Vec3 verticalSize{kGridThickness, halfY * 2.0F + kGridThickness,
+                          kGridThickness};
+  const Vec3 lineCenters[8] = {
+      {center.x, topY, center.z - halfZ},
+      {center.x, topY, center.z + halfZ},
+      {center.x - halfX, topY, center.z},
+      {center.x + halfX, topY, center.z},
+      {center.x - halfX, center.y, center.z - halfZ},
+      {center.x + halfX, center.y, center.z - halfZ},
+      {center.x - halfX, center.y, center.z + halfZ},
+      {center.x + halfX, center.y, center.z + halfZ},
+  };
+  const Vec3 lineSizes[8] = {topXLineSize, topXLineSize, topZLineSize, topZLineSize,
+                             verticalSize, verticalSize, verticalSize, verticalSize};
+  for (std::size_t i = 0; i < 8U; ++i) {
+    if (!appendBoxIfFits(vertices, indices, draws, lineCenters[i], lineSizes[i], color)) {
+      return false;
+    }
+    ++lineCount;
+  }
+  return true;
+}
+
 bool appendBean(std::vector<FirstRoomVertex>& vertices,
                 std::vector<std::uint16_t>& indices,
                 std::vector<IndexedDrawRange>& draws,
@@ -323,8 +412,8 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(const SceneRoomProjection& room) {
     return result;
   }
 
-  result.vertices.reserve(room.meshes.size() * 8U);
-  result.indices.reserve(room.meshes.size() * 72U);
+  result.vertices.reserve(room.meshes.size() * 16U);
+  result.indices.reserve(room.meshes.size() * 144U);
   for (const SceneRoomMeshItem& mesh : room.meshes) {
     BeanModelKind beanKind = BeanModelKind::Player;
     if (parseBeanModelId(mesh.role, beanKind)) {
@@ -337,8 +426,7 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(const SceneRoomProjection& room) {
         return result;
       }
     } else {
-      if (result.vertices.size() + 8U >
-          static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max())) {
+      if (!canAppendBox(result.vertices)) {
         result.vertices.clear();
         result.indices.clear();
         result.indexedDraws.clear();
@@ -346,6 +434,28 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(const SceneRoomProjection& room) {
       }
       appendBox(result.vertices, result.indices, result.indexedDraws,
                 mesh.position, mesh.size, colorForRoomRole(mesh.role));
+      if (mesh.role == "floor") {
+        ++result.roomFloorDrawCount;
+        std::size_t gridLines = 0;
+        if (!appendFloorGrid(result.vertices, result.indices, result.indexedDraws,
+                             mesh.position, mesh.size, gridLines)) {
+          result.roomGridTruncated = true;
+        }
+        result.roomGridLineDrawCount += gridLines;
+        result.roomGridVisible = result.roomGridVisible || gridLines > 0U;
+      } else if (mesh.role == "wall") {
+        ++result.roomWallDrawCount;
+        std::size_t gridLines = 0;
+        if (!appendWallGrid(result.vertices, result.indices, result.indexedDraws,
+                            mesh.position, mesh.size, gridLines)) {
+          result.roomGridTruncated = true;
+        }
+        result.roomGridLineDrawCount += gridLines;
+        result.roomGridVisible = result.roomGridVisible || gridLines > 0U;
+      } else if (mesh.role == "grid") {
+        ++result.roomGridLineDrawCount;
+        result.roomGridVisible = true;
+      }
     }
   }
 
@@ -409,6 +519,11 @@ BufferImageResourcesResult BufferImageResources::createFirstRoomResources(
   geometry_.sourceRoomAssetId.clear();
   geometry_.sourceRoomStaticMeshCount = 0;
   geometry_.sourceRoomGeometrySignature = 0;
+  geometry_.roomFloorDrawCount = 0;
+  geometry_.roomWallDrawCount = 0;
+  geometry_.roomGridLineDrawCount = 0;
+  geometry_.roomGridVisible = false;
+  geometry_.roomGridTruncated = false;
   geometry_.packageRoomGeometry = false;
   geometry_.indexedDraw = true;
 
@@ -489,6 +604,14 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
     appendReceiptField(result.receipt, "room_asset_id", room.assetId);
     appendReceiptField(result.receipt, "mesh_draw_count",
                        static_cast<std::uint64_t>(geometry_.indexedDraws.size()));
+    appendReceiptField(result.receipt, "room_floor_draw_count",
+                       static_cast<std::uint64_t>(geometry_.roomFloorDrawCount));
+    appendReceiptField(result.receipt, "room_wall_draw_count",
+                       static_cast<std::uint64_t>(geometry_.roomWallDrawCount));
+    appendReceiptField(result.receipt, "room_grid_line_draw_count",
+                       static_cast<std::uint64_t>(geometry_.roomGridLineDrawCount));
+    appendReceiptField(result.receipt, "room_grid_visible", geometry_.roomGridVisible);
+    appendReceiptField(result.receipt, "room_grid_truncated", geometry_.roomGridTruncated);
     return result;
   }
 
@@ -528,6 +651,11 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
   replacement.sourceRoomAssetId = cpuGeometry.sourceRoomAssetId;
   replacement.sourceRoomStaticMeshCount = cpuGeometry.sourceRoomStaticMeshCount;
   replacement.sourceRoomGeometrySignature = cpuGeometry.sourceRoomGeometrySignature;
+  replacement.roomFloorDrawCount = cpuGeometry.roomFloorDrawCount;
+  replacement.roomWallDrawCount = cpuGeometry.roomWallDrawCount;
+  replacement.roomGridLineDrawCount = cpuGeometry.roomGridLineDrawCount;
+  replacement.roomGridVisible = cpuGeometry.roomGridVisible;
+  replacement.roomGridTruncated = cpuGeometry.roomGridTruncated;
   replacement.packageRoomGeometry = true;
   replacement.indexedDraw = true;
   destroyGeometryBuffers();
@@ -550,6 +678,14 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
                      static_cast<std::uint64_t>(room.meshes.size()));
   appendReceiptField(result.receipt, "mesh_draw_count",
                      static_cast<std::uint64_t>(geometry_.indexedDraws.size()));
+  appendReceiptField(result.receipt, "room_floor_draw_count",
+                     static_cast<std::uint64_t>(geometry_.roomFloorDrawCount));
+  appendReceiptField(result.receipt, "room_wall_draw_count",
+                     static_cast<std::uint64_t>(geometry_.roomWallDrawCount));
+  appendReceiptField(result.receipt, "room_grid_line_draw_count",
+                     static_cast<std::uint64_t>(geometry_.roomGridLineDrawCount));
+  appendReceiptField(result.receipt, "room_grid_visible", geometry_.roomGridVisible);
+  appendReceiptField(result.receipt, "room_grid_truncated", geometry_.roomGridTruncated);
   appendReceiptField(result.receipt, "index_count", static_cast<std::uint64_t>(geometry_.indexCount));
   return result;
 }

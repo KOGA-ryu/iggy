@@ -717,6 +717,8 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
                      drawProxyPrimitives ? "no_projected_room_geometry" : "not_applicable");
   if (drawPackageRoom) {
     const SceneRoomProjection& room = frame.projections.scene->room;
+    const FirstRoomGeometryResources& geometry =
+        createInfo_.firstRoomResources->geometry();
     appendReceiptField(result.receipt, "room_asset_loaded", true);
     appendReceiptField(result.receipt, "room_asset_id", room.assetId);
     appendReceiptField(result.receipt, "room_asset_version",
@@ -735,6 +737,14 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     appendReceiptField(result.receipt, "indexed_draw_count",
                        static_cast<std::uint64_t>(
                            createInfo_.firstRoomResources->geometry().indexedDraws.size()));
+    appendReceiptField(result.receipt, "room_floor_draw_count",
+                       static_cast<std::uint64_t>(geometry.roomFloorDrawCount));
+    appendReceiptField(result.receipt, "room_wall_draw_count",
+                       static_cast<std::uint64_t>(geometry.roomWallDrawCount));
+    appendReceiptField(result.receipt, "room_grid_line_draw_count",
+                       static_cast<std::uint64_t>(geometry.roomGridLineDrawCount));
+    appendReceiptField(result.receipt, "room_grid_visible", geometry.roomGridVisible);
+    appendReceiptField(result.receipt, "room_grid_truncated", geometry.roomGridTruncated);
     appendReceiptField(result.receipt, "vertex_buffer_uploaded",
                        createInfo_.firstRoomResources->geometry().vertexBuffer.allocation.buffer !=
                            VK_NULL_HANDLE);

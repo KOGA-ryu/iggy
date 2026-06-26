@@ -46,6 +46,11 @@ struct FirstRoomGeometryResources {
   std::string sourceRoomAssetId;
   std::size_t sourceRoomStaticMeshCount = 0;
   std::uint64_t sourceRoomGeometrySignature = 0;
+  std::size_t roomFloorDrawCount = 0;
+  std::size_t roomWallDrawCount = 0;
+  std::size_t roomGridLineDrawCount = 0;
+  bool roomGridVisible = false;
+  bool roomGridTruncated = false;
   bool packageRoomGeometry = false;
   bool indexedDraw = false;
 };
@@ -57,6 +62,11 @@ struct RoomMeshCpuGeometry {
   std::string sourceRoomAssetId;
   std::size_t sourceRoomStaticMeshCount = 0;
   std::uint64_t sourceRoomGeometrySignature = 0;
+  std::size_t roomFloorDrawCount = 0;
+  std::size_t roomWallDrawCount = 0;
+  std::size_t roomGridLineDrawCount = 0;
+  bool roomGridVisible = false;
+  bool roomGridTruncated = false;
   bool ready = false;
 };
 
