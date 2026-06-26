@@ -1,6 +1,7 @@
 #include "app/iggy3d/ReceiptBuilder.hpp"
 
 #include <charconv>
+#include <string>
 
 #include "app/frontend/FrontendReceipt.hpp"
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
@@ -406,6 +407,29 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.savedMarkerBindPreviousHash);
   appendReceiptField(receipt, "saved_marker_bind_bound_hash",
                      window.savedMarkerBindBoundHash);
+  appendReceiptField(receipt, "room_editor_cursor_ready",
+                     window.roomEditorCursorReady);
+  appendReceiptField(receipt, "room_editor_grid_x",
+                     std::to_string(window.roomEditorCursor.gridX));
+  appendReceiptField(receipt, "room_editor_grid_z",
+                     std::to_string(window.roomEditorCursor.gridZ));
+  appendReceiptField(receipt, "room_editor_story_index",
+                     std::to_string(window.roomEditorCursor.storyIndex));
+  appendReceiptField(receipt, "room_editor_cell_size_meters",
+                     floatReceiptValue(window.roomEditorCursor.cellSizeMeters));
+  appendReceiptField(receipt, "room_editor_tool",
+                     productRoomEditorToolName(window.roomEditorCursor.selectedTool));
+  appendReceiptField(receipt, "room_editor_wall_direction",
+                     productRoomEditorDirectionName(window.roomEditorCursor.wallDirection));
+  appendReceiptField(receipt, "room_editor_status", window.roomEditorStatus);
+  appendReceiptField(receipt, "room_editor_reason_code",
+                     window.roomEditorReasonCode);
+  appendReceiptField(receipt, "room_editor_last_operation",
+                     window.roomEditorLastOperation);
+  appendReceiptField(receipt, "room_editor_last_operation_accepted",
+                     window.roomEditorLastOperationAccepted);
+  appendReceiptField(receipt, "room_editor_last_primitive_id",
+                     window.roomEditorLastPrimitiveId);
   appendReceiptField(receipt, "selected_save_id", window.selectedProductSaveId);
   appendReceiptField(receipt, "selected_save_enabled",
                      window.selectedProductSaveEnabled);

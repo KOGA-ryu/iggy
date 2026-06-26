@@ -8,6 +8,7 @@
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductActiveRoomState.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
+#include "app/iggy3d/ProductRoomEditorCursor.hpp"
 #include "app/iggy3d/ProductRoomEditingState.hpp"
 #include "app/iggy3d/ProductViewportState.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
@@ -105,6 +106,13 @@ struct ProductAppWindowState {
   std::string roomEditingLastInputSource = "none";
   bool roomEditingLastOperationAccepted = false;
   std::string roomEditingLastPrimitiveId = "none";
+  bool roomEditorCursorReady = false;
+  ProductRoomEditorCursorState roomEditorCursor;
+  std::string roomEditorStatus = "not_requested";
+  std::string roomEditorReasonCode = "not_requested";
+  std::string roomEditorLastOperation = "none";
+  bool roomEditorLastOperationAccepted = false;
+  std::string roomEditorLastPrimitiveId = "none";
   ProductActiveRoomState activeRoom;
   ProductActiveRoomCollisionState activeRoomCollision;
   std::string productSaveStatus = "not_requested";
