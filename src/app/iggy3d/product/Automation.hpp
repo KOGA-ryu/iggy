@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -110,6 +111,24 @@ struct ProductAutomationCommandDispatchResult {
 struct ProductAutomationCommand {
   std::string key;
   std::string value;
+};
+
+struct FrontendState;
+struct ProductAppWindowState;
+enum class FrontendSettingsTab : int;
+enum class MenuOwner : std::uint8_t;
+
+struct ProductAutomationExecutionContext {
+  FrontendState& frontend;
+  FrontendSettingsTab& settingsTab;
+  ProductAppWindowState& window;
+  std::function<MenuOwner()> currentOwner;
+  std::function<bool(InputAction)> routeInput;
+};
+
+struct ProductAutomationExecutionResult {
+  bool handled = false;
+  bool accepted = false;
 };
 
 struct ProductMenuShortcutAutomationResult {
@@ -279,6 +298,17 @@ ProductDevToolsCategoryAutomationResult resolveProductDevToolsCategoryAutomation
 
 ProductSaveSelectionAutomationResult resolveProductSaveSelectionAutomation(
     std::string_view value);
+
+void markAutomationApplied(ProductAppWindowState& window,
+                           const ProductAutomationCommand& command,
+                           std::string_view action,
+                           MenuOwner owner,
+                           std::string_view result);
+
+ProductAutomationExecutionResult applyProductCommonAutomationCommand(
+    const ProductAutomationCommand& command,
+    const ProductAutomationCommandDispatchSpec& automationSpec,
+    ProductAutomationExecutionContext& context);
 
 struct ProductRoomEditorCursorResult;
 struct ProductRoomEditorActionResult;

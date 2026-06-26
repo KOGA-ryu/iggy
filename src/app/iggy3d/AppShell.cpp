@@ -1185,21 +1185,6 @@ void routeOpeningMenuInput(FrontendState& frontend,
   }
 }
 
-void markAutomationApplied(ProductAppWindowState& window,
-                           const ProductAutomationCommand& command,
-                           std::string_view action,
-                           MenuOwner owner,
-                           std::string_view result) {
-  window.automationControlLastKey = command.key;
-  window.automationControlLastAction = std::string(action);
-  window.automationControlLastOwner = owner;
-  window.automationControlLastResult = std::string(result);
-  if (result == "applied") {
-    ++window.automationControlAppliedCount;
-    window.automationControlStatus = "applied";
-  }
-}
-
 bool automationFailurePreservesLoaded(std::string_view status) {
   return status == "applied" || status == "loaded" ||
          status == "command_failed";
@@ -1403,72 +1388,26 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       automationDispatch.spec;
   bool boolValue = false;
 
-  if (key == "automation.owner") {
-    MenuOwner expectedOwner = MenuOwner::None;
-    if (!parseProductAutomationOwner(value, expectedOwner)) {
-      window.automationControlStatus = "invalid_value";
-      return false;
-    }
-    const MenuOwner currentOwner = productInputOwnerFor(frontend, window);
-    if (currentOwner != expectedOwner) {
-      window.automationControlStatus = "owner_unavailable";
-      markAutomationApplied(window, command, menuOwnerName(expectedOwner), currentOwner,
-                            "failed");
-      return false;
-    }
-    markAutomationApplied(window, command, menuOwnerName(expectedOwner), currentOwner,
-                          "applied");
-    return true;
-  }
-
-  if (key == "menu.input") {
-    const ProductMenuInputAutomationResult menuInput =
-        resolveProductMenuInputAutomation(value);
-    if (!menuInput.valid) {
-      window.automationControlStatus = "invalid_value";
-      return false;
-    }
-    const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
-                                            activeSession, worldSetupDraft, window,
-                                            menuInput.inputAction, closeRequested);
-    markAutomationApplied(window, command, inputActionName(menuInput.inputAction),
-                          window.automationControlLastOwner,
-                          routed ? "applied" : "ignored");
-    return routed;
-  }
-
-  if (automationSpec.commandId == ProductAutomationCommandId::MenuShortcut) {
-    const ProductMenuShortcutAutomationResult shortcut =
-        resolveProductMenuShortcutAutomation(automationSpec, value);
-    if (!shortcut.valid) {
-      window.automationControlStatus = "invalid_value";
-      return false;
-    }
-    if (!shortcut.routeRequested) {
-      markAutomationApplied(window, command, "none", productInputOwnerFor(frontend, window),
-                            "ignored");
-      return true;
-    }
-    const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
-                                            activeSession, worldSetupDraft, window,
-                                            shortcut.inputAction, closeRequested);
-    markAutomationApplied(window, command, inputActionName(shortcut.inputAction),
-                          window.automationControlLastOwner,
-                          routed ? "applied" : "ignored");
-    return routed;
-  }
-
-  if (key == "frontend.select" || key == "pause.select") {
-    const ProductFrontendSelectAutomationResult select =
-        resolveProductFrontendSelectAutomation(value);
-    if (!select.valid) {
-      window.automationControlStatus = "invalid_value";
-      return false;
-    }
-    frontend.selectedAction = select.action;
-    markAutomationApplied(window, command, frontendActionName(select.action),
-                          productInputOwnerFor(frontend, window), "applied");
-    return true;
+  ProductAutomationExecutionContext commonExecutionContext{
+      frontend,
+      settingsTab,
+      window,
+      [&frontend, &window]() {
+        return productInputOwnerFor(frontend, window);
+      },
+      [&frontend, &saves, &options, &settingsTab, &activeSession, &worldSetupDraft,
+       &window, &closeRequested](InputAction action) {
+        return routeAutomationInput(frontend, saves, options, settingsTab,
+                                    activeSession, worldSetupDraft, window, action,
+                                    closeRequested);
+      },
+  };
+  const ProductAutomationExecutionResult commonExecution =
+      applyProductCommonAutomationCommand(command, automationSpec,
+                                          commonExecutionContext);
+  // branch-gate: BG-1003
+  if (commonExecution.handled) {
+    return commonExecution.accepted;
   }
 
   if (key == "world.title" || key == "world_setup.title") {
@@ -2348,34 +2287,6 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                           productInputOwnerFor(frontend, window),
                           window.saveRecoverExecuted ? "applied" : "failed");
     return window.saveRecoverExecuted;
-  }
-
-  if (key == "settings.tab") {
-    const ProductSettingsTabAutomationResult settingsResult =
-        resolveProductSettingsTabAutomation(value);
-    if (!settingsResult.valid) {
-      window.automationControlStatus = "invalid_value";
-      return false;
-    }
-    settingsTab = settingsResult.settingsTab;
-    window.selectedSettingsTab = settingsTab;
-    markAutomationApplied(window, command, frontendSettingsTabName(settingsTab),
-                          productInputOwnerFor(frontend, window), "applied");
-    return true;
-  }
-
-  if (key == "dev_tools.category") {
-    const ProductDevToolsCategoryAutomationResult devToolsResult =
-        resolveProductDevToolsCategoryAutomation(value);
-    if (!devToolsResult.valid) {
-      window.automationControlStatus = "invalid_value";
-      return false;
-    }
-    const FrontendDevToolsCategory category = devToolsResult.category;
-    frontend.devToolsCategory = category;
-    markAutomationApplied(window, command, frontendDevToolsCategoryName(category),
-                          productInputOwnerFor(frontend, window), "applied");
-    return true;
   }
 
   if (key == "frontend.execute" || key == "pause.execute" ||

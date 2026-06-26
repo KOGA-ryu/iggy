@@ -8,6 +8,7 @@
 #include <iterator>
 
 #include "app/frontend/FrontendState.hpp"
+#include "app/frontend/MenuInput.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/ProductDungeonDraft.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
@@ -997,6 +998,142 @@ bool resolveProductSaveBrowserBoolAutomation(std::string_view value,
       std::min(rowIndex, lookup.size() - 1U);
   out = lookup[selectedIndex].value;
   return row != rows.end();
+}
+
+void markAutomationApplied(ProductAppWindowState& window,
+                           const ProductAutomationCommand& command,
+                           std::string_view action,
+                           MenuOwner owner,
+                           std::string_view result) {
+  window.automationControlLastKey = command.key;
+  window.automationControlLastAction = std::string(action);
+  window.automationControlLastOwner = owner;
+  window.automationControlLastResult = std::string(result);
+  // branch-gate: BG-1002
+  if (result == "applied") {
+    ++window.automationControlAppliedCount;
+    window.automationControlStatus = "applied";
+  }
+}
+
+ProductAutomationExecutionResult applyProductCommonAutomationCommand(
+    const ProductAutomationCommand& command,
+    const ProductAutomationCommandDispatchSpec& automationSpec,
+    ProductAutomationExecutionContext& context) {
+  const std::string_view key{command.key};
+  const std::string_view value{command.value};
+
+  // branch-gate: BG-1002
+  if (key == "automation.owner") {
+    MenuOwner expectedOwner = MenuOwner::None;
+    // branch-gate: BG-1002
+    if (!parseProductAutomationOwner(value, expectedOwner)) {
+      context.window.automationControlStatus = "invalid_value";
+      return {true, false};
+    }
+    const MenuOwner currentOwner = context.currentOwner();
+    // branch-gate: BG-1002
+    if (currentOwner != expectedOwner) {
+      context.window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(context.window, command, menuOwnerName(expectedOwner),
+                            currentOwner, "failed");
+      return {true, false};
+    }
+    markAutomationApplied(context.window, command, menuOwnerName(expectedOwner),
+                          currentOwner, "applied");
+    return {true, true};
+  }
+
+  // branch-gate: BG-1002
+  if (key == "menu.input") {
+    const ProductMenuInputAutomationResult menuInput =
+        resolveProductMenuInputAutomation(value);
+    // branch-gate: BG-1002
+    if (!menuInput.valid) {
+      context.window.automationControlStatus = "invalid_value";
+      return {true, false};
+    }
+    const bool routed = context.routeInput(menuInput.inputAction);
+    // branch-gate: BG-1002
+    markAutomationApplied(context.window, command, inputActionName(menuInput.inputAction),
+                          context.window.automationControlLastOwner,
+                          routed ? "applied" : "ignored");
+    return {true, routed};
+  }
+
+  // branch-gate: BG-1002
+  if (automationSpec.commandId == ProductAutomationCommandId::MenuShortcut) {
+    const ProductMenuShortcutAutomationResult shortcut =
+        resolveProductMenuShortcutAutomation(automationSpec, value);
+    // branch-gate: BG-1002
+    if (!shortcut.valid) {
+      context.window.automationControlStatus = "invalid_value";
+      return {true, false};
+    }
+    // branch-gate: BG-1002
+    if (!shortcut.routeRequested) {
+      markAutomationApplied(context.window, command, "none", context.currentOwner(),
+                            "ignored");
+      return {true, true};
+    }
+    const bool routed = context.routeInput(shortcut.inputAction);
+    // branch-gate: BG-1002
+    markAutomationApplied(context.window, command, inputActionName(shortcut.inputAction),
+                          context.window.automationControlLastOwner,
+                          routed ? "applied" : "ignored");
+    return {true, routed};
+  }
+
+  // branch-gate: BG-1002
+  if (key == "frontend.select" || key == "pause.select") {
+    const ProductFrontendSelectAutomationResult select =
+        resolveProductFrontendSelectAutomation(value);
+    // branch-gate: BG-1002
+    if (!select.valid) {
+      context.window.automationControlStatus = "invalid_value";
+      return {true, false};
+    }
+    context.frontend.selectedAction = select.action;
+    markAutomationApplied(context.window, command, frontendActionName(select.action),
+                          context.currentOwner(), "applied");
+    return {true, true};
+  }
+
+  // branch-gate: BG-1002
+  if (key == "settings.tab") {
+    const ProductSettingsTabAutomationResult settingsResult =
+        resolveProductSettingsTabAutomation(value);
+    // branch-gate: BG-1002
+    if (!settingsResult.valid) {
+      context.window.automationControlStatus = "invalid_value";
+      return {true, false};
+    }
+    context.settingsTab = settingsResult.settingsTab;
+    context.window.selectedSettingsTab = context.settingsTab;
+    markAutomationApplied(context.window, command,
+                          frontendSettingsTabName(context.settingsTab),
+                          context.currentOwner(), "applied");
+    return {true, true};
+  }
+
+  // branch-gate: BG-1002
+  if (key == "dev_tools.category") {
+    const ProductDevToolsCategoryAutomationResult devToolsResult =
+        resolveProductDevToolsCategoryAutomation(value);
+    // branch-gate: BG-1002
+    if (!devToolsResult.valid) {
+      context.window.automationControlStatus = "invalid_value";
+      return {true, false};
+    }
+    const FrontendDevToolsCategory category = devToolsResult.category;
+    context.frontend.devToolsCategory = category;
+    markAutomationApplied(context.window, command,
+                          frontendDevToolsCategoryName(category),
+                          context.currentOwner(), "applied");
+    return {true, true};
+  }
+
+  return {};
 }
 
 ProductRoomEditorCursorResult applyProductRoomEditorMoveAutomation(
