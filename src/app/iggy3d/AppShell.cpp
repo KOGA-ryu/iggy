@@ -665,27 +665,9 @@ void applyOpeningMenuAction(FrontendState& frontend,
                             ProductAppWindowState& window,
                             InputAction action,
                             bool& closeRequested) {
-  if (action == InputAction::SystemPause) {
-    if (frontend.screen == FrontendScreen::Gameplay && window.gameplayActive) {
-      openProductPauseTransition(frontend, window, FrontendAction::Resume);
-      frontend.status = "pause_opened_from_gameplay";
-      return;
-    }
-    if (frontend.screen == FrontendScreen::Pause) {
-      closeProductOverlayToGameplayTransition(frontend, window);
-      return;
-    }
-    if (frontend.screen == FrontendScreen::DevOverlay) {
-      closeProductOverlayToGameplayTransition(frontend, window);
-      return;
-    }
-    if (frontend.screen == FrontendScreen::Settings &&
-        frontend.childScreen == FrontendScreen::Pause) {
-      openProductPauseTransition(frontend, window, FrontendAction::Settings);
-      return;
-    }
-    frontend.status = "opening_menu_pause_back_requested";
-    closeRequested = true;
+  const ProductMenuActionResult systemPause =
+      applyProductSystemPauseMenuAction(action, {frontend, window, closeRequested});
+  if (systemPause.handled) {
     return;
   }
 

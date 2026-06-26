@@ -515,4 +515,40 @@ ProductMenuActionResult applyProductStarterMenuAction(
   return handleStarterConfirm(context);
 }
 
+ProductMenuActionResult applyProductSystemPauseMenuAction(
+    InputAction action,
+    ProductSystemPauseMenuActionContext context) {
+  // branch-gate: BG-1023
+  if (action != InputAction::SystemPause) {
+    return {false, false};
+  }
+  FrontendState& frontend = context.frontend;
+  ProductAppWindowState& window = context.window;
+  // branch-gate: BG-1023
+  if (frontend.screen == FrontendScreen::Gameplay && window.gameplayActive) {
+    openProductPauseTransition(frontend, window, FrontendAction::Resume);
+    frontend.status = "pause_opened_from_gameplay";
+    return {true, true};
+  }
+  // branch-gate: BG-1023
+  if (frontend.screen == FrontendScreen::Pause) {
+    closeProductOverlayToGameplayTransition(frontend, window);
+    return {true, true};
+  }
+  // branch-gate: BG-1023
+  if (frontend.screen == FrontendScreen::DevOverlay) {
+    closeProductOverlayToGameplayTransition(frontend, window);
+    return {true, true};
+  }
+  // branch-gate: BG-1023
+  if (frontend.screen == FrontendScreen::Settings &&
+      frontend.childScreen == FrontendScreen::Pause) {
+    openProductPauseTransition(frontend, window, FrontendAction::Settings);
+    return {true, true};
+  }
+  frontend.status = "opening_menu_pause_back_requested";
+  context.closeRequested = true;
+  return {true, true};
+}
+
 }  // namespace iggy3d

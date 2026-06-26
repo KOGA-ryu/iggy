@@ -67,6 +67,12 @@ struct ProductStarterMenuActionContext {
   bool& closeRequested;
 };
 
+struct ProductSystemPauseMenuActionContext {
+  FrontendState& frontend;
+  ProductAppWindowState& window;
+  bool& closeRequested;
+};
+
 struct ProductMenuActionResult {
   bool handled = false;
   bool accepted = false;
@@ -103,5 +109,9 @@ ProductMenuActionResult applyProductNewWorldMenuAction(
 ProductMenuActionResult applyProductStarterMenuAction(
     InputAction action,
     ProductStarterMenuActionContext context);
+
+ProductMenuActionResult applyProductSystemPauseMenuAction(
+    InputAction action,
+    ProductSystemPauseMenuActionContext context);
 
 }  // namespace iggy3d
