@@ -145,6 +145,7 @@ void attachRoomProjection(const RoomAsset* room, SceneProjectionResult& result) 
     SceneRoomMeshItem item;
     item.id = mesh.id;
     item.role = mesh.role;
+    item.materialId = mesh.materialId;
     item.position = mesh.positionMeters;
     item.size = mesh.sizeMeters;
     projected.floorVisible = projected.floorVisible || mesh.role == "floor";

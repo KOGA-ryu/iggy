@@ -3,9 +3,15 @@
 #include "render/mesh/BeanMesh.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <iterator>
 #include <limits>
+#include <map>
+#include <set>
+#include <tuple>
+#include <utility>
+#include <vector>
 
 #if defined(IGGY3D_HAS_VULKAN)
 #include <vulkan/vulkan.h>
@@ -13,6 +19,9 @@
 
 namespace iggy3d::vulkan {
 namespace {
+
+constexpr float kRoomMeshEpsilon = 0.0001F;
+constexpr float kRoomMeshQuantizeScale = 10000.0F;
 
 RenderReceipt baseReceipt(std::string_view result, std::string_view reasonCode) {
   RenderReceipt receipt;
@@ -177,6 +186,18 @@ Vec3 colorForRoomRole(const std::string& role) {
   return {0.36F, 0.42F, 0.48F};
 }
 
+bool near(float lhs, float rhs) {
+  return std::fabs(lhs - rhs) <= kRoomMeshEpsilon;
+}
+
+std::int64_t quantized(float value) {
+  return static_cast<std::int64_t>(std::llround(value * kRoomMeshQuantizeScale));
+}
+
+bool finitePositive(float value) {
+  return std::isfinite(value) && value > kRoomMeshEpsilon;
+}
+
 void hashByte(std::uint64_t& hash, std::uint8_t value) {
   hash ^= value;
   hash *= 1099511628211ULL;
@@ -204,6 +225,7 @@ std::uint64_t roomGeometrySignature(const SceneRoomProjection& room) {
   for (const SceneRoomMeshItem& mesh : room.meshes) {
     hashString(hash, mesh.id);
     hashString(hash, mesh.role);
+    hashString(hash, mesh.materialId);
     hashFloat(hash, mesh.position.x);
     hashFloat(hash, mesh.position.y);
     hashFloat(hash, mesh.position.z);
@@ -212,6 +234,54 @@ std::uint64_t roomGeometrySignature(const SceneRoomProjection& room) {
     hashFloat(hash, mesh.size.z);
   }
   return hash;
+}
+
+void appendTriangle(std::vector<std::uint16_t>& indices,
+                    std::uint16_t a,
+                    std::uint16_t b,
+                    std::uint16_t c);
+
+bool canAppendPlane(const std::vector<FirstRoomVertex>& vertices) {
+  return vertices.size() + 4U <=
+         static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max());
+}
+
+void appendFloorPlane(std::vector<FirstRoomVertex>& vertices,
+                      std::vector<std::uint16_t>& indices,
+                      std::vector<IndexedDrawRange>& draws,
+                      Vec3 center,
+                      Vec3 size,
+                      Vec3 color) {
+  const std::uint16_t base = static_cast<std::uint16_t>(vertices.size());
+  const float hx = std::max(size.x * 0.5F, 0.001F);
+  const float hz = std::max(size.z * 0.5F, 0.001F);
+  const float y = center.y + std::max(size.y * 0.5F, 0.001F);
+  const FirstRoomVertex planeVertices[4] = {
+      {{center.x - hx, y, center.z - hz}, {color.x, color.y, color.z}},
+      {{center.x + hx, y, center.z - hz}, {color.x, color.y, color.z}},
+      {{center.x + hx, y, center.z + hz}, {color.x, color.y, color.z}},
+      {{center.x - hx, y, center.z + hz}, {color.x, color.y, color.z}},
+  };
+  vertices.insert(vertices.end(), std::begin(planeVertices), std::end(planeVertices));
+  IndexedDrawRange range;
+  range.firstIndex = static_cast<std::uint32_t>(indices.size());
+  appendTriangle(indices, base + 0U, base + 1U, base + 2U);
+  appendTriangle(indices, base + 0U, base + 2U, base + 3U);
+  range.indexCount = static_cast<std::uint32_t>(indices.size()) - range.firstIndex;
+  draws.push_back(range);
+}
+
+bool appendFloorPlaneIfFits(std::vector<FirstRoomVertex>& vertices,
+                            std::vector<std::uint16_t>& indices,
+                            std::vector<IndexedDrawRange>& draws,
+                            Vec3 center,
+                            Vec3 size,
+                            Vec3 color) {
+  if (!canAppendPlane(vertices)) {
+    return false;
+  }
+  appendFloorPlane(vertices, indices, draws, center, size, color);
+  return true;
 }
 
 void appendTriangle(std::vector<std::uint16_t>& indices,
@@ -390,6 +460,150 @@ bool appendBean(std::vector<FirstRoomVertex>& vertices,
   return true;
 }
 
+struct FloorMergeKey {
+  std::string materialId;
+  std::int64_t positionY = 0;
+  std::int64_t sizeX = 0;
+  std::int64_t sizeY = 0;
+  std::int64_t sizeZ = 0;
+
+  bool operator<(const FloorMergeKey& rhs) const {
+    return std::tie(materialId, positionY, sizeX, sizeY, sizeZ) <
+           std::tie(rhs.materialId, rhs.positionY, rhs.sizeX, rhs.sizeY, rhs.sizeZ);
+  }
+};
+
+struct FloorCell {
+  std::int64_t x = 0;
+  std::int64_t z = 0;
+  Vec3 position;
+  Vec3 size;
+
+  bool operator<(const FloorCell& rhs) const {
+    return std::tie(z, x) < std::tie(rhs.z, rhs.x);
+  }
+};
+
+struct FloorDraw {
+  Vec3 position;
+  Vec3 size;
+};
+
+bool floorToGridCell(const SceneRoomMeshItem& mesh,
+                     FloorMergeKey& key,
+                     FloorCell& cell) {
+  if (mesh.role != "floor" || !std::isfinite(mesh.position.x) ||
+      !std::isfinite(mesh.position.y) || !std::isfinite(mesh.position.z) ||
+      !finitePositive(mesh.size.x) || !finitePositive(mesh.size.y) ||
+      !finitePositive(mesh.size.z)) {
+    return false;
+  }
+
+  const float gridX = mesh.position.x / mesh.size.x;
+  const float gridZ = mesh.position.z / mesh.size.z;
+  const auto roundedX = static_cast<std::int64_t>(std::llround(gridX));
+  const auto roundedZ = static_cast<std::int64_t>(std::llround(gridZ));
+  if (!near(gridX, static_cast<float>(roundedX)) ||
+      !near(gridZ, static_cast<float>(roundedZ))) {
+    return false;
+  }
+
+  key.materialId = mesh.materialId;
+  key.positionY = quantized(mesh.position.y);
+  key.sizeX = quantized(mesh.size.x);
+  key.sizeY = quantized(mesh.size.y);
+  key.sizeZ = quantized(mesh.size.z);
+  cell.x = roundedX;
+  cell.z = roundedZ;
+  cell.position = mesh.position;
+  cell.size = mesh.size;
+  return true;
+}
+
+void appendFloorRectsForGroup(const std::vector<FloorCell>& cells,
+                              std::vector<FloorDraw>& floorDraws) {
+  std::map<std::pair<std::int64_t, std::int64_t>, FloorCell> remaining;
+  std::vector<FloorCell> duplicates;
+  for (const FloorCell& cell : cells) {
+    const auto key = std::make_pair(cell.x, cell.z);
+    if (!remaining.emplace(key, cell).second) {
+      duplicates.push_back(cell);
+    }
+  }
+
+  for (const FloorCell& duplicate : duplicates) {
+    floorDraws.push_back({duplicate.position, duplicate.size});
+  }
+
+  while (!remaining.empty()) {
+    const FloorCell origin = remaining.begin()->second;
+    std::int64_t width = 1;
+    while (remaining.contains({origin.x + width, origin.z})) {
+      ++width;
+    }
+
+    std::int64_t height = 1;
+    bool canGrow = true;
+    while (canGrow) {
+      for (std::int64_t dx = 0; dx < width; ++dx) {
+        if (!remaining.contains({origin.x + dx, origin.z + height})) {
+          canGrow = false;
+          break;
+        }
+      }
+      if (canGrow) {
+        ++height;
+      }
+    }
+
+    FloorDraw draw;
+    draw.size = {static_cast<float>(width) * origin.size.x,
+                 origin.size.y,
+                 static_cast<float>(height) * origin.size.z};
+    draw.position = {
+        origin.position.x + (static_cast<float>(width - 1) * origin.size.x * 0.5F),
+        origin.position.y,
+        origin.position.z + (static_cast<float>(height - 1) * origin.size.z * 0.5F),
+    };
+    floorDraws.push_back(draw);
+
+    for (std::int64_t dz = 0; dz < height; ++dz) {
+      for (std::int64_t dx = 0; dx < width; ++dx) {
+        remaining.erase({origin.x + dx, origin.z + dz});
+      }
+    }
+  }
+}
+
+std::vector<FloorDraw> buildOptimizedFloorDraws(const SceneRoomProjection& room) {
+  std::map<FloorMergeKey, std::vector<FloorCell>> groups;
+  std::vector<FloorDraw> floorDraws;
+  for (const SceneRoomMeshItem& mesh : room.meshes) {
+    if (mesh.role != "floor") {
+      continue;
+    }
+    FloorMergeKey key;
+    FloorCell cell;
+    if (!floorToGridCell(mesh, key, cell)) {
+      floorDraws.push_back({mesh.position, mesh.size});
+      continue;
+    }
+    groups[key].push_back(cell);
+  }
+
+  for (const auto& [key, cells] : groups) {
+    (void)key;
+    appendFloorRectsForGroup(cells, floorDraws);
+  }
+  return floorDraws;
+}
+
+bool canEmitFloorDraw(const FloorDraw& floor) {
+  return std::isfinite(floor.position.x) && std::isfinite(floor.position.y) &&
+         std::isfinite(floor.position.z) && finitePositive(floor.size.x) &&
+         finitePositive(floor.size.y) && finitePositive(floor.size.z);
+}
+
 }  // namespace
 
 std::vector<FirstRoomVertex> firstRoomBootstrapVertices() {
@@ -414,7 +628,41 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(const SceneRoomProjection& room) {
 
   result.vertices.reserve(room.meshes.size() * 16U);
   result.indices.reserve(room.meshes.size() * 144U);
+
+  const std::vector<FloorDraw> floorDraws = buildOptimizedFloorDraws(room);
+  for (const FloorDraw& floor : floorDraws) {
+    if (!canEmitFloorDraw(floor)) {
+      result.vertices.clear();
+      result.indices.clear();
+      result.indexedDraws.clear();
+      return result;
+    }
+    if (!appendFloorPlaneIfFits(result.vertices,
+                                result.indices,
+                                result.indexedDraws,
+                                floor.position,
+                                floor.size,
+                                colorForRoomRole("floor"))) {
+      result.vertices.clear();
+      result.indices.clear();
+      result.indexedDraws.clear();
+      return result;
+    }
+    ++result.roomFloorDrawCount;
+  }
+
   for (const SceneRoomMeshItem& mesh : room.meshes) {
+    if (mesh.role == "floor") {
+      std::size_t gridLines = 0;
+      if (!appendFloorGrid(result.vertices, result.indices, result.indexedDraws,
+                           mesh.position, mesh.size, gridLines)) {
+        result.roomGridTruncated = true;
+      }
+      result.roomGridLineDrawCount += gridLines;
+      result.roomGridVisible = result.roomGridVisible || gridLines > 0U;
+      continue;
+    }
+
     BeanModelKind beanKind = BeanModelKind::Player;
     if (parseBeanModelId(mesh.role, beanKind)) {
       if (!appendBean(result.vertices, result.indices, result.indexedDraws,
@@ -434,16 +682,7 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(const SceneRoomProjection& room) {
       }
       appendBox(result.vertices, result.indices, result.indexedDraws,
                 mesh.position, mesh.size, colorForRoomRole(mesh.role));
-      if (mesh.role == "floor") {
-        ++result.roomFloorDrawCount;
-        std::size_t gridLines = 0;
-        if (!appendFloorGrid(result.vertices, result.indices, result.indexedDraws,
-                             mesh.position, mesh.size, gridLines)) {
-          result.roomGridTruncated = true;
-        }
-        result.roomGridLineDrawCount += gridLines;
-        result.roomGridVisible = result.roomGridVisible || gridLines > 0U;
-      } else if (mesh.role == "wall") {
+      if (mesh.role == "wall") {
         ++result.roomWallDrawCount;
         std::size_t gridLines = 0;
         if (!appendWallGrid(result.vertices, result.indices, result.indexedDraws,

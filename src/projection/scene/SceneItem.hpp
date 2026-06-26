@@ -46,6 +46,7 @@ struct SceneItem {
 struct SceneRoomMeshItem {
   std::string id;
   std::string role;
+  std::string materialId;
   Vec3 position;
   Vec3 size;
 };

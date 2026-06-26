@@ -10,6 +10,8 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace {
 
@@ -80,6 +82,46 @@ std::size_t countVerticesWithColor(
   return count;
 }
 
+iggy3d::SceneRoomMeshItem floorMesh(std::string id,
+                                    float x,
+                                    float y,
+                                    float z,
+                                    std::string materialId = "debug_floor",
+                                    iggy3d::Vec3 size = {1.0F, 0.10F, 1.0F}) {
+  iggy3d::SceneRoomMeshItem mesh;
+  mesh.id = std::move(id);
+  mesh.role = "floor";
+  mesh.materialId = std::move(materialId);
+  mesh.position = {x, y, z};
+  mesh.size = size;
+  return mesh;
+}
+
+iggy3d::SceneRoomMeshItem wallMesh(std::string id,
+                                   float x,
+                                   float y,
+                                   float z,
+                                   std::string materialId = "debug_wall",
+                                   iggy3d::Vec3 size = {1.0F, 2.5F, 1.0F}) {
+  iggy3d::SceneRoomMeshItem mesh;
+  mesh.id = std::move(id);
+  mesh.role = "wall";
+  mesh.materialId = std::move(materialId);
+  mesh.position = {x, y, z};
+  mesh.size = size;
+  return mesh;
+}
+
+iggy3d::SceneRoomProjection roomProjection(std::vector<iggy3d::SceneRoomMeshItem> meshes) {
+  iggy3d::SceneRoomProjection room;
+  room.loaded = true;
+  room.assetId = "manual_room";
+  room.version = 1;
+  room.staticMeshCount = meshes.size();
+  room.meshes = std::move(meshes);
+  return room;
+}
+
 bool asciiFloorsAndWallsBuildVulkanRoomGeometry() {
   const iggy3d::AsciiRoomToRoomAssetResult asset = buildAsciiRoomAsset(
       "###\n"
@@ -99,8 +141,11 @@ bool asciiFloorsAndWallsBuildVulkanRoomGeometry() {
   constexpr std::size_t kWallGridLineCount = kWallCount * 8U;
   constexpr std::size_t kGridLineCount = kFloorGridLineCount + kWallGridLineCount;
   constexpr std::size_t kDrawCount = kMeshCount + kGridLineCount;
+  constexpr std::size_t kFloorPlaneVertexCount = 4U;
+  constexpr std::size_t kFloorPlaneIndexCount = 12U;
   constexpr std::size_t kBoxVertexCount = 8U;
   constexpr std::size_t kBoxIndexCount = 72U;
+  constexpr std::size_t kBoxDrawCount = kWallCount + kGridLineCount;
 
   bool ok = true;
   ok = expect(asset.ok, "ascii room asset ok") && ok;
@@ -137,25 +182,35 @@ bool asciiFloorsAndWallsBuildVulkanRoomGeometry() {
   ok = expect(geometry.sourceRoomGeometrySignature != 0U,
               "geometry signature present") &&
        ok;
-  ok = expect(geometry.vertices.size() == kDrawCount * kBoxVertexCount,
+  ok = expect(geometry.vertices.size() ==
+                  kFloorCount * kFloorPlaneVertexCount +
+                      kBoxDrawCount * kBoxVertexCount,
               "geometry vertex count") &&
        ok;
-  ok = expect(geometry.indices.size() == kDrawCount * kBoxIndexCount,
+  ok = expect(geometry.indices.size() ==
+                  kFloorCount * kFloorPlaneIndexCount +
+                      kBoxDrawCount * kBoxIndexCount,
               "geometry index count") &&
        ok;
   ok = expect(geometry.indexedDraws.size() == kDrawCount,
               "geometry draw count") &&
        ok;
   for (std::size_t i = 0; i < geometry.indexedDraws.size(); ++i) {
-    ok = expect(geometry.indexedDraws[i].firstIndex == i * kBoxIndexCount,
+    const std::uint32_t expectedFirst =
+        i == 0U ? 0U
+                : static_cast<std::uint32_t>(kFloorPlaneIndexCount +
+                                             (i - 1U) * kBoxIndexCount);
+    const std::uint32_t expectedCount =
+        i == 0U ? kFloorPlaneIndexCount : kBoxIndexCount;
+    ok = expect(geometry.indexedDraws[i].firstIndex == expectedFirst,
                 "draw first index") &&
          ok;
-    ok = expect(geometry.indexedDraws[i].indexCount == kBoxIndexCount,
+    ok = expect(geometry.indexedDraws[i].indexCount == expectedCount,
                 "draw index count") &&
          ok;
   }
   ok = expect(countVerticesWithColor(geometry.vertices, 0.30F, 0.32F, 0.34F) ==
-                  kFloorCount * kBoxVertexCount,
+                  kFloorCount * kFloorPlaneVertexCount,
               "floor vertex color count") &&
        ok;
   ok = expect(countVerticesWithColor(geometry.vertices, 0.42F, 0.43F, 0.46F) ==
@@ -167,6 +222,144 @@ bool asciiFloorsAndWallsBuildVulkanRoomGeometry() {
               "grid vertex color count") &&
        ok;
   return ok;
+}
+
+bool compatibleFloorBlockMergesButPreservesSourceGrid() {
+  const iggy3d::SceneRoomProjection room = roomProjection({
+      floorMesh("floor_1", 0.0F, -0.05F, 0.0F),
+      floorMesh("floor_2", 1.0F, -0.05F, 0.0F),
+      floorMesh("floor_3", 0.0F, -0.05F, 1.0F),
+      floorMesh("floor_4", 1.0F, -0.05F, 1.0F),
+  });
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room);
+
+  constexpr std::size_t kSourceFloorCount = 4U;
+  constexpr std::size_t kOptimizedFloorDrawCount = 1U;
+  constexpr std::size_t kFloorGridLineCount = kSourceFloorCount * 4U;
+  constexpr std::size_t kOptimizedDrawCount =
+      kOptimizedFloorDrawCount + kFloorGridLineCount;
+  constexpr std::size_t kNaiveFloorDrawCount = kSourceFloorCount + kFloorGridLineCount;
+  constexpr std::size_t kPlaneVertexCount = 4U;
+  constexpr std::size_t kPlaneIndexCount = 12U;
+  constexpr std::size_t kBoxVertexCount = 8U;
+  constexpr std::size_t kBoxIndexCount = 72U;
+  constexpr std::size_t kOptimizedVertexCount =
+      kPlaneVertexCount + kFloorGridLineCount * kBoxVertexCount;
+  constexpr std::size_t kOptimizedIndexCount =
+      kPlaneIndexCount + kFloorGridLineCount * kBoxIndexCount;
+  constexpr std::size_t kNaiveVertexCount = kNaiveFloorDrawCount * kBoxVertexCount;
+  constexpr std::size_t kNaiveIndexCount = kNaiveFloorDrawCount * kBoxIndexCount;
+
+  bool ok = true;
+  ok = expect(geometry.ready, "2x2 floor geometry ready") && ok;
+  ok = expect(geometry.sourceRoomStaticMeshCount == kSourceFloorCount,
+              "2x2 source mesh count preserved") &&
+       ok;
+  ok = expect(geometry.roomFloorDrawCount == kOptimizedFloorDrawCount,
+              "2x2 floors merge to one draw") &&
+       ok;
+  ok = expect(geometry.roomGridLineDrawCount == kFloorGridLineCount,
+              "2x2 source grid lines preserved") &&
+       ok;
+  ok = expect(geometry.indexedDraws.size() == kOptimizedDrawCount,
+              "2x2 optimized draw count") &&
+       ok;
+  ok = expect(geometry.vertices.size() == kOptimizedVertexCount,
+              "2x2 optimized vertex count") &&
+       ok;
+  ok = expect(geometry.indices.size() == kOptimizedIndexCount,
+              "2x2 optimized index count") &&
+       ok;
+  ok = expect(geometry.vertices.size() < kNaiveVertexCount,
+              "2x2 fewer vertices than naive floor boxes") &&
+       ok;
+  ok = expect(geometry.indices.size() < kNaiveIndexCount,
+              "2x2 fewer indices than naive floor boxes") &&
+       ok;
+  ok = expect(geometry.indexedDraws.front().indexCount == kPlaneIndexCount,
+              "2x2 merged floor emits plane") &&
+       ok;
+  return ok;
+}
+
+bool nonAdjacentFloorsDoNotMerge() {
+  const iggy3d::SceneRoomProjection room = roomProjection({
+      floorMesh("floor_1", 0.0F, -0.05F, 0.0F),
+      floorMesh("floor_2", 2.0F, -0.05F, 0.0F),
+  });
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room);
+  return expect(geometry.ready, "non-adjacent geometry ready") &&
+         expect(geometry.sourceRoomStaticMeshCount == 2U,
+                "non-adjacent source count") &&
+         expect(geometry.roomFloorDrawCount == 2U,
+                "non-adjacent floors do not merge") &&
+         expect(geometry.roomGridLineDrawCount == 8U,
+                "non-adjacent grid count");
+}
+
+bool mismatchedFloorMaterialDoesNotMergeAndAffectsSignature() {
+  iggy3d::SceneRoomProjection sameMaterial = roomProjection({
+      floorMesh("floor_1", 0.0F, -0.05F, 0.0F),
+      floorMesh("floor_2", 1.0F, -0.05F, 0.0F),
+  });
+  iggy3d::SceneRoomProjection mixedMaterial = roomProjection({
+      floorMesh("floor_1", 0.0F, -0.05F, 0.0F),
+      floorMesh("floor_2", 1.0F, -0.05F, 0.0F, "painted_floor"),
+  });
+  const iggy3d::vulkan::RoomMeshCpuGeometry sameGeometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(sameMaterial);
+  const iggy3d::vulkan::RoomMeshCpuGeometry mixedGeometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(mixedMaterial);
+  return expect(sameGeometry.ready, "same material geometry ready") &&
+         expect(mixedGeometry.ready, "mixed material geometry ready") &&
+         expect(sameGeometry.roomFloorDrawCount == 1U,
+                "same material floors merge") &&
+         expect(mixedGeometry.roomFloorDrawCount == 2U,
+                "mismatched material floors do not merge") &&
+         expect(sameGeometry.sourceRoomGeometrySignature !=
+                    mixedGeometry.sourceRoomGeometrySignature,
+                "material changes geometry signature");
+}
+
+bool mismatchedFloorYOrSizeDoesNotMerge() {
+  const iggy3d::SceneRoomProjection yMismatch = roomProjection({
+      floorMesh("floor_1", 0.0F, -0.05F, 0.0F),
+      floorMesh("floor_2", 1.0F, 0.00F, 0.0F),
+  });
+  const iggy3d::SceneRoomProjection sizeMismatch = roomProjection({
+      floorMesh("floor_1", 0.0F, -0.05F, 0.0F),
+      floorMesh("floor_2", 1.0F, -0.05F, 0.0F, "debug_floor",
+                {2.0F, 0.10F, 1.0F}),
+  });
+  const iggy3d::vulkan::RoomMeshCpuGeometry yGeometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(yMismatch);
+  const iggy3d::vulkan::RoomMeshCpuGeometry sizeGeometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(sizeMismatch);
+  return expect(yGeometry.ready, "floor y mismatch geometry ready") &&
+         expect(sizeGeometry.ready, "floor size mismatch geometry ready") &&
+         expect(yGeometry.roomFloorDrawCount == 2U,
+                "floor y mismatch does not merge") &&
+         expect(sizeGeometry.roomFloorDrawCount == 2U,
+                "floor size mismatch does not merge");
+}
+
+bool wallsRemainUnmerged() {
+  const iggy3d::SceneRoomProjection room = roomProjection({
+      wallMesh("wall_1", 0.5F, 1.25F, 0.0F),
+      wallMesh("wall_2", 1.5F, 1.25F, 0.0F),
+      wallMesh("wall_3", 2.5F, 1.25F, 0.0F),
+  });
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room);
+  return expect(geometry.ready, "wall run geometry ready") &&
+         expect(geometry.sourceRoomStaticMeshCount == 3U,
+                "wall run source mesh count") &&
+         expect(geometry.roomWallDrawCount == 3U,
+                "walls remain unmerged") &&
+         expect(geometry.roomGridLineDrawCount == 24U,
+                "wall grid remains per source wall");
 }
 
 bool roomGeometrySignatureTracksAsciiRoomShape() {
@@ -223,6 +416,11 @@ bool emptyProjectionDoesNotBuildRoomGeometry() {
 int main() {
   bool ok = true;
   ok = asciiFloorsAndWallsBuildVulkanRoomGeometry() && ok;
+  ok = compatibleFloorBlockMergesButPreservesSourceGrid() && ok;
+  ok = nonAdjacentFloorsDoNotMerge() && ok;
+  ok = mismatchedFloorMaterialDoesNotMergeAndAffectsSignature() && ok;
+  ok = mismatchedFloorYOrSizeDoesNotMerge() && ok;
+  ok = wallsRemainUnmerged() && ok;
   ok = roomGeometrySignatureTracksAsciiRoomShape() && ok;
   ok = emptyProjectionDoesNotBuildRoomGeometry() && ok;
   return ok ? 0 : 1;
