@@ -25,3 +25,4 @@ BG-1023	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	system pause menu a
 BG-1024	src/app/iggy3d/product/ProductMenuInputRouter.cpp	opening menu input router extraction from AppShell	codex	2026-06-26
 BG-1025	src/app/iggy3d/ProductGameplayProjectionRefresh.cpp	gameplay projection refresh extraction from AppShell	codex	2026-06-26
 BG-1026	src/app/iggy3d/AppShell.cpp	package override new-world draft selection repair	codex	2026-06-26
+BG-1027	src/app/iggy3d/ProductGameplayProjectionRefresh.cpp	live gameplay projection frame assembly extraction from AppShell	codex	2026-06-26

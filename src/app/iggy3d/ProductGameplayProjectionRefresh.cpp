@@ -1,9 +1,9 @@
 #include "app/iggy3d/ProductGameplayProjectionRefresh.hpp"
 
+#include <cmath>
 #include <cstdint>
 #include <string>
 
-#include "app/iggy3d/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductGameplayTapeRunner.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
 #include "runtime/ai/NpcBehaviorDebugSnapshot.hpp"
@@ -81,7 +81,81 @@ void applyProductVulkanRoomMeshProof(ProductViewportState& viewport,
       geometry.sourceRoomGeometrySignature;
 }
 
+Vec3 crossProduct(Vec3 lhs, Vec3 rhs) {
+  return {lhs.y * rhs.z - lhs.z * rhs.y,
+          lhs.z * rhs.x - lhs.x * rhs.z,
+          lhs.x * rhs.y - lhs.y * rhs.x};
+}
+
+Vec3 normalizedOr(Vec3 value, Vec3 fallback) {
+  const float len2 = lengthSquared(value);
+  // branch-gate: BG-1027
+  if (!std::isfinite(len2) || len2 <= 0.000001F) {
+    return fallback;
+  }
+  return value / std::sqrt(len2);
+}
+
+Mat4 productPerspectiveMat4(float verticalFovRadians,
+                            float aspect,
+                            float nearPlane,
+                            float farPlane) {
+  const float f = 1.0F / std::tan(verticalFovRadians * 0.5F);
+  Mat4 result{{{}}};
+  result.m[0] = f / aspect;
+  result.m[5] = -f;
+  result.m[10] = farPlane / (nearPlane - farPlane);
+  result.m[11] = -(farPlane * nearPlane) / (farPlane - nearPlane);
+  result.m[14] = -1.0F;
+  return result;
+}
+
+Mat4 productViewFromCamera(Vec3 eye, Vec3 forward, Vec3 up) {
+  const Vec3 f = normalizedOr(forward, {0.0F, 0.0F, -1.0F});
+  const Vec3 r = normalizedOr(crossProduct(f, up), {1.0F, 0.0F, 0.0F});
+  const Vec3 u = crossProduct(r, f);
+  Mat4 result = identityMat4();
+  result.m[0] = r.x;
+  result.m[1] = r.y;
+  result.m[2] = r.z;
+  result.m[3] = -dot(r, eye);
+  result.m[4] = u.x;
+  result.m[5] = u.y;
+  result.m[6] = u.z;
+  result.m[7] = -dot(u, eye);
+  result.m[8] = -f.x;
+  result.m[9] = -f.y;
+  result.m[10] = -f.z;
+  result.m[11] = dot(f, eye);
+  return result;
+}
+
 }  // namespace
+
+const SceneProjectionResult* ProductGameplayProjectionFrame::scenePtr() const {
+  // branch-gate: BG-1027
+  return hasGameplayProjection ? &scene : nullptr;
+}
+
+const DebugProjectionResult* ProductGameplayProjectionFrame::debugPtr() const {
+  // branch-gate: BG-1027
+  return hasGameplayProjection ? &debug : nullptr;
+}
+
+const ProductPrimitiveDrawList* ProductGameplayProjectionFrame::drawListPtr() const {
+  // branch-gate: BG-1027
+  return hasGameplayProjection ? &drawList : nullptr;
+}
+
+const ProductViewportFrame* ProductGameplayProjectionFrame::viewportFramePtr() const {
+  // branch-gate: BG-1027
+  return hasGameplayProjection ? &viewportFrame : nullptr;
+}
+
+const ProductRenderBridgeFrame* ProductGameplayProjectionFrame::renderBridgePtr() const {
+  // branch-gate: BG-1027
+  return hasGameplayProjection ? &renderBridge : nullptr;
+}
 
 DebugProjectionResult buildProductDebugProjectionWithNpcBehavior(
     const SessionState& state) {
@@ -235,55 +309,127 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
   }
 }
 
+ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
+    const ProductGameplayProjectionFrameRequest& request) {
+  ProductAppWindowState& window = request.window;
+  ProductGameplayProjectionFrame frame;
+  frame.feedback = buildProductGameplayFeedback(window);
+  frame.movementHud = buildProductMovementDebugHud(window,
+                                                   request.developerToolsEnabled,
+                                                   request.debugOverlayEnabled);
+  frame.npcBehaviorHud =
+      buildProductNpcBehaviorDebugHud(nullptr, window.gameplayActive,
+                                      request.developerToolsEnabled,
+                                      request.debugOverlayEnabled);
+  copyNpcBehaviorDebugHud(window, frame.npcBehaviorHud);
+  frame.roomEditorOverlay =
+      buildProductRoomEditorOverlay(window.roomEditorCursor, false);
+  copyProductRoomEditorOverlay(window, frame.roomEditorOverlay);
+
+  // branch-gate: BG-1027
+  if (!window.gameplayActive || !request.activeSession.has_value()) {
+    return frame;
+  }
+
+  // branch-gate: BG-1027
+  const RoomAsset* activeRoom =
+      window.activeRoom.loaded ? &window.activeRoom.room : nullptr;
+  frame.scene = buildSceneProjection(request.activeSession->state(), activeRoom);
+  frame.debug =
+      buildProductDebugProjectionWithNpcBehavior(request.activeSession->state());
+  frame.roomEditorOverlay =
+      buildProductRoomEditorOverlay(window.roomEditorCursor, window.roomEditing.ready);
+  copyProductRoomEditorOverlay(window, frame.roomEditorOverlay);
+  frame.drawList = buildProductPrimitiveDrawList(&frame.scene, &frame.debug,
+                                                 activeRoom,
+                                                 &window.activeRoomCollision,
+                                                 &frame.roomEditorOverlay);
+  frame.viewportFrame = buildProductViewportFrame(
+      frame.drawList, ProductViewportFrameConfig{window.viewport.cameraYawDegrees,
+                                                window.viewport.cameraPitchDegrees});
+  frame.hasGameplayProjection = true;
+  frame.viewVisible = true;
+  frame.sceneItemCount = frame.scene.items.size();
+  window.runtimeStateHash = request.activeSession->stateHash();
+  frame.feedback = buildProductGameplayFeedback(window);
+  frame.movementHud = buildProductMovementDebugHud(window,
+                                                   request.developerToolsEnabled,
+                                                   request.debugOverlayEnabled);
+  frame.npcBehaviorHud = buildProductNpcBehaviorDebugHud(&frame.debug,
+                                                         window.gameplayActive,
+                                                         request.developerToolsEnabled,
+                                                         request.debugOverlayEnabled);
+  copyNpcBehaviorDebugHud(window, frame.npcBehaviorHud);
+  frame.renderBridge =
+      buildProductRenderBridgeFrame(&frame.drawList, &frame.viewportFrame,
+                                    &frame.feedback);
+  return frame;
+}
+
+FrameInput makeProductVulkanFrame(const SceneProjectionResult& scene,
+                                  const DebugProjectionResult& debug,
+                                  std::uint64_t frameIndex,
+                                  std::uint32_t viewportWidth,
+                                  std::uint32_t viewportHeight,
+                                  float cameraYawDegrees,
+                                  float cameraPitchDegrees) {
+  constexpr float kPi = 3.14159265358979323846F;
+  constexpr float kEyeHeightMeters = 1.7F;
+  FrameInput frame;
+  frame.viewport = {viewportWidth, viewportHeight,
+                    static_cast<float>(viewportWidth) / static_cast<float>(viewportHeight)};
+  frame.clock = {scene.sourceTick, frameIndex, 0.0F, 1.0F / 60.0F};
+  frame.camera.mode = RenderCameraMode::FirstPerson;
+  Vec3 eye{0.0F, kEyeHeightMeters, 0.0F};
+  // branch-gate: BG-1027
+  for (const SceneItem& item : scene.items) {
+    // branch-gate: BG-1027
+    if (item.kind == SceneItemKind::Player || item.stableName == "player") {
+      eye = item.transform.position + Vec3{0.0F, kEyeHeightMeters, 0.0F};
+      break;
+    }
+  }
+  const float yaw = cameraYawDegrees * kPi / 180.0F;
+  const float pitch = cameraPitchDegrees * kPi / 180.0F;
+  const float cosPitch = std::cos(pitch);
+  frame.camera.worldEye = eye;
+  frame.camera.worldForward = {std::sin(yaw) * cosPitch, std::sin(pitch),
+                               -std::cos(yaw) * cosPitch};
+  frame.camera.worldUp = {0.0F, 1.0F, 0.0F};
+  frame.camera.nearPlane = 0.1F;
+  frame.camera.farPlane = 200.0F;
+  frame.camera.viewFromWorld =
+      productViewFromCamera(frame.camera.worldEye, frame.camera.worldForward,
+                            frame.camera.worldUp);
+  frame.camera.clipFromView =
+      productPerspectiveMat4(68.0F * kPi / 180.0F, frame.viewport.aspectRatio,
+                             frame.camera.nearPlane, frame.camera.farPlane);
+  frame.camera.clipFromWorld = frame.camera.clipFromView * frame.camera.viewFromWorld;
+  frame.projections.scene = &scene;
+  frame.projections.debug = &debug;
+  return frame;
+}
+
 void refreshProductGameplayProjectionMetrics(
     const ProductGameplayProjectionRefreshRequest& request) {
   ProductAppWindowState& window = request.window;
+  const ProductGameplayProjectionFrame frame = buildProductGameplayProjectionFrame(
+      ProductGameplayProjectionFrameRequest{request.activeSession, window,
+                                            request.developerToolsEnabled,
+                                            request.debugOverlayEnabled});
   // branch-gate: BG-1025
-  if (!window.gameplayActive || !request.activeSession.has_value()) {
+  if (!frame.hasGameplayProjection) {
     window.sessionOutcome = "None";
-    copyProductRoomEditorOverlay(
-        window, buildProductRoomEditorOverlay(window.roomEditorCursor, false));
-    copyNpcBehaviorDebugHud(window,
-                            buildProductNpcBehaviorDebugHud(nullptr,
-                                                            window.gameplayActive,
-                                                            request.developerToolsEnabled,
-                                                            request.debugOverlayEnabled));
     applyGameplayProjectionMetrics(window, nullptr, nullptr, nullptr, nullptr, nullptr,
                                    false);
     return;
   }
 
-  // branch-gate: BG-1025
-  const RoomAsset* activeRoom =
-      window.activeRoom.loaded ? &window.activeRoom.room : nullptr;
-  const SceneProjectionResult scene =
-      buildSceneProjection(request.activeSession->state(), activeRoom);
-  const DebugProjectionResult debug =
-      buildProductDebugProjectionWithNpcBehavior(request.activeSession->state());
-  copyNpcBehaviorDebugHud(window,
-                          buildProductNpcBehaviorDebugHud(&debug,
-                                                          window.gameplayActive,
-                                                          request.developerToolsEnabled,
-                                                          request.debugOverlayEnabled));
-  const ProductRoomEditorOverlay roomEditorOverlay =
-      buildProductRoomEditorOverlay(window.roomEditorCursor,
-                                    window.roomEditing.ready);
-  copyProductRoomEditorOverlay(window, roomEditorOverlay);
-  const ProductPrimitiveDrawList drawList =
-      buildProductPrimitiveDrawList(&scene, &debug, activeRoom,
-                                    &window.activeRoomCollision,
-                                    &roomEditorOverlay);
-  const ProductViewportFrame frame = buildProductViewportFrame(
-      drawList, ProductViewportFrameConfig{window.viewport.cameraYawDegrees,
-                                           window.viewport.cameraPitchDegrees});
-  const ProductGameplayFeedback feedback = buildProductGameplayFeedback(window);
-  const ProductRenderBridgeFrame bridge =
-      buildProductRenderBridgeFrame(&drawList, &frame, &feedback);
-  window.runtimeStateHash = request.activeSession->stateHash();
   window.sessionOutcome = std::string(productGameplayTapeSessionOutcomeName(
       request.activeSession->state().outcome));
-  applyGameplayProjectionMetrics(window, &scene, &debug, &drawList, &frame, &bridge,
-                                 true);
+  applyGameplayProjectionMetrics(window, frame.scenePtr(), frame.debugPtr(),
+                                 frame.drawListPtr(), frame.viewportFramePtr(),
+                                 frame.renderBridgePtr(), frame.viewVisible);
 }
 
 }  // namespace iggy3d

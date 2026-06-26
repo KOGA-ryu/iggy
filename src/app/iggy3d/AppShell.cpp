@@ -1,6 +1,5 @@
 #include "app/iggy3d/AppShell.hpp"
 
-#include <cmath>
 #include <iostream>
 #include <optional>
 #include <string>
@@ -21,19 +20,12 @@
 #include "app/iggy3d/product/ProductMenuInputRouter.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
-#include "app/iggy3d/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductGameplayProjectionRefresh.hpp"
 #include "app/iggy3d/ProductGameplayTape.hpp"
 #include "app/iggy3d/ProductGameplayTapeRunner.hpp"
 #include "app/iggy3d/ProductMenuTransitions.hpp"
-#include "app/iggy3d/ProductMovementDebugHud.hpp"
-#include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
-#include "app/iggy3d/ProductPrimitiveDrawList.hpp"
-#include "app/iggy3d/ProductRenderBridge.hpp"
 #include "app/iggy3d/ProductRoomEditorActionController.hpp"
-#include "app/iggy3d/ProductRoomEditorOverlay.hpp"
 #include "app/iggy3d/ProductScriptedGameplayDriver.hpp"
-#include "app/iggy3d/ProductViewportFraming.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
 #include "app/input/ActionState.hpp"
@@ -41,8 +33,6 @@
 #include "app/input/GamepadInput.hpp"
 #include "app/input/KeyboardInput.hpp"
 #include "app/input/MouseInput.hpp"
-#include "projection/debug/DebugProjection.hpp"
-#include "projection/scene/SceneProjection.hpp"
 #include "render/FrameInput.hpp"
 #include "render/RenderDiagnostics.hpp"
 #include "render/RendererApi.hpp"
@@ -170,96 +160,6 @@ void recordProductVulkanSubmit(ProductAppWindowState& window,
   } else {
     window.productVulkanStatus = "frame_not_submitted";
   }
-}
-
-Vec3 crossProduct(Vec3 lhs, Vec3 rhs) {
-  return {lhs.y * rhs.z - lhs.z * rhs.y,
-          lhs.z * rhs.x - lhs.x * rhs.z,
-          lhs.x * rhs.y - lhs.y * rhs.x};
-}
-
-Vec3 normalizedOr(Vec3 value, Vec3 fallback) {
-  const float len2 = lengthSquared(value);
-  if (!std::isfinite(len2) || len2 <= 0.000001F) {
-    return fallback;
-  }
-  return value / std::sqrt(len2);
-}
-
-Mat4 productPerspectiveMat4(float verticalFovRadians,
-                            float aspect,
-                            float nearPlane,
-                            float farPlane) {
-  const float f = 1.0F / std::tan(verticalFovRadians * 0.5F);
-  Mat4 result{{{}}};
-  result.m[0] = f / aspect;
-  result.m[5] = -f;
-  result.m[10] = farPlane / (nearPlane - farPlane);
-  result.m[11] = -(farPlane * nearPlane) / (farPlane - nearPlane);
-  result.m[14] = -1.0F;
-  return result;
-}
-
-Mat4 productViewFromCamera(Vec3 eye, Vec3 forward, Vec3 up) {
-  const Vec3 f = normalizedOr(forward, {0.0F, 0.0F, -1.0F});
-  const Vec3 r = normalizedOr(crossProduct(f, up), {1.0F, 0.0F, 0.0F});
-  const Vec3 u = crossProduct(r, f);
-  Mat4 result = identityMat4();
-  result.m[0] = r.x;
-  result.m[1] = r.y;
-  result.m[2] = r.z;
-  result.m[3] = -dot(r, eye);
-  result.m[4] = u.x;
-  result.m[5] = u.y;
-  result.m[6] = u.z;
-  result.m[7] = -dot(u, eye);
-  result.m[8] = -f.x;
-  result.m[9] = -f.y;
-  result.m[10] = -f.z;
-  result.m[11] = dot(f, eye);
-  return result;
-}
-
-FrameInput makeProductVulkanFrame(const SceneProjectionResult& scene,
-                                  const DebugProjectionResult& debug,
-                                  std::uint64_t frameIndex,
-                                  std::uint32_t viewportWidth,
-                                  std::uint32_t viewportHeight,
-                                  float cameraYawDegrees,
-                                  float cameraPitchDegrees) {
-  constexpr float kPi = 3.14159265358979323846F;
-  constexpr float kEyeHeightMeters = 1.7F;
-  FrameInput frame;
-  frame.viewport = {viewportWidth, viewportHeight,
-                    static_cast<float>(viewportWidth) / static_cast<float>(viewportHeight)};
-  frame.clock = {scene.sourceTick, frameIndex, 0.0F, 1.0F / 60.0F};
-  frame.camera.mode = RenderCameraMode::FirstPerson;
-  Vec3 eye{0.0F, kEyeHeightMeters, 0.0F};
-  for (const SceneItem& item : scene.items) {
-    if (item.kind == SceneItemKind::Player || item.stableName == "player") {
-      eye = item.transform.position + Vec3{0.0F, kEyeHeightMeters, 0.0F};
-      break;
-    }
-  }
-  const float yaw = cameraYawDegrees * kPi / 180.0F;
-  const float pitch = cameraPitchDegrees * kPi / 180.0F;
-  const float cosPitch = std::cos(pitch);
-  frame.camera.worldEye = eye;
-  frame.camera.worldForward = {std::sin(yaw) * cosPitch, std::sin(pitch),
-                               -std::cos(yaw) * cosPitch};
-  frame.camera.worldUp = {0.0F, 1.0F, 0.0F};
-  frame.camera.nearPlane = 0.1F;
-  frame.camera.farPlane = 200.0F;
-  frame.camera.viewFromWorld =
-      productViewFromCamera(frame.camera.worldEye, frame.camera.worldForward,
-                            frame.camera.worldUp);
-  frame.camera.clipFromView =
-      productPerspectiveMat4(68.0F * kPi / 180.0F, frame.viewport.aspectRatio,
-                             frame.camera.nearPlane, frame.camera.farPlane);
-  frame.camera.clipFromWorld = frame.camera.clipFromView * frame.camera.viewFromWorld;
-  frame.projections.scene = &scene;
-  frame.projections.debug = &debug;
-  return frame;
 }
 
 RendererConfig makeProductVulkanRendererConfig() {
@@ -631,69 +531,28 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
       }
     }
 
-    SceneProjectionResult scene;
-    DebugProjectionResult debug;
-    ProductPrimitiveDrawList drawList;
-    ProductViewportFrame frame;
-    std::size_t sceneItemCount = 0;
-    const SceneProjectionResult* scenePtr = nullptr;
-    const DebugProjectionResult* debugPtr = nullptr;
-    const ProductPrimitiveDrawList* drawListPtr = nullptr;
-    const ProductViewportFrame* framePtr = nullptr;
-    const ProductRenderBridgeFrame* bridgePtr = nullptr;
-    ProductGameplayFeedback feedback = buildProductGameplayFeedback(window);
-    ProductMovementDebugHud movementHud = buildProductMovementDebugHud(
-        window, settings.devToolsEnabled, settings.debugOverlayEnabled);
-    ProductNpcBehaviorDebugHud npcBehaviorHud = buildProductNpcBehaviorDebugHud(
-        nullptr, window.gameplayActive, settings.devToolsEnabled,
-        settings.debugOverlayEnabled);
-    copyNpcBehaviorDebugHud(window, npcBehaviorHud);
-    ProductRoomEditorOverlay roomEditorOverlay =
-        buildProductRoomEditorOverlay(window.roomEditorCursor, false);
-    copyProductRoomEditorOverlay(window, roomEditorOverlay);
-    ProductRenderBridgeFrame bridge;
-    if (window.gameplayActive && activeSession.has_value()) {
-      const RoomAsset* activeRoom =
-          window.activeRoom.loaded ? &window.activeRoom.room : nullptr;
-      scene = buildSceneProjection(activeSession->state(), activeRoom);
-      debug = buildProductDebugProjectionWithNpcBehavior(activeSession->state());
-      roomEditorOverlay = buildProductRoomEditorOverlay(window.roomEditorCursor,
-                                                        window.roomEditing.ready);
-      copyProductRoomEditorOverlay(window, roomEditorOverlay);
-      drawList = buildProductPrimitiveDrawList(&scene, &debug, activeRoom,
-                                               &window.activeRoomCollision,
-                                               &roomEditorOverlay);
-      frame = buildProductViewportFrame(
-          drawList, ProductViewportFrameConfig{window.viewport.cameraYawDegrees,
-                                               window.viewport.cameraPitchDegrees});
-      scenePtr = &scene;
-      debugPtr = &debug;
-      drawListPtr = &drawList;
-      framePtr = &frame;
-      sceneItemCount = scene.items.size();
-      window.runtimeStateHash = activeSession->stateHash();
-      feedback = buildProductGameplayFeedback(window);
-      movementHud = buildProductMovementDebugHud(window, settings.devToolsEnabled,
-                                                 settings.debugOverlayEnabled);
-      npcBehaviorHud = buildProductNpcBehaviorDebugHud(&debug,
-                                                       window.gameplayActive,
-                                                       settings.devToolsEnabled,
-                                                       settings.debugOverlayEnabled);
-      copyNpcBehaviorDebugHud(window, npcBehaviorHud);
-      bridge = buildProductRenderBridgeFrame(&drawList, &frame, &feedback);
-      bridgePtr = &bridge;
-    }
+    const ProductGameplayProjectionFrame projectionFrame =
+        buildProductGameplayProjectionFrame(ProductGameplayProjectionFrameRequest{
+            activeSession, window, settings.devToolsEnabled,
+            settings.debugOverlayEnabled});
 
     if (window.drawable) {
-      applyGameplayProjectionMetrics(window, scenePtr, debugPtr, drawListPtr, framePtr,
-                                     bridgePtr,
-                                     window.gameplayActive && scenePtr != nullptr);
+      applyGameplayProjectionMetrics(window,
+                                     projectionFrame.scenePtr(),
+                                     projectionFrame.debugPtr(),
+                                     projectionFrame.drawListPtr(),
+                                     projectionFrame.viewportFramePtr(),
+                                     projectionFrame.renderBridgePtr(),
+                                     projectionFrame.viewVisible);
       if (useVulkanRenderer) {
-        if (scenePtr != nullptr && debugPtr != nullptr && scenePtr->room.loaded) {
+        if (projectionFrame.scenePtr() != nullptr &&
+            projectionFrame.debugPtr() != nullptr &&
+            projectionFrame.scene.room.loaded) {
           const SdlDrawableExtent drawableExtent = sdlWindow.drawableExtent();
           if (drawableExtent.width > 0U && drawableExtent.height > 0U) {
             const FrameInput renderFrame = makeProductVulkanFrame(
-                *scenePtr, *debugPtr, window.framesPresented + 1U, drawableExtent.width,
+                projectionFrame.scene, projectionFrame.debug,
+                window.framesPresented + 1U, drawableExtent.width,
                 drawableExtent.height, window.viewport.cameraYawDegrees,
                 window.viewport.cameraPitchDegrees);
             const RenderSubmitResult submit = vulkanRenderer.submitFrame(renderFrame);
@@ -714,9 +573,13 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
                                 window.worldSetupDungeonDraftModified,
                                 window.worldSetupDungeonDraftCursorRow,
                                 window.worldSetupDungeonDraftCursorColumn,
-                                window.gameplayActive, window.runtimeStateHash, framePtr,
-                                &feedback, &movementHud, &npcBehaviorHud,
-                                sceneItemCount, debugPtr,
+                                window.gameplayActive, window.runtimeStateHash,
+                                projectionFrame.viewportFramePtr(),
+                                &projectionFrame.feedback,
+                                &projectionFrame.movementHud,
+                                &projectionFrame.npcBehaviorHud,
+                                projectionFrame.sceneItemCount,
+                                projectionFrame.debugPtr(),
                                 window.viewport.cameraYawDegrees,
                                 window.viewport.cameraPitchDegrees, saves);
         window.viewport.cameraHeadingVisible =
@@ -726,8 +589,13 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
         window.menuRowCount = view.rowCount;
       }
     } else {
-      applyGameplayProjectionMetrics(window, scenePtr, debugPtr, drawListPtr, framePtr,
-                                     bridgePtr, false);
+      applyGameplayProjectionMetrics(window,
+                                     projectionFrame.scenePtr(),
+                                     projectionFrame.debugPtr(),
+                                     projectionFrame.drawListPtr(),
+                                     projectionFrame.viewportFramePtr(),
+                                     projectionFrame.renderBridgePtr(),
+                                     false);
     }
     ++window.framesPresented;
 
