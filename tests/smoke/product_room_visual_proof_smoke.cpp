@@ -189,6 +189,11 @@ int main() {
                               "pause_save_and_exit") &&
       iggy3d::smoke::hasField(fields, "product_save_save_id", "save_001") &&
       iggy3d::smoke::hasField(fields, "active_product_save_id", "save_001") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_visible", "false") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_tool", "wall") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_last_operation",
+                              "editor.place") &&
+      iggy3d::smoke::hasField(fields, "room_editor_overlay_visible", "false") &&
       iggy3d::smoke::hasField(fields, "room_editor_last_operation",
                               "editor.place") &&
       std::filesystem::exists(saveFile);
@@ -236,6 +241,8 @@ int main() {
                               "58") &&
       iggy3d::smoke::hasField(fields, "active_room_authored_wall_count",
                               "62") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_visible", "false") &&
+      iggy3d::smoke::hasField(fields, "room_editor_overlay_visible", "false") &&
       iggy3d::smoke::hasField(fields, "product_vulkan_room_mesh_cpu_ready",
                               "true") &&
       iggy3d::smoke::hasField(fields, "product_vulkan_room_mesh_source",
