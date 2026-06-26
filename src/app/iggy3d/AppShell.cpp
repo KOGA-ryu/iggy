@@ -1,6 +1,5 @@
 #include "app/iggy3d/AppShell.hpp"
 
-#include <algorithm>
 #include <array>
 #include <cmath>
 #include <iostream>
@@ -8,7 +7,6 @@
 #include <string>
 #include <string_view>
 #include <utility>
-#include <vector>
 
 #include "app/PackageRuntimeLookup.hpp"
 #include "app/frontend/FrontendState.hpp"
@@ -20,6 +18,7 @@
 #include "app/iggy3d/ProductAsciiRoomActivation.hpp"
 #include "app/iggy3d/ProductAsciiRoomPreview.hpp"
 #include "app/iggy3d/product/Automation.hpp"
+#include "app/iggy3d/product/AutomationControl.hpp"
 #include "app/iggy3d/product/AutomationGameplay.hpp"
 #include "app/iggy3d/product/AutomationRoomEditing.hpp"
 #include "app/iggy3d/product/AutomationSaveBrowser.hpp"
@@ -1097,11 +1096,6 @@ void routeOpeningMenuInput(FrontendState& frontend,
   }
 }
 
-bool automationFailurePreservesLoaded(std::string_view status) {
-  return status == "applied" || status == "loaded" ||
-         status == "command_failed";
-}
-
 bool routeAutomationInput(FrontendState& frontend,
                           const ProductSaveBridgeResult& saves,
                           const ProductAppOptions& options,
@@ -1285,48 +1279,6 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
 
   window.automationControlStatus = "unknown_key";
   return false;
-}
-
-void applyProductAutomationControl(const ProductAppOptions& options,
-                                   FrontendState& frontend,
-                                   const ProductSaveBridgeResult& saves,
-                                   FrontendSettingsTab& settingsTab,
-                                   std::optional<Session>& activeSession,
-                                   WorldSetupDraft& worldSetupDraft,
-                                   ProductAppWindowState& window,
-                                   bool& closeRequested) {
-  std::vector<ProductAutomationCommand> commands;
-  if (!readProductAutomationCommands(options.automationControlPath, window, commands)) {
-    return;
-  }
-  for (const ProductAutomationCommand& command : commands) {
-    if (!applyProductAutomationCommand(command, frontend, saves, options, settingsTab,
-                                       activeSession, worldSetupDraft, window,
-                                       closeRequested)) {
-      if (window.automationControlLastKey == "none") {
-        window.automationControlLastKey = command.key;
-      }
-      if (window.automationControlLastAction == "none") {
-        window.automationControlLastAction = command.value.empty() ? "none" : command.value;
-      }
-      window.automationControlLastOwner = productInputOwnerFor(frontend, window);
-      window.automationControlLastResult = "failed";
-      if (automationFailurePreservesLoaded(window.automationControlStatus)) {
-        window.automationControlStatus = "command_failed";
-      } else {
-        window.automationControlLoaded = false;
-      }
-      return;
-    }
-  }
-  if (window.automationControlStatus == "loaded" && commands.empty()) {
-    window.automationControlLastResult = "none";
-  }
-  window.selectedSettingsTab = settingsTab;
-  window.inputOwner = productInputOwnerFor(frontend, window);
-  window.gameplayInputSuppressed =
-      frontendBlocksGameplayInput(frontend) ||
-      menuOwnerBlocksGameplay(window.inputOwner);
 }
 
 ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
@@ -1721,9 +1673,22 @@ int runProductApp(int argc, char** argv) {
 
   FrontendSettingsTab automationSettingsTab = FrontendSettingsTab::None;
   bool automationCloseRequested = false;
-  applyProductAutomationControl(options, frontend, saves, automationSettingsTab,
-                                activeSession, worldSetupDraft, window,
-                                automationCloseRequested);
+  ProductAutomationControlContext automationControlContext{
+      options.automationControlPath, window, automationSettingsTab,
+      [&frontend, &saves, &options, &automationSettingsTab, &activeSession,
+       &worldSetupDraft, &window, &automationCloseRequested](
+          const ProductAutomationCommand& command) {
+        return applyProductAutomationCommand(command, frontend, saves, options,
+                                             automationSettingsTab, activeSession,
+                                             worldSetupDraft, window,
+                                             automationCloseRequested);
+      },
+      [&frontend, &window]() { return productInputOwnerFor(frontend, window); },
+      [&frontend](MenuOwner owner) {
+        return frontendBlocksGameplayInput(frontend) || menuOwnerBlocksGameplay(owner);
+      },
+  };
+  applyProductAutomationControl(automationControlContext);
   if (!automationCloseRequested) {
     runProductGameplayTapeFromOptions(options, activeSession, window);
   }
