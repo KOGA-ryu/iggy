@@ -56,6 +56,17 @@ struct ProductNewWorldMenuActionContext {
   ProductAppWindowState& window;
 };
 
+struct ProductStarterMenuActionContext {
+  FrontendState& frontend;
+  const ProductAppOptions& options;
+  const ProductSaveBridgeResult& saves;
+  FrontendSettingsTab& settingsTab;
+  std::optional<Session>& activeSession;
+  WorldSetupDraft& worldSetupDraft;
+  ProductAppWindowState& window;
+  bool& closeRequested;
+};
+
 struct ProductMenuActionResult {
   bool handled = false;
   bool accepted = false;
@@ -88,5 +99,9 @@ ProductMenuActionResult applyProductLoadSaveMenuAction(
 ProductMenuActionResult applyProductNewWorldMenuAction(
     InputAction action,
     ProductNewWorldMenuActionContext context);
+
+ProductMenuActionResult applyProductStarterMenuAction(
+    InputAction action,
+    ProductStarterMenuActionContext context);
 
 }  // namespace iggy3d

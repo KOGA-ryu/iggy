@@ -20,3 +20,4 @@ BG-1018	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	dev tools menu acti
 BG-1019	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	settings menu action handler extraction from AppShell	codex	2026-06-26
 BG-1020	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	save browser menu action handler extraction from AppShell	codex	2026-06-26
 BG-1021	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	new world menu action handler extraction from AppShell	codex	2026-06-26
+BG-1022	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	starter menu action handler extraction from AppShell	codex	2026-06-26

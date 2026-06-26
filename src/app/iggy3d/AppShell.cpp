@@ -1,6 +1,5 @@
 #include "app/iggy3d/AppShell.hpp"
 
-#include <array>
 #include <cmath>
 #include <iostream>
 #include <optional>
@@ -632,32 +631,6 @@ void refreshGameplayProjectionMetrics(const std::optional<Session>& activeSessio
                                  true);
 }
 
-FrontendAction nextStarterSelection(FrontendAction current, InputAction action) {
-  const std::array<FrontendAction, 6> actions = {
-      FrontendAction::Continue,
-      FrontendAction::NewWorld,
-      FrontendAction::LoadSave,
-      FrontendAction::Settings,
-      FrontendAction::DevTools,
-      FrontendAction::Exit,
-  };
-
-  std::size_t index = 0;
-  for (std::size_t i = 0; i < actions.size(); ++i) {
-    if (actions[i] == current) {
-      index = i;
-      break;
-    }
-  }
-
-  if (action == InputAction::MenuUp) {
-    index = index == 0 ? actions.size() - 1 : index - 1;
-  } else if (action == InputAction::MenuDown) {
-    index = (index + 1) % actions.size();
-  }
-  return actions[index];
-}
-
 MenuOwner productInputOwnerFor(const FrontendState& frontend,
                                const ProductAppWindowState& window) {
   if (frontend.screen == FrontendScreen::Settings ||
@@ -733,62 +706,10 @@ void applyOpeningMenuAction(FrontendState& frontend,
   if (frontend.childScreen == FrontendScreen::LoadSave)
     return (void)applyProductLoadSaveMenuAction(action, {frontend, options, saves, activeSession, window});
 
-  if (action == InputAction::MenuUp || action == InputAction::MenuDown) {
-    frontend.selectedAction = nextStarterSelection(frontend.selectedAction, action);
-    frontend.status = "opening_menu_selection_changed";
-    return;
-  }
-  if (action == InputAction::MenuBack) {
-    frontend.status = "opening_menu_back_requested";
-    closeRequested = true;
-    return;
-  }
-  if (action != InputAction::MenuConfirm) {
-    return;
-  }
-
-  if (frontend.selectedAction == FrontendAction::Continue) {
-    if (saves.slots.compatibleCount == 0) {
-      frontend.status = "opening_menu_action_disabled";
-      return;
-    }
-    launchProductContinueSave(options, productWorldTemplateFromOptions(options), saves,
-                              frontend, activeSession, window);
-    return;
-  }
-  if (frontend.selectedAction == FrontendAction::Exit) {
-    frontend.status = "opening_menu_exit_requested";
-    closeRequested = true;
-    return;
-  }
-  if (frontend.selectedAction == FrontendAction::NewWorld) {
-    frontend.childScreen = FrontendScreen::NewWorld;
-    frontend.selectedAction = FrontendAction::CreateAndEnter;
-    frontend.status = "opening_menu_new_world_selected";
-    recordWorldSetupDraftState(worldSetupDraft, window);
-    window.worldSetupStatus = "world_setup_open";
-    return;
-  }
-  if (frontend.selectedAction == FrontendAction::LoadSave) {
-    frontend.childScreen = FrontendScreen::LoadSave;
-    initializeSelectedProductSaveSlot(saves.slots, window);
-    frontend.status = "opening_menu_load_save_selected";
-    return;
-  }
-  if (frontend.selectedAction == FrontendAction::Settings) {
-    frontend.childScreen = FrontendScreen::Settings;
-    settingsTab = FrontendSettingsTab::Input;
-    frontend.status = "opening_menu_settings_selected";
-    return;
-  }
-  if (frontend.selectedAction == FrontendAction::DevTools) {
-    frontend.childScreen = FrontendScreen::StarterDevTools;
-    frontend.devToolsOpen = true;
-    frontend.devToolsCategory = FrontendDevToolsCategory::Session;
-    frontend.status = "opening_menu_dev_tools_selected";
-    return;
-  }
-  frontend.status = "opening_menu_action_selected";
+  ProductStarterMenuActionContext starterContext{
+      frontend, options, saves, settingsTab, activeSession, worldSetupDraft,
+      window, closeRequested};
+  (void)applyProductStarterMenuAction(action, starterContext);
 }
 
 void routeOpeningMenuInput(FrontendState& frontend,

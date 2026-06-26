@@ -46,6 +46,35 @@ FrontendAction nextPauseSelection(FrontendAction current, InputAction action) {
   return actions[index];
 }
 
+FrontendAction nextStarterSelection(FrontendAction current, InputAction action) {
+  const std::array<FrontendAction, 6> actions = {
+      FrontendAction::Continue,
+      FrontendAction::NewWorld,
+      FrontendAction::LoadSave,
+      FrontendAction::Settings,
+      FrontendAction::DevTools,
+      FrontendAction::Exit,
+  };
+
+  std::size_t index = 0;
+  // branch-gate: BG-1022
+  for (std::size_t i = 0; i < actions.size(); ++i) {
+    // branch-gate: BG-1022
+    if (actions[i] == current) {
+      index = i;
+      break;
+    }
+  }
+
+  // branch-gate: BG-1022
+  if (action == InputAction::MenuUp) {
+    index = index == 0 ? actions.size() - 1 : index - 1;  // branch-gate: BG-1022
+  } else if (action == InputAction::MenuDown) {  // branch-gate: BG-1022
+    index = (index + 1) % actions.size();
+  }
+  return actions[index];
+}
+
 FrontendDevToolsCategory nextDevToolsSelection(FrontendDevToolsCategory current,
                                                InputAction action) {
   const auto& categories = devToolsCategoryOrder();
@@ -207,6 +236,62 @@ ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& contex
     return {true, true};
   }
   frontend.status = "pause_action_selected";
+  return {true, true};
+}
+
+ProductMenuActionResult handleStarterConfirm(ProductStarterMenuActionContext context) {
+  FrontendState& frontend = context.frontend;
+  ProductAppWindowState& window = context.window;
+  // branch-gate: BG-1022
+  if (frontend.selectedAction == FrontendAction::Continue) {
+    // branch-gate: BG-1022
+    if (context.saves.slots.compatibleCount == 0) {
+      frontend.status = "opening_menu_action_disabled";
+      return {true, true};
+    }
+    launchProductContinueSave(
+        context.options, productWorldTemplateFromOptions(context.options),
+        context.saves, frontend, context.activeSession, window);
+    return {true, true};
+  }
+  // branch-gate: BG-1022
+  if (frontend.selectedAction == FrontendAction::Exit) {
+    frontend.status = "opening_menu_exit_requested";
+    context.closeRequested = true;
+    return {true, true};
+  }
+  // branch-gate: BG-1022
+  if (frontend.selectedAction == FrontendAction::NewWorld) {
+    frontend.childScreen = FrontendScreen::NewWorld;
+    frontend.selectedAction = FrontendAction::CreateAndEnter;
+    frontend.status = "opening_menu_new_world_selected";
+    recordWorldSetupDraftState(context.worldSetupDraft, window);
+    window.worldSetupStatus = "world_setup_open";
+    return {true, true};
+  }
+  // branch-gate: BG-1022
+  if (frontend.selectedAction == FrontendAction::LoadSave) {
+    frontend.childScreen = FrontendScreen::LoadSave;
+    initializeSelectedProductSaveSlot(context.saves.slots, window);
+    frontend.status = "opening_menu_load_save_selected";
+    return {true, true};
+  }
+  // branch-gate: BG-1022
+  if (frontend.selectedAction == FrontendAction::Settings) {
+    frontend.childScreen = FrontendScreen::Settings;
+    context.settingsTab = FrontendSettingsTab::Input;
+    frontend.status = "opening_menu_settings_selected";
+    return {true, true};
+  }
+  // branch-gate: BG-1022
+  if (frontend.selectedAction == FrontendAction::DevTools) {
+    frontend.childScreen = FrontendScreen::StarterDevTools;
+    frontend.devToolsOpen = true;
+    frontend.devToolsCategory = FrontendDevToolsCategory::Session;
+    frontend.status = "opening_menu_dev_tools_selected";
+    return {true, true};
+  }
+  frontend.status = "opening_menu_action_selected";
   return {true, true};
 }
 
@@ -405,6 +490,29 @@ ProductMenuActionResult applyProductNewWorldMenuAction(
   }
   frontend.status = "new_world_input_ignored";
   return {true, false};
+}
+
+ProductMenuActionResult applyProductStarterMenuAction(
+    InputAction action,
+    ProductStarterMenuActionContext context) {
+  FrontendState& frontend = context.frontend;
+  // branch-gate: BG-1022
+  if (action == InputAction::MenuUp || action == InputAction::MenuDown) {
+    frontend.selectedAction = nextStarterSelection(frontend.selectedAction, action);
+    frontend.status = "opening_menu_selection_changed";
+    return {true, true};
+  }
+  // branch-gate: BG-1022
+  if (action == InputAction::MenuBack) {
+    frontend.status = "opening_menu_back_requested";
+    context.closeRequested = true;
+    return {true, true};
+  }
+  // branch-gate: BG-1022
+  if (action != InputAction::MenuConfirm) {
+    return {true, false};
+  }
+  return handleStarterConfirm(context);
 }
 
 }  // namespace iggy3d
