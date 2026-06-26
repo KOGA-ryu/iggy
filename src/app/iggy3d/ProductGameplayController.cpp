@@ -159,6 +159,19 @@ void clearProductMovementDebug(ProductAppWindowState& window) {
   window.gameplayMovementGradePercent = 0.0F;
 }
 
+bool productMovementDebugChangedPosition(const ProductAppWindowState& window) {
+  if (!window.gameplayMovementDebugAvailable) {
+    return false;
+  }
+  const Vec3 start{window.gameplayMovementStartX,
+                   window.gameplayMovementStartY,
+                   window.gameplayMovementStartZ};
+  const Vec3 final{window.gameplayMovementFinalX,
+                   window.gameplayMovementFinalY,
+                   window.gameplayMovementFinalZ};
+  return !nearlyEqual(start, final);
+}
+
 void clearProductTargetProof(ProductAppWindowState& window) {
   window.targetDiscovered = false;
   window.gameplayTargetStatus = "not_requested";
@@ -372,12 +385,15 @@ void submitProductGameplayCommand(Session& session,
     const bool runtimeMovementBlocked =
         window.gameplayMovementDebugAvailable &&
         window.gameplayMovementBlockedReason != "movement_ok";
+    const bool runtimeMovementChanged = productMovementDebugChangedPosition(window);
+    window.playerPositionChanged =
+        window.playerPositionChanged || movedThisCommand || runtimeMovementChanged;
     if (!window.gameplayTickAdvanced) {
       window.gameplayMovementStatus = "tick_failed";
     } else if (runtimeMovementBlocked) {
       window.gameplayMovementBlocked = true;
       window.gameplayMovementStatus = "blocked";
-    } else if (movedThisCommand) {
+    } else if (movedThisCommand || runtimeMovementChanged) {
       window.gameplayMovementStatus = "moved";
     } else {
       window.gameplayMovementBlocked = true;
