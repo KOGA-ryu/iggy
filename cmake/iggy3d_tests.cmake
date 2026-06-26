@@ -82,6 +82,11 @@ iggy3d_add_unit_test(product_gameplay_feedback_tests tests/unit/product_gameplay
 set_tests_properties(product_gameplay_feedback_tests PROPERTIES
   LABELS "unit;app;product;feedback;iggy3d")
 
+iggy3d_add_unit_test(product_automation_command_registry_tests
+  tests/unit/product_automation_command_registry_tests.cpp)
+set_tests_properties(product_automation_command_registry_tests PROPERTIES
+  LABELS "unit;app;product;automation;registry;iggy3d")
+
 iggy3d_add_unit_test(product_builtin_dungeon_tests
   tests/unit/product_builtin_dungeon_tests.cpp)
 set_tests_properties(product_builtin_dungeon_tests PROPERTIES
