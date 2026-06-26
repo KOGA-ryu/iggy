@@ -70,22 +70,27 @@ Notes:
 ## Manual Flow
 
 1. On the Starter screen, select `New World`.
-2. Enter the New World flow and create the custom draft/world.
-3. Enter gameplay.
-4. Open Pause.
-5. Select `Edit Room`.
-6. Use editor controls:
+2. On the New World screen, press `Tab` to enter dungeon draft edit mode.
+3. Move the draft cursor to row `1`, column `2`:
+   - press `S` or Down once;
+   - press `D` or Right twice.
+4. Press `1` to paint `#` as a wall glyph at the cursor.
+5. Press `Enter` or `Space` to create the world from the edited draft.
+6. Enter gameplay.
+7. Open Pause.
+8. Select `Edit Room`.
+9. Use editor controls:
    - `W/A/S/D` or d-pad: move editor cursor.
    - `Q/E` or shoulders: cycle editor tool.
    - `Space` or gamepad south: place.
    - `Delete`: delete.
    - `Z`: undo.
    - `Y`: redo.
-7. Place at least one wall or floor so the edited room changes.
-8. Open Pause again.
-9. Select `Save And Exit`.
-10. Relaunch with the same `--save-root`.
-11. Select `Continue`.
+10. Place at least one wall or floor so the edited room changes.
+11. Open Pause again.
+12. Select `Save And Exit`.
+13. Relaunch with the same `--save-root`.
+14. Select `Continue`.
 
 Expected user-visible state after Continue:
 
@@ -94,6 +99,32 @@ Expected user-visible state after Continue:
 - the room editor HUD is not visible until Edit Room is opened again;
 - when Edit Room is opened again, the editor HUD and cursor/tool overlay should
   be visible.
+
+## New World Draft Controls
+
+The New World draft editor is controlled through the existing menu input layer.
+Press `Tab` before painting. When draft edit mode is off, `W/A/S/D` and the
+arrow keys select built-in dungeon presets instead of moving the draft cursor.
+
+| Control | New World draft behavior |
+| --- | --- |
+| `Tab` | Toggle dungeon draft edit mode |
+| `W` or Up | Move draft cursor up while edit mode is on |
+| `S` or Down | Move draft cursor down while edit mode is on |
+| `A` or Left | Move draft cursor left while edit mode is on |
+| `D` or Right | Move draft cursor right while edit mode is on |
+| `1` | Paint `#` wall glyph |
+| `2` | Paint `.` floor glyph |
+| `3` | Paint `P` player-start glyph |
+| `4` | Paint `K` key glyph |
+| `5` | Paint `$` treasure glyph |
+| `6` | Paint `E` exit glyph |
+| `7` | Paint `+` door/opening glyph |
+| `Enter` or `Space` | Create the world |
+| `Escape` | Back out of New World |
+
+Gamepad d-pad, south, and east buttons can navigate, confirm, and back out of
+New World. Glyph painting is currently keyboard number-key driven.
 
 ## Bounded Window Receipt Check
 
@@ -123,7 +154,7 @@ ctest --test-dir build --output-on-failure -R '^product_room_visual_proof_smoke$
 
 That smoke runs the same editor-loop spine without a window:
 
-1. creates a custom draft;
+1. creates a custom draft through the New World flow;
 2. enters gameplay;
 3. opens Pause and Edit Room;
 4. applies real editor input:
@@ -154,6 +185,35 @@ room_visual_proof_geometry_signature=<positive integer>
 result=pass
 ```
 
+The focused draft-control parity case is in `product_ascii_map_smoke` as
+`ascii_map_custom_draft_cursor_paint_create`. It proves the New World draft
+cursor path without using direct hidden room setup:
+
+```text
+frontend.select=new_world
+frontend.execute=true
+world.title=Cursor Draft
+menu.next_tab=true
+menu.input=down
+menu.right=true
+world.draft_move=right
+world.draft_paint=#
+world.create=true
+```
+
+This maps to the manual controls as:
+
+- `menu.next_tab=true`: press `Tab`, entering draft edit mode.
+- `menu.input=down`: press Down or `S` once.
+- `menu.right=true` and `world.draft_move=right`: move right twice without
+  repeating the same automation key in one control file.
+- `world.draft_paint=#`: headless equivalent of pressing `1`.
+- `world.create=true`: press `Enter` or `Space`.
+
+`world.draft_cell=1,2,#` is still useful for direct model setup tests, but the
+manual recipe and parity proof use cursor movement plus paint because that is
+the user-facing flow.
+
 The PPM path policy is stable within each smoke run: it is written under that
 run's isolated temporary save root as:
 
@@ -174,7 +234,11 @@ Create `/tmp/iggy3d-editor-loop-create-edit-save.in`:
 frontend.select=new_world
 frontend.execute=true
 world.title=Custom Draft
-world.draft_cell=1,2,#
+menu.next_tab=true
+menu.input=down
+menu.right=true
+world.draft_move=right
+world.draft_paint=#
 world.create=true
 system.pause=true
 menu.down=true
@@ -235,6 +299,26 @@ build/iggy3d \
 ```
 
 ## Receipt Fields
+
+After creating the world from the cursor-painted draft, expect:
+
+```text
+frontend_screen=gameplay
+gameplay_active=true
+world_setup_dungeon_draft_edit_mode=true
+world_setup_dungeon_draft_modified=true
+world_setup_dungeon_draft_cursor_row=1
+world_setup_dungeon_draft_cursor_column=2
+world_setup_dungeon_draft_status=dungeon_draft_cell_painted
+world_setup_dungeon_draft_reason_code=dungeon_draft_cell_painted
+world_setup_dungeon_draft_last_glyph=#
+world_setup_ascii_room_id=custom_dungeon_draft
+world_creation_ascii_room_id=custom_dungeon_draft
+active_room_source=ascii_room
+active_room_id=custom_dungeon_draft
+active_room_authored_floor_count=58
+active_room_authored_wall_count=61
+```
 
 After Save And Exit, expect the save path receipt to include:
 
@@ -302,18 +386,18 @@ For this recipe and receipt parity:
 
 ```sh
 cmake --build build --target iggy3d_app
+cmake --build build --target product_ascii_map_smoke
+ctest --test-dir build --output-on-failure -R '^product_ascii_map_smoke$'
 cmake --build build --target product_room_visual_proof_smoke
 ctest --test-dir build --output-on-failure -R '^product_room_visual_proof_smoke$'
 tools/check_branch_gate.py
 git diff --check
 ```
 
-Run `product_ascii_map_smoke` only when changing the broader ASCII map smoke:
-
-```sh
-cmake --build build --target product_ascii_map_smoke
-ctest --test-dir build --output-on-failure -R '^product_ascii_map_smoke$'
-```
+`product_ascii_map_smoke` proves the New World draft controls and receipt
+fields through `ascii_map_custom_draft_cursor_paint_create`.
+`product_room_visual_proof_smoke` proves Save And Exit, fresh Continue, and the
+headless PPM visual artifact for the edited room.
 
 ## Stop Rules
 
