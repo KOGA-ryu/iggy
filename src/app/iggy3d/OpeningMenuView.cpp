@@ -14,6 +14,7 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "projection/debug/DebugProjection.hpp"
+#include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductMovementDebugHud.hpp"
 #include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
@@ -454,13 +455,21 @@ void drawNewWorldPanel(SDL_Renderer& renderer,
   setColor(renderer, 226, 230, 211);
   drawText(renderer, "NEW WORLD", 450.0F, 152.0F, 4.0F);
   setColor(renderer, 166, 184, 177);
-  drawText(renderer, "CREATE A SAVE AND ENTER THE FIRST WORLD", 452.0F, 210.0F, 2.0F);
-  drawText(renderer, "PACKAGE", 452.0F, 275.0F, 2.0F);
-  drawText(renderer, world.packageId, 452.0F, 304.0F, 2.0F);
-  drawText(renderer, "SCENARIO", 452.0F, 356.0F, 2.0F);
-  drawText(renderer, world.scenarioId, 452.0F, 385.0F, 2.0F);
-  drawText(renderer, "SAVES", 452.0F, 437.0F, 2.0F);
-  drawText(renderer, std::to_string(saves.slots.slots.size()), 542.0F, 437.0F, 2.0F);
+  drawText(renderer, "CREATE LOOP KEEP DUNGEON AND SAVE", 452.0F, 210.0F, 2.0F);
+  drawText(renderer, "DUNGEON", 452.0F, 260.0F, 2.0F);
+  drawText(renderer, productBuiltinDungeonWorldTitle(), 452.0F, 289.0F, 2.0F);
+  drawText(renderer, "ASCII ROOM", 452.0F, 338.0F, 2.0F);
+  drawText(renderer, productBuiltinDungeonRoomId(), 452.0F, 367.0F, 2.0F);
+  drawText(renderer, "MAP SOURCE", 452.0F, 416.0F, 2.0F);
+  drawText(renderer, productBuiltinDungeonSourceName(), 452.0F, 445.0F, 2.0F);
+  drawText(renderer, "PACKAGE", 850.0F, 260.0F, 2.0F);
+  drawText(renderer, world.packageId, 850.0F, 289.0F, 2.0F);
+  drawText(renderer, "SCENARIO", 850.0F, 338.0F, 2.0F);
+  drawText(renderer, world.scenarioId, 850.0F, 367.0F, 2.0F);
+  drawText(renderer, "SAVES", 850.0F, 416.0F, 2.0F);
+  drawText(renderer, std::to_string(saves.slots.slots.size()), 940.0F, 416.0F, 2.0F);
+  setColor(renderer, 126, 201, 176);
+  drawText(renderer, "CONFIRM TO CREATE", 452.0F, 508.0F, 2.0F);
 }
 
 void drawDevToolsPanel(SDL_Renderer& renderer, FrontendDevToolsCategory selected) {

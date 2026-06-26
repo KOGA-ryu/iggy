@@ -21,6 +21,7 @@
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductAsciiRoomActivation.hpp"
 #include "app/iggy3d/ProductAsciiRoomPreview.hpp"
+#include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductGameplayTape.hpp"
@@ -2467,7 +2468,7 @@ int runProductApp(int argc, char** argv) {
       scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
   const FrontendSettings settings = productFrontendSettingsFromOptions(options);
   std::optional<Session> activeSession;
-  WorldSetupDraft worldSetupDraft = makeDefaultWorldSetupDraft();
+  WorldSetupDraft worldSetupDraft = makeProductDefaultWorldSetupDraft();
   ProductAppWindowState window;
   recordWorldSetupDraftState(worldSetupDraft, window);
 

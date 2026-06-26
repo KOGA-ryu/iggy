@@ -82,6 +82,12 @@ iggy3d_add_unit_test(product_gameplay_feedback_tests tests/unit/product_gameplay
 set_tests_properties(product_gameplay_feedback_tests PROPERTIES
   LABELS "unit;app;product;feedback;iggy3d")
 
+iggy3d_add_unit_test(product_builtin_dungeon_tests
+  tests/unit/product_builtin_dungeon_tests.cpp)
+set_tests_properties(product_builtin_dungeon_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;product;world_setup;ascii_room;iggy3d")
+
 iggy3d_add_unit_test(product_gameplay_tape_tests tests/unit/product_gameplay_tape_tests.cpp)
 set_tests_properties(product_gameplay_tape_tests PROPERTIES
   LABELS "unit;app;product;gameplay;tape;iggy3d")
