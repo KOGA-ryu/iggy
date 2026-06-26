@@ -227,6 +227,11 @@ iggy3d_add_unit_test(product_room_editing_state_tests
 set_tests_properties(product_room_editing_state_tests PROPERTIES
   LABELS "unit;app;product;ascii_room;authoring;editable_room;controller;active_room;collision;iggy3d")
 
+iggy3d_add_unit_test(product_room_visual_proof_tests
+  tests/unit/product_room_visual_proof_tests.cpp)
+set_tests_properties(product_room_visual_proof_tests PROPERTIES
+  LABELS "unit;app;product;room_visual_proof;draw_list;iggy3d")
+
 iggy3d_add_unit_test(ascii_room_fixture_tests tests/unit/ascii_room_fixture_tests.cpp)
 set_tests_properties(ascii_room_fixture_tests PROPERTIES
   LABELS "unit;app;product;ascii_room;fixture;iggy3d")
@@ -534,6 +539,10 @@ set_tests_properties(package_runtime_lookup_tests PROPERTIES LABELS "unit;render
     product_ascii_map_smoke
     tests/smoke/product_ascii_map_smoke.cpp
     "ascii_room;map;world_setup;save;load")
+  iggy3d_add_product_app_automation_smoke(
+    product_room_visual_proof_smoke
+    tests/smoke/product_room_visual_proof_smoke.cpp
+    "ascii_room;map;save;load;visual_proof")
 
   add_executable(product_gameplay_tape_smoke
     tests/smoke/product_gameplay_tape_smoke.cpp)

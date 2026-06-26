@@ -36,3 +36,4 @@ BG-1034	src/app/iggy3d/ProductRoomEditorHud.cpp	room editor HUD visibility and w
 BG-1035	src/app/iggy3d/OpeningMenuView.cpp	room editor HUD compact SDL drawing	codex	2026-06-26
 BG-1036	src/app/iggy3d/ProductRoomEditorActionController.cpp	room editor live delete undo redo input policy	codex	2026-06-26
 BG-1037	src/app/input/KeyboardInput.cpp	room editor keyboard delete undo redo mappings	codex	2026-06-26
+BG-1038	src/app/iggy3d/ProductRoomVisualProof.cpp	headless room visual proof raster artifact generation	codex	2026-06-26
