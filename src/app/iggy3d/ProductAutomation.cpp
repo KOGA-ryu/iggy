@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductAutomationCommandRegistry.hpp"
+#include "app/iggy3d/ProductAutomation.hpp"
 
 #include <algorithm>
 #include <array>
@@ -46,6 +46,28 @@ std::string_view productAutomationValueKindName(
       std::string_view{"unknown"},
   };
   return names[static_cast<std::size_t>(valueKind)];
+}
+
+std::string_view productAutomationCommandIdName(
+    ProductAutomationCommandId commandId) {
+  static constexpr std::array names{
+      std::string_view{"menu_shortcut"},
+      std::string_view{"room_edit.start"},
+      std::string_view{"room_edit.start_active"},
+      std::string_view{"room_edit.add_floor"},
+      std::string_view{"room_edit.add_wall"},
+      std::string_view{"room_edit.delete_floor"},
+      std::string_view{"room_edit.delete_wall"},
+      std::string_view{"room_edit.undo"},
+      std::string_view{"room_edit.redo"},
+      std::string_view{"room_editor.move"},
+      std::string_view{"room_editor.tool"},
+      std::string_view{"room_editor.cycle_tool"},
+      std::string_view{"room_editor.wall_direction"},
+      std::string_view{"room_editor.place"},
+      std::string_view{"unknown"},
+  };
+  return names[static_cast<std::size_t>(commandId)];
 }
 
 ProductAutomationCommandRegistry makeProductAutomationCommandRegistry() {
@@ -197,6 +219,113 @@ std::string_view productAutomationCanonicalKey(
     const ProductAutomationCommandRegistry& registry,
     std::string_view key) {
   return findProductAutomationCommandSpec(registry, key).canonicalKey;
+}
+
+const ProductAutomationCommandDispatchSpec& findProductAutomationCommandDispatchSpec(
+    std::string_view canonicalKey) {
+  using Category = ProductAutomationCommandCategory;
+  using Id = ProductAutomationCommandId;
+  using Value = ProductAutomationValueKind;
+  static constexpr std::array rows{
+      ProductAutomationCommandDispatchSpec{
+          "menu.up", Id::MenuShortcut, Category::MenuShortcut, Value::Bool,
+          InputAction::MenuUp},
+      ProductAutomationCommandDispatchSpec{
+          "menu.down", Id::MenuShortcut, Category::MenuShortcut, Value::Bool,
+          InputAction::MenuDown},
+      ProductAutomationCommandDispatchSpec{
+          "menu.left", Id::MenuShortcut, Category::MenuShortcut, Value::Bool,
+          InputAction::MenuLeft},
+      ProductAutomationCommandDispatchSpec{
+          "menu.right", Id::MenuShortcut, Category::MenuShortcut, Value::Bool,
+          InputAction::MenuRight},
+      ProductAutomationCommandDispatchSpec{
+          "menu.confirm", Id::MenuShortcut, Category::MenuShortcut, Value::Bool,
+          InputAction::MenuConfirm},
+      ProductAutomationCommandDispatchSpec{
+          "menu.back", Id::MenuShortcut, Category::MenuShortcut, Value::Bool,
+          InputAction::MenuBack},
+      ProductAutomationCommandDispatchSpec{
+          "menu.next_tab", Id::MenuShortcut, Category::MenuShortcut, Value::Bool,
+          InputAction::MenuNextTab},
+      ProductAutomationCommandDispatchSpec{
+          "menu.previous_tab", Id::MenuShortcut, Category::MenuShortcut,
+          Value::Bool, InputAction::MenuPreviousTab},
+      ProductAutomationCommandDispatchSpec{
+          "room_edit.start", Id::RoomEditStart, Category::RoomEdit, Value::Bool,
+          InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          "room_edit.start_active", Id::RoomEditStartActive, Category::RoomEdit,
+          Value::Bool, InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          "room_edit.add_floor", Id::RoomEditAddFloor, Category::RoomEdit,
+          Value::Csv, InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          "room_edit.add_wall", Id::RoomEditAddWall, Category::RoomEdit,
+          Value::Csv, InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          "room_edit.delete_floor", Id::RoomEditDeleteFloor, Category::RoomEdit,
+          Value::String, InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          "room_edit.delete_wall", Id::RoomEditDeleteWall, Category::RoomEdit,
+          Value::String, InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          "room_edit.undo", Id::RoomEditUndo, Category::RoomEdit, Value::Bool,
+          InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          "room_edit.redo", Id::RoomEditRedo, Category::RoomEdit, Value::Bool,
+          InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          "room_editor.move", Id::RoomEditorMove, Category::RoomEditor,
+          Value::Direction, InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          "room_editor.tool", Id::RoomEditorTool, Category::RoomEditor,
+          Value::Tool, InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          "room_editor.cycle_tool", Id::RoomEditorCycleTool,
+          Category::RoomEditor, Value::Bool, InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          "room_editor.wall_direction", Id::RoomEditorWallDirection,
+          Category::RoomEditor, Value::Direction, InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          "room_editor.place", Id::RoomEditorPlace, Category::RoomEditor,
+          Value::Bool, InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          "unknown", Id::Unknown, Category::Unknown, Value::Unknown,
+          InputAction::None},
+  };
+  const auto searchEnd = std::prev(rows.end());
+  const auto row = std::find_if(
+      rows.begin(), searchEnd,
+      [canonicalKey](const ProductAutomationCommandDispatchSpec& candidate) {
+        return candidate.canonicalKey == canonicalKey;
+      });
+  return *row;
+}
+
+ProductAutomationCommandDispatchResult resolveProductAutomationCommandDispatch(
+    ProductAutomationCommandDispatchRequest request) {
+  const std::string_view canonicalKey =
+      productAutomationCanonicalKey(*request.registry, request.key);
+  const ProductAutomationCommandDispatchSpec& spec =
+      findProductAutomationCommandDispatchSpec(canonicalKey);
+  const std::array<bool, 15U> handledById{
+      true,  true,  true,  true,  true,
+      true,  true,  true,  true,  true,
+      true,  true,  true,  true,  false,
+  };
+  const bool handled = handledById[static_cast<std::size_t>(spec.commandId)];
+  const std::array<std::string_view, 2U> statuses{
+      std::string_view{"unknown"},
+      std::string_view{"automation_command_resolved"},
+  };
+  ProductAutomationCommandDispatchResult result;
+  result.handled = handled;
+  result.status = statuses[handled];
+  result.reasonCode = statuses[handled];
+  result.canonicalActionLabel = spec.canonicalKey;
+  result.spec = spec;
+  return result;
 }
 
 }  // namespace iggy3d

@@ -22,7 +22,7 @@
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductAsciiRoomActivation.hpp"
 #include "app/iggy3d/ProductAsciiRoomPreview.hpp"
-#include "app/iggy3d/ProductAutomationCommandRegistry.hpp"
+#include "app/iggy3d/ProductAutomation.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/ProductDungeonDraft.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
@@ -1768,6 +1768,10 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       makeProductAutomationCommandRegistry();
   const std::string_view canonicalKey =
       productAutomationCanonicalKey(automationRegistry, key);
+  const ProductAutomationCommandDispatchResult automationDispatch =
+      resolveProductAutomationCommandDispatch({&automationRegistry, key});
+  const ProductAutomationCommandDispatchSpec& automationSpec =
+      automationDispatch.spec;
   bool boolValue = false;
   InputAction inputAction = InputAction::None;
 
@@ -1803,23 +1807,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return routed;
   }
 
-  static constexpr std::array menuShortcutRows{
-      std::pair{std::string_view{"menu.up"}, InputAction::MenuUp},
-      std::pair{std::string_view{"menu.down"}, InputAction::MenuDown},
-      std::pair{std::string_view{"menu.left"}, InputAction::MenuLeft},
-      std::pair{std::string_view{"menu.right"}, InputAction::MenuRight},
-      std::pair{std::string_view{"menu.confirm"}, InputAction::MenuConfirm},
-      std::pair{std::string_view{"menu.back"}, InputAction::MenuBack},
-      std::pair{std::string_view{"menu.next_tab"}, InputAction::MenuNextTab},
-      std::pair{std::string_view{"menu.previous_tab"},
-                InputAction::MenuPreviousTab},
-  };
-  const auto menuShortcut = std::find_if(
-      menuShortcutRows.begin(), menuShortcutRows.end(),
-      [canonicalKey](const auto& row) {
-        return row.first == canonicalKey;
-      });
-  if (menuShortcut != menuShortcutRows.end()) {
+  if (automationSpec.commandId == ProductAutomationCommandId::MenuShortcut) {
     if (!parseAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
@@ -1829,7 +1817,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                             "ignored");
       return true;
     }
-    inputAction = menuShortcut->second;
+    inputAction = automationSpec.inputAction;
     const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
                                             activeSession, worldSetupDraft, window,
                                             inputAction, closeRequested);
@@ -2170,13 +2158,13 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return activated.ok;
   }
 
-  if (canonicalKey == "room_edit.start") {
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditStart) {
     if (!parseAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
     if (!boolValue) {
-      markAutomationApplied(window, command, "room_edit.start",
+      markAutomationApplied(window, command, automationSpec.canonicalKey,
                             productInputOwnerFor(frontend, window), "ignored");
       return true;
     }
@@ -2186,27 +2174,27 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     const ProductRoomEditingStartResult started =
         startProductRoomEditingFromAscii(request);
     recordProductRoomEditingStart(window, started);
-    markAutomationApplied(window, command, "room_edit.start",
+    markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
                           started.ok ? "applied" : "failed");
     return started.ok;
   }
 
-  if (canonicalKey == "room_edit.start_active") {
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditStartActive) {
     if (!parseAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
     if (!boolValue) {
-      markAutomationApplied(window, command, "room_edit.start_active",
+      markAutomationApplied(window, command, automationSpec.canonicalKey,
                             productInputOwnerFor(frontend, window), "ignored");
       return true;
     }
 
     const ProductRoomEditingStartResult started =
         startProductRoomEditingFromActiveRoom(window.activeRoom);
-    recordProductRoomEditingStart(window, started, "room_edit.start_active");
-    markAutomationApplied(window, command, "room_edit.start_active",
+    recordProductRoomEditingStart(window, started, automationSpec.canonicalKey);
+    markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
                           started.ok ? "applied" : "failed");
     return started.ok;
@@ -2281,120 +2269,121 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return true;
   }
 
-  if (canonicalKey == "room_editor.move") {
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditorMove) {
     ProductRoomEditorDirection direction = ProductRoomEditorDirection::Up;
     if (!parseProductRoomEditorDirection(value, direction)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
     if (!window.roomEditing.ready) {
-      rejectProductRoomEditorNotReady(window, "room_editor.move");
-      markAutomationApplied(window, command, "room_editor.move",
+      rejectProductRoomEditorNotReady(window, automationSpec.canonicalKey);
+      markAutomationApplied(window, command, automationSpec.canonicalKey,
                             productInputOwnerFor(frontend, window), "failed");
       return false;
     }
     const ProductRoomEditorCursorResult moved =
         moveProductRoomEditorCursor(window.roomEditorCursor, direction);
-    recordProductRoomEditorCursorResult(window, "room_editor.move", moved);
+    recordProductRoomEditorCursorResult(window, automationSpec.canonicalKey, moved);
     if (!moved.ok) {
       window.automationControlStatus = "command_failed";
     }
-    markAutomationApplied(window, command, "room_editor.move",
+    markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
                           moved.ok ? "applied" : "failed");
     return moved.ok;
   }
 
-  if (canonicalKey == "room_editor.tool") {
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditorTool) {
     ProductRoomEditorTool tool = ProductRoomEditorTool::Floor;
     if (!parseProductRoomEditorTool(value, tool)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
     if (!window.roomEditing.ready) {
-      rejectProductRoomEditorNotReady(window, "room_editor.tool");
-      markAutomationApplied(window, command, "room_editor.tool",
+      rejectProductRoomEditorNotReady(window, automationSpec.canonicalKey);
+      markAutomationApplied(window, command, automationSpec.canonicalKey,
                             productInputOwnerFor(frontend, window), "failed");
       return false;
     }
     const ProductRoomEditorCursorResult changed =
         setProductRoomEditorTool(window.roomEditorCursor, tool);
-    recordProductRoomEditorCursorResult(window, "room_editor.tool", changed);
+    recordProductRoomEditorCursorResult(window, automationSpec.canonicalKey, changed);
     if (!changed.ok) {
       window.automationControlStatus = "command_failed";
     }
-    markAutomationApplied(window, command, "room_editor.tool",
+    markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
                           changed.ok ? "applied" : "failed");
     return changed.ok;
   }
 
-  if (canonicalKey == "room_editor.cycle_tool") {
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditorCycleTool) {
     if (!parseAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
     if (!boolValue) {
-      markAutomationApplied(window, command, "room_editor.cycle_tool",
+      markAutomationApplied(window, command, automationSpec.canonicalKey,
                             productInputOwnerFor(frontend, window), "ignored");
       return true;
     }
     if (!window.roomEditing.ready) {
-      rejectProductRoomEditorNotReady(window, "room_editor.cycle_tool");
-      markAutomationApplied(window, command, "room_editor.cycle_tool",
+      rejectProductRoomEditorNotReady(window, automationSpec.canonicalKey);
+      markAutomationApplied(window, command, automationSpec.canonicalKey,
                             productInputOwnerFor(frontend, window), "failed");
       return false;
     }
     const ProductRoomEditorCursorResult changed =
         cycleProductRoomEditorTool(window.roomEditorCursor);
-    recordProductRoomEditorCursorResult(window, "room_editor.cycle_tool", changed);
+    recordProductRoomEditorCursorResult(window, automationSpec.canonicalKey, changed);
     if (!changed.ok) {
       window.automationControlStatus = "command_failed";
     }
-    markAutomationApplied(window, command, "room_editor.cycle_tool",
+    markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
                           changed.ok ? "applied" : "failed");
     return changed.ok;
   }
 
-  if (canonicalKey == "room_editor.wall_direction") {
+  if (automationSpec.commandId ==
+      ProductAutomationCommandId::RoomEditorWallDirection) {
     ProductRoomEditorDirection direction = ProductRoomEditorDirection::Up;
     if (!parseProductRoomEditorDirection(value, direction)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
     if (!window.roomEditing.ready) {
-      rejectProductRoomEditorNotReady(window, "room_editor.wall_direction");
-      markAutomationApplied(window, command, "room_editor.wall_direction",
+      rejectProductRoomEditorNotReady(window, automationSpec.canonicalKey);
+      markAutomationApplied(window, command, automationSpec.canonicalKey,
                             productInputOwnerFor(frontend, window), "failed");
       return false;
     }
     const ProductRoomEditorCursorResult changed =
         setProductRoomEditorWallDirection(window.roomEditorCursor, direction);
     recordProductRoomEditorCursorResult(
-        window, "room_editor.wall_direction", changed);
+        window, automationSpec.canonicalKey, changed);
     if (!changed.ok) {
       window.automationControlStatus = "command_failed";
     }
-    markAutomationApplied(window, command, "room_editor.wall_direction",
+    markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
                           changed.ok ? "applied" : "failed");
     return changed.ok;
   }
 
-  if (canonicalKey == "room_editor.place") {
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditorPlace) {
     if (!parseAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
     if (!boolValue) {
-      markAutomationApplied(window, command, "room_editor.place",
+      markAutomationApplied(window, command, automationSpec.canonicalKey,
                             productInputOwnerFor(frontend, window), "ignored");
       return true;
     }
     if (!window.roomEditing.ready) {
-      rejectProductRoomEditorNotReady(window, "room_editor.place");
-      markAutomationApplied(window, command, "room_editor.place",
+      rejectProductRoomEditorNotReady(window, automationSpec.canonicalKey);
+      markAutomationApplied(window, command, automationSpec.canonicalKey,
                             productInputOwnerFor(frontend, window), "failed");
       return false;
     }
@@ -2404,10 +2393,10 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
             window.roomEditorCursor,
             &window.roomEditing.authoringSnapshot.document);
     if (!cursorCommand.ok || !cursorCommand.command.has_value()) {
-      recordProductRoomEditorCursorResult(window, "room_editor.place",
+      recordProductRoomEditorCursorResult(window, automationSpec.canonicalKey,
                                           cursorCommand);
       window.automationControlStatus = "command_failed";
-      markAutomationApplied(window, command, "room_editor.place",
+      markAutomationApplied(window, command, automationSpec.canonicalKey,
                             productInputOwnerFor(frontend, window), "failed");
       return false;
     }
@@ -2416,19 +2405,19 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
         window.roomEditing,
         ProductRoomAuthoringInputSource::Hotkey,
         *cursorCommand.command);
-    recordProductRoomEditingOperation(window, "room_editor.place", result);
+    recordProductRoomEditingOperation(window, automationSpec.canonicalKey, result);
     const bool accepted =
         recordProductRoomEditorPlaceResult(window, cursorCommand, result);
     if (!accepted) {
       window.automationControlStatus = "command_failed";
     }
-    markAutomationApplied(window, command, "room_editor.place",
+    markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
                           accepted ? "applied" : "failed");
     return accepted;
   }
 
-  if (canonicalKey == "room_edit.add_floor") {
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditAddFloor) {
     RoomEditCommand edit;
     if (!parseAutomationFloorCommand(value, edit)) {
       window.automationControlStatus = "invalid_value";
@@ -2436,14 +2425,14 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     }
     ProductRoomEditingOperationResult result = applyProductRoomEditingCommand(
         window.roomEditing, ProductRoomAuthoringInputSource::Script, edit);
-    recordProductRoomEditingOperation(window, "room_edit.add_floor", result);
-    markAutomationApplied(window, command, "room_edit.add_floor",
+    recordProductRoomEditingOperation(window, automationSpec.canonicalKey, result);
+    markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
                           result.accepted ? "applied" : "failed");
     return result.accepted;
   }
 
-  if (canonicalKey == "room_edit.add_wall") {
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditAddWall) {
     RoomEditCommand edit;
     if (!parseAutomationWallCommand(value, edit)) {
       window.automationControlStatus = "invalid_value";
@@ -2451,14 +2440,14 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     }
     ProductRoomEditingOperationResult result = applyProductRoomEditingCommand(
         window.roomEditing, ProductRoomAuthoringInputSource::Script, edit);
-    recordProductRoomEditingOperation(window, "room_edit.add_wall", result);
-    markAutomationApplied(window, command, "room_edit.add_wall",
+    recordProductRoomEditingOperation(window, automationSpec.canonicalKey, result);
+    markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
                           result.accepted ? "applied" : "failed");
     return result.accepted;
   }
 
-  if (canonicalKey == "room_edit.delete_floor") {
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditDeleteFloor) {
     if (value.empty()) {
       window.automationControlStatus = "invalid_value";
       return false;
@@ -2467,14 +2456,14 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
         window.roomEditing,
         ProductRoomAuthoringInputSource::Script,
         deleteFloorCommand(std::string(value)));
-    recordProductRoomEditingOperation(window, "room_edit.delete_floor", result);
-    markAutomationApplied(window, command, "room_edit.delete_floor",
+    recordProductRoomEditingOperation(window, automationSpec.canonicalKey, result);
+    markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
                           result.accepted ? "applied" : "failed");
     return result.accepted;
   }
 
-  if (canonicalKey == "room_edit.delete_wall") {
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditDeleteWall) {
     if (value.empty()) {
       window.automationControlStatus = "invalid_value";
       return false;
@@ -2483,46 +2472,46 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
         window.roomEditing,
         ProductRoomAuthoringInputSource::Script,
         deleteWallCommand(std::string(value)));
-    recordProductRoomEditingOperation(window, "room_edit.delete_wall", result);
-    markAutomationApplied(window, command, "room_edit.delete_wall",
+    recordProductRoomEditingOperation(window, automationSpec.canonicalKey, result);
+    markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
                           result.accepted ? "applied" : "failed");
     return result.accepted;
   }
 
-  if (canonicalKey == "room_edit.undo") {
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditUndo) {
     if (!parseAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
     if (!boolValue) {
-      markAutomationApplied(window, command, "room_edit.undo",
+      markAutomationApplied(window, command, automationSpec.canonicalKey,
                             productInputOwnerFor(frontend, window), "ignored");
       return true;
     }
     ProductRoomEditingOperationResult result = undoProductRoomEditing(
         window.roomEditing, ProductRoomAuthoringInputSource::Script);
-    recordProductRoomEditingOperation(window, "room_edit.undo", result);
-    markAutomationApplied(window, command, "room_edit.undo",
+    recordProductRoomEditingOperation(window, automationSpec.canonicalKey, result);
+    markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
                           result.accepted ? "applied" : "failed");
     return result.accepted;
   }
 
-  if (canonicalKey == "room_edit.redo") {
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditRedo) {
     if (!parseAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
     if (!boolValue) {
-      markAutomationApplied(window, command, "room_edit.redo",
+      markAutomationApplied(window, command, automationSpec.canonicalKey,
                             productInputOwnerFor(frontend, window), "ignored");
       return true;
     }
     ProductRoomEditingOperationResult result = redoProductRoomEditing(
         window.roomEditing, ProductRoomAuthoringInputSource::Script);
-    recordProductRoomEditingOperation(window, "room_edit.redo", result);
-    markAutomationApplied(window, command, "room_edit.redo",
+    recordProductRoomEditingOperation(window, automationSpec.canonicalKey, result);
+    markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
                           result.accepted ? "applied" : "failed");
     return result.accepted;

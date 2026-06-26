@@ -48,6 +48,10 @@ int main() {
          "bool value kind name is stable");
   expect(iggy3d::productAutomationValueKindName(Value::Direction) == "direction",
          "direction value kind name is stable");
+  expect(iggy3d::productAutomationCommandIdName(
+             iggy3d::ProductAutomationCommandId::RoomEditorPlace) ==
+             "room_editor.place",
+         "room editor command id name is stable");
 
   expect(spec(registry, "automation.owner").category == Category::Owner,
          "owner command is registered");
@@ -111,6 +115,43 @@ int main() {
          "game move x is a float value");
   expect(spec(registry, "room_edit.add_floor").valueKind == Value::Csv,
          "add floor is a csv value");
+
+  const iggy3d::ProductAutomationCommandDispatchResult placeDispatch =
+      iggy3d::resolveProductAutomationCommandDispatch(
+          iggy3d::ProductAutomationCommandDispatchRequest{
+              &registry, "frontend.room_editor_place"});
+  expect(placeDispatch.handled, "frontend room editor place is dispatch-handled");
+  expect(placeDispatch.spec.commandId ==
+             iggy3d::ProductAutomationCommandId::RoomEditorPlace,
+         "frontend room editor place dispatch id is stable");
+  expect(placeDispatch.canonicalActionLabel == "room_editor.place",
+         "frontend room editor place dispatch label is canonical");
+
+  const iggy3d::ProductAutomationCommandDispatchResult addWallDispatch =
+      iggy3d::resolveProductAutomationCommandDispatch(
+          iggy3d::ProductAutomationCommandDispatchRequest{
+              &registry, "frontend.room_edit_add_wall"});
+  expect(addWallDispatch.handled, "frontend room edit add wall is dispatch-handled");
+  expect(addWallDispatch.spec.commandId ==
+             iggy3d::ProductAutomationCommandId::RoomEditAddWall,
+         "frontend room edit add wall dispatch id is stable");
+
+  const iggy3d::ProductAutomationCommandDispatchResult menuDispatch =
+      iggy3d::resolveProductAutomationCommandDispatch(
+          iggy3d::ProductAutomationCommandDispatchRequest{&registry, "menu.up"});
+  expect(menuDispatch.handled, "menu up is dispatch-handled");
+  expect(menuDispatch.spec.commandId ==
+             iggy3d::ProductAutomationCommandId::MenuShortcut,
+         "menu up dispatch id is menu shortcut");
+  expect(menuDispatch.spec.inputAction == iggy3d::InputAction::MenuUp,
+         "menu up dispatch action is stable");
+
+  const iggy3d::ProductAutomationCommandDispatchResult frontendDispatch =
+      iggy3d::resolveProductAutomationCommandDispatch(
+          iggy3d::ProductAutomationCommandDispatchRequest{
+              &registry, "frontend.select"});
+  expect(!frontendDispatch.handled,
+         "frontend select is not dispatch-handled by this slice");
 
   std::set<std::string> canonicalKeys;
   std::set<std::string> ownedKeys;
