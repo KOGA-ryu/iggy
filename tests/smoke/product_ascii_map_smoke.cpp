@@ -64,6 +64,10 @@ int main() {
       iggy3d::smoke::cleanSaveRoot("ascii_map_gatehouse_selected");
   const std::filesystem::path customSaveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_custom_draft");
+  const std::filesystem::path cursorPaintRejectedSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("ascii_map_cursor_paint_rejected");
+  const std::filesystem::path customCursorPaintSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("ascii_map_custom_draft_cursor_paint");
   const std::filesystem::path customEditSaveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_custom_draft_edit_active");
   const std::filesystem::path customLiveEditSaveRoot =
@@ -289,6 +293,144 @@ int main() {
       fileContains(customSaveRoot / "save_001.iggy3d.save",
                    "authoredRoom.sourceFile=custom_dungeon_draft.iggyroom.txt\n") &&
       fileContains(customSaveRoot / "save_001.iggy3d.save",
+                   "authoredRoom.wall.count=61\n");
+
+  fields.clear();
+  const bool cursorPaintRequiresEditMode =
+      appAvailable && mapAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_map_cursor_paint_requires_edit_mode",
+          "frontend.select=new_world\nfrontend.execute=true\n"
+          "world.draft_paint=#\n",
+          iggy3d::smoke::saveRootArg(cursorPaintRejectedSaveRoot),
+          fields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::hasField(fields, "automation_control_requested",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "automation_control_loaded", "false") &&
+      iggy3d::smoke::hasField(fields, "automation_control_status",
+                              "command_failed") &&
+      iggy3d::smoke::hasField(fields, "automation_control_last_key",
+                              "world.draft_paint") &&
+      iggy3d::smoke::hasField(fields, "automation_control_last_action",
+                              "world.draft_paint") &&
+      iggy3d::smoke::hasField(fields, "automation_control_last_result",
+                              "failed") &&
+      iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(fields, "window_created", "false") &&
+      iggy3d::smoke::hasField(fields, "frontend_screen", "starter") &&
+      iggy3d::smoke::hasField(fields, "frontend_child_screen", "new_world") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_dungeon_draft_edit_mode",
+                              "false") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_dungeon_draft_modified",
+                              "false") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_dungeon_draft_status",
+                              "dungeon_draft_edit_mode_off") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_dungeon_draft_reason_code",
+                              "dungeon_draft_edit_mode_off") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_dungeon_draft_last_glyph",
+                              "none") &&
+      iggy3d::smoke::hasField(fields, "world_creation_status",
+                              "not_requested") &&
+      iggy3d::smoke::hasField(fields, "active_room_loaded", "false");
+
+  fields.clear();
+  const bool createCursorPaintDraftWorld =
+      appAvailable && mapAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_map_custom_draft_cursor_paint_create",
+          "frontend.select=new_world\nfrontend.execute=true\n"
+          "world.title=Cursor Draft\n"
+          "menu.next_tab=true\n"
+          "menu.input=down\n"
+          "menu.right=true\n"
+          "world.draft_move=right\n"
+          "world.draft_paint=#\n"
+          "world.create=true\n",
+          iggy3d::smoke::saveRootArg(customCursorPaintSaveRoot),
+          fields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::automationApplied(fields) &&
+      iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(fields, "window_created", "false") &&
+      iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "world_setup_title", "Cursor Draft") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_dungeon_draft_edit_mode",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_dungeon_draft_modified",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_dungeon_draft_cursor_row",
+                              "1") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_dungeon_draft_cursor_column",
+                              "2") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_dungeon_draft_status",
+                              "dungeon_draft_cell_painted") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_dungeon_draft_reason_code",
+                              "dungeon_draft_cell_painted") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_dungeon_draft_last_glyph",
+                              "#") &&
+      iggy3d::smoke::hasField(fields, "world_setup_ascii_room_id",
+                              "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields, "world_setup_ascii_room_source_name",
+                              "custom_dungeon_draft.iggyroom.txt") &&
+      iggy3d::smoke::hasField(fields, "world_creation_status",
+                              "world_creation_initial_save_written") &&
+      iggy3d::smoke::hasField(fields, "world_creation_world_title",
+                              "Cursor Draft") &&
+      iggy3d::smoke::hasField(fields, "world_creation_ascii_room_id",
+                              "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_creation_ascii_room_source_name",
+                              "custom_dungeon_draft.iggyroom.txt") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_status",
+                              "product_ascii_room_ready") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_room_id",
+                              "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_floor_count",
+                              "58") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_wall_count", "61") &&
+      iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
+      iggy3d::smoke::hasField(fields, "active_room_source", "ascii_room") &&
+      iggy3d::smoke::hasField(fields, "active_room_id",
+                              "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_authored_floor_count",
+                              "58") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_authored_wall_count",
+                              "61") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_mesh_cpu_ready",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "product_vulkan_room_asset_id",
+                              "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_wall_draw_count",
+                              "61") &&
+      std::filesystem::exists(customCursorPaintSaveRoot /
+                              "save_001.iggy3d.save") &&
+      fileContains(customCursorPaintSaveRoot / "save_001.iggy3d.save",
+                   "authoredRoom.id=custom_dungeon_draft\n") &&
+      fileContains(customCursorPaintSaveRoot / "save_001.iggy3d.save",
+                   "authoredRoom.floor.count=58\n") &&
+      fileContains(customCursorPaintSaveRoot / "save_001.iggy3d.save",
                    "authoredRoom.wall.count=61\n");
 
   fields.clear();
@@ -1005,7 +1147,9 @@ int main() {
                                           "product_vulkan_room_draw_count");
 
   const bool passed = createDefaultDungeonWorld && createSelectedDungeonWorld &&
-                      createCustomDraftWorld && startCustomDraftActiveRoomEditing &&
+                      createCustomDraftWorld && cursorPaintRequiresEditMode &&
+                      createCursorPaintDraftWorld &&
+                      startCustomDraftActiveRoomEditing &&
                       liveEditCustomDraftActiveRoom &&
                       saveLiveEditedCustomDraftActiveRoom &&
                       continueLiveEditedCustomDraftActiveRoom &&
@@ -1022,6 +1166,10 @@ int main() {
                          "new world selector creates gatehouse dungeon") &&
                   expect(createCustomDraftWorld,
                          "new world custom draft creates edited dungeon") &&
+                  expect(cursorPaintRequiresEditMode,
+                         "cursor draft paint requires edit mode") &&
+                  expect(createCursorPaintDraftWorld,
+                         "new world cursor paint creates edited dungeon") &&
                   expect(startCustomDraftActiveRoomEditing,
                          "custom draft active room enters editing") &&
                   expect(liveEditCustomDraftActiveRoom,
@@ -1047,6 +1195,10 @@ int main() {
             << (createSelectedDungeonWorld ? "true" : "false") << "\n";
   std::cout << "create_custom_draft_world="
             << (createCustomDraftWorld ? "true" : "false") << "\n";
+  std::cout << "cursor_paint_requires_edit_mode="
+            << (cursorPaintRequiresEditMode ? "true" : "false") << "\n";
+  std::cout << "create_cursor_paint_draft_world="
+            << (createCursorPaintDraftWorld ? "true" : "false") << "\n";
   std::cout << "start_custom_draft_active_room_editing="
             << (startCustomDraftActiveRoomEditing ? "true" : "false") << "\n";
   std::cout << "live_edit_custom_draft_active_room="

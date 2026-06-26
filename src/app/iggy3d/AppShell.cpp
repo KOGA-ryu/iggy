@@ -1725,6 +1725,76 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return true;
   }
 
+  if (key == "world.draft_move" || key == "world_setup.draft_move" ||
+      key == "frontend.draft_move") {
+    if (frontend.childScreen != FrontendScreen::NewWorld) {
+      window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(window, command, "world.draft_move",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    if (!window.worldSetupDungeonDraftEditMode) {
+      window.worldSetupDungeonDraftStatus = "dungeon_draft_edit_mode_off";
+      window.worldSetupDungeonDraftReasonCode = "dungeon_draft_edit_mode_off";
+      window.automationControlStatus = "command_failed";
+      markAutomationApplied(window, command, "world.draft_move",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    ProductDungeonDraftDirection direction = ProductDungeonDraftDirection::Up;
+    if (value == "up") {
+      direction = ProductDungeonDraftDirection::Up;
+    } else if (value == "down") {
+      direction = ProductDungeonDraftDirection::Down;
+    } else if (value == "left") {
+      direction = ProductDungeonDraftDirection::Left;
+    } else if (value == "right") {
+      direction = ProductDungeonDraftDirection::Right;
+    } else {
+      window.automationControlStatus = "invalid_value";
+      markAutomationApplied(window, command, "world.draft_move",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    const ProductDungeonDraftOperationResult moved =
+        moveProductDungeonDraftCursor(worldSetupDraft,
+                                      dungeonDraftCursorFromWindow(window),
+                                      direction);
+    recordDungeonDraftOperation(window, moved);
+    markAutomationApplied(window, command, "world.draft_move",
+                          productInputOwnerFor(frontend, window),
+                          moved.ok ? "applied" : "failed");
+    if (!moved.ok) {
+      window.automationControlStatus = "command_failed";
+    }
+    return moved.ok;
+  }
+
+  if (key == "world.draft_paint" || key == "world_setup.draft_paint" ||
+      key == "frontend.draft_paint") {
+    if (frontend.childScreen != FrontendScreen::NewWorld) {
+      window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(window, command, "world.draft_paint",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    if (value.size() != 1U) {
+      window.automationControlStatus = "invalid_value";
+      markAutomationApplied(window, command, "world.draft_paint",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    const bool painted =
+        applyDungeonDraftPaintGlyph(worldSetupDraft, window, value.front());
+    markAutomationApplied(window, command, "world.draft_paint",
+                          productInputOwnerFor(frontend, window),
+                          painted ? "applied" : "failed");
+    if (!painted) {
+      window.automationControlStatus = "command_failed";
+    }
+    return painted;
+  }
+
   if (key == "world.draft_cell" || key == "world_setup.draft_cell") {
     if (frontend.childScreen != FrontendScreen::NewWorld) {
       window.automationControlStatus = "owner_unavailable";
