@@ -21,6 +21,7 @@
 #include "app/iggy3d/ProductAsciiRoomPreview.hpp"
 #include "app/iggy3d/product/Automation.hpp"
 #include "app/iggy3d/product/AutomationRoomEditing.hpp"
+#include "app/iggy3d/product/AutomationSaveBrowser.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/ProductDungeonDraft.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
@@ -1350,129 +1351,15 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return executed;
   }
 
-  if (key == "save.select" || key == "frontend.save_select") {
-    if (frontend.childScreen != FrontendScreen::LoadSave) {
-      window.automationControlStatus = "owner_unavailable";
-      markAutomationApplied(window, command, "save.select",
-                            productInputOwnerFor(frontend, window), "failed");
-      return false;
-    }
-    const ProductSaveSelectionAutomationResult saveSelection =
-        resolveProductSaveSelectionAutomation(value);
-    window.automationControlStatus =
-        std::array<std::string_view, 2>{
-            window.automationControlStatus, std::string_view{"invalid_value"}}
-            [!saveSelection.valid];
-    const auto selectSave = [&]() -> bool {
-      const bool selected =
-          selectProductSaveSlotById(saves.slots, saveSelection.saveId, window);
-      markAutomationApplied(window,
-                            command,
-                            window.selectedProductSaveId,
-                            productInputOwnerFor(frontend, window),
-                            selected ? "applied" : "ignored");
-      return selected;
-    };
-    return saveSelection.valid && selectSave();
-  }
-
-  if (key == "save.delete" || key == "frontend.save_delete") {
-    if (!resolveProductSaveBrowserBoolAutomation(value, boolValue)) {
-      window.automationControlStatus = "invalid_value";
-      return false;
-    }
-    if (!boolValue) {
-      markAutomationApplied(window, command, "save.delete",
-                            productInputOwnerFor(frontend, window), "ignored");
-      return true;
-    }
-    if (frontend.childScreen != FrontendScreen::LoadSave) {
-      window.automationControlStatus = "owner_unavailable";
-      markAutomationApplied(window, command, "save.delete",
-                            productInputOwnerFor(frontend, window), "failed");
-      return false;
-    }
-    openProductSaveDeleteConfirmation(saves.slots, window, frontend);
-    markAutomationApplied(window, command, "save.delete",
-                          productInputOwnerFor(frontend, window), "applied");
-    return true;
-  }
-
-  if (key == "save.show_deleted" || key == "frontend.show_deleted_saves") {
-    if (!resolveProductSaveBrowserBoolAutomation(value, boolValue)) {
-      window.automationControlStatus = "invalid_value";
-      return false;
-    }
-    if (!boolValue) {
-      markAutomationApplied(window, command, "save.show_deleted",
-                            productInputOwnerFor(frontend, window), "ignored");
-      return true;
-    }
-    if (frontend.childScreen != FrontendScreen::LoadSave) {
-      window.automationControlStatus = "owner_unavailable";
-      markAutomationApplied(window, command, "save.show_deleted",
-                            productInputOwnerFor(frontend, window), "failed");
-      return false;
-    }
-    openDeletedProductSaveBrowser(options, window, frontend);
-    markAutomationApplied(window, command, "save.show_deleted",
-                          productInputOwnerFor(frontend, window), "applied");
-    return true;
-  }
-
-  if (key == "save.deleted_select" || key == "frontend.deleted_save_select") {
-    if (frontend.childScreen != FrontendScreen::LoadSave ||
-        !window.deletedSaveBrowserOpen) {
-      window.automationControlStatus = "owner_unavailable";
-      markAutomationApplied(window, command, "save.deleted_select",
-                            productInputOwnerFor(frontend, window), "failed");
-      return false;
-    }
-    const ProductSaveSelectionAutomationResult saveSelection =
-        resolveProductSaveSelectionAutomation(value);
-    window.automationControlStatus =
-        std::array<std::string_view, 2>{
-            window.automationControlStatus, std::string_view{"invalid_value"}}
-            [!saveSelection.valid];
-    const auto selectDeletedSave = [&]() -> bool {
-      const ProductSaveBridgeResult deletedSaves =
-          scanDeletedProductSavesForOptions(options);
-      recordDeletedProductSaveSlots(deletedSaves, window);
-      const bool selected =
-          selectDeletedProductSaveSlotById(deletedSaves.slots,
-                                           saveSelection.saveId, window);
-      markAutomationApplied(window,
-                            command,
-                            window.deletedSelectedSaveId,
-                            productInputOwnerFor(frontend, window),
-                            selected ? "applied" : "ignored");
-      return selected;
-    };
-    return saveSelection.valid && selectDeletedSave();
-  }
-
-  if (key == "save.recover" || key == "frontend.save_recover") {
-    if (!resolveProductSaveBrowserBoolAutomation(value, boolValue)) {
-      window.automationControlStatus = "invalid_value";
-      return false;
-    }
-    if (!boolValue) {
-      markAutomationApplied(window, command, "save.recover",
-                            productInputOwnerFor(frontend, window), "ignored");
-      return true;
-    }
-    if (frontend.childScreen != FrontendScreen::LoadSave ||
-        !window.deletedSaveBrowserOpen) {
-      window.automationControlStatus = "owner_unavailable";
-      markAutomationApplied(window, command, "save.recover",
-                            productInputOwnerFor(frontend, window), "failed");
-      return false;
-    }
-    executeProductSaveRecover(options, window, frontend);
-    markAutomationApplied(window, command, "save.recover",
-                          productInputOwnerFor(frontend, window),
-                          window.saveRecoverExecuted ? "applied" : "failed");
-    return window.saveRecoverExecuted;
+  ProductAutomationSaveBrowserContext saveBrowserExecutionContext{
+      frontend, window, options, saves,
+      [&frontend, &window]() { return productInputOwnerFor(frontend, window); }};
+  const ProductAutomationExecutionResult saveBrowserExecution =
+      applyProductSaveBrowserAutomationCommand(command, automationSpec,
+                                               saveBrowserExecutionContext);
+  // branch-gate: BG-1009
+  if (saveBrowserExecution.handled) {
+    return saveBrowserExecution.accepted;
   }
 
   if (key == "frontend.execute" || key == "pause.execute" ||

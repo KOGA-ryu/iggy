@@ -63,6 +63,11 @@ enum class ProductAutomationCommandId : std::uint8_t {
   RoomEditorCycleTool,
   RoomEditorWallDirection,
   RoomEditorPlace,
+  SaveSelect,
+  SaveDelete,
+  SaveShowDeleted,
+  SaveDeletedSelect,
+  SaveRecover,
   Unknown,
 };
 

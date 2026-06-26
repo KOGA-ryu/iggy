@@ -79,6 +79,11 @@ std::string_view productAutomationCommandIdName(
       std::string_view{"room_editor.cycle_tool"},
       std::string_view{"room_editor.wall_direction"},
       std::string_view{"room_editor.place"},
+      std::string_view{"save.select"},
+      std::string_view{"save.delete"},
+      std::string_view{"save.show_deleted"},
+      std::string_view{"save.deleted_select"},
+      std::string_view{"save.recover"},
       std::string_view{"unknown"},
   };
   return names[static_cast<std::size_t>(commandId)];
@@ -538,6 +543,21 @@ const ProductAutomationCommandDispatchSpec& findProductAutomationCommandDispatch
       ProductAutomationCommandDispatchSpec{
           true, "menu.previous_tab", Id::MenuShortcut, Category::MenuShortcut,
           Value::Bool, InputAction::MenuPreviousTab},
+      ProductAutomationCommandDispatchSpec{
+          true, "save.select", Id::SaveSelect, Category::SaveBrowser, Value::String,
+          InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          true, "save.delete", Id::SaveDelete, Category::SaveBrowser, Value::Bool,
+          InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          true, "save.show_deleted", Id::SaveShowDeleted, Category::SaveBrowser,
+          Value::Bool, InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          true, "save.deleted_select", Id::SaveDeletedSelect,
+          Category::DeletedSaveBrowser, Value::String, InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          true, "save.recover", Id::SaveRecover, Category::DeletedSaveBrowser,
+          Value::Bool, InputAction::None},
       ProductAutomationCommandDispatchSpec{
           true, "room_edit.start", Id::RoomEditStart, Category::RoomEdit, Value::Bool,
           InputAction::None},
