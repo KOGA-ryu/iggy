@@ -22,6 +22,7 @@
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductAsciiRoomActivation.hpp"
 #include "app/iggy3d/ProductAsciiRoomPreview.hpp"
+#include "app/iggy3d/ProductAutomationCommandRegistry.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/ProductDungeonDraft.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
@@ -1772,6 +1773,10 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                                    bool& closeRequested) {
   const std::string_view key{command.key};
   const std::string_view value{command.value};
+  static const ProductAutomationCommandRegistry automationRegistry =
+      makeProductAutomationCommandRegistry();
+  const std::string_view canonicalKey =
+      productAutomationCanonicalKey(automationRegistry, key);
   bool boolValue = false;
   InputAction inputAction = InputAction::None;
 
@@ -2290,8 +2295,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return true;
   }
 
-  if (key == "room_editor.move" ||
-      key == "frontend.room_editor_move") {
+  if (canonicalKey == "room_editor.move") {
     ProductRoomEditorDirection direction = ProductRoomEditorDirection::Up;
     if (!parseProductRoomEditorDirection(value, direction)) {
       window.automationControlStatus = "invalid_value";
@@ -2315,8 +2319,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return moved.ok;
   }
 
-  if (key == "room_editor.tool" ||
-      key == "frontend.room_editor_tool") {
+  if (canonicalKey == "room_editor.tool") {
     ProductRoomEditorTool tool = ProductRoomEditorTool::Floor;
     if (!parseProductRoomEditorTool(value, tool)) {
       window.automationControlStatus = "invalid_value";
@@ -2340,8 +2343,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return changed.ok;
   }
 
-  if (key == "room_editor.cycle_tool" ||
-      key == "frontend.room_editor_cycle_tool") {
+  if (canonicalKey == "room_editor.cycle_tool") {
     if (!parseAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
@@ -2369,8 +2371,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return changed.ok;
   }
 
-  if (key == "room_editor.wall_direction" ||
-      key == "frontend.room_editor_wall_direction") {
+  if (canonicalKey == "room_editor.wall_direction") {
     ProductRoomEditorDirection direction = ProductRoomEditorDirection::Up;
     if (!parseProductRoomEditorDirection(value, direction)) {
       window.automationControlStatus = "invalid_value";
@@ -2395,8 +2396,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return changed.ok;
   }
 
-  if (key == "room_editor.place" ||
-      key == "frontend.room_editor_place") {
+  if (canonicalKey == "room_editor.place") {
     if (!parseAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
