@@ -727,73 +727,8 @@ void applyOpeningMenuAction(FrontendState& frontend,
   if (frontend.childScreen == FrontendScreen::DeleteConfirm && window.saveDeleteConfirmationOpen)
     return (void)applyProductDeleteConfirmMenuAction(action, {frontend, options, window});
 
-  if (frontend.childScreen == FrontendScreen::NewWorld) {
-    recordWorldSetupDraftState(worldSetupDraft, window);
-    if (action == InputAction::MenuNextTab) {
-      window.worldSetupDungeonDraftEditMode =
-          !window.worldSetupDungeonDraftEditMode;
-      worldSetupDraft.selectedField =
-          window.worldSetupDungeonDraftEditMode ? WorldSetupField::AsciiRoom
-                                                : WorldSetupField::Create;
-      window.worldSetupDungeonDraftStatus =
-          window.worldSetupDungeonDraftEditMode ? "dungeon_draft_edit_mode_on"
-                                                : "dungeon_draft_edit_mode_off";
-      window.worldSetupDungeonDraftReasonCode = window.worldSetupDungeonDraftStatus;
-      resetDungeonDraftWindowCursor(worldSetupDraft, window);
-      frontend.status = window.worldSetupDungeonDraftStatus;
-      return;
-    }
-    if (window.worldSetupDungeonDraftEditMode &&
-        (action == InputAction::MenuUp || action == InputAction::MenuDown ||
-         action == InputAction::MenuLeft || action == InputAction::MenuRight)) {
-      ProductDungeonDraftDirection direction = ProductDungeonDraftDirection::Up;
-      if (action == InputAction::MenuDown) {
-        direction = ProductDungeonDraftDirection::Down;
-      } else if (action == InputAction::MenuLeft) {
-        direction = ProductDungeonDraftDirection::Left;
-      } else if (action == InputAction::MenuRight) {
-        direction = ProductDungeonDraftDirection::Right;
-      }
-      const ProductDungeonDraftOperationResult moved =
-          moveProductDungeonDraftCursor(worldSetupDraft,
-                                        dungeonDraftCursorFromWindow(window),
-                                        direction);
-      recordDungeonDraftOperation(window, moved);
-      frontend.status = moved.status;
-      return;
-    }
-    if (!window.worldSetupDungeonDraftEditMode &&
-        (action == InputAction::MenuUp || action == InputAction::MenuDown ||
-         action == InputAction::MenuLeft || action == InputAction::MenuRight)) {
-      const bool previous =
-          action == InputAction::MenuUp || action == InputAction::MenuLeft;
-      const bool changed = previous
-                               ? selectPreviousProductBuiltinDungeon(worldSetupDraft)
-                               : selectNextProductBuiltinDungeon(worldSetupDraft);
-      window.worldSetupDungeonDraftModified = false;
-      window.worldSetupDungeonDraftEditMode = false;
-      resetDungeonDraftWindowCursor(worldSetupDraft, window);
-      recordWorldSetupDraftState(worldSetupDraft, window);
-      frontend.status =
-          changed ? "new_world_dungeon_selection_changed" : "new_world_input_ignored";
-      window.worldSetupStatus =
-          changed ? "world_setup_dungeon_selected" : "world_setup_dungeon_unavailable";
-      return;
-    }
-    if (action == InputAction::MenuBack) {
-      frontend.childScreen = FrontendScreen::Gameplay;
-      frontend.selectedAction = FrontendAction::NewWorld;
-      frontend.status = "new_world_closed";
-      window.worldSetupStatus = "world_setup_back";
-      return;
-    }
-    if (action == InputAction::MenuConfirm) {
-      launchProductNewWorld(options, worldSetupDraft, frontend, activeSession, window);
-      return;
-    }
-    frontend.status = "new_world_input_ignored";
-    return;
-  }
+  if (frontend.childScreen == FrontendScreen::NewWorld)
+    return (void)applyProductNewWorldMenuAction(action, {frontend, options, activeSession, worldSetupDraft, window});
 
   if (frontend.childScreen == FrontendScreen::LoadSave)
     return (void)applyProductLoadSaveMenuAction(action, {frontend, options, saves, activeSession, window});

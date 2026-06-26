@@ -12,6 +12,7 @@
 namespace iggy3d {
 
 struct ProductSaveBridgeResult;
+struct WorldSetupDraft;
 
 struct ProductPauseMenuActionContext {
   FrontendState& frontend;
@@ -47,6 +48,14 @@ struct ProductLoadSaveMenuActionContext {
   ProductAppWindowState& window;
 };
 
+struct ProductNewWorldMenuActionContext {
+  FrontendState& frontend;
+  const ProductAppOptions& options;
+  std::optional<Session>& activeSession;
+  WorldSetupDraft& worldSetupDraft;
+  ProductAppWindowState& window;
+};
+
 struct ProductMenuActionResult {
   bool handled = false;
   bool accepted = false;
@@ -75,5 +84,9 @@ ProductMenuActionResult applyProductDeleteConfirmMenuAction(
 ProductMenuActionResult applyProductLoadSaveMenuAction(
     InputAction action,
     ProductLoadSaveMenuActionContext context);
+
+ProductMenuActionResult applyProductNewWorldMenuAction(
+    InputAction action,
+    ProductNewWorldMenuActionContext context);
 
 }  // namespace iggy3d

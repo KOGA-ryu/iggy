@@ -2,13 +2,17 @@
 
 #include <array>
 #include <cstddef>
+#include <optional>
 #include <string_view>
 
 #include "app/frontend/FrontendState.hpp"
+#include "app/iggy3d/ProductBuiltinDungeon.hpp"
+#include "app/iggy3d/ProductDungeonDraft.hpp"
 #include "app/iggy3d/ProductAppOperations.hpp"
 #include "app/iggy3d/ProductMenuTransitions.hpp"
 #include "app/iggy3d/ProductRoomAuthoringController.hpp"
 #include "app/iggy3d/ProductSaveFlow.hpp"
+#include "app/iggy3d/product/Automation.hpp"
 #include "app/iggy3d/product/AutomationRoomEditing.hpp"
 
 namespace iggy3d {
@@ -118,6 +122,31 @@ ProductMenuActionResult applyDevToolsMenuAction(
     return {true, true};
   }
   return {true, false};
+}
+
+std::optional<ProductDungeonDraftDirection> dungeonDraftDirectionForAction(
+    InputAction action) {
+  // branch-gate: BG-1021
+  if (action == InputAction::MenuUp) {
+    return ProductDungeonDraftDirection::Up;
+  }
+  // branch-gate: BG-1021
+  if (action == InputAction::MenuDown) {
+    return ProductDungeonDraftDirection::Down;
+  }
+  // branch-gate: BG-1021
+  if (action == InputAction::MenuLeft) {
+    return ProductDungeonDraftDirection::Left;
+  }
+  // branch-gate: BG-1021
+  if (action == InputAction::MenuRight) {
+    return ProductDungeonDraftDirection::Right;
+  }
+  return std::nullopt;
+}
+
+bool isPreviousBuiltinDungeonAction(InputAction action) {
+  return action == InputAction::MenuUp || action == InputAction::MenuLeft;
 }
 
 ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& context) {
@@ -305,6 +334,76 @@ ProductMenuActionResult applyProductLoadSaveMenuAction(
     }
     return {true, true};
   }
+  return {true, false};
+}
+
+ProductMenuActionResult applyProductNewWorldMenuAction(
+    InputAction action,
+    ProductNewWorldMenuActionContext context) {
+  FrontendState& frontend = context.frontend;
+  ProductAppWindowState& window = context.window;
+  WorldSetupDraft& worldSetupDraft = context.worldSetupDraft;
+  recordWorldSetupDraftState(worldSetupDraft, window);
+  // branch-gate: BG-1021
+  if (action == InputAction::MenuNextTab) {
+    window.worldSetupDungeonDraftEditMode =
+        !window.worldSetupDungeonDraftEditMode;
+    worldSetupDraft.selectedField =
+        window.worldSetupDungeonDraftEditMode ? WorldSetupField::AsciiRoom  // branch-gate: BG-1021
+                                              : WorldSetupField::Create;
+    window.worldSetupDungeonDraftStatus =
+        window.worldSetupDungeonDraftEditMode ? "dungeon_draft_edit_mode_on"
+                                              : "dungeon_draft_edit_mode_off";  // branch-gate: BG-1021
+    window.worldSetupDungeonDraftReasonCode =
+        window.worldSetupDungeonDraftStatus;
+    resetDungeonDraftWindowCursor(worldSetupDraft, window);
+    frontend.status = window.worldSetupDungeonDraftStatus;
+    return {true, true};
+  }
+
+  const std::optional<ProductDungeonDraftDirection> direction =
+      dungeonDraftDirectionForAction(action);
+  // branch-gate: BG-1021
+  if (window.worldSetupDungeonDraftEditMode && direction.has_value()) {
+    const ProductDungeonDraftOperationResult moved =
+        moveProductDungeonDraftCursor(worldSetupDraft,
+                                      dungeonDraftCursorFromWindow(window),
+                                      *direction);
+    recordDungeonDraftOperation(window, moved);
+    frontend.status = moved.status;
+    return {true, true};
+  }
+  // branch-gate: BG-1021
+  if (!window.worldSetupDungeonDraftEditMode && direction.has_value()) {
+    const bool previous = isPreviousBuiltinDungeonAction(action);
+    const bool changed = previous
+                             ? selectPreviousProductBuiltinDungeon(worldSetupDraft)
+                             : selectNextProductBuiltinDungeon(worldSetupDraft);  // branch-gate: BG-1021
+    window.worldSetupDungeonDraftModified = false;
+    window.worldSetupDungeonDraftEditMode = false;
+    resetDungeonDraftWindowCursor(worldSetupDraft, window);
+    recordWorldSetupDraftState(worldSetupDraft, window);
+    frontend.status =
+        changed ? "new_world_dungeon_selection_changed" : "new_world_input_ignored";  // branch-gate: BG-1021
+    window.worldSetupStatus =
+        changed ? "world_setup_dungeon_selected" : "world_setup_dungeon_unavailable";  // branch-gate: BG-1021
+    return {true, true};
+  }
+  // branch-gate: BG-1021
+  if (action == InputAction::MenuBack) {
+    frontend.childScreen = FrontendScreen::Gameplay;
+    frontend.selectedAction = FrontendAction::NewWorld;
+    frontend.status = "new_world_closed";
+    window.worldSetupStatus = "world_setup_back";
+    return {true, true};
+  }
+  // branch-gate: BG-1021
+  if (action == InputAction::MenuConfirm) {
+    launchProductNewWorld(context.options, worldSetupDraft, frontend,
+                          context.activeSession, window);
+    return {true, true};
+  }
+  frontend.status = "new_world_input_ignored";
   return {true, false};
 }
 
