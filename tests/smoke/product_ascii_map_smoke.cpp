@@ -683,6 +683,20 @@ int main() {
                               "true") &&
       iggy3d::smoke::hasField(fields, "room_editor_last_primitive_id",
                               "edit_wall_1") &&
+      iggy3d::smoke::hasField(fields, "room_editor_overlay_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "room_editor_overlay_status",
+                              "room_editor_overlay_ready") &&
+      iggy3d::smoke::hasField(fields, "room_editor_overlay_reason_code",
+                              "room_editor_overlay_ready") &&
+      iggy3d::smoke::hasField(fields, "room_editor_overlay_item_count",
+                              "1") &&
+      iggy3d::smoke::hasField(fields, "room_editor_overlay_world_x",
+                              "1.000") &&
+      iggy3d::smoke::hasField(fields, "room_editor_overlay_world_y",
+                              "0.150") &&
+      iggy3d::smoke::hasField(fields, "room_editor_overlay_world_z",
+                              "-0.500") &&
       iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
       iggy3d::smoke::hasField(fields, "active_room_source", "editable_room") &&
       iggy3d::smoke::hasField(fields, "active_room_id",
@@ -707,6 +721,22 @@ int main() {
       iggy3d::smoke::hasField(fields,
                               "active_room_collision_projectile_blocker_count",
                               "62") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_draw_room_editor_cursor_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_draw_room_editor_cursor_count",
+                              "1") &&
+      iggy3d::smoke::hasField(fields, "product_render_bridge_ready",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "product_view_frame_ready", "true") &&
+      iggy3d::smoke::positiveIntegerField(
+          fields, "product_view_frame_item_count") &&
+      iggy3d::smoke::hasField(
+          fields, "product_render_bridge_room_editor_cursor_visible",
+          "true") &&
+      iggy3d::smoke::hasField(
+          fields, "product_render_bridge_room_editor_cursor_count", "1") &&
       iggy3d::smoke::hasField(fields,
                               "product_vulkan_room_mesh_cpu_ready",
                               "true") &&

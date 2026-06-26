@@ -56,6 +56,10 @@ ProductRenderBridgeFrame buildProductRenderBridgeFrame(
       if (isTargetItem(item)) {
         ++bridge.targetItemCount;
       }
+      if (item.kind == ProductPrimitiveDrawKind::RoomEditorCursor) {
+        ++bridge.roomEditorCursorCount;
+        bridge.roomEditorCursorVisible = true;
+      }
     }
   }
 

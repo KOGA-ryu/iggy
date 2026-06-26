@@ -36,6 +36,8 @@ struct ProductRenderBridgeFrame {
   bool playerVisible = false;
   bool objectiveVisible = false;
   bool targetIndicatorVisible = false;
+  bool roomEditorCursorVisible = false;
+  std::uint64_t roomEditorCursorCount = 0;
   std::string projectionMode = "primitive_first_person";
   std::vector<ProductRenderBridgeItem> items;
 };

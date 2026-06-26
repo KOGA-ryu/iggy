@@ -113,6 +113,13 @@ struct ProductAppWindowState {
   std::string roomEditorLastOperation = "none";
   bool roomEditorLastOperationAccepted = false;
   std::string roomEditorLastPrimitiveId = "none";
+  bool roomEditorOverlayVisible = false;
+  std::string roomEditorOverlayStatus = "room_editor_overlay_not_ready";
+  std::string roomEditorOverlayReasonCode = "room_editor_overlay_not_ready";
+  std::uint64_t roomEditorOverlayItemCount = 0;
+  float roomEditorOverlayWorldX = 0.0F;
+  float roomEditorOverlayWorldY = 0.0F;
+  float roomEditorOverlayWorldZ = 0.0F;
   ProductActiveRoomState activeRoom;
   ProductActiveRoomCollisionState activeRoomCollision;
   std::string productSaveStatus = "not_requested";

@@ -430,6 +430,20 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.roomEditorLastOperationAccepted);
   appendReceiptField(receipt, "room_editor_last_primitive_id",
                      window.roomEditorLastPrimitiveId);
+  appendReceiptField(receipt, "room_editor_overlay_visible",
+                     window.roomEditorOverlayVisible);
+  appendReceiptField(receipt, "room_editor_overlay_status",
+                     window.roomEditorOverlayStatus);
+  appendReceiptField(receipt, "room_editor_overlay_reason_code",
+                     window.roomEditorOverlayReasonCode);
+  appendReceiptField(receipt, "room_editor_overlay_item_count",
+                     window.roomEditorOverlayItemCount);
+  appendReceiptField(receipt, "room_editor_overlay_world_x",
+                     floatReceiptValue(window.roomEditorOverlayWorldX));
+  appendReceiptField(receipt, "room_editor_overlay_world_y",
+                     floatReceiptValue(window.roomEditorOverlayWorldY));
+  appendReceiptField(receipt, "room_editor_overlay_world_z",
+                     floatReceiptValue(window.roomEditorOverlayWorldZ));
   appendReceiptField(receipt, "selected_save_id", window.selectedProductSaveId);
   appendReceiptField(receipt, "selected_save_enabled",
                      window.selectedProductSaveEnabled);
@@ -754,6 +768,10 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.viewport.productDrawBlockedSlopeTileCount);
   appendReceiptField(receipt, "product_draw_wall_tile_count",
                      window.viewport.productDrawWallTileCount);
+  appendReceiptField(receipt, "product_draw_room_editor_cursor_visible",
+                     window.viewport.productDrawRoomEditorCursorVisible);
+  appendReceiptField(receipt, "product_draw_room_editor_cursor_count",
+                     window.viewport.productDrawRoomEditorCursorCount);
   appendReceiptField(receipt, "product_view_projection",
                      window.viewport.productViewProjection);
   appendReceiptField(receipt, "product_view_yaw_applied",
@@ -772,6 +790,10 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.viewport.productViewFrameOnScreenItemCount);
   appendReceiptField(receipt, "product_view_frame_target_item_count",
                      window.viewport.productViewFrameTargetItemCount);
+  appendReceiptField(receipt, "product_render_bridge_room_editor_cursor_visible",
+                     window.viewport.productRenderBridgeRoomEditorCursorVisible);
+  appendReceiptField(receipt, "product_render_bridge_room_editor_cursor_count",
+                     window.viewport.productRenderBridgeRoomEditorCursorCount);
   appendReceiptField(receipt, "product_feedback_bridge_ready",
                      window.viewport.productFeedbackBridgeReady);
   appendReceiptField(receipt, "product_feedback_bridge_line_count",

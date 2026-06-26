@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/ProductRoomEditorOverlay.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneItem.hpp"
 #include "projection/scene/SceneProjection.hpp"
@@ -69,6 +70,8 @@ ProductPrimitiveColor colorForRoomKind(ProductPrimitiveDrawKind kind) {
       return {184, 82, 74};
     case ProductPrimitiveDrawKind::WallTile:
       return {76, 86, 92};
+    case ProductPrimitiveDrawKind::RoomEditorCursor:
+      return {245, 214, 96};
     case ProductPrimitiveDrawKind::PlayerMarker:
     case ProductPrimitiveDrawKind::NpcMarker:
     case ProductPrimitiveDrawKind::PickupMarker:
@@ -259,6 +262,10 @@ void updateCounts(ProductPrimitiveDrawList& list, const ProductPrimitiveDrawItem
       ++list.wallTileCount;
       list.roomVisible = true;
       break;
+    case ProductPrimitiveDrawKind::RoomEditorCursor:
+      ++list.roomEditorCursorCount;
+      list.roomEditorCursorVisible = true;
+      break;
   }
 }
 
@@ -358,18 +365,44 @@ void appendRoomGeometry(const RoomAsset* room, ProductPrimitiveDrawList& list) {
   }
 }
 
+void appendRoomEditorOverlay(const ProductRoomEditorOverlay* overlay,
+                             ProductPrimitiveDrawList& list) {
+  if (overlay == nullptr || !overlay->visible || overlay->itemCount == 0U) {
+    return;
+  }
+
+  ProductPrimitiveDrawItem item;
+  item.kind = ProductPrimitiveDrawKind::RoomEditorCursor;
+  item.stableName = "room_editor_cursor";
+  item.worldPosition = overlay->worldPosition;
+  item.worldBounds =
+      aabbFromCenterExtents(overlay->worldPosition, {0.28F, 0.08F, 0.28F});
+  item.visible = true;
+  item.targetable = false;
+  item.interactable = false;
+  item.tactical = false;
+  item.color = colorForRoomKind(item.kind);
+  item.markerSize = 30.0F;
+  list.items.push_back(item);
+  updateCounts(list, item);
+}
+
 }  // namespace
 
 ProductPrimitiveDrawList buildProductPrimitiveDrawList(
     const SceneProjectionResult* scene,
     const DebugProjectionResult* debug,
     const RoomAsset* activeRoom,
-    const ProductActiveRoomCollisionState* activeRoomCollision) {
+    const ProductActiveRoomCollisionState* activeRoomCollision,
+    const ProductRoomEditorOverlay* roomEditorOverlay) {
   (void)debug;
   ProductPrimitiveDrawList list;
-  list.gridVisible = scene != nullptr || activeRoom != nullptr;
+  list.gridVisible =
+      scene != nullptr || activeRoom != nullptr ||
+      (roomEditorOverlay != nullptr && roomEditorOverlay->visible);
   appendRoomGeometry(activeRoom, list);
   appendOpenDoorMarkers(activeRoom, activeRoomCollision, list);
+  appendRoomEditorOverlay(roomEditorOverlay, list);
   if (scene == nullptr) {
     return list;
   }

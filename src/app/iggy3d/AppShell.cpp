@@ -33,6 +33,7 @@
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductRenderBridge.hpp"
 #include "app/iggy3d/ProductRoomEditorCursor.hpp"
+#include "app/iggy3d/ProductRoomEditorOverlay.hpp"
 #include "app/iggy3d/ProductRoomEditingState.hpp"
 #include "app/iggy3d/ProductScriptedGameplayDriver.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
@@ -404,6 +405,8 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productDrawRampTileCount = 0;
     window.viewport.productDrawBlockedSlopeTileCount = 0;
     window.viewport.productDrawWallTileCount = 0;
+    window.viewport.productDrawRoomEditorCursorVisible = false;
+    window.viewport.productDrawRoomEditorCursorCount = 0;
     window.viewport.productViewProjection = "primitive_first_person";
     window.viewport.productViewYawApplied = false;
     window.viewport.productViewPitchApplied = false;
@@ -413,6 +416,8 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productViewFrameItemCount = 0;
     window.viewport.productViewFrameOnScreenItemCount = 0;
     window.viewport.productViewFrameTargetItemCount = 0;
+    window.viewport.productRenderBridgeRoomEditorCursorVisible = false;
+    window.viewport.productRenderBridgeRoomEditorCursorCount = 0;
     window.viewport.productFeedbackBridgeReady = false;
     window.viewport.productFeedbackBridgeLineCount = 0;
     clearProductVulkanRoomMeshProof(window.viewport);
@@ -459,6 +464,10 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productDrawBlockedSlopeTileCount =
         drawList->blockedSlopeTileCount;
     window.viewport.productDrawWallTileCount = drawList->wallTileCount;
+    window.viewport.productDrawRoomEditorCursorVisible =
+        drawList->roomEditorCursorVisible;
+    window.viewport.productDrawRoomEditorCursorCount =
+        drawList->roomEditorCursorCount;
   }
   if (frame != nullptr) {
     window.viewport.productViewProjection = frame->projectionMode;
@@ -472,6 +481,10 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productViewFrameItemCount = bridge->frameItemCount;
     window.viewport.productViewFrameOnScreenItemCount = bridge->onScreenItemCount;
     window.viewport.productViewFrameTargetItemCount = bridge->targetItemCount;
+    window.viewport.productRenderBridgeRoomEditorCursorVisible =
+        bridge->roomEditorCursorVisible;
+    window.viewport.productRenderBridgeRoomEditorCursorCount =
+        bridge->roomEditorCursorCount;
     window.viewport.productFeedbackBridgeReady = bridge->feedbackReady;
     window.viewport.productFeedbackBridgeLineCount = bridge->feedbackLineCount;
   }
@@ -564,12 +577,25 @@ void runProductGameplayTapeFromOptions(const ProductAppOptions& options,
   recordProductGameplayTapeRun(run, window);
 }
 
+void copyProductRoomEditorOverlay(ProductAppWindowState& window,
+                                  const ProductRoomEditorOverlay& overlay) {
+  window.roomEditorOverlayVisible = overlay.visible;
+  window.roomEditorOverlayStatus = overlay.status;
+  window.roomEditorOverlayReasonCode = overlay.reasonCode;
+  window.roomEditorOverlayItemCount = overlay.itemCount;
+  window.roomEditorOverlayWorldX = overlay.worldPosition.x;
+  window.roomEditorOverlayWorldY = overlay.worldPosition.y;
+  window.roomEditorOverlayWorldZ = overlay.worldPosition.z;
+}
+
 void refreshGameplayProjectionMetrics(const std::optional<Session>& activeSession,
                                       ProductAppWindowState& window,
                                       bool developerToolsEnabled,
                                       bool debugOverlayEnabled) {
   if (!window.gameplayActive || !activeSession.has_value()) {
     window.sessionOutcome = "None";
+    copyProductRoomEditorOverlay(
+        window, buildProductRoomEditorOverlay(window.roomEditorCursor, false));
     copyNpcBehaviorDebugHud(window,
                             buildProductNpcBehaviorDebugHud(nullptr,
                                                             window.gameplayActive,
@@ -591,9 +617,14 @@ void refreshGameplayProjectionMetrics(const std::optional<Session>& activeSessio
                                                           window.gameplayActive,
                                                           developerToolsEnabled,
                                                           debugOverlayEnabled));
+  const ProductRoomEditorOverlay roomEditorOverlay =
+      buildProductRoomEditorOverlay(window.roomEditorCursor,
+                                    window.roomEditing.ready);
+  copyProductRoomEditorOverlay(window, roomEditorOverlay);
   const ProductPrimitiveDrawList drawList =
       buildProductPrimitiveDrawList(&scene, &debug, activeRoom,
-                                    &window.activeRoomCollision);
+                                    &window.activeRoomCollision,
+                                    &roomEditorOverlay);
   const ProductViewportFrame frame = buildProductViewportFrame(
       drawList, ProductViewportFrameConfig{window.viewport.cameraYawDegrees,
                                            window.viewport.cameraPitchDegrees});
@@ -2896,14 +2927,21 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
         nullptr, window.gameplayActive, settings.devToolsEnabled,
         settings.debugOverlayEnabled);
     copyNpcBehaviorDebugHud(window, npcBehaviorHud);
+    ProductRoomEditorOverlay roomEditorOverlay =
+        buildProductRoomEditorOverlay(window.roomEditorCursor, false);
+    copyProductRoomEditorOverlay(window, roomEditorOverlay);
     ProductRenderBridgeFrame bridge;
     if (window.gameplayActive && activeSession.has_value()) {
       const RoomAsset* activeRoom =
           window.activeRoom.loaded ? &window.activeRoom.room : nullptr;
       scene = buildSceneProjection(activeSession->state(), activeRoom);
       debug = buildProductDebugProjectionWithNpcBehavior(activeSession->state());
+      roomEditorOverlay = buildProductRoomEditorOverlay(window.roomEditorCursor,
+                                                        window.roomEditing.ready);
+      copyProductRoomEditorOverlay(window, roomEditorOverlay);
       drawList = buildProductPrimitiveDrawList(&scene, &debug, activeRoom,
-                                               &window.activeRoomCollision);
+                                               &window.activeRoomCollision,
+                                               &roomEditorOverlay);
       frame = buildProductViewportFrame(
           drawList, ProductViewportFrameConfig{window.viewport.cameraYawDegrees,
                                                window.viewport.cameraPitchDegrees});
