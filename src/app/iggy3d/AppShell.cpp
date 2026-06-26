@@ -17,12 +17,9 @@
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductAsciiRoomActivation.hpp"
 #include "app/iggy3d/ProductAsciiRoomPreview.hpp"
-#include "app/iggy3d/product/Automation.hpp"
 #include "app/iggy3d/product/AutomationControl.hpp"
-#include "app/iggy3d/product/AutomationGameplay.hpp"
+#include "app/iggy3d/product/AutomationDispatch.hpp"
 #include "app/iggy3d/product/AutomationRoomEditing.hpp"
-#include "app/iggy3d/product/AutomationSaveBrowser.hpp"
-#include "app/iggy3d/product/AutomationSystem.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/ProductDungeonDraft.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
@@ -1121,75 +1118,27 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                                    WorldSetupDraft& worldSetupDraft,
                                    ProductAppWindowState& window,
                                    bool& closeRequested) {
-  const std::string_view key{command.key};
-  static const ProductAutomationCommandRegistry automationRegistry =
-      makeProductAutomationCommandRegistry();
-  const std::string_view canonicalKey =
-      productAutomationCanonicalKey(automationRegistry, key);
-  const ProductAutomationCommandDispatchResult automationDispatch =
-      resolveProductAutomationCommandDispatch({&automationRegistry, key});
-  const ProductAutomationCommandDispatchSpec& automationSpec =
-      automationDispatch.spec;
-
-  ProductAutomationExecutionContext commonExecutionContext{
-      frontend,
-      settingsTab,
-      window,
-      [&frontend, &window]() {
-        return productInputOwnerFor(frontend, window);
-      },
+  ProductAutomationDispatchContext dispatchContext{
+      frontend, saves, options, settingsTab,
+      // branch-gate: BG-1016
+      activeSession.has_value() ? &*activeSession : nullptr,
+      worldSetupDraft, window,
+      [&frontend, &window]() { return productInputOwnerFor(frontend, window); },
       [&frontend, &saves, &options, &settingsTab, &activeSession, &worldSetupDraft,
        &window, &closeRequested](InputAction action) {
         return routeAutomationInput(frontend, saves, options, settingsTab,
                                     activeSession, worldSetupDraft, window, action,
                                     closeRequested);
       },
-  };
-  const ProductAutomationExecutionResult commonExecution =
-      applyProductCommonAutomationCommand(command, automationSpec,
-                                          commonExecutionContext);
-  // branch-gate: BG-1003
-  if (commonExecution.handled) {
-    return commonExecution.accepted;
-  }
-
-  ProductAutomationWorldSetupContext worldSetupExecutionContext{
-      frontend,
-      worldSetupDraft,
-      window,
-      [&frontend, &window]() {
-        return productInputOwnerFor(frontend, window);
-      },
       [&activeSession, &window, &frontend]() {
         const ProductAsciiRoomActivationResult activated =
             activateProductAsciiRoomPreview(activeSession, window);
+        // branch-gate: BG-1016
         if (activated.ok) {
           enterProductGameplayTransition(frontend, window,
                                          FrontendAction::CreateAndEnter);
         }
         return activated.ok;
-      },
-      [&frontend, &saves, &options, &settingsTab, &activeSession, &worldSetupDraft,
-       &window, &closeRequested](InputAction action) {
-        return routeAutomationInput(frontend, saves, options, settingsTab,
-                                    activeSession, worldSetupDraft, window, action,
-                                    closeRequested);
-      },
-  };
-  const ProductAutomationExecutionResult worldSetupExecution =
-      applyProductWorldSetupAutomationCommand(command, canonicalKey,
-                                              worldSetupExecutionContext);
-  // branch-gate: BG-1005
-  if (worldSetupExecution.handled) {
-    return worldSetupExecution.accepted;
-  }
-
-  ProductAutomationRoomEditingContext roomEditingExecutionContext{
-      frontend,
-      window,
-      activeSession.has_value(),
-      [&frontend, &window]() {
-        return productInputOwnerFor(frontend, window);
       },
       [&window](InputAction action) {
         InputRoutingContext routingContext;
@@ -1197,67 +1146,13 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
         routingContext.owners.gameplay = true;
         return routeInputAction(routingContext, action);
       },
-  };
-  const ProductAutomationExecutionResult roomEditingExecution =
-      applyProductRoomEditingAutomationCommand(command, automationSpec,
-                                               roomEditingExecutionContext);
-  // branch-gate: BG-1007
-  if (roomEditingExecution.handled) {
-    return roomEditingExecution.accepted;
-  }
-
-  ProductAutomationGameplayContext gameplayExecutionContext{
-      frontend, window,
-      // branch-gate: BG-1011
-      activeSession.has_value() ? &*activeSession : nullptr,
-      [&frontend, &window]() { return productInputOwnerFor(frontend, window); }};
-  const ProductAutomationExecutionResult gameplayExecution =
-      applyProductGameplayAutomationCommand(command, automationSpec,
-                                            gameplayExecutionContext);
-  // branch-gate: BG-1011
-  if (gameplayExecution.handled) {
-    return gameplayExecution.accepted;
-  }
-
-  ProductAutomationSaveBrowserContext saveBrowserExecutionContext{
-      frontend, window, options, saves,
-      [&frontend, &window]() { return productInputOwnerFor(frontend, window); }};
-  const ProductAutomationExecutionResult saveBrowserExecution =
-      applyProductSaveBrowserAutomationCommand(command, automationSpec,
-                                               saveBrowserExecutionContext);
-  // branch-gate: BG-1009
-  if (saveBrowserExecution.handled) {
-    return saveBrowserExecution.accepted;
-  }
-
-  ProductAutomationSystemContext systemExecutionContext{
-      frontend,
-      window,
-      [&frontend, &window]() { return productInputOwnerFor(frontend, window); },
-      [&frontend, &saves, &options, &settingsTab, &activeSession, &worldSetupDraft,
-       &window, &closeRequested](InputAction action) {
-        return routeAutomationInput(frontend, saves, options, settingsTab,
-                                    activeSession, worldSetupDraft, window,
-                                    action, closeRequested);
-      },
       [&frontend, &window, &activeSession]() {
         returnProductToTitleTransition(frontend, window);
         activeSession.reset();
       },
-      [&closeRequested]() {
-        closeRequested = true;
-      },
+      [&closeRequested]() { closeRequested = true; },
   };
-  const ProductAutomationExecutionResult systemExecution =
-      applyProductSystemAutomationCommand(command, automationSpec,
-                                          systemExecutionContext);
-  // branch-gate: BG-1013
-  if (systemExecution.handled) {
-    return systemExecution.accepted;
-  }
-
-  window.automationControlStatus = "unknown_key";
-  return false;
+  return applyProductAutomationCommand(command, dispatchContext);
 }
 
 ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,

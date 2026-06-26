@@ -58,6 +58,7 @@ target_sources(iggy3d
     src/app/iggy3d/ProductAppOptions.cpp
     src/app/iggy3d/product/Automation.cpp
     src/app/iggy3d/product/AutomationControl.cpp
+    src/app/iggy3d/product/AutomationDispatch.cpp
     src/app/iggy3d/product/AutomationGameplay.cpp
     src/app/iggy3d/product/AutomationRoomEditing.cpp
     src/app/iggy3d/product/AutomationSaveBrowser.cpp
