@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <string_view>
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/ProductMenuTransitions.hpp"
@@ -59,6 +60,27 @@ FrontendDevToolsCategory nextDevToolsSelection(FrontendDevToolsCategory current,
     index = (index + 1) % categories.size();
   }
   return categories[index];
+}
+
+FrontendSettingsTab nextSettingsSelection(FrontendSettingsTab current,
+                                          InputAction action) {
+  const auto& tabs = settingsTabOrder();
+  std::size_t index = 0;
+  // branch-gate: BG-1019
+  for (std::size_t i = 0; i < tabs.size(); ++i) {
+    // branch-gate: BG-1019
+    if (tabs[i] == current) {
+      index = i;
+      break;
+    }
+  }
+  // branch-gate: BG-1019
+  if (action == InputAction::MenuUp) {
+    index = index == 0 ? tabs.size() - 1 : index - 1;  // branch-gate: BG-1019
+  } else if (action == InputAction::MenuDown) {  // branch-gate: BG-1019
+    index = (index + 1) % tabs.size();
+  }
+  return tabs[index];
 }
 
 void closeDevOverlayToGameplay(FrontendState& frontend,
@@ -203,6 +225,37 @@ ProductMenuActionResult applyProductStarterDevToolsMenuAction(
       closeStarterDevTools,
   };
   return applyDevToolsMenuAction(action, context, config);
+}
+
+ProductMenuActionResult applyProductSettingsMenuAction(
+    InputAction action,
+    ProductSettingsMenuActionContext context) {
+  FrontendState& frontend = context.frontend;
+  // branch-gate: BG-1019
+  if (action == InputAction::MenuUp || action == InputAction::MenuDown) {
+    context.settingsTab = nextSettingsSelection(context.settingsTab, action);
+    frontend.status = "settings_selection_changed";
+    return {true, true};
+  }
+  // branch-gate: BG-1019
+  if (action == InputAction::MenuBack) {
+    // branch-gate: BG-1019
+    if (frontend.screen == FrontendScreen::Settings &&
+        frontend.childScreen == FrontendScreen::Pause) {
+      openProductPauseTransition(frontend, context.window,
+                                 FrontendAction::Settings);
+    } else {
+      frontend.childScreen = FrontendScreen::Gameplay;
+    }
+    frontend.status = "settings_closed";
+    return {true, true};
+  }
+  // branch-gate: BG-1019
+  if (action == InputAction::MenuConfirm) {
+    frontend.status = "settings_tab_selected";
+    return {true, true};
+  }
+  return {true, false};
 }
 
 }  // namespace iggy3d

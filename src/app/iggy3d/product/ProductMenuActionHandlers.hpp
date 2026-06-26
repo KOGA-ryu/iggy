@@ -25,6 +25,12 @@ struct ProductDevToolsMenuActionContext {
   ProductAppWindowState& window;
 };
 
+struct ProductSettingsMenuActionContext {
+  FrontendState& frontend;
+  FrontendSettingsTab& settingsTab;
+  ProductAppWindowState& window;
+};
+
 struct ProductMenuActionResult {
   bool handled = false;
   bool accepted = false;
@@ -41,5 +47,9 @@ ProductMenuActionResult applyProductDevOverlayMenuAction(
 ProductMenuActionResult applyProductStarterDevToolsMenuAction(
     InputAction action,
     ProductDevToolsMenuActionContext& context);
+
+ProductMenuActionResult applyProductSettingsMenuAction(
+    InputAction action,
+    ProductSettingsMenuActionContext context);
 
 }  // namespace iggy3d

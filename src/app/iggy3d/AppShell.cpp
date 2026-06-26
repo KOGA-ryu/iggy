@@ -658,23 +658,6 @@ FrontendAction nextStarterSelection(FrontendAction current, InputAction action) 
   return actions[index];
 }
 
-FrontendSettingsTab nextSettingsSelection(FrontendSettingsTab current, InputAction action) {
-  const auto& tabs = settingsTabOrder();
-  std::size_t index = 0;
-  for (std::size_t i = 0; i < tabs.size(); ++i) {
-    if (tabs[i] == current) {
-      index = i;
-      break;
-    }
-  }
-  if (action == InputAction::MenuUp) {
-    index = index == 0 ? tabs.size() - 1 : index - 1;
-  } else if (action == InputAction::MenuDown) {
-    index = (index + 1) % tabs.size();
-  }
-  return tabs[index];
-}
-
 MenuOwner productInputOwnerFor(const FrontendState& frontend,
                                const ProductAppWindowState& window) {
   if (frontend.screen == FrontendScreen::Settings ||
@@ -752,25 +735,7 @@ void applyOpeningMenuAction(FrontendState& frontend,
   }
 
   if (frontend.childScreen == FrontendScreen::Settings) {
-    if (action == InputAction::MenuUp || action == InputAction::MenuDown) {
-      settingsTab = nextSettingsSelection(settingsTab, action);
-      frontend.status = "settings_selection_changed";
-      return;
-    }
-    if (action == InputAction::MenuBack) {
-      if (frontend.screen == FrontendScreen::Settings &&
-          frontend.childScreen == FrontendScreen::Pause) {
-        openProductPauseTransition(frontend, window, FrontendAction::Settings);
-      } else {
-        frontend.childScreen = FrontendScreen::Gameplay;
-      }
-      frontend.status = "settings_closed";
-      return;
-    }
-    if (action == InputAction::MenuConfirm) {
-      frontend.status = "settings_tab_selected";
-      return;
-    }
+    return (void)applyProductSettingsMenuAction(action, {frontend, settingsTab, window});
   }
 
   if (frontend.childScreen == FrontendScreen::DeleteConfirm &&
