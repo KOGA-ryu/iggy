@@ -192,6 +192,11 @@ iggy3d_add_unit_test(product_room_authoring_controller_tests
 set_tests_properties(product_room_authoring_controller_tests PROPERTIES
   LABELS "unit;app;product;ascii_room;authoring;editable_room;controller;iggy3d")
 
+iggy3d_add_unit_test(product_room_geometry_optimization_tests
+  tests/unit/product_room_geometry_optimization_tests.cpp)
+set_tests_properties(product_room_geometry_optimization_tests PROPERTIES
+  LABELS "unit;app;product;room_geometry;optimization;editable_room;iggy3d")
+
 iggy3d_add_unit_test(product_room_editor_action_controller_tests
   tests/unit/product_room_editor_action_controller_tests.cpp)
 set_tests_properties(product_room_editor_action_controller_tests PROPERTIES

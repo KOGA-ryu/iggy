@@ -58,6 +58,7 @@ target_sources(iggy3d
     src/app/iggy3d/ProductAppOptions.cpp
     src/app/iggy3d/ProductPrimitiveDrawList.cpp
     src/app/iggy3d/ProductRenderBridge.cpp
+    src/app/iggy3d/ProductRoomGeometryOptimization.cpp
     src/app/iggy3d/ProductRoomAuthoringController.cpp
     src/app/iggy3d/ProductRoomEditorActionController.cpp
     src/app/iggy3d/ProductRoomEditorCursor.cpp
