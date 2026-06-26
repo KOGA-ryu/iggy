@@ -24,6 +24,7 @@ SOURCE_SUFFIXES = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"}
 DEFAULT_SOURCE_PREFIXES = ("src/", "apps/")
 DEFAULT_IGNORED_PREFIXES = ("build/",)
 LEDGER_PATH = Path("docs/branch_gate_approvals.tsv")
+APPROVAL_WINDOW_LINES = 3
 
 
 @dataclass
@@ -107,7 +108,7 @@ def scan_diff(diff: str, approval_ids: set[str], include_tests: bool) -> list[Fi
   findings: list[Finding] = []
   current_path = ""
   new_line = 0
-  recent_approvals: list[str] = []
+  recent_approvals: list[tuple[str, int]] = []
   removed_branches: dict[str, int] = {}
 
   for raw_line in diff.splitlines():
@@ -145,14 +146,17 @@ def scan_diff(diff: str, approval_ids: set[str], include_tests: bool) -> list[Fi
     if not current_path or not source_path(current_path, include_tests):
       continue
 
+    approval_match = APPROVAL_RE.search(raw_line[1:])
+    if approval_match:
+      recent_approvals.append((approval_match.group(1), new_line))
+
+    recent_approvals = [
+        approval for approval in recent_approvals
+        if 0 <= new_line - approval[1] <= APPROVAL_WINDOW_LINES
+    ]
+
     code = added_code(raw_line)
     if not code:
-      continue
-
-    approval_match = APPROVAL_RE.search(code)
-    if approval_match:
-      recent_approvals.append(approval_match.group(1))
-      recent_approvals = recent_approvals[-3:]
       continue
 
     statement = branch_statement_name(code)
@@ -163,8 +167,8 @@ def scan_diff(diff: str, approval_ids: set[str], include_tests: bool) -> list[Fi
       removed_branches[statement] -= 1
       continue
 
-    approved_id = next((approval for approval in reversed(recent_approvals)
-                        if approval in approval_ids), "")
+    approved_id = next((approval_id for approval_id, _ in reversed(recent_approvals)
+                        if approval_id in approval_ids), "")
     if approved_id:
       recent_approvals.clear()
       continue

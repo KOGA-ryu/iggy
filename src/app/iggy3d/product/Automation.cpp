@@ -82,15 +82,11 @@ std::string_view productAutomationCommandIdName(
 }
 
 bool parseProductAutomationBool(std::string_view value, bool& out) {
-  [[maybe_unused]] const bool branch_gate_parse_product_automation_bool_1 =
-      true;  // branch-gate: BG-1001
   // branch-gate: BG-1001
   if (value == "true" || value == "1" || value == "yes") {
     out = true;
     return true;
   }
-  [[maybe_unused]] const bool branch_gate_parse_product_automation_bool_2 =
-      true;  // branch-gate: BG-1001
   // branch-gate: BG-1001
   if (value == "false" || value == "0" || value == "no") {
     out = false;
@@ -100,8 +96,6 @@ bool parseProductAutomationBool(std::string_view value, bool& out) {
 }
 
 bool parseProductAutomationFloat(std::string_view value, float& out) {
-  [[maybe_unused]] const bool branch_gate_parse_product_automation_float_1 =
-      true;  // branch-gate: BG-1001
   // branch-gate: BG-1001
   if (value.empty()) {
     return false;
@@ -117,8 +111,6 @@ std::vector<std::string_view> splitProductAutomationCsv(
   std::vector<std::string_view> fields;
   std::size_t start = 0;
   while (start <= value.size()) {
-    [[maybe_unused]] const bool branch_gate_split_product_automation_csv_1 =
-        true;  // branch-gate: BG-1001
     // branch-gate: BG-1001
     const std::size_t comma = value.find(',', start);
     // branch-gate: BG-1001
@@ -139,8 +131,6 @@ bool parseProductAutomationCsvFloat(std::string_view value, float& out) {
 bool parseProductAutomationFloorCommand(std::string_view value,
                                         RoomEditCommand& command) {
   const std::vector<std::string_view> fields = splitProductAutomationCsv(value);
-  [[maybe_unused]] const bool branch_gate_parse_product_automation_floor_1 =
-      true;  // branch-gate: BG-1001
   // branch-gate: BG-1001
   if (fields.size() != 7U && fields.size() != 8U) {
     return false;
@@ -148,8 +138,6 @@ bool parseProductAutomationFloorCommand(std::string_view value,
 
   EditableRoomFloor floor;
   floor.id = std::string(fields[0]);
-  [[maybe_unused]] const bool branch_gate_parse_product_automation_floor_2 =
-      true;  // branch-gate: BG-1001
   // branch-gate: BG-1001
   if (floor.id.empty() ||
       !parseProductAutomationCsvFloat(fields[1], floor.centerMeters.x) ||
@@ -160,8 +148,6 @@ bool parseProductAutomationFloorCommand(std::string_view value,
       !parseProductAutomationCsvFloat(fields[6], floor.sizeMeters.z)) {
     return false;
   }
-  [[maybe_unused]] const bool branch_gate_parse_product_automation_floor_3 =
-      true;  // branch-gate: BG-1001
   // branch-gate: BG-1001
   floor.semantics = defaultFloorSemantics(
       fields.size() == 8U && !fields[7].empty()
@@ -174,8 +160,6 @@ bool parseProductAutomationFloorCommand(std::string_view value,
 bool parseProductAutomationWallCommand(std::string_view value,
                                        RoomEditCommand& command) {
   const std::vector<std::string_view> fields = splitProductAutomationCsv(value);
-  [[maybe_unused]] const bool branch_gate_parse_product_automation_wall_1 =
-      true;  // branch-gate: BG-1001
   // branch-gate: BG-1001
   if (fields.size() != 10U && fields.size() != 11U) {
     return false;
@@ -183,8 +167,6 @@ bool parseProductAutomationWallCommand(std::string_view value,
 
   EditableRoomWall wall;
   wall.id = std::string(fields[0]);
-  [[maybe_unused]] const bool branch_gate_parse_product_automation_wall_2 =
-      true;  // branch-gate: BG-1001
   // branch-gate: BG-1001
   if (wall.id.empty() ||
       !parseProductAutomationCsvFloat(fields[1], wall.startMeters.x) ||
@@ -198,8 +180,6 @@ bool parseProductAutomationWallCommand(std::string_view value,
       !parseProductAutomationCsvFloat(fields[9], wall.thicknessMeters)) {
     return false;
   }
-  [[maybe_unused]] const bool branch_gate_parse_product_automation_wall_3 =
-      true;  // branch-gate: BG-1001
   // branch-gate: BG-1001
   wall.semantics = defaultWallSemantics(
       fields.size() == 11U && !fields[10].empty()
@@ -231,8 +211,6 @@ bool parseAutomationTableValue(
       [value](const AutomationParserRow<Value>& candidate) {
         return candidate.name == value;
       });
-  [[maybe_unused]] const bool branch_gate_parse_automation_table_value_1 =
-      true;  // branch-gate: BG-1001
   // branch-gate: BG-1001
   if (row == rows.end()) {
     return false;
@@ -292,8 +270,6 @@ bool parseProductRoomEditorInputAction(std::string_view value,
       [value](const RoomEditorInputActionRow& candidate) {
         return candidate.name == value;
       });
-  [[maybe_unused]] const bool branch_gate_parse_product_room_editor_input_action_1 =
-      true;  // branch-gate: BG-1001
   // branch-gate: BG-1001
   if (row == rows.end()) {
     return false;
@@ -316,8 +292,6 @@ bool parseProductAutomationOwner(std::string_view value, MenuOwner& out) {
 bool hasProductAutomationKey(const std::vector<ProductAutomationCommand>& commands,
                              const std::string& key) {
   for (const ProductAutomationCommand& command : commands) {
-    [[maybe_unused]] const bool branch_gate_has_product_automation_key_1 =
-        true;  // branch-gate: BG-1001
     // branch-gate: BG-1001
     if (command.key == key) {
       return true;
@@ -330,20 +304,14 @@ bool readProductAutomationCommands(const std::filesystem::path& path,
                                    ProductAppWindowState& window,
                                    std::vector<ProductAutomationCommand>& commands) {
   window.automationControlRequested = !path.empty();
-  [[maybe_unused]] const bool branch_gate_read_product_automation_commands_1 =
-      true;  // branch-gate: BG-1001
   // branch-gate: BG-1001
   window.automationControlPath = path.empty() ? "" : path.generic_string();
-  [[maybe_unused]] const bool branch_gate_read_product_automation_commands_2 =
-      true;  // branch-gate: BG-1001
   // branch-gate: BG-1001
   if (path.empty()) {
     return false;
   }
   window.automationControlScope = "frontend_menu";
   std::ifstream input(path);
-  [[maybe_unused]] const bool branch_gate_read_product_automation_commands_3 =
-      true;  // branch-gate: BG-1001
   // branch-gate: BG-1001
   if (!input) {
     window.automationControlStatus = "read_failed";
@@ -353,16 +321,12 @@ bool readProductAutomationCommands(const std::filesystem::path& path,
 
   std::string line;
   while (std::getline(input, line)) {
-    [[maybe_unused]] const bool branch_gate_read_product_automation_commands_4 =
-        true;  // branch-gate: BG-1001
     // branch-gate: BG-1001
     if (line.empty()) {
       continue;
     }
     ++window.automationControlLineCount;
     const std::size_t equals = line.find('=');
-    [[maybe_unused]] const bool branch_gate_read_product_automation_commands_5 =
-        true;  // branch-gate: BG-1001
     // branch-gate: BG-1001
     if (equals == std::string::npos || equals == 0U) {
       window.automationControlStatus = "parse_error";
@@ -371,8 +335,6 @@ bool readProductAutomationCommands(const std::filesystem::path& path,
       return false;
     }
     ProductAutomationCommand command{line.substr(0, equals), line.substr(equals + 1U)};
-    [[maybe_unused]] const bool branch_gate_read_product_automation_commands_6 =
-        true;  // branch-gate: BG-1001
     // branch-gate: BG-1001
     if (hasProductAutomationKey(commands, command.key)) {
       window.automationControlStatus = "duplicate_key";
