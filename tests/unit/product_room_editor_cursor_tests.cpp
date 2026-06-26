@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <string_view>
 
 namespace {
@@ -17,6 +18,33 @@ bool expect(bool condition, std::string_view message) {
 
 bool near(float a, float b) {
   return std::fabs(a - b) < 0.0001F;
+}
+
+iggy3d::ProductViewportFrameConfig viewportConfig(float yawDegrees = 0.0F,
+                                                  float pitchDegrees = 0.0F) {
+  iggy3d::ProductViewportFrameConfig config;
+  config.cameraYawDegrees = yawDegrees;
+  config.cameraPitchDegrees = pitchDegrees;
+  config.pixelsPerMeter = 10.0F;
+  config.centerX = 100.0F;
+  config.centerY = 100.0F;
+  return config;
+}
+
+iggy3d::ProductRoomEditorMousePickRequest mousePickRequest(
+    iggy3d::ProductRoomEditorCursorState cursor,
+    float screenX,
+    float screenY,
+    iggy3d::ProductViewportFrameConfig config = viewportConfig(),
+    iggy3d::Vec3 anchor = {}) {
+  iggy3d::ProductRoomEditorMousePickRequest request;
+  request.roomEditingReady = true;
+  request.cursor = cursor;
+  request.screenX = screenX;
+  request.screenY = screenY;
+  request.viewportConfig = config;
+  request.anchorWorld = anchor;
+  return request;
 }
 
 iggy3d::ProductAsciiRoomAuthoringRequest smallRoomRequest() {
@@ -290,6 +318,138 @@ bool invalidCursorRejectsWithoutEditingMutation() {
                 "wall count unchanged");
 }
 
+bool mousePickMapsViewportClicksToGrid() {
+  iggy3d::ProductRoomEditorCursorState cursor;
+  cursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
+  cursor.wallDirection = iggy3d::ProductRoomEditorDirection::Right;
+  cursor.storyIndex = 2;
+  cursor.cellSizeMeters = 1.0F;
+
+  const iggy3d::ProductRoomEditorMousePickResult center =
+      iggy3d::pickProductRoomEditorCursorFromScreen(
+          mousePickRequest(cursor, 100.0F, 100.0F));
+  bool ok = expect(center.ok, "center pick accepted") &&
+            expect(center.status == "room_editor_mouse_pick_mapped",
+                   "center pick status") &&
+            expect(center.gridX == 0, "center grid x") &&
+            expect(center.gridZ == 0, "center grid z") &&
+            expect(near(center.worldX, 0.0F), "center world x") &&
+            expect(near(center.worldZ, 0.0F), "center world z") &&
+            expect(center.cursor.selectedTool == cursor.selectedTool,
+                   "pick preserves tool") &&
+            expect(center.cursor.wallDirection == cursor.wallDirection,
+                   "pick preserves wall direction") &&
+            expect(center.cursor.storyIndex == cursor.storyIndex,
+                   "pick preserves story") &&
+            expect(near(center.cursor.cellSizeMeters, cursor.cellSizeMeters),
+                   "pick preserves cell size");
+
+  const iggy3d::ProductRoomEditorMousePickResult right =
+      iggy3d::pickProductRoomEditorCursorFromScreen(
+          mousePickRequest(cursor, 110.0F, 100.0F));
+  ok = expect(right.gridX == 1, "right click grid x") &&
+       expect(right.gridZ == 0, "right click grid z") && ok;
+
+  const iggy3d::ProductRoomEditorMousePickResult left =
+      iggy3d::pickProductRoomEditorCursorFromScreen(
+          mousePickRequest(cursor, 90.0F, 100.0F));
+  ok = expect(left.gridX == -1, "left click grid x") &&
+       expect(left.gridZ == 0, "left click grid z") && ok;
+
+  const iggy3d::ProductRoomEditorMousePickResult up =
+      iggy3d::pickProductRoomEditorCursorFromScreen(
+          mousePickRequest(cursor, 100.0F, 90.0F));
+  ok = expect(up.gridX == 0, "up click grid x") &&
+       expect(up.gridZ == 1, "up click grid z") && ok;
+
+  const iggy3d::ProductRoomEditorMousePickResult down =
+      iggy3d::pickProductRoomEditorCursorFromScreen(
+          mousePickRequest(cursor, 100.0F, 110.0F));
+  return expect(down.gridX == 0, "down click grid x") &&
+         expect(down.gridZ == -1, "down click grid z") && ok;
+}
+
+bool mousePickInvertsYawPitchAndAnchor() {
+  iggy3d::ProductRoomEditorCursorState cursor;
+  cursor.cellSizeMeters = 1.0F;
+
+  const iggy3d::ProductRoomEditorMousePickResult yawNinety =
+      iggy3d::pickProductRoomEditorCursorFromScreen(
+          mousePickRequest(cursor, 90.0F, 100.0F, viewportConfig(90.0F, 0.0F)));
+  bool ok = expect(yawNinety.ok, "yaw pick accepted") &&
+            expect(yawNinety.gridX == 0, "yaw ninety x") &&
+            expect(yawNinety.gridZ == 1, "yaw ninety maps left to world z");
+
+  const iggy3d::ProductRoomEditorMousePickResult pitchTen =
+      iggy3d::pickProductRoomEditorCursorFromScreen(mousePickRequest(
+          cursor, 100.0F, 115.0F, viewportConfig(0.0F, 10.0F)));
+  ok = expect(pitchTen.ok, "pitch pick accepted") &&
+       expect(pitchTen.gridX == 0, "pitch center x") &&
+       expect(pitchTen.gridZ == 0, "pitch center y includes offset") && ok;
+
+  const iggy3d::ProductRoomEditorMousePickResult anchored =
+      iggy3d::pickProductRoomEditorCursorFromScreen(mousePickRequest(
+          cursor, 100.0F, 100.0F, viewportConfig(), {3.0F, 0.0F, -2.0F}));
+  return expect(anchored.ok, "anchor pick accepted") &&
+         expect(anchored.gridX == 3, "anchor grid x") &&
+         expect(anchored.gridZ == -2, "anchor grid z") && ok;
+}
+
+bool mousePickRejectsInvalidInputs() {
+  iggy3d::ProductRoomEditorCursorState cursor;
+  iggy3d::ProductRoomEditorMousePickRequest request =
+      mousePickRequest(cursor, 100.0F, 100.0F);
+  request.roomEditingReady = false;
+  const iggy3d::ProductRoomEditorMousePickResult notReady =
+      iggy3d::pickProductRoomEditorCursorFromScreen(request);
+  bool ok = expect(!notReady.ok, "not ready rejected") &&
+            expect(notReady.status == "room_editor_mouse_pick_not_ready",
+                   "not ready status") &&
+            expect(notReady.cursor.gridX == cursor.gridX,
+                   "not ready preserves cursor x") &&
+            expect(notReady.cursor.gridZ == cursor.gridZ,
+                   "not ready preserves cursor z");
+
+  request = mousePickRequest(cursor, 100.0F, 100.0F);
+  request.cursor.cellSizeMeters = 0.0F;
+  const iggy3d::ProductRoomEditorMousePickResult invalidCell =
+      iggy3d::pickProductRoomEditorCursorFromScreen(request);
+  ok = expect(!invalidCell.ok, "invalid cell rejected") &&
+       expect(invalidCell.reasonCode ==
+                  "room_editor_mouse_pick_invalid_cell_size",
+              "invalid cell status") &&
+       ok;
+
+  request = mousePickRequest(cursor, 100.0F, 100.0F);
+  request.viewportConfig.pixelsPerMeter = 0.0F;
+  const iggy3d::ProductRoomEditorMousePickResult invalidScale =
+      iggy3d::pickProductRoomEditorCursorFromScreen(request);
+  ok = expect(!invalidScale.ok, "invalid scale rejected") &&
+       expect(invalidScale.reasonCode ==
+                  "room_editor_mouse_pick_invalid_pixels_per_meter",
+              "invalid scale status") &&
+       ok;
+
+  request = mousePickRequest(cursor, std::numeric_limits<float>::infinity(),
+                             100.0F);
+  const iggy3d::ProductRoomEditorMousePickResult invalidScreen =
+      iggy3d::pickProductRoomEditorCursorFromScreen(request);
+  ok = expect(!invalidScreen.ok, "invalid screen rejected") &&
+       expect(invalidScreen.reasonCode == "room_editor_mouse_pick_invalid_input",
+              "invalid screen status") &&
+       ok;
+
+  request = mousePickRequest(cursor, 100.0F, 100.0F);
+  request.viewportConfig.cameraYawDegrees =
+      std::numeric_limits<float>::infinity();
+  const iggy3d::ProductRoomEditorMousePickResult invalidCamera =
+      iggy3d::pickProductRoomEditorCursorFromScreen(request);
+  return expect(!invalidCamera.ok, "invalid camera rejected") &&
+         expect(invalidCamera.reasonCode == "room_editor_mouse_pick_invalid_input",
+                "invalid camera status") &&
+         ok;
+}
+
 }  // namespace
 
 int main() {
@@ -298,6 +458,9 @@ int main() {
                   floorCommandUsesCursorAndNextDocumentId() &&
                   wallCommandUsesCursorEdgeAndNextDocumentId() &&
                   cursorCommandsApplyThroughProductRoomEditingState() &&
-                  invalidCursorRejectsWithoutEditingMutation();
+                  invalidCursorRejectsWithoutEditingMutation() &&
+                  mousePickMapsViewportClicksToGrid() &&
+                  mousePickInvertsYawPitchAndAnchor() &&
+                  mousePickRejectsInvalidInputs();
   return ok ? 0 : 1;
 }

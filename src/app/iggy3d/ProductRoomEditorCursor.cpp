@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <string>
 
 namespace iggy3d {
@@ -88,6 +89,35 @@ constexpr std::array kClockwiseWallDirectionCycle{
     WallDirectionCycleRow{ProductRoomEditorDirection::Left,
                           ProductRoomEditorDirection::Up},
 };
+
+constexpr float kPi = 3.14159265358979323846F;
+
+bool finiteVec2(float x, float y) {
+  return std::isfinite(x) && std::isfinite(y);
+}
+
+bool finiteViewportConfig(const ProductViewportFrameConfig& config) {
+  return std::isfinite(config.cameraYawDegrees) &&
+         std::isfinite(config.cameraPitchDegrees) &&
+         std::isfinite(config.centerX) && std::isfinite(config.centerY);
+}
+
+bool finiteAnchor(Vec3 anchor) {
+  return std::isfinite(anchor.x) && std::isfinite(anchor.y) &&
+         std::isfinite(anchor.z);
+}
+
+ProductRoomEditorMousePickResult mousePickResult(
+    const ProductRoomEditorCursorState& cursor,
+    std::string status) {
+  ProductRoomEditorMousePickResult result;
+  result.cursor = cursor;
+  result.gridX = cursor.gridX;
+  result.gridZ = cursor.gridZ;
+  result.status = std::move(status);
+  result.reasonCode = result.status;
+  return result;
+}
 
 ProductRoomEditorCursorResult buildFloorCommand(ProductRoomEditorCursorState state,
                                                 const EditableRoomDocument& document) {
@@ -246,6 +276,60 @@ ProductRoomEditorCursorResult buildProductRoomEditorPlaceCommand(
       return buildWallCommand(state, *document);
   }
   return cursorResult(state, false, "room_editor_invalid_tool");
+}
+
+ProductRoomEditorMousePickResult pickProductRoomEditorCursorFromScreen(
+    const ProductRoomEditorMousePickRequest& request) {
+  ProductRoomEditorMousePickResult result =
+      mousePickResult(request.cursor, "room_editor_mouse_pick_not_ready");
+  // branch-gate: BG-1043
+  if (!request.roomEditingReady) {
+    return result;
+  }
+  // branch-gate: BG-1043
+  if (!validCellSize(request.cursor.cellSizeMeters)) {
+    return mousePickResult(request.cursor,
+                           "room_editor_mouse_pick_invalid_cell_size");
+  }
+  // branch-gate: BG-1043
+  if (!std::isfinite(request.viewportConfig.pixelsPerMeter) ||
+      request.viewportConfig.pixelsPerMeter <= 0.0F) {
+    return mousePickResult(request.cursor,
+                           "room_editor_mouse_pick_invalid_pixels_per_meter");
+  }
+  // branch-gate: BG-1043
+  if (!finiteVec2(request.screenX, request.screenY) ||
+      !finiteViewportConfig(request.viewportConfig) ||
+      !finiteAnchor(request.anchorWorld)) {
+    return mousePickResult(request.cursor, "room_editor_mouse_pick_invalid_input");
+  }
+
+  const float yawRadians =
+      request.viewportConfig.cameraYawDegrees * kPi / 180.0F;
+  const float cosYaw = std::cos(yawRadians);
+  const float sinYaw = std::sin(yawRadians);
+  const float pitchOffsetPixels =
+      request.viewportConfig.cameraPitchDegrees * 1.5F;
+  const float viewX =
+      (request.screenX - request.viewportConfig.centerX) /
+      request.viewportConfig.pixelsPerMeter;
+  const float viewZ =
+      (request.viewportConfig.centerY + pitchOffsetPixels - request.screenY) /
+      request.viewportConfig.pixelsPerMeter;
+  const float worldX = request.anchorWorld.x + viewX * cosYaw + viewZ * sinYaw;
+  const float worldZ = request.anchorWorld.z - viewX * sinYaw + viewZ * cosYaw;
+
+  result = mousePickResult(request.cursor, "room_editor_mouse_pick_mapped");
+  result.ok = true;
+  result.worldX = worldX;
+  result.worldZ = worldZ;
+  result.gridX = static_cast<std::int32_t>(
+      std::lround(worldX / request.cursor.cellSizeMeters));
+  result.gridZ = static_cast<std::int32_t>(
+      std::lround(worldZ / request.cursor.cellSizeMeters));
+  result.cursor.gridX = result.gridX;
+  result.cursor.gridZ = result.gridZ;
+  return result;
 }
 
 }  // namespace iggy3d

@@ -41,3 +41,4 @@ BG-1039	src/app/input/KeyboardInput.cpp	new world draft keyboard glyph recorder 
 BG-1040	src/app/iggy3d/ProductRoomEditorActionController.cpp	room editor direct floor wall tool input policy	codex	2026-06-26
 BG-1041	src/app/iggy3d/ProductRoomEditorActionController.cpp	room editor wall direction rotate input policy	codex	2026-06-26
 BG-1042	src/app/iggy3d/ProductRoomEditorCursor.cpp	room editor wall direction clockwise cycle table	codex	2026-06-26
+BG-1043	src/app/iggy3d/ProductRoomEditorCursor.cpp	pure room editor mouse grid pick validation	codex	2026-06-26
