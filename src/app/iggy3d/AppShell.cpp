@@ -19,21 +19,17 @@
 #include "app/iggy3d/product/AutomationRoomEditing.hpp"
 #include "app/iggy3d/product/ProductMenuInputRouter.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
-#include "app/iggy3d/ProductGameplayController.hpp"
 #include "app/iggy3d/ProductGameplayProjectionRefresh.hpp"
 #include "app/iggy3d/ProductGameplayTape.hpp"
 #include "app/iggy3d/ProductGameplayTapeRunner.hpp"
 #include "app/iggy3d/ProductMenuTransitions.hpp"
-#include "app/iggy3d/ProductRoomEditorActionController.hpp"
 #include "app/iggy3d/ProductScriptedGameplayDriver.hpp"
+#include "app/iggy3d/ProductWindowInputFrame.hpp"
 #include "app/iggy3d/ProductWindowRendererLifecycle.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
 #include "app/input/ActionState.hpp"
 #include "app/input/InputRouter.hpp"
-#include "app/input/GamepadInput.hpp"
-#include "app/input/KeyboardInput.hpp"
-#include "app/input/MouseInput.hpp"
 #include "render/FrameInput.hpp"
 #include "runtime/session/Session.hpp"
 
@@ -292,107 +288,19 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
 
   sdlWindow.setTitle(window.gameplayActive ? "iggy3d - Gameplay" : "iggy3d - Opening Menu");
   const auto start = std::chrono::steady_clock::now();
-  KeyboardInputState keyboard;
-  MouseInputState mouse;
-  GamepadMenuState gamepad;
-  initializeGamepadMenuState(gamepad);
-  window.gamepadAvailable = gamepad.gamepadAvailable;
-  window.gamepadName = gamepad.gamepadName;
-  window.gamepadMapping = gamepad.gamepadAvailable ? "sdl_gamepad" : "unavailable";
+  ProductWindowInputFrameState inputFrame;
+  initializeProductWindowInputFrameState(inputFrame, window);
   bool closeRequested = false;
   FrontendSettingsTab settingsTab = FrontendSettingsTab::Input;
   while (sdlWindow.isOpen()) {
-    ActionState actionState;
     sdlWindow.pollEvents();
     ++window.eventPollCount;
     window.drawable = sdlWindow.isDrawable();
     sdlWindow.setTitle(window.gameplayActive ? "iggy3d - Gameplay" : "iggy3d - Opening Menu");
 
-    ProductOpeningMenuInputContext menuContext{
+    processProductWindowInputFrame(ProductWindowInputFrameContext{
         frontend, saves, options, settingsTab, activeSession, worldSetupDraft,
-        window, closeRequested};
-    routeProductOpeningMenuInput(pollKeyboardMenuAction(keyboard), actionState,
-                                 menuContext);
-    if (frontend.childScreen == FrontendScreen::NewWorld) {
-      const char paintGlyph = pollKeyboardAsciiRoomPaintGlyph(keyboard);
-      if (paintGlyph != '\0') {
-        applyDungeonDraftPaintGlyph(worldSetupDraft, window, paintGlyph);
-      }
-    }
-
-    const InputAction gamepadAction = pollGamepadMenuAction(gamepad);
-    if (gamepadAction != InputAction::None) {
-      window.gamepadMenuSelectUsed = true;
-      routeProductOpeningMenuInput(gamepadAction, actionState, menuContext);
-    }
-
-    const MouseClick click = pollMouseClick(mouse);
-    if (click.clicked) {
-      const OpeningMenuHitTestResult hit = openingMenuActionAt(frontend, click.x, click.y);
-      if (hit.hit) {
-        window.mouseMenuSelectUsed = true;
-        if (hit.area == OpeningMenuHitArea::StarterAction) {
-          frontend.selectedAction = hit.action;
-          routeProductOpeningMenuInput(mouseClickAction(click), actionState,
-                                       menuContext);
-        } else if (hit.area == OpeningMenuHitArea::DevToolsCategory) {
-          frontend.devToolsCategory = hit.devToolsCategory;
-          frontend.status = "dev_tools_category_selected";
-        } else if (hit.area == OpeningMenuHitArea::SettingsTab) {
-          settingsTab = hit.settingsTab;
-          frontend.status = "settings_tab_selected";
-        }
-      }
-    }
-
-    if (window.gameplayActive && activeSession.has_value() &&
-        !frontendBlocksGameplayInput(frontend)) {
-      ActionState gameplayActions;
-      if (window.roomEditing.ready) {
-        pollKeyboardRoomEditorActions(keyboard, gameplayActions);
-        pollGamepadRoomEditorActions(gamepad, gameplayActions);
-      } else {
-        pollKeyboardGameplayActions(keyboard, gameplayActions);
-        pollGamepadGameplayActions(gamepad, gameplayActions);
-        pollMouseGameplayActions(mouse, gameplayActions);
-      }
-
-      ActionState acceptedGameplayActions;
-      ActionState acceptedEditorActions;
-      InputRoutingContext routingContext;
-      routingContext.owners.editor = window.roomEditing.ready;
-      routingContext.owners.gameplay = true;
-      for (const ActionStateEntry& entry : gameplayActions.entries) {
-        const InputRoutingResult routed = routeInputAction(routingContext, entry.action);
-        window.inputOwner = routed.owner;
-        window.lastInputAction = routed.action;
-        window.lastInputAccepted = routed.accepted;
-        window.gameplayInputSuppressed = routed.gameplaySuppressed;
-        if (routed.accepted && routed.owner == MenuOwner::Editor &&
-            inputActionGroup(entry.action) == InputActionGroup::Editor) {
-          recordAction(acceptedEditorActions, entry.action, entry.down, entry.pressed,
-                       entry.released, entry.value);
-        } else if (routed.accepted && routed.owner == MenuOwner::Gameplay) {
-          recordAction(acceptedGameplayActions, entry.action, entry.down, entry.pressed,
-                       entry.released, entry.value);
-        }
-      }
-      if (!acceptedEditorActions.entries.empty()) {
-        const ProductRoomEditorActionResult result =
-            applyProductRoomEditorActions(window.roomEditing,
-                                          window.roomEditorCursor,
-                                          acceptedEditorActions,
-                                          ProductRoomAuthoringInputSource::Hotkey);
-        recordProductRoomEditorActionResult(window, result);
-      } else {
-        applyProductCameraActions(acceptedGameplayActions, window.viewport, settings,
-                                  "action_map");
-        const SpatialSurfaceSet* collisionSurfaces =
-            productActiveRoomCollisionSurfaces(window.activeRoomCollision);
-        applyProductGameplayActions(*activeSession, acceptedGameplayActions, window,
-                                    "action_map", collisionSurfaces);
-      }
-    }
+        window, settings, inputFrame, closeRequested});
 
     const ProductGameplayProjectionFrame projectionFrame =
         buildProductGameplayProjectionFrame(ProductGameplayProjectionFrameRequest{
@@ -479,7 +387,7 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
     std::this_thread::sleep_for(std::chrono::milliseconds(16));
   }
 
-  shutdownGamepadMenuState(gamepad);
+  shutdownProductWindowInputFrameState(inputFrame);
   shutdownProductWindowRenderer(renderer);
   window.selectedSettingsTab = settingsTab;
   finalizeProductWindowRendererStatus(renderer, window);
