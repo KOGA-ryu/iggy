@@ -307,17 +307,9 @@ int main() {
           fields,
           exitCode) &&
       exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
-      iggy3d::smoke::hasField(fields, "automation_control_requested",
-                              "true") &&
-      iggy3d::smoke::hasField(fields, "automation_control_loaded", "false") &&
-      iggy3d::smoke::hasField(fields, "automation_control_status",
-                              "command_failed") &&
-      iggy3d::smoke::hasField(fields, "automation_control_last_key",
-                              "world.draft_paint") &&
+      iggy3d::smoke::automationCommandFailed(fields, "world.draft_paint") &&
       iggy3d::smoke::hasField(fields, "automation_control_last_action",
                               "world.draft_paint") &&
-      iggy3d::smoke::hasField(fields, "automation_control_last_result",
-                              "failed") &&
       iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
       iggy3d::smoke::hasField(fields, "window_created", "false") &&
       iggy3d::smoke::hasField(fields, "frontend_screen", "starter") &&

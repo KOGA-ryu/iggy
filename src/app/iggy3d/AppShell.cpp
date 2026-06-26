@@ -1443,7 +1443,8 @@ void markAutomationApplied(ProductAppWindowState& window,
 }
 
 bool automationFailurePreservesLoaded(std::string_view status) {
-  return status == "applied" || status == "loaded";
+  return status == "applied" || status == "loaded" ||
+         status == "command_failed";
 }
 
 bool routeAutomationInput(FrontendState& frontend,
