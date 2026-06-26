@@ -173,4 +173,59 @@ void pollGamepadGameplayActions(GamepadMenuState& state, ActionState& actions) {
 #endif
 }
 
+void recordGamepadRoomEditorActions(GamepadMenuState& state,
+                                    const GamepadRoomEditorInputSample& sample,
+                                    ActionState& actions) {
+  if (sample.upDown && !state.editorUpWasDown) {
+    recordAction(actions, InputAction::EditorNudgeZ, true, true, false, -1.0F);
+  }
+  if (sample.downDown && !state.editorDownWasDown) {
+    recordAction(actions, InputAction::EditorNudgeZ, true, true, false, 1.0F);
+  }
+  if (sample.leftDown && !state.editorLeftWasDown) {
+    recordAction(actions, InputAction::EditorNudgeX, true, true, false, -1.0F);
+  }
+  if (sample.rightDown && !state.editorRightWasDown) {
+    recordAction(actions, InputAction::EditorNudgeX, true, true, false, 1.0F);
+  }
+  if (sample.placeDown && !state.editorPlaceWasDown) {
+    recordAction(actions, InputAction::EditorPlace, true, true, false, 1.0F);
+  }
+  if (sample.nextToolDown && !state.editorNextToolWasDown) {
+    recordAction(actions, InputAction::EditorNextTool, true, true, false, 1.0F);
+  }
+  if (sample.previousToolDown && !state.editorPreviousToolWasDown) {
+    recordAction(actions, InputAction::EditorPreviousTool, true, true, false, 1.0F);
+  }
+
+  state.editorUpWasDown = sample.upDown;
+  state.editorDownWasDown = sample.downDown;
+  state.editorLeftWasDown = sample.leftDown;
+  state.editorRightWasDown = sample.rightDown;
+  state.editorPlaceWasDown = sample.placeDown;
+  state.editorNextToolWasDown = sample.nextToolDown;
+  state.editorPreviousToolWasDown = sample.previousToolDown;
+}
+
+void pollGamepadRoomEditorActions(GamepadMenuState& state, ActionState& actions) {
+#if defined(IGGY3D_HAS_SDL3)
+  if (!state.gamepadAvailable) {
+    return;
+  }
+
+  GamepadRoomEditorInputSample sample;
+  sample.upDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_DPAD_UP);
+  sample.downDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_DPAD_DOWN);
+  sample.leftDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_DPAD_LEFT);
+  sample.rightDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_DPAD_RIGHT);
+  sample.placeDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_SOUTH);
+  sample.nextToolDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER);
+  sample.previousToolDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER);
+  recordGamepadRoomEditorActions(state, sample, actions);
+#else
+  (void)state;
+  (void)actions;
+#endif
+}
+
 }  // namespace iggy3d

@@ -3017,9 +3017,14 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
     if (window.gameplayActive && activeSession.has_value() &&
         !frontendBlocksGameplayInput(frontend)) {
       ActionState gameplayActions;
-      pollKeyboardGameplayActions(keyboard, gameplayActions);
-      pollGamepadGameplayActions(gamepad, gameplayActions);
-      pollMouseGameplayActions(mouse, gameplayActions);
+      if (window.roomEditing.ready) {
+        pollKeyboardRoomEditorActions(keyboard, gameplayActions);
+        pollGamepadRoomEditorActions(gamepad, gameplayActions);
+      } else {
+        pollKeyboardGameplayActions(keyboard, gameplayActions);
+        pollGamepadGameplayActions(gamepad, gameplayActions);
+        pollMouseGameplayActions(mouse, gameplayActions);
+      }
 
       ActionState acceptedGameplayActions;
       ActionState acceptedEditorActions;

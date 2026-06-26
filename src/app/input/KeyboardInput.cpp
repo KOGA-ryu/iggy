@@ -144,4 +144,56 @@ void pollKeyboardGameplayActions(KeyboardInputState& state, ActionState& actions
 #endif
 }
 
+void recordKeyboardRoomEditorActions(KeyboardInputState& state,
+                                     const KeyboardRoomEditorInputSample& sample,
+                                     ActionState& actions) {
+  if (sample.upDown && !state.editorUpWasDown) {
+    recordAction(actions, InputAction::EditorNudgeZ, true, true, false, -1.0F);
+  }
+  if (sample.downDown && !state.editorDownWasDown) {
+    recordAction(actions, InputAction::EditorNudgeZ, true, true, false, 1.0F);
+  }
+  if (sample.leftDown && !state.editorLeftWasDown) {
+    recordAction(actions, InputAction::EditorNudgeX, true, true, false, -1.0F);
+  }
+  if (sample.rightDown && !state.editorRightWasDown) {
+    recordAction(actions, InputAction::EditorNudgeX, true, true, false, 1.0F);
+  }
+  if (sample.nextToolDown && !state.editorNextToolWasDown) {
+    recordAction(actions, InputAction::EditorNextTool, true, true, false, 1.0F);
+  }
+  if (sample.previousToolDown && !state.editorPreviousToolWasDown) {
+    recordAction(actions, InputAction::EditorPreviousTool, true, true, false, 1.0F);
+  }
+  if (sample.placeDown && !state.editorPlaceWasDown) {
+    recordAction(actions, InputAction::EditorPlace, true, true, false, 1.0F);
+  }
+
+  state.editorUpWasDown = sample.upDown;
+  state.editorDownWasDown = sample.downDown;
+  state.editorLeftWasDown = sample.leftDown;
+  state.editorRightWasDown = sample.rightDown;
+  state.editorNextToolWasDown = sample.nextToolDown;
+  state.editorPreviousToolWasDown = sample.previousToolDown;
+  state.editorPlaceWasDown = sample.placeDown;
+}
+
+void pollKeyboardRoomEditorActions(KeyboardInputState& state, ActionState& actions) {
+#if defined(IGGY3D_HAS_SDL3)
+  const bool* keys = SDL_GetKeyboardState(nullptr);
+  KeyboardRoomEditorInputSample sample;
+  sample.upDown = keyDown(keys, SDL_SCANCODE_W);
+  sample.downDown = keyDown(keys, SDL_SCANCODE_S);
+  sample.leftDown = keyDown(keys, SDL_SCANCODE_A);
+  sample.rightDown = keyDown(keys, SDL_SCANCODE_D);
+  sample.nextToolDown = keyDown(keys, SDL_SCANCODE_E);
+  sample.previousToolDown = keyDown(keys, SDL_SCANCODE_Q);
+  sample.placeDown = keyDown(keys, SDL_SCANCODE_SPACE);
+  recordKeyboardRoomEditorActions(state, sample, actions);
+#else
+  (void)state;
+  (void)actions;
+#endif
+}
+
 }  // namespace iggy3d
