@@ -47,15 +47,15 @@ bool saveExitWithCombinedEdits(const iggy3d::smoke::ReceiptFields& fields) {
          iggy3d::smoke::hasField(fields, "room_editor_last_operation_accepted",
                                  "true") &&
          iggy3d::smoke::hasField(fields, "room_editor_last_primitive_id",
-                                 "edit_wall_1") &&
-         iggy3d::smoke::hasField(fields, "room_editor_hud_tool", "wall") &&
+                                 "edit_floor_1") &&
+         iggy3d::smoke::hasField(fields, "room_editor_hud_tool", "floor") &&
          iggy3d::smoke::hasField(fields, "room_editor_hud_last_operation",
                                  "editor.place") &&
          iggy3d::smoke::hasField(fields,
                                  "room_editor_hud_last_operation_accepted",
                                  "true") &&
          iggy3d::smoke::hasField(fields, "room_editor_hud_last_primitive_id",
-                                 "edit_wall_1");
+                                 "edit_floor_1");
 }
 
 bool starterSeesSave(const iggy3d::smoke::ReceiptFields& fields) {
@@ -154,7 +154,7 @@ int main() {
           "system.pause=true\n"
           "menu.down=true\n"
           "pause.execute=true\n"
-          "editor.input=editor.nudge_x_pos,editor.place,editor.next_tool,editor.place\n"
+          "editor.input=editor.nudge_x_pos,editor.select_wall_tool,editor.place,editor.select_floor_tool,editor.place\n"
           "menu.back=true\n"
           "pause.select=save_and_exit\n"
           "menu.confirm=true\n",

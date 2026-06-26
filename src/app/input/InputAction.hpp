@@ -42,6 +42,8 @@ enum class InputAction : std::uint8_t {
   EditorRedo,
   EditorNextTool,
   EditorPreviousTool,
+  EditorSelectFloorTool,
+  EditorSelectWallTool,
   EditorNudgeX,
   EditorNudgeZ,
   EditorResizeX,

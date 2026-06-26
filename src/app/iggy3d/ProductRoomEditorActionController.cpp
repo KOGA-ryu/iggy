@@ -296,6 +296,24 @@ ProductRoomEditorActionResult applyProductRoomEditorAction(
         return ignoredResult(editing, cursor, operation);
       }
       return cursorResult(editing, cycleProductRoomEditorTool(cursor), operation);
+    case InputAction::EditorSelectFloorTool:
+      // branch-gate: BG-1040
+      if (!buttonIntent(action)) {
+        return ignoredResult(editing, cursor, operation);
+      }
+      return cursorResult(editing,
+                          setProductRoomEditorTool(
+                          cursor, ProductRoomEditorTool::Floor),
+                          operation);
+    case InputAction::EditorSelectWallTool:
+      // branch-gate: BG-1040
+      if (!buttonIntent(action)) {
+        return ignoredResult(editing, cursor, operation);
+      }
+      return cursorResult(editing,
+                          setProductRoomEditorTool(
+                              cursor, ProductRoomEditorTool::Wall),
+                          operation);
     case InputAction::EditorPlace:
     case InputAction::EditorApply:
       if (!buttonIntent(action)) {

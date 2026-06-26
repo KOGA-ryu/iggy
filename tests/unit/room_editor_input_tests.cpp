@@ -185,6 +185,36 @@ int main() {
 
   {
     iggy3d::KeyboardInputState keyboard;
+    iggy3d::ActionState floorActions;
+    iggy3d::KeyboardRoomEditorInputSample sample;
+    sample.selectFloorToolDown = true;
+    iggy3d::recordKeyboardRoomEditorActions(keyboard, sample, floorActions);
+    ok = expectActionValue(floorActions,
+                           iggy3d::InputAction::EditorSelectFloorTool,
+                           1.0F,
+                           "keyboard 1 emits direct floor tool") &&
+         ok;
+
+    iggy3d::ActionState held;
+    iggy3d::recordKeyboardRoomEditorActions(keyboard, sample, held);
+    ok = expect(held.entries.empty(), "keyboard held direct floor does not repeat") &&
+         ok;
+
+    sample.selectFloorToolDown = false;
+    iggy3d::ActionState release;
+    iggy3d::recordKeyboardRoomEditorActions(keyboard, sample, release);
+    sample.selectWallToolDown = true;
+    iggy3d::ActionState wallActions;
+    iggy3d::recordKeyboardRoomEditorActions(keyboard, sample, wallActions);
+    ok = expectActionValue(wallActions,
+                           iggy3d::InputAction::EditorSelectWallTool,
+                           1.0F,
+                           "keyboard 2 emits direct wall tool") &&
+         ok;
+  }
+
+  {
+    iggy3d::KeyboardInputState keyboard;
     iggy3d::ActionState actions;
     iggy3d::KeyboardRoomEditorInputSample sample;
     sample.placeDown = true;

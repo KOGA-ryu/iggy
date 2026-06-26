@@ -85,6 +85,49 @@ bool toolActionsChangeDeterministically() {
                 "previous tool returns floor") && ok;
 }
 
+bool directToolActionsSelectWithoutMutation() {
+  iggy3d::ProductRoomEditingState editing =
+      iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
+  iggy3d::ProductRoomEditorCursorState cursor;
+  const std::uint64_t initialFloors = editing.documentFloorCount;
+  const std::uint64_t initialWalls = editing.documentWallCount;
+
+  iggy3d::ProductRoomEditorActionResult result =
+      iggy3d::applyProductRoomEditorAction(
+          editing, cursor, action(iggy3d::InputAction::EditorSelectWallTool));
+  bool ok = expect(result.ok, "direct wall tool accepted") &&
+            expect(result.status == "room_editor_tool_changed",
+                   "direct wall tool status") &&
+            expect(result.operation == "editor.select_wall_tool",
+                   "direct wall tool operation") &&
+            expect(result.operationAccepted,
+                   "direct wall tool operation accepted") &&
+            expect(result.cursor.selectedTool == iggy3d::ProductRoomEditorTool::Wall,
+                   "direct wall tool selected") &&
+            expect(result.editing.documentFloorCount == initialFloors,
+                   "direct wall tool leaves floors") &&
+            expect(result.editing.documentWallCount == initialWalls,
+                   "direct wall tool leaves walls");
+
+  result = iggy3d::applyProductRoomEditorAction(
+      result.editing, result.cursor,
+      action(iggy3d::InputAction::EditorSelectFloorTool));
+  return expect(result.ok, "direct floor tool accepted") &&
+         expect(result.status == "room_editor_tool_changed",
+                "direct floor tool status") &&
+         expect(result.operation == "editor.select_floor_tool",
+                "direct floor tool operation") &&
+         expect(result.operationAccepted,
+                "direct floor tool operation accepted") &&
+         expect(result.cursor.selectedTool == iggy3d::ProductRoomEditorTool::Floor,
+                "direct floor tool selected") &&
+         expect(result.editing.documentFloorCount == initialFloors,
+                "direct floor tool leaves floors") &&
+         expect(result.editing.documentWallCount == initialWalls,
+                "direct floor tool leaves walls") &&
+         ok;
+}
+
 bool placeAppliesThroughEditingState() {
   iggy3d::ProductRoomEditingState editing =
       iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
@@ -257,6 +300,7 @@ bool unsupportedActionsAreIgnored() {
 int main() {
   const bool ok = notReadyRejectsWithoutMutation() && nudgeActionsMoveCursor() &&
                   toolActionsChangeDeterministically() &&
+                  directToolActionsSelectWithoutMutation() &&
                   placeAppliesThroughEditingState() &&
                   deleteUndoRedoApplyThroughEditingState() &&
                   floorDeleteUndoRedoApplyThroughEditingState() &&

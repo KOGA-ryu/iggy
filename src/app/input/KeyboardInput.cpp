@@ -15,6 +15,67 @@ namespace {
 constexpr std::array<char, 7> kAsciiRoomPaintGlyphs = {'#', '.', 'P', 'K',
                                                        '$', 'E', '+'};
 
+struct KeyboardRoomEditorActionBinding {
+  bool KeyboardRoomEditorInputSample::* down;
+  bool KeyboardInputState::* wasDown;
+  InputAction action;
+  float value;
+};
+
+constexpr std::array kKeyboardRoomEditorActionBindings{
+    KeyboardRoomEditorActionBinding{&KeyboardRoomEditorInputSample::upDown,
+                                    &KeyboardInputState::editorUpWasDown,
+                                    InputAction::EditorNudgeZ,
+                                    -1.0F},
+    KeyboardRoomEditorActionBinding{&KeyboardRoomEditorInputSample::downDown,
+                                    &KeyboardInputState::editorDownWasDown,
+                                    InputAction::EditorNudgeZ,
+                                    1.0F},
+    KeyboardRoomEditorActionBinding{&KeyboardRoomEditorInputSample::leftDown,
+                                    &KeyboardInputState::editorLeftWasDown,
+                                    InputAction::EditorNudgeX,
+                                    -1.0F},
+    KeyboardRoomEditorActionBinding{&KeyboardRoomEditorInputSample::rightDown,
+                                    &KeyboardInputState::editorRightWasDown,
+                                    InputAction::EditorNudgeX,
+                                    1.0F},
+    KeyboardRoomEditorActionBinding{&KeyboardRoomEditorInputSample::nextToolDown,
+                                    &KeyboardInputState::editorNextToolWasDown,
+                                    InputAction::EditorNextTool,
+                                    1.0F},
+    KeyboardRoomEditorActionBinding{
+        &KeyboardRoomEditorInputSample::previousToolDown,
+        &KeyboardInputState::editorPreviousToolWasDown,
+        InputAction::EditorPreviousTool,
+        1.0F},
+    KeyboardRoomEditorActionBinding{
+        &KeyboardRoomEditorInputSample::selectFloorToolDown,
+        &KeyboardInputState::editorSelectFloorToolWasDown,
+        InputAction::EditorSelectFloorTool,
+        1.0F},
+    KeyboardRoomEditorActionBinding{
+        &KeyboardRoomEditorInputSample::selectWallToolDown,
+        &KeyboardInputState::editorSelectWallToolWasDown,
+        InputAction::EditorSelectWallTool,
+        1.0F},
+    KeyboardRoomEditorActionBinding{&KeyboardRoomEditorInputSample::placeDown,
+                                    &KeyboardInputState::editorPlaceWasDown,
+                                    InputAction::EditorPlace,
+                                    1.0F},
+    KeyboardRoomEditorActionBinding{&KeyboardRoomEditorInputSample::deleteDown,
+                                    &KeyboardInputState::editorDeleteWasDown,
+                                    InputAction::EditorDelete,
+                                    1.0F},
+    KeyboardRoomEditorActionBinding{&KeyboardRoomEditorInputSample::undoDown,
+                                    &KeyboardInputState::editorUndoWasDown,
+                                    InputAction::EditorUndo,
+                                    1.0F},
+    KeyboardRoomEditorActionBinding{&KeyboardRoomEditorInputSample::redoDown,
+                                    &KeyboardInputState::editorRedoWasDown,
+                                    InputAction::EditorRedo,
+                                    1.0F},
+};
+
 #if defined(IGGY3D_HAS_SDL3)
 bool keyDown(const bool* keys, SDL_Scancode scanCode) {
   return keys != nullptr && keys[scanCode];
@@ -159,50 +220,16 @@ void pollKeyboardGameplayActions(KeyboardInputState& state, ActionState& actions
 void recordKeyboardRoomEditorActions(KeyboardInputState& state,
                                      const KeyboardRoomEditorInputSample& sample,
                                      ActionState& actions) {
-  if (sample.upDown && !state.editorUpWasDown) {
-    recordAction(actions, InputAction::EditorNudgeZ, true, true, false, -1.0F);
+  for (const KeyboardRoomEditorActionBinding& binding :
+       kKeyboardRoomEditorActionBindings) {
+    const bool down = sample.*(binding.down);
+    bool& wasDown = state.*(binding.wasDown);
+    // branch-gate: BG-1037
+    if (down && !wasDown) {
+      recordAction(actions, binding.action, true, true, false, binding.value);
+    }
+    wasDown = down;
   }
-  if (sample.downDown && !state.editorDownWasDown) {
-    recordAction(actions, InputAction::EditorNudgeZ, true, true, false, 1.0F);
-  }
-  if (sample.leftDown && !state.editorLeftWasDown) {
-    recordAction(actions, InputAction::EditorNudgeX, true, true, false, -1.0F);
-  }
-  if (sample.rightDown && !state.editorRightWasDown) {
-    recordAction(actions, InputAction::EditorNudgeX, true, true, false, 1.0F);
-  }
-  if (sample.nextToolDown && !state.editorNextToolWasDown) {
-    recordAction(actions, InputAction::EditorNextTool, true, true, false, 1.0F);
-  }
-  if (sample.previousToolDown && !state.editorPreviousToolWasDown) {
-    recordAction(actions, InputAction::EditorPreviousTool, true, true, false, 1.0F);
-  }
-  if (sample.placeDown && !state.editorPlaceWasDown) {
-    recordAction(actions, InputAction::EditorPlace, true, true, false, 1.0F);
-  }
-  // branch-gate: BG-1037
-  if (sample.deleteDown && !state.editorDeleteWasDown) {
-    recordAction(actions, InputAction::EditorDelete, true, true, false, 1.0F);
-  }
-  // branch-gate: BG-1037
-  if (sample.undoDown && !state.editorUndoWasDown) {
-    recordAction(actions, InputAction::EditorUndo, true, true, false, 1.0F);
-  }
-  // branch-gate: BG-1037
-  if (sample.redoDown && !state.editorRedoWasDown) {
-    recordAction(actions, InputAction::EditorRedo, true, true, false, 1.0F);
-  }
-
-  state.editorUpWasDown = sample.upDown;
-  state.editorDownWasDown = sample.downDown;
-  state.editorLeftWasDown = sample.leftDown;
-  state.editorRightWasDown = sample.rightDown;
-  state.editorNextToolWasDown = sample.nextToolDown;
-  state.editorPreviousToolWasDown = sample.previousToolDown;
-  state.editorPlaceWasDown = sample.placeDown;
-  state.editorDeleteWasDown = sample.deleteDown;
-  state.editorUndoWasDown = sample.undoDown;
-  state.editorRedoWasDown = sample.redoDown;
 }
 
 void pollKeyboardRoomEditorActions(KeyboardInputState& state, ActionState& actions) {
@@ -215,6 +242,8 @@ void pollKeyboardRoomEditorActions(KeyboardInputState& state, ActionState& actio
   sample.rightDown = keyDown(keys, SDL_SCANCODE_D);
   sample.nextToolDown = keyDown(keys, SDL_SCANCODE_E);
   sample.previousToolDown = keyDown(keys, SDL_SCANCODE_Q);
+  sample.selectFloorToolDown = keyDown(keys, SDL_SCANCODE_1);
+  sample.selectWallToolDown = keyDown(keys, SDL_SCANCODE_2);
   sample.placeDown = keyDown(keys, SDL_SCANCODE_SPACE);
   sample.deleteDown = keyDown(keys, SDL_SCANCODE_DELETE);
   sample.undoDown = keyDown(keys, SDL_SCANCODE_Z);

@@ -38,3 +38,4 @@ BG-1036	src/app/iggy3d/ProductRoomEditorActionController.cpp	room editor live de
 BG-1037	src/app/input/KeyboardInput.cpp	room editor keyboard delete undo redo mappings	codex	2026-06-26
 BG-1038	src/app/iggy3d/ProductRoomVisualProof.cpp	headless room visual proof raster artifact generation	codex	2026-06-26
 BG-1039	src/app/input/KeyboardInput.cpp	new world draft keyboard glyph recorder parity proof	codex	2026-06-26
+BG-1040	src/app/iggy3d/ProductRoomEditorActionController.cpp	room editor direct floor wall tool input policy	codex	2026-06-26

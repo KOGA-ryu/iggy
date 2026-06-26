@@ -25,6 +25,8 @@ struct KeyboardInputState {
   bool editorRightWasDown = false;
   bool editorNextToolWasDown = false;
   bool editorPreviousToolWasDown = false;
+  bool editorSelectFloorToolWasDown = false;
+  bool editorSelectWallToolWasDown = false;
   bool editorPlaceWasDown = false;
   bool editorDeleteWasDown = false;
   bool editorUndoWasDown = false;
@@ -38,6 +40,8 @@ struct KeyboardRoomEditorInputSample {
   bool rightDown = false;
   bool nextToolDown = false;
   bool previousToolDown = false;
+  bool selectFloorToolDown = false;
+  bool selectWallToolDown = false;
   bool placeDown = false;
   bool deleteDown = false;
   bool undoDown = false;
