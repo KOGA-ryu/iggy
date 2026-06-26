@@ -12,6 +12,9 @@
 namespace iggy3d {
 namespace {
 
+constexpr std::array<char, 7> kAsciiRoomPaintGlyphs = {'#', '.', 'P', 'K',
+                                                       '$', 'E', '+'};
+
 #if defined(IGGY3D_HAS_SDL3)
 bool keyDown(const bool* keys, SDL_Scancode scanCode) {
   return keys != nullptr && keys[scanCode];
@@ -63,6 +66,20 @@ InputAction pollKeyboardMenuAction(KeyboardInputState& state) {
 #endif
 }
 
+char recordKeyboardAsciiRoomPaintGlyph(KeyboardInputState& state,
+                                       const KeyboardAsciiRoomPaintSample& sample) {
+  char glyph = '\0';
+  for (std::size_t index = 0; index < sample.glyphDown.size(); ++index) {
+    const bool down = sample.glyphDown[index];
+    // branch-gate: BG-1039
+    if (down && !state.asciiPaintWasDown[index] && glyph == '\0') {
+      glyph = kAsciiRoomPaintGlyphs[index];
+    }
+    state.asciiPaintWasDown[index] = down;
+  }
+  return glyph;
+}
+
 char pollKeyboardAsciiRoomPaintGlyph(KeyboardInputState& state) {
 #if defined(IGGY3D_HAS_SDL3)
   const bool* keys = SDL_GetKeyboardState(nullptr);
@@ -75,16 +92,11 @@ char pollKeyboardAsciiRoomPaintGlyph(KeyboardInputState& state) {
       SDL_SCANCODE_6,
       SDL_SCANCODE_7,
   };
-  constexpr std::array<char, 7> kGlyphs = {'#', '.', 'P', 'K', '$', 'E', '+'};
-  char glyph = '\0';
+  KeyboardAsciiRoomPaintSample sample;
   for (std::size_t index = 0; index < kScanCodes.size(); ++index) {
-    const bool down = keyDown(keys, kScanCodes[index]);
-    if (down && !state.asciiPaintWasDown[index] && glyph == '\0') {
-      glyph = kGlyphs[index];
-    }
-    state.asciiPaintWasDown[index] = down;
+    sample.glyphDown[index] = keyDown(keys, kScanCodes[index]);
   }
-  return glyph;
+  return recordKeyboardAsciiRoomPaintGlyph(state, sample);
 #else
   (void)state;
   return '\0';

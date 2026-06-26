@@ -44,7 +44,13 @@ struct KeyboardRoomEditorInputSample {
   bool redoDown = false;
 };
 
+struct KeyboardAsciiRoomPaintSample {
+  std::array<bool, 7> glyphDown{};
+};
+
 InputAction pollKeyboardMenuAction(KeyboardInputState& state);
+char recordKeyboardAsciiRoomPaintGlyph(KeyboardInputState& state,
+                                       const KeyboardAsciiRoomPaintSample& sample);
 char pollKeyboardAsciiRoomPaintGlyph(KeyboardInputState& state);
 void pollKeyboardGameplayActions(KeyboardInputState& state, ActionState& actions);
 void recordKeyboardRoomEditorActions(KeyboardInputState& state,

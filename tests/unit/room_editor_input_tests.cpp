@@ -1,6 +1,8 @@
 #include "app/input/GamepadInput.hpp"
+#include "app/input/InputBindings.hpp"
 #include "app/input/KeyboardInput.hpp"
 
+#include <array>
 #include <cmath>
 #include <iostream>
 #include <string_view>
@@ -32,6 +34,63 @@ bool expectActionValue(const iggy3d::ActionState& actions,
 
 int main() {
   bool ok = true;
+
+  {
+    ok = expect(iggy3d::actionForInput(iggy3d::NeutralInput::KeyTab) ==
+                    iggy3d::InputAction::MenuNextTab,
+                "keyboard Tab emits menu next tab") &&
+         ok;
+    ok = expect(iggy3d::actionForInput(iggy3d::NeutralInput::KeyW) ==
+                    iggy3d::InputAction::PlayerMoveY,
+                "keyboard W remains gameplay move outside menu polling") &&
+         ok;
+    ok = expect(iggy3d::actionForInput(iggy3d::NeutralInput::KeyDown) ==
+                    iggy3d::InputAction::MenuDown,
+                "keyboard Down emits menu down") &&
+         ok;
+    ok = expect(iggy3d::actionForInput(iggy3d::NeutralInput::KeyRight) ==
+                    iggy3d::InputAction::MenuRight,
+                "keyboard Right emits menu right") &&
+         ok;
+    ok = expect(iggy3d::actionForInput(iggy3d::NeutralInput::KeyEnter) ==
+                    iggy3d::InputAction::MenuConfirm,
+                "keyboard Enter emits menu confirm") &&
+         ok;
+    ok = expect(iggy3d::actionForInput(iggy3d::NeutralInput::KeySpace) ==
+                    iggy3d::InputAction::MenuConfirm,
+                "keyboard Space emits menu confirm") &&
+         ok;
+  }
+
+  {
+    constexpr std::array<char, 7> expectedGlyphs = {'#', '.', 'P', 'K',
+                                                   '$', 'E', '+'};
+    for (std::size_t index = 0; index < expectedGlyphs.size(); ++index) {
+      iggy3d::KeyboardInputState keyboard;
+      iggy3d::KeyboardAsciiRoomPaintSample sample;
+      sample.glyphDown[index] = true;
+      const char first = iggy3d::recordKeyboardAsciiRoomPaintGlyph(keyboard, sample);
+      const char held = iggy3d::recordKeyboardAsciiRoomPaintGlyph(keyboard, sample);
+      sample.glyphDown[index] = false;
+      const char released =
+          iggy3d::recordKeyboardAsciiRoomPaintGlyph(keyboard, sample);
+      sample.glyphDown[index] = true;
+      const char pressedAgain =
+          iggy3d::recordKeyboardAsciiRoomPaintGlyph(keyboard, sample);
+
+      ok = expect(first == expectedGlyphs[index],
+                  "keyboard number key emits expected draft glyph") &&
+           ok;
+      ok = expect(held == '\0', "keyboard held draft paint key does not repeat") &&
+           ok;
+      ok = expect(released == '\0',
+                  "keyboard draft paint key release emits no glyph") &&
+           ok;
+      ok = expect(pressedAgain == expectedGlyphs[index],
+                  "keyboard draft paint key re-press emits expected glyph") &&
+           ok;
+    }
+  }
 
   {
     iggy3d::KeyboardInputState keyboard;
