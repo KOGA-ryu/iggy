@@ -47,6 +47,16 @@ iggy3d::EditableRoomWall extraWallPrimitive() {
   return wall;
 }
 
+const iggy3d::RoomStaticMeshAsset* findMesh(const iggy3d::RoomAsset& room,
+                                            std::string_view id) {
+  for (const iggy3d::RoomStaticMeshAsset& mesh : room.staticMeshes) {
+    if (mesh.id == id) {
+      return &mesh;
+    }
+  }
+  return nullptr;
+}
+
 bool startAsciiCreatesReadyEditingState() {
   const iggy3d::ProductRoomEditingStartResult result =
       iggy3d::startProductRoomEditingFromAscii(smallRoomRequest());
@@ -147,6 +157,8 @@ bool activeRoomEditingOperationsRebuildLiveRoom() {
           state,
           iggy3d::ProductRoomAuthoringInputSource::Script,
           iggy3d::addWallCommand(extraWallPrimitive()));
+  const iggy3d::RoomStaticMeshAsset* addedWall =
+      findMesh(state.activeRoom.room, "state_wall_1");
 
   return expect(addWall.accepted, "active room add wall accepted") &&
          expect(addWall.state.documentWallCount == 9U,
@@ -158,6 +170,18 @@ bool activeRoomEditingOperationsRebuildLiveRoom() {
                 "active room after edit authored wall count") &&
          expect(state.activeRoomStaticMeshCount == 10U,
                 "active room after edit mesh count") &&
+         expect(addedWall != nullptr, "active room added wall mesh") &&
+         expect(addedWall->hasWallSegment, "active room added wall segment") &&
+         expect(addedWall->wallStartMeters.x == 2.0F,
+                "active room added wall start x") &&
+         expect(addedWall->wallEndMeters.x == 3.0F,
+                "active room added wall end x") &&
+         expect(addedWall->wallBottomY == 0.0F,
+                "active room added wall bottom") &&
+         expect(addedWall->wallHeightMeters == 2.5F,
+                "active room added wall height") &&
+         expect(addedWall->wallThicknessMeters == 1.0F,
+                "active room added wall thickness") &&
          expect(state.activeRoomCollision.ready,
                 "active room after edit collision ready") &&
          expect(state.collisionActorBlockerSurfaceCount == 9U,

@@ -752,7 +752,7 @@ int main() {
                               "custom_dungeon_draft") &&
       iggy3d::smoke::hasField(fields,
                               "product_vulkan_room_wall_draw_count",
-                              "62") &&
+                              "22") &&
       iggy3d::smoke::positiveIntegerField(fields,
                                           "product_vulkan_room_vertex_count") &&
       iggy3d::smoke::positiveIntegerField(fields,
@@ -842,7 +842,7 @@ int main() {
                               "true") &&
       iggy3d::smoke::hasField(fields,
                               "product_vulkan_room_wall_draw_count",
-                              "62") &&
+                              "22") &&
       iggy3d::smoke::positiveIntegerField(
           fields, "product_vulkan_room_geometry_signature");
 
@@ -1127,7 +1127,7 @@ int main() {
                               "custom_dungeon_draft") &&
       iggy3d::smoke::hasField(fields,
                               "product_vulkan_room_wall_draw_count",
-                              "62") &&
+                              "23") &&
       iggy3d::smoke::positiveIntegerField(fields,
                                           "product_vulkan_room_vertex_count") &&
       iggy3d::smoke::positiveIntegerField(fields,

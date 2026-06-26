@@ -227,6 +227,12 @@ RoomStaticMeshAsset makeWallMesh(const EditableRoomWall& wall) {
   mesh.role = "wall";
   mesh.positionMeters = center(bounds);
   mesh.sizeMeters = bounds.max - bounds.min;
+  mesh.hasWallSegment = true;
+  mesh.wallStartMeters = wall.startMeters;
+  mesh.wallEndMeters = wall.endMeters;
+  mesh.wallBottomY = wall.bottomY;
+  mesh.wallHeightMeters = wall.heightMeters;
+  mesh.wallThicknessMeters = wall.thicknessMeters;
   return mesh;
 }
 

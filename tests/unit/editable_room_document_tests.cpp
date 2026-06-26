@@ -40,6 +40,16 @@ iggy3d::EditableRoomWall wallPrimitive() {
   return wall;
 }
 
+const iggy3d::RoomStaticMeshAsset* findMesh(const iggy3d::RoomAsset& room,
+                                            std::string_view id) {
+  for (const iggy3d::RoomStaticMeshAsset& mesh : room.staticMeshes) {
+    if (mesh.id == id) {
+      return &mesh;
+    }
+  }
+  return nullptr;
+}
+
 bool sessionAddsDeletesAndRestoresPrimitives() {
   iggy3d::EditableRoomSession session;
   const iggy3d::RoomEditResult addFloor =
@@ -144,6 +154,58 @@ bool semanticsBakeIntoRuntimeSurfaces() {
          expect(slots.slots.front().slotId == "wall_1:wall_1_top_walkable",
                 "clamber slot id") &&
          expect(slots.slots.front().authoredAffordance, "clamber slot authored");
+}
+
+bool wallBakePreservesSegmentMetadataAndSurfaceCounts() {
+  iggy3d::EditableRoomDocument document;
+  iggy3d::EditableRoomWall xWall = wallPrimitive();
+  xWall.id = "wall_x";
+  xWall.startMeters = {-1.0F, 0.0F, -2.0F};
+  xWall.endMeters = {2.0F, 0.0F, -2.0F};
+  xWall.bottomY = 0.25F;
+  xWall.heightMeters = 2.5F;
+  xWall.thicknessMeters = 0.35F;
+  document.walls.push_back(xWall);
+
+  iggy3d::EditableRoomWall zWall = wallPrimitive();
+  zWall.id = "wall_z";
+  zWall.startMeters = {4.0F, 0.0F, -1.0F};
+  zWall.endMeters = {4.0F, 0.0F, 3.0F};
+  zWall.bottomY = 0.0F;
+  zWall.heightMeters = 3.0F;
+  zWall.thicknessMeters = 0.5F;
+  document.walls.push_back(zWall);
+
+  const iggy3d::RoomBakeResult bake = iggy3d::bakeEditableRoomDocument(document);
+  const iggy3d::RoomStaticMeshAsset* xMesh = findMesh(bake.room, "wall_x");
+  const iggy3d::RoomStaticMeshAsset* zMesh = findMesh(bake.room, "wall_z");
+
+  return expect(bake.ok, "segment metadata bake ok") &&
+         expect(bake.room.staticMeshes.size() == 2U, "segment mesh count") &&
+         expect(bake.room.spatialSurfaces.size() == 4U,
+                "segment surface count unchanged") &&
+         expect(xMesh != nullptr, "x wall mesh exists") &&
+         expect(xMesh->hasWallSegment, "x wall segment present") &&
+         expect(nearly(xMesh->wallStartMeters.x, -1.0F), "x wall start x") &&
+         expect(nearly(xMesh->wallStartMeters.z, -2.0F), "x wall start z") &&
+         expect(nearly(xMesh->wallEndMeters.x, 2.0F), "x wall end x") &&
+         expect(nearly(xMesh->wallEndMeters.z, -2.0F), "x wall end z") &&
+         expect(nearly(xMesh->wallBottomY, 0.25F), "x wall bottom") &&
+         expect(nearly(xMesh->wallHeightMeters, 2.5F), "x wall height") &&
+         expect(nearly(xMesh->wallThicknessMeters, 0.35F), "x wall thickness") &&
+         expect(nearly(xMesh->positionMeters.x, 0.5F), "x wall fallback center x") &&
+         expect(nearly(xMesh->sizeMeters.x, 3.0F), "x wall fallback size x") &&
+         expect(zMesh != nullptr, "z wall mesh exists") &&
+         expect(zMesh->hasWallSegment, "z wall segment present") &&
+         expect(nearly(zMesh->wallStartMeters.x, 4.0F), "z wall start x") &&
+         expect(nearly(zMesh->wallStartMeters.z, -1.0F), "z wall start z") &&
+         expect(nearly(zMesh->wallEndMeters.x, 4.0F), "z wall end x") &&
+         expect(nearly(zMesh->wallEndMeters.z, 3.0F), "z wall end z") &&
+         expect(nearly(zMesh->wallBottomY, 0.0F), "z wall bottom") &&
+         expect(nearly(zMesh->wallHeightMeters, 3.0F), "z wall height") &&
+         expect(nearly(zMesh->wallThicknessMeters, 0.5F), "z wall thickness") &&
+         expect(nearly(zMesh->positionMeters.z, 1.0F), "z wall fallback center z") &&
+         expect(nearly(zMesh->sizeMeters.z, 4.0F), "z wall fallback size z");
 }
 
 bool validationRejectsAmbiguousWallGeometryAndBadTags() {
@@ -380,6 +442,7 @@ bool lockedTransformsRejectedAndHiddenTransformsAllowed() {
 int main() {
   const bool ok = sessionAddsDeletesAndRestoresPrimitives() &&
                   semanticsBakeIntoRuntimeSurfaces() &&
+                  wallBakePreservesSegmentMetadataAndSurfaceCounts() &&
                   validationRejectsAmbiguousWallGeometryAndBadTags() &&
                   nextEditableCountersIgnoreNonMatchingIds() &&
                   lockedHiddenAndProjectileSemanticsAreStable() &&
