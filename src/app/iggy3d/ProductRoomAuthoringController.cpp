@@ -2,6 +2,9 @@
 
 #include <utility>
 
+#include "app/iggy3d/ProductRoomEditorActionController.hpp"
+#include "app/iggy3d/ProductRoomEditingState.hpp"
+#include "app/input/ActionState.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "runtime/session/SessionState.hpp"
 
@@ -208,6 +211,41 @@ ProductRoomAuthoringCommandResult ProductRoomAuthoringController::redo(
                             "product_room_authoring_redo_applied",
                             std::move(edit),
                             snapshot_);
+}
+
+ProductRoomEditingStartResult startProductRoomAuthoringFromAsciiDraft(
+    ProductRoomAuthoringStartFromAsciiRequest request) {
+  return startProductRoomEditingFromAscii(request.request);
+}
+
+ProductRoomEditingStartResult startProductRoomAuthoringFromActiveRoom(
+    ProductRoomAuthoringStartFromActiveRoomRequest request) {
+  return startProductRoomEditingFromActiveRoom(request.activeRoom);
+}
+
+ProductRoomEditingOperationResult applyProductRoomAuthoringEditCommand(
+    ProductRoomAuthoringEditCommandRequest request) {
+  return applyProductRoomEditingCommand(request.state, request.source, request.command);
+}
+
+ProductRoomEditingOperationResult undoProductRoomAuthoringEdit(
+    ProductRoomAuthoringUndoRedoRequest request) {
+  return undoProductRoomEditing(request.state, request.source);
+}
+
+ProductRoomEditingOperationResult redoProductRoomAuthoringEdit(
+    ProductRoomAuthoringUndoRedoRequest request) {
+  return redoProductRoomEditing(request.state, request.source);
+}
+
+ProductRoomEditorActionResult applyProductRoomAuthoringCursorPlace(
+    ProductRoomAuthoringCursorPlaceRequest request) {
+  ActionState actions;
+  recordAction(actions, InputAction::EditorPlace, true, true, false, 1.0F);
+  return applyProductRoomEditorActions(request.editing,
+                                       request.cursor,
+                                       actions,
+                                       request.source);
 }
 
 }  // namespace iggy3d

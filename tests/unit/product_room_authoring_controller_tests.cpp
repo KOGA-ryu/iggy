@@ -1,7 +1,10 @@
 #include "app/iggy3d/AsciiRoomGrid.hpp"
 #include "app/iggy3d/AsciiRoomSource.hpp"
 #include "app/iggy3d/AsciiRoomToEditableRoom.hpp"
+#include "app/iggy3d/ProductAsciiRoomAuthoring.hpp"
 #include "app/iggy3d/ProductRoomAuthoringController.hpp"
+#include "app/iggy3d/ProductRoomEditorActionController.hpp"
+#include "app/iggy3d/ProductRoomEditingState.hpp"
 
 #include <iostream>
 #include <string_view>
@@ -37,6 +40,17 @@ iggy3d::EditableRoomDocument editableDocumentFromAscii() {
   const iggy3d::AsciiRoomToEditableRoomResult editable =
       iggy3d::buildEditableRoomFromAsciiRoom(grid.grid, compileConfig());
   return editable.document;
+}
+
+iggy3d::ProductAsciiRoomAuthoringRequest smallRoomRequest() {
+  iggy3d::ProductAsciiRoomAuthoringRequest request;
+  request.sourceText =
+      "###\n"
+      "#P#\n"
+      "###\n";
+  request.sourceName = "tests/product_room_authoring_controller.iggyroom.txt";
+  request.roomId = "controller_ascii_room";
+  return request;
 }
 
 iggy3d::EditableRoomFloor extraFloorPrimitive() {
@@ -212,6 +226,59 @@ bool undoRedoRebuildsProjection() {
          expect(redo.snapshot.redoDepth == 0U, "redo depth after redo");
 }
 
+bool productLevelRoomAuthoringOperationsUseEditingStatePath() {
+  const iggy3d::ProductRoomEditingStartResult started =
+      iggy3d::startProductRoomAuthoringFromAsciiDraft({smallRoomRequest()});
+  iggy3d::ProductRoomEditingState state = started.state;
+  const std::uint64_t initialFloorCount = state.documentFloorCount;
+  const std::uint64_t initialWallCount = state.documentWallCount;
+
+  const iggy3d::RoomEditCommand addFloor =
+      iggy3d::addFloorCommand(extraFloorPrimitive());
+  const iggy3d::ProductRoomEditingOperationResult applied =
+      iggy3d::applyProductRoomAuthoringEditCommand(
+          {state, iggy3d::ProductRoomAuthoringInputSource::Script, addFloor});
+
+  iggy3d::ProductRoomEditorCursorState cursor;
+  cursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
+  const iggy3d::ProductRoomEditorActionResult placed =
+      iggy3d::applyProductRoomAuthoringCursorPlace(
+          {state, cursor, iggy3d::ProductRoomAuthoringInputSource::Hotkey});
+  state = placed.editing;
+
+  const iggy3d::ProductRoomEditingOperationResult undone =
+      iggy3d::undoProductRoomAuthoringEdit(
+          {state, iggy3d::ProductRoomAuthoringInputSource::Script});
+  const iggy3d::ProductRoomEditingOperationResult redone =
+      iggy3d::redoProductRoomAuthoringEdit(
+          {state, iggy3d::ProductRoomAuthoringInputSource::Script});
+
+  return expect(started.ok, "product-level start from ascii accepted") &&
+         expect(started.status == "product_room_editing_started",
+                "product-level start status") &&
+         expect(applied.accepted, "product-level edit accepted") &&
+         expect(applied.status == "product_room_editing_edit_applied",
+                "product-level edit status") &&
+         expect(state.documentFloorCount == initialFloorCount + 1U,
+                "product-level edit updates state floor count") &&
+         expect(placed.ok, "product-level cursor place accepted") &&
+         expect(placed.status == "room_editor_command_applied",
+                "product-level cursor place status") &&
+         expect(placed.operationAccepted, "product-level cursor place operation") &&
+         expect(placed.primitiveId != "none",
+                "product-level cursor place primitive id") &&
+         expect(placed.editing.documentWallCount == initialWallCount + 1U,
+                "product-level cursor place result wall count") &&
+         expect(state.documentWallCount == initialWallCount + 1U,
+                "product-level cursor place updates state wall count") &&
+         expect(undone.accepted, "product-level undo accepted") &&
+         expect(undone.status == "product_room_editing_undo_applied",
+                "product-level undo status") &&
+         expect(redone.accepted, "product-level redo accepted") &&
+         expect(redone.status == "product_room_editing_redo_applied",
+                "product-level redo status");
+}
+
 }  // namespace
 
 int main() {
@@ -220,5 +287,6 @@ int main() {
   ok = inputSourcesShareRoomEditCommandPath() && ok;
   ok = rejectedEditDoesNotMutateSnapshot() && ok;
   ok = undoRedoRebuildsProjection() && ok;
+  ok = productLevelRoomAuthoringOperationsUseEditingStatePath() && ok;
   return ok ? 0 : 1;
 }

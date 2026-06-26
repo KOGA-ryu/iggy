@@ -885,7 +885,7 @@ void applyOpeningMenuAction(FrontendState& frontend,
     }
     if (frontend.selectedAction == FrontendAction::EditRoom) {
       const ProductRoomEditingStartResult started =
-          startProductRoomEditingFromActiveRoom(window.activeRoom);
+          startProductRoomAuthoringFromActiveRoom({window.activeRoom});
       recordProductRoomEditingStart(window, started, "pause_edit_room");
       frontend.status = started.ok ? "pause_edit_room_requested"
                                    : "pause_edit_room_failed";
@@ -1706,27 +1706,6 @@ bool rejectProductRoomEditorNotReady(ProductAppWindowState& window,
   return false;
 }
 
-bool recordProductRoomEditorPlaceResult(
-    ProductAppWindowState& window,
-    const ProductRoomEditorCursorResult& cursor,
-    const ProductRoomEditingOperationResult& operation) {
-  window.roomEditorCursorReady = window.roomEditing.ready;
-  window.roomEditorCursor = cursor.state;
-  window.roomEditorLastOperation = "room_editor.place";
-  window.roomEditorLastOperationAccepted = operation.accepted;
-  window.roomEditorLastPrimitiveId =
-      operation.edit.primitiveId.empty() ? std::string{"none"}
-                                        : operation.edit.primitiveId;
-  if (operation.accepted) {
-    window.roomEditorStatus = "room_editor_command_applied";
-    window.roomEditorReasonCode = "room_editor_command_applied";
-  } else {
-    window.roomEditorStatus = operation.status;
-    window.roomEditorReasonCode = operation.reasonCode;
-  }
-  return operation.accepted;
-}
-
 void recordProductRoomEditorActionResult(
     ProductAppWindowState& window,
     const ProductRoomEditorActionResult& result,
@@ -2172,7 +2151,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     const ProductAsciiRoomAuthoringRequest request =
         productAsciiRoomAuthoringRequestFromDraft(window);
     const ProductRoomEditingStartResult started =
-        startProductRoomEditingFromAscii(request);
+        startProductRoomAuthoringFromAsciiDraft({request});
     recordProductRoomEditingStart(window, started);
     markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
@@ -2192,7 +2171,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     }
 
     const ProductRoomEditingStartResult started =
-        startProductRoomEditingFromActiveRoom(window.activeRoom);
+        startProductRoomAuthoringFromActiveRoom({window.activeRoom});
     recordProductRoomEditingStart(window, started, automationSpec.canonicalKey);
     markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
@@ -2388,33 +2367,19 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       return false;
     }
 
-    const ProductRoomEditorCursorResult cursorCommand =
-        buildProductRoomEditorPlaceCommand(
-            window.roomEditorCursor,
-            &window.roomEditing.authoringSnapshot.document);
-    if (!cursorCommand.ok || !cursorCommand.command.has_value()) {
-      recordProductRoomEditorCursorResult(window, automationSpec.canonicalKey,
-                                          cursorCommand);
-      window.automationControlStatus = "command_failed";
-      markAutomationApplied(window, command, automationSpec.canonicalKey,
-                            productInputOwnerFor(frontend, window), "failed");
-      return false;
-    }
-
-    ProductRoomEditingOperationResult result = applyProductRoomEditingCommand(
-        window.roomEditing,
-        ProductRoomAuthoringInputSource::Hotkey,
-        *cursorCommand.command);
-    recordProductRoomEditingOperation(window, automationSpec.canonicalKey, result);
-    const bool accepted =
-        recordProductRoomEditorPlaceResult(window, cursorCommand, result);
-    if (!accepted) {
+    const ProductRoomEditorActionResult result =
+        applyProductRoomAuthoringCursorPlace(
+            {window.roomEditing,
+             window.roomEditorCursor,
+             ProductRoomAuthoringInputSource::Hotkey});
+    recordProductRoomEditorActionResult(window, result, automationSpec.canonicalKey);
+    if (!result.ok) {
       window.automationControlStatus = "command_failed";
     }
     markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
-                          accepted ? "applied" : "failed");
-    return accepted;
+                          result.ok ? "applied" : "failed");
+    return result.ok;
   }
 
   if (automationSpec.commandId == ProductAutomationCommandId::RoomEditAddFloor) {
@@ -2423,8 +2388,8 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       window.automationControlStatus = "invalid_value";
       return false;
     }
-    ProductRoomEditingOperationResult result = applyProductRoomEditingCommand(
-        window.roomEditing, ProductRoomAuthoringInputSource::Script, edit);
+    ProductRoomEditingOperationResult result = applyProductRoomAuthoringEditCommand(
+        {window.roomEditing, ProductRoomAuthoringInputSource::Script, edit});
     recordProductRoomEditingOperation(window, automationSpec.canonicalKey, result);
     markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
@@ -2438,8 +2403,8 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       window.automationControlStatus = "invalid_value";
       return false;
     }
-    ProductRoomEditingOperationResult result = applyProductRoomEditingCommand(
-        window.roomEditing, ProductRoomAuthoringInputSource::Script, edit);
+    ProductRoomEditingOperationResult result = applyProductRoomAuthoringEditCommand(
+        {window.roomEditing, ProductRoomAuthoringInputSource::Script, edit});
     recordProductRoomEditingOperation(window, automationSpec.canonicalKey, result);
     markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
@@ -2452,10 +2417,9 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       window.automationControlStatus = "invalid_value";
       return false;
     }
-    ProductRoomEditingOperationResult result = applyProductRoomEditingCommand(
-        window.roomEditing,
-        ProductRoomAuthoringInputSource::Script,
-        deleteFloorCommand(std::string(value)));
+    const RoomEditCommand edit = deleteFloorCommand(std::string(value));
+    ProductRoomEditingOperationResult result = applyProductRoomAuthoringEditCommand(
+        {window.roomEditing, ProductRoomAuthoringInputSource::Script, edit});
     recordProductRoomEditingOperation(window, automationSpec.canonicalKey, result);
     markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
@@ -2468,10 +2432,9 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       window.automationControlStatus = "invalid_value";
       return false;
     }
-    ProductRoomEditingOperationResult result = applyProductRoomEditingCommand(
-        window.roomEditing,
-        ProductRoomAuthoringInputSource::Script,
-        deleteWallCommand(std::string(value)));
+    const RoomEditCommand edit = deleteWallCommand(std::string(value));
+    ProductRoomEditingOperationResult result = applyProductRoomAuthoringEditCommand(
+        {window.roomEditing, ProductRoomAuthoringInputSource::Script, edit});
     recordProductRoomEditingOperation(window, automationSpec.canonicalKey, result);
     markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
@@ -2489,8 +2452,9 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                             productInputOwnerFor(frontend, window), "ignored");
       return true;
     }
-    ProductRoomEditingOperationResult result = undoProductRoomEditing(
-        window.roomEditing, ProductRoomAuthoringInputSource::Script);
+    ProductRoomEditingOperationResult result =
+        undoProductRoomAuthoringEdit(
+            {window.roomEditing, ProductRoomAuthoringInputSource::Script});
     recordProductRoomEditingOperation(window, automationSpec.canonicalKey, result);
     markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),
@@ -2508,8 +2472,9 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                             productInputOwnerFor(frontend, window), "ignored");
       return true;
     }
-    ProductRoomEditingOperationResult result = redoProductRoomEditing(
-        window.roomEditing, ProductRoomAuthoringInputSource::Script);
+    ProductRoomEditingOperationResult result =
+        redoProductRoomAuthoringEdit(
+            {window.roomEditing, ProductRoomAuthoringInputSource::Script});
     recordProductRoomEditingOperation(window, automationSpec.canonicalKey, result);
     markAutomationApplied(window, command, automationSpec.canonicalKey,
                           productInputOwnerFor(frontend, window),

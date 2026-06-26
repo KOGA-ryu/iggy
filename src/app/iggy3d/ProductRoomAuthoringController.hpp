@@ -8,6 +8,14 @@
 
 namespace iggy3d {
 
+struct ProductActiveRoomState;
+struct ProductAsciiRoomAuthoringRequest;
+struct ProductRoomEditingOperationResult;
+struct ProductRoomEditingStartResult;
+struct ProductRoomEditingState;
+struct ProductRoomEditorActionResult;
+struct ProductRoomEditorCursorState;
+
 enum class ProductRoomAuthoringInputSource : std::uint8_t {
   Ai,
   Hotkey,
@@ -63,5 +71,48 @@ class ProductRoomAuthoringController {
   EditableRoomSession session_;
   ProductRoomAuthoringSnapshot snapshot_;
 };
+
+struct ProductRoomAuthoringStartFromAsciiRequest {
+  const ProductAsciiRoomAuthoringRequest& request;
+};
+
+struct ProductRoomAuthoringStartFromActiveRoomRequest {
+  const ProductActiveRoomState& activeRoom;
+};
+
+struct ProductRoomAuthoringEditCommandRequest {
+  ProductRoomEditingState& state;
+  ProductRoomAuthoringInputSource source = ProductRoomAuthoringInputSource::Script;
+  const RoomEditCommand& command;
+};
+
+struct ProductRoomAuthoringUndoRedoRequest {
+  ProductRoomEditingState& state;
+  ProductRoomAuthoringInputSource source = ProductRoomAuthoringInputSource::Script;
+};
+
+struct ProductRoomAuthoringCursorPlaceRequest {
+  const ProductRoomEditingState& editing;
+  const ProductRoomEditorCursorState& cursor;
+  ProductRoomAuthoringInputSource source = ProductRoomAuthoringInputSource::Hotkey;
+};
+
+ProductRoomEditingStartResult startProductRoomAuthoringFromAsciiDraft(
+    ProductRoomAuthoringStartFromAsciiRequest request);
+
+ProductRoomEditingStartResult startProductRoomAuthoringFromActiveRoom(
+    ProductRoomAuthoringStartFromActiveRoomRequest request);
+
+ProductRoomEditingOperationResult applyProductRoomAuthoringEditCommand(
+    ProductRoomAuthoringEditCommandRequest request);
+
+ProductRoomEditingOperationResult undoProductRoomAuthoringEdit(
+    ProductRoomAuthoringUndoRedoRequest request);
+
+ProductRoomEditingOperationResult redoProductRoomAuthoringEdit(
+    ProductRoomAuthoringUndoRedoRequest request);
+
+ProductRoomEditorActionResult applyProductRoomAuthoringCursorPlace(
+    ProductRoomAuthoringCursorPlaceRequest request);
 
 }  // namespace iggy3d
