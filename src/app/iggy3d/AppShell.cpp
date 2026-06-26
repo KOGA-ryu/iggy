@@ -71,6 +71,10 @@ namespace iggy3d {
 
 namespace {
 
+void recordProductRoomEditingStart(ProductAppWindowState& window,
+                                   const ProductRoomEditingStartResult& result,
+                                   std::string_view operation);
+
 FrontendInputBackend settingsInputBackendFromOptions(ProductInputBackend backend) {
   switch (backend) {
     case ProductInputBackend::Keyboard:
@@ -840,6 +844,17 @@ void applyOpeningMenuAction(FrontendState& frontend,
       closeProductOverlayToGameplayTransition(frontend, window);
       return;
     }
+    if (frontend.selectedAction == FrontendAction::EditRoom) {
+      const ProductRoomEditingStartResult started =
+          startProductRoomEditingFromActiveRoom(window.activeRoom);
+      recordProductRoomEditingStart(window, started, "pause_edit_room");
+      frontend.status = started.ok ? "pause_edit_room_requested"
+                                   : "pause_edit_room_failed";
+      if (started.ok) {
+        closeProductOverlayToGameplayTransition(frontend, window);
+      }
+      return;
+    }
     if (frontend.selectedAction == FrontendAction::Settings) {
       openProductPauseSettingsTransition(frontend, window, settingsTab);
       return;
@@ -1294,6 +1309,8 @@ bool parseAutomationFrontendAction(std::string_view value, FrontendAction& out) 
     out = FrontendAction::Exit;
   } else if (value == "resume") {
     out = FrontendAction::Resume;
+  } else if (value == "edit_room") {
+    out = FrontendAction::EditRoom;
   } else if (value == "save") {
     out = FrontendAction::Save;
   } else if (value == "save_and_exit") {

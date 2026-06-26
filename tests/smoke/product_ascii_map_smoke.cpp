@@ -70,6 +70,8 @@ int main() {
       iggy3d::smoke::cleanSaveRoot("ascii_map_custom_draft_cursor_paint");
   const std::filesystem::path customEditSaveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_custom_draft_edit_active");
+  const std::filesystem::path customPauseEditSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("ascii_map_custom_draft_pause_edit_room");
   const std::filesystem::path customLiveEditSaveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_custom_draft_live_edit");
   const std::filesystem::path customLiveEditPauseSaveRoot =
@@ -518,6 +520,102 @@ int main() {
                               "58") &&
       iggy3d::smoke::hasField(fields,
                               "active_room_collision_actor_blocker_count",
+                              "61");
+
+  fields.clear();
+  const bool pauseEditCustomDraftActiveRoom =
+      appAvailable && mapAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_map_custom_draft_pause_edit_room",
+          "frontend.select=new_world\nfrontend.execute=true\n"
+          "world.title=Custom Draft\n"
+          "world.draft_cell=1,2,#\n"
+          "world.create=true\n"
+          "system.pause=true\n"
+          "pause.select=edit_room\n"
+          "pause.execute=true\n",
+          iggy3d::smoke::saveRootArg(customPauseEditSaveRoot),
+          fields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::automationApplied(fields) &&
+      iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(fields, "window_created", "false") &&
+      iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(fields, "frontend_selected_action",
+                              "edit_room") &&
+      iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "input_owner", "gameplay") &&
+      iggy3d::smoke::hasField(fields, "gameplay_input_suppressed",
+                              "false") &&
+      iggy3d::smoke::hasField(fields, "pause_menu_open", "false") &&
+      iggy3d::smoke::hasField(fields, "room_editing_ready", "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_status",
+                              "product_room_editing_ready") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_reason_code",
+                              "product_room_editing_ready") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_last_operation",
+                              "pause_edit_room") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_last_operation_status",
+                              "product_room_editing_started_from_active_room") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_last_operation_reason_code",
+                              "product_room_editing_started_from_active_room") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_last_operation_accepted",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_active_room_loaded",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_authored_floor_count",
+                              "58") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_authored_wall_count",
+                              "61") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_collision_ready",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_collision_surface_count",
+                              "180") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_collision_walkable_surface_count",
+                              "58") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_collision_actor_blocker_count",
+                              "61") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_collision_projectile_blocker_count",
+                              "61") &&
+      iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
+      iggy3d::smoke::hasField(fields, "active_room_source", "editable_room") &&
+      iggy3d::smoke::hasField(fields, "active_room_id",
+                              "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_authored_floor_count",
+                              "58") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_authored_wall_count",
+                              "61") &&
+      iggy3d::smoke::hasField(fields, "active_room_collision_ready",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_query_surface_count",
+                              "180") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_walkable_surface_count",
+                              "58") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_actor_blocker_count",
+                              "61") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_projectile_blocker_count",
                               "61");
 
   fields.clear();
@@ -1142,6 +1240,7 @@ int main() {
                       createCustomDraftWorld && cursorPaintRequiresEditMode &&
                       createCursorPaintDraftWorld &&
                       startCustomDraftActiveRoomEditing &&
+                      pauseEditCustomDraftActiveRoom &&
                       liveEditCustomDraftActiveRoom &&
                       saveLiveEditedCustomDraftActiveRoom &&
                       continueLiveEditedCustomDraftActiveRoom &&
@@ -1164,6 +1263,8 @@ int main() {
                          "new world cursor paint creates edited dungeon") &&
                   expect(startCustomDraftActiveRoomEditing,
                          "custom draft active room enters editing") &&
+                  expect(pauseEditCustomDraftActiveRoom,
+                         "custom draft pause edit room enters editing") &&
                   expect(liveEditCustomDraftActiveRoom,
                          "custom draft active room live edit") &&
                   expect(saveLiveEditedCustomDraftActiveRoom,
@@ -1193,6 +1294,8 @@ int main() {
             << (createCursorPaintDraftWorld ? "true" : "false") << "\n";
   std::cout << "start_custom_draft_active_room_editing="
             << (startCustomDraftActiveRoomEditing ? "true" : "false") << "\n";
+  std::cout << "pause_edit_custom_draft_active_room="
+            << (pauseEditCustomDraftActiveRoom ? "true" : "false") << "\n";
   std::cout << "live_edit_custom_draft_active_room="
             << (liveEditCustomDraftActiveRoom ? "true" : "false") << "\n";
   std::cout << "save_live_edited_custom_draft_active_room="

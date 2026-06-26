@@ -192,6 +192,7 @@ FrontendRouteResult routeSaveBrowserAction(const SaveBrowserModel& model,
     case FrontendAction::Apply:
     case FrontendAction::RestoreDefaults:
     case FrontendAction::Resume:
+    case FrontendAction::EditRoom:
     case FrontendAction::Save:
     case FrontendAction::SaveAndExit:
     case FrontendAction::ReturnToTitle:

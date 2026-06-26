@@ -60,7 +60,7 @@ iggy3d::ProductFrontendRouteContext settingsContextFor(
 
 iggy3d::PauseMenuModel buildOpenPauseModel(std::uint64_t compatibleSaveCount = 1U) {
   return iggy3d::buildPauseMenuModel(
-      iggy3d::PauseMenuContext{true, true, true, compatibleSaveCount, true},
+      iggy3d::PauseMenuContext{true, true, true, compatibleSaveCount, true, true},
       iggy3d::FrontendAction::Resume);
 }
 

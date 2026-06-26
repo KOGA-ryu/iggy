@@ -277,6 +277,7 @@ FrontendRouteResult routeSettingsAction(const SettingsRouteContext& context,
     case FrontendAction::Load:
     case FrontendAction::Delete:
     case FrontendAction::Resume:
+    case FrontendAction::EditRoom:
     case FrontendAction::Save:
     case FrontendAction::SaveAndExit:
     case FrontendAction::ReturnToTitle:

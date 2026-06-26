@@ -35,6 +35,7 @@ enum class FrontendAction : std::uint8_t {
   Apply,
   RestoreDefaults,
   Resume,
+  EditRoom,
   Save,
   SaveAndExit,
   ReturnToTitle,

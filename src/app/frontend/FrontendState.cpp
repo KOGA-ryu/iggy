@@ -60,6 +60,8 @@ std::string_view frontendActionName(FrontendAction action) {
       return "restore_defaults";
     case FrontendAction::Resume:
       return "resume";
+    case FrontendAction::EditRoom:
+      return "edit_room";
     case FrontendAction::Save:
       return "save";
     case FrontendAction::SaveAndExit:
@@ -116,6 +118,7 @@ const std::vector<FrontendAction>& starterActionOrder() {
 const std::vector<FrontendAction>& pauseActionOrder() {
   static const std::vector<FrontendAction> actions = {
       FrontendAction::Resume,
+      FrontendAction::EditRoom,
       FrontendAction::Save,
       FrontendAction::SaveAndExit,
       FrontendAction::LoadSave,
