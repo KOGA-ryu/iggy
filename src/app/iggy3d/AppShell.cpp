@@ -32,6 +32,7 @@
 #include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductRenderBridge.hpp"
+#include "app/iggy3d/ProductRoomEditorActionController.hpp"
 #include "app/iggy3d/ProductRoomEditorCursor.hpp"
 #include "app/iggy3d/ProductRoomEditorOverlay.hpp"
 #include "app/iggy3d/ProductRoomEditingState.hpp"
@@ -733,6 +734,9 @@ MenuOwner productInputOwnerFor(const FrontendState& frontend,
     return MenuOwner::Pause;
   }
   if (frontend.screen == FrontendScreen::Gameplay && window.gameplayActive) {
+    if (window.roomEditing.ready) {
+      return MenuOwner::Editor;
+    }
     return MenuOwner::Gameplay;
   }
   return MenuOwner::None;
@@ -1354,6 +1358,36 @@ bool parseProductRoomEditorTool(std::string_view value,
   return true;
 }
 
+bool parseProductRoomEditorInputAction(std::string_view value,
+                                       InputAction& out,
+                                       float& actionValue) {
+  actionValue = 1.0F;
+  if (value == "editor.nudge_x_pos") {
+    out = InputAction::EditorNudgeX;
+    actionValue = 1.0F;
+  } else if (value == "editor.nudge_x_neg") {
+    out = InputAction::EditorNudgeX;
+    actionValue = -1.0F;
+  } else if (value == "editor.nudge_z_pos") {
+    out = InputAction::EditorNudgeZ;
+    actionValue = 1.0F;
+  } else if (value == "editor.nudge_z_neg") {
+    out = InputAction::EditorNudgeZ;
+    actionValue = -1.0F;
+  } else if (value == "editor.next_tool") {
+    out = InputAction::EditorNextTool;
+  } else if (value == "editor.previous_tool") {
+    out = InputAction::EditorPreviousTool;
+  } else if (value == "editor.place") {
+    out = InputAction::EditorPlace;
+  } else if (value == "editor.apply") {
+    out = InputAction::EditorApply;
+  } else {
+    return false;
+  }
+  return true;
+}
+
 bool parseAutomationFrontendAction(std::string_view value, FrontendAction& out) {
   if (value == "continue") {
     out = FrontendAction::Continue;
@@ -1694,6 +1728,32 @@ bool recordProductRoomEditorPlaceResult(
     window.roomEditorReasonCode = operation.reasonCode;
   }
   return operation.accepted;
+}
+
+void recordProductRoomEditorActionResult(
+    ProductAppWindowState& window,
+    const ProductRoomEditorActionResult& result,
+    std::string_view operationOverride = {}) {
+  window.roomEditing = result.editing;
+  copyRoomEditingStateToWindow(window, result.editing);
+  window.roomEditorCursorReady = result.editing.ready;
+  window.roomEditorCursor = result.cursor;
+  window.roomEditorStatus = result.status;
+  window.roomEditorReasonCode = result.reasonCode;
+  window.roomEditorLastOperation =
+      operationOverride.empty() ? result.operation : std::string(operationOverride);
+  window.roomEditorLastOperationAccepted = result.operationAccepted;
+  window.roomEditorLastPrimitiveId = result.primitiveId;
+
+  if (result.status == "room_editor_command_applied") {
+    window.roomEditingLastOperation = window.roomEditorLastOperation;
+    window.roomEditingLastOperationStatus = "product_room_editing_edit_applied";
+    window.roomEditingLastOperationReasonCode = "product_room_editing_edit_applied";
+    window.roomEditingLastInputSource =
+        productRoomAuthoringInputSourceName(ProductRoomAuthoringInputSource::Hotkey);
+    window.roomEditingLastOperationAccepted = result.operationAccepted;
+    window.roomEditingLastPrimitiveId = result.primitiveId;
+  }
 }
 
 bool applyProductAutomationCommand(const ProductAutomationCommand& command,
@@ -2154,6 +2214,75 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                           productInputOwnerFor(frontend, window),
                           started.ok ? "applied" : "failed");
     return started.ok;
+  }
+
+  if (key == "editor.input") {
+    const std::vector<std::string_view> editorInputs = splitAutomationCsv(value);
+    if (editorInputs.empty()) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+
+    InputAction lastAction = InputAction::None;
+    MenuOwner lastOwner = productInputOwnerFor(frontend, window);
+    ProductRoomEditorActionResult lastResult;
+    bool anyApplied = false;
+    for (const std::string_view token : editorInputs) {
+      InputAction editorAction = InputAction::None;
+      float actionValue = 1.0F;
+      if (!parseProductRoomEditorInputAction(token, editorAction, actionValue)) {
+        window.automationControlStatus = "invalid_value";
+        return false;
+      }
+      lastAction = editorAction;
+      if (frontend.screen != FrontendScreen::Gameplay || !window.gameplayActive ||
+          !activeSession.has_value() || !window.roomEditing.ready) {
+        rejectProductRoomEditorNotReady(window, inputActionName(editorAction));
+        markAutomationApplied(window, command, inputActionName(editorAction),
+                              productInputOwnerFor(frontend, window), "failed");
+        return false;
+      }
+
+      InputRoutingContext routingContext;
+      routingContext.owners.editor = window.roomEditing.ready;
+      routingContext.owners.gameplay = true;
+      const InputRoutingResult routed = routeInputAction(routingContext, editorAction);
+      lastOwner = routed.owner;
+      window.inputOwner = routed.owner;
+      window.lastInputAction = routed.action;
+      window.lastInputAccepted = routed.accepted;
+      window.gameplayInputSuppressed = routed.gameplaySuppressed;
+      if (!routed.accepted || routed.owner != MenuOwner::Editor) {
+        window.automationControlStatus = "owner_unavailable";
+        markAutomationApplied(window, command, inputActionName(editorAction),
+                              routed.owner, "failed");
+        return false;
+      }
+
+      ActionState actions;
+      recordAction(actions, editorAction, true, true, false, actionValue);
+      lastResult =
+          applyProductRoomEditorActions(window.roomEditing, window.roomEditorCursor,
+                                        actions,
+                                        ProductRoomAuthoringInputSource::Hotkey);
+      recordProductRoomEditorActionResult(window, lastResult);
+      if (!lastResult.ok) {
+        window.automationControlStatus = "command_failed";
+        markAutomationApplied(window, command, inputActionName(editorAction),
+                              routed.owner, "failed");
+        return false;
+      }
+      anyApplied = true;
+    }
+
+    if (!anyApplied) {
+      window.automationControlStatus = "command_failed";
+      markAutomationApplied(window, command, "editor.input", lastOwner, "failed");
+      return false;
+    }
+    markAutomationApplied(window, command, inputActionName(lastAction),
+                          lastOwner, "applied");
+    return true;
   }
 
   if (key == "room_editor.move" ||
@@ -2728,7 +2857,9 @@ void applyProductAutomationControl(const ProductAppOptions& options,
   }
   window.selectedSettingsTab = settingsTab;
   window.inputOwner = productInputOwnerFor(frontend, window);
-  window.gameplayInputSuppressed = frontendBlocksGameplayInput(frontend);
+  window.gameplayInputSuppressed =
+      frontendBlocksGameplayInput(frontend) ||
+      menuOwnerBlocksGameplay(window.inputOwner);
 }
 
 ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
@@ -2743,7 +2874,9 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
   const bool useVulkanRenderer = options.renderer == ProductRendererRequest::Vulkan;
   window.productVulkanRendererRequested = useVulkanRenderer;
   window.inputOwner = productInputOwnerFor(frontend, window);
-  window.gameplayInputSuppressed = frontendBlocksGameplayInput(frontend);
+  window.gameplayInputSuppressed =
+      frontendBlocksGameplayInput(frontend) ||
+      menuOwnerBlocksGameplay(window.inputOwner);
   if (!window.requested) {
     return window;
   }
@@ -2889,7 +3022,9 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
       pollMouseGameplayActions(mouse, gameplayActions);
 
       ActionState acceptedGameplayActions;
+      ActionState acceptedEditorActions;
       InputRoutingContext routingContext;
+      routingContext.owners.editor = window.roomEditing.ready;
       routingContext.owners.gameplay = true;
       for (const ActionStateEntry& entry : gameplayActions.entries) {
         const InputRoutingResult routed = routeInputAction(routingContext, entry.action);
@@ -2897,17 +3032,30 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
         window.lastInputAction = routed.action;
         window.lastInputAccepted = routed.accepted;
         window.gameplayInputSuppressed = routed.gameplaySuppressed;
-        if (routed.accepted) {
+        if (routed.accepted && routed.owner == MenuOwner::Editor &&
+            inputActionGroup(entry.action) == InputActionGroup::Editor) {
+          recordAction(acceptedEditorActions, entry.action, entry.down, entry.pressed,
+                       entry.released, entry.value);
+        } else if (routed.accepted && routed.owner == MenuOwner::Gameplay) {
           recordAction(acceptedGameplayActions, entry.action, entry.down, entry.pressed,
                        entry.released, entry.value);
         }
       }
-      applyProductCameraActions(acceptedGameplayActions, window.viewport, settings,
-                                "action_map");
-      const SpatialSurfaceSet* collisionSurfaces =
-          productActiveRoomCollisionSurfaces(window.activeRoomCollision);
-      applyProductGameplayActions(*activeSession, acceptedGameplayActions, window,
-                                  "action_map", collisionSurfaces);
+      if (!acceptedEditorActions.entries.empty()) {
+        const ProductRoomEditorActionResult result =
+            applyProductRoomEditorActions(window.roomEditing,
+                                          window.roomEditorCursor,
+                                          acceptedEditorActions,
+                                          ProductRoomAuthoringInputSource::Hotkey);
+        recordProductRoomEditorActionResult(window, result);
+      } else {
+        applyProductCameraActions(acceptedGameplayActions, window.viewport, settings,
+                                  "action_map");
+        const SpatialSurfaceSet* collisionSurfaces =
+            productActiveRoomCollisionSurfaces(window.activeRoomCollision);
+        applyProductGameplayActions(*activeSession, acceptedGameplayActions, window,
+                                    "action_map", collisionSurfaces);
+      }
     }
 
     SceneProjectionResult scene;
