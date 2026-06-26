@@ -716,39 +716,16 @@ void applyOpeningMenuAction(FrontendState& frontend,
     return;
   }
 
-  if (frontend.screen == FrontendScreen::Pause) {
-    ProductPauseMenuActionContext pauseContext{frontend, options, settingsTab, activeSession, window, closeRequested};
-    (void)applyProductPauseMenuAction(action, pauseContext);
-    return;
-  }
-
-  if (frontend.screen == FrontendScreen::DevOverlay) {
-    ProductDevToolsMenuActionContext devToolsContext{frontend, window};
-    (void)applyProductDevOverlayMenuAction(action, devToolsContext);
-    return;
-  }
-
-  if (frontend.childScreen == FrontendScreen::StarterDevTools) {
-    ProductDevToolsMenuActionContext devToolsContext{frontend, window};
-    (void)applyProductStarterDevToolsMenuAction(action, devToolsContext);
-    return;
-  }
-
-  if (frontend.childScreen == FrontendScreen::Settings) {
+  if (frontend.screen == FrontendScreen::Pause)
+    return (void)applyProductPauseMenuAction(action, {frontend, options, settingsTab, activeSession, window, closeRequested});
+  if (frontend.screen == FrontendScreen::DevOverlay)
+    return (void)applyProductDevOverlayMenuAction(action, {frontend, window});
+  if (frontend.childScreen == FrontendScreen::StarterDevTools)
+    return (void)applyProductStarterDevToolsMenuAction(action, {frontend, window});
+  if (frontend.childScreen == FrontendScreen::Settings)
     return (void)applyProductSettingsMenuAction(action, {frontend, settingsTab, window});
-  }
-
-  if (frontend.childScreen == FrontendScreen::DeleteConfirm &&
-      window.saveDeleteConfirmationOpen) {
-    if (action == InputAction::MenuBack) {
-      cancelProductSaveDeleteConfirmation(window, frontend);
-      return;
-    }
-    if (action == InputAction::MenuConfirm) {
-      executeProductSaveSoftDelete(options, window, frontend);
-      return;
-    }
-  }
+  if (frontend.childScreen == FrontendScreen::DeleteConfirm && window.saveDeleteConfirmationOpen)
+    return (void)applyProductDeleteConfirmMenuAction(action, {frontend, options, window});
 
   if (frontend.childScreen == FrontendScreen::NewWorld) {
     recordWorldSetupDraftState(worldSetupDraft, window);
@@ -818,31 +795,8 @@ void applyOpeningMenuAction(FrontendState& frontend,
     return;
   }
 
-  if (frontend.childScreen == FrontendScreen::LoadSave) {
-    if (action == InputAction::MenuBack) {
-      frontend.childScreen = FrontendScreen::Gameplay;
-      frontend.status = "load_save_closed";
-      return;
-    }
-    if (action == InputAction::MenuUp || action == InputAction::MenuDown) {
-      moveSelectedProductSaveSlot(saves.slots, action, window);
-      frontend.status = "load_save_selection_changed";
-      return;
-    }
-    if (action == InputAction::MenuConfirm) {
-      if (frontend.selectedAction == FrontendAction::Delete) {
-        openProductSaveDeleteConfirmation(saves.slots, window, frontend);
-      } else {
-        launchProductLoadSaveSelection(options,
-                                       productWorldTemplateFromOptions(options),
-                                       saves,
-                                       frontend,
-                                       activeSession,
-                                       window);
-      }
-      return;
-    }
-  }
+  if (frontend.childScreen == FrontendScreen::LoadSave)
+    return (void)applyProductLoadSaveMenuAction(action, {frontend, options, saves, activeSession, window});
 
   if (action == InputAction::MenuUp || action == InputAction::MenuDown) {
     frontend.selectedAction = nextStarterSelection(frontend.selectedAction, action);

@@ -5,6 +5,7 @@
 #include <string_view>
 
 #include "app/frontend/FrontendState.hpp"
+#include "app/iggy3d/ProductAppOperations.hpp"
 #include "app/iggy3d/ProductMenuTransitions.hpp"
 #include "app/iggy3d/ProductRoomAuthoringController.hpp"
 #include "app/iggy3d/ProductSaveFlow.hpp"
@@ -184,7 +185,7 @@ ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& contex
 
 ProductMenuActionResult applyProductPauseMenuAction(
     InputAction action,
-    ProductPauseMenuActionContext& context) {
+    ProductPauseMenuActionContext context) {
   FrontendState& frontend = context.frontend;
   ProductAppWindowState& window = context.window;
   // branch-gate: BG-1017
@@ -207,7 +208,7 @@ ProductMenuActionResult applyProductPauseMenuAction(
 
 ProductMenuActionResult applyProductDevOverlayMenuAction(
     InputAction action,
-    ProductDevToolsMenuActionContext& context) {
+    ProductDevToolsMenuActionContext context) {
   static constexpr DevToolsMenuActionConfig config{
       "dev_overlay_selection_changed",
       "dev_overlay_category_selected",
@@ -218,7 +219,7 @@ ProductMenuActionResult applyProductDevOverlayMenuAction(
 
 ProductMenuActionResult applyProductStarterDevToolsMenuAction(
     InputAction action,
-    ProductDevToolsMenuActionContext& context) {
+    ProductDevToolsMenuActionContext context) {
   static constexpr DevToolsMenuActionConfig config{
       "dev_tools_selection_changed",
       "dev_tools_category_selected",
@@ -253,6 +254,55 @@ ProductMenuActionResult applyProductSettingsMenuAction(
   // branch-gate: BG-1019
   if (action == InputAction::MenuConfirm) {
     frontend.status = "settings_tab_selected";
+    return {true, true};
+  }
+  return {true, false};
+}
+
+ProductMenuActionResult applyProductDeleteConfirmMenuAction(
+    InputAction action,
+    ProductDeleteConfirmMenuActionContext context) {
+  // branch-gate: BG-1020
+  if (action == InputAction::MenuBack) {
+    cancelProductSaveDeleteConfirmation(context.window, context.frontend);
+    return {true, true};
+  }
+  // branch-gate: BG-1020
+  if (action == InputAction::MenuConfirm) {
+    executeProductSaveSoftDelete(context.options, context.window,
+                                 context.frontend);
+    return {true, true};
+  }
+  return {true, false};
+}
+
+ProductMenuActionResult applyProductLoadSaveMenuAction(
+    InputAction action,
+    ProductLoadSaveMenuActionContext context) {
+  FrontendState& frontend = context.frontend;
+  // branch-gate: BG-1020
+  if (action == InputAction::MenuBack) {
+    frontend.childScreen = FrontendScreen::Gameplay;
+    frontend.status = "load_save_closed";
+    return {true, true};
+  }
+  // branch-gate: BG-1020
+  if (action == InputAction::MenuUp || action == InputAction::MenuDown) {
+    moveSelectedProductSaveSlot(context.saves.slots, action, context.window);
+    frontend.status = "load_save_selection_changed";
+    return {true, true};
+  }
+  // branch-gate: BG-1020
+  if (action == InputAction::MenuConfirm) {
+    // branch-gate: BG-1020
+    if (frontend.selectedAction == FrontendAction::Delete) {
+      openProductSaveDeleteConfirmation(context.saves.slots, context.window,
+                                        frontend);
+    } else {
+      launchProductLoadSaveSelection(
+          context.options, productWorldTemplateFromOptions(context.options),
+          context.saves, frontend, context.activeSession, context.window);
+    }
     return {true, true};
   }
   return {true, false};

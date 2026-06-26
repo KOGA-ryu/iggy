@@ -11,6 +11,8 @@
 
 namespace iggy3d {
 
+struct ProductSaveBridgeResult;
+
 struct ProductPauseMenuActionContext {
   FrontendState& frontend;
   const ProductAppOptions& options;
@@ -31,6 +33,20 @@ struct ProductSettingsMenuActionContext {
   ProductAppWindowState& window;
 };
 
+struct ProductDeleteConfirmMenuActionContext {
+  FrontendState& frontend;
+  const ProductAppOptions& options;
+  ProductAppWindowState& window;
+};
+
+struct ProductLoadSaveMenuActionContext {
+  FrontendState& frontend;
+  const ProductAppOptions& options;
+  const ProductSaveBridgeResult& saves;
+  std::optional<Session>& activeSession;
+  ProductAppWindowState& window;
+};
+
 struct ProductMenuActionResult {
   bool handled = false;
   bool accepted = false;
@@ -38,18 +54,26 @@ struct ProductMenuActionResult {
 
 ProductMenuActionResult applyProductPauseMenuAction(
     InputAction action,
-    ProductPauseMenuActionContext& context);
+    ProductPauseMenuActionContext context);
 
 ProductMenuActionResult applyProductDevOverlayMenuAction(
     InputAction action,
-    ProductDevToolsMenuActionContext& context);
+    ProductDevToolsMenuActionContext context);
 
 ProductMenuActionResult applyProductStarterDevToolsMenuAction(
     InputAction action,
-    ProductDevToolsMenuActionContext& context);
+    ProductDevToolsMenuActionContext context);
 
 ProductMenuActionResult applyProductSettingsMenuAction(
     InputAction action,
     ProductSettingsMenuActionContext context);
+
+ProductMenuActionResult applyProductDeleteConfirmMenuAction(
+    InputAction action,
+    ProductDeleteConfirmMenuActionContext context);
+
+ProductMenuActionResult applyProductLoadSaveMenuAction(
+    InputAction action,
+    ProductLoadSaveMenuActionContext context);
 
 }  // namespace iggy3d
