@@ -2,13 +2,11 @@
 
 #include <iostream>
 #include <optional>
-#include <string>
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/ProductAppOperations.hpp"
 #include "app/iggy3d/ProductCameraController.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
-#include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductAsciiRoomActivation.hpp"
 #include "app/iggy3d/product/AutomationControl.hpp"
 #include "app/iggy3d/product/AutomationDispatch.hpp"
@@ -16,7 +14,6 @@
 #include "app/iggy3d/product/ProductMenuInputRouter.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/ProductGameplayProjectionRefresh.hpp"
-#include "app/iggy3d/ProductGameplayTape.hpp"
 #include "app/iggy3d/ProductGameplayTapeRunner.hpp"
 #include "app/iggy3d/ProductMenuTransitions.hpp"
 #include "app/iggy3d/ProductScriptedGameplayDriver.hpp"
@@ -72,93 +69,6 @@ FrontendSettings productFrontendSettingsFromOptions(const ProductAppOptions& opt
   settings.devToolsEnabled = true;
   settings.debugOverlayEnabled = true;
   return settings;
-}
-
-std::string failedTapeStepReceiptValue(std::uint64_t stepIndex) {
-  return stepIndex == 0U ? "none" : std::to_string(stepIndex);
-}
-
-void recordProductGameplayTapeParse(const ProductGameplayTapeParseResult& parsed,
-                                    ProductAppWindowState& window) {
-  window.gameplayTapeLoaded = parsed.ok;
-  window.gameplayTapeStatus = parsed.status;
-  window.gameplayTapeReasonCode = parsed.reasonCode;
-  window.gameplayTapeLineCount = parsed.lineCount;
-  window.gameplayTapeStepCount =
-      static_cast<std::uint64_t>(parsed.tape.steps.size());
-  window.gameplayTapeFailedStep = failedTapeStepReceiptValue(parsed.failedLine);
-  window.gameplayTapeFailedSourceLine = parsed.failedLine;
-  window.gameplayTapeFailedAction = "none";
-  window.gameplayTapeFailedTarget = parsed.failedToken;
-  window.gameplayTapeFailedRejection = "none";
-}
-
-void recordProductGameplayTapeRun(const ProductGameplayTapeRunResult& run,
-                                  ProductAppWindowState& window) {
-  window.gameplayTapeStatus = run.status;
-  window.gameplayTapeReasonCode = run.reasonCode;
-  window.gameplayTapeStepCount = run.stepCount;
-  window.gameplayTapeExecutedStepCount = run.executedStepCount;
-  window.gameplayTapeExpectedRejectedStepCount = run.expectedRejectedStepCount;
-  window.gameplayTapeExpectedBlockedStepCount = run.expectedBlockedStepCount;
-  window.gameplayTapeFailedStep = failedTapeStepReceiptValue(run.failedStepIndex);
-  window.gameplayTapeFailedSourceLine = run.failedSourceLine;
-  window.gameplayTapeFailedAction = run.failedAction;
-  window.gameplayTapeFailedTarget = run.failedTarget;
-  window.gameplayTapeFailedRejection = run.failedRejection;
-  window.gameplayTapeFailedMovementBlock = run.failedMovementBlock;
-  window.gameplayTapeLastAction = run.lastAction;
-  window.gameplayTapeLastTarget = run.lastTarget;
-  window.gameplayTapeLastMovementBlock = run.lastMovementBlock;
-  window.gameplayTapeKeyCollected = run.keyCollected;
-  window.gameplayTapeSecretDoorOpened = run.secretDoorOpened;
-  window.gameplayTapeTreasureCollected = run.treasureCollected;
-  window.gameplayTapeNpcTargetable = run.npcTargetable;
-  window.gameplayTapeNpcDefeated = run.npcDefeated;
-  window.gameplayTapeExitObjectiveComplete = run.exitObjectiveComplete;
-  window.gameplayTapeLoopComplete = run.loopComplete;
-  window.gameplayTapeAiCommandLogged = run.aiCommandLogged;
-  window.gameplayTapeAiAttackLogged = run.aiAttackLogged;
-  window.gameplayTapeAiWaitLogged = run.aiWaitLogged;
-  window.gameplayTapeAiPlayerDamaged = run.aiPlayerDamaged;
-  window.gameplayTapeAiPlayerHpBefore = run.aiPlayerHpBefore;
-  window.gameplayTapeAiPlayerHpAfter = run.aiPlayerHpAfter;
-  window.gameplayTapeAiActorId = run.aiActorId;
-  window.gameplayTapeAiTargetId = run.aiTargetId;
-  window.gameplayTapeAiBehavior = run.aiBehavior;
-  window.gameplayTapeAiIntent = run.aiIntent;
-  window.sessionOutcome = run.sessionOutcome;
-  window.runtimeStateHash = run.runtimeStateHash;
-  if (!run.ok) {
-    window.status = "gameplay_tape_failed";
-  }
-}
-
-void runProductGameplayTapeFromOptions(const ProductAppOptions& options,
-                                       std::optional<Session>& activeSession,
-                                       ProductAppWindowState& window) {
-  if (options.gameplayTapePath.empty()) {
-    return;
-  }
-
-  window.gameplayTapeRequested = true;
-  window.gameplayTapePath = options.gameplayTapePath.generic_string();
-  const ProductGameplayTapeParseResult parsed =
-      loadProductGameplayTapeFile(options.gameplayTapePath);
-  recordProductGameplayTapeParse(parsed, window);
-  if (!parsed.ok) {
-    window.status = "gameplay_tape_parse_failed";
-    return;
-  }
-
-  const ProductGameplayTapeRunResult run = runProductGameplayTape(
-      ProductGameplayTapeRunRequest{activeSession.has_value() ? &*activeSession : nullptr,
-                                    &parsed.tape,
-                                    productActiveRoomCollisionSurfaces(
-                                        window.activeRoomCollision),
-                                    &window.activeRoom,
-                                    &window.activeRoomCollision});
-  recordProductGameplayTapeRun(run, window);
 }
 
 bool routeAutomationInput(FrontendState& frontend,
@@ -289,7 +199,8 @@ int runProductApp(int argc, char** argv) {
   };
   applyProductAutomationControl(automationControlContext);
   if (!automationCloseRequested) {
-    runProductGameplayTapeFromOptions(options, activeSession, window);
+    runProductGameplayTapeFromOptions(
+        ProductGameplayTapeOptionsRunRequest{options, activeSession, window});
   }
   saves = scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
   if (automationCloseRequested) {

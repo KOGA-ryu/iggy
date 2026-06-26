@@ -129,6 +129,11 @@ std::string entityIdReceiptValue(EntityId entity) {
   return isValid(entity) ? std::to_string(toUint64(entity)) : "none";
 }
 
+std::string failedTapeStepReceiptValue(std::uint64_t stepIndex) {
+  // branch-gate: BG-1032
+  return stepIndex == 0U ? "none" : std::to_string(stepIndex);
+}
+
 std::int32_t playerHitPoints(const SessionState& state) {
   const EntityId player = state.players.actorForSlot(0);
   const CombatantState* combatant = findCombatant(state.combat, player);
@@ -255,6 +260,63 @@ MovementBlockedReason lastMovementBlock(const Session& session) {
     return MovementBlockedReason::None;
   }
   return session.state().transient.lastMovementResult.blocked;
+}
+
+void recordProductGameplayTapeParse(const ProductGameplayTapeParseResult& parsed,
+                                    ProductAppWindowState& window) {
+  window.gameplayTapeLoaded = parsed.ok;
+  window.gameplayTapeStatus = parsed.status;
+  window.gameplayTapeReasonCode = parsed.reasonCode;
+  window.gameplayTapeLineCount = parsed.lineCount;
+  window.gameplayTapeStepCount =
+      static_cast<std::uint64_t>(parsed.tape.steps.size());
+  window.gameplayTapeFailedStep = failedTapeStepReceiptValue(parsed.failedLine);
+  window.gameplayTapeFailedSourceLine = parsed.failedLine;
+  window.gameplayTapeFailedAction = "none";
+  window.gameplayTapeFailedTarget = parsed.failedToken;
+  window.gameplayTapeFailedRejection = "none";
+}
+
+void recordProductGameplayTapeRun(const ProductGameplayTapeRunResult& run,
+                                  ProductAppWindowState& window) {
+  window.gameplayTapeStatus = run.status;
+  window.gameplayTapeReasonCode = run.reasonCode;
+  window.gameplayTapeStepCount = run.stepCount;
+  window.gameplayTapeExecutedStepCount = run.executedStepCount;
+  window.gameplayTapeExpectedRejectedStepCount = run.expectedRejectedStepCount;
+  window.gameplayTapeExpectedBlockedStepCount = run.expectedBlockedStepCount;
+  window.gameplayTapeFailedStep = failedTapeStepReceiptValue(run.failedStepIndex);
+  window.gameplayTapeFailedSourceLine = run.failedSourceLine;
+  window.gameplayTapeFailedAction = run.failedAction;
+  window.gameplayTapeFailedTarget = run.failedTarget;
+  window.gameplayTapeFailedRejection = run.failedRejection;
+  window.gameplayTapeFailedMovementBlock = run.failedMovementBlock;
+  window.gameplayTapeLastAction = run.lastAction;
+  window.gameplayTapeLastTarget = run.lastTarget;
+  window.gameplayTapeLastMovementBlock = run.lastMovementBlock;
+  window.gameplayTapeKeyCollected = run.keyCollected;
+  window.gameplayTapeSecretDoorOpened = run.secretDoorOpened;
+  window.gameplayTapeTreasureCollected = run.treasureCollected;
+  window.gameplayTapeNpcTargetable = run.npcTargetable;
+  window.gameplayTapeNpcDefeated = run.npcDefeated;
+  window.gameplayTapeExitObjectiveComplete = run.exitObjectiveComplete;
+  window.gameplayTapeLoopComplete = run.loopComplete;
+  window.gameplayTapeAiCommandLogged = run.aiCommandLogged;
+  window.gameplayTapeAiAttackLogged = run.aiAttackLogged;
+  window.gameplayTapeAiWaitLogged = run.aiWaitLogged;
+  window.gameplayTapeAiPlayerDamaged = run.aiPlayerDamaged;
+  window.gameplayTapeAiPlayerHpBefore = run.aiPlayerHpBefore;
+  window.gameplayTapeAiPlayerHpAfter = run.aiPlayerHpAfter;
+  window.gameplayTapeAiActorId = run.aiActorId;
+  window.gameplayTapeAiTargetId = run.aiTargetId;
+  window.gameplayTapeAiBehavior = run.aiBehavior;
+  window.gameplayTapeAiIntent = run.aiIntent;
+  window.sessionOutcome = run.sessionOutcome;
+  window.runtimeStateHash = run.runtimeStateHash;
+  // branch-gate: BG-1032
+  if (!run.ok) {
+    window.status = "gameplay_tape_failed";
+  }
 }
 
 }  // namespace
@@ -397,6 +459,35 @@ ProductGameplayTapeRunResult runProductGameplayTape(
   result.failedRejection = "none";
   result.failedMovementBlock = "none";
   return result;
+}
+
+void runProductGameplayTapeFromOptions(
+    const ProductGameplayTapeOptionsRunRequest& request) {
+  // branch-gate: BG-1032
+  if (request.options.gameplayTapePath.empty()) {
+    return;
+  }
+
+  request.window.gameplayTapeRequested = true;
+  request.window.gameplayTapePath = request.options.gameplayTapePath.generic_string();
+  const ProductGameplayTapeParseResult parsed =
+      loadProductGameplayTapeFile(request.options.gameplayTapePath);
+  recordProductGameplayTapeParse(parsed, request.window);
+  // branch-gate: BG-1032
+  if (!parsed.ok) {
+    request.window.status = "gameplay_tape_parse_failed";
+    return;
+  }
+
+  const ProductGameplayTapeRunResult run = runProductGameplayTape(
+      ProductGameplayTapeRunRequest{
+          // branch-gate: BG-1032
+          request.activeSession.has_value() ? &*request.activeSession : nullptr,
+          &parsed.tape,
+          productActiveRoomCollisionSurfaces(request.window.activeRoomCollision),
+          &request.window.activeRoom,
+          &request.window.activeRoomCollision});
+  recordProductGameplayTapeRun(run, request.window);
 }
 
 }  // namespace iggy3d

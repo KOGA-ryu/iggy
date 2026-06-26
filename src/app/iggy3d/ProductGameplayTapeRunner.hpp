@@ -1,9 +1,12 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 
+#include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ProductGameplayTape.hpp"
+#include "app/iggy3d/ReceiptBuilder.hpp"
 #include "runtime/session/SessionState.hpp"
 
 namespace iggy3d {
@@ -59,9 +62,18 @@ struct ProductGameplayTapeRunResult {
   std::uint64_t runtimeStateHash = 0;
 };
 
+struct ProductGameplayTapeOptionsRunRequest {
+  const ProductAppOptions& options;
+  std::optional<Session>& activeSession;
+  ProductAppWindowState& window;
+};
+
 std::string_view productGameplayTapeSessionOutcomeName(SessionOutcome outcome);
 
 ProductGameplayTapeRunResult runProductGameplayTape(
     const ProductGameplayTapeRunRequest& request);
+
+void runProductGameplayTapeFromOptions(
+    const ProductGameplayTapeOptionsRunRequest& request);
 
 }  // namespace iggy3d
