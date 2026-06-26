@@ -289,6 +289,17 @@ struct ProductAppWindowState {
   std::string automationControlLastAction = "none";
   MenuOwner automationControlLastOwner = MenuOwner::None;
   std::string automationControlLastResult = "none";
+  bool productVulkanRendererRequested = false;
+  bool productVulkanRendererCreated = false;
+  bool productVulkanRendererReady = false;
+  bool productVulkanSurfaceCreated = false;
+  bool productVulkanSwapchainReady = false;
+  bool productVulkanFrameSubmitted = false;
+  std::uint64_t productVulkanFrameSubmittedCount = 0;
+  std::string productVulkanStatus = "not_requested";
+  std::string productVulkanReasonCode = "not_requested";
+  std::string productVulkanRenderingPath = "none";
+  std::string productVulkanRecordMode = "none";
   std::uint64_t framesPresented = 0;
   std::uint64_t eventPollCount = 0;
   std::uint64_t menuRowCount = 0;

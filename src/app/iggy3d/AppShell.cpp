@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "app/PackageRuntimeLookup.hpp"
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/ProductAppOperations.hpp"
@@ -41,7 +42,9 @@
 #include "app/input/MouseInput.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneProjection.hpp"
+#include "render/FrameInput.hpp"
 #include "render/RenderDiagnostics.hpp"
+#include "render/RendererApi.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
 #include "runtime/ai/NpcBehaviorDebugSnapshot.hpp"
 #include "runtime/ai/NpcBehaviorProfile.hpp"
@@ -55,6 +58,11 @@
 
 #include "app/iggy3d/OpeningMenuView.hpp"
 #include "app/platform/SdlWindow.hpp"
+#endif
+
+#if defined(IGGY3D_HAS_SDL3) && defined(IGGY3D_APP_VULKAN_BACKEND)
+#include "app/platform/SdlVulkanSurface.hpp"
+#include "render/vulkan/VulkanBackend.hpp"
 #endif
 
 namespace iggy3d {
@@ -152,6 +160,7 @@ void clearProductVulkanRoomMeshProof(ProductViewportState& viewport) {
 
 void applyProductVulkanRoomMeshProof(ProductViewportState& viewport,
                                      const SceneRoomProjection& room) {
+  const bool backendPresented = viewport.productVulkanRoomMeshBackendPresented;
   clearProductVulkanRoomMeshProof(viewport);
   if (!room.loaded || room.meshes.empty()) {
     return;
@@ -159,7 +168,7 @@ void applyProductVulkanRoomMeshProof(ProductViewportState& viewport,
   const vulkan::RoomMeshCpuGeometry geometry =
       vulkan::buildRoomMeshCpuGeometry(room);
   viewport.productVulkanRoomMeshCpuReady = geometry.ready;
-  viewport.productVulkanRoomMeshBackendPresented = false;
+  viewport.productVulkanRoomMeshBackendPresented = backendPresented;
   viewport.productVulkanRoomMeshSource = "scene_room_projection";
   viewport.productVulkanRoomAssetId =
       geometry.sourceRoomAssetId.empty() ? "none" : geometry.sourceRoomAssetId;
@@ -175,6 +184,176 @@ void applyProductVulkanRoomMeshProof(ProductViewportState& viewport,
       static_cast<std::uint64_t>(geometry.indexedDraws.size());
   viewport.productVulkanRoomGeometrySignature =
       geometry.sourceRoomGeometrySignature;
+}
+
+std::string receiptFieldValueOr(const RenderReceipt& receipt,
+                                std::string_view key,
+                                std::string_view fallback) {
+  for (const RenderReceiptField& field : receipt.fields) {
+    if (field.key == key) {
+      return field.value;
+    }
+  }
+  return std::string(fallback);
+}
+
+void recordProductVulkanRendererUnavailable(ProductAppWindowState& window,
+                                            std::string_view reasonCode) {
+  window.productVulkanRendererCreated = false;
+  window.productVulkanRendererReady = false;
+  window.productVulkanSurfaceCreated = false;
+  window.productVulkanSwapchainReady = false;
+  window.productVulkanStatus = "renderer_unavailable";
+  window.productVulkanReasonCode = std::string(reasonCode);
+}
+
+void recordProductVulkanRendererReady(ProductAppWindowState& window,
+                                      const RendererApi& renderer) {
+  const RenderReceipt diagnostics = renderer.diagnostics();
+  window.productVulkanRendererCreated = renderer.hasBackend();
+  window.productVulkanRendererReady =
+      renderer.lifecycleState() == RendererLifecycleState::Ready;
+  window.productVulkanSurfaceCreated =
+      window.productVulkanRendererReady ||
+      hasReceiptField(diagnostics, "surface_ready", "true");
+  window.productVulkanSwapchainReady =
+      window.productVulkanRendererReady ||
+      receiptFieldValueOr(diagnostics, "swapchain_state", "none") == "ready";
+  window.productVulkanStatus = window.productVulkanRendererReady
+                                   ? "renderer_ready"
+                                   : "renderer_unavailable";
+  window.productVulkanReasonCode =
+      receiptFieldValueOr(diagnostics, "reason_code", "renderer_unavailable");
+}
+
+void recordProductVulkanSubmit(ProductAppWindowState& window,
+                               const RenderSubmitResult& submit) {
+  window.productVulkanRenderingPath =
+      receiptFieldValueOr(submit.receipt, "rendering_path", "none");
+  window.productVulkanRecordMode =
+      receiptFieldValueOr(submit.receipt, "record_mode", "none");
+  window.productVulkanReasonCode = std::string(submit.reason.code);
+  if (submit.outcome == RenderOutcome::Ok) {
+    window.productVulkanSurfaceCreated = true;
+    window.productVulkanSwapchainReady = true;
+    window.productVulkanFrameSubmitted = true;
+    ++window.productVulkanFrameSubmittedCount;
+    window.productVulkanStatus = "frame_submitted";
+    if (window.productVulkanRenderingPath == "package_room_meshes" &&
+        window.productVulkanRecordMode == "room_mesh_draws") {
+      window.viewport.productVulkanRoomMeshBackendPresented = true;
+    }
+  } else {
+    window.productVulkanStatus = "frame_not_submitted";
+  }
+}
+
+Vec3 crossProduct(Vec3 lhs, Vec3 rhs) {
+  return {lhs.y * rhs.z - lhs.z * rhs.y,
+          lhs.z * rhs.x - lhs.x * rhs.z,
+          lhs.x * rhs.y - lhs.y * rhs.x};
+}
+
+Vec3 normalizedOr(Vec3 value, Vec3 fallback) {
+  const float len2 = lengthSquared(value);
+  if (!std::isfinite(len2) || len2 <= 0.000001F) {
+    return fallback;
+  }
+  return value / std::sqrt(len2);
+}
+
+Mat4 productPerspectiveMat4(float verticalFovRadians,
+                            float aspect,
+                            float nearPlane,
+                            float farPlane) {
+  const float f = 1.0F / std::tan(verticalFovRadians * 0.5F);
+  Mat4 result{{{}}};
+  result.m[0] = f / aspect;
+  result.m[5] = -f;
+  result.m[10] = farPlane / (nearPlane - farPlane);
+  result.m[11] = -(farPlane * nearPlane) / (farPlane - nearPlane);
+  result.m[14] = -1.0F;
+  return result;
+}
+
+Mat4 productViewFromCamera(Vec3 eye, Vec3 forward, Vec3 up) {
+  const Vec3 f = normalizedOr(forward, {0.0F, 0.0F, -1.0F});
+  const Vec3 r = normalizedOr(crossProduct(f, up), {1.0F, 0.0F, 0.0F});
+  const Vec3 u = crossProduct(r, f);
+  Mat4 result = identityMat4();
+  result.m[0] = r.x;
+  result.m[1] = r.y;
+  result.m[2] = r.z;
+  result.m[3] = -dot(r, eye);
+  result.m[4] = u.x;
+  result.m[5] = u.y;
+  result.m[6] = u.z;
+  result.m[7] = -dot(u, eye);
+  result.m[8] = -f.x;
+  result.m[9] = -f.y;
+  result.m[10] = -f.z;
+  result.m[11] = dot(f, eye);
+  return result;
+}
+
+FrameInput makeProductVulkanFrame(const SceneProjectionResult& scene,
+                                  const DebugProjectionResult& debug,
+                                  std::uint64_t frameIndex,
+                                  std::uint32_t viewportWidth,
+                                  std::uint32_t viewportHeight,
+                                  float cameraYawDegrees,
+                                  float cameraPitchDegrees) {
+  constexpr float kPi = 3.14159265358979323846F;
+  constexpr float kEyeHeightMeters = 1.7F;
+  FrameInput frame;
+  frame.viewport = {viewportWidth, viewportHeight,
+                    static_cast<float>(viewportWidth) / static_cast<float>(viewportHeight)};
+  frame.clock = {scene.sourceTick, frameIndex, 0.0F, 1.0F / 60.0F};
+  frame.camera.mode = RenderCameraMode::FirstPerson;
+  Vec3 eye{0.0F, kEyeHeightMeters, 0.0F};
+  for (const SceneItem& item : scene.items) {
+    if (item.kind == SceneItemKind::Player || item.stableName == "player") {
+      eye = item.transform.position + Vec3{0.0F, kEyeHeightMeters, 0.0F};
+      break;
+    }
+  }
+  const float yaw = cameraYawDegrees * kPi / 180.0F;
+  const float pitch = cameraPitchDegrees * kPi / 180.0F;
+  const float cosPitch = std::cos(pitch);
+  frame.camera.worldEye = eye;
+  frame.camera.worldForward = {std::sin(yaw) * cosPitch, std::sin(pitch),
+                               -std::cos(yaw) * cosPitch};
+  frame.camera.worldUp = {0.0F, 1.0F, 0.0F};
+  frame.camera.nearPlane = 0.1F;
+  frame.camera.farPlane = 200.0F;
+  frame.camera.viewFromWorld =
+      productViewFromCamera(frame.camera.worldEye, frame.camera.worldForward,
+                            frame.camera.worldUp);
+  frame.camera.clipFromView =
+      productPerspectiveMat4(68.0F * kPi / 180.0F, frame.viewport.aspectRatio,
+                             frame.camera.nearPlane, frame.camera.farPlane);
+  frame.camera.clipFromWorld = frame.camera.clipFromView * frame.camera.viewFromWorld;
+  frame.projections.scene = &scene;
+  frame.projections.debug = &debug;
+  return frame;
+}
+
+RendererConfig makeProductVulkanRendererConfig() {
+  PackageLookupConfig lookupConfig;
+  lookupConfig.packageMode = PackageMode::BuildTreeVisual;
+  lookupConfig.requireShaderRoot = true;
+  lookupConfig.requireGraphicsRuntime = true;
+  const PackageLookupResult lookup = resolvePackageRuntimeLookup(lookupConfig);
+
+  RendererConfig config;
+  config.renderer = RendererMode::Vulkan;
+  config.rendererRequirement = RendererRequirement::Optional;
+  config.allowSoftwareVulkan = true;
+  if (lookup.outcome == RenderOutcome::Ok) {
+    config.shaderRoot = lookup.lookup.shaderRoot;
+    config.diagnosticsDir = lookup.lookup.diagnosticsDir;
+  }
+  return config;
 }
 
 void applyGameplayProjectionMetrics(ProductAppWindowState& window,
@@ -1952,6 +2131,8 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
                                            const FrontendSettings& settings,
                                            const ProductSaveBridgeResult& saves) {
   window.requested = options.windowMode == ProductWindowMode::Window;
+  const bool useVulkanRenderer = options.renderer == ProductRendererRequest::Vulkan;
+  window.productVulkanRendererRequested = useVulkanRenderer;
   window.inputOwner = productInputOwnerFor(frontend, window);
   window.gameplayInputSuppressed = frontendBlocksGameplayInput(frontend);
   if (!window.requested) {
@@ -1967,7 +2148,7 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
   createInfo.height = 720;
   createInfo.resizable = true;
   createInfo.highDpi = true;
-  createInfo.vulkan = false;
+  createInfo.vulkan = useVulkanRenderer;
 
   SdlWindow sdlWindow(createInfo);
   window.created = sdlWindow.nativeWindow() != nullptr;
@@ -1978,10 +2159,61 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
     return window;
   }
 
-  SDL_Renderer* renderer = SDL_CreateRenderer(sdlWindow.nativeWindow(), nullptr);
-  if (renderer == nullptr) {
-    window.status = "renderer_create_failed";
+  SDL_Renderer* renderer = nullptr;
+  RendererApi vulkanRenderer;
+  if (useVulkanRenderer) {
+#if defined(IGGY3D_APP_VULKAN_BACKEND)
+    SdlVulkanSurfaceProvider sdlVulkanProvider;
+    const SdlVulkanExtensionList extensions =
+        sdlVulkanProvider.requiredInstanceExtensions(sdlWindow);
+    if (extensions.outcome != RenderOutcome::Ok) {
+      recordProductVulkanRendererUnavailable(window, extensions.reason.code);
+      window.status = "product_vulkan_renderer_unavailable";
+      return window;
+    }
+    VulkanBackendCreateInfo backendInfo;
+    backendInfo.config = makeProductVulkanRendererConfig();
+    const SdlDrawableExtent drawableExtent = sdlWindow.drawableExtent();
+    backendInfo.drawableWidth =
+        drawableExtent.width == 0U ? createInfo.width : drawableExtent.width;
+    backendInfo.drawableHeight =
+        drawableExtent.height == 0U ? createInfo.height : drawableExtent.height;
+    backendInfo.surfaceProvider.requiredInstanceExtensions = extensions.names;
+    backendInfo.surfaceProvider.createSurface =
+        [&sdlVulkanProvider, &sdlWindow](VkInstance instance, VkSurfaceKHR* surface) {
+          const SdlVulkanSurfaceCreateResult created =
+              sdlVulkanProvider.createSurface(sdlWindow, instance);
+          if (surface != nullptr) {
+            *surface = created.surface;
+          }
+          RenderReceipt receipt;
+          appendReceiptField(receipt, "surface_provider", "sdl3");
+          appendReceiptField(receipt, "surface_created",
+                             created.outcome == RenderOutcome::Ok &&
+                                 created.surface != VK_NULL_HANDLE);
+          appendReceiptField(receipt, "result",
+                             created.outcome == RenderOutcome::Ok ? "pass" : "fail");
+          appendReceiptField(receipt, "reason_code", created.reason.code);
+          return receipt;
+        };
+    vulkanRenderer =
+        RendererApi(std::make_unique<VulkanBackend>(std::move(backendInfo)));
+    recordProductVulkanRendererReady(window, vulkanRenderer);
+    if (!window.productVulkanRendererReady) {
+      window.status = "product_vulkan_renderer_unavailable";
+      return window;
+    }
+#else
+    recordProductVulkanRendererUnavailable(window, "product_vulkan_backend_unavailable");
+    window.status = "product_vulkan_renderer_unavailable";
     return window;
+#endif
+  } else {
+    renderer = SDL_CreateRenderer(sdlWindow.nativeWindow(), nullptr);
+    if (renderer == nullptr) {
+      window.status = "renderer_create_failed";
+      return window;
+    }
   }
 
   sdlWindow.setTitle(window.gameplayActive ? "iggy3d - Gameplay" : "iggy3d - Opening Menu");
@@ -2110,21 +2342,41 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
     }
 
     if (window.drawable) {
-      const OpeningMenuViewState view =
-          drawOpeningMenuView(*renderer, options, world, frontend, settingsTab,
-                              window.gameplayActive, window.runtimeStateHash, framePtr,
-                              &feedback, &movementHud, &npcBehaviorHud,
-                              sceneItemCount, debugPtr,
-                              window.viewport.cameraYawDegrees,
-                              window.viewport.cameraPitchDegrees, saves);
       applyGameplayProjectionMetrics(window, scenePtr, debugPtr, drawListPtr, framePtr,
                                      bridgePtr,
                                      window.gameplayActive && scenePtr != nullptr);
-      window.viewport.cameraHeadingVisible =
-          window.viewport.cameraHeadingVisible || view.cameraHeadingDrawn;
-      window.menuTextDrawn = window.menuTextDrawn || view.textDrawn;
-      window.selectedRowDrawn = window.selectedRowDrawn || view.selectedRowDrawn;
-      window.menuRowCount = view.rowCount;
+      if (useVulkanRenderer) {
+        if (scenePtr != nullptr && debugPtr != nullptr && scenePtr->room.loaded) {
+          const SdlDrawableExtent drawableExtent = sdlWindow.drawableExtent();
+          if (drawableExtent.width > 0U && drawableExtent.height > 0U) {
+            const FrameInput renderFrame = makeProductVulkanFrame(
+                *scenePtr, *debugPtr, window.framesPresented + 1U, drawableExtent.width,
+                drawableExtent.height, window.viewport.cameraYawDegrees,
+                window.viewport.cameraPitchDegrees);
+            const RenderSubmitResult submit = vulkanRenderer.submitFrame(renderFrame);
+            recordProductVulkanSubmit(window, submit);
+          } else {
+            window.productVulkanStatus = "frame_not_submitted";
+            window.productVulkanReasonCode = "frame_not_drawable";
+          }
+        } else {
+          window.productVulkanStatus = "waiting_for_gameplay_room";
+          window.productVulkanReasonCode = "product_vulkan_waiting_for_gameplay_room";
+        }
+      } else {
+        const OpeningMenuViewState view =
+            drawOpeningMenuView(*renderer, options, world, frontend, settingsTab,
+                                window.gameplayActive, window.runtimeStateHash, framePtr,
+                                &feedback, &movementHud, &npcBehaviorHud,
+                                sceneItemCount, debugPtr,
+                                window.viewport.cameraYawDegrees,
+                                window.viewport.cameraPitchDegrees, saves);
+        window.viewport.cameraHeadingVisible =
+            window.viewport.cameraHeadingVisible || view.cameraHeadingDrawn;
+        window.menuTextDrawn = window.menuTextDrawn || view.textDrawn;
+        window.selectedRowDrawn = window.selectedRowDrawn || view.selectedRowDrawn;
+        window.menuRowCount = view.rowCount;
+      }
     } else {
       applyGameplayProjectionMetrics(window, scenePtr, debugPtr, drawListPtr, framePtr,
                                      bridgePtr, false);
@@ -2148,10 +2400,21 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
   }
 
   shutdownGamepadMenuState(gamepad);
-  SDL_DestroyRenderer(renderer);
+  if (useVulkanRenderer) {
+    (void)vulkanRenderer.waitIdle();
+    vulkanRenderer.shutdown();
+  } else {
+    SDL_DestroyRenderer(renderer);
+  }
   window.selectedSettingsTab = settingsTab;
-  window.status = window.menuTextDrawn ? "opening_menu_text_ready"
-                                       : "opening_menu_window_ready";
+  if (useVulkanRenderer) {
+    window.status = window.productVulkanFrameSubmitted
+                        ? "product_vulkan_frame_presented"
+                        : window.productVulkanStatus;
+  } else {
+    window.status = window.menuTextDrawn ? "opening_menu_text_ready"
+                                         : "opening_menu_window_ready";
+  }
   return window;
 #else
   (void)world;

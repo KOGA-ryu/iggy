@@ -792,6 +792,27 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      menuOwnerName(window.automationControlLastOwner));
   appendReceiptField(receipt, "automation_control_last_result",
                      window.automationControlLastResult);
+  appendReceiptField(receipt, "product_vulkan_renderer_requested",
+                     window.productVulkanRendererRequested);
+  appendReceiptField(receipt, "product_vulkan_renderer_created",
+                     window.productVulkanRendererCreated);
+  appendReceiptField(receipt, "product_vulkan_renderer_ready",
+                     window.productVulkanRendererReady);
+  appendReceiptField(receipt, "product_vulkan_surface_created",
+                     window.productVulkanSurfaceCreated);
+  appendReceiptField(receipt, "product_vulkan_swapchain_ready",
+                     window.productVulkanSwapchainReady);
+  appendReceiptField(receipt, "product_vulkan_frame_submitted",
+                     window.productVulkanFrameSubmitted);
+  appendReceiptField(receipt, "product_vulkan_frame_submitted_count",
+                     window.productVulkanFrameSubmittedCount);
+  appendReceiptField(receipt, "product_vulkan_status", window.productVulkanStatus);
+  appendReceiptField(receipt, "product_vulkan_reason_code",
+                     window.productVulkanReasonCode);
+  appendReceiptField(receipt, "product_vulkan_rendering_path",
+                     window.productVulkanRenderingPath);
+  appendReceiptField(receipt, "product_vulkan_record_mode",
+                     window.productVulkanRecordMode);
   appendReceiptField(receipt, "event_poll_count", window.eventPollCount);
   appendReceiptField(receipt, "frames", static_cast<std::uint64_t>(options.frames));
   appendReceiptField(receipt, "frames_presented", window.framesPresented);
