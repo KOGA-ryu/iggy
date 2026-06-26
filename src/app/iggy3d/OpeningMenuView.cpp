@@ -472,7 +472,11 @@ void drawAsciiPreviewLines(SDL_Renderer& renderer,
 void drawNewWorldPanel(SDL_Renderer& renderer,
                        const ProductWorldTemplate& world,
                        const ProductSaveBridgeResult& saves,
-                       const WorldSetupDraft& draft) {
+                       const WorldSetupDraft& draft,
+                       bool dungeonDraftEditMode,
+                       bool dungeonDraftModified,
+                       std::uint64_t dungeonDraftCursorRow,
+                       std::uint64_t dungeonDraftCursorColumn) {
   const std::size_t selectedIndex =
       productBuiltinDungeonIndexForRoomId(draft.asciiRoomId);
   const std::size_t dungeonCount = productBuiltinDungeonCatalog().size();
@@ -485,11 +489,26 @@ void drawNewWorldPanel(SDL_Renderer& renderer,
   setColor(renderer, 226, 230, 211);
   drawText(renderer, "NEW WORLD", 450.0F, 152.0F, 4.0F);
   setColor(renderer, 166, 184, 177);
-  drawText(renderer, "UP DOWN SELECT DUNGEON   CONFIRM CREATE", 452.0F, 210.0F, 2.0F);
+  drawText(renderer,
+           dungeonDraftEditMode
+               ? "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+"
+               : "UP DOWN SELECT DUNGEON   TAB EDIT   CONFIRM CREATE",
+           452.0F,
+           210.0F,
+           2.0F);
   drawText(renderer, "DUNGEON", 452.0F, 260.0F, 2.0F);
   drawText(renderer, draft.worldName, 452.0F, 289.0F, 2.0F);
   drawText(renderer, "SELECTED", 714.0F, 260.0F, 2.0F);
   drawText(renderer, selectionLabel, 714.0F, 289.0F, 2.0F);
+  drawText(renderer, "DRAFT", 714.0F, 338.0F, 2.0F);
+  drawText(renderer, dungeonDraftModified ? "CUSTOM" : "TEMPLATE", 714.0F, 367.0F, 2.0F);
+  drawText(renderer, "CURSOR", 714.0F, 416.0F, 2.0F);
+  drawText(renderer,
+           std::to_string(dungeonDraftCursorRow) + "," +
+               std::to_string(dungeonDraftCursorColumn),
+           714.0F,
+           445.0F,
+           2.0F);
   drawText(renderer, "ASCII ROOM", 452.0F, 338.0F, 2.0F);
   drawText(renderer, draft.asciiRoomId, 452.0F, 367.0F, 2.0F);
   drawText(renderer, "MAP SOURCE", 452.0F, 416.0F, 2.0F);
@@ -503,7 +522,12 @@ void drawNewWorldPanel(SDL_Renderer& renderer,
   drawText(renderer, "ASCII PREVIEW", 850.0F, 468.0F, 2.0F);
   drawAsciiPreviewLines(renderer, draft.asciiRoomText, 850.0F, 500.0F);
   setColor(renderer, 126, 201, 176);
-  drawText(renderer, "CONFIRM TO CREATE", 452.0F, 508.0F, 2.0F);
+  drawText(renderer,
+           dungeonDraftEditMode ? "TAB EXIT EDIT   CONFIRM CREATE" :
+                                  "CONFIRM TO CREATE",
+           452.0F,
+           508.0F,
+           2.0F);
 }
 
 void drawDevToolsPanel(SDL_Renderer& renderer, FrontendDevToolsCategory selected) {
@@ -660,6 +684,10 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const FrontendState& frontend,
                                          FrontendSettingsTab selectedSettingsTab,
                                          const WorldSetupDraft& worldSetupDraft,
+                                         bool dungeonDraftEditMode,
+                                         bool dungeonDraftModified,
+                                         std::uint64_t dungeonDraftCursorRow,
+                                         std::uint64_t dungeonDraftCursorColumn,
                                          bool gameplayActive,
                                          std::uint64_t runtimeStateHash,
                                          const ProductViewportFrame* frame,
@@ -721,7 +749,14 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
   } else if (frontend.childScreen == FrontendScreen::Settings) {
     drawSettingsPanel(renderer, selectedSettingsTab);
   } else {
-    drawNewWorldPanel(renderer, world, saves, worldSetupDraft);
+    drawNewWorldPanel(renderer,
+                      world,
+                      saves,
+                      worldSetupDraft,
+                      dungeonDraftEditMode,
+                      dungeonDraftModified,
+                      dungeonDraftCursorRow,
+                      dungeonDraftCursorColumn);
   }
 
   setColor(renderer, 24, 30, 34);

@@ -39,6 +39,7 @@ target_sources(iggy3d
     src/app/iggy3d/ProductActiveRoomState.cpp
     src/app/iggy3d/ProductBuiltinDungeon.cpp
     src/app/iggy3d/ProductCameraController.cpp
+    src/app/iggy3d/ProductDungeonDraft.cpp
     src/app/iggy3d/ProductAsciiRoomActivation.cpp
     src/app/iggy3d/ProductAsciiRoomAuthoring.cpp
     src/app/iggy3d/ProductAsciiRoomEditing.cpp

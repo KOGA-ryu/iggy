@@ -62,6 +62,8 @@ int main() {
       iggy3d::smoke::cleanSaveRoot("ascii_map_loop_keep_default");
   const std::filesystem::path selectedSaveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_gatehouse_selected");
+  const std::filesystem::path customSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("ascii_map_custom_draft");
   const std::filesystem::path saveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_loop_keep");
 
@@ -177,6 +179,73 @@ int main() {
                    "authoredRoom.id=gatehouse_ascii\n") &&
       fileContains(selectedSaveRoot / "save_001.iggy3d.save",
                    "authoredRoom.sourceFile=fixtures/rooms/ascii/gatehouse.iggyroom.txt\n");
+
+  fields.clear();
+  const bool createCustomDraftWorld =
+      appAvailable && mapAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_map_custom_draft_create",
+          "frontend.select=new_world\nfrontend.execute=true\n"
+          "world.title=Custom Draft\n"
+          "world.draft_cell=1,2,#\n"
+          "world.create=true\n",
+          iggy3d::smoke::saveRootArg(customSaveRoot),
+          fields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::automationApplied(fields) &&
+      iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(fields, "window_created", "false") &&
+      iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "world_setup_title", "Custom Draft") &&
+      iggy3d::smoke::hasField(fields, "world_setup_ascii_room_id",
+                              "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields, "world_setup_ascii_room_source_name",
+                              "custom_dungeon_draft.iggyroom.txt") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_dungeon_draft_modified",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_dungeon_draft_status",
+                              "dungeon_draft_cell_painted") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_dungeon_draft_reason_code",
+                              "dungeon_draft_cell_painted") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_dungeon_draft_cursor_row",
+                              "1") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_dungeon_draft_cursor_column",
+                              "2") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_dungeon_draft_last_glyph",
+                              "#") &&
+      iggy3d::smoke::hasField(fields, "world_creation_world_title",
+                              "Custom Draft") &&
+      iggy3d::smoke::hasField(fields, "world_creation_ascii_room_id",
+                              "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_creation_ascii_room_source_name",
+                              "custom_dungeon_draft.iggyroom.txt") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_status",
+                              "product_ascii_room_ready") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_room_id",
+                              "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_wall_count", "61") &&
+      iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
+      iggy3d::smoke::hasField(fields, "active_room_source", "ascii_room") &&
+      iggy3d::smoke::hasField(fields, "active_room_id", "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields, "active_room_authored_wall_count",
+                              "61") &&
+      std::filesystem::exists(customSaveRoot / "save_001.iggy3d.save") &&
+      fileContains(customSaveRoot / "save_001.iggy3d.save",
+                   "authoredRoom.id=custom_dungeon_draft\n") &&
+      fileContains(customSaveRoot / "save_001.iggy3d.save",
+                   "authoredRoom.sourceFile=custom_dungeon_draft.iggyroom.txt\n") &&
+      fileContains(customSaveRoot / "save_001.iggy3d.save",
+                   "authoredRoom.wall.count=61\n");
 
   fields.clear();
   const std::string createControl =
@@ -332,13 +401,15 @@ int main() {
                                           "product_vulkan_room_draw_count");
 
   const bool passed = createDefaultDungeonWorld && createSelectedDungeonWorld &&
-                      createMapWorld && continueMapWorld;
+                      createCustomDraftWorld && createMapWorld && continueMapWorld;
   const bool ok = expect(appAvailable, "product app exists") &&
                   expect(mapAvailable, "loop keep map fixture exists") &&
                   expect(createDefaultDungeonWorld,
                          "default new world creates loop keep dungeon") &&
                   expect(createSelectedDungeonWorld,
                          "new world selector creates gatehouse dungeon") &&
+                  expect(createCustomDraftWorld,
+                         "new world custom draft creates edited dungeon") &&
                   expect(createMapWorld, "create map world") &&
                   expect(continueMapWorld, "continue map world");
 
@@ -348,6 +419,8 @@ int main() {
             << (createDefaultDungeonWorld ? "true" : "false") << "\n";
   std::cout << "create_selected_dungeon_world="
             << (createSelectedDungeonWorld ? "true" : "false") << "\n";
+  std::cout << "create_custom_draft_world="
+            << (createCustomDraftWorld ? "true" : "false") << "\n";
   std::cout << "create_map_world=" << (createMapWorld ? "true" : "false")
             << "\n";
   std::cout << "continue_map_world=" << (continueMapWorld ? "true" : "false")

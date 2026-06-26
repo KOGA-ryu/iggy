@@ -96,6 +96,8 @@ InputAction pollGamepadMenuAction(GamepadMenuState& state) {
   }
   const bool upDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_DPAD_UP);
   const bool downDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_DPAD_DOWN);
+  const bool leftDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_DPAD_LEFT);
+  const bool rightDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_DPAD_RIGHT);
   const bool confirmDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_SOUTH);
   const bool backDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_EAST);
   const bool optionsDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_START);
@@ -105,6 +107,10 @@ InputAction pollGamepadMenuAction(GamepadMenuState& state) {
     action = actionForInput(NeutralInput::DpadUp);
   } else if (downDown && !state.downWasDown) {
     action = actionForInput(NeutralInput::DpadDown);
+  } else if (leftDown && !state.leftWasDown) {
+    action = actionForInput(NeutralInput::DpadLeft);
+  } else if (rightDown && !state.rightWasDown) {
+    action = actionForInput(NeutralInput::DpadRight);
   } else if (confirmDown && !state.confirmWasDown) {
     action = actionForInput(NeutralInput::ButtonSouth);
   } else if (backDown && !state.backWasDown) {
@@ -115,6 +121,8 @@ InputAction pollGamepadMenuAction(GamepadMenuState& state) {
 
   state.upWasDown = upDown;
   state.downWasDown = downDown;
+  state.leftWasDown = leftDown;
+  state.rightWasDown = rightDown;
   state.confirmWasDown = confirmDown;
   state.backWasDown = backDown;
   state.optionsWasDown = optionsDown;

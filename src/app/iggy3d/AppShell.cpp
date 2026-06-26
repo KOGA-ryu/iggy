@@ -22,6 +22,7 @@
 #include "app/iggy3d/ProductAsciiRoomActivation.hpp"
 #include "app/iggy3d/ProductAsciiRoomPreview.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
+#include "app/iggy3d/ProductDungeonDraft.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductGameplayTape.hpp"
@@ -741,6 +742,54 @@ void recordWorldSetupDraftState(const WorldSetupDraft& draft,
   window.asciiRoomPreviewAssetTextBytes = 0;
 }
 
+ProductDungeonDraftCursor dungeonDraftCursorFromWindow(
+    const ProductAppWindowState& window) {
+  return ProductDungeonDraftCursor{
+      static_cast<std::size_t>(window.worldSetupDungeonDraftCursorRow),
+      static_cast<std::size_t>(window.worldSetupDungeonDraftCursorColumn),
+  };
+}
+
+void recordDungeonDraftOperation(ProductAppWindowState& window,
+                                 const ProductDungeonDraftOperationResult& result) {
+  window.worldSetupDungeonDraftStatus = std::string(result.status);
+  window.worldSetupDungeonDraftReasonCode = std::string(result.reasonCode);
+  window.worldSetupDungeonDraftCursorRow =
+      static_cast<std::uint64_t>(result.cursor.row);
+  window.worldSetupDungeonDraftCursorColumn =
+      static_cast<std::uint64_t>(result.cursor.column);
+  window.worldSetupDungeonDraftLastGlyph =
+      result.glyph == '\0' ? std::string{"none"} : std::string(1U, result.glyph);
+  if (result.modified) {
+    window.worldSetupDungeonDraftModified = true;
+  }
+}
+
+void resetDungeonDraftWindowCursor(const WorldSetupDraft& draft,
+                                   ProductAppWindowState& window) {
+  const ProductDungeonDraftCursor cursor =
+      clampProductDungeonDraftCursor(draft, ProductDungeonDraftCursor{});
+  window.worldSetupDungeonDraftCursorRow = static_cast<std::uint64_t>(cursor.row);
+  window.worldSetupDungeonDraftCursorColumn =
+      static_cast<std::uint64_t>(cursor.column);
+  window.worldSetupDungeonDraftLastGlyph = "none";
+}
+
+bool applyDungeonDraftPaintGlyph(WorldSetupDraft& worldSetupDraft,
+                                 ProductAppWindowState& window,
+                                 char glyph) {
+  if (!window.worldSetupDungeonDraftEditMode) {
+    window.worldSetupDungeonDraftStatus = "dungeon_draft_edit_mode_off";
+    window.worldSetupDungeonDraftReasonCode = "dungeon_draft_edit_mode_off";
+    return false;
+  }
+  ProductDungeonDraftOperationResult painted = paintProductDungeonDraftCell(
+      worldSetupDraft, dungeonDraftCursorFromWindow(window), glyph);
+  recordDungeonDraftOperation(window, painted);
+  recordWorldSetupDraftState(worldSetupDraft, window);
+  return painted.ok;
+}
+
 void applyOpeningMenuAction(FrontendState& frontend,
                             const ProductSaveBridgeResult& saves,
                             const ProductAppOptions& options,
@@ -904,10 +953,50 @@ void applyOpeningMenuAction(FrontendState& frontend,
 
   if (frontend.childScreen == FrontendScreen::NewWorld) {
     recordWorldSetupDraftState(worldSetupDraft, window);
-    if (action == InputAction::MenuUp || action == InputAction::MenuDown) {
-      const bool changed = action == InputAction::MenuUp
+    if (action == InputAction::MenuNextTab) {
+      window.worldSetupDungeonDraftEditMode =
+          !window.worldSetupDungeonDraftEditMode;
+      worldSetupDraft.selectedField =
+          window.worldSetupDungeonDraftEditMode ? WorldSetupField::AsciiRoom
+                                                : WorldSetupField::Create;
+      window.worldSetupDungeonDraftStatus =
+          window.worldSetupDungeonDraftEditMode ? "dungeon_draft_edit_mode_on"
+                                                : "dungeon_draft_edit_mode_off";
+      window.worldSetupDungeonDraftReasonCode = window.worldSetupDungeonDraftStatus;
+      resetDungeonDraftWindowCursor(worldSetupDraft, window);
+      frontend.status = window.worldSetupDungeonDraftStatus;
+      return;
+    }
+    if (window.worldSetupDungeonDraftEditMode &&
+        (action == InputAction::MenuUp || action == InputAction::MenuDown ||
+         action == InputAction::MenuLeft || action == InputAction::MenuRight)) {
+      ProductDungeonDraftDirection direction = ProductDungeonDraftDirection::Up;
+      if (action == InputAction::MenuDown) {
+        direction = ProductDungeonDraftDirection::Down;
+      } else if (action == InputAction::MenuLeft) {
+        direction = ProductDungeonDraftDirection::Left;
+      } else if (action == InputAction::MenuRight) {
+        direction = ProductDungeonDraftDirection::Right;
+      }
+      const ProductDungeonDraftOperationResult moved =
+          moveProductDungeonDraftCursor(worldSetupDraft,
+                                        dungeonDraftCursorFromWindow(window),
+                                        direction);
+      recordDungeonDraftOperation(window, moved);
+      frontend.status = moved.status;
+      return;
+    }
+    if (!window.worldSetupDungeonDraftEditMode &&
+        (action == InputAction::MenuUp || action == InputAction::MenuDown ||
+         action == InputAction::MenuLeft || action == InputAction::MenuRight)) {
+      const bool previous =
+          action == InputAction::MenuUp || action == InputAction::MenuLeft;
+      const bool changed = previous
                                ? selectPreviousProductBuiltinDungeon(worldSetupDraft)
                                : selectNextProductBuiltinDungeon(worldSetupDraft);
+      window.worldSetupDungeonDraftModified = false;
+      window.worldSetupDungeonDraftEditMode = false;
+      resetDungeonDraftWindowCursor(worldSetupDraft, window);
       recordWorldSetupDraftState(worldSetupDraft, window);
       frontend.status =
           changed ? "new_world_dungeon_selection_changed" : "new_world_input_ignored";
@@ -1080,6 +1169,15 @@ bool parseAutomationFloat(std::string_view value, float& out) {
       std::from_chars(value.data(), value.data() + value.size(), out);
   return error == std::errc{} && ptr == value.data() + value.size() &&
          std::isfinite(out);
+}
+
+bool parseAutomationSize(std::string_view value, std::size_t& out) {
+  if (value.empty()) {
+    return false;
+  }
+  const auto [ptr, error] =
+      std::from_chars(value.data(), value.data() + value.size(), out);
+  return error == std::errc{} && ptr == value.data() + value.size();
 }
 
 std::vector<std::string_view> splitAutomationCsv(std::string_view value) {
@@ -1593,10 +1691,68 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       return false;
     }
     recordWorldSetupDraftState(worldSetupDraft, window);
+    window.worldSetupDungeonDraftModified = false;
+    window.worldSetupDungeonDraftEditMode = false;
+    resetDungeonDraftWindowCursor(worldSetupDraft, window);
     window.worldSetupStatus = "world_setup_dungeon_selected";
     markAutomationApplied(window, command, "world.dungeon_id",
                           productInputOwnerFor(frontend, window), "applied");
     return true;
+  }
+
+  if (key == "world.draft_edit_mode" ||
+      key == "world_setup.draft_edit_mode") {
+    if (!parseAutomationBool(value, boolValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    if (frontend.childScreen != FrontendScreen::NewWorld) {
+      window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(window, command, "world.draft_edit_mode",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    window.worldSetupDungeonDraftEditMode = boolValue;
+    worldSetupDraft.selectedField =
+        boolValue ? WorldSetupField::AsciiRoom : WorldSetupField::Create;
+    window.worldSetupDungeonDraftStatus =
+        boolValue ? "dungeon_draft_edit_mode_on" : "dungeon_draft_edit_mode_off";
+    window.worldSetupDungeonDraftReasonCode = window.worldSetupDungeonDraftStatus;
+    resetDungeonDraftWindowCursor(worldSetupDraft, window);
+    markAutomationApplied(window, command, "world.draft_edit_mode",
+                          productInputOwnerFor(frontend, window), "applied");
+    return true;
+  }
+
+  if (key == "world.draft_cell" || key == "world_setup.draft_cell") {
+    if (frontend.childScreen != FrontendScreen::NewWorld) {
+      window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(window, command, "world.draft_cell",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    const std::vector<std::string_view> fields = splitAutomationCsv(value);
+    std::size_t row = 0;
+    std::size_t column = 0;
+    if (fields.size() != 3U || fields[2].size() != 1U ||
+        !parseAutomationSize(fields[0], row) ||
+        !parseAutomationSize(fields[1], column)) {
+      window.automationControlStatus = "invalid_value";
+      markAutomationApplied(window, command, "world.draft_cell",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    ProductDungeonDraftOperationResult painted =
+        setProductDungeonDraftCell(worldSetupDraft, row, column, fields[2].front());
+    recordDungeonDraftOperation(window, painted);
+    recordWorldSetupDraftState(worldSetupDraft, window);
+    markAutomationApplied(window, command, "world.draft_cell",
+                          productInputOwnerFor(frontend, window),
+                          painted.ok ? "applied" : "failed");
+    if (!painted.ok) {
+      window.automationControlStatus = "command_failed";
+    }
+    return painted.ok;
   }
 
   if (key == "world.ascii_room_text" ||
@@ -2313,6 +2469,12 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
     routeOpeningMenuInput(frontend, saves, options, settingsTab, activeSession,
                           worldSetupDraft, actionState, pollKeyboardMenuAction(keyboard),
                           window, closeRequested);
+    if (frontend.childScreen == FrontendScreen::NewWorld) {
+      const char paintGlyph = pollKeyboardAsciiRoomPaintGlyph(keyboard);
+      if (paintGlyph != '\0') {
+        applyDungeonDraftPaintGlyph(worldSetupDraft, window, paintGlyph);
+      }
+    }
 
     const InputAction gamepadAction = pollGamepadMenuAction(gamepad);
     if (gamepadAction != InputAction::None) {
@@ -2443,6 +2605,10 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
         const OpeningMenuViewState view =
             drawOpeningMenuView(*renderer, options, world, frontend, settingsTab,
                                 worldSetupDraft,
+                                window.worldSetupDungeonDraftEditMode,
+                                window.worldSetupDungeonDraftModified,
+                                window.worldSetupDungeonDraftCursorRow,
+                                window.worldSetupDungeonDraftCursorColumn,
                                 window.gameplayActive, window.runtimeStateHash, framePtr,
                                 &feedback, &movementHud, &npcBehaviorHud,
                                 sceneItemCount, debugPtr,

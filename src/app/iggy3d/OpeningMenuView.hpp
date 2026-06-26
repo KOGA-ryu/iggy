@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
@@ -55,6 +56,10 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const FrontendState& frontend,
                                          FrontendSettingsTab selectedSettingsTab,
                                          const WorldSetupDraft& worldSetupDraft,
+                                         bool dungeonDraftEditMode,
+                                         bool dungeonDraftModified,
+                                         std::uint64_t dungeonDraftCursorRow,
+                                         std::uint64_t dungeonDraftCursorColumn,
                                          bool gameplayActive,
                                          std::uint64_t runtimeStateHash,
                                          const ProductViewportFrame* frame,

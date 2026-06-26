@@ -111,6 +111,27 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt,
                      "world_setup_ascii_room_source_name",
                      window.worldSetupAsciiRoomSourceName);
+  appendReceiptField(receipt,
+                     "world_setup_dungeon_draft_edit_mode",
+                     window.worldSetupDungeonDraftEditMode);
+  appendReceiptField(receipt,
+                     "world_setup_dungeon_draft_modified",
+                     window.worldSetupDungeonDraftModified);
+  appendReceiptField(receipt,
+                     "world_setup_dungeon_draft_cursor_row",
+                     window.worldSetupDungeonDraftCursorRow);
+  appendReceiptField(receipt,
+                     "world_setup_dungeon_draft_cursor_column",
+                     window.worldSetupDungeonDraftCursorColumn);
+  appendReceiptField(receipt,
+                     "world_setup_dungeon_draft_status",
+                     window.worldSetupDungeonDraftStatus);
+  appendReceiptField(receipt,
+                     "world_setup_dungeon_draft_reason_code",
+                     window.worldSetupDungeonDraftReasonCode);
+  appendReceiptField(receipt,
+                     "world_setup_dungeon_draft_last_glyph",
+                     window.worldSetupDungeonDraftLastGlyph);
   appendReceiptField(receipt, "world_creation_status", window.worldCreationStatus);
   appendReceiptField(receipt, "world_creation_reason_code",
                      window.worldCreationReasonCode);

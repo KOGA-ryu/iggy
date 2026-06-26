@@ -13,6 +13,8 @@ struct GamepadMenuState {
   bool gamepadAvailable = false;
   bool upWasDown = false;
   bool downWasDown = false;
+  bool leftWasDown = false;
+  bool rightWasDown = false;
   bool confirmWasDown = false;
   bool backWasDown = false;
   bool optionsWasDown = false;

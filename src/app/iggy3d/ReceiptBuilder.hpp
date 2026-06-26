@@ -40,6 +40,13 @@ struct ProductAppWindowState {
   bool worldSetupAsciiRoomTextPresent = false;
   std::string worldSetupAsciiRoomId = "world_setup_room";
   std::string worldSetupAsciiRoomSourceName = "world_setup_ascii_room.iggyroom.txt";
+  bool worldSetupDungeonDraftEditMode = false;
+  bool worldSetupDungeonDraftModified = false;
+  std::uint64_t worldSetupDungeonDraftCursorRow = 0;
+  std::uint64_t worldSetupDungeonDraftCursorColumn = 0;
+  std::string worldSetupDungeonDraftStatus = "not_requested";
+  std::string worldSetupDungeonDraftReasonCode = "not_requested";
+  std::string worldSetupDungeonDraftLastGlyph = "none";
   std::string worldCreationStatus = "not_requested";
   std::string worldCreationReasonCode = "not_requested";
   std::string worldCreationWorldId = "none";
