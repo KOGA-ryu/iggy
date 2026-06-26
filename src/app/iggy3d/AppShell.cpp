@@ -2261,7 +2261,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       return false;
     }
     const ProductRoomEditorCursorResult moved =
-        moveProductRoomEditorCursor(window.roomEditorCursor, direction);
+        applyProductRoomEditorMoveAutomation(window.roomEditorCursor, direction);
     recordProductRoomEditorCursorResult(window, automationSpec.canonicalKey, moved);
     if (!moved.ok) {
       window.automationControlStatus = "command_failed";
@@ -2285,7 +2285,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       return false;
     }
     const ProductRoomEditorCursorResult changed =
-        setProductRoomEditorTool(window.roomEditorCursor, tool);
+        applyProductRoomEditorToolAutomation(window.roomEditorCursor, tool);
     recordProductRoomEditorCursorResult(window, automationSpec.canonicalKey, changed);
     if (!changed.ok) {
       window.automationControlStatus = "command_failed";
@@ -2313,7 +2313,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       return false;
     }
     const ProductRoomEditorCursorResult changed =
-        cycleProductRoomEditorTool(window.roomEditorCursor);
+        applyProductRoomEditorCycleToolAutomation(window.roomEditorCursor);
     recordProductRoomEditorCursorResult(window, automationSpec.canonicalKey, changed);
     if (!changed.ok) {
       window.automationControlStatus = "command_failed";
@@ -2338,7 +2338,8 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       return false;
     }
     const ProductRoomEditorCursorResult changed =
-        setProductRoomEditorWallDirection(window.roomEditorCursor, direction);
+        applyProductRoomEditorWallDirectionAutomation(window.roomEditorCursor,
+                                                      direction);
     recordProductRoomEditorCursorResult(
         window, automationSpec.canonicalKey, changed);
     if (!changed.ok) {
@@ -2368,10 +2369,9 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     }
 
     const ProductRoomEditorActionResult result =
-        applyProductRoomAuthoringCursorPlace(
-            {window.roomEditing,
-             window.roomEditorCursor,
-             ProductRoomAuthoringInputSource::Hotkey});
+        applyProductRoomEditorPlaceAutomation(
+            window.roomEditing, window.roomEditorCursor,
+            ProductRoomAuthoringInputSource::Hotkey);
     recordProductRoomEditorActionResult(window, result, automationSpec.canonicalKey);
     if (!result.ok) {
       window.automationControlStatus = "command_failed";

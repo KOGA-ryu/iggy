@@ -127,4 +127,32 @@ const ProductAutomationCommandDispatchSpec& findProductAutomationCommandDispatch
 ProductAutomationCommandDispatchResult resolveProductAutomationCommandDispatch(
     ProductAutomationCommandDispatchRequest request);
 
+struct ProductRoomEditorCursorResult;
+struct ProductRoomEditorActionResult;
+struct ProductRoomEditorCursorState;
+struct ProductRoomEditingState;
+enum class ProductRoomEditorDirection : std::uint8_t;
+enum class ProductRoomEditorTool : std::uint8_t;
+enum class ProductRoomAuthoringInputSource : std::uint8_t;
+
+ProductRoomEditorCursorResult applyProductRoomEditorMoveAutomation(
+    ProductRoomEditorCursorState state,
+    ProductRoomEditorDirection direction);
+
+ProductRoomEditorCursorResult applyProductRoomEditorToolAutomation(
+    ProductRoomEditorCursorState state,
+    ProductRoomEditorTool tool);
+
+ProductRoomEditorCursorResult applyProductRoomEditorCycleToolAutomation(
+    ProductRoomEditorCursorState state);
+
+ProductRoomEditorCursorResult applyProductRoomEditorWallDirectionAutomation(
+    ProductRoomEditorCursorState state,
+    ProductRoomEditorDirection direction);
+
+ProductRoomEditorActionResult applyProductRoomEditorPlaceAutomation(
+    const ProductRoomEditingState& editing,
+    ProductRoomEditorCursorState cursor,
+    ProductRoomAuthoringInputSource inputSource);
+
 }  // namespace iggy3d

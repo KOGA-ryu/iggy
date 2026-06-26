@@ -4,6 +4,10 @@
 #include <array>
 #include <iterator>
 
+#include "app/iggy3d/ProductRoomAuthoringController.hpp"
+#include "app/iggy3d/ProductRoomEditorActionController.hpp"
+#include "app/iggy3d/ProductRoomEditorCursor.hpp"
+
 namespace iggy3d {
 
 std::string_view productAutomationCommandCategoryName(
@@ -326,6 +330,37 @@ ProductAutomationCommandDispatchResult resolveProductAutomationCommandDispatch(
   result.canonicalActionLabel = spec.canonicalKey;
   result.spec = spec;
   return result;
+}
+
+ProductRoomEditorCursorResult applyProductRoomEditorMoveAutomation(
+    ProductRoomEditorCursorState state,
+    ProductRoomEditorDirection direction) {
+  return moveProductRoomEditorCursor(state, direction);
+}
+
+ProductRoomEditorCursorResult applyProductRoomEditorToolAutomation(
+    ProductRoomEditorCursorState state,
+    ProductRoomEditorTool tool) {
+  return setProductRoomEditorTool(state, tool);
+}
+
+ProductRoomEditorCursorResult applyProductRoomEditorCycleToolAutomation(
+    ProductRoomEditorCursorState state) {
+  return cycleProductRoomEditorTool(state);
+}
+
+ProductRoomEditorCursorResult applyProductRoomEditorWallDirectionAutomation(
+    ProductRoomEditorCursorState state,
+    ProductRoomEditorDirection direction) {
+  return setProductRoomEditorWallDirection(state, direction);
+}
+
+ProductRoomEditorActionResult applyProductRoomEditorPlaceAutomation(
+    const ProductRoomEditingState& editing,
+    ProductRoomEditorCursorState cursor,
+    ProductRoomAuthoringInputSource inputSource) {
+  return applyProductRoomAuthoringCursorPlace(
+      {editing, cursor, inputSource});
 }
 
 }  // namespace iggy3d
