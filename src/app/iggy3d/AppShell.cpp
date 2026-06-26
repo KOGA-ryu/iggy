@@ -2183,7 +2183,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return activated.ok;
   }
 
-  if (key == "room_edit.start" || key == "frontend.room_edit_start") {
+  if (canonicalKey == "room_edit.start") {
     if (!parseAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
@@ -2205,8 +2205,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return started.ok;
   }
 
-  if (key == "room_edit.start_active" ||
-      key == "frontend.room_edit_start_active") {
+  if (canonicalKey == "room_edit.start_active") {
     if (!parseAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
@@ -2442,7 +2441,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return accepted;
   }
 
-  if (key == "room_edit.add_floor" || key == "frontend.room_edit_add_floor") {
+  if (canonicalKey == "room_edit.add_floor") {
     RoomEditCommand edit;
     if (!parseAutomationFloorCommand(value, edit)) {
       window.automationControlStatus = "invalid_value";
@@ -2457,7 +2456,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return result.accepted;
   }
 
-  if (key == "room_edit.add_wall" || key == "frontend.room_edit_add_wall") {
+  if (canonicalKey == "room_edit.add_wall") {
     RoomEditCommand edit;
     if (!parseAutomationWallCommand(value, edit)) {
       window.automationControlStatus = "invalid_value";
@@ -2472,8 +2471,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return result.accepted;
   }
 
-  if (key == "room_edit.delete_floor" ||
-      key == "frontend.room_edit_delete_floor") {
+  if (canonicalKey == "room_edit.delete_floor") {
     if (value.empty()) {
       window.automationControlStatus = "invalid_value";
       return false;
@@ -2489,8 +2487,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return result.accepted;
   }
 
-  if (key == "room_edit.delete_wall" ||
-      key == "frontend.room_edit_delete_wall") {
+  if (canonicalKey == "room_edit.delete_wall") {
     if (value.empty()) {
       window.automationControlStatus = "invalid_value";
       return false;
@@ -2506,7 +2503,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return result.accepted;
   }
 
-  if (key == "room_edit.undo" || key == "frontend.room_edit_undo") {
+  if (canonicalKey == "room_edit.undo") {
     if (!parseAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
@@ -2525,7 +2522,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return result.accepted;
   }
 
-  if (key == "room_edit.redo" || key == "frontend.room_edit_redo") {
+  if (canonicalKey == "room_edit.redo") {
     if (!parseAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
