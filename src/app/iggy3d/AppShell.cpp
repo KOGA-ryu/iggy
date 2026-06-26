@@ -1812,11 +1812,23 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return routed;
   }
 
-  const bool menuBoolKey =
-      key == "menu.up" || key == "menu.down" || key == "menu.left" ||
-      key == "menu.right" || key == "menu.confirm" || key == "menu.back" ||
-      key == "menu.next_tab" || key == "menu.previous_tab";
-  if (menuBoolKey) {
+  static constexpr std::array menuShortcutRows{
+      std::pair{std::string_view{"menu.up"}, InputAction::MenuUp},
+      std::pair{std::string_view{"menu.down"}, InputAction::MenuDown},
+      std::pair{std::string_view{"menu.left"}, InputAction::MenuLeft},
+      std::pair{std::string_view{"menu.right"}, InputAction::MenuRight},
+      std::pair{std::string_view{"menu.confirm"}, InputAction::MenuConfirm},
+      std::pair{std::string_view{"menu.back"}, InputAction::MenuBack},
+      std::pair{std::string_view{"menu.next_tab"}, InputAction::MenuNextTab},
+      std::pair{std::string_view{"menu.previous_tab"},
+                InputAction::MenuPreviousTab},
+  };
+  const auto menuShortcut = std::find_if(
+      menuShortcutRows.begin(), menuShortcutRows.end(),
+      [canonicalKey](const auto& row) {
+        return row.first == canonicalKey;
+      });
+  if (menuShortcut != menuShortcutRows.end()) {
     if (!parseAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
@@ -1826,23 +1838,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                             "ignored");
       return true;
     }
-    if (key == "menu.up") {
-      inputAction = InputAction::MenuUp;
-    } else if (key == "menu.down") {
-      inputAction = InputAction::MenuDown;
-    } else if (key == "menu.left") {
-      inputAction = InputAction::MenuLeft;
-    } else if (key == "menu.right") {
-      inputAction = InputAction::MenuRight;
-    } else if (key == "menu.confirm") {
-      inputAction = InputAction::MenuConfirm;
-    } else if (key == "menu.back") {
-      inputAction = InputAction::MenuBack;
-    } else if (key == "menu.next_tab") {
-      inputAction = InputAction::MenuNextTab;
-    } else {
-      inputAction = InputAction::MenuPreviousTab;
-    }
+    inputAction = menuShortcut->second;
     const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
                                             activeSession, worldSetupDraft, window,
                                             inputAction, closeRequested);
