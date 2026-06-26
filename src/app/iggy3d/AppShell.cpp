@@ -2408,13 +2408,14 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
         return row.first == canonicalKey;
       });
   if (gameplayAxis != gameplayAxisRows.end()) {
-    float axisValue = 0.0F;
-    if (!parseAutomationFloat(value, axisValue)) {
+    const ProductGameplayAxisAutomationResult axisResult =
+        resolveProductGameplayAxisAutomation(value);
+    if (!axisResult.valid) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
     const InputAction action = gameplayAxis->second;
-    const bool moved = applyAutomationGameplayAxis(action, axisValue, frontend,
+    const bool moved = applyAutomationGameplayAxis(action, axisResult.value, frontend,
                                                    activeSession, window);
     markAutomationApplied(window,
                           command,
@@ -2434,7 +2435,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
         return row.first == canonicalKey;
       });
   if (gameplayButton != gameplayButtonRows.end()) {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }

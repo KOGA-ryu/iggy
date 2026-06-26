@@ -147,10 +147,18 @@ struct ProductBoolAutomationResult {
   bool requested = false;
 };
 
+struct ProductGameplayAxisAutomationResult {
+  bool valid = false;
+  float value = 0.0F;
+};
+
 ProductBoolAutomationResult resolveProductAutomationBool(
     std::string_view value);
 
 bool resolveProductAutomationBool(std::string_view value, bool& out);
+
+ProductGameplayAxisAutomationResult resolveProductGameplayAxisAutomation(
+    std::string_view value);
 
 bool resolveProductSaveBrowserBoolAutomation(std::string_view value, bool& out);
 

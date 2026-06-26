@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
+#include <cmath>
 #include <iterator>
 
 #include "app/frontend/FrontendState.hpp"
@@ -607,6 +609,18 @@ bool resolveProductAutomationBool(std::string_view value, bool& out) {
   const ProductBoolAutomationResult result = resolveProductAutomationBool(value);
   out = result.requested;
   return result.valid;
+}
+
+ProductGameplayAxisAutomationResult resolveProductGameplayAxisAutomation(
+    std::string_view value) {
+  ProductGameplayAxisAutomationResult result;
+  float parsedValue = 0.0F;
+  const auto [ptr, error] =
+      std::from_chars(value.data(), value.data() + value.size(), parsedValue);
+  result.valid = error == std::errc{} && ptr == value.data() + value.size() &&
+                 std::isfinite(parsedValue);
+  result.value = parsedValue;
+  return result;
 }
 
 bool resolveProductSaveBrowserBoolAutomation(std::string_view value,

@@ -204,6 +204,15 @@ int main() {
       iggy3d::resolveProductAutomationBool("teleport");
   expect(!boolInvalid.valid, "generic bool teleport is invalid");
 
+  const iggy3d::ProductGameplayAxisAutomationResult gameplayAxis =
+      iggy3d::resolveProductGameplayAxisAutomation("1.25");
+  expect(gameplayAxis.valid, "gameplay axis 1.25 is valid");
+  expect(gameplayAxis.value == 1.25F, "gameplay axis 1.25 preserves value");
+
+  const iggy3d::ProductGameplayAxisAutomationResult gameplayAxisInvalid =
+      iggy3d::resolveProductGameplayAxisAutomation("teleport");
+  expect(!gameplayAxisInvalid.valid, "gameplay axis teleport is invalid");
+
   bool saveDeleteBool = false;
   expect(iggy3d::resolveProductSaveBrowserBoolAutomation("yes", saveDeleteBool),
          "save browser bool yes is valid");
