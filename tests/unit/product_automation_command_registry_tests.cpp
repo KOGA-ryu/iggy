@@ -153,6 +153,12 @@ int main() {
   expect(!frontendDispatch.handled,
          "frontend select is not dispatch-handled by this slice");
 
+  const iggy3d::ProductAutomationCommandDispatchResult unknownDispatch =
+      iggy3d::resolveProductAutomationCommandDispatch(
+          iggy3d::ProductAutomationCommandDispatchRequest{
+              &registry, "not.a.real.command"});
+  expect(!unknownDispatch.handled, "unknown dispatch is not handled");
+
   std::set<std::string> canonicalKeys;
   std::set<std::string> ownedKeys;
   for (const iggy3d::ProductAutomationCommandSpec& commandSpec :

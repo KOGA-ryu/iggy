@@ -73,11 +73,14 @@ struct ProductAutomationCommandSpec {
   std::string ownerHint;
 };
 
+// Owns the full set of known automation keys, aliases, and metadata.
 struct ProductAutomationCommandRegistry {
   std::vector<ProductAutomationCommandSpec> specs;
 };
 
+// Owns the subset of registry rows this runtime dispatch path handles directly.
 struct ProductAutomationCommandDispatchSpec {
+  bool handled = false;
   std::string_view canonicalKey = "unknown";
   ProductAutomationCommandId commandId = ProductAutomationCommandId::Unknown;
   ProductAutomationCommandCategory category =
