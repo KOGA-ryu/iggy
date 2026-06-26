@@ -116,6 +116,22 @@ int main() {
   expect(spec(registry, "room_edit.add_floor").valueKind == Value::Csv,
          "add floor is a csv value");
 
+  const iggy3d::ProductMenuInputAutomationResult menuUp =
+      iggy3d::resolveProductMenuInputAutomation("up");
+  expect(menuUp.valid, "menu input up is valid");
+  expect(menuUp.inputAction == iggy3d::InputAction::MenuUp,
+         "menu input up resolves to menu up");
+
+  const iggy3d::ProductMenuInputAutomationResult menuNone =
+      iggy3d::resolveProductMenuInputAutomation("none");
+  expect(menuNone.valid, "menu input none is valid");
+  expect(menuNone.inputAction == iggy3d::InputAction::None,
+         "menu input none resolves to none");
+
+  const iggy3d::ProductMenuInputAutomationResult menuInvalid =
+      iggy3d::resolveProductMenuInputAutomation("teleport");
+  expect(!menuInvalid.valid, "menu input teleport is invalid");
+
   const iggy3d::ProductAutomationCommandDispatchResult placeDispatch =
       iggy3d::resolveProductAutomationCommandDispatch(
           iggy3d::ProductAutomationCommandDispatchRequest{

@@ -1327,22 +1327,6 @@ bool parseAutomationTableValue(
   return true;
 }
 
-bool parseAutomationInputAction(std::string_view value, InputAction& out) {
-  static constexpr std::array rows{
-      AutomationParserRow<InputAction>{"up", InputAction::MenuUp},
-      AutomationParserRow<InputAction>{"down", InputAction::MenuDown},
-      AutomationParserRow<InputAction>{"left", InputAction::MenuLeft},
-      AutomationParserRow<InputAction>{"right", InputAction::MenuRight},
-      AutomationParserRow<InputAction>{"confirm", InputAction::MenuConfirm},
-      AutomationParserRow<InputAction>{"back", InputAction::MenuBack},
-      AutomationParserRow<InputAction>{"next_tab", InputAction::MenuNextTab},
-      AutomationParserRow<InputAction>{"previous_tab",
-                                       InputAction::MenuPreviousTab},
-      AutomationParserRow<InputAction>{"none", InputAction::None},
-  };
-  return parseAutomationTableValue(value, rows, out);
-}
-
 bool parseProductRoomEditorDirection(std::string_view value,
                                      ProductRoomEditorDirection& out) {
   static constexpr std::array rows{
@@ -1752,7 +1736,6 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   const ProductAutomationCommandDispatchSpec& automationSpec =
       automationDispatch.spec;
   bool boolValue = false;
-  InputAction inputAction = InputAction::None;
 
   if (key == "automation.owner") {
     MenuOwner expectedOwner = MenuOwner::None;
@@ -1773,14 +1756,16 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (key == "menu.input") {
-    if (!parseAutomationInputAction(value, inputAction)) {
+    const ProductMenuInputAutomationResult menuInput =
+        resolveProductMenuInputAutomation(value);
+    if (!menuInput.valid) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
     const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
                                             activeSession, worldSetupDraft, window,
-                                            inputAction, closeRequested);
-    markAutomationApplied(window, command, inputActionName(inputAction),
+                                            menuInput.inputAction, closeRequested);
+    markAutomationApplied(window, command, inputActionName(menuInput.inputAction),
                           window.automationControlLastOwner,
                           routed ? "applied" : "ignored");
     return routed;

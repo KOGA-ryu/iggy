@@ -112,6 +112,11 @@ struct ProductMenuShortcutAutomationResult {
   InputAction inputAction = InputAction::None;
 };
 
+struct ProductMenuInputAutomationResult {
+  bool valid = false;
+  InputAction inputAction = InputAction::None;
+};
+
 std::string_view productAutomationCommandCategoryName(
     ProductAutomationCommandCategory category);
 
@@ -139,6 +144,9 @@ ProductAutomationCommandDispatchResult resolveProductAutomationCommandDispatch(
 
 ProductMenuShortcutAutomationResult resolveProductMenuShortcutAutomation(
     const ProductAutomationCommandDispatchSpec& spec,
+    std::string_view value);
+
+ProductMenuInputAutomationResult resolveProductMenuInputAutomation(
     std::string_view value);
 
 struct ProductRoomEditorCursorResult;

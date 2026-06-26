@@ -375,6 +375,50 @@ ProductMenuShortcutAutomationResult resolveProductMenuShortcutAutomation(
   return result;
 }
 
+ProductMenuInputAutomationResult resolveProductMenuInputAutomation(
+    std::string_view value) {
+  struct MenuInputRow {
+    std::string_view name;
+    InputAction action;
+  };
+  static constexpr std::array rows{
+      MenuInputRow{"up", InputAction::MenuUp},
+      MenuInputRow{"down", InputAction::MenuDown},
+      MenuInputRow{"left", InputAction::MenuLeft},
+      MenuInputRow{"right", InputAction::MenuRight},
+      MenuInputRow{"confirm", InputAction::MenuConfirm},
+      MenuInputRow{"back", InputAction::MenuBack},
+      MenuInputRow{"next_tab", InputAction::MenuNextTab},
+      MenuInputRow{"previous_tab", InputAction::MenuPreviousTab},
+      MenuInputRow{"none", InputAction::None},
+  };
+  static constexpr std::array lookup{
+      MenuInputRow{"up", InputAction::MenuUp},
+      MenuInputRow{"down", InputAction::MenuDown},
+      MenuInputRow{"left", InputAction::MenuLeft},
+      MenuInputRow{"right", InputAction::MenuRight},
+      MenuInputRow{"confirm", InputAction::MenuConfirm},
+      MenuInputRow{"back", InputAction::MenuBack},
+      MenuInputRow{"next_tab", InputAction::MenuNextTab},
+      MenuInputRow{"previous_tab", InputAction::MenuPreviousTab},
+      MenuInputRow{"none", InputAction::None},
+      MenuInputRow{"unknown", InputAction::None},
+  };
+  const auto row = std::find_if(
+      rows.begin(), rows.end(), [value](const MenuInputRow& candidate) {
+        return candidate.name == value;
+      });
+  const std::size_t rowIndex =
+      static_cast<std::size_t>(std::distance(rows.begin(), row));
+  const std::size_t selectedIndex =
+      std::min(rowIndex, lookup.size() - 1U);
+
+  ProductMenuInputAutomationResult result;
+  result.valid = rowIndex != rows.size();
+  result.inputAction = lookup[selectedIndex].action;
+  return result;
+}
+
 ProductRoomEditorCursorResult applyProductRoomEditorMoveAutomation(
     ProductRoomEditorCursorState state,
     ProductRoomEditorDirection direction) {
