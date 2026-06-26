@@ -121,7 +121,20 @@ enum class FrontendAction : std::uint8_t;
 
 struct ProductFrontendSelectAutomationResult {
   bool valid = false;
-  FrontendAction action;
+  FrontendAction action{};
+};
+
+enum class FrontendSettingsTab : int;
+enum class FrontendDevToolsCategory : std::uint8_t;
+
+struct ProductSettingsTabAutomationResult {
+  bool valid = false;
+  FrontendSettingsTab settingsTab{};
+};
+
+struct ProductDevToolsCategoryAutomationResult {
+  bool valid = false;
+  FrontendDevToolsCategory category{};
 };
 
 std::string_view productAutomationCommandCategoryName(
@@ -157,6 +170,12 @@ ProductMenuInputAutomationResult resolveProductMenuInputAutomation(
     std::string_view value);
 
 ProductFrontendSelectAutomationResult resolveProductFrontendSelectAutomation(
+    std::string_view value);
+
+ProductSettingsTabAutomationResult resolveProductSettingsTabAutomation(
+    std::string_view value);
+
+ProductDevToolsCategoryAutomationResult resolveProductDevToolsCategoryAutomation(
     std::string_view value);
 
 struct ProductRoomEditorCursorResult;

@@ -5,6 +5,7 @@
 #include <iterator>
 
 #include "app/frontend/FrontendState.hpp"
+#include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/ProductRoomAuthoringController.hpp"
 #include "app/iggy3d/ProductRoomEditorActionController.hpp"
 #include "app/iggy3d/ProductRoomEditorCursor.hpp"
@@ -467,6 +468,92 @@ ProductFrontendSelectAutomationResult resolveProductFrontendSelectAutomation(
   ProductFrontendSelectAutomationResult result;
   result.valid = rowIndex != rows.size();
   result.action = lookup[selectedIndex].action;
+  return result;
+}
+
+ProductSettingsTabAutomationResult resolveProductSettingsTabAutomation(
+    std::string_view value) {
+  struct SettingsTabRow {
+    std::string_view name;
+    FrontendSettingsTab settingsTab;
+  };
+  static constexpr std::array rows{
+      SettingsTabRow{"input", FrontendSettingsTab::Input},
+      SettingsTabRow{"controls", FrontendSettingsTab::Controls},
+      SettingsTabRow{"camera", FrontendSettingsTab::Camera},
+      SettingsTabRow{"gameplay", FrontendSettingsTab::Gameplay},
+      SettingsTabRow{"video_display", FrontendSettingsTab::VideoDisplay},
+      SettingsTabRow{"audio", FrontendSettingsTab::Audio},
+      SettingsTabRow{"accessibility", FrontendSettingsTab::Accessibility},
+      SettingsTabRow{"developer", FrontendSettingsTab::Developer},
+  };
+  static constexpr std::array lookup{
+      SettingsTabRow{"input", FrontendSettingsTab::Input},
+      SettingsTabRow{"controls", FrontendSettingsTab::Controls},
+      SettingsTabRow{"camera", FrontendSettingsTab::Camera},
+      SettingsTabRow{"gameplay", FrontendSettingsTab::Gameplay},
+      SettingsTabRow{"video_display", FrontendSettingsTab::VideoDisplay},
+      SettingsTabRow{"audio", FrontendSettingsTab::Audio},
+      SettingsTabRow{"accessibility", FrontendSettingsTab::Accessibility},
+      SettingsTabRow{"developer", FrontendSettingsTab::Developer},
+      SettingsTabRow{"unknown", FrontendSettingsTab::None},
+  };
+  ProductSettingsTabAutomationResult result;
+  const auto row = std::find_if(
+      rows.begin(), rows.end(), [value](const SettingsTabRow& candidate) {
+        return candidate.name == value;
+      });
+  const std::size_t rowIndex =
+      static_cast<std::size_t>(std::distance(rows.begin(), row));
+  const std::size_t selectedIndex =
+      std::min(rowIndex, lookup.size() - 1U);
+  result.valid = row != rows.end();
+  result.settingsTab = lookup[selectedIndex].settingsTab;
+  return result;
+}
+
+ProductDevToolsCategoryAutomationResult resolveProductDevToolsCategoryAutomation(
+    std::string_view value) {
+  struct DevToolsCategoryRow {
+    std::string_view name;
+    FrontendDevToolsCategory category;
+  };
+  static constexpr std::array rows{
+      DevToolsCategoryRow{"session", FrontendDevToolsCategory::Session},
+      DevToolsCategoryRow{"input", FrontendDevToolsCategory::Input},
+      DevToolsCategoryRow{"player", FrontendDevToolsCategory::Player},
+      DevToolsCategoryRow{"movement", FrontendDevToolsCategory::Movement},
+      DevToolsCategoryRow{"world_editor", FrontendDevToolsCategory::WorldEditor},
+      DevToolsCategoryRow{"collision", FrontendDevToolsCategory::Collision},
+      DevToolsCategoryRow{"spells", FrontendDevToolsCategory::Spells},
+      DevToolsCategoryRow{"camera", FrontendDevToolsCategory::Camera},
+      DevToolsCategoryRow{"renderer", FrontendDevToolsCategory::Renderer},
+      DevToolsCategoryRow{"performance", FrontendDevToolsCategory::Performance},
+  };
+  static constexpr std::array lookup{
+      DevToolsCategoryRow{"session", FrontendDevToolsCategory::Session},
+      DevToolsCategoryRow{"input", FrontendDevToolsCategory::Input},
+      DevToolsCategoryRow{"player", FrontendDevToolsCategory::Player},
+      DevToolsCategoryRow{"movement", FrontendDevToolsCategory::Movement},
+      DevToolsCategoryRow{"world_editor", FrontendDevToolsCategory::WorldEditor},
+      DevToolsCategoryRow{"collision", FrontendDevToolsCategory::Collision},
+      DevToolsCategoryRow{"spells", FrontendDevToolsCategory::Spells},
+      DevToolsCategoryRow{"camera", FrontendDevToolsCategory::Camera},
+      DevToolsCategoryRow{"renderer", FrontendDevToolsCategory::Renderer},
+      DevToolsCategoryRow{"performance", FrontendDevToolsCategory::Performance},
+      DevToolsCategoryRow{"unknown", FrontendDevToolsCategory::None},
+  };
+  ProductDevToolsCategoryAutomationResult result;
+  const auto row = std::find_if(
+      rows.begin(), rows.end(), [value](const DevToolsCategoryRow& candidate) {
+        return candidate.name == value;
+      });
+  const std::size_t rowIndex =
+      static_cast<std::size_t>(std::distance(rows.begin(), row));
+  const std::size_t selectedIndex =
+      std::min(rowIndex, lookup.size() - 1U);
+  result.valid = row != rows.end();
+  result.category = lookup[selectedIndex].category;
   return result;
 }
 

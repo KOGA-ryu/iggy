@@ -1386,56 +1386,6 @@ bool parseProductRoomEditorInputAction(std::string_view value,
   return true;
 }
 
-bool parseAutomationSettingsTab(std::string_view value,
-                                FrontendSettingsTab& out) {
-  static constexpr std::array rows{
-      AutomationParserRow<FrontendSettingsTab>{"input",
-                                               FrontendSettingsTab::Input},
-      AutomationParserRow<FrontendSettingsTab>{"controls",
-                                               FrontendSettingsTab::Controls},
-      AutomationParserRow<FrontendSettingsTab>{"camera",
-                                               FrontendSettingsTab::Camera},
-      AutomationParserRow<FrontendSettingsTab>{"gameplay",
-                                               FrontendSettingsTab::Gameplay},
-      AutomationParserRow<FrontendSettingsTab>{
-          "video_display", FrontendSettingsTab::VideoDisplay},
-      AutomationParserRow<FrontendSettingsTab>{"audio",
-                                               FrontendSettingsTab::Audio},
-      AutomationParserRow<FrontendSettingsTab>{
-          "accessibility", FrontendSettingsTab::Accessibility},
-      AutomationParserRow<FrontendSettingsTab>{"developer",
-                                               FrontendSettingsTab::Developer},
-  };
-  return parseAutomationTableValue(value, rows, out);
-}
-
-bool parseAutomationDevToolsCategory(std::string_view value,
-                                     FrontendDevToolsCategory& out) {
-  static constexpr std::array rows{
-      AutomationParserRow<FrontendDevToolsCategory>{
-          "session", FrontendDevToolsCategory::Session},
-      AutomationParserRow<FrontendDevToolsCategory>{
-          "input", FrontendDevToolsCategory::Input},
-      AutomationParserRow<FrontendDevToolsCategory>{
-          "player", FrontendDevToolsCategory::Player},
-      AutomationParserRow<FrontendDevToolsCategory>{
-          "movement", FrontendDevToolsCategory::Movement},
-      AutomationParserRow<FrontendDevToolsCategory>{
-          "world_editor", FrontendDevToolsCategory::WorldEditor},
-      AutomationParserRow<FrontendDevToolsCategory>{
-          "collision", FrontendDevToolsCategory::Collision},
-      AutomationParserRow<FrontendDevToolsCategory>{
-          "spells", FrontendDevToolsCategory::Spells},
-      AutomationParserRow<FrontendDevToolsCategory>{
-          "camera", FrontendDevToolsCategory::Camera},
-      AutomationParserRow<FrontendDevToolsCategory>{
-          "renderer", FrontendDevToolsCategory::Renderer},
-      AutomationParserRow<FrontendDevToolsCategory>{
-          "performance", FrontendDevToolsCategory::Performance},
-  };
-  return parseAutomationTableValue(value, rows, out);
-}
-
 bool parseAutomationOwner(std::string_view value, MenuOwner& out) {
   static constexpr std::array rows{
       AutomationParserRow<MenuOwner>{"starter", MenuOwner::Starter},
@@ -2610,10 +2560,13 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (key == "settings.tab") {
-    if (!parseAutomationSettingsTab(value, settingsTab)) {
+    const ProductSettingsTabAutomationResult settingsResult =
+        resolveProductSettingsTabAutomation(value);
+    if (!settingsResult.valid) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
+    settingsTab = settingsResult.settingsTab;
     window.selectedSettingsTab = settingsTab;
     markAutomationApplied(window, command, frontendSettingsTabName(settingsTab),
                           productInputOwnerFor(frontend, window), "applied");
@@ -2621,11 +2574,13 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (key == "dev_tools.category") {
-    FrontendDevToolsCategory category = FrontendDevToolsCategory::None;
-    if (!parseAutomationDevToolsCategory(value, category)) {
+    const ProductDevToolsCategoryAutomationResult devToolsResult =
+        resolveProductDevToolsCategoryAutomation(value);
+    if (!devToolsResult.valid) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
+    const FrontendDevToolsCategory category = devToolsResult.category;
     frontend.devToolsCategory = category;
     markAutomationApplied(window, command, frontendDevToolsCategoryName(category),
                           productInputOwnerFor(frontend, window), "applied");

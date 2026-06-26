@@ -1,4 +1,5 @@
 #include "app/frontend/FrontendState.hpp"
+#include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/product/Automation.hpp"
 
 #include <iostream>
@@ -146,6 +147,38 @@ int main() {
   const iggy3d::ProductFrontendSelectAutomationResult selectInvalid =
       iggy3d::resolveProductFrontendSelectAutomation("teleport");
   expect(!selectInvalid.valid, "frontend select teleport is invalid");
+
+  const iggy3d::ProductSettingsTabAutomationResult settingsInput =
+      iggy3d::resolveProductSettingsTabAutomation("input");
+  expect(settingsInput.valid, "settings tab input is valid");
+  expect(settingsInput.settingsTab == iggy3d::FrontendSettingsTab::Input,
+         "settings tab input resolves to input");
+
+  const iggy3d::ProductSettingsTabAutomationResult settingsDeveloper =
+      iggy3d::resolveProductSettingsTabAutomation("developer");
+  expect(settingsDeveloper.valid, "settings tab developer is valid");
+  expect(settingsDeveloper.settingsTab == iggy3d::FrontendSettingsTab::Developer,
+         "settings tab developer resolves to developer");
+
+  const iggy3d::ProductSettingsTabAutomationResult settingsInvalid =
+      iggy3d::resolveProductSettingsTabAutomation("teleport");
+  expect(!settingsInvalid.valid, "settings tab teleport is invalid");
+
+  const iggy3d::ProductDevToolsCategoryAutomationResult devToolsSession =
+      iggy3d::resolveProductDevToolsCategoryAutomation("session");
+  expect(devToolsSession.valid, "dev tools category session is valid");
+  expect(devToolsSession.category == iggy3d::FrontendDevToolsCategory::Session,
+         "dev tools category session resolves to session");
+
+  const iggy3d::ProductDevToolsCategoryAutomationResult devToolsRenderer =
+      iggy3d::resolveProductDevToolsCategoryAutomation("renderer");
+  expect(devToolsRenderer.valid, "dev tools category renderer is valid");
+  expect(devToolsRenderer.category == iggy3d::FrontendDevToolsCategory::Renderer,
+         "dev tools category renderer resolves to renderer");
+
+  const iggy3d::ProductDevToolsCategoryAutomationResult devToolsInvalid =
+      iggy3d::resolveProductDevToolsCategoryAutomation("teleport");
+  expect(!devToolsInvalid.valid, "dev tools category teleport is invalid");
 
   const iggy3d::ProductAutomationCommandDispatchResult placeDispatch =
       iggy3d::resolveProductAutomationCommandDispatch(
