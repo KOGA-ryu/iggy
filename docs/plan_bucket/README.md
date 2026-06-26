@@ -59,6 +59,7 @@ Each plan document must define:
 - Data-oriented product spine refactor contract
 - AppShell shell refactor audit
 - Product module consolidation audit
+- Product shell consolidation boundary audit
 - Product module taxonomy contract
 - Map generation slices with DoD
 
@@ -135,6 +136,11 @@ Each plan document must define:
     modules, no-new-one-shot rule, aggressive consolidation slice order, and
     acceptance gates for shrinking `AppShell.cpp` without spreading policy into
     another pile of feature files;
+- `product_shell_consolidation_audit_v0_1.md`
+  - post-extraction AppShell boundary audit, current product file counts,
+    consolidation candidate classification, future consolidation rules, and the
+    recommendation to stop AppShell extraction and return to the dungeon editor
+    build lane;
 - `product_module_taxonomy_contract_v0_1.md`
   - folder-first naming and ownership contract for product consolidation,
     including the target `src/app/iggy3d/product/` module set, stable naming
