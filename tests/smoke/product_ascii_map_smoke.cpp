@@ -78,6 +78,12 @@ int main() {
   const std::filesystem::path customEditorInputPlaceSaveRoot =
       iggy3d::smoke::cleanSaveRoot(
           "ascii_map_custom_draft_editor_input_place_wall");
+  const std::filesystem::path customEditorInputDeleteSaveRoot =
+      iggy3d::smoke::cleanSaveRoot(
+          "ascii_map_custom_draft_editor_input_delete_wall");
+  const std::filesystem::path customEditorInputUndoRedoSaveRoot =
+      iggy3d::smoke::cleanSaveRoot(
+          "ascii_map_custom_draft_editor_input_undo_redo_wall");
   const std::filesystem::path customCursorEditSaveExitRoot =
       iggy3d::smoke::cleanSaveRoot(
           "ascii_map_custom_draft_cursor_edit_save_exit");
@@ -860,6 +866,131 @@ int main() {
       iggy3d::smoke::hasField(fields,
                               "product_vulkan_room_wall_draw_count",
                               "22") &&
+      iggy3d::smoke::positiveIntegerField(
+          fields, "product_vulkan_room_geometry_signature");
+
+  fields.clear();
+  const bool editorInputDeleteWall =
+      appAvailable && mapAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_map_custom_draft_editor_input_delete_wall",
+          "frontend.select=new_world\nfrontend.execute=true\n"
+          "world.title=Custom Draft\n"
+          "world.draft_cell=1,2,#\n"
+          "world.create=true\n"
+          "system.pause=true\n"
+          "pause.select=edit_room\n"
+          "pause.execute=true\n"
+          "editor.input=editor.nudge_x_pos,editor.next_tool,editor.place,editor.delete\n",
+          iggy3d::smoke::saveRootArg(customEditorInputDeleteSaveRoot),
+          fields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::automationApplied(fields) &&
+      iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "input_owner", "editor") &&
+      iggy3d::smoke::hasField(fields, "gameplay_input_suppressed", "true") &&
+      iggy3d::smoke::hasField(fields, "input_action_last",
+                              "editor.delete") &&
+      iggy3d::smoke::hasField(fields, "automation_control_last_key",
+                              "editor.input") &&
+      iggy3d::smoke::hasField(fields, "automation_control_last_action",
+                              "editor.delete") &&
+      iggy3d::smoke::hasField(fields, "room_editing_ready", "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_collision_actor_blocker_count",
+                              "61") &&
+      iggy3d::smoke::hasField(fields, "room_editor_grid_x", "1") &&
+      iggy3d::smoke::hasField(fields, "room_editor_grid_z", "0") &&
+      iggy3d::smoke::hasField(fields, "room_editor_tool", "wall") &&
+      iggy3d::smoke::hasField(fields, "room_editor_status",
+                              "room_editor_delete_applied") &&
+      iggy3d::smoke::hasField(fields, "room_editor_last_operation",
+                              "editor.delete") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editor_last_operation_accepted",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "room_editor_last_primitive_id",
+                              "edit_wall_1") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_visible", "true") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_last_operation",
+                              "editor.delete") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editor_hud_last_operation_accepted",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_last_primitive_id",
+                              "edit_wall_1") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_authored_wall_count",
+                              "61") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_actor_blocker_count",
+                              "61") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_projectile_blocker_count",
+                              "61") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_wall_draw_count",
+                              "21") &&
+      iggy3d::smoke::positiveIntegerField(
+          fields, "product_vulkan_room_geometry_signature");
+
+  fields.clear();
+  const bool editorInputUndoRedoWall =
+      appAvailable && mapAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_map_custom_draft_editor_input_undo_redo_wall",
+          "frontend.select=new_world\nfrontend.execute=true\n"
+          "world.title=Custom Draft\n"
+          "world.draft_cell=1,2,#\n"
+          "world.create=true\n"
+          "system.pause=true\n"
+          "pause.select=edit_room\n"
+          "pause.execute=true\n"
+          "editor.input=editor.nudge_x_pos,editor.next_tool,editor.place,editor.delete,editor.undo,editor.redo\n",
+          iggy3d::smoke::saveRootArg(customEditorInputUndoRedoSaveRoot),
+          fields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::automationApplied(fields) &&
+      iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "input_owner", "editor") &&
+      iggy3d::smoke::hasField(fields, "input_action_last", "editor.redo") &&
+      iggy3d::smoke::hasField(fields, "automation_control_last_action",
+                              "editor.redo") &&
+      iggy3d::smoke::hasField(fields, "room_editor_status",
+                              "room_editor_redo_applied") &&
+      iggy3d::smoke::hasField(fields, "room_editor_last_operation",
+                              "editor.redo") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editor_last_operation_accepted",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "room_editor_last_primitive_id",
+                              "edit_wall_1") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_last_operation",
+                              "editor.redo") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editor_hud_last_operation_accepted",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_last_primitive_id",
+                              "edit_wall_1") &&
+      iggy3d::smoke::hasField(fields, "room_editing_undo_depth", "2") &&
+      iggy3d::smoke::hasField(fields, "room_editing_redo_depth", "0") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_authored_wall_count",
+                              "61") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_actor_blocker_count",
+                              "61") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_wall_draw_count",
+                              "21") &&
       iggy3d::smoke::positiveIntegerField(
           fields, "product_vulkan_room_geometry_signature");
 
@@ -1695,6 +1826,10 @@ int main() {
                          "custom draft pause editor cursor places wall") &&
                   expect(editorInputCursorPlaceWall,
                          "custom draft editor input places wall") &&
+                  expect(editorInputDeleteWall,
+                         "custom draft editor input deletes wall") &&
+                  expect(editorInputUndoRedoWall,
+                         "custom draft editor input undo redo wall") &&
                   expect(saveAndExitCursorEditedCustomDraftActiveRoom,
                          "custom draft cursor edit saves and exits") &&
                   expect(rebootCursorEditedCustomDraftStarter,
@@ -1736,6 +1871,10 @@ int main() {
             << (pauseEditorCursorPlaceWall ? "true" : "false") << "\n";
   std::cout << "editor_input_cursor_place_wall="
             << (editorInputCursorPlaceWall ? "true" : "false") << "\n";
+  std::cout << "editor_input_delete_wall="
+            << (editorInputDeleteWall ? "true" : "false") << "\n";
+  std::cout << "editor_input_undo_redo_wall="
+            << (editorInputUndoRedoWall ? "true" : "false") << "\n";
   std::cout << "save_and_exit_cursor_edited_custom_draft_active_room="
             << (saveAndExitCursorEditedCustomDraftActiveRoom ? "true"
                                                              : "false")

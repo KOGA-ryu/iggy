@@ -283,6 +283,9 @@ bool parseProductRoomEditorInputAction(std::string_view value,
                                InputAction::EditorPreviousTool, 1.0F},
       RoomEditorInputActionRow{"editor.place", InputAction::EditorPlace, 1.0F},
       RoomEditorInputActionRow{"editor.apply", InputAction::EditorApply, 1.0F},
+      RoomEditorInputActionRow{"editor.delete", InputAction::EditorDelete, 1.0F},
+      RoomEditorInputActionRow{"editor.undo", InputAction::EditorUndo, 1.0F},
+      RoomEditorInputActionRow{"editor.redo", InputAction::EditorRedo, 1.0F},
   };
   actionValue = 1.0F;
   const auto row = std::find_if(

@@ -136,6 +136,39 @@ int main() {
   }
 
   {
+    iggy3d::KeyboardInputState keyboard;
+    iggy3d::ActionState actions;
+    iggy3d::KeyboardRoomEditorInputSample sample;
+    sample.deleteDown = true;
+    iggy3d::recordKeyboardRoomEditorActions(keyboard, sample, actions);
+    ok = expectActionValue(actions, iggy3d::InputAction::EditorDelete, 1.0F,
+                           "keyboard delete emits editor delete") &&
+         ok;
+  }
+
+  {
+    iggy3d::KeyboardInputState keyboard;
+    iggy3d::ActionState actions;
+    iggy3d::KeyboardRoomEditorInputSample sample;
+    sample.undoDown = true;
+    iggy3d::recordKeyboardRoomEditorActions(keyboard, sample, actions);
+    ok = expectActionValue(actions, iggy3d::InputAction::EditorUndo, 1.0F,
+                           "keyboard Z emits editor undo") &&
+         ok;
+  }
+
+  {
+    iggy3d::KeyboardInputState keyboard;
+    iggy3d::ActionState actions;
+    iggy3d::KeyboardRoomEditorInputSample sample;
+    sample.redoDown = true;
+    iggy3d::recordKeyboardRoomEditorActions(keyboard, sample, actions);
+    ok = expectActionValue(actions, iggy3d::InputAction::EditorRedo, 1.0F,
+                           "keyboard Y emits editor redo") &&
+         ok;
+  }
+
+  {
     iggy3d::GamepadMenuState gamepad;
     iggy3d::ActionState actions;
     iggy3d::GamepadRoomEditorInputSample sample;

@@ -111,6 +111,69 @@ bool placeAppliesThroughEditingState() {
                 "actor blocker incremented");
 }
 
+bool deleteUndoRedoApplyThroughEditingState() {
+  iggy3d::ProductRoomEditingState editing =
+      iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
+  iggy3d::ProductRoomEditorCursorState cursor;
+  cursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
+  cursor.gridX = 2;
+  const std::uint64_t initialWalls = editing.documentWallCount;
+  const iggy3d::ProductRoomEditorActionResult placed =
+      iggy3d::applyProductRoomEditorAction(
+          editing, cursor, action(iggy3d::InputAction::EditorPlace));
+  const iggy3d::ProductRoomEditorActionResult deleted =
+      iggy3d::applyProductRoomEditorAction(
+          placed.editing, placed.cursor, action(iggy3d::InputAction::EditorDelete));
+  const iggy3d::ProductRoomEditorActionResult undone =
+      iggy3d::applyProductRoomEditorAction(
+          deleted.editing, deleted.cursor, action(iggy3d::InputAction::EditorUndo));
+  const iggy3d::ProductRoomEditorActionResult redone =
+      iggy3d::applyProductRoomEditorAction(
+          undone.editing, undone.cursor, action(iggy3d::InputAction::EditorRedo));
+
+  return expect(placed.ok, "place setup accepted") &&
+         expect(deleted.ok, "delete accepted") &&
+         expect(deleted.status == "room_editor_delete_applied",
+                "delete status") &&
+         expect(deleted.operation == "editor.delete", "delete operation") &&
+         expect(deleted.operationAccepted, "delete operation accepted") &&
+         expect(deleted.primitiveId == "edit_wall_1", "delete primitive") &&
+         expect(deleted.editing.documentWallCount == initialWalls,
+                "delete restores wall count") &&
+         expect(deleted.editing.activeRoomCollision.ready,
+                "delete rebuilds collision") &&
+         expect(undone.ok, "undo accepted") &&
+         expect(undone.status == "room_editor_undo_applied", "undo status") &&
+         expect(undone.operation == "editor.undo", "undo operation") &&
+         expect(undone.primitiveId == "edit_wall_1", "undo primitive") &&
+         expect(undone.editing.documentWallCount == initialWalls + 1U,
+                "undo restores wall") &&
+         expect(redone.ok, "redo accepted") &&
+         expect(redone.status == "room_editor_redo_applied", "redo status") &&
+         expect(redone.operation == "editor.redo", "redo operation") &&
+         expect(redone.primitiveId == "edit_wall_1", "redo primitive") &&
+         expect(redone.editing.documentWallCount == initialWalls,
+                "redo deletes wall again");
+}
+
+bool deleteMissingTargetIsStable() {
+  iggy3d::ProductRoomEditingState editing =
+      iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
+  iggy3d::ProductRoomEditorCursorState cursor;
+  cursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
+  cursor.gridX = 12;
+  const iggy3d::ProductRoomEditorActionResult result =
+      iggy3d::applyProductRoomEditorAction(
+          editing, cursor, action(iggy3d::InputAction::EditorDelete));
+  return expect(!result.ok, "missing delete rejected") &&
+         expect(result.handled, "missing delete handled") &&
+         expect(result.status == "room_editor_delete_target_not_found",
+                "missing delete status") &&
+         expect(result.operation == "editor.delete", "missing delete operation") &&
+         expect(!result.operationAccepted, "missing delete not accepted") &&
+         expect(result.primitiveId == "none", "missing delete primitive");
+}
+
 bool unsupportedActionsAreIgnored() {
   iggy3d::ProductRoomEditingState editing =
       iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
@@ -118,13 +181,13 @@ bool unsupportedActionsAreIgnored() {
   const iggy3d::ProductRoomEditorCursorState cursor;
   const iggy3d::ProductRoomEditorActionResult result =
       iggy3d::applyProductRoomEditorAction(
-          editing, cursor, action(iggy3d::InputAction::EditorDelete));
-  return expect(!result.ok, "delete ignored") &&
+          editing, cursor, action(iggy3d::InputAction::EditorToggle));
+  return expect(!result.ok, "toggle ignored") &&
          expect(result.status == "room_editor_action_not_supported",
-                "delete status") &&
+                "toggle status") &&
          expect(result.editing.documentWallCount == initialWalls,
-                "delete leaves walls") &&
-         expect(result.cursor.gridX == 0, "delete leaves cursor");
+                "toggle leaves walls") &&
+         expect(result.cursor.gridX == 0, "toggle leaves cursor");
 }
 
 }  // namespace
@@ -133,6 +196,8 @@ int main() {
   const bool ok = notReadyRejectsWithoutMutation() && nudgeActionsMoveCursor() &&
                   toolActionsChangeDeterministically() &&
                   placeAppliesThroughEditingState() &&
+                  deleteUndoRedoApplyThroughEditingState() &&
+                  deleteMissingTargetIsStable() &&
                   unsupportedActionsAreIgnored();
   return ok ? 0 : 1;
 }

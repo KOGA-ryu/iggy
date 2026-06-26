@@ -168,6 +168,18 @@ void recordKeyboardRoomEditorActions(KeyboardInputState& state,
   if (sample.placeDown && !state.editorPlaceWasDown) {
     recordAction(actions, InputAction::EditorPlace, true, true, false, 1.0F);
   }
+  // branch-gate: BG-1037
+  if (sample.deleteDown && !state.editorDeleteWasDown) {
+    recordAction(actions, InputAction::EditorDelete, true, true, false, 1.0F);
+  }
+  // branch-gate: BG-1037
+  if (sample.undoDown && !state.editorUndoWasDown) {
+    recordAction(actions, InputAction::EditorUndo, true, true, false, 1.0F);
+  }
+  // branch-gate: BG-1037
+  if (sample.redoDown && !state.editorRedoWasDown) {
+    recordAction(actions, InputAction::EditorRedo, true, true, false, 1.0F);
+  }
 
   state.editorUpWasDown = sample.upDown;
   state.editorDownWasDown = sample.downDown;
@@ -176,6 +188,9 @@ void recordKeyboardRoomEditorActions(KeyboardInputState& state,
   state.editorNextToolWasDown = sample.nextToolDown;
   state.editorPreviousToolWasDown = sample.previousToolDown;
   state.editorPlaceWasDown = sample.placeDown;
+  state.editorDeleteWasDown = sample.deleteDown;
+  state.editorUndoWasDown = sample.undoDown;
+  state.editorRedoWasDown = sample.redoDown;
 }
 
 void pollKeyboardRoomEditorActions(KeyboardInputState& state, ActionState& actions) {
@@ -189,6 +204,9 @@ void pollKeyboardRoomEditorActions(KeyboardInputState& state, ActionState& actio
   sample.nextToolDown = keyDown(keys, SDL_SCANCODE_E);
   sample.previousToolDown = keyDown(keys, SDL_SCANCODE_Q);
   sample.placeDown = keyDown(keys, SDL_SCANCODE_SPACE);
+  sample.deleteDown = keyDown(keys, SDL_SCANCODE_DELETE);
+  sample.undoDown = keyDown(keys, SDL_SCANCODE_Z);
+  sample.redoDown = keyDown(keys, SDL_SCANCODE_Y);
   recordKeyboardRoomEditorActions(state, sample, actions);
 #else
   (void)state;

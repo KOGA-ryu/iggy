@@ -26,6 +26,9 @@ struct KeyboardInputState {
   bool editorNextToolWasDown = false;
   bool editorPreviousToolWasDown = false;
   bool editorPlaceWasDown = false;
+  bool editorDeleteWasDown = false;
+  bool editorUndoWasDown = false;
+  bool editorRedoWasDown = false;
 };
 
 struct KeyboardRoomEditorInputSample {
@@ -36,6 +39,9 @@ struct KeyboardRoomEditorInputSample {
   bool nextToolDown = false;
   bool previousToolDown = false;
   bool placeDown = false;
+  bool deleteDown = false;
+  bool undoDown = false;
+  bool redoDown = false;
 };
 
 InputAction pollKeyboardMenuAction(KeyboardInputState& state);

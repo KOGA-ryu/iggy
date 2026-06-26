@@ -1,6 +1,8 @@
 #include "app/iggy3d/ProductRoomEditorActionController.hpp"
 
 #include <cmath>
+#include <optional>
+#include <string_view>
 
 namespace iggy3d {
 namespace {
@@ -89,6 +91,152 @@ ProductRoomEditorActionResult placeResult(
   return result;
 }
 
+bool nearly(float lhs, float rhs) {
+  return std::fabs(lhs - rhs) <= 0.001F;
+}
+
+bool samePoint(Vec3 lhs, Vec3 rhs) {
+  return nearly(lhs.x, rhs.x) && nearly(lhs.y, rhs.y) && nearly(lhs.z, rhs.z);
+}
+
+bool wallMatchesEdge(const EditableRoomWall& wall, Vec3 startMeters, Vec3 endMeters) {
+  return samePoint(wall.startMeters, startMeters) &&
+         samePoint(wall.endMeters, endMeters);
+}
+
+std::optional<RoomEditCommand> buildDeleteCommand(
+    const ProductRoomEditingState& editing,
+    const ProductRoomEditorCursorState& cursor,
+    std::string& primitiveId) {
+  const EditableRoomDocument& document = editing.authoringSnapshot.document;
+  const ProductRoomEditorCursorResult target =
+      buildProductRoomEditorPlaceCommand(cursor, &document);
+  // branch-gate: BG-1036
+  if (!target.ok || !target.command.has_value()) {
+    return std::nullopt;
+  }
+  // branch-gate: BG-1036
+  switch (cursor.selectedTool) {
+    case ProductRoomEditorTool::Floor: {
+      const EditableRoomFloor& targetFloor = target.command->floor;
+      for (const EditableRoomFloor& floor : document.floors) {
+        // branch-gate: BG-1036
+        if (floor.storyIndex == cursor.storyIndex &&
+            samePoint(floor.centerMeters, targetFloor.centerMeters)) {
+          primitiveId = floor.id;
+          return deleteFloorCommand(floor.id);
+        }
+      }
+      return std::nullopt;
+    }
+    case ProductRoomEditorTool::Wall: {
+      const EditableRoomWall& targetWall = target.command->wall;
+      for (const EditableRoomWall& wall : document.walls) {
+        // branch-gate: BG-1036
+        if (wall.storyIndex == cursor.storyIndex &&
+            wallMatchesEdge(wall,
+                            targetWall.startMeters,
+                            targetWall.endMeters)) {
+          primitiveId = wall.id;
+          return deleteWallCommand(wall.id);
+        }
+      }
+      return std::nullopt;
+    }
+  }
+  return std::nullopt;
+}
+
+ProductRoomEditorActionResult operationResult(
+    const ProductRoomEditingState& editing,
+    ProductRoomEditorCursorState cursor,
+    std::string operation,
+    ProductRoomEditingOperationResult applied,
+    std::string_view acceptedStatus) {
+  ProductRoomEditorActionResult result =
+      baseResult(editing, cursor, std::move(operation));
+  result.handled = true;
+  result.editing = applied.state;
+  result.ok = applied.accepted;
+  result.operationAccepted = applied.accepted;
+  // branch-gate: BG-1036
+  result.primitiveId =
+      applied.edit.primitiveId.empty() ? std::string{"none"}
+                                      : applied.edit.primitiveId;
+  // branch-gate: BG-1036
+  if (applied.accepted) {
+    result.status = std::string(acceptedStatus);
+    result.reasonCode = result.status;
+  } else {
+    result.status = applied.status;
+    result.reasonCode = applied.reasonCode;
+  }
+  return result;
+}
+
+ProductRoomEditorActionResult deleteResult(
+    const ProductRoomEditingState& editing,
+    ProductRoomEditorCursorState cursor,
+    std::string operation,
+    ProductRoomAuthoringInputSource inputSource) {
+  ProductRoomEditorActionResult result =
+      baseResult(editing, cursor, std::move(operation));
+  result.handled = true;
+
+  std::string primitiveId = "none";
+  std::optional<RoomEditCommand> command =
+      buildDeleteCommand(editing, cursor, primitiveId);
+  // branch-gate: BG-1036
+  if (!command.has_value()) {
+    result.status = "room_editor_delete_target_not_found";
+    result.reasonCode = result.status;
+    return result;
+  }
+
+  ProductRoomEditingOperationResult applied =
+      applyProductRoomEditingCommand(result.editing, inputSource, *command);
+  result = operationResult(editing,
+                           cursor,
+                           result.operation,
+                           std::move(applied),
+                           "room_editor_delete_applied");
+  // branch-gate: BG-1036
+  if (result.primitiveId == "none") {
+    result.primitiveId = primitiveId;
+  }
+  return result;
+}
+
+ProductRoomEditorActionResult undoResult(
+    const ProductRoomEditingState& editing,
+    ProductRoomEditorCursorState cursor,
+    std::string operation,
+    ProductRoomAuthoringInputSource inputSource) {
+  ProductRoomEditingState next = editing;
+  ProductRoomEditingOperationResult applied =
+      undoProductRoomEditing(next, inputSource);
+  return operationResult(editing,
+                         cursor,
+                         std::move(operation),
+                         std::move(applied),
+                         "room_editor_undo_applied");
+}
+
+ProductRoomEditorActionResult redoResult(
+    const ProductRoomEditingState& editing,
+    ProductRoomEditorCursorState cursor,
+    std::string operation,
+    ProductRoomAuthoringInputSource inputSource) {
+  ProductRoomEditingState next = editing;
+  ProductRoomEditingOperationResult applied =
+      redoProductRoomEditing(next, inputSource);
+  return operationResult(editing,
+                         cursor,
+                         std::move(operation),
+                         std::move(applied),
+                         "room_editor_redo_applied");
+}
+
 bool buttonIntent(const ActionStateEntry& action) {
   return action.down || action.pressed;
 }
@@ -155,8 +303,23 @@ ProductRoomEditorActionResult applyProductRoomEditorAction(
       }
       return placeResult(editing, cursor, action, inputSource);
     case InputAction::EditorDelete:
+      // branch-gate: BG-1036
+      if (!buttonIntent(action)) {
+        return ignoredResult(editing, cursor, operation);
+      }
+      return deleteResult(editing, cursor, operation, inputSource);
     case InputAction::EditorUndo:
+      // branch-gate: BG-1036
+      if (!buttonIntent(action)) {
+        return ignoredResult(editing, cursor, operation);
+      }
+      return undoResult(editing, cursor, operation, inputSource);
     case InputAction::EditorRedo:
+      // branch-gate: BG-1036
+      if (!buttonIntent(action)) {
+        return ignoredResult(editing, cursor, operation);
+      }
+      return redoResult(editing, cursor, operation, inputSource);
     case InputAction::EditorToggle:
     case InputAction::EditorSelect:
     case InputAction::EditorResizeX:
