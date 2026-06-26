@@ -776,6 +776,8 @@ iggy3d_add_render_packet6_unit_test(render_shader_build_policy_tests
   tests/unit/render_shader_build_policy_tests.cpp)
 iggy3d_add_render_packet6_unit_test(render_memory_budget_policy_tests
   tests/unit/render_memory_budget_policy_tests.cpp)
+iggy3d_add_render_packet6_unit_test(render_room_mesh_geometry_tests
+  tests/unit/render_room_mesh_geometry_tests.cpp)
 
 add_executable(package_headless_smoke tests/smoke/package_headless_smoke.cpp)
 target_link_libraries(package_headless_smoke PRIVATE iggy3d)

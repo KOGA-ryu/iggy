@@ -50,6 +50,16 @@ struct FirstRoomGeometryResources {
   bool indexedDraw = false;
 };
 
+struct RoomMeshCpuGeometry {
+  std::vector<FirstRoomVertex> vertices;
+  std::vector<std::uint16_t> indices;
+  std::vector<IndexedDrawRange> indexedDraws;
+  std::string sourceRoomAssetId;
+  std::size_t sourceRoomStaticMeshCount = 0;
+  std::uint64_t sourceRoomGeometrySignature = 0;
+  bool ready = false;
+};
+
 struct DepthResourceRecord {
   GpuImageRecord depthImage;
   VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
@@ -101,5 +111,6 @@ private:
 
 std::vector<FirstRoomVertex> firstRoomBootstrapVertices();
 std::vector<std::uint16_t> firstRoomBootstrapIndices();
+RoomMeshCpuGeometry buildRoomMeshCpuGeometry(const SceneRoomProjection& room);
 
 }  // namespace iggy3d::vulkan

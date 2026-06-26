@@ -314,6 +314,46 @@ std::vector<std::uint16_t> firstRoomBootstrapIndices() {
   return {0U, 1U, 2U, 2U, 3U, 0U};
 }
 
+RoomMeshCpuGeometry buildRoomMeshCpuGeometry(const SceneRoomProjection& room) {
+  RoomMeshCpuGeometry result;
+  result.sourceRoomAssetId = room.assetId;
+  result.sourceRoomStaticMeshCount = room.meshes.size();
+  result.sourceRoomGeometrySignature = roomGeometrySignature(room);
+  if (room.meshes.empty()) {
+    return result;
+  }
+
+  result.vertices.reserve(room.meshes.size() * 8U);
+  result.indices.reserve(room.meshes.size() * 72U);
+  for (const SceneRoomMeshItem& mesh : room.meshes) {
+    BeanModelKind beanKind = BeanModelKind::Player;
+    if (parseBeanModelId(mesh.role, beanKind)) {
+      if (!appendBean(result.vertices, result.indices, result.indexedDraws,
+                      mesh.position, mesh.size, colorForRoomRole(mesh.role),
+                      beanKind)) {
+        result.vertices.clear();
+        result.indices.clear();
+        result.indexedDraws.clear();
+        return result;
+      }
+    } else {
+      if (result.vertices.size() + 8U >
+          static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max())) {
+        result.vertices.clear();
+        result.indices.clear();
+        result.indexedDraws.clear();
+        return result;
+      }
+      appendBox(result.vertices, result.indices, result.indexedDraws,
+                mesh.position, mesh.size, colorForRoomRole(mesh.role));
+    }
+  }
+
+  result.ready = !result.vertices.empty() && !result.indices.empty() &&
+                 !result.indexedDraws.empty();
+  return result;
+}
+
 BufferImageResources::~BufferImageResources() {
   destroy();
 }
@@ -452,31 +492,8 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
     return result;
   }
 
-  std::vector<FirstRoomVertex> vertices;
-  std::vector<std::uint16_t> indices;
-  std::vector<IndexedDrawRange> draws;
-  vertices.reserve(room.meshes.size() * 8U);
-  indices.reserve(room.meshes.size() * 72U);
-  for (const SceneRoomMeshItem& mesh : room.meshes) {
-    BeanModelKind beanKind = BeanModelKind::Player;
-    if (parseBeanModelId(mesh.role, beanKind)) {
-      if (!appendBean(vertices, indices, draws, mesh.position, mesh.size,
-                      colorForRoomRole(mesh.role), beanKind)) {
-        result.reason = {"vertex_buffer_create_failed", "vertex buffer create failed"};
-        result.receipt = baseReceipt("fail", result.reason.code);
-        return result;
-      }
-    } else {
-      if (vertices.size() + 8U >
-          static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max())) {
-        result.reason = {"vertex_buffer_create_failed", "vertex buffer create failed"};
-        result.receipt = baseReceipt("fail", result.reason.code);
-        return result;
-      }
-      appendBox(vertices, indices, draws, mesh.position, mesh.size, colorForRoomRole(mesh.role));
-    }
-  }
-  if (vertices.empty() || indices.empty() || draws.empty()) {
+  const RoomMeshCpuGeometry cpuGeometry = buildRoomMeshCpuGeometry(room);
+  if (!cpuGeometry.ready) {
     result.reason = {"vertex_buffer_create_failed", "vertex buffer create failed"};
     result.receipt = baseReceipt("fail", result.reason.code);
     return result;
@@ -485,12 +502,13 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
 #if defined(IGGY3D_HAS_VULKAN)
   FirstRoomGeometryResources replacement;
   const VkDeviceSize vertexBytes =
-      static_cast<VkDeviceSize>(vertices.size() * sizeof(FirstRoomVertex));
-  const VkDeviceSize indexBytes = static_cast<VkDeviceSize>(indices.size() * sizeof(std::uint16_t));
+      static_cast<VkDeviceSize>(cpuGeometry.vertices.size() * sizeof(FirstRoomVertex));
+  const VkDeviceSize indexBytes =
+      static_cast<VkDeviceSize>(cpuGeometry.indices.size() * sizeof(std::uint16_t));
   if (!uploadBuffer(allocator_, createInfo_.device, createInfo_.graphicsQueue,
                     createInfo_.graphicsQueueFamily, "buffer.staging.upload.room_mesh",
                     "buffer.room_asset.vertices", vertexBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                    vertices.data(), replacement.vertexBuffer)) {
+                    cpuGeometry.vertices.data(), replacement.vertexBuffer)) {
     result.reason = {"vertex_buffer_create_failed", "vertex buffer create failed"};
     result.receipt = baseReceipt("fail", result.reason.code);
     return result;
@@ -498,18 +516,18 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
   if (!uploadBuffer(allocator_, createInfo_.device, createInfo_.graphicsQueue,
                     createInfo_.graphicsQueueFamily, "buffer.staging.upload.room_mesh",
                     "buffer.room_asset.indices", indexBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                    indices.data(), replacement.indexBuffer)) {
+                    cpuGeometry.indices.data(), replacement.indexBuffer)) {
     allocator_.destroyBuffer(replacement.vertexBuffer.allocation);
     result.reason = {"index_buffer_create_failed", "index buffer create failed"};
     result.receipt = baseReceipt("fail", result.reason.code);
     return result;
   }
-  replacement.vertexCount = static_cast<std::uint32_t>(vertices.size());
-  replacement.indexCount = static_cast<std::uint32_t>(indices.size());
-  replacement.indexedDraws = std::move(draws);
-  replacement.sourceRoomAssetId = room.assetId;
-  replacement.sourceRoomStaticMeshCount = room.meshes.size();
-  replacement.sourceRoomGeometrySignature = geometrySignature;
+  replacement.vertexCount = static_cast<std::uint32_t>(cpuGeometry.vertices.size());
+  replacement.indexCount = static_cast<std::uint32_t>(cpuGeometry.indices.size());
+  replacement.indexedDraws = cpuGeometry.indexedDraws;
+  replacement.sourceRoomAssetId = cpuGeometry.sourceRoomAssetId;
+  replacement.sourceRoomStaticMeshCount = cpuGeometry.sourceRoomStaticMeshCount;
+  replacement.sourceRoomGeometrySignature = cpuGeometry.sourceRoomGeometrySignature;
   replacement.packageRoomGeometry = true;
   replacement.indexedDraw = true;
   destroyGeometryBuffers();
