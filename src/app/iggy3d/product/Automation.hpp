@@ -157,6 +157,24 @@ struct ProductNonEmptyStringAutomationResult {
   std::string_view value = "";
 };
 
+enum class ProductDungeonDraftDirection : std::uint8_t;
+
+struct ProductDungeonDraftDirectionAutomationResult {
+  bool valid = false;
+  ProductDungeonDraftDirection direction{};
+};
+
+struct ProductDungeonDraftPaintAutomationResult {
+  bool valid = false;
+  std::string_view glyph = "";
+};
+
+struct ProductDungeonDraftCellAutomationResult {
+  bool valid = false;
+  std::size_t row = 0;
+  std::size_t column = 0;
+};
+
 ProductBoolAutomationResult resolveProductAutomationBool(
     std::string_view value);
 
@@ -167,6 +185,17 @@ ProductGameplayAxisAutomationResult resolveProductGameplayAxisAutomation(
 
 ProductNonEmptyStringAutomationResult resolveProductNonEmptyStringAutomation(
     std::string_view value);
+
+ProductDungeonDraftDirectionAutomationResult resolveProductDungeonDraftDirectionAutomation(
+    std::string_view value);
+
+ProductDungeonDraftPaintAutomationResult resolveProductDungeonDraftPaintAutomation(
+    std::string_view value);
+
+ProductDungeonDraftCellAutomationResult resolveProductDungeonDraftCellAutomation(
+    std::string_view rowValue,
+    std::string_view columnValue,
+    std::string_view glyphValue);
 
 bool resolveProductSaveBrowserBoolAutomation(std::string_view value, bool& out);
 

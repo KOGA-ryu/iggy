@@ -1215,15 +1215,6 @@ bool parseAutomationFloat(std::string_view value, float& out) {
          std::isfinite(out);
 }
 
-bool parseAutomationSize(std::string_view value, std::size_t& out) {
-  if (value.empty()) {
-    return false;
-  }
-  const auto [ptr, error] =
-      std::from_chars(value.data(), value.data() + value.size(), out);
-  return error == std::errc{} && ptr == value.data() + value.size();
-}
-
 std::vector<std::string_view> splitAutomationCsv(std::string_view value) {
   std::vector<std::string_view> fields;
   std::size_t start = 0;
@@ -1784,7 +1775,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
 
   if (key == "world.draft_edit_mode" ||
       key == "world_setup.draft_edit_mode") {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
@@ -1822,16 +1813,9 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                             productInputOwnerFor(frontend, window), "failed");
       return false;
     }
-    ProductDungeonDraftDirection direction = ProductDungeonDraftDirection::Up;
-    if (value == "up") {
-      direction = ProductDungeonDraftDirection::Up;
-    } else if (value == "down") {
-      direction = ProductDungeonDraftDirection::Down;
-    } else if (value == "left") {
-      direction = ProductDungeonDraftDirection::Left;
-    } else if (value == "right") {
-      direction = ProductDungeonDraftDirection::Right;
-    } else {
+    const ProductDungeonDraftDirectionAutomationResult direction =
+        resolveProductDungeonDraftDirectionAutomation(value);
+    if (!direction.valid) {
       window.automationControlStatus = "invalid_value";
       markAutomationApplied(window, command, "world.draft_move",
                             productInputOwnerFor(frontend, window), "failed");
@@ -1840,7 +1824,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     const ProductDungeonDraftOperationResult moved =
         moveProductDungeonDraftCursor(worldSetupDraft,
                                       dungeonDraftCursorFromWindow(window),
-                                      direction);
+                                      direction.direction);
     recordDungeonDraftOperation(window, moved);
     markAutomationApplied(window, command, "world.draft_move",
                           productInputOwnerFor(frontend, window),
@@ -1859,14 +1843,16 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                             productInputOwnerFor(frontend, window), "failed");
       return false;
     }
-    if (value.size() != 1U) {
+    const ProductDungeonDraftPaintAutomationResult paint =
+        resolveProductDungeonDraftPaintAutomation(value);
+    if (!paint.valid) {
       window.automationControlStatus = "invalid_value";
       markAutomationApplied(window, command, "world.draft_paint",
                             productInputOwnerFor(frontend, window), "failed");
       return false;
     }
     const bool painted =
-        applyDungeonDraftPaintGlyph(worldSetupDraft, window, value.front());
+        applyDungeonDraftPaintGlyph(worldSetupDraft, window, paint.glyph.front());
     markAutomationApplied(window, command, "world.draft_paint",
                           productInputOwnerFor(frontend, window),
                           painted ? "applied" : "failed");
@@ -1884,18 +1870,20 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       return false;
     }
     const std::vector<std::string_view> fields = splitAutomationCsv(value);
-    std::size_t row = 0;
-    std::size_t column = 0;
-    if (fields.size() != 3U || fields[2].size() != 1U ||
-        !parseAutomationSize(fields[0], row) ||
-        !parseAutomationSize(fields[1], column)) {
+    const ProductDungeonDraftCellAutomationResult cell =
+        fields.size() == 3U
+            ? resolveProductDungeonDraftCellAutomation(fields[0], fields[1],
+                                                      fields[2])
+            : ProductDungeonDraftCellAutomationResult{};
+    if (!cell.valid) {
       window.automationControlStatus = "invalid_value";
       markAutomationApplied(window, command, "world.draft_cell",
                             productInputOwnerFor(frontend, window), "failed");
       return false;
     }
     ProductDungeonDraftOperationResult painted =
-        setProductDungeonDraftCell(worldSetupDraft, row, column, fields[2].front());
+        setProductDungeonDraftCell(worldSetupDraft, cell.row, cell.column,
+                                   fields[2].front());
     recordDungeonDraftOperation(window, painted);
     recordWorldSetupDraftState(worldSetupDraft, window);
     markAutomationApplied(window, command, "world.draft_cell",

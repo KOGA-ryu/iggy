@@ -1,5 +1,6 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
+#include "app/iggy3d/ProductDungeonDraft.hpp"
 #include "app/iggy3d/product/Automation.hpp"
 
 #include <iostream>
@@ -222,6 +223,35 @@ int main() {
   const iggy3d::ProductNonEmptyStringAutomationResult emptyString =
       iggy3d::resolveProductNonEmptyStringAutomation("");
   expect(!emptyString.valid, "empty string is invalid");
+
+  const iggy3d::ProductDungeonDraftDirectionAutomationResult draftUp =
+      iggy3d::resolveProductDungeonDraftDirectionAutomation("up");
+  expect(draftUp.valid, "dungeon draft direction up is valid");
+  expect(draftUp.direction == iggy3d::ProductDungeonDraftDirection::Up,
+         "dungeon draft direction up resolves to up");
+
+  const iggy3d::ProductDungeonDraftDirectionAutomationResult draftInvalid =
+      iggy3d::resolveProductDungeonDraftDirectionAutomation("teleport");
+  expect(!draftInvalid.valid, "dungeon draft direction teleport is invalid");
+
+  const iggy3d::ProductDungeonDraftPaintAutomationResult draftPaint =
+      iggy3d::resolveProductDungeonDraftPaintAutomation("#");
+  expect(draftPaint.valid, "dungeon draft paint # is valid");
+  expect(draftPaint.glyph == "#", "dungeon draft paint preserves glyph");
+
+  const iggy3d::ProductDungeonDraftPaintAutomationResult draftPaintInvalid =
+      iggy3d::resolveProductDungeonDraftPaintAutomation("##");
+  expect(!draftPaintInvalid.valid, "dungeon draft paint ## is invalid");
+
+  const iggy3d::ProductDungeonDraftCellAutomationResult draftCell =
+      iggy3d::resolveProductDungeonDraftCellAutomation("4", "7", "@");
+  expect(draftCell.valid, "dungeon draft cell 4,7,@ is valid");
+  expect(draftCell.row == 4U, "dungeon draft cell preserves row");
+  expect(draftCell.column == 7U, "dungeon draft cell preserves column");
+
+  const iggy3d::ProductDungeonDraftCellAutomationResult draftCellInvalid =
+      iggy3d::resolveProductDungeonDraftCellAutomation("4", "7", "@@");
+  expect(!draftCellInvalid.valid, "dungeon draft cell invalid glyph is rejected");
 
   bool saveDeleteBool = false;
   expect(iggy3d::resolveProductSaveBrowserBoolAutomation("yes", saveDeleteBool),

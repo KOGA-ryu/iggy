@@ -8,6 +8,7 @@
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
+#include "app/iggy3d/ProductDungeonDraft.hpp"
 #include "app/iggy3d/ProductRoomAuthoringController.hpp"
 #include "app/iggy3d/ProductRoomEditorActionController.hpp"
 #include "app/iggy3d/ProductRoomEditorCursor.hpp"
@@ -628,6 +629,68 @@ ProductNonEmptyStringAutomationResult resolveProductNonEmptyStringAutomation(
   ProductNonEmptyStringAutomationResult result;
   result.valid = !value.empty();
   result.value = value;
+  return result;
+}
+
+ProductDungeonDraftDirectionAutomationResult resolveProductDungeonDraftDirectionAutomation(
+    std::string_view value) {
+  struct DirectionRow {
+    std::string_view name;
+    ProductDungeonDraftDirection direction;
+  };
+  static constexpr std::array rows{
+      DirectionRow{"up", ProductDungeonDraftDirection::Up},
+      DirectionRow{"down", ProductDungeonDraftDirection::Down},
+      DirectionRow{"left", ProductDungeonDraftDirection::Left},
+      DirectionRow{"right", ProductDungeonDraftDirection::Right},
+  };
+  static constexpr std::array lookup{
+      DirectionRow{"up", ProductDungeonDraftDirection::Up},
+      DirectionRow{"down", ProductDungeonDraftDirection::Down},
+      DirectionRow{"left", ProductDungeonDraftDirection::Left},
+      DirectionRow{"right", ProductDungeonDraftDirection::Right},
+      DirectionRow{"unknown", ProductDungeonDraftDirection::Up},
+  };
+  const auto row = std::find_if(
+      rows.begin(), rows.end(), [value](const DirectionRow& candidate) {
+        return candidate.name == value;
+      });
+  const std::size_t rowIndex =
+      static_cast<std::size_t>(std::distance(rows.begin(), row));
+  const std::size_t selectedIndex =
+      std::min(rowIndex, lookup.size() - 1U);
+  ProductDungeonDraftDirectionAutomationResult result;
+  result.valid = row != rows.end();
+  result.direction = lookup[selectedIndex].direction;
+  return result;
+}
+
+ProductDungeonDraftPaintAutomationResult resolveProductDungeonDraftPaintAutomation(
+    std::string_view value) {
+  ProductDungeonDraftPaintAutomationResult result;
+  result.valid = value.size() == 1U;
+  result.glyph = value;
+  return result;
+}
+
+bool parseProductAutomationSize(std::string_view value, std::size_t& out) {
+  const auto [ptr, error] =
+      std::from_chars(value.data(), value.data() + value.size(), out);
+  return error == std::errc{} && ptr == value.data() + value.size();
+}
+
+ProductDungeonDraftCellAutomationResult resolveProductDungeonDraftCellAutomation(
+    std::string_view rowValue,
+    std::string_view columnValue,
+    std::string_view glyphValue) {
+  ProductDungeonDraftCellAutomationResult result;
+  std::size_t row = 0;
+  std::size_t column = 0;
+  result.valid = glyphValue.size() == 1U &&
+                 parseProductAutomationSize(rowValue, row) &&
+                 parseProductAutomationSize(columnValue, column);
+  result.row = row;
+  result.column = column;
   return result;
 }
 
