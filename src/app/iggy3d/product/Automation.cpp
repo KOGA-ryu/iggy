@@ -565,6 +565,50 @@ ProductSaveSelectionAutomationResult resolveProductSaveSelectionAutomation(
   return result;
 }
 
+ProductBoolAutomationResult resolveProductAutomationBool(
+    std::string_view value) {
+  struct BoolRow {
+    std::string_view name;
+    bool requested;
+  };
+  static constexpr std::array rows{
+      BoolRow{"true", true},
+      BoolRow{"1", true},
+      BoolRow{"yes", true},
+      BoolRow{"false", false},
+      BoolRow{"0", false},
+      BoolRow{"no", false},
+  };
+  static constexpr std::array lookup{
+      BoolRow{"true", true},
+      BoolRow{"1", true},
+      BoolRow{"yes", true},
+      BoolRow{"false", false},
+      BoolRow{"0", false},
+      BoolRow{"no", false},
+      BoolRow{"unknown", false},
+  };
+  const auto row = std::find_if(
+      rows.begin(), rows.end(), [value](const BoolRow& candidate) {
+        return candidate.name == value;
+      });
+  const std::size_t rowIndex =
+      static_cast<std::size_t>(std::distance(rows.begin(), row));
+  const std::size_t selectedIndex =
+      std::min(rowIndex, lookup.size() - 1U);
+
+  ProductBoolAutomationResult result;
+  result.valid = row != rows.end();
+  result.requested = lookup[selectedIndex].requested;
+  return result;
+}
+
+bool resolveProductAutomationBool(std::string_view value, bool& out) {
+  const ProductBoolAutomationResult result = resolveProductAutomationBool(value);
+  out = result.requested;
+  return result.valid;
+}
+
 bool resolveProductSaveBrowserBoolAutomation(std::string_view value,
                                              bool& out) {
   struct BoolRow {

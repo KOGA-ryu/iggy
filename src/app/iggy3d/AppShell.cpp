@@ -2609,7 +2609,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
 
   if (key == "frontend.execute" || key == "pause.execute" ||
       key == "dev_tools.execute") {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
@@ -2628,7 +2628,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (key == "settings.apply" || key == "settings.restore_defaults") {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
@@ -2644,7 +2644,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (key == "settings.back" || key == "system.back") {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
@@ -2663,7 +2663,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (key == "frontend.return_to_title") {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
@@ -2678,7 +2678,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (key == "system.pause") {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
@@ -2697,7 +2697,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (key == "system.quit") {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }

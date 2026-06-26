@@ -190,6 +190,20 @@ int main() {
       iggy3d::resolveProductSaveSelectionAutomation("");
   expect(!saveSelectionInvalid.valid, "save selection empty is invalid");
 
+  const iggy3d::ProductBoolAutomationResult boolTrue =
+      iggy3d::resolveProductAutomationBool("yes");
+  expect(boolTrue.valid, "generic bool yes is valid");
+  expect(boolTrue.requested, "generic bool yes resolves to true");
+
+  const iggy3d::ProductBoolAutomationResult boolFalse =
+      iggy3d::resolveProductAutomationBool("no");
+  expect(boolFalse.valid, "generic bool no is valid");
+  expect(!boolFalse.requested, "generic bool no resolves to false");
+
+  const iggy3d::ProductBoolAutomationResult boolInvalid =
+      iggy3d::resolveProductAutomationBool("teleport");
+  expect(!boolInvalid.valid, "generic bool teleport is invalid");
+
   bool saveDeleteBool = false;
   expect(iggy3d::resolveProductSaveBrowserBoolAutomation("yes", saveDeleteBool),
          "save browser bool yes is valid");
