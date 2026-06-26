@@ -15,3 +15,4 @@ BG-1013	src/app/iggy3d/AppShell.cpp	system and navigation automation execution d
 BG-1014	src/app/iggy3d/product/AutomationControl.cpp	automation control-file runner extraction from AppShell	codex	2026-06-26
 BG-1015	src/app/iggy3d/product/AutomationDispatch.cpp	automation command dispatcher extraction from AppShell	codex	2026-06-26
 BG-1016	src/app/iggy3d/AppShell.cpp	automation dispatcher callback adapter seam	codex	2026-06-26
+BG-1017	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	pause menu action handler extraction from AppShell	codex	2026-06-26

@@ -63,6 +63,7 @@ target_sources(iggy3d
     src/app/iggy3d/product/AutomationRoomEditing.cpp
     src/app/iggy3d/product/AutomationSaveBrowser.cpp
     src/app/iggy3d/product/AutomationSystem.cpp
+    src/app/iggy3d/product/ProductMenuActionHandlers.cpp
     src/app/iggy3d/ProductPrimitiveDrawList.cpp
     src/app/iggy3d/ProductRenderBridge.cpp
     src/app/iggy3d/ProductRoomGeometryOptimization.cpp

@@ -16,10 +16,10 @@
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductAsciiRoomActivation.hpp"
-#include "app/iggy3d/ProductAsciiRoomPreview.hpp"
 #include "app/iggy3d/product/AutomationControl.hpp"
 #include "app/iggy3d/product/AutomationDispatch.hpp"
 #include "app/iggy3d/product/AutomationRoomEditing.hpp"
+#include "app/iggy3d/product/ProductMenuActionHandlers.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/ProductDungeonDraft.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
@@ -32,11 +32,8 @@
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductRenderBridge.hpp"
 #include "app/iggy3d/ProductRoomEditorActionController.hpp"
-#include "app/iggy3d/ProductRoomEditorCursor.hpp"
 #include "app/iggy3d/ProductRoomEditorOverlay.hpp"
-#include "app/iggy3d/ProductRoomEditingState.hpp"
 #include "app/iggy3d/ProductScriptedGameplayDriver.hpp"
-#include "app/iggy3d/ProductSaveFlow.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
@@ -696,23 +693,6 @@ FrontendSettingsTab nextSettingsSelection(FrontendSettingsTab current, InputActi
   return tabs[index];
 }
 
-FrontendAction nextPauseSelection(FrontendAction current, InputAction action) {
-  const auto& actions = pauseActionOrder();
-  std::size_t index = 0;
-  for (std::size_t i = 0; i < actions.size(); ++i) {
-    if (actions[i] == current) {
-      index = i;
-      break;
-    }
-  }
-  if (action == InputAction::MenuUp) {
-    index = index == 0 ? actions.size() - 1 : index - 1;
-  } else if (action == InputAction::MenuDown) {
-    index = (index + 1) % actions.size();
-  }
-  return actions[index];
-}
-
 MenuOwner productInputOwnerFor(const FrontendState& frontend,
                                const ProductAppWindowState& window) {
   if (frontend.screen == FrontendScreen::Settings ||
@@ -772,63 +752,8 @@ void applyOpeningMenuAction(FrontendState& frontend,
   }
 
   if (frontend.screen == FrontendScreen::Pause) {
-    if (action == InputAction::MenuUp || action == InputAction::MenuDown) {
-      frontend.selectedAction = nextPauseSelection(frontend.selectedAction, action);
-      frontend.status = "pause_menu_selection_changed";
-      return;
-    }
-    if (action == InputAction::MenuBack) {
-      closeProductOverlayToGameplayTransition(frontend, window);
-      return;
-    }
-    if (action != InputAction::MenuConfirm) {
-      return;
-    }
-    if (frontend.selectedAction == FrontendAction::Resume) {
-      closeProductOverlayToGameplayTransition(frontend, window);
-      return;
-    }
-    if (frontend.selectedAction == FrontendAction::EditRoom) {
-      const ProductRoomEditingStartResult started =
-          startProductRoomAuthoringFromActiveRoom({window.activeRoom});
-      recordProductRoomEditingStart(window, started, "pause_edit_room");
-      frontend.status = started.ok ? "pause_edit_room_requested"
-                                   : "pause_edit_room_failed";
-      if (started.ok) {
-        closeProductOverlayToGameplayTransition(frontend, window);
-      }
-      return;
-    }
-    if (frontend.selectedAction == FrontendAction::Settings) {
-      openProductPauseSettingsTransition(frontend, window, settingsTab);
-      return;
-    }
-    if (frontend.selectedAction == FrontendAction::DevTools) {
-      openProductPauseDevToolsTransition(frontend, window,
-                                         FrontendDevToolsCategory::Session);
-      return;
-    }
-    if (frontend.selectedAction == FrontendAction::Save) {
-      executeProductPauseSaveFlow(ProductPauseSaveFlowKind::Save, options,
-                                  frontend, activeSession, window);
-      return;
-    }
-    if (frontend.selectedAction == FrontendAction::SaveAndExit) {
-      executeProductPauseSaveFlow(ProductPauseSaveFlowKind::SaveAndExit, options,
-                                  frontend, activeSession, window);
-      return;
-    }
-    if (frontend.selectedAction == FrontendAction::ReturnToTitle) {
-      returnProductToTitleTransition(frontend, window);
-      activeSession.reset();
-      return;
-    }
-    if (frontend.selectedAction == FrontendAction::ExitGame) {
-      frontend.status = "pause_exit_game_requested";
-      closeRequested = true;
-      return;
-    }
-    frontend.status = "pause_action_selected";
+    ProductPauseMenuActionContext pauseContext{frontend, options, settingsTab, activeSession, window, closeRequested};
+    (void)applyProductPauseMenuAction(action, pauseContext);
     return;
   }
 
