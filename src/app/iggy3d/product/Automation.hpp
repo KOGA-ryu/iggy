@@ -152,12 +152,20 @@ struct ProductGameplayAxisAutomationResult {
   float value = 0.0F;
 };
 
+struct ProductNonEmptyStringAutomationResult {
+  bool valid = false;
+  std::string_view value = "";
+};
+
 ProductBoolAutomationResult resolveProductAutomationBool(
     std::string_view value);
 
 bool resolveProductAutomationBool(std::string_view value, bool& out);
 
 ProductGameplayAxisAutomationResult resolveProductGameplayAxisAutomation(
+    std::string_view value);
+
+ProductNonEmptyStringAutomationResult resolveProductNonEmptyStringAutomation(
     std::string_view value);
 
 bool resolveProductSaveBrowserBoolAutomation(std::string_view value, bool& out);

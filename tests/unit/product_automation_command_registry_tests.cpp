@@ -213,6 +213,16 @@ int main() {
       iggy3d::resolveProductGameplayAxisAutomation("teleport");
   expect(!gameplayAxisInvalid.valid, "gameplay axis teleport is invalid");
 
+  const iggy3d::ProductNonEmptyStringAutomationResult nonEmptyString =
+      iggy3d::resolveProductNonEmptyStringAutomation("room_1");
+  expect(nonEmptyString.valid, "non-empty string room_1 is valid");
+  expect(nonEmptyString.value == "room_1",
+         "non-empty string room_1 preserves the value");
+
+  const iggy3d::ProductNonEmptyStringAutomationResult emptyString =
+      iggy3d::resolveProductNonEmptyStringAutomation("");
+  expect(!emptyString.valid, "empty string is invalid");
+
   bool saveDeleteBool = false;
   expect(iggy3d::resolveProductSaveBrowserBoolAutomation("yes", saveDeleteBool),
          "save browser bool yes is valid");

@@ -1758,21 +1758,28 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                             productInputOwnerFor(frontend, window), "failed");
       return false;
     }
-    const std::size_t index = productBuiltinDungeonIndexForRoomId(value);
-    if (!applyProductBuiltinDungeonToDraft(index, worldSetupDraft)) {
+    const ProductNonEmptyStringAutomationResult dungeonId =
+        resolveProductNonEmptyStringAutomation(value);
+    const std::size_t index = productBuiltinDungeonIndexForRoomId(dungeonId.value);
+    const auto fail = [&]() -> bool {
       window.automationControlStatus = "invalid_value";
       markAutomationApplied(window, command, "world.dungeon_id",
                             productInputOwnerFor(frontend, window), "failed");
       return false;
-    }
-    recordWorldSetupDraftState(worldSetupDraft, window);
-    window.worldSetupDungeonDraftModified = false;
-    window.worldSetupDungeonDraftEditMode = false;
-    resetDungeonDraftWindowCursor(worldSetupDraft, window);
-    window.worldSetupStatus = "world_setup_dungeon_selected";
-    markAutomationApplied(window, command, "world.dungeon_id",
-                          productInputOwnerFor(frontend, window), "applied");
-    return true;
+    };
+    const auto apply = [&]() -> bool {
+      return applyProductBuiltinDungeonToDraft(index, worldSetupDraft) &&
+             (recordWorldSetupDraftState(worldSetupDraft, window),
+              window.worldSetupDungeonDraftModified = false,
+              window.worldSetupDungeonDraftEditMode = false,
+              resetDungeonDraftWindowCursor(worldSetupDraft, window),
+              window.worldSetupStatus = "world_setup_dungeon_selected",
+              markAutomationApplied(window, command, "world.dungeon_id",
+                                    productInputOwnerFor(frontend, window),
+                                    "applied"),
+              true);
+    };
+    return (dungeonId.valid && apply()) || fail();
   }
 
   if (key == "world.draft_edit_mode" ||
@@ -1920,38 +1927,58 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
 
   if (key == "world.ascii_room_id" ||
       key == "world_setup.ascii_room_id") {
-    if (frontend.childScreen != FrontendScreen::NewWorld || value.empty()) {
-      window.automationControlStatus =
-          value.empty() ? "invalid_value" : "owner_unavailable";
+    if (frontend.childScreen != FrontendScreen::NewWorld) {
+      window.automationControlStatus = "owner_unavailable";
       markAutomationApplied(window, command, "world.ascii_room_id",
                             productInputOwnerFor(frontend, window), "failed");
       return false;
     }
-    worldSetupDraft.asciiRoomEnabled = true;
-    worldSetupDraft.asciiRoomId = std::string(value);
-    recordWorldSetupDraftState(worldSetupDraft, window);
-    window.worldSetupStatus = "world_setup_ascii_room_id_updated";
-    markAutomationApplied(window, command, "world.ascii_room_id",
-                          productInputOwnerFor(frontend, window), "applied");
-    return true;
+    const ProductNonEmptyStringAutomationResult asciiRoomId =
+        resolveProductNonEmptyStringAutomation(value);
+    const auto fail = [&]() -> bool {
+      window.automationControlStatus = "invalid_value";
+      markAutomationApplied(window, command, "world.ascii_room_id",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    };
+    const auto apply = [&]() -> bool {
+      worldSetupDraft.asciiRoomEnabled = true;
+      worldSetupDraft.asciiRoomId = std::string(asciiRoomId.value);
+      recordWorldSetupDraftState(worldSetupDraft, window);
+      window.worldSetupStatus = "world_setup_ascii_room_id_updated";
+      markAutomationApplied(window, command, "world.ascii_room_id",
+                            productInputOwnerFor(frontend, window), "applied");
+      return true;
+    };
+    return (asciiRoomId.valid && apply()) || fail();
   }
 
   if (key == "world.ascii_room_source_name" ||
       key == "world_setup.ascii_room_source_name") {
-    if (frontend.childScreen != FrontendScreen::NewWorld || value.empty()) {
-      window.automationControlStatus =
-          value.empty() ? "invalid_value" : "owner_unavailable";
+    if (frontend.childScreen != FrontendScreen::NewWorld) {
+      window.automationControlStatus = "owner_unavailable";
       markAutomationApplied(window, command, "world.ascii_room_source_name",
                             productInputOwnerFor(frontend, window), "failed");
       return false;
     }
-    worldSetupDraft.asciiRoomEnabled = true;
-    worldSetupDraft.asciiRoomSourceName = std::string(value);
-    recordWorldSetupDraftState(worldSetupDraft, window);
-    window.worldSetupStatus = "world_setup_ascii_room_source_name_updated";
-    markAutomationApplied(window, command, "world.ascii_room_source_name",
-                          productInputOwnerFor(frontend, window), "applied");
-    return true;
+    const ProductNonEmptyStringAutomationResult asciiRoomSourceName =
+        resolveProductNonEmptyStringAutomation(value);
+    const auto fail = [&]() -> bool {
+      window.automationControlStatus = "invalid_value";
+      markAutomationApplied(window, command, "world.ascii_room_source_name",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    };
+    const auto apply = [&]() -> bool {
+      worldSetupDraft.asciiRoomEnabled = true;
+      worldSetupDraft.asciiRoomSourceName = std::string(asciiRoomSourceName.value);
+      recordWorldSetupDraftState(worldSetupDraft, window);
+      window.worldSetupStatus = "world_setup_ascii_room_source_name_updated";
+      markAutomationApplied(window, command, "world.ascii_room_source_name",
+                            productInputOwnerFor(frontend, window), "applied");
+      return true;
+    };
+    return (asciiRoomSourceName.valid && apply()) || fail();
   }
 
   if (key == "world.create" || key == "world_setup.create") {
@@ -1991,26 +2018,36 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (key == "ascii_room.room_id" || key == "frontend.ascii_room_id") {
-    if (value.empty()) {
+    const ProductNonEmptyStringAutomationResult roomId =
+        resolveProductNonEmptyStringAutomation(value);
+    const auto fail = [&]() -> bool {
       window.automationControlStatus = "invalid_value";
       return false;
-    }
-    window.asciiRoomDraftRoomId = std::string(value);
-    markAutomationApplied(window, command, "ascii_room.room_id",
-                          productInputOwnerFor(frontend, window), "applied");
-    return true;
+    };
+    const auto apply = [&]() -> bool {
+      window.asciiRoomDraftRoomId = std::string(roomId.value);
+      markAutomationApplied(window, command, "ascii_room.room_id",
+                            productInputOwnerFor(frontend, window), "applied");
+      return true;
+    };
+    return (roomId.valid && apply()) || fail();
   }
 
   if (key == "ascii_room.source_name" ||
       key == "frontend.ascii_room_source_name") {
-    if (value.empty()) {
+    const ProductNonEmptyStringAutomationResult sourceName =
+        resolveProductNonEmptyStringAutomation(value);
+    const auto fail = [&]() -> bool {
       window.automationControlStatus = "invalid_value";
       return false;
-    }
-    window.asciiRoomDraftSourceName = std::string(value);
-    markAutomationApplied(window, command, "ascii_room.source_name",
-                          productInputOwnerFor(frontend, window), "applied");
-    return true;
+    };
+    const auto apply = [&]() -> bool {
+      window.asciiRoomDraftSourceName = std::string(sourceName.value);
+      markAutomationApplied(window, command, "ascii_room.source_name",
+                            productInputOwnerFor(frontend, window), "applied");
+      return true;
+    };
+    return (sourceName.valid && apply()) || fail();
   }
 
   if (key == "ascii_room.build" || key == "frontend.ascii_room_build") {

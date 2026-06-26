@@ -623,6 +623,14 @@ ProductGameplayAxisAutomationResult resolveProductGameplayAxisAutomation(
   return result;
 }
 
+ProductNonEmptyStringAutomationResult resolveProductNonEmptyStringAutomation(
+    std::string_view value) {
+  ProductNonEmptyStringAutomationResult result;
+  result.valid = !value.empty();
+  result.value = value;
+  return result;
+}
+
 bool resolveProductSaveBrowserBoolAutomation(std::string_view value,
                                              bool& out) {
   struct BoolRow {
