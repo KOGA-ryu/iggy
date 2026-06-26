@@ -22,7 +22,7 @@
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductAsciiRoomActivation.hpp"
 #include "app/iggy3d/ProductAsciiRoomPreview.hpp"
-#include "app/iggy3d/ProductAutomation.hpp"
+#include "app/iggy3d/product/Automation.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/ProductDungeonDraft.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"

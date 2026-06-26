@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductAutomationCommandRegistry.hpp"
+#include "app/iggy3d/product/Automation.hpp"
 
 #include <iostream>
 #include <set>

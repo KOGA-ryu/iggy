@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductAutomation.hpp"
+#include "app/iggy3d/product/Automation.hpp"
 
 #include <algorithm>
 #include <array>
