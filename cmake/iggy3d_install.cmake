@@ -1,9 +1,6 @@
 if(NOT DEFINED IGGY3D_INSTALL_HEADLESS_DEMO)
   option(IGGY3D_INSTALL_HEADLESS_DEMO "Install the headless demo binary" ON)
 endif()
-if(NOT DEFINED IGGY3D_INSTALL_VISUAL_DEMO)
-  option(IGGY3D_INSTALL_VISUAL_DEMO "Install the visual demo binary" OFF)
-endif()
 if(NOT DEFINED IGGY3D_INSTALL_VULKAN_SHADERS)
   option(IGGY3D_INSTALL_VULKAN_SHADERS "Install generated Vulkan shader artifacts" OFF)
 endif()
@@ -20,10 +17,6 @@ endif()
 
 if(TARGET iggy3d_replay_tool AND IGGY3D_INSTALL_HEADLESS_DEMO)
   install(TARGETS iggy3d_replay_tool RUNTIME DESTINATION bin)
-endif()
-
-if(TARGET iggy3d_visual_demo AND IGGY3D_INSTALL_VISUAL_DEMO)
-  install(TARGETS iggy3d_visual_demo RUNTIME DESTINATION bin)
 endif()
 
 if(IGGY3D_INSTALL_VULKAN_SHADERS AND TARGET iggy3d_vulkan_shaders)

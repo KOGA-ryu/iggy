@@ -68,7 +68,7 @@ std::string representative(std::string_view result,
   out << "screenshot_written=" << screenshot << "\n";
   out << "frame_hash_exact=" << frameHash << "\n";
   out << "visible_room_rendered=" << firstRoom << "\n";
-  out << "package_mode=build_tree_visual\n";
+  out << "package_mode=build_tree_product\n";
   out << "unsupported_policy=" << unsupportedPolicy << "\n";
   out << "device_lost_handled=" << deviceLost << "\n";
   out << "runtime_hash_before=46c911b0c2c0419a\n";
@@ -111,7 +111,7 @@ int main() {
       "screenshot_written=true\n"
       "frame_hash_exact=abc123\n"
       "visible_room_rendered=true\n"
-      "package_mode=build_tree_visual\n"
+      "package_mode=build_tree_product\n"
       "unsupported_policy=not_applicable\n"
       "device_lost_handled=true\n"
       "runtime_hash_before=46c911b0c2c0419a\n"
@@ -123,7 +123,7 @@ int main() {
       "screenshot_written=true\n"
       "frame_hash_exact=abc123\n"
       "visible_room_rendered=true\n"
-      "package_mode=build_tree_visual\n"
+      "package_mode=build_tree_product\n"
       "unsupported_policy=not_applicable\n"
       "device_lost_handled=true\n"
       "runtime_hash_before=46c911b0c2c0419a\n"
@@ -143,7 +143,7 @@ int main() {
   std::cout << "screenshot_written=true\n";
   std::cout << "frame_hash_exact=diagnostics_sample_hash\n";
   std::cout << "visible_room_rendered=true\n";
-  std::cout << "package_mode=build_tree_visual\n";
+  std::cout << "package_mode=build_tree_product\n";
   std::cout << "unsupported_policy=not_applicable\n";
   std::cout << "device_lost_handled=true\n";
   std::cout << "runtime_hash_before=46c911b0c2c0419a\n";

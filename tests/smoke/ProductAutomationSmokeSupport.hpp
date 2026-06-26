@@ -178,9 +178,7 @@ inline std::string saveRootArg(const std::filesystem::path& root) {
 }
 
 inline bool productReceipt(const ReceiptFields& fields) {
-  return hasField(fields, "app", "iggy3d") &&
-         !hasField(fields, "app", "iggy3d_visual_demo") &&
-         hasField(fields, "result", "pass");
+  return hasField(fields, "app", "iggy3d") && hasField(fields, "result", "pass");
 }
 
 inline bool automationApplied(const ReceiptFields& fields) {

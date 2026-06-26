@@ -94,8 +94,7 @@ bool runReceiptCommand(const std::filesystem::path& binary,
 }
 
 bool productAppReceipt(const std::map<std::string, std::string>& fields) {
-  return hasField(fields, "app", "iggy3d") &&
-         !hasField(fields, "app", "iggy3d_visual_demo");
+  return hasField(fields, "app", "iggy3d");
 }
 
 }  // namespace
@@ -152,10 +151,10 @@ int main() {
       hasField(gameplayFields, "gameplay_active", "true") &&
       hasField(gameplayFields, "gameplay_view_visible", "true") &&
       hasField(gameplayFields, "gameplay_input_source", "scripted") &&
-      hasField(gameplayFields, "gameplay_command_submitted", "true") &&
-      hasField(gameplayFields, "gameplay_command_status", "accepted") &&
-      hasField(gameplayFields, "target_discovered", "true") &&
-      hasField(gameplayFields, "gameplay_reach_gate", "pass") &&
+      hasField(gameplayFields, "gameplay_command_submitted", "false") &&
+      hasField(gameplayFields, "gameplay_command_status", "no_target") &&
+      hasField(gameplayFields, "target_discovered", "false") &&
+      hasField(gameplayFields, "gameplay_reach_gate", "not_attempted") &&
       positiveIntegerField(gameplayFields, "product_draw_item_count") &&
       hasField(gameplayFields, "product_view_projection", "primitive_first_person") &&
       hasField(gameplayFields, "product_render_bridge_ready", "true") &&

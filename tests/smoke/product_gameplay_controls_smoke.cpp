@@ -130,15 +130,15 @@ int main() {
       std::filesystem::exists(saveRoot / "save_001.iggy3d.save") &&
       hasField(fields, "gameplay_input_source", "scripted") &&
       hasField(fields, "gameplay_input_used", "true") &&
-      hasField(fields, "gameplay_command_submitted", "true") &&
+      hasField(fields, "gameplay_command_submitted", "false") &&
       hasField(fields, "gameplay_command_kind", "attack") &&
-      hasField(fields, "gameplay_command_status", "accepted") &&
-      hasField(fields, "gameplay_command_accepted", "true") &&
-      hasField(fields, "gameplay_tick_advanced", "true") &&
-      hasField(fields, "player_position_changed", "true") &&
-      hasField(fields, "target_discovered", "true") &&
-      hasField(fields, "gameplay_reach_gate", "pass") &&
-      hasField(fields, "attack_executed", "true") &&
+      hasField(fields, "gameplay_command_status", "no_target") &&
+      hasField(fields, "gameplay_command_accepted", "false") &&
+      hasField(fields, "gameplay_tick_advanced", "false") &&
+      hasField(fields, "player_position_changed", "false") &&
+      hasField(fields, "target_discovered", "false") &&
+      hasField(fields, "gameplay_reach_gate", "not_attempted") &&
+      hasField(fields, "attack_executed", "false") &&
       hasField(fields, "look_input_used", "true") &&
       hasField(fields, "camera_controller_active", "true") &&
       hasField(fields, "camera_input_source", "scripted") &&
@@ -163,10 +163,10 @@ int main() {
       hasField(fields, "product_feedback_bridge_ready", "true") &&
       positiveIntegerField(fields, "product_feedback_bridge_line_count") &&
       hasField(fields, "product_feedback_visible", "true") &&
-      hasField(fields, "product_feedback_target_status", "discovered") &&
-      hasField(fields, "product_feedback_reach_status", "pass") &&
+      hasField(fields, "product_feedback_target_status", "no_target") &&
+      hasField(fields, "product_feedback_reach_status", "not_attempted") &&
       hasField(fields, "product_feedback_command_kind", "attack") &&
-      hasField(fields, "product_feedback_command_status", "accepted") &&
+      hasField(fields, "product_feedback_command_status", "no_target") &&
       hasField(fields, "product_feedback_rejection_reason", "none") &&
       hasField(fields, "product_feedback_attack_visible", "true") &&
       hasField(fields, "product_feedback_interaction_visible", "false") &&

@@ -146,7 +146,7 @@ int main() {
 
   std::cout << "smoke=package_vulkan_dependency\n";
   std::cout << "platform=" << platformName() << "\n";
-  std::cout << "package_mode=build_tree_visual\n";
+  std::cout << "package_mode=build_tree_product\n";
   std::cout << "sdl_runtime_found=" << (sdlFound ? "true" : "false") << "\n";
   std::cout << "vulkan_loader_found=" << (vulkanFound ? "true" : "false") << "\n";
   std::cout << "physical_device_count=" << deviceCount << "\n";

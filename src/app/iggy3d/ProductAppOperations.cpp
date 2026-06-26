@@ -56,7 +56,7 @@ std::filesystem::path defaultProductPackagePath(const ProductAppOptions& options
   }
 
   PackageLookupConfig lookupConfig;
-  lookupConfig.packageMode = PackageMode::BuildTreeVisual;
+  lookupConfig.packageMode = PackageMode::BuildTreeProduct;
   lookupConfig.requireGraphicsRuntime = false;
   lookupConfig.requireShaderRoot = false;
   const PackageLookupResult lookup = resolvePackageRuntimeLookup(lookupConfig);

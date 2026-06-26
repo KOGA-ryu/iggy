@@ -227,18 +227,6 @@ if(IGGY3D_BUILD_TOOLS)
   iggy3d_apply_warnings(iggy3d_collision_probe)
 endif()
 
-if(IGGY3D_BUILD_TOOLS OR IGGY3D_ENABLE_VISUAL_DEMO)
-  add_executable(iggy3d_visual_demo apps/iggy3d_visual_demo/main.cpp)
-  target_link_libraries(iggy3d_visual_demo PRIVATE iggy3d)
-  target_compile_definitions(iggy3d_visual_demo
-    PRIVATE
-      IGGY3D_VULKAN_ICD_FOUND_VALUE=$<BOOL:${IGGY3D_VULKAN_ICD_FOUND}>)
-  if(IGGY3D_BUILD_VULKAN_BACKEND AND IGGY3D_HAS_SDL3_TARGET)
-    target_compile_definitions(iggy3d_visual_demo PRIVATE IGGY3D_APP_VULKAN_BACKEND=1)
-  endif()
-  iggy3d_apply_warnings(iggy3d_visual_demo)
-endif()
-
 include(cmake/iggy3d_install.cmake)
 
 if(IGGY3D_BUILD_TESTS)

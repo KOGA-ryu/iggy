@@ -11,8 +11,8 @@ namespace iggy3d {
 
 enum class PackageMode : std::uint8_t {
   Headless,
-  BuildTreeVisual,
-  InstalledVisual,
+  BuildTreeProduct,
+  InstalledProduct,
 };
 
 struct PackageLookupConfig {

@@ -362,7 +362,7 @@ FrameInput makeProductVulkanFrame(const SceneProjectionResult& scene,
 
 RendererConfig makeProductVulkanRendererConfig() {
   PackageLookupConfig lookupConfig;
-  lookupConfig.packageMode = PackageMode::BuildTreeVisual;
+  lookupConfig.packageMode = PackageMode::BuildTreeProduct;
   lookupConfig.requireShaderRoot = true;
   lookupConfig.requireGraphicsRuntime = true;
   const PackageLookupResult lookup = resolvePackageRuntimeLookup(lookupConfig);

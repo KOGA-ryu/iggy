@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
   }
 
   iggy3d::PackageLookupConfig config;
-  config.packageMode = iggy3d::PackageMode::BuildTreeVisual;
+  config.packageMode = iggy3d::PackageMode::BuildTreeProduct;
   config.shaderRootOverride = root;
   config.requireShaderRoot = true;
   config.requireGraphicsRuntime = false;
@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
   const iggy3d::PackageLookupResult lookup = iggy3d::resolvePackageRuntimeLookup(config);
   if (lookup.outcome != iggy3d::RenderOutcome::Ok) {
     std::cout << "smoke=package_shader_lookup\n";
-    std::cout << "package_mode=build_tree_visual\n";
+    std::cout << "package_mode=build_tree_product\n";
     std::cout << "shader_root=" << root.string() << "\n";
     std::cout << "shader_root_source=override\n";
     std::cout << "shader_artifact_count=0\n";

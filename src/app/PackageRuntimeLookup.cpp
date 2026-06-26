@@ -129,13 +129,13 @@ std::vector<PathCandidate> resourceCandidates(const PackageLookupConfig& config,
   addCandidate(candidates, lookup.executableDir / "resources", "executable_relative");
   addCandidate(candidates, lookup.executableDir.parent_path() / "share" / "iggy3d",
                "install_prefix");
-  if (config.packageMode == PackageMode::BuildTreeVisual) {
+  if (config.packageMode == PackageMode::BuildTreeProduct) {
     addCandidate(candidates, lookup.executableDir / "fixtures", "build_tree");
     addCandidate(candidates, lookup.executableDir.parent_path() / "fixtures", "build_tree");
     addCandidate(candidates, lookup.executableDir.parent_path().parent_path() / "fixtures",
                  "build_tree");
   }
-  if (config.packageMode == PackageMode::InstalledVisual) {
+  if (config.packageMode == PackageMode::InstalledProduct) {
     addCandidate(candidates, lookup.executableDir.parent_path() / "Resources", "bundle");
     addCandidate(candidates, lookup.executableDir.parent_path().parent_path() / "Resources",
                  "bundle");
@@ -156,7 +156,7 @@ std::vector<PathCandidate> shaderCandidates(const PackageLookupConfig& config,
   if (!lookup.resourceRoot.empty()) {
     addCandidate(candidates, lookup.resourceRoot / "shaders" / "vulkan", "resource_root");
   }
-  if (config.packageMode == PackageMode::BuildTreeVisual) {
+  if (config.packageMode == PackageMode::BuildTreeProduct) {
     addCandidate(candidates, lookup.executableDir / "generated" / "shaders" / "vulkan",
                  "build_tree");
     addCandidate(candidates, lookup.executableDir.parent_path() / "generated" / "shaders" /
@@ -171,7 +171,7 @@ std::vector<PathCandidate> diagnosticsCandidates(const PackageLookupConfig& conf
   std::vector<PathCandidate> candidates;
   addCandidate(candidates, config.diagnosticsDirOverride, "override");
   addCandidate(candidates, envPath("IGGY3D_DIAGNOSTICS_DIR"), "environment");
-  if (config.packageMode == PackageMode::BuildTreeVisual) {
+  if (config.packageMode == PackageMode::BuildTreeProduct) {
     addCandidate(candidates, lookup.executableDir / "artifacts" / "render_diagnostics",
                  "build_tree");
   }
@@ -229,10 +229,10 @@ std::string_view packageModeName(PackageMode mode) {
   switch (mode) {
     case PackageMode::Headless:
       return "headless";
-    case PackageMode::BuildTreeVisual:
-      return "build_tree_visual";
-    case PackageMode::InstalledVisual:
-      return "installed_visual";
+    case PackageMode::BuildTreeProduct:
+      return "build_tree_product";
+    case PackageMode::InstalledProduct:
+      return "installed_product";
   }
   return "headless";
 }
@@ -272,7 +272,7 @@ PackageLookupResult resolvePackageRuntimeLookup(const PackageLookupConfig& confi
     if (isCurrentWorkingDirectory(lookup.resourceRoot)) {
       return makeFailure(lookup, RenderOutcome::Unsupported, "package_lookup_cwd_forbidden");
     }
-    if (config.requireGraphicsRuntime || config.packageMode == PackageMode::InstalledVisual ||
+    if (config.requireGraphicsRuntime || config.packageMode == PackageMode::InstalledProduct ||
         !config.resourceRootOverride.empty()) {
       return makeFailure(lookup, RenderOutcome::Unsupported,
                          "package_lookup_resource_root_missing");

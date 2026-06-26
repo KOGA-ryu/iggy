@@ -40,7 +40,7 @@ void touchFile(const std::filesystem::path& path) {
 
 iggy3d::PackageLookupConfig baseConfig(const std::filesystem::path& executable) {
   iggy3d::PackageLookupConfig config;
-  config.packageMode = iggy3d::PackageMode::BuildTreeVisual;
+  config.packageMode = iggy3d::PackageMode::BuildTreeProduct;
   config.executablePathOverride = executable;
   return config;
 }
@@ -48,7 +48,7 @@ iggy3d::PackageLookupConfig baseConfig(const std::filesystem::path& executable) 
 bool buildTreeRootsResolve() {
   const std::filesystem::path root = processTempRoot() / "build_tree";
   std::filesystem::remove_all(root);
-  const std::filesystem::path executable = root / "build" / "iggy3d_visual_demo";
+  const std::filesystem::path executable = root / "build" / "iggy3d";
   const std::filesystem::path resourceRoot = root / "fixtures";
   const std::filesystem::path shaderRoot = root / "build" / "generated" / "shaders" / "vulkan";
   touchFile(executable);
@@ -71,14 +71,14 @@ bool buildTreeRootsResolve() {
 bool installedLayoutsResolve() {
   const std::filesystem::path root = processTempRoot() / "installed";
   std::filesystem::remove_all(root);
-  const std::filesystem::path executable = root / "bin" / "iggy3d_visual_demo";
+  const std::filesystem::path executable = root / "bin" / "iggy3d";
   const std::filesystem::path shareRoot = root / "share" / "iggy3d";
   const std::filesystem::path shaderRoot = shareRoot / "shaders" / "vulkan";
   touchFile(executable);
   std::filesystem::create_directories(shaderRoot);
 
   iggy3d::PackageLookupConfig config;
-  config.packageMode = iggy3d::PackageMode::InstalledVisual;
+  config.packageMode = iggy3d::PackageMode::InstalledProduct;
   config.executablePathOverride = executable;
   config.requireShaderRoot = true;
   config.requireGraphicsRuntime = true;
@@ -91,7 +91,7 @@ bool installedLayoutsResolve() {
 bool explicitShaderRootMissingFails() {
   const std::filesystem::path root = processTempRoot() / "missing_shader";
   std::filesystem::remove_all(root);
-  const std::filesystem::path executable = root / "build" / "iggy3d_visual_demo";
+  const std::filesystem::path executable = root / "build" / "iggy3d";
   touchFile(executable);
   std::filesystem::create_directories(root / "fixtures");
 
@@ -107,7 +107,7 @@ bool explicitShaderRootMissingFails() {
 bool diagnosticsDirectoryPolicyWorks() {
   const std::filesystem::path root = processTempRoot() / "diagnostics";
   std::filesystem::remove_all(root);
-  const std::filesystem::path executable = root / "build" / "iggy3d_visual_demo";
+  const std::filesystem::path executable = root / "build" / "iggy3d";
   const std::filesystem::path diagnostics = root / "diagnostics_out";
   touchFile(executable);
   std::filesystem::create_directories(root / "fixtures");
@@ -134,7 +134,7 @@ bool diagnosticsDirectoryPolicyWorks() {
 bool currentWorkingDirectoryIsIgnored() {
   const std::filesystem::path root = processTempRoot() / "cwd";
   std::filesystem::remove_all(root);
-  const std::filesystem::path executable = root / "build" / "iggy3d_visual_demo";
+  const std::filesystem::path executable = root / "build" / "iggy3d";
   const std::filesystem::path cwdResource = root / "cwd" / "resources";
   touchFile(executable);
   std::filesystem::create_directories(cwdResource);
@@ -144,7 +144,7 @@ bool currentWorkingDirectoryIsIgnored() {
   std::filesystem::current_path(cwdResource, error);
 
   iggy3d::PackageLookupConfig config;
-  config.packageMode = iggy3d::PackageMode::InstalledVisual;
+  config.packageMode = iggy3d::PackageMode::InstalledProduct;
   config.executablePathOverride = executable;
   config.requireGraphicsRuntime = true;
   const iggy3d::PackageLookupResult result = iggy3d::resolvePackageRuntimeLookup(config);
@@ -171,11 +171,11 @@ bool headlessModeAllowsMissingShaderRoot() {
 bool requiredGraphicsRuntimeFailsMissingResourceRoot() {
   const std::filesystem::path root = processTempRoot() / "missing_resource";
   std::filesystem::remove_all(root);
-  const std::filesystem::path executable = root / "bin" / "iggy3d_visual_demo";
+  const std::filesystem::path executable = root / "bin" / "iggy3d";
   touchFile(executable);
 
   iggy3d::PackageLookupConfig config;
-  config.packageMode = iggy3d::PackageMode::BuildTreeVisual;
+  config.packageMode = iggy3d::PackageMode::BuildTreeProduct;
   config.executablePathOverride = executable;
   config.requireGraphicsRuntime = true;
   const iggy3d::PackageLookupResult result = iggy3d::resolvePackageRuntimeLookup(config);

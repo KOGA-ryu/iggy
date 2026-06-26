@@ -131,7 +131,7 @@ int main() {
 
   iggy3d::Result<iggy3d::Session> sessionResult = loadFirstRoomSession();
   if (sessionResult.status != iggy3d::ResultStatus::Ok) {
-    return printReceipt(baseReceipt("fail", "visual_demo_package_lookup_failed"), 1);
+    return printReceipt(baseReceipt("fail", "product_package_lookup_failed"), 1);
   }
   iggy3d::Session session = std::move(sessionResult.value);
   const iggy3d::StateHashValue hashBefore = iggy3d::computeStateHash(session.state());
