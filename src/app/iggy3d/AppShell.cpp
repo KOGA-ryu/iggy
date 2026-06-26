@@ -20,6 +20,7 @@
 #include "app/iggy3d/ProductAsciiRoomActivation.hpp"
 #include "app/iggy3d/ProductAsciiRoomPreview.hpp"
 #include "app/iggy3d/product/Automation.hpp"
+#include "app/iggy3d/product/AutomationGameplay.hpp"
 #include "app/iggy3d/product/AutomationRoomEditing.hpp"
 #include "app/iggy3d/product/AutomationSaveBrowser.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
@@ -1116,69 +1117,6 @@ bool routeAutomationInput(FrontendState& frontend,
   return window.lastInputAccepted || action == InputAction::None;
 }
 
-bool applyAutomationGameplayAxis(InputAction action,
-                                 float value,
-                                 FrontendState& frontend,
-                                 std::optional<Session>& activeSession,
-                                 ProductAppWindowState& window) {
-  if (frontend.screen != FrontendScreen::Gameplay || !window.gameplayActive ||
-      !activeSession.has_value()) {
-    window.automationControlStatus = "owner_unavailable";
-    return false;
-  }
-
-  ActionState actions;
-  recordAction(actions, action, true, false, false, value);
-
-  InputRoutingContext routingContext;
-  routingContext.owners.gameplay = true;
-  const InputRoutingResult routed = routeInputAction(routingContext, action);
-  window.inputOwner = routed.owner;
-  window.lastInputAction = routed.action;
-  window.lastInputAccepted = routed.accepted;
-  window.gameplayInputSuppressed = routed.gameplaySuppressed;
-  if (!routed.accepted) {
-    return false;
-  }
-
-  applyProductGameplayActions(
-      *activeSession, actions, window, "automation",
-      productActiveRoomCollisionSurfaces(window.activeRoomCollision));
-  return window.gameplayCommandSubmitted && window.gameplayCommandAccepted &&
-         window.gameplayTickAdvanced;
-}
-
-bool applyAutomationGameplayButton(InputAction action,
-                                   FrontendState& frontend,
-                                   std::optional<Session>& activeSession,
-                                   ProductAppWindowState& window) {
-  if (frontend.screen != FrontendScreen::Gameplay || !window.gameplayActive ||
-      !activeSession.has_value()) {
-    window.automationControlStatus = "owner_unavailable";
-    return false;
-  }
-
-  ActionState actions;
-  recordAction(actions, action, true, true, false, 1.0F);
-
-  InputRoutingContext routingContext;
-  routingContext.owners.gameplay = true;
-  const InputRoutingResult routed = routeInputAction(routingContext, action);
-  window.inputOwner = routed.owner;
-  window.lastInputAction = routed.action;
-  window.lastInputAccepted = routed.accepted;
-  window.gameplayInputSuppressed = routed.gameplaySuppressed;
-  if (!routed.accepted) {
-    return false;
-  }
-
-  applyProductGameplayActions(
-      *activeSession, actions, window, "automation",
-      productActiveRoomCollisionSurfaces(window.activeRoomCollision));
-  return window.gameplayCommandSubmitted && window.gameplayCommandAccepted &&
-         window.gameplayTickAdvanced;
-}
-
 bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                                    FrontendState& frontend,
                                    const ProductSaveBridgeResult& saves,
@@ -1294,61 +1232,17 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return roomEditingExecution.accepted;
   }
 
-  static constexpr std::array gameplayAxisRows{
-      std::pair{std::string_view{"game.move_x"}, InputAction::PlayerMoveX},
-      std::pair{std::string_view{"game.move_y"}, InputAction::PlayerMoveY},
-  };
-  const auto gameplayAxis = std::find_if(
-      gameplayAxisRows.begin(), gameplayAxisRows.end(),
-      [canonicalKey](const auto& row) {
-        return row.first == canonicalKey;
-      });
-  if (gameplayAxis != gameplayAxisRows.end()) {
-    const ProductGameplayAxisAutomationResult axisResult =
-        resolveProductGameplayAxisAutomation(value);
-    if (!axisResult.valid) {
-      window.automationControlStatus = "invalid_value";
-      return false;
-    }
-    const InputAction action = gameplayAxis->second;
-    const bool moved = applyAutomationGameplayAxis(action, axisResult.value, frontend,
-                                                   activeSession, window);
-    markAutomationApplied(window,
-                          command,
-                          inputActionName(action),
-                          productInputOwnerFor(frontend, window),
-                          moved ? "applied" : "failed");
-    return moved;
-  }
-
-  static constexpr std::array gameplayButtonRows{
-      std::pair{std::string_view{"game.attack"}, InputAction::PlayerAttack},
-      std::pair{std::string_view{"game.interact"}, InputAction::PlayerInteract},
-  };
-  const auto gameplayButton = std::find_if(
-      gameplayButtonRows.begin(), gameplayButtonRows.end(),
-      [canonicalKey](const auto& row) {
-        return row.first == canonicalKey;
-      });
-  if (gameplayButton != gameplayButtonRows.end()) {
-    if (!resolveProductAutomationBool(value, boolValue)) {
-      window.automationControlStatus = "invalid_value";
-      return false;
-    }
-    const InputAction action = gameplayButton->second;
-    if (!boolValue) {
-      markAutomationApplied(window, command, inputActionName(action),
-                            productInputOwnerFor(frontend, window), "ignored");
-      return true;
-    }
-    const bool executed =
-        applyAutomationGameplayButton(action, frontend, activeSession, window);
-    markAutomationApplied(window,
-                          command,
-                          inputActionName(action),
-                          productInputOwnerFor(frontend, window),
-                          executed ? "applied" : "failed");
-    return executed;
+  ProductAutomationGameplayContext gameplayExecutionContext{
+      frontend, window,
+      // branch-gate: BG-1011
+      activeSession.has_value() ? &*activeSession : nullptr,
+      [&frontend, &window]() { return productInputOwnerFor(frontend, window); }};
+  const ProductAutomationExecutionResult gameplayExecution =
+      applyProductGameplayAutomationCommand(command, automationSpec,
+                                            gameplayExecutionContext);
+  // branch-gate: BG-1011
+  if (gameplayExecution.handled) {
+    return gameplayExecution.accepted;
   }
 
   ProductAutomationSaveBrowserContext saveBrowserExecutionContext{

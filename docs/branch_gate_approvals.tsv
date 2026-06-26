@@ -8,3 +8,5 @@ BG-1006	src/app/iggy3d/product/AutomationRoomEditing.cpp	room editing automation
 BG-1007	src/app/iggy3d/AppShell.cpp	room editing automation execution delegation seam	codex	2026-06-26
 BG-1008	src/app/iggy3d/product/AutomationSaveBrowser.cpp	save browser automation execution extraction from AppShell	codex	2026-06-26
 BG-1009	src/app/iggy3d/AppShell.cpp	save browser automation execution delegation seam	codex	2026-06-26
+BG-1010	src/app/iggy3d/product/AutomationGameplay.cpp	gameplay automation execution extraction from AppShell	codex	2026-06-26
+BG-1011	src/app/iggy3d/AppShell.cpp	gameplay automation execution delegation seam	codex	2026-06-26

@@ -68,6 +68,10 @@ enum class ProductAutomationCommandId : std::uint8_t {
   SaveShowDeleted,
   SaveDeletedSelect,
   SaveRecover,
+  GameplayMoveX,
+  GameplayMoveY,
+  GameplayAttack,
+  GameplayInteract,
   Unknown,
 };
 

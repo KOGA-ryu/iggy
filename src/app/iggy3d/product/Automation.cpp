@@ -84,6 +84,10 @@ std::string_view productAutomationCommandIdName(
       std::string_view{"save.show_deleted"},
       std::string_view{"save.deleted_select"},
       std::string_view{"save.recover"},
+      std::string_view{"game.move_x"},
+      std::string_view{"game.move_y"},
+      std::string_view{"game.attack"},
+      std::string_view{"game.interact"},
       std::string_view{"unknown"},
   };
   return names[static_cast<std::size_t>(commandId)];
@@ -558,6 +562,18 @@ const ProductAutomationCommandDispatchSpec& findProductAutomationCommandDispatch
       ProductAutomationCommandDispatchSpec{
           true, "save.recover", Id::SaveRecover, Category::DeletedSaveBrowser,
           Value::Bool, InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          true, "game.move_x", Id::GameplayMoveX, Category::GameplayInput,
+          Value::Float, InputAction::PlayerMoveX},
+      ProductAutomationCommandDispatchSpec{
+          true, "game.move_y", Id::GameplayMoveY, Category::GameplayInput,
+          Value::Float, InputAction::PlayerMoveY},
+      ProductAutomationCommandDispatchSpec{
+          true, "game.attack", Id::GameplayAttack, Category::GameplayInput,
+          Value::Bool, InputAction::PlayerAttack},
+      ProductAutomationCommandDispatchSpec{
+          true, "game.interact", Id::GameplayInteract, Category::GameplayInput,
+          Value::Bool, InputAction::PlayerInteract},
       ProductAutomationCommandDispatchSpec{
           true, "room_edit.start", Id::RoomEditStart, Category::RoomEdit, Value::Bool,
           InputAction::None},
