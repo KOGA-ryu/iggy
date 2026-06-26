@@ -1787,20 +1787,21 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (automationSpec.commandId == ProductAutomationCommandId::MenuShortcut) {
-    if (!parseAutomationBool(value, boolValue)) {
+    const ProductMenuShortcutAutomationResult shortcut =
+        resolveProductMenuShortcutAutomation(automationSpec, value);
+    if (!shortcut.valid) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
-    if (!boolValue) {
+    if (!shortcut.routeRequested) {
       markAutomationApplied(window, command, "none", productInputOwnerFor(frontend, window),
                             "ignored");
       return true;
     }
-    inputAction = automationSpec.inputAction;
     const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
                                             activeSession, worldSetupDraft, window,
-                                            inputAction, closeRequested);
-    markAutomationApplied(window, command, inputActionName(inputAction),
+                                            shortcut.inputAction, closeRequested);
+    markAutomationApplied(window, command, inputActionName(shortcut.inputAction),
                           window.automationControlLastOwner,
                           routed ? "applied" : "ignored");
     return routed;

@@ -106,6 +106,12 @@ struct ProductAutomationCommandDispatchResult {
   ProductAutomationCommandDispatchSpec spec;
 };
 
+struct ProductMenuShortcutAutomationResult {
+  bool valid = false;
+  bool routeRequested = false;
+  InputAction inputAction = InputAction::None;
+};
+
 std::string_view productAutomationCommandCategoryName(
     ProductAutomationCommandCategory category);
 
@@ -130,6 +136,10 @@ const ProductAutomationCommandDispatchSpec& findProductAutomationCommandDispatch
 
 ProductAutomationCommandDispatchResult resolveProductAutomationCommandDispatch(
     ProductAutomationCommandDispatchRequest request);
+
+ProductMenuShortcutAutomationResult resolveProductMenuShortcutAutomation(
+    const ProductAutomationCommandDispatchSpec& spec,
+    std::string_view value);
 
 struct ProductRoomEditorCursorResult;
 struct ProductRoomEditorActionResult;

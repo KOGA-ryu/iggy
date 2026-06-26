@@ -334,6 +334,47 @@ ProductAutomationCommandDispatchResult resolveProductAutomationCommandDispatch(
   return result;
 }
 
+ProductMenuShortcutAutomationResult resolveProductMenuShortcutAutomation(
+    const ProductAutomationCommandDispatchSpec& spec,
+    std::string_view value) {
+  struct MenuShortcutBoolRow {
+    std::string_view name;
+    bool value;
+  };
+  static constexpr std::array rows{
+      MenuShortcutBoolRow{"true", true},
+      MenuShortcutBoolRow{"1", true},
+      MenuShortcutBoolRow{"yes", true},
+      MenuShortcutBoolRow{"false", false},
+      MenuShortcutBoolRow{"0", false},
+      MenuShortcutBoolRow{"no", false},
+  };
+  static constexpr std::array lookup{
+      MenuShortcutBoolRow{"true", true},
+      MenuShortcutBoolRow{"1", true},
+      MenuShortcutBoolRow{"yes", true},
+      MenuShortcutBoolRow{"false", false},
+      MenuShortcutBoolRow{"0", false},
+      MenuShortcutBoolRow{"no", false},
+      MenuShortcutBoolRow{"unknown", false},
+  };
+  const auto row = std::find_if(
+      rows.begin(), rows.end(), [value](const MenuShortcutBoolRow& candidate) {
+        return candidate.name == value;
+      });
+  const std::size_t rowIndex =
+      static_cast<std::size_t>(std::distance(rows.begin(), row));
+  const std::size_t selectedIndex =
+      std::min(rowIndex, lookup.size() - 1U);
+  const MenuShortcutBoolRow& parsed = lookup[selectedIndex];
+
+  ProductMenuShortcutAutomationResult result;
+  result.valid = rowIndex != rows.size();
+  result.routeRequested = result.valid && parsed.value;
+  result.inputAction = spec.inputAction;
+  return result;
+}
+
 ProductRoomEditorCursorResult applyProductRoomEditorMoveAutomation(
     ProductRoomEditorCursorState state,
     ProductRoomEditorDirection direction) {
