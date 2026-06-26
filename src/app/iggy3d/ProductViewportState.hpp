@@ -45,6 +45,17 @@ struct ProductViewportState {
   std::uint64_t productViewFrameTargetItemCount = 0;
   bool productFeedbackBridgeReady = false;
   std::uint64_t productFeedbackBridgeLineCount = 0;
+  bool productVulkanRoomMeshCpuReady = false;
+  bool productVulkanRoomMeshBackendPresented = false;
+  std::string productVulkanRoomMeshSource = "none";
+  std::string productVulkanRoomAssetId = "none";
+  bool productVulkanRoomFloorVisible = false;
+  bool productVulkanRoomWallVisible = false;
+  std::uint64_t productVulkanRoomSourceMeshCount = 0;
+  std::uint64_t productVulkanRoomVertexCount = 0;
+  std::uint64_t productVulkanRoomIndexCount = 0;
+  std::uint64_t productVulkanRoomDrawCount = 0;
+  std::uint64_t productVulkanRoomGeometrySignature = 0;
 };
 
 }  // namespace iggy3d

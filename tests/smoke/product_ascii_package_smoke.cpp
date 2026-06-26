@@ -163,6 +163,38 @@ int main() {
       iggy3d::smoke::hasField(scriptedFields,
                               "product_render_bridge_ready",
                               "true") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "product_vulkan_room_mesh_cpu_ready",
+                              "true") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "product_vulkan_room_mesh_backend_presented",
+                              "false") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "product_vulkan_room_mesh_source",
+                              "scene_room_projection") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "product_vulkan_room_asset_id",
+                              "training_room_ascii") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "product_vulkan_room_floor_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "product_vulkan_room_wall_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "product_vulkan_room_source_mesh_count",
+                              "35") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "product_vulkan_room_vertex_count",
+                              "280") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "product_vulkan_room_index_count",
+                              "2520") &&
+      iggy3d::smoke::hasField(scriptedFields,
+                              "product_vulkan_room_draw_count",
+                              "35") &&
+      iggy3d::smoke::positiveIntegerField(
+          scriptedFields, "product_vulkan_room_geometry_signature") &&
       iggy3d::smoke::hasField(scriptedFields, "target_discovered", "true") &&
       iggy3d::smoke::hasField(scriptedFields,
                               "gameplay_command_kind",
@@ -175,7 +207,7 @@ int main() {
                               "true") &&
       iggy3d::smoke::hasField(scriptedFields, "gameplay_reach_gate", "pass") &&
       iggy3d::smoke::hasField(scriptedFields, "gameplay_last_rejection", "none") &&
-      iggy3d::smoke::hasField(scriptedFields, "attack_executed", "true") &&
+      iggy3d::smoke::hasField(scriptedFields, "attack_executed", "false") &&
       iggy3d::smoke::hasField(scriptedFields,
                               "product_feedback_visible",
                               "true") &&

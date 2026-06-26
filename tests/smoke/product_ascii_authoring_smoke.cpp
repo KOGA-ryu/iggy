@@ -365,6 +365,38 @@ bool activatedAsciiRoom(const iggy3d::smoke::ReceiptFields& fields) {
          iggy3d::smoke::hasField(fields,
                                  "product_draw_wall_tile_count",
                                  "20") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_vulkan_room_mesh_cpu_ready",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_vulkan_room_mesh_backend_presented",
+                                 "false") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_vulkan_room_mesh_source",
+                                 "scene_room_projection") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_vulkan_room_asset_id",
+                                 "automation_activation_room") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_vulkan_room_floor_visible",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_vulkan_room_wall_visible",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_vulkan_room_source_mesh_count",
+                                 "35") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_vulkan_room_vertex_count",
+                                 "280") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_vulkan_room_index_count",
+                                 "2520") &&
+         iggy3d::smoke::hasField(fields,
+                                 "product_vulkan_room_draw_count",
+                                 "35") &&
+         iggy3d::smoke::positiveIntegerField(
+             fields, "product_vulkan_room_geometry_signature") &&
          iggy3d::smoke::positiveIntegerField(fields, "runtime_state_hash");
 }
 

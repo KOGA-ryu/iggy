@@ -42,6 +42,7 @@
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/RenderDiagnostics.hpp"
+#include "render/vulkan/BufferImageResources.hpp"
 #include "runtime/ai/NpcBehaviorDebugSnapshot.hpp"
 #include "runtime/ai/NpcBehaviorProfile.hpp"
 #include "runtime/session/Session.hpp"
@@ -135,6 +136,47 @@ void copyNpcBehaviorDebugHud(ProductAppWindowState& window,
       npcBehaviorHudHasUnresolvedProfile(hud);
 }
 
+void clearProductVulkanRoomMeshProof(ProductViewportState& viewport) {
+  viewport.productVulkanRoomMeshCpuReady = false;
+  viewport.productVulkanRoomMeshBackendPresented = false;
+  viewport.productVulkanRoomMeshSource = "none";
+  viewport.productVulkanRoomAssetId = "none";
+  viewport.productVulkanRoomFloorVisible = false;
+  viewport.productVulkanRoomWallVisible = false;
+  viewport.productVulkanRoomSourceMeshCount = 0;
+  viewport.productVulkanRoomVertexCount = 0;
+  viewport.productVulkanRoomIndexCount = 0;
+  viewport.productVulkanRoomDrawCount = 0;
+  viewport.productVulkanRoomGeometrySignature = 0;
+}
+
+void applyProductVulkanRoomMeshProof(ProductViewportState& viewport,
+                                     const SceneRoomProjection& room) {
+  clearProductVulkanRoomMeshProof(viewport);
+  if (!room.loaded || room.meshes.empty()) {
+    return;
+  }
+  const vulkan::RoomMeshCpuGeometry geometry =
+      vulkan::buildRoomMeshCpuGeometry(room);
+  viewport.productVulkanRoomMeshCpuReady = geometry.ready;
+  viewport.productVulkanRoomMeshBackendPresented = false;
+  viewport.productVulkanRoomMeshSource = "scene_room_projection";
+  viewport.productVulkanRoomAssetId =
+      geometry.sourceRoomAssetId.empty() ? "none" : geometry.sourceRoomAssetId;
+  viewport.productVulkanRoomFloorVisible = room.floorVisible;
+  viewport.productVulkanRoomWallVisible = room.wallVisible;
+  viewport.productVulkanRoomSourceMeshCount =
+      static_cast<std::uint64_t>(geometry.sourceRoomStaticMeshCount);
+  viewport.productVulkanRoomVertexCount =
+      static_cast<std::uint64_t>(geometry.vertices.size());
+  viewport.productVulkanRoomIndexCount =
+      static_cast<std::uint64_t>(geometry.indices.size());
+  viewport.productVulkanRoomDrawCount =
+      static_cast<std::uint64_t>(geometry.indexedDraws.size());
+  viewport.productVulkanRoomGeometrySignature =
+      geometry.sourceRoomGeometrySignature;
+}
+
 void applyGameplayProjectionMetrics(ProductAppWindowState& window,
                                     const SceneProjectionResult* scene,
                                     const DebugProjectionResult* debug,
@@ -174,6 +216,7 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productViewFrameTargetItemCount = 0;
     window.viewport.productFeedbackBridgeReady = false;
     window.viewport.productFeedbackBridgeLineCount = 0;
+    clearProductVulkanRoomMeshProof(window.viewport);
     window.sceneItemCount = 0;
     window.debugItemCount = 0;
     window.playerVisible = false;
@@ -193,6 +236,7 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
       scene->pickupCount > 0 || scene->interactableCount > 0 || scene->markerCount > 0 ||
       scene->room.loaded;
   window.rendererMutatedRuntime = false;
+  applyProductVulkanRoomMeshProof(window.viewport, scene->room);
   if (drawList != nullptr) {
     window.viewport.productDrawGridVisible = drawList->gridVisible;
     window.viewport.productDrawPlayerVisible = drawList->playerVisible;

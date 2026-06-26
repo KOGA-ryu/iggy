@@ -731,6 +731,28 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.viewport.productFeedbackBridgeReady);
   appendReceiptField(receipt, "product_feedback_bridge_line_count",
                      window.viewport.productFeedbackBridgeLineCount);
+  appendReceiptField(receipt, "product_vulkan_room_mesh_cpu_ready",
+                     window.viewport.productVulkanRoomMeshCpuReady);
+  appendReceiptField(receipt, "product_vulkan_room_mesh_backend_presented",
+                     window.viewport.productVulkanRoomMeshBackendPresented);
+  appendReceiptField(receipt, "product_vulkan_room_mesh_source",
+                     window.viewport.productVulkanRoomMeshSource);
+  appendReceiptField(receipt, "product_vulkan_room_asset_id",
+                     window.viewport.productVulkanRoomAssetId);
+  appendReceiptField(receipt, "product_vulkan_room_floor_visible",
+                     window.viewport.productVulkanRoomFloorVisible);
+  appendReceiptField(receipt, "product_vulkan_room_wall_visible",
+                     window.viewport.productVulkanRoomWallVisible);
+  appendReceiptField(receipt, "product_vulkan_room_source_mesh_count",
+                     window.viewport.productVulkanRoomSourceMeshCount);
+  appendReceiptField(receipt, "product_vulkan_room_vertex_count",
+                     window.viewport.productVulkanRoomVertexCount);
+  appendReceiptField(receipt, "product_vulkan_room_index_count",
+                     window.viewport.productVulkanRoomIndexCount);
+  appendReceiptField(receipt, "product_vulkan_room_draw_count",
+                     window.viewport.productVulkanRoomDrawCount);
+  appendReceiptField(receipt, "product_vulkan_room_geometry_signature",
+                     window.viewport.productVulkanRoomGeometrySignature);
   appendReceiptField(receipt, "product_feedback_visible", feedback.visible);
   appendReceiptField(receipt, "product_feedback_target_status",
                      feedback.targetStatus);
