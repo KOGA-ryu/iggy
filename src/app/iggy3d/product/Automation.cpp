@@ -95,6 +95,7 @@ std::string_view productAutomationCommandIdName(
       std::string_view{"frontend.return_to_title"},
       std::string_view{"system.pause"},
       std::string_view{"system.quit"},
+      std::string_view{"world.create"},
       std::string_view{"unknown"},
   };
   return names[static_cast<std::size_t>(commandId)];
@@ -602,6 +603,9 @@ const ProductAutomationCommandDispatchSpec& findProductAutomationCommandDispatch
       ProductAutomationCommandDispatchSpec{
           true, "system.quit", Id::SystemQuit, Category::System,
           Value::Bool, InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          true, "world.create", Id::WorldCreate, Category::WorldSetup,
+          Value::Bool, InputAction::MenuConfirm},
       ProductAutomationCommandDispatchSpec{
           true, "room_edit.start", Id::RoomEditStart, Category::RoomEdit, Value::Bool,
           InputAction::None},
@@ -1303,6 +1307,36 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
     std::string_view canonicalKey,
     ProductAutomationWorldSetupContext& context) {
   const std::string_view value{command.value};
+
+  // branch-gate: BG-1004
+  if (canonicalKey == "world.create") {
+    bool boolValue = false;
+    // branch-gate: BG-1004
+    if (!resolveProductAutomationBool(value, boolValue)) {
+      context.window.automationControlStatus = "invalid_value";
+      return {true, false};
+    }
+    // branch-gate: BG-1004
+    if (!boolValue) {
+      markAutomationApplied(context.window, command, "world.create",
+                            context.currentOwner(), "ignored");
+      return {true, true};
+    }
+    // branch-gate: BG-1004
+    if (context.frontend.childScreen != FrontendScreen::NewWorld) {
+      context.window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(context.window, command, "world.create",
+                            context.currentOwner(), "failed");
+      return {true, false};
+    }
+    const bool routed = context.routeInput(InputAction::MenuConfirm);
+    markAutomationApplied(context.window, command,
+                          inputActionName(InputAction::MenuConfirm),
+                          context.window.automationControlLastOwner,
+                          // branch-gate: BG-1004
+                          routed ? "applied" : "failed");
+    return {true, routed};
+  }
 
   // branch-gate: BG-1004
   if (canonicalKey == "world.title") {

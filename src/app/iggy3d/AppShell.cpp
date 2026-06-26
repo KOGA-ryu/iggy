@@ -1122,7 +1122,6 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                                    ProductAppWindowState& window,
                                    bool& closeRequested) {
   const std::string_view key{command.key};
-  const std::string_view value{command.value};
   static const ProductAutomationCommandRegistry automationRegistry =
       makeProductAutomationCommandRegistry();
   const std::string_view canonicalKey =
@@ -1131,7 +1130,6 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
       resolveProductAutomationCommandDispatch({&automationRegistry, key});
   const ProductAutomationCommandDispatchSpec& automationSpec =
       automationDispatch.spec;
-  bool boolValue = false;
 
   ProductAutomationExecutionContext commonExecutionContext{
       frontend,
@@ -1171,6 +1169,12 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
         }
         return activated.ok;
       },
+      [&frontend, &saves, &options, &settingsTab, &activeSession, &worldSetupDraft,
+       &window, &closeRequested](InputAction action) {
+        return routeAutomationInput(frontend, saves, options, settingsTab,
+                                    activeSession, worldSetupDraft, window, action,
+                                    closeRequested);
+      },
   };
   const ProductAutomationExecutionResult worldSetupExecution =
       applyProductWorldSetupAutomationCommand(command, canonicalKey,
@@ -1178,31 +1182,6 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   // branch-gate: BG-1005
   if (worldSetupExecution.handled) {
     return worldSetupExecution.accepted;
-  }
-
-  if (key == "world.create" || key == "world_setup.create") {
-    if (!resolveProductAutomationBool(value, boolValue)) {
-      window.automationControlStatus = "invalid_value";
-      return false;
-    }
-    if (!boolValue) {
-      markAutomationApplied(window, command, "world.create",
-                            productInputOwnerFor(frontend, window), "ignored");
-      return true;
-    }
-    if (frontend.childScreen != FrontendScreen::NewWorld) {
-      window.automationControlStatus = "owner_unavailable";
-      markAutomationApplied(window, command, "world.create",
-                            productInputOwnerFor(frontend, window), "failed");
-      return false;
-    }
-    const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
-                                            activeSession, worldSetupDraft, window,
-                                            InputAction::MenuConfirm, closeRequested);
-    markAutomationApplied(window, command, inputActionName(InputAction::MenuConfirm),
-                          window.automationControlLastOwner,
-                          routed ? "applied" : "failed");
-    return routed;
   }
 
   ProductAutomationRoomEditingContext roomEditingExecutionContext{

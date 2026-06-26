@@ -79,6 +79,7 @@ enum class ProductAutomationCommandId : std::uint8_t {
   FrontendReturnToTitle,
   SystemPause,
   SystemQuit,
+  WorldCreate,
   Unknown,
 };
 
@@ -154,6 +155,7 @@ struct ProductAutomationWorldSetupContext {
   ProductAppWindowState& window;
   std::function<MenuOwner()> currentOwner;
   std::function<bool()> activateAsciiRoom;
+  std::function<bool(InputAction)> routeInput;
 };
 
 struct ProductMenuShortcutAutomationResult {
