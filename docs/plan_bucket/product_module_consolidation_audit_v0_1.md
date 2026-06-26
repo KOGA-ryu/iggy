@@ -12,6 +12,13 @@ of growth:
 
 The target shape is fewer durable product modules, not one file per feature.
 
+Prerequisite:
+
+- `product_module_taxonomy_contract_v0_1.md` defines the folder and naming
+  scheme that consolidation slices must use.
+- Do not start moving source until the target folder/module taxonomy and the
+  file migration table for the slice are explicit.
+
 ## Audit Tool
 
 Use:
@@ -65,20 +72,20 @@ module must have one durable domain.
 
 | Target module | Owns | Does not own |
 | --- | --- | --- |
-| `ProductShell` | app lifecycle, option parse result handling, top-level sequencing | save policy, room editing policy, map generation |
-| `ProductFrontendFlow` | starter/pause/settings/dev-tools/save-selector/world-setup screen flow | durable save writes, room geometry |
-| `ProductAutomation` | command registry, parser, dispatch, command result recording | separate feature behavior |
-| `ProductSaveFlow` | Continue, Load Save, Save, Save And Exit, delete, recover, save-slot selection | filesystem primitives, runtime save codec |
-| `ProductWorldFlow` | world setup draft, title/seed/dungeon selection, New World launch request | room mesh baking |
-| `ProductRoomAuthoring` | editable room state, edit commands, cursor, overlay, editor actions | ASCII parsing pipeline, Vulkan |
-| `ProductRoomPipeline` | ASCII/grid/authored/editable/room-asset conversion and generated-map adapters | editor input, save/load |
-| `ProductProjection` | scene/debug/draw-list/viewport/render-bridge proof assembly | Vulkan allocation/upload |
-| `ProductReceipt` | descriptor-driven receipt projection | domain behavior |
-| `ProductGameplay` | gameplay command/controller/tape proof | menus, save flow |
+| `product/Shell` (compatibility via `src/app/iggy3d/Shell.*` + temporary wrappers) | app lifecycle, option parse result handling, top-level sequencing | save policy, room editing policy, map generation |
+| `product/Frontend` | starter/pause/settings/dev-tools/save-selector/world-setup screen flow | durable save writes, room geometry |
+| `product/Automation` | command registry, parser, dispatch, command result recording | separate feature behavior |
+| `product/Save` | Continue, Load Save, Save, Save And Exit, delete, recover, save-slot selection | filesystem primitives, runtime save codec |
+| `product/World` | world setup draft, title/seed/dungeon selection, New World launch request | room mesh baking |
+| `product/Room` | editable room state, edit commands, cursor, overlay, editor actions | ASCII parsing pipeline, Vulkan |
+| `product/RoomPipeline` | ASCII/grid/authored/editable/room-asset conversion and generated-map adapters | editor input, save/load |
+| `product/Projection` | scene/debug/draw-list/viewport/render-bridge proof assembly | Vulkan allocation/upload |
+| `product/Receipt` | descriptor-driven receipt projection | domain behavior |
+| `product/Gameplay` | gameplay command/controller/tape proof | menus, save flow |
 
 ## Consolidation Targets
 
-### ProductRoomPipeline
+### product/RoomPipeline
 
 Likely fold together:
 
@@ -114,7 +121,7 @@ DoD for a consolidation slice:
 - existing ASCII/map/room smoke tests pass;
 - branch gate passes.
 
-### ProductRoomAuthoring
+### product/Room
 
 Likely fold together:
 
@@ -139,7 +146,7 @@ DoD:
 - edit/save/exit/Continue proof still passes;
 - AppShell calls only room-authoring domain APIs for room editor operations.
 
-### ProductProjection
+### product/Projection
 
 Likely fold together:
 
@@ -168,7 +175,7 @@ DoD:
 - room mesh CPU proof remains stable;
 - Vulkan backend allocation/upload code is not changed.
 
-### ProductSaveFlow
+### product/Save
 
 Keep as durable low-level owners:
 
@@ -193,7 +200,7 @@ DoD:
 - no runtime save codec changes;
 - existing save/load/delete/recover smokes pass.
 
-### ProductFrontendFlow
+### product/Frontend
 
 Candidate consolidation:
 
@@ -222,7 +229,7 @@ DoD:
 - pure frontend model tests remain focused;
 - no save/write/session side effects enter frontend model files.
 
-### ProductAutomation
+### product/Automation
 
 Likely fold together:
 
@@ -260,20 +267,22 @@ Allowed files:
 
 - `tools/audit_product_module_shape.py`;
 - this plan document;
+- `product_module_taxonomy_contract_v0_1.md`;
 - plan-bucket README.
 
 DoD:
 
 - script runs without changing source;
 - doc records target domains and first consolidation order;
+- taxonomy contract records folder/name rules before code moves;
 - no source/test/build edits.
 
-### Slice 1 - ProductSaveFlow Extraction Without New File Explosion
+### Slice 1 - product/Save Extraction Without New File Explosion
 
 Allowed files:
 
 - existing save/product operation files;
-- one consolidated `ProductSaveFlow.*` if needed;
+- one consolidated `product/Save.hpp/.cpp` if needed;
 - AppShell call-site reduction;
 - focused save smokes/tests.
 
@@ -284,11 +293,11 @@ DoD:
 - `ProductAppOperations` shrinks or is split with a clear deletion path;
 - no save schema/runtime changes.
 
-### Slice 2 - ProductAutomation Consolidation
+### Slice 2 - product/Automation Consolidation
 
 Allowed files:
 
-- `ProductAutomation.*` or existing registry renamed/expanded;
+- `product/Automation.*` or existing registry renamed/expanded;
 - AppShell command dispatch removal;
 - automation tests/smokes.
 
@@ -299,7 +308,7 @@ DoD:
 - no new one-shot automation controller/parser pair unless they merge into the
   domain before acceptance.
 
-### Slice 3 - ProductRoomAuthoring Consolidation
+### Slice 3 - product/Room Consolidation
 
 Allowed files:
 
@@ -314,7 +323,7 @@ DoD:
 - AppShell no longer applies room edit commands directly;
 - edit/save/continue proof remains stable.
 
-### Slice 4 - ProductRoomPipeline Consolidation
+### Slice 4 - product/RoomPipeline Consolidation
 
 Allowed files:
 
@@ -329,7 +338,7 @@ DoD:
 - ASCII remains layout only;
 - map generation has a clear entry point without adding another adapter chain.
 
-### Slice 5 - ProductProjection Consolidation
+### Slice 5 - product/Projection Consolidation
 
 Allowed files:
 
@@ -343,7 +352,7 @@ DoD:
 - product projection module owns draw-list/frame/bridge proof assembly;
 - Vulkan backend remains isolated.
 
-### Slice 6 - ProductFrontendFlow Consolidation
+### Slice 6 - product/Frontend Consolidation
 
 Allowed files:
 
@@ -433,4 +442,3 @@ Stop a consolidation slice if:
 - it touches NPC behavior;
 - it restores visual-demo or package-visual work;
 - it requires broad test loops to gain confidence.
-
