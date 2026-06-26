@@ -8,6 +8,7 @@
 #include <string_view>
 #include <vector>
 
+#include "app/frontend/WorldSetupModel.hpp"
 #include "app/input/ActionState.hpp"
 #include "app/input/InputAction.hpp"
 
@@ -131,6 +132,14 @@ struct ProductAutomationExecutionResult {
   bool accepted = false;
 };
 
+struct ProductAutomationWorldSetupContext {
+  FrontendState& frontend;
+  WorldSetupDraft& worldSetupDraft;
+  ProductAppWindowState& window;
+  std::function<MenuOwner()> currentOwner;
+  std::function<bool()> activateAsciiRoom;
+};
+
 struct ProductMenuShortcutAutomationResult {
   bool valid = false;
   bool routeRequested = false;
@@ -200,6 +209,9 @@ struct ProductDungeonDraftCellAutomationResult {
   std::size_t column = 0;
 };
 
+struct ProductDungeonDraftCursor;
+struct ProductDungeonDraftOperationResult;
+
 ProductBoolAutomationResult resolveProductAutomationBool(
     std::string_view value);
 
@@ -224,7 +236,6 @@ ProductDungeonDraftCellAutomationResult resolveProductDungeonDraftCellAutomation
 
 struct ProductAppWindowState;
 struct RoomEditCommand;
-enum class MenuOwner : std::uint8_t;
 enum class ProductRoomEditorDirection : std::uint8_t;
 enum class ProductRoomEditorTool : std::uint8_t;
 
@@ -309,6 +320,27 @@ ProductAutomationExecutionResult applyProductCommonAutomationCommand(
     const ProductAutomationCommand& command,
     const ProductAutomationCommandDispatchSpec& automationSpec,
     ProductAutomationExecutionContext& context);
+
+void recordWorldSetupDraftState(const WorldSetupDraft& draft,
+                                ProductAppWindowState& window);
+
+ProductDungeonDraftCursor dungeonDraftCursorFromWindow(
+    const ProductAppWindowState& window);
+
+void recordDungeonDraftOperation(ProductAppWindowState& window,
+                                 const ProductDungeonDraftOperationResult& result);
+
+void resetDungeonDraftWindowCursor(const WorldSetupDraft& draft,
+                                   ProductAppWindowState& window);
+
+bool applyDungeonDraftPaintGlyph(WorldSetupDraft& worldSetupDraft,
+                                 ProductAppWindowState& window,
+                                 char glyph);
+
+ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
+    const ProductAutomationCommand& command,
+    std::string_view canonicalKey,
+    ProductAutomationWorldSetupContext& context);
 
 struct ProductRoomEditorCursorResult;
 struct ProductRoomEditorActionResult;

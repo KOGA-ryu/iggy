@@ -10,6 +10,8 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/MenuInput.hpp"
 #include "app/frontend/SettingsMenu.hpp"
+#include "app/iggy3d/ProductAsciiRoomPreview.hpp"
+#include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/ProductDungeonDraft.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/ProductRoomAuthoringController.hpp"
@@ -1000,6 +1002,102 @@ bool resolveProductSaveBrowserBoolAutomation(std::string_view value,
   return row != rows.end();
 }
 
+void recordWorldSetupDraftState(const WorldSetupDraft& draft,
+                                ProductAppWindowState& window) {
+  window.worldSetupTitle = draft.worldName;
+  window.worldSetupAsciiRoomEnabled = draft.asciiRoomEnabled;
+  window.worldSetupAsciiRoomTextPresent = !draft.asciiRoomText.empty();
+  // branch-gate: BG-1004
+  window.worldSetupAsciiRoomId =
+      draft.asciiRoomId.empty() ? "none" : draft.asciiRoomId;
+  // branch-gate: BG-1004
+  window.worldSetupAsciiRoomSourceName =
+      draft.asciiRoomSourceName.empty() ? "none" : draft.asciiRoomSourceName;
+  window.asciiRoomDraftText = draft.asciiRoomText;
+  // branch-gate: BG-1004
+  window.asciiRoomDraftRoomId =
+      draft.asciiRoomId.empty() ? "ascii_preview" : draft.asciiRoomId;
+  // branch-gate: BG-1004
+  window.asciiRoomDraftSourceName =
+      draft.asciiRoomSourceName.empty() ? "world_setup_ascii_room" :
+                                          draft.asciiRoomSourceName;
+  // branch-gate: BG-1004
+  if (draft.asciiRoomEnabled && !draft.asciiRoomText.empty()) {
+    buildProductAsciiRoomPreviewResult(window);
+    return;
+  }
+  window.asciiRoomPreviewStatus = "not_requested";
+  window.asciiRoomPreviewReasonCode = "not_requested";
+  window.asciiRoomPreviewFailedStage = "not_started";
+  window.asciiRoomPreviewRoomId = "none";
+  window.asciiRoomPreviewSourceName = "none";
+  window.asciiRoomPreviewReady = false;
+  window.asciiRoomPreviewWidth = 0;
+  window.asciiRoomPreviewHeight = 0;
+  window.asciiRoomPreviewFloorCount = 0;
+  window.asciiRoomPreviewWallCount = 0;
+  window.asciiRoomPreviewMarkerCount = 0;
+  window.asciiRoomPreviewElevatedFloorCount = 0;
+  window.asciiRoomPreviewRampCount = 0;
+  window.asciiRoomPreviewBlockedSlopeCount = 0;
+  window.asciiRoomPreviewStaticMeshCount = 0;
+  window.asciiRoomPreviewAnchorCount = 0;
+  window.asciiRoomPreviewSpatialSurfaceCount = 0;
+  window.asciiRoomPreviewAssetTextWritten = false;
+  window.asciiRoomPreviewAssetTextBytes = 0;
+}
+
+ProductDungeonDraftCursor dungeonDraftCursorFromWindow(
+    const ProductAppWindowState& window) {
+  return ProductDungeonDraftCursor{
+      static_cast<std::size_t>(window.worldSetupDungeonDraftCursorRow),
+      static_cast<std::size_t>(window.worldSetupDungeonDraftCursorColumn),
+  };
+}
+
+void recordDungeonDraftOperation(ProductAppWindowState& window,
+                                 const ProductDungeonDraftOperationResult& result) {
+  window.worldSetupDungeonDraftStatus = std::string(result.status);
+  window.worldSetupDungeonDraftReasonCode = std::string(result.reasonCode);
+  window.worldSetupDungeonDraftCursorRow =
+      static_cast<std::uint64_t>(result.cursor.row);
+  window.worldSetupDungeonDraftCursorColumn =
+      static_cast<std::uint64_t>(result.cursor.column);
+  // branch-gate: BG-1004
+  window.worldSetupDungeonDraftLastGlyph =
+      result.glyph == '\0' ? std::string{"none"} : std::string(1U, result.glyph);
+  // branch-gate: BG-1004
+  if (result.modified) {
+    window.worldSetupDungeonDraftModified = true;
+  }
+}
+
+void resetDungeonDraftWindowCursor(const WorldSetupDraft& draft,
+                                   ProductAppWindowState& window) {
+  const ProductDungeonDraftCursor cursor =
+      clampProductDungeonDraftCursor(draft, ProductDungeonDraftCursor{});
+  window.worldSetupDungeonDraftCursorRow = static_cast<std::uint64_t>(cursor.row);
+  window.worldSetupDungeonDraftCursorColumn =
+      static_cast<std::uint64_t>(cursor.column);
+  window.worldSetupDungeonDraftLastGlyph = "none";
+}
+
+bool applyDungeonDraftPaintGlyph(WorldSetupDraft& worldSetupDraft,
+                                 ProductAppWindowState& window,
+                                 char glyph) {
+  // branch-gate: BG-1004
+  if (!window.worldSetupDungeonDraftEditMode) {
+    window.worldSetupDungeonDraftStatus = "dungeon_draft_edit_mode_off";
+    window.worldSetupDungeonDraftReasonCode = "dungeon_draft_edit_mode_off";
+    return false;
+  }
+  ProductDungeonDraftOperationResult painted = paintProductDungeonDraftCell(
+      worldSetupDraft, dungeonDraftCursorFromWindow(window), glyph);
+  recordDungeonDraftOperation(window, painted);
+  recordWorldSetupDraftState(worldSetupDraft, window);
+  return painted.ok;
+}
+
 void markAutomationApplied(ProductAppWindowState& window,
                            const ProductAutomationCommand& command,
                            std::string_view action,
@@ -1131,6 +1229,378 @@ ProductAutomationExecutionResult applyProductCommonAutomationCommand(
                           frontendDevToolsCategoryName(category),
                           context.currentOwner(), "applied");
     return {true, true};
+  }
+
+  return {};
+}
+
+ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
+    const ProductAutomationCommand& command,
+    std::string_view canonicalKey,
+    ProductAutomationWorldSetupContext& context) {
+  const std::string_view value{command.value};
+
+  // branch-gate: BG-1004
+  if (canonicalKey == "world.title") {
+    // branch-gate: BG-1004
+    if (context.frontend.childScreen != FrontendScreen::NewWorld) {
+      context.window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(context.window, command, "world.title",
+                            context.currentOwner(), "failed");
+      return {true, false};
+    }
+    context.worldSetupDraft.worldName = std::string(value);
+    recordWorldSetupDraftState(context.worldSetupDraft, context.window);
+    context.window.worldSetupStatus = "world_setup_title_updated";
+    markAutomationApplied(context.window, command, "world.title",
+                          context.currentOwner(), "applied");
+    return {true, true};
+  }
+
+  // branch-gate: BG-1004
+  if (canonicalKey == "world.dungeon_id") {
+    // branch-gate: BG-1004
+    if (context.frontend.childScreen != FrontendScreen::NewWorld) {
+      context.window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(context.window, command, "world.dungeon_id",
+                            context.currentOwner(), "failed");
+      return {true, false};
+    }
+    const ProductNonEmptyStringAutomationResult dungeonId =
+        resolveProductNonEmptyStringAutomation(value);
+    const std::size_t index = productBuiltinDungeonIndexForRoomId(dungeonId.value);
+    const auto fail = [&]() -> ProductAutomationExecutionResult {
+      context.window.automationControlStatus = "invalid_value";
+      markAutomationApplied(context.window, command, "world.dungeon_id",
+                            context.currentOwner(), "failed");
+      return {true, false};
+    };
+    const auto apply = [&]() -> ProductAutomationExecutionResult {
+      const bool applied =
+          applyProductBuiltinDungeonToDraft(index, context.worldSetupDraft);
+      // branch-gate: BG-1004
+      if (!applied) {
+        return fail();
+      }
+      recordWorldSetupDraftState(context.worldSetupDraft, context.window);
+      context.window.worldSetupDungeonDraftModified = false;
+      context.window.worldSetupDungeonDraftEditMode = false;
+      resetDungeonDraftWindowCursor(context.worldSetupDraft, context.window);
+      context.window.worldSetupStatus = "world_setup_dungeon_selected";
+      markAutomationApplied(context.window, command, "world.dungeon_id",
+                            context.currentOwner(), "applied");
+      return {true, true};
+    };
+    // branch-gate: BG-1004
+    return dungeonId.valid ? apply() : fail();
+  }
+
+  // branch-gate: BG-1004
+  if (canonicalKey == "world.draft_edit_mode") {
+    bool boolValue = false;
+    // branch-gate: BG-1004
+    if (!resolveProductAutomationBool(value, boolValue)) {
+      context.window.automationControlStatus = "invalid_value";
+      return {true, false};
+    }
+    // branch-gate: BG-1004
+    if (context.frontend.childScreen != FrontendScreen::NewWorld) {
+      context.window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(context.window, command, "world.draft_edit_mode",
+                            context.currentOwner(), "failed");
+      return {true, false};
+    }
+    context.window.worldSetupDungeonDraftEditMode = boolValue;
+    // branch-gate: BG-1004
+    context.worldSetupDraft.selectedField =
+        boolValue ? WorldSetupField::AsciiRoom : WorldSetupField::Create;
+    // branch-gate: BG-1004
+    context.window.worldSetupDungeonDraftStatus =
+        boolValue ? "dungeon_draft_edit_mode_on" : "dungeon_draft_edit_mode_off";
+    context.window.worldSetupDungeonDraftReasonCode =
+        context.window.worldSetupDungeonDraftStatus;
+    resetDungeonDraftWindowCursor(context.worldSetupDraft, context.window);
+    markAutomationApplied(context.window, command, "world.draft_edit_mode",
+                          context.currentOwner(), "applied");
+    return {true, true};
+  }
+
+  // branch-gate: BG-1004
+  if (canonicalKey == "world.draft_move") {
+    // branch-gate: BG-1004
+    if (context.frontend.childScreen != FrontendScreen::NewWorld) {
+      context.window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(context.window, command, "world.draft_move",
+                            context.currentOwner(), "failed");
+      return {true, false};
+    }
+    // branch-gate: BG-1004
+    if (!context.window.worldSetupDungeonDraftEditMode) {
+      context.window.worldSetupDungeonDraftStatus = "dungeon_draft_edit_mode_off";
+      context.window.worldSetupDungeonDraftReasonCode =
+          "dungeon_draft_edit_mode_off";
+      context.window.automationControlStatus = "command_failed";
+      markAutomationApplied(context.window, command, "world.draft_move",
+                            context.currentOwner(), "failed");
+      return {true, false};
+    }
+    const ProductDungeonDraftDirectionAutomationResult direction =
+        resolveProductDungeonDraftDirectionAutomation(value);
+    // branch-gate: BG-1004
+    if (!direction.valid) {
+      context.window.automationControlStatus = "invalid_value";
+      markAutomationApplied(context.window, command, "world.draft_move",
+                            context.currentOwner(), "failed");
+      return {true, false};
+    }
+    const ProductDungeonDraftOperationResult moved =
+        moveProductDungeonDraftCursor(context.worldSetupDraft,
+                                      dungeonDraftCursorFromWindow(context.window),
+                                      direction.direction);
+    recordDungeonDraftOperation(context.window, moved);
+    // branch-gate: BG-1004
+    markAutomationApplied(context.window, command, "world.draft_move",
+                          context.currentOwner(),
+                          moved.ok ? "applied" : "failed");
+    // branch-gate: BG-1004
+    if (!moved.ok) {
+      context.window.automationControlStatus = "command_failed";
+    }
+    return {true, moved.ok};
+  }
+
+  // branch-gate: BG-1004
+  if (canonicalKey == "world.draft_paint") {
+    // branch-gate: BG-1004
+    if (context.frontend.childScreen != FrontendScreen::NewWorld) {
+      context.window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(context.window, command, "world.draft_paint",
+                            context.currentOwner(), "failed");
+      return {true, false};
+    }
+    const ProductDungeonDraftPaintAutomationResult paint =
+        resolveProductDungeonDraftPaintAutomation(value);
+    // branch-gate: BG-1004
+    if (!paint.valid) {
+      context.window.automationControlStatus = "invalid_value";
+      markAutomationApplied(context.window, command, "world.draft_paint",
+                            context.currentOwner(), "failed");
+      return {true, false};
+    }
+    const bool painted =
+        applyDungeonDraftPaintGlyph(context.worldSetupDraft, context.window,
+                                    paint.glyph.front());
+    // branch-gate: BG-1004
+    markAutomationApplied(context.window, command, "world.draft_paint",
+                          context.currentOwner(),
+                          painted ? "applied" : "failed");
+    // branch-gate: BG-1004
+    if (!painted) {
+      context.window.automationControlStatus = "command_failed";
+    }
+    return {true, painted};
+  }
+
+  // branch-gate: BG-1004
+  if (canonicalKey == "world.draft_cell") {
+    // branch-gate: BG-1004
+    if (context.frontend.childScreen != FrontendScreen::NewWorld) {
+      context.window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(context.window, command, "world.draft_cell",
+                            context.currentOwner(), "failed");
+      return {true, false};
+    }
+    const std::vector<std::string_view> fields = splitProductAutomationCsv(value);
+    const ProductDungeonDraftCellAutomationResult cell =
+        fields.size() == 3U
+            ? resolveProductDungeonDraftCellAutomation(fields[0], fields[1],
+                                                      fields[2])
+            : ProductDungeonDraftCellAutomationResult{};
+    // branch-gate: BG-1004
+    if (!cell.valid) {
+      context.window.automationControlStatus = "invalid_value";
+      markAutomationApplied(context.window, command, "world.draft_cell",
+                            context.currentOwner(), "failed");
+      return {true, false};
+    }
+    ProductDungeonDraftOperationResult painted =
+        setProductDungeonDraftCell(context.worldSetupDraft, cell.row, cell.column,
+                                   fields[2].front());
+    recordDungeonDraftOperation(context.window, painted);
+    recordWorldSetupDraftState(context.worldSetupDraft, context.window);
+    // branch-gate: BG-1004
+    markAutomationApplied(context.window, command, "world.draft_cell",
+                          context.currentOwner(),
+                          painted.ok ? "applied" : "failed");
+    // branch-gate: BG-1004
+    if (!painted.ok) {
+      context.window.automationControlStatus = "command_failed";
+    }
+    return {true, painted.ok};
+  }
+
+  // branch-gate: BG-1004
+  if (canonicalKey == "world.ascii_room_text") {
+    // branch-gate: BG-1004
+    if (context.frontend.childScreen != FrontendScreen::NewWorld) {
+      context.window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(context.window, command, "world.ascii_room_text",
+                            context.currentOwner(), "failed");
+      return {true, false};
+    }
+    context.worldSetupDraft.asciiRoomEnabled = true;
+    context.worldSetupDraft.asciiRoomText =
+        decodeProductAsciiRoomAutomationText(value);
+    recordWorldSetupDraftState(context.worldSetupDraft, context.window);
+    context.window.worldSetupStatus = "world_setup_ascii_room_text_updated";
+    markAutomationApplied(context.window, command, "world.ascii_room_text",
+                          context.currentOwner(), "applied");
+    return {true, true};
+  }
+
+  // branch-gate: BG-1004
+  if (canonicalKey == "world.ascii_room_id") {
+    // branch-gate: BG-1004
+    if (context.frontend.childScreen != FrontendScreen::NewWorld) {
+      context.window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(context.window, command, "world.ascii_room_id",
+                            context.currentOwner(), "failed");
+      return {true, false};
+    }
+    const ProductNonEmptyStringAutomationResult asciiRoomId =
+        resolveProductNonEmptyStringAutomation(value);
+    // branch-gate: BG-1004
+    if (!asciiRoomId.valid) {
+      context.window.automationControlStatus = "invalid_value";
+      markAutomationApplied(context.window, command, "world.ascii_room_id",
+                            context.currentOwner(), "failed");
+      return {true, false};
+    }
+    context.worldSetupDraft.asciiRoomEnabled = true;
+    context.worldSetupDraft.asciiRoomId = std::string(asciiRoomId.value);
+    recordWorldSetupDraftState(context.worldSetupDraft, context.window);
+    context.window.worldSetupStatus = "world_setup_ascii_room_id_updated";
+    markAutomationApplied(context.window, command, "world.ascii_room_id",
+                          context.currentOwner(), "applied");
+    return {true, true};
+  }
+
+  // branch-gate: BG-1004
+  if (canonicalKey == "world.ascii_room_source_name") {
+    // branch-gate: BG-1004
+    if (context.frontend.childScreen != FrontendScreen::NewWorld) {
+      context.window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(context.window, command,
+                            "world.ascii_room_source_name",
+                            context.currentOwner(), "failed");
+      return {true, false};
+    }
+    const ProductNonEmptyStringAutomationResult asciiRoomSourceName =
+        resolveProductNonEmptyStringAutomation(value);
+    // branch-gate: BG-1004
+    if (!asciiRoomSourceName.valid) {
+      context.window.automationControlStatus = "invalid_value";
+      markAutomationApplied(context.window, command,
+                            "world.ascii_room_source_name",
+                            context.currentOwner(), "failed");
+      return {true, false};
+    }
+    context.worldSetupDraft.asciiRoomEnabled = true;
+    context.worldSetupDraft.asciiRoomSourceName =
+        std::string(asciiRoomSourceName.value);
+    recordWorldSetupDraftState(context.worldSetupDraft, context.window);
+    context.window.worldSetupStatus =
+        "world_setup_ascii_room_source_name_updated";
+    markAutomationApplied(context.window, command, "world.ascii_room_source_name",
+                          context.currentOwner(), "applied");
+    return {true, true};
+  }
+
+  // branch-gate: BG-1004
+  if (canonicalKey == "ascii_room.text") {
+    context.window.asciiRoomDraftText =
+        decodeProductAsciiRoomAutomationText(value);
+    context.window.asciiRoomPreviewStatus = "ascii_room_text_updated";
+    context.window.asciiRoomPreviewReasonCode = "ascii_room_text_updated";
+    context.window.asciiRoomPreviewFailedStage = "not_started";
+    context.window.asciiRoomPreviewReady = false;
+    markAutomationApplied(context.window, command, "ascii_room.text",
+                          context.currentOwner(), "applied");
+    return {true, true};
+  }
+
+  // branch-gate: BG-1004
+  if (canonicalKey == "ascii_room.room_id") {
+    const ProductNonEmptyStringAutomationResult roomId =
+        resolveProductNonEmptyStringAutomation(value);
+    // branch-gate: BG-1004
+    if (!roomId.valid) {
+      context.window.automationControlStatus = "invalid_value";
+      return {true, false};
+    }
+    context.window.asciiRoomDraftRoomId = std::string(roomId.value);
+    markAutomationApplied(context.window, command, "ascii_room.room_id",
+                          context.currentOwner(), "applied");
+    return {true, true};
+  }
+
+  // branch-gate: BG-1004
+  if (canonicalKey == "ascii_room.source_name") {
+    const ProductNonEmptyStringAutomationResult sourceName =
+        resolveProductNonEmptyStringAutomation(value);
+    // branch-gate: BG-1004
+    if (!sourceName.valid) {
+      context.window.automationControlStatus = "invalid_value";
+      return {true, false};
+    }
+    context.window.asciiRoomDraftSourceName = std::string(sourceName.value);
+    markAutomationApplied(context.window, command, "ascii_room.source_name",
+                          context.currentOwner(), "applied");
+    return {true, true};
+  }
+
+  // branch-gate: BG-1004
+  if (canonicalKey == "ascii_room.build") {
+    bool boolValue = false;
+    // branch-gate: BG-1004
+    if (!resolveProductAutomationBool(value, boolValue)) {
+      context.window.automationControlStatus = "invalid_value";
+      return {true, false};
+    }
+    // branch-gate: BG-1004
+    if (!boolValue) {
+      markAutomationApplied(context.window, command, "ascii_room.build",
+                            context.currentOwner(), "ignored");
+      return {true, true};
+    }
+    const bool previewBuilt = buildProductAsciiRoomPreview(context.window);
+    // branch-gate: BG-1004
+    markAutomationApplied(context.window, command, "ascii_room.build",
+                          context.currentOwner(),
+                          previewBuilt ? "applied" : "failed");
+    return {true, previewBuilt};
+  }
+
+  // branch-gate: BG-1004
+  if (canonicalKey == "ascii_room.activate") {
+    bool boolValue = false;
+    // branch-gate: BG-1004
+    if (!resolveProductAutomationBool(value, boolValue)) {
+      context.window.automationControlStatus = "invalid_value";
+      return {true, false};
+    }
+    // branch-gate: BG-1004
+    if (!boolValue) {
+      markAutomationApplied(context.window, command, "ascii_room.activate",
+                            context.currentOwner(), "ignored");
+      return {true, true};
+    }
+    const bool activated = context.activateAsciiRoom();
+    // branch-gate: BG-1004
+    markAutomationApplied(context.window, command, "ascii_room.activate",
+                          context.currentOwner(),
+                          activated ? "applied" : "failed");
+    return {true, activated};
   }
 
   return {};

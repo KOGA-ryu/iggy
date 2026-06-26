@@ -2,3 +2,5 @@ id	file	reason	approved_by	date
 BG-1001	src/app/iggy3d/product/Automation.cpp	control-file parser extraction for dungeon draft and automation readers	codex	2026-06-26
 BG-1002	src/app/iggy3d/product/Automation.cpp	common automation execution context extraction from AppShell	codex	2026-06-26
 BG-1003	src/app/iggy3d/AppShell.cpp	common automation execution delegation seam	codex	2026-06-26
+BG-1004	src/app/iggy3d/product/Automation.cpp	world setup and ASCII automation execution extraction from AppShell	codex	2026-06-26
+BG-1005	src/app/iggy3d/AppShell.cpp	world setup automation execution delegation seam	codex	2026-06-26
