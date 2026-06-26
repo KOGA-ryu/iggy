@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -106,6 +107,11 @@ struct ProductAutomationCommandDispatchResult {
   ProductAutomationCommandDispatchSpec spec;
 };
 
+struct ProductAutomationCommand {
+  std::string key;
+  std::string value;
+};
+
 struct ProductMenuShortcutAutomationResult {
   bool valid = false;
   bool routeRequested = false;
@@ -196,6 +202,37 @@ ProductDungeonDraftCellAutomationResult resolveProductDungeonDraftCellAutomation
     std::string_view rowValue,
     std::string_view columnValue,
     std::string_view glyphValue);
+
+struct ProductAppWindowState;
+struct RoomEditCommand;
+enum class MenuOwner : std::uint8_t;
+enum class ProductRoomEditorDirection : std::uint8_t;
+enum class ProductRoomEditorTool : std::uint8_t;
+
+std::vector<std::string_view> splitProductAutomationCsv(
+    std::string_view value);
+
+bool parseProductAutomationOwner(std::string_view value, MenuOwner& out);
+
+bool parseProductAutomationFloorCommand(std::string_view value,
+                                        RoomEditCommand& command);
+
+bool parseProductAutomationWallCommand(std::string_view value,
+                                       RoomEditCommand& command);
+
+bool parseProductRoomEditorDirection(std::string_view value,
+                                     ProductRoomEditorDirection& out);
+
+bool parseProductRoomEditorTool(std::string_view value,
+                                ProductRoomEditorTool& out);
+
+bool parseProductRoomEditorInputAction(std::string_view value,
+                                       InputAction& out,
+                                       float& actionValue);
+
+bool readProductAutomationCommands(const std::filesystem::path& path,
+                                   ProductAppWindowState& window,
+                                   std::vector<ProductAutomationCommand>& commands);
 
 bool resolveProductSaveBrowserBoolAutomation(std::string_view value, bool& out);
 

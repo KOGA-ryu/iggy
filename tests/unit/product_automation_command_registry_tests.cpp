@@ -1,8 +1,11 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/ProductDungeonDraft.hpp"
+#include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/product/Automation.hpp"
 
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <set>
 #include <string>
@@ -30,6 +33,17 @@ void expectCanonical(const iggy3d::ProductAutomationCommandRegistry& registry,
                      std::string_view canonical) {
   expect(iggy3d::productAutomationCanonicalKey(registry, key) == canonical,
          std::string{"canonical key mismatch for "} + std::string{key});
+}
+
+std::filesystem::path tempAutomationPath() {
+  return std::filesystem::temp_directory_path() /
+         "iggy3d_product_automation_commands.txt";
+}
+
+void writeAutomationFile(const std::filesystem::path& path,
+                         std::string_view content) {
+  std::ofstream output(path);
+  output << content;
 }
 
 }  // namespace
@@ -252,6 +266,43 @@ int main() {
   const iggy3d::ProductDungeonDraftCellAutomationResult draftCellInvalid =
       iggy3d::resolveProductDungeonDraftCellAutomation("4", "7", "@@");
   expect(!draftCellInvalid.valid, "dungeon draft cell invalid glyph is rejected");
+
+  const std::filesystem::path automationPath = tempAutomationPath();
+  {
+    writeAutomationFile(automationPath,
+                        "menu.input=up\n"
+                        "world.draft_move=left\n");
+    iggy3d::ProductAppWindowState window;
+    std::vector<iggy3d::ProductAutomationCommand> commands;
+    expect(iggy3d::readProductAutomationCommands(automationPath, window, commands),
+           "automation control file loads");
+    expect(window.automationControlRequested,
+           "automation control requested is recorded");
+    expect(window.automationControlLoaded, "automation control loaded is recorded");
+    expect(window.automationControlStatus == "loaded",
+           "automation control status is loaded");
+    expect(window.automationControlLineCount == 2U,
+           "automation control line count tracks parsed lines");
+    expect(commands.size() == 2U, "automation control command count is stable");
+    expect(commands[0].key == "menu.input" && commands[0].value == "up",
+           "automation control first command preserves key/value");
+    expect(commands[1].key == "world.draft_move" && commands[1].value == "left",
+           "automation control second command preserves key/value");
+  }
+  {
+    writeAutomationFile(automationPath,
+                        "menu.input=up\n"
+                        "menu.input=down\n");
+    iggy3d::ProductAppWindowState window;
+    std::vector<iggy3d::ProductAutomationCommand> commands;
+    expect(!iggy3d::readProductAutomationCommands(automationPath, window, commands),
+           "duplicate automation control keys are rejected");
+    expect(window.automationControlStatus == "duplicate_key",
+           "duplicate automation control status is stable");
+    expect(window.automationControlLastKey == "menu.input",
+           "duplicate automation control last key is stable");
+    expect(commands.size() == 1U, "duplicate automation control preserves prior rows");
+  }
 
   bool saveDeleteBool = false;
   expect(iggy3d::resolveProductSaveBrowserBoolAutomation("yes", saveDeleteBool),

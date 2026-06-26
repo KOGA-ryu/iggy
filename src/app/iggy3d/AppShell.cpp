@@ -2,10 +2,7 @@
 
 #include <algorithm>
 #include <array>
-#include <charconv>
 #include <cmath>
-#include <filesystem>
-#include <fstream>
 #include <iostream>
 #include <optional>
 #include <string>
@@ -1188,258 +1185,6 @@ void routeOpeningMenuInput(FrontendState& frontend,
   }
 }
 
-struct ProductAutomationCommand {
-  std::string key;
-  std::string value;
-};
-
-bool parseAutomationBool(std::string_view value, bool& out) {
-  if (value == "true" || value == "1" || value == "yes") {
-    out = true;
-    return true;
-  }
-  if (value == "false" || value == "0" || value == "no") {
-    out = false;
-    return true;
-  }
-  return false;
-}
-
-bool parseAutomationFloat(std::string_view value, float& out) {
-  if (value.empty()) {
-    return false;
-  }
-  const auto [ptr, error] =
-      std::from_chars(value.data(), value.data() + value.size(), out);
-  return error == std::errc{} && ptr == value.data() + value.size() &&
-         std::isfinite(out);
-}
-
-std::vector<std::string_view> splitAutomationCsv(std::string_view value) {
-  std::vector<std::string_view> fields;
-  std::size_t start = 0;
-  while (start <= value.size()) {
-    const std::size_t comma = value.find(',', start);
-    if (comma == std::string_view::npos) {
-      fields.push_back(value.substr(start));
-      break;
-    }
-    fields.push_back(value.substr(start, comma - start));
-    start = comma + 1U;
-  }
-  return fields;
-}
-
-bool parseAutomationCsvFloat(std::string_view value, float& out) {
-  return parseAutomationFloat(value, out);
-}
-
-bool parseAutomationFloorCommand(std::string_view value,
-                                 RoomEditCommand& command) {
-  const std::vector<std::string_view> fields = splitAutomationCsv(value);
-  if (fields.size() != 7U && fields.size() != 8U) {
-    return false;
-  }
-
-  EditableRoomFloor floor;
-  floor.id = std::string(fields[0]);
-  if (floor.id.empty() ||
-      !parseAutomationCsvFloat(fields[1], floor.centerMeters.x) ||
-      !parseAutomationCsvFloat(fields[2], floor.centerMeters.y) ||
-      !parseAutomationCsvFloat(fields[3], floor.centerMeters.z) ||
-      !parseAutomationCsvFloat(fields[4], floor.sizeMeters.x) ||
-      !parseAutomationCsvFloat(fields[5], floor.sizeMeters.y) ||
-      !parseAutomationCsvFloat(fields[6], floor.sizeMeters.z)) {
-    return false;
-  }
-  floor.semantics = defaultFloorSemantics(
-      fields.size() == 8U && !fields[7].empty()
-          ? std::string(fields[7])
-          : std::string{"debug_floor"});
-  command = addFloorCommand(std::move(floor));
-  return true;
-}
-
-bool parseAutomationWallCommand(std::string_view value,
-                                RoomEditCommand& command) {
-  const std::vector<std::string_view> fields = splitAutomationCsv(value);
-  if (fields.size() != 10U && fields.size() != 11U) {
-    return false;
-  }
-
-  EditableRoomWall wall;
-  wall.id = std::string(fields[0]);
-  if (wall.id.empty() ||
-      !parseAutomationCsvFloat(fields[1], wall.startMeters.x) ||
-      !parseAutomationCsvFloat(fields[2], wall.startMeters.y) ||
-      !parseAutomationCsvFloat(fields[3], wall.startMeters.z) ||
-      !parseAutomationCsvFloat(fields[4], wall.endMeters.x) ||
-      !parseAutomationCsvFloat(fields[5], wall.endMeters.y) ||
-      !parseAutomationCsvFloat(fields[6], wall.endMeters.z) ||
-      !parseAutomationCsvFloat(fields[7], wall.bottomY) ||
-      !parseAutomationCsvFloat(fields[8], wall.heightMeters) ||
-      !parseAutomationCsvFloat(fields[9], wall.thicknessMeters)) {
-    return false;
-  }
-  wall.semantics = defaultWallSemantics(
-      fields.size() == 11U && !fields[10].empty()
-          ? std::string(fields[10])
-          : std::string{"debug_wall"});
-  command = addWallCommand(std::move(wall));
-  return true;
-}
-
-template <typename Value>
-struct AutomationParserRow {
-  std::string_view name;
-  Value value;
-};
-
-struct RoomEditorInputActionRow {
-  std::string_view name;
-  InputAction action;
-  float value;
-};
-
-template <typename Value, std::size_t Count>
-bool parseAutomationTableValue(
-    std::string_view value,
-    const std::array<AutomationParserRow<Value>, Count>& rows,
-    Value& out) {
-  const auto row = std::find_if(
-      rows.begin(), rows.end(),
-      [value](const AutomationParserRow<Value>& candidate) {
-        return candidate.name == value;
-      });
-  if (row == rows.end()) {
-    return false;
-  }
-  out = row->value;
-  return true;
-}
-
-bool parseProductRoomEditorDirection(std::string_view value,
-                                     ProductRoomEditorDirection& out) {
-  static constexpr std::array rows{
-      AutomationParserRow<ProductRoomEditorDirection>{
-          "up", ProductRoomEditorDirection::Up},
-      AutomationParserRow<ProductRoomEditorDirection>{
-          "down", ProductRoomEditorDirection::Down},
-      AutomationParserRow<ProductRoomEditorDirection>{
-          "left", ProductRoomEditorDirection::Left},
-      AutomationParserRow<ProductRoomEditorDirection>{
-          "right", ProductRoomEditorDirection::Right},
-  };
-  return parseAutomationTableValue(value, rows, out);
-}
-
-bool parseProductRoomEditorTool(std::string_view value,
-                                ProductRoomEditorTool& out) {
-  static constexpr std::array rows{
-      AutomationParserRow<ProductRoomEditorTool>{
-          "floor", ProductRoomEditorTool::Floor},
-      AutomationParserRow<ProductRoomEditorTool>{
-          "wall", ProductRoomEditorTool::Wall},
-  };
-  return parseAutomationTableValue(value, rows, out);
-}
-
-bool parseProductRoomEditorInputAction(std::string_view value,
-                                       InputAction& out,
-                                       float& actionValue) {
-  static constexpr std::array rows{
-      RoomEditorInputActionRow{"editor.nudge_x_pos",
-                               InputAction::EditorNudgeX, 1.0F},
-      RoomEditorInputActionRow{"editor.nudge_x_neg",
-                               InputAction::EditorNudgeX, -1.0F},
-      RoomEditorInputActionRow{"editor.nudge_z_pos",
-                               InputAction::EditorNudgeZ, 1.0F},
-      RoomEditorInputActionRow{"editor.nudge_z_neg",
-                               InputAction::EditorNudgeZ, -1.0F},
-      RoomEditorInputActionRow{"editor.next_tool",
-                               InputAction::EditorNextTool, 1.0F},
-      RoomEditorInputActionRow{"editor.previous_tool",
-                               InputAction::EditorPreviousTool, 1.0F},
-      RoomEditorInputActionRow{"editor.place", InputAction::EditorPlace, 1.0F},
-      RoomEditorInputActionRow{"editor.apply", InputAction::EditorApply, 1.0F},
-  };
-  actionValue = 1.0F;
-  const auto row = std::find_if(
-      rows.begin(), rows.end(),
-      [value](const RoomEditorInputActionRow& candidate) {
-        return candidate.name == value;
-      });
-  if (row == rows.end()) {
-    return false;
-  }
-  out = row->action;
-  actionValue = row->value;
-  return true;
-}
-
-bool parseAutomationOwner(std::string_view value, MenuOwner& out) {
-  static constexpr std::array rows{
-      AutomationParserRow<MenuOwner>{"starter", MenuOwner::Starter},
-      AutomationParserRow<MenuOwner>{"pause", MenuOwner::Pause},
-      AutomationParserRow<MenuOwner>{"settings", MenuOwner::Settings},
-      AutomationParserRow<MenuOwner>{"dev_tools", MenuOwner::DevTools},
-  };
-  return parseAutomationTableValue(value, rows, out);
-}
-
-bool hasAutomationKey(const std::vector<ProductAutomationCommand>& commands,
-                      const std::string& key) {
-  for (const ProductAutomationCommand& command : commands) {
-    if (command.key == key) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool readProductAutomationCommands(const std::filesystem::path& path,
-                                   ProductAppWindowState& window,
-                                   std::vector<ProductAutomationCommand>& commands) {
-  window.automationControlRequested = !path.empty();
-  window.automationControlPath = path.empty() ? "" : path.generic_string();
-  if (path.empty()) {
-    return false;
-  }
-  window.automationControlScope = "frontend_menu";
-  std::ifstream input(path);
-  if (!input) {
-    window.automationControlStatus = "read_failed";
-    window.automationControlLastResult = "failed";
-    return false;
-  }
-
-  std::string line;
-  while (std::getline(input, line)) {
-    if (line.empty()) {
-      continue;
-    }
-    ++window.automationControlLineCount;
-    const std::size_t equals = line.find('=');
-    if (equals == std::string::npos || equals == 0U) {
-      window.automationControlStatus = "parse_error";
-      window.automationControlLastKey = "none";
-      window.automationControlLastResult = "failed";
-      return false;
-    }
-    ProductAutomationCommand command{line.substr(0, equals), line.substr(equals + 1U)};
-    if (hasAutomationKey(commands, command.key)) {
-      window.automationControlStatus = "duplicate_key";
-      window.automationControlLastKey = command.key;
-      window.automationControlLastResult = "failed";
-      return false;
-    }
-    commands.push_back(std::move(command));
-  }
-  window.automationControlLoaded = true;
-  window.automationControlStatus = "loaded";
-  return true;
-}
-
 void markAutomationApplied(ProductAppWindowState& window,
                            const ProductAutomationCommand& command,
                            std::string_view action,
@@ -1660,7 +1405,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
 
   if (key == "automation.owner") {
     MenuOwner expectedOwner = MenuOwner::None;
-    if (!parseAutomationOwner(value, expectedOwner)) {
+    if (!parseProductAutomationOwner(value, expectedOwner)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
@@ -1869,7 +1614,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                             productInputOwnerFor(frontend, window), "failed");
       return false;
     }
-    const std::vector<std::string_view> fields = splitAutomationCsv(value);
+    const std::vector<std::string_view> fields = splitProductAutomationCsv(value);
     const ProductDungeonDraftCellAutomationResult cell =
         fields.size() == 3U
             ? resolveProductDungeonDraftCellAutomation(fields[0], fields[1],
@@ -1970,7 +1715,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (key == "world.create" || key == "world_setup.create") {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
@@ -2039,7 +1784,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (key == "ascii_room.build" || key == "frontend.ascii_room_build") {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
@@ -2057,7 +1802,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (key == "ascii_room.activate" || key == "frontend.ascii_room_activate") {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
@@ -2080,7 +1825,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (automationSpec.commandId == ProductAutomationCommandId::RoomEditStart) {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
@@ -2102,7 +1847,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (automationSpec.commandId == ProductAutomationCommandId::RoomEditStartActive) {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
@@ -2122,7 +1867,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (key == "editor.input") {
-    const std::vector<std::string_view> editorInputs = splitAutomationCsv(value);
+    const std::vector<std::string_view> editorInputs = splitProductAutomationCsv(value);
     if (editorInputs.empty()) {
       window.automationControlStatus = "invalid_value";
       return false;
@@ -2238,7 +1983,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (automationSpec.commandId == ProductAutomationCommandId::RoomEditorCycleTool) {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
@@ -2293,7 +2038,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (automationSpec.commandId == ProductAutomationCommandId::RoomEditorPlace) {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
@@ -2325,7 +2070,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
 
   if (automationSpec.commandId == ProductAutomationCommandId::RoomEditAddFloor) {
     RoomEditCommand edit;
-    if (!parseAutomationFloorCommand(value, edit)) {
+    if (!parseProductAutomationFloorCommand(value, edit)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
@@ -2340,7 +2085,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
 
   if (automationSpec.commandId == ProductAutomationCommandId::RoomEditAddWall) {
     RoomEditCommand edit;
-    if (!parseAutomationWallCommand(value, edit)) {
+    if (!parseProductAutomationWallCommand(value, edit)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
@@ -2384,7 +2129,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (automationSpec.commandId == ProductAutomationCommandId::RoomEditUndo) {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
@@ -2404,7 +2149,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (automationSpec.commandId == ProductAutomationCommandId::RoomEditRedo) {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductAutomationBool(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }

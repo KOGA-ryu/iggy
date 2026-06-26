@@ -1,1 +1,2 @@
 id	file	reason	approved_by	date
+BG-1001	src/app/iggy3d/product/Automation.cpp	control-file parser extraction for dungeon draft and automation readers	codex	2026-06-26

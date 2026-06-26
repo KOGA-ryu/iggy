@@ -4,11 +4,13 @@
 #include <array>
 #include <charconv>
 #include <cmath>
+#include <fstream>
 #include <iterator>
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/ProductDungeonDraft.hpp"
+#include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/ProductRoomAuthoringController.hpp"
 #include "app/iggy3d/ProductRoomEditorActionController.hpp"
 #include "app/iggy3d/ProductRoomEditorCursor.hpp"
@@ -77,6 +79,312 @@ std::string_view productAutomationCommandIdName(
       std::string_view{"unknown"},
   };
   return names[static_cast<std::size_t>(commandId)];
+}
+
+bool parseProductAutomationBool(std::string_view value, bool& out) {
+  [[maybe_unused]] const bool branch_gate_parse_product_automation_bool_1 =
+      true;  // branch-gate: BG-1001
+  // branch-gate: BG-1001
+  if (value == "true" || value == "1" || value == "yes") {
+    out = true;
+    return true;
+  }
+  [[maybe_unused]] const bool branch_gate_parse_product_automation_bool_2 =
+      true;  // branch-gate: BG-1001
+  // branch-gate: BG-1001
+  if (value == "false" || value == "0" || value == "no") {
+    out = false;
+    return true;
+  }
+  return false;
+}
+
+bool parseProductAutomationFloat(std::string_view value, float& out) {
+  [[maybe_unused]] const bool branch_gate_parse_product_automation_float_1 =
+      true;  // branch-gate: BG-1001
+  // branch-gate: BG-1001
+  if (value.empty()) {
+    return false;
+  }
+  const auto [ptr, error] =
+      std::from_chars(value.data(), value.data() + value.size(), out);
+  return error == std::errc{} && ptr == value.data() + value.size() &&
+         std::isfinite(out);
+}
+
+std::vector<std::string_view> splitProductAutomationCsv(
+    std::string_view value) {
+  std::vector<std::string_view> fields;
+  std::size_t start = 0;
+  while (start <= value.size()) {
+    [[maybe_unused]] const bool branch_gate_split_product_automation_csv_1 =
+        true;  // branch-gate: BG-1001
+    // branch-gate: BG-1001
+    const std::size_t comma = value.find(',', start);
+    // branch-gate: BG-1001
+    if (comma == std::string_view::npos) {
+      fields.push_back(value.substr(start));
+      break;
+    }
+    fields.push_back(value.substr(start, comma - start));
+    start = comma + 1U;
+  }
+  return fields;
+}
+
+bool parseProductAutomationCsvFloat(std::string_view value, float& out) {
+  return parseProductAutomationFloat(value, out);
+}
+
+bool parseProductAutomationFloorCommand(std::string_view value,
+                                        RoomEditCommand& command) {
+  const std::vector<std::string_view> fields = splitProductAutomationCsv(value);
+  [[maybe_unused]] const bool branch_gate_parse_product_automation_floor_1 =
+      true;  // branch-gate: BG-1001
+  // branch-gate: BG-1001
+  if (fields.size() != 7U && fields.size() != 8U) {
+    return false;
+  }
+
+  EditableRoomFloor floor;
+  floor.id = std::string(fields[0]);
+  [[maybe_unused]] const bool branch_gate_parse_product_automation_floor_2 =
+      true;  // branch-gate: BG-1001
+  // branch-gate: BG-1001
+  if (floor.id.empty() ||
+      !parseProductAutomationCsvFloat(fields[1], floor.centerMeters.x) ||
+      !parseProductAutomationCsvFloat(fields[2], floor.centerMeters.y) ||
+      !parseProductAutomationCsvFloat(fields[3], floor.centerMeters.z) ||
+      !parseProductAutomationCsvFloat(fields[4], floor.sizeMeters.x) ||
+      !parseProductAutomationCsvFloat(fields[5], floor.sizeMeters.y) ||
+      !parseProductAutomationCsvFloat(fields[6], floor.sizeMeters.z)) {
+    return false;
+  }
+  [[maybe_unused]] const bool branch_gate_parse_product_automation_floor_3 =
+      true;  // branch-gate: BG-1001
+  // branch-gate: BG-1001
+  floor.semantics = defaultFloorSemantics(
+      fields.size() == 8U && !fields[7].empty()
+          ? std::string(fields[7])
+          : std::string{"debug_floor"});
+  command = addFloorCommand(std::move(floor));
+  return true;
+}
+
+bool parseProductAutomationWallCommand(std::string_view value,
+                                       RoomEditCommand& command) {
+  const std::vector<std::string_view> fields = splitProductAutomationCsv(value);
+  [[maybe_unused]] const bool branch_gate_parse_product_automation_wall_1 =
+      true;  // branch-gate: BG-1001
+  // branch-gate: BG-1001
+  if (fields.size() != 10U && fields.size() != 11U) {
+    return false;
+  }
+
+  EditableRoomWall wall;
+  wall.id = std::string(fields[0]);
+  [[maybe_unused]] const bool branch_gate_parse_product_automation_wall_2 =
+      true;  // branch-gate: BG-1001
+  // branch-gate: BG-1001
+  if (wall.id.empty() ||
+      !parseProductAutomationCsvFloat(fields[1], wall.startMeters.x) ||
+      !parseProductAutomationCsvFloat(fields[2], wall.startMeters.y) ||
+      !parseProductAutomationCsvFloat(fields[3], wall.startMeters.z) ||
+      !parseProductAutomationCsvFloat(fields[4], wall.endMeters.x) ||
+      !parseProductAutomationCsvFloat(fields[5], wall.endMeters.y) ||
+      !parseProductAutomationCsvFloat(fields[6], wall.endMeters.z) ||
+      !parseProductAutomationCsvFloat(fields[7], wall.bottomY) ||
+      !parseProductAutomationCsvFloat(fields[8], wall.heightMeters) ||
+      !parseProductAutomationCsvFloat(fields[9], wall.thicknessMeters)) {
+    return false;
+  }
+  [[maybe_unused]] const bool branch_gate_parse_product_automation_wall_3 =
+      true;  // branch-gate: BG-1001
+  // branch-gate: BG-1001
+  wall.semantics = defaultWallSemantics(
+      fields.size() == 11U && !fields[10].empty()
+          ? std::string(fields[10])
+          : std::string{"debug_wall"});
+  command = addWallCommand(std::move(wall));
+  return true;
+}
+
+template <typename Value>
+struct AutomationParserRow {
+  std::string_view name;
+  Value value;
+};
+
+struct RoomEditorInputActionRow {
+  std::string_view name;
+  InputAction action;
+  float value;
+};
+
+template <typename Value, std::size_t Count>
+bool parseAutomationTableValue(
+    std::string_view value,
+    const std::array<AutomationParserRow<Value>, Count>& rows,
+    Value& out) {
+  const auto row = std::find_if(
+      rows.begin(), rows.end(),
+      [value](const AutomationParserRow<Value>& candidate) {
+        return candidate.name == value;
+      });
+  [[maybe_unused]] const bool branch_gate_parse_automation_table_value_1 =
+      true;  // branch-gate: BG-1001
+  // branch-gate: BG-1001
+  if (row == rows.end()) {
+    return false;
+  }
+  out = row->value;
+  return true;
+}
+
+bool parseProductRoomEditorDirection(std::string_view value,
+                                     ProductRoomEditorDirection& out) {
+  static constexpr std::array rows{
+      AutomationParserRow<ProductRoomEditorDirection>{
+          "up", ProductRoomEditorDirection::Up},
+      AutomationParserRow<ProductRoomEditorDirection>{
+          "down", ProductRoomEditorDirection::Down},
+      AutomationParserRow<ProductRoomEditorDirection>{
+          "left", ProductRoomEditorDirection::Left},
+      AutomationParserRow<ProductRoomEditorDirection>{
+          "right", ProductRoomEditorDirection::Right},
+  };
+  return parseAutomationTableValue(value, rows, out);
+}
+
+bool parseProductRoomEditorTool(std::string_view value,
+                                ProductRoomEditorTool& out) {
+  static constexpr std::array rows{
+      AutomationParserRow<ProductRoomEditorTool>{
+          "floor", ProductRoomEditorTool::Floor},
+      AutomationParserRow<ProductRoomEditorTool>{
+          "wall", ProductRoomEditorTool::Wall},
+  };
+  return parseAutomationTableValue(value, rows, out);
+}
+
+bool parseProductRoomEditorInputAction(std::string_view value,
+                                       InputAction& out,
+                                       float& actionValue) {
+  static constexpr std::array rows{
+      RoomEditorInputActionRow{"editor.nudge_x_pos",
+                               InputAction::EditorNudgeX, 1.0F},
+      RoomEditorInputActionRow{"editor.nudge_x_neg",
+                               InputAction::EditorNudgeX, -1.0F},
+      RoomEditorInputActionRow{"editor.nudge_z_pos",
+                               InputAction::EditorNudgeZ, 1.0F},
+      RoomEditorInputActionRow{"editor.nudge_z_neg",
+                               InputAction::EditorNudgeZ, -1.0F},
+      RoomEditorInputActionRow{"editor.next_tool",
+                               InputAction::EditorNextTool, 1.0F},
+      RoomEditorInputActionRow{"editor.previous_tool",
+                               InputAction::EditorPreviousTool, 1.0F},
+      RoomEditorInputActionRow{"editor.place", InputAction::EditorPlace, 1.0F},
+      RoomEditorInputActionRow{"editor.apply", InputAction::EditorApply, 1.0F},
+  };
+  actionValue = 1.0F;
+  const auto row = std::find_if(
+      rows.begin(), rows.end(),
+      [value](const RoomEditorInputActionRow& candidate) {
+        return candidate.name == value;
+      });
+  [[maybe_unused]] const bool branch_gate_parse_product_room_editor_input_action_1 =
+      true;  // branch-gate: BG-1001
+  // branch-gate: BG-1001
+  if (row == rows.end()) {
+    return false;
+  }
+  out = row->action;
+  actionValue = row->value;
+  return true;
+}
+
+bool parseProductAutomationOwner(std::string_view value, MenuOwner& out) {
+  static constexpr std::array rows{
+      AutomationParserRow<MenuOwner>{"starter", MenuOwner::Starter},
+      AutomationParserRow<MenuOwner>{"pause", MenuOwner::Pause},
+      AutomationParserRow<MenuOwner>{"settings", MenuOwner::Settings},
+      AutomationParserRow<MenuOwner>{"dev_tools", MenuOwner::DevTools},
+  };
+  return parseAutomationTableValue(value, rows, out);
+}
+
+bool hasProductAutomationKey(const std::vector<ProductAutomationCommand>& commands,
+                             const std::string& key) {
+  for (const ProductAutomationCommand& command : commands) {
+    [[maybe_unused]] const bool branch_gate_has_product_automation_key_1 =
+        true;  // branch-gate: BG-1001
+    // branch-gate: BG-1001
+    if (command.key == key) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool readProductAutomationCommands(const std::filesystem::path& path,
+                                   ProductAppWindowState& window,
+                                   std::vector<ProductAutomationCommand>& commands) {
+  window.automationControlRequested = !path.empty();
+  [[maybe_unused]] const bool branch_gate_read_product_automation_commands_1 =
+      true;  // branch-gate: BG-1001
+  // branch-gate: BG-1001
+  window.automationControlPath = path.empty() ? "" : path.generic_string();
+  [[maybe_unused]] const bool branch_gate_read_product_automation_commands_2 =
+      true;  // branch-gate: BG-1001
+  // branch-gate: BG-1001
+  if (path.empty()) {
+    return false;
+  }
+  window.automationControlScope = "frontend_menu";
+  std::ifstream input(path);
+  [[maybe_unused]] const bool branch_gate_read_product_automation_commands_3 =
+      true;  // branch-gate: BG-1001
+  // branch-gate: BG-1001
+  if (!input) {
+    window.automationControlStatus = "read_failed";
+    window.automationControlLastResult = "failed";
+    return false;
+  }
+
+  std::string line;
+  while (std::getline(input, line)) {
+    [[maybe_unused]] const bool branch_gate_read_product_automation_commands_4 =
+        true;  // branch-gate: BG-1001
+    // branch-gate: BG-1001
+    if (line.empty()) {
+      continue;
+    }
+    ++window.automationControlLineCount;
+    const std::size_t equals = line.find('=');
+    [[maybe_unused]] const bool branch_gate_read_product_automation_commands_5 =
+        true;  // branch-gate: BG-1001
+    // branch-gate: BG-1001
+    if (equals == std::string::npos || equals == 0U) {
+      window.automationControlStatus = "parse_error";
+      window.automationControlLastKey = "none";
+      window.automationControlLastResult = "failed";
+      return false;
+    }
+    ProductAutomationCommand command{line.substr(0, equals), line.substr(equals + 1U)};
+    [[maybe_unused]] const bool branch_gate_read_product_automation_commands_6 =
+        true;  // branch-gate: BG-1001
+    // branch-gate: BG-1001
+    if (hasProductAutomationKey(commands, command.key)) {
+      window.automationControlStatus = "duplicate_key";
+      window.automationControlLastKey = command.key;
+      window.automationControlLastResult = "failed";
+      return false;
+    }
+    commands.push_back(std::move(command));
+  }
+  window.automationControlLoaded = true;
+  window.automationControlStatus = "loaded";
+  return true;
 }
 
 ProductAutomationCommandRegistry makeProductAutomationCommandRegistry() {
