@@ -691,6 +691,10 @@ if(TARGET iggy3d_visual_demo)
     product_pause_save_smoke
     tests/smoke/product_pause_save_smoke.cpp
     "pause;save")
+  iggy3d_add_product_app_automation_smoke(
+    product_startup_lifecycle_smoke
+    tests/smoke/product_startup_lifecycle_smoke.cpp
+    "startup;world_setup;save;load;lifecycle")
 
   add_executable(product_gameplay_tape_smoke
     tests/smoke/product_gameplay_tape_smoke.cpp)
