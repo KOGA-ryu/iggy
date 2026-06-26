@@ -58,6 +58,11 @@ constexpr std::array kKeyboardRoomEditorActionBindings{
         &KeyboardInputState::editorSelectWallToolWasDown,
         InputAction::EditorSelectWallTool,
         1.0F},
+    KeyboardRoomEditorActionBinding{
+        &KeyboardRoomEditorInputSample::rotateWallDirectionDown,
+        &KeyboardInputState::editorRotateWallDirectionWasDown,
+        InputAction::EditorRotateWallDirection,
+        1.0F},
     KeyboardRoomEditorActionBinding{&KeyboardRoomEditorInputSample::placeDown,
                                     &KeyboardInputState::editorPlaceWasDown,
                                     InputAction::EditorPlace,
@@ -244,6 +249,7 @@ void pollKeyboardRoomEditorActions(KeyboardInputState& state, ActionState& actio
   sample.previousToolDown = keyDown(keys, SDL_SCANCODE_Q);
   sample.selectFloorToolDown = keyDown(keys, SDL_SCANCODE_1);
   sample.selectWallToolDown = keyDown(keys, SDL_SCANCODE_2);
+  sample.rotateWallDirectionDown = keyDown(keys, SDL_SCANCODE_R);
   sample.placeDown = keyDown(keys, SDL_SCANCODE_SPACE);
   sample.deleteDown = keyDown(keys, SDL_SCANCODE_DELETE);
   sample.undoDown = keyDown(keys, SDL_SCANCODE_Z);

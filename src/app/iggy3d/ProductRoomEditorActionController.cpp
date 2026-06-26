@@ -314,6 +314,14 @@ ProductRoomEditorActionResult applyProductRoomEditorAction(
                           setProductRoomEditorTool(
                               cursor, ProductRoomEditorTool::Wall),
                           operation);
+    case InputAction::EditorRotateWallDirection:
+      // branch-gate: BG-1041
+      if (!buttonIntent(action)) {
+        return ignoredResult(editing, cursor, operation);
+      }
+      return cursorResult(
+          editing, rotateProductRoomEditorWallDirectionClockwise(cursor),
+          operation);
     case InputAction::EditorPlace:
     case InputAction::EditorApply:
       if (!buttonIntent(action)) {

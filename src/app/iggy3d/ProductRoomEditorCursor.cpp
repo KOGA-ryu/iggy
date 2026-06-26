@@ -1,5 +1,6 @@
 #include "app/iggy3d/ProductRoomEditorCursor.hpp"
 
+#include <array>
 #include <cmath>
 #include <string>
 
@@ -71,6 +72,22 @@ bool fillWallEdge(ProductRoomEditorCursorState state,
   }
   return false;
 }
+
+struct WallDirectionCycleRow {
+  ProductRoomEditorDirection from;
+  ProductRoomEditorDirection to;
+};
+
+constexpr std::array kClockwiseWallDirectionCycle{
+    WallDirectionCycleRow{ProductRoomEditorDirection::Up,
+                          ProductRoomEditorDirection::Right},
+    WallDirectionCycleRow{ProductRoomEditorDirection::Right,
+                          ProductRoomEditorDirection::Down},
+    WallDirectionCycleRow{ProductRoomEditorDirection::Down,
+                          ProductRoomEditorDirection::Left},
+    WallDirectionCycleRow{ProductRoomEditorDirection::Left,
+                          ProductRoomEditorDirection::Up},
+};
 
 ProductRoomEditorCursorResult buildFloorCommand(ProductRoomEditorCursorState state,
                                                 const EditableRoomDocument& document) {
@@ -197,6 +214,17 @@ ProductRoomEditorCursorResult setProductRoomEditorWallDirection(
     case ProductRoomEditorDirection::Right:
       state.wallDirection = direction;
       return cursorResult(state, true, "room_editor_wall_direction_changed");
+  }
+  return cursorResult(state, false, "room_editor_invalid_direction");
+}
+
+ProductRoomEditorCursorResult rotateProductRoomEditorWallDirectionClockwise(
+    ProductRoomEditorCursorState state) {
+  for (const WallDirectionCycleRow& row : kClockwiseWallDirectionCycle) {
+    // branch-gate: BG-1042
+    if (state.wallDirection == row.from) {
+      return setProductRoomEditorWallDirection(state, row.to);
+    }
   }
   return cursorResult(state, false, "room_editor_invalid_direction");
 }

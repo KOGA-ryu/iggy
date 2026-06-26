@@ -217,6 +217,25 @@ int main() {
     iggy3d::KeyboardInputState keyboard;
     iggy3d::ActionState actions;
     iggy3d::KeyboardRoomEditorInputSample sample;
+    sample.rotateWallDirectionDown = true;
+    iggy3d::recordKeyboardRoomEditorActions(keyboard, sample, actions);
+    ok = expectActionValue(actions,
+                           iggy3d::InputAction::EditorRotateWallDirection,
+                           1.0F,
+                           "keyboard R emits wall direction rotate") &&
+         ok;
+
+    iggy3d::ActionState held;
+    iggy3d::recordKeyboardRoomEditorActions(keyboard, sample, held);
+    ok = expect(held.entries.empty(),
+                "keyboard held wall direction rotate does not repeat") &&
+         ok;
+  }
+
+  {
+    iggy3d::KeyboardInputState keyboard;
+    iggy3d::ActionState actions;
+    iggy3d::KeyboardRoomEditorInputSample sample;
     sample.placeDown = true;
     iggy3d::recordKeyboardRoomEditorActions(keyboard, sample, actions);
     ok = expectActionValue(actions, iggy3d::InputAction::EditorPlace, 1.0F,

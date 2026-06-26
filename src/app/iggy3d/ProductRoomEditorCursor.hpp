@@ -56,6 +56,9 @@ ProductRoomEditorCursorResult setProductRoomEditorWallDirection(
     ProductRoomEditorCursorState state,
     ProductRoomEditorDirection direction);
 
+ProductRoomEditorCursorResult rotateProductRoomEditorWallDirectionClockwise(
+    ProductRoomEditorCursorState state);
+
 ProductRoomEditorCursorResult buildProductRoomEditorPlaceCommand(
     ProductRoomEditorCursorState state,
     const EditableRoomDocument* document);

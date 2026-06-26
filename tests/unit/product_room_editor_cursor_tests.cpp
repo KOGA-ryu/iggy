@@ -109,12 +109,29 @@ bool toolCycleAndWallDirectionAreDeterministic() {
 
   changed = iggy3d::setProductRoomEditorWallDirection(
       changed.state, iggy3d::ProductRoomEditorDirection::Right);
-  return expect(changed.ok, "set direction accepted") &&
-         expect(changed.status == "room_editor_wall_direction_changed",
-                "direction status") &&
-         expect(changed.state.wallDirection ==
-                    iggy3d::ProductRoomEditorDirection::Right,
-                "direction right") && ok;
+  ok = expect(changed.ok, "set direction accepted") &&
+       expect(changed.status == "room_editor_wall_direction_changed",
+              "direction status") &&
+       expect(changed.state.wallDirection == iggy3d::ProductRoomEditorDirection::Right,
+              "direction right") &&
+       ok;
+
+  changed = iggy3d::rotateProductRoomEditorWallDirectionClockwise(changed.state);
+  ok = expect(changed.state.wallDirection == iggy3d::ProductRoomEditorDirection::Down,
+              "rotated right to down") &&
+       ok;
+  changed = iggy3d::rotateProductRoomEditorWallDirectionClockwise(changed.state);
+  ok = expect(changed.state.wallDirection == iggy3d::ProductRoomEditorDirection::Left,
+              "rotated down to left") &&
+       ok;
+  changed = iggy3d::rotateProductRoomEditorWallDirectionClockwise(changed.state);
+  ok = expect(changed.state.wallDirection == iggy3d::ProductRoomEditorDirection::Up,
+              "rotated left to up") &&
+       ok;
+  changed = iggy3d::rotateProductRoomEditorWallDirectionClockwise(changed.state);
+  return expect(changed.state.wallDirection == iggy3d::ProductRoomEditorDirection::Right,
+                "rotated up to right") &&
+         ok;
 }
 
 bool floorCommandUsesCursorAndNextDocumentId() {

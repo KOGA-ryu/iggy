@@ -72,6 +72,8 @@ std::string_view inputActionName(InputAction action) {
       return "editor.select_floor_tool";
     case InputAction::EditorSelectWallTool:
       return "editor.select_wall_tool";
+    case InputAction::EditorRotateWallDirection:
+      return "editor.rotate_wall_direction";
     case InputAction::EditorNudgeX:
       return "editor.nudge_x";
     case InputAction::EditorNudgeZ:
@@ -130,6 +132,7 @@ InputActionGroup inputActionGroup(InputAction action) {
     case InputAction::EditorPreviousTool:
     case InputAction::EditorSelectFloorTool:
     case InputAction::EditorSelectWallTool:
+    case InputAction::EditorRotateWallDirection:
     case InputAction::EditorNudgeX:
     case InputAction::EditorNudgeZ:
     case InputAction::EditorResizeX:

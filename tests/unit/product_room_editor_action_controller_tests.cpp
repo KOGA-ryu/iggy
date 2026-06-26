@@ -128,6 +128,58 @@ bool directToolActionsSelectWithoutMutation() {
          ok;
 }
 
+bool wallDirectionRotateActionsAreDeterministic() {
+  iggy3d::ProductRoomEditingState editing =
+      iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
+  iggy3d::ProductRoomEditorCursorState cursor;
+  cursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
+  const std::uint64_t initialFloors = editing.documentFloorCount;
+  const std::uint64_t initialWalls = editing.documentWallCount;
+
+  iggy3d::ProductRoomEditorActionResult result =
+      iggy3d::applyProductRoomEditorAction(
+          editing, cursor,
+          action(iggy3d::InputAction::EditorRotateWallDirection));
+  bool ok = expect(result.ok, "rotate wall direction accepted") &&
+            expect(result.status == "room_editor_wall_direction_changed",
+                   "rotate wall direction status") &&
+            expect(result.operation == "editor.rotate_wall_direction",
+                   "rotate wall direction operation") &&
+            expect(result.operationAccepted,
+                   "rotate wall direction operation accepted") &&
+            expect(result.cursor.wallDirection ==
+                       iggy3d::ProductRoomEditorDirection::Right,
+                   "rotate up to right") &&
+            expect(result.editing.documentFloorCount == initialFloors,
+                   "rotate leaves floors") &&
+            expect(result.editing.documentWallCount == initialWalls,
+                   "rotate leaves walls");
+
+  result = iggy3d::applyProductRoomEditorAction(
+      result.editing, result.cursor,
+      action(iggy3d::InputAction::EditorRotateWallDirection));
+  ok = expect(result.cursor.wallDirection == iggy3d::ProductRoomEditorDirection::Down,
+              "rotate right to down") &&
+       ok;
+  result = iggy3d::applyProductRoomEditorAction(
+      result.editing, result.cursor,
+      action(iggy3d::InputAction::EditorRotateWallDirection));
+  ok = expect(result.cursor.wallDirection == iggy3d::ProductRoomEditorDirection::Left,
+              "rotate down to left") &&
+       ok;
+  result = iggy3d::applyProductRoomEditorAction(
+      result.editing, result.cursor,
+      action(iggy3d::InputAction::EditorRotateWallDirection));
+  ok = expect(result.cursor.wallDirection == iggy3d::ProductRoomEditorDirection::Up,
+              "rotate left to up") &&
+       ok;
+  return expect(result.editing.documentFloorCount == initialFloors,
+                "rotation cycle leaves floors") &&
+         expect(result.editing.documentWallCount == initialWalls,
+                "rotation cycle leaves walls") &&
+         ok;
+}
+
 bool placeAppliesThroughEditingState() {
   iggy3d::ProductRoomEditingState editing =
       iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
@@ -301,6 +353,7 @@ int main() {
   const bool ok = notReadyRejectsWithoutMutation() && nudgeActionsMoveCursor() &&
                   toolActionsChangeDeterministically() &&
                   directToolActionsSelectWithoutMutation() &&
+                  wallDirectionRotateActionsAreDeterministic() &&
                   placeAppliesThroughEditingState() &&
                   deleteUndoRedoApplyThroughEditingState() &&
                   floorDeleteUndoRedoApplyThroughEditingState() &&
