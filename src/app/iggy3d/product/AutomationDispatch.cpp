@@ -4,7 +4,12 @@
 #include "app/iggy3d/product/AutomationRoomEditing.hpp"
 #include "app/iggy3d/product/AutomationSaveBrowser.hpp"
 #include "app/iggy3d/product/AutomationSystem.hpp"
+#include "app/iggy3d/product/ProductMenuInputRouter.hpp"
+#include "app/iggy3d/ProductAsciiRoomActivation.hpp"
+#include "app/iggy3d/ProductMenuTransitions.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/input/ActionState.hpp"
+#include "app/input/InputRouter.hpp"
 
 namespace iggy3d {
 
@@ -18,6 +23,24 @@ bool returnIfHandled(const ProductAutomationExecutionResult& execution,
     return true;
   }
   return false;
+}
+
+bool routeAutomationInput(FrontendState& frontend,
+                          const ProductSaveBridgeResult& saves,
+                          const ProductAppOptions& options,
+                          FrontendSettingsTab& settingsTab,
+                          std::optional<Session>& activeSession,
+                          WorldSetupDraft& worldSetupDraft,
+                          ProductAppWindowState& window,
+                          InputAction action,
+                          bool& closeRequested) {
+  ActionState actionState;
+  ProductOpeningMenuInputContext menuContext{
+      frontend, saves, options, settingsTab, activeSession, worldSetupDraft,
+      window, closeRequested};
+  routeProductOpeningMenuInput(action, actionState, menuContext);
+  window.automationControlLastOwner = productInputOwnerFor(frontend, window);
+  return window.lastInputAccepted || action == InputAction::None;
 }
 
 }  // namespace
@@ -124,6 +147,47 @@ bool applyProductAutomationCommand(
 
   context.window.automationControlStatus = "unknown_key";
   return false;
+}
+
+bool applyProductAutomationAppCommand(const ProductAutomationCommand& command,
+                                      ProductAutomationAppContext context) {
+  ProductAutomationDispatchContext dispatchContext{
+      context.frontend, context.saves, context.options, context.settingsTab,
+      // branch-gate: BG-1033
+      context.activeSession.has_value() ? &*context.activeSession : nullptr,
+      context.worldSetupDraft, context.window,
+      [&context]() {
+        return productInputOwnerFor(context.frontend, context.window);
+      },
+      [&context](InputAction action) {
+        return routeAutomationInput(context.frontend, context.saves,
+                                    context.options, context.settingsTab,
+                                    context.activeSession, context.worldSetupDraft,
+                                    context.window, action, context.closeRequested);
+      },
+      [&context]() {
+        const ProductAsciiRoomActivationResult activated =
+            activateProductAsciiRoomPreview(context.activeSession, context.window);
+        // branch-gate: BG-1033
+        if (activated.ok) {
+          enterProductGameplayTransition(context.frontend, context.window,
+                                         FrontendAction::CreateAndEnter);
+        }
+        return activated.ok;
+      },
+      [&context](InputAction action) {
+        InputRoutingContext routingContext;
+        routingContext.owners.editor = context.window.roomEditing.ready;
+        routingContext.owners.gameplay = true;
+        return routeInputAction(routingContext, action);
+      },
+      [&context]() {
+        returnProductToTitleTransition(context.frontend, context.window);
+        context.activeSession.reset();
+      },
+      [&context]() { context.closeRequested = true; },
+  };
+  return applyProductAutomationCommand(command, dispatchContext);
 }
 
 }  // namespace iggy3d

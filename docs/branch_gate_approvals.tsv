@@ -31,3 +31,4 @@ BG-1029	src/app/iggy3d/ProductWindowInputFrame.cpp	product window input frame pr
 BG-1030	src/app/iggy3d/ProductWindowFramePresenter.cpp	product window frame presenter extraction from AppShell	codex	2026-06-26
 BG-1031	src/app/iggy3d/ProductWindowLoop.cpp	product window loop extraction from AppShell	codex	2026-06-26
 BG-1032	src/app/iggy3d/ProductGameplayTapeRunner.cpp	gameplay tape option flow extraction from AppShell	codex	2026-06-26
+BG-1033	src/app/iggy3d/product/AutomationDispatch.cpp	automation app adapter extraction from AppShell	codex	2026-06-26

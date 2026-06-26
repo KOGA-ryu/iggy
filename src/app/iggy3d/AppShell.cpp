@@ -7,10 +7,8 @@
 #include "app/iggy3d/ProductAppOperations.hpp"
 #include "app/iggy3d/ProductCameraController.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
-#include "app/iggy3d/ProductAsciiRoomActivation.hpp"
 #include "app/iggy3d/product/AutomationControl.hpp"
 #include "app/iggy3d/product/AutomationDispatch.hpp"
-#include "app/iggy3d/product/AutomationRoomEditing.hpp"
 #include "app/iggy3d/product/ProductMenuInputRouter.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/ProductGameplayProjectionRefresh.hpp"
@@ -21,7 +19,6 @@
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
 #include "app/input/ActionState.hpp"
-#include "app/input/InputRouter.hpp"
 #include "runtime/session/Session.hpp"
 
 namespace iggy3d {
@@ -69,70 +66,6 @@ FrontendSettings productFrontendSettingsFromOptions(const ProductAppOptions& opt
   settings.devToolsEnabled = true;
   settings.debugOverlayEnabled = true;
   return settings;
-}
-
-bool routeAutomationInput(FrontendState& frontend,
-                          const ProductSaveBridgeResult& saves,
-                          const ProductAppOptions& options,
-                          FrontendSettingsTab& settingsTab,
-                          std::optional<Session>& activeSession,
-                          WorldSetupDraft& worldSetupDraft,
-                          ProductAppWindowState& window,
-                          InputAction action,
-                          bool& closeRequested) {
-  ActionState actionState;
-  ProductOpeningMenuInputContext menuContext{
-      frontend, saves, options, settingsTab, activeSession, worldSetupDraft,
-      window, closeRequested};
-  routeProductOpeningMenuInput(action, actionState, menuContext);
-  window.automationControlLastOwner = productInputOwnerFor(frontend, window);
-  return window.lastInputAccepted || action == InputAction::None;
-}
-
-bool applyProductAutomationCommand(const ProductAutomationCommand& command,
-                                   FrontendState& frontend,
-                                   const ProductSaveBridgeResult& saves,
-                                   const ProductAppOptions& options,
-                                   FrontendSettingsTab& settingsTab,
-                                   std::optional<Session>& activeSession,
-                                   WorldSetupDraft& worldSetupDraft,
-                                   ProductAppWindowState& window,
-                                   bool& closeRequested) {
-  ProductAutomationDispatchContext dispatchContext{
-      frontend, saves, options, settingsTab,
-      // branch-gate: BG-1016
-      activeSession.has_value() ? &*activeSession : nullptr,
-      worldSetupDraft, window,
-      [&frontend, &window]() { return productInputOwnerFor(frontend, window); },
-      [&frontend, &saves, &options, &settingsTab, &activeSession, &worldSetupDraft,
-       &window, &closeRequested](InputAction action) {
-        return routeAutomationInput(frontend, saves, options, settingsTab,
-                                    activeSession, worldSetupDraft, window, action,
-                                    closeRequested);
-      },
-      [&activeSession, &window, &frontend]() {
-        const ProductAsciiRoomActivationResult activated =
-            activateProductAsciiRoomPreview(activeSession, window);
-        // branch-gate: BG-1016
-        if (activated.ok) {
-          enterProductGameplayTransition(frontend, window,
-                                         FrontendAction::CreateAndEnter);
-        }
-        return activated.ok;
-      },
-      [&window](InputAction action) {
-        InputRoutingContext routingContext;
-        routingContext.owners.editor = window.roomEditing.ready;
-        routingContext.owners.gameplay = true;
-        return routeInputAction(routingContext, action);
-      },
-      [&frontend, &window, &activeSession]() {
-        returnProductToTitleTransition(frontend, window);
-        activeSession.reset();
-      },
-      [&closeRequested]() { closeRequested = true; },
-  };
-  return applyProductAutomationCommand(command, dispatchContext);
 }
 
 }  // namespace
@@ -187,10 +120,11 @@ int runProductApp(int argc, char** argv) {
       [&frontend, &saves, &options, &automationSettingsTab, &activeSession,
        &worldSetupDraft, &window, &automationCloseRequested](
           const ProductAutomationCommand& command) {
-        return applyProductAutomationCommand(command, frontend, saves, options,
-                                             automationSettingsTab, activeSession,
-                                             worldSetupDraft, window,
-                                             automationCloseRequested);
+        return applyProductAutomationAppCommand(
+            command, ProductAutomationAppContext{
+                         frontend, saves, options, automationSettingsTab,
+                         activeSession, worldSetupDraft, window,
+                         automationCloseRequested});
       },
       [&frontend, &window]() { return productInputOwnerFor(frontend, window); },
       [&frontend](MenuOwner owner) {

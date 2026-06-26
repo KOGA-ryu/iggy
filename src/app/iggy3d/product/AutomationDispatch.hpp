@@ -1,9 +1,11 @@
 #pragma once
 
 #include <functional>
+#include <optional>
 
 #include "app/iggy3d/product/Automation.hpp"
 #include "app/input/InputRouter.hpp"
+#include "runtime/session/Session.hpp"
 
 namespace iggy3d {
 
@@ -27,8 +29,22 @@ struct ProductAutomationDispatchContext {
   std::function<void()> requestQuit;
 };
 
+struct ProductAutomationAppContext {
+  FrontendState& frontend;
+  const ProductSaveBridgeResult& saves;
+  const ProductAppOptions& options;
+  FrontendSettingsTab& settingsTab;
+  std::optional<Session>& activeSession;
+  WorldSetupDraft& worldSetupDraft;
+  ProductAppWindowState& window;
+  bool& closeRequested;
+};
+
 bool applyProductAutomationCommand(
     const ProductAutomationCommand& command,
     ProductAutomationDispatchContext& context);
+
+bool applyProductAutomationAppCommand(const ProductAutomationCommand& command,
+                                      ProductAutomationAppContext context);
 
 }  // namespace iggy3d
