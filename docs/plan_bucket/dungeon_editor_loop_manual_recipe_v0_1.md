@@ -8,7 +8,8 @@ to the deterministic no-window proof that already covers:
 
 - New World from a custom draft;
 - Pause to Edit Room;
-- real editor input for place/delete/undo/redo;
+- real editor input for direct floor/wall tool selection, wall-direction
+  rotation, place/delete/undo/redo;
 - Save And Exit;
 - fresh starter boot;
 - Continue into the saved edited room;
@@ -81,12 +82,17 @@ Notes:
 8. Select `Edit Room`.
 9. Use editor controls:
    - `W/A/S/D` or d-pad: move editor cursor.
-   - `Q/E` or shoulders: cycle editor tool.
+   - `1`: select Floor tool.
+   - `2`: select Wall tool.
+   - `R`: rotate wall direction clockwise while the Wall tool is active.
+   - `Q/E` or shoulders: cycle editor tools when direct selection is not desired.
    - `Space` or gamepad south: place.
    - `Delete`: delete.
    - `Z`: undo.
    - `Y`: redo.
-10. Place at least one wall or floor so the edited room changes.
+10. Place at least one wall or floor so the edited room changes. A compact manual
+    proof path is: move right once, press `2`, press `Space`, press `R`, press
+    `Space` again. That creates two wall edits with distinct directions.
 11. Open Pause again.
 12. Select `Save And Exit`.
 13. Relaunch with the same `--save-root`.
@@ -126,6 +132,34 @@ arrow keys select built-in dungeon presets instead of moving the draft cursor.
 Gamepad d-pad, south, and east buttons can navigate, confirm, and back out of
 New World. Glyph painting is currently keyboard number-key driven.
 
+ASCII glyphs remain map/layout authoring only. The New World number keys are
+only draft paint inputs while the New World draft editor owns input; they are
+separate from the in-game room editor tool hotkeys below.
+
+## In-Game Room Editor Controls
+
+Open Pause, select `Edit Room`, then use these controls while room editing is
+active:
+
+| Control | In-game room editor behavior |
+| --- | --- |
+| `W` or d-pad Up | Move editor cursor up |
+| `S` or d-pad Down | Move editor cursor down |
+| `A` or d-pad Left | Move editor cursor left |
+| `D` or d-pad Right | Move editor cursor right |
+| `1` | Select Floor tool |
+| `2` | Select Wall tool |
+| `R` | Rotate wall direction clockwise: Up, Right, Down, Left, Up |
+| `Q` or left shoulder | Cycle to previous tool |
+| `E` or right shoulder | Cycle to next tool |
+| `Space` or gamepad south | Place with the active tool |
+| `Delete` | Delete the primitive under the cursor/tool target |
+| `Z` | Undo |
+| `Y` | Redo |
+
+Direct `1`/`2` selection is the preferred manual way to choose Floor or Wall.
+`Q/E` still work for cycling and remain covered by the input/controller tests.
+
 ## Bounded Window Receipt Check
 
 For a short user-run receipt sanity check, use a finite frame count:
@@ -145,19 +179,32 @@ for the interactive editor test above.
 
 ## Deterministic No-Window Parity Proof
 
-The stable no-window parity gate is:
+The focused proof map for the current editor loop is:
+
+| Target | What it proves |
+| --- | --- |
+| `product_new_world_menu_action_tests` | New World draft edit-mode movement, paint, and create semantics |
+| `product_ascii_map_smoke` | End-to-end New World draft receipt parity, including cursor paint create |
+| `room_editor_input_tests` | Physical room-editor keyboard mappings, including `1`, `2`, and `R` |
+| `product_room_editor_action_controller_tests` | Editor actions change cursor/tool/direction state and edit documents correctly |
+| `product_editor_wall_direction_hotkey_smoke` | Wall direction hotkey persists distinct Up and Right wall geometry |
+| `product_editor_combined_save_continue_smoke` | Direct floor+wall edits persist together through Save And Exit and Continue |
+| `product_continued_room_movement_smoke` | Continued edited room uses restored collision for exploration |
+| `product_room_visual_proof_smoke` | Continued edited room has deterministic headless PPM visual artifact |
+
+The stable headless visual parity gate is:
 
 ```sh
 cmake --build build --target product_room_visual_proof_smoke
 ctest --test-dir build --output-on-failure -R '^product_room_visual_proof_smoke$'
 ```
 
-That smoke runs the same editor-loop spine without a window:
+That smoke runs the editor-loop spine without a window:
 
 1. creates a custom draft through the New World flow;
 2. enters gameplay;
 3. opens Pause and Edit Room;
-4. applies real editor input:
+4. applies real editor input through the room editor action path:
 
 ```text
 editor.input=editor.nudge_x_pos,editor.next_tool,editor.place
@@ -170,6 +217,21 @@ editor.input=editor.nudge_x_pos,editor.next_tool,editor.place
 9. rebuilds product active-room, scene projection, primitive draw-list, and CPU
    room mesh proof;
 10. writes a deterministic PPM visual proof artifact.
+
+The direct floor/wall persistence proof uses:
+
+```text
+editor.input=editor.nudge_x_pos,editor.select_wall_tool,editor.place,editor.select_floor_tool,editor.place
+```
+
+The wall-direction hotkey persistence proof uses:
+
+```text
+editor.input=editor.nudge_x_pos,editor.select_wall_tool,editor.place,editor.rotate_wall_direction,editor.place
+```
+
+That second proof decodes the saved room and checks `edit_wall_1` is the
+default Up edge while `edit_wall_2` is the rotated Right edge.
 
 The smoke emits:
 
@@ -243,7 +305,7 @@ world.create=true
 system.pause=true
 menu.down=true
 pause.execute=true
-editor.input=editor.nudge_x_pos,editor.next_tool,editor.place
+editor.input=editor.nudge_x_pos,editor.select_wall_tool,editor.place,editor.rotate_wall_direction,editor.place
 menu.back=true
 pause.select=save_and_exit
 menu.confirm=true
@@ -330,6 +392,7 @@ product_save_source=pause_save_and_exit
 active_product_save_id=save_001
 room_editor_hud_visible=false
 room_editor_hud_tool=wall
+room_editor_hud_wall_direction=right
 room_editor_hud_last_operation=editor.place
 room_editor_overlay_visible=false
 ```
@@ -342,12 +405,12 @@ gameplay_active=true
 active_room_source=saved_authored_room
 active_room_id=custom_dungeon_draft
 active_room_authored_floor_count=58
-active_room_authored_wall_count=62
+active_room_authored_wall_count=63
 room_editor_hud_visible=false
 product_save_load_status=product_save_loaded
 product_save_load_source=continue
 product_vulkan_room_mesh_cpu_ready=true
-product_vulkan_room_wall_draw_count=22
+product_vulkan_room_wall_draw_count=<positive integer>
 ```
 
 The visual proof smoke additionally ties the PPM artifact to:
@@ -386,18 +449,21 @@ For this recipe and receipt parity:
 
 ```sh
 cmake --build build --target iggy3d_app
-cmake --build build --target product_ascii_map_smoke
-ctest --test-dir build --output-on-failure -R '^product_ascii_map_smoke$'
-cmake --build build --target product_room_visual_proof_smoke
-ctest --test-dir build --output-on-failure -R '^product_room_visual_proof_smoke$'
+cmake --build build --target room_editor_input_tests
+ctest --test-dir build --output-on-failure -R '^room_editor_input_tests$'
+cmake --build build --target product_room_editor_action_controller_tests
+ctest --test-dir build --output-on-failure -R '^product_room_editor_action_controller_tests$'
+cmake --build build --target product_editor_wall_direction_hotkey_smoke
+ctest --test-dir build --output-on-failure -R '^product_editor_wall_direction_hotkey_smoke$'
+cmake --build build --target product_new_world_menu_action_tests
+ctest --test-dir build --output-on-failure -R '^product_new_world_menu_action_tests$'
 tools/check_branch_gate.py
 git diff --check
 ```
 
-`product_ascii_map_smoke` proves the New World draft controls and receipt
-fields through `ascii_map_custom_draft_cursor_paint_create`.
-`product_room_visual_proof_smoke` proves Save And Exit, fresh Continue, and the
-headless PPM visual artifact for the edited room.
+`product_ascii_map_smoke`, `product_editor_combined_save_continue_smoke`,
+`product_continued_room_movement_smoke`, and `product_room_visual_proof_smoke`
+remain the broader end-to-end proof targets listed in the proof map above.
 
 ## Stop Rules
 
