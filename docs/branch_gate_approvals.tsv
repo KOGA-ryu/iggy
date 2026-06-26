@@ -29,3 +29,4 @@ BG-1027	src/app/iggy3d/ProductGameplayProjectionRefresh.cpp	live gameplay projec
 BG-1028	src/app/iggy3d/ProductWindowRendererLifecycle.cpp	product window renderer lifecycle extraction from AppShell	codex	2026-06-26
 BG-1029	src/app/iggy3d/ProductWindowInputFrame.cpp	product window input frame processing extraction from AppShell	codex	2026-06-26
 BG-1030	src/app/iggy3d/ProductWindowFramePresenter.cpp	product window frame presenter extraction from AppShell	codex	2026-06-26
+BG-1031	src/app/iggy3d/ProductWindowLoop.cpp	product window loop extraction from AppShell	codex	2026-06-26
