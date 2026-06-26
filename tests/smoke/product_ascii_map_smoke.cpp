@@ -293,7 +293,7 @@ int main() {
                                           "product_vulkan_room_floor_draw_count") &&
       iggy3d::smoke::hasField(fields,
                               "product_vulkan_room_wall_draw_count",
-                              "61") &&
+                              "21") &&
       iggy3d::smoke::positiveIntegerField(
           fields, "product_vulkan_room_grid_line_draw_count") &&
       iggy3d::smoke::positiveIntegerField(
@@ -426,7 +426,7 @@ int main() {
                               "custom_dungeon_draft") &&
       iggy3d::smoke::hasField(fields,
                               "product_vulkan_room_wall_draw_count",
-                              "61") &&
+                              "21") &&
       std::filesystem::exists(customCursorPaintSaveRoot /
                               "save_001.iggy3d.save") &&
       fileContains(customCursorPaintSaveRoot / "save_001.iggy3d.save",
@@ -1012,7 +1012,7 @@ int main() {
                               "custom_dungeon_draft") &&
       iggy3d::smoke::hasField(fields,
                               "product_vulkan_room_wall_draw_count",
-                              "62") &&
+                              "22") &&
       iggy3d::smoke::positiveIntegerField(fields,
                                           "product_vulkan_room_vertex_count") &&
       iggy3d::smoke::positiveIntegerField(fields,
@@ -1315,7 +1315,7 @@ int main() {
                               "custom_dungeon_draft") &&
       iggy3d::smoke::hasField(fields,
                               "product_vulkan_room_wall_draw_count",
-                              "62") &&
+                              "23") &&
       iggy3d::smoke::positiveIntegerField(fields,
                                           "product_vulkan_room_vertex_count") &&
       iggy3d::smoke::positiveIntegerField(fields,
@@ -1477,7 +1477,7 @@ int main() {
                               "custom_dungeon_draft") &&
       iggy3d::smoke::hasField(fields,
                               "product_vulkan_room_wall_draw_count",
-                              "62") &&
+                              "23") &&
       iggy3d::smoke::positiveIntegerField(fields,
                                           "product_vulkan_room_vertex_count") &&
       iggy3d::smoke::positiveIntegerField(fields,

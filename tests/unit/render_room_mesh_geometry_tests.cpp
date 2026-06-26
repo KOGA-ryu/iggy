@@ -189,17 +189,19 @@ bool asciiFloorsAndWallsBuildVulkanRoomGeometry() {
       iggy3d::vulkan::buildRoomMeshCpuGeometry(projection.room);
 
   constexpr std::size_t kFloorCount = 1U;
-  constexpr std::size_t kWallCount = 8U;
-  constexpr std::size_t kMeshCount = kFloorCount + kWallCount;
+  constexpr std::size_t kSourceWallCount = 8U;
+  constexpr std::size_t kOptimizedWallDrawCount = 4U;
+  constexpr std::size_t kMeshCount = kFloorCount + kSourceWallCount;
   constexpr std::size_t kFloorGridLineCount = kFloorCount * 4U;
-  constexpr std::size_t kWallGridLineCount = kWallCount * 8U;
+  constexpr std::size_t kWallGridLineCount = kSourceWallCount * 8U;
   constexpr std::size_t kGridLineCount = kFloorGridLineCount + kWallGridLineCount;
-  constexpr std::size_t kDrawCount = kMeshCount + kGridLineCount;
+  constexpr std::size_t kDrawCount =
+      kFloorCount + kOptimizedWallDrawCount + kGridLineCount;
   constexpr std::size_t kFloorPlaneVertexCount = 4U;
   constexpr std::size_t kFloorPlaneIndexCount = 12U;
   constexpr std::size_t kBoxVertexCount = 8U;
   constexpr std::size_t kBoxIndexCount = 72U;
-  constexpr std::size_t kBoxDrawCount = kWallCount + kGridLineCount;
+  constexpr std::size_t kBoxDrawCount = kOptimizedWallDrawCount + kGridLineCount;
 
   bool ok = true;
   ok = expect(asset.ok, "ascii room asset ok") && ok;
@@ -212,7 +214,7 @@ bool asciiFloorsAndWallsBuildVulkanRoomGeometry() {
   ok = expect(countProjectedRole(projection.room, "floor") == kFloorCount,
               "projected floor count") &&
        ok;
-  ok = expect(countProjectedRole(projection.room, "wall") == kWallCount,
+  ok = expect(countProjectedRole(projection.room, "wall") == kSourceWallCount,
               "projected wall count") &&
        ok;
   ok = expect(geometry.ready, "room mesh geometry ready") && ok;
@@ -225,7 +227,7 @@ bool asciiFloorsAndWallsBuildVulkanRoomGeometry() {
   ok = expect(geometry.roomFloorDrawCount == kFloorCount,
               "geometry floor draw count") &&
        ok;
-  ok = expect(geometry.roomWallDrawCount == kWallCount,
+  ok = expect(geometry.roomWallDrawCount == kOptimizedWallDrawCount,
               "geometry wall draw count") &&
        ok;
   ok = expect(geometry.roomGridLineDrawCount == kGridLineCount,
@@ -268,7 +270,7 @@ bool asciiFloorsAndWallsBuildVulkanRoomGeometry() {
               "floor vertex color count") &&
        ok;
   ok = expect(countVerticesWithColor(geometry.vertices, 0.42F, 0.43F, 0.46F) ==
-                  kWallCount * kBoxVertexCount,
+                  kOptimizedWallDrawCount * kBoxVertexCount,
               "wall vertex color count") &&
        ok;
   ok = expect(countVerticesWithColor(geometry.vertices, 0.78F, 0.82F, 0.86F) ==
@@ -416,6 +418,194 @@ bool wallsRemainUnmerged() {
                 "wall grid remains per source wall");
 }
 
+bool compatibleXWallSegmentsMergeButPreserveSourceGrid() {
+  const iggy3d::SceneRoomProjection room = roomProjection({
+      wallSegmentMesh("wall_1", {0.0F, 0.0F, 0.0F}, {1.0F, 0.0F, 0.0F},
+                      0.0F, 2.0F, 0.5F),
+      wallSegmentMesh("wall_2", {1.0F, 0.0F, 0.0F}, {2.0F, 0.0F, 0.0F},
+                      0.0F, 2.0F, 0.5F),
+      wallSegmentMesh("wall_3", {2.0F, 0.0F, 0.0F}, {3.0F, 0.0F, 0.0F},
+                      0.0F, 2.0F, 0.5F),
+  });
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room);
+  const VertexBounds bounds = boundsForVertexRange(geometry.vertices, 0U, 8U);
+
+  constexpr std::size_t kSourceWallCount = 3U;
+  constexpr std::size_t kMergedWallDrawCount = 1U;
+  constexpr std::size_t kWallGridLineCount = kSourceWallCount * 8U;
+  constexpr std::size_t kBoxVertexCount = 8U;
+  constexpr std::size_t kBoxIndexCount = 72U;
+  constexpr std::size_t kOptimizedDrawCount = kMergedWallDrawCount + kWallGridLineCount;
+  constexpr std::size_t kNaiveDrawCount = kSourceWallCount + kWallGridLineCount;
+
+  bool ok = true;
+  ok = expect(geometry.ready, "x run merge geometry ready") && ok;
+  ok = expect(geometry.sourceRoomStaticMeshCount == kSourceWallCount,
+              "x run source count preserved") &&
+       ok;
+  ok = expect(geometry.roomWallDrawCount == kMergedWallDrawCount,
+              "x run wall draw merged") &&
+       ok;
+  ok = expect(geometry.roomGridLineDrawCount == kWallGridLineCount,
+              "x run grid per source wall") &&
+       ok;
+  ok = expect(geometry.indexedDraws.size() == kOptimizedDrawCount,
+              "x run optimized draw count") &&
+       ok;
+  ok = expect(geometry.vertices.size() == kOptimizedDrawCount * kBoxVertexCount,
+              "x run optimized vertex count") &&
+       ok;
+  ok = expect(geometry.indices.size() == kOptimizedDrawCount * kBoxIndexCount,
+              "x run optimized index count") &&
+       ok;
+  ok = expect(geometry.vertices.size() < kNaiveDrawCount * kBoxVertexCount,
+              "x run fewer vertices than naive") &&
+       ok;
+  ok = expect(geometry.indices.size() < kNaiveDrawCount * kBoxIndexCount,
+              "x run fewer indices than naive") &&
+       ok;
+  ok = expect(near(bounds.minX, 0.0F) && near(bounds.maxX, 3.0F),
+              "x run merged x bounds") &&
+       ok;
+  ok = expect(near(bounds.minZ, -0.25F) && near(bounds.maxZ, 0.25F),
+              "x run merged z thickness") &&
+       ok;
+  return ok;
+}
+
+bool compatibleZWallSegmentsMergeButPreserveSourceGrid() {
+  const iggy3d::SceneRoomProjection room = roomProjection({
+      wallSegmentMesh("wall_1", {0.0F, 0.0F, 0.0F}, {0.0F, 0.0F, 1.0F},
+                      0.0F, 2.0F, 0.5F),
+      wallSegmentMesh("wall_2", {0.0F, 0.0F, 1.0F}, {0.0F, 0.0F, 2.0F},
+                      0.0F, 2.0F, 0.5F),
+      wallSegmentMesh("wall_3", {0.0F, 0.0F, 2.0F}, {0.0F, 0.0F, 3.0F},
+                      0.0F, 2.0F, 0.5F),
+  });
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room);
+  const VertexBounds bounds = boundsForVertexRange(geometry.vertices, 0U, 8U);
+
+  bool ok = true;
+  ok = expect(geometry.ready, "z run merge geometry ready") && ok;
+  ok = expect(geometry.sourceRoomStaticMeshCount == 3U,
+              "z run source count preserved") &&
+       ok;
+  ok = expect(geometry.roomWallDrawCount == 1U, "z run wall draw merged") && ok;
+  ok = expect(geometry.roomGridLineDrawCount == 24U,
+              "z run grid per source wall") &&
+       ok;
+  ok = expect(geometry.indexedDraws.size() == 25U, "z run draw count") && ok;
+  ok = expect(geometry.vertices.size() == 200U, "z run vertex count") && ok;
+  ok = expect(geometry.indices.size() == 1800U, "z run index count") && ok;
+  ok = expect(near(bounds.minX, -0.25F) && near(bounds.maxX, 0.25F),
+              "z run merged x thickness") &&
+       ok;
+  ok = expect(near(bounds.minZ, 0.0F) && near(bounds.maxZ, 3.0F),
+              "z run merged z bounds") &&
+       ok;
+  return ok;
+}
+
+bool gappedWallSegmentsDoNotMerge() {
+  const iggy3d::SceneRoomProjection room = roomProjection({
+      wallSegmentMesh("wall_1", {0.0F, 0.0F, 0.0F}, {1.0F, 0.0F, 0.0F},
+                      0.0F, 2.0F, 0.5F),
+      wallSegmentMesh("wall_2", {2.0F, 0.0F, 0.0F}, {3.0F, 0.0F, 0.0F},
+                      0.0F, 2.0F, 0.5F),
+  });
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room);
+  return expect(geometry.ready, "gapped walls geometry ready") &&
+         expect(geometry.roomWallDrawCount == 2U, "gapped walls do not merge") &&
+         expect(geometry.roomGridLineDrawCount == 16U, "gapped walls grid count");
+}
+
+bool perpendicularWallSegmentsDoNotMerge() {
+  const iggy3d::SceneRoomProjection room = roomProjection({
+      wallSegmentMesh("wall_x", {0.0F, 0.0F, 0.0F}, {1.0F, 0.0F, 0.0F},
+                      0.0F, 2.0F, 0.5F),
+      wallSegmentMesh("wall_z", {1.0F, 0.0F, 0.0F}, {1.0F, 0.0F, 1.0F},
+                      0.0F, 2.0F, 0.5F),
+  });
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room);
+  return expect(geometry.ready, "perpendicular walls geometry ready") &&
+         expect(geometry.roomWallDrawCount == 2U,
+                "perpendicular walls do not merge") &&
+         expect(geometry.roomGridLineDrawCount == 16U,
+                "perpendicular walls grid count");
+}
+
+bool mismatchedWallMaterialDoesNotMerge() {
+  const iggy3d::SceneRoomProjection room = roomProjection({
+      wallSegmentMesh("wall_1", {0.0F, 0.0F, 0.0F}, {1.0F, 0.0F, 0.0F},
+                      0.0F, 2.0F, 0.5F, "debug_wall"),
+      wallSegmentMesh("wall_2", {1.0F, 0.0F, 0.0F}, {2.0F, 0.0F, 0.0F},
+                      0.0F, 2.0F, 0.5F, "painted_wall"),
+  });
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room);
+  return expect(geometry.ready, "wall material mismatch geometry ready") &&
+         expect(geometry.roomWallDrawCount == 2U,
+                "wall material mismatch does not merge");
+}
+
+bool mismatchedWallDimensionsDoNotMerge() {
+  const iggy3d::SceneRoomProjection bottomMismatch = roomProjection({
+      wallSegmentMesh("wall_1", {0.0F, 0.0F, 0.0F}, {1.0F, 0.0F, 0.0F},
+                      0.0F, 2.0F, 0.5F),
+      wallSegmentMesh("wall_2", {1.0F, 0.0F, 0.0F}, {2.0F, 0.0F, 0.0F},
+                      0.25F, 2.0F, 0.5F),
+  });
+  const iggy3d::SceneRoomProjection heightMismatch = roomProjection({
+      wallSegmentMesh("wall_1", {0.0F, 0.0F, 0.0F}, {1.0F, 0.0F, 0.0F},
+                      0.0F, 2.0F, 0.5F),
+      wallSegmentMesh("wall_2", {1.0F, 0.0F, 0.0F}, {2.0F, 0.0F, 0.0F},
+                      0.0F, 2.5F, 0.5F),
+  });
+  const iggy3d::SceneRoomProjection thicknessMismatch = roomProjection({
+      wallSegmentMesh("wall_1", {0.0F, 0.0F, 0.0F}, {1.0F, 0.0F, 0.0F},
+                      0.0F, 2.0F, 0.5F),
+      wallSegmentMesh("wall_2", {1.0F, 0.0F, 0.0F}, {2.0F, 0.0F, 0.0F},
+                      0.0F, 2.0F, 0.75F),
+  });
+  const iggy3d::vulkan::RoomMeshCpuGeometry bottomGeometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(bottomMismatch);
+  const iggy3d::vulkan::RoomMeshCpuGeometry heightGeometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(heightMismatch);
+  const iggy3d::vulkan::RoomMeshCpuGeometry thicknessGeometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(thicknessMismatch);
+  return expect(bottomGeometry.ready, "wall bottom mismatch geometry ready") &&
+         expect(heightGeometry.ready, "wall height mismatch geometry ready") &&
+         expect(thicknessGeometry.ready, "wall thickness mismatch geometry ready") &&
+         expect(bottomGeometry.roomWallDrawCount == 2U,
+                "wall bottom mismatch does not merge") &&
+         expect(heightGeometry.roomWallDrawCount == 2U,
+                "wall height mismatch does not merge") &&
+         expect(thicknessGeometry.roomWallDrawCount == 2U,
+                "wall thickness mismatch does not merge");
+}
+
+bool duplicateWallSegmentsDoNotCollapse() {
+  const iggy3d::SceneRoomProjection room = roomProjection({
+      wallSegmentMesh("wall_1", {0.0F, 0.0F, 0.0F}, {1.0F, 0.0F, 0.0F},
+                      0.0F, 2.0F, 0.5F),
+      wallSegmentMesh("wall_2", {0.0F, 0.0F, 0.0F}, {1.0F, 0.0F, 0.0F},
+                      0.0F, 2.0F, 0.5F),
+  });
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room);
+  return expect(geometry.ready, "duplicate walls geometry ready") &&
+         expect(geometry.sourceRoomStaticMeshCount == 2U,
+                "duplicate source count preserved") &&
+         expect(geometry.roomWallDrawCount == 2U,
+                "duplicate walls do not collapse") &&
+         expect(geometry.roomGridLineDrawCount == 16U,
+                "duplicate wall grid per source wall");
+}
+
 bool orientedWallSegmentsRenderDistinctBoundsAndSignatures() {
   const iggy3d::SceneRoomProjection xRoom = roomProjection({
       wallSegmentMesh("wall_x", {0.0F, 0.0F, 0.0F}, {2.0F, 0.0F, 0.0F},
@@ -553,6 +743,13 @@ int main() {
   ok = mismatchedFloorMaterialDoesNotMergeAndAffectsSignature() && ok;
   ok = mismatchedFloorYOrSizeDoesNotMerge() && ok;
   ok = wallsRemainUnmerged() && ok;
+  ok = compatibleXWallSegmentsMergeButPreserveSourceGrid() && ok;
+  ok = compatibleZWallSegmentsMergeButPreserveSourceGrid() && ok;
+  ok = gappedWallSegmentsDoNotMerge() && ok;
+  ok = perpendicularWallSegmentsDoNotMerge() && ok;
+  ok = mismatchedWallMaterialDoesNotMerge() && ok;
+  ok = mismatchedWallDimensionsDoNotMerge() && ok;
+  ok = duplicateWallSegmentsDoNotCollapse() && ok;
   ok = orientedWallSegmentsRenderDistinctBoundsAndSignatures() && ok;
   ok = wallWithoutSegmentUsesFallbackBoxPath() && ok;
   ok = wallSegmentEndpointChangesGeometrySignature() && ok;
