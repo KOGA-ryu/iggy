@@ -2481,7 +2481,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (key == "save.delete" || key == "frontend.save_delete") {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductSaveBrowserBoolAutomation(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
@@ -2503,7 +2503,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (key == "save.show_deleted" || key == "frontend.show_deleted_saves") {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductSaveBrowserBoolAutomation(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }
@@ -2556,7 +2556,7 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
   }
 
   if (key == "save.recover" || key == "frontend.save_recover") {
-    if (!parseAutomationBool(value, boolValue)) {
+    if (!resolveProductSaveBrowserBoolAutomation(value, boolValue)) {
       window.automationControlStatus = "invalid_value";
       return false;
     }

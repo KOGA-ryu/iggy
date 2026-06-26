@@ -142,6 +142,8 @@ struct ProductSaveSelectionAutomationResult {
   std::string_view saveId = "";
 };
 
+bool resolveProductSaveBrowserBoolAutomation(std::string_view value, bool& out);
+
 std::string_view productAutomationCommandCategoryName(
     ProductAutomationCommandCategory category);
 

@@ -565,6 +565,41 @@ ProductSaveSelectionAutomationResult resolveProductSaveSelectionAutomation(
   return result;
 }
 
+bool resolveProductSaveBrowserBoolAutomation(std::string_view value,
+                                             bool& out) {
+  struct BoolRow {
+    std::string_view name;
+    bool value;
+  };
+  static constexpr std::array rows{
+      BoolRow{"true", true},
+      BoolRow{"1", true},
+      BoolRow{"yes", true},
+      BoolRow{"false", false},
+      BoolRow{"0", false},
+      BoolRow{"no", false},
+  };
+  static constexpr std::array lookup{
+      BoolRow{"true", true},
+      BoolRow{"1", true},
+      BoolRow{"yes", true},
+      BoolRow{"false", false},
+      BoolRow{"0", false},
+      BoolRow{"no", false},
+      BoolRow{"unknown", false},
+  };
+  const auto row = std::find_if(
+      rows.begin(), rows.end(), [value](const BoolRow& candidate) {
+        return candidate.name == value;
+      });
+  const std::size_t rowIndex =
+      static_cast<std::size_t>(std::distance(rows.begin(), row));
+  const std::size_t selectedIndex =
+      std::min(rowIndex, lookup.size() - 1U);
+  out = lookup[selectedIndex].value;
+  return row != rows.end();
+}
+
 ProductRoomEditorCursorResult applyProductRoomEditorMoveAutomation(
     ProductRoomEditorCursorState state,
     ProductRoomEditorDirection direction) {
