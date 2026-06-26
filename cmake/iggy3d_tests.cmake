@@ -548,6 +548,10 @@ set_tests_properties(package_runtime_lookup_tests PROPERTIES LABELS "unit;render
     product_room_visual_proof_smoke
     tests/smoke/product_room_visual_proof_smoke.cpp
     "ascii_room;map;save;load;visual_proof")
+  iggy3d_add_product_app_automation_smoke(
+    product_continued_room_movement_smoke
+    tests/smoke/product_continued_room_movement_smoke.cpp
+    "ascii_room;map;save;load;gameplay;movement;collision")
 
   add_executable(product_gameplay_tape_smoke
     tests/smoke/product_gameplay_tape_smoke.cpp)
