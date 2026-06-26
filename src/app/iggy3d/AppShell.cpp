@@ -1535,8 +1535,9 @@ void copyRoomEditingStateToWindow(ProductAppWindowState& window,
 }
 
 void recordProductRoomEditingStart(ProductAppWindowState& window,
-                                   const ProductRoomEditingStartResult& result) {
-  window.roomEditingLastOperation = "room_edit.start";
+                                   const ProductRoomEditingStartResult& result,
+                                   std::string_view operation = "room_edit.start") {
+  window.roomEditingLastOperation = std::string(operation);
   window.roomEditingLastOperationStatus = result.status;
   window.roomEditingLastOperationReasonCode = result.reasonCode;
   window.roomEditingLastInputSource =
@@ -1926,6 +1927,27 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
         startProductRoomEditingFromAscii(request);
     recordProductRoomEditingStart(window, started);
     markAutomationApplied(window, command, "room_edit.start",
+                          productInputOwnerFor(frontend, window),
+                          started.ok ? "applied" : "failed");
+    return started.ok;
+  }
+
+  if (key == "room_edit.start_active" ||
+      key == "frontend.room_edit_start_active") {
+    if (!parseAutomationBool(value, boolValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    if (!boolValue) {
+      markAutomationApplied(window, command, "room_edit.start_active",
+                            productInputOwnerFor(frontend, window), "ignored");
+      return true;
+    }
+
+    const ProductRoomEditingStartResult started =
+        startProductRoomEditingFromActiveRoom(window.activeRoom);
+    recordProductRoomEditingStart(window, started, "room_edit.start_active");
+    markAutomationApplied(window, command, "room_edit.start_active",
                           productInputOwnerFor(frontend, window),
                           started.ok ? "applied" : "failed");
     return started.ok;
