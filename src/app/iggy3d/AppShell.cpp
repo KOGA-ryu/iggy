@@ -2224,10 +2224,9 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
 
       ActionState actions;
       recordAction(actions, editorAction, true, true, false, actionValue);
-      lastResult =
-          applyProductRoomEditorActions(window.roomEditing, window.roomEditorCursor,
-                                        actions,
-                                        ProductRoomAuthoringInputSource::Hotkey);
+      lastResult = applyProductEditorInputAutomation(
+          window.roomEditing, window.roomEditorCursor, actions,
+          ProductRoomAuthoringInputSource::Hotkey);
       recordProductRoomEditorActionResult(window, lastResult);
       if (!lastResult.ok) {
         window.automationControlStatus = "command_failed";

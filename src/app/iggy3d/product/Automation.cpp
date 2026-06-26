@@ -365,6 +365,14 @@ ProductRoomEditorActionResult applyProductRoomEditorPlaceAutomation(
       {editing, cursor, inputSource});
 }
 
+ProductRoomEditorActionResult applyProductEditorInputAutomation(
+    const ProductRoomEditingState& editing,
+    ProductRoomEditorCursorState cursor,
+    const ActionState& actions,
+    ProductRoomAuthoringInputSource inputSource) {
+  return applyProductRoomEditorActions(editing, cursor, actions, inputSource);
+}
+
 ProductRoomEditingStartResult startProductRoomEditAutomationFromAsciiDraft(
     ProductRoomAuthoringStartFromAsciiRequest request) {
   return startProductRoomAuthoringFromAsciiDraft(request);

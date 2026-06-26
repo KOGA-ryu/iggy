@@ -6,6 +6,7 @@
 #include <string_view>
 #include <vector>
 
+#include "app/input/ActionState.hpp"
 #include "app/input/InputAction.hpp"
 
 namespace iggy3d {
@@ -164,6 +165,12 @@ ProductRoomEditorCursorResult applyProductRoomEditorWallDirectionAutomation(
 ProductRoomEditorActionResult applyProductRoomEditorPlaceAutomation(
     const ProductRoomEditingState& editing,
     ProductRoomEditorCursorState cursor,
+    ProductRoomAuthoringInputSource inputSource);
+
+ProductRoomEditorActionResult applyProductEditorInputAutomation(
+    const ProductRoomEditingState& editing,
+    ProductRoomEditorCursorState cursor,
+    const ActionState& actions,
     ProductRoomAuthoringInputSource inputSource);
 
 ProductRoomEditingStartResult startProductRoomEditAutomationFromAsciiDraft(
