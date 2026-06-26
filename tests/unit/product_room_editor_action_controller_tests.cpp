@@ -156,6 +156,68 @@ bool deleteUndoRedoApplyThroughEditingState() {
                 "redo deletes wall again");
 }
 
+bool floorDeleteUndoRedoApplyThroughEditingState() {
+  iggy3d::ProductRoomEditingState editing =
+      iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
+  iggy3d::ProductRoomEditorCursorState cursor;
+  cursor.selectedTool = iggy3d::ProductRoomEditorTool::Floor;
+  cursor.gridX = 2;
+  const std::uint64_t initialFloors = editing.documentFloorCount;
+  const std::uint64_t initialWalkable = editing.collisionWalkableSurfaceCount;
+  const iggy3d::ProductRoomEditorActionResult placed =
+      iggy3d::applyProductRoomEditorAction(
+          editing, cursor, action(iggy3d::InputAction::EditorPlace));
+  const iggy3d::ProductRoomEditorActionResult deleted =
+      iggy3d::applyProductRoomEditorAction(
+          placed.editing, placed.cursor, action(iggy3d::InputAction::EditorDelete));
+  const iggy3d::ProductRoomEditorActionResult undone =
+      iggy3d::applyProductRoomEditorAction(
+          deleted.editing, deleted.cursor, action(iggy3d::InputAction::EditorUndo));
+  const iggy3d::ProductRoomEditorActionResult redone =
+      iggy3d::applyProductRoomEditorAction(
+          undone.editing, undone.cursor, action(iggy3d::InputAction::EditorRedo));
+
+  return expect(placed.ok, "floor place setup accepted") &&
+         expect(placed.status == "room_editor_command_applied",
+                "floor place status") &&
+         expect(placed.operation == "editor.place", "floor place operation") &&
+         expect(placed.primitiveId == "edit_floor_1", "floor place primitive") &&
+         expect(placed.editing.documentFloorCount == initialFloors + 1U,
+                "floor place increments document count") &&
+         expect(placed.editing.collisionWalkableSurfaceCount == initialWalkable + 1U,
+                "floor place increments walkable collision count") &&
+         expect(deleted.ok, "floor delete accepted") &&
+         expect(deleted.status == "room_editor_delete_applied",
+                "floor delete status") &&
+         expect(deleted.operation == "editor.delete", "floor delete operation") &&
+         expect(deleted.operationAccepted, "floor delete operation accepted") &&
+         expect(deleted.primitiveId == "edit_floor_1", "floor delete primitive") &&
+         expect(deleted.editing.documentFloorCount == initialFloors,
+                "floor delete restores document count") &&
+         expect(deleted.editing.collisionWalkableSurfaceCount == initialWalkable,
+                "floor delete restores walkable collision count") &&
+         expect(deleted.editing.activeRoomCollision.ready,
+                "floor delete rebuilds collision") &&
+         expect(undone.ok, "floor undo accepted") &&
+         expect(undone.status == "room_editor_undo_applied",
+                "floor undo status") &&
+         expect(undone.operation == "editor.undo", "floor undo operation") &&
+         expect(undone.primitiveId == "edit_floor_1", "floor undo primitive") &&
+         expect(undone.editing.documentFloorCount == initialFloors + 1U,
+                "floor undo restores document count") &&
+         expect(undone.editing.collisionWalkableSurfaceCount == initialWalkable + 1U,
+                "floor undo restores walkable collision count") &&
+         expect(redone.ok, "floor redo accepted") &&
+         expect(redone.status == "room_editor_redo_applied",
+                "floor redo status") &&
+         expect(redone.operation == "editor.redo", "floor redo operation") &&
+         expect(redone.primitiveId == "edit_floor_1", "floor redo primitive") &&
+         expect(redone.editing.documentFloorCount == initialFloors,
+                "floor redo deletes floor again") &&
+         expect(redone.editing.collisionWalkableSurfaceCount == initialWalkable,
+                "floor redo restores deleted walkable collision count");
+}
+
 bool deleteMissingTargetIsStable() {
   iggy3d::ProductRoomEditingState editing =
       iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
@@ -197,6 +259,7 @@ int main() {
                   toolActionsChangeDeterministically() &&
                   placeAppliesThroughEditingState() &&
                   deleteUndoRedoApplyThroughEditingState() &&
+                  floorDeleteUndoRedoApplyThroughEditingState() &&
                   deleteMissingTargetIsStable() &&
                   unsupportedActionsAreIgnored();
   return ok ? 0 : 1;
