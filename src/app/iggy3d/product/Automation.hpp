@@ -72,6 +72,13 @@ enum class ProductAutomationCommandId : std::uint8_t {
   GameplayMoveY,
   GameplayAttack,
   GameplayInteract,
+  FrontendExecute,
+  SettingsApply,
+  SettingsRestoreDefaults,
+  SettingsBack,
+  FrontendReturnToTitle,
+  SystemPause,
+  SystemQuit,
   Unknown,
 };
 

@@ -23,6 +23,7 @@
 #include "app/iggy3d/product/AutomationGameplay.hpp"
 #include "app/iggy3d/product/AutomationRoomEditing.hpp"
 #include "app/iggy3d/product/AutomationSaveBrowser.hpp"
+#include "app/iggy3d/product/AutomationSystem.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/ProductDungeonDraft.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
@@ -1256,107 +1257,30 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     return saveBrowserExecution.accepted;
   }
 
-  if (key == "frontend.execute" || key == "pause.execute" ||
-      key == "dev_tools.execute") {
-    if (!resolveProductAutomationBool(value, boolValue)) {
-      window.automationControlStatus = "invalid_value";
-      return false;
-    }
-    if (!boolValue) {
-      markAutomationApplied(window, command, "none", productInputOwnerFor(frontend, window),
-                            "ignored");
-      return true;
-    }
-    const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
-                                            activeSession, worldSetupDraft, window,
-                                            InputAction::MenuConfirm, closeRequested);
-    markAutomationApplied(window, command, inputActionName(InputAction::MenuConfirm),
-                          window.automationControlLastOwner,
-                          routed ? "applied" : "ignored");
-    return routed;
-  }
-
-  if (key == "settings.apply" || key == "settings.restore_defaults") {
-    if (!resolveProductAutomationBool(value, boolValue)) {
-      window.automationControlStatus = "invalid_value";
-      return false;
-    }
-    if (boolValue) {
-      frontend.status = key == "settings.apply" ? "settings_applied"
-                                                : "settings_defaults_restored";
-    }
-    markAutomationApplied(window, command, key == "settings.apply" ? "settings.apply"
-                                                                   : "settings.restore_defaults",
-                          productInputOwnerFor(frontend, window),
-                          boolValue ? "applied" : "ignored");
-    return true;
-  }
-
-  if (key == "settings.back" || key == "system.back") {
-    if (!resolveProductAutomationBool(value, boolValue)) {
-      window.automationControlStatus = "invalid_value";
-      return false;
-    }
-    if (!boolValue) {
-      markAutomationApplied(window, command, "none", productInputOwnerFor(frontend, window),
-                            "ignored");
-      return true;
-    }
-    const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
-                                            activeSession, worldSetupDraft, window,
-                                            InputAction::MenuBack, closeRequested);
-    markAutomationApplied(window, command, inputActionName(InputAction::MenuBack),
-                          window.automationControlLastOwner,
-                          routed ? "applied" : "ignored");
-    return routed;
-  }
-
-  if (key == "frontend.return_to_title") {
-    if (!resolveProductAutomationBool(value, boolValue)) {
-      window.automationControlStatus = "invalid_value";
-      return false;
-    }
-    if (boolValue) {
-      returnProductToTitleTransition(frontend, window);
-      activeSession.reset();
-    }
-    markAutomationApplied(window, command, "frontend.return_to_title",
-                          productInputOwnerFor(frontend, window),
-                          boolValue ? "applied" : "ignored");
-    return true;
-  }
-
-  if (key == "system.pause") {
-    if (!resolveProductAutomationBool(value, boolValue)) {
-      window.automationControlStatus = "invalid_value";
-      return false;
-    }
-    if (!boolValue) {
-      markAutomationApplied(window, command, "none", productInputOwnerFor(frontend, window),
-                            "ignored");
-      return true;
-    }
-    const bool routed = routeAutomationInput(frontend, saves, options, settingsTab,
-                                            activeSession, worldSetupDraft, window,
-                                            InputAction::SystemPause, closeRequested);
-    markAutomationApplied(window, command, inputActionName(InputAction::SystemPause),
-                          window.automationControlLastOwner,
-                          routed ? "applied" : "ignored");
-    return routed;
-  }
-
-  if (key == "system.quit") {
-    if (!resolveProductAutomationBool(value, boolValue)) {
-      window.automationControlStatus = "invalid_value";
-      return false;
-    }
-    if (boolValue) {
-      closeRequested = true;
-    }
-    markAutomationApplied(window, command, "system.quit",
-                          productInputOwnerFor(frontend, window),
-                          boolValue ? "applied" : "ignored");
-    return true;
+  ProductAutomationSystemContext systemExecutionContext{
+      frontend,
+      window,
+      [&frontend, &window]() { return productInputOwnerFor(frontend, window); },
+      [&frontend, &saves, &options, &settingsTab, &activeSession, &worldSetupDraft,
+       &window, &closeRequested](InputAction action) {
+        return routeAutomationInput(frontend, saves, options, settingsTab,
+                                    activeSession, worldSetupDraft, window,
+                                    action, closeRequested);
+      },
+      [&frontend, &window, &activeSession]() {
+        returnProductToTitleTransition(frontend, window);
+        activeSession.reset();
+      },
+      [&closeRequested]() {
+        closeRequested = true;
+      },
+  };
+  const ProductAutomationExecutionResult systemExecution =
+      applyProductSystemAutomationCommand(command, automationSpec,
+                                          systemExecutionContext);
+  // branch-gate: BG-1013
+  if (systemExecution.handled) {
+    return systemExecution.accepted;
   }
 
   window.automationControlStatus = "unknown_key";

@@ -88,6 +88,13 @@ std::string_view productAutomationCommandIdName(
       std::string_view{"game.move_y"},
       std::string_view{"game.attack"},
       std::string_view{"game.interact"},
+      std::string_view{"frontend.execute"},
+      std::string_view{"settings.apply"},
+      std::string_view{"settings.restore_defaults"},
+      std::string_view{"settings.back"},
+      std::string_view{"frontend.return_to_title"},
+      std::string_view{"system.pause"},
+      std::string_view{"system.quit"},
       std::string_view{"unknown"},
   };
   return names[static_cast<std::size_t>(commandId)];
@@ -574,6 +581,27 @@ const ProductAutomationCommandDispatchSpec& findProductAutomationCommandDispatch
       ProductAutomationCommandDispatchSpec{
           true, "game.interact", Id::GameplayInteract, Category::GameplayInput,
           Value::Bool, InputAction::PlayerInteract},
+      ProductAutomationCommandDispatchSpec{
+          true, "frontend.execute", Id::FrontendExecute,
+          Category::FrontendExecute, Value::Bool, InputAction::MenuConfirm},
+      ProductAutomationCommandDispatchSpec{
+          true, "settings.apply", Id::SettingsApply, Category::Settings,
+          Value::Bool, InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          true, "settings.restore_defaults", Id::SettingsRestoreDefaults,
+          Category::Settings, Value::Bool, InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          true, "settings.back", Id::SettingsBack, Category::Settings,
+          Value::Bool, InputAction::MenuBack},
+      ProductAutomationCommandDispatchSpec{
+          true, "frontend.return_to_title", Id::FrontendReturnToTitle,
+          Category::System, Value::Bool, InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          true, "system.pause", Id::SystemPause, Category::System,
+          Value::Bool, InputAction::SystemPause},
+      ProductAutomationCommandDispatchSpec{
+          true, "system.quit", Id::SystemQuit, Category::System,
+          Value::Bool, InputAction::None},
       ProductAutomationCommandDispatchSpec{
           true, "room_edit.start", Id::RoomEditStart, Category::RoomEdit, Value::Bool,
           InputAction::None},
