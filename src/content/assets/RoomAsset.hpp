@@ -15,6 +15,12 @@ struct RoomStaticMeshAsset {
   std::string role;
   Vec3 positionMeters;
   Vec3 sizeMeters;
+  bool hasWallSegment = false;
+  Vec3 wallStartMeters;
+  Vec3 wallEndMeters;
+  float wallBottomY = 0.0F;
+  float wallHeightMeters = 0.0F;
+  float wallThicknessMeters = 0.0F;
 };
 
 struct RoomAnchorAsset {

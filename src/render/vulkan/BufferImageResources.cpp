@@ -219,6 +219,16 @@ void hashFloat(std::uint64_t& hash, float value) {
   }
 }
 
+void hashBool(std::uint64_t& hash, bool value) {
+  hashByte(hash, value ? 1U : 0U);
+}
+
+void hashVec3(std::uint64_t& hash, Vec3 value) {
+  hashFloat(hash, value.x);
+  hashFloat(hash, value.y);
+  hashFloat(hash, value.z);
+}
+
 std::uint64_t roomGeometrySignature(const SceneRoomProjection& room) {
   std::uint64_t hash = 1469598103934665603ULL;
   hashString(hash, room.assetId);
@@ -232,6 +242,14 @@ std::uint64_t roomGeometrySignature(const SceneRoomProjection& room) {
     hashFloat(hash, mesh.size.x);
     hashFloat(hash, mesh.size.y);
     hashFloat(hash, mesh.size.z);
+    hashBool(hash, mesh.hasWallSegment);
+    if (mesh.hasWallSegment) {
+      hashVec3(hash, mesh.wallStartMeters);
+      hashVec3(hash, mesh.wallEndMeters);
+      hashFloat(hash, mesh.wallBottomY);
+      hashFloat(hash, mesh.wallHeightMeters);
+      hashFloat(hash, mesh.wallThicknessMeters);
+    }
   }
   return hash;
 }
@@ -604,6 +622,55 @@ bool canEmitFloorDraw(const FloorDraw& floor) {
          finitePositive(floor.size.y) && finitePositive(floor.size.z);
 }
 
+struct WallBoxDraw {
+  Vec3 position;
+  Vec3 size;
+};
+
+bool finiteVec3(Vec3 value) {
+  return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
+}
+
+bool wallBoxFromSegment(const SceneRoomMeshItem& mesh, WallBoxDraw& draw) {
+  if (!finiteVec3(mesh.wallStartMeters) || !finiteVec3(mesh.wallEndMeters) ||
+      !std::isfinite(mesh.wallBottomY) || !finitePositive(mesh.wallHeightMeters) ||
+      !finitePositive(mesh.wallThicknessMeters)) {
+    return false;
+  }
+
+  const float dx = mesh.wallEndMeters.x - mesh.wallStartMeters.x;
+  const float dz = mesh.wallEndMeters.z - mesh.wallStartMeters.z;
+  const bool runsAlongX = !near(dx, 0.0F) && near(dz, 0.0F);
+  const bool runsAlongZ = near(dx, 0.0F) && !near(dz, 0.0F);
+  if (!runsAlongX && !runsAlongZ) {
+    return false;
+  }
+
+  const float length = runsAlongX ? std::fabs(dx) : std::fabs(dz);
+  if (!finitePositive(length)) {
+    return false;
+  }
+
+  draw.position = {(mesh.wallStartMeters.x + mesh.wallEndMeters.x) * 0.5F,
+                   mesh.wallBottomY + mesh.wallHeightMeters * 0.5F,
+                   (mesh.wallStartMeters.z + mesh.wallEndMeters.z) * 0.5F};
+  draw.size = runsAlongX
+                  ? Vec3{length, mesh.wallHeightMeters, mesh.wallThicknessMeters}
+                  : Vec3{mesh.wallThicknessMeters, mesh.wallHeightMeters, length};
+  return true;
+}
+
+bool wallBoxForMesh(const SceneRoomMeshItem& mesh, WallBoxDraw& draw) {
+  if (mesh.hasWallSegment) {
+    return wallBoxFromSegment(mesh, draw);
+  }
+  draw.position = mesh.position;
+  draw.size = mesh.size;
+  return std::isfinite(draw.position.x) && std::isfinite(draw.position.y) &&
+         std::isfinite(draw.position.z) && finitePositive(draw.size.x) &&
+         finitePositive(draw.size.y) && finitePositive(draw.size.z);
+}
+
 }  // namespace
 
 std::vector<FirstRoomVertex> firstRoomBootstrapVertices() {
@@ -674,6 +741,19 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(const SceneRoomProjection& room) {
         return result;
       }
     } else {
+      Vec3 meshPosition = mesh.position;
+      Vec3 meshSize = mesh.size;
+      if (mesh.role == "wall") {
+        WallBoxDraw wallDraw;
+        if (!wallBoxForMesh(mesh, wallDraw)) {
+          result.vertices.clear();
+          result.indices.clear();
+          result.indexedDraws.clear();
+          return result;
+        }
+        meshPosition = wallDraw.position;
+        meshSize = wallDraw.size;
+      }
       if (!canAppendBox(result.vertices)) {
         result.vertices.clear();
         result.indices.clear();
@@ -681,12 +761,12 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(const SceneRoomProjection& room) {
         return result;
       }
       appendBox(result.vertices, result.indices, result.indexedDraws,
-                mesh.position, mesh.size, colorForRoomRole(mesh.role));
+                meshPosition, meshSize, colorForRoomRole(mesh.role));
       if (mesh.role == "wall") {
         ++result.roomWallDrawCount;
         std::size_t gridLines = 0;
         if (!appendWallGrid(result.vertices, result.indices, result.indexedDraws,
-                            mesh.position, mesh.size, gridLines)) {
+                            meshPosition, meshSize, gridLines)) {
           result.roomGridTruncated = true;
         }
         result.roomGridLineDrawCount += gridLines;

@@ -16,6 +16,10 @@ float segmentLength(const Vec3& start, const Vec3& end) {
   return std::sqrt(dx * dx + dy * dy + dz * dz);
 }
 
+bool near(float lhs, float rhs) {
+  return std::fabs(lhs - rhs) <= 0.0001F;
+}
+
 Vec3 midpoint(const SaveAuthoredRoomWallRecord& wall) {
   return {(wall.startMeters.x + wall.endMeters.x) / 2.0F,
           wall.bottomY + wall.heightMeters / 2.0F,
@@ -33,12 +37,25 @@ std::vector<Vec3> floorTopFacePoints(const SaveAuthoredRoomFloorRecord& floor) {
 }
 
 std::vector<Vec3> wallBoxPoints(const SaveAuthoredRoomWallRecord& wall) {
-  const float minX = std::min(wall.startMeters.x, wall.endMeters.x);
-  const float maxX = std::max(wall.startMeters.x, wall.endMeters.x);
-  const float centerZ = (wall.startMeters.z + wall.endMeters.z) / 2.0F;
   const float halfThickness = wall.thicknessMeters / 2.0F;
-  const float minZ = centerZ - halfThickness;
-  const float maxZ = centerZ + halfThickness;
+  float minX = 0.0F;
+  float maxX = 0.0F;
+  float minZ = 0.0F;
+  float maxZ = 0.0F;
+  if (near(wall.startMeters.x, wall.endMeters.x) &&
+      !near(wall.startMeters.z, wall.endMeters.z)) {
+    const float centerX = (wall.startMeters.x + wall.endMeters.x) / 2.0F;
+    minX = centerX - halfThickness;
+    maxX = centerX + halfThickness;
+    minZ = std::min(wall.startMeters.z, wall.endMeters.z);
+    maxZ = std::max(wall.startMeters.z, wall.endMeters.z);
+  } else {
+    minX = std::min(wall.startMeters.x, wall.endMeters.x);
+    maxX = std::max(wall.startMeters.x, wall.endMeters.x);
+    const float centerZ = (wall.startMeters.z + wall.endMeters.z) / 2.0F;
+    minZ = centerZ - halfThickness;
+    maxZ = centerZ + halfThickness;
+  }
   const float minY = wall.bottomY;
   const float maxY = wall.bottomY + wall.heightMeters;
   return {{minX, minY, minZ}, {maxX, minY, minZ}, {maxX, minY, maxZ},
@@ -80,6 +97,12 @@ RoomStaticMeshAsset wallMesh(const SaveAuthoredRoomWallRecord& wall,
   mesh.sizeMeters = {segmentLength(wall.startMeters, wall.endMeters),
                      wall.heightMeters,
                      wall.thicknessMeters};
+  mesh.hasWallSegment = true;
+  mesh.wallStartMeters = wall.startMeters;
+  mesh.wallEndMeters = wall.endMeters;
+  mesh.wallBottomY = wall.bottomY;
+  mesh.wallHeightMeters = wall.heightMeters;
+  mesh.wallThicknessMeters = wall.thicknessMeters;
   return mesh;
 }
 

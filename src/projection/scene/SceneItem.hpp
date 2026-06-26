@@ -49,6 +49,12 @@ struct SceneRoomMeshItem {
   std::string materialId;
   Vec3 position;
   Vec3 size;
+  bool hasWallSegment = false;
+  Vec3 wallStartMeters;
+  Vec3 wallEndMeters;
+  float wallBottomY = 0.0F;
+  float wallHeightMeters = 0.0F;
+  float wallThicknessMeters = 0.0F;
 };
 
 struct SceneRoomProjection {

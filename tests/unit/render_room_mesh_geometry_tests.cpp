@@ -8,6 +8,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -82,6 +83,32 @@ std::size_t countVerticesWithColor(
   return count;
 }
 
+struct VertexBounds {
+  float minX = std::numeric_limits<float>::max();
+  float maxX = std::numeric_limits<float>::lowest();
+  float minY = std::numeric_limits<float>::max();
+  float maxY = std::numeric_limits<float>::lowest();
+  float minZ = std::numeric_limits<float>::max();
+  float maxZ = std::numeric_limits<float>::lowest();
+};
+
+VertexBounds boundsForVertexRange(
+    const std::vector<iggy3d::vulkan::FirstRoomVertex>& vertices,
+    std::size_t first,
+    std::size_t count) {
+  VertexBounds bounds;
+  const std::size_t end = std::min(vertices.size(), first + count);
+  for (std::size_t index = first; index < end; ++index) {
+    bounds.minX = std::min(bounds.minX, vertices[index].position[0]);
+    bounds.maxX = std::max(bounds.maxX, vertices[index].position[0]);
+    bounds.minY = std::min(bounds.minY, vertices[index].position[1]);
+    bounds.maxY = std::max(bounds.maxY, vertices[index].position[1]);
+    bounds.minZ = std::min(bounds.minZ, vertices[index].position[2]);
+    bounds.maxZ = std::max(bounds.maxZ, vertices[index].position[2]);
+  }
+  return bounds;
+}
+
 iggy3d::SceneRoomMeshItem floorMesh(std::string id,
                                     float x,
                                     float y,
@@ -109,6 +136,33 @@ iggy3d::SceneRoomMeshItem wallMesh(std::string id,
   mesh.materialId = std::move(materialId);
   mesh.position = {x, y, z};
   mesh.size = size;
+  return mesh;
+}
+
+iggy3d::SceneRoomMeshItem wallSegmentMesh(std::string id,
+                                          iggy3d::Vec3 start,
+                                          iggy3d::Vec3 end,
+                                          float bottomY,
+                                          float height,
+                                          float thickness,
+                                          std::string materialId = "debug_wall") {
+  iggy3d::SceneRoomMeshItem mesh;
+  mesh.id = std::move(id);
+  mesh.role = "wall";
+  mesh.materialId = std::move(materialId);
+  mesh.position = {(start.x + end.x) * 0.5F, bottomY + height * 0.5F,
+                   (start.z + end.z) * 0.5F};
+  mesh.size = {std::sqrt((end.x - start.x) * (end.x - start.x) +
+                         (end.y - start.y) * (end.y - start.y) +
+                         (end.z - start.z) * (end.z - start.z)),
+               height,
+               thickness};
+  mesh.hasWallSegment = true;
+  mesh.wallStartMeters = start;
+  mesh.wallEndMeters = end;
+  mesh.wallBottomY = bottomY;
+  mesh.wallHeightMeters = height;
+  mesh.wallThicknessMeters = thickness;
   return mesh;
 }
 
@@ -362,6 +416,84 @@ bool wallsRemainUnmerged() {
                 "wall grid remains per source wall");
 }
 
+bool orientedWallSegmentsRenderDistinctBoundsAndSignatures() {
+  const iggy3d::SceneRoomProjection xRoom = roomProjection({
+      wallSegmentMesh("wall_x", {0.0F, 0.0F, 0.0F}, {2.0F, 0.0F, 0.0F},
+                      0.0F, 2.0F, 0.5F),
+  });
+  const iggy3d::SceneRoomProjection zRoom = roomProjection({
+      wallSegmentMesh("wall_z", {0.0F, 0.0F, 0.0F}, {0.0F, 0.0F, 2.0F},
+                      0.0F, 2.0F, 0.5F),
+  });
+  const iggy3d::vulkan::RoomMeshCpuGeometry xGeometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(xRoom);
+  const iggy3d::vulkan::RoomMeshCpuGeometry zGeometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(zRoom);
+  const VertexBounds xBounds = boundsForVertexRange(xGeometry.vertices, 0U, 8U);
+  const VertexBounds zBounds = boundsForVertexRange(zGeometry.vertices, 0U, 8U);
+
+  bool ok = true;
+  ok = expect(xGeometry.ready, "x wall segment geometry ready") && ok;
+  ok = expect(zGeometry.ready, "z wall segment geometry ready") && ok;
+  ok = expect(xGeometry.roomWallDrawCount == 1U, "x wall draw count") && ok;
+  ok = expect(zGeometry.roomWallDrawCount == 1U, "z wall draw count") && ok;
+  ok = expect(near(xBounds.minX, 0.0F) && near(xBounds.maxX, 2.0F),
+              "x wall x length bounds") &&
+       ok;
+  ok = expect(near(xBounds.minZ, -0.25F) && near(xBounds.maxZ, 0.25F),
+              "x wall z thickness bounds") &&
+       ok;
+  ok = expect(near(zBounds.minX, -0.25F) && near(zBounds.maxX, 0.25F),
+              "z wall x thickness bounds") &&
+       ok;
+  ok = expect(near(zBounds.minZ, 0.0F) && near(zBounds.maxZ, 2.0F),
+              "z wall z length bounds") &&
+       ok;
+  ok = expect(xGeometry.sourceRoomGeometrySignature !=
+                  zGeometry.sourceRoomGeometrySignature,
+              "oriented wall signatures differ") &&
+       ok;
+  return ok;
+}
+
+bool wallWithoutSegmentUsesFallbackBoxPath() {
+  const iggy3d::SceneRoomProjection room = roomProjection({
+      wallMesh("wall_fallback", 1.0F, 1.0F, 2.0F, "debug_wall",
+               {2.0F, 2.0F, 0.5F}),
+  });
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room);
+  const VertexBounds bounds = boundsForVertexRange(geometry.vertices, 0U, 8U);
+  return expect(geometry.ready, "fallback wall geometry ready") &&
+         expect(geometry.roomWallDrawCount == 1U, "fallback wall draw count") &&
+         expect(near(bounds.minX, 0.0F), "fallback min x") &&
+         expect(near(bounds.maxX, 2.0F), "fallback max x") &&
+         expect(near(bounds.minY, 0.0F), "fallback min y") &&
+         expect(near(bounds.maxY, 2.0F), "fallback max y") &&
+         expect(near(bounds.minZ, 1.75F), "fallback min z") &&
+         expect(near(bounds.maxZ, 2.25F), "fallback max z");
+}
+
+bool wallSegmentEndpointChangesGeometrySignature() {
+  const iggy3d::SceneRoomProjection shortRoom = roomProjection({
+      wallSegmentMesh("wall", {0.0F, 0.0F, 0.0F}, {2.0F, 0.0F, 0.0F},
+                      0.0F, 2.0F, 0.5F),
+  });
+  const iggy3d::SceneRoomProjection longRoom = roomProjection({
+      wallSegmentMesh("wall", {0.0F, 0.0F, 0.0F}, {3.0F, 0.0F, 0.0F},
+                      0.0F, 2.0F, 0.5F),
+  });
+  const iggy3d::vulkan::RoomMeshCpuGeometry shortGeometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(shortRoom);
+  const iggy3d::vulkan::RoomMeshCpuGeometry longGeometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(longRoom);
+  return expect(shortGeometry.ready, "short wall geometry ready") &&
+         expect(longGeometry.ready, "long wall geometry ready") &&
+         expect(shortGeometry.sourceRoomGeometrySignature !=
+                    longGeometry.sourceRoomGeometrySignature,
+                "wall endpoint changes signature");
+}
+
 bool roomGeometrySignatureTracksAsciiRoomShape() {
   const iggy3d::AsciiRoomToRoomAssetResult small = buildAsciiRoomAsset(
       "###\n"
@@ -421,6 +553,9 @@ int main() {
   ok = mismatchedFloorMaterialDoesNotMergeAndAffectsSignature() && ok;
   ok = mismatchedFloorYOrSizeDoesNotMerge() && ok;
   ok = wallsRemainUnmerged() && ok;
+  ok = orientedWallSegmentsRenderDistinctBoundsAndSignatures() && ok;
+  ok = wallWithoutSegmentUsesFallbackBoxPath() && ok;
+  ok = wallSegmentEndpointChangesGeometrySignature() && ok;
   ok = roomGeometrySignatureTracksAsciiRoomShape() && ok;
   ok = emptyProjectionDoesNotBuildRoomGeometry() && ok;
   return ok ? 0 : 1;

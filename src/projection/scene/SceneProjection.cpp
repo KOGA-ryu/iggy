@@ -148,6 +148,12 @@ void attachRoomProjection(const RoomAsset* room, SceneProjectionResult& result) 
     item.materialId = mesh.materialId;
     item.position = mesh.positionMeters;
     item.size = mesh.sizeMeters;
+    item.hasWallSegment = mesh.hasWallSegment;
+    item.wallStartMeters = mesh.wallStartMeters;
+    item.wallEndMeters = mesh.wallEndMeters;
+    item.wallBottomY = mesh.wallBottomY;
+    item.wallHeightMeters = mesh.wallHeightMeters;
+    item.wallThicknessMeters = mesh.wallThicknessMeters;
     projected.floorVisible = projected.floorVisible || mesh.role == "floor";
     projected.wallVisible = projected.wallVisible || mesh.role == "wall";
     if (!mesh.materialId.empty()) {

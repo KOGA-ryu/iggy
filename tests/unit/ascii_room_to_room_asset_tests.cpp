@@ -67,6 +67,40 @@ iggy3d::AsciiRoomToRoomAssetResult buildInlineRoomAsset(std::string_view text) {
   return iggy3d::buildRoomAssetFromAsciiRoom(authored, assetConfig);
 }
 
+iggy3d::SaveAuthoredRoomSemanticsRecord defaultWallSemantics() {
+  iggy3d::SaveAuthoredRoomSemanticsRecord semantics;
+  semantics.materialId = "debug_wall";
+  semantics.traversalTags = {"clamber_candidate"};
+  semantics.blocksActor = true;
+  semantics.blocksProjectile = true;
+  return semantics;
+}
+
+iggy3d::AsciiRoomToRoomAssetResult buildAuthoredZWallRoomAsset() {
+  iggy3d::AsciiRoomAuthoredRoomResult authored;
+  authored.ok = true;
+  authored.status = "ascii_room_ok";
+  authored.reasonCode = "ascii_room_ok";
+  authored.authoredRoom.present = true;
+  authored.authoredRoom.id = "authored_z_wall_room";
+  authored.authoredRoom.sourceFile = "authored_z_wall_room";
+
+  iggy3d::SaveAuthoredRoomWallRecord wall;
+  wall.id = "wall_z_run";
+  wall.startMeters = {2.0F, 0.0F, 0.0F};
+  wall.endMeters = {2.0F, 0.0F, 3.0F};
+  wall.bottomY = 0.0F;
+  wall.heightMeters = 2.5F;
+  wall.thicknessMeters = 0.5F;
+  wall.semantics = defaultWallSemantics();
+  authored.authoredRoom.walls.push_back(wall);
+
+  iggy3d::AsciiRoomToRoomAssetConfig assetConfig;
+  assetConfig.roomId = "authored_z_wall_room";
+  assetConfig.sourceName = "authored_z_wall_room";
+  return iggy3d::buildRoomAssetFromAsciiRoom(authored, assetConfig);
+}
+
 const iggy3d::RoomStaticMeshAsset* findMesh(const iggy3d::RoomAsset& room,
                                             std::string_view id) {
   for (const auto& mesh : room.staticMeshes) {
@@ -242,6 +276,14 @@ bool representativeWallMeshAndSurfacesMatch() {
          expect(mesh->meshId == "wall_segment", "wall mesh id") &&
          expect(mesh->materialId == "debug_wall", "wall material") &&
          expect(mesh->role == "wall", "wall role") &&
+         expect(mesh->hasWallSegment, "wall segment present") &&
+         expect(near(mesh->wallStartMeters.x, -3.5F), "wall segment start x") &&
+         expect(near(mesh->wallStartMeters.z, -2.0F), "wall segment start z") &&
+         expect(near(mesh->wallEndMeters.x, -2.5F), "wall segment end x") &&
+         expect(near(mesh->wallEndMeters.z, -2.0F), "wall segment end z") &&
+         expect(near(mesh->wallBottomY, 0.0F), "wall segment bottom") &&
+         expect(near(mesh->wallHeightMeters, 2.5F), "wall segment height") &&
+         expect(near(mesh->wallThicknessMeters, 1.0F), "wall segment thickness") &&
          expect(near(mesh->positionMeters.x, -3.0F), "wall mesh x") &&
          expect(near(mesh->positionMeters.y, 1.25F), "wall mesh y") &&
          expect(near(mesh->positionMeters.z, -2.0F), "wall mesh z") &&
@@ -282,6 +324,35 @@ bool representativeWallMeshAndSurfacesMatch() {
                 "projectile collision mask") &&
          expect(!projectile->blocksActor, "projectile actor pass") &&
          expect(projectile->blocksProjectile, "projectile blocks projectile");
+}
+
+bool authoredZRunningWallPreservesSegmentAndSurfaceExtents() {
+  const auto result = buildAuthoredZWallRoomAsset();
+  const auto* mesh = findMesh(result.room, "wall_z_run");
+  const auto* actor = findSurface(result.room, "wall_z_run_actor_blocker");
+  const auto* projectile = findSurface(result.room, "wall_z_run_projectile_blocker");
+  return expect(result.ok, "z wall room asset ok") &&
+         expect(mesh != nullptr, "z wall mesh exists") &&
+         expect(mesh->hasWallSegment, "z wall segment present") &&
+         expect(near(mesh->wallStartMeters.x, 2.0F), "z wall start x") &&
+         expect(near(mesh->wallStartMeters.z, 0.0F), "z wall start z") &&
+         expect(near(mesh->wallEndMeters.x, 2.0F), "z wall end x") &&
+         expect(near(mesh->wallEndMeters.z, 3.0F), "z wall end z") &&
+         expect(near(mesh->wallBottomY, 0.0F), "z wall bottom") &&
+         expect(near(mesh->wallHeightMeters, 2.5F), "z wall height") &&
+         expect(near(mesh->wallThicknessMeters, 0.5F), "z wall thickness") &&
+         expect(actor != nullptr, "z actor blocker exists") &&
+         expect(actor->pointsMeters.size() == 8U, "z actor point count") &&
+         expect(near(actor->pointsMeters[0].x, 1.75F), "z actor min x") &&
+         expect(near(actor->pointsMeters[0].z, 0.0F), "z actor min z") &&
+         expect(near(actor->pointsMeters[6].x, 2.25F), "z actor max x") &&
+         expect(near(actor->pointsMeters[6].z, 3.0F), "z actor max z") &&
+         expect(projectile != nullptr, "z projectile blocker exists") &&
+         expect(projectile->pointsMeters.size() == 8U, "z projectile point count") &&
+         expect(near(projectile->pointsMeters[0].x, 1.75F),
+                "z projectile min x") &&
+         expect(near(projectile->pointsMeters[6].z, 3.0F),
+                "z projectile max z");
 }
 
 bool terrainSurfacesPreserveHeightAndSlope() {
@@ -370,6 +441,7 @@ int main() {
   ok = doorMeshAndBlockerUseRuntimeOwner() && ok;
   ok = representativeFloorMeshAndSurfaceMatch() && ok;
   ok = representativeWallMeshAndSurfacesMatch() && ok;
+  ok = authoredZRunningWallPreservesSegmentAndSurfaceExtents() && ok;
   ok = terrainSurfacesPreserveHeightAndSlope() && ok;
   ok = invalidAuthoredResultRejectsWithoutPartialRoom() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
