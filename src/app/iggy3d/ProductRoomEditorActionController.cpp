@@ -412,4 +412,23 @@ ProductRoomEditorActionResult applyProductRoomEditorActions(
   return last;
 }
 
+ProductRoomEditorActionResult applyProductRoomEditorMousePick(
+    const ProductRoomEditingState& editing,
+    const ProductRoomEditorMousePickRequest& request,
+    std::string operation) {
+  ProductRoomEditorMousePickRequest pickRequest = request;
+  pickRequest.roomEditingReady = editing.ready && request.roomEditingReady;
+  const ProductRoomEditorMousePickResult pick =
+      pickProductRoomEditorCursorFromScreen(pickRequest);
+
+  ProductRoomEditorActionResult result =
+      baseResult(editing, pick.cursor, std::move(operation));
+  result.handled = true;
+  result.ok = pick.ok;
+  result.operationAccepted = pick.ok;
+  result.status = pick.status;
+  result.reasonCode = pick.reasonCode;
+  return result;
+}
+
 }  // namespace iggy3d

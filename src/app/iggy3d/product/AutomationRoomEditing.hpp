@@ -11,6 +11,7 @@ namespace iggy3d {
 
 struct FrontendState;
 struct ProductAppWindowState;
+class Session;
 struct ProductRoomEditingState;
 struct ProductRoomEditingStartResult;
 struct ProductRoomEditingOperationResult;
@@ -26,6 +27,7 @@ struct ProductRoomAuthoringUndoRedoRequest;
 struct ProductAutomationRoomEditingContext {
   FrontendState& frontend;
   ProductAppWindowState& window;
+  Session* activeSession = nullptr;
   bool activeSessionAvailable = false;
   std::function<MenuOwner()> currentOwner;
   std::function<InputRoutingResult(InputAction)> routeEditorInput;

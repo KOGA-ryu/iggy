@@ -92,6 +92,7 @@ bool applyProductAutomationCommand(
   ProductAutomationRoomEditingContext roomEditingExecutionContext{
       context.frontend,
       context.window,
+      context.activeSession,
       context.activeSession != nullptr,
       context.currentOwner,
       context.routeEditorInput,

@@ -34,4 +34,9 @@ ProductRoomEditorActionResult applyProductRoomEditorActions(
     ProductRoomAuthoringInputSource inputSource =
         ProductRoomAuthoringInputSource::Hotkey);
 
+ProductRoomEditorActionResult applyProductRoomEditorMousePick(
+    const ProductRoomEditingState& editing,
+    const ProductRoomEditorMousePickRequest& request,
+    std::string operation = "room_editor.mouse_pick");
+
 }  // namespace iggy3d

@@ -62,6 +62,7 @@ enum class ProductAutomationCommandId : std::uint8_t {
   RoomEditorTool,
   RoomEditorCycleTool,
   RoomEditorWallDirection,
+  RoomEditorMousePick,
   RoomEditorPlace,
   SaveSelect,
   SaveDelete,
@@ -234,6 +235,8 @@ ProductBoolAutomationResult resolveProductAutomationBool(
     std::string_view value);
 
 bool resolveProductAutomationBool(std::string_view value, bool& out);
+
+bool parseProductAutomationFloat(std::string_view value, float& out);
 
 ProductGameplayAxisAutomationResult resolveProductGameplayAxisAutomation(
     std::string_view value);

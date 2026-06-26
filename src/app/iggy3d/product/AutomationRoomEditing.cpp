@@ -12,6 +12,7 @@
 #include "app/iggy3d/ProductRoomEditingState.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/input/ActionState.hpp"
+#include "runtime/session/Session.hpp"
 
 namespace iggy3d {
 
@@ -181,6 +182,23 @@ ProductRoomEditorActionResult applyProductEditorInputAutomation(
   return applyProductRoomEditorActions(editing, cursor, actions, inputSource);
 }
 
+ProductRoomEditorActionResult applyProductRoomEditorMousePickAutomation(
+    const ProductRoomEditingState& editing,
+    ProductRoomEditorCursorState cursor,
+    float screenX,
+    float screenY,
+    ProductViewportFrameConfig viewportConfig,
+    Vec3 anchorWorld) {
+  ProductRoomEditorMousePickRequest request;
+  request.roomEditingReady = editing.ready;
+  request.cursor = cursor;
+  request.screenX = screenX;
+  request.screenY = screenY;
+  request.viewportConfig = viewportConfig;
+  request.anchorWorld = anchorWorld;
+  return applyProductRoomEditorMousePick(editing, request);
+}
+
 namespace {
 
 ProductAutomationExecutionResult unhandledRoomEditingAutomation() {
@@ -193,6 +211,50 @@ ProductAutomationExecutionResult failRoomEditingAutomation() {
 
 ProductAutomationExecutionResult passRoomEditingAutomation(bool accepted) {
   return {true, accepted};
+}
+
+struct RoomEditorMousePickValue {
+  bool valid = false;
+  float screenX = 0.0F;
+  float screenY = 0.0F;
+};
+
+RoomEditorMousePickValue parseRoomEditorMousePickValue(std::string_view value) {
+  const std::vector<std::string_view> parts = splitProductAutomationCsv(value);
+  RoomEditorMousePickValue parsed;
+  // branch-gate: BG-1044
+  if (parts.size() != 2U) {
+    return parsed;
+  }
+  // branch-gate: BG-1044
+  if (!parseProductAutomationFloat(parts[0], parsed.screenX) ||
+      !parseProductAutomationFloat(parts[1], parsed.screenY)) {
+    return parsed;
+  }
+  parsed.valid = true;
+  return parsed;
+}
+
+Vec3 roomEditorMousePickAnchor(Session* activeSession) {
+  // branch-gate: BG-1044
+  if (activeSession == nullptr) {
+    return {};
+  }
+  for (const EntityState& entity : activeSession->state().world.entities()) {
+    // branch-gate: BG-1044
+    if (entity.active && entity.kind == EntityKind::Player) {
+      return entity.transform.position;
+    }
+  }
+  return {};
+}
+
+ProductViewportFrameConfig roomEditorMousePickViewportConfig(
+    const ProductAppWindowState& window) {
+  ProductViewportFrameConfig config;
+  config.cameraYawDegrees = window.viewport.cameraYawDegrees;
+  config.cameraPitchDegrees = window.viewport.cameraPitchDegrees;
+  return config;
 }
 
 bool roomEditorReady(ProductAutomationRoomEditingContext& context,
@@ -449,6 +511,40 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
         command, automationSpec, context,
         applyProductRoomEditorWallDirectionAutomation(
             context.window.roomEditorCursor, direction));
+  }
+
+  // branch-gate: BG-1044
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditorMousePick) {
+    const RoomEditorMousePickValue pick = parseRoomEditorMousePickValue(value);
+    // branch-gate: BG-1044
+    if (!pick.valid) {
+      context.window.automationControlStatus = "invalid_value";
+      return failRoomEditingAutomation();
+    }
+    // branch-gate: BG-1044
+    if (!roomEditorReady(context, command, automationSpec.canonicalKey)) {
+      return failRoomEditingAutomation();
+    }
+
+    const ProductRoomEditorActionResult result =
+        applyProductRoomEditorMousePickAutomation(
+            context.window.roomEditing,
+            context.window.roomEditorCursor,
+            pick.screenX,
+            pick.screenY,
+            roomEditorMousePickViewportConfig(context.window),
+            roomEditorMousePickAnchor(context.activeSession));
+    recordProductRoomEditorActionResult(context.window, result,
+                                        automationSpec.canonicalKey);
+    // branch-gate: BG-1044
+    if (!result.ok) {
+      context.window.automationControlStatus = "command_failed";
+    }
+    // branch-gate: BG-1044
+    markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                          context.currentOwner(),
+                          result.ok ? "applied" : "failed");
+    return passRoomEditingAutomation(result.ok);
   }
 
   // branch-gate: BG-1006

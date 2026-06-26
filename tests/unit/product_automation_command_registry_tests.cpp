@@ -69,6 +69,10 @@ int main() {
              iggy3d::ProductAutomationCommandId::RoomEditorPlace) ==
              "room_editor.place",
          "room editor command id name is stable");
+  expect(iggy3d::productAutomationCommandIdName(
+             iggy3d::ProductAutomationCommandId::RoomEditorMousePick) ==
+             "room_editor.mouse_pick",
+         "room editor mouse pick command id name is stable");
 
   expect(spec(registry, "automation.owner").category == Category::Owner,
          "owner command is registered");
@@ -96,6 +100,8 @@ int main() {
          "room edit command is registered");
   expect(spec(registry, "room_editor.place").category == Category::RoomEditor,
          "room editor command is registered");
+  expect(spec(registry, "room_editor.mouse_pick").category == Category::RoomEditor,
+         "room editor mouse pick command is registered");
   expect(spec(registry, "game.move_x").category == Category::GameplayInput,
          "gameplay input command is registered");
   expect(spec(registry, "settings.tab").category == Category::Settings,
@@ -132,6 +138,8 @@ int main() {
          "game move x is a float value");
   expect(spec(registry, "room_edit.add_floor").valueKind == Value::Csv,
          "add floor is a csv value");
+  expect(spec(registry, "room_editor.mouse_pick").valueKind == Value::Csv,
+         "mouse pick is a csv value");
 
   const iggy3d::ProductMenuInputAutomationResult menuUp =
       iggy3d::resolveProductMenuInputAutomation("up");
@@ -326,6 +334,17 @@ int main() {
          "frontend room editor place dispatch id is stable");
   expect(placeDispatch.canonicalActionLabel == "room_editor.place",
          "frontend room editor place dispatch label is canonical");
+
+  const iggy3d::ProductAutomationCommandDispatchResult mousePickDispatch =
+      iggy3d::resolveProductAutomationCommandDispatch(
+          iggy3d::ProductAutomationCommandDispatchRequest{
+              &registry, "frontend.room_editor_mouse_pick"});
+  expect(mousePickDispatch.handled, "frontend room editor mouse pick is dispatch-handled");
+  expect(mousePickDispatch.spec.commandId ==
+             iggy3d::ProductAutomationCommandId::RoomEditorMousePick,
+         "frontend room editor mouse pick dispatch id is stable");
+  expect(mousePickDispatch.canonicalActionLabel == "room_editor.mouse_pick",
+         "frontend room editor mouse pick dispatch label is canonical");
 
   const iggy3d::ProductAutomationCommandDispatchResult addWallDispatch =
       iggy3d::resolveProductAutomationCommandDispatch(

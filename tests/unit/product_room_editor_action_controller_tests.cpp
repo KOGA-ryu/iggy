@@ -331,6 +331,87 @@ bool deleteMissingTargetIsStable() {
          expect(result.primitiveId == "none", "missing delete primitive");
 }
 
+bool mousePickUpdatesCursorWithoutMutation() {
+  iggy3d::ProductRoomEditingState editing =
+      iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
+  iggy3d::ProductRoomEditorCursorState cursor;
+  cursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
+  cursor.wallDirection = iggy3d::ProductRoomEditorDirection::Right;
+  cursor.storyIndex = 1;
+  const std::uint64_t initialFloors = editing.documentFloorCount;
+  const std::uint64_t initialWalls = editing.documentWallCount;
+  const std::uint64_t initialWalkable = editing.collisionWalkableSurfaceCount;
+  const std::uint64_t initialBlockers = editing.collisionActorBlockerSurfaceCount;
+
+  iggy3d::ProductRoomEditorMousePickRequest request;
+  request.roomEditingReady = true;
+  request.cursor = cursor;
+  request.screenX = 732.0F;
+  request.screenY = 394.0F;
+  const iggy3d::ProductRoomEditorActionResult result =
+      iggy3d::applyProductRoomEditorMousePick(editing, request);
+
+  return expect(result.ok, "mouse pick accepted") &&
+         expect(result.handled, "mouse pick handled") &&
+         expect(result.status == "room_editor_mouse_pick_mapped",
+                "mouse pick status") &&
+         expect(result.reasonCode == "room_editor_mouse_pick_mapped",
+                "mouse pick reason") &&
+         expect(result.operation == "room_editor.mouse_pick",
+                "mouse pick operation") &&
+         expect(result.operationAccepted, "mouse pick accepted operation") &&
+         expect(result.primitiveId == "none", "mouse pick primitive none") &&
+         expect(result.cursor.gridX == 1, "mouse pick cursor x") &&
+         expect(result.cursor.gridZ == 0, "mouse pick cursor z") &&
+         expect(result.cursor.selectedTool == cursor.selectedTool,
+                "mouse pick preserves tool") &&
+         expect(result.cursor.wallDirection == cursor.wallDirection,
+                "mouse pick preserves wall direction") &&
+         expect(result.cursor.storyIndex == cursor.storyIndex,
+                "mouse pick preserves story") &&
+         expect(result.editing.documentFloorCount == initialFloors,
+                "mouse pick leaves floors") &&
+         expect(result.editing.documentWallCount == initialWalls,
+                "mouse pick leaves walls") &&
+         expect(result.editing.collisionWalkableSurfaceCount == initialWalkable,
+                "mouse pick leaves walkable collision") &&
+         expect(result.editing.collisionActorBlockerSurfaceCount == initialBlockers,
+                "mouse pick leaves blocker collision");
+}
+
+bool mousePickRejectsInvalidWithoutMutation() {
+  const iggy3d::ProductRoomEditingState notReadyEditing;
+  iggy3d::ProductRoomEditorMousePickRequest request;
+  request.roomEditingReady = true;
+  request.cursor.gridX = 4;
+  request.cursor.gridZ = 5;
+  request.screenX = 640.0F;
+  request.screenY = 394.0F;
+  const iggy3d::ProductRoomEditorActionResult notReady =
+      iggy3d::applyProductRoomEditorMousePick(notReadyEditing, request);
+
+  iggy3d::ProductRoomEditingState editing =
+      iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
+  const std::uint64_t initialFloors = editing.documentFloorCount;
+  const std::uint64_t initialWalls = editing.documentWallCount;
+  request.cursor.cellSizeMeters = 0.0F;
+  const iggy3d::ProductRoomEditorActionResult invalid =
+      iggy3d::applyProductRoomEditorMousePick(editing, request);
+
+  return expect(!notReady.ok, "not ready mouse pick rejected") &&
+         expect(notReady.status == "room_editor_mouse_pick_not_ready",
+                "not ready mouse pick status") &&
+         expect(notReady.cursor.gridX == 4, "not ready preserves x") &&
+         expect(notReady.cursor.gridZ == 5, "not ready preserves z") &&
+         expect(!invalid.ok, "invalid mouse pick rejected") &&
+         expect(invalid.status == "room_editor_mouse_pick_invalid_cell_size",
+                "invalid mouse pick status") &&
+         expect(invalid.editing.documentFloorCount == initialFloors,
+                "invalid mouse pick leaves floors") &&
+         expect(invalid.editing.documentWallCount == initialWalls,
+                "invalid mouse pick leaves walls");
+}
+
 bool unsupportedActionsAreIgnored() {
   iggy3d::ProductRoomEditingState editing =
       iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
@@ -358,6 +439,8 @@ int main() {
                   deleteUndoRedoApplyThroughEditingState() &&
                   floorDeleteUndoRedoApplyThroughEditingState() &&
                   deleteMissingTargetIsStable() &&
+                  mousePickUpdatesCursorWithoutMutation() &&
+                  mousePickRejectsInvalidWithoutMutation() &&
                   unsupportedActionsAreIgnored();
   return ok ? 0 : 1;
 }
