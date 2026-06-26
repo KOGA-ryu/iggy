@@ -208,6 +208,50 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.asciiRoomActivationMarkerCount);
   appendReceiptField(receipt, "ascii_room_activation_runtime_hash",
                      window.asciiRoomActivationRuntimeHash);
+  appendReceiptField(receipt, "room_editing_ready", window.roomEditing.ready);
+  appendReceiptField(receipt, "room_editing_status", window.roomEditing.status);
+  appendReceiptField(receipt, "room_editing_reason_code",
+                     window.roomEditing.reasonCode);
+  appendReceiptField(receipt, "room_editing_floor_count",
+                     window.roomEditing.documentFloorCount);
+  appendReceiptField(receipt, "room_editing_wall_count",
+                     window.roomEditing.documentWallCount);
+  appendReceiptField(receipt, "room_editing_active_room_loaded",
+                     window.roomEditing.activeRoom.loaded);
+  appendReceiptField(receipt, "room_editing_active_room_static_mesh_count",
+                     window.roomEditing.activeRoomStaticMeshCount);
+  appendReceiptField(receipt, "room_editing_active_room_spatial_surface_count",
+                     window.roomEditing.activeRoomSpatialSurfaceCount);
+  appendReceiptField(receipt, "room_editing_authored_floor_count",
+                     window.roomEditing.activeRoomAuthoredFloorCount);
+  appendReceiptField(receipt, "room_editing_authored_wall_count",
+                     window.roomEditing.activeRoomAuthoredWallCount);
+  appendReceiptField(receipt, "room_editing_collision_ready",
+                     window.roomEditing.activeRoomCollision.ready);
+  appendReceiptField(receipt, "room_editing_collision_surface_count",
+                     window.roomEditing.collisionQuerySurfaceCount);
+  appendReceiptField(receipt, "room_editing_collision_walkable_surface_count",
+                     window.roomEditing.collisionWalkableSurfaceCount);
+  appendReceiptField(receipt, "room_editing_collision_actor_blocker_count",
+                     window.roomEditing.collisionActorBlockerSurfaceCount);
+  appendReceiptField(receipt, "room_editing_collision_projectile_blocker_count",
+                     window.roomEditing.collisionProjectileBlockerSurfaceCount);
+  appendReceiptField(receipt, "room_editing_undo_depth",
+                     window.roomEditing.undoDepth);
+  appendReceiptField(receipt, "room_editing_redo_depth",
+                     window.roomEditing.redoDepth);
+  appendReceiptField(receipt, "room_editing_last_operation",
+                     window.roomEditingLastOperation);
+  appendReceiptField(receipt, "room_editing_last_operation_status",
+                     window.roomEditingLastOperationStatus);
+  appendReceiptField(receipt, "room_editing_last_operation_reason_code",
+                     window.roomEditingLastOperationReasonCode);
+  appendReceiptField(receipt, "room_editing_last_input_source",
+                     window.roomEditingLastInputSource);
+  appendReceiptField(receipt, "room_editing_last_operation_accepted",
+                     window.roomEditingLastOperationAccepted);
+  appendReceiptField(receipt, "room_editing_last_primitive_id",
+                     window.roomEditingLastPrimitiveId);
   appendReceiptField(receipt, "active_room_loaded", window.activeRoom.loaded);
   appendReceiptField(receipt, "active_room_status", window.activeRoom.status);
   appendReceiptField(receipt, "active_room_reason_code",

@@ -9,6 +9,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "app/frontend/FrontendState.hpp"
@@ -28,6 +29,7 @@
 #include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductRenderBridge.hpp"
+#include "app/iggy3d/ProductRoomEditingState.hpp"
 #include "app/iggy3d/ProductScriptedGameplayDriver.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
@@ -803,6 +805,80 @@ bool parseAutomationFloat(std::string_view value, float& out) {
          std::isfinite(out);
 }
 
+std::vector<std::string_view> splitAutomationCsv(std::string_view value) {
+  std::vector<std::string_view> fields;
+  std::size_t start = 0;
+  while (start <= value.size()) {
+    const std::size_t comma = value.find(',', start);
+    if (comma == std::string_view::npos) {
+      fields.push_back(value.substr(start));
+      break;
+    }
+    fields.push_back(value.substr(start, comma - start));
+    start = comma + 1U;
+  }
+  return fields;
+}
+
+bool parseAutomationCsvFloat(std::string_view value, float& out) {
+  return parseAutomationFloat(value, out);
+}
+
+bool parseAutomationFloorCommand(std::string_view value,
+                                 RoomEditCommand& command) {
+  const std::vector<std::string_view> fields = splitAutomationCsv(value);
+  if (fields.size() != 7U && fields.size() != 8U) {
+    return false;
+  }
+
+  EditableRoomFloor floor;
+  floor.id = std::string(fields[0]);
+  if (floor.id.empty() ||
+      !parseAutomationCsvFloat(fields[1], floor.centerMeters.x) ||
+      !parseAutomationCsvFloat(fields[2], floor.centerMeters.y) ||
+      !parseAutomationCsvFloat(fields[3], floor.centerMeters.z) ||
+      !parseAutomationCsvFloat(fields[4], floor.sizeMeters.x) ||
+      !parseAutomationCsvFloat(fields[5], floor.sizeMeters.y) ||
+      !parseAutomationCsvFloat(fields[6], floor.sizeMeters.z)) {
+    return false;
+  }
+  floor.semantics = defaultFloorSemantics(
+      fields.size() == 8U && !fields[7].empty()
+          ? std::string(fields[7])
+          : std::string{"debug_floor"});
+  command = addFloorCommand(std::move(floor));
+  return true;
+}
+
+bool parseAutomationWallCommand(std::string_view value,
+                                RoomEditCommand& command) {
+  const std::vector<std::string_view> fields = splitAutomationCsv(value);
+  if (fields.size() != 10U && fields.size() != 11U) {
+    return false;
+  }
+
+  EditableRoomWall wall;
+  wall.id = std::string(fields[0]);
+  if (wall.id.empty() ||
+      !parseAutomationCsvFloat(fields[1], wall.startMeters.x) ||
+      !parseAutomationCsvFloat(fields[2], wall.startMeters.y) ||
+      !parseAutomationCsvFloat(fields[3], wall.startMeters.z) ||
+      !parseAutomationCsvFloat(fields[4], wall.endMeters.x) ||
+      !parseAutomationCsvFloat(fields[5], wall.endMeters.y) ||
+      !parseAutomationCsvFloat(fields[6], wall.endMeters.z) ||
+      !parseAutomationCsvFloat(fields[7], wall.bottomY) ||
+      !parseAutomationCsvFloat(fields[8], wall.heightMeters) ||
+      !parseAutomationCsvFloat(fields[9], wall.thicknessMeters)) {
+    return false;
+  }
+  wall.semantics = defaultWallSemantics(
+      fields.size() == 11U && !fields[10].empty()
+          ? std::string(fields[10])
+          : std::string{"debug_wall"});
+  command = addWallCommand(std::move(wall));
+  return true;
+}
+
 bool parseAutomationInputAction(std::string_view value, InputAction& out) {
   if (value == "up") {
     out = InputAction::MenuUp;
@@ -1074,6 +1150,43 @@ bool applyAutomationGameplayButton(InputAction action,
          window.gameplayTickAdvanced;
 }
 
+void copyRoomEditingStateToWindow(ProductAppWindowState& window,
+                                  const ProductRoomEditingState& state) {
+  window.roomEditing = state;
+  if (state.ready) {
+    window.activeRoom = state.activeRoom;
+    window.activeRoomCollision = state.activeRoomCollision;
+  }
+}
+
+void recordProductRoomEditingStart(ProductAppWindowState& window,
+                                   const ProductRoomEditingStartResult& result) {
+  window.roomEditingLastOperation = "room_edit.start";
+  window.roomEditingLastOperationStatus = result.status;
+  window.roomEditingLastOperationReasonCode = result.reasonCode;
+  window.roomEditingLastInputSource =
+      productRoomAuthoringInputSourceName(ProductRoomAuthoringInputSource::Script);
+  window.roomEditingLastOperationAccepted = result.ok;
+  window.roomEditingLastPrimitiveId = "none";
+  copyRoomEditingStateToWindow(window, result.state);
+}
+
+void recordProductRoomEditingOperation(
+    ProductAppWindowState& window,
+    std::string_view operation,
+    const ProductRoomEditingOperationResult& result) {
+  window.roomEditingLastOperation = std::string(operation);
+  window.roomEditingLastOperationStatus = result.status;
+  window.roomEditingLastOperationReasonCode = result.reasonCode;
+  window.roomEditingLastInputSource =
+      productRoomAuthoringInputSourceName(result.inputSource);
+  window.roomEditingLastOperationAccepted = result.accepted;
+  window.roomEditingLastPrimitiveId =
+      result.edit.primitiveId.empty() ? std::string{"none"}
+                                      : result.edit.primitiveId;
+  copyRoomEditingStateToWindow(window, result.state);
+}
+
 bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                                    FrontendState& frontend,
                                    const ProductSaveBridgeResult& saves,
@@ -1339,6 +1452,130 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                           productInputOwnerFor(frontend, window),
                           activated.ok ? "applied" : "failed");
     return activated.ok;
+  }
+
+  if (key == "room_edit.start" || key == "frontend.room_edit_start") {
+    if (!parseAutomationBool(value, boolValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    if (!boolValue) {
+      markAutomationApplied(window, command, "room_edit.start",
+                            productInputOwnerFor(frontend, window), "ignored");
+      return true;
+    }
+
+    const ProductAsciiRoomAuthoringRequest request =
+        productAsciiRoomAuthoringRequestFromDraft(window);
+    const ProductRoomEditingStartResult started =
+        startProductRoomEditingFromAscii(request);
+    recordProductRoomEditingStart(window, started);
+    markAutomationApplied(window, command, "room_edit.start",
+                          productInputOwnerFor(frontend, window),
+                          started.ok ? "applied" : "failed");
+    return started.ok;
+  }
+
+  if (key == "room_edit.add_floor" || key == "frontend.room_edit_add_floor") {
+    RoomEditCommand edit;
+    if (!parseAutomationFloorCommand(value, edit)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    ProductRoomEditingOperationResult result = applyProductRoomEditingCommand(
+        window.roomEditing, ProductRoomAuthoringInputSource::Script, edit);
+    recordProductRoomEditingOperation(window, "room_edit.add_floor", result);
+    markAutomationApplied(window, command, "room_edit.add_floor",
+                          productInputOwnerFor(frontend, window),
+                          result.accepted ? "applied" : "failed");
+    return result.accepted;
+  }
+
+  if (key == "room_edit.add_wall" || key == "frontend.room_edit_add_wall") {
+    RoomEditCommand edit;
+    if (!parseAutomationWallCommand(value, edit)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    ProductRoomEditingOperationResult result = applyProductRoomEditingCommand(
+        window.roomEditing, ProductRoomAuthoringInputSource::Script, edit);
+    recordProductRoomEditingOperation(window, "room_edit.add_wall", result);
+    markAutomationApplied(window, command, "room_edit.add_wall",
+                          productInputOwnerFor(frontend, window),
+                          result.accepted ? "applied" : "failed");
+    return result.accepted;
+  }
+
+  if (key == "room_edit.delete_floor" ||
+      key == "frontend.room_edit_delete_floor") {
+    if (value.empty()) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    ProductRoomEditingOperationResult result = applyProductRoomEditingCommand(
+        window.roomEditing,
+        ProductRoomAuthoringInputSource::Script,
+        deleteFloorCommand(std::string(value)));
+    recordProductRoomEditingOperation(window, "room_edit.delete_floor", result);
+    markAutomationApplied(window, command, "room_edit.delete_floor",
+                          productInputOwnerFor(frontend, window),
+                          result.accepted ? "applied" : "failed");
+    return result.accepted;
+  }
+
+  if (key == "room_edit.delete_wall" ||
+      key == "frontend.room_edit_delete_wall") {
+    if (value.empty()) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    ProductRoomEditingOperationResult result = applyProductRoomEditingCommand(
+        window.roomEditing,
+        ProductRoomAuthoringInputSource::Script,
+        deleteWallCommand(std::string(value)));
+    recordProductRoomEditingOperation(window, "room_edit.delete_wall", result);
+    markAutomationApplied(window, command, "room_edit.delete_wall",
+                          productInputOwnerFor(frontend, window),
+                          result.accepted ? "applied" : "failed");
+    return result.accepted;
+  }
+
+  if (key == "room_edit.undo" || key == "frontend.room_edit_undo") {
+    if (!parseAutomationBool(value, boolValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    if (!boolValue) {
+      markAutomationApplied(window, command, "room_edit.undo",
+                            productInputOwnerFor(frontend, window), "ignored");
+      return true;
+    }
+    ProductRoomEditingOperationResult result = undoProductRoomEditing(
+        window.roomEditing, ProductRoomAuthoringInputSource::Script);
+    recordProductRoomEditingOperation(window, "room_edit.undo", result);
+    markAutomationApplied(window, command, "room_edit.undo",
+                          productInputOwnerFor(frontend, window),
+                          result.accepted ? "applied" : "failed");
+    return result.accepted;
+  }
+
+  if (key == "room_edit.redo" || key == "frontend.room_edit_redo") {
+    if (!parseAutomationBool(value, boolValue)) {
+      window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    if (!boolValue) {
+      markAutomationApplied(window, command, "room_edit.redo",
+                            productInputOwnerFor(frontend, window), "ignored");
+      return true;
+    }
+    ProductRoomEditingOperationResult result = redoProductRoomEditing(
+        window.roomEditing, ProductRoomAuthoringInputSource::Script);
+    recordProductRoomEditingOperation(window, "room_edit.redo", result);
+    markAutomationApplied(window, command, "room_edit.redo",
+                          productInputOwnerFor(frontend, window),
+                          result.accepted ? "applied" : "failed");
+    return result.accepted;
   }
 
   if (key == "game.move_x" || key == "game.move_y" ||

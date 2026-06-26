@@ -616,6 +616,21 @@ if(TARGET iggy3d_visual_demo)
     SKIP_RETURN_CODE 77
     LABELS "smoke;product;ascii_room;authoring;automation;no_window;iggy3d")
 
+  add_executable(product_room_editing_automation_smoke
+    tests/smoke/product_room_editing_automation_smoke.cpp)
+  target_link_libraries(product_room_editing_automation_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(product_room_editing_automation_smoke)
+  target_compile_definitions(product_room_editing_automation_smoke
+    PRIVATE
+      IGGY3D_PRODUCT_APP_PATH="$<TARGET_FILE:iggy3d_app>")
+  add_dependencies(product_room_editing_automation_smoke iggy3d_app)
+  add_test(NAME product_room_editing_automation_smoke
+           COMMAND "$<TARGET_FILE:product_room_editing_automation_smoke>")
+  set_tests_properties(product_room_editing_automation_smoke PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    SKIP_RETURN_CODE 77
+    LABELS "smoke;product;ascii_room;authoring;editable_room;automation;no_window;iggy3d")
+
   add_executable(product_ascii_gameplay_loop_smoke
     tests/smoke/product_ascii_gameplay_loop_smoke.cpp)
   target_link_libraries(product_ascii_gameplay_loop_smoke PRIVATE iggy3d)
