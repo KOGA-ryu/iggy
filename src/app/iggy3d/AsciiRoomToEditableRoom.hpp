@@ -25,4 +25,7 @@ AsciiRoomToEditableRoomResult buildEditableRoomFromAsciiRoom(
     const AsciiRoomGrid& grid,
     const AsciiRoomCompileConfig& config = {});
 
+EditableRoomDocument buildEditableRoomDocumentFromAuthoredRoom(
+    const SaveAuthoredRoomSection& authoredRoom);
+
 }  // namespace iggy3d

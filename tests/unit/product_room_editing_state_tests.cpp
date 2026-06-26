@@ -93,6 +93,116 @@ bool startAsciiCreatesReadyEditingState() {
          expect(state.redoDepth == 0U, "initial redo depth");
 }
 
+bool startActiveRoomCreatesReadyEditingState() {
+  const iggy3d::ProductRoomEditingStartResult ascii =
+      iggy3d::startProductRoomEditingFromAscii(smallRoomRequest());
+  const iggy3d::ProductRoomEditingStartResult result =
+      iggy3d::startProductRoomEditingFromActiveRoom(ascii.state.activeRoom);
+  const iggy3d::ProductRoomEditingState& state = result.state;
+
+  return expect(ascii.ok, "ascii source start ok") &&
+         expect(result.ok, "active room start ok") &&
+         expect(result.status == "product_room_editing_started_from_active_room",
+                "active room start status") &&
+         expect(result.reasonCode ==
+                    "product_room_editing_started_from_active_room",
+                "active room start reason") &&
+         expect(result.failedStage == "none", "active room failed stage") &&
+         expect(state.ready, "active room state ready") &&
+         expect(state.activeRoom.loaded, "active room rebuilt loaded") &&
+         expect(state.activeRoom.source == "editable_room",
+                "active room rebuilt source") &&
+         expect(state.activeRoom.roomId == "editing_state_room",
+                "active room id preserved") &&
+         expect(state.activeRoom.sourceName ==
+                    "unit/editing_state_room.iggyroom.txt",
+                "active room source name preserved") &&
+         expect(state.activeRoom.hasAuthoredRoom,
+                "active room authored present") &&
+         expect(state.documentFloorCount == 1U,
+                "active room document floor count") &&
+         expect(state.documentWallCount == 8U,
+                "active room document wall count") &&
+         expect(state.activeRoomAuthoredFloorCount == 1U,
+                "active room authored floor count") &&
+         expect(state.activeRoomAuthoredWallCount == 8U,
+                "active room authored wall count") &&
+         expect(state.activeRoomCollision.ready,
+                "active room collision ready") &&
+         expect(state.collisionWalkableSurfaceCount == 1U,
+                "active room collision walkable count") &&
+         expect(state.collisionActorBlockerSurfaceCount == 8U,
+                "active room collision blocker count");
+}
+
+bool activeRoomEditingOperationsRebuildLiveRoom() {
+  iggy3d::ProductRoomEditingState state =
+      iggy3d::startProductRoomEditingFromActiveRoom(
+          iggy3d::startProductRoomEditingFromAscii(smallRoomRequest())
+              .state.activeRoom)
+          .state;
+
+  const iggy3d::ProductRoomEditingOperationResult addWall =
+      iggy3d::applyProductRoomEditingCommand(
+          state,
+          iggy3d::ProductRoomAuthoringInputSource::Script,
+          iggy3d::addWallCommand(extraWallPrimitive()));
+
+  return expect(addWall.accepted, "active room add wall accepted") &&
+         expect(addWall.state.documentWallCount == 9U,
+                "active room add wall document count") &&
+         expect(state.activeRoom.loaded, "active room after edit loaded") &&
+         expect(state.activeRoom.roomId == "editing_state_room",
+                "active room after edit id") &&
+         expect(state.activeRoomAuthoredWallCount == 9U,
+                "active room after edit authored wall count") &&
+         expect(state.activeRoomStaticMeshCount == 10U,
+                "active room after edit mesh count") &&
+         expect(state.activeRoomCollision.ready,
+                "active room after edit collision ready") &&
+         expect(state.collisionActorBlockerSurfaceCount == 9U,
+                "active room after edit blocker count") &&
+         expect(state.undoDepth == 1U, "active room after edit undo depth");
+}
+
+bool unloadedActiveRoomFailsWithoutReadyState() {
+  iggy3d::ProductActiveRoomState active;
+  active.loaded = false;
+  active.reasonCode = "unit_unloaded_room";
+
+  const iggy3d::ProductRoomEditingStartResult result =
+      iggy3d::startProductRoomEditingFromActiveRoom(active);
+
+  return expect(!result.ok, "unloaded active room rejected") &&
+         expect(result.status == "product_room_editing_active_room_unloaded",
+                "unloaded active room status") &&
+         expect(result.reasonCode == "unit_unloaded_room",
+                "unloaded active room reason") &&
+         expect(result.failedStage == "active_room",
+                "unloaded active room failed stage") &&
+         expect(!result.state.ready, "unloaded active room state not ready");
+}
+
+bool activeRoomWithoutAuthoredRoomFailsWithoutReadyState() {
+  iggy3d::ProductActiveRoomState active;
+  active.loaded = true;
+  active.hasAuthoredRoom = false;
+  active.status = "active_room_loaded";
+  active.reasonCode = "active_room_loaded";
+
+  const iggy3d::ProductRoomEditingStartResult result =
+      iggy3d::startProductRoomEditingFromActiveRoom(active);
+
+  return expect(!result.ok, "missing authored active room rejected") &&
+         expect(result.status == "product_room_editing_authored_room_missing",
+                "missing authored status") &&
+         expect(result.reasonCode == "product_room_editing_authored_room_missing",
+                "missing authored reason") &&
+         expect(result.failedStage == "active_room",
+                "missing authored failed stage") &&
+         expect(!result.state.ready, "missing authored state not ready");
+}
+
 bool editCommandsRebuildActiveRoomCollisionAndAuthoredCounts() {
   iggy3d::ProductRoomEditingState state =
       iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
@@ -275,6 +385,10 @@ bool invalidAsciiFailsWithoutReadyState() {
 
 int main() {
   const bool ok = startAsciiCreatesReadyEditingState() &&
+                  startActiveRoomCreatesReadyEditingState() &&
+                  activeRoomEditingOperationsRebuildLiveRoom() &&
+                  unloadedActiveRoomFailsWithoutReadyState() &&
+                  activeRoomWithoutAuthoredRoomFailsWithoutReadyState() &&
                   editCommandsRebuildActiveRoomCollisionAndAuthoredCounts() &&
                   undoRedoRebuildsProductEditingState() &&
                   rejectedEditPreservesPreviousState() &&

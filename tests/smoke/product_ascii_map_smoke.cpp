@@ -239,6 +239,41 @@ int main() {
       iggy3d::smoke::hasField(fields, "active_room_id", "custom_dungeon_draft") &&
       iggy3d::smoke::hasField(fields, "active_room_authored_wall_count",
                               "61") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_mesh_cpu_ready",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_mesh_backend_presented",
+                              "false") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_mesh_source",
+                              "scene_room_projection") &&
+      iggy3d::smoke::hasField(fields, "product_vulkan_room_asset_id",
+                              "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_floor_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_wall_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_grid_visible",
+                              "true") &&
+      iggy3d::smoke::positiveIntegerField(fields,
+                                          "product_vulkan_room_vertex_count") &&
+      iggy3d::smoke::positiveIntegerField(fields,
+                                          "product_vulkan_room_index_count") &&
+      iggy3d::smoke::positiveIntegerField(fields,
+                                          "product_vulkan_room_draw_count") &&
+      iggy3d::smoke::positiveIntegerField(fields,
+                                          "product_vulkan_room_floor_draw_count") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_wall_draw_count",
+                              "61") &&
+      iggy3d::smoke::positiveIntegerField(
+          fields, "product_vulkan_room_grid_line_draw_count") &&
+      iggy3d::smoke::positiveIntegerField(
+          fields, "product_vulkan_room_geometry_signature") &&
       std::filesystem::exists(customSaveRoot / "save_001.iggy3d.save") &&
       fileContains(customSaveRoot / "save_001.iggy3d.save",
                    "authoredRoom.id=custom_dungeon_draft\n") &&

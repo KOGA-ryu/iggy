@@ -170,6 +170,46 @@ ProductRoomEditingStartResult startProductRoomEditingFromAscii(
   return result;
 }
 
+ProductRoomEditingStartResult startProductRoomEditingFromActiveRoom(
+    const ProductActiveRoomState& activeRoom) {
+  ProductRoomEditingStartResult result;
+  result.failedStage = "active_room";
+  if (!activeRoom.loaded) {
+    result.ok = false;
+    result.status = "product_room_editing_active_room_unloaded";
+    result.reasonCode = activeRoom.reasonCode.empty() ? result.status
+                                                       : activeRoom.reasonCode;
+    result.state.status = result.status;
+    result.state.reasonCode = result.reasonCode;
+    return result;
+  }
+  if (!activeRoom.hasAuthoredRoom || !activeRoom.authoredRoom.present) {
+    result.ok = false;
+    result.status = "product_room_editing_authored_room_missing";
+    result.reasonCode = "product_room_editing_authored_room_missing";
+    result.state.status = result.status;
+    result.state.reasonCode = result.reasonCode;
+    return result;
+  }
+
+  ProductRoomAuthoringController controller(
+      buildEditableRoomDocumentFromAuthoredRoom(activeRoom.authoredRoom));
+  result.state = buildProductRoomEditingState(std::move(controller));
+  if (!result.state.ready) {
+    result.ok = false;
+    result.failedStage = "room_editing_state";
+    result.status = result.state.status;
+    result.reasonCode = result.state.reasonCode;
+    return result;
+  }
+
+  result.ok = true;
+  result.status = "product_room_editing_started_from_active_room";
+  result.reasonCode = "product_room_editing_started_from_active_room";
+  result.failedStage = "none";
+  return result;
+}
+
 ProductRoomEditingOperationResult applyProductRoomEditingCommand(
     ProductRoomEditingState& state,
     ProductRoomAuthoringInputSource source,

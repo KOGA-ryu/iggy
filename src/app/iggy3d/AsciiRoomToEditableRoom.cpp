@@ -56,6 +56,21 @@ void copyAuthoredMetadata(const SaveAuthoredRoomSection& authored,
 
 }  // namespace
 
+EditableRoomDocument buildEditableRoomDocumentFromAuthoredRoom(
+    const SaveAuthoredRoomSection& authoredRoom) {
+  EditableRoomDocument document;
+  copyAuthoredMetadata(authoredRoom, document);
+  document.floors.reserve(authoredRoom.floors.size());
+  for (const SaveAuthoredRoomFloorRecord& floor : authoredRoom.floors) {
+    document.floors.push_back(editableFloorFrom(floor));
+  }
+  document.walls.reserve(authoredRoom.walls.size());
+  for (const SaveAuthoredRoomWallRecord& wall : authoredRoom.walls) {
+    document.walls.push_back(editableWallFrom(wall));
+  }
+  return document;
+}
+
 AsciiRoomToEditableRoomResult buildEditableRoomFromAsciiRoom(
     const AsciiRoomGrid& grid,
     const AsciiRoomCompileConfig& config) {
@@ -73,15 +88,8 @@ AsciiRoomToEditableRoomResult buildEditableRoomFromAsciiRoom(
     return result;
   }
 
-  copyAuthoredMetadata(result.authoredRoom.authoredRoom, result.document);
-  result.document.floors.reserve(result.authoredRoom.authoredRoom.floors.size());
-  for (const SaveAuthoredRoomFloorRecord& floor : result.authoredRoom.authoredRoom.floors) {
-    result.document.floors.push_back(editableFloorFrom(floor));
-  }
-  result.document.walls.reserve(result.authoredRoom.authoredRoom.walls.size());
-  for (const SaveAuthoredRoomWallRecord& wall : result.authoredRoom.authoredRoom.walls) {
-    result.document.walls.push_back(editableWallFrom(wall));
-  }
+  result.document =
+      buildEditableRoomDocumentFromAuthoredRoom(result.authoredRoom.authoredRoom);
 
   result.ok = true;
   result.status = "ascii_room_editable_ready";

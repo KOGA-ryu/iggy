@@ -57,6 +57,9 @@ ProductRoomEditingState buildProductRoomEditingState(
 ProductRoomEditingStartResult startProductRoomEditingFromAscii(
     const ProductAsciiRoomAuthoringRequest& request);
 
+ProductRoomEditingStartResult startProductRoomEditingFromActiveRoom(
+    const ProductActiveRoomState& activeRoom);
+
 ProductRoomEditingOperationResult applyProductRoomEditingCommand(
     ProductRoomEditingState& state,
     ProductRoomAuthoringInputSource source,
