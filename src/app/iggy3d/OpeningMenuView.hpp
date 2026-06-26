@@ -4,6 +4,7 @@
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
+#include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductMovementDebugHud.hpp"
@@ -53,6 +54,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const ProductWorldTemplate& world,
                                          const FrontendState& frontend,
                                          FrontendSettingsTab selectedSettingsTab,
+                                         const WorldSetupDraft& worldSetupDraft,
                                          bool gameplayActive,
                                          std::uint64_t runtimeStateHash,
                                          const ProductViewportFrame* frame,

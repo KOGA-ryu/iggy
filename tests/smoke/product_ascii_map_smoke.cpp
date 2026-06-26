@@ -60,6 +60,8 @@ int main() {
   const std::string mapText = mapAvailable ? readTextFile(mapPath) : std::string{};
   const std::filesystem::path defaultSaveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_loop_keep_default");
+  const std::filesystem::path selectedSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("ascii_map_gatehouse_selected");
   const std::filesystem::path saveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_loop_keep");
 
@@ -123,6 +125,58 @@ int main() {
                    "authoredRoom.floor.count=59\n") &&
       fileContains(defaultSaveRoot / "save_001.iggy3d.save",
                    "authoredRoom.wall.count=60\n");
+
+  fields.clear();
+  const bool createSelectedDungeonWorld =
+      appAvailable && mapAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_map_gatehouse_selected_create",
+          "frontend.select=new_world\nfrontend.execute=true\n"
+          "menu.down=true\n"
+          "world.create=true\n",
+          iggy3d::smoke::saveRootArg(selectedSaveRoot),
+          fields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::automationApplied(fields) &&
+      iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(fields, "window_created", "false") &&
+      iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "world_setup_title", "Gatehouse") &&
+      iggy3d::smoke::hasField(fields, "world_setup_status",
+                              "world_setup_create_requested") &&
+      iggy3d::smoke::hasField(fields, "world_setup_ascii_room_enabled",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "world_setup_ascii_room_id",
+                              "gatehouse_ascii") &&
+      iggy3d::smoke::hasField(fields, "world_setup_ascii_room_source_name",
+                              "fixtures/rooms/ascii/gatehouse.iggyroom.txt") &&
+      iggy3d::smoke::hasField(fields, "world_creation_status",
+                              "world_creation_initial_save_written") &&
+      iggy3d::smoke::hasField(fields, "world_creation_world_title",
+                              "Gatehouse") &&
+      iggy3d::smoke::hasField(fields, "world_creation_ascii_room_requested",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "world_creation_ascii_room_id",
+                              "gatehouse_ascii") &&
+      iggy3d::smoke::hasField(fields, "world_creation_ascii_room_source_name",
+                              "fixtures/rooms/ascii/gatehouse.iggyroom.txt") &&
+      iggy3d::smoke::hasField(fields, "world_creation_initial_save_title",
+                              "Gatehouse") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_status",
+                              "product_ascii_room_ready") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_room_id",
+                              "gatehouse_ascii") &&
+      iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
+      iggy3d::smoke::hasField(fields, "active_room_source", "ascii_room") &&
+      iggy3d::smoke::hasField(fields, "active_room_id", "gatehouse_ascii") &&
+      std::filesystem::exists(selectedSaveRoot / "save_001.iggy3d.save") &&
+      fileContains(selectedSaveRoot / "save_001.iggy3d.save",
+                   "authoredRoom.id=gatehouse_ascii\n") &&
+      fileContains(selectedSaveRoot / "save_001.iggy3d.save",
+                   "authoredRoom.sourceFile=fixtures/rooms/ascii/gatehouse.iggyroom.txt\n");
 
   fields.clear();
   const std::string createControl =
@@ -277,12 +331,14 @@ int main() {
       iggy3d::smoke::positiveIntegerField(fields,
                                           "product_vulkan_room_draw_count");
 
-  const bool passed = createDefaultDungeonWorld && createMapWorld &&
-                      continueMapWorld;
+  const bool passed = createDefaultDungeonWorld && createSelectedDungeonWorld &&
+                      createMapWorld && continueMapWorld;
   const bool ok = expect(appAvailable, "product app exists") &&
                   expect(mapAvailable, "loop keep map fixture exists") &&
                   expect(createDefaultDungeonWorld,
                          "default new world creates loop keep dungeon") &&
+                  expect(createSelectedDungeonWorld,
+                         "new world selector creates gatehouse dungeon") &&
                   expect(createMapWorld, "create map world") &&
                   expect(continueMapWorld, "continue map world");
 
@@ -290,6 +346,8 @@ int main() {
   std::cout << "map_path=" << kMapPath << "\n";
   std::cout << "create_default_dungeon_world="
             << (createDefaultDungeonWorld ? "true" : "false") << "\n";
+  std::cout << "create_selected_dungeon_world="
+            << (createSelectedDungeonWorld ? "true" : "false") << "\n";
   std::cout << "create_map_world=" << (createMapWorld ? "true" : "false")
             << "\n";
   std::cout << "continue_map_world=" << (continueMapWorld ? "true" : "false")

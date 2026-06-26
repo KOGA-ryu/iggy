@@ -449,25 +449,59 @@ void drawPanelRow(SDL_Renderer& renderer,
   drawText(renderer, label, x, y, 2.0F);
 }
 
+void drawAsciiPreviewLines(SDL_Renderer& renderer,
+                           std::string_view text,
+                           float x,
+                           float y) {
+  std::size_t lineStart = 0;
+  std::size_t row = 0;
+  while (lineStart < text.size() && row < 8U) {
+    std::size_t lineEnd = text.find('\n', lineStart);
+    if (lineEnd == std::string_view::npos) {
+      lineEnd = text.size();
+    }
+    const std::string_view line = text.substr(lineStart, lineEnd - lineStart);
+    if (!line.empty()) {
+      drawText(renderer, line, x, y + static_cast<float>(row) * 22.0F, 1.6F);
+    }
+    lineStart = lineEnd + 1U;
+    ++row;
+  }
+}
+
 void drawNewWorldPanel(SDL_Renderer& renderer,
                        const ProductWorldTemplate& world,
-                       const ProductSaveBridgeResult& saves) {
+                       const ProductSaveBridgeResult& saves,
+                       const WorldSetupDraft& draft) {
+  const std::size_t selectedIndex =
+      productBuiltinDungeonIndexForRoomId(draft.asciiRoomId);
+  const std::size_t dungeonCount = productBuiltinDungeonCatalog().size();
+  const std::string selectionLabel =
+      selectedIndex < dungeonCount
+          ? std::to_string(selectedIndex + 1U) + " / " +
+                std::to_string(dungeonCount)
+          : std::string{"CUSTOM"};
+
   setColor(renderer, 226, 230, 211);
   drawText(renderer, "NEW WORLD", 450.0F, 152.0F, 4.0F);
   setColor(renderer, 166, 184, 177);
-  drawText(renderer, "CREATE LOOP KEEP DUNGEON AND SAVE", 452.0F, 210.0F, 2.0F);
+  drawText(renderer, "UP DOWN SELECT DUNGEON   CONFIRM CREATE", 452.0F, 210.0F, 2.0F);
   drawText(renderer, "DUNGEON", 452.0F, 260.0F, 2.0F);
-  drawText(renderer, productBuiltinDungeonWorldTitle(), 452.0F, 289.0F, 2.0F);
+  drawText(renderer, draft.worldName, 452.0F, 289.0F, 2.0F);
+  drawText(renderer, "SELECTED", 714.0F, 260.0F, 2.0F);
+  drawText(renderer, selectionLabel, 714.0F, 289.0F, 2.0F);
   drawText(renderer, "ASCII ROOM", 452.0F, 338.0F, 2.0F);
-  drawText(renderer, productBuiltinDungeonRoomId(), 452.0F, 367.0F, 2.0F);
+  drawText(renderer, draft.asciiRoomId, 452.0F, 367.0F, 2.0F);
   drawText(renderer, "MAP SOURCE", 452.0F, 416.0F, 2.0F);
-  drawText(renderer, productBuiltinDungeonSourceName(), 452.0F, 445.0F, 2.0F);
+  drawText(renderer, draft.asciiRoomSourceName, 452.0F, 445.0F, 2.0F);
   drawText(renderer, "PACKAGE", 850.0F, 260.0F, 2.0F);
   drawText(renderer, world.packageId, 850.0F, 289.0F, 2.0F);
   drawText(renderer, "SCENARIO", 850.0F, 338.0F, 2.0F);
   drawText(renderer, world.scenarioId, 850.0F, 367.0F, 2.0F);
   drawText(renderer, "SAVES", 850.0F, 416.0F, 2.0F);
   drawText(renderer, std::to_string(saves.slots.slots.size()), 940.0F, 416.0F, 2.0F);
+  drawText(renderer, "ASCII PREVIEW", 850.0F, 468.0F, 2.0F);
+  drawAsciiPreviewLines(renderer, draft.asciiRoomText, 850.0F, 500.0F);
   setColor(renderer, 126, 201, 176);
   drawText(renderer, "CONFIRM TO CREATE", 452.0F, 508.0F, 2.0F);
 }
@@ -625,6 +659,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const ProductWorldTemplate& world,
                                          const FrontendState& frontend,
                                          FrontendSettingsTab selectedSettingsTab,
+                                         const WorldSetupDraft& worldSetupDraft,
                                          bool gameplayActive,
                                          std::uint64_t runtimeStateHash,
                                          const ProductViewportFrame* frame,
@@ -686,7 +721,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
   } else if (frontend.childScreen == FrontendScreen::Settings) {
     drawSettingsPanel(renderer, selectedSettingsTab);
   } else {
-    drawNewWorldPanel(renderer, world, saves);
+    drawNewWorldPanel(renderer, world, saves, worldSetupDraft);
   }
 
   setColor(renderer, 24, 30, 34);

@@ -61,17 +61,65 @@ bool productDefaultDraftCreatesLoopKeepDungeon() {
          expect(validation.reasonCode == "ok", "validation reason");
 }
 
-bool embeddedDungeonMatchesFixture() {
-  const std::filesystem::path fixture{
-      iggy3d::productBuiltinDungeonSourceName()};
-  const std::string fixtureText = normalizeLineEndings(readTextFile(fixture));
-  const std::string builtinText = normalizeLineEndings(
-      std::string{iggy3d::productBuiltinDungeonAsciiRoomText()});
-  return expect(!fixtureText.empty(), "fixture readable") &&
-         expect(fixtureText == builtinText, "fixture text matches builtin");
+bool catalogExposesSelectableDungeons() {
+  const auto catalog = iggy3d::productBuiltinDungeonCatalog();
+  iggy3d::WorldSetupDraft draft =
+      iggy3d::makeProductDefaultWorldSetupDraft("seed_selector");
+  const bool startsOnLoopKeep =
+      draft.asciiRoomId == "loop_keep_ascii" && draft.worldName == "Loop Keep";
+
+  const bool nextOk = iggy3d::selectNextProductBuiltinDungeon(draft);
+  const bool nextIsGatehouse =
+      draft.asciiRoomId == "gatehouse_ascii" && draft.worldName == "Gatehouse";
+
+  const bool previousOk = iggy3d::selectPreviousProductBuiltinDungeon(draft);
+  const bool previousReturnsLoopKeep =
+      draft.asciiRoomId == "loop_keep_ascii" && draft.worldName == "Loop Keep";
+
+  return expect(catalog.size() == 3U, "catalog size") &&
+         expect(startsOnLoopKeep, "default starts loop keep") &&
+         expect(nextOk, "next select ok") &&
+         expect(nextIsGatehouse, "next selects gatehouse") &&
+         expect(previousOk, "previous select ok") &&
+         expect(previousReturnsLoopKeep, "previous returns loop keep") &&
+         expect(iggy3d::findProductBuiltinDungeonByRoomId(
+                    "courtyard_vault_ascii") != nullptr,
+                "find courtyard vault") &&
+         expect(iggy3d::findProductBuiltinDungeonByRoomId("missing") == nullptr,
+                "missing dungeon absent");
 }
 
-bool embeddedDungeonBuildsAuthoredRoom() {
+bool embeddedDungeonsMatchFixturesAndBuild() {
+  bool ok = true;
+  for (const iggy3d::ProductBuiltinDungeonDefinition& dungeon :
+       iggy3d::productBuiltinDungeonCatalog()) {
+    const std::filesystem::path fixture{dungeon.sourceName};
+    const std::string fixtureText = normalizeLineEndings(readTextFile(fixture));
+    const std::string builtinText =
+        normalizeLineEndings(std::string{dungeon.asciiRoomText});
+
+    iggy3d::ProductAsciiRoomAuthoringRequest request;
+    request.sourceText = std::string{dungeon.asciiRoomText};
+    request.roomId = std::string{dungeon.roomId};
+    request.sourceName = std::string{dungeon.sourceName};
+
+    const iggy3d::ProductAsciiRoomAuthoringResult result =
+        iggy3d::buildProductAsciiRoomAuthoring(request);
+
+    ok = expect(!fixtureText.empty(), "fixture readable") && ok;
+    ok = expect(fixtureText == builtinText, "fixture text matches builtin") && ok;
+    ok = expect(result.ok, "authoring ok") && ok;
+    ok = expect(result.width > 0U, "width positive") && ok;
+    ok = expect(result.height > 0U, "height positive") && ok;
+    ok = expect(result.floorCount > 0U, "floor count positive") && ok;
+    ok = expect(result.wallCount > 0U, "wall count positive") && ok;
+    ok = expect(result.markerCount >= 3U, "marker count useful") && ok;
+    ok = expect(result.anchorCount >= 3U, "anchor count useful") && ok;
+  }
+  return ok;
+}
+
+bool loopKeepCountsRemainStable() {
   iggy3d::ProductAsciiRoomAuthoringRequest request;
   request.sourceText = std::string{iggy3d::productBuiltinDungeonAsciiRoomText()};
   request.roomId = std::string{iggy3d::productBuiltinDungeonRoomId()};
@@ -79,7 +127,6 @@ bool embeddedDungeonBuildsAuthoredRoom() {
 
   const iggy3d::ProductAsciiRoomAuthoringResult result =
       iggy3d::buildProductAsciiRoomAuthoring(request);
-
   return expect(result.ok, "authoring ok") &&
          expect(result.width == 17U, "width") &&
          expect(result.height == 7U, "height") &&
@@ -93,8 +140,9 @@ bool embeddedDungeonBuildsAuthoredRoom() {
 
 int main() {
   const bool passed = productDefaultDraftCreatesLoopKeepDungeon() &&
-                      embeddedDungeonMatchesFixture() &&
-                      embeddedDungeonBuildsAuthoredRoom();
+                      catalogExposesSelectableDungeons() &&
+                      embeddedDungeonsMatchFixturesAndBuild() &&
+                      loopKeepCountsRemainStable();
   std::cout << "product_builtin_dungeon_tests="
             << (passed ? "pass" : "fail") << '\n';
   return passed ? 0 : 1;

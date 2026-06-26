@@ -710,6 +710,35 @@ void recordWorldSetupDraftState(const WorldSetupDraft& draft,
       draft.asciiRoomId.empty() ? "none" : draft.asciiRoomId;
   window.worldSetupAsciiRoomSourceName =
       draft.asciiRoomSourceName.empty() ? "none" : draft.asciiRoomSourceName;
+  window.asciiRoomDraftText = draft.asciiRoomText;
+  window.asciiRoomDraftRoomId =
+      draft.asciiRoomId.empty() ? "ascii_preview" : draft.asciiRoomId;
+  window.asciiRoomDraftSourceName =
+      draft.asciiRoomSourceName.empty() ? "world_setup_ascii_room" :
+                                          draft.asciiRoomSourceName;
+  if (draft.asciiRoomEnabled && !draft.asciiRoomText.empty()) {
+    buildProductAsciiRoomPreviewResult(window);
+    return;
+  }
+  window.asciiRoomPreviewStatus = "not_requested";
+  window.asciiRoomPreviewReasonCode = "not_requested";
+  window.asciiRoomPreviewFailedStage = "not_started";
+  window.asciiRoomPreviewRoomId = "none";
+  window.asciiRoomPreviewSourceName = "none";
+  window.asciiRoomPreviewReady = false;
+  window.asciiRoomPreviewWidth = 0;
+  window.asciiRoomPreviewHeight = 0;
+  window.asciiRoomPreviewFloorCount = 0;
+  window.asciiRoomPreviewWallCount = 0;
+  window.asciiRoomPreviewMarkerCount = 0;
+  window.asciiRoomPreviewElevatedFloorCount = 0;
+  window.asciiRoomPreviewRampCount = 0;
+  window.asciiRoomPreviewBlockedSlopeCount = 0;
+  window.asciiRoomPreviewStaticMeshCount = 0;
+  window.asciiRoomPreviewAnchorCount = 0;
+  window.asciiRoomPreviewSpatialSurfaceCount = 0;
+  window.asciiRoomPreviewAssetTextWritten = false;
+  window.asciiRoomPreviewAssetTextBytes = 0;
 }
 
 void applyOpeningMenuAction(FrontendState& frontend,
@@ -875,6 +904,17 @@ void applyOpeningMenuAction(FrontendState& frontend,
 
   if (frontend.childScreen == FrontendScreen::NewWorld) {
     recordWorldSetupDraftState(worldSetupDraft, window);
+    if (action == InputAction::MenuUp || action == InputAction::MenuDown) {
+      const bool changed = action == InputAction::MenuUp
+                               ? selectPreviousProductBuiltinDungeon(worldSetupDraft)
+                               : selectNextProductBuiltinDungeon(worldSetupDraft);
+      recordWorldSetupDraftState(worldSetupDraft, window);
+      frontend.status =
+          changed ? "new_world_dungeon_selection_changed" : "new_world_input_ignored";
+      window.worldSetupStatus =
+          changed ? "world_setup_dungeon_selected" : "world_setup_dungeon_unavailable";
+      return;
+    }
     if (action == InputAction::MenuBack) {
       frontend.childScreen = FrontendScreen::Gameplay;
       frontend.selectedAction = FrontendAction::NewWorld;
@@ -1533,6 +1573,28 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
     recordWorldSetupDraftState(worldSetupDraft, window);
     window.worldSetupStatus = "world_setup_title_updated";
     markAutomationApplied(window, command, "world.title",
+                          productInputOwnerFor(frontend, window), "applied");
+    return true;
+  }
+
+  if (key == "world.dungeon_id" || key == "world.map_id" ||
+      key == "world_setup.dungeon_id" || key == "world_setup.map_id") {
+    if (frontend.childScreen != FrontendScreen::NewWorld) {
+      window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(window, command, "world.dungeon_id",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    const std::size_t index = productBuiltinDungeonIndexForRoomId(value);
+    if (!applyProductBuiltinDungeonToDraft(index, worldSetupDraft)) {
+      window.automationControlStatus = "invalid_value";
+      markAutomationApplied(window, command, "world.dungeon_id",
+                            productInputOwnerFor(frontend, window), "failed");
+      return false;
+    }
+    recordWorldSetupDraftState(worldSetupDraft, window);
+    window.worldSetupStatus = "world_setup_dungeon_selected";
+    markAutomationApplied(window, command, "world.dungeon_id",
                           productInputOwnerFor(frontend, window), "applied");
     return true;
   }
@@ -2380,6 +2442,7 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
       } else {
         const OpeningMenuViewState view =
             drawOpeningMenuView(*renderer, options, world, frontend, settingsTab,
+                                worldSetupDraft,
                                 window.gameplayActive, window.runtimeStateHash, framePtr,
                                 &feedback, &movementHud, &npcBehaviorHud,
                                 sceneItemCount, debugPtr,
