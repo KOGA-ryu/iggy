@@ -18,9 +18,8 @@
 #include "app/iggy3d/product/AutomationControl.hpp"
 #include "app/iggy3d/product/AutomationDispatch.hpp"
 #include "app/iggy3d/product/AutomationRoomEditing.hpp"
-#include "app/iggy3d/product/ProductMenuActionHandlers.hpp"
+#include "app/iggy3d/product/ProductMenuInputRouter.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
-#include "app/iggy3d/ProductDungeonDraft.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductGameplayTape.hpp"
@@ -631,110 +630,6 @@ void refreshGameplayProjectionMetrics(const std::optional<Session>& activeSessio
                                  true);
 }
 
-MenuOwner productInputOwnerFor(const FrontendState& frontend,
-                               const ProductAppWindowState& window) {
-  if (frontend.screen == FrontendScreen::Settings ||
-      frontend.childScreen == FrontendScreen::Settings) {
-    return MenuOwner::Settings;
-  }
-  if (frontend.screen == FrontendScreen::DevOverlay ||
-      frontend.childScreen == FrontendScreen::StarterDevTools) {
-    return MenuOwner::DevTools;
-  }
-  if (frontend.screen == FrontendScreen::Starter) {
-    return MenuOwner::Starter;
-  }
-  if (frontend.screen == FrontendScreen::Pause) {
-    return MenuOwner::Pause;
-  }
-  if (frontend.screen == FrontendScreen::Gameplay && window.gameplayActive) {
-    if (window.roomEditing.ready) {
-      return MenuOwner::Editor;
-    }
-    return MenuOwner::Gameplay;
-  }
-  return MenuOwner::None;
-}
-
-void applyOpeningMenuAction(FrontendState& frontend,
-                            const ProductSaveBridgeResult& saves,
-                            const ProductAppOptions& options,
-                            FrontendSettingsTab& settingsTab,
-                            std::optional<Session>& activeSession,
-                            WorldSetupDraft& worldSetupDraft,
-                            ProductAppWindowState& window,
-                            InputAction action,
-                            bool& closeRequested) {
-  const ProductMenuActionResult systemPause =
-      applyProductSystemPauseMenuAction(action, {frontend, window, closeRequested});
-  if (systemPause.handled) {
-    return;
-  }
-
-  if (frontend.screen == FrontendScreen::Pause)
-    return (void)applyProductPauseMenuAction(action, {frontend, options, settingsTab, activeSession, window, closeRequested});
-  if (frontend.screen == FrontendScreen::DevOverlay)
-    return (void)applyProductDevOverlayMenuAction(action, {frontend, window});
-  if (frontend.childScreen == FrontendScreen::StarterDevTools)
-    return (void)applyProductStarterDevToolsMenuAction(action, {frontend, window});
-  if (frontend.childScreen == FrontendScreen::Settings)
-    return (void)applyProductSettingsMenuAction(action, {frontend, settingsTab, window});
-  if (frontend.childScreen == FrontendScreen::DeleteConfirm && window.saveDeleteConfirmationOpen)
-    return (void)applyProductDeleteConfirmMenuAction(action, {frontend, options, window});
-
-  if (frontend.childScreen == FrontendScreen::NewWorld)
-    return (void)applyProductNewWorldMenuAction(action, {frontend, options, activeSession, worldSetupDraft, window});
-
-  if (frontend.childScreen == FrontendScreen::LoadSave)
-    return (void)applyProductLoadSaveMenuAction(action, {frontend, options, saves, activeSession, window});
-
-  ProductStarterMenuActionContext starterContext{
-      frontend, options, saves, settingsTab, activeSession, worldSetupDraft,
-      window, closeRequested};
-  (void)applyProductStarterMenuAction(action, starterContext);
-}
-
-void routeOpeningMenuInput(FrontendState& frontend,
-                           const ProductSaveBridgeResult& saves,
-                           const ProductAppOptions& options,
-                           FrontendSettingsTab& settingsTab,
-                           std::optional<Session>& activeSession,
-                           WorldSetupDraft& worldSetupDraft,
-                           ActionState& actionState,
-                           InputAction inputAction,
-                           ProductAppWindowState& window,
-                           bool& closeRequested) {
-  if (inputAction == InputAction::None) {
-    return;
-  }
-
-  if (frontend.screen == FrontendScreen::Gameplay &&
-      inputAction == InputAction::MenuBack) {
-    inputAction = InputAction::SystemPause;
-  }
-
-  recordAction(actionState, inputAction, true, true, false, 1.0F);
-
-  InputRoutingContext routingContext;
-  routingContext.owners.starter = frontend.screen == FrontendScreen::Starter;
-  routingContext.owners.pause = frontend.screen == FrontendScreen::Pause;
-  routingContext.owners.settings = frontend.screen == FrontendScreen::Settings ||
-                                   frontend.childScreen == FrontendScreen::Settings;
-  routingContext.owners.devTools = frontend.screen == FrontendScreen::DevOverlay ||
-                                   frontend.childScreen == FrontendScreen::StarterDevTools;
-  routingContext.owners.gameplay = frontend.screen == FrontendScreen::Gameplay &&
-                                   window.gameplayActive;
-  const InputRoutingResult routed = routeInputAction(routingContext, inputAction);
-  window.inputOwner = routed.owner;
-  window.lastInputAction = routed.action;
-  window.lastInputAccepted = routed.accepted;
-  window.gameplayInputSuppressed = routed.gameplaySuppressed;
-  if (routed.accepted) {
-    applyOpeningMenuAction(frontend, saves, options, settingsTab, activeSession,
-                           worldSetupDraft, window, routed.action, closeRequested);
-  }
-}
-
 bool routeAutomationInput(FrontendState& frontend,
                           const ProductSaveBridgeResult& saves,
                           const ProductAppOptions& options,
@@ -745,8 +640,10 @@ bool routeAutomationInput(FrontendState& frontend,
                           InputAction action,
                           bool& closeRequested) {
   ActionState actionState;
-  routeOpeningMenuInput(frontend, saves, options, settingsTab, activeSession,
-                        worldSetupDraft, actionState, action, window, closeRequested);
+  ProductOpeningMenuInputContext menuContext{
+      frontend, saves, options, settingsTab, activeSession, worldSetupDraft,
+      window, closeRequested};
+  routeProductOpeningMenuInput(action, actionState, menuContext);
   window.automationControlLastOwner = productInputOwnerFor(frontend, window);
   return window.lastInputAccepted || action == InputAction::None;
 }
@@ -911,9 +808,11 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
     window.drawable = sdlWindow.isDrawable();
     sdlWindow.setTitle(window.gameplayActive ? "iggy3d - Gameplay" : "iggy3d - Opening Menu");
 
-    routeOpeningMenuInput(frontend, saves, options, settingsTab, activeSession,
-                          worldSetupDraft, actionState, pollKeyboardMenuAction(keyboard),
-                          window, closeRequested);
+    ProductOpeningMenuInputContext menuContext{
+        frontend, saves, options, settingsTab, activeSession, worldSetupDraft,
+        window, closeRequested};
+    routeProductOpeningMenuInput(pollKeyboardMenuAction(keyboard), actionState,
+                                 menuContext);
     if (frontend.childScreen == FrontendScreen::NewWorld) {
       const char paintGlyph = pollKeyboardAsciiRoomPaintGlyph(keyboard);
       if (paintGlyph != '\0') {
@@ -924,9 +823,7 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
     const InputAction gamepadAction = pollGamepadMenuAction(gamepad);
     if (gamepadAction != InputAction::None) {
       window.gamepadMenuSelectUsed = true;
-      routeOpeningMenuInput(frontend, saves, options, settingsTab, activeSession,
-                            worldSetupDraft, actionState, gamepadAction, window,
-                            closeRequested);
+      routeProductOpeningMenuInput(gamepadAction, actionState, menuContext);
     }
 
     const MouseClick click = pollMouseClick(mouse);
@@ -936,9 +833,8 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
         window.mouseMenuSelectUsed = true;
         if (hit.area == OpeningMenuHitArea::StarterAction) {
           frontend.selectedAction = hit.action;
-          routeOpeningMenuInput(frontend, saves, options, settingsTab, activeSession,
-                                worldSetupDraft, actionState, mouseClickAction(click),
-                                window, closeRequested);
+          routeProductOpeningMenuInput(mouseClickAction(click), actionState,
+                                       menuContext);
         } else if (hit.area == OpeningMenuHitArea::DevToolsCategory) {
           frontend.devToolsCategory = hit.devToolsCategory;
           frontend.status = "dev_tools_category_selected";
