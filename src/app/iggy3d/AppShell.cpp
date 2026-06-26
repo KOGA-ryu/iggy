@@ -39,6 +39,7 @@
 #include "app/iggy3d/ProductRoomEditorOverlay.hpp"
 #include "app/iggy3d/ProductRoomEditingState.hpp"
 #include "app/iggy3d/ProductScriptedGameplayDriver.hpp"
+#include "app/iggy3d/ProductSaveFlow.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
@@ -903,23 +904,13 @@ void applyOpeningMenuAction(FrontendState& frontend,
       return;
     }
     if (frontend.selectedAction == FrontendAction::Save) {
-      const ProductSaveWriteResult written =
-          writeProductCurrentSessionSave(options, activeSession, "pause_save", window);
-      frontend.status = written.ok ? "pause_save_written" : "pause_save_failed";
-      window.launchStatus = written.ok ? "pause_save_written" : written.reasonCode;
+      executeProductPauseSaveFlow(ProductPauseSaveFlowKind::Save, options,
+                                  frontend, activeSession, window);
       return;
     }
     if (frontend.selectedAction == FrontendAction::SaveAndExit) {
-      const ProductSaveWriteResult written = writeProductCurrentSessionSave(
-          options, activeSession, "pause_save_and_exit", window);
-      frontend.status = written.ok ? "pause_save_and_exit_written"
-                                   : "pause_save_and_exit_failed";
-      window.launchStatus =
-          written.ok ? "pause_save_and_exit_written" : written.reasonCode;
-      if (written.ok) {
-        returnProductToTitleTransition(frontend, window);
-        activeSession.reset();
-      }
+      executeProductPauseSaveFlow(ProductPauseSaveFlowKind::SaveAndExit, options,
+                                  frontend, activeSession, window);
       return;
     }
     if (frontend.selectedAction == FrontendAction::ReturnToTitle) {

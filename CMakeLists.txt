@@ -68,6 +68,7 @@ target_sources(iggy3d
     src/app/iggy3d/ProductScriptedGameplayDriver.cpp
     src/app/iggy3d/ProductSavedRoomMarkerBinding.cpp
     src/app/iggy3d/ProductSaveCatalog.cpp
+    src/app/iggy3d/ProductSaveFlow.cpp
     src/app/iggy3d/ProductNpcProfileAssignment.cpp
     src/app/iggy3d/ProductViewportFraming.cpp
     src/app/iggy3d/ProductWorldCreation.cpp
