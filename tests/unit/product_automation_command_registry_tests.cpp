@@ -180,6 +180,16 @@ int main() {
       iggy3d::resolveProductDevToolsCategoryAutomation("teleport");
   expect(!devToolsInvalid.valid, "dev tools category teleport is invalid");
 
+  const iggy3d::ProductSaveSelectionAutomationResult saveSelection =
+      iggy3d::resolveProductSaveSelectionAutomation("slot_1");
+  expect(saveSelection.valid, "save selection slot_1 is valid");
+  expect(saveSelection.saveId == "slot_1",
+         "save selection slot_1 preserves the id");
+
+  const iggy3d::ProductSaveSelectionAutomationResult saveSelectionInvalid =
+      iggy3d::resolveProductSaveSelectionAutomation("");
+  expect(!saveSelectionInvalid.valid, "save selection empty is invalid");
+
   const iggy3d::ProductAutomationCommandDispatchResult placeDispatch =
       iggy3d::resolveProductAutomationCommandDispatch(
           iggy3d::ProductAutomationCommandDispatchRequest{

@@ -2461,13 +2461,23 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                             productInputOwnerFor(frontend, window), "failed");
       return false;
     }
-    const bool selected = selectProductSaveSlotById(saves.slots, value, window);
-    markAutomationApplied(window,
-                          command,
-                          window.selectedProductSaveId,
-                          productInputOwnerFor(frontend, window),
-                          selected ? "applied" : "ignored");
-    return selected;
+    const ProductSaveSelectionAutomationResult saveSelection =
+        resolveProductSaveSelectionAutomation(value);
+    window.automationControlStatus =
+        std::array<std::string_view, 2>{
+            window.automationControlStatus, std::string_view{"invalid_value"}}
+            [!saveSelection.valid];
+    const auto selectSave = [&]() -> bool {
+      const bool selected =
+          selectProductSaveSlotById(saves.slots, saveSelection.saveId, window);
+      markAutomationApplied(window,
+                            command,
+                            window.selectedProductSaveId,
+                            productInputOwnerFor(frontend, window),
+                            selected ? "applied" : "ignored");
+      return selected;
+    };
+    return saveSelection.valid && selectSave();
   }
 
   if (key == "save.delete" || key == "frontend.save_delete") {
@@ -2522,17 +2532,27 @@ bool applyProductAutomationCommand(const ProductAutomationCommand& command,
                             productInputOwnerFor(frontend, window), "failed");
       return false;
     }
-    const ProductSaveBridgeResult deletedSaves =
-        scanDeletedProductSavesForOptions(options);
-    recordDeletedProductSaveSlots(deletedSaves, window);
-    const bool selected =
-        selectDeletedProductSaveSlotById(deletedSaves.slots, value, window);
-    markAutomationApplied(window,
-                          command,
-                          window.deletedSelectedSaveId,
-                          productInputOwnerFor(frontend, window),
-                          selected ? "applied" : "ignored");
-    return selected;
+    const ProductSaveSelectionAutomationResult saveSelection =
+        resolveProductSaveSelectionAutomation(value);
+    window.automationControlStatus =
+        std::array<std::string_view, 2>{
+            window.automationControlStatus, std::string_view{"invalid_value"}}
+            [!saveSelection.valid];
+    const auto selectDeletedSave = [&]() -> bool {
+      const ProductSaveBridgeResult deletedSaves =
+          scanDeletedProductSavesForOptions(options);
+      recordDeletedProductSaveSlots(deletedSaves, window);
+      const bool selected =
+          selectDeletedProductSaveSlotById(deletedSaves.slots,
+                                           saveSelection.saveId, window);
+      markAutomationApplied(window,
+                            command,
+                            window.deletedSelectedSaveId,
+                            productInputOwnerFor(frontend, window),
+                            selected ? "applied" : "ignored");
+      return selected;
+    };
+    return saveSelection.valid && selectDeletedSave();
   }
 
   if (key == "save.recover" || key == "frontend.save_recover") {

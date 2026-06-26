@@ -557,6 +557,14 @@ ProductDevToolsCategoryAutomationResult resolveProductDevToolsCategoryAutomation
   return result;
 }
 
+ProductSaveSelectionAutomationResult resolveProductSaveSelectionAutomation(
+    std::string_view value) {
+  ProductSaveSelectionAutomationResult result;
+  result.valid = !value.empty();
+  result.saveId = value;
+  return result;
+}
+
 ProductRoomEditorCursorResult applyProductRoomEditorMoveAutomation(
     ProductRoomEditorCursorState state,
     ProductRoomEditorDirection direction) {

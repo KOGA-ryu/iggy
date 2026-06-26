@@ -137,6 +137,11 @@ struct ProductDevToolsCategoryAutomationResult {
   FrontendDevToolsCategory category{};
 };
 
+struct ProductSaveSelectionAutomationResult {
+  bool valid = false;
+  std::string_view saveId = "";
+};
+
 std::string_view productAutomationCommandCategoryName(
     ProductAutomationCommandCategory category);
 
@@ -176,6 +181,9 @@ ProductSettingsTabAutomationResult resolveProductSettingsTabAutomation(
     std::string_view value);
 
 ProductDevToolsCategoryAutomationResult resolveProductDevToolsCategoryAutomation(
+    std::string_view value);
+
+ProductSaveSelectionAutomationResult resolveProductSaveSelectionAutomation(
     std::string_view value);
 
 struct ProductRoomEditorCursorResult;
