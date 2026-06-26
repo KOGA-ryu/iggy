@@ -342,61 +342,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
     std::string_view canonicalKey,
     ProductAutomationWorldSetupContext& context);
 
-struct ProductRoomEditorCursorResult;
-struct ProductRoomEditorActionResult;
-struct ProductRoomEditorCursorState;
-struct ProductRoomEditingStartResult;
-struct ProductRoomEditingOperationResult;
-struct ProductAsciiRoomAuthoringRequest;
-struct ProductActiveRoomState;
-struct ProductRoomEditingState;
-struct ProductRoomAuthoringStartFromAsciiRequest;
-struct ProductRoomAuthoringStartFromActiveRoomRequest;
-struct ProductRoomAuthoringEditCommandRequest;
-struct ProductRoomAuthoringUndoRedoRequest;
 enum class ProductRoomEditorDirection : std::uint8_t;
 enum class ProductRoomEditorTool : std::uint8_t;
-enum class ProductRoomAuthoringInputSource : std::uint8_t;
-
-ProductRoomEditorCursorResult applyProductRoomEditorMoveAutomation(
-    ProductRoomEditorCursorState state,
-    ProductRoomEditorDirection direction);
-
-ProductRoomEditorCursorResult applyProductRoomEditorToolAutomation(
-    ProductRoomEditorCursorState state,
-    ProductRoomEditorTool tool);
-
-ProductRoomEditorCursorResult applyProductRoomEditorCycleToolAutomation(
-    ProductRoomEditorCursorState state);
-
-ProductRoomEditorCursorResult applyProductRoomEditorWallDirectionAutomation(
-    ProductRoomEditorCursorState state,
-    ProductRoomEditorDirection direction);
-
-ProductRoomEditorActionResult applyProductRoomEditorPlaceAutomation(
-    const ProductRoomEditingState& editing,
-    ProductRoomEditorCursorState cursor,
-    ProductRoomAuthoringInputSource inputSource);
-
-ProductRoomEditorActionResult applyProductEditorInputAutomation(
-    const ProductRoomEditingState& editing,
-    ProductRoomEditorCursorState cursor,
-    const ActionState& actions,
-    ProductRoomAuthoringInputSource inputSource);
-
-ProductRoomEditingStartResult startProductRoomEditAutomationFromAsciiDraft(
-    ProductRoomAuthoringStartFromAsciiRequest request);
-
-ProductRoomEditingStartResult startProductRoomEditAutomationFromActiveRoom(
-    ProductRoomAuthoringStartFromActiveRoomRequest request);
-
-ProductRoomEditingOperationResult applyProductRoomEditAutomation(
-    ProductRoomAuthoringEditCommandRequest request);
-
-ProductRoomEditingOperationResult undoProductRoomEditAutomation(
-    ProductRoomAuthoringUndoRedoRequest request);
-
-ProductRoomEditingOperationResult redoProductRoomEditAutomation(
-    ProductRoomAuthoringUndoRedoRequest request);
 
 }  // namespace iggy3d

@@ -1,0 +1,79 @@
+#pragma once
+
+#include <functional>
+
+#include "app/frontend/MenuInput.hpp"
+#include "app/iggy3d/product/Automation.hpp"
+#include "app/input/InputAction.hpp"
+#include "app/input/InputRouter.hpp"
+
+namespace iggy3d {
+
+struct FrontendState;
+struct ProductAppWindowState;
+struct ProductRoomEditingState;
+struct ProductRoomEditingStartResult;
+struct ProductRoomEditingOperationResult;
+struct ProductRoomEditorActionResult;
+struct ProductRoomEditorCursorResult;
+struct ProductAsciiRoomAuthoringRequest;
+struct ProductActiveRoomState;
+struct ProductRoomAuthoringStartFromAsciiRequest;
+struct ProductRoomAuthoringStartFromActiveRoomRequest;
+struct ProductRoomAuthoringEditCommandRequest;
+struct ProductRoomAuthoringUndoRedoRequest;
+
+struct ProductAutomationRoomEditingContext {
+  FrontendState& frontend;
+  ProductAppWindowState& window;
+  bool activeSessionAvailable = false;
+  std::function<MenuOwner()> currentOwner;
+  std::function<InputRoutingResult(InputAction)> routeEditorInput;
+};
+
+void copyRoomEditingStateToWindow(ProductAppWindowState& window,
+                                  const ProductRoomEditingState& state);
+
+void recordProductRoomEditingStart(ProductAppWindowState& window,
+                                   const ProductRoomEditingStartResult& result,
+                                   std::string_view operation = "room_edit.start");
+
+void recordProductRoomEditingOperation(
+    ProductAppWindowState& window,
+    std::string_view operation,
+    const ProductRoomEditingOperationResult& result);
+
+void recordProductRoomEditorCursorResult(
+    ProductAppWindowState& window,
+    std::string_view operation,
+    const ProductRoomEditorCursorResult& result);
+
+bool rejectProductRoomEditorNotReady(ProductAppWindowState& window,
+                                     std::string_view operation);
+
+void recordProductRoomEditorActionResult(
+    ProductAppWindowState& window,
+    const ProductRoomEditorActionResult& result,
+    std::string_view operationOverride = {});
+
+ProductRoomEditingStartResult startProductRoomEditAutomationFromAsciiDraft(
+    ProductRoomAuthoringStartFromAsciiRequest request);
+
+ProductRoomEditingStartResult startProductRoomEditAutomationFromActiveRoom(
+    ProductRoomAuthoringStartFromActiveRoomRequest request);
+
+ProductRoomEditingOperationResult applyProductRoomEditAutomation(
+    ProductRoomAuthoringEditCommandRequest request);
+
+ProductRoomEditingOperationResult undoProductRoomEditAutomation(
+    ProductRoomAuthoringUndoRedoRequest request);
+
+ProductRoomEditingOperationResult redoProductRoomEditAutomation(
+    ProductRoomAuthoringUndoRedoRequest request);
+
+ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
+    const ProductAutomationCommand& command,
+    const ProductAutomationCommandDispatchSpec& automationSpec,
+    ProductAutomationRoomEditingContext& context);
+
+}  // namespace iggy3d

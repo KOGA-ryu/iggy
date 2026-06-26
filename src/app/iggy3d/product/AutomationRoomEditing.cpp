@@ -1,0 +1,582 @@
+#include "app/iggy3d/product/AutomationRoomEditing.hpp"
+
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include "app/frontend/FrontendState.hpp"
+#include "app/iggy3d/ProductAsciiRoomPreview.hpp"
+#include "app/iggy3d/ProductRoomAuthoringController.hpp"
+#include "app/iggy3d/ProductRoomEditorActionController.hpp"
+#include "app/iggy3d/ProductRoomEditorCursor.hpp"
+#include "app/iggy3d/ProductRoomEditingState.hpp"
+#include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/input/ActionState.hpp"
+
+namespace iggy3d {
+
+void copyRoomEditingStateToWindow(ProductAppWindowState& window,
+                                  const ProductRoomEditingState& state) {
+  window.roomEditing = state;
+  // branch-gate: BG-1006
+  if (state.ready) {
+    window.activeRoom = state.activeRoom;
+    window.activeRoomCollision = state.activeRoomCollision;
+  }
+}
+
+void recordProductRoomEditingStart(ProductAppWindowState& window,
+                                   const ProductRoomEditingStartResult& result,
+                                   std::string_view operation) {
+  window.roomEditingLastOperation = std::string(operation);
+  window.roomEditingLastOperationStatus = result.status;
+  window.roomEditingLastOperationReasonCode = result.reasonCode;
+  window.roomEditingLastInputSource =
+      productRoomAuthoringInputSourceName(ProductRoomAuthoringInputSource::Script);
+  window.roomEditingLastOperationAccepted = result.ok;
+  window.roomEditingLastPrimitiveId = "none";
+  copyRoomEditingStateToWindow(window, result.state);
+  // branch-gate: BG-1006
+  if (result.ok) {
+    window.roomEditorCursorReady = true;
+    window.roomEditorCursor = ProductRoomEditorCursorState{};
+    window.roomEditorStatus = "room_editor_cursor_ready";
+    window.roomEditorReasonCode = "room_editor_cursor_ready";
+    window.roomEditorLastOperation = "none";
+    window.roomEditorLastOperationAccepted = false;
+    window.roomEditorLastPrimitiveId = "none";
+  }
+}
+
+void recordProductRoomEditingOperation(
+    ProductAppWindowState& window,
+    std::string_view operation,
+    const ProductRoomEditingOperationResult& result) {
+  window.roomEditingLastOperation = std::string(operation);
+  window.roomEditingLastOperationStatus = result.status;
+  window.roomEditingLastOperationReasonCode = result.reasonCode;
+  window.roomEditingLastInputSource =
+      productRoomAuthoringInputSourceName(result.inputSource);
+  window.roomEditingLastOperationAccepted = result.accepted;
+  // branch-gate: BG-1006
+  window.roomEditingLastPrimitiveId =
+      result.edit.primitiveId.empty() ? std::string{"none"}
+                                      : result.edit.primitiveId;
+  copyRoomEditingStateToWindow(window, result.state);
+}
+
+void recordProductRoomEditorCursorResult(
+    ProductAppWindowState& window,
+    std::string_view operation,
+    const ProductRoomEditorCursorResult& result) {
+  window.roomEditorCursorReady = window.roomEditing.ready;
+  window.roomEditorCursor = result.state;
+  window.roomEditorStatus = result.status;
+  window.roomEditorReasonCode = result.reasonCode;
+  window.roomEditorLastOperation = std::string(operation);
+  window.roomEditorLastOperationAccepted = result.ok;
+  window.roomEditorLastPrimitiveId = "none";
+}
+
+bool rejectProductRoomEditorNotReady(ProductAppWindowState& window,
+                                     std::string_view operation) {
+  window.roomEditorCursorReady = false;
+  window.roomEditorStatus = "room_editor_not_ready";
+  window.roomEditorReasonCode = "room_editor_not_ready";
+  window.roomEditorLastOperation = std::string(operation);
+  window.roomEditorLastOperationAccepted = false;
+  window.roomEditorLastPrimitiveId = "none";
+  window.automationControlStatus = "command_failed";
+  return false;
+}
+
+void recordProductRoomEditorActionResult(
+    ProductAppWindowState& window,
+    const ProductRoomEditorActionResult& result,
+    std::string_view operationOverride) {
+  window.roomEditing = result.editing;
+  copyRoomEditingStateToWindow(window, result.editing);
+  window.roomEditorCursorReady = result.editing.ready;
+  window.roomEditorCursor = result.cursor;
+  window.roomEditorStatus = result.status;
+  window.roomEditorReasonCode = result.reasonCode;
+  // branch-gate: BG-1006
+  window.roomEditorLastOperation =
+      operationOverride.empty() ? result.operation : std::string(operationOverride);
+  window.roomEditorLastOperationAccepted = result.operationAccepted;
+  window.roomEditorLastPrimitiveId = result.primitiveId;
+
+  // branch-gate: BG-1006
+  if (result.status == "room_editor_command_applied") {
+    window.roomEditingLastOperation = window.roomEditorLastOperation;
+    window.roomEditingLastOperationStatus = "product_room_editing_edit_applied";
+    window.roomEditingLastOperationReasonCode = "product_room_editing_edit_applied";
+    window.roomEditingLastInputSource =
+        productRoomAuthoringInputSourceName(ProductRoomAuthoringInputSource::Hotkey);
+    window.roomEditingLastOperationAccepted = result.operationAccepted;
+    window.roomEditingLastPrimitiveId = result.primitiveId;
+  }
+}
+
+ProductRoomEditingStartResult startProductRoomEditAutomationFromAsciiDraft(
+    ProductRoomAuthoringStartFromAsciiRequest request) {
+  return startProductRoomAuthoringFromAsciiDraft(request);
+}
+
+ProductRoomEditingStartResult startProductRoomEditAutomationFromActiveRoom(
+    ProductRoomAuthoringStartFromActiveRoomRequest request) {
+  return startProductRoomAuthoringFromActiveRoom(request);
+}
+
+ProductRoomEditingOperationResult applyProductRoomEditAutomation(
+    ProductRoomAuthoringEditCommandRequest request) {
+  return applyProductRoomAuthoringEditCommand(request);
+}
+
+ProductRoomEditingOperationResult undoProductRoomEditAutomation(
+    ProductRoomAuthoringUndoRedoRequest request) {
+  return undoProductRoomAuthoringEdit(request);
+}
+
+ProductRoomEditingOperationResult redoProductRoomEditAutomation(
+    ProductRoomAuthoringUndoRedoRequest request) {
+  return redoProductRoomAuthoringEdit(request);
+}
+
+ProductRoomEditorCursorResult applyProductRoomEditorMoveAutomation(
+    ProductRoomEditorCursorState state,
+    ProductRoomEditorDirection direction) {
+  return moveProductRoomEditorCursor(state, direction);
+}
+
+ProductRoomEditorCursorResult applyProductRoomEditorToolAutomation(
+    ProductRoomEditorCursorState state,
+    ProductRoomEditorTool tool) {
+  return setProductRoomEditorTool(state, tool);
+}
+
+ProductRoomEditorCursorResult applyProductRoomEditorCycleToolAutomation(
+    ProductRoomEditorCursorState state) {
+  return cycleProductRoomEditorTool(state);
+}
+
+ProductRoomEditorCursorResult applyProductRoomEditorWallDirectionAutomation(
+    ProductRoomEditorCursorState state,
+    ProductRoomEditorDirection direction) {
+  return setProductRoomEditorWallDirection(state, direction);
+}
+
+ProductRoomEditorActionResult applyProductRoomEditorPlaceAutomation(
+    const ProductRoomEditingState& editing,
+    ProductRoomEditorCursorState cursor,
+    ProductRoomAuthoringInputSource inputSource) {
+  return applyProductRoomAuthoringCursorPlace({editing, cursor, inputSource});
+}
+
+ProductRoomEditorActionResult applyProductEditorInputAutomation(
+    const ProductRoomEditingState& editing,
+    ProductRoomEditorCursorState cursor,
+    const ActionState& actions,
+    ProductRoomAuthoringInputSource inputSource) {
+  return applyProductRoomEditorActions(editing, cursor, actions, inputSource);
+}
+
+namespace {
+
+ProductAutomationExecutionResult unhandledRoomEditingAutomation() {
+  return {};
+}
+
+ProductAutomationExecutionResult failRoomEditingAutomation() {
+  return {true, false};
+}
+
+ProductAutomationExecutionResult passRoomEditingAutomation(bool accepted) {
+  return {true, accepted};
+}
+
+bool roomEditorReady(ProductAutomationRoomEditingContext& context,
+                     const ProductAutomationCommand& command,
+                     std::string_view operation) {
+  // branch-gate: BG-1006
+  if (context.window.roomEditing.ready) {
+    return true;
+  }
+  rejectProductRoomEditorNotReady(context.window, operation);
+  markAutomationApplied(context.window, command, operation, context.currentOwner(),
+                        "failed");
+  return false;
+}
+
+ProductAutomationExecutionResult applyRoomEditingOperationResult(
+    const ProductAutomationCommand& command,
+    const ProductAutomationCommandDispatchSpec& automationSpec,
+    ProductAutomationRoomEditingContext& context,
+    ProductRoomEditingOperationResult& result) {
+  recordProductRoomEditingOperation(context.window, automationSpec.canonicalKey,
+                                    result);
+  // branch-gate: BG-1006
+  markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                        context.currentOwner(),
+                        result.accepted ? "applied" : "failed");
+  return passRoomEditingAutomation(result.accepted);
+}
+
+ProductAutomationExecutionResult applyRoomEditorCursorResult(
+    const ProductAutomationCommand& command,
+    const ProductAutomationCommandDispatchSpec& automationSpec,
+    ProductAutomationRoomEditingContext& context,
+    const ProductRoomEditorCursorResult& result) {
+  recordProductRoomEditorCursorResult(context.window, automationSpec.canonicalKey,
+                                      result);
+  // branch-gate: BG-1006
+  if (!result.ok) {
+    context.window.automationControlStatus = "command_failed";
+  }
+  // branch-gate: BG-1006
+  markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                        context.currentOwner(),
+                        result.ok ? "applied" : "failed");
+  return passRoomEditingAutomation(result.ok);
+}
+
+}  // namespace
+
+ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
+    const ProductAutomationCommand& command,
+    const ProductAutomationCommandDispatchSpec& automationSpec,
+    ProductAutomationRoomEditingContext& context) {
+  const std::string_view value{command.value};
+  bool boolValue = false;
+
+  // branch-gate: BG-1006
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditStart) {
+    // branch-gate: BG-1006
+    if (!resolveProductAutomationBool(value, boolValue)) {
+      context.window.automationControlStatus = "invalid_value";
+      return failRoomEditingAutomation();
+    }
+    // branch-gate: BG-1006
+    if (!boolValue) {
+      markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                            context.currentOwner(), "ignored");
+      return passRoomEditingAutomation(true);
+    }
+
+    const ProductAsciiRoomAuthoringRequest request =
+        productAsciiRoomAuthoringRequestFromDraft(context.window);
+    const ProductRoomEditingStartResult started =
+        startProductRoomEditAutomationFromAsciiDraft({request});
+    recordProductRoomEditingStart(context.window, started);
+    // branch-gate: BG-1006
+    markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                          context.currentOwner(),
+                          started.ok ? "applied" : "failed");
+    return passRoomEditingAutomation(started.ok);
+  }
+
+  // branch-gate: BG-1006
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditStartActive) {
+    // branch-gate: BG-1006
+    if (!resolveProductAutomationBool(value, boolValue)) {
+      context.window.automationControlStatus = "invalid_value";
+      return failRoomEditingAutomation();
+    }
+    // branch-gate: BG-1006
+    if (!boolValue) {
+      markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                            context.currentOwner(), "ignored");
+      return passRoomEditingAutomation(true);
+    }
+
+    const ProductRoomEditingStartResult started =
+        startProductRoomEditAutomationFromActiveRoom({context.window.activeRoom});
+    recordProductRoomEditingStart(context.window, started, automationSpec.canonicalKey);
+    // branch-gate: BG-1006
+    markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                          context.currentOwner(),
+                          started.ok ? "applied" : "failed");
+    return passRoomEditingAutomation(started.ok);
+  }
+
+  // branch-gate: BG-1006
+  if (command.key == "editor.input") {
+    const std::vector<std::string_view> editorInputs =
+        splitProductAutomationCsv(value);
+    // branch-gate: BG-1006
+    if (editorInputs.empty()) {
+      context.window.automationControlStatus = "invalid_value";
+      return failRoomEditingAutomation();
+    }
+
+    InputAction lastAction = InputAction::None;
+    MenuOwner lastOwner = context.currentOwner();
+    bool anyApplied = false;
+    for (const std::string_view token : editorInputs) {
+      InputAction editorAction = InputAction::None;
+      float actionValue = 1.0F;
+      // branch-gate: BG-1006
+      if (!parseProductRoomEditorInputAction(token, editorAction, actionValue)) {
+        context.window.automationControlStatus = "invalid_value";
+        return failRoomEditingAutomation();
+      }
+      lastAction = editorAction;
+      // branch-gate: BG-1006
+      if (context.frontend.screen != FrontendScreen::Gameplay ||
+          !context.window.gameplayActive ||
+          !context.activeSessionAvailable ||
+          !context.window.roomEditing.ready) {
+        rejectProductRoomEditorNotReady(context.window, inputActionName(editorAction));
+        markAutomationApplied(context.window, command, inputActionName(editorAction),
+                              context.currentOwner(), "failed");
+        return failRoomEditingAutomation();
+      }
+
+      const InputRoutingResult routed = context.routeEditorInput(editorAction);
+      lastOwner = routed.owner;
+      context.window.inputOwner = routed.owner;
+      context.window.lastInputAction = routed.action;
+      context.window.lastInputAccepted = routed.accepted;
+      context.window.gameplayInputSuppressed = routed.gameplaySuppressed;
+      // branch-gate: BG-1006
+      if (!routed.accepted || routed.owner != MenuOwner::Editor) {
+        context.window.automationControlStatus = "owner_unavailable";
+        markAutomationApplied(context.window, command, inputActionName(editorAction),
+                              routed.owner, "failed");
+        return failRoomEditingAutomation();
+      }
+
+      ActionState actions;
+      recordAction(actions, editorAction, true, true, false, actionValue);
+      const ProductRoomEditorActionResult result =
+          applyProductEditorInputAutomation(
+              context.window.roomEditing, context.window.roomEditorCursor, actions,
+              ProductRoomAuthoringInputSource::Hotkey);
+      recordProductRoomEditorActionResult(context.window, result);
+      // branch-gate: BG-1006
+      if (!result.ok) {
+        context.window.automationControlStatus = "command_failed";
+        markAutomationApplied(context.window, command, inputActionName(editorAction),
+                              routed.owner, "failed");
+        return failRoomEditingAutomation();
+      }
+      anyApplied = true;
+    }
+
+    // branch-gate: BG-1006
+    if (!anyApplied) {
+      context.window.automationControlStatus = "command_failed";
+      markAutomationApplied(context.window, command, "editor.input", lastOwner,
+                            "failed");
+      return failRoomEditingAutomation();
+    }
+    markAutomationApplied(context.window, command, inputActionName(lastAction),
+                          lastOwner, "applied");
+    return passRoomEditingAutomation(true);
+  }
+
+  // branch-gate: BG-1006
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditorMove) {
+    ProductRoomEditorDirection direction = ProductRoomEditorDirection::Up;
+    // branch-gate: BG-1006
+    if (!parseProductRoomEditorDirection(value, direction)) {
+      context.window.automationControlStatus = "invalid_value";
+      return failRoomEditingAutomation();
+    }
+    // branch-gate: BG-1006
+    if (!roomEditorReady(context, command, automationSpec.canonicalKey)) {
+      return failRoomEditingAutomation();
+    }
+    return applyRoomEditorCursorResult(
+        command, automationSpec, context,
+        applyProductRoomEditorMoveAutomation(context.window.roomEditorCursor,
+                                             direction));
+  }
+
+  // branch-gate: BG-1006
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditorTool) {
+    ProductRoomEditorTool tool = ProductRoomEditorTool::Floor;
+    // branch-gate: BG-1006
+    if (!parseProductRoomEditorTool(value, tool)) {
+      context.window.automationControlStatus = "invalid_value";
+      return failRoomEditingAutomation();
+    }
+    // branch-gate: BG-1006
+    if (!roomEditorReady(context, command, automationSpec.canonicalKey)) {
+      return failRoomEditingAutomation();
+    }
+    return applyRoomEditorCursorResult(
+        command, automationSpec, context,
+        applyProductRoomEditorToolAutomation(context.window.roomEditorCursor, tool));
+  }
+
+  // branch-gate: BG-1006
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditorCycleTool) {
+    // branch-gate: BG-1006
+    if (!resolveProductAutomationBool(value, boolValue)) {
+      context.window.automationControlStatus = "invalid_value";
+      return failRoomEditingAutomation();
+    }
+    // branch-gate: BG-1006
+    if (!boolValue) {
+      markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                            context.currentOwner(), "ignored");
+      return passRoomEditingAutomation(true);
+    }
+    // branch-gate: BG-1006
+    if (!roomEditorReady(context, command, automationSpec.canonicalKey)) {
+      return failRoomEditingAutomation();
+    }
+    return applyRoomEditorCursorResult(
+        command, automationSpec, context,
+        applyProductRoomEditorCycleToolAutomation(context.window.roomEditorCursor));
+  }
+
+  // branch-gate: BG-1006
+  if (automationSpec.commandId ==
+      ProductAutomationCommandId::RoomEditorWallDirection) {
+    ProductRoomEditorDirection direction = ProductRoomEditorDirection::Up;
+    // branch-gate: BG-1006
+    if (!parseProductRoomEditorDirection(value, direction)) {
+      context.window.automationControlStatus = "invalid_value";
+      return failRoomEditingAutomation();
+    }
+    // branch-gate: BG-1006
+    if (!roomEditorReady(context, command, automationSpec.canonicalKey)) {
+      return failRoomEditingAutomation();
+    }
+    return applyRoomEditorCursorResult(
+        command, automationSpec, context,
+        applyProductRoomEditorWallDirectionAutomation(
+            context.window.roomEditorCursor, direction));
+  }
+
+  // branch-gate: BG-1006
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditorPlace) {
+    // branch-gate: BG-1006
+    if (!resolveProductAutomationBool(value, boolValue)) {
+      context.window.automationControlStatus = "invalid_value";
+      return failRoomEditingAutomation();
+    }
+    // branch-gate: BG-1006
+    if (!boolValue) {
+      markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                            context.currentOwner(), "ignored");
+      return passRoomEditingAutomation(true);
+    }
+    // branch-gate: BG-1006
+    if (!roomEditorReady(context, command, automationSpec.canonicalKey)) {
+      return failRoomEditingAutomation();
+    }
+
+    const ProductRoomEditorActionResult result =
+        applyProductRoomEditorPlaceAutomation(
+            context.window.roomEditing, context.window.roomEditorCursor,
+            ProductRoomAuthoringInputSource::Hotkey);
+    recordProductRoomEditorActionResult(context.window, result,
+                                        automationSpec.canonicalKey);
+    // branch-gate: BG-1006
+    if (!result.ok) {
+      context.window.automationControlStatus = "command_failed";
+    }
+    // branch-gate: BG-1006
+    markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                          context.currentOwner(),
+                          result.ok ? "applied" : "failed");
+    return passRoomEditingAutomation(result.ok);
+  }
+
+  // branch-gate: BG-1006
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditAddFloor) {
+    RoomEditCommand edit;
+    // branch-gate: BG-1006
+    if (!parseProductAutomationFloorCommand(value, edit)) {
+      context.window.automationControlStatus = "invalid_value";
+      return failRoomEditingAutomation();
+    }
+    ProductRoomEditingOperationResult result = applyProductRoomEditAutomation(
+        {context.window.roomEditing, ProductRoomAuthoringInputSource::Script, edit});
+    return applyRoomEditingOperationResult(command, automationSpec, context, result);
+  }
+
+  // branch-gate: BG-1006
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditAddWall) {
+    RoomEditCommand edit;
+    // branch-gate: BG-1006
+    if (!parseProductAutomationWallCommand(value, edit)) {
+      context.window.automationControlStatus = "invalid_value";
+      return failRoomEditingAutomation();
+    }
+    ProductRoomEditingOperationResult result = applyProductRoomEditAutomation(
+        {context.window.roomEditing, ProductRoomAuthoringInputSource::Script, edit});
+    return applyRoomEditingOperationResult(command, automationSpec, context, result);
+  }
+
+  // branch-gate: BG-1006
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditDeleteFloor) {
+    // branch-gate: BG-1006
+    if (value.empty()) {
+      context.window.automationControlStatus = "invalid_value";
+      return failRoomEditingAutomation();
+    }
+    const RoomEditCommand edit = deleteFloorCommand(std::string(value));
+    ProductRoomEditingOperationResult result = applyProductRoomEditAutomation(
+        {context.window.roomEditing, ProductRoomAuthoringInputSource::Script, edit});
+    return applyRoomEditingOperationResult(command, automationSpec, context, result);
+  }
+
+  // branch-gate: BG-1006
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditDeleteWall) {
+    // branch-gate: BG-1006
+    if (value.empty()) {
+      context.window.automationControlStatus = "invalid_value";
+      return failRoomEditingAutomation();
+    }
+    const RoomEditCommand edit = deleteWallCommand(std::string(value));
+    ProductRoomEditingOperationResult result = applyProductRoomEditAutomation(
+        {context.window.roomEditing, ProductRoomAuthoringInputSource::Script, edit});
+    return applyRoomEditingOperationResult(command, automationSpec, context, result);
+  }
+
+  // branch-gate: BG-1006
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditUndo) {
+    // branch-gate: BG-1006
+    if (!resolveProductAutomationBool(value, boolValue)) {
+      context.window.automationControlStatus = "invalid_value";
+      return failRoomEditingAutomation();
+    }
+    // branch-gate: BG-1006
+    if (!boolValue) {
+      markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                            context.currentOwner(), "ignored");
+      return passRoomEditingAutomation(true);
+    }
+    ProductRoomEditingOperationResult result =
+        undoProductRoomEditAutomation(
+            {context.window.roomEditing, ProductRoomAuthoringInputSource::Script});
+    return applyRoomEditingOperationResult(command, automationSpec, context, result);
+  }
+
+  // branch-gate: BG-1006
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditRedo) {
+    // branch-gate: BG-1006
+    if (!resolveProductAutomationBool(value, boolValue)) {
+      context.window.automationControlStatus = "invalid_value";
+      return failRoomEditingAutomation();
+    }
+    // branch-gate: BG-1006
+    if (!boolValue) {
+      markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                            context.currentOwner(), "ignored");
+      return passRoomEditingAutomation(true);
+    }
+    ProductRoomEditingOperationResult result =
+        redoProductRoomEditAutomation(
+            {context.window.roomEditing, ProductRoomAuthoringInputSource::Script});
+    return applyRoomEditingOperationResult(command, automationSpec, context, result);
+  }
+
+  return unhandledRoomEditingAutomation();
+}
+
+}  // namespace iggy3d
