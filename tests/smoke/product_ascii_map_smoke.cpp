@@ -68,6 +68,8 @@ int main() {
       iggy3d::smoke::cleanSaveRoot("ascii_map_custom_draft_edit_active");
   const std::filesystem::path customLiveEditSaveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_custom_draft_live_edit");
+  const std::filesystem::path customLiveEditPauseSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("ascii_map_custom_draft_live_edit_save");
   const std::filesystem::path saveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_loop_keep");
 
@@ -499,6 +501,106 @@ int main() {
           fields, "product_vulkan_room_geometry_signature");
 
   fields.clear();
+  const std::filesystem::path customLiveEditPauseSaveFile =
+      customLiveEditPauseSaveRoot / "save_001.iggy3d.save";
+  const bool saveLiveEditedCustomDraftActiveRoom =
+      appAvailable && mapAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_map_custom_draft_live_edit_save",
+          "frontend.select=new_world\nfrontend.execute=true\n"
+          "world.title=Custom Draft\n"
+          "world.draft_cell=1,2,#\n"
+          "world.create=true\n"
+          "room_edit.start_active=true\n"
+          "room_edit.add_wall=live_wall_1,0,0,0,1,0,0,0,2.5,1\n"
+          "system.pause=true\n"
+          "pause.select=save\n"
+          "pause.execute=true\n",
+          iggy3d::smoke::saveRootArg(customLiveEditPauseSaveRoot),
+          fields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::automationApplied(fields) &&
+      iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(fields, "window_created", "false") &&
+      iggy3d::smoke::hasField(fields, "frontend_screen", "pause") &&
+      iggy3d::smoke::hasField(fields, "frontend_selected_action", "save") &&
+      iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "pause_menu_open", "true") &&
+      iggy3d::smoke::hasField(fields, "room_editing_ready", "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_status",
+                              "product_room_editing_ready") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_last_operation",
+                              "room_edit.add_wall") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_last_operation_status",
+                              "product_room_editing_edit_applied") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_last_operation_accepted",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_last_primitive_id",
+                              "live_wall_1") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_active_room_loaded",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_authored_floor_count",
+                              "58") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_authored_wall_count",
+                              "62") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_collision_ready",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_collision_surface_count",
+                              "182") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_collision_actor_blocker_count",
+                              "62") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_collision_projectile_blocker_count",
+                              "62") &&
+      iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
+      iggy3d::smoke::hasField(fields, "active_room_source", "editable_room") &&
+      iggy3d::smoke::hasField(fields, "active_room_id", "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_authored_floor_count",
+                              "58") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_authored_wall_count",
+                              "62") &&
+      iggy3d::smoke::hasField(fields, "active_room_collision_ready", "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_query_surface_count",
+                              "182") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_actor_blocker_count",
+                              "62") &&
+      iggy3d::smoke::hasField(fields, "product_save_status",
+                              "product_save_written") &&
+      iggy3d::smoke::hasField(fields, "product_save_reason_code",
+                              "product_save_written") &&
+      iggy3d::smoke::hasField(fields, "product_save_durable_reason",
+                              "durable_save_file_written") &&
+      iggy3d::smoke::hasField(fields, "product_save_source", "pause_save") &&
+      iggy3d::smoke::hasField(fields, "product_save_save_id", "save_001") &&
+      iggy3d::smoke::hasField(fields, "product_save_session_saved", "true") &&
+      iggy3d::smoke::hasField(fields, "active_product_save_id", "save_001") &&
+      std::filesystem::exists(customLiveEditPauseSaveFile) &&
+      fileContains(customLiveEditPauseSaveFile,
+                   "authoredRoom.id=custom_dungeon_draft\n") &&
+      fileContains(customLiveEditPauseSaveFile,
+                   "authoredRoom.floor.count=58\n") &&
+      fileContains(customLiveEditPauseSaveFile,
+                   "authoredRoom.wall.count=62\n") &&
+      fileContains(customLiveEditPauseSaveFile, "live_wall_1\n");
+
+  fields.clear();
   const std::string createControl =
       std::string{"frontend.select=new_world\nfrontend.execute=true\n"} +
       "world.title=Loop Keep\n"
@@ -653,7 +755,8 @@ int main() {
 
   const bool passed = createDefaultDungeonWorld && createSelectedDungeonWorld &&
                       createCustomDraftWorld && startCustomDraftActiveRoomEditing &&
-                      liveEditCustomDraftActiveRoom && createMapWorld &&
+                      liveEditCustomDraftActiveRoom &&
+                      saveLiveEditedCustomDraftActiveRoom && createMapWorld &&
                       continueMapWorld;
   const bool ok = expect(appAvailable, "product app exists") &&
                   expect(mapAvailable, "loop keep map fixture exists") &&
@@ -667,6 +770,8 @@ int main() {
                          "custom draft active room enters editing") &&
                   expect(liveEditCustomDraftActiveRoom,
                          "custom draft active room live edit") &&
+                  expect(saveLiveEditedCustomDraftActiveRoom,
+                         "custom draft active room live edit persists") &&
                   expect(createMapWorld, "create map world") &&
                   expect(continueMapWorld, "continue map world");
 
@@ -682,6 +787,9 @@ int main() {
             << (startCustomDraftActiveRoomEditing ? "true" : "false") << "\n";
   std::cout << "live_edit_custom_draft_active_room="
             << (liveEditCustomDraftActiveRoom ? "true" : "false") << "\n";
+  std::cout << "save_live_edited_custom_draft_active_room="
+            << (saveLiveEditedCustomDraftActiveRoom ? "true" : "false")
+            << "\n";
   std::cout << "create_map_world=" << (createMapWorld ? "true" : "false")
             << "\n";
   std::cout << "continue_map_world=" << (continueMapWorld ? "true" : "false")
