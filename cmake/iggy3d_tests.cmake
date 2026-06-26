@@ -552,6 +552,10 @@ set_tests_properties(package_runtime_lookup_tests PROPERTIES LABELS "unit;render
     product_continued_room_movement_smoke
     tests/smoke/product_continued_room_movement_smoke.cpp
     "ascii_room;map;save;load;gameplay;movement;collision")
+  iggy3d_add_product_app_automation_smoke(
+    product_editor_floor_save_continue_smoke
+    tests/smoke/product_editor_floor_save_continue_smoke.cpp
+    "ascii_room;map;save;load;room_editor;floor")
 
   add_executable(product_gameplay_tape_smoke
     tests/smoke/product_gameplay_tape_smoke.cpp)
