@@ -363,4 +363,29 @@ ProductRoomEditorActionResult applyProductRoomEditorPlaceAutomation(
       {editing, cursor, inputSource});
 }
 
+ProductRoomEditingStartResult startProductRoomEditAutomationFromAsciiDraft(
+    ProductRoomAuthoringStartFromAsciiRequest request) {
+  return startProductRoomAuthoringFromAsciiDraft(request);
+}
+
+ProductRoomEditingStartResult startProductRoomEditAutomationFromActiveRoom(
+    ProductRoomAuthoringStartFromActiveRoomRequest request) {
+  return startProductRoomAuthoringFromActiveRoom(request);
+}
+
+ProductRoomEditingOperationResult applyProductRoomEditAutomation(
+    ProductRoomAuthoringEditCommandRequest request) {
+  return applyProductRoomAuthoringEditCommand(request);
+}
+
+ProductRoomEditingOperationResult undoProductRoomEditAutomation(
+    ProductRoomAuthoringUndoRedoRequest request) {
+  return undoProductRoomAuthoringEdit(request);
+}
+
+ProductRoomEditingOperationResult redoProductRoomEditAutomation(
+    ProductRoomAuthoringUndoRedoRequest request) {
+  return redoProductRoomAuthoringEdit(request);
+}
+
 }  // namespace iggy3d

@@ -130,7 +130,15 @@ ProductAutomationCommandDispatchResult resolveProductAutomationCommandDispatch(
 struct ProductRoomEditorCursorResult;
 struct ProductRoomEditorActionResult;
 struct ProductRoomEditorCursorState;
+struct ProductRoomEditingStartResult;
+struct ProductRoomEditingOperationResult;
+struct ProductAsciiRoomAuthoringRequest;
+struct ProductActiveRoomState;
 struct ProductRoomEditingState;
+struct ProductRoomAuthoringStartFromAsciiRequest;
+struct ProductRoomAuthoringStartFromActiveRoomRequest;
+struct ProductRoomAuthoringEditCommandRequest;
+struct ProductRoomAuthoringUndoRedoRequest;
 enum class ProductRoomEditorDirection : std::uint8_t;
 enum class ProductRoomEditorTool : std::uint8_t;
 enum class ProductRoomAuthoringInputSource : std::uint8_t;
@@ -154,5 +162,20 @@ ProductRoomEditorActionResult applyProductRoomEditorPlaceAutomation(
     const ProductRoomEditingState& editing,
     ProductRoomEditorCursorState cursor,
     ProductRoomAuthoringInputSource inputSource);
+
+ProductRoomEditingStartResult startProductRoomEditAutomationFromAsciiDraft(
+    ProductRoomAuthoringStartFromAsciiRequest request);
+
+ProductRoomEditingStartResult startProductRoomEditAutomationFromActiveRoom(
+    ProductRoomAuthoringStartFromActiveRoomRequest request);
+
+ProductRoomEditingOperationResult applyProductRoomEditAutomation(
+    ProductRoomAuthoringEditCommandRequest request);
+
+ProductRoomEditingOperationResult undoProductRoomEditAutomation(
+    ProductRoomAuthoringUndoRedoRequest request);
+
+ProductRoomEditingOperationResult redoProductRoomEditAutomation(
+    ProductRoomAuthoringUndoRedoRequest request);
 
 }  // namespace iggy3d
