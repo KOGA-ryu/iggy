@@ -80,6 +80,7 @@ target_sources(iggy3d
     src/app/iggy3d/ProductSaveFlow.cpp
     src/app/iggy3d/ProductNpcProfileAssignment.cpp
     src/app/iggy3d/ProductViewportFraming.cpp
+    src/app/iggy3d/ProductWindowFramePresenter.cpp
     src/app/iggy3d/ProductWindowInputFrame.cpp
     src/app/iggy3d/ProductWindowRendererLifecycle.cpp
     src/app/iggy3d/ProductWorldCreation.cpp

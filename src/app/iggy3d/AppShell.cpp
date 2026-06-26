@@ -24,22 +24,19 @@
 #include "app/iggy3d/ProductGameplayTapeRunner.hpp"
 #include "app/iggy3d/ProductMenuTransitions.hpp"
 #include "app/iggy3d/ProductScriptedGameplayDriver.hpp"
+#include "app/iggy3d/ProductWindowFramePresenter.hpp"
 #include "app/iggy3d/ProductWindowInputFrame.hpp"
 #include "app/iggy3d/ProductWindowRendererLifecycle.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
 #include "app/input/ActionState.hpp"
 #include "app/input/InputRouter.hpp"
-#include "render/FrameInput.hpp"
 #include "runtime/session/Session.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)
 #include <chrono>
 #include <thread>
 
-#include <SDL3/SDL.h>
-
-#include "app/iggy3d/OpeningMenuView.hpp"
 #include "app/platform/SdlWindow.hpp"
 #endif
 
@@ -307,68 +304,9 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
             activeSession, window, settings.devToolsEnabled,
             settings.debugOverlayEnabled});
 
-    if (window.drawable) {
-      applyGameplayProjectionMetrics(window,
-                                     projectionFrame.scenePtr(),
-                                     projectionFrame.debugPtr(),
-                                     projectionFrame.drawListPtr(),
-                                     projectionFrame.viewportFramePtr(),
-                                     projectionFrame.renderBridgePtr(),
-                                     projectionFrame.viewVisible);
-      if (useVulkanRenderer) {
-        if (projectionFrame.scenePtr() != nullptr &&
-            projectionFrame.debugPtr() != nullptr &&
-            projectionFrame.scene.room.loaded) {
-          const SdlDrawableExtent drawableExtent = sdlWindow.drawableExtent();
-          if (drawableExtent.width > 0U && drawableExtent.height > 0U) {
-            const FrameInput renderFrame = makeProductVulkanFrame(
-                projectionFrame.scene, projectionFrame.debug,
-                window.framesPresented + 1U, drawableExtent.width,
-                drawableExtent.height, window.viewport.cameraYawDegrees,
-                window.viewport.cameraPitchDegrees);
-            const RenderSubmitResult submit =
-                renderer.vulkanRenderer.submitFrame(renderFrame);
-            recordProductVulkanSubmit(window, submit);
-          } else {
-            window.productVulkanStatus = "frame_not_submitted";
-            window.productVulkanReasonCode = "frame_not_drawable";
-          }
-        } else {
-          window.productVulkanStatus = "waiting_for_gameplay_room";
-          window.productVulkanReasonCode = "product_vulkan_waiting_for_gameplay_room";
-        }
-      } else {
-        const OpeningMenuViewState view =
-            drawOpeningMenuView(*renderer.sdlRenderer, options, world, frontend,
-                                settingsTab, worldSetupDraft,
-                                window.worldSetupDungeonDraftEditMode,
-                                window.worldSetupDungeonDraftModified,
-                                window.worldSetupDungeonDraftCursorRow,
-                                window.worldSetupDungeonDraftCursorColumn,
-                                window.gameplayActive, window.runtimeStateHash,
-                                projectionFrame.viewportFramePtr(),
-                                &projectionFrame.feedback,
-                                &projectionFrame.movementHud,
-                                &projectionFrame.npcBehaviorHud,
-                                projectionFrame.sceneItemCount,
-                                projectionFrame.debugPtr(),
-                                window.viewport.cameraYawDegrees,
-                                window.viewport.cameraPitchDegrees, saves);
-        window.viewport.cameraHeadingVisible =
-            window.viewport.cameraHeadingVisible || view.cameraHeadingDrawn;
-        window.menuTextDrawn = window.menuTextDrawn || view.textDrawn;
-        window.selectedRowDrawn = window.selectedRowDrawn || view.selectedRowDrawn;
-        window.menuRowCount = view.rowCount;
-      }
-    } else {
-      applyGameplayProjectionMetrics(window,
-                                     projectionFrame.scenePtr(),
-                                     projectionFrame.debugPtr(),
-                                     projectionFrame.drawListPtr(),
-                                     projectionFrame.viewportFramePtr(),
-                                     projectionFrame.renderBridgePtr(),
-                                     false);
-    }
+    presentProductWindowFrame(ProductWindowFramePresenterRequest{
+        options, world, frontend, settingsTab, worldSetupDraft, window, saves,
+        sdlWindow, renderer, projectionFrame});
     ++window.framesPresented;
 
     if (options.frames > 0 && window.framesPresented >= options.frames) {
