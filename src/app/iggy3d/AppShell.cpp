@@ -26,6 +26,7 @@
 #include "app/iggy3d/ProductMenuTransitions.hpp"
 #include "app/iggy3d/ProductRoomEditorActionController.hpp"
 #include "app/iggy3d/ProductScriptedGameplayDriver.hpp"
+#include "app/iggy3d/ProductWindowRendererLifecycle.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
 #include "app/input/ActionState.hpp"
@@ -34,8 +35,6 @@
 #include "app/input/KeyboardInput.hpp"
 #include "app/input/MouseInput.hpp"
 #include "render/FrameInput.hpp"
-#include "render/RenderDiagnostics.hpp"
-#include "render/RendererApi.hpp"
 #include "runtime/session/Session.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)
@@ -46,11 +45,6 @@
 
 #include "app/iggy3d/OpeningMenuView.hpp"
 #include "app/platform/SdlWindow.hpp"
-#endif
-
-#if defined(IGGY3D_HAS_SDL3) && defined(IGGY3D_APP_VULKAN_BACKEND)
-#include "app/platform/SdlVulkanSurface.hpp"
-#include "render/vulkan/VulkanBackend.hpp"
 #endif
 
 namespace iggy3d {
@@ -98,86 +92,6 @@ FrontendSettings productFrontendSettingsFromOptions(const ProductAppOptions& opt
   settings.devToolsEnabled = true;
   settings.debugOverlayEnabled = true;
   return settings;
-}
-
-std::string receiptFieldValueOr(const RenderReceipt& receipt,
-                                std::string_view key,
-                                std::string_view fallback) {
-  for (const RenderReceiptField& field : receipt.fields) {
-    if (field.key == key) {
-      return field.value;
-    }
-  }
-  return std::string(fallback);
-}
-
-void recordProductVulkanRendererUnavailable(ProductAppWindowState& window,
-                                            std::string_view reasonCode) {
-  window.productVulkanRendererCreated = false;
-  window.productVulkanRendererReady = false;
-  window.productVulkanSurfaceCreated = false;
-  window.productVulkanSwapchainReady = false;
-  window.productVulkanStatus = "renderer_unavailable";
-  window.productVulkanReasonCode = std::string(reasonCode);
-}
-
-void recordProductVulkanRendererReady(ProductAppWindowState& window,
-                                      const RendererApi& renderer) {
-  const RenderReceipt diagnostics = renderer.diagnostics();
-  window.productVulkanRendererCreated = renderer.hasBackend();
-  window.productVulkanRendererReady =
-      renderer.lifecycleState() == RendererLifecycleState::Ready;
-  window.productVulkanSurfaceCreated =
-      window.productVulkanRendererReady ||
-      hasReceiptField(diagnostics, "surface_ready", "true");
-  window.productVulkanSwapchainReady =
-      window.productVulkanRendererReady ||
-      receiptFieldValueOr(diagnostics, "swapchain_state", "none") == "ready";
-  window.productVulkanStatus = window.productVulkanRendererReady
-                                   ? "renderer_ready"
-                                   : "renderer_unavailable";
-  window.productVulkanReasonCode =
-      receiptFieldValueOr(diagnostics, "reason_code", "renderer_unavailable");
-}
-
-void recordProductVulkanSubmit(ProductAppWindowState& window,
-                               const RenderSubmitResult& submit) {
-  window.productVulkanRenderingPath =
-      receiptFieldValueOr(submit.receipt, "rendering_path", "none");
-  window.productVulkanRecordMode =
-      receiptFieldValueOr(submit.receipt, "record_mode", "none");
-  window.productVulkanReasonCode = std::string(submit.reason.code);
-  if (submit.outcome == RenderOutcome::Ok) {
-    window.productVulkanSurfaceCreated = true;
-    window.productVulkanSwapchainReady = true;
-    window.productVulkanFrameSubmitted = true;
-    ++window.productVulkanFrameSubmittedCount;
-    window.productVulkanStatus = "frame_submitted";
-    if (window.productVulkanRenderingPath == "package_room_meshes" &&
-        window.productVulkanRecordMode == "room_mesh_draws") {
-      window.viewport.productVulkanRoomMeshBackendPresented = true;
-    }
-  } else {
-    window.productVulkanStatus = "frame_not_submitted";
-  }
-}
-
-RendererConfig makeProductVulkanRendererConfig() {
-  PackageLookupConfig lookupConfig;
-  lookupConfig.packageMode = PackageMode::BuildTreeProduct;
-  lookupConfig.requireShaderRoot = true;
-  lookupConfig.requireGraphicsRuntime = true;
-  const PackageLookupResult lookup = resolvePackageRuntimeLookup(lookupConfig);
-
-  RendererConfig config;
-  config.renderer = RendererMode::Vulkan;
-  config.rendererRequirement = RendererRequirement::Optional;
-  config.allowSoftwareVulkan = true;
-  if (lookup.outcome == RenderOutcome::Ok) {
-    config.shaderRoot = lookup.lookup.shaderRoot;
-    config.diagnosticsDir = lookup.lookup.diagnosticsDir;
-  }
-  return config;
 }
 
 std::string failedTapeStepReceiptValue(std::uint64_t stepIndex) {
@@ -340,7 +254,7 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
                                            const FrontendSettings& settings,
                                            const ProductSaveBridgeResult& saves) {
   window.requested = options.windowMode == ProductWindowMode::Window;
-  const bool useVulkanRenderer = options.renderer == ProductRendererRequest::Vulkan;
+  const bool useVulkanRenderer = productWindowRendererUsesVulkan(options.renderer);
   window.productVulkanRendererRequested = useVulkanRenderer;
   window.inputOwner = productInputOwnerFor(frontend, window);
   window.gameplayInputSuppressed =
@@ -370,61 +284,10 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
     return window;
   }
 
-  SDL_Renderer* renderer = nullptr;
-  RendererApi vulkanRenderer;
-  if (useVulkanRenderer) {
-#if defined(IGGY3D_APP_VULKAN_BACKEND)
-    SdlVulkanSurfaceProvider sdlVulkanProvider;
-    const SdlVulkanExtensionList extensions =
-        sdlVulkanProvider.requiredInstanceExtensions(sdlWindow);
-    if (extensions.outcome != RenderOutcome::Ok) {
-      recordProductVulkanRendererUnavailable(window, extensions.reason.code);
-      window.status = "product_vulkan_renderer_unavailable";
-      return window;
-    }
-    VulkanBackendCreateInfo backendInfo;
-    backendInfo.config = makeProductVulkanRendererConfig();
-    const SdlDrawableExtent drawableExtent = sdlWindow.drawableExtent();
-    backendInfo.drawableWidth =
-        drawableExtent.width == 0U ? createInfo.width : drawableExtent.width;
-    backendInfo.drawableHeight =
-        drawableExtent.height == 0U ? createInfo.height : drawableExtent.height;
-    backendInfo.surfaceProvider.requiredInstanceExtensions = extensions.names;
-    backendInfo.surfaceProvider.createSurface =
-        [&sdlVulkanProvider, &sdlWindow](VkInstance instance, VkSurfaceKHR* surface) {
-          const SdlVulkanSurfaceCreateResult created =
-              sdlVulkanProvider.createSurface(sdlWindow, instance);
-          if (surface != nullptr) {
-            *surface = created.surface;
-          }
-          RenderReceipt receipt;
-          appendReceiptField(receipt, "surface_provider", "sdl3");
-          appendReceiptField(receipt, "surface_created",
-                             created.outcome == RenderOutcome::Ok &&
-                                 created.surface != VK_NULL_HANDLE);
-          appendReceiptField(receipt, "result",
-                             created.outcome == RenderOutcome::Ok ? "pass" : "fail");
-          appendReceiptField(receipt, "reason_code", created.reason.code);
-          return receipt;
-        };
-    vulkanRenderer =
-        RendererApi(std::make_unique<VulkanBackend>(std::move(backendInfo)));
-    recordProductVulkanRendererReady(window, vulkanRenderer);
-    if (!window.productVulkanRendererReady) {
-      window.status = "product_vulkan_renderer_unavailable";
-      return window;
-    }
-#else
-    recordProductVulkanRendererUnavailable(window, "product_vulkan_backend_unavailable");
-    window.status = "product_vulkan_renderer_unavailable";
+  ProductWindowRendererState renderer = createProductWindowRenderer(
+      ProductWindowRendererRequest{options.renderer, &createInfo, &sdlWindow, &window});
+  if (!renderer.ready) {
     return window;
-#endif
-  } else {
-    renderer = SDL_CreateRenderer(sdlWindow.nativeWindow(), nullptr);
-    if (renderer == nullptr) {
-      window.status = "renderer_create_failed";
-      return window;
-    }
   }
 
   sdlWindow.setTitle(window.gameplayActive ? "iggy3d - Gameplay" : "iggy3d - Opening Menu");
@@ -555,7 +418,8 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
                 window.framesPresented + 1U, drawableExtent.width,
                 drawableExtent.height, window.viewport.cameraYawDegrees,
                 window.viewport.cameraPitchDegrees);
-            const RenderSubmitResult submit = vulkanRenderer.submitFrame(renderFrame);
+            const RenderSubmitResult submit =
+                renderer.vulkanRenderer.submitFrame(renderFrame);
             recordProductVulkanSubmit(window, submit);
           } else {
             window.productVulkanStatus = "frame_not_submitted";
@@ -567,8 +431,8 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
         }
       } else {
         const OpeningMenuViewState view =
-            drawOpeningMenuView(*renderer, options, world, frontend, settingsTab,
-                                worldSetupDraft,
+            drawOpeningMenuView(*renderer.sdlRenderer, options, world, frontend,
+                                settingsTab, worldSetupDraft,
                                 window.worldSetupDungeonDraftEditMode,
                                 window.worldSetupDungeonDraftModified,
                                 window.worldSetupDungeonDraftCursorRow,
@@ -616,21 +480,9 @@ ProductAppWindowState runOpeningMenuWindow(const ProductAppOptions& options,
   }
 
   shutdownGamepadMenuState(gamepad);
-  if (useVulkanRenderer) {
-    (void)vulkanRenderer.waitIdle();
-    vulkanRenderer.shutdown();
-  } else {
-    SDL_DestroyRenderer(renderer);
-  }
+  shutdownProductWindowRenderer(renderer);
   window.selectedSettingsTab = settingsTab;
-  if (useVulkanRenderer) {
-    window.status = window.productVulkanFrameSubmitted
-                        ? "product_vulkan_frame_presented"
-                        : window.productVulkanStatus;
-  } else {
-    window.status = window.menuTextDrawn ? "opening_menu_text_ready"
-                                         : "opening_menu_window_ready";
-  }
+  finalizeProductWindowRendererStatus(renderer, window);
   return window;
 #else
   (void)world;
