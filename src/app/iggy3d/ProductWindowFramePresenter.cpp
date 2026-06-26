@@ -65,6 +65,7 @@ void presentProductSdlFrame(ProductWindowFramePresenterRequest request) {
                           &request.projectionFrame.feedback,
                           &request.projectionFrame.movementHud,
                           &request.projectionFrame.npcBehaviorHud,
+                          &request.projectionFrame.roomEditorHud,
                           request.projectionFrame.sceneItemCount,
                           request.projectionFrame.debugPtr(),
                           request.window.viewport.cameraYawDegrees,

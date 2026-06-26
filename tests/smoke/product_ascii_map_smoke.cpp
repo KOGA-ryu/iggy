@@ -811,6 +811,23 @@ int main() {
                               "true") &&
       iggy3d::smoke::hasField(fields, "room_editor_overlay_item_count",
                               "1") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_visible", "true") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_status",
+                              "room_editor_hud_ready") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_reason_code",
+                              "room_editor_hud_ready") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_tool", "wall") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_wall_direction",
+                              "up") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_grid_x", "1") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_grid_z", "0") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_last_operation",
+                              "editor.place") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editor_hud_last_operation_accepted",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_last_primitive_id",
+                              "edit_wall_1") &&
       iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
       iggy3d::smoke::hasField(fields, "active_room_source", "editable_room") &&
       iggy3d::smoke::hasField(fields, "active_room_id",

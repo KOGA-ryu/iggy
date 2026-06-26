@@ -191,6 +191,20 @@ void copyProductRoomEditorOverlay(ProductAppWindowState& window,
   window.roomEditorOverlayWorldZ = overlay.worldPosition.z;
 }
 
+void copyProductRoomEditorHud(ProductAppWindowState& window,
+                              const ProductRoomEditorHud& hud) {
+  window.roomEditorHudVisible = hud.visible;
+  window.roomEditorHudStatus = hud.status;
+  window.roomEditorHudReasonCode = hud.reasonCode;
+  window.roomEditorHudTool = hud.toolName;
+  window.roomEditorHudWallDirection = hud.wallDirectionName;
+  window.roomEditorHudGridX = hud.gridX;
+  window.roomEditorHudGridZ = hud.gridZ;
+  window.roomEditorHudLastOperation = hud.lastOperation;
+  window.roomEditorHudLastOperationAccepted = hud.lastOperationAccepted;
+  window.roomEditorHudLastPrimitiveId = hud.lastPrimitiveId;
+}
+
 void applyGameplayProjectionMetrics(ProductAppWindowState& window,
                                     const SceneProjectionResult* scene,
                                     const DebugProjectionResult* debug,
@@ -325,6 +339,14 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   frame.roomEditorOverlay =
       buildProductRoomEditorOverlay(window.roomEditorCursor, false);
   copyProductRoomEditorOverlay(window, frame.roomEditorOverlay);
+  frame.roomEditorHud = buildProductRoomEditorHud(
+      ProductRoomEditorHudRequest{window.roomEditing,
+                                  window.roomEditorCursor,
+                                  window.gameplayActive,
+                                  window.roomEditorLastOperation,
+                                  window.roomEditorLastOperationAccepted,
+                                  window.roomEditorLastPrimitiveId});
+  copyProductRoomEditorHud(window, frame.roomEditorHud);
 
   // branch-gate: BG-1027
   if (!window.gameplayActive || !request.activeSession.has_value()) {
@@ -340,6 +362,14 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   frame.roomEditorOverlay =
       buildProductRoomEditorOverlay(window.roomEditorCursor, window.roomEditing.ready);
   copyProductRoomEditorOverlay(window, frame.roomEditorOverlay);
+  frame.roomEditorHud = buildProductRoomEditorHud(
+      ProductRoomEditorHudRequest{window.roomEditing,
+                                  window.roomEditorCursor,
+                                  window.gameplayActive,
+                                  window.roomEditorLastOperation,
+                                  window.roomEditorLastOperationAccepted,
+                                  window.roomEditorLastPrimitiveId});
+  copyProductRoomEditorHud(window, frame.roomEditorHud);
   frame.drawList = buildProductPrimitiveDrawList(&frame.scene, &frame.debug,
                                                  activeRoom,
                                                  &window.activeRoomCollision,

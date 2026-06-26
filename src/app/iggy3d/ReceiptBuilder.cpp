@@ -444,6 +444,25 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      floatReceiptValue(window.roomEditorOverlayWorldY));
   appendReceiptField(receipt, "room_editor_overlay_world_z",
                      floatReceiptValue(window.roomEditorOverlayWorldZ));
+  appendReceiptField(receipt, "room_editor_hud_visible",
+                     window.roomEditorHudVisible);
+  appendReceiptField(receipt, "room_editor_hud_status",
+                     window.roomEditorHudStatus);
+  appendReceiptField(receipt, "room_editor_hud_reason_code",
+                     window.roomEditorHudReasonCode);
+  appendReceiptField(receipt, "room_editor_hud_tool", window.roomEditorHudTool);
+  appendReceiptField(receipt, "room_editor_hud_wall_direction",
+                     window.roomEditorHudWallDirection);
+  appendReceiptField(receipt, "room_editor_hud_grid_x",
+                     std::to_string(window.roomEditorHudGridX));
+  appendReceiptField(receipt, "room_editor_hud_grid_z",
+                     std::to_string(window.roomEditorHudGridZ));
+  appendReceiptField(receipt, "room_editor_hud_last_operation",
+                     window.roomEditorHudLastOperation);
+  appendReceiptField(receipt, "room_editor_hud_last_operation_accepted",
+                     window.roomEditorHudLastOperationAccepted);
+  appendReceiptField(receipt, "room_editor_hud_last_primitive_id",
+                     window.roomEditorHudLastPrimitiveId);
   appendReceiptField(receipt, "selected_save_id", window.selectedProductSaveId);
   appendReceiptField(receipt, "selected_save_enabled",
                      window.selectedProductSaveEnabled);

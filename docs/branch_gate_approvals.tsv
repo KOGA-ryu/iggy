@@ -32,3 +32,5 @@ BG-1030	src/app/iggy3d/ProductWindowFramePresenter.cpp	product window frame pres
 BG-1031	src/app/iggy3d/ProductWindowLoop.cpp	product window loop extraction from AppShell	codex	2026-06-26
 BG-1032	src/app/iggy3d/ProductGameplayTapeRunner.cpp	gameplay tape option flow extraction from AppShell	codex	2026-06-26
 BG-1033	src/app/iggy3d/product/AutomationDispatch.cpp	automation app adapter extraction from AppShell	codex	2026-06-26
+BG-1034	src/app/iggy3d/ProductRoomEditorHud.cpp	room editor HUD visibility and wall-tool proof	codex	2026-06-26
+BG-1035	src/app/iggy3d/OpeningMenuView.cpp	room editor HUD compact SDL drawing	codex	2026-06-26

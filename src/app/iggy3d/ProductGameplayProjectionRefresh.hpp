@@ -8,6 +8,7 @@
 #include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductRenderBridge.hpp"
+#include "app/iggy3d/ProductRoomEditorHud.hpp"
 #include "app/iggy3d/ProductRoomEditorOverlay.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
@@ -40,6 +41,7 @@ struct ProductGameplayProjectionFrame {
   ProductGameplayFeedback feedback;
   ProductMovementDebugHud movementHud;
   ProductNpcBehaviorDebugHud npcBehaviorHud;
+  ProductRoomEditorHud roomEditorHud;
   ProductRoomEditorOverlay roomEditorOverlay;
   ProductRenderBridgeFrame renderBridge;
   bool hasGameplayProjection = false;
@@ -61,6 +63,9 @@ void copyNpcBehaviorDebugHud(ProductAppWindowState& window,
 
 void copyProductRoomEditorOverlay(ProductAppWindowState& window,
                                   const ProductRoomEditorOverlay& overlay);
+
+void copyProductRoomEditorHud(ProductAppWindowState& window,
+                              const ProductRoomEditorHud& hud);
 
 void applyGameplayProjectionMetrics(ProductAppWindowState& window,
                                     const SceneProjectionResult* scene,

@@ -120,6 +120,16 @@ struct ProductAppWindowState {
   float roomEditorOverlayWorldX = 0.0F;
   float roomEditorOverlayWorldY = 0.0F;
   float roomEditorOverlayWorldZ = 0.0F;
+  bool roomEditorHudVisible = false;
+  std::string roomEditorHudStatus = "room_editor_hud_not_ready";
+  std::string roomEditorHudReasonCode = "room_editor_hud_not_ready";
+  std::string roomEditorHudTool = "floor";
+  std::string roomEditorHudWallDirection = "up";
+  std::int32_t roomEditorHudGridX = 0;
+  std::int32_t roomEditorHudGridZ = 0;
+  std::string roomEditorHudLastOperation = "none";
+  bool roomEditorHudLastOperationAccepted = false;
+  std::string roomEditorHudLastPrimitiveId = "none";
   ProductActiveRoomState activeRoom;
   ProductActiveRoomCollisionState activeRoomCollision;
   std::string productSaveStatus = "not_requested";
