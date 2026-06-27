@@ -1,5 +1,6 @@
 #include "runtime/physics/PhysicsBodyDeltaAccumulator.hpp"
 
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -13,6 +14,18 @@ bool expect(bool condition, std::string_view message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
+}
+
+bool sameFloatField(float lhs, float rhs) {
+  if (std::isnan(lhs) && std::isnan(rhs)) {
+    return true;
+  }
+  return lhs == rhs;
+}
+
+bool sameVec3Fields(iggy3d::Vec3 lhs, iggy3d::Vec3 rhs) {
+  return sameFloatField(lhs.x, rhs.x) && sameFloatField(lhs.y, rhs.y) &&
+         sameFloatField(lhs.z, rhs.z);
 }
 
 iggy3d::PhysicsBodyDescriptor bodyDescriptor(
@@ -87,10 +100,10 @@ bool accumulatorUnchanged(const iggy3d::PhysicsBodyDeltaAccumulator& lhs,
   }
   for (std::size_t index = 0U; index < lhs.bodyIds.size(); ++index) {
     if (lhs.bodyIds[index].value != rhs.bodyIds[index].value ||
-        !iggy3d::nearlyEqual(lhs.positionDeltasMeters[index],
-                             rhs.positionDeltasMeters[index]) ||
-        !iggy3d::nearlyEqual(lhs.velocityDeltasMetersPerSecond[index],
-                             rhs.velocityDeltasMetersPerSecond[index]) ||
+        !sameVec3Fields(lhs.positionDeltasMeters[index],
+                        rhs.positionDeltasMeters[index]) ||
+        !sameVec3Fields(lhs.velocityDeltasMetersPerSecond[index],
+                        rhs.velocityDeltasMetersPerSecond[index]) ||
         lhs.contributingPlanCounts[index] !=
             rhs.contributingPlanCounts[index]) {
       return false;
@@ -363,6 +376,56 @@ bool noOpAndInvalidPlansDoNotMutateAccumulator() {
                 "nonfinite unchanged");
 }
 
+bool poisonedExistingAccumulatorDeltasRejectWithoutMutation() {
+  iggy3d::PhysicsBodyStore store;
+  const iggy3d::PhysicsBodyStoreResult first =
+      store.add(bodyDescriptor({0.0F, 0.0F, 0.0F}));
+  const iggy3d::PhysicsBodyStoreResult second =
+      store.add(bodyDescriptor({1.0F, 0.0F, 0.0F}));
+  const iggy3d::PhysicsAabbContactSolvePlan validPlan =
+      solvePlan(first.id, second.id, {-0.1F, 0.0F, 0.0F},
+                {0.1F, 0.0F, 0.0F}, {}, {});
+
+  iggy3d::PhysicsBodyDeltaAccumulator poisonedPosition =
+      iggy3d::buildPhysicsBodyDeltaAccumulator(&store).accumulator;
+  poisonedPosition.positionDeltasMeters[1].x =
+      std::numeric_limits<float>::infinity();
+  const iggy3d::PhysicsBodyDeltaAccumulator positionBefore =
+      poisonedPosition;
+  const iggy3d::PhysicsBodyDeltaAccumulatorResult positionResult =
+      iggy3d::accumulatePhysicsAabbContactSolvePlan(&poisonedPosition,
+                                                    &validPlan);
+
+  iggy3d::PhysicsBodyDeltaAccumulator poisonedVelocity =
+      iggy3d::buildPhysicsBodyDeltaAccumulator(&store).accumulator;
+  poisonedVelocity.velocityDeltasMetersPerSecond[0].y =
+      std::numeric_limits<float>::quiet_NaN();
+  const iggy3d::PhysicsBodyDeltaAccumulator velocityBefore =
+      poisonedVelocity;
+  const iggy3d::PhysicsBodyDeltaAccumulatorResult velocityResult =
+      iggy3d::accumulatePhysicsAabbContactSolvePlan(&poisonedVelocity,
+                                                    &validPlan);
+
+  return expect(!positionResult.ok, "poisoned position rejected") &&
+         expect(positionResult.reasonCode == "physics_body_delta_invalid_delta",
+                "poisoned position reason") &&
+         expect(positionResult.invalidBodyIndex == 1U,
+                "poisoned position index") &&
+         expect(positionResult.invalidBodyId.value == second.id.value,
+                "poisoned position body id") &&
+         expect(accumulatorUnchanged(positionBefore, poisonedPosition),
+                "poisoned position unchanged") &&
+         expect(!velocityResult.ok, "poisoned velocity rejected") &&
+         expect(velocityResult.reasonCode == "physics_body_delta_invalid_delta",
+                "poisoned velocity reason") &&
+         expect(velocityResult.invalidBodyIndex == 0U,
+                "poisoned velocity index") &&
+         expect(velocityResult.invalidBodyId.value == first.id.value,
+                "poisoned velocity body id") &&
+         expect(accumulatorUnchanged(velocityBefore, poisonedVelocity),
+                "poisoned velocity unchanged");
+}
+
 bool applyMutatesPositionsAndVelocitiesOnly() {
   iggy3d::PhysicsBodyStore store;
   const iggy3d::PhysicsBodyStoreResult first =
@@ -558,6 +621,7 @@ int main() {
                   accumulatePlanUpdatesRowsAndKeepsPlanConst() &&
                   accumulatingMultiplePlansSumsDeterministically() &&
                   noOpAndInvalidPlansDoNotMutateAccumulator() &&
+                  poisonedExistingAccumulatorDeltasRejectWithoutMutation() &&
                   applyMutatesPositionsAndVelocitiesOnly() &&
                   applyConfigCanDisablePositionOrVelocityDeltas() &&
                   allZeroAndDisabledApplyNoOp() &&

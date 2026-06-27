@@ -189,6 +189,25 @@ bool accumulatorDeltasFinite(const PhysicsBodyDeltaAccumulator& accumulator) {
   return true;
 }
 
+PhysicsBodyDeltaAccumulatorResult validateAccumulatorDeltasForAccumulation(
+    const PhysicsBodyDeltaAccumulator& accumulator) {
+  for (std::size_t index = 0U;
+       index < accumulator.positionDeltasMeters.size(); ++index) {
+    // branch-gate: BG-1093
+    if (!finiteDelta(accumulator.positionDeltasMeters[index])) {
+      return invalidDeltaAccumulatorResult(accumulator.bodyIds[index], index);
+    }
+  }
+  for (std::size_t index = 0U;
+       index < accumulator.velocityDeltasMetersPerSecond.size(); ++index) {
+    // branch-gate: BG-1093
+    if (!finiteDelta(accumulator.velocityDeltasMetersPerSecond[index])) {
+      return invalidDeltaAccumulatorResult(accumulator.bodyIds[index], index);
+    }
+  }
+  return accumulatorResult(PhysicsBodyDeltaStatus::DeltaAccumulated, true);
+}
+
 bool accumulatorAllZero(const PhysicsBodyDeltaAccumulator& accumulator) {
   for (Vec3 value : accumulator.positionDeltasMeters) {
     // branch-gate: BG-1093
@@ -320,6 +339,12 @@ PhysicsBodyDeltaAccumulatorResult accumulatePhysicsAabbContactSolvePlan(
   if (!accumulatorShapeValid(*accumulator)) {
     return accumulatorResult(PhysicsBodyDeltaStatus::MissingAccumulator,
                              false);
+  }
+  const PhysicsBodyDeltaAccumulatorResult accumulatorDeltaValidation =
+      validateAccumulatorDeltasForAccumulation(*accumulator);
+  // branch-gate: BG-1093
+  if (!accumulatorDeltaValidation.ok) {
+    return accumulatorDeltaValidation;
   }
   // branch-gate: BG-1093
   if (!plan->ok) {
