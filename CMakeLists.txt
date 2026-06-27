@@ -40,7 +40,7 @@ target_sources(iggy3d
     src/app/iggy3d/ProductBuiltinDungeon.cpp
     src/app/iggy3d/ProductCameraController.cpp
     src/app/iggy3d/ProductDungeonDraft.cpp
-    src/app/iggy3d/ascii_room/ProductAsciiRoomActivation.cpp
+    src/app/iggy3d/ascii_room/Activation.cpp
     src/app/iggy3d/ascii_room/Authoring.cpp
     src/app/iggy3d/ascii_room/ProductAsciiRoomEditing.cpp
     src/app/iggy3d/ascii_room/Package.cpp

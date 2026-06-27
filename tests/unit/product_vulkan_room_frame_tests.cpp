@@ -1,4 +1,4 @@
-#include "app/iggy3d/ascii_room/ProductAsciiRoomActivation.hpp"
+#include "app/iggy3d/ascii_room/Activation.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
