@@ -81,7 +81,7 @@ target_sources(iggy3d
     src/app/iggy3d/room_editor/ProductRoomEditorCursor.cpp
     src/app/iggy3d/room_editor/ProductRoomEditorObjectPalette.cpp
     src/app/iggy3d/room_editor/Presentation.cpp
-    src/app/iggy3d/room_editor/ProductRoomEditorPreview.cpp
+    src/app/iggy3d/room_editor/Preview.cpp
     src/app/iggy3d/room_editor/ProductRoomEditingState.cpp
     src/app/iggy3d/room/ProductRoomVisualProof.cpp
     src/app/iggy3d/ProductScriptedGameplayDriver.cpp

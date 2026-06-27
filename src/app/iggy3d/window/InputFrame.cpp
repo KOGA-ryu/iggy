@@ -8,7 +8,7 @@
 #include "app/iggy3d/ProductInteractionModeState.hpp"
 #include "app/iggy3d/window/MouseCapturePolicy.hpp"
 #include "app/iggy3d/room_editor/ProductRoomEditorActionController.hpp"
-#include "app/iggy3d/room_editor/ProductRoomEditorPreview.hpp"
+#include "app/iggy3d/room_editor/Preview.hpp"
 #include "app/iggy3d/automation/Automation.hpp"
 #include "app/iggy3d/automation/AutomationRoomEditing.hpp"
 #include "app/iggy3d/menu/ProductMenuInputRouter.hpp"

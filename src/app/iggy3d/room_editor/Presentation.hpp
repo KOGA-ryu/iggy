@@ -7,7 +7,7 @@
 
 #include "app/iggy3d/room_editor/ProductRoomEditingState.hpp"
 #include "app/iggy3d/room_editor/ProductRoomEditorCursor.hpp"
-#include "app/iggy3d/room_editor/ProductRoomEditorPreview.hpp"
+#include "app/iggy3d/room_editor/Preview.hpp"
 #include "core/math/Vec3.hpp"
 
 namespace iggy3d {
