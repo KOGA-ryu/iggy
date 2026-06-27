@@ -407,6 +407,11 @@ set_tests_properties(movement_traversal_slots_tests PROPERTIES
 iggy3d_add_unit_test(player_motor_tests tests/unit/player_motor_tests.cpp)
 set_tests_properties(player_motor_tests PROPERTIES LABELS "unit;runtime;player;movement;iggy3d")
 
+iggy3d_add_unit_test(player_physics_move_planner_tests
+  tests/unit/player_physics_move_planner_tests.cpp)
+set_tests_properties(player_physics_move_planner_tests PROPERTIES
+  LABELS "unit;runtime;player;physics_move;iggy3d")
+
 iggy3d_add_unit_test(runtime_debug_snapshot_tests tests/unit/runtime_debug_snapshot_tests.cpp)
 set_tests_properties(runtime_debug_snapshot_tests PROPERTIES LABELS "unit;runtime;debug;iggy3d")
 
