@@ -63,3 +63,5 @@ BG-1062	src/app/iggy3d/product/AutomationGameplay.cpp	controller input automatio
 BG-1063	src/app/iggy3d/ProductWindowInputFrame.cpp	live creative room editor mouse pick preview policy	codex	2026-06-26
 BG-1064	src/app/iggy3d/ProductInteractionModeHud.cpp	product interaction mode hud descriptor visibility policy	codex	2026-06-26
 BG-1065	src/app/iggy3d/OpeningMenuView.cpp	product interaction mode hud draw visibility policy	codex	2026-06-26
+BG-1066	src/app/frontend/PauseMenu.cpp	leave editor pause menu availability policy	codex	2026-06-26
+BG-1067	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	leave editor pause action lifecycle policy	codex	2026-06-26

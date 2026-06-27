@@ -77,6 +77,74 @@ bool roomEditingStartSetsCreativeMode() {
                 "room editing start receipt interaction mode");
 }
 
+bool roomEditingLeaveReturnsPlayerModeAndPreservesActiveRoom() {
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  const iggy3d::ProductRoomEditingStartResult started =
+      iggy3d::startProductRoomEditingFromAscii(smallRoomRequest());
+  iggy3d::recordProductRoomEditingStart(window, started, "unit_edit_room");
+  window.roomEditorPreviewActive = true;
+  window.roomEditorPreviewVisible = true;
+  window.roomEditorOverlayVisible = true;
+  window.roomEditorHudVisible = true;
+  window.viewport.productDrawRoomEditorCursorVisible = true;
+  window.viewport.productDrawRoomEditorCursorCount = 1;
+  const std::string activeRoomId = window.activeRoom.roomId;
+  const std::uint64_t activeFloorCount = window.activeRoom.authoredFloorCount;
+  const std::uint64_t activeWallCount = window.activeRoom.authoredWallCount;
+  const std::uint64_t activeCollisionCount =
+      window.activeRoomCollision.querySurfaceCount;
+
+  const bool left =
+      iggy3d::recordProductRoomEditingLeave(window, "unit_leave_editor");
+
+  return expect(started.ok, "room editing start accepted for leave") &&
+         expect(left, "room editing leave accepted") &&
+         expect(!window.roomEditing.ready, "room editing no longer ready") &&
+         expect(window.roomEditing.status == "product_room_editing_left",
+                "room editing leave status") &&
+         expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+                "room editing leave returns player mode") &&
+         expect(window.inputOwner == iggy3d::MenuOwner::Gameplay,
+                "room editing leave returns gameplay owner") &&
+         expect(!window.gameplayInputSuppressed,
+                "room editing leave unsuppresses gameplay") &&
+         expect(!window.roomEditorCursorReady, "room editor cursor no longer ready") &&
+         expect(window.roomEditorStatus == "room_editor_not_ready",
+                "room editor leave status") &&
+         expect(!window.roomEditorOverlayVisible, "room editor overlay hidden") &&
+         expect(!window.roomEditorPreviewVisible, "room editor preview hidden") &&
+         expect(!window.roomEditorPreviewActive, "room editor preview inactive") &&
+         expect(!window.roomEditorHudVisible, "room editor hud hidden") &&
+         expect(!window.viewport.productDrawRoomEditorCursorVisible,
+                "room editor cursor draw hidden") &&
+         expect(window.activeRoom.loaded, "active room still loaded") &&
+         expect(window.activeRoom.roomId == activeRoomId, "active room id preserved") &&
+         expect(window.activeRoom.authoredFloorCount == activeFloorCount,
+                "active floor count preserved") &&
+         expect(window.activeRoom.authoredWallCount == activeWallCount,
+                "active wall count preserved") &&
+         expect(window.activeRoomCollision.querySurfaceCount == activeCollisionCount,
+                "active collision count preserved");
+}
+
+bool roomEditingLeaveRejectsWhenNotReady() {
+  iggy3d::ProductAppWindowState window;
+  window.interactionMode = iggy3d::ProductInteractionMode::Player;
+
+  const bool left =
+      iggy3d::recordProductRoomEditingLeave(window, "unit_leave_editor");
+
+  return expect(!left, "not-ready leave rejected") &&
+         expect(!window.roomEditing.ready, "not-ready leave keeps editing off") &&
+         expect(window.roomEditingLastOperationStatus == "room_editor_not_ready",
+                "not-ready leave status") &&
+         expect(window.roomEditorStatus == "room_editor_not_ready",
+                "not-ready editor status") &&
+         expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+                "not-ready leave keeps player mode");
+}
+
 bool returnToTitleResetsCreativeModeToPlayer() {
   iggy3d::ProductAppWindowState window;
   const iggy3d::ProductRoomEditingStartResult started =
@@ -318,6 +386,8 @@ bool receiptFieldsExposeInteractionModeProof() {
 int main() {
   const bool ok =
       defaultStateIsPlayerMode() && roomEditingStartSetsCreativeMode() &&
+      roomEditingLeaveReturnsPlayerModeAndPreservesActiveRoom() &&
+      roomEditingLeaveRejectsWhenNotReady() &&
       returnToTitleResetsCreativeModeToPlayer() &&
       gamepadSampleConversionIsStable() &&
       surfaceDerivationIsConservative() && gameplayChordTogglesAndLatches() &&

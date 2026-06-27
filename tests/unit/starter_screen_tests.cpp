@@ -28,19 +28,21 @@ bool starterActionOrderIsExact() {
 
 bool pauseActionOrderIsExact() {
   const std::vector<iggy3d::FrontendAction>& actions = iggy3d::pauseActionOrder();
-  return expect(actions.size() == 9U, "pause action count") &&
+  return expect(actions.size() == 10U, "pause action count") &&
          expect(actions[0] == iggy3d::FrontendAction::Resume, "resume first") &&
          expect(actions[1] == iggy3d::FrontendAction::EditRoom,
                 "edit room second") &&
-         expect(actions[2] == iggy3d::FrontendAction::Save, "save third") &&
-         expect(actions[3] == iggy3d::FrontendAction::SaveAndExit,
-                "save and exit fourth") &&
-         expect(actions[4] == iggy3d::FrontendAction::LoadSave, "load save fifth") &&
-         expect(actions[5] == iggy3d::FrontendAction::Settings, "settings sixth") &&
-         expect(actions[6] == iggy3d::FrontendAction::DevTools, "dev tools seventh") &&
-         expect(actions[7] == iggy3d::FrontendAction::ReturnToTitle,
-                "return to title eighth") &&
-         expect(actions[8] == iggy3d::FrontendAction::ExitGame, "exit game ninth");
+         expect(actions[2] == iggy3d::FrontendAction::LeaveEditor,
+                "leave editor third") &&
+         expect(actions[3] == iggy3d::FrontendAction::Save, "save fourth") &&
+         expect(actions[4] == iggy3d::FrontendAction::SaveAndExit,
+                "save and exit fifth") &&
+         expect(actions[5] == iggy3d::FrontendAction::LoadSave, "load save sixth") &&
+         expect(actions[6] == iggy3d::FrontendAction::Settings, "settings seventh") &&
+         expect(actions[7] == iggy3d::FrontendAction::DevTools, "dev tools eighth") &&
+         expect(actions[8] == iggy3d::FrontendAction::ReturnToTitle,
+                "return to title ninth") &&
+         expect(actions[9] == iggy3d::FrontendAction::ExitGame, "exit game tenth");
 }
 
 bool continueDisablesWithoutSave() {

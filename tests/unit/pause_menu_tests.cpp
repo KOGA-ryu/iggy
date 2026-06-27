@@ -14,45 +14,52 @@ bool expect(bool condition, std::string_view message) {
 
 bool rowOrderAndCommandsAreExact() {
   const iggy3d::PauseMenuModel model = iggy3d::buildPauseMenuModel(
-      iggy3d::PauseMenuContext{true, true, true, 1U, true, true},
+      iggy3d::PauseMenuContext{true, true, true, 1U, true, true, true},
       iggy3d::FrontendAction::SaveAndExit);
-  return expect(model.rows.size() == 9U, "pause row count") &&
+  return expect(model.rows.size() == 10U, "pause row count") &&
          expect(model.rows[0].action == iggy3d::FrontendAction::Resume,
                 "resume first") &&
          expect(model.rows[1].action == iggy3d::FrontendAction::EditRoom,
                 "edit room second") &&
          expect(model.rows[1].command == "pause_edit_room",
                 "edit room command") &&
-         expect(model.rows[2].action == iggy3d::FrontendAction::Save,
-                "save third") &&
-         expect(model.rows[3].action == iggy3d::FrontendAction::SaveAndExit,
-                "save exit fourth") &&
-         expect(model.rows[4].action == iggy3d::FrontendAction::LoadSave,
-                "load fifth") &&
-         expect(model.rows[5].action == iggy3d::FrontendAction::Settings,
-                "settings sixth") &&
-         expect(model.rows[6].action == iggy3d::FrontendAction::DevTools,
-                "dev seventh") &&
-         expect(model.rows[7].action == iggy3d::FrontendAction::ReturnToTitle,
-                "return eighth") &&
-         expect(model.rows[8].action == iggy3d::FrontendAction::ExitGame,
-                "exit ninth") &&
+         expect(model.rows[2].action == iggy3d::FrontendAction::LeaveEditor,
+                "leave editor third") &&
+         expect(model.rows[2].command == "pause_leave_editor",
+                "leave editor command") &&
+         expect(model.rows[3].action == iggy3d::FrontendAction::Save,
+                "save fourth") &&
+         expect(model.rows[4].action == iggy3d::FrontendAction::SaveAndExit,
+                "save exit fifth") &&
+         expect(model.rows[5].action == iggy3d::FrontendAction::LoadSave,
+                "load sixth") &&
+         expect(model.rows[6].action == iggy3d::FrontendAction::Settings,
+                "settings seventh") &&
+         expect(model.rows[7].action == iggy3d::FrontendAction::DevTools,
+                "dev eighth") &&
+         expect(model.rows[8].action == iggy3d::FrontendAction::ReturnToTitle,
+                "return ninth") &&
+         expect(model.rows[9].action == iggy3d::FrontendAction::ExitGame,
+                "exit tenth") &&
          expect(model.selectedCommand == "pause_save_and_exit",
                 "selected command");
 }
 
 bool disabledReasonsAreDeterministic() {
   const iggy3d::PauseMenuModel model = iggy3d::buildPauseMenuModel(
-      iggy3d::PauseMenuContext{true, true, true, 0U, false, false},
+      iggy3d::PauseMenuContext{true, true, true, 0U, false, false, false},
       iggy3d::FrontendAction::LoadSave);
   return expect(!model.rows[1].enabled, "edit room disabled without room") &&
          expect(model.rows[1].disabledReason == "active_room_unavailable",
                 "edit room disabled reason") &&
-         expect(!model.rows[4].enabled, "load disabled without save") &&
-         expect(model.rows[4].disabledReason == "no_compatible_save",
+         expect(!model.rows[2].enabled, "leave editor disabled before editing") &&
+         expect(model.rows[2].disabledReason == "room_editor_not_ready",
+                "leave editor disabled reason") &&
+         expect(!model.rows[5].enabled, "load disabled without save") &&
+         expect(model.rows[5].disabledReason == "no_compatible_save",
                 "load disabled reason") &&
-         expect(!model.rows[6].enabled, "dev disabled") &&
-         expect(model.rows[6].disabledReason == "developer_tools_disabled",
+         expect(!model.rows[7].enabled, "dev disabled") &&
+         expect(model.rows[7].disabledReason == "developer_tools_disabled",
                 "dev disabled reason") &&
          expect(!model.selectedEnabled, "selected load disabled") &&
          expect(model.selectedDisabledReason == "no_compatible_save",
@@ -61,7 +68,7 @@ bool disabledReasonsAreDeterministic() {
 
 bool resumeRouteReturnsToGameplay() {
   const iggy3d::PauseMenuModel model = iggy3d::buildPauseMenuModel(
-      iggy3d::PauseMenuContext{true, true, true, 1U, true, true},
+      iggy3d::PauseMenuContext{true, true, true, 1U, true, true, true},
       iggy3d::FrontendAction::Resume);
   const auto route = iggy3d::routePauseAction(model, iggy3d::FrontendAction::Resume);
   return expect(route.accepted, "resume accepted") &&
@@ -81,7 +88,7 @@ bool resumeRouteReturnsToGameplay() {
 
 bool editRoomRouteReturnsToGameplay() {
   const iggy3d::PauseMenuModel model = iggy3d::buildPauseMenuModel(
-      iggy3d::PauseMenuContext{true, true, true, 1U, true, true},
+      iggy3d::PauseMenuContext{true, true, true, 1U, true, true, true},
       iggy3d::FrontendAction::EditRoom);
   const auto route =
       iggy3d::routePauseAction(model, iggy3d::FrontendAction::EditRoom);
@@ -100,9 +107,34 @@ bool editRoomRouteReturnsToGameplay() {
                 "edit room status");
 }
 
+bool leaveEditorRouteReturnsToGameplayWhenReady() {
+  const iggy3d::PauseMenuModel ready = iggy3d::buildPauseMenuModel(
+      iggy3d::PauseMenuContext{true, true, true, 1U, true, true, true},
+      iggy3d::FrontendAction::LeaveEditor);
+  const iggy3d::PauseMenuModel notReady = iggy3d::buildPauseMenuModel(
+      iggy3d::PauseMenuContext{true, true, true, 1U, true, true, false},
+      iggy3d::FrontendAction::LeaveEditor);
+  const auto readyRoute =
+      iggy3d::routePauseAction(ready, iggy3d::FrontendAction::LeaveEditor);
+  const auto blockedRoute =
+      iggy3d::routePauseAction(notReady, iggy3d::FrontendAction::LeaveEditor);
+  return expect(readyRoute.accepted, "leave editor accepted") &&
+         expect(readyRoute.inputOwner == iggy3d::MenuOwner::Gameplay,
+                "leave editor owner") &&
+         expect(readyRoute.nextScreen == iggy3d::FrontendScreen::Gameplay,
+                "leave editor screen") &&
+         expect(!readyRoute.gameplayInputSuppressed,
+                "leave editor unsuppressed") &&
+         expect(readyRoute.status == "pause_leave_editor_requested",
+                "leave editor status") &&
+         expect(!blockedRoute.accepted, "leave editor blocked when not ready") &&
+         expect(blockedRoute.status == "room_editor_not_ready",
+                "leave editor blocked reason");
+}
+
 bool saveRoutesRequestTransitions() {
   const iggy3d::PauseMenuModel model = iggy3d::buildPauseMenuModel(
-      iggy3d::PauseMenuContext{true, true, true, 1U, true, true},
+      iggy3d::PauseMenuContext{true, true, true, 1U, true, true, true},
       iggy3d::FrontendAction::Save);
   const auto save = iggy3d::routePauseAction(model, iggy3d::FrontendAction::Save);
   const auto saveAndExit =
@@ -121,7 +153,7 @@ bool saveRoutesRequestTransitions() {
 
 bool childRoutesOpenExpectedScreens() {
   const iggy3d::PauseMenuModel model = iggy3d::buildPauseMenuModel(
-      iggy3d::PauseMenuContext{true, true, true, 1U, true, true},
+      iggy3d::PauseMenuContext{true, true, true, 1U, true, true, true},
       iggy3d::FrontendAction::Settings);
   const auto settings =
       iggy3d::routePauseAction(model, iggy3d::FrontendAction::Settings);
@@ -156,7 +188,7 @@ bool childRoutesOpenExpectedScreens() {
 
 bool titleAndExitRoutesRequestTransitions() {
   const iggy3d::PauseMenuModel model = iggy3d::buildPauseMenuModel(
-      iggy3d::PauseMenuContext{true, true, true, 1U, true, true},
+      iggy3d::PauseMenuContext{true, true, true, 1U, true, true, true},
       iggy3d::FrontendAction::ReturnToTitle);
   const auto title =
       iggy3d::routePauseAction(model, iggy3d::FrontendAction::ReturnToTitle);
@@ -182,7 +214,7 @@ bool titleAndExitRoutesRequestTransitions() {
 
 bool disabledLoadSaveAndUnsupportedActionsAreIgnored() {
   const iggy3d::PauseMenuModel model = iggy3d::buildPauseMenuModel(
-      iggy3d::PauseMenuContext{true, true, true, 0U, true, true},
+      iggy3d::PauseMenuContext{true, true, true, 0U, true, true, true},
       iggy3d::FrontendAction::LoadSave);
   const auto loadSave =
       iggy3d::routePauseAction(model, iggy3d::FrontendAction::LoadSave);
@@ -208,6 +240,7 @@ int main() {
   const bool ok = rowOrderAndCommandsAreExact() && disabledReasonsAreDeterministic() &&
                   resumeRouteReturnsToGameplay() && saveRoutesRequestTransitions() &&
                   editRoomRouteReturnsToGameplay() &&
+                  leaveEditorRouteReturnsToGameplayWhenReady() &&
                   childRoutesOpenExpectedScreens() &&
                   titleAndExitRoutesRequestTransitions() &&
                   disabledLoadSaveAndUnsupportedActionsAreIgnored();

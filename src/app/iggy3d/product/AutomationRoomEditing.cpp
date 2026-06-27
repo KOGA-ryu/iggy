@@ -91,6 +91,59 @@ void recordProductRoomEditingStart(ProductAppWindowState& window,
   }
 }
 
+bool recordProductRoomEditingLeave(ProductAppWindowState& window,
+                                   std::string_view operation) {
+  window.roomEditingLastOperation = std::string(operation);
+  window.roomEditingLastPrimitiveId = "none";
+  if (!window.roomEditing.ready) {  // branch-gate: BG-1006
+    window.roomEditingLastOperationStatus = "room_editor_not_ready";
+    window.roomEditingLastOperationReasonCode = "room_editor_not_ready";
+    window.roomEditingLastInputSource =
+        productRoomAuthoringInputSourceName(ProductRoomAuthoringInputSource::Script);
+    window.roomEditingLastOperationAccepted = false;
+    rejectProductRoomEditorNotReady(window, operation);
+    return false;
+  }
+
+  ProductRoomEditingState leftState;
+  leftState.status = "product_room_editing_left";
+  leftState.reasonCode = leftState.status;
+  copyRoomEditingStateToWindow(window, leftState);
+  window.roomEditingLastOperationStatus = "product_room_editing_left";
+  window.roomEditingLastOperationReasonCode = window.roomEditingLastOperationStatus;
+  window.roomEditingLastInputSource =
+      productRoomAuthoringInputSourceName(ProductRoomAuthoringInputSource::Script);
+  window.roomEditingLastOperationAccepted = true;
+  window.interactionMode = ProductInteractionMode::Player;
+  window.inputOwner = MenuOwner::Gameplay;
+  window.gameplayInputSuppressed = false;
+  window.roomEditorCursorReady = false;
+  window.roomEditorStatus = "room_editor_not_ready";
+  window.roomEditorReasonCode = "room_editor_not_ready";
+  window.roomEditorLastOperation = std::string(operation);
+  window.roomEditorLastOperationAccepted = true;
+  window.roomEditorLastPrimitiveId = "none";
+  window.roomEditorOverlayVisible = false;
+  window.roomEditorOverlayStatus = "room_editor_overlay_not_ready";
+  window.roomEditorOverlayReasonCode = window.roomEditorOverlayStatus;
+  window.roomEditorOverlayItemCount = 0;
+  window.roomEditorHudVisible = false;
+  window.roomEditorHudStatus = "room_editor_hud_not_ready";
+  window.roomEditorHudReasonCode = window.roomEditorHudStatus;
+  window.roomEditorHudLastOperation = std::string(operation);
+  window.roomEditorHudLastOperationAccepted = true;
+  window.roomEditorHudLastPrimitiveId = "none";
+  window.viewport.productDrawRoomEditorCursorVisible = false;
+  window.viewport.productDrawRoomEditorCursorCount = 0;
+  window.viewport.productDrawRoomEditorPreviewVisible = false;
+  window.viewport.productDrawRoomEditorPreviewCount = 0;
+  window.viewport.productRenderBridgeRoomEditorCursorVisible = false;
+  window.viewport.productRenderBridgeRoomEditorCursorCount = 0;
+  window.viewport.productRenderBridgeRoomEditorPreviewVisible = false;
+  window.viewport.productRenderBridgeRoomEditorPreviewCount = 0;
+  return true;
+}
+
 void recordProductRoomEditingOperation(
     ProductAppWindowState& window,
     std::string_view operation,

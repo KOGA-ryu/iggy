@@ -113,6 +113,9 @@ bool stableNamesArePacketNames() {
          expect(iggy3d::frontendActionName(iggy3d::FrontendAction::EditRoom) ==
                     "edit_room",
                 "edit room name") &&
+         expect(iggy3d::frontendActionName(iggy3d::FrontendAction::LeaveEditor) ==
+                    "leave_editor",
+                "leave editor name") &&
          expect(iggy3d::frontendDevToolsCategoryName(
                     iggy3d::FrontendDevToolsCategory::WorldEditor) == "world_editor",
                 "world editor category name");

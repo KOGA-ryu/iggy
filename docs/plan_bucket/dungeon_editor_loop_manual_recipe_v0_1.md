@@ -147,7 +147,9 @@ Then run this controller-focused manual path:
 
 6. Use the creative controls to preview and confirm at least one floor or wall
    edit.
-7. Press and hold `LT + RT + L3 + R3` once to return to player mode.
+7. Open Pause and select `Leave Editor` to stop editing while staying in
+   gameplay. The active room keeps already-applied edits, editor overlay and
+   phantom preview feedback hide, and `interaction_mode` returns to `player`.
 8. In player mode, controller movement should control the player again instead
    of the editor cursor.
 9. Press and release the chord again if you want to return to creative mode
@@ -160,11 +162,12 @@ The mode chord is deliberately handled before ordinary controller actions. When
 the full chord is active, normal controller action routing is consumed for that
 frame so the chord does not also place, preview, move, or interact.
 
-Mode lifecycle is intentionally narrow today: entering `Edit Room` sets
-`interaction_mode=creative`, while Save And Exit and Return To Title reset the
-starter/title state to `interaction_mode=player`. There is not yet a separate
-"leave editor but stay in gameplay" command; closing a pause overlay while room
-editing remains ready does not by itself leave the editor.
+Mode lifecycle is intentionally explicit: entering `Edit Room` sets
+`interaction_mode=creative`; selecting `Leave Editor` from Pause exits room
+editing, clears editor preview/overlay feedback, and returns to
+`interaction_mode=player` while gameplay stays active. Save And Exit and Return
+To Title also reset the starter/title state to `interaction_mode=player`.
+Closing a pause overlay with Resume does not mean Leave Editor.
 
 Current mode feedback is receipt/proof based:
 
@@ -310,6 +313,7 @@ active:
 | `F` or gamepad west | Build/update phantom preview at current cursor |
 | `Enter` or gamepad south | Confirm active phantom preview |
 | `C` or gamepad east | Cancel active phantom preview |
+| Pause -> Leave Editor | Exit editing, hide editor feedback, return to Player mode |
 | `Space` | Place immediately with the active tool |
 | `Delete` | Delete the primitive under the cursor/tool target |
 | `Z` | Undo |
@@ -347,6 +351,7 @@ The focused proof map for the current editor loop is:
 | `product_room_editor_action_controller_tests` | Editor actions change cursor/tool/direction state and edit documents correctly |
 | `product_window_input_frame_tests` | Live product mouse click path headlessly: creative click picks cursor and builds phantom preview without mutation |
 | `product_controller_input_smoke` | No-window controller sample injection, player/creative mode toggle receipts, and creative editor routing |
+| `product_ascii_map_smoke` | Leave Editor exits editing, returns player mode, hides editor feedback, and preserves the edited active room |
 | `product_editor_wall_direction_hotkey_smoke` | Wall direction hotkey persists distinct Up and Right wall geometry |
 | `product_editor_combined_save_continue_smoke` | Direct floor+wall edits persist together through Save And Exit and Continue |
 | `product_continued_room_movement_smoke` | Continued edited room uses restored collision for exploration |
@@ -667,6 +672,29 @@ Before explicit confirm, authored room and collision counts should match the
 pre-click state. After explicit confirm, those counts should update through the
 normal room-editing operation receipts. After cancel, they should remain
 unchanged and preview counts should return to zero.
+
+After Pause -> Leave Editor, expect:
+
+```text
+frontend_screen=gameplay
+gameplay_active=true
+interaction_mode=player
+interaction_mode_hud_visible=true
+interaction_mode_hud_mode=player
+input_owner=gameplay
+gameplay_input_suppressed=false
+room_editing_ready=false
+room_editing_status=product_room_editing_left
+room_editor_cursor_ready=false
+room_editor_overlay_visible=false
+room_editor_preview_visible=false
+room_editor_hud_visible=false
+active_room_id=custom_dungeon_draft
+active_room_authored_floor_count=<latest applied floor count>
+active_room_authored_wall_count=<latest applied wall count>
+active_room_collision_ready=true
+product_vulkan_room_mesh_cpu_ready=true
+```
 
 The visual proof smoke additionally ties the PPM artifact to:
 

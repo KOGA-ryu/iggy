@@ -200,6 +200,17 @@ ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& contex
     return {true, started.ok};
   }
   // branch-gate: BG-1017
+  if (frontend.selectedAction == FrontendAction::LeaveEditor) {  // branch-gate: BG-1067
+    const bool left = recordProductRoomEditingLeave(window, "pause_leave_editor");
+    frontend.status =
+        left ? "pause_leave_editor_requested" : "pause_leave_editor_failed";  // branch-gate: BG-1067
+    // branch-gate: BG-1017
+    if (left) {
+      closeProductOverlayToGameplayTransition(frontend, window);
+    }
+    return {true, left};
+  }
+  // branch-gate: BG-1017
   if (frontend.selectedAction == FrontendAction::Settings) {
     openProductPauseSettingsTransition(frontend, window, context.settingsTab);
     return {true, true};

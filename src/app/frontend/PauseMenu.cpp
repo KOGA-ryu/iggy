@@ -17,6 +17,11 @@ MenuRowModel makePauseRow(FrontendAction action, const PauseMenuContext& context
       row.enabled = context.pauseOpen && context.activeRoomEditable;
       row.disabledReason = row.enabled ? "none" : "active_room_unavailable";
       break;
+    case FrontendAction::LeaveEditor:
+      row.enabled = context.pauseOpen && context.roomEditingReady;
+      row.disabledReason =
+          row.enabled ? "none" : "room_editor_not_ready";  // branch-gate: BG-1066
+      break;
     case FrontendAction::Save:
       row.enabled = context.runtimeSessionAvailable && context.saveRootWritable;
       row.disabledReason = row.enabled ? "none" : "save_unavailable";
@@ -109,6 +114,8 @@ std::string_view pauseCommandName(FrontendAction action) {
       return "pause_resume";
     case FrontendAction::EditRoom:
       return "pause_edit_room";
+    case FrontendAction::LeaveEditor:
+      return "pause_leave_editor";
     case FrontendAction::Save:
       return "pause_save";
     case FrontendAction::SaveAndExit:
@@ -175,6 +182,15 @@ FrontendRouteResult routePauseAction(const PauseMenuModel& model,
                                 false,
                                 false,
                                 "pause_edit_room_requested",
+                                action);
+    case FrontendAction::LeaveEditor:
+      return acceptedPauseRoute(MenuOwner::Gameplay,
+                                FrontendScreen::Gameplay,
+                                FrontendScreen::Gameplay,
+                                FrontendTransitionRequest::None,
+                                false,
+                                false,
+                                "pause_leave_editor_requested",
                                 action);
     case FrontendAction::Save:
       return acceptedPauseRoute(MenuOwner::Pause,

@@ -23,6 +23,7 @@ struct PauseMenuContext {
   std::uint64_t compatibleSaveCount = 0;
   bool developerToolsEnabled = true;
   bool activeRoomEditable = false;
+  bool roomEditingReady = false;
 };
 
 struct PauseMenuModel {

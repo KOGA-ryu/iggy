@@ -55,6 +55,9 @@ void recordProductRoomEditingStart(ProductAppWindowState& window,
                                    const ProductRoomEditingStartResult& result,
                                    std::string_view operation = "room_edit.start");
 
+bool recordProductRoomEditingLeave(ProductAppWindowState& window,
+                                   std::string_view operation = "pause_leave_editor");
+
 void recordProductRoomEditingOperation(
     ProductAppWindowState& window,
     std::string_view operation,

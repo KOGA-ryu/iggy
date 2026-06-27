@@ -99,6 +99,7 @@ FrontendRouteResult routeStarterAction(const StarterScreenModel& model,
     case FrontendAction::RestoreDefaults:
     case FrontendAction::Resume:
     case FrontendAction::EditRoom:
+    case FrontendAction::LeaveEditor:
     case FrontendAction::Save:
     case FrontendAction::SaveAndExit:
     case FrontendAction::ReturnToTitle:
@@ -153,6 +154,7 @@ FrontendScreen starterChildScreenForAction(FrontendAction action) {
     case FrontendAction::RestoreDefaults:
     case FrontendAction::Resume:
     case FrontendAction::EditRoom:
+    case FrontendAction::LeaveEditor:
     case FrontendAction::Save:
     case FrontendAction::SaveAndExit:
     case FrontendAction::ReturnToTitle:
