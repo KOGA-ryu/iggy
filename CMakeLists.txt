@@ -276,6 +276,11 @@ if(IGGY3D_BUILD_TOOLS)
   add_executable(iggy3d_collision_probe apps/iggy3d_collision_probe/main.cpp)
   target_link_libraries(iggy3d_collision_probe PRIVATE iggy3d)
   iggy3d_apply_warnings(iggy3d_collision_probe)
+
+  add_executable(iggy3d_physics_kernel_bench
+    apps/iggy3d_physics_kernel_bench/main.cpp)
+  target_link_libraries(iggy3d_physics_kernel_bench PRIVATE iggy3d)
+  iggy3d_apply_warnings(iggy3d_physics_kernel_bench)
 endif()
 
 include(cmake/iggy3d_install.cmake)

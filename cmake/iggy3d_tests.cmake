@@ -870,6 +870,23 @@ if(TARGET iggy3d_collision_probe)
     LABELS "smoke;runtime;collision;package;iggy3d")
 endif()
 
+if(TARGET iggy3d_physics_kernel_bench)
+  add_executable(physics_kernel_benchmark_cli_smoke
+    tests/smoke/physics_kernel_benchmark_cli_smoke.cpp)
+  target_link_libraries(physics_kernel_benchmark_cli_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(physics_kernel_benchmark_cli_smoke)
+  target_compile_definitions(physics_kernel_benchmark_cli_smoke
+    PRIVATE
+      IGGY3D_PHYSICS_KERNEL_BENCH_PATH="$<TARGET_FILE:iggy3d_physics_kernel_bench>")
+  add_dependencies(physics_kernel_benchmark_cli_smoke
+    iggy3d_physics_kernel_bench)
+  add_test(NAME physics_kernel_benchmark_cli_smoke
+           COMMAND "$<TARGET_FILE:physics_kernel_benchmark_cli_smoke>")
+  set_tests_properties(physics_kernel_benchmark_cli_smoke PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    LABELS "smoke;runtime;physics;kernel_benchmark;cli;iggy3d")
+endif()
+
 if(IGGY3D_ENABLE_VULKAN_SMOKE)
   function(iggy3d_add_vulkan_backend_smoke_sources target_name)
     if(NOT IGGY3D_BUILD_VULKAN_BACKEND)
