@@ -707,6 +707,10 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      floatReceiptValue(window.gameplayMovementVerticalDeltaMeters));
   appendReceiptField(receipt, "gameplay_movement_grade_percent",
                      floatReceiptValue(window.gameplayMovementGradePercent));
+  appendReceiptField(receipt, "gameplay_movement_profile",
+                     window.gameplayMovementProfile);
+  appendReceiptField(receipt, "gameplay_movement_max_speed_mps",
+                     floatReceiptValue(window.gameplayMovementMaxSpeedMetersPerSecond));
   appendReceiptField(receipt, "movement_debug_hud_visible", movementHud.visible);
   appendReceiptField(receipt, "movement_debug_hud_line_count",
                      static_cast<std::uint64_t>(movementHud.lines.size()));

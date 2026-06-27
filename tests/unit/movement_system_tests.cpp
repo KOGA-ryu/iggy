@@ -164,6 +164,16 @@ iggy3d::CommandRecord acceptedMoveCommand() {
   return command;
 }
 
+bool movementParamsDefaultsRemainRuntimeOwned() {
+  const iggy3d::MovementParams params;
+  return expect(params.maxSpeedMetersPerSecond == 3.0F,
+                "runtime movement max speed default") &&
+         expect(params.radiusMeters == 0.30F, "runtime movement radius default") &&
+         expect(params.heightMeters == 1.80F, "runtime movement height default") &&
+         expect(params.groundSnapMeters == 0.60F,
+                "runtime movement ground snap default");
+}
+
 bool acceptedMoveToKeyUpdatesPlayerPosition() {
   iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.0F});
   iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
@@ -627,7 +637,8 @@ bool physicsPlannerWithoutSurfacesUsesLegacyNoCollisionPath() {
 }  // namespace
 
 int main() {
-  const bool ok = acceptedMoveToKeyUpdatesPlayerPosition() && tacticalMoveUsesSameMutationPath() &&
+  const bool ok = movementParamsDefaultsRemainRuntimeOwned() &&
+                  acceptedMoveToKeyUpdatesPlayerPosition() && tacticalMoveUsesSameMutationPath() &&
                   acceptedCommandConversionPreservesPayload() &&
                   missingPointConversionBlocksAsNonfiniteDestination() &&
                   blockedCasesDoNotMutateWorld() && kinematicFlatMovementSnapsAndMutatesOnce() &&

@@ -149,6 +149,8 @@ int main() {
       hasField(fields, "mouse_capture_reason_code", "mouse_capture_no_window") &&
       hasField(fields, "mouse_capture_mode", "no_window") &&
       hasField(fields, "mouse_capture_input_owner", "gameplay") &&
+      hasField(fields, "gameplay_movement_profile", "manual_first_person") &&
+      hasField(fields, "gameplay_movement_max_speed_mps", "1.600") &&
       hasField(fields, "target_discovered", "false") &&
       hasField(fields, "gameplay_reach_gate", "not_attempted") &&
       hasField(fields, "attack_executed", "false") &&

@@ -19,6 +19,10 @@
 namespace iggy3d {
 namespace {
 
+constexpr std::string_view kManualFirstPersonMovementProfile = "manual_first_person";
+constexpr float kManualFirstPersonMaxSpeedMetersPerSecond = 1.6F;
+constexpr float kManualFirstPersonInputStepSeconds = 1.0F / 60.0F;
+
 struct ProductInteractionOutcomeSnapshot {
   EntityId target;
   PlayerSlotId playerSlot = kInvalidPlayerSlotId;
@@ -157,6 +161,12 @@ void clearProductMovementDebug(ProductAppWindowState& window) {
   window.gameplayMovementHorizontalDistanceMeters = 0.0F;
   window.gameplayMovementVerticalDeltaMeters = 0.0F;
   window.gameplayMovementGradePercent = 0.0F;
+}
+
+void recordProductMovementProfile(ProductAppWindowState& window) {
+  window.gameplayMovementProfile = std::string{kManualFirstPersonMovementProfile};
+  window.gameplayMovementMaxSpeedMetersPerSecond =
+      kManualFirstPersonMaxSpeedMetersPerSecond;
 }
 
 bool productMovementDebugChangedPosition(const ProductAppWindowState& window) {
@@ -455,9 +465,11 @@ void submitProductMove(Session& session,
   if (moveX == 0.0F && moveY == 0.0F) {
     return;
   }
+  recordProductMovementProfile(window);
   const float magnitude = std::sqrt(moveX * moveX + moveY * moveY);
   const float scale = magnitude > 1.0F ? 1.0F / magnitude : 1.0F;
-  constexpr float kStepMeters = 0.5F;
+  constexpr float kStepMeters = kManualFirstPersonMaxSpeedMetersPerSecond *
+                                kManualFirstPersonInputStepSeconds;
   Vec3 destination = actor->transform.position;
   destination.x += moveX * scale * kStepMeters;
   destination.z += moveY * scale * kStepMeters;

@@ -288,6 +288,8 @@ struct ProductAppWindowState {
   float gameplayMovementHorizontalDistanceMeters = 0.0F;
   float gameplayMovementVerticalDeltaMeters = 0.0F;
   float gameplayMovementGradePercent = 0.0F;
+  std::string gameplayMovementProfile = "manual_first_person";
+  float gameplayMovementMaxSpeedMetersPerSecond = 1.6F;
   bool gameplayCollisionSurfacesUsed = false;
   std::uint64_t gameplayCollisionSurfaceCount = 0;
   std::string gameplayTickReasonCode = "not_requested";

@@ -15,6 +15,10 @@
 
 namespace {
 
+constexpr float kExpectedManualFirstPersonSpeedMetersPerSecond = 1.6F;
+constexpr float kExpectedManualFirstPersonStepMeters =
+    kExpectedManualFirstPersonSpeedMetersPerSecond / 60.0F;
+
 bool expect(bool condition, std::string_view message) {
   if (!condition) {
     std::cerr << "FAIL: " << message << '\n';
@@ -92,11 +96,17 @@ bool productMoveUsesTunedManualStep() {
          expect(window.physicsMovementPlannerStatus ==
                     "physics_movement_planner_disabled",
                 "default physics planner status") &&
+         expect(window.gameplayMovementProfile == "manual_first_person",
+                "manual movement profile") &&
+         expect(nearlyEqual(window.gameplayMovementMaxSpeedMetersPerSecond,
+                            kExpectedManualFirstPersonSpeedMetersPerSecond),
+                "manual movement speed") &&
          expect(nearlyEqual(window.gameplayMovementHorizontalDistanceMeters,
-                            0.5F),
-                "horizontal distance is tuned step") &&
+                            kExpectedManualFirstPersonStepMeters),
+                "horizontal distance is profile step") &&
          expect(nearlyEqual(final.x, start.x), "x unchanged") &&
-         expect(nearlyEqual(final.z - start.z, 0.5F), "z moved tuned step");
+         expect(nearlyEqual(final.z - start.z, kExpectedManualFirstPersonStepMeters),
+                "z moved profile step");
 }
 
 bool productMoveNormalizesDiagonalToTunedStep() {
@@ -117,9 +127,11 @@ bool productMoveNormalizesDiagonalToTunedStep() {
   return expect(window.gameplayCommandAccepted, "diagonal move accepted") &&
          expect(window.gameplayMovementStatus == "moved",
                 "diagonal movement status") &&
+         expect(window.gameplayMovementProfile == "manual_first_person",
+                "diagonal movement profile") &&
          expect(nearlyEqual(window.gameplayMovementHorizontalDistanceMeters,
-                            0.5F),
-                "diagonal movement normalizes to tuned step");
+                            kExpectedManualFirstPersonStepMeters),
+                "diagonal movement normalizes to profile step");
 }
 
 bool defaultOffMoveWithCollisionSurfacesUsesLegacyPath() {
