@@ -1,4 +1,4 @@
-#include "app/iggy3d/DefaultWorldTemplate.hpp"
+#include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 
 namespace iggy3d {
 

@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductWorldCreation.hpp"
+#include "app/iggy3d/world/ProductWorldCreation.hpp"
 
 #include <cctype>
 #include <utility>

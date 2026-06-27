@@ -4,7 +4,7 @@
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
-#include "app/iggy3d/DefaultWorldTemplate.hpp"
+#include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 

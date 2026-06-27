@@ -3,7 +3,7 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
-#include "app/iggy3d/DefaultWorldTemplate.hpp"
+#include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ProductGameplayProjectionRefresh.hpp"
 #include "app/iggy3d/window/ProductWindowRendererLifecycle.hpp"

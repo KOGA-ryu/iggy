@@ -31,7 +31,7 @@ target_sources(iggy3d
     src/app/iggy3d/AsciiRoomAssetText.cpp
     src/app/iggy3d/AsciiRoomToEditableRoom.cpp
     src/app/iggy3d/AsciiRoomToRoomAsset.cpp
-    src/app/iggy3d/DefaultWorldTemplate.cpp
+    src/app/iggy3d/world/DefaultWorldTemplate.cpp
     src/app/iggy3d/EditableRoomToAuthoredRoom.cpp
     src/app/iggy3d/FrontendActionExecutor.cpp
     src/app/iggy3d/OpeningMenuView.cpp
@@ -60,7 +60,7 @@ target_sources(iggy3d
     src/app/iggy3d/window/ProductMouseCapturePolicy.cpp
     src/app/iggy3d/ProductMovementDebugHud.cpp
     src/app/iggy3d/ProductNpcBehaviorDebugHud.cpp
-    src/app/iggy3d/ProductPackageSessionSeed.cpp
+    src/app/iggy3d/world/ProductPackageSessionSeed.cpp
     src/app/iggy3d/ProductAppOperations.cpp
     src/app/iggy3d/ProductAppOptions.cpp
     src/app/iggy3d/product/Automation.cpp
@@ -95,7 +95,7 @@ target_sources(iggy3d
     src/app/iggy3d/window/ProductWindowInputFrame.cpp
     src/app/iggy3d/window/ProductWindowLoop.cpp
     src/app/iggy3d/window/ProductWindowRendererLifecycle.cpp
-    src/app/iggy3d/ProductWorldCreation.cpp
+    src/app/iggy3d/world/ProductWorldCreation.cpp
     src/app/iggy3d/ReceiptBuilder.cpp
     src/app/iggy3d/save/SaveBridge.cpp
     src/app/frontend/FrontendState.cpp

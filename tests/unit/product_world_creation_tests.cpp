@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductWorldCreation.hpp"
+#include "app/iggy3d/world/ProductWorldCreation.hpp"
 #include "content/PackageLoader.hpp"
 #include "runtime/session/Session.hpp"
 

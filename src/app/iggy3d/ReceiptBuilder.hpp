@@ -4,7 +4,7 @@
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/input/InputAction.hpp"
 #include "app/frontend/MenuInput.hpp"
-#include "app/iggy3d/DefaultWorldTemplate.hpp"
+#include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductActiveRoomState.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"

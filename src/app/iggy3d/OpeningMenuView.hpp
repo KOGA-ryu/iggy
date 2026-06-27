@@ -6,7 +6,7 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
-#include "app/iggy3d/DefaultWorldTemplate.hpp"
+#include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductInteractionModeHud.hpp"
 #include "app/iggy3d/ProductMovementDebugHud.hpp"
