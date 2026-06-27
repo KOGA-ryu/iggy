@@ -8,6 +8,8 @@
 
 namespace iggy3d {
 
+class PhysicsShapeStore;
+
 enum class PhysicsAabbColliderStatus : std::uint8_t {
   Valid,
   MissingDescriptor,
@@ -15,6 +17,9 @@ enum class PhysicsAabbColliderStatus : std::uint8_t {
   InvalidBodyPosition,
   InvalidCenterOffset,
   InvalidHalfExtents,
+  MissingShapeStore,
+  ShapeNotFound,
+  InvalidShapeKind,
   Built,
 };
 
@@ -52,6 +57,11 @@ bool isPositiveFinitePhysicsHalfExtents(Vec3 halfExtentsMeters);
 bool isValidPhysicsAabbCollider(const PhysicsAabbCollider& collider);
 PhysicsAabbColliderResult buildPhysicsAabbCollider(
     const PhysicsAabbColliderDescriptor* descriptor,
+    Vec3 bodyPositionMeters);
+PhysicsAabbColliderResult buildPhysicsAabbColliderFromShape(
+    const PhysicsShapeStore* shapeStore,
+    PhysicsShapeId shapeId,
+    PhysicsBodyId bodyId,
     Vec3 bodyPositionMeters);
 bool physicsAabbOverlaps(const PhysicsAabbCollider& lhs,
                          const PhysicsAabbCollider& rhs);

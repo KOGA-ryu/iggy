@@ -164,6 +164,7 @@ target_sources(iggy3d
     src/runtime/physics/PhysicsAabbContact.cpp
     src/runtime/physics/PhysicsBodyStore.cpp
     src/runtime/physics/PhysicsBroadphase.cpp
+    src/runtime/physics/PhysicsShapeStore.cpp
     src/runtime/physics/PhysicsStep.cpp
     src/runtime/physics/PhysicsTypes.cpp
     src/runtime/session/SessionTick.cpp

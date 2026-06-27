@@ -50,6 +50,17 @@ std::string_view physicsBodyMotionKindName(PhysicsBodyMotionKind kind) {
   return enumName(kind, kNames, "unknown");
 }
 
+std::string_view physicsShapeKindName(PhysicsShapeKind kind) {
+  static constexpr std::array<std::string_view, 5> kNames{
+      "box",
+      "capsule",
+      "floor_span",
+      "wall_slab",
+      "trigger_aabb",
+  };
+  return enumName(kind, kNames, "unknown");
+}
+
 std::string_view physicsStatusName(PhysicsStatus status) {
   static constexpr std::array<std::string_view, 10> kNames{
       "physics_body_valid",
@@ -67,6 +78,10 @@ std::string_view physicsStatusName(PhysicsStatus status) {
 }
 
 bool isValidPhysicsBodyId(PhysicsBodyId id) {
+  return id.value != 0U;
+}
+
+bool isValidPhysicsShapeId(PhysicsShapeId id) {
   return id.value != 0U;
 }
 

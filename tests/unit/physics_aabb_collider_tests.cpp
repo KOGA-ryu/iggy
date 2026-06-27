@@ -1,4 +1,5 @@
 #include "runtime/physics/PhysicsAabbCollider.hpp"
+#include "runtime/physics/PhysicsShapeStore.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -43,6 +44,18 @@ bool stableNamesAreLowerSnake() {
                     iggy3d::PhysicsAabbColliderStatus::InvalidHalfExtents) ==
                     "physics_aabb_invalid_half_extents",
                 "invalid extents status name") &&
+         expect(iggy3d::physicsAabbColliderStatusName(
+                    iggy3d::PhysicsAabbColliderStatus::MissingShapeStore) ==
+                    "physics_aabb_missing_shape_store",
+                "missing shape store status name") &&
+         expect(iggy3d::physicsAabbColliderStatusName(
+                    iggy3d::PhysicsAabbColliderStatus::ShapeNotFound) ==
+                    "physics_aabb_shape_not_found",
+                "shape not found status name") &&
+         expect(iggy3d::physicsAabbColliderStatusName(
+                    iggy3d::PhysicsAabbColliderStatus::InvalidShapeKind) ==
+                    "physics_aabb_invalid_shape_kind",
+                "invalid shape kind status name") &&
          expect(iggy3d::physicsAabbColliderStatusName(
                     iggy3d::PhysicsAabbColliderStatus::Built) ==
                     "physics_aabb_built",
@@ -127,6 +140,102 @@ bool buildColliderCreatesWorldBoundsFromBodyPositionAndOffset() {
                 "bounds max");
 }
 
+bool shapeStoreHelperBuildsIdenticalBounds() {
+  iggy3d::PhysicsAabbColliderDescriptor input = descriptor({7U});
+  input.sensor = true;
+
+  iggy3d::PhysicsShapeStore store;
+  iggy3d::PhysicsShapeDescriptor shape;
+  shape.kind = iggy3d::PhysicsShapeKind::Box;
+  shape.localCenterOffsetMeters = input.shape.localCenterOffsetMeters;
+  shape.halfExtentsMeters = input.shape.halfExtentsMeters;
+  shape.sensor = input.sensor;
+
+  const iggy3d::PhysicsShapeStoreResult added = store.add(shape);
+  const iggy3d::PhysicsAabbColliderResult descriptorResult =
+      iggy3d::buildPhysicsAabbCollider(&input, {2.0F, 3.0F, 4.0F});
+  const iggy3d::PhysicsAabbColliderResult shapeResult =
+      iggy3d::buildPhysicsAabbColliderFromShape(&store,
+                                                added.id,
+                                                input.bodyId,
+                                                {2.0F, 3.0F, 4.0F});
+
+  return expect(added.ok, "shape add ok") &&
+         expect(descriptorResult.ok, "descriptor build ok") &&
+         expect(shapeResult.ok, "shape build ok") &&
+         expect(shapeResult.reasonCode == "physics_aabb_built",
+                "shape build reason") &&
+         expect(shapeResult.collider.bodyId.value ==
+                    descriptorResult.collider.bodyId.value,
+                "shape body id") &&
+         expect(shapeResult.collider.sensor == descriptorResult.collider.sensor,
+                "shape sensor") &&
+         expect(iggy3d::nearlyEqual(shapeResult.collider.worldCenterMeters,
+                                    descriptorResult.collider.worldCenterMeters),
+                "shape world center") &&
+         expect(iggy3d::nearlyEqual(shapeResult.collider.halfExtentsMeters,
+                                    descriptorResult.collider.halfExtentsMeters),
+                "shape half extents") &&
+         expect(iggy3d::nearlyEqual(shapeResult.collider.bounds.min,
+                                    descriptorResult.collider.bounds.min),
+                "shape bounds min") &&
+         expect(iggy3d::nearlyEqual(shapeResult.collider.bounds.max,
+                                    descriptorResult.collider.bounds.max),
+                "shape bounds max");
+}
+
+bool shapeStoreHelperRejectsBadInputs() {
+  iggy3d::PhysicsShapeStore store;
+  const iggy3d::PhysicsShapeStoreResult box = store.add({
+      iggy3d::PhysicsShapeKind::Box,
+      {0.25F, 0.50F, -0.25F},
+      {0.50F, 1.00F, 0.75F},
+      false,
+  });
+  const iggy3d::PhysicsShapeStoreResult capsule = store.add({
+      iggy3d::PhysicsShapeKind::Capsule,
+      {},
+      {0.50F, 1.00F, 0.50F},
+      false,
+  });
+
+  const iggy3d::PhysicsAabbColliderResult missingStore =
+      iggy3d::buildPhysicsAabbColliderFromShape(nullptr,
+                                                box.id,
+                                                {1U},
+                                                {});
+  const iggy3d::PhysicsAabbColliderResult missingShape =
+      iggy3d::buildPhysicsAabbColliderFromShape(&store,
+                                                {99U},
+                                                {1U},
+                                                {});
+  const iggy3d::PhysicsAabbColliderResult invalidBody =
+      iggy3d::buildPhysicsAabbColliderFromShape(&store,
+                                                box.id,
+                                                {0U},
+                                                {});
+  const iggy3d::PhysicsAabbColliderResult invalidKind =
+      iggy3d::buildPhysicsAabbColliderFromShape(&store,
+                                                capsule.id,
+                                                {1U},
+                                                {});
+
+  return expect(box.ok, "box shape add ok") &&
+         expect(capsule.ok, "capsule shape add ok") &&
+         expect(!missingStore.ok, "missing store rejected") &&
+         expect(missingStore.reasonCode == "physics_aabb_missing_shape_store",
+                "missing store reason") &&
+         expect(!missingShape.ok, "missing shape rejected") &&
+         expect(missingShape.reasonCode == "physics_aabb_shape_not_found",
+                "missing shape reason") &&
+         expect(!invalidBody.ok, "invalid body rejected") &&
+         expect(invalidBody.reasonCode == "physics_aabb_invalid_body_id",
+                "invalid body reason") &&
+         expect(!invalidKind.ok, "invalid kind rejected") &&
+         expect(invalidKind.reasonCode == "physics_aabb_invalid_shape_kind",
+                "invalid kind reason");
+}
+
 bool overlapUsesValidAabbBounds() {
   const iggy3d::PhysicsAabbCollider lhs =
       colliderAt({1U}, {0.0F, 0.0F, 0.0F}, {1.0F, 1.0F, 1.0F});
@@ -175,6 +284,8 @@ int main() {
                   positiveFiniteHalfExtentsRejectInvalidValues() &&
                   descriptorValidationRejectsBadInputs() &&
                   buildColliderCreatesWorldBoundsFromBodyPositionAndOffset() &&
+                  shapeStoreHelperBuildsIdenticalBounds() &&
+                  shapeStoreHelperRejectsBadInputs() &&
                   overlapUsesValidAabbBounds() &&
                   pointContainmentUsesValidColliderBounds();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
