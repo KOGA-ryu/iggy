@@ -21,6 +21,13 @@ struct SessionRunnerRunRequest {
   bool stopWhenIdle = true;
   bool stopWhenComplete = true;
   const SpatialSurfaceSet* collisionSurfaces = nullptr;
+  bool usePhysicsMovePlanner = false;
+};
+
+struct SessionRunnerStepRequest {
+  Session* session = nullptr;
+  const SpatialSurfaceSet* collisionSurfaces = nullptr;
+  bool usePhysicsMovePlanner = false;
 };
 
 struct SessionRunnerRunResult {
@@ -34,6 +41,7 @@ struct SessionRunnerRunResult {
 };
 
 SessionRunnerRunResult runSession(SessionRunnerRunRequest request);
+SessionRunnerRunResult stepPausedOnce(SessionRunnerStepRequest request);
 SessionRunnerRunResult stepPausedOnce(Session& session);
 
 }  // namespace iggy3d

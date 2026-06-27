@@ -96,6 +96,8 @@ public:
   StatusResult stepOneTickWithOptions(const SessionTickOptions& options);
   StatusResult runUntilIdle(std::uint32_t maxTicks,
                             const SpatialSurfaceSet* collisionSurfaces = nullptr);
+  StatusResult runUntilIdleWithOptions(std::uint32_t maxTicks,
+                                       const SessionTickOptions& options);
 
   SessionResetResult resetToBaseline();
   SessionLoadResult replaceStateFromLoad(SessionState loadedState);

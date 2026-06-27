@@ -75,7 +75,9 @@ SessionRunnerRunResult runSession(SessionRunnerRunRequest request) {
     }
 
     const CommandTick before = session.state().clock.tickIndex;
-    const StatusResult tick = session.tick(request.collisionSurfaces);
+    const StatusResult tick =
+        session.tickWithOptions(SessionTickOptions{request.collisionSurfaces,
+                                                  request.usePhysicsMovePlanner});
     if (tick.status != ResultStatus::Ok) {
       result.status = SessionRunnerStatus::Failed;
       result.diagnostic = tick.error.code;
@@ -100,7 +102,13 @@ SessionRunnerRunResult runSession(SessionRunnerRunRequest request) {
   return result;
 }
 
-SessionRunnerRunResult stepPausedOnce(Session& session) {
+SessionRunnerRunResult stepPausedOnce(SessionRunnerStepRequest request) {
+  // branch-gate: BG-1104
+  if (request.session == nullptr) {
+    return finish(SessionRunnerStatus::Failed, nullptr, "missing session");
+  }
+
+  Session& session = *request.session;
   if (session.state().clock.mode != ClockMode::Paused) {
     return finish(SessionRunnerStatus::Failed, &session, "step requires paused clock");
   }
@@ -115,7 +123,9 @@ SessionRunnerRunResult stepPausedOnce(Session& session) {
   SessionRunnerRunResult result;
   result.ticksAttempted = 1;
   const CommandTick before = session.state().clock.tickIndex;
-  const StatusResult stepped = session.stepOneTick();
+  const StatusResult stepped =
+      session.stepOneTickWithOptions(SessionTickOptions{request.collisionSurfaces,
+                                                       request.usePhysicsMovePlanner});
   if (stepped.status != ResultStatus::Ok) {
     return finish(SessionRunnerStatus::Failed, &session, stepped.error.code);
   }
@@ -126,6 +136,10 @@ SessionRunnerRunResult stepPausedOnce(Session& session) {
   result.outcome = session.outcome();
   result.stateHash = session.stateHash();
   return result;
+}
+
+SessionRunnerRunResult stepPausedOnce(Session& session) {
+  return stepPausedOnce(SessionRunnerStepRequest{&session, nullptr, false});
 }
 
 }  // namespace iggy3d

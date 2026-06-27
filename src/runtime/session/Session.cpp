@@ -800,8 +800,18 @@ StatusResult Session::stepOneTickWithOptions(const SessionTickOptions& options) 
 
 StatusResult Session::runUntilIdle(std::uint32_t maxTicks,
                                    const SpatialSurfaceSet* collisionSurfaces) {
+  return runUntilIdleWithOptions(maxTicks, SessionTickOptions{collisionSurfaces, false});
+}
+
+StatusResult Session::runUntilIdleWithOptions(std::uint32_t maxTicks,
+                                              const SessionTickOptions& options) {
   SessionRunnerRunResult run =
-      runSession(SessionRunnerRunRequest{this, maxTicks, true, true, collisionSurfaces});
+      runSession(SessionRunnerRunRequest{this,
+                                         maxTicks,
+                                         true,
+                                         true,
+                                         options.collisionSurfaces,
+                                         options.usePhysicsMovePlanner});
   if (run.status == SessionRunnerStatus::Failed) {
     return statusError("session.runner_failed", run.diagnostic);
   }
