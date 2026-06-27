@@ -4,7 +4,7 @@
 #include <string>
 
 #include "app/iggy3d/room_editor/Cursor.hpp"
-#include "app/iggy3d/room/ProductRoomGeometryOptimization.hpp"
+#include "app/iggy3d/room/GeometryOptimization.hpp"
 #include "content/authoring/EditableRoomDocument.hpp"
 
 namespace iggy3d {
