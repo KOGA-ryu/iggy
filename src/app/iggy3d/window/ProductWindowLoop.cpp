@@ -1,10 +1,10 @@
-#include "app/iggy3d/ProductWindowLoop.hpp"
+#include "app/iggy3d/window/ProductWindowLoop.hpp"
 
 #include "app/frontend/MenuInput.hpp"
 #include "app/iggy3d/ProductGameplayProjectionRefresh.hpp"
-#include "app/iggy3d/ProductWindowFramePresenter.hpp"
-#include "app/iggy3d/ProductWindowInputFrame.hpp"
-#include "app/iggy3d/ProductWindowRendererLifecycle.hpp"
+#include "app/iggy3d/window/ProductWindowFramePresenter.hpp"
+#include "app/iggy3d/window/ProductWindowInputFrame.hpp"
+#include "app/iggy3d/window/ProductWindowRendererLifecycle.hpp"
 #include "app/iggy3d/product/ProductMenuInputRouter.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)

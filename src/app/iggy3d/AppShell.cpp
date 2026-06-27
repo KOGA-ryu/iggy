@@ -15,7 +15,7 @@
 #include "app/iggy3d/ProductGameplayTapeRunner.hpp"
 #include "app/iggy3d/ProductMenuTransitions.hpp"
 #include "app/iggy3d/ProductScriptedGameplayDriver.hpp"
-#include "app/iggy3d/ProductWindowLoop.hpp"
+#include "app/iggy3d/window/ProductWindowLoop.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
 #include "app/input/ActionState.hpp"

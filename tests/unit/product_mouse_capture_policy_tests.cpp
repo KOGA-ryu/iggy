@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductMouseCapturePolicy.hpp"
+#include "app/iggy3d/window/ProductMouseCapturePolicy.hpp"
 
 #include <cstdlib>
 #include <iostream>

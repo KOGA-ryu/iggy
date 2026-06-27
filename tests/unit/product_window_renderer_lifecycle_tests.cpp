@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductWindowRendererLifecycle.hpp"
+#include "app/iggy3d/window/ProductWindowRendererLifecycle.hpp"
 
 #include <iostream>
 #include <string_view>

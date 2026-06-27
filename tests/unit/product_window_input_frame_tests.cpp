@@ -1,6 +1,6 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/ProductRoomEditingState.hpp"
-#include "app/iggy3d/ProductWindowInputFrame.hpp"
+#include "app/iggy3d/window/ProductWindowInputFrame.hpp"
 #include "app/iggy3d/product/AutomationRoomEditing.hpp"
 
 #include <iostream>

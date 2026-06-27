@@ -57,7 +57,7 @@ target_sources(iggy3d
     src/app/iggy3d/ProductInteractionModeHud.cpp
     src/app/iggy3d/ProductInteractionModeState.cpp
     src/app/iggy3d/ProductMenuTransitions.cpp
-    src/app/iggy3d/ProductMouseCapturePolicy.cpp
+    src/app/iggy3d/window/ProductMouseCapturePolicy.cpp
     src/app/iggy3d/ProductMovementDebugHud.cpp
     src/app/iggy3d/ProductNpcBehaviorDebugHud.cpp
     src/app/iggy3d/ProductPackageSessionSeed.cpp
@@ -91,10 +91,10 @@ target_sources(iggy3d
     src/app/iggy3d/ProductTopDownMapOverlay.cpp
     src/app/iggy3d/ProductUiDrawList.cpp
     src/app/iggy3d/ProductViewportFraming.cpp
-    src/app/iggy3d/ProductWindowFramePresenter.cpp
-    src/app/iggy3d/ProductWindowInputFrame.cpp
-    src/app/iggy3d/ProductWindowLoop.cpp
-    src/app/iggy3d/ProductWindowRendererLifecycle.cpp
+    src/app/iggy3d/window/ProductWindowFramePresenter.cpp
+    src/app/iggy3d/window/ProductWindowInputFrame.cpp
+    src/app/iggy3d/window/ProductWindowLoop.cpp
+    src/app/iggy3d/window/ProductWindowRendererLifecycle.cpp
     src/app/iggy3d/ProductWorldCreation.cpp
     src/app/iggy3d/ReceiptBuilder.cpp
     src/app/iggy3d/SaveBridge.cpp

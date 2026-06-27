@@ -8,7 +8,7 @@
 #include "app/iggy3d/ProductControllerActionMap.hpp"
 #include "app/iggy3d/ProductControllerActionRouting.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
-#include "app/iggy3d/ProductWindowInputFrame.hpp"
+#include "app/iggy3d/window/ProductWindowInputFrame.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/input/ActionState.hpp"
 #include "app/input/InputRouter.hpp"

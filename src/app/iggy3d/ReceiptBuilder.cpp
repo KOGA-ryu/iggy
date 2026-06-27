@@ -7,7 +7,7 @@
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductMovementDebugHud.hpp"
 #include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
-#include "app/iggy3d/ProductWindowRendererLifecycle.hpp"
+#include "app/iggy3d/window/ProductWindowRendererLifecycle.hpp"
 
 namespace iggy3d {
 namespace {

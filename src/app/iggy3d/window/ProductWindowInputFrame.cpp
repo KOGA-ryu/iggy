@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductWindowInputFrame.hpp"
+#include "app/iggy3d/window/ProductWindowInputFrame.hpp"
 
 #include "app/iggy3d/OpeningMenuView.hpp"
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
@@ -6,7 +6,7 @@
 #include "app/iggy3d/ProductControllerActionRouting.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
 #include "app/iggy3d/ProductInteractionModeState.hpp"
-#include "app/iggy3d/ProductMouseCapturePolicy.hpp"
+#include "app/iggy3d/window/ProductMouseCapturePolicy.hpp"
 #include "app/iggy3d/ProductRoomEditorActionController.hpp"
 #include "app/iggy3d/ProductRoomEditorPreview.hpp"
 #include "app/iggy3d/product/Automation.hpp"
