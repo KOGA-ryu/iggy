@@ -49,6 +49,7 @@ std::string_view physicsAabbColliderStatusName(
     PhysicsAabbColliderStatus status);
 
 bool isPositiveFinitePhysicsHalfExtents(Vec3 halfExtentsMeters);
+bool isValidPhysicsAabbCollider(const PhysicsAabbCollider& collider);
 PhysicsAabbColliderResult buildPhysicsAabbCollider(
     const PhysicsAabbColliderDescriptor* descriptor,
     Vec3 bodyPositionMeters);

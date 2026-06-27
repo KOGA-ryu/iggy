@@ -26,13 +26,6 @@ PhysicsAabbColliderResult colliderResult(PhysicsAabbColliderStatus status,
   return result;
 }
 
-bool validCollider(const PhysicsAabbCollider& collider) {
-  return isValidPhysicsBodyId(collider.bodyId) &&
-         isFinite(collider.worldCenterMeters) &&
-         isPositiveFinitePhysicsHalfExtents(collider.halfExtentsMeters) &&
-         isValid(collider.bounds);
-}
-
 }  // namespace
 
 std::string_view physicsAabbColliderStatusName(
@@ -52,6 +45,13 @@ std::string_view physicsAabbColliderStatusName(
 bool isPositiveFinitePhysicsHalfExtents(Vec3 halfExtentsMeters) {
   return isFinite(halfExtentsMeters) && halfExtentsMeters.x > 0.0F &&
          halfExtentsMeters.y > 0.0F && halfExtentsMeters.z > 0.0F;
+}
+
+bool isValidPhysicsAabbCollider(const PhysicsAabbCollider& collider) {
+  return isValidPhysicsBodyId(collider.bodyId) &&
+         isFinite(collider.worldCenterMeters) &&
+         isPositiveFinitePhysicsHalfExtents(collider.halfExtentsMeters) &&
+         isValid(collider.bounds);
 }
 
 PhysicsAabbColliderResult buildPhysicsAabbCollider(
@@ -97,7 +97,7 @@ PhysicsAabbColliderResult buildPhysicsAabbCollider(
 bool physicsAabbOverlaps(const PhysicsAabbCollider& lhs,
                          const PhysicsAabbCollider& rhs) {
   // branch-gate: BG-1087
-  if (!validCollider(lhs) || !validCollider(rhs)) {
+  if (!isValidPhysicsAabbCollider(lhs) || !isValidPhysicsAabbCollider(rhs)) {
     return false;
   }
   return intersects(lhs.bounds, rhs.bounds);
@@ -106,7 +106,7 @@ bool physicsAabbOverlaps(const PhysicsAabbCollider& lhs,
 bool physicsAabbContainsPoint(const PhysicsAabbCollider& collider,
                               Vec3 pointMeters) {
   // branch-gate: BG-1087
-  if (!validCollider(collider) || !isFinite(pointMeters)) {
+  if (!isValidPhysicsAabbCollider(collider) || !isFinite(pointMeters)) {
     return false;
   }
   return contains(collider.bounds, pointMeters);
