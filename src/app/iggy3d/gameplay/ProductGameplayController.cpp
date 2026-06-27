@@ -1,5 +1,6 @@
 #include "app/iggy3d/gameplay/ProductGameplayController.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <string>
 #include <string_view>
@@ -22,6 +23,7 @@ namespace {
 constexpr std::string_view kManualFirstPersonMovementProfile = "manual_first_person";
 constexpr float kManualFirstPersonMaxSpeedMetersPerSecond = 1.6F;
 constexpr float kManualFirstPersonInputStepSeconds = 1.0F / 60.0F;
+constexpr float kPi = 3.14159265358979323846F;
 
 struct ProductInteractionOutcomeSnapshot {
   EntityId target;
@@ -167,6 +169,19 @@ void recordProductMovementProfile(ProductAppWindowState& window) {
   window.gameplayMovementProfile = std::string{kManualFirstPersonMovementProfile};
   window.gameplayMovementMaxSpeedMetersPerSecond =
       kManualFirstPersonMaxSpeedMetersPerSecond;
+}
+
+Vec3 manualFirstPersonMoveDelta(float moveX, float moveY, float yawDegrees) {
+  const float magnitude = std::sqrt(moveX * moveX + moveY * moveY);
+  const float scale = 1.0F / std::max(1.0F, magnitude);
+  constexpr float kStepMeters = kManualFirstPersonMaxSpeedMetersPerSecond *
+                                kManualFirstPersonInputStepSeconds;
+  const float yawRadians = yawDegrees * kPi / 180.0F;
+  const float cosYaw = std::cos(yawRadians);
+  const float sinYaw = std::sin(yawRadians);
+  const Vec3 forward{sinYaw, 0.0F, -cosYaw};
+  const Vec3 right{cosYaw, 0.0F, sinYaw};
+  return (right * moveX + forward * moveY) * (scale * kStepMeters);
 }
 
 bool productMovementDebugChangedPosition(const ProductAppWindowState& window) {
@@ -466,13 +481,9 @@ void submitProductMove(Session& session,
     return;
   }
   recordProductMovementProfile(window);
-  const float magnitude = std::sqrt(moveX * moveX + moveY * moveY);
-  const float scale = magnitude > 1.0F ? 1.0F / magnitude : 1.0F;
-  constexpr float kStepMeters = kManualFirstPersonMaxSpeedMetersPerSecond *
-                                kManualFirstPersonInputStepSeconds;
   Vec3 destination = actor->transform.position;
-  destination.x += moveX * scale * kStepMeters;
-  destination.z += moveY * scale * kStepMeters;
+  destination = destination + manualFirstPersonMoveDelta(
+                                  moveX, moveY, window.viewport.cameraYawDegrees);
 
   CommandRecord command;
   command.playerSlot = 0;

@@ -35,8 +35,10 @@ iggy3d::ProductAppWindowState makeGameplayWindow(
   iggy3d::ProductAppWindowState window;
   window.asciiRoomDraftText =
       "#######\n"
-      "#P..$.#\n"
-      "#..E..#\n"
+      "#.....#\n"
+      "#..P..#\n"
+      "#.....#\n"
+      "#..$.E#\n"
       "#######\n";
   window.asciiRoomDraftRoomId = "gameplay_controller_step_room";
   window.asciiRoomDraftSourceName = "unit/gameplay_controller_step_room.iggyroom.txt";
@@ -63,27 +65,60 @@ iggy3d::ActionState forwardMoveActions() {
   return actions;
 }
 
-bool productMoveUsesTunedManualStep() {
+iggy3d::ActionState manualMoveActions(float moveX, float moveY) {
+  iggy3d::ActionState actions;
+  if (moveX != 0.0F) {
+    iggy3d::recordAction(actions, iggy3d::InputAction::PlayerMoveX, true, false,
+                         false, moveX);
+  }
+  if (moveY != 0.0F) {
+    iggy3d::recordAction(actions, iggy3d::InputAction::PlayerMoveY, true, false,
+                         false, moveY);
+  }
+  return actions;
+}
+
+bool runManualMove(float moveX,
+                   float moveY,
+                   float yawDegrees,
+                   iggy3d::Vec3& delta,
+                   iggy3d::ProductAppWindowState* capturedWindow = nullptr) {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
-  if (!expect(session.has_value(), "session created")) {
+  if (!expect(session.has_value(), "session created for manual move")) {
     return false;
   }
+  window.viewport.cameraYawDegrees = yawDegrees;
   const iggy3d::EntityState* before = playerEntity(*session);
-  if (!expect(before != nullptr, "player before move")) {
+  if (!expect(before != nullptr, "player before manual move")) {
     return false;
   }
   const iggy3d::Vec3 start = before->transform.position;
 
-  iggy3d::ActionState actions = forwardMoveActions();
-  iggy3d::applyProductGameplayActions(*session, actions, window,
-                                      "unit/gameplay_controller_step");
+  iggy3d::applyProductGameplayActions(*session,
+                                      manualMoveActions(moveX, moveY),
+                                      window,
+                                      "unit/gameplay_controller_manual_move");
 
   const iggy3d::EntityState* after = playerEntity(*session);
-  if (!expect(after != nullptr, "player after move")) {
+  if (!expect(after != nullptr, "player after manual move")) {
     return false;
   }
-  const iggy3d::Vec3 final = after->transform.position;
+  delta = after->transform.position - start;
+  if (capturedWindow != nullptr) {
+    *capturedWindow = window;
+  }
+  return expect(window.gameplayCommandAccepted, "manual move accepted") &&
+         expect(window.gameplayMovementStatus == "moved",
+                "manual movement status");
+}
+
+bool productMoveUsesTunedManualStep() {
+  iggy3d::Vec3 delta;
+  iggy3d::ProductAppWindowState window;
+  if (!runManualMove(0.0F, 1.0F, 0.0F, delta, &window)) {
+    return false;
+  }
 
   return expect(window.gameplayCommandAccepted, "move accepted") &&
          expect(window.gameplayMovementStatus == "moved", "movement status") &&
@@ -104,9 +139,50 @@ bool productMoveUsesTunedManualStep() {
          expect(nearlyEqual(window.gameplayMovementHorizontalDistanceMeters,
                             kExpectedManualFirstPersonStepMeters),
                 "horizontal distance is profile step") &&
-         expect(nearlyEqual(final.x, start.x), "x unchanged") &&
-         expect(nearlyEqual(final.z - start.z, kExpectedManualFirstPersonStepMeters),
-                "z moved profile step");
+         expect(nearlyEqual(delta.x, 0.0F), "forward x unchanged") &&
+         expect(nearlyEqual(delta.z, -kExpectedManualFirstPersonStepMeters),
+                "W moves forward along camera -Z at yaw zero");
+}
+
+bool productWasdUsesCameraRelativeYawZero() {
+  iggy3d::Vec3 delta;
+  bool ok = true;
+
+  ok = runManualMove(0.0F, 1.0F, 0.0F, delta) && ok;
+  ok = expect(nearlyEqual(delta.x, 0.0F), "W x unchanged") && ok;
+  ok = expect(nearlyEqual(delta.z, -kExpectedManualFirstPersonStepMeters),
+              "W moves forward") &&
+       ok;
+
+  ok = runManualMove(0.0F, -1.0F, 0.0F, delta) && ok;
+  ok = expect(nearlyEqual(delta.x, 0.0F), "S x unchanged") && ok;
+  ok = expect(nearlyEqual(delta.z, kExpectedManualFirstPersonStepMeters),
+              "S moves back") &&
+       ok;
+
+  ok = runManualMove(-1.0F, 0.0F, 0.0F, delta) && ok;
+  ok = expect(nearlyEqual(delta.x, -kExpectedManualFirstPersonStepMeters),
+              "A moves left") &&
+       ok;
+  ok = expect(nearlyEqual(delta.z, 0.0F), "A z unchanged") && ok;
+
+  ok = runManualMove(1.0F, 0.0F, 0.0F, delta) && ok;
+  ok = expect(nearlyEqual(delta.x, kExpectedManualFirstPersonStepMeters),
+              "D moves right") &&
+       ok;
+  ok = expect(nearlyEqual(delta.z, 0.0F), "D z unchanged") && ok;
+
+  return ok;
+}
+
+bool productMoveUsesCameraYaw() {
+  iggy3d::Vec3 delta;
+  if (!runManualMove(0.0F, 1.0F, 90.0F, delta)) {
+    return false;
+  }
+  return expect(nearlyEqual(delta.x, kExpectedManualFirstPersonStepMeters),
+                "yaw ninety W moves camera forward along +X") &&
+         expect(nearlyEqual(delta.z, 0.0F), "yaw ninety W z unchanged");
 }
 
 bool productMoveNormalizesDiagonalToTunedStep() {
@@ -116,13 +192,10 @@ bool productMoveNormalizesDiagonalToTunedStep() {
     return false;
   }
 
-  iggy3d::ActionState actions;
-  iggy3d::recordAction(actions, iggy3d::InputAction::PlayerMoveX, true, false,
-                       false, 1.0F);
-  iggy3d::recordAction(actions, iggy3d::InputAction::PlayerMoveY, true, false,
-                       false, 1.0F);
-  iggy3d::applyProductGameplayActions(*session, actions, window,
+  const iggy3d::Vec3 start = playerEntity(*session)->transform.position;
+  iggy3d::applyProductGameplayActions(*session, manualMoveActions(1.0F, 1.0F), window,
                                       "unit/gameplay_controller_step");
+  const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
 
   return expect(window.gameplayCommandAccepted, "diagonal move accepted") &&
          expect(window.gameplayMovementStatus == "moved",
@@ -131,7 +204,9 @@ bool productMoveNormalizesDiagonalToTunedStep() {
                 "diagonal movement profile") &&
          expect(nearlyEqual(window.gameplayMovementHorizontalDistanceMeters,
                             kExpectedManualFirstPersonStepMeters),
-                "diagonal movement normalizes to profile step");
+                "diagonal movement normalizes to profile step") &&
+         expect(final.x > start.x, "diagonal includes right movement") &&
+         expect(final.z < start.z, "diagonal includes forward movement");
 }
 
 bool defaultOffMoveWithCollisionSurfacesUsesLegacyPath() {
@@ -238,6 +313,8 @@ bool optInMoveWithoutCollisionSurfacesRecordsNoSurfaces() {
 
 int main() {
   const bool ok = productMoveUsesTunedManualStep() &&
+                  productWasdUsesCameraRelativeYawZero() &&
+                  productMoveUsesCameraYaw() &&
                   productMoveNormalizesDiagonalToTunedStep() &&
                   defaultOffMoveWithCollisionSurfacesUsesLegacyPath() &&
                   optInMoveWithCollisionSurfacesUsesPhysicsPlanner() &&
