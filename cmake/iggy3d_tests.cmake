@@ -107,6 +107,11 @@ iggy3d_add_unit_test(product_gameplay_tape_runner_tests
 set_tests_properties(product_gameplay_tape_runner_tests PROPERTIES
   LABELS "unit;app;product;gameplay;tape;runtime;iggy3d")
 
+iggy3d_add_unit_test(product_interaction_mode_tests
+  tests/unit/product_interaction_mode_tests.cpp)
+set_tests_properties(product_interaction_mode_tests PROPERTIES
+  LABELS "unit;app;product;input;interaction_mode;iggy3d")
+
 iggy3d_add_unit_test(product_movement_debug_hud_tests
   tests/unit/product_movement_debug_hud_tests.cpp)
 set_tests_properties(product_movement_debug_hud_tests PROPERTIES

@@ -53,3 +53,4 @@ BG-1051	src/app/iggy3d/product/AutomationRoomEditing.cpp	room editor phantom pre
 BG-1052	src/app/iggy3d/ProductGameplayProjectionRefresh.cpp	room editor cleared phantom preview receipt preservation	codex	2026-06-26
 BG-1054	src/app/iggy3d/product/AutomationRoomEditing.cpp	room editor physical phantom preview action dispatch	codex	2026-06-26
 BG-1055	src/app/iggy3d/ProductWindowInputFrame.cpp	room editor physical phantom preview input routing	codex	2026-06-26
+BG-1056	src/app/iggy3d/ProductInteractionMode.cpp	product controller interaction mode chord policy	codex	2026-06-26
