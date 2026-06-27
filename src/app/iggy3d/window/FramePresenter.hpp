@@ -9,7 +9,7 @@
 #include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
-#include "app/iggy3d/gameplay/ProductGameplayProjectionRefresh.hpp"
+#include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/menu/ProductUiDrawList.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"

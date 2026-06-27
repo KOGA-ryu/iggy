@@ -1,7 +1,7 @@
 #include "app/iggy3d/window/Loop.hpp"
 
 #include "app/frontend/MenuInput.hpp"
-#include "app/iggy3d/gameplay/ProductGameplayProjectionRefresh.hpp"
+#include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/window/FramePresenter.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/iggy3d/window/MouseCapturePolicy.hpp"

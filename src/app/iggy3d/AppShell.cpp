@@ -11,7 +11,7 @@
 #include "app/iggy3d/automation/AutomationDispatch.hpp"
 #include "app/iggy3d/menu/ProductMenuInputRouter.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
-#include "app/iggy3d/gameplay/ProductGameplayProjectionRefresh.hpp"
+#include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/gameplay/TapeRunner.hpp"
 #include "app/iggy3d/menu/ProductMenuTransitions.hpp"
 #include "app/iggy3d/ProductScriptedGameplayDriver.hpp"

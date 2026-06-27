@@ -1,5 +1,5 @@
 #include "app/iggy3d/ascii_room/ProductAsciiRoomActivation.hpp"
-#include "app/iggy3d/gameplay/ProductGameplayProjectionRefresh.hpp"
+#include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "core/math/Mat4.hpp"
