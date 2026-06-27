@@ -3,7 +3,7 @@
 #include "app/frontend/MenuInput.hpp"
 #include "app/iggy3d/gameplay/ProductGameplayProjectionRefresh.hpp"
 #include "app/iggy3d/window/FramePresenter.hpp"
-#include "app/iggy3d/window/ProductWindowInputFrame.hpp"
+#include "app/iggy3d/window/InputFrame.hpp"
 #include "app/iggy3d/window/ProductMouseCapturePolicy.hpp"
 #include "app/iggy3d/window/ProductWindowRendererLifecycle.hpp"
 #include "app/iggy3d/menu/ProductMenuInputRouter.hpp"

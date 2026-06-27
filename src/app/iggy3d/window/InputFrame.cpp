@@ -1,4 +1,4 @@
-#include "app/iggy3d/window/ProductWindowInputFrame.hpp"
+#include "app/iggy3d/window/InputFrame.hpp"
 
 #include "app/iggy3d/view/OpeningMenuView.hpp"
 #include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
