@@ -33,7 +33,7 @@ target_sources(iggy3d
     src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.cpp
     src/app/iggy3d/world/DefaultWorldTemplate.cpp
     src/app/iggy3d/EditableRoomToAuthoredRoom.cpp
-    src/app/iggy3d/FrontendActionExecutor.cpp
+    src/app/iggy3d/menu/FrontendActionExecutor.cpp
     src/app/iggy3d/OpeningMenuView.cpp
     src/app/iggy3d/gameplay/ProductActiveRoomCollision.cpp
     src/app/iggy3d/gameplay/ProductActiveRoomState.cpp
@@ -48,7 +48,7 @@ target_sources(iggy3d
     src/app/iggy3d/gameplay/ProductGameplayController.cpp
     src/app/iggy3d/gameplay/ProductGameplayFeedback.cpp
     src/app/iggy3d/gameplay/ProductGameplayProjectionRefresh.cpp
-    src/app/iggy3d/ProductFrontendRouter.cpp
+    src/app/iggy3d/menu/ProductFrontendRouter.cpp
     src/app/iggy3d/gameplay/ProductGameplayTape.cpp
     src/app/iggy3d/gameplay/ProductGameplayTapeRunner.cpp
     src/app/iggy3d/ProductControllerActionMap.cpp
@@ -56,7 +56,7 @@ target_sources(iggy3d
     src/app/iggy3d/ProductInteractionMode.cpp
     src/app/iggy3d/ProductInteractionModeHud.cpp
     src/app/iggy3d/ProductInteractionModeState.cpp
-    src/app/iggy3d/ProductMenuTransitions.cpp
+    src/app/iggy3d/menu/ProductMenuTransitions.cpp
     src/app/iggy3d/window/ProductMouseCapturePolicy.cpp
     src/app/iggy3d/ProductMovementDebugHud.cpp
     src/app/iggy3d/ProductNpcBehaviorDebugHud.cpp
@@ -70,8 +70,8 @@ target_sources(iggy3d
     src/app/iggy3d/product/AutomationRoomEditing.cpp
     src/app/iggy3d/product/AutomationSaveBrowser.cpp
     src/app/iggy3d/product/AutomationSystem.cpp
-    src/app/iggy3d/product/ProductMenuActionHandlers.cpp
-    src/app/iggy3d/product/ProductMenuInputRouter.cpp
+    src/app/iggy3d/menu/ProductMenuActionHandlers.cpp
+    src/app/iggy3d/menu/ProductMenuInputRouter.cpp
     src/app/iggy3d/ProductPrimitiveDrawList.cpp
     src/app/iggy3d/ProductRenderBridge.cpp
     src/app/iggy3d/room/ProductRoomGeometryOptimization.cpp
@@ -89,7 +89,7 @@ target_sources(iggy3d
     src/app/iggy3d/save/ProductSaveFlow.cpp
     src/app/iggy3d/ProductNpcProfileAssignment.cpp
     src/app/iggy3d/ProductTopDownMapOverlay.cpp
-    src/app/iggy3d/ProductUiDrawList.cpp
+    src/app/iggy3d/menu/ProductUiDrawList.cpp
     src/app/iggy3d/ProductViewportFraming.cpp
     src/app/iggy3d/window/ProductWindowFramePresenter.cpp
     src/app/iggy3d/window/ProductWindowInputFrame.cpp

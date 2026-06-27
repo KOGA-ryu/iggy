@@ -11,7 +11,7 @@
 #include "app/iggy3d/room_editor/ProductRoomEditorPreview.hpp"
 #include "app/iggy3d/product/Automation.hpp"
 #include "app/iggy3d/product/AutomationRoomEditing.hpp"
-#include "app/iggy3d/product/ProductMenuInputRouter.hpp"
+#include "app/iggy3d/menu/ProductMenuInputRouter.hpp"
 #include "app/input/ActionState.hpp"
 #include "app/input/InputRouter.hpp"
 #include "app/platform/SdlWindow.hpp"

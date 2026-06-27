@@ -5,7 +5,7 @@
 #include "app/iggy3d/window/ProductWindowFramePresenter.hpp"
 #include "app/iggy3d/window/ProductWindowInputFrame.hpp"
 #include "app/iggy3d/window/ProductWindowRendererLifecycle.hpp"
-#include "app/iggy3d/product/ProductMenuInputRouter.hpp"
+#include "app/iggy3d/menu/ProductMenuInputRouter.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)
 #include <chrono>

@@ -1,6 +1,6 @@
-#include "app/iggy3d/product/ProductMenuInputRouter.hpp"
+#include "app/iggy3d/menu/ProductMenuInputRouter.hpp"
 
-#include "app/iggy3d/product/ProductMenuActionHandlers.hpp"
+#include "app/iggy3d/menu/ProductMenuActionHandlers.hpp"
 
 namespace iggy3d {
 

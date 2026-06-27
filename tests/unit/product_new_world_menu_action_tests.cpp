@@ -1,4 +1,4 @@
-#include "app/iggy3d/product/ProductMenuActionHandlers.hpp"
+#include "app/iggy3d/menu/ProductMenuActionHandlers.hpp"
 
 #include <iostream>
 #include <optional>

@@ -15,14 +15,14 @@ BG-1013	src/app/iggy3d/AppShell.cpp	system and navigation automation execution d
 BG-1014	src/app/iggy3d/product/AutomationControl.cpp	automation control-file runner extraction from AppShell	codex	2026-06-26
 BG-1015	src/app/iggy3d/product/AutomationDispatch.cpp	automation command dispatcher extraction from AppShell	codex	2026-06-26
 BG-1016	src/app/iggy3d/AppShell.cpp	automation dispatcher callback adapter seam	codex	2026-06-26
-BG-1017	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	pause menu action handler extraction from AppShell	codex	2026-06-26
-BG-1018	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	dev tools menu action handler extraction from AppShell	codex	2026-06-26
-BG-1019	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	settings menu action handler extraction from AppShell	codex	2026-06-26
-BG-1020	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	save browser menu action handler extraction from AppShell	codex	2026-06-26
-BG-1021	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	new world menu action handler extraction from AppShell	codex	2026-06-26
-BG-1022	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	starter menu action handler extraction from AppShell	codex	2026-06-26
-BG-1023	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	system pause menu action handler extraction from AppShell	codex	2026-06-26
-BG-1024	src/app/iggy3d/product/ProductMenuInputRouter.cpp	opening menu input router extraction from AppShell	codex	2026-06-26
+BG-1017	src/app/iggy3d/menu/ProductMenuActionHandlers.cpp	pause menu action handler extraction from AppShell	codex	2026-06-26
+BG-1018	src/app/iggy3d/menu/ProductMenuActionHandlers.cpp	dev tools menu action handler extraction from AppShell	codex	2026-06-26
+BG-1019	src/app/iggy3d/menu/ProductMenuActionHandlers.cpp	settings menu action handler extraction from AppShell	codex	2026-06-26
+BG-1020	src/app/iggy3d/menu/ProductMenuActionHandlers.cpp	save browser menu action handler extraction from AppShell	codex	2026-06-26
+BG-1021	src/app/iggy3d/menu/ProductMenuActionHandlers.cpp	new world menu action handler extraction from AppShell	codex	2026-06-26
+BG-1022	src/app/iggy3d/menu/ProductMenuActionHandlers.cpp	starter menu action handler extraction from AppShell	codex	2026-06-26
+BG-1023	src/app/iggy3d/menu/ProductMenuActionHandlers.cpp	system pause menu action handler extraction from AppShell	codex	2026-06-26
+BG-1024	src/app/iggy3d/menu/ProductMenuInputRouter.cpp	opening menu input router extraction from AppShell	codex	2026-06-26
 BG-1025	src/app/iggy3d/gameplay/ProductGameplayProjectionRefresh.cpp	gameplay projection refresh extraction from AppShell	codex	2026-06-26
 BG-1026	src/app/iggy3d/AppShell.cpp	package override new-world draft selection repair	codex	2026-06-26
 BG-1027	src/app/iggy3d/gameplay/ProductGameplayProjectionRefresh.cpp	live gameplay projection frame assembly extraction from AppShell	codex	2026-06-26
@@ -64,13 +64,13 @@ BG-1063	src/app/iggy3d/window/ProductWindowInputFrame.cpp	live creative room edi
 BG-1064	src/app/iggy3d/ProductInteractionModeHud.cpp	product interaction mode hud descriptor visibility policy	codex	2026-06-26
 BG-1065	src/app/iggy3d/OpeningMenuView.cpp	product interaction mode hud draw visibility policy	codex	2026-06-26
 BG-1066	src/app/frontend/PauseMenu.cpp	leave editor pause menu availability policy	codex	2026-06-26
-BG-1067	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	leave editor pause action lifecycle policy	codex	2026-06-26
+BG-1067	src/app/iggy3d/menu/ProductMenuActionHandlers.cpp	leave editor pause action lifecycle policy	codex	2026-06-26
 BG-1068	src/app/iggy3d/ProductAppOptions.cpp	explicit product debug overlay option parsing	codex	2026-06-26
 BG-1069	src/app/iggy3d/window/ProductWindowRendererLifecycle.cpp	product Vulkan gameplay readiness gate policy	codex	2026-06-26
 BG-1070	src/app/iggy3d/ProductTopDownMapOverlay.cpp	product top-down map overlay purpose policy	codex	2026-06-26
 BG-1071	src/app/iggy3d/OpeningMenuView.cpp	product top-down map SDL layout policy	codex	2026-06-26
 BG-1072	src/app/iggy3d/window/ProductWindowFramePresenter.cpp	product Vulkan starter menu unsupported status policy	codex	2026-06-26
-BG-1073	src/app/iggy3d/ProductUiDrawList.cpp	product starter UI draw-list guard and descriptor lookup policy	codex	2026-06-26
+BG-1073	src/app/iggy3d/menu/ProductUiDrawList.cpp	product starter UI draw-list guard and descriptor lookup policy	codex	2026-06-26
 BG-1074	src/app/iggy3d/window/ProductMouseCapturePolicy.cpp	product mouse capture gameplay ownership policy	codex	2026-06-27
 BG-1075	src/app/platform/SdlWindow.cpp	SDL relative mouse mode platform guard policy	codex	2026-06-27
 BG-1076	src/app/iggy3d/window/ProductWindowInputFrame.cpp	product window mouse capture platform update policy	codex	2026-06-27

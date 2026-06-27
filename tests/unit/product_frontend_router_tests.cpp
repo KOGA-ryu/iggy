@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductFrontendRouter.hpp"
+#include "app/iggy3d/menu/ProductFrontendRouter.hpp"
 
 #include "app/frontend/DevToolsMenu.hpp"
 #include "app/frontend/PauseMenu.hpp"
