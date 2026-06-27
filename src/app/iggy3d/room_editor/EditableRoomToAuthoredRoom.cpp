@@ -1,4 +1,4 @@
-#include "app/iggy3d/EditableRoomToAuthoredRoom.hpp"
+#include "app/iggy3d/room_editor/EditableRoomToAuthoredRoom.hpp"
 
 namespace iggy3d {
 namespace {

@@ -1,7 +1,7 @@
 #include "app/iggy3d/ascii_room/AsciiRoomGrid.hpp"
 #include "app/iggy3d/ascii_room/AsciiRoomSource.hpp"
 #include "app/iggy3d/ascii_room/AsciiRoomToEditableRoom.hpp"
-#include "app/iggy3d/EditableRoomToAuthoredRoom.hpp"
+#include "app/iggy3d/room_editor/EditableRoomToAuthoredRoom.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "runtime/save/SaveCodec.hpp"

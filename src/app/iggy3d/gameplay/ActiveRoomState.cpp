@@ -5,7 +5,7 @@
 #include <string_view>
 
 #include "app/iggy3d/ascii_room/AsciiRoomToRoomAsset.hpp"
-#include "app/iggy3d/EditableRoomToAuthoredRoom.hpp"
+#include "app/iggy3d/room_editor/EditableRoomToAuthoredRoom.hpp"
 #include "app/iggy3d/ascii_room/Authoring.hpp"
 #include "app/iggy3d/room_editor/AuthoringController.hpp"
 
