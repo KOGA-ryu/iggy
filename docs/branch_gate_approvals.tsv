@@ -86,3 +86,4 @@ BG-1085	src/runtime/physics/PhysicsBodyStore.cpp	runtime physics body store look
 BG-1086	src/runtime/physics/PhysicsStep.cpp	runtime physics fixed-step validation and integration policy	codex	2026-06-27
 BG-1087	src/runtime/physics/PhysicsAabbCollider.cpp	runtime physics AABB collider validation and query policy	codex	2026-06-27
 BG-1088	src/runtime/physics/PhysicsBroadphase.cpp	runtime physics AABB broadphase pair collection policy	codex	2026-06-27
+BG-1089	src/runtime/physics/PhysicsAabbContact.cpp	runtime physics AABB narrowphase contact generation policy	codex	2026-06-27
