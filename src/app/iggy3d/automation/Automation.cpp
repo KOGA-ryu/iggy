@@ -16,7 +16,7 @@
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/room_editor/ProductRoomAuthoringController.hpp"
 #include "app/iggy3d/room_editor/ProductRoomEditorActionController.hpp"
-#include "app/iggy3d/room_editor/ProductRoomEditorCursor.hpp"
+#include "app/iggy3d/room_editor/Cursor.hpp"
 
 namespace iggy3d {
 

@@ -1,4 +1,4 @@
-#include "app/iggy3d/room_editor/ProductRoomEditorCursor.hpp"
+#include "app/iggy3d/room_editor/Cursor.hpp"
 
 #include "app/iggy3d/room_editor/ProductRoomEditingState.hpp"
 

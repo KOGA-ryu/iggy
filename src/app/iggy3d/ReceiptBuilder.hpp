@@ -9,7 +9,7 @@
 #include "app/iggy3d/gameplay/ProductActiveRoomState.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ProductInteractionMode.hpp"
-#include "app/iggy3d/room_editor/ProductRoomEditorCursor.hpp"
+#include "app/iggy3d/room_editor/Cursor.hpp"
 #include "app/iggy3d/room_editor/Preview.hpp"
 #include "app/iggy3d/room_editor/ProductRoomEditingState.hpp"
 #include "app/iggy3d/ProductViewportState.hpp"
