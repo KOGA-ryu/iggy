@@ -69,6 +69,11 @@ struct SessionFinalizationResult {
   StateHashValue stateHash = 0;
 };
 
+struct SessionTickOptions {
+  const SpatialSurfaceSet* collisionSurfaces = nullptr;
+  bool usePhysicsMovePlanner = false;
+};
+
 class Session {
 public:
   Session();
@@ -86,7 +91,9 @@ public:
   SessionCommandResult submitCommand(const CommandRecord& command);
 
   StatusResult tick(const SpatialSurfaceSet* collisionSurfaces = nullptr);
+  StatusResult tickWithOptions(const SessionTickOptions& options);
   StatusResult stepOneTick(const SpatialSurfaceSet* collisionSurfaces = nullptr);
+  StatusResult stepOneTickWithOptions(const SessionTickOptions& options);
   StatusResult runUntilIdle(std::uint32_t maxTicks,
                             const SpatialSurfaceSet* collisionSurfaces = nullptr);
 

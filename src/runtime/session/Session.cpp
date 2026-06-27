@@ -731,10 +731,18 @@ SessionCommandResult Session::submitCommand(const CommandRecord& command) {
 }
 
 StatusResult Session::tick(const SpatialSurfaceSet* collisionSurfaces) {
+  return tickWithOptions(SessionTickOptions{collisionSurfaces, false});
+}
+
+StatusResult Session::tickWithOptions(const SessionTickOptions& options) {
   enqueueNpcBehaviorCommands(*this, state_);
   std::vector<CommandRecord> commands = pendingAcceptedCommands(state_);
   const SessionTickResult tick =
-      runSessionTick(SessionTickInput{&state_, std::move(commands), collisionSurfaces, false});
+      runSessionTick(SessionTickInput{&state_,
+                                      std::move(commands),
+                                      options.collisionSurfaces,
+                                      false,
+                                      options.usePhysicsMovePlanner});
   removeExecutedSequences(state_.transient.pendingExecutionSequences, tick.executedSequences);
 
   markDirtyAndHash(state_);
@@ -752,6 +760,10 @@ StatusResult Session::tick(const SpatialSurfaceSet* collisionSurfaces) {
 }
 
 StatusResult Session::stepOneTick(const SpatialSurfaceSet* collisionSurfaces) {
+  return stepOneTickWithOptions(SessionTickOptions{collisionSurfaces, false});
+}
+
+StatusResult Session::stepOneTickWithOptions(const SessionTickOptions& options) {
   if (state_.clock.mode != ClockMode::Paused || !state_.clock.stepRequested) {
     return statusError("session.step_requires_paused", "paused step was not requested");
   }
@@ -772,7 +784,11 @@ StatusResult Session::stepOneTick(const SpatialSurfaceSet* collisionSurfaces) {
   }
 
   const SessionTickResult tick =
-      runSessionTick(SessionTickInput{&state_, std::move(commands), collisionSurfaces, true});
+      runSessionTick(SessionTickInput{&state_,
+                                      std::move(commands),
+                                      options.collisionSurfaces,
+                                      true,
+                                      options.usePhysicsMovePlanner});
   removeExecutedSequences(state_.transient.pendingExecutionSequences, tick.executedSequences);
   markDirtyAndHash(state_);
 

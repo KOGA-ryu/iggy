@@ -29,6 +29,7 @@ struct SessionTickInput {
   std::vector<CommandRecord> acceptedCommands;
   const SpatialSurfaceSet* collisionSurfaces = nullptr;
   bool forceStepWhilePaused = false;
+  bool usePhysicsMovePlanner = false;
 };
 
 struct SessionTickResult {

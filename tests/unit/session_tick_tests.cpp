@@ -1,4 +1,5 @@
 #include "runtime/session/Session.hpp"
+#include "runtime/session/SessionTick.hpp"
 
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/inventory/InventorySystem.hpp"
@@ -642,6 +643,87 @@ bool collisionBlockedMoveConsumesPendingCommandWithoutMutation() {
   return ok;
 }
 
+bool sessionTickInputPhysicsPlannerDefaultsOff() {
+  iggy3d::Session session = makeSession();
+  const iggy3d::SpatialSurfaceSet surfaces = tickCollisionSurfaces();
+  const iggy3d::SessionCommandResult move =
+      session.submitCommand(submittedMove({0.0F, 0.0F, -2.0F}));
+  std::vector<iggy3d::CommandRecord> commands = {move.command};
+
+  iggy3d::SessionTickInput input;
+  input.state = &session.mutableStateForOwnedSystems();
+  input.acceptedCommands = commands;
+  input.collisionSurfaces = &surfaces;
+
+  const iggy3d::SessionTickResult tick = iggy3d::runSessionTick(input);
+  return expect(!input.usePhysicsMovePlanner, "tick input physics default false") &&
+         expect(tick.status == iggy3d::SessionTickStatus::Stepped,
+                "default physics-off tick stepped") &&
+         expect(session.state().transient.lastMovementResultAvailable,
+                "default physics-off movement result") &&
+         expect(session.state().transient.lastMovementResult.blocked ==
+                    iggy3d::MovementBlockedReason::BlockedByCollision,
+                "default physics-off uses legacy blocked wall") &&
+         expect(iggy3d::nearlyEqual(session.state().world.findById({1})->transform.position,
+                                    {0.0F, 0.0F, 0.0F}),
+                "default physics-off no mutation");
+}
+
+bool physicsPlannerTickOptionPartiallyMovesAgainstWall() {
+  iggy3d::Session session = makeSession();
+  const iggy3d::SpatialSurfaceSet surfaces = tickCollisionSurfaces();
+
+  const iggy3d::SessionCommandResult move =
+      session.submitCommand(submittedMove({0.0F, 0.0F, -2.0F}));
+  bool ok = expect(move.command.admission == iggy3d::CommandAdmissionStatus::Accepted,
+                   "physics tick move accepted") &&
+            expect(session.tickWithOptions({&surfaces, true}).status ==
+                       iggy3d::ResultStatus::Ok,
+                   "physics tick option ok") &&
+            expect(session.state().transient.pendingExecutionSequences.empty(),
+                   "physics tick queue consumed") &&
+            expect(session.state().transient.lastMovementResultAvailable,
+                   "physics tick movement result available");
+
+  const iggy3d::MovementResult& movement =
+      session.state().transient.lastMovementResult;
+  const iggy3d::Vec3 finalPosition =
+      session.state().world.findById({1})->transform.position;
+  ok = ok && expect(movement.blocked == iggy3d::MovementBlockedReason::None,
+                    "physics tick movement succeeds with partial clamp") &&
+       expect(movement.movementClamped, "physics tick movement clamped") &&
+       expect(movement.hitSurfaceId == "tick_wall", "physics tick wall id") &&
+       expect(movement.collisionSweepCount >= 1U, "physics tick sweep count") &&
+       expect(finalPosition.z < -0.10F && finalPosition.z > -0.90F,
+              "physics tick partial z before wall") &&
+       expect(iggy3d::nearlyEqual(finalPosition, movement.finalPosition),
+              "physics tick final transform matches result") &&
+       expect(session.state().clock.tickIndex == 1U,
+              "physics tick advanced");
+  return ok;
+}
+
+bool physicsPlannerStepOneTickOptionCompilesAndRuns() {
+  iggy3d::Session session = makeSession();
+  const iggy3d::SpatialSurfaceSet surfaces = tickCollisionSurfaces();
+
+  const iggy3d::SessionCommandResult move =
+      session.submitCommand(submittedMove({0.0F, 0.0F, -2.0F}));
+  session.mutableStateForOwnedSystems().clock.mode = iggy3d::ClockMode::Paused;
+  session.mutableStateForOwnedSystems().clock.timeScale = 0.0F;
+  session.mutableStateForOwnedSystems().clock.stepRequested = true;
+  bool ok = expect(move.command.admission == iggy3d::CommandAdmissionStatus::Accepted,
+                   "physics step move accepted") &&
+            expect(session.stepOneTickWithOptions({&surfaces, true}).status ==
+                       iggy3d::ResultStatus::Ok,
+                   "physics step option ok") &&
+            expect(session.state().transient.lastMovementResultAvailable,
+                   "physics step movement result available") &&
+            expect(session.state().transient.lastMovementResult.movementClamped,
+                   "physics step clamped");
+  return ok;
+}
+
 bool npcAiTickEnqueuesAttackThroughAdmissionAndCombat() {
   iggy3d::Session session = makeNpcCombatSession();
 
@@ -1248,6 +1330,9 @@ int main() {
   const bool ok = tickMovesThenRetryPicksUpKeyExactlyOnce() &&
                   exitObjectiveCompletionSetsVictoryAfterRequiredItems() &&
                   collisionBlockedMoveConsumesPendingCommandWithoutMutation() &&
+                  sessionTickInputPhysicsPlannerDefaultsOff() &&
+                  physicsPlannerTickOptionPartiallyMovesAgainstWall() &&
+                  physicsPlannerStepOneTickOptionCompilesAndRuns() &&
                   npcAiTickEnqueuesAttackThroughAdmissionAndCombat() &&
                   npcAiCooldownTickWaitsWithoutSecondAttack() &&
                   npcAiChaseMovesThroughNormalCommandExecution() &&
