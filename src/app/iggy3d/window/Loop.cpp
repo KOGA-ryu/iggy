@@ -1,4 +1,4 @@
-#include "app/iggy3d/window/ProductWindowLoop.hpp"
+#include "app/iggy3d/window/Loop.hpp"
 
 #include "app/frontend/MenuInput.hpp"
 #include "app/iggy3d/gameplay/ProductGameplayProjectionRefresh.hpp"

@@ -5,7 +5,7 @@
 #include <string_view>
 
 #include "app/iggy3d/menu/ProductUiDrawList.hpp"
-#include "app/iggy3d/window/ProductWindowLoop.hpp"
+#include "app/iggy3d/window/Loop.hpp"
 #include "render/RenderDiagnostics.hpp"
 
 namespace {
