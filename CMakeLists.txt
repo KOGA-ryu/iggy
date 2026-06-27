@@ -175,6 +175,7 @@ target_sources(iggy3d
     src/runtime/physics/PhysicsDebugSnapshot.cpp
     src/runtime/physics/PhysicsFrameStats.cpp
     src/runtime/physics/PhysicsKinematicMotor.cpp
+    src/runtime/physics/PhysicsKernelBenchmark.cpp
     src/runtime/physics/PhysicsMaterialTraits.cpp
     src/runtime/physics/PhysicsShapeStore.cpp
     src/runtime/physics/PhysicsSpatialSurfaceColliderBake.cpp
