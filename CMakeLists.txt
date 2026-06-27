@@ -74,6 +74,7 @@ target_sources(iggy3d
     src/app/iggy3d/ProductRoomEditorCursor.cpp
     src/app/iggy3d/ProductRoomEditorHud.cpp
     src/app/iggy3d/ProductRoomEditorOverlay.cpp
+    src/app/iggy3d/ProductRoomEditorPreview.cpp
     src/app/iggy3d/ProductRoomEditingState.cpp
     src/app/iggy3d/ProductRoomVisualProof.cpp
     src/app/iggy3d/ProductScriptedGameplayDriver.cpp

@@ -227,6 +227,11 @@ iggy3d_add_unit_test(product_room_editor_overlay_tests
 set_tests_properties(product_room_editor_overlay_tests PROPERTIES
   LABELS "unit;app;product;room_editor;overlay;cursor;iggy3d")
 
+iggy3d_add_unit_test(product_room_editor_preview_tests
+  tests/unit/product_room_editor_preview_tests.cpp)
+set_tests_properties(product_room_editor_preview_tests PROPERTIES
+  LABELS "unit;app;product;room_editor;preview;optimization;editable_room;iggy3d")
+
 iggy3d_add_unit_test(product_room_editing_state_tests
   tests/unit/product_room_editing_state_tests.cpp)
 set_tests_properties(product_room_editing_state_tests PROPERTIES
