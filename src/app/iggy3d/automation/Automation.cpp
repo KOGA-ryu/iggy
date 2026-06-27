@@ -10,7 +10,7 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/MenuInput.hpp"
 #include "app/frontend/SettingsMenu.hpp"
-#include "app/iggy3d/ascii_room/ProductAsciiRoomPreview.hpp"
+#include "app/iggy3d/ascii_room/Preview.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/ProductDungeonDraft.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"

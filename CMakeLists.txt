@@ -44,7 +44,7 @@ target_sources(iggy3d
     src/app/iggy3d/ascii_room/Authoring.cpp
     src/app/iggy3d/ascii_room/ProductAsciiRoomEditing.cpp
     src/app/iggy3d/ascii_room/Package.cpp
-    src/app/iggy3d/ascii_room/ProductAsciiRoomPreview.cpp
+    src/app/iggy3d/ascii_room/Preview.cpp
     src/app/iggy3d/gameplay/Controller.cpp
     src/app/iggy3d/gameplay/GameplayFeedback.cpp
     src/app/iggy3d/gameplay/ProjectionRefresh.cpp

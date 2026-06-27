@@ -9,7 +9,7 @@
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/ascii_room/Authoring.hpp"
 #include "app/iggy3d/ascii_room/Package.hpp"
-#include "app/iggy3d/ascii_room/ProductAsciiRoomPreview.hpp"
+#include "app/iggy3d/ascii_room/Preview.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/world/ProductPackageSessionSeed.hpp"
