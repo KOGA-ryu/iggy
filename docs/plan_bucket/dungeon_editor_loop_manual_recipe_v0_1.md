@@ -28,24 +28,30 @@ Hard rules for this lane:
 From `/Users/kogaryu/iggy3d`:
 
 ```sh
-cmake -S . -B build -DIGGY3D_ENABLE_VULKAN=ON
-cmake --build build --target iggy3d_app -j 8
+tools/run_first_person_acceptance.sh
+```
+
+The helper configures a separate `build-vulkan` tree with
+`-DIGGY3D_ENABLE_VULKAN=ON`, builds `iggy3d_app`, prints the manual launch
+command, and lists the readiness receipt fields to inspect. It does not launch a
+window unless you pass `--run`.
+
+The equivalent raw commands are:
+
+```sh
+cmake -S . -B build-vulkan -DIGGY3D_ENABLE_VULKAN=ON
+cmake --build build-vulkan --target iggy3d_app -j 8
 ```
 
 First-person manual acceptance requires the app Vulkan backend to be present in
 the configured build. If `--renderer vulkan` exits with
 `product_vulkan_backend_unavailable`, reconfigure the build with Vulkan enabled
-before treating the run as a visual acceptance pass:
+before treating the run as a visual acceptance pass.
+
+The Vulkan app binary is:
 
 ```sh
-cmake -S . -B build -DIGGY3D_ENABLE_VULKAN=ON
-cmake --build build --target iggy3d_app -j 8
-```
-
-The app binary is:
-
-```sh
-build/iggy3d
+build-vulkan/iggy3d
 ```
 
 ## Isolated Save Root
@@ -67,7 +73,7 @@ The first save created by the current loop is:
 Use this command for the main manual pass:
 
 ```sh
-build/iggy3d \
+build-vulkan/iggy3d \
   --window \
   --renderer vulkan \
   --input auto \
@@ -95,6 +101,12 @@ Notes:
 
 For a short receipt-only window sanity check, add `--frames 1`; that is not a
 replacement for the interactive pass.
+
+To have the helper launch the same command after building, run:
+
+```sh
+tools/run_first_person_acceptance.sh --run
+```
 
 ## Full Manual Loop
 
@@ -589,6 +601,7 @@ and ctest target.
 For the Vulkan readiness gate, run:
 
 ```sh
+tools/run_first_person_acceptance.sh
 cmake --build build --target iggy3d_app
 cmake --build build --target product_window_renderer_lifecycle_tests
 ctest --test-dir build --output-on-failure -R '^product_window_renderer_lifecycle_tests$'

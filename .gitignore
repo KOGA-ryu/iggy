@@ -1,4 +1,5 @@
 build/
+build-vulkan/
 .DS_Store
 *.user
 *.swp
