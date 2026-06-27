@@ -96,3 +96,4 @@ BG-1095	src/runtime/physics/PhysicsAabbCollisionBatch.cpp	runtime physics pure A
 BG-1096	src/runtime/physics/PhysicsAabbStep.cpp	runtime physics applied AABB step pipeline policy	codex	2026-06-27
 BG-1097	src/runtime/physics/PhysicsCollisionQueries.cpp	runtime physics read-only AABB collision query policy	codex	2026-06-27
 BG-1098	src/runtime/physics/PhysicsKinematicMotor.cpp	runtime physics pure kinematic AABB motor planning policy	codex	2026-06-27
+BG-1099	src/runtime/physics/PhysicsSpatialSurfaceColliderBake.cpp	runtime physics spatial surface to AABB collider bake policy	codex	2026-06-27

@@ -173,6 +173,7 @@ target_sources(iggy3d
     src/runtime/physics/PhysicsKinematicMotor.cpp
     src/runtime/physics/PhysicsMaterialTraits.cpp
     src/runtime/physics/PhysicsShapeStore.cpp
+    src/runtime/physics/PhysicsSpatialSurfaceColliderBake.cpp
     src/runtime/physics/PhysicsStep.cpp
     src/runtime/physics/PhysicsTypes.cpp
     src/runtime/session/SessionTick.cpp

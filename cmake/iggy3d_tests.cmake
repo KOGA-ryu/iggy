@@ -470,6 +470,11 @@ iggy3d_add_unit_test(physics_kinematic_motor_tests
 set_tests_properties(physics_kinematic_motor_tests PROPERTIES
   LABELS "unit;runtime;physics;kinematic_motor;iggy3d")
 
+iggy3d_add_unit_test(physics_spatial_surface_collider_bake_tests
+  tests/unit/physics_spatial_surface_collider_bake_tests.cpp)
+set_tests_properties(physics_spatial_surface_collider_bake_tests PROPERTIES
+  LABELS "unit;runtime;physics;spatial_surface_bake;iggy3d")
+
 iggy3d_add_unit_test(physics_shape_store_tests tests/unit/physics_shape_store_tests.cpp)
 set_tests_properties(physics_shape_store_tests PROPERTIES
   LABELS "unit;runtime;physics;shape_store;iggy3d")
