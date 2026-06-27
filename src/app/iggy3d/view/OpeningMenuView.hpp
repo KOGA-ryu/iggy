@@ -13,7 +13,7 @@
 #include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/ProductPhysicsDebugHud.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
-#include "app/iggy3d/room_editor/ProductRoomEditorHud.hpp"
+#include "app/iggy3d/room_editor/ProductRoomEditorPresentation.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ProductTopDownMapOverlay.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
