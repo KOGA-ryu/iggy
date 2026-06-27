@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <optional>
 
-#include "app/iggy3d/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductInteractionModeHud.hpp"
 #include "app/iggy3d/ProductMovementDebugHud.hpp"
 #include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"

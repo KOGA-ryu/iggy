@@ -6,7 +6,7 @@
 #include <string>
 #include <string_view>
 
-#include "app/iggy3d/ProductActiveRoomState.hpp"
+#include "app/iggy3d/gameplay/ProductActiveRoomState.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductRoomVisualProof.hpp"
 #include "projection/scene/SceneProjection.hpp"

@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <string>
 
-#include "app/iggy3d/ProductActiveRoomState.hpp"
+#include "app/iggy3d/gameplay/ProductActiveRoomState.hpp"
 #include "runtime/session/Session.hpp"
 
 namespace iggy3d {

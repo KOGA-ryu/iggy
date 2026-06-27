@@ -4,7 +4,7 @@
 #include <string>
 
 #include "app/frontend/FrontendReceipt.hpp"
-#include "app/iggy3d/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductMovementDebugHud.hpp"
 #include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/window/ProductWindowRendererLifecycle.hpp"

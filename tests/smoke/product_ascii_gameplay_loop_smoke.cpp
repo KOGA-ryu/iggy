@@ -1,6 +1,6 @@
 #include "app/iggy3d/ProductAsciiRoomAuthoring.hpp"
-#include "app/iggy3d/ProductActiveRoomCollision.hpp"
-#include "app/iggy3d/ProductActiveRoomState.hpp"
+#include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ProductActiveRoomState.hpp"
 #include "app/iggy3d/world/ProductPackageSessionSeed.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "runtime/combat/CombatState.hpp"

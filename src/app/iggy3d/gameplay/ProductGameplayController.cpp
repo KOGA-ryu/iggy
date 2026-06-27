@@ -1,11 +1,11 @@
-#include "app/iggy3d/ProductGameplayController.hpp"
+#include "app/iggy3d/gameplay/ProductGameplayController.hpp"
 
 #include <cmath>
 #include <string>
 #include <string_view>
 
 #include "app/input/ActionState.hpp"
-#include "app/iggy3d/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/command/Command.hpp"
 #include "runtime/inventory/InventorySystem.hpp"

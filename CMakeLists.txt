@@ -35,8 +35,8 @@ target_sources(iggy3d
     src/app/iggy3d/EditableRoomToAuthoredRoom.cpp
     src/app/iggy3d/FrontendActionExecutor.cpp
     src/app/iggy3d/OpeningMenuView.cpp
-    src/app/iggy3d/ProductActiveRoomCollision.cpp
-    src/app/iggy3d/ProductActiveRoomState.cpp
+    src/app/iggy3d/gameplay/ProductActiveRoomCollision.cpp
+    src/app/iggy3d/gameplay/ProductActiveRoomState.cpp
     src/app/iggy3d/ProductBuiltinDungeon.cpp
     src/app/iggy3d/ProductCameraController.cpp
     src/app/iggy3d/ProductDungeonDraft.cpp
@@ -45,12 +45,12 @@ target_sources(iggy3d
     src/app/iggy3d/ProductAsciiRoomEditing.cpp
     src/app/iggy3d/ProductAsciiRoomPackage.cpp
     src/app/iggy3d/ProductAsciiRoomPreview.cpp
-    src/app/iggy3d/ProductGameplayController.cpp
-    src/app/iggy3d/ProductGameplayFeedback.cpp
-    src/app/iggy3d/ProductGameplayProjectionRefresh.cpp
+    src/app/iggy3d/gameplay/ProductGameplayController.cpp
+    src/app/iggy3d/gameplay/ProductGameplayFeedback.cpp
+    src/app/iggy3d/gameplay/ProductGameplayProjectionRefresh.cpp
     src/app/iggy3d/ProductFrontendRouter.cpp
-    src/app/iggy3d/ProductGameplayTape.cpp
-    src/app/iggy3d/ProductGameplayTapeRunner.cpp
+    src/app/iggy3d/gameplay/ProductGameplayTape.cpp
+    src/app/iggy3d/gameplay/ProductGameplayTapeRunner.cpp
     src/app/iggy3d/ProductControllerActionMap.cpp
     src/app/iggy3d/ProductControllerActionRouting.cpp
     src/app/iggy3d/ProductInteractionMode.cpp

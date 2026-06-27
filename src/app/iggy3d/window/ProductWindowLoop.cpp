@@ -1,7 +1,7 @@
 #include "app/iggy3d/window/ProductWindowLoop.hpp"
 
 #include "app/frontend/MenuInput.hpp"
-#include "app/iggy3d/ProductGameplayProjectionRefresh.hpp"
+#include "app/iggy3d/gameplay/ProductGameplayProjectionRefresh.hpp"
 #include "app/iggy3d/window/ProductWindowFramePresenter.hpp"
 #include "app/iggy3d/window/ProductWindowInputFrame.hpp"
 #include "app/iggy3d/window/ProductWindowRendererLifecycle.hpp"

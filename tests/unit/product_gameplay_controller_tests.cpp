@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductGameplayController.hpp"
+#include "app/iggy3d/gameplay/ProductGameplayController.hpp"
 
 #include <cmath>
 #include <cstdlib>

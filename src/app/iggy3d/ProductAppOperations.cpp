@@ -5,8 +5,8 @@
 
 #include "app/PackageRuntimeLookup.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
-#include "app/iggy3d/ProductActiveRoomCollision.hpp"
-#include "app/iggy3d/ProductActiveRoomState.hpp"
+#include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ProductActiveRoomState.hpp"
 #include "app/iggy3d/ProductAsciiRoomAuthoring.hpp"
 #include "app/iggy3d/ProductAsciiRoomPackage.hpp"
 #include "app/iggy3d/ProductAsciiRoomPreview.hpp"

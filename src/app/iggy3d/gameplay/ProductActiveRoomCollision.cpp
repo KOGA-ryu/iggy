@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
 
 #include <cstddef>
 #include <cstdint>

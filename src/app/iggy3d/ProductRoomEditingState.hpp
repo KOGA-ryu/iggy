@@ -3,8 +3,8 @@
 #include <cstdint>
 #include <string>
 
-#include "app/iggy3d/ProductActiveRoomCollision.hpp"
-#include "app/iggy3d/ProductActiveRoomState.hpp"
+#include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ProductActiveRoomState.hpp"
 #include "app/iggy3d/ProductAsciiRoomEditing.hpp"
 #include "app/iggy3d/ProductRoomAuthoringController.hpp"
 

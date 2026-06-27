@@ -1,12 +1,12 @@
-#include "app/iggy3d/ProductGameplayTapeRunner.hpp"
+#include "app/iggy3d/gameplay/ProductGameplayTapeRunner.hpp"
 
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
-#include "app/iggy3d/ProductActiveRoomCollision.hpp"
-#include "app/iggy3d/ProductActiveRoomState.hpp"
+#include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ProductActiveRoomState.hpp"
 #include "runtime/ai/AiState.hpp"
 #include "runtime/inventory/InventorySystem.hpp"
 #include "runtime/objective/ObjectiveSystem.hpp"

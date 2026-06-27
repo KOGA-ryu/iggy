@@ -23,14 +23,14 @@ BG-1021	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	new world menu acti
 BG-1022	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	starter menu action handler extraction from AppShell	codex	2026-06-26
 BG-1023	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	system pause menu action handler extraction from AppShell	codex	2026-06-26
 BG-1024	src/app/iggy3d/product/ProductMenuInputRouter.cpp	opening menu input router extraction from AppShell	codex	2026-06-26
-BG-1025	src/app/iggy3d/ProductGameplayProjectionRefresh.cpp	gameplay projection refresh extraction from AppShell	codex	2026-06-26
+BG-1025	src/app/iggy3d/gameplay/ProductGameplayProjectionRefresh.cpp	gameplay projection refresh extraction from AppShell	codex	2026-06-26
 BG-1026	src/app/iggy3d/AppShell.cpp	package override new-world draft selection repair	codex	2026-06-26
-BG-1027	src/app/iggy3d/ProductGameplayProjectionRefresh.cpp	live gameplay projection frame assembly extraction from AppShell	codex	2026-06-26
+BG-1027	src/app/iggy3d/gameplay/ProductGameplayProjectionRefresh.cpp	live gameplay projection frame assembly extraction from AppShell	codex	2026-06-26
 BG-1028	src/app/iggy3d/window/ProductWindowRendererLifecycle.cpp	product window renderer lifecycle extraction from AppShell	codex	2026-06-26
 BG-1029	src/app/iggy3d/window/ProductWindowInputFrame.cpp	product window input frame processing extraction from AppShell	codex	2026-06-26
 BG-1030	src/app/iggy3d/window/ProductWindowFramePresenter.cpp	product window frame presenter extraction from AppShell	codex	2026-06-26
 BG-1031	src/app/iggy3d/window/ProductWindowLoop.cpp	product window loop extraction from AppShell	codex	2026-06-26
-BG-1032	src/app/iggy3d/ProductGameplayTapeRunner.cpp	gameplay tape option flow extraction from AppShell	codex	2026-06-26
+BG-1032	src/app/iggy3d/gameplay/ProductGameplayTapeRunner.cpp	gameplay tape option flow extraction from AppShell	codex	2026-06-26
 BG-1033	src/app/iggy3d/product/AutomationDispatch.cpp	automation app adapter extraction from AppShell	codex	2026-06-26
 BG-1034	src/app/iggy3d/ProductRoomEditorHud.cpp	room editor HUD visibility and wall-tool proof	codex	2026-06-26
 BG-1035	src/app/iggy3d/OpeningMenuView.cpp	room editor HUD compact SDL drawing	codex	2026-06-26
@@ -48,9 +48,9 @@ BG-1046	src/app/iggy3d/ProductRoomEditorOverlay.cpp	room editor phantom placemen
 BG-1047	src/app/iggy3d/ProductPrimitiveDrawList.cpp	room editor phantom placement preview draw-list validation	codex	2026-06-26
 BG-1048	src/app/iggy3d/ProductRenderBridge.cpp	room editor phantom placement preview bridge count validation	codex	2026-06-26
 BG-1049	src/app/iggy3d/product/AutomationRoomEditing.cpp	room editor active phantom preview automation validation	codex	2026-06-26
-BG-1050	src/app/iggy3d/ProductGameplayProjectionRefresh.cpp	room editor active phantom preview projection validation	codex	2026-06-26
+BG-1050	src/app/iggy3d/gameplay/ProductGameplayProjectionRefresh.cpp	room editor active phantom preview projection validation	codex	2026-06-26
 BG-1051	src/app/iggy3d/product/AutomationRoomEditing.cpp	room editor phantom preview confirm cancel validation	codex	2026-06-26
-BG-1052	src/app/iggy3d/ProductGameplayProjectionRefresh.cpp	room editor cleared phantom preview receipt preservation	codex	2026-06-26
+BG-1052	src/app/iggy3d/gameplay/ProductGameplayProjectionRefresh.cpp	room editor cleared phantom preview receipt preservation	codex	2026-06-26
 BG-1054	src/app/iggy3d/product/AutomationRoomEditing.cpp	room editor physical phantom preview action dispatch	codex	2026-06-26
 BG-1055	src/app/iggy3d/window/ProductWindowInputFrame.cpp	room editor physical phantom preview input routing	codex	2026-06-26
 BG-1056	src/app/iggy3d/ProductInteractionMode.cpp	product controller interaction mode chord policy	codex	2026-06-26

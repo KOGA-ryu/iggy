@@ -16,7 +16,7 @@
 #include "app/frontend/SettingsMenu.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
-#include "app/iggy3d/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductInteractionModeHud.hpp"
 #include "app/iggy3d/ProductMovementDebugHud.hpp"
 #include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"

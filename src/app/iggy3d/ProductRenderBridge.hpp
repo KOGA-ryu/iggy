@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "app/iggy3d/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
 

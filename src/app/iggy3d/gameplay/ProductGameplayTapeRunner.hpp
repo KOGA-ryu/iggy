@@ -5,7 +5,7 @@
 #include <string>
 
 #include "app/iggy3d/ProductAppOptions.hpp"
-#include "app/iggy3d/ProductGameplayTape.hpp"
+#include "app/iggy3d/gameplay/ProductGameplayTape.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "runtime/session/SessionState.hpp"
 

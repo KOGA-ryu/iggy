@@ -3,7 +3,7 @@
 #include <string>
 #include <string_view>
 
-#include "app/iggy3d/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductInteractionMode.hpp"
 
 namespace iggy3d {

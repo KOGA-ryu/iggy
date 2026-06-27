@@ -1,10 +1,10 @@
-#include "app/iggy3d/ProductGameplayProjectionRefresh.hpp"
+#include "app/iggy3d/gameplay/ProductGameplayProjectionRefresh.hpp"
 
 #include <cmath>
 #include <cstdint>
 #include <string>
 
-#include "app/iggy3d/ProductGameplayTapeRunner.hpp"
+#include "app/iggy3d/gameplay/ProductGameplayTapeRunner.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
 #include "runtime/ai/NpcBehaviorDebugSnapshot.hpp"
 #include "runtime/ai/NpcBehaviorProfile.hpp"
