@@ -22,7 +22,7 @@
 #include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
-#include "app/iggy3d/room_editor/ProductRoomEditorPresentation.hpp"
+#include "app/iggy3d/room_editor/Presentation.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
 
 namespace iggy3d {

@@ -1,4 +1,4 @@
-#include "app/iggy3d/room_editor/ProductRoomEditorPresentation.hpp"
+#include "app/iggy3d/room_editor/Presentation.hpp"
 
 #include <iostream>
 #include <string_view>

@@ -10,7 +10,7 @@
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductRenderBridge.hpp"
-#include "app/iggy3d/room_editor/ProductRoomEditorPresentation.hpp"
+#include "app/iggy3d/room_editor/Presentation.hpp"
 #include "app/iggy3d/debug/TopDownMapOverlay.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
