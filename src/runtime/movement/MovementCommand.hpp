@@ -7,6 +7,7 @@
 #include "core/math/Vec3.hpp"
 #include "runtime/command/Command.hpp"
 #include "runtime/movement/MovementParams.hpp"
+#include "runtime/physics/PhysicsFrameStats.hpp"
 
 namespace iggy3d {
 
@@ -64,6 +65,8 @@ struct MovementResult {
   float staminaCostMultiplier = 1.0F;
   float stepPenaltyMultiplier = 1.0F;
   std::uint32_t collisionSweepCount = 0;
+  bool physicsFrameStatsAvailable = false;
+  PhysicsFrameStats physicsFrameStats;
   std::string slopeTravelDirection = "stationary";
   std::string movementPolicyBand;
   std::string hitSurfaceId;

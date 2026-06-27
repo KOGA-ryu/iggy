@@ -450,6 +450,8 @@ bool acceptedMoveWithCollisionBlocksWallWithoutMutation() {
          expect(result.hitSurfaceId == "wall", "collision wall id") &&
          expect(result.movementClamped, "collision wall clamp flag") &&
          expect(result.collisionSweepCount == 1U, "collision wall sweep") &&
+         expect(!result.physicsFrameStatsAvailable,
+                "legacy collision has no physics stats") &&
          expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
                                     {0.0F, 0.0F, 1.0F}),
                 "collision wall no mutation");
@@ -471,6 +473,19 @@ bool physicsPlannerClearMoveOverFloorSnapsAndMutates() {
          expect(!result.movementClamped, "physics clear not clamped") &&
          expect(result.groundSnapApplied, "physics clear ground snapped") &&
          expect(result.collisionSweepCount >= 1U, "physics clear sweep") &&
+         expect(result.physicsFrameStatsAvailable,
+                "physics clear stats available") &&
+         expect(result.physicsFrameStats.ok, "physics clear stats ok") &&
+         expect(result.physicsFrameStats.sourcePacketCount == 1U,
+                "physics clear stats source count") &&
+         expect(result.physicsFrameStats.playerBakedSurfaceCount > 0U,
+                "physics clear baked surfaces") &&
+         expect(result.physicsFrameStats.playerBakedColliderCount > 0U,
+                "physics clear baked colliders") &&
+         expect(result.physicsFrameStats.playerIterationCount >= 1U,
+                "physics clear iterations") &&
+         expect(result.physicsFrameStats.playerHitCount == 0U,
+                "physics clear no hits") &&
          expect(result.movementPolicyBand == "flat", "physics clear slope band") &&
          expect(iggy3d::nearlyEqual(result.finalPosition, {1.0F, 0.0F, 0.0F}),
                 "physics clear final") &&
@@ -495,6 +510,15 @@ bool physicsPlannerWallMoveClampsAndMutatesPartial() {
          expect(result.movementClamped, "physics wall clamped") &&
          expect(!result.movementSlid, "physics wall straight no slide") &&
          expect(result.collisionSweepCount >= 1U, "physics wall sweep") &&
+         expect(result.physicsFrameStatsAvailable,
+                "physics wall stats available") &&
+         expect(result.physicsFrameStats.ok, "physics wall stats ok") &&
+         expect(result.physicsFrameStats.sourcePacketCount == 1U,
+                "physics wall stats source count") &&
+         expect(result.physicsFrameStats.playerHitCount >= 1U,
+                "physics wall hit count") &&
+         expect(result.physicsFrameStats.playerIterationCount >= 1U,
+                "physics wall iteration count") &&
          expect(result.finalPosition.z > 0.10F, "physics wall stayed before wall") &&
          expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
                                     result.finalPosition),
@@ -516,6 +540,12 @@ bool physicsPlannerDiagonalWallMoveSlides() {
          expect(result.hitSurfaceId == "wall", "physics slide wall id") &&
          expect(result.movementClamped, "physics slide clamped") &&
          expect(result.movementSlid, "physics slide flag") &&
+         expect(result.physicsFrameStatsAvailable,
+                "physics slide stats available") &&
+         expect(result.physicsFrameStats.playerHitCount >= 1U,
+                "physics slide hit count") &&
+         expect(result.physicsFrameStats.playerIterationCount >= 1U,
+                "physics slide iteration count") &&
          expect(result.finalPosition.x > 0.50F, "physics slide x advanced") &&
          expect(result.finalPosition.z > 0.10F, "physics slide wall not crossed");
 }
@@ -534,6 +564,12 @@ bool physicsPlannerSkipsProjectileOnlyBlocker() {
                 "physics projectile skipped accepted") &&
          expect(!result.movementClamped, "physics projectile skipped unclamped") &&
          expect(result.hitSurfaceId.empty(), "physics projectile skipped no hit") &&
+         expect(result.physicsFrameStatsAvailable,
+                "physics projectile stats available") &&
+         expect(result.physicsFrameStats.playerSkippedSurfaceCount >= 1U,
+                "physics projectile skipped stats") &&
+         expect(result.physicsFrameStats.playerHitCount == 0U,
+                "physics projectile skipped no stats hit") &&
          expect(iggy3d::nearlyEqual(result.finalPosition, {0.0F, 0.0F, -1.0F}),
                 "physics projectile skipped final") &&
          expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
@@ -552,6 +588,8 @@ bool physicsPlannerWithoutSurfacesUsesLegacyNoCollisionPath() {
   return expect(result.blocked == iggy3d::MovementBlockedReason::None,
                 "physics missing surfaces legacy accepted") &&
          expect(result.collisionSweepCount == 0U, "physics missing surfaces no sweep") &&
+         expect(!result.physicsFrameStatsAvailable,
+                "physics missing surfaces no stats") &&
          expect(iggy3d::nearlyEqual(result.finalPosition, {1.0F, 0.0F, 0.0F}),
                 "physics missing surfaces final") &&
          expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,

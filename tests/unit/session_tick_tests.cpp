@@ -615,6 +615,8 @@ bool collisionBlockedMoveConsumesPendingCommandWithoutMutation() {
        expect(session.state().transient.lastMovementResult.blocked ==
                   iggy3d::MovementBlockedReason::BlockedByCollision,
               "collision movement blocked reason") &&
+       expect(!session.state().transient.lastMovementResult.physicsFrameStatsAvailable,
+              "collision movement no physics stats") &&
        expect(session.state().transient.lastMovementResult.hitSurfaceId == "tick_wall",
               "collision movement hit surface id") &&
        expect(session.state().transient.lastMovementResult.movementClamped,
@@ -664,6 +666,8 @@ bool sessionTickInputPhysicsPlannerDefaultsOff() {
          expect(session.state().transient.lastMovementResult.blocked ==
                     iggy3d::MovementBlockedReason::BlockedByCollision,
                 "default physics-off uses legacy blocked wall") &&
+         expect(!session.state().transient.lastMovementResult.physicsFrameStatsAvailable,
+                "default physics-off no stats") &&
          expect(iggy3d::nearlyEqual(session.state().world.findById({1})->transform.position,
                                     {0.0F, 0.0F, 0.0F}),
                 "default physics-off no mutation");
@@ -694,6 +698,15 @@ bool physicsPlannerTickOptionPartiallyMovesAgainstWall() {
        expect(movement.movementClamped, "physics tick movement clamped") &&
        expect(movement.hitSurfaceId == "tick_wall", "physics tick wall id") &&
        expect(movement.collisionSweepCount >= 1U, "physics tick sweep count") &&
+       expect(movement.physicsFrameStatsAvailable,
+              "physics tick stats available") &&
+       expect(movement.physicsFrameStats.ok, "physics tick stats ok") &&
+       expect(movement.physicsFrameStats.sourcePacketCount == 1U,
+              "physics tick stats source count") &&
+       expect(movement.physicsFrameStats.playerHitCount >= 1U,
+              "physics tick stats hit count") &&
+       expect(movement.physicsFrameStats.playerIterationCount >= 1U,
+              "physics tick stats iterations") &&
        expect(finalPosition.z < -0.10F && finalPosition.z > -0.90F,
               "physics tick partial z before wall") &&
        expect(iggy3d::nearlyEqual(finalPosition, movement.finalPosition),

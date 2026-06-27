@@ -181,6 +181,19 @@ bool physicsMovementSlid(const PlayerPhysicsMovePlannerResult& planned) {
   return isFinite(tangent) && vectorLength(tangent) > kMovementEpsilon;
 }
 
+PhysicsFrameStats frameStatsForPhysicsPlanner(
+    const PlayerPhysicsMovePlannerResult& planned) {
+  PhysicsFrameStats stats = buildPhysicsFrameStats();
+  accumulatePlayerPhysicsMovePlannerStats(stats, planned);
+  return stats;
+}
+
+void attachPhysicsFrameStats(MovementResult& result,
+                             const PlayerPhysicsMovePlannerResult& planned) {
+  result.physicsFrameStatsAvailable = true;
+  result.physicsFrameStats = frameStatsForPhysicsPlanner(planned);
+}
+
 MovementResult blockedPhysicsResult(const MovementRequest& request,
                                     Vec3 start,
                                     MovementBlockedReason reason,
@@ -196,6 +209,7 @@ MovementResult blockedPhysicsResult(const MovementRequest& request,
   result.movementClamped = planned.blocked || planned.hitCount > 0U ||
                            reason == MovementBlockedReason::BlockedByCollision;
   result.movementSlid = physicsMovementSlid(planned);
+  attachPhysicsFrameStats(result, planned);
   return result;
 }
 
@@ -224,7 +238,10 @@ MovementResult executePhysicsPlannedMovement(MovementSystemContext& context,
   const PlayerPhysicsMovePlannerResult planned = planPlayerPhysicsMove(plannerRequest);
   // branch-gate: BG-1102
   if (!planned.ok) {
-    return blockedResult(request, start, MovementBlockedReason::InternalError, distanceMeters);
+    MovementResult blocked =
+        blockedResult(request, start, MovementBlockedReason::InternalError, distanceMeters);
+    attachPhysicsFrameStats(blocked, planned);
+    return blocked;
   }
 
   Vec3 finalPosition = planned.finalCenterMeters -
@@ -268,7 +285,10 @@ MovementResult executePhysicsPlannedMovement(MovementSystemContext& context,
       context.world->updateTransform(request.actor, nextTransform);
   // branch-gate: BG-1102
   if (mutation.status != WorldStatus::Ok) {
-    return blockedResult(request, start, MovementBlockedReason::BlockedByWorld, distanceMeters);
+    MovementResult blocked =
+        blockedResult(request, start, MovementBlockedReason::BlockedByWorld, distanceMeters);
+    attachPhysicsFrameStats(blocked, planned);
+    return blocked;
   }
 
   MovementResult result;
@@ -286,6 +306,7 @@ MovementResult executePhysicsPlannedMovement(MovementSystemContext& context,
   result.collisionSweepCount = physicsCollisionSweepCount(planned);
   result.hitSurfaceId = planned.firstHitSourceSurfaceId;
   result.reasonCode = "movement_ok";
+  attachPhysicsFrameStats(result, planned);
   applySlopeToResult(result, slope);
   applyTravelFacts(result);
   return result;
