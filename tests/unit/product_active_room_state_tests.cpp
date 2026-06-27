@@ -1,6 +1,6 @@
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/ascii_room/Authoring.hpp"
-#include "app/iggy3d/ascii_room/ProductAsciiRoomEditing.hpp"
+#include "app/iggy3d/ascii_room/Editing.hpp"
 
 #include <cstdlib>
 #include <iostream>

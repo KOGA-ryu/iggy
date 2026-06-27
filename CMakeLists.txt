@@ -42,7 +42,7 @@ target_sources(iggy3d
     src/app/iggy3d/ProductDungeonDraft.cpp
     src/app/iggy3d/ascii_room/Activation.cpp
     src/app/iggy3d/ascii_room/Authoring.cpp
-    src/app/iggy3d/ascii_room/ProductAsciiRoomEditing.cpp
+    src/app/iggy3d/ascii_room/Editing.cpp
     src/app/iggy3d/ascii_room/Package.cpp
     src/app/iggy3d/ascii_room/Preview.cpp
     src/app/iggy3d/gameplay/Controller.cpp

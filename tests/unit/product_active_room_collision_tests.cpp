@@ -1,7 +1,7 @@
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/ascii_room/Authoring.hpp"
-#include "app/iggy3d/ascii_room/ProductAsciiRoomEditing.hpp"
+#include "app/iggy3d/ascii_room/Editing.hpp"
 #include "runtime/collision/CollisionQuery.hpp"
 #include "runtime/world/EntityState.hpp"
 #include "runtime/session/SessionState.hpp"
