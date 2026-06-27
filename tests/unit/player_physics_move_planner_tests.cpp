@@ -116,6 +116,18 @@ iggy3d::PlayerPhysicsMovePlannerRequest requestFor(
   return request;
 }
 
+bool displacementFactsMatch(const iggy3d::PlayerPhysicsMovePlannerResult& result,
+                            iggy3d::Vec3 desiredDisplacementMeters) {
+  const iggy3d::Vec3 expectedApplied =
+      result.finalCenterMeters - result.startCenterMeters;
+  const iggy3d::Vec3 expectedRemaining =
+      desiredDisplacementMeters - result.appliedDisplacementMeters;
+  return iggy3d::nearlyEqual(result.appliedDisplacementMeters,
+                             expectedApplied) &&
+         iggy3d::nearlyEqual(result.remainingDisplacementMeters,
+                             expectedRemaining);
+}
+
 bool statusNamesAndConfigValidation() {
   iggy3d::PlayerPhysicsMovePlannerConfig valid;
   iggy3d::PlayerPhysicsMovePlannerConfig invalidBake = valid;
@@ -254,9 +266,10 @@ bool invalidRequestsRejectBeforeMovement() {
 
 bool emptySurfaceSetPlansClearMovement() {
   const iggy3d::SpatialSurfaceSet empty;
+  const iggy3d::Vec3 desired = {1.0F, 0.0F, 0.5F};
   const iggy3d::PlayerPhysicsMovePlannerResult result =
       iggy3d::planPlayerPhysicsMove(
-          requestFor(&empty, {0.0F, 0.9F, 0.0F}, {1.0F, 0.0F, 0.5F}));
+          requestFor(&empty, {0.0F, 0.9F, 0.0F}, desired));
 
   return expect(result.ok, "empty surface move ok") &&
          expect(result.bakedSurfaceCount == 0U, "empty surface count") &&
@@ -268,7 +281,9 @@ bool emptySurfaceSetPlansClearMovement() {
                 "empty move final center") &&
          expect(iggy3d::nearlyEqual(result.appliedDisplacementMeters,
                                     {1.0F, 0.0F, 0.5F}),
-                "empty move applied");
+                "empty move applied") &&
+         expect(displacementFactsMatch(result, desired),
+                "empty move displacement facts");
 }
 
 bool floorGroundsBodyThroughBakeAndMotor() {
@@ -329,6 +344,32 @@ bool diagonalMoveSlidesAlongActorWall() {
                 "slide no remaining");
 }
 
+bool groundSnapRefreshesDisplacementFacts() {
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet({floorSurface()});
+  iggy3d::PlayerPhysicsMovePlannerConfig config = plannerConfig();
+  config.motor.groundProbeDistanceMeters = 0.05F;
+  config.motor.groundSnapDistanceMeters = 0.30F;
+  const iggy3d::Vec3 start = {0.0F, 1.05F, 0.0F};
+  const iggy3d::Vec3 desired = {1.0F, 0.0F, 0.0F};
+  const iggy3d::PlayerPhysicsMovePlannerResult result =
+      iggy3d::planPlayerPhysicsMove(
+          requestFor(&surfaces, start, desired, config));
+
+  return expect(result.ok, "snap move ok") &&
+         expect(result.grounded, "snap grounded") &&
+         expect(result.snappedToGround, "snap flag") &&
+         expect(near(result.finalCenterMeters.y, 0.90F),
+                "snap final y") &&
+         expect(iggy3d::nearlyEqual(result.appliedDisplacementMeters,
+                                    {1.0F, -0.15F, 0.0F}),
+                "snap applied") &&
+         expect(iggy3d::nearlyEqual(result.remainingDisplacementMeters,
+                                    {0.0F, 0.15F, 0.0F}),
+                "snap remaining") &&
+         expect(displacementFactsMatch(result, desired),
+                "snap displacement facts");
+}
+
 bool projectileOnlySurfacePolicyIsExplicit() {
   const iggy3d::SpatialSurfaceSet surfaces =
       makeSurfaceSet({floorSurface(), projectileOnlySurface()});
@@ -369,6 +410,7 @@ int main() {
                   floorGroundsBodyThroughBakeAndMotor() &&
                   wallBlocksAndReportsSurfaceId() &&
                   diagonalMoveSlidesAlongActorWall() &&
+                  groundSnapRefreshesDisplacementFacts() &&
                   projectileOnlySurfacePolicyIsExplicit();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

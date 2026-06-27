@@ -35,6 +35,14 @@ PlayerPhysicsMovePlannerResult failedWithUpstream(
   return result;
 }
 
+void refreshDisplacementFacts(PlayerPhysicsMovePlannerResult* result,
+                              Vec3 desiredDisplacementMeters) {
+  result->appliedDisplacementMeters =
+      result->finalCenterMeters - result->startCenterMeters;
+  result->remainingDisplacementMeters =
+      desiredDisplacementMeters - result->appliedDisplacementMeters;
+}
+
 PlayerPhysicsMovePlannerResult validateRequest(
     const PlayerPhysicsMovePlannerRequest& request) {
   // branch-gate: BG-1100
@@ -181,8 +189,7 @@ void applyGroundFacts(PlayerPhysicsMovePlannerResult* result,
     if (snap.ok && snap.grounded) {
       result->finalCenterMeters = result->finalCenterMeters +
                                   Vec3{0.0F, -snap.groundDistanceMeters, 0.0F};
-      result->appliedDisplacementMeters =
-          result->finalCenterMeters - result->startCenterMeters;
+      refreshDisplacementFacts(result, request.desiredDisplacementMeters);
       result->grounded = true;
       result->snappedToGround = true;
     }
