@@ -1,16 +1,39 @@
 #pragma once
 
+#include <cstdint>
+#include <string>
+#include <vector>
+
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/gameplay/ProductGameplayProjectionRefresh.hpp"
+#include "app/iggy3d/menu/ProductUiDrawList.hpp"
 #include "app/iggy3d/window/ProductWindowRendererLifecycle.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/platform/SdlWindow.hpp"
+#include "render/FrameInput.hpp"
 
 namespace iggy3d {
+
+struct ProductVulkanMenuFrameRequest {
+  const ProductUiDrawList* uiDrawList = nullptr;
+  std::uint64_t frameIndex = 0;
+  std::uint32_t drawableWidth = 0;
+  std::uint32_t drawableHeight = 0;
+};
+
+struct ProductVulkanMenuFrame {
+  bool ready = false;
+  std::string status = "product_vulkan_menu_frame_not_ready";
+  std::string reasonCode = "product_vulkan_menu_frame_not_ready";
+  FrameInput frame;
+  std::vector<RenderUiRect> rects;
+  std::vector<DebugHudGlyphQuad> textGlyphQuads;
+  std::uint64_t textGlyphCount = 0;
+};
 
 struct ProductWindowFramePresenterRequest {
   const ProductAppOptions& options;
@@ -25,6 +48,10 @@ struct ProductWindowFramePresenterRequest {
   const ProductGameplayProjectionFrame& projectionFrame;
 };
 
+ProductVulkanMenuFrame buildProductVulkanStarterMenuFrame(
+    const ProductVulkanMenuFrameRequest& request);
+const FrameInput& refreshProductVulkanMenuFrameInput(
+    ProductVulkanMenuFrame& menuFrame);
 void presentProductWindowFrame(ProductWindowFramePresenterRequest request);
 
 }  // namespace iggy3d
