@@ -80,6 +80,23 @@ iggy3d::RoomSpatialSurface projectileOnlySurface() {
   return surface;
 }
 
+iggy3d::RoomSpatialSurface actorMaskBlockerSurface() {
+  iggy3d::RoomSpatialSurface surface = wallSurface();
+  surface.id = "actor_mask_wall";
+  surface.blocksActor = false;
+  surface.collisionMask = {"actor"};
+  surface.runtimeOwnerStableName = "owner.actor_mask_wall";
+  return surface;
+}
+
+iggy3d::RoomSpatialSurface blockerRoleProjectileOnlySurface() {
+  iggy3d::RoomSpatialSurface surface = projectileOnlySurface();
+  surface.id = "blocker_role_projectile";
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Blocker;
+  surface.runtimeOwnerStableName = "owner.blocker_role_projectile";
+  return surface;
+}
+
 iggy3d::RoomSpatialSurface openingSurface() {
   iggy3d::RoomSpatialSurface surface;
   surface.id = "opening";
@@ -276,6 +293,51 @@ bool defaultPolicySkipsProjectileOnlyAndOpeningSurfaces() {
                 "opening invalid source index");
 }
 
+bool actorBlockerPolicyFollowsActorQuerySemantics() {
+  const iggy3d::SpatialSurfaceSet set =
+      surfaceSet({actorMaskBlockerSurface()});
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult result =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&set, {}});
+
+  return expect(result.ok, "actor mask blocker bakes ok") &&
+         expect(result.colliderCount == 1U, "actor mask blocker included") &&
+         expect(result.sourceSurfaceIds[0] == "actor_mask_wall",
+                "actor mask blocker id") &&
+         expect(result.sourceRoles[0] == iggy3d::CollisionSurfaceRole::Blocker,
+                "actor mask blocker role") &&
+         expect(result.runtimeOwnerStableNames[0] == "owner.actor_mask_wall",
+                "actor mask blocker owner");
+}
+
+bool blockerRoleProjectileMaskIsNotActorBlockerByDefault() {
+  const iggy3d::SpatialSurfaceSet set =
+      surfaceSet({blockerRoleProjectileOnlySurface()});
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult skipped =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&set, {}});
+
+  iggy3d::PhysicsSpatialSurfaceColliderBakeConfig includeProjectile;
+  includeProjectile.includeProjectileBlockers = true;
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult included =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces(
+          {&set, includeProjectile});
+
+  return expect(skipped.ok, "blocker role projectile default ok") &&
+         expect(skipped.colliderCount == 0U,
+                "blocker role projectile skipped by default") &&
+         expect(skipped.skippedSurfaceCount == 1U,
+                "blocker role projectile skip count") &&
+         expect(included.ok, "blocker role projectile included ok") &&
+         expect(included.colliderCount == 1U,
+                "blocker role projectile included") &&
+         expect(included.sourceSurfaceIds[0] == "blocker_role_projectile",
+                "blocker role projectile id") &&
+         expect(included.sourceRoles[0] == iggy3d::CollisionSurfaceRole::Blocker,
+                "blocker role projectile preserves role") &&
+         expect(included.runtimeOwnerStableNames[0] ==
+                    "owner.blocker_role_projectile",
+                "blocker role projectile owner");
+}
+
 bool malformedAuthoredSurfaceIsFilteredBeforeBake() {
   const iggy3d::SpatialSurfaceSet set = surfaceSet({malformedSurface()});
   const iggy3d::PhysicsSpatialSurfaceColliderBakeResult result =
@@ -369,6 +431,8 @@ int main() {
       missingAndEmptyInputsAreStable() &&
       roomSurfacesBakeInDeterministicOrderAndPreserveMetadata() &&
       defaultPolicySkipsProjectileOnlyAndOpeningSurfaces() &&
+      actorBlockerPolicyFollowsActorQuerySemantics() &&
+      blockerRoleProjectileMaskIsNotActorBlockerByDefault() &&
       malformedAuthoredSurfaceIsFilteredBeforeBake() &&
       floorPlaneThicknessPolicyIsExact() &&
       bakedFloorWorksWithGroundCheck() &&

@@ -41,11 +41,10 @@ Vec3 expandHalfExtents(Vec3 halfExtents, float minHalfExtentMeters) {
 }
 
 bool actorBlockingSurface(const CollisionSurfaceView& surface) {
-  return surface.role == CollisionSurfaceRole::Blocker ||
-         surface.blocksActor;
+  return surface.blocksActor || surface.hasActorMask;
 }
 
-bool projectileOnlySurface(const CollisionSurfaceView& surface) {
+bool projectileBlockingSurface(const CollisionSurfaceView& surface) {
   return surface.role == CollisionSurfaceRole::ProjectileBlocker ||
          surface.blocksProjectile || surface.hasProjectileMask;
 }
@@ -70,7 +69,7 @@ bool includeSurface(
     return config.includeActorBlockers;
   }
   // branch-gate: BG-1099
-  if (projectileOnlySurface(surface)) {
+  if (projectileBlockingSurface(surface)) {
     return config.includeProjectileBlockers;
   }
   return false;
