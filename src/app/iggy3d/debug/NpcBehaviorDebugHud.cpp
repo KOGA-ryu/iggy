@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
+#include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
 
 #include <string>
 #include <string_view>
@@ -15,23 +15,23 @@ ProductFeedbackTone toneForLine(std::string_view line) {
   return ProductFeedbackTone::Neutral;
 }
 
-void copyVisibleLines(ProductNpcBehaviorDebugHud& hud,
+void copyVisibleLines(NpcBehaviorDebugHud& hud,
                       const DebugProjectionResult& debug) {
   hud.lines.reserve(debug.npcBehaviorDebugHudLines.size());
   for (const std::string& line : debug.npcBehaviorDebugHudLines) {
-    hud.lines.push_back(ProductNpcBehaviorDebugHudLine{
+    hud.lines.push_back(NpcBehaviorDebugHudLine{
         line, toneForLine(line), hud.visible});
   }
 }
 
 }  // namespace
 
-ProductNpcBehaviorDebugHud buildProductNpcBehaviorDebugHud(
+NpcBehaviorDebugHud buildNpcBehaviorDebugHud(
     const DebugProjectionResult* debug,
     bool gameplayActive,
     bool developerToolsEnabled,
     bool debugOverlayEnabled) {
-  ProductNpcBehaviorDebugHud hud;
+  NpcBehaviorDebugHud hud;
   hud.developerToolsEnabled = developerToolsEnabled;
   hud.debugOverlayEnabled = debugOverlayEnabled;
   hud.debugAvailable = debug != nullptr;

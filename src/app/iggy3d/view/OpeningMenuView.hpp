@@ -9,13 +9,13 @@
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductInteractionModeHud.hpp"
-#include "app/iggy3d/ProductMovementDebugHud.hpp"
-#include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
-#include "app/iggy3d/ProductPhysicsDebugHud.hpp"
+#include "app/iggy3d/debug/MovementDebugHud.hpp"
+#include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
+#include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/room_editor/ProductRoomEditorPresentation.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
-#include "app/iggy3d/ProductTopDownMapOverlay.hpp"
+#include "app/iggy3d/debug/TopDownMapOverlay.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 
@@ -69,10 +69,10 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const ProductViewportFrame* frame,
                                          const ProductGameplayFeedback* feedback,
                                          const ProductInteractionModeHud* interactionModeHud,
-                                         const ProductTopDownMapOverlay* topDownMapOverlay,
-                                         const ProductMovementDebugHud* movementHud,
-                                         const ProductNpcBehaviorDebugHud* npcHud,
-                                         const ProductPhysicsDebugHud* physicsHud,
+                                         const TopDownMapOverlay* topDownMapOverlay,
+                                         const MovementDebugHud* movementHud,
+                                         const NpcBehaviorDebugHud* npcHud,
+                                         const PhysicsDebugHud* physicsHud,
                                          const ProductRoomEditorHud* roomEditorHud,
                                          std::size_t sceneItemCount,
                                          const DebugProjectionResult* debug,

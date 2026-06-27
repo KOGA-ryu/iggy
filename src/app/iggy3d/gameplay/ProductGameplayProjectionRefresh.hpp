@@ -5,13 +5,13 @@
 
 #include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductInteractionModeHud.hpp"
-#include "app/iggy3d/ProductMovementDebugHud.hpp"
-#include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
-#include "app/iggy3d/ProductPhysicsDebugHud.hpp"
+#include "app/iggy3d/debug/MovementDebugHud.hpp"
+#include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
+#include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductRenderBridge.hpp"
 #include "app/iggy3d/room_editor/ProductRoomEditorPresentation.hpp"
-#include "app/iggy3d/ProductTopDownMapOverlay.hpp"
+#include "app/iggy3d/debug/TopDownMapOverlay.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "projection/debug/DebugProjection.hpp"
@@ -44,10 +44,10 @@ struct ProductGameplayProjectionFrame {
   ProductViewportFrame viewportFrame;
   ProductGameplayFeedback feedback;
   ProductInteractionModeHud interactionModeHud;
-  ProductTopDownMapOverlay topDownMapOverlay;
-  ProductMovementDebugHud movementHud;
-  ProductNpcBehaviorDebugHud npcBehaviorHud;
-  ProductPhysicsDebugHud physicsHud;
+  TopDownMapOverlay topDownMapOverlay;
+  MovementDebugHud movementHud;
+  NpcBehaviorDebugHud npcBehaviorHud;
+  PhysicsDebugHud physicsHud;
   ProductRoomEditorHud roomEditorHud;
   ProductRoomEditorOverlay roomEditorOverlay;
   ProductRoomEditorPreviewOverlay roomEditorPreviewOverlay;
@@ -69,10 +69,10 @@ DebugProjectionResult buildProductDebugProjectionWithNpcBehavior(
     bool debugOverlayEnabled = false);
 
 void copyNpcBehaviorDebugHud(ProductAppWindowState& window,
-                             const ProductNpcBehaviorDebugHud& hud);
+                             const NpcBehaviorDebugHud& hud);
 
 void copyPhysicsDebugHud(ProductAppWindowState& window,
-                         const ProductPhysicsDebugHud& hud);
+                         const PhysicsDebugHud& hud);
 
 void copyProductRoomEditorOverlay(ProductAppWindowState& window,
                                   const ProductRoomEditorOverlay& overlay);

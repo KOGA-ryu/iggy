@@ -8,7 +8,7 @@
 
 namespace iggy3d {
 
-struct ProductTopDownMapOverlay {
+struct TopDownMapOverlay {
   bool visible = false;
   std::string purpose = "hidden";
   std::string size = "hidden";
@@ -17,7 +17,7 @@ struct ProductTopDownMapOverlay {
   std::uint64_t itemCount = 0;
 };
 
-struct ProductTopDownMapOverlayRequest {
+struct TopDownMapOverlayRequest {
   ProductRendererRequest rendererRequest = ProductRendererRequest::Vulkan;
   ProductInteractionMode interactionMode = ProductInteractionMode::Player;
   bool gameplayActive = false;
@@ -25,7 +25,7 @@ struct ProductTopDownMapOverlayRequest {
   std::uint64_t itemCount = 0;
 };
 
-ProductTopDownMapOverlay buildProductTopDownMapOverlay(
-    ProductTopDownMapOverlayRequest request);
+TopDownMapOverlay buildTopDownMapOverlay(
+    TopDownMapOverlayRequest request);
 
 }  // namespace iggy3d

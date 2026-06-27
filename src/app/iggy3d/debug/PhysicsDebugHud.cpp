@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductPhysicsDebugHud.hpp"
+#include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 
 #include <string>
 #include <string_view>
@@ -29,23 +29,23 @@ bool hasWarningLine(const DebugProjectionResult& debug) {
   return false;
 }
 
-void copyVisibleLines(ProductPhysicsDebugHud& hud,
+void copyVisibleLines(PhysicsDebugHud& hud,
                       const DebugProjectionResult& debug) {
   hud.lines.reserve(debug.physicsDebugHudLines.size());
   for (const std::string& line : debug.physicsDebugHudLines) {
     hud.lines.push_back(
-        ProductPhysicsDebugHudLine{line, toneForLine(line), hud.visible});
+        PhysicsDebugHudLine{line, toneForLine(line), hud.visible});
   }
 }
 
 }  // namespace
 
-ProductPhysicsDebugHud buildProductPhysicsDebugHud(
+PhysicsDebugHud buildPhysicsDebugHud(
     const DebugProjectionResult* debug,
     bool gameplayActive,
     bool developerToolsEnabled,
     bool debugOverlayEnabled) {
-  ProductPhysicsDebugHud hud;
+  PhysicsDebugHud hud;
   hud.developerToolsEnabled = developerToolsEnabled;
   hud.debugOverlayEnabled = debugOverlayEnabled;
   hud.debugAvailable = debug != nullptr;

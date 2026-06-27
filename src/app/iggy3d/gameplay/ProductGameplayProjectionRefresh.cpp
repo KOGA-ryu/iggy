@@ -14,9 +14,9 @@ namespace iggy3d {
 
 namespace {
 
-bool npcBehaviorHudHasUnresolvedProfile(const ProductNpcBehaviorDebugHud& hud) {
+bool npcBehaviorHudHasUnresolvedProfile(const NpcBehaviorDebugHud& hud) {
   // branch-gate: BG-1025
-  for (const ProductNpcBehaviorDebugHudLine& line : hud.lines) {
+  for (const NpcBehaviorDebugHudLine& line : hud.lines) {
     // branch-gate: BG-1025
     if (line.text.find("unresolved=") != std::string::npos) {
       return true;
@@ -201,7 +201,7 @@ DebugProjectionResult buildProductDebugProjectionWithNpcBehavior(
 }
 
 void copyNpcBehaviorDebugHud(ProductAppWindowState& window,
-                             const ProductNpcBehaviorDebugHud& hud) {
+                             const NpcBehaviorDebugHud& hud) {
   window.npcBehaviorDebugHudVisible = hud.visible;
   window.npcBehaviorDebugHudDebugAvailable = hud.debugAvailable;
   window.npcBehaviorDebugHudLineCount = static_cast<std::uint64_t>(hud.lineCount);
@@ -212,7 +212,7 @@ void copyNpcBehaviorDebugHud(ProductAppWindowState& window,
 }
 
 void copyPhysicsDebugHud(ProductAppWindowState& window,
-                         const ProductPhysicsDebugHud& hud) {
+                         const PhysicsDebugHud& hud) {
   window.physicsDebugHudVisible = hud.visible;
   window.physicsDebugHudDebugAvailable = hud.debugAvailable;
   window.physicsDebugHudLineCount = static_cast<std::uint64_t>(hud.lineCount);
@@ -263,8 +263,8 @@ void copyProductInteractionModeHud(ProductAppWindowState& window,
   window.interactionModeHudLabel = hud.label;
 }
 
-void copyProductTopDownMapOverlay(ProductAppWindowState& window,
-                                  const ProductTopDownMapOverlay& overlay) {
+void copyTopDownMapOverlay(ProductAppWindowState& window,
+                                  const TopDownMapOverlay& overlay) {
   window.topDownMapVisible = overlay.visible;
   window.topDownMapPurpose = overlay.purpose;
   window.topDownMapSize = overlay.size;
@@ -480,22 +480,22 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
           window.roomEditing.ready,
       });
   copyProductInteractionModeHud(window, frame.interactionModeHud);
-  frame.topDownMapOverlay = buildProductTopDownMapOverlay(
-      ProductTopDownMapOverlayRequest{request.rendererRequest,
+  frame.topDownMapOverlay = buildTopDownMapOverlay(
+      TopDownMapOverlayRequest{request.rendererRequest,
                                       window.interactionMode,
                                       window.gameplayActive,
                                       window.roomEditing.ready,
                                       0U});
-  copyProductTopDownMapOverlay(window, frame.topDownMapOverlay);
-  frame.movementHud = buildProductMovementDebugHud(window,
+  copyTopDownMapOverlay(window, frame.topDownMapOverlay);
+  frame.movementHud = buildMovementDebugHud(window,
                                                    request.developerToolsEnabled,
                                                    request.debugOverlayEnabled);
   frame.npcBehaviorHud =
-      buildProductNpcBehaviorDebugHud(nullptr, window.gameplayActive,
+      buildNpcBehaviorDebugHud(nullptr, window.gameplayActive,
                                       request.developerToolsEnabled,
                                       request.debugOverlayEnabled);
   copyNpcBehaviorDebugHud(window, frame.npcBehaviorHud);
-  frame.physicsHud = buildProductPhysicsDebugHud(nullptr, window.gameplayActive,
+  frame.physicsHud = buildPhysicsDebugHud(nullptr, window.gameplayActive,
                                                  request.developerToolsEnabled,
                                                  request.debugOverlayEnabled);
   copyPhysicsDebugHud(window, frame.physicsHud);
@@ -548,13 +548,13 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
                                                  &window.activeRoomCollision,
                                                  &frame.roomEditorOverlay,
                                                  &frame.roomEditorPreviewOverlay);
-  frame.topDownMapOverlay = buildProductTopDownMapOverlay(
-      ProductTopDownMapOverlayRequest{request.rendererRequest,
+  frame.topDownMapOverlay = buildTopDownMapOverlay(
+      TopDownMapOverlayRequest{request.rendererRequest,
                                       window.interactionMode,
                                       window.gameplayActive,
                                       window.roomEditing.ready,
                                       frame.drawList.itemCount});
-  copyProductTopDownMapOverlay(window, frame.topDownMapOverlay);
+  copyTopDownMapOverlay(window, frame.topDownMapOverlay);
   frame.viewportFrame = buildProductViewportFrame(
       frame.drawList, ProductViewportFrameConfig{window.viewport.cameraYawDegrees,
                                                 window.viewport.cameraPitchDegrees});
@@ -570,15 +570,15 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
           window.roomEditing.ready,
       });
   copyProductInteractionModeHud(window, frame.interactionModeHud);
-  frame.movementHud = buildProductMovementDebugHud(window,
+  frame.movementHud = buildMovementDebugHud(window,
                                                    request.developerToolsEnabled,
                                                    request.debugOverlayEnabled);
-  frame.npcBehaviorHud = buildProductNpcBehaviorDebugHud(&frame.debug,
+  frame.npcBehaviorHud = buildNpcBehaviorDebugHud(&frame.debug,
                                                          window.gameplayActive,
                                                          request.developerToolsEnabled,
                                                          request.debugOverlayEnabled);
   copyNpcBehaviorDebugHud(window, frame.npcBehaviorHud);
-  frame.physicsHud = buildProductPhysicsDebugHud(&frame.debug, window.gameplayActive,
+  frame.physicsHud = buildPhysicsDebugHud(&frame.debug, window.gameplayActive,
                                                  request.developerToolsEnabled,
                                                  request.debugOverlayEnabled);
   copyPhysicsDebugHud(window, frame.physicsHud);

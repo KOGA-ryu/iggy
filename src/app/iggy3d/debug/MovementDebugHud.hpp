@@ -10,14 +10,14 @@ namespace iggy3d {
 
 struct ProductAppWindowState;
 
-struct ProductMovementDebugHudLine {
+struct MovementDebugHudLine {
   std::string label;
   std::string value;
   ProductFeedbackTone tone = ProductFeedbackTone::Neutral;
   bool visible = false;
 };
 
-struct ProductMovementDebugHud {
+struct MovementDebugHud {
   bool visible = false;
   bool developerToolsEnabled = false;
   bool debugOverlayEnabled = false;
@@ -36,10 +36,10 @@ struct ProductMovementDebugHud {
   float finalX = 0.0F;
   float finalY = 0.0F;
   float finalZ = 0.0F;
-  std::vector<ProductMovementDebugHudLine> lines;
+  std::vector<MovementDebugHudLine> lines;
 };
 
-ProductMovementDebugHud buildProductMovementDebugHud(
+MovementDebugHud buildMovementDebugHud(
     const ProductAppWindowState& window,
     bool developerToolsEnabled,
     bool debugOverlayEnabled);

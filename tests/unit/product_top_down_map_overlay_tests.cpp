@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductTopDownMapOverlay.hpp"
+#include "app/iggy3d/debug/TopDownMapOverlay.hpp"
 
 #include <iostream>
 
@@ -19,8 +19,8 @@ bool expect(bool condition, const char* message) {
 }
 
 bool inactiveGameplayHidesTopDownMap() {
-  const iggy3d::ProductTopDownMapOverlay overlay =
-      iggy3d::buildProductTopDownMapOverlay(
+  const iggy3d::TopDownMapOverlay overlay =
+      iggy3d::buildTopDownMapOverlay(
           {iggy3d::ProductRendererRequest::Vulkan,
            iggy3d::ProductInteractionMode::Player,
            false,
@@ -36,8 +36,8 @@ bool inactiveGameplayHidesTopDownMap() {
 }
 
 bool playerGameplayUsesCompactMinimap() {
-  const iggy3d::ProductTopDownMapOverlay overlay =
-      iggy3d::buildProductTopDownMapOverlay(
+  const iggy3d::TopDownMapOverlay overlay =
+      iggy3d::buildTopDownMapOverlay(
           {iggy3d::ProductRendererRequest::Vulkan,
            iggy3d::ProductInteractionMode::Player,
            true,
@@ -53,8 +53,8 @@ bool playerGameplayUsesCompactMinimap() {
 }
 
 bool creativeEditingUsesEditorOverview() {
-  const iggy3d::ProductTopDownMapOverlay overlay =
-      iggy3d::buildProductTopDownMapOverlay(
+  const iggy3d::TopDownMapOverlay overlay =
+      iggy3d::buildTopDownMapOverlay(
           {iggy3d::ProductRendererRequest::Vulkan,
            iggy3d::ProductInteractionMode::Creative,
            true,
@@ -72,8 +72,8 @@ bool creativeEditingUsesEditorOverview() {
 }
 
 bool nullPlayerGameplayUsesDiagnosticFallback() {
-  const iggy3d::ProductTopDownMapOverlay overlay =
-      iggy3d::buildProductTopDownMapOverlay(
+  const iggy3d::TopDownMapOverlay overlay =
+      iggy3d::buildTopDownMapOverlay(
           {iggy3d::ProductRendererRequest::Null,
            iggy3d::ProductInteractionMode::Player,
            true,
@@ -91,8 +91,8 @@ bool nullPlayerGameplayUsesDiagnosticFallback() {
 }
 
 bool unknownInteractionModeFailsClosed() {
-  const iggy3d::ProductTopDownMapOverlay overlay =
-      iggy3d::buildProductTopDownMapOverlay(
+  const iggy3d::TopDownMapOverlay overlay =
+      iggy3d::buildTopDownMapOverlay(
           {iggy3d::ProductRendererRequest::Vulkan,
            static_cast<iggy3d::ProductInteractionMode>(255U),
            true,
@@ -113,8 +113,8 @@ bool receiptCarriesTopDownMapFields() {
   iggy3d::FrontendSettings settings;
   iggy3d::ProductSaveBridgeResult saves;
   iggy3d::ProductAppWindowState window;
-  const iggy3d::ProductTopDownMapOverlay overlay =
-      iggy3d::buildProductTopDownMapOverlay(
+  const iggy3d::TopDownMapOverlay overlay =
+      iggy3d::buildTopDownMapOverlay(
           {iggy3d::ProductRendererRequest::Vulkan,
            iggy3d::ProductInteractionMode::Player,
            true,

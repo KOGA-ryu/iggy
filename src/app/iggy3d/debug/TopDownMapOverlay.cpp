@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductTopDownMapOverlay.hpp"
+#include "app/iggy3d/debug/TopDownMapOverlay.hpp"
 
 #include <array>
 #include <string_view>
@@ -6,7 +6,7 @@
 namespace iggy3d {
 namespace {
 
-enum class ProductTopDownMapContext {
+enum class TopDownMapContext {
   Hidden,
   Minimap,
   EditorOverview,
@@ -14,8 +14,8 @@ enum class ProductTopDownMapContext {
   UnknownMode,
 };
 
-struct ProductTopDownMapDescriptor {
-  ProductTopDownMapContext context;
+struct TopDownMapDescriptor {
+  TopDownMapContext context;
   bool visible;
   std::string_view purpose;
   std::string_view size;
@@ -23,41 +23,41 @@ struct ProductTopDownMapDescriptor {
   std::string_view reasonCode;
 };
 
-constexpr std::array<ProductTopDownMapDescriptor, 5> kTopDownMapDescriptors{
-    ProductTopDownMapDescriptor{
-        ProductTopDownMapContext::Hidden,
+constexpr std::array<TopDownMapDescriptor, 5> kTopDownMapDescriptors{
+    TopDownMapDescriptor{
+        TopDownMapContext::Hidden,
         false,
         "hidden",
         "hidden",
         "top_down_map_hidden",
         "top_down_map_gameplay_inactive",
     },
-    ProductTopDownMapDescriptor{
-        ProductTopDownMapContext::Minimap,
+    TopDownMapDescriptor{
+        TopDownMapContext::Minimap,
         true,
         "minimap",
         "compact",
         "top_down_map_ready",
         "top_down_map_minimap",
     },
-    ProductTopDownMapDescriptor{
-        ProductTopDownMapContext::EditorOverview,
+    TopDownMapDescriptor{
+        TopDownMapContext::EditorOverview,
         true,
         "editor_overview",
         "editor",
         "top_down_map_ready",
         "top_down_map_editor_overview",
     },
-    ProductTopDownMapDescriptor{
-        ProductTopDownMapContext::DebugFallback,
+    TopDownMapDescriptor{
+        TopDownMapContext::DebugFallback,
         true,
         "top_down_debug_fallback",
         "fallback_full",
         "top_down_map_debug_fallback",
         "top_down_map_null_renderer_fallback",
     },
-    ProductTopDownMapDescriptor{
-        ProductTopDownMapContext::UnknownMode,
+    TopDownMapDescriptor{
+        TopDownMapContext::UnknownMode,
         false,
         "hidden",
         "hidden",
@@ -66,8 +66,8 @@ constexpr std::array<ProductTopDownMapDescriptor, 5> kTopDownMapDescriptors{
     },
 };
 
-const ProductTopDownMapDescriptor& descriptorFor(ProductTopDownMapContext context) {
-  for (const ProductTopDownMapDescriptor& descriptor : kTopDownMapDescriptors) {
+const TopDownMapDescriptor& descriptorFor(TopDownMapContext context) {
+  for (const TopDownMapDescriptor& descriptor : kTopDownMapDescriptors) {
     // branch-gate: BG-1070
     if (descriptor.context == context) {
       return descriptor;
@@ -76,34 +76,34 @@ const ProductTopDownMapDescriptor& descriptorFor(ProductTopDownMapContext contex
   return kTopDownMapDescriptors.front();
 }
 
-ProductTopDownMapContext contextFor(ProductTopDownMapOverlayRequest request) {
+TopDownMapContext contextFor(TopDownMapOverlayRequest request) {
   // branch-gate: BG-1070
   if (!request.gameplayActive) {
-    return ProductTopDownMapContext::Hidden;
+    return TopDownMapContext::Hidden;
   }
   // branch-gate: BG-1070
   if (request.interactionMode == ProductInteractionMode::Creative ||
       request.roomEditingReady) {
-    return ProductTopDownMapContext::EditorOverview;
+    return TopDownMapContext::EditorOverview;
   }
   // branch-gate: BG-1070
   if (request.rendererRequest == ProductRendererRequest::Null) {
-    return ProductTopDownMapContext::DebugFallback;
+    return TopDownMapContext::DebugFallback;
   }
   // branch-gate: BG-1070
   if (request.interactionMode == ProductInteractionMode::Player) {
-    return ProductTopDownMapContext::Minimap;
+    return TopDownMapContext::Minimap;
   }
-  return ProductTopDownMapContext::UnknownMode;
+  return TopDownMapContext::UnknownMode;
 }
 
 }  // namespace
 
-ProductTopDownMapOverlay buildProductTopDownMapOverlay(
-    ProductTopDownMapOverlayRequest request) {
-  const ProductTopDownMapDescriptor& descriptor =
+TopDownMapOverlay buildTopDownMapOverlay(
+    TopDownMapOverlayRequest request) {
+  const TopDownMapDescriptor& descriptor =
       descriptorFor(contextFor(request));
-  ProductTopDownMapOverlay overlay;
+  TopDownMapOverlay overlay;
   overlay.visible = descriptor.visible;
   overlay.purpose = std::string(descriptor.purpose);
   overlay.size = std::string(descriptor.size);

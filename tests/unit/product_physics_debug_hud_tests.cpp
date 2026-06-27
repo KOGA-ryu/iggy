@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductPhysicsDebugHud.hpp"
+#include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 
 #include <iostream>
 
@@ -36,7 +36,7 @@ iggy3d::DebugProjectionResult physicsWarningProjection() {
   return debug;
 }
 
-bool visibleLine(const iggy3d::ProductPhysicsDebugHud& hud,
+bool visibleLine(const iggy3d::PhysicsDebugHud& hud,
                  std::size_t index,
                  const char* text,
                  iggy3d::ProductFeedbackTone tone) {
@@ -51,8 +51,8 @@ int main() {
   const iggy3d::DebugProjectionResult debug = physicsDebugProjection();
   const iggy3d::DebugProjectionResult warningDebug = physicsWarningProjection();
 
-  const iggy3d::ProductPhysicsDebugHud inactive =
-      iggy3d::buildProductPhysicsDebugHud(&debug, false, true, true);
+  const iggy3d::PhysicsDebugHud inactive =
+      iggy3d::buildPhysicsDebugHud(&debug, false, true, true);
   ok &= expect(!inactive.visible, "inactive gameplay hides physics hud");
   ok &= expect(inactive.status == "not_requested", "inactive status");
   ok &= expect(inactive.reasonCode == "not_requested", "inactive reason");
@@ -60,22 +60,22 @@ int main() {
   ok &= expect(inactive.lineCount == 4U, "inactive line count");
   ok &= expect(inactive.lines.empty(), "inactive emits no lines");
 
-  const iggy3d::ProductPhysicsDebugHud devDisabled =
-      iggy3d::buildProductPhysicsDebugHud(&debug, true, false, true);
+  const iggy3d::PhysicsDebugHud devDisabled =
+      iggy3d::buildPhysicsDebugHud(&debug, true, false, true);
   ok &= expect(!devDisabled.visible, "developer tools disabled hides physics hud");
   ok &= expect(!devDisabled.developerToolsEnabled, "dev disabled proof");
   ok &= expect(devDisabled.status == "not_requested", "dev disabled status");
   ok &= expect(devDisabled.lineCount == 4U, "dev disabled line count");
 
-  const iggy3d::ProductPhysicsDebugHud overlayDisabled =
-      iggy3d::buildProductPhysicsDebugHud(&debug, true, true, false);
+  const iggy3d::PhysicsDebugHud overlayDisabled =
+      iggy3d::buildPhysicsDebugHud(&debug, true, true, false);
   ok &= expect(!overlayDisabled.visible, "debug overlay disabled hides physics hud");
   ok &= expect(!overlayDisabled.debugOverlayEnabled, "overlay disabled proof");
   ok &= expect(overlayDisabled.status == "not_requested", "overlay disabled status");
   ok &= expect(overlayDisabled.lineCount == 4U, "overlay disabled line count");
 
-  const iggy3d::ProductPhysicsDebugHud missingProjection =
-      iggy3d::buildProductPhysicsDebugHud(nullptr, true, true, true);
+  const iggy3d::PhysicsDebugHud missingProjection =
+      iggy3d::buildPhysicsDebugHud(nullptr, true, true, true);
   ok &= expect(!missingProjection.visible, "missing projection hides physics hud");
   ok &= expect(!missingProjection.debugAvailable, "missing projection proof");
   ok &= expect(missingProjection.status == "projection_missing",
@@ -86,8 +86,8 @@ int main() {
   ok &= expect(!missingProjection.hasWarnings, "missing projection no warnings");
 
   iggy3d::DebugProjectionResult emptyDebug;
-  const iggy3d::ProductPhysicsDebugHud unavailable =
-      iggy3d::buildProductPhysicsDebugHud(&emptyDebug, true, true, true);
+  const iggy3d::PhysicsDebugHud unavailable =
+      iggy3d::buildPhysicsDebugHud(&emptyDebug, true, true, true);
   ok &= expect(!unavailable.visible, "empty physics lines hides physics hud");
   ok &= expect(unavailable.debugAvailable, "empty projection available");
   ok &= expect(unavailable.status == "physics_debug_unavailable",
@@ -97,8 +97,8 @@ int main() {
   ok &= expect(unavailable.lineCount == 0U, "empty physics line count");
   ok &= expect(unavailable.lines.empty(), "empty physics emits no lines");
 
-  const iggy3d::ProductPhysicsDebugHud visible =
-      iggy3d::buildProductPhysicsDebugHud(&debug, true, true, true);
+  const iggy3d::PhysicsDebugHud visible =
+      iggy3d::buildPhysicsDebugHud(&debug, true, true, true);
   ok &= expect(visible.visible, "physics hud visible");
   ok &= expect(visible.developerToolsEnabled, "visible dev tools proof");
   ok &= expect(visible.debugOverlayEnabled, "visible overlay proof");
@@ -130,8 +130,8 @@ int main() {
                            iggy3d::ProductFeedbackTone::Neutral),
                "movement neutral");
 
-  const iggy3d::ProductPhysicsDebugHud warning =
-      iggy3d::buildProductPhysicsDebugHud(&warningDebug, true, true, true);
+  const iggy3d::PhysicsDebugHud warning =
+      iggy3d::buildPhysicsDebugHud(&warningDebug, true, true, true);
   ok &= expect(warning.visible, "warning hud visible");
   ok &= expect(warning.hasWarnings, "warning hud has warnings");
   ok &= expect(warning.lineCount == 5U, "warning line count");
@@ -146,14 +146,14 @@ int main() {
   iggy3d::DebugProjectionResult statusFailureDebug = debug;
   statusFailureDebug.physicsDebugHudLines.push_back(
       "PHYS status=physics_debug_snapshot_stats_failed diagnostics");
-  const iggy3d::ProductPhysicsDebugHud statusFailure =
-      iggy3d::buildProductPhysicsDebugHud(&statusFailureDebug, true, true, true);
+  const iggy3d::PhysicsDebugHud statusFailure =
+      iggy3d::buildPhysicsDebugHud(&statusFailureDebug, true, true, true);
   ok &= expect(statusFailure.hasWarnings, "status failed line has warnings");
   ok &= expect(statusFailure.lines.back().tone == iggy3d::ProductFeedbackTone::Warn,
                "status failed line warn tone");
 
-  const iggy3d::ProductPhysicsDebugHud hiddenWarning =
-      iggy3d::buildProductPhysicsDebugHud(&warningDebug, false, true, true);
+  const iggy3d::PhysicsDebugHud hiddenWarning =
+      iggy3d::buildPhysicsDebugHud(&warningDebug, false, true, true);
   ok &= expect(!hiddenWarning.visible, "hidden warning hud hidden");
   ok &= expect(hiddenWarning.hasWarnings, "hidden warning still tracked");
   ok &= expect(hiddenWarning.lineCount == 5U, "hidden warning line count");

@@ -58,9 +58,9 @@ target_sources(iggy3d
     src/app/iggy3d/ProductInteractionModeState.cpp
     src/app/iggy3d/menu/ProductMenuTransitions.cpp
     src/app/iggy3d/window/ProductMouseCapturePolicy.cpp
-    src/app/iggy3d/ProductMovementDebugHud.cpp
-    src/app/iggy3d/ProductNpcBehaviorDebugHud.cpp
-    src/app/iggy3d/ProductPhysicsDebugHud.cpp
+    src/app/iggy3d/debug/MovementDebugHud.cpp
+    src/app/iggy3d/debug/NpcBehaviorDebugHud.cpp
+    src/app/iggy3d/debug/PhysicsDebugHud.cpp
     src/app/iggy3d/world/ProductPackageSessionSeed.cpp
     src/app/iggy3d/ProductAppOperations.cpp
     src/app/iggy3d/ProductAppOptions.cpp
@@ -89,7 +89,7 @@ target_sources(iggy3d
     src/app/iggy3d/save/ProductSaveCatalog.cpp
     src/app/iggy3d/save/ProductSaveFlow.cpp
     src/app/iggy3d/world/ProductNpcProfileAssignment.cpp
-    src/app/iggy3d/ProductTopDownMapOverlay.cpp
+    src/app/iggy3d/debug/TopDownMapOverlay.cpp
     src/app/iggy3d/menu/ProductUiDrawList.cpp
     src/app/iggy3d/ProductViewportFraming.cpp
     src/app/iggy3d/window/ProductWindowFramePresenter.cpp

@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
+#include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
 
 #include <iostream>
 
@@ -26,7 +26,7 @@ iggy3d::DebugProjectionResult npcDebugProjection() {
   return debug;
 }
 
-bool visibleLine(const iggy3d::ProductNpcBehaviorDebugHud& hud,
+bool visibleLine(const iggy3d::NpcBehaviorDebugHud& hud,
                  std::size_t index,
                  const char* text,
                  iggy3d::ProductFeedbackTone tone) {
@@ -40,29 +40,29 @@ int main() {
   bool ok = true;
   const iggy3d::DebugProjectionResult debug = npcDebugProjection();
 
-  const iggy3d::ProductNpcBehaviorDebugHud inactive =
-      iggy3d::buildProductNpcBehaviorDebugHud(&debug, false, true, true);
+  const iggy3d::NpcBehaviorDebugHud inactive =
+      iggy3d::buildNpcBehaviorDebugHud(&debug, false, true, true);
   ok &= expect(!inactive.visible, "inactive gameplay hides npc hud");
   ok &= expect(inactive.status == "not_requested", "inactive status");
   ok &= expect(inactive.debugAvailable, "inactive still reports debug available");
   ok &= expect(inactive.lineCount == 3U, "inactive copies line count");
   ok &= expect(inactive.lines.empty(), "inactive emits no lines");
 
-  const iggy3d::ProductNpcBehaviorDebugHud devDisabled =
-      iggy3d::buildProductNpcBehaviorDebugHud(&debug, true, false, true);
+  const iggy3d::NpcBehaviorDebugHud devDisabled =
+      iggy3d::buildNpcBehaviorDebugHud(&debug, true, false, true);
   ok &= expect(!devDisabled.visible, "developer tools disabled hides npc hud");
   ok &= expect(devDisabled.developerToolsEnabled == false, "dev disabled proof");
   ok &= expect(devDisabled.status == "not_requested", "dev disabled status");
   ok &= expect(devDisabled.lineCount == 3U, "dev disabled line count");
 
-  const iggy3d::ProductNpcBehaviorDebugHud overlayDisabled =
-      iggy3d::buildProductNpcBehaviorDebugHud(&debug, true, true, false);
+  const iggy3d::NpcBehaviorDebugHud overlayDisabled =
+      iggy3d::buildNpcBehaviorDebugHud(&debug, true, true, false);
   ok &= expect(!overlayDisabled.visible, "debug overlay disabled hides npc hud");
   ok &= expect(!overlayDisabled.debugOverlayEnabled, "overlay disabled proof");
   ok &= expect(overlayDisabled.status == "not_requested", "overlay disabled status");
 
-  const iggy3d::ProductNpcBehaviorDebugHud missingProjection =
-      iggy3d::buildProductNpcBehaviorDebugHud(nullptr, true, true, true);
+  const iggy3d::NpcBehaviorDebugHud missingProjection =
+      iggy3d::buildNpcBehaviorDebugHud(nullptr, true, true, true);
   ok &= expect(!missingProjection.visible, "missing projection hides npc hud");
   ok &= expect(!missingProjection.debugAvailable, "missing projection proof");
   ok &= expect(missingProjection.status == "projection_missing",
@@ -72,8 +72,8 @@ int main() {
   ok &= expect(missingProjection.lineCount == 0U, "missing projection line count");
 
   iggy3d::DebugProjectionResult emptyDebug;
-  const iggy3d::ProductNpcBehaviorDebugHud unavailable =
-      iggy3d::buildProductNpcBehaviorDebugHud(&emptyDebug, true, true, true);
+  const iggy3d::NpcBehaviorDebugHud unavailable =
+      iggy3d::buildNpcBehaviorDebugHud(&emptyDebug, true, true, true);
   ok &= expect(!unavailable.visible, "empty npc lines hides npc hud");
   ok &= expect(unavailable.debugAvailable, "empty projection available");
   ok &= expect(unavailable.status == "npc_debug_unavailable",
@@ -83,8 +83,8 @@ int main() {
   ok &= expect(unavailable.lineCount == 0U, "empty npc line count");
   ok &= expect(unavailable.lines.empty(), "empty npc emits no lines");
 
-  const iggy3d::ProductNpcBehaviorDebugHud visible =
-      iggy3d::buildProductNpcBehaviorDebugHud(&debug, true, true, true);
+  const iggy3d::NpcBehaviorDebugHud visible =
+      iggy3d::buildNpcBehaviorDebugHud(&debug, true, true, true);
   ok &= expect(visible.visible, "npc hud visible");
   ok &= expect(visible.developerToolsEnabled, "visible dev tools proof");
   ok &= expect(visible.debugOverlayEnabled, "visible overlay proof");

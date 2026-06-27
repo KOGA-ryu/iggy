@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductMovementDebugHud.hpp"
+#include "app/iggy3d/debug/MovementDebugHud.hpp"
 
 #include <charconv>
 #include <string_view>
@@ -51,21 +51,21 @@ ProductFeedbackTone statusTone(const ProductAppWindowState& window) {
   return ProductFeedbackTone::Neutral;
 }
 
-void addLine(ProductMovementDebugHud& hud,
+void addLine(MovementDebugHud& hud,
              std::string label,
              std::string value,
              ProductFeedbackTone tone) {
   hud.lines.push_back(
-      ProductMovementDebugHudLine{std::move(label), std::move(value), tone, hud.visible});
+      MovementDebugHudLine{std::move(label), std::move(value), tone, hud.visible});
 }
 
 }  // namespace
 
-ProductMovementDebugHud buildProductMovementDebugHud(
+MovementDebugHud buildMovementDebugHud(
     const ProductAppWindowState& window,
     bool developerToolsEnabled,
     bool debugOverlayEnabled) {
-  ProductMovementDebugHud hud;
+  MovementDebugHud hud;
   hud.developerToolsEnabled = developerToolsEnabled;
   hud.debugOverlayEnabled = debugOverlayEnabled;
   hud.debugAvailable = window.gameplayMovementDebugAvailable;

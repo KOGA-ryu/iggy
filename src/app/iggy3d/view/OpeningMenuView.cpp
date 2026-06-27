@@ -18,9 +18,9 @@
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductInteractionModeHud.hpp"
-#include "app/iggy3d/ProductMovementDebugHud.hpp"
-#include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
-#include "app/iggy3d/ProductPhysicsDebugHud.hpp"
+#include "app/iggy3d/debug/MovementDebugHud.hpp"
+#include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
+#include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/room_editor/ProductRoomEditorPresentation.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
@@ -382,7 +382,7 @@ void drawInteractionModeHud(SDL_Renderer& renderer,
 }
 
 void drawMovementDebugHud(SDL_Renderer& renderer,
-                          const ProductMovementDebugHud* hud) {
+                          const MovementDebugHud* hud) {
   if (hud == nullptr || !hud->visible) {
     return;
   }
@@ -393,7 +393,7 @@ void drawMovementDebugHud(SDL_Renderer& renderer,
   drawText(renderer, "MOVEMENT DEBUG", 108.0F, 164.0F, 2.0F);
 
   float y = 198.0F;
-  for (const ProductMovementDebugHudLine& line : hud->lines) {
+  for (const MovementDebugHudLine& line : hud->lines) {
     if (!line.visible) {
       continue;
     }
@@ -406,7 +406,7 @@ void drawMovementDebugHud(SDL_Renderer& renderer,
 }
 
 void drawNpcBehaviorDebugHud(SDL_Renderer& renderer,
-                             const ProductNpcBehaviorDebugHud* hud) {
+                             const NpcBehaviorDebugHud* hud) {
   if (hud == nullptr || !hud->visible) {
     return;
   }
@@ -418,7 +418,7 @@ void drawNpcBehaviorDebugHud(SDL_Renderer& renderer,
 
   float y = 198.0F;
   std::uint64_t drawn = 0;
-  for (const ProductNpcBehaviorDebugHudLine& line : hud->lines) {
+  for (const NpcBehaviorDebugHudLine& line : hud->lines) {
     if (!line.visible) {
       continue;
     }
@@ -433,7 +433,7 @@ void drawNpcBehaviorDebugHud(SDL_Renderer& renderer,
 }
 
 void drawPhysicsDebugHud(SDL_Renderer& renderer,
-                         const ProductPhysicsDebugHud* hud) {
+                         const PhysicsDebugHud* hud) {
   // branch-gate: BG-1110
   if (hud == nullptr || !hud->visible) {
     return;
@@ -446,7 +446,7 @@ void drawPhysicsDebugHud(SDL_Renderer& renderer,
 
   float y = 408.0F;
   std::uint64_t drawn = 0;
-  for (const ProductPhysicsDebugHudLine& line : hud->lines) {
+  for (const PhysicsDebugHudLine& line : hud->lines) {
     // branch-gate: BG-1110
     if (!line.visible) {
       continue;
@@ -557,7 +557,7 @@ void drawGrid(SDL_Renderer& renderer) {
   }
 }
 
-std::string_view topDownMapTitle(const ProductTopDownMapOverlay* overlay) {
+std::string_view topDownMapTitle(const TopDownMapOverlay* overlay) {
   // branch-gate: BG-1071
   if (overlay == nullptr || overlay->purpose == "hidden") {
     return "TOP-DOWN MAP";
@@ -573,7 +573,7 @@ std::string_view topDownMapTitle(const ProductTopDownMapOverlay* overlay) {
   return "TOP-DOWN DEBUG FALLBACK";
 }
 
-bool topDownMapUsesCompactLayout(const ProductTopDownMapOverlay* overlay) {
+bool topDownMapUsesCompactLayout(const TopDownMapOverlay* overlay) {
   return overlay != nullptr && overlay->size == "compact";
 }
 
@@ -638,7 +638,7 @@ void drawFirstPersonPrimitiveViewport(SDL_Renderer& renderer,
 
 void drawTopDownMapPrimitives(SDL_Renderer& renderer,
                               const ProductViewportFrame* frame,
-                              const ProductTopDownMapOverlay* overlay) {
+                              const TopDownMapOverlay* overlay) {
   // branch-gate: BG-1071
   if (overlay == nullptr || !overlay->visible || frame == nullptr) {
     return;
@@ -874,10 +874,10 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
                        const ProductViewportFrame* frame,
                        const ProductGameplayFeedback* feedback,
                        const ProductInteractionModeHud* interactionModeHud,
-                       const ProductTopDownMapOverlay* topDownMapOverlay,
-                       const ProductMovementDebugHud* movementHud,
-                       const ProductNpcBehaviorDebugHud* npcHud,
-                       const ProductPhysicsDebugHud* physicsHud,
+                       const TopDownMapOverlay* topDownMapOverlay,
+                       const MovementDebugHud* movementHud,
+                       const NpcBehaviorDebugHud* npcHud,
+                       const PhysicsDebugHud* physicsHud,
                        const ProductRoomEditorHud* roomEditorHud,
                        std::size_t sceneItemCount,
                        const DebugProjectionResult* debug,
@@ -990,10 +990,10 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const ProductViewportFrame* frame,
                                          const ProductGameplayFeedback* feedback,
                                          const ProductInteractionModeHud* interactionModeHud,
-                                         const ProductTopDownMapOverlay* topDownMapOverlay,
-                                         const ProductMovementDebugHud* movementHud,
-                                         const ProductNpcBehaviorDebugHud* npcHud,
-                                         const ProductPhysicsDebugHud* physicsHud,
+                                         const TopDownMapOverlay* topDownMapOverlay,
+                                         const MovementDebugHud* movementHud,
+                                         const NpcBehaviorDebugHud* npcHud,
+                                         const PhysicsDebugHud* physicsHud,
                                          const ProductRoomEditorHud* roomEditorHud,
                                          std::size_t sceneItemCount,
                                          const DebugProjectionResult* debug,

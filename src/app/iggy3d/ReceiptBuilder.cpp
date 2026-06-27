@@ -6,9 +6,9 @@
 
 #include "app/frontend/FrontendReceipt.hpp"
 #include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
-#include "app/iggy3d/ProductMovementDebugHud.hpp"
-#include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
-#include "app/iggy3d/ProductPhysicsDebugHud.hpp"
+#include "app/iggy3d/debug/MovementDebugHud.hpp"
+#include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
+#include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/window/ProductWindowRendererLifecycle.hpp"
 
 namespace iggy3d {
@@ -73,10 +73,10 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   const ProductGameplayFeedback feedback = buildProductGameplayFeedback(window);
   const ProductVulkanGameplayReadiness vulkanGameplayReadiness =
       evaluateProductVulkanGameplayReadiness(window);
-  const ProductMovementDebugHud movementHud =
-      buildProductMovementDebugHud(window, settings.devToolsEnabled,
+  const MovementDebugHud movementHud =
+      buildMovementDebugHud(window, settings.devToolsEnabled,
                                    settings.debugOverlayEnabled);
-  const ProductNpcBehaviorDebugHud npcBehaviorHud{
+  const NpcBehaviorDebugHud npcBehaviorHud{
       window.npcBehaviorDebugHudVisible,
       settings.devToolsEnabled,
       settings.debugOverlayEnabled,
@@ -85,7 +85,7 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
       window.npcBehaviorDebugHudStatus,
       window.npcBehaviorDebugHudReasonCode,
       {}};
-  const ProductPhysicsDebugHud physicsHud{
+  const PhysicsDebugHud physicsHud{
       window.physicsDebugHudVisible,
       settings.devToolsEnabled,
       settings.debugOverlayEnabled,

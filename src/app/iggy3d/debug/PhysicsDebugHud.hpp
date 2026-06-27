@@ -10,24 +10,25 @@ namespace iggy3d {
 
 struct DebugProjectionResult;
 
-struct ProductNpcBehaviorDebugHudLine {
+struct PhysicsDebugHudLine {
   std::string text;
   ProductFeedbackTone tone = ProductFeedbackTone::Neutral;
   bool visible = false;
 };
 
-struct ProductNpcBehaviorDebugHud {
+struct PhysicsDebugHud {
   bool visible = false;
   bool developerToolsEnabled = false;
   bool debugOverlayEnabled = false;
   bool debugAvailable = false;
-  std::size_t lineCount = 0;
+  std::size_t lineCount = 0U;
   std::string status = "not_requested";
   std::string reasonCode = "not_requested";
-  std::vector<ProductNpcBehaviorDebugHudLine> lines;
+  bool hasWarnings = false;
+  std::vector<PhysicsDebugHudLine> lines;
 };
 
-ProductNpcBehaviorDebugHud buildProductNpcBehaviorDebugHud(
+PhysicsDebugHud buildPhysicsDebugHud(
     const DebugProjectionResult* debug,
     bool gameplayActive,
     bool developerToolsEnabled,
