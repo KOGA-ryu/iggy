@@ -3,7 +3,7 @@
 #include <array>
 
 #include "app/iggy3d/ProductAppOperations.hpp"
-#include "app/iggy3d/menu/ProductMenuTransitions.hpp"
+#include "app/iggy3d/menu/Transitions.hpp"
 
 namespace iggy3d {
 namespace {

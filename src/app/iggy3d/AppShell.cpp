@@ -13,7 +13,7 @@
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/gameplay/TapeRunner.hpp"
-#include "app/iggy3d/menu/ProductMenuTransitions.hpp"
+#include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/ProductScriptedGameplayDriver.hpp"
 #include "app/iggy3d/window/Loop.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
