@@ -96,10 +96,20 @@ iggy3d_add_unit_test(product_gameplay_feedback_tests tests/unit/product_gameplay
 set_tests_properties(product_gameplay_feedback_tests PROPERTIES
   LABELS "unit;app;product;feedback;iggy3d")
 
+iggy3d_add_unit_test(product_gameplay_controller_tests
+  tests/unit/product_gameplay_controller_tests.cpp)
+set_tests_properties(product_gameplay_controller_tests PROPERTIES
+  LABELS "unit;app;product;gameplay;controls;iggy3d")
+
 iggy3d_add_unit_test(product_interaction_mode_hud_tests
   tests/unit/product_interaction_mode_hud_tests.cpp)
 set_tests_properties(product_interaction_mode_hud_tests PROPERTIES
   LABELS "unit;app;product;input;hud;iggy3d")
+
+iggy3d_add_unit_test(product_mouse_capture_policy_tests
+  tests/unit/product_mouse_capture_policy_tests.cpp)
+set_tests_properties(product_mouse_capture_policy_tests PROPERTIES
+  LABELS "unit;app;product;input;mouse;iggy3d")
 
 iggy3d_add_unit_test(product_top_down_map_overlay_tests
   tests/unit/product_top_down_map_overlay_tests.cpp)

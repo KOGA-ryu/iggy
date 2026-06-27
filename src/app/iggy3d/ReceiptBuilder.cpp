@@ -116,6 +116,12 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.topDownMapReasonCode);
   appendReceiptField(receipt, "top_down_map_item_count",
                      window.topDownMapItemCount);
+  appendReceiptField(receipt, "mouse_capture_requested",
+                     window.mouseCaptureRequested);
+  appendReceiptField(receipt, "mouse_capture_active", window.mouseCaptureActive);
+  appendReceiptField(receipt, "mouse_capture_status", window.mouseCaptureStatus);
+  appendReceiptField(receipt, "mouse_capture_reason_code",
+                     window.mouseCaptureReasonCode);
   appendReceiptField(receipt,
                      "controller_mode_toggle_requested",
                      window.controllerModeToggleRequested);

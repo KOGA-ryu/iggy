@@ -71,3 +71,6 @@ BG-1070	src/app/iggy3d/ProductTopDownMapOverlay.cpp	product top-down map overlay
 BG-1071	src/app/iggy3d/OpeningMenuView.cpp	product top-down map SDL layout policy	codex	2026-06-26
 BG-1072	src/app/iggy3d/ProductWindowFramePresenter.cpp	product Vulkan starter menu unsupported status policy	codex	2026-06-26
 BG-1073	src/app/iggy3d/ProductUiDrawList.cpp	product starter UI draw-list guard and descriptor lookup policy	codex	2026-06-26
+BG-1074	src/app/iggy3d/ProductMouseCapturePolicy.cpp	product mouse capture gameplay ownership policy	codex	2026-06-27
+BG-1075	src/app/platform/SdlWindow.cpp	SDL relative mouse mode platform guard policy	codex	2026-06-27
+BG-1076	src/app/iggy3d/ProductWindowInputFrame.cpp	product window mouse capture platform update policy	codex	2026-06-27

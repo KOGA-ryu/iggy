@@ -421,7 +421,7 @@ void submitProductMove(Session& session,
   }
   const float magnitude = std::sqrt(moveX * moveX + moveY * moveY);
   const float scale = magnitude > 1.0F ? 1.0F / magnitude : 1.0F;
-  constexpr float kStepMeters = 1.0F;
+  constexpr float kStepMeters = 0.5F;
   Vec3 destination = actor->transform.position;
   destination.x += moveX * scale * kStepMeters;
   destination.z += moveY * scale * kStepMeters;

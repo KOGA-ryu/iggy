@@ -12,6 +12,11 @@ std::uint32_t toExtent(int value) {
   return value <= 0 ? 0U : static_cast<std::uint32_t>(value);
 }
 
+constexpr const char* kMouseCaptureStatuses[] = {
+    "mouse_capture_released",
+    "mouse_capture_active",
+};
+
 }  // namespace
 
 SdlWindow::SdlWindow(const SdlWindowCreateInfo& createInfo) {
@@ -87,6 +92,30 @@ void SdlWindow::setTitle(std::string_view title) {
   }
   const std::string ownedTitle(title);
   (void)SDL_SetWindowTitle(window_, ownedTitle.c_str());
+}
+
+SdlMouseCaptureResult SdlWindow::setRelativeMouseMode(bool enabled) {
+  SdlMouseCaptureResult result;
+  result.requested = enabled;
+  // branch-gate: BG-1075
+  if (window_ == nullptr) {
+    result.status = "mouse_capture_window_unavailable";
+    result.reasonCode = result.status;
+    return result;
+  }
+  // branch-gate: BG-1075
+  if (!SDL_SetWindowRelativeMouseMode(window_, enabled)) {
+    result.status = "mouse_capture_set_failed";
+    result.reasonCode = result.status;
+    result.active = SDL_GetWindowRelativeMouseMode(window_);
+    return result;
+  }
+
+  result.active = SDL_GetWindowRelativeMouseMode(window_);
+  result.status =
+      kMouseCaptureStatuses[static_cast<unsigned>(result.active)];
+  result.reasonCode = result.status;
+  return result;
 }
 
 void SdlWindow::pollEvents() {

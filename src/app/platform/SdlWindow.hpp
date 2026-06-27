@@ -34,6 +34,13 @@ struct SdlWindowEventState {
   std::uint32_t drawableHeight = 0;
 };
 
+struct SdlMouseCaptureResult {
+  bool requested = false;
+  bool active = false;
+  std::string status = "mouse_capture_not_requested";
+  std::string reasonCode = "mouse_capture_not_requested";
+};
+
 class SdlWindow {
 public:
   explicit SdlWindow(const SdlWindowCreateInfo& createInfo);
@@ -49,6 +56,7 @@ public:
   SdlDrawableExtent drawableExtent() const;
   const SdlWindowEventState& eventState() const;
   void setTitle(std::string_view title);
+  SdlMouseCaptureResult setRelativeMouseMode(bool enabled);
   void pollEvents();
 
   SDL_Window* nativeWindow() const;

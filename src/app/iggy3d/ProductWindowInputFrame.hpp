@@ -18,6 +18,7 @@
 
 namespace iggy3d {
 
+class SdlWindow;
 struct ProductSaveBridgeResult;
 struct WorldSetupDraft;
 
@@ -40,6 +41,7 @@ struct ProductWindowInputFrameContext {
   const FrontendSettings& settings;
   ProductWindowInputFrameState& inputFrame;
   bool& closeRequested;
+  SdlWindow* sdlWindow = nullptr;
 };
 
 struct ProductControllerSampleInputContext {
@@ -79,7 +81,9 @@ struct ProductWindowEditorMousePickPreviewResult {
 
 void initializeProductWindowInputFrameState(ProductWindowInputFrameState& state,
                                             ProductAppWindowState& window);
-void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state);
+void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state,
+                                          SdlWindow* sdlWindow = nullptr,
+                                          ProductAppWindowState* window = nullptr);
 void processProductWindowInputFrame(ProductWindowInputFrameContext context);
 ProductControllerSampleInputResult processProductControllerActionSample(
     ProductControllerSampleInputContext context,

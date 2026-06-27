@@ -88,7 +88,7 @@ ProductAppWindowState runProductWindowLoop(const ProductWindowLoopRequest& reque
     processProductWindowInputFrame(ProductWindowInputFrameContext{
         request.frontend, request.saves, request.options, settingsTab,
         request.activeSession, request.worldSetupDraft, window, request.settings,
-        inputFrame, closeRequested});
+        inputFrame, closeRequested, &sdlWindow});
 
     const ProductGameplayProjectionFrame projectionFrame =
         buildProductGameplayProjectionFrame(ProductGameplayProjectionFrameRequest{
@@ -122,7 +122,7 @@ ProductAppWindowState runProductWindowLoop(const ProductWindowLoopRequest& reque
     std::this_thread::sleep_for(std::chrono::milliseconds(16));
   }
 
-  shutdownProductWindowInputFrameState(inputFrame);
+  shutdownProductWindowInputFrameState(inputFrame, &sdlWindow, &window);
   shutdownProductWindowRenderer(renderer);
   window.selectedSettingsTab = settingsTab;
   finalizeProductWindowRendererStatus(renderer, window);

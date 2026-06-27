@@ -6,6 +6,7 @@
 #include "app/iggy3d/ProductControllerActionRouting.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
 #include "app/iggy3d/ProductInteractionModeState.hpp"
+#include "app/iggy3d/ProductMouseCapturePolicy.hpp"
 #include "app/iggy3d/ProductRoomEditorActionController.hpp"
 #include "app/iggy3d/ProductRoomEditorPreview.hpp"
 #include "app/iggy3d/product/Automation.hpp"
@@ -13,6 +14,7 @@
 #include "app/iggy3d/product/ProductMenuInputRouter.hpp"
 #include "app/input/ActionState.hpp"
 #include "app/input/InputRouter.hpp"
+#include "app/platform/SdlWindow.hpp"
 
 namespace iggy3d {
 namespace {
@@ -66,6 +68,47 @@ bool productWindowEditorMousePickSurfaceReady(
     const ProductAppWindowState& window) {
   return frontend.screen == FrontendScreen::Gameplay && window.gameplayActive &&
          !frontendBlocksGameplayInput(frontend);
+}
+
+bool productWindowFocused(const SdlWindow* sdlWindow) {
+  return sdlWindow == nullptr || sdlWindow->eventState().focused;
+}
+
+void recordProductMouseCaptureResult(ProductAppWindowState& window,
+                                     const ProductMouseCapturePolicy& policy,
+                                     const SdlMouseCaptureResult* platform) {
+  window.mouseCaptureRequested = policy.requested;
+  window.mouseCaptureActive = false;
+  window.mouseCaptureStatus = policy.status;
+  window.mouseCaptureReasonCode = policy.reasonCode;
+  // branch-gate: BG-1076
+  if (platform != nullptr) {
+    window.mouseCaptureRequested = platform->requested;
+    window.mouseCaptureActive = platform->active;
+    window.mouseCaptureStatus = platform->status;
+    window.mouseCaptureReasonCode = platform->reasonCode;
+  }
+}
+
+void updateProductWindowMouseCapture(const FrontendState& frontend,
+                                     ProductAppWindowState& window,
+                                     SdlWindow* sdlWindow) {
+  const MenuOwner owner = productInputOwnerFor(frontend, window);
+  const ProductMouseCapturePolicy policy = buildProductMouseCapturePolicy({
+      window.gameplayActive,
+      window.interactionMode,
+      owner,
+      frontendBlocksGameplayInput(frontend),
+      productWindowFocused(sdlWindow),
+  });
+  // branch-gate: BG-1076
+  if (sdlWindow == nullptr) {
+    recordProductMouseCaptureResult(window, policy, nullptr);
+    return;
+  }
+  const SdlMouseCaptureResult platform =
+      sdlWindow->setRelativeMouseMode(policy.requested);
+  recordProductMouseCaptureResult(window, policy, &platform);
 }
 
 ProductControllerSampleInputResult applyProductWindowInputActions(
@@ -138,7 +181,20 @@ void initializeProductWindowInputFrameState(ProductWindowInputFrameState& state,
   window.gamepadMapping = state.gamepad.gamepadAvailable ? "sdl_gamepad" : "unavailable";
 }
 
-void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state) {
+void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state,
+                                          SdlWindow* sdlWindow,
+                                          ProductAppWindowState* window) {
+  // branch-gate: BG-1076
+  if (sdlWindow != nullptr) {
+    const SdlMouseCaptureResult platform =
+        sdlWindow->setRelativeMouseMode(false);
+    // branch-gate: BG-1076
+    if (window != nullptr) {
+      ProductMouseCapturePolicy policy;
+      policy.reasonCode = "mouse_capture_shutdown";
+      recordProductMouseCaptureResult(*window, policy, &platform);
+    }
+  }
   shutdownGamepadMenuState(state.gamepad);
 }
 
@@ -330,6 +386,9 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
                                          &context.settings, gameplayActions,
                                          "action_map");
   }
+  updateProductWindowMouseCapture(context.frontend,
+                                  context.window,
+                                  context.sdlWindow);
 }
 
 }  // namespace iggy3d

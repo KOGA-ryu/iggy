@@ -57,6 +57,7 @@ target_sources(iggy3d
     src/app/iggy3d/ProductInteractionModeHud.cpp
     src/app/iggy3d/ProductInteractionModeState.cpp
     src/app/iggy3d/ProductMenuTransitions.cpp
+    src/app/iggy3d/ProductMouseCapturePolicy.cpp
     src/app/iggy3d/ProductMovementDebugHud.cpp
     src/app/iggy3d/ProductNpcBehaviorDebugHud.cpp
     src/app/iggy3d/ProductPackageSessionSeed.cpp
