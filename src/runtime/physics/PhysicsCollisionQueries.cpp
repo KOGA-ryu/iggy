@@ -393,6 +393,15 @@ bool sweptHitLess(const PhysicsSweptAabbHit& lhs,
   return lhs.colliderIndex < rhs.colliderIndex;
 }
 
+Vec3 groundNormalForHit(const PhysicsSweptAabbHit& hit, Vec3 normalizedDown) {
+  // branch-gate: BG-1097
+  if (hit.initialOverlap &&
+      zeroVector(hit.normalFromColliderToMovingAabb)) {
+    return normalizedDown * -1.0F;
+  }
+  return hit.normalFromColliderToMovingAabb;
+}
+
 }  // namespace
 
 std::string_view physicsCollisionQueryStatusName(
@@ -582,7 +591,7 @@ PhysicsGroundCheckQueryResult checkPhysicsGround(
   if (result.grounded) {
     result.nearestHit = sweep.nearestHit;
     result.groundDistanceMeters = sweep.nearestHit.distanceMeters;
-    result.groundNormal = sweep.nearestHit.normalFromColliderToMovingAabb;
+    result.groundNormal = groundNormalForHit(sweep.nearestHit, down);
   }
   return result;
 }

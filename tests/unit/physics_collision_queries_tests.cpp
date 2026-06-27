@@ -359,6 +359,8 @@ bool groundCheckUsesSweptAabbAndSensorPolicy() {
       colliderAt({100U}, {0.0F, 3.0F, 0.0F}, {0.5F, 0.5F, 0.5F});
   const iggy3d::PhysicsAabbCollider sensorBody =
       colliderAt({101U}, {4.0F, 1.1F, 0.0F}, {0.5F, 0.5F, 0.5F});
+  const iggy3d::PhysicsAabbCollider overlappingBody =
+      colliderAt({102U}, {0.0F, 0.95F, 0.0F}, {0.5F, 0.5F, 0.5F});
 
   iggy3d::PhysicsGroundCheckQueryRequest request;
   request.colliders = &colliders;
@@ -377,6 +379,10 @@ bool groundCheckUsesSweptAabbAndSensorPolicy() {
   request.includeSensors = true;
   const iggy3d::PhysicsGroundCheckQueryResult sensorIncluded =
       iggy3d::checkPhysicsGround(request);
+  request.includeSensors = false;
+  request.movingCollider = &overlappingBody;
+  const iggy3d::PhysicsGroundCheckQueryResult initialOverlap =
+      iggy3d::checkPhysicsGround(request);
 
   return expect(grounded.ok, "ground check ok") &&
          expect(grounded.grounded, "ground detected") &&
@@ -394,7 +400,16 @@ bool groundCheckUsesSweptAabbAndSensorPolicy() {
          expect(sensorIncluded.ok, "sensor included ground ok") &&
          expect(sensorIncluded.grounded, "sensor included grounded") &&
          expect(sensorIncluded.nearestHit.sensor,
-                "sensor included nearest flag");
+                "sensor included nearest flag") &&
+         expect(initialOverlap.ok, "initial overlap ground ok") &&
+         expect(initialOverlap.grounded, "initial overlap grounded") &&
+         expect(initialOverlap.nearestHit.initialOverlap,
+                "initial overlap flag") &&
+         expect(initialOverlap.groundDistanceMeters == 0.0F,
+                "initial overlap ground distance") &&
+         expect(iggy3d::nearlyEqual(initialOverlap.groundNormal,
+                                    {0.0F, 1.0F, 0.0F}),
+                "initial overlap fallback normal");
 }
 
 }  // namespace
