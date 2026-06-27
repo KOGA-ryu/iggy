@@ -9,7 +9,7 @@
 #include "app/iggy3d/debug/MovementDebugHud.hpp"
 #include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
-#include "app/iggy3d/window/ProductWindowRendererLifecycle.hpp"
+#include "app/iggy3d/window/RendererLifecycle.hpp"
 
 namespace iggy3d {
 namespace {

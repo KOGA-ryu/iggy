@@ -95,7 +95,7 @@ target_sources(iggy3d
     src/app/iggy3d/window/FramePresenter.cpp
     src/app/iggy3d/window/InputFrame.cpp
     src/app/iggy3d/window/ProductWindowLoop.cpp
-    src/app/iggy3d/window/ProductWindowRendererLifecycle.cpp
+    src/app/iggy3d/window/RendererLifecycle.cpp
     src/app/iggy3d/world/ProductWorldCreation.cpp
     src/app/iggy3d/ReceiptBuilder.cpp
     src/app/iggy3d/save/SaveBridge.cpp
