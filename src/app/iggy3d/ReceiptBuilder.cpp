@@ -5,7 +5,7 @@
 #include <utility>
 
 #include "app/frontend/FrontendReceipt.hpp"
-#include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/gameplay/GameplayFeedback.hpp"
 #include "app/iggy3d/debug/MovementDebugHud.hpp"
 #include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
@@ -70,7 +70,7 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                                      const ProductAppWindowState& window,
                                      const ProductSaveBridgeResult& saves) {
   RenderReceipt receipt;
-  const ProductGameplayFeedback feedback = buildProductGameplayFeedback(window);
+  const GameplayFeedback feedback = buildGameplayFeedback(window);
   const ProductVulkanGameplayReadiness vulkanGameplayReadiness =
       evaluateProductVulkanGameplayReadiness(window);
   const MovementDebugHud movementHud =

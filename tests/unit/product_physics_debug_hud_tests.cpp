@@ -39,7 +39,7 @@ iggy3d::DebugProjectionResult physicsWarningProjection() {
 bool visibleLine(const iggy3d::PhysicsDebugHud& hud,
                  std::size_t index,
                  const char* text,
-                 iggy3d::ProductFeedbackTone tone) {
+                 iggy3d::FeedbackTone tone) {
   return index < hud.lines.size() && hud.lines[index].visible &&
          hud.lines[index].text == text && hud.lines[index].tone == tone;
 }
@@ -111,23 +111,23 @@ int main() {
   ok &= expect(visibleLine(visible,
                            0,
                            "PHYS packets=2 failed=0 bodies=6 colliders=7 contacts=2 sensors=1",
-                           iggy3d::ProductFeedbackTone::Neutral),
+                           iggy3d::FeedbackTone::Neutral),
                "summary neutral");
   ok &= expect(visibleLine(visible,
                            1,
                            "PHYS BP cells=3 entries=12 bucket=4 candidates=8 tested=5 dup=1 overlaps=2",
-                           iggy3d::ProductFeedbackTone::Neutral),
+                           iggy3d::FeedbackTone::Neutral),
                "broadphase neutral");
   ok &= expect(visibleLine(visible,
                            2,
                            "PHYS SOLVE plans=2 pos=1 vel=2 fric=1 pen=0.125 "
                            "ni=3.500/2.250 fi=1.000/0.750",
-                           iggy3d::ProductFeedbackTone::Neutral),
+                           iggy3d::FeedbackTone::Neutral),
                "solver neutral");
   ok &= expect(visibleLine(visible,
                            3,
                            "PHYS MOVE kin_iter=3 kin_hits=1 player_iter=2 player_hits=1 baked=5 skipped=2",
-                           iggy3d::ProductFeedbackTone::Neutral),
+                           iggy3d::FeedbackTone::Neutral),
                "movement neutral");
 
   const iggy3d::PhysicsDebugHud warning =
@@ -140,7 +140,7 @@ int main() {
                            4,
                            "PHYS WARN status=physics_debug_snapshot_stats_failed "
                            "upstream=physics_frame_stats_nonfinite_scalar bp=1 pen=1 impulse=1",
-                           iggy3d::ProductFeedbackTone::Warn),
+                           iggy3d::FeedbackTone::Warn),
                "warning line warn tone");
 
   iggy3d::DebugProjectionResult statusFailureDebug = debug;
@@ -149,7 +149,7 @@ int main() {
   const iggy3d::PhysicsDebugHud statusFailure =
       iggy3d::buildPhysicsDebugHud(&statusFailureDebug, true, true, true);
   ok &= expect(statusFailure.hasWarnings, "status failed line has warnings");
-  ok &= expect(statusFailure.lines.back().tone == iggy3d::ProductFeedbackTone::Warn,
+  ok &= expect(statusFailure.lines.back().tone == iggy3d::FeedbackTone::Warn,
                "status failed line warn tone");
 
   const iggy3d::PhysicsDebugHud hiddenWarning =

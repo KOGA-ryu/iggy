@@ -64,10 +64,10 @@ int main() {
   frame.framedItems[1].onScreen = true;
   frame.framedItems[2].onScreen = true;
 
-  iggy3d::ProductGameplayFeedback feedback;
+  iggy3d::GameplayFeedback feedback;
   feedback.visible = true;
-  feedback.lines.push_back({"TARGET", "discovered", iggy3d::ProductFeedbackTone::Pass, true});
-  feedback.lines.push_back({"REJECT", "none", iggy3d::ProductFeedbackTone::Fail, false});
+  feedback.lines.push_back({"TARGET", "discovered", iggy3d::FeedbackTone::Pass, true});
+  feedback.lines.push_back({"REJECT", "none", iggy3d::FeedbackTone::Fail, false});
 
   const iggy3d::ProductRenderBridgeFrame bridge =
       iggy3d::buildProductRenderBridgeFrame(&drawList, &frame, &feedback);

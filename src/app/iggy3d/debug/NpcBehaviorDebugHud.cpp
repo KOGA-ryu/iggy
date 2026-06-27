@@ -8,11 +8,11 @@
 namespace iggy3d {
 namespace {
 
-ProductFeedbackTone toneForLine(std::string_view line) {
+FeedbackTone toneForLine(std::string_view line) {
   if (line.find("unresolved=") != std::string_view::npos) {
-    return ProductFeedbackTone::Warn;
+    return FeedbackTone::Warn;
   }
-  return ProductFeedbackTone::Neutral;
+  return FeedbackTone::Neutral;
 }
 
 void copyVisibleLines(NpcBehaviorDebugHud& hud,

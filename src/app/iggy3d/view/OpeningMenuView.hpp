@@ -7,7 +7,7 @@
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
-#include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/gameplay/GameplayFeedback.hpp"
 #include "app/iggy3d/debug/InteractionModeHud.hpp"
 #include "app/iggy3d/debug/MovementDebugHud.hpp"
 #include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
@@ -67,7 +67,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          bool gameplayActive,
                                          std::uint64_t runtimeStateHash,
                                          const ProductViewportFrame* frame,
-                                         const ProductGameplayFeedback* feedback,
+                                         const GameplayFeedback* feedback,
                                          const InteractionModeHud* interactionModeHud,
                                          const TopDownMapOverlay* topDownMapOverlay,
                                          const MovementDebugHud* movementHud,

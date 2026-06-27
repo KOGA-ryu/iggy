@@ -3,7 +3,7 @@
 #include <string>
 #include <string_view>
 
-#include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/gameplay/GameplayFeedback.hpp"
 #include "app/iggy3d/ProductInteractionMode.hpp"
 
 namespace iggy3d {
@@ -14,7 +14,7 @@ struct InteractionModeHud {
   std::string reasonCode = "interaction_mode_hud_hidden";
   std::string mode = "player";
   std::string label = "player";
-  ProductFeedbackTone tone = ProductFeedbackTone::Neutral;
+  FeedbackTone tone = FeedbackTone::Neutral;
   bool roomEditingReady = false;
 };
 

@@ -57,7 +57,7 @@ void countPhysicsDebugKind(ProductRenderBridgeFrame& bridge,
 ProductRenderBridgeFrame buildProductRenderBridgeFrame(
     const ProductPrimitiveDrawList* drawList,
     const ProductViewportFrame* frame,
-    const ProductGameplayFeedback* feedback) {
+    const GameplayFeedback* feedback) {
   ProductRenderBridgeFrame bridge;
   bridge.viewFrameReady = drawList != nullptr && frame != nullptr;
   bridge.feedbackReady = feedback != nullptr && feedback->visible;
@@ -126,7 +126,7 @@ ProductRenderBridgeFrame buildProductRenderBridgeFrame(
   }
 
   if (feedback != nullptr) {
-    for (const ProductGameplayFeedbackLine& line : feedback->lines) {
+    for (const GameplayFeedbackLine& line : feedback->lines) {
       if (line.visible) {
         ++bridge.feedbackLineCount;
       }

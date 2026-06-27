@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <optional>
 
-#include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/gameplay/GameplayFeedback.hpp"
 #include "app/iggy3d/debug/InteractionModeHud.hpp"
 #include "app/iggy3d/debug/MovementDebugHud.hpp"
 #include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
@@ -42,7 +42,7 @@ struct ProductGameplayProjectionFrame {
   DebugProjectionResult debug;
   ProductPrimitiveDrawList drawList;
   ProductViewportFrame viewportFrame;
-  ProductGameplayFeedback feedback;
+  GameplayFeedback feedback;
   InteractionModeHud interactionModeHud;
   TopDownMapOverlay topDownMapOverlay;
   MovementDebugHud movementHud;

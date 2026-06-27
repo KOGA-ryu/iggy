@@ -44,7 +44,7 @@ int main() {
                "player ready reason");
   ok &= expect(player.mode == "player", "player mode name");
   ok &= expect(player.label == "player", "player label");
-  ok &= expect(player.tone == iggy3d::ProductFeedbackTone::Neutral,
+  ok &= expect(player.tone == iggy3d::FeedbackTone::Neutral,
                "player neutral tone");
 
   const iggy3d::InteractionModeHud creative =
@@ -59,7 +59,7 @@ int main() {
   ok &= expect(creative.mode == "creative", "creative mode name");
   ok &= expect(creative.label == "creative", "creative label");
   ok &= expect(creative.roomEditingReady, "creative room editing ready copied");
-  ok &= expect(creative.tone == iggy3d::ProductFeedbackTone::Warn,
+  ok &= expect(creative.tone == iggy3d::FeedbackTone::Warn,
                "creative accent tone");
 
   const iggy3d::InteractionModeHud unknown =

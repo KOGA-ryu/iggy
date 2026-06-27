@@ -1,4 +1,4 @@
-#include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/gameplay/GameplayFeedback.hpp"
 
 #include <utility>
 
@@ -12,37 +12,37 @@ bool isTargetCommand(const ProductAppWindowState& window) {
          window.gameplayCommandKind == "interact";
 }
 
-ProductFeedbackTone targetTone(const std::string& status) {
+FeedbackTone targetTone(const std::string& status) {
   if (status == "discovered") {
-    return ProductFeedbackTone::Pass;
+    return FeedbackTone::Pass;
   }
   if (status == "no_target") {
-    return ProductFeedbackTone::Warn;
+    return FeedbackTone::Warn;
   }
-  return ProductFeedbackTone::Neutral;
+  return FeedbackTone::Neutral;
 }
 
-ProductFeedbackTone reachTone(const std::string& status) {
+FeedbackTone reachTone(const std::string& status) {
   if (status == "pass") {
-    return ProductFeedbackTone::Pass;
+    return FeedbackTone::Pass;
   }
   if (status == "fail") {
-    return ProductFeedbackTone::Warn;
+    return FeedbackTone::Warn;
   }
-  return ProductFeedbackTone::Neutral;
+  return FeedbackTone::Neutral;
 }
 
-ProductFeedbackTone commandTone(const std::string& status) {
+FeedbackTone commandTone(const std::string& status) {
   if (status == "accepted") {
-    return ProductFeedbackTone::Pass;
+    return FeedbackTone::Pass;
   }
   if (status == "rejected" || status == "missing_player") {
-    return ProductFeedbackTone::Fail;
+    return FeedbackTone::Fail;
   }
   if (status == "no_target") {
-    return ProductFeedbackTone::Warn;
+    return FeedbackTone::Warn;
   }
-  return ProductFeedbackTone::Neutral;
+  return FeedbackTone::Neutral;
 }
 
 std::string resultStatusFor(const ProductAppWindowState& window) {
@@ -64,34 +64,34 @@ std::string resultStatusFor(const ProductAppWindowState& window) {
   return window.gameplayCommandStatus;
 }
 
-ProductFeedbackTone resultTone(const std::string& status) {
+FeedbackTone resultTone(const std::string& status) {
   if (status == "attack_executed" || status == "interaction_executed" ||
       status == "reset_executed" || status == "accepted") {
-    return ProductFeedbackTone::Pass;
+    return FeedbackTone::Pass;
   }
   if (status == "rejected" || status == "missing_player") {
-    return ProductFeedbackTone::Fail;
+    return FeedbackTone::Fail;
   }
   if (status == "no_target") {
-    return ProductFeedbackTone::Warn;
+    return FeedbackTone::Warn;
   }
-  return ProductFeedbackTone::Neutral;
+  return FeedbackTone::Neutral;
 }
 
-void addLine(ProductGameplayFeedback& feedback,
+void addLine(GameplayFeedback& feedback,
              std::string label,
              std::string value,
-             ProductFeedbackTone tone,
+             FeedbackTone tone,
              bool visible) {
   feedback.lines.push_back(
-      ProductGameplayFeedbackLine{std::move(label), std::move(value), tone, visible});
+      GameplayFeedbackLine{std::move(label), std::move(value), tone, visible});
 }
 
 }  // namespace
 
-ProductGameplayFeedback buildProductGameplayFeedback(
+GameplayFeedback buildGameplayFeedback(
     const ProductAppWindowState& window) {
-  ProductGameplayFeedback feedback;
+  GameplayFeedback feedback;
   feedback.visible = window.gameplayActive;
   feedback.commandKind = window.gameplayCommandKind;
   feedback.commandStatus = window.gameplayCommandStatus;
@@ -127,7 +127,7 @@ ProductGameplayFeedback buildProductGameplayFeedback(
           commandTone(feedback.commandStatus), feedback.visible);
   addLine(feedback, "RESULT", feedback.resultStatus,
           resultTone(feedback.resultStatus), feedback.visible);
-  addLine(feedback, "REJECT", feedback.rejectionReason, ProductFeedbackTone::Fail,
+  addLine(feedback, "REJECT", feedback.rejectionReason, FeedbackTone::Fail,
           feedback.visible && feedback.rejectionReason != "none");
 
   return feedback;

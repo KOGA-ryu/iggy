@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/gameplay/GameplayFeedback.hpp"
 
 namespace iggy3d {
 
@@ -12,7 +12,7 @@ struct DebugProjectionResult;
 
 struct NpcBehaviorDebugHudLine {
   std::string text;
-  ProductFeedbackTone tone = ProductFeedbackTone::Neutral;
+  FeedbackTone tone = FeedbackTone::Neutral;
   bool visible = false;
 };
 

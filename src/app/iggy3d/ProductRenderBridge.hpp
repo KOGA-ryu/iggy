@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/gameplay/GameplayFeedback.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
 
@@ -52,6 +52,6 @@ struct ProductRenderBridgeFrame {
 ProductRenderBridgeFrame buildProductRenderBridgeFrame(
     const ProductPrimitiveDrawList* drawList,
     const ProductViewportFrame* frame,
-    const ProductGameplayFeedback* feedback);
+    const GameplayFeedback* feedback);
 
 }  // namespace iggy3d

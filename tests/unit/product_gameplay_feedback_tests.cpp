@@ -1,4 +1,4 @@
-#include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/gameplay/GameplayFeedback.hpp"
 
 #include <iostream>
 
@@ -14,10 +14,10 @@ bool expect(bool condition, const char* message) {
   return true;
 }
 
-bool hasVisibleLine(const iggy3d::ProductGameplayFeedback& feedback,
+bool hasVisibleLine(const iggy3d::GameplayFeedback& feedback,
                     const char* label,
                     const char* value) {
-  for (const iggy3d::ProductGameplayFeedbackLine& line : feedback.lines) {
+  for (const iggy3d::GameplayFeedbackLine& line : feedback.lines) {
     if (line.visible && line.label == label && line.value == value) {
       return true;
     }
@@ -32,8 +32,8 @@ int main() {
 
   iggy3d::ProductAppWindowState neutralWindow;
   neutralWindow.gameplayActive = true;
-  const iggy3d::ProductGameplayFeedback neutral =
-      iggy3d::buildProductGameplayFeedback(neutralWindow);
+  const iggy3d::GameplayFeedback neutral =
+      iggy3d::buildGameplayFeedback(neutralWindow);
   ok &= expect(neutral.visible, "neutral gameplay feedback visible");
   ok &= expect(neutral.targetStatus == "not_attempted", "neutral target status");
   ok &= expect(neutral.commandStatus == "not_requested", "neutral command status");
@@ -52,8 +52,8 @@ int main() {
   attackWindow.gameplayCommandStatus = "accepted";
   attackWindow.gameplayLastRejection = "none";
   attackWindow.attackExecuted = true;
-  const iggy3d::ProductGameplayFeedback attack =
-      iggy3d::buildProductGameplayFeedback(attackWindow);
+  const iggy3d::GameplayFeedback attack =
+      iggy3d::buildGameplayFeedback(attackWindow);
   ok &= expect(attack.targetFeedbackVisible, "attack target feedback visible");
   ok &= expect(attack.reachFeedbackVisible, "attack reach feedback visible");
   ok &= expect(attack.commandFeedbackVisible, "attack command feedback visible");
@@ -73,8 +73,8 @@ int main() {
   noTargetWindow.gameplayCommandKind = "interact";
   noTargetWindow.gameplayCommandStatus = "no_target";
   noTargetWindow.gameplayReachGate = "not_attempted";
-  const iggy3d::ProductGameplayFeedback noTarget =
-      iggy3d::buildProductGameplayFeedback(noTargetWindow);
+  const iggy3d::GameplayFeedback noTarget =
+      iggy3d::buildGameplayFeedback(noTargetWindow);
   ok &= expect(noTarget.targetFeedbackVisible, "no target feedback visible");
   ok &= expect(noTarget.interactionFeedbackVisible, "interaction feedback visible");
   ok &= expect(noTarget.targetStatus == "no_target", "no target status");
@@ -90,8 +90,8 @@ int main() {
   rejectedWindow.gameplayCommandStatus = "rejected";
   rejectedWindow.gameplayReachGate = "fail";
   rejectedWindow.gameplayLastRejection = "out_of_range";
-  const iggy3d::ProductGameplayFeedback rejected =
-      iggy3d::buildProductGameplayFeedback(rejectedWindow);
+  const iggy3d::GameplayFeedback rejected =
+      iggy3d::buildGameplayFeedback(rejectedWindow);
   ok &= expect(rejected.combatFeedbackVisible, "rejected combat feedback visible");
   ok &= expect(rejected.rejectionReason == "out_of_range", "rejection reason");
   ok &= expect(hasVisibleLine(rejected, "REJECT", "out_of_range"),

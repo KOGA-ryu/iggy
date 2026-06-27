@@ -7,21 +7,21 @@ namespace iggy3d {
 
 struct ProductAppWindowState;
 
-enum class ProductFeedbackTone {
+enum class FeedbackTone {
   Neutral,
   Pass,
   Warn,
   Fail,
 };
 
-struct ProductGameplayFeedbackLine {
+struct GameplayFeedbackLine {
   std::string label;
   std::string value;
-  ProductFeedbackTone tone = ProductFeedbackTone::Neutral;
+  FeedbackTone tone = FeedbackTone::Neutral;
   bool visible = false;
 };
 
-struct ProductGameplayFeedback {
+struct GameplayFeedback {
   bool visible = false;
   bool targetFeedbackVisible = false;
   bool commandFeedbackVisible = false;
@@ -34,10 +34,10 @@ struct ProductGameplayFeedback {
   std::string reachStatus = "not_attempted";
   std::string rejectionReason = "none";
   std::string resultStatus = "not_attempted";
-  std::vector<ProductGameplayFeedbackLine> lines;
+  std::vector<GameplayFeedbackLine> lines;
 };
 
-ProductGameplayFeedback buildProductGameplayFeedback(
+GameplayFeedback buildGameplayFeedback(
     const ProductAppWindowState& window);
 
 }  // namespace iggy3d

@@ -16,7 +16,7 @@
 #include "app/frontend/SettingsMenu.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
-#include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/gameplay/GameplayFeedback.hpp"
 #include "app/iggy3d/debug/InteractionModeHud.hpp"
 #include "app/iggy3d/debug/MovementDebugHud.hpp"
 #include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
@@ -325,25 +325,25 @@ void drawCameraHeading(SDL_Renderer& renderer, float yawDegrees) {
   fillRect(renderer, originX - 3.0F, originY - 3.0F, 6.0F, 6.0F);
 }
 
-void setFeedbackToneColor(SDL_Renderer& renderer, ProductFeedbackTone tone) {
+void setFeedbackToneColor(SDL_Renderer& renderer, FeedbackTone tone) {
   switch (tone) {
-    case ProductFeedbackTone::Pass:
+    case FeedbackTone::Pass:
       setColor(renderer, 126, 201, 176);
       return;
-    case ProductFeedbackTone::Warn:
+    case FeedbackTone::Warn:
       setColor(renderer, 220, 178, 86);
       return;
-    case ProductFeedbackTone::Fail:
+    case FeedbackTone::Fail:
       setColor(renderer, 222, 112, 96);
       return;
-    case ProductFeedbackTone::Neutral:
+    case FeedbackTone::Neutral:
       break;
   }
   setColor(renderer, 166, 184, 177);
 }
 
 void drawGameplayFeedback(SDL_Renderer& renderer,
-                          const ProductGameplayFeedback* feedback) {
+                          const GameplayFeedback* feedback) {
   if (feedback == nullptr || !feedback->visible) {
     return;
   }
@@ -354,7 +354,7 @@ void drawGameplayFeedback(SDL_Renderer& renderer,
   drawText(renderer, "ACTION FEEDBACK", 878.0F, 430.0F, 2.0F);
 
   float y = 462.0F;
-  for (const ProductGameplayFeedbackLine& line : feedback->lines) {
+  for (const GameplayFeedbackLine& line : feedback->lines) {
     if (!line.visible) {
       continue;
     }
@@ -872,7 +872,7 @@ void drawSettingsPanel(SDL_Renderer& renderer, FrontendSettingsTab selected) {
 bool drawGameplayPanel(SDL_Renderer& renderer,
                        std::uint64_t runtimeStateHash,
                        const ProductViewportFrame* frame,
-                       const ProductGameplayFeedback* feedback,
+                       const GameplayFeedback* feedback,
                        const InteractionModeHud* interactionModeHud,
                        const TopDownMapOverlay* topDownMapOverlay,
                        const MovementDebugHud* movementHud,
@@ -988,7 +988,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          bool gameplayActive,
                                          std::uint64_t runtimeStateHash,
                                          const ProductViewportFrame* frame,
-                                         const ProductGameplayFeedback* feedback,
+                                         const GameplayFeedback* feedback,
                                          const InteractionModeHud* interactionModeHud,
                                          const TopDownMapOverlay* topDownMapOverlay,
                                          const MovementDebugHud* movementHud,

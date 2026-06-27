@@ -472,7 +472,7 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
     const ProductGameplayProjectionFrameRequest& request) {
   ProductAppWindowState& window = request.window;
   ProductGameplayProjectionFrame frame;
-  frame.feedback = buildProductGameplayFeedback(window);
+  frame.feedback = buildGameplayFeedback(window);
   frame.interactionModeHud = buildInteractionModeHud(
       InteractionModeHudRequest{
           window.interactionMode,
@@ -562,7 +562,7 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   frame.viewVisible = true;
   frame.sceneItemCount = frame.scene.items.size();
   window.runtimeStateHash = request.activeSession->stateHash();
-  frame.feedback = buildProductGameplayFeedback(window);
+  frame.feedback = buildGameplayFeedback(window);
   frame.interactionModeHud = buildInteractionModeHud(
       InteractionModeHudRequest{
           window.interactionMode,

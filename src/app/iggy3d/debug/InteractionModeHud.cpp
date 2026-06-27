@@ -8,19 +8,19 @@ namespace {
 struct InteractionModeHudDescriptor {
   ProductInteractionMode mode;
   std::string_view label;
-  ProductFeedbackTone tone;
+  FeedbackTone tone;
 };
 
 constexpr std::array<InteractionModeHudDescriptor, 2> kModeHudDescriptors{
     InteractionModeHudDescriptor{
         ProductInteractionMode::Player,
         "player",
-        ProductFeedbackTone::Neutral,
+        FeedbackTone::Neutral,
     },
     InteractionModeHudDescriptor{
         ProductInteractionMode::Creative,
         "creative",
-        ProductFeedbackTone::Warn,
+        FeedbackTone::Warn,
     },
 };
 

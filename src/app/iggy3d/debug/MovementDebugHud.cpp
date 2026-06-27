@@ -38,23 +38,23 @@ std::string finalPositionDisplay(const ProductAppWindowState& window) {
          " z" + fixed3(window.gameplayMovementFinalZ);
 }
 
-ProductFeedbackTone statusTone(const ProductAppWindowState& window) {
+FeedbackTone statusTone(const ProductAppWindowState& window) {
   if (window.gameplayMovementBlocked) {
-    return ProductFeedbackTone::Warn;
+    return FeedbackTone::Warn;
   }
   if (window.gameplayMovementStatus == "moved") {
-    return ProductFeedbackTone::Pass;
+    return FeedbackTone::Pass;
   }
   if (window.gameplayMovementStatus == "tick_failed") {
-    return ProductFeedbackTone::Fail;
+    return FeedbackTone::Fail;
   }
-  return ProductFeedbackTone::Neutral;
+  return FeedbackTone::Neutral;
 }
 
 void addLine(MovementDebugHud& hud,
              std::string label,
              std::string value,
-             ProductFeedbackTone tone) {
+             FeedbackTone tone) {
   hud.lines.push_back(
       MovementDebugHudLine{std::move(label), std::move(value), tone, hud.visible});
 }
@@ -92,15 +92,15 @@ MovementDebugHud buildMovementDebugHud(
 
   addLine(hud, "STATUS", codeDisplay(hud.status), statusTone(window));
   addLine(hud, "REASON", codeDisplay(hud.reasonCode),
-          window.gameplayMovementBlocked ? ProductFeedbackTone::Warn
-                                         : ProductFeedbackTone::Neutral);
+          window.gameplayMovementBlocked ? FeedbackTone::Warn
+                                         : FeedbackTone::Neutral);
   addLine(hud, "HIT", codeDisplay(hud.hitSurfaceId),
-          window.gameplayMovementBlocked ? ProductFeedbackTone::Warn
-                                         : ProductFeedbackTone::Neutral);
-  addLine(hud, "POS", finalPositionDisplay(window), ProductFeedbackTone::Neutral);
-  addLine(hud, "SLOPE", codeDisplay(hud.policyBand), ProductFeedbackTone::Neutral);
-  addLine(hud, "SPEED", fixed3(hud.speedMultiplier), ProductFeedbackTone::Neutral);
-  addLine(hud, "SNAP", boolDisplay(hud.groundSnapApplied), ProductFeedbackTone::Neutral);
+          window.gameplayMovementBlocked ? FeedbackTone::Warn
+                                         : FeedbackTone::Neutral);
+  addLine(hud, "POS", finalPositionDisplay(window), FeedbackTone::Neutral);
+  addLine(hud, "SLOPE", codeDisplay(hud.policyBand), FeedbackTone::Neutral);
+  addLine(hud, "SPEED", fixed3(hud.speedMultiplier), FeedbackTone::Neutral);
+  addLine(hud, "SNAP", boolDisplay(hud.groundSnapApplied), FeedbackTone::Neutral);
   return hud;
 }
 

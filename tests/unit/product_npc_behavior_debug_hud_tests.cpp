@@ -29,7 +29,7 @@ iggy3d::DebugProjectionResult npcDebugProjection() {
 bool visibleLine(const iggy3d::NpcBehaviorDebugHud& hud,
                  std::size_t index,
                  const char* text,
-                 iggy3d::ProductFeedbackTone tone) {
+                 iggy3d::FeedbackTone tone) {
   return index < hud.lines.size() && hud.lines[index].visible &&
          hud.lines[index].text == text && hud.lines[index].tone == tone;
 }
@@ -96,19 +96,19 @@ int main() {
   ok &= expect(visibleLine(visible,
                            0,
                            "NPCS world=2 ai=2 resolved=1 failed=1 hostile=1 passive=0",
-                           iggy3d::ProductFeedbackTone::Neutral),
+                           iggy3d::FeedbackTone::Neutral),
                "summary neutral");
   ok &= expect(visibleLine(visible,
                            1,
                            "NPC 2 training_dummy default attacking/attack_target "
                            "tgt=player cd=2",
-                           iggy3d::ProductFeedbackTone::Neutral),
+                           iggy3d::FeedbackTone::Neutral),
                "normal row neutral");
   ok &= expect(visibleLine(visible,
                            2,
                            "NPC 3 ghost ghost_profile idle/none tgt=none cd=0 "
                            "unresolved=profile_missing",
-                           iggy3d::ProductFeedbackTone::Warn),
+                           iggy3d::FeedbackTone::Warn),
                "unresolved row warn");
 
   if (!ok) {

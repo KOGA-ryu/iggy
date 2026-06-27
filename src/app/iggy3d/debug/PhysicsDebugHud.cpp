@@ -8,21 +8,21 @@
 namespace iggy3d {
 namespace {
 
-ProductFeedbackTone toneForLine(std::string_view line) {
+FeedbackTone toneForLine(std::string_view line) {
   const bool warningLine = line.starts_with("PHYS WARN") ||
                            line.find("status=physics_debug_snapshot_stats_failed") !=
                                std::string_view::npos;
   // branch-gate: BG-1108
   if (warningLine) {
-    return ProductFeedbackTone::Warn;
+    return FeedbackTone::Warn;
   }
-  return ProductFeedbackTone::Neutral;
+  return FeedbackTone::Neutral;
 }
 
 bool hasWarningLine(const DebugProjectionResult& debug) {
   for (const std::string& line : debug.physicsDebugHudLines) {
     // branch-gate: BG-1108
-    if (toneForLine(line) == ProductFeedbackTone::Warn) {
+    if (toneForLine(line) == FeedbackTone::Warn) {
       return true;
     }
   }
