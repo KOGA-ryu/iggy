@@ -2,6 +2,7 @@
 
 #include "runtime/collision/CollisionQuery.hpp"
 #include "runtime/movement/MovementKinematics.hpp"
+#include "runtime/player/PlayerPhysicsMovePlanner.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -165,6 +166,131 @@ bool snapToGround(const SpatialSurfaceSet& surfaces,
   return true;
 }
 
+std::uint32_t physicsCollisionSweepCount(const PlayerPhysicsMovePlannerResult& planned) {
+  return static_cast<std::uint32_t>(std::max<std::size_t>(1U, planned.iterationCount));
+}
+
+bool physicsMovementSlid(const PlayerPhysicsMovePlannerResult& planned) {
+  // branch-gate: BG-1102
+  if (!planned.blocked || planned.hits.empty()) {
+    return false;
+  }
+  const Vec3 normal = planned.hits.front().normalFromColliderToMotor;
+  const Vec3 horizontalApplied = horizontalIntent(planned.appliedDisplacementMeters);
+  const Vec3 tangent = horizontalApplied - normal * dot(horizontalApplied, normal);
+  return isFinite(tangent) && vectorLength(tangent) > kMovementEpsilon;
+}
+
+MovementResult blockedPhysicsResult(const MovementRequest& request,
+                                    Vec3 start,
+                                    MovementBlockedReason reason,
+                                    float distanceMeters,
+                                    const PlayerPhysicsMovePlannerResult& planned) {
+  MovementResult result =
+      blockedCollisionAwareResult(request,
+                                  start,
+                                  reason,
+                                  distanceMeters,
+                                  planned.firstHitSourceSurfaceId);
+  result.collisionSweepCount = physicsCollisionSweepCount(planned);
+  result.movementClamped = planned.blocked || planned.hitCount > 0U ||
+                           reason == MovementBlockedReason::BlockedByCollision;
+  result.movementSlid = physicsMovementSlid(planned);
+  return result;
+}
+
+MovementResult executePhysicsPlannedMovement(MovementSystemContext& context,
+                                             const MovementRequest& request,
+                                             const EntityState& actor,
+                                             Vec3 start,
+                                             float distanceMeters,
+                                             float movementLimit) {
+  MovementParams params;
+  PlayerPhysicsMovePlannerConfig plannerConfig;
+  plannerConfig.motor.skinMeters = params.skinMeters;
+  plannerConfig.motor.groundProbeDistanceMeters = params.groundSnapMeters;
+  plannerConfig.motor.groundSnapDistanceMeters = params.groundSnapMeters;
+  plannerConfig.motor.maxMoveDistanceMeters =
+      std::max(plannerConfig.motor.maxMoveDistanceMeters, movementLimit + 0.001F);
+
+  PlayerPhysicsMovePlannerRequest plannerRequest;
+  plannerRequest.collisionSurfaces = context.collisionSurfaces;
+  plannerRequest.startCenterMeters = start + vec3UnitY() * (params.heightMeters * 0.5F);
+  plannerRequest.bodyHalfExtentsMeters = {
+      params.radiusMeters, params.heightMeters * 0.5F, params.radiusMeters};
+  plannerRequest.desiredDisplacementMeters = request.destination - start;
+  plannerRequest.config = plannerConfig;
+
+  const PlayerPhysicsMovePlannerResult planned = planPlayerPhysicsMove(plannerRequest);
+  // branch-gate: BG-1102
+  if (!planned.ok) {
+    return blockedResult(request, start, MovementBlockedReason::InternalError, distanceMeters);
+  }
+
+  Vec3 finalPosition = planned.finalCenterMeters -
+                       vec3UnitY() * (params.heightMeters * 0.5F);
+  const Vec3 beforeSnap = finalPosition;
+  // branch-gate: BG-1102
+  if (!planned.grounded) {
+    return blockedPhysicsResult(
+        request, start, MovementBlockedReason::NoWalkableGround, distanceMeters, planned);
+  }
+
+  const CollisionQueryResult ground =
+      sampleSurfaceHeight(*context.collisionSurfaces,
+                          finalPosition,
+                          std::max(params.radiusMeters, 0.001F));
+  // branch-gate: BG-1102
+  if (ground.status != CollisionQueryStatus::Hit) {
+    return blockedPhysicsResult(
+        request, start, MovementBlockedReason::NoWalkableGround, distanceMeters, planned);
+  }
+
+  const SlopeSample slope = sampleSlope(ground.normal, params);
+  // branch-gate: BG-1102
+  if (!slope.valid || !slope.walkable) {
+    MovementResult blocked = blockedPhysicsResult(
+        request, start, MovementBlockedReason::SlopeRejected, distanceMeters, planned);
+    applySlopeToResult(blocked, slope);
+    return blocked;
+  }
+  finalPosition.y = ground.heightMeters;
+
+  // branch-gate: BG-1102
+  if (planned.blocked && movementDistanceMeters(start, finalPosition) <= kMovementEpsilon) {
+    return blockedPhysicsResult(
+        request, start, MovementBlockedReason::BlockedByCollision, distanceMeters, planned);
+  }
+
+  Transform3 nextTransform = actor.transform;
+  nextTransform.position = finalPosition;
+  const WorldMutationResult mutation =
+      context.world->updateTransform(request.actor, nextTransform);
+  // branch-gate: BG-1102
+  if (mutation.status != WorldStatus::Ok) {
+    return blockedResult(request, start, MovementBlockedReason::BlockedByWorld, distanceMeters);
+  }
+
+  MovementResult result;
+  result.actor = request.actor;
+  result.start = start;
+  result.destination = request.destination;
+  result.finalPosition = finalPosition;
+  result.mode = request.mode;
+  result.blocked = MovementBlockedReason::None;
+  result.sourceCommandId = request.sourceCommandId;
+  result.movementClamped = planned.blocked || planned.hitCount > 0U;
+  result.movementSlid = physicsMovementSlid(planned);
+  result.groundSnapApplied =
+      planned.snappedToGround || std::fabs(finalPosition.y - beforeSnap.y) > kMovementEpsilon;
+  result.collisionSweepCount = physicsCollisionSweepCount(planned);
+  result.hitSurfaceId = planned.firstHitSourceSurfaceId;
+  result.reasonCode = "movement_ok";
+  applySlopeToResult(result, slope);
+  applyTravelFacts(result);
+  return result;
+}
+
 }  // namespace
 
 float movementDistanceMeters(const Vec3& start, const Vec3& destination) {
@@ -267,6 +393,11 @@ MovementResult executeMovement(MovementSystemContext& context, const MovementReq
   }
   if (distance > limit) {
     return blockedResult(request, start, MovementBlockedReason::MovementTooFar, distance);
+  }
+
+  // branch-gate: BG-1102
+  if (context.usePhysicsMovePlanner && context.collisionSurfaces != nullptr) {
+    return executePhysicsPlannedMovement(context, request, *actor, start, distance, limit);
   }
 
   if (context.collisionSurfaces != nullptr) {

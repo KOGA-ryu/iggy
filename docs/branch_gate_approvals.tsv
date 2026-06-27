@@ -99,3 +99,4 @@ BG-1098	src/runtime/physics/PhysicsKinematicMotor.cpp	runtime physics pure kinem
 BG-1099	src/runtime/physics/PhysicsSpatialSurfaceColliderBake.cpp	runtime physics spatial surface to AABB collider bake policy	codex	2026-06-27
 BG-1100	src/runtime/player/PlayerPhysicsMovePlanner.cpp	runtime player physics move planner composition policy	codex	2026-06-27
 BG-1101	src/runtime/player/PlayerMotor.cpp	runtime player opt-in physics movement planner policy	codex	2026-06-27
+BG-1102	src/runtime/movement/MovementSystem.cpp	runtime movement opt-in physics planner policy	codex	2026-06-27

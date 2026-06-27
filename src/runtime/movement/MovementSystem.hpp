@@ -13,6 +13,7 @@ struct MovementSystemContext {
   WorldState* world = nullptr;
   const RuntimeConfig* config = nullptr;
   const SpatialSurfaceSet* collisionSurfaces = nullptr;
+  bool usePhysicsMovePlanner = false;
 };
 
 MovementResult executeMovement(MovementSystemContext& context, const MovementRequest& request);

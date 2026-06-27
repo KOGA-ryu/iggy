@@ -102,6 +102,25 @@ iggy3d::RoomSpatialSurface openingSurface() {
   return surface;
 }
 
+iggy3d::RoomSpatialSurface projectileOnlySurface() {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = "projectile_wall";
+  surface.sourceStaticMeshId = "synthetic_projectile_wall";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Box;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::ProjectileBlocker;
+  surface.pointsMeters = {
+      {-10.0F, 0.0F, -0.10F},
+      {10.0F, 0.0F, -0.10F},
+      {10.0F, 3.0F, 0.10F},
+      {-10.0F, 3.0F, 0.10F},
+  };
+  surface.normal = {0.0F, 0.0F, 1.0F};
+  surface.traversalTags = {"projectile_blocker"};
+  surface.collisionMask = {"projectile"};
+  surface.blocksProjectile = true;
+  return surface;
+}
+
 iggy3d::SpatialSurfaceSet makeSurfaceSet(std::initializer_list<iggy3d::RoomSpatialSurface> surfaces) {
   iggy3d::RoomAsset room;
   room.id = "synthetic_room";
@@ -436,6 +455,110 @@ bool acceptedMoveWithCollisionBlocksWallWithoutMutation() {
                 "collision wall no mutation");
 }
 
+bool physicsPlannerClearMoveOverFloorSnapsAndMutates() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.30F, 0.0F});
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet({floorSurface()});
+  iggy3d::MovementSystemContext context{&world, &config, &surfaces, true};
+
+  const iggy3d::MovementResult result =
+      iggy3d::executeMovement(context, moveRequest({1.0F, 0.30F, 0.0F}));
+
+  return expect(result.blocked == iggy3d::MovementBlockedReason::None,
+                "physics clear move accepted") &&
+         expect(result.reasonCode == std::string_view{"movement_ok"},
+                "physics clear reason") &&
+         expect(!result.movementClamped, "physics clear not clamped") &&
+         expect(result.groundSnapApplied, "physics clear ground snapped") &&
+         expect(result.collisionSweepCount >= 1U, "physics clear sweep") &&
+         expect(result.movementPolicyBand == "flat", "physics clear slope band") &&
+         expect(iggy3d::nearlyEqual(result.finalPosition, {1.0F, 0.0F, 0.0F}),
+                "physics clear final") &&
+         expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
+                                    {1.0F, 0.0F, 0.0F}),
+                "physics clear mutated world");
+}
+
+bool physicsPlannerWallMoveClampsAndMutatesPartial() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 1.0F});
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  const iggy3d::SpatialSurfaceSet surfaces =
+      makeSurfaceSet({floorSurface(), wallSurface()});
+  iggy3d::MovementSystemContext context{&world, &config, &surfaces, true};
+
+  const iggy3d::MovementResult result =
+      iggy3d::executeMovement(context, moveRequest({0.0F, 0.0F, -1.0F}));
+
+  return expect(result.blocked == iggy3d::MovementBlockedReason::None,
+                "physics wall partial accepted") &&
+         expect(result.hitSurfaceId == "wall", "physics wall id") &&
+         expect(result.movementClamped, "physics wall clamped") &&
+         expect(!result.movementSlid, "physics wall straight no slide") &&
+         expect(result.collisionSweepCount >= 1U, "physics wall sweep") &&
+         expect(result.finalPosition.z > 0.10F, "physics wall stayed before wall") &&
+         expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
+                                    result.finalPosition),
+                "physics wall mutated partial");
+}
+
+bool physicsPlannerDiagonalWallMoveSlides() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 1.0F});
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  const iggy3d::SpatialSurfaceSet surfaces =
+      makeSurfaceSet({floorSurface(), wallSurface()});
+  iggy3d::MovementSystemContext context{&world, &config, &surfaces, true};
+
+  const iggy3d::MovementResult result =
+      iggy3d::executeMovement(context, moveRequest({1.0F, 0.0F, -1.0F}));
+
+  return expect(result.blocked == iggy3d::MovementBlockedReason::None,
+                "physics slide accepted") &&
+         expect(result.hitSurfaceId == "wall", "physics slide wall id") &&
+         expect(result.movementClamped, "physics slide clamped") &&
+         expect(result.movementSlid, "physics slide flag") &&
+         expect(result.finalPosition.x > 0.50F, "physics slide x advanced") &&
+         expect(result.finalPosition.z > 0.10F, "physics slide wall not crossed");
+}
+
+bool physicsPlannerSkipsProjectileOnlyBlocker() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 1.0F});
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  const iggy3d::SpatialSurfaceSet surfaces =
+      makeSurfaceSet({floorSurface(), projectileOnlySurface()});
+  iggy3d::MovementSystemContext context{&world, &config, &surfaces, true};
+
+  const iggy3d::MovementResult result =
+      iggy3d::executeMovement(context, moveRequest({0.0F, 0.0F, -1.0F}));
+
+  return expect(result.blocked == iggy3d::MovementBlockedReason::None,
+                "physics projectile skipped accepted") &&
+         expect(!result.movementClamped, "physics projectile skipped unclamped") &&
+         expect(result.hitSurfaceId.empty(), "physics projectile skipped no hit") &&
+         expect(iggy3d::nearlyEqual(result.finalPosition, {0.0F, 0.0F, -1.0F}),
+                "physics projectile skipped final") &&
+         expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
+                                    {0.0F, 0.0F, -1.0F}),
+                "physics projectile skipped mutated");
+}
+
+bool physicsPlannerWithoutSurfacesUsesLegacyNoCollisionPath() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.0F});
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  iggy3d::MovementSystemContext context{&world, &config, nullptr, true};
+
+  const iggy3d::MovementResult result =
+      iggy3d::executeMovement(context, moveRequest({1.0F, 0.0F, 0.0F}));
+
+  return expect(result.blocked == iggy3d::MovementBlockedReason::None,
+                "physics missing surfaces legacy accepted") &&
+         expect(result.collisionSweepCount == 0U, "physics missing surfaces no sweep") &&
+         expect(iggy3d::nearlyEqual(result.finalPosition, {1.0F, 0.0F, 0.0F}),
+                "physics missing surfaces final") &&
+         expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
+                                    {1.0F, 0.0F, 0.0F}),
+                "physics missing surfaces mutated");
+}
+
 }  // namespace
 
 int main() {
@@ -450,6 +573,11 @@ int main() {
                   kinematicModerateSlopeReportsDirectionalGrade() &&
                   kinematicMissingSurfacesAndInvalidParamsDoNotMutate() &&
                   acceptedMoveWithCollisionSnapsToWalkableGround() &&
-                  acceptedMoveWithCollisionBlocksWallWithoutMutation();
+                  acceptedMoveWithCollisionBlocksWallWithoutMutation() &&
+                  physicsPlannerClearMoveOverFloorSnapsAndMutates() &&
+                  physicsPlannerWallMoveClampsAndMutatesPartial() &&
+                  physicsPlannerDiagonalWallMoveSlides() &&
+                  physicsPlannerSkipsProjectileOnlyBlocker() &&
+                  physicsPlannerWithoutSurfacesUsesLegacyNoCollisionPath();
   return ok ? 0 : 1;
 }
