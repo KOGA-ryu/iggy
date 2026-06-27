@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductRoomGeometryOptimization.hpp"
+#include "app/iggy3d/room/ProductRoomGeometryOptimization.hpp"
 
 #include <iostream>
 #include <string>

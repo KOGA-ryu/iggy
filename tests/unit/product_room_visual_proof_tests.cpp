@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductRoomVisualProof.hpp"
+#include "app/iggy3d/room/ProductRoomVisualProof.hpp"
 
 #include <filesystem>
 #include <fstream>

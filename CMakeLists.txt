@@ -74,7 +74,7 @@ target_sources(iggy3d
     src/app/iggy3d/product/ProductMenuInputRouter.cpp
     src/app/iggy3d/ProductPrimitiveDrawList.cpp
     src/app/iggy3d/ProductRenderBridge.cpp
-    src/app/iggy3d/ProductRoomGeometryOptimization.cpp
+    src/app/iggy3d/room/ProductRoomGeometryOptimization.cpp
     src/app/iggy3d/room_editor/ProductRoomAuthoringController.cpp
     src/app/iggy3d/room_editor/ProductRoomEditorActionController.cpp
     src/app/iggy3d/room_editor/ProductRoomEditorCursor.cpp
@@ -82,7 +82,7 @@ target_sources(iggy3d
     src/app/iggy3d/room_editor/ProductRoomEditorOverlay.cpp
     src/app/iggy3d/room_editor/ProductRoomEditorPreview.cpp
     src/app/iggy3d/room_editor/ProductRoomEditingState.cpp
-    src/app/iggy3d/ProductRoomVisualProof.cpp
+    src/app/iggy3d/room/ProductRoomVisualProof.cpp
     src/app/iggy3d/ProductScriptedGameplayDriver.cpp
     src/app/iggy3d/save/ProductSavedRoomMarkerBinding.cpp
     src/app/iggy3d/save/ProductSaveCatalog.cpp
