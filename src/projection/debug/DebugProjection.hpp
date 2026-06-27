@@ -9,6 +9,8 @@
 #include "core/math/Vec3.hpp"
 #include "runtime/command/Command.hpp"
 #include "runtime/debug/RuntimeDebugSnapshot.hpp"
+#include "runtime/physics/PhysicsAabbCollider.hpp"
+#include "runtime/physics/PhysicsKinematicMotor.hpp"
 #include "runtime/replay/StateHash.hpp"
 #include "runtime/session/SessionState.hpp"
 
@@ -48,6 +50,11 @@ struct PhysicsDebugGeometryProjectionConfig {
   std::size_t maxAabbs = 128U;
   std::size_t maxContacts = 128U;
   std::size_t maxPairs = 128U;
+};
+
+struct PlayerPhysicsMovePlannerDebugProjectionRequest {
+  const std::vector<PhysicsAabbCollider>* aabbColliders = nullptr;
+  const std::vector<PhysicsKinematicMotorHit>* hits = nullptr;
 };
 
 struct DebugProjectionItem {
@@ -91,6 +98,10 @@ void appendPhysicsDebugSnapshot(DebugProjectionResult& result,
 void appendPhysicsCollisionBatchDebugProjection(
     DebugProjectionResult& result,
     const PhysicsAabbCollisionBatchResult& batch,
+    const PhysicsDebugGeometryProjectionConfig& config = {});
+void appendPlayerPhysicsMovePlannerDebugProjection(
+    DebugProjectionResult& result,
+    const PlayerPhysicsMovePlannerDebugProjectionRequest& request,
     const PhysicsDebugGeometryProjectionConfig& config = {});
 
 }  // namespace iggy3d

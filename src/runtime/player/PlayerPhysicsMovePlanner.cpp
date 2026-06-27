@@ -43,6 +43,13 @@ void refreshDisplacementFacts(PlayerPhysicsMovePlannerResult* result,
       desiredDisplacementMeters - result->appliedDisplacementMeters;
 }
 
+void attachDebugGeometry(PlayerPhysicsMovePlannerResult* result,
+                         const PhysicsSpatialSurfaceColliderBakeResult& bake) {
+  result->debugGeometryAvailable = true;
+  result->debugAabbColliders = bake.colliders;
+  result->debugAabbSourceSurfaceIds = bake.sourceSurfaceIds;
+}
+
 PlayerPhysicsMovePlannerResult validateRequest(
     const PlayerPhysicsMovePlannerRequest& request) {
   // branch-gate: BG-1100
@@ -252,6 +259,7 @@ PlayerPhysicsMovePlannerResult planPlayerPhysicsMove(
   result.bakedSurfaceCount = bake.surfaceCount;
   result.bakedColliderCount = bake.colliderCount;
   result.skippedSurfaceCount = bake.skippedSurfaceCount;
+  attachDebugGeometry(&result, bake);
 
   const MovementColliderPacket movementPacket = makeMovementColliderPacket(bake);
   PhysicsKinematicMotorConfig motorConfig = request.config.motor;
@@ -276,6 +284,7 @@ PlayerPhysicsMovePlannerResult planPlayerPhysicsMove(
     failed.bakedSurfaceCount = bake.surfaceCount;
     failed.bakedColliderCount = bake.colliderCount;
     failed.skippedSurfaceCount = bake.skippedSurfaceCount;
+    attachDebugGeometry(&failed, bake);
     return failed;
   }
 

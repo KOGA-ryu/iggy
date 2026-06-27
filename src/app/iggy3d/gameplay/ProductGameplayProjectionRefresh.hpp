@@ -65,7 +65,9 @@ struct ProductGameplayProjectionFrame {
 };
 
 DebugProjectionResult buildProductDebugProjectionWithNpcBehavior(
-    const SessionState& state);
+    const SessionState& state,
+    bool developerToolsEnabled = false,
+    bool debugOverlayEnabled = false);
 
 void copyNpcBehaviorDebugHud(ProductAppWindowState& window,
                              const ProductNpcBehaviorDebugHud& hud);

@@ -989,6 +989,127 @@ bool physicsCollisionBatchProjectionPreservesHudLinesAndExistingItems() {
                 "geometry preserves physics hud lines");
 }
 
+bool playerPhysicsMovePlannerProjectionAppendsCollidersAndHits() {
+  std::vector<iggy3d::PhysicsAabbCollider> colliders{
+      physicsCollider({8}, {1.0F, 0.5F, 0.0F}, {0.5F, 0.5F, 0.5F}, false),
+      physicsCollider({9}, {2.0F, 0.5F, 0.0F}, {0.25F, 0.5F, 0.25F}, true),
+  };
+  std::vector<iggy3d::PhysicsKinematicMotorHit> hits;
+  iggy3d::PhysicsKinematicMotorHit hit;
+  hit.colliderIndex = 1U;
+  hit.bodyId = {9};
+  hit.centerMeters = {1.65F, 0.9F, 0.0F};
+  hit.sensor = true;
+  hits.push_back(hit);
+
+  iggy3d::DebugProjectionResult debug;
+  debug.runtimeDebugHudLines.push_back("runtime line");
+  debug.physicsDebugHudLines.push_back("physics line");
+  const std::vector<std::string> runtimeBefore = debug.runtimeDebugHudLines;
+  const std::vector<std::string> physicsBefore = debug.physicsDebugHudLines;
+
+  iggy3d::appendPlayerPhysicsMovePlannerDebugProjection(
+      debug,
+      iggy3d::PlayerPhysicsMovePlannerDebugProjectionRequest{&colliders,
+                                                             &hits});
+
+  const iggy3d::DebugProjectionItem* solidAabb =
+      nthDebugKind(debug, iggy3d::DebugProjectionKind::PhysicsAabb, 0U);
+  const iggy3d::DebugProjectionItem* sensorAabb =
+      nthDebugKind(debug, iggy3d::DebugProjectionKind::PhysicsAabb, 1U);
+  const iggy3d::DebugProjectionItem* movementHit = nthDebugKind(
+      debug, iggy3d::DebugProjectionKind::PhysicsContactNormal, 0U);
+
+  return expect(countDebugKind(debug,
+                               iggy3d::DebugProjectionKind::PhysicsAabb) == 2U,
+                "player planner aabb item count") &&
+         expect(countDebugKind(debug,
+                               iggy3d::DebugProjectionKind::PhysicsContactNormal) ==
+                    1U,
+                "player planner hit item count") &&
+         expect(solidAabb != nullptr && solidAabb->actor == iggy3d::EntityId{8},
+                "player planner solid actor") &&
+         expect(solidAabb != nullptr && solidAabb->hasBounds &&
+                    nearlyEqualAabb(solidAabb->worldBounds,
+                                    colliders[0].bounds),
+                "player planner solid bounds") &&
+         expect(solidAabb != nullptr &&
+                    solidAabb->labelCode == "physics.player_move_aabb",
+                "player planner aabb label") &&
+         expect(solidAabb != nullptr && solidAabb->valueCode == "solid",
+                "player planner solid value") &&
+         expect(sensorAabb != nullptr && sensorAabb->valueCode == "sensor",
+                "player planner sensor value") &&
+         expect(movementHit != nullptr &&
+                    movementHit->actor == iggy3d::EntityId{9},
+                "player planner hit actor") &&
+         expect(movementHit != nullptr && movementHit->hasWorldPoint &&
+                    iggy3d::nearlyEqual(movementHit->worldPoint,
+                                        iggy3d::Vec3{1.65F, 0.9F, 0.0F}),
+                "player planner hit point") &&
+         expect(movementHit != nullptr &&
+                    movementHit->labelCode == "physics.player_move_hit",
+                "player planner hit label") &&
+         expect(movementHit != nullptr && movementHit->hasScalar &&
+                    movementHit->scalarValue == 1.0F,
+                "player planner hit sensor scalar") &&
+         expect(debug.runtimeDebugHudLines == runtimeBefore,
+                "player planner geometry preserves runtime lines") &&
+         expect(debug.physicsDebugHudLines == physicsBefore,
+                "player planner geometry preserves physics lines");
+}
+
+bool playerPhysicsMovePlannerProjectionRespectsCapsAndFlags() {
+  std::vector<iggy3d::PhysicsAabbCollider> colliders{
+      physicsCollider({8}, {1.0F, 0.5F, 0.0F}, {0.5F, 0.5F, 0.5F}, false),
+      physicsCollider({9}, {2.0F, 0.5F, 0.0F}, {0.25F, 0.5F, 0.25F}, false),
+  };
+  std::vector<iggy3d::PhysicsKinematicMotorHit> hits;
+  iggy3d::PhysicsKinematicMotorHit firstHit;
+  firstHit.bodyId = {9};
+  firstHit.centerMeters = {1.5F, 0.9F, 0.0F};
+  hits.push_back(firstHit);
+  iggy3d::PhysicsKinematicMotorHit secondHit = firstHit;
+  secondHit.bodyId = {10};
+  secondHit.centerMeters = {2.5F, 0.9F, 0.0F};
+  hits.push_back(secondHit);
+
+  iggy3d::PhysicsDebugGeometryProjectionConfig capped;
+  capped.maxAabbs = 1U;
+  capped.maxContacts = 1U;
+  capped.includeBroadphasePairs = false;
+  iggy3d::DebugProjectionResult cappedResult;
+  iggy3d::appendPlayerPhysicsMovePlannerDebugProjection(
+      cappedResult,
+      iggy3d::PlayerPhysicsMovePlannerDebugProjectionRequest{&colliders,
+                                                             &hits},
+      capped);
+
+  iggy3d::PhysicsDebugGeometryProjectionConfig noAabbs;
+  noAabbs.includeAabbs = false;
+  iggy3d::DebugProjectionResult withoutAabbs;
+  iggy3d::appendPlayerPhysicsMovePlannerDebugProjection(
+      withoutAabbs,
+      iggy3d::PlayerPhysicsMovePlannerDebugProjectionRequest{&colliders,
+                                                             &hits},
+      noAabbs);
+
+  return expect(countDebugKind(cappedResult,
+                               iggy3d::DebugProjectionKind::PhysicsAabb) == 1U,
+                "player planner aabb cap") &&
+         expect(countDebugKind(cappedResult,
+                               iggy3d::DebugProjectionKind::PhysicsContactNormal) ==
+                    1U,
+                "player planner hit cap") &&
+         expect(countDebugKind(withoutAabbs,
+                               iggy3d::DebugProjectionKind::PhysicsAabb) == 0U,
+                "player planner include flag disables aabbs") &&
+         expect(countDebugKind(withoutAabbs,
+                               iggy3d::DebugProjectionKind::PhysicsContactNormal) ==
+                    2U,
+                "player planner include flag keeps hits");
+}
+
 bool saveLoadProjectionIsEquivalent() {
   const iggy3d::SessionCreateRequest create = createRequestFromPackage();
   const iggy3d::Session session = makeCompletedSession();
@@ -1049,6 +1170,8 @@ int main() {
   ok = physicsCollisionBatchProjectionIgnoresFailedBatch() && ok;
   ok = physicsCollisionBatchProjectionRespectsIncludeFlagsAndCaps() && ok;
   ok = physicsCollisionBatchProjectionPreservesHudLinesAndExistingItems() && ok;
+  ok = playerPhysicsMovePlannerProjectionAppendsCollidersAndHits() && ok;
+  ok = playerPhysicsMovePlannerProjectionRespectsCapsAndFlags() && ok;
   ok = saveLoadProjectionIsEquivalent() && ok;
   return ok ? 0 : 1;
 }

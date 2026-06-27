@@ -64,6 +64,9 @@ struct PlayerPhysicsMovePlannerResult {
   std::string firstHitSourceSurfaceId;
   std::vector<PhysicsKinematicMotorHit> hits;
   std::vector<std::string> hitSourceSurfaceIds;
+  bool debugGeometryAvailable = false;
+  std::vector<PhysicsAabbCollider> debugAabbColliders;
+  std::vector<std::string> debugAabbSourceSurfaceIds;
 };
 
 std::string_view playerPhysicsMovePlannerStatusName(

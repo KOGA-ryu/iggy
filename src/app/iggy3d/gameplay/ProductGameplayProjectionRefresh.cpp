@@ -26,7 +26,8 @@ bool npcBehaviorHudHasUnresolvedProfile(const ProductNpcBehaviorDebugHud& hud) {
 }
 
 void appendPhysicsDebugFromMovement(DebugProjectionResult& debug,
-                                    const SessionState& state) {
+                                    const SessionState& state,
+                                    bool includeGeometry) {
   const MovementResult& movement = state.transient.lastMovementResult;
   // branch-gate: BG-1109
   if (!state.transient.lastMovementResultAvailable ||
@@ -37,6 +38,17 @@ void appendPhysicsDebugFromMovement(DebugProjectionResult& debug,
   const PhysicsDebugSnapshot snapshot = buildPhysicsDebugSnapshot(
       PhysicsDebugSnapshotRequest{&movement.physicsFrameStats, {}});
   appendPhysicsDebugSnapshot(debug, snapshot);
+  // branch-gate: BG-1109
+  if (!includeGeometry || !movement.physicsDebugGeometryAvailable) {
+    return;
+  }
+
+  appendPlayerPhysicsMovePlannerDebugProjection(
+      debug,
+      PlayerPhysicsMovePlannerDebugProjectionRequest{
+          &movement.physicsDebugAabbColliders,
+          &movement.physicsDebugHits,
+      });
 }
 
 void clearProductVulkanRoomMeshProof(ProductViewportState& viewport) {
@@ -173,7 +185,9 @@ const ProductRenderBridgeFrame* ProductGameplayProjectionFrame::renderBridgePtr(
 }
 
 DebugProjectionResult buildProductDebugProjectionWithNpcBehavior(
-    const SessionState& state) {
+    const SessionState& state,
+    bool developerToolsEnabled,
+    bool debugOverlayEnabled) {
   DebugProjectionResult debug = buildDebugProjection(state);
   const NpcBehaviorProfileCatalog catalog =
       makeBuiltInNpcBehaviorProfileCatalog();
@@ -181,7 +195,8 @@ DebugProjectionResult buildProductDebugProjectionWithNpcBehavior(
       {true, &state.world, &state.ai, &state.combat, &catalog,
        state.clock.tickIndex, 128});
   appendNpcBehaviorDebugSnapshot(debug, snapshot);
-  appendPhysicsDebugFromMovement(debug, state);
+  appendPhysicsDebugFromMovement(debug, state,
+                                 developerToolsEnabled && debugOverlayEnabled);
   return debug;
 }
 
@@ -466,8 +481,10 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   const RoomAsset* activeRoom =
       window.activeRoom.loaded ? &window.activeRoom.room : nullptr;
   frame.scene = buildSceneProjection(request.activeSession->state(), activeRoom);
-  frame.debug =
-      buildProductDebugProjectionWithNpcBehavior(request.activeSession->state());
+  frame.debug = buildProductDebugProjectionWithNpcBehavior(
+      request.activeSession->state(),
+      request.developerToolsEnabled,
+      request.debugOverlayEnabled);
   frame.roomEditorOverlay =
       buildProductRoomEditorOverlay(window.roomEditorCursor, window.roomEditing.ready);
   copyProductRoomEditorOverlay(window, frame.roomEditorOverlay);

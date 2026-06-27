@@ -194,6 +194,22 @@ void attachPhysicsFrameStats(MovementResult& result,
   result.physicsFrameStats = frameStatsForPhysicsPlanner(planned);
 }
 
+void attachPhysicsDebugGeometry(
+    MovementResult& result,
+    const PlayerPhysicsMovePlannerResult& planned) {
+  result.physicsDebugGeometryAvailable = planned.debugGeometryAvailable;
+  result.physicsDebugAabbColliders = planned.debugAabbColliders;
+  result.physicsDebugAabbSourceSurfaceIds = planned.debugAabbSourceSurfaceIds;
+  result.physicsDebugHits = planned.hits;
+  result.physicsDebugHitSourceSurfaceIds = planned.hitSourceSurfaceIds;
+}
+
+void attachPhysicsDebugPackets(MovementResult& result,
+                               const PlayerPhysicsMovePlannerResult& planned) {
+  attachPhysicsFrameStats(result, planned);
+  attachPhysicsDebugGeometry(result, planned);
+}
+
 MovementResult blockedPhysicsResult(const MovementRequest& request,
                                     Vec3 start,
                                     MovementBlockedReason reason,
@@ -209,7 +225,7 @@ MovementResult blockedPhysicsResult(const MovementRequest& request,
   result.movementClamped = planned.blocked || planned.hitCount > 0U ||
                            reason == MovementBlockedReason::BlockedByCollision;
   result.movementSlid = physicsMovementSlid(planned);
-  attachPhysicsFrameStats(result, planned);
+  attachPhysicsDebugPackets(result, planned);
   return result;
 }
 
@@ -240,7 +256,7 @@ MovementResult executePhysicsPlannedMovement(MovementSystemContext& context,
   if (!planned.ok) {
     MovementResult blocked =
         blockedResult(request, start, MovementBlockedReason::InternalError, distanceMeters);
-    attachPhysicsFrameStats(blocked, planned);
+    attachPhysicsDebugPackets(blocked, planned);
     return blocked;
   }
 
@@ -287,7 +303,7 @@ MovementResult executePhysicsPlannedMovement(MovementSystemContext& context,
   if (mutation.status != WorldStatus::Ok) {
     MovementResult blocked =
         blockedResult(request, start, MovementBlockedReason::BlockedByWorld, distanceMeters);
-    attachPhysicsFrameStats(blocked, planned);
+    attachPhysicsDebugPackets(blocked, planned);
     return blocked;
   }
 
@@ -306,7 +322,7 @@ MovementResult executePhysicsPlannedMovement(MovementSystemContext& context,
   result.collisionSweepCount = physicsCollisionSweepCount(planned);
   result.hitSurfaceId = planned.firstHitSourceSurfaceId;
   result.reasonCode = "movement_ok";
-  attachPhysicsFrameStats(result, planned);
+  attachPhysicsDebugPackets(result, planned);
   applySlopeToResult(result, slope);
   applyTravelFacts(result);
   return result;

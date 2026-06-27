@@ -2,12 +2,15 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "core/ids/EntityId.hpp"
 #include "core/math/Vec3.hpp"
 #include "runtime/command/Command.hpp"
 #include "runtime/movement/MovementParams.hpp"
+#include "runtime/physics/PhysicsAabbCollider.hpp"
 #include "runtime/physics/PhysicsFrameStats.hpp"
+#include "runtime/physics/PhysicsKinematicMotor.hpp"
 
 namespace iggy3d {
 
@@ -67,6 +70,11 @@ struct MovementResult {
   std::uint32_t collisionSweepCount = 0;
   bool physicsFrameStatsAvailable = false;
   PhysicsFrameStats physicsFrameStats;
+  bool physicsDebugGeometryAvailable = false;
+  std::vector<PhysicsAabbCollider> physicsDebugAabbColliders;
+  std::vector<std::string> physicsDebugAabbSourceSurfaceIds;
+  std::vector<PhysicsKinematicMotorHit> physicsDebugHits;
+  std::vector<std::string> physicsDebugHitSourceSurfaceIds;
   std::string slopeTravelDirection = "stationary";
   std::string movementPolicyBand;
   std::string hitSurfaceId;

@@ -260,6 +260,8 @@ bool invalidRequestsRejectBeforeMovement() {
          expect(motorResult.upstreamReasonCode ==
                     "physics_kinematic_motor_invalid_config",
                 "bad motor upstream reason") &&
+         expect(!missingResult.debugGeometryAvailable,
+                "invalid request no debug geometry") &&
          expect(iggy3d::nearlyEqual(startResult.appliedDisplacementMeters, {}),
                 "invalid request no movement");
 }
@@ -274,6 +276,10 @@ bool emptySurfaceSetPlansClearMovement() {
   return expect(result.ok, "empty surface move ok") &&
          expect(result.bakedSurfaceCount == 0U, "empty surface count") &&
          expect(result.bakedColliderCount == 0U, "empty collider count") &&
+         expect(result.debugGeometryAvailable,
+                "empty planner debug geometry available") &&
+         expect(result.debugAabbColliders.empty(),
+                "empty planner debug colliders empty") &&
          expect(!result.blocked, "empty move not blocked") &&
          expect(!result.grounded, "empty move not grounded") &&
          expect(iggy3d::nearlyEqual(result.finalCenterMeters,
@@ -313,6 +319,19 @@ bool wallBlocksAndReportsSurfaceId() {
   return expect(result.ok, "wall move ok") &&
          expect(result.bakedSurfaceCount == 2U, "wall surface count") &&
          expect(result.bakedColliderCount == 2U, "wall collider count") &&
+         expect(result.debugGeometryAvailable, "wall debug geometry available") &&
+         expect(result.debugAabbColliders.size() == 2U,
+                "wall debug collider count") &&
+         expect(result.debugAabbSourceSurfaceIds.size() == 2U,
+                "wall debug source id count") &&
+         expect(result.debugAabbSourceSurfaceIds[0] == "floor",
+                "wall debug floor source id") &&
+         expect(result.debugAabbSourceSurfaceIds[1] == "actor_wall",
+                "wall debug actor source id") &&
+         expect(result.debugAabbColliders[1].bodyId.value == 2U,
+                "wall debug actor body id") &&
+         expect(result.debugAabbColliders[1].bounds.max.x > 2.0F,
+                "wall debug actor bounds copied") &&
          expect(result.blocked, "wall blocks") &&
          expect(result.hitCount == 1U, "wall hit count") &&
          expect(result.firstHitBodyId.value == 2U, "wall hit body id") &&

@@ -340,6 +340,56 @@ void appendPhysicsBroadphasePairDebugItems(
   }
 }
 
+void appendPlayerPhysicsAabbDebugItems(
+    DebugProjectionResult& result,
+    const std::vector<PhysicsAabbCollider>& colliders,
+    std::size_t maxAabbs) {
+  std::size_t emitted = 0U;
+  for (const PhysicsAabbCollider& collider : colliders) {
+    // branch-gate: BG-1111
+    if (emitted >= maxAabbs) {
+      break;
+    }
+
+    DebugProjectionItem item;
+    item.kind = DebugProjectionKind::PhysicsAabb;
+    item.actor = physicsBodyDebugEntityId(collider.bodyId);
+    item.hasBounds = true;
+    item.worldBounds = collider.bounds;
+    item.hasScalar = true;
+    item.scalarValue = sensorScalar(collider.sensor);
+    item.labelCode = "physics.player_move_aabb";
+    item.valueCode = sensorValueCode(collider.sensor);
+    result.items.push_back(std::move(item));
+    ++emitted;
+  }
+}
+
+void appendPlayerPhysicsHitDebugItems(
+    DebugProjectionResult& result,
+    const std::vector<PhysicsKinematicMotorHit>& hits,
+    std::size_t maxHits) {
+  std::size_t emitted = 0U;
+  for (const PhysicsKinematicMotorHit& hit : hits) {
+    // branch-gate: BG-1111
+    if (emitted >= maxHits) {
+      break;
+    }
+
+    DebugProjectionItem item;
+    item.kind = DebugProjectionKind::PhysicsContactNormal;
+    item.actor = physicsBodyDebugEntityId(hit.bodyId);
+    item.hasWorldPoint = true;
+    item.worldPoint = hit.centerMeters;
+    item.hasScalar = true;
+    item.scalarValue = sensorScalar(hit.sensor);
+    item.labelCode = "physics.player_move_hit";
+    item.valueCode = sensorValueCode(hit.sensor);
+    result.items.push_back(std::move(item));
+    ++emitted;
+  }
+}
+
 }  // namespace
 
 DebugProjectionResult buildDebugProjection(const SessionState& state,
@@ -488,6 +538,21 @@ void appendPhysicsCollisionBatchDebugProjection(
   // branch-gate: BG-1111
   if (config.includeBroadphasePairs) {
     appendPhysicsBroadphasePairDebugItems(result, batch, config.maxPairs);
+  }
+}
+
+void appendPlayerPhysicsMovePlannerDebugProjection(
+    DebugProjectionResult& result,
+    const PlayerPhysicsMovePlannerDebugProjectionRequest& request,
+    const PhysicsDebugGeometryProjectionConfig& config) {
+  // branch-gate: BG-1111
+  if (config.includeAabbs && request.aabbColliders != nullptr) {
+    appendPlayerPhysicsAabbDebugItems(result, *request.aabbColliders,
+                                      config.maxAabbs);
+  }
+  // branch-gate: BG-1111
+  if (config.includeContacts && request.hits != nullptr) {
+    appendPlayerPhysicsHitDebugItems(result, *request.hits, config.maxContacts);
   }
 }
 

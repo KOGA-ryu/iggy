@@ -452,6 +452,8 @@ bool acceptedMoveWithCollisionBlocksWallWithoutMutation() {
          expect(result.collisionSweepCount == 1U, "collision wall sweep") &&
          expect(!result.physicsFrameStatsAvailable,
                 "legacy collision has no physics stats") &&
+         expect(!result.physicsDebugGeometryAvailable,
+                "legacy collision has no physics debug geometry") &&
          expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
                                     {0.0F, 0.0F, 1.0F}),
                 "collision wall no mutation");
@@ -486,6 +488,11 @@ bool physicsPlannerClearMoveOverFloorSnapsAndMutates() {
                 "physics clear iterations") &&
          expect(result.physicsFrameStats.playerHitCount == 0U,
                 "physics clear no hits") &&
+         expect(result.physicsDebugGeometryAvailable,
+                "physics clear debug geometry available") &&
+         expect(!result.physicsDebugAabbColliders.empty(),
+                "physics clear debug colliders") &&
+         expect(result.physicsDebugHits.empty(), "physics clear no debug hits") &&
          expect(result.movementPolicyBand == "flat", "physics clear slope band") &&
          expect(iggy3d::nearlyEqual(result.finalPosition, {1.0F, 0.0F, 0.0F}),
                 "physics clear final") &&
@@ -519,6 +526,15 @@ bool physicsPlannerWallMoveClampsAndMutatesPartial() {
                 "physics wall hit count") &&
          expect(result.physicsFrameStats.playerIterationCount >= 1U,
                 "physics wall iteration count") &&
+         expect(result.physicsDebugGeometryAvailable,
+                "physics wall debug geometry available") &&
+         expect(result.physicsDebugAabbColliders.size() >= 2U,
+                "physics wall debug colliders") &&
+         expect(!result.physicsDebugHits.empty(), "physics wall debug hits") &&
+         expect(!result.physicsDebugHitSourceSurfaceIds.empty(),
+                "physics wall debug hit source ids") &&
+         expect(result.physicsDebugHitSourceSurfaceIds.front() == "wall",
+                "physics wall debug hit source id") &&
          expect(result.finalPosition.z > 0.10F, "physics wall stayed before wall") &&
          expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
                                     result.finalPosition),
@@ -546,6 +562,9 @@ bool physicsPlannerDiagonalWallMoveSlides() {
                 "physics slide hit count") &&
          expect(result.physicsFrameStats.playerIterationCount >= 1U,
                 "physics slide iteration count") &&
+         expect(result.physicsDebugGeometryAvailable,
+                "physics slide debug geometry available") &&
+         expect(!result.physicsDebugHits.empty(), "physics slide debug hits") &&
          expect(result.finalPosition.x > 0.50F, "physics slide x advanced") &&
          expect(result.finalPosition.z > 0.10F, "physics slide wall not crossed");
 }
@@ -570,6 +589,12 @@ bool physicsPlannerSkipsProjectileOnlyBlocker() {
                 "physics projectile skipped stats") &&
          expect(result.physicsFrameStats.playerHitCount == 0U,
                 "physics projectile skipped no stats hit") &&
+         expect(result.physicsDebugGeometryAvailable,
+                "physics projectile debug geometry available") &&
+         expect(result.physicsDebugAabbColliders.size() == 1U,
+                "physics projectile skipped debug collider count") &&
+         expect(result.physicsDebugHits.empty(),
+                "physics projectile skipped debug hits") &&
          expect(iggy3d::nearlyEqual(result.finalPosition, {0.0F, 0.0F, -1.0F}),
                 "physics projectile skipped final") &&
          expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
@@ -590,6 +615,8 @@ bool physicsPlannerWithoutSurfacesUsesLegacyNoCollisionPath() {
          expect(result.collisionSweepCount == 0U, "physics missing surfaces no sweep") &&
          expect(!result.physicsFrameStatsAvailable,
                 "physics missing surfaces no stats") &&
+         expect(!result.physicsDebugGeometryAvailable,
+                "physics missing surfaces no debug geometry") &&
          expect(iggy3d::nearlyEqual(result.finalPosition, {1.0F, 0.0F, 0.0F}),
                 "physics missing surfaces final") &&
          expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
