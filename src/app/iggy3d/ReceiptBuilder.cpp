@@ -947,6 +947,15 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.viewport.productDrawRoomEditorPreviewVisible);
   appendReceiptField(receipt, "product_draw_room_editor_preview_count",
                      window.viewport.productDrawRoomEditorPreviewCount);
+  appendReceiptField(receipt, "product_draw_physics_debug_visible",
+                     window.viewport.productDrawPhysicsDebugVisible);
+  appendReceiptField(receipt, "product_draw_physics_debug_item_count",
+                     window.viewport.productDrawPhysicsDebugItemCount);
+  appendReceiptField(receipt, "product_draw_physics_aabb_debug_count",
+                     window.viewport.productDrawPhysicsAabbDebugCount);
+  appendReceiptField(receipt,
+                     "product_draw_physics_contact_normal_debug_count",
+                     window.viewport.productDrawPhysicsContactNormalDebugCount);
   appendReceiptField(receipt, "product_view_projection",
                      window.viewport.productViewProjection);
   appendReceiptField(receipt, "product_view_yaw_applied",
@@ -973,6 +982,17 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.viewport.productRenderBridgeRoomEditorPreviewVisible);
   appendReceiptField(receipt, "product_render_bridge_room_editor_preview_count",
                      window.viewport.productRenderBridgeRoomEditorPreviewCount);
+  appendReceiptField(receipt, "product_render_bridge_physics_debug_visible",
+                     window.viewport.productRenderBridgePhysicsDebugVisible);
+  appendReceiptField(receipt, "product_render_bridge_physics_debug_item_count",
+                     window.viewport.productRenderBridgePhysicsDebugItemCount);
+  appendReceiptField(receipt,
+                     "product_render_bridge_physics_aabb_debug_count",
+                     window.viewport.productRenderBridgePhysicsAabbDebugCount);
+  appendReceiptField(
+      receipt,
+      "product_render_bridge_physics_contact_normal_debug_count",
+      window.viewport.productRenderBridgePhysicsContactNormalDebugCount);
   appendReceiptField(receipt, "product_feedback_bridge_ready",
                      window.viewport.productFeedbackBridgeReady);
   appendReceiptField(receipt, "product_feedback_bridge_line_count",

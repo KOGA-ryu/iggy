@@ -330,6 +330,10 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productDrawRoomEditorCursorCount = 0;
     window.viewport.productDrawRoomEditorPreviewVisible = false;
     window.viewport.productDrawRoomEditorPreviewCount = 0;
+    window.viewport.productDrawPhysicsDebugVisible = false;
+    window.viewport.productDrawPhysicsDebugItemCount = 0;
+    window.viewport.productDrawPhysicsAabbDebugCount = 0;
+    window.viewport.productDrawPhysicsContactNormalDebugCount = 0;
     window.viewport.productViewProjection = "primitive_first_person";
     window.viewport.productViewYawApplied = false;
     window.viewport.productViewPitchApplied = false;
@@ -343,6 +347,10 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productRenderBridgeRoomEditorCursorCount = 0;
     window.viewport.productRenderBridgeRoomEditorPreviewVisible = false;
     window.viewport.productRenderBridgeRoomEditorPreviewCount = 0;
+    window.viewport.productRenderBridgePhysicsDebugVisible = false;
+    window.viewport.productRenderBridgePhysicsDebugItemCount = 0;
+    window.viewport.productRenderBridgePhysicsAabbDebugCount = 0;
+    window.viewport.productRenderBridgePhysicsContactNormalDebugCount = 0;
     window.viewport.productFeedbackBridgeReady = false;
     window.viewport.productFeedbackBridgeLineCount = 0;
     clearProductVulkanRoomMeshProof(window.viewport);
@@ -399,6 +407,14 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
         drawList->roomEditorPlacementPreviewVisible;
     window.viewport.productDrawRoomEditorPreviewCount =
         drawList->roomEditorPlacementPreviewCount;
+    window.viewport.productDrawPhysicsDebugVisible =
+        drawList->physicsDebugVisible;
+    window.viewport.productDrawPhysicsDebugItemCount =
+        drawList->physicsDebugItemCount;
+    window.viewport.productDrawPhysicsAabbDebugCount =
+        drawList->physicsAabbDebugCount;
+    window.viewport.productDrawPhysicsContactNormalDebugCount =
+        drawList->physicsContactNormalDebugCount;
   }
   // branch-gate: BG-1025
   if (frame != nullptr) {
@@ -422,6 +438,14 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
         bridge->roomEditorPlacementPreviewVisible;
     window.viewport.productRenderBridgeRoomEditorPreviewCount =
         bridge->roomEditorPlacementPreviewCount;
+    window.viewport.productRenderBridgePhysicsDebugVisible =
+        bridge->physicsDebugVisible;
+    window.viewport.productRenderBridgePhysicsDebugItemCount =
+        bridge->physicsDebugItemCount;
+    window.viewport.productRenderBridgePhysicsAabbDebugCount =
+        bridge->physicsAabbDebugCount;
+    window.viewport.productRenderBridgePhysicsContactNormalDebugCount =
+        bridge->physicsContactNormalDebugCount;
     window.viewport.productFeedbackBridgeReady = bridge->feedbackReady;
     window.viewport.productFeedbackBridgeLineCount = bridge->feedbackLineCount;
   }

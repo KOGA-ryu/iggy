@@ -273,7 +273,7 @@ int main() {
           physicsControlPath, "gameplay.physics_movement=true\n");
   const bool physicsTapeGenerated =
       iggy3d::smoke::writeTextFile(physicsTapePath,
-                                   "move marker_key_r1_c2\n");
+                                   "move marker_key_r1_c3\n");
 
   int exitCode = 77;
   iggy3d::smoke::ReceiptFields fields;
@@ -292,12 +292,12 @@ int main() {
   int physicsExitCode = 77;
   iggy3d::smoke::ReceiptFields physicsFields;
   const bool physicsReceiptValid =
-      appAvailable && packageGenerated && physicsControlGenerated &&
+      appAvailable && wallPackageGenerated && physicsControlGenerated &&
       physicsTapeGenerated &&
       iggy3d::smoke::runProductReceiptCase(
           binary,
           "product_gameplay_tape_physics_movement",
-          std::string{"--package "} + iggy3d::smoke::shellQuote(packagePath) +
+          std::string{"--package "} + iggy3d::smoke::shellQuote(wallPackagePath) +
               " --auto-new-world --automation-control " +
               iggy3d::smoke::shellQuote(physicsControlPath) +
               " --debug-overlay --gameplay-tape " +
@@ -459,8 +459,20 @@ int main() {
       physicsExitCode == 0 && physicsReceiptValid &&
       iggy3d::smoke::productReceipt(physicsFields) &&
       iggy3d::smoke::hasField(physicsFields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(physicsFields, "window_created", "false") &&
       iggy3d::smoke::hasField(physicsFields, "frontend_screen", "gameplay") &&
       iggy3d::smoke::hasField(physicsFields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(physicsFields, "active_room_loaded", "true") &&
+      iggy3d::smoke::hasField(physicsFields, "active_room_source", "package_room") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "active_room_collision_ready",
+                              "true") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "active_room_collision_query_surface_count",
+                              "28") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "product_vulkan_room_mesh_cpu_ready",
+                              "true") &&
       iggy3d::smoke::hasField(physicsFields,
                               "automation_control_requested",
                               "true") &&
@@ -486,6 +498,9 @@ int main() {
                               "gameplay_tape_last_action",
                               "move") &&
       iggy3d::smoke::hasField(physicsFields,
+                              "gameplay_tape_last_target",
+                              "marker_key_r1_c3") &&
+      iggy3d::smoke::hasField(physicsFields,
                               "physics_movement_planner_enabled",
                               "true") &&
       iggy3d::smoke::hasField(physicsFields,
@@ -509,6 +524,25 @@ int main() {
       iggy3d::smoke::hasField(physicsFields,
                               "physics_debug_hud_status",
                               "physics_debug_ready") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "product_draw_physics_debug_visible",
+                              "true") &&
+      iggy3d::smoke::positiveIntegerField(
+          physicsFields, "product_draw_physics_debug_item_count") &&
+      iggy3d::smoke::positiveIntegerField(
+          physicsFields, "product_draw_physics_aabb_debug_count") &&
+      iggy3d::smoke::positiveIntegerField(
+          physicsFields, "product_draw_physics_contact_normal_debug_count") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "product_render_bridge_physics_debug_visible",
+                              "true") &&
+      iggy3d::smoke::positiveIntegerField(
+          physicsFields, "product_render_bridge_physics_debug_item_count") &&
+      iggy3d::smoke::positiveIntegerField(
+          physicsFields, "product_render_bridge_physics_aabb_debug_count") &&
+      iggy3d::smoke::positiveIntegerField(
+          physicsFields,
+          "product_render_bridge_physics_contact_normal_debug_count") &&
       iggy3d::smoke::hasField(physicsFields, "session_outcome", "None");
 
   const bool wallPassed =

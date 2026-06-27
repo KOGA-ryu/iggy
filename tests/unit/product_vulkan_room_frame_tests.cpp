@@ -416,6 +416,19 @@ bool productPhysicsDebugGeometryFromMovementStatsWhenGatedOn() {
       iggy3d::buildProductGameplayProjectionFrame(
           iggy3d::ProductGameplayProjectionFrameRequest{
               session, window, true, true, iggy3d::ProductRendererRequest::Vulkan});
+  iggy3d::applyGameplayProjectionMetrics(window, frame.scenePtr(), frame.debugPtr(),
+                                         frame.drawListPtr(), frame.viewportFramePtr(),
+                                         frame.renderBridgePtr(), frame.viewVisible);
+
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductWorldTemplate world;
+  iggy3d::FrontendState frontend;
+  iggy3d::FrontendSettings settings;
+  settings.devToolsEnabled = true;
+  settings.debugOverlayEnabled = true;
+  iggy3d::ProductSaveBridgeResult saves;
+  const iggy3d::RenderReceipt receipt =
+      iggy3d::buildProductAppReceipt(options, world, frontend, settings, window, saves);
 
   bool ok = true;
   ok = expect(frame.debug.physicsDebugHudLines.size() == 4U,
@@ -457,6 +470,52 @@ bool productPhysicsDebugGeometryFromMovementStatsWhenGatedOn() {
        ok;
   ok = expect(frame.renderBridge.physicsContactNormalDebugCount == 1U,
               "geometry render bridge hit count") &&
+       ok;
+  ok = expect(window.viewport.productDrawPhysicsDebugVisible,
+              "window draw physics debug visible") &&
+       ok;
+  ok = expect(window.viewport.productDrawPhysicsDebugItemCount == 3U,
+              "window draw physics debug count") &&
+       ok;
+  ok = expect(window.viewport.productDrawPhysicsAabbDebugCount == 2U,
+              "window draw physics AABB count") &&
+       ok;
+  ok = expect(window.viewport.productDrawPhysicsContactNormalDebugCount == 1U,
+              "window draw physics contact count") &&
+       ok;
+  ok = expect(window.viewport.productRenderBridgePhysicsDebugVisible,
+              "window render physics debug visible") &&
+       ok;
+  ok = expect(window.viewport.productRenderBridgePhysicsDebugItemCount == 3U,
+              "window render physics debug count") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(
+                  receipt, "product_draw_physics_debug_visible", "true"),
+              "receipt draw physics debug visible") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(
+                  receipt, "product_draw_physics_debug_item_count", "3"),
+              "receipt draw physics debug count") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(
+                  receipt, "product_draw_physics_aabb_debug_count", "2"),
+              "receipt draw physics AABB count") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(
+                  receipt,
+                  "product_draw_physics_contact_normal_debug_count",
+                  "1"),
+              "receipt draw physics contact count") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(
+                  receipt, "product_render_bridge_physics_debug_visible", "true"),
+              "receipt render physics debug visible") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(
+                  receipt,
+                  "product_render_bridge_physics_debug_item_count",
+                  "3"),
+              "receipt render physics debug count") &&
        ok;
   return ok;
 }
