@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <string>
 
-#include "app/iggy3d/gameplay/ProductActiveRoomState.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/session/SessionState.hpp"
 

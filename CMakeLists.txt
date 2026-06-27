@@ -36,7 +36,7 @@ target_sources(iggy3d
     src/app/iggy3d/menu/FrontendActionExecutor.cpp
     src/app/iggy3d/view/OpeningMenuView.cpp
     src/app/iggy3d/gameplay/ProductActiveRoomCollision.cpp
-    src/app/iggy3d/gameplay/ProductActiveRoomState.cpp
+    src/app/iggy3d/gameplay/ActiveRoomState.cpp
     src/app/iggy3d/ProductBuiltinDungeon.cpp
     src/app/iggy3d/ProductCameraController.cpp
     src/app/iggy3d/ProductDungeonDraft.cpp

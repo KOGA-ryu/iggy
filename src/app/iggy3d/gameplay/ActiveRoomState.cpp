@@ -1,4 +1,4 @@
-#include "app/iggy3d/gameplay/ProductActiveRoomState.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 
 #include <cstdint>
 #include <string>

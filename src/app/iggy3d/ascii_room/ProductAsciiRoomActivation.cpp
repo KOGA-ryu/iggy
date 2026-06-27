@@ -5,7 +5,7 @@
 #include <string>
 #include <utility>
 
-#include "app/iggy3d/gameplay/ProductActiveRoomState.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ascii_room/ProductAsciiRoomPackage.hpp"
 #include "app/iggy3d/ascii_room/ProductAsciiRoomPreview.hpp"
