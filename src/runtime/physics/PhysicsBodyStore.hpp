@@ -7,6 +7,12 @@
 
 namespace iggy3d {
 
+class PhysicsBodyStore;
+struct PhysicsStepConfig;
+struct PhysicsStepResult;
+PhysicsStepResult stepPhysicsBodies(PhysicsBodyStore* store,
+                                    const PhysicsStepConfig& config);
+
 struct PhysicsBodyView {
   PhysicsBodyId id;
   PhysicsBodyMotionKind motion = PhysicsBodyMotionKind::Static;
@@ -44,6 +50,9 @@ class PhysicsBodyStore {
   PhysicsBodyStoreResult reset();
 
  private:
+  friend PhysicsStepResult stepPhysicsBodies(PhysicsBodyStore* store,
+                                             const PhysicsStepConfig& config);
+
   [[nodiscard]] PhysicsBodyView bodyAt(std::size_t index) const;
   [[nodiscard]] std::size_t findIndex(PhysicsBodyId id) const;
 

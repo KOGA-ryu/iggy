@@ -83,3 +83,4 @@ BG-1082	src/runtime/object/ObjectTraits.cpp	runtime object asset and instance va
 BG-1083	src/app/iggy3d/room_editor/ProductRoomEditorObjectPalette.cpp	room editor object palette validation and selection policy	codex	2026-06-27
 BG-1084	src/runtime/physics/PhysicsTypes.cpp	runtime physics descriptor validation policy	codex	2026-06-27
 BG-1085	src/runtime/physics/PhysicsBodyStore.cpp	runtime physics body store lookup and mutation policy	codex	2026-06-27
+BG-1086	src/runtime/physics/PhysicsStep.cpp	runtime physics fixed-step validation and integration policy	codex	2026-06-27

@@ -161,6 +161,7 @@ target_sources(iggy3d
     src/runtime/interaction/InteractionSystem.cpp
     src/runtime/object/ObjectTraits.cpp
     src/runtime/physics/PhysicsBodyStore.cpp
+    src/runtime/physics/PhysicsStep.cpp
     src/runtime/physics/PhysicsTypes.cpp
     src/runtime/session/SessionTick.cpp
     src/runtime/session/SessionRunner.cpp
