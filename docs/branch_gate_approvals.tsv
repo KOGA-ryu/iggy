@@ -114,3 +114,4 @@ BG-1113	src/app/iggy3d/ProductRenderBridge.cpp	product physics debug render brid
 BG-1114	src/app/iggy3d/ReceiptBuilder.cpp	product physics movement planner receipt status policy	codex	2026-06-27
 BG-1115	src/app/iggy3d/gameplay/ProductGameplayController.cpp	product gameplay transient physics movement opt-in policy	codex	2026-06-27
 BG-1116	src/runtime/physics/PhysicsKernelBenchmark.cpp	runtime physics kernel benchmark dispatch and validation policy	codex	2026-06-27
+BG-1117	src/runtime/physics/PhysicsKernelBenchmarkJson.cpp	runtime physics kernel benchmark JSON serialization policy	codex	2026-06-27

@@ -495,6 +495,11 @@ iggy3d_add_unit_test(physics_kernel_benchmark_tests
 set_tests_properties(physics_kernel_benchmark_tests PROPERTIES
   LABELS "unit;runtime;physics;kernel_benchmark;iggy3d")
 
+iggy3d_add_unit_test(physics_kernel_benchmark_json_tests
+  tests/unit/physics_kernel_benchmark_json_tests.cpp)
+set_tests_properties(physics_kernel_benchmark_json_tests PROPERTIES
+  LABELS "unit;runtime;physics;kernel_benchmark_json;iggy3d")
+
 iggy3d_add_unit_test(physics_spatial_surface_collider_bake_tests
   tests/unit/physics_spatial_surface_collider_bake_tests.cpp)
 set_tests_properties(physics_spatial_surface_collider_bake_tests PROPERTIES
