@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <string>
 
-#include "app/iggy3d/gameplay/ProductGameplayTapeRunner.hpp"
+#include "app/iggy3d/gameplay/TapeRunner.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
 #include "runtime/ai/NpcBehaviorDebugSnapshot.hpp"
 #include "runtime/ai/NpcBehaviorProfile.hpp"

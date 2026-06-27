@@ -1,6 +1,6 @@
 #include "app/iggy3d/ascii_room/ProductAsciiRoomAuthoring.hpp"
 #include "app/iggy3d/gameplay/Tape.hpp"
-#include "app/iggy3d/gameplay/ProductGameplayTapeRunner.hpp"
+#include "app/iggy3d/gameplay/TapeRunner.hpp"
 #include "app/iggy3d/world/ProductPackageSessionSeed.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/session/Session.hpp"
