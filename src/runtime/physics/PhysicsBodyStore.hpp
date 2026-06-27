@@ -8,8 +8,15 @@
 namespace iggy3d {
 
 class PhysicsBodyStore;
+struct PhysicsBodyDeltaAccumulator;
+struct PhysicsBodyDeltaApplyConfig;
+struct PhysicsBodyDeltaApplyResult;
 struct PhysicsStepConfig;
 struct PhysicsStepResult;
+PhysicsBodyDeltaApplyResult applyPhysicsBodyDeltas(
+    PhysicsBodyStore* store,
+    const PhysicsBodyDeltaAccumulator& accumulator,
+    const PhysicsBodyDeltaApplyConfig& config);
 PhysicsStepResult stepPhysicsBodies(PhysicsBodyStore* store,
                                     const PhysicsStepConfig& config);
 
@@ -50,6 +57,10 @@ class PhysicsBodyStore {
   PhysicsBodyStoreResult reset();
 
  private:
+  friend PhysicsBodyDeltaApplyResult applyPhysicsBodyDeltas(
+      PhysicsBodyStore* store,
+      const PhysicsBodyDeltaAccumulator& accumulator,
+      const PhysicsBodyDeltaApplyConfig& config);
   friend PhysicsStepResult stepPhysicsBodies(PhysicsBodyStore* store,
                                              const PhysicsStepConfig& config);
 

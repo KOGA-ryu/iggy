@@ -163,6 +163,7 @@ target_sources(iggy3d
     src/runtime/physics/PhysicsAabbCollider.cpp
     src/runtime/physics/PhysicsAabbContact.cpp
     src/runtime/physics/PhysicsAabbContactSolver.cpp
+    src/runtime/physics/PhysicsBodyDeltaAccumulator.cpp
     src/runtime/physics/PhysicsBodyStore.cpp
     src/runtime/physics/PhysicsBroadphase.cpp
     src/runtime/physics/PhysicsMaterialTraits.cpp
