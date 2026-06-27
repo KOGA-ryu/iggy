@@ -158,6 +158,7 @@ target_sources(iggy3d
     src/runtime/inventory/InventorySystem.cpp
     src/runtime/objective/ObjectiveSystem.cpp
     src/runtime/interaction/InteractionSystem.cpp
+    src/runtime/object/ObjectTraits.cpp
     src/runtime/session/SessionTick.cpp
     src/runtime/session/SessionRunner.cpp
     src/runtime/replay/StateHash.cpp

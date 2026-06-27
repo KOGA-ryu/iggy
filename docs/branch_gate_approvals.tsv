@@ -79,3 +79,4 @@ BG-1078	src/render/vulkan/RenderLoop.cpp	Vulkan product UI primitive frame routi
 BG-1079	src/app/iggy3d/window/ProductVulkanMenuFrame.cpp	product starter UI Vulkan frame conversion policy	codex	2026-06-27
 BG-1080	src/render/FrameInput.cpp	render UI-only frame validation policy	codex	2026-06-27
 BG-1081	src/render/null/NullRenderer.cpp	null renderer UI-only frame scene count policy	codex	2026-06-27
+BG-1082	src/runtime/object/ObjectTraits.cpp	runtime object asset and instance validation policy	codex	2026-06-27

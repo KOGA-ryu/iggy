@@ -438,6 +438,9 @@ set_tests_properties(objective_system_tests PROPERTIES LABELS "unit;runtime;obje
 iggy3d_add_unit_test(interaction_system_tests tests/unit/interaction_system_tests.cpp)
 set_tests_properties(interaction_system_tests PROPERTIES LABELS "unit;runtime;interaction;iggy3d")
 
+iggy3d_add_unit_test(object_traits_tests tests/unit/object_traits_tests.cpp)
+set_tests_properties(object_traits_tests PROPERTIES LABELS "unit;runtime;object;traits;iggy3d")
+
 iggy3d_add_unit_test(session_tick_tests tests/unit/session_tick_tests.cpp)
 set_tests_properties(session_tick_tests PROPERTIES LABELS "unit;runtime;session;iggy3d")
 
