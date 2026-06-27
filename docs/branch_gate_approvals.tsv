@@ -116,3 +116,4 @@ BG-1115	src/app/iggy3d/gameplay/ProductGameplayController.cpp	product gameplay t
 BG-1116	src/runtime/physics/PhysicsKernelBenchmark.cpp	runtime physics kernel benchmark dispatch and validation policy	codex	2026-06-27
 BG-1117	src/runtime/physics/PhysicsKernelBenchmarkJson.cpp	runtime physics kernel benchmark JSON serialization policy	codex	2026-06-27
 BG-1118	apps/iggy3d_physics_kernel_bench/main.cpp	physics kernel benchmark CLI parsing and output policy	codex	2026-06-27
+BG-1119	src/app/iggy3d/view/OpeningMenuView.cpp	product first-person primitive viewport and top-down overlay draw policy	codex	2026-06-27

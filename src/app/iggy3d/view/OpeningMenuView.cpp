@@ -577,20 +577,63 @@ bool topDownMapUsesCompactLayout(const ProductTopDownMapOverlay* overlay) {
   return overlay != nullptr && overlay->size == "compact";
 }
 
-ProductViewportFramedItem scaleFramedItemIntoMinimap(
-    const ProductViewportFramedItem& item) {
-  constexpr float kSourceWidth = 1280.0F;
-  constexpr float kSourceHeight = 720.0F;
-  constexpr float kMinimapX = 890.0F;
-  constexpr float kMinimapY = 116.0F;
-  constexpr float kMinimapWidth = 270.0F;
-  constexpr float kMinimapHeight = 126.0F;
-  constexpr float kMinimapScale = kMinimapWidth / kSourceWidth;
-  ProductViewportFramedItem scaled = item;
-  scaled.screenX = kMinimapX + item.screenX * kMinimapScale;
-  scaled.screenY = kMinimapY + item.screenY * (kMinimapHeight / kSourceHeight);
-  scaled.item.markerSize = std::max(3.0F, item.item.markerSize * kMinimapScale);
-  return scaled;
+Vec3 topDownMapAnchorFor(const ProductViewportFrame* frame) {
+  // branch-gate: BG-1119
+  if (frame == nullptr) {
+    return {};
+  }
+  for (const ProductViewportFramedItem& item : frame->framedItems) {
+    // branch-gate: BG-1119
+    if (item.item.kind == ProductPrimitiveDrawKind::PlayerMarker && item.item.visible) {
+      return item.item.worldPosition;
+    }
+  }
+  return {};
+}
+
+ProductViewportFramedItem topDownMappedItem(const ProductViewportFramedItem& item,
+                                            Vec3 anchor,
+                                            float originX,
+                                            float originY,
+                                            float width,
+                                            float height,
+                                            float pixelsPerMeter,
+                                            float markerScale) {
+  ProductViewportFramedItem mapped = item;
+  mapped.screenX = originX + width * 0.5F +
+                   (item.item.worldPosition.x - anchor.x) * pixelsPerMeter;
+  mapped.screenY = originY + height * 0.5F +
+                   (item.item.worldPosition.z - anchor.z) * pixelsPerMeter;
+  mapped.item.markerSize = std::max(3.0F, item.item.markerSize * markerScale);
+  mapped.onScreen = item.item.visible && mapped.screenX >= originX &&
+                    mapped.screenX <= originX + width && mapped.screenY >= originY &&
+                    mapped.screenY <= originY + height;
+  return mapped;
+}
+
+void drawFirstPersonPrimitiveViewport(SDL_Renderer& renderer,
+                                      const ProductViewportFrame* frame) {
+  setColor(renderer, 11, 17, 20);
+  fillRect(renderer, 80.0F, 130.0F, 1120.0F, 480.0F);
+  setColor(renderer, 18, 32, 36);
+  fillRect(renderer, 80.0F, 130.0F, 1120.0F, 190.0F);
+  setColor(renderer, 22, 28, 27);
+  fillRect(renderer, 80.0F, 320.0F, 1120.0F, 290.0F);
+  setColor(renderer, 42, 58, 58);
+  fillRect(renderer, 80.0F, 319.0F, 1120.0F, 2.0F);
+
+  // branch-gate: BG-1119
+  if (frame == nullptr) {
+    return;
+  }
+
+  for (const ProductViewportFramedItem& item : frame->framedItems) {
+    // branch-gate: BG-1119
+    if (!item.onScreen) {
+      continue;
+    }
+    drawPrimitiveItem(renderer, item);
+  }
 }
 
 void drawTopDownMapPrimitives(SDL_Renderer& renderer,
@@ -601,16 +644,30 @@ void drawTopDownMapPrimitives(SDL_Renderer& renderer,
     return;
   }
 
+  const Vec3 anchor = topDownMapAnchorFor(frame);
+
   // branch-gate: BG-1071
   if (topDownMapUsesCompactLayout(overlay)) {
+    constexpr float kMinimapX = 890.0F;
+    constexpr float kMinimapY = 116.0F;
+    constexpr float kMinimapWidth = 270.0F;
+    constexpr float kMinimapHeight = 126.0F;
     setColor(renderer, 18, 24, 27);
     fillRect(renderer, 874.0F, 74.0F, 318.0F, 190.0F);
     setColor(renderer, 126, 201, 176);
     drawText(renderer, topDownMapTitle(overlay), 890.0F, 86.0F, 2.0F);
     setColor(renderer, 32, 48, 48);
-    fillRect(renderer, 890.0F, 116.0F, 270.0F, 126.0F);
+    fillRect(renderer, kMinimapX, kMinimapY, kMinimapWidth, kMinimapHeight);
     for (const ProductViewportFramedItem& item : frame->framedItems) {
-      drawPrimitiveItem(renderer, scaleFramedItemIntoMinimap(item));
+      drawPrimitiveItem(renderer,
+                        topDownMappedItem(item,
+                                          anchor,
+                                          kMinimapX,
+                                          kMinimapY,
+                                          kMinimapWidth,
+                                          kMinimapHeight,
+                                          18.0F,
+                                          0.24F));
     }
     return;
   }
@@ -620,7 +677,15 @@ void drawTopDownMapPrimitives(SDL_Renderer& renderer,
     drawGrid(renderer);
   }
   for (const ProductViewportFramedItem& item : frame->framedItems) {
-    drawPrimitiveItem(renderer, item);
+    drawPrimitiveItem(renderer,
+                      topDownMappedItem(item,
+                                        anchor,
+                                        80.0F,
+                                        130.0F,
+                                        1120.0F,
+                                        480.0F,
+                                        80.0F,
+                                        1.0F));
   }
 }
 
@@ -821,12 +886,13 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
   setColor(renderer, 10, 16, 18);
   SDL_RenderClear(&renderer);
 
+  drawFirstPersonPrimitiveViewport(renderer, frame);
   drawTopDownMapPrimitives(renderer, frame, topDownMapOverlay);
 
   setColor(renderer, 226, 230, 211);
   drawText(renderer, "IGGY3D GAMEPLAY", 84.0F, 42.0F, 5.0F);
   setColor(renderer, 126, 201, 176);
-  drawText(renderer, topDownMapTitle(topDownMapOverlay), 88.0F, 104.0F, 3.0F);
+  drawText(renderer, "FIRST-PERSON PRIMITIVE VIEW", 88.0F, 104.0F, 3.0F);
   drawCameraHeading(renderer, cameraYawDegrees);
   drawInteractionModeHud(renderer, interactionModeHud);
   setColor(renderer, 166, 184, 177);
