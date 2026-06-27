@@ -19,6 +19,12 @@ PhysicsBodyDeltaApplyResult applyPhysicsBodyDeltas(
     const PhysicsBodyDeltaApplyConfig& config);
 PhysicsStepResult stepPhysicsBodies(PhysicsBodyStore* store,
                                     const PhysicsStepConfig& config);
+PhysicsStepResult integratePhysicsBodyVelocities(
+    PhysicsBodyStore* store,
+    const PhysicsStepConfig& config);
+PhysicsStepResult integratePhysicsBodyPositions(
+    PhysicsBodyStore* store,
+    const PhysicsStepConfig& config);
 
 struct PhysicsBodyView {
   PhysicsBodyId id;
@@ -63,6 +69,12 @@ class PhysicsBodyStore {
       const PhysicsBodyDeltaApplyConfig& config);
   friend PhysicsStepResult stepPhysicsBodies(PhysicsBodyStore* store,
                                              const PhysicsStepConfig& config);
+  friend PhysicsStepResult integratePhysicsBodyVelocities(
+      PhysicsBodyStore* store,
+      const PhysicsStepConfig& config);
+  friend PhysicsStepResult integratePhysicsBodyPositions(
+      PhysicsBodyStore* store,
+      const PhysicsStepConfig& config);
 
   [[nodiscard]] PhysicsBodyView bodyAt(std::size_t index) const;
   [[nodiscard]] std::size_t findIndex(PhysicsBodyId id) const;

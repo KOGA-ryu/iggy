@@ -32,10 +32,18 @@ struct PhysicsStepResult {
   std::size_t kinematicBodyCount = 0U;
   std::size_t integratedBodyCount = 0U;
   std::size_t gravityAppliedBodyCount = 0U;
+  std::size_t velocityIntegratedBodyCount = 0U;
+  std::size_t positionIntegratedBodyCount = 0U;
 };
 
 std::string_view physicsStepStatusName(PhysicsStepStatus status);
 
+PhysicsStepResult integratePhysicsBodyVelocities(
+    PhysicsBodyStore* store,
+    const PhysicsStepConfig& config);
+PhysicsStepResult integratePhysicsBodyPositions(
+    PhysicsBodyStore* store,
+    const PhysicsStepConfig& config);
 PhysicsStepResult stepPhysicsBodies(PhysicsBodyStore* store,
                                     const PhysicsStepConfig& config);
 

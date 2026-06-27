@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cmath>
+#include <vector>
 
 namespace iggy3d {
 namespace {
@@ -70,21 +71,8 @@ void countMotion(PhysicsStepResult& result, PhysicsBodyMotionKind motion) {
   }
 }
 
-}  // namespace
-
-std::string_view physicsStepStatusName(PhysicsStepStatus status) {
-  static constexpr std::array<std::string_view, 5> kNames{
-      "physics_step_stepped",
-      "physics_step_missing_store",
-      "physics_step_invalid_step_seconds",
-      "physics_step_invalid_gravity",
-      "physics_step_invalid_body_state",
-  };
-  return enumName(status, kNames, "physics_step_invalid_body_state");
-}
-
-PhysicsStepResult stepPhysicsBodies(PhysicsBodyStore* store,
-                                    const PhysicsStepConfig& config) {
+PhysicsStepResult validateStepRequest(PhysicsBodyStore* store,
+                                      const PhysicsStepConfig& config) {
   // branch-gate: BG-1086
   if (store == nullptr) {
     return stepResult(PhysicsStepStatus::MissingStore, false);
@@ -98,57 +86,121 @@ PhysicsStepResult stepPhysicsBodies(PhysicsBodyStore* store,
     return stepResult(PhysicsStepStatus::InvalidGravity, false);
   }
   // branch-gate: BG-1086
-  if (!validStoreShape(store->ids_.size(),
-                       store->motions_.size(),
-                       store->positions_.size(),
-                       store->velocities_.size(),
-                       store->masses_.size(),
-                       store->inverseMasses_.size())) {
+  if (!validStoreShape(store->ids().size(),
+                       store->motions().size(),
+                       store->positions().size(),
+                       store->velocities().size(),
+                       store->masses().size(),
+                       store->inverseMasses().size())) {
     return stepResult(PhysicsStepStatus::InvalidBodyState, false);
   }
 
-  PhysicsStepResult result =
-      stepResult(PhysicsStepStatus::Stepped, true);
+  PhysicsStepResult result = stepResult(PhysicsStepStatus::Stepped, true);
   result.stepSeconds = config.stepSeconds;
-  result.bodyCount = store->ids_.size();
-
-  for (std::size_t index = 0U; index < store->ids_.size(); ++index) {
+  result.bodyCount = store->ids().size();
+  for (std::size_t index = 0U; index < store->ids().size(); ++index) {
     // branch-gate: BG-1086
-    if (!validStoredBody(store->motions_[index],
-                         store->positions_[index],
-                         store->velocities_[index],
-                         store->masses_[index],
-                         store->inverseMasses_[index])) {
+    if (!validStoredBody(store->motions()[index],
+                         store->positions()[index],
+                         store->velocities()[index],
+                         store->masses()[index],
+                         store->inverseMasses()[index])) {
       return stepResult(PhysicsStepStatus::InvalidBodyState, false);
     }
-    countMotion(result, store->motions_[index]);
+    countMotion(result, store->motions()[index]);
   }
+  return result;
+}
 
-  for (std::size_t index = 0U; index < store->ids_.size(); ++index) {
-    const PhysicsBodyMotionKind motion = store->motions_[index];
+void integrateVelocities(
+    const std::vector<PhysicsBodyMotionKind>& motions,
+    std::vector<Vec3>& velocities,
+    const PhysicsStepConfig& config,
+    PhysicsStepResult& result) {
+  for (std::size_t index = 0U; index < motions.size(); ++index) {
+    // branch-gate: BG-1086
+    if (motions[index] != PhysicsBodyMotionKind::Dynamic) {
+      continue;
+    }
+    velocities[index] =
+        velocities[index] +
+        config.gravityMetersPerSecondSquared * config.stepSeconds;
+    ++result.gravityAppliedBodyCount;
+    ++result.velocityIntegratedBodyCount;
+  }
+}
+
+void integratePositions(
+    const std::vector<PhysicsBodyMotionKind>& motions,
+    std::vector<Vec3>& positions,
+    const std::vector<Vec3>& velocities,
+    const PhysicsStepConfig& config,
+    PhysicsStepResult& result) {
+  for (std::size_t index = 0U; index < motions.size(); ++index) {
+    const PhysicsBodyMotionKind motion = motions[index];
     // branch-gate: BG-1086
     switch (motion) {
       case PhysicsBodyMotionKind::Static:
         break;
       case PhysicsBodyMotionKind::Dynamic:
-        store->velocities_[index] =
-            store->velocities_[index] +
-            config.gravityMetersPerSecondSquared * config.stepSeconds;
-        store->positions_[index] =
-            store->positions_[index] +
-            store->velocities_[index] * config.stepSeconds;
-        ++result.integratedBodyCount;
-        ++result.gravityAppliedBodyCount;
-        break;
       case PhysicsBodyMotionKind::Kinematic:
-        store->positions_[index] =
-            store->positions_[index] +
-            store->velocities_[index] * config.stepSeconds;
+        positions[index] =
+            positions[index] + velocities[index] * config.stepSeconds;
         ++result.integratedBodyCount;
+        ++result.positionIntegratedBodyCount;
         break;
     }
   }
+}
 
+}  // namespace
+
+std::string_view physicsStepStatusName(PhysicsStepStatus status) {
+  static constexpr std::array<std::string_view, 5> kNames{
+      "physics_step_stepped",
+      "physics_step_missing_store",
+      "physics_step_invalid_step_seconds",
+      "physics_step_invalid_gravity",
+      "physics_step_invalid_body_state",
+  };
+  return enumName(status, kNames, "physics_step_invalid_body_state");
+}
+
+PhysicsStepResult integratePhysicsBodyVelocities(
+    PhysicsBodyStore* store,
+    const PhysicsStepConfig& config) {
+  PhysicsStepResult result = validateStepRequest(store, config);
+  // branch-gate: BG-1086
+  if (!result.ok) {
+    return result;
+  }
+  integrateVelocities(store->motions_, store->velocities_, config, result);
+  return result;
+}
+
+PhysicsStepResult integratePhysicsBodyPositions(
+    PhysicsBodyStore* store,
+    const PhysicsStepConfig& config) {
+  PhysicsStepResult result = validateStepRequest(store, config);
+  // branch-gate: BG-1086
+  if (!result.ok) {
+    return result;
+  }
+  integratePositions(
+      store->motions_, store->positions_, store->velocities_, config, result);
+  return result;
+}
+
+PhysicsStepResult stepPhysicsBodies(PhysicsBodyStore* store,
+                                    const PhysicsStepConfig& config) {
+  PhysicsStepResult result = validateStepRequest(store, config);
+  // branch-gate: BG-1086
+  if (!result.ok) {
+    return result;
+  }
+  integrateVelocities(store->motions_, store->velocities_, config, result);
+  integratePositions(
+      store->motions_, store->positions_, store->velocities_, config, result);
   return result;
 }
 
