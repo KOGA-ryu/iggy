@@ -39,6 +39,11 @@ SUMMARY_COLUMNS = (
     "friction_impulses",
     "kinematic_iterations",
     "kinematic_hits",
+    "surfaces",
+    "baked_colliders",
+    "skipped_surfaces",
+    "player_planner_hits",
+    "player_planner_iterations",
     "max_penetration_m",
     "normal_impulse_total",
     "friction_impulse_total",
@@ -54,6 +59,10 @@ COMPARE_COLUMNS = (
     "contacts_delta",
     "solve_plans_delta",
     "kinematic_hits_delta",
+    "surfaces_delta",
+    "baked_colliders_delta",
+    "player_planner_hits_delta",
+    "player_planner_iterations_delta",
     "status_change",
 )
 
@@ -76,6 +85,11 @@ class BenchmarkRow:
   friction_impulses: int
   kinematic_iterations: int
   kinematic_hits: int
+  surfaces: int
+  baked_colliders: int
+  skipped_surfaces: int
+  player_planner_hits: int
+  player_planner_iterations: int
   max_penetration_m: float
   normal_impulse_total: float
   friction_impulse_total: float
@@ -143,6 +157,14 @@ def row_from_case(case: dict[str, object]) -> BenchmarkRow:
       friction_impulses=int_value(counters, "friction_impulse_applied_count"),
       kinematic_iterations=int_value(counters, "kinematic_iteration_count"),
       kinematic_hits=int_value(counters, "kinematic_hit_count"),
+      surfaces=int_value(counters, "surface_count"),
+      baked_colliders=int_value(counters, "baked_collider_count"),
+      skipped_surfaces=int_value(counters, "skipped_surface_count"),
+      player_planner_hits=int_value(counters, "player_planner_hit_count"),
+      player_planner_iterations=int_value(
+          counters,
+          "player_planner_iteration_count",
+      ),
       max_penetration_m=float_value(extrema, "max_penetration_meters"),
       normal_impulse_total=float_value(extrema, "total_normal_impulse"),
       friction_impulse_total=float_value(extrema, "total_friction_impulse"),
@@ -203,6 +225,11 @@ def row_to_dict(row: BenchmarkRow) -> dict[str, object]:
       "friction_impulses": row.friction_impulses,
       "kinematic_iterations": row.kinematic_iterations,
       "kinematic_hits": row.kinematic_hits,
+      "surfaces": row.surfaces,
+      "baked_colliders": row.baked_colliders,
+      "skipped_surfaces": row.skipped_surfaces,
+      "player_planner_hits": row.player_planner_hits,
+      "player_planner_iterations": row.player_planner_iterations,
       "max_penetration_m": row.max_penetration_m,
       "normal_impulse_total": row.normal_impulse_total,
       "friction_impulse_total": row.friction_impulse_total,
@@ -249,6 +276,16 @@ def compare_rows(
         - metric(baseline, "solve_plans"),
         "kinematic_hits_delta": metric(candidate, "kinematic_hits")
         - metric(baseline, "kinematic_hits"),
+        "surfaces_delta": metric(candidate, "surfaces")
+        - metric(baseline, "surfaces"),
+        "baked_colliders_delta": metric(candidate, "baked_colliders")
+        - metric(baseline, "baked_colliders"),
+        "player_planner_hits_delta": metric(candidate, "player_planner_hits")
+        - metric(baseline, "player_planner_hits"),
+        "player_planner_iterations_delta": metric(
+            candidate,
+            "player_planner_iterations",
+        ) - metric(baseline, "player_planner_iterations"),
         "status_change": status_change,
     })
   return rows

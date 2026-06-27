@@ -48,6 +48,10 @@ constexpr NameKernel kKernelNames[] = {
     {"aabb_contact_solver",
      iggy3d::PhysicsKernelBenchmarkKernel::AabbContactSolver},
     {"kinematic_motor", iggy3d::PhysicsKernelBenchmarkKernel::KinematicMotor},
+    {"spatial_surface_bake",
+     iggy3d::PhysicsKernelBenchmarkKernel::SpatialSurfaceBake},
+    {"player_move_planner",
+     iggy3d::PhysicsKernelBenchmarkKernel::PlayerMovePlanner},
 };
 
 constexpr NameScenario kScenarioNames[] = {
@@ -59,6 +63,12 @@ constexpr NameScenario kScenarioNames[] = {
     {"dense_cluster_16",
      iggy3d::PhysicsKernelBenchmarkScenario::DenseCluster16},
     {"corner_slide", iggy3d::PhysicsKernelBenchmarkScenario::CornerSlide},
+    {"room_floor_wall",
+     iggy3d::PhysicsKernelBenchmarkScenario::RoomFloorWall},
+    {"room_long_corridor",
+     iggy3d::PhysicsKernelBenchmarkScenario::RoomLongCorridor},
+    {"room_dense_walls",
+     iggy3d::PhysicsKernelBenchmarkScenario::RoomDenseWalls},
 };
 
 void printUsage(std::ostream& out) {
@@ -70,9 +80,10 @@ void printUsage(std::ostream& out) {
       << "  --suite\n"
       << "  --case\n"
       << "  --kernel <broadphase_grid|aabb_contact|aabb_contact_solver|"
-         "kinematic_motor>\n"
+         "kinematic_motor|spatial_surface_bake|player_move_planner>\n"
       << "  --scenario <tiny_separated|dense_overlap|wall_slide|"
-         "grid_line_corridor|dense_cluster_16|corner_slide>\n"
+         "grid_line_corridor|dense_cluster_16|corner_slide|"
+         "room_floor_wall|room_long_corridor|room_dense_walls>\n"
       << "  --iterations <positive_uint>\n"
       << "  --cell-size <positive_float>\n"
       << "  --no-timing\n"

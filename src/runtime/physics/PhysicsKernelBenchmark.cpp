@@ -5,11 +5,17 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <string>
+#include <utility>
 
+#include "content/assets/RoomAsset.hpp"
+#include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/physics/PhysicsAabbContact.hpp"
 #include "runtime/physics/PhysicsAabbContactSolver.hpp"
 #include "runtime/physics/PhysicsBroadphase.hpp"
 #include "runtime/physics/PhysicsKinematicMotor.hpp"
+#include "runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp"
+#include "runtime/player/PlayerPhysicsMovePlanner.hpp"
 
 namespace iggy3d {
 namespace {
@@ -128,6 +134,102 @@ std::vector<PhysicsAabbCollider> cornerSlideColliders() {
   };
 }
 
+RoomSpatialSurface floorSurface(std::string id,
+                                float minX,
+                                float maxX,
+                                float minZ,
+                                float maxZ) {
+  RoomSpatialSurface surface;
+  surface.id = std::move(id);
+  surface.shape = RoomSpatialSurfaceShape::Plane;
+  surface.role = RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = {
+      {minX, 0.0F, minZ},
+      {maxX, 0.0F, minZ},
+      {maxX, 0.0F, maxZ},
+      {minX, 0.0F, maxZ},
+  };
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.runtimeOwnerStableName = surface.id;
+  return surface;
+}
+
+RoomSpatialSurface wallSurface(std::string id,
+                               Vec3 minMeters,
+                               Vec3 maxMeters,
+                               Vec3 normal) {
+  RoomSpatialSurface surface;
+  surface.id = std::move(id);
+  surface.shape = RoomSpatialSurfaceShape::Box;
+  surface.role = RoomSpatialSurfaceRole::Blocker;
+  surface.pointsMeters = {minMeters, maxMeters};
+  surface.normal = normal;
+  surface.collisionMask = {"actor"};
+  surface.blocksActor = true;
+  surface.runtimeOwnerStableName = surface.id;
+  return surface;
+}
+
+RoomAsset roomFloorWallAsset() {
+  RoomAsset room;
+  room.id = "benchmark_room_floor_wall";
+  room.units = "meters";
+  room.source = "physics_kernel_benchmark";
+  room.spatialSurfaces.push_back(floorSurface("floor", -3.0F, 3.0F,
+                                              -3.0F, 3.0F));
+  room.spatialSurfaces.push_back(wallSurface(
+      "front_wall", {1.10F, 0.0F, -2.0F}, {1.30F, 2.0F, 2.0F},
+      {-1.0F, 0.0F, 0.0F}));
+  return room;
+}
+
+RoomAsset roomLongCorridorAsset() {
+  RoomAsset room;
+  room.id = "benchmark_room_long_corridor";
+  room.units = "meters";
+  room.source = "physics_kernel_benchmark";
+  room.spatialSurfaces.push_back(floorSurface("corridor_floor", -1.0F,
+                                              17.0F, -1.5F, 1.5F));
+  for (std::uint32_t segment = 0U; segment < 8U; ++segment) {
+    const float minX = static_cast<float>(segment) * 2.0F;
+    const float maxX = minX + 1.75F;
+    room.spatialSurfaces.push_back(wallSurface(
+        "corridor_left_" + std::to_string(segment),
+        {minX, 0.0F, -1.45F}, {maxX, 2.0F, -1.25F},
+        {0.0F, 0.0F, 1.0F}));
+    room.spatialSurfaces.push_back(wallSurface(
+        "corridor_right_" + std::to_string(segment),
+        {minX, 0.0F, 1.25F}, {maxX, 2.0F, 1.45F},
+        {0.0F, 0.0F, -1.0F}));
+  }
+  return room;
+}
+
+RoomAsset roomDenseWallsAsset() {
+  RoomAsset room;
+  room.id = "benchmark_room_dense_walls";
+  room.units = "meters";
+  room.source = "physics_kernel_benchmark";
+  room.spatialSurfaces.push_back(floorSurface("dense_floor", -2.5F, 2.5F,
+                                              -2.5F, 2.5F));
+  room.spatialSurfaces.push_back(wallSurface(
+      "dense_east_wall", {1.05F, 0.0F, -2.0F}, {1.25F, 2.0F, 2.0F},
+      {-1.0F, 0.0F, 0.0F}));
+  room.spatialSurfaces.push_back(wallSurface(
+      "dense_north_wall", {-2.0F, 0.0F, 1.05F}, {2.0F, 2.0F, 1.25F},
+      {0.0F, 0.0F, -1.0F}));
+  room.spatialSurfaces.push_back(wallSurface(
+      "dense_west_wall", {-1.25F, 0.0F, -2.0F}, {-1.05F, 2.0F, 2.0F},
+      {1.0F, 0.0F, 0.0F}));
+  room.spatialSurfaces.push_back(wallSurface(
+      "dense_south_wall", {-2.0F, 0.0F, -1.25F}, {2.0F, 2.0F, -1.05F},
+      {0.0F, 0.0F, 1.0F}));
+  room.spatialSurfaces.push_back(wallSurface(
+      "dense_inner_pillar", {0.35F, 0.0F, 0.35F}, {0.55F, 1.5F, 0.55F},
+      {-1.0F, 0.0F, 0.0F}));
+  return room;
+}
+
 PhysicsBroadphaseResult runBroadphase(
     const std::vector<PhysicsAabbCollider>& colliders,
     float cellSizeMeters) {
@@ -209,6 +311,43 @@ void addSolveCounters(PhysicsKernelBenchmarkCaseResult& result,
   }
   result.totalNormalImpulse += plan.normalImpulseMagnitude;
   result.totalFrictionImpulse += plan.frictionImpulseMagnitude;
+}
+
+void copySpatialBakeCounters(
+    PhysicsKernelBenchmarkCaseResult& result,
+    const PhysicsSpatialSurfaceColliderBakeResult& bake) {
+  result.surfaceCount = bake.surfaceCount;
+  result.bakedColliderCount = bake.colliderCount;
+  result.skippedSurfaceCount = bake.skippedSurfaceCount;
+  result.colliderCount = bake.colliderCount;
+}
+
+void copyPlayerPlannerCounters(
+    PhysicsKernelBenchmarkCaseResult& result,
+    const PlayerPhysicsMovePlannerResult& plan) {
+  result.surfaceCount = plan.bakedSurfaceCount;
+  result.bakedColliderCount = plan.bakedColliderCount;
+  result.skippedSurfaceCount = plan.skippedSurfaceCount;
+  result.colliderCount = plan.bakedColliderCount;
+  result.playerPlannerHitCount = plan.hitCount;
+  result.playerPlannerIterationCount = plan.iterationCount;
+}
+
+PhysicsKernelBenchmarkCaseResult failedSpatialBakeResult(
+    PhysicsKernelBenchmarkCaseResult result,
+    std::string_view upstreamReasonCode) {
+  result.ok = false;
+  result.status = PhysicsKernelBenchmarkStatus::KernelFailed;
+  result.reasonCode = physicsKernelBenchmarkStatusName(result.status);
+  result.upstreamReasonCode = upstreamReasonCode;
+  return result;
+}
+
+PhysicsSpatialSurfaceColliderBakeResult bakeRoomSurfaces(
+    const SpatialSurfaceSet& surfaces) {
+  PhysicsSpatialSurfaceColliderBakeRequest request;
+  request.surfaces = &surfaces;
+  return bakePhysicsAabbCollidersFromSpatialSurfaces(request);
 }
 
 PhysicsKernelBenchmarkCaseResult broadphaseTinySeparated(
@@ -497,7 +636,117 @@ PhysicsKernelBenchmarkCaseResult kinematicMotorCornerSlide(
   return result;
 }
 
-constexpr std::array<KernelScenarioHandler, 9> kHandlers{{
+PhysicsKernelBenchmarkCaseResult spatialSurfaceBakeRoomFloorWall(
+    const PhysicsKernelBenchmarkConfig& config) {
+  PhysicsKernelBenchmarkCaseResult result =
+      readyResult(PhysicsKernelBenchmarkKernel::SpatialSurfaceBake,
+                  PhysicsKernelBenchmarkScenario::RoomFloorWall, config);
+  const SpatialSurfaceSet surfaces =
+      buildSpatialSurfaceSet(roomFloorWallAsset());
+  const PhysicsSpatialSurfaceColliderBakeResult bake =
+      bakeRoomSurfaces(surfaces);
+  // branch-gate: BG-1116
+  if (!bake.ok) {
+    return failedSpatialBakeResult(result, bake.reasonCode);
+  }
+  copySpatialBakeCounters(result, bake);
+  return result;
+}
+
+PhysicsKernelBenchmarkCaseResult spatialSurfaceBakeRoomLongCorridor(
+    const PhysicsKernelBenchmarkConfig& config) {
+  PhysicsKernelBenchmarkCaseResult result =
+      readyResult(PhysicsKernelBenchmarkKernel::SpatialSurfaceBake,
+                  PhysicsKernelBenchmarkScenario::RoomLongCorridor, config);
+  const SpatialSurfaceSet surfaces =
+      buildSpatialSurfaceSet(roomLongCorridorAsset());
+  const PhysicsSpatialSurfaceColliderBakeResult bake =
+      bakeRoomSurfaces(surfaces);
+  // branch-gate: BG-1116
+  if (!bake.ok) {
+    return failedSpatialBakeResult(result, bake.reasonCode);
+  }
+  copySpatialBakeCounters(result, bake);
+  return result;
+}
+
+PhysicsKernelBenchmarkCaseResult spatialSurfaceBakeRoomDenseWalls(
+    const PhysicsKernelBenchmarkConfig& config) {
+  PhysicsKernelBenchmarkCaseResult result =
+      readyResult(PhysicsKernelBenchmarkKernel::SpatialSurfaceBake,
+                  PhysicsKernelBenchmarkScenario::RoomDenseWalls, config);
+  const SpatialSurfaceSet surfaces =
+      buildSpatialSurfaceSet(roomDenseWallsAsset());
+  const PhysicsSpatialSurfaceColliderBakeResult bake =
+      bakeRoomSurfaces(surfaces);
+  // branch-gate: BG-1116
+  if (!bake.ok) {
+    return failedSpatialBakeResult(result, bake.reasonCode);
+  }
+  copySpatialBakeCounters(result, bake);
+  return result;
+}
+
+PlayerPhysicsMovePlannerConfig playerBenchmarkPlannerConfig() {
+  PlayerPhysicsMovePlannerConfig config;
+  config.motor.maxIterations = 4U;
+  config.motor.skinMeters = 0.001F;
+  config.motor.groundProbeDistanceMeters = 0.0F;
+  config.motor.groundSnapDistanceMeters = 0.0F;
+  config.motor.maxMoveDistanceMeters = 20.0F;
+  return config;
+}
+
+PhysicsKernelBenchmarkCaseResult runPlayerMovePlannerBenchmark(
+    PhysicsKernelBenchmarkScenario scenario,
+    const PhysicsKernelBenchmarkConfig& config,
+    const RoomAsset& room,
+    Vec3 startCenterMeters,
+    Vec3 desiredDisplacementMeters) {
+  PhysicsKernelBenchmarkCaseResult result =
+      readyResult(PhysicsKernelBenchmarkKernel::PlayerMovePlanner, scenario,
+                  config);
+  const SpatialSurfaceSet surfaces = buildSpatialSurfaceSet(room);
+  PlayerPhysicsMovePlannerRequest request;
+  request.collisionSurfaces = &surfaces;
+  request.startCenterMeters = startCenterMeters;
+  request.desiredDisplacementMeters = desiredDisplacementMeters;
+  request.config = playerBenchmarkPlannerConfig();
+  const PlayerPhysicsMovePlannerResult plan = planPlayerPhysicsMove(request);
+  // branch-gate: BG-1116
+  if (!plan.ok) {
+    result = failedSpatialBakeResult(result, plan.upstreamReasonCode.empty()
+                                                 ? plan.reasonCode
+                                                 : plan.upstreamReasonCode);
+    copyPlayerPlannerCounters(result, plan);
+    return result;
+  }
+  copyPlayerPlannerCounters(result, plan);
+  return result;
+}
+
+PhysicsKernelBenchmarkCaseResult playerMovePlannerRoomFloorWall(
+    const PhysicsKernelBenchmarkConfig& config) {
+  return runPlayerMovePlannerBenchmark(
+      PhysicsKernelBenchmarkScenario::RoomFloorWall, config,
+      roomFloorWallAsset(), {0.0F, 0.90F, 0.0F}, {1.50F, 0.0F, 0.25F});
+}
+
+PhysicsKernelBenchmarkCaseResult playerMovePlannerRoomLongCorridor(
+    const PhysicsKernelBenchmarkConfig& config) {
+  return runPlayerMovePlannerBenchmark(
+      PhysicsKernelBenchmarkScenario::RoomLongCorridor, config,
+      roomLongCorridorAsset(), {0.25F, 0.90F, 0.0F}, {6.0F, 0.0F, 0.0F});
+}
+
+PhysicsKernelBenchmarkCaseResult playerMovePlannerRoomDenseWalls(
+    const PhysicsKernelBenchmarkConfig& config) {
+  return runPlayerMovePlannerBenchmark(
+      PhysicsKernelBenchmarkScenario::RoomDenseWalls, config,
+      roomDenseWallsAsset(), {0.0F, 0.90F, 0.0F}, {1.50F, 0.0F, 1.50F});
+}
+
+constexpr std::array<KernelScenarioHandler, 15> kHandlers{{
     {PhysicsKernelBenchmarkKernel::BroadphaseGrid,
      PhysicsKernelBenchmarkScenario::TinySeparated, broadphaseTinySeparated},
     {PhysicsKernelBenchmarkKernel::BroadphaseGrid,
@@ -518,6 +767,24 @@ constexpr std::array<KernelScenarioHandler, 9> kHandlers{{
      PhysicsKernelBenchmarkScenario::DenseCluster16, contactDenseCluster16},
     {PhysicsKernelBenchmarkKernel::KinematicMotor,
      PhysicsKernelBenchmarkScenario::CornerSlide, kinematicMotorCornerSlide},
+    {PhysicsKernelBenchmarkKernel::SpatialSurfaceBake,
+     PhysicsKernelBenchmarkScenario::RoomFloorWall,
+     spatialSurfaceBakeRoomFloorWall},
+    {PhysicsKernelBenchmarkKernel::SpatialSurfaceBake,
+     PhysicsKernelBenchmarkScenario::RoomLongCorridor,
+     spatialSurfaceBakeRoomLongCorridor},
+    {PhysicsKernelBenchmarkKernel::SpatialSurfaceBake,
+     PhysicsKernelBenchmarkScenario::RoomDenseWalls,
+     spatialSurfaceBakeRoomDenseWalls},
+    {PhysicsKernelBenchmarkKernel::PlayerMovePlanner,
+     PhysicsKernelBenchmarkScenario::RoomFloorWall,
+     playerMovePlannerRoomFloorWall},
+    {PhysicsKernelBenchmarkKernel::PlayerMovePlanner,
+     PhysicsKernelBenchmarkScenario::RoomLongCorridor,
+     playerMovePlannerRoomLongCorridor},
+    {PhysicsKernelBenchmarkKernel::PlayerMovePlanner,
+     PhysicsKernelBenchmarkScenario::RoomDenseWalls,
+     playerMovePlannerRoomDenseWalls},
 }};
 
 const KernelScenarioHandler* findHandler(
@@ -550,6 +817,11 @@ void addIterationCounters(PhysicsKernelBenchmarkCaseResult& total,
   total.frictionImpulseAppliedCount += iteration.frictionImpulseAppliedCount;
   total.kinematicIterationCount += iteration.kinematicIterationCount;
   total.kinematicHitCount += iteration.kinematicHitCount;
+  total.surfaceCount = iteration.surfaceCount;
+  total.bakedColliderCount = iteration.bakedColliderCount;
+  total.skippedSurfaceCount = iteration.skippedSurfaceCount;
+  total.playerPlannerHitCount += iteration.playerPlannerHitCount;
+  total.playerPlannerIterationCount += iteration.playerPlannerIterationCount;
   total.maxPenetrationMeters =
       std::max(total.maxPenetrationMeters, iteration.maxPenetrationMeters);
   total.totalNormalImpulse += iteration.totalNormalImpulse;
@@ -583,24 +855,29 @@ std::string_view physicsKernelBenchmarkStatusName(
 
 std::string_view physicsKernelBenchmarkKernelName(
     PhysicsKernelBenchmarkKernel kernel) {
-  static constexpr std::array<std::string_view, 4> kNames{
+  static constexpr std::array<std::string_view, 6> kNames{
       "broadphase_grid",
       "aabb_contact",
       "aabb_contact_solver",
       "kinematic_motor",
+      "spatial_surface_bake",
+      "player_move_planner",
   };
   return enumName(kernel, kNames, "unknown_kernel");
 }
 
 std::string_view physicsKernelBenchmarkScenarioName(
     PhysicsKernelBenchmarkScenario scenario) {
-  static constexpr std::array<std::string_view, 6> kNames{
+  static constexpr std::array<std::string_view, 9> kNames{
       "tiny_separated",
       "dense_overlap",
       "wall_slide",
       "grid_line_corridor",
       "dense_cluster_16",
       "corner_slide",
+      "room_floor_wall",
+      "room_long_corridor",
+      "room_dense_walls",
   };
   return enumName(scenario, kNames, "unknown_scenario");
 }

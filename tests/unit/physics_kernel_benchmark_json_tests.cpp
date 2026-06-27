@@ -35,6 +35,11 @@ iggy3d::PhysicsKernelBenchmarkCaseResult representativeCase() {
   result.frictionImpulseAppliedCount = 1U;
   result.kinematicIterationCount = 0U;
   result.kinematicHitCount = 0U;
+  result.surfaceCount = 6U;
+  result.bakedColliderCount = 5U;
+  result.skippedSurfaceCount = 1U;
+  result.playerPlannerHitCount = 2U;
+  result.playerPlannerIterationCount = 3U;
   result.maxPenetrationMeters = 1.25F;
   result.totalNormalImpulse = 2.5F;
   result.totalFrictionImpulse = 0.125F;
@@ -81,7 +86,12 @@ bool exactCaseJsonMatchesStableShape() {
     "velocity_impulse_applied_count": 1,
     "friction_impulse_applied_count": 1,
     "kinematic_iteration_count": 0,
-    "kinematic_hit_count": 0
+    "kinematic_hit_count": 0,
+    "surface_count": 6,
+    "baked_collider_count": 5,
+    "skipped_surface_count": 1,
+    "player_planner_hit_count": 2,
+    "player_planner_iteration_count": 3
   },
   "extrema": {
     "max_penetration_meters": 1.25,
@@ -139,7 +149,12 @@ bool exactSuiteJsonMatchesStableShapeAndEscapesStrings() {
         "velocity_impulse_applied_count": 1,
         "friction_impulse_applied_count": 1,
         "kinematic_iteration_count": 0,
-        "kinematic_hit_count": 0
+        "kinematic_hit_count": 0,
+        "surface_count": 6,
+        "baked_collider_count": 5,
+        "skipped_surface_count": 1,
+        "player_planner_hit_count": 2,
+        "player_planner_iteration_count": 3
       },
       "extrema": {
         "max_penetration_meters": 1.25,
@@ -169,7 +184,12 @@ bool exactSuiteJsonMatchesStableShapeAndEscapesStrings() {
         "velocity_impulse_applied_count": 0,
         "friction_impulse_applied_count": 0,
         "kinematic_iteration_count": 0,
-        "kinematic_hit_count": 0
+        "kinematic_hit_count": 0,
+        "surface_count": 0,
+        "baked_collider_count": 0,
+        "skipped_surface_count": 0,
+        "player_planner_hit_count": 0,
+        "player_planner_iteration_count": 0
       },
       "extrema": {
         "max_penetration_meters": 0.0,
@@ -209,7 +229,7 @@ bool realSuiteSerializesWithExpectedSchemaStrings() {
                     "\"iggy3d.physics_kernel_benchmark.suite.v1\"") !=
                     std::string::npos,
                 "suite schema present") &&
-         expect(json.find("\"case_count\": 9") != std::string::npos,
+         expect(json.find("\"case_count\": 15") != std::string::npos,
                 "case count present") &&
          expect(json.find("\"kernel\": \"broadphase_grid\"") !=
                     std::string::npos,
@@ -217,6 +237,14 @@ bool realSuiteSerializesWithExpectedSchemaStrings() {
          expect(json.find("\"kernel\": \"kinematic_motor\"") !=
                     std::string::npos,
                 "motor case present") &&
+         expect(json.find("\"kernel\": \"spatial_surface_bake\"") !=
+                    std::string::npos,
+                "spatial surface bake case present") &&
+         expect(json.find("\"kernel\": \"player_move_planner\"") !=
+                    std::string::npos,
+                "player planner case present") &&
+         expect(json.find("\"surface_count\":") != std::string::npos,
+                "surface count present") &&
          expect(json.find("\"elapsed_nanoseconds\": 0") !=
                     std::string::npos,
                 "timing disabled present");

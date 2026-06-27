@@ -166,7 +166,16 @@ void appendCountersObject(std::string& out,
   appendUintField(out, depth + 1, "kinematic_iteration_count",
                   result.kinematicIterationCount);
   appendUintField(out, depth + 1, "kinematic_hit_count",
-                  result.kinematicHitCount, false);
+                  result.kinematicHitCount);
+  appendUintField(out, depth + 1, "surface_count", result.surfaceCount);
+  appendUintField(out, depth + 1, "baked_collider_count",
+                  result.bakedColliderCount);
+  appendUintField(out, depth + 1, "skipped_surface_count",
+                  result.skippedSurfaceCount);
+  appendUintField(out, depth + 1, "player_planner_hit_count",
+                  result.playerPlannerHitCount);
+  appendUintField(out, depth + 1, "player_planner_iteration_count",
+                  result.playerPlannerIterationCount, false);
   appendIndent(out, depth);
   out += "},\n";
 }

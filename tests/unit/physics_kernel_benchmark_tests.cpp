@@ -58,6 +58,14 @@ bool stableNamesAreLowerSnake() {
                     iggy3d::PhysicsKernelBenchmarkKernel::KinematicMotor) ==
                     "kinematic_motor",
                 "motor name") &&
+         expect(iggy3d::physicsKernelBenchmarkKernelName(
+                    iggy3d::PhysicsKernelBenchmarkKernel::SpatialSurfaceBake) ==
+                    "spatial_surface_bake",
+                "spatial surface bake name") &&
+         expect(iggy3d::physicsKernelBenchmarkKernelName(
+                    iggy3d::PhysicsKernelBenchmarkKernel::PlayerMovePlanner) ==
+                    "player_move_planner",
+                "player move planner name") &&
          expect(iggy3d::physicsKernelBenchmarkScenarioName(
                     iggy3d::PhysicsKernelBenchmarkScenario::TinySeparated) ==
                     "tiny_separated",
@@ -81,7 +89,19 @@ bool stableNamesAreLowerSnake() {
          expect(iggy3d::physicsKernelBenchmarkScenarioName(
                     iggy3d::PhysicsKernelBenchmarkScenario::CornerSlide) ==
                     "corner_slide",
-                "corner slide scenario");
+                "corner slide scenario") &&
+         expect(iggy3d::physicsKernelBenchmarkScenarioName(
+                    iggy3d::PhysicsKernelBenchmarkScenario::RoomFloorWall) ==
+                    "room_floor_wall",
+                "room floor wall scenario") &&
+         expect(iggy3d::physicsKernelBenchmarkScenarioName(
+                    iggy3d::PhysicsKernelBenchmarkScenario::RoomLongCorridor) ==
+                    "room_long_corridor",
+                "room long corridor scenario") &&
+         expect(iggy3d::physicsKernelBenchmarkScenarioName(
+                    iggy3d::PhysicsKernelBenchmarkScenario::RoomDenseWalls) ==
+                    "room_dense_walls",
+                "room dense walls scenario");
 }
 
 bool invalidConfigRejects() {
@@ -303,6 +323,91 @@ bool kinematicMotorCornerSlideReportsHits() {
          expect(result.kinematicHitCount > 0U, "corner hits");
 }
 
+bool spatialSurfaceBakeRoomFloorWallReportsBakeCounters() {
+  const iggy3d::PhysicsKernelBenchmarkCaseResult result =
+      run(iggy3d::PhysicsKernelBenchmarkKernel::SpatialSurfaceBake,
+          iggy3d::PhysicsKernelBenchmarkScenario::RoomFloorWall);
+
+  return expect(result.ok, "room floor wall bake ok") &&
+         expect(result.surfaceCount > 0U, "room floor wall surfaces") &&
+         expect(result.bakedColliderCount > 0U,
+                "room floor wall baked colliders") &&
+         expect(result.colliderCount == result.bakedColliderCount,
+                "room floor wall collider mirror") &&
+         expect(result.playerPlannerHitCount == 0U,
+                "room floor wall no planner hits");
+}
+
+bool spatialSurfaceBakeRoomLongCorridorReportsMorePressure() {
+  const iggy3d::PhysicsKernelBenchmarkCaseResult floorWall =
+      run(iggy3d::PhysicsKernelBenchmarkKernel::SpatialSurfaceBake,
+          iggy3d::PhysicsKernelBenchmarkScenario::RoomFloorWall);
+  const iggy3d::PhysicsKernelBenchmarkCaseResult corridor =
+      run(iggy3d::PhysicsKernelBenchmarkKernel::SpatialSurfaceBake,
+          iggy3d::PhysicsKernelBenchmarkScenario::RoomLongCorridor);
+
+  return expect(floorWall.ok, "floor wall bake ok for corridor comparison") &&
+         expect(corridor.ok, "corridor bake ok") &&
+         expect(corridor.surfaceCount > floorWall.surfaceCount,
+                "corridor has more surfaces") &&
+         expect(corridor.bakedColliderCount > floorWall.bakedColliderCount,
+                "corridor has more baked colliders") &&
+         expect(corridor.colliderCount == corridor.bakedColliderCount,
+                "corridor collider mirror");
+}
+
+bool spatialSurfaceBakeRoomDenseWallsReportsMoreWallPressure() {
+  const iggy3d::PhysicsKernelBenchmarkCaseResult floorWall =
+      run(iggy3d::PhysicsKernelBenchmarkKernel::SpatialSurfaceBake,
+          iggy3d::PhysicsKernelBenchmarkScenario::RoomFloorWall);
+  const iggy3d::PhysicsKernelBenchmarkCaseResult dense =
+      run(iggy3d::PhysicsKernelBenchmarkKernel::SpatialSurfaceBake,
+          iggy3d::PhysicsKernelBenchmarkScenario::RoomDenseWalls);
+
+  return expect(floorWall.ok, "floor wall bake ok for dense comparison") &&
+         expect(dense.ok, "dense wall bake ok") &&
+         expect(dense.surfaceCount > floorWall.surfaceCount,
+                "dense walls has more surfaces") &&
+         expect(dense.bakedColliderCount > floorWall.bakedColliderCount,
+                "dense walls has more baked colliders") &&
+         expect(dense.colliderCount == dense.bakedColliderCount,
+                "dense walls collider mirror");
+}
+
+bool playerMovePlannerRoomFloorWallReportsPlannerCounters() {
+  const iggy3d::PhysicsKernelBenchmarkCaseResult result =
+      run(iggy3d::PhysicsKernelBenchmarkKernel::PlayerMovePlanner,
+          iggy3d::PhysicsKernelBenchmarkScenario::RoomFloorWall);
+
+  return expect(result.ok, "player floor wall ok") &&
+         expect(result.bakedColliderCount > 0U,
+                "player floor wall baked colliders") &&
+         expect(result.colliderCount == result.bakedColliderCount,
+                "player floor wall collider mirror") &&
+         expect(result.playerPlannerIterationCount > 0U,
+                "player floor wall iterations") &&
+         expect(result.playerPlannerHitCount > 0U,
+                "player floor wall hit count");
+}
+
+bool playerMovePlannerRoomDenseWallsReportsPressure() {
+  const iggy3d::PhysicsKernelBenchmarkCaseResult floorWall =
+      run(iggy3d::PhysicsKernelBenchmarkKernel::PlayerMovePlanner,
+          iggy3d::PhysicsKernelBenchmarkScenario::RoomFloorWall);
+  const iggy3d::PhysicsKernelBenchmarkCaseResult dense =
+      run(iggy3d::PhysicsKernelBenchmarkKernel::PlayerMovePlanner,
+          iggy3d::PhysicsKernelBenchmarkScenario::RoomDenseWalls);
+
+  return expect(floorWall.ok, "player floor wall ok for dense comparison") &&
+         expect(dense.ok, "player dense wall ok") &&
+         expect(dense.bakedColliderCount > floorWall.bakedColliderCount,
+                "player dense wall baked colliders") &&
+         expect(dense.playerPlannerIterationCount > 0U,
+                "player dense wall iterations") &&
+         expect(dense.playerPlannerHitCount >= floorWall.playerPlannerHitCount,
+                "player dense wall hit pressure");
+}
+
 bool iterationCountersAccumulateDeterministically() {
   iggy3d::PhysicsKernelBenchmarkConfig config;
   config.iterations = 2U;
@@ -341,11 +446,11 @@ bool suiteRunsDefaultCasesInOrder() {
   return expect(suite.ok, "suite ok") &&
          expect(suite.reasonCode == "physics_kernel_benchmark_ready",
                 "suite reason") &&
-         expect(suite.caseCount == 9U, "suite case count") &&
+         expect(suite.caseCount == 15U, "suite case count") &&
          expect(suite.failedCaseCount == 0U, "suite failed count") &&
          expect(suite.totalElapsedNanoseconds == 0U,
                 "suite timing disabled") &&
-         expect(suite.cases.size() == 9U, "suite vector size") &&
+         expect(suite.cases.size() == 15U, "suite vector size") &&
          expect(suite.cases[0].kernelName == "broadphase_grid",
                 "case 0 kernel") &&
          expect(suite.cases[0].scenarioName == "tiny_separated",
@@ -381,7 +486,31 @@ bool suiteRunsDefaultCasesInOrder() {
          expect(suite.cases[8].kernelName == "kinematic_motor",
                 "case 8 kernel") &&
          expect(suite.cases[8].scenarioName == "corner_slide",
-                "case 8 scenario");
+                "case 8 scenario") &&
+         expect(suite.cases[9].kernelName == "spatial_surface_bake",
+                "case 9 kernel") &&
+         expect(suite.cases[9].scenarioName == "room_floor_wall",
+                "case 9 scenario") &&
+         expect(suite.cases[10].kernelName == "spatial_surface_bake",
+                "case 10 kernel") &&
+         expect(suite.cases[10].scenarioName == "room_long_corridor",
+                "case 10 scenario") &&
+         expect(suite.cases[11].kernelName == "spatial_surface_bake",
+                "case 11 kernel") &&
+         expect(suite.cases[11].scenarioName == "room_dense_walls",
+                "case 11 scenario") &&
+         expect(suite.cases[12].kernelName == "player_move_planner",
+                "case 12 kernel") &&
+         expect(suite.cases[12].scenarioName == "room_floor_wall",
+                "case 12 scenario") &&
+         expect(suite.cases[13].kernelName == "player_move_planner",
+                "case 13 kernel") &&
+         expect(suite.cases[13].scenarioName == "room_long_corridor",
+                "case 13 scenario") &&
+         expect(suite.cases[14].kernelName == "player_move_planner",
+                "case 14 kernel") &&
+         expect(suite.cases[14].scenarioName == "room_dense_walls",
+                "case 14 scenario");
 }
 
 bool invalidSuiteConfigRejects() {
@@ -414,6 +543,11 @@ int main() {
                   solverBenchmarkReportsCorrectionAndImpulses() &&
                   kinematicMotorBenchmarkReportsWallHit() &&
                   kinematicMotorCornerSlideReportsHits() &&
+                  spatialSurfaceBakeRoomFloorWallReportsBakeCounters() &&
+                  spatialSurfaceBakeRoomLongCorridorReportsMorePressure() &&
+                  spatialSurfaceBakeRoomDenseWallsReportsMoreWallPressure() &&
+                  playerMovePlannerRoomFloorWallReportsPlannerCounters() &&
+                  playerMovePlannerRoomDenseWallsReportsPressure() &&
                   iterationCountersAccumulateDeterministically() &&
                   suiteRunsDefaultCasesInOrder() &&
                   invalidSuiteConfigRejects();

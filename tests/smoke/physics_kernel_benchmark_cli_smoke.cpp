@@ -75,7 +75,7 @@ bool suiteStdoutSmoke(const std::filesystem::path& binary) {
   return exitCode == 0 && readTextFile(stdoutPath, text) &&
          contains(text, "\"schema\": "
                         "\"iggy3d.physics_kernel_benchmark.suite.v1\"") &&
-         contains(text, "\"case_count\": 9") &&
+         contains(text, "\"case_count\": 15") &&
          contains(text, "\"elapsed_nanoseconds\": 0");
 }
 
@@ -115,6 +115,48 @@ bool denseClusterCaseSmoke(const std::filesystem::path& binary) {
                         "\"iggy3d.physics_kernel_benchmark.case.v1\"") &&
          contains(text, "\"kernel\": \"broadphase_grid\"") &&
          contains(text, "\"scenario\": \"dense_cluster_16\"") &&
+         contains(text, "\"elapsed_nanoseconds\": 0");
+}
+
+bool roomBakeCaseSmoke(const std::filesystem::path& binary) {
+  const std::filesystem::path stdoutPath =
+      "/tmp/iggy3d_physics_kernel_cli_room_bake.json";
+  const std::filesystem::path stderrPath =
+      "/tmp/iggy3d_physics_kernel_cli_room_bake.err";
+  int exitCode = 1;
+  std::string text;
+  runCommand(binary,
+             "--case --kernel spatial_surface_bake "
+             "--scenario room_long_corridor --no-timing",
+             stdoutPath, stderrPath, exitCode);
+  return exitCode == 0 && readTextFile(stdoutPath, text) &&
+         contains(text, "\"schema\": "
+                        "\"iggy3d.physics_kernel_benchmark.case.v1\"") &&
+         contains(text, "\"kernel\": \"spatial_surface_bake\"") &&
+         contains(text, "\"scenario\": \"room_long_corridor\"") &&
+         contains(text, "\"surface_count\":") &&
+         contains(text, "\"baked_collider_count\":") &&
+         contains(text, "\"elapsed_nanoseconds\": 0");
+}
+
+bool playerMoveCaseSmoke(const std::filesystem::path& binary) {
+  const std::filesystem::path stdoutPath =
+      "/tmp/iggy3d_physics_kernel_cli_player_move.json";
+  const std::filesystem::path stderrPath =
+      "/tmp/iggy3d_physics_kernel_cli_player_move.err";
+  int exitCode = 1;
+  std::string text;
+  runCommand(binary,
+             "--case --kernel player_move_planner "
+             "--scenario room_dense_walls --no-timing",
+             stdoutPath, stderrPath, exitCode);
+  return exitCode == 0 && readTextFile(stdoutPath, text) &&
+         contains(text, "\"schema\": "
+                        "\"iggy3d.physics_kernel_benchmark.case.v1\"") &&
+         contains(text, "\"kernel\": \"player_move_planner\"") &&
+         contains(text, "\"scenario\": \"room_dense_walls\"") &&
+         contains(text, "\"player_planner_hit_count\":") &&
+         contains(text, "\"player_planner_iteration_count\":") &&
          contains(text, "\"elapsed_nanoseconds\": 0");
 }
 
@@ -167,6 +209,8 @@ int main() {
   const bool casePassed = binaryExists && caseStdoutSmoke(binary);
   const bool denseClusterPassed =
       binaryExists && denseClusterCaseSmoke(binary);
+  const bool roomBakePassed = binaryExists && roomBakeCaseSmoke(binary);
+  const bool playerMovePassed = binaryExists && playerMoveCaseSmoke(binary);
   const bool outputPassed = binaryExists && caseOutputFileSmoke(binary);
   const bool invalidPassed = binaryExists && invalidKernelSmoke(binary);
 #else
@@ -174,13 +218,15 @@ int main() {
   const bool suitePassed = false;
   const bool casePassed = false;
   const bool denseClusterPassed = false;
+  const bool roomBakePassed = false;
+  const bool playerMovePassed = false;
   const bool outputPassed = false;
   const bool invalidPassed = false;
 #endif
 
   const bool passed =
       binaryExists && suitePassed && casePassed && denseClusterPassed &&
-      outputPassed && invalidPassed;
+      roomBakePassed && playerMovePassed && outputPassed && invalidPassed;
   std::cout << "smoke=physics_kernel_benchmark_cli\n";
   std::cout << "binary_exists=" << (binaryExists ? "true" : "false")
             << "\n";
@@ -189,6 +235,10 @@ int main() {
   std::cout << "case_passed=" << (casePassed ? "true" : "false") << "\n";
   std::cout << "dense_cluster_passed="
             << (denseClusterPassed ? "true" : "false") << "\n";
+  std::cout << "room_bake_passed=" << (roomBakePassed ? "true" : "false")
+            << "\n";
+  std::cout << "player_move_passed="
+            << (playerMovePassed ? "true" : "false") << "\n";
   std::cout << "output_passed=" << (outputPassed ? "true" : "false")
             << "\n";
   std::cout << "invalid_passed=" << (invalidPassed ? "true" : "false")

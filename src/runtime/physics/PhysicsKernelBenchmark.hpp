@@ -18,6 +18,8 @@ enum class PhysicsKernelBenchmarkKernel : std::uint8_t {
   AabbContact,
   AabbContactSolver,
   KinematicMotor,
+  SpatialSurfaceBake,
+  PlayerMovePlanner,
 };
 
 enum class PhysicsKernelBenchmarkScenario : std::uint8_t {
@@ -27,6 +29,9 @@ enum class PhysicsKernelBenchmarkScenario : std::uint8_t {
   GridLineCorridor,
   DenseCluster16,
   CornerSlide,
+  RoomFloorWall,
+  RoomLongCorridor,
+  RoomDenseWalls,
 };
 
 struct PhysicsKernelBenchmarkConfig {
@@ -64,6 +69,11 @@ struct PhysicsKernelBenchmarkCaseResult {
   std::uint64_t frictionImpulseAppliedCount = 0U;
   std::uint64_t kinematicIterationCount = 0U;
   std::uint64_t kinematicHitCount = 0U;
+  std::uint64_t surfaceCount = 0U;
+  std::uint64_t bakedColliderCount = 0U;
+  std::uint64_t skippedSurfaceCount = 0U;
+  std::uint64_t playerPlannerHitCount = 0U;
+  std::uint64_t playerPlannerIterationCount = 0U;
   float maxPenetrationMeters = 0.0F;
   float totalNormalImpulse = 0.0F;
   float totalFrictionImpulse = 0.0F;
