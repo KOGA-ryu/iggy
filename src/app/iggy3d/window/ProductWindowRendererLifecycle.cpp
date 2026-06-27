@@ -177,6 +177,27 @@ void recordProductVulkanMenuUnsupported(ProductAppWindowState& window,
   window.productVulkanMenuSurface = std::string(menuSurface);
 }
 
+void recordProductVulkanMenuUiDrawList(ProductAppWindowState& window,
+                                       std::string_view menuSurface,
+                                       const ProductUiDrawList& uiDrawList) {
+  window.productVulkanMenuRequested = true;
+  window.productVulkanMenuVisible = uiDrawList.ready;
+  window.productVulkanMenuStatus = uiDrawList.ready
+                                       ? "product_vulkan_menu_ui_ready"
+                                       : "product_vulkan_menu_ui_not_ready";
+  window.productVulkanMenuReasonCode = uiDrawList.reasonCode;
+  window.productVulkanMenuSurface = std::string(menuSurface);
+  window.productVulkanMenuUiReady = uiDrawList.ready;
+  window.productVulkanMenuUiPartial = uiDrawList.partial;
+  window.productVulkanMenuUiStatus = uiDrawList.status;
+  window.productVulkanMenuUiReasonCode = uiDrawList.reasonCode;
+  window.productVulkanMenuUiPrimitiveCount = uiDrawList.primitiveCount;
+  window.productVulkanMenuUiTextCount = uiDrawList.textCount;
+  window.productVulkanMenuUiRectCount = uiDrawList.rectCount;
+  window.productVulkanMenuUiRowCount = uiDrawList.rowCount;
+  window.productVulkanMenuUiSelectedAction = uiDrawList.selectedAction;
+}
+
 ProductWindowRendererState createProductWindowRenderer(
     const ProductWindowRendererRequest& request) {
   ProductWindowRendererState renderer;

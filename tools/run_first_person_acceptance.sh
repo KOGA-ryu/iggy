@@ -8,15 +8,15 @@ Usage: tools/run_first_person_acceptance.sh [options]
 Configures and builds the Vulkan-enabled product app, then prints the manual
 first-person acceptance launch command and receipt fields to inspect.
 
-The default launch command enters gameplay with --auto-new-world. The current
-Vulkan path does not render the starter menu yet, so a starter-screen run is a
-menu/UI diagnostic, not a first-person gameplay acceptance gate.
+The default launch command enters gameplay with --auto-new-world. A
+starter-screen run is a Vulkan menu/UI draw-list diagnostic; gameplay acceptance
+still requires entering gameplay or using --auto-new-world.
 
 Default behavior does not launch a window.
 
 Options:
   --run                 Launch the product window after configure/build.
-  --starter-menu        Do not add --auto-new-world. Diagnostic only.
+  --starter-menu        Do not add --auto-new-world. Menu/UI diagnostic only.
   --build-dir PATH      Build directory. Default: build-vulkan
   --save-root PATH      Save root for the manual run. Default: $HOME/.iggy3d/saves
   --jobs N              Build parallelism. Default: $IGGY3D_JOBS or 8
@@ -122,17 +122,15 @@ if [[ "${auto_new_world}" -eq 1 ]]; then
 
 Launch policy:
   --auto-new-world is included so the Vulkan renderer receives an active gameplay
-  room mesh. Without it, the app can remain on the starter screen; the current
-  Vulkan path does not draw that menu yet.
+  room mesh. Without it, the app can remain on the starter screen; that path now
+  proves starter UI draw-list readiness, not first-person gameplay readiness.
 POLICY
 else
   cat <<'POLICY'
 
 Launch policy:
-  --starter-menu was requested. This is diagnostic only for the current Vulkan
-  path: if the receipt remains on frontend_screen=starter with
-  product_vulkan_menu_status=vulkan_starter_menu_not_rendered, no visible
-  Vulkan starter menu or first-person room frame has been submitted.
+  --starter-menu was requested. This checks the Vulkan starter menu path builds
+  product UI primitives. First-person room rendering still requires gameplay.
 POLICY
 fi
 echo
@@ -158,14 +156,27 @@ Readiness receipt fields to inspect:
   product_vulkan_menu_visible=false
   top_down_map_purpose=minimap
 
+Starter-menu diagnostic fields:
+  frontend_screen=starter
+  gameplay_active=false
+  product_vulkan_menu_requested=true
+  product_vulkan_menu_visible=true
+  product_vulkan_menu_status=product_vulkan_menu_ui_ready
+  product_vulkan_menu_reason_code=product_ui_draw_list_ready
+  product_vulkan_menu_surface=starter
+  product_vulkan_menu_ui_ready=true
+  product_vulkan_menu_ui_status=product_ui_draw_list_ready
+  product_vulkan_menu_ui_primitive_count=22
+  product_vulkan_menu_ui_text_count=11
+  product_vulkan_menu_ui_rect_count=11
+  product_vulkan_menu_ui_row_count=7
+
 Blocker examples:
   frontend_screen=starter
   gameplay_active=false
   active_room_loaded=false
-  product_vulkan_menu_requested=true
-  product_vulkan_menu_visible=false
-  product_vulkan_menu_status=vulkan_starter_menu_not_rendered
-  product_vulkan_menu_reason_code=vulkan_menu_not_supported
+  product_vulkan_menu_ui_ready=false
+  product_vulkan_menu_status=product_vulkan_menu_ui_not_ready
   product_vulkan_backend_built=false
   product_vulkan_gameplay_status=product_vulkan_backend_unavailable
   product_vulkan_gameplay_status=product_vulkan_renderer_unavailable

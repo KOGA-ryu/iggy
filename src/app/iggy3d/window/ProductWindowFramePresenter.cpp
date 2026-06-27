@@ -1,5 +1,6 @@
 #include "app/iggy3d/window/ProductWindowFramePresenter.hpp"
 
+#include "app/iggy3d/menu/ProductUiDrawList.hpp"
 #include "app/iggy3d/view/OpeningMenuView.hpp"
 #include "render/FrameInput.hpp"
 
@@ -46,7 +47,9 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
         "product_vulkan_waiting_for_gameplay_room";
     // branch-gate: BG-1072
     if (request.frontend.screen == FrontendScreen::Starter) {
-      recordProductVulkanMenuUnsupported(request.window, "starter");
+      const ProductUiDrawList menuUi = buildProductStarterUiDrawList(
+          {&request.frontend, request.saves.slots.compatibleCount, 1280U, 720U});
+      recordProductVulkanMenuUiDrawList(request.window, "starter", menuUi);
     }
   }
 }

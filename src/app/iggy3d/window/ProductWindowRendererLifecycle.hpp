@@ -7,6 +7,7 @@ struct SDL_Renderer;
 
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/menu/ProductUiDrawList.hpp"
 #include "app/platform/SdlWindow.hpp"
 #include "render/RendererApi.hpp"
 
@@ -46,6 +47,9 @@ void recordProductVulkanSubmit(ProductAppWindowState& window,
                                const RenderSubmitResult& submit);
 void recordProductVulkanMenuUnsupported(ProductAppWindowState& window,
                                         std::string_view menuSurface);
+void recordProductVulkanMenuUiDrawList(ProductAppWindowState& window,
+                                       std::string_view menuSurface,
+                                       const ProductUiDrawList& uiDrawList);
 
 ProductWindowRendererState createProductWindowRenderer(
     const ProductWindowRendererRequest& request);

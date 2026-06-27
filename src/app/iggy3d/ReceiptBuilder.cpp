@@ -1006,6 +1006,24 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.productVulkanMenuReasonCode);
   appendReceiptField(receipt, "product_vulkan_menu_surface",
                      window.productVulkanMenuSurface);
+  appendReceiptField(receipt, "product_vulkan_menu_ui_ready",
+                     window.productVulkanMenuUiReady);
+  appendReceiptField(receipt, "product_vulkan_menu_ui_partial",
+                     window.productVulkanMenuUiPartial);
+  appendReceiptField(receipt, "product_vulkan_menu_ui_status",
+                     window.productVulkanMenuUiStatus);
+  appendReceiptField(receipt, "product_vulkan_menu_ui_reason_code",
+                     window.productVulkanMenuUiReasonCode);
+  appendReceiptField(receipt, "product_vulkan_menu_ui_primitive_count",
+                     window.productVulkanMenuUiPrimitiveCount);
+  appendReceiptField(receipt, "product_vulkan_menu_ui_text_count",
+                     window.productVulkanMenuUiTextCount);
+  appendReceiptField(receipt, "product_vulkan_menu_ui_rect_count",
+                     window.productVulkanMenuUiRectCount);
+  appendReceiptField(receipt, "product_vulkan_menu_ui_row_count",
+                     window.productVulkanMenuUiRowCount);
+  appendReceiptField(receipt, "product_vulkan_menu_ui_selected_action",
+                     window.productVulkanMenuUiSelectedAction);
   appendReceiptField(receipt, "product_vulkan_gameplay_ready",
                      vulkanGameplayReadiness.ready);
   appendReceiptField(receipt, "product_vulkan_gameplay_status",
