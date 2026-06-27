@@ -44,6 +44,8 @@ struct PlayerMotorParams {
   float dashDurationSeconds = 0.18F;
   float dashCooldownSeconds = 0.45F;
   float wireWalkSpeedMetersPerSecond = 2.25F;
+  bool usePhysicsMovePlanner = false;
+  Vec3 physicsBodyHalfExtentsMeters{0.35F, 0.90F, 0.35F};
 };
 
 struct PlayerMotorState {

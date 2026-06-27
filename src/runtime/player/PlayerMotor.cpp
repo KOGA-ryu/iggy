@@ -2,6 +2,7 @@
 
 #include "runtime/collision/CollisionQuery.hpp"
 #include "runtime/movement/MovementPolicy.hpp"
+#include "runtime/player/PlayerPhysicsMovePlanner.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -46,7 +47,12 @@ bool validParams(const PlayerMotorParams& params) {
          std::isfinite(params.dashDurationSeconds) && params.dashDurationSeconds >= 0.0F &&
          std::isfinite(params.dashCooldownSeconds) && params.dashCooldownSeconds >= 0.0F &&
          std::isfinite(params.wireWalkSpeedMetersPerSecond) &&
-         params.wireWalkSpeedMetersPerSecond >= 0.0F;
+         params.wireWalkSpeedMetersPerSecond >= 0.0F &&
+         (!params.usePhysicsMovePlanner ||
+          (isFinite(params.physicsBodyHalfExtentsMeters) &&
+           params.physicsBodyHalfExtentsMeters.x > 0.0F &&
+           params.physicsBodyHalfExtentsMeters.y > 0.0F &&
+           params.physicsBodyHalfExtentsMeters.z > 0.0F));
 }
 
 PlayerMotorResult baseResult(const PlayerMotorState& state,
@@ -246,6 +252,76 @@ HorizontalCollisionResult applyHorizontalCollision(const SpatialSurfaceSet& surf
   finalPosition.x = candidate.x;
   finalPosition.z = candidate.z;
   return result;
+}
+
+HorizontalCollisionResult applyPhysicsHorizontalCollision(const SpatialSurfaceSet& surfaces,
+                                                          const PlayerMotorParams& params,
+                                                          Vec3 start,
+                                                          Vec3 horizontalDisplacement,
+                                                          Vec3& finalPosition,
+                                                          Vec3& horizontalVelocity) {
+  HorizontalCollisionResult result;
+  const float horizontalDistance = vectorLength(horizontalDisplacement);
+  // branch-gate: BG-1101
+  if (!std::isfinite(horizontalDistance) || horizontalDistance <= kPlayerMotorEpsilon) {
+    return result;
+  }
+
+  PlayerPhysicsMovePlannerConfig config;
+  config.motor.skinMeters = params.airCollisionSkinMeters;
+  config.motor.groundProbeDistanceMeters = 0.0F;
+  config.motor.groundSnapDistanceMeters = 0.0F;
+  config.motor.maxMoveDistanceMeters =
+      std::max(config.motor.maxMoveDistanceMeters, horizontalDistance + 1.0F);
+
+  PlayerPhysicsMovePlannerRequest request;
+  request.collisionSurfaces = &surfaces;
+  request.startCenterMeters =
+      start + vec3UnitY() * params.physicsBodyHalfExtentsMeters.y;
+  request.bodyHalfExtentsMeters = params.physicsBodyHalfExtentsMeters;
+  request.desiredDisplacementMeters = horizontal(horizontalDisplacement);
+  request.config = config;
+  const PlayerPhysicsMovePlannerResult planned = planPlayerPhysicsMove(request);
+  // branch-gate: BG-1101
+  if (!planned.ok) {
+    finalPosition.x = start.x;
+    finalPosition.z = start.z;
+    horizontalVelocity = {};
+    result.clamped = true;
+    return result;
+  }
+
+  finalPosition.x = planned.finalCenterMeters.x;
+  finalPosition.z = planned.finalCenterMeters.z;
+  result.clamped = planned.blocked || planned.hitCount > 0U;
+  result.hitSurfaceId = planned.firstHitSourceSurfaceId;
+  for (const PhysicsKinematicMotorHit& hit : planned.hits) {
+    horizontalVelocity = withoutNormal(horizontalVelocity, hit.normalFromColliderToMotor);
+  }
+  // branch-gate: BG-1101
+  if (!planned.hits.empty()) {
+    const Vec3 tangent =
+        withoutNormal(horizontal(planned.appliedDisplacementMeters),
+                      planned.hits.front().normalFromColliderToMotor);
+    result.slid = vectorLength(tangent) > params.airCollisionSkinMeters;
+  }
+  return result;
+}
+
+HorizontalCollisionResult applyConfiguredHorizontalCollision(
+    const SpatialSurfaceSet& surfaces,
+    const PlayerMotorParams& params,
+    Vec3 start,
+    Vec3 horizontalDisplacement,
+    Vec3& finalPosition,
+    Vec3& horizontalVelocity) {
+  // branch-gate: BG-1101
+  if (params.usePhysicsMovePlanner) {
+    return applyPhysicsHorizontalCollision(
+        surfaces, params, start, horizontalDisplacement, finalPosition, horizontalVelocity);
+  }
+  return applyHorizontalCollision(
+      surfaces, params, start, horizontalDisplacement, finalPosition, horizontalVelocity);
 }
 
 }  // namespace
@@ -449,12 +525,12 @@ PlayerMotorResult updatePlayerMotor(PlayerMotorContext& context,
     finalPosition.x = start.x + horizontalDisplacement.x;
     finalPosition.z = start.z + horizontalDisplacement.z;
     HorizontalCollisionResult dashCollision =
-        applyHorizontalCollision(*context.collisionSurfaces,
-                                 params,
-                                 start,
-                                 horizontalDisplacement,
-                                 finalPosition,
-                                 state.horizontalVelocityMetersPerSecond);
+        applyConfiguredHorizontalCollision(*context.collisionSurfaces,
+                                           params,
+                                           start,
+                                           horizontalDisplacement,
+                                           finalPosition,
+                                           state.horizontalVelocityMetersPerSecond);
     result.dashMovementClamped = dashCollision.clamped;
     result.dashMovementSlid = dashCollision.slid;
     if (!dashCollision.hitSurfaceId.empty()) {
@@ -485,12 +561,12 @@ PlayerMotorResult updatePlayerMotor(PlayerMotorContext& context,
     finalPosition.x = start.x + horizontalDisplacement.x;
     finalPosition.z = start.z + horizontalDisplacement.z;
     HorizontalCollisionResult airCollision =
-        applyHorizontalCollision(*context.collisionSurfaces,
-                                 params,
-                                 start,
-                                 horizontalDisplacement,
-                                 finalPosition,
-                                 state.horizontalVelocityMetersPerSecond);
+        applyConfiguredHorizontalCollision(*context.collisionSurfaces,
+                                           params,
+                                           start,
+                                           horizontalDisplacement,
+                                           finalPosition,
+                                           state.horizontalVelocityMetersPerSecond);
     result.airMovementClamped = airCollision.clamped;
     result.airMovementSlid = airCollision.slid;
     if (!airCollision.hitSurfaceId.empty()) {

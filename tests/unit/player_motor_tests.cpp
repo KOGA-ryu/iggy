@@ -73,6 +73,25 @@ iggy3d::RoomSpatialSurface wallSurface(std::string_view id = "wall") {
   return surface;
 }
 
+iggy3d::RoomSpatialSurface projectileOnlySurface() {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = "projectile_wall";
+  surface.sourceStaticMeshId = "synthetic_projectile_wall";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Box;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::ProjectileBlocker;
+  surface.pointsMeters = {
+      {-10.0F, 0.0F, -0.10F},
+      {10.0F, 0.0F, -0.10F},
+      {10.0F, 3.0F, 0.10F},
+      {-10.0F, 3.0F, 0.10F},
+  };
+  surface.normal = {0.0F, 0.0F, 1.0F};
+  surface.traversalTags = {"projectile_blocker"};
+  surface.collisionMask = {"projectile"};
+  surface.blocksProjectile = true;
+  return surface;
+}
+
 iggy3d::SpatialSurfaceSet makeSurfaceSet(
     std::initializer_list<iggy3d::RoomSpatialSurface> surfaces = {floorSurface()}) {
   iggy3d::RoomAsset room;
@@ -201,6 +220,83 @@ bool airControlClampsAgainstActorBlocker() {
                 "player stayed before wall");
 }
 
+bool physicsAirControlClampsAgainstActorBlocker() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.50F});
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet({floorSurface(), wallSurface()});
+  iggy3d::PlayerMotorContext context{&world, &surfaces};
+  iggy3d::PlayerMotorState state = motorState();
+  iggy3d::PlayerMotorParams params;
+  params.usePhysicsMovePlanner = true;
+  params.airMaxSpeedMetersPerSecond = 8.0F;
+  params.airAccelerationMetersPerSecondSquared = 24.0F;
+  params.airLaunchSpeedMetersPerSecond = 8.0F;
+  iggy3d::PlayerMotorInput input;
+  input.moveIntent = {0.0F, 0.0F, -1.0F};
+  input.jumpPressed = true;
+  input.seconds = 0.20F;
+
+  const iggy3d::PlayerMotorResult jump = iggy3d::updatePlayerMotor(context, state, input, params);
+  const iggy3d::EntityState* player = world.findById({1});
+  return expect(iggy3d::playerMotorSucceeded(jump), "physics air wall result ok") &&
+         expect(jump.airMovementClamped, "physics air wall clamped") &&
+         expect(!jump.airMovementSlid, "physics straight wall no slide") &&
+         expect(jump.hitSurfaceId == "wall", "physics air wall hit id") &&
+         expect(player != nullptr && player->transform.position.z > 0.10F,
+                "physics player stayed before wall");
+}
+
+bool physicsAirControlSlidesAlongActorBlocker() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.50F});
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet({floorSurface(), wallSurface()});
+  iggy3d::PlayerMotorContext context{&world, &surfaces};
+  iggy3d::PlayerMotorState state = motorState();
+  iggy3d::PlayerMotorParams params;
+  params.usePhysicsMovePlanner = true;
+  params.airMaxSpeedMetersPerSecond = 8.0F;
+  params.airAccelerationMetersPerSecondSquared = 24.0F;
+  params.airLaunchSpeedMetersPerSecond = 8.0F;
+  iggy3d::PlayerMotorInput input;
+  input.moveIntent = {1.0F, 0.0F, -1.0F};
+  input.jumpPressed = true;
+  input.seconds = 0.20F;
+
+  const iggy3d::PlayerMotorResult jump = iggy3d::updatePlayerMotor(context, state, input, params);
+  const iggy3d::EntityState* player = world.findById({1});
+  return expect(iggy3d::playerMotorSucceeded(jump), "physics air slide result ok") &&
+         expect(jump.airMovementClamped, "physics air slide clamped") &&
+         expect(jump.airMovementSlid, "physics air slide slid") &&
+         expect(jump.hitSurfaceId == "wall", "physics air slide hit id") &&
+         expect(player != nullptr && player->transform.position.x > 0.10F,
+                "physics player slid along wall") &&
+         expect(player != nullptr && player->transform.position.z > 0.10F,
+                "physics slide stayed before wall");
+}
+
+bool physicsAirControlSkipsProjectileOnlyBlocker() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.50F});
+  const iggy3d::SpatialSurfaceSet surfaces =
+      makeSurfaceSet({floorSurface(), projectileOnlySurface()});
+  iggy3d::PlayerMotorContext context{&world, &surfaces};
+  iggy3d::PlayerMotorState state = motorState();
+  iggy3d::PlayerMotorParams params;
+  params.usePhysicsMovePlanner = true;
+  params.airMaxSpeedMetersPerSecond = 8.0F;
+  params.airAccelerationMetersPerSecondSquared = 24.0F;
+  params.airLaunchSpeedMetersPerSecond = 8.0F;
+  iggy3d::PlayerMotorInput input;
+  input.moveIntent = {0.0F, 0.0F, -1.0F};
+  input.jumpPressed = true;
+  input.seconds = 0.20F;
+
+  const iggy3d::PlayerMotorResult jump = iggy3d::updatePlayerMotor(context, state, input, params);
+  const iggy3d::EntityState* player = world.findById({1});
+  return expect(iggy3d::playerMotorSucceeded(jump), "physics projectile result ok") &&
+         expect(!jump.airMovementClamped, "physics projectile not clamped") &&
+         expect(jump.hitSurfaceId.empty(), "physics projectile no hit id") &&
+         expect(player != nullptr && player->transform.position.z < 0.10F,
+                "physics projectile-only wall skipped");
+}
+
 bool dashMovesHorizontallyOnGround() {
   iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.0F});
   const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet();
@@ -267,6 +363,30 @@ bool dashClampsAgainstActorBlocker() {
          expect(dash.hitSurfaceId == "wall", "dash wall hit id") &&
          expect(player != nullptr && player->transform.position.z > 0.10F,
                 "dash player stayed before wall");
+}
+
+bool physicsDashClampsAgainstActorBlocker() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 0.50F});
+  const iggy3d::SpatialSurfaceSet surfaces = makeSurfaceSet({floorSurface(), wallSurface()});
+  iggy3d::PlayerMotorContext context{&world, &surfaces};
+  iggy3d::PlayerMotorState state = motorState();
+  iggy3d::PlayerMotorParams params;
+  params.usePhysicsMovePlanner = true;
+  params.dashSpeedMetersPerSecond = 12.0F;
+  params.dashDurationSeconds = 0.20F;
+  iggy3d::PlayerMotorInput input;
+  input.moveIntent = {0.0F, 0.0F, -1.0F};
+  input.dashPressed = true;
+  input.seconds = 0.20F;
+
+  const iggy3d::PlayerMotorResult dash = iggy3d::updatePlayerMotor(context, state, input, params);
+  const iggy3d::EntityState* player = world.findById({1});
+  return expect(iggy3d::playerMotorSucceeded(dash), "physics dash wall result ok") &&
+         expect(dash.dashAccepted, "physics dash wall accepted") &&
+         expect(dash.dashMovementClamped, "physics dash wall clamped") &&
+         expect(dash.hitSurfaceId == "wall", "physics dash wall hit id") &&
+         expect(player != nullptr && player->transform.position.z > 0.10F,
+                "physics dash player stayed before wall");
 }
 
 bool gravityLandsAndRearmsJump() {
@@ -405,6 +525,14 @@ bool missingAndInvalidInputsDoNotMutate() {
   ok = ok && expect(bad.status == iggy3d::PlayerMotorStatus::InvalidParameters,
                     "bad params");
 
+  iggy3d::PlayerMotorParams badPhysicsParams;
+  badPhysicsParams.usePhysicsMovePlanner = true;
+  badPhysicsParams.physicsBodyHalfExtentsMeters.x = 0.0F;
+  const iggy3d::PlayerMotorResult badPhysics =
+      iggy3d::updatePlayerMotor(context, state, input, badPhysicsParams);
+  ok = ok && expect(badPhysics.status == iggy3d::PlayerMotorStatus::InvalidParameters,
+                    "bad physics params");
+
   return ok && expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
                                           {0.0F, 0.0F, 0.0F}),
                       "invalid no mutation");
@@ -417,9 +545,13 @@ int main() {
                   doubleJumpRejectedWhileAirborne() &&
                   airControlMovesHorizontallyWhileAirborne() &&
                   airControlClampsAgainstActorBlocker() &&
+                  physicsAirControlClampsAgainstActorBlocker() &&
+                  physicsAirControlSlidesAlongActorBlocker() &&
+                  physicsAirControlSkipsProjectileOnlyBlocker() &&
                   dashMovesHorizontallyOnGround() &&
                   dashRequiresIntentAndRejectsCooldown() &&
                   dashClampsAgainstActorBlocker() &&
+                  physicsDashClampsAgainstActorBlocker() &&
                   gravityLandsAndRearmsJump() &&
                   wireWalkMovesAlongRailAndClampsAtEndpoint() &&
                   wireWalkJumpDetachesIntoAirbornePhase() &&
