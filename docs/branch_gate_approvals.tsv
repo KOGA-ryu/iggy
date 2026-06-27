@@ -108,3 +108,4 @@ BG-1107	src/projection/debug/DebugProjection.cpp	projection physics debug HUD li
 BG-1108	src/app/iggy3d/ProductPhysicsDebugHud.cpp	product physics debug HUD gate and warning tone policy	codex	2026-06-27
 BG-1109	src/app/iggy3d/gameplay/ProductGameplayProjectionRefresh.cpp	product physics debug projection packet routing policy	codex	2026-06-27
 BG-1110	src/app/iggy3d/view/OpeningMenuView.cpp	product physics debug SDL HUD draw visibility and row cap policy	codex	2026-06-27
+BG-1111	src/projection/debug/DebugProjection.cpp	physics collision batch debug geometry projection policy	codex	2026-06-27

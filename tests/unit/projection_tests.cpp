@@ -4,6 +4,7 @@
 #include "runtime/ai/NpcBehaviorDebugSnapshot.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "runtime/objective/ObjectiveSystem.hpp"
+#include "runtime/physics/PhysicsAabbCollisionBatch.hpp"
 #include "runtime/physics/PhysicsDebugSnapshot.hpp"
 #include "runtime/save/SaveLoad.hpp"
 #include "runtime/session/Session.hpp"
@@ -207,6 +208,39 @@ const iggy3d::DebugProjectionItem* findNpcProjectionItem(
   return nullptr;
 }
 
+const iggy3d::DebugProjectionItem* nthDebugKind(
+    const iggy3d::DebugProjectionResult& projection,
+    iggy3d::DebugProjectionKind kind,
+    std::size_t targetIndex) {
+  std::size_t index = 0U;
+  for (const iggy3d::DebugProjectionItem& item : projection.items) {
+    if (item.kind != kind) {
+      continue;
+    }
+    if (index == targetIndex) {
+      return &item;
+    }
+    ++index;
+  }
+  return nullptr;
+}
+
+std::size_t countDebugKind(const iggy3d::DebugProjectionResult& projection,
+                           iggy3d::DebugProjectionKind kind) {
+  std::size_t count = 0U;
+  for (const iggy3d::DebugProjectionItem& item : projection.items) {
+    if (item.kind == kind) {
+      ++count;
+    }
+  }
+  return count;
+}
+
+bool nearlyEqualAabb(iggy3d::Aabb3 lhs, iggy3d::Aabb3 rhs) {
+  return iggy3d::nearlyEqual(lhs.min, rhs.min) &&
+         iggy3d::nearlyEqual(lhs.max, rhs.max);
+}
+
 iggy3d::RuntimeDebugSnapshot okRuntimeDebugSnapshot() {
   iggy3d::RuntimeDebugSnapshot snapshot;
   snapshot.status = iggy3d::RuntimeDebugSnapshotStatus::Ok;
@@ -374,6 +408,67 @@ iggy3d::PhysicsDebugSnapshot physicsWarningSnapshot() {
   snapshot.hasImpulseWarning = true;
   snapshot.hasWarnings = true;
   return snapshot;
+}
+
+iggy3d::PhysicsAabbCollider physicsCollider(iggy3d::PhysicsBodyId bodyId,
+                                            iggy3d::Vec3 center,
+                                            iggy3d::Vec3 halfExtents,
+                                            bool sensor) {
+  iggy3d::PhysicsAabbCollider collider;
+  collider.bodyId = bodyId;
+  collider.worldCenterMeters = center;
+  collider.halfExtentsMeters = halfExtents;
+  collider.bounds = iggy3d::aabbFromCenterExtents(center, halfExtents);
+  collider.sensor = sensor;
+  return collider;
+}
+
+iggy3d::PhysicsAabbCollisionBatchResult readyPhysicsCollisionBatch() {
+  iggy3d::PhysicsAabbCollisionBatchResult batch;
+  batch.ok = true;
+  batch.status = iggy3d::PhysicsAabbCollisionBatchStatus::Batched;
+  batch.reasonCode = "physics_aabb_collision_batch_batched";
+  batch.colliders.push_back(physicsCollider({1}, {0.0F, 0.5F, 0.0F},
+                                            {0.5F, 0.5F, 0.5F}, false));
+  batch.colliders.push_back(physicsCollider({2}, {2.0F, 0.5F, 0.0F},
+                                            {0.25F, 0.5F, 0.25F}, true));
+  batch.colliders.push_back(physicsCollider({3}, {0.0F, 0.5F, 2.0F},
+                                            {0.5F, 0.5F, 0.5F}, false));
+
+  iggy3d::PhysicsBroadphasePair sensorPair;
+  sensorPair.firstBodyId = {1};
+  sensorPair.secondBodyId = {2};
+  sensorPair.firstColliderIndex = 0U;
+  sensorPair.secondColliderIndex = 1U;
+  sensorPair.includesSensor = true;
+  batch.broadphasePairs.push_back(sensorPair);
+
+  iggy3d::PhysicsBroadphasePair solidPair;
+  solidPair.firstBodyId = {1};
+  solidPair.secondBodyId = {3};
+  solidPair.firstColliderIndex = 0U;
+  solidPair.secondColliderIndex = 2U;
+  batch.broadphasePairs.push_back(solidPair);
+
+  iggy3d::PhysicsAabbContact sensorContact;
+  sensorContact.firstBodyId = {1};
+  sensorContact.secondBodyId = {2};
+  sensorContact.firstColliderIndex = 0U;
+  sensorContact.secondColliderIndex = 1U;
+  sensorContact.pointMeters = {1.0F, 0.5F, 0.0F};
+  sensorContact.penetrationMeters = 0.125F;
+  sensorContact.includesSensor = true;
+  batch.contacts.push_back(sensorContact);
+
+  iggy3d::PhysicsAabbContact solidContact;
+  solidContact.firstBodyId = {1};
+  solidContact.secondBodyId = {3};
+  solidContact.firstColliderIndex = 0U;
+  solidContact.secondColliderIndex = 2U;
+  solidContact.pointMeters = {0.0F, 0.5F, 1.0F};
+  solidContact.penetrationMeters = 0.25F;
+  batch.contacts.push_back(solidContact);
+  return batch;
 }
 
 bool firstRoomProjectionContainsInitialItems() {
@@ -670,8 +765,228 @@ bool physicsDebugProjectionPreservesRuntimeAndNpcHudLines() {
                 "physics preserves runtime hud lines") &&
          expect(debug.npcBehaviorDebugHudLines == npcLinesBefore,
                 "physics preserves npc hud lines") &&
-         expect(debug.physicsDebugHudLines.size() == 4U,
-                "physics hud lines appended separately");
+	         expect(debug.physicsDebugHudLines.size() == 4U,
+	                "physics hud lines appended separately");
+}
+
+bool physicsCollisionBatchProjectionAppendsAabbItems() {
+  iggy3d::DebugProjectionResult debug;
+  const iggy3d::PhysicsAabbCollisionBatchResult batch =
+      readyPhysicsCollisionBatch();
+  iggy3d::appendPhysicsCollisionBatchDebugProjection(debug, batch);
+
+  const iggy3d::DebugProjectionItem* solid =
+      nthDebugKind(debug, iggy3d::DebugProjectionKind::PhysicsAabb, 0U);
+  const iggy3d::DebugProjectionItem* sensor =
+      nthDebugKind(debug, iggy3d::DebugProjectionKind::PhysicsAabb, 1U);
+
+  return expect(countDebugKind(debug,
+                               iggy3d::DebugProjectionKind::PhysicsAabb) == 3U,
+                "physics aabb item count") &&
+         expect(solid != nullptr && solid->actor == iggy3d::EntityId{1},
+                "physics aabb actor") &&
+         expect(solid != nullptr && solid->hasBounds, "physics aabb bounds") &&
+         expect(solid != nullptr &&
+                    nearlyEqualAabb(solid->worldBounds, batch.colliders[0].bounds),
+                "physics aabb bounds copied") &&
+         expect(solid != nullptr && solid->hasScalar &&
+                    solid->scalarValue == 0.0F,
+                "solid aabb scalar") &&
+         expect(solid != nullptr && solid->labelCode == "physics.aabb",
+                "solid aabb label") &&
+         expect(solid != nullptr && solid->valueCode == "solid",
+                "solid aabb value") &&
+         expect(sensor != nullptr && sensor->actor == iggy3d::EntityId{2},
+                "sensor aabb actor") &&
+         expect(sensor != nullptr && sensor->hasScalar &&
+                    sensor->scalarValue == 1.0F,
+                "sensor aabb scalar") &&
+         expect(sensor != nullptr && sensor->valueCode == "sensor",
+                "sensor aabb value");
+}
+
+bool physicsCollisionBatchProjectionAppendsContactNormalItems() {
+  iggy3d::DebugProjectionResult debug;
+  const iggy3d::PhysicsAabbCollisionBatchResult batch =
+      readyPhysicsCollisionBatch();
+  iggy3d::appendPhysicsCollisionBatchDebugProjection(debug, batch);
+
+  const iggy3d::DebugProjectionItem* sensor =
+      nthDebugKind(debug, iggy3d::DebugProjectionKind::PhysicsContactNormal, 0U);
+  const iggy3d::DebugProjectionItem* solid =
+      nthDebugKind(debug, iggy3d::DebugProjectionKind::PhysicsContactNormal, 1U);
+
+  return expect(countDebugKind(debug,
+                               iggy3d::DebugProjectionKind::PhysicsContactNormal) ==
+                    2U,
+                "physics contact item count") &&
+         expect(sensor != nullptr && sensor->actor == iggy3d::EntityId{1},
+                "sensor contact actor") &&
+         expect(sensor != nullptr && sensor->target == iggy3d::EntityId{2},
+                "sensor contact target") &&
+         expect(sensor != nullptr && sensor->hasWorldPoint &&
+                    iggy3d::nearlyEqual(sensor->worldPoint,
+                                        iggy3d::Vec3{1.0F, 0.5F, 0.0F}),
+                "sensor contact point") &&
+         expect(sensor != nullptr && sensor->hasScalar &&
+                    sensor->scalarValue == 0.125F,
+                "sensor contact penetration") &&
+         expect(sensor != nullptr &&
+                    sensor->labelCode == "physics.contact_normal",
+                "sensor contact label") &&
+         expect(sensor != nullptr && sensor->valueCode == "sensor",
+                "sensor contact value") &&
+         expect(solid != nullptr && solid->target == iggy3d::EntityId{3},
+                "solid contact target") &&
+         expect(solid != nullptr && solid->valueCode == "solid",
+                "solid contact value");
+}
+
+bool physicsCollisionBatchProjectionAppendsBroadphasePairItems() {
+  iggy3d::DebugProjectionResult debug;
+  iggy3d::PhysicsAabbCollisionBatchResult batch = readyPhysicsCollisionBatch();
+  iggy3d::PhysicsBroadphasePair invalidIndexPair;
+  invalidIndexPair.firstBodyId = {2};
+  invalidIndexPair.secondBodyId = {3};
+  invalidIndexPair.firstColliderIndex = 1U;
+  invalidIndexPair.secondColliderIndex = 99U;
+  batch.broadphasePairs.push_back(invalidIndexPair);
+  iggy3d::appendPhysicsCollisionBatchDebugProjection(debug, batch);
+
+  const iggy3d::DebugProjectionItem* sensor =
+      nthDebugKind(debug, iggy3d::DebugProjectionKind::PhysicsBroadphasePair, 0U);
+  const iggy3d::DebugProjectionItem* invalid =
+      nthDebugKind(debug, iggy3d::DebugProjectionKind::PhysicsBroadphasePair, 2U);
+
+  return expect(countDebugKind(debug,
+                               iggy3d::DebugProjectionKind::PhysicsBroadphasePair) ==
+                    3U,
+                "physics broadphase pair item count") &&
+         expect(sensor != nullptr && sensor->actor == iggy3d::EntityId{1},
+                "broadphase pair actor") &&
+         expect(sensor != nullptr && sensor->target == iggy3d::EntityId{2},
+                "broadphase pair target") &&
+         expect(sensor != nullptr && sensor->hasWorldPoint &&
+                    iggy3d::nearlyEqual(sensor->worldPoint,
+                                        iggy3d::Vec3{1.0F, 0.5F, 0.0F}),
+                "broadphase pair midpoint") &&
+         expect(sensor != nullptr && sensor->hasScalar &&
+                    sensor->scalarValue == 1.0F,
+                "broadphase pair sensor scalar") &&
+         expect(sensor != nullptr &&
+                    sensor->labelCode == "physics.broadphase_pair",
+                "broadphase pair label") &&
+         expect(sensor != nullptr && sensor->valueCode == "sensor",
+                "broadphase pair value") &&
+         expect(invalid != nullptr && !invalid->hasWorldPoint,
+                "invalid pair indices omit midpoint") &&
+         expect(invalid != nullptr && invalid->valueCode == "solid",
+                "invalid pair value");
+}
+
+bool physicsCollisionBatchProjectionIgnoresFailedBatch() {
+  iggy3d::DebugProjectionResult debug;
+  iggy3d::PhysicsAabbCollisionBatchResult batch = readyPhysicsCollisionBatch();
+  batch.ok = false;
+  iggy3d::appendPhysicsCollisionBatchDebugProjection(debug, batch);
+
+  return expect(debug.items.empty(), "failed batch appends no geometry");
+}
+
+bool physicsCollisionBatchProjectionRespectsIncludeFlagsAndCaps() {
+  const iggy3d::PhysicsAabbCollisionBatchResult batch =
+      readyPhysicsCollisionBatch();
+
+  iggy3d::PhysicsDebugGeometryProjectionConfig noAabbs;
+  noAabbs.includeAabbs = false;
+  iggy3d::DebugProjectionResult withoutAabbs;
+  iggy3d::appendPhysicsCollisionBatchDebugProjection(withoutAabbs, batch, noAabbs);
+
+  iggy3d::PhysicsDebugGeometryProjectionConfig noContacts;
+  noContacts.includeContacts = false;
+  iggy3d::DebugProjectionResult withoutContacts;
+  iggy3d::appendPhysicsCollisionBatchDebugProjection(withoutContacts, batch,
+                                                     noContacts);
+
+  iggy3d::PhysicsDebugGeometryProjectionConfig noPairs;
+  noPairs.includeBroadphasePairs = false;
+  iggy3d::DebugProjectionResult withoutPairs;
+  iggy3d::appendPhysicsCollisionBatchDebugProjection(withoutPairs, batch, noPairs);
+
+  iggy3d::PhysicsDebugGeometryProjectionConfig capped;
+  capped.maxAabbs = 1U;
+  capped.maxContacts = 1U;
+  capped.maxPairs = 1U;
+  iggy3d::DebugProjectionResult cappedResult;
+  iggy3d::appendPhysicsCollisionBatchDebugProjection(cappedResult, batch, capped);
+
+  const iggy3d::DebugProjectionItem* cappedAabb =
+      nthDebugKind(cappedResult, iggy3d::DebugProjectionKind::PhysicsAabb, 0U);
+  const iggy3d::DebugProjectionItem* cappedContact = nthDebugKind(
+      cappedResult, iggy3d::DebugProjectionKind::PhysicsContactNormal, 0U);
+  const iggy3d::DebugProjectionItem* cappedPair = nthDebugKind(
+      cappedResult, iggy3d::DebugProjectionKind::PhysicsBroadphasePair, 0U);
+
+  return expect(countDebugKind(withoutAabbs,
+                               iggy3d::DebugProjectionKind::PhysicsAabb) == 0U,
+                "include flag disables aabbs") &&
+         expect(countDebugKind(withoutContacts,
+                               iggy3d::DebugProjectionKind::PhysicsContactNormal) ==
+                    0U,
+                "include flag disables contacts") &&
+         expect(countDebugKind(withoutPairs,
+                               iggy3d::DebugProjectionKind::PhysicsBroadphasePair) ==
+                    0U,
+                "include flag disables pairs") &&
+         expect(countDebugKind(cappedResult,
+                               iggy3d::DebugProjectionKind::PhysicsAabb) == 1U,
+                "aabb cap") &&
+         expect(countDebugKind(cappedResult,
+                               iggy3d::DebugProjectionKind::PhysicsContactNormal) ==
+                    1U,
+                "contact cap") &&
+         expect(countDebugKind(cappedResult,
+                               iggy3d::DebugProjectionKind::PhysicsBroadphasePair) ==
+                    1U,
+                "pair cap") &&
+         expect(cappedAabb != nullptr &&
+                    cappedAabb->actor == iggy3d::EntityId{1},
+                "aabb cap keeps first") &&
+         expect(cappedContact != nullptr &&
+                    cappedContact->target == iggy3d::EntityId{2},
+                "contact cap keeps first") &&
+         expect(cappedPair != nullptr &&
+                    cappedPair->target == iggy3d::EntityId{2},
+                "pair cap keeps first");
+}
+
+bool physicsCollisionBatchProjectionPreservesHudLinesAndExistingItems() {
+  iggy3d::DebugProjectionResult debug;
+  iggy3d::DebugProjectionItem existing;
+  existing.kind = iggy3d::DebugProjectionKind::StateHash;
+  existing.labelCode = "existing";
+  debug.items.push_back(existing);
+  debug.runtimeDebugHudLines.push_back("runtime line");
+  debug.npcBehaviorDebugHudLines.push_back("npc line");
+  debug.physicsDebugHudLines.push_back("physics line");
+  const std::vector<std::string> runtimeBefore = debug.runtimeDebugHudLines;
+  const std::vector<std::string> npcBefore = debug.npcBehaviorDebugHudLines;
+  const std::vector<std::string> physicsBefore = debug.physicsDebugHudLines;
+
+  iggy3d::appendPhysicsCollisionBatchDebugProjection(debug,
+                                                     readyPhysicsCollisionBatch());
+
+  return expect(debug.items.front().kind == iggy3d::DebugProjectionKind::StateHash,
+                "existing item order preserved") &&
+         expect(debug.items.front().labelCode == "existing",
+                "existing item payload preserved") &&
+         expect(debug.items.size() == 8U, "geometry appended after existing") &&
+         expect(debug.runtimeDebugHudLines == runtimeBefore,
+                "geometry preserves runtime hud lines") &&
+         expect(debug.npcBehaviorDebugHudLines == npcBefore,
+                "geometry preserves npc hud lines") &&
+         expect(debug.physicsDebugHudLines == physicsBefore,
+                "geometry preserves physics hud lines");
 }
 
 bool saveLoadProjectionIsEquivalent() {
@@ -728,6 +1043,12 @@ int main() {
   ok = physicsDebugProjectionAppendsWarningLine() && ok;
   ok = physicsDebugProjectionIgnoresInactiveSnapshots() && ok;
   ok = physicsDebugProjectionPreservesRuntimeAndNpcHudLines() && ok;
+  ok = physicsCollisionBatchProjectionAppendsAabbItems() && ok;
+  ok = physicsCollisionBatchProjectionAppendsContactNormalItems() && ok;
+  ok = physicsCollisionBatchProjectionAppendsBroadphasePairItems() && ok;
+  ok = physicsCollisionBatchProjectionIgnoresFailedBatch() && ok;
+  ok = physicsCollisionBatchProjectionRespectsIncludeFlagsAndCaps() && ok;
+  ok = physicsCollisionBatchProjectionPreservesHudLinesAndExistingItems() && ok;
   ok = saveLoadProjectionIsEquivalent() && ok;
   return ok ? 0 : 1;
 }

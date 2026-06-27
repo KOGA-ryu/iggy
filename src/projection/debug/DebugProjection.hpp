@@ -15,6 +15,7 @@
 namespace iggy3d {
 
 struct NpcBehaviorDebugSnapshot;
+struct PhysicsAabbCollisionBatchResult;
 struct PhysicsDebugSnapshot;
 
 enum class DebugProjectionKind : std::uint8_t {
@@ -28,6 +29,9 @@ enum class DebugProjectionKind : std::uint8_t {
   ReplayDivergence,
   RuntimeTelemetry,
   NpcBehavior,
+  PhysicsAabb,
+  PhysicsContactNormal,
+  PhysicsBroadphasePair,
 };
 
 struct DebugProjectionConfig {
@@ -35,6 +39,15 @@ struct DebugProjectionConfig {
   bool includeReach = true;
   bool includeCommandRejections = true;
   bool includeSessionFacts = true;
+};
+
+struct PhysicsDebugGeometryProjectionConfig {
+  bool includeAabbs = true;
+  bool includeContacts = true;
+  bool includeBroadphasePairs = true;
+  std::size_t maxAabbs = 128U;
+  std::size_t maxContacts = 128U;
+  std::size_t maxPairs = 128U;
 };
 
 struct DebugProjectionItem {
@@ -75,5 +88,9 @@ void appendNpcBehaviorDebugSnapshot(DebugProjectionResult& result,
                                     const NpcBehaviorDebugSnapshot& snapshot);
 void appendPhysicsDebugSnapshot(DebugProjectionResult& result,
                                 const PhysicsDebugSnapshot& snapshot);
+void appendPhysicsCollisionBatchDebugProjection(
+    DebugProjectionResult& result,
+    const PhysicsAabbCollisionBatchResult& batch,
+    const PhysicsDebugGeometryProjectionConfig& config = {});
 
 }  // namespace iggy3d
