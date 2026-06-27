@@ -4,7 +4,7 @@
 #include <utility>
 
 #include "app/iggy3d/ascii_room/Package.hpp"
-#include "app/iggy3d/world/ProductPackageSessionSeed.hpp"
+#include "app/iggy3d/world/PackageSessionSeed.hpp"
 #include "content/FixtureScenarioLoader.hpp"
 #include "runtime/combat/CombatState.hpp"
 #include "runtime/objective/ObjectiveState.hpp"

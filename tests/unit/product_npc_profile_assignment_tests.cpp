@@ -1,4 +1,4 @@
-#include "app/iggy3d/world/ProductNpcProfileAssignment.hpp"
+#include "app/iggy3d/world/NpcProfileAssignment.hpp"
 
 #include <cstdlib>
 #include <iostream>

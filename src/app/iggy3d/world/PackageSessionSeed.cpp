@@ -1,6 +1,6 @@
-#include "app/iggy3d/world/ProductPackageSessionSeed.hpp"
+#include "app/iggy3d/world/PackageSessionSeed.hpp"
 
-#include "app/iggy3d/world/ProductNpcProfileAssignment.hpp"
+#include "app/iggy3d/world/NpcProfileAssignment.hpp"
 #include <initializer_list>
 #include <string>
 #include <string_view>

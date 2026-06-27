@@ -12,9 +12,9 @@
 #include "app/iggy3d/ascii_room/Preview.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
-#include "app/iggy3d/world/ProductPackageSessionSeed.hpp"
+#include "app/iggy3d/world/PackageSessionSeed.hpp"
 #include "app/iggy3d/save/RoomMarkerBinding.hpp"
-#include "app/iggy3d/world/ProductWorldCreation.hpp"
+#include "app/iggy3d/world/Creation.hpp"
 #include "content/PackageLoader.hpp"
 #include "render/RenderDiagnostics.hpp"
 

@@ -1,4 +1,4 @@
-#include "app/iggy3d/world/ProductPackageSessionSeed.hpp"
+#include "app/iggy3d/world/PackageSessionSeed.hpp"
 #include "runtime/session/Session.hpp"
 
 #include <cmath>

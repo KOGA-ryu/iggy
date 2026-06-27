@@ -1,7 +1,7 @@
 #include "app/iggy3d/ascii_room/Authoring.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
-#include "app/iggy3d/world/ProductPackageSessionSeed.hpp"
+#include "app/iggy3d/world/PackageSessionSeed.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "runtime/combat/CombatState.hpp"
 #include "runtime/inventory/InventorySystem.hpp"

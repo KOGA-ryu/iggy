@@ -9,7 +9,7 @@
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/ascii_room/Package.hpp"
 #include "app/iggy3d/ascii_room/Preview.hpp"
-#include "app/iggy3d/world/ProductPackageSessionSeed.hpp"
+#include "app/iggy3d/world/PackageSessionSeed.hpp"
 
 namespace iggy3d {
 namespace {
