@@ -209,7 +209,7 @@ bool realSuiteSerializesWithExpectedSchemaStrings() {
                     "\"iggy3d.physics_kernel_benchmark.suite.v1\"") !=
                     std::string::npos,
                 "suite schema present") &&
-         expect(json.find("\"case_count\": 5") != std::string::npos,
+         expect(json.find("\"case_count\": 9") != std::string::npos,
                 "case count present") &&
          expect(json.find("\"kernel\": \"broadphase_grid\"") !=
                     std::string::npos,

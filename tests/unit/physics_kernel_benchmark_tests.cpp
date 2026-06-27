@@ -69,7 +69,19 @@ bool stableNamesAreLowerSnake() {
          expect(iggy3d::physicsKernelBenchmarkScenarioName(
                     iggy3d::PhysicsKernelBenchmarkScenario::WallSlide) ==
                     "wall_slide",
-                "wall slide scenario");
+                "wall slide scenario") &&
+         expect(iggy3d::physicsKernelBenchmarkScenarioName(
+                    iggy3d::PhysicsKernelBenchmarkScenario::GridLineCorridor) ==
+                    "grid_line_corridor",
+                "grid line corridor scenario") &&
+         expect(iggy3d::physicsKernelBenchmarkScenarioName(
+                    iggy3d::PhysicsKernelBenchmarkScenario::DenseCluster16) ==
+                    "dense_cluster_16",
+                "dense cluster 16 scenario") &&
+         expect(iggy3d::physicsKernelBenchmarkScenarioName(
+                    iggy3d::PhysicsKernelBenchmarkScenario::CornerSlide) ==
+                    "corner_slide",
+                "corner slide scenario");
 }
 
 bool invalidConfigRejects() {
@@ -175,6 +187,48 @@ bool broadphaseDenseOverlapReportsPressure() {
                 "dense overlaps");
 }
 
+bool broadphaseGridLineCorridorReportsManyLowOverlapColliders() {
+  const iggy3d::PhysicsKernelBenchmarkCaseResult tiny =
+      run(iggy3d::PhysicsKernelBenchmarkKernel::BroadphaseGrid,
+          iggy3d::PhysicsKernelBenchmarkScenario::TinySeparated);
+  const iggy3d::PhysicsKernelBenchmarkCaseResult corridor =
+      run(iggy3d::PhysicsKernelBenchmarkKernel::BroadphaseGrid,
+          iggy3d::PhysicsKernelBenchmarkScenario::GridLineCorridor);
+
+  return expect(tiny.ok, "tiny ok for corridor comparison") &&
+         expect(corridor.ok, "corridor ok") &&
+         expect(corridor.colliderCount > tiny.colliderCount,
+                "corridor has more colliders than tiny") &&
+         expect(corridor.broadphaseOverlappingPairCount == 0U,
+                "corridor has zero overlaps") &&
+         expect(corridor.contactCount == 0U, "corridor contact count");
+}
+
+bool broadphaseDenseCluster16ReportsLargerPressure() {
+  const iggy3d::PhysicsKernelBenchmarkCaseResult dense =
+      run(iggy3d::PhysicsKernelBenchmarkKernel::BroadphaseGrid,
+          iggy3d::PhysicsKernelBenchmarkScenario::DenseOverlap);
+  const iggy3d::PhysicsKernelBenchmarkCaseResult cluster =
+      run(iggy3d::PhysicsKernelBenchmarkKernel::BroadphaseGrid,
+          iggy3d::PhysicsKernelBenchmarkScenario::DenseCluster16);
+
+  return expect(dense.ok, "dense ok for cluster comparison") &&
+         expect(cluster.ok, "cluster ok") &&
+         expect(cluster.colliderCount == 16U, "cluster collider count") &&
+         expect(cluster.broadphaseCandidatePairCount >
+                    dense.broadphaseCandidatePairCount,
+                "cluster candidate pressure") &&
+         expect(cluster.broadphaseTestedPairCount >
+                    dense.broadphaseTestedPairCount,
+                "cluster tested pressure") &&
+         expect(cluster.broadphaseDuplicatePairRejectedCount >
+                    dense.broadphaseDuplicatePairRejectedCount,
+                "cluster duplicate pressure") &&
+         expect(cluster.broadphaseOverlappingPairCount >
+                    dense.broadphaseOverlappingPairCount,
+                "cluster overlap pressure");
+}
+
 bool contactBenchmarkReportsContactsAndPenetration() {
   const iggy3d::PhysicsKernelBenchmarkCaseResult result =
       run(iggy3d::PhysicsKernelBenchmarkKernel::AabbContact,
@@ -186,6 +240,23 @@ bool contactBenchmarkReportsContactsAndPenetration() {
                 "contact penetration") &&
          expect(result.broadphaseOverlappingPairCount > 0U,
                 "contact broadphase pairs");
+}
+
+bool contactDenseCluster16ReportsMoreContacts() {
+  const iggy3d::PhysicsKernelBenchmarkCaseResult dense =
+      run(iggy3d::PhysicsKernelBenchmarkKernel::AabbContact,
+          iggy3d::PhysicsKernelBenchmarkScenario::DenseOverlap);
+  const iggy3d::PhysicsKernelBenchmarkCaseResult cluster =
+      run(iggy3d::PhysicsKernelBenchmarkKernel::AabbContact,
+          iggy3d::PhysicsKernelBenchmarkScenario::DenseCluster16);
+
+  return expect(dense.ok, "dense contact ok for cluster comparison") &&
+         expect(cluster.ok, "cluster contact ok") &&
+         expect(cluster.colliderCount == 16U, "cluster contact colliders") &&
+         expect(cluster.contactCount > dense.contactCount,
+                "cluster contact count") &&
+         expect(cluster.maxPenetrationMeters > 0.0F,
+                "cluster max penetration");
 }
 
 bool solverBenchmarkReportsCorrectionAndImpulses() {
@@ -218,6 +289,18 @@ bool kinematicMotorBenchmarkReportsWallHit() {
          expect(result.kinematicIterationCount > 0U,
                 "motor iterations") &&
          expect(result.kinematicHitCount > 0U, "motor hits");
+}
+
+bool kinematicMotorCornerSlideReportsHits() {
+  const iggy3d::PhysicsKernelBenchmarkCaseResult result =
+      run(iggy3d::PhysicsKernelBenchmarkKernel::KinematicMotor,
+          iggy3d::PhysicsKernelBenchmarkScenario::CornerSlide);
+
+  return expect(result.ok, "corner motor ok") &&
+         expect(result.colliderCount == 2U, "corner collider count") &&
+         expect(result.kinematicIterationCount > 0U,
+                "corner iterations") &&
+         expect(result.kinematicHitCount > 0U, "corner hits");
 }
 
 bool iterationCountersAccumulateDeterministically() {
@@ -258,11 +341,11 @@ bool suiteRunsDefaultCasesInOrder() {
   return expect(suite.ok, "suite ok") &&
          expect(suite.reasonCode == "physics_kernel_benchmark_ready",
                 "suite reason") &&
-         expect(suite.caseCount == 5U, "suite case count") &&
+         expect(suite.caseCount == 9U, "suite case count") &&
          expect(suite.failedCaseCount == 0U, "suite failed count") &&
          expect(suite.totalElapsedNanoseconds == 0U,
                 "suite timing disabled") &&
-         expect(suite.cases.size() == 5U, "suite vector size") &&
+         expect(suite.cases.size() == 9U, "suite vector size") &&
          expect(suite.cases[0].kernelName == "broadphase_grid",
                 "case 0 kernel") &&
          expect(suite.cases[0].scenarioName == "tiny_separated",
@@ -282,7 +365,23 @@ bool suiteRunsDefaultCasesInOrder() {
          expect(suite.cases[4].kernelName == "kinematic_motor",
                 "case 4 kernel") &&
          expect(suite.cases[4].scenarioName == "wall_slide",
-                "case 4 scenario");
+                "case 4 scenario") &&
+         expect(suite.cases[5].kernelName == "broadphase_grid",
+                "case 5 kernel") &&
+         expect(suite.cases[5].scenarioName == "grid_line_corridor",
+                "case 5 scenario") &&
+         expect(suite.cases[6].kernelName == "broadphase_grid",
+                "case 6 kernel") &&
+         expect(suite.cases[6].scenarioName == "dense_cluster_16",
+                "case 6 scenario") &&
+         expect(suite.cases[7].kernelName == "aabb_contact",
+                "case 7 kernel") &&
+         expect(suite.cases[7].scenarioName == "dense_cluster_16",
+                "case 7 scenario") &&
+         expect(suite.cases[8].kernelName == "kinematic_motor",
+                "case 8 kernel") &&
+         expect(suite.cases[8].scenarioName == "corner_slide",
+                "case 8 scenario");
 }
 
 bool invalidSuiteConfigRejects() {
@@ -308,9 +407,13 @@ int main() {
                   unknownKernelScenarioComboRejects() &&
                   broadphaseSeparatedReportsZeroOverlaps() &&
                   broadphaseDenseOverlapReportsPressure() &&
+                  broadphaseGridLineCorridorReportsManyLowOverlapColliders() &&
+                  broadphaseDenseCluster16ReportsLargerPressure() &&
                   contactBenchmarkReportsContactsAndPenetration() &&
+                  contactDenseCluster16ReportsMoreContacts() &&
                   solverBenchmarkReportsCorrectionAndImpulses() &&
                   kinematicMotorBenchmarkReportsWallHit() &&
+                  kinematicMotorCornerSlideReportsHits() &&
                   iterationCountersAccumulateDeterministically() &&
                   suiteRunsDefaultCasesInOrder() &&
                   invalidSuiteConfigRejects();

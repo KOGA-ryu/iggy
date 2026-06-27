@@ -88,9 +88,43 @@ std::vector<PhysicsAabbCollider> denseOverlapColliders() {
   };
 }
 
+std::vector<PhysicsAabbCollider> gridLineCorridorColliders() {
+  std::vector<PhysicsAabbCollider> colliders;
+  colliders.reserve(24U);
+  for (std::uint32_t index = 0U; index < 24U; ++index) {
+    colliders.push_back(colliderAt({100U + index},
+                                   {static_cast<float>(index) * 2.0F, 0.0F,
+                                    0.0F},
+                                   {0.25F, 0.25F, 0.25F}));
+  }
+  return colliders;
+}
+
+std::vector<PhysicsAabbCollider> denseCluster16Colliders() {
+  std::vector<PhysicsAabbCollider> colliders;
+  colliders.reserve(16U);
+  for (std::uint32_t row = 0U; row < 4U; ++row) {
+    for (std::uint32_t column = 0U; column < 4U; ++column) {
+      const float x = (static_cast<float>(column) - 1.5F) * 0.25F;
+      const float z = (static_cast<float>(row) - 1.5F) * 0.25F;
+      colliders.push_back(colliderAt({200U + row * 4U + column},
+                                     {x, 0.0F, z},
+                                     {0.75F, 0.75F, 0.75F}));
+    }
+  }
+  return colliders;
+}
+
 std::vector<PhysicsAabbCollider> wallSlideColliders() {
   return {
       colliderAt({2U}, {1.0F, 0.0F, 0.0F}, {0.10F, 1.0F, 1.0F}),
+  };
+}
+
+std::vector<PhysicsAabbCollider> cornerSlideColliders() {
+  return {
+      colliderAt({2U}, {1.0F, 0.0F, 0.0F}, {0.10F, 1.0F, 1.0F}),
+      colliderAt({3U}, {0.0F, 0.0F, 1.0F}, {1.0F, 1.0F, 0.10F}),
   };
 }
 
@@ -248,6 +282,80 @@ PhysicsKernelBenchmarkCaseResult contactDenseOverlap(
   return result;
 }
 
+PhysicsKernelBenchmarkCaseResult broadphaseGridLineCorridor(
+    const PhysicsKernelBenchmarkConfig& config) {
+  PhysicsKernelBenchmarkCaseResult result =
+      readyResult(PhysicsKernelBenchmarkKernel::BroadphaseGrid,
+                  PhysicsKernelBenchmarkScenario::GridLineCorridor, config);
+  const std::vector<PhysicsAabbCollider> colliders =
+      gridLineCorridorColliders();
+  const PhysicsBroadphaseResult broadphase =
+      runBroadphase(colliders, config.broadphaseCellSizeMeters);
+  // branch-gate: BG-1116
+  if (!broadphase.ok) {
+    result.ok = false;
+    result.status = PhysicsKernelBenchmarkStatus::KernelFailed;
+    result.reasonCode = physicsKernelBenchmarkStatusName(result.status);
+    result.upstreamReasonCode = broadphase.reasonCode;
+    return result;
+  }
+  copyBroadphaseCounters(result, broadphase);
+  return result;
+}
+
+PhysicsKernelBenchmarkCaseResult broadphaseDenseCluster16(
+    const PhysicsKernelBenchmarkConfig& config) {
+  PhysicsKernelBenchmarkCaseResult result =
+      readyResult(PhysicsKernelBenchmarkKernel::BroadphaseGrid,
+                  PhysicsKernelBenchmarkScenario::DenseCluster16, config);
+  const std::vector<PhysicsAabbCollider> colliders =
+      denseCluster16Colliders();
+  const PhysicsBroadphaseResult broadphase =
+      runBroadphase(colliders, config.broadphaseCellSizeMeters);
+  // branch-gate: BG-1116
+  if (!broadphase.ok) {
+    result.ok = false;
+    result.status = PhysicsKernelBenchmarkStatus::KernelFailed;
+    result.reasonCode = physicsKernelBenchmarkStatusName(result.status);
+    result.upstreamReasonCode = broadphase.reasonCode;
+    return result;
+  }
+  copyBroadphaseCounters(result, broadphase);
+  return result;
+}
+
+PhysicsKernelBenchmarkCaseResult contactDenseCluster16(
+    const PhysicsKernelBenchmarkConfig& config) {
+  PhysicsKernelBenchmarkCaseResult result =
+      readyResult(PhysicsKernelBenchmarkKernel::AabbContact,
+                  PhysicsKernelBenchmarkScenario::DenseCluster16, config);
+  const std::vector<PhysicsAabbCollider> colliders =
+      denseCluster16Colliders();
+  const PhysicsBroadphaseResult broadphase =
+      runBroadphase(colliders, config.broadphaseCellSizeMeters);
+  // branch-gate: BG-1116
+  if (!broadphase.ok) {
+    result.ok = false;
+    result.status = PhysicsKernelBenchmarkStatus::KernelFailed;
+    result.reasonCode = physicsKernelBenchmarkStatusName(result.status);
+    result.upstreamReasonCode = broadphase.reasonCode;
+    return result;
+  }
+  copyBroadphaseCounters(result, broadphase);
+  for (const PhysicsBroadphasePair& pair : broadphase.pairs) {
+    PhysicsAabbContactRequest request;
+    request.colliders = &colliders;
+    request.pair = &pair;
+    const PhysicsAabbContactResult contact =
+        generatePhysicsAabbContact(request);
+    // branch-gate: BG-1116
+    if (!addContactCounters(result, contact)) {
+      return result;
+    }
+  }
+  return result;
+}
+
 PhysicsKernelBenchmarkCaseResult solverDenseOverlap(
     const PhysicsKernelBenchmarkConfig& config) {
   PhysicsKernelBenchmarkCaseResult result =
@@ -351,7 +459,45 @@ PhysicsKernelBenchmarkCaseResult kinematicMotorWallSlide(
   return result;
 }
 
-constexpr std::array<KernelScenarioHandler, 5> kHandlers{{
+PhysicsKernelBenchmarkCaseResult kinematicMotorCornerSlide(
+    const PhysicsKernelBenchmarkConfig& config) {
+  PhysicsKernelBenchmarkCaseResult result =
+      readyResult(PhysicsKernelBenchmarkKernel::KinematicMotor,
+                  PhysicsKernelBenchmarkScenario::CornerSlide, config);
+  const std::vector<PhysicsAabbCollider> colliders = cornerSlideColliders();
+  const PhysicsAabbCollider motor =
+      colliderAt({1U}, {0.0F, 0.0F, 0.0F}, {0.25F, 0.50F, 0.25F});
+
+  PhysicsKinematicMotorConfig motorConfig;
+  motorConfig.maxIterations = 4U;
+  motorConfig.skinMeters = 0.001F;
+  motorConfig.groundProbeDistanceMeters = 0.0F;
+  motorConfig.groundSnapDistanceMeters = 0.0F;
+  motorConfig.maxMoveDistanceMeters = 5.0F;
+
+  PhysicsKinematicMotorRequest request;
+  request.colliders = &colliders;
+  request.bodyCollider = &motor;
+  request.desiredDisplacementMeters = {1.50F, 0.0F, 1.50F};
+  request.config = motorConfig;
+  const PhysicsKinematicMotorResult plan =
+      planPhysicsKinematicAabbMove(request);
+  // branch-gate: BG-1116
+  if (!plan.ok) {
+    result.ok = false;
+    result.status = PhysicsKernelBenchmarkStatus::KernelFailed;
+    result.reasonCode = physicsKernelBenchmarkStatusName(result.status);
+    result.upstreamReasonCode = plan.reasonCode;
+    return result;
+  }
+
+  result.colliderCount = colliders.size();
+  result.kinematicIterationCount = plan.iterationCount;
+  result.kinematicHitCount = plan.hitCount;
+  return result;
+}
+
+constexpr std::array<KernelScenarioHandler, 9> kHandlers{{
     {PhysicsKernelBenchmarkKernel::BroadphaseGrid,
      PhysicsKernelBenchmarkScenario::TinySeparated, broadphaseTinySeparated},
     {PhysicsKernelBenchmarkKernel::BroadphaseGrid,
@@ -362,6 +508,16 @@ constexpr std::array<KernelScenarioHandler, 5> kHandlers{{
      PhysicsKernelBenchmarkScenario::DenseOverlap, solverDenseOverlap},
     {PhysicsKernelBenchmarkKernel::KinematicMotor,
      PhysicsKernelBenchmarkScenario::WallSlide, kinematicMotorWallSlide},
+    {PhysicsKernelBenchmarkKernel::BroadphaseGrid,
+     PhysicsKernelBenchmarkScenario::GridLineCorridor,
+     broadphaseGridLineCorridor},
+    {PhysicsKernelBenchmarkKernel::BroadphaseGrid,
+     PhysicsKernelBenchmarkScenario::DenseCluster16,
+     broadphaseDenseCluster16},
+    {PhysicsKernelBenchmarkKernel::AabbContact,
+     PhysicsKernelBenchmarkScenario::DenseCluster16, contactDenseCluster16},
+    {PhysicsKernelBenchmarkKernel::KinematicMotor,
+     PhysicsKernelBenchmarkScenario::CornerSlide, kinematicMotorCornerSlide},
 }};
 
 const KernelScenarioHandler* findHandler(
@@ -438,10 +594,13 @@ std::string_view physicsKernelBenchmarkKernelName(
 
 std::string_view physicsKernelBenchmarkScenarioName(
     PhysicsKernelBenchmarkScenario scenario) {
-  static constexpr std::array<std::string_view, 3> kNames{
+  static constexpr std::array<std::string_view, 6> kNames{
       "tiny_separated",
       "dense_overlap",
       "wall_slide",
+      "grid_line_corridor",
+      "dense_cluster_16",
+      "corner_slide",
   };
   return enumName(scenario, kNames, "unknown_scenario");
 }

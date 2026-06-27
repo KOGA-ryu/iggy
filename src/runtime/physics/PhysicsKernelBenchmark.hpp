@@ -24,6 +24,9 @@ enum class PhysicsKernelBenchmarkScenario : std::uint8_t {
   TinySeparated,
   DenseOverlap,
   WallSlide,
+  GridLineCorridor,
+  DenseCluster16,
+  CornerSlide,
 };
 
 struct PhysicsKernelBenchmarkConfig {

@@ -54,6 +54,11 @@ constexpr NameScenario kScenarioNames[] = {
     {"tiny_separated", iggy3d::PhysicsKernelBenchmarkScenario::TinySeparated},
     {"dense_overlap", iggy3d::PhysicsKernelBenchmarkScenario::DenseOverlap},
     {"wall_slide", iggy3d::PhysicsKernelBenchmarkScenario::WallSlide},
+    {"grid_line_corridor",
+     iggy3d::PhysicsKernelBenchmarkScenario::GridLineCorridor},
+    {"dense_cluster_16",
+     iggy3d::PhysicsKernelBenchmarkScenario::DenseCluster16},
+    {"corner_slide", iggy3d::PhysicsKernelBenchmarkScenario::CornerSlide},
 };
 
 void printUsage(std::ostream& out) {
@@ -66,7 +71,8 @@ void printUsage(std::ostream& out) {
       << "  --case\n"
       << "  --kernel <broadphase_grid|aabb_contact|aabb_contact_solver|"
          "kinematic_motor>\n"
-      << "  --scenario <tiny_separated|dense_overlap|wall_slide>\n"
+      << "  --scenario <tiny_separated|dense_overlap|wall_slide|"
+         "grid_line_corridor|dense_cluster_16|corner_slide>\n"
       << "  --iterations <positive_uint>\n"
       << "  --cell-size <positive_float>\n"
       << "  --no-timing\n"

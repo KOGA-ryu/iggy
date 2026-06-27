@@ -75,7 +75,7 @@ bool suiteStdoutSmoke(const std::filesystem::path& binary) {
   return exitCode == 0 && readTextFile(stdoutPath, text) &&
          contains(text, "\"schema\": "
                         "\"iggy3d.physics_kernel_benchmark.suite.v1\"") &&
-         contains(text, "\"case_count\": 5") &&
+         contains(text, "\"case_count\": 9") &&
          contains(text, "\"elapsed_nanoseconds\": 0");
 }
 
@@ -96,6 +96,25 @@ bool caseStdoutSmoke(const std::filesystem::path& binary) {
          contains(text, "\"kernel\": \"broadphase_grid\"") &&
          contains(text, "\"scenario\": \"dense_overlap\"") &&
          contains(text, "\"iterations\": 2") &&
+         contains(text, "\"elapsed_nanoseconds\": 0");
+}
+
+bool denseClusterCaseSmoke(const std::filesystem::path& binary) {
+  const std::filesystem::path stdoutPath =
+      "/tmp/iggy3d_physics_kernel_cli_dense_cluster.json";
+  const std::filesystem::path stderrPath =
+      "/tmp/iggy3d_physics_kernel_cli_dense_cluster.err";
+  int exitCode = 1;
+  std::string text;
+  runCommand(binary,
+             "--case --kernel broadphase_grid --scenario dense_cluster_16 "
+             "--no-timing",
+             stdoutPath, stderrPath, exitCode);
+  return exitCode == 0 && readTextFile(stdoutPath, text) &&
+         contains(text, "\"schema\": "
+                        "\"iggy3d.physics_kernel_benchmark.case.v1\"") &&
+         contains(text, "\"kernel\": \"broadphase_grid\"") &&
+         contains(text, "\"scenario\": \"dense_cluster_16\"") &&
          contains(text, "\"elapsed_nanoseconds\": 0");
 }
 
@@ -146,25 +165,30 @@ int main() {
   const bool binaryExists = std::filesystem::exists(binary);
   const bool suitePassed = binaryExists && suiteStdoutSmoke(binary);
   const bool casePassed = binaryExists && caseStdoutSmoke(binary);
+  const bool denseClusterPassed =
+      binaryExists && denseClusterCaseSmoke(binary);
   const bool outputPassed = binaryExists && caseOutputFileSmoke(binary);
   const bool invalidPassed = binaryExists && invalidKernelSmoke(binary);
 #else
   const bool binaryExists = false;
   const bool suitePassed = false;
   const bool casePassed = false;
+  const bool denseClusterPassed = false;
   const bool outputPassed = false;
   const bool invalidPassed = false;
 #endif
 
   const bool passed =
-      binaryExists && suitePassed && casePassed && outputPassed &&
-      invalidPassed;
+      binaryExists && suitePassed && casePassed && denseClusterPassed &&
+      outputPassed && invalidPassed;
   std::cout << "smoke=physics_kernel_benchmark_cli\n";
   std::cout << "binary_exists=" << (binaryExists ? "true" : "false")
             << "\n";
   std::cout << "suite_passed=" << (suitePassed ? "true" : "false")
             << "\n";
   std::cout << "case_passed=" << (casePassed ? "true" : "false") << "\n";
+  std::cout << "dense_cluster_passed="
+            << (denseClusterPassed ? "true" : "false") << "\n";
   std::cout << "output_passed=" << (outputPassed ? "true" : "false")
             << "\n";
   std::cout << "invalid_passed=" << (invalidPassed ? "true" : "false")
