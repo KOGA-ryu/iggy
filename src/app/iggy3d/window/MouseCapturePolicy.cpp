@@ -1,4 +1,4 @@
-#include "app/iggy3d/window/ProductMouseCapturePolicy.hpp"
+#include "app/iggy3d/window/MouseCapturePolicy.hpp"
 
 namespace iggy3d {
 

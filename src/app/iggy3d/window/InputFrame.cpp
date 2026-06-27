@@ -6,7 +6,7 @@
 #include "app/iggy3d/ProductControllerActionRouting.hpp"
 #include "app/iggy3d/gameplay/ProductGameplayController.hpp"
 #include "app/iggy3d/ProductInteractionModeState.hpp"
-#include "app/iggy3d/window/ProductMouseCapturePolicy.hpp"
+#include "app/iggy3d/window/MouseCapturePolicy.hpp"
 #include "app/iggy3d/room_editor/ProductRoomEditorActionController.hpp"
 #include "app/iggy3d/room_editor/ProductRoomEditorPreview.hpp"
 #include "app/iggy3d/automation/Automation.hpp"
