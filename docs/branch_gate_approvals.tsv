@@ -61,3 +61,5 @@ BG-1060	src/app/iggy3d/ProductControllerActionRouting.cpp	product controller act
 BG-1061	src/app/iggy3d/ProductWindowInputFrame.cpp	product controller sample input application seam	codex	2026-06-26
 BG-1062	src/app/iggy3d/product/AutomationGameplay.cpp	controller input automation sample sequence parsing	codex	2026-06-26
 BG-1063	src/app/iggy3d/ProductWindowInputFrame.cpp	live creative room editor mouse pick preview policy	codex	2026-06-26
+BG-1064	src/app/iggy3d/ProductInteractionModeHud.cpp	product interaction mode hud descriptor visibility policy	codex	2026-06-26
+BG-1065	src/app/iggy3d/OpeningMenuView.cpp	product interaction mode hud draw visibility policy	codex	2026-06-26

@@ -205,6 +205,15 @@ void copyProductRoomEditorHud(ProductAppWindowState& window,
   window.roomEditorHudLastPrimitiveId = hud.lastPrimitiveId;
 }
 
+void copyProductInteractionModeHud(ProductAppWindowState& window,
+                                   const ProductInteractionModeHud& hud) {
+  window.interactionModeHudVisible = hud.visible;
+  window.interactionModeHudStatus = hud.status;
+  window.interactionModeHudReasonCode = hud.reasonCode;
+  window.interactionModeHudMode = hud.mode;
+  window.interactionModeHudLabel = hud.label;
+}
+
 void copyProductRoomEditorPreviewOverlay(
     ProductAppWindowState& window,
     const ProductRoomEditorPreviewOverlay& overlay) {
@@ -372,6 +381,13 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   ProductAppWindowState& window = request.window;
   ProductGameplayProjectionFrame frame;
   frame.feedback = buildProductGameplayFeedback(window);
+  frame.interactionModeHud = buildProductInteractionModeHud(
+      ProductInteractionModeHudRequest{
+          window.interactionMode,
+          window.gameplayActive,
+          window.roomEditing.ready,
+      });
+  copyProductInteractionModeHud(window, frame.interactionModeHud);
   frame.movementHud = buildProductMovementDebugHud(window,
                                                    request.developerToolsEnabled,
                                                    request.debugOverlayEnabled);
@@ -433,6 +449,13 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   frame.sceneItemCount = frame.scene.items.size();
   window.runtimeStateHash = request.activeSession->stateHash();
   frame.feedback = buildProductGameplayFeedback(window);
+  frame.interactionModeHud = buildProductInteractionModeHud(
+      ProductInteractionModeHudRequest{
+          window.interactionMode,
+          window.gameplayActive,
+          window.roomEditing.ready,
+      });
+  copyProductInteractionModeHud(window, frame.interactionModeHud);
   frame.movementHud = buildProductMovementDebugHud(window,
                                                    request.developerToolsEnabled,
                                                    request.debugOverlayEnabled);

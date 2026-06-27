@@ -4,6 +4,7 @@
 #include <optional>
 
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/ProductInteractionModeHud.hpp"
 #include "app/iggy3d/ProductMovementDebugHud.hpp"
 #include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
@@ -39,6 +40,7 @@ struct ProductGameplayProjectionFrame {
   ProductPrimitiveDrawList drawList;
   ProductViewportFrame viewportFrame;
   ProductGameplayFeedback feedback;
+  ProductInteractionModeHud interactionModeHud;
   ProductMovementDebugHud movementHud;
   ProductNpcBehaviorDebugHud npcBehaviorHud;
   ProductRoomEditorHud roomEditorHud;

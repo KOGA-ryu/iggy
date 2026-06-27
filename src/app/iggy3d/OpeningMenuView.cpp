@@ -16,6 +16,7 @@
 #include "projection/debug/DebugProjection.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
+#include "app/iggy3d/ProductInteractionModeHud.hpp"
 #include "app/iggy3d/ProductMovementDebugHud.hpp"
 #include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
@@ -310,6 +311,21 @@ void drawGameplayFeedback(SDL_Renderer& renderer,
     drawText(renderer, line.value, 1010.0F, y, 2.0F);
     y += 24.0F;
   }
+}
+
+void drawInteractionModeHud(SDL_Renderer& renderer,
+                            const ProductInteractionModeHud* hud) {
+  // branch-gate: BG-1065
+  if (hud == nullptr || !hud->visible) {
+    return;
+  }
+
+  setColor(renderer, 18, 24, 27);
+  fillRect(renderer, 862.0F, 238.0F, 328.0F, 34.0F);
+  setColor(renderer, 166, 184, 177);
+  drawText(renderer, "MODE", 878.0F, 248.0F, 2.0F);
+  setFeedbackToneColor(renderer, hud->tone);
+  drawText(renderer, hud->label, 970.0F, 248.0F, 2.0F);
 }
 
 void drawMovementDebugHud(SDL_Renderer& renderer,
@@ -633,6 +649,7 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
                        std::uint64_t runtimeStateHash,
                        const ProductViewportFrame* frame,
                        const ProductGameplayFeedback* feedback,
+                       const ProductInteractionModeHud* interactionModeHud,
                        const ProductMovementDebugHud* movementHud,
                        const ProductNpcBehaviorDebugHud* npcHud,
                        const ProductRoomEditorHud* roomEditorHud,
@@ -658,6 +675,7 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
   setColor(renderer, 126, 201, 176);
   drawText(renderer, "FIRST PERSON GAMEPLAY VIEW", 88.0F, 104.0F, 3.0F);
   drawCameraHeading(renderer, cameraYawDegrees);
+  drawInteractionModeHud(renderer, interactionModeHud);
   setColor(renderer, 166, 184, 177);
   drawText(renderer, "CAMERA FIRST PERSON", 870.0F, 286.0F, 2.0F);
   drawText(renderer, "YAW", 870.0F, 324.0F, 2.0F);
@@ -751,6 +769,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          std::uint64_t runtimeStateHash,
                                          const ProductViewportFrame* frame,
                                          const ProductGameplayFeedback* feedback,
+                                         const ProductInteractionModeHud* interactionModeHud,
                                          const ProductMovementDebugHud* movementHud,
                                          const ProductNpcBehaviorDebugHud* npcHud,
                                          const ProductRoomEditorHud* roomEditorHud,
@@ -764,8 +783,9 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
 
   if (gameplayActive || frontend.screen == FrontendScreen::Gameplay) {
     state.cameraHeadingDrawn =
-        drawGameplayPanel(renderer, runtimeStateHash, frame, feedback, movementHud, npcHud,
-                          roomEditorHud, sceneItemCount, debug, cameraYawDegrees,
+        drawGameplayPanel(renderer, runtimeStateHash, frame, feedback,
+                          interactionModeHud, movementHud, npcHud, roomEditorHud,
+                          sceneItemCount, debug, cameraYawDegrees,
                           cameraPitchDegrees);
     SDL_RenderPresent(&renderer);
     state.textDrawn = true;

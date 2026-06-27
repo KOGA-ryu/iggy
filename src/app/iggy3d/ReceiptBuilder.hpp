@@ -32,6 +32,11 @@ struct ProductAppWindowState {
   std::string gamepadName = "unavailable";
   std::string gamepadMapping = "unavailable";
   ProductInteractionMode interactionMode = ProductInteractionMode::Player;
+  bool interactionModeHudVisible = false;
+  std::string interactionModeHudStatus = "interaction_mode_hud_hidden";
+  std::string interactionModeHudReasonCode = "interaction_mode_hud_hidden";
+  std::string interactionModeHudMode = "player";
+  std::string interactionModeHudLabel = "player";
   bool controllerModeToggleRequested = false;
   bool controllerModeToggleAccepted = false;
   std::string controllerModeToggleStatus = "interaction_mode_toggle_not_requested";

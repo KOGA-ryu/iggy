@@ -63,6 +63,7 @@ void presentProductSdlFrame(ProductWindowFramePresenterRequest request) {
                           request.window.runtimeStateHash,
                           request.projectionFrame.viewportFramePtr(),
                           &request.projectionFrame.feedback,
+                          &request.projectionFrame.interactionModeHud,
                           &request.projectionFrame.movementHud,
                           &request.projectionFrame.npcBehaviorHud,
                           &request.projectionFrame.roomEditorHud,

@@ -95,6 +95,16 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "gamepad_menu_select_used", window.gamepadMenuSelectUsed);
   appendReceiptField(receipt, "interaction_mode",
                      productInteractionModeName(window.interactionMode));
+  appendReceiptField(receipt, "interaction_mode_hud_visible",
+                     window.interactionModeHudVisible);
+  appendReceiptField(receipt, "interaction_mode_hud_status",
+                     window.interactionModeHudStatus);
+  appendReceiptField(receipt, "interaction_mode_hud_reason_code",
+                     window.interactionModeHudReasonCode);
+  appendReceiptField(receipt, "interaction_mode_hud_mode",
+                     window.interactionModeHudMode);
+  appendReceiptField(receipt, "interaction_mode_hud_label",
+                     window.interactionModeHudLabel);
   appendReceiptField(receipt,
                      "controller_mode_toggle_requested",
                      window.controllerModeToggleRequested);

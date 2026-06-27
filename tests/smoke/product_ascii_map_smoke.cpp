@@ -142,6 +142,13 @@ int main() {
       iggy3d::smoke::hasField(fields, "window_created", "false") &&
       iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
       iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode", "player") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_visible", "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "interaction_mode_hud_status",
+                              "interaction_mode_hud_ready") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_mode", "player") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_label", "player") &&
       iggy3d::smoke::hasField(fields, "world_setup_title", "Loop Keep") &&
       iggy3d::smoke::hasField(fields, "world_setup_ascii_room_enabled",
                               "true") &&
@@ -490,6 +497,12 @@ int main() {
       iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
       iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
       iggy3d::smoke::hasField(fields, "interaction_mode", "creative") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_visible", "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "interaction_mode_hud_status",
+                              "interaction_mode_hud_ready") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_mode", "creative") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_label", "creative") &&
       iggy3d::smoke::hasField(fields,
                               "automation_control_last_key",
                               "room_edit.start_active") &&
@@ -590,6 +603,12 @@ int main() {
                               "edit_room") &&
       iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
       iggy3d::smoke::hasField(fields, "interaction_mode", "creative") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_visible", "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "interaction_mode_hud_status",
+                              "interaction_mode_hud_ready") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_mode", "creative") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_label", "creative") &&
       iggy3d::smoke::hasField(fields, "input_owner", "editor") &&
       iggy3d::smoke::hasField(fields, "gameplay_input_suppressed",
                               "true") &&
@@ -1644,6 +1663,11 @@ int main() {
                               "pause_save_and_exit_written") &&
       iggy3d::smoke::hasField(fields, "gameplay_active", "false") &&
       iggy3d::smoke::hasField(fields, "interaction_mode", "player") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_visible", "false") &&
+      iggy3d::smoke::hasField(fields,
+                              "interaction_mode_hud_status",
+                              "interaction_mode_hud_hidden") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_mode", "player") &&
       iggy3d::smoke::hasField(fields, "input_owner", "starter") &&
       iggy3d::smoke::hasField(fields, "room_editor_status",
                               "room_editor_command_applied") &&
