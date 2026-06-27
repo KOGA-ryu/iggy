@@ -4,6 +4,7 @@
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductCameraController.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
+#include "app/iggy3d/ProductInteractionModeState.hpp"
 #include "app/iggy3d/ProductRoomEditorActionController.hpp"
 #include "app/iggy3d/product/Automation.hpp"
 #include "app/iggy3d/product/AutomationRoomEditing.hpp"
@@ -67,6 +68,16 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
     }
   }
 
+  const ProductInteractionModeToggleResult modeToggle =
+      applyProductInteractionModeFrameToggle({
+          context.frontend,
+          context.window,
+          context.inputFrame.controllerModeChord,
+          productControllerModeChordSampleFromGamepad(
+              pollGamepadControllerModeChordSample(context.inputFrame.gamepad)),
+      });
+  const bool controllerModeChordRequested = modeToggle.toggleRequested;
+
   const InputAction gamepadAction = pollGamepadMenuAction(context.inputFrame.gamepad);
   // branch-gate: BG-1029
   if (gamepadAction != InputAction::None) {
@@ -105,10 +116,14 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
     // branch-gate: BG-1029
     if (context.window.roomEditing.ready) {
       pollKeyboardRoomEditorActions(context.inputFrame.keyboard, gameplayActions);
-      pollGamepadRoomEditorActions(context.inputFrame.gamepad, gameplayActions);
+      if (!controllerModeChordRequested) {  // branch-gate: BG-1059
+        pollGamepadRoomEditorActions(context.inputFrame.gamepad, gameplayActions);
+      }
     } else {
       pollKeyboardGameplayActions(context.inputFrame.keyboard, gameplayActions);
-      pollGamepadGameplayActions(context.inputFrame.gamepad, gameplayActions);
+      if (!controllerModeChordRequested) {  // branch-gate: BG-1059
+        pollGamepadGameplayActions(context.inputFrame.gamepad, gameplayActions);
+      }
       pollMouseGameplayActions(context.inputFrame.mouse, gameplayActions);
     }
 

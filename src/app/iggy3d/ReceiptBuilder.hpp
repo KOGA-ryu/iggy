@@ -8,6 +8,7 @@
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductActiveRoomState.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
+#include "app/iggy3d/ProductInteractionMode.hpp"
 #include "app/iggy3d/ProductRoomEditorCursor.hpp"
 #include "app/iggy3d/ProductRoomEditorPreview.hpp"
 #include "app/iggy3d/ProductRoomEditingState.hpp"
@@ -30,6 +31,12 @@ struct ProductAppWindowState {
   bool gamepadMenuSelectUsed = false;
   std::string gamepadName = "unavailable";
   std::string gamepadMapping = "unavailable";
+  ProductInteractionMode interactionMode = ProductInteractionMode::Player;
+  bool controllerModeToggleRequested = false;
+  bool controllerModeToggleAccepted = false;
+  std::string controllerModeToggleStatus = "interaction_mode_toggle_not_requested";
+  std::string controllerModeToggleReasonCode = "interaction_mode_toggle_not_requested";
+  std::string controllerModeToggleSurface = "none";
   FrontendSettingsTab selectedSettingsTab = FrontendSettingsTab::None;
   bool runtimeSessionCreated = false;
   bool gameplayActive = false;

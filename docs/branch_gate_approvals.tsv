@@ -55,3 +55,5 @@ BG-1054	src/app/iggy3d/product/AutomationRoomEditing.cpp	room editor physical ph
 BG-1055	src/app/iggy3d/ProductWindowInputFrame.cpp	room editor physical phantom preview input routing	codex	2026-06-26
 BG-1056	src/app/iggy3d/ProductInteractionMode.cpp	product controller interaction mode chord policy	codex	2026-06-26
 BG-1057	src/app/iggy3d/ProductControllerActionMap.cpp	product controller action mapping table lookup policy	codex	2026-06-26
+BG-1058	src/app/iggy3d/ProductInteractionModeState.cpp	product interaction mode surface derivation policy	codex	2026-06-26
+BG-1059	src/app/iggy3d/ProductWindowInputFrame.cpp	controller mode chord consumes gamepad action polling	codex	2026-06-26

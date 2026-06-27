@@ -93,6 +93,23 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "gamepad_name", window.gamepadName);
   appendReceiptField(receipt, "gamepad_mapping", window.gamepadMapping);
   appendReceiptField(receipt, "gamepad_menu_select_used", window.gamepadMenuSelectUsed);
+  appendReceiptField(receipt, "interaction_mode",
+                     productInteractionModeName(window.interactionMode));
+  appendReceiptField(receipt,
+                     "controller_mode_toggle_requested",
+                     window.controllerModeToggleRequested);
+  appendReceiptField(receipt,
+                     "controller_mode_toggle_accepted",
+                     window.controllerModeToggleAccepted);
+  appendReceiptField(receipt,
+                     "controller_mode_toggle_status",
+                     window.controllerModeToggleStatus);
+  appendReceiptField(receipt,
+                     "controller_mode_toggle_reason_code",
+                     window.controllerModeToggleReasonCode);
+  appendReceiptField(receipt,
+                     "controller_mode_toggle_surface",
+                     window.controllerModeToggleSurface);
   appendReceiptField(receipt, "dev_tools_category",
                      frontendDevToolsCategoryName(frontend.devToolsCategory));
   appendReceiptField(receipt, "launch_action", window.launchAction);

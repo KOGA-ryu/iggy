@@ -133,6 +133,21 @@ InputAction pollGamepadMenuAction(GamepadMenuState& state) {
 #endif
 }
 
+GamepadControllerModeChordSample pollGamepadControllerModeChordSample(
+    GamepadMenuState& state) {
+#if defined(IGGY3D_HAS_SDL3)
+  return {
+      triggerDown(state, SDL_GAMEPAD_AXIS_LEFT_TRIGGER),
+      triggerDown(state, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER),
+      gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_LEFT_STICK),
+      gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_RIGHT_STICK),
+  };
+#else
+  (void)state;
+  return {};
+#endif
+}
+
 void pollGamepadGameplayActions(GamepadMenuState& state, ActionState& actions) {
 #if defined(IGGY3D_HAS_SDL3)
   if (!state.gamepadAvailable) {

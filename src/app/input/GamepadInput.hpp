@@ -41,9 +41,18 @@ struct GamepadRoomEditorInputSample {
   bool previousToolDown = false;
 };
 
+struct GamepadControllerModeChordSample {
+  bool leftTriggerDown = false;
+  bool rightTriggerDown = false;
+  bool leftStickPressDown = false;
+  bool rightStickPressDown = false;
+};
+
 void initializeGamepadMenuState(GamepadMenuState& state);
 void shutdownGamepadMenuState(GamepadMenuState& state);
 InputAction pollGamepadMenuAction(GamepadMenuState& state);
+GamepadControllerModeChordSample pollGamepadControllerModeChordSample(
+    GamepadMenuState& state);
 void pollGamepadGameplayActions(GamepadMenuState& state, ActionState& actions);
 void recordGamepadRoomEditorActions(GamepadMenuState& state,
                                     const GamepadRoomEditorInputSample& sample,

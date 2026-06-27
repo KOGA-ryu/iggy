@@ -112,6 +112,11 @@ iggy3d_add_unit_test(product_interaction_mode_tests
 set_tests_properties(product_interaction_mode_tests PROPERTIES
   LABELS "unit;app;product;input;interaction_mode;iggy3d")
 
+iggy3d_add_unit_test(product_interaction_mode_state_tests
+  tests/unit/product_interaction_mode_state_tests.cpp)
+set_tests_properties(product_interaction_mode_state_tests PROPERTIES
+  LABELS "unit;app;product;input;interaction_mode;state;iggy3d")
+
 iggy3d_add_unit_test(product_controller_action_map_tests
   tests/unit/product_controller_action_map_tests.cpp)
 set_tests_properties(product_controller_action_map_tests PROPERTIES

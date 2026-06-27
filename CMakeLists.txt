@@ -53,6 +53,7 @@ target_sources(iggy3d
     src/app/iggy3d/ProductGameplayTapeRunner.cpp
     src/app/iggy3d/ProductControllerActionMap.cpp
     src/app/iggy3d/ProductInteractionMode.cpp
+    src/app/iggy3d/ProductInteractionModeState.cpp
     src/app/iggy3d/ProductMenuTransitions.cpp
     src/app/iggy3d/ProductMovementDebugHud.cpp
     src/app/iggy3d/ProductNpcBehaviorDebugHud.cpp

@@ -1,0 +1,258 @@
+#include "app/iggy3d/ProductInteractionModeState.hpp"
+
+#include <array>
+#include <iostream>
+#include <string_view>
+
+#include "render/RenderDiagnostics.hpp"
+
+namespace {
+
+bool expect(bool condition, std::string_view message) {
+  if (!condition) {
+    std::cerr << "FAIL: " << message << '\n';
+  }
+  return condition;
+}
+
+iggy3d::ProductControllerModeChordSample fullChord() {
+  return {
+      true,
+      true,
+      true,
+      true,
+  };
+}
+
+bool defaultStateIsPlayerMode() {
+  const iggy3d::ProductAppWindowState window;
+  return expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+                "default interaction mode is player") &&
+         expect(!window.controllerModeToggleRequested,
+                "default toggle not requested") &&
+         expect(!window.controllerModeToggleAccepted,
+                "default toggle not accepted") &&
+         expect(window.controllerModeToggleStatus ==
+                    "interaction_mode_toggle_not_requested",
+                "default toggle status") &&
+         expect(window.controllerModeToggleSurface == "none",
+                "default toggle surface");
+}
+
+bool gamepadSampleConversionIsStable() {
+  const iggy3d::ProductControllerModeChordSample sample =
+      iggy3d::productControllerModeChordSampleFromGamepad(
+          {true, false, true, false});
+  return expect(sample.leftTriggerPressed, "left trigger converted") &&
+         expect(!sample.rightTriggerPressed, "right trigger converted") &&
+         expect(sample.leftStickPressed, "left stick press converted") &&
+         expect(!sample.rightStickPressed, "right stick press converted");
+}
+
+bool surfaceDerivationIsConservative() {
+  struct SurfaceCase {
+    iggy3d::FrontendScreen screen;
+    iggy3d::FrontendScreen childScreen;
+    bool gameplayActive;
+    bool roomEditingReady;
+    iggy3d::ProductInputSurface expected;
+  };
+  constexpr std::array cases{
+      SurfaceCase{iggy3d::FrontendScreen::Starter,
+                  iggy3d::FrontendScreen::Gameplay,
+                  false,
+                  false,
+                  iggy3d::ProductInputSurface::Starter},
+      SurfaceCase{iggy3d::FrontendScreen::Starter,
+                  iggy3d::FrontendScreen::NewWorld,
+                  false,
+                  false,
+                  iggy3d::ProductInputSurface::WorldSetup},
+      SurfaceCase{iggy3d::FrontendScreen::Starter,
+                  iggy3d::FrontendScreen::LoadSave,
+                  false,
+                  false,
+                  iggy3d::ProductInputSurface::SaveBrowser},
+      SurfaceCase{iggy3d::FrontendScreen::Starter,
+                  iggy3d::FrontendScreen::Settings,
+                  false,
+                  false,
+                  iggy3d::ProductInputSurface::Settings},
+      SurfaceCase{iggy3d::FrontendScreen::Starter,
+                  iggy3d::FrontendScreen::StarterDevTools,
+                  false,
+                  false,
+                  iggy3d::ProductInputSurface::DevTools},
+      SurfaceCase{iggy3d::FrontendScreen::Pause,
+                  iggy3d::FrontendScreen::Gameplay,
+                  true,
+                  false,
+                  iggy3d::ProductInputSurface::Pause},
+      SurfaceCase{iggy3d::FrontendScreen::Gameplay,
+                  iggy3d::FrontendScreen::Gameplay,
+                  true,
+                  false,
+                  iggy3d::ProductInputSurface::Gameplay},
+      SurfaceCase{iggy3d::FrontendScreen::Gameplay,
+                  iggy3d::FrontendScreen::Gameplay,
+                  true,
+                  true,
+                  iggy3d::ProductInputSurface::RoomEditor},
+      SurfaceCase{iggy3d::FrontendScreen::Gameplay,
+                  iggy3d::FrontendScreen::Gameplay,
+                  false,
+                  false,
+                  iggy3d::ProductInputSurface::None},
+  };
+
+  bool ok = true;
+  for (const SurfaceCase row : cases) {
+    iggy3d::FrontendState frontend;
+    frontend.screen = row.screen;
+    frontend.childScreen = row.childScreen;
+    iggy3d::ProductAppWindowState window;
+    window.gameplayActive = row.gameplayActive;
+    window.roomEditing.ready = row.roomEditingReady;
+    ok = expect(iggy3d::productInputSurfaceFor(frontend, window) ==
+                    row.expected,
+                "surface derivation case") &&
+         ok;
+  }
+  return ok;
+}
+
+bool gameplayChordTogglesAndLatches() {
+  iggy3d::FrontendState frontend;
+  frontend.screen = iggy3d::FrontendScreen::Gameplay;
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  iggy3d::ProductControllerModeChordState chordState;
+
+  const iggy3d::ProductInteractionModeToggleResult first =
+      iggy3d::applyProductInteractionModeFrameToggle(
+          {frontend, window, chordState, fullChord()});
+  const iggy3d::ProductInteractionModeToggleResult held =
+      iggy3d::applyProductInteractionModeFrameToggle(
+          {frontend, window, chordState, fullChord()});
+  const iggy3d::ProductInteractionModeToggleResult released =
+      iggy3d::applyProductInteractionModeFrameToggle(
+          {frontend, window, chordState, {}});
+  const iggy3d::ProductInteractionModeToggleResult pressedAgain =
+      iggy3d::applyProductInteractionModeFrameToggle(
+          {frontend, window, chordState, fullChord()});
+
+  return expect(first.toggleAccepted, "first gameplay chord accepted") &&
+         expect(first.mode == iggy3d::ProductInteractionMode::Creative,
+                "first gameplay chord sets creative") &&
+         expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+                "re-pressed gameplay chord returns player") &&
+         expect(held.toggleRequested, "held chord requested") &&
+         expect(!held.toggleAccepted, "held chord not accepted") &&
+         expect(held.status == "interaction_mode_chord_held",
+                "held chord status") &&
+         expect(!released.toggleRequested, "released chord not requested") &&
+         expect(released.status == "interaction_mode_chord_partial",
+                "released chord status") &&
+         expect(pressedAgain.toggleAccepted, "re-pressed chord accepted") &&
+         expect(pressedAgain.mode == iggy3d::ProductInteractionMode::Player,
+                "re-pressed chord toggles player") &&
+         expect(window.controllerModeToggleSurface == "gameplay",
+                "gameplay toggle surface") &&
+         expect(window.controllerModeToggleStatus ==
+                    "interaction_mode_toggled",
+                "final toggle status");
+}
+
+bool roomEditorSurfaceAllowsToggle() {
+  iggy3d::FrontendState frontend;
+  frontend.screen = iggy3d::FrontendScreen::Gameplay;
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  window.roomEditing.ready = true;
+  iggy3d::ProductControllerModeChordState chordState;
+
+  const iggy3d::ProductInteractionModeToggleResult result =
+      iggy3d::applyProductInteractionModeFrameToggle(
+          {frontend, window, chordState, fullChord()});
+  return expect(result.toggleAccepted, "room editor chord accepted") &&
+         expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+                "room editor toggles mode") &&
+         expect(window.controllerModeToggleSurface == "room_editor",
+                "room editor surface recorded");
+}
+
+bool blockedSurfaceDoesNotToggle() {
+  iggy3d::FrontendState frontend;
+  frontend.screen = iggy3d::FrontendScreen::Starter;
+  iggy3d::ProductAppWindowState window;
+  iggy3d::ProductControllerModeChordState chordState;
+
+  const iggy3d::ProductInteractionModeToggleResult result =
+      iggy3d::applyProductInteractionModeFrameToggle(
+          {frontend, window, chordState, fullChord()});
+  return expect(result.toggleRequested, "starter chord requested") &&
+         expect(!result.toggleAccepted, "starter chord rejected") &&
+         expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+                "starter preserves player mode") &&
+         expect(window.controllerModeToggleStatus ==
+                    "interaction_mode_surface_blocked",
+                "starter blocked status") &&
+         expect(window.controllerModeToggleReasonCode ==
+                    "interaction_mode_surface_blocked",
+                "starter blocked reason") &&
+         expect(window.controllerModeToggleSurface == "starter",
+                "starter surface recorded");
+}
+
+bool receiptFieldsExposeInteractionModeProof() {
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductWorldTemplate world;
+  iggy3d::FrontendState frontend;
+  iggy3d::FrontendSettings settings;
+  iggy3d::ProductAppWindowState window;
+  iggy3d::ProductSaveBridgeResult saves;
+
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.controllerModeToggleRequested = true;
+  window.controllerModeToggleAccepted = true;
+  window.controllerModeToggleStatus = "interaction_mode_toggled";
+  window.controllerModeToggleReasonCode = "interaction_mode_toggled";
+  window.controllerModeToggleSurface = "gameplay";
+
+  const iggy3d::RenderReceipt receipt =
+      iggy3d::buildProductAppReceipt(options, world, frontend, settings, window,
+                                     saves);
+  return expect(iggy3d::hasReceiptField(receipt, "interaction_mode", "creative"),
+                "receipt interaction mode") &&
+         expect(iggy3d::hasReceiptField(receipt,
+                                        "controller_mode_toggle_requested",
+                                        "true"),
+                "receipt toggle requested") &&
+         expect(iggy3d::hasReceiptField(receipt,
+                                        "controller_mode_toggle_accepted",
+                                        "true"),
+                "receipt toggle accepted") &&
+         expect(iggy3d::hasReceiptField(receipt,
+                                        "controller_mode_toggle_status",
+                                        "interaction_mode_toggled"),
+                "receipt toggle status") &&
+         expect(iggy3d::hasReceiptField(receipt,
+                                        "controller_mode_toggle_reason_code",
+                                        "interaction_mode_toggled"),
+                "receipt toggle reason") &&
+         expect(iggy3d::hasReceiptField(receipt,
+                                        "controller_mode_toggle_surface",
+                                        "gameplay"),
+                "receipt toggle surface");
+}
+
+}  // namespace
+
+int main() {
+  const bool ok =
+      defaultStateIsPlayerMode() && gamepadSampleConversionIsStable() &&
+      surfaceDerivationIsConservative() && gameplayChordTogglesAndLatches() &&
+      roomEditorSurfaceAllowsToggle() && blockedSurfaceDoesNotToggle() &&
+      receiptFieldsExposeInteractionModeProof();
+  return ok ? 0 : 1;
+}
