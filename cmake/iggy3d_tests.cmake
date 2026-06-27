@@ -455,6 +455,11 @@ iggy3d_add_unit_test(physics_body_delta_accumulator_tests
 set_tests_properties(physics_body_delta_accumulator_tests PROPERTIES
   LABELS "unit;runtime;physics;body_delta;iggy3d")
 
+iggy3d_add_unit_test(physics_collider_bake_tests
+  tests/unit/physics_collider_bake_tests.cpp)
+set_tests_properties(physics_collider_bake_tests PROPERTIES
+  LABELS "unit;runtime;physics;collider_bake;iggy3d")
+
 iggy3d_add_unit_test(physics_shape_store_tests tests/unit/physics_shape_store_tests.cpp)
 set_tests_properties(physics_shape_store_tests PROPERTIES
   LABELS "unit;runtime;physics;shape_store;iggy3d")
