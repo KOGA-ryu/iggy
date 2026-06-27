@@ -102,3 +102,4 @@ BG-1101	src/runtime/player/PlayerMotor.cpp	runtime player opt-in physics movemen
 BG-1102	src/runtime/movement/MovementSystem.cpp	runtime movement opt-in physics planner policy	codex	2026-06-27
 BG-1103	src/runtime/session/Session.cpp	transient SessionTickOptions physics movement planner policy	codex	2026-06-27
 BG-1104	src/runtime/session/SessionRunner.cpp	transient SessionRunner physics movement planner option policy	codex	2026-06-27
+BG-1105	src/runtime/physics/PhysicsFrameStats.cpp	runtime physics frame stats aggregation and finite scalar policy	codex	2026-06-27

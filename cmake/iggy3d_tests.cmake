@@ -470,6 +470,11 @@ iggy3d_add_unit_test(physics_collision_queries_tests
 set_tests_properties(physics_collision_queries_tests PROPERTIES
   LABELS "unit;runtime;physics;collision_queries;iggy3d")
 
+iggy3d_add_unit_test(physics_frame_stats_tests
+  tests/unit/physics_frame_stats_tests.cpp)
+set_tests_properties(physics_frame_stats_tests PROPERTIES
+  LABELS "unit;runtime;physics;frame_stats;iggy3d")
+
 iggy3d_add_unit_test(physics_kinematic_motor_tests
   tests/unit/physics_kinematic_motor_tests.cpp)
 set_tests_properties(physics_kinematic_motor_tests PROPERTIES
