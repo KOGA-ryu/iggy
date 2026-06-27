@@ -11,6 +11,7 @@
 #include "app/iggy3d/ProductInteractionModeHud.hpp"
 #include "app/iggy3d/ProductMovementDebugHud.hpp"
 #include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
+#include "app/iggy3d/ProductPhysicsDebugHud.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/room_editor/ProductRoomEditorHud.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
@@ -71,6 +72,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const ProductTopDownMapOverlay* topDownMapOverlay,
                                          const ProductMovementDebugHud* movementHud,
                                          const ProductNpcBehaviorDebugHud* npcHud,
+                                         const ProductPhysicsDebugHud* physicsHud,
                                          const ProductRoomEditorHud* roomEditorHud,
                                          std::size_t sceneItemCount,
                                          const DebugProjectionResult* debug,

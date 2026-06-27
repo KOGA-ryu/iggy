@@ -20,6 +20,7 @@
 #include "app/iggy3d/ProductInteractionModeHud.hpp"
 #include "app/iggy3d/ProductMovementDebugHud.hpp"
 #include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
+#include "app/iggy3d/ProductPhysicsDebugHud.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/room_editor/ProductRoomEditorHud.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
@@ -380,6 +381,36 @@ void drawNpcBehaviorDebugHud(SDL_Renderer& renderer,
   }
 }
 
+void drawPhysicsDebugHud(SDL_Renderer& renderer,
+                         const ProductPhysicsDebugHud* hud) {
+  // branch-gate: BG-1110
+  if (hud == nullptr || !hud->visible) {
+    return;
+  }
+
+  setColor(renderer, 14, 21, 23);
+  fillRect(renderer, 92.0F, 360.0F, 720.0F, 150.0F);
+  setColor(renderer, 126, 201, 176);
+  drawText(renderer, "PHYSICS DEBUG", 108.0F, 378.0F, 2.0F);
+
+  float y = 408.0F;
+  std::uint64_t drawn = 0;
+  for (const ProductPhysicsDebugHudLine& line : hud->lines) {
+    // branch-gate: BG-1110
+    if (!line.visible) {
+      continue;
+    }
+    // branch-gate: BG-1110
+    if (drawn >= 5U) {
+      break;
+    }
+    setFeedbackToneColor(renderer, line.tone);
+    drawText(renderer, line.text, 108.0F, y, 1.0F);
+    y += 20.0F;
+    ++drawn;
+  }
+}
+
 void drawRoomEditorHud(SDL_Renderer& renderer,
                        const ProductRoomEditorHud* hud) {
   // branch-gate: BG-1035
@@ -721,6 +752,7 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
                        const ProductTopDownMapOverlay* topDownMapOverlay,
                        const ProductMovementDebugHud* movementHud,
                        const ProductNpcBehaviorDebugHud* npcHud,
+                       const ProductPhysicsDebugHud* physicsHud,
                        const ProductRoomEditorHud* roomEditorHud,
                        std::size_t sceneItemCount,
                        const DebugProjectionResult* debug,
@@ -745,6 +777,7 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
   drawText(renderer, roundedDegrees(cameraPitchDegrees), 974.0F, 356.0F, 2.0F);
   drawMovementDebugHud(renderer, movementHud);
   drawNpcBehaviorDebugHud(renderer, npcHud);
+  drawPhysicsDebugHud(renderer, physicsHud);
   drawRoomEditorHud(renderer, roomEditorHud);
   drawGameplayFeedback(renderer, feedback);
   drawText(renderer, "RUNTIME OWNS GAME STATE", 88.0F, 630.0F, 2.0F);
@@ -834,6 +867,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const ProductTopDownMapOverlay* topDownMapOverlay,
                                          const ProductMovementDebugHud* movementHud,
                                          const ProductNpcBehaviorDebugHud* npcHud,
+                                         const ProductPhysicsDebugHud* physicsHud,
                                          const ProductRoomEditorHud* roomEditorHud,
                                          std::size_t sceneItemCount,
                                          const DebugProjectionResult* debug,
@@ -847,7 +881,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
     state.cameraHeadingDrawn =
         drawGameplayPanel(renderer, runtimeStateHash, frame, feedback,
                           interactionModeHud, topDownMapOverlay, movementHud, npcHud,
-                          roomEditorHud, sceneItemCount, debug, cameraYawDegrees,
+                          physicsHud, roomEditorHud, sceneItemCount, debug, cameraYawDegrees,
                           cameraPitchDegrees);
     SDL_RenderPresent(&renderer);
     state.textDrawn = true;

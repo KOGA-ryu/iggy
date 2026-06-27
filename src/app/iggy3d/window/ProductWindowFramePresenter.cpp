@@ -93,6 +93,7 @@ void presentProductSdlFrame(ProductWindowFramePresenterRequest request) {
                           &request.projectionFrame.topDownMapOverlay,
                           &request.projectionFrame.movementHud,
                           &request.projectionFrame.npcBehaviorHud,
+                          &request.projectionFrame.physicsHud,
                           &request.projectionFrame.roomEditorHud,
                           request.projectionFrame.sceneItemCount,
                           request.projectionFrame.debugPtr(),
