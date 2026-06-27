@@ -4,6 +4,7 @@
 #include "app/iggy3d/gameplay/ProductGameplayProjectionRefresh.hpp"
 #include "app/iggy3d/window/ProductWindowFramePresenter.hpp"
 #include "app/iggy3d/window/ProductWindowInputFrame.hpp"
+#include "app/iggy3d/window/ProductMouseCapturePolicy.hpp"
 #include "app/iggy3d/window/ProductWindowRendererLifecycle.hpp"
 #include "app/iggy3d/menu/ProductMenuInputRouter.hpp"
 
@@ -26,6 +27,24 @@ const char* productWindowTitle(const ProductAppWindowState& window) {
   return "iggy3d - Opening Menu";
 }
 
+void recordNoWindowMouseCapturePolicy(const FrontendState& frontend,
+                                      ProductAppWindowState& window) {
+  const ProductMouseCapturePolicy policy = buildProductMouseCapturePolicy({
+      window.gameplayActive,
+      window.interactionMode,
+      window.inputOwner,
+      frontendBlocksGameplayInput(frontend),
+      true,
+      false,
+  });
+  window.mouseCaptureRequested = policy.requested;
+  window.mouseCaptureActive = false;
+  window.mouseCaptureStatus = policy.status;
+  window.mouseCaptureReasonCode = policy.reasonCode;
+  window.mouseCaptureMode = policy.mode;
+  window.mouseCaptureInputOwner = policy.inputOwner;
+}
+
 }  // namespace
 
 ProductAppWindowState runProductWindowLoop(const ProductWindowLoopRequest& request) {
@@ -40,6 +59,7 @@ ProductAppWindowState runProductWindowLoop(const ProductWindowLoopRequest& reque
       menuOwnerBlocksGameplay(window.inputOwner);
   // branch-gate: BG-1031
   if (!window.requested) {
+    recordNoWindowMouseCapturePolicy(request.frontend, window);
     return window;
   }
 

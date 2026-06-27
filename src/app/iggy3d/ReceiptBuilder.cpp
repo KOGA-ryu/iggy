@@ -171,6 +171,9 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "mouse_capture_status", window.mouseCaptureStatus);
   appendReceiptField(receipt, "mouse_capture_reason_code",
                      window.mouseCaptureReasonCode);
+  appendReceiptField(receipt, "mouse_capture_mode", window.mouseCaptureMode);
+  appendReceiptField(receipt, "mouse_capture_input_owner",
+                     window.mouseCaptureInputOwner);
   appendReceiptField(receipt,
                      "controller_mode_toggle_requested",
                      window.controllerModeToggleRequested);

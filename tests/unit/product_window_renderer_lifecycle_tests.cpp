@@ -1,9 +1,11 @@
 #include "app/iggy3d/window/ProductWindowRendererLifecycle.hpp"
 
 #include <iostream>
+#include <optional>
 #include <string_view>
 
 #include "app/iggy3d/menu/ProductUiDrawList.hpp"
+#include "app/iggy3d/window/ProductWindowLoop.hpp"
 #include "render/RenderDiagnostics.hpp"
 
 namespace {
@@ -299,6 +301,58 @@ bool productReceiptCarriesReadinessFields() {
                 "receipt includes menu ui selected action");
 }
 
+bool noWindowGameplayReportsMouseCaptureNotApplied() {
+  iggy3d::ProductAppOptions options;
+  options.windowMode = iggy3d::ProductWindowMode::NoWindow;
+  iggy3d::ProductWorldTemplate world;
+  iggy3d::FrontendState frontend;
+  frontend.screen = iggy3d::FrontendScreen::Gameplay;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::WorldSetupDraft worldSetupDraft;
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  iggy3d::FrontendSettings settings;
+  iggy3d::ProductSaveBridgeResult saves;
+
+  const iggy3d::ProductAppWindowState result =
+      iggy3d::runProductWindowLoop(iggy3d::ProductWindowLoopRequest{
+          options, world, frontend, activeSession, worldSetupDraft, window,
+          settings, saves});
+  const iggy3d::RenderReceipt receipt =
+      iggy3d::buildProductAppReceipt(options, world, frontend, settings, result,
+                                     saves);
+
+  return expect(!result.requested, "no-window not requested") &&
+         expect(!result.created, "no-window not created") &&
+         expect(!result.mouseCaptureRequested,
+                "no-window mouse capture not requested") &&
+         expect(!result.mouseCaptureActive,
+                "no-window mouse capture not active") &&
+         expect(result.mouseCaptureStatus == "mouse_capture_not_requested",
+                "no-window mouse capture status") &&
+         expect(result.mouseCaptureReasonCode == "mouse_capture_no_window",
+                "no-window mouse capture reason") &&
+         expect(result.mouseCaptureMode == "no_window",
+                "no-window mouse capture mode") &&
+         expect(result.mouseCaptureInputOwner == "gameplay",
+                "no-window mouse capture owner") &&
+         expect(iggy3d::hasReceiptField(receipt, "mouse_capture_requested",
+                                        "false"),
+                "no-window receipt capture requested") &&
+         expect(iggy3d::hasReceiptField(receipt, "mouse_capture_active",
+                                        "false"),
+                "no-window receipt capture active") &&
+         expect(iggy3d::hasReceiptField(receipt, "mouse_capture_reason_code",
+                                        "mouse_capture_no_window"),
+                "no-window receipt capture reason") &&
+         expect(iggy3d::hasReceiptField(receipt, "mouse_capture_mode",
+                                        "no_window"),
+                "no-window receipt capture mode") &&
+         expect(iggy3d::hasReceiptField(receipt, "mouse_capture_input_owner",
+                                        "gameplay"),
+                "no-window receipt capture owner");
+}
+
 }  // namespace
 
 int main() {
@@ -311,7 +365,8 @@ int main() {
       roomMeshFramePathReportsGameplayReadyWhenBackendBuilt() &&
       starterMenuUiDrawListStatusIsStable() &&
       starterMenuSubmitMarksFramePresented() &&
-      productReceiptCarriesReadinessFields();
+      productReceiptCarriesReadinessFields() &&
+      noWindowGameplayReportsMouseCaptureNotApplied();
   if (!ok) {
     return 1;
   }

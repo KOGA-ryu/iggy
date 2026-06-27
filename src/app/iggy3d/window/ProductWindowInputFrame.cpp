@@ -81,6 +81,8 @@ void recordProductMouseCaptureResult(ProductAppWindowState& window,
   window.mouseCaptureActive = false;
   window.mouseCaptureStatus = policy.status;
   window.mouseCaptureReasonCode = policy.reasonCode;
+  window.mouseCaptureMode = policy.mode;
+  window.mouseCaptureInputOwner = policy.inputOwner;
   // branch-gate: BG-1076
   if (platform != nullptr) {
     window.mouseCaptureRequested = platform->requested;
@@ -100,6 +102,7 @@ void updateProductWindowMouseCapture(const FrontendState& frontend,
       owner,
       frontendBlocksGameplayInput(frontend),
       productWindowFocused(sdlWindow),
+      sdlWindow != nullptr,
   });
   // branch-gate: BG-1076
   if (sdlWindow == nullptr) {

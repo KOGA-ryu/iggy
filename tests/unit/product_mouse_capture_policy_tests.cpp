@@ -24,6 +24,8 @@ struct MouseCapturePolicyCase {
   bool requested = false;
   const char* status = "mouse_capture_not_requested";
   const char* reasonCode = "mouse_capture_gameplay_inactive";
+  const char* mode = "none";
+  const char* inputOwner = "none";
 };
 
 bool policyCases() {
@@ -40,6 +42,8 @@ bool policyCases() {
           true,
           "mouse_capture_requested",
           "mouse_capture_gameplay_mouselook",
+          "relative",
+          "gameplay",
       },
       {
           "inactive_gameplay_releases",
@@ -53,6 +57,8 @@ bool policyCases() {
           false,
           "mouse_capture_not_requested",
           "mouse_capture_gameplay_inactive",
+          "none",
+          "gameplay",
       },
       {
           "pause_menu_releases",
@@ -66,6 +72,38 @@ bool policyCases() {
           false,
           "mouse_capture_not_requested",
           "mouse_capture_frontend_blocked",
+          "gameplay_released",
+          "pause",
+      },
+      {
+          "starter_menu_releases",
+          {
+              true,
+              iggy3d::ProductInteractionMode::Player,
+              iggy3d::MenuOwner::Starter,
+              true,
+              true,
+          },
+          false,
+          "mouse_capture_not_requested",
+          "mouse_capture_frontend_blocked",
+          "gameplay_released",
+          "starter",
+      },
+      {
+          "settings_menu_releases",
+          {
+              true,
+              iggy3d::ProductInteractionMode::Player,
+              iggy3d::MenuOwner::Settings,
+              true,
+              true,
+          },
+          false,
+          "mouse_capture_not_requested",
+          "mouse_capture_frontend_blocked",
+          "gameplay_released",
+          "settings",
       },
       {
           "editor_owner_releases",
@@ -79,6 +117,8 @@ bool policyCases() {
           false,
           "mouse_capture_not_requested",
           "mouse_capture_input_owner_blocked",
+          "gameplay_released",
+          "editor",
       },
       {
           "creative_gameplay_releases",
@@ -92,6 +132,8 @@ bool policyCases() {
           false,
           "mouse_capture_not_requested",
           "mouse_capture_mode_blocked",
+          "gameplay_released",
+          "gameplay",
       },
       {
           "unfocused_window_releases",
@@ -105,6 +147,24 @@ bool policyCases() {
           false,
           "mouse_capture_not_requested",
           "mouse_capture_window_unfocused",
+          "gameplay_released",
+          "gameplay",
+      },
+      {
+          "no_window_reports_no_capture",
+          {
+              true,
+              iggy3d::ProductInteractionMode::Player,
+              iggy3d::MenuOwner::Gameplay,
+              false,
+              true,
+              false,
+          },
+          false,
+          "mouse_capture_not_requested",
+          "mouse_capture_no_window",
+          "no_window",
+          "gameplay",
       },
   };
 
@@ -115,11 +175,17 @@ bool policyCases() {
     const std::string requestedMessage = std::string(testCase.name) + " requested";
     const std::string statusMessage = std::string(testCase.name) + " status";
     const std::string reasonMessage = std::string(testCase.name) + " reason";
+    const std::string modeMessage = std::string(testCase.name) + " mode";
+    const std::string ownerMessage = std::string(testCase.name) + " owner";
     ok = expect(policy.requested == testCase.requested, requestedMessage.c_str()) &&
          ok;
     ok = expect(policy.status == testCase.status, statusMessage.c_str()) &&
          ok;
     ok = expect(policy.reasonCode == testCase.reasonCode, reasonMessage.c_str()) &&
+         ok;
+    ok = expect(policy.mode == testCase.mode, modeMessage.c_str()) &&
+         ok;
+    ok = expect(policy.inputOwner == testCase.inputOwner, ownerMessage.c_str()) &&
          ok;
   }
   return ok;
@@ -136,6 +202,8 @@ bool receiptCarriesMouseCaptureProof() {
   window.mouseCaptureActive = true;
   window.mouseCaptureStatus = "mouse_capture_active";
   window.mouseCaptureReasonCode = "mouse_capture_active";
+  window.mouseCaptureMode = "relative";
+  window.mouseCaptureInputOwner = "gameplay";
 
   const iggy3d::RenderReceipt receipt =
       iggy3d::buildProductAppReceipt(options, world, frontend, settings, window,
@@ -152,7 +220,13 @@ bool receiptCarriesMouseCaptureProof() {
                 "receipt mouse capture status") &&
          expect(iggy3d::hasReceiptField(receipt, "mouse_capture_reason_code",
                                         "mouse_capture_active"),
-                "receipt mouse capture reason");
+                "receipt mouse capture reason") &&
+         expect(iggy3d::hasReceiptField(receipt, "mouse_capture_mode",
+                                        "relative"),
+                "receipt mouse capture mode") &&
+         expect(iggy3d::hasReceiptField(receipt, "mouse_capture_input_owner",
+                                        "gameplay"),
+                "receipt mouse capture owner");
 }
 
 }  // namespace

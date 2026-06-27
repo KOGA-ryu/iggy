@@ -143,6 +143,12 @@ int main() {
                "physics_movement_planner_disabled") &&
       hasField(fields, "physics_movement_planner_reason_code",
                "physics_movement_planner_disabled") &&
+      hasField(fields, "mouse_capture_requested", "false") &&
+      hasField(fields, "mouse_capture_active", "false") &&
+      hasField(fields, "mouse_capture_status", "mouse_capture_not_requested") &&
+      hasField(fields, "mouse_capture_reason_code", "mouse_capture_no_window") &&
+      hasField(fields, "mouse_capture_mode", "no_window") &&
+      hasField(fields, "mouse_capture_input_owner", "gameplay") &&
       hasField(fields, "target_discovered", "false") &&
       hasField(fields, "gameplay_reach_gate", "not_attempted") &&
       hasField(fields, "attack_executed", "false") &&

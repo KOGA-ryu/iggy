@@ -13,12 +13,15 @@ struct ProductMouseCapturePolicyRequest {
   MenuOwner inputOwner = MenuOwner::None;
   bool frontendBlocksGameplay = true;
   bool windowFocused = true;
+  bool windowCaptureSupported = true;
 };
 
 struct ProductMouseCapturePolicy {
   bool requested = false;
   std::string status = "mouse_capture_not_requested";
   std::string reasonCode = "mouse_capture_gameplay_inactive";
+  std::string mode = "none";
+  std::string inputOwner = "none";
 };
 
 ProductMouseCapturePolicy buildProductMouseCapturePolicy(

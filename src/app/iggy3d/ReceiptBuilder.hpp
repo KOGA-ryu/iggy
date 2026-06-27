@@ -47,6 +47,8 @@ struct ProductAppWindowState {
   bool mouseCaptureActive = false;
   std::string mouseCaptureStatus = "mouse_capture_not_requested";
   std::string mouseCaptureReasonCode = "mouse_capture_gameplay_inactive";
+  std::string mouseCaptureMode = "none";
+  std::string mouseCaptureInputOwner = "none";
   bool controllerModeToggleRequested = false;
   bool controllerModeToggleAccepted = false;
   std::string controllerModeToggleStatus = "interaction_mode_toggle_not_requested";
