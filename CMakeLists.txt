@@ -92,7 +92,7 @@ target_sources(iggy3d
     src/app/iggy3d/debug/TopDownMapOverlay.cpp
     src/app/iggy3d/menu/ProductUiDrawList.cpp
     src/app/iggy3d/ProductViewportFraming.cpp
-    src/app/iggy3d/window/ProductWindowFramePresenter.cpp
+    src/app/iggy3d/window/FramePresenter.cpp
     src/app/iggy3d/window/ProductWindowInputFrame.cpp
     src/app/iggy3d/window/ProductWindowLoop.cpp
     src/app/iggy3d/window/ProductWindowRendererLifecycle.cpp

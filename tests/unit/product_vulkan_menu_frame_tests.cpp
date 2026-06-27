@@ -1,4 +1,4 @@
-#include "app/iggy3d/window/ProductWindowFramePresenter.hpp"
+#include "app/iggy3d/window/FramePresenter.hpp"
 
 #include <iostream>
 #include <string_view>
