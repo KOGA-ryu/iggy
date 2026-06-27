@@ -1,6 +1,6 @@
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/ascii_room/Authoring.hpp"
-#include "app/iggy3d/save/ProductSavedRoomMarkerBinding.hpp"
+#include "app/iggy3d/save/RoomMarkerBinding.hpp"
 #include "config/RuntimeConfig.hpp"
 #include "runtime/session/Session.hpp"
 

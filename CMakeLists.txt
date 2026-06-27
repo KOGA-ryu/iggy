@@ -85,9 +85,9 @@ target_sources(iggy3d
     src/app/iggy3d/room_editor/EditingState.cpp
     src/app/iggy3d/room/ProductRoomVisualProof.cpp
     src/app/iggy3d/ProductScriptedGameplayDriver.cpp
-    src/app/iggy3d/save/ProductSavedRoomMarkerBinding.cpp
-    src/app/iggy3d/save/ProductSaveCatalog.cpp
-    src/app/iggy3d/save/ProductSaveFlow.cpp
+    src/app/iggy3d/save/RoomMarkerBinding.cpp
+    src/app/iggy3d/save/Catalog.cpp
+    src/app/iggy3d/save/Flow.cpp
     src/app/iggy3d/world/ProductNpcProfileAssignment.cpp
     src/app/iggy3d/debug/TopDownMapOverlay.cpp
     src/app/iggy3d/menu/DrawList.cpp

@@ -13,7 +13,7 @@
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/world/ProductPackageSessionSeed.hpp"
-#include "app/iggy3d/save/ProductSavedRoomMarkerBinding.hpp"
+#include "app/iggy3d/save/RoomMarkerBinding.hpp"
 #include "app/iggy3d/world/ProductWorldCreation.hpp"
 #include "content/PackageLoader.hpp"
 #include "render/RenderDiagnostics.hpp"

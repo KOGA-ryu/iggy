@@ -1,4 +1,4 @@
-#include "app/iggy3d/save/ProductSaveCatalog.hpp"
+#include "app/iggy3d/save/Catalog.hpp"
 
 #include <algorithm>
 
