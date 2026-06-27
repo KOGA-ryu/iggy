@@ -51,12 +51,18 @@ int main() {
                                     2,
                                     "training_dummy",
                                     true));
+  drawList.items.push_back(
+      drawItem(iggy3d::ProductPrimitiveDrawKind::RoomEditorPlacementPreview,
+               0,
+               "edit_floor_1",
+               false));
   drawList.itemCount = static_cast<std::uint64_t>(drawList.items.size());
 
   iggy3d::ProductViewportFrame frame =
       iggy3d::buildProductViewportFrame(drawList, {});
   frame.framedItems[0].onScreen = true;
   frame.framedItems[1].onScreen = true;
+  frame.framedItems[2].onScreen = true;
 
   iggy3d::ProductGameplayFeedback feedback;
   feedback.visible = true;
@@ -68,19 +74,28 @@ int main() {
   ok &= expect(bridge.ready, "bridge ready with draw list and frame");
   ok &= expect(bridge.viewFrameReady, "view frame ready");
   ok &= expect(bridge.feedbackReady, "feedback ready");
-  ok &= expect(bridge.drawItemCount == 2U, "draw item count copied");
-  ok &= expect(bridge.frameItemCount == 2U, "frame item count");
-  ok &= expect(bridge.onScreenItemCount == 2U, "on screen count");
+  ok &= expect(bridge.drawItemCount == 3U, "draw item count copied");
+  ok &= expect(bridge.frameItemCount == 3U, "frame item count");
+  ok &= expect(bridge.onScreenItemCount == 3U, "on screen count");
   ok &= expect(bridge.targetItemCount == 1U, "target count");
   ok &= expect(bridge.feedbackLineCount == 1U, "visible feedback line count");
   ok &= expect(bridge.gridVisible, "grid visible copied");
   ok &= expect(bridge.playerVisible, "player visible copied");
   ok &= expect(bridge.objectiveVisible, "objective visible copied");
   ok &= expect(bridge.targetIndicatorVisible, "target indicator copied");
-  ok &= expect(bridge.items.size() == 2U, "bridge item metadata count");
+  ok &= expect(bridge.roomEditorPlacementPreviewVisible,
+               "preview bridge visible");
+  ok &= expect(bridge.roomEditorPlacementPreviewCount == 1U,
+               "preview bridge count");
+  ok &= expect(bridge.items.size() == 3U, "bridge item metadata count");
   ok &= expect(bridge.items[1].entityId == 2U, "entity id copied");
   ok &= expect(bridge.items[1].stableName == "training_dummy", "stable name copied");
   ok &= expect(bridge.items[1].targetable, "targetable copied");
+  ok &= expect(bridge.items[2].kind ==
+                   iggy3d::ProductPrimitiveDrawKind::RoomEditorPlacementPreview,
+               "preview kind copied");
+  ok &= expect(bridge.items[2].stableName == "edit_floor_1",
+               "preview stable name copied");
 
   if (!ok) {
     return 1;

@@ -42,6 +42,7 @@ bool isFloorKind(ProductPrimitiveDrawKind kind) {
     case ProductPrimitiveDrawKind::PlayerFocusIndicator:
     case ProductPrimitiveDrawKind::DoorMarker:
     case ProductPrimitiveDrawKind::RoomEditorCursor:
+    case ProductPrimitiveDrawKind::RoomEditorPlacementPreview:
       return false;
   }
   return false;

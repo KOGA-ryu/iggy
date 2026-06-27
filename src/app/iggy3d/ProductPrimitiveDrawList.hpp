@@ -14,6 +14,7 @@ namespace iggy3d {
 struct DebugProjectionResult;
 struct ProductActiveRoomCollisionState;
 struct ProductRoomEditorOverlay;
+struct ProductRoomEditorPreviewOverlay;
 struct SceneProjectionResult;
 
 enum class ProductPrimitiveDrawKind : std::uint8_t {
@@ -32,6 +33,7 @@ enum class ProductPrimitiveDrawKind : std::uint8_t {
   BlockedSlopeTile,
   WallTile,
   RoomEditorCursor,
+  RoomEditorPlacementPreview,
 };
 
 struct ProductPrimitiveColor {
@@ -82,6 +84,8 @@ struct ProductPrimitiveDrawList {
   std::uint64_t wallTileCount = 0;
   bool roomEditorCursorVisible = false;
   std::uint64_t roomEditorCursorCount = 0;
+  bool roomEditorPlacementPreviewVisible = false;
+  std::uint64_t roomEditorPlacementPreviewCount = 0;
 };
 
 ProductPrimitiveDrawList buildProductPrimitiveDrawList(
@@ -89,6 +93,7 @@ ProductPrimitiveDrawList buildProductPrimitiveDrawList(
     const DebugProjectionResult* debug,
     const RoomAsset* activeRoom = nullptr,
     const ProductActiveRoomCollisionState* activeRoomCollision = nullptr,
-    const ProductRoomEditorOverlay* roomEditorOverlay = nullptr);
+    const ProductRoomEditorOverlay* roomEditorOverlay = nullptr,
+    const ProductRoomEditorPreviewOverlay* roomEditorPreviewOverlay = nullptr);
 
 }  // namespace iggy3d

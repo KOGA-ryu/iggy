@@ -26,8 +26,12 @@ struct ProductRoomEditorPlacementPreviewResult {
   std::int32_t gridZ = 0;
   std::int32_t storyIndex = 0;
   Vec3 worldCenter;
+  Vec3 floorSizeMeters;
   Vec3 wallStartMeters;
   Vec3 wallEndMeters;
+  float wallBottomY = 0.0F;
+  float wallHeightMeters = 0.0F;
+  float wallThicknessMeters = 0.0F;
   ProductRoomGeometryOptimizationReport before;
   ProductRoomGeometryOptimizationReport after;
   std::uint64_t floorCountBefore = 0;

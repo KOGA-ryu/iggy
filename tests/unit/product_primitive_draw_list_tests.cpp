@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/ProductRoomEditorOverlay.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
@@ -256,6 +257,44 @@ int main() {
                "open room door maps to door marker");
   ok &= expect(openDoorRoomList.items[0].doorOpen,
                "open room door item is open");
+
+  iggy3d::ProductRoomEditorOverlay cursorOverlay;
+  cursorOverlay.visible = true;
+  cursorOverlay.itemCount = 1;
+  cursorOverlay.worldPosition = {6.0F, 0.08F, 0.0F};
+  iggy3d::ProductRoomEditorPreviewOverlay previewOverlay;
+  previewOverlay.visible = true;
+  previewOverlay.itemCount = 1;
+  previewOverlay.candidateId = "edit_floor_1";
+  previewOverlay.tool = iggy3d::ProductRoomEditorTool::Floor;
+  previewOverlay.worldPosition = {7.0F, -0.05F, 0.0F};
+  previewOverlay.floorSizeMeters = {1.0F, 0.10F, 1.0F};
+  const iggy3d::ProductPrimitiveDrawList previewRoomList =
+      iggy3d::buildProductPrimitiveDrawList(nullptr,
+                                            nullptr,
+                                            &room,
+                                            nullptr,
+                                            &cursorOverlay,
+                                            &previewOverlay);
+  ok &= expect(previewRoomList.itemCount == 7U,
+               "room plus cursor plus preview item count");
+  ok &= expect(previewRoomList.roomGeometryCount == 5U,
+               "preview does not affect room geometry count");
+  ok &= expect(previewRoomList.floorTileCount == 1U,
+               "preview does not affect real floor tile count");
+  ok &= expect(previewRoomList.wallTileCount == 1U,
+               "preview does not affect real wall tile count");
+  ok &= expect(previewRoomList.roomEditorCursorCount == 1U,
+               "cursor overlay remains separate");
+  ok &= expect(previewRoomList.roomEditorPlacementPreviewCount == 1U,
+               "preview overlay counted separately");
+  ok &= expect(previewRoomList.roomEditorPlacementPreviewVisible,
+               "preview overlay visible");
+  ok &= expect(previewRoomList.items.back().kind ==
+                   iggy3d::ProductPrimitiveDrawKind::RoomEditorPlacementPreview,
+               "preview overlay draw kind");
+  ok &= expect(previewRoomList.items.back().stableName == "edit_floor_1",
+               "preview overlay stable name");
 
   if (!ok) {
     return 1;

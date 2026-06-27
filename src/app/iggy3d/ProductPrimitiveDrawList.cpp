@@ -1,6 +1,7 @@
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <string>
 #include <string_view>
@@ -72,6 +73,8 @@ ProductPrimitiveColor colorForRoomKind(ProductPrimitiveDrawKind kind) {
       return {76, 86, 92};
     case ProductPrimitiveDrawKind::RoomEditorCursor:
       return {245, 214, 96};
+    case ProductPrimitiveDrawKind::RoomEditorPlacementPreview:
+      return {105, 205, 228};
     case ProductPrimitiveDrawKind::PlayerMarker:
     case ProductPrimitiveDrawKind::NpcMarker:
     case ProductPrimitiveDrawKind::PickupMarker:
@@ -266,6 +269,10 @@ void updateCounts(ProductPrimitiveDrawList& list, const ProductPrimitiveDrawItem
       ++list.roomEditorCursorCount;
       list.roomEditorCursorVisible = true;
       break;
+    case ProductPrimitiveDrawKind::RoomEditorPlacementPreview:
+      ++list.roomEditorPlacementPreviewCount;
+      list.roomEditorPlacementPreviewVisible = true;
+      break;
   }
 }
 
@@ -387,6 +394,54 @@ void appendRoomEditorOverlay(const ProductRoomEditorOverlay* overlay,
   updateCounts(list, item);
 }
 
+Vec3 previewWallCenter(const ProductRoomEditorPreviewOverlay& overlay) {
+  return {(overlay.wallStartMeters.x + overlay.wallEndMeters.x) * 0.5F,
+          overlay.wallBottomY + overlay.wallHeightMeters * 0.5F,
+          (overlay.wallStartMeters.z + overlay.wallEndMeters.z) * 0.5F};
+}
+
+Vec3 previewWallExtents(const ProductRoomEditorPreviewOverlay& overlay) {
+  const float lengthX = std::abs(overlay.wallEndMeters.x - overlay.wallStartMeters.x);
+  const float lengthZ = std::abs(overlay.wallEndMeters.z - overlay.wallStartMeters.z);
+  return {std::max(lengthX, overlay.wallThicknessMeters),
+          overlay.wallHeightMeters,
+          std::max(lengthZ, overlay.wallThicknessMeters)};
+}
+
+void appendRoomEditorPlacementPreview(
+    const ProductRoomEditorPreviewOverlay* overlay,
+    ProductPrimitiveDrawList& list) {
+  // branch-gate: BG-1047
+  if (overlay == nullptr || !overlay->visible || overlay->itemCount == 0U) {
+    return;
+  }
+
+  ProductPrimitiveDrawItem item;
+  item.kind = ProductPrimitiveDrawKind::RoomEditorPlacementPreview;
+  item.stableName = overlay->candidateId;
+  item.visible = true;
+  item.targetable = false;
+  item.interactable = false;
+  item.tactical = false;
+  item.color = colorForRoomKind(item.kind);
+  // branch-gate: BG-1047
+  item.markerSize = overlay->tool == ProductRoomEditorTool::Wall ? 58.0F : 52.0F;
+
+  // branch-gate: BG-1047
+  if (overlay->tool == ProductRoomEditorTool::Wall) {
+    item.worldPosition = previewWallCenter(*overlay);
+    item.worldBounds =
+        aabbFromCenterExtents(item.worldPosition, previewWallExtents(*overlay) * 0.5F);
+  } else {
+    item.worldPosition = overlay->worldPosition;
+    item.worldBounds =
+        aabbFromCenterExtents(item.worldPosition, overlay->floorSizeMeters * 0.5F);
+  }
+
+  list.items.push_back(item);
+  updateCounts(list, item);
+}
+
 }  // namespace
 
 ProductPrimitiveDrawList buildProductPrimitiveDrawList(
@@ -394,15 +449,18 @@ ProductPrimitiveDrawList buildProductPrimitiveDrawList(
     const DebugProjectionResult* debug,
     const RoomAsset* activeRoom,
     const ProductActiveRoomCollisionState* activeRoomCollision,
-    const ProductRoomEditorOverlay* roomEditorOverlay) {
+    const ProductRoomEditorOverlay* roomEditorOverlay,
+    const ProductRoomEditorPreviewOverlay* roomEditorPreviewOverlay) {
   (void)debug;
   ProductPrimitiveDrawList list;
   list.gridVisible =
       scene != nullptr || activeRoom != nullptr ||
-      (roomEditorOverlay != nullptr && roomEditorOverlay->visible);
+      (roomEditorOverlay != nullptr && roomEditorOverlay->visible) ||
+      (roomEditorPreviewOverlay != nullptr && roomEditorPreviewOverlay->visible);
   appendRoomGeometry(activeRoom, list);
   appendOpenDoorMarkers(activeRoom, activeRoomCollision, list);
   appendRoomEditorOverlay(roomEditorOverlay, list);
+  appendRoomEditorPlacementPreview(roomEditorPreviewOverlay, list);
   if (scene == nullptr) {
     return list;
   }

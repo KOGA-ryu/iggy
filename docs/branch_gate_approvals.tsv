@@ -44,3 +44,6 @@ BG-1042	src/app/iggy3d/ProductRoomEditorCursor.cpp	room editor wall direction cl
 BG-1043	src/app/iggy3d/ProductRoomEditorCursor.cpp	pure room editor mouse grid pick validation	codex	2026-06-26
 BG-1044	src/app/iggy3d/product/AutomationRoomEditing.cpp	room editor mouse pick automation validation	codex	2026-06-26
 BG-1045	src/app/iggy3d/ProductRoomEditorPreview.cpp	room editor phantom placement preview validation	codex	2026-06-26
+BG-1046	src/app/iggy3d/ProductRoomEditorOverlay.cpp	room editor phantom placement preview overlay validation	codex	2026-06-26
+BG-1047	src/app/iggy3d/ProductPrimitiveDrawList.cpp	room editor phantom placement preview draw-list validation	codex	2026-06-26
+BG-1048	src/app/iggy3d/ProductRenderBridge.cpp	room editor phantom placement preview bridge count validation	codex	2026-06-26

@@ -1,6 +1,7 @@
 #include "app/iggy3d/ProductRoomEditorOverlay.hpp"
 
 #include <cmath>
+#include <string>
 
 namespace iggy3d {
 namespace {
@@ -54,6 +55,31 @@ Vec3 midpoint(Vec3 a, Vec3 b) {
   return {(a.x + b.x) * 0.5F, kCursorWallY, (a.z + b.z) * 0.5F};
 }
 
+ProductRoomEditorTool toolFromPreview(const ProductRoomEditorPlacementPreviewResult& preview) {
+  // branch-gate: BG-1046
+  if (preview.tool == "wall") {
+    return ProductRoomEditorTool::Wall;
+  }
+  return ProductRoomEditorTool::Floor;
+}
+
+ProductRoomEditorDirection wallDirectionFromPreview(
+    const ProductRoomEditorPlacementPreviewResult& preview) {
+  // branch-gate: BG-1046
+  if (preview.wallDirection == "right") {
+    return ProductRoomEditorDirection::Right;
+  }
+  // branch-gate: BG-1046
+  if (preview.wallDirection == "down") {
+    return ProductRoomEditorDirection::Down;
+  }
+  // branch-gate: BG-1046
+  if (preview.wallDirection == "left") {
+    return ProductRoomEditorDirection::Left;
+  }
+  return ProductRoomEditorDirection::Up;
+}
+
 }  // namespace
 
 ProductRoomEditorOverlay buildProductRoomEditorOverlay(
@@ -89,6 +115,51 @@ ProductRoomEditorOverlay buildProductRoomEditorOverlay(
   }
 
   overlay.worldPosition = floorCursorCenter(cursor);
+  return overlay;
+}
+
+ProductRoomEditorPreviewOverlay buildProductRoomEditorPreviewOverlay(
+    const ProductRoomEditorPlacementPreviewResult* preview) {
+  ProductRoomEditorPreviewOverlay overlay;
+  // branch-gate: BG-1046
+  if (preview == nullptr) {
+    overlay.status = "room_editor_preview_overlay_not_requested";
+    overlay.reasonCode = overlay.status;
+    return overlay;
+  }
+
+  overlay.candidateId = preview->primitiveId;
+  overlay.tool = toolFromPreview(*preview);
+  overlay.toolName = preview->tool;
+  overlay.wallDirection = wallDirectionFromPreview(*preview);
+  overlay.wallDirectionName = preview->wallDirection;
+  overlay.gridX = preview->gridX;
+  overlay.gridZ = preview->gridZ;
+  overlay.storyIndex = preview->storyIndex;
+  overlay.worldPosition = preview->worldCenter;
+  overlay.floorSizeMeters = preview->floorSizeMeters;
+  overlay.wallStartMeters = preview->wallStartMeters;
+  overlay.wallEndMeters = preview->wallEndMeters;
+  overlay.wallBottomY = preview->wallBottomY;
+  overlay.wallHeightMeters = preview->wallHeightMeters;
+  overlay.wallThicknessMeters = preview->wallThicknessMeters;
+  overlay.optimizedDrawDelta = preview->optimizedDrawDelta;
+  overlay.optimizedTriangleDelta = preview->optimizedTriangleDelta;
+  overlay.optimizedFloorRectDelta = preview->optimizedFloorRectDelta;
+  overlay.optimizedWallRunDelta = preview->optimizedWallRunDelta;
+  overlay.wouldMerge = preview->wouldMerge;
+
+  // branch-gate: BG-1046
+  if (!preview->ok) {
+    overlay.status = preview->status;
+    overlay.reasonCode = preview->reasonCode;
+    return overlay;
+  }
+
+  overlay.visible = true;
+  overlay.status = "room_editor_preview_overlay_ready";
+  overlay.reasonCode = overlay.status;
+  overlay.itemCount = 1;
   return overlay;
 }
 

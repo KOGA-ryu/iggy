@@ -249,6 +249,7 @@ void drawRoomTile(SDL_Renderer& renderer, const ProductViewportFramedItem& frame
     case ProductPrimitiveDrawKind::PlayerFocusIndicator:
     case ProductPrimitiveDrawKind::DoorMarker:
     case ProductPrimitiveDrawKind::RoomEditorCursor:
+    case ProductPrimitiveDrawKind::RoomEditorPlacementPreview:
       break;
   }
 }
@@ -411,6 +412,9 @@ void drawPrimitiveItem(SDL_Renderer& renderer, const ProductViewportFramedItem& 
       return;
     case ProductPrimitiveDrawKind::RoomEditorCursor:
       drawRoomEditorCursor(renderer, framed);
+      return;
+    case ProductPrimitiveDrawKind::RoomEditorPlacementPreview:
+      drawMarker(renderer, framed);
       return;
     case ProductPrimitiveDrawKind::FloorTile:
     case ProductPrimitiveDrawKind::ElevatedFloorTile:

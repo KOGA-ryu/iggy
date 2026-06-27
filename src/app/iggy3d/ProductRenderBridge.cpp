@@ -60,6 +60,11 @@ ProductRenderBridgeFrame buildProductRenderBridgeFrame(
         ++bridge.roomEditorCursorCount;
         bridge.roomEditorCursorVisible = true;
       }
+      // branch-gate: BG-1048
+      if (item.kind == ProductPrimitiveDrawKind::RoomEditorPlacementPreview) {
+        ++bridge.roomEditorPlacementPreviewCount;
+        bridge.roomEditorPlacementPreviewVisible = true;
+      }
     }
   }
 

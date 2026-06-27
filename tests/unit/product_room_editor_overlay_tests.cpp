@@ -100,11 +100,123 @@ bool drawListAppendIsDeterministic() {
                 "overlay draw x");
 }
 
+iggy3d::ProductRoomEditorPlacementPreviewResult previewFor(
+    iggy3d::ProductRoomEditorCursorState cursor,
+    iggy3d::EditableRoomDocument& document,
+    bool roomEditingReady = true) {
+  iggy3d::ProductRoomEditorPlacementPreviewRequest request;
+  request.roomEditingReady = roomEditingReady;
+  request.cursor = cursor;
+  request.document = &document;
+  return iggy3d::buildProductRoomEditorPlacementPreview(request);
+}
+
+bool previewOverlayHiddenForMissingAndRejectedPreview() {
+  iggy3d::EditableRoomDocument document;
+  iggy3d::ProductRoomEditorCursorState cursor;
+  const iggy3d::ProductRoomEditorPlacementPreviewResult notReady =
+      previewFor(cursor, document, false);
+
+  const iggy3d::ProductRoomEditorPreviewOverlay missing =
+      iggy3d::buildProductRoomEditorPreviewOverlay(nullptr);
+  const iggy3d::ProductRoomEditorPreviewOverlay rejected =
+      iggy3d::buildProductRoomEditorPreviewOverlay(&notReady);
+
+  return expect(!missing.visible, "missing preview hidden") &&
+         expect(missing.status == "room_editor_preview_overlay_not_requested",
+                "missing preview status") &&
+         expect(!rejected.visible, "rejected preview hidden") &&
+         expect(rejected.status == "room_editor_preview_not_ready",
+                "rejected preview status") &&
+         expect(rejected.reasonCode == "room_editor_preview_not_ready",
+                "rejected preview reason") &&
+         expect(rejected.itemCount == 0U, "rejected preview count");
+}
+
+bool floorPreviewOverlayCarriesCandidateFacts() {
+  iggy3d::EditableRoomDocument document;
+  iggy3d::ProductRoomEditorCursorState cursor;
+  cursor.gridX = 2;
+  cursor.gridZ = -1;
+  cursor.selectedTool = iggy3d::ProductRoomEditorTool::Floor;
+  const iggy3d::ProductRoomEditorPlacementPreviewResult preview =
+      previewFor(cursor, document);
+  const iggy3d::ProductRoomEditorPreviewOverlay overlay =
+      iggy3d::buildProductRoomEditorPreviewOverlay(&preview);
+
+  return expect(overlay.visible, "floor preview visible") &&
+         expect(overlay.status == "room_editor_preview_overlay_ready",
+                "floor preview status") &&
+         expect(overlay.itemCount == 1U, "floor preview item count") &&
+         expect(overlay.candidateId == "edit_floor_1",
+                "floor preview candidate") &&
+         expect(overlay.tool == iggy3d::ProductRoomEditorTool::Floor,
+                "floor preview tool") &&
+         expect(overlay.toolName == "floor", "floor preview tool name") &&
+         expect(overlay.gridX == 2 && overlay.gridZ == -1,
+                "floor preview grid") &&
+         expect(near(overlay.worldPosition.x, 2.0F),
+                "floor preview world x") &&
+         expect(near(overlay.worldPosition.z, -1.0F),
+                "floor preview world z") &&
+         expect(near(overlay.floorSizeMeters.x, 1.0F),
+                "floor preview size x") &&
+         expect(near(overlay.floorSizeMeters.z, 1.0F),
+                "floor preview size z") &&
+         expect(overlay.optimizedDrawDelta == 1,
+                "floor preview draw delta") &&
+         expect(overlay.optimizedTriangleDelta == 2,
+                "floor preview triangle delta");
+}
+
+bool wallPreviewOverlayCarriesEdgeAndDeltaFacts() {
+  iggy3d::EditableRoomDocument document;
+  iggy3d::ProductRoomEditorCursorState cursor;
+  cursor.gridX = 3;
+  cursor.gridZ = 4;
+  cursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
+  cursor.wallDirection = iggy3d::ProductRoomEditorDirection::Right;
+  const iggy3d::ProductRoomEditorPlacementPreviewResult preview =
+      previewFor(cursor, document);
+  const iggy3d::ProductRoomEditorPreviewOverlay overlay =
+      iggy3d::buildProductRoomEditorPreviewOverlay(&preview);
+
+  return expect(overlay.visible, "wall preview visible") &&
+         expect(overlay.candidateId == "edit_wall_1",
+                "wall preview candidate") &&
+         expect(overlay.tool == iggy3d::ProductRoomEditorTool::Wall,
+                "wall preview tool") &&
+         expect(overlay.wallDirection ==
+                    iggy3d::ProductRoomEditorDirection::Right,
+                "wall preview direction") &&
+         expect(overlay.wallDirectionName == "right",
+                "wall preview direction name") &&
+         expect(near(overlay.wallStartMeters.x, 3.5F),
+                "wall preview start x") &&
+         expect(near(overlay.wallStartMeters.z, 3.5F),
+                "wall preview start z") &&
+         expect(near(overlay.wallEndMeters.x, 3.5F),
+                "wall preview end x") &&
+         expect(near(overlay.wallEndMeters.z, 4.5F),
+                "wall preview end z") &&
+         expect(near(overlay.wallHeightMeters, 2.5F),
+                "wall preview height") &&
+         expect(near(overlay.wallThicknessMeters, 1.0F),
+                "wall preview thickness") &&
+         expect(overlay.optimizedDrawDelta == 1,
+                "wall preview draw delta") &&
+         expect(overlay.optimizedTriangleDelta == 12,
+                "wall preview triangle delta");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = hiddenWhenEditingNotReady() && floorCursorCenterUsesGridMath() &&
                   wallCursorUsesPlacementEdgeConvention() &&
-                  invalidCellSizeRejects() && drawListAppendIsDeterministic();
+                  invalidCellSizeRejects() && drawListAppendIsDeterministic() &&
+                  previewOverlayHiddenForMissingAndRejectedPreview() &&
+                  floorPreviewOverlayCarriesCandidateFacts() &&
+                  wallPreviewOverlayCarriesEdgeAndDeltaFacts();
   return ok ? 0 : 1;
 }

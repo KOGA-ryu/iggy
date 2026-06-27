@@ -115,6 +115,9 @@ bool floorPreviewDeltasDistinguishMergeAndIsolation() {
                 "adjacent floor primitive id") &&
          expect(adjacent.floorCountBefore == 1U, "adjacent floor before count") &&
          expect(adjacent.floorCountAfter == 2U, "adjacent floor after count") &&
+         expect(adjacent.floorSizeMeters.x == 1.0F &&
+                    adjacent.floorSizeMeters.z == 1.0F,
+                "adjacent floor size facts") &&
          expect(adjacent.optimizedFloorRectDelta == 0,
                 "adjacent floor rect merges") &&
          expect(adjacent.optimizedDrawDelta == 0,
@@ -207,6 +210,9 @@ bool wallDirectionAndCandidateFactsAreStable() {
                 "right wall end x") &&
          expect(result.wallEndMeters.z == 3.5F,
                 "right wall end z") &&
+         expect(result.wallBottomY == 0.0F, "right wall bottom") &&
+         expect(result.wallHeightMeters == 2.5F, "right wall height") &&
+         expect(result.wallThicknessMeters == 1.0F, "right wall thickness") &&
          expect(document.walls.empty(), "candidate facts leave document");
 }
 

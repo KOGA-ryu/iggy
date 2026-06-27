@@ -44,11 +44,15 @@ void copyCandidateFacts(ProductRoomEditorPlacementPreviewResult& result,
     case RoomEditCommandKind::AddFloor:
       result.primitiveId = command.floor.id;
       result.worldCenter = command.floor.centerMeters;
+      result.floorSizeMeters = command.floor.sizeMeters;
       break;
     case RoomEditCommandKind::AddWall:
       result.primitiveId = command.wall.id;
       result.wallStartMeters = command.wall.startMeters;
       result.wallEndMeters = command.wall.endMeters;
+      result.wallBottomY = command.wall.bottomY;
+      result.wallHeightMeters = command.wall.heightMeters;
+      result.wallThicknessMeters = command.wall.thicknessMeters;
       result.worldCenter = {(command.wall.startMeters.x + command.wall.endMeters.x) *
                                 0.5F,
                             command.wall.bottomY,
