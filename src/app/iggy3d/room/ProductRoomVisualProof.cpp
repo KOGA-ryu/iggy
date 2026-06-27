@@ -43,6 +43,9 @@ bool isFloorKind(ProductPrimitiveDrawKind kind) {
     case ProductPrimitiveDrawKind::DoorMarker:
     case ProductPrimitiveDrawKind::RoomEditorCursor:
     case ProductPrimitiveDrawKind::RoomEditorPlacementPreview:
+    case ProductPrimitiveDrawKind::PhysicsAabbDebug:
+    case ProductPrimitiveDrawKind::PhysicsContactNormalDebug:
+    case ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug:
       return false;
   }
   return false;

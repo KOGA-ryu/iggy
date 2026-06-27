@@ -158,6 +158,54 @@ void drawMarker(SDL_Renderer& renderer,
   fillRect(renderer, x - size * 0.5F, y - size * 0.5F, size, size);
 }
 
+void drawPhysicsAabbDebugMarker(SDL_Renderer& renderer,
+                                const ProductViewportFramedItem& framed) {
+  const ProductPrimitiveDrawItem& item = framed.item;
+  const float x = framed.screenX;
+  const float y = framed.screenY;
+  const float size = item.markerSize;
+  const float half = size * 0.5F;
+  constexpr float kLineWidth = 3.0F;
+
+  setColor(renderer, item.color.r, item.color.g, item.color.b);
+  fillRect(renderer, x - half, y - half, size, kLineWidth);
+  fillRect(renderer, x - half, y + half - kLineWidth, size, kLineWidth);
+  fillRect(renderer, x - half, y - half, kLineWidth, size);
+  fillRect(renderer, x + half - kLineWidth, y - half, kLineWidth, size);
+  SDL_RenderLine(&renderer, x - half + 6.0F, y, x + half - 6.0F, y);
+  SDL_RenderLine(&renderer, x, y - half + 6.0F, x, y + half - 6.0F);
+}
+
+void drawPhysicsContactNormalDebugMarker(
+    SDL_Renderer& renderer,
+    const ProductViewportFramedItem& framed) {
+  const ProductPrimitiveDrawItem& item = framed.item;
+  const float x = framed.screenX;
+  const float y = framed.screenY;
+  const float half = item.markerSize * 0.5F;
+
+  setColor(renderer, item.color.r, item.color.g, item.color.b);
+  SDL_RenderLine(&renderer, x, y - half, x + half, y);
+  SDL_RenderLine(&renderer, x + half, y, x, y + half);
+  SDL_RenderLine(&renderer, x, y + half, x - half, y);
+  SDL_RenderLine(&renderer, x - half, y, x, y - half);
+  fillRect(renderer, x - 2.0F, y - 2.0F, 4.0F, 4.0F);
+}
+
+void drawPhysicsBroadphasePairDebugMarker(
+    SDL_Renderer& renderer,
+    const ProductViewportFramedItem& framed) {
+  const ProductPrimitiveDrawItem& item = framed.item;
+  const float x = framed.screenX;
+  const float y = framed.screenY;
+  const float half = item.markerSize * 0.5F;
+
+  setColor(renderer, item.color.r, item.color.g, item.color.b);
+  SDL_RenderLine(&renderer, x - half, y, x + half, y);
+  SDL_RenderLine(&renderer, x, y - half, x, y + half);
+  fillRect(renderer, x - 2.0F, y - 2.0F, 4.0F, 4.0F);
+}
+
 void drawFocusIndicator(SDL_Renderer& renderer, const ProductViewportFramedItem& framed) {
   const float x = framed.screenX;
   const float y = framed.screenY;
@@ -253,6 +301,9 @@ void drawRoomTile(SDL_Renderer& renderer, const ProductViewportFramedItem& frame
     case ProductPrimitiveDrawKind::DoorMarker:
     case ProductPrimitiveDrawKind::RoomEditorCursor:
     case ProductPrimitiveDrawKind::RoomEditorPlacementPreview:
+    case ProductPrimitiveDrawKind::PhysicsAabbDebug:
+    case ProductPrimitiveDrawKind::PhysicsContactNormalDebug:
+    case ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug:
       break;
   }
 }
@@ -463,6 +514,15 @@ void drawPrimitiveItem(SDL_Renderer& renderer, const ProductViewportFramedItem& 
       return;
     case ProductPrimitiveDrawKind::RoomEditorPlacementPreview:
       drawMarker(renderer, framed);
+      return;
+    case ProductPrimitiveDrawKind::PhysicsAabbDebug:
+      drawPhysicsAabbDebugMarker(renderer, framed);
+      return;
+    case ProductPrimitiveDrawKind::PhysicsContactNormalDebug:
+      drawPhysicsContactNormalDebugMarker(renderer, framed);
+      return;
+    case ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug:
+      drawPhysicsBroadphasePairDebugMarker(renderer, framed);
       return;
     case ProductPrimitiveDrawKind::FloorTile:
     case ProductPrimitiveDrawKind::ElevatedFloorTile:

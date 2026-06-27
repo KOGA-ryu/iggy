@@ -52,6 +52,18 @@ int main() {
       iggy3d::ProductPrimitiveDrawKind::WallTile,
       "wall_1",
       iggy3d::makeAabb3({0.75F, 0.0F, 0.0F}, {1.0F, 1.5F, 2.0F})));
+  drawList.items.push_back(roomItem(
+      iggy3d::ProductPrimitiveDrawKind::PhysicsAabbDebug,
+      "physics_aabb",
+      iggy3d::makeAabb3({0.0F, 0.0F, 0.0F}, {2.0F, 0.1F, 2.0F})));
+  drawList.items.push_back(roomItem(
+      iggy3d::ProductPrimitiveDrawKind::PhysicsContactNormalDebug,
+      "physics_contact",
+      iggy3d::makeAabb3({0.5F, 0.0F, 0.5F}, {0.7F, 0.2F, 0.7F})));
+  drawList.items.push_back(roomItem(
+      iggy3d::ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug,
+      "physics_pair",
+      iggy3d::makeAabb3({0.8F, 0.0F, 0.8F}, {1.0F, 0.2F, 1.0F})));
 
   const std::filesystem::path output =
       std::filesystem::temp_directory_path() /
