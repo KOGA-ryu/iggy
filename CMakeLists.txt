@@ -37,9 +37,9 @@ target_sources(iggy3d
     src/app/iggy3d/view/OpeningMenuView.cpp
     src/app/iggy3d/gameplay/ActiveRoomCollision.cpp
     src/app/iggy3d/gameplay/ActiveRoomState.cpp
-    src/app/iggy3d/ProductBuiltinDungeon.cpp
+    src/app/iggy3d/world/BuiltinDungeon.cpp
     src/app/iggy3d/view/CameraController.cpp
-    src/app/iggy3d/ProductDungeonDraft.cpp
+    src/app/iggy3d/world/DungeonDraft.cpp
     src/app/iggy3d/ascii_room/Activation.cpp
     src/app/iggy3d/ascii_room/Authoring.cpp
     src/app/iggy3d/ascii_room/Editing.cpp

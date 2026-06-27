@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductDungeonDraft.hpp"
+#include "app/iggy3d/world/DungeonDraft.hpp"
 
 #include <algorithm>
 #include <string>

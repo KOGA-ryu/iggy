@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductBuiltinDungeon.hpp"
+#include "app/iggy3d/world/BuiltinDungeon.hpp"
 
 #include <filesystem>
 #include <fstream>

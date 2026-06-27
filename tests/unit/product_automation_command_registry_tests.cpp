@@ -1,6 +1,6 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
-#include "app/iggy3d/ProductDungeonDraft.hpp"
+#include "app/iggy3d/world/DungeonDraft.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/automation/Automation.hpp"
 

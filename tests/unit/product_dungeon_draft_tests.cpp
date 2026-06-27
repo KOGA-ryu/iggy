@@ -1,10 +1,10 @@
-#include "app/iggy3d/ProductDungeonDraft.hpp"
+#include "app/iggy3d/world/DungeonDraft.hpp"
 
 #include <iostream>
 #include <string_view>
 
 #include "app/iggy3d/ascii_room/Authoring.hpp"
-#include "app/iggy3d/ProductBuiltinDungeon.hpp"
+#include "app/iggy3d/world/BuiltinDungeon.hpp"
 
 namespace {
 

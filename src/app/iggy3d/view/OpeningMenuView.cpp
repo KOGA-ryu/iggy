@@ -15,7 +15,7 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "projection/debug/DebugProjection.hpp"
-#include "app/iggy3d/ProductBuiltinDungeon.hpp"
+#include "app/iggy3d/world/BuiltinDungeon.hpp"
 #include "app/iggy3d/gameplay/GameplayFeedback.hpp"
 #include "app/iggy3d/debug/InteractionModeHud.hpp"
 #include "app/iggy3d/debug/MovementDebugHud.hpp"

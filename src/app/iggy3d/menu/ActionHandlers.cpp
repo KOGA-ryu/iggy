@@ -6,8 +6,8 @@
 #include <string_view>
 
 #include "app/frontend/FrontendState.hpp"
-#include "app/iggy3d/ProductBuiltinDungeon.hpp"
-#include "app/iggy3d/ProductDungeonDraft.hpp"
+#include "app/iggy3d/world/BuiltinDungeon.hpp"
+#include "app/iggy3d/world/DungeonDraft.hpp"
 #include "app/iggy3d/ProductAppOperations.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/room_editor/AuthoringController.hpp"
