@@ -10,7 +10,7 @@
 #include "app/iggy3d/room_editor/ActionController.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
 #include "app/iggy3d/room_editor/Preview.hpp"
-#include "app/iggy3d/room_editor/ProductRoomEditingState.hpp"
+#include "app/iggy3d/room_editor/EditingState.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/input/ActionState.hpp"
 #include "runtime/session/Session.hpp"

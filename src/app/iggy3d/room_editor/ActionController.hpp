@@ -3,7 +3,7 @@
 #include <string>
 
 #include "app/iggy3d/room_editor/Cursor.hpp"
-#include "app/iggy3d/room_editor/ProductRoomEditingState.hpp"
+#include "app/iggy3d/room_editor/EditingState.hpp"
 #include "app/input/ActionState.hpp"
 
 namespace iggy3d {
