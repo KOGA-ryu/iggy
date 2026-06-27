@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductRenderBridge.hpp"
+#include "app/iggy3d/view/RenderBridge.hpp"
 
 #include <iostream>
 

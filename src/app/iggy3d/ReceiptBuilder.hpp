@@ -12,7 +12,7 @@
 #include "app/iggy3d/room_editor/Cursor.hpp"
 #include "app/iggy3d/room_editor/Preview.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
-#include "app/iggy3d/ProductViewportState.hpp"
+#include "app/iggy3d/view/ViewportState.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "render/RenderDiagnostics.hpp"
 

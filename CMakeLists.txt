@@ -38,7 +38,7 @@ target_sources(iggy3d
     src/app/iggy3d/gameplay/ActiveRoomCollision.cpp
     src/app/iggy3d/gameplay/ActiveRoomState.cpp
     src/app/iggy3d/ProductBuiltinDungeon.cpp
-    src/app/iggy3d/ProductCameraController.cpp
+    src/app/iggy3d/view/CameraController.cpp
     src/app/iggy3d/ProductDungeonDraft.cpp
     src/app/iggy3d/ascii_room/Activation.cpp
     src/app/iggy3d/ascii_room/Authoring.cpp
@@ -73,8 +73,8 @@ target_sources(iggy3d
     src/app/iggy3d/automation/AutomationSystem.cpp
     src/app/iggy3d/menu/ActionHandlers.cpp
     src/app/iggy3d/menu/InputRouter.cpp
-    src/app/iggy3d/ProductPrimitiveDrawList.cpp
-    src/app/iggy3d/ProductRenderBridge.cpp
+    src/app/iggy3d/view/PrimitiveDrawList.cpp
+    src/app/iggy3d/view/RenderBridge.cpp
     src/app/iggy3d/room/GeometryOptimization.cpp
     src/app/iggy3d/room_editor/AuthoringController.cpp
     src/app/iggy3d/room_editor/ActionController.cpp
@@ -91,7 +91,7 @@ target_sources(iggy3d
     src/app/iggy3d/world/NpcProfileAssignment.cpp
     src/app/iggy3d/debug/TopDownMapOverlay.cpp
     src/app/iggy3d/menu/DrawList.cpp
-    src/app/iggy3d/ProductViewportFraming.cpp
+    src/app/iggy3d/view/ViewportFraming.cpp
     src/app/iggy3d/window/FramePresenter.cpp
     src/app/iggy3d/window/InputFrame.cpp
     src/app/iggy3d/window/Loop.cpp

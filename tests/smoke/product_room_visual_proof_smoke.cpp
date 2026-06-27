@@ -7,7 +7,7 @@
 #include <string_view>
 
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
-#include "app/iggy3d/ProductPrimitiveDrawList.hpp"
+#include "app/iggy3d/view/PrimitiveDrawList.hpp"
 #include "app/iggy3d/room/VisualProof.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/vulkan/BufferImageResources.hpp"

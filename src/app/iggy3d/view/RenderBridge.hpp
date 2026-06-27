@@ -5,8 +5,8 @@
 #include <vector>
 
 #include "app/iggy3d/gameplay/GameplayFeedback.hpp"
-#include "app/iggy3d/ProductPrimitiveDrawList.hpp"
-#include "app/iggy3d/ProductViewportFraming.hpp"
+#include "app/iggy3d/view/PrimitiveDrawList.hpp"
+#include "app/iggy3d/view/ViewportFraming.hpp"
 
 namespace iggy3d {
 

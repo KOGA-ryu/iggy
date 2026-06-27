@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductCameraController.hpp"
+#include "app/iggy3d/view/CameraController.hpp"
 
 #include <string>
 

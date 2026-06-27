@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "app/iggy3d/ProductPrimitiveDrawList.hpp"
+#include "app/iggy3d/view/PrimitiveDrawList.hpp"
 
 namespace iggy3d {
 

@@ -10,7 +10,7 @@
 #include "app/iggy3d/ProductControllerActionRouting.hpp"
 #include "app/iggy3d/ProductInteractionMode.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
-#include "app/iggy3d/ProductViewportFraming.hpp"
+#include "app/iggy3d/view/ViewportFraming.hpp"
 #include "app/input/GamepadInput.hpp"
 #include "app/input/KeyboardInput.hpp"
 #include "app/input/MouseInput.hpp"

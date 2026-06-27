@@ -5,7 +5,7 @@
 #include <string>
 #include <string_view>
 
-#include "app/iggy3d/ProductViewportFraming.hpp"
+#include "app/iggy3d/view/ViewportFraming.hpp"
 #include "content/authoring/EditableRoomDocument.hpp"
 
 namespace iggy3d {

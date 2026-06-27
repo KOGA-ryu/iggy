@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductViewportFraming.hpp"
+#include "app/iggy3d/view/ViewportFraming.hpp"
 
 #include <cmath>
 #include <iostream>

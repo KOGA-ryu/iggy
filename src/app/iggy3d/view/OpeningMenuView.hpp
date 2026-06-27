@@ -12,11 +12,11 @@
 #include "app/iggy3d/debug/MovementDebugHud.hpp"
 #include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
-#include "app/iggy3d/ProductPrimitiveDrawList.hpp"
+#include "app/iggy3d/view/PrimitiveDrawList.hpp"
 #include "app/iggy3d/room_editor/Presentation.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/debug/TopDownMapOverlay.hpp"
-#include "app/iggy3d/ProductViewportFraming.hpp"
+#include "app/iggy3d/view/ViewportFraming.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)

@@ -3,7 +3,7 @@
 #include <string_view>
 
 #include "app/frontend/SettingsMenu.hpp"
-#include "app/iggy3d/ProductViewportState.hpp"
+#include "app/iggy3d/view/ViewportState.hpp"
 
 namespace iggy3d {
 
