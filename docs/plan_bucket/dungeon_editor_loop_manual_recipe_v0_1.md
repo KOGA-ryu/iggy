@@ -13,7 +13,9 @@ to the deterministic no-window proof that already covers:
 - Save And Exit;
 - fresh starter boot;
 - Continue into the saved edited room;
-- headless PPM visual proof for the continued room.
+- headless PPM visual proof for the continued room;
+- controller player/creative mode switching and creative editor control
+  semantics through no-window receipt proof.
 
 This recipe does not require a builder to open a real window. The live window
 steps are for a user-run manual check.
@@ -106,6 +108,76 @@ Expected user-visible state after Continue:
 - when Edit Room is opened again, the editor HUD and cursor/tool overlay should
   be visible.
 
+## Manual Controller Acceptance Flow
+
+Use the same build, save root, and window launch above:
+
+```sh
+cmake --build build --target iggy3d_app -j 8
+
+build/iggy3d \
+  --window \
+  --renderer null \
+  --input auto \
+  --save-root "$IGGY3D_EDITOR_SAVE_ROOT" \
+  --print-render-receipt
+```
+
+Then run this controller-focused manual path:
+
+1. Create a New World/custom dungeon using the manual New World draft steps
+   above.
+2. Enter gameplay.
+3. In player mode, use the controller left stick to move the player. Player
+   mode routes controller movement to gameplay movement.
+4. Open Pause and select `Edit Room`.
+5. Press and hold the mode chord `LT + RT + L3 + R3` once to switch to creative
+   mode. Release the chord after the mode changes.
+6. In creative mode, controller input routes to room-editor actions:
+
+| Control | Creative room-editor behavior |
+| --- | --- |
+| Left stick or d-pad | Move editor cursor |
+| West button | Build/update phantom placement preview |
+| South button | Confirm active phantom preview |
+| East button | Cancel active phantom preview |
+| North button | Rotate wall direction clockwise |
+| Left shoulder | Cycle to previous tool |
+| Right shoulder | Cycle to next tool |
+
+7. Use the creative controls to preview and confirm at least one floor or wall
+   edit.
+8. Press and hold `LT + RT + L3 + R3` again, after releasing it from the first
+   toggle, to return to player mode.
+9. In player mode, controller movement should control the player again instead
+   of the editor cursor.
+10. Save And Exit.
+11. Relaunch with the same `--save-root`.
+12. Select `Continue`.
+
+The mode chord is deliberately handled before ordinary controller actions. When
+the full chord is active, normal controller action routing is consumed for that
+frame so the chord does not also place, preview, move, or interact.
+
+Current mode feedback is receipt/proof based:
+
+```text
+interaction_mode=player|creative
+controller_mode_toggle_requested=true|false
+controller_mode_toggle_accepted=true|false
+controller_mode_toggle_status=interaction_mode_toggled|interaction_mode_surface_blocked|...
+controller_mode_toggle_surface=gameplay|room_editor|starter|...
+controller_action_status=controller_action_mapped|controller_action_chord_consumed|...
+controller_action_control=<controller control name>
+controller_action_mode=player|creative
+controller_action_surface=gameplay|room_editor|...
+controller_action_input_action=<mapped InputAction name>
+```
+
+The live UI currently does not add controller shortcut/tutorial text. A compact
+visible mode indicator can be added later if it fits an existing gameplay HUD
+state area without becoming instructions.
+
 ## New World Draft Controls
 
 The New World draft editor is controlled through the existing menu input layer.
@@ -187,6 +259,7 @@ The focused proof map for the current editor loop is:
 | `product_ascii_map_smoke` | End-to-end New World draft receipt parity, including cursor paint create |
 | `room_editor_input_tests` | Physical room-editor keyboard mappings, including `1`, `2`, and `R` |
 | `product_room_editor_action_controller_tests` | Editor actions change cursor/tool/direction state and edit documents correctly |
+| `product_controller_input_smoke` | No-window controller sample injection, player/creative mode toggle receipts, and creative editor routing |
 | `product_editor_wall_direction_hotkey_smoke` | Wall direction hotkey persists distinct Up and Right wall geometry |
 | `product_editor_combined_save_continue_smoke` | Direct floor+wall edits persist together through Save And Exit and Continue |
 | `product_continued_room_movement_smoke` | Continued edited room uses restored collision for exploration |
@@ -232,6 +305,33 @@ editor.input=editor.nudge_x_pos,editor.select_wall_tool,editor.place,editor.rota
 
 That second proof decodes the saved room and checks `edit_wall_1` is the
 default Up edge while `edit_wall_2` is the rotated Right edge.
+
+The focused controller mode parity gate is:
+
+```sh
+cmake --build build --target product_controller_input_smoke
+ctest --test-dir build --output-on-failure -R '^product_controller_input_smoke$'
+```
+
+That smoke injects controller samples without SDL hardware or a real window:
+
+```text
+controller.input=left_stick_up
+controller.input=mode_chord
+controller.input=mode_chord,release,mode_chord
+controller.input=mode_chord,release,dpad_right
+```
+
+It proves:
+
+- player-mode gameplay surface maps controller movement to `game.move_y`;
+- `mode_chord` toggles `player -> creative` and records
+  `controller_action_chord_consumed`;
+- release plus another `mode_chord` toggles `creative -> player`;
+- creative room-editor surface maps controller d-pad movement to
+  `editor.nudge_x` and moves the editor cursor;
+- starter surface blocks the chord with
+  `interaction_mode_surface_blocked`.
 
 The smoke emits:
 
@@ -413,6 +513,24 @@ product_vulkan_room_mesh_cpu_ready=true
 product_vulkan_room_wall_draw_count=<positive integer>
 ```
 
+After controller mode checks, expect:
+
+```text
+interaction_mode=player|creative
+controller_mode_toggle_requested=true|false
+controller_mode_toggle_accepted=true|false
+controller_mode_toggle_status=interaction_mode_toggled|interaction_mode_surface_blocked|interaction_mode_chord_partial
+controller_mode_toggle_reason_code=<same stable status>
+controller_mode_toggle_surface=gameplay|room_editor|starter
+controller_action_mapped=true|false
+controller_action_status=controller_action_mapped|controller_action_chord_consumed
+controller_action_reason_code=<same stable status>
+controller_action_control=left_stick_up|dpad_right|none
+controller_action_mode=player|creative
+controller_action_surface=gameplay|room_editor|starter
+controller_action_input_action=game.move_y|editor.nudge_x|none
+```
+
 The visual proof smoke additionally ties the PPM artifact to:
 
 ```text
@@ -455,6 +573,8 @@ cmake --build build --target product_room_editor_action_controller_tests
 ctest --test-dir build --output-on-failure -R '^product_room_editor_action_controller_tests$'
 cmake --build build --target product_editor_wall_direction_hotkey_smoke
 ctest --test-dir build --output-on-failure -R '^product_editor_wall_direction_hotkey_smoke$'
+cmake --build build --target product_controller_input_smoke
+ctest --test-dir build --output-on-failure -R '^product_controller_input_smoke$'
 cmake --build build --target product_new_world_menu_action_tests
 ctest --test-dir build --output-on-failure -R '^product_new_world_menu_action_tests$'
 tools/check_branch_gate.py
