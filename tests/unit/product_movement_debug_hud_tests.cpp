@@ -53,16 +53,23 @@ int main() {
   const iggy3d::ProductMovementDebugHud inactiveHud =
       iggy3d::buildProductMovementDebugHud(inactive, true, true);
   ok &= expect(!inactiveHud.visible, "inactive gameplay hides movement hud");
+  ok &= expect(inactiveHud.status == "not_requested", "inactive hud status");
+  ok &= expect(inactiveHud.reasonCode == "not_requested", "inactive hud reason");
   ok &= expect(inactiveHud.lines.empty(), "inactive hud has no visible lines");
 
   const iggy3d::ProductMovementDebugHud devDisabled =
       iggy3d::buildProductMovementDebugHud(movedWindow(), false, true);
   ok &= expect(!devDisabled.visible, "developer tools disabled hides hud");
   ok &= expect(devDisabled.debugAvailable, "disabled hud still reports debug availability");
+  ok &= expect(devDisabled.status == "not_requested", "developer tools disabled status");
+  ok &= expect(devDisabled.reasonCode == "not_requested", "developer tools disabled reason");
 
   const iggy3d::ProductMovementDebugHud overlayDisabled =
       iggy3d::buildProductMovementDebugHud(movedWindow(), true, false);
   ok &= expect(!overlayDisabled.visible, "debug overlay disabled hides hud");
+  ok &= expect(overlayDisabled.debugAvailable, "overlay disabled still reports debug availability");
+  ok &= expect(overlayDisabled.status == "not_requested", "overlay disabled status");
+  ok &= expect(overlayDisabled.reasonCode == "not_requested", "overlay disabled reason");
 
   const iggy3d::ProductMovementDebugHud moved =
       iggy3d::buildProductMovementDebugHud(movedWindow(), true, true);

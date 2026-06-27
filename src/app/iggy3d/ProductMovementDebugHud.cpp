@@ -70,8 +70,6 @@ ProductMovementDebugHud buildProductMovementDebugHud(
   hud.debugOverlayEnabled = debugOverlayEnabled;
   hud.debugAvailable = window.gameplayMovementDebugAvailable;
   hud.blocked = window.gameplayMovementBlocked;
-  hud.status = window.gameplayMovementStatus;
-  hud.reasonCode = window.gameplayMovementReasonCode;
   hud.blockedReason = window.gameplayMovementBlockedReason;
   hud.hitSurfaceId = window.gameplayMovementHitSurfaceId;
   hud.policyBand = window.gameplayMovementPolicyBand;
@@ -88,6 +86,9 @@ ProductMovementDebugHud buildProductMovementDebugHud(
   if (!hud.visible) {
     return hud;
   }
+
+  hud.status = window.gameplayMovementStatus;
+  hud.reasonCode = window.gameplayMovementReasonCode;
 
   addLine(hud, "STATUS", codeDisplay(hud.status), statusTone(window));
   addLine(hud, "REASON", codeDisplay(hud.reasonCode),

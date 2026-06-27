@@ -110,6 +110,20 @@ void seedPhysicsMovementStats(std::optional<iggy3d::Session>& session,
   state.transient.lastMovementResult = movement;
 }
 
+void seedMovementDebugFacts(iggy3d::ProductAppWindowState& window) {
+  window.gameplayMovementDebugAvailable = true;
+  window.gameplayMovementStatus = "moved";
+  window.gameplayMovementReasonCode = "movement_ok";
+  window.gameplayMovementBlockedReason = "movement_ok";
+  window.gameplayMovementHitSurfaceId = "none";
+  window.gameplayMovementGroundSnapApplied = true;
+  window.gameplayMovementPolicyBand = "flat";
+  window.gameplayMovementSpeedMultiplier = 1.0F;
+  window.gameplayMovementFinalX = -1.0F;
+  window.gameplayMovementFinalY = 0.0F;
+  window.gameplayMovementFinalZ = -1.0F;
+}
+
 void seedPhysicsMovementStatsAndGeometry(std::optional<iggy3d::Session>& session) {
   iggy3d::MovementResult movement;
   movement.physicsFrameStatsAvailable = true;
@@ -234,6 +248,102 @@ bool productGameplayBuildsFirstPersonRoomFrame() {
   ok = expect(!frame.physicsHud.visible, "physics debug HUD hidden") && ok;
   ok = expect(frame.physicsHud.status == "not_requested",
               "physics debug HUD not requested") &&
+       ok;
+  return ok;
+}
+
+bool productGameplayDefaultOverlayKeepsDebugHudsCleanWithData() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "clean overlay session created")) {
+    return false;
+  }
+  seedMovementDebugFacts(window);
+  seedPhysicsMovementStats(session, makeReadyPlayerPhysicsStats());
+
+  const iggy3d::ProductGameplayProjectionFrame frame =
+      iggy3d::buildProductGameplayProjectionFrame(
+          iggy3d::ProductGameplayProjectionFrameRequest{
+              session, window, true, false, iggy3d::ProductRendererRequest::Vulkan});
+
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductWorldTemplate world;
+  iggy3d::FrontendState frontend;
+  iggy3d::FrontendSettings settings;
+  settings.devToolsEnabled = true;
+  settings.debugOverlayEnabled = false;
+  iggy3d::ProductSaveBridgeResult saves;
+  const iggy3d::RenderReceipt receipt =
+      iggy3d::buildProductAppReceipt(options, world, frontend, settings, window, saves);
+
+  bool ok = true;
+  ok = expect(!frame.movementHud.visible,
+              "default overlay hides movement debug HUD with data") &&
+       ok;
+  ok = expect(frame.movementHud.debugAvailable,
+              "hidden movement HUD keeps data availability") &&
+       ok;
+  ok = expect(frame.movementHud.status == "not_requested",
+              "hidden movement HUD status is gated") &&
+       ok;
+  ok = expect(frame.movementHud.reasonCode == "not_requested",
+              "hidden movement HUD reason is gated") &&
+       ok;
+  ok = expect(frame.movementHud.lines.empty(), "hidden movement HUD has no lines") &&
+       ok;
+  ok = expect(!frame.npcBehaviorHud.visible, "default overlay hides NPC HUD") &&
+       ok;
+  ok = expect(frame.npcBehaviorHud.status == "not_requested",
+              "default overlay NPC status") &&
+       ok;
+  ok = expect(!frame.physicsHud.visible, "default overlay hides physics HUD") &&
+       ok;
+  ok = expect(frame.physicsHud.status == "not_requested",
+              "default overlay physics status") &&
+       ok;
+  ok = expect(frame.physicsHud.lineCount == 4U,
+              "hidden physics HUD keeps line count") &&
+       ok;
+  ok = expect(frame.debug.physicsDebugHudLines.size() == 4U,
+              "default overlay preserves physics debug lines") &&
+       ok;
+  ok = expect(!frame.drawList.physicsDebugVisible,
+              "default overlay hides physics debug geometry") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(receipt,
+                                      "movement_debug_hud_visible",
+                                      "false"),
+              "receipt clean movement HUD hidden") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(receipt,
+                                      "movement_debug_hud_debug_overlay_enabled",
+                                      "false"),
+              "receipt clean movement overlay disabled") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(receipt,
+                                      "movement_debug_hud_debug_available",
+                                      "true"),
+              "receipt clean movement data available") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(receipt,
+                                      "movement_debug_hud_status",
+                                      "not_requested"),
+              "receipt clean movement HUD status") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(receipt,
+                                      "movement_debug_hud_reason_code",
+                                      "not_requested"),
+              "receipt clean movement HUD reason") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(receipt,
+                                      "physics_debug_hud_visible",
+                                      "false"),
+              "receipt clean physics HUD hidden") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(receipt,
+                                      "physics_debug_hud_status",
+                                      "not_requested"),
+              "receipt clean physics HUD status") &&
        ok;
   return ok;
 }
@@ -659,6 +769,7 @@ bool productReceiptCarriesFirstPersonRoomPathProof() {
 
 int main() {
   const bool ok = productGameplayBuildsFirstPersonRoomFrame() &&
+                  productGameplayDefaultOverlayKeepsDebugHudsCleanWithData() &&
                   productPhysicsDebugHudUnavailableWithoutMovementStats() &&
                   productPhysicsDebugHudReadyFromMovementStats() &&
                   productPhysicsDebugHudWarningFromMovementStats() &&

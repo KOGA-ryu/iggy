@@ -149,6 +149,16 @@ int main() {
       hasField(fields, "mouse_capture_reason_code", "mouse_capture_no_window") &&
       hasField(fields, "mouse_capture_mode", "no_window") &&
       hasField(fields, "mouse_capture_input_owner", "gameplay") &&
+      hasField(fields, "movement_debug_hud_visible", "false") &&
+      hasField(fields, "movement_debug_hud_line_count", "0") &&
+      hasField(fields, "movement_debug_hud_dev_tools_enabled", "true") &&
+      hasField(fields, "movement_debug_hud_debug_overlay_enabled", "false") &&
+      hasField(fields, "movement_debug_hud_status", "not_requested") &&
+      hasField(fields, "movement_debug_hud_reason_code", "not_requested") &&
+      hasField(fields, "npc_behavior_debug_hud_visible", "false") &&
+      hasField(fields, "npc_behavior_debug_hud_status", "not_requested") &&
+      hasField(fields, "physics_debug_hud_visible", "false") &&
+      hasField(fields, "physics_debug_hud_status", "not_requested") &&
       hasField(fields, "gameplay_movement_profile", "manual_first_person") &&
       hasField(fields, "gameplay_movement_max_speed_mps", "1.600") &&
       hasField(fields, "target_discovered", "false") &&
