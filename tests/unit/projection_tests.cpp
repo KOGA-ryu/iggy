@@ -4,6 +4,7 @@
 #include "runtime/ai/NpcBehaviorDebugSnapshot.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "runtime/objective/ObjectiveSystem.hpp"
+#include "runtime/physics/PhysicsDebugSnapshot.hpp"
 #include "runtime/save/SaveLoad.hpp"
 #include "runtime/session/Session.hpp"
 #include "runtime/session/SessionRunner.hpp"
@@ -306,6 +307,75 @@ iggy3d::NpcBehaviorDebugSnapshot npcDebugSnapshot() {
   return snapshot;
 }
 
+iggy3d::PhysicsDebugSnapshot physicsDebugSnapshot() {
+  iggy3d::PhysicsDebugSnapshot snapshot;
+  snapshot.ok = true;
+  snapshot.status = iggy3d::PhysicsDebugSnapshotStatus::Ready;
+  snapshot.reasonCode = "physics_debug_snapshot_ready";
+  snapshot.statsOk = true;
+  snapshot.sourcePacketCount = 2U;
+  snapshot.failedPacketCount = 0U;
+  snapshot.broadphaseColliderCount = 7U;
+  snapshot.broadphaseOccupiedCellCount = 3U;
+  snapshot.broadphaseCellEntryCount = 12U;
+  snapshot.broadphaseMaxBucketSize = 4U;
+  snapshot.broadphaseCandidatePairCount = 8U;
+  snapshot.broadphaseTestedPairCount = 5U;
+  snapshot.broadphaseDuplicatePairRejectedCount = 1U;
+  snapshot.broadphaseOverlappingPairCount = 2U;
+  snapshot.bindingCount = 6U;
+  snapshot.colliderCount = 7U;
+  snapshot.broadphasePairCount = 2U;
+  snapshot.contactCount = 2U;
+  snapshot.sensorContactCount = 1U;
+  snapshot.solvePlanCount = 2U;
+  snapshot.accumulatedPlanCount = 1U;
+  snapshot.skippedNoOpPlanCount = 1U;
+  snapshot.positionCorrectionAppliedCount = 1U;
+  snapshot.velocityImpulseAppliedCount = 2U;
+  snapshot.frictionImpulseAppliedCount = 1U;
+  snapshot.maxPenetrationMeters = 0.125F;
+  snapshot.totalNormalImpulseMagnitude = 3.5F;
+  snapshot.maxNormalImpulseMagnitude = 2.25F;
+  snapshot.totalFrictionImpulseMagnitude = 1.0F;
+  snapshot.maxFrictionImpulseMagnitude = 0.75F;
+  snapshot.bodyCount = 6U;
+  snapshot.appliedPositionCount = 1U;
+  snapshot.appliedVelocityCount = 1U;
+  snapshot.kinematicIterationCount = 3U;
+  snapshot.kinematicHitCount = 1U;
+  snapshot.kinematicSweepTestedColliderCount = 9U;
+  snapshot.kinematicGroundTestedColliderCount = 4U;
+  snapshot.playerBakedSurfaceCount = 8U;
+  snapshot.playerBakedColliderCount = 5U;
+  snapshot.playerSkippedSurfaceCount = 2U;
+  snapshot.playerHitCount = 1U;
+  snapshot.playerIterationCount = 2U;
+  snapshot.hasContacts = true;
+  snapshot.hasSensorContacts = true;
+  snapshot.hasSolverActivity = true;
+  snapshot.hasAppliedDeltas = true;
+  snapshot.hasKinematicHits = true;
+  snapshot.hasPlayerHits = true;
+  return snapshot;
+}
+
+iggy3d::PhysicsDebugSnapshot physicsWarningSnapshot() {
+  iggy3d::PhysicsDebugSnapshot snapshot = physicsDebugSnapshot();
+  snapshot.ok = false;
+  snapshot.status = iggy3d::PhysicsDebugSnapshotStatus::StatsFailed;
+  snapshot.reasonCode = "physics_debug_snapshot_stats_failed";
+  snapshot.statsOk = false;
+  snapshot.upstreamReasonCode = "physics_frame_stats_nonfinite_scalar";
+  snapshot.failedPacketCount = 1U;
+  snapshot.hasFailedPackets = true;
+  snapshot.hasBroadphasePressure = true;
+  snapshot.hasPenetrationWarning = true;
+  snapshot.hasImpulseWarning = true;
+  snapshot.hasWarnings = true;
+  return snapshot;
+}
+
 bool firstRoomProjectionContainsInitialItems() {
   const iggy3d::Session session = makeSession();
   const iggy3d::SceneProjectionResult projection = iggy3d::buildSceneProjection(session.state());
@@ -527,6 +597,83 @@ bool npcDebugProjectionPreservesRuntimeHudLines() {
          expect(!debug.npcBehaviorDebugHudLines.empty(), "npc hud lines present");
 }
 
+bool physicsDebugProjectionAppendsReadyHudLines() {
+  iggy3d::DebugProjectionResult debug;
+  iggy3d::appendPhysicsDebugSnapshot(debug, physicsDebugSnapshot());
+
+  return expect(debug.physicsDebugHudLines.size() == 4U,
+                "physics hud ready line count") &&
+         expect(debug.physicsDebugHudLines[0] ==
+                    "PHYS packets=2 failed=0 bodies=6 colliders=7 contacts=2 sensors=1",
+                "physics summary line") &&
+         expect(debug.physicsDebugHudLines[1] ==
+                    "PHYS BP cells=3 entries=12 bucket=4 candidates=8 tested=5 dup=1 overlaps=2",
+                "physics broadphase line") &&
+         expect(debug.physicsDebugHudLines[2] ==
+                    "PHYS SOLVE plans=2 pos=1 vel=2 fric=1 pen=0.125 ni=3.500/2.250 fi=1.000/0.750",
+                "physics solver line") &&
+         expect(debug.physicsDebugHudLines[3] ==
+                    "PHYS MOVE kin_iter=3 kin_hits=1 player_iter=2 player_hits=1 baked=5 skipped=2",
+                "physics movement line") &&
+         expect(debug.runtimeDebugHudLines.empty(),
+                "physics append leaves runtime empty") &&
+         expect(debug.npcBehaviorDebugHudLines.empty(),
+                "physics append leaves npc empty");
+}
+
+bool physicsDebugProjectionAppendsWarningLine() {
+  iggy3d::DebugProjectionResult debug;
+  iggy3d::appendPhysicsDebugSnapshot(debug, physicsWarningSnapshot());
+
+  return expect(debug.physicsDebugHudLines.size() == 5U,
+                "physics warning line count") &&
+         expect(debug.physicsDebugHudLines[4] ==
+                    "PHYS WARN status=physics_debug_snapshot_stats_failed "
+                    "upstream=physics_frame_stats_nonfinite_scalar bp=1 pen=1 impulse=1",
+                "physics warning line");
+}
+
+bool physicsDebugProjectionIgnoresInactiveSnapshots() {
+  iggy3d::DebugProjectionResult debug;
+
+  iggy3d::PhysicsDebugSnapshot disabled;
+  disabled.status = iggy3d::PhysicsDebugSnapshotStatus::Disabled;
+  disabled.reasonCode = "physics_debug_snapshot_disabled";
+  iggy3d::appendPhysicsDebugSnapshot(debug, disabled);
+
+  iggy3d::PhysicsDebugSnapshot missing;
+  missing.ok = false;
+  missing.status = iggy3d::PhysicsDebugSnapshotStatus::MissingStats;
+  missing.reasonCode = "physics_debug_snapshot_missing_stats";
+  iggy3d::appendPhysicsDebugSnapshot(debug, missing);
+
+  return expect(debug.physicsDebugHudLines.empty(),
+                "inactive physics snapshots ignored") &&
+         expect(debug.runtimeDebugHudLines.empty(),
+                "inactive physics leaves runtime empty") &&
+         expect(debug.npcBehaviorDebugHudLines.empty(),
+                "inactive physics leaves npc empty");
+}
+
+bool physicsDebugProjectionPreservesRuntimeAndNpcHudLines() {
+  iggy3d::DebugProjectionResult debug;
+  iggy3d::appendRuntimeDebugSnapshot(debug, okRuntimeDebugSnapshot());
+  iggy3d::appendNpcBehaviorDebugSnapshot(debug, npcDebugSnapshot());
+  const std::vector<std::string> runtimeLinesBefore = debug.runtimeDebugHudLines;
+  const std::vector<std::string> npcLinesBefore = debug.npcBehaviorDebugHudLines;
+
+  iggy3d::appendPhysicsDebugSnapshot(debug, physicsDebugSnapshot());
+
+  return expect(!runtimeLinesBefore.empty(), "runtime hud line fixture") &&
+         expect(!npcLinesBefore.empty(), "npc hud line fixture") &&
+         expect(debug.runtimeDebugHudLines == runtimeLinesBefore,
+                "physics preserves runtime hud lines") &&
+         expect(debug.npcBehaviorDebugHudLines == npcLinesBefore,
+                "physics preserves npc hud lines") &&
+         expect(debug.physicsDebugHudLines.size() == 4U,
+                "physics hud lines appended separately");
+}
+
 bool saveLoadProjectionIsEquivalent() {
   const iggy3d::SessionCreateRequest create = createRequestFromPackage();
   const iggy3d::Session session = makeCompletedSession();
@@ -577,6 +724,10 @@ int main() {
   ok = npcDebugProjectionAppendsItemsAndHudLines() && ok;
   ok = npcDebugProjectionIgnoresDisabledSnapshots() && ok;
   ok = npcDebugProjectionPreservesRuntimeHudLines() && ok;
+  ok = physicsDebugProjectionAppendsReadyHudLines() && ok;
+  ok = physicsDebugProjectionAppendsWarningLine() && ok;
+  ok = physicsDebugProjectionIgnoresInactiveSnapshots() && ok;
+  ok = physicsDebugProjectionPreservesRuntimeAndNpcHudLines() && ok;
   ok = saveLoadProjectionIsEquivalent() && ok;
   return ok ? 0 : 1;
 }

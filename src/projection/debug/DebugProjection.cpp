@@ -1,10 +1,13 @@
 #include "projection/debug/DebugProjection.hpp"
 
+#include <array>
 #include <iomanip>
-#include <string>
 #include <sstream>
+#include <string>
+#include <string_view>
 
 #include "runtime/ai/NpcBehaviorDebugSnapshot.hpp"
+#include "runtime/physics/PhysicsDebugSnapshot.hpp"
 #include "runtime/world/EntityState.hpp"
 
 namespace iggy3d {
@@ -106,6 +109,19 @@ std::string fixed3(float value) {
   std::ostringstream out;
   out << std::fixed << std::setprecision(3) << value;
   return out.str();
+}
+
+std::string bit(bool value) {
+  static constexpr std::array<std::string_view, 2> kValues{"0", "1"};
+  return std::string(kValues[static_cast<std::size_t>(value)]);
+}
+
+std::string upstreamCode(std::string_view value) {
+  // branch-gate: BG-1107
+  if (value.empty()) {
+    return "none";
+  }
+  return std::string(value);
 }
 
 std::string phaseName(const RuntimeDebugSnapshot& snapshot) {
@@ -289,6 +305,66 @@ void appendNpcBehaviorDebugSnapshot(DebugProjectionResult& result,
   }
 
   appendNpcBehaviorHudLines(result, snapshot);
+}
+
+void appendPhysicsDebugSnapshot(DebugProjectionResult& result,
+                                const PhysicsDebugSnapshot& snapshot) {
+  // branch-gate: BG-1107
+  if (snapshot.status != PhysicsDebugSnapshotStatus::Ready &&
+      snapshot.status != PhysicsDebugSnapshotStatus::StatsFailed) {
+    return;
+  }
+
+  result.physicsDebugHudLines.push_back(
+      "PHYS packets=" + std::to_string(snapshot.sourcePacketCount) +
+      " failed=" + std::to_string(snapshot.failedPacketCount) +
+      " bodies=" + std::to_string(snapshot.bodyCount) +
+      " colliders=" + std::to_string(snapshot.colliderCount) +
+      " contacts=" + std::to_string(snapshot.contactCount) +
+      " sensors=" + std::to_string(snapshot.sensorContactCount));
+
+  result.physicsDebugHudLines.push_back(
+      "PHYS BP cells=" +
+      std::to_string(snapshot.broadphaseOccupiedCellCount) +
+      " entries=" + std::to_string(snapshot.broadphaseCellEntryCount) +
+      " bucket=" + std::to_string(snapshot.broadphaseMaxBucketSize) +
+      " candidates=" +
+      std::to_string(snapshot.broadphaseCandidatePairCount) +
+      " tested=" + std::to_string(snapshot.broadphaseTestedPairCount) +
+      " dup=" +
+      std::to_string(snapshot.broadphaseDuplicatePairRejectedCount) +
+      " overlaps=" +
+      std::to_string(snapshot.broadphaseOverlappingPairCount));
+
+  result.physicsDebugHudLines.push_back(
+      "PHYS SOLVE plans=" + std::to_string(snapshot.solvePlanCount) +
+      " pos=" + std::to_string(snapshot.positionCorrectionAppliedCount) +
+      " vel=" + std::to_string(snapshot.velocityImpulseAppliedCount) +
+      " fric=" + std::to_string(snapshot.frictionImpulseAppliedCount) +
+      " pen=" + fixed3(snapshot.maxPenetrationMeters) +
+      " ni=" + fixed3(snapshot.totalNormalImpulseMagnitude) + "/" +
+      fixed3(snapshot.maxNormalImpulseMagnitude) + " fi=" +
+      fixed3(snapshot.totalFrictionImpulseMagnitude) + "/" +
+      fixed3(snapshot.maxFrictionImpulseMagnitude));
+
+  result.physicsDebugHudLines.push_back(
+      "PHYS MOVE kin_iter=" +
+      std::to_string(snapshot.kinematicIterationCount) +
+      " kin_hits=" + std::to_string(snapshot.kinematicHitCount) +
+      " player_iter=" + std::to_string(snapshot.playerIterationCount) +
+      " player_hits=" + std::to_string(snapshot.playerHitCount) +
+      " baked=" + std::to_string(snapshot.playerBakedColliderCount) +
+      " skipped=" + std::to_string(snapshot.playerSkippedSurfaceCount));
+
+  // branch-gate: BG-1107
+  if (snapshot.hasWarnings) {
+    result.physicsDebugHudLines.push_back(
+        "PHYS WARN status=" + std::string(snapshot.reasonCode) +
+        " upstream=" + upstreamCode(snapshot.upstreamReasonCode) +
+        " bp=" + bit(snapshot.hasBroadphasePressure) +
+        " pen=" + bit(snapshot.hasPenetrationWarning) +
+        " impulse=" + bit(snapshot.hasImpulseWarning));
+  }
 }
 
 }  // namespace iggy3d

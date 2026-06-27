@@ -15,6 +15,7 @@
 namespace iggy3d {
 
 struct NpcBehaviorDebugSnapshot;
+struct PhysicsDebugSnapshot;
 
 enum class DebugProjectionKind : std::uint8_t {
   TargetCandidate,
@@ -61,6 +62,7 @@ struct DebugProjectionResult {
   std::vector<DebugProjectionItem> items;
   std::vector<std::string> runtimeDebugHudLines;
   std::vector<std::string> npcBehaviorDebugHudLines;
+  std::vector<std::string> physicsDebugHudLines;
   StateHashValue sourceStateHash = 0;
   CommandTick sourceTick = kInvalidCommandTick;
 };
@@ -71,5 +73,7 @@ void appendRuntimeDebugSnapshot(DebugProjectionResult& result,
                                 const RuntimeDebugSnapshot& snapshot);
 void appendNpcBehaviorDebugSnapshot(DebugProjectionResult& result,
                                     const NpcBehaviorDebugSnapshot& snapshot);
+void appendPhysicsDebugSnapshot(DebugProjectionResult& result,
+                                const PhysicsDebugSnapshot& snapshot);
 
 }  // namespace iggy3d
