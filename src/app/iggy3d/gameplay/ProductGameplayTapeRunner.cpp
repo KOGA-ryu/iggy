@@ -262,6 +262,22 @@ MovementBlockedReason lastMovementBlock(const Session& session) {
   return session.state().transient.lastMovementResult.blocked;
 }
 
+bool lastMovementHasPhysicsStats(const Session& session) {
+  return session.state().transient.lastMovementResultAvailable &&
+         session.state().transient.lastMovementResult.physicsFrameStatsAvailable;
+}
+
+StatusResult tickProductGameplayTape(Session& session,
+                                     const SpatialSurfaceSet* collisionSurfaces,
+                                     bool usePhysicsMovePlanner) {
+  // branch-gate: BG-1032
+  if (usePhysicsMovePlanner) {
+    return session.tickWithOptions(
+        SessionTickOptions{collisionSurfaces, true});
+  }
+  return session.tick(collisionSurfaces);
+}
+
 void recordProductGameplayTapeParse(const ProductGameplayTapeParseResult& parsed,
                                     ProductAppWindowState& window) {
   window.gameplayTapeLoaded = parsed.ok;
@@ -407,7 +423,10 @@ ProductGameplayTapeRunResult runProductGameplayTape(
                   submitted.command.rejection);
     }
 
-    const StatusResult tick = request.session->tick(currentCollisionSurfaces(request));
+    const StatusResult tick =
+        tickProductGameplayTape(*request.session,
+                                currentCollisionSurfaces(request),
+                                request.usePhysicsMovePlanner);
     if (tick.status != ResultStatus::Ok) {
       return fail(std::move(result),
                   request.session,
@@ -479,15 +498,24 @@ void runProductGameplayTapeFromOptions(
     return;
   }
 
+  const SpatialSurfaceSet* collisionSurfaces =
+      productActiveRoomCollisionSurfaces(request.window.activeRoomCollision);
   const ProductGameplayTapeRunResult run = runProductGameplayTape(
       ProductGameplayTapeRunRequest{
           // branch-gate: BG-1032
           request.activeSession.has_value() ? &*request.activeSession : nullptr,
           &parsed.tape,
-          productActiveRoomCollisionSurfaces(request.window.activeRoomCollision),
+          collisionSurfaces,
           &request.window.activeRoom,
-          &request.window.activeRoomCollision});
+          &request.window.activeRoomCollision,
+          request.window.physicsMovementPlannerEnabled});
   recordProductGameplayTapeRun(run, request.window);
+  recordProductPhysicsMovementPlannerTickProof(
+      request.window,
+      request.window.physicsMovementPlannerEnabled,
+      collisionSurfaces != nullptr,
+      request.activeSession.has_value() &&
+          lastMovementHasPhysicsStats(*request.activeSession));
 }
 
 }  // namespace iggy3d

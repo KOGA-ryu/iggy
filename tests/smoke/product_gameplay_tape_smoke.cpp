@@ -195,8 +195,18 @@ int main() {
       std::filesystem::temp_directory_path() /
       ("iggy3d_product_gameplay_tape_" +
        iggy3d::smoke::uniqueCaseToken("ghost_npc_package"));
+  const std::filesystem::path physicsControlPath =
+      std::filesystem::temp_directory_path() /
+      ("iggy3d_product_gameplay_tape_" +
+       iggy3d::smoke::uniqueCaseToken("physics_movement_control.txt"));
+  const std::filesystem::path physicsTapePath =
+      std::filesystem::temp_directory_path() /
+      ("iggy3d_product_gameplay_tape_" +
+       iggy3d::smoke::uniqueCaseToken("physics_movement_tape.txt"));
   const std::filesystem::path saveRoot =
       iggy3d::smoke::cleanSaveRoot("gameplay_tape");
+  const std::filesystem::path physicsSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("gameplay_tape_physics_movement");
   const std::filesystem::path wallSaveRoot =
       iggy3d::smoke::cleanSaveRoot("gameplay_tape_wall_collision");
   const std::filesystem::path npcSaveRoot =
@@ -258,6 +268,12 @@ int main() {
                                 npcCombatTapeText(),
                                 ghostNpcPackagePath,
                                 ghostNpcTapePath);
+  const bool physicsControlGenerated =
+      iggy3d::smoke::writeTextFile(
+          physicsControlPath, "gameplay.physics_movement=true\n");
+  const bool physicsTapeGenerated =
+      iggy3d::smoke::writeTextFile(physicsTapePath,
+                                   "move marker_key_r1_c2\n");
 
   int exitCode = 77;
   iggy3d::smoke::ReceiptFields fields;
@@ -272,6 +288,23 @@ int main() {
               iggy3d::smoke::saveRootArg(saveRoot),
           fields,
           exitCode);
+
+  int physicsExitCode = 77;
+  iggy3d::smoke::ReceiptFields physicsFields;
+  const bool physicsReceiptValid =
+      appAvailable && packageGenerated && physicsControlGenerated &&
+      physicsTapeGenerated &&
+      iggy3d::smoke::runProductReceiptCase(
+          binary,
+          "product_gameplay_tape_physics_movement",
+          std::string{"--package "} + iggy3d::smoke::shellQuote(packagePath) +
+              " --auto-new-world --automation-control " +
+              iggy3d::smoke::shellQuote(physicsControlPath) +
+              " --debug-overlay --gameplay-tape " +
+              iggy3d::smoke::shellQuote(physicsTapePath) + " " +
+              iggy3d::smoke::saveRootArg(physicsSaveRoot),
+          physicsFields,
+          physicsExitCode);
 
   int wallExitCode = 77;
   iggy3d::smoke::ReceiptFields wallFields;
@@ -408,7 +441,75 @@ int main() {
                               "gameplay_tape_exit_objective_complete",
                               "true") &&
       iggy3d::smoke::hasField(fields, "gameplay_tape_loop_complete", "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "physics_movement_planner_enabled",
+                              "false") &&
+      iggy3d::smoke::hasField(fields,
+                              "physics_movement_planner_requested",
+                              "false") &&
+      iggy3d::smoke::hasField(fields,
+                              "physics_movement_planner_used",
+                              "false") &&
+      iggy3d::smoke::hasField(fields,
+                              "physics_movement_planner_status",
+                              "physics_movement_planner_disabled") &&
       iggy3d::smoke::hasField(fields, "session_outcome", "Victory");
+
+  const bool physicsPassed =
+      physicsExitCode == 0 && physicsReceiptValid &&
+      iggy3d::smoke::productReceipt(physicsFields) &&
+      iggy3d::smoke::hasField(physicsFields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(physicsFields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(physicsFields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "automation_control_requested",
+                              "true") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "automation_control_loaded",
+                              "true") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "automation_control_last_key",
+                              "gameplay.physics_movement") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "automation_control_last_result",
+                              "applied") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "gameplay_tape_status",
+                              "gameplay_tape_completed") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "gameplay_tape_step_count",
+                              "1") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "gameplay_tape_executed_step_count",
+                              "1") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "gameplay_tape_last_action",
+                              "move") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "physics_movement_planner_enabled",
+                              "true") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "physics_movement_planner_requested",
+                              "true") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "physics_movement_planner_used",
+                              "true") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "physics_movement_planner_status",
+                              "physics_movement_planner_used") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "physics_movement_planner_reason_code",
+                              "physics_movement_planner_used") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "physics_debug_hud_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "physics_debug_hud_line_count",
+                              "4") &&
+      iggy3d::smoke::hasField(physicsFields,
+                              "physics_debug_hud_status",
+                              "physics_debug_ready") &&
+      iggy3d::smoke::hasField(physicsFields, "session_outcome", "None");
 
   const bool wallPassed =
       wallExitCode == 0 && wallReceiptValid &&
@@ -699,6 +800,14 @@ int main() {
                          "generated ghost npc ascii package") &&
                   expect(receiptValid, "receipt valid") &&
                   expect(passed, "product gameplay tape pass") &&
+                  expect(physicsControlGenerated,
+                         "physics movement automation control generated") &&
+                  expect(physicsTapeGenerated,
+                         "physics movement tape generated") &&
+                  expect(physicsReceiptValid,
+                         "physics movement receipt valid") &&
+                  expect(physicsPassed,
+                         "product gameplay tape physics movement pass") &&
                   expect(wallReceiptValid, "wall receipt valid") &&
                   expect(wallPassed, "product package wall collision pass") &&
                   expect(npcReceiptValid, "npc receipt valid") &&
@@ -712,6 +821,8 @@ int main() {
   std::cout << "smoke=product_gameplay_tape\n";
   std::cout << "package_generated=" << (packageGenerated ? "true" : "false") << "\n";
   std::cout << "receipt_valid=" << (receiptValid ? "true" : "false") << "\n";
+  std::cout << "physics_receipt_valid="
+            << (physicsReceiptValid ? "true" : "false") << "\n";
   std::cout << "wall_receipt_valid=" << (wallReceiptValid ? "true" : "false") << "\n";
   std::cout << "npc_receipt_valid=" << (npcReceiptValid ? "true" : "false") << "\n";
   std::cout << "passive_npc_receipt_valid="

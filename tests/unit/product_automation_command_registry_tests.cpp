@@ -89,6 +89,10 @@ int main() {
              iggy3d::ProductAutomationCommandId::ControllerInput) ==
              "controller.input",
          "controller input command id name is stable");
+  expect(iggy3d::productAutomationCommandIdName(
+             iggy3d::ProductAutomationCommandId::GameplayPhysicsMovement) ==
+             "gameplay.physics_movement",
+         "gameplay physics movement command id name is stable");
 
   expect(spec(registry, "automation.owner").category == Category::Owner,
          "owner command is registered");
@@ -128,6 +132,9 @@ int main() {
          "room editor preview cancel command is registered");
   expect(spec(registry, "game.move_x").category == Category::GameplayInput,
          "gameplay input command is registered");
+  expect(spec(registry, "gameplay.physics_movement").category ==
+             Category::GameplayInput,
+         "gameplay physics movement command is registered");
   expect(spec(registry, "controller.input").category == Category::ControllerInput,
          "controller input command is registered");
   expect(spec(registry, "settings.tab").category == Category::Settings,
@@ -150,6 +157,8 @@ int main() {
   expectCanonical(registry, "world_setup.draft_paint", "world.draft_paint");
   expectCanonical(registry, "frontend.draft_move", "world.draft_move");
   expectCanonical(registry, "frontend.game_attack", "game.attack");
+  expectCanonical(registry, "frontend.physics_movement",
+                  "gameplay.physics_movement");
   expectCanonical(registry, "controller.sample", "controller.input");
 
   const iggy3d::ProductAutomationCommandSpec& unknown =
@@ -181,6 +190,8 @@ int main() {
          "room editor preview cancel ignores false bool");
   expect(spec(registry, "controller.input").valueKind == Value::Action,
          "controller input is an action sequence value");
+  expect(spec(registry, "gameplay.physics_movement").valueKind == Value::Bool,
+         "gameplay physics movement is a bool value");
 
   const iggy3d::ProductMenuInputAutomationResult menuUp =
       iggy3d::resolveProductMenuInputAutomation("up");
@@ -441,6 +452,19 @@ int main() {
          "controller input dispatch id is stable");
   expect(controllerDispatch.canonicalActionLabel == "controller.input",
          "controller input dispatch label is canonical");
+
+  const iggy3d::ProductAutomationCommandDispatchResult physicsMovementDispatch =
+      iggy3d::resolveProductAutomationCommandDispatch(
+          iggy3d::ProductAutomationCommandDispatchRequest{
+              &registry, "frontend.physics_movement"});
+  expect(physicsMovementDispatch.handled,
+         "frontend physics movement alias is dispatch-handled");
+  expect(physicsMovementDispatch.spec.commandId ==
+             iggy3d::ProductAutomationCommandId::GameplayPhysicsMovement,
+         "physics movement dispatch id is stable");
+  expect(physicsMovementDispatch.canonicalActionLabel ==
+             "gameplay.physics_movement",
+         "physics movement dispatch label is canonical");
 
   const iggy3d::ProductAutomationCommandDispatchResult menuDispatch =
       iggy3d::resolveProductAutomationCommandDispatch(

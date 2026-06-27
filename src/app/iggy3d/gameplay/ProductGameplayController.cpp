@@ -335,6 +335,30 @@ void recordProductMovementDebug(const Session& session, ProductAppWindowState& w
   window.gameplayMovementGradePercent = movement.gradePercent;
 }
 
+bool commandMovementHasPhysicsFrameStats(const Session& session,
+                                         CommandKind kind) {
+  // branch-gate: BG-1115
+  if (kind != CommandKind::Move) {
+    return false;
+  }
+  const SessionTransientState& transient = session.state().transient;
+  return transient.lastMovementResultAvailable &&
+         transient.lastMovementResult.physicsFrameStatsAvailable;
+}
+
+StatusResult tickProductGameplayCommand(Session& session,
+                                        ProductAppWindowState& window,
+                                        const SpatialSurfaceSet* collisionSurfaces) {
+  // branch-gate: BG-1115
+  if (!window.physicsMovementPlannerEnabled) {
+    recordProductPhysicsMovementPlannerTickProof(window, false,
+                                                 collisionSurfaces != nullptr,
+                                                 false);
+    return session.tick(collisionSurfaces);
+  }
+  return session.tickWithOptions(SessionTickOptions{collisionSurfaces, true});
+}
+
 void submitProductGameplayCommand(Session& session,
                                   ProductAppWindowState& window,
                                   CommandRecord command,
@@ -355,6 +379,12 @@ void submitProductGameplayCommand(Session& session,
       collisionSurfaces == nullptr
           ? 0U
           : static_cast<std::uint64_t>(collisionSurfaces->size());
+  // branch-gate: BG-1115
+  if (!window.physicsMovementPlannerEnabled) {
+    recordProductPhysicsMovementPlannerTickProof(window, false,
+                                                 collisionSurfaces != nullptr,
+                                                 false);
+  }
 
   const SessionCommandResult submitted = session.submitCommand(command);
   window.gameplayCommandAccepted =
@@ -364,7 +394,8 @@ void submitProductGameplayCommand(Session& session,
   window.gameplayCommandStatus = window.gameplayCommandAccepted ? "accepted" : "rejected";
 
   if (window.gameplayCommandAccepted) {
-    const StatusResult tick = session.tick(collisionSurfaces);
+    const StatusResult tick =
+        tickProductGameplayCommand(session, window, collisionSurfaces);
     window.gameplayTickAdvanced = tick.status == ResultStatus::Ok;
     window.gameplayTickReasonCode =
         tick.status == ResultStatus::Ok
@@ -373,6 +404,11 @@ void submitProductGameplayCommand(Session& session,
     if (command.kind == CommandKind::Move) {
       recordProductMovementDebug(session, window);
     }
+    recordProductPhysicsMovementPlannerTickProof(
+        window,
+        window.physicsMovementPlannerEnabled,
+        collisionSurfaces != nullptr,
+        commandMovementHasPhysicsFrameStats(session, command.kind));
   }
 
   const EntityState* afterPlayer = productPlayerEntity(session);

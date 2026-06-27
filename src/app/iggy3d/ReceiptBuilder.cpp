@@ -2,6 +2,7 @@
 
 #include <charconv>
 #include <string>
+#include <utility>
 
 #include "app/frontend/FrontendReceipt.hpp"
 #include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
@@ -23,7 +24,44 @@ std::string floatReceiptValue(float value) {
   return std::string(buffer, static_cast<std::size_t>(ptr - buffer));
 }
 
+void setPhysicsMovementPlannerProof(ProductAppWindowState& window,
+                                    std::string status,
+                                    bool requested,
+                                    bool used) {
+  window.physicsMovementPlannerRequested = requested;
+  window.physicsMovementPlannerUsed = used;
+  window.physicsMovementPlannerStatus = std::move(status);
+  window.physicsMovementPlannerReasonCode = window.physicsMovementPlannerStatus;
+}
+
 }  // namespace
+
+void recordProductPhysicsMovementPlannerTickProof(
+    ProductAppWindowState& window,
+    bool requested,
+    bool collisionSurfacesAvailable,
+    bool movementPhysicsStatsAvailable) {
+  // branch-gate: BG-1114
+  if (!requested) {
+    setPhysicsMovementPlannerProof(
+        window, "physics_movement_planner_disabled", false, false);
+    return;
+  }
+  // branch-gate: BG-1114
+  if (!collisionSurfacesAvailable) {
+    setPhysicsMovementPlannerProof(
+        window, "physics_movement_planner_no_collision_surfaces", true, false);
+    return;
+  }
+  // branch-gate: BG-1114
+  if (movementPhysicsStatsAvailable) {
+    setPhysicsMovementPlannerProof(
+        window, "physics_movement_planner_used", true, true);
+    return;
+  }
+  setPhysicsMovementPlannerProof(
+      window, "physics_movement_planner_not_used", true, false);
+}
 
 RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                                      const ProductWorldTemplate& world,
@@ -729,6 +767,16 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.gameplayCollisionSurfacesUsed);
   appendReceiptField(receipt, "gameplay_collision_surface_count",
                      window.gameplayCollisionSurfaceCount);
+  appendReceiptField(receipt, "physics_movement_planner_enabled",
+                     window.physicsMovementPlannerEnabled);
+  appendReceiptField(receipt, "physics_movement_planner_requested",
+                     window.physicsMovementPlannerRequested);
+  appendReceiptField(receipt, "physics_movement_planner_used",
+                     window.physicsMovementPlannerUsed);
+  appendReceiptField(receipt, "physics_movement_planner_status",
+                     window.physicsMovementPlannerStatus);
+  appendReceiptField(receipt, "physics_movement_planner_reason_code",
+                     window.physicsMovementPlannerReasonCode);
   appendReceiptField(receipt, "target_discovered", window.targetDiscovered);
   appendReceiptField(receipt, "gameplay_target_status",
                      window.gameplayTargetStatus);

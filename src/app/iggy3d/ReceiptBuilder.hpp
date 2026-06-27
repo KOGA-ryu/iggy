@@ -289,6 +289,11 @@ struct ProductAppWindowState {
   bool gameplayCollisionSurfacesUsed = false;
   std::uint64_t gameplayCollisionSurfaceCount = 0;
   std::string gameplayTickReasonCode = "not_requested";
+  bool physicsMovementPlannerEnabled = false;
+  bool physicsMovementPlannerRequested = false;
+  bool physicsMovementPlannerUsed = false;
+  std::string physicsMovementPlannerStatus = "physics_movement_planner_disabled";
+  std::string physicsMovementPlannerReasonCode = "physics_movement_planner_disabled";
   bool targetDiscovered = false;
   std::string gameplayTargetStatus = "not_requested";
   std::string gameplayTargetAction = "none";
@@ -405,5 +410,11 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                                      const FrontendSettings& settings,
                                      const ProductAppWindowState& window,
                                      const ProductSaveBridgeResult& saves);
+
+void recordProductPhysicsMovementPlannerTickProof(
+    ProductAppWindowState& window,
+    bool requested,
+    bool collisionSurfacesAvailable,
+    bool movementPhysicsStatsAvailable);
 
 }  // namespace iggy3d

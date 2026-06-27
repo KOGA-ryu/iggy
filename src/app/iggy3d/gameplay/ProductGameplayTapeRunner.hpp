@@ -22,6 +22,7 @@ struct ProductGameplayTapeRunRequest {
   const SpatialSurfaceSet* collisionSurfaces = nullptr;
   const ProductActiveRoomState* activeRoom = nullptr;
   ProductActiveRoomCollisionState* activeRoomCollision = nullptr;
+  bool usePhysicsMovePlanner = false;
 };
 
 struct ProductGameplayTapeRunResult {

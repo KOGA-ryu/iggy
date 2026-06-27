@@ -136,6 +136,13 @@ int main() {
       hasField(fields, "gameplay_command_accepted", "false") &&
       hasField(fields, "gameplay_tick_advanced", "false") &&
       hasField(fields, "player_position_changed", "false") &&
+      hasField(fields, "physics_movement_planner_enabled", "false") &&
+      hasField(fields, "physics_movement_planner_requested", "false") &&
+      hasField(fields, "physics_movement_planner_used", "false") &&
+      hasField(fields, "physics_movement_planner_status",
+               "physics_movement_planner_disabled") &&
+      hasField(fields, "physics_movement_planner_reason_code",
+               "physics_movement_planner_disabled") &&
       hasField(fields, "target_discovered", "false") &&
       hasField(fields, "gameplay_reach_gate", "not_attempted") &&
       hasField(fields, "attack_executed", "false") &&

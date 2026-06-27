@@ -158,6 +158,26 @@ ProductAutomationExecutionResult applyProductGameplayAutomationCommand(
     const ProductAutomationCommandDispatchSpec& automationSpec,
     ProductAutomationGameplayContext& context) {
   const std::string_view value{command.value};
+  // branch-gate: BG-1010
+  if (automationSpec.commandId ==
+      ProductAutomationCommandId::GameplayPhysicsMovement) {
+    bool boolValue = false;
+    // branch-gate: BG-1010
+    if (!resolveProductAutomationBool(value, boolValue)) {
+      context.window.automationControlStatus = "invalid_value";
+      return failGameplayAutomation();
+    }
+    context.window.physicsMovementPlannerEnabled = boolValue;
+    // branch-gate: BG-1010
+    if (!boolValue) {
+      recordProductPhysicsMovementPlannerTickProof(context.window, false,
+                                                   false, false);
+    }
+    markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                          context.currentOwner(), "applied");
+    return passGameplayAutomation(true);
+  }
+
   // branch-gate: BG-1062
   if (automationSpec.commandId == ProductAutomationCommandId::ControllerInput) {
     const bool processed = applyControllerInputSequence(context, value);
