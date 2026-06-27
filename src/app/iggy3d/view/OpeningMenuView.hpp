@@ -14,7 +14,7 @@
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/view/PrimitiveDrawList.hpp"
 #include "app/iggy3d/room_editor/Presentation.hpp"
-#include "app/iggy3d/ProductAppOptions.hpp"
+#include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/debug/TopDownMapOverlay.hpp"
 #include "app/iggy3d/view/ViewportFraming.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"

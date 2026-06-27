@@ -4,9 +4,9 @@
 #include <optional>
 
 #include "app/frontend/FrontendState.hpp"
-#include "app/iggy3d/ProductAppOperations.hpp"
+#include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/view/CameraController.hpp"
-#include "app/iggy3d/ProductAppOptions.hpp"
+#include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/automation/AutomationControl.hpp"
 #include "app/iggy3d/automation/AutomationDispatch.hpp"
 #include "app/iggy3d/menu/InputRouter.hpp"

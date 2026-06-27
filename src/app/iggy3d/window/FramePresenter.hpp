@@ -8,7 +8,7 @@
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
-#include "app/iggy3d/ProductAppOptions.hpp"
+#include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/menu/DrawList.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"

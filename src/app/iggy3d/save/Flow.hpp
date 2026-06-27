@@ -7,7 +7,7 @@
 #include <string_view>
 
 #include "app/frontend/FrontendState.hpp"
-#include "app/iggy3d/ProductAppOptions.hpp"
+#include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "runtime/session/Session.hpp"

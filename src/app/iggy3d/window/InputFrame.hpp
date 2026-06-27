@@ -6,7 +6,7 @@
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
-#include "app/iggy3d/ProductAppOptions.hpp"
+#include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/input/ControllerActionRouting.hpp"
 #include "app/iggy3d/input/InteractionMode.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"

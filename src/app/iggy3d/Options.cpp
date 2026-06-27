@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductAppOptions.hpp"
+#include "app/iggy3d/Options.hpp"
 
 #include <charconv>
 #include <cstdlib>

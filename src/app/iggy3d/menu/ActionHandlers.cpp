@@ -8,7 +8,7 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/world/BuiltinDungeon.hpp"
 #include "app/iggy3d/world/DungeonDraft.hpp"
-#include "app/iggy3d/ProductAppOperations.hpp"
+#include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/room_editor/AuthoringController.hpp"
 #include "app/iggy3d/save/Flow.hpp"
