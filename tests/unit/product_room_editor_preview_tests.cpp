@@ -113,6 +113,11 @@ bool floorPreviewDeltasDistinguishMergeAndIsolation() {
   return expect(adjacent.ok, "adjacent floor preview accepted") &&
          expect(adjacent.primitiveId == "edit_floor_1",
                 "adjacent floor primitive id") &&
+         expect(adjacent.candidateCommandReady,
+                "adjacent floor candidate command ready") &&
+         expect(adjacent.candidateCommand.kind ==
+                    iggy3d::RoomEditCommandKind::AddFloor,
+                "adjacent floor candidate command kind") &&
          expect(adjacent.floorCountBefore == 1U, "adjacent floor before count") &&
          expect(adjacent.floorCountAfter == 2U, "adjacent floor after count") &&
          expect(adjacent.floorSizeMeters.x == 1.0F &&
@@ -200,6 +205,11 @@ bool wallDirectionAndCandidateFactsAreStable() {
                 "direction preview wall direction") &&
          expect(result.primitiveId == "edit_wall_1",
                 "direction preview primitive id") &&
+         expect(result.candidateCommandReady,
+                "direction preview candidate command ready") &&
+         expect(result.candidateCommand.kind ==
+                    iggy3d::RoomEditCommandKind::AddWall,
+                "direction preview candidate command kind") &&
          expect(result.gridX == 2 && result.gridZ == 3,
                 "direction preview grid") &&
          expect(result.wallStartMeters.x == 2.5F,

@@ -31,6 +31,13 @@ void clearProductRoomEditorPreview(ProductAppWindowState& window) {
   window.roomEditorPreviewOptimizedTriangleDelta = 0;
 }
 
+void markProductRoomEditorPreviewCleared(ProductAppWindowState& window,
+                                         std::string_view status) {
+  clearProductRoomEditorPreview(window);
+  window.roomEditorPreviewStatus = std::string(status);
+  window.roomEditorPreviewReasonCode = window.roomEditorPreviewStatus;
+}
+
 void recordProductRoomEditorPreviewResult(
     ProductAppWindowState& window,
     const ProductRoomEditorPlacementPreviewResult& result) {
@@ -246,6 +253,13 @@ ProductRoomEditorPlacementPreviewResult buildProductRoomEditorPreviewAutomation(
   return buildProductRoomEditorPlacementPreview(request);
 }
 
+ProductRoomEditingOperationResult confirmProductRoomEditorPreviewAutomation(
+    ProductRoomEditingState& editing,
+    const ProductRoomEditorPlacementPreviewResult& preview) {
+  return applyProductRoomEditAutomation(
+      {editing, ProductRoomAuthoringInputSource::Hotkey, preview.candidateCommand});
+}
+
 namespace {
 
 ProductAutomationExecutionResult unhandledRoomEditingAutomation() {
@@ -258,6 +272,18 @@ ProductAutomationExecutionResult failRoomEditingAutomation() {
 
 ProductAutomationExecutionResult passRoomEditingAutomation(bool accepted) {
   return {true, accepted};
+}
+
+ProductAutomationExecutionResult failRoomEditorPreviewAutomation(
+    const ProductAutomationCommand& command,
+    const ProductAutomationCommandDispatchSpec& automationSpec,
+    ProductAutomationRoomEditingContext& context,
+    std::string_view reasonCode) {
+  context.window.automationControlStatus = "command_failed";
+  markProductRoomEditorPreviewCleared(context.window, reasonCode);
+  markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                        context.currentOwner(), "failed");
+  return failRoomEditingAutomation();
 }
 
 struct RoomEditorMousePickValue {
@@ -625,6 +651,64 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
                           context.currentOwner(),
                           result.ok ? "applied" : "failed");
     return passRoomEditingAutomation(result.ok);
+  }
+
+  // branch-gate: BG-1051
+  if (automationSpec.commandId ==
+      ProductAutomationCommandId::RoomEditorPreviewConfirm) {
+    // branch-gate: BG-1051
+    if (!resolveProductAutomationBool(value, boolValue)) {
+      context.window.automationControlStatus = "invalid_value";
+      return failRoomEditingAutomation();
+    }
+    // branch-gate: BG-1051
+    if (!boolValue) {
+      markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                            context.currentOwner(), "ignored");
+      return passRoomEditingAutomation(true);
+    }
+    // branch-gate: BG-1051
+    if (!roomEditorReady(context, command, automationSpec.canonicalKey)) {
+      return failRoomEditingAutomation();
+    }
+    // branch-gate: BG-1051
+    if (!context.window.roomEditorPreviewActive ||
+        !context.window.roomEditorPlacementPreview.ok ||
+        !context.window.roomEditorPlacementPreview.candidateCommandReady) {
+      return failRoomEditorPreviewAutomation(
+          command, automationSpec, context, "room_editor_preview_confirm_missing");
+    }
+
+    ProductRoomEditingOperationResult result =
+        confirmProductRoomEditorPreviewAutomation(
+            context.window.roomEditing, context.window.roomEditorPlacementPreview);
+    return applyRoomEditingOperationResult(command, automationSpec, context, result);
+  }
+
+  // branch-gate: BG-1051
+  if (automationSpec.commandId ==
+      ProductAutomationCommandId::RoomEditorPreviewCancel) {
+    // branch-gate: BG-1051
+    if (!resolveProductAutomationBool(value, boolValue)) {
+      context.window.automationControlStatus = "invalid_value";
+      return failRoomEditingAutomation();
+    }
+    // branch-gate: BG-1051
+    if (!boolValue) {
+      markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                            context.currentOwner(), "ignored");
+      return passRoomEditingAutomation(true);
+    }
+    // branch-gate: BG-1051
+    if (!roomEditorReady(context, command, automationSpec.canonicalKey)) {
+      return failRoomEditingAutomation();
+    }
+
+    markProductRoomEditorPreviewCleared(context.window,
+                                        "room_editor_preview_cancelled");
+    markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                          context.currentOwner(), "applied");
+    return passRoomEditingAutomation(true);
   }
 
   // branch-gate: BG-1006

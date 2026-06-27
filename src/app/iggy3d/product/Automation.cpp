@@ -80,6 +80,8 @@ std::string_view productAutomationCommandIdName(
       std::string_view{"room_editor.wall_direction"},
       std::string_view{"room_editor.mouse_pick"},
       std::string_view{"room_editor.preview"},
+      std::string_view{"room_editor.preview_confirm"},
+      std::string_view{"room_editor.preview_cancel"},
       std::string_view{"room_editor.place"},
       std::string_view{"save.select"},
       std::string_view{"save.delete"},
@@ -481,6 +483,10 @@ ProductAutomationCommandRegistry makeProductAutomationCommandRegistry() {
        Category::RoomEditor, Value::Csv, true, false, "room_editor"},
       {"room_editor.preview", {"frontend.room_editor_preview"},
        Category::RoomEditor, Value::Bool, true, true, "room_editor"},
+      {"room_editor.preview_confirm", {"frontend.room_editor_preview_confirm"},
+       Category::RoomEditor, Value::Bool, true, true, "room_editor"},
+      {"room_editor.preview_cancel", {"frontend.room_editor_preview_cancel"},
+       Category::RoomEditor, Value::Bool, true, true, "room_editor"},
       {"room_editor.place", {"frontend.room_editor_place"},
        Category::RoomEditor, Value::Bool, true, true, "room_editor"},
       {"editor.input", {}, Category::RoomEditor, Value::Action, true, false,
@@ -662,6 +668,12 @@ const ProductAutomationCommandDispatchSpec& findProductAutomationCommandDispatch
           Category::RoomEditor, Value::Csv, InputAction::None},
       ProductAutomationCommandDispatchSpec{
           true, "room_editor.preview", Id::RoomEditorPreview,
+          Category::RoomEditor, Value::Bool, InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          true, "room_editor.preview_confirm", Id::RoomEditorPreviewConfirm,
+          Category::RoomEditor, Value::Bool, InputAction::None},
+      ProductAutomationCommandDispatchSpec{
+          true, "room_editor.preview_cancel", Id::RoomEditorPreviewCancel,
           Category::RoomEditor, Value::Bool, InputAction::None},
       ProductAutomationCommandDispatchSpec{
           true, "room_editor.place", Id::RoomEditorPlace, Category::RoomEditor,

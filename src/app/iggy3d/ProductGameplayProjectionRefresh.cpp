@@ -209,14 +209,25 @@ void copyProductRoomEditorPreviewOverlay(
     ProductAppWindowState& window,
     const ProductRoomEditorPreviewOverlay& overlay) {
   window.roomEditorPreviewVisible = overlay.visible;
-  // branch-gate: BG-1050
-  window.roomEditorPreviewStatus =
-      window.roomEditorPreviewActive ? window.roomEditorPlacementPreview.status
-                                     : overlay.status;
-  // branch-gate: BG-1050
-  window.roomEditorPreviewReasonCode =
-      window.roomEditorPreviewActive ? window.roomEditorPlacementPreview.reasonCode
-                                     : overlay.reasonCode;
+  if (window.roomEditorPreviewActive) {  // branch-gate: BG-1050
+    window.roomEditorPreviewStatus = window.roomEditorPlacementPreview.status;
+  } else {
+    const bool shouldCopyOverlayStatus =
+        window.roomEditorPreviewStatus == "room_editor_preview_not_requested";
+    if (shouldCopyOverlayStatus) {  // branch-gate: BG-1052
+      window.roomEditorPreviewStatus = overlay.status;
+    }
+  }
+  if (window.roomEditorPreviewActive) {  // branch-gate: BG-1050
+    window.roomEditorPreviewReasonCode =
+        window.roomEditorPlacementPreview.reasonCode;
+  } else {
+    const bool shouldCopyOverlayReason =
+        window.roomEditorPreviewReasonCode == "room_editor_preview_not_requested";
+    if (shouldCopyOverlayReason) {  // branch-gate: BG-1052
+      window.roomEditorPreviewReasonCode = overlay.reasonCode;
+    }
+  }
   window.roomEditorPreviewCandidateId = overlay.candidateId;
   window.roomEditorPreviewTool = overlay.toolName;
   window.roomEditorPreviewGridX = overlay.gridX;

@@ -133,6 +133,8 @@ ProductRoomEditorPlacementPreviewResult buildProductRoomEditorPlacementPreview(
   // branch-gate: BG-1045
   result.primitiveId =
       applied.primitiveId.empty() ? std::string{"none"} : applied.primitiveId;
+  result.candidateCommandReady = true;
+  result.candidateCommand = *cursor.command;
   copyCandidateFacts(result, *cursor.command);
   result.floorCountAfter = static_cast<std::uint64_t>(dryRun.floors.size());
   result.wallCountAfter = static_cast<std::uint64_t>(dryRun.walls.size());

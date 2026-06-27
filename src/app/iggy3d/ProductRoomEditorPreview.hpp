@@ -20,6 +20,8 @@ struct ProductRoomEditorPlacementPreviewResult {
   std::string status = "room_editor_preview_not_requested";
   std::string reasonCode = "room_editor_preview_not_requested";
   std::string primitiveId = "none";
+  bool candidateCommandReady = false;
+  RoomEditCommand candidateCommand;
   std::string tool = "floor";
   std::string wallDirection = "up";
   std::int32_t gridX = 0;

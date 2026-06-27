@@ -77,6 +77,14 @@ int main() {
              iggy3d::ProductAutomationCommandId::RoomEditorPreview) ==
              "room_editor.preview",
          "room editor preview command id name is stable");
+  expect(iggy3d::productAutomationCommandIdName(
+             iggy3d::ProductAutomationCommandId::RoomEditorPreviewConfirm) ==
+             "room_editor.preview_confirm",
+         "room editor preview confirm command id name is stable");
+  expect(iggy3d::productAutomationCommandIdName(
+             iggy3d::ProductAutomationCommandId::RoomEditorPreviewCancel) ==
+             "room_editor.preview_cancel",
+         "room editor preview cancel command id name is stable");
 
   expect(spec(registry, "automation.owner").category == Category::Owner,
          "owner command is registered");
@@ -108,6 +116,12 @@ int main() {
          "room editor mouse pick command is registered");
   expect(spec(registry, "room_editor.preview").category == Category::RoomEditor,
          "room editor preview command is registered");
+  expect(spec(registry, "room_editor.preview_confirm").category ==
+             Category::RoomEditor,
+         "room editor preview confirm command is registered");
+  expect(spec(registry, "room_editor.preview_cancel").category ==
+             Category::RoomEditor,
+         "room editor preview cancel command is registered");
   expect(spec(registry, "game.move_x").category == Category::GameplayInput,
          "gameplay input command is registered");
   expect(spec(registry, "settings.tab").category == Category::Settings,
@@ -150,6 +164,14 @@ int main() {
          "room editor preview is a bool value");
   expect(spec(registry, "room_editor.preview").ignoresFalseBool,
          "room editor preview ignores false bool");
+  expect(spec(registry, "room_editor.preview_confirm").valueKind == Value::Bool,
+         "room editor preview confirm is a bool value");
+  expect(spec(registry, "room_editor.preview_confirm").ignoresFalseBool,
+         "room editor preview confirm ignores false bool");
+  expect(spec(registry, "room_editor.preview_cancel").valueKind == Value::Bool,
+         "room editor preview cancel is a bool value");
+  expect(spec(registry, "room_editor.preview_cancel").ignoresFalseBool,
+         "room editor preview cancel ignores false bool");
 
   const iggy3d::ProductMenuInputAutomationResult menuUp =
       iggy3d::resolveProductMenuInputAutomation("up");
@@ -366,6 +388,30 @@ int main() {
          "frontend room editor preview dispatch id is stable");
   expect(previewDispatch.canonicalActionLabel == "room_editor.preview",
          "frontend room editor preview dispatch label is canonical");
+
+  const iggy3d::ProductAutomationCommandDispatchResult confirmDispatch =
+      iggy3d::resolveProductAutomationCommandDispatch(
+          iggy3d::ProductAutomationCommandDispatchRequest{
+              &registry, "frontend.room_editor_preview_confirm"});
+  expect(confirmDispatch.handled,
+         "frontend room editor preview confirm is dispatch-handled");
+  expect(confirmDispatch.spec.commandId ==
+             iggy3d::ProductAutomationCommandId::RoomEditorPreviewConfirm,
+         "frontend room editor preview confirm dispatch id is stable");
+  expect(confirmDispatch.canonicalActionLabel == "room_editor.preview_confirm",
+         "frontend room editor preview confirm dispatch label is canonical");
+
+  const iggy3d::ProductAutomationCommandDispatchResult cancelDispatch =
+      iggy3d::resolveProductAutomationCommandDispatch(
+          iggy3d::ProductAutomationCommandDispatchRequest{
+              &registry, "frontend.room_editor_preview_cancel"});
+  expect(cancelDispatch.handled,
+         "frontend room editor preview cancel is dispatch-handled");
+  expect(cancelDispatch.spec.commandId ==
+             iggy3d::ProductAutomationCommandId::RoomEditorPreviewCancel,
+         "frontend room editor preview cancel dispatch id is stable");
+  expect(cancelDispatch.canonicalActionLabel == "room_editor.preview_cancel",
+         "frontend room editor preview cancel dispatch label is canonical");
 
   const iggy3d::ProductAutomationCommandDispatchResult addWallDispatch =
       iggy3d::resolveProductAutomationCommandDispatch(

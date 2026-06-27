@@ -64,6 +64,8 @@ enum class ProductAutomationCommandId : std::uint8_t {
   RoomEditorWallDirection,
   RoomEditorMousePick,
   RoomEditorPreview,
+  RoomEditorPreviewConfirm,
+  RoomEditorPreviewCancel,
   RoomEditorPlace,
   SaveSelect,
   SaveDelete,
