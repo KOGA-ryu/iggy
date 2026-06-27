@@ -990,6 +990,16 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.productVulkanRenderingPath);
   appendReceiptField(receipt, "product_vulkan_record_mode",
                      window.productVulkanRecordMode);
+  appendReceiptField(receipt, "product_vulkan_menu_requested",
+                     window.productVulkanMenuRequested);
+  appendReceiptField(receipt, "product_vulkan_menu_visible",
+                     window.productVulkanMenuVisible);
+  appendReceiptField(receipt, "product_vulkan_menu_status",
+                     window.productVulkanMenuStatus);
+  appendReceiptField(receipt, "product_vulkan_menu_reason_code",
+                     window.productVulkanMenuReasonCode);
+  appendReceiptField(receipt, "product_vulkan_menu_surface",
+                     window.productVulkanMenuSurface);
   appendReceiptField(receipt, "product_vulkan_gameplay_ready",
                      vulkanGameplayReadiness.ready);
   appendReceiptField(receipt, "product_vulkan_gameplay_status",

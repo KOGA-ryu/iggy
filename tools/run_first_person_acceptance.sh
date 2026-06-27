@@ -131,8 +131,8 @@ else
 Launch policy:
   --starter-menu was requested. This is diagnostic only for the current Vulkan
   path: if the receipt remains on frontend_screen=starter with
-  product_vulkan_status=waiting_for_gameplay_room, no first-person room frame
-  has been submitted.
+  product_vulkan_menu_status=vulkan_starter_menu_not_rendered, no visible
+  Vulkan starter menu or first-person room frame has been submitted.
 POLICY
 fi
 echo
@@ -154,12 +154,18 @@ Readiness receipt fields to inspect:
   product_vulkan_gameplay_ready=true
   product_vulkan_gameplay_status=product_vulkan_gameplay_ready
   product_vulkan_gameplay_reason_code=product_vulkan_gameplay_ready
+  product_vulkan_menu_requested=false
+  product_vulkan_menu_visible=false
   top_down_map_purpose=minimap
 
 Blocker examples:
   frontend_screen=starter
   gameplay_active=false
   active_room_loaded=false
+  product_vulkan_menu_requested=true
+  product_vulkan_menu_visible=false
+  product_vulkan_menu_status=vulkan_starter_menu_not_rendered
+  product_vulkan_menu_reason_code=vulkan_menu_not_supported
   product_vulkan_backend_built=false
   product_vulkan_gameplay_status=product_vulkan_backend_unavailable
   product_vulkan_gameplay_status=product_vulkan_renderer_unavailable

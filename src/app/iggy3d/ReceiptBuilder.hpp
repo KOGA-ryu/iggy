@@ -369,6 +369,11 @@ struct ProductAppWindowState {
   std::string productVulkanReasonCode = "not_requested";
   std::string productVulkanRenderingPath = "none";
   std::string productVulkanRecordMode = "none";
+  bool productVulkanMenuRequested = false;
+  bool productVulkanMenuVisible = false;
+  std::string productVulkanMenuStatus = "vulkan_menu_not_requested";
+  std::string productVulkanMenuReasonCode = "vulkan_menu_not_requested";
+  std::string productVulkanMenuSurface = "none";
   std::uint64_t framesPresented = 0;
   std::uint64_t eventPollCount = 0;
   std::uint64_t menuRowCount = 0;

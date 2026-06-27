@@ -23,9 +23,10 @@ The first-person Vulkan acceptance helper configures `build-vulkan`, builds the
 product app, and launches with `--auto-new-world` so the renderer receives an
 active gameplay room mesh. The current Vulkan path does not render the starter
 menu yet; a run that remains on `frontend_screen=starter` with
-`product_vulkan_status=waiting_for_gameplay_room` has not submitted a
-first-person gameplay frame. Use the SDL/null diagnostic path for starter-menu
-inspection until Vulkan UI/menu rendering is wired.
+`product_vulkan_menu_status=vulkan_starter_menu_not_rendered` has not shown a
+visible Vulkan starter menu or submitted a first-person gameplay frame. Use the
+SDL/null diagnostic path for starter-menu inspection until Vulkan UI/menu
+rendering is wired.
 
 Save files are plain `.iggy3d.save` files under `--save-root` and contain the
 runtime save envelope plus any authored room floors/walls from the in-game

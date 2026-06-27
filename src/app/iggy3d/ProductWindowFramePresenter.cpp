@@ -44,6 +44,10 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
     request.window.productVulkanStatus = "waiting_for_gameplay_room";
     request.window.productVulkanReasonCode =
         "product_vulkan_waiting_for_gameplay_room";
+    // branch-gate: BG-1072
+    if (request.frontend.screen == FrontendScreen::Starter) {
+      recordProductVulkanMenuUnsupported(request.window, "starter");
+    }
   }
 }
 

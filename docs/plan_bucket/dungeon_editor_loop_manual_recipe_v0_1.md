@@ -124,8 +124,9 @@ tools/run_first_person_acceptance.sh --starter-menu --run
 ```
 
 If that receipt remains on `frontend_screen=starter` with
-`product_vulkan_status=waiting_for_gameplay_room`, no first-person room frame
-has been submitted. Do not count that as visual gameplay acceptance.
+`product_vulkan_menu_status=vulkan_starter_menu_not_rendered`, no visible
+Vulkan starter menu or first-person room frame has been submitted. Do not count
+that as visual gameplay acceptance.
 
 ## Full Manual Loop
 
@@ -134,7 +135,16 @@ has been submitted. Do not count that as visual gameplay acceptance.
 The full product loop still starts conceptually at Starter -> New World, but the
 current Vulkan first-person renderer gate skips that UI with `--auto-new-world`.
 The starter/menu UI is currently visible through the SDL/null diagnostic path,
-not the accepted first-person Vulkan path.
+not the accepted first-person Vulkan path. Vulkan starter-menu diagnosis should
+report:
+
+```text
+product_vulkan_menu_requested=true
+product_vulkan_menu_visible=false
+product_vulkan_menu_status=vulkan_starter_menu_not_rendered
+product_vulkan_menu_reason_code=vulkan_menu_not_supported
+product_vulkan_menu_surface=starter
+```
 
 For the Vulkan first-person pass, launch with `--auto-new-world` and continue
 from gameplay. For menu-specific diagnosis, use the SDL/null fallback or the

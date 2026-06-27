@@ -69,3 +69,4 @@ BG-1068	src/app/iggy3d/ProductAppOptions.cpp	explicit product debug overlay opti
 BG-1069	src/app/iggy3d/ProductWindowRendererLifecycle.cpp	product Vulkan gameplay readiness gate policy	codex	2026-06-26
 BG-1070	src/app/iggy3d/ProductTopDownMapOverlay.cpp	product top-down map overlay purpose policy	codex	2026-06-26
 BG-1071	src/app/iggy3d/OpeningMenuView.cpp	product top-down map SDL layout policy	codex	2026-06-26
+BG-1072	src/app/iggy3d/ProductWindowFramePresenter.cpp	product Vulkan starter menu unsupported status policy	codex	2026-06-26

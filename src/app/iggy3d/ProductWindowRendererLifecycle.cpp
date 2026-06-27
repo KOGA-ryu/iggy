@@ -168,6 +168,15 @@ void recordProductVulkanSubmit(ProductAppWindowState& window,
   }
 }
 
+void recordProductVulkanMenuUnsupported(ProductAppWindowState& window,
+                                        std::string_view menuSurface) {
+  window.productVulkanMenuRequested = true;
+  window.productVulkanMenuVisible = false;
+  window.productVulkanMenuStatus = "vulkan_starter_menu_not_rendered";
+  window.productVulkanMenuReasonCode = "vulkan_menu_not_supported";
+  window.productVulkanMenuSurface = std::string(menuSurface);
+}
+
 ProductWindowRendererState createProductWindowRenderer(
     const ProductWindowRendererRequest& request) {
   ProductWindowRendererState renderer;

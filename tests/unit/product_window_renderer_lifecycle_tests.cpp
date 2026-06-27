@@ -132,6 +132,19 @@ bool roomMeshFramePathReportsGameplayReadyWhenBackendBuilt() {
                 "gameplay ready reason");
 }
 
+bool starterMenuUnsupportedStatusIsStable() {
+  iggy3d::ProductAppWindowState window = requestedWindow();
+  iggy3d::recordProductVulkanMenuUnsupported(window, "starter");
+  return expect(window.productVulkanMenuRequested, "menu requested") &&
+         expect(!window.productVulkanMenuVisible, "menu not visible") &&
+         expect(window.productVulkanMenuStatus == "vulkan_starter_menu_not_rendered",
+                "menu unsupported status") &&
+         expect(window.productVulkanMenuReasonCode == "vulkan_menu_not_supported",
+                "menu unsupported reason") &&
+         expect(window.productVulkanMenuSurface == "starter",
+                "menu unsupported surface");
+}
+
 bool productReceiptCarriesReadinessFields() {
   iggy3d::ProductAppOptions options;
   iggy3d::ProductWorldTemplate world;
@@ -146,6 +159,7 @@ bool productReceiptCarriesReadinessFields() {
   window.productVulkanRenderingPath = "package_room_meshes";
   window.productVulkanRecordMode = "room_mesh_draws";
   window.viewport.productVulkanRoomMeshBackendPresented = true;
+  iggy3d::recordProductVulkanMenuUnsupported(window, "starter");
   const iggy3d::RenderReceipt receipt =
       iggy3d::buildProductAppReceipt(options, world, frontend, settings, window, saves);
 
@@ -171,7 +185,29 @@ bool productReceiptCarriesReadinessFields() {
                     "product_vulkan_gameplay_reason_code",
                     expectedReady ? "product_vulkan_gameplay_ready"
                                   : "product_vulkan_backend_unavailable"),
-                "receipt includes gameplay readiness reason");
+                "receipt includes gameplay readiness reason") &&
+         expect(iggy3d::hasReceiptField(receipt,
+                                        "product_vulkan_menu_requested",
+                                        "true"),
+                "receipt includes menu requested") &&
+         expect(iggy3d::hasReceiptField(receipt,
+                                        "product_vulkan_menu_visible",
+                                        "false"),
+                "receipt includes menu visible false") &&
+         expect(iggy3d::hasReceiptField(
+                    receipt,
+                    "product_vulkan_menu_status",
+                    "vulkan_starter_menu_not_rendered"),
+                "receipt includes menu unsupported status") &&
+         expect(iggy3d::hasReceiptField(
+                    receipt,
+                    "product_vulkan_menu_reason_code",
+                    "vulkan_menu_not_supported"),
+                "receipt includes menu unsupported reason") &&
+         expect(iggy3d::hasReceiptField(receipt,
+                                        "product_vulkan_menu_surface",
+                                        "starter"),
+                "receipt includes menu surface");
 }
 
 }  // namespace
@@ -184,6 +220,7 @@ int main() {
       frameSubmitIsRequiredBeforeGameplayReady() &&
       roomMeshBackendPresentationIsRequiredBeforeGameplayReady() &&
       roomMeshFramePathReportsGameplayReadyWhenBackendBuilt() &&
+      starterMenuUnsupportedStatusIsStable() &&
       productReceiptCarriesReadinessFields();
   if (!ok) {
     return 1;
