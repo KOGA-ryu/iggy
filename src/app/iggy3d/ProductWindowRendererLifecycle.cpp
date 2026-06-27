@@ -57,6 +57,64 @@ bool productWindowRendererUsesVulkan(ProductRendererRequest rendererRequest) {
   return rendererRequest == ProductRendererRequest::Vulkan;
 }
 
+bool productWindowVulkanBackendBuilt() {
+#if defined(IGGY3D_HAS_SDL3) && defined(IGGY3D_APP_VULKAN_BACKEND)
+  return true;
+#else
+  return false;
+#endif
+}
+
+ProductVulkanGameplayReadiness evaluateProductVulkanGameplayReadiness(
+    const ProductAppWindowState& window) {
+  ProductVulkanGameplayReadiness readiness;
+  readiness.backendBuilt = productWindowVulkanBackendBuilt();
+  // branch-gate: BG-1069
+  if (!window.productVulkanRendererRequested) {
+    readiness.status = "product_vulkan_not_requested";
+    readiness.reasonCode = "product_vulkan_not_requested";
+    return readiness;
+  }
+  // branch-gate: BG-1069
+  if (!readiness.backendBuilt) {
+    readiness.status = "product_vulkan_backend_unavailable";
+    readiness.reasonCode = "product_vulkan_backend_unavailable";
+    return readiness;
+  }
+  // branch-gate: BG-1069
+  if (!window.productVulkanRendererCreated || !window.productVulkanRendererReady) {
+    readiness.status = "product_vulkan_renderer_unavailable";
+    readiness.reasonCode = window.productVulkanReasonCode.empty()
+                               ? "renderer_unavailable"
+                               : window.productVulkanReasonCode;
+    return readiness;
+  }
+  // branch-gate: BG-1069
+  if (!window.viewport.productVulkanRoomMeshCpuReady) {
+    readiness.status = "product_vulkan_room_mesh_cpu_not_ready";
+    readiness.reasonCode = "product_vulkan_room_mesh_cpu_not_ready";
+    return readiness;
+  }
+  // branch-gate: BG-1069
+  if (!window.productVulkanFrameSubmitted) {
+    readiness.status = "product_vulkan_frame_not_submitted";
+    readiness.reasonCode = window.productVulkanReasonCode.empty()
+                               ? "frame_not_submitted"
+                               : window.productVulkanReasonCode;
+    return readiness;
+  }
+  // branch-gate: BG-1069
+  if (!window.viewport.productVulkanRoomMeshBackendPresented) {
+    readiness.status = "product_vulkan_room_mesh_not_presented";
+    readiness.reasonCode = "product_vulkan_room_mesh_not_presented";
+    return readiness;
+  }
+  readiness.ready = true;
+  readiness.status = "product_vulkan_gameplay_ready";
+  readiness.reasonCode = "product_vulkan_gameplay_ready";
+  return readiness;
+}
+
 void recordProductVulkanRendererUnavailable(ProductAppWindowState& window,
                                             std::string_view reasonCode) {
   window.productVulkanRendererCreated = false;

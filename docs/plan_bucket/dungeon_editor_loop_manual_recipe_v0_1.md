@@ -28,6 +28,7 @@ Hard rules for this lane:
 From `/Users/kogaryu/iggy3d`:
 
 ```sh
+cmake -S . -B build -DIGGY3D_ENABLE_VULKAN=ON
 cmake --build build --target iggy3d_app -j 8
 ```
 
@@ -38,6 +39,7 @@ before treating the run as a visual acceptance pass:
 
 ```sh
 cmake -S . -B build -DIGGY3D_ENABLE_VULKAN=ON
+cmake --build build --target iggy3d_app -j 8
 ```
 
 The app binary is:
@@ -79,6 +81,9 @@ Notes:
 - `--renderer vulkan` is the required visual/manual acceptance path for the
   real first-person renderer. A `product_vulkan_backend_unavailable` receipt is
   a build/configuration blocker, not an accepted fallback.
+- Vulkan readiness must be proven by receipt fields. The accepted first-person
+  path is not just "Vulkan requested"; it must show the renderer, submitted
+  frame, and room-mesh backend path all ready.
 - `--renderer null` is diagnostic only. It uses the SDL top-down debug fallback
   and is not accepted first-person gameplay presentation.
 - `--input auto` enables keyboard/gamepad auto input selection. It does not
@@ -144,6 +149,36 @@ draft paint inputs only.
 
 After Create, gameplay should open. Visually check that the room is drawn in
 the first-person renderer and the compact mode HUD shows `MODE player`.
+
+The renderer readiness receipt must show:
+
+```text
+renderer_request=vulkan
+product_vulkan_renderer_requested=true
+product_vulkan_backend_built=true
+product_vulkan_renderer_created=true
+product_vulkan_renderer_ready=true
+product_vulkan_frame_submitted=true
+product_vulkan_rendering_path=package_room_meshes
+product_vulkan_record_mode=room_mesh_draws
+product_vulkan_room_mesh_backend_presented=true
+product_vulkan_gameplay_ready=true
+product_vulkan_gameplay_status=product_vulkan_gameplay_ready
+product_vulkan_gameplay_reason_code=product_vulkan_gameplay_ready
+```
+
+Readiness blockers are explicit:
+
+```text
+product_vulkan_backend_built=false
+product_vulkan_gameplay_status=product_vulkan_backend_unavailable
+product_vulkan_renderer_ready=false
+product_vulkan_gameplay_status=product_vulkan_renderer_unavailable
+product_vulkan_frame_submitted=false
+product_vulkan_gameplay_status=product_vulkan_frame_not_submitted
+product_vulkan_room_mesh_backend_presented=false
+product_vulkan_gameplay_status=product_vulkan_room_mesh_not_presented
+```
 
 Hard visual gate: if the window shows a top-down grid, `TOP-DOWN DEBUG
 FALLBACK`, or movement/NPC debug panels covering the play area, it is not the
@@ -300,6 +335,8 @@ product_vulkan_room_mesh_cpu_ready=true
 product_vulkan_room_mesh_source=scene_room_projection
 product_vulkan_room_asset_id=custom_dungeon_draft
 product_vulkan_room_geometry_signature=<positive integer>
+product_vulkan_gameplay_ready=true
+product_vulkan_gameplay_status=product_vulkan_gameplay_ready
 ```
 
 While editing with a phantom preview:
@@ -516,8 +553,10 @@ used to prove the same product path without launching a window.
   a documented guarantee for this loop.
 - Builder proof is deterministic and no-window. Manual controller/window
   validation is still user/controller-run hardware and display acceptance.
-- Vulkan screenshot/window proof remains separate and display-dependent, but
-  manual first-person acceptance still uses `--renderer vulkan`.
+- Vulkan screenshot/window proof remains separate and display-dependent. The
+  deterministic gate proves configuration, renderer lifecycle, and product
+  room-mesh frame-submit readiness; final visual acceptance is still a manual
+  window/GPU observation using `--renderer vulkan`.
 - The SDL/null fallback is top-down diagnostic output. It must not be used as
   first-person gameplay acceptance.
 - ASCII remains map/layout authoring only; it does not define behavior,
@@ -529,9 +568,16 @@ Docs-only changes should run:
 
 ```sh
 git diff --check
-rg -n "<unresolved-marker-pattern>" <docs checked by this slice>
 tools/check_branch_gate.py
 ```
 
 If a proof target or test helper is changed, also run that exact focused build
 and ctest target.
+
+For the Vulkan readiness gate, run:
+
+```sh
+cmake --build build --target iggy3d_app
+cmake --build build --target product_window_renderer_lifecycle_tests
+ctest --test-dir build --output-on-failure -R '^product_window_renderer_lifecycle_tests$'
+```

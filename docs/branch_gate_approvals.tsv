@@ -66,3 +66,4 @@ BG-1065	src/app/iggy3d/OpeningMenuView.cpp	product interaction mode hud draw vis
 BG-1066	src/app/frontend/PauseMenu.cpp	leave editor pause menu availability policy	codex	2026-06-26
 BG-1067	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	leave editor pause action lifecycle policy	codex	2026-06-26
 BG-1068	src/app/iggy3d/ProductAppOptions.cpp	explicit product debug overlay option parsing	codex	2026-06-26
+BG-1069	src/app/iggy3d/ProductWindowRendererLifecycle.cpp	product Vulkan gameplay readiness gate policy	codex	2026-06-26

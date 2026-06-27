@@ -7,6 +7,7 @@
 #include "app/iggy3d/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductMovementDebugHud.hpp"
 #include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
+#include "app/iggy3d/ProductWindowRendererLifecycle.hpp"
 
 namespace iggy3d {
 namespace {
@@ -31,6 +32,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                                      const ProductSaveBridgeResult& saves) {
   RenderReceipt receipt;
   const ProductGameplayFeedback feedback = buildProductGameplayFeedback(window);
+  const ProductVulkanGameplayReadiness vulkanGameplayReadiness =
+      evaluateProductVulkanGameplayReadiness(window);
   const ProductMovementDebugHud movementHud =
       buildProductMovementDebugHud(window, settings.devToolsEnabled,
                                    settings.debugOverlayEnabled);
@@ -958,6 +961,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.automationControlLastResult);
   appendReceiptField(receipt, "product_vulkan_renderer_requested",
                      window.productVulkanRendererRequested);
+  appendReceiptField(receipt, "product_vulkan_backend_built",
+                     vulkanGameplayReadiness.backendBuilt);
   appendReceiptField(receipt, "product_vulkan_renderer_created",
                      window.productVulkanRendererCreated);
   appendReceiptField(receipt, "product_vulkan_renderer_ready",
@@ -977,6 +982,12 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.productVulkanRenderingPath);
   appendReceiptField(receipt, "product_vulkan_record_mode",
                      window.productVulkanRecordMode);
+  appendReceiptField(receipt, "product_vulkan_gameplay_ready",
+                     vulkanGameplayReadiness.ready);
+  appendReceiptField(receipt, "product_vulkan_gameplay_status",
+                     vulkanGameplayReadiness.status);
+  appendReceiptField(receipt, "product_vulkan_gameplay_reason_code",
+                     vulkanGameplayReadiness.reasonCode);
   appendReceiptField(receipt, "event_poll_count", window.eventPollCount);
   appendReceiptField(receipt, "frames", static_cast<std::uint64_t>(options.frames));
   appendReceiptField(receipt, "frames_presented", window.framesPresented);

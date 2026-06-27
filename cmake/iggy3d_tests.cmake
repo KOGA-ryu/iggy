@@ -67,6 +67,11 @@ iggy3d_add_unit_test(product_app_options_tests tests/unit/product_app_options_te
 set_tests_properties(product_app_options_tests PROPERTIES
   LABELS "unit;app;product;options;iggy3d")
 
+iggy3d_add_unit_test(product_window_renderer_lifecycle_tests
+  tests/unit/product_window_renderer_lifecycle_tests.cpp)
+set_tests_properties(product_window_renderer_lifecycle_tests PROPERTIES
+  LABELS "unit;app;product;renderer;window;iggy3d")
+
 iggy3d_add_unit_test(dev_tools_menu_tests tests/unit/dev_tools_menu_tests.cpp)
 set_tests_properties(dev_tools_menu_tests PROPERTIES LABELS "unit;app;frontend;dev_tools;iggy3d")
 

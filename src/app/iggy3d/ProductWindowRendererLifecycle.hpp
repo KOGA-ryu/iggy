@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <string_view>
 
 struct SDL_Renderer;
@@ -25,7 +26,17 @@ struct ProductWindowRendererState {
   RendererApi vulkanRenderer;
 };
 
+struct ProductVulkanGameplayReadiness {
+  bool backendBuilt = false;
+  bool ready = false;
+  std::string status = "product_vulkan_not_requested";
+  std::string reasonCode = "product_vulkan_not_requested";
+};
+
 bool productWindowRendererUsesVulkan(ProductRendererRequest rendererRequest);
+bool productWindowVulkanBackendBuilt();
+ProductVulkanGameplayReadiness evaluateProductVulkanGameplayReadiness(
+    const ProductAppWindowState& window);
 
 void recordProductVulkanRendererUnavailable(ProductAppWindowState& window,
                                             std::string_view reasonCode);
