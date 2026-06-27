@@ -88,7 +88,7 @@ target_sources(iggy3d
     src/app/iggy3d/save/ProductSavedRoomMarkerBinding.cpp
     src/app/iggy3d/save/ProductSaveCatalog.cpp
     src/app/iggy3d/save/ProductSaveFlow.cpp
-    src/app/iggy3d/ProductNpcProfileAssignment.cpp
+    src/app/iggy3d/world/ProductNpcProfileAssignment.cpp
     src/app/iggy3d/ProductTopDownMapOverlay.cpp
     src/app/iggy3d/menu/ProductUiDrawList.cpp
     src/app/iggy3d/ProductViewportFraming.cpp

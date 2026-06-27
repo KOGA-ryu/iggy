@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductNpcProfileAssignment.hpp"
+#include "app/iggy3d/world/ProductNpcProfileAssignment.hpp"
 
 #include <unordered_set>
 

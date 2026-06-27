@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <string>
 
-#include "app/iggy3d/ProductNpcProfileAssignment.hpp"
+#include "app/iggy3d/world/ProductNpcProfileAssignment.hpp"
 #include "content/FixtureScenarioLoader.hpp"
 #include "content/PackageLoader.hpp"
 
