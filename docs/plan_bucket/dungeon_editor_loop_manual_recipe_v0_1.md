@@ -2,24 +2,26 @@
 
 ## Objective
 
-Give a practical user-facing recipe for the current dungeon editor loop without
-guessing flags or receipt fields. This document connects the live window path
-to the deterministic no-window proof that already covers:
+This is the user-run acceptance recipe for the current product dungeon
+authoring loop:
 
-- New World from a custom draft;
-- Pause to Edit Room;
-- real editor input for direct floor/wall tool selection, wall-direction
-  rotation, place/delete/undo/redo;
-- Save And Exit;
-- fresh starter boot;
-- Continue into the saved edited room;
-- headless PPM visual proof for the continued room;
-- creative-mode mouse click cursor picking and phantom placement preview;
-- controller player/creative mode switching and creative editor control
-  semantics through no-window receipt proof.
+```text
+launch -> starter -> create dungeon -> see room -> explore in Player mode
+-> enter Edit Room / Creative mode -> preview/place floor or wall
+-> Leave Editor -> explicit Save -> exit -> relaunch -> Continue
+```
 
-This recipe does not require a builder to open a real window. The live window
-steps are for a user-run manual check.
+The deterministic builder proof for the same loop is headless and receipt
+driven. This document is for a real/manual window pass; it does not make the
+builder launch a window.
+
+Hard rules for this lane:
+
+- ASCII is map/layout authoring only, not behavior/profile/NPC truth.
+- Leave Editor does not autosave.
+- Save is explicit through Pause -> Save or Pause -> Save And Exit.
+- Receipts prove product state; visual acceptance still requires user/manual
+  observation in a window.
 
 ## Build
 
@@ -35,23 +37,23 @@ The app binary is:
 build/iggy3d
 ```
 
-## Save Root
+## Isolated Save Root
 
-Use an isolated save root while testing:
+Use a fresh save root for each manual pass:
 
 ```sh
 export IGGY3D_EDITOR_SAVE_ROOT="$(mktemp -d /tmp/iggy3d-editor-loop.XXXXXX)"
 ```
 
-The current save file created by this loop is expected at:
+The first save created by the current loop is:
 
 ```sh
 "$IGGY3D_EDITOR_SAVE_ROOT/save_001.iggy3d.save"
 ```
 
-## Manual Window Launch
+## Window Launch
 
-Normal interactive launch:
+Use this command for the main manual pass:
 
 ```sh
 build/iggy3d \
@@ -65,217 +67,53 @@ build/iggy3d \
 Notes:
 
 - `--window` opens the SDL product window.
-- `--renderer null` uses the current product SDL fallback drawing path. Use
-  `--renderer vulkan` only when intentionally checking the Vulkan backend.
-- `--print-render-receipt` prints the receipt after the app exits.
-- Do not add `--frames` for an interactive manual run, because that exits after
-  the requested frame count.
+- `--renderer null` uses the current SDL fallback product drawing path and is
+  the stable manual recipe default.
+- Use `--renderer vulkan` only when intentionally checking the display-dependent
+  Vulkan backend path.
+- `--input auto` enables keyboard/gamepad auto input selection. It does not
+  create a world or run the editor by itself.
+- `--print-render-receipt` prints state proof when the app exits.
+- Do not add `--frames` for an interactive manual run.
 
-## Manual Flow
+For a short receipt-only window sanity check, add `--frames 1`; that is not a
+replacement for the interactive pass.
 
-1. On the Starter screen, select `New World`.
-2. On the New World screen, press `Tab` to enter dungeon draft edit mode.
-3. Move the draft cursor to row `1`, column `2`:
+## Full Manual Loop
+
+### 1. Starter To New World
+
+1. Launch the app with the command above.
+2. On the Starter screen, select `New World` and confirm.
+   On an empty save root, New World is the current practical create path.
+
+### 2. Create A Custom Draft Dungeon
+
+The New World screen shows the selected dungeon, ASCII room id/source, draft
+status, cursor, and ASCII preview.
+
+Current manual title behavior:
+
+- The visible title comes from the selected New World draft/template.
+- Free-text title editing in the live window is not currently wired.
+- The no-window proof can set `world.title=Custom Draft`; manual window testing
+  should not depend on typing a custom title yet.
+
+To make a custom draft manually:
+
+1. Press `Tab` to enter draft edit mode.
+2. Move the draft cursor to row `1`, column `2`:
    - press `S` or Down once;
    - press `D` or Right twice.
-4. Press `1` to paint `#` as a wall glyph at the cursor.
-5. Press `Enter` or `Space` to create the world from the edited draft.
-6. Enter gameplay.
-7. Open Pause.
-8. Select `Edit Room`.
-9. Use editor controls:
-   - `W/A/S/D` or d-pad: move editor cursor.
-   - `1`: select Floor tool.
-   - `2`: select Wall tool.
-   - `R`: rotate wall direction clockwise while the Wall tool is active.
-   - `Q/E` or shoulders: cycle editor tools when direct selection is not desired.
-   - `Space` or gamepad south: place.
-   - `Delete`: delete.
-   - `Z`: undo.
-   - `Y`: redo.
-10. Place at least one wall or floor so the edited room changes. A compact manual
-    proof path is: move right once, press `2`, press `Space`, press `R`, press
-    `Space` again. That creates two wall edits with distinct directions.
-11. Open Pause again.
-12. Select `Save And Exit`.
-13. Relaunch with the same `--save-root`.
-14. Select `Continue`.
+3. Press `1` to paint `#` at the cursor.
+4. Press `Enter` or `Space` to create the world.
 
-Expected user-visible state after Continue:
+New World draft controls:
 
-- gameplay resumes instead of opening the editor automatically;
-- the restored room is the saved edited room;
-- the room editor HUD is not visible until Edit Room is opened again;
-- when Edit Room is opened again, the editor HUD and cursor/tool overlay should
-  be visible.
-
-## Manual Controller Acceptance Flow
-
-Use the same build, save root, and window launch above:
-
-```sh
-cmake --build build --target iggy3d_app -j 8
-
-build/iggy3d \
-  --window \
-  --renderer null \
-  --input auto \
-  --save-root "$IGGY3D_EDITOR_SAVE_ROOT" \
-  --print-render-receipt
-```
-
-Then run this controller-focused manual path:
-
-1. Create a New World/custom dungeon using the manual New World draft steps
-   above.
-2. Enter gameplay.
-3. In player mode, use the controller left stick to move the player. Player
-   mode routes controller movement to gameplay movement.
-4. Open Pause and select `Edit Room`. Entering room editing sets
-   `interaction_mode=creative`.
-5. In creative mode, controller input routes to room-editor actions:
-
-| Control | Creative room-editor behavior |
-| --- | --- |
-| Left stick or d-pad | Move editor cursor |
-| West button | Build/update phantom placement preview |
-| South button | Confirm active phantom preview |
-| East button | Cancel active phantom preview |
-| North button | Rotate wall direction clockwise |
-| Left shoulder | Cycle to previous tool |
-| Right shoulder | Cycle to next tool |
-
-6. Use the creative controls to preview and confirm at least one floor or wall
-   edit.
-7. Open Pause and select `Leave Editor` to stop editing while staying in
-   gameplay. The active room keeps already-applied edits, editor overlay and
-   phantom preview feedback hide, and `interaction_mode` returns to `player`.
-8. In player mode, controller movement should control the player again instead
-   of the editor cursor.
-9. Press and release the chord again if you want to return to creative mode
-   during the same gameplay session.
-10. Save And Exit.
-11. Relaunch with the same `--save-root`.
-12. Select `Continue`.
-
-The mode chord is deliberately handled before ordinary controller actions. When
-the full chord is active, normal controller action routing is consumed for that
-frame so the chord does not also place, preview, move, or interact.
-
-Mode lifecycle is intentionally explicit: entering `Edit Room` sets
-`interaction_mode=creative`; selecting `Leave Editor` from Pause exits room
-editing, clears editor preview/overlay feedback, and returns to
-`interaction_mode=player` while gameplay stays active. Save And Exit and Return
-To Title also reset the starter/title state to `interaction_mode=player`.
-Closing a pause overlay with Resume does not mean Leave Editor.
-
-Current mode feedback is receipt/proof based:
-
-```text
-interaction_mode=player|creative
-controller_mode_toggle_requested=true|false
-controller_mode_toggle_accepted=true|false
-controller_mode_toggle_status=interaction_mode_toggled|interaction_mode_surface_blocked|...
-controller_mode_toggle_surface=gameplay|room_editor|starter|...
-controller_action_status=controller_action_mapped|controller_action_chord_consumed|...
-controller_action_control=<controller control name>
-controller_action_mode=player|creative
-controller_action_surface=gameplay|room_editor|...
-controller_action_input_action=<mapped InputAction name>
-```
-
-The live UI currently does not add controller shortcut/tutorial text. A compact
-visible mode indicator can be added later if it fits an existing gameplay HUD
-state area without becoming instructions.
-
-## Window Mouse Creative Placement Acceptance
-
-Use this user-run path to check the live mouse flow. The builder verification
-for this recipe remains headless; do not treat this section as a CI window gate.
-
-1. Build and launch the product app with the same isolated save root:
-
-```sh
-cmake --build build --target iggy3d_app -j 8
-
-build/iggy3d \
-  --window \
-  --renderer null \
-  --input auto \
-  --save-root "$IGGY3D_EDITOR_SAVE_ROOT" \
-  --print-render-receipt
-```
-
-2. Create and enter a dungeon world using the New World draft steps above.
-3. Open Pause and select `Edit Room`.
-4. Edit Room entry sets `interaction_mode=creative`, so creative/editor mouse
-   control is active immediately. The controller chord `LT + RT + L3 + R3`
-   remains available if you intentionally switch back to player mode and later
-   return to creative mode.
-5. Select the intended tool:
-   - press `1` for Floor;
-   - press `2` for Wall;
-   - press `R` to rotate wall direction before previewing a wall.
-6. Left mouse click in the room view.
-
-Expected after the click:
-
-- the editor cursor moves to the clicked grid cell;
-- a phantom placement preview appears for the current tool and cursor;
-- the active authored floor/wall counts do not change yet;
-- collision counts do not change yet;
-- no save/write occurs from the click.
-
-7. Confirm or cancel explicitly:
-   - press `Enter`, controller south, or run `room_editor.preview_confirm=true`
-     to commit the active phantom preview;
-   - press `C`, controller east, or run `room_editor.preview_cancel=true` to
-     clear it without changing the room.
-8. If confirmed, Save And Exit, relaunch with the same `--save-root`, then
-   Continue. The confirmed edit should persist only after that explicit confirm.
-
-A click is intentionally not placement. It updates cursor plus phantom preview;
-the existing confirm/cancel path decides whether real geometry changes.
-
-If using `--print-render-receipt`, the relevant proof fields after a creative
-mouse preview are:
-
-```text
-interaction_mode=creative
-room_editor_grid_x=<clicked grid x>
-room_editor_grid_z=<clicked grid z>
-room_editor_last_operation=room_editor.mouse_pick
-room_editor_last_operation_accepted=true
-room_editor_preview_visible=true
-room_editor_preview_status=room_editor_preview_ready
-room_editor_preview_candidate_id=<candidate primitive id>
-room_editor_preview_tool=floor|wall
-room_editor_preview_grid_x=<clicked grid x>
-room_editor_preview_grid_z=<clicked grid z>
-room_editor_preview_optimized_draw_delta=<integer>
-room_editor_preview_optimized_triangle_delta=<integer>
-product_draw_room_editor_preview_count=1
-product_render_bridge_room_editor_preview_count=1
-```
-
-After confirm, expect the preview counts to return to zero and the normal room
-editing/authored/collision receipts to reflect the committed primitive. After
-cancel, expect the preview to be cleared and the authored/collision counts to
-remain unchanged.
-
-## New World Draft Controls
-
-The New World draft editor is controlled through the existing menu input layer.
-Press `Tab` before painting. When draft edit mode is off, `W/A/S/D` and the
-arrow keys select built-in dungeon presets instead of moving the draft cursor.
-
-| Control | New World draft behavior |
+| Control | Behavior |
 | --- | --- |
 | `Tab` | Toggle dungeon draft edit mode |
-| `W` or Up | Move draft cursor up while edit mode is on |
-| `S` or Down | Move draft cursor down while edit mode is on |
-| `A` or Left | Move draft cursor left while edit mode is on |
-| `D` or Right | Move draft cursor right while edit mode is on |
+| `W/A/S/D` or arrows | Move draft cursor while edit mode owns input |
 | `1` | Paint `#` wall glyph |
 | `2` | Paint `.` floor glyph |
 | `3` | Paint `P` player-start glyph |
@@ -286,394 +124,192 @@ arrow keys select built-in dungeon presets instead of moving the draft cursor.
 | `Enter` or `Space` | Create the world |
 | `Escape` | Back out of New World |
 
-Gamepad d-pad, south, and east buttons can navigate, confirm, and back out of
-New World. Glyph painting is currently keyboard number-key driven.
+When draft edit mode is off, `W/A/S/D` and arrows select built-in dungeon
+presets instead of moving the draft cursor. The number-key glyphs are New World
+draft paint inputs only.
 
-ASCII glyphs remain map/layout authoring only. The New World number keys are
-only draft paint inputs while the New World draft editor owns input; they are
-separate from the in-game room editor tool hotkeys below.
+### 3. See And Explore The Room
 
-## In-Game Room Editor Controls
+After Create, gameplay should open. Visually check that the room is drawn and
+the compact mode HUD shows `MODE player`.
 
-Open Pause, select `Edit Room`, then use these controls while room editing is
-active:
+In Player mode:
 
-| Control | In-game room editor behavior |
+- keyboard movement uses the existing gameplay controls;
+- controller left stick maps to player movement;
+- room editor cursor, preview, and editor HUD should not be visible.
+
+### 4. Enter Creative/Edit Mode
+
+1. Open Pause.
+2. Select `Edit Room`.
+
+Entering Edit Room sets `interaction_mode=creative`. The mode HUD should show
+`MODE creative`, and editor cursor/overlay feedback should be visible.
+
+### 5. Preview And Place Geometry
+
+Keyboard room-editor controls:
+
+| Control | Behavior |
 | --- | --- |
-| `W` or d-pad Up | Move editor cursor up |
-| `S` or d-pad Down | Move editor cursor down |
-| `A` or d-pad Left | Move editor cursor left |
-| `D` or d-pad Right | Move editor cursor right |
+| `W/A/S/D` | Move editor cursor |
 | `1` | Select Floor tool |
 | `2` | Select Wall tool |
 | `R` | Rotate wall direction clockwise: Up, Right, Down, Left, Up |
-| `Q` or left shoulder | Cycle to previous tool |
-| `E` or right shoulder | Cycle to next tool |
-| Left mouse click in creative mode | Move editor cursor and build/update phantom preview |
-| `F` or gamepad west | Build/update phantom preview at current cursor |
-| `Enter` or gamepad south | Confirm active phantom preview |
-| `C` or gamepad east | Cancel active phantom preview |
-| Pause -> Leave Editor | Exit editing, hide editor feedback, return to Player mode |
-| `Space` | Place immediately with the active tool |
-| `Delete` | Delete the primitive under the cursor/tool target |
-| `Z` | Undo |
-| `Y` | Redo |
+| `Q` / `E` | Cycle previous / next tool |
+| Left mouse click | Move cursor to clicked grid cell and build/update phantom preview |
+| `F` | Build/update phantom preview at current cursor |
+| `Enter` | Confirm active phantom preview |
+| `C` | Cancel active phantom preview |
+| `Space` | Immediate place with active tool |
+| `Delete` | Delete primitive under the cursor/tool target |
+| `Z` / `Y` | Undo / redo |
 
-Direct `1`/`2` selection is the preferred manual way to choose Floor or Wall.
-`Q/E` still work for cycling and remain covered by the input/controller tests.
+Controller creative controls:
 
-## Bounded Window Receipt Check
-
-For a short user-run receipt sanity check, use a finite frame count:
-
-```sh
-build/iggy3d \
-  --window \
-  --renderer null \
-  --input auto \
-  --save-root "$IGGY3D_EDITOR_SAVE_ROOT" \
-  --frames 1 \
-  --print-render-receipt
-```
-
-This opens a window only briefly and prints a receipt. It is not a replacement
-for the interactive editor test above.
-
-## Deterministic No-Window Parity Proof
-
-The focused proof map for the current editor loop is:
-
-| Target | What it proves |
+| Control | Behavior |
 | --- | --- |
-| `product_new_world_menu_action_tests` | New World draft edit-mode movement, paint, and create semantics |
-| `product_ascii_map_smoke` | End-to-end New World draft receipt parity, including cursor paint create |
-| `room_editor_input_tests` | Physical room-editor keyboard mappings, including `1`, `2`, and `R` |
-| `product_room_editor_action_controller_tests` | Editor actions change cursor/tool/direction state and edit documents correctly |
-| `product_window_input_frame_tests` | Live product mouse click path headlessly: creative click picks cursor and builds phantom preview without mutation |
-| `product_controller_input_smoke` | No-window controller sample injection, player/creative mode toggle receipts, and creative editor routing |
-| `product_ascii_map_smoke` | Leave Editor exits editing, returns player mode, hides editor feedback, and preserves the edited active room |
-| `product_editor_wall_direction_hotkey_smoke` | Wall direction hotkey persists distinct Up and Right wall geometry |
-| `product_editor_combined_save_continue_smoke` | Direct floor+wall edits persist together through Save And Exit and Continue |
-| `product_continued_room_movement_smoke` | Continued edited room uses restored collision for exploration |
-| `product_room_visual_proof_smoke` | Continued edited room has deterministic headless PPM visual artifact |
+| Left stick or d-pad | Move editor cursor |
+| West button | Build/update phantom preview |
+| South button | Confirm active phantom preview |
+| East button | Cancel active phantom preview |
+| North button | Rotate wall direction clockwise |
+| Left shoulder / right shoulder | Cycle previous / next tool |
 
-The stable headless visual parity gate is:
-
-```sh
-cmake --build build --target product_room_visual_proof_smoke
-ctest --test-dir build --output-on-failure -R '^product_room_visual_proof_smoke$'
-```
-
-That smoke runs the editor-loop spine without a window:
-
-1. creates a custom draft through the New World flow;
-2. enters gameplay;
-3. opens Pause and Edit Room;
-4. applies real editor input through the room editor action path:
+The deliberate mode chord is:
 
 ```text
-editor.input=editor.nudge_x_pos,editor.next_tool,editor.place
+LT + RT + L3 + R3
 ```
 
-5. Save And Exit;
-6. fresh starter boot on the same save root;
-7. Continue;
-8. decodes the saved authored room;
-9. rebuilds product active-room, scene projection, primitive draw-list, and CPU
-   room mesh proof;
-10. writes a deterministic PPM visual proof artifact.
+The chord toggles `player <-> creative` on gameplay/editor-capable surfaces and
+is consumed before ordinary controller actions. Edit Room entry already sets
+Creative mode, so the chord is optional for the main editor path.
 
-The direct floor/wall persistence proof uses:
+Practical wall proof path:
 
-```text
-editor.input=editor.nudge_x_pos,editor.select_wall_tool,editor.place,editor.select_floor_tool,editor.place
-```
+1. Move the editor cursor right once.
+2. Press `2` for Wall.
+3. Press `F` to preview.
+4. Press `Enter` to confirm, or press `Space` for immediate placement.
 
-The wall-direction hotkey persistence proof uses:
+Practical floor proof path:
 
-```text
-editor.input=editor.nudge_x_pos,editor.select_wall_tool,editor.place,editor.rotate_wall_direction,editor.place
-```
+1. Move the cursor to a cell where no floor exists.
+2. Press `1` for Floor.
+3. Press `F`.
+4. Press `Enter`.
 
-That second proof decodes the saved room and checks `edit_wall_1` is the
-default Up edge while `edit_wall_2` is the rotated Right edge.
+Mouse click policy:
 
-The focused controller mode parity gate is:
+- A creative-mode left click is not placement.
+- It moves the editor cursor and builds a phantom preview.
+- Real authored room and collision counts change only after explicit confirm.
+- `C` cancels the preview without changing room geometry.
 
-```sh
-cmake --build build --target product_controller_input_smoke
-ctest --test-dir build --output-on-failure -R '^product_controller_input_smoke$'
-```
+### 6. Leave Editor
 
-That smoke injects controller samples without SDL hardware or a real window:
+1. Open Pause.
+2. Select `Leave Editor`.
 
-```text
-controller.input=left_stick_up
-controller.input=mode_chord
-controller.input=mode_chord,release,mode_chord
-room_edit.start_active=true
-controller.input=dpad_right
-```
+Expected result:
 
-It proves:
+- gameplay remains active;
+- `interaction_mode` returns to `player`;
+- room editing becomes not ready;
+- editor cursor, overlay, phantom preview, and editor HUD hide;
+- the active room keeps already-applied edits;
+- no save is written by Leave Editor.
 
-- player-mode gameplay surface maps controller movement to `game.move_y`;
-- `mode_chord` toggles `player -> creative` and records
-  `controller_action_chord_consumed`;
-- release plus another `mode_chord` toggles `creative -> player`;
-- `room_edit.start_active=true` enters room editing in creative mode without a
-  controller chord;
-- creative room-editor surface maps controller d-pad movement to
-  `editor.nudge_x` and moves the editor cursor;
-- starter surface blocks the chord with
-  `interaction_mode_surface_blocked`.
+Pause Resume is not Leave Editor. Resume only closes the pause overlay.
 
-The focused creative mouse input-frame parity gate is:
+### 7. Save Explicitly
 
-```sh
-cmake --build build --target product_window_input_frame_tests
-ctest --test-dir build --output-on-failure -R '^product_window_input_frame_tests$'
-```
+1. Open Pause.
+2. Select `Save`.
 
-That test calls `processProductWindowEditorMousePickPreview(...)` directly with
-synthetic clicks. It proves:
+Expected result:
 
-- creative mode plus room editing ready moves the editor cursor, builds a
-  visible phantom preview, and leaves real floor/wall/collision counts
-  unchanged;
-- player mode with the same click does not run the editor pick/preview path;
-- room editing not ready does not mutate editor state;
-- invalid click coordinates propagate the mouse-pick rejection without preview
-  or geometry mutation.
+- the current active session writes `save_001`;
+- the save source is `pause_save`;
+- the app remains in the product flow after saving.
 
-The smoke emits:
+After Save, either close the window manually for relaunch testing or use the
+product menu's Save And Exit path if you want a product-controlled return to
+Starter. Save And Exit writes through the existing save-and-exit path; it is not
+required for the Leave Editor -> Save proof.
 
-```text
-room_visual_proof_save_exit=true
-room_visual_proof_reboot_starter=true
-room_visual_proof_continue=true
-room_visual_proof_artifact=true
-room_visual_proof_artifact_path=<temp save root>/custom_dungeon_draft_continue_visual_proof.ppm
-room_visual_proof_floor_pixels=<positive integer>
-room_visual_proof_wall_pixels=<positive integer>
-room_visual_proof_geometry_signature=<positive integer>
-result=pass
-```
+### 8. Relaunch And Continue
 
-The focused draft-control parity case is in `product_ascii_map_smoke` as
-`ascii_map_custom_draft_cursor_paint_create`. It proves the New World draft
-cursor path without using direct hidden room setup:
+1. Relaunch with the same `--save-root`.
+2. On Starter, verify one compatible save is present.
+3. Select `Continue`.
 
-```text
-frontend.select=new_world
-frontend.execute=true
-world.title=Cursor Draft
-menu.next_tab=true
-menu.input=down
-menu.right=true
-world.draft_move=right
-world.draft_paint=#
-world.create=true
-```
+Expected result:
 
-This maps to the manual controls as:
+- gameplay resumes;
+- interaction mode is `player`;
+- Edit Room is not opened automatically;
+- the loaded room source is `saved_authored_room`;
+- the saved floor/wall edits are present.
 
-- `menu.next_tab=true`: press `Tab`, entering draft edit mode.
-- `menu.input=down`: press Down or `S` once.
-- `menu.right=true` and `world.draft_move=right`: move right twice without
-  repeating the same automation key in one control file.
-- `world.draft_paint=#`: headless equivalent of pressing `1`.
-- `world.create=true`: press `Enter` or `Space`.
+## Receipt Proof Map
 
-`world.draft_cell=1,2,#` is still useful for direct model setup tests, but the
-manual recipe and parity proof use cursor movement plus paint because that is
-the user-facing flow.
+Use these as the minimal fields to inspect from `--print-render-receipt`. The
+exact values below match the current custom-draft one-wall proof unless marked
+with `<...>`.
 
-The PPM path policy is stable within each smoke run: it is written under that
-run's isolated temporary save root as:
-
-```text
-custom_dungeon_draft_continue_visual_proof.ppm
-```
-
-The exact temp root prefix is intentionally unique per run.
-
-## Control File Example
-
-If a reproducible control file is needed, use unique command keys. Repeating a
-key in one control file is rejected as `duplicate_key`.
-
-Create `/tmp/iggy3d-editor-loop-create-edit-save.in`:
-
-```text
-frontend.select=new_world
-frontend.execute=true
-world.title=Custom Draft
-menu.next_tab=true
-menu.input=down
-menu.right=true
-world.draft_move=right
-world.draft_paint=#
-world.create=true
-system.pause=true
-menu.down=true
-pause.execute=true
-editor.input=editor.nudge_x_pos,editor.select_wall_tool,editor.place,editor.rotate_wall_direction,editor.place
-menu.back=true
-pause.select=save_and_exit
-menu.confirm=true
-```
-
-Run it headlessly:
-
-```sh
-build/iggy3d \
-  --no-window \
-  --save-root "$IGGY3D_EDITOR_SAVE_ROOT" \
-  --automation-control /tmp/iggy3d-editor-loop-create-edit-save.in \
-  --print-render-receipt
-```
-
-Then verify a fresh starter sees the save:
-
-```sh
-build/iggy3d \
-  --no-window \
-  --save-root "$IGGY3D_EDITOR_SAVE_ROOT" \
-  --print-render-receipt
-```
-
-Create `/tmp/iggy3d-editor-loop-continue.in`:
-
-```text
-frontend.select=continue
-frontend.execute=true
-```
-
-Continue headlessly:
-
-```sh
-build/iggy3d \
-  --no-window \
-  --save-root "$IGGY3D_EDITOR_SAVE_ROOT" \
-  --automation-control /tmp/iggy3d-editor-loop-continue.in \
-  --print-render-receipt
-```
-
-The equivalent window launch uses the same `--save-root`, but do not use
-automation for an interactive manual run unless deliberately reproducing a
-scripted setup:
-
-```sh
-build/iggy3d \
-  --window \
-  --renderer null \
-  --input auto \
-  --save-root "$IGGY3D_EDITOR_SAVE_ROOT" \
-  --print-render-receipt
-```
-
-## Receipt Fields
-
-After creating the world from the cursor-painted draft, expect:
+After creating the custom draft:
 
 ```text
 frontend_screen=gameplay
 gameplay_active=true
+interaction_mode=player
+interaction_mode_hud_visible=true
+interaction_mode_hud_mode=player
 world_setup_dungeon_draft_edit_mode=true
 world_setup_dungeon_draft_modified=true
 world_setup_dungeon_draft_cursor_row=1
 world_setup_dungeon_draft_cursor_column=2
 world_setup_dungeon_draft_status=dungeon_draft_cell_painted
-world_setup_dungeon_draft_reason_code=dungeon_draft_cell_painted
 world_setup_dungeon_draft_last_glyph=#
 world_setup_ascii_room_id=custom_dungeon_draft
-world_creation_ascii_room_id=custom_dungeon_draft
 active_room_source=ascii_room
 active_room_id=custom_dungeon_draft
 active_room_authored_floor_count=58
 active_room_authored_wall_count=61
-```
-
-After Save And Exit, expect the save path receipt to include:
-
-```text
-frontend_screen=starter
-gameplay_active=false
-interaction_mode=player
-product_save_status=product_save_written
-product_save_source=pause_save_and_exit
-active_product_save_id=save_001
-room_editor_hud_visible=false
-room_editor_hud_tool=wall
-room_editor_hud_wall_direction=right
-room_editor_hud_last_operation=editor.place
-room_editor_overlay_visible=false
-```
-
-After a fresh Continue, expect:
-
-```text
-frontend_screen=gameplay
-gameplay_active=true
-active_room_source=saved_authored_room
-active_room_id=custom_dungeon_draft
-active_room_authored_floor_count=58
-active_room_authored_wall_count=63
-room_editor_hud_visible=false
-product_save_load_status=product_save_loaded
-product_save_load_source=continue
 product_vulkan_room_mesh_cpu_ready=true
-product_vulkan_room_wall_draw_count=<positive integer>
+product_vulkan_room_mesh_source=scene_room_projection
+product_vulkan_room_asset_id=custom_dungeon_draft
+product_vulkan_room_geometry_signature=<positive integer>
 ```
 
-After controller mode checks, expect:
-
-```text
-interaction_mode=player|creative
-controller_mode_toggle_requested=true|false
-controller_mode_toggle_accepted=true|false
-controller_mode_toggle_status=interaction_mode_toggled|interaction_mode_surface_blocked|interaction_mode_chord_partial
-controller_mode_toggle_reason_code=<same stable status>
-controller_mode_toggle_surface=gameplay|room_editor|starter
-controller_action_mapped=true|false
-controller_action_status=controller_action_mapped|controller_action_chord_consumed
-controller_action_reason_code=<same stable status>
-controller_action_control=left_stick_up|dpad_right|none
-controller_action_mode=player|creative
-controller_action_surface=gameplay|room_editor|starter
-controller_action_input_action=game.move_y|editor.nudge_x|none
-```
-
-After creative mouse preview checks, expect:
+While editing with a phantom preview:
 
 ```text
 interaction_mode=creative
-room_editor_grid_x=<clicked grid x>
-room_editor_grid_z=<clicked grid z>
-room_editor_status=room_editor_mouse_pick_mapped
-room_editor_reason_code=room_editor_mouse_pick_mapped
-room_editor_last_operation=room_editor.mouse_pick
-room_editor_last_operation_accepted=true
+interaction_mode_hud_visible=true
+interaction_mode_hud_mode=creative
+room_editing_ready=true
+room_editor_overlay_visible=true
 room_editor_preview_visible=true
 room_editor_preview_status=room_editor_preview_ready
-room_editor_preview_reason_code=room_editor_preview_ready
 room_editor_preview_candidate_id=<candidate primitive id>
 room_editor_preview_tool=floor|wall
-room_editor_preview_grid_x=<clicked grid x>
-room_editor_preview_grid_z=<clicked grid z>
+room_editor_preview_grid_x=<grid x>
+room_editor_preview_grid_z=<grid z>
 room_editor_preview_optimized_draw_delta=<integer>
 room_editor_preview_optimized_triangle_delta=<integer>
 product_draw_room_editor_preview_count=1
 product_render_bridge_room_editor_preview_count=1
 ```
 
-Before explicit confirm, authored room and collision counts should match the
-pre-click state. After explicit confirm, those counts should update through the
-normal room-editing operation receipts. After cancel, they should remain
-unchanged and preview counts should return to zero.
+Before confirm, authored room and collision counts should still match the
+pre-preview state. After confirm, the normal room-editing operation fields and
+active room counts should reflect the committed primitive.
 
-After Pause -> Leave Editor, expect:
+After Leave Editor:
 
 ```text
 frontend_screen=gameplay
@@ -685,81 +321,197 @@ input_owner=gameplay
 gameplay_input_suppressed=false
 room_editing_ready=false
 room_editing_status=product_room_editing_left
+room_editing_last_operation=pause_leave_editor
 room_editor_cursor_ready=false
 room_editor_overlay_visible=false
 room_editor_preview_visible=false
 room_editor_hud_visible=false
 active_room_id=custom_dungeon_draft
-active_room_authored_floor_count=<latest applied floor count>
-active_room_authored_wall_count=<latest applied wall count>
+active_room_authored_floor_count=58
+active_room_authored_wall_count=62
 active_room_collision_ready=true
+active_room_collision_query_surface_count=182
+active_room_collision_walkable_surface_count=58
+active_room_collision_actor_blocker_count=62
+active_room_collision_projectile_blocker_count=62
 product_vulkan_room_mesh_cpu_ready=true
+product_vulkan_room_wall_draw_count=22
 ```
 
-The visual proof smoke additionally ties the PPM artifact to:
+After explicit Pause -> Save:
 
 ```text
-room_visual_proof_artifact=true
-room_visual_proof_floor_pixels=<positive integer>
-room_visual_proof_wall_pixels=<positive integer>
-room_visual_proof_geometry_signature=<positive integer>
+frontend_screen=pause
+frontend_selected_action=save
+gameplay_active=true
+interaction_mode=player
+room_editing_ready=false
+product_save_status=product_save_written
+product_save_reason_code=product_save_written
+product_save_durable_reason=durable_save_file_written
+product_save_source=pause_save
+product_save_save_id=save_001
+product_save_session_saved=true
+active_product_save_id=save_001
 ```
 
-The PPM comments include:
+The saved file should contain:
 
 ```text
-room_id=custom_dungeon_draft
+authoredRoom.id=custom_dungeon_draft
+authoredRoom.floor.count=58
+authoredRoom.wall.count=62
+edit_wall_1
+```
+
+On a fresh Starter boot with the same save root:
+
+```text
+frontend_screen=starter
+gameplay_active=false
+interaction_mode=player
+interaction_mode_hud_visible=false
+save_count=1
+compatible_save_count=1
+product_save_status=not_requested
+product_save_load_status=not_requested
+```
+
+After Continue:
+
+```text
+frontend_screen=gameplay
+gameplay_active=true
+interaction_mode=player
+interaction_mode_hud_visible=true
+interaction_mode_hud_mode=player
+input_owner=gameplay
+room_editing_ready=false
+room_editor_overlay_visible=false
+room_editor_preview_visible=false
+room_editor_hud_visible=false
+product_save_load_status=product_save_loaded
+product_save_load_source=continue
+product_save_load_save_id=save_001
+product_save_load_authored_room_id=custom_dungeon_draft
+product_save_load_authored_floor_count=58
+product_save_load_authored_wall_count=62
 active_room_source=saved_authored_room
-authored_floor_count=58
-authored_wall_count=62
-optimized_wall_draw_count=22
-room_geometry_signature=<positive integer>
+active_room_id=custom_dungeon_draft
+active_room_authored_floor_count=58
+active_room_authored_wall_count=62
+active_room_collision_query_surface_count=182
+active_room_collision_walkable_surface_count=58
+active_room_collision_actor_blocker_count=62
+active_room_collision_projectile_blocker_count=62
+product_vulkan_room_mesh_cpu_ready=true
+product_vulkan_room_asset_id=custom_dungeon_draft
+product_vulkan_room_wall_draw_count=22
 ```
 
-## Honest Current Limits
+Controller mode/action receipts:
 
-- This recipe does not claim Vulkan screenshot proof. `vulkan_screenshot_smoke`
-  remains the later display-dependent visual gate.
-- The builder verification for this slice stays headless.
-- ASCII remains map/layout authoring only.
-- NPC behavior is outside this lane.
-- `--input auto` only selects input backend. It does not create a dungeon or
-  run the editor loop by itself.
+```text
+interaction_mode=player|creative
+controller_mode_toggle_requested=true|false
+controller_mode_toggle_accepted=true|false
+controller_mode_toggle_status=interaction_mode_toggled|interaction_mode_surface_blocked|interaction_mode_chord_partial
+controller_mode_toggle_surface=gameplay|room_editor|starter
+controller_action_status=controller_action_mapped|controller_action_chord_consumed
+controller_action_control=left_stick_up|dpad_right|none
+controller_action_mode=player|creative
+controller_action_surface=gameplay|room_editor|starter
+controller_action_input_action=game.move_y|editor.nudge_x|none
+```
 
-## Verification Gate
+## Deterministic Proof Targets
 
-For this recipe and receipt parity:
+| Target | What it proves |
+| --- | --- |
+| `product_new_world_menu_action_tests` | New World draft edit-mode movement, paint, and create semantics |
+| `room_editor_input_tests` | Keyboard editor mappings, including `1`, `2`, `R`, `F`, `Enter`, and `C` |
+| `product_room_editor_action_controller_tests` | Editor actions mutate only through the room-editing controller path |
+| `product_window_input_frame_tests` | Creative mouse click picks cursor and builds phantom preview without mutation |
+| `product_controller_input_smoke` | No-window controller sample injection, mode chord, and creative editor routing |
+| `product_ascii_map_smoke` | New World draft, editor input, Leave Editor, explicit Save, fresh Starter, and Continue |
+| `product_editor_wall_direction_hotkey_smoke` | Wall direction hotkey persists distinct wall orientations |
+| `product_editor_combined_save_continue_smoke` | Floor+wall edits persist together through Save And Exit and Continue |
+| `product_continued_room_movement_smoke` | Continued edited room uses restored collision for exploration |
+| `product_room_visual_proof_smoke` | Continued edited room has deterministic headless PPM visual artifact |
+
+The Slice 11 leave/save/continue parity case is in `product_ascii_map_smoke`:
+
+```text
+ascii_map_custom_draft_leave_editor_pause_save
+ascii_map_custom_draft_leave_editor_pause_save_reboot_starter
+ascii_map_custom_draft_leave_editor_pause_save_continue
+```
+
+It uses real editor input for the wall edit, then the explicit Leave Editor
+path, then Pause -> Save, then fresh Continue.
+
+The headless visual artifact proof writes:
+
+```text
+custom_dungeon_draft_continue_visual_proof.ppm
+```
+
+under that smoke run's isolated temporary save root. The PPM metadata ties the
+artifact to `custom_dungeon_draft`, `saved_authored_room`, authored counts,
+optimized wall draw count, and geometry signature.
+
+## Headless Control-File Shape
+
+Control files reject duplicate keys. The focused proof uses distinct keys and
+aliases to express multiple menu phases in one no-window invocation. The current
+shape is:
+
+```text
+frontend.execute=true
+world.title=Custom Draft
+world.draft_cell=1,2,#
+world.create=true
+system.pause=true
+menu.down=true
+pause.execute=true
+editor.input=editor.nudge_x_pos,editor.next_tool,editor.place
+menu.back=true
+frontend.select=leave_editor
+menu.confirm=true
+settings.back=true
+pause.select=save
+dev_tools.execute=true
+```
+
+This is not the preferred manual UX; it is the deterministic automation shape
+used to prove the same product path without launching a window.
+
+## Current Gaps
+
+- Manual free-text New World title entry is not wired in the live window. The
+  control-file path can set `world.title=Custom Draft`.
+- The New World dungeon authoring UI is draft/cursor based, not a full visual
+  level editor.
+- Mouse click in Creative mode only moves the editor cursor and creates a
+  phantom preview. It does not place geometry until `Enter`, controller south,
+  or `room_editor.preview_confirm=true`.
+- Keyboard and gamepad editor actions are edge-triggered. Hold-to-repeat is not
+  a documented guarantee for this loop.
+- Builder proof is deterministic and no-window. Manual controller/window
+  validation is still user/controller-run hardware and display acceptance.
+- Vulkan screenshot/window proof remains separate and display-dependent.
+- ASCII remains map/layout authoring only; it does not define behavior,
+  profiles, or NPC truth.
+
+## Verification Gate For This Recipe
+
+Docs-only changes should run:
 
 ```sh
-cmake --build build --target iggy3d_app
-cmake --build build --target room_editor_input_tests
-ctest --test-dir build --output-on-failure -R '^room_editor_input_tests$'
-cmake --build build --target product_room_editor_action_controller_tests
-ctest --test-dir build --output-on-failure -R '^product_room_editor_action_controller_tests$'
-cmake --build build --target product_editor_wall_direction_hotkey_smoke
-ctest --test-dir build --output-on-failure -R '^product_editor_wall_direction_hotkey_smoke$'
-cmake --build build --target product_window_input_frame_tests
-ctest --test-dir build --output-on-failure -R '^product_window_input_frame_tests$'
-cmake --build build --target product_controller_input_smoke
-ctest --test-dir build --output-on-failure -R '^product_controller_input_smoke$'
-cmake --build build --target product_pause_save_smoke
-ctest --test-dir build --output-on-failure -R '^product_pause_save_smoke$'
-cmake --build build --target product_new_world_menu_action_tests
-ctest --test-dir build --output-on-failure -R '^product_new_world_menu_action_tests$'
-tools/check_branch_gate.py
 git diff --check
+rg -n "<unresolved-marker-pattern>" <docs checked by this slice>
+tools/check_branch_gate.py
 ```
 
-`product_ascii_map_smoke`, `product_editor_combined_save_continue_smoke`,
-`product_continued_room_movement_smoke`, and `product_room_visual_proof_smoke`
-remain the broader end-to-end proof targets listed in the proof map above.
-
-## Stop Rules
-
-Stop and create a source slice instead of editing this recipe if any of these
-become true:
-
-- the manual flow cannot open New World, Edit Room, Save And Exit, or Continue;
-- the receipt fields above disappear or change meaning;
-- the visual proof artifact can only be produced by launching a window;
-- fixing the recipe requires AppShell to own new behavior.
+If a proof target or test helper is changed, also run that exact focused build
+and ctest target.

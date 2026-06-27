@@ -156,10 +156,11 @@ Each plan document must define:
     New World integration preconditions, edit/save/exit/Continue proof, and
     performance harness expectations;
 - `dungeon_editor_loop_manual_recipe_v0_1.md`
-  - current manual/window launch recipe for New World, room editing, Save And
-    Exit, fresh Continue, controller player/creative mode acceptance,
-    creative mouse pick-preview acceptance, stable receipt fields, and
-    headless PPM visual proof parity;
+  - current manual/window launch recipe for the full dungeon authoring loop:
+    New World draft, gameplay/player mode, Edit Room/creative mode,
+    preview/place floor or wall, Leave Editor, explicit Save, fresh Continue,
+    controller player/creative acceptance, creative mouse pick-preview
+    acceptance, stable receipt fields, and headless PPM visual proof parity;
 - `selection_cursor_contract_v1.md`
   - crosshair versus mouse cursor selection authority, cursor state ownership,
     hit-test routing, and dev tools inspector wiring.
