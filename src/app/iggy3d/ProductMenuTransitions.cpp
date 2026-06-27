@@ -94,6 +94,7 @@ void returnProductToTitleTransition(FrontendState& frontend,
                                     ProductAppWindowState& window) {
   window.gameplayActive = false;
   window.runtimeSessionCreated = false;
+  window.interactionMode = ProductInteractionMode::Player;
   frontend.screen = FrontendScreen::Starter;
   frontend.childScreen = FrontendScreen::Gameplay;
   frontend.selectedAction = FrontendAction::NewWorld;

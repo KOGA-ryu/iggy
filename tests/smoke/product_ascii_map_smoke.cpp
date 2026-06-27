@@ -1643,6 +1643,7 @@ int main() {
       iggy3d::smoke::hasField(fields, "launch_status",
                               "pause_save_and_exit_written") &&
       iggy3d::smoke::hasField(fields, "gameplay_active", "false") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode", "player") &&
       iggy3d::smoke::hasField(fields, "input_owner", "starter") &&
       iggy3d::smoke::hasField(fields, "room_editor_status",
                               "room_editor_command_applied") &&
@@ -1715,6 +1716,7 @@ int main() {
       iggy3d::smoke::hasField(fields, "window_created", "false") &&
       iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
       iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode", "player") &&
       iggy3d::smoke::hasField(fields, "save_count", "1") &&
       iggy3d::smoke::hasField(fields, "compatible_save_count", "1") &&
       iggy3d::smoke::hasField(fields, "product_save_load_status",
@@ -1820,6 +1822,7 @@ int main() {
       iggy3d::smoke::hasField(fields, "launch_status",
                               "pause_save_and_exit_written") &&
       iggy3d::smoke::hasField(fields, "gameplay_active", "false") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode", "player") &&
       iggy3d::smoke::hasField(fields, "input_owner", "starter") &&
       iggy3d::smoke::hasField(fields, "room_editor_status",
                               "room_editor_command_applied") &&
@@ -1892,6 +1895,7 @@ int main() {
       iggy3d::smoke::hasField(fields, "window_created", "false") &&
       iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
       iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode", "player") &&
       iggy3d::smoke::hasField(fields, "save_count", "1") &&
       iggy3d::smoke::hasField(fields, "compatible_save_count", "1") &&
       iggy3d::smoke::hasField(fields, "product_save_load_status",

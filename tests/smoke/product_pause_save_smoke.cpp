@@ -58,6 +58,7 @@ int main() {
       iggy3d::smoke::automationApplied(fields) &&
       iggy3d::smoke::hasField(fields, "frontend_screen", "starter") &&
       iggy3d::smoke::hasField(fields, "gameplay_active", "false") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode", "player") &&
       iggy3d::smoke::hasField(fields, "input_owner", "starter") &&
       iggy3d::smoke::hasField(fields, "product_save_status",
                               "product_save_written") &&
@@ -73,6 +74,41 @@ int main() {
       iggy3d::smoke::hasField(fields, "product_transition_returned_to_title",
                               "true") &&
       std::filesystem::exists(saveAndExitRoot / "save_001.iggy3d.save");
+
+  fields.clear();
+  const std::filesystem::path editSaveAndExitRoot =
+      iggy3d::smoke::cleanSaveRoot("pause_edit_room_save_and_exit");
+  const bool pauseEditRoomSaveAndExit =
+      appAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "pause_edit_room_save_and_exit",
+          "system.pause=true\n"
+          "menu.down=true\n"
+          "pause.execute=true\n"
+          "menu.back=true\n"
+          "pause.select=save_and_exit\n"
+          "menu.confirm=true\n",
+          std::string{"--auto-new-world "} +
+              iggy3d::smoke::saveRootArg(editSaveAndExitRoot),
+          fields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::automationApplied(fields) &&
+      iggy3d::smoke::hasField(fields, "frontend_screen", "starter") &&
+      iggy3d::smoke::hasField(fields, "gameplay_active", "false") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode", "player") &&
+      iggy3d::smoke::hasField(fields, "input_owner", "starter") &&
+      iggy3d::smoke::hasField(fields, "room_editing_last_operation",
+                              "pause_edit_room") &&
+      iggy3d::smoke::hasField(fields, "product_save_status",
+                              "product_save_written") &&
+      iggy3d::smoke::hasField(fields, "product_save_source",
+                              "pause_save_and_exit") &&
+      iggy3d::smoke::hasField(fields, "active_product_save_id", "save_001") &&
+      iggy3d::smoke::hasField(fields, "product_transition_returned_to_title",
+                              "true") &&
+      std::filesystem::exists(editSaveAndExitRoot / "save_001.iggy3d.save");
 
   fields.clear();
   const std::filesystem::path pauseFromGameplayRoot =
@@ -122,18 +158,54 @@ int main() {
                               "true") &&
       iggy3d::smoke::hasField(fields, "product_transition_returned_to_title",
                               "true") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode", "player") &&
       iggy3d::smoke::hasField(fields, "gameplay_active", "false");
 
-  const bool passed = pauseSave && pauseSaveAndExit && pauseFromGameplay &&
-                      returnToTitle;
+  fields.clear();
+  const std::filesystem::path editReturnToTitleRoot =
+      iggy3d::smoke::cleanSaveRoot("pause_edit_room_return_to_title");
+  const bool returnToTitleAfterEditRoom =
+      appAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "pause_edit_room_return_to_title",
+          "system.pause=true\n"
+          "menu.down=true\n"
+          "pause.execute=true\n"
+          "menu.back=true\n"
+          "pause.select=return_to_title\n"
+          "menu.confirm=true\n",
+          std::string{"--auto-new-world "} +
+              iggy3d::smoke::saveRootArg(editReturnToTitleRoot),
+          fields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::automationApplied(fields) &&
+      iggy3d::smoke::hasField(fields, "frontend_screen", "starter") &&
+      iggy3d::smoke::hasField(fields, "frontend_return_to_title_requested",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "product_transition_returned_to_title",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode", "player") &&
+      iggy3d::smoke::hasField(fields, "room_editing_last_operation",
+                              "pause_edit_room") &&
+      iggy3d::smoke::hasField(fields, "gameplay_active", "false");
+
+  const bool passed = pauseSave && pauseSaveAndExit &&
+                      pauseEditRoomSaveAndExit && pauseFromGameplay &&
+                      returnToTitle && returnToTitleAfterEditRoom;
   std::cout << "smoke=product_pause_save\n";
   std::cout << "pause_save=" << (pauseSave ? "true" : "false") << "\n";
   std::cout << "pause_save_and_exit="
             << (pauseSaveAndExit ? "true" : "false") << "\n";
+  std::cout << "pause_edit_room_save_and_exit="
+            << (pauseEditRoomSaveAndExit ? "true" : "false") << "\n";
   std::cout << "pause_from_gameplay="
             << (pauseFromGameplay ? "true" : "false") << "\n";
   std::cout << "return_to_title=" << (returnToTitle ? "true" : "false")
             << "\n";
+  std::cout << "pause_edit_room_return_to_title="
+            << (returnToTitleAfterEditRoom ? "true" : "false") << "\n";
   std::cout << "window_launch_count=0\n";
   std::cout << "result=" << (passed ? "pass" : (appAvailable ? "fail" : "skip"))
             << "\n";

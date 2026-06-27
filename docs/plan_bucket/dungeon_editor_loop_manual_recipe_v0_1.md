@@ -160,6 +160,12 @@ The mode chord is deliberately handled before ordinary controller actions. When
 the full chord is active, normal controller action routing is consumed for that
 frame so the chord does not also place, preview, move, or interact.
 
+Mode lifecycle is intentionally narrow today: entering `Edit Room` sets
+`interaction_mode=creative`, while Save And Exit and Return To Title reset the
+starter/title state to `interaction_mode=player`. There is not yet a separate
+"leave editor but stay in gameplay" command; closing a pause overlay while room
+editing remains ready does not by itself leave the editor.
+
 Current mode feedback is receipt/proof based:
 
 ```text
@@ -589,6 +595,7 @@ After Save And Exit, expect the save path receipt to include:
 ```text
 frontend_screen=starter
 gameplay_active=false
+interaction_mode=player
 product_save_status=product_save_written
 product_save_source=pause_save_and_exit
 active_product_save_id=save_001
@@ -707,6 +714,8 @@ cmake --build build --target product_window_input_frame_tests
 ctest --test-dir build --output-on-failure -R '^product_window_input_frame_tests$'
 cmake --build build --target product_controller_input_smoke
 ctest --test-dir build --output-on-failure -R '^product_controller_input_smoke$'
+cmake --build build --target product_pause_save_smoke
+ctest --test-dir build --output-on-failure -R '^product_pause_save_smoke$'
 cmake --build build --target product_new_world_menu_action_tests
 ctest --test-dir build --output-on-failure -R '^product_new_world_menu_action_tests$'
 tools/check_branch_gate.py

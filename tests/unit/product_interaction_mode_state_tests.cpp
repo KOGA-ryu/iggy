@@ -1,4 +1,5 @@
 #include "app/iggy3d/ProductInteractionModeState.hpp"
+#include "app/iggy3d/ProductMenuTransitions.hpp"
 #include "app/iggy3d/ProductRoomEditingState.hpp"
 #include "app/iggy3d/product/AutomationRoomEditing.hpp"
 
@@ -74,6 +75,35 @@ bool roomEditingStartSetsCreativeMode() {
                 "room editing start sets creative mode") &&
          expect(iggy3d::hasReceiptField(receipt, "interaction_mode", "creative"),
                 "room editing start receipt interaction mode");
+}
+
+bool returnToTitleResetsCreativeModeToPlayer() {
+  iggy3d::ProductAppWindowState window;
+  const iggy3d::ProductRoomEditingStartResult started =
+      iggy3d::startProductRoomEditingFromAscii(smallRoomRequest());
+  iggy3d::recordProductRoomEditingStart(window, started, "unit_edit_room");
+
+  iggy3d::FrontendState frontend;
+  frontend.screen = iggy3d::FrontendScreen::Gameplay;
+  window.gameplayActive = true;
+  window.runtimeSessionCreated = true;
+  iggy3d::returnProductToTitleTransition(frontend, window);
+
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductWorldTemplate world;
+  iggy3d::FrontendSettings settings;
+  iggy3d::ProductSaveBridgeResult saves;
+  const iggy3d::RenderReceipt receipt =
+      iggy3d::buildProductAppReceipt(options, world, frontend, settings, window,
+                                     saves);
+
+  return expect(started.ok, "room editing start accepted for title reset") &&
+         expect(frontend.screen == iggy3d::FrontendScreen::Starter,
+                "return to title opens starter") &&
+         expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+                "return to title resets player mode") &&
+         expect(iggy3d::hasReceiptField(receipt, "interaction_mode", "player"),
+                "return to title receipt interaction mode");
 }
 
 bool gamepadSampleConversionIsStable() {
@@ -288,6 +318,7 @@ bool receiptFieldsExposeInteractionModeProof() {
 int main() {
   const bool ok =
       defaultStateIsPlayerMode() && roomEditingStartSetsCreativeMode() &&
+      returnToTitleResetsCreativeModeToPlayer() &&
       gamepadSampleConversionIsStable() &&
       surfaceDerivationIsConservative() && gameplayChordTogglesAndLatches() &&
       roomEditorSurfaceAllowsToggle() && blockedSurfaceDoesNotToggle() &&

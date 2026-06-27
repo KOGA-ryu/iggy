@@ -91,6 +91,7 @@ int main() {
                "resume transition status");
 
   openProductPauseTransition(frontend, window, iggy3d::FrontendAction::ReturnToTitle);
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
   returnProductToTitleTransition(frontend, window);
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Starter,
                "return to title opens starter");
@@ -99,6 +100,8 @@ int main() {
   ok &= expect(!window.runtimeSessionCreated, "return to title clears session flag");
   ok &= expect(window.inputOwner == iggy3d::MenuOwner::Starter,
                "return to title restores starter owner");
+  ok &= expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+               "return to title resets interaction mode");
   ok &= expect(window.productTransitionReturnedToTitle,
                "return to title transition status");
   ok &= expect(!window.productTransitionSessionPreserved,
