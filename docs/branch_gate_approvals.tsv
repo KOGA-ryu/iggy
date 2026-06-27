@@ -88,3 +88,4 @@ BG-1087	src/runtime/physics/PhysicsAabbCollider.cpp	runtime physics AABB collide
 BG-1088	src/runtime/physics/PhysicsBroadphase.cpp	runtime physics AABB broadphase pair collection policy	codex	2026-06-27
 BG-1089	src/runtime/physics/PhysicsAabbContact.cpp	runtime physics AABB narrowphase contact generation policy	codex	2026-06-27
 BG-1090	src/runtime/physics/PhysicsShapeStore.cpp	runtime physics shape store validation and mutation policy	codex	2026-06-27
+BG-1091	src/runtime/physics/PhysicsMaterialTraits.cpp	runtime physics material traits validation and pair policy	codex	2026-06-27

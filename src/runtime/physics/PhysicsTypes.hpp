@@ -15,6 +15,10 @@ struct PhysicsShapeId {
   std::uint32_t value = 0U;
 };
 
+struct PhysicsMaterialId {
+  std::uint32_t value = 0U;
+};
+
 enum class PhysicsBodyMotionKind : std::uint8_t {
   Static,
   Dynamic,
@@ -27,6 +31,14 @@ enum class PhysicsShapeKind : std::uint8_t {
   FloorSpan,
   WallSlab,
   TriggerAabb,
+};
+
+enum class PhysicsWeightClass : std::uint8_t {
+  Static,
+  Light,
+  Medium,
+  Heavy,
+  Massive,
 };
 
 enum class PhysicsStatus : std::uint8_t {
@@ -57,10 +69,12 @@ struct PhysicsValidationResult {
 
 std::string_view physicsBodyMotionKindName(PhysicsBodyMotionKind kind);
 std::string_view physicsShapeKindName(PhysicsShapeKind kind);
+std::string_view physicsWeightClassName(PhysicsWeightClass weightClass);
 std::string_view physicsStatusName(PhysicsStatus status);
 
 bool isValidPhysicsBodyId(PhysicsBodyId id);
 bool isValidPhysicsShapeId(PhysicsShapeId id);
+bool isValidPhysicsMaterialId(PhysicsMaterialId id);
 float computePhysicsInverseMass(PhysicsBodyMotionKind motion,
                                 float massKilograms);
 PhysicsValidationResult validatePhysicsBodyDescriptor(

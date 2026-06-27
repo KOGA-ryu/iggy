@@ -454,6 +454,11 @@ iggy3d_add_unit_test(physics_shape_store_tests tests/unit/physics_shape_store_te
 set_tests_properties(physics_shape_store_tests PROPERTIES
   LABELS "unit;runtime;physics;shape_store;iggy3d")
 
+iggy3d_add_unit_test(physics_material_traits_tests
+  tests/unit/physics_material_traits_tests.cpp)
+set_tests_properties(physics_material_traits_tests PROPERTIES
+  LABELS "unit;runtime;physics;material_traits;iggy3d")
+
 iggy3d_add_unit_test(physics_aabb_collider_tests
   tests/unit/physics_aabb_collider_tests.cpp)
 set_tests_properties(physics_aabb_collider_tests PROPERTIES
