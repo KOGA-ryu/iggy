@@ -1,7 +1,7 @@
 #include <filesystem>
 #include <iostream>
 
-#include "ProductAutomationSmokeSupport.hpp"
+#include "AutomationSmokeSupport.hpp"
 
 namespace {
 

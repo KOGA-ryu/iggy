@@ -3,7 +3,7 @@
 #include <iostream>
 #include <string>
 
-#include "ProductAutomationSmokeSupport.hpp"
+#include "AutomationSmokeSupport.hpp"
 
 namespace {
 

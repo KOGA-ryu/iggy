@@ -14,7 +14,7 @@
 #include "runtime/save/SaveCodec.hpp"
 #include "runtime/save/SaveFileStore.hpp"
 #include "runtime/session/SessionState.hpp"
-#include "ProductAutomationSmokeSupport.hpp"
+#include "AutomationSmokeSupport.hpp"
 
 namespace {
 

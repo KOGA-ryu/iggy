@@ -1,4 +1,4 @@
-#include "ProductAutomationSmokeSupport.hpp"
+#include "AutomationSmokeSupport.hpp"
 
 #include <filesystem>
 #include <fstream>

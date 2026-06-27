@@ -1,4 +1,4 @@
-#include "ProductAutomationSmokeSupport.hpp"
+#include "AutomationSmokeSupport.hpp"
 
 #include "app/iggy3d/ascii_room/Authoring.hpp"
 

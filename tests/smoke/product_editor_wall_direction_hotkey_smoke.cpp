@@ -5,7 +5,7 @@
 
 #include "runtime/save/SaveCodec.hpp"
 #include "runtime/save/SaveFileStore.hpp"
-#include "ProductAutomationSmokeSupport.hpp"
+#include "AutomationSmokeSupport.hpp"
 
 namespace {
 
