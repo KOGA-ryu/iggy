@@ -160,6 +160,8 @@ target_sources(iggy3d
     src/runtime/objective/ObjectiveSystem.cpp
     src/runtime/interaction/InteractionSystem.cpp
     src/runtime/object/ObjectTraits.cpp
+    src/runtime/physics/PhysicsBodyStore.cpp
+    src/runtime/physics/PhysicsTypes.cpp
     src/runtime/session/SessionTick.cpp
     src/runtime/session/SessionRunner.cpp
     src/runtime/replay/StateHash.cpp
