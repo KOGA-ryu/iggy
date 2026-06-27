@@ -1,12 +1,14 @@
 #pragma once
 
 #include <cstdint>
+#include <cstddef>
 #include <string_view>
 
 #include "core/math/Mat4.hpp"
 #include "core/math/Vec3.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneProjection.hpp"
+#include "render/debug/DebugHudText.hpp"
 
 namespace iggy3d {
 
@@ -46,11 +48,33 @@ struct RenderSceneFrame {
   const DebugProjectionResult* debug = nullptr;
 };
 
+struct RenderUiRect {
+  std::int32_t x = 0;
+  std::int32_t y = 0;
+  std::uint32_t width = 0;
+  std::uint32_t height = 0;
+  float r = 1.0F;
+  float g = 1.0F;
+  float b = 1.0F;
+  float a = 1.0F;
+};
+
+struct RenderUiFrame {
+  bool visible = false;
+  const RenderUiRect* rects = nullptr;
+  std::size_t rectCount = 0;
+  const DebugHudGlyphQuad* textGlyphQuads = nullptr;
+  std::size_t textGlyphQuadCount = 0;
+  std::size_t textGlyphCount = 0;
+  std::size_t primitiveCount = 0;
+};
+
 struct FrameInput {
   RenderViewport viewport;
   RenderFrameClock clock;
   RenderCameraFrame camera;
   RenderSceneFrame projections;
+  RenderUiFrame ui;
 };
 
 enum class FrameInputStatus : std::uint8_t {

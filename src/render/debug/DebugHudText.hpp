@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace iggy3d {
@@ -26,5 +27,10 @@ struct DebugHudLayoutResult {
 DebugHudLayoutResult layoutDebugHudText(std::span<const std::string> lines,
                                         std::uint32_t viewportWidth,
                                         std::uint32_t viewportHeight);
+DebugHudLayoutResult layoutDebugHudTextAt(std::string_view text,
+                                          std::int32_t x,
+                                          std::int32_t y,
+                                          std::uint32_t viewportWidth,
+                                          std::uint32_t viewportHeight);
 
 }  // namespace iggy3d

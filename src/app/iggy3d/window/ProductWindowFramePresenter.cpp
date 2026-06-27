@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/menu/ProductUiDrawList.hpp"
 #include "app/iggy3d/view/OpeningMenuView.hpp"
+#include "app/iggy3d/window/ProductVulkanMenuFrame.hpp"
 #include "render/FrameInput.hpp"
 
 namespace iggy3d {
@@ -50,6 +51,24 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
       const ProductUiDrawList menuUi = buildProductStarterUiDrawList(
           {&request.frontend, request.saves.slots.compatibleCount, 1280U, 720U});
       recordProductVulkanMenuUiDrawList(request.window, "starter", menuUi);
+      const SdlDrawableExtent drawableExtent = request.sdlWindow.drawableExtent();
+      // branch-gate: BG-1072
+      if (drawableExtent.width > 0U && drawableExtent.height > 0U && menuUi.ready) {
+        ProductVulkanMenuFrame menuFrame = buildProductVulkanStarterMenuFrame(
+            {&menuUi,
+             request.window.framesPresented + 1U,
+             drawableExtent.width,
+             drawableExtent.height});
+        // branch-gate: BG-1072
+        if (menuFrame.ready) {
+          const RenderSubmitResult submit = request.renderer.vulkanRenderer.submitFrame(
+              refreshProductVulkanMenuFrameInput(menuFrame));
+          recordProductVulkanSubmit(request.window, submit);
+        } else {
+          request.window.productVulkanStatus = "frame_not_submitted";
+          request.window.productVulkanReasonCode = menuFrame.reasonCode;
+        }
+      }
     }
   }
 }

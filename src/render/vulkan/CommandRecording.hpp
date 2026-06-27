@@ -20,6 +20,17 @@ struct CommandRecordingCreateInfo {
   std::uint32_t frameSlotCount = 2;
 };
 
+struct OverlayRect {
+  std::int32_t x = 0;
+  std::int32_t y = 0;
+  std::uint32_t width = 0;
+  std::uint32_t height = 0;
+  float r = 1.0F;
+  float g = 1.0F;
+  float b = 1.0F;
+  float a = 1.0F;
+};
+
 struct EmptyFrameRecordInfo {
   VkCommandBuffer commandBuffer{};
   VkImage swapchainImage{};
@@ -32,19 +43,12 @@ struct EmptyFrameRecordInfo {
   float clearG = 0.055F;
   float clearB = 0.080F;
   float clearA = 1.0F;
+  const OverlayRect* uiOverlayRects = nullptr;
+  std::size_t uiOverlayRectCount = 0;
+  const DebugHudGlyphQuad* uiTextGlyphQuads = nullptr;
+  std::size_t uiTextGlyphQuadCount = 0;
   const DebugHudGlyphQuad* debugHudQuads = nullptr;
   std::size_t debugHudQuadCount = 0;
-};
-
-struct OverlayRect {
-  std::int32_t x = 0;
-  std::int32_t y = 0;
-  std::uint32_t width = 0;
-  std::uint32_t height = 0;
-  float r = 1.0F;
-  float g = 1.0F;
-  float b = 1.0F;
-  float a = 1.0F;
 };
 
 struct FirstRoomFrameRecordInfo {

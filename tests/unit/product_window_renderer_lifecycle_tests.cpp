@@ -173,6 +173,35 @@ bool starterMenuUiDrawListStatusIsStable() {
                 "menu ui selected action");
 }
 
+bool starterMenuSubmitMarksFramePresented() {
+  iggy3d::ProductAppWindowState window = requestedWindow();
+  const iggy3d::FrontendState frontend =
+      starterFrontend(iggy3d::FrontendAction::NewWorld);
+  const iggy3d::ProductUiDrawList drawList =
+      iggy3d::buildProductStarterUiDrawList({&frontend, 0U, 1280U, 720U});
+  iggy3d::recordProductVulkanMenuUiDrawList(window, "starter", drawList);
+
+  iggy3d::RenderSubmitResult submit;
+  submit.outcome = iggy3d::RenderOutcome::Ok;
+  submit.reason = {"product_menu_ui_presented", "product menu ui presented"};
+  iggy3d::appendReceiptField(submit.receipt, "rendering_path", "product_menu_ui");
+  iggy3d::appendReceiptField(submit.receipt, "record_mode", "ui_primitives");
+  iggy3d::appendReceiptField(submit.receipt, "reason_code", "product_menu_ui_presented");
+  iggy3d::recordProductVulkanSubmit(window, submit);
+
+  return expect(window.productVulkanFrameSubmitted, "menu frame submitted") &&
+         expect(window.productVulkanRenderingPath == "product_menu_ui",
+                "menu rendering path") &&
+         expect(window.productVulkanRecordMode == "ui_primitives",
+                "menu record mode") &&
+         expect(window.productVulkanMenuVisible, "menu visible after submit") &&
+         expect(window.productVulkanMenuStatus ==
+                    "product_vulkan_menu_frame_submitted",
+                "menu submitted status") &&
+         expect(window.productVulkanMenuReasonCode == "product_menu_ui_presented",
+                "menu submitted reason");
+}
+
 bool productReceiptCarriesReadinessFields() {
   iggy3d::ProductAppOptions options;
   iggy3d::ProductWorldTemplate world;
@@ -281,6 +310,7 @@ int main() {
       roomMeshBackendPresentationIsRequiredBeforeGameplayReady() &&
       roomMeshFramePathReportsGameplayReadyWhenBackendBuilt() &&
       starterMenuUiDrawListStatusIsStable() &&
+      starterMenuSubmitMarksFramePresented() &&
       productReceiptCarriesReadinessFields();
   if (!ok) {
     return 1;

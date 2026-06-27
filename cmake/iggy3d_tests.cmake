@@ -77,6 +77,11 @@ iggy3d_add_unit_test(product_vulkan_room_frame_tests
 set_tests_properties(product_vulkan_room_frame_tests PROPERTIES
   LABELS "unit;app;product;renderer;vulkan;room;iggy3d")
 
+iggy3d_add_unit_test(product_vulkan_menu_frame_tests
+  tests/unit/product_vulkan_menu_frame_tests.cpp)
+set_tests_properties(product_vulkan_menu_frame_tests PROPERTIES
+  LABELS "unit;app;product;renderer;vulkan;menu;iggy3d")
+
 iggy3d_add_unit_test(dev_tools_menu_tests tests/unit/dev_tools_menu_tests.cpp)
 set_tests_properties(dev_tools_menu_tests PROPERTIES LABELS "unit;app;frontend;dev_tools;iggy3d")
 

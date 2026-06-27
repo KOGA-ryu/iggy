@@ -37,6 +37,14 @@ bool frameProjectionValidationWorks() {
   iggy3d::FrameInput noDebug = validFrame(scene);
   iggy3d::FrameInput missingScene = validFrame(scene);
   missingScene.projections.scene = nullptr;
+  iggy3d::RenderUiRect rect;
+  rect.width = 320U;
+  rect.height = 120U;
+  iggy3d::FrameInput uiOnly = missingScene;
+  uiOnly.ui.visible = true;
+  uiOnly.ui.rects = &rect;
+  uiOnly.ui.rectCount = 1U;
+  uiOnly.ui.primitiveCount = 1U;
 
   return expect(iggy3d::validateFrameInput(frame) == iggy3d::FrameInputStatus::Valid,
                 "valid projection frame") &&
@@ -45,6 +53,8 @@ bool frameProjectionValidationWorks() {
          expect(iggy3d::validateFrameInput(missingScene) ==
                     iggy3d::FrameInputStatus::MissingSceneProjection,
                 "scene required") &&
+         expect(iggy3d::validateFrameInput(uiOnly) == iggy3d::FrameInputStatus::Valid,
+                "ui-only frame valid") &&
          expect(iggy3d::frameInputReasonCode(iggy3d::FrameInputStatus::MissingSceneProjection) ==
                     "frame_scene_missing",
                 "scene reason");

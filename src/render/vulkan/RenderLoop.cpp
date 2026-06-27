@@ -29,6 +29,10 @@ RenderReason reasonFor(std::string_view code) {
   if (code == "proxy_primitives_presented") {
     return {code, "proxy primitives presented"};
   }
+  // branch-gate: BG-1078
+  if (code == "product_menu_ui_presented") {
+    return {code, "product menu ui presented"};
+  }
   if (code == "first_room_resources_missing") {
     return {code, "first room resources missing"};
   }
@@ -170,6 +174,13 @@ bool sceneHasRenderableContent(const FrameInput& frame) {
          !frame.projections.scene->projectiles.empty();
 }
 
+bool frameHasUiContent(const FrameInput& frame) {
+  return frame.ui.visible &&
+         ((frame.ui.rects != nullptr && frame.ui.rectCount > 0U) ||
+          (frame.ui.textGlyphQuads != nullptr &&
+           frame.ui.textGlyphQuadCount > 0U));
+}
+
 DebugHudLayoutResult debugHudLayoutFor(const FrameInput& frame) {
   if (frame.projections.debug == nullptr ||
       frame.projections.debug->runtimeDebugHudLines.empty()) {
@@ -265,6 +276,20 @@ ProjectileOverlayLayout projectileOverlayLayoutFor(const FrameInput& frame) {
     }
   }
   return layout;
+}
+
+std::vector<OverlayRect> uiOverlayRectsFor(const FrameInput& frame) {
+  std::vector<OverlayRect> rects;
+  // branch-gate: BG-1078
+  if (frame.ui.rects == nullptr || frame.ui.rectCount == 0U) {
+    return rects;
+  }
+  rects.reserve(frame.ui.rectCount);
+  for (std::size_t index = 0; index < frame.ui.rectCount; ++index) {
+    const RenderUiRect& ui = frame.ui.rects[index];
+    rects.push_back({ui.x, ui.y, ui.width, ui.height, ui.r, ui.g, ui.b, ui.a});
+  }
+  return rects;
 }
 
 }  // namespace
@@ -475,9 +500,11 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
   const SwapchainInfo& readySwapchain = createInfo_.swapchain->info();
   const DebugHudLayoutResult debugHud = debugHudLayoutFor(frame);
   const ProjectileOverlayLayout projectileOverlay = projectileOverlayLayoutFor(frame);
+  const std::vector<OverlayRect> uiOverlayRects = uiOverlayRectsFor(frame);
   VkCommandBuffer commandBuffer =
       createInfo_.commandRecording->commandBufferForFrameSlot(result.frameSlot);
   const bool drawSceneContent = sceneHasRenderableContent(frame);
+  const bool drawUiFrame = frameHasUiContent(frame) && !drawSceneContent;
   const bool drawProxyPrimitives =
       drawSceneContent && !drawPackageRoom && frame.camera.mode == RenderCameraMode::FirstPerson;
   const bool drawFirstRoom =
@@ -584,6 +611,16 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     recordInfo.extent = readySwapchain.extent;
     recordInfo.frameSlot = result.frameSlot;
     recordInfo.imageIndex = acquire.imageIndex;
+    // branch-gate: BG-1078
+    if (drawUiFrame) {
+      recordInfo.clearR = 0.055F;
+      recordInfo.clearG = 0.075F;
+      recordInfo.clearB = 0.090F;
+      recordInfo.uiOverlayRects = uiOverlayRects.data();
+      recordInfo.uiOverlayRectCount = uiOverlayRects.size();
+      recordInfo.uiTextGlyphQuads = frame.ui.textGlyphQuads;
+      recordInfo.uiTextGlyphQuadCount = frame.ui.textGlyphQuadCount;
+    }
     recordInfo.debugHudQuads = debugHud.quads.data();
     recordInfo.debugHudQuadCount = debugHud.quads.size();
     recordResult = createInfo_.commandRecording->recordEmptyFrame(recordInfo);
@@ -655,16 +692,22 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     result.status = presentResult.recreateRequested ? VulkanFrameStatus::PresentedSuboptimal
                                                     : VulkanFrameStatus::Presented;
     result.outcome = RenderOutcome::Ok;
+    // branch-gate: BG-1078
     result.reason = reasonFor(presentResult.recreateRequested
                                   ? "swapchain_suboptimal"
                                   : (drawPackageRoom ? "package_room_meshes_presented"
                                       : (drawProxyPrimitives ? "proxy_primitives_presented"
+                                      // branch-gate: BG-1078
+                                      : (drawUiFrame ? "product_menu_ui_presented"
                                       : (drawFirstRoom ? "packet7_first_room_visible"
-                                                       : "empty_frame_presented"))));
-    result.receipt = makeReceipt("pass", result.reason.code,
+                                                       : "empty_frame_presented")))));
+    // branch-gate: BG-1078
+      result.receipt = makeReceipt("pass", result.reason.code,
                                  drawPackageRoom ? "package_room_meshes"
-                                                 : (drawProxyPrimitives ? "proxy_primitives"
-                                                                        : std::string_view{}));
+                                 : drawProxyPrimitives ? "proxy_primitives"
+                                 // branch-gate: BG-1078
+                                 : drawUiFrame ? "product_menu_ui"
+                                               : std::string_view{});
   } else if (presentResult.recreateRequested) {
     result.status = VulkanFrameStatus::PresentRecreateRequested;
     result.outcome = presentResult.outcome;
@@ -690,15 +733,21 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
                                                             : "presented")
                          : (presentResult.recreateRequested ? "recreate" : "fail"));
   appendReceiptField(result.receipt, "presented", presentResult.presented);
+  // branch-gate: BG-1078
   appendReceiptField(result.receipt, "record_mode",
                      drawPackageRoom ? "room_mesh_draws"
                      : drawProxyPrimitives ? "draw_primitives"
+                     // branch-gate: BG-1078
+                     : drawUiFrame ? "ui_primitives"
                                          : (drawFirstRoom ? "first_room" : "empty_frame"));
+  // branch-gate: BG-1078
   appendReceiptField(result.receipt, "draw_count",
                      static_cast<std::uint64_t>(
                          drawPackageRoom
                              ? createInfo_.firstRoomResources->geometry().indexedDraws.size()
                          : drawProxyPrimitives ? proxyDrawCount(proxyFacts)
+                         // branch-gate: BG-1078
+                         : drawUiFrame ? frame.ui.primitiveCount
                                              : (drawFirstRoom ? 1U : 0U)));
   appendReceiptField(result.receipt, "first_room_visible",
                      (drawPackageRoom || drawProxyPrimitives || drawFirstRoom) &&
@@ -791,6 +840,17 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
   appendReceiptField(result.receipt, "debug_hud_record_mode",
                      debugHud.projected && !debugHud.quads.empty() ? "glyph_quads"
                                                                    : "unavailable");
+  appendReceiptField(result.receipt, "ui_visible", frame.ui.visible);
+  appendReceiptField(result.receipt, "ui_rendered",
+                     drawUiFrame && result.commandRecorded && presentResult.presented);
+  appendReceiptField(result.receipt, "ui_overlay_rect_count",
+                     static_cast<std::uint64_t>(frame.ui.rectCount));
+  appendReceiptField(result.receipt, "ui_text_glyph_count",
+                     static_cast<std::uint64_t>(frame.ui.textGlyphCount));
+  appendReceiptField(result.receipt, "ui_text_glyph_quad_count",
+                     static_cast<std::uint64_t>(frame.ui.textGlyphQuadCount));
+  appendReceiptField(result.receipt, "ui_primitive_count",
+                     static_cast<std::uint64_t>(frame.ui.primitiveCount));
   appendReceiptField(result.receipt, "projectile_visual_projected",
                      projectileOverlay.projected);
   appendReceiptField(result.receipt, "projectile_visual_count",

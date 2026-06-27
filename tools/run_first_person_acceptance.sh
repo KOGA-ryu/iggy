@@ -161,8 +161,10 @@ Starter-menu diagnostic fields:
   gameplay_active=false
   product_vulkan_menu_requested=true
   product_vulkan_menu_visible=true
-  product_vulkan_menu_status=product_vulkan_menu_ui_ready
-  product_vulkan_menu_reason_code=product_ui_draw_list_ready
+  product_vulkan_rendering_path=product_menu_ui
+  product_vulkan_record_mode=ui_primitives
+  product_vulkan_menu_status=product_vulkan_menu_frame_submitted
+  product_vulkan_menu_reason_code=product_menu_ui_presented
   product_vulkan_menu_surface=starter
   product_vulkan_menu_ui_ready=true
   product_vulkan_menu_ui_status=product_ui_draw_list_ready

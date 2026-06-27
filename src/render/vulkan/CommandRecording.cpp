@@ -302,6 +302,8 @@ CommandRecordResult CommandRecording::recordEmptyFrame(const EmptyFrameRecordInf
   vkCmdSetViewport(info.commandBuffer, 0, 1, &viewport);
   vkCmdSetScissor(info.commandBuffer, 0, 1, &scissor);
   createInfo_.deviceFunctions.cmdBeginRendering(info.commandBuffer, &renderingInfo);
+  recordOverlayRects(info.commandBuffer, info.uiOverlayRects, info.uiOverlayRectCount);
+  recordHudGlyphQuads(info.commandBuffer, info.uiTextGlyphQuads, info.uiTextGlyphQuadCount);
   recordHudGlyphQuads(info.commandBuffer, info.debugHudQuads, info.debugHudQuadCount);
   createInfo_.deviceFunctions.cmdEndRendering(info.commandBuffer);
 
@@ -341,6 +343,10 @@ CommandRecordResult CommandRecording::recordEmptyFrame(const EmptyFrameRecordInf
                      static_cast<std::uint64_t>(info.imageIndex));
   appendReceiptField(result.receipt, "debug_hud_quad_count",
                      static_cast<std::uint64_t>(info.debugHudQuadCount));
+  appendReceiptField(result.receipt, "ui_overlay_rect_count",
+                     static_cast<std::uint64_t>(info.uiOverlayRectCount));
+  appendReceiptField(result.receipt, "ui_text_glyph_quad_count",
+                     static_cast<std::uint64_t>(info.uiTextGlyphQuadCount));
   return result;
 }
 

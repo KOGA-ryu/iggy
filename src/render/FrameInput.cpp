@@ -23,6 +23,12 @@ bool isNonZeroFiniteVector(Vec3 value) {
   return isFinite(value) && lengthSquared(value) > 0.0F;
 }
 
+bool hasUiContent(const RenderUiFrame& ui) {
+  return ui.visible &&
+         ((ui.rects != nullptr && ui.rectCount > 0U) ||
+          (ui.textGlyphQuads != nullptr && ui.textGlyphQuadCount > 0U));
+}
+
 }  // namespace
 
 std::string_view renderCameraModeName(RenderCameraMode mode) {
@@ -100,7 +106,8 @@ FrameInputStatus validateFrameInput(const FrameInput& frame) {
     return FrameInputStatus::InvalidClipPlanes;
   }
 
-  if (frame.projections.scene == nullptr) {
+  // branch-gate: BG-1080
+  if (frame.projections.scene == nullptr && !hasUiContent(frame.ui)) {
     return FrameInputStatus::MissingSceneProjection;
   }
 

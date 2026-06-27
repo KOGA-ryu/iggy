@@ -62,7 +62,11 @@ RenderSubmitResult NullRenderer::submitFrame(const FrameInput& frame) {
     lastFrameIndex_ = frame.clock.frameIndex;
     lastViewportWidth_ = frame.viewport.width;
     lastViewportHeight_ = frame.viewport.height;
-    lastSceneItemCount_ = static_cast<std::uint64_t>(frame.projections.scene->items.size());
+    // branch-gate: BG-1081
+    lastSceneItemCount_ = frame.projections.scene == nullptr
+                              ? 0U
+                              : static_cast<std::uint64_t>(
+                                    frame.projections.scene->items.size());
     lastDebugItemCount_ = frame.projections.debug == nullptr
                               ? 0U
                               : static_cast<std::uint64_t>(frame.projections.debug->items.size());

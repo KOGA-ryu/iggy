@@ -63,10 +63,27 @@ bool emptyOrZeroViewportIsUnavailable() {
          expect(!zero.projected, "zero unavailable");
 }
 
+bool positionedTextProducesBoundedQuads() {
+  const iggy3d::DebugHudLayoutResult layout =
+      iggy3d::layoutDebugHudTextAt("NEW WORLD", 120, 80, 640, 360);
+  bool bounded = true;
+  for (const iggy3d::DebugHudGlyphQuad& quad : layout.quads) {
+    bounded = bounded && quad.x >= 120 && quad.y >= 80 && quad.width > 0U &&
+              quad.height > 0U &&
+              static_cast<std::uint32_t>(quad.x) + quad.width <= 640U &&
+              static_cast<std::uint32_t>(quad.y) + quad.height <= 360U;
+  }
+  return expect(layout.projected, "positioned projected") &&
+         expect(layout.lineCount == 1U, "positioned line count") &&
+         expect(layout.glyphCount > 0U, "positioned glyph count") &&
+         expect(!layout.quads.empty(), "positioned quads") &&
+         expect(bounded, "positioned bounded");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = knownStringProducesBoundedQuads() && unknownGlyphIsDeterministic() &&
-                  emptyOrZeroViewportIsUnavailable();
+                  emptyOrZeroViewportIsUnavailable() && positionedTextProducesBoundedQuads();
   return ok ? 0 : 1;
 }

@@ -163,6 +163,14 @@ void recordProductVulkanSubmit(ProductAppWindowState& window,
         window.productVulkanRecordMode == "room_mesh_draws") {
       window.viewport.productVulkanRoomMeshBackendPresented = true;
     }
+    // branch-gate: BG-1028
+    if (window.productVulkanRenderingPath == "product_menu_ui" &&
+        window.productVulkanRecordMode == "ui_primitives") {
+      window.productVulkanMenuVisible = true;
+      window.productVulkanMenuStatus = "product_vulkan_menu_frame_submitted";
+      window.productVulkanMenuReasonCode =
+          receiptFieldValueOr(submit.receipt, "reason_code", "product_menu_ui_presented");
+    }
   } else {
     window.productVulkanStatus = "frame_not_submitted";
   }

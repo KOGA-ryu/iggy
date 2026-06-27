@@ -74,3 +74,8 @@ BG-1073	src/app/iggy3d/menu/ProductUiDrawList.cpp	product starter UI draw-list g
 BG-1074	src/app/iggy3d/window/ProductMouseCapturePolicy.cpp	product mouse capture gameplay ownership policy	codex	2026-06-27
 BG-1075	src/app/platform/SdlWindow.cpp	SDL relative mouse mode platform guard policy	codex	2026-06-27
 BG-1076	src/app/iggy3d/window/ProductWindowInputFrame.cpp	product window mouse capture platform update policy	codex	2026-06-27
+BG-1077	src/render/debug/DebugHudText.cpp	positioned bitmap text layout bounds policy	codex	2026-06-27
+BG-1078	src/render/vulkan/RenderLoop.cpp	Vulkan product UI primitive frame routing policy	codex	2026-06-27
+BG-1079	src/app/iggy3d/window/ProductVulkanMenuFrame.cpp	product starter UI Vulkan frame conversion policy	codex	2026-06-27
+BG-1080	src/render/FrameInput.cpp	render UI-only frame validation policy	codex	2026-06-27
+BG-1081	src/render/null/NullRenderer.cpp	null renderer UI-only frame scene count policy	codex	2026-06-27
