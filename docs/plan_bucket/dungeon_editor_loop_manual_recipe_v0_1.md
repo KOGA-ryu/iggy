@@ -14,6 +14,7 @@ to the deterministic no-window proof that already covers:
 - fresh starter boot;
 - Continue into the saved edited room;
 - headless PPM visual proof for the continued room;
+- creative-mode mouse click cursor picking and phantom placement preview;
 - controller player/creative mode switching and creative editor control
   semantics through no-window receipt proof.
 
@@ -178,6 +179,82 @@ The live UI currently does not add controller shortcut/tutorial text. A compact
 visible mode indicator can be added later if it fits an existing gameplay HUD
 state area without becoming instructions.
 
+## Window Mouse Creative Placement Acceptance
+
+Use this user-run path to check the live mouse flow. The builder verification
+for this recipe remains headless; do not treat this section as a CI window gate.
+
+1. Build and launch the product app with the same isolated save root:
+
+```sh
+cmake --build build --target iggy3d_app -j 8
+
+build/iggy3d \
+  --window \
+  --renderer null \
+  --input auto \
+  --save-root "$IGGY3D_EDITOR_SAVE_ROOT" \
+  --print-render-receipt
+```
+
+2. Create and enter a dungeon world using the New World draft steps above.
+3. Open Pause and select `Edit Room`.
+4. Enter creative/editor mouse control:
+   - with a controller, press and release `LT + RT + L3 + R3`;
+   - without a controller, the keyboard editor controls still work once Edit
+     Room is active, but the live left-click pick-preview path specifically
+     requires `interaction_mode=creative`.
+5. Select the intended tool:
+   - press `1` for Floor;
+   - press `2` for Wall;
+   - press `R` to rotate wall direction before previewing a wall.
+6. Left mouse click in the room view.
+
+Expected after the click:
+
+- the editor cursor moves to the clicked grid cell;
+- a phantom placement preview appears for the current tool and cursor;
+- the active authored floor/wall counts do not change yet;
+- collision counts do not change yet;
+- no save/write occurs from the click.
+
+7. Confirm or cancel explicitly:
+   - press `Enter`, controller south, or run `room_editor.preview_confirm=true`
+     to commit the active phantom preview;
+   - press `C`, controller east, or run `room_editor.preview_cancel=true` to
+     clear it without changing the room.
+8. If confirmed, Save And Exit, relaunch with the same `--save-root`, then
+   Continue. The confirmed edit should persist only after that explicit confirm.
+
+A click is intentionally not placement. It updates cursor plus phantom preview;
+the existing confirm/cancel path decides whether real geometry changes.
+
+If using `--print-render-receipt`, the relevant proof fields after a creative
+mouse preview are:
+
+```text
+interaction_mode=creative
+room_editor_grid_x=<clicked grid x>
+room_editor_grid_z=<clicked grid z>
+room_editor_last_operation=room_editor.mouse_pick
+room_editor_last_operation_accepted=true
+room_editor_preview_visible=true
+room_editor_preview_status=room_editor_preview_ready
+room_editor_preview_candidate_id=<candidate primitive id>
+room_editor_preview_tool=floor|wall
+room_editor_preview_grid_x=<clicked grid x>
+room_editor_preview_grid_z=<clicked grid z>
+room_editor_preview_optimized_draw_delta=<integer>
+room_editor_preview_optimized_triangle_delta=<integer>
+product_draw_room_editor_preview_count=1
+product_render_bridge_room_editor_preview_count=1
+```
+
+After confirm, expect the preview counts to return to zero and the normal room
+editing/authored/collision receipts to reflect the committed primitive. After
+cancel, expect the preview to be cleared and the authored/collision counts to
+remain unchanged.
+
 ## New World Draft Controls
 
 The New World draft editor is controlled through the existing menu input layer.
@@ -224,7 +301,11 @@ active:
 | `R` | Rotate wall direction clockwise: Up, Right, Down, Left, Up |
 | `Q` or left shoulder | Cycle to previous tool |
 | `E` or right shoulder | Cycle to next tool |
-| `Space` or gamepad south | Place with the active tool |
+| Left mouse click in creative mode | Move editor cursor and build/update phantom preview |
+| `F` or gamepad west | Build/update phantom preview at current cursor |
+| `Enter` or gamepad south | Confirm active phantom preview |
+| `C` or gamepad east | Cancel active phantom preview |
+| `Space` | Place immediately with the active tool |
 | `Delete` | Delete the primitive under the cursor/tool target |
 | `Z` | Undo |
 | `Y` | Redo |
@@ -259,6 +340,7 @@ The focused proof map for the current editor loop is:
 | `product_ascii_map_smoke` | End-to-end New World draft receipt parity, including cursor paint create |
 | `room_editor_input_tests` | Physical room-editor keyboard mappings, including `1`, `2`, and `R` |
 | `product_room_editor_action_controller_tests` | Editor actions change cursor/tool/direction state and edit documents correctly |
+| `product_window_input_frame_tests` | Live product mouse click path headlessly: creative click picks cursor and builds phantom preview without mutation |
 | `product_controller_input_smoke` | No-window controller sample injection, player/creative mode toggle receipts, and creative editor routing |
 | `product_editor_wall_direction_hotkey_smoke` | Wall direction hotkey persists distinct Up and Right wall geometry |
 | `product_editor_combined_save_continue_smoke` | Direct floor+wall edits persist together through Save And Exit and Continue |
@@ -332,6 +414,24 @@ It proves:
   `editor.nudge_x` and moves the editor cursor;
 - starter surface blocks the chord with
   `interaction_mode_surface_blocked`.
+
+The focused creative mouse input-frame parity gate is:
+
+```sh
+cmake --build build --target product_window_input_frame_tests
+ctest --test-dir build --output-on-failure -R '^product_window_input_frame_tests$'
+```
+
+That test calls `processProductWindowEditorMousePickPreview(...)` directly with
+synthetic clicks. It proves:
+
+- creative mode plus room editing ready moves the editor cursor, builds a
+  visible phantom preview, and leaves real floor/wall/collision counts
+  unchanged;
+- player mode with the same click does not run the editor pick/preview path;
+- room editing not ready does not mutate editor state;
+- invalid click coordinates propagate the mouse-pick rejection without preview
+  or geometry mutation.
 
 The smoke emits:
 
@@ -531,6 +631,34 @@ controller_action_surface=gameplay|room_editor|starter
 controller_action_input_action=game.move_y|editor.nudge_x|none
 ```
 
+After creative mouse preview checks, expect:
+
+```text
+interaction_mode=creative
+room_editor_grid_x=<clicked grid x>
+room_editor_grid_z=<clicked grid z>
+room_editor_status=room_editor_mouse_pick_mapped
+room_editor_reason_code=room_editor_mouse_pick_mapped
+room_editor_last_operation=room_editor.mouse_pick
+room_editor_last_operation_accepted=true
+room_editor_preview_visible=true
+room_editor_preview_status=room_editor_preview_ready
+room_editor_preview_reason_code=room_editor_preview_ready
+room_editor_preview_candidate_id=<candidate primitive id>
+room_editor_preview_tool=floor|wall
+room_editor_preview_grid_x=<clicked grid x>
+room_editor_preview_grid_z=<clicked grid z>
+room_editor_preview_optimized_draw_delta=<integer>
+room_editor_preview_optimized_triangle_delta=<integer>
+product_draw_room_editor_preview_count=1
+product_render_bridge_room_editor_preview_count=1
+```
+
+Before explicit confirm, authored room and collision counts should match the
+pre-click state. After explicit confirm, those counts should update through the
+normal room-editing operation receipts. After cancel, they should remain
+unchanged and preview counts should return to zero.
+
 The visual proof smoke additionally ties the PPM artifact to:
 
 ```text
@@ -573,6 +701,8 @@ cmake --build build --target product_room_editor_action_controller_tests
 ctest --test-dir build --output-on-failure -R '^product_room_editor_action_controller_tests$'
 cmake --build build --target product_editor_wall_direction_hotkey_smoke
 ctest --test-dir build --output-on-failure -R '^product_editor_wall_direction_hotkey_smoke$'
+cmake --build build --target product_window_input_frame_tests
+ctest --test-dir build --output-on-failure -R '^product_window_input_frame_tests$'
 cmake --build build --target product_controller_input_smoke
 ctest --test-dir build --output-on-failure -R '^product_controller_input_smoke$'
 cmake --build build --target product_new_world_menu_action_tests
