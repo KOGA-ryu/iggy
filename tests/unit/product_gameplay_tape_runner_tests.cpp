@@ -1,4 +1,4 @@
-#include "app/iggy3d/ascii_room/ProductAsciiRoomAuthoring.hpp"
+#include "app/iggy3d/ascii_room/Authoring.hpp"
 #include "app/iggy3d/gameplay/Tape.hpp"
 #include "app/iggy3d/gameplay/TapeRunner.hpp"
 #include "app/iggy3d/world/ProductPackageSessionSeed.hpp"

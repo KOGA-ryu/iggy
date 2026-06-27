@@ -1,6 +1,6 @@
 #include "ProductAutomationSmokeSupport.hpp"
 
-#include "app/iggy3d/ascii_room/ProductAsciiRoomAuthoring.hpp"
+#include "app/iggy3d/ascii_room/Authoring.hpp"
 
 #include <filesystem>
 #include <iostream>

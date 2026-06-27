@@ -7,7 +7,7 @@
 #include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
-#include "app/iggy3d/ascii_room/ProductAsciiRoomAuthoring.hpp"
+#include "app/iggy3d/ascii_room/Authoring.hpp"
 #include "app/iggy3d/ascii_room/Package.hpp"
 #include "app/iggy3d/ascii_room/ProductAsciiRoomPreview.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"

@@ -7,7 +7,7 @@
 #include "app/iggy3d/ascii_room/AsciiRoomGrid.hpp"
 #include "app/iggy3d/ascii_room/AsciiRoomSource.hpp"
 #include "app/iggy3d/ascii_room/AsciiRoomToEditableRoom.hpp"
-#include "app/iggy3d/ascii_room/ProductAsciiRoomAuthoring.hpp"
+#include "app/iggy3d/ascii_room/Authoring.hpp"
 #include "app/iggy3d/room_editor/AuthoringController.hpp"
 
 namespace iggy3d {
