@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductScriptedGameplayDriver.hpp"
+#include "app/iggy3d/gameplay/ScriptedDriver.hpp"
 
 #include <cmath>
 
