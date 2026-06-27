@@ -58,3 +58,5 @@ BG-1057	src/app/iggy3d/ProductControllerActionMap.cpp	product controller action 
 BG-1058	src/app/iggy3d/ProductInteractionModeState.cpp	product interaction mode surface derivation policy	codex	2026-06-26
 BG-1059	src/app/iggy3d/ProductWindowInputFrame.cpp	controller mode chord consumes gamepad action polling	codex	2026-06-26
 BG-1060	src/app/iggy3d/ProductControllerActionRouting.cpp	product controller action routing table emission policy	codex	2026-06-26
+BG-1061	src/app/iggy3d/ProductWindowInputFrame.cpp	product controller sample input application seam	codex	2026-06-26
+BG-1062	src/app/iggy3d/product/AutomationGameplay.cpp	controller input automation sample sequence parsing	codex	2026-06-26

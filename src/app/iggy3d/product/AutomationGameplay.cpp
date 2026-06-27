@@ -5,7 +5,10 @@
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/ProductControllerActionMap.hpp"
+#include "app/iggy3d/ProductControllerActionRouting.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
+#include "app/iggy3d/ProductWindowInputFrame.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/input/ActionState.hpp"
 #include "app/input/InputRouter.hpp"
@@ -91,6 +94,63 @@ bool applyAutomationGameplayButton(ProductAutomationGameplayContext& context,
   return applyGameplayActionState(context, action, actions);
 }
 
+bool parseControllerInputToken(std::string_view token,
+                               GamepadControllerActionSample& out) {
+  // branch-gate: BG-1062
+  if (token == "release" || token == "none") {
+    out = {};
+    return true;
+  }
+  // branch-gate: BG-1062
+  if (token == "mode_chord") {
+    out = productControllerModeChordActionSample();
+    return true;
+  }
+  ProductControllerControl control = ProductControllerControl::None;
+  // branch-gate: BG-1062
+  if (!parseProductControllerControlName(token, control) ||
+      control == ProductControllerControl::None) {
+    return false;
+  }
+  out = productControllerActionSampleForControl(control);
+  return true;
+}
+
+bool applyControllerInputSequence(ProductAutomationGameplayContext& context,
+                                  std::string_view value) {
+  const std::vector<std::string_view> tokens = splitProductAutomationCsv(value);
+  // branch-gate: BG-1062
+  if (tokens.empty()) {
+    context.window.automationControlStatus = "invalid_value";
+    return false;
+  }
+
+  ProductControllerModeChordState chordState;
+  ProductControllerActionRoutingState actionState;
+  bool processed = false;
+  for (const std::string_view token : tokens) {
+    GamepadControllerActionSample sample;
+    // branch-gate: BG-1062
+    if (!parseControllerInputToken(token, sample)) {
+      context.window.automationControlStatus = "invalid_value";
+      return false;
+    }
+    ProductControllerSampleInputResult result =
+        processProductControllerActionSample({
+            context.frontend,
+            context.window,
+            context.activeSession,
+            chordState,
+            actionState,
+            nullptr,
+            "controller",
+        },
+                                             sample);
+    processed = processed || result.processed;
+  }
+  return processed;
+}
+
 }  // namespace
 
 ProductAutomationExecutionResult applyProductGameplayAutomationCommand(
@@ -98,6 +158,16 @@ ProductAutomationExecutionResult applyProductGameplayAutomationCommand(
     const ProductAutomationCommandDispatchSpec& automationSpec,
     ProductAutomationGameplayContext& context) {
   const std::string_view value{command.value};
+  // branch-gate: BG-1062
+  if (automationSpec.commandId == ProductAutomationCommandId::ControllerInput) {
+    const bool processed = applyControllerInputSequence(context, value);
+    markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                          context.currentOwner(),
+                          // branch-gate: BG-1062
+                          processed ? "applied" : "failed");
+    return passGameplayAutomation(processed);
+  }
+
   static constexpr std::array axisRows{
       GameplayAutomationRow{ProductAutomationCommandId::GameplayMoveX,
                             InputAction::PlayerMoveX},

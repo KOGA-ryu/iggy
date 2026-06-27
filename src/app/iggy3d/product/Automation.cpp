@@ -36,6 +36,7 @@ std::string_view productAutomationCommandCategoryName(
       std::string_view{"room_edit"},
       std::string_view{"room_editor"},
       std::string_view{"gameplay_input"},
+      std::string_view{"controller_input"},
       std::string_view{"gameplay_tape"},
       std::string_view{"settings"},
       std::string_view{"dev_tools"},
@@ -92,6 +93,7 @@ std::string_view productAutomationCommandIdName(
       std::string_view{"game.move_y"},
       std::string_view{"game.attack"},
       std::string_view{"game.interact"},
+      std::string_view{"controller.input"},
       std::string_view{"frontend.execute"},
       std::string_view{"settings.apply"},
       std::string_view{"settings.restore_defaults"},
@@ -506,6 +508,8 @@ ProductAutomationCommandRegistry makeProductAutomationCommandRegistry() {
        Value::Bool, true, true, "gameplay"},
       {"game.interact", {"frontend.game_interact"}, Category::GameplayInput,
        Value::Bool, true, true, "gameplay"},
+      {"controller.input", {"controller.sample"}, Category::ControllerInput,
+       Value::Action, true, false, "controller"},
 
       {"settings.tab", {}, Category::Settings, Value::String, true, false,
        "settings"},
@@ -609,6 +613,9 @@ const ProductAutomationCommandDispatchSpec& findProductAutomationCommandDispatch
       ProductAutomationCommandDispatchSpec{
           true, "game.interact", Id::GameplayInteract, Category::GameplayInput,
           Value::Bool, InputAction::PlayerInteract},
+      ProductAutomationCommandDispatchSpec{
+          true, "controller.input", Id::ControllerInput,
+          Category::ControllerInput, Value::Action, InputAction::None},
       ProductAutomationCommandDispatchSpec{
           true, "frontend.execute", Id::FrontendExecute,
           Category::FrontendExecute, Value::Bool, InputAction::MenuConfirm},

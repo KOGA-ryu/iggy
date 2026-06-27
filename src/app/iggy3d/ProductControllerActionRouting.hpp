@@ -40,6 +40,9 @@ ProductControllerActionRoutingResult productControllerActionRoutingSkipped(
     ProductInputSurface surface,
     ProductInteractionMode interactionMode,
     std::string_view status);
+GamepadControllerActionSample productControllerActionSampleForControl(
+    ProductControllerControl control);
+GamepadControllerActionSample productControllerModeChordActionSample();
 void recordProductControllerActionRoutingResult(
     ProductAppWindowState& window,
     const ProductControllerActionRoutingResult& result);

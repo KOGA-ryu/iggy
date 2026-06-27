@@ -60,6 +60,8 @@ struct ProductControllerActionMapResult {
 };
 
 std::string_view productControllerControlName(ProductControllerControl control);
+bool parseProductControllerControlName(std::string_view name,
+                                       ProductControllerControl& out);
 bool productControllerControlIsModeChordComponent(
     ProductControllerControl control);
 std::span<const ProductControllerActionMapRow> productControllerActionMapRows();

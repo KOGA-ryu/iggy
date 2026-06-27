@@ -323,6 +323,17 @@ std::string_view productControllerControlName(ProductControllerControl control) 
   return kControllerControlNames[static_cast<std::size_t>(control)];
 }
 
+bool parseProductControllerControlName(std::string_view name,
+                                       ProductControllerControl& out) {
+  for (std::size_t index = 0; index < kControllerControlNames.size(); ++index) {
+    if (kControllerControlNames[index] == name) {  // branch-gate: BG-1057
+      out = static_cast<ProductControllerControl>(index);
+      return true;
+    }
+  }
+  return false;
+}
+
 bool productControllerControlIsModeChordComponent(
     ProductControllerControl control) {
   return kModeChordComponentControls[static_cast<std::size_t>(control)];

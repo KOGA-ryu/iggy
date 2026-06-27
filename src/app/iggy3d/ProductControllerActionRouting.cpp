@@ -120,6 +120,25 @@ std::array<ControllerControlInput, 22> controllerControlInputs(
   };
 }
 
+GamepadControllerActionSample sampleWithLeftStick(float x, float y) {
+  GamepadControllerActionSample sample;
+  sample.leftStickX = x;
+  sample.leftStickY = y;
+  return sample;
+}
+
+GamepadControllerActionSample sampleWithRightStick(float x, float y) {
+  GamepadControllerActionSample sample;
+  sample.rightStickX = x;
+  sample.rightStickY = y;
+  return sample;
+}
+
+struct ControllerSampleRow {
+  ProductControllerControl control;
+  GamepadControllerActionSample sample;
+};
+
 }  // namespace
 
 ProductControllerActionRoutingResult recordProductControllerMappedActions(
@@ -189,6 +208,88 @@ ProductControllerActionRoutingResult productControllerActionRoutingSkipped(
   result.status = status;
   result.reasonCode = status;
   return result;
+}
+
+GamepadControllerActionSample productControllerActionSampleForControl(
+    ProductControllerControl control) {
+  GamepadControllerActionSample dpadUp;
+  dpadUp.dpadUpDown = true;
+  GamepadControllerActionSample dpadDown;
+  dpadDown.dpadDownDown = true;
+  GamepadControllerActionSample dpadLeft;
+  dpadLeft.dpadLeftDown = true;
+  GamepadControllerActionSample dpadRight;
+  dpadRight.dpadRightDown = true;
+  GamepadControllerActionSample south;
+  south.southButtonDown = true;
+  GamepadControllerActionSample east;
+  east.eastButtonDown = true;
+  GamepadControllerActionSample west;
+  west.westButtonDown = true;
+  GamepadControllerActionSample north;
+  north.northButtonDown = true;
+  GamepadControllerActionSample leftShoulder;
+  leftShoulder.leftShoulderDown = true;
+  GamepadControllerActionSample rightShoulder;
+  rightShoulder.rightShoulderDown = true;
+  GamepadControllerActionSample leftTrigger;
+  leftTrigger.leftTriggerDown = true;
+  GamepadControllerActionSample rightTrigger;
+  rightTrigger.rightTriggerDown = true;
+  GamepadControllerActionSample leftStickPress;
+  leftStickPress.leftStickPressDown = true;
+  GamepadControllerActionSample rightStickPress;
+  rightStickPress.rightStickPressDown = true;
+
+  const std::array rows{
+      ControllerSampleRow{ProductControllerControl::LeftStickUp,
+                          sampleWithLeftStick(0.0F, 1.0F)},
+      ControllerSampleRow{ProductControllerControl::LeftStickDown,
+                          sampleWithLeftStick(0.0F, -1.0F)},
+      ControllerSampleRow{ProductControllerControl::LeftStickLeft,
+                          sampleWithLeftStick(-1.0F, 0.0F)},
+      ControllerSampleRow{ProductControllerControl::LeftStickRight,
+                          sampleWithLeftStick(1.0F, 0.0F)},
+      ControllerSampleRow{ProductControllerControl::RightStickUp,
+                          sampleWithRightStick(0.0F, 1.0F)},
+      ControllerSampleRow{ProductControllerControl::RightStickDown,
+                          sampleWithRightStick(0.0F, -1.0F)},
+      ControllerSampleRow{ProductControllerControl::RightStickLeft,
+                          sampleWithRightStick(-1.0F, 0.0F)},
+      ControllerSampleRow{ProductControllerControl::RightStickRight,
+                          sampleWithRightStick(1.0F, 0.0F)},
+      ControllerSampleRow{ProductControllerControl::DpadUp, dpadUp},
+      ControllerSampleRow{ProductControllerControl::DpadDown, dpadDown},
+      ControllerSampleRow{ProductControllerControl::DpadLeft, dpadLeft},
+      ControllerSampleRow{ProductControllerControl::DpadRight, dpadRight},
+      ControllerSampleRow{ProductControllerControl::SouthButton, south},
+      ControllerSampleRow{ProductControllerControl::EastButton, east},
+      ControllerSampleRow{ProductControllerControl::WestButton, west},
+      ControllerSampleRow{ProductControllerControl::NorthButton, north},
+      ControllerSampleRow{ProductControllerControl::LeftShoulder, leftShoulder},
+      ControllerSampleRow{ProductControllerControl::RightShoulder, rightShoulder},
+      ControllerSampleRow{ProductControllerControl::LeftTrigger, leftTrigger},
+      ControllerSampleRow{ProductControllerControl::RightTrigger, rightTrigger},
+      ControllerSampleRow{ProductControllerControl::LeftStickPress,
+                          leftStickPress},
+      ControllerSampleRow{ProductControllerControl::RightStickPress,
+                          rightStickPress},
+  };
+  for (const ControllerSampleRow& row : rows) {
+    if (row.control == control) {  // branch-gate: BG-1060
+      return row.sample;
+    }
+  }
+  return {};
+}
+
+GamepadControllerActionSample productControllerModeChordActionSample() {
+  GamepadControllerActionSample sample;
+  sample.leftTriggerDown = true;
+  sample.rightTriggerDown = true;
+  sample.leftStickPressDown = true;
+  sample.rightStickPressDown = true;
+  return sample;
 }
 
 void recordProductControllerActionRoutingResult(

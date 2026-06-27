@@ -85,6 +85,10 @@ int main() {
              iggy3d::ProductAutomationCommandId::RoomEditorPreviewCancel) ==
              "room_editor.preview_cancel",
          "room editor preview cancel command id name is stable");
+  expect(iggy3d::productAutomationCommandIdName(
+             iggy3d::ProductAutomationCommandId::ControllerInput) ==
+             "controller.input",
+         "controller input command id name is stable");
 
   expect(spec(registry, "automation.owner").category == Category::Owner,
          "owner command is registered");
@@ -124,6 +128,8 @@ int main() {
          "room editor preview cancel command is registered");
   expect(spec(registry, "game.move_x").category == Category::GameplayInput,
          "gameplay input command is registered");
+  expect(spec(registry, "controller.input").category == Category::ControllerInput,
+         "controller input command is registered");
   expect(spec(registry, "settings.tab").category == Category::Settings,
          "settings command is registered");
   expect(spec(registry, "dev_tools.category").category == Category::DevTools,
@@ -144,6 +150,7 @@ int main() {
   expectCanonical(registry, "world_setup.draft_paint", "world.draft_paint");
   expectCanonical(registry, "frontend.draft_move", "world.draft_move");
   expectCanonical(registry, "frontend.game_attack", "game.attack");
+  expectCanonical(registry, "controller.sample", "controller.input");
 
   const iggy3d::ProductAutomationCommandSpec& unknown =
       spec(registry, "not.a.real.command");
@@ -172,6 +179,8 @@ int main() {
          "room editor preview cancel is a bool value");
   expect(spec(registry, "room_editor.preview_cancel").ignoresFalseBool,
          "room editor preview cancel ignores false bool");
+  expect(spec(registry, "controller.input").valueKind == Value::Action,
+         "controller input is an action sequence value");
 
   const iggy3d::ProductMenuInputAutomationResult menuUp =
       iggy3d::resolveProductMenuInputAutomation("up");
@@ -421,6 +430,17 @@ int main() {
   expect(addWallDispatch.spec.commandId ==
              iggy3d::ProductAutomationCommandId::RoomEditAddWall,
          "frontend room edit add wall dispatch id is stable");
+
+  const iggy3d::ProductAutomationCommandDispatchResult controllerDispatch =
+      iggy3d::resolveProductAutomationCommandDispatch(
+          iggy3d::ProductAutomationCommandDispatchRequest{
+              &registry, "controller.sample"});
+  expect(controllerDispatch.handled, "controller sample alias is dispatch-handled");
+  expect(controllerDispatch.spec.commandId ==
+             iggy3d::ProductAutomationCommandId::ControllerInput,
+         "controller input dispatch id is stable");
+  expect(controllerDispatch.canonicalActionLabel == "controller.input",
+         "controller input dispatch label is canonical");
 
   const iggy3d::ProductAutomationCommandDispatchResult menuDispatch =
       iggy3d::resolveProductAutomationCommandDispatch(

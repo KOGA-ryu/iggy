@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <string_view>
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
@@ -39,9 +40,30 @@ struct ProductWindowInputFrameContext {
   bool& closeRequested;
 };
 
+struct ProductControllerSampleInputContext {
+  const FrontendState& frontend;
+  ProductAppWindowState& window;
+  Session* activeSession = nullptr;
+  ProductControllerModeChordState& controllerModeChord;
+  ProductControllerActionRoutingState& controllerAction;
+  const FrontendSettings* settings = nullptr;
+  std::string_view inputSource = "controller";
+};
+
+struct ProductControllerSampleInputResult {
+  bool processed = false;
+  bool actionApplied = false;
+  bool actionAccepted = false;
+  std::string_view status = "controller_sample_not_processed";
+  std::string_view reasonCode = "controller_sample_not_processed";
+};
+
 void initializeProductWindowInputFrameState(ProductWindowInputFrameState& state,
                                             ProductAppWindowState& window);
 void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state);
 void processProductWindowInputFrame(ProductWindowInputFrameContext context);
+ProductControllerSampleInputResult processProductControllerActionSample(
+    ProductControllerSampleInputContext context,
+    GamepadControllerActionSample sample);
 
 }  // namespace iggy3d

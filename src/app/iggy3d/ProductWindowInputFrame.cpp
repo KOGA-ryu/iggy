@@ -38,25 +38,85 @@ void applyProductWindowRoomEditorActions(ProductAppWindowState& window,
 }
 
 void recordProductWindowControllerActions(
-    ProductWindowInputFrameContext& context,
+    const FrontendState& frontend,
+    ProductAppWindowState& window,
+    ProductControllerActionRoutingState& controllerAction,
     const GamepadControllerActionSample& sample,
     bool controllerModeChordRequested,
     ActionState& actions) {
-  const ProductInputSurface surface =
-      productInputSurfaceFor(context.frontend, context.window);
+  const ProductInputSurface surface = productInputSurfaceFor(frontend, window);
   ProductControllerActionRoutingResult result =
       productControllerActionRoutingSkipped(
-          surface, context.window.interactionMode, "controller_action_chord_consumed");
+          surface, window.interactionMode, "controller_action_chord_consumed");
   if (!controllerModeChordRequested) {  // branch-gate: BG-1059
     result = recordProductControllerMappedActions({
         surface,
-        context.window.interactionMode,
+        window.interactionMode,
         sample,
-        context.inputFrame.controllerAction,
+        controllerAction,
         actions,
     });
   }
-  recordProductControllerActionRoutingResult(context.window, result);
+  recordProductControllerActionRoutingResult(window, result);
+}
+
+ProductControllerSampleInputResult applyProductWindowInputActions(
+    ProductAppWindowState& window,
+    Session* activeSession,
+    const FrontendSettings* settings,
+    const ActionState& gameplayActions,
+    std::string_view inputSource) {
+  ProductControllerSampleInputResult result;
+  result.processed = true;
+  result.status = "controller_sample_processed";
+  result.reasonCode = result.status;
+
+  ActionState acceptedGameplayActions;
+  ActionState acceptedEditorActions;
+  InputRoutingContext routingContext;
+  routingContext.owners.editor = window.roomEditing.ready;
+  routingContext.owners.gameplay = true;
+  for (const ActionStateEntry& entry : gameplayActions.entries) {
+    const InputRoutingResult routed = routeInputAction(routingContext, entry.action);
+    window.inputOwner = routed.owner;
+    window.lastInputAction = routed.action;
+    window.lastInputAccepted = routed.accepted;
+    window.gameplayInputSuppressed = routed.gameplaySuppressed;
+    // branch-gate: BG-1061
+    if (routed.accepted && routed.owner == MenuOwner::Editor &&
+        inputActionGroup(entry.action) == InputActionGroup::Editor) {
+      recordAction(acceptedEditorActions, entry.action, entry.down, entry.pressed,
+                   entry.released, entry.value);
+    // branch-gate: BG-1061
+    } else if (routed.accepted && routed.owner == MenuOwner::Gameplay) {
+      recordAction(acceptedGameplayActions, entry.action, entry.down, entry.pressed,
+                   entry.released, entry.value);
+    }
+  }
+
+  // branch-gate: BG-1061
+  if (!acceptedEditorActions.entries.empty()) {
+    applyProductWindowRoomEditorActions(window, acceptedEditorActions);
+    result.actionApplied = true;
+    result.actionAccepted = window.roomEditorLastOperationAccepted;
+    return result;
+  }
+
+  // branch-gate: BG-1061
+  if (settings != nullptr) {
+    applyProductCameraActions(acceptedGameplayActions, window.viewport, *settings,
+                              inputSource);
+  }
+  // branch-gate: BG-1061
+  if (activeSession != nullptr) {
+    const SpatialSurfaceSet* collisionSurfaces =
+        productActiveRoomCollisionSurfaces(window.activeRoomCollision);
+    applyProductGameplayActions(*activeSession, acceptedGameplayActions, window,
+                                inputSource, collisionSurfaces);
+    result.actionApplied = !acceptedGameplayActions.entries.empty();
+    result.actionAccepted = window.gameplayCommandAccepted;
+  }
+  return result;
 }
 
 }  // namespace
@@ -72,6 +132,43 @@ void initializeProductWindowInputFrameState(ProductWindowInputFrameState& state,
 
 void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state) {
   shutdownGamepadMenuState(state.gamepad);
+}
+
+ProductControllerSampleInputResult processProductControllerActionSample(
+    ProductControllerSampleInputContext context,
+    GamepadControllerActionSample sample) {
+  const ProductInteractionModeToggleResult modeToggle =
+      applyProductInteractionModeFrameToggle({
+          context.frontend,
+          context.window,
+          context.controllerModeChord,
+          productControllerModeChordSampleFromGamepad(sample),
+      });
+  const bool controllerModeChordRequested = modeToggle.toggleRequested;
+
+  ActionState controllerActions;
+  recordProductWindowControllerActions(context.frontend,
+                                       context.window,
+                                       context.controllerAction,
+                                       sample,
+                                       controllerModeChordRequested,
+                                       controllerActions);
+
+  // branch-gate: BG-1061
+  if (!context.window.gameplayActive || context.activeSession == nullptr ||
+      frontendBlocksGameplayInput(context.frontend)) {
+    ProductControllerSampleInputResult result;
+    result.processed = true;
+    result.status = "controller_sample_processed";
+    result.reasonCode = result.status;
+    return result;
+  }
+
+  return applyProductWindowInputActions(context.window,
+                                        context.activeSession,
+                                        context.settings,
+                                        controllerActions,
+                                        context.inputSource);
 }
 
 void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
@@ -141,49 +238,20 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
     if (context.window.roomEditing.ready) {
       pollKeyboardRoomEditorActions(context.inputFrame.keyboard, gameplayActions);
       recordProductWindowControllerActions(
-          context, gamepadControllerSample, controllerModeChordRequested,
+          context.frontend, context.window, context.inputFrame.controllerAction,
+          gamepadControllerSample, controllerModeChordRequested,
           gameplayActions);
     } else {
       pollKeyboardGameplayActions(context.inputFrame.keyboard, gameplayActions);
       recordProductWindowControllerActions(
-          context, gamepadControllerSample, controllerModeChordRequested,
+          context.frontend, context.window, context.inputFrame.controllerAction,
+          gamepadControllerSample, controllerModeChordRequested,
           gameplayActions);
       pollMouseGameplayActions(context.inputFrame.mouse, gameplayActions);
     }
-
-    ActionState acceptedGameplayActions;
-    ActionState acceptedEditorActions;
-    InputRoutingContext routingContext;
-    routingContext.owners.editor = context.window.roomEditing.ready;
-    routingContext.owners.gameplay = true;
-    for (const ActionStateEntry& entry : gameplayActions.entries) {
-      const InputRoutingResult routed = routeInputAction(routingContext, entry.action);
-      context.window.inputOwner = routed.owner;
-      context.window.lastInputAction = routed.action;
-      context.window.lastInputAccepted = routed.accepted;
-      context.window.gameplayInputSuppressed = routed.gameplaySuppressed;
-      // branch-gate: BG-1029
-      if (routed.accepted && routed.owner == MenuOwner::Editor &&
-          inputActionGroup(entry.action) == InputActionGroup::Editor) {
-        recordAction(acceptedEditorActions, entry.action, entry.down, entry.pressed,
-                     entry.released, entry.value);
-      // branch-gate: BG-1029
-      } else if (routed.accepted && routed.owner == MenuOwner::Gameplay) {
-        recordAction(acceptedGameplayActions, entry.action, entry.down, entry.pressed,
-                     entry.released, entry.value);
-      }
-    }
-    // branch-gate: BG-1029
-    if (!acceptedEditorActions.entries.empty()) {
-      applyProductWindowRoomEditorActions(context.window, acceptedEditorActions);
-    } else {
-      applyProductCameraActions(acceptedGameplayActions, context.window.viewport,
-                                context.settings, "action_map");
-      const SpatialSurfaceSet* collisionSurfaces =
-          productActiveRoomCollisionSurfaces(context.window.activeRoomCollision);
-      applyProductGameplayActions(*context.activeSession, acceptedGameplayActions,
-                                  context.window, "action_map", collisionSurfaces);
-    }
+    (void)applyProductWindowInputActions(context.window, &*context.activeSession,
+                                         &context.settings, gameplayActions,
+                                         "action_map");
   }
 }
 
