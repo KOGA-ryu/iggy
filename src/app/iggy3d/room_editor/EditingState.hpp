@@ -6,7 +6,7 @@
 #include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ProductActiveRoomState.hpp"
 #include "app/iggy3d/ascii_room/ProductAsciiRoomEditing.hpp"
-#include "app/iggy3d/room_editor/ProductRoomAuthoringController.hpp"
+#include "app/iggy3d/room_editor/AuthoringController.hpp"
 
 namespace iggy3d {
 

@@ -76,7 +76,7 @@ target_sources(iggy3d
     src/app/iggy3d/ProductPrimitiveDrawList.cpp
     src/app/iggy3d/ProductRenderBridge.cpp
     src/app/iggy3d/room/ProductRoomGeometryOptimization.cpp
-    src/app/iggy3d/room_editor/ProductRoomAuthoringController.cpp
+    src/app/iggy3d/room_editor/AuthoringController.cpp
     src/app/iggy3d/room_editor/ActionController.cpp
     src/app/iggy3d/room_editor/Cursor.cpp
     src/app/iggy3d/room_editor/ObjectPalette.cpp

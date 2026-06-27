@@ -1,4 +1,4 @@
-#include "app/iggy3d/room_editor/ProductRoomAuthoringController.hpp"
+#include "app/iggy3d/room_editor/AuthoringController.hpp"
 
 #include <utility>
 
