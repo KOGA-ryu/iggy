@@ -63,6 +63,21 @@ constexpr std::array kKeyboardRoomEditorActionBindings{
         &KeyboardInputState::editorRotateWallDirectionWasDown,
         InputAction::EditorRotateWallDirection,
         1.0F},
+    KeyboardRoomEditorActionBinding{
+        &KeyboardRoomEditorInputSample::previewPlacementDown,
+        &KeyboardInputState::editorPreviewPlacementWasDown,
+        InputAction::EditorPreviewPlacement,
+        1.0F},
+    KeyboardRoomEditorActionBinding{
+        &KeyboardRoomEditorInputSample::confirmPreviewDown,
+        &KeyboardInputState::editorConfirmPreviewWasDown,
+        InputAction::EditorConfirmPreview,
+        1.0F},
+    KeyboardRoomEditorActionBinding{
+        &KeyboardRoomEditorInputSample::cancelPreviewDown,
+        &KeyboardInputState::editorCancelPreviewWasDown,
+        InputAction::EditorCancelPreview,
+        1.0F},
     KeyboardRoomEditorActionBinding{&KeyboardRoomEditorInputSample::placeDown,
                                     &KeyboardInputState::editorPlaceWasDown,
                                     InputAction::EditorPlace,
@@ -250,6 +265,9 @@ void pollKeyboardRoomEditorActions(KeyboardInputState& state, ActionState& actio
   sample.selectFloorToolDown = keyDown(keys, SDL_SCANCODE_1);
   sample.selectWallToolDown = keyDown(keys, SDL_SCANCODE_2);
   sample.rotateWallDirectionDown = keyDown(keys, SDL_SCANCODE_R);
+  sample.previewPlacementDown = keyDown(keys, SDL_SCANCODE_F);
+  sample.confirmPreviewDown = keyDown(keys, SDL_SCANCODE_RETURN);
+  sample.cancelPreviewDown = keyDown(keys, SDL_SCANCODE_C);
   sample.placeDown = keyDown(keys, SDL_SCANCODE_SPACE);
   sample.deleteDown = keyDown(keys, SDL_SCANCODE_DELETE);
   sample.undoDown = keyDown(keys, SDL_SCANCODE_Z);

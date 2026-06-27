@@ -260,6 +260,144 @@ ProductRoomEditingOperationResult confirmProductRoomEditorPreviewAutomation(
       {editing, ProductRoomAuthoringInputSource::Hotkey, preview.candidateCommand});
 }
 
+ProductRoomEditorPreviewInputResult baseProductRoomEditorPreviewInputResult(
+    InputAction action) {
+  ProductRoomEditorPreviewInputResult result;
+  result.operation = std::string(inputActionName(action));
+  result.handled = isProductRoomEditorPreviewInputAction(action);
+  return result;
+}
+
+void recordProductRoomEditorPreviewInputReceipt(
+    ProductAppWindowState& window,
+    const ProductRoomEditorPreviewInputResult& result) {
+  window.roomEditorCursorReady = window.roomEditing.ready;
+  window.roomEditorStatus = result.status;
+  window.roomEditorReasonCode = result.reasonCode;
+  window.roomEditorLastOperation = result.operation;
+  window.roomEditorLastOperationAccepted = result.operationAccepted;
+  window.roomEditorLastPrimitiveId = result.primitiveId;
+}
+
+ProductRoomEditorPreviewInputResult rejectProductRoomEditorPreviewInputNotReady(
+    ProductAppWindowState& window,
+    InputAction action) {
+  ProductRoomEditorPreviewInputResult result =
+      baseProductRoomEditorPreviewInputResult(action);
+  result.status = "room_editor_not_ready";
+  result.reasonCode = result.status;
+  recordProductRoomEditorPreviewInputReceipt(window, result);
+  return result;
+}
+
+ProductRoomEditorPreviewInputResult applyProductRoomEditorPreviewInputBuild(
+    ProductAppWindowState& window,
+    InputAction action) {
+  ProductRoomEditorPreviewInputResult result =
+      baseProductRoomEditorPreviewInputResult(action);
+  const ProductRoomEditorPlacementPreviewResult preview =
+      buildProductRoomEditorPreviewAutomation(window.roomEditing,
+                                              window.roomEditorCursor);
+  recordProductRoomEditorPreviewResult(window, preview);
+  result.ok = preview.ok;
+  result.status = preview.status;
+  result.reasonCode = preview.reasonCode;
+  result.operationAccepted = preview.ok;
+  result.primitiveId = preview.primitiveId;
+  recordProductRoomEditorPreviewInputReceipt(window, result);
+  return result;
+}
+
+ProductRoomEditorPreviewInputResult applyProductRoomEditorPreviewInputConfirm(
+    ProductAppWindowState& window,
+    InputAction action) {
+  ProductRoomEditorPreviewInputResult result =
+      baseProductRoomEditorPreviewInputResult(action);
+  // branch-gate: BG-1054
+  if (!window.roomEditorPreviewActive || !window.roomEditorPlacementPreview.ok ||
+      !window.roomEditorPlacementPreview.candidateCommandReady) {
+    markProductRoomEditorPreviewCleared(window,
+                                        "room_editor_preview_confirm_missing");
+    result.status = "room_editor_preview_confirm_missing";
+    result.reasonCode = result.status;
+    recordProductRoomEditorPreviewInputReceipt(window, result);
+    return result;
+  }
+
+  ProductRoomEditingOperationResult applied =
+      confirmProductRoomEditorPreviewAutomation(
+          window.roomEditing, window.roomEditorPlacementPreview);
+  recordProductRoomEditingOperation(window, result.operation, applied);
+  result.ok = applied.accepted;
+  result.operationAccepted = applied.accepted;
+  result.primitiveId = "none";
+  // branch-gate: BG-1054
+  if (!applied.edit.primitiveId.empty()) {
+    result.primitiveId = applied.edit.primitiveId;
+  }
+  // branch-gate: BG-1054
+  if (applied.accepted) {
+    result.status = "room_editor_preview_confirmed";
+    result.reasonCode = result.status;
+  } else {
+    result.status = applied.status;
+    result.reasonCode = applied.reasonCode;
+  }
+  recordProductRoomEditorPreviewInputReceipt(window, result);
+  return result;
+}
+
+ProductRoomEditorPreviewInputResult applyProductRoomEditorPreviewInputCancel(
+    ProductAppWindowState& window,
+    InputAction action) {
+  ProductRoomEditorPreviewInputResult result =
+      baseProductRoomEditorPreviewInputResult(action);
+  markProductRoomEditorPreviewCleared(window, "room_editor_preview_cancelled");
+  result.ok = true;
+  result.status = "room_editor_preview_cancelled";
+  result.reasonCode = result.status;
+  result.operationAccepted = true;
+  recordProductRoomEditorPreviewInputReceipt(window, result);
+  return result;
+}
+
+bool isProductRoomEditorPreviewInputAction(InputAction action) {
+  switch (action) {  // branch-gate: BG-1054
+    case InputAction::EditorPreviewPlacement:
+    case InputAction::EditorConfirmPreview:
+    case InputAction::EditorCancelPreview:
+      return true;
+    default:
+      return false;
+  }
+}
+
+ProductRoomEditorPreviewInputResult applyProductRoomEditorPreviewInputAction(
+    ProductAppWindowState& window,
+    InputAction action) {
+  ProductRoomEditorPreviewInputResult result =
+      baseProductRoomEditorPreviewInputResult(action);
+  // branch-gate: BG-1054
+  if (!result.handled) {
+    return result;
+  }
+  // branch-gate: BG-1054
+  if (!window.roomEditing.ready) {
+    return rejectProductRoomEditorPreviewInputNotReady(window, action);
+  }
+
+  switch (action) {  // branch-gate: BG-1054
+    case InputAction::EditorPreviewPlacement:
+      return applyProductRoomEditorPreviewInputBuild(window, action);
+    case InputAction::EditorConfirmPreview:
+      return applyProductRoomEditorPreviewInputConfirm(window, action);
+    case InputAction::EditorCancelPreview:
+      return applyProductRoomEditorPreviewInputCancel(window, action);
+    default:
+      return result;
+  }
+}
+
 namespace {
 
 ProductAutomationExecutionResult unhandledRoomEditingAutomation() {
@@ -479,6 +617,21 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
         markAutomationApplied(context.window, command, inputActionName(editorAction),
                               routed.owner, "failed");
         return failRoomEditingAutomation();
+      }
+
+      // branch-gate: BG-1054
+      if (isProductRoomEditorPreviewInputAction(editorAction)) {
+        const ProductRoomEditorPreviewInputResult previewResult =
+            applyProductRoomEditorPreviewInputAction(context.window, editorAction);
+        // branch-gate: BG-1054
+        if (!previewResult.ok) {
+          context.window.automationControlStatus = "command_failed";
+          markAutomationApplied(context.window, command, inputActionName(editorAction),
+                                routed.owner, "failed");
+          return failRoomEditingAutomation();
+        }
+        anyApplied = true;
+        continue;
       }
 
       ActionState actions;

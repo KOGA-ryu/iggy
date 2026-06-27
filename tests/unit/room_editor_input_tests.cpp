@@ -234,6 +234,49 @@ int main() {
 
   {
     iggy3d::KeyboardInputState keyboard;
+    iggy3d::ActionState previewActions;
+    iggy3d::KeyboardRoomEditorInputSample sample;
+    sample.previewPlacementDown = true;
+    iggy3d::recordKeyboardRoomEditorActions(keyboard, sample, previewActions);
+    ok = expectActionValue(previewActions,
+                           iggy3d::InputAction::EditorPreviewPlacement,
+                           1.0F,
+                           "keyboard F emits editor preview") &&
+         ok;
+
+    iggy3d::ActionState held;
+    iggy3d::recordKeyboardRoomEditorActions(keyboard, sample, held);
+    ok = expect(held.entries.empty(),
+                "keyboard held editor preview does not repeat") &&
+         ok;
+
+    sample.previewPlacementDown = false;
+    iggy3d::ActionState release;
+    iggy3d::recordKeyboardRoomEditorActions(keyboard, sample, release);
+    sample.confirmPreviewDown = true;
+    iggy3d::ActionState confirmActions;
+    iggy3d::recordKeyboardRoomEditorActions(keyboard, sample, confirmActions);
+    ok = expectActionValue(confirmActions,
+                           iggy3d::InputAction::EditorConfirmPreview,
+                           1.0F,
+                           "keyboard Enter emits editor preview confirm") &&
+         ok;
+
+    sample.confirmPreviewDown = false;
+    iggy3d::ActionState confirmRelease;
+    iggy3d::recordKeyboardRoomEditorActions(keyboard, sample, confirmRelease);
+    sample.cancelPreviewDown = true;
+    iggy3d::ActionState cancelActions;
+    iggy3d::recordKeyboardRoomEditorActions(keyboard, sample, cancelActions);
+    ok = expectActionValue(cancelActions,
+                           iggy3d::InputAction::EditorCancelPreview,
+                           1.0F,
+                           "keyboard C emits editor preview cancel") &&
+         ok;
+  }
+
+  {
+    iggy3d::KeyboardInputState keyboard;
     iggy3d::ActionState actions;
     iggy3d::KeyboardRoomEditorInputSample sample;
     sample.placeDown = true;

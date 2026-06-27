@@ -51,3 +51,5 @@ BG-1049	src/app/iggy3d/product/AutomationRoomEditing.cpp	room editor active phan
 BG-1050	src/app/iggy3d/ProductGameplayProjectionRefresh.cpp	room editor active phantom preview projection validation	codex	2026-06-26
 BG-1051	src/app/iggy3d/product/AutomationRoomEditing.cpp	room editor phantom preview confirm cancel validation	codex	2026-06-26
 BG-1052	src/app/iggy3d/ProductGameplayProjectionRefresh.cpp	room editor cleared phantom preview receipt preservation	codex	2026-06-26
+BG-1054	src/app/iggy3d/product/AutomationRoomEditing.cpp	room editor physical phantom preview action dispatch	codex	2026-06-26
+BG-1055	src/app/iggy3d/ProductWindowInputFrame.cpp	room editor physical phantom preview input routing	codex	2026-06-26

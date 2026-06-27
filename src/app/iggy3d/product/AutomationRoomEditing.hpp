@@ -1,6 +1,8 @@
 #pragma once
 
 #include <functional>
+#include <string>
+#include <string_view>
 
 #include "app/frontend/MenuInput.hpp"
 #include "app/iggy3d/product/Automation.hpp"
@@ -24,6 +26,16 @@ struct ProductRoomAuthoringStartFromAsciiRequest;
 struct ProductRoomAuthoringStartFromActiveRoomRequest;
 struct ProductRoomAuthoringEditCommandRequest;
 struct ProductRoomAuthoringUndoRedoRequest;
+
+struct ProductRoomEditorPreviewInputResult {
+  bool handled = false;
+  bool ok = false;
+  std::string status = "room_editor_preview_action_ignored";
+  std::string reasonCode = "room_editor_preview_action_ignored";
+  std::string operation = "none";
+  bool operationAccepted = false;
+  std::string primitiveId = "none";
+};
 
 struct ProductAutomationRoomEditingContext {
   FrontendState& frontend;
@@ -61,9 +73,18 @@ void recordProductRoomEditorActionResult(
 
 void clearProductRoomEditorPreview(ProductAppWindowState& window);
 
+void markProductRoomEditorPreviewCleared(ProductAppWindowState& window,
+                                         std::string_view status);
+
 void recordProductRoomEditorPreviewResult(
     ProductAppWindowState& window,
     const ProductRoomEditorPlacementPreviewResult& result);
+
+bool isProductRoomEditorPreviewInputAction(InputAction action);
+
+ProductRoomEditorPreviewInputResult applyProductRoomEditorPreviewInputAction(
+    ProductAppWindowState& window,
+    InputAction action);
 
 ProductRoomEditingStartResult startProductRoomEditAutomationFromAsciiDraft(
     ProductRoomAuthoringStartFromAsciiRequest request);

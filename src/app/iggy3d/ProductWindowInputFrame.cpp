@@ -12,6 +12,30 @@
 #include "app/input/InputRouter.hpp"
 
 namespace iggy3d {
+namespace {
+
+void applyProductWindowRoomEditorActions(ProductAppWindowState& window,
+                                         const ActionState& actions) {
+  for (const ActionStateEntry& entry : actions.entries) {
+    // branch-gate: BG-1055
+    if (isProductRoomEditorPreviewInputAction(entry.action)) {
+      (void)applyProductRoomEditorPreviewInputAction(window, entry.action);
+      continue;
+    }
+
+    ActionState singleAction;
+    recordAction(singleAction, entry.action, entry.down, entry.pressed,
+                 entry.released, entry.value);
+    const ProductRoomEditorActionResult result =
+        applyProductRoomEditorActions(window.roomEditing,
+                                      window.roomEditorCursor,
+                                      singleAction,
+                                      ProductRoomAuthoringInputSource::Hotkey);
+    recordProductRoomEditorActionResult(window, result);
+  }
+}
+
+}  // namespace
 
 void initializeProductWindowInputFrameState(ProductWindowInputFrameState& state,
                                             ProductAppWindowState& window) {
@@ -112,12 +136,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
     }
     // branch-gate: BG-1029
     if (!acceptedEditorActions.entries.empty()) {
-      const ProductRoomEditorActionResult result =
-          applyProductRoomEditorActions(context.window.roomEditing,
-                                        context.window.roomEditorCursor,
-                                        acceptedEditorActions,
-                                        ProductRoomAuthoringInputSource::Hotkey);
-      recordProductRoomEditorActionResult(context.window, result);
+      applyProductWindowRoomEditorActions(context.window, acceptedEditorActions);
     } else {
       applyProductCameraActions(acceptedGameplayActions, context.window.viewport,
                                 context.settings, "action_map");

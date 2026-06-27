@@ -348,6 +348,9 @@ ProductRoomEditorActionResult applyProductRoomEditorAction(
       return redoResult(editing, cursor, operation, inputSource);
     case InputAction::EditorToggle:
     case InputAction::EditorSelect:
+    case InputAction::EditorPreviewPlacement:
+    case InputAction::EditorConfirmPreview:
+    case InputAction::EditorCancelPreview:
     case InputAction::EditorResizeX:
     case InputAction::EditorResizeZ: {
       ProductRoomEditorActionResult result =

@@ -1,4 +1,6 @@
 #include "app/iggy3d/ProductRoomEditorActionController.hpp"
+#include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/product/AutomationRoomEditing.hpp"
 
 #include <iostream>
 #include <string_view>
@@ -412,6 +414,112 @@ bool mousePickRejectsInvalidWithoutMutation() {
                 "invalid mouse pick leaves walls");
 }
 
+bool previewInputBuildsAndConfirmsThroughEditingState() {
+  iggy3d::ProductAppWindowState window;
+  window.roomEditing =
+      iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
+  window.roomEditorCursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
+  window.roomEditorCursor.gridX = 2;
+  const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
+  const std::uint64_t initialBlockers =
+      window.roomEditing.collisionActorBlockerSurfaceCount;
+
+  const iggy3d::ProductRoomEditorPreviewInputResult preview =
+      iggy3d::applyProductRoomEditorPreviewInputAction(
+          window, iggy3d::InputAction::EditorPreviewPlacement);
+  bool ok = expect(preview.ok, "preview input accepted") &&
+            expect(preview.status == "room_editor_preview_ready",
+                   "preview input status") &&
+            expect(preview.operation == "editor.preview",
+                   "preview input operation") &&
+            expect(preview.primitiveId == "edit_wall_1",
+                   "preview input primitive") &&
+            expect(window.roomEditorPreviewActive,
+                   "preview input activates preview") &&
+            expect(window.roomEditorPreviewVisible,
+                   "preview input visible") &&
+            expect(window.roomEditing.documentWallCount == initialWalls,
+                   "preview input leaves walls") &&
+            expect(window.roomEditing.collisionActorBlockerSurfaceCount ==
+                       initialBlockers,
+                   "preview input leaves collision");
+
+  const iggy3d::ProductRoomEditorPreviewInputResult confirmed =
+      iggy3d::applyProductRoomEditorPreviewInputAction(
+          window, iggy3d::InputAction::EditorConfirmPreview);
+  return expect(confirmed.ok, "preview confirm accepted") &&
+         expect(confirmed.status == "room_editor_preview_confirmed",
+                "preview confirm status") &&
+         expect(confirmed.operation == "editor.preview_confirm",
+                "preview confirm operation") &&
+         expect(confirmed.primitiveId == "edit_wall_1",
+                "preview confirm primitive") &&
+         expect(!window.roomEditorPreviewActive, "preview confirm clears active") &&
+         expect(!window.roomEditorPreviewVisible, "preview confirm hidden") &&
+         expect(window.roomEditing.documentWallCount == initialWalls + 1U,
+                "preview confirm increments walls") &&
+         expect(window.roomEditing.collisionActorBlockerSurfaceCount ==
+                    initialBlockers + 1U,
+                "preview confirm increments collision") &&
+         expect(window.roomEditingLastOperation == "editor.preview_confirm",
+                "preview confirm records room editing operation") &&
+         expect(window.roomEditingLastOperationStatus ==
+                    "product_room_editing_edit_applied",
+                "preview confirm records edit applied") &&
+         expect(window.roomEditingLastPrimitiveId == "edit_wall_1",
+                "preview confirm records editing primitive") &&
+         ok;
+}
+
+bool previewInputCancelAndMissingConfirmDoNotMutate() {
+  iggy3d::ProductAppWindowState cancelWindow;
+  cancelWindow.roomEditing =
+      iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
+  cancelWindow.roomEditorCursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
+  cancelWindow.roomEditorCursor.gridX = 2;
+  const std::uint64_t initialWalls = cancelWindow.roomEditing.documentWallCount;
+  const std::uint64_t initialBlockers =
+      cancelWindow.roomEditing.collisionActorBlockerSurfaceCount;
+
+  const iggy3d::ProductRoomEditorPreviewInputResult preview =
+      iggy3d::applyProductRoomEditorPreviewInputAction(
+          cancelWindow, iggy3d::InputAction::EditorPreviewPlacement);
+  const iggy3d::ProductRoomEditorPreviewInputResult cancelled =
+      iggy3d::applyProductRoomEditorPreviewInputAction(
+          cancelWindow, iggy3d::InputAction::EditorCancelPreview);
+
+  iggy3d::ProductAppWindowState missingWindow;
+  missingWindow.roomEditing =
+      iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
+  const std::uint64_t missingWalls = missingWindow.roomEditing.documentWallCount;
+  const iggy3d::ProductRoomEditorPreviewInputResult missing =
+      iggy3d::applyProductRoomEditorPreviewInputAction(
+          missingWindow, iggy3d::InputAction::EditorConfirmPreview);
+
+  return expect(preview.ok, "cancel setup preview accepted") &&
+         expect(cancelled.ok, "preview cancel accepted") &&
+         expect(cancelled.status == "room_editor_preview_cancelled",
+                "preview cancel status") &&
+         expect(cancelled.operation == "editor.preview_cancel",
+                "preview cancel operation") &&
+         expect(!cancelWindow.roomEditorPreviewActive,
+                "preview cancel clears active") &&
+         expect(cancelWindow.roomEditing.documentWallCount == initialWalls,
+                "preview cancel leaves walls") &&
+         expect(cancelWindow.roomEditing.collisionActorBlockerSurfaceCount ==
+                    initialBlockers,
+                "preview cancel leaves collision") &&
+         expect(cancelWindow.roomEditorLastOperation == "editor.preview_cancel",
+                "preview cancel records editor operation") &&
+         expect(!missing.ok, "missing preview confirm rejected") &&
+         expect(missing.status == "room_editor_preview_confirm_missing",
+                "missing preview confirm status") &&
+         expect(missingWindow.roomEditing.documentWallCount == missingWalls,
+                "missing preview confirm leaves walls") &&
+         expect(!missingWindow.roomEditorPreviewActive,
+                "missing preview confirm no active preview");
+}
+
 bool unsupportedActionsAreIgnored() {
   iggy3d::ProductRoomEditingState editing =
       iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
@@ -441,6 +549,8 @@ int main() {
                   deleteMissingTargetIsStable() &&
                   mousePickUpdatesCursorWithoutMutation() &&
                   mousePickRejectsInvalidWithoutMutation() &&
+                  previewInputBuildsAndConfirmsThroughEditingState() &&
+                  previewInputCancelAndMissingConfirmDoNotMutate() &&
                   unsupportedActionsAreIgnored();
   return ok ? 0 : 1;
 }
