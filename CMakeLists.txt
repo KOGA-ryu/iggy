@@ -72,7 +72,7 @@ target_sources(iggy3d
     src/app/iggy3d/automation/AutomationSaveBrowser.cpp
     src/app/iggy3d/automation/AutomationSystem.cpp
     src/app/iggy3d/menu/ProductMenuActionHandlers.cpp
-    src/app/iggy3d/menu/ProductMenuInputRouter.cpp
+    src/app/iggy3d/menu/InputRouter.cpp
     src/app/iggy3d/ProductPrimitiveDrawList.cpp
     src/app/iggy3d/ProductRenderBridge.cpp
     src/app/iggy3d/room/ProductRoomGeometryOptimization.cpp

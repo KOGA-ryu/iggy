@@ -6,7 +6,7 @@
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/iggy3d/window/MouseCapturePolicy.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
-#include "app/iggy3d/menu/ProductMenuInputRouter.hpp"
+#include "app/iggy3d/menu/InputRouter.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)
 #include <chrono>

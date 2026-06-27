@@ -1,4 +1,4 @@
-#include "app/iggy3d/menu/ProductMenuInputRouter.hpp"
+#include "app/iggy3d/menu/InputRouter.hpp"
 
 #include "app/iggy3d/menu/ProductMenuActionHandlers.hpp"
 

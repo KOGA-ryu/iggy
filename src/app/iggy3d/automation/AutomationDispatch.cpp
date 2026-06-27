@@ -4,7 +4,7 @@
 #include "app/iggy3d/automation/AutomationRoomEditing.hpp"
 #include "app/iggy3d/automation/AutomationSaveBrowser.hpp"
 #include "app/iggy3d/automation/AutomationSystem.hpp"
-#include "app/iggy3d/menu/ProductMenuInputRouter.hpp"
+#include "app/iggy3d/menu/InputRouter.hpp"
 #include "app/iggy3d/ascii_room/ProductAsciiRoomActivation.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"

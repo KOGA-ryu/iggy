@@ -9,7 +9,7 @@
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/automation/AutomationControl.hpp"
 #include "app/iggy3d/automation/AutomationDispatch.hpp"
-#include "app/iggy3d/menu/ProductMenuInputRouter.hpp"
+#include "app/iggy3d/menu/InputRouter.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/gameplay/TapeRunner.hpp"
