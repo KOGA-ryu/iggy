@@ -106,6 +106,11 @@ iggy3d_add_unit_test(product_gameplay_controller_tests
 set_tests_properties(product_gameplay_controller_tests PROPERTIES
   LABELS "unit;app;product;gameplay;controls;iggy3d")
 
+iggy3d_add_unit_test(product_camera_controller_tests
+  tests/unit/product_camera_controller_tests.cpp)
+set_tests_properties(product_camera_controller_tests PROPERTIES
+  LABELS "unit;app;product;camera;controls;iggy3d")
+
 iggy3d_add_unit_test(product_interaction_mode_hud_tests
   tests/unit/product_interaction_mode_hud_tests.cpp)
 set_tests_properties(product_interaction_mode_hud_tests PROPERTIES

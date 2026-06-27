@@ -168,7 +168,7 @@ int main() {
       hasField(fields, "camera_controller_active", "true") &&
       hasField(fields, "camera_input_source", "scripted") &&
       hasField(fields, "camera_yaw_degrees", "6.000") &&
-      hasField(fields, "camera_pitch_degrees", "2.000") &&
+      hasField(fields, "camera_pitch_degrees", "-2.000") &&
       hasField(fields, "product_draw_grid_visible", "true") &&
       hasField(fields, "product_draw_player_visible", "true") &&
       hasField(fields, "product_draw_room_visible", "true") &&

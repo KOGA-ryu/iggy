@@ -119,6 +119,12 @@ bool playerGameplayMappingsAreStable() {
                       "player left stick left maps to strafe left") &&
          expectMapped(iggy3d::ProductInputSurface::Gameplay,
                       iggy3d::ProductInteractionMode::Player,
+                      iggy3d::ProductControllerControl::RightStickUp,
+                      iggy3d::InputAction::PlayerLookY,
+                      -1.0F,
+                      "player right stick up maps to look up") &&
+         expectMapped(iggy3d::ProductInputSurface::Gameplay,
+                      iggy3d::ProductInteractionMode::Player,
                       iggy3d::ProductControllerControl::RightStickRight,
                       iggy3d::InputAction::PlayerLookX,
                       1.0F,

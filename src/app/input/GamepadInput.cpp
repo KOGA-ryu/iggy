@@ -186,7 +186,7 @@ void pollGamepadGameplayActions(GamepadMenuState& state, ActionState& actions) {
   const float moveX = normalizedAxis(state, SDL_GAMEPAD_AXIS_LEFTX);
   const float moveY = -normalizedAxis(state, SDL_GAMEPAD_AXIS_LEFTY);
   const float lookX = normalizedAxis(state, SDL_GAMEPAD_AXIS_RIGHTX);
-  const float lookY = -normalizedAxis(state, SDL_GAMEPAD_AXIS_RIGHTY);
+  const float lookY = normalizedAxis(state, SDL_GAMEPAD_AXIS_RIGHTY);
   const bool interactDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_SOUTH);
   const bool attackDown = triggerDown(state, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER);
 

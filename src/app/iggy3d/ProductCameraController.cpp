@@ -43,7 +43,7 @@ void applyProductCameraActions(const ActionState& actions,
   constexpr float kYawStepDegrees = 6.0F;
   constexpr float kPitchStepDegrees = 4.0F;
   const float sensitivity = settings.lookSensitivity;
-  const float pitchDirection = settings.invertLook ? -1.0F : 1.0F;
+  const float pitchDirection = settings.invertLook ? 1.0F : -1.0F;
   viewport.cameraControllerActive = true;
   viewport.lookInputUsed = true;
   viewport.cameraInputSource = std::string(source);

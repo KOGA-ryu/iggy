@@ -217,10 +217,10 @@ void pollKeyboardGameplayActions(KeyboardInputState& state, ActionState& actions
     recordAction(actions, InputAction::PlayerLookX, true, false, false, 1.0F);
   }
   if (lookUpDown) {
-    recordAction(actions, InputAction::PlayerLookY, true, false, false, 1.0F);
+    recordAction(actions, InputAction::PlayerLookY, true, false, false, -1.0F);
   }
   if (lookDownDown) {
-    recordAction(actions, InputAction::PlayerLookY, true, false, false, -1.0F);
+    recordAction(actions, InputAction::PlayerLookY, true, false, false, 1.0F);
   }
   if (interactDown && !state.interactWasDown) {
     recordAction(actions, InputAction::PlayerInteract, true, true, false, 1.0F);
