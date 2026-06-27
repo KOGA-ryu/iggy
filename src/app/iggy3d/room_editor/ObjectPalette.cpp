@@ -1,4 +1,4 @@
-#include "app/iggy3d/room_editor/ProductRoomEditorObjectPalette.hpp"
+#include "app/iggy3d/room_editor/ObjectPalette.hpp"
 
 #include <utility>
 
